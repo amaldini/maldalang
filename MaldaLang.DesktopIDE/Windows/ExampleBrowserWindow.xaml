@@ -1,0 +1,228 @@
+<Window x:Class="MaldaLang.DesktopIDE.Windows.ExampleBrowserWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:avalon="http://icsharpcode.net/sharpdevelop/avalonedit"
+        mc:Ignorable="d"
+        Title="Browse Examples" Height="700" Width="1000"
+        Background="{DynamicResource WindowBackgroundBrush}">
+
+    <Window.Resources>
+        <!-- ScrollBar brushes will be set dynamically in code-behind -->
+        <SolidColorBrush x:Key="ScrollBarTrackBrush" Color="#E0E0E0"/>
+        <SolidColorBrush x:Key="ScrollBarThumbBrush" Color="#B0B0B0"/>
+        <SolidColorBrush x:Key="ScrollBarThumbHoverBrush" Color="#808080"/>
+        <SolidColorBrush x:Key="ScrollBarButtonBrush" Color="#C0C0C0"/>
+
+        <Style x:Key="ScrollBarThumbStyle" TargetType="Thumb">
+            <Setter Property="OverridesDefaultStyle" Value="true"/>
+            <Setter Property="IsTabStop" Value="false"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Thumb">
+                        <Border x:Name="rectangle"
+                                Background="{DynamicResource ScrollBarThumbBrush}"
+                                CornerRadius="3"
+                                Margin="2"/>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="true">
+                                <Setter TargetName="rectangle" Property="Background" Value="{DynamicResource ScrollBarThumbHoverBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsDragging" Value="true">
+                                <Setter TargetName="rectangle" Property="Background" Value="{DynamicResource ScrollBarThumbHoverBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="ScrollBar">
+            <Setter Property="Background" Value="{DynamicResource ScrollBarTrackBrush}"/>
+            <Setter Property="Width" Value="14"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Grid x:Name="Bg" SnapsToDevicePixels="true">
+                            <Grid.RowDefinitions>
+                                <RowDefinition MaxHeight="14"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition MaxHeight="14"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition MaxWidth="14"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition MaxWidth="14"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Track x:Name="PART_Track" Grid.Row="1" Grid.Column="1" IsDirectionReversed="true">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="ScrollBar.PageUpCommand" Background="Transparent" BorderBrush="Transparent"/>
+                                </Track.DecreaseRepeatButton>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="ScrollBar.PageDownCommand" Background="Transparent" BorderBrush="Transparent"/>
+                                </Track.IncreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Style="{StaticResource ScrollBarThumbStyle}"/>
+                                </Track.Thumb>
+                            </Track>
+
+                            <RepeatButton x:Name="LineUpButton" Command="ScrollBar.LineUpCommand" Grid.Row="0" Grid.Column="1">
+                                <Path x:Name="LineUpPath" Data="M 0 4 L 4 0 L 8 4 Z" Fill="{DynamicResource TextForegroundBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.7"/>
+                            </RepeatButton>
+                            <RepeatButton x:Name="LineDownButton" Command="ScrollBar.LineDownCommand" Grid.Row="2" Grid.Column="1">
+                                <Path x:Name="LineDownPath" Data="M 0 0 L 4 4 L 8 0 Z" Fill="{DynamicResource TextForegroundBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.7"/>
+                            </RepeatButton>
+                        </Grid>
+
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="Orientation" Value="Horizontal">
+                                <Setter Property="Width" Value="Auto"/>
+                                <Setter Property="Height" Value="14"/>
+                                <Setter TargetName="PART_Track" Property="Grid.Row" Value="1"/>
+                                <Setter TargetName="PART_Track" Property="Grid.Column" Value="1"/>
+                                <Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="false"/>
+                                <Setter TargetName="LineUpButton" Property="Grid.Row" Value="1"/>
+                                <Setter TargetName="LineUpButton" Property="Grid.Column" Value="0"/>
+                                <Setter TargetName="LineDownButton" Property="Grid.Row" Value="1"/>
+                                <Setter TargetName="LineDownButton" Property="Grid.Column" Value="2"/>
+                                <Setter TargetName="LineUpPath" Property="Data" Value="M 4 0 L 0 4 L 4 8 Z"/>
+                                <Setter TargetName="LineDownPath" Property="Data" Value="M 0 0 L 4 4 L 0 8 Z"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="Button">
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="Margin" Value="2"/>
+            <Setter Property="Background" Value="{DynamicResource ButtonBackgroundBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource ButtonForegroundBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="Button" x:Key="PrimaryButton" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="{DynamicResource PrimaryButtonBackgroundBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryButtonForegroundBrush}"/>
+        </Style>
+
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource InputForegroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="4"/>
+        </Style>
+
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource TextForegroundBrush}"/>
+        </Style>
+
+        <Style TargetType="ListBox">
+            <Setter Property="Background" Value="{DynamicResource ListBackgroundBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource ListForegroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ListBorderBrush}"/>
+        </Style>
+
+        <Style TargetType="ListBoxItem">
+            <Setter Property="Foreground" Value="{DynamicResource ListForegroundBrush}"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="Browse Examples" FontSize="18" FontWeight="Bold" Margin="0,0,0,12" Foreground="{DynamicResource TextForegroundBrush}"/>
+
+        <Grid Grid.Row="1" Margin="0,0,0,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBox x:Name="SearchTextBox" Grid.Column="0" TextChanged="SearchTextBox_TextChanged" Padding="8,4"/>
+            <Button x:Name="RefreshButton" Grid.Column="1" Content="Refresh" Click="RefreshButton_Click" Margin="8,0,0,0" MinWidth="80"/>
+        </Grid>
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="200"/>
+                <ColumnDefinition Width="5"/>
+                <ColumnDefinition Width="250"/>
+                <ColumnDefinition Width="5"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                <ListBox x:Name="CategoriesListBox" SelectionChanged="CategoriesListBox_SelectionChanged" BorderThickness="0">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" Padding="8,6"/>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Border>
+
+            <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch" Background="{DynamicResource GridSplitterBackgroundBrush}"/>
+
+            <Border Grid.Column="2" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Margin="5,0,0,0">
+                <ListBox x:Name="ExamplesListBox" SelectionChanged="ExamplesListBox_SelectionChanged" BorderThickness="0">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="8,4">
+                                <TextBlock Text="{Binding Name}" FontWeight="Bold"/>
+                                <TextBlock Text="{Binding Description}" FontSize="11" Opacity="0.7" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Border>
+
+            <GridSplitter Grid.Column="3" HorizontalAlignment="Stretch" Background="{DynamicResource GridSplitterBackgroundBrush}"/>
+
+            <Border Grid.Column="4" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Margin="5,0,0,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <avalon:TextEditor x:Name="PreviewEditor" 
+                                       IsReadOnly="True" 
+                                       FontFamily="Consolas" 
+                                       FontSize="12" 
+                                       ShowLineNumbers="True" 
+                                       SyntaxHighlighting="CSharp"
+                                       Background="{DynamicResource EditorBackgroundBrush}"
+                                       Foreground="{DynamicResource EditorForegroundBrush}"
+                                       LineNumbersForeground="{DynamicResource EditorLineNumbersBrush}"/>
+                    <Border Grid.Row="1" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource BorderBrush}" Background="{DynamicResource InputBackgroundBrush}">
+                        <TextBlock x:Name="DescriptionTextBlock" Padding="12,8" TextWrapping="Wrap" Foreground="{DynamicResource TextForegroundBrush}"/>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="3" Padding="12" Margin="0,12,0,0">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button x:Name="LoadButton" Content="Load Example" Click="LoadButton_Click" IsEnabled="False" MinWidth="120" Style="{StaticResource PrimaryButton}" Margin="0,0,8,0"/>
+                <Button x:Name="CloseButton" Content="Close" Click="CloseButton_Click" MinWidth="80"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

@@ -1,0 +1,47 @@
+// Spectre.Console Progress Callback Example
+// Demonstrates the new callback-based syntax for progress bars
+
+AnsiConsole.progress((ctx) => {
+    ctx.addTask("Loading World Map", 100);
+    
+    while (!ctx.isFinished()) {
+      ctx.increment("Loading World Map", 1.5);
+      sleep(50);
+    }
+  });
+
+AnsiConsole.markupLine("[green]World map loaded![/]");
+AnsiConsole.markupLine("");
+
+// Example with multiple tasks
+AnsiConsole.progress((ctx) => {
+    ctx.addTask("Downloading", 100);
+    ctx.addTask("Extracting", 50);
+    ctx.addTask("Installing", 75);
+    
+    // Download
+    var downloadProgress = 0;
+    while (downloadProgress < 100) {
+      downloadProgress = downloadProgress + 10;
+      ctx.increment("Downloading", 10);
+      sleep(50);
+    }
+    
+    // Extract
+    var extractProgress = 0;
+    while (extractProgress < 50) {
+      extractProgress = extractProgress + 5;
+      ctx.increment("Extracting", 5);
+      sleep(30);
+    }
+    
+    // Install
+    var installProgress = 0;
+    while (installProgress < 75) {
+      installProgress = installProgress + 7.5;
+      ctx.increment("Installing", 7.5);
+      sleep(40);
+    }
+  });
+
+AnsiConsole.markupLine("[green]All tasks completed![/]");

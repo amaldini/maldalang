@@ -1,0 +1,1184 @@
+// Chapter Numbering Script using VectorDB and Graphs
+// Updates chapter numbers in HTML files based on chapters.json order
+// Uses built-in embedBagOfWords for semantic understanding
+// Handles: titles, headings, inline "Section X:" links, cross-references, navigation,
+//          ReferenceManualPDF.html generation
+// Run with: malda update-chapter-numbers.malda
+//
+// For title/breadcrumb/main-h1/nav-footer only, prefer (faster, CI-tested):
+//   powershell -File ../scripts/sync-reference-manual-chapter-numbers.ps1
+// See ReferenceManual/README-numbering.md and SCRIPT_CONSOLIDATION.md
+
+// Configuration options
+var renumberH2 = true;  // Set to true to renumber h2 headings
+var renumberH3 = false;  // Set to true to renumber h3 headings
+
+// Language rename options (set to null to disable)
+var oldLanguageName = null;  // Set to old language name (e.g., "MALDA") to rename
+var newLanguageName = null;  // Set to new language name (e.g., "SimpleLang") to rename to
+var maxLoopIterations = 100000;
+
+// Verbose debug logging for chapter/heading replacement internals
+var enableDebugLogs = false;
+function debugLog(_message) {
+    if (enableDebugLogs) {
+        print(_message);
+    }
+}
+
+function guardLoop(loopName, iteration) {
+    if (iteration >= maxLoopIterations) {
+        print($"Error: loop iteration limit reached in {loopName} (max={maxLoopIterations})\n");
+        return false;
+    }
+    return true;
+}
+
+// Use built-in embedding function instead of custom implementation
+// This replaces 50+ lines of manual feature extraction with a single optimized call
+function calculateVector(text) {
+    // Use bag-of-words embedding with 128 dimensions for good balance of
+    // semantic understanding and compact representation
+    var result = embedBagOfWords(text, 128);
+    return result;
+}
+
+// Alternative options (uncomment to try):
+// function calculateVector(text) {
+//     return embedHash(text, 128);  // Hash-based, similar to original approach
+// }
+// function calculateVector(text) {
+//     return embedBagOfWords(text, 32);  // Match original 32 dimensions
+// }
+
+// Load chapters configuration
+function loadChaptersConfig() {
+    // First, try to get path from MALDAREFERENCEMANUAL environment variable
+    var refManualPath = getEnv("MALDAREFERENCEMANUAL");
+    var configPath = null;
+    
+    if (refManualPath != null) {
+        var envPath = refManualPath;
+        if (substring(envPath, length(envPath) - 1, 1) != "/" && substring(envPath, length(envPath) - 1, 1) != "\\") {
+            envPath = envPath + "/";
+        }
+        var envConfigPath = envPath + "chapters.json";
+        if (hasFile(envConfigPath)) {
+            configPath = envConfigPath;
+            print($"Using MALDAREFERENCEMANUAL environment variable: {refManualPath}");
+        }
+    }
+    
+    // If not found via environment variable, try multiple possible locations
+    if (configPath == null) {
+        var possiblePaths = [
+            "chapters.json",
+            "ReferenceManual/chapters.json",
+            "../chapters.json",
+            "./chapters.json"
+        ];
+        
+        for (var i = 0; i < length(possiblePaths) && guardLoop("loadChaptersConfig:possiblePaths", i); i = i + 1) {
+            if (hasFile(possiblePaths[i])) {
+                configPath = possiblePaths[i];
+                break;
+            }
+        }
+    }
+    
+    if (configPath == null) {
+        print("Error: chapters.json not found");
+        if (refManualPath != null) {
+            print($"  Checked: {refManualPath}chapters.json (from MALDAREFERENCEMANUAL)");
+        } else {
+            print("  MALDAREFERENCEMANUAL environment variable not set");
+        }
+        print("  Also checked: chapters.json, ReferenceManual/chapters.json, ../chapters.json");
+        return null;
+    }
+    
+    print($"Found chapters.json at: {configPath}\n");
+    var configContent = readFile(configPath);
+    if (configContent == null) {
+        print("Error: Failed to read chapters.json\n");
+        return null;
+    }
+    var result = parseJSON(configContent);
+    return result;
+}
+
+// Build chapter graph from HTML links
+function buildChapterGraph(chapters, htmlFiles) {
+    print("Building chapter relationship graph...\n");
+    var chapterGraph = graph directed {};
+    var chapterMap = dict {};
+    
+    // Add all chapters as nodes
+    var i = 0;
+    var chapterNodeLoopGuard = 0;
+    while (i < length(chapters)) {
+        if (!guardLoop("buildChapterGraph:addNodes", chapterNodeLoopGuard)) {
+            break;
+        }
+        chapterNodeLoopGuard = chapterNodeLoopGuard + 1;
+        var chapter = chapters[i];
+        if (chapter.isHome) {
+            i = i + 1;
+            continue;
+        }
+        var filename = chapter.file;
+        chapterGraph.addNode(filename, chapter);
+        chapterMap.set(filename, chapter);
+        i = i + 1;
+    }
+    
+    // Extract links from HTML files to build edges
+    var linkPattern = "<a href=\"([^\"]+\\.html)\"";
+    var fileIdx = 0;
+    var htmlFileLoopGuard = 0;
+    while (fileIdx < length(htmlFiles)) {
+        if (!guardLoop("buildChapterGraph:scanHtmlFiles", htmlFileLoopGuard)) {
+            break;
+        }
+        htmlFileLoopGuard = htmlFileLoopGuard + 1;
+        var file = htmlFiles[fileIdx];
+        if (!hasFile(file)) {
+            fileIdx = fileIdx + 1;
+            continue;
+        }
+        
+        var filename = getFileName(file);
+        var content = readFile(file);
+        if (content == null) {
+            fileIdx = fileIdx + 1;
+            continue;
+        }
+        
+        var matches = regexFind(content, linkPattern);
+        for (var j = 0; j < length(matches) && guardLoop("buildChapterGraph:linkMatches", j); j = j + 1) {
+            var found = matches[j];
+            var groups = found.groups;
+            if (length(groups) >= 2) {
+                var targetFile = groups[1];
+                var targetFilename = split(targetFile, "/");
+                targetFilename = length(targetFilename) > 0 ? targetFilename[length(targetFilename) - 1] : targetFile;
+                
+                if (chapterGraph.hasNode(filename) && chapterGraph.hasNode(targetFilename)) {
+                    if (!chapterGraph.hasEdge(filename, targetFilename)) {
+                        chapterGraph.addEdge(filename, targetFilename, 1.0, dict { "type": "link" });
+                    }
+                }
+            }
+        }
+        fileIdx = fileIdx + 1;
+    }
+    
+    print($"Graph built: {chapterGraph.nodeCount()} nodes, {chapterGraph.edgeCount()} edges\n");
+    return chapterGraph;
+}
+
+// Build VectorDB index of chapters
+function buildChapterIndex(chapters) {
+    print("Building VectorDB index of chapters...\n");
+    // Updated dimension from 32 to 128 to match embedBagOfWords dimension
+    var chapterDB = new VectorDB(128, "double");
+    chapterDB.init(calculateVector);
+    
+    var addedCount = 0;
+    var i = 0;
+    var chapterIndexLoopGuard = 0;
+    while (i < length(chapters)) {
+        if (!guardLoop("buildChapterIndex:addVectors", chapterIndexLoopGuard)) {
+            break;
+        }
+        chapterIndexLoopGuard = chapterIndexLoopGuard + 1;
+        var chapter = chapters[i];
+        if (chapter.isHome) {
+            i = i + 1;
+            continue;
+        }
+        
+        // Create embedding from title and category
+        var text = chapter.title;
+        if (chapter.category != null) {
+            text = text + " " + chapter.category;
+        }
+        var vector = calculateVector(text);
+        var data = dict {
+            "file": chapter.file,
+            "title": chapter.title,
+            "category": chapter.category,
+            "index": i
+        };
+        chapterDB.add(vector, data);
+        addedCount = addedCount + 1;
+        i = i + 1;
+    }
+    
+    print($"Chapter index built: {addedCount} chapters added\n");
+    return chapterDB;
+}
+
+// Get chapter number using graph relationships
+function getChapterNumberFromGraph(chapters, filename, chapterGraph) {
+    var chapterIndex = 0;
+    var i = 0;
+    var chapterNumberLoopGuard = 0;
+    while (i < length(chapters)) {
+        if (!guardLoop("getChapterNumberFromGraph", chapterNumberLoopGuard)) {
+            break;
+        }
+        chapterNumberLoopGuard = chapterNumberLoopGuard + 1;
+        var chapter = chapters[i];
+        if (chapter.isHome) {
+            i = i + 1;
+            continue;
+        }
+        
+        if (chapter.file == filename) {
+            if (chapter.number != null) {
+                return chapter.number;
+            }
+            var result = string(chapterIndex + 1);
+            return result;
+        }
+        chapterIndex = chapterIndex + 1;
+        i = i + 1;
+    }
+    return null;
+}
+
+// Find related chapters using VectorDB similarity
+function findRelatedChapters(chapterDB, queryText, topN) {
+    var results = chapterDB.searchSimilar(queryText, topN);
+    var related = [];
+    var i = 0;
+    var relatedLoopGuard = 0;
+    while (i < length(results)) {
+        if (!guardLoop("findRelatedChapters", relatedLoopGuard)) {
+            break;
+        }
+        relatedLoopGuard = relatedLoopGuard + 1;
+        var result = results[i];
+        if (result.data != null && result.data.file != null) {
+            related.append(result.data);
+        }
+        i = i + 1;
+    }
+    return related;
+}
+
+// Get chapter info by filename
+function getChapterInfo(chapters, filename) {
+    for (var i = 0; i < length(chapters) && guardLoop("getChapterInfo", i); i = i + 1) {
+        var chapter = chapters[i];
+        if (chapter.file == filename) {
+            return chapter;
+        }
+    }
+    return null;
+}
+
+// Get previous chapter based on chapters.json order
+function getPreviousChapter(chapters, currentFilename) {
+    for (var i = 0; i < length(chapters) && guardLoop("getPreviousChapter:outer", i); i = i + 1) {
+        if (chapters[i].file == currentFilename) {
+            // Find the previous non-home chapter
+            for (var j = i - 1; j >= 0 && guardLoop("getPreviousChapter:inner", i - j); j = j - 1) {
+                if (!chapters[j].isHome) {
+                    return chapters[j];
+                }
+            }
+            // If no previous chapter found, return index.html (home)
+            if (i > 0 && chapters[0].isHome) {
+                return chapters[0];
+            }
+            return null;
+        }
+    }
+    return null;
+}
+
+// Get next chapter based on chapters.json order
+function getNextChapter(chapters, currentFilename) {
+    for (var i = 0; i < length(chapters) && guardLoop("getNextChapter:outer", i); i = i + 1) {
+        if (chapters[i].file == currentFilename) {
+            // Find the next non-home chapter
+            for (var j = i + 1; j < length(chapters) && guardLoop("getNextChapter:inner", j - i - 1); j = j + 1) {
+                if (!chapters[j].isHome) {
+                    return chapters[j];
+                }
+            }
+            return null;
+        }
+    }
+    return null;
+}
+
+// Remove existing number prefix from text
+// Handles patterns like "13.7", ".7", "13.7 .7", etc.
+function stripNumberPrefix(text) {
+    // First, remove leading whitespace
+    text = regexReplace(text, "^\\s+", "");
+    // Remove patterns like "13.7", "13.7.1", etc. at the start
+    text = regexReplace(text, "^\\d+\\.\\d*\\.?\\d*\\s+", "");
+    // Also remove patterns like ".7", ".7.1" that might be left over
+    text = regexReplace(text, "^\\.\\d+\\.?\\d*\\s+", "");
+    // Remove any remaining leading whitespace
+    text = regexReplace(text, "^\\s+", "");
+    return text;
+}
+
+// Extract filename from href
+function extractFilename(href) {
+    var parts = split(href, "/");
+    return length(parts) > 0 ? parts[length(parts) - 1] : href;
+}
+
+// Fix all links to point to correct files from chapters.json
+function fixLinksInContent(content, chapters, chapterGraph) {
+    var modified = false;
+    
+    // Find all links to HTML files
+    var linkPattern = "(<a[^>]*href=\")([^\"]+\\.html)(\"[^>]*>)([^<]*)(</a>)";
+    var allLinks = regexFind(content, linkPattern);
+    allLinks.reverse(); // Process in reverse to maintain positions
+    
+    for (var linkIdx = 0; linkIdx < length(allLinks) && guardLoop("fixLinksInContent:allLinks", linkIdx); linkIdx = linkIdx + 1) {
+        var found = allLinks[linkIdx];
+                    var groups = found.groups;
+        if (length(groups) >= 6) {
+            var linkOpen = groups[1];  // <a ... href="
+            var href = groups[2];       // filename.html
+            var linkMiddle = groups[3]; // " ... >
+            var linkText = groups[4];   // link text
+            var linkClose = groups[5];  // </a>
+            
+            var refFilename = extractFilename(href);
+            var refChapter = getChapterInfo(chapters, refFilename);
+            
+            // If link points to a file that doesn't exist in chapters.json, try to find correct file
+            if (refChapter == null && refFilename != "index.html") {
+                // Try to find by chapter number in link text (e.g., "Section 5:" or "5. Introduction")
+                var numberPattern = "(?:Section\\s+)?(\\d+)(?:\\.|:)?\\s*";
+                var numberMatch = regexFind(linkText, numberPattern);
+                if (length(numberMatch) > 0) {
+                    var chapterNumStr = numberMatch[0].groups[1];
+                    var chapterNum = int(chapterNumStr);
+                    
+                    // Find chapter with this number
+                    var chapterIndex = 0;
+                    for (var i = 0; i < length(chapters) && guardLoop("fixLinksInContent:findByNumber", i); i = i + 1) {
+                        var ch = chapters[i];
+                        if (ch.isHome) {
+                            continue;
+                        }
+                        chapterIndex = chapterIndex + 1;
+                        if (chapterIndex == chapterNum) {
+                            refChapter = ch;
+                            break;
+                        }
+                    }
+                }
+                
+                // If still not found, try to match by title in link text
+                if (refChapter == null) {
+                    var cleanLinkText = stripNumberPrefix(linkText);
+                    cleanLinkText = trim(cleanLinkText);
+                    
+                    for (var i = 0; i < length(chapters) && guardLoop("fixLinksInContent:findByTitle", i); i = i + 1) {
+                        var ch = chapters[i];
+                        if (ch.isHome) {
+                            continue;
+                        }
+                        var cleanTitle = stripNumberPrefix(ch.title);
+                        cleanTitle = trim(cleanTitle);
+                        
+                        // Check if link text contains chapter title or vice versa
+                        if (indexOf(cleanLinkText, cleanTitle) >= 0 || indexOf(cleanTitle, cleanLinkText) >= 0) {
+                            refChapter = ch;
+                            break;
+                        }
+                    }
+                }
+                
+                // If found correct chapter, update the href
+                if (refChapter != null) {
+                    var newHref = refChapter.file;
+                    var newLink = linkOpen + newHref + linkMiddle + linkText + linkClose;
+                    content = replace(content, found.text, newLink);
+                    modified = true;
+                }
+            }
+            // If link points to valid file, verify href is correct (in case file was renamed)
+            else if (refChapter != null) {
+                var correctFilename = refChapter.file;
+                if (refFilename != correctFilename) {
+                    var newLink = linkOpen + correctFilename + linkMiddle + linkText + linkClose;
+                    content = replace(content, found.text, newLink);
+                    modified = true;
+                }
+            }
+        }
+    }
+    
+    return content;
+}
+
+// Rename language name in content (simple global replace)
+function renameLanguageInContent(content) {
+    if (oldLanguageName == null || newLanguageName == null || oldLanguageName == newLanguageName) {
+        return content;
+    }
+    // Simple global replace: keep replacing until no more occurrences found
+    var result = content;
+    var previousResult = "";
+    var renameLoopGuard = 0;
+    while (result != previousResult) {
+        if (!guardLoop("renameLanguageInContent", renameLoopGuard)) {
+            break;
+        }
+        renameLoopGuard = renameLoopGuard + 1;
+        previousResult = result;
+        result = replace(result, oldLanguageName, newLanguageName);
+    }
+    return result;
+}
+
+// Update HTML file using AI understanding
+// (This function remains largely the same, just uses the refactored calculateVector)
+function updateHTMLFileAI(filePath, chapters, chapterGraph, chapterDB) {
+    var filename = getFileName(filePath);
+    var chapter = getChapterInfo(chapters, filename);
+    
+    if (chapter == null || chapter.isHome) {
+        return false;
+    }
+    
+    var chapterNum = getChapterNumberFromGraph(chapters, filename, chapterGraph);
+    if (chapterNum == null) {
+        print($"Warning: Could not determine chapter number for {filename}\n");
+        sleep(0);
+        return false;
+    }
+    
+    var content = readFile(filePath);
+    if (content == null) {
+        return false;
+    }
+    
+    // Rename language name if configured
+    var originalContent = content;
+    content = renameLanguageInContent(content);
+    var modified = content != originalContent;
+    
+    // Fix all links to point to correct files from chapters.json
+    var contentBeforeLinkFix = content;
+    content = fixLinksInContent(content, chapters, chapterGraph);
+    if (content != contentBeforeLinkFix) {
+        modified = true;
+    }
+    
+    // Update page title
+    var titlePattern = "<title>(\\d+\\.\\s*)?([^<]+)</title>";
+    if (regexMatch(content, titlePattern)) {
+        var newTitle = $"<title>{chapterNum}. {chapter.title} - MALDA Reference Manual</title>";
+        content = regexReplace(content, titlePattern, newTitle);
+        modified = true;
+    }
+    
+    // Update breadcrumbs
+    var breadcrumbPattern = "(<div class=\"breadcrumbs\">[^<]*<span[^>]*>)(\\d+\\.\\s*)?([^<]+)(</span>)";
+    if (regexMatch(content, breadcrumbPattern)) {
+        var matches = regexFind(content, breadcrumbPattern);
+        if (length(matches) > 0) {
+            var found = matches[0];
+            var groups = found.groups;
+            if (length(groups) >= 5) {
+                var prefix = groups[1];
+                var suffix = groups[4];
+                var newBreadcrumb = prefix + chapterNum + ". " + chapter.title + suffix;
+                content = regexReplace(content, breadcrumbPattern, newBreadcrumb);
+                modified = true;
+            }
+        }
+    }
+    
+    // Update main h1 heading
+    var h1Pattern = "(<h1[^>]*>)(\\d+\\.\\s*)?([^<]+)(</h1>)";
+    var h1Matches = regexFind(content, h1Pattern);
+    if (length(h1Matches) > 0) {
+        var mainPos = indexOf(content, "<main>");
+        if (mainPos >= 0) {
+            var mainH1Match = null;
+            for (var i = 0; i < length(h1Matches) && guardLoop("updateHTMLFileAI:h1Matches", i); i = i + 1) {
+                var found = h1Matches[i];
+                var h1Pos = indexOf(content, found.text);
+                if (h1Pos > mainPos) {
+                    mainH1Match = found;
+                    break;
+                }
+            }
+            
+            if (mainH1Match != null) {
+                var groups = mainH1Match.groups;
+                if (length(groups) >= 5) {
+                    var openTag = groups[1];
+                    var closeTag = groups[4];
+                    var newH1 = $"{openTag}{chapterNum}. {chapter.title}{closeTag}";
+                    content = replace(content, mainH1Match.text, newH1);
+                    modified = true;
+                }
+            }
+        }
+    }
+    
+    // Update section headings (h2) - simplified version
+    if (renumberH2) {
+        var splitPattern = "(<div class=\"(see-also|nav-footer)\">[\\s\\S]*?</div>)";
+        var parts = split(content, splitPattern, true);
+        
+        debugLog($"H2_DEBUG: Split content into {length(parts)} parts for h2 renumbering\n");
+        var sectionNum = 1;
+        for (var partIdx = 0; partIdx < length(parts) && guardLoop("updateHTMLFileAI:h2Parts", partIdx); partIdx = partIdx + 1) {
+            debugLog($"H2_DEBUG: Processing part {partIdx + 1} of {length(parts)}\n");
+            var part = parts[partIdx];
+            if (regexMatch(part, "see-also|nav-footer")) {
+                debugLog($"H2_DEBUG: Skipping part {partIdx + 1} (see-also/nav-footer)\n");
+                continue;
+            }
+            
+            // Pattern to match h2 with optional number prefix
+            // The stripNumberPrefix function will clean up any malformed numbers in the text
+            var h2Pattern = "(<h2[^>]*>)(\\d+\\.\\d+\\s*)?([^<]+)(</h2>)";
+            var h2Matches = regexFind(part, h2Pattern);
+            
+            if (length(h2Matches) > 0) {
+                debugLog($"H2_DEBUG: Found {length(h2Matches)} h2 matches in part {partIdx + 1}, starting sectionNum={sectionNum}\n");
+                
+                var currentSectionNum = sectionNum;
+                var workingPart = part;
+                
+                // Process each match and replace it with a unique placeholder, then replace placeholders
+                // This avoids the issue of replace() only replacing the first occurrence
+                var placeholders = [];
+                var placeholderPattern = "___H2_PLACEHOLDER_";
+                
+                // First pass: replace each h2 with a unique placeholder
+                for (var matchIdx = 0; matchIdx < length(h2Matches) && guardLoop("updateHTMLFileAI:h2PlaceholderPass", matchIdx); matchIdx = matchIdx + 1) {
+                    var found = h2Matches[matchIdx];
+                    var groups = found.groups;
+                    var oldText = groups.length >= 3 ? groups[3] : "unknown";
+                    debugLog($"H2_DEBUG: Match {matchIdx}: old text='{oldText}', full match='{found.text}'\n");
+                    
+                    var placeholder = $"{placeholderPattern}{matchIdx}___";
+                    workingPart = replace(workingPart, found.text, placeholder);
+                    placeholders.append(placeholder);
+                }
+                
+                // Second pass: replace placeholders with correctly numbered h2s
+                for (var matchIdx = 0; matchIdx < length(h2Matches) && guardLoop("updateHTMLFileAI:h2ReplacePass", matchIdx); matchIdx = matchIdx + 1) {
+                    var found = h2Matches[matchIdx];
+                    var groups = found.groups;
+                    if (length(groups) >= 5) {
+                        var openTag = groups[1];
+                        var text = groups[3];
+                        var closeTag = groups[4];
+                        var cleanText = stripNumberPrefix(text);
+                        var newH2 = $"{openTag}{chapterNum}.{currentSectionNum} {cleanText}{closeTag}";
+                        debugLog($"H2_DEBUG: Replacing placeholder {matchIdx} with sectionNum {currentSectionNum}: '{newH2}'\n");
+                        workingPart = replace(workingPart, placeholders[matchIdx], newH2);
+                        currentSectionNum = currentSectionNum + 1;
+                    }
+                }
+                
+                debugLog($"H2_DEBUG: Final sectionNum after part {partIdx + 1}: {currentSectionNum}\n");
+                part = workingPart;
+                sectionNum = currentSectionNum;
+                modified = true;
+            }
+            parts[partIdx] = part;
+        }
+        debugLog($"H2_DEBUG: About to join {length(parts)} parts...\n");
+        content = parts.join("");
+        debugLog($"H2_DEBUG: Join completed, content length: {length(content)}\n");
+    }
+    
+    // Update inline links in main content that reference "Section X:" patterns
+    // This handles links like: <a href="13-agent-orchestration.html">Section 12: Agent Orchestration</a>
+    // Split content to exclude see-also and nav-footer sections
+    debugLog("H2_DEBUG: About to split content for inline links...\n");
+    var mainContentParts = split(content, "(<div class=\"(see-also|nav-footer)\">[\\s\\S]*?</div>)", true);
+    debugLog($"H2_DEBUG: Split completed, got {length(mainContentParts)} parts\n");
+    
+    for (var partIdx = 0; partIdx < length(mainContentParts) && guardLoop("updateHTMLFileAI:inlineLinkParts", partIdx); partIdx = partIdx + 1) {
+        debugLog($"H2_DEBUG: Processing inline links in part {partIdx + 1} of {length(mainContentParts)}\n");
+        var part = mainContentParts[partIdx];
+        // Skip see-also and nav-footer sections
+        if (regexMatch(part, "see-also|nav-footer")) {
+            debugLog($"H2_DEBUG: Skipping part {partIdx + 1} for inline links (see-also/nav-footer)\n");
+            continue;
+        }
+        
+        // Find links with "Section X:" pattern
+        var sectionLinkPattern = "(<a href=\"([^\"]+\\.html)\"[^>]*>)(Section\\s+)(\\d+)([^:]*:\\s*)([^<]+)(</a>)";
+        debugLog($"H2_DEBUG: Finding section links in part {partIdx + 1}...\n");
+        var sectionLinks = regexFind(part, sectionLinkPattern);
+        debugLog($"H2_DEBUG: Found {length(sectionLinks)} section links in part {partIdx + 1}\n");
+        sectionLinks.reverse(); // Process in reverse to maintain positions
+        
+        for (var linkIdx = 0; linkIdx < length(sectionLinks) && guardLoop("updateHTMLFileAI:sectionLinks", linkIdx); linkIdx = linkIdx + 1) {
+            var item = sectionLinks[linkIdx];
+            var groups = item.groups;
+            if (length(groups) >= 7) {
+                var linkOpen = groups[1];
+                var href = groups[2];
+                var sectionWord = groups[3];  // "Section "
+                var oldSectionNum = groups[4]; // old number
+                var colonPart = groups[5];     // ": " or similar
+                var linkText = groups[6];
+                var linkClose = groups[7];
+                
+                var refFilename = extractFilename(href);
+                var refChapter = getChapterInfo(chapters, refFilename);
+                if (refChapter != null && !refChapter.isHome) {
+                    var refNum = getChapterNumberFromGraph(chapters, refFilename, chapterGraph);
+                    if (refNum != null) {
+                        // Update "Section X:" to "Section Y:"
+                        var newLink = $"{linkOpen}{sectionWord}{refNum}{colonPart}{linkText}{linkClose}";
+                        part = replace(part, item.text, newLink);
+                        modified = true;
+                    }
+                }
+            }
+        }
+        
+        mainContentParts[partIdx] = part;
+    }
+    
+    debugLog("H2_DEBUG: About to join mainContentParts...\n");
+    content = mainContentParts.join("");
+    debugLog($"H2_DEBUG: Join completed, content length: {length(content)}\n");
+    
+    // Update cross-references using VectorDB similarity
+    debugLog("H2_DEBUG: Finding see-also links...\n");
+    var seeAlsoPattern = "(<div class=\"see-also\">[\\s\\S]*?)(<a href=\"([^\"]+\\.html)\">)(\\d+\\.\\s*)?([^<]+)(</a>)";
+    var seeAlsoMatches = regexFind(content, seeAlsoPattern);
+    debugLog($"H2_DEBUG: Found {length(seeAlsoMatches)} see-also links\n");
+    seeAlsoMatches.reverse();
+    
+    for (var seeAlsoIdx = 0; seeAlsoIdx < length(seeAlsoMatches) && guardLoop("updateHTMLFileAI:seeAlso", seeAlsoIdx); seeAlsoIdx = seeAlsoIdx + 1) {
+        if (seeAlsoIdx % 10 == 0) {
+            debugLog($"H2_DEBUG: Processing see-also link {seeAlsoIdx + 1} of {length(seeAlsoMatches)}\n");
+        }
+        var found = seeAlsoMatches[seeAlsoIdx];
+                    var groups = found.groups;
+        if (length(groups) >= 7) {
+            var prefix = groups[1];
+            var linkOpen = groups[2];
+            var href = groups[3];
+            var text = groups[5];
+            var linkClose = groups[6];
+            
+            var refFilename = extractFilename(href);
+            var refChapter = getChapterInfo(chapters, refFilename);
+            
+            // Use VectorDB to find related chapters if direct lookup fails
+            if (refChapter == null) {
+                debugLog($"H2_DEBUG: Using VectorDB to find chapter for '{text}'...\n");
+                var related = findRelatedChapters(chapterDB, text, 3);
+                if (length(related) > 0) {
+                    refChapter = getChapterInfo(chapters, related[0].file);
+                }
+            }
+            
+            if (refChapter != null) {
+                var refNum = getChapterNumberFromGraph(chapters, refFilename, chapterGraph);
+                if (refNum != null) {
+                    var cleanText = stripNumberPrefix(text);
+                    var newLink = $"{linkOpen}{refNum}. {cleanText}{linkClose}";
+                    content = replace(content, found.text, $"{prefix}{newLink}");
+                    modified = true;
+                }
+            }
+        }
+    }
+    
+    // Update navigation footer - use correct order from chapters.json
+    debugLog("H2_DEBUG: Updating navigation footer...\n");
+    var prevChapter = getPreviousChapter(chapters, filename);
+    var nextChapter = getNextChapter(chapters, filename);
+    
+    // Update Previous link
+    debugLog("H2_DEBUG: Finding previous links...\n");
+    var navFooterPrevPattern = "(<a href=\")([^\"]+\\.html)(\"[^>]*>←\\s*Previous:\\s*)(\\d+\\.\\s*)?([^<]+)(</a>)";
+    var prevMatches = regexFind(content, navFooterPrevPattern);
+    debugLog($"H2_DEBUG: Found {length(prevMatches)} previous links\n");
+    prevMatches.reverse();
+    
+    for (var prevIdx = 0; prevIdx < length(prevMatches) && guardLoop("updateHTMLFileAI:prevLinks", prevIdx); prevIdx = prevIdx + 1) {
+        var prevMatch = prevMatches[prevIdx];
+        var groups = prevMatch.groups;
+        if (length(groups) >= 7) {
+            var linkOpen = groups[1];  // <a href="
+            var oldHref = groups[2];   // old filename
+            var linkMiddle = groups[3]; // "[^>]*>← Previous:
+            var oldNum = groups[4];     // optional number
+            var oldText = groups[5];    // old text
+            var linkClose = groups[6];  // </a>
+            
+            if (prevChapter != null) {
+                var newHref = prevChapter.file;
+                var newText = "";
+                if (prevChapter.isHome) {
+                    newText = prevChapter.title;
+                } else {
+                    var prevNum = getChapterNumberFromGraph(chapters, prevChapter.file, chapterGraph);
+                    if (prevNum != null) {
+                        newText = $"{prevNum}. {prevChapter.title}";
+                    } else {
+                        newText = prevChapter.title;
+                    }
+                }
+                var newLink = $"{linkOpen}{newHref}{linkMiddle}{newText}{linkClose}";
+                content = replace(content, prevMatch.text, newLink);
+                modified = true;
+            } else {
+                // No previous chapter - remove the link or leave it as is
+                // For now, we'll leave it unchanged if there's no previous chapter
+            }
+        }
+    }
+    
+    // Update Next link
+    debugLog("H2_DEBUG: Finding next links...\n");
+    var navFooterNextPattern = "(<a href=\")([^\"]+\\.html)(\"[^>]*>Next:\\s*)(\\d+\\.\\s*)?([^<]+)(\\s*→</a>)";
+    var nextMatches = regexFind(content, navFooterNextPattern);
+    debugLog($"H2_DEBUG: Found {length(nextMatches)} next links\n");
+    nextMatches.reverse();
+    
+    for (var nextIdx = 0; nextIdx < length(nextMatches) && guardLoop("updateHTMLFileAI:nextLinks", nextIdx); nextIdx = nextIdx + 1) {
+        var found = nextMatches[nextIdx];
+                    var groups = found.groups;
+        if (length(groups) >= 7) {
+            var linkOpen = groups[1];  // <a href="
+            var oldHref = groups[2];   // old filename
+            var linkMiddle = groups[3]; // "[^>]*>Next:
+            var oldNum = groups[4];     // optional number
+            var oldText = groups[5];    // old text
+            var linkTextEnd = groups[6]; // →</a>
+            
+            if (nextChapter != null) {
+                var newHref = nextChapter.file;
+                var nextNum = getChapterNumberFromGraph(chapters, nextChapter.file, chapterGraph);
+                var newText = "";
+                if (nextNum != null) {
+                    newText = $"{nextNum}. {nextChapter.title}";
+                } else {
+                    newText = nextChapter.title;
+                }
+                var newLink = $"{linkOpen}{newHref}{linkMiddle}{newText}{linkTextEnd}";
+                content = replace(content, found.text, newLink);
+                modified = true;
+            } else {
+                // No next chapter - remove the link or leave it as is
+                // For now, we'll leave it unchanged if there's no next chapter
+            }
+        }
+    }
+    
+    debugLog($"H2_DEBUG: Finished processing {filename}, modified={modified}\n");
+    if (modified) {
+        debugLog($"H2_DEBUG: Writing file {filename}...\n");
+        writeFile(filePath, content);
+        print($"Updated {filename} (Chapter {chapterNum})\n");
+        return true;
+    }
+    
+    return false;
+}
+
+// Get base directory for ReferenceManual files
+function getReferenceManualDir() {
+    var refManualPath = getEnv("MALDAREFERENCEMANUAL");
+    if (refManualPath != null) {
+        if (substring(refManualPath, length(refManualPath) - 1, 1) != "/" && substring(refManualPath, length(refManualPath) - 1, 1) != "\\") {
+            return refManualPath + "/";
+        }
+        return refManualPath;
+    }
+    return ".";
+}
+
+// Update navigation.js with correct chapter order and numbers
+function updateNavigationJS(navJsPath, chapters, chapterGraph) {
+    var content = readFile(navJsPath);
+    if (content == null) {
+        return false;
+    }
+    
+    // Build FALLBACK_NAV_ITEMS array from chapters.json in correct order
+    var navItemsLines = [];
+    navItemsLines.append("const FALLBACK_NAV_ITEMS = [");
+    navItemsLines.append("        { href: " + "\"index.html\"" + ", text: " + "\"Home\"" + ", category: null },");
+    
+    for (var i = 0; i < length(chapters) && guardLoop("updateNavigationJS:chapters", i); i = i + 1) {
+        var chapter = chapters[i];
+        if (chapter.isHome) {
+            continue;
+        }
+        
+        var chapterNum = getChapterNumberFromGraph(chapters, chapter.file, chapterGraph);
+        if (chapterNum != null) {
+            var backslash = "\\";
+            var escapedQuote = backslash + "\"";
+            var escapedTitle = replace(chapter.title, "\"", escapedQuote);
+            var navText = $"{chapterNum}. {escapedTitle}";
+            var category = chapter.category;
+            if (category == null) {
+                category = "Reference";
+            }
+            var escapedCategory = replace(category, "\"", escapedQuote);
+            var jsLine = "        { href: \"" + chapter.file + "\", text: \"" + navText + "\", category: \"" + escapedCategory + "\" },";
+            navItemsLines.append(jsLine);
+        }
+    }
+    
+    navItemsLines.append("];");
+    var newNavItems = navItemsLines.join("\n");
+    
+    var navItemsPattern = "(const FALLBACK_NAV_ITEMS = \\[[\\s\\S]*?\\];)";
+    var matches = regexFind(content, navItemsPattern);
+    if (length(matches) > 0) {
+        // Replace the first (and should be only) match
+        content = replace(content, matches[0].text, newNavItems);
+        writeFile(navJsPath, content);
+        return true;
+    }
+    
+    return false;
+}
+
+// Main function
+print("========================================\n");
+sleep(0);
+print("SCRIPT STARTED - Chapter Numbering Script\n");
+sleep(0);
+print("========================================\n");
+sleep(0);
+print("=== AI-Powered Chapter Numbering (Refactored) ===\n");
+sleep(0);
+print("Using built-in embedBagOfWords for semantic understanding\n");
+sleep(0);
+print("Loading chapters.json...\n");
+sleep(0);
+
+var config = loadChaptersConfig();
+if (config != null) {
+    var chapters = config.chapters;
+    print($"Found {length(chapters)} chapters\n");
+
+    var baseDir = getReferenceManualDir();
+    var files = listDirectory(baseDir);
+    
+    var htmlFiles = [];
+    for (var i = 0; i < length(files) && guardLoop("main:listDirectoryFiles", i); i = i + 1) {
+        var item = files[i];
+        if (item.type == "file") {
+            var fileName = item.name;
+            if (regexMatch(fileName, "\\.html$") && fileName != "index.html") {
+                var fullPath = item.path;
+                if (hasFile(fullPath)) {
+                    htmlFiles.append(fullPath);
+                }
+            }
+        }
+    }
+    
+    print("Building AI understanding models...\n");
+    sleep(0);
+
+    // Build VectorDB index for semantic search
+    var chapterDB = buildChapterIndex(chapters);
+
+    // Build graph of chapter relationships
+    var chapterGraph = buildChapterGraph(chapters, htmlFiles);
+    sleep(0);
+
+    print($"\nUpdating {length(htmlFiles)} HTML files using AI understanding...\n");
+
+    var updatedCount = 0;
+    for (var i = 0; i < length(htmlFiles) && guardLoop("main:updateHtmlFiles", i); i = i + 1) {
+        var file = htmlFiles[i];
+        if (updateHTMLFileAI(file, chapters, chapterGraph, chapterDB)) {
+            updatedCount = updatedCount + 1;
+        }
+    }
+
+    // Update index.html
+    var indexPath = baseDir == "." ? "index.html" : baseDir + "index.html";
+    if (hasFile(indexPath)) {
+        var indexContent = readFile(indexPath);
+        var originalIndexContent = indexContent;
+        indexContent = renameLanguageInContent(indexContent);
+        var indexModified = indexContent != originalIndexContent;
+        
+        // Fix all links in index.html
+        var indexContentBeforeLinkFix = indexContent;
+        indexContent = fixLinksInContent(indexContent, chapters, chapterGraph);
+        if (indexContent != indexContentBeforeLinkFix) {
+            indexModified = true;
+        }
+        
+        // Update Next link in index.html - use first chapter from chapters.json
+        var nextChapter = getNextChapter(chapters, "index.html");
+        var nextLinkPattern = "(<a href=\")([^\"]+\\.html)(\"[^>]*>Next:\\s*)(\\d+\\.\\s*)?([^<]+)(\\s*→</a>)";
+        var nextMatches = regexFind(indexContent, nextLinkPattern);
+        nextMatches.reverse();
+        
+        for (var nextIdx = 0; nextIdx < length(nextMatches) && guardLoop("main:indexNextLinks", nextIdx); nextIdx = nextIdx + 1) {
+            var found = nextMatches[nextIdx];
+            var groups = found.groups;
+            if (length(groups) >= 7) {
+                var linkOpen = groups[1];  // <a href="
+                var oldHref = groups[2];   // old filename
+                var linkMiddle = groups[3]; // "[^>]*>Next:
+                var oldNum = groups[4];     // optional number
+                var oldText = groups[5];    // old text
+                var linkTextEnd = groups[6]; // →</a>
+                
+                if (nextChapter != null) {
+                    var newHref = nextChapter.file;
+                    var nextNum = getChapterNumberFromGraph(chapters, nextChapter.file, chapterGraph);
+                    var newText = "";
+                    if (nextNum != null) {
+                        newText = $"{nextNum}. {nextChapter.title}";
+                    } else {
+                        newText = nextChapter.title;
+                    }
+                    var newLink = $"{linkOpen}{newHref}{linkMiddle}{newText}{linkTextEnd}";
+                    indexContent = replace(indexContent, found.text, newLink);
+                    indexModified = true;
+                }
+            }
+        }
+        
+        if (indexModified) {
+            writeFile(indexPath, indexContent);
+            print("Updated index.html");
+            updatedCount = updatedCount + 1;
+        }
+    }
+
+    // Update navigation.js navbar
+    var navJsPath = baseDir == "." ? "navigation.js" : baseDir + "navigation.js";
+    if (hasFile(navJsPath)) {
+        print("Updating navigation.js navbar...\n");
+        var navUpdated = updateNavigationJS(navJsPath, chapters, chapterGraph);
+        
+        // Also rename language in navigation.js if configured
+        if (oldLanguageName != null && newLanguageName != null && oldLanguageName != newLanguageName) {
+            var navContent = readFile(navJsPath);
+            if (navContent != null) {
+                var originalNavContent = navContent;
+                navContent = renameLanguageInContent(navContent);
+                if (navContent != originalNavContent) {
+                    writeFile(navJsPath, navContent);
+                    navUpdated = true;
+                }
+            }
+        }
+        
+        if (navUpdated) {
+            print("Updated navigation.js\n");
+        }
+    }
+    
+    print($"\n✓ Updated {updatedCount} files using AI understanding\n");
+    print("Graph statistics:\n");
+    print($"  - Nodes: {chapterGraph.nodeCount()}\n");
+    print($"  - Edges: {chapterGraph.edgeCount()}\n");
+    
+    // Build combined PDF HTML file
+    print("\nBuilding ReferenceManualPDF.html for PDF export...\n");
+    buildPDFHTML(chapters, baseDir);
+    
+    print("Done!\n");
+} else {
+    print("Error: Failed to load chapters.json. Cannot continue.\n");
+}
+
+// Extract main content from HTML file
+function extractMainContent(htmlContent) {
+    // Find <main> tag
+    var mainStart = indexOf(htmlContent, "<main>");
+    var mainEnd = indexOf(htmlContent, "</main>");
+    
+    if (mainStart < 0 || mainEnd < 0) {
+        return "";
+    }
+    
+    // Extract content between <main> and </main>
+    var mainContent = substring(htmlContent, mainStart + 6, mainEnd - mainStart - 6);
+    
+    // Remove breadcrumbs
+    mainContent = regexReplace(mainContent, "<div class=\"breadcrumbs\">[\\s\\S]*?</div>", "");
+    
+    // Remove navigation footer
+    mainContent = regexReplace(mainContent, "<div class=\"nav-footer\">[\\s\\S]*?</div>", "");
+    
+    return mainContent;
+}
+
+// Read CSS file and return as inline style
+function readCSSAsInline(cssPath) {
+    var cssContent = readFile(cssPath);
+    if (cssContent == null) {
+        return "";
+    }
+    return cssContent;
+}
+
+// Build the combined HTML file for PDF
+function buildPDFHTML(chapters, baseDir) {
+    // Read CSS files
+    var stylesCSS = "";
+    var syntaxCSS = "";
+    var stylesPath = baseDir == "." ? "styles.css" : baseDir + "styles.css";
+    var syntaxPath = baseDir == "." ? "syntax.css" : baseDir + "syntax.css";
+    
+    if (hasFile(stylesPath)) {
+        stylesCSS = readCSSAsInline(stylesPath);
+    }
+    
+    if (hasFile(syntaxPath)) {
+        syntaxCSS = readCSSAsInline(syntaxPath);
+    }
+    
+    // Start building HTML
+    var html = "<!DOCTYPE html>\n";
+    html = html + "<html lang=\"en\">\n";
+    html = html + "<head>\n";
+    html = html + "    <meta charset=\"UTF-8\">\n";
+    html = html + "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n";
+    html = html + "    <meta name=\"description\" content=\"MALDA Reference Manual - The AI-First Programming Language\">\n";
+    html = html + "    <title>MALDA Reference Manual - Complete</title>\n";
+    
+    // Add inline styles
+    if (length(stylesCSS) > 0) {
+        html = html + "    <style>\n";
+        html = html + stylesCSS;
+        html = html + "\n    </style>\n";
+    }
+    
+    if (length(syntaxCSS) > 0) {
+        html = html + "    <style>\n";
+        html = html + syntaxCSS;
+        html = html + "\n    </style>\n";
+    }
+    
+    // Override responsive styles for fixed-width A4 layout
+    html = html + "    <style>\n";
+    html = html + "        /* Override responsive grid layout for PDF */\n";
+    html = html + "        body {\n";
+    html = html + "            display: block !important;\n";
+    html = html + "            grid-template-columns: none !important;\n";
+    html = html + "            grid-template-rows: none !important;\n";
+    html = html + "            min-height: auto !important;\n";
+    html = html + "            margin: 0;\n";
+    html = html + "            padding: 0;\n";
+    html = html + "        }\n";
+    html = html + "        \n";
+    html = html + "        header {\n";
+    html = html + "            grid-column: auto !important;\n";
+    html = html + "            margin-bottom: 2rem;\n";
+    html = html + "        }\n";
+    html = html + "        \n";
+    html = html + "        nav {\n";
+    html = html + "            display: none !important;\n";
+    html = html + "        }\n";
+    html = html + "        \n";
+    html = html + "        main {\n";
+    html = html + "            max-width: 680px !important;\n";
+    html = html + "            width: 680px !important;\n";
+    html = html + "            margin: 0 auto !important;\n";
+    html = html + "            padding: 0 20px !important;\n";
+    html = html + "            display: block !important;\n";
+    html = html + "        }\n";
+    html = html + "        \n";
+    html = html + "        /* Disable all responsive breakpoints */\n";
+    html = html + "        @media (max-width: 1024px) {\n";
+    html = html + "            body, main { max-width: 680px !important; width: 680px !important; }\n";
+    html = html + "        }\n";
+    html = html + "        @media (max-width: 768px) {\n";
+    html = html + "            body, main { max-width: 680px !important; width: 680px !important; }\n";
+    html = html + "        }\n";
+    html = html + "        \n";
+    html = html + "        .chapter-separator {\n";
+    html = html + "            margin-top: 3em;\n";
+    html = html + "            padding-top: 2em;\n";
+    html = html + "            border-top: 2px solid #ccc;\n";
+    html = html + "        }\n";
+    html = html + "        \n";
+    html = html + "        @media print {\n";
+    html = html + "            body { margin: 0; padding: 0; }\n";
+    html = html + "            main { max-width: 100% !important; width: 100% !important; padding: 0 15mm !important; }\n";
+    html = html + "            .page-break { page-break-before: always; }\n";
+    html = html + "            h1 { page-break-after: avoid; }\n";
+    html = html + "            h2 { page-break-after: avoid; }\n";
+    html = html + "            pre { page-break-inside: avoid; }\n";
+    html = html + "            code { page-break-inside: avoid; }\n";
+    html = html + "        }\n";
+    html = html + "    </style>\n";
+    
+    html = html + "</head>\n";
+    html = html + "<body>\n";
+    html = html + "    <header>\n";
+    html = html + "        <h1>MALDA Reference Manual</h1>\n";
+    html = html + "        <p>The AI-First Programming Language - Version 0.1</p>\n";
+    html = html + "    </header>\n";
+    html = html + "\n";
+    html = html + "    <main>\n";
+    
+    // Process each chapter
+    var chapterCount = 0;
+    for (var i = 0; i < length(chapters) && guardLoop("buildPDFHTML:chapters", i); i = i + 1) {
+        var chapter = chapters[i];
+        var filePath = baseDir == "." ? chapter.file : baseDir + chapter.file;
+        
+        if (!hasFile(filePath)) {
+            continue;
+        }
+        
+        var content = readFile(filePath);
+        if (content == null) {
+            continue;
+        }
+        
+        var mainContent = extractMainContent(content);
+        if (length(mainContent) == 0) {
+            continue;
+        }
+        
+        // Add chapter separator (except for first chapter)
+        if (chapterCount > 0) {
+            html = html + "        <div class=\"chapter-separator page-break\"></div>\n";
+        }
+        
+        // Add the main content
+        html = html + mainContent;
+        html = html + "\n";
+        
+        chapterCount = chapterCount + 1;
+    }
+    
+    html = html + "    </main>\n";
+    html = html + "</body>\n";
+    html = html + "</html>\n";
+    
+    var outputPath = baseDir == "." ? "ReferenceManualPDF.html" : baseDir + "ReferenceManualPDF.html";
+    writeFile(outputPath, html);
+    
+    print($"✓ Created {outputPath}\n");
+    print("You can now open this file in a browser and save as PDF (Ctrl+P / Cmd+P)\n");
+}

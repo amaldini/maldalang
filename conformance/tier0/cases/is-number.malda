@@ -1,0 +1,3 @@
+print(isNumber(1));
+print(isNumber(3.14));
+print(isNumber("x"));

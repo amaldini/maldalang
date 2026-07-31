@@ -1,0 +1,23 @@
+var root = dom.query("#app");
+
+if (root == null) {
+    println("No #app container found.");
+} else {
+    dom.clear(root);
+
+    function addParagraph(parent, textValue) {
+        var p = dom.create("p");
+        dom.setText(p, textValue);
+        dom.append(parent, p);
+    }
+
+    var title = dom.create("h1");
+    dom.setText(title, "Hello from MALDA JS backend");
+    dom.append(root, title);
+
+    addParagraph(root, "This page is running MALDA code compiled to JavaScript.");
+
+    var note = dom.create("div");
+    dom.html(note, "Rendered via <strong>dom.query/create/append/clear/setText/html/on</strong> runtime helpers.");
+    dom.append(root, note);
+}

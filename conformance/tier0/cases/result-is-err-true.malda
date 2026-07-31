@@ -1,0 +1,3 @@
+var r = result.err("x");
+print(result.isErr(r));
+print(result.isOk(r));

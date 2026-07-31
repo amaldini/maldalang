@@ -1,0 +1,184 @@
+var root = dom.query("#app");
+
+if (root == null) {
+    println("No #app container found.");
+} else {
+    dom.clear(root);
+
+    var title = dom.create("h1");
+    dom.setText(title, "MALDA Game: Bounce");
+    dom.append(root, title);
+
+    var hint = dom.create("p");
+    dom.setText(hint, "Move with Left/Right arrows. Keep the ball in play. Press R to restart after game over.");
+    dom.append(root, hint);
+
+    var canvasWidth = 800;
+    var canvasHeight = 450;
+    var paddleWidth = 140;
+    var paddleHeight = 16;
+    var paddleY = canvasHeight - 30;
+    var paddleX = (canvasWidth - paddleWidth) / 2;
+    var paddleSpeed = 520;
+
+    var ballRadius = 10;
+    var ballX = canvasWidth / 2;
+    var ballY = canvasHeight / 2;
+    var ballVx = 220;
+    var ballVy = -180;
+
+    var score = 0;
+    var misses = 0;
+    var maxMisses = 3;
+    var gameOver = false;
+    var audioBooted = false;
+    var patternStarted = false;
+    var gameOverSoundPlayed = false;
+
+    function resetBall(direction) {
+        ballX = canvasWidth / 2;
+        ballY = canvasHeight / 2;
+        ballVx = 220 * direction;
+        ballVy = -180;
+    }
+
+    function clampPaddle() {
+        if (paddleX < 0) {
+            paddleX = 0;
+        }
+        if (paddleX + paddleWidth > canvasWidth) {
+            paddleX = canvasWidth - paddleWidth;
+        }
+    }
+
+    function updateGame(dtMs) {
+        if (!audioBooted) {
+            var wantsAudio =
+                game.isKeyDown("arrowleft") ||
+                game.isKeyDown("arrowright") ||
+                game.isMouseDown(0) ||
+                game.isKeyDown("r");
+            if (wantsAudio) {
+                game.audioInit();
+                audioBooted = true;
+                game.audioSetMasterVolume(0.4);
+            }
+        }
+
+        if (audioBooted && game.audioIsReady() && !patternStarted) {
+            game.audioPlayPattern({
+                "tempoBpm": 110,
+                "loop": true,
+                "tracks": [
+                    [
+                        { "atBeats": 0.0, "noteHz": 220, "durBeats": 0.45, "waveType": "triangle", "volume": 0.10 },
+                        { "atBeats": 0.5, "noteHz": 246, "durBeats": 0.45, "waveType": "triangle", "volume": 0.10 },
+                        { "atBeats": 1.0, "noteHz": 261, "durBeats": 0.45, "waveType": "triangle", "volume": 0.10 },
+                        { "atBeats": 1.5, "noteHz": 246, "durBeats": 0.45, "waveType": "triangle", "volume": 0.10 }
+                    ]
+                ]
+            });
+            patternStarted = true;
+        }
+
+        var paddleStep = (paddleSpeed * dtMs) / 1000;
+        if (game.isKeyDown("arrowleft")) {
+            paddleX = paddleX - paddleStep;
+        }
+        if (game.isKeyDown("arrowright")) {
+            paddleX = paddleX + paddleStep;
+        }
+        clampPaddle();
+
+        if (gameOver) {
+            if (game.isKeyDown("r")) {
+                game.audioStopAll();
+                score = 0;
+                misses = 0;
+                gameOver = false;
+                gameOverSoundPlayed = false;
+                patternStarted = false;
+                resetBall(1);
+                game.audioPlayTone(520, 70, "square", 0.16);
+                game.audioPlayTone(660, 80, "square", 0.13);
+            }
+            return;
+        }
+
+        var ballStepX = (ballVx * dtMs) / 1000;
+        var ballStepY = (ballVy * dtMs) / 1000;
+        ballX = ballX + ballStepX;
+        ballY = ballY + ballStepY;
+
+        if (ballX - ballRadius < 0) {
+            ballX = ballRadius;
+            if (ballVx < 0) {
+                ballVx = 0 - ballVx;
+                game.audioPlayTone(420, 26, "triangle", 0.08);
+            }
+        }
+        if (ballX + ballRadius > canvasWidth) {
+            ballX = canvasWidth - ballRadius;
+            if (ballVx > 0) {
+                ballVx = 0 - ballVx;
+                game.audioPlayTone(420, 26, "triangle", 0.08);
+            }
+        }
+        if (ballY - ballRadius < 0) {
+            ballY = ballRadius;
+            if (ballVy < 0) {
+                ballVy = 0 - ballVy;
+                game.audioPlayTone(360, 24, "triangle", 0.07);
+            }
+        }
+
+        if (ballVy > 0 &&
+            ballY + ballRadius >= paddleY &&
+            ballY - ballRadius <= paddleY + paddleHeight &&
+            ballX >= paddleX &&
+            ballX <= paddleX + paddleWidth) {
+            ballY = paddleY - ballRadius;
+            ballVy = 0 - ballVy;
+            score = score + 1;
+            game.audioPlayTone(920, 40, "square", 0.14);
+        }
+
+        if (ballY - ballRadius > canvasHeight) {
+            misses = misses + 1;
+            game.audioPlayNoise(120, 0.12);
+            if (misses >= maxMisses) {
+                gameOver = true;
+                if (!gameOverSoundPlayed) {
+                    game.audioStopPattern();
+                    game.audioPlayTone(240, 180, "sawtooth", 0.14);
+                    game.audioPlayTone(180, 220, "sawtooth", 0.12);
+                    gameOverSoundPlayed = true;
+                }
+            } else {
+                var nextDirection = 1;
+                if (misses % 2 == 1) {
+                    nextDirection = -1;
+                }
+                resetBall(nextDirection);
+                game.audioPlayTone(260, 70, "square", 0.12);
+            }
+        }
+    }
+
+    function renderGame() {
+        game.clear();
+        game.fillRect(paddleX, paddleY, paddleWidth, paddleHeight, "#66ccff");
+        game.fillCircle(ballX, ballY, ballRadius, "#ffcc33");
+        game.drawText("Score: " + string(score) + "  Misses: " + string(misses) + "/" + string(maxMisses), 12, 24, "#ffffff", "16px monospace");
+        game.drawText("Mouse: " + string(game.getMouseX()) + ", " + string(game.getMouseY()), 12, 46, "#99ddee", "14px monospace");
+
+        if (gameOver) {
+            game.drawText("Game Over", 330, 210, "#ff8888", "28px sans-serif");
+            game.drawText("Press R to restart", 320, 245, "#ffffff", "18px sans-serif");
+        }
+    }
+
+    game.createCanvas(canvasWidth, canvasHeight, "#app");
+    game.setBackground("#101722");
+    game.start(updateGame, renderGame);
+}

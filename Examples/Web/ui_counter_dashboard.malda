@@ -1,0 +1,39 @@
+// Server-side UI framework example using ui.* controls and session render envelopes.
+
+var sessionId = "counter-demo";
+ui.configure("maxPatchCount", 512, sessionId);
+ui.configure("maxEventQueueDepth", 1024, sessionId);
+ui.configure("sessionTtlMs", 1800000);
+
+ui.onMount("CounterRoot", sessionId);
+ui.onUpdate("CounterRoot", sessionId);
+ui.onUnmount("CounterRoot", sessionId);
+
+var count = ui.state("CounterRoot", "count", 0, sessionId);
+
+function buildView(value) {
+    return ui.column(
+        {"componentId": "CounterRoot", "className": "counter-root"},
+        [
+            ui.heading({"value": "Server Counter"}),
+            ui.text({"value": "Current value: " + string(value)}),
+            ui.button({"label": "Increment", "onClick": "increment"})
+        ]
+    );
+}
+
+var firstTree = buildView(count);
+print(ui.mount(firstTree, sessionId));
+
+// Simulate click event from client.
+ui.dispatchEvent({"type": "click", "targetPath": "/2/", "payload": {"action": "increment"}}, sessionId, 1);
+
+var evt = ui.pullEvent(sessionId);
+if (evt != null) {
+    count = count + 1;
+    ui.setState("CounterRoot", "count", count, sessionId);
+}
+
+var nextTree = buildView(count);
+print(ui.render(nextTree, sessionId));
+print(ui.snapshot(sessionId));

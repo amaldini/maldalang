@@ -1,0 +1,9 @@
+@requires("actors")
+@targets("interpreter", "csharp", "js")
+property actorCapabilityScopedIdentity(counterValue) {
+    return counterValue == counterValue;
+}
+
+// JS parity is capability-gated:
+// - interpreter/csharp run normally
+// - js is reported as not-applicable with a capability reason

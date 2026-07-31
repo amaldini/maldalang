@@ -1,0 +1,7 @@
+try {
+    throw dict { "kind": "Parse", "message": "bad token" };
+} catch (e if e.kind == "IO") {
+    print("io");
+} catch (e) {
+    print("generic:" + e.message);
+}

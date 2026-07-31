@@ -1,0 +1,67 @@
+# Build outputs
+bin/
+obj/
+*.exe
+*.dll
+*.pdb
+*.nupkg
+artifacts/
+temp-build/
+temp_*/
+temp_pending_*/
+temp_fresh_*/
+_tmp*/
+_compile_out/
+_testout/
+.tmp-*/
+.cursor-build/
+
+# Visual Studio / IDE
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+.idea/
+
+# Temporary / logs
+*.tmp
+*.temp
+*.log
+publish-*.log
+
+# Example runtimes and local state
+Examples/runtimes/
+*.db
+.malda-preview/
+.malda/
+PWA_Output/
+
+# Generated transpile/debug artifacts
+build_errors.txt
+GeneratedProgram.cs
+
+# Large / local media
+Examples/Web/wwwroot/audio/maldanoid.mp3
+
+# Ralph / GraphMemory local artifacts
+.ralph-memory.graph.json
+.ralph-memory.metadata.json
+.ralph-memory.vectordb.bin
+.graph.json
+.metadata.json
+.vectordb.bin
+.ralph-state.json
+.ralph-validate.js
+
+# OS junk
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Per-machine editor config (maldaLanguageServer.path is an absolute local path)
+.vscode/settings.json
+
+# Launch crib sheet (title A/B, thread answers, checklist) — keep local only
+docs/announcement-private.md
+Temporary/

@@ -1,0 +1,20 @@
+// Dictionary usage examples
+
+var d = dict { "a": 1, "b": 2 };
+print("a = " + d["a"]);
+print("b = " + d["b"]);
+
+// Add and update entries via indexing
+d["c"] = 3;
+print("c = " + d["c"]);
+
+// Methods
+print("has b: " + d.containsKey("b"));
+print("has missing: " + d.containsKey("missing"));
+
+var keys = d.keys();
+var values = d.values();
+
+print("keys length: " + keys.length);
+print("values length: " + values.length);
+

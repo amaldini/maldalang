@@ -1,0 +1,42 @@
+// ACP Cancellation Example
+// Demonstrates cancelling a long-running agent execution
+
+var client = new OpenRouterClient();
+var agent = new Agent(
+    "Worker",
+    "assistant",
+    "You are a worker agent that processes tasks.",
+    client
+);
+
+// Expose agent as ACP server
+var server = new ACPServer(8081);
+server.registerAgent("worker-agent", agent);
+server.start();
+
+print("ACP Server started on http://localhost:8081/");
+print("");
+
+// In another process or client, you would use:
+// var acpClient = new ACPClient("http://localhost:8081");
+// 
+// // Start async execution
+// var runId = acpClient.sendMessageAsync("worker-agent", "Process this long task...");
+// print("Started run: " + runId);
+// 
+// // Wait a bit
+// sleep(500);
+// 
+// // Cancel the run
+// var cancelStatus = acpClient.cancelRun("worker-agent", runId);
+// print("Cancellation requested. Status: " + cancelStatus.status);
+// 
+// // Check final status
+// var finalStatus = acpClient.getRunStatus("worker-agent", runId);
+// print("Final status: " + finalStatus.status);
+
+// Keep server running
+print("Server running. Press Ctrl+C to stop.");
+while (server.isRunning) {
+    sleep(1000);
+}

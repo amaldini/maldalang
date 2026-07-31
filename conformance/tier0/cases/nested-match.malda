@@ -1,0 +1,6 @@
+var code = 404;
+var label = match code {
+    case 404: "missing";
+    default: "unknown";
+};
+print(label);

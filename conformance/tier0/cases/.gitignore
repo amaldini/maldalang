@@ -1,0 +1,8 @@
+# Transpiled test output must not live beside .malda sources
+*.exe
+*.dll
+*.pdb
+*.deps.json
+*.runtimeconfig.json
+runtimes/
+build_errors.txt

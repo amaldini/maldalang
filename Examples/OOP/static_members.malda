@@ -1,0 +1,17 @@
+class Counter {
+    static var count = 0;
+    
+    static function increment() {
+        Counter.count = Counter.count + 1;
+    }
+    
+    static function getCount() {
+        return Counter.count;
+    }
+}
+
+Counter.increment();
+Counter.increment();
+Counter.increment();
+
+print($"Count: {Counter.getCount()}");

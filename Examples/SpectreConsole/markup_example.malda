@@ -1,0 +1,31 @@
+// Spectre.Console Markup Example
+// Demonstrates colored and styled text output
+//
+// markupLine() appends a newline; markup() does not. Use markup() only when you
+// want to build a line from several styled pieces.
+
+AnsiConsole.markupLine("[bold blue]Welcome to Spectre.Console![/]");
+AnsiConsole.markupLine("");
+
+AnsiConsole.markupLine("[green]✓ Success:[/] Operation completed successfully");
+AnsiConsole.markupLine("[red]✗ Error:[/] Something went wrong");
+AnsiConsole.markupLine("[yellow]⚠ Warning:[/] This is a warning message");
+AnsiConsole.markupLine("[blue]ℹ Info:[/] This is an informational message");
+AnsiConsole.markupLine("");
+
+AnsiConsole.markupLine("[bold]Bold text[/] | [dim]Dim text[/] | [italic]Italic text[/]");
+AnsiConsole.markupLine("");
+
+AnsiConsole.markupLine("[underline]Underlined text[/] | [strikethrough]Strikethrough text[/]");
+AnsiConsole.markupLine("");
+
+AnsiConsole.markupLine("[bold green on red]Bold green text on red background[/]");
+AnsiConsole.markupLine("");
+
+// Several markup() calls compose one line, then markupLine() ends it.
+AnsiConsole.markup("[dim]Composed:[/] ");
+AnsiConsole.markup("[green]part one[/] ");
+AnsiConsole.markupLine("[cyan]part two[/]");
+AnsiConsole.markupLine("");
+
+AnsiConsole.markupLine("[link=https://spectreconsole.net]Click here to visit Spectre.Console[/]");

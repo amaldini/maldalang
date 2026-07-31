@@ -1,0 +1,18 @@
+// Note: Requires OPENROUTER_API_KEY environment variable
+// OpenRouterClient automatically reads the API key and uses the correct endpoint
+var client = new OpenRouterClient();
+
+// Create an agent that can ask questions
+var interactiveAgent = new Agent(
+    "Assistant",
+    "helpful assistant",
+    "You help users by asking clarifying questions when needed.",
+    client
+);
+
+// Add the ask_user tool
+interactiveAgent.addTool(createAskUserTool());
+
+// Agent can now ask questions to get clarification
+var response = interactiveAgent.think("Ask the user what their favorite programming language is, then provide a brief explanation of that language.");
+print(response.content);

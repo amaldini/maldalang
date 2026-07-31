@@ -1,0 +1,11 @@
+property alwaysFails(x) {
+    return x == (x + 1);
+}
+
+// End-to-end failure -> shrink -> generated regression flow:
+// 1) Observe deterministic failure details:
+//    malda test Examples/Testing/property_failure_to_regression.malda --iterations 40 --seed 1337
+// 2) Generate regression artifact from canonical shrunk payload:
+//    malda test Examples/Testing/property_failure_to_regression.malda --iterations 40 --seed 1337 --write-regression
+// 3) Emit CI payload for IDE/Desktop "Create Regression" action:
+//    malda test Examples/Testing/property_failure_to_regression.malda --format ci --iterations 40 --seed 1337

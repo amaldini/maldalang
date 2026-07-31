@@ -1,0 +1,41 @@
+// Actor Spawning Example
+// Demonstrates creating multiple actor instances
+
+actor Greeter {
+    var name;
+    
+    function Greeter(actorName) {
+        name = actorName;
+    }
+    
+    on greet() {
+        print($"Hello from {name}!");
+    }
+    
+    on introduce() {
+        print($"I am actor: {name}");
+    }
+}
+
+// Spawn multiple actor instances
+print("Spawning actors...");
+var greeter1 = spawn Greeter("Alice");
+var greeter2 = spawn Greeter("Bob");
+var greeter3 = spawn Greeter("Charlie");
+
+// Small initial delay to ensure actor loops have started
+sleep(100);
+
+// Send messages to different actors
+send greeter1.greet();
+send greeter2.greet();
+send greeter3.greet();
+
+send greeter1.introduce();
+send greeter2.introduce();
+send greeter3.introduce();
+
+// Give actors time to process
+sleep(500);
+
+print("All actors have been spawned and messaged!");

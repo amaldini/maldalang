@@ -1,0 +1,33 @@
+// Note: Requires OPENROUTER_API_KEY environment variable
+// Create initial code file
+writeFile("math.malda", "function calc(x, y) {
+    var result = x + y;
+    return result;
+}
+
+function calc2(a, b) {
+    var r = a - b;
+    return r;
+}");
+
+// Using CodingAgent - automatically includes all file tools and uses OpenRouterClient
+// Create refactoring agent - all file tools are already included!
+var refactorAgent = new CodingAgent(
+    "RefactorBot",
+    "code refactoring specialist",
+    "You refactor code to improve naming, structure, and readability. Always use the file tools to read and edit files."
+);
+
+print("Original code:");
+print(readFile("math.malda"));
+
+print("
+
+Agent refactoring...");
+var response = refactorAgent.think("Read math.malda, analyze the code, and refactor it to use better function names and add comments.");
+print(response.content);
+
+print("
+
+Refactored code:");
+print(readFile("math.malda"));

@@ -1,0 +1,154 @@
+# AGENTS.md — working on MALDA (OSS)
+
+This file is the entry map for humans and coding agents. Read it before large edits.
+
+## What this repo is
+
+Open-source **MALDA core**: language runtime, compiler/transpiler, Desktop + Web IDEs, LSP, examples, templates, reference manual.
+
+**Not in this repo:** private product apps and vertical domain packs kept outside the OSS
+core. Packaging for the open-source CLI is in-repo
+(`build_malda_distribution.bat` / `scripts/build-oss-dist.ps1`).
+
+## Two LLM entrypoints
+
+| Goal | Load first |
+|------|------------|
+| Edit the **engine** (C#, compiler, IDE apps) | This file + `docs/architecture.md` |
+| **Write / review `.malda` programs** | `docs/llm/` (syntax, gotchas, grammar, few-shots, built-in table) |
+
+Do not mix them: repo rules are not a substitute for the language pack.
+
+## Build and run (smoke)
+
+```bash
+dotnet build MaldaLang.sln
+dotnet run --project MaldaLang -- Examples/Basics/hello_world.malda
+```
+
+Stable CLI output (preferred over `dotnet run -e` on Windows):
+
+```bash
+dotnet build MaldaLang -o artifacts/malda-cli
+artifacts/malda-cli/malda.exe Examples/Basics/hello_world.malda
+```
+
+Produce a self-contained executable (default mode is Interpreter — that is expected, not a
+fallback). Use `--mode transpile` for typed publish:
+
+```bash
+artifacts/malda-cli/malda.exe compile prog.malda -o dist/prog.exe
+```
+
+The named `-o` exe is the shippable artifact. `MaldaLang.Executable.exe` / `.pdb` beside it
+are publish scaffolding and can be ignored or deleted when shipping only the named output.
+On transpile failure the CLI prints full paths to `build_errors.txt` and `GeneratedProgram.cs`
+next to `-o`; a successful compile removes a stale `build_errors.txt` from that folder.
+Force English `dotnet` diagnostics via `DOTNET_CLI_UI_LANGUAGE=en` (the compiler sets this).
+
+## Tests — do not run the full suite
+
+The full suite is too slow. Use filtered tests for the area you touch:
+
+```bash
+dotnet test MaldaLang.Tests --filter "FullyQualifiedName~RelevantTests"
+```
+
+CI smoke filter (see `.github/workflows/ci.yml`): `BuiltInRegistryTests`, `CompilerPackDecouplingGuardTests`, `OptionalPackTranspileEmitTests`.
+
+## IDE roles (not interchangeable)
+
+| Tool | Role |
+|------|------|
+| `MaldaLang.DesktopIDE` | **Reference** full Windows IDE |
+| `MaldaLang.IDE` | Browser **learning playground** (Monaco) — not Desktop parity |
+| `vscode-malda` + `MaldaLang.LanguageServer` | Cross-platform editor integration |
+
+Web IDE improvements (Monaco UX, examples browser, diagnostics presentation) are good first contributions. Do not assume Desktop-only features exist on Web (virtual `@malda-section` tabs, MCP UI, local model browser, UIHost preview).
+
+## Architecture map (where to edit)
+
+| Concern | Primary paths |
+|---------|----------------|
+| Lexer / tokens | `MaldaLang/Lexer.cs`, `MaldaLang/TokenType.cs` |
+| Parser / AST | `MaldaLang/Parser/` |
+| Interpreter | `MaldaLang/Interpreter/Interpreter.cs` (+ partials) |
+| Built-in functions | `MaldaLang/BuiltIns/BuiltInFunctions.cs`, `BuiltInRegistry.cs` |
+| C# transpile | `MaldaLang.Compiler/CSharpTranspiler.cs`, `Compiler.cs` |
+| JS / PWA transpile | `MaldaLang.Compiler/JsTranspiler.cs` |
+| Optional pack emit (string-only) | `MaldaLang.Compiler/OptionalPack/` |
+| CLI | `MaldaLang/Program.cs` |
+| Language intelligence (IDE/LSP shared) | `MaldaLang/IDE/LanguageService.cs` |
+| LSP host | `MaldaLang.LanguageServer/` |
+| Web IDE | `MaldaLang.IDE/` |
+| Desktop IDE | `MaldaLang.DesktopIDE/` |
+| Examples | `Examples/` |
+| Language reference (edit HTML chapters) | `ReferenceManual/*.html` (not generated PDF HTML) |
+| Spec / onboarding docs | `docs/spec/`, `docs/start-here.md`, `docs/architecture.md` |
+| Licensing | `LICENSE-MIT`, `LICENSE-APACHE`, `LICENSE-RUNTIME-EXCEPTION`, `TRADEMARK.md`, `THIRD-PARTY-NOTICES.md` |
+
+Longer overview: [`docs/architecture.md`](docs/architecture.md).
+
+## Hard rules for agents
+
+1. **Never run the full test suite** unless the user explicitly asks.
+2. **Do not hand-edit generated artifacts** such as `GeneratedProgram.cs` or generated `.js` from `.malda` — change the MALDA source and regenerate.
+3. Prefer the keyword **`function`** (not `fn` / `def`) in examples and docs.
+4. **Prompt declarations** use name-only parameters (no `name: string` style). `-> ReturnType` on prompts is informational only.
+5. When adding a **built-in**, register it in interpreter + transpiler surfaces (see `docs/architecture.md` § Built-ins).
+6. Keep PRs focused. Prefer filtered tests that match the change.
+7. `docs/planning/` is historical / roadmap notes — not the source of truth for current behavior. Prefer code, `docs/spec/`, and `ReferenceManual/`.
+8. **Licensing is dual `MIT OR Apache-2.0`.** New C# files carry `// SPDX-License-Identifier: MIT OR Apache-2.0` under the copyright line. Never write "All rights reserved", never add a file named `NOTICE`, and never offer only one of the two licences — `LicenseHeaderGuardTests` fails on all three. If you change what the transpilers emit into user programs, update the "Runtime Material" list in `LICENSE-RUNTIME-EXCEPTION`.
+
+## New built-in checklist (summary)
+
+1. Implement in `MaldaLang/BuiltIns/BuiltInFunctions.cs` (or related BuiltIns type)
+2. Check the argument count with `BuiltInArity.Require("name", args, min, max, "a, b?")` — one
+   phrasing for every built-in, and the generator in step 6 reads these call sites
+3. Register in `CallBuiltIn` and `CallBuiltInAsync`
+4. Add to `IsBuiltIn` in `MaldaLang/Interpreter/Interpreter.cs`
+5. Add to `IsBuiltInFunction` + `TranspileBuiltInFunction` in `MaldaLang.Compiler/CSharpTranspiler.cs`
+6. Name it somewhere in `ReferenceManual/*.html` (the coverage guard fails otherwise)
+7. Regenerate the agent lookup table: `pwsh scripts/sync-llm-builtins-tsv.ps1`
+8. Rebuild and smoke-test interpreted + transpiled paths
+
+## Debugging transpile failures
+
+1. Check `build_errors.txt` if present (gitignored locally)
+2. Inspect generated `GeneratedProgram.cs` (gitignored; regenerate via compile)
+3. Fix the transpiler method — do not patch generated output as the fix
+
+## Chapter numbering
+
+After changing `ReferenceManual/chapters.json` order, run:
+
+```bash
+pwsh scripts/sync-reference-manual-chapter-numbers.ps1
+```
+
+That script must build ←/→ via Unicode codepoints (`[char]0x2190` / `0x2192`) so Windows PowerShell 5 does not mojibake footers.
+
+## Reference Manual content guards
+
+See [`ReferenceManual/README-content-guards.md`](ReferenceManual/README-content-guards.md). Tests keep the manual aligned with the code: reserved words vs `Lexer.Keywords`, built-in coverage vs `BuiltInRegistry`, internal links, unique section numbers, the `navigation.js` fallback vs `chapters.json`, and execution of every snippet marked `data-run="true"`.
+
+```bash
+dotnet test MaldaLang.Tests --filter "FullyQualifiedName~ReferenceManual"
+```
+
+Adding a built-in without naming it anywhere in `ReferenceManual/*.html` fails the coverage guard.
+
+## Reference Manual presentation
+
+See [`ReferenceManual/README-print.md`](ReferenceManual/README-print.md). Short version:
+
+- After adding a chapter, run `pwsh scripts/sync-reference-manual-assets.ps1` so it links the shared CSS/JS. `print.css` must load **after** `styles.css`.
+- Code highlighting is `ReferenceManual/malda-highlight.js`; its keyword list mirrors `MaldaLang/Lexer.cs`. Update both together.
+- Paper edition: `pwsh scripts/build-reference-manual-book.ps1` → `artifacts/reference-manual/`, then print to PDF from Chrome/Edge.
+
+## Useful links
+
+- [`README.md`](README.md) — product overview
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — contributor workflow
+- [`docs/start-here.md`](docs/start-here.md) — learning paths
+- [`llms.txt`](llms.txt) — compact doc index for LLM tools

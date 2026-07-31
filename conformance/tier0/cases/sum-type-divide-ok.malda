@@ -1,0 +1,11 @@
+type Result = Ok(value) | Err(message);
+function divide(a, b) {
+    if (b == 0) return Err("divide by zero");
+    return Ok(a / b);
+}
+var r = divide(10, 2);
+var result = match r {
+    case Ok(v): "ok: " + v;
+    case Err(msg): "error: " + msg;
+};
+print(result);

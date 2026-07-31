@@ -1,0 +1,13 @@
+{
+  "deployment": {
+    "environment": "prod",
+    "serviceName": "__PROJECT_SLUG__",
+    "replicas": 1,
+    "port": 8080
+  },
+  "healthChecks": {
+    "livenessPath": "/api/health",
+    "readinessPath": "/api/readiness",
+    "intervalSeconds": 15
+  }
+}

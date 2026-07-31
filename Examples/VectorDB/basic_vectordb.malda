@@ -1,0 +1,76 @@
+// VectorDB Basic Operations Example
+// Demonstrates creating a VectorDB, adding vectors, and similarity search
+
+print("=== VectorDB Basic Operations ===\n");
+
+// Define a bag-of-letters vector calculator function
+// Counts the frequency of each letter (a-z) in the text
+// This creates a 26-dimensional vector where each dimension represents a letter count
+function calculateVector(text) {
+    // Create a 26-dimensional vector (one for each letter a-z)
+    var vec = [];
+    var alphabet = "abcdefghijklmnopqrstuvwxyz";
+    var textLower = lower(text);
+    var textLen = length(textLower);
+    
+    // Count each letter in the text
+    for (var i = 0; i < 26; i = i + 1) {
+        var letter = substring(alphabet, i, 1);
+        var count = 0;
+        
+        // Count occurrences of this letter
+        for (var j = 0; j < textLen; j = j + 1) {
+            var char = substring(textLower, j, 1);
+            if (char == letter) {
+                count = count + 1;
+            }
+        }
+        
+        // Normalize by text length to get frequency (0.0 to 1.0)
+        var frequency = textLen > 0 ? count / textLen : 0.0;
+        vec.append(frequency);
+    }
+    
+    return vec;
+}
+
+// Create a VectorDB with dimension 26 (one for each letter) and double precision
+var db = new VectorDB(26, "double");
+
+// Initialize with the calculator function
+db.init(calculateVector);
+
+print("Created VectorDB with dimension 26 (bag of letters)\n");
+
+// Add some documents - vectors are calculated automatically using the calculator function
+print("Adding documents...");
+db.add("Hello");
+db.add("World");
+db.add("Hello there");
+db.add("Goodbye");
+db.add("Hello world");
+
+print("Added 5 documents\n");
+
+// Search for similar documents
+print("=== Similarity Search ===");
+var query = "Hello";
+print("Query: \"" + query + "\"\n");
+
+var results = db.searchSimilar(query, 3);
+
+print("Top 3 similar documents:");
+for (var i = 0; i < results.length; i = i + 1) {
+    var result = results[i];
+    print((i + 1) + ". \"" + result.data + "\" (similarity: " + formatNumber(result.similarity, 4) + ")");
+}
+print("");
+
+// Demonstrate with different query
+print("Query: \"World\"\n");
+var results2 = db.searchSimilar("World", 2);
+print("Top 2 similar documents:");
+for (var i = 0; i < results2.length; i = i + 1) {
+    var result = results2[i];
+    print((i + 1) + ". \"" + result.data + "\" (similarity: " + formatNumber(result.similarity, 4) + ")");
+}

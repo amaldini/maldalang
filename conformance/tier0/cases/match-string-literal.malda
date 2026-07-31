@@ -1,0 +1,7 @@
+var msg = "hello";
+var result = match msg {
+    case "hello": "greeting";
+    case "goodbye": "farewell";
+    default: "unknown";
+};
+print(result);

@@ -1,0 +1,57 @@
+# PRD — Snake.html (demo Ralph Wiggum)
+
+## Visione prodotto
+
+Creare **un unico file standalone** `snake.html` (HTML + CSS + JS inline, zero dipendenze esterne) che dimostri un Snake all'avanguardia: grafica eccezionale, gameplay fluido a 60 FPS, modalità **Auto-Play** con IA che punta a punteggi elevati, e polish da showcase.
+
+**Vincoli non negoziabili**
+- Output finale: solo `snake.html` in questa cartella (nessun altro asset richiesto per giocare).
+- Apribile con doppio click nel browser, offline.
+- Nessuna libreria CDN; tutto inline.
+- Codice leggibile; per file piccoli preferire `writeFile` completo invece di molti patch.
+
+**Metriche di successo**
+- Auto-play raggiunge regolarmente punteggi ≥ 50 senza collisioni evidenti.
+- FPS stabile; animazioni fluide.
+- UI moderna: tipografia, colori, feedback visivo, responsive base (desktop + mobile).
+
+---
+
+## Checklist feature (priorità alta → bassa)
+
+Implementare **una feature per iterazione**. Segnare `[DONE]` solo quando la feature è completa, il file passa la validazione Ralph, ed è testabile aprendo `snake.html`.
+
+### Fondamenta
+
+- [TODO] **F1 — Scaffold e loop di gioco**  
+  Creare `snake.html` con canvas responsive, griglia 24×24, serpente iniziale, cibo random, movimento a tick, crescita al mangiare, game over su muro/self-collision, restart (R). Controlli: frecce e W/S/D (A riservato ad auto-play in F4).
+
+- [TODO] **F2 — Estetica premium**  
+  Sfondo con gradiente animato; griglia con glow; serpente con testa distinta e corpo degradé; cibo pulsante; HUD (score, best placeholder, stato); transizione morbida su game over.
+
+### Gameplay avanzato
+
+- [TODO] **F3 — High score e persistenza**  
+  `localStorage` per il record; animazione su nuovo record; reset record con Shift+R.
+
+- [TODO] **F4 — Auto-Play con IA**  
+  Toggle Auto (tasto A + pulsante). BFS verso il cibo con fallback safe verso la coda; punteggi credibili in auto.
+
+- [TODO] **F5 — Velocità adattiva**  
+  Accelerazione ogni N punti; indicatore livello/velocità in HUD; pausa (P).
+
+### Polish
+
+- [TODO] **F6 — Juice**  
+  Particelle su cibo/game over, screen shake, trail sul serpente, beep Web Audio (sintetici, no file esterni).
+
+- [TODO] **F7 — UX finale**  
+  Schermata titolo con istruzioni; game over con statistiche (score, lunghezza, tempo); pulsanti Play / Auto / Restart; commento in cima al file con istruzioni rapide.
+
+---
+
+## Note per l'agente
+
+- Lavorare **solo** in questa directory.
+- Dopo ogni feature: rileggere `snake.html`, aggiornare checklist, non segnare `[DONE]` se la validazione fallisce.
+- Quando tutte le voci sono `[DONE]` e il gioco è valido, rispondere con esattamente: `TASK_COMPLETE`.

@@ -1,0 +1,4 @@
+var r = result.err("bad");
+var mapped = result.map(r, (x) => x);
+print(result.isErr(mapped));
+print(result.unwrapOr(mapped, 99));

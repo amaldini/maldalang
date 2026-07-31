@@ -1,0 +1,39 @@
+class Animal {
+    var name;
+    
+    function Animal(name) {
+        this.name = name;  // 'this.' required due to parameter name conflict
+    }
+    
+    function speak() {
+        print("Some generic animal sound");
+    }
+}
+
+class Dog extends Animal {
+    function Dog(name) {
+        super(name);
+    }
+    
+    function speak() {
+        // Implicit member access - no 'this.' needed
+        print($"{name} says: Woof!");
+    }
+}
+
+class Cat extends Animal {
+    function Cat(name) {
+        super(name);
+    }
+    
+    function speak() {
+        // Implicit member access - no 'this.' needed
+        print($"{name} says: Meow!");
+    }
+}
+
+var dog = new Dog("Rex");
+var cat = new Cat("Fluffy");
+
+dog.speak();
+cat.speak();

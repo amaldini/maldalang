@@ -1,0 +1,24 @@
+{
+  "examples": [
+    {
+      "name": "LLM Server - Basic",
+      "description": "Simple local model server with minimal configuration. Demonstrates basic LLMServer setup with OpenAI-compatible endpoints.",
+      "file": "llm_server_basic.malda"
+    },
+    {
+      "name": "LLM Server - With Bridge",
+      "description": "Using LLMClientBridge with multiple backends and proxy features. Includes round-robin routing, rate limiting, health checking, and retry policies.",
+      "file": "llm_server_with_bridge.malda"
+    },
+    {
+      "name": "LLM Server - Cost Optimization",
+      "description": "Cost-based routing between local and cloud backends. Automatically routes requests to the most cost-effective backend based on token costs.",
+      "file": "llm_server_cost_optimization.malda"
+    },
+    {
+      "name": "LLM Server - High Availability",
+      "description": "Multiple backends with failover and health checking. Automatically fails over to backup backends if the primary fails, with configurable retry policies.",
+      "file": "llm_server_high_availability.malda"
+    }
+  ]
+}

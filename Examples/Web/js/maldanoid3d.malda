@@ -1,0 +1,524 @@
+var root = dom.query("#app");
+
+if (root == null) {
+    println("No #app container found.");
+} else {
+    dom.clear(root);
+
+    var head = dom.query("head");
+    if (head != null) {
+        var styleNode = dom.create("style");
+        var styleText = "body { margin: 0; background: #020617; color: #e2e8f0; font-family: Arial, sans-serif; }\n";
+        styleText = styleText + "#maldanoid3d-shell { max-width: 1080px; margin: 0 auto; padding: 20px; }\n";
+        styleText = styleText + "#maldanoid3d-shell h1 { margin: 0 0 8px 0; font-size: 34px; }\n";
+        styleText = styleText + "#maldanoid3d-shell p { margin: 0; }\n";
+        styleText = styleText + "#maldanoid3d-subtitle { color: #cbd5e1; margin-bottom: 14px; }\n";
+        styleText = styleText + "#maldanoid3d-stats { margin: 0 0 8px 0; color: #7dd3fc; font: 600 15px monospace; }\n";
+        styleText = styleText + "#maldanoid3d-state { min-height: 24px; margin: 0 0 14px 0; color: #f8fafc; font: 15px Arial, sans-serif; }\n";
+        styleText = styleText + "#maldanoid3d-scene canvas { width: 100%; height: auto; max-width: 960px; display: block; border: 1px solid #1e293b; border-radius: 14px; box-shadow: 0 18px 48px #00000055; }\n";
+        dom.setText(styleNode, styleText);
+        dom.append(head, styleNode);
+    }
+
+    var appHtml = "<div id=\"maldanoid3d-shell\">" +
+        "<h1>Maldanoid 3D</h1>" +
+        "<p id=\"maldanoid3d-subtitle\">A browser demo that mixes MALDA gameplay logic with the new three.js scene helpers.</p>" +
+        "<div id=\"maldanoid3d-stats\"></div>" +
+        "<div id=\"maldanoid3d-state\"></div>" +
+        "<div id=\"maldanoid3d-scene\"></div>" +
+        "</div>";
+    dom.html("#app", appHtml);
+
+    var statsNode = dom.query("#maldanoid3d-stats");
+    var stateNode = dom.query("#maldanoid3d-state");
+
+    var width = 960;
+    var height = 600;
+    var aspect = width / height;
+
+    var arenaLeft = -5.4;
+    var arenaRight = 5.4;
+    var arenaTop = 3.05;
+    var arenaBottom = -3.75;
+    var sceneZ = -10.0;
+
+    var paddleY = -3.05;
+    var paddleWidth = 1.8;
+    var paddleHeight = 0.28;
+    var paddleX = 0.0;
+    var paddleVx = 0.0;
+    var paddleSpeed = 7.4;
+    var paddleTilt = 0.0;
+
+    var ballRadius = 0.18;
+    var ballX = 0.0;
+    var ballY = 0.0;
+    var ballVx = 3.6;
+    var ballVy = 5.1;
+    var ballRotX = 0.0;
+    var ballRotY = 0.0;
+
+    var brickRows = 5;
+    var brickCols = 8;
+    var brickWidth = 1.02;
+    var brickHeight = 0.4;
+    var brickGapX = 0.16;
+    var brickGapY = 0.22;
+    var brickTopY = 2.25;
+    var brickStartX = -4.13;
+
+    var bricksBaseX = [];
+    var bricksBaseY = [];
+    var bricksAlive = [];
+    var bricksRow = [];
+    var bricksPhase = [];
+    var brickMeshes = [];
+    var bricksLeft = 0;
+
+    var score = 0;
+    var lives = 3;
+    var state = "serve";
+    var animClockMs = 0;
+    var launchDebounceMs = 0;
+    var pauseDebounceMs = 0;
+    var restartDebounceMs = 0;
+
+    var mouseDown = false;
+    var prevMouseDown = false;
+
+    function abs(v) {
+        if (v < 0) {
+            return 0 - v;
+        }
+        return v;
+    }
+
+    function clamp(v, mn, mx) {
+        var out = v;
+        if (out < mn) {
+            out = mn;
+        }
+        if (out > mx) {
+            out = mx;
+        }
+        return out;
+    }
+
+    function triWave01(t, periodMs) {
+        var p = t % periodMs;
+        var half = periodMs / 2;
+        if (p < half) {
+            return p / half;
+        }
+        return (periodMs - p) / half;
+    }
+
+    function updateHud() {
+        if (statsNode != null) {
+            dom.setText(
+                statsNode,
+                "Score " + string(score) +
+                "   Lives " + string(lives) +
+                "   Bricks " + string(bricksLeft) + "/" + string(brickRows * brickCols)
+            );
+        }
+
+        if (stateNode != null) {
+            var message = "Press SPACE or click to launch. Move with Left/Right, A/D, or by dragging across the canvas.";
+            if (state == "playing") {
+                message = "Break the rotating brick wall. Press P to pause.";
+            } else if (state == "paused") {
+                message = "Paused. Press P to continue.";
+            } else if (state == "gameover") {
+                message = "Hull breach. Press R, Enter, or click to rebuild the scene.";
+            } else if (state == "win") {
+                message = "Wall cleared. Press R, Enter, or click to play again.";
+            }
+            dom.setText(stateNode, message);
+        }
+    }
+
+    var renderer = three.createRenderer(width, height, "#maldanoid3d-scene");
+    three.setClearColor(renderer, "#050816");
+
+    var scene = three.createScene();
+    var camera = three.createPerspectiveCamera(68, aspect, 0.1, 100.0);
+    three.setPosition(camera, 0.0, 0.15, 0.0);
+
+    var boardGeometry = three.createBoxGeometry(13.2, 8.4, 0.3);
+    var boardMaterial = three.createStandardMaterial({
+        "color": "#0b1220",
+        "roughness": 0.92,
+        "metalness": 0.05
+    });
+    var boardMesh = three.createMesh(boardGeometry, boardMaterial);
+    three.setPosition(boardMesh, 0.0, -0.1, sceneZ - 0.9);
+    three.setRotation(boardMesh, 0.02, 0.0, 0.0);
+    three.add(scene, boardMesh);
+
+    var wallGeometrySide = three.createBoxGeometry(0.28, 7.8, 0.65);
+    var wallGeometryTop = three.createBoxGeometry(11.6, 0.28, 0.65);
+    var wallMaterial = three.createStandardMaterial({
+        "color": "#38bdf8",
+        "roughness": 0.25,
+        "metalness": 0.55
+    });
+    var leftWall = three.createMesh(wallGeometrySide, wallMaterial);
+    var rightWall = three.createMesh(wallGeometrySide, wallMaterial);
+    var topWall = three.createMesh(wallGeometryTop, wallMaterial);
+    three.setPosition(leftWall, arenaLeft - 0.32, -0.2, sceneZ);
+    three.setPosition(rightWall, arenaRight + 0.32, -0.2, sceneZ);
+    three.setPosition(topWall, 0.0, arenaTop + 0.28, sceneZ);
+    three.setRotation(leftWall, 0.0, 0.18, 0.0);
+    three.setRotation(rightWall, 0.0, -0.18, 0.0);
+    three.setRotation(topWall, 0.18, 0.0, 0.0);
+    three.add(scene, leftWall);
+    three.add(scene, rightWall);
+    three.add(scene, topWall);
+
+    var paddleGeometry = three.createBoxGeometry(paddleWidth, paddleHeight, 0.6);
+    var paddleMaterial = three.createStandardMaterial({
+        "color": "#22d3ee",
+        "roughness": 0.28,
+        "metalness": 0.48
+    });
+    var paddleMesh = three.createMesh(paddleGeometry, paddleMaterial);
+    three.add(scene, paddleMesh);
+
+    var ballGeometry = three.createBoxGeometry(ballRadius * 2.0, ballRadius * 2.0, ballRadius * 2.0);
+    var ballMaterial = three.createStandardMaterial({
+        "color": "#f8fafc",
+        "roughness": 0.12,
+        "metalness": 0.22
+    });
+    var ballMesh = three.createMesh(ballGeometry, ballMaterial);
+    three.add(scene, ballMesh);
+
+    var brickGeometry = three.createBoxGeometry(brickWidth, brickHeight, 0.52);
+    var brickMaterials = [];
+    brickMaterials[0] = three.createStandardMaterial({ "color": "#ef4444", "roughness": 0.24, "metalness": 0.44 });
+    brickMaterials[1] = three.createStandardMaterial({ "color": "#f97316", "roughness": 0.24, "metalness": 0.44 });
+    brickMaterials[2] = three.createStandardMaterial({ "color": "#facc15", "roughness": 0.24, "metalness": 0.44 });
+    brickMaterials[3] = three.createStandardMaterial({ "color": "#22c55e", "roughness": 0.24, "metalness": 0.44 });
+    brickMaterials[4] = three.createStandardMaterial({ "color": "#818cf8", "roughness": 0.24, "metalness": 0.44 });
+
+    var keyLight = three.createDirectionalLight("#ffffff", 1.4);
+    var fillLight = three.createDirectionalLight("#67e8f9", 0.7);
+    var rimLight = three.createDirectionalLight("#a78bfa", 0.5);
+    three.setPosition(keyLight, 4.5, 5.2, 4.0);
+    three.setPosition(fillLight, -4.2, 1.4, 3.0);
+    three.setPosition(rimLight, 0.0, -3.0, 2.0);
+    three.add(scene, keyLight);
+    three.add(scene, fillLight);
+    three.add(scene, rimLight);
+
+    function syncPaddleVisual() {
+        three.setPosition(paddleMesh, paddleX, paddleY, sceneZ + 0.12);
+        three.setRotation(paddleMesh, 0.22, paddleTilt, 0.0);
+    }
+
+    function syncBallVisual() {
+        three.setPosition(ballMesh, ballX, ballY, sceneZ + 0.24);
+        three.setRotation(ballMesh, ballRotX, ballRotY, ballRotX * 0.35);
+    }
+
+    function hideBrick(index) {
+        three.setPosition(brickMeshes[index], bricksBaseX[index], bricksBaseY[index], sceneZ - 28.0);
+        three.setRotation(brickMeshes[index], 1.2, 0.8, 0.0);
+    }
+
+    function syncBrickVisual(index) {
+        if (!bricksAlive[index]) {
+            hideBrick(index);
+            return;
+        }
+
+        var wave = triWave01(animClockMs + bricksPhase[index], 1800);
+        var pulse = (wave - 0.5) * 2.0;
+        var bob = pulse * 0.06;
+        var rotX = 0.18 + (pulse * 0.06);
+        var rotY = -0.12 + (pulse * 0.08);
+        three.setPosition(brickMeshes[index], bricksBaseX[index], bricksBaseY[index] + bob, sceneZ);
+        three.setRotation(brickMeshes[index], rotX, rotY, 0.0);
+    }
+
+    function createBricks() {
+        var row = 0;
+        while (row < brickRows) {
+            var col = 0;
+            while (col < brickCols) {
+                var index = brickMeshes.length;
+                var x = brickStartX + (col * (brickWidth + brickGapX));
+                var y = brickTopY - (row * (brickHeight + brickGapY));
+                bricksBaseX[index] = x;
+                bricksBaseY[index] = y;
+                bricksAlive[index] = true;
+                bricksRow[index] = row;
+                bricksPhase[index] = (row * 240) + (col * 90);
+                var mesh = three.createMesh(brickGeometry, brickMaterials[row % brickMaterials.length]);
+                brickMeshes[index] = mesh;
+                three.add(scene, mesh);
+                col = col + 1;
+            }
+            row = row + 1;
+        }
+    }
+
+    function resetLevel() {
+        bricksLeft = brickMeshes.length;
+        var i = 0;
+        while (i < brickMeshes.length) {
+            bricksAlive[i] = true;
+            syncBrickVisual(i);
+            i = i + 1;
+        }
+    }
+
+    function resetRound(direction) {
+        paddleX = 0.0;
+        paddleVx = 0.0;
+        paddleTilt = 0.0;
+        ballX = paddleX;
+        ballY = paddleY + 0.42;
+        ballVx = 3.4 * direction;
+        ballVy = 5.3;
+        ballRotX = 0.0;
+        ballRotY = 0.0;
+        state = "serve";
+        syncPaddleVisual();
+        syncBallVisual();
+    }
+
+    function restartGame() {
+        score = 0;
+        lives = 3;
+        resetLevel();
+        resetRound(1);
+        updateHud();
+    }
+
+    function hitBrick(index) {
+        if (!bricksAlive[index]) {
+            return;
+        }
+        bricksAlive[index] = false;
+        bricksLeft = bricksLeft - 1;
+        score = score + 100;
+        hideBrick(index);
+        if (bricksLeft <= 0) {
+            state = "win";
+        }
+    }
+
+    function bounceOffPaddle() {
+        var offset = (ballX - paddleX) / (paddleWidth / 2.0);
+        offset = clamp(offset, -1.0, 1.0);
+        ballVx = (offset * 5.3) + (paddleVx * 0.18);
+        ballVy = 5.25 + (abs(offset) * 0.85);
+        if (ballVy < 4.8) {
+            ballVy = 4.8;
+        }
+    }
+
+    function collideWithBricks(prevX, prevY) {
+        var i = 0;
+        var collided = false;
+
+        while (i < brickMeshes.length) {
+            if (bricksAlive[i] && !collided) {
+                var bx = bricksBaseX[i];
+                var by = bricksBaseY[i];
+                var overlaps =
+                    ballX + ballRadius >= bx - (brickWidth / 2.0) &&
+                    ballX - ballRadius <= bx + (brickWidth / 2.0) &&
+                    ballY + ballRadius >= by - (brickHeight / 2.0) &&
+                    ballY - ballRadius <= by + (brickHeight / 2.0);
+
+                if (overlaps) {
+                    var prevOverlapX =
+                        prevX + ballRadius >= bx - (brickWidth / 2.0) &&
+                        prevX - ballRadius <= bx + (brickWidth / 2.0);
+                    var prevOverlapY =
+                        prevY + ballRadius >= by - (brickHeight / 2.0) &&
+                        prevY - ballRadius <= by + (brickHeight / 2.0);
+
+                    if (!prevOverlapY) {
+                        ballVy = 0 - ballVy;
+                    } else if (!prevOverlapX) {
+                        ballVx = 0 - ballVx;
+                    } else if (abs(ballVx) > abs(ballVy)) {
+                        ballVx = 0 - ballVx;
+                    } else {
+                        ballVy = 0 - ballVy;
+                    }
+
+                    hitBrick(i);
+                    collided = true;
+                }
+            }
+            i = i + 1;
+        }
+    }
+
+    function updatePaddle(dt) {
+        var prevPaddleX = paddleX;
+        var moveLeft = three.isKeyDown("arrowleft") || three.isKeyDown("a");
+        var moveRight = three.isKeyDown("arrowright") || three.isKeyDown("d");
+
+        if (mouseDown && three.getMouseX() > 0) {
+            var target = arenaLeft + ((three.getMouseX() / width) * (arenaRight - arenaLeft));
+            paddleX = paddleX + ((target - paddleX) * 0.22);
+        } else {
+            var step = (paddleSpeed * dt) / 1000.0;
+            if (moveLeft) {
+                paddleX = paddleX - step;
+            }
+            if (moveRight) {
+                paddleX = paddleX + step;
+            }
+        }
+
+        paddleX = clamp(paddleX, arenaLeft + (paddleWidth / 2.0), arenaRight - (paddleWidth / 2.0));
+        if (dt > 0) {
+            paddleVx = ((paddleX - prevPaddleX) * 1000.0) / dt;
+        } else {
+            paddleVx = 0.0;
+        }
+        paddleTilt = clamp(paddleVx / 16.0, -0.34, 0.34);
+        syncPaddleVisual();
+    }
+
+    function updateBall(dt) {
+        var prevX = ballX;
+        var prevY = ballY;
+
+        ballX = ballX + ((ballVx * dt) / 1000.0);
+        ballY = ballY + ((ballVy * dt) / 1000.0);
+
+        if (ballX - ballRadius <= arenaLeft) {
+            ballX = arenaLeft + ballRadius;
+            if (ballVx < 0) {
+                ballVx = 0 - ballVx;
+            }
+        }
+        if (ballX + ballRadius >= arenaRight) {
+            ballX = arenaRight - ballRadius;
+            if (ballVx > 0) {
+                ballVx = 0 - ballVx;
+            }
+        }
+        if (ballY + ballRadius >= arenaTop) {
+            ballY = arenaTop - ballRadius;
+            if (ballVy > 0) {
+                ballVy = 0 - ballVy;
+            }
+        }
+
+        var paddleHalfW = paddleWidth / 2.0;
+        var paddleHalfH = paddleHeight / 2.0;
+        var hitsPaddle =
+            ballVy < 0 &&
+            ballX + ballRadius >= paddleX - paddleHalfW &&
+            ballX - ballRadius <= paddleX + paddleHalfW &&
+            ballY - ballRadius <= paddleY + paddleHalfH &&
+            ballY + ballRadius >= paddleY - paddleHalfH;
+
+        if (hitsPaddle) {
+            ballY = paddleY + paddleHalfH + ballRadius;
+            bounceOffPaddle();
+        }
+
+        collideWithBricks(prevX, prevY);
+
+        if (ballY + ballRadius < arenaBottom) {
+            lives = lives - 1;
+            if (lives <= 0) {
+                state = "gameover";
+            } else {
+                resetRound(ballVx < 0 ? -1 : 1);
+            }
+        }
+
+        ballRotX = ballRotX + ((ballVy * dt) / 1600.0);
+        ballRotY = ballRotY + ((ballVx * dt) / 1600.0);
+        syncBallVisual();
+    }
+
+    function updateBrickAnimations() {
+        var i = 0;
+        while (i < brickMeshes.length) {
+            syncBrickVisual(i);
+            i = i + 1;
+        }
+    }
+
+    function update(dtMs) {
+        var dt = dtMs;
+        if (dt > 40) {
+            dt = 40;
+        }
+        if (dt < 0) {
+            dt = 0;
+        }
+
+        animClockMs = animClockMs + dt;
+        prevMouseDown = mouseDown;
+        mouseDown = three.isMouseDown(0);
+        var mousePressed = mouseDown && !prevMouseDown;
+
+        if (launchDebounceMs > 0) launchDebounceMs = launchDebounceMs - dt;
+        if (pauseDebounceMs > 0) pauseDebounceMs = pauseDebounceMs - dt;
+        if (restartDebounceMs > 0) restartDebounceMs = restartDebounceMs - dt;
+
+        if (three.isKeyDown("p") && pauseDebounceMs <= 0) {
+            if (state == "playing") {
+                state = "paused";
+            } else if (state == "paused") {
+                state = "playing";
+            }
+            pauseDebounceMs = 220;
+        }
+
+        if ((state == "gameover" || state == "win") &&
+            (three.isKeyDown("r") || three.isKeyDown("enter") || mousePressed) &&
+            restartDebounceMs <= 0) {
+            restartGame();
+            restartDebounceMs = 260;
+            return;
+        }
+
+        updatePaddle(dt);
+        updateBrickAnimations();
+
+        if (state == "paused" || state == "gameover" || state == "win") {
+            updateHud();
+            return;
+        }
+
+        if (state == "serve") {
+            ballX = paddleX;
+            ballY = paddleY + 0.42;
+            syncBallVisual();
+
+            if ((three.isKeyDown(" ") || mousePressed) && launchDebounceMs <= 0) {
+                state = "playing";
+                launchDebounceMs = 220;
+                ballVx = ballVx + (paddleVx * 0.12);
+            }
+
+            updateHud();
+            return;
+        }
+
+        updateBall(dt);
+        updateHud();
+    }
+
+    function render() {
+        three.render(renderer, scene, camera);
+    }
+
+    createBricks();
+    restartGame();
+    three.start(update, render);
+}

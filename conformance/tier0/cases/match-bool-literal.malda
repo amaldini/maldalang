@@ -1,0 +1,6 @@
+var flag = true;
+var result = match flag {
+    case true: "yes";
+    case false: "no";
+};
+print(result);

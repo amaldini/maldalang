@@ -1,0 +1,52 @@
+// Ralph Interview — terminal-guided PRD authoring for Ralph Wiggum.
+// Writes PRD.md in MALDA_RALPH_WORKDIR (or cwd) then you run RalphWiggum / ralph.exe.
+//
+// Environment (optional):
+//   MALDA_RALPH_WORKDIR, MALDA_RALPH_WORKTREE, MALDA_RALPH_PROJECT_REL
+//   MALDA_RALPH_PRD (default PRD.md)
+//   MALDA_RALPH_LOCALE — it | en (prompts and PRD section labels)
+//   MALDA_RALPH_BRIEF — path to extra context file merged into the interview
+//   MALDA_RALPH_INTERVIEW_PROFILE — new | append | features | brief
+//   MALDA_RALPH_INTERVIEW_MODE — new | append (when PRD already exists)
+//   MALDA_RALPH_INTERVIEW_OVERWRITE — true to replace PRD without prompting
+//   MALDA_RALPH_INTERVIEW_MAX_FOLLOWUPS — max ask_user clarifications (default 8)
+//   MALDA_RALPH_INTERVIEW_MAX_LLM_ROUNDS — cap LLM tool rounds (default 20 in distribution launcher)
+//   MALDA_RALPH_INTERVIEW_BROWNFIELD — scan workdir and include repo snapshot in prompt
+//   MALDA_RALPH_INTERVIEW_TEMPLATE — optional PRD template markdown path
+//   MALDA_RALPH_INTERVIEW_FEWSHOT — optional few-shot checklist excerpt path
+//   MALDA_RALPH_INTERVIEW_SUGGEST_VALIDATE_CMD — mention .ralph-validate.bat in agent notes
+//   MALDA_RALPH_INTERVIEW_THEN_LOOP — run MALDA_RALPH_LOOP_EXE smoke loop (1 iter) after success
+//   MALDA_RALPH_LOOP_EXE — path to ralph.exe (set by distribution launcher)
+//   MALDA_RALPH_INTERVIEW_PREVIEW_LINES — PRD preview line count (default 30)
+//   MALDA_RALPH_INTERVIEW_SKIP_PREVIEW — skip Step 1 brief preview
+//   MALDA_RALPH_INTERVIEW_NO_DRAFT — do not write .ralph-interview-brief.json
+//   MALDA_RALPH_INTERVIEW_NO_MEMORY — skip writing .ralph-memory after successful interview
+//   MALDA_RALPH_INTERVIEW_NO_SUMMARY — do not write ralph-interview-summary.md
+//   MALDA_RALPH_INTERVIEW_NO_WORKTREE_HINT — skip worktree tip
+//   MALDA_RALPH_MODEL, OPENROUTER_API_KEY, MALDA_CONFIG — same as Ralph loop
+//
+// Distribution: compiled as bin\interview\ralph-interview.exe (see build_ralph_distribution.bat)
+
+include "ralph/00-env.malda";
+include "ralph/01-cli.malda";
+include "ralph/02-prd.malda";
+include "ralph/03-validation.malda";
+include "ralph/04-state-memory.malda";
+include "ralph/08-interview.malda";
+
+var config = getMaldaConfig();
+
+var workingDir = resolveRalphWorkingDir();
+var prdFile = getEnv("MALDA_RALPH_PRD");
+if (prdFile == null || prdFile == "") {
+    prdFile = "PRD.md";
+}
+
+var result = runRalphInterview(workingDir, prdFile);
+if (result != 0) {
+    if (agentRichEnabled()) {
+        ralphMarkup("[red]Interview failed.[/]");
+    } else {
+        print("Interview failed.");
+    }
+}

@@ -1,0 +1,49 @@
+{
+  "examples": [
+    {
+      "name": "Markup Example",
+      "description": "Colored and styled text output using markup syntax",
+      "file": "markup_example.malda"
+    },
+    {
+      "name": "Table Example",
+      "description": "Display data in formatted tables",
+      "file": "table_example.malda"
+    },
+    {
+      "name": "Panel Example",
+      "description": "Display content in bordered panels with different styles",
+      "file": "panel_example.malda"
+    },
+    {
+      "name": "Tree Example",
+      "description": "Display hierarchical tree structures",
+      "file": "tree_example.malda"
+    },
+    {
+      "name": "Status Example",
+      "description": "Show status spinner during async operations",
+      "file": "status_example.malda"
+    },
+    {
+      "name": "Prompt Example",
+      "description": "Interactive prompts for user input (text, confirm, selection)",
+      "file": "prompt_example.malda"
+    },
+    {
+      "name": "Progress Example",
+      "description": "Progress bars with single or multiple tasks",
+      "file": "progress_example.malda"
+    },
+    {
+      "name": "Progress Callback Example",
+      "description": "Progress bars using the new callback-based syntax with addTask, increment, and isFinished",
+      "file": "progress_callback_example.malda"
+    },
+    {
+      "name": "Comprehensive Example",
+      "description": "Combines multiple Spectre.Console features in one demo",
+      "file": "comprehensive_example.malda"
+    }
+  ]
+}

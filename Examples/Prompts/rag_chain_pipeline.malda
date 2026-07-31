@@ -1,0 +1,68 @@
+// RAG Pipeline — chain keyword (LCEL-style) over v1 |> primitives
+// Runs without a live LLM (structure demo + mock parseJson)
+
+schema Answer {
+    text: string;
+    sources: string[];
+}
+
+prompt answerPrompt(question, context) {
+    system: "Answer using only the provided context.",
+    user: "Context:\n{context}\n\nQuestion: {question}"
+}
+
+function embedText(text) {
+    return embedBagOfWords(text, 16);
+}
+
+// --- Setup knowledge base ---
+var vdb = new VectorDB(16, "single");
+vdb.init(embedText);
+
+var docs = [
+    { content: "GraphMemory stores facts in a graph with semantic retrieval.", metadata: { source: "memory.md" } },
+    { content: "VectorDB provides cosine similarity search over embeddings.", metadata: { source: "vectordb.md" } }
+];
+
+indexInto(vdb, docs);
+var retriever = vdb.asRetriever({ topK: 2 });
+
+// --- LCEL-style chain declaration ---
+chain ragContext(question, retriever) {
+    step hits = question |> retriever.get;
+    step text = formatRetrievedDocs(hits);
+    return text;
+}
+
+chain ragPrompt(question, context) {
+    context |> (ctx) => answerPrompt(question, ctx)
+}
+
+chain ragParse(mockResponse) {
+    mockResponse |> parseJson("Answer")
+}
+
+var question = "How does GraphMemory work?";
+var context = ragContext(question, retriever);
+var p = ragPrompt(question, context);
+
+print("=== Chain: ragContext ===");
+print(context);
+print("");
+print("=== Chain: ragPrompt ===");
+print(p.user);
+
+var mockResponse = "{\"text\":\"GraphMemory stores facts with semantic retrieval.\",\"sources\":[\"memory.md\"]}";
+var parsed = ragParse(mockResponse);
+print("");
+print("=== Chain: ragParse ===");
+print(parsed.text);
+print(join(parsed.sources, ", "));
+
+print("");
+print("End-to-end with LLM (set OPENROUTER_API_KEY):");
+print("  chain ragAnswer(question, client) {");
+print("      question |> retriever.get |> formatRetrievedDocs");
+print("          |> (ctx) => answerPrompt(question, ctx) |> runPrompt(client) |> parseJson(\"Answer\")");
+print("  }");
+print("  var result = await ragAnswer(question, client);");

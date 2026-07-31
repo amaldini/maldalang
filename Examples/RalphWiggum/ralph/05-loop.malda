@@ -1,0 +1,607 @@
+﻿function rememberIterationSummary(memory, iteration, phase, validationOk, responseText, modifiedFiles, toolCount, memoryScope) {
+    if (memory == null) {
+        return;
+    }
+    var fact = "Iteration " + string(iteration) + " [" + phase + "]: " + truncateText(responseText, 400);
+    var context = "validation=" + string(validationOk) + "; tools=" + string(toolCount);
+    if (modifiedFiles != null && length(modifiedFiles) > 0) {
+        context = context + "; files=" + join(modifiedFiles, ", ");
+    }
+    var metadata = {
+        "iteration": iteration,
+        "phase": phase,
+        "type": "progress",
+        "source": "ralph"
+    };
+    if (memoryScope != null && memoryScope != "") {
+        metadata.scope = memoryScope;
+    }
+    try {
+        memory.remember(fact, context, metadata);
+    } catch (error) {
+        ralphLog(phase, "[ralph] Warning: could not save iteration memory (" + string(error) + ")");
+    }
+}
+
+function indexModifiedFilesInMemory(memory, workDir, modifiedFiles, phase, memoryScope) {
+    if (memory == null || modifiedFiles == null || length(modifiedFiles) == 0) {
+        return;
+    }
+    var i = 0;
+    while (i < length(modifiedFiles)) {
+        var filePath = modifiedFiles[i];
+        if (isRalphMemoryArtifact(filePath)) {
+            i = i + 1;
+            continue;
+        }
+        var resolved = filePath;
+        if (indexOf(filePath, ":") < 0 && indexOf(filePath, "\\") < 0 && indexOf(filePath, "/") < 0) {
+            resolved = pathJoin(workDir, filePath);
+        }
+        try {
+            if (hasFile(resolved)) {
+                memory.analyzeFile(resolved);
+                var note = "Indexed code structure for " + filePath + " during " + phase;
+                var fileMeta = {
+                    "phase": phase,
+                    "type": "file",
+                    "source": "ralph"
+                };
+                if (memoryScope != null && memoryScope != "") {
+                    fileMeta.scope = memoryScope;
+                }
+                memory.remember(note, "", fileMeta);
+            }
+        } catch (error) {
+            // Non-code or unsupported files are skipped silently
+        }
+        i = i + 1;
+    }
+}
+
+function buildContextNote(ralphState, resetEachIteration) {
+    if (ralphState == null || ralphState.completedIterations == null || ralphState.completedIterations <= 0) {
+        return "";
+    }
+    var note = "[Session context]\n" +
+        "Completed iterations so far: " + string(ralphState.completedIterations) + ".";
+    if (ralphState.lastPhase != null && ralphState.lastPhase != "") {
+        note = note + "\nLast completed phase: " + string(ralphState.lastPhase);
+    }
+    if (ralphState.lastResponsePreview != null && ralphState.lastResponsePreview != "") {
+        note = note + "\nLast agent summary: " + ralphState.lastResponsePreview;
+    }
+    var recent = formatRecentIterations(ralphState, 3);
+    if (recent != "") {
+        note = note + "\nRecent iterations:\n" + recent;
+    }
+    var resetMode = ralphResetMode();
+    if (resetEachIteration) {
+        note = note + "\nConversation was reset for this iteration — use recall_progress / GraphMemory and the PRD for continuity.";
+    } else if (resetMode == "auto") {
+        note = note + "\nConversation is trimmed automatically when context grows large — use recall_progress / GraphMemory and the PRD for continuity.";
+    }
+    note = note + "\nBefore marking any item [DONE], re-read the files you changed and verify the PRD criteria for that item.";
+    return note;
+}
+
+function buildContextTrimHandoff(ralphState, lastValidationNote) {
+    var note = buildContextNote(ralphState, false);
+    if (lastValidationNote != null && lastValidationNote != "") {
+        if (note != null && note != "") {
+            note = note + "\n\n";
+        } else {
+            note = "";
+        }
+        note = note + "Outstanding validation: " + lastValidationNote;
+    }
+    return note;
+}
+
+function fileEditingRules() {
+    return "File editing rules (CRITICAL — prevents truncation / corruption):\n" +
+        "- write_file: ONLY for brand-new files under ~200 lines (~6000 chars total).\n" +
+        "- If the file ALREADY EXISTS: read_file first, then edit_file or replace_in_file with small unique snippets (each oldText/newText under ~1500 chars).\n" +
+        "- NEVER rewrite an entire existing large file with write_file — model output truncates and the write is rejected.\n" +
+        "- If write_file fails with truncation/JSON error: do NOT retry the full file; use edit_file with several small edits instead.\n" +
+        "- Syntax/indentation fixes: use the line numbers and >> context from validation errors; read_file that exact range; copy oldText verbatim from read_file (spaces/tabs must match); replace a whole statement or block — never oldText that is only whitespace.";
+}
+
+function ralphSyntaxFixRules() {
+    return "Syntax and indentation fix rules (validation-fix phase):\n" +
+        "- Validation errors include HTML/source line numbers and a >> marked context snippet — edit at that line, not at temp-file paths.\n" +
+        "- read_file the shown line range before edit_file/replace_in_file; paste oldText exactly as returned (including indentation).\n" +
+        "- Prefer replacing a full function/if-block rather than patching single braces or spaces.\n" +
+        "- If edit_file fails with 'oldText not found', re-read the file — fuzzy match may have changed whitespace; widen oldText to a unique multi-line snippet.\n" +
+        "- Optional: set MALDA_RALPH_AUTO_FORMAT_JS=true to auto-run Prettier on JS syntax/indentation issues when npx is available.";
+}
+
+function ralphGitRules() {
+    return "Git rules (CRITICAL — Ralph worktree):\n" +
+        "- File and git tools share the same workdir — paths like PRD.md and snake.html only.\n" +
+        "- Do NOT pass repoPath on git_status, git_add, git_commit, or git_diff; defaults are correct.\n" +
+        "- Never point git at the main repo or process launch directory (SimpleLanguage root).\n" +
+        "- After write_file creates a new file, use git_status (untracked). git_diff ignores untracked files.\n" +
+        "- Stage with git_add (files='.' or basename), then git_commit.";
+}
+
+function ralphEfficiencyRules() {
+    return "One-shot execution (CRITICAL — minimize LLM roundtrips within this iteration):\n" +
+        "- Complete the current PRD item in one continuous tool session. Target at most 3–5 LLM rounds total.\n" +
+        "- Before your first tool call, plan the full step: which files to inspect, what to change, and how to verify.\n" +
+        "- File tool paths must be relative to the workdir (e.g. PRD.md, snake.html) — never absolute paths or paths from another repo.\n" +
+        "- Batch read-only tools in every response: glob, list_directory, grep, and all read_file calls you expect to need — they run in parallel.\n" +
+        "- Use glob for file discovery by pattern (e.g. **/*.cs); use grep for content search.\n" +
+        "- Do NOT read one file per round. Do NOT re-read a file unless you edited it or need a line you did not capture.\n" +
+        "- Do NOT manually count or verify brace balance — Ralph runs structural validation (including node --check for JS) after each iteration.\n" +
+        "- After exploration, batch all edits for this item in the next response(s). Do not stop after a single edit if more changes remain.\n" +
+        "- Combine verification reads and run_command (build/test) in the same round when possible.\n" +
+        "- Do not use submit_plan, ask_user, or mid-task summaries — keep executing until the item is done or you are blocked.\n" +
+        "- Do not ask for confirmation. Do not narrate what you will do next — just call the tools.\n" +
+        "- End with PRD checklist updated, criteria verified, and a brief summary of what changed.";
+}
+
+function buildCompletionIterationInstructions(prdPath, iter) {
+    return "This is iteration " + string(iter) + ".\n" +
+        "Current PRD phase: complete — every checklist item is already [DONE].\n" +
+        "Do NOT re-read entire files or manually verify brace balance. Ralph validates structure automatically after this turn.\n" +
+        "Do not call read_file, grep, or list_directory unless you are fixing a specific validation error from the previous iteration.\n" +
+        "Reply with exactly TASK_COMPLETE now unless validation errors below require a minimal fix.\n" +
+        ralphGitRules();
+}
+
+function buildValidationFixInstructions(prdPath, iter) {
+    return "This is iteration " + string(iter) + ".\n" +
+        "Current PRD phase: validation-fix.\n" +
+        "The PRD checklist may be complete but structural validation failed on the last iteration.\n" +
+        "Fix ONLY the validation errors listed below — do NOT manually count braces or re-read the whole file.\n" +
+        ralphSyntaxFixRules() + "\n" +
+        "Use grep or read_file on the line range from the error context, apply minimal edit_file/replace_in_file changes, then reply TASK_COMPLETE.\n" +
+        ralphEfficiencyRules() + "\n" +
+        ralphGitRules() + "\n" +
+        fileEditingRules();
+}
+
+function iterationInstructions(prdPath, iter, phase, acceptance, fileHints) {
+    if (phase == "complete") {
+        return buildCompletionIterationInstructions(prdPath, iter);
+    }
+    if (phase == "validation-fix") {
+        return buildValidationFixInstructions(prdPath, iter);
+    }
+    var accBlock = "";
+    if (acceptance != null && acceptance != "") {
+        accBlock = "\nAcceptance criteria for this item:\n" + acceptance + "\n";
+    }
+    var filesBlock = formatPrdFileHintsBlock(fileHints);
+    if (filesBlock != null && filesBlock != "") {
+        accBlock = accBlock + "\n" + filesBlock;
+    }
+    return "This is iteration " + string(iter) + ".\n" +
+        "Current PRD phase: " + phase + ".\n" + accBlock +
+        "Read " + prdPath + " and implement the next highest-priority feature still marked [TODO] or [ ].\n" +
+        "Implement only one feature this iteration.\n" +
+        ralphEfficiencyRules() + "\n" +
+        ralphGitRules() + "\n" +
+        "Before marking a feature [DONE], re-read the modified files and confirm the PRD criteria for that item are met — not just your intent.\n" +
+        "Mark [DONE] only after structural validation passes.\n" +
+        "Use remember_progress(note, type?, phase?) to save decisions and progress; recall_progress(query?, phase?) to retrieve past notes.\n" +
+        "Structured iteration summaries are saved automatically — prefer remember_progress for extra decisions not captured in your reply.\n" +
+        fileEditingRules() + "\n" +
+        "Run tests or compile when relevant, and git commit your changes if the directory is a git repo.\n" +
+        "When every checklist item in the PRD is [DONE] and validation passes, reply with exactly TASK_COMPLETE.";
+}
+
+function buildPrompt(originalTask, prdPath, iter, validationNote, contextNote, phase, memory, acceptance, fileHints, memoryScope) {
+    var fullPrompt = originalTask + "\n\n" + iterationInstructions(prdPath, iter, phase, acceptance, fileHints);
+    if (contextNote != null && contextNote != "") {
+        fullPrompt = fullPrompt + "\n\n" + contextNote;
+    }
+    var memoryContext = queryMemoryForPrompt(memory, phase, memoryScope);
+    if (memoryContext != null && memoryContext != "") {
+        fullPrompt = fullPrompt + "\n\n[GraphMemory context]\n" + memoryContext;
+    }
+    if (validationNote != null && validationNote != "") {
+        fullPrompt = fullPrompt + "\n\nPrevious iteration validation failed:\n" + validationNote +
+            "\nFix these issues before marking any feature [DONE].";
+    }
+    return fullPrompt;
+}
+
+function buildGitCommitMessage(iteration, phase) {
+    var template = getEnv("MALDA_RALPH_COMMIT_MESSAGE_TEMPLATE");
+    if (template != null && template != "") {
+        var msg = replace(template, "{iter}", string(iteration));
+        msg = replace(msg, "{phase}", phase);
+        return truncateText(msg, 72);
+    }
+    return truncateText("ralph: iter " + string(iteration) + " — " + phase, 72);
+}
+
+function runPreflightChecks(workDir, prdRelativePath) {
+    var mode = ralphPreflightMode();
+    if (mode == "off") {
+        return true;
+    }
+    var prdPath = pathJoin(workDir, prdRelativePath);
+    var errors = [];
+    if (!hasFile(prdPath)) {
+        errors.append("PRD not found: " + prdPath);
+    } else {
+        var progress = countPrdChecklistProgress(prdPath);
+        if (progress.open == 0 && !isPrdComplete(prdPath)) {
+            errors.append("PRD has no open checklist items");
+        }
+    }
+    var client = createAgentClient();
+    if (client == null) {
+        errors.append("LLM client not configured (API key / backend)");
+    }
+    if (length(errors) > 0) {
+        var i = 0;
+        while (i < length(errors)) {
+            if (mode == "strict") {
+                print("[preflight] " + errors[i]);
+            } else {
+                ralphLog("", "[preflight] " + errors[i]);
+            }
+            i = i + 1;
+        }
+        return mode != "strict";
+    }
+    return true;
+}
+
+function shouldResetConversation(resetMode, iteration, currentPhase, lastPhase) {
+    if (resetMode == "false" or resetMode == "auto") {
+        return false;
+    }
+    if (resetMode == "phase") {
+        if (iteration <= 1) {
+            return false;
+        }
+        return currentPhase != lastPhase;
+    }
+    return iteration > 1;
+}
+
+function setupRalphCodeMemory(agent, workDir) {
+    if (!envBool("MALDA_RALPH_CODE_MEMORY", true)) {
+        return;
+    }
+    try {
+        agent.enableCodeMemory();
+        if (envBool("MALDA_RALPH_CODE_MEMORY_INDEX", false)) {
+            agent.indexCodebase();
+            ralphLog("", "[ralph] Code memory: bulk index complete");
+        }
+        ralphLog("", "[ralph] DevAgent code memory tools attached");
+    } catch (error) {
+        ralphLog("", "[ralph] Warning: code memory setup failed (" + string(error) + ")");
+    }
+}
+
+function runPlanOnlyMode(task, workDir, prdRelativePath, includeSymbols) {
+    var client = createAgentClient();
+    if (client == null) {
+        return -1;
+    }
+    var prdPath = pathJoin(workDir, prdRelativePath);
+    if (!hasFile(prdPath)) {
+        print("PRD not found: " + prdPath);
+        return -1;
+    }
+    var agent = new DevAgent(
+        "RalphPlanner",
+        "technical planner",
+        "Analyze the PRD and propose a concrete plan for the next open item. Use read-only tools only. Do not modify files.",
+        client,
+        workDir,
+        includeSymbols
+    );
+    var phase = getCurrentPrdPhase(prdPath, "");
+    var acceptance = getCurrentPrdAcceptance(prdPath, "");
+    var planPrompt = task + "\n\nPlan-only mode: read PRD and produce a step-by-step plan for: " + phase +
+        "\nAcceptance:\n" + acceptance + "\nWrite the plan to ralph-plan.md using write_file.";
+    var response = agent.think(planPrompt);
+    var text = responseTextOrEmpty(response);
+    if (text != null && text != "") {
+        writeFile(pathJoin(workDir, "ralph-plan.md"), text);
+        print("Plan written to ralph-plan.md");
+    }
+    return 0;
+}
+
+function tryAutoGitCommit(workDir, projectRel, iteration, validationOk, autoGitCommit, phase) {
+    if (!autoGitCommit || !validationOk) {
+        return;
+    }
+    try {
+        var files = collectModifiedFiles(workDir, projectRel);
+        if (length(files) == 0) {
+            return;
+        }
+        var i = 0;
+        while (i < length(files)) {
+            gitAdd(workDir, files[i]);
+            i = i + 1;
+        }
+        var result = gitCommit(workDir, buildGitCommitMessage(iteration, phase));
+        ralphLog("", "[ralph] Git: " + string(result));
+    } catch (error) {
+        ralphLog("", "[ralph] Git commit skipped: " + string(error));
+    }
+}
+
+function autonomousAgentLoop(initialTask, maxIter, workDir, projectRel, prdRelativePath, resetEachIteration, validateEachIteration, verboseLogging, resumeRun, autoGitCommit, includeSymbols) {
+    var client = createAgentClient();
+    if (client == null) {
+        return -1;
+    }
+
+    var prdPath = pathJoin(workDir, prdRelativePath);
+    var memoryPath = pathJoin(workDir, ".ralph-memory");
+    var statePath = pathJoin(workDir, ".ralph-state.json");
+
+    if (!hasFile(prdPath)) {
+        print("PRD not found: " + prdPath);
+        print("Create a PRD with checklist items marked [ ], [TODO], or [DONE].");
+        return -1;
+    }
+
+    var ralphState = loadRalphState(statePath);
+    if (ralphState.taskComplete) {
+        print("Previous run marked task complete (.ralph-state.json). Nothing to do.");
+        print("Delete .ralph-state.json to run again.");
+        return 0;
+    }
+
+    var memory = new GraphMemory();
+    var projectTitle = resolveRalphProjectTitle(workDir);
+    var memoryScope = setupRalphGraphMemory(memory, memoryPath, workDir, prdRelativePath, projectTitle);
+
+    var agent = new DevAgent(
+        "CodeRefiner",
+        "senior software engineer",
+        "You implement code with maximum quality in as few LLM rounds as possible. " +
+        "Plan each PRD step fully before calling tools, then batch tool calls aggressively. " +
+        "Always read files before editing. Use glob, list_directory, grep, and read_file together in one response when exploring — never run_command with powershell/cmd/findstr. " +
+        "run_command is only for whitelisted programs (dotnet, npm, node, python). " +
+        "Update the PRD checklist as you complete features. After edits, ensure files are structurally valid. " +
+        "Before marking [DONE], re-read changed files and verify the PRD criteria. " +
+        "Do NOT manually count braces — Ralph validates with node --check and structural checks after each iteration. " +
+        "When the PRD is complete, reply TASK_COMPLETE immediately — do not re-verify syntax with extra read_file rounds. " +
+        "For existing files over ~200 lines use edit_file/replace_in_file only — never rewrite the whole file with write_file. " +
+        "Do not use submit_plan or ask_user — execute directly. Commit progress with git when possible. Do not pass repoPath on git tools.",
+        client,
+        workDir,
+        includeSymbols
+    );
+    agent.useMemory(memory);
+    if (memoryScope != null && memoryScope != "") {
+        agent.setMemoryScope(memoryScope);
+    }
+    setupRalphCodeMemory(agent, workDir);
+    var autoRememberOnThink = envBool("MALDA_RALPH_AUTO_REMEMBER", false);
+    agent.setAutoRememberOnThink(autoRememberOnThink);
+    agent.addMemoryProgressTools();
+
+    var iteration = 0;
+    var taskComplete = false;
+    var originalTask = initialTask;
+    var lastValidationNote = ralphState.lastValidationNote;
+    if (lastValidationNote == null) {
+        lastValidationNote = "";
+    }
+    var skippedResume = 0;
+    var resetMode = ralphResetMode();
+    var runStartedAt = now();
+    var lastAgentPhase = "";
+
+    if (!runPreflightChecks(workDir, prdRelativePath)) {
+        return -1;
+    }
+
+    try {
+        var modelLabel = resolveRalphModelLabel();
+        var resumeCheckpoint = getResumeCheckpoint(ralphState);
+        printRalphBanner(workDir, prdRelativePath, maxIter, resumeRun, resumeCheckpoint, modelLabel);
+        if (ralphVerboseConfigEnabled()) {
+            printRalphConfigDetails(workDir, projectRel, prdRelativePath, initialTask, maxIter, resetEachIteration, validateEachIteration, verboseLogging, resumeRun, ralphState.completedIterations, autoGitCommit, includeSymbols, statePath);
+        }
+        if (verboseLogging) {
+            enableAgentVerboseLogging(true);
+            if (!ralphQuietEnabled()) {
+                ralphLog("", "Live output: [llm] / [tool] during agent.think()");
+            }
+        }
+
+        while (iteration < maxIter and (not taskComplete)) {
+            iteration = iteration + 1;
+            var currentPhase = getCurrentPrdPhase(prdPath, lastValidationNote);
+            printIterationHeader(iteration, maxIter, currentPhase, projectTitle, prdPath);
+            setIterationVerbosePhase("");
+
+            if (shouldSkipResumeIteration(iteration, ralphState, resumeRun)) {
+                if (ralphResumePolicy() == "success-only" && iteration > ralphState.lastSuccessfulIteration) {
+                    ralphLog("", "Retrying iteration " + string(iteration) + " (previous attempt did not succeed)");
+                } else {
+                    ralphLog("", "Skipping iteration " + string(iteration) + " (already completed - resume)");
+                    skippedResume = skippedResume + 1;
+                    continue;
+                }
+            }
+
+            if (envBool("MALDA_RALPH_ABORT_ON_STALL", false) && ralphState.stalled) {
+                ralphLog("", "Aborting: stall detected (MALDA_RALPH_ABORT_ON_STALL)");
+                break;
+            }
+
+            if (shouldResetConversation(resetMode, iteration, currentPhase, lastAgentPhase)) {
+                agent.reset();
+            }
+            lastAgentPhase = currentPhase;
+
+            if (isPrdComplete(prdPath)) {
+                var canFinish = true;
+                if (validateEachIteration) {
+                    var preGitChanged = collectModifiedFiles(workDir, projectRel);
+                    var preValidationPaths = mergeValidationRelPaths(preGitChanged, getCurrentPrdFileHints(prdPath, lastValidationNote), prdRelativePath);
+                    var preValidation = validateWorkdirWithContext(workDir, prdRelativePath, preValidationPaths, currentPhase, preGitChanged);
+                    canFinish = preValidation.ok;
+                    if (!canFinish) {
+                        lastValidationNote = formatValidationErrors(preValidation.errors);
+                        currentPhase = getCurrentPrdPhase(prdPath, lastValidationNote);
+                        ralphLog("", "PRD checklist complete but validation failed; continuing...");
+                        ralphLog("", lastValidationNote);
+                        print("");
+                    }
+                }
+                if (canFinish) {
+                    taskComplete = true;
+                    ralphLog("", "PRD has no remaining [TODO] or [ ] items.");
+                    break;
+                }
+            }
+
+            try {
+                currentPhase = getCurrentPrdPhase(prdPath, lastValidationNote);
+                syncAgentStatusBanner(projectTitle, prdPath, currentPhase, iteration, maxIter);
+                var progressBefore = countPrdChecklistProgress(prdPath);
+                var acceptance = getCurrentPrdAcceptance(prdPath, lastValidationNote);
+                var fileHints = getCurrentPrdFileHints(prdPath, lastValidationNote);
+                var contextNote = buildContextNote(ralphState, resetEachIteration);
+                if (ralphState.stalled) {
+                    contextNote = contextNote + "\n\n" + buildStallEscalationNote(ralphState, lastValidationNote, collectModifiedFiles(workDir, projectRel));
+                }
+                var currentPrompt = buildPrompt(originalTask, prdPath, iteration, lastValidationNote, contextNote, currentPhase, memory, acceptance, fileHints, memoryScope);
+                if (ralphResetMode() == "auto") {
+                    agent.setContextTrimHandoff(buildContextTrimHandoff(ralphState, lastValidationNote));
+                }
+                ralphLog("", "[ralph] Prompt length: " + string(length(currentPrompt)) + " chars");
+                ralphLog("", "[ralph] Estimated context: " + string(agent.getEstimatedContextTokens()) + " tokens");
+                ralphLog("", "[ralph] Calling agent.think() - waiting for LLM and tools (may take several minutes)...");
+                var thinkStart = now();
+                var response = null;
+                var thinkTimedOut = false;
+                try {
+                    response = agent.think(currentPrompt);
+                } catch (error) {
+                    var errMsg = string(error);
+                    if (indexOf(lower(errMsg), "timeout") >= 0) {
+                        thinkTimedOut = true;
+                        lastValidationNote = "Iteration timed out: " + errMsg;
+                        ralphLog("", lastValidationNote);
+                    } else {
+                        throw error;
+                    }
+                }
+                var thinkElapsed = now() - thinkStart;
+                var usage = {"promptTokens": 0, "completionTokens": 0, "cost": 0};
+                if (response != null) {
+                    usage = accumulateTokenUsage(ralphState, response);
+                }
+                var turnSummary = summarizeTurn(agent);
+                printTurnSummary(agent, iteration, thinkElapsed, currentPhase, usage);
+                var responseText = responseTextOrEmpty(response);
+                printAgentFinalResponse(responseText);
+
+                var validationOk = true;
+                if (thinkTimedOut) {
+                    validationOk = false;
+                }
+                var failedToolNote = collectFailedWriteToolNotes(agent);
+                if (failedToolNote != null && failedToolNote != "") {
+                    validationOk = false;
+                    if (lastValidationNote != null && lastValidationNote != "") {
+                        lastValidationNote = lastValidationNote + "\n\n" + failedToolNote;
+                    } else {
+                        lastValidationNote = failedToolNote;
+                    }
+                    ralphLog("", "Write tool failure(s) detected:");
+                    ralphLog("", failedToolNote);
+                    print("");
+                }
+                if (validateEachIteration && validationOk) {
+                    var gitChanged = collectModifiedFiles(workDir, projectRel);
+                    var validationPaths = mergeValidationRelPaths(gitChanged, fileHints, prdRelativePath);
+                    var validation = validateWorkdirWithContext(workDir, prdRelativePath, validationPaths, currentPhase, gitChanged);
+                    validationOk = validation.ok;
+                    if (validationOk) {
+                        ralphLog("", formatValidationStatusLine(validation));
+                        lastValidationNote = "";
+                    } else {
+                        lastValidationNote = formatValidationErrors(validation.errors);
+                        ralphLog("", "Validation FAILED:");
+                        ralphLog("", lastValidationNote);
+                        print("");
+                    }
+                }
+
+                var progressAfter = countPrdChecklistProgress(prdPath);
+                if (validationOk && ralphPrdStrictEnabled() && progressAfter.done == progressBefore.done && !isPrdComplete(prdPath)) {
+                    validationOk = false;
+                    lastValidationNote = "PRD checklist unchanged — mark the current item [DONE] or fix blockers before finishing.";
+                    ralphLog("", lastValidationNote);
+                }
+
+                ralphState.lastValidationNote = lastValidationNote;
+                updateStallTracking(ralphState, currentPhase, progressAfter.done);
+                var modifiedFiles = collectModifiedFiles(workDir, projectRel);
+                recordIterationResult(ralphState, iteration, currentPhase, thinkElapsed, turnSummary, validationOk, responseText, modifiedFiles, thinkTimedOut, usage);
+                rememberIterationSummary(memory, iteration, currentPhase, validationOk, responseText, modifiedFiles, turnSummary.tools, memoryScope);
+                indexModifiedFilesInMemory(memory, workDir, modifiedFiles, currentPhase, memoryScope);
+                finalizeRalphMemoryIteration(memory, memoryPath, client, memoryScope, maxIter);
+                tryAutoGitCommit(workDir, projectRel, iteration, validationOk, autoGitCommit, currentPhase);
+                saveRalphState(statePath, ralphState);
+
+                try {
+                    var dashProgress = countPrdChecklistProgress(prdPath);
+                    reportRalphStatus("CodeRefiner", currentPhase, iteration, maxIter, dashProgress.percent, validationOk, thinkElapsed, usage.promptTokens, usage.completionTokens, usage.cost);
+                } catch (error) {
+                }
+
+                if (shouldMarkTaskComplete(responseText, prdPath, validationOk)) {
+                    taskComplete = true;
+                    ralphState.taskComplete = true;
+                    saveRalphState(statePath, ralphState);
+                    ralphLog("", "Task complete.");
+                } else if (validationOk && isPrdComplete(prdPath) && ralphRequireCompleteSignal()) {
+                    ralphLog("", "PRD checklist complete; waiting for agent TASK_COMPLETE signal.");
+                }
+
+                sleep(500);
+            } catch (error) {
+                ralphLog("", "Error in iteration " + string(iteration) + ": " + string(error));
+                ralphLog("", "Continuing to next iteration...");
+                ralphState.lastValidationNote = "Runtime error: " + string(error);
+                saveRalphState(statePath, ralphState);
+                finalizeRalphMemoryIteration(memory, memoryPath, client, memoryScope, maxIter);
+                sleep(1000);
+            }
+        }
+
+        finalizeRalphMemoryIteration(memory, memoryPath, client, memoryScope, maxIter);
+        saveRalphState(statePath, ralphState);
+
+        writeRalphRunReport(workDir, taskComplete, iteration, maxIter, ralphState, modelLabel, workDir, prdRelativePath, runStartedAt, memory);
+        var eventName = "max_iter";
+        if (taskComplete) {
+            eventName = "complete";
+        } else if (ralphState.stalled) {
+            eventName = "stalled";
+        }
+        ralphNotifyOnEvent(eventName, projectTitle, iteration, maxIter, prdPath, taskComplete);
+
+        printFinalStatus(taskComplete, iteration, maxIter, skippedResume, prdPath, workDir, prdRelativePath, validateEachIteration, ralphState);
+        setAgentStatusBanner("");
+
+        return iteration;
+    } catch (error) {
+        print("Fatal error in autonomous agent: " + error);
+        saveRalphState(statePath, ralphState);
+        finalizeRalphMemoryIteration(memory, memoryPath, client, memoryScope, maxIter);
+        return -1;
+    }
+}
+

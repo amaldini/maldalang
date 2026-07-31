@@ -1,0 +1,64 @@
+// Ralph completion notifications (desktop / webhook).
+
+function ralphNotifyOnEvent(eventName, projectTitle, iteration, maxIter, prdPath, taskComplete) {
+    var raw = getEnv("MALDA_RALPH_NOTIFY");
+    if (raw == null || raw == "") {
+        return;
+    }
+    var progress = countPrdChecklistProgress(prdPath);
+    var parts = split(raw, ",");
+    var i = 0;
+    while (i < length(parts)) {
+        var part = trim(parts[i]);
+        if (part == "desktop") {
+            sendRalphDesktopNotification(eventName, projectTitle, progress.percent, taskComplete);
+        } else if (startsWith(part, "webhook:")) {
+            var url = trim(substring(part, length("webhook:"), length(part) - length("webhook:")));
+            sendRalphWebhookNotification(url, eventName, projectTitle, iteration, maxIter, progress.percent, taskComplete);
+        }
+        i = i + 1;
+    }
+}
+
+function sendRalphDesktopNotification(eventName, projectTitle, prdPercent, taskComplete) {
+    var title = "Ralph: " + projectTitle;
+    var body = eventName + " — PRD " + string(prdPercent) + "%";
+    if (taskComplete) {
+        body = body + " (complete)";
+    }
+    try {
+        var host = getHostPlatform();
+        if (host.os == "windows") {
+            var ps = "powershell -NoProfile -Command \"[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null; " +
+                "$t = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('Ralph'); " +
+                "$x = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02); " +
+                "$n = $x.GetElementsByTagName('text'); $n.Item(0).AppendChild($x.CreateTextNode('" + replace(title, "'", "''") + "')) > $null; " +
+                "$n.Item(1).AppendChild($x.CreateTextNode('" + replace(body, "'", "''") + "')) > $null; " +
+                "$t.Show([Windows.UI.Notifications.ToastNotification]::new($x))\"";
+            runCommand("cmd", ["/c", ps]);
+        } else if (host.os == "macos") {
+            runCommand("osascript", ["-e", "display notification \"" + body + "\" with title \"" + title + "\""]);
+        }
+    } catch (error) {
+        ralphLog("", "[ralph] Desktop notification skipped: " + string(error));
+    }
+}
+
+function sendRalphWebhookNotification(url, eventName, projectTitle, iteration, maxIter, prdPercent, taskComplete) {
+    if (url == null || url == "") {
+        return;
+    }
+    try {
+        var payload = {
+            "event": eventName,
+            "project": projectTitle,
+            "iteration": iteration,
+            "maxIter": maxIter,
+            "prdPercent": prdPercent,
+            "complete": taskComplete
+        };
+        httpPost(url, toJSON(payload), "application/json");
+    } catch (error) {
+        ralphLog("", "[ralph] Webhook notification failed: " + string(error));
+    }
+}

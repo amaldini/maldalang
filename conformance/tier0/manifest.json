@@ -1,0 +1,1117 @@
+{
+    "version":  1,
+    "caseCount":  101,
+    "cases":  [
+                  {
+                      "id":  "T0-001",
+                      "file":  "actor-send-order.malda",
+                      "title":  "actor send order",
+                      "spec":  "13",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-002",
+                      "file":  "all-array.malda",
+                      "title":  "all array",
+                      "spec":  "11",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-003",
+                      "file":  "all-variadic.malda",
+                      "title":  "all variadic",
+                      "spec":  "11",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-004",
+                      "file":  "and-or-bool.malda",
+                      "title":  "and or bool",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-005",
+                      "file":  "arithmetic-print.malda",
+                      "title":  "arithmetic print",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-006",
+                      "file":  "array-append-length.malda",
+                      "title":  "array append length",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-007",
+                      "file":  "array-index-access.malda",
+                      "title":  "array index access",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-008",
+                      "file":  "array-length.malda",
+                      "title":  "array length",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-009",
+                      "file":  "async-await.malda",
+                      "title":  "async await",
+                      "spec":  "11",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-010",
+                      "file":  "await-literal-task.malda",
+                      "title":  "await literal task",
+                      "spec":  "11",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-011",
+                      "file":  "break-while.malda",
+                      "title":  "break while",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-012",
+                      "file":  "catch-fallback-generic.malda",
+                      "title":  "catch fallback generic",
+                      "spec":  "12",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-013",
+                      "file":  "catch-io-filter.malda",
+                      "title":  "catch io filter",
+                      "spec":  "12",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-014",
+                      "file":  "catch-plain-string.malda",
+                      "title":  "catch plain string",
+                      "spec":  "12",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-015",
+                      "file":  "catch-rethrow-nested.malda",
+                      "title":  "catch rethrow nested",
+                      "spec":  "12",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-016",
+                      "file":  "compare-null.malda",
+                      "title":  "compare null",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-017",
+                      "file":  "comparison-operators.malda",
+                      "title":  "comparison operators",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-018",
+                      "file":  "const-read.malda",
+                      "title":  "const read",
+                      "spec":  "18",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-019",
+                      "file":  "continue-while.malda",
+                      "title":  "continue while",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-020",
+                      "file":  "defer-lifo.malda",
+                      "title":  "defer lifo",
+                      "spec":  "18",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-021",
+                      "file":  "dict-bracket-access.malda",
+                      "title":  "dict bracket access",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-022",
+                      "file":  "dict-comprehension-map.malda",
+                      "title":  "dict comprehension map",
+                      "spec":  "18",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-023",
+                      "file":  "dict-dot-assign.malda",
+                      "title":  "dict dot assign",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-024",
+                      "file":  "dict-keys-dot.malda",
+                      "title":  "dict keys dot",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-025",
+                      "file":  "dict-missing-null.malda",
+                      "title":  "dict missing null",
+                      "spec":  "5.3",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-026",
+                      "file":  "empty-array-length.malda",
+                      "title":  "empty array length",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-027",
+                      "file":  "equality-primitives.malda",
+                      "title":  "equality primitives",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-028",
+                      "file":  "fibonacci-small.malda",
+                      "title":  "fibonacci small",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-029",
+                      "file":  "float-literal-print.malda",
+                      "title":  "float literal print",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-030",
+                      "file":  "for-continue-skip.malda",
+                      "title":  "for continue skip",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-031",
+                      "file":  "foreach-sum.malda",
+                      "title":  "foreach sum",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-032",
+                      "file":  "for-loop-count.malda",
+                      "title":  "for loop count",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-033",
+                      "file":  "function-return.malda",
+                      "title":  "function return",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-034",
+                      "file":  "greater-equals-int.malda",
+                      "title":  "greater equals int",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-035",
+                      "file":  "if-else-chain.malda",
+                      "title":  "if else chain",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-036",
+                      "file":  "is-number.malda",
+                      "title":  "is number",
+                      "spec":  "10",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-037",
+                      "file":  "is-tag-bool-legacy.malda",
+                      "title":  "is tag bool legacy",
+                      "spec":  "4.3",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-038",
+                      "file":  "is-tag-dict-legacy.malda",
+                      "title":  "is tag dict legacy",
+                      "spec":  "4.3",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-039",
+                      "file":  "is-tag-legacy.malda",
+                      "title":  "is tag legacy",
+                      "spec":  "4.3",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-040",
+                      "file":  "is-tag-rejects-wrong.malda",
+                      "title":  "is tag rejects wrong",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-041",
+                      "file":  "list-comprehension-filter.malda",
+                      "title":  "list comprehension filter",
+                      "spec":  "18",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-042",
+                      "file":  "logical-not.malda",
+                      "title":  "logical not",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-043",
+                      "file":  "match-array-bind-sum.malda",
+                      "title":  "match array bind sum",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-044",
+                      "file":  "match-array-exact.malda",
+                      "title":  "match array exact",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-045",
+                      "file":  "match-array-rest.malda",
+                      "title":  "match array rest",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-046",
+                      "file":  "match-array-two.malda",
+                      "title":  "match array two",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-047",
+                      "file":  "match-block-expression.malda",
+                      "title":  "match block expression",
+                      "spec":  "9",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-048",
+                      "file":  "match-block-null.malda",
+                      "title":  "match block null",
+                      "spec":  "9",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-049",
+                      "file":  "match-bool-literal.malda",
+                      "title":  "match bool literal",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-050",
+                      "file":  "match-default-block.malda",
+                      "title":  "match default block",
+                      "spec":  "9",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-051",
+                      "file":  "match-default-fallback.malda",
+                      "title":  "match default fallback",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-052",
+                      "file":  "match-first-branch.malda",
+                      "title":  "match first branch",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-053",
+                      "file":  "match-identifier-bind.malda",
+                      "title":  "match identifier bind",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-054",
+                      "file":  "match-identifier-first.malda",
+                      "title":  "match identifier first",
+                      "spec":  "9",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-055",
+                      "file":  "match-literal.malda",
+                      "title":  "match literal",
+                      "spec":  "9",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-056",
+                      "file":  "match-nested-array-object.malda",
+                      "title":  "match nested array object",
+                      "spec":  "9",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-057",
+                      "file":  "match-no-default-error.malda",
+                      "title":  "match no default error",
+                      "spec":  "9",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-058",
+                      "file":  "match-null-literal.malda",
+                      "title":  "match null literal",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-059",
+                      "file":  "match-object-missing-prop.malda",
+                      "title":  "match object missing prop",
+                      "spec":  "9",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-060",
+                      "file":  "match-object-nested.malda",
+                      "title":  "match object nested",
+                      "spec":  "9",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-061",
+                      "file":  "match-object-shorthand.malda",
+                      "title":  "match object shorthand",
+                      "spec":  "9",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-062",
+                      "file":  "match-object-simple.malda",
+                      "title":  "match object simple",
+                      "spec":  "9",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-063",
+                      "file":  "match-statement-body.malda",
+                      "title":  "match statement body",
+                      "spec":  "9",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-064",
+                      "file":  "match-string-literal.malda",
+                      "title":  "match string literal",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-065",
+                      "file":  "match-wildcard.malda",
+                      "title":  "match wildcard",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-066",
+                      "file":  "modulo-op.malda",
+                      "title":  "modulo op",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-067",
+                      "file":  "nested-match.malda",
+                      "title":  "nested match",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-068",
+                      "file":  "null-conditional-index.malda",
+                      "title":  "null conditional index",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-069",
+                      "file":  "null-conditional-member.malda",
+                      "title":  "null conditional member",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-070",
+                      "file":  "null-conditional-present.malda",
+                      "title":  "null conditional present",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-071",
+                      "file":  "operator-precedence.malda",
+                      "title":  "operator precedence",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-072",
+                      "file":  "option-some-map.malda",
+                      "title":  "option some map",
+                      "spec":  "4.4",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-073",
+                      "file":  "option-unwrap-none.malda",
+                      "title":  "option unwrap none",
+                      "spec":  "4.4",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-074",
+                      "file":  "pipe-sort.malda",
+                      "title":  "pipe sort",
+                      "spec":  "18",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-075",
+                      "file":  "result-err-unwrapor.malda",
+                      "title":  "result err unwrapor",
+                      "spec":  "4.4",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-076",
+                      "file":  "result-is-err-true.malda",
+                      "title":  "result is err true",
+                      "spec":  "4.4",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-077",
+                      "file":  "result-map-unwrap.malda",
+                      "title":  "result map unwrap",
+                      "spec":  "4.4",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-078",
+                      "file":  "run-property-stable.malda",
+                      "title":  "run property stable",
+                      "spec":  "15",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-079",
+                      "file":  "string-concat.malda",
+                      "title":  "string concat",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-080",
+                      "file":  "string-length-builtin.malda",
+                      "title":  "string length builtin",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-081",
+                      "file":  "string-not-equal.malda",
+                      "title":  "string not equal",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-082",
+                      "file":  "sum-ok-payload-field.malda",
+                      "title":  "sum ok payload field",
+                      "spec":  "8-9",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-083",
+                      "file":  "sum-type-divide-ok.malda",
+                      "title":  "sum type divide ok",
+                      "spec":  "8-9",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-084",
+                      "file":  "sum-type-err-branch.malda",
+                      "title":  "sum type err branch",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-085",
+                      "file":  "sum-type-match.malda",
+                      "title":  "sum type match",
+                      "spec":  "8-9",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-086",
+                      "file":  "sum-type-none-constructor.malda",
+                      "title":  "sum type none constructor",
+                      "spec":  "8",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-087",
+                      "file":  "ternary-true-branch.malda",
+                      "title":  "ternary true branch",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-088",
+                      "file":  "try-catch-string.malda",
+                      "title":  "try catch string",
+                      "spec":  "12",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-089",
+                      "file":  "typeof-array.malda",
+                      "title":  "typeof array",
+                      "spec":  "4.3",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-090",
+                      "file":  "typeof-bool.malda",
+                      "title":  "typeof bool",
+                      "spec":  "4.3",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-091",
+                      "file":  "typeof-dict.malda",
+                      "title":  "typeof dict",
+                      "spec":  "4.3",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-092",
+                      "file":  "typeof-float.malda",
+                      "title":  "typeof float",
+                      "spec":  "4.3",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-093",
+                      "file":  "typeof-int.malda",
+                      "title":  "typeof int",
+                      "spec":  "4.3",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-094",
+                      "file":  "typeof-null.malda",
+                      "title":  "typeof null",
+                      "spec":  "4.3",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-095",
+                      "file":  "typeof-string.malda",
+                      "title":  "typeof string",
+                      "spec":  "4.3",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-096",
+                      "file":  "typeof-task.malda",
+                      "title":  "typeof task",
+                      "spec":  "11",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-097",
+                      "file":  "typeof-variant.malda",
+                      "title":  "typeof variant",
+                      "spec":  "8",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-098",
+                      "file":  "unary-minus.malda",
+                      "title":  "unary minus",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-099",
+                      "file":  "using-dispose.malda",
+                      "title":  "using dispose",
+                      "spec":  "18",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-100",
+                      "file":  "variant-err-message.malda",
+                      "title":  "variant err message",
+                      "spec":  "8-9",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-101",
+                      "file":  "while-loop-count.malda",
+                      "title":  "while loop count",
+                      "spec":  "7",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  }
+              ]
+}

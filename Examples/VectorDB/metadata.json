@@ -1,0 +1,14 @@
+{
+  "examples": [
+    {
+      "name": "Basic VectorDB Operations",
+      "description": "Creating a VectorDB, adding vectors, and performing similarity search",
+      "file": "basic_vectordb.malda"
+    },
+    {
+      "name": "VectorDB Serialization",
+      "description": "Serializing and deserializing VectorDB to/from binary files with function validation",
+      "file": "vectordb_serialization.malda"
+    }
+  ]
+}

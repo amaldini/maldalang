@@ -1,0 +1,744 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MALDA microgpt</title>
+  <style>
+    :root {
+      --bg: #0b0d12;
+      --code-bg: #0f131a;
+      --text: #e8edf7;
+      --muted: #9aa6bf;
+      --kw: #7dd3fc;
+      --fn: #c4b5fd;
+      --cls: #f9c97b;
+      --num: #fda4af;
+      --str: #a7f3d0;
+      --com: #7f8ea8;
+      --op: #f0abfc;
+      --id: #dde6f8;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      background: var(--bg);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      min-height: 100vh;
+    }
+
+    .wrap {
+      width: min(1780px, 98vw);
+      margin: 20px auto 20px;
+    }
+
+    .title {
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      margin: 0 0 1px;
+      font-weight: 700;
+      font-size: clamp(1.38rem, 1.85vw, 1.95rem);
+      letter-spacing: 0;
+      color: #f4f7ff;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.94rem;
+      max-width: 980px;
+      line-height: 1.35;
+    }
+
+    .frame {
+      background: transparent;
+      border: 0;
+      border-radius: 0;
+      overflow: visible;
+      box-shadow: none;
+    }
+
+    .columns-wrap {
+      padding: 2px 0 6px;
+      max-height: none;
+      overflow: visible;
+      background: var(--code-bg);
+      border-radius: 4px;
+    }
+
+    .code-columns {
+      column-width: 340px;
+      column-gap: 18px;
+      column-rule: 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      line-height: 1.43;
+      tab-size: 4;
+      -moz-tab-size: 4;
+      color: var(--id);
+      padding: 8px 10px;
+    }
+
+    .line {
+      display: block;
+      break-inside: avoid;
+      white-space: pre;
+      margin: 0;
+      padding: 0;
+    }
+
+    .line:hover { background: transparent; }
+
+    .kw { color: var(--kw); font-weight: 700; }
+    .fn { color: var(--fn); }
+    .cls { color: var(--cls); font-weight: 500; }
+    .num { color: var(--num); }
+    .str { color: var(--str); }
+    .com { color: var(--com); font-style: italic; }
+    .op { color: var(--op); }
+
+    .footer {
+      margin-top: 0;
+      color: #7a7a7a;
+      font-size: 0;
+      text-align: left;
+    }
+
+    .meta {
+      color: #8d99b3;
+      font-size: 0.82rem;
+      margin: 3px 0 8px;
+    }
+
+    @media (max-width: 900px) {
+      .code-columns {
+        column-width: 280px;
+        font-size: 11.8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="title">
+      <h1>MALDA microgpt</h1>
+    </div>
+    <div class="subtitle">The most atomic way to train and inference a GPT in pure, dependency-free MALDA.</div>
+    <div class="subtitle">This file is the complete algorithm.</div>
+    <div class="subtitle">Everything else is just efficiency.</div>
+    <div class="meta">@karpathy</div>
+    <section class="frame">
+      <div class="columns-wrap">
+        <div class="code-columns" id="codeColumns"></div>
+      </div>
+    </section>
+    <div class="footer"></div>
+  </main>
+
+  <script id="source" type="text/plain">// microgpt.malda
+// A MALDA port of Andrej Karpathy's "microgpt":
+// dataset + tokenizer + autograd + tiny GPT + Adam + inference.
+
+// -----------------------------
+// Global model configuration
+// -----------------------------
+var n_embd = 16;
+var n_head = 4;
+var n_layer = 1;
+var block_size = 16;
+var head_dim = int(n_embd / n_head);
+
+var BOS = 0;
+var vocab_size = 0;
+var uchars = [];
+var charToId = {};
+
+var state_dict = dict {};
+var params = [];
+
+var valueIdCounter = 0;
+
+class Value {
+    var id;
+    var data;
+    var grad;
+    var children;
+    var localGrads;
+
+    function Value(data, children, localGrads) {
+        valueIdCounter = valueIdCounter + 1;
+        id = valueIdCounter;
+        this.data = data;
+        grad = 0.0;
+        this.children = children;
+        this.localGrads = localGrads;
+    }
+
+    function __add__(other) {
+        var o = asValue(other);
+        return new Value(data + o.data, [this, o], [1.0, 1.0]);
+    }
+
+    function __radd__(other) {
+        return this + other;
+    }
+
+    function __mul__(other) {
+        var o = asValue(other);
+        return new Value(data * o.data, [this, o], [o.data, data]);
+    }
+
+    function __rmul__(other) {
+        return this * other;
+    }
+
+    function __neg__() {
+        return -1.0 * this;
+    }
+
+    function __sub__(other) {
+        return this + (-other);
+    }
+
+    function __rsub__(other) {
+        return other + (-this);
+    }
+
+    function __div__(other) {
+        return this * asValue(other).powScalar(-1.0);
+    }
+
+    function __rdiv__(other) {
+        return other * this.powScalar(-1.0);
+    }
+
+    function powScalar(exponent) {
+        var out = pow(data, exponent);
+        var d = exponent * pow(data, exponent - 1.0);
+        return new Value(out, [this], [d]);
+    }
+
+    function logv() {
+        return new Value(log(data), [this], [1.0 / data]);
+    }
+
+    function expv() {
+        var e = exp(data);
+        return new Value(e, [this], [e]);
+    }
+
+    function reluv() {
+        return new Value(max(0.0, data), [this], [data > 0.0 ? 1.0 : 0.0]);
+    }
+
+    function backward() {
+        var topo = [];
+        var visited = dict {};
+        var stack = [{"node": this, "expanded": false}];
+        while (stack.length > 0) {
+            var frame = stack.pop();
+            var v = frame.node;
+            var key = string(v.id);
+
+            if (frame.expanded) {
+                topo.append(v);
+                continue;
+            }
+
+            if (visited.containsKey(key)) {
+                continue;
+            }
+
+            visited[key] = true;
+            stack.append({"node": v, "expanded": true});
+
+            // Push children in reverse so traversal order stays stable.
+            for (var i = v.children.length - 1; i >= 0; i = i - 1) {
+                var child = v.children[i];
+                var childKey = string(child.id);
+                if (!visited.containsKey(childKey)) {
+                    stack.append({"node": child, "expanded": false});
+                }
+            }
+        }
+
+        grad = 1.0;
+
+        for (var i = topo.length - 1; i >= 0; i = i - 1) {
+            var v = topo[i];
+            for (var j = 0; j < v.children.length; j = j + 1) {
+                var child = v.children[j];
+                child.grad = child.grad + v.localGrads[j] * v.grad;
+            }
+        }
+    }
+}
+
+function asValue(x) {
+    if (typeOf(x) == "object" && x != null && x.data != null && x.grad != null) {
+        return x;
+    }
+    return new Value(float(x), [], []);
+}
+
+function matrix(nout, nin, std) {
+    var m = [];
+    for (var i = 0; i < nout; i = i + 1) {
+        var row = [];
+        for (var j = 0; j < nin; j = j + 1) {
+            row.append(new Value(Math.randn(std), [], []));
+        }
+        m.append(row);
+    }
+    return m;
+}
+
+function linear(x, w) {
+    var out = [];
+    for (var i = 0; i < w.length; i = i + 1) {
+        var s = new Value(0.0, [], []);
+        for (var j = 0; j < x.length; j = j + 1) {
+            s = s + (w[i][j] * x[j]);
+        }
+        out.append(s);
+    }
+    return out;
+}
+
+function softmax(logits) {
+    var max_val = logits[0].data;
+    for (var i = 1; i < logits.length; i = i + 1) {
+        max_val = max(max_val, logits[i].data);
+    }
+
+    var exps = [];
+    var total = new Value(0.0, [], []);
+    for (var i = 0; i < logits.length; i = i + 1) {
+        var e = (logits[i] - max_val).expv();
+        exps.append(e);
+        total = total + e;
+    }
+
+    var probs = [];
+    for (var i = 0; i < exps.length; i = i + 1) {
+        probs.append(exps[i] / total);
+    }
+    return probs;
+}
+
+function softmaxDataFromValueLogits(logits, temperature) {
+    // Inference-only path: detach from autograd by reading raw scalar data.
+    // Then delegate normalization to native Math.softmax for simpler code.
+    var logitsData = [];
+    for (var i = 0; i < logits.length; i = i + 1) {
+        logitsData.append(logits[i].data);
+    }
+    return Math.softmax(logitsData, temperature);
+}
+
+function rmsnorm(x) {
+    var ms = new Value(0.0, [], []);
+    for (var i = 0; i < x.length; i = i + 1) {
+        ms = ms + (x[i] * x[i]);
+    }
+    ms = (1.0 / x.length) * ms;
+    var scale = (ms + 1e-5).powScalar(-0.5);
+
+    var out = [];
+    for (var i = 0; i < x.length; i = i + 1) {
+        out.append(x[i] * scale);
+    }
+    return out;
+}
+
+function buildFallbackDocs() {
+    return [
+        "emma", "olivia", "ava", "isabella", "sophia", "charlotte", "mia", "amelia", "harper", "evelyn",
+        "abigail", "emily", "ella", "elizabeth", "camila", "luna", "sofia", "avery", "mila", "aria",
+        "scarlett", "penelope", "layla", "chloe", "victoria", "madison", "eleanor", "grace", "nora", "riley",
+        "zoey", "hannah", "hazel", "lily", "ellie", "violet", "lillian", "zoe", "stella", "aurora",
+        "natalie", "emilia", "everly", "leah", "aubrey", "willow", "addison", "lucy", "audrey", "bella",
+        "nova", "brooklyn", "paisley", "savannah", "claire", "skylar", "isla", "genesis", "naomi", "elena",
+        "caroline", "eliana", "anna", "maya", "valentina", "ruby", "kennedy", "ivy", "ariana", "aila",
+        "madelyn", "josephine", "autumn", "adeline", "hailey", "gianna", "alice", "nevaeh", "serenity", "samantha",
+        "sarah", "allison", "madeline", "katherine", "eva", "sienna", "piper", "lydia", "jade", "peyton",
+        "julia", "brielle", "delilah", "vivian", "ruth", "alexis", "lauren", "mackenzie", "gabriella", "reagan"
+    ];
+}
+
+function loadDocs() {
+    var docs = [];
+    var preferred = "Examples/AI_LLM/input.txt";
+    var fallback = "input.txt";
+
+    var content = "";
+    if (hasFile(preferred)) {
+        content = readFile(preferred);
+    } else if (hasFile(fallback)) {
+        content = readFile(fallback);
+    }
+
+    if (content != "") {
+        var lines = split(content, "\n");
+        for (var i = 0; i < lines.length; i = i + 1) {
+            var s = string(lines[i]).trim().lower();
+            if (s != "") {
+                docs.append(s);
+            }
+        }
+    }
+
+    if (docs.length == 0) {
+        docs = buildFallbackDocs();
+    }
+
+    return docs;
+}
+
+function shuffleInPlace(arr) {
+    for (var i = arr.length - 1; i > 0; i = i - 1) {
+        var j = randomInt(0, i);
+        var t = arr[i];
+        arr[i] = arr[j];
+        arr[j] = t;
+    }
+}
+
+function buildTokenizer(docs) {
+    uchars = [];
+    for (var i = 0; i < docs.length; i = i + 1) {
+        var d = docs[i];
+        for (var j = 0; j < d.length(); j = j + 1) {
+            var ch = d.substring(j, 1);
+            if (!uchars.includes(ch)) {
+                uchars.append(ch);
+            }
+        }
+    }
+
+    uchars.sort((a, b) => a < b ? -1 : (a > b ? 1 : 0));
+    BOS = uchars.length;
+    vocab_size = uchars.length + 1;
+
+    charToId = {};
+    for (var i = 0; i < uchars.length; i = i + 1) {
+        charToId[uchars[i]] = i;
+    }
+}
+
+function encodeDoc(doc) {
+    var out = [BOS];
+    for (var i = 0; i < doc.length(); i = i + 1) {
+        out.append(charToId[doc.substring(i, 1)]);
+    }
+    out.append(BOS);
+    return out;
+}
+
+function initModel() {
+    state_dict = dict {};
+    params = [];
+
+    state_dict["wte"] = matrix(vocab_size, n_embd, 0.08);
+    state_dict["wpe"] = matrix(block_size, n_embd, 0.08);
+    state_dict["lm_head"] = matrix(vocab_size, n_embd, 0.08);
+
+    for (var i = 0; i < n_layer; i = i + 1) {
+        state_dict[$"layer{i}.attn_wq"] = matrix(n_embd, n_embd, 0.08);
+        state_dict[$"layer{i}.attn_wk"] = matrix(n_embd, n_embd, 0.08);
+        state_dict[$"layer{i}.attn_wv"] = matrix(n_embd, n_embd, 0.08);
+        state_dict[$"layer{i}.attn_wo"] = matrix(n_embd, n_embd, 0.08);
+        state_dict[$"layer{i}.mlp_fc1"] = matrix(4 * n_embd, n_embd, 0.08);
+        state_dict[$"layer{i}.mlp_fc2"] = matrix(n_embd, 4 * n_embd, 0.08);
+    }
+
+    var names = state_dict.keys();
+    for (var ni = 0; ni < names.length; ni = ni + 1) {
+        var mat = state_dict[names[ni]];
+        for (var r = 0; r < mat.length; r = r + 1) {
+            for (var c = 0; c < mat[r].length; c = c + 1) {
+                params.append(mat[r][c]);
+            }
+        }
+    }
+}
+
+function gpt(token_id, pos_id, keys, values) {
+    var tokEmb = state_dict["wte"][token_id];
+    var posEmb = state_dict["wpe"][pos_id];
+    var x = [];
+    for (var i = 0; i < n_embd; i = i + 1) {
+        x.append(tokEmb[i] + posEmb[i]);
+    }
+    x = rmsnorm(x);
+
+    for (var li = 0; li < n_layer; li = li + 1) {
+        // 1) Multi-head attention block
+        var xResidual = x;
+        x = rmsnorm(x);
+
+        var q = linear(x, state_dict[$"layer{li}.attn_wq"]);
+        var k = linear(x, state_dict[$"layer{li}.attn_wk"]);
+        var v = linear(x, state_dict[$"layer{li}.attn_wv"]);
+
+        keys[li].append(k);
+        values[li].append(v);
+
+        var xAttn = [];
+        for (var h = 0; h < n_head; h = h + 1) {
+            var hs = h * head_dim;
+            var qh = q.slice(hs, hs + head_dim);
+
+            var kh = [];
+            var vh = [];
+            for (var t = 0; t < keys[li].length; t = t + 1) {
+                kh.append(keys[li][t].slice(hs, hs + head_dim));
+                vh.append(values[li][t].slice(hs, hs + head_dim));
+            }
+
+            var attnLogits = [];
+            for (var t = 0; t < kh.length; t = t + 1) {
+                var s = new Value(0.0, [], []);
+                for (var j = 0; j < head_dim; j = j + 1) {
+                    s = s + (qh[j] * kh[t][j]);
+                }
+                s = Math.rsqrt(head_dim) * s;
+                attnLogits.append(s);
+            }
+
+            var attnWeights = softmax(attnLogits);
+            var headOut = [];
+            for (var j = 0; j < head_dim; j = j + 1) {
+                var s = new Value(0.0, [], []);
+                for (var t = 0; t < vh.length; t = t + 1) {
+                    s = s + (attnWeights[t] * vh[t][j]);
+                }
+                headOut.append(s);
+            }
+
+            xAttn = xAttn.concat(headOut);
+        }
+
+        x = linear(xAttn, state_dict[$"layer{li}.attn_wo"]);
+        for (var i = 0; i < n_embd; i = i + 1) {
+            x[i] = x[i] + xResidual[i];
+        }
+
+        // 2) MLP block
+        xResidual = x;
+        x = rmsnorm(x);
+        x = linear(x, state_dict[$"layer{li}.mlp_fc1"]);
+        for (var i = 0; i < x.length; i = i + 1) {
+            x[i] = x[i].reluv();
+        }
+        x = linear(x, state_dict[$"layer{li}.mlp_fc2"]);
+        for (var i = 0; i < n_embd; i = i + 1) {
+            x[i] = x[i] + xResidual[i];
+        }
+    }
+
+    return linear(x, state_dict["lm_head"]);
+}
+
+function trainAndSample() {
+    Math.seed(42);
+    var docs = loadDocs();
+    shuffleInPlace(docs);
+    buildTokenizer(docs);
+    initModel();
+
+    print($"num docs: {docs.length}");
+    print($"vocab size: {vocab_size}");
+    print($"num params: {params.length}");
+
+    // Adam optimizer
+    var learningRate = 0.01;
+    var beta1 = 0.85;
+    var beta2 = 0.99;
+    var epsAdam = 1e-8;
+    var m = [];
+    var v = [];
+    for (var i = 0; i < params.length; i = i + 1) {
+        m.append(0.0);
+        v.append(0.0);
+    }
+
+    // Keep 300 for faster local runs; use 1000+ to match the original behavior more closely.
+    var num_steps = 300;
+    for (var step = 0; step < num_steps; step = step + 1) {
+        var doc = docs[step % docs.length];
+        var tokens = encodeDoc(doc);
+        var n = min(block_size, tokens.length - 1);
+
+        var keys = [];
+        var values = [];
+        for (var li = 0; li < n_layer; li = li + 1) {
+            keys.append([]);
+            values.append([]);
+        }
+
+        var losses = [];
+        for (var pos_id = 0; pos_id < n; pos_id = pos_id + 1) {
+            var token_id = tokens[pos_id];
+            var target_id = tokens[pos_id + 1];
+            var logits = gpt(token_id, pos_id, keys, values);
+            var probs = softmax(logits);
+            var loss_t = -probs[target_id].logv();
+            losses.append(loss_t);
+        }
+
+        var loss = new Value(0.0, [], []);
+        for (var i = 0; i < losses.length; i = i + 1) {
+            loss = loss + losses[i];
+        }
+        loss = (1.0 / n) * loss;
+
+        loss.backward();
+
+        var lr_t = learningRate * (1.0 - (step / num_steps));
+        for (var i = 0; i < params.length; i = i + 1) {
+            var p = params[i];
+            m[i] = beta1 * m[i] + (1.0 - beta1) * p.grad;
+            v[i] = beta2 * v[i] + (1.0 - beta2) * p.grad * p.grad;
+            var mHat = m[i] / (1.0 - pow(beta1, step + 1));
+            var vHat = v[i] / (1.0 - pow(beta2, step + 1));
+            p.data = p.data - lr_t * mHat / (sqrt(vHat) + epsAdam);
+            p.grad = 0.0;
+        }
+
+        if ((step + 1) % 20 == 0 || step == 0) {
+            print($"step {step + 1} / {num_steps} | loss {loss.data}");
+        }
+    }
+
+    var temperature = 0.5;
+    print("");
+    print("--- inference (new, hallucinated names) ---");
+    for (var sample_idx = 0; sample_idx < 20; sample_idx = sample_idx + 1) {
+        var keys = [];
+        var values = [];
+        for (var li = 0; li < n_layer; li = li + 1) {
+            keys.append([]);
+            values.append([]);
+        }
+
+        var token_id = BOS;
+        var sample = "";
+        for (var pos_id = 0; pos_id < block_size; pos_id = pos_id + 1) {
+            var logits = gpt(token_id, pos_id, keys, values);
+            // During inference we don't need gradient tracking; use numeric softmax.
+            var probsData = softmaxDataFromValueLogits(logits, temperature);
+            token_id = Math.randomChoiceWeighted(probsData);
+            if (token_id == BOS) {
+                break;
+            }
+            sample = sample + uchars[token_id];
+        }
+        print($"sample {sample_idx + 1}: {sample}");
+    }
+}
+
+trainAndSample();
+</script>
+
+  <script>
+    const source = document.getElementById("source").textContent.replace(/\r\n/g, "\n");
+    const codeColumns = document.getElementById("codeColumns");
+    const keywords = new Set([
+      "var", "function", "class", "return", "if", "else", "for", "while",
+      "continue", "break", "new", "null", "true", "false", "this"
+    ]);
+
+    const operatorChars = /[=+\-*\/%<>!&|?:]/;
+    const numberRe = /^(?:\d+\.\d+|\d+)(?:e[+\-]?\d+)?/i;
+    const identRe = /^[A-Za-z_][A-Za-z0-9_]*/;
+
+    const esc = (s) => s
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;");
+
+    function highlightLine(line) {
+      if (line.trimStart().startsWith("//")) {
+        return `<span class="com">${esc(line)}</span>`;
+      }
+
+      let out = "";
+      let i = 0;
+      while (i < line.length) {
+        const ch = line[i];
+
+        if (ch === '"' || ch === "'") {
+          const quote = ch;
+          let j = i + 1;
+          while (j < line.length) {
+            if (line[j] === "\\" && j + 1 < line.length) {
+              j += 2;
+              continue;
+            }
+            if (line[j] === quote) {
+              j++;
+              break;
+            }
+            j++;
+          }
+          out += `<span class="str">${esc(line.slice(i, j))}</span>`;
+          i = j;
+          continue;
+        }
+
+        if (ch === "/" && i + 1 < line.length && line[i + 1] === "/") {
+          out += `<span class="com">${esc(line.slice(i))}</span>`;
+          break;
+        }
+
+        const num = line.slice(i).match(numberRe);
+        if (num) {
+          out += `<span class="num">${esc(num[0])}</span>`;
+          i += num[0].length;
+          continue;
+        }
+
+        const ident = line.slice(i).match(identRe);
+        if (ident) {
+          const word = ident[0];
+          const prev = i > 0 ? line[i - 1] : "";
+          const next = i + word.length < line.length ? line[i + word.length] : "";
+          if (keywords.has(word)) {
+            out += `<span class="kw">${word}</span>`;
+          } else if (word[0] >= "A" && word[0] <= "Z") {
+            out += `<span class="cls">${word}</span>`;
+          } else if (next === "(") {
+            out += `<span class="fn">${word}</span>`;
+          } else if (prev === "." || prev === "$") {
+            out += `<span class="id">${word}</span>`;
+          } else {
+            out += esc(word);
+          }
+          i += word.length;
+          continue;
+        }
+
+        if (operatorChars.test(ch)) {
+          out += `<span class="op">${esc(ch)}</span>`;
+        } else {
+          out += esc(ch);
+        }
+        i++;
+      }
+      return out;
+    }
+
+    const lines = source.split("\n");
+    let html = "";
+    for (let i = 0; i < lines.length; i++) {
+      html += `<span class="line">${highlightLine(lines[i])}</span>`;
+    }
+    codeColumns.innerHTML = html;
+  </script>
+</body>
+</html>

@@ -1,0 +1,531 @@
+@using MaldaLang.IDE
+@using Microsoft.JSInterop
+@inject IJSRuntime JSRuntime
+@implements IAsyncDisposable
+
+<div class="modal fade @(IsVisible ? "show" : "")" style="@(IsVisible ? "display: block;" : "display: none;")" tabindex="-1" role="dialog" @onkeydown="HandleKeyDown">
+    <div class="modal-dialog modal-xl" role="document" style="max-width: 90vw;">
+        <div class="modal-content" style="height: 80vh;">
+            <div class="modal-header">
+                <h5 class="modal-title">Browse Examples</h5>
+                <button type="button" class="btn-close" @onclick="Close" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="display: flex; flex-direction: column; height: calc(100% - 120px); overflow: hidden;">
+                <!-- Search -->
+                <div class="mb-3">
+                    <input type="text" class="form-control" placeholder="Search examples..." value="@searchQuery" @oninput="OnSearchInput" />
+                </div>
+
+                <div class="track-filter-bar">
+                    @foreach (var track in trackFilters)
+                    {
+                        <button type="button"
+                                class="track-chip @(selectedTrack == track.Id ? "active" : "")"
+                                @onclick="() => SelectTrack(track.Id)">
+                            @track.Label
+                        </button>
+                    }
+                </div>
+                
+                <!-- Main Content: Categories, Examples, Preview -->
+                <div style="display: flex; flex: 1; gap: 10px; min-height: 0;">
+                    <!-- Categories -->
+                    <div style="width: 200px; border: 1px solid #ddd; border-radius: 4px; overflow: hidden; display: flex; flex-direction: column;">
+                        <div style="background: #f5f5f5; padding: 8px; font-weight: bold; border-bottom: 1px solid #ddd;">Categories</div>
+                        <div style="flex: 1; overflow-y: auto;">
+                            @foreach (var category in categories)
+                            {
+                                <div class="category-item @(selectedCategory == category ? "active" : "")" 
+                                     @onclick="() => SelectCategory(category)"
+                                     style="padding: 8px; cursor: pointer; border-bottom: 1px solid #eee; @(selectedCategory == category ? "background: #e3f2fd;" : "")">
+                                    @category
+                                </div>
+                            }
+                        </div>
+                    </div>
+                    
+                    <!-- Examples List -->
+                    <div style="width: 300px; border: 1px solid #ddd; border-radius: 4px; overflow: hidden; display: flex; flex-direction: column;">
+                        <div style="background: #f5f5f5; padding: 8px; font-weight: bold; border-bottom: 1px solid #ddd;">Examples</div>
+                        <div style="flex: 1; overflow-y: auto;">
+                            @if (filteredExamples.Count == 0)
+                            {
+                                <div style="padding: 16px; color: #666; text-align: center;">No examples found</div>
+                            }
+                            else
+                            {
+                                @foreach (var example in filteredExamples)
+                                {
+                                    <div class="example-item @(selectedExample?.Name == example.Name ? "active" : "")"
+                                         @onclick="async () => await SelectExample(example)"
+                                         style="padding: 12px; cursor: pointer; border-bottom: 1px solid #eee; @(selectedExample?.Name == example.Name ? "background: #e3f2fd;" : "")">
+                                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px;">
+                                            <div style="font-weight: bold;">@example.Name</div>
+                                            @if (!string.IsNullOrEmpty(example.Difficulty))
+                                            {
+                                                <span class="example-badge">@example.Difficulty</span>
+                                            }
+                                        </div>
+                                        <div style="font-size: 0.9em; color: #666;">@example.Description</div>
+                                        @if (example.Minutes.HasValue || !string.IsNullOrEmpty(example.Track))
+                                        {
+                                            <div class="example-meta-line">
+                                                @if (example.Minutes.HasValue)
+                                                {
+                                                    <span>@example.Minutes.Value min</span>
+                                                }
+                                                @if (!string.IsNullOrEmpty(example.Track))
+                                                {
+                                                    <span>@GetTrackLabel(example.Track)</span>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            }
+                        </div>
+                    </div>
+                    
+                    <!-- Preview -->
+                    <div style="flex: 1; border: 1px solid #ddd; border-radius: 4px; overflow: hidden; display: flex; flex-direction: column; min-height: 0;">
+                        <div style="background: #f5f5f5; padding: 8px; font-weight: bold; border-bottom: 1px solid #ddd; flex-shrink: 0;">Preview</div>
+                        <div style="flex: 1; overflow: hidden; background: #1e1e1e; position: relative; min-height: 0;">
+                            <div id="@previewEditorId" style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; @(selectedExample == null ? "display: none;" : "")"></div>
+                            @if (selectedExample == null)
+                            {
+                                <div style="color: #888; text-align: center; padding: 20px; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none;">Select an example to preview</div>
+                            }
+                        </div>
+                        @if (selectedExample != null)
+                        {
+                            <div class="preview-details">
+                                <div><strong>Description:</strong> @selectedExample.Description</div>
+                                @if (!string.IsNullOrWhiteSpace(selectedExample.LearningGoal))
+                                {
+                                    <div><strong>Learning goal:</strong> @selectedExample.LearningGoal</div>
+                                }
+                                @if (selectedExample.Concepts.Count > 0)
+                                {
+                                    <div><strong>Concepts:</strong> @string.Join(", ", selectedExample.Concepts)</div>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(selectedExample.ExpectedOutput))
+                                {
+                                    <div><strong>Expected output:</strong> @selectedExample.ExpectedOutput</div>
+                                }
+                                @if (GetNextExample() is ExampleProgram nextExample)
+                                {
+                                    <div class="next-step-row">
+                                        <span><strong>Next step:</strong> @nextExample.Name</span>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="async () => await SelectExample(nextExample)">Preview Next</button>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick="Close">Close</button>
+                <button type="button" class="btn btn-primary" @onclick="LoadSelectedExample" disabled="@(selectedExample == null)">Load Example</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (IsVisible)
+{
+    <div class="modal-backdrop fade show" @onclick="Close"></div>
+}
+
+<style>
+    /* Style scrollbars in example browser to match dark theme */
+    .modal-content ::-webkit-scrollbar {
+        width: 12px;
+        height: 12px;
+    }
+    
+    .modal-content ::-webkit-scrollbar-track {
+        background: #2d2d2d;
+    }
+    
+    .modal-content ::-webkit-scrollbar-thumb {
+        background: #555;
+        border-radius: 6px;
+    }
+    
+    .modal-content ::-webkit-scrollbar-thumb:hover {
+        background: #666;
+    }
+    
+    /* Monaco Editor scrollbar styling */
+    .modal-content .monaco-scrollable-element > .scrollbar {
+        background: #2d2d2d !important;
+    }
+    
+    .modal-content .monaco-scrollable-element > .scrollbar > .slider {
+        background: #555 !important;
+    }
+    
+    .modal-content .monaco-scrollable-element > .scrollbar > .slider:hover {
+        background: #666 !important;
+    }
+    
+    /* Firefox scrollbars */
+    .modal-content * {
+        scrollbar-width: thin;
+        scrollbar-color: #555 #2d2d2d;
+    }
+
+    .track-filter-bar {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+    }
+
+    .track-chip {
+        border: 1px solid #d0d7de;
+        background: #fff;
+        color: #333;
+        border-radius: 999px;
+        padding: 6px 12px;
+        font-size: 0.85rem;
+    }
+
+    .track-chip.active {
+        background: #e3f2fd;
+        border-color: #90caf9;
+        color: #0b5394;
+    }
+
+    .example-badge {
+        border-radius: 999px;
+        background: #eef3f8;
+        color: #44576d;
+        font-size: 0.75rem;
+        padding: 2px 8px;
+        white-space: nowrap;
+    }
+
+    .example-meta-line {
+        display: flex;
+        gap: 8px;
+        margin-top: 6px;
+        color: #667085;
+        font-size: 0.8rem;
+        flex-wrap: wrap;
+    }
+
+    .preview-details {
+        padding: 12px;
+        background: #f9f9f9;
+        border-top: 1px solid #ddd;
+        font-size: 0.9em;
+        color: #666;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .next-step-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+    }
+</style>
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback<bool> IsVisibleChanged { get; set; }
+    [Parameter] public EventCallback<ExampleProgram?> OnExampleSelected { get; set; }
+
+    private List<string> categories = new();
+    private List<ExampleProgram> allExamples = new();
+    private List<ExampleProgram> filteredExamples = new();
+    private string? selectedCategory;
+    private ExampleProgram? selectedExample;
+    private string searchQuery = string.Empty;
+    private string selectedTrack = "all";
+    private string previewEditorId = "monaco-preview-" + Guid.NewGuid().ToString("N")[..8];
+    private bool editorInitialized = false;
+    private readonly (string Id, string Label)[] trackFilters =
+    [
+        ("all", "All paths"),
+        ("student", "Learn programming"),
+        ("ai-builder", "Build with AI"),
+        ("showcase", "Showcases")
+    ];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsVisible)
+        {
+            LoadExamples();
+            if (!editorInitialized)
+            {
+                await InitializePreviewEditor();
+            }
+        }
+    }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && IsVisible)
+        {
+            // Wait a bit to ensure the DOM is fully rendered
+            await Task.Delay(100);
+            await InitializePreviewEditor();
+        }
+        
+        if (selectedExample != null && editorInitialized)
+        {
+            // Small delay to ensure editor is ready
+            await Task.Delay(50);
+            await UpdatePreviewContent();
+        }
+    }
+    
+    private async Task InitializePreviewEditor()
+    {
+        try
+        {
+            // Ensure element exists and is visible
+            var elementExists = await JSRuntime.InvokeAsync<bool>("eval", $@"
+                (function() {{
+                    const element = document.getElementById('{previewEditorId}');
+                    return element !== null && element.offsetWidth > 0 && element.offsetHeight > 0;
+                }})();
+            ");
+            
+            if (!elementExists)
+            {
+                // Retry after a short delay
+                await Task.Delay(200);
+            }
+            
+            var success = await JSRuntime.InvokeAsync<bool>("initMonacoPreviewEditor", previewEditorId);
+            if (success)
+            {
+                editorInitialized = true;
+                // Force layout update
+                await JSRuntime.InvokeVoidAsync("eval", $@"
+                    (function() {{
+                        const editor = window.monacoEditors['{previewEditorId}'];
+                        if (editor) {{
+                            setTimeout(function() {{
+                                editor.layout();
+                            }}, 0);
+                        }}
+                    }})();
+                ");
+                
+                if (selectedExample != null)
+                {
+                    await Task.Delay(100);
+                    await UpdatePreviewContent();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to initialize Monaco preview editor: {ex.Message}");
+        }
+    }
+    
+    private async Task UpdatePreviewContent()
+    {
+        if (selectedExample != null && editorInitialized)
+        {
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("setMonacoValue", previewEditorId, selectedExample.Code);
+                // Force layout update after setting content
+                await JSRuntime.InvokeVoidAsync("eval", $@"
+                    (function() {{
+                        const editor = window.monacoEditors['{previewEditorId}'];
+                        if (editor) {{
+                            setTimeout(function() {{
+                                editor.layout();
+                            }}, 0);
+                        }}
+                    }})();
+                ");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to update preview content: {ex.Message}");
+            }
+        }
+    }
+
+    private void LoadExamples()
+    {
+        allExamples.Clear();
+        categories.Clear();
+        filteredExamples.Clear();
+        selectedExample = null;
+        searchQuery = string.Empty;
+        selectedTrack = "all";
+
+        // Get examples sorted by category order (matching reference manual)
+        var examples = ExampleProgramsService.GetExamplesSorted();
+        
+        foreach (var example in examples)
+        {
+            allExamples.Add(example);
+        }
+        
+        // Get categories sorted by display order
+        var sortedCategories = ExampleProgramsService.GetCategoriesSorted();
+        foreach (var category in sortedCategories)
+        {
+            categories.Add(category);
+        }
+
+        // Select first category if available
+        if (categories.Count > 0)
+        {
+            selectedCategory = categories[0];
+        }
+
+        ApplyFilters();
+    }
+
+    private void SelectCategory(string category)
+    {
+        selectedCategory = category;
+        selectedExample = null;
+        ApplyFilters();
+    }
+
+    private async Task SelectExample(ExampleProgram example)
+    {
+        selectedExample = example;
+        
+        // Show the editor div
+        await JSRuntime.InvokeVoidAsync("eval", $@"
+            (function() {{
+                const element = document.getElementById('{previewEditorId}');
+                if (element) {{
+                    element.style.display = '';
+                }}
+            }})();
+        ");
+        
+        if (!editorInitialized && IsVisible)
+        {
+            await InitializePreviewEditor();
+        }
+        if (editorInitialized)
+        {
+            // Small delay to ensure DOM update is complete
+            await Task.Delay(100);
+            await UpdatePreviewContent();
+        }
+    }
+
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        searchQuery = e.Value?.ToString() ?? string.Empty;
+        ApplyFilters();
+    }
+
+    private void SelectTrack(string track)
+    {
+        selectedTrack = track;
+        selectedExample = null;
+        ApplyFilters();
+    }
+
+    private void ApplyFilters()
+    {
+        filteredExamples.Clear();
+
+        var filtered = allExamples.AsEnumerable();
+
+        // Filter by category
+        if (!string.IsNullOrEmpty(selectedCategory))
+        {
+            filtered = filtered.Where(ex => ex.Category == selectedCategory);
+        }
+
+        if (!string.Equals(selectedTrack, "all", StringComparison.OrdinalIgnoreCase))
+        {
+            filtered = filtered.Where(ex => ex.Track.Equals(selectedTrack, StringComparison.OrdinalIgnoreCase));
+        }
+
+        // Filter by search query
+        if (!string.IsNullOrEmpty(searchQuery))
+        {
+            var query = searchQuery.ToLowerInvariant();
+            filtered = filtered.Where(ex =>
+                ex.Name.ToLowerInvariant().Contains(query) ||
+                ex.Description.ToLowerInvariant().Contains(query) ||
+                (!string.IsNullOrEmpty(ex.Category) && ex.Category.ToLowerInvariant().Contains(query)));
+        }
+
+        // Sort filtered examples by category order, then by name
+        filteredExamples.AddRange(filtered.OrderBy(ex => ExampleProgramsService.GetCategoryOrder(ex.Category ?? ""))
+                                          .ThenBy(ex => ex.Name));
+
+        // Clear selection if current selection is not in filtered list
+        if (selectedExample != null && !filteredExamples.Contains(selectedExample))
+        {
+            selectedExample = null;
+        }
+    }
+
+    private ExampleProgram? GetNextExample()
+    {
+        return ExampleProgramsService.GetExampleByRelativePath(selectedExample?.Next);
+    }
+
+    private static string GetTrackLabel(string track)
+    {
+        return track switch
+        {
+            "student" => "Learn programming",
+            "ai-builder" => "Build with AI",
+            "showcase" => "Showcase",
+            _ => track
+        };
+    }
+
+    private async Task LoadSelectedExample()
+    {
+        if (selectedExample != null)
+        {
+            await OnExampleSelected.InvokeAsync(selectedExample);
+            await Close();
+        }
+    }
+
+    private async Task Close()
+    {
+        IsVisible = false;
+        selectedExample = null;
+        searchQuery = string.Empty;
+        await IsVisibleChanged.InvokeAsync(false);
+    }
+    
+    private void HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape" && IsVisible)
+        {
+            _ = Close();
+        }
+    }
+    
+    public async ValueTask DisposeAsync()
+    {
+        if (editorInitialized)
+        {
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("disposeMonacoEditor", previewEditorId);
+            }
+            catch { }
+        }
+    }
+}

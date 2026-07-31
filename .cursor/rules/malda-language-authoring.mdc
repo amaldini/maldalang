@@ -1,0 +1,22 @@
+---
+description: Load MALDA language pack when editing .malda programs
+globs: "**/*.malda"
+alwaysApply: false
+---
+
+# Writing / reviewing MALDA source
+
+Before generating or substantially editing `.malda` files:
+
+1. Read `docs/llm/malda-syntax.md` and `docs/llm/malda-gotchas.md`
+2. Pull 1–3 matching snippets from `docs/llm/few-shot/` or `Examples/`
+3. If unsure about syntax, check `docs/llm/malda-grammar.md`
+4. Do not invent builtins — grep `docs/llm/malda-builtins.tsv`; absence from it is authoritative
+
+Style:
+
+- Prefer `function` over `fn`/`def`
+- Prompt params are name-only (no `name: string`)
+- Call the stdlib through its namespace: `math.sqrt`, `str.upper`, `io.print`. Flat and `Math.` spellings raise style warnings
+- No string interpolation outside prompt bodies — concatenate with `+ string(x)`
+- Verify with `dotnet run --project MaldaLang -- path/to/file.malda` when practical. For interactive or random programs, `math.seed(n)` plus a piped stdin transcript makes the run deterministic

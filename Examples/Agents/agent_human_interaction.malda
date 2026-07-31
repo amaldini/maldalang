@@ -1,0 +1,113 @@
+// Example: Using HumanAgent for human interaction
+// This demonstrates how HumanAgent can be used standalone and as a subagent for human-in-the-loop workflows
+
+// Note: Requires OPENROUTER_API_KEY environment variable
+var apiKey = getEnv("OPENROUTER_API_KEY");
+if (apiKey == null) {
+    print("Error: OPENROUTER_API_KEY environment variable not set");
+} else {
+    var client = new OpenRouterClient();
+    
+    print("=== Example 1: Basic HumanAgent Usage ===\n");
+    
+    // Create a HumanAgent - it automatically includes the ask_user tool
+    var assistant = new HumanAgent(
+        "Assistant",
+        "helpful assistant",
+        "You help users by asking clarifying questions when needed. " +
+        "Be friendly and concise in your questions."
+    );
+    
+    // Agent can now ask questions without manually adding the tool
+    print("Agent will ask you a question...\n");
+    var response = assistant.think(
+        "Ask the user what their favorite programming language is, " +
+        "then provide a brief explanation of that language."
+    );
+    print("Agent response:\n" + response.content + "\n");
+    
+    print("\n=== Example 2: HumanAgent as Subagent (Human-in-the-Loop) ===\n");
+    
+    // Create a HumanAgent for user interaction
+    var humanInterface = new HumanAgent(
+        "HumanInterface",
+        "user interaction specialist",
+        "You handle all interactions with human users. " +
+        "Ask clear, concise questions when clarification is needed. " +
+        "Request approval before making destructive changes. " +
+        "Always confirm important decisions with the user."
+    );
+    
+    // Create an orchestrator that can delegate to specialists
+    var orchestrator = new CodingAgent(
+        "Orchestrator",
+        "project coordinator",
+        "You coordinate code changes and file operations. " +
+        "When you need user approval, clarification, or confirmation, " +
+        "use the HumanInterface tool. " +
+        "Always ask for confirmation before deleting files or making breaking changes. " +
+        "If you're unsure about something, ask the user for guidance."
+    );
+    
+    // Add HumanAgent as a subagent
+    orchestrator.addSubAgent(
+        humanInterface,
+        "Handles user interaction, clarification requests, and approval confirmations. " +
+        "Use this when you need to ask the user a question, get their approval, " +
+        "or request clarification on requirements."
+    );
+    
+    print("Orchestrator with HumanAgent subagent is ready. " +
+          "It can now request human input when needed.\n");
+    
+    // Example: Orchestrator can now request user input
+    print("Example prompt: 'Refactor the codebase to use dependency injection. " +
+          "Ask the user which design pattern they prefer before proceeding.'\n");
+    print("(This would trigger the HumanAgent to ask the user for input)\n");
+    
+    print("\n=== Example 3: Approval Workflow ===\n");
+    
+    // Create a HumanAgent for approval workflows
+    var approver = new HumanAgent(
+        "Approver",
+        "approval specialist",
+        "You handle approval requests. " +
+        "Ask for explicit confirmation before proceeding with important changes. " +
+        "Present options clearly and wait for user confirmation."
+    );
+    
+    // Create a coding agent that needs approval
+    var codeEditor = new CodingAgent(
+        "CodeEditor",
+        "code editor",
+        "You edit code files. " +
+        "Before making any destructive changes (like deleting files or major refactoring), " +
+        "use the Approver tool to get user confirmation. " +
+        "Always explain what you're about to do before asking for approval."
+    );
+    
+    // Add approver as subagent
+    codeEditor.addSubAgent(
+        approver,
+        "Handles approval requests. Use this to get user confirmation before " +
+        "making destructive changes or important modifications."
+    );
+    
+    print("CodeEditor with Approver subagent is ready. " +
+          "It will request approval before making important changes.\n");
+    
+    print("Example workflow:\n");
+    print("1. CodeEditor identifies a need for a major refactoring\n");
+    print("2. CodeEditor calls Approver tool to request confirmation\n");
+    print("3. Approver asks user: 'I'm about to refactor the authentication system. Proceed? (yes/no)'\n");
+    print("4. User responds\n");
+    print("5. CodeEditor receives approval and proceeds (or stops if denied)\n");
+    
+    print("\n=== Summary ===\n");
+    print("HumanAgent provides:\n");
+    print("- Automatic ask_user tool inclusion (no manual setup needed)\n");
+    print("- Easy creation of interactive agents\n");
+    print("- Human-in-the-loop patterns via subagent architecture\n");
+    print("- Safety through approval workflows\n");
+    print("- Separation of concerns (human interaction isolated in HumanAgent)\n");
+}

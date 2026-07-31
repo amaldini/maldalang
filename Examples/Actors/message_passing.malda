@@ -1,0 +1,45 @@
+// Message Passing Example
+// Demonstrates actors sending messages to each other
+
+actor Sender {
+    on start(receiver) {
+        print("Sender: Starting to send messages...");
+        send receiver.hello();
+        send receiver.world();
+        send receiver.handle("from sender");
+    }
+}
+
+actor Receiver {
+    var messageCount = 0;
+    
+    on hello() {
+        messageCount = messageCount + 1;
+        print($"Receiver: Received 'hello' message (total: {messageCount})");
+    }
+    
+    on world() {
+        messageCount = messageCount + 1;
+        print($"Receiver: Received 'world' message (total: {messageCount})");
+    }
+    
+    on handle(msg) {
+        messageCount = messageCount + 1;
+        print($"Receiver: Received message '{msg}' (total: {messageCount})");
+    }
+}
+
+// Create actors
+var receiver = spawn Receiver();
+var sender = spawn Sender();
+
+// Small initial delay to ensure actor loops have started
+sleep(100);
+
+// Start the communication
+send sender.start(receiver);
+
+// Give actors time to process messages
+sleep(500);
+
+print("Message passing complete!");

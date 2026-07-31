@@ -1,0 +1,2 @@
+type Result = Ok(value) | Err(message);
+print(typeOf(Ok(1)));

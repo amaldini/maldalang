@@ -1,0 +1,16 @@
+{
+  "logging": {
+    "format": "json",
+    "level": "info",
+    "includeCorrelationId": true
+  },
+  "metrics": {
+    "enabled": true,
+    "endpoint": "/metrics",
+    "includeRuntime": true
+  },
+  "tracing": {
+    "enabled": true,
+    "exporter": "local"
+  }
+}

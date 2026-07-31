@@ -1,0 +1,13 @@
+{
+  "driver": "sqlite",
+  "mode": "local-first",
+  "databaseFile": "data/__PROJECT_SLUG__.db",
+  "journalMode": "WAL",
+  "migrationModule": "data/local_first.malda",
+  "notes": [
+    "This starter bootstraps a small SQLite migration registry in code.",
+    "malda db status and malda db migrate use this contract plus the localMigrationRegistry seam.",
+    "malda db seed runs initLocalDataPlatform() and then seedLocalDataPlatform() from the scaffolded module.",
+    "malda db rollback only rolls back the latest applied registry entry and expects openLocalDataPlatform() plus rollbackLocalMigration<ID>()."
+  ]
+}

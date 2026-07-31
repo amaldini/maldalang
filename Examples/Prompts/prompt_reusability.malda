@@ -1,0 +1,46 @@
+// Prompt Reusability
+// Demonstrates how prompt blocks enable code reuse and maintainability
+
+// Define reusable prompts
+prompt codeGenerator(language, feature) {
+    system: "You are an expert {language} programmer."
+    user: "Generate {language} code for: {feature}"
+}
+
+prompt codeExplainer(code, language) {
+    system: "You are a technical writer.",
+    user: """
+    Explain this {language} code:
+    
+    ```{language}
+    {code}
+    ```
+    
+    Provide:
+    1. What it does
+    2. How it works
+    3. Key concepts
+    """
+}
+
+// Use prompts multiple times with different arguments
+print("=== Code Generation Prompts ===");
+var gen1 = codeGenerator("malda", "error handling");
+var gen2 = codeGenerator("python", "data processing");
+var gen3 = codeGenerator("javascript", "async operations");
+
+print("Prompt 1: " + gen1.user);
+print("Prompt 2: " + gen2.user);
+print("Prompt 3: " + gen3.user);
+
+print("\n=== Code Explanation Prompts ===");
+var code1 = "function add(a, b) { return a + b; }";
+var code2 = "class Person { constructor(name) { this.name = name; } }";
+
+var explain1 = codeExplainer(code1, "malda");
+var explain2 = codeExplainer(code2, "javascript");
+
+print("Explanation 1: " + explain1.user.substring(0, 50) + "...");
+print("Explanation 2: " + explain2.user.substring(0, 50) + "...");
+
+// Benefits: Easy to update prompts in one place, consistent structure

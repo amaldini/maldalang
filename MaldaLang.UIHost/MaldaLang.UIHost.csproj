@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>MaldaLang.UIHost</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="wwwroot\index.html" LogicalName="MaldaLang.UIHost.wwwroot.index.html" />
+    <EmbeddedResource Include="wwwroot\malda-ui-client.js" LogicalName="MaldaLang.UIHost.wwwroot.malda-ui-client.js" />
+  </ItemGroup>
+</Project>

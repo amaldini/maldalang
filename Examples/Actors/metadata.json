@@ -1,0 +1,39 @@
+{
+  "examples": [
+    {
+      "name": "Basic Actor - Counter",
+      "description": "Simple actor with message handlers for incrementing and getting count",
+      "file": "basic_counter.malda"
+    },
+    {
+      "name": "Actor Spawning",
+      "description": "Creating and spawning multiple actor instances",
+      "file": "actor_spawning.malda"
+    },
+    {
+      "name": "Message Passing",
+      "description": "Sending and receiving messages between actors",
+      "file": "message_passing.malda"
+    },
+    {
+      "name": "Worker Pool",
+      "description": "Multiple worker actors processing tasks concurrently",
+      "file": "worker_pool.malda"
+    },
+    {
+      "name": "Actor State Isolation",
+      "description": "Demonstrates that each actor has isolated state",
+      "file": "state_isolation.malda"
+    },
+    {
+      "name": "Self Reference",
+      "description": "Using 'self' to send messages to the current actor",
+      "file": "self_reference.malda"
+    },
+    {
+      "name": "Concurrent Counter",
+      "description": "Multiple actors incrementing counters concurrently",
+      "file": "concurrent_counter.malda"
+    }
+  ]
+}

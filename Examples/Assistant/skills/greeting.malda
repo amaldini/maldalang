@@ -1,0 +1,32 @@
+// Greeting skill — copy to ~/.malda/skills/greeting.malda (or run malda onboard).
+// Exports a tool and a sub-agent specialist for the default assistant.
+
+@Tool("greet_user", "Greets someone by name", "{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"description\":\"Name to greet\"}},\"required\":[\"name\"]}")
+function greetUserTool(args) {
+    var name = args.name;
+    if (name == null || name == "") {
+        name = "friend";
+    }
+    return "Hello, " + name + "! — Greeting skill";
+}
+
+var tools = ["greet_user"];
+var agentDescription = "Greets users by name using greet_user when asked to say hello.";
+
+var skillClient = null;
+var apiKey = getEnv("OPENROUTER_API_KEY");
+var config = getMaldaConfig();
+if (config != null && config.providers != null && config.providers.openrouter != null && config.providers.openrouter.apiKey != null && config.providers.openrouter.apiKey != "") {
+    apiKey = config.providers.openrouter.apiKey;
+}
+if (apiKey != null && apiKey != "") {
+    skillClient = new OpenRouterClient();
+}
+
+var agent = new Agent(
+    "GreetingSkill",
+    "specialist",
+    "You greet users warmly. Use greet_user with their name when they want a hello.",
+    skillClient
+);
+agent.addTool("greet_user");

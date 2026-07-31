@@ -1,0 +1,375 @@
+@page "/trace-viewer"
+@using System.IO
+@using System.Text
+@using System.Text.Json
+@using MaldaLang.TraceViewer
+@using MaldaLang.Runtime.Tracing
+@using MaldaLang.Interpreter
+@using Microsoft.AspNetCore.Components.Forms
+@rendermode InteractiveServer
+
+<PageTitle>Trace Viewer</PageTitle>
+
+<div class="trace-viewer-container p-3">
+    <h2 class="mb-3">Trace Viewer</h2>
+    @if (_session == null)
+    {
+        <div class="mb-3">
+            <label class="form-label">Load a trace file (.malda-trace.jsonl)</label>
+            <InputFile class="form-control" accept=".malda-trace.jsonl,.jsonl" OnChange="OnFileSelected" />
+        </div>
+        @if (!string.IsNullOrEmpty(_loadError))
+        {
+            <div class="alert alert-warning" role="alert">@_loadError</div>
+        }
+    }
+    else
+    {
+        <!-- Navigation: Go to step, Prev, Next -->
+        <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+            <span>Go to step:</span>
+            <input type="number" class="form-control form-control-sm" style="width: 70px;" @bind="_goToStepValue" min="0" />
+            <button class="btn btn-sm btn-secondary" @onclick="GoToStep">Go</button>
+            <button class="btn btn-sm btn-secondary" @onclick="PrevStep" disabled="@(_selectedIndex <= 0)">◀ Previous</button>
+            <button class="btn btn-sm btn-secondary" @onclick="NextStep" disabled="@(_selectedIndex < 0 || _selectedIndex >= _session.Events.Count - 1)">Next ▶</button>
+            <button class="btn btn-sm btn-secondary" @onclick="ReplayToHere" disabled="@(_selectedIndex < 0)" title="Restore file system state up to selected step">Replay to Here</button>
+            <button class="btn btn-sm btn-secondary" @onclick="RunFromHere" disabled="@(_selectedIndex < 0)" title="Start new agent execution from selected step">Run from Here</button>
+            <button class="btn btn-sm btn-secondary" @onclick="BranchFromHere" disabled="@(_selectedIndex < 0)" title="Create new trace branch from selected step">Branch from Here</button>
+        </div>
+        @if (_replayToHereMessage != null)
+        {
+            <div class="alert alert-info mt-2" role="alert">
+                @_replayToHereMessage
+                <button type="button" class="btn-close" aria-label="Close" @onclick='() => _replayToHereMessage = null'></button>
+            </div>
+        }
+        <div class="row g-2">
+            <!-- Left: Event table -->
+            <div class="col-md-5">
+                <div class="table-responsive" style="max-height: 70vh; overflow-y: auto;">
+                    <table class="table table-sm table-hover">
+                        <thead><tr><th>Step</th><th>Type</th><th>Agent</th><th>Summary</th></tr></thead>
+                        <tbody>
+                            @for (var i = 0; i < _session.Events.Count; i++)
+                            {
+                                var idx = i;
+                                var ev = _session.Events[idx];
+                                <tr class="@(idx == _selectedIndex ? "table-active" : "")" @onclick="() => SelectRow(idx)">
+                                    <td>@ev.StepIndex</td>
+                                    <td>@ev.Type</td>
+                                    <td>@(ev.AgentName ?? "-")</td>
+                                    <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis;" title="@ev.Summary">@ev.Summary</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <!-- Right: Details and File state -->
+            <div class="col-md-7">
+                <ul class="nav nav-tabs mb-2">
+                    <li class="nav-item">
+                        <button class="nav-link @(_activeTab == "details" ? "active" : "")"
+                                @onclick='() => _activeTab = "details"'>Details</button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link @(_activeTab == "file" ? "active" : "")"
+                                @onclick='() => _activeTab = "file"'>File state</button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link @(_activeTab == "conversation" ? "active" : "")"
+                                @onclick='() => _activeTab = "conversation"'>Conversation</button>
+                    </li>
+                </ul>
+                @if (_activeTab == "details")
+                {
+                    <pre class="border rounded p-2 bg-light overflow-auto" style="max-height: 60vh; font-size: 12px;">@_detailsText</pre>
+                }
+                else if (_activeTab == "file")
+                {
+                    <p class="text-muted small">@_fileStateLabel</p>
+                    <pre class="border rounded p-2 bg-light overflow-auto" style="max-height: 55vh; font-size: 12px;">@_fileStateText</pre>
+                }
+                else if (_activeTab == "conversation")
+                {
+                    <p class="text-muted small">
+                        Conversation state reconstructed from trace up to the selected step (read-only preview).
+                    </p>
+                    <pre class="border rounded p-2 bg-light overflow-auto" style="max-height: 55vh; font-size: 12px;">@_conversationPreview</pre>
+                }
+            </div>
+        </div>
+        <div class="mt-2">
+            <button class="btn btn-sm btn-outline-secondary" @onclick="ClearSession">Load another trace</button>
+        </div>
+    }
+</div>
+
+@code {
+    private TraceViewerSession? _session;
+    private string _loadError = "";
+    private int _selectedIndex = -1;
+    private string _goToStepValue = "0";
+    private string _activeTab = "details";
+    private string _detailsText = "";
+    private string _fileStateLabel = "Select a FileEdit event to see path, operation, and content.";
+    private string _fileStateText = "";
+    private string? _replayToHereMessage;
+    private AgentReplayState? _lastReplayState;
+    private string _conversationPreview = "";
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        _loadError = "";
+        try
+        {
+            var file = e.File;
+            await using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+            using var reader = new StreamReader(stream);
+            var content = await reader.ReadToEndAsync();
+            _session = TraceViewerService.LoadTraceFromContent(content);
+            _selectedIndex = _session.Events.Count > 0 ? 0 : -1;
+            _goToStepValue = "0";
+            if (_session.Events.Count > 0)
+                UpdateDetailsFromSelection();
+        }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+        }
+    }
+
+    private void SelectRow(int idx)
+    {
+        _selectedIndex = idx;
+        _session!.Context.StepTo(idx);
+        UpdateDetailsFromSelection();
+    }
+
+    private void UpdateDetailsFromSelection()
+    {
+        if (_session == null || _selectedIndex < 0 || _selectedIndex >= _session.Events.Count)
+            return;
+        var vm = _session.Events[_selectedIndex];
+        _session.Context.StepTo(_selectedIndex);
+        var payloadJson = vm.RawEvent.Payload as string ?? "{}";
+        _detailsText = TracePayloadHelper.Prettify(payloadJson);
+        if (vm.RawEvent.Type == TraceEventType.FileEdit)
+        {
+            _fileStateLabel = FormatFileEditState(vm.RawEvent, payloadJson);
+            _fileStateText = TryGetAfterContent(payloadJson) ?? "(no content or too large)";
+        }
+        else
+        {
+            _fileStateLabel = "Select a FileEdit event to see path, operation, and content.";
+            _fileStateText = "";
+        }
+
+        UpdateConversationPreview();
+    }
+
+    private static string FormatFileEditState(TraceEvent evt, string payloadJson)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(payloadJson);
+            var r = doc.RootElement;
+            var path = r.TryGetProperty("path", out var p) ? p.GetString() : null;
+            var op = r.TryGetProperty("operation", out var o) ? o.GetString() : null;
+            var after = r.TryGetProperty("afterContent", out var a) ? a.GetString() : null;
+            var len = after?.Length ?? 0;
+            return $"Path: {path ?? "-"}  |  Operation: {op ?? "-"}  |  afterContent length: {len}";
+        }
+        catch { return "Path, operation, and content for FileEdit events."; }
+    }
+
+    private static string? TryGetAfterContent(string payloadJson)
+    {
+        const int maxShow = 50_000;
+        try
+        {
+            using var doc = JsonDocument.Parse(payloadJson);
+            if (!doc.RootElement.TryGetProperty("afterContent", out var a)) return null;
+            var s = a.GetString();
+            if (s == null) return null;
+            if (s.Length > maxShow) return s[..maxShow] + "\n… (truncated)";
+            return s;
+        }
+        catch { return null; }
+    }
+
+    private void GoToStep()
+    {
+        if (_session == null || !int.TryParse(_goToStepValue, out var step) || step < 0 || step >= _session.Events.Count)
+            return;
+        _selectedIndex = step;
+        _session.Context.StepTo(step);
+        UpdateDetailsFromSelection();
+        StateHasChanged();
+    }
+
+    private void PrevStep()
+    {
+        if (_session == null || _selectedIndex <= 0) return;
+        _selectedIndex--;
+        _session.Context.StepTo(_selectedIndex);
+        UpdateDetailsFromSelection();
+        _goToStepValue = _selectedIndex.ToString();
+        StateHasChanged();
+    }
+
+    private void NextStep()
+    {
+        if (_session == null || _selectedIndex < 0 || _selectedIndex >= _session.Events.Count - 1) return;
+        _selectedIndex++;
+        _session.Context.StepTo(_selectedIndex);
+        UpdateDetailsFromSelection();
+        _goToStepValue = _selectedIndex.ToString();
+        StateHasChanged();
+    }
+
+    private void ClearSession()
+    {
+        _session = null;
+        _loadError = "";
+        _selectedIndex = -1;
+        _detailsText = "";
+        _fileStateText = "";
+        _replayToHereMessage = null;
+        _lastReplayState = null;
+        _conversationPreview = "";
+    }
+
+    private void ReplayToHere()
+    {
+        if (_session == null || _selectedIndex < 0) return;
+        _session.Context.StepTo(_selectedIndex);
+        var paths = _session.Context.Files.Keys.ToList();
+        if (paths.Count == 0)
+            _replayToHereMessage = "No files to restore at this step.";
+        else
+            _replayToHereMessage = "In the Web IDE, file restoration cannot write to disk. " + paths.Count + " file(s) would be restored at this step. Use the Desktop IDE (View → Open Trace...) and click Replay to Here to restore files to a folder.";
+        StateHasChanged();
+    }
+
+    private void RunFromHere()
+    {
+        if (_session == null || _selectedIndex < 0) return;
+        try
+        {
+            _lastReplayState = TraceReplayEngine.PrepareAgentFromStep(_session, _selectedIndex);
+            _conversationPreview = BuildConversationPreview(_lastReplayState);
+            var count = _lastReplayState.Messages.Count;
+            _replayToHereMessage =
+                $"Run from Here (Web): conversation state prepared with {count} message(s). " +
+                "To actually continue execution and create a new agent with tools and tracing, open this trace in the Desktop IDE and use Run from Here.";
+            _activeTab = "conversation";
+        }
+        catch (Exception ex)
+        {
+            _replayToHereMessage = $"Run from Here failed: {ex.Message}";
+        }
+        StateHasChanged();
+    }
+
+    private void BranchFromHere()
+    {
+        if (_session == null || _selectedIndex < 0) return;
+        try
+        {
+            _lastReplayState = TraceReplayEngine.PrepareAgentFromStep(_session, _selectedIndex);
+            _conversationPreview = BuildConversationPreview(_lastReplayState);
+            var count = _lastReplayState.Messages.Count;
+            _replayToHereMessage =
+                $"Branch from Here (Web): conversation state prepared with {count} message(s). " +
+                "To actually create a new trace branch and record further activity, open this trace in the Desktop IDE and use Branch from Here.";
+            _activeTab = "conversation";
+        }
+        catch (Exception ex)
+        {
+            _replayToHereMessage = $"Branch from Here failed: {ex.Message}";
+        }
+        StateHasChanged();
+    }
+
+    private void UpdateConversationPreview()
+    {
+        if (_session == null || _selectedIndex < 0 || _selectedIndex >= _session.Events.Count)
+        {
+            _lastReplayState = null;
+            _conversationPreview = "";
+            return;
+        }
+
+        try
+        {
+            _lastReplayState = TraceReplayEngine.PrepareAgentFromStep(_session, _selectedIndex);
+            _conversationPreview = BuildConversationPreview(_lastReplayState);
+        }
+        catch
+        {
+            _lastReplayState = null;
+            _conversationPreview = "(Conversation preview not available for this step.)";
+        }
+    }
+
+    private static string BuildConversationPreview(AgentReplayState? state)
+    {
+        if (state == null)
+            return "";
+
+        var sb = new StringBuilder();
+
+        if (!string.IsNullOrWhiteSpace(state.SystemPrompt))
+        {
+            sb.Append("[system] ");
+            sb.AppendLine(state.SystemPrompt);
+            sb.AppendLine();
+        }
+
+        foreach (var msg in state.Messages)
+        {
+            if (msg.Type != MaldaLang.Interpreter.ValueType.Object)
+                continue;
+
+            var obj = msg.AsObject();
+            string role;
+            string content;
+            try
+            {
+                var roleVal = obj.Get("role", null);
+                role = roleVal != null && roleVal.Type == MaldaLang.Interpreter.ValueType.String ? roleVal.AsString() : "user";
+            }
+            catch
+            {
+                role = "user";
+            }
+
+            try
+            {
+                var contentVal = obj.Get("content", null);
+                content = contentVal != null && contentVal.Type == MaldaLang.Interpreter.ValueType.String ? contentVal.AsString() : "";
+            }
+            catch
+            {
+                content = "";
+            }
+
+            sb.Append('[').Append(role).Append("] ");
+            if (content.Length > 500)
+            {
+                sb.AppendLine(content[..500] + "…");
+            }
+            else
+            {
+                sb.AppendLine(content);
+            }
+            sb.AppendLine();
+        }
+
+        if (sb.Length == 0)
+            return "(No conversation messages up to this step.)";
+
+        return sb.ToString();
+    }
+}

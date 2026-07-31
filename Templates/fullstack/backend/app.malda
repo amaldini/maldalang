@@ -1,0 +1,133 @@
+{{#LOCAL_FIRST}}
+include "data/local_first.malda";
+{{/LOCAL_FIRST}}
+
+var api = new RestServer(8080);
+var web = new HttpServer(8081);
+var ticketsStateId = "tickets-board";
+
+function htmlLayout(title, content) {
+    var helper = "<script>(function(){document.querySelectorAll('form').forEach(function(form){if(form.dataset.splAjaxBound==='1')return;form.dataset.splAjaxBound='1';form.addEventListener('submit',async function(e){e.preventDefault();var fd=new FormData(form);var r=await fetch(form.action||window.location.pathname,{method:'POST',body:fd});var html=await r.text();var isFrag=(r.headers.get('X-Malda-Fragment')||'').toLowerCase()==='true';var target=r.headers.get('X-Malda-Fragment-Target');if(isFrag&&target&&document.getElementById(target)){document.getElementById(target).innerHTML=html;return;}document.body.innerHTML=html;});});var es=new EventSource('/components/tickets/live?channel=tickets');es.onmessage=function(evt){console.log('tickets live',evt.data);};})();</script>";
+    return "<!DOCTYPE html><html><head><meta charset='utf-8'><title>" + title + "</title></head><body>" + content + helper + "</body></html>";
+}
+
+function requireAuth(req, res, next) {
+    req.auth.authenticateBearerJwt("change-me-jwt-secret");
+    next();
+}
+
+@GET("/api/health")
+function health() {
+    return {
+        "app": "__PROJECT_NAME__",
+        "appSlug": "__PROJECT_SLUG__",
+        "status": "ok"
+    };
+}
+
+@GET("/api/readiness")
+function readiness() {
+    return {
+        "app": "__PROJECT_NAME__",
+        "status": "ready"
+        {{#LOCAL_FIRST}},
+        "storage": "sqlite-local"
+        {{/LOCAL_FIRST}}
+    };
+}
+
+@GET("/metrics")
+function metrics() {
+    return {
+        "name": "__PROJECT_NAME__",
+        "requests_total": 0
+    };
+}
+
+@GET("/api/me")
+function me(req) {
+    return {
+        "verified": req.auth.verified,
+        "sub": req.auth.sub,
+        "role": req.auth.claim("role", "user"),
+        "isAdmin": req.auth.hasRole("admin")
+    };
+}
+
+{{#LOCAL_FIRST}}
+@GET("/api/data/status")
+function dataStatus() {
+    return getLocalDataPlatformStatus();
+}
+{{/LOCAL_FIRST}}
+
+component TicketBoard() {
+    {{#LOCAL_FIRST}}
+    var tickets = listLocalTickets();
+    {{/LOCAL_FIRST}}
+    {{^LOCAL_FIRST}}
+    var tickets = componentStateGet(ticketsStateId, "items", []);
+    {{/LOCAL_FIRST}}
+    var items = "";
+    var i = 0;
+    while (i < tickets.length) {
+        var t = tickets[i];
+        items = items + "<li><strong>" + t.title + "</strong> - " + t.status + "</li>";
+        i = i + 1;
+    }
+    if (items == "") {
+        items = "<li>No tickets yet</li>";
+    }
+
+    var page = "<h1>__PROJECT_NAME__ Ticket Board</h1>";
+    {{#LOCAL_FIRST}}
+    page = page + "<p>Storage: SQLite local-first starter with migration bootstrap.</p>";
+    {{/LOCAL_FIRST}}
+    page = page + "<form method='POST' action='/components/addTicket/action'>";
+    page = page + "<input name='title' placeholder='Ticket title' />";
+    page = page + "<button type='submit'>Add</button>";
+    page = page + "</form>";
+    page = page + "<div id='ticket-list'><ul>" + items + "</ul></div>";
+    page = page + "<p>Live endpoint: <code>/components/tickets/live?channel=tickets</code> (SSE)</p>";
+    return htmlLayout("__PROJECT_NAME__", page);
+}
+
+@ACTION("/components/addTicket/action")
+function addTicketAction(body) {
+    var title = body.title == null ? "Untitled ticket" : body.title;
+    {{#LOCAL_FIRST}}
+    insertLocalTicket(title);
+    var tickets = listLocalTickets();
+    {{/LOCAL_FIRST}}
+    {{^LOCAL_FIRST}}
+    var tickets = componentStateGet(ticketsStateId, "items", []);
+    tickets.append({"title": title, "status": "open"});
+    componentStateSet(ticketsStateId, "items", tickets);
+    {{/LOCAL_FIRST}}
+
+    var items = "";
+    var i = 0;
+    while (i < tickets.length) {
+        var t = tickets[i];
+        items = items + "<li><strong>" + t.title + "</strong> - " + t.status + "</li>";
+        i = i + 1;
+    }
+    componentLiveEmit("tickets", {"count": tickets.length}, "ticket-added");
+    return componentFragment("ticket-list", "<ul>" + items + "</ul>");
+}
+
+@LIVE("/components/tickets/live")
+function ticketsLive() {
+    return {"sse": true};
+}
+
+{{#LOCAL_FIRST}}
+initLocalDataPlatform();
+{{/LOCAL_FIRST}}
+
+api.enableCsrf("change-me-csrf-secret");
+api.setRateLimit(200, 60, "verifiedSubOrIp");
+api.setRateLimitHeaders(true, true);
+api.use(requireAuth);
+api.start();
+web.start();

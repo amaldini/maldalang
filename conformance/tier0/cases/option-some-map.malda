@@ -1,0 +1,4 @@
+var o = option.some(3);
+var next = option.map(o, (n) => n + 1);
+print(option.unwrapOr(next, 0));
+print(option.isNone(option.none()));

@@ -1,0 +1,2 @@
+var d = null;
+print(d?["key"] == null);

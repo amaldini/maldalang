@@ -1,0 +1,60 @@
+// RAG Pipeline — advanced LCEL composition (composePipe + parallelRun + mergeRetrievedDocs)
+// Runs without a live LLM (structure demo)
+
+schema Answer {
+    text: string;
+    sources: string[];
+}
+
+prompt answerPrompt(question, context) {
+    system: "Answer using only the provided context.",
+    user: "Context:\n{context}\n\nQuestion: {question}"
+}
+
+function embedText(text) {
+    return embedBagOfWords(text, 16);
+}
+
+// --- Setup knowledge base ---
+var vdb = new VectorDB(16, "single");
+vdb.init(embedText);
+
+var docs = [
+    { content: "GraphMemory stores facts in a graph with semantic retrieval.", metadata: { source: "memory.md" } },
+    { content: "VectorDB provides cosine similarity search over embeddings.", metadata: { source: "vectordb.md" } }
+];
+
+indexInto(vdb, docs);
+var retriever = vdb.asRetriever({ topK: 2 });
+
+// --- RunnableParallel: same query, multiple retrieval branches ---
+chain buildContext(question) {
+    step parallel = parallelRun(question, {
+        primary: (q) => q |> retriever.get,
+        secondary: (q) => q |> retriever.get
+    });
+    step merged = mergeRetrievedDocs(parallel.primary, parallel.secondary);
+    step text = formatRetrievedDocs(merged);
+    return text;
+}
+
+// --- RunnableSequence via composePipe (retriever closed over in buildContext) ---
+var question = "How does GraphMemory work?";
+var toPrompt = composePipe(
+    buildContext,
+    (ctx) => answerPrompt(question, ctx)
+);
+
+var context = buildContext(question);
+var p = toPrompt(question);
+
+print("=== parallelRun + mergeRetrievedDocs ===");
+print(context);
+print("");
+print("=== composePipe → prompt ===");
+print(p.user);
+
+print("");
+print("End-to-end with LLM (set OPENROUTER_API_KEY):");
+print("  var pipeline = composePipe(buildContext, (ctx) => answerPrompt(q, ctx), runPrompt(client), parseJson(\"Answer\"));");
+print("  var result = await pipeline(question);");

@@ -1,0 +1,396 @@
+﻿function escapeMarkup(text) {
+    if (text == null) {
+        return "";
+    }
+    text = replace(string(text), "[", "[[");
+    text = replace(text, "]", "]]");
+    return text;
+}
+
+function ralphMarkup(line) {
+    if (line == null || line == "") {
+        print("");
+        return;
+    }
+    if (!agentRichEnabled()) {
+        print(line);
+        return;
+    }
+    try {
+        AnsiConsole.markup(line);
+        print("");
+    } catch (error) {
+        print(line);
+    }
+}
+
+function resolveRalphModelLabel() {
+    var model = resolveRalphModel();
+    if (model != null && model != "") {
+        return model;
+    }
+    return "deepseek/deepseek-v4-flash (OpenRouterClient default)";
+}
+
+function printRalphBanner(workDir, prdPath, maxIter, resumeRun, completedIterations, modelLabel) {
+    if (ralphQuietEnabled()) {
+        return;
+    }
+    var iterNote = "1–" + string(maxIter);
+    if (resumeRun && completedIterations > 0) {
+        iterNote = iterNote + " (resume from " + string(completedIterations + 1) + ")";
+    }
+    var rows = [
+        {"Setting": "Workdir", "Value": workDir},
+        {"Setting": "PRD", "Value": prdPath},
+        {"Setting": "Model", "Value": modelLabel},
+        {"Setting": "Iterations", "Value": iterNote}
+    ];
+    if (agentRichEnabled()) {
+        ralphMarkup("[bold]Ralph[/] [dim]· PRD-driven agent loop[/]");
+        AnsiConsole.table(rows, null, ["Setting", "Value"]);
+        print("");
+    } else {
+        print("Ralph - PRD-driven agent loop");
+        print("Workdir: " + workDir);
+        print("PRD: " + prdPath);
+        print("Model: " + modelLabel);
+        print("Iterations: " + iterNote);
+        print("");
+    }
+}
+
+function printRalphConfigDetails(workDir, projectRel, prdPath, initialTask, maxIter, resetEachIteration, validateEachIteration, verboseLogging, resumeRun, completedIterations, autoGitCommit, includeSymbols, statePath) {
+    var hostPlatform = getHostPlatform();
+    var lines = "Host OS: " + string(hostPlatform.os) + " (" + string(hostPlatform.description) + ")\n" +
+        "Workdir: " + workDir + "\n";
+    var worktreeRoot = getEnv("MALDA_RALPH_WORKTREE");
+    if (worktreeRoot != null && worktreeRoot != "") {
+        lines = lines + "Git worktree: " + worktreeRoot + "\n";
+    }
+    if (projectRel != null && projectRel != "") {
+        lines = lines + "Project rel (git filter): " + projectRel + "\n";
+    }
+    lines = lines + "PRD: " + prdPath + "\n" +
+        "Task: " + truncateText(initialTask, 200) + "\n" +
+        "Max iterations: " + string(maxIter) + "\n" +
+        "Reset conversation each iteration: " + string(resetEachIteration) + "\n" +
+        "Post-iteration validation: " + string(validateEachIteration) + "\n" +
+        "Verbose logging: " + string(verboseLogging) + "\n" +
+        "Resume: " + string(resumeRun) + " (completed so far: " + string(completedIterations) + ")\n" +
+        "Auto git commit: " + string(autoGitCommit) + "\n" +
+        "DevAgent includeSymbols: " + string(includeSymbols) + "\n" +
+        "Max output tokens: " + string(envInt("MALDA_RALPH_MAX_TOKENS", 16384)) + "\n" +
+        "State file: " + statePath;
+    if (agentRichEnabled()) {
+        AnsiConsole.panel(lines, "Configuration", "rounded");
+        print("");
+    } else {
+        print(lines);
+        print("");
+    }
+}
+
+function resolveRalphProjectTitle(workDir) {
+    var title = getEnv("MALDA_RALPH_PROJECT_TITLE");
+    if (title != null && title != "") {
+        return title;
+    }
+    return getFileName(workDir);
+}
+
+function buildRalphStatusBanner(projectTitle, phase, progress, iteration, maxIter) {
+    var checklist = string(progress.done) + "/" + string(progress.total) + " DONE";
+    var pct = string(progress.percent) + "%";
+    if (progress.total == 0) {
+        checklist = "0 checklist items";
+        pct = "—";
+    }
+    return projectTitle + " · " + phase + " · " + checklist + " (" + pct + ") · iter " + string(iteration) + "/" + string(maxIter);
+}
+
+function syncAgentStatusBanner(projectTitle, prdPath, phase, iteration, maxIter) {
+    var progress = countPrdChecklistProgress(prdPath);
+    var banner = buildRalphStatusBanner(projectTitle, phase, progress, iteration, maxIter);
+    setAgentStatusBanner(banner);
+}
+
+function printIterationHeader(iteration, maxIter, phase, projectTitle, prdPath) {
+    var progress = countPrdChecklistProgress(prdPath);
+    var banner = buildRalphStatusBanner(projectTitle, phase, progress, iteration, maxIter);
+    if (agentRichEnabled()) {
+        print("");
+        ralphMarkup("[bold]" + escapeMarkup(banner) + "[/]");
+        ralphMarkup("[dim]────────────────────────────────────────────────────────[/]");
+    } else {
+        print("");
+        print("--- " + banner + " ---");
+    }
+}
+
+function printFinalStatus(taskComplete, iteration, maxIter, skippedResume, prdPath, workDir, prdRelativePath, validateEachIteration, ralphState) {
+    var body = "";
+    var title = "Final status";
+    var border = "rounded";
+    if (taskComplete) {
+        body = "Completed in " + string(iteration) + " iteration(s).";
+        if (skippedResume > 0) {
+            body = body + " (" + string(skippedResume) + " skipped via resume)";
+        }
+        border = "heavy";
+    } else {
+        body = "Stopped after max iterations (" + string(maxIter) + "). Resume with the same workdir to continue.";
+        if (isPrdComplete(prdPath) && validateEachIteration) {
+            var finalValidation = validateWorkdir(workDir, prdRelativePath);
+            if (!finalValidation.ok) {
+                body = body + "\n\nPRD checklist is complete but validation still fails:\n" +
+                    formatValidationErrors(finalValidation.errors) + "\n\nIncrease MALDA_RALPH_MAX_ITER above completedIterations (" +
+                    string(ralphState.completedIterations) + ") and rerun.";
+            }
+        }
+        border = "double";
+    }
+    if (ralphState.totalCost != null && ralphState.totalCost > 0) {
+        body = body + "\n\nOpenRouter cost (run total): " + formatOpenRouterCost(ralphState.totalCost);
+    }
+    if (agentRichEnabled()) {
+        print("");
+        AnsiConsole.panel(body, title, border);
+    } else {
+        print("");
+        print(title + ":");
+        print(body);
+    }
+}
+
+function ralphLog(phase, message) {
+    var kind = "info";
+    var msgLower = lower(message);
+    if (indexOf(message, "Validation FAILED") >= 0 || indexOf(message, "Fatal error") >= 0 ||
+        indexOf(msgLower, "error in iteration") >= 0 || indexOf(msgLower, "validation failed") >= 0) {
+        kind = "error";
+    } else if (indexOf(message, "Validation: OK") >= 0 || indexOf(message, "Task complete") >= 0) {
+        kind = "success";
+    } else if (indexOf(message, "[ralph]") >= 0 || indexOf(message, "Skipping iteration") >= 0 ||
+        indexOf(message, "Prompt length") >= 0 || indexOf(message, "Conversation:") >= 0 ||
+        indexOf(message, "finished in") >= 0 || indexOf(message, "Agent response (") >= 0) {
+        kind = "dim";
+    }
+    if (!agentRichEnabled()) {
+        if (phase != null && phase != "") {
+            print("[" + phase + "] " + message);
+        } else {
+            print(message);
+        }
+        return;
+    }
+    var safeMsg = escapeMarkup(message);
+    var line = safeMsg;
+    if (kind == "success") {
+        line = "[green]" + safeMsg + "[/]";
+    } else if (kind == "error") {
+        line = "[red]" + safeMsg + "[/]";
+    } else if (kind == "dim") {
+        line = "[dim]" + safeMsg + "[/]";
+    }
+    if (phase != null && phase != "") {
+        line = "[dim][" + escapeMarkup(phase) + "][/] " + line;
+    }
+    ralphMarkup(line);
+}
+
+function setIterationVerbosePhase(phase) {
+    setAgentVerbosePhase(phase);
+}
+
+function responseTextOrEmpty(response) {
+    if (response == null || response.content == null) {
+        return "";
+    }
+    return string(response.content);
+}
+
+function truncateText(text, maxLen) {
+    if (text == null) {
+        return "";
+    }
+    text = string(text);
+    if (length(text) <= maxLen) {
+        return text;
+    }
+    return substring(text, 0, maxLen) + "...";
+}
+
+function formatElapsedMs(ms) {
+    if (ms < 1000) {
+        return string(ms) + "ms";
+    }
+    var sec = ms / 1000.0;
+    if (sec < 60) {
+        return string(round(sec * 10) / 10) + "s";
+    }
+    var min = sec / 60.0;
+    return string(round(min * 10) / 10) + "min";
+}
+
+function trimLeadingMarkdown(line) {
+    if (line == null) {
+        return "";
+    }
+    line = trim(string(line));
+    while (length(line) > 0 && substring(line, 0, 1) == "#") {
+        line = trim(substring(line, 1, length(line) - 1));
+    }
+    line = replace(line, "**", "");
+    return trim(line);
+}
+
+function extractResponseHeadline(text) {
+    if (text == null || text == "") {
+        return "Agent response";
+    }
+    var lines = split(string(text), "\n");
+    var i = 0;
+    while (i < length(lines)) {
+        var line = trimLeadingMarkdown(lines[i]);
+        if (line != "") {
+            return truncateText(line, 70);
+        }
+        i = i + 1;
+    }
+    return "Agent response";
+}
+
+function truncateResponsePreview(text, maxLines, maxChars) {
+    if (text == null || text == "") {
+        return "";
+    }
+    text = string(text);
+    var lines = split(text, "\n");
+    var out = "";
+    var count = 0;
+    var i = 0;
+    while (i < length(lines) && count < maxLines) {
+        var line = lines[i];
+        if (out != "") {
+            out = out + "\n";
+        }
+        out = out + line;
+        count = count + 1;
+        i = i + 1;
+    }
+    if (i < length(lines)) {
+        out = out + "\n... (" + string(length(lines) - i) + " more lines)";
+    }
+    if (length(out) > maxChars) {
+        out = substring(out, 0, maxChars) + "...";
+    }
+    return out;
+}
+
+function printAgentFinalResponse(responseText) {
+    if (responseText == null || responseText == "") {
+        ralphLog("", "Agent response: (empty)");
+        return;
+    }
+    var maxLines = agentEnvInt("MALDA_AGENT_RESPONSE_LINES", "MALDA_RALPH_RESPONSE_LINES", 15);
+    var preview = truncateResponsePreview(responseText, maxLines, 1400);
+    var title = extractResponseHeadline(responseText) + " (" + string(length(responseText)) + " chars)";
+    if (agentRichEnabled()) {
+        print("");
+        AnsiConsole.panel(preview, title, "rounded");
+        print("");
+    } else {
+        ralphLog("", "Agent response (" + string(length(responseText)) + " chars):");
+        print(preview);
+        print("");
+    }
+}
+
+function summarizeTurn(agent) {
+    var conv = agent.getConversation();
+    var msgs = conv.getMessages();
+    var userCount = 0;
+    var assistantCount = 0;
+    var toolCount = 0;
+    var i = 0;
+    while (i < length(msgs)) {
+        var msg = msgs[i];
+        if (msg != null && msg.role != null) {
+            var role = lower(string(msg.role));
+            if (role == "user") {
+                userCount = userCount + 1;
+            } else if (role == "assistant") {
+                assistantCount = assistantCount + 1;
+            } else if (role == "tool") {
+                toolCount = toolCount + 1;
+            }
+        }
+        i = i + 1;
+    }
+    return {"users": userCount, "assistants": assistantCount, "tools": toolCount, "total": length(msgs)};
+}
+
+function formatFailedWriteToolLine(failure) {
+    if (failure == null) {
+        return "";
+    }
+    var toolName = failure.toolName;
+    if (toolName == null || toolName == "") {
+        toolName = "write tool";
+    } else {
+        toolName = string(toolName);
+    }
+    var target = failure.target;
+    var line = "- " + toolName;
+    if (target != null && target != "") {
+        line = line + " " + string(target);
+    }
+    if (failure.error != null && failure.error != "") {
+        line = line + ": " + string(failure.error);
+    } else {
+        line = line + ": failed";
+    }
+    return line;
+}
+
+function collectFailedWriteToolNotes(agent) {
+    if (agent == null) {
+        return "";
+    }
+    var conv = agent.getConversation();
+    if (conv == null) {
+        return "";
+    }
+    var failures = conv.getFailedWriteTools();
+    if (failures == null || length(failures) == 0) {
+        return "";
+    }
+    var note = "[Write tool failures — do NOT assume file changes were applied]\n" +
+        "Re-read affected files before continuing. Fix oldText snippets or split edits smaller.\n";
+    var i = 0;
+    while (i < length(failures)) {
+        var line = formatFailedWriteToolLine(failures[i]);
+        if (line != "") {
+            note = note + line + "\n";
+        }
+        i = i + 1;
+    }
+    return trim(note);
+}
+
+function printTurnSummary(agent, iteration, elapsedMs, phase, usage) {
+    var summary = summarizeTurn(agent);
+    ralphLog("", "[ralph] Iteration " + string(iteration) + " finished in " + formatElapsedMs(elapsedMs));
+    ralphLog("", "[ralph] Conversation: " + string(summary.total) + " messages (" +
+        string(summary.users) + " user, " + string(summary.assistants) + " assistant, " +
+        string(summary.tools) + " tool results)");
+    if (usage != null && (usage.promptTokens > 0 || usage.completionTokens > 0)) {
+        var tokenLine = "[ralph] Tokens: prompt " + string(usage.promptTokens) + ", completion " + string(usage.completionTokens);
+        if (usage.cost != null && usage.cost > 0) {
+            tokenLine = tokenLine + " · OpenRouter cost " + formatOpenRouterCost(usage.cost);
+        }
+        ralphLog("", tokenLine);
+    }
+}
+

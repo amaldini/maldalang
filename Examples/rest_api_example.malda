@@ -1,0 +1,97 @@
+// REST API Server Example
+// Demonstrates decorator-based routing with path parameters, query parameters, and request bodies
+
+// Helper function to create JSON objects from strings
+function json(str) {
+    return parseJSON(str);
+}
+
+// Simple GET endpoint
+@GET("/api/health")
+function healthCheck() {
+    return json("{\"status\": \"healthy\", \"timestamp\": 1234567890}");
+}
+
+// GET with path parameter
+@GET("/api/users/{id}")
+function getUserById(id) {
+    var jsonStr = "{\"id\": \"" + id + "\", \"name\": \"Alice\", \"email\": \"alice@example.com\"}";
+    return json(jsonStr);
+}
+
+// GET with query parameters
+@GET("/api/users")
+function getUsers(limit, offset) {
+    var limitVal = 10;
+    if (limit != null) {
+        limitVal = int(limit);
+    }
+    var offsetVal = 0;
+    if (offset != null) {
+        offsetVal = int(offset);
+    }
+    var jsonStr = "{\"users\": [{\"id\": 1, \"name\": \"Alice\"}, {\"id\": 2, \"name\": \"Bob\"}], \"limit\": " + limitVal + ", \"offset\": " + offsetVal + "}";
+    return json(jsonStr);
+}
+
+// POST with request body
+@POST("/api/users")
+function createUser(body) {
+    // body is automatically parsed as JSON object
+    var name = body.name;
+    var email = body.email;
+    var jsonStr = "{\"status\": 201, \"data\": {\"id\": 3, \"name\": \"" + name + "\", \"email\": \"" + email + "\", \"created\": true}}";
+    return json(jsonStr);
+}
+
+// PUT with path parameter and body
+@PUT("/api/users/{id}")
+function updateUser(id, body) {
+    var jsonStr = "{\"id\": \"" + id + "\", \"updated\": true, \"data\": " + toJSON(body) + "}";
+    return json(jsonStr);
+}
+
+// DELETE endpoint
+@DELETE("/api/users/{id}")
+function deleteUser(id) {
+    var jsonStr = "{\"id\": \"" + id + "\", \"deleted\": true}";
+    return json(jsonStr);
+}
+
+// Start the REST server
+var server = new RestServer(8080);
+server.enableSwagger(true);  // Enable Swagger/OpenAPI documentation
+server.start();
+print("REST API running at http://localhost:8080");
+
+// Print registered routes
+var routes = server.getRoutes();
+print("Registered routes:");
+for (var i = 0; i < routes.length; i = i + 1) {
+    var route = routes[i];
+    print("  " + route.method + " " + route.path);
+}
+
+print("");
+print("Try these endpoints:");
+print("  GET  http://localhost:8080/api/health");
+print("  GET  http://localhost:8080/api/users/123");
+print("  GET  http://localhost:8080/api/users?limit=5&offset=0");
+print("  POST http://localhost:8080/api/users (with JSON body)");
+print("");
+print("Swagger/OpenAPI documentation:");
+print("  GET  http://localhost:8080/swagger.json");
+print("  GET  http://localhost:8080/openapi.json");
+print("");
+print("Server running... Press Enter to stop");
+
+// Keep the script alive - use sleep() to avoid CPU spinning
+// Without this loop, the script would end and the server would stop
+while (server.isRunning) {
+    sleep(1000);  // Sleep for 1 second (1000ms) - doesn't consume CPU
+}
+
+// Alternative: Wait for user input
+// var stop = input("Press Enter to stop the server...");
+// server.stop();
+print("Server stopped");

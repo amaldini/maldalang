@@ -1,0 +1,288 @@
+﻿{
+    "examples":  [
+                     {
+                         "name":  "AI-Generated HTML Form",
+                         "description":  "Generate HTML forms using AI and serve them via HttpServer",
+                         "file":  "ai_generated_html_form.malda",
+                         "track":  "showcase",
+                         "difficulty":  "advanced",
+                         "minutes":  18,
+                         "concepts":  [
+                                          "AI-generated UI",
+                                          "HttpServer",
+                                          "HTML generation"
+                                      ],
+                         "prerequisites":  [
+                                               "Web/rest_api_server.malda"
+                                           ],
+                         "learningGoal":  "Show MALDA\u0027s higher-level AI-assisted web app capability after the learner already understands core runtime ideas.",
+                         "expectedOutput":  "Serves an AI-generated HTML form through MALDA\u0027s web runtime."
+                     },
+                     {
+                         "name":  "REST API Server",
+                         "description":  "Create REST API endpoints using decorators",
+                         "file":  "rest_api_server.malda",
+                         "track":  "ai-builder",
+                         "difficulty":  "intermediate",
+                         "minutes":  15,
+                         "concepts":  [
+                                          "@GET",
+                                          "@POST",
+                                          "server",
+                                          "routing"
+                                      ],
+                         "prerequisites":  [
+                                               "Prompts/prompt_with_agent.malda"
+                                           ],
+                         "learningGoal":  "Move from scripts to server capabilities using MALDA\u0027s built-in REST features.",
+                         "expectedOutput":  "Starts a REST server with MALDA-defined endpoints.",
+                         "next":  "Web/ui_controls_showcase_minimal.malda",
+                         "documentationPath":  "/?lesson=build-ai-apps#lesson-build-ai-apps",
+                         "documentationTitle":  "Build AI Apps"
+                     },
+                     {
+                         "name":  "HttpServer with Static and Dynamic Pages",
+                         "description":  "Serve static HTML files from web/ folder and dynamic pages using @PAGE decorator",
+                         "file":  "http_server_example.malda",
+                         "track":  "ai-builder",
+                         "difficulty":  "intermediate",
+                         "minutes":  14,
+                         "concepts":  [
+                                          "HttpServer",
+                                          "@PAGE",
+                                          "dynamic pages",
+                                          "static files"
+                                      ],
+                         "prerequisites":  [
+                                               "Web/rest_api_server.malda"
+                                           ],
+                         "learningGoal":  "Move from API endpoints into MALDA\u0027s built-in page-serving model.",
+                         "expectedOutput":  "Serves static and dynamic pages from a MALDA application.",
+                         "next":  "Web/redirect_example.malda",
+                         "documentationPath":  "/?lesson=build-ai-apps#lesson-build-ai-apps",
+                         "documentationTitle":  "Web Server"
+                     },
+                     {
+                         "name":  "Multi-page Application with Redirects",
+                         "description":  "Demonstrates RedirectTo() function with login flow, protected pages, and navigation between multiple pages",
+                         "file":  "redirect_example.malda",
+                         "track":  "ai-builder",
+                         "difficulty":  "intermediate",
+                         "minutes":  16,
+                         "concepts":  [
+                                          "RedirectTo",
+                                          "navigation",
+                                          "multi-page flow",
+                                          "auth-like flow"
+                                      ],
+                         "prerequisites":  [
+                                               "Web/http_server_example.malda"
+                                           ],
+                         "learningGoal":  "Teach navigation flow and page-to-page control in a more app-shaped example.",
+                         "expectedOutput":  "Runs a multi-page flow with redirects and protected pages.",
+                         "next":  "Web/ui_controls_showcase_minimal.malda",
+                         "documentationPath":  "/?lesson=build-ai-apps#lesson-build-ai-apps",
+                         "documentationTitle":  "Web Navigation"
+                     },
+                     {
+                         "name":  "UI Controls Showcase",
+                         "description":  "Comprehensive server-side UI example covering the full ui.* control catalog",
+                         "file":  "ui_controls_showcase.malda"
+                     },
+                     {
+                         "name":  "UI Controls Showcase (Minimal)",
+                         "description":  "Compact all-controls tour for quick onboarding and copy/paste",
+                         "file":  "ui_controls_showcase_minimal.malda",
+                         "track":  "showcase",
+                         "difficulty":  "intermediate",
+                         "minutes":  15,
+                         "concepts":  [
+                                          "ui.*",
+                                          "server-driven UI",
+                                          "full-stack"
+                                      ],
+                         "prerequisites":  [
+                                               "Web/rest_api_server.malda"
+                                           ],
+                         "learningGoal":  "See how MALDA scales from language basics into full-stack UI delivery.",
+                         "expectedOutput":  "Renders a compact UI showcase in the browser.",
+                         "next":  "Web/crm_modern_sqlite.malda",
+                         "documentationPath":  "/?lesson=fullstack-demo#lesson-fullstack-demo",
+                         "documentationTitle":  "Full-Stack Demo",
+                         "featured":  true
+                     },
+                     {
+                         "name":  "Text Adventure FSM",
+                         "description":  "Story-driven web adventure with rooms, puzzles, and match-based state transitions",
+                         "file":  "ui_text_adventure_fsm.malda"
+                     },
+                     {
+                         "name":  "JS Browser DOM Hello",
+                         "description":  "Compile to JavaScript and update the browser DOM with MALDA dom.* helpers",
+                         "file":  "js/hello_dom.malda",
+                         "track":  "showcase",
+                         "difficulty":  "intermediate",
+                         "minutes":  12,
+                         "concepts":  [
+                                          "JavaScript target",
+                                          "dom.*",
+                                          "browser"
+                                      ],
+                         "prerequisites":  [
+                                               "Basics/functions.malda"
+                                           ],
+                         "learningGoal":  "Show that MALDA can move from local learning into browser delivery.",
+                         "expectedOutput":  "Updates DOM content in a browser page.",
+                         "next":  "Web/js/counter.malda",
+                         "documentationPath":  "/?lesson=browser-track#lesson-browser-track",
+                         "documentationTitle":  "Browser Track",
+                         "featured":  true
+                     },
+                     {
+                         "name":  "JS Browser Counter",
+                         "description":  "Button click counter example using MALDA dom.* helpers compiled to JavaScript",
+                         "file":  "js/counter.malda",
+                         "track":  "student",
+                         "difficulty":  "intermediate",
+                         "minutes":  12,
+                         "concepts":  [
+                                          "events",
+                                          "DOM updates",
+                                          "browser state"
+                                      ],
+                         "prerequisites":  [
+                                               "Web/js/hello_dom.malda"
+                                           ],
+                         "learningGoal":  "Teach interactive browser state with a tiny event-driven example.",
+                         "expectedOutput":  "Renders a clickable counter in the browser.",
+                         "next":  "Web/js/actors_counter.malda",
+                         "documentationPath":  "/?lesson=browser-track#lesson-browser-track",
+                         "documentationTitle":  "Browser Track",
+                         "featured":  true
+                     },
+                     {
+                         "name":  "JS Actors Counter",
+                         "description":  "Browser-local actor example with spawn/send/reply callback, timeout handling, and DOM updates",
+                         "file":  "js/actors_counter.malda",
+                         "track":  "showcase",
+                         "difficulty":  "advanced",
+                         "minutes":  16,
+                         "concepts":  [
+                                          "actors",
+                                          "browser runtime",
+                                          "callbacks",
+                                          "DOM updates"
+                                      ],
+                         "prerequisites":  [
+                                               "Web/js/counter.malda"
+                                           ],
+                         "learningGoal":  "Show that MALDA\u0027s concurrency model can also appear in browser-delivered experiences.",
+                         "expectedOutput":  "Runs a browser counter driven by local actor messages.",
+                         "next":  "Web/js/game_bounce.malda",
+                         "documentationPath":  "/?lesson=browser-track#lesson-browser-track",
+                         "documentationTitle":  "Browser Track"
+                     },
+                     {
+                         "name":  "JS Canvas Game Bounce",
+                         "description":  "Playable 2D canvas bounce game using MALDA game.* API (arrow keys + animation loop)",
+                         "file":  "js/game_bounce.malda",
+                         "track":  "student",
+                         "difficulty":  "intermediate",
+                         "minutes":  18,
+                         "concepts":  [
+                                          "game loop",
+                                          "input",
+                                          "canvas",
+                                          "animation"
+                                      ],
+                         "prerequisites":  [
+                                               "Web/js/counter.malda"
+                                           ],
+                         "learningGoal":  "Branch the browser track into playful interactive programming.",
+                         "expectedOutput":  "Runs a simple playable 2D bounce game in the browser.",
+                         "next":  "Web/js/three_cube.malda",
+                         "documentationPath":  "/?lesson=browser-track#lesson-browser-track",
+                         "documentationTitle":  "Browser Track",
+                         "featured":  true
+                     },
+                     {
+                         "name":  "JS Canvas Game Maldanoid",
+                         "description":  "Arkanoid-style breakout game with multiple levels, power-ups, score combo, and polished canvas effects using MALDA game.* API",
+                         "file":  "js/maldanoid.malda",
+                         "track":  "showcase",
+                         "difficulty":  "advanced",
+                         "minutes":  25,
+                         "concepts":  [
+                                          "game systems",
+                                          "levels",
+                                          "effects",
+                                          "browser gameplay"
+                                      ],
+                         "prerequisites":  [
+                                               "Web/js/game_bounce.malda"
+                                           ],
+                         "learningGoal":  "Show the commercial-quality ceiling of MALDA\u0027s browser game/runtime path.",
+                         "expectedOutput":  "Runs a richer breakout-style browser game."
+                     },
+                     {
+                         "name":  "JS three.js Rotating Cube",
+                         "description":  "Minimal 3D browser demo using MALDA three.* helpers with a lit cube and animation loop",
+                         "file":  "js/three_cube.malda",
+                         "track":  "showcase",
+                         "difficulty":  "intermediate",
+                         "minutes":  14,
+                         "concepts":  [
+                                          "three.*",
+                                          "3D scene",
+                                          "render loop",
+                                          "browser graphics"
+                                      ],
+                         "prerequisites":  [
+                                               "Web/js/game_bounce.malda"
+                                           ],
+                         "learningGoal":  "Introduce MALDA\u0027s 3D browser path with a small but visually rich example.",
+                         "expectedOutput":  "Renders a rotating 3D cube in the browser.",
+                         "next":  "Web/js/maldanoid3d.malda",
+                         "documentationPath":  "/?lesson=browser-track#lesson-browser-track",
+                         "documentationTitle":  "Browser Track"
+                     },
+                     {
+                         "name":  "JS three.js Maldanoid 3D",
+                         "description":  "Playable breakout-style 3D demo using MALDA three.* helpers with a lit arena, animated bricks, and browser controls",
+                         "file":  "js/maldanoid3d.malda",
+                         "track":  "showcase",
+                         "difficulty":  "advanced",
+                         "minutes":  25,
+                         "concepts":  [
+                                          "3D gameplay",
+                                          "three.*",
+                                          "advanced browser app"
+                                      ],
+                         "prerequisites":  [
+                                               "Web/js/three_cube.malda"
+                                           ],
+                         "learningGoal":  "Provide a high-ceiling browser/3D showcase after the learner has seen smaller JS-target examples.",
+                         "expectedOutput":  "Runs a playable 3D breakout-style browser demo."
+                     },
+                     {
+                         "name":  "JS HTML Template Hello",
+                         "description":  "Template mode example (.malda.html) with interpolation and embedded MALDA blocks for browser rendering",
+                         "file":  "js/hello_template.malda.html",
+                         "track":  "ai-builder",
+                         "difficulty":  "intermediate",
+                         "minutes":  12,
+                         "concepts":  [
+                                          "template mode",
+                                          "interpolation",
+                                          "browser rendering"
+                                      ],
+                         "prerequisites":  [
+                                               "Web/js/hello_dom.malda"
+                                           ],
+                         "learningGoal":  "Show the template-style side of MALDA\u0027s browser target after the learner understands basic DOM output.",
+                         "expectedOutput":  "Renders a simple template-driven browser output.",
+                         "documentationPath":  "/?lesson=browser-track#lesson-browser-track",
+                         "documentationTitle":  "Browser Track"
+                     }
+                 ]
+}

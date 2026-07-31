@@ -1,0 +1,19 @@
+{
+  "examples": [
+    {
+      "name": "Basic Arduino Control",
+      "description": "Simple example connecting to Arduino via serial port, controlling LED and reading sensors",
+      "file": "basic_arduino.malda"
+    },
+    {
+      "name": "Multi-Robot Soccer Game",
+      "description": "Complete multi-robot coordination example using actors to control multiple robots playing soccer",
+      "file": "multi_robot_soccer.malda"
+    },
+    {
+      "name": "Smart Home Control",
+      "description": "Example controlling smart home devices (Philips Hue) via HTTP/REST API",
+      "file": "smart_home.malda"
+    }
+  ]
+}

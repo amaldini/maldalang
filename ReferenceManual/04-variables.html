@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>5. Variables - MALDA Reference Manual</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="syntax.css">
+    <link rel="stylesheet" href="print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>MALDA&trade; Reference Manual</h1>
+        <p>The AI-First Programming Language - Version 0.1</p>
+    </header>
+    <nav></nav>
+    <main>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>5. Variables</span></div>
+        <h1>5. Variables</h1>
+        <h2>5.1 Variable Declaration</h2>
+        <p>Variables in MALDA are declared using the <code>var</code> keyword followed by the variable name and an optional initial value:</p>
+        <pre><code>var x = 10;
+var name = "Alice";
+var isActive = true;
+var pi = 3.14159;</code></pre>
+        <p>Variables must be declared before use. The type is inferred from the initial value. For bindings that must never be reassigned, use <code>const</code> instead of <code>var</code> (see <a href="#const">5.3 Constant Declarations</a>).</p>
+        <p>You may optionally add an <strong>informational type hint</strong> after the variable name. Type hints are not enforced at runtime or in the transpiler; they are used by tools, IDEs, and documentation.</p>
+        <pre><code>var name: Type? = value;</code></pre>
+        <p>Example: <code>var count: int = 0;</code> or <code>var msg: string = "hello";</code></p>
+        <h2>5.2 Variable Assignment</h2>
+        <p>After declaration, variables can be reassigned using the assignment operator <code>=</code>:</p>
+        <pre><code>x = 20;
+name = "Bob";
+x = x + 1;</code></pre>
+        <h2 id="const">5.3 Constant Declarations</h2>
+        <p>A binding declared with <code>const</code> instead of <code>var</code> cannot be reassigned. An initializer is required:</p>
+        <pre><code data-run="true" data-expect="3">const MAX_RETRIES = 3;
+const APP_NAME = "malda-demo";
+
+print(MAX_RETRIES);   // 3</code></pre>
+        <p>Attempting to assign to a constant is a runtime error that names the binding:</p>
+        <pre><code>const limit = 10;
+limit = 20;   // Runtime error: Cannot assign to const 'limit'.</code></pre>
+        <p>Compound assignment (<code>+=</code>) and the increment operators are assignments too, so they fail on a constant for the same reason.</p>
+
+        <h3>Constants Are Shallow</h3>
+        <p><code>const</code> freezes the <em>binding</em>, not the value it points to. A constant that holds an array, dictionary, or object still allows the contents to change:</p>
+        <pre><code data-run="true" data-expect="5">const config = dict { "retries": 3 };
+
+config["retries"] = 5;   // Allowed: the dictionary is mutated, not the binding
+print(config["retries"]); // 5
+
+// config = dict { };    // Runtime error: Cannot assign to const 'config'.</code></pre>
+
+        <h3>Scope and Shadowing</h3>
+        <p>Constants follow the same block scoping as <code>var</code>, and an inner scope may shadow an outer constant with its own binding:</p>
+        <pre><code data-run="true" data-expect="local\nprod">const mode = "prod";
+
+function describe() {
+    var mode = "local";   // Shadows the outer constant inside this function
+    return mode;
+}
+
+print(describe());   // "local"
+print(mode);         // "prod"</code></pre>
+        <div class="info-box">
+            <strong>When to reach for it:</strong> use <code>const</code> for configuration values, limits, and lookup tables that must not drift during a run. Everything else stays <code>var</code>; MALDA does not require constants and does not optimize differently for them.
+        </div>
+
+        <h2>5.4 Destructuring</h2>
+        <p>Destructuring allows you to extract values from arrays and objects into individual variables in a single statement.</p>
+        
+        <h3>Array Destructuring</h3>
+        <p>Extract elements from an array into variables:</p>
+        <pre><code>var arr = [10, 20];
+var [x, y] = arr;
+print(x);  // Prints: 10
+print(y);  // Prints: 20</code></pre>
+        
+        <p><strong>Rest Pattern:</strong> Use <code>...rest</code> to capture remaining elements:</p>
+        <pre><code>var arr = [1, 2, 3, 4, 5];
+var [first, second, ...rest] = arr;
+// first = 1, second = 2, rest = [3, 4, 5]
+print(length(rest));  // Prints: 3</code></pre>
+        
+        <p><strong>Notes:</strong></p>
+        <ul>
+            <li>The array must have at least as many elements as variables (unless using rest pattern)</li>
+            <li>The rest pattern must be at the last position</li>
+            <li>You can skip elements using the wildcard pattern <code>_</code></li>
+        </ul>
+        
+        <h3>Object Destructuring</h3>
+        <p>Extract properties from an object into variables:</p>
+        <pre><code>var user = { name: "Alice", age: 30, role: "admin" };
+var { name, age } = user;
+print(name);  // Prints: "Alice"
+print(age);   // Prints: 30</code></pre>
+        
+        <p><strong>Renaming:</strong> Extract properties with different variable names:</p>
+        <pre><code>var user = { name: "Bob", age: 25 };
+var { name: userName, age: userAge } = user;
+print(userName);   // Prints: "Bob"
+print(userAge);    // Prints: 25</code></pre>
+        
+        <p><strong>Nested Destructuring:</strong> Extract from nested objects:</p>
+        <pre><code>var data = {
+    user: { name: "Charlie", age: 35 },
+    role: "admin"
+};
+var { user: { name, age }, role } = data;
+print(name);   // Prints: "Charlie"
+print(age);    // Prints: 35
+print(role);   // Prints: "admin"</code></pre>
+        
+        <h3>Destructuring Assignment</h3>
+        <p>You can also use destructuring with assignment (for existing variables):</p>
+        <pre><code>var x = 0;
+var y = 0;
+var arr = [10, 20];
+[x, y] = arr;  // Assigns 10 to x, 20 to y
+print(x + y);  // Prints: 30</code></pre>
+        
+        <pre><code>var name = "";
+var age = 0;
+var user = { name: "David", age: 40 };
+{ name, age } = user;  // Assigns properties to variables
+print(name);  // Prints: "David"
+print(age);   // Prints: 40</code></pre>
+        
+        <h3>Destructuring from Function Returns</h3>
+        <p>Destructure values returned from functions:</p>
+        <pre><code>function getPoint() {
+    return { x: 5, y: 10 };
+}
+
+var { x, y } = getPoint();
+print(x + y);  // Prints: 15</code></pre>
+        
+        <h3>Error Handling</h3>
+        <p>If a destructuring pattern doesn't match (e.g., array too short, missing object property), a runtime error is thrown:</p>
+        <pre><code>try {
+    var arr = [1, 2];
+    var [x, y, z] = arr;  // Error: array has only 2 elements
+} catch (e) {
+    print("Destructuring failed: " + e);
+}</code></pre>
+        
+        <div class="info-box">
+            <strong>Destructuring Tips:</strong>
+            <ul>
+                <li>Use destructuring to make code more readable when working with structured data</li>
+                <li>Destructuring is particularly useful when processing API responses or function returns</li>
+                <li>You can combine array and object destructuring in nested structures</li>
+                <li>Use the rest pattern to capture remaining elements when you don't know the exact length</li>
+            </ul>
+        </div>
+        
+        <h2>5.5 Variable Scope</h2>
+        <p>Variables in MALDA are block-scoped. A variable is accessible within the block where it is declared and any nested blocks.</p>
+        <h3>Global Variables</h3>
+        <p>Variables declared outside functions are global and accessible throughout the program:</p>
+        <pre><code>var globalVar = 10;
+
+function test() {
+    print(globalVar);  // Can access global variable
+}
+
+test();</code></pre>
+        <h3>Local Variables</h3>
+        <p>Variables declared inside a function are local to that function:</p>
+        <pre><code>function test() {
+    var localVar = 20;
+    print(localVar);  // Can access local variable
+}
+
+// print(localVar);  // Error: localVar is not accessible here</code></pre>
+        <h3>Variable Shadowing</h3>
+        <p>Local variables shadow global variables with the same name:</p>
+        <pre><code>var x = 10;  // Global variable
+
+function test() {
+    var x = 20;  // Local variable shadows global x
+    print(x);    // Prints 20 (local)
+}
+
+test();
+print(x);  // Prints 10 (global)</code></pre>
+        <h3>Block Scope</h3>
+        <p>Variables declared in blocks (if, while, for) are scoped to that block:</p>
+        <pre><code>if (true) {
+    var blockVar = 30;
+    print(blockVar);  // Can access blockVar
+}
+
+// print(blockVar);  // Error: blockVar is not accessible here</code></pre>
+        <div class="see-also">
+            <h3>See Also</h3>
+            <ul>
+                <li><a href="03-data-types.html">4. Data Types</a> - Types that variables can hold</li>
+                <li><a href="08-control-structures.html">7. Control Structures</a> - Pattern matching and block scoping</li>
+                <li><a href="05-arrays.html">9. Arrays</a> - Arrays used in destructuring</li>
+                <li><a href="09-functions.html">8. Functions</a> - Function scope and parameters</li>
+            </ul>
+        </div>
+        <div class="nav-footer">
+            <a href="03-data-types.html">← Previous: 4. Data Types</a>
+            <a href="07-expressions.html">Next: 6. Expressions→</a>
+        </div>
+
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, at your option.</p>
+        </footer>
+    </main>
+    <script src="malda-highlight.js"></script>
+    <script src="navigation.js"></script>
+</body>
+</html>

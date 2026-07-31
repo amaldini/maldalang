@@ -1,0 +1,23 @@
+// Protocol recovery example: resync and diagnostics.
+
+var sid = "resync-demo";
+
+var tree = ui.row(
+    {"componentId": "Root"},
+    [
+        ui.text({"value": "hello"})
+    ]
+);
+
+var mountEnvelope = ui.mount(tree, sid);
+print(mountEnvelope.version);
+print(mountEnvelope.type);
+
+// Simulate recovery request.
+var full = ui.resync(sid);
+print(full.type);
+
+// Tune policy for this session.
+ui.configure("maxPayloadBytes", 131072, sid);
+ui.configure("maxPatchCount", 2048, sid);
+print(ui.snapshot(sid));

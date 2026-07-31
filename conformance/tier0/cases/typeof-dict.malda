@@ -1,0 +1,2 @@
+var d = dict { "k": 1 };
+print(typeOf(d));

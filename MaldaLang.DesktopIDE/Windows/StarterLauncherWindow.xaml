@@ -1,0 +1,286 @@
+<Window x:Class="MaldaLang.DesktopIDE.Windows.StarterLauncherWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="Start With MALDA"
+        Height="620"
+        Width="900"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource WindowBackgroundBrush}">
+    <Window.Resources>
+        <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#101821" />
+        <SolidColorBrush x:Key="PanelBackgroundBrush" Color="#16212D" />
+        <SolidColorBrush x:Key="SecondaryPanelBackgroundBrush" Color="#132231" />
+        <SolidColorBrush x:Key="BorderBrush" Color="#314152" />
+        <SolidColorBrush x:Key="PrimaryBrush" Color="#53B3FF" />
+        <SolidColorBrush x:Key="PrimaryForegroundBrush" Color="#04111F" />
+        <SolidColorBrush x:Key="TextBrush" Color="#F4F7FB" />
+        <SolidColorBrush x:Key="SubtleTextBrush" Color="#B8C7D9" />
+        <SolidColorBrush x:Key="ButtonBackgroundBrush" Color="#1D2A38" />
+        <SolidColorBrush x:Key="ButtonHoverBrush" Color="#243649" />
+        <SolidColorBrush x:Key="AccentSurfaceBrush" Color="#21364A" />
+        <SolidColorBrush x:Key="AccentBorderBrush" Color="#36516F" />
+        <SolidColorBrush x:Key="AccentTextBrush" Color="#D7EBFF" />
+        <SolidColorBrush x:Key="SelectionBrush" Color="#0D3558" />
+        <SolidColorBrush x:Key="SelectionTextBrush" Color="#DFF1FF" />
+
+        <Style TargetType="Button">
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="Margin" Value="4" />
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+            <Setter Property="Background" Value="{DynamicResource ButtonBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="10">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              Margin="{TemplateBinding Padding}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonBorder"
+                                        Property="Background"
+                                        Value="{DynamicResource ButtonHoverBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonBorder"
+                                        Property="Opacity"
+                                        Value="0.92" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ButtonBorder"
+                                        Property="Opacity"
+                                        Value="0.55" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PrimaryActionButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="{DynamicResource PrimaryBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryForegroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource SelectionBrush}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource SelectionBrush}" />
+                    <Setter Property="Foreground" Value="{DynamicResource SelectionTextBrush}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style TargetType="ListBoxItem">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="ItemBorder"
+                                Margin="2"
+                                Padding="2"
+                                Background="Transparent"
+                                CornerRadius="10">
+                            <ContentPresenter />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ItemBorder"
+                                        Property="Background"
+                                        Value="{DynamicResource AccentSurfaceBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemBorder"
+                                        Property="Background"
+                                        Value="{DynamicResource SelectionBrush}" />
+                                <Setter Property="Foreground"
+                                        Value="{DynamicResource SelectionTextBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock Text="Choose how you want to start with MALDA"
+                       FontSize="24"
+                       FontWeight="Bold"
+                       Foreground="{DynamicResource TextBrush}" />
+            <TextBlock Text="Follow a linear basics path, jump into AI-native workflows, or open a commercial showcase."
+                       Margin="0,8,0,0"
+                       Foreground="{DynamicResource SubtleTextBrush}"
+                       TextWrapping="Wrap" />
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Margin="0,0,0,16">
+            <StackPanel Orientation="Horizontal">
+                <Button x:Name="StudentTrackButton" Content="Learn programming" Click="StudentTrackButton_Click" />
+                <Button x:Name="AiTrackButton" Content="Build with AI" Click="AiTrackButton_Click" />
+                <Button x:Name="ShowcaseTrackButton" Content="Commercial showcases" Click="ShowcaseTrackButton_Click" />
+            </StackPanel>
+            <TextBlock x:Name="TrackGuidanceTextBlock"
+                       Margin="4,8,4,0"
+                       Foreground="{DynamicResource SubtleTextBrush}"
+                       TextWrapping="Wrap" />
+        </StackPanel>
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="320" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0"
+                    Background="{DynamicResource PanelBackgroundBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="12"
+                    Padding="8">
+                <ListBox x:Name="StartersListBox"
+                         BorderThickness="0"
+                         Background="Transparent"
+                         Foreground="{DynamicResource TextBrush}"
+                         SelectionChanged="StartersListBox_SelectionChanged">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="6">
+                                <TextBlock Text="{Binding Title}" FontWeight="Bold" />
+                                <TextBlock Text="{Binding Description}"
+                                           Foreground="{DynamicResource SubtleTextBrush}"
+                                           FontSize="12"
+                                           Margin="0,4,0,0"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Border>
+
+            <Border Grid.Column="1"
+                    Margin="16,0,0,0"
+                    Background="{DynamicResource PanelBackgroundBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="12"
+                    Padding="18">
+                <StackPanel>
+                    <TextBlock x:Name="TrackTextBlock"
+                               Foreground="{DynamicResource PrimaryBrush}"
+                               FontSize="12"
+                               FontWeight="SemiBold" />
+                    <TextBlock x:Name="TitleTextBlock"
+                               Margin="0,8,0,0"
+                               FontSize="22"
+                               FontWeight="Bold"
+                               Foreground="{DynamicResource TextBrush}" />
+                    <TextBlock x:Name="DescriptionTextBlock"
+                               Margin="0,12,0,0"
+                               Foreground="{DynamicResource SubtleTextBrush}"
+                               TextWrapping="Wrap" />
+                    <TextBlock x:Name="GoalTextBlock"
+                               Margin="0,16,0,0"
+                               Foreground="{DynamicResource TextBrush}"
+                               TextWrapping="Wrap" />
+                    <TextBlock x:Name="TimeTextBlock"
+                               Margin="0,16,0,0"
+                               Foreground="{DynamicResource PrimaryBrush}" />
+                    <ItemsControl x:Name="HighlightsItemsControl" Margin="0,16,0,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Margin="0,0,8,8"
+                                        Padding="8,4"
+                                        Background="{DynamicResource AccentSurfaceBrush}"
+                                        BorderBrush="{DynamicResource AccentBorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="999">
+                                    <TextBlock Text="{Binding}"
+                                               Foreground="{DynamicResource AccentTextBrush}"
+                                               FontSize="12" />
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                    <Border Margin="0,20,0,0"
+                            Padding="14"
+                            Background="{DynamicResource SecondaryPanelBackgroundBrush}"
+                            BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="10">
+                        <StackPanel>
+                            <TextBlock Text="Specialization tracks"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontWeight="Bold" />
+                            <TextBlock x:Name="BranchesDescriptionTextBlock"
+                                       Margin="0,8,0,0"
+                                       Foreground="{DynamicResource SubtleTextBrush}"
+                                       TextWrapping="Wrap" />
+                            <ItemsControl x:Name="BranchesItemsControl" Margin="0,12,0,0">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Click="BranchButton_Click"
+                                                Tag="{Binding RelativeExamplePath}"
+                                                HorizontalAlignment="Left"
+                                                Margin="0,0,8,8"
+                                                ToolTip="{Binding Description}"
+                                                Background="{DynamicResource AccentSurfaceBrush}"
+                                                BorderBrush="{DynamicResource AccentBorderBrush}">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                                                <TextBlock Text="{Binding EstimatedTime}"
+                                                           Foreground="{DynamicResource SubtleTextBrush}"
+                                                           FontSize="11" />
+                                            </StackPanel>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <StackPanel Grid.Row="3"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Margin="0,16,0,0">
+            <Button Content="Start Blank" Click="StartBlankButton_Click" />
+            <Button Content="Browse Examples" Click="BrowseExamplesButton_Click" />
+            <Button Content="Open Starter"
+                    Click="OpenStarterButton_Click"
+                    Style="{StaticResource PrimaryActionButtonStyle}"
+                    FontWeight="Bold" />
+        </StackPanel>
+    </Grid>
+</Window>

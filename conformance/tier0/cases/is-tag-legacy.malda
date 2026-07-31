@@ -1,0 +1,2 @@
+print(isTag(42, "integer"));
+print(isTag(42, "int"));

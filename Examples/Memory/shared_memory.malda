@@ -1,0 +1,23 @@
+// Shared GraphMemory example: two agents using one memory instance.
+// Run with: malda Examples/Memory/shared_memory.malda
+
+var client = new OpenRouterClient();
+var memory = new GraphMemory();
+memory.initialize(384, "single", function (text) { return embedHash(text, 384); });
+
+var path = getMaldaHome() + "/memory/team_memory";
+ensureDir(getMaldaHome() + "/memory");
+if (hasFile(path + ".graph.json")) {
+    memory.load(path);
+}
+
+var agent1 = new Agent("Agent1", "helper", "You are assistant one.", client);
+var agent2 = new Agent("Agent2", "helper", "You are assistant two.", client);
+agent1.useMemory(memory);
+agent2.useMemory(memory);
+
+agent1.remember("Team preference: always summarize action items.");
+var seen = memory.query("team preference", 3, { "minScore": 0, "scope": "global" });
+print("Agent2 sees shared memory entries: " + seen.length);
+
+memory.save(path);

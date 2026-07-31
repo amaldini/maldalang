@@ -1,0 +1,40 @@
+// Multi-agent shared GraphMemory with distinct scopes.
+// Run: malda Examples/Memory/multi_agent_shared.malda
+
+var client = new OpenRouterClient();
+var memory = new GraphMemory();
+memory.initialize(384, "single", function (text) { return embedHash(text, 384); });
+
+var path = getMaldaHome() + "/memory/multi_agent_demo";
+ensureDir(getMaldaHome() + "/memory");
+if (hasFile(path + ".graph.json")) {
+    memory.load(path);
+}
+
+var agentA = new Agent("Analyst", "analyst", "You analyze requirements.", client);
+var agentB = new Agent("Coder", "developer", "You write code.", client);
+agentA.useMemory(memory);
+agentB.useMemory(memory);
+
+agentA.setMemoryScope("team:alpha");
+agentB.setMemoryScope("team:beta");
+
+agentA.remember("Alpha team prefers TypeScript.", "", { "type": "semantic", "scope": "team:alpha" });
+agentB.remember("Beta team prefers Python.", "", { "type": "semantic", "scope": "team:beta" });
+memory.remember("Shared CI runs on every PR.", "", { "type": "semantic", "scope": "global" });
+
+var alphaView = memory.query("team preference", 5, {
+    "scope": "team:alpha",
+    "scopeHierarchy": ["team:alpha", "global"],
+    "minScore": 0
+});
+var betaView = memory.query("team preference", 5, {
+    "scope": "team:beta",
+    "scopeHierarchy": ["team:beta", "global"],
+    "minScore": 0
+});
+
+print("Alpha scoped results: " + alphaView.length);
+print("Beta scoped results: " + betaView.length);
+
+memory.save(path);

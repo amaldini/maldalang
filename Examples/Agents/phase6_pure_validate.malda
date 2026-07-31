@@ -1,0 +1,22 @@
+// Phase 6 — @pure helper + validate() on tool input schema (CI smoke via Phase6EffectsTests).
+
+schema ToolInput {
+    name: string;
+}
+
+@pure()
+function normalizeName(name) {
+    return upper(trim(name));
+}
+
+function handleToolInput(raw) {
+    var check = validate("ToolInput", raw);
+    if (!check.ok) {
+        print("invalid: " + check.error);
+        return;
+    }
+    var validated = check.data;
+    print(normalizeName(validated.name));
+}
+
+handleToolInput(dict { "name": "  alice  " });

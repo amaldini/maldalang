@@ -1,0 +1,75 @@
+// VectorDB Serialization Example
+// Demonstrates serializing and deserializing VectorDB to/from binary files
+
+print("=== VectorDB Serialization ===\n");
+
+// Define vector calculator function
+function calculateVector(data) {
+    // Simple 3D vector calculator
+    var vec = [];
+    if (data.type == "string") {
+        var text = data.value;
+        var len = length(text);
+        vec.append(len / 10.0);
+        
+        // Use first character position in alphabet as feature
+        var alphabet = "abcdefghijklmnopqrstuvwxyz";
+        var firstChar = lower(substring(text, 0, 1));
+        var firstPos = indexOf(alphabet, firstChar);
+        vec.append(firstPos >= 0 ? firstPos / 25.0 : 0.0);
+        
+        // Use second character position in alphabet as feature (if available)
+        if (len > 1) {
+            var secondChar = lower(substring(text, 1, 1));
+            var secondPos = indexOf(alphabet, secondChar);
+            vec.append(secondPos >= 0 ? secondPos / 25.0 : 0.0);
+        } else {
+            vec.append(0.0);
+        }
+    } else {
+        vec.append(0.0);
+        vec.append(0.0);
+        vec.append(0.0);
+    }
+    return vec;
+}
+
+// Create VectorDB
+var db = new VectorDB(3, "double");
+
+// Initialize with the calculator function
+db.init(calculateVector);
+
+print("Created VectorDB\n");
+
+// Add data objects - vectors are calculated automatically
+db.add(dict { "type": "string", "value": "Hello" });
+db.add(dict { "type": "string", "value": "World" });
+db.add(dict { "type": "string", "value": "Hello there" });
+
+print("Added 3 vectors\n");
+
+// Serialize to binary file
+var filePath = "vectordb_example.bin";
+db.serialize(filePath);
+print("Serialized VectorDB to: " + filePath + "\n");
+
+// Deserialize from file
+print("Deserializing VectorDB...");
+var db2 = db.deserialize(filePath);
+print("Deserialized successfully\n");
+
+// Initialize the deserialized VectorDB with the calculator function
+db2.init(calculateVector);
+
+// Verify data is preserved
+print("=== Verification ===");
+var results = db2.searchSimilar(dict { "type": "string", "value": "Hello" }, 2);
+print("Search results from deserialized VectorDB:");
+for (var i = 0; i < results.length; i = i + 1) {
+    var result = results[i];
+    print((i + 1) + ". Data: " + result.data);
+    print("   Similarity: " + formatNumber(result.similarity, 4));
+}
+
+print("\nSerialization/deserialization successful!");

@@ -1,0 +1,51 @@
+{
+  "name": "malda-language",
+  "displayName": "MALDA Language Support",
+  "description": "Language support for MALDA (.malda) via the MALDA Language Server: diagnostics, completion, hover, go to definition, find references, rename, code actions, signature help, formatting, workspace symbol.",
+  "version": "0.1.0",
+  "publisher": "maldalang",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters",
+    "Formatters"
+  ],
+  "activationEvents": [
+    "onLanguage:malda"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "malda",
+        "aliases": ["MALDA", "malda"],
+        "extensions": [".malda"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "configuration": {
+      "title": "MALDA Language Server",
+      "properties": {
+        "maldaLanguageServer.path": {
+          "type": "string",
+          "default": "malda-lsp",
+          "description": "Path to the MALDA language server executable (malda-lsp or malda-lsp.exe). Use full path if not on PATH."
+        },
+        "maldaLanguageServer.trace": {
+          "type": "string",
+          "enum": ["off", "messages", "verbose"],
+          "default": "off",
+          "description": "Traces the communication between the editor and the language server."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "node -e \"\""
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.0"
+  }
+}

@@ -1,0 +1,62 @@
+var root = dom.query("#app");
+
+if (root == null) {
+    println("No #app container found.");
+} else {
+    dom.clear(root);
+
+    var title = dom.create("h1");
+    dom.setText(title, "JS Actors Counter");
+    dom.append(root, title);
+
+    var valueLabel = dom.create("p");
+    dom.setText(valueLabel, "Count: 0");
+    dom.append(root, valueLabel);
+
+    var statusLabel = dom.create("p");
+    dom.setText(statusLabel, "Status: ready");
+    dom.append(root, statusLabel);
+
+    var button = dom.create("button");
+    dom.setText(button, "Increment via actor");
+    dom.append(root, button);
+
+    actor Counter {
+        var count = 0;
+
+        on increment() {
+            this.count = this.count + 1;
+            reply(this.count);
+        }
+    }
+
+    actor UIController {
+        var counterRef;
+        var valueNode;
+        var statusNode;
+
+        function UIController(counter, valueLabelNode, statusLabelNode) {
+            this.counterRef = counter;
+            this.valueNode = valueLabelNode;
+            this.statusNode = statusLabelNode;
+        }
+
+        on requestIncrement() {
+            send this.counterRef.increment() then (nextValue) {
+                dom.setText(this.valueNode, "Count: " + string(nextValue));
+                dom.setText(this.statusNode, "Status: updated by callback");
+            } timeout 1000 catch (error) {
+                dom.setText(this.statusNode, "Status: timeout - " + string(error));
+            };
+        }
+    }
+
+    var counter = spawn Counter();
+    var ui = spawn UIController(counter, valueLabel, statusLabel);
+
+    function onIncrementClick() {
+        send ui.requestIncrement();
+    }
+
+    dom.on(button, "click", onIncrementClick);
+}

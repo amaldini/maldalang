@@ -1,0 +1,77 @@
+// Ralph run report (JSON/HTML) — written at end of autonomousAgentLoop.
+
+function ralphReportMode() {
+    var raw = getEnv("MALDA_RALPH_REPORT");
+    if (raw == null || raw == "") {
+        return "json";
+    }
+    return lower(raw);
+}
+
+function ralphReportEnabled() {
+    var mode = ralphReportMode();
+    return not (mode == "off" or mode == "false" or mode == "0");
+}
+
+function buildRunReportSummary(taskComplete, iteration, maxIter, ralphState, modelLabel, workDir, prdPath) {
+    var progress = countPrdChecklistProgress(prdPath);
+    var status = "max_iter";
+    if (taskComplete) {
+        status = "complete";
+    } else if (ralphState.stalled) {
+        status = "stalled";
+    }
+    return {
+        "status": status,
+        "taskComplete": taskComplete,
+        "lastIteration": iteration,
+        "maxIterations": maxIter,
+        "prdDone": progress.done,
+        "prdOpen": progress.open,
+        "prdPercent": progress.percent,
+        "completedIterations": ralphState.completedIterations,
+        "lastSuccessfulIteration": ralphState.lastSuccessfulIteration,
+        "totalPromptTokens": ralphState.totalPromptTokens,
+        "totalCompletionTokens": ralphState.totalCompletionTokens,
+        "totalCost": ralphState.totalCost
+    };
+}
+
+function writeRalphRunReport(workDir, taskComplete, iteration, maxIter, ralphState, modelLabel, workDirPath, prdRelativePath, runStartedAt, memory) {
+    if (!ralphReportEnabled()) {
+        return;
+    }
+    var prdPath = pathJoin(workDirPath, prdRelativePath);
+    var memoryStats = collectRalphMemoryStats(memory);
+    var report = {
+        "generatedAt": now(),
+        "runStartedAt": runStartedAt,
+        "model": modelLabel,
+        "workdir": workDirPath,
+        "prd": prdRelativePath,
+        "summary": buildRunReportSummary(taskComplete, iteration, maxIter, ralphState, modelLabel, workDirPath, prdPath),
+        "iterations": ralphState.iterations
+    };
+    if (memoryStats != null) {
+        report.memory = memoryStats;
+    }
+    var mode = ralphReportMode();
+    if (mode == "json" or mode == "both") {
+        writeFile(pathJoin(workDirPath, "ralph-run-report.json"), toJSON(report));
+    }
+    if (mode == "html" or mode == "both") {
+        var html = "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Ralph run report</title>" +
+            "<style>body{font-family:system-ui;margin:2rem}table{border-collapse:collapse}td,th{border:1px solid #ccc;padding:.4rem .6rem}</style></head><body>" +
+            "<h1>Ralph run report</h1><p>Status: " + string(report.summary.status) + "</p>" +
+            "<p>PRD: " + string(report.summary.prdDone) + "/" + string(report.summary.prdDone + report.summary.prdOpen) + " done (" +
+            string(report.summary.prdPercent) + "%)</p>" +
+            "<p>Iterations: " + string(report.summary.lastIteration) + "/" + string(report.summary.maxIterations) + "</p>" +
+            (report.memory != null && report.memory.nodes != null ?
+                "<p>GraphMemory nodes: " + string(report.memory.nodes) + "</p>" : "") +
+            "<p>Tokens: prompt " + string(report.summary.totalPromptTokens) + ", completion " + string(report.summary.totalCompletionTokens) + "</p>" +
+            (report.summary.totalCost != null && report.summary.totalCost > 0 ?
+                "<p>OpenRouter cost: " + formatOpenRouterCost(report.summary.totalCost) + "</p>" : "") +
+            "</body></html>";
+        writeFile(pathJoin(workDirPath, "ralph-run-report.html"), html);
+    }
+}

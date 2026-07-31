@@ -1,0 +1,26 @@
+@inherits LayoutComponentBase
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        <div class="top-row px-4">
+            <a href="/" class="me-3">Start Here</a>
+            <a href="/ide?starter=hello-world" class="me-3">Learn Programming</a>
+            <a href="/ide?starter=prompt" class="me-3">Build With AI</a>
+            <a href="/ide?starter=fullstack">Full-Stack Demo</a>
+        </div>
+
+        <article class="content px-4" style="width: 100%; max-width: 100%; overflow-x: hidden; box-sizing: border-box;">
+            @Body
+        </article>
+    </main>
+</div>
+
+<div id="blazor-error-ui">
+    An unhandled error has occurred.
+    <a href="" class="reload">Reload</a>
+    <a class="dismiss">🗙</a>
+</div>

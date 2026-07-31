@@ -1,0 +1,105 @@
+// Ralph Wiggum autonomous agent loop for PRD-driven development.
+// Modular layout: see ralph/ARCHITECTURE.md
+//
+// Configure via environment (all optional). Key variables:
+//   MALDA_RALPH_WORKDIR, MALDA_RALPH_WORKTREE, MALDA_RALPH_PROJECT_REL
+//   MALDA_RALPH_MAX_ITER (default 10), MALDA_RALPH_PRD (default PRD.md)
+//   MALDA_RALPH_RESUME_POLICY (all|success-only), MALDA_RALPH_RESET_EACH (true|false|phase|auto)
+//   MALDA_RALPH_VALIDATE_DEPTH (flat|recursive), MALDA_RALPH_VALIDATE_SCOPE (all|changed)
+//   MALDA_RALPH_VALIDATE_HOOK (always|on_change|never), MALDA_RALPH_VALIDATE_FALLBACK (all|none)
+//   MALDA_RALPH_VALIDATE_ALWAYS (comma paths), PRD item Files:/Verify: lines (phase 2 hints)
+//   Validation hooks receive RALPH_WORKDIR, RALPH_CHANGED_FILES, RALPH_VALIDATION_FILES
+//   MALDA_RALPH_VALIDATE_CMD, MALDA_RALPH_PRD_STRICT
+//   MALDA_RALPH_PLAN_ONLY, MALDA_RALPH_PREFLIGHT (strict|warn|off)
+//   MALDA_RALPH_REPORT (json|html|both|off), MALDA_RALPH_NOTIFY (desktop,webhook:url)
+//   MALDA_RALPH_MAX_PHASE_RETRIES, MALDA_RALPH_ABORT_ON_STALL
+//   MALDA_AGENT_* / MALDA_RALPH_* aliases for verbose, rich, LLM stream, tokens
+//   MALDA_RALPH_MEMORY_* / MALDA_MEMORY_EMBED — GraphMemory maintenance, scope, PRD reindex (see README)
+//   MALDA_RALPH_CODE_MEMORY (default true), MALDA_RALPH_CODE_MEMORY_INDEX — DevAgent code tools on Ralph GraphMemory
+//
+// Requires OPENROUTER_API_KEY or providers.openrouter in ~/.malda/config.json
+
+include "ralph/00-env.malda";
+include "ralph/01-cli.malda";
+include "ralph/02-prd.malda";
+include "ralph/03-validation.malda";
+include "ralph/04-state-memory.malda";
+include "ralph/05-loop.malda";
+include "ralph/06-report.malda";
+include "ralph/07-notify.malda";
+
+var config = getMaldaConfig();
+
+var defaultTask = "Goal: develop what is described in PRD.md. " +
+    "The PRD contains a product description and a feature checklist marked [ ], [TODO], or [DONE]. " +
+    "Read the PRD, pick the highest-priority open item, implement it in one focused session with minimal back-and-forth, and mark it [DONE].";
+
+var workingDir = resolveRalphWorkingDir();
+var ralphProjectRel = resolveRalphProjectRel();
+
+var maxIterations = envInt("MALDA_RALPH_MAX_ITER", 10);
+var prdFile = getEnv("MALDA_RALPH_PRD");
+if (prdFile == null || prdFile == "") {
+    prdFile = "PRD.md";
+}
+
+var taskOverride = getEnv("MALDA_RALPH_TASK");
+var task = taskOverride != null && taskOverride != "" ? taskOverride : defaultTask;
+var resetEachIteration = envBool("MALDA_RALPH_RESET_EACH", true);
+var validateEachIteration = envBool("MALDA_RALPH_VALIDATE", true);
+var validateOnly = envBool("MALDA_RALPH_VALIDATE_ONLY", false);
+var planOnly = envBool("MALDA_RALPH_PLAN_ONLY", false);
+var verboseLogging = agentVerboseEnabled(true);
+var resumeRun = envBool("MALDA_RALPH_RESUME", true);
+var autoGitCommit = envBool("MALDA_RALPH_GIT_COMMIT", false);
+var includeSymbols = envBool("MALDA_RALPH_INCLUDE_SYMBOLS", false);
+
+if (validateOnly) {
+    if (agentRichEnabled()) {
+        ralphMarkup("[bold]Ralph[/] [dim]· validate-only[/]");
+    } else {
+        print("Validate-only mode");
+    }
+    print("Workdir: " + workingDir);
+    var check = validateWorkdir(workingDir, prdFile);
+    if (check.ok) {
+        if (agentRichEnabled()) {
+            AnsiConsole.panel("Validation OK", "Result", "heavy");
+        } else {
+            print("Validation: OK");
+        }
+    } else {
+        var errBody = formatValidationErrors(check.errors);
+        if (agentRichEnabled()) {
+            AnsiConsole.panel("Validation FAILED\n\n" + errBody, "Result", "double");
+        } else {
+            print("Validation FAILED:");
+            print(errBody);
+        }
+    }
+} else if (planOnly) {
+    var planResult = runPlanOnlyMode(task, workingDir, prdFile, includeSymbols);
+    if (planResult != 0) {
+        print("Plan-only mode failed.");
+    }
+} else {
+    var result = autonomousAgentLoop(task, maxIterations, workingDir, ralphProjectRel, prdFile, resetEachIteration, validateEachIteration, verboseLogging, resumeRun, autoGitCommit, includeSymbols);
+
+    if (result > 0) {
+        if (agentRichEnabled()) {
+            print("");
+            ralphMarkup("[dim]Agent finished with " + string(result) + " iteration(s).[/]");
+        } else {
+            print("");
+            print("Agent finished with " + string(result) + " iteration(s).");
+        }
+    } else {
+        if (agentRichEnabled()) {
+            print("");
+            ralphMarkup("[red]Agent execution failed.[/]");
+        } else {
+            print("");
+            print("Agent execution failed.");
+        }
+    }
+}

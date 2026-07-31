@@ -1,0 +1,29 @@
+{
+  "examples": [
+    {
+      "name": "Async Execution",
+      "description": "Demonstrates asynchronous agent execution with polling for status updates",
+      "file": "async_execution.malda"
+    },
+    {
+      "name": "Streaming",
+      "description": "Demonstrates streaming execution with Server-Sent Events (SSE) for real-time responses",
+      "file": "streaming.malda"
+    },
+    {
+      "name": "Await/Resume",
+      "description": "Demonstrates pausing agent execution to await user input and resuming with the response",
+      "file": "await_resume.malda"
+    },
+    {
+      "name": "Sessions",
+      "description": "Demonstrates session management for stateful conversations across multiple messages",
+      "file": "sessions.malda"
+    },
+    {
+      "name": "Cancellation",
+      "description": "Demonstrates cancelling a long-running agent execution",
+      "file": "cancellation.malda"
+    }
+  ]
+}

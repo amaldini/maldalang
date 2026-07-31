@@ -1,0 +1,291 @@
+﻿function resolveRalphModel() {
+    var modelOverride = getEnv("MALDA_RALPH_MODEL");
+    if (modelOverride != null && modelOverride != "") {
+        return modelOverride;
+    }
+    if (config != null && config.agents != null && config.agents.defaults != null && config.agents.defaults.model != null && config.agents.defaults.model != "") {
+        return string(config.agents.defaults.model);
+    }
+    if (config != null && config.providers != null && config.providers.openrouter != null && config.providers.openrouter.model != null && config.providers.openrouter.model != "") {
+        return string(config.providers.openrouter.model);
+    }
+    return null;
+}
+
+function createAgentClient() {
+    var backendOverride = getEnv("MALDA_AGENT_BACKEND");
+    var backend = "openrouter";
+    if (backendOverride != null && backendOverride != "") {
+        backend = backendOverride;
+    } else if (config != null && config.agents != null && config.agents.defaults != null && config.agents.defaults.backend != null && config.agents.defaults.backend != "") {
+        backend = config.agents.defaults.backend;
+    }
+
+    if (backend == "local-llama") {
+        if (config == null || config.providers == null || config.providers.local_llama == null || config.providers.local_llama.modelPath == null || config.providers.local_llama.modelPath == "") {
+            print("Backend 'local-llama' selected but providers.local_llama.modelPath is not configured.");
+            return null;
+        }
+        var localCfg = config.providers.local_llama;
+        var llamaClient = new LlamaCppClient(string(localCfg.modelPath));
+        if (localCfg.temperature != null && localCfg.temperature != 0) {
+            llamaClient.setTemperature(localCfg.temperature);
+        }
+        if (localCfg.maxTokens != null && localCfg.maxTokens > 0) {
+            llamaClient.setMaxTokens(localCfg.maxTokens);
+        }
+        if (localCfg.gpuLayers != null && localCfg.gpuLayers >= 0) {
+            llamaClient.setGpuLayerCount(localCfg.gpuLayers);
+        }
+        return llamaClient;
+    }
+
+    var apiKey = getEnv("OPENROUTER_API_KEY");
+    if (config != null && config.providers != null && config.providers.openrouter != null && config.providers.openrouter.apiKey != null && config.providers.openrouter.apiKey != "") {
+        apiKey = config.providers.openrouter.apiKey;
+    }
+    if (apiKey == null || apiKey == "") {
+        print("Set OPENROUTER_API_KEY or providers.openrouter.apiKey in ~/.malda/config.json");
+        return null;
+    }
+
+    var model = resolveRalphModel();
+    var client = model != null && model != "" ? new OpenRouterClient(string(model)) : new OpenRouterClient();
+    var maxTokens = envInt("MALDA_RALPH_MAX_TOKENS", 16384);
+    if (maxTokens < 8192) {
+        maxTokens = 8192;
+    }
+    client.setMaxTokens(maxTokens);
+    return client;
+}
+
+function envInt(name, defaultValue) {
+    var raw = getEnv(name);
+    if (raw == null || raw == "") {
+        return defaultValue;
+    }
+    var n = toIntOrNull(raw);
+    if (n == null || n <= 0) {
+        return defaultValue;
+    }
+    return n;
+}
+
+function envBool(name, defaultValue) {
+    var raw = getEnv(name);
+    if (raw == null || raw == "") {
+        return defaultValue;
+    }
+    var lower = lower(raw);
+    return lower == "1" or lower == "true" or lower == "yes";
+}
+
+function getAgentEnv(primary, legacyAlias) {
+    var v = getEnv(primary);
+    if (v != null && v != "") {
+        return v;
+    }
+    return getEnv(legacyAlias);
+}
+
+function agentRichEnabled() {
+    var raw = getAgentEnv("MALDA_AGENT_RICH", "MALDA_RALPH_RICH");
+    if (raw == null || raw == "") {
+        return true;
+    }
+    var v = lower(raw);
+    return not (v == "0" or v == "false" or v == "no" or v == "off");
+}
+
+function agentVerboseEnabled(defaultValue) {
+    var raw = getAgentEnv("MALDA_AGENT_VERBOSE", "MALDA_RALPH_VERBOSE");
+    if (raw == null || raw == "") {
+        return defaultValue;
+    }
+    var v = lower(raw);
+    return v == "1" or v == "true" or v == "yes" or v == "on";
+}
+
+function agentEnvInt(primary, legacyAlias, defaultValue) {
+    var raw = getAgentEnv(primary, legacyAlias);
+    if (raw == null || raw == "") {
+        return defaultValue;
+    }
+    var n = toIntOrNull(raw);
+    if (n == null || n <= 0) {
+        return defaultValue;
+    }
+    return n;
+}
+
+function ralphQuietEnabled() {
+    return envBool("MALDA_RALPH_QUIET", false);
+}
+
+function ralphVerboseConfigEnabled() {
+    return envBool("MALDA_RALPH_VERBOSE_CONFIG", false);
+}
+
+function envStr(name, defaultValue) {
+    var raw = getEnv(name);
+    if (raw == null || raw == "") {
+        return defaultValue;
+    }
+    return raw;
+}
+
+function ralphResumePolicy() {
+    return lower(envStr("MALDA_RALPH_RESUME_POLICY", "all"));
+}
+
+function ralphResetMode() {
+    var raw = getEnv("MALDA_RALPH_RESET_EACH");
+    if (raw == null || raw == "") {
+        return "true";
+    }
+    var v = lower(raw);
+    if (v == "false" or v == "0" or v == "no") {
+        return "false";
+    }
+    if (v == "phase") {
+        return "phase";
+    }
+    if (v == "auto") {
+        return "auto";
+    }
+    return "true";
+}
+
+function ralphPreflightMode() {
+    return lower(envStr("MALDA_RALPH_PREFLIGHT", "strict"));
+}
+
+function ralphPrdStrictEnabled() {
+    return envBool("MALDA_RALPH_PRD_STRICT", true);
+}
+
+function ralphRequireCompleteSignal() {
+    return envBool("MALDA_RALPH_REQUIRE_SIGNAL", false);
+}
+
+function ralphTimeoutAction() {
+    return lower(envStr("MALDA_RALPH_TIMEOUT_ACTION", "continue"));
+}
+
+function ralphValidateDepth() {
+    return lower(envStr("MALDA_RALPH_VALIDATE_DEPTH", "recursive"));
+}
+
+function ralphValidateScope() {
+    return lower(envStr("MALDA_RALPH_VALIDATE_SCOPE", "all"));
+}
+
+function ralphValidateHook() {
+    return lower(envStr("MALDA_RALPH_VALIDATE_HOOK", "always"));
+}
+
+function ralphValidateFallback() {
+    return lower(envStr("MALDA_RALPH_VALIDATE_FALLBACK", "all"));
+}
+
+function getResumeCheckpoint(state) {
+    if (ralphResumePolicy() == "success-only") {
+        if (state.lastSuccessfulIteration != null && state.lastSuccessfulIteration > 0) {
+            return state.lastSuccessfulIteration;
+        }
+        return 0;
+    }
+    if (state.completedIterations == null) {
+        return 0;
+    }
+    return state.completedIterations;
+}
+
+function shouldSkipResumeIteration(iteration, state, resumeRun) {
+    if (!resumeRun) {
+        return false;
+    }
+    return iteration <= getResumeCheckpoint(state);
+}
+
+function extractUsageFromResponse(response) {
+    if (response == null || response.usage == null) {
+        return {"promptTokens": 0, "completionTokens": 0, "totalTokens": 0, "cost": 0};
+    }
+    var u = response.usage;
+    var pt = 0;
+    var ct = 0;
+    var cost = 0;
+    if (u.promptTokens != null) {
+        pt = u.promptTokens;
+    } else if (u.prompt_tokens != null) {
+        pt = u.prompt_tokens;
+    }
+    if (u.completionTokens != null) {
+        ct = u.completionTokens;
+    } else if (u.completion_tokens != null) {
+        ct = u.completion_tokens;
+    }
+    if (u.cost != null) {
+        cost = u.cost;
+    } else if (u.total_cost != null) {
+        cost = u.total_cost;
+    }
+    return {"promptTokens": pt, "completionTokens": ct, "totalTokens": pt + ct, "cost": cost};
+}
+
+function formatOpenRouterCost(cost) {
+    if (cost == null || cost <= 0) {
+        return "";
+    }
+    if (cost >= 1) {
+        return "$" + string(round(cost * 100) / 100);
+    }
+    if (cost >= 0.01) {
+        return "$" + string(round(cost * 10000) / 10000);
+    }
+    return "$" + string(round(cost * 1000000) / 1000000);
+}
+
+function accumulateTokenUsage(state, response) {
+    var usage = extractUsageFromResponse(response);
+    if (state.totalPromptTokens == null) {
+        state.totalPromptTokens = 0;
+    }
+    if (state.totalCompletionTokens == null) {
+        state.totalCompletionTokens = 0;
+    }
+    if (state.totalCost == null) {
+        state.totalCost = 0;
+    }
+    state.totalPromptTokens = state.totalPromptTokens + usage.promptTokens;
+    state.totalCompletionTokens = state.totalCompletionTokens + usage.completionTokens;
+    if (usage.cost != null && usage.cost > 0) {
+        state.totalCost = state.totalCost + usage.cost;
+    }
+    return usage;
+}
+
+function resolveRalphWorkingDir() {
+    var explicit = getEnv("MALDA_RALPH_WORKDIR");
+    if (explicit != null && explicit != "") {
+        return pathNormalize(explicit);
+    }
+    var worktree = getEnv("MALDA_RALPH_WORKTREE");
+    if (worktree != null && worktree != "") {
+        var rel = getEnv("MALDA_RALPH_PROJECT_REL");
+        if (rel == null || rel == "") {
+            rel = ".";
+        }
+        return pathNormalize(pathJoin(worktree, rel));
+    }
+    return pathNormalize(".");
+}
+
+function resolveRalphProjectRel() {
+    var rel = getEnv("MALDA_RALPH_PROJECT_REL");
+    if (rel == null || rel == "") {
+        return "";
+    }
+    return rel;
+}

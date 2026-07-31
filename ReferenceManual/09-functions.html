@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>8. Functions - MALDA Reference Manual</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="syntax.css">
+    <link rel="stylesheet" href="print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>MALDA&trade; Reference Manual</h1>
+        <p>The AI-First Programming Language - Version 0.1</p>
+    </header>
+    <nav></nav>
+    <main>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>8. Functions</span></div>
+        <h1>8. Functions</h1>
+        <h2>8.1 Function Declaration</h2>
+        <pre><code>function functionName(param1, param2) {
+    // function body
+    return value;  // optional
+}</code></pre>
+        <p>For functions that consist of a single expression, you may omit the braces and use a semicolon:</p>
+        <pre><code>function square(x) x*x;
+function double(n) -> int n * 2;</code></pre>
+        <p>This is equivalent to <code>function square(x) { return x*x; }</code>.</p>
+        <p>You may use <code>fn</code> or <code>def</code> instead of <code>function</code>; all three are equivalent. In documentation and examples, <code>function</code> is preferred.</p>
+        <p>You may optionally add <strong>informational type hints</strong> to parameters and a return type. These are not enforced at runtime or in the transpiler; they are used by tools (e.g. <code>getSymbols</code>), IDEs, and documentation.</p>
+        <pre><code>function name(param: Type?, ...) -> ReturnType? {
+    // param and return type hints are optional and informational only
+}</code></pre>
+        <p>Example:</p>
+        <pre><code>function greet(name: string) -> string {
+    return "Hello, " + name;
+}
+function add(a: int, b: int) -> int {
+    return a + b;
+}</code></pre>
+        <h2>8.2 Function Call</h2>
+        <pre><code>var result = functionName(arg1, arg2);
+functionName();  // No return value needed</code></pre>
+        <h2>8.3 Return Statement</h2>
+        <p>Return statements are <strong>optional</strong> in MALDA functions. A function can:</p>
+        <ul>
+            <li>Have <code>return value;</code> - returns the specified value</li>
+            <li>Have no return statement - <strong>last expression wins</strong>: if the last statement is an expression, its value is implicitly returned; otherwise returns <code>null</code></li>
+            <li>Have <code>return;</code> - explicitly returns <code>null</code></li>
+        </ul>
+        <p>This applies to <strong>functions</strong>, <strong>methods</strong>, and <strong>lambdas</strong> (but not constructors). The same rule applies to <strong>match case bodies</strong> when the match is used as an expression (see <a href="08-control-structures.html">7. Control Structures</a>).</p>
+        <h3>Examples</h3>
+        <pre><code>// Function with explicit return
+function add(a, b) {
+    return a + b;
+}
+
+// Last expression wins: no explicit return needed
+function process(x) {
+    var doubled = x * 2;
+    doubled + 1;   // implicitly returned
+}
+print(process(5));  // Prints 11
+
+// Function without return (last statement is not an expression)
+function printMessage(msg) {
+    print(msg);
+    // No return - function returns null
+}
+
+// Function with explicit null return
+function logInfo(message) {
+    print("Info: " + message);
+    return;  // Explicitly return null
+}
+
+// Function that may or may not return a value
+function findValue(arr, target) {
+    var i = 0;
+    while (i < length(arr)) {
+        if (arr[i] == target) {
+            return i;  // Return index if found
+        }
+        i = i + 1;
+    }
+    // No return statement - returns null if not found
+}</code></pre>
+        <h3>Using Function Return Values</h3>
+        <p>When calling a function, you can:</p>
+        <ul>
+            <li>Ignore the return value: <code>printMessage("Hello");</code></li>
+            <li>Capture the return value: <code>var sum = add(5, 3);</code></li>
+            <li>Use the return value in expressions: <code>print("Sum: " + add(5, 3));</code></li>
+        </ul>
+        <div class="info-box">
+            <strong>Note:</strong> With <strong>last expression wins</strong>, a function that ends with an expression returns that value even without <code>return</code>. Only when the last statement is not an expression (e.g. <code>print(...)</code>) does the function return <code>null</code>. You can check for null using <code>result == null</code> or use the return value in conditional expressions.
+        </div>
+        <h2>8.4 Recursion</h2>
+        <p>Functions can call themselves recursively:</p>
+        <pre><code>function factorial(n) {
+    if (n <= 1) {
+        return 1;
+    }
+    return n * factorial(n - 1);
+}</code></pre>
+        <h2>8.5 Standalone Functions vs Methods</h2>
+        <ul>
+            <li>Standalone functions (defined outside classes) are global functions</li>
+            <li>Methods are functions defined within classes</li>
+            <li>Both use the same syntax, but methods have access to <code>this</code></li>
+        </ul>
+        <h2 id="lambda-expressions">8.6 Lambda Expressions</h2>
+        <p>MALDA supports lambda expressions (anonymous functions) using arrow function syntax. Lambdas are first-class values that can be assigned to variables, passed as arguments, and returned from functions.</p>
+        <h3>Expression Body</h3>
+        <p>Lambdas with a single expression automatically return that expression:</p>
+        <pre><code>var add = (a, b) => a + b;
+var square = x => x * x;  // Single parameter can omit parentheses
+var getValue = () => 42;   // Empty parameter list</code></pre>
+        <h3>Block Body</h3>
+        <p>Lambdas with multiple statements use braces. You can use explicit <code>return</code>, or rely on <strong>last expression wins</strong>: if the last statement is an expression, its value is implicitly returned.</p>
+        <pre><code>var process = (x) => {
+    var result = x * 2;
+    return result + 1;
+};
+
+// Last expression wins: no explicit return needed
+var process2 = (x) => {
+    print("processing " + x);
+    x * 2;   // implicitly returned
+};
+print(process2(5));  // Prints "processing 5" then 10</code></pre>
+        <h3>Closure Capture</h3>
+        <p>Lambdas capture variables from their enclosing scope, enabling powerful functional programming patterns:</p>
+        <pre><code>function makeMultiplier(factor) {
+    return (x) => x * factor;  // Captures 'factor' in closure
+}
+
+var double = makeMultiplier(2);
+print(double(5));  // Prints 10
+
+var triple = makeMultiplier(3);
+print(triple(4));  // Prints 12</code></pre>
+        <h3>Usage Examples</h3>
+        <pre><code>// Assign to variable
+var comparator = (a, b) => a < b;
+
+// Pass as argument to functions that accept callbacks
+function transformArray(arr, transformer) {
+    var result = [];
+    for (var i = 0; i < arr.length; i = i + 1) {
+        result.append(transformer(arr[i]));
+    }
+    return result;
+}
+
+var numbers = [1, 2, 3, 4];
+var doubled = transformArray(numbers, (x) => x * 2);
+var squared = transformArray(numbers, (x) => x * x);
+print(doubled);  // [2, 4, 6, 8]
+print(squared);  // [1, 4, 9, 16]
+
+// Return from function
+function createAdder(n) {
+    return (x) => x + n;
+}
+
+var addFive = createAdder(5);
+print(addFive(10));  // Prints 15</code></pre>
+        <div class="info-box">
+            <strong>Note:</strong> Lambdas don't have their own <code>this</code> context. If you need <code>this</code> binding, use a regular function or method.
+        </div>
+        <h2>8.7 Decorators</h2>
+        <p>MALDA supports decorators for functions, enabling features like custom tools and REST API endpoints:</p>
+        <h3>@Tool Decorator</h3>
+        <pre><code>@Tool("tool_name", "Tool description")
+function myTool(param1, param2) {
+    return param1 + param2;
+}</code></pre>
+        <h3>REST API Decorators</h3>
+        <pre><code>@GET("/api/users")
+function getUsers() {
+    return [{"id": 1, "name": "Alice"}];
+}
+
+@POST("/api/users")
+function createUser(body) {
+    return {"id": 2, "name": body.name};
+}</code></pre>
+        <h2>8.8 Prompt Blocks</h2>
+        <p>Prompt blocks enable developers to define reusable prompt templates as first-class language constructs. They compile to runtime values that can be invoked with <code>agent.think(promptBlock(...))</code>, providing structure and IDE support for AI prompts.</p>
+        
+        <h3>8.8.1 Prompt Declaration Syntax</h3>
+        <p>Prompts support two body syntaxes:</p>
+        
+        <h4>Object Literal Syntax (Backward Compatible)</h4>
+        <pre><code>prompt name(params) -> ReturnType? {
+    system: "Optional system prompt"
+    user: "Required user prompt with {parameter} interpolation"
+    model: "Optional model name"
+    temperature: 0.7
+    tools: ["tool1", "tool2"]
+    maxTokens: 2000
+}</code></pre>
+        
+        <h4>Statement-Based Syntax (New)</h4>
+        <pre><code>prompt name(params) -> ReturnType? {
+    system "Optional system prompt";
+    user expression;
+    model "Optional model name";
+    temperature 0.7;
+    tools ["tool1", "tool2"];
+    maxTokens 2000;
+}</code></pre>
+        
+        <p><strong>Key Features:</strong></p>
+        <ul>
+            <li><strong>Parameters:</strong> Like functions, prompts can take parameters that are interpolated into the prompt strings</li>
+            <li><strong>Return Type:</strong> Optional annotation (<code>-&gt; ReturnType</code>). For <code>prompt(...)</code> (without <code>await</code>) it only affects the type of the <code>PromptInstance</code>. When you use <code>await prompt(...)</code>, the return type is <strong>enforced</strong>: the LLM response is parsed as JSON, validated against the declared type (primitives, <code>Plan</code>, or custom class names), and on repeated validation failure a repair instruction is sent and the call is retried (bounded attempts); after exhaustion a runtime error is thrown. Custom class return types (e.g. <code>-&gt; MyClass</code>) are supported in both interpreted and transpiled runs.</li>
+            <li><strong>Body:</strong> Two syntaxes supported:
+                <ul>
+                    <li><strong>Object literal:</strong> Traditional syntax with <code>key: value</code> pairs</li>
+                    <li><strong>Statement-based:</strong> New syntax with <code>keyword expression;</code> statements. The <code>user</code> field can be any expression (converted to string), not just string literals.</li>
+                </ul>
+            </li>
+            <li><strong>Prompt Fields:</strong>
+                <ul>
+                    <li><code>system</code> / <code>system:</code> (optional string) - System prompt for the LLM</li>
+                    <li><code>user</code> / <code>user:</code> (required) - User prompt. In statement syntax, can be any expression (converted to string). Supports <code>{param}</code> interpolation and <code>$"..."</code> interpolated strings.</li>
+                    <li><code>model</code> / <code>model:</code> (optional string) - LLM model name</li>
+                    <li><code>temperature</code> / <code>temperature:</code> (optional number) - Temperature setting for the LLM</li>
+                    <li><code>tools</code> / <code>tools:</code> (optional array of strings) - List of tool names to make available</li>
+                    <li><code>maxTokens</code> / <code>maxTokens:</code> (optional integer) - Maximum tokens for the response</li>
+                    <li><code>examples</code> / <code>examples:</code> (optional array) - Few-shot example pairs injected as user/assistant messages before the final <code>user</code> prompt. Each entry is an object with <code>input</code> and <code>output</code> strings (aliases <code>user</code> / <code>assistant</code> are accepted).</li>
+                </ul>
+            </li>
+        </ul>
+
+        <h4>Few-Shot Examples</h4>
+        <pre><code>prompt classify(text) {
+    system: "Classify sentiment as positive or negative."
+    examples: [
+        { input: "I love it!", output: "positive" },
+        { input: "Terrible.", output: "negative" }
+    ]
+    user: "Classify: {text}"
+}
+
+var p = classify("Pretty good");
+print(length(p.examples));  // 2</code></pre>
+        <p>When the prompt is executed (via <code>agent.think</code>, <code>await prompt(...)</code>, or <code>runPrompt</code>), each example is sent as a user message followed by an assistant message, then the interpolated <code>user</code> field.</p>
+
+        <h4>Dynamic Few-Shot at Runtime</h4>
+        <p>Use <code>withExamples()</code> to attach or replace examples on a <code>PromptInstance</code> built at runtime. Works in pipe/chain pipelines:</p>
+        <pre><code>prompt classify(text) {
+    user: "Classify: {text}"
+}
+
+var dynamic = [
+    { input: "Great!", output: "positive" },
+    { input: "Awful.", output: "negative" }
+];
+
+var p = classify("Pretty good") |> withExamples(dynamic);
+// merge static + runtime examples from the prompt declaration:
+var merged = withExamples(classify("x"), dynamic, { merge: true });
+
+await (p |> runPrompt(client));</code></pre>
+        
+        <h3>8.8.2 Basic Prompt Examples</h3>
+        <h4>Simple Prompt</h4>
+        <pre><code>prompt simple(task) {
+    user: "Task: {task}"
+}
+
+var p = simple("Add logging");
+print(p.user);  // Output: Task: Add logging</code></pre>
+        
+        <h4>Prompt with System Message</h4>
+        <pre><code>prompt planTask(task, docs) -> Plan {
+    system: "You are a senior MALDA engineer specializing in feature planning.",
+    user: """
+    Implement feature: {task}
+    
+    Relevant documentation:
+    {docs}
+    
+    Provide a detailed implementation plan.
+    """
+}
+
+var plan = planTask("Add error handling", readFile("docs.md"));</code></pre>
+        
+        <h4>Prompt with Interpolation</h4>
+        <pre><code>prompt greet(name, age) {
+    user: $"Hello {name}, you are {age} years old."
+}
+
+var greeting = greet("Alice", 25);</code></pre>
+        
+        <h3>8.8.3 Using Prompts with Agents</h3>
+        <p>Prompt blocks can be passed directly to <code>agent.think()</code>:</p>
+        <pre><code>var client = new OpenRouterClient("openai/gpt-4");
+var agent = new CodingAgent("Dev", "developer", "");
+
+prompt codeReview(code, language) {
+    system: "You are an expert code reviewer.",
+    user: """
+    Review this {language} code:
+    
+    ```{language}
+    {code}
+    ```
+    
+    Provide:
+    1. Bug findings
+    2. Performance issues
+    3. Style suggestions
+    """
+}
+
+var review = agent.think(codeReview(sourceCode, "malda"));
+print(review.content);</code></pre>
+        
+        <p>When a <code>PromptInstance</code> is passed to <code>agent.think()</code>:</p>
+        <ul>
+            <li>The <code>system</code> prompt (if provided) is set on the conversation</li>
+            <li>The <code>user</code> prompt is used as the message</li>
+            <li>Optional metadata (<code>model</code>, <code>temperature</code>, <code>tools</code>, <code>maxTokens</code>) can be applied (future enhancement)</li>
+        </ul>
+        
+        <h3>8.8.3.1 Direct Await Execution</h3>
+        <p>Prompts can be executed directly using <code>await</code>, which calls the LLM and returns the response string:</p>
+        <pre><code>// Optional: use OpenRouter; omit to use default local LLM
+var client = new OpenRouterClient();
+var agent = new Agent("Assistant", "helper", "You are helpful.", client);
+setDefaultAgent(agent);
+
+prompt summarize(text) {
+    system "You are a summarizer. Respond with only the summary.";
+    user "Summarize: " + text;
+}
+
+var summary = await summarize("Long document text here...");
+print(summary);  // Prints the LLM response directly</code></pre>
+        
+        <p><strong>How it works:</strong></p>
+        <ul>
+            <li>When you use <code>await prompt(...)</code>, the prompt is executed immediately</li>
+            <li>The system uses the default agent (set via <code>setDefaultAgent(agent)</code>) or creates a temporary agent with the <strong>default local LLM</strong> (Qwen/Qwen2.5-0.5B-Instruct, downloaded as a GGUF build from Hugging Face on first use) if none is set</li>
+            <li>If no return type is declared, the LLM response content is returned as a string</li>
+            <li>If a return type is declared (<code>prompt name(...) -&gt; Type</code>), the return value is <strong>enforced</strong>: MALDA extracts JSON from the response (including from markdown or code fences), validates it against the declared type schema, and returns the parsed value on success</li>
+            <li>When <code>-&gt; Type</code> is present and the prompt body has <strong>no tools</strong>, the JSON schema is sent to the LLM backend (e.g. OpenAI <code>response_format</code>) so the model returns schema-conforming JSON on the first attempt. For v1, <code>response_format</code> and <code>tools</code> are mutually exclusive: if the prompt requests tools, the schema is not sent.</li>
+            <li>On validation failure, MALDA appends a repair instruction to the prompt and retries (up to a fixed maximum of attempts); after exhaustion, a runtime error is thrown</li>
+            <li>Supported return types include primitives (<code>string</code>, <code>int</code>, <code>number</code>, <code>bool</code>, <code>array</code>, <code>object</code>), the built-in <code>Plan</code> type, and custom class names (e.g. <code>-&gt; MyClass</code>); custom classes work in both interpreter and transpiled mode</li>
+            <li>This provides a cleaner syntax than <code>agent.think(prompt(...)).content</code></li>
+        </ul>
+
+        <h3>8.8.3.2 Schema Declarations for Structured Output</h3>
+        <p>Declare reusable JSON schemas with the <code>schema</code> keyword. Schemas are used by <code>parseJson()</code> and typed prompt returns (<code>-&gt; Type</code>):</p>
+        <pre><code>schema Answer {
+    text: string;
+    sources: string[];   // array types: elementType[]
+    score: float?;       // optional field
+}
+
+var parsed = parseJson('{"text":"hi","sources":["a.md"]}', "Answer");</code></pre>
+        <p>Supported field types: <code>string</code>, <code>int</code>, <code>float</code>, <code>bool</code>, <code>object</code>, and array forms such as <code>string[]</code>. Use <code>?</code> after the type for optional fields.</p>
+        <p>For end-to-end RAG pipelines combining schemas, prompts, retrievers, and pipes, see <code>Examples/Prompts/rag_pipeline.malda</code> and <a href="11-built-in-functions.html">12. Built-in Functions</a> (AI pipeline helpers).</p>
+
+        <h3>8.8.3.3 Chain Declarations (LCEL-style Pipelines)</h3>
+        <p>Use <code>chain</code> to name and reuse multi-step AI pipelines built from the pipe operator (<code>|&gt;</code>). Chains compile to callable functions; expression bodies return the final pipe result implicitly.</p>
+        <pre><code>chain ragContext(question, retriever) {
+    question |> retriever.get |> formatRetrievedDocs
+}
+
+chain ragPrompt(question, context) {
+    context |> (ctx) => answerPrompt(question, ctx)
+}
+
+var context = ragContext("What is GraphMemory?", retriever);
+var prompt = ragPrompt("What is GraphMemory?", context);</code></pre>
+        <p>With an LLM client and typed output:</p>
+        <pre><code>chain ragAnswer(question, client) -> Answer {
+    question |> retriever.get |> formatRetrievedDocs
+        |> (ctx) => answerPrompt(question, ctx)
+        |> runPrompt(client)
+        |> parseJson("Answer")
+}
+
+var answer = await ragAnswer("How does retrieval work?", client);</code></pre>
+        <p>Named steps for readable multi-stage bodies (retrieval, branching, reuse of intermediate values):</p>
+        <pre><code>chain buildContext(question, retriever, fallback) {
+    step hits = question |> retriever.get;
+    if (length(hits) == 0) {
+        return fallback;
+    }
+    step text = formatRetrievedDocs(hits);
+    return text;
+}</code></pre>
+        <p>Stream tokens during <code>runPrompt</code> in interpreted and transpiled mode: pass <code>{ onToken: (token) =&gt; ... }</code> for content and <code>{ onReasoning: (token) =&gt; ... }</code> for reasoning deltas (see <a href="11-built-in-functions.html">12. Built-in Functions</a>).</p>
+        <p>See <a href="07-expressions.html">6. Expressions</a> (pipe + chain) and <code>Examples/Prompts/rag_chain_pipeline.malda</code>.</p>
+        <p><strong>Advanced composition:</strong> <code>composePipe</code> (RunnableSequence), <code>parallelRun</code> (RunnableParallel), and <code>mergeRetrievedDocs</code> compose with chains and pipes for parallel retrieval and reusable pipeline functions. See <code>Examples/Prompts/rag_compose_pipeline.malda</code> and <a href="11-built-in-functions.html">12. Built-in Functions</a>.</p>
+
+        <h4>Typed Await Example (Validated Output)</h4>
+        <pre><code>prompt planTask(task) -&gt; Plan {
+    system "You are a planner. Return only JSON.";
+    user "Task: " + task;
+}
+
+// With a return type, await validates the model output
+var plan = await planTask("Add parser tests");
+print(plan.steps[0].description);</code></pre>
+        
+        <p><strong>Setting a Default Agent:</strong></p>
+        <p>If you omit a client, the default is the local Qwen/Qwen2.5-0.5B-Instruct model (auto-downloaded as a GGUF build from Hugging Face). To use a remote model (e.g. OpenRouter), pass a client:</p>
+        <pre><code>// Optional: use OpenRouter for remote model
+var client = new OpenRouterClient();
+var agent = new Agent("MyAgent", "assistant", "You are helpful.", client);
+setDefaultAgent(agent);
+
+// Now await prompt() calls will use this agent
+var result = await myPrompt("input");</code></pre>
+        
+        <h3>8.8.4 PromptInstance Properties</h3>
+        <p>When a prompt is invoked, it returns a <code>PromptInstance</code> object with the following properties:</p>
+        <pre><code>var p = myPrompt("arg1", "arg2");
+
+// Access prompt fields
+var system = p.system;      // string? (null if not provided)
+var user = p.user;          // string (required)
+var examples = p.examples;  // array? of { input, output } few-shot pairs
+var model = p.model;        // string? (null if not provided)
+var temperature = p.temperature;  // number? (null if not provided)
+var tools = p.tools;        // array? (null if not provided)
+var maxTokens = p.maxTokens; // number? (null if not provided)
+
+// Methods
+var userStr = p.getUser();     // Returns user prompt string
+var systemStr = p.getSystem(); // Returns system prompt string or null
+var promptStr = p.toPromptString(); // Returns user prompt (for backward compatibility)</code></pre>
+        
+        <h3>8.8.5 Advanced Prompt Features</h3>
+        <h4>Prompt with Metadata (Object Literal Syntax)</h4>
+        <pre><code>prompt advanced(task) {
+    system: "You are an expert.",
+    user: "Task: {task}",
+    model: "openai/gpt-4",
+    temperature: 0.7,
+    tools: ["read_file", "write_file", "grep"],
+    maxTokens: 2000
+}</code></pre>
+        
+        <h4>Prompt with Metadata (Statement-Based Syntax)</h4>
+        <pre><code>prompt advanced(task) {
+    system "You are an expert.";
+    user "Task: " + task;
+    model "openai/gpt-4";
+    temperature 0.7;
+    tools ["read_file", "write_file", "grep"];
+    maxTokens 2000;
+}</code></pre>
+        
+        <h4>Statement-Based Syntax with Expressions</h4>
+        <p>The statement-based syntax allows <code>user</code> to be any expression, not just a string literal:</p>
+        <pre><code>prompt combine(a, b) {
+    user "First: " + a + ", Second: " + b;
+}
+
+var result = combine("A", "B");
+print(result.user);  // Output: First: A, Second: B</code></pre>
+        
+        <h4>Multi-line Prompts</h4>
+        <pre><code>prompt detailedPlan(goal, context) {
+    system: "You are a strategic planner.",
+    user: """
+    Goal: {goal}
+    
+    Context:
+    {context}
+    
+    Please provide:
+    1. Step-by-step plan
+    2. Risk assessment
+    3. Timeline estimate
+    """
+}</code></pre>
+        
+        <h3>8.8.6 Prompt Blocks vs String Concatenation</h3>
+        <p><strong>Before (String Concatenation):</strong></p>
+        <pre><code>var prompt = "Task: " + task + "\n\n" +
+             "Documentation:\n" + docs;
+var response = agent.think(prompt);</code></pre>
+        
+        <p><strong>After (Prompt Blocks):</strong></p>
+        <pre><code>prompt planTask(task, docs) {
+    user: """
+    Task: {task}
+    
+    Documentation:
+    {docs}
+    """
+}
+
+var response = agent.think(planTask(task, docs));</code></pre>
+        
+        <p><strong>Benefits:</strong></p>
+        <ul>
+            <li><strong>Structure:</strong> Prompts are named, parameterized functions</li>
+            <li><strong>Reusability:</strong> Define once, use anywhere</li>
+            <li><strong>Parameter Validation:</strong> Runtime validates argument count matching</li>
+            <li><strong>IDE Support:</strong> Autocomplete, go-to-definition, refactoring</li>
+            <li><strong>Maintainability:</strong> Version prompts independently, test variations easily</li>
+        </ul>
+        
+        <div class="see-also">
+            <h3>See Also</h3>
+            <ul>
+                <li><a href="10-classes-objects.html">10. Classes & Objects</a> - Methods in classes</li>
+                <li><a href="14-agent-orchestration.html">16. Agent Orchestration</a> - Using agents with prompts</li>
+                <li><a href="15-database.html">18. Database Support</a> - REST decorators</li>
+            </ul>
+        </div>
+        <div class="nav-footer">
+            <a href="08-control-structures.html">← Previous: 7. Control Structures</a>
+            <a href="05-arrays.html">Next: 9. Arrays→</a>
+        </div>
+
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, at your option.</p>
+        </footer>
+    </main>
+    <script src="malda-highlight.js"></script>
+    <script src="navigation.js"></script>
+</body>
+</html>

@@ -1,0 +1,60 @@
+// PostgreSQL Database Example
+// This example demonstrates basic database operations with PostgreSQL
+
+print("=== PostgreSQL Database Example ===\n");
+
+// Create a PostgreSQL client
+var db = new PostgresClient();
+
+// Connect to database (replace with your connection string)
+// db.connect("Host=localhost;Database=mydb;Username=user;Password=pass;");
+
+// For demonstration, we'll show the API without actually connecting
+print("1. Connection Management:");
+print("   db.connect(connectionString) - Connect to database");
+print("   db.disconnect() - Close connection");
+print("   db.isConnected - Check connection status\n");
+
+print("2. Raw SQL Queries with Parameters:");
+print("   // Query with parameters (prevents SQL injection)");
+print("   // PostgreSQL uses $1, $2, $3... for parameters");
+print("   var users = db.query(\"SELECT * FROM users WHERE age > $1\", {$1: 25});");
+print("   var user = db.queryOne(\"SELECT * FROM users WHERE id = $1\", {$1: 1});\n");
+
+print("3. Execute Non-Query Commands:");
+print("   // Insert, Update, Delete");
+print("   var rowsAffected = db.execute(\"INSERT INTO users (name, email) VALUES ($1, $2)\", {$1: \"John\", $2: \"john@example.com\"});\n");
+
+print("4. Query Builder API:");
+print("   // Type-safe query building (parameters handled automatically)");
+print("   var results = db.select(\"name\", \"email\")");
+print("                    .from(\"users\")");
+print("                    .where(\"age\", \">\", 25)");
+print("                    .query();\n");
+
+print("5. Insert with Query Builder:");
+print("   var result = db.insert(\"users\", {name: \"Jane\", email: \"jane@example.com\", age: 30});\n");
+
+print("6. Update with Query Builder:");
+print("   var result = db.update(\"users\", {email: \"newemail@example.com\"})");
+print("                    .where(\"id\", \"=\", 1);\n");
+
+print("7. Delete with Query Builder:");
+print("   var result = db.delete(\"users\")");
+print("                    .where(\"id\", \"=\", 1);\n");
+
+print("8. Transactions:");
+print("   db.beginTransaction();");
+print("   try {");
+print("       db.execute(\"INSERT INTO users (name) VALUES ($1)\", {$1: \"Test\"});");
+print("       db.execute(\"UPDATE users SET email = $1 WHERE name = $2\", {$1: \"test@example.com\", $2: \"Test\"});");
+print("       db.commit();");
+print("   } catch (e) {");
+print("       db.rollback();");
+print("       print(\"Transaction rolled back: \" + e);");
+print("   }\n");
+
+print("Note: Replace the connection string with your actual PostgreSQL connection details.");
+print("Example connection string formats:");
+print("  - Standard: \"Host=localhost;Database=mydb;Username=user;Password=pass;\"");
+print("  - With Port: \"Host=localhost;Port=5432;Database=mydb;Username=user;Password=pass;\"");

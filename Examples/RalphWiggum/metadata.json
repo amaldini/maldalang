@@ -1,0 +1,20 @@
+{
+  "examples": [
+    {
+      "name": "Ralph Wiggum — PRD autonomous loop",
+      "description": "PRD-checklist loop with DevAgent, GraphMemory, validation, and resume. Requires OpenRouter API key.",
+      "file": "RalphWiggum.malda",
+      "track": "ai-builder",
+      "difficulty": "advanced",
+      "minutes": 30,
+      "concepts": ["DevAgent", "GraphMemory", "PRD-driven development", "autonomous loop"],
+      "prerequisites": ["Agents/multi_agent_file_workflow.malda"],
+      "learningGoal": "Run a production-style autonomous coding loop driven by a PRD checklist and structured memory.",
+      "expectedOutput": "Iterates on PRD.md in MALDA_RALPH_WORKDIR until checklist complete or max iterations.",
+      "next": "Agents/agent_spl_development.malda",
+      "documentationPath": "/?lesson=build-ai-apps#lesson-build-ai-apps",
+      "documentationTitle": "Ralph Wiggum",
+      "featured": true
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+actor Worker {
+    on start() {
+        print("Started");
+        var me = self;
+        print("Self reference obtained");
+    }
+}
+
+var worker = spawn Worker();
+send worker.start();
+
+// Give actor time to process
+var x = 0;
+while (x < 10) {
+    x = x + 1;
+    print(x);
+    sleep(500);
+}
+
+print("Done");

@@ -1,0 +1,71 @@
+// Basic Graph Operations Example
+// Demonstrates creating graphs and basic operations
+
+print("=== Basic Graph Operations ===\n");
+
+// Create a directed graph with initial nodes and edges
+var g = graph directed {
+  nodes: ["A", "B", "C", "D"],
+  edges: [
+    { from: "A", to: "B", weight: 4 },
+    { from: "A", to: "C", weight: 2 },
+    { from: "B", to: "D", weight: 5 },
+    { from: "C", to: "D", weight: 1 }
+  ]
+};
+
+print("Graph created with " + g.nodeCount() + " nodes and " + g.edgeCount() + " edges");
+print("Is directed: " + g.isDirected());
+print("");
+
+// Query graph
+print("Has node 'A': " + g.hasNode("A"));
+print("Has edge from 'A' to 'B': " + g.hasEdge("A", "B"));
+print("Weight of edge A->B: " + g.getWeight("A", "B"));
+print("");
+
+// Get neighbors
+var neighbors = g.getNeighbors("A");
+print("Neighbors of 'A': " + neighbors);
+print("");
+
+// Get all nodes and edges
+var nodes = g.nodes();
+var edges = g.edges();
+print("All nodes: " + nodes);
+print("All edges: " + edges);
+print("");
+
+// Add a new node and edge
+g.addNode("E");
+g.addEdge("D", "E", 3);
+print("After adding node E and edge D->E:");
+print("Node count: " + g.nodeCount());
+print("Edge count: " + g.edgeCount());
+print("");
+
+// Add edge with properties
+g.addEdge("E", "A", 7, dict { "label": "return", "type": "cycle" });
+print("Added edge E->A with properties");
+print("");
+
+// Remove an edge
+g.removeEdge("A", "B");
+print("After removing edge A->B:");
+print("Has edge A->B: " + g.hasEdge("A", "B"));
+print("Edge count: " + g.edgeCount());
+print("");
+
+// Create an undirected graph
+var g2 = graph undirected {
+  nodes: ["X", "Y", "Z"],
+  edges: [
+    { from: "X", to: "Y", weight: 10 },
+    { from: "Y", to: "Z", weight: 5 }
+  ]
+};
+
+print("Undirected graph created:");
+print("Is directed: " + g2.isDirected());
+print("Nodes: " + g2.nodes());
+print("Edges: " + g2.edges());

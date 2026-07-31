@@ -1,0 +1,6 @@
+var arr = [10, 20];
+var result = match arr {
+    case [x, y]: x + y;
+    default: 0;
+};
+print(result);

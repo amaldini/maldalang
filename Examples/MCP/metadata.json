@@ -1,0 +1,19 @@
+{
+  "examples": [
+    {
+      "name": "MCP Tools Server",
+      "description": "Create custom MCP tools using @MCPTool decorator for Claude Desktop and ChatGPT",
+      "file": "mcp_tools_server.malda"
+    },
+    {
+      "name": "MCP Client",
+      "description": "Connect to MCP servers and use their tools programmatically. Works with the Example MCP Server.",
+      "file": "mcp_client_example.malda"
+    },
+    {
+      "name": "Orchestrator with MALDACodingAgent",
+      "description": "Demonstrates an Orchestrator agent with a MALDACodingAgent subagent for dynamic MCP agent creation. The Orchestrator can create agents dynamically and delegate MCP agent creation to MALDACodingAgent.",
+      "file": "orchestrator_mcp.malda"
+    }
+  ]
+}

@@ -1,0 +1,114 @@
+/* MALDA Reference Manual - syntax highlighting tokens
+ *
+ * Token classes are emitted by malda-highlight.js.
+ * Hues are chosen to stay legible in three contexts: screen, colour print, and
+ * greyscale print. Greyscale separation comes from weight and slant, not hue:
+ * keywords are semibold, comments italic, everything else regular.
+ */
+
+:root {
+    --tok-comment: #64748b;
+    --tok-string: #0f6f52;
+    --tok-number: #a44a06;
+    --tok-keyword: #7c3aed;
+    --tok-literal: #a44a06;
+    --tok-type: #0b6b78;
+    --tok-function: #0b4fa8;
+    --tok-property: #334155;
+    --tok-decorator: #b03a12;
+    --tok-operator: #55636f;
+    --tok-punctuation: #7a8894;
+    --tok-key: #0b4fa8;
+    --tok-flag: #7c3aed;
+    --tok-command: #0b6b78;
+    --tok-prompt: #9aa7b2;
+    --tok-output: #55636f;
+}
+
+/* One block box per source line. Print stylesheets turn these into
+   hanging-indented paragraphs so wrapped code stays readable on paper. */
+.ln {
+    display: block;
+}
+
+.ln:empty::after {
+    content: "\00a0";
+}
+
+.mld-comment {
+    color: var(--tok-comment);
+    font-style: italic;
+}
+
+.mld-str {
+    color: var(--tok-string);
+}
+
+.mld-interp-brace {
+    color: var(--tok-decorator);
+    font-weight: 600;
+}
+
+.mld-num {
+    color: var(--tok-number);
+}
+
+.mld-kw {
+    color: var(--tok-keyword);
+    font-weight: 600;
+}
+
+.mld-lit {
+    color: var(--tok-literal);
+    font-weight: 600;
+}
+
+.mld-type {
+    color: var(--tok-type);
+    font-weight: 600;
+}
+
+.mld-fn {
+    color: var(--tok-function);
+}
+
+.mld-prop {
+    color: var(--tok-property);
+}
+
+.mld-at {
+    color: var(--tok-decorator);
+    font-weight: 600;
+}
+
+.mld-op {
+    color: var(--tok-operator);
+}
+
+.mld-punct {
+    color: var(--tok-punctuation);
+}
+
+/* JSON */
+.mld-key {
+    color: var(--tok-key);
+}
+
+/* Shell transcripts */
+.mld-cmd {
+    color: var(--tok-command);
+    font-weight: 600;
+}
+
+.mld-flag {
+    color: var(--tok-flag);
+}
+
+.mld-prompt {
+    color: var(--tok-prompt);
+    user-select: none;
+}
+
+.mld-output {
+    color: var(--tok-output);
+}

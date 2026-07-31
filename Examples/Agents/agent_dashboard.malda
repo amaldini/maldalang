@@ -1,0 +1,462 @@
+// Real-time Agent Dashboard Server
+// Monitors all MALDA agents across the system with real-time updates via Server-Sent Events
+
+var server = new HttpServer(8080);
+
+// Store agent statuses: agentId -> {processId, role, events[], lastUpdate, stats}
+var agentStatuses = {};
+
+// Store recent events for timeline (max 1000 events)
+var eventHistory = [];
+var maxEventHistory = 1000;
+
+// Helper function to add event to history
+function addToHistory(event) {
+    append(eventHistory, event);
+    if (eventHistory.length > maxEventHistory) {
+        // Remove oldest event
+        var i = 1;
+        while (i < eventHistory.length) {
+            eventHistory[i - 1] = eventHistory[i];
+            i = i + 1;
+        }
+        eventHistory.length = eventHistory.length - 1;
+    }
+}
+
+// POST endpoint to receive agent status reports
+@POST("/api/agent/status")
+function receiveAgentStatus(body) {
+    var agentId = body.agentId;
+    var processId = body.processId;
+    var eventType = body.eventType;
+    var timestamp = body.timestamp;
+    var data = body.data;
+    
+    // Initialize agent status if not exists
+    if (agentStatuses[agentId] == null) {
+        agentStatuses[agentId] = {
+            "processId": processId,
+            "role": data.role != null ? data.role : "unknown",
+            "events": [],
+            "lastUpdate": timestamp,
+            "stats": {
+                "thinkCount": 0,
+                "toolCallCount": 0,
+                "toolSuccessCount": 0,
+                "toolErrorCount": 0
+            }
+        };
+    }
+    
+    // Update agent status
+    var agent = agentStatuses[agentId];
+    agent.processId = processId;
+    agent.lastUpdate = timestamp;
+    
+    // Create event object
+    var event = {
+        "agentId": agentId,
+        "processId": processId,
+        "eventType": eventType,
+        "timestamp": timestamp,
+        "data": data
+    };
+    
+    // Add to agent's event list (keep last 100 events per agent)
+    append(agent.events, event);
+    if (agent.events.length > 100) {
+        var i = 1;
+        while (i < agent.events.length) {
+            agent.events[i - 1] = agent.events[i];
+            i = i + 1;
+        }
+        agent.events.length = agent.events.length - 1;
+    }
+    
+    // Update statistics
+    if (eventType == "think") {
+        agent.stats.thinkCount = agent.stats.thinkCount + 1;
+    }
+    else if (eventType == "tool_call") {
+        agent.stats.toolCallCount = agent.stats.toolCallCount + 1;
+        if (data.success == true) {
+            agent.stats.toolSuccessCount = agent.stats.toolSuccessCount + 1;
+        }
+        else {
+            agent.stats.toolErrorCount = agent.stats.toolErrorCount + 1;
+        }
+    }
+    
+    // Add to global event history
+    addToHistory(event);
+    
+    // Broadcast via SSE
+    var sseData = toJSON(event);
+    server.broadcastSSE(sseData);
+    
+    return {"status": 200, "message": "Status received"};
+}
+
+// GET endpoint to retrieve all agent statuses
+@GET("/api/agents")
+function getAllAgents() {
+    return {"status": 200, "agents": agentStatuses, "eventHistory": eventHistory};
+}
+
+// SSE endpoint for real-time updates
+@GET("/api/events")
+function sseEvents() {
+    // Return SSE mode indicator
+    return {"sse": true};
+}
+
+// Dashboard page
+@PAGE("/")
+function dashboardPage() {
+    return getDashboardHTML();
+}
+
+// Generate dashboard HTML
+function getDashboardHTML() {
+    var html = "<!DOCTYPE html>\n";
+    html = html + "<html lang=\"en\">\n";
+    html = html + "<head>\n";
+    html = html + "    <meta charset=\"UTF-8\">\n";
+    html = html + "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n";
+    html = html + "    <title>MALDA Agent Dashboard</title>\n";
+    html = html + "    <!-- Using Tailwind CDN for development. For production, use PostCSS plugin or CLI -->\n";
+    html = html + "    <script src=\"https://cdn.tailwindcss.com\"></script>\n";
+    html = html + "</head>\n";
+    html = html + "<body class=\"bg-gray-100\">\n";
+    html = html + "    <div class=\"container mx-auto px-4 py-8\">\n";
+    html = html + "        <div class=\"mb-8\">\n";
+    html = html + "            <h1 class=\"text-4xl font-bold text-gray-800 mb-2\">MALDA Agent Dashboard</h1>\n";
+    html = html + "            <div class=\"flex items-center gap-4\">\n";
+    html = html + "                <div id=\"connectionStatus\" class=\"flex items-center gap-2\">\n";
+    html = html + "                    <div class=\"w-3 h-3 rounded-full bg-red-500\" id=\"statusDot\"></div>\n";
+    html = html + "                    <span class=\"text-sm text-gray-600\" id=\"statusText\">Disconnected</span>\n";
+    html = html + "                </div>\n";
+    html = html + "                <button onclick=\"location.reload()\" class=\"px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600\">Refresh</button>\n";
+    html = html + "            </div>\n";
+    html = html + "        </div>\n";
+    
+    // System Overview Cards
+    html = html + "        <div class=\"grid grid-cols-1 md:grid-cols-4 gap-4 mb-8\">\n";
+    html = html + "            <div class=\"bg-white rounded-lg shadow p-6\">\n";
+    html = html + "                <div class=\"text-sm text-gray-500 mb-1\">Total Agents</div>\n";
+    html = html + "                <div class=\"text-3xl font-bold text-gray-800\" id=\"totalAgents\">0</div>\n";
+    html = html + "            </div>\n";
+    html = html + "            <div class=\"bg-white rounded-lg shadow p-6\">\n";
+    html = html + "                <div class=\"text-sm text-gray-500 mb-1\">Active Processes</div>\n";
+    html = html + "                <div class=\"text-3xl font-bold text-gray-800\" id=\"activeProcesses\">0</div>\n";
+    html = html + "            </div>\n";
+    html = html + "            <div class=\"bg-white rounded-lg shadow p-6\">\n";
+    html = html + "                <div class=\"text-sm text-gray-500 mb-1\">Events Today</div>\n";
+    html = html + "                <div class=\"text-3xl font-bold text-gray-800\" id=\"eventsToday\">0</div>\n";
+    html = html + "            </div>\n";
+    html = html + "            <div class=\"bg-white rounded-lg shadow p-6\">\n";
+    html = html + "                <div class=\"text-sm text-gray-500 mb-1\">Success Rate</div>\n";
+    html = html + "                <div class=\"text-3xl font-bold text-gray-800\" id=\"successRate\">0%</div>\n";
+    html = html + "            </div>\n";
+    html = html + "        </div>\n";
+    
+    // Agent List
+    html = html + "        <div class=\"mb-8\">\n";
+    html = html + "            <h2 class=\"text-2xl font-bold text-gray-800 mb-4\">Agents</h2>\n";
+    html = html + "            <div id=\"agentList\" class=\"grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4\">\n";
+    html = html + "                <div class=\"text-center text-gray-500 py-8\">No agents yet</div>\n";
+    html = html + "            </div>\n";
+    html = html + "        </div>\n";
+    
+    // Recent Events Feed
+    html = html + "        <div>\n";
+    html = html + "            <h2 class=\"text-2xl font-bold text-gray-800 mb-4\">Recent Events</h2>\n";
+    html = html + "            <div class=\"bg-white rounded-lg shadow\">\n";
+    html = html + "                <div id=\"eventFeed\" class=\"p-4 max-h-96 overflow-y-auto\">\n";
+    html = html + "                    <div class=\"text-center text-gray-500 py-4\">No events yet</div>\n";
+    html = html + "                </div>\n";
+    html = html + "            </div>\n";
+    html = html + "        </div>\n";
+    
+    html = html + "    </div>\n";
+    
+    // JavaScript for SSE client and UI updates
+    html = html + "    <script>\n";
+    html = html + "        let eventSource = null;\n";
+    html = html + "        let agents = {};\n";
+    html = html + "        let eventHistory = [];\n";
+    html = html + "\n";
+    html = html + "        function connectSSE() {\n";
+    html = html + "            eventSource = new EventSource('/api/events');\n";
+    html = html + "\n";
+    html = html + "            eventSource.onopen = function() {\n";
+    html = html + "                updateConnectionStatus(true);\n";
+    html = html + "                loadInitialData();\n";
+    html = html + "            };\n";
+    html = html + "\n";
+    html = html + "            eventSource.onmessage = function(event) {\n";
+    html = html + "                try {\n";
+    html = html + "                    const data = JSON.parse(event.data);\n";
+    html = html + "                    handleEvent(data);\n";
+    html = html + "                } catch (e) {\n";
+    html = html + "                    console.error('Error parsing event:', e);\n";
+    html = html + "                }\n";
+    html = html + "            };\n";
+    html = html + "\n";
+    html = html + "            eventSource.onerror = function() {\n";
+    html = html + "                updateConnectionStatus(false);\n";
+    html = html + "                eventSource.close();\n";
+    html = html + "                setTimeout(connectSSE, 3000); // Reconnect after 3 seconds\n";
+    html = html + "            };\n";
+    html = html + "        }\n";
+    html = html + "\n";
+    html = html + "        function updateConnectionStatus(connected) {\n";
+    html = html + "            const dot = document.getElementById('statusDot');\n";
+    html = html + "            const text = document.getElementById('statusText');\n";
+    html = html + "            if (connected) {\n";
+    html = html + "                dot.className = 'w-3 h-3 rounded-full bg-green-500';\n";
+    html = html + "                text.textContent = 'Connected';\n";
+    html = html + "            } else {\n";
+    html = html + "                dot.className = 'w-3 h-3 rounded-full bg-red-500';\n";
+    html = html + "                text.textContent = 'Disconnected';\n";
+    html = html + "            }\n";
+    html = html + "        }\n";
+    html = html + "\n";
+    html = html + "        async function loadInitialData() {\n";
+    html = html + "            try {\n";
+    html = html + "                const response = await fetch('/api/agents');\n";
+    html = html + "                if (!response.ok) {\n";
+    html = html + "                    throw new Error(`HTTP error! status: ${response.status}`);\n";
+    html = html + "                }\n";
+    html = html + "                const text = await response.text();\n";
+    html = html + "                let data;\n";
+    html = html + "                try {\n";
+    html = html + "                    data = JSON.parse(text);\n";
+    html = html + "                } catch (e) {\n";
+    html = html + "                    // Try to extract JSON from HTML if wrapped\n";
+    html = html + "                    let jsonText = text;\n";
+    html = html + "                    const preMatch = text.match(/<pre>\\s*([\\s\\S]*?)\\s*<\\/pre>/i);\n";
+    html = html + "                    if (preMatch) {\n";
+    html = html + "                        jsonText = preMatch[1];\n";
+    html = html + "                        // Decode HTML entities\n";
+    html = html + "                        const tempDiv = document.createElement('div');\n";
+    html = html + "                        tempDiv.innerHTML = jsonText;\n";
+    html = html + "                        jsonText = tempDiv.textContent || tempDiv.innerText || jsonText;\n";
+    html = html + "                    }\n";
+    html = html + "                    try {\n";
+    html = html + "                        data = JSON.parse(jsonText);\n";
+    html = html + "                    } catch (e2) {\n";
+    html = html + "                        throw new Error(`Failed to parse JSON. Response: ${text.substring(0, 200)}`);\n";
+    html = html + "                    }\n";
+    html = html + "                }\n";
+    html = html + "                agents = data.agents || {};\n";
+    html = html + "                eventHistory = data.eventHistory || [];\n";
+    html = html + "                updateUI();\n";
+    html = html + "            } catch (e) {\n";
+    html = html + "                console.error('Error loading initial data:', e);\n";
+    html = html + "            }\n";
+    html = html + "        }\n";
+    html = html + "\n";
+    html = html + "        function handleEvent(event) {\n";
+    html = html + "            // Ignore SSE connection events (connected, heartbeat, etc.)\n";
+    html = html + "            if (!event || event.type === 'connected' || event.type === 'heartbeat') {\n";
+    html = html + "                return;\n";
+    html = html + "            }\n";
+    html = html + "            \n";
+    html = html + "            // Only process events with agentId\n";
+    html = html + "            if (!event.agentId) {\n";
+    html = html + "                return;\n";
+    html = html + "            }\n";
+    html = html + "            \n";
+    html = html + "            const agentId = event.agentId;\n";
+    html = html + "            const eventData = event.data || {};\n";
+    html = html + "            \n";
+    html = html + "            // Update agent data\n";
+    html = html + "            if (!agents[agentId]) {\n";
+    html = html + "                agents[agentId] = {\n";
+    html = html + "                    processId: event.processId,\n";
+    html = html + "                    role: eventData.role || 'unknown',\n";
+    html = html + "                    events: [],\n";
+    html = html + "                    lastUpdate: event.timestamp,\n";
+    html = html + "                    stats: { thinkCount: 0, toolCallCount: 0, toolSuccessCount: 0, toolErrorCount: 0 }\n";
+    html = html + "                };\n";
+    html = html + "            }\n";
+    html = html + "            \n";
+    html = html + "            const agent = agents[agentId];\n";
+    html = html + "            agent.lastUpdate = event.timestamp;\n";
+    html = html + "            agent.events.push(event);\n";
+    html = html + "            if (agent.events.length > 100) agent.events.shift();\n";
+    html = html + "            \n";
+    html = html + "            // Update stats\n";
+    html = html + "            if (event.eventType === 'think') {\n";
+    html = html + "                agent.stats.thinkCount++;\n";
+    html = html + "            } else if (event.eventType === 'tool_call') {\n";
+    html = html + "                agent.stats.toolCallCount++;\n";
+    html = html + "                if (eventData.success) {\n";
+    html = html + "                    agent.stats.toolSuccessCount++;\n";
+    html = html + "                } else {\n";
+    html = html + "                    agent.stats.toolErrorCount++;\n";
+    html = html + "                }\n";
+    html = html + "            }\n";
+    html = html + "            \n";
+    html = html + "            // Add to event history\n";
+    html = html + "            eventHistory.push(event);\n";
+    html = html + "            if (eventHistory.length > 1000) eventHistory.shift();\n";
+    html = html + "            \n";
+    html = html + "            updateUI();\n";
+    html = html + "        }\n";
+    html = html + "\n";
+    html = html + "        function updateUI() {\n";
+    html = html + "            updateOverviewCards();\n";
+    html = html + "            updateAgentList();\n";
+    html = html + "            updateEventFeed();\n";
+    html = html + "        }\n";
+    html = html + "\n";
+    html = html + "        function updateOverviewCards() {\n";
+    html = html + "            const agentIds = Object.keys(agents);\n";
+    html = html + "            const processIds = new Set();\n";
+    html = html + "            let totalToolCalls = 0;\n";
+    html = html + "            let totalSuccess = 0;\n";
+    html = html + "            \n";
+    html = html + "            for (const agentId of agentIds) {\n";
+    html = html + "                const agent = agents[agentId];\n";
+    html = html + "                processIds.add(agent.processId);\n";
+    html = html + "                totalToolCalls += agent.stats.toolCallCount;\n";
+    html = html + "                totalSuccess += agent.stats.toolSuccessCount;\n";
+    html = html + "            }\n";
+    html = html + "            \n";
+    html = html + "            document.getElementById('totalAgents').textContent = agentIds.length;\n";
+    html = html + "            document.getElementById('activeProcesses').textContent = processIds.size;\n";
+    html = html + "            document.getElementById('eventsToday').textContent = eventHistory.length;\n";
+    html = html + "            \n";
+    html = html + "            const successRate = totalToolCalls > 0 ? Math.round((totalSuccess / totalToolCalls) * 100) : 0;\n";
+    html = html + "            document.getElementById('successRate').textContent = successRate + '%';\n";
+    html = html + "        }\n";
+    html = html + "\n";
+    html = html + "        function updateAgentList() {\n";
+    html = html + "            const container = document.getElementById('agentList');\n";
+    html = html + "            const agentIds = Object.keys(agents);\n";
+    html = html + "            \n";
+    html = html + "            if (agentIds.length === 0) {\n";
+    html = html + "                container.innerHTML = '<div class=\"text-center text-gray-500 py-8\">No agents yet</div>';\n";
+    html = html + "                return;\n";
+    html = html + "            }\n";
+    html = html + "            \n";
+    html = html + "            container.innerHTML = agentIds.map(agentId => {\n";
+    html = html + "                const agent = agents[agentId];\n";
+    html = html + "                const lastUpdate = new Date(agent.lastUpdate);\n";
+    html = html + "                const timeAgo = getTimeAgo(lastUpdate);\n";
+    html = html + "                const successRate = agent.stats.toolCallCount > 0 ? \n";
+    html = html + "                    Math.round((agent.stats.toolSuccessCount / agent.stats.toolCallCount) * 100) : 0;\n";
+    html = html + "                \n";
+    html = html + "                return `\n";
+    html = html + "                    <div class=\"bg-white rounded-lg shadow p-6\">\n";
+    html = html + "                        <div class=\"flex justify-between items-start mb-4\">\n";
+    html = html + "                            <div>\n";
+    html = html + "                                <h3 class=\"text-lg font-bold text-gray-800\">${agentId}</h3>\n";
+    html = html + "                                <p class=\"text-sm text-gray-500\">${agent.role}</p>\n";
+    html = html + "                            </div>\n";
+    html = html + "                            <span class=\"px-2 py-1 text-xs bg-green-100 text-green-800 rounded\">Active</span>\n";
+    html = html + "                        </div>\n";
+    html = html + "                        <div class=\"space-y-2 text-sm\">\n";
+    html = html + "                            <div class=\"flex justify-between\">\n";
+    html = html + "                                <span class=\"text-gray-500\">Process ID:</span>\n";
+    html = html + "                                <span class=\"font-mono\">${agent.processId}</span>\n";
+    html = html + "                            </div>\n";
+    html = html + "                            <div class=\"flex justify-between\">\n";
+    html = html + "                                <span class=\"text-gray-500\">Think Calls:</span>\n";
+    html = html + "                                <span class=\"font-semibold\">${agent.stats.thinkCount}</span>\n";
+    html = html + "                            </div>\n";
+    html = html + "                            <div class=\"flex justify-between\">\n";
+    html = html + "                                <span class=\"text-gray-500\">Tool Calls:</span>\n";
+    html = html + "                                <span class=\"font-semibold\">${agent.stats.toolCallCount}</span>\n";
+    html = html + "                            </div>\n";
+    html = html + "                            <div class=\"flex justify-between\">\n";
+    html = html + "                                <span class=\"text-gray-500\">Success Rate:</span>\n";
+    html = html + "                                <span class=\"font-semibold ${successRate >= 90 ? 'text-green-600' : successRate >= 70 ? 'text-yellow-600' : 'text-red-600'}\">${successRate}%</span>\n";
+    html = html + "                            </div>\n";
+    html = html + "                            <div class=\"flex justify-between\">\n";
+    html = html + "                                <span class=\"text-gray-500\">Last Update:</span>\n";
+    html = html + "                                <span class=\"text-xs text-gray-400\">${timeAgo}</span>\n";
+    html = html + "                            </div>\n";
+    html = html + "                        </div>\n";
+    html = html + "                    </div>\n";
+    html = html + "                `;\n";
+    html = html + "            }).join('');\n";
+    html = html + "        }\n";
+    html = html + "\n";
+    html = html + "        function updateEventFeed() {\n";
+    html = html + "            const container = document.getElementById('eventFeed');\n";
+    html = html + "            \n";
+    html = html + "            if (eventHistory.length === 0) {\n";
+    html = html + "                container.innerHTML = '<div class=\"text-center text-gray-500 py-4\">No events yet</div>';\n";
+    html = html + "                return;\n";
+    html = html + "            }\n";
+    html = html + "            \n";
+    html = html + "            // Show last 50 events (most recent first)\n";
+    html = html + "            const recentEvents = eventHistory.slice(-50).reverse();\n";
+    html = html + "            \n";
+    html = html + "            container.innerHTML = recentEvents.map(event => {\n";
+    html = html + "                const time = new Date(event.timestamp);\n";
+    html = html + "                const timeStr = time.toLocaleTimeString();\n";
+    html = html + "                const eventData = event.data || {};\n";
+    html = html + "                const eventTypeColors = {\n";
+    html = html + "                    'agent_created': 'bg-blue-100 text-blue-800',\n";
+    html = html + "                    'think': 'bg-purple-100 text-purple-800',\n";
+    html = html + "                    'tool_call': eventData.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800',\n";
+    html = html + "                    'agent_reset': 'bg-yellow-100 text-yellow-800'\n";
+    html = html + "                };\n";
+    html = html + "                const colorClass = eventTypeColors[event.eventType] || 'bg-gray-100 text-gray-800';\n";
+    html = html + "                \n";
+    html = html + "                let eventDesc = event.eventType;\n";
+    html = html + "                if (event.eventType === 'tool_call') {\n";
+    html = html + "                    eventDesc = `Tool: ${eventData.toolName || 'unknown'}`;\n";
+    html = html + "                } else if (event.eventType === 'think') {\n";
+    html = html + "                    const prompt = eventData.prompt || '';\n";
+    html = html + "                    eventDesc = `Think: ${prompt.substring(0, 50)}${prompt.length > 50 ? '...' : ''}`;\n";
+    html = html + "                }\n";
+    html = html + "                \n";
+    html = html + "                return `\n";
+    html = html + "                    <div class=\"border-b border-gray-200 py-2 flex items-start gap-3\">\n";
+    html = html + "                        <span class=\"px-2 py-1 text-xs rounded ${colorClass}\">${eventDesc}</span>\n";
+    html = html + "                        <div class=\"flex-1\">\n";
+    html = html + "                            <div class=\"text-sm font-semibold\">${event.agentId}</div>\n";
+    html = html + "                            <div class=\"text-xs text-gray-500\">${timeStr}</div>\n";
+    html = html + "                        </div>\n";
+    html = html + "                    </div>\n";
+    html = html + "                `;\n";
+    html = html + "            }).join('');\n";
+    html = html + "            \n";
+    html = html + "            // Auto-scroll to bottom\n";
+    html = html + "            container.scrollTop = container.scrollHeight;\n";
+    html = html + "        }\n";
+    html = html + "\n";
+    html = html + "        function getTimeAgo(date) {\n";
+    html = html + "            const seconds = Math.floor((new Date() - date) / 1000);\n";
+    html = html + "            if (seconds < 60) return seconds + 's ago';\n";
+    html = html + "            const minutes = Math.floor(seconds / 60);\n";
+    html = html + "            if (minutes < 60) return minutes + 'm ago';\n";
+    html = html + "            const hours = Math.floor(minutes / 60);\n";
+    html = html + "            if (hours < 24) return hours + 'h ago';\n";
+    html = html + "            const days = Math.floor(hours / 24);\n";
+    html = html + "            return days + 'd ago';\n";
+    html = html + "        }\n";
+    html = html + "\n";
+    html = html + "        // Connect on page load\n";
+    html = html + "        connectSSE();\n";
+    html = html + "    </script>\n";
+    html = html + "</body>\n";
+    html = html + "</html>\n";
+    
+    return html;
+}
+
+server.start();
+print("Agent Dashboard running at http://localhost:8080");
+print("Open http://localhost:8080 in your browser to view the dashboard");
+print("Press Ctrl+C to stop the server");
+
+while (true) {
+    sleep(1000);
+}

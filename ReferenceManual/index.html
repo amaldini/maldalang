@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MALDA Reference Manual - The AI-First Programming Language">
+    <title>MALDA Reference Manual</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="syntax.css">
+    <link rel="stylesheet" href="print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>MALDA&trade; Reference Manual</h1>
+        <p>The AI-First Programming Language - Version 0.1</p>
+    </header>
+
+    <nav></nav>
+
+    <main>
+        <h1>Welcome to the MALDA Reference Manual</h1>
+        
+        <p><strong>MALDA: The AI-First Programming Language</strong> is a modern, object-oriented programming language designed for building AI agents and automation workflows. With native support for LLM integration, agent orchestration, and multi-agent systems, MALDA makes it simple to create intelligent, autonomous applications.</p>
+
+        <p><strong>MALDA: Multi Agent Language with Development Automation</strong> - The name MALDA reflects the core principles of the language: <strong>Multi Agent</strong> (native support for orchestrating multiple AI agents working together), <strong>Language</strong> (a complete programming language with syntax, runtime, and tooling), <strong>Development</strong> (a full toolchain - interpreter, compiler, IDEs, language server - for building and shipping real software), and <strong>Automation</strong> (coding agents can write MALDA thanks to the language pack in <code>docs/llm/</code>, and MALDA programs automate development work in turn, since prompts, agents, and durable workflows are language constructs).</p>
+
+        <div class="info-box">
+            <strong>What ships today:</strong> a C# interpreter, a compiler that transpiles to C# or JavaScript, a Windows Desktop IDE, a browser playground, and a language server for cross-platform editors. Every feature described in this manual runs on the interpreter; where a feature is unavailable in one of the transpilers, the chapter says so.
+        </div>
+
+        <div class="info-box">
+            <strong>Recommended onboarding:</strong> MALDA works best with a dual-track start.
+            New programmers should begin with the language fundamentals path.
+            Experienced builders can jump straight into prompts, agents, APIs, and full-stack showcases.
+            After the core path, branch into <strong>Testing and Quality</strong>, <strong>Data and Databases</strong>, and <strong>Browser Apps</strong>.
+            For runnable example paths and CLI quickstarts, see <a href="../docs/start-here.md">Start Here</a>.
+        </div>
+
+        <h2>Quick Start</h2>
+        
+        <p>Start with these examples in order. Each one adds one more basic idea so the syntax feels more like a small real program instead of isolated fragments.</p>
+
+        <h3>1. Print Output</h3>
+        <pre><code>print("Hello, World!");</code></pre>
+
+        <h3>2. Variables and Arithmetic</h3>
+        <pre><code>var price = 12;
+var quantity = 3;
+var total = price * quantity;
+
+print("Total: " + total);</code></pre>
+
+        <h3>3. Conditionals</h3>
+        <pre><code>var score = 82;
+
+if (score >= 60) {
+    print("Pass");
+} else {
+    print("Fail");
+}</code></pre>
+
+        <h3>4. Loops and Functions</h3>
+        <pre><code>function printCountdown(start) {
+    var current = start;
+    while (current > 0) {
+        print(current);
+        current = current - 1;
+    }
+    print("Go!");
+}
+
+printCountdown(3);</code></pre>
+
+        <h3>5. Complete Starter Program</h3>
+        <p>This example combines variables, arrays, a loop, a function, and an <code>if</code> statement in one linear program:</p>
+        <pre><code data-run="true" data-expect="Items: 3\nTotal: 37\nSummary: big order">var cart = [12, 18, 7];
+var total = 0;
+
+for (var item in cart) {
+    total = total + item;
+}
+
+function describeTotal(amount) {
+    if (amount >= 30) {
+        return "big order";
+    }
+    return "small order";
+}
+
+print("Items: " + cart.length);
+print("Total: " + total);
+print("Summary: " + describeTotal(total));</code></pre>
+
+        <p>For more runnable beginner programs in the same style, see <a href="20-examples.html">Examples</a>.</p>
+
+        <h2>Choose Your Path</h2>
+
+        <h3>Path 1: Learn Programming With MALDA</h3>
+        <p>Start here if you are learning programming for the first time. Follow this sequence:</p>
+        <ol>
+            <li>Hello World</li>
+            <li>Variables and Arithmetic</li>
+            <li>Conditionals</li>
+            <li>Loops</li>
+            <li>Functions</li>
+            <li>Complete Starter Program</li>
+            <li>Input Example</li>
+        </ol>
+        <p>See <a href="20-examples.html">Examples</a> for runnable beginner programs.</p>
+        <p>After the core path, branch into <strong>Testing and Quality</strong>, <strong>Data and Databases</strong>, and <strong>Browser Apps</strong>.</p>
+
+        <h3>Path 2: Build AI Apps With MALDA</h3>
+        <p>Start here if you already know the basics and want to see MALDA's commercial ceiling quickly.</p>
+        <ul>
+            <li>Prompt blocks and reusable prompting</li>
+            <li>Agents and tool-based workflows</li>
+            <li>REST APIs and UI controls</li>
+            <li>Full-stack web and API showcases</li>
+        </ul>
+
+        <div class="info-box">
+            <strong>Full-Stack Quickstart:</strong> MALDA supports both <strong>MALDA-native full stack</strong> (server-rendered UI) and <strong>hybrid full stack</strong> (React/Vue/etc. frontend + MALDA backend).
+            Not sure which UI chapter to read? Start with <a href="16-web-ui-hub.html">19. Web UI Overview</a>.
+            <a href="30-full-stack-development.html">31. Full-Stack Development with MALDA</a> ties the pieces together end to end.
+        </div>
+
+        <h2>Key Features</h2>
+
+        <h3>Core Language</h3>
+        <ul>
+            <li><strong>Dynamic Typing</strong> - Variables can hold values of any type</li>
+            <li><strong>Object-Oriented</strong> - Classes, inheritance, polymorphism</li>
+            <li><strong>Actors</strong> - Native actor model for concurrent programming</li>
+            <li><strong>Functions</strong> - First-class functions with recursion support</li>
+            <li><strong>Arrays</strong> - Dynamic arrays with built-in methods</li>
+            <li><strong>Control Structures</strong> - if/else, while, for, foreach loops</li>
+        </ul>
+
+        <h3>AI-First Capabilities</h3>
+        <ul>
+            <li><strong>LLM Integration</strong> - Built-in support for OpenAI, OpenRouter, LMStudio, OLLAMA</li>
+            <li><strong>Local LLMs</strong> - LlamaCppClient for local inference with GGUF models</li>
+            <li><strong>Agent System</strong> - Create autonomous agents with roles and instructions</li>
+            <li><strong>Tool System</strong> - Define custom tools with @Tool decorator</li>
+            <li><strong>Multi-Agent Orchestration</strong> - Coordinate multiple agents working together, including hierarchical systems</li>
+            <li><strong>Conversation Management</strong> - Automatic tool call handling with parallel read-only execution (default on)</li>
+        </ul>
+
+        <h3>Web & API Features</h3>
+        <ul>
+            <li><strong>Web Server</strong> - Built-in HTTP server for serving HTML</li>
+            <li><strong>REST API</strong> - Create REST APIs with decorator-based routing</li>
+            <li><strong>UI Web Framework</strong> - Use <code>@PAGE</code> and <code>@AIPAGE</code> with component library support to build full-stack applications with MALDA backend and server-rendered UI</li>
+            <li><strong>MCP Server</strong> - Expose MALDA functions as MCP tools</li>
+            <li><strong>UI Generation</strong> - Generate HTML interfaces using LLM agents</li>
+        </ul>
+
+        <h2>Table of Contents</h2>
+        <div id="table-of-contents">
+            <!-- Table of contents will be generated dynamically -->
+        </div>
+
+        <h2>Getting Started</h2>
+
+        <p>To get started with MALDA, you can use the <strong>WPF Desktop IDE</strong>, which provides:</p>
+
+        <ul>
+            <li>Syntax highlighting</li>
+            <li>IntelliSense/auto-completion</li>
+            <li>Full debugger with breakpoints</li>
+            <li>Error diagnostics</li>
+            <li>Compiler to create standalone executables</li>
+            <li>Built-in profiling for bottleneck analysis in interpreted and transpiled runs</li>
+        </ul>
+
+        <p>If you are new to the language, work through the Quick Start examples above from top to bottom before jumping into agents and full-stack features.</p>
+        <p>When you are ready to tune runtime behavior, see <a href="23-appendix.html">Appendix</a> for the command-line profiling flags (including optional periodic file snapshots for long runs) and report summary.</p>
+
+        <h2>Example: Simple Agent</h2>
+
+        <p>Here's a quick example of creating an AI agent in MALDA:</p>
+
+        <pre><code>// Create an agent (pass a client; for remote models use OpenRouterClient)
+var client = new OpenRouterClient();
+var agent = new Agent("Assistant", "helper", "You are a helpful assistant.", client);
+var response = agent.think("What is 2+2?");
+print(response.content);</code></pre>
+        <p>When you use <code>await prompt(...)</code> or specialized agents (e.g. <code>CodingAgent</code>) without passing a client, MALDA uses a <strong>default local LLM</strong> (Qwen/Qwen2.5-0.5B-Instruct, downloaded as a GGUF build from Hugging Face on first use—no API key required).</p>
+
+        <div class="nav-footer">
+            <span></span>
+            <a href="01-introduction.html">Next: 1. Introduction→</a>
+        </div>
+
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, at your option.</p>
+        </footer>
+    </main>
+
+    <script src="malda-highlight.js"></script>
+
+    <script src="navigation.js"></script>
+    <script src="index-toc.js"></script>
+</body>
+</html>

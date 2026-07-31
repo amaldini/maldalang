@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>29. Personal Assistant and CLI - MALDA Reference Manual</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="syntax.css">
+    <link rel="stylesheet" href="print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>MALDA&trade; Reference Manual</h1>
+        <p>The AI-First Programming Language - Version 0.1</p>
+    </header>
+    <nav></nav>
+    <main>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>29. Personal Assistant and CLI</span></div>
+        <h1>29. Personal Assistant and CLI</h1>
+        <p>MALDA provides a built-in personal assistant and a set of CLI commands for configuration, scheduled tasks, and status. These features use a standard config directory <code>~/.malda</code> and an optional config file so you can run an AI assistant from the command line without writing a script.</p>
+
+        <h2>29.1 Quick start</h2>
+        <ol>
+            <li>Run <code>malda onboard</code> (or <code>malda onboard --download-rerank --download-local-llama</code>) to create <code>~/.malda</code>, <code>skills/</code>, <code>memory/</code>, and a starter <code>config.json</code> with <code>agents.memory</code>, <code>channels.telegram</code>, and provider placeholders.</li>
+            <li>Set <code>OPENROUTER_API_KEY</code> or add <code>providers.openrouter.apiKey</code> in <code>~/.malda/config.json</code>.</li>
+            <li>Optional: <code>malda memory download-rerank</code> installs the ONNX cross-encoder under <code>~/.malda/models/cross-encoder</code> for <code>agents.memory.rerankMode: onnx</code>.</li>
+            <li>Run <code>malda agent</code> for interactive chat, or <code>malda agent -m "Your question"</code> for a one-shot reply.</li>
+        </ol>
+
+        <h2>29.2 Commands</h2>
+        <h3>26.2.1 malda agent</h3>
+        <p>Runs the default assistant script in interactive or one-shot mode.</p>
+        <ul>
+            <li><code>malda agent</code> — Starts an interactive loop: prompts with <code>You: </code>, reads your message, calls the agent, and prints the response. Type <code>exit</code> or <code>quit</code> (or empty line) to exit.</li>
+            <li><code>malda agent -m "message"</code> or <code>malda agent --message "message"</code> — Sends the message once to the assistant, prints the response, and exits.</li>
+        </ul>
+        <p>The assistant script is resolved in this order:</p>
+        <ol>
+            <li>Path in the <code>MALDA_AGENT_SCRIPT</code> environment variable (if the file exists).</li>
+            <li><code>~/.malda/assistant.malda</code>.</li>
+            <li><code>Examples/Assistant/assistant.malda</code> relative to the current directory or the executable (e.g. when run from the repo).</li>
+        </ol>
+        <p>If no script is found, the CLI prints an error and exits.</p>
+
+        <h3>26.2.2 malda onboard</h3>
+        <p>Initializes the MALDA config directory and a guided starter config.</p>
+        <ul>
+            <li>Creates <code>~/.malda</code>, <code>~/.malda/skills/</code>, and <code>~/.malda/memory/</code> if they do not exist.</li>
+            <li>Creates <code>~/.malda/config.json</code> with <code>providers</code>, <code>channels.telegram</code>, <code>agents.defaults</code>, <code>agents.memory</code> (embed, rerank ONNX path), and <code>tools.web.search</code> if the file does not exist.</li>
+            <li><code>--download-rerank</code> — downloads <code>model.onnx</code> and <code>vocab.txt</code> to <code>~/.malda/models/cross-encoder</code>.</li>
+            <li><code>--download-local-llama</code> — downloads the default GGUF model and sets <code>providers.local_llama.modelPath</code> when empty.</li>
+        </ul>
+        <p>Run this once before using the assistant, gateway, or cron. The command prints next-step hints (API keys, Telegram, ONNX rerank, <code>malda doctor</code>).</p>
+
+        <h3>26.2.3 malda status</h3>
+        <p>Prints the current assistant setup and runtime health. Use <code>malda status --json</code> for machine-readable output (config, channels, skills, gateway, memory, cron jobs).</p>
+        <ul>
+            <li>MALDA home and config path; whether <code>~/.malda/config.json</code> exists.</li>
+            <li>Whether an OpenRouter API key is set (environment or config), default model, backend, and local llama model path.</li>
+            <li>Telegram channel configured (<code>TELEGRAM_BOT_TOKEN</code> or <code>channels.telegram.botToken</code>).</li>
+            <li>Skills count in <code>~/.malda/skills/</code>.</li>
+            <li>Gateway process state (<code>~/.malda/gateway.pid</code>; stale pid files are removed).</li>
+            <li>GraphMemory stats when <code>~/.malda/memory/assistant</code> exists (nodes, edges, last reflect).</li>
+            <li>Cron jobs from <code>~/.malda/cron.json</code> (id, name, scope, message, cron expression).</li>
+        </ul>
+
+        <h3>26.2.4 malda gateway</h3>
+        <p>Long-running process for Telegram and optional in-process cron scheduling.</p>
+        <ul>
+            <li><code>malda gateway</code> — Starts Telegram long polling with the default assistant script. Writes <code>~/.malda/gateway.pid</code> and refuses to start if another gateway is already running.</li>
+            <li><code>malda gateway stop</code> — Stops a running gateway process and removes <code>~/.malda/gateway.pid</code> (also cleans stale pid files).</li>
+            <li><code>malda gateway -c telegram</code> — Same as above (Telegram is the only supported channel today).</li>
+            <li><code>malda gateway --no-cron</code> — Disable the built-in cron scheduler (use system Task Scheduler via <code>malda cron install</code> instead).</li>
+        </ul>
+        <p>The gateway runs the same <code>assistant.malda</code> as <code>malda agent -c telegram</code>, but also polls <code>~/.malda/cron.json</code> every minute and spawns <code>malda agent -m "..."</code> for due jobs (with per-job memory scope). Requires a Telegram bot token in config or <code>TELEGRAM_BOT_TOKEN</code>.</p>
+        <p>Gateway alerts: set <code>channels.telegram.notifyChatId</code> (or <code>MALDA_GATEWAY_NOTIFY_CHAT_ID</code>) to receive Telegram messages on cron failures, gateway crashes, and restarts after a crash. Events are also appended to <code>~/.malda/gateway-alerts.log</code>. <code>malda doctor</code> reports gateway state and previous crashes via <code>~/.malda/gateway-crash.json</code>.</p>
+
+        <h3>26.2.5 malda cron</h3>
+        <p>Manage scheduled jobs stored in <code>~/.malda/cron.json</code>. Jobs can run via the gateway scheduler, <code>malda cron install</code> (Windows Task Scheduler), or your system cron.</p>
+        <ul>
+            <li><code>malda cron add --name &lt;name&gt; --message &lt;message&gt; --cron &lt;cron-expr&gt; [--scope &lt;scope&gt;]</code> — Adds a job. Default scope is <code>cron:&lt;name&gt;</code> so scheduled turns use isolated GraphMemory facts.</li>
+            <li><code>malda cron list</code> — Lists all jobs (id, name, scope, message, cron).</li>
+            <li><code>malda cron remove &lt;job-id&gt;</code> — Removes the job with the given id.</li>
+            <li><code>malda cron install</code> — On Windows, syncs jobs to Task Scheduler with <code>MALDA_MEMORY_SCOPE</code> set per job.</li>
+        </ul>
+
+        <h2>29.3 Config file (~/.malda/config.json)</h2>
+        <p>Optional. The assistant and some built-ins read config from the current directory first (<code>./.malda/config.json</code>), then from the user directory (<code>~/.malda/config.json</code>).</p>
+        <p>Minimal structure (OpenRouter only):</p>
+        <pre><code>{
+  "providers": { "openrouter": { "apiKey": "sk-..." } },
+  "agents": { "defaults": { "model": "anthropic/claude-sonnet" } },
+  "tools": { "web": { "search": { "apiKey": "BSA-..." } } }
+}</code></pre>
+        <ul>
+            <li><code>providers.openrouter.apiKey</code> — Used by the default assistant when <code>OPENROUTER_API_KEY</code> is not set.</li>
+            <li><code>agents.defaults.model</code> — Default LLM model for the assistant (e.g. <code>anthropic/claude-sonnet</code>).</li>
+            <li><code>tools.web.search.apiKey</code> — Brave Search API key so the assistant can use the web search tool when you add it.</li>
+        </ul>
+        <p>In MALDA scripts, use <code>getMaldaConfig()</code> to read this config as an object (or <code>null</code> if the file is missing). See <a href="11-built-in-functions.html">Built-in Functions</a> for <code>getMaldaHome()</code> and <code>getMaldaConfig()</code>.</p>
+
+        <h3>29.3.1 agents.memory schema</h3>
+        <p>The assistant reads <code>agents.memory</code> for GraphMemory behavior (embedding, reflection, KB indexing, and retention).</p>
+        <pre><code>{
+  "agents": {
+    "memory": {
+      "embed": "hash",
+      "modelPath": "",
+      "pruneEpisodicAfterDays": 30,
+      "consolidateMinEpisodic": 3,
+      "maxNodes": 5000,
+      "reflectEnabled": false,
+      "reflectMinEpisodic": 3,
+      "reflectEveryNSaves": 1,
+      "reflectModel": "",
+      "reflectMinConfidence": 0.7,
+      "kbDir": "",
+      "kbPattern": "**/*.md",
+      "scopeParent": "project:myapp",
+      "scopeHierarchy": ["project:myapp", "org:acme", "global"],
+      "rerankMode": "onnx",
+      "rerankModelPath": "~/.malda/models/cross-encoder"
+    }
+  }
+}</code></pre>
+        <ul>
+            <li><code>scopeParent</code> - Single parent scope in the memory hierarchy (e.g. <code>chat:123</code> → <code>project:myapp</code> → <code>global</code>). Applied via <code>agent.setMemoryScopeParent()</code> when <code>scopeHierarchy</code> is not set.</li>
+            <li><code>scopeHierarchy</code> - Multi-level scopes between the active scope and <code>global</code>, e.g. <code>["project:myapp", "org:acme", "global"]</code>. The assistant prepends the active scope (<code>chat:{id}</code> on Telegram) at runtime. Overrides <code>scopeParent</code>. Env alternative: <code>MALDA_MEMORY_SCOPE_HIERARCHY</code> (comma-separated or JSON array).</li>
+            <li><code>rerankEnabled</code>, <code>rerankMode</code>, <code>rerankModelPath</code>, <code>rerankTopK</code> - Applied to every <code>think()</code> memory query via <code>agent.setMemoryRerank()</code>. Use <code>rerankMode: onnx</code> with a directory containing <code>model.onnx</code> and <code>vocab.txt</code>, or <code>cross</code> for local heuristic rerank.</li>
+            <li><code>embed</code> - <code>hash</code> (default), <code>bow</code>, or <code>llama</code>.</li>
+            <li><code>modelPath</code> - Embedding model path used when <code>embed = "llama"</code>.</li>
+            <li><code>pruneEpisodicAfterDays</code>, <code>consolidateMinEpisodic</code>, <code>maxNodes</code> - Maintenance limits for episodic retention and memory growth.</li>
+            <li><code>reflectEnabled</code>, <code>reflectMinEpisodic</code>, <code>reflectEveryNSaves</code>, <code>reflectModel</code>, <code>reflectMinConfidence</code> - Reflection schedule and quality controls.</li>
+            <li><code>kbDir</code>, <code>kbPattern</code> - Optional knowledge-base directory/pattern reindexed with <code>reindexDocuments(..., { changedOnly: true })</code>.</li>
+            <li><code>MALDA_MEMORY_REFLECT=1</code> forces reflection mode; <code>MALDA_MEMORY_REFLECT_MIN_CONFIDENCE</code> overrides <code>reflectMinConfidence</code>.</li>
+        </ul>
+
+        <h2>29.4 Selecting OpenRouter vs local llama.cpp</h2>
+        <p>The default assistant can use either OpenRouter (remote) or a local <code>llama.cpp</code>-based model. The backend is controlled by <code>agents.defaults.backend</code> in <code>config.json</code> and can be overridden per run with <code>MALDA_AGENT_BACKEND</code> or a CLI flag.</p>
+        <p>Extended structure:</p>
+        <pre><code>{
+  "providers": {
+    "openrouter": {
+      "apiKey": "sk-...",
+      "model": "anthropic/claude-sonnet"
+    },
+    "local_llama": {
+      "modelPath": "C:/Users/YourName/AppData/Local/MaldaLang/Models/default/qwen2.5-0.5b-instruct-q4_k_m.gguf",
+      "contextLength": 4096,
+      "gpuLayers": 0,
+      "temperature": 0.7,
+      "maxTokens": 2000
+    }
+  },
+  "agents": {
+    "defaults": {
+      "backend": "openrouter",   // or "local-llama"
+      "model": "anthropic/claude-sonnet"
+    }
+  },
+  "tools": { "web": { "search": { "apiKey": "BSA-..." } } }
+}</code></pre>
+        <ul>
+            <li><code>agents.defaults.backend</code> — <code>"openrouter"</code> (default) or <code>"local-llama"</code>. Controls which LLM client the default assistant uses.</li>
+            <li><code>providers.openrouter.model</code> — Optional override for the OpenRouter model name. If set, it wins over <code>agents.defaults.model</code> for the default assistant.</li>
+            <li><code>providers.local_llama.modelPath</code> — Path to a local GGUF model file used by <code>LlamaCppClient</code>. Required when <code>backend = "local-llama"</code>.</li>
+            <li><code>providers.local_llama.contextLength</code> — Optional context window size passed to <code>LlamaCppClient</code>.</li>
+            <li><code>providers.local_llama.temperature</code>, <code>maxTokens</code>, <code>gpuLayers</code> — Optional tuning parameters applied via <code>setTemperature()</code>, <code>setMaxTokens()</code>, and <code>setGpuLayerCount()</code> on the local client.</li>
+            <li><code>MALDA_AGENT_BACKEND</code> — Environment variable that overrides <code>agents.defaults.backend</code> for the current process (e.g. <code>MALDA_AGENT_BACKEND=local-llama</code>).</li>
+        </ul>
+
+        <h2>29.5 Default assistant behavior</h2>
+        <p>The default assistant script (e.g. <code>Examples/Assistant/assistant.malda</code>) does the following:</p>
+        <ul>
+            <li>Reads API key and default model from <code>getMaldaConfig()</code> or from <code>OPENROUTER_API_KEY</code>.</li>
+            <li>Creates an <code>OpenRouterClient</code> and an <code>Agent</code> with a fixed system prompt.</li>
+            <li>Adds the web search tool (<code>createWebSearchTool()</code>) if a Brave Search API key is present in config or in <code>BRAVE_SEARCH_API_KEY</code>.</li>
+            <li>Creates a <code>GraphMemory</code> with <code>embedHash</code> (384 dimensions) by default, or <code>embedBagOfWords</code> / <code>LlamaEmbedder</code> when configured. Initializes before <code>load()</code> so the embedding function survives reload. Loads from <code>~/.malda/memory/assistant</code> when present, attaches memory with <code>agent.useMemory(memory)</code>, and saves after each turn.</li>
+            <li>Embedding mode: <code>MALDA_MEMORY_EMBED</code> or <code>config.agents.memory.embed</code> — <code>hash</code> (default), <code>bow</code>, or <code>llama</code> (requires <code>config.agents.memory.modelPath</code> or <code>providers.local_llama.embedModelPath</code>).</li>
+            <li>Memory scope: Telegram sets <code>MALDA_CHAT_ID</code> per message; the agent scopes reads/writes to <code>chat:{id}</code>. Override with <code>MALDA_MEMORY_SCOPE</code> or <code>agent.setMemoryScope()</code>. Set <code>MALDA_MEMORY_SCOPE_PARENT=project:foo</code> so queries inherit project-level facts via <code>scopeHierarchy</code>.</li>
+            <li>Memory maintenance on each turn: <code>consolidate()</code> or <code>reflect()</code> (when <code>reflectEnabled</code> / <code>MALDA_MEMORY_REFLECT=1</code>), <code>prune()</code> of old consolidated episodics, and <code>enforceLimits()</code> (default 5000 nodes). With <code>reflectAsync</code> (default on via <code>MALDA_MEMORY_REFLECT_ASYNC</code>), <code>reflectAsync()</code> runs after <code>save()</code> so the response is not blocked.</li>
+            <li>Rotating backups on <code>save()</code> when <code>MALDA_MEMORY_BACKUP=true</code> or <code>config.agents.memory.backupEnabled</code> (default 5 snapshots via <code>maxBackups</code>).</li>
+            <li>Health check: <code>memory.validate()</code> or <code>malda memory validate</code>.</li>
+            <li>When <code>config.agents.memory.kbDir</code> is set, the assistant runs <code>reindexDocuments</code> on each save and starts <code>memory.startKbWatch()</code> at launch (disable with <code>MALDA_MEMORY_KB_WATCH=false</code>).</li>
+            <li>Scripts can use <code>getAssistantMemory()</code> instead of manual <code>GraphMemory</code> setup for the default <code>~/.malda/memory/assistant</code> path (hash/bow embed via <code>MALDA_MEMORY_EMBED</code>).</li>
+            <li>Agent retrieval uses <code>hybridLexical</code> alongside vector search and synapse re-ranking for better matches on names, paths, and IDs.</li>
+            <li>If <code>MALDA_AGENT_MESSAGE</code> is set (e.g. by <code>malda agent -m "..."</code>), runs one shot and prints the response; otherwise runs an interactive loop.</li>
+        </ul>
+        <p>You can override the script by setting <code>MALDA_AGENT_SCRIPT</code> to the path of your own <code>.malda</code> file or by placing <code>assistant.malda</code> in <code>~/.malda/</code>.</p>
+
+        <h2>29.6 Scheduling on Windows (Task Scheduler)</h2>
+        <p><code>malda cron add/list/remove</code> store job definitions in <code>%USERPROFILE%\.malda\cron.json</code>. MALDA does not run them itself, but on Windows you can either use <code>malda cron install</code> to create tasks automatically, or configure <strong>Task Scheduler</strong> manually.</p>
+
+        <h3>26.5.0 Automatic installation (malda cron install)</h3>
+        <p>To sync all jobs from <code>%USERPROFILE%\.malda\cron.json</code> into Windows Task Scheduler, run:</p>
+        <pre><code>malda cron install</code></pre>
+        <p>This command:</p>
+        <ul>
+            <li>Reads all jobs from <code>%USERPROFILE%\.malda\cron.json</code>.</li>
+            <li>Removes any existing tasks whose names start with <code>MALDA_cron_</code> (previous installs).</li>
+            <li>Creates a Task Scheduler task for each job using <code>schtasks</code>, with the appropriate daily or weekday trigger.</li>
+        </ul>
+        <p>Only a small subset of cron expressions is supported for automatic mapping:</p>
+        <table>
+            <tr><th>Cron expression</th><th>Meaning</th><th>Task Scheduler trigger</th></tr>
+            <tr><td><code>0 9 * * *</code></td><td>9:00 AM every day</td><td><code>/SC DAILY /ST 09:00</code></td></tr>
+            <tr><td><code>0 18 * * *</code></td><td>6:00 PM every day</td><td><code>/SC DAILY /ST 18:00</code></td></tr>
+            <tr><td><code>0 9 * * 1-5</code></td><td>9:00 AM Mon–Fri</td><td><code>/SC WEEKLY /D MON,TUE,WED,THU,FRI /ST 09:00</code></td></tr>
+        </table>
+        <p>The in-process <code>malda gateway</code> scheduler also supports <code>*/N</code> minute intervals, comma-separated hours (<code>0 9,18 * * *</code>), monthly (<code>0 9 1 * *</code>), and multi-weekday (<code>0 9 * * 1,3,5</code>) expressions.</p>
+
+        <h3>26.5.1 Add the job in MALDA</h3>
+        <p>Record the message and schedule so you can reuse the message when creating the task:</p>
+        <pre><code>malda cron add --name "daily" --message "Good morning! What's on my calendar today?" --cron "0 9 * * *"</code></pre>
+        <p>Note the job id and the exact message; you will use the same message in the scheduled task.</p>
+
+        <h3>26.5.2 Find malda.exe</h3>
+        <p>Task Scheduler needs the full path to the MALDA executable. If you run from the repo with <code>dotnet run</code>, the executable is under the project output, e.g.:</p>
+        <ul>
+            <li><code>MaldaLang\bin\Debug\net8.0\malda.exe</code> or <code>MaldaLang\bin\Release\net8.0\malda.exe</code> (relative to the solution root).</li>
+        </ul>
+        <p>From PowerShell you can run <code>where.exe malda</code> if <code>malda</code> is on your PATH; otherwise use the path above. Use this full path as the program in the task.</p>
+
+        <h3>26.5.3 Create the scheduled task (GUI)</h3>
+        <ol>
+            <li>Press <strong>Win + R</strong>, type <code>taskschd.msc</code>, press Enter.</li>
+            <li>Click <strong>Create Task</strong> (not “Create Basic Task” so you can set a daily trigger at a specific time).</li>
+            <li><strong>General</strong> tab: name the task (e.g. “MALDA daily assistant”). Choose “Run whether user is logged on or not” or “Run only when user is logged on” as needed.</li>
+            <li><strong>Triggers</strong> tab → <strong>New</strong>: set <strong>Daily</strong> and the time (e.g. 9:00 AM for cron <code>0 9 * * *</code>).</li>
+            <li><strong>Actions</strong> tab → <strong>New</strong>:
+                <ul>
+                    <li><strong>Program/script</strong>: full path to <code>malda.exe</code> (e.g. <code>C:\Users\You\Documents\maldalang\MaldaLang\bin\Debug\net8.0\malda.exe</code>).</li>
+                    <li><strong>Add arguments</strong>: <code>agent -m "Good morning! What's on my calendar today?"</code> (use the exact message from <code>malda cron add</code>; escape or use single quotes if the message contains double quotes).</li>
+                </ul>
+            </li>
+            <li><strong>Start in (optional)</strong>: set to the folder where MALDA can find the assistant script (e.g. the repo root so <code>Examples/Assistant/assistant.malda</code> is found).</li>
+            <li>Click <strong>OK</strong> to save. Create one task per scheduled message (e.g. one for 9:00, one for 18:00).</li>
+        </ol>
+
+        <h3>26.5.4 Create the scheduled task (command line)</h3>
+        <p>Using <code>schtasks</code> to create a daily task at 9:00 AM:</p>
+        <pre><code>schtasks /Create /TN "MALDA daily" /TR "\"C:\Path\To\malda.exe\" agent -m \"Good morning! What's on my calendar today?\"" /SC DAILY /ST 09:00 /RU "%USERNAME%"</code></pre>
+        <p>Replace <code>C:\Path\To\malda.exe</code> with your actual <code>malda.exe</code> path and the message with the one you stored in <code>malda cron add</code>. <code>/RU %USERNAME%</code> runs the task as your user so it can read <code>%USERPROFILE%\.malda</code> and your config.</p>
+
+        <h3>26.5.5 Environment and API key</h3>
+        <p>The task runs in a clean environment. The assistant needs either:</p>
+        <ul>
+            <li><strong>Config file</strong>: run <code>malda onboard</code> and put <code>providers.openrouter.apiKey</code> in <code>%USERPROFILE%\.malda\config.json</code> (no environment variable needed for the task), or</li>
+            <li><strong>Environment variable</strong>: set <code>OPENROUTER_API_KEY</code> in your user or system environment variables (System Properties → Environment variables) so the task sees it when run as your user.</li>
+        </ul>
+
+        <h3>26.5.6 Mapping cron expressions to Task Scheduler</h3>
+        <p>MALDA stores cron expressions in <code>%USERPROFILE%\.malda\cron.json</code> and does not run them directly. You can either let <code>malda cron install</code> map supported patterns to Task Scheduler triggers automatically (see above), or translate them manually when creating tasks yourself:</p>
+        <table>
+            <tr><th>Cron expression</th><th>Meaning</th><th>Task Scheduler</th></tr>
+            <tr><td><code>0 9 * * *</code></td><td>9:00 AM every day</td><td>Trigger: Daily, 9:00 AM</td></tr>
+            <tr><td><code>0 18 * * *</code></td><td>6:00 PM every day</td><td>Trigger: Daily, 18:00</td></tr>
+            <tr><td><code>0 9 * * 1-5</code></td><td>9:00 AM Mon–Fri</td><td>Trigger: Daily, 9:00 AM, repeat weekly Mon–Fri (or use “Weekdays”)</td></tr>
+        </table>
+        <p>Use <code>malda cron add</code> to define and list jobs, then either run <code>malda cron install</code> (Windows) or configure your system scheduler to run <code>malda agent -m "message"</code> at the matching times.</p>
+
+        <h2 id="skills">29.7 Skills</h2>
+        <p>Skills are MALDA files in <code>~/.malda/skills/</code> that export tools (and optionally an <code>agent</code>) for the assistant. You can load them in two ways.</p>
+        <h3>Static import</h3>
+        <p>Use <code>using Alias = skills.skillname</code> to load <code>~/.malda/skills/skillname.malda</code> and import its globals under the alias. For example:</p>
+        <pre><code>using GithubSkill = skills.github;
+// Then: GithubSkill.tools, GithubSkill.agent (if the skill exports them)</code></pre>
+        <h3>Dynamic loading</h3>
+        <p>Use <code>loadSkillsFromDir()</code> to scan <code>~/.malda/skills/*.malda</code> in one call, or <code>getSkillNames()</code> + <code>loadSkill(name)</code> for explicit control. Each loaded skill is an object with module globals plus a <code>name</code> field; failed loads include an <code>error</code> string. The default assistant uses <code>loadSkillsFromDir()</code>, adds each skill’s <code>tools</code> array to the agent, and registers each skill’s <code>agent</code> via <code>addSubAgent</code> when present.</p>
+        <pre><code>var skills = loadSkillsFromDir();
+for (var i = 0; i &lt; skills.length; i++) {
+  var s = skills[i];
+  if (s.error != null &amp;&amp; s.error != "") continue;
+  if (s.tools != null) {
+    for (var j = 0; j &lt; s.tools.length; j++) agent.addTool(s.tools[j]);
+  }
+  if (s.agent != null) {
+    var desc = s.agentDescription != null &amp;&amp; s.agentDescription != ""
+      ? s.agentDescription : "Delegates to the " + s.name + " skill specialist.";
+    agent.addSubAgent(s.agent, desc);
+  }
+}</code></pre>
+        <h3>Skill file convention</h3>
+        <p>A skill file should export at least a <code>tools</code> array. Optionally export <code>agent</code> (an <code>Agent</code> instance) and <code>agentDescription</code> (tool description shown to the orchestrator). <code>malda onboard</code> installs a working template at <code>~/.malda/skills/greeting.malda</code> (tool + sub-agent). Example:</p>
+        <pre><code>// ~/.malda/skills/greeting.malda (installed by malda onboard)
+@Tool("greet_user", "Greets someone by name", "...")
+function greetUserTool(args) { ... }
+var tools = ["greet_user"];
+var agentDescription = "Greets users by name.";
+var agent = new Agent("GreetingSkill", "specialist", "...", skillClient);
+agent.addTool("greet_user");</code></pre>
+        <p>Place additional <code>.malda</code> files in <code>~/.malda/skills/</code>. The assistant discovers and loads them automatically when using the default script. Run <code>malda doctor</code> to validate skill syntax.</p>
+
+        <h2>29.8 Channels / Telegram</h2>
+        <p>You can run the assistant over a <strong>channel</strong> so it communicates with users via an external transport. The same assistant script is used; the host injects a channel that supplies input (e.g. from Telegram) and sends <code>print()</code> output back to that channel.</p>
+        <h3>Running over Telegram</h3>
+        <p>To run the assistant as a Telegram bot:</p>
+        <ol>
+            <li>Create a bot with <a href="https://t.me/BotFather">BotFather</a> and obtain the bot token.</li>
+            <li>Set the token via <code>TELEGRAM_BOT_TOKEN</code> or in <code>~/.malda/config.json</code> under <code>channels.telegram.botToken</code>.</li>
+            <li>Run <code>malda agent -c telegram</code> or <code>malda agent --channel telegram</code>.</li>
+        </ol>
+        <p>The process stays running and uses long polling to receive messages. Each message you send to the bot is passed to the assistant as <code>input()</code>; the assistant’s reply (from <code>print()</code>) is sent back to the same chat. The same script (<code>assistant.malda</code>) and config (API keys, model, tools, memory) are used as for the console; only the source of input and the destination of output change.</p>
+        <h3>Config example</h3>
+        <pre><code>{
+  "providers": { "openrouter": { "apiKey": "sk-..." } },
+  "agents": { "defaults": { "model": "anthropic/claude-sonnet" } },
+  "channels": { "telegram": { "botToken": "123456:ABC-DEF..." } }
+}</code></pre>
+        <p>If the token is missing when you run <code>malda agent -c telegram</code> or <code>malda gateway</code>, the CLI prints an error and exits. Each Telegram chat gets its own memory scope (<code>chat:{id}</code>); global memories (no scope) remain visible in every chat. For a persistent bot with scheduled jobs, prefer <code>malda gateway</code> over <code>malda agent -c telegram</code>.</p>
+
+        <div class="see-also">
+            <h3>See Also</h3>
+            <ul>
+                <li><a href="11-built-in-functions.html">12. Built-in Functions</a> — <code>getMaldaHome()</code>, <code>getMaldaConfig()</code>, <code>ensureDir()</code>, <code>webSearch()</code></li>
+                <li><a href="14-agent-orchestration.html">Agent Orchestration</a> — Agents, tools, and GraphMemory</li>
+                <li><a href="23-appendix.html">Appendix</a> — Command-line reference summary</li>
+                <li>26.7 above — Channels / Telegram for <code>malda agent -c telegram</code></li>
+            </ul>
+        </div>
+        <div class="nav-footer">
+            <a href="24-device-integration.html">← Previous: 28. Device Integration</a>
+            <a href="20-examples.html">Next: 30. Examples→</a>
+        </div>
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, at your option.</p>
+        </footer>
+    </main>
+    <script src="malda-highlight.js"></script>
+    <script src="navigation.js"></script>
+</body>
+</html>

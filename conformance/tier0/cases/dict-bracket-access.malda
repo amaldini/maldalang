@@ -1,0 +1,2 @@
+var d = dict { "k": 5 };
+print(d["k"]);

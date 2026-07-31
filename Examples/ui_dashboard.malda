@@ -1,0 +1,64 @@
+// Example: Dashboard with Multiple UI Generation and Cache Reuse
+// This demonstrates generating multiple UIs, cache reuse, and handling multiple submissions
+
+var client = new OpenRouterClient();
+var uiAgent = new Agent(
+    "UIGenerator",
+    "UI designer",
+    "You create beautiful, functional HTML interfaces with modern CSS. Always include proper form submission to /submit endpoint with POST method.",
+    client
+);
+
+var cache = new HTMLCache("./ui_cache", 50, 24); // Max 50 entries, 24 hour expiration
+
+function getOrGenerateUI(description) {
+    var cached = cache.get(description);
+    if (cached != null) {
+        print("Using cached HTML for: " + description);
+        return cached;
+    }
+    
+    print("Generating HTML for: " + description);
+    var response = uiAgent.think("Create HTML interface: " + description);
+    var html = extractHTML(response.content);
+    cache.set(description, html);
+    return html;
+}
+
+// Generate multiple UIs
+var dashboardHTML = getOrGenerateUI("Admin dashboard with user list, statistics cards, and action buttons");
+var loginHTML = getOrGenerateUI("Login form with username and password fields");
+var contactHTML = getOrGenerateUI("Contact form with name, email, and message fields");
+
+// Use dashboard as the main page
+var server = new HttpServer(8080);
+var submissionCount = 0;
+
+@PAGE("/")
+function homePage() {
+    return dashboardHTML;
+}
+
+@POST("/submit")
+function handleSubmit(body) {
+    submissionCount = submissionCount + 1;
+    print("Submission #" + submissionCount + " received:");
+    print("  Data: " + toJSON(body));
+    
+    if (submissionCount >= 5) {
+        server.stop();
+        print("Received " + submissionCount + " submissions");
+        print("Server stopped");
+    }
+    
+    return {"status": 200, "body": "<html><body><h1>Thank you!</h1><p>Submission received.</p></body></html>"};
+}
+
+server.start();
+
+print("Server running at http://localhost:8080");
+print("Cache statistics:");
+var stats = cache.stats();
+print("  Cached entries: " + stats.count);
+print("  Total size: " + stats.totalSize + " bytes");
+print("Waiting for submissions (will stop after 5 submissions)...");

@@ -1,0 +1,3 @@
+var o = option.none();
+print(option.unwrapOr(o, 42));
+print(option.isNone(o));

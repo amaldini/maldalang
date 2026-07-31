@@ -1,0 +1,87 @@
+// Example: Using @Tool decorator to define custom LLM tools
+// Tools are automatically registered but must be explicitly added to agents
+
+// Simple tool with auto-generated schema
+@Tool("calculate_sum", "Adds two numbers together")
+function calculateSum(a, b) {
+    return int(a) + int(b);
+}
+
+// Tool with custom schema (as JSON string)
+@Tool("get_weather", "Gets weather for a location", "{\"type\":\"object\",\"properties\":{\"location\":{\"type\":\"string\",\"description\":\"City name\"},\"unit\":{\"type\":\"string\",\"enum\":[\"celsius\",\"fahrenheit\"]}},\"required\":[\"location\"]}")
+function getWeather(location, unit) {
+    // Simulated weather data
+    var temp = 25;
+    if (unit == "fahrenheit") {
+        temp = temp * 9 / 5 + 32;
+    }
+    return "Weather in " + location + ": Sunny, " + string(temp) + "°" + (unit == "fahrenheit" ? "F" : "C");
+}
+
+// Tool that processes text
+@Tool("count_words", "Counts words in a text string")
+function countWords(text) {
+    if (text == null || text == "") {
+        return 0;
+    }
+    var words = 0;
+    var inWord = false;
+    var i = 0;
+    while (i < length(text)) {
+        var char = substring(text, i, 1);
+        if (char != " " && char != "\t" && char != "\n") {
+            if (!inWord) {
+                words = words + 1;
+                inWord = true;
+            }
+        } else {
+            inWord = false;
+        }
+        i = i + 1;
+    }
+    return words;
+}
+
+// Create LLM client
+var apiKey = getEnv("OPENROUTER_API_KEY");
+if (apiKey == null) {
+    print("Error: OPENROUTER_API_KEY environment variable not set");
+} else {
+    var client = new OpenRouterClient("openai/gpt-4");
+    
+    // Create an agent
+    var agent = new Agent(
+        "Assistant",
+        "Helper",
+        "You are a helpful assistant that can perform calculations, check weather, and analyze text.",
+        client
+    );
+    
+    // Add specific tools by name
+    agent.addTool("calculate_sum");
+    agent.addTool("get_weather");
+    agent.addTool("count_words");
+    
+    // Or add all registered tools at once:
+    // agent.addAllTools();
+    
+    // Get list of available tools
+    var availableTools = agent.getAvailableTools();
+    print("Available tools: " + toJSON(availableTools));
+    
+    // Use the agent
+    print("
+=== Example 1: Calculation ===");
+    var response1 = agent.think("What is 15 + 27?");
+    print(response1.content);
+    
+    print("
+=== Example 2: Weather ===");
+    var response2 = agent.think("What's the weather in Paris in celsius?");
+    print(response2.content);
+    
+    print("
+=== Example 3: Word Count ===");
+    var response3 = agent.think("How many words are in this text: 'The quick brown fox jumps over the lazy dog'?");
+    print(response3.content);
+}

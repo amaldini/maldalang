@@ -1,0 +1,17 @@
+// V2 UI form workflow example.
+
+var sid = "form-demo";
+
+var formNode = ui.form(
+    {"componentId": "ContactForm", "onSubmit": "submitContact"},
+    [
+        ui.field({}, [ui.text({"value": "Name"}), ui.textField({"name": "name", "placeholder": "Your name"})]),
+        ui.field({}, [ui.text({"value": "Message"}), ui.textArea({"name": "message", "placeholder": "Your message"})]),
+        ui.switch({"name": "subscribe", "defaultChecked": true, "label": "Subscribe"}),
+        ui.button({"label": "Send", "onClick": "submit"})
+    ]
+);
+
+print(ui.mount(formNode, sid));
+ui.dispatchEvent({"type": "submit", "targetPath": "/", "payload": {"name": "Andrea", "message": "Hello!"}}, sid, 1);
+print(ui.pullEvent(sid));

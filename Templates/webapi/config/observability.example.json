@@ -1,0 +1,12 @@
+{
+  "logging": {
+    "format": "json",
+    "level": "info",
+    "includeCorrelationId": true
+  },
+  "metrics": {
+    "enabled": true,
+    "endpoint": "/metrics",
+    "includeRuntime": true
+  }
+}

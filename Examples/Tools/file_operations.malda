@@ -1,0 +1,25 @@
+// Write a file
+var content = "Hello, World!
+This is a test file.";
+writeFile("test.txt", content);
+print("File written");
+
+// Read it back
+var readContent = readFile("test.txt");
+if (readContent != null) {
+    print("File content:");
+    print(readContent);
+} else {
+    print("File not found");
+}
+
+// List directory
+var items = listDirectory(".");
+print("
+Directory contents:");
+var i = 0;
+while (i < items.length) {
+    var item = items[i];
+        print($"{item.name} ({item.type})");
+    i = i + 1;
+}

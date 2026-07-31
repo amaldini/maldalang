@@ -1,0 +1,66 @@
+// LLM Server - High Availability Example
+// Multiple backends with failover and health checking
+
+var PORT = 8080;
+var MODEL_PATH = "models/qwen2.5-0.5b-instruct-q4_k_m.gguf";
+var localAppData = getEnv("LOCALAPPDATA");
+if (localAppData != null && localAppData != "") {
+    MODEL_PATH = localAppData + "/MaldaLang/Models/default/qwen2.5-0.5b-instruct-q4_k_m.gguf";
+}
+
+print("=== LLM Server - High Availability Example ===");
+print("Setting up high availability configuration...");
+
+// Create bridge with multiple backends for failover
+var bridge = new LLMClientBridge([
+    {
+        "type": "local",
+        "modelPath": MODEL_PATH,
+        "priority": 1  // Primary backend
+    },
+    {
+        "type": "server",
+        "url": "http://backup-server:8080",
+        "priority": 2  // Failover backend
+    },
+    {
+        "type": "api",
+        "url": "https://api.openai.com/v1",
+        "apiKey": "sk-your-api-key",
+        "model": "gpt-3.5-turbo",
+        "priority": 3  // Last resort backend
+    }
+]);
+
+// Configure failover and health checking
+bridge.setRetryPolicy(3, 1000);  // 3 retries with 1 second delay
+bridge.enableHealthCheck(5000);  // Check health every 5 seconds
+
+print("High availability configuration:");
+print("  - Primary: Local model");
+print("  - Failover 1: Backup server");
+print("  - Failover 2: Cloud API (last resort)");
+print("  - Health checking: every 5s");
+print("  - Retry policy: 3 retries, 1s delay");
+print("");
+
+print("Starting server on port " + string(PORT) + "...");
+var server = new LLMServer(bridge, PORT);
+server.start();
+
+print("Server started successfully!");
+print("");
+print("The server will automatically:");
+print("  - Use the primary backend when available");
+print("  - Failover to backup backends if primary fails");
+print("  - Check backend health periodically");
+print("  - Retry failed requests automatically");
+print("");
+print("Server running. Press Ctrl+C to stop.");
+
+// Keep server running
+while (server.isRunning) {
+    sleep(1000);
+}
+
+print("Server stopped.");

@@ -1,0 +1,21 @@
+# Optional-pack symbols that must NOT appear in MaldaLang/BuiltIns/BuiltInRegistry.cs
+# Format: symbol -> note
+# Used by OptionalPackRegistryGuardTests and scripts/verify-optional-pack-registry.ps1
+
+sma -> optional-pack | timeseries indicators
+ema -> optional-pack | timeseries indicators
+rsi -> optional-pack | timeseries indicators
+atr -> optional-pack | timeseries indicators
+adx -> optional-pack | timeseries indicators
+bbands -> optional-pack | timeseries indicators
+highest -> optional-pack | timeseries indicators
+lowest -> optional-pack | timeseries indicators
+stddev -> optional-pack | timeseries indicators
+stochastic -> optional-pack | timeseries indicators
+ta -> optional-pack | SDK facade (not core-registered)
+createIndicatorEngine -> optional-pack | vertical indicator engine
+applyIndicatorEngineState -> optional-pack | vertical indicator engine
+createBacktestTelemetryEngine -> optional-pack | vertical backtest
+collectBacktestPendingIntents -> optional-pack | vertical backtest
+prepareBacktestCsvFiles -> optional-pack | vertical backtest
+parseBacktestCsvBars -> optional-pack | vertical backtest

@@ -1,0 +1,2 @@
+print(isTag(1, "bool"));
+print(isTag("x", "int"));

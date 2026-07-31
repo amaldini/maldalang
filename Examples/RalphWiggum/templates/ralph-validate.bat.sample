@@ -1,0 +1,18 @@
+@echo off
+REM Copy to your Ralph workdir as .ralph-validate.bat
+REM Ralph sets: RALPH_WORKDIR, RALPH_CHANGED_FILES (git), RALPH_VALIDATION_FILES (git + PRD hints)
+
+if "%RALPH_CHANGED_FILES%"=="" (
+  echo [ralph-validate] No git changes; skipping targeted tests.
+  exit /b 0
+)
+
+echo [ralph-validate] Changed: %RALPH_CHANGED_FILES%
+echo [ralph-validate] Validate set: %RALPH_VALIDATION_FILES%
+
+REM Example: run tests only when C# under src/ changed
+echo %RALPH_CHANGED_FILES% | findstr /i /c:"src\\" /c:"src/" >nul
+if errorlevel 1 exit /b 0
+
+dotnet test Your.Tests.csproj --filter "FullyQualifiedName~AreaUnderWork"
+exit /b %ERRORLEVEL%

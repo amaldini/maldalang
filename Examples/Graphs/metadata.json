@@ -1,0 +1,39 @@
+{
+  "examples": [
+    {
+      "name": "Basic Graph Operations",
+      "description": "Creating graphs, adding/removing nodes and edges, querying graph properties",
+      "file": "basic_graph_operations.malda"
+    },
+    {
+      "name": "Graph Algorithms",
+      "description": "Breadth-first search, depth-first search, and shortest path algorithms",
+      "file": "graph_algorithms.malda"
+    },
+    {
+      "name": "Topological Sort",
+      "description": "Topological sorting for directed acyclic graphs (DAGs) and cycle detection",
+      "file": "topological_sort.malda"
+    },
+    {
+      "name": "Minimum Spanning Tree",
+      "description": "Finding minimum spanning tree in undirected graphs using Kruskal's algorithm",
+      "file": "minimum_spanning_tree.malda"
+    },
+    {
+      "name": "Connected Components",
+      "description": "Finding connected components in graphs for network analysis",
+      "file": "connected_components.malda"
+    },
+    {
+      "name": "Graph Pathfinding",
+      "description": "Comprehensive pathfinding examples comparing BFS, DFS, and shortest path algorithms",
+      "file": "graph_pathfinding.malda"
+    },
+    {
+      "name": "Graph Serialization",
+      "description": "Serializing and deserializing graphs to/from JSON format for storage and transmission",
+      "file": "graph_serialization.malda"
+    }
+  ]
+}

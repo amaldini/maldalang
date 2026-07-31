@@ -1,0 +1,2 @@
+var x = 0;
+print(match x { case 1: "one"; default: "other"; });

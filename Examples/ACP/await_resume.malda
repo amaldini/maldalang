@@ -1,0 +1,43 @@
+// ACP Await/Resume Example
+// Demonstrates pausing agent execution to await user input
+
+var client = new OpenRouterClient();
+var agent = new Agent(
+    "Interactive",
+    "assistant",
+    "You are an interactive agent. When you need user input, respond with '__ACP_AWAIT__:Your question here'",
+    client
+);
+
+// Expose agent as ACP server
+var server = new ACPServer(8082);
+server.registerAgent("interactive-agent", agent);
+server.start();
+
+print("ACP Server started on http://localhost:8082/");
+print("");
+
+// In another process or client, you would use:
+// var acpClient = new ACPClient("http://localhost:8082");
+// 
+// // Start execution (agent will await)
+// var runId = acpClient.sendMessageAsync("interactive-agent", "Ask the user for their name");
+// 
+// // Poll for status
+// var status = acpClient.getRunStatus("interactive-agent", runId);
+// while (status.status != "awaiting") {
+//     sleep(100);
+//     status = acpClient.getRunStatus("interactive-agent", runId);
+// }
+// 
+// print("Agent is awaiting input");
+// 
+// // Resume with user input
+// var resumeResponse = acpClient.resumeRun("interactive-agent", runId, "John Doe");
+// print("Resume response: " + resumeResponse);
+
+// Keep server running
+print("Server running. Press Ctrl+C to stop.");
+while (server.isRunning) {
+    sleep(1000);
+}

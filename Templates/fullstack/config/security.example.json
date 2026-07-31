@@ -1,0 +1,11 @@
+{
+  "security": {
+    "jwtSecret": "change-me-jwt-secret",
+    "csrfSecret": "change-me-csrf-secret"
+  },
+  "rateLimit": {
+    "limit": 200,
+    "windowSeconds": 60,
+    "keyStrategy": "verifiedSubOrIp"
+  }
+}

@@ -1,0 +1,64 @@
+// Graph Algorithms Example
+// Demonstrates BFS, DFS, and shortest path algorithms
+
+print("=== Graph Algorithms ===\n");
+
+// Create a directed graph
+var g = graph directed {
+  nodes: ["A", "B", "C", "D", "E", "F"],
+  edges: [
+    { from: "A", to: "B", weight: 4 },
+    { from: "A", to: "C", weight: 2 },
+    { from: "B", to: "D", weight: 5 },
+    { from: "C", to: "D", weight: 1 },
+    { from: "C", to: "E", weight: 3 },
+    { from: "D", to: "F", weight: 2 },
+    { from: "E", to: "F", weight: 4 }
+  ]
+};
+
+print("Graph structure:");
+print("Nodes: " + g.nodes());
+print("Edges: " + g.edges());
+print("");
+
+// Breadth-first search (BFS) - visit all nodes
+print("=== Breadth-First Search (BFS) ===");
+var visited = g.bfs("A");
+print("BFS traversal from 'A': " + visited);
+print("");
+
+// BFS with target - find path
+var pathResult = g.bfs("A", "F");
+print("BFS path from 'A' to 'F':");
+print("  Path: " + pathResult.path);
+print("  Found: " + pathResult.found);
+print("");
+
+// Depth-first search (DFS) - visit all nodes
+print("=== Depth-First Search (DFS) ===");
+var dfsVisited = g.dfs("A");
+print("DFS traversal from 'A': " + dfsVisited);
+print("");
+
+// DFS with target - find path
+var dfsPath = g.dfs("A", "F");
+print("DFS path from 'A' to 'F':");
+print("  Path: " + dfsPath.path);
+print("  Found: " + dfsPath.found);
+print("");
+
+// Shortest path using Dijkstra's algorithm
+print("=== Shortest Path (Dijkstra) ===");
+var shortest = g.shortestPath("A", "F");
+print("Shortest path from 'A' to 'F':");
+print("  Path: " + shortest.path);
+print("  Distance: " + shortest.distance);
+print("  Found: " + shortest.found);
+print("");
+
+// Compare different paths
+var path1 = g.shortestPath("A", "D");
+var path2 = g.shortestPath("A", "E");
+print("Shortest path A->D: " + path1.path + " (distance: " + path1.distance + ")");
+print("Shortest path A->E: " + path2.path + " (distance: " + path2.distance + ")");

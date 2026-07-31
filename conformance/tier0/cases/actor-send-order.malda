@@ -1,0 +1,20 @@
+actor Worker {
+    on work(label) {
+        print(label);
+    }
+}
+
+actor Controller {
+    on start() {
+        var w = spawn Worker();
+        sleep(100);
+        send w.work("first");
+        send w.work("second");
+        sleep(300);
+    }
+}
+
+var c = spawn Controller();
+sleep(100);
+send c.start();
+sleep(500);

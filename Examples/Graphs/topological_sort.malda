@@ -1,0 +1,64 @@
+// Topological Sort Example
+// Demonstrates topological sorting for directed acyclic graphs (DAGs)
+
+print("=== Topological Sort ===\n");
+
+// Create a DAG representing task dependencies
+// Example: Course prerequisites or build dependencies
+var courseGraph = graph directed {
+  nodes: ["Intro", "DataStructures", "Algorithms", "Database", "WebDev", "Advanced"],
+  edges: [
+    { from: "Intro", to: "DataStructures", weight: 1 },
+    { from: "Intro", to: "Database", weight: 1 },
+    { from: "DataStructures", to: "Algorithms", weight: 1 },
+    { from: "Database", to: "WebDev", weight: 1 },
+    { from: "Algorithms", to: "Advanced", weight: 1 },
+    { from: "WebDev", to: "Advanced", weight: 1 }
+  ]
+};
+
+print("Course dependency graph:");
+print("Nodes: " + courseGraph.nodes());
+print("Edges: " + courseGraph.edges());
+print("");
+
+// Topological sort
+var topo = courseGraph.topologicalSort();
+print("Topological sort result:");
+print("  Order: " + topo.order);
+print("  Valid: " + topo.valid);
+print("");
+
+if (topo.valid) {
+  print("Valid course order (prerequisites first):");
+  var i = 1;
+  for (var course in topo.order) {
+    print("  " + i + ". " + course);
+    i = i + 1;
+  }
+} else {
+  print("Graph has cycles - cannot determine valid order");
+}
+print("");
+
+// Check for cycles
+print("Graph is cyclic: " + courseGraph.isCyclic());
+print("");
+
+// Create a graph with a cycle (invalid for topological sort)
+var cyclicGraph = graph directed {
+  nodes: ["A", "B", "C"],
+  edges: [
+    { from: "A", to: "B", weight: 1 },
+    { from: "B", to: "C", weight: 1 },
+    { from: "C", to: "A", weight: 1 }  // Creates a cycle
+  ]
+};
+
+print("Cyclic graph:");
+print("Is cyclic: " + cyclicGraph.isCyclic());
+var cyclicTopo = cyclicGraph.topologicalSort();
+print("Topological sort valid: " + cyclicTopo.valid);
+if (!cyclicTopo.valid) {
+  print("Cannot perform topological sort on cyclic graph");
+}

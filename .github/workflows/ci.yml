@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build:
+    name: Build and smoke tests (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Build
+        run: dotnet build MaldaLang.sln -c Release --verbosity minimal
+
+      - name: Smoke tests (filtered)
+        run: >
+          dotnet test MaldaLang.Tests -c Release --no-build
+          --filter "FullyQualifiedName~BuiltInRegistryTests|FullyQualifiedName~CompilerPackDecouplingGuardTests|FullyQualifiedName~OptionalPackTranspileEmitTests|FullyQualifiedName~LicenseHeaderGuardTests|FullyQualifiedName~ReferenceManual"
+          --verbosity minimal
+
+  build-linux:
+    name: Build and run CLI (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      # MaldaLang.sln contains the WPF Desktop IDE (net8.0-windows), which cannot build
+      # on Linux. Build the cross-platform projects explicitly instead of the solution.
+      - name: Build cross-platform projects
+        run: |
+          dotnet build MaldaLang -c Release --verbosity minimal
+          dotnet build MaldaLang.Compiler -c Release --verbosity minimal
+          dotnet build MaldaLang.LanguageServer -c Release --verbosity minimal
+          dotnet build MaldaLang.IDE -c Release --verbosity minimal
+          dotnet build MaldaLang.Tests -c Release --verbosity minimal
+
+      # Deliberately narrower than the Windows job: these two guards are pure source and
+      # registry scans, so they are the subset known to be platform-neutral. Broadening
+      # Linux test coverage is tracked work, not a solved problem.
+      - name: Platform-neutral guard tests
+        run: >
+          dotnet test MaldaLang.Tests -c Release --no-build
+          --filter "FullyQualifiedName~BuiltInRegistryTests|FullyQualifiedName~LicenseHeaderGuardTests"
+          --verbosity minimal
+
+      - name: Run an example through the CLI
+        run: |
+          dotnet build MaldaLang -c Release -o artifacts/malda-cli --verbosity minimal
+          ./artifacts/malda-cli/malda Examples/Basics/hello_world.malda

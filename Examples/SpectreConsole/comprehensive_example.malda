@@ -1,0 +1,94 @@
+// Spectre.Console Comprehensive Example
+// Demonstrates multiple Spectre.Console features together
+
+AnsiConsole.markupLine("[bold blue]=== Spectre.Console Demo ===[/]");
+AnsiConsole.markupLine("");
+
+// Welcome panel
+AnsiConsole.panel("Welcome to the Spectre.Console comprehensive example!\n" +
+      "This demonstrates various features of Spectre.Console.", 
+      "Welcome", 
+      "rounded");
+
+AnsiConsole.markupLine("");
+
+// User information table
+var users = [
+  {"name": "Alice", "role": "Admin", "status": "Active"},
+  {"name": "Bob", "role": "User", "status": "Active"},
+  {"name": "Charlie", "role": "User", "status": "Inactive"}
+];
+
+AnsiConsole.table(users, "User Management", ["name", "role", "status"]);
+
+AnsiConsole.markupLine("");
+
+// File structure tree
+AnsiConsole.tree("Project Structure", [
+  {
+    "label": "src/",
+    "children": [
+      "main.malda",
+      "utils.malda"
+    ]
+  },
+  {
+    "label": "docs/",
+    "children": [
+      "README.md",
+      "CHANGELOG.md"
+    ]
+  },
+  "config.json"
+]);
+
+AnsiConsole.markupLine("");
+
+// Status spinner
+AnsiConsole.status("Initializing system...", () => {
+  var delay = 0;
+  while (delay < 50) {
+    delay = delay + 1;
+  }
+});
+
+AnsiConsole.markupLine("[green]System initialized[/]");
+AnsiConsole.markupLine("");
+
+// Progress bar
+AnsiConsole.progress({
+  "tasks": [
+    {
+      "name": "Loading data",
+      "maxValue": 100
+    },
+    {
+      "name": "Processing",
+      "maxValue": 100
+    }
+  ],
+  "action": (progressObj) => {
+    var delay1 = 0;
+    while (delay1 < 30) {
+      delay1 = delay1 + 1;
+    }
+    
+    var delay2 = 0;
+    while (delay2 < 30) {
+      delay2 = delay2 + 1;
+    }
+  }
+});
+
+AnsiConsole.markupLine("[green]Processing complete![/]");
+AnsiConsole.markupLine("");
+
+// Final summary panel
+var summary = "✓ All operations completed successfully!\n" +
+              "✓ System is ready for use.\n" +
+              "✓ No errors encountered.";
+
+AnsiConsole.panel(summary, "Summary", "double");
+
+AnsiConsole.markupLine("");
+AnsiConsole.markupLine("[bold green]Demo completed![/]");

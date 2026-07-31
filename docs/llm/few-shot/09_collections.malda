@@ -1,0 +1,15 @@
+// Arrays use member-style methods on the value — there is no `arr` namespace.
+// .length is a property (items.length), not a call (items.length() errors).
+
+var items = [1, 2, 3];
+items.append(4);
+var last = items.pop();
+io.print($"last={last} length={items.length}");
+
+foreach (var n in items) {
+    io.print(n);
+}
+
+var person = { "name": "Ada", "age": 36 };
+person.age = 37;
+io.print($"name={person.name} age={person.age}");

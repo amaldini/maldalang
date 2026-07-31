@@ -1,0 +1,9 @@
+var x = 99;
+var result = match x {
+    case 1: "one";
+    default: {
+        print("fallback");
+        "other";
+    }
+};
+print(result);

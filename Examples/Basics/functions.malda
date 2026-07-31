@@ -1,0 +1,16 @@
+function add(a, b) {
+    return a + b;
+}
+
+function factorial(n) {
+    if (n <= 1) {
+        return 1;
+    }
+    return n * factorial(n - 1);
+}
+
+var result1 = add(5, 3);
+print($"5 + 3 = {result1}");
+
+var result2 = factorial(5);
+print($"5! = {result2}");

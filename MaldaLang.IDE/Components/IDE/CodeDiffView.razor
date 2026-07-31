@@ -1,0 +1,261 @@
+@using MaldaLang.IDE.Models
+
+<div class="diff-view">
+    <div class="diff-header">
+        <span class="diff-title">Code Changes</span>
+        <button class="btn-diff-toggle" @onclick="ToggleView">@(isUnified ? "Side-by-Side" : "Unified")</button>
+    </div>
+    <div class="diff-content">
+        @if (isUnified)
+        {
+            <div class="diff-unified">
+                @foreach (var line in DiffResult.Lines)
+                {
+                    <div class="diff-line @GetLineClass(line.Type)">
+                        <span class="diff-line-number">@GetLineNumber(line)</span>
+                        <span class="diff-line-content">@GetLineContent(line)</span>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="diff-split">
+                <div class="diff-original">
+                    <div class="diff-header">Original</div>
+                    @foreach (var line in DiffResult.Lines)
+                    {
+                        <div class="diff-line @GetLineClass(line.Type)">
+                            <span class="diff-line-number">@(line.OriginalLineNumber?.ToString() ?? "")</span>
+                            <span class="diff-line-content">@(line.OriginalContent ?? "")</span>
+                        </div>
+                    }
+                </div>
+                <div class="diff-new">
+                    <div class="diff-header">Suggested</div>
+                    @foreach (var line in DiffResult.Lines)
+                    {
+                        <div class="diff-line @GetLineClass(line.Type)">
+                            <span class="diff-line-number">@(line.NewLineNumber?.ToString() ?? "")</span>
+                            <span class="diff-line-content">@(line.NewContent ?? "")</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+    <div class="diff-actions">
+        <button class="btn-apply" @onclick="OnApply">Apply Changes</button>
+        <button class="btn-discard" @onclick="OnDiscard">Discard</button>
+        <button class="btn-copy" @onclick="OnCopy">Copy Code</button>
+    </div>
+</div>
+
+@code {
+    [Parameter] public DiffResult DiffResult { get; set; } = new();
+    [Parameter] public string? SuggestedCode { get; set; }
+    [Parameter] public EventCallback OnApply { get; set; }
+    [Parameter] public EventCallback OnDiscard { get; set; }
+    [Parameter] public EventCallback OnCopy { get; set; }
+    
+    private bool isUnified = false;
+    
+    private void ToggleView()
+    {
+        isUnified = !isUnified;
+    }
+    
+    private string GetLineClass(DiffLineType type)
+    {
+        return type switch
+        {
+            DiffLineType.Added => "diff-added",
+            DiffLineType.Removed => "diff-removed",
+            DiffLineType.Modified => "diff-modified",
+            _ => "diff-unchanged"
+        };
+    }
+    
+    private string GetLineNumber(DiffLine line)
+    {
+        if (line.OriginalLineNumber.HasValue && line.NewLineNumber.HasValue)
+            return $"{line.OriginalLineNumber} → {line.NewLineNumber}";
+        if (line.OriginalLineNumber.HasValue)
+            return line.OriginalLineNumber.ToString() ?? "";
+        if (line.NewLineNumber.HasValue)
+            return line.NewLineNumber.ToString() ?? "";
+        return "";
+    }
+    
+    private string GetLineContent(DiffLine line)
+    {
+        if (line.Type == DiffLineType.Modified)
+            return $"- {line.OriginalContent}\n+ {line.NewContent}";
+        if (line.Type == DiffLineType.Removed)
+            return $"- {line.OriginalContent}";
+        if (line.Type == DiffLineType.Added)
+            return $"+ {line.NewContent}";
+        return line.OriginalContent ?? line.NewContent ?? "";
+    }
+}
+
+<style>
+    .diff-view {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        background: #1e1e1e;
+        border-top: 1px solid #444;
+    }
+    
+    .diff-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px;
+        background: #2d2d2d;
+        border-bottom: 1px solid #444;
+    }
+    
+    .diff-title {
+        color: #ccc;
+        font-weight: bold;
+        font-size: 13px;
+    }
+    
+    .btn-diff-toggle {
+        background: #3d3d3d;
+        border: 1px solid #555;
+        color: #ccc;
+        padding: 4px 8px;
+        cursor: pointer;
+        font-size: 11px;
+        border-radius: 3px;
+    }
+    
+    .btn-diff-toggle:hover {
+        background: #4d4d4d;
+    }
+    
+    .diff-content {
+        flex: 1;
+        overflow: auto;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 12px;
+    }
+    
+    .diff-split {
+        display: flex;
+        height: 100%;
+    }
+    
+    .diff-original,
+    .diff-new {
+        flex: 1;
+        overflow: auto;
+        border-right: 1px solid #444;
+    }
+    
+    .diff-new {
+        border-right: none;
+    }
+    
+    .diff-unified {
+        width: 100%;
+    }
+    
+    .diff-line {
+        display: flex;
+        white-space: pre;
+        padding: 2px 8px;
+    }
+    
+    .diff-line-number {
+        min-width: 60px;
+        padding-right: 8px;
+        color: #666;
+        text-align: right;
+        user-select: none;
+        border-right: 1px solid #333;
+        margin-right: 8px;
+    }
+    
+    .diff-line-content {
+        flex: 1;
+        color: #ccc;
+    }
+    
+    .diff-added {
+        background: #1a3a1a;
+    }
+    
+    .diff-added .diff-line-content {
+        color: #4caf50;
+    }
+    
+    .diff-removed {
+        background: #3a1a1a;
+    }
+    
+    .diff-removed .diff-line-content {
+        color: #f44336;
+    }
+    
+    .diff-modified {
+        background: #3a3a1a;
+    }
+    
+    .diff-modified .diff-line-content {
+        color: #ffc107;
+    }
+    
+    .diff-unchanged {
+        background: transparent;
+    }
+    
+    .diff-actions {
+        display: flex;
+        gap: 8px;
+        padding: 8px;
+        background: #2d2d2d;
+        border-top: 1px solid #444;
+    }
+    
+    .btn-apply,
+    .btn-discard,
+    .btn-copy {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 12px;
+    }
+    
+    .btn-apply {
+        background: #4caf50;
+        color: white;
+    }
+    
+    .btn-apply:hover {
+        background: #45a049;
+    }
+    
+    .btn-discard {
+        background: #666;
+        color: white;
+    }
+    
+    .btn-discard:hover {
+        background: #777;
+    }
+    
+    .btn-copy {
+        background: #3d3d3d;
+        color: #ccc;
+        border: 1px solid #555;
+    }
+    
+    .btn-copy:hover {
+        background: #4d4d4d;
+    }
+</style>

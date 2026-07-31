@@ -1,0 +1,53 @@
+// Example: AI-generated structured UI tree with ui.generate(...)
+// Requires OpenRouter configuration for the default agent path.
+
+var sessionId = "ui-ai-generated-tree";
+var cache = new HTMLCache("./ui_cache", 25, 24);
+
+var tree = ui.generate(
+    "Login panel with heading, username and password fields, a remember me checkbox, and a primary submit button",
+    cache
+);
+
+var envelope = ui.mountEnvelope(tree, sessionId, {
+    "maxPatchCount": 1024,
+    "maxEventQueueDepth": 1024,
+    "sessionTtlMs": 1800000
+});
+
+print("Generated root node type:");
+print(tree.type);
+print("Mount envelope:");
+print(toJSON(envelope));
+
+var server = new HttpServer(8081);
+
+@PAGE("/web/ui-ai-generated-tree")
+function uiAiGeneratedTreePage() {
+    var html = "<!DOCTYPE html><html><head><meta charset='utf-8'><title>AI Generated UI Tree</title>";
+    html = html + "<meta name='viewport' content='width=device-width, initial-scale=1'>";
+    html = html + "<style>body{font-family:Arial,sans-serif;margin:24px}pre{background:#f5f5f5;padding:12px;border-radius:8px;overflow:auto}</style>";
+    html = html + "</head><body>";
+    html = html + "<h1>AI-generated UI Tree Envelope</h1>";
+    html = html + "<p>Fetch the generated mount envelope from <code>/web/api/ui-ai-generated-tree</code>.</p>";
+    html = html + "<pre id='out'>Loading...</pre>";
+    html = html + "<script>fetch('/web/api/ui-ai-generated-tree').then(r=>r.json()).then(j=>{document.getElementById('out').textContent=JSON.stringify(j,null,2);}).catch(e=>{document.getElementById('out').textContent='Error: '+e;});</script>";
+    html = html + "</body></html>";
+    return html;
+}
+
+@GET("/web/api/ui-ai-generated-tree")
+function uiAiGeneratedTreeEnvelope() {
+    var freshTree = ui.generate(
+        "Login panel with heading, username and password fields, a remember me checkbox, and a primary submit button",
+        cache
+    );
+    return ui.mountEnvelope(freshTree, sessionId, {
+        "maxPatchCount": 1024,
+        "maxEventQueueDepth": 1024,
+        "sessionTtlMs": 1800000
+    });
+}
+
+server.start();
+print("Open: http://localhost:8081/web/ui-ai-generated-tree");

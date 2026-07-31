@@ -1,0 +1,20 @@
+{
+  "security": {
+    "jwtSecret": "change-me-jwt-secret",
+    "csrfSecret": "change-me-csrf-secret",
+    "trustedProxy": {
+      "enabled": false,
+      "header": "X-Forwarded-For",
+      "hopIndex": 0
+    }
+  },
+  "rateLimit": {
+    "limit": 120,
+    "windowSeconds": 60,
+    "keyStrategy": "verifiedSubOrIp",
+    "headers": {
+      "enabled": true,
+      "includeRemaining": true
+    }
+  }
+}

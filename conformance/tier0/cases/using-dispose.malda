@@ -1,0 +1,8 @@
+class Resource {
+    function dispose() {
+        print("disposed");
+    }
+}
+using r = new Resource() {
+    print("body");
+}

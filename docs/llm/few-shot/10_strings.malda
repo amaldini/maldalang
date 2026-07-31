@@ -1,0 +1,16 @@
+// $"..." interpolates expressions. A plain string does not — braces stay literal.
+// Prompt bodies interpolate without the $ prefix (see 04_prompt.malda).
+
+var n = 7;
+var items = [1, 2, 3];
+
+io.print($"dollar form: {n}");
+io.print("plain form: {n}");
+io.print($"expr: {n * 2}  call: {math.sqrt(16)}  index: {items[0]}");
+io.print("concat: " + string(n));
+
+AnsiConsole.markupLine($"[bold green]n={n}[/]");
+AnsiConsole.markupLine($"bracket [[x]] and n={n}");
+
+// Escapes work inside $"..." too (including under --mode transpile).
+io.print($"two lines:{n}\nsecond");

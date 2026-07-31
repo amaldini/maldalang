@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <Version>0.1.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AvalonEdit" Version="6.3.0" />
+    <PackageReference Include="Markdig" Version="0.33.0" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3719.77" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MaldaLang.Compiler\MaldaLang.Compiler.csproj" />
+    <ProjectReference Include="..\MaldaLang\MaldaLang.csproj" />
+    <ProjectReference Include="..\MaldaLang.UIHost\MaldaLang.UIHost.csproj" />
+  </ItemGroup>
+
+</Project>

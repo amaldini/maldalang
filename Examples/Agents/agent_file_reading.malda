@@ -1,0 +1,12 @@
+// Note: Requires OPENROUTER_API_KEY environment variable
+// Using CodingAgent - automatically includes all file tools and uses OpenRouterClient
+// Create a coding agent that can read files
+var fileAgent = new CodingAgent(
+    "FileReader",
+    "file system assistant",
+    "You help users read and analyze files."
+);
+
+// Agent already has all file tools - ready to use!
+var response = fileAgent.think("Read the file test.txt and tell me what it contains.");
+print(response.content);

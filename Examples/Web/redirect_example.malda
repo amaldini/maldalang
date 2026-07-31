@@ -1,0 +1,135 @@
+// Example: Multi-page application with redirects
+// Demonstrates RedirectTo() function with login flow and page navigation
+// Shows redirects between: Login -> Dashboard -> Logout -> Login
+
+var server = new HttpServer(8080);
+
+// Simple in-memory session storage (for demo purposes)
+var sessions = {};
+var currentSessionId = 0;
+
+function createSession(username) {
+    currentSessionId = currentSessionId + 1;
+    var sessionId = "session_" + currentSessionId;
+    sessions[sessionId] = username;
+    return sessionId;
+}
+
+function getSession(sessionId) {
+    return sessions[sessionId];
+}
+
+function deleteSession(sessionId) {
+    sessions[sessionId] = null;
+}
+
+// Page 1: Login Page (handles query parameters for error/message display)
+@PAGE("/")
+function loginPage(queryParams) {
+    var error = queryParams["error"];
+    var statusMessage = queryParams["message"];
+    
+    var alertHtml = "";
+    if (error == "invalid") {
+        alertHtml = "<div class='error'>Invalid username or password!</div>";
+    } else if (error == "session_expired") {
+        alertHtml = "<div class='error'>Your session has expired. Please login again.</div>";
+    } else if (statusMessage == "logged_out") {
+        alertHtml = "<div style='color:green;margin:10px 0;'>You have been successfully logged out.</div>";
+    }
+    
+    return "<html><head><title>Login</title><style>body{font-family:Arial;max-width:400px;margin:50px auto;padding:20px;}input{margin:10px 0;padding:8px;width:100%;}button{padding:10px 20px;background:#007bff;color:white;border:none;cursor:pointer;width:100%;}button:hover{background:#0056b3;}.error{color:red;margin:10px 0;}</style></head><body><h1>Login</h1>" + alertHtml + "<form action='/login' method='post'><input type='text' name='username' placeholder='Username' required><input type='password' name='password' placeholder='Password' required><button type='submit'>Login</button></form><p><small>Try: admin/password or user/secret</small></p></body></html>";
+}
+
+// Handle login POST
+@POST("/login")
+function handleLogin(body) {
+    var username = body.username;
+    var password = body.password;
+    
+    // Simple authentication (for demo)
+    if ((username == "admin" && password == "password") || 
+        (username == "user" && password == "secret")) {
+        // Create session
+        var sessionId = createSession(username);
+        
+        // Set session cookie and redirect to dashboard
+        print("User " + username + " logged in with session " + sessionId);
+        return RedirectTo("/dashboard?session=" + sessionId);
+    }
+    
+    // Invalid credentials - redirect back to login with error
+    return RedirectTo("/?error=invalid");
+}
+
+// Page 2: Dashboard (protected - redirects to login if not authenticated)
+@PAGE("/dashboard")
+function dashboardPage(queryParams) {
+    var sessionId = queryParams["session"];
+    
+    // Check if session is valid
+    if (sessionId == null || getSession(sessionId) == null) {
+        return RedirectTo("/?error=session_expired");
+    }
+    
+    var username = getSession(sessionId);
+    
+    return "<html><head><title>Dashboard</title><style>body{font-family:Arial;max-width:600px;margin:50px auto;padding:20px;}a{color:#007bff;text-decoration:none;margin:10px 0;display:inline-block;}a:hover{text-decoration:underline;}.card{background:#f8f9fa;padding:20px;margin:20px 0;border-radius:5px;}</style></head><body><h1>Dashboard</h1><div class='card'><p>Welcome, <strong>" + username + "</strong>!</p><p>You are successfully logged in.</p></div><div class='card'><h2>Navigation</h2><p><a href='/profile?session=" + sessionId + "'>View Profile</a></p><p><a href='/logout?session=" + sessionId + "'>Logout</a></p></div></body></html>";
+}
+
+// Page 3: Profile Page (also protected)
+@PAGE("/profile")
+function profilePage(queryParams) {
+    var sessionId = queryParams["session"];
+    
+    // Check if session is valid
+    if (sessionId == null || getSession(sessionId) == null) {
+        return RedirectTo("/?error=session_expired");
+    }
+    
+    var username = getSession(sessionId);
+    
+    return "<html><head><title>Profile</title><style>body{font-family:Arial;max-width:600px;margin:50px auto;padding:20px;}a{color:#007bff;text-decoration:none;margin:10px 0;display:inline-block;}a:hover{text-decoration:underline;}.card{background:#f8f9fa;padding:20px;margin:20px 0;border-radius:5px;}</style></head><body><h1>User Profile</h1><div class='card'><p><strong>Username:</strong> " + username + "</p><p><strong>Role:</strong> " + (username == "admin" ? "Administrator" : "User") + "</p><p><strong>Session ID:</strong> " + sessionId + "</p></div><p><a href='/dashboard?session=" + sessionId + "'>← Back to Dashboard</a></p><p><a href='/logout?session=" + sessionId + "'>Logout</a></p></body></html>";
+}
+
+// Logout handler - redirects to login
+@PAGE("/logout")
+function logoutPage(queryParams) {
+    var sessionId = queryParams["session"];
+    
+    if (sessionId != null) {
+        var username = getSession(sessionId);
+        if (username != null) {
+            deleteSession(sessionId);
+            print("User " + username + " logged out");
+        }
+    }
+    
+    // Redirect to login page
+    return RedirectTo("/?message=logged_out");
+}
+
+
+server.start();
+print("Server running at http://localhost:8080");
+print("Open http://localhost:8080 in your browser");
+print("");
+print("This example demonstrates:");
+print("1. Login page (/) - redirects to dashboard after successful login");
+print("2. Dashboard page (/dashboard) - redirects to login if not authenticated");
+print("3. Profile page (/profile) - redirects to login if not authenticated");
+print("4. Logout page (/logout) - redirects back to login");
+print("");
+print("Try logging in with:");
+print("  Username: admin, Password: password");
+print("  Username: user, Password: secret");
+print("");
+print("Press Ctrl+C to stop the server");
+
+// Keep script alive
+while (server.isRunning) {
+    sleep(1000);
+}
+
+server.stop();
+print("Server stopped.");

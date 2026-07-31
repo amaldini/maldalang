@@ -1,0 +1,79 @@
+# MALDA gotchas: the mistakes the interpreter will not catch
+
+*Applies to: MALDA 0.1.0*
+
+`malda-syntax.md` lists the JS-isms an agent might guess — `const`, `console.log`, `def`.
+Those are cheap: the parser rejects them immediately and you fix them on the next run.
+
+This file is for the expensive ones. Every entry below **runs without error** and produces
+the wrong output, so there is no feedback loop to self-correct from. Read it before you
+claim a program works.
+
+## Silent failures
+
+| You write | What actually happens | Write this instead |
+|-----------|----------------------|--------------------|
+| `print("n is {n}")` | Prints the literal `n is {n}`. A plain string does **not** interpolate. | `io.print($"n is {n}")` or `io.print("n is " + string(n))` |
+| `var raw = io.input("? ");` in a loop | At end of input this returns `""` — **not** `null`, and it does not exit. Every later call returns `""` too, so a loop that only advances on valid input never terminates. | Treat empty as end/quit: `if (str.trim(raw) == "") { break; }` |
+| `AnsiConsole.markup("line one")` | No trailing newline, so consecutive calls smear onto one line. | `AnsiConsole.markupLine("line one")` |
+| `parseJson(text)` | A schema-validating parser for LLM output, not a JSON reader. Different arguments, different job. | `parseJSON(text)` — capital JSON |
+| `randomInt(1, 100)` | Returns `100` too. Both endpoints are included, unlike half-open ranges elsewhere. | Fine as written — just do not subtract 1 |
+| `println(x)` | `Undefined variable 'println'`. It does not exist. | `print(x)` |
+| `var n: int = "abc";` | Runs. Type annotations feed the language server; nothing enforces them at runtime. | Validate explicitly, or use `toIntOrNull` |
+| `str.repeat("-", n / 2)` when `n` is odd | `Error: repeat() expects (string, integer)`. `/` always yields a float; a fractional float is **not** coerced at integer sinks. Whole-valued floats from `math.floor` / `round` / `ceil` (and exact `n / 2`) are accepted. | `str.repeat("-", int(n / 2))` or `math.floor(n / 2)` |
+| `str.trim(io.getEnv("MISSING"))` | `getEnv` returns **`null`** when the variable is unset (unlike `io.input`, which returns `""` at EOF). `trim` then errors. | `var v = io.getEnv("MISSING"); if (v == null) { v = ""; }` — or check before string sinks |
+
+## Half-truths
+
+**The interpreter and `malda compile --mode transpile` are different backends.** A program that
+runs under the interpreter is not automatically a program that compiles. Prefer smoke-testing
+both when you need a shippable `.exe`. Escape sequences inside `$"..."` (for example `\n`)
+are valid in both; if transpile fails with a C# string error (`CS1039`), inspect
+`GeneratedProgram.cs` next to `-o` — and `build_errors.txt` in that same folder.
+
+**Colour and Unicode borders disappear when you pipe output.** Spectre.Console strips ANSI
+escapes when stdout is not a terminal, and MALDA also turns off Unicode capabilities for
+redirected / non-terminal output. So `malda prog.malda > out.txt` or a piped stdin test
+produces plain text — and `"rounded"` / `"heavy"` panel borders fall back to square corners
+(square box-drawing) even though those styles work in an interactive terminal. Under a
+non-UTF-8 console codepage (common default in Windows Git Bash) box-drawing can also arrive
+as mojibake — same non-bug class, different symptom. Do not debug this; it is correct
+behaviour for a non-TTY / mismatched encoding.
+
+**`AnsiConsole.panel` border styles are three values, not Spectre's full set.** Only
+`"rounded"`, `"double"` and `"heavy"` are recognised. Anything else — including `"square"`,
+`"ascii"`, `"none"`, or a typo — silently becomes square. There is no error.
+
+**`AnsiConsole.panel` renders unparseable markup literally.** The body and title are parsed
+as markup, but content that is not valid markup — arbitrary JSON, code, a stack trace with
+brackets — falls back to literal text instead of raising. So a malformed tag shows up as
+text rather than as an error. The same markup parsing applies inside `AnsiConsole.table`
+cells and headers.
+
+**`math.floor` / `round` / `ceil` still return floats.** Integer sinks (counts, indexes,
+seeds, `str.repeat`, …) coerce whole-valued floats automatically, so
+`str.repeat("-", math.floor(n / 2))` works. The value is still tagged float: `print` shows
+`1` not `1.0`, and a fractional float such as `2.7` is still rejected. Use `int(...)` when
+you want an integer value, not only an integer-accepting call.
+
+**Flat built-in names are deprecated aliases.** `sqrt(16)` and `Math.sqrt(16)` both run, but
+the language server reports both as deprecated. Prefer `math.sqrt(16)`. See the namespace
+rule in [`malda-syntax.md`](malda-syntax.md).
+
+## Before you say it works
+
+Look up any built-in you are unsure about in [`malda-builtins.tsv`](malda-builtins.tsv) —
+one lookup, five columns (`name`, preferred call, arguments, notes, returns). Notes hold
+footguns; **returns** is where null-vs-empty and typed results live. The preferred-call
+column uses `<array>.append` for member-style methods — that is a receiver method, not a
+free-function namespace:
+
+```bash
+awk -F'\t' '$1 == "randomInt"' docs/llm/malda-builtins.tsv
+```
+
+(`grep -P` is not reliable in Windows Git Bash; prefer `awk` as above, or
+`grep -E '^randomInt	'` with a literal tab.)
+
+Then run the program. [`README.md`](README.md) describes how to smoke-test programs that
+read input or use randomness, which are exactly the ones that look untestable.

@@ -1,0 +1,239 @@
+@using MaldaLang.IDE.Models
+
+<div class="error-list">
+    @if (Diagnostics.Count == 0)
+    {
+        <div class="empty-state">No errors or warnings</div>
+    }
+    else
+    {
+        @foreach (var diagnostic in Diagnostics)
+        {
+            <div class="diagnostic-entry">
+                <div class="error-item @diagnostic.Severity.ToString().ToLower()">
+                    <div class="error-content" @onclick="() => NavigateToError(diagnostic)">
+                        <div class="error-icon">
+                            @if (diagnostic.Severity == DiagnosticSeverity.Error)
+                            {
+                                <span>✕</span>
+                            }
+                            else if (diagnostic.Severity == DiagnosticSeverity.Warning)
+                            {
+                                <span>⚠</span>
+                            }
+                            else
+                            {
+                                <span>ℹ</span>
+                            }
+                        </div>
+                        <div class="error-message-wrapper">
+                            <div class="error-message">@diagnostic.Message</div>
+                            <div class="error-location">
+                                Line @(diagnostic.Line + 1), Column @(diagnostic.Column + 1)
+                                @if (!string.IsNullOrEmpty(diagnostic.Source))
+                                {
+                                    <span class="error-source">(@diagnostic.Source)</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    <div class="error-actions">
+                        @if (diagnostic.AutoFix != null && diagnostic.AutoFix.IsSimpleCharacterFix)
+                        {
+                            <button class="autofix-button" @onclick="() => ApplyAutofix(diagnostic)" title="@diagnostic.AutoFix.Description">
+                                🔧 Fix
+                            </button>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(diagnostic.RelatedExamplePath))
+                        {
+                            <button class="secondary-action-button" @onclick="() => OpenExample(diagnostic)" title="@diagnostic.RelatedExampleTitle">
+                                Example
+                            </button>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(diagnostic.RelatedDocumentationPath))
+                        {
+                            <button class="secondary-action-button" @onclick="() => ReadLesson(diagnostic)" title="@diagnostic.RelatedDocumentationTitle">
+                                Lesson
+                            </button>
+                        }
+                    </div>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(diagnostic.LearningHint) || !string.IsNullOrWhiteSpace(diagnostic.SuggestedFix))
+                {
+                    <div class="learning-panel">
+                        @if (!string.IsNullOrWhiteSpace(diagnostic.LearningHint))
+                        {
+                            <div><strong>Why:</strong> @diagnostic.LearningHint</div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(diagnostic.SuggestedFix))
+                        {
+                            <div><strong>Try:</strong> @diagnostic.SuggestedFix</div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public List<Diagnostic> Diagnostics { get; set; } = new();
+    [Parameter] public EventCallback<Diagnostic> OnNavigate { get; set; }
+    [Parameter] public EventCallback<Diagnostic> OnApplyAutofix { get; set; }
+    [Parameter] public EventCallback<Diagnostic> OnOpenExample { get; set; }
+    [Parameter] public EventCallback<Diagnostic> OnReadLesson { get; set; }
+    
+    private async Task NavigateToError(Diagnostic diagnostic)
+    {
+        await OnNavigate.InvokeAsync(diagnostic);
+    }
+    
+    private async Task ApplyAutofix(Diagnostic diagnostic)
+    {
+        await OnApplyAutofix.InvokeAsync(diagnostic);
+    }
+
+    private async Task OpenExample(Diagnostic diagnostic)
+    {
+        await OnOpenExample.InvokeAsync(diagnostic);
+    }
+
+    private async Task ReadLesson(Diagnostic diagnostic)
+    {
+        await OnReadLesson.InvokeAsync(diagnostic);
+    }
+}
+
+<style>
+    .error-list {
+        height: 100%;
+        overflow: auto;
+    }
+    
+    .error-item {
+        display: flex;
+        padding: 8px;
+        border-bottom: 1px solid #333;
+        cursor: pointer;
+        align-items: flex-start;
+    }
+    
+    .error-item:hover {
+        background: #2a2d2e;
+    }
+    
+    .error-item.error {
+        border-left: 3px solid #f48771;
+    }
+    
+    .error-item.warning {
+        border-left: 3px solid #cca700;
+    }
+    
+    .error-item.info {
+        border-left: 3px solid #75beff;
+    }
+    
+    .error-icon {
+        width: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 8px;
+        font-size: 14px;
+    }
+    
+    .error-item.error .error-icon {
+        color: #f48771;
+    }
+    
+    .error-item.warning .error-icon {
+        color: #cca700;
+    }
+    
+    .error-item.info .error-icon {
+        color: #75beff;
+    }
+    
+    .error-content {
+        flex: 1;
+    }
+    
+    .error-message {
+        color: #ccc;
+        margin-bottom: 4px;
+    }
+    
+    .error-location {
+        color: #808080;
+        font-size: 11px;
+    }
+    
+    .error-source {
+        color: #666;
+    }
+    
+    .empty-state {
+        padding: 16px;
+        text-align: center;
+        color: #666;
+        font-style: italic;
+    }
+    
+    .error-message-wrapper {
+        flex: 1;
+    }
+    
+    .autofix-button {
+        padding: 4px 8px;
+        background: #2196F3;
+        color: white;
+        border: none;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 11px;
+        white-space: nowrap;
+        flex-shrink: 0;
+        margin-left: 8px;
+    }
+    
+    .autofix-button:hover {
+        background: #1976D2;
+    }
+
+    .error-actions {
+        display: flex;
+        gap: 8px;
+        margin-left: 8px;
+        flex-wrap: wrap;
+        align-items: flex-start;
+    }
+
+    .secondary-action-button {
+        padding: 4px 8px;
+        background: transparent;
+        color: #ccc;
+        border: 1px solid #555;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 11px;
+        white-space: nowrap;
+    }
+
+    .secondary-action-button:hover {
+        border-color: #75beff;
+        color: #75beff;
+    }
+
+    .learning-panel {
+        margin: 0 8px 10px 36px;
+        padding: 8px 10px;
+        border-radius: 6px;
+        background: #23272b;
+        color: #b8c0c9;
+        font-size: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+</style>

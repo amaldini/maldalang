@@ -1,0 +1,6 @@
+prompt greet(name) {
+    user: "Hello, {name}! How are you today?"
+}
+
+var greeting = greet("Ada");
+io.print(greeting.user);

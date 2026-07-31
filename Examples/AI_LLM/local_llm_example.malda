@@ -1,0 +1,70 @@
+// Local LLM Example using LlamaCppClient
+// This example demonstrates how to use a local LLM model with MALDA
+// No API keys or network connection required - complete privacy and works offline
+
+// Step 1: Create a LlamaCppClient
+// With no path, MALDA uses the default Qwen/Qwen2.5-0.5B-Instruct local model
+// and auto-downloads the GGUF file on first use if needed.
+var client = new LlamaCppClient();
+
+// Step 2: Configure the client (optional)
+client.setTemperature(0.7);  // Control randomness (0.0 = deterministic, 2.0 = very creative)
+client.setMaxTokens(2000);   // Maximum tokens in response
+
+// Optional: Enable GPU acceleration if you have CUDA installed
+// Set to the number of layers in your model (e.g., 35 for 7B models)
+// client.setGpuLayerCount(35);  // 0 = CPU only, >0 = GPU layers
+
+print("Local LLM client created successfully!");
+print("Model path: " + client.modelPath);
+print("Temperature: " + client.temperature);
+print("Max tokens: " + client.maxTokens);
+print("");
+
+// Step 3: Simple completion example
+print("=== Simple Completion ===");
+var response = client.complete("What is the capital of France?");
+print("Response: " + response);
+print("");
+
+// Step 4: Using with Conversation class for multi-turn conversations
+print("=== Conversation Example ===");
+var conversation = new Conversation(client, "You are a helpful assistant.");
+conversation.addUserMessage("Write a function to calculate the factorial of a number.");
+var convResponse = conversation.send();
+print("Assistant: " + convResponse.content);
+print("");
+
+conversation.addUserMessage("Now make it iterative instead of recursive.");
+var convResponse2 = conversation.send();
+print("Assistant: " + convResponse2.content);
+print("");
+
+// Step 5: Using with Agent class for autonomous behavior
+print("=== Agent Example ===");
+var agent = new Agent(
+    "LocalAI",
+    "assistant",
+    "You are a helpful coding assistant that explains concepts clearly.",
+    client
+);
+
+var agentResponse = agent.think("Explain what a recursive function is in simple terms.");
+print("Agent: " + agentResponse.content);
+print("");
+
+// Step 6: Example with custom temperature for creative tasks
+print("=== Creative Writing Example ===");
+client.setTemperature(0.9);  // Higher temperature for more creativity
+var creativeResponse = client.complete("Write a short haiku about programming.");
+print("Creative response: " + creativeResponse);
+print("");
+
+// Reset to default for factual tasks
+client.setTemperature(0.7);
+print("Temperature reset to 0.7 for factual tasks");
+print("");
+
+print("=== Example Complete ===");
+print("Local LLM inference works completely offline with no API costs!");
+print("Your data stays private and never leaves your machine.");

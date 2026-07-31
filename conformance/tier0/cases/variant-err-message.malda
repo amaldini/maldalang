@@ -1,0 +1,7 @@
+type Result = Ok(value) | Err(message);
+var r = Err("fail");
+var out = match r {
+    case Ok(v): "";
+    case Err(m): m;
+};
+print(out);

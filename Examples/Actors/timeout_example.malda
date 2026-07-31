@@ -1,0 +1,98 @@
+// Message timeout example
+// Demonstrates timeout support for call-style sends with send ... then ... timeout ... catch ...
+
+actor Worker {
+    on quickWork() {
+        // Reply immediately - timeout should not fire
+        reply("quick work done");
+    }
+    
+    on slowWork() {
+        // Intentionally don't reply to demonstrate timeout
+        // In a real scenario, this might be due to network issues, 
+        // actor crash, or processing delay
+    }
+    
+    on delayedWork() {
+        // Simulate work that takes time but completes before timeout
+        var delay = 0;
+        while (delay < 50) {
+            sleep(1);
+            delay = delay + 1;
+        }
+        reply("delayed work done");
+    }
+}
+
+actor Coordinator {
+    var successCount = 0;
+    var timeoutCount = 0;
+    
+    on start() {
+        var worker = spawn Worker();
+        
+        // Example 1: Quick work that replies immediately
+        // Timeout is set but should not fire since reply arrives quickly
+        print("Sending quickWork with 1000ms timeout...");
+        send worker.quickWork() then (result) {
+            successCount = successCount + 1;
+            print($"Success: {result}");
+        } timeout 1000 catch (error) {
+            print($"Unexpected timeout: {error}");
+        };
+        
+        // Small delay to allow first message to process
+        sleep(100);
+        
+        // Example 2: Slow work that doesn't reply
+        // Timeout should fire and error handler should be invoked
+        print("Sending slowWork with 100ms timeout...");
+        send worker.slowWork() then (result) {
+            print($"This should not print: {result}");
+        } timeout 100 catch (error) {
+            timeoutCount = timeoutCount + 1;
+            print($"Timeout caught: {error}");
+        };
+        
+        // Small delay to allow second message to process
+        sleep(100);
+        
+        // Example 3: Delayed work that completes before timeout
+        // Timeout is set but should not fire since reply arrives in time
+        print("Sending delayedWork with 500ms timeout...");
+        send worker.delayedWork() then (result) {
+            successCount = successCount + 1;
+            print($"Success: {result}");
+        } timeout 500 catch (error) {
+            print($"Unexpected timeout: {error}");
+        };
+        
+        // Small delay to allow third message to process
+        sleep(100);
+        
+        // Example 4: Timeout without error handler (silent timeout)
+        // The timeout will fire but no error handler is invoked
+        print("Sending slowWork with timeout but no error handler...");
+        send worker.slowWork() then (result) {
+            print($"This should not print: {result}");
+        } timeout 100;
+        print("Send completed (timeout will fire silently)");
+        
+        // Summary
+        sleep(200);
+        
+        print($"Summary: {successCount} successes, {timeoutCount} timeouts");
+    }
+}
+
+var coordinator = spawn Coordinator();
+
+// Small initial delay to ensure Coordinator actor loop has started
+sleep(100);
+
+send coordinator.start();
+
+// Give actors time to process messages, callbacks, and timeouts
+// This delay ensures the program doesn't exit before async actor work completes
+// Use sleep() to ensure real-world time passes for timeout tests
+sleep(500);

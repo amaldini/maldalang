@@ -1,0 +1,26 @@
+// Prompt with System Message
+// Demonstrates separating system and user prompts
+
+prompt codeReview(code, language) {
+    system: "You are an expert code reviewer specializing in {language}.",
+    user: """
+    Please review this {language} code:
+    
+    ```{language}
+    {code}
+    ```
+    
+    Provide feedback on:
+    1. Code quality
+    2. Potential bugs
+    3. Best practices
+    """
+}
+
+// Create a prompt instance
+var reviewPrompt = codeReview("function add(a, b) { return a + b; }", "malda");
+
+print("System prompt:");
+print(reviewPrompt.system);
+print("\nUser prompt:");
+print(reviewPrompt.user);

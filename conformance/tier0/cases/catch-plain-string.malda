@@ -1,0 +1,5 @@
+try {
+    throw "plain";
+} catch (e if e == "plain") {
+    print("matched");
+}

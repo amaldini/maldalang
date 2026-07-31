@@ -1,0 +1,41 @@
+// Interactive input with validation and a bounded loop.
+// Seeded so the run is reproducible: math.seed(7) pins the secret to 39.
+// Test it without a human: printf '50\n25\n39\n' | malda 07_input_loop.malda
+// Every io.input loop needs a termination path that does not depend on valid input —
+// at EOF, io.input returns "" forever (not null), so treat empty as quit.
+
+math.seed(7);
+
+var secret = math.randomInt(1, 100);   // both endpoints included
+var attempts = 0;
+var maxAttempts = 6;
+var solved = false;
+
+while (attempts < maxAttempts and not solved) {
+    var raw = io.input("Guess (1-100): ");
+    var text = str.trim(raw);
+    if (text == "") {          // end of input, or the player pressed Enter to quit
+        break;
+    }
+    var guess = toIntOrNull(text);      // null instead of throwing on bad input
+
+    if (guess == null) {
+        io.print("Not a number, try again.");
+    } else if (guess < 1 or guess > 100) {
+        io.print("Out of range: " + string(guess));
+    } else {
+        attempts = attempts + 1;
+        if (guess < secret) {
+            io.print("Too low.");
+        } else if (guess > secret) {
+            io.print("Too high.");
+        } else {
+            solved = true;
+            io.print("Correct in " + string(attempts) + " attempts.");
+        }
+    }
+}
+
+if (not solved) {
+    io.print("Out of attempts. The number was " + string(secret) + ".");
+}

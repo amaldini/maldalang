@@ -1,0 +1,9 @@
+// Simple workflow with one step - for Sprint 2 testing
+function double(x) {
+    return x * 2;
+}
+
+workflow SimpleStep(input) {
+    step result = double(input);
+    return result;
+}

@@ -1,0 +1,43 @@
+// ACP Sessions Example
+// Demonstrates session management for stateful conversations
+
+var client = new OpenRouterClient();
+var agent = new Agent(
+    "SessionAgent",
+    "assistant",
+    "You are a conversational agent that remembers context.",
+    client
+);
+
+// Expose agent as ACP server
+var server = new ACPServer(8084);
+server.registerAgent("session-agent", agent);
+server.start();
+
+print("ACP Server started on http://localhost:8084/");
+print("");
+
+// In another process or client, you would use:
+// var acpClient = new ACPClient("http://localhost:8084");
+// 
+// // Create a session (session_id is auto-generated if not provided)
+// var sessionId = "session-" + random();
+// 
+// // Send first message with session
+// var response1 = acpClient.sendMessage("session-agent", "My name is Alice", 30000, sessionId);
+// print("Response 1: " + response1);
+// 
+// // Send second message in same session (agent remembers context)
+// var response2 = acpClient.sendMessage("session-agent", "What is my name?", 30000, sessionId);
+// print("Response 2: " + response2);
+// 
+// // Get session details
+// var session = acpClient.getSession(sessionId);
+// print("Session ID: " + session.id);
+// print("History: " + length(session.history) + " runs");
+
+// Keep server running
+print("Server running. Press Ctrl+C to stop.");
+while (server.isRunning) {
+    sleep(1000);
+}

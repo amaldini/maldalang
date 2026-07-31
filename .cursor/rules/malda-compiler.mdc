@@ -1,0 +1,14 @@
+---
+description: Transpiler and compiler change checklist
+globs: MaldaLang.Compiler/**/*.cs
+alwaysApply: false
+---
+
+# Compiler / transpiler edits
+
+- Main C# emit: `CSharpTranspiler.cs`; orchestration: `Compiler.cs`; JS: `JsTranspiler.cs`.
+- Optional packs under `OptionalPack/` are string-only emit hooks — do not reintroduce ProjectReferences to out-of-tree vertical pack assemblies.
+- After transpile bugs: inspect `build_errors.txt` / regenerated `GeneratedProgram.cs` locally; fix the transpiler, not the generated file.
+- New builtins need matching `IsBuiltInFunction` + `TranspileBuiltInFunction` cases (and interpreter registration).
+- Prefer a small filtered test or a tiny `.malda` smoke compile over the full suite.
+- Rebuild `MaldaLang.Compiler` (or the solution) before trusting CLI output.

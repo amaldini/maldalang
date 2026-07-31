@@ -1,0 +1,109 @@
+// Minimal all-controls showcase for quick learning and copy/paste.
+
+var sid = "ui-controls-minimal";
+
+var shell = ui.panel({}, [
+    ui.slot({"name": "title"}),
+    ui.slot({"name": "body"})
+]);
+var shellWithTitle = ui.withSlot(shell, "title", ui.heading({"value": "Minimal Slot Card"}));
+var shellComplete = ui.withSlot(shellWithTitle, "body", ui.text({"value": "Injected content"}));
+
+var conditional = ui.when(true, ui.badge({"value": "on"}), ui.badge({"value": "off"}));
+var chooser = ui.choose("ok", {"ok": ui.alert({}, [ui.text({"value": "All good"})])}, ui.text({"value": "Fallback"}));
+var eachItems = ui.each(["one", "two"], "value");
+
+var root = ui.column({"componentId": "MinimalShowcase"}, [
+    ui.heading({"value": "UI Controls Minimal Showcase"}),
+    ui.row({}, [ui.text({"value": "row"}), ui.spacer({}), ui.text({"value": "end"} )]),
+    ui.stack({}, [ui.badge({"value": "a"}), ui.badge({"value": "b"})]),
+    ui.drawer({"open": true}, [ui.text({"value": "drawer"})]),
+    ui.tabs({"value": "t1"}, [ui.panel({"key": "t1"}, [ui.text({"value": "tab1"})]), ui.panel({"key": "t2"}, [ui.text({"value": "tab2"})])]),
+    ui.accordion({}, [ui.panel({"key": "a"}, [ui.text({"value": "acc a"})])]),
+    ui.breadcrumbs({"items": "Home / Minimal"}),
+
+    ui.icon({"name": "star"}),
+    ui.image({"src": "https://via.placeholder.com/80x40", "alt": "placeholder"}),
+    shellComplete,
+    conditional,
+    chooser,
+
+    ui.form({"onSubmit": "submitMini"}, [
+        ui.field({}, [ui.text({"value": "Name"}), ui.textField({"name": "name"})]),
+        ui.field({}, [ui.text({"value": "Note"}), ui.textArea({"name": "note"})]),
+        ui.checkbox({"name": "agree", "label": "Agree"}),
+        ui.switch({"name": "enabled", "label": "Enabled"}),
+        ui.select({"name": "priority", "options": [{"label": "Low", "value": "low"}, {"label": "High", "value": "high"}]}),
+        ui.radioGroup({"name": "mode", "options": [{"label": "A", "value": "a"}, {"label": "B", "value": "b"}]}),
+        ui.slider({"name": "size", "value": 5, "min": 0, "max": 10}),
+        ui.datePicker({"name": "dueDate", "value": "2026-02-22", "placeholder": "Due date"}),
+        ui.datePicker({"name": "scheduledAt", "value": "2026-02-22T14:30", "includeTime": true, "placeholder": "Date and time"}),
+        ui.button({"label": "Submit", "onClick": "submit"})
+    ]),
+
+    ui.list({}, eachItems),
+    ui.table({}, [ui.row({}, [ui.text({"value": "k"}), ui.text({"value": "v"})])]),
+    ui.dataGrid({
+        "columns": [{"key": "name", "title": "Name"}],
+        "rows": [{"id": 1, "name": "Andrea"}],
+        "rowKey": "id",
+        "onRowClick": "rowClick"
+    }),
+    ui.treeView({
+        "nodes": [{"id": "r", "label": "Root", "children": [{"id": "c", "label": "Child"}]}],
+        "expandedKeys": ["r"],
+        "onNodeSelect": "nodeSelect"
+    }),
+    ui.paginator({"page": 1, "pageSize": 10, "totalItems": 10}),
+    ui.emptyState({}, [ui.text({"value": "Nothing here"})]),
+    ui.alert({}, [ui.text({"value": "Alert"})]),
+    ui.progress({"value": 30, "max": 100}),
+    ui.modal({"open": true, "title": "Modal"}, [ui.text({"value": "modal body"})]),
+    ui.toast({"open": true, "message": "Saved"}),
+    ui.skeleton({}),
+    ui.spinner({}),
+    ui.errorBoundary({}, [ui.text({"value": "fallback"})])
+]);
+
+print(ui.mount(root, sid));
+ui.dispatchEvent({"type": "click", "targetPath": "/0/", "payload": {"action": "noop"}}, sid, 1);
+print(ui.pullEvent(sid));
+ui.setState("MinimalShowcase", "count", 1, sid);
+print(ui.state("MinimalShowcase", "count", 0, sid));
+print(ui.render(root, sid));
+print(ui.snapshot(sid));
+print(ui.resync(sid));
+
+var server = new HttpServer(8081);
+
+@PAGE("/web/ui-controls-showcase-minimal")
+function uiControlsShowcaseMinimalPage() {
+    var html = "<!DOCTYPE html><html><head><meta charset='utf-8'><title>UI Controls Minimal Showcase</title>";
+    html = html + "<style>body{font-family:Arial,sans-serif;margin:20px}section{border:1px solid #ddd;border-radius:8px;padding:12px;margin:10px 0}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.toast{display:none;background:#1f7a1f;color:#fff;padding:8px 10px;border-radius:8px;position:fixed;bottom:16px;right:16px}</style>";
+    html = html + "</head><body>";
+    html = html + "<h1>UI Controls Showcase (Minimal)</h1><p>Simple interactive page. Envelope JSON is available at <code>/web/api/ui-controls-showcase-minimal</code>.</p>";
+    html = html + "<section><h2>Basics</h2><div class='row'><button id='btn'>Button</button><input id='name' placeholder='Text field'><textarea id='note' rows='2' cols='20' placeholder='Text area'></textarea><label><input type='checkbox' id='check'> Checkbox</label><label><input type='checkbox' id='switch'> Switch</label></div><div class='row'><select id='select'><option>Low</option><option>High</option></select><label><input type='radio' name='r' value='A' checked> A</label><label><input type='radio' name='r' value='B'> B</label><input id='slider' type='range' min='0' max='10' value='5'><span id='sliderOut'>5</span></div></section>";
+    html = html + "<section><h2>Data + Feedback</h2><ul><li>one</li><li>two</li></ul><table border='1' cellpadding='4'><tr><th>Name</th><th>Role</th></tr><tr><td>Andrea</td><td>Owner</td></tr></table><details open><summary>Tree root</summary><ul><li>Child</li></ul></details><progress max='100' value='30'></progress><div style='margin-top:8px'>Empty state: Nothing here</div></section>";
+    html = html + "<section><h2>Modal + Drawer + Paginator</h2><div class='row'><button id='openModal'>Open Modal</button><button id='openDrawer'>Open Drawer</button><button id='prev'>Prev</button><span id='page'>Page 1 / 2</span><button id='next'>Next</button><button id='toastBtn'>Toast</button></div><dialog id='modal'><p>Modal body</p><button id='closeModal'>Close</button></dialog><div id='drawer' style='display:none;border:1px solid #ccc;padding:8px;margin-top:8px'>Drawer content <button id='closeDrawer'>Close</button></div></section>";
+    html = html + "<pre id='log'>Event log:\n</pre><div id='toast' class='toast'>Saved</div>";
+    html = html + "<script>(function(){var log=document.getElementById('log');function add(m){log.textContent+=m+'\\n';}var s=document.getElementById('slider');var so=document.getElementById('sliderOut');s.oninput=function(){so.textContent=s.value;add('slider:'+s.value);};document.getElementById('btn').onclick=function(){add('button:click');};document.getElementById('name').oninput=function(){add('text:'+this.value);};document.getElementById('note').oninput=function(){add('textarea:'+this.value.length);};document.getElementById('check').onchange=function(){add('checkbox:'+this.checked);};document.getElementById('switch').onchange=function(){add('switch:'+this.checked);};document.getElementById('select').onchange=function(){add('select:'+this.value);};document.querySelectorAll('input[name=r]').forEach(function(r){r.onchange=function(){if(r.checked)add('radio:'+r.value);};});var modal=document.getElementById('modal');document.getElementById('openModal').onclick=function(){modal.showModal();add('modal:open');};document.getElementById('closeModal').onclick=function(e){e.preventDefault();modal.close();add('modal:close');};var drawer=document.getElementById('drawer');document.getElementById('openDrawer').onclick=function(){drawer.style.display='block';add('drawer:open');};document.getElementById('closeDrawer').onclick=function(){drawer.style.display='none';add('drawer:close');};var p=1;function upd(){document.getElementById('page').textContent='Page '+p+' / 2';add('page:'+p);}document.getElementById('prev').onclick=function(){if(p>1){p--;upd();}};document.getElementById('next').onclick=function(){if(p<2){p++;upd();}};var t=document.getElementById('toast');document.getElementById('toastBtn').onclick=function(){t.style.display='block';add('toast');setTimeout(function(){t.style.display='none';},1200);};upd();})();</script>";
+    html = html + "</body></html>";
+    return html;
+}
+
+@GET("/web/api/ui-controls-showcase-minimal")
+function uiControlsShowcaseMinimalApi() {
+    var mounted = ui.mount(root, sid);
+    var patched = ui.render(root, sid);
+    return {
+        "status": 200,
+        "sessionId": sid,
+        "mount": mounted,
+        "patch": patched,
+        "snapshot": ui.snapshot(sid),
+        "resync": ui.resync(sid)
+    };
+}
+
+server.start();
+print("Open: http://localhost:8081/web/ui-controls-showcase-minimal");

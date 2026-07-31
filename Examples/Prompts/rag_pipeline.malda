@@ -1,0 +1,53 @@
+// RAG Pipeline — AI-native composition with |> , retriever, prompt, parseJson
+// Demonstrates MALDA AI Pipeline v1 (no live LLM required for structure demo)
+
+schema Answer {
+    text: string;
+    sources: string[];
+}
+
+prompt answerPrompt(question, context) {
+    system: "Answer using only the provided context.",
+    user: "Context:\n{context}\n\nQuestion: {question}"
+}
+
+function embedText(text) {
+    return embedBagOfWords(text, 16);
+}
+
+// --- Setup knowledge base ---
+var vdb = new VectorDB(16, "single");
+vdb.init(embedText);
+
+var docs = [
+    { content: "GraphMemory stores facts in a graph with semantic retrieval.", metadata: { source: "memory.md" } },
+    { content: "VectorDB provides cosine similarity search over embeddings.", metadata: { source: "vectordb.md" } }
+];
+
+indexInto(vdb, docs);
+var retriever = vdb.asRetriever({ topK: 2 });
+
+// --- Build pipeline (without live LLM) ---
+var question = "How does GraphMemory work?";
+var context = question |> retriever.get |> formatRetrievedDocs;
+var p = answerPrompt(question, context);
+
+print("=== Pipeline context ===");
+print(context);
+print("");
+print("=== Prompt user message ===");
+print(p.user);
+
+// Typed parseJson works independently of LLM
+var mockResponse = "{\"text\":\"GraphMemory stores facts with semantic retrieval.\",\"sources\":[\"memory.md\"]}";
+var parsed = mockResponse |> parseJson("Answer");
+print("");
+print("=== Parsed mock LLM output ===");
+print(parsed.text);
+print(join(parsed.sources, ", "));
+
+print("");
+print("To run end-to-end with an LLM, set OPENROUTER_API_KEY and use:");
+print("  await (question |> retriever.get |> formatRetrievedDocs |> (ctx) => answerPrompt(question, ctx) |> runPrompt(client) |> parseJson(\"Answer\"));");
+print("");
+print("Or use named chains — see Examples/Prompts/rag_chain_pipeline.malda");

@@ -1,0 +1,14 @@
+{
+  "examples": [
+    {
+      "name": "Planning Prompt",
+      "description": "Build a planning prompt with task and docs, optional return type hint",
+      "file": "plan_prompt.malda"
+    },
+    {
+      "name": "Decompose and Execute Plan",
+      "description": "Structured task planning: decomposeTask + executePlan with DevAgent",
+      "file": "decompose_execute_plan.malda"
+    }
+  ]
+}

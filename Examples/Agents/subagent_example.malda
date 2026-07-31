@@ -1,0 +1,70 @@
+// Example: Using addSubAgent to create hierarchical agent systems
+// This demonstrates how agents can be used as tools by other agents
+
+// Note: Requires OPENROUTER_API_KEY environment variable
+var apiKey = getEnv("OPENROUTER_API_KEY");
+if (apiKey == null) {
+    print("Error: OPENROUTER_API_KEY environment variable not set");
+} else {
+    var client = new OpenRouterClient("openai/gpt-4");
+    
+    // Create specialized subagents with detailed internal instructions
+    var codeReviewer = new Agent(
+        "CodeReviewer",
+        "code review specialist",
+        "You are an expert code reviewer. When reviewing code, you should:\n" +
+        "1. Check for bugs and logical errors\n" +
+        "2. Review code style and best practices\n" +
+        "3. Suggest improvements\n" +
+        "4. Consider performance implications\n" +
+        "5. Check for security vulnerabilities\n" +
+        "Provide detailed feedback with line numbers and specific suggestions.",
+        client
+    );
+    
+    var tester = new Agent(
+        "Tester",
+        "testing specialist",
+        "You are an expert in software testing. When asked to write tests:\n" +
+        "1. Analyze the code to understand what needs to be tested\n" +
+        "2. Write comprehensive test cases covering edge cases\n" +
+        "3. Include both positive and negative test cases\n" +
+        "4. Ensure tests are clear and maintainable\n" +
+        "5. Consider boundary conditions and error handling",
+        client
+    );
+    
+    // Create orchestrator agent
+    var orchestrator = new Agent(
+        "Orchestrator",
+        "project coordinator",
+        "You coordinate tasks between specialized agents. " +
+        "When you need code reviewed, use the CodeReviewer tool. " +
+        "When you need tests written, use the Tester tool. " +
+        "Delegate work to the appropriate specialist agent.",
+        client
+    );
+    
+    // Add subagents with simplified, tool-focused descriptions
+    orchestrator.addSubAgent(
+        codeReviewer,
+        "Reviews code for bugs, style issues, and improvements. Provide the code to review as the prompt."
+    );
+    
+    orchestrator.addSubAgent(
+        tester,
+        "Writes comprehensive test cases for code. Provide the code to test as the prompt."
+    );
+    
+    // Now the orchestrator can delegate to subagents
+    print("=== Example: Orchestrator delegating to subagents ===\n");
+    
+    var code = "function add(a, b) {\n    return a + b;\n}";
+    
+    var response = orchestrator.think(
+        "I have this code: " + code + "\n\n" +
+        "Please have it reviewed and then write tests for it."
+    );
+    
+    print(response.content);
+}

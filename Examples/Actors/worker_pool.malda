@@ -1,0 +1,49 @@
+// Worker Pool Example
+// Demonstrates multiple worker actors processing tasks concurrently
+
+actor Worker {
+    var workerId;
+    var tasksProcessed = 0;
+    
+    function Worker(id) {
+        workerId = id;
+    }
+    
+    on process(task) {
+        tasksProcessed = tasksProcessed + 1;
+        var result = task * 2;
+        print($"Worker {workerId}: Processed task {task} -> {result} (total tasks: {tasksProcessed})");
+    }
+    
+    on status() {
+        print($"Worker {workerId}: Has processed {tasksProcessed} tasks");
+    }
+}
+
+// Create a pool of workers
+print("Creating worker pool...");
+var workers = [];
+for (var i = 0; i < 5; i = i + 1) {
+    workers.append(spawn Worker(i + 1));
+}
+
+// Small initial delay to ensure worker actor loops have started
+sleep(100);
+
+// Distribute tasks to workers
+print("Distributing tasks...");
+for (var i = 1; i <= 10; i = i + 1) {
+    var workerIndex = (i - 1) % workers.length;
+    send workers[workerIndex].process(i);
+}
+
+// Check status of all workers
+print("\nWorker status:");
+for (var i = 0; i < workers.length; i = i + 1) {
+    send workers[i].status();
+}
+
+// Give workers time to process
+sleep(500);
+
+print("\nWorker pool example complete!");

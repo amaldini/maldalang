@@ -1,0 +1,22 @@
+// V2 navigation and feedback components example.
+
+var sid = "nav-demo";
+
+var nav = ui.column(
+    {"componentId": "NavRoot"},
+    [
+        ui.breadcrumbs({"items": "Home / Projects / UI"}),
+        ui.tabs({"value": "overview"}, [
+            ui.panel({"key": "overview"}, [ui.heading({"value": "Overview"})]),
+            ui.panel({"key": "details"}, [ui.heading({"value": "Details"})])
+        ]),
+        ui.accordion({}, [
+            ui.panel({"key": "a"}, [ui.text({"value": "Section A"})]),
+            ui.panel({"key": "b"}, [ui.text({"value": "Section B"})])
+        ]),
+        ui.toast({"open": true, "message": "Saved", "variant": "success"}),
+        ui.badge({"value": "beta"})
+    ]
+);
+
+print(ui.mount(nav, sid));

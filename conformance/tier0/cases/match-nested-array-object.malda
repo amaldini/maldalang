@@ -1,0 +1,6 @@
+var data = [{ type: "A", value: 1 }, { type: "B", value: 2 }];
+var result = match data {
+    case [{ type: "A", value: v }, ...rest]: v;
+    default: 0;
+};
+print(result);

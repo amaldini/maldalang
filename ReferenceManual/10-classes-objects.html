@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>10. Classes & Objects - MALDA Reference Manual</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="syntax.css">
+    <link rel="stylesheet" href="print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>MALDA&trade; Reference Manual</h1>
+        <p>The AI-First Programming Language - Version 0.1</p>
+    </header>
+    <nav></nav>
+    <main>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>10. Classes & Objects</span></div>
+        <h1>10. Classes & Objects</h1>
+        <h2>10.1 Class Declaration</h2>
+        <pre><code>class ClassName {
+    public var field1;
+    private var field2;
+    
+    function ClassName(param1, param2) {
+        this.field1 = param1;
+        this.field2 = param2;
+    }
+    
+    public function method1() {
+        field1 = "value";  // Implicit member access
+    }
+    
+    private function method2() {
+        // method body
+    }
+}</code></pre>
+        <h2>10.2 Access Modifiers</h2>
+        <ul>
+            <li><strong>public</strong>: Accessible from anywhere (default for methods)</li>
+            <li><strong>private</strong>: Accessible only within the class</li>
+            <li>Fields default to private if no modifier is specified</li>
+        </ul>
+        <h2>10.3 Constructors</h2>
+        <p>Constructors have the same name as the class and are called automatically when objects are created:</p>
+        <pre><code>class Point {
+    public var x;
+    public var y;
+    
+    function Point(x, y) {
+        this.x = x;
+        this.y = y;
+    }
+}</code></pre>
+        <h2>10.4 Methods</h2>
+        <p>Methods are functions defined within classes. They can access class fields using <code>this</code> or implicitly:</p>
+        <pre><code>class Calculator {
+    public var result;
+    
+    function Calculator() {
+        result = 0;  // Implicit member access
+    }
+    
+    public function add(value) {
+        result = result + value;
+        return result;
+    }
+}</code></pre>
+        <h2>10.5 Object Instantiation</h2>
+        <pre><code>var obj = new ClassName(arg1, arg2);
+var person = new Person("Alice", 25);</code></pre>
+        <h2>10.6 Member Access</h2>
+        <pre><code>var person = new Person("Bob", 30);
+person.name = "Charlie";
+var age = person.age;
+person.setAge(31);</code></pre>
+        <h2>10.7 The <code>this</code> Keyword</h2>
+        <p><code>this</code> refers to the current object instance. It's optional when accessing member variables (implicit member access is supported):</p>
+        <pre><code>class Counter {
+    private var count;
+    
+    function Counter() {
+        count = 0;  // Implicit member access
+    }
+    
+    public function setCount(count) {
+        this.count = count;  // 'this.' required due to name conflict
+    }
+}</code></pre>
+        <h2>10.8 Inheritance</h2>
+        <p>Classes can inherit from a parent class using <code>extends</code>:</p>
+        <pre><code>class Animal {
+    public var name;
+    
+    function Animal(name) {
+        this.name = name;
+    }
+    
+    public function speak() {
+        print(name + " makes a sound");
+    }
+}
+
+class Dog extends Animal {
+    function Dog(name) {
+        super(name);  // Call parent constructor
+    }
+    
+    public function speak() {
+        super.speak();  // Call parent method
+        print($"{name} also barks");
+    }
+}</code></pre>
+        <h2>10.9 Static Members</h2>
+        <p>Static members belong to the class, not instances:</p>
+        <pre><code>class MathUtils {
+    static var PI = 3.14159;
+    
+    static function add(a, b) {
+        return a + b;
+    }
+}
+
+var pi = MathUtils.PI;
+var sum = MathUtils.add(5, 3);</code></pre>
+        <h2>10.10 Operator Overloading</h2>
+        <p>Classes can overload selected operators by defining methods with reserved names. For binary operators, MALDA first tries the left operand overload (<code>__add__</code>, <code>__sub__</code>, etc.). If that overload is not found, MALDA then tries the right operand reversed overload (<code>__radd__</code>, <code>__rsub__</code>, etc.) with the left operand passed as argument. For unary operators, the single operand is the receiver.</p>
+        <table>
+            <thead>
+                <tr><th>Operator</th><th>Left-hand method</th><th>Right-hand fallback method</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>+</code></td><td><code>__add__(other)</code></td><td><code>__radd__(other)</code></td></tr>
+                <tr><td><code>-</code> (binary)</td><td><code>__sub__(other)</code></td><td><code>__rsub__(other)</code></td></tr>
+                <tr><td><code>*</code></td><td><code>__mul__(other)</code></td><td><code>__rmul__(other)</code></td></tr>
+                <tr><td><code>/</code></td><td><code>__div__(other)</code></td><td><code>__rdiv__(other)</code></td></tr>
+                <tr><td><code>%</code></td><td><code>__mod__(other)</code></td><td><code>__rmod__(other)</code></td></tr>
+                <tr><td><code>==</code></td><td><code>__eq__(other)</code></td><td><code>__req__(other)</code></td></tr>
+                <tr><td><code>!=</code></td><td><code>__neq__(other)</code></td><td><code>__rneq__(other)</code></td></tr>
+                <tr><td><code>&lt;</code></td><td><code>__lt__(other)</code></td><td><code>__rlt__(other)</code></td></tr>
+                <tr><td><code>&lt;=</code></td><td><code>__le__(other)</code></td><td><code>__rle__(other)</code></td></tr>
+                <tr><td><code>&gt;</code></td><td><code>__gt__(other)</code></td><td><code>__rgt__(other)</code></td></tr>
+                <tr><td><code>&gt;=</code></td><td><code>__ge__(other)</code></td><td><code>__rge__(other)</code></td></tr>
+                <tr><td><code>-</code> (unary)</td><td><code>__neg__()</code></td><td>n/a</td></tr>
+            </tbody>
+        </table>
+        <p>If no matching left-hand or right-hand overload method exists, MALDA uses the built-in operator behavior.</p>
+        <pre><code data-run="true" data-expect="5">class Value {
+    public var data;
+
+    function Value(data) {
+        this.data = data;
+    }
+
+    public function __add__(other) {
+        return data + other.data;
+    }
+}
+
+var a = new Value(2);
+var b = new Value(3);
+print(a + b); // 5</code></pre>
+        <pre><code data-run="true" data-expect="12">class RightValue {
+    public var data;
+
+    function RightValue(data) {
+        this.data = data;
+    }
+
+    public function __radd__(other) {
+        return other + data;
+    }
+}
+
+var rhs = new RightValue(7);
+print(5 + rhs); // 12</code></pre>
+        <div class="see-also">
+            <h3>See Also</h3>
+            <ul>
+                <li><a href="03-data-types.html">4. Data Types</a> - Object types</li>
+                <li><a href="09-functions.html">8. Functions</a> - Methods vs functions</li>
+            </ul>
+        </div>
+        <div class="nav-footer">
+            <a href="05-arrays.html">← Previous: 9. Arrays</a>
+            <a href="12-input-output.html">Next: 11. Input/Output→</a>
+        </div>
+
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, at your option.</p>
+        </footer>
+    </main>
+    <script src="malda-highlight.js"></script>
+    <script src="navigation.js"></script>
+</body>
+</html>

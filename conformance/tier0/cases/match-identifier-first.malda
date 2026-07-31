@@ -1,0 +1,7 @@
+var x = 42;
+var result = match x {
+    case y: "bound to y";
+    case 42: "matched 42";
+    default: "default";
+};
+print(result);

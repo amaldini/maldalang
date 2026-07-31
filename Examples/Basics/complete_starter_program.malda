@@ -1,0 +1,18 @@
+var cart = [12, 18, 7];
+var total = 0;
+
+for (var item in cart) {
+    total = total + item;
+}
+
+function describeTotal(amount) {
+    if (amount >= 30) {
+        return "big order";
+    }
+
+    return "small order";
+}
+
+print($"Items: {cart.length}");
+print($"Total: {total}");
+print($"Summary: {describeTotal(total)}");

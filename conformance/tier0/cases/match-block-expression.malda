@@ -1,0 +1,9 @@
+var x = 42;
+var result = match x {
+    case 42: {
+        print("side effect");
+        "result";
+    }
+    default: "no match";
+};
+print(result);

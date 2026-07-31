@@ -1,0 +1,7 @@
+type Option = Some(x) | None();
+var n = None();
+var result = match n {
+    case Some(v): "some " + v;
+    case None(): "none";
+};
+print(result);

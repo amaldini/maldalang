@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>7. Control Structures - MALDA Reference Manual</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="syntax.css">
+    <link rel="stylesheet" href="print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>MALDA&trade; Reference Manual</h1>
+        <p>The AI-First Programming Language - Version 0.1</p>
+    </header>
+    <nav></nav>
+    <main>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>7. Control Structures</span></div>
+        <h1>7. Control Structures</h1>
+        <p>Control structures allow you to control the flow of execution in your program with conditionals and loops.</p>
+        <h2>7.1 Conditional Statements</h2>
+        <h3>If Statement</h3>
+        <pre><code>if (condition) {
+    // code block
+}</code></pre>
+        <h3>If-Else Statement</h3>
+        <pre><code>if (condition) {
+    // code block
+} else {
+    // code block
+}</code></pre>
+        <h3>If-Else If-Else Statement</h3>
+        <pre><code>if (condition1) {
+    // code block
+} else if (condition2) {
+    // code block
+} else {
+    // code block
+}</code></pre>
+        <h2>7.2 Loops</h2>
+        <h3>While Loop</h3>
+        <pre><code>while (condition) {
+    // code block
+}</code></pre>
+        <h3>For Loop</h3>
+        <p>The traditional for loop with initialization, condition, and increment:</p>
+        <pre><code>for (var i = 0; i < 10; i = i + 1) {
+    // code block
+}</code></pre>
+        <h3>For-In Loop</h3>
+        <p>The for-in loop iterates over each element in an array:</p>
+        <pre><code>for (var component in components) {
+    // code block - component is the current element
+}</code></pre>
+        <p><strong>Example:</strong></p>
+        <pre><code>var numbers = [1, 2, 3, 4, 5];
+for (var num in numbers) {
+    print(num);  // Prints: 1, 2, 3, 4, 5
+}
+
+var names = ["Alice", "Bob", "Charlie"];
+for (var name in names) {
+    print("Hello, " + name);
+}</code></pre>
+        <p><strong>Notes:</strong></p>
+        <ul>
+            <li>The loop variable is declared with <code>var</code> and is scoped to the loop body</li>
+            <li>Each iteration assigns the current array element to the loop variable</li>
+            <li>The collection must be an array - other types will throw a runtime error</li>
+            <li><code>break</code> and <code>continue</code> work the same as in other loops</li>
+        </ul>
+        <h3>Foreach Loop</h3>
+        <p>The <code>foreach</code> loop is equivalent to the for-in loop: it iterates over each element in an array. Use whichever form you prefer.</p>
+        <pre><code>foreach (var item in collection) {
+    // code block - item is the current element
+}</code></pre>
+        <p><strong>Example:</strong></p>
+        <pre><code>var results = [10, 20, 30];
+foreach (var x in results) {
+    print(x);  // Prints: 10, 20, 30
+}</code></pre>
+        <p>The same rules as for-in apply: the loop variable is declared with <code>var</code>, the collection must be an array, and <code>break</code> and <code>continue</code> work as in other loops.</p>
+        <h3>Break and Continue</h3>
+        <pre><code>while (true) {
+    if (condition) {
+        break;  // Exit loop
+    }
+    if (skipCondition) {
+        continue;  // Skip to next iteration
+    }
+}</code></pre>
+        <h2>7.3 Pattern Matching</h2>
+        <p>Pattern matching allows you to match values against patterns and execute code based on the match. It's similar to switch statements in other languages but more powerful, supporting pattern matching on arrays, objects, and nested structures.</p>
+        
+        <h3>Match Expression</h3>
+        <p>The <code>match</code> expression evaluates a value against a series of patterns and executes the code for the first matching pattern:</p>
+        <pre><code>var result = match value {
+    case pattern1: expression1;
+    case pattern2: expression2;
+    default: defaultExpression;
+};</code></pre>
+        
+        <p><strong>Example:</strong></p>
+        <pre><code>var x = 42;
+var result = match x {
+    case 42: "matched 42";
+    case 10: "matched 10";
+    default: "no match";
+};
+print(result);  // Prints: "matched 42"</code></pre>
+        
+        <p>Match expressions can also be used as statements (without assigning to a variable):</p>
+        <pre><code>match x {
+    case 42: print("matched 42");
+    default: print("no match");
+}</code></pre>
+        
+        <h4>Block Bodies and Multiple Statements</h4>
+        <p>A case body can be a single expression or a block <code>{ ... }</code> with multiple statements. This allows side effects (e.g. <code>print</code>, assignments) before producing the case value.</p>
+        <p><strong>Last expression wins (match case bodies):</strong> When a match is used as an expression, a case block's value is the last statement's value if that statement is an expression. If the last statement is not an expression (e.g. <code>print(...)</code>), the match yields <code>null</code>. The same <em>last expression wins</em> rule also applies to functions, methods, and lambdas (see <a href="09-functions.html">8. Functions</a>). Blocks in <code>if</code>, <code>while</code>, and <code>for</code> do not produce a value; they are purely imperative.</p>
+        <pre><code>var result = match x {
+    case 42: {
+        print("side effect");
+        "result";   // last expression is the case value
+    }
+    default: "no match";
+};
+print(result);  // Prints: "side effect" then "result"</code></pre>
+        <pre><code>var result = match x {
+    case 42: {
+        print("only side effect");
+    }
+    default: "no match";
+};
+print(result);  // result is null (block ends with statement, not expression)</code></pre>
+        <p><strong>Summary:</strong></p>
+        <ul>
+            <li>Single expression: <code>case 42: "value";</code> — the expression is the case value.</li>
+            <li>Block with expression last: <code>case 42: { stmt; expr; }</code> — the last expression is the case value.</li>
+            <li>Block with statement last: <code>case 42: { print(x); }</code> — the case value is <code>null</code>.</li>
+        </ul>
+        
+        <h3>Pattern Types</h3>
+
+        <h4>Variant Patterns</h4>
+        <p>For values built from <a href="03-data-types.html">sum types</a>, use a variant pattern: <code>ConstructorName(binding, ...)</code>. The value must be that variant and have the same number of payload slots; payloads are bound to the names in the pattern.</p>
+        <pre><code>type Result = Ok(value) | Err(message);
+var r = divide(10, 0);
+match r {
+    case Ok(v): print("value: " + v);
+    case Err(msg): print("error: " + msg);
+}</code></pre>
+
+        <h4>Literal Patterns</h4>
+        <p>Match exact values (numbers, strings, booleans, null):</p>
+        <pre><code>match x {
+    case 42: "number";
+    case "hello": "string";
+    case true: "boolean";
+    case null: "null";
+}</code></pre>
+        
+        <h4>Identifier Patterns</h4>
+        <p>Bind the matched value to a variable name:</p>
+        <pre><code>match x {
+    case y: y + 10;  // Binds x to y, then evaluates y + 10
+}</code></pre>
+        
+        <h4>Wildcard Pattern</h4>
+        <p>Match anything without binding (use <code>_</code>):</p>
+        <pre><code>match x {
+    case 10: "ten";
+    case _: "other";  // Matches anything else
+}</code></pre>
+        
+        <h4>Array Patterns</h4>
+        <p>Match arrays by structure and extract elements:</p>
+        <pre><code>var arr = [1, 2, 3];
+match arr {
+    case [1, 2, 3]: "exact match";
+    case [x, y, z]: "three elements: " + x + ", " + y + ", " + z;
+    case [first, ...rest]: "first is " + first + ", rest has " + length(rest) + " elements";
+    default: "no match";
+}</code></pre>
+        
+        <p><strong>Rest Pattern:</strong> Use <code>...rest</code> to capture remaining array elements:</p>
+        <pre><code>var arr = [1, 2, 3, 4, 5];
+match arr {
+    case [first, second, ...rest]: 
+        // first = 1, second = 2, rest = [3, 4, 5]
+        first + second + length(rest);
+}</code></pre>
+        
+        <p><strong>Notes:</strong></p>
+        <ul>
+            <li>Array patterns must match the exact length (unless using rest pattern)</li>
+            <li>The rest pattern (<code>...rest</code>) must be at the end of the array pattern</li>
+            <li>You can use nested patterns within array patterns</li>
+        </ul>
+        
+        <h4>Object Patterns</h4>
+        <p>Match objects by properties and extract values:</p>
+        <pre><code>var obj = { name: "Alice", age: 30 };
+match obj {
+    case { name, age }: name + " is " + age;  // Shorthand: binds name and age
+    case { name: userName, age: userAge }: userName + " is " + userAge;  // Explicit binding
+    default: "unknown";
+}</code></pre>
+        
+        <p><strong>Nested Object Patterns:</strong></p>
+        <pre><code>var obj = { user: { name: "Bob", age: 25 }, role: "admin" };
+match obj {
+    case { user: { name, age }, role }: 
+        name + " (" + age + ") is " + role;
+}</code></pre>
+        
+        <p><strong>Notes:</strong></p>
+        <ul>
+            <li>Object patterns match if all specified properties exist</li>
+            <li>Shorthand <code>{ name }</code> is equivalent to <code>{ name: name }</code></li>
+            <li>You can use nested patterns to match nested objects</li>
+            <li>Missing properties cause the pattern to not match</li>
+        </ul>
+        
+        <h3>Default Case</h3>
+        <p>The <code>default</code> case is optional and matches when no other pattern matches:</p>
+        <pre><code>match x {
+    case 1: "one";
+    case 2: "two";
+    default: "other";  // Matches anything else
+}</code></pre>
+        
+        <p>If no pattern matches and there's no default case, a runtime error is thrown.</p>
+        
+        <h3>Pattern Matching in Practice</h3>
+        <p>Pattern matching is particularly useful for handling different message types in actors or processing structured data:</p>
+        <pre><code>// Handle different message types
+var msg = receive();
+match msg {
+    case { type: "Start", payload: p }: handleStart(p);
+    case { type: "Stop" }: handleStop();
+    case { type: "Update", id: id, value: v }: handleUpdate(id, v);
+    default: print("Unknown message type");
+}
+
+// Process API responses
+var response = fetchData();
+match response {
+    case { status: 200, data: d }: processData(d);
+    case { status: 404 }: print("Not found");
+    case { status: 500, error: e }: print("Server error: " + e);
+    default: print("Unexpected response");
+}</code></pre>
+        
+        <div class="info-box">
+            <strong>Pattern Matching Tips:</strong>
+            <ul>
+                <li>Patterns are matched in order - the first matching pattern executes</li>
+                <li>Identifier patterns always match, so put them after more specific patterns</li>
+                <li>Use wildcard patterns (<code>_</code>) when you don't need the value</li>
+                <li>Nested patterns allow deep matching of complex data structures</li>
+                <li>Variables bound in patterns are scoped to the case body</li>
+            </ul>
+        </div>
+        
+        <h2>7.4 Exception Handling</h2>
+        <h3>Throw Statement</h3>
+        <p>The <code>throw</code> statement throws an exception. The expression can be any value (string, object, etc.).</p>
+        <pre><code>throw expression;</code></pre>
+        <p><strong>Example:</strong></p>
+        <pre><code>throw "Error occurred";
+throw "Division by zero";</code></pre>
+        <h3>Try-Catch-Finally</h3>
+        <p>Exception handling allows you to catch and handle errors gracefully.</p>
+        <pre><code>try {
+    // statements that may throw
+} catch (exceptionVar if condition) {
+    // handle when condition is true (guarded catch)
+} catch (exceptionVar) {
+    // fallback handler
+} finally {
+    // cleanup code (always executes)
+}</code></pre>
+        <ul>
+            <li><strong>try block</strong>: Contains code that may throw an exception</li>
+            <li><strong>catch clause</strong>: Handles exceptions. The exception variable is optional - if provided, it contains the exception value</li>
+            <li><strong>finally block</strong>: Optional cleanup code that always executes, whether an exception occurred or not</li>
+        </ul>
+        <p><strong>Examples:</strong></p>
+        <pre><code>// Basic try-catch
+try {
+    var result = 10 / 0;
+} catch (error) {
+    print("Error: " + error);
+}
+
+// Tagged catch (throw dict with kind/message for e.kind filters)
+try {
+    throw dict { "kind": "IO", "message": "disk full" };
+} catch (e if e.kind == "IO") {
+    print("IO: " + e.message);
+} catch (e) {
+    print("Other: " + e);
+}
+
+// Try-catch-finally
+try {
+    // risky operation
+} catch (error) {
+    print("Caught: " + error);
+} finally {
+    print("Cleanup always runs");
+}
+
+// Multiple catch clauses (currently only the first one executes)
+try {
+    // code
+} catch (error) {
+    // This catch clause will catch any exception
+    // handle error
+} catch (otherError) {
+    // This catch clause is unreachable - the first one catches all exceptions
+    // Note: Exception type matching may be added in future versions
+} finally {
+    // cleanup
+}</code></pre>
+        <p><strong>Important Notes:</strong></p>
+        <ul>
+            <li>The finally block always executes, whether an exception occurred or not</li>
+            <li>Exceptions can be any MALDA value (string, number, object, etc.)</li>
+            <li><strong>Multiple catch clauses:</strong> Currently, all catch clauses match any exception type. The first catch clause will always catch the exception, making subsequent catch clauses unreachable. Exception type matching may be added in future versions.</li>
+            <li>If no catch clause is present and an exception occurs, it propagates up after the finally block executes</li>
+        </ul>
+
+        <h2 id="cleanup">7.5 Deterministic Cleanup</h2>
+        <p>Besides <code>finally</code>, MALDA offers two dedicated forms for releasing resources: <code>defer</code> registers cleanup next to the code that acquired the resource, and the <code>using</code> resource block ties a resource's lifetime to a scope.</p>
+
+        <h3>defer</h3>
+        <p>A <code>defer</code> block is registered when execution reaches it and runs when the enclosing block or function exits &mdash; on normal completion, on <code>return</code>, and on an exception alike:</p>
+        <pre><code>function process(path) {
+    var handle = openHandle(path);
+    defer {
+        closeHandle(handle);
+    }
+
+    // Any exit path below still closes the handle
+    if (not isValid(handle)) {
+        return null;
+    }
+    return readAll(handle);
+}</code></pre>
+        <p>Several deferred blocks in the same scope run in <strong>reverse registration order</strong> (last registered, first executed), which lets you unwind acquisitions in the opposite order to how you made them:</p>
+        <pre><code data-run="true" data-expect="body\nsecond registered, runs first\nfirst registered, runs last">function demo() {
+    defer { print("first registered, runs last"); }
+    defer { print("second registered, runs first"); }
+    print("body");
+}
+
+demo();
+// body
+// second registered, runs first
+// first registered, runs last</code></pre>
+        <p>Rules to keep in mind:</p>
+        <ul>
+            <li><code>defer</code> requires an enclosing block, function, or <code>using</code> body. At top level with no enclosing scope it raises <em>'defer' is only valid inside a block, function, or 'using' body</em>.</li>
+            <li>A <code>defer</code> statement that is never reached is never registered, so cleanup only happens for resources actually acquired.</li>
+            <li>An error thrown <em>inside</em> a deferred block is swallowed, so a failing cleanup cannot mask the exception that is already unwinding. Handle errors explicitly inside the deferred block if you need to observe them.</li>
+            <li><code>return</code>, <code>break</code>, and <code>continue</code> inside a deferred block do propagate, so avoid them unless you intend to change the control flow of the enclosing scope.</li>
+        </ul>
+
+        <h3>using Resource Blocks</h3>
+        <p>The <code>using name = expression { ... }</code> form binds a resource for the duration of a block and disposes it when the block exits, including on exceptions:</p>
+        <pre><code>using conn = openConnection(url) {
+    var rows = conn.query("SELECT 1");
+    print(rows.length);
+}
+// conn has been disposed here</code></pre>
+        <p>On exit MALDA looks for a cleanup method on the resource object and calls the <strong>first one it finds</strong>, in this order:</p>
+        <ol>
+            <li><code>dispose()</code></li>
+            <li><code>close()</code></li>
+            <li><code>disconnect()</code></li>
+        </ol>
+        <p>If the resource is <code>null</code>, or is not an object, or defines none of those methods, the block still runs and no cleanup is attempted. The bound name is scoped to the block and is not visible afterwards.</p>
+        <pre><code>class TempFile {
+    public var path;
+
+    function TempFile(path) {
+        this.path = path;
+    }
+
+    public function close() {
+        deleteFile(path);
+        print("removed " + path);
+    }
+}
+
+using tmp = new TempFile("scratch.txt") {
+    writeFile(tmp.path, "work in progress");
+}
+// removed scratch.txt</code></pre>
+        <div class="info-box">
+            <strong>Choosing between them:</strong> use a <code>using</code> block when the resource has a clear disposal method and a clear scope. Use <code>defer</code> when cleanup is not a single method call, when several resources are acquired conditionally, or when the cleanup belongs to a whole function rather than to a nested block. Note that this <code>using</code> is unrelated to the top-level <code>using</code> that aliases a package.
+        </div>
+        <p>Both forms are supported by the interpreter, the C# transpiler, and the JavaScript transpiler.</p>
+
+        <div class="see-also">
+            <h3>See Also</h3>
+            <ul>
+                <li><a href="07-expressions.html">6. Expressions</a> - Expressions used in conditions</li>
+                <li><a href="04-variables.html">5. Variables</a> - Variable scope in control structures and destructuring</li>
+            </ul>
+        </div>
+        <div class="nav-footer">
+            <a href="07-expressions.html">← Previous: 6. Expressions</a>
+            <a href="09-functions.html">Next: 8. Functions→</a>
+        </div>
+
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, at your option.</p>
+        </footer>
+    </main>
+    <script src="malda-highlight.js"></script>
+    <script src="navigation.js"></script>
+</body>
+</html>

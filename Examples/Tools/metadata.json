@@ -1,0 +1,14 @@
+{
+  "examples": [
+    {
+      "name": "File Operations",
+      "description": "Basic file reading and writing",
+      "file": "file_operations.malda"
+    },
+    {
+      "name": "Custom Tools with @Tool Decorator",
+      "description": "Define custom LLM tools using @Tool decorator",
+      "file": "custom_tools_decorator.malda"
+    }
+  ]
+}

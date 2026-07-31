@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>mlRuntime.game Smoke Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 16px;
+    }
+
+    #game-root {
+      width: fit-content;
+      border: 1px solid #cccccc;
+    }
+
+    .row {
+      margin: 8px 0;
+    }
+
+    button {
+      margin-right: 8px;
+    }
+
+    #audio-status {
+      font-family: Consolas, monospace;
+      white-space: pre-wrap;
+      background: #f8f8f8;
+      border: 1px solid #dddddd;
+      padding: 8px;
+      max-width: 760px;
+    }
+  </style>
+</head>
+<body>
+  <h1>mlRuntime.game Smoke Test</h1>
+  <p>Use arrow keys to move the green box. Click inside canvas to test mouse position.</p>
+  <p>Audio controls test additive track APIs (`audioLoadTrack`, `audioPlayTrack`, `audioStopTrack`).</p>
+  <div id="game-root"></div>
+  <div class="row">
+    <input id="track-url" size="70" value="../wwwroot/audio/maldanoid.ogg" />
+    <button id="track-load">Load Track</button>
+    <button id="track-play">Play</button>
+    <button id="track-stop">Stop</button>
+  </div>
+  <div id="audio-status">Audio track status: not initialized</div>
+
+  <script src="../wwwroot/malda-js-runtime.js"></script>
+  <script>
+    const game = window.mlRuntime.game;
+    let x = 20;
+    let y = 20;
+    const speedPxPerMs = 0.2;
+
+    game.createCanvas(640, 360, "#game-root");
+    game.setBackground("#202830");
+
+    game.start(function update(dtMs) {
+      const distance = speedPxPerMs * dtMs;
+      if (game.isKeyDown("arrowleft")) x -= distance;
+      if (game.isKeyDown("arrowright")) x += distance;
+      if (game.isKeyDown("arrowup")) y -= distance;
+      if (game.isKeyDown("arrowdown")) y += distance;
+
+      x = Math.max(0, Math.min(600, x));
+      y = Math.max(0, Math.min(320, y));
+    }, function render() {
+      game.clear();
+      game.fillRect(x, y, 40, 40, "#33cc66");
+      game.drawText("Mouse: " + Math.round(game.getMouseX()) + ", " + Math.round(game.getMouseY()), 10, 24, "#ffffff", "14px monospace");
+      game.fillCircle(game.getMouseX(), game.getMouseY(), game.isMouseDown() ? 6 : 3, "#ffcc00");
+    });
+
+    const trackUrlInput = document.getElementById("track-url");
+    const audioStatus = document.getElementById("audio-status");
+    const trackLoadBtn = document.getElementById("track-load");
+    const trackPlayBtn = document.getElementById("track-play");
+    const trackStopBtn = document.getElementById("track-stop");
+
+    function updateTrackStatus(prefix) {
+      const info = game.audioGetTrackInfo();
+      audioStatus.textContent = [
+        prefix,
+        "ready=" + game.audioTrackIsReady(),
+        "playing=" + info.playing,
+        "backendError=" + (info.backendError || "none"),
+        "source=" + (info.source || "none")
+      ].join("\n");
+    }
+
+    game.audioInit();
+    game.audioSetTrackOptions({ loop: true, volume: 0.4 });
+    updateTrackStatus("Track API initialized");
+
+    trackLoadBtn.addEventListener("click", function () {
+      const url = trackUrlInput.value.trim();
+      game.audioLoadTrack(url, { autoplay: false, loop: true, volume: 0.4 });
+      updateTrackStatus("Track load requested");
+    });
+
+    trackPlayBtn.addEventListener("click", function () {
+      game.audioPlayTrack();
+      updateTrackStatus("Track play requested");
+    });
+
+    trackStopBtn.addEventListener("click", function () {
+      game.audioStopTrack();
+      updateTrackStatus("Track stop requested");
+    });
+  </script>
+</body>
+</html>

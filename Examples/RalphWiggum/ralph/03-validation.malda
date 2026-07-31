@@ -1,0 +1,837 @@
+﻿function countOccurrences(text, needle) {
+    var count = 0;
+    var remaining = text;
+    while (true) {
+        var idx = indexOf(remaining, needle);
+        if (idx < 0) {
+            break;
+        }
+        count = count + 1;
+        var skip = idx + length(needle);
+        if (skip >= length(remaining)) {
+            remaining = "";
+        } else {
+            remaining = substring(remaining, skip, length(remaining) - skip);
+        }
+    }
+    return count;
+}
+
+function braceBalanceOk(text) {
+    var depth = 0;
+    var i = 0;
+    while (i < length(text)) {
+        var ch = substring(text, i, 1);
+        if (ch == "{") {
+            depth = depth + 1;
+        }
+        if (ch == "}") {
+            depth = depth - 1;
+        }
+        if (depth < 0) {
+            return false;
+        }
+        i = i + 1;
+    }
+    return depth == 0;
+}
+
+function addValidationError(errors, message) {
+    errors.append(message);
+}
+
+function isRalphMemoryArtifact(filePath) {
+    if (filePath == null || filePath == "") {
+        return false;
+    }
+    var lowerPath = lower(filePath);
+    if (endsWith(lowerPath, ".graph.json") || endsWith(lowerPath, ".metadata.json")) {
+        return true;
+    }
+    if (endsWith(lowerPath, ".vectordb.bin")) {
+        return true;
+    }
+    if (endsWith(lowerPath, ".ralph-state.json") || endsWith(lowerPath, ".ralph-validate.js")) {
+        return true;
+    }
+    if (indexOf(lowerPath, ".ralph-memory.") >= 0) {
+        return true;
+    }
+    return false;
+}
+
+function shouldSkipValidationFile(fileName) {
+    if (fileName == null || fileName == "") {
+        return true;
+    }
+    if (indexOf(fileName, ".") == 0) {
+        return true;
+    }
+    if (lower(fileName) == "prd.md") {
+        return true;
+    }
+    if (isRalphMemoryArtifact(fileName)) {
+        return true;
+    }
+    return false;
+}
+
+function ralphMemoryPersisted(workDir) {
+    var memoryPath = pathJoin(workDir, ".ralph-memory");
+    if (hasFile(memoryPath + ".graph.json")) {
+        return true;
+    }
+    if (hasFile(pathJoin(workDir, ".graph.json"))) {
+        return true;
+    }
+    return false;
+}
+
+function isMergeConflictMarkerLine(line) {
+    if (line == null || line == "") {
+        return false;
+    }
+    var trimmed = trim(line);
+    if (trimmed == "=======") {
+        return true;
+    }
+    if (startsWith(trimmed, "<<<<<<<")) {
+        return true;
+    }
+    if (startsWith(trimmed, ">>>>>>>")) {
+        return true;
+    }
+    return false;
+}
+
+function hasMergeConflictMarkers(content) {
+    var lines = split(content, "\n");
+    var i = 0;
+    while (i < length(lines)) {
+        if (isMergeConflictMarkerLine(lines[i])) {
+            return true;
+        }
+        i = i + 1;
+    }
+    return false;
+}
+
+function validateGenericContent(content, filePath) {
+    var errors = [];
+    if (content == null || content == "") {
+        addValidationError(errors, filePath + ": file is empty");
+        return errors;
+    }
+    if (hasMergeConflictMarkers(content)) {
+        addValidationError(errors, filePath + ": merge conflict markers detected");
+    }
+    if (countOccurrences(lower(content), "<!doctype html") > 1) {
+        addValidationError(errors, filePath + ": multiple <!DOCTYPE html> roots (likely concatenated files)");
+    }
+    return errors;
+}
+
+function ralphAutoFormatJsEnabled() {
+    return envBool("MALDA_RALPH_AUTO_FORMAT_JS", false);
+}
+
+function countLinesBeforeOffset(content, offset) {
+    var line = 1;
+    var i = 0;
+    while (i < offset && i < length(content)) {
+        if (substring(content, i, 1) == "\n") {
+            line = line + 1;
+        }
+        i = i + 1;
+    }
+    return line;
+}
+
+function htmlLineForScriptLine(startLine, scriptLine) {
+    if (scriptLine == null || scriptLine <= 0) {
+        return startLine;
+    }
+    return startLine + scriptLine - 1;
+}
+
+function formatFileLineContext(content, centerLine, radius) {
+    if (content == null || content == "" || centerLine == null || centerLine <= 0) {
+        return "";
+    }
+    var lines = split(content, "\n");
+    var start = centerLine - radius - 1;
+    if (start < 0) {
+        start = 0;
+    }
+    var end = centerLine + radius - 1;
+    if (end >= length(lines)) {
+        end = length(lines) - 1;
+    }
+    var text = "";
+    var i = start;
+    while (i <= end) {
+        var lineNo = i + 1;
+        var marker = "   ";
+        if (lineNo == centerLine) {
+            marker = ">> ";
+        }
+        if (text != "") {
+            text = text + "\n";
+        }
+        text = text + marker + string(lineNo) + ": " + lines[i];
+        i = i + 1;
+    }
+    return text;
+}
+
+function parseNodeErrorLineNumber(detail, tmpFileName) {
+    if (detail == null || detail == "" || tmpFileName == null || tmpFileName == "") {
+        return -1;
+    }
+    var idx = indexOf(detail, tmpFileName);
+    if (idx < 0) {
+        idx = indexOf(lower(detail), lower(tmpFileName));
+    }
+    if (idx < 0) {
+        return -1;
+    }
+    var after = substring(detail, idx + length(tmpFileName), length(detail) - idx - length(tmpFileName));
+    if (length(after) == 0 || substring(after, 0, 1) != ":") {
+        return -1;
+    }
+    after = substring(after, 1, length(after) - 1);
+    var digits = "";
+    var i = 0;
+    while (i < length(after)) {
+        var ch = substring(after, i, 1);
+        if (ch >= "0" && ch <= "9") {
+            digits = digits + ch;
+        } else {
+            break;
+        }
+        i = i + 1;
+    }
+    if (digits == "") {
+        return -1;
+    }
+    var lineNo = toIntOrNull(digits);
+    if (lineNo == null || lineNo <= 0) {
+        return -1;
+    }
+    return lineNo;
+}
+
+function formatNodeJsValidationError(filePath, fileContent, tmpFileName, detail, mappedLine) {
+    var msg = filePath;
+    if (mappedLine != null && mappedLine > 0) {
+        msg = msg + " line " + string(mappedLine);
+    }
+    msg = msg + ": " + trim(detail);
+    if (mappedLine != null && mappedLine > 0 && fileContent != null && fileContent != "") {
+        var ctx = formatFileLineContext(fileContent, mappedLine, 3);
+        if (ctx != null && ctx != "") {
+            msg = msg + "\n" + ctx;
+        }
+    }
+    return msg;
+}
+
+function tryPrettierFormatContent(content, workDir, tmpBase) {
+    var inPath = pathJoin(workDir, tmpBase + ".prettier.js");
+    try {
+        writeFile(inPath, content);
+        var cmd = runCommand("npx", ["--yes", "prettier", "--write", "--parser", "babel", inPath]);
+        if (cmd == null || cmd.exitCode == null || cmd.exitCode != 0) {
+            return null;
+        }
+        return readFile(inPath);
+    } catch (error) {
+        return null;
+    }
+}
+
+function spliceContentAt(content, start, len, replacement) {
+    return substring(content, 0, start) + replacement + substring(content, start + len, length(content) - start - len);
+}
+
+function extractHtmlScriptBlocksWithMeta(content) {
+    var blocks = [];
+    var searchFrom = 0;
+    while (searchFrom < length(content)) {
+        var slice = substring(content, searchFrom, length(content) - searchFrom);
+        var lowerSlice = lower(slice);
+        var relOpen = indexOf(lowerSlice, "<script");
+        if (relOpen < 0) {
+            break;
+        }
+        var absOpen = searchFrom + relOpen;
+        var afterOpen = substring(content, absOpen, length(content) - absOpen);
+        var lowerAfter = lower(afterOpen);
+        var relOpenEnd = indexOf(lowerAfter, ">");
+        if (relOpenEnd < 0) {
+            break;
+        }
+        var relClose = indexOf(lowerAfter, "</script>");
+        if (relClose < 0) {
+            break;
+        }
+        var bodyStart = relOpenEnd + 1;
+        var bodyLen = relClose - bodyStart;
+        if (bodyLen > 0) {
+            var bodyText = substring(afterOpen, bodyStart, bodyLen);
+            var bodyStartOffset = absOpen + bodyStart;
+            blocks.append({
+                "body": bodyText,
+                "bodyStartOffset": bodyStartOffset,
+                "bodyLength": bodyLen,
+                "startLine": countLinesBeforeOffset(content, bodyStartOffset)
+            });
+        }
+        var nextStart = relClose + length("</script>");
+        searchFrom = absOpen + nextStart;
+    }
+    return blocks;
+}
+
+function extractHtmlScriptBlocks(content) {
+    var blocks = [];
+    var meta = extractHtmlScriptBlocksWithMeta(content);
+    var i = 0;
+    while (i < length(meta)) {
+        blocks.append(meta[i].body);
+        i = i + 1;
+    }
+    return blocks;
+}
+
+function tryNodeJsCheck(content, workDir, tmpName) {
+    var tmpPath = pathJoin(workDir, tmpName);
+    try {
+        writeFile(tmpPath, content);
+        var cmd = runCommand("node", ["--check", tmpPath]);
+        if (cmd != null && cmd.exitCode != null && cmd.exitCode != 0) {
+            var detail = cmd.stderr;
+            if (detail == null || detail == "") {
+                detail = cmd.stdout;
+            }
+            if (detail == null) {
+                detail = "node --check failed";
+            }
+            return {"available": true, "ok": false, "detail": detail};
+        }
+        return {"available": true, "ok": true, "detail": ""};
+    } catch (error) {
+        return {"available": false, "ok": true, "detail": ""};
+    }
+}
+
+function validateHtmlFile(content, filePath, workDir) {
+    var errors = validateGenericContent(content, filePath);
+    var lowerContent = lower(content);
+
+    if (countOccurrences(lowerContent, "<html") != countOccurrences(lowerContent, "</html>")) {
+        addValidationError(errors, filePath + ": unbalanced <html> tags");
+    }
+    if (countOccurrences(lowerContent, "<head") != countOccurrences(lowerContent, "</head>")) {
+        addValidationError(errors, filePath + ": unbalanced <head> tags");
+    }
+    if (countOccurrences(lowerContent, "<body") != countOccurrences(lowerContent, "</body>")) {
+        addValidationError(errors, filePath + ": unbalanced <body> tags");
+    }
+    if (countOccurrences(lowerContent, "<script") != countOccurrences(lowerContent, "</script>")) {
+        addValidationError(errors, filePath + ": unbalanced <script> tags");
+    }
+    if (countOccurrences(lowerContent, "<style") != countOccurrences(lowerContent, "</style>")) {
+        addValidationError(errors, filePath + ": unbalanced <style> tags");
+    }
+    if (indexOf(lowerContent, "<script") >= 0 && indexOf(lowerContent, "</style>") >= 0) {
+        var scriptPos = indexOf(lowerContent, "<script");
+        var styleClose = indexOf(lowerContent, "</style>");
+        var styleOpen = indexOf(lowerContent, "<style");
+        if (styleOpen >= 0 && scriptPos > styleOpen && scriptPos < styleClose) {
+            addValidationError(errors, filePath + ": <script> appears inside <style> block");
+        }
+    }
+
+    var scripts = extractHtmlScriptBlocksWithMeta(content);
+    var si = 0;
+    while (si < length(scripts)) {
+        var scriptMeta = scripts[si];
+        var scriptBody = scriptMeta.body;
+        var tmpName = ".ralph-validate-script-" + string(si + 1) + ".js";
+        var nodeCheck = tryNodeJsCheck(scriptBody, workDir, tmpName);
+        if (!nodeCheck.ok && ralphAutoFormatJsEnabled()) {
+            var formatted = tryPrettierFormatContent(scriptBody, workDir, tmpName + "-fmt");
+            if (formatted != null) {
+                var recheck = tryNodeJsCheck(formatted, workDir, tmpName + "-fmt-check");
+                if (recheck.ok) {
+                    content = spliceContentAt(content, scriptMeta.bodyStartOffset, scriptMeta.bodyLength, formatted);
+                    writeFile(filePath, content);
+                    return validateHtmlFile(readFile(filePath), filePath, workDir);
+                }
+            }
+        }
+        if (nodeCheck.available) {
+            if (!nodeCheck.ok) {
+                var scriptLine = parseNodeErrorLineNumber(nodeCheck.detail, tmpName);
+                var htmlLine = htmlLineForScriptLine(scriptMeta.startLine, scriptLine);
+                var label = filePath + " (inline script " + string(si + 1) + ")";
+                addValidationError(errors, formatNodeJsValidationError(label, content, tmpName, nodeCheck.detail, htmlLine));
+            }
+        } else if (!braceBalanceOk(scriptBody)) {
+            addValidationError(errors, filePath + ": inline script block " + string(si + 1) + " has unbalanced braces");
+        }
+        si = si + 1;
+    }
+
+    return errors;
+}
+
+function validateMaldaFile(filePath) {
+    var errors = [];
+    var result = getParseErrors(filePath);
+    if (result == null || result.parseErrors == null) {
+        return errors;
+    }
+    var pe = result.parseErrors;
+    var i = 0;
+    while (i < length(pe)) {
+        var entry = pe[i];
+        var msg = entry.message;
+        if (msg == null) {
+            msg = "parse error";
+        }
+        addValidationError(errors, filePath + ": " + msg);
+        i = i + 1;
+    }
+    return errors;
+}
+
+function validateJsonFile(content, filePath) {
+    var errors = validateGenericContent(content, filePath);
+    try {
+        parseJSON(content);
+    } catch (error) {
+        addValidationError(errors, filePath + ": invalid JSON (" + string(error) + ")");
+    }
+    return errors;
+}
+
+function validateJsFile(content, filePath, workDir) {
+    var errors = validateGenericContent(content, filePath);
+    var tmpName = ".ralph-validate.js";
+    var nodeCheck = tryNodeJsCheck(content, workDir, tmpName);
+    if (!nodeCheck.ok && ralphAutoFormatJsEnabled()) {
+        try {
+            writeFile(filePath, content);
+            var cmd = runCommand("npx", ["--yes", "prettier", "--write", "--parser", "babel", filePath]);
+            if (cmd != null && cmd.exitCode != null && cmd.exitCode == 0) {
+                content = readFile(filePath);
+                nodeCheck = tryNodeJsCheck(content, workDir, tmpName + "-fmt");
+            }
+        } catch (error) {
+        }
+    }
+    if (nodeCheck.available) {
+        if (!nodeCheck.ok) {
+            var lineNo = parseNodeErrorLineNumber(nodeCheck.detail, tmpName);
+            addValidationError(errors, formatNodeJsValidationError(filePath, content, tmpName, nodeCheck.detail, lineNo));
+        }
+    } else if (!braceBalanceOk(content)) {
+        addValidationError(errors, filePath + ": unbalanced braces");
+    }
+    return errors;
+}
+
+function validateWorkdirFile(workDir, filePath) {
+    var errors = [];
+    if (!hasFile(filePath)) {
+        addValidationError(errors, filePath + ": file not found");
+        return {"ok": false, "errors": errors};
+    }
+
+    var content = readFile(filePath);
+    var fileName = getFileName(filePath);
+    var lowerName = lower(fileName);
+    var fileErrors = validateGenericContent(content, filePath);
+
+    if (endsWith(lowerName, ".html") || endsWith(lowerName, ".htm")) {
+        fileErrors = validateHtmlFile(content, filePath, workDir);
+    } else if (endsWith(lowerName, ".malda")) {
+        fileErrors = validateMaldaFile(filePath);
+    } else if (endsWith(lowerName, ".json")) {
+        fileErrors = validateJsonFile(content, filePath);
+    } else if (endsWith(lowerName, ".js")) {
+        fileErrors = validateJsFile(content, filePath, workDir);
+    } else if (endsWith(lowerName, ".css")) {
+        if (indexOf(content, "<script") >= 0 || indexOf(content, "<html") >= 0) {
+            addValidationError(fileErrors, filePath + ": CSS file contains HTML markup (possible misplaced edit)");
+        }
+    }
+
+    var ei = 0;
+    while (ei < length(fileErrors)) {
+        errors.append(fileErrors[ei]);
+        ei = ei + 1;
+    }
+
+    return {"ok": length(errors) == 0, "errors": errors};
+}
+
+function isValidationExcludedDir(dirName) {
+    if (dirName == null || dirName == "") {
+        return true;
+    }
+    var lowerName = lower(dirName);
+    if (lowerName == ".git" or lowerName == "node_modules" or lowerName == "bin" or lowerName == "obj") {
+        return true;
+    }
+    var extra = getEnv("MALDA_RALPH_VALIDATE_EXCLUDE");
+    if (extra != null && extra != "") {
+        var parts = split(extra, ",");
+        var i = 0;
+        while (i < length(parts)) {
+            if (lower(trim(parts[i])) == lowerName) {
+                return true;
+            }
+            i = i + 1;
+        }
+    }
+    return false;
+}
+
+function collectWorkdirFilesFlat(workDir, allFiles) {
+    var entries = listDirectory(workDir);
+    var i = 0;
+    while (i < length(entries)) {
+        var entry = entries[i];
+        if (entry.type == "file" && !shouldSkipValidationFile(entry.name)) {
+            var filePath = entry.path;
+            if (filePath == null || filePath == "") {
+                filePath = pathJoin(workDir, entry.name);
+            }
+            allFiles.append(filePath);
+        }
+        i = i + 1;
+    }
+}
+
+function collectWorkdirFilesRecursive(workDir, allFiles) {
+    var entries = listDirectory(workDir);
+    var i = 0;
+    while (i < length(entries)) {
+        var entry = entries[i];
+        if (entry.type == "directory") {
+            if (!isValidationExcludedDir(entry.name)) {
+                var subDir = entry.path;
+                if (subDir == null || subDir == "") {
+                    subDir = pathJoin(workDir, entry.name);
+                }
+                collectWorkdirFilesRecursive(subDir, allFiles);
+            }
+        } else if (entry.type == "file" && !shouldSkipValidationFile(entry.name)) {
+            var filePath = entry.path;
+            if (filePath == null || filePath == "") {
+                filePath = pathJoin(workDir, entry.name);
+            }
+            allFiles.append(filePath);
+        }
+        i = i + 1;
+    }
+}
+
+function shouldSkipValidationPath(filePath) {
+    if (filePath == null || filePath == "") {
+        return true;
+    }
+    return shouldSkipValidationFile(getFileName(filePath));
+}
+
+function resolveValidationAbsolutePath(workDir, filePath) {
+    if (filePath == null || filePath == "") {
+        return "";
+    }
+    if (indexOf(filePath, ":") >= 0) {
+        return pathNormalize(filePath);
+    }
+    if (indexOf(filePath, "\\") >= 0 || indexOf(filePath, "/") >= 0) {
+        var workNorm = lower(pathNormalize(workDir));
+        var fileNorm = lower(pathNormalize(filePath));
+        if (startsWith(fileNorm, workNorm)) {
+            return pathNormalize(filePath);
+        }
+        return pathNormalize(pathJoin(workDir, filePath));
+    }
+    return pathNormalize(pathJoin(workDir, filePath));
+}
+
+function validationPathAlreadyListed(files, absPath) {
+    if (absPath == null || absPath == "" || files == null) {
+        return true;
+    }
+    var target = lower(absPath);
+    var i = 0;
+    while (i < length(files)) {
+        if (lower(files[i]) == target) {
+            return true;
+        }
+        i = i + 1;
+    }
+    return false;
+}
+
+function appendValidationPath(files, workDir, filePath) {
+    var absPath = resolveValidationAbsolutePath(workDir, filePath);
+    if (absPath == "" || shouldSkipValidationPath(absPath)) {
+        return;
+    }
+    if (!validationPathAlreadyListed(files, absPath)) {
+        files.append(absPath);
+    }
+}
+
+function effectiveValidationScope(phase) {
+    if (phase != null && phase == "validation-fix") {
+        return "changed";
+    }
+    return ralphValidateScope();
+}
+
+function ralphValidateAlwaysRelPaths() {
+    var raw = envStr("MALDA_RALPH_VALIDATE_ALWAYS", "");
+    var paths = [];
+    if (raw == null || trim(raw) == "") {
+        return paths;
+    }
+    var parts = split(raw, ",");
+    var i = 0;
+    while (i < length(parts)) {
+        appendUniqueRelPath(paths, parts[i]);
+        i = i + 1;
+    }
+    return paths;
+}
+
+function mergeValidationRelPaths(changedRelPaths, prdRelPaths, prdRelativePath) {
+    var merged = [];
+    if (changedRelPaths != null) {
+        var ci = 0;
+        while (ci < length(changedRelPaths)) {
+            appendUniqueRelPath(merged, changedRelPaths[ci]);
+            ci = ci + 1;
+        }
+    }
+    if (prdRelPaths != null) {
+        var pi = 0;
+        while (pi < length(prdRelPaths)) {
+            appendUniqueRelPath(merged, prdRelPaths[pi]);
+            pi = pi + 1;
+        }
+    }
+    if (prdRelativePath != null && prdRelativePath != "") {
+        appendUniqueRelPath(merged, prdRelativePath);
+    }
+    var alwaysPaths = ralphValidateAlwaysRelPaths();
+    var ai = 0;
+    while (ai < length(alwaysPaths)) {
+        appendUniqueRelPath(merged, alwaysPaths[ai]);
+        ai = ai + 1;
+    }
+    return merged;
+}
+
+function collectAllValidationFiles(workDir) {
+    var allFiles = [];
+    if (ralphValidateDepth() == "recursive") {
+        collectWorkdirFilesRecursive(workDir, allFiles);
+    } else {
+        collectWorkdirFilesFlat(workDir, allFiles);
+    }
+    return allFiles;
+}
+
+function resolveFilesForValidation(workDir, changedRelPaths, phase) {
+    var scope = effectiveValidationScope(phase);
+    var files = [];
+    if (scope == "all") {
+        return collectAllValidationFiles(workDir);
+    }
+    if (changedRelPaths != null) {
+        var i = 0;
+        while (i < length(changedRelPaths)) {
+            appendValidationPath(files, workDir, changedRelPaths[i]);
+            i = i + 1;
+        }
+    }
+    if (length(files) == 0) {
+        if (ralphValidateFallback() == "all") {
+            return collectAllValidationFiles(workDir);
+        }
+    }
+    return files;
+}
+
+function shouldRunValidationHook(hasChanges) {
+    var mode = ralphValidateHook();
+    if (mode == "never") {
+        return false;
+    }
+    if (mode == "on_change") {
+        return hasChanges;
+    }
+    return true;
+}
+
+function validateFiles(workDir, filePaths) {
+    var allErrors = [];
+    var i = 0;
+    while (i < length(filePaths)) {
+        var result = validateWorkdirFile(workDir, filePaths[i]);
+        if (!result.ok) {
+            var j = 0;
+            while (j < length(result.errors)) {
+                allErrors.append(result.errors[j]);
+                j = j + 1;
+            }
+        }
+        i = i + 1;
+    }
+    return {"ok": length(allErrors) == 0, "errors": allErrors, "fileCount": length(filePaths)};
+}
+
+function formatRalphEnvFileList(relPaths) {
+    if (relPaths == null || length(relPaths) == 0) {
+        return "";
+    }
+    var text = relPaths[0];
+    var i = 1;
+    while (i < length(relPaths)) {
+        text = text + "," + relPaths[i];
+        i = i + 1;
+    }
+    return text;
+}
+
+function buildRalphValidationHookEnv(workDir, validationRelPaths, gitChangedRelPaths) {
+    return {
+        "RALPH_WORKDIR": pathNormalize(workDir),
+        "RALPH_CHANGED_FILES": formatRalphEnvFileList(gitChangedRelPaths),
+        "RALPH_VALIDATION_FILES": formatRalphEnvFileList(validationRelPaths)
+    };
+}
+
+function runCustomValidationHook(workDir, runHook, validationRelPaths, gitChangedRelPaths) {
+    var errors = [];
+    if (!runHook) {
+        return errors;
+    }
+    var hookEnv = buildRalphValidationHookEnv(workDir, validationRelPaths, gitChangedRelPaths);
+    var cmd = getEnv("MALDA_RALPH_VALIDATE_CMD");
+    if (cmd != null && cmd != "") {
+        try {
+            var result = runCommand("cmd", ["/c", cmd], workDir, hookEnv);
+            if (result != null && result.exitCode != null && result.exitCode != 0) {
+                addValidationError(errors, "custom validate cmd failed: " + string(result.stderr));
+            }
+        } catch (error) {
+            addValidationError(errors, "custom validate cmd: " + string(error));
+        }
+    }
+    var hookBat = pathJoin(workDir, ".ralph-validate.bat");
+    var hookSh = pathJoin(workDir, ".ralph-validate.sh");
+    if (hasFile(hookBat)) {
+        try {
+            var bat = runCommand(hookBat, [], workDir, hookEnv);
+            if (bat != null && bat.exitCode != null && bat.exitCode != 0) {
+                addValidationError(errors, ".ralph-validate.bat failed");
+            }
+        } catch (error) {
+            addValidationError(errors, ".ralph-validate.bat: " + string(error));
+        }
+    }
+    if (hasFile(hookSh)) {
+        try {
+            var sh = runCommand("sh", [hookSh], workDir, hookEnv);
+            if (sh != null && sh.exitCode != null && sh.exitCode != 0) {
+                addValidationError(errors, ".ralph-validate.sh failed");
+            }
+        } catch (error) {
+            // sh may be unavailable on Windows
+        }
+    }
+    return errors;
+}
+
+function validateWorkdirWithContext(workDir, prdRelativePath, validationRelPaths, phase, gitChangedRelPaths) {
+    var scope = effectiveValidationScope(phase);
+    var filesToValidate = resolveFilesForValidation(workDir, validationRelPaths, phase);
+    var fileResult = validateFiles(workDir, filesToValidate);
+    var allErrors = [];
+    if (fileResult.errors != null) {
+        var ei = 0;
+        while (ei < length(fileResult.errors)) {
+            allErrors.append(fileResult.errors[ei]);
+            ei = ei + 1;
+        }
+    }
+    var hasGitChanges = gitChangedRelPaths != null && length(gitChangedRelPaths) > 0;
+    var customErrors = runCustomValidationHook(workDir, shouldRunValidationHook(hasGitChanges), validationRelPaths, gitChangedRelPaths);
+    var k = 0;
+    while (k < length(customErrors)) {
+        allErrors.append(customErrors[k]);
+        k = k + 1;
+    }
+    var errorCount = length(allErrors);
+    return {
+        "ok": errorCount == 0,
+        "errors": allErrors,
+        "scope": scope,
+        "fileCount": fileResult.fileCount,
+        "hookRan": shouldRunValidationHook(hasGitChanges)
+    };
+}
+
+function validateWorkdir(workDir, prdRelativePath) {
+    return validateWorkdirWithContext(workDir, prdRelativePath, [], "", []);
+}
+
+function formatValidationStatusLine(validation) {
+    if (validation == null) {
+        return "Validation: unknown";
+    }
+    var scope = validation.scope;
+    if (scope == null || scope == "") {
+        scope = "all";
+    }
+    var count = validation.fileCount;
+    if (count == null) {
+        count = 0;
+    }
+    var hookNote = "";
+    if (validation.hookRan != null && validation.hookRan) {
+        hookNote = ", hook=ran";
+    } else if (ralphValidateHook() != "never") {
+        hookNote = ", hook=skipped";
+    }
+    if (validation.ok) {
+        return "Validation: OK (" + string(count) + " files, scope=" + scope + hookNote + ")";
+    }
+    return "Validation FAILED (" + string(count) + " files, scope=" + scope + hookNote + ")";
+}
+
+function formatValidationErrors(errors) {
+    if (errors == null || length(errors) == 0) {
+        return "";
+    }
+    var text = "";
+    var i = 0;
+    while (i < length(errors)) {
+        if (text != "") {
+            text = text + "\n";
+        }
+        text = text + "- " + errors[i];
+        i = i + 1;
+    }
+    return text;
+}
+

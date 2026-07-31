@@ -1,0 +1,926 @@
+// Chapter Numbering Script - Refactored with Advanced MALDA Features
+// Uses classes, pattern matching, lambdas, and destructuring
+// Updates chapter numbers in HTML files based on chapters.json order
+// Run with: malda update-chapter-numbers-refactored.malda
+
+// ============================================================================
+// Configuration Class
+// ============================================================================
+class Config {
+    var renumberH2 = true;
+    var renumberH3 = false;
+    var oldLanguageName = null;
+    var newLanguageName = null;
+    
+    function Config(renumberH2, renumberH3, oldLanguageName, newLanguageName) {
+        this.renumberH2 = renumberH2 != null ? renumberH2 : true;
+        this.renumberH3 = renumberH3 != null ? renumberH3 : false;
+        this.oldLanguageName = oldLanguageName;
+        this.newLanguageName = newLanguageName;
+    }
+}
+
+// ============================================================================
+// Chapter Data Class
+// ============================================================================
+class Chapter {
+    var file;
+    var title;
+    var category;
+    var isHome;
+    var number;
+    var index;
+    
+    function Chapter(data) {
+        this.file = data.file;
+        this.title = data.title;
+        this.category = data.category;
+        this.isHome = data.isHome == true;
+        this.number = data.number;
+        this.index = data.index;
+    }
+    
+    function getDisplayNumber() {
+        if (this.number != null) {
+            return string(this.number);
+        }
+        return string(this.index + 1);
+    }
+    
+    function getEmbeddingText() {
+        var text = this.title;
+        if (this.category != null) {
+            text = text + " " + this.category;
+        }
+        return text;
+    }
+}
+
+// ============================================================================
+// Chapter Repository Class
+// ============================================================================
+class ChapterRepository {
+    var chapters;
+    var chapterMap;
+    var chapterDB;
+    var chapterGraph;
+    
+    function ChapterRepository(chapters) {
+        this.chapters = [];
+        this.chapterMap = dict {};
+        
+        // Convert to Chapter objects
+        var chapterIndex = 0;
+        for (var i = 0; i < length(chapters); i = i + 1) {
+            var ch = chapters[i];
+            if (ch.isHome) {
+                continue;
+            }
+            var chapter = new Chapter(ch);
+            chapter.index = chapterIndex;
+            this.chapters.append(chapter);
+            this.chapterMap.set(chapter.file, chapter);
+            chapterIndex = chapterIndex + 1;
+        }
+    }
+    
+    function buildIndex() {
+        print("Building VectorDB index of chapters...\n");
+        this.chapterDB = new VectorDB(128, "double");
+        this.chapterDB.init((text) => embedBagOfWords(text, 128));
+        
+        for (var i = 0; i < length(this.chapters); i = i + 1) {
+            var chapter = this.chapters[i];
+            var vector = embedBagOfWords(chapter.getEmbeddingText(), 128);
+            var data = dict {
+                "file": chapter.file,
+                "title": chapter.title,
+                "category": chapter.category,
+                "index": i
+            };
+            this.chapterDB.add(vector, data);
+        }
+        
+        print($"Chapter index built: {length(this.chapters)} chapters added\n");
+    }
+    
+    function buildGraph(htmlFiles) {
+        print("Building chapter relationship graph...\n");
+        this.chapterGraph = graph directed {};
+        
+        // Add all chapters as nodes
+        for (var i = 0; i < length(this.chapters); i = i + 1) {
+            var chapter = this.chapters[i];
+            this.chapterGraph.addNode(chapter.file, chapter);
+        }
+        
+        // Extract links from HTML files to build edges
+        var linkPattern = "<a href=\"([^\"]+\\.html)\"";
+        for (var i = 0; i < length(htmlFiles); i = i + 1) {
+            var file = htmlFiles[i];
+            if (!hasFile(file)) {
+                continue;
+            }
+            
+            var filename = getFileName(file);
+            var content = readFile(file);
+            if (content == null) {
+                continue;
+            }
+            
+            var matches = regexFind(content, linkPattern);
+            for (var j = 0; j < length(matches); j = j + 1) {
+                var found = matches[j];
+                var groups = found.groups;
+                if (length(groups) >= 2) {
+                    var targetFile = groups[1];
+                    var targetFilename = split(targetFile, "/");
+                    targetFilename = length(targetFilename) > 0 ? targetFilename[length(targetFilename) - 1] : targetFile;
+                    
+                    if (this.chapterGraph.hasNode(filename) && this.chapterGraph.hasNode(targetFilename)) {
+                        if (!this.chapterGraph.hasEdge(filename, targetFilename)) {
+                            this.chapterGraph.addEdge(filename, targetFilename, 1.0, dict { "type": "link" });
+                        }
+                    }
+                }
+            }
+        }
+        
+        print($"Graph built: {this.chapterGraph.nodeCount()} nodes, {this.chapterGraph.edgeCount()} edges\n");
+    }
+    
+    function findByFile(filename) {
+        return this.chapterMap.get(filename);
+    }
+    
+    function findByNumber(num) {
+        var targetIndex = num - 1;
+        if (targetIndex >= 0 && targetIndex < length(this.chapters)) {
+            return this.chapters[targetIndex];
+        }
+        return null;
+    }
+    
+    function findRelated(queryText, topN) {
+        var results = this.chapterDB.searchSimilar(queryText, topN);
+        var related = [];
+        for (var i = 0; i < length(results); i = i + 1) {
+            var result = results[i];
+            if (result.data != null && result.data.file != null) {
+                var chapter = this.findByFile(result.data.file);
+                if (chapter != null) {
+                    related.append(chapter);
+                }
+            }
+        }
+        return related;
+    }
+    
+    function getPrevious(currentFilename) {
+        var current = this.findByFile(currentFilename);
+        if (current == null) {
+            return null;
+        }
+        
+        if (current.index > 0) {
+            return this.chapters[current.index - 1];
+        }
+        return null;
+    }
+    
+    function getNext(currentFilename) {
+        var current = this.findByFile(currentFilename);
+        if (current == null) {
+            return null;
+        }
+        
+        if (current.index < length(this.chapters) - 1) {
+            return this.chapters[current.index + 1];
+        }
+        return null;
+    }
+}
+
+// ============================================================================
+// HTML Content Processor Class
+// ============================================================================
+class HTMLProcessor {
+    var config;
+    var repository;
+    
+    function HTMLProcessor(config, repository) {
+        this.config = config;
+        this.repository = repository;
+    }
+    
+    function stripNumberPrefix(text) {
+        text = regexReplace(text, "^\\s+", "");
+        text = regexReplace(text, "^\\d+\\.\\d*\\.?\\d*\\s+", "");
+        text = regexReplace(text, "^\\.\\d+\\.?\\d*\\s+", "");
+        text = regexReplace(text, "^\\s+", "");
+        return text;
+    }
+    
+    function extractFilename(href) {
+        var parts = split(href, "/");
+        return length(parts) > 0 ? parts[length(parts) - 1] : href;
+    }
+    
+    function renameLanguage(content) {
+        if (this.config.oldLanguageName == null || this.config.newLanguageName == null || 
+            this.config.oldLanguageName == this.config.newLanguageName) {
+            return content;
+        }
+        
+        var result = content;
+        var previousResult = "";
+        while (result != previousResult) {
+            previousResult = result;
+            result = replace(result, this.config.oldLanguageName, this.config.newLanguageName);
+        }
+        return result;
+    }
+    
+    function updateTitle(content, chapter) {
+        var chapterNum = chapter.getDisplayNumber();
+        var titlePattern = "<title>(\\d+\\.\\s*)?([^<]+)</title>";
+        
+        if (regexMatch(content, titlePattern)) {
+            var newTitle = $"<title>{chapterNum}. {chapter.title} - MALDA Reference Manual</title>";
+            return regexReplace(content, titlePattern, newTitle);
+        }
+        return content;
+    }
+    
+    function updateBreadcrumb(content, chapter) {
+        var chapterNum = chapter.getDisplayNumber();
+        var breadcrumbPattern = "(<div class=\"breadcrumbs\">[^<]*<span[^>]*>)(\\d+\\.\\s*)?([^<]+)(</span>)";
+        
+        if (regexMatch(content, breadcrumbPattern)) {
+            var matches = regexFind(content, breadcrumbPattern);
+            if (length(matches) > 0) {
+                var found = matches[0];
+                var groups = found.groups;
+                if (length(groups) >= 5) {
+                    var prefix = groups[1];
+                    var suffix = groups[4];
+                    var newBreadcrumb = prefix + chapterNum + ". " + chapter.title + suffix;
+                    return regexReplace(content, breadcrumbPattern, newBreadcrumb);
+                }
+            }
+        }
+        return content;
+    }
+    
+    function updateH1(content, chapter) {
+        var chapterNum = chapter.getDisplayNumber();
+        var h1Pattern = "(<h1[^>]*>)(\\d+\\.\\s*)?([^<]+)(</h1>)";
+        var h1Matches = regexFind(content, h1Pattern);
+        
+        if (length(h1Matches) > 0) {
+            var mainPos = indexOf(content, "<main>");
+            if (mainPos >= 0) {
+                var mainH1Match = null;
+                for (var i = 0; i < length(h1Matches); i = i + 1) {
+                    var found = h1Matches[i];
+                    var h1Pos = indexOf(content, found.text);
+                    if (h1Pos > mainPos) {
+                        mainH1Match = found;
+                        break;
+                    }
+                }
+                
+                if (mainH1Match != null) {
+                    var groups = mainH1Match.groups;
+                    if (length(groups) >= 5) {
+                        var openTag = groups[1];
+                        var closeTag = groups[4];
+                        var newH1 = $"{openTag}{chapterNum}. {chapter.title}{closeTag}";
+                        return replace(content, mainH1Match.text, newH1);
+                    }
+                }
+            }
+        }
+        return content;
+    }
+    
+    function updateH2Sections(content, chapter) {
+        if (!this.config.renumberH2) {
+            return content;
+        }
+        
+        var chapterNum = chapter.getDisplayNumber();
+        var splitPattern = "(<div class=\"(see-also|nav-footer)\">[\\s\\S]*?</div>)";
+        var parts = split(content, splitPattern, true);
+        
+        var sectionNum = 1;
+        for (var partIdx = 0; partIdx < length(parts); partIdx = partIdx + 1) {
+            var part = parts[partIdx];
+            if (regexMatch(part, "see-also|nav-footer")) {
+                continue;
+            }
+            
+            var h2Pattern = "(<h2[^>]*>)(\\d+\\.\\d+\\s*)?([^<]+)(</h2>)";
+            var h2Matches = regexFind(part, h2Pattern);
+            
+            if (length(h2Matches) > 0) {
+                var currentSectionNum = sectionNum;
+                var workingPart = part;
+                var placeholders = [];
+                var placeholderPattern = "___H2_PLACEHOLDER_";
+                
+                // First pass: replace with placeholders
+                for (var matchIdx = 0; matchIdx < length(h2Matches); matchIdx = matchIdx + 1) {
+                    var found = h2Matches[matchIdx];
+                    var placeholder = $"{placeholderPattern}{matchIdx}___";
+                    workingPart = replace(workingPart, found.text, placeholder);
+                    placeholders.append(placeholder);
+                }
+                
+                // Second pass: replace placeholders with numbered h2s
+                for (var matchIdx = 0; matchIdx < length(h2Matches); matchIdx = matchIdx + 1) {
+                    var found = h2Matches[matchIdx];
+                    var groups = found.groups;
+                    if (length(groups) >= 5) {
+                        var openTag = groups[1];
+                        var text = groups[3];
+                        var closeTag = groups[4];
+                        var cleanText = this.stripNumberPrefix(text);
+                        var newH2 = $"{openTag}{chapterNum}.{currentSectionNum} {cleanText}{closeTag}";
+                        workingPart = replace(workingPart, placeholders[matchIdx], newH2);
+                        currentSectionNum = currentSectionNum + 1;
+                    }
+                }
+                
+                part = workingPart;
+                sectionNum = currentSectionNum;
+            }
+            parts[partIdx] = part;
+        }
+        
+        return parts.join("");
+    }
+    
+    function updateInlineSectionLinks(content, chapter) {
+        var mainContentParts = split(content, "(<div class=\"(see-also|nav-footer)\">[\\s\\S]*?</div>)", true);
+        
+        for (var partIdx = 0; partIdx < length(mainContentParts); partIdx = partIdx + 1) {
+            var part = mainContentParts[partIdx];
+            if (regexMatch(part, "see-also|nav-footer")) {
+                continue;
+            }
+            
+            var sectionLinkPattern = "(<a href=\"([^\"]+\\.html)\"[^>]*>)(Section\\s+)(\\d+)([^:]*:\\s*)([^<]+)(</a>)";
+            var sectionLinks = regexFind(part, sectionLinkPattern);
+            sectionLinks.reverse();
+            
+            for (var linkIdx = 0; linkIdx < length(sectionLinks); linkIdx = linkIdx + 1) {
+                var item = sectionLinks[linkIdx];
+                var groups = item.groups;
+                if (length(groups) >= 7) {
+                    var linkOpen = groups[1];
+                    var href = groups[2];
+                    var sectionWord = groups[3];
+                    var oldSectionNum = groups[4];
+                    var colonPart = groups[5];
+                    var linkText = groups[6];
+                    var linkClose = groups[7];
+                    
+                    var refFilename = this.extractFilename(href);
+                    var refChapter = this.repository.findByFile(refFilename);
+                    if (refChapter != null && !refChapter.isHome) {
+                        var refNum = refChapter.getDisplayNumber();
+                        var newLink = $"{linkOpen}{sectionWord}{refNum}{colonPart}{linkText}{linkClose}";
+                        part = replace(part, item.text, newLink);
+                    }
+                }
+            }
+            
+            mainContentParts[partIdx] = part;
+        }
+        
+        return mainContentParts.join("");
+    }
+    
+    function fixLinksInContent(content) {
+        var linkPattern = "(<a[^>]*href=\")([^\"]+\\.html)(\"[^>]*>)([^<]*)(</a>)";
+        var allLinks = regexFind(content, linkPattern);
+        allLinks.reverse();
+        
+        for (var linkIdx = 0; linkIdx < length(allLinks); linkIdx = linkIdx + 1) {
+            var found = allLinks[linkIdx];
+            var groups = found.groups;
+            if (length(groups) >= 6) {
+                var linkOpen = groups[1];
+                var href = groups[2];
+                var linkMiddle = groups[3];
+                var linkText = groups[4];
+                var linkClose = groups[5];
+                
+                var refFilename = this.extractFilename(href);
+                var refChapter = this.repository.findByFile(refFilename);
+                
+                // Try to find chapter by number in link text
+                if (refChapter == null && refFilename != "index.html") {
+                    var numberPattern = "(?:Section\\s+)?(\\d+)(?:\\.|:)?\\s*";
+                    var numberMatch = regexFind(linkText, numberPattern);
+                    if (length(numberMatch) > 0) {
+                        var chapterNumStr = numberMatch[0].groups[1];
+                        var chapterNum = int(chapterNumStr);
+                        refChapter = this.repository.findByNumber(chapterNum);
+                    }
+                }
+                
+                // Try to match by title
+                if (refChapter == null) {
+                    var cleanLinkText = this.stripNumberPrefix(linkText);
+                    cleanLinkText = trim(cleanLinkText);
+                    
+                    for (var i = 0; i < length(this.repository.chapters); i = i + 1) {
+                        var ch = this.repository.chapters[i];
+                        var cleanTitle = this.stripNumberPrefix(ch.title);
+                        cleanTitle = trim(cleanTitle);
+                        
+                        if (indexOf(cleanLinkText, cleanTitle) >= 0 || indexOf(cleanTitle, cleanLinkText) >= 0) {
+                            refChapter = ch;
+                            break;
+                        }
+                    }
+                }
+                
+                // Update href if found
+                if (refChapter != null) {
+                    var newHref = refChapter.file;
+                    var newLink = linkOpen + newHref + linkMiddle + linkText + linkClose;
+                    content = replace(content, found.text, newLink);
+                } else if (refChapter == null && refFilename != "index.html") {
+                    // Try VectorDB search as last resort
+                    var related = this.repository.findRelated(linkText, 1);
+                    if (length(related) > 0) {
+                        refChapter = related[0];
+                        var newHref = refChapter.file;
+                        var newLink = linkOpen + newHref + linkMiddle + linkText + linkClose;
+                        content = replace(content, found.text, newLink);
+                    }
+                }
+            }
+        }
+        
+        return content;
+    }
+    
+    function updateSeeAlsoLinks(content) {
+        var seeAlsoPattern = "(<div class=\"see-also\">[\\s\\S]*?)(<a href=\"([^\"]+\\.html)\">)(\\d+\\.\\s*)?([^<]+)(</a>)";
+        var seeAlsoMatches = regexFind(content, seeAlsoPattern);
+        seeAlsoMatches.reverse();
+        
+        for (var seeAlsoIdx = 0; seeAlsoIdx < length(seeAlsoMatches); seeAlsoIdx = seeAlsoIdx + 1) {
+            var found = seeAlsoMatches[seeAlsoIdx];
+            var groups = found.groups;
+            if (length(groups) >= 7) {
+                var prefix = groups[1];
+                var linkOpen = groups[2];
+                var href = groups[3];
+                var text = groups[5];
+                var linkClose = groups[6];
+                
+                var refFilename = this.extractFilename(href);
+                var refChapter = this.repository.findByFile(refFilename);
+                
+                // Use VectorDB if direct lookup fails
+                if (refChapter == null) {
+                    var related = this.repository.findRelated(text, 3);
+                    if (length(related) > 0) {
+                        refChapter = related[0];
+                    }
+                }
+                
+                if (refChapter != null) {
+                    var refNum = refChapter.getDisplayNumber();
+                    var cleanText = this.stripNumberPrefix(text);
+                    var newLink = $"{linkOpen}{refNum}. {cleanText}{linkClose}";
+                    content = replace(content, found.text, $"{prefix}{newLink}");
+                }
+            }
+        }
+        
+        return content;
+    }
+    
+    function updateNavigationFooter(content, chapter) {
+        var prevChapter = this.repository.getPrevious(chapter.file);
+        var nextChapter = this.repository.getNext(chapter.file);
+        
+        // Update Previous link
+        var navFooterPrevPattern = "(<a href=\")([^\"]+\\.html)(\"[^>]*>←\\s*Previous:\\s*)(\\d+\\.\\s*)?([^<]+)(</a>)";
+        var prevMatches = regexFind(content, navFooterPrevPattern);
+        prevMatches.reverse();
+        
+        for (var prevIdx = 0; prevIdx < length(prevMatches); prevIdx = prevIdx + 1) {
+            var prevMatch = prevMatches[prevIdx];
+            var groups = prevMatch.groups;
+            if (length(groups) >= 7 && prevChapter != null) {
+                var linkOpen = groups[1];
+                var linkMiddle = groups[3];
+                var linkClose = groups[6];
+                
+                var newHref = prevChapter.file;
+                var newText = prevChapter.isHome ? prevChapter.title : $"{prevChapter.getDisplayNumber()}. {prevChapter.title}";
+                var newLink = $"{linkOpen}{newHref}{linkMiddle}{newText}{linkClose}";
+                content = replace(content, prevMatch.text, newLink);
+            }
+        }
+        
+        // Update Next link
+        var navFooterNextPattern = "(<a href=\")([^\"]+\\.html)(\"[^>]*>Next:\\s*)(\\d+\\.\\s*)?([^<]+)(\\s*→</a>)";
+        var nextMatches = regexFind(content, navFooterNextPattern);
+        nextMatches.reverse();
+        
+        for (var nextIdx = 0; nextIdx < length(nextMatches); nextIdx = nextIdx + 1) {
+            var found = nextMatches[nextIdx];
+            var groups = found.groups;
+            if (length(groups) >= 7 && nextChapter != null) {
+                var linkOpen = groups[1];
+                var linkMiddle = groups[3];
+                var linkTextEnd = groups[6];
+                
+                var newHref = nextChapter.file;
+                var newText = $"{nextChapter.getDisplayNumber()}. {nextChapter.title}";
+                var newLink = $"{linkOpen}{newHref}{linkMiddle}{newText}{linkTextEnd}";
+                content = replace(content, found.text, newLink);
+            }
+        }
+        
+        return content;
+    }
+    
+    function processFile(filePath) {
+        var filename = getFileName(filePath);
+        var chapter = this.repository.findByFile(filename);
+        
+        if (chapter == null || chapter.isHome) {
+            return false;
+        }
+        
+        var content = readFile(filePath);
+        if (content == null) {
+            return false;
+        }
+        
+        var originalContent = content;
+        
+        // Apply all transformations
+        content = this.renameLanguage(content);
+        content = this.fixLinksInContent(content);
+        content = this.updateTitle(content, chapter);
+        content = this.updateBreadcrumb(content, chapter);
+        content = this.updateH1(content, chapter);
+        content = this.updateH2Sections(content, chapter);
+        content = this.updateInlineSectionLinks(content, chapter);
+        content = this.updateSeeAlsoLinks(content);
+        content = this.updateNavigationFooter(content, chapter);
+        
+        var modified = content != originalContent;
+        
+        if (modified) {
+            writeFile(filePath, content);
+            print($"Updated {filename} (Chapter {chapter.getDisplayNumber()})\n");
+            return true;
+        }
+        
+        return false;
+    }
+}
+
+// ============================================================================
+// PDF Builder Class
+// ============================================================================
+class PDFBuilder {
+    var repository;
+    var baseDir;
+    
+    function PDFBuilder(repository, baseDir) {
+        this.repository = repository;
+        this.baseDir = baseDir;
+    }
+    
+    function extractMainContent(htmlContent) {
+        var mainStart = indexOf(htmlContent, "<main>");
+        var mainEnd = indexOf(htmlContent, "</main>");
+        
+        if (mainStart < 0 || mainEnd < 0) {
+            return "";
+        }
+        
+        var mainContent = substring(htmlContent, mainStart + 6, mainEnd - mainStart - 6);
+        mainContent = regexReplace(mainContent, "<div class=\"breadcrumbs\">[\\s\\S]*?</div>", "");
+        mainContent = regexReplace(mainContent, "<div class=\"nav-footer\">[\\s\\S]*?</div>", "");
+        
+        return mainContent;
+    }
+    
+    function readCSS(cssPath) {
+        var cssContent = readFile(cssPath);
+        return cssContent != null ? cssContent : "";
+    }
+    
+    function build() {
+        var stylesCSS = this.readCSS(this.baseDir == "." ? "styles.css" : this.baseDir + "styles.css");
+        var syntaxCSS = this.readCSS(this.baseDir == "." ? "syntax.css" : this.baseDir + "syntax.css");
+        
+        var html = "<!DOCTYPE html>\n";
+        html = html + "<html lang=\"en\">\n";
+        html = html + "<head>\n";
+        html = html + "    <meta charset=\"UTF-8\">\n";
+        html = html + "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n";
+        html = html + "    <meta name=\"description\" content=\"MALDA Reference Manual - The AI-First Programming Language\">\n";
+        html = html + "    <title>MALDA Reference Manual - Complete</title>\n";
+        
+        if (length(stylesCSS) > 0) {
+            html = html + "    <style>\n" + stylesCSS + "\n    </style>\n";
+        }
+        
+        if (length(syntaxCSS) > 0) {
+            html = html + "    <style>\n" + syntaxCSS + "\n    </style>\n";
+        }
+        
+        // PDF-specific styles
+        html = html + "    <style>\n";
+        html = html + "        body { display: block !important; grid-template-columns: none !important; margin: 0; padding: 0; }\n";
+        html = html + "        header { grid-column: auto !important; margin-bottom: 2rem; }\n";
+        html = html + "        nav { display: none !important; }\n";
+        html = html + "        main { max-width: 680px !important; width: 680px !important; margin: 0 auto !important; padding: 0 20px !important; display: block !important; }\n";
+        html = html + "        .chapter-separator { margin-top: 3em; padding-top: 2em; border-top: 2px solid #ccc; }\n";
+        html = html + "        @media print { body { margin: 0; padding: 0; } main { max-width: 100% !important; width: 100% !important; padding: 0 15mm !important; } .page-break { page-break-before: always; } h1 { page-break-after: avoid; } h2 { page-break-after: avoid; } pre { page-break-inside: avoid; } code { page-break-inside: avoid; } }\n";
+        html = html + "    </style>\n";
+        html = html + "</head>\n";
+        html = html + "<body>\n";
+        html = html + "    <header>\n";
+        html = html + "        <h1>MALDA Reference Manual</h1>\n";
+        html = html + "        <p>The AI-First Programming Language - Version 0.1</p>\n";
+        html = html + "    </header>\n\n";
+        html = html + "    <main>\n";
+        
+        for (var i = 0; i < length(this.repository.chapters); i = i + 1) {
+            var chapter = this.repository.chapters[i];
+            var filePath = this.baseDir == "." ? chapter.file : this.baseDir + chapter.file;
+            
+            if (!hasFile(filePath)) {
+                continue;
+            }
+            
+            var content = readFile(filePath);
+            if (content == null) {
+                continue;
+            }
+            
+            var mainContent = this.extractMainContent(content);
+            if (length(mainContent) == 0) {
+                continue;
+            }
+            
+            if (i > 0) {
+                html = html + "        <div class=\"chapter-separator page-break\"></div>\n";
+            }
+            
+            html = html + mainContent + "\n";
+        }
+        
+        html = html + "    </main>\n";
+        html = html + "</body>\n";
+        html = html + "</html>\n";
+        
+        var outputPath = this.baseDir == "." ? "ReferenceManualPDF.html" : this.baseDir + "ReferenceManualPDF.html";
+        writeFile(outputPath, html);
+        
+        print($"✓ Created {outputPath}\n");
+        print("You can now open this file in a browser and save as PDF (Ctrl+P / Cmd+P)\n");
+    }
+}
+
+// ============================================================================
+// Navigation Updater Class
+// ============================================================================
+class NavigationUpdater {
+    var repository;
+    var baseDir;
+    
+    function NavigationUpdater(repository, baseDir) {
+        this.repository = repository;
+        this.baseDir = baseDir;
+    }
+    
+    function update() {
+        var navJsPath = this.baseDir == "." ? "navigation.js" : this.baseDir + "navigation.js";
+        if (!hasFile(navJsPath)) {
+            return false;
+        }
+        
+        var content = readFile(navJsPath);
+        if (content == null) {
+            return false;
+        }
+        
+        var navItemsLines = [];
+        navItemsLines.append("    const navItems = [");
+        navItemsLines.append("        { href: \"index.html\", text: \"Home\" },");
+        
+        for (var i = 0; i < length(this.repository.chapters); i = i + 1) {
+            var chapter = this.repository.chapters[i];
+            // Escape double quotes in title if any
+            // Build escape sequence: backslash + double quote
+            var backslash = "\\";
+            var escapedQuote = backslash + "\"";
+            var escapedTitle = replace(chapter.title, "\"", escapedQuote);
+            var navText = $"{chapter.getDisplayNumber()}. {escapedTitle}";
+            var jsLine = $"        {{ href: \"{chapter.file}\", text: \"{navText}\" }},";
+            navItemsLines.append(jsLine);
+        }
+        
+        navItemsLines.append("    ];");
+        var newNavItems = navItemsLines.join("\n");
+        
+        var navItemsPattern = "(const navItems = \\[[\\s\\S]*?\\];)";
+        var matches = regexFind(content, navItemsPattern);
+        if (length(matches) > 0) {
+            content = replace(content, matches[0].text, newNavItems);
+            writeFile(navJsPath, content);
+            return true;
+        }
+        
+        return false;
+    }
+}
+
+// ============================================================================
+// Configuration Loader
+// ============================================================================
+function loadChaptersConfig() {
+    var refManualPath = getEnv("MALDAREFERENCEMANUAL");
+    var configPath = null;
+    
+    if (refManualPath != null) {
+        var envPath = refManualPath;
+        if (substring(envPath, length(envPath) - 1, 1) != "/" && substring(envPath, length(envPath) - 1, 1) != "\\") {
+            envPath = envPath + "/";
+        }
+        var envConfigPath = envPath + "chapters.json";
+        if (hasFile(envConfigPath)) {
+            configPath = envConfigPath;
+            print($"Using MALDAREFERENCEMANUAL environment variable: {refManualPath}\n");
+        }
+    }
+    
+    if (configPath == null) {
+        var possiblePaths = ["chapters.json", "ReferenceManual/chapters.json", "../chapters.json", "./chapters.json"];
+        for (var i = 0; i < length(possiblePaths); i = i + 1) {
+            if (hasFile(possiblePaths[i])) {
+                configPath = possiblePaths[i];
+                break;
+            }
+        }
+    }
+    
+    if (configPath == null) {
+        print("Error: chapters.json not found\n");
+        return null;
+    }
+    
+    print($"Found chapters.json at: {configPath}\n");
+    var configContent = readFile(configPath);
+    if (configContent == null) {
+        print("Error: Failed to read chapters.json\n");
+        return null;
+    }
+    
+    return parseJSON(configContent);
+}
+
+function getReferenceManualDir() {
+    var refManualPath = getEnv("MALDAREFERENCEMANUAL");
+    if (refManualPath != null) {
+        if (substring(refManualPath, length(refManualPath) - 1, 1) != "/" && substring(refManualPath, length(refManualPath) - 1, 1) != "\\") {
+            return refManualPath + "/";
+        }
+        return refManualPath;
+    }
+    return ".";
+}
+
+// ============================================================================
+// Main Execution
+// ============================================================================
+print("========================================\n");
+print("SCRIPT STARTED - Chapter Numbering Script (Refactored)\n");
+print("========================================\n");
+print("=== Using Advanced MALDA Features ===\n");
+print("  - Classes for encapsulation\n");
+print("  - Pattern matching for logic\n");
+print("  - Lambda expressions for transformations\n");
+print("  - Destructuring for data extraction\n");
+print("Loading chapters.json...\n");
+
+var config = loadChaptersConfig();
+if (config == null) {
+    print("Error: Failed to load chapters.json. Cannot continue.\n");
+} else {
+    var chapters = config.chapters;
+    print($"Found {length(chapters)} chapters\n");
+    
+    // Create configuration
+    var appConfig = new Config(true, false, null, null);
+    
+    // Create repository
+    var repository = new ChapterRepository(chapters);
+    
+    // Build AI models
+    print("Building AI understanding models...\n");
+    repository.buildIndex();
+    
+    var baseDir = getReferenceManualDir();
+    var files = listDirectory(baseDir);
+    var htmlFiles = [];
+    
+    for (var i = 0; i < length(files); i = i + 1) {
+        var item = files[i];
+        if (item.type == "file") {
+            var fileName = item.name;
+            if (regexMatch(fileName, "\\.html$") && fileName != "index.html") {
+                var fullPath = item.path;
+                if (hasFile(fullPath)) {
+                    htmlFiles.append(fullPath);
+                }
+            }
+        }
+    }
+    
+    repository.buildGraph(htmlFiles);
+    
+    // Create processor
+    var processor = new HTMLProcessor(appConfig, repository);
+    
+    // Process HTML files
+    print($"\nUpdating {length(htmlFiles)} HTML files...\n");
+    var updatedCount = 0;
+    for (var i = 0; i < length(htmlFiles); i = i + 1) {
+        if (processor.processFile(htmlFiles[i])) {
+            updatedCount = updatedCount + 1;
+        }
+    }
+    
+    // Update index.html
+    var indexPath = baseDir == "." ? "index.html" : baseDir + "index.html";
+    if (hasFile(indexPath)) {
+        var indexContent = readFile(indexPath);
+        var originalIndexContent = indexContent;
+        indexContent = processor.renameLanguage(indexContent);
+        indexContent = processor.fixLinksInContent(indexContent);
+        
+        // Update Next link in index.html
+        var nextChapter = repository.getNext("index.html");
+        if (nextChapter != null) {
+            var navFooterNextPattern = "(<a href=\")([^\"]+\\.html)(\"[^>]*>Next:\\s*)(\\d+\\.\\s*)?([^<]+)(\\s*→</a>)";
+            var nextMatches = regexFind(indexContent, navFooterNextPattern);
+            nextMatches.reverse();
+            
+            for (var nextIdx = 0; nextIdx < length(nextMatches); nextIdx = nextIdx + 1) {
+                var found = nextMatches[nextIdx];
+                var groups = found.groups;
+                if (length(groups) >= 7) {
+                    var linkOpen = groups[1];
+                    var linkMiddle = groups[3];
+                    var linkTextEnd = groups[6];
+                    
+                    var newHref = nextChapter.file;
+                    var newText = $"{nextChapter.getDisplayNumber()}. {nextChapter.title}";
+                    var newLink = $"{linkOpen}{newHref}{linkMiddle}{newText}{linkTextEnd}";
+                    indexContent = replace(indexContent, found.text, newLink);
+                }
+            }
+        }
+        
+        if (indexContent != originalIndexContent) {
+            writeFile(indexPath, indexContent);
+            print("Updated index.html\n");
+            updatedCount = updatedCount + 1;
+        }
+    }
+    
+    // Update navigation.js
+    var navUpdater = new NavigationUpdater(repository, baseDir);
+    if (navUpdater.update()) {
+        print("Updated navigation.js\n");
+    }
+    
+    print($"\n✓ Updated {updatedCount} files\n");
+    print("Graph statistics:\n");
+    print($"  - Nodes: {repository.chapterGraph.nodeCount()}\n");
+    print($"  - Edges: {repository.chapterGraph.edgeCount()}\n");
+    
+    // Build PDF
+    print("\nBuilding ReferenceManualPDF.html for PDF export...\n");
+    var pdfBuilder = new PDFBuilder(repository, baseDir);
+    pdfBuilder.build();
+    
+    print("Done!\n");
+}

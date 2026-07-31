@@ -1,0 +1,160 @@
+@using MaldaLang.IDE.Models
+
+<div class="debug-panel">
+    <div class="debug-info">
+        <div class="debug-section">
+            <h6>Call Stack</h6>
+            <div class="call-stack">
+                @if (DebugState.CallStack.Count == 0)
+                {
+                    <div class="empty-state">No call stack</div>
+                }
+                else
+                {
+                    @foreach (var frame in DebugState.CallStack)
+                    {
+                        <div class="stack-frame">
+                            @if (!string.IsNullOrEmpty(frame.ClassName))
+                            {
+                                <span class="class-name">@frame.ClassName.</span>
+                            }
+                            <span class="function-name">@frame.FunctionName</span>
+                            <span class="location">(@frame.File:@frame.Line)</span>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+        
+        <div class="debug-section">
+            <h6>Variables</h6>
+            <div class="variables">
+                @if (DebugState.Variables.Count == 0)
+                {
+                    <div class="empty-state">No variables</div>
+                }
+                else
+                {
+                    @foreach (var variable in DebugState.Variables)
+                    {
+                        <div class="variable">
+                            <span class="var-name">@variable.Key</span>
+                            <span class="var-value">= @variable.Value</span>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+        
+        <div class="debug-section">
+            <h6>Breakpoints</h6>
+            <div class="breakpoints">
+                @if (Breakpoints.Count == 0)
+                {
+                    <div class="empty-state">No breakpoints</div>
+                }
+                else
+                {
+                    @foreach (var bp in Breakpoints)
+                    {
+                        <div class="breakpoint-item">
+                            <span>Line @bp.Line</span>
+                            @if (!string.IsNullOrEmpty(bp.Condition))
+                            {
+                                <span class="condition">(@bp.Condition)</span>
+                            }
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public DebugState DebugState { get; set; } = new();
+    [Parameter] public List<Breakpoint> Breakpoints { get; set; } = new();
+}
+
+<style>
+    .debug-panel {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        color: #ccc;
+        font-size: 12px;
+    }
+    
+    .debug-controls {
+        padding: 8px;
+        border-bottom: 1px solid #444;
+        display: flex;
+        gap: 4px;
+    }
+    
+    .debug-info {
+        flex: 1;
+        overflow: auto;
+        padding: 8px;
+    }
+    
+    .debug-section {
+        margin-bottom: 16px;
+    }
+    
+    .debug-section h6 {
+        margin: 0 0 8px 0;
+        color: #007acc;
+        font-size: 11px;
+        text-transform: uppercase;
+    }
+    
+    .call-stack, .variables, .breakpoints {
+        background: #252526;
+        border: 1px solid #444;
+        border-radius: 4px;
+        padding: 4px;
+    }
+    
+    .stack-frame, .variable, .breakpoint-item {
+        padding: 4px 8px;
+        border-bottom: 1px solid #333;
+    }
+    
+    .stack-frame:last-child, .variable:last-child, .breakpoint-item:last-child {
+        border-bottom: none;
+    }
+    
+    .class-name {
+        color: #4ec9b0;
+    }
+    
+    .function-name {
+        color: #dcdcaa;
+    }
+    
+    .location {
+        color: #808080;
+        font-size: 11px;
+    }
+    
+    .var-name {
+        color: #9cdcfe;
+    }
+    
+    .var-value {
+        color: #ce9178;
+    }
+    
+    .condition {
+        color: #808080;
+        font-size: 11px;
+    }
+    
+    .empty-state {
+        padding: 8px;
+        color: #666;
+        font-style: italic;
+        text-align: center;
+    }
+</style>

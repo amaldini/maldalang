@@ -1,0 +1,7 @@
+// Note: Requires OPENROUTER_API_KEY environment variable
+// OpenRouterClient automatically reads the API key and uses the correct endpoint
+var client = new OpenRouterClient();
+
+// Simple completion
+var response = client.complete("What is the capital of France?");
+print(response);

@@ -1,0 +1,59 @@
+// SQL Server Database Example
+// This example demonstrates basic database operations with SQL Server
+
+print("=== SQL Server Database Example ===\n");
+
+// Create a SQL Server client
+var db = new SqlServerClient();
+
+// Connect to database (replace with your connection string)
+// db.connect("Server=localhost;Database=mydb;User Id=user;Password=pass;Integrated Security=false;");
+
+// For demonstration, we'll show the API without actually connecting
+print("1. Connection Management:");
+print("   db.connect(connectionString) - Connect to database");
+print("   db.disconnect() - Close connection");
+print("   db.isConnected - Check connection status\n");
+
+print("2. Raw SQL Queries with Parameters:");
+print("   // Query with parameters (prevents SQL injection)");
+print("   var users = db.query(\"SELECT * FROM users WHERE age > @age\", {age: 25});");
+print("   var user = db.queryOne(\"SELECT * FROM users WHERE id = @id\", {id: 1});\n");
+
+print("3. Execute Non-Query Commands:");
+print("   // Insert, Update, Delete");
+print("   var rowsAffected = db.execute(\"INSERT INTO users (name, email) VALUES (@name, @email)\", {name: \"John\", email: \"john@example.com\"});\n");
+
+print("4. Query Builder API:");
+print("   // Type-safe query building");
+print("   var results = db.select(\"name\", \"email\")");
+print("                    .from(\"users\")");
+print("                    .where(\"age\", \">\", 25)");
+print("                    .query();\n");
+
+print("5. Insert with Query Builder:");
+print("   var result = db.insert(\"users\", {name: \"Jane\", email: \"jane@example.com\", age: 30});\n");
+
+print("6. Update with Query Builder:");
+print("   var result = db.update(\"users\", {email: \"newemail@example.com\"})");
+print("                    .where(\"id\", \"=\", 1);\n");
+
+print("7. Delete with Query Builder:");
+print("   var result = db.delete(\"users\")");
+print("                    .where(\"id\", \"=\", 1);\n");
+
+print("8. Transactions:");
+print("   db.beginTransaction();");
+print("   try {");
+print("       db.execute(\"INSERT INTO users (name) VALUES (@name)\", {name: \"Test\"});");
+print("       db.execute(\"UPDATE users SET email = @email WHERE name = @name\", {email: \"test@example.com\", name: \"Test\"});");
+print("       db.commit();");
+print("   } catch (e) {");
+print("       db.rollback();");
+print("       print(\"Transaction rolled back: \" + e);");
+print("   }\n");
+
+print("Note: Replace the connection string with your actual SQL Server connection details.");
+print("Example connection string formats:");
+print("  - SQL Server: \"Server=localhost;Database=mydb;User Id=user;Password=pass;\"");
+print("  - Windows Auth: \"Server=localhost;Database=mydb;Integrated Security=true;\"");

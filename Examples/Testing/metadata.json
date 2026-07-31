@@ -1,0 +1,62 @@
+{
+  "examples": [
+    {
+      "name": "Property Core Identity",
+      "description": "Basic property tests with deterministic seed and iterations",
+      "file": "property_core_identity.malda",
+      "track": "student",
+      "difficulty": "intermediate",
+      "minutes": 10,
+      "concepts": ["property", "deterministic testing", "invariants"],
+      "prerequisites": ["OOP/calculator.malda"],
+      "learningGoal": "Introduce testing as a way to describe rules that should always stay true.",
+      "expectedOutput": "Runs a property test with a deterministic seed and reports whether it passed.",
+      "next": "Testing/run_property_inline.malda",
+      "documentationPath": "/?lesson=testing-track#lesson-testing-track",
+      "documentationTitle": "Testing Track",
+      "featured": true
+    },
+    {
+      "name": "Property JS Capability Skip",
+      "description": "Capability-scoped property showing JS not-applicable behavior",
+      "file": "property_js_capability_skip.malda",
+      "track": "showcase",
+      "difficulty": "advanced",
+      "minutes": 12,
+      "concepts": ["capabilities", "cross-runtime testing", "skip behavior"],
+      "prerequisites": ["Testing/property_core_identity.malda"],
+      "learningGoal": "Show how MALDA testing can adapt to different targets and runtime capabilities.",
+      "expectedOutput": "Demonstrates capability-aware property behavior across targets."
+    },
+    {
+      "name": "Run Property Inline",
+      "description": "Execute a property directly inside a MALDA script with runProperty()",
+      "file": "run_property_inline.malda",
+      "track": "student",
+      "difficulty": "intermediate",
+      "minutes": 10,
+      "concepts": ["runProperty()", "scripted testing", "feedback loop"],
+      "prerequisites": ["Testing/property_core_identity.malda"],
+      "learningGoal": "Show that tests can live close to the code and be executed from a normal MALDA script.",
+      "expectedOutput": "Prints property execution results from inside a script.",
+      "next": "Testing/property_failure_to_regression.malda",
+      "documentationPath": "/?lesson=testing-track#lesson-testing-track",
+      "documentationTitle": "Testing Track"
+    },
+    {
+      "name": "Property Failure to Regression",
+      "description": "Intentional property failure that demonstrates shrunk counterexample and generated regression flow",
+      "file": "property_failure_to_regression.malda",
+      "track": "showcase",
+      "difficulty": "advanced",
+      "minutes": 15,
+      "concepts": ["counterexample", "shrinking", "regression generation"],
+      "prerequisites": ["Testing/run_property_inline.malda"],
+      "learningGoal": "Teach how MALDA turns a failing property into a concrete regression workflow.",
+      "expectedOutput": "Shows a failing property and the resulting regression-oriented output.",
+      "documentationPath": "/?lesson=testing-track#lesson-testing-track",
+      "documentationTitle": "Testing Track",
+      "featured": true
+    }
+  ]
+}

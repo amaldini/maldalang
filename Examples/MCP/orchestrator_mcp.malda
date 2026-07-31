@@ -1,0 +1,82 @@
+// Orchestrator with MALDACodingAgent for Dynamic MCP Agent Creation
+// This script creates an Orchestrator agent with a MALDACodingAgent subagent
+// The Orchestrator can create agents dynamically and delegate MCP agent creation to MALDACodingAgent
+
+// Note: Requires OPENROUTER_API_KEY environment variable
+var apiKey = getEnv("OPENROUTER_API_KEY");
+if (apiKey == null) {
+    print("Error: OPENROUTER_API_KEY environment variable not set");
+} else {
+    // Initialize LLM client
+    var client = new OpenRouterClient("openai/gpt-4");
+    
+    // Create MALDACodingAgent - specialized agent for MALDA development and MCP agent creation
+    var splCodingAgent = new MALDACodingAgent(
+        "MALDACodingAgent",
+        "MALDA Development Specialist",
+        "You are a specialized agent for MALDA script development and MCP agent creation. " +
+        "You have access to file operations, MALDA execution/compilation tools, and MCP agent script generation. " +
+        "When asked to create an MCP agent, use the create_mcp_agent_script tool to generate the MALDA script, " +
+        "then use run_malda to execute it and start the MCP server. " +
+        "You can also compile MALDA scripts and manage file operations.",
+        client,
+        "."
+    );
+    
+    // Create Orchestrator agent
+    var orchestrator = new Agent(
+        "Orchestrator",
+        "Multi-Agent Orchestrator",
+        "You are an orchestrator agent that coordinates multiple specialized agents. " +
+        "You can create as many agents as needed to accomplish tasks. " +
+        "When you need to create external MCP agents, delegate this task to the MALDACodingAgent. " +
+        "The MALDACodingAgent will: " +
+        "1. Generate the MCP agent script using create_mcp_agent_script tool " +
+        "2. Execute the script to start the MCP server " +
+        "3. Create an MCPClient connection to the server " +
+        "4. Use createWrapperAgent to create an agent with MCP tools " +
+        "5. Return the agent so you can add it as a subagent using the add_sub_agent tool. " +
+        "After the MALDACodingAgent returns an agent, use the add_sub_agent tool to add it to your available tools. " +
+        "You can dynamically create and manage agents as needed for your tasks. " +
+        "Use the MALDACodingAgent tool whenever you need to create new MCP-based agents.",
+        client
+    );
+    
+    // Create a tool function that wraps addSubAgent
+    // This function can access 'orchestrator' from its closure
+    @Tool("add_sub_agent", "Adds a sub-agent to the orchestrator. Call this after creating an agent to make it available as a tool. Provide the agent instance and a tool description.")
+    function addSubAgentTool(agent, description) {
+        orchestrator.addSubAgent(agent, description);
+        return "Sub-agent '" + agent.name + "' (" + agent.role + ") has been added successfully. " +
+               "You can now use this agent as a tool in your conversations.";
+    }
+    
+    // Add the tool to the orchestrator
+    orchestrator.addTool("add_sub_agent");
+    
+    // Add MALDACodingAgent as a subagent to the Orchestrator
+    orchestrator.addSubAgent(
+        splCodingAgent,
+        "Creates and manages MCP agents dynamically. " +
+        "When you need to create an external MCP agent, use this tool. " +
+        "Provide the agent name, role, instructions, and tools as a prompt. " +
+        "The MALDACodingAgent will generate the MCP script, execute it, connect to it, " +
+        "and return a wrapper agent. After receiving the agent, use the add_sub_agent tool to add it to your available tools."
+    );
+    
+    print("=== Orchestrator with MALDACodingAgent Setup Complete ===");
+    print("Orchestrator is ready to create agents dynamically.");
+    print("MALDACodingAgent is available as a subagent for MCP agent creation.");
+    print("add_sub_agent tool is available for adding created agents as subagents.");
+    print("");
+    print("The Orchestrator can now:");
+    print("  - Create agents dynamically as needed");
+    print("  - Delegate MCP agent creation to MALDACodingAgent");
+    print("  - Add dynamically created agents as subagents using the add_sub_agent tool");
+    print("");
+    print("Example workflow:");
+    print("  1. Orchestrator asks MALDACodingAgent to create an MCP agent");
+    print("  2. MALDACodingAgent creates the agent and returns it");
+    print("  3. Orchestrator uses add_sub_agent tool to add the agent");
+    print("  4. The new agent is now available as a tool for future tasks");
+}

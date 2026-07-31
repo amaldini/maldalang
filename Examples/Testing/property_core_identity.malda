@@ -1,0 +1,10 @@
+property intIdentity(x) {
+    return (x + 0) == x;
+}
+
+property boolInvolution(isFlag) {
+    return (!(!isFlag)) == isFlag;
+}
+
+// Suggested run:
+// malda test Examples/Testing/property_core_identity.malda --iterations 80 --seed 1337

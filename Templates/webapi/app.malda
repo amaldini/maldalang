@@ -1,0 +1,64 @@
+{{#LOCAL_FIRST}}
+include "data/local_first.malda";
+{{/LOCAL_FIRST}}
+
+var server = new RestServer(8080);
+
+function requireAuth(req, res, next) {
+    req.auth.authenticateBearerJwt("change-me-jwt-secret");
+    next();
+}
+
+@GET("/api/health")
+function health() {
+    return {
+        "service": "__PROJECT_NAME__",
+        "serviceSlug": "__PROJECT_SLUG__",
+        "status": "ok"
+    };
+}
+
+@GET("/api/readiness")
+function readiness() {
+    return {
+        "service": "__PROJECT_NAME__",
+        "status": "ready"
+        {{#LOCAL_FIRST}},
+        "storage": "sqlite-local"
+        {{/LOCAL_FIRST}}
+    };
+}
+
+@GET("/metrics")
+function metrics() {
+    return {
+        "name": "__PROJECT_NAME__",
+        "requests_total": 0
+    };
+}
+
+@GET("/api/profile")
+function profile(req) {
+    var sub = req.auth.sub;
+    return {
+        "verified": req.auth.verified,
+        "sub": sub == null ? "anonymous" : sub,
+        "role": req.auth.claim("role", "user"),
+        "isAdmin": req.auth.hasRole("admin")
+    };
+}
+
+{{#LOCAL_FIRST}}
+@GET("/api/data/status")
+function dataStatus() {
+    return getLocalDataPlatformStatus();
+}
+
+initLocalDataPlatform();
+{{/LOCAL_FIRST}}
+
+server.enableCsrf("change-me-csrf-secret");
+server.setRateLimit(120, 60, "verifiedSubOrIp");
+server.setRateLimitHeaders(true, true);
+server.use(requireAuth);
+server.start();

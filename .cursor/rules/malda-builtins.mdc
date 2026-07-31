@@ -1,0 +1,14 @@
+---
+description: Built-in and interpreter registration rules
+globs: MaldaLang/BuiltIns/**/*.cs,MaldaLang/Interpreter/**/*.cs
+alwaysApply: false
+---
+
+# Built-ins / interpreter
+
+- Implement builtin logic under `MaldaLang/BuiltIns/` (often `BuiltInFunctions.cs`).
+- Register in both `CallBuiltIn` and `CallBuiltInAsync` when applicable.
+- Add the name to `Interpreter.IsBuiltIn`.
+- Mirror recognition/codegen in `MaldaLang.Compiler/CSharpTranspiler.cs`.
+- Update or add a focused test under `MaldaLang.Tests` with a filterable name.
+- Do not assume optional vertical-pack builtins exist in this OSS core.

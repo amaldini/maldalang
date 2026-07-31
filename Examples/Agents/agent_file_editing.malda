@@ -1,0 +1,23 @@
+// Note: Requires OPENROUTER_API_KEY environment variable
+// First, create a test file
+writeFile("example.txt", "function add(a, b) {
+    return a + b;
+}");
+
+// Using CodingAgent - automatically includes all file tools and uses OpenRouterClient
+// Create a coding agent that can edit files
+var editorAgent = new CodingAgent(
+    "CodeEditor",
+    "code editor",
+    "You edit code files to improve them."
+);
+
+// Agent already has all file tools - ready to use!
+var response = editorAgent.think("Read example.txt and add a comment to the add function.");
+print(response.content);
+
+// Verify the edit
+var content = readFile("example.txt");
+print("
+File after edit:");
+print(content);

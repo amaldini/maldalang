@@ -1,0 +1,22 @@
+// Example demonstrating dynamic .NET interop from SPL
+// Note: You must build a small .NET class library and reference its DLL path below.
+// Example C# library (namespace TestLib):
+//   public class Foo {
+//       public string Name { get; set; } = "default";
+//       public int Add(int a, int b) => a + b;
+//   }
+
+let asmPath = "C:\\path\\to\\TestLib.dll"; // adjust this path for your environment
+let asm = loadAssembly(asmPath);
+
+let fooType = getDotNetType(asm, "TestLib.Foo");
+let foo = dotnetNew(fooType);
+
+// Call instance method via obj.method()
+let sum = foo.Add(2, 3);
+print("2 + 3 = " + string(sum));
+
+// Use property getter / setter
+foo.Name = "from SPL";
+print("Foo.Name = " + foo.Name);
+

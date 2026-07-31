@@ -1,0 +1,325 @@
+/* MALDA Reference Manual - paper stylesheet (single chapters)
+ *
+ * Loaded by styles.css for the print medium, so Ctrl+P on any chapter yields a
+ * clean A4 document. The bound edition adds running heads, folios and a
+ * paginated table of contents on top of these rules; see book.css.
+ *
+ * Two things matter most here:
+ *   1. Code wraps instead of being clipped. On screen `pre` scrolls
+ *      horizontally; on paper there is nowhere to scroll, so any line past the
+ *      measure would simply be lost. Wrapped lines get a hanging indent so a
+ *      continuation is never mistaken for a new statement.
+ *   2. Content is aligned to pages: headings never end a page, short code
+ *      blocks are never split, table headers repeat.
+ */
+
+@page {
+    size: A4;
+    margin: 20mm 22mm 18mm;
+}
+
+:root {
+    /* ~89 characters fit on a 166mm measure at this size. */
+    --print-code-size: 9pt;
+    --print-code-leading: 1.45;
+    --print-hang: 2.6ch;
+}
+
+html {
+    font-size: 11pt;
+}
+
+body {
+    display: block;
+    background: #ffffff;
+    color: #000000;
+    font-family: var(--font-serif);
+    font-size: 11pt;
+    line-height: 1.5;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+/* ------------------------------------------------------- Screen-only UI */
+
+nav,
+.copy-btn,
+.manual-actions,
+.breadcrumbs,
+.nav-footer,
+pre::before {
+    display: none !important;
+}
+
+/* ------------------------------------------------------------- Masthead */
+
+header {
+    position: static;
+    height: auto;
+    display: block;
+    padding: 0 0 0.5rem;
+    margin-bottom: 1.5rem;
+    background: none;
+    color: #000000;
+    box-shadow: none;
+    border-bottom: 0.75pt solid #000000;
+    break-after: avoid-page;
+}
+
+header h1 {
+    font-family: var(--font-sans);
+    font-size: 9pt;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #000000;
+}
+
+header p {
+    font-family: var(--font-sans);
+    font-size: 8pt;
+    color: #444444;
+}
+
+/* --------------------------------------------------------------- Layout */
+
+main {
+    display: block;
+    max-width: none;
+    width: auto;
+    margin: 0;
+    padding: 0;
+    font-size: 11pt;
+}
+
+/* ----------------------------------------------------------- Typography */
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-sans);
+    color: #000000;
+    break-after: avoid-page;
+    break-inside: avoid;
+}
+
+h1 {
+    font-size: 20pt;
+    line-height: 1.15;
+    margin: 0 0 1.2rem;
+}
+
+h2 {
+    font-size: 14pt;
+    margin: 1.6em 0 0.6em;
+    padding-bottom: 0.2em;
+    border-bottom: 0.5pt solid #999999;
+}
+
+h3 {
+    font-size: 11.5pt;
+    margin: 1.3em 0 0.4em;
+}
+
+h4 {
+    font-size: 10.5pt;
+    margin: 1.1em 0 0.3em;
+}
+
+h5 {
+    font-size: 10pt;
+    color: #333333;
+    margin: 1em 0 0.3em;
+}
+
+p, li {
+    orphans: 2;
+    widows: 2;
+}
+
+p {
+    margin: 0 0 0.6em;
+}
+
+ul, ol {
+    margin: 0 0 0.8em 1.4em;
+}
+
+li {
+    margin-bottom: 0.2em;
+}
+
+blockquote {
+    border-left: 1.5pt solid #999999;
+    color: #333333;
+    break-inside: avoid;
+}
+
+/* Cross-references read fine as plain text; only outbound URLs need spelling
+   out, since a reader on paper cannot click them. */
+a {
+    color: #000000;
+    text-decoration: none;
+}
+
+main a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-family: var(--font-mono);
+    font-size: 0.8em;
+    word-break: break-all;
+    color: #444444;
+}
+
+/* ------------------------------------------------------------------ Code */
+
+pre {
+    background: #f4f7f9;
+    border: 0.5pt solid #c8d2d8;
+    border-radius: 3pt;
+    padding: 6pt 8pt;
+    margin: 0.75em 0;
+    overflow: visible;
+    orphans: 3;
+    widows: 3;
+    break-inside: auto;
+}
+
+/* Blocks that comfortably fit a page are kept whole; longer listings are
+   allowed to flow so they do not leave half-empty pages behind. */
+pre[data-short] {
+    break-inside: avoid;
+}
+
+pre code {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: var(--print-code-size);
+    line-height: var(--print-code-leading);
+    tab-size: 4;
+    color: #000000;
+}
+
+/* The hanging indent. `--i` is the line's own indentation in columns, set by
+   the highlighter, so a wrapped continuation hangs off the code it belongs to
+   rather than off the left edge of the block. Without it a continuation of an
+   indented line would start further left than the line itself and read as a
+   dedent. */
+pre code .ln {
+    display: block;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    --lead: calc(var(--i, 0) * 1ch);
+    padding-left: calc(var(--lead) + var(--print-hang));
+    text-indent: calc(-1 * (var(--lead) + var(--print-hang)));
+}
+
+code {
+    font-family: var(--font-mono);
+    font-size: 0.87em;
+    background: none;
+    border: none;
+    padding: 0;
+    color: #000000;
+    word-break: break-word;
+}
+
+/* ---------------------------------------------------------------- Tables */
+
+table {
+    width: 100%;
+    border: 0.5pt solid #999999;
+    border-radius: 0;
+    font-size: 9.5pt;
+    margin: 0.8em 0;
+    break-inside: auto;
+}
+
+thead {
+    display: table-header-group;
+}
+
+tr {
+    break-inside: avoid;
+}
+
+th, td {
+    padding: 3pt 5pt;
+    border-bottom: 0.5pt solid #cccccc;
+}
+
+th {
+    background: #eef2f4;
+    font-family: var(--font-sans);
+    font-size: 8pt;
+    color: #000000;
+}
+
+tbody tr:nth-child(even) {
+    background: #fafbfc;
+}
+
+tbody tr:hover {
+    background: transparent;
+}
+
+/* -------------------------------------------------------------- Callouts */
+
+.info-box,
+.warning-box,
+.error-box,
+.success-box,
+.quick-ref,
+.see-also,
+.hub-path-card {
+    break-inside: avoid;
+    border-radius: 3pt;
+    padding: 6pt 9pt;
+    margin: 0.8em 0;
+    font-size: 10pt;
+}
+
+.info-box {
+    background: #eef5f6;
+    border: 0.5pt solid #b9d4d7;
+    border-left: 2pt solid #0e7c86;
+}
+
+.warning-box {
+    background: #fbf5e9;
+    border: 0.5pt solid #ddc9a0;
+    border-left: 2pt solid #c07c1e;
+}
+
+.error-box {
+    background: #fbf0ef;
+    border: 0.5pt solid #ddbfbc;
+    border-left: 2pt solid #c0433d;
+}
+
+.success-box {
+    background: #eef8f3;
+    border: 0.5pt solid #bcdccd;
+    border-left: 2pt solid #2f9e79;
+}
+
+.see-also {
+    background: #f5f7f8;
+    border: 0.5pt solid #cccccc;
+    margin-top: 1.5em;
+}
+
+.see-also h3 {
+    font-size: 8pt;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+/* --------------------------------------------------------------- Footers */
+
+footer {
+    margin-top: 2em;
+    padding-top: 0.6em;
+    border-top: 0.5pt solid #cccccc;
+    font-family: var(--font-sans);
+    font-size: 8pt;
+    color: #555555;
+    break-inside: avoid;
+}

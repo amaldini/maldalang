@@ -1,0 +1,651 @@
+﻿function emptyRalphState() {
+    return {
+        "completedIterations": 0,
+        "lastSuccessfulIteration": 0,
+        "failedIterations": [],
+        "iterations": [],
+        "lastValidationNote": "",
+        "taskComplete": false,
+        "phaseStreak": 0,
+        "lastProgressDone": 0,
+        "stalled": false,
+        "totalPromptTokens": 0,
+        "totalCompletionTokens": 0,
+        "totalCost": 0
+    };
+}
+
+function loadRalphState(statePath) {
+    if (!hasFile(statePath)) {
+        return emptyRalphState();
+    }
+    try {
+        var parsed = parseJSON(readFile(statePath));
+        if (parsed == null) {
+            return emptyRalphState();
+        }
+        if (parsed.completedIterations == null) {
+            parsed.completedIterations = 0;
+        }
+        if (parsed.iterations == null) {
+            parsed.iterations = [];
+        }
+        if (parsed.lastValidationNote == null) {
+            parsed.lastValidationNote = "";
+        }
+        if (parsed.taskComplete == null) {
+            parsed.taskComplete = false;
+        }
+        if (parsed.lastSuccessfulIteration == null) {
+            parsed.lastSuccessfulIteration = 0;
+        }
+        if (parsed.failedIterations == null) {
+            parsed.failedIterations = [];
+        }
+        if (parsed.totalPromptTokens == null) {
+            parsed.totalPromptTokens = 0;
+        }
+        if (parsed.totalCompletionTokens == null) {
+            parsed.totalCompletionTokens = 0;
+        }
+        if (parsed.totalCost == null) {
+            parsed.totalCost = 0;
+        }
+        return parsed;
+    } catch (error) {
+        print("[ralph] Warning: could not load state, starting fresh (" + string(error) + ")");
+        return emptyRalphState();
+    }
+}
+
+function saveRalphState(statePath, state) {
+    state.updatedAt = now();
+    writeFile(statePath, toJSON(state));
+}
+
+function recordIterationResult(state, iteration, phase, thinkElapsed, summary, validationOk, responseText, modifiedFiles, runtimeError, usage) {
+    var entry = {
+        "iteration": iteration,
+        "phase": phase,
+        "elapsedMs": thinkElapsed,
+        "toolResults": summary.tools,
+        "messages": summary.total,
+        "validationOk": validationOk,
+        "runtimeError": runtimeError,
+        "responsePreview": truncateText(responseText, 300),
+        "modifiedFiles": modifiedFiles
+    };
+    if (usage != null) {
+        entry.promptTokens = usage.promptTokens;
+        entry.completionTokens = usage.completionTokens;
+        if (usage.cost != null && usage.cost > 0) {
+            entry.cost = usage.cost;
+        }
+    }
+    state.iterations.append(entry);
+    var success = validationOk && !runtimeError;
+    if (ralphResumePolicy() == "all" || success) {
+        state.completedIterations = iteration;
+    }
+    if (success) {
+        state.lastSuccessfulIteration = iteration;
+    } else {
+        if (state.failedIterations == null) {
+            state.failedIterations = [];
+        }
+        state.failedIterations.append(iteration);
+    }
+    state.lastResponsePreview = truncateText(responseText, 500);
+    state.lastPhase = phase;
+    state.lastThinkMs = thinkElapsed;
+}
+
+function updateStallTracking(state, phase, progressDone) {
+    if (state.lastPhase == phase && state.lastProgressDone == progressDone) {
+        if (state.phaseStreak == null) {
+            state.phaseStreak = 1;
+        } else {
+            state.phaseStreak = state.phaseStreak + 1;
+        }
+    } else {
+        state.phaseStreak = 1;
+        state.lastProgressDone = progressDone;
+    }
+    var maxRetries = envInt("MALDA_RALPH_MAX_PHASE_RETRIES", 3);
+    if (state.phaseStreak >= maxRetries) {
+        state.stalled = true;
+    }
+}
+
+function buildStallEscalationNote(state, lastValidationNote, modifiedFiles) {
+    var note = "[Stall escalation] Same PRD phase repeated " + string(state.phaseStreak) + " times without checklist progress.\n";
+    if (lastValidationNote != null && lastValidationNote != "") {
+        note = note + "Validation: " + lastValidationNote + "\n";
+    }
+    if (modifiedFiles != null && length(modifiedFiles) > 0) {
+        note = note + "Recent files: " + join(modifiedFiles, ", ") + "\n";
+    }
+    note = note + "Try a different approach: smaller edits, re-read PRD acceptance criteria, or fix validation errors first.";
+    return note;
+}
+
+function formatRecentIterations(ralphState, maxEntries) {
+    if (ralphState == null || ralphState.iterations == null || length(ralphState.iterations) == 0) {
+        return "";
+    }
+    var total = length(ralphState.iterations);
+    var start = total - maxEntries;
+    if (start < 0) {
+        start = 0;
+    }
+    var lines = "";
+    var i = start;
+    while (i < total) {
+        var entry = ralphState.iterations[i];
+        var line = "- Iteration " + string(entry.iteration);
+        if (entry.phase != null && entry.phase != "") {
+            line = line + " [" + string(entry.phase) + "]";
+        }
+        line = line + ": validation=" + string(entry.validationOk);
+        if (entry.toolResults != null) {
+            line = line + ", tools=" + string(entry.toolResults);
+        }
+        if (entry.modifiedFiles != null && length(entry.modifiedFiles) > 0) {
+            line = line + ", files=" + join(entry.modifiedFiles, ", ");
+        }
+        if (entry.responsePreview != null && entry.responsePreview != "") {
+            line = line + " — " + entry.responsePreview;
+        }
+        if (lines != "") {
+            lines = lines + "\n";
+        }
+        lines = lines + line;
+        i = i + 1;
+    }
+    return lines;
+}
+
+function formatMemoryFact(mem) {
+    if (mem == null) {
+        return "";
+    }
+    var fact = mem.fact;
+    if (fact == null) {
+        fact = "";
+    } else {
+        fact = string(fact);
+    }
+    var prefix = "";
+    if (mem.phase != null && mem.phase != "") {
+        prefix = prefix + string(mem.phase);
+    }
+    if (mem.type != null && mem.type != "") {
+        if (prefix != "") {
+            prefix = prefix + " | ";
+        }
+        prefix = prefix + string(mem.type);
+    }
+    if (mem.iteration != null) {
+        if (prefix != "") {
+            prefix = prefix + " | ";
+        }
+        prefix = prefix + "iter " + string(mem.iteration);
+    }
+    if (prefix != "") {
+        return "[" + prefix + "] " + fact;
+    }
+    return fact;
+}
+
+function formatMemoryResults(results) {
+    if (results == null || length(results) == 0) {
+        return "";
+    }
+    var text = "";
+    var i = 0;
+    while (i < length(results)) {
+        var line = "- " + formatMemoryFact(results[i]);
+        if (text != "") {
+            text = text + "\n";
+        }
+        text = text + line;
+        i = i + 1;
+    }
+    return text;
+}
+
+var ralphMemorySaveCounter = 0;
+var ralphMemoryEmbedder = null;
+var ralphMemoryEmbedMode = "hash";
+
+function ralphMemoryEmbedFn(text) {
+    if (ralphMemoryEmbedMode == "bow") {
+        return embedBagOfWords(text, 384);
+    }
+    if (ralphMemoryEmbedMode == "llama" && ralphMemoryEmbedder != null) {
+        return ralphMemoryEmbedder.getEmbeddings(text);
+    }
+    return embedHash(text, 384);
+}
+
+function resolveRalphMemoryScope(projectTitle) {
+    var scope = getEnv("MALDA_RALPH_MEMORY_SCOPE");
+    if (scope != null && scope != "") {
+        return scope;
+    }
+    if (projectTitle != null && projectTitle != "") {
+        return "ralph:" + projectTitle;
+    }
+    return "ralph:default";
+}
+
+function ralphMemoryMaintainEnabled(maxIter) {
+    var raw = getEnv("MALDA_RALPH_MEMORY_MAINTAIN");
+    if (raw != null && raw != "") {
+        return envBool("MALDA_RALPH_MEMORY_MAINTAIN", true);
+    }
+    return maxIter > 5;
+}
+
+function loadRalphInterviewBrief(workDir) {
+    var draftPath = pathJoin(workDir, ".ralph-interview-brief.json");
+    if (!hasFile(draftPath)) {
+        return null;
+    }
+    try {
+        return parseJSON(readFile(draftPath));
+    } catch (error) {
+        return null;
+    }
+}
+
+function initializeRalphGraphMemory(memory) {
+    ralphMemoryEmbedMode = "hash";
+    ralphMemoryEmbedder = null;
+    var embedOverride = getEnv("MALDA_MEMORY_EMBED");
+    if (embedOverride != null && embedOverride != "") {
+        ralphMemoryEmbedMode = embedOverride;
+    } else if (config != null && config.agents != null && config.agents.memory != null && config.agents.memory.embed != null && config.agents.memory.embed != "") {
+        ralphMemoryEmbedMode = config.agents.memory.embed;
+    }
+    if (ralphMemoryEmbedMode == "llama") {
+        var embedPath = null;
+        if (config != null && config.agents != null && config.agents.memory != null && config.agents.memory.modelPath != null && config.agents.memory.modelPath != "") {
+            embedPath = config.agents.memory.modelPath;
+        } else if (config != null && config.providers != null && config.providers.local_llama != null && config.providers.local_llama.embedModelPath != null && config.providers.local_llama.embedModelPath != "") {
+            embedPath = config.providers.local_llama.embedModelPath;
+        }
+        if (embedPath != null && embedPath != "") {
+            ralphMemoryEmbedder = new LlamaEmbedder(embedPath);
+        } else {
+            ralphLog("", "[ralph] MALDA_MEMORY_EMBED=llama but no embed model path — falling back to hash");
+            ralphMemoryEmbedMode = "hash";
+        }
+    }
+    memory.initialize(384, "single", ralphMemoryEmbedFn);
+}
+
+function maybeResetRalphMemory(memory, memoryScope) {
+    if (!envBool("MALDA_RALPH_MEMORY_RESET", false)) {
+        return;
+    }
+    try {
+        memory.forgetByScope(memoryScope, dict {});
+    } catch (error) {
+        ralphLog("", "[ralph] Memory reset (scope) warning: " + string(error));
+    }
+}
+
+function persistInterviewMemoryAfterSuccess(workDir, brief, progress, prdRelativePath) {
+    if (envBool("MALDA_RALPH_INTERVIEW_NO_MEMORY", false)) {
+        return;
+    }
+    if (!envBool("MALDA_RALPH_MEMORY_SEED_INTERVIEW", true)) {
+        return;
+    }
+    try {
+        var memory = new GraphMemory();
+        var memoryPath = pathJoin(workDir, ".ralph-memory");
+        initializeRalphGraphMemory(memory);
+        var title = brief != null ? brief.title : "";
+        var memoryScope = resolveRalphMemoryScope(title);
+        if (ralphMemoryPersisted(workDir)) {
+            memory.load(memoryPath);
+        }
+        seedRalphMemoryFromInterview(memory, workDir, memoryScope);
+        if (progress != null) {
+            memory.remember(
+                "PRD checklist: " + string(progress.open) + " open / " + string(progress.total) + " total",
+                "",
+                {
+                    "type": "semantic",
+                    "source": "interview",
+                    "scope": memoryScope,
+                    "category": "prd"
+                }
+            );
+        }
+        indexRalphKnowledgeBase(memory, workDir, prdRelativePath, memoryScope);
+        memory.save(memoryPath);
+        ralphLog("interview", "GraphMemory saved: " + memoryPath + " (scope=" + memoryScope + ")");
+    } catch (error) {
+        ralphLog("interview", "Interview memory persist skipped: " + string(error));
+    }
+}
+
+function seedRalphMemoryFromInterview(memory, workDir, memoryScope) {
+    if (!envBool("MALDA_RALPH_MEMORY_SEED_INTERVIEW", true)) {
+        return;
+    }
+    var payload = loadRalphInterviewBrief(workDir);
+    if (payload == null || payload.brief == null) {
+        return;
+    }
+    var brief = payload.brief;
+    try {
+        if (brief.title != null && brief.title != "") {
+            memory.remember("Project: " + string(brief.title), string(brief.vision), {
+                "type": "semantic",
+                "source": "interview",
+                "scope": memoryScope,
+                "category": "project"
+            });
+        }
+        if (brief.constraints != null && brief.constraints != "") {
+            memory.remember("Constraints: " + truncateText(string(brief.constraints), 300), "", {
+                "type": "semantic",
+                "source": "interview",
+                "scope": memoryScope,
+                "category": "constraints"
+            });
+        }
+        if (brief.deliverables != null && brief.deliverables != "") {
+            memory.remember("Deliverables: " + truncateText(string(brief.deliverables), 300), "", {
+                "type": "semantic",
+                "source": "interview",
+                "scope": memoryScope,
+                "category": "deliverables"
+            });
+        }
+    } catch (error) {
+        ralphLog("", "[ralph] Interview memory seed skipped: " + string(error));
+    }
+}
+
+function indexRalphKnowledgeBase(memory, workDir, prdRelativePath, memoryScope) {
+    try {
+        var prdOpts = dict {
+            "scope": "global",
+            "changedOnly": true
+        };
+        memory.reindexDocuments(prdRelativePath, workDir, prdOpts);
+    } catch (error) {
+        ralphLog("", "[ralph] PRD reindex warning: " + string(error));
+    }
+    var indexDir = getEnv("MALDA_RALPH_MEMORY_INDEX_DIR");
+    if (indexDir != null && indexDir != "") {
+        var pattern = "**/*.md";
+        var patternEnv = getEnv("MALDA_RALPH_MEMORY_INDEX_PATTERN");
+        if (patternEnv != null && patternEnv != "") {
+            pattern = patternEnv;
+        }
+        try {
+            var dirOpts = dict {
+                "scope": memoryScope,
+                "changedOnly": true
+            };
+            memory.reindexDocuments(pattern, indexDir, dirOpts);
+        } catch (error) {
+            ralphLog("", "[ralph] Extra KB reindex warning: " + string(error));
+        }
+    }
+}
+
+function setupRalphGraphMemory(memory, memoryPath, workDir, prdRelativePath, projectTitle) {
+    initializeRalphGraphMemory(memory);
+    var memoryScope = resolveRalphMemoryScope(projectTitle);
+    maybeResetRalphMemory(memory, memoryScope);
+    if (ralphMemoryPersisted(workDir) && !envBool("MALDA_RALPH_MEMORY_RESET", false)) {
+        memory.load(memoryPath);
+    }
+    seedRalphMemoryFromInterview(memory, workDir, memoryScope);
+    indexRalphKnowledgeBase(memory, workDir, prdRelativePath, memoryScope);
+    return memoryScope;
+}
+
+function buildRalphQueryOptions(memory, phase, memoryScope) {
+    var options = dict {
+        "recentCount": 3,
+        "hybrid": true,
+        "phase": phase,
+        "hybridLexical": true,
+        "lexicalWeight": 0.25,
+        "synapse": true,
+        "minScore": 0.5,
+        "includeTypes": ["progress", "decision", "file", "error", "semantic"]
+    };
+    if (memoryScope != null && memoryScope != "") {
+        options.scope = memoryScope;
+    }
+    var rerankMin = envInt("MALDA_RALPH_MEMORY_RERANK_MIN_NODES", 200);
+    try {
+        var stats = memory.stats();
+        if (stats != null && stats.nodes != null && stats.nodes >= rerankMin) {
+            options.rerank = true;
+            options.rerankTopK = 20;
+        }
+    } catch (error) {
+    }
+    return options;
+}
+
+function queryMemoryForPrompt(memory, phase, memoryScope) {
+    if (memory == null) {
+        return "";
+    }
+    if (!envBool("MALDA_RALPH_MEMORY_PHASE_QUERY", false)) {
+        return "";
+    }
+    var queryText = phase + " progress files changed decisions blockers";
+    try {
+        var results = memory.query(queryText, 5, buildRalphQueryOptions(memory, phase, memoryScope));
+        return formatMemoryResults(results);
+    } catch (error) {
+        return "";
+    }
+}
+
+function maintainRalphMemory(memory, client, memoryScope, maxIter) {
+    if (memory == null || !ralphMemoryMaintainEnabled(maxIter)) {
+        return;
+    }
+    ralphMemorySaveCounter = ralphMemorySaveCounter + 1;
+    var pruneDays = envInt("MALDA_RALPH_MEMORY_PRUNE_DAYS", 30);
+    if (config != null && config.agents != null && config.agents.memory != null && config.agents.memory.pruneEpisodicAfterDays != null && config.agents.memory.pruneEpisodicAfterDays > 0) {
+        pruneDays = config.agents.memory.pruneEpisodicAfterDays;
+    }
+    var consolidateMin = envInt("MALDA_RALPH_MEMORY_CONSOLIDATE_MIN", 3);
+    if (config != null && config.agents != null && config.agents.memory != null && config.agents.memory.consolidateMinEpisodic != null && config.agents.memory.consolidateMinEpisodic > 0) {
+        consolidateMin = config.agents.memory.consolidateMinEpisodic;
+    }
+    var useReflect = envBool("MALDA_RALPH_MEMORY_REFLECT", false);
+    if (envBool("MALDA_MEMORY_REFLECT", false)) {
+        useReflect = true;
+    }
+    if (config != null && config.agents != null && config.agents.memory != null && config.agents.memory.reflectEnabled == true) {
+        useReflect = true;
+    }
+    var maintainOpts = dict {
+        "maxEpisodic": 30,
+        "minEpisodic": consolidateMin
+    };
+    if (client != null) {
+        maintainOpts.client = client;
+    }
+    var reflectEvery = envInt("MALDA_RALPH_MEMORY_REFLECT_EVERY", 1);
+    if (config != null && config.agents != null && config.agents.memory != null && config.agents.memory.reflectEveryNSaves != null && config.agents.memory.reflectEveryNSaves > 1) {
+        reflectEvery = config.agents.memory.reflectEveryNSaves;
+    }
+    var reflectMinEpisodic = envInt("MALDA_RALPH_MEMORY_REFLECT_MIN_EPISODIC", 0);
+    if (reflectMinEpisodic > 0) {
+        maintainOpts.minEpisodic = reflectMinEpisodic;
+    } else if (config != null && config.agents != null && config.agents.memory != null && config.agents.memory.reflectMinEpisodic != null && config.agents.memory.reflectMinEpisodic > 0) {
+        maintainOpts.minEpisodic = config.agents.memory.reflectMinEpisodic;
+    }
+    var reflectMinConfidenceEnv = getEnv("MALDA_MEMORY_REFLECT_MIN_CONFIDENCE");
+    if (reflectMinConfidenceEnv != null && reflectMinConfidenceEnv != "") {
+        maintainOpts.minConfidence = float(reflectMinConfidenceEnv);
+    } else if (config != null && config.agents != null && config.agents.memory != null && config.agents.memory.reflectMinConfidence != null) {
+        maintainOpts.minConfidence = config.agents.memory.reflectMinConfidence;
+    }
+    if (config != null && config.agents != null && config.agents.memory != null && config.agents.memory.reflectModel != null && config.agents.memory.reflectModel != "") {
+        maintainOpts.model = config.agents.memory.reflectModel;
+    }
+    if (memoryScope != null && memoryScope != "") {
+        maintainOpts.scope = memoryScope;
+    }
+    try {
+        if (useReflect == true && (ralphMemorySaveCounter % reflectEvery) == 0) {
+            memory.reflect(maintainOpts);
+        } else {
+            memory.consolidate(maintainOpts);
+        }
+        var pruneOpts = dict {
+            "type": "episodic",
+            "olderThanDays": pruneDays,
+            "consolidated": true
+        };
+        if (memoryScope != null && memoryScope != "") {
+            pruneOpts.scope = memoryScope;
+        }
+        memory.prune(pruneOpts);
+        var maxNodes = envInt("MALDA_RALPH_MEMORY_MAX_NODES", 5000);
+        if (config != null && config.agents != null && config.agents.memory != null && config.agents.memory.maxNodes != null && config.agents.memory.maxNodes > 0) {
+            maxNodes = config.agents.memory.maxNodes;
+        }
+        var limitOpts = dict {
+            "maxNodes": maxNodes,
+            "type": "episodic"
+        };
+        if (memoryScope != null && memoryScope != "") {
+            limitOpts.scope = memoryScope;
+        }
+        memory.enforceLimits(limitOpts);
+    } catch (error) {
+        ralphLog("", "[ralph] Memory maintenance warning: " + string(error));
+    }
+}
+
+function collectRalphMemoryStats(memory) {
+    if (memory == null) {
+        return null;
+    }
+    try {
+        return memory.stats();
+    } catch (error) {
+        return null;
+    }
+}
+
+function finalizeRalphMemoryIteration(memory, memoryPath, client, memoryScope, maxIter) {
+    maintainRalphMemory(memory, client, memoryScope, maxIter);
+    memory.save(memoryPath);
+}
+
+function appendFileIfCommittable(files, filePath) {
+    if (filePath != null && filePath != "" && !isRalphMemoryArtifact(filePath)) {
+        files.append(filePath);
+    }
+}
+
+function normalizePathForCompare(pathValue) {
+    if (pathValue == null || pathValue == "") {
+        return "";
+    }
+    var normalized = pathNormalize(pathValue);
+    return lower(replace(normalized, "/", "\\"));
+}
+
+function isFileUnderRalphWorkDir(workDir, projectRel, filePath) {
+    if (filePath == null || filePath == "") {
+        return false;
+    }
+    var workNorm = normalizePathForCompare(workDir);
+    if (workNorm == "") {
+        return false;
+    }
+    var gitPath = lower(replace(filePath, "/", "\\"));
+    if (projectRel != null && projectRel != "" && projectRel != ".") {
+        var rel = lower(replace(projectRel, "/", "\\"));
+        if (endsWith(rel, "\\")) {
+            rel = substring(rel, 0, length(rel) - 1);
+        }
+        if (gitPath == rel) {
+            return true;
+        }
+        var relPrefix = rel + "\\";
+        if (startsWith(gitPath, relPrefix)) {
+            return true;
+        }
+    }
+    var hasSlash = indexOf(filePath, "\\") >= 0 || indexOf(filePath, "/") >= 0;
+    var resolved = filePath;
+    if (!hasSlash) {
+        resolved = pathJoin(workDir, filePath);
+    } else if (indexOf(filePath, ":") < 0) {
+        return false;
+    }
+    var fileNorm = normalizePathForCompare(resolved);
+    if (fileNorm == workNorm) {
+        return true;
+    }
+    var prefix = workNorm;
+    if (!endsWith(prefix, "\\")) {
+        prefix = prefix + "\\";
+    }
+    if (startsWith(fileNorm, prefix)) {
+        return true;
+    }
+    return false;
+}
+
+function appendFileIfCommittableInWorkDir(files, workDir, projectRel, filePath) {
+    if (isFileUnderRalphWorkDir(workDir, projectRel, filePath)) {
+        appendFileIfCommittable(files, filePath);
+    }
+}
+
+function collectModifiedFiles(workDir, projectRel) {
+    var files = [];
+    try {
+        var status = gitStatus(workDir);
+        if (status == null) {
+            return files;
+        }
+        if (status.modified != null) {
+            var i = 0;
+            while (i < length(status.modified)) {
+                appendFileIfCommittableInWorkDir(files, workDir, projectRel, status.modified[i]);
+                i = i + 1;
+            }
+        }
+        if (status.staged != null) {
+            var j = 0;
+            while (j < length(status.staged)) {
+                appendFileIfCommittableInWorkDir(files, workDir, projectRel, status.staged[j]);
+                j = j + 1;
+            }
+        }
+        if (status.untracked != null) {
+            var k = 0;
+            while (k < length(status.untracked)) {
+                appendFileIfCommittableInWorkDir(files, workDir, projectRel, status.untracked[k]);
+                k = k + 1;
+            }
+        }
+    } catch (error) {
+        return files;
+    }
+    return files;
+}
+

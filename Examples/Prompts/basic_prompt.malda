@@ -1,0 +1,10 @@
+// Basic Prompt Block Example
+// Demonstrates simple prompt declaration and usage
+
+prompt greet(name) {
+    user: "Hello, {name}! How are you today?"
+}
+
+// Use the prompt
+var greeting = greet("Alice");
+print("User prompt: " + greeting.user);

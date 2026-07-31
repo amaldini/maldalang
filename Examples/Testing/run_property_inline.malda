@@ -1,0 +1,15 @@
+property stableIdentity(x) {
+    return (x + 0) == x;
+}
+
+var result = runProperty("stableIdentity", 40, 1337);
+
+print("Property: " + string(result.propertyName));
+print("Passed: " + string(result.passed));
+print("Seed: " + string(result.seed));
+print("Iterations: " + string(result.iterations));
+
+if (!result.passed) {
+    print("Failed trial: " + string(result.failedTrial));
+    print("Counterexample: " + string(result.counterexample));
+}

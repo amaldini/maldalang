@@ -1,0 +1,8 @@
+var x = 42;
+var result = match x {
+    case 42: {
+        print("only side effect");
+    }
+    default: "no match";
+};
+print(result == null ? "null" : "not null");

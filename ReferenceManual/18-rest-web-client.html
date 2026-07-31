@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>24. REST Web Client - MALDA Reference Manual</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="syntax.css">
+    <link rel="stylesheet" href="print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>MALDA&trade; Reference Manual</h1>
+        <p>The AI-First Programming Language - Version 0.1</p>
+    </header>
+    <nav></nav>
+    <main>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>24. REST Web Client</span></div>
+        <h1>24. REST Web Client</h1>
+        <p>MALDA includes native support for making HTTP requests to external REST APIs. This includes both a <code>RestClient</code> class for advanced usage and static convenience functions for simple cases.</p>
+        
+        <h2>24.1 RestClient Class</h2>
+        <p>The <code>RestClient</code> class provides a full-featured HTTP client for making REST API requests.</p>
+        
+        <h3>Constructor</h3>
+        <pre><code>var client = new RestClient();                    // No base URL
+var client = new RestClient("https://api.example.com");  // With base URL
+var client = new RestClient("https://api.example.com", 60000);  // With base URL and timeout (ms)</code></pre>
+        
+        <h3>Parameters</h3>
+        <ul>
+            <li><code>baseUrl</code> (string, optional): Base URL for all requests. If provided, relative URLs in requests will be prepended with this base URL.</li>
+            <li><code>timeout</code> (int, optional): Request timeout in milliseconds. Default: 30000 (30 seconds).</li>
+        </ul>
+        
+        <h3>Properties</h3>
+        <ul>
+            <li><code>baseUrl</code> (string): The base URL for all requests</li>
+            <li><code>timeout</code> (int): Request timeout in milliseconds</li>
+        </ul>
+        
+        <h3>HTTP Request Methods</h3>
+        <ul>
+            <li><code>get(url, headers?, queryParams?)</code> - Make a GET request</li>
+            <li><code>post(url, body?, headers?, queryParams?)</code> - Make a POST request</li>
+            <li><code>put(url, body?, headers?, queryParams?)</code> - Make a PUT request</li>
+            <li><code>delete(url, headers?, queryParams?)</code> - Make a DELETE request</li>
+            <li><code>patch(url, body?, headers?, queryParams?)</code> - Make a PATCH request</li>
+        </ul>
+        
+        <h4>Method Parameters</h4>
+        <ul>
+            <li><code>url</code> (string): Request URL (relative if baseUrl is set, absolute otherwise)</li>
+            <li><code>body</code> (object/string, optional): Request body for POST, PUT, PATCH. Objects are automatically serialized to JSON.</li>
+            <li><code>headers</code> (object, optional): Custom headers as an object (e.g., <code>{"Authorization": "Bearer token"}</code>)</li>
+            <li><code>queryParams</code> (object, optional): Query parameters as an object (e.g., <code>{"limit": "10", "offset": "0"}</code>)</li>
+        </ul>
+        
+        <h3>Configuration Methods</h3>
+        <ul>
+            <li><code>setHeader(name, value)</code> - Set a default header for all requests</li>
+            <li><code>setAuth(type, credentials)</code> - Set authentication (type: "Bearer" or "Basic", credentials: token or username:password)</li>
+            <li><code>setTimeout(ms)</code> - Set request timeout in milliseconds</li>
+            <li><code>setBaseUrl(url)</code> - Set base URL for all requests</li>
+        </ul>
+        
+        <h3>Response Format</h3>
+        <p>All HTTP methods return an object with the following properties:</p>
+        <ul>
+            <li><code>status</code> (int): HTTP status code (200, 404, 500, etc.)</li>
+            <li><code>statusText</code> (string): HTTP status text ("OK", "Not Found", etc.)</li>
+            <li><code>headers</code> (object): Response headers as an object</li>
+            <li><code>body</code> (object/string): Response body. Automatically parsed as JSON if Content-Type is application/json, otherwise returned as string.</li>
+            <li><code>ok</code> (bool): True if status code is 200-299 (success)</li>
+        </ul>
+        
+        <h3>Error Handling</h3>
+        <p>If an error occurs (network error, timeout, etc.), the response object will have:</p>
+        <ul>
+            <li><code>error</code> (string): Error message</li>
+            <li><code>status</code> (int): HTTP status code if available, otherwise 0</li>
+            <li><code>ok</code> (bool): false</li>
+        </ul>
+        
+        <h2>24.2 Static HTTP Functions</h2>
+        <p>For simple cases, you can use static convenience functions without creating a RestClient instance:</p>
+        <ul>
+            <li><code>httpGet(url, headers?, queryParams?)</code> - Simple GET request</li>
+            <li><code>httpPost(url, body?, headers?, queryParams?)</code> - Simple POST request</li>
+            <li><code>httpPut(url, body?, headers?, queryParams?)</code> - Simple PUT request</li>
+            <li><code>httpDelete(url, headers?, queryParams?)</code> - Simple DELETE request</li>
+            <li><code>httpPatch(url, body?, headers?, queryParams?)</code> - Simple PATCH request</li>
+        </ul>
+        <p>These functions create a temporary <code>RestClient</code> internally and return the same response format as RestClient methods.</p>
+        
+        <h2>24.3 Examples</h2>
+        
+        <h3>Using RestClient Class</h3>
+        <pre><code>// Create client with base URL
+var client = new RestClient("https://api.example.com");
+
+// Set authentication
+client.setAuth("Bearer", "your-token-here");
+
+// GET request
+var response = client.get("/users");
+if (response.ok) {
+    print("Users: " + toJSON(response.body));
+} else {
+    print("Error: " + response.error);
+}
+
+// GET with query parameters
+var response = client.get("/users", null, {"limit": "10", "offset": "0"});
+
+// POST request with JSON body
+var body = parseJSON("{\"name\": \"Alice\", \"email\": \"alice@example.com\"}");
+var response = client.post("/users", body);
+if (response.status == 201) {
+    print("User created: " + toJSON(response.body));
+}
+
+// PUT request
+var updateData = parseJSON("{\"name\": \"Alice Updated\"}");
+var response = client.put("/users/123", updateData);
+
+// DELETE request
+var response = client.delete("/users/123");</code></pre>
+        
+        <h3>Using Static Functions</h3>
+        <pre><code>// Simple GET request
+var response = httpGet("https://api.example.com/users");
+if (response.ok) {
+    print("Users: " + toJSON(response.body));
+}
+
+// GET with headers
+var headers = {"Authorization": "Bearer token123"};
+var response = httpGet("https://api.example.com/users", headers);
+
+// GET with query parameters
+var response = httpGet("https://api.example.com/users", null, {"limit": "10"});
+
+// POST with JSON body
+var body = parseJSON("{\"name\": \"Alice\"}");
+var response = httpPost("https://api.example.com/users", body);
+
+// POST with custom headers
+var headers = {"Content-Type": "application/json", "X-API-Key": "key123"};
+var body = parseJSON("{\"name\": \"Alice\"}");
+var response = httpPost("https://api.example.com/users", body, headers);</code></pre>
+        
+        <h3>Error Handling</h3>
+        <pre><code>var response = httpGet("https://api.example.com/users/999");
+if (!response.ok) {
+    if (response.status == 404) {
+        print("User not found");
+    } else if (response.error != null) {
+        print("Error: " + response.error);
+    } else {
+        print("HTTP Error: " + response.status + " " + response.statusText);
+    }
+}</code></pre>
+        
+        <h3>Working with Response Data</h3>
+        <pre><code>var response = httpGet("https://api.example.com/users");
+if (response.ok) {
+    var users = response.body;  // Already parsed as object/array if JSON
+    if (users.length > 0) {
+        print("First user: " + users[0].name);
+    }
+    
+    // Access response headers
+    var contentType = response.headers["Content-Type"];
+    print("Content-Type: " + contentType);
+}</code></pre>
+        
+        <h2>24.4 Authentication</h2>
+        
+        <h3>Bearer Token Authentication</h3>
+        <pre><code>var client = new RestClient("https://api.example.com");
+client.setAuth("Bearer", "your-token-here");
+var response = client.get("/protected-endpoint");</code></pre>
+        
+        <h3>Basic Authentication</h3>
+        <pre><code>var client = new RestClient("https://api.example.com");
+client.setAuth("Basic", "username:password");
+var response = client.get("/protected-endpoint");</code></pre>
+        
+        <h3>Custom Authorization Header</h3>
+        <pre><code>var headers = {"Authorization": "Custom token123"};
+var response = httpGet("https://api.example.com/endpoint", headers);</code></pre>
+        
+        <h2>24.5 Timeouts</h2>
+        <pre><code>// Set timeout to 60 seconds
+var client = new RestClient("https://api.example.com", 60000);
+client.setTimeout(10000);  // Change to 10 seconds
+
+var response = client.get("/slow-endpoint");
+if (response.error != null && response.error.contains("timeout")) {
+    print("Request timed out");
+}</code></pre>
+        
+        <h2>24.6 Complete Example</h2>
+        <pre><code>// Create REST client
+var client = new RestClient("https://jsonplaceholder.typicode.com");
+
+// GET all posts
+var response = client.get("/posts");
+if (response.ok) {
+    var posts = response.body;
+    print("Total posts: " + posts.length);
+    
+    // GET specific post
+    var postResponse = client.get("/posts/1");
+    if (postResponse.ok) {
+        var post = postResponse.body;
+        print("Post title: " + post.title);
+    }
+    
+    // POST new post
+    var newPost = parseJSON("{\"title\": \"My Post\", \"body\": \"Content\", \"userId\": 1}");
+    var createResponse = client.post("/posts", newPost);
+    if (createResponse.ok) {
+        print("Created post ID: " + createResponse.body.id);
+    }
+    
+    // PUT update post
+    var update = parseJSON("{\"title\": \"Updated Title\"}");
+    var updateResponse = client.put("/posts/1", update);
+    
+    // DELETE post
+    var deleteResponse = client.delete("/posts/1");
+    if (deleteResponse.ok) {
+        print("Post deleted");
+    }
+}</code></pre>
+        
+        <div class="see-also">
+            <h3>See Also</h3>
+            <ul>
+                <li><a href="17-rest-api.html">23. REST API Server</a> - Creating REST API servers</li>
+                <li><a href="16-web-ui.html">19. Web UI Server Components</a> - Web UI + API integration patterns</li>
+                <li><a href="30-full-stack-development.html">30. Full-Stack Development with MALDA</a> - End-to-end architecture and API calls from UI</li>
+                <li><a href="12-input-output.html">11. Input/Output</a> - Static HTTP functions</li>
+            </ul>
+        </div>
+        <div class="nav-footer">
+            <a href="17-rest-api.html">← Previous: 23. REST API Server</a>
+            <a href="19-mcp-server.html">Next: 25. MCP Server→</a>
+        </div>
+
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, at your option.</p>
+        </footer>
+    </main>
+    <script src="malda-highlight.js"></script>
+    <script src="navigation.js"></script>
+</body>
+</html>

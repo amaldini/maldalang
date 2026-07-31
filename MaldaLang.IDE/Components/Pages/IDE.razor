@@ -1,0 +1,2015 @@
+@page "/ide"
+@using MaldaLang.IDE
+@using MaldaLang.IDE.Components
+@using MaldaLang.IDE.Components.IDE
+@using MaldaLang.IDE.Services
+@using MaldaLang.IDE.Models
+@using MaldaLang.Interpreter
+@using MaldaLang.BuiltIns
+@using MaldaLang.Testing
+@using CompilerNamespace = MaldaLang.Compiler
+@implements IDisposable
+@inject ILanguageService LanguageService
+@inject ExecutionService ExecutionService
+@inject DebuggerService DebuggerService
+@inject FileService FileService
+@inject CompilerService CompilerService
+@inject AIChatService AIChatService
+@inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+
+<PageTitle>MALDA IDE</PageTitle>
+
+<div class="ide-container">
+    <div class="ide-toolbar">
+        <button class="btn btn-primary" @onclick="RunProgram">Run</button>
+        <button class="btn btn-secondary" @onclick="DebugProgram" disabled="@(DebuggerService.State.IsRunning)">Debug</button>
+        <button class="btn btn-secondary" @onclick="StopProgram" disabled="@(!DebuggerService.State.IsRunning)">Stop</button>
+        <button class="btn btn-secondary" @onclick="CompileProgramAsync" disabled="@isCompiling">Compile</button>
+        <select @bind="compilationMode" style="margin-left: 10px; padding: 4px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 12px;" disabled="@isCompiling">
+            <option value="@CompilerNamespace.CompilationMode.Interpreter">Interpreter (Current)</option>
+            <option value="@CompilerNamespace.CompilationMode.TranspileToCSharp">Transpile to C#</option>
+            <option value="@CompilerNamespace.CompilationMode.TranspileToDll">Transpile to DLL</option>
+        </select>
+        @if (!string.IsNullOrEmpty(compilationStatus))
+        {
+            <span style="margin-left: 10px; color: @(isCompiling ? "#007acc" : compilationStatus.Contains("Error") ? "#f44336" : "#4caf50"); font-size: 12px;">
+                @compilationStatus
+            </span>
+        }
+        
+        <!-- Debug Controls -->
+        <div class="debug-toolbar-separator"></div>
+        <button class="btn btn-sm btn-success" @onclick="OnContinue" disabled="@(!DebuggerService.State.IsPaused || !DebuggerService.State.IsRunning)" title="Continue (F5)">
+            ▶ Continue
+        </button>
+        <button class="btn btn-sm btn-info" @onclick="OnStepOver" disabled="@(!DebuggerService.State.IsPaused || !DebuggerService.State.IsRunning)" title="Step Over (F10)">
+            ⏭ Step Over
+        </button>
+        <button class="btn btn-sm btn-info" @onclick="OnStepInto" disabled="@(!DebuggerService.State.IsPaused || !DebuggerService.State.IsRunning)" title="Step Into (F11)">
+            ⬇ Step Into
+        </button>
+        <button class="btn btn-sm btn-info" @onclick="OnStepOut" disabled="@(!DebuggerService.State.IsPaused || !DebuggerService.State.IsRunning)" title="Step Out (Shift+F11)">
+            ⬆ Step Out
+        </button>
+        <button class="btn btn-sm btn-warning" @onclick="OnPause" disabled="@(!DebuggerService.State.IsRunning || DebuggerService.State.IsPaused)" title="Pause">
+            ⏸ Pause
+        </button>
+        
+        <div class="debug-toolbar-separator"></div>
+        <button class="btn btn-sm btn-primary" @onclick="AutofixErrors" disabled="@(!HasAutofixableErrors)" title="Auto-fix parser errors">
+            🔧 Autofix Errors
+        </button>
+        
+        <div class="spacer"></div>
+        <button class="btn btn-sm btn-outline-secondary" @onclick="OpenStarterLauncher" title="Open guided starter path">Guided Start</button>
+        <button class="btn btn-sm btn-outline-secondary" @onclick="ShowExampleBrowser" title="Browse Examples">Browse Examples...</button>
+        <button class="btn btn-sm btn-outline-secondary" @onclick="ClearOutput" title="Clear Output">Clear Output</button>
+        <button class="btn btn-sm btn-outline-secondary" @onclick="SaveFile">Save</button>
+        <button class="btn btn-sm btn-outline-secondary" @onclick="LoadFile">Load</button>
+    </div>
+
+    @if (ShowStarterContext)
+    {
+        <div class="starter-context-banner">
+            <button class="starter-context-dismiss" @onclick="CloseStarterContext" title="Hide starter header" aria-label="Hide starter header">×</button>
+            <div class="starter-context-copy">
+                <div class="starter-context-title">@currentExample.Name</div>
+                <div class="starter-context-meta">
+                    @if (!string.IsNullOrWhiteSpace(currentExample.Track))
+                    {
+                        <span>@GetTrackLabel(currentExample.Track)</span>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(currentExample.Difficulty))
+                    {
+                        <span>@currentExample.Difficulty</span>
+                    }
+                    @if (currentExample.Minutes.HasValue)
+                    {
+                        <span>@currentExample.Minutes.Value min</span>
+                    }
+                </div>
+                @if (!string.IsNullOrWhiteSpace(currentExample.LearningGoal))
+                {
+                    <div class="starter-context-goal">@currentExample.LearningGoal</div>
+                }
+            </div>
+            <div class="starter-context-actions">
+                @if (GetNextExample() is ExampleProgram nextExample)
+                {
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="() => LoadExampleIntoEditorAsync(nextExample, true)">Load Next: @nextExample.Name</button>
+                }
+                <button class="btn btn-sm btn-outline-secondary" @onclick="OpenStarterLauncher">Switch Path</button>
+            </div>
+        </div>
+        @if (SuggestedBranches.Count != 0)
+        {
+            <div class="starter-branch-banner">
+                <div class="starter-branch-label">Next branches after fundamentals</div>
+                <div class="starter-branch-actions">
+                    @foreach (var branch in SuggestedBranches)
+                    {
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="() => OpenExamplePathAsync(branch.RelativeExamplePath, true)">
+                            @branch.Title
+                        </button>
+                    }
+                </div>
+            </div>
+        }
+    }
+    
+    <div class="ide-content">
+        <div class="ide-editor-panel" style="width: calc(100% - @(sidebarWidth + 5)px);">
+            <CodeEditor @ref="codeEditor" 
+                       OnContentChanged="OnEditorContentChanged"
+                       OnCursorPositionChanged="HandleCursorPositionChanged"
+                       OnBreakpointToggle="OnBreakpointToggle"
+                       OnModelContentChanged="OnModelContentChanged" />
+        </div>
+        
+        <div class="ide-splitter" 
+             @onmousedown="StartResizeWithJS"
+             style="cursor: col-resize; width: 5px; background: #444; flex-shrink: 0;"></div>
+        
+        <div class="ide-sidebar" style="width: @(sidebarWidth)px;">
+            <div class="ide-tabs">
+                <button class="tab-button @(activeTab == "output" ? "active" : "")" @onclick='() => activeTab = "output"'>Output</button>
+                <button class="tab-button @(activeTab == "debug" ? "active" : "")" @onclick='() => activeTab = "debug"'>Debug</button>
+                <button class="tab-button @(activeTab == "errors" ? "active" : "")" @onclick='() => activeTab = "errors"'>Errors</button>
+                <button class="tab-button @(activeTab == "ai" ? "active" : "")" @onclick='() => activeTab = "ai"'>AI</button>
+            </div>
+            
+            <div class="ide-panel-content">
+                @if (activeTab == "output")
+                {
+                    <div style="display: flex; flex-direction: column; height: 100%;">
+                        <div style="flex: 1; overflow: auto;">
+                            <OutputPanel Output="@executionOutput" Error="@executionError" OnCreateRegression="CreateRegressionFromPayloadAsync" />
+                        </div>
+                        <div style="border-top: 1px solid #444; padding: 8px; background: #2d2d2d;">
+                            <label style="color: #ccc; font-size: 12px; margin-bottom: 4px; display: block;">Program Input (one value per line):</label>
+                            <textarea @bind="programInput" 
+                                    style="width: 100%; min-height: 60px; background: #1e1e1e; color: #ccc; border: 1px solid #555; padding: 4px; font-family: monospace; font-size: 12px; resize: vertical;"
+                                    placeholder="Enter input values here, one per line..."></textarea>
+                        </div>
+                    </div>
+                }
+                else if (activeTab == "debug")
+                {
+                    <DebugPanel DebugState="@DebuggerService.State" 
+                               Breakpoints="@DebuggerService.Breakpoints" />
+                }
+                else if (activeTab == "errors")
+                {
+                    <ErrorList Diagnostics="@diagnostics"
+                               OnNavigate="NavigateToError"
+                               OnApplyAutofix="ApplySingleAutofix"
+                               OnOpenExample="OpenDiagnosticExample"
+                               OnReadLesson="OpenDiagnosticLesson" />
+                }
+                else if (activeTab == "ai")
+                {
+                    <AIChatPanel CurrentCode="@currentCode" 
+                                CursorPosition="@cursorPosition"
+                                Errors="@diagnostics"
+                                SelectedCode="@selectedCode"
+                                OnCodeChange="HandleAICodeChange" />
+                }
+            </div>
+        </div>
+    </div>
+    
+    <!-- Model Loading Progress Overlay -->
+    @if (showModelLoading)
+    {
+        <div class="model-loading-overlay">
+            <div class="model-loading-card">
+                <div class="model-loading-text">@modelLoadingMessage</div>
+                @if (showProgressBar)
+                {
+                    <div class="model-loading-progress-container">
+                        <div class="model-loading-progress-bar" style="width: @(modelLoadingProgress)%"></div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+    
+    <!-- Toast Notification -->
+    @if (showToast)
+    {
+        <div class="toast-overlay">
+            <div class="toast-card @toastType">
+                <div class="toast-icon">
+                    @if (toastType == "success")
+                    {
+                        <span>✓</span>
+                    }
+                    else if (toastType == "error")
+                    {
+                        <span>✕</span>
+                    }
+                    else
+                    {
+                        <span>ℹ</span>
+                    }
+                </div>
+                <div class="toast-message">@toastMessage</div>
+            </div>
+        </div>
+    }
+
+    @if (showStarterLauncher)
+    {
+        <div class="starter-overlay">
+            <div class="starter-panel">
+                <div class="starter-panel-header">
+                    <div>
+                        <div class="starter-panel-eyebrow">Guided onboarding</div>
+                        <h2>Choose how you want to start with MALDA</h2>
+                        <p>Begin with programming fundamentals, jump into AI-native features, or open a commercial showcase.</p>
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="CloseStarterLauncher">Start Blank</button>
+                </div>
+
+                <div class="starter-track-picker">
+                    @foreach (var track in starterTracks)
+                    {
+                        <button class="starter-track-button @(selectedStarterTrack == track.Id ? "active" : "")"
+                                @onclick="() => SelectStarterTrack(track.Id)">
+                            @track.Label
+                        </button>
+                    }
+                </div>
+
+                <div class="starter-card-grid">
+                    @foreach (var starter in VisibleStarterOptions)
+                    {
+                        <button class="starter-choice-card" @onclick="() => OpenStarterAsync(starter.Id)">
+                            <div class="starter-choice-topline">
+                                <span class="starter-choice-track">@GetTrackLabel(starter.Track)</span>
+                                <span class="starter-choice-time">@starter.EstimatedTime</span>
+                            </div>
+                            <div class="starter-choice-title">@starter.Title</div>
+                            <div class="starter-choice-description">@starter.Description</div>
+                            <div class="starter-choice-goal">@starter.LearningGoal</div>
+                            <div class="starter-choice-highlights">
+                                @foreach (var highlight in starter.Highlights)
+                                {
+                                    <span>@highlight</span>
+                                }
+                            </div>
+                        </button>
+                    }
+                </div>
+
+                <div class="specialization-section">
+                    <div class="specialization-header">
+                        <h3>Specialization tracks</h3>
+                        <p>After the core path, branch into @StarterCatalog.GetBranchTitleSummary().</p>
+                    </div>
+                    <div class="specialization-grid">
+                        @foreach (var branch in VisibleLearningBranches)
+                        {
+                            <button class="specialization-card" @onclick="() => OpenExamplePathAsync(branch.RelativeExamplePath, true)">
+                                <div class="starter-choice-topline">
+                                    <span class="starter-choice-track">@GetTrackLabel(branch.AudienceTrack)</span>
+                                    <span class="starter-choice-time">@branch.EstimatedTime</span>
+                                </div>
+                                <div class="starter-choice-title">@branch.Title</div>
+                                <div class="starter-choice-description">@branch.Description</div>
+                                <div class="starter-choice-goal">@branch.LearningGoal</div>
+                                <div class="starter-choice-highlights">
+                                    @foreach (var highlight in branch.Highlights)
+                                    {
+                                        <span>@highlight</span>
+                                    }
+                                </div>
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "starter")]
+    public string? StarterId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "track")]
+    public string? TrackId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "example")]
+    public string? ExamplePath { get; set; }
+
+    private CodeEditor? codeEditor;
+    private string activeTab = "output";
+    private string executionOutput = "";
+    private string? executionError;
+    private bool showExampleBrowser = false;
+    private string programInput = "";
+    private List<Diagnostic> diagnostics = new();
+    private DebuggerHook? debuggerHook;
+    private Task? debugTask;
+    private CancellationTokenSource? debugCancellation;
+    private int sidebarWidth = 300;
+    private Microsoft.JSInterop.DotNetObjectReference<IDE>? dotNetRef;
+    private string currentCode = "";
+    private (int Line, int Column) cursorPosition = (0, 0);
+    private string? selectedCode = null;
+    private bool showModelLoading = false;
+    private string modelLoadingMessage = "Loading model...";
+    private int modelLoadingProgress = 0;
+    private bool showProgressBar = true;
+    private bool showToast = false;
+    private string toastMessage = "";
+    private string toastType = "info"; // "success", "error", "info"
+    private bool showStarterLauncher;
+    private bool initialStarterResolved;
+    private string selectedStarterTrack = "student";
+    private ExampleProgram? currentExample;
+    private bool starterContextDismissed;
+    private readonly (string Id, string Label)[] starterTracks =
+    [
+        ("student", "Learn programming"),
+        ("ai-builder", "Build with AI"),
+        ("showcase", "Commercial showcases")
+    ];
+
+    private IEnumerable<StarterOption> VisibleStarterOptions =>
+        StarterCatalog.GetByTrack(selectedStarterTrack);
+
+    private IEnumerable<LearningBranch> VisibleLearningBranches =>
+        StarterCatalog.GetBranchesForTrack(selectedStarterTrack);
+
+    private List<LearningBranch> SuggestedBranches =>
+        currentExample != null && IsCoreLearningExample(currentExample)
+            ? StarterCatalog.GetBranches()
+            : [];
+
+    private bool ShowStarterContext =>
+        currentExample != null && !starterContextDismissed;
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Subscribe to breakpoint changes
+            DebuggerService.BreakpointsChanged += OnBreakpointsChanged;
+            
+            // Subscribe to input needed event to update output in real-time
+            ExecutionService.InputNeeded += OnInputNeeded;
+            
+            // Subscribe to output needs update event (e.g., during sleep)
+            ExecutionService.OutputNeedsUpdate += OnOutputNeedsUpdate;
+            
+            // Subscribe to model loading progress
+            ModelLoadingService.OnProgressChanged += OnModelLoadingProgress;
+            ModelLoadingService.OnLoadingStarted += OnModelLoadingStarted;
+            ModelLoadingService.OnLoadingCompleted += OnModelLoadingCompleted;
+            
+            // Update breakpoints when editor is first rendered
+            if (codeEditor != null)
+            {
+                await codeEditor.SetBreakpoints(DebuggerService.Breakpoints);
+                // Initialize current code
+                currentCode = await codeEditor.GetValue();
+            }
+            
+            // Setup splitter resizing
+            dotNetRef = Microsoft.JSInterop.DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("eval", @"
+                (function() {
+                    var component = null;
+                    var isResizing = false;
+                    var startX = 0;
+                    var startWidth = 300;
+                    
+                    window.addEventListener('mousemove', function(e) {
+                        if (isResizing && component) {
+                            var deltaX = startX - e.clientX;
+                            var newWidth = startWidth + deltaX;
+                            if (newWidth < 250) newWidth = 250;
+                            if (newWidth > 400) newWidth = 400;
+                            component.invokeMethodAsync('UpdateSidebarWidth', Math.round(newWidth));
+                        }
+                    });
+                    
+                    window.addEventListener('mouseup', function(e) {
+                        isResizing = false;
+                    });
+                    
+                    window.setupSplitter = function(comp) {
+                        component = comp;
+                    };
+                    
+                    window.startResize = function(clientX, currentWidth) {
+                        isResizing = true;
+                        startX = clientX;
+                        startWidth = currentWidth;
+                    };
+                })();
+            ");
+            await JSRuntime.InvokeVoidAsync("setupSplitter", dotNetRef);
+            await InitializeStarterStateAsync();
+        }
+    }
+    
+    public void Dispose()
+    {
+        // Unsubscribe from events
+        ExecutionService.InputNeeded -= OnInputNeeded;
+        ExecutionService.OutputNeedsUpdate -= OnOutputNeedsUpdate;
+        DebuggerService.BreakpointsChanged -= OnBreakpointsChanged;
+        ModelLoadingService.OnProgressChanged -= OnModelLoadingProgress;
+        ModelLoadingService.OnLoadingStarted -= OnModelLoadingStarted;
+        ModelLoadingService.OnLoadingCompleted -= OnModelLoadingCompleted;
+        dotNetRef?.Dispose();
+    }
+    
+    private async void OnModelLoadingProgress(ModelLoadingService.ModelLoadingProgress progress)
+    {
+        await InvokeAsync(() =>
+        {
+            if (progress.IsError)
+            {
+                // Show error message and hide progress bar
+                showModelLoading = true;
+                showProgressBar = false;
+                modelLoadingMessage = progress.Message;
+                StateHasChanged();
+                
+                // Hide after 3 seconds
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(3000);
+                    await InvokeAsync(() =>
+                    {
+                        if (!ModelLoadingService.IsAnyModelLoading())
+                        {
+                            showModelLoading = false;
+                            showProgressBar = true;
+                            StateHasChanged();
+                        }
+                    });
+                });
+            }
+            else if (progress.IsLoading && progress.Percentage < 100)
+            {
+                showModelLoading = true;
+                showProgressBar = true;
+                modelLoadingMessage = progress.Message;
+                modelLoadingProgress = progress.Percentage;
+                StateHasChanged();
+            }
+        });
+    }
+    
+    private void OnModelLoadingStarted(ModelLoadingService.ModelLoadingProgress progress)
+    {
+        InvokeAsync(() =>
+        {
+            showModelLoading = true;
+            showProgressBar = true;
+            modelLoadingMessage = progress.Message;
+            modelLoadingProgress = progress.Percentage;
+            StateHasChanged();
+        });
+    }
+    
+    private void OnModelLoadingCompleted(string modelPath)
+    {
+        InvokeAsync(() =>
+        {
+            // Check if there are any other models still loading
+            if (!ModelLoadingService.IsAnyModelLoading())
+            {
+                showModelLoading = false;
+                showProgressBar = true;
+                modelLoadingProgress = 100;
+                StateHasChanged();
+            }
+        });
+    }
+    
+    private void OnInputNeeded()
+    {
+        // Update output before input is requested
+        InvokeAsync(() =>
+        {
+            executionOutput = ExecutionService.GetCurrentOutput();
+            activeTab = "output"; // Ensure output tab is visible
+            StateHasChanged();
+        });
+    }
+    
+    private void OnOutputNeedsUpdate()
+    {
+        // Update output panel (e.g., during sleep)
+        InvokeAsync(() =>
+        {
+            executionOutput = ExecutionService.GetCurrentOutput();
+            activeTab = "output"; // Ensure output tab is visible
+            StateHasChanged();
+        });
+    }
+    
+    private async void OnBreakpointsChanged()
+    {
+        await InvokeAsync(async () =>
+        {
+            if (codeEditor != null)
+            {
+                await codeEditor.SetBreakpoints(DebuggerService.Breakpoints);
+                StateHasChanged();
+            }
+        });
+    }
+    
+    private async Task OnEditorContentChanged(string content)
+    {
+        currentCode = content;
+        
+        // Update diagnostics on content change (debounced)
+        await Task.Delay(500); // Simple debounce
+        var fileName = FileService.CurrentFilePath ?? "main.malda";
+        diagnostics = LanguageService.GetDiagnostics(content, fileName);
+        if (codeEditor != null)
+        {
+            await codeEditor.SetDiagnostics(diagnostics);
+        }
+    }
+    
+    private async Task HandleAICodeChange(string newCode)
+    {
+        if (codeEditor != null)
+        {
+            await codeEditor.SetValue(newCode);
+            currentCode = newCode;
+            // Update diagnostics after code change
+            var fileName = FileService.CurrentFilePath ?? "main.malda";
+            diagnostics = LanguageService.GetDiagnostics(newCode, fileName);
+            await codeEditor.SetDiagnostics(diagnostics);
+        }
+    }
+    
+    private async void HandleCursorPositionChanged((int Line, int Column) position)
+    {
+        cursorPosition = position;
+        OnCursorPositionChanged(position.Line, position.Column);
+        
+        // Update selected code if there's a selection
+        if (codeEditor != null)
+        {
+            var selection = await codeEditor.GetSelection();
+            if (selection != null && (selection.StartLine != selection.EndLine || selection.StartColumn != selection.EndColumn))
+            {
+                selectedCode = await codeEditor.GetSelectedText();
+            }
+            else
+            {
+                selectedCode = null;
+            }
+        }
+    }
+    
+    private void OnCursorPositionChanged(int line, int column)
+    {
+        // Could show hover information here
+    }
+    
+    private async Task OnBreakpointToggle(int line)
+    {
+        DebuggerService.ToggleBreakpoint(line, FileService.CurrentFilePath ?? "main.malda");
+        
+        // Update breakpoints in editor
+        if (codeEditor != null)
+        {
+            await codeEditor.SetBreakpoints(DebuggerService.Breakpoints);
+        }
+    }
+    
+    private async Task OnModelContentChanged((int LineNumber, int Delta) change)
+    {
+        var fileName = FileService.CurrentFilePath ?? "main.malda";
+        DebuggerService.AdjustBreakpointsForLineChange(fileName, change.LineNumber, change.Delta);
+        
+        // Update breakpoints in editor after adjustment
+        if (codeEditor != null)
+        {
+            await codeEditor.SetBreakpoints(DebuggerService.Breakpoints);
+        }
+    }
+    
+    private async Task RunProgram()
+    {
+        if (codeEditor == null) return;
+        
+        var source = await codeEditor.GetValue();
+        currentCode = source; // Update current code
+        var input = string.IsNullOrWhiteSpace(programInput) ? null : programInput;
+        var fileName = FileService.CurrentFilePath ?? "main.malda";
+        var result = await ExecutionService.ExecuteAsync(source, input, fileName);
+        
+        executionOutput = result.Output;
+        executionError = result.Error;
+        activeTab = "output";
+        
+        if (!result.Success)
+        {
+            activeTab = "errors";
+            diagnostics.Add(new Diagnostic
+            {
+                Severity = DiagnosticSeverity.Error,
+                Message = result.Error ?? "Execution failed",
+                Line = 0,
+                Column = 0,
+                Length = 1
+            });
+        }
+    }
+    
+    private async Task DebugProgram()
+    {
+        if (codeEditor == null) return;
+        
+        var source = await codeEditor.GetValue();
+        var fileName = FileService.CurrentFilePath ?? "main.malda";
+        
+        // Update breakpoints in editor before starting
+        await codeEditor.SetBreakpoints(DebuggerService.Breakpoints);
+        
+        // Clear output at start of debugging
+        executionOutput = "";
+        executionError = null;
+        
+        DebuggerService.Start();
+        activeTab = "output"; // Show output tab to see debug output
+        
+        // Create debugger hook
+        debuggerHook = new DebuggerHook(DebuggerService);
+        debuggerHook.SetDebugMode(DebugMode.Continue);
+        debuggerHook.OnPaused += async (line, file) =>
+        {
+            await InvokeAsync(async () =>
+            {
+                // Update output during debugging
+                executionOutput = ExecutionService.GetCurrentOutput();
+                
+                UpdateDebugInfo();
+                if (codeEditor != null && line > 0)
+                {
+                    await codeEditor.HighlightLine(line);
+                }
+                StateHasChanged();
+            });
+        };
+        
+        // Start debugging in background task
+        debugCancellation = new CancellationTokenSource();
+        var input = string.IsNullOrWhiteSpace(programInput) ? null : programInput;
+        debugTask = Task.Run(async () =>
+        {
+            try
+            {
+                var result = await ExecutionService.ExecuteWithDebuggerAsync(source, debuggerHook, input, fileName);
+                
+                // Update UI with final results
+                await InvokeAsync(async () =>
+                {
+                    // Get final output (should already be updated during pauses, but ensure it's complete)
+                    executionOutput = ExecutionService.GetCurrentOutput();
+                    executionError = result.Error;
+                    if (!result.Success && !string.IsNullOrEmpty(result.Error))
+                    {
+                        activeTab = "errors";
+                    }
+                    else
+                    {
+                        activeTab = "output"; // Show output tab
+                    }
+                    UpdateDebugInfo();
+                    StateHasChanged();
+                });
+            }
+            catch (Exception ex)
+            {
+                await InvokeAsync(() =>
+                {
+                    executionError = ex.Message;
+                    activeTab = "errors";
+                    StateHasChanged();
+                });
+            }
+            finally
+            {
+                await InvokeAsync(async () =>
+                {
+                    DebuggerService.Stop();
+                    // Update debug info one last time
+                    UpdateDebugInfo();
+                    StateHasChanged();
+                });
+            }
+        }, debugCancellation.Token);
+    }
+    
+    private void StopProgram()
+    {
+        debugCancellation?.Cancel();
+        DebuggerService.Stop();
+        debuggerHook = null;
+        debugTask = null;
+        debugCancellation?.Dispose();
+        debugCancellation = null;
+    }
+    
+    private string compilationStatus = "";
+    private bool isCompiling = false;
+    private CompilerNamespace.CompilationMode compilationMode = CompilerNamespace.CompilationMode.Interpreter;
+    private bool HasAutofixableErrors => diagnostics.Any(d => d.AutoFix != null && d.AutoFix.IsSimpleCharacterFix);
+
+    private async Task CompileProgramAsync()
+    {
+        if (codeEditor == null) return;
+        
+        var source = await codeEditor.GetValue();
+        if (string.IsNullOrWhiteSpace(source))
+        {
+            compilationStatus = "Error: Please enter some code to compile.";
+            StateHasChanged();
+            return;
+        }
+
+        isCompiling = true;
+        compilationStatus = "Compiling...";
+        StateHasChanged();
+
+        try
+        {
+            var outputFileName = compilationMode == CompilerNamespace.CompilationMode.TranspileToDll ? "program.dll" : "program.exe";
+            if (!string.IsNullOrEmpty(FileService.CurrentFilePath))
+            {
+                var fileName = Path.GetFileNameWithoutExtension(FileService.CurrentFilePath);
+                var extension = compilationMode == CompilerNamespace.CompilationMode.TranspileToDll ? ".dll" : ".exe";
+                outputFileName = $"{fileName}{extension}";
+            }
+
+            CompilerService.OnProgress += (progress) =>
+            {
+                compilationStatus = progress.Message;
+                InvokeAsync(StateHasChanged);
+            };
+
+            var result = await CompilerService.CompileAsync(source, outputFileName, compilationMode);
+
+            if (result.Success && !string.IsNullOrEmpty(result.OutputPath))
+            {
+                // Try to create zip with dependencies first
+                var zipBytes = CompilerService.CreateZipWithDependencies(result.OutputPath);
+                byte[] fileBytes;
+                string downloadFileName;
+                string contentType;
+
+                // For DLL mode, always download the DLL directly
+                if (compilationMode == CompilerNamespace.CompilationMode.TranspileToDll)
+                {
+                    var dllBytes = CompilerService.ReadCompiledExecutable(result.OutputPath);
+                    if (dllBytes != null)
+                    {
+                        fileBytes = dllBytes;
+                        downloadFileName = outputFileName;
+                        contentType = "application/x-msdownload";
+                        compilationStatus = $"Compilation successful! Downloading {downloadFileName} (DLL library)...";
+                    }
+                    else
+                    {
+                        compilationStatus = "Error: Could not read compiled DLL.";
+                        return;
+                    }
+                }
+                else if (zipBytes != null)
+                {
+                    // DLL exists separately (single-file publish didn't fully embed it), create zip
+                    fileBytes = zipBytes;
+                    downloadFileName = Path.ChangeExtension(outputFileName, ".zip");
+                    contentType = "application/zip";
+                    compilationStatus = $"Compilation successful! Downloading {downloadFileName} (includes executable and DLL)...";
+                }
+                else
+                {
+                    // DLL is embedded in exe (single-file publish worked), download single exe
+                    var exeBytes = CompilerService.ReadCompiledExecutable(result.OutputPath);
+                    if (exeBytes != null)
+                    {
+                        fileBytes = exeBytes;
+                        downloadFileName = outputFileName;
+                        contentType = "application/x-msdownload";
+                        compilationStatus = $"Compilation successful! Downloading {downloadFileName} (single-file executable)...";
+                    }
+                    else
+                    {
+                        compilationStatus = "Error: Could not read compiled executable.";
+                        return;
+                    }
+                }
+
+                // Download the file using JavaScript
+                var base64 = Convert.ToBase64String(fileBytes);
+                await JSRuntime.InvokeVoidAsync("downloadFile", downloadFileName, base64, contentType);
+                
+                // Clean up the temp file after a delay
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(5000);
+                    try
+                    {
+                        if (File.Exists(result.OutputPath))
+                            File.Delete(result.OutputPath);
+                        var dllPath = Path.Combine(Path.GetDirectoryName(result.OutputPath) ?? "", "MaldaLang.dll");
+                        if (File.Exists(dllPath))
+                            File.Delete(dllPath);
+                    }
+                    catch { }
+                });
+            }
+            else
+            {
+                compilationStatus = $"Compilation failed: {result.ErrorMessage}";
+            }
+        }
+        catch (Exception ex)
+        {
+            compilationStatus = $"Error during compilation: {ex.Message}";
+        }
+        finally
+        {
+            isCompiling = false;
+            StateHasChanged();
+        }
+    }
+    
+    private async Task SaveFile()
+    {
+        if (codeEditor == null) return;
+        
+        var content = await codeEditor.GetValue();
+        FileService.SetContent(content);
+        
+        string fileName;
+        
+        if (string.IsNullOrEmpty(FileService.CurrentFilePath))
+        {
+            // Prompt for file name using JavaScript
+            var promptResult = await JSRuntime.InvokeAsync<string>("eval", 
+                "window.prompt ? window.prompt('Enter file name:', 'program.malda') : null");
+            
+            if (string.IsNullOrEmpty(promptResult))
+            {
+                // User cancelled or prompt not available
+                return;
+            }
+            
+            // Ensure .malda extension
+            fileName = promptResult.EndsWith(".malda", StringComparison.OrdinalIgnoreCase) 
+                ? promptResult 
+                : promptResult + ".malda";
+            
+            // Update file service with new path
+            FileService.SetFilePath(fileName);
+        }
+        else
+        {
+            fileName = FileService.GetFileName();
+        }
+        
+        // Save using browser download
+        await JSRuntime.InvokeVoidAsync("downloadFile", fileName, content);
+    }
+    
+    private async Task LoadFile()
+    {
+        // Use a simpler approach with a hidden file input
+        await JSRuntime.InvokeVoidAsync("loadFile", DotNetObjectReference.Create(this));
+    }
+    
+    [JSInvokable]
+    public async Task HandleFileLoaded(string fileName, string content)
+    {
+        // Stop debugger if running
+        if (DebuggerService.State.IsRunning)
+        {
+            StopProgram();
+        }
+        
+        // Clear breakpoints for the old file before loading new file
+        var oldFilePath = FileService.CurrentFilePath ?? "main.malda";
+        DebuggerService.ClearBreakpointsForFile(oldFilePath);
+        
+        FileService.SetFilePath(fileName);
+        FileService.SetContent(content);
+        if (codeEditor != null)
+        {
+            await codeEditor.SetValue(content);
+            currentCode = content;
+            currentExample = null;
+            starterContextDismissed = false;
+            // Update breakpoints after loading file
+            await codeEditor.SetBreakpoints(DebuggerService.Breakpoints);
+        }
+    }
+    
+    private void ClearOutput()
+    {
+        executionOutput = "";
+        executionError = null;
+        StateHasChanged();
+    }
+    
+    
+    private async Task OnStepOver()
+    {
+        if (debuggerHook == null || !DebuggerService.State.IsPaused || !DebuggerService.State.IsRunning)
+            return;
+            
+        await InvokeAsync(async () =>
+        {
+            // Update output before stepping
+            executionOutput = ExecutionService.GetCurrentOutput();
+            UpdateDebugInfo();
+            
+            debuggerHook.SetDebugMode(DebugMode.StepOver);
+            DebuggerService.Resume();
+            
+            // Highlight current line after step (convert 1-based -> 0-based for Monaco)
+            if (DebuggerService.State.CurrentLine.HasValue && codeEditor != null)
+            {
+                var line = DebuggerService.State.CurrentLine.Value;
+                if (line > 0)
+                {
+                    await codeEditor.HighlightLine(line - 1);
+                }
+            }
+            StateHasChanged();
+        });
+    }
+    
+    private async Task OnStepInto()
+    {
+        if (debuggerHook == null || !DebuggerService.State.IsPaused || !DebuggerService.State.IsRunning)
+            return;
+            
+        await InvokeAsync(async () =>
+        {
+            // Update output before stepping
+            executionOutput = ExecutionService.GetCurrentOutput();
+            UpdateDebugInfo();
+            
+            debuggerHook.SetDebugMode(DebugMode.StepInto);
+            DebuggerService.Resume();
+            
+            // Highlight current line after step (convert 1-based -> 0-based for Monaco)
+            if (DebuggerService.State.CurrentLine.HasValue && codeEditor != null)
+            {
+                var line = DebuggerService.State.CurrentLine.Value;
+                if (line > 0)
+                {
+                    await codeEditor.HighlightLine(line - 1);
+                }
+            }
+            StateHasChanged();
+        });
+    }
+    
+    private async Task OnStepOut()
+    {
+        if (debuggerHook == null || !DebuggerService.State.IsPaused || !DebuggerService.State.IsRunning)
+            return;
+            
+        await InvokeAsync(async () =>
+        {
+            var interpreter = ExecutionService.GetCurrentInterpreter();
+            if (interpreter != null)
+            {
+                var callStack = interpreter.GetCallStack();
+                if (callStack.Count > 0)
+                {
+                    var currentFrame = callStack[callStack.Count - 1];
+                    debuggerHook.SetStepOutFunction(currentFrame.FunctionName);
+                }
+            }
+            
+            // Update output before stepping
+            executionOutput = ExecutionService.GetCurrentOutput();
+            UpdateDebugInfo();
+            
+            debuggerHook.SetDebugMode(DebugMode.StepOut);
+            DebuggerService.Resume();
+            
+            // Highlight current line after step (convert 1-based -> 0-based for Monaco)
+            if (DebuggerService.State.CurrentLine.HasValue && codeEditor != null)
+            {
+                var line = DebuggerService.State.CurrentLine.Value;
+                if (line > 0)
+                {
+                    await codeEditor.HighlightLine(line - 1);
+                }
+            }
+            StateHasChanged();
+        });
+    }
+    
+    private async Task OnContinue()
+    {
+        if (debuggerHook == null || !DebuggerService.State.IsPaused || !DebuggerService.State.IsRunning)
+            return;
+            
+        await InvokeAsync(() =>
+        {
+            // Update output before continuing
+            executionOutput = ExecutionService.GetCurrentOutput();
+            debuggerHook.SetDebugMode(DebugMode.Continue);
+            DebuggerService.Resume();
+            StateHasChanged();
+        });
+    }
+    
+    private async Task OnPause()
+    {
+        if (debuggerHook == null || !DebuggerService.State.IsRunning || DebuggerService.State.IsPaused)
+            return;
+            
+        await InvokeAsync(async () =>
+        {
+            debuggerHook.SetDebugMode(DebugMode.Paused);
+            DebuggerService.Pause();
+            
+            // Update output when pausing
+            executionOutput = ExecutionService.GetCurrentOutput();
+            UpdateDebugInfo();
+            
+            // Highlight current line when pausing (convert 1-based -> 0-based for Monaco)
+            if (DebuggerService.State.CurrentLine.HasValue && codeEditor != null)
+            {
+                var line = DebuggerService.State.CurrentLine.Value;
+                if (line > 0)
+                {
+                    await codeEditor.HighlightLine(line - 1);
+                }
+            }
+            StateHasChanged();
+        });
+    }
+    
+    private void UpdateDebugInfo()
+    {
+        var interpreter = ExecutionService.GetCurrentInterpreter();
+        if (interpreter != null)
+        {
+            var callStack = interpreter.GetCallStack();
+            var variables = interpreter.GetVariables();
+            
+            // Convert to IDE models
+            var frames = callStack.Select(f => new Models.CallStackFrame
+            {
+                FunctionName = f.FunctionName,
+                ClassName = f.ClassName,
+                Line = f.Line,
+                File = f.File
+            }).ToList();
+            
+            DebuggerService.UpdateCallStack(frames);
+            
+            // Convert variables to object dictionary
+            var varDict = variables.ToDictionary(kvp => kvp.Key, kvp => (object)kvp.Value);
+            DebuggerService.UpdateVariables(varDict);
+        }
+    }
+    
+    private async Task StartResizeWithJS(Microsoft.AspNetCore.Components.Web.MouseEventArgs e)
+    {
+        await JSRuntime.InvokeVoidAsync("startResize", e.ClientX, sidebarWidth);
+    }
+    
+    [JSInvokable]
+    public void UpdateSidebarWidth(int width)
+    {
+        sidebarWidth = width;
+        StateHasChanged();
+    }
+    
+    // Periodically update debug info when paused
+    private async Task UpdateDebugInfoPeriodically()
+    {
+        while (DebuggerService.State.IsPaused)
+        {
+            UpdateDebugInfo();
+            await Task.Delay(100); // Update every 100ms while paused
+        }
+    }
+    
+    private void ShowExampleBrowser()
+    {
+        showExampleBrowser = true;
+    }
+    
+    private async Task OnExampleSelected(ExampleProgram? example)
+    {
+        if (example != null)
+        {
+            await LoadExampleIntoEditorAsync(example, false);
+        }
+    }
+    
+    private async Task NavigateToError(Diagnostic diagnostic)
+    {
+        if (codeEditor != null)
+        {
+            await codeEditor.NavigateToPosition(diagnostic.Line, diagnostic.Column, diagnostic.Length);
+        }
+    }
+
+    private async Task OpenDiagnosticExample(Diagnostic diagnostic)
+    {
+        var relatedExample = ExampleProgramsService.GetExampleByRelativePath(diagnostic.RelatedExamplePath);
+        if (relatedExample != null)
+        {
+            await LoadExampleIntoEditorAsync(relatedExample, true);
+            activeTab = "output";
+            return;
+        }
+
+        ShowToast("No related example is available for this lesson yet.", "info");
+    }
+
+    private Task OpenDiagnosticLesson(Diagnostic diagnostic)
+    {
+        if (!string.IsNullOrWhiteSpace(diagnostic.RelatedDocumentationPath))
+        {
+            NavigationManager.NavigateTo(diagnostic.RelatedDocumentationPath);
+            return Task.CompletedTask;
+        }
+
+        ShowToast("No related lesson is available for this diagnostic.", "info");
+        return Task.CompletedTask;
+    }
+
+    private void OpenStarterLauncher()
+    {
+        selectedStarterTrack = NormalizeStarterTrack(TrackId);
+        showStarterLauncher = true;
+    }
+
+    private void CloseStarterLauncher()
+    {
+        showStarterLauncher = false;
+        StateHasChanged();
+    }
+
+    private void CloseStarterContext()
+    {
+        starterContextDismissed = true;
+    }
+
+    private void SelectStarterTrack(string track)
+    {
+        selectedStarterTrack = track;
+    }
+
+    private async Task InitializeStarterStateAsync()
+    {
+        if (initialStarterResolved || codeEditor == null)
+        {
+            return;
+        }
+
+        initialStarterResolved = true;
+        selectedStarterTrack = NormalizeStarterTrack(TrackId);
+        currentCode = await codeEditor.GetValue();
+
+        if (!string.IsNullOrWhiteSpace(StarterId))
+        {
+            await OpenStarterAsync(StarterId);
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(ExamplePath))
+        {
+            await OpenExamplePathAsync(ExamplePath, true);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(currentCode))
+        {
+            showStarterLauncher = true;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OpenStarterAsync(string? starterId)
+    {
+        var starter = StarterCatalog.GetById(starterId);
+        if (starter == null)
+        {
+            ShowToast("Starter not found", "error");
+            return;
+        }
+
+        var example = ExampleProgramsService.GetExampleByRelativePath(starter.RelativeExamplePath);
+        if (example == null)
+        {
+            ShowToast("Starter example could not be loaded", "error");
+            return;
+        }
+
+        selectedStarterTrack = starter.Track;
+        showStarterLauncher = false;
+        await LoadExampleIntoEditorAsync(example, true);
+    }
+
+    private async Task OpenExamplePathAsync(string? relativeExamplePath, bool showToastAfterLoad)
+    {
+        var example = ExampleProgramsService.GetExampleByRelativePath(relativeExamplePath);
+        if (example == null)
+        {
+            ShowToast("Example could not be loaded", "error");
+            return;
+        }
+
+        showStarterLauncher = false;
+        if (!string.IsNullOrWhiteSpace(example.Track))
+        {
+            selectedStarterTrack = example.Track;
+        }
+
+        await LoadExampleIntoEditorAsync(example, showToastAfterLoad);
+    }
+
+    private async Task LoadExampleIntoEditorAsync(ExampleProgram example, bool showToastAfterLoad)
+    {
+        if (codeEditor == null)
+        {
+            return;
+        }
+
+        await codeEditor.SetValue(example.Code);
+        currentCode = example.Code;
+        currentExample = example;
+        starterContextDismissed = false;
+        var fileName = FileService.CurrentFilePath ?? "main.malda";
+        diagnostics = LanguageService.GetDiagnostics(example.Code, fileName);
+        await codeEditor.SetDiagnostics(diagnostics);
+        activeTab = "output";
+
+        if (showToastAfterLoad)
+        {
+            ShowToast($"Loaded starter: {example.Name}", "success");
+        }
+
+        StateHasChanged();
+    }
+
+    private ExampleProgram? GetNextExample()
+    {
+        return ExampleProgramsService.GetExampleByRelativePath(currentExample?.Next);
+    }
+
+    private static bool IsCoreLearningExample(ExampleProgram example)
+    {
+        return example.Track.Equals("student", StringComparison.OrdinalIgnoreCase) &&
+               (example.Category.Equals("Basics", StringComparison.OrdinalIgnoreCase) ||
+                example.Category.Equals("OOP", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string NormalizeStarterTrack(string? track)
+    {
+        return track switch
+        {
+            "ai-builder" => "ai-builder",
+            "showcase" => "showcase",
+            _ => "student"
+        };
+    }
+
+    private static string GetTrackLabel(string track)
+    {
+        return track switch
+        {
+            "student" => "Learn programming",
+            "ai-builder" => "Build with AI",
+            "showcase" => "Showcase",
+            _ => track
+        };
+    }
+    
+    private async Task ApplySingleAutofix(Diagnostic diagnostic)
+    {
+        if (codeEditor == null)
+        {
+            ShowToast("Editor not available", "error");
+            return;
+        }
+        
+        var autofix = diagnostic.AutoFix;
+        if (autofix == null)
+        {
+            ShowToast("No autofix available for this error", "info");
+            return;
+        }
+        
+        try
+        {
+            // Validate autofix before applying
+            var source = await codeEditor.GetValue();
+            if (!ValidateAutofix(source, autofix))
+            {
+                ShowToast("Invalid autofix position - code may have changed", "error");
+                return;
+            }
+            
+            await codeEditor.ReplaceRange(
+                autofix.Line,
+                autofix.Column,
+                autofix.Line,
+                autofix.Column + autofix.LengthToReplace,
+                autofix.TextToInsert
+            );
+            
+            // Re-validate after autofix
+            var newSource = await codeEditor.GetValue();
+            var fileName = FileService.CurrentFilePath ?? "main.malda";
+            diagnostics = LanguageService.GetDiagnostics(newSource, fileName);
+            if (codeEditor != null)
+            {
+                await codeEditor.SetDiagnostics(diagnostics);
+            }
+            
+            ShowToast("Error fixed successfully", "success");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            ShowToast($"Error applying autofix: {ex.Message}", "error");
+        }
+    }
+    
+    private bool ValidateAutofix(string source, AutoFixInfo autofix)
+    {
+        if (string.IsNullOrEmpty(source)) return false;
+        
+        var lines = source.Split('\n');
+        
+        // Validate line number
+        if (autofix.Line < 0 || autofix.Line >= lines.Length)
+        {
+            return false;
+        }
+        
+        var line = lines[autofix.Line];
+        
+        // Validate column number
+        if (autofix.Column < 0 || autofix.Column > line.Length)
+        {
+            return false;
+        }
+        
+        // Validate length to replace
+        if (autofix.LengthToReplace < 0 || autofix.Column + autofix.LengthToReplace > line.Length)
+        {
+            return false;
+        }
+        
+        return true;
+    }
+    
+    private async Task<bool> ApplyAutofixInternal(AutoFixInfo autofix)
+    {
+        if (codeEditor == null) return false;
+        
+        try
+        {
+            var source = await codeEditor.GetValue();
+            
+            // Validate before applying
+            if (!ValidateAutofix(source, autofix))
+            {
+                return false;
+            }
+            
+            await codeEditor.ReplaceRange(
+                autofix.Line,
+                autofix.Column,
+                autofix.Line,
+                autofix.Column + autofix.LengthToReplace,
+                autofix.TextToInsert
+            );
+            
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+    
+    private void ShowToast(string message, string type = "info")
+    {
+        toastMessage = message;
+        toastType = type;
+        showToast = true;
+        StateHasChanged();
+        
+        // Auto-hide after 3 seconds
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(3000);
+            await InvokeAsync(() =>
+            {
+                showToast = false;
+                StateHasChanged();
+            });
+        });
+    }
+
+    private async Task CreateRegressionFromPayloadAsync(PropertyRegressionArtifactRequest request)
+    {
+        try
+        {
+            var content = PropertyRegressionArtifactSupport.BuildArtifactContent(request);
+            var suggestedName = request.RecommendedRegressionFileName;
+            if (string.IsNullOrWhiteSpace(suggestedName))
+            {
+                suggestedName = PropertyRegressionArtifactSupport.BuildRecommendedFileName(request);
+            }
+
+            var downloadName = System.IO.Path.GetFileName(PropertyRegressionArtifactSupport.EnsureSpecExtension(suggestedName));
+            await JSRuntime.InvokeVoidAsync("downloadFile", downloadName, content);
+            ShowToast($"Regression generated: {downloadName}", "success");
+        }
+        catch (Exception ex)
+        {
+            ShowToast($"Failed to generate regression: {ex.Message}", "error");
+        }
+    }
+    
+    private async Task AutofixErrors()
+    {
+        if (codeEditor == null)
+        {
+            ShowToast("Editor not available", "error");
+            return;
+        }
+        
+        try
+        {
+            var source = await codeEditor.GetValue();
+            var autofixableDiagnostics = diagnostics
+                .Where(d => d.AutoFix != null && d.AutoFix.IsSimpleCharacterFix)
+                .ToList();
+            
+            if (autofixableDiagnostics.Count == 0)
+            {
+                ShowToast("No autofixable errors found", "info");
+                return;
+            }
+            
+            // Sort by position (reverse order to avoid offset issues when inserting)
+            autofixableDiagnostics.Sort((a, b) =>
+            {
+                var lineCompare = b.Line.CompareTo(a.Line);
+                if (lineCompare != 0) return lineCompare;
+                return b.Column.CompareTo(a.Column);
+            });
+            
+            // Apply all autofixes
+            var fixedCount = 0;
+            foreach (var diagnostic in autofixableDiagnostics)
+            {
+                var autofix = diagnostic.AutoFix;
+                if (autofix == null) continue;
+                
+                if (await ApplyAutofixInternal(autofix))
+                {
+                    fixedCount++;
+                }
+            }
+            
+            // Re-validate after autofix
+            var newSource = await codeEditor.GetValue();
+            var fileName = FileService.CurrentFilePath ?? "main.malda";
+            diagnostics = LanguageService.GetDiagnostics(newSource, fileName);
+            if (codeEditor != null)
+            {
+                await codeEditor.SetDiagnostics(diagnostics);
+            }
+            
+            // Switch to errors tab to show results
+            activeTab = "errors";
+            
+            // Show results
+            if (fixedCount > 0)
+            {
+                ShowToast($"Successfully fixed {fixedCount} error{(fixedCount > 1 ? "s" : string.Empty)}", "success");
+            }
+            else
+            {
+                ShowToast("No errors could be fixed", "info");
+            }
+            
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            ShowToast($"Error applying autofixes: {ex.Message}", "error");
+        }
+    }
+}
+
+<style>
+    .ide-container {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        width: 100%;
+        max-width: 100%;
+        overflow: hidden;
+        box-sizing: border-box;
+    }
+    
+    .ide-toolbar {
+        display: flex;
+        padding: 8px;
+        background: #2d2d2d;
+        border-bottom: 1px solid #444;
+        gap: 4px;
+        align-items: center;
+        flex-wrap: wrap;
+        min-width: 0;
+        box-sizing: border-box;
+        width: 100%;
+        max-width: 100%;
+    }
+    
+    .ide-toolbar .btn {
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+    
+    .debug-toolbar-separator {
+        width: 1px;
+        height: 24px;
+        background: #555;
+        margin: 0 2px;
+        flex-shrink: 0;
+    }
+    
+    .spacer {
+        flex: 1;
+        min-width: 20px;
+    }
+    
+    .ide-content {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+        min-width: 0;
+        box-sizing: border-box;
+    }
+
+    .starter-context-banner {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        padding: 12px 16px;
+        background: #1f2733;
+        border-bottom: 1px solid #38485b;
+        position: relative;
+        padding-right: 52px;
+    }
+
+    .starter-context-title {
+        color: #f4f7fb;
+        font-weight: 600;
+        margin-bottom: 4px;
+    }
+
+    .starter-context-meta {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        color: #9fc7f0;
+        font-size: 12px;
+        margin-bottom: 4px;
+    }
+
+    .starter-context-goal {
+        color: #c1ccda;
+        font-size: 13px;
+    }
+
+    .starter-context-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .starter-context-dismiss {
+        position: absolute;
+        top: 10px;
+        right: 12px;
+        width: 28px;
+        height: 28px;
+        border: 1px solid #55677d;
+        background: #253243;
+        color: #f4f7fb;
+        border-radius: 4px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        line-height: 1;
+        cursor: pointer;
+    }
+
+    .starter-context-dismiss:hover {
+        background: #314155;
+    }
+
+    .starter-branch-banner {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 16px 12px;
+        background: #18222d;
+        border-bottom: 1px solid #2f4053;
+    }
+
+    .starter-branch-label {
+        color: #9fc7f0;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+    }
+
+    .starter-branch-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: flex-end;
+    }
+    
+    .ide-editor-panel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 0; /* Allow flex item to shrink below content size */
+        overflow: hidden;
+        box-sizing: border-box;
+    }
+    
+    .ide-splitter {
+        width: 5px;
+        background: #444;
+        flex-shrink: 0;
+        cursor: col-resize;
+        user-select: none;
+        transition: background 0.2s;
+    }
+    
+    .ide-splitter:hover {
+        background: #555;
+    }
+    
+    .ide-sidebar {
+        min-width: 250px;
+        max-width: 400px;
+        display: flex;
+        flex-direction: column;
+        background: #1e1e1e;
+        border-left: 1px solid #444;
+        flex-shrink: 0; /* Prevent sidebar from shrinking */
+        overflow: hidden;
+        box-sizing: border-box;
+    }
+    
+    .ide-tabs {
+        display: flex;
+        border-bottom: 1px solid #444;
+        flex-shrink: 0;
+        min-width: 0;
+    }
+    
+    .tab-button {
+        flex: 1;
+        padding: 8px;
+        background: #2d2d2d;
+        border: none;
+        color: #ccc;
+        cursor: pointer;
+        white-space: nowrap;
+        min-width: 0;
+    }
+    
+    .tab-button:hover {
+        background: #333;
+    }
+    
+    .tab-button.active {
+        background: #1e1e1e;
+        border-bottom: 2px solid #007acc;
+    }
+    
+    .ide-panel-content {
+        flex: 1;
+        overflow: auto;
+        padding: 8px;
+        min-width: 0;
+        box-sizing: border-box;
+    }
+    
+    .spacer {
+        flex: 1;
+    }
+    
+    .model-loading-overlay {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1000;
+        pointer-events: none;
+    }
+    
+    .model-loading-card {
+        background: #2d2d2d;
+        border: 1px solid #555;
+        border-radius: 4px;
+        padding: 12px 16px;
+        min-width: 300px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    
+    .model-loading-text {
+        color: #ccc;
+        font-size: 13px;
+        font-weight: 500;
+        margin-bottom: 8px;
+    }
+    
+    .model-loading-progress-container {
+        width: 100%;
+        height: 20px;
+        background: #1e1e1e;
+        border-radius: 2px;
+        overflow: hidden;
+    }
+    
+    .model-loading-progress-bar {
+        height: 100%;
+        background: #007acc;
+        transition: width 0.2s ease;
+        border-radius: 2px;
+    }
+    
+    .toast-overlay {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 1001;
+        pointer-events: none;
+        animation: slideInRight 0.3s ease-out;
+    }
+    
+    @@keyframes slideInRight {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    .toast-card {
+        background: #2d2d2d;
+        border: 1px solid #555;
+        border-radius: 4px;
+        padding: 12px 16px;
+        min-width: 250px;
+        max-width: 400px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .toast-card.success {
+        border-left: 4px solid #4caf50;
+    }
+    
+    .toast-card.error {
+        border-left: 4px solid #f44336;
+    }
+    
+    .toast-card.info {
+        border-left: 4px solid #2196F3;
+    }
+    
+    .toast-icon {
+        font-size: 20px;
+        flex-shrink: 0;
+    }
+    
+    .toast-card.success .toast-icon {
+        color: #4caf50;
+    }
+    
+    .toast-card.error .toast-icon {
+        color: #f44336;
+    }
+    
+    .toast-card.info .toast-icon {
+        color: #2196F3;
+    }
+    
+    .toast-message {
+        color: #ccc;
+        font-size: 13px;
+        flex: 1;
+    }
+
+    .starter-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(4, 10, 20, 0.72);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1002;
+        padding: 20px;
+    }
+
+    .starter-panel {
+        width: min(1100px, 100%);
+        max-height: calc(100vh - 40px);
+        overflow: auto;
+        background: #121a24;
+        border: 1px solid #324152;
+        border-radius: 18px;
+        padding: 24px;
+        box-shadow: 0 24px 50px rgba(0, 0, 0, 0.35);
+    }
+
+    .starter-panel-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        margin-bottom: 18px;
+    }
+
+    .starter-panel-header h2 {
+        color: #f4f7fb;
+        margin-bottom: 8px;
+    }
+
+    .starter-panel-header p,
+    .starter-choice-description,
+    .starter-choice-goal {
+        color: #c1ccda;
+    }
+
+    .starter-panel-eyebrow {
+        color: #8cc8ff;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 8px;
+    }
+
+    .starter-track-picker {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 18px;
+    }
+
+    .starter-track-button {
+        border: 1px solid #43566d;
+        background: #182230;
+        color: #d6e2ef;
+        border-radius: 999px;
+        padding: 8px 14px;
+        font-size: 13px;
+    }
+
+    .starter-track-button.active {
+        background: #0d3558;
+        border-color: #53b3ff;
+        color: #dff1ff;
+    }
+
+    .starter-card-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 14px;
+    }
+
+    .specialization-section {
+        margin-top: 22px;
+        padding-top: 20px;
+        border-top: 1px solid #2d3b4d;
+    }
+
+    .specialization-header {
+        margin-bottom: 14px;
+    }
+
+    .specialization-header h3 {
+        color: #f4f7fb;
+        margin-bottom: 6px;
+    }
+
+    .specialization-header p {
+        color: #aebed1;
+        margin: 0;
+    }
+
+    .specialization-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 14px;
+    }
+
+    .specialization-card {
+        text-align: left;
+        padding: 18px;
+        border: 1px solid #36516f;
+        border-radius: 16px;
+        background: linear-gradient(180deg, #162638, #122131);
+        color: inherit;
+    }
+
+    .specialization-card:hover {
+        border-color: #6ec0ff;
+        background: linear-gradient(180deg, #1a3048, #152739);
+    }
+
+    .starter-choice-card {
+        text-align: left;
+        padding: 18px;
+        border: 1px solid #304154;
+        border-radius: 16px;
+        background: linear-gradient(180deg, #182230, #141c27);
+        color: inherit;
+    }
+
+    .starter-choice-card:hover {
+        border-color: #53b3ff;
+        background: linear-gradient(180deg, #1b2b3f, #162131);
+    }
+
+    .starter-choice-topline {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 10px;
+        color: #9fc7f0;
+        font-size: 12px;
+    }
+
+    .starter-choice-title {
+        color: #f4f7fb;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .starter-choice-goal {
+        font-size: 13px;
+        margin-top: 10px;
+    }
+
+    .starter-choice-highlights {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 12px;
+    }
+
+    .starter-choice-highlights span {
+        border-radius: 999px;
+        background: rgba(140, 200, 255, 0.12);
+        color: #d7ebff;
+        padding: 4px 9px;
+        font-size: 12px;
+    }
+</style>
+
+<ExampleBrowser IsVisible="@showExampleBrowser" IsVisibleChanged="@((bool value) => showExampleBrowser = value)" OnExampleSelected="OnExampleSelected" />

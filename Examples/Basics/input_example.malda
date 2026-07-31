@@ -1,0 +1,25 @@
+// Note: Enter input values in the 'Program Input' field below
+// One value per line, e.g.:
+// Alice
+// 25
+
+print("Starting input example...");
+
+var name = input("Enter your name: ");
+print($"Name received: {name}");
+
+var ageStr = input("Enter your age: ");
+print($"Age string received: {ageStr}");
+
+if (ageStr != "") {
+    var age = int(ageStr);
+    print($"You are {age} years old.");
+    
+    if (age >= 18) {
+        print("You are an adult.");
+    } else {
+        print("You are a minor.");
+    }
+} else {
+    print("No age provided.");
+}

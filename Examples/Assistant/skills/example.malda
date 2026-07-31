@@ -1,0 +1,3 @@
+// Example skill for the assistant. Copy to ~/.malda/skills/example.malda to use.
+// See greeting.malda for a working tool + sub-agent template.
+var tools = [];

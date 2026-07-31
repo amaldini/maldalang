@@ -1,0 +1,13 @@
+---
+description: Web IDE is a playground; prefer Desktop for full IDE features
+globs: MaldaLang.IDE/**/*
+alwaysApply: false
+---
+
+# Web IDE (`MaldaLang.IDE`)
+
+- Treat this as a **browser learning playground** (Monaco + run/debug/examples).
+- Do not implement or document Desktop-only features as if they already exist here (virtual `@malda-section` tabs, MCP config UI, local model browser, UIHost preview, full multi-file project graph).
+- Good contributions: Monaco UX, diagnostics presentation, examples browser, learning flows.
+- Shared language intelligence lives in `MaldaLang/IDE/LanguageService.cs` — prefer fixing shared logic there when both IDEs should benefit.
+- Avoid reintroducing Blazor template scaffold pages (`Counter`, `Weather`, etc.).

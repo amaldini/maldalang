@@ -1,0 +1,61 @@
+{
+  "examples": [
+    {
+      "name": "Basic Prompt",
+      "description": "Simple prompt declaration and usage",
+      "file": "basic_prompt.malda",
+      "track": "ai-builder",
+      "difficulty": "beginner",
+      "minutes": 8,
+      "concepts": ["prompt", "prompt object", "reuse"],
+      "prerequisites": ["Basics/functions.malda"],
+      "learningGoal": "See how MALDA turns a prompt block into a reusable value.",
+      "expectedOutput": "Prints the user-facing fields of a prompt result.",
+      "next": "Prompts/prompt_with_agent.malda",
+      "documentationPath": "/?lesson=first-prompt#lesson-first-prompt",
+      "documentationTitle": "First Prompt",
+      "featured": true
+    },
+    {
+      "name": "Prompt with System Message",
+      "description": "Separating system and user prompts",
+      "file": "prompt_with_system.malda"
+    },
+    {
+      "name": "Prompt Interpolation",
+      "description": "Using string interpolation in prompts",
+      "file": "prompt_interpolation.malda"
+    },
+    {
+      "name": "Using Prompts with Agents",
+      "description": "Passing PromptInstance to agent.think()",
+      "file": "prompt_with_agent.malda",
+      "track": "ai-builder",
+      "difficulty": "intermediate",
+      "minutes": 12,
+      "concepts": ["prompt", "agent", "AI workflow"],
+      "prerequisites": ["Prompts/basic_prompt.malda"],
+      "learningGoal": "Connect MALDA prompt blocks to an agent call.",
+      "expectedOutput": "Creates an agent flow using prompt-driven input.",
+      "next": "Agents/single_agent_code_generator.malda",
+      "documentationPath": "/?lesson=first-agent#lesson-first-agent",
+      "documentationTitle": "First Agent",
+      "featured": true
+    },
+    {
+      "name": "Prompt Metadata",
+      "description": "Optional metadata fields: model, temperature, tools, maxTokens",
+      "file": "prompt_metadata.malda"
+    },
+    {
+      "name": "Prompt Return Types",
+      "description": "Optional return type annotations for type hints",
+      "file": "prompt_return_type.malda"
+    },
+    {
+      "name": "Prompt Reusability",
+      "description": "How prompt blocks enable code reuse and maintainability",
+      "file": "prompt_reusability.malda"
+    }
+  ]
+}

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>9. Arrays - MALDA Reference Manual</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="syntax.css">
+    <link rel="stylesheet" href="print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>MALDA&trade; Reference Manual</h1>
+        <p>The AI-First Programming Language - Version 0.1</p>
+    </header>
+    <nav></nav>
+    <main>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>9. Arrays</span></div>
+        <h1>9. Arrays</h1>
+        <p>Arrays in MALDA are dynamic, zero-indexed collections that can hold values of any type.</p>
+        <h2>9.1 Array Declaration</h2>
+        <p>Arrays are created using square brackets with comma-separated values:</p>
+        <pre><code>var arr = [1, 2, 3, 4, 5];
+var names = ["Alice", "Bob", "Charlie"];
+var empty = [];
+var mixed = [1, "two", 3.0, true];  // Arrays can hold mixed types</code></pre>
+        <h2>9.2 Array Access</h2>
+        <p>Array elements are accessed using zero-based indexing:</p>
+        <pre><code>var arr = [10, 20, 30];
+var first = arr[0];   // first = 10
+var second = arr[1];  // second = 20
+arr[2] = 40;          // Modify element
+var length = arr.length;  // Built-in property returns array length</code></pre>
+        <div class="warning-box">
+            <strong>Note:</strong> Accessing an index beyond the array bounds causes a runtime error.
+        </div>
+        <h2>9.3 Array Operations</h2>
+        <h3>Dynamic Resizing</h3>
+        <p>Arrays can grow and shrink dynamically:</p>
+        <pre><code>var arr = [1, 2, 3];
+arr[3] = 4;  // Array automatically grows
+// arr is now [1, 2, 3, 4]</code></pre>
+        <h3>Multi-dimensional Arrays</h3>
+        <p>MALDA supports multi-dimensional arrays (arrays of arrays):</p>
+        <pre><code>var matrix = [[1, 2], [3, 4]];
+var value = matrix[0][1];  // value = 2
+matrix[1][0] = 5;          // matrix is now [[1, 2], [5, 4]]</code></pre>
+        <h2>9.4 Array Methods</h2>
+        <p>Arrays are objects with built-in methods:</p>
+        <h3>append(item)</h3>
+        <p>Adds an item to the end of the array and returns the array:</p>
+        <pre><code>var arr = [1, 2];
+arr.append(3);  // arr is now [1, 2, 3]</code></pre>
+        <h3>pop()</h3>
+        <p>Removes and returns the last element:</p>
+        <pre><code>var arr = [1, 2, 3];
+var last = arr.pop();  // last = 3, arr is now [1, 2]</code></pre>
+        <h3>popOrNull()</h3>
+        <p>Removes and returns the last element, or <code>null</code> when the array is empty:</p>
+        <pre><code>var arr = [];
+var value = arr.popOrNull();  // null</code></pre>
+        <h3>shift()</h3>
+        <p>Removes and returns the first element:</p>
+        <pre><code>var arr = [1, 2, 3];
+var first = arr.shift();  // first = 1, arr is now [2, 3]</code></pre>
+        <h3>shiftOrNull()</h3>
+        <p>Removes and returns the first element, or <code>null</code> when the array is empty:</p>
+        <pre><code>var arr = [];
+var value = arr.shiftOrNull();  // null</code></pre>
+        <h3>concat(otherArray)</h3>
+        <p>Returns a new array containing elements from both arrays:</p>
+        <pre><code>var a = [1, 2];
+var b = [3, 4];
+var c = a.concat(b);  // c is [1, 2, 3, 4], a and b unchanged</code></pre>
+        <h3>map(fn)</h3>
+        <p>Returns a new array with each element transformed by the function:</p>
+        <pre><code>var doubled = [1, 2, 3].map(x => x * 2);  // [2, 4, 6]
+var squared = [1, 2, 3].map(x => x * x);  // [1, 4, 9]</code></pre>
+        <h3>filter(fn)</h3>
+        <p>Returns a new array containing only elements that match the predicate:</p>
+        <pre><code>var evens = [1, 2, 3, 4].filter(x => x % 2 == 0);  // [2, 4]
+var positives = [-1, 2, -3, 4].filter(x => x > 0);  // [2, 4]</code></pre>
+        <h3>reduce(fn, initialValue?)</h3>
+        <p>Reduces the array to a single value by applying the function to each element:</p>
+        <pre><code>var sum = [1, 2, 3].reduce((acc, x) => acc + x, 0);  // 6
+var product = [2, 3, 4].reduce((acc, x) => acc * x, 1);  // 24
+var max = [3, 1, 4, 2].reduce((acc, x) => x > acc ? x : acc);  // 4</code></pre>
+        <h3>forEach(fn)</h3>
+        <p>Iterates over each element and calls the function (for side effects):</p>
+        <pre><code>[1, 2, 3].forEach(x => print(x));  // Prints 1, 2, 3</code></pre>
+        <h3>find(fn)</h3>
+        <p>Returns the first element that matches the predicate, or <code>null</code> if none found:</p>
+        <pre><code>var found = [1, 2, 3].find(x => x > 1);  // 2
+var notFound = [1, 2, 3].find(x => x > 10);  // null</code></pre>
+        <h3>findIndex(fn)</h3>
+        <p>Returns the index of the first element that matches the predicate, or <code>-1</code> if none found:</p>
+        <pre><code>var idx = [1, 2, 3].findIndex(x => x > 1);  // 1
+var notFound = [1, 2, 3].findIndex(x => x > 10);  // -1</code></pre>
+        <h3>some(fn)</h3>
+        <p>Returns <code>true</code> if at least one element matches the predicate:</p>
+        <pre><code>var hasEven = [1, 2, 3].some(x => x % 2 == 0);  // true
+var allOdd = [1, 3, 5].some(x => x % 2 == 0);  // false</code></pre>
+        <h3>every(fn)</h3>
+        <p>Returns <code>true</code> if all elements match the predicate:</p>
+        <pre><code>var allPositive = [1, 2, 3].every(x => x > 0);  // true
+var allEven = [1, 2, 3].every(x => x % 2 == 0);  // false</code></pre>
+        <h3>sort(comparator?)</h3>
+        <p>Sorts the array in place. With a comparator function, sorts according to the comparison result (negative if a &lt; b, 0 if equal, positive if a &gt; b). Without a comparator, uses default comparison:</p>
+        <pre><code>var arr = [3, 1, 2];
+arr.sort((a, b) => a - b);  // arr is now [1, 2, 3]
+var names = ["Charlie", "Alice", "Bob"];
+names.sort();  // Default string comparison: ["Alice", "Bob", "Charlie"]</code></pre>
+        <h3>reverse()</h3>
+        <p>Reverses the array in place and returns the array:</p>
+        <pre><code>var arr = [1, 2, 3];
+arr.reverse();  // arr is now [3, 2, 1]</code></pre>
+        <h3>slice(start, end?)</h3>
+        <p>Returns a new array containing elements from <code>start</code> index (inclusive) to <code>end</code> index (exclusive). If <code>end</code> is omitted, includes all elements to the end. Negative indices count from the end:</p>
+        <pre><code>var arr = [1, 2, 3, 4, 5];
+var sub = arr.slice(1, 3);  // [2, 3]
+var rest = arr.slice(2);  // [3, 4, 5]
+var lastTwo = arr.slice(-2);  // [4, 5]</code></pre>
+        <h3>get(index, fallback?)</h3>
+        <p>Returns the element at <code>index</code>, or the optional fallback when out of bounds. Negative indices count from the end:</p>
+        <pre><code>var arr = [10, 20, 30];
+print(arr.get(1));          // 20
+print(arr.get(-1));         // 30
+print(arr.get(10, "n/a"));  // n/a</code></pre>
+        <h3>at(index)</h3>
+        <p>Returns the element at <code>index</code>, or <code>null</code> when out of bounds. Negative indices count from the end:</p>
+        <pre><code>var arr = [10, 20, 30];
+print(arr.at(0));   // 10
+print(arr.at(-1));  // 30
+print(arr.at(9));   // null</code></pre>
+        <h3>indexOf(value)</h3>
+        <p>Returns the index of the first occurrence of <code>value</code>, or <code>-1</code> if not found:</p>
+        <pre><code>var idx = [1, 2, 3].indexOf(2);  // 1
+var notFound = [1, 2, 3].indexOf(5);  // -1</code></pre>
+        <h3>includes(value)</h3>
+        <p>Returns <code>true</code> if the array contains <code>value</code>:</p>
+        <pre><code>var hasTwo = [1, 2, 3].includes(2);  // true
+var hasFive = [1, 2, 3].includes(5);  // false</code></pre>
+        <h3>join(separator?)</h3>
+        <p>Joins array elements into a string with the specified separator (default: <code>","</code>):</p>
+        <pre><code>var arr = ["a", "b", "c"];
+var str = arr.join();  // "a,b,c"
+var str2 = arr.join("-");  // "a-b-c"</code></pre>
+        <h2>9.5 Numeric Array Aggregation</h2>
+        <p>For numeric arrays, MALDA also provides built-in aggregation helpers:</p>
+        <pre><code>var scores = [10, 20, 30];
+var total = sum(scores);       // 60
+var avg = average(scores);     // 20.0
+var smallest = min(scores);    // 10
+var largest = max(scores);     // 30
+
+var total2 = scores.sum();     // 60
+var avg2 = scores.average();   // 20.0
+var smallest2 = scores.min();  // 10
+var largest2 = scores.max();   // 30</code></pre>
+        <p><code>sum(array)</code> returns the total of a numeric array. <code>average(array)</code> returns the arithmetic mean of a non-empty numeric array as a float. <code>min(array)</code> and <code>max(array)</code> return the smallest and largest numeric element in a non-empty numeric array.</p>
+        <p>The same operations are also available as array methods: <code>array.sum()</code>, <code>array.average()</code>, <code>array.min()</code>, and <code>array.max()</code>.</p>
+        <p>The scalar forms <code>min(a, b)</code> and <code>max(a, b)</code> are still available for comparing two numeric values.</p>
+        <h2>9.6 Array Length</h2>
+        <p>The <code>length</code> property returns the number of elements in the array:</p>
+        <pre><code>var arr = [1, 2, 3, 4, 5];
+print(arr.length);  // Prints 5</code></pre>
+        <div class="see-also">
+            <h3>See Also</h3>
+            <ul>
+                <li><a href="08-control-structures.html">7. Control Structures</a> - Iterating over arrays with loops</li>
+                <li><a href="12-input-output.html">11. Input/Output</a> - Additional array functions</li>
+                <li><a href="03-data-types.html">4. Data Types</a> - Dictionary types and <code>dict { ... }</code> literals</li>
+            </ul>
+        </div>
+        <div class="nav-footer">
+            <a href="09-functions.html">← Previous: 8. Functions</a>
+            <a href="10-classes-objects.html">Next: 10. Classes & Objects→</a>
+        </div>
+
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, at your option.</p>
+        </footer>
+    </main>
+    <script src="malda-highlight.js"></script>
+    <script src="navigation.js"></script>
+</body>
+</html>

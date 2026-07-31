@@ -1,0 +1,75 @@
+// Graph Pathfinding Example
+// Demonstrates various pathfinding algorithms and use cases
+
+print("=== Graph Pathfinding ===\n");
+
+// Create a graph representing a map with cities and roads
+var map = graph directed {
+  nodes: ["Start", "CityA", "CityB", "CityC", "CityD", "End"],
+  edges: [
+    { from: "Start", to: "CityA", weight: 5 },
+    { from: "Start", to: "CityB", weight: 2 },
+    { from: "CityA", to: "CityC", weight: 4 },
+    { from: "CityA", to: "CityD", weight: 2 },
+    { from: "CityB", to: "CityA", weight: 8 },
+    { from: "CityB", to: "CityD", weight: 7 },
+    { from: "CityC", to: "End", weight: 3 },
+    { from: "CityD", to: "CityC", weight: 1 },
+    { from: "CityD", to: "End", weight: 4 }
+  ]
+};
+
+print("Map graph:");
+print("Nodes: " + map.nodes());
+print("Edges: " + map.edges());
+print("");
+
+// Find shortest path from Start to End
+print("=== Shortest Path (Dijkstra) ===");
+var shortest = map.shortestPath("Start", "End");
+print("Shortest path from Start to End:");
+print("  Path: " + shortest.path);
+print("  Distance: " + shortest.distance);
+print("  Found: " + shortest.found);
+print("");
+
+// Find path using BFS (unweighted, finds shortest in terms of edges)
+print("=== BFS Path (fewest edges) ===");
+var bfsPath = map.bfs("Start", "End");
+print("BFS path from Start to End:");
+print("  Path: " + bfsPath.path);
+print("  Found: " + bfsPath.found);
+print("  Number of edges: " + bfsPath.path.length);
+print("");
+
+// Find path using DFS (may not be shortest)
+print("=== DFS Path ===");
+var dfsPath = map.dfs("Start", "End");
+print("DFS path from Start to End:");
+print("  Path: " + dfsPath.path);
+print("  Found: " + dfsPath.found);
+print("");
+
+// Compare different routes
+print("=== Route Comparison ===");
+var route1 = map.shortestPath("Start", "CityA");
+var route2 = map.shortestPath("Start", "CityB");
+var route3 = map.shortestPath("CityA", "End");
+var route4 = map.shortestPath("CityB", "End");
+
+print("Start -> CityA: " + route1.path + " (distance: " + route1.distance + ")");
+print("Start -> CityB: " + route2.path + " (distance: " + route2.distance + ")");
+print("CityA -> End: " + route3.path + " (distance: " + route3.distance + ")");
+print("CityB -> End: " + route4.path + " (distance: " + route4.distance + ")");
+print("");
+
+// Find all paths to a node
+print("=== Finding All Paths ===");
+print("All nodes reachable from Start:");
+var allReachable = map.bfs("Start");
+print("  " + allReachable);
+print("");
+
+// Check if path exists
+var pathExists = map.bfs("Start", "End").found;
+print("Path exists from Start to End: " + pathExists);

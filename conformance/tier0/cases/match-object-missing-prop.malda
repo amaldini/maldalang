@@ -1,0 +1,7 @@
+var obj = { name: "Alice" };
+var result = match obj {
+    case { name, age }: "has age";
+    case { name }: "no age";
+    default: "unknown";
+};
+print(result);

@@ -1,0 +1,69 @@
+// Spectre.Console Progress Example
+// Demonstrates progress bars with multiple tasks
+
+// Simple progress with single task
+AnsiConsole.progress({
+  "tasks": [
+    {
+      "name": "Processing files",
+      "maxValue": 100
+    }
+  ],
+  "action": (progressObj) => {
+    var current = 0;
+    while (current < 100) {
+      current = current + 10;
+      // Update the progress by setting the value on the progress object
+      progressObj["Processing files"] = current;
+      sleep(50);
+    }
+  }
+});
+
+AnsiConsole.markupLine("[green]Files processed![/]");
+AnsiConsole.markupLine("");
+
+// Progress with multiple tasks
+AnsiConsole.progress({
+  "tasks": [
+    {
+      "name": "Downloading",
+      "maxValue": 100
+    },
+    {
+      "name": "Extracting",
+      "maxValue": 50
+    },
+    {
+      "name": "Installing",
+      "maxValue": 75
+    }
+  ],
+  "action": (progressObj) => {
+    // Simulate downloading
+    var downloadProgress = 0;
+    while (downloadProgress < 100) {
+      downloadProgress = downloadProgress + 10;
+      progressObj["Downloading"] = downloadProgress;
+      sleep(50);
+    }
+    
+    // Simulate extracting
+    var extractProgress = 0;
+    while (extractProgress < 50) {
+      extractProgress = extractProgress + 5;
+      progressObj["Extracting"] = extractProgress;
+      sleep(30);
+    }
+    
+    // Simulate installing
+    var installProgress = 0;
+    while (installProgress < 75) {
+      installProgress = installProgress + 7.5;
+      progressObj["Installing"] = installProgress;
+      sleep(40);
+    }
+  }
+});
+
+AnsiConsole.markupLine("[green]All tasks completed![/]");

@@ -1,0 +1,67 @@
+// Install MALDA VS Code/Cursor extension into editor extensions folders.
+// Uses runCommand (robocopy on Windows) to copy the vscode-malda folder.
+//
+// Prerequisites:
+//   Set MALDA_EXTENSION_SOURCE to the full path of the vscode-malda folder.
+//   Example (PowerShell from repo root):
+//     $env:MALDA_EXTENSION_SOURCE = (Resolve-Path "vscode-malda").Path
+//     malda run install-malda-extension.malda
+//   Example (cmd from repo root):
+//     set MALDA_EXTENSION_SOURCE=%CD%\vscode-malda
+//     malda run install-malda-extension.malda
+//
+// Targets:
+//   - %USERPROFILE%\.vscode\extensions\malda-language
+//   - %USERPROFILE%\.cursor\extensions\malda-language
+
+var source = getEnv("MALDA_EXTENSION_SOURCE");
+if (source == null or source == "") {
+  print("MALDA_EXTENSION_SOURCE is not set.");
+  print("Set it to the full path of the vscode-malda folder, then run:");
+  print("  malda run install-malda-extension.malda");
+  print("Example (PowerShell from repo root):");
+  print('  $env:MALDA_EXTENSION_SOURCE = (Resolve-Path "vscode-malda").Path');
+  print("  malda run install-malda-extension.malda");
+  return;
+}
+
+var userProfile = getEnv("USERPROFILE");
+if (userProfile == null or userProfile == "") {
+  userProfile = getEnv("HOME");
+}
+if (userProfile == null or userProfile == "") {
+  print("Could not determine user home (USERPROFILE / HOME).");
+  return;
+}
+
+if (not hasDirectory(source)) {
+  print("Source directory does not exist: " + source);
+  return;
+}
+
+var targets = [
+  userProfile + "/.vscode/extensions/malda-language",
+  userProfile + "/.cursor/extensions/malda-language"
+];
+
+// Use backslashes so "/" in paths is not read as xcopy options
+var src = replace(source, "/", "\\");
+var ok = true;
+for (var i = 0; i < length(targets); i = i + 1) {
+  var dest = replace(targets[i], "/", "\\");
+  print("Copying to: " + dest);
+  // robocopy: source dest /E (simpler than xcopy; exit 0-7 = success, 8+ = error)
+  var r = runCommand("robocopy", [src, dest, "/E", "/IS", "/IT"]);
+  if (r.exitCode >= 8) {
+    print("  Failed: " + r.stderr);
+    ok = false;
+  } else {
+    print("  Done.");
+  }
+}
+
+if (ok) {
+  print("Installation complete. Reload VS Code or Cursor to use the extension.");
+} else {
+  print("Some copies failed. On non-Windows, copy the vscode-malda folder manually into each editor's extensions folder.");
+}

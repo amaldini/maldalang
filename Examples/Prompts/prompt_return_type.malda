@@ -1,0 +1,28 @@
+// Prompt with Return Type Annotation
+// Demonstrates optional return type annotations for type hints
+
+prompt planTask(task, docs) -> Plan {
+    system: "You are a project planner.",
+    user: """
+    Task: {task}
+    
+    Documentation:
+    {docs}
+    
+    Create a detailed implementation plan.
+    """
+}
+
+prompt codeReview(code) -> Review {
+    system: "You are a code reviewer.",
+    user: "Review this code:\n\n{code}"
+}
+
+// Return types are currently informational (for future type checking)
+var plan = planTask("Add logging", "See docs/logging.md");
+var review = codeReview("function test() { return 42; }");
+
+print("Plan prompt:");
+print(plan.user);
+print("\nReview prompt:");
+print(review.user);

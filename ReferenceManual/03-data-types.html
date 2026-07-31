@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MALDA Data Types - Primitive types, type system, objects">
+    <title>4. Data Types - MALDA Reference Manual</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="syntax.css">
+    <link rel="stylesheet" href="print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>MALDA&trade; Reference Manual</h1>
+        <p>The AI-First Programming Language - Version 0.1</p>
+    </header>
+
+    <nav></nav>
+
+    <main>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>4. Data Types</span></div>
+
+        <h1>4. Data Types</h1>
+
+        <p>MALDA is a dynamically-typed language with support for primitive types, arrays, and objects. Variables can hold values of any type, and types are inferred from values.</p>
+
+        <h2>4.1 Primitive Types</h2>
+
+        <p>MALDA supports four primitive data types:</p>
+
+        <h3>Integer (int)</h3>
+        <p>32-bit signed integers. Examples:</p>
+        <pre><code>42
+-10
+0
+12345</code></pre>
+
+        <h3>Float (float)</h3>
+        <p>64-bit floating-point numbers. Examples:</p>
+        <pre><code>3.14
+-0.5
+2.0
+1e-5</code></pre>
+
+        <h3>String (string)</h3>
+        <p>Sequences of characters enclosed in double quotes (<code>"..."</code>) or single quotes (<code>'...'</code>). Both forms are equivalent. Examples:</p>
+        <pre><code>"Hello, World!"
+'Hello, World!'
+"Line 1\nLine 2"
+'Line 1\nLine 2'
+"Tab\tseparated"
+"It's a test"        // Using double quotes when string contains single quote
+'He said "hello"'    // Using single quotes when string contains double quote</code></pre>
+
+        <h3>Boolean (bool)</h3>
+        <p>Logical values: <code>true</code> or <code>false</code>.</p>
+
+        <h2>4.2 Type System</h2>
+
+        <h3>Dynamic Typing</h3>
+        <p>Variables in MALDA are dynamically typed - they can hold values of any type, and the type is determined at runtime:</p>
+        <pre><code>var x = 10;        // x is an integer
+x = "Hello";      // x is now a string
+x = 3.14;         // x is now a float
+x = true;         // x is now a boolean</code></pre>
+
+        <h3>Type Inference</h3>
+        <p>Variable types are automatically inferred from their initial values:</p>
+        <pre><code>var name = "Alice";     // Inferred as string
+var age = 25;          // Inferred as integer
+var pi = 3.14159;     // Inferred as float
+var isActive = true;   // Inferred as boolean</code></pre>
+
+        <h3>Type Coercion</h3>
+        <p>MALDA automatically converts between compatible types in certain contexts:</p>
+
+        <h4>Integer ↔ Float Conversion</h4>
+        <p>Integers are automatically converted to floats when needed:</p>
+        <pre><code>var x = 10;        // integer
+var y = 3.14;     // float
+var sum = x + y;   // x is converted to float, result is 13.14</code></pre>
+
+        <h4>String Concatenation</h4>
+        <p>When using the <code>+</code> operator with strings, non-string values are converted to strings:</p>
+        <pre><code>var name = "Alice";
+var age = 25;
+var message = "Name: " + name + ", Age: " + age;
+// message = "Name: Alice, Age: 25"</code></pre>
+
+        <h4>Explicit Type Conversion</h4>
+        <p>Use built-in functions for explicit type conversion (see <a href="11-built-in-functions.html">Built-in Functions</a>):</p>
+        <pre><code>var num = int("123");      // Convert string to integer
+var floatVal = float("3.14");  // Convert string to float
+var str = string(42);     // Convert number to string</code></pre>
+
+        <h2>4.3 Object Types</h2>
+
+        <h3>Class Instances</h3>
+        <p>Objects are instances of classes. They are created using the <code>new</code> keyword:</p>
+        <pre><code>class Person {
+    public var name;
+    public var age;
+    
+    function Person(name, age) {
+        this.name = name;
+        this.age = age;
+    }
+}
+
+var person = new Person("Alice", 25);  // person is an object</code></pre>
+
+        <p>See <a href="10-classes-objects.html">Classes & Objects</a> for more information.</p>
+
+        <h3>Null</h3>
+        <p><code>null</code> is a special value representing the absence of an object. It can be assigned to any object variable:</p>
+        <pre><code>var obj = null;
+
+if (obj == null) {
+    print("Object is null");
+}</code></pre>
+
+        <div class="warning-box">
+            <strong>Warning:</strong> Accessing members of <code>null</code> causes a runtime error.
+        </div>
+
+        <h3>Reference Types</h3>
+        <p>Objects are reference types - when you assign an object to a variable, both variables refer to the same object:</p>
+        <pre><code>var person1 = new Person("Alice", 25);
+var person2 = person1;  // person2 refers to the same object
+person2.name = "Bob";
+print(person1.name);    // Prints "Bob" (same object)</code></pre>
+
+        <h2>4.4 Dictionaries</h2>
+
+        <p>Dictionaries are mutable key–value maps with <strong>string keys</strong> and values of any type. They are useful for configuration objects, dynamic maps, and aggregating data.</p>
+
+        <h3>Dictionary Literals</h3>
+        <p>Dictionaries are created with the <code>dict { ... }</code> literal syntax:</p>
+        <pre><code>var d = dict { "a": 1, "b": 2 };
+print(d["a"]);   // 1
+print(d["b"]);   // 2
+
+// Add or update entries
+d["c"] = 3;
+print(d["c"]);   // 3
+
+// Missing keys return null
+print(d["missing"] == null);  // true</code></pre>
+
+        <h3>Dictionary Methods</h3>
+        <p>Dictionaries are objects with built-in methods:</p>
+        <pre><code>var d = dict { "x": 10 };
+
+// get(key) – returns value or null
+print(d.get("x"));        // 10
+print(d.get("missing"));  // null
+
+// set(key, value) – sets and returns the same dictionary
+d.set("y", 20);
+print(d["y"]);            // 20
+
+// remove(key) – removes entry and returns true/false
+print(d.remove("y"));     // true
+
+// containsKey(key) – membership test
+print(d.containsKey("x"));   // true
+
+// keys() – array of string keys
+var keys = d.keys();
+print(keys.length);
+
+// values() – array of values
+var values = d.values();
+print(values.length);
+
+// entries() – array of [key, value] pairs
+var entries = d.entries();
+var first = entries[0];   // [key, value]
+print(first[0]);          // key
+print(first[1]);          // value</code></pre>
+
+        <p>In transpiled executables, dictionary literals are backed by <code>Dictionary&lt;string, object?&gt;</code> but expose the same behavior as in the interpreter.</p>
+
+        <h2>4.5 Sum Types (Tagged Unions)</h2>
+
+        <p>Sum types let you define a value that can be one of several variants, each carrying optional payload data. They are useful for structured results (e.g. success vs error) and protocol-style data.</p>
+
+        <h3>Type Declaration</h3>
+        <p>Declare a sum type with <code>type</code>, a type name, and one or more constructors separated by <code>|</code>. Each constructor has a name and optional parameters (in parentheses):</p>
+        <pre><code>type Result = Ok(value) | Err(message);
+type Option = Some(x) | None();</code></pre>
+        <p>Constructor names (e.g. <code>Ok</code>, <code>Err</code>) become global functions that build values of that variant.</p>
+
+        <h3>Constructing Values</h3>
+        <p>Call a constructor like a function. It returns a tagged value carrying the arguments as payload:</p>
+        <pre><code>var r = Ok(42);           // variant Ok with payload 42
+var e = Err("failed");    // variant Err with payload "failed"
+var n = None();           // variant None with no payload</code></pre>
+
+        <h3>Matching on Variants</h3>
+        <p>Use <code>match</code> with <strong>variant patterns</strong>: <code>ConstructorName(binding, ...)</code>. The pattern matches if the value is that variant and binds the payload to the given names:</p>
+        <pre><code data-run="true" data-expect="ok: 5">type Result = Ok(value) | Err(message);
+function divide(a, b) {
+    if (b == 0) return Err("divide by zero");
+    return Ok(a / b);
+}
+var r = divide(10, 2);
+var result = match r {
+    case Ok(v): "ok: " + v;
+    case Err(msg): "error: " + msg;
+};
+print(result);   // "ok: 5"</code></pre>
+        <p>See <a href="08-control-structures.html">Control Structures</a> for the full <code>match</code> syntax and other pattern types.</p>
+
+        <h2>4.6 Type Checking</h2>
+
+        <p>While MALDA is dynamically typed, you can inspect types at runtime with built-in helpers (see <a href="11-built-in-functions.html">Built-in Functions</a>):</p>
+        <pre><code>var x = 10;
+
+// Preferred: type tag from typeOf()
+if (typeOf(x) == "int") {
+    print("x is an integer");
+}
+
+// Any numeric value (integer or float)
+if (isNumber(x)) {
+    print("x is a number");
+}
+
+// Check for null
+if (x == null) {
+    print("x is null");
+}</code></pre>
+        <p><code>typeOf()</code> returns canonical tags such as <code>"int"</code>, <code>"float"</code>, <code>"string"</code>, <code>"bool"</code>, <code>"array"</code>, <code>"dict"</code> (for <code>dict { }</code>), or <code>"object"</code> (class instances). Use <code>isTag(x, "integer")</code> during migration if older literal names are still in use.</p>
+
+        <div class="see-also">
+            <h3>See Also</h3>
+            <ul>
+                <li><a href="04-variables.html">5. Variables</a> - How to declare and use variables</li>
+                <li><a href="05-arrays.html">9. Arrays</a> - Array data structures</li>
+                <li><a href="06-graphs.html">13. Graphs</a> - Graph data structures</li>
+                <li><a href="10-classes-objects.html">10. Classes & Objects</a> - Creating custom object types</li>
+                <li><a href="11-built-in-functions.html">12. Built-in Functions</a> - Type conversion functions</li>
+            </ul>
+        </div>
+
+        <div class="nav-footer">
+            <a href="02-lexical-structure.html">← Previous: 3. Lexical Structure</a>
+            <a href="04-variables.html">Next: 5. Variables→</a>
+        </div>
+
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, at your option.</p>
+        </footer>
+    </main>
+
+    <script src="malda-highlight.js"></script>
+
+    <script src="navigation.js"></script>
+</body>
+</html>

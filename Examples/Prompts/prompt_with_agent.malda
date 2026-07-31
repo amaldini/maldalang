@@ -1,0 +1,46 @@
+// Using Prompts with Agents
+// Demonstrates passing PromptInstance to agent.think()
+
+prompt reviewCode(code, language) {
+    system: "You are a senior software engineer reviewing code.",
+    user: """
+    Review this {language} code:
+    
+    {code}
+    
+    Provide:
+    1. What the code does
+    2. Potential issues
+    3. Suggestions for improvement
+    """
+}
+
+// Note: Requires OPENROUTER_API_KEY environment variable
+var apiKey = getEnv("OPENROUTER_API_KEY");
+if (apiKey == null) {
+    print("Note: OPENROUTER_API_KEY not set. This example shows the syntax but won't call the LLM.");
+    print("Set OPENROUTER_API_KEY to actually run the agent.");
+} else {
+    var client = new OpenRouterClient("openai/gpt-4");
+    var agent = new Agent(
+        "CodeReviewer",
+        "code reviewer",
+        "You review code and provide constructive feedback.",
+        client
+    );
+    
+    // Use the prompt with the agent
+    var code = "function calculate(x) { return x * 2 + 1; }";
+    var response = agent.think(reviewCode(code, "malda"));
+    print("Agent response:");
+    print(response.content);
+}
+
+// Even without API key, we can demonstrate prompt creation
+prompt simplePrompt(task) {
+    user: "Task: {task}"
+}
+
+var p = simplePrompt("test");
+print("\nPrompt created successfully:");
+print("User: " + p.user);

@@ -1,0 +1,7 @@
+var users = [
+    dict { "name": "alice", "score": 10 },
+    dict { "name": "bob", "score": 20 }
+];
+var byName = dict { u.name: u.score for u in users };
+print(byName["alice"]);
+print(byName["bob"]);

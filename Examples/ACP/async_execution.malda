@@ -1,0 +1,41 @@
+// ACP Async Execution Example
+// Demonstrates asynchronous agent execution with polling
+
+var client = new OpenRouterClient();
+var agent = new Agent(
+    "Helper",
+    "assistant",
+    "You are a helpful assistant.",
+    client
+);
+
+// Expose agent as ACP server
+var server = new ACPServer(8080);
+server.registerAgent("helper-agent", agent);
+server.start();
+
+print("ACP Server started on http://localhost:8080/");
+print("Agent registered as 'helper-agent'");
+print("");
+
+// In another process or client, you would use:
+// var acpClient = new ACPClient("http://localhost:8080");
+// var runId = acpClient.sendMessageAsync("helper-agent", "What is 2+2?");
+// 
+// // Poll for status
+// var status = acpClient.getRunStatus("helper-agent", runId);
+// while (status.status == "in-progress" || status.status == "created") {
+//     sleep(100);
+//     status = acpClient.getRunStatus("helper-agent", runId);
+// }
+// 
+// print("Final status: " + status.status);
+// if (status.message != null) {
+//     print("Response: " + status.message);
+// }
+
+// Keep server running
+print("Server running. Press Ctrl+C to stop.");
+while (server.isRunning) {
+    sleep(1000);
+}

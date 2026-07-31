@@ -1,0 +1,11 @@
+var handled = false;
+try {
+    try {
+        throw dict { "kind": "Parse", "message": "x" };
+    } catch (e if e.kind == "IO") {
+        handled = true;
+    }
+} catch (e) {
+    handled = true;
+}
+print(handled);

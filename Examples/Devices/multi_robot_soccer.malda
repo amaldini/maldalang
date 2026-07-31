@@ -1,0 +1,193 @@
+// Multi-Robot Soccer Game Example
+// Demonstrates coordinating multiple robots using actors
+
+print("=== Multi-Robot Soccer Game ===\n");
+
+// Actor for each robot
+actor Robot {
+    var robotId;
+    var position = {x: 0, y: 0};
+    var angle = 0;
+    var arduino;
+    var coordinator;
+    
+    function Robot(id, arduinoUrl, gameCoordinator) {
+        robotId = id;
+        arduino = new ArduinoConnection(arduinoUrl);
+        coordinator = gameCoordinator;
+        
+        // Initialize random position
+        position.x = 50 + (id * 30);
+        position.y = 50 + (id * 20);
+        angle = id * 45;
+        
+        print("Robot " + robotId + " initialized at (" + position.x + ", " + position.y + ")\n");
+    }
+    
+    on connect() {
+        var connected = arduino.connect();
+        if (connected) {
+            print("Robot " + robotId + " connected\n");
+            send coordinator.robotConnected(robotId);
+        } else {
+            print("Robot " + robotId + " connection failed\n");
+        }
+    }
+    
+    on moveForward(distance) {
+        // Move robot forward
+        arduino.digitalWrite(5, true);  // Motor pin 1
+        arduino.digitalWrite(6, true);  // Motor pin 2
+        sleep(distance * 10);  // Convert distance to time
+        arduino.digitalWrite(5, false);
+        arduino.digitalWrite(6, false);
+        
+        // Update position
+        position.x = position.x + distance * cos(angle);
+        position.y = position.y + distance * sin(angle);
+        
+        send coordinator.robotMoved(robotId, position);
+    }
+    
+    on turn(degrees) {
+        // Turn robot
+        arduino.digitalWrite(7, true);  // Turn motor
+        sleep(abs(degrees) * 5);
+        arduino.digitalWrite(7, false);
+        
+        angle = (angle + degrees) % 360;
+        send coordinator.robotTurned(robotId, angle);
+    }
+    
+    on stop() {
+        arduino.digitalWrite(5, false);
+        arduino.digitalWrite(6, false);
+        arduino.digitalWrite(7, false);
+    }
+    
+    on play() {
+        // Simple strategy: move forward, then turn
+        send self.moveForward(10);
+        sleep(100);
+        send self.turn(45);
+    }
+}
+
+// Game coordinator actor
+actor GameCoordinator {
+    var robots = [];
+    var gameState = "waiting";
+    
+    function GameCoordinator() {
+        print("Game Coordinator initialized\n");
+    }
+    
+    on registerRobot(robotRef, robotId) {
+        robots.append({ref: robotRef, id: robotId});
+        print("Robot " + robotId + " registered. Total: " + robots.length + "\n");
+    }
+    
+    on robotConnected(robotId) {
+        print("Robot " + robotId + " confirmed connection\n");
+    }
+    
+    on robotMoved(robotId, newPosition) {
+        print("Robot " + robotId + " moved to (" + newPosition.x + ", " + newPosition.y + ")\n");
+    }
+    
+    on robotTurned(robotId, newAngle) {
+        print("Robot " + robotId + " turned to " + newAngle + " degrees\n");
+    }
+    
+    on startGame() {
+        gameState = "playing";
+        print("=== GAME STARTED ===\n");
+        
+        // Start all robots
+        for (var i = 0; i < robots.length; i = i + 1) {
+            send robots[i].ref.play();
+        }
+        
+        // Game loop
+        send self.gameLoop();
+    }
+    
+    on gameLoop() {
+        if (gameState != "playing") {
+            return;
+        }
+        
+        // Make all robots play
+        for (var i = 0; i < robots.length; i = i + 1) {
+            send robots[i].ref.play();
+        }
+        
+        // Continue loop
+        sleep(200);
+        send self.gameLoop();
+    }
+    
+    on stopGame() {
+        gameState = "stopped";
+        print("Game stopped\n");
+    }
+}
+
+// Helper functions
+function cos(degrees) {
+    var radians = degrees * 3.14159 / 180;
+    return 1 - (radians * radians) / 2;  // Simple approximation
+}
+
+function sin(degrees) {
+    var radians = degrees * 3.14159 / 180;
+    return radians - (radians * radians * radians) / 6;  // Simple approximation
+}
+
+// Main program
+print("Setting up robots...\n");
+
+// Create coordinator
+var coordinator = spawn GameCoordinator();
+
+// Create robots (using HTTP mode - ESP32 devices)
+// Change IP addresses to match your ESP32 devices
+var robot1 = spawn Robot(1, "http://192.168.1.100", coordinator);
+var robot2 = spawn Robot(2, "http://192.168.1.101", coordinator);
+var robot3 = spawn Robot(3, "http://192.168.1.102", coordinator);
+
+// Register robots
+send coordinator.registerRobot(robot1, 1);
+send coordinator.registerRobot(robot2, 2);
+send coordinator.registerRobot(robot3, 3);
+
+// Wait for initialization
+sleep(1000);
+
+// Connect all robots
+print("\nConnecting robots...\n");
+send robot1.connect();
+send robot2.connect();
+send robot3.connect();
+
+sleep(2000);
+
+// Start game
+print("\nStarting game in 3 seconds...\n");
+sleep(3000);
+
+send coordinator.startGame();
+
+// Run for 10 seconds
+print("\nGame running for 10 seconds...\n");
+sleep(10000);
+
+// Stop game
+send coordinator.stopGame();
+
+// Stop all robots
+send robot1.stop();
+send robot2.stop();
+send robot3.stop();
+
+print("\nGame complete!\n");

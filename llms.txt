@@ -1,0 +1,49 @@
+# MALDA OSS — LLM doc index
+
+Canonical reading order for tools and agents working on this repository.
+
+## Start
+
+- AGENTS.md — agent/human working map (build, tests, edit locations, hard rules)
+- README.md — product overview and IDE roles
+- CONTRIBUTING.md — contribution workflow
+- docs/start-here.md — learning paths
+- docs/architecture.md — pipeline and project map
+
+## Writing MALDA programs (language pack)
+
+- docs/llm/README.md — how to load the pack, and how to smoke-test interactive/random programs
+- docs/llm/malda-syntax.md — compact idioms / do-don't
+- docs/llm/malda-gotchas.md — mistakes that run without error
+- docs/llm/malda-grammar.md — plain-text BNF
+- docs/llm/malda-builtins-min.md — high-frequency builtins and top-level objects
+- docs/llm/malda-builtins.tsv — every builtin, grep-able, generated from the engine
+- docs/llm/few-shot/ — tiny runnable snippets
+
+## Language reference (deeper)
+
+- ReferenceManual/index.html — HTML reference home
+- docs/spec/malda-language-1.0.md — language spec notes
+- docs/spec/README.md — spec folder index
+- malda-cheat-sheet.html — quick syntax cheat sheet (HTML; prefer docs/llm for agents)
+
+## Tooling topics
+
+- docs/javascript-backend.md — JS/PWA backend
+- docs/native-numeric-rollout.md — typed transpile levels
+- docs/profiling.md — profiler usage
+- MaldaLang.LanguageServer/README.md — LSP capabilities
+- vscode-malda/README.md — VS Code extension
+
+## Examples
+
+- Examples/Basics/
+- Examples/Prompts/
+- Examples/Web/
+- Examples/Actors/
+- Templates/webapi/
+- Templates/fullstack/
+
+## Note
+
+docs/planning/ contains historical design notes. Prefer AGENTS.md, docs/architecture.md, ReferenceManual/, and the code when behavior disagrees with planning docs.

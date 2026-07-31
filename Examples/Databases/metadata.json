@@ -1,0 +1,50 @@
+{
+  "examples": [
+    {
+      "name": "SQLite Basic",
+      "description": "Basic database operations with SQLite including connection, queries, query builder, and transactions",
+      "file": "sqlite_basic.malda",
+      "track": "student",
+      "difficulty": "intermediate",
+      "minutes": 12,
+      "concepts": ["SqliteClient", "queries", "query builder", "transactions"],
+      "prerequisites": ["OOP/calculator.malda"],
+      "learningGoal": "Introduce database programming with the lightest-weight MALDA database client.",
+      "expectedOutput": "Prints SQLite usage patterns and transaction examples.",
+      "next": "Databases/postgres_basic.malda",
+      "documentationPath": "/?lesson=database-track#lesson-database-track",
+      "documentationTitle": "Database Track",
+      "featured": true
+    },
+    {
+      "name": "SQL Server Basic",
+      "description": "Basic database operations with SQL Server including connection, queries, query builder, and transactions",
+      "file": "sql_server_basic.malda",
+      "track": "showcase",
+      "difficulty": "advanced",
+      "minutes": 15,
+      "concepts": ["SqlServerClient", "queries", "transactions", "enterprise data"],
+      "prerequisites": ["Databases/sqlite_basic.malda"],
+      "learningGoal": "Show how the same MALDA data concepts scale to enterprise-style SQL Server workflows.",
+      "expectedOutput": "Demonstrates SQL Server connection, querying, and transactions.",
+      "documentationPath": "/?lesson=database-track#lesson-database-track",
+      "documentationTitle": "Database Track"
+    },
+    {
+      "name": "PostgreSQL Basic",
+      "description": "Basic database operations with PostgreSQL including connection, queries, query builder, and transactions",
+      "file": "postgres_basic.malda",
+      "track": "student",
+      "difficulty": "intermediate",
+      "minutes": 14,
+      "concepts": ["PostgresClient", "queries", "query builder", "transactions"],
+      "prerequisites": ["Databases/sqlite_basic.malda"],
+      "learningGoal": "Transition from local SQLite concepts into a production-style PostgreSQL client workflow.",
+      "expectedOutput": "Demonstrates PostgreSQL connection, querying, and transactions.",
+      "next": "Web/js/hello_dom.malda",
+      "documentationPath": "/?lesson=database-track#lesson-database-track",
+      "documentationTitle": "Database Track",
+      "featured": true
+    }
+  ]
+}

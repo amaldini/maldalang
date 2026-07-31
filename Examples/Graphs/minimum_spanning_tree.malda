@@ -1,0 +1,54 @@
+// Minimum Spanning Tree Example
+// Demonstrates MST algorithm for undirected graphs
+
+print("=== Minimum Spanning Tree ===\n");
+
+// Create an undirected graph representing a network
+// Example: Cities connected by roads with distances
+var cityGraph = graph undirected {
+  nodes: ["A", "B", "C", "D", "E"],
+  edges: [
+    { from: "A", to: "B", weight: 4 },
+    { from: "A", to: "C", weight: 2 },
+    { from: "B", to: "C", weight: 1 },
+    { from: "B", to: "D", weight: 5 },
+    { from: "C", to: "D", weight: 8 },
+    { from: "C", to: "E", weight: 10 },
+    { from: "D", to: "E", weight: 2 }
+  ]
+};
+
+print("City network graph:");
+print("Nodes: " + cityGraph.nodes());
+print("Edges: " + cityGraph.edges());
+print("Is directed: " + cityGraph.isDirected());
+print("");
+
+// Calculate minimum spanning tree
+var mst = cityGraph.minimumSpanningTree();
+print("Minimum Spanning Tree:");
+print("  Edges: " + mst.edges);
+print("  Total weight: " + mst.totalWeight);
+print("");
+
+// Display MST edges in a readable format
+print("MST edges (connecting all cities with minimum cost):");
+for (var edge in mst.edges) {
+  var from = edge[0];
+  var to = edge[1];
+  var weight = edge[2];
+  print("  " + from + " <-> " + to + " (weight: " + weight + ")");
+}
+print("");
+
+// Compare original graph vs MST
+print("Original graph:");
+print("  Total edges: " + cityGraph.edgeCount());
+print("MST:");
+print("  Total edges: " + mst.edges.length);
+print("  Total weight: " + mst.totalWeight);
+print("");
+
+// Example: Network infrastructure planning
+print("Application: Network infrastructure planning");
+print("The MST shows the minimum cost network to connect all cities.");

@@ -1,0 +1,18 @@
+// Note: Requires OPENROUTER_API_KEY environment variable
+// OpenRouterClient automatically reads the API key and uses the correct endpoint
+var client = new OpenRouterClient();
+
+// Create a coding agent
+var coder = new Agent(
+    "CodeBot",
+    "expert programmer",
+    "You write clean, well-documented code in MALDA.",
+    client
+);
+
+// Generate code
+var task = "Write a function that calculates the nth Fibonacci number.";
+var response = coder.think(task);
+
+print("Generated code:");
+print(response.content);

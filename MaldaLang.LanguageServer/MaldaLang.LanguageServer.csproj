@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Copyright>© 2026 - Andrea Maldini</Copyright>
+    <AssemblyName>malda-lsp</AssemblyName>
+    <RootNamespace>MaldaLang.LanguageServer</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="OmniSharp.Extensions.LanguageServer" Version="0.19.9" />
+    <PackageReference Include="OmniSharp.Extensions.LanguageProtocol" Version="0.19.9" />
+    <PackageReference Include="OmniSharp.Extensions.LanguageServer.Shared" Version="0.19.9" />
+    <PackageReference Include="OmniSharp.Extensions.JsonRpc" Version="0.19.9" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MaldaLang\MaldaLang.csproj" />
+  </ItemGroup>
+
+</Project>

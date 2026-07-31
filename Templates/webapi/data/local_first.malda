@@ -1,0 +1,172 @@
+var localDataDir = "data";
+var localDatabaseFile = pathJoin(localDataDir, "__PROJECT_SLUG__.db");
+var localDb = new SqliteClient();
+var localMigrationRegistry = [
+    {"id": "001_baseline", "description": "Create migration registry and starter app settings tables"}
+];
+
+function initLocalDataPlatform() {
+    openLocalDataPlatform();
+    runLocalMigrations();
+}
+
+function openLocalDataPlatform() {
+    ensureDir(localDataDir);
+    localDb.connect("Data Source=" + localDatabaseFile + ";");
+    localDb.execute("PRAGMA journal_mode = WAL");
+    localDb.execute("PRAGMA foreign_keys = ON");
+}
+
+function closeLocalDataPlatform() {
+    if (localDb.isConnected) {
+        localDb.disconnect();
+    }
+}
+
+function ensureLocalMigrationRegistryTable() {
+    localDb.execute("CREATE TABLE IF NOT EXISTS app_migrations (id TEXT PRIMARY KEY, description TEXT NOT NULL, applied_at TEXT DEFAULT CURRENT_TIMESTAMP)");
+}
+
+function isLocalMigrationApplied(migrationId) {
+    var row = localDb.queryOne("SELECT 1 AS value FROM app_migrations WHERE id = @id", {"id": migrationId});
+    return row != null;
+}
+
+function recordLocalMigrationApplied(migrationId, description) {
+    localDb.execute("INSERT INTO app_migrations (id, description) VALUES (@id, @description)", {
+        "id": migrationId,
+        "description": description
+    });
+}
+
+function forgetLocalMigrationApplied(migrationId) {
+    localDb.execute("DELETE FROM app_migrations WHERE id = @id", {
+        "id": migrationId
+    });
+}
+
+function quoteSqlName(name) {
+    return "\"" + replace(string(name), "\"", "\"\"") + "\"";
+}
+
+function quoteSqlLiteral(value) {
+    return "'" + replace(string(value), "'", "''") + "'";
+}
+
+function tableExists(name) {
+    var row = localDb.queryOne("SELECT 1 AS value FROM sqlite_master WHERE type = 'table' AND name = @name", {"name": name});
+    return row != null;
+}
+
+function columnExists(tableName, columnName) {
+    if (!tableExists(tableName)) {
+        return false;
+    }
+    var row = localDb.queryOne("SELECT COUNT(*) AS count FROM pragma_table_info(" + quoteSqlLiteral(tableName) + ") WHERE name = @columnName", {
+        "columnName": columnName
+    });
+    return row != null && row.count > 0;
+}
+
+function indexExists(name) {
+    var row = localDb.queryOne("SELECT 1 AS value FROM sqlite_master WHERE type = 'index' AND name = @name", {"name": name});
+    return row != null;
+}
+
+function ensureColumn(tableName, columnName, columnType, defaultSql) {
+    if (!tableExists(tableName) || columnExists(tableName, columnName)) {
+        return;
+    }
+    var sql = "ALTER TABLE " + quoteSqlName(tableName) + " ADD COLUMN " + quoteSqlName(columnName) + " " + columnType;
+    if (defaultSql != null && string(defaultSql) != "") {
+        sql = sql + " DEFAULT " + defaultSql;
+    }
+    localDb.execute(sql);
+}
+
+function ensureIndex(name, createSql) {
+    if (!indexExists(name)) {
+        localDb.execute(createSql);
+    }
+}
+
+function ensureLifecycleColumns(tableName) {
+    ensureColumn(tableName, "deleted_at", "TEXT", null);
+    ensureColumn(tableName, "deleted_by", "INTEGER", null);
+    ensureColumn(tableName, "updated_at", "TEXT", null);
+    ensureColumn(tableName, "row_version", "INTEGER NOT NULL", "1");
+}
+
+function runLocalMigration001Baseline() {
+    localDb.execute("CREATE TABLE IF NOT EXISTS app_settings (id INTEGER PRIMARY KEY AUTOINCREMENT, key TEXT NOT NULL UNIQUE, value_json TEXT NOT NULL, updated_at TEXT DEFAULT CURRENT_TIMESTAMP)");
+    localDb.execute("CREATE TABLE IF NOT EXISTS app_notes (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, body TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP)");
+    ensureLifecycleColumns("app_settings");
+    ensureLifecycleColumns("app_notes");
+    ensureIndex("idx_app_notes_created_at", "CREATE INDEX IF NOT EXISTS idx_app_notes_created_at ON app_notes(created_at DESC)");
+}
+
+function rollbackLocalMigration001Baseline() {
+    localDb.execute("DROP INDEX IF EXISTS idx_app_notes_created_at");
+    localDb.execute("DROP TABLE IF EXISTS app_notes");
+    localDb.execute("DROP TABLE IF EXISTS app_settings");
+    forgetLocalMigrationApplied("001_baseline");
+    localDb.execute("DROP TABLE IF EXISTS app_migrations");
+}
+
+function runLocalMigrations() {
+    ensureLocalMigrationRegistryTable();
+    var i = 0;
+    while (i < localMigrationRegistry.length) {
+        var migration = localMigrationRegistry[i];
+        if (!isLocalMigrationApplied(migration.id)) {
+            if (migration.id == "001_baseline") {
+                runLocalMigration001Baseline();
+            }
+            recordLocalMigrationApplied(migration.id, migration.description);
+            print("Applied local migration: " + migration.id + " - " + migration.description);
+        }
+        i = i + 1;
+    }
+}
+
+function getAppliedLocalMigrations() {
+    return localDb.query("SELECT id, description, applied_at AS appliedAt FROM app_migrations ORDER BY id ASC");
+}
+
+function seedLocalDataPlatform() {
+    seedLocalAppSetting("starter.mode", "{\"driver\":\"sqlite\",\"mode\":\"local-first\"}");
+    seedLocalAppSetting("starter.seedVersion", "\"v1\"");
+    seedLocalNote("Welcome to __PROJECT_NAME__", "This scaffolded local-first starter is ready. Add migrations in data/local_first.malda and rerun malda db migrate when the registry changes.");
+    seedLocalNote("Seed workflow", "malda db seed is idempotent for the generated starter rows, and malda db rollback removes only the latest applied scaffolded migration with a matching rollbackLocalMigration<ID>() function.");
+}
+
+function seedLocalAppSetting(key, valueJson) {
+    var existing = localDb.queryOne("SELECT id FROM app_settings WHERE key = @key", {"key": key});
+    if (existing == null) {
+        localDb.execute("INSERT INTO app_settings (key, value_json) VALUES (@key, @value_json)", {
+            "key": key,
+            "value_json": valueJson
+        });
+    }
+}
+
+function seedLocalNote(title, body) {
+    var existing = localDb.queryOne("SELECT id FROM app_notes WHERE title = @title", {"title": title});
+    if (existing == null) {
+        localDb.execute("INSERT INTO app_notes (title, body) VALUES (@title, @body)", {
+            "title": title,
+            "body": body
+        });
+    }
+}
+
+function getLocalDataPlatformStatus() {
+    var applied = getAppliedLocalMigrations();
+    return {
+        "driver": "sqlite",
+        "mode": "local-first",
+        "databaseFile": localDatabaseFile,
+        "appliedMigrationCount": applied.length,
+        "appliedMigrations": applied
+    };
+}

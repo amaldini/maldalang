@@ -1,0 +1,7 @@
+var arr = [1, 2];
+var result = match arr {
+    case [x, y, z]: "three";
+    case [x, y]: "two";
+    default: "other";
+};
+print(result);

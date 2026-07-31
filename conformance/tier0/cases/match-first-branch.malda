@@ -1,0 +1,2 @@
+var n = 1;
+print(match n { case 1: "one"; case 2: "two"; default: "other"; });

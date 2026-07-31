@@ -1,0 +1,31 @@
+<Window x:Class="MaldaLang.DesktopIDE.Windows.AgentReplayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Run from Here - Agent Replay" Height="500" Width="700"
+        WindowStartupLocation="CenterOwner" ResizeMode="CanResizeWithGrip"
+        Background="{DynamicResource WindowBackgroundBrush}">
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <TextBlock Grid.Row="0" TextWrapping="Wrap" Margin="0,0,0,8" Foreground="{DynamicResource TextForegroundBrush}">
+            Conversation restored from trace. Enter a prompt and click Think to continue from this point.
+        </TextBlock>
+        <Border Grid.Row="1" BorderBrush="{DynamicResource ListBorderBrush}" BorderThickness="1" Margin="0,0,0,8"
+                Background="{DynamicResource ListBackgroundBrush}">
+            <ScrollViewer x:Name="MessagesScrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Padding="8">
+                <TextBlock x:Name="MessagesTextBlock" TextWrapping="Wrap" Foreground="{DynamicResource ListForegroundBrush}" FontFamily="Consolas" FontSize="12"/>
+            </ScrollViewer>
+        </Border>
+        <TextBox x:Name="PromptTextBox" Grid.Row="2" MinHeight="60" Margin="0,0,0,8" Padding="6"
+                 AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                 Background="{DynamicResource InputBackgroundBrush}" Foreground="{DynamicResource InputForegroundBrush}"
+                 BorderBrush="{DynamicResource InputBorderBrush}" BorderThickness="1"/>
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button x:Name="ThinkButton" Content="Think" Click="ThinkButton_Click" Padding="12,6" IsDefault="True"/>
+        </StackPanel>
+    </Grid>
+</Window>

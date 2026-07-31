@@ -1,0 +1,6 @@
+function compute() {
+    return 99;
+}
+var t = async compute();
+var v = await t;
+print(v);

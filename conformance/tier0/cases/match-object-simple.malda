@@ -1,0 +1,7 @@
+var obj = { type: "Start", value: 42 };
+var result = match obj {
+    case { type: "Start", value: v }: v;
+    case { type: "Stop" }: "stopped";
+    default: "unknown";
+};
+print(result);

@@ -1,0 +1,148 @@
+// MCP Client Example
+// Demonstrates how to connect to an MCP server and use its tools
+// This example connects to the Example MCP Server (mcp_tools_server.malda)
+
+print("=== MCP Client Example ===");
+print("");
+
+// Create an MCP client instance
+var client = new MCPClient("example-server");
+print("Created MCPClient instance: " + client.serverName);
+print("");
+
+// Connect to the MCP server
+// We'll use the malda.exe interpreter directly to run the server script
+print("Connecting to MCP server...");
+var serverScriptPath = "Examples/MCP/mcp_tools_server.malda";
+
+// Try different executable names and paths
+// Most common: malda.exe in PATH or current directory
+var exeNames = ["malda.exe", "malda"];
+var scriptPaths = [
+    "Examples/MCP/mcp_tools_server.malda",
+    "../Examples/MCP/mcp_tools_server.malda"
+];
+
+var connected = false;
+var usedExe = "";
+var usedPath = "";
+
+// Try each combination (quietly, only show errors)
+for (var i = 0; i < exeNames.length && !connected; i++) {
+    for (var j = 0; j < scriptPaths.length && !connected; j++) {
+        connected = client.connect(exeNames[i], [scriptPaths[j]]);
+        if (connected) {
+            usedExe = exeNames[i];
+            usedPath = scriptPaths[j];
+            break;
+        }
+    }
+}
+
+if (!connected) {
+    print("Failed to connect to MCP server!");
+    print("");
+    print("Tried the following combinations:");
+    for (var i = 0; i < exeNames.length; i++) {
+        for (var j = 0; j < scriptPaths.length; j++) {
+            print("  - " + exeNames[i] + " " + scriptPaths[j]);
+        }
+    }
+    print("");
+    print("Please ensure:");
+    print("  1. malda.exe is built and available (in PATH or current directory)");
+    print("  2. The server script exists at: Examples/MCP/mcp_tools_server.malda");
+    print("  3. You're running from the project root directory");
+    print("");
+    print("To build malda.exe, run:");
+    print("  cd MaldaLang");
+    print("  dotnet build");
+    print("The executable will be in: MaldaLang/bin/Debug/net8.0/malda.exe");
+    return;
+}
+
+print("✓ Connected to MCP server successfully!");
+print("  Using: " + usedExe + " " + usedPath);
+print("");
+
+// Check connection status
+if (!client.isConnected) {
+    print("Error: Client is not connected. Cannot proceed.");
+    return;
+}
+
+print("Connection status: " + string(client.isConnected));
+print("");
+
+// Discover and list available tools
+print("Discovering available tools...");
+var tools = client.getTools();
+print("Found " + string(tools.length) + " tools:");
+print("");
+
+for (var i = 0; i < tools.length; i++) {
+    var tool = tools[i];
+    print("  Tool " + string(i + 1) + ":");
+    print("    Name: " + tool.name);
+    print("    Description: " + tool.description);
+    print("");
+}
+
+// Example 1: Call a simple tool (add)
+print("=== Example 1: Calling the 'add' tool ===");
+var addResult = client.callTool("add", {"a": 5, "b": 3});
+print("Result of add(5, 3): " + string(addResult));
+print("");
+
+// Example 2: Call a string manipulation tool
+print("=== Example 2: Calling the 'reverse_string' tool ===");
+var reverseResult = client.callTool("reverse_string", {"text": "Hello, World!"});
+print("Result of reverse_string('Hello, World!'): " + string(reverseResult));
+print("");
+
+// Example 3: Call a text processing tool
+print("=== Example 3: Calling the 'count_words' tool ===");
+var text = "This is a sample text with multiple words";
+var wordCount = client.callTool("count_words", {"text": text});
+print("Text: '" + text + "'");
+print("Word count: " + string(wordCount));
+print("");
+
+// Example 4: Call a tool with custom schema (get_weather)
+print("=== Example 4: Calling the 'get_weather' tool ===");
+var weatherResult = client.callTool("get_weather", {"location": "New York", "unit": "fahrenheit"});
+print("Weather result: " + string(weatherResult));
+print("");
+
+// Example 5: Create a tool instance and use it
+print("=== Example 5: Creating a tool instance ===");
+var addTool = client.createTool("add", "my_add_tool", true);
+print("Created tool instance: " + addTool.name);
+print("Tool is registered: " + string(addTool.isRegistered));
+print("");
+
+// Example 6: Create a wrapper agent with all MCP tools
+print("=== Example 6: Creating a wrapper agent ===");
+print("Note: This requires an LLM client. Skipping for this example.");
+print("You can create a wrapper agent like this:");
+print("  var agent = client.createWrapperAgent(");
+print("    'Assistant',");
+print("    'Helper',");
+print("    'You are a helpful assistant with access to MCP tools',");
+print("    llmClient");
+print("  );");
+print("");
+
+// Clean up: disconnect from the server
+print("=== Disconnecting from MCP server ===");
+client.disconnect();
+print("✓ Disconnected successfully");
+print("");
+
+print("=== Example completed ===");
+print("");
+print("Note: The client automatically starts the MCP server process via STDIO.");
+print("The server runs in the background and communicates with the client.");
+print("");
+print("To test manually, you can run the server separately:");
+print("  malda Examples/MCP/mcp_tools_server.malda");

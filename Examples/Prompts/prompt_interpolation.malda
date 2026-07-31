@@ -1,0 +1,24 @@
+// Prompt with String Interpolation
+// Demonstrates using interpolated strings in prompts
+
+prompt taskPlan(task, priority, deadline) {
+    user: $"Create a plan for task: {task}\nPriority: {priority}\nDeadline: {deadline}"
+}
+
+var plan = taskPlan("Implement authentication", 1, "2026-02-15");
+print(plan.user);
+
+// Using multi-line interpolation
+prompt detailedPlan(goal, steps) {
+    user: $"""
+    Goal: {goal}
+    
+    Steps needed: {steps}
+    
+    Please break down the goal into {steps} concrete steps.
+    """
+}
+
+var detailed = detailedPlan("Build a web API", 5);
+print("\nDetailed plan prompt:");
+print(detailed.user);

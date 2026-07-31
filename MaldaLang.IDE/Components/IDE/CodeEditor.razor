@@ -1,0 +1,214 @@
+@using Microsoft.JSInterop
+@using MaldaLang.IDE.Models
+@using MaldaLang.IDE.Services
+@inject IJSRuntime JSRuntime
+@inject ILanguageService LanguageService
+@implements IAsyncDisposable
+
+<div id="@editorId" style="width: 100%; height: 100%;"></div>
+
+@code {
+    private DotNetObjectReference<CodeEditor>? objRef;
+    private string editorId = "monaco-editor-" + Guid.NewGuid().ToString("N")[..8];
+    
+    [Parameter] public EventCallback<string> OnContentChanged { get; set; }
+    [Parameter] public EventCallback<(int Line, int Column)> OnCursorPositionChanged { get; set; }
+    [Parameter] public EventCallback<int> OnBreakpointToggle { get; set; }
+    [Parameter] public EventCallback<(int LineNumber, int Delta)> OnModelContentChanged { get; set; }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            objRef = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("eval", @"
+                (function() {
+                    if (!document.getElementById('monaco-loader')) {
+                        var script = document.createElement('script');
+                        script.id = 'monaco-loader';
+                        script.src = './js/monaco-editor.js';
+                        document.head.appendChild(script);
+                    }
+                })();
+            ");
+            
+            await Task.Delay(100); // Give script time to load
+            
+            var success = await JSRuntime.InvokeAsync<bool>("initMonacoEditor", editorId, objRef);
+            if (!success)
+            {
+                Console.WriteLine("Failed to initialize Monaco Editor");
+            }
+        }
+    }
+    
+    [JSInvokable]
+    public async Task OnContentChangedJS(string content)
+    {
+        await OnContentChanged.InvokeAsync(content);
+    }
+    
+    [JSInvokable]
+    public async Task OnCursorPositionChangedJS(int line, int column)
+    {
+        await OnCursorPositionChanged.InvokeAsync((line, column));
+    }
+    
+    [JSInvokable]
+    public async Task OnBreakpointToggleJS(int line)
+    {
+        await OnBreakpointToggle.InvokeAsync(line);
+    }
+    
+    [JSInvokable]
+    public async Task OnModelContentChangedJS(int lineNumber, int delta)
+    {
+        await OnModelContentChanged.InvokeAsync((lineNumber, delta));
+    }
+    
+    [JSInvokable]
+    public Task<List<CompletionItem>> GetCompletions(string source, int line, int column)
+    {
+        if (LanguageService != null)
+        {
+            return Task.FromResult(LanguageService.GetCompletions(source, line, column));
+        }
+        return Task.FromResult(new List<CompletionItem>());
+    }
+    
+    [JSInvokable]
+    public Task<string?> GetHoverInfo(string source, int line, int column)
+    {
+        if (LanguageService != null)
+        {
+            return Task.FromResult(LanguageService.GetHoverInformation(source, line, column));
+        }
+        return Task.FromResult<string?>(null);
+    }
+    
+    public async Task<string> GetValue()
+    {
+        try
+        {
+            return await JSRuntime.InvokeAsync<string>("getMonacoValue", editorId);
+        }
+        catch
+        {
+            return "";
+        }
+    }
+    
+    public async Task SetValue(string value)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("setMonacoValue", editorId, value);
+        }
+        catch { }
+    }
+    
+    public async Task SetDiagnostics(List<Diagnostic> diagnostics)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("setMonacoDiagnostics", editorId, diagnostics);
+        }
+        catch { }
+    }
+    
+    public async Task SetBreakpoints(List<Breakpoint> breakpoints)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("setMonacoBreakpoints", editorId, breakpoints);
+        }
+        catch { }
+    }
+    
+    public async Task HighlightLine(int line)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("highlightMonacoLine", editorId, line);
+        }
+        catch { }
+    }
+    
+    public async Task NavigateToPosition(int line, int column, int length = 1)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigateMonacoToPosition", editorId, line, column, length);
+        }
+        catch { }
+    }
+    
+    public async Task<string> GetSelectedText()
+    {
+        try
+        {
+            return await JSRuntime.InvokeAsync<string>("getMonacoSelectedText", editorId) ?? "";
+        }
+        catch
+        {
+            return "";
+        }
+    }
+    
+    public async Task<Selection?> GetSelection()
+    {
+        try
+        {
+            var result = await JSRuntime.InvokeAsync<Selection>("getMonacoSelection", editorId);
+            return result;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+    
+    public async Task InsertText(string text, int line, int column)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("insertMonacoText", editorId, text, line, column);
+        }
+        catch { }
+    }
+    
+    public async Task ReplaceRange(int startLine, int startCol, int endLine, int endCol, string text)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("replaceMonacoRange", editorId, startLine, startCol, endLine, endCol, text);
+        }
+        catch { }
+    }
+    
+    public class Selection
+    {
+        public int StartLine { get; set; }
+        public int StartColumn { get; set; }
+        public int EndLine { get; set; }
+        public int EndColumn { get; set; }
+    }
+    
+    public async ValueTask DisposeAsync()
+    {
+        if (objRef != null)
+        {
+            objRef.Dispose();
+        }
+        try
+        {
+            var editor = await JSRuntime.InvokeAsync<IJSObjectReference>("eval", 
+                $"window.monacoEditors && window.monacoEditors['{editorId}']");
+            if (editor != null)
+            {
+                await editor.InvokeVoidAsync("dispose");
+            }
+        }
+        catch { }
+    }
+}

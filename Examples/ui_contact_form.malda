@@ -1,0 +1,30 @@
+// Example: Contact Form with AI-Generated UI
+// This demonstrates how to generate a contact form using HttpServer with @AIPAGE decorator
+
+var server = new HttpServer(8080);
+
+// Use @AIPAGE decorator - AI will automatically generate the HTML
+@AIPAGE("/", "Contact form with name, email, and message fields")
+function homePage() {
+    // AI generates the HTML automatically on first access
+    return "";
+}
+
+// Handle form submissions
+@POST("/submit")
+function handleSubmit(body) {
+    print("Form submitted!");
+    print("Name: " + body.name);
+    print("Email: " + body.email);
+    print("Message: " + body.message);
+    
+    return {
+        "status": 200,
+        "body": "<html><head><title>Thank You</title></head><body><h1>Thank You!</h1><p>Your message has been received.</p><p><a href='/'>Back to form</a></p></body></html>"
+    };
+}
+
+server.start();
+print("Server running at http://localhost:8080");
+print("Open http://localhost:8080 in your browser");
+print("Press Ctrl+C to stop the server");

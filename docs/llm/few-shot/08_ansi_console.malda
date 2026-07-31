@@ -1,0 +1,52 @@
+// Rich console output. Colour and Unicode borders are stripped when stdout
+// is not a terminal, so piped output looks plain even when the markup is correct.
+
+// markupLine ends the line; markup does not.
+AnsiConsole.markupLine("[bold blue]Build report[/]");
+AnsiConsole.markupLine("");
+
+AnsiConsole.markup("[dim]status:[/] ");
+AnsiConsole.markupLine("[green]passing[/]");
+AnsiConsole.markupLine("");
+
+// panel borderStyle: "rounded", "double", or "heavy" (anything else → square).
+// Body and title both parse markup.
+AnsiConsole.panel("[green]17 passed[/], [red]0 failed[/]", "Summary", "rounded");
+
+// Table cells and headers parse markup too.
+var rows = [
+    { "suite": "lexer", "tests": 42, "status": "[green]ok[/]" },
+    { "suite": "parser", "tests": 96, "status": "[green]ok[/]" },
+    { "suite": "interpreter", "tests": 310, "status": "[yellow]skip[/]" }
+];
+AnsiConsole.table(rows, "Suites", ["suite", "tests", "status"]);
+
+// Doubling a bracket prints it literally.
+AnsiConsole.markupLine("array index [[0]] is the first element");
+
+// tree(label, items?): items are strings or { "label", "children"? }.
+AnsiConsole.tree("Repo", [
+    { "label": "src", "children": ["main.malda", "util.malda"] },
+    "README.md"
+]);
+
+// status(message, action?): spinner around a 0-arg callback (no-op when not a TTY).
+AnsiConsole.status("Working...", () => {
+    sleep(10);
+});
+
+// progress(callback): ctx.addTask / increment / isFinished.
+AnsiConsole.progress((ctx) => {
+    ctx.addTask("Step", 5);
+    var i = 0;
+    while (i < 5) {
+        ctx.increment("Step", 1);
+        i = i + 1;
+        sleep(5);
+    }
+});
+
+// prompt(config) is interactive — needs a TTY. Shape:
+//   { "type": "text"|"confirm"|"selection", "message": "...", "defaultValue"?: ...,
+//     "choices"?: ["a", "b"] }   // choices required for selection
+// Returns string (text/selection) or bool (confirm). Prefer io.input for pipe-testable games.

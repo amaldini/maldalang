@@ -1,0 +1,93 @@
+// Graph Serialization Example
+// Demonstrates serializing and deserializing graphs to/from JSON
+
+print("=== Graph Serialization ===\n");
+
+// Create a graph with nodes, edges, and data
+var g1 = graph directed {
+  nodes: ["A", "B", "C", "D"],
+  edges: [
+    { from: "A", to: "B", weight: 4 },
+    { from: "A", to: "C", weight: 2 },
+    { from: "B", to: "D", weight: 5 },
+    { from: "C", to: "D", weight: 1 }
+  ]
+};
+
+// Add node data
+g1.addNode("A", "start node");
+g1.addNode("B", 100);
+g1.addNode("C", "intermediate");
+g1.addNode("D", "end node");
+
+// Add edge with properties
+g1.addEdge("A", "B", 4, dict { "label": "primary", "type": "connection" });
+
+print("Original graph:");
+print("Nodes: " + g1.nodeCount());
+print("Edges: " + g1.edgeCount());
+print("Node A data: " + g1.getNode("A"));
+print("");
+
+// Serialize to JSON string
+print("=== Serialization ===");
+var json = g1.serialize();
+print("Serialized JSON (first 200 chars): " + json.substring(0, 200) + "...");
+print("");
+
+// Deserialize from JSON string
+print("=== Deserialization ===");
+var g2 = g1.deserialize(json);
+print("Deserialized graph:");
+print("Nodes: " + g2.nodeCount());
+print("Edges: " + g2.edgeCount());
+print("Is directed: " + g2.isDirected());
+print("Has node A: " + g2.hasNode("A"));
+print("Has edge A->B: " + g2.hasEdge("A", "B"));
+print("Weight A->B: " + g2.getWeight("A", "B"));
+print("Node A data: " + g2.getNode("A"));
+print("Node B data: " + g2.getNode("B"));
+print("");
+
+// Verify graph structure is preserved
+print("=== Verification ===");
+print("Original nodes: " + g1.nodes());
+print("Deserialized nodes: " + g2.nodes());
+print("Graphs are equivalent: " + (g1.nodeCount() == g2.nodeCount() && g1.edgeCount() == g2.edgeCount()));
+print("");
+
+// Test with undirected graph
+print("=== Undirected Graph Serialization ===");
+var g3 = graph undirected {
+  nodes: ["X", "Y", "Z"],
+  edges: [
+    { from: "X", to: "Y", weight: 10 },
+    { from: "Y", to: "Z", weight: 5 }
+  ]
+};
+
+var json3 = g3.serialize();
+var g4 = g3.deserialize(json3);
+
+print("Original undirected graph:");
+print("Is directed: " + g3.isDirected());
+print("Edge count: " + g3.edgeCount());
+print("Has X->Y: " + g3.hasEdge("X", "Y"));
+print("Has Y->X: " + g3.hasEdge("Y", "X"));
+print("");
+
+print("Deserialized undirected graph:");
+print("Is directed: " + g4.isDirected());
+print("Edge count: " + g4.edgeCount());
+print("Has X->Y: " + g4.hasEdge("X", "Y"));
+print("Has Y->X: " + g4.hasEdge("Y", "X"));
+print("");
+
+// Test empty graph
+print("=== Empty Graph Serialization ===");
+var g5 = graph directed {};
+var json5 = g5.serialize();
+var g6 = g5.deserialize(json5);
+print("Empty graph nodes: " + g6.nodeCount());
+print("Empty graph edges: " + g6.edgeCount());
+print("Is directed: " + g6.isDirected());

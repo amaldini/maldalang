@@ -1,0 +1,6 @@
+var x = null;
+var result = match x {
+    case null: "is null";
+    default: "not null";
+};
+print(result);

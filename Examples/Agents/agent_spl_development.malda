@@ -1,0 +1,53 @@
+// Note: Requires OPENROUTER_API_KEY environment variable
+// Example demonstrating MALDACodingAgent for MALDA script development
+
+// Create a sample MALDA script with a bug
+writeFile("calculator.malda", "function add(a, b) {
+    return a + b;
+}
+
+function multiply(a, b) {
+    return a * b;
+}
+
+function divide(a, b) {
+    // Missing error handling for division by zero
+    return a / b;
+}
+
+function main() {
+    print(\"Testing calculator functions\");
+    print(\"5 + 3 = \" + string(add(5, 3)));
+    print(\"5 * 3 = \" + string(multiply(5, 3)));
+    print(\"10 / 2 = \" + string(divide(10, 2)));
+    print(\"10 / 0 = \" + string(divide(10, 0)));  // This will cause an error
+    return 0;
+}");
+
+print("Original calculator.malda:");
+print(readFile("calculator.malda"));
+print("\n");
+
+// Using MALDACodingAgent - automatically includes file tools and MALDA execution/compilation tools
+var splAgent = new MALDACodingAgent(
+    "SPLDeveloper",
+    "MALDA script developer",
+    "You write, test, and compile MALDA scripts. Always verify your changes work by running the code. Add proper error handling."
+);
+
+print("Agent improving calculator.malda...");
+// Agent will: read the file, add error handling, test it, and compile it
+var response = splAgent.think("Read calculator.malda, add error handling to the divide function to prevent division by zero, test it with run_malda, and compile it to calculator.exe");
+print(response.content);
+print("\n");
+
+print("Updated calculator.malda:");
+print(readFile("calculator.malda"));
+print("\n");
+
+// Test the compiled executable (if compilation succeeded)
+if (fileExists("calculator.exe")) {
+    print("Compilation successful! Executable created: calculator.exe");
+} else {
+    print("Compilation may have failed or executable was created with a different name.");
+}

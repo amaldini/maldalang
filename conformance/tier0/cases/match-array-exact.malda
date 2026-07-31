@@ -1,0 +1,6 @@
+var arr = [1, 2, 3];
+var result = match arr {
+    case [1, 2, 3]: "exact match";
+    default: "no match";
+};
+print(result);

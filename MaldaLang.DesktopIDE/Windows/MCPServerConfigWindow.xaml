@@ -1,0 +1,280 @@
+<Window x:Class="MaldaLang.DesktopIDE.Windows.MCPServerConfigWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="Configure MCP Servers" Height="600" Width="900"
+        Background="{DynamicResource WindowBackgroundBrush}">
+    <Window.Resources>
+        <!-- Button Styles matching MainWindow -->
+        <Style TargetType="Button">
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="Margin" Value="2"/>
+            <Setter Property="Background" Value="{DynamicResource ButtonBackgroundBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource ButtonForegroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ButtonBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" 
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource ButtonHoverBrush}"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource ButtonHoverBorderBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="Button" x:Key="PrimaryButton" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="{DynamicResource PrimaryButtonBackgroundBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryButtonForegroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource PrimaryButtonBorderBrush}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" 
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource PrimaryButtonHoverBrush}"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource PrimaryButtonHoverBorderBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <!-- TextBox Style -->
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource InputForegroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="4"/>
+        </Style>
+        <!-- TextBlock Style -->
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource TextForegroundBrush}"/>
+        </Style>
+        <!-- CheckBox Style -->
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="{DynamicResource TextForegroundBrush}"/>
+        </Style>
+    </Window.Resources>
+    <Grid Margin="12">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="250"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Left Panel: Server List -->
+        <Grid Grid.Column="0" Margin="0,0,12,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0" 
+                       Text="MCP Servers"
+                       FontSize="14" 
+                       FontWeight="Bold"
+                       Margin="0,0,0,8"
+                       Foreground="{DynamicResource TextForegroundBrush}"/>
+
+            <Border Grid.Row="1"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="1"
+                    Background="{DynamicResource ListBackgroundBrush}">
+                <ListBox x:Name="ServersListBox"
+                         Background="{DynamicResource ListBackgroundBrush}"
+                         Foreground="{DynamicResource ListForegroundBrush}"
+                         BorderThickness="0"
+                         SelectionChanged="ServersListBox_SelectionChanged">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="4">
+                                <TextBlock Text="{Binding Name, Mode=OneWay}"
+                                           FontWeight="Bold"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource TextForegroundBrush}"/>
+                                <TextBlock FontSize="10"
+                                           Margin="0,2,0,0"
+                                           Foreground="{DynamicResource TextSecondaryBrush}">
+                                    <Run Text="{Binding Command, Mode=OneWay}"/>
+                                    <Run Text=" " Foreground="Transparent"/>
+                                    <Run Text="{Binding StatusText, Mode=OneWay}"/>
+                                </TextBlock>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Border>
+
+            <StackPanel Grid.Row="2" 
+                        Orientation="Horizontal"
+                        Margin="0,8,0,0">
+                <Button Content="Add"
+                        Click="AddButton_Click"
+                        Padding="12,4"
+                        Margin="0,0,4,0"
+                        Style="{StaticResource PrimaryButton}"/>
+                <Button Content="Delete"
+                        x:Name="DeleteButton"
+                        Click="DeleteButton_Click"
+                        Padding="12,4"
+                        IsEnabled="False"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- Right Panel: Server Details -->
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0"
+                       x:Name="DetailsHeader"
+                       Text="Select a server to configure"
+                       FontSize="14"
+                       FontWeight="Bold"
+                       Margin="0,0,0,12"
+                       Foreground="{DynamicResource TextForegroundBrush}"/>
+
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                <StackPanel x:Name="DetailsPanel" IsEnabled="False">
+                    <TextBlock Text="Name:" 
+                               Margin="0,0,0,4"
+                               Foreground="{DynamicResource TextForegroundBrush}"/>
+                    <TextBox x:Name="NameTextBox"
+                             Margin="0,0,0,12"
+                             TextChanged="NameTextBox_TextChanged"/>
+
+                    <TextBlock Text="Command:" 
+                               Margin="0,0,0,4"
+                               Foreground="{DynamicResource TextForegroundBrush}"/>
+                    <TextBox x:Name="CommandTextBox"
+                             Margin="0,0,0,12"
+                             TextChanged="CommandTextBox_TextChanged"/>
+
+                    <TextBlock Text="Arguments (one per line):" 
+                               Margin="0,0,0,4"
+                               Foreground="{DynamicResource TextForegroundBrush}"/>
+                    <TextBox x:Name="ArgsTextBox"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             VerticalScrollBarVisibility="Auto"
+                             MinHeight="60"
+                             Margin="0,0,0,12"
+                             TextChanged="ArgsTextBox_TextChanged"/>
+
+                    <TextBlock Text="Environment Variables (key=value, one per line):" 
+                               Margin="0,0,0,4"
+                               Foreground="{DynamicResource TextForegroundBrush}"/>
+                    <TextBox x:Name="EnvTextBox"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             VerticalScrollBarVisibility="Auto"
+                             MinHeight="60"
+                             Margin="0,0,0,12"
+                             TextChanged="EnvTextBox_TextChanged"/>
+
+                    <CheckBox x:Name="AutoConnectCheckBox"
+                              Content="Auto-connect on startup"
+                              Margin="0,0,0,12"
+                              Checked="AutoConnectCheckBox_Checked"
+                              Unchecked="AutoConnectCheckBox_Unchecked"/>
+
+                    <TextBlock Text="Status:" 
+                               Margin="0,0,0,4"
+                               Foreground="{DynamicResource TextForegroundBrush}"/>
+                    <TextBlock x:Name="StatusTextBlock"
+                               Text="Not connected"
+                               Margin="0,0,0,12"
+                               Foreground="{DynamicResource TextSecondaryBrush}"/>
+
+                    <TextBlock Text="Discovered Tools:" 
+                               Margin="0,0,0,4"
+                               Foreground="{DynamicResource TextForegroundBrush}"/>
+                    <Border BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="1"
+                            Background="{DynamicResource ListBackgroundBrush}"
+                            MaxHeight="150">
+                        <ListBox x:Name="ToolsListBox"
+                                 Background="Transparent"
+                                 BorderThickness="0">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}"
+                                               FontSize="11"
+                                               Foreground="{DynamicResource TextForegroundBrush}"/>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <StackPanel Grid.Row="2"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Margin="0,12,0,0">
+                <Button Content="Test Connection"
+                        x:Name="TestButton"
+                        Click="TestButton_Click"
+                        Padding="12,6"
+                        Margin="0,0,8,0"
+                        IsEnabled="False"/>
+                <Button Content="Connect"
+                        x:Name="ConnectButton"
+                        Click="ConnectButton_Click"
+                        Padding="12,6"
+                        Margin="0,0,8,0"
+                        IsEnabled="False"
+                        Style="{StaticResource PrimaryButton}"/>
+                <Button Content="Disconnect"
+                        x:Name="DisconnectButton"
+                        Click="DisconnectButton_Click"
+                        Padding="12,6"
+                        Margin="0,0,8,0"
+                        IsEnabled="False"/>
+                <Button Content="Save"
+                        x:Name="SaveButton"
+                        Click="SaveButton_Click"
+                        Padding="12,6"
+                        IsEnabled="False"
+                        Style="{StaticResource PrimaryButton}"/>
+                <Button Content="Cancel"
+                        Click="CancelButton_Click"
+                        Padding="12,6"
+                        Margin="8,0,0,0"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

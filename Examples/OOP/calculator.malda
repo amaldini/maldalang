@@ -1,0 +1,35 @@
+class Calculator {
+    function add(a, b) {
+        return a + b;
+    }
+    
+    function subtract(a, b) {
+        return a - b;
+    }
+    
+    function multiply(a, b) {
+        return a * b;
+    }
+    
+    function divide(a, b) {
+        if (b == 0) {
+            print("Error: Division by zero!");
+            return 0;
+        }
+        return a / b;
+    }
+}
+
+var calc = new Calculator();
+var a = 20;
+var b = 5;
+
+print("Calculator Demo");
+print($"a = {a}, b = {b}");
+print($"a + b = {calc.add(a, b)}");
+print($"a - b = {calc.subtract(a, b)}");
+print($"a * b = {calc.multiply(a, b)}");
+print($"a / b = {calc.divide(a, b)}");
+
+// Test division by zero
+print($"10 / 0 = {calc.divide(10, 0)}");

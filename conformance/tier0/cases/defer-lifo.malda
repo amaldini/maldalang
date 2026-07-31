@@ -1,0 +1,6 @@
+function run() {
+    defer { print("second"); }
+    defer { print("first"); }
+    print("body");
+}
+run();

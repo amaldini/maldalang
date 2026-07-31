@@ -1,0 +1,65 @@
+{
+  "examples": [
+    {
+      "name": "Basic LLM Interaction",
+      "description": "Simple LLM API call example",
+      "file": "basic_llm_interaction.malda",
+      "track": "ai-builder",
+      "difficulty": "beginner",
+      "minutes": 8,
+      "concepts": ["OpenRouterClient", "complete()", "LLM call"],
+      "prerequisites": ["Agents/multi_agent_file_workflow.malda"],
+      "learningGoal": "Understand the most direct way MALDA talks to an LLM outside a larger agent workflow.",
+      "expectedOutput": "Prints a simple model completion.",
+      "next": "AI_LLM/conversation_management.malda",
+      "documentationPath": "/?lesson=build-ai-apps#lesson-build-ai-apps",
+      "documentationTitle": "Basic LLM Interaction",
+      "featured": true
+    },
+    {
+      "name": "Conversation Management",
+      "description": "Multi-turn conversation example",
+      "file": "conversation_management.malda",
+      "track": "ai-builder",
+      "difficulty": "intermediate",
+      "minutes": 12,
+      "concepts": ["Conversation", "history", "multi-turn chat"],
+      "prerequisites": ["AI_LLM/basic_llm_interaction.malda"],
+      "learningGoal": "Move from single completions to structured multi-turn interactions.",
+      "expectedOutput": "Maintains a conversation over multiple turns.",
+      "next": "AI_LLM/local_llm_example.malda",
+      "documentationPath": "/?lesson=build-ai-apps#lesson-build-ai-apps",
+      "documentationTitle": "Conversation Management"
+    },
+    {
+      "name": "Local LLM Example",
+      "description": "Using LlamaCppClient for local LLM inference with GGUF models",
+      "file": "local_llm_example.malda",
+      "track": "showcase",
+      "difficulty": "intermediate",
+      "minutes": 15,
+      "concepts": ["LlamaCppClient", "local AI", "privacy", "offline inference"],
+      "prerequisites": ["AI_LLM/conversation_management.malda"],
+      "learningGoal": "Highlight MALDA's strongest cross-over value: student-friendly setup and commercial local-AI control.",
+      "expectedOutput": "Runs local inference without external API keys.",
+      "next": "Web/rest_api_server.malda",
+      "documentationPath": "/?lesson=fullstack-demo#lesson-fullstack-demo",
+      "documentationTitle": "Local AI Showcase",
+      "featured": true
+    },
+    {
+      "name": "microgpt (Karpathy Port)",
+      "description": "Pure MALDA port of Karpathy's dependency-free microgpt training and inference loop",
+      "file": "microgpt.malda",
+      "track": "showcase",
+      "difficulty": "advanced",
+      "minutes": 30,
+      "concepts": ["training loop", "ML internals", "advanced AI"],
+      "prerequisites": ["AI_LLM/local_llm_example.malda"],
+      "learningGoal": "Provide an advanced AI showcase after the learner already understands MALDA's core and applied AI workflows.",
+      "expectedOutput": "Runs an advanced MALDA implementation of a GPT-style training and inference loop.",
+      "documentationPath": "/?lesson=fullstack-demo#lesson-fullstack-demo",
+      "documentationTitle": "Advanced AI Showcase"
+    }
+  ]
+}

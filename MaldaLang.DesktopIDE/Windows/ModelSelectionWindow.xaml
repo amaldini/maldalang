@@ -1,0 +1,128 @@
+<Window x:Class="MaldaLang.DesktopIDE.Windows.ModelSelectionWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="Select Model" Height="500" Width="600"
+        Background="{DynamicResource WindowBackgroundBrush}">
+    <Window.Resources>
+        <!-- Default theme resources (will be overridden if owner window has them) -->
+        <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#F5F5F5"/>
+        <SolidColorBrush x:Key="TextForegroundBrush" Color="#212121"/>
+        <SolidColorBrush x:Key="TextSecondaryBrush" Color="#757575"/>
+        <SolidColorBrush x:Key="BorderBrush" Color="#D0D0D0"/>
+        <SolidColorBrush x:Key="ListBackgroundBrush" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="ListForegroundBrush" Color="#212121"/>
+        <SolidColorBrush x:Key="ButtonBackgroundBrush" Color="#E8E8E8"/>
+        <SolidColorBrush x:Key="ButtonForegroundBrush" Color="#212121"/>
+        <SolidColorBrush x:Key="ButtonBorderBrush" Color="#B0B0B0"/>
+        <SolidColorBrush x:Key="PrimaryButtonBackgroundBrush" Color="#2196F3"/>
+        <SolidColorBrush x:Key="PrimaryButtonForegroundBrush" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="PrimaryButtonBorderBrush" Color="#1976D2"/>
+    </Window.Resources>
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <TextBlock Grid.Row="0" 
+                   Text="Select a Local Model"
+                   FontSize="16" 
+                   FontWeight="Bold"
+                   Margin="0,0,0,12"
+                   Foreground="{DynamicResource TextForegroundBrush}"/>
+
+        <!-- Models List -->
+        <Border Grid.Row="1"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="1"
+                Background="{DynamicResource ListBackgroundBrush}">
+            <Grid>
+                <ListBox x:Name="ModelsListBox"
+                         Background="{DynamicResource ListBackgroundBrush}"
+                         Foreground="{DynamicResource ListForegroundBrush}"
+                         BorderThickness="0">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="8,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="{Binding FileName}"
+                                               FontWeight="Bold"
+                                               FontSize="12"
+                                               Foreground="{DynamicResource TextForegroundBrush}"/>
+                                    <TextBlock Text="{Binding Path}"
+                                               FontSize="10"
+                                               Margin="0,2,0,0"
+                                               Foreground="{DynamicResource TextSecondaryBrush}"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock FontSize="10"
+                                               Margin="0,2,0,0"
+                                               Foreground="{DynamicResource TextSecondaryBrush}">
+                                        <Run Text="{Binding Size, StringFormat='{}{0:N0} bytes'}"/>
+                                        <Run Text=" • Downloaded: "/>
+                                        <Run Text="{Binding DownloadedAt, StringFormat='{}{0:yyyy-MM-dd}'}"/>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+                <TextBlock x:Name="NoModelsTextBlock"
+                           Text="No local models installed.&#x0a;Use Tools → Browse Models to download models."
+                           TextAlignment="Center"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource TextSecondaryBrush}"
+                           TextWrapping="Wrap"
+                           Visibility="Collapsed"/>
+            </Grid>
+        </Border>
+
+        <!-- Options -->
+        <StackPanel Grid.Row="2"
+                    Orientation="Horizontal"
+                    Margin="0,12,0,0">
+            <RadioButton x:Name="UseLocalModelRadioButton"
+                         Content="Use Local Model"
+                         Margin="0,0,16,0"
+                         VerticalAlignment="Center"
+                         Checked="UseLocalModelRadioButton_Checked"/>
+            <RadioButton x:Name="UseOpenRouterRadioButton"
+                         Content="Use OpenRouter (Online)"
+                         VerticalAlignment="Center"
+                         Checked="UseOpenRouterRadioButton_Checked"/>
+        </StackPanel>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="3"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Margin="0,12,0,0">
+            <Button Content="Cancel"
+                    Click="CancelButton_Click"
+                    Padding="16,6"
+                    Margin="0,0,8,0"
+                    MinWidth="80"
+                    Background="{DynamicResource ButtonBackgroundBrush}"
+                    Foreground="{DynamicResource ButtonForegroundBrush}"
+                    BorderBrush="{DynamicResource ButtonBorderBrush}"/>
+            <Button x:Name="SelectButton"
+                    Content="Select"
+                    Click="SelectButton_Click"
+                    Padding="16,6"
+                    MinWidth="80"
+                    IsEnabled="False"
+                    Background="{DynamicResource PrimaryButtonBackgroundBrush}"
+                    Foreground="{DynamicResource PrimaryButtonForegroundBrush}"
+                    BorderBrush="{DynamicResource PrimaryButtonBorderBrush}"/>
+        </StackPanel>
+    </Grid>
+</Window>

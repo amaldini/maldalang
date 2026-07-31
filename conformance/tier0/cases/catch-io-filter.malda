@@ -1,0 +1,7 @@
+try {
+    throw dict { "kind": "IO", "message": "disk full" };
+} catch (e if e.kind == "IO") {
+    print("io:" + e.message);
+} catch (e) {
+    print("other");
+}

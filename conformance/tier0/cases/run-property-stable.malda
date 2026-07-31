@@ -1,0 +1,7 @@
+property stableIdentity(x) {
+    return (x + 0) == x;
+}
+var result = runProperty("stableIdentity", 10, 99);
+print(string(result.seed));
+print(string(result.iterations));
+print(string(result.passed));

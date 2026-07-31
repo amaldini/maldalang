@@ -1,0 +1,7 @@
+type Result = Ok(value) | Err(message);
+var r = Ok(7);
+var out = match r {
+    case Ok(v): v;
+    case Err(m): -1;
+};
+print(out);

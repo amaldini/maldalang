@@ -1,0 +1,8 @@
+function json(str) {
+    return parseJSON(str);
+}
+
+@GET("/api/health")
+function healthCheck() {
+    return json("{\"status\": \"healthy\"}");
+}

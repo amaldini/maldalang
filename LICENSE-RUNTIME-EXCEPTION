@@ -1,0 +1,77 @@
+MALDA Runtime Library Exception
+Version 1.0
+
+This is an additional permission that accompanies the licences governing MALDA:
+the MIT License (LICENSE-MIT) and the Apache License 2.0 (LICENSE-APACHE), at
+your option. It exists because the MALDA toolchain does not merely translate
+your program: it copies parts of its own runtime into the output it produces.
+Without this exception, the notice and attribution requirements of those
+licences could be read as attaching to every program compiled with MALDA. They
+do not.
+
+
+1. DEFINITIONS
+
+   "MALDA" means the software in this repository: the compiler, the
+   transpilers, the interpreter, the runtime libraries, the IDEs, the language
+   server, the tooling and the documentation.
+
+   "Runtime Material" means any part of MALDA that the MALDA compiler,
+   transpilers or scaffolding tools copy into, embed in, or emit alongside a
+   compiled program. It includes, without limitation:
+
+     - the RuntimeHelpers class emitted into generated C# source;
+     - the embedded UI host runtime emitted into generated C# source for
+       programs that use UIHost;
+     - malda-js-runtime.js and any other runtime asset written next to
+       generated JavaScript or PWA output;
+     - project files and scaffolding produced by "malda new".
+
+   "Your Program" means a work you write in the MALDA language, together with
+   the output produced by compiling, transpiling or bundling it with MALDA.
+
+
+2. GRANT
+
+   You may use, distribute and license Your Program on terms of your own
+   choosing, including proprietary and commercial terms, and you are under no
+   obligation to disclose its source.
+
+   In particular, on account of Runtime Material that MALDA places into Your
+   Program, you need NOT:
+
+     - reproduce the MALDA copyright notice or either licence text in Your
+       Program, in its documentation, in its user interface, or in an about
+       box, as the MIT License would otherwise require for "substantial
+       portions of the Software";
+     - carry forward the notices, the NOTICE file handling, or the
+       statement-of-changes requirements of sections 4(a) through 4(d) of the
+       Apache License 2.0.
+
+   The patent grant in section 3 of the Apache License 2.0 continues to apply
+   to Runtime Material for those who take MALDA under that licence. This
+   exception removes obligations; it takes away no permission.
+
+   This permission is irrevocable and applies to every version of MALDA that
+   carries this file.
+
+
+3. WHAT THIS EXCEPTION DOES NOT COVER
+
+   This exception concerns only Runtime Material that the toolchain emits into
+   your output. It does not apply when you distribute MALDA itself: the
+   compiler, the interpreter, the IDEs, the language server, the reference
+   manual, or a modified version of any of them. Redistributing those remains
+   governed by whichever of the two licences you chose, and their notice
+   requirements continue to apply in full.
+
+   Nor does it grant any right in the trade name "MALDA" or in project logos.
+   See TRADEMARK.md.
+
+
+4. NO OTHER CHANGE
+
+   Except as stated above, the MIT License and the Apache License 2.0 apply
+   unchanged. Nothing here limits their disclaimers of warranty or their
+   limitations of liability: MALDA and everything it emits are provided "as
+   is", without warranty of any kind.

@@ -1,0 +1,23 @@
+// Actor handlers do not see the io/math/str namespaces — use the flat print alias
+// inside on-handlers. Outside the actor, prefer io.print.
+
+actor Counter {
+    var count = 0;
+
+    on increment() {
+        count = count + 1;
+        print($"Counter incremented to {count}");
+    }
+
+    on get() {
+        print($"Current count: {count}");
+    }
+}
+
+var counter = spawn Counter();
+sleep(100);
+send counter.increment();
+send counter.increment();
+send counter.get();
+sleep(500);
+io.print("Done!");

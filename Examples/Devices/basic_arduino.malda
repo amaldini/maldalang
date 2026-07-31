@@ -1,0 +1,54 @@
+// Basic Arduino Example
+// Demonstrates connecting to Arduino and controlling basic I/O
+
+print("=== Basic Arduino Control ===\n");
+
+// Connect to Arduino via serial (USB)
+// Change "COM3" to your Arduino's port (e.g., "COM3" on Windows, "/dev/ttyUSB0" on Linux)
+var arduino = new ArduinoConnection("COM3", 9600);
+
+print("Connecting to Arduino...\n");
+var connected = arduino.connect();
+if (connected) {
+    print("Connected successfully!\n\n");
+    
+    // Configure pin 13 as OUTPUT (built-in LED on most Arduino boards)
+    print("Configuring pin 13 as OUTPUT...\n");
+    arduino.pinMode(13, "OUTPUT");
+    
+    // Blink LED 5 times
+    print("Blinking LED 5 times...\n");
+    for (var i = 0; i < 5; i = i + 1) {
+        arduino.digitalWrite(13, true);
+        print("LED ON\n");
+        sleep(500);
+        
+        arduino.digitalWrite(13, false);
+        print("LED OFF\n");
+        sleep(500);
+    }
+    
+    // Read analog pin 0 (if sensor connected)
+    print("\nReading analog pin 0...\n");
+    var analogValue = arduino.analogRead(0);
+    print("Analog value: " + analogValue + "\n");
+    
+    // Read digital pin 2 (if button/sensor connected)
+    print("Reading digital pin 2...\n");
+    arduino.pinMode(2, "INPUT");
+    var digitalValue = arduino.digitalRead(2);
+    print("Digital value: " + digitalValue + "\n");
+    
+    // Disconnect
+    print("\nDisconnecting...\n");
+    arduino.disconnect();
+    print("Disconnected.\n");
+} else {
+    print("Failed to connect to Arduino.\n");
+    print("Make sure:\n");
+    print("  1. Arduino is connected via USB\n");
+    print("  2. Correct port name is used (COM3, /dev/ttyUSB0, etc.)\n");
+    print("  3. Arduino bridge sketch is uploaded\n");
+}
+
+print("\nExample complete!\n");

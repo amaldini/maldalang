@@ -1,0 +1,5 @@
+var r = result.ok(10);
+var doubled = result.map(r, (x) => x * 2);
+print(result.unwrapOr(doubled, 0));
+print(result.isOk(r));
+print(result.isErr(r));

@@ -1,0 +1,3 @@
+var d = null;
+var x = d?.missing;
+print(x == null);

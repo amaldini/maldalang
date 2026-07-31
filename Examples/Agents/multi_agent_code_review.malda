@@ -1,0 +1,22 @@
+// Note: Requires OPENROUTER_API_KEY environment variable
+// OpenRouterClient automatically reads the API key and uses the correct endpoint
+var client = new OpenRouterClient();
+
+var writer = new Agent("Writer", "programmer", "Write efficient code.", client);
+var reviewer = new Agent("Reviewer", "code reviewer", "Find bugs and suggest improvements.", client);
+
+// Writer generates code
+var codeResponse = writer.think("Write a quicksort function.");
+var code = codeResponse.content;
+
+// Reviewer reviews it
+reviewer.getConversation().addUserMessage("Review this code:
+
+" + code);
+var reviewResponse = reviewer.getConversation().send();
+
+print("=== Generated Code ===");
+print(code);
+print("
+=== Review ===");
+print(reviewResponse.content);

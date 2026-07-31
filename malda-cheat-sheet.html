@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MALDA Cheat Sheet</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #121a31;
+      --panel-2: #182344;
+      --text: #e7ecff;
+      --muted: #aab6dd;
+      --line: #2a3864;
+      --k: #80d4ff;
+      --fn: #ffd580;
+      --type: #8ef7b1;
+      --num: #ffb3c7;
+      --str: #b6f58e;
+      --com: #8e9abf;
+      --dec: #d5a6ff;
+      --id: #c4d2ff;
+      --chip: #1d2b53;
+      --chip-line: #3b4f88;
+      --accent: #5eead4;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
+      background:
+        radial-gradient(circle at 20% -10%, #1b2a56 0%, transparent 35%),
+        radial-gradient(circle at 90% 0%, #17395c 0%, transparent 30%),
+        var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .container {
+      width: min(1180px, 95vw);
+      margin: 0 auto;
+      padding: 28px 0 64px;
+    }
+
+    .hero {
+      background: linear-gradient(145deg, #111a35, #182a56);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.7rem, 2.4vw, 2.4rem);
+      letter-spacing: 0.4px;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      max-width: 78ch;
+    }
+
+    .chips {
+      margin-top: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .chip {
+      border: 1px solid var(--chip-line);
+      background: var(--chip);
+      color: #cfe0ff;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      white-space: nowrap;
+    }
+
+    .toc {
+      margin: 18px 0 22px;
+      background: rgba(16, 28, 58, 0.86);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 8px 14px;
+    }
+
+    .toc a {
+      color: #bdd2ff;
+      text-decoration: none;
+      font-size: 0.92rem;
+      padding: 6px 8px;
+      border-radius: 8px;
+    }
+
+    .toc a:hover {
+      background: #1a2b58;
+      color: #e7f1ff;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 16px;
+    }
+
+    section {
+      background: linear-gradient(160deg, rgba(24, 35, 68, 0.98), rgba(16, 27, 53, 0.98));
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    .section-head {
+      padding: 14px 16px 0;
+    }
+
+    h2 {
+      margin: 0 0 6px;
+      font-size: 1.05rem;
+      letter-spacing: 0.3px;
+    }
+
+    .hint {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    pre {
+      margin: 0;
+      border-top: 1px solid var(--line);
+      background: #0a132b;
+      color: var(--id);
+      overflow-x: hidden;
+      padding: 12px 14px 14px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.86rem;
+      line-height: 1.46;
+      tab-size: 2;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    .legend {
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: 0.86rem;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .legend span {
+      border: 1px solid var(--line);
+      background: #101b39;
+      border-radius: 6px;
+      padding: 4px 8px;
+    }
+
+    .page-break {
+      margin: 28px 0 18px;
+      border: 0;
+      border-top: 1px dashed #3f528e;
+      opacity: 0.8;
+    }
+
+    .page-hero {
+      background: linear-gradient(145deg, #101a33, #1a2f5b);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+      margin-bottom: 18px;
+    }
+
+    .page-title {
+      margin: 0 0 8px;
+      font-size: clamp(1.4rem, 2vw, 1.9rem);
+    }
+
+    .page-subtitle {
+      margin: 0;
+      color: var(--muted);
+      max-width: 80ch;
+    }
+
+    .mini-toc {
+      margin-top: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .mini-toc a {
+      color: #c7d9ff;
+      text-decoration: none;
+      border: 1px solid #435b9a;
+      background: #1a2d58;
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-size: 0.82rem;
+      white-space: nowrap;
+    }
+
+    .mini-toc a:hover {
+      background: #223a72;
+      color: #eff6ff;
+    }
+
+    .ui-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    @media (max-width: 980px) {
+      .ui-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media print {
+      .page-break {
+        break-before: page;
+        page-break-before: always;
+      }
+    }
+
+    .k { color: var(--k); font-weight: 600; }
+    .fn { color: var(--fn); }
+    .type { color: var(--type); }
+    .num { color: var(--num); }
+    .str { color: var(--str); }
+    .com { color: var(--com); font-style: italic; }
+    .dec { color: var(--dec); font-weight: 600; }
+
+    footer {
+      margin-top: 26px;
+      color: var(--muted);
+      font-size: 0.84rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="hero">
+      <h1>MALDA Cheat Sheet</h1>
+      <p class="subtitle">
+        A practical one-page reference with core syntax and advanced capabilities:
+        language fundamentals, OOP, actors, prompts, AI agents, REST/web, databases,
+        MCP/ACP, graphs, vector search, and .NET interop.
+      </p>
+      <div class="chips">
+        <span class="chip">Dynamic + OOP</span>
+        <span class="chip">AI-First</span>
+        <span class="chip">Server + UI</span>
+        <span class="chip">Agents + Tools</span>
+        <span class="chip">Compiled or Interpreted</span>
+      </div>
+      <div class="legend">
+        <span><code>var</code> for variables</span>
+        <span><code>@DECORATOR</code> for routes/tools</span>
+        <span><code>prompt name(args)</code> (no typed prompt parameters)</span>
+        <span><code>prompt ... -&gt; TypeHint</code> optional and informational</span>
+      </div>
+    </header>
+
+    <nav class="toc">
+      <a href="#fundamentals">Fundamentals</a>
+      <a href="#control">Control Flow + Pattern Matching</a>
+      <a href="#match-advanced">Advanced Match Patterns</a>
+      <a href="#functions">Functions + Lambdas</a>
+      <a href="#oop">Classes + Objects</a>
+      <a href="#collections">Arrays + Maps + JSON</a>
+      <a href="#builtins">Built-ins + File/OS</a>
+      <a href="#errors">Error Handling</a>
+      <a href="#actors">Actors + Concurrency</a>
+      <a href="#prompts">Prompt Blocks</a>
+      <a href="#agents">LLMs, Tools, Agents</a>
+      <a href="#webui">Web UI + HttpServer</a>
+      <a href="#rest">REST API Server + Client</a>
+      <a href="#db">Database Clients</a>
+      <a href="#mcp">MCP Server + Client</a>
+      <a href="#acp">ACP Agent Protocol</a>
+      <a href="#graph">Graphs + GraphMemory</a>
+      <a href="#vectordb">VectorDB</a>
+      <a href="#interop">.NET Interop</a>
+      <a href="#cli">CLI + Compile + Test</a>
+      <a href="#ui-framework-page">UI Framework (Page 2)</a>
+    </nav>
+
+    <div class="grid">
+      <section id="fundamentals">
+        <div class="section-head">
+          <h2>1) Fundamentals</h2>
+          <p class="hint">Variables, literals, interpolation, arithmetic, boolean logic.</p>
+        </div>
+        <pre><code class="language-malda">// Variables and primitive values
+var name = "MALDA";
+var version = 1;
+var isAwesome = true;
+var pi = 3.14159;
+var nothing = null;
+
+// String interpolation + concatenation
+print($"Hello from {name} v{version}");
+print("2 + 2 = " + string(2 + 2));
+
+// Object/map style literals
+var user = {"id": 1, "name": "Ada", "active": true};
+print(user.name);</code></pre>
+      </section>
+
+      <section id="control">
+        <div class="section-head">
+          <h2>2) Control Flow + Pattern Matching</h2>
+          <p class="hint">if/else, loops, range-like loops, match/case.</p>
+        </div>
+        <pre><code class="language-malda">var x = 7;
+if (x &gt; 10) {
+  print("big");
+} else {
+  print("small");
+}
+
+for (var i = 0; i &lt; 3; i = i + 1) {
+  print(i);
+}
+
+var arr = [10, 20, 30];
+for (var item in arr) {
+  print(item);
+}
+
+match x {
+  case 0: print("zero");
+  case 7: print("seven");
+  default: print("other");
+}</code></pre>
+      </section>
+
+      <section id="match-advanced">
+        <div class="section-head">
+          <h2>2b) Advanced Match Patterns</h2>
+          <p class="hint">Wildcard, bindings, nested object/array patterns, and sum-type variants.</p>
+        </div>
+        <pre><code class="language-malda">// array + nested object + rest
+var data = [{ type: "A", value: 1 }, { type: "B", value: 2 }];
+var m1 = match data {
+  case [{ type: "A", value: v }, ...rest]: "first=" + v;
+  default: "none";
+};
+print(m1);
+
+// object shorthand + wildcard fallback
+var profile = { name: "Alice", age: 30, city: "Rome" };
+var m2 = match profile {
+  case { name, age }: name + " is " + age;
+  case { name }: name;
+  case _: "unknown";
+};
+print(m2);
+
+// sum-type / variant matching
+type Result = Ok(value) | Err(message);
+var r = Ok(42);
+var m3 = match r {
+  case Ok(v): "ok: " + v;
+  case Err(msg): "error: " + msg;
+};
+print(m3);</code></pre>
+      </section>
+
+      <section id="functions">
+        <div class="section-head">
+          <h2>3) Functions + Lambdas</h2>
+          <p class="hint">Named functions, return values, lambda expressions.</p>
+        </div>
+        <pre><code class="language-malda">function sum(a, b) {
+  return a + b;
+}
+
+function applyTwice(value, fn) {
+  return fn(fn(value));
+}
+
+var inc = (n) =&gt; n + 1;
+var result = applyTwice(3, inc);
+print(result); // 5
+
+// Optional typed params can appear in regular functions
+function greet(name: string) {
+  print("Hello " + name);
+}</code></pre>
+      </section>
+
+      <section id="oop">
+        <div class="section-head">
+          <h2>4) Classes + Objects</h2>
+          <p class="hint">Constructors, methods, inheritance, this/super.</p>
+        </div>
+        <pre><code class="language-malda">class Animal {
+  var name;
+  function Animal(name) {
+    this.name = name;
+  }
+  function speak() {
+    return "...";
+  }
+}
+
+class Dog extends Animal {
+  function Dog(name) {
+    super(name);
+  }
+  function speak() {
+    return $"Woof! I'm {this.name}";
+  }
+}
+
+var d = new Dog("Rex");
+print(d.speak());</code></pre>
+      </section>
+
+      <section id="collections">
+        <div class="section-head">
+          <h2>5) Arrays + Maps + JSON</h2>
+          <p class="hint">Core collection operations and JSON conversion helpers.</p>
+        </div>
+        <pre><code class="language-malda">var nums = [1, 2, 3];
+nums.append(4);
+print(nums.length); // 4
+
+var profile = {"name": "Lina", "age": 28};
+profile.city = "Milan";
+print(profile.city);
+
+var payload = parseJSON("{\"ok\": true, \"count\": 2}");
+print(payload.ok);
+print(toJSON(profile));
+
+// destructuring patterns
+var [a, b, ...rest] = nums;
+print(a + ", " + b);
+
+// object destructuring
+var {name: personName, city: personCity} = profile;
+print(personName + " from " + personCity);
+
+// shorthand object destructuring (supported)
+var {name, city} = profile;
+print(name + " - " + city);</code></pre>
+      </section>
+
+      <section id="builtins">
+        <div class="section-head">
+          <h2>6) Built-ins + File/OS + Utilities</h2>
+          <p class="hint">Common helpers: conversion, strings, paths, env, process, git.</p>
+        </div>
+        <pre><code class="language-malda">var s = string(123);
+var n = int("42");
+var f = float("2.5");
+
+print(length("hello"));
+print(substring("abcdef", 1, 3)); // "bcd"
+
+var key = getEnv("OPENAI_API_KEY");
+var cwd = getCurrentDirectory();
+print(cwd);
+
+writeFile("out.txt", "Hello");
+var txt = readFile("out.txt");
+print(txt);
+
+var cmd = executeCommand("dotnet --version");
+print(cmd);</code></pre>
+      </section>
+
+      <section id="errors">
+        <div class="section-head">
+          <h2>7) Error Handling</h2>
+          <p class="hint">Throw/catch/finally patterns and guard checks.</p>
+        </div>
+        <pre><code class="language-malda">function divide(a, b) {
+  if (b == 0) {
+    throw "Division by zero";
+  }
+  return a / b;
+}
+
+try {
+  var z = divide(10, 0);
+  print(z);
+} catch (e) {
+  print("Error: " + string(e));
+} finally {
+  print("cleanup done");
+}</code></pre>
+      </section>
+
+      <section id="actors">
+        <div class="section-head">
+          <h2>8) Actors + Concurrency</h2>
+          <p class="hint">Isolated state, message passing, non-blocking architecture.</p>
+        </div>
+        <pre><code class="language-malda">actor Counter {
+  var count = 0;
+
+  on increment() {
+    count = count + 1;
+    print($"count={count}");
+  }
+
+  on get() {
+    print($"current={count}");
+  }
+}
+
+var c = spawn Counter();
+sleep(100); // ensure actor loop has started
+send c.increment();
+send c.increment();
+send c.get();
+sleep(500);</code></pre>
+      </section>
+
+      <section id="prompts">
+        <div class="section-head">
+          <h2>9) Prompt Blocks</h2>
+          <p class="hint">Reusable prompt templates; typed await validates JSON output.</p>
+        </div>
+        <pre><code class="language-malda">prompt greet(name) {
+  user: "Hello {name}, how can I help?"
+}
+
+prompt planTask(task, docs) -&gt; Plan {
+  system: "You are a planner.",
+  user: """
+  Task: {task}
+  Docs:
+  {docs}
+  Return a step-by-step plan.
+  """
+}
+
+var p = planTask("Add auth", "README + API docs");
+print(p.user); // prompt(...) returns PromptInstance
+
+// Typed await execution:
+// - with -> ReturnType, MALDA validates JSON output against that type
+// - without -> ReturnType, await returns string content
+var plan = await planTask("Add auth", "README + API docs");
+print(plan.steps[0].description);</code></pre>
+      </section>
+
+      <section id="agents">
+        <div class="section-head">
+          <h2>10) LLMs, Tools, Agents</h2>
+          <p class="hint">LLM client, conversations, tool calling, multi-agent workflows.</p>
+        </div>
+        <pre><code class="language-malda">var client = new OpenRouterClient("openai/gpt-4");
+
+var agent = new Agent(
+  "CodeMaster",
+  "software engineer",
+  "You write safe and clean code.",
+  client
+);
+
+agent.addTool(createReadFileTool("."));
+agent.addTool(createReplaceInFileTool("."));
+
+var response = agent.think("Read app.malda and improve error handling.");
+print(response.content);
+
+// Specialized agent
+var coder = new CodingAgent("Coder", "senior dev", "Be precise.");</code></pre>
+      </section>
+
+      <section id="webui">
+        <div class="section-head">
+          <h2>11) Web UI + HttpServer</h2>
+          <p class="hint">Dynamic pages, path params, form handling, simple UI backends.</p>
+        </div>
+        <pre><code class="language-malda">var server = new HttpServer(8080);
+
+@PAGE("/")
+function home() {
+  return "&lt;h1&gt;Welcome to MALDA&lt;/h1&gt;";
+}
+
+@PAGE("/user/{id}")
+function userPage(id) {
+  return "&lt;h2&gt;User " + id + "&lt;/h2&gt;";
+}
+
+@POST("/submit")
+function submit(body) {
+  return {"status": 200, "message": "ok", "received": body};
+}
+
+server.start();</code></pre>
+      </section>
+
+      <section id="rest">
+        <div class="section-head">
+          <h2>12) REST API Server + HTTP Client</h2>
+          <p class="hint">Decorators for endpoints and `RestClient` for outbound calls.</p>
+        </div>
+        <pre><code class="language-malda">@GET("/api/users/{id}")
+function getUserById(id) {
+  return {"id": id, "name": "Alice"};
+}
+
+@POST("/api/users")
+function createUser(body) {
+  return {"status": 201, "data": body};
+}
+
+var api = new RestServer(8080);
+api.enableCORS(true);
+api.enableSwagger(true);
+api.start();
+
+var client = new RestClient("https://api.example.com");
+client.setAuth("Bearer", "token");
+var r = client.get("/users", null, {"limit": "10"});
+if (r.ok) print(toJSON(r.body));</code></pre>
+      </section>
+
+      <section id="db">
+        <div class="section-head">
+          <h2>13) Database Clients</h2>
+          <p class="hint">SQL Server, PostgreSQL, SQLite with query + fluent CRUD support.</p>
+        </div>
+        <pre><code class="language-malda">// SqlServerClient / PostgresClient / SqliteClient
+var db = new SqliteClient();
+db.connect("Data Source=app.db;");
+
+var rows = db.query(
+  "SELECT * FROM users WHERE age &gt; @age",
+  {age: 25}
+);
+
+var result = db.select("name", "email")
+  .from("users")
+  .where("age", "&gt;", 25)
+  .query();
+
+db.insert("users", {"name": "John", "email": "john@example.com"});
+db.disconnect();</code></pre>
+      </section>
+
+      <section id="mcp">
+        <div class="section-head">
+          <h2>14) MCP Server + Client</h2>
+          <p class="hint">Expose MALDA functions as tools; call external MCP tools.</p>
+        </div>
+        <pre><code class="language-malda">@MCPTool("add", "Adds two numbers")
+function add(a, b) {
+  return int(a) + int(b);
+}
+
+@MCPTool("count_words", "Counts words in text")
+function countWords(text) {
+  if (text == null || text == "") return 0;
+  // ... custom logic ...
+  return 3;
+}
+
+var mcpServer = new MCPServer();
+mcpServer.start();</code></pre>
+      </section>
+
+      <section id="acp">
+        <div class="section-head">
+          <h2>15) ACP (Agent Communication Protocol)</h2>
+          <p class="hint">Agent-to-agent interoperability across systems.</p>
+        </div>
+        <pre><code class="language-malda">var acp = new ACPClient("https://acp.example.com", "api-key");
+var agents = acp.discoverAgents();
+var reply = acp.sendMessage("translation-agent", "Translate hello to Spanish", 5000);
+print(reply);
+
+var llm = new OpenRouterClient();
+var localAgent = new Agent("Helper", "assistant", "Be concise", llm);
+
+var server = new ACPServer(8080);
+server.registerAgent("helper-1", localAgent, {
+  "name": "Helper",
+  "version": "1.0.0"
+});
+server.start();</code></pre>
+      </section>
+
+      <section id="graph">
+        <div class="section-head">
+          <h2>16) Graphs + GraphMemory</h2>
+          <p class="hint">Relationship modeling, traversal, and knowledge structures.</p>
+        </div>
+        <pre><code class="language-malda">// Graph literals and operations
+var g = {
+  "nodes": ["A", "B", "C"],
+  "edges": [
+    {"from": "A", "to": "B", "weight": 3},
+    {"from": "B", "to": "C", "weight": 2}
+  ]
+};
+
+// Typical helpers in graph chapters include:
+// shortest paths, traversal, serialization patterns, dependency modeling
+
+// GraphMemory feature area supports memory-oriented graph structures
+// for AI workflows (entities, links, context retrieval).</code></pre>
+      </section>
+
+      <section id="vectordb">
+        <div class="section-head">
+          <h2>17) VectorDB + Semantic Search</h2>
+          <p class="hint">Embed text, store vectors, run similarity queries.</p>
+        </div>
+        <pre><code class="language-malda">// Core VectorDB usage pattern
+var db = new VectorDB();
+
+// Add items (with automatic or explicit embeddings)
+db.add("doc-1", "MALDA is an AI-first language");
+db.add("doc-2", "Actors handle concurrency");
+
+// Similarity search
+var hits = db.search("How do actors work?", 3);
+for (var hit in hits) {
+  print(hit.id + " score=" + string(hit.score));
+}
+
+// Serialize / load patterns are supported in manual examples.</code></pre>
+      </section>
+
+      <section id="interop">
+        <div class="section-head">
+          <h2>18) .NET Interop</h2>
+          <p class="hint">Load assemblies, instantiate types, call methods/properties.</p>
+        </div>
+        <pre><code class="language-malda">var asm = loadAssembly("C:\\MyLibs\\MathUtils.dll");
+var calcType = getDotNetType(asm, "MathUtils.Calculator");
+var calc = dotnetNew(calcType);
+
+var result = calc.Add(10, 20);
+print("Result: " + string(result));
+
+calc.Precision = 5;
+print("Precision: " + string(calc.Precision));
+
+// Also supports direct type-name creation:
+var list = dotnetNew("System.Collections.Generic.List");
+list.Add("item1");</code></pre>
+      </section>
+
+      <section id="cli">
+        <div class="section-head">
+          <h2>19) CLI Workflow</h2>
+          <p class="hint">Run scripts, compile executables, scaffold, and test.</p>
+        </div>
+        <pre><code class="language-malda">// Run
+malda program.malda
+
+// Compile
+malda compile program.malda -o app.exe
+
+// Test discovery + execution
+malda test
+malda test ./tests --filter auth --format human
+malda test ./tests --iterations 100 --seed 1337 --write-regression
+malda test ./tests --write-regression --regression-dir ./artifacts/regressions
+malda test ./tests --format ci --iterations 100 --seed 1337
+
+// Scaffold
+malda new webapi my-api
+malda new fullstack my-app</code></pre>
+      </section>
+    </div>
+
+    <hr class="page-break">
+
+    <section id="ui-framework-page" class="page-hero">
+      <h2 class="page-title">MALDA UI Framework Cheat Sheet</h2>
+      <p class="page-subtitle">
+        Focused reference for server-side UI composition in MALDA using <code>ui.*</code>,
+        runtime lifecycle APIs, event pipeline, forms, routing/session helpers, and CRM-style CRUD helpers.
+      </p>
+      <nav class="mini-toc">
+        <a href="#ui-components">Components</a>
+        <a href="#ui-runtime">Runtime + Lifecycle</a>
+        <a href="#ui-events">Events + Forms</a>
+        <a href="#ui-routing">Routing + Session</a>
+        <a href="#ui-templates">Templates + CRUD</a>
+        <a href="#ui-datacontrols">Data Controls</a>
+      </nav>
+    </section>
+
+    <div class="ui-grid">
+      <section id="ui-components">
+        <div class="section-head">
+          <h2>UI 1) Component Composition</h2>
+          <p class="hint">Build a tree with layout/display/input controls using <code>ui.control(props, children?, key?)</code>.</p>
+        </div>
+        <pre><code class="language-malda">// Step 1: create a reusable action row
+function ticketActions() {
+  return ui.row({"gap": 8}, [
+    ui.button({"label": "Assign", "variant": "primary", "onClick": "assignTicket"}),
+    ui.button({"label": "Close", "variant": "danger", "onClick": "closeTicket"})
+  ]);
+}
+
+// Step 2: compose a card component
+var ticketCard = ui.panel({"componentId": "TicketCard", "className": "card"}, [
+  ui.heading({"level": 2, "value": "Ticket #123"}),
+  ui.text({"value": "Login issue reported by customer"}),
+  ticketActions()
+]);
+
+// Step 3: compose page root
+var root = ui.column({"gap": 12}, [
+  ui.heading({"level": 1, "value": "Support Dashboard"}),
+  ticketCard
+]);</code></pre>
+      </section>
+
+      <section id="ui-runtime">
+        <div class="section-head">
+          <h2>UI 2) Runtime + Lifecycle</h2>
+          <p class="hint">Mount/render, snapshot/resync, state helpers, and lifecycle event hooks.</p>
+        </div>
+        <pre><code class="language-malda">var sessionId = "crm-ui";
+
+// 1) runtime guardrails
+ui.configure("maxPayloadBytes", 250000, sessionId);
+ui.configure("sessionTtlMs", 1800000, sessionId);
+
+// 2) mount + envelope response
+var envelope = ui.mountEnvelope(root, sessionId, {"includeSnapshot": true});
+
+// 3) server-side state
+var wasOpen = ui.state("TicketPanel", "open", false, "session");
+ui.setState("TicketPanel", "open", !wasOpen, "session");
+
+// 4) lifecycle hooks
+ui.onInit("TicketPanel", sessionId);
+ui.onPreRender("TicketPanel", sessionId);
+ui.onUpdate("TicketPanel", sessionId);
+ui.onError("TicketPanel", sessionId);
+
+// 5) refresh pipeline + inspect emitted event
+ui.invalidate("tickets", {"reason": "server-update"});
+var ev = ui.pullEvent(sessionId);</code></pre>
+      </section>
+
+      <section id="ui-events">
+        <div class="section-head">
+          <h2>UI 3) Events + Form Patterns</h2>
+          <p class="hint">Server-driven form handling with validation feedback rendering.</p>
+        </div>
+        <pre><code class="language-malda">// Form component
+var form = ui.form({"componentId": "CreateTicketForm", "onSubmit": "submitTicket"}, [
+  ui.field({}, [
+    ui.text({"value": "Title"}),
+    ui.textField({"name": "title", "required": true, "onChange": "validateTitle"})
+  ]),
+  ui.field({}, [
+    ui.text({"value": "Priority"}),
+    ui.select({"name": "priority", "options": [
+      {"label": "Low", "value": "low"},
+      {"label": "High", "value": "high"}
+    ]})
+  ]),
+  ui.button({"label": "Create", "variant": "primary", "onClick": "submit"})
+]);
+
+// Called by onChange
+function validateTitle(event) {
+  if (event.value == null || length(event.value) < 3) {
+    ui.setState("CreateTicketForm", "titleError", "Title must be at least 3 chars", "session");
+  } else {
+    ui.setState("CreateTicketForm", "titleError", "", "session");
+  }
+}
+
+// Called by onSubmit
+function submitTicket(event) {
+  // event.values typically carries form values
+  ui.setState("CreateTicketForm", "saved", true, "session");
+}
+
+// In production, host/framework dispatches this automatically
+ui.dispatchEvent({"type": "submit", "componentId": "CreateTicketForm", "values": {"title": "VPN issue"}}, "crm-ui");</code></pre>
+      </section>
+
+      <section id="ui-routing">
+        <div class="section-head">
+          <h2>UI 4) Routing + Session Helpers</h2>
+          <p class="hint">Preserve user UI session across server routes and redirects.</p>
+        </div>
+        <pre><code class="language-malda">// GET route: mount UI with stable session id
+@GET("/web/crm/tickets")
+function ticketsPage(req) {
+  var sessionId = ui.sessionId(req, "crm-tickets-ui");
+  var app = ui.column({}, [
+    ui.heading({"level": 1, "value": "Tickets"}),
+    ui.text({"value": "Filter and manage support tickets"})
+  ]);
+  return ui.mountEnvelope(app, sessionId, {"includeSnapshot": true});
+}
+
+// POST route: persist then redirect while preserving session
+@POST("/web/crm/tickets/create")
+function createTicket(body) {
+  // ... persist body.title/body.priority ...
+  return ui.redirectWithSession("/web/crm/tickets", body, "crm-tickets-ui");
+}</code></pre>
+      </section>
+
+      <section id="ui-templates">
+        <div class="section-head">
+          <h2>UI 5) Templates + CRUD Helpers</h2>
+          <p class="hint">Compose templates and generate schema-driven CRUD controls quickly.</p>
+        </div>
+        <pre><code class="language-malda">var base = "Examples/Web/templates/crm/";
+
+// Compose full page from templates
+var sidebar = ui.template(base + "sidebar.html", {"active": "tickets"}, {"cache": false});
+var body = ui.partial(base + "tickets_body.html", {"rowsHtml": rowsHtml});
+var page = ui.layout(base + "layout.html", {"sidebar": sidebar, "body": body}, {"title": "CRM"});
+
+// Normalize schema + defaults once
+var schema = ui.crudSchema({
+  "entityName": "Ticket",
+  "entitySingularLower": "ticket",
+  "columns": ["id", "title", "priority"],
+  "filterDefs": [{"name": "priority", "type": "select"}]
+});
+
+// Generate CRUD controls html from schema + query + lookups
+var controlsHtml = ui.crudControls(
+  schema,
+  "crm-session",
+  {"page": "1"},
+  {"agents": []},
+  {"cache": false}
+);</code></pre>
+      </section>
+
+      <section id="ui-datacontrols">
+        <div class="section-head">
+          <h2>UI 6) Advanced Data Controls</h2>
+          <p class="hint">Large datasets and hierarchy UIs with <code>ui.dataGrid</code> and <code>ui.treeView</code>.</p>
+        </div>
+        <pre><code class="language-malda">// Grid for tabular data
+var grid = ui.dataGrid({
+  "componentId": "TicketsGrid",
+  "rows": tickets,
+  "columns": [
+    {"field": "id", "title": "ID"},
+    {"field": "title", "title": "Title"},
+    {"field": "status", "title": "Status"}
+  ],
+  "sortable": true,
+  "filterable": true,
+  "pagination": true,
+  "onRowClick": "openTicket"
+});
+
+// Tree for hierarchical data
+var tree = ui.treeView({
+  "componentId": "KnowledgeTree",
+  "nodes": kbNodes,
+  "onSelect": "selectNode",
+  "onExpand": "loadNodeChildren"
+});
+
+function openTicket(event) {
+  ui.setState("TicketPanel", "selectedTicketId", event.row.id, "session");
+}
+
+function selectNode(event) {
+  ui.setState("KnowledgeTree", "activeNodeId", event.node.id, "session");
+}</code></pre>
+      </section>
+    </div>
+
+    <footer>
+      MALDA cheat sheet generated for quick daily reference.
+      Keep this file near your project root and extend snippets as your style evolves.
+    </footer>
+  </div>
+
+  <script>
+    (function () {
+      function escapeHtml(s) {
+        return s
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+      }
+
+      const KEYWORDS = [
+        "actor", "on", "spawn", "send", "self", "sleep",
+        "class", "extends", "new", "this", "super",
+        "function", "return", "var", "if", "else", "for", "while",
+        "match", "case", "default", "break", "continue",
+        "try", "catch", "finally", "throw",
+        "include", "using", "true", "false", "null",
+        "and", "or", "not", "prompt"
+      ];
+
+      const TYPES = [
+        "HttpServer", "RestServer", "RestClient",
+        "LLMClient", "OpenRouterClient", "LlamaCppClient",
+        "Agent", "CodingAgent", "Conversation",
+        "SqlServerClient", "PostgresClient", "SqliteClient",
+        "MCPServer", "ACPClient", "ACPServer",
+        "VectorDB"
+      ];
+
+      const keywordRegex = new RegExp("\\b(" + KEYWORDS.join("|") + ")\\b", "g");
+      const typeRegex = new RegExp("\\b(" + TYPES.join("|") + ")\\b", "g");
+      const fnRegex = /\b([a-zA-Z_][a-zA-Z0-9_]*)\s*(?=\()/g;
+      const numRegex = /\b(\d+(\.\d+)?)\b/g;
+      const decRegex = /@\b([A-Z_][A-Z0-9_]*)\b/g;
+
+      document.querySelectorAll("code.language-malda").forEach(function (el) {
+        let src = el.textContent || "";
+        src = escapeHtml(src);
+
+        // Use placeholders for every token type so regex never runs on markup.
+        const tokens = [];
+        function put(html) {
+          const key = "%%TOK" + tokens.length + "%%";
+          tokens.push(html);
+          return key;
+        }
+
+        function stash(pattern, cssClass, groupIndex) {
+          src = src.replace(pattern, function () {
+            const args = Array.prototype.slice.call(arguments);
+            const full = args[0];
+            const content = (groupIndex == null) ? full : args[groupIndex];
+            return put('<span class="' + cssClass + '">' + content + "</span>");
+          });
+        }
+
+        // Protect strings first, then comments.
+        // This avoids treating URL fragments like "https://..." as comments.
+        stash(/"""[\s\S]*?"""/g, "str");
+        stash(/"(?:\\.|[^"\\])*"/g, "str");
+        stash(/\/\/[^\n]*/g, "com");
+
+        // Then syntax tokens (still as placeholders).
+        stash(decRegex, "dec");
+        stash(keywordRegex, "k");
+        stash(typeRegex, "type");
+        stash(fnRegex, "fn");
+        stash(numRegex, "num");
+
+        // Restore placeholders recursively until stable.
+        let prev;
+        do {
+          prev = src;
+          src = src.replace(/%%TOK(\d+)%%/g, function (_, n) {
+            return tokens[Number(n)];
+          });
+        } while (src !== prev && /%%TOK\d+%%/.test(src));
+
+        el.innerHTML = src;
+      });
+    })();
+  </script>
+</body>
+</html>

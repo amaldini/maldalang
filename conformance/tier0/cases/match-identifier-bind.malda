@@ -1,0 +1,5 @@
+var x = 42;
+var result = match x {
+    case y: y + 10;
+};
+print(result);

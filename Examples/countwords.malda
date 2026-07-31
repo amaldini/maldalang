@@ -1,0 +1,30 @@
+function countWords(text) {
+    print("Debug: Input text: '" + text + "'");
+    if (text == null || text == "") {
+        print("Debug: Empty or null text, returning 0");
+        return 0;
+    }
+    var words = 0;
+    var inWord = false;
+    var i = 0;
+    while (i < length(text)) {
+        var char = substring(text, i, 1);
+        print("Debug: Processing character '" + char + "' at position " + i);
+        print("Non é spazio:"+(char != " "));
+        if (char != " " && char != "\t" && char != "\n") {
+            if (!inWord) {
+                words = words + 1;
+                print("Debug: Found new word, total words now: " + words);
+                inWord = true;
+            }
+        } else {
+            inWord = false;
+            print("Debug: Found whitespace, inWord set to false");
+        }
+        i = i + 1;
+    }
+    print("Debug: Final word count: " + words);
+    return words;
+}
+
+print(countWords("Quante sono queste parole"));

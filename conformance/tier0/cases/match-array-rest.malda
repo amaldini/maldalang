@@ -1,0 +1,6 @@
+var arr = [1, 2, 3, 4, 5];
+var result = match arr {
+    case [first, second, ...rest]: first + second + length(rest);
+    default: 0;
+};
+print(result);

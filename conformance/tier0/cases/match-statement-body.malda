@@ -1,0 +1,5 @@
+var x = 42;
+match x {
+    case 42: print("matched 42");
+    default: print("no match");
+}

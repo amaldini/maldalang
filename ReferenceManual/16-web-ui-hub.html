@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MALDA Web UI Overview - Choose server components, HttpServer pages, or browser JavaScript">
+    <title>19. Web UI Overview - MALDA Reference Manual</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="syntax.css">
+    <link rel="stylesheet" href="print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>MALDA&trade; Reference Manual</h1>
+        <p>The AI-First Programming Language - Version 0.1</p>
+    </header>
+    <nav></nav>
+    <main>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>19. Web UI Overview</span></div>
+        <h1>19. Web UI Overview</h1>
+
+        <p>MALDA supports more than one way to build user interfaces. The three models below share HTTP and routing concepts but target different runtimes and delivery styles. Start here before diving into a specific chapter.</p>
+
+        <div class="info-box">
+            <strong>Full-stack context:</strong> For how UI, API, database, and agents fit together, see <a href="30-full-stack-development.html">31. Full-Stack Development with MALDA</a>.
+        </div>
+
+        <h2>19.1 Choose your UI model</h2>
+
+        <table>
+            <tr>
+                <th>Model</th>
+                <th>Best for</th>
+                <th>Key constructs</th>
+                <th>Chapter</th>
+            </tr>
+            <tr>
+                <td><strong>Server components</strong></td>
+                <td>MALDA-native full stack with partial page updates, forms, and live SSE refresh</td>
+                <td><code>component</code>, <code>@ACTION</code>, <code>@LIVE</code>, <code>ui.*</code>, <code>componentState*</code></td>
+                <td><a href="16-web-ui.html">20. Web UI Server Components</a></td>
+            </tr>
+            <tr>
+                <td><strong>HttpServer pages</strong></td>
+                <td>Route-first apps that return full HTML documents, AI-generated pages, or classic server-rendered sites</td>
+                <td><code>HttpServer</code>, <code>@PAGE</code>, <code>@AIPAGE</code>, <code>HTMLCache</code>, <code>generateUI()</code></td>
+                <td><a href="16-http-server-html-ui.html">21. HttpServer &amp; HTML UI Generation</a></td>
+            </tr>
+            <tr>
+                <td><strong>Browser JavaScript</strong></td>
+                <td>UI that runs in the browser from MALDA transpiled to JavaScript (games, DOM apps, hybrid frontends)</td>
+                <td><code>dom.*</code>, template mode, <code>@client()</code>, canvas/game APIs</td>
+                <td><a href="16-browser-javascript-backend.html">22. Browser JavaScript UI Backend</a></td>
+            </tr>
+        </table>
+
+        <h2>19.2 Decision guide</h2>
+
+        <h3>Pick server components when…</h3>
+        <ul>
+            <li>You want server-rendered HTML with targeted fragment updates instead of full page reloads.</li>
+            <li>Forms post to <code>@ACTION</code> handlers and you need <code>@LIVE</code> push updates.</li>
+            <li>You are building a MALDA-native app and can keep UI logic on the server.</li>
+        </ul>
+
+        <h3>Pick HttpServer / @PAGE when…</h3>
+        <ul>
+            <li>Each request should return a complete HTML page or redirect.</li>
+            <li>You rely on <code>@AIPAGE</code> or <code>generateUI()</code> for LLM-generated HTML.</li>
+            <li>Your app is mostly document-oriented (dashboards, wizards, marketing pages).</li>
+        </ul>
+
+        <h3>Pick browser JavaScript when…</h3>
+        <ul>
+            <li>The UI must run client-side (canvas games, rich DOM interaction, offline-ish bundles).</li>
+            <li>You use a hybrid stack: MALDA backend API + MALDA or JS frontend bundle.</li>
+            <li>You need <code>@client()</code> / <code>@shared()</code> split from a single <code>.malda</code> source file.</li>
+        </ul>
+
+        <h2>19.3 How the models relate</h2>
+
+        <pre><code>                    ┌─────────────────────────────────────┐
+                    │         MALDA Web UI choices          │
+                    └─────────────────────────────────────┘
+                                      │
+          ┌───────────────────────────┼───────────────────────────┐
+          ▼                           ▼                           ▼
+   Server components            HttpServer / @PAGE           Browser JS backend
+   (server HTML +              (full pages + AI HTML)        (transpile to JS +
+    fragments + SSE)                                          dom.* / canvas)
+          │                           │                           │
+          └───────────────────────────┴───────────────────────────┘
+                                      │
+                              HTTP / REST API layer
+                         (see REST API + REST Web Client)</code></pre>
+
+        <p>You can combine models in one product: for example, <code>@PAGE</code> for marketing routes, server components for an authenticated app shell, and a browser JS bundle for a interactive widget. Keep API boundaries explicit—see <a href="17-rest-api.html">23. REST API Server</a> for JSON endpoints that any UI model can call.</p>
+
+        <h2>19.4 Runtime boundary reminder</h2>
+        <ul>
+            <li><strong>Server (interpreter or transpiled .exe):</strong> <code>HttpServer</code>, database clients, agents, server components, <code>@PAGE</code>.</li>
+            <li><strong>Browser (JS transpile):</strong> DOM helpers, canvas/game APIs, local actors—no direct SQL or filesystem on the server from browser code.</li>
+            <li><strong>Hybrid:</strong> browser UI calls MALDA REST routes; server keeps secrets and persistence.</li>
+        </ul>
+        <p>See <a href="25-tools.html">2. Tools &amp; Tooling</a> (Runtime modes at a glance) for interpreter vs transpile vs JavaScript trade-offs.</p>
+
+        <div class="see-also">
+            <h3>See Also</h3>
+            <ul>
+                <li><a href="16-web-ui.html">20. Web UI Server Components</a> - Components, actions, live updates</li>
+                <li><a href="16-http-server-html-ui.html">21. HttpServer &amp; HTML UI Generation</a> - @PAGE, @AIPAGE, HTML cache</li>
+                <li><a href="16-browser-javascript-backend.html">22. Browser JavaScript UI Backend</a> - JS transpile and dom.*</li>
+                <li><a href="30-full-stack-development.html">31. Full-Stack Development with MALDA</a> - End-to-end architecture</li>
+            </ul>
+        </div>
+
+        <div class="nav-footer">
+            <a href="15-database.html">← Previous: 18. Database Support</a>
+            <a href="16-web-ui.html">Next: 20. Web UI Server Components→</a>
+        </div>
+
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, at your option.</p>
+        </footer>
+    </main>
+    <script src="malda-highlight.js"></script>
+    <script src="navigation.js"></script>
+</body>
+</html>

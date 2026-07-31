@@ -1,0 +1,310 @@
+@using Markdig
+@using MaldaLang.IDE.Models
+@using MaldaLang.Testing
+
+<div class="output-panel">
+    @if (!string.IsNullOrEmpty(Error))
+    {
+        <div class="output-error">
+            <strong>Error:</strong> @Error
+        </div>
+    }
+    @if (_regressionRequest != null && OnCreateRegression.HasDelegate)
+    {
+        <div class="regression-action">
+            <button class="regression-button" @onclick="CreateRegressionAsync">Create Regression</button>
+            <span class="regression-hint">@GetRegressionHint()</span>
+        </div>
+    }
+    <div class="output-content">
+        @if (string.IsNullOrEmpty(Output))
+        {
+            <div class="output-placeholder">No output yet. Run your program to see output here.</div>
+        }
+        else
+        {
+            @if (IsMarkdown(Output))
+            {
+                <div class="markdown-content">@((MarkupString)RenderMarkdown(Output))</div>
+            }
+            else
+            {
+                <pre>@Output</pre>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Output { get; set; } = "";
+    [Parameter] public string? Error { get; set; }
+    [Parameter] public EventCallback<PropertyRegressionArtifactRequest> OnCreateRegression { get; set; }
+
+    private PropertyRegressionArtifactRequest? _regressionRequest;
+
+    protected override void OnParametersSet()
+    {
+        _regressionRequest = PropertyRegressionArtifactSupport.TryExtractFromOutput(Output, out var request)
+            ? request
+            : null;
+    }
+
+    private async Task CreateRegressionAsync()
+    {
+        if (_regressionRequest == null || !OnCreateRegression.HasDelegate)
+        {
+            return;
+        }
+
+        await OnCreateRegression.InvokeAsync(_regressionRequest);
+    }
+
+    private string GetRegressionHint()
+    {
+        if (_regressionRequest == null)
+        {
+            return string.Empty;
+        }
+
+        var fileName = _regressionRequest.RecommendedRegressionFileName;
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            fileName = PropertyRegressionArtifactSupport.BuildRecommendedFileName(_regressionRequest);
+        }
+
+        return $"from CI payload ({fileName})";
+    }
+
+    private bool IsMarkdown(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return false;
+        
+        // More strict markdown detection - only detect actual markdown structures
+        // Check for markdown patterns that indicate structured content, not just any text with * or #
+        var trimmed = text.TrimStart();
+        
+        // Check for headings at the start of lines
+        if (System.Text.RegularExpressions.Regex.IsMatch(trimmed, @"^#{1,6}\s+\w", System.Text.RegularExpressions.RegexOptions.Multiline))
+            return true;
+        
+        // Check for code blocks
+        if (trimmed.Contains("```"))
+            return true;
+        
+        // Check for horizontal rules (--- on its own line)
+        if (System.Text.RegularExpressions.Regex.IsMatch(trimmed, @"^---+$", System.Text.RegularExpressions.RegexOptions.Multiline))
+            return true;
+        
+        // Check for markdown lists (lines starting with - or * or numbers)
+        if (System.Text.RegularExpressions.Regex.IsMatch(trimmed, @"^[\s]*[-*+]\s+\w", System.Text.RegularExpressions.RegexOptions.Multiline))
+            return true;
+        if (System.Text.RegularExpressions.Regex.IsMatch(trimmed, @"^[\s]*\d+\.\s+\w", System.Text.RegularExpressions.RegexOptions.Multiline))
+            return true;
+        
+        // Check for markdown tables
+        if (trimmed.Contains("|") && trimmed.Contains("---"))
+            return true;
+        
+        // Check for blockquotes
+        if (System.Text.RegularExpressions.Regex.IsMatch(trimmed, @"^>\s+\w", System.Text.RegularExpressions.RegexOptions.Multiline))
+            return true;
+        
+        return false;
+    }
+    
+    private string RenderMarkdown(string markdown)
+    {
+        var normalized = markdown.Replace("\r\n", "\n").Replace("\r", "\n");
+        
+        // Convert single newlines to markdown hard breaks (two spaces + newline)
+        // This preserves newlines from print statements while still allowing markdown formatting
+        var processedMarkdown = System.Text.RegularExpressions.Regex.Replace(
+            normalized,
+            @"(?<!\n)\n(?!\n)",
+            "  \n" // Two spaces before newline = hard break in markdown
+        );
+        
+        var pipeline = new MarkdownPipelineBuilder()
+            .UseAdvancedExtensions()
+            .Build();
+        
+        var html = Markdown.ToHtml(processedMarkdown, pipeline);
+        
+        // Post-process: Replace any remaining newlines outside of code/pre blocks with <br>
+        // Split by code/pre blocks, process text parts, then reassemble
+        var parts = System.Text.RegularExpressions.Regex.Split(html, @"(<pre[^>]*>.*?</pre>|<code[^>]*>.*?</code>)", System.Text.RegularExpressions.RegexOptions.Singleline | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        var result = new System.Text.StringBuilder();
+        foreach (var part in parts)
+        {
+            if (System.Text.RegularExpressions.Regex.IsMatch(part, @"^<(pre|code)", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+            {
+                // Keep code/pre blocks as-is
+                result.Append(part);
+            }
+            else
+            {
+                // Replace newlines with <br> in text content
+                result.Append(part.Replace("\n", "<br>"));
+            }
+        }
+        
+        return result.ToString();
+    }
+}
+
+<style>
+    .output-panel {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        color: #ccc;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 12px;
+    }
+    
+    .output-error {
+        padding: 8px;
+        background: #5a1d1d;
+        color: #ff6b6b;
+        border-bottom: 1px solid #444;
+    }
+    
+    .output-content {
+        flex: 1;
+        overflow: auto;
+        padding: 8px;
+    }
+
+    .regression-action {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px;
+        border-bottom: 1px solid #444;
+        background: #2d2d2d;
+    }
+
+    .regression-button {
+        background: #1976d2;
+        border: 1px solid #1565c0;
+        border-radius: 4px;
+        color: #fff;
+        cursor: pointer;
+        font-size: 12px;
+        padding: 4px 8px;
+    }
+
+    .regression-button:hover {
+        background: #1565c0;
+    }
+
+    .regression-hint {
+        color: #999;
+        font-size: 11px;
+    }
+    
+    .output-content pre {
+        margin: 0;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+    
+    .markdown-content {
+        color: #ccc;
+        line-height: 1.6;
+    }
+    
+    .markdown-content p {
+        white-space: pre-wrap;
+        margin: 0.5em 0;
+    }
+    
+    .markdown-content br {
+        display: block;
+        content: "";
+        margin-top: 0.5em;
+    }
+    
+    .markdown-content h1,
+    .markdown-content h2,
+    .markdown-content h3,
+    .markdown-content h4,
+    .markdown-content h5,
+    .markdown-content h6 {
+        color: #fff;
+        margin-top: 1em;
+        margin-bottom: 0.5em;
+    }
+    
+    .markdown-content h1 { font-size: 1.8em; }
+    .markdown-content h2 { font-size: 1.5em; }
+    .markdown-content h3 { font-size: 1.3em; }
+    
+    .markdown-content code {
+        background: #2d2d2d;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-family: 'Consolas', 'Monaco', monospace;
+    }
+    
+    .markdown-content pre {
+        background: #2d2d2d;
+        padding: 12px;
+        border-radius: 4px;
+        overflow-x: auto;
+        margin: 1em 0;
+    }
+    
+    .markdown-content pre code {
+        background: transparent;
+        padding: 0;
+    }
+    
+    .markdown-content blockquote {
+        border-left: 4px solid #555;
+        padding-left: 1em;
+        margin: 1em 0;
+        color: #aaa;
+    }
+    
+    .markdown-content table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 1em 0;
+    }
+    
+    .markdown-content table th,
+    .markdown-content table td {
+        border: 1px solid #555;
+        padding: 8px;
+    }
+    
+    .markdown-content table th {
+        background: #2d2d2d;
+        font-weight: bold;
+    }
+    
+    .markdown-content a {
+        color: #4a9eff;
+        text-decoration: none;
+    }
+    
+    .markdown-content a:hover {
+        text-decoration: underline;
+    }
+    
+    .markdown-content ul,
+    .markdown-content ol {
+        margin: 1em 0;
+        padding-left: 2em;
+    }
+    
+    .markdown-content li {
+        margin: 0.5em 0;
+    }
+    
+    .output-placeholder {
+        color: #666;
+        font-style: italic;
+    }
+</style>

@@ -1,0 +1,529 @@
+// Story-driven web adventure using a match-based state machine and ui.* view trees.
+
+var sessionId = "adventure-fsm";
+
+function makeIntro() {
+    return {"kind": "Intro"};
+}
+
+function makeExploring(room, hp, inventory, flags, log) {
+    return {"kind": "Exploring", "room": room, "hp": hp, "inventory": inventory, "flags": flags, "log": log};
+}
+
+function makeWon(ending) {
+    return {"kind": "Won", "ending": ending};
+}
+
+function makeLost(reason) {
+    return {"kind": "Lost", "reason": reason};
+}
+
+function getGameState() {
+    return ui.state("AdventureStore", "gameState", makeIntro(), sessionId);
+}
+
+function setGameState(state) {
+    ui.setState("AdventureStore", "gameState", state, sessionId);
+}
+
+function asString(value) {
+    if (value == null) return "";
+    return string(value);
+}
+
+function hasItem(inventory, item) {
+    for (var i = 0; i < inventory.length; i = i + 1) {
+        if (inventory[i] == item) return true;
+    }
+    return false;
+}
+
+function addItem(inventory, item) {
+    if (hasItem(inventory, item)) return inventory;
+    var next = [];
+    for (var i = 0; i < inventory.length; i = i + 1) {
+        next.append(inventory[i]);
+    }
+    next.append(item);
+    return next;
+}
+
+function copyFlags(flags) {
+    return {
+        "gear": flags.gear == true,
+        "lens": flags.lens == true,
+        "cipher": flags.cipher == true
+    };
+}
+
+function withFlag(flags, name, value) {
+    var next = copyFlags(flags);
+    if (name == "gear") next.gear = value;
+    else if (name == "lens") next.lens = value;
+    else if (name == "cipher") next.cipher = value;
+    return next;
+}
+
+function pushLog(log, message) {
+    var next = [];
+    for (var i = 0; i < log.length; i = i + 1) {
+        next.append(log[i]);
+    }
+    next.append(message);
+    return next;
+}
+
+function roomDescription(room) {
+    if (room == "Atrium") {
+        return "An abandoned marble hall. Rain taps the glass dome while portraits stare from the shadows.";
+    }
+    if (room == "Clockwork Gallery") {
+        return "Brass automata line the walls. One machine twitches as if trying to remember a forgotten dance.";
+    }
+    if (room == "Whispering Library") {
+        return "Tall shelves bend inward. A silver raven repeats a riddle whenever the wind turns the pages.";
+    }
+    if (room == "Lunar Observatory") {
+        return "A cracked telescope points to a painted moon. Three empty sockets await missing components.";
+    }
+    if (room == "Vault") {
+        return "A circular steel door hums with old power. A glowing panel asks for the final word.";
+    }
+    return "A silent corridor between stories.";
+}
+
+function inventoryText(inventory) {
+    if (inventory.length == 0) return "empty";
+    var text = "";
+    for (var i = 0; i < inventory.length; i = i + 1) {
+        if (i > 0) text = text + ", ";
+        text = text + inventory[i];
+    }
+    return text;
+}
+
+function logText(log) {
+    if (log.length == 0) return "none";
+    var start = log.length > 4 ? log.length - 4 : 0;
+    var text = "";
+    for (var i = start; i < log.length; i = i + 1) {
+        if (text != "") text = text + " | ";
+        text = text + log[i];
+    }
+    return text;
+}
+
+function actionToRoom(action) {
+    if (action == "move_atrium") return "Atrium";
+    if (action == "move_gallery") return "Clockwork Gallery";
+    if (action == "move_library") return "Whispering Library";
+    if (action == "move_observatory") return "Lunar Observatory";
+    if (action == "move_vault") return "Vault";
+    return "";
+}
+
+function transitionMove(room, hp, inventory, flags, log, destination) {
+    if (destination == "Vault" && flags.cipher != true) {
+        return makeExploring(
+            room,
+            hp,
+            inventory,
+            flags,
+            pushLog(log, "The vault panel is dark. The observatory might power it.")
+        );
+    }
+    return makeExploring(destination, hp, inventory, flags, pushLog(log, "You enter the " + destination + "."));
+}
+
+function transitionSearchGallery(hp, inventory, flags, log) {
+    if (flags.gear == true) {
+        return makeExploring("Clockwork Gallery", hp, inventory, flags, pushLog(log, "Only dust and ticking echoes remain."));
+    }
+    return makeExploring(
+        "Clockwork Gallery",
+        hp,
+        addItem(inventory, "Brass Gear"),
+        withFlag(flags, "gear", true),
+        pushLog(log, "Inside a broken automaton, you recover a Brass Gear etched with stars.")
+    );
+}
+
+function transitionSearchLibrary(hp, inventory, flags, log) {
+    return makeExploring(
+        "Whispering Library",
+        hp,
+        inventory,
+        flags,
+        pushLog(log, "Riddle: 'Born in silence, gone in light, kept alive by moonless night.'")
+    );
+}
+
+function transitionSolveLibrary(hp, inventory, flags, log, answer) {
+    if (flags.lens == true) {
+        return makeExploring("Whispering Library", hp, inventory, flags, pushLog(log, "The raven already trusts you."));
+    }
+    var normalized = lower(asString(answer));
+    if (normalized == "shadow" || normalized == "a shadow") {
+        return makeExploring(
+            "Whispering Library",
+            hp,
+            addItem(inventory, "Silver Lens"),
+            withFlag(flags, "lens", true),
+            pushLog(log, "Correct. The raven drops a Silver Lens into your hand.")
+        );
+    }
+    return makeExploring("Whispering Library", hp, inventory, flags, pushLog(log, "Wrong answer. The raven clicks in disappointment."));
+}
+
+function transitionSearchObservatory(hp, inventory, flags, log) {
+    if (flags.gear == true && flags.lens == true && flags.cipher != true) {
+        return makeExploring(
+            "Lunar Observatory",
+            hp,
+            addItem(inventory, "Star Cipher"),
+            withFlag(flags, "cipher", true),
+            pushLog(log, "You repair the telescope. Moonlight reveals the vault word: STELLA.")
+        );
+    }
+    if (flags.cipher == true) {
+        return makeExploring("Lunar Observatory", hp, inventory, flags, pushLog(log, "The telescope points toward the vault."));
+    }
+    return makeExploring(
+        "Lunar Observatory",
+        hp,
+        inventory,
+        flags,
+        pushLog(log, "The mechanism needs a Brass Gear and a Silver Lens.")
+    );
+}
+
+function transitionSolveVault(hp, inventory, flags, log, answer) {
+    if (flags.cipher == true && lower(asString(answer)) == "stella") {
+        return makeWon("The vault opens. You claim the Astral Core and the manor exhales.");
+    }
+    var nextHp = hp - 1;
+    if (nextHp <= 0) {
+        return makeLost("The vault wards overwhelm you. Dawn arrives before the core is found.");
+    }
+    return makeExploring("Vault", nextHp, inventory, flags, pushLog(log, "Wrong code. Arc-light surges through the room."));
+}
+
+function transitionSearchVault(hp, inventory, flags, log) {
+    if (flags.cipher == true) {
+        return makeExploring("Vault", hp, inventory, flags, pushLog(log, "A constellation mark pulses with the word STELLA."));
+    }
+    return makeExploring("Vault", hp, inventory, flags, pushLog(log, "The panel is unreadable without a celestial alignment."));
+}
+
+function transitionSearchByRoom(room, hp, inventory, flags, log) {
+    if (room == "Clockwork Gallery") return transitionSearchGallery(hp, inventory, flags, log);
+    if (room == "Whispering Library") return transitionSearchLibrary(hp, inventory, flags, log);
+    if (room == "Lunar Observatory") return transitionSearchObservatory(hp, inventory, flags, log);
+    if (room == "Vault") return transitionSearchVault(hp, inventory, flags, log);
+    return makeExploring(room, hp, inventory, flags, pushLog(log, "You find only dust and old footprints."));
+}
+
+function transitionSolveByRoom(room, hp, inventory, flags, log, answer) {
+    if (room == "Whispering Library") return transitionSolveLibrary(hp, inventory, flags, log, answer);
+    if (room == "Vault") return transitionSolveVault(hp, inventory, flags, log, answer);
+    return makeExploring(room, hp, inventory, flags, pushLog(log, "There is no puzzle interface in this room."));
+}
+
+function transition(state, action, answer) {
+    return match state {
+        case { kind: "Intro" }:
+            match action {
+                case "start":
+                    makeExploring(
+                        "Atrium",
+                        3,
+                        [],
+                        {"gear": false, "lens": false, "cipher": false},
+                        ["Night falls over Asterfall Manor. Find the Astral Core before dawn."]
+                    );
+                default:
+                    state;
+            };
+
+        case { kind: "Exploring", room: room, hp: hp, inventory: inventory, flags: flags, log: log }:
+            match action {
+                case "search":
+                    transitionSearchByRoom(room, hp, inventory, flags, log);
+                case "solve":
+                    transitionSolveByRoom(room, hp, inventory, flags, log, answer);
+                case "quit":
+                    makeLost("You leave Asterfall Manor behind. Some doors remain closed forever.");
+                case "move_atrium":
+                    transitionMove(room, hp, inventory, flags, log, actionToRoom(action));
+                case "move_gallery":
+                    transitionMove(room, hp, inventory, flags, log, actionToRoom(action));
+                case "move_library":
+                    transitionMove(room, hp, inventory, flags, log, actionToRoom(action));
+                case "move_observatory":
+                    transitionMove(room, hp, inventory, flags, log, actionToRoom(action));
+                case "move_vault":
+                    transitionMove(room, hp, inventory, flags, log, actionToRoom(action));
+                default:
+                    state;
+            };
+
+        case { kind: "Won", ending: _ }:
+            match action {
+                case "restart":
+                    makeIntro();
+                default:
+                    state;
+            };
+
+        case { kind: "Lost", reason: _ }:
+            match action {
+                case "restart":
+                    makeIntro();
+                default:
+                    state;
+            };
+    };
+}
+
+function describeIntro() {
+    return {
+        "title": "Asterfall Manor",
+        "story": "Storm clouds swallow the moon. Press Start to begin your night in the manor.",
+        "room": "",
+        "hp": 3,
+        "inventoryText": "empty",
+        "logText": "none",
+        "goal": "Recover the Astral Core hidden behind the vault."
+    };
+}
+
+function describeExploring(room, hp, inventory, flags, log) {
+    return {
+        "title": "Asterfall Manor - " + room,
+        "story": roomDescription(room),
+        "room": room,
+        "hp": hp,
+        "inventoryText": inventoryText(inventory),
+        "logText": logText(log),
+        "goal": flags.cipher == true ? "Enter STELLA in the Vault panel." : "Collect clues and power the observatory."
+    };
+}
+
+function describeWon(ending) {
+    return {
+        "title": "Victory",
+        "story": ending,
+        "room": "",
+        "hp": 3,
+        "inventoryText": "Legendary haul",
+        "logText": "The Astral Core is secure.",
+        "goal": "Press Restart to play another route."
+    };
+}
+
+function describeLost(reason) {
+    return {
+        "title": "Game Over",
+        "story": reason,
+        "room": "",
+        "hp": 0,
+        "inventoryText": "Scattered in the dark",
+        "logText": "Press Restart and try a different sequence.",
+        "goal": "You can still solve the manor."
+    };
+}
+
+function describeState(state) {
+    return match state {
+        case { kind: "Intro" }:
+            describeIntro();
+
+        case { kind: "Exploring", room: room, hp: hp, inventory: inventory, flags: flags, log: log }:
+            describeExploring(room, hp, inventory, flags, log);
+
+        case { kind: "Won", ending: ending }:
+            describeWon(ending);
+
+        case { kind: "Lost", reason: reason }:
+            describeLost(reason);
+    };
+}
+
+function buildView(state) {
+    var vm = describeState(state);
+    return ui.column(
+        {"componentId": "AdventureRoot", "className": "adventure-root"},
+        [
+            ui.heading({"value": vm.title}),
+            ui.text({"value": vm.story}),
+            ui.text({"value": "Goal: " + vm.goal}),
+            ui.text({"value": vm.room == "" ? "Room: (not entered)" : "Room: " + vm.room}),
+            ui.progress({"value": vm.hp, "max": 3}),
+            ui.text({"value": "Inventory: " + vm.inventoryText}),
+            ui.text({"value": "Recent clues: " + vm.logText}),
+            ui.textField({"name": "answer", "placeholder": "Puzzle answer (e.g. shadow, stella)"}),
+            ui.row({}, [
+                ui.button({"label": "Start", "onClick": "start"}),
+                ui.button({"label": "Search", "onClick": "search"}),
+                ui.button({"label": "Solve", "onClick": "solve"}),
+                ui.button({"label": "Quit", "onClick": "quit"}),
+                ui.button({"label": "Restart", "onClick": "restart"})
+            ]),
+            ui.row({}, [
+                ui.button({"label": "Atrium", "onClick": "move_atrium"}),
+                ui.button({"label": "Gallery", "onClick": "move_gallery"}),
+                ui.button({"label": "Library", "onClick": "move_library"}),
+                ui.button({"label": "Observatory", "onClick": "move_observatory"}),
+                ui.button({"label": "Vault", "onClick": "move_vault"})
+            ])
+        ]
+    );
+}
+
+function snapshotPayload() {
+    var state = getGameState();
+    var tree = buildView(state);
+    var mounted = ui.mount(tree, sessionId);
+    var patch = ui.render(tree, sessionId);
+    return {
+        "viewModel": describeState(state),
+        "mount": mounted,
+        "patch": patch,
+        "snapshot": ui.snapshot(sessionId),
+        "resync": ui.resync(sessionId)
+    };
+}
+
+@GET("/web/api/adventure-fsm/state")
+function adventureStateApi() {
+    return {"status": 200, "data": snapshotPayload()};
+}
+
+@POST("/web/api/adventure-fsm/event")
+function adventureEventApi(body) {
+    var action = asString(body.action);
+    var answer = asString(body.answer);
+    var state = getGameState();
+    setGameState(transition(state, lower(action), answer));
+    return {"status": 200, "data": snapshotPayload()};
+}
+
+@POST("/web/api/adventure-fsm/reset")
+function adventureResetApi() {
+    setGameState(makeIntro());
+    return {"status": 200, "data": snapshotPayload()};
+}
+
+function roomLink(action, label) {
+    return "<a class='btn room' href='/web/adventure-fsm/" + action + "'>" + label + "</a>";
+}
+
+function applyAction(action, answer) {
+    try {
+        var state = getGameState();
+        setGameState(transition(state, lower(asString(action)), asString(answer)));
+    } catch (e) {
+        setGameState(makeLost("Engine error while handling action '" + asString(action) + "': " + asString(e)));
+    }
+}
+
+function safeViewModel(state) {
+    try {
+        return describeState(state);
+    } catch (e) {
+        return {
+            "title": "Game Error",
+            "story": "A runtime error occurred while building the view.",
+            "room": "",
+            "hp": 0,
+            "inventoryText": "unavailable",
+            "logText": asString(e),
+            "goal": "Press Restart. If error persists, report this message."
+        };
+    }
+}
+
+@PAGE("/web/adventure-fsm/start")
+function adventureStartPage() {
+    applyAction("start", "");
+    return RedirectTo("/web/adventure-fsm");
+}
+
+@PAGE("/web/adventure-fsm/search")
+function adventureSearchPage() {
+    applyAction("search", "");
+    return RedirectTo("/web/adventure-fsm");
+}
+
+@PAGE("/web/adventure-fsm/quit")
+function adventureQuitPage() {
+    applyAction("quit", "");
+    return RedirectTo("/web/adventure-fsm");
+}
+
+@PAGE("/web/adventure-fsm/restart")
+function adventureRestartPage() {
+    applyAction("restart", "");
+    return RedirectTo("/web/adventure-fsm");
+}
+
+@PAGE("/web/adventure-fsm/move_atrium")
+function adventureMoveAtriumPage() {
+    applyAction("move_atrium", "");
+    return RedirectTo("/web/adventure-fsm");
+}
+
+@PAGE("/web/adventure-fsm/move_gallery")
+function adventureMoveGalleryPage() {
+    applyAction("move_gallery", "");
+    return RedirectTo("/web/adventure-fsm");
+}
+
+@PAGE("/web/adventure-fsm/move_library")
+function adventureMoveLibraryPage() {
+    applyAction("move_library", "");
+    return RedirectTo("/web/adventure-fsm");
+}
+
+@PAGE("/web/adventure-fsm/move_observatory")
+function adventureMoveObservatoryPage() {
+    applyAction("move_observatory", "");
+    return RedirectTo("/web/adventure-fsm");
+}
+
+@PAGE("/web/adventure-fsm/move_vault")
+function adventureMoveVaultPage() {
+    applyAction("move_vault", "");
+    return RedirectTo("/web/adventure-fsm");
+}
+
+@POST("/web/adventure-fsm/solve")
+function adventureSolvePage(body) {
+    applyAction("solve", asString(body.answer));
+    return RedirectTo("/web/adventure-fsm");
+}
+
+@PAGE("/web/adventure-fsm")
+function adventurePage() {
+    var state = getGameState();
+    var vm = safeViewModel(state);
+    var html = "<!DOCTYPE html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Asterfall Manor Adventure</title>";
+    html = html + "<style>body{font-family:Arial,sans-serif;background:#0f1220;color:#e8ebff;margin:0;padding:24px}main{max-width:860px;margin:0 auto}h1{margin:0 0 10px}p{line-height:1.5}.card{background:#1a1f36;border:1px solid #2b335a;border-radius:12px;padding:16px;margin:12px 0}.row{display:flex;gap:8px;flex-wrap:wrap}.btn{display:inline-block;padding:8px 12px;border-radius:8px;border:1px solid #3a4472;background:#20284a;color:#fff;text-decoration:none}.btn.room{background:#263057}.answer{padding:8px;border-radius:8px;border:1px solid #3a4472;background:#10152b;color:#fff;width:260px}code{color:#96d6ff}</style>";
+    html = html + "</head><body><main>";
+    html = html + "<h1>Asterfall Manor</h1><p>Story + puzzle + room navigation powered by a MALDA <code>match [state, event]</code> machine.</p>";
+    html = html + "<div class='card'><h2>" + asString(vm.title) + "</h2><p>" + asString(vm.story) + "</p><p><strong>Goal:</strong> " + asString(vm.goal) + "</p><p><strong>Room:</strong> " + (asString(vm.room) == "" ? "(not entered)" : asString(vm.room)) + " | <strong>Vitality:</strong> " + asString(vm.hp) + "/3</p><p><strong>Inventory:</strong> " + asString(vm.inventoryText) + "</p><p><strong>Recent clues:</strong> " + asString(vm.logText) + "</p></div>";
+    html = html + "<div class='card'><div class='row'><a class='btn' href='/web/adventure-fsm/start'>Start</a><a class='btn' href='/web/adventure-fsm/search'>Search</a><a class='btn' href='/web/adventure-fsm/quit'>Quit</a><a class='btn' href='/web/adventure-fsm/restart'>Restart</a></div>";
+    html = html + "<div class='row' style='margin-top:8px'>" + roomLink("move_atrium", "Atrium") + roomLink("move_gallery", "Gallery") + roomLink("move_library", "Library") + roomLink("move_observatory", "Observatory") + roomLink("move_vault", "Vault") + "</div>";
+    html = html + "<form method='post' action='/web/adventure-fsm/solve' style='margin-top:10px'><input class='answer' name='answer' placeholder='Type puzzle answer'><button class='btn' type='submit'>Solve Puzzle</button></form></div>";
+    html = html + "<div class='card'><p>API endpoints:</p><p><code>GET /web/api/adventure-fsm/state</code></p><p><code>POST /web/api/adventure-fsm/event</code> with {\"action\":\"...\",\"answer\":\"...\"}</p></div>";
+    html = html + "</main></body></html>";
+    return html;
+}
+
+var server = new HttpServer(39017);
+server.start();
+print("Open: http://localhost:39017/web/adventure-fsm");
+
+while (server.isRunning) {
+    sleep(1000);
+}

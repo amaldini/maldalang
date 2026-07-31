@@ -1,0 +1,31 @@
+class Person {
+    var name;
+    var age;
+    
+    function Person(name, age) {
+        this.name = name;  // 'this.' required due to parameter name conflict
+        this.age = age;   // 'this.' required due to parameter name conflict
+    }
+    
+    function introduce() {
+        // Implicit member access - no 'this.' needed
+        print($"Hi, I'm {name} and I'm {age} years old");
+    }
+    
+    function getAge() {
+        return age;  // Implicit member access
+    }
+    
+    function setAge(newAge) {
+        age = newAge;  // Implicit member access (no name conflict)
+    }
+}
+
+var person1 = new Person("Alice", 30);
+var person2 = new Person("Bob", 25);
+
+person1.introduce();
+person2.introduce();
+print($"Alice's age: {person1.getAge()}");
+person1.setAge(31);
+print($"Alice's new age: {person1.getAge()}");

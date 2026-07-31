@@ -1,0 +1,72 @@
+// Spectre.Console Tree Example
+// Demonstrates hierarchical tree structures
+
+// Simple tree with flat list
+AnsiConsole.tree("Project Structure", [
+  "src/main.malda",
+  "src/utils.malda",
+  "README.md",
+  "LICENSE"
+]);
+
+AnsiConsole.markupLine("");
+
+// Tree with nested structure
+AnsiConsole.tree("File System", [
+  {
+    "label": "Documents",
+    "children": [
+      "report.pdf",
+      "presentation.pptx",
+      {
+        "label": "Projects",
+        "children": [
+          "project1/",
+          "project2/"
+        ]
+      }
+    ]
+  },
+  {
+    "label": "Pictures",
+    "children": [
+      "vacation.jpg",
+      "family.png"
+    ]
+  },
+  {
+    "label": "Music",
+    "children": [
+      "song1.mp3",
+      "song2.mp3"
+    ]
+  }
+]);
+
+AnsiConsole.markupLine("");
+
+// Code structure tree
+AnsiConsole.tree("Application Structure", [
+  {
+    "label": "src/",
+    "children": [
+      {
+        "label": "components/",
+        "children": [
+          "Button.malda",
+          "Input.malda"
+        ]
+      },
+      {
+        "label": "utils/",
+        "children": [
+          "helpers.malda",
+          "validators.malda"
+        ]
+      },
+      "main.malda"
+    ]
+  },
+  "tests/",
+  "config.json"
+]);

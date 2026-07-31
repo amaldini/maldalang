@@ -1,0 +1,34 @@
+// Spectre.Console Table Example
+// Demonstrates displaying data in tables
+
+// Simple table with array of objects
+var users = [
+  {"name": "Alice", "age": 30, "city": "New York"},
+  {"name": "Bob", "age": 25, "city": "London"},
+  {"name": "Charlie", "age": 35, "city": "Tokyo"}
+];
+
+AnsiConsole.table(users, "User Information", ["name", "age", "city"]);
+
+AnsiConsole.markupLine("");
+
+// Table with array of arrays (first row as headers)
+var sales = [
+  ["Product", "Q1", "Q2", "Q3", "Q4"],
+  ["Widget A", "100", "150", "120", "180"],
+  ["Widget B", "200", "180", "220", "250"],
+  ["Widget C", "150", "160", "140", "170"]
+];
+
+AnsiConsole.table(sales, "Sales Report");
+
+AnsiConsole.markupLine("");
+
+// Table with custom column order
+var employees = [
+  {"id": 1, "name": "Alice", "department": "Engineering", "salary": 95000},
+  {"id": 2, "name": "Bob", "department": "Marketing", "salary": 75000},
+  {"id": 3, "name": "Charlie", "department": "Engineering", "salary": 105000}
+];
+
+AnsiConsole.table(employees, "Employee Directory", ["name", "department", "salary"]);

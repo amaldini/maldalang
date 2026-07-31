@@ -1,0 +1,382 @@
+// Default assistant script for "malda agent" and "malda agent -m \"...\""
+// Uses ~/.malda/config.json if present; otherwise environment variables.
+// One-shot if MALDA_AGENT_MESSAGE is set; otherwise interactive.
+// Persistent memory stored under ~/.malda/memory/assistant.*
+// Telegram (-c telegram): MALDA_CHAT_ID is set per message; agent scopes memory to chat:{id}.
+//
+var config = getMaldaConfig();
+
+// Backend selection:
+// - MALDA_AGENT_BACKEND env var overrides config
+// - config.agents.defaults.backend if present
+// - defaults to "openrouter"
+var backendOverride = getEnv("MALDA_AGENT_BACKEND");
+var backend = "openrouter";
+if (backendOverride != null && backendOverride != "") {
+    backend = backendOverride;
+} else if (config != null && config.agents != null && config.agents.defaults != null && config.agents.defaults.backend != null && config.agents.defaults.backend != "") {
+    backend = config.agents.defaults.backend;
+}
+
+var client = null;
+
+if (backend == "local-llama") {
+    // Local llama.cpp backend using LlamaCppClient
+    if (config == null || config.providers == null || config.providers.local_llama == null || config.providers.local_llama.modelPath == null || config.providers.local_llama.modelPath == "") {
+        print("Backend 'local-llama' selected but providers.local_llama.modelPath is not configured in ~/.malda/config.json");
+    } else {
+        var localCfg = config.providers.local_llama;
+        var modelPath = localCfg.modelPath;
+
+        // Optional second argument: context length
+        if (localCfg.contextLength != null && localCfg.contextLength > 0) {
+            client = new LlamaCppClient(modelPath, localCfg.contextLength);
+        } else {
+            client = new LlamaCppClient(modelPath);
+        }
+
+        // Optional tuning parameters
+        if (localCfg.temperature != null && localCfg.temperature != 0) {
+            client.setTemperature(localCfg.temperature);
+        }
+        if (localCfg.maxTokens != null && localCfg.maxTokens > 0) {
+            client.setMaxTokens(localCfg.maxTokens);
+        }
+        if (localCfg.gpuLayers != null && localCfg.gpuLayers >= 0) {
+            client.setGpuLayerCount(localCfg.gpuLayers);
+        }
+    }
+} else {
+    // OpenRouter (default) or unknown backend
+    if (backend != "openrouter") {
+        print("Unknown backend '" + backend + "', falling back to 'openrouter'.");
+    }
+
+    var apiKey = getEnv("OPENROUTER_API_KEY");
+    if (config != null && config.providers != null && config.providers.openrouter != null && config.providers.openrouter.apiKey != null && config.providers.openrouter.apiKey != "") {
+        apiKey = config.providers.openrouter.apiKey;
+    }
+    if (apiKey == null || apiKey == "") {
+        print("Set OPENROUTER_API_KEY or add providers.openrouter.apiKey to ~/.malda/config.json");
+    } else {
+        var model = null;
+        // Prefer agents.defaults.model if set
+        if (config != null && config.agents != null && config.agents.defaults != null && config.agents.defaults.model != null && config.agents.defaults.model != "") {
+            model = config.agents.defaults.model;
+        }
+        // Allow providers.openrouter.model to override if present
+        if (config != null && config.providers != null && config.providers.openrouter != null && config.providers.openrouter.model != null && config.providers.openrouter.model != "") {
+            model = config.providers.openrouter.model;
+        }
+        client = model != null ? new OpenRouterClient(model) : new OpenRouterClient();
+    }
+}
+
+function resolveActiveMemoryScope() {
+    var scope = getEnv("MALDA_MEMORY_SCOPE");
+    if (scope != null && scope != "") {
+        return scope;
+    }
+    var chatId = getEnv("MALDA_CHAT_ID");
+    if (chatId != null && chatId != "") {
+        return "chat:" + chatId;
+    }
+    return "";
+}
+
+var memorySaveCounter = 0;
+
+function memoryReflectEnabled(cfg) {
+    var reflectEnv = getEnv("MALDA_MEMORY_REFLECT");
+    if (reflectEnv == "1") {
+        return true;
+    }
+    if (cfg != null && cfg.agents != null && cfg.agents.memory != null && cfg.agents.memory.reflectEnabled == true) {
+        return true;
+    }
+    return false;
+}
+
+function memoryReflectAsyncEnabled(cfg) {
+    var env = getEnv("MALDA_MEMORY_REFLECT_ASYNC");
+    if (env == "0" || env == "false") {
+        return false;
+    }
+    if (env == "1" || env == "true") {
+        return true;
+    }
+    if (cfg != null && cfg.agents != null && cfg.agents.memory != null && cfg.agents.memory.reflectAsync == false) {
+        return false;
+    }
+    return true;
+}
+
+function memoryReflectDue(cfg) {
+    if (!memoryReflectEnabled(cfg)) {
+        return false;
+    }
+    var reflectEvery = 1;
+    if (cfg != null && cfg.agents != null && cfg.agents.memory != null && cfg.agents.memory.reflectEveryNSaves != null && cfg.agents.memory.reflectEveryNSaves > 1) {
+        reflectEvery = cfg.agents.memory.reflectEveryNSaves;
+    }
+    return (memorySaveCounter % reflectEvery) == 0;
+}
+
+function buildReflectOpts(activeScope, cfg) {
+    var consolidateMin = 3;
+    if (cfg != null && cfg.agents != null && cfg.agents.memory != null && cfg.agents.memory.consolidateMinEpisodic != null && cfg.agents.memory.consolidateMinEpisodic > 0) {
+        consolidateMin = cfg.agents.memory.consolidateMinEpisodic;
+    }
+    var opts = dict {
+        "maxEpisodic": 30,
+        "minEpisodic": consolidateMin
+    };
+    opts.client = client;
+    if (cfg != null && cfg.agents != null && cfg.agents.memory != null && cfg.agents.memory.reflectMinEpisodic != null && cfg.agents.memory.reflectMinEpisodic > 0) {
+        opts.minEpisodic = cfg.agents.memory.reflectMinEpisodic;
+    }
+    if (cfg != null && cfg.agents != null && cfg.agents.memory != null && cfg.agents.memory.reflectModel != null && cfg.agents.memory.reflectModel != "") {
+        opts.model = cfg.agents.memory.reflectModel;
+    }
+    var reflectMinConfidenceEnv = getEnv("MALDA_MEMORY_REFLECT_MIN_CONFIDENCE");
+    if (reflectMinConfidenceEnv != null && reflectMinConfidenceEnv != "") {
+        opts.minConfidence = float(reflectMinConfidenceEnv);
+    } else if (cfg != null && cfg.agents != null && cfg.agents.memory != null && cfg.agents.memory.reflectMinConfidence != null) {
+        opts.minConfidence = cfg.agents.memory.reflectMinConfidence;
+    }
+    if (activeScope != null && activeScope != "") {
+        opts.scope = activeScope;
+    }
+    return opts;
+}
+
+function buildMemorySaveOpts(cfg) {
+    var opts = dict {};
+    var backupEnv = getEnv("MALDA_MEMORY_BACKUP");
+    if (backupEnv == "1" || backupEnv == "true") {
+        opts.backup = true;
+    } else if (cfg != null && cfg.agents != null && cfg.agents.memory != null && cfg.agents.memory.backupEnabled == true) {
+        opts.backup = true;
+    }
+    var maxBackupsEnv = getEnv("MALDA_MEMORY_MAX_BACKUPS");
+    if (maxBackupsEnv != null && maxBackupsEnv != "") {
+        opts.maxBackups = int(maxBackupsEnv);
+    } else if (cfg != null && cfg.agents != null && cfg.agents.memory != null && cfg.agents.memory.maxBackups != null && cfg.agents.memory.maxBackups > 0) {
+        opts.maxBackups = cfg.agents.memory.maxBackups;
+    }
+    return opts;
+}
+
+function scheduleDeferredReflect(mem, activeScope, cfg, memoryPath) {
+    if (!memoryReflectDue(cfg)) {
+        return;
+    }
+    if (!memoryReflectAsyncEnabled(cfg)) {
+        return;
+    }
+    var opts = buildReflectOpts(activeScope, cfg);
+    opts.savePath = memoryPath;
+    mem.reflectAsync(opts);
+}
+
+function maintainMemory(mem, activeScope, cfg) {
+    memorySaveCounter = memorySaveCounter + 1;
+    var pruneDays = 30;
+    if (cfg != null && cfg.agents != null && cfg.agents.memory != null && cfg.agents.memory.pruneEpisodicAfterDays != null && cfg.agents.memory.pruneEpisodicAfterDays > 0) {
+        pruneDays = cfg.agents.memory.pruneEpisodicAfterDays;
+    }
+    if (cfg != null && cfg.agents != null && cfg.agents.memory != null && cfg.agents.memory.kbDir != null && cfg.agents.memory.kbDir != "") {
+        var kbPattern = "**/*.md";
+        if (cfg.agents.memory.kbPattern != null && cfg.agents.memory.kbPattern != "") {
+            kbPattern = cfg.agents.memory.kbPattern;
+        }
+        var kbOpts = dict {
+            "scope": "global",
+            "changedOnly": true
+        };
+        mem.reindexDocuments(kbPattern, cfg.agents.memory.kbDir, kbOpts);
+    }
+    var maintainOpts = buildReflectOpts(activeScope, cfg);
+    if (memoryReflectEnabled(cfg) == true && memoryReflectDue(cfg) == true && memoryReflectAsyncEnabled(cfg) == false) {
+        mem.reflect(maintainOpts);
+    } else if (memoryReflectEnabled(cfg) == false || memoryReflectDue(cfg) == false) {
+        mem.consolidate(maintainOpts);
+    }
+    var pruneOpts = dict {
+        "type": "episodic",
+        "olderThanDays": pruneDays,
+        "consolidated": true
+    };
+    if (activeScope != null && activeScope != "") {
+        pruneOpts.scope = activeScope;
+    }
+    mem.prune(pruneOpts);
+    var maxNodes = 5000;
+    if (cfg != null && cfg.agents != null && cfg.agents.memory != null && cfg.agents.memory.maxNodes != null && cfg.agents.memory.maxNodes > 0) {
+        maxNodes = cfg.agents.memory.maxNodes;
+    }
+    var limitOpts = dict {
+        "maxNodes": maxNodes,
+        "type": "episodic"
+    };
+    if (activeScope != null && activeScope != "") {
+        limitOpts.scope = activeScope;
+    }
+    mem.enforceLimits(limitOpts);
+}
+
+function startAssistantKbWatch(mem, memoryPath, cfg) {
+    var kbWatchEnv = getEnv("MALDA_MEMORY_KB_WATCH");
+    if (kbWatchEnv == "0" || kbWatchEnv == "false") {
+        return;
+    }
+    if (cfg == null || cfg.agents == null || cfg.agents.memory == null || cfg.agents.memory.kbDir == null || cfg.agents.memory.kbDir == "") {
+        return;
+    }
+    var kbPattern = "**/*.md";
+    if (cfg.agents.memory.kbPattern != null && cfg.agents.memory.kbPattern != "") {
+        kbPattern = cfg.agents.memory.kbPattern;
+    }
+    try {
+        var watchOpts = dict {
+            "scope": "global",
+            "savePath": memoryPath,
+            "pattern": kbPattern
+        };
+        mem.startKbWatch(cfg.agents.memory.kbDir, kbPattern, watchOpts);
+    } catch (error) {
+        print("KB watch not started: " + string(error));
+    }
+}
+
+if (client == null) {
+    // Failed to initialize any backend; nothing more to do
+} else {
+    var agent = new Agent("Assistant", "personal assistant", "You are a helpful personal assistant.", client);
+    if (config != null && config.tools != null && config.tools.web != null && config.tools.web.search != null && config.tools.web.search.apiKey != null && config.tools.web.search.apiKey != "") {
+        agent.addTool(createWebSearchTool());
+    } else if (getEnv("BRAVE_SEARCH_API_KEY") != null && getEnv("BRAVE_SEARCH_API_KEY") != "") {
+        agent.addTool(createWebSearchTool());
+    }
+    var embedMode = "hash";
+    var embedOverride = getEnv("MALDA_MEMORY_EMBED");
+    if (embedOverride != null && embedOverride != "") {
+        embedMode = embedOverride;
+    } else if (config != null && config.agents != null && config.agents.memory != null && config.agents.memory.embed != null && config.agents.memory.embed != "") {
+        embedMode = config.agents.memory.embed;
+    }
+
+    var memoryEmbedder = null;
+    if (embedMode == "llama") {
+        var embedPath = null;
+        if (config != null && config.agents != null && config.agents.memory != null && config.agents.memory.modelPath != null && config.agents.memory.modelPath != "") {
+            embedPath = config.agents.memory.modelPath;
+        } else if (config != null && config.providers != null && config.providers.local_llama != null && config.providers.local_llama.embedModelPath != null && config.providers.local_llama.embedModelPath != "") {
+            embedPath = config.providers.local_llama.embedModelPath;
+        }
+        if (embedPath != null && embedPath != "") {
+            memoryEmbedder = new LlamaEmbedder(embedPath);
+        } else {
+            print("MALDA_MEMORY_EMBED=llama but no agents.memory.modelPath configured; falling back to hash");
+            embedMode = "hash";
+        }
+    }
+
+    function memoryEmbed(text) {
+        if (embedMode == "bow") {
+            return embedBagOfWords(text, 384);
+        }
+        if (embedMode == "llama" && memoryEmbedder != null) {
+            return memoryEmbedder.getEmbeddings(text);
+        }
+        return embedHash(text, 384);
+    }
+
+    var memory = new GraphMemory();
+    var home = getMaldaHome();
+    var memoryDir = home + "/memory";
+    ensureDir(memoryDir);
+    var memoryPath = memoryDir + "/assistant";
+    memory.initialize(384, "single", memoryEmbed);
+    if (hasFile(memoryPath + ".graph.json")) {
+        memory.load(memoryPath);
+    }
+    startAssistantKbWatch(memory, memoryPath, config);
+    agent.useMemory(memory);
+    if (config != null && config.agents != null && config.agents.memory != null) {
+        if (config.agents.memory.scopeHierarchy != null && config.agents.memory.scopeHierarchy.length > 0) {
+            agent.setMemoryScopeHierarchy(config.agents.memory.scopeHierarchy);
+        } else if (config.agents.memory.scopeParent != null && config.agents.memory.scopeParent != "") {
+            agent.setMemoryScopeParent(config.agents.memory.scopeParent);
+        }
+        if (config.agents.memory.rerankEnabled == true || (config.agents.memory.rerankMode != null && config.agents.memory.rerankMode != "")) {
+            var rerankMode = config.agents.memory.rerankMode;
+            if (rerankMode == null || rerankMode == "") {
+                rerankMode = "cross";
+            }
+            if (config.agents.memory.rerankModelPath != null && config.agents.memory.rerankModelPath != "" && config.agents.memory.rerankTopK != null && config.agents.memory.rerankTopK > 0) {
+                agent.setMemoryRerank(true, rerankMode, config.agents.memory.rerankModelPath, config.agents.memory.rerankTopK);
+            } else if (config.agents.memory.rerankModelPath != null && config.agents.memory.rerankModelPath != "") {
+                agent.setMemoryRerank(true, rerankMode, config.agents.memory.rerankModelPath);
+            } else if (config.agents.memory.rerankTopK != null && config.agents.memory.rerankTopK > 0) {
+                agent.setMemoryRerank(true, rerankMode, "", config.agents.memory.rerankTopK);
+            } else {
+                agent.setMemoryRerank(true, rerankMode);
+            }
+        }
+    }
+    function refreshMemoryScopeForTurn() {
+        var turnScope = resolveActiveMemoryScope();
+        if (turnScope != "") {
+            agent.setMemoryScope(turnScope);
+        }
+        return turnScope;
+    }
+    var activeMemoryScope = refreshMemoryScopeForTurn();
+    var skills = loadSkillsFromDir();
+    for (var i = 0; i < skills.length; i++) {
+        var s = skills[i];
+        if (s == null) {
+            continue;
+        }
+        if (s.error != null && s.error != "") {
+            print("Skill '" + s.name + "' skipped: " + s.error);
+            continue;
+        }
+        if (s.tools != null) {
+            for (var j = 0; j < s.tools.length; j++) {
+                agent.addTool(s.tools[j]);
+            }
+        }
+        if (s.agent != null) {
+            var skillDesc = "Delegates to the " + s.name + " skill specialist.";
+            if (s.agentDescription != null && s.agentDescription != "") {
+                skillDesc = s.agentDescription;
+            } else if (s.description != null && s.description != "") {
+                skillDesc = s.description;
+            }
+            agent.addSubAgent(s.agent, skillDesc);
+        }
+    }
+    var oneShot = getEnv("MALDA_AGENT_MESSAGE");
+    if (oneShot != null && oneShot != "") {
+        var r = agent.think(oneShot);
+        print(r.content);
+        maintainMemory(memory, activeMemoryScope, config);
+        memory.save(memoryPath, buildMemorySaveOpts(config));
+        scheduleDeferredReflect(memory, activeMemoryScope, config, memoryPath);
+    } else {
+        while (true) {
+            var msg = input("You: ");
+            if (msg == null || msg == "" || msg == "exit" || msg == "quit") {
+                break;
+            }
+            var turnScope = refreshMemoryScopeForTurn();
+            var r = agent.think(msg);
+            print(r.content);
+            maintainMemory(memory, turnScope, config);
+            memory.save(memoryPath, buildMemorySaveOpts(config));
+            scheduleDeferredReflect(memory, activeMemoryScope, config, memoryPath);
+        }
+    }
+}

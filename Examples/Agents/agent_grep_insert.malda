@@ -1,0 +1,36 @@
+// Note: Requires OPENROUTER_API_KEY environment variable
+// Create a sample code file
+writeFile("utils.malda", "function helper1() {
+    return 1;
+}
+
+function helper2() {
+    return 2;
+}
+
+function main() {
+    return 0;
+}");
+
+// Using CodingAgent - automatically includes all file tools and uses OpenRouterClient
+// Create a coding agent - all file tools are already included!
+var codeAgent = new CodingAgent(
+    "CodeAssistant",
+    "code assistant",
+    "You help with code by searching for patterns and inserting new code at appropriate locations."
+);
+
+print("Original file:");
+print(readFile("utils.malda"));
+
+print("
+
+Agent searching and inserting...");
+// Agent can search for patterns and insert new functions
+var response = codeAgent.think("Search for all function definitions in utils.malda, then insert a new helper function called helper3 that returns 3, right after helper2.");
+print(response.content);
+
+print("
+
+File after insertion:");
+print(readFile("utils.malda"));

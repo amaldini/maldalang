@@ -1,0 +1,3 @@
+var t = async 7;
+var v = await t;
+print(v);

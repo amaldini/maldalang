@@ -1,0 +1,10 @@
+function assertVerifiedContext(authContext, expectedSub) {
+    assert(authContext != null, "auth context cannot be null");
+    assert(authContext.verified == true, "expected verified context");
+    assert(authContext.sub == expectedSub, "unexpected auth subject");
+}
+
+function createAuthContextFromToken(token, secret) {
+    var claims = verifyJwt(token, secret);
+    return { "verified": true, "sub": claims.sub };
+}

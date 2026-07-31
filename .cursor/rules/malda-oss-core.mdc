@@ -1,0 +1,15 @@
+---
+description: Core MALDA OSS agent rules (build, tests, generated files, IDE roles)
+alwaysApply: true
+---
+
+# MALDA OSS — always apply
+
+- Read `AGENTS.md` and `docs/architecture.md` before large changes.
+- Never run the full test suite unless the user explicitly asks. Use filtered `dotnet test`.
+- Do not hand-edit `GeneratedProgram.cs` or generated `.js` from `.malda`; change sources and regenerate.
+- Prefer `function` over `fn`/`def` in examples and docs.
+- Prompt declarations: name-only parameters (no typed prompt params).
+- Desktop IDE = reference; Web IDE = browser playground (not feature parity).
+- Product apps and vertical domain packs are out of scope for this repository.
+- `docs/planning/` is historical; verify against code and `ReferenceManual/`.

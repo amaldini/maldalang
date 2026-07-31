@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>11. Input/Output - MALDA Reference Manual</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="syntax.css">
+    <link rel="stylesheet" href="print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>MALDA&trade; Reference Manual</h1>
+        <p>The AI-First Programming Language - Version 0.1</p>
+    </header>
+    <nav></nav>
+    <main>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>11. Input/Output</span></div>
+        <h1>11. Input/Output</h1>
+        <h2>11.1 Output</h2>
+        <p>Console output uses <code>io.print(...)</code> (preferred) or the deprecated flat alias <code>print(...)</code>:</p>
+        <pre><code>print("Hello, World!");
+print(42);
+print("Value of x: " + x);  // String concatenation
+print($"Value of x: {x}");   // String interpolation (preferred)</code></pre>
+        <h2>11.2 Input</h2>
+        <p>The <code>input()</code> function reads user input from the console:</p>
+        <pre><code>var name = input("Enter your name: ");
+var age = input("Enter your age: ");  // Returns string, convert if needed
+var num = int(input("Enter a number: "));  // Type conversion</code></pre>
+        <div class="info-box">
+            <strong>Input Function Behavior:</strong> The <code>input()</code> function is asynchronous and pauses script execution until user input is provided. Execution resumes exactly from the same statement after input is received. Works correctly within loops, functions, and nested control structures.
+        </div>
+        <h2>11.3 Sleep</h2>
+        <p>The <code>sleep()</code> function pauses script execution for the specified number of milliseconds:</p>
+        <pre><code>sleep(1000);  // Sleep for 1 second (1000 milliseconds)
+sleep(500);   // Sleep for 500 milliseconds (0.5 seconds)</code></pre>
+        <div class="info-box">
+            <strong>Sleep Function Behavior:</strong> The <code>sleep()</code> function is asynchronous and doesn't consume CPU while waiting. Useful for keeping scripts alive in loops without CPU spinning. Commonly used with REST servers and long-running processes.
+        </div>
+        <h3>Example: Keep Server Alive</h3>
+        <pre><code>// Keep server alive without consuming CPU
+while (server.isRunning) {
+    sleep(1000);  // Sleep for 1 second
+}</code></pre>
+        <div class="see-also">
+            <h3>See Also</h3>
+            <ul>
+                <li><a href="07-expressions.html">6. Expressions</a> - String interpolation</li>
+                <li><a href="11-built-in-functions.html">12. Built-in Functions</a> - Type conversion functions</li>
+            </ul>
+        </div>
+        <div class="nav-footer">
+            <a href="10-classes-objects.html">← Previous: 10. Classes & Objects</a>
+            <a href="11-built-in-functions.html">Next: 12. Built-in Functions→</a>
+        </div>
+
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, at your option.</p>
+        </footer>
+    </main>
+    <script src="malda-highlight.js"></script>
+    <script src="navigation.js"></script>
+</body>
+</html>

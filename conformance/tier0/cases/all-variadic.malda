@@ -1,0 +1,5 @@
+var t1 = async 1;
+var t2 = async 2;
+var allTask = all(t1, t2);
+var results = await allTask;
+print(results[0] + results[1]);

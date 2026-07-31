@@ -1,0 +1,91 @@
+// Smart Home Control Example
+// Demonstrates controlling smart home devices via HTTP/REST
+
+print("=== Smart Home Control ===\n");
+
+// Example: Control Philips Hue lights
+// Note: Replace with your actual device IP and API key
+
+var hueBridge = new RestClient("http://192.168.1.50");
+hueBridge.setAuth("Bearer", "your-api-key-here");
+
+print("Controlling smart home devices...\n\n");
+
+// Turn on living room light
+print("Turning on living room light...\n");
+var response = hueBridge.put("/api/your-username/lights/1/state", {
+    "on": true,
+    "bri": 254,
+    "hue": 10000,
+    "sat": 254
+});
+
+if (response.status == 200) {
+    print("Light turned on successfully\n");
+} else {
+    print("Failed to turn on light: " + response.statusText + "\n");
+}
+
+sleep(2000);
+
+// Set light to dim
+print("Dimming light...\n");
+var dimResponse = hueBridge.put("/api/your-username/lights/1/state", {
+    "bri": 128
+});
+
+if (dimResponse.status == 200) {
+    print("Light dimmed successfully\n");
+}
+
+sleep(2000);
+
+// Turn off light
+print("Turning off light...\n");
+var offResponse = hueBridge.put("/api/your-username/lights/1/state", {
+    "on": false
+});
+
+if (offResponse.status == 200) {
+    print("Light turned off successfully\n");
+}
+
+// Example: Control multiple devices
+print("\nControlling multiple devices...\n");
+
+var devices = [
+    {name: "Living Room", url: "http://192.168.1.50/api/your-username/lights/1"},
+    {name: "Bedroom", url: "http://192.168.1.50/api/your-username/lights/2"},
+    {name: "Kitchen", url: "http://192.168.1.50/api/your-username/lights/3"}
+];
+
+// Turn on all lights
+for (var i = 0; i < devices.length; i = i + 1) {
+    print("Turning on " + devices[i].name + " light...\n");
+    var device = new RestClient(devices[i].url);
+    device.setAuth("Bearer", "your-api-key-here");
+    var result = device.put("/state", {"on": true, "bri": 200});
+    
+    if (result.status == 200) {
+        print(devices[i].name + " light turned on\n");
+    }
+    sleep(500);
+}
+
+sleep(2000);
+
+// Turn off all lights
+print("\nTurning off all lights...\n");
+for (var i = 0; i < devices.length; i = i + 1) {
+    var device = new RestClient(devices[i].url);
+    device.setAuth("Bearer", "your-api-key-here");
+    var result = device.put("/state", {"on": false});
+    
+    if (result.status == 200) {
+        print(devices[i].name + " light turned off\n");
+    }
+    sleep(500);
+}
+
+print("\nSmart home control example complete!\n");
+print("Note: Replace IP addresses and API keys with your actual device credentials.\n");

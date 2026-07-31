@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>35. Appendix - MALDA Reference Manual</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="syntax.css">
+    <link rel="stylesheet" href="print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>MALDA&trade; Reference Manual</h1>
+        <p>The AI-First Programming Language - Version 0.1</p>
+    </header>
+    <nav></nav>
+    <main>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>35. Appendix</span></div>
+        <h1>35. Appendix</h1>
+        <h2>35.1 Appendix A: Reserved Words</h2>
+        <p>Keywords are defined in <code>MaldaLang/Lexer.cs</code>. <code>fn</code> and <code>def</code> are aliases of <code>function</code>. <code>reply</code> is a <strong>built-in function</strong>, not a reserved word.</p>
+        <pre><code><a href="08-control-structures.html">if</a>, <a href="08-control-structures.html">else</a>, <a href="08-control-structures.html">while</a>, <a href="08-control-structures.html">for</a>, <a href="08-control-structures.html">foreach</a>, <a href="09-functions.html">function</a>, <a href="09-functions.html">fn</a>, <a href="09-functions.html">def</a>, <a href="09-functions.html">return</a>, <a href="04-variables.html">var</a>, <a href="04-variables.html">const</a>, <a href="12-input-output.html">print</a>, <a href="12-input-output.html">input</a>,
+<a href="03-data-types.html">true</a>, <a href="03-data-types.html">false</a>, <a href="07-expressions.html">and</a>, <a href="07-expressions.html">or</a>, <a href="07-expressions.html">not</a>, <a href="08-control-structures.html">break</a>, <a href="08-control-structures.html">continue</a>, <a href="08-control-structures.html">try</a>, <a href="08-control-structures.html">catch</a>, <a href="08-control-structures.html">finally</a>, <a href="08-control-structures.html">throw</a>,
+<a href="08-control-structures.html">match</a>, <a href="08-control-structures.html">case</a>, <a href="08-control-structures.html">default</a>, <a href="08-control-structures.html">defer</a>,
+<a href="10-classes-objects.html">class</a>, <a href="10-classes-objects.html">new</a>, <a href="10-classes-objects.html">this</a>, <a href="10-classes-objects.html">super</a>, <a href="10-classes-objects.html">extends</a>, <a href="10-classes-objects.html">public</a>, <a href="10-classes-objects.html">private</a>, <a href="10-classes-objects.html">static</a>, <a href="03-data-types.html">null</a>, <a href="03-data-types.html">type</a>, <a href="09-functions.html">schema</a>,
+<a href="09-functions.html">prompt</a>, <a href="09-functions.html">chain</a>, <a href="07-expressions.html">async</a>, <a href="07-expressions.html">await</a>,
+<a href="13-actors.html">actor</a>, <a href="13-actors.html">spawn</a>, <a href="13-actors.html">send</a>, <a href="13-actors.html">receive</a>, <a href="13-actors.html">self</a>, <a href="13-actors.html">on</a>, <a href="13-actors.html">then</a>, <a href="13-actors.html">timeout</a>, <a href="13-actors.html">message</a>,
+<a href="31-durable-workflows.html">workflow</a>, <a href="31-durable-workflows.html">step</a>, <a href="31-durable-workflows.html">approval</a>, <a href="31-durable-workflows.html">wait</a>, <a href="31-durable-workflows.html">retry</a>, <a href="31-durable-workflows.html">backoff</a>, <a href="31-durable-workflows.html">delay</a>, <a href="31-durable-workflows.html">maxDelay</a>, <a href="31-durable-workflows.html">compensate</a>, <a href="31-durable-workflows.html">onReject</a>,
+<a href="16-web-ui.html">component</a>, <a href="16-web-ui.html">property</a>,
+<a href="07-expressions.html">dict</a>, <a href="06-graphs.html">graph</a>, <a href="06-graphs.html">directed</a>, <a href="06-graphs.html">undirected</a>, <a href="08-control-structures.html">in</a>,
+<a href="01-introduction.html">using</a>, <a href="01-introduction.html">include</a>, <a href="01-introduction.html">import</a>, <a href="01-introduction.html">export</a></code></pre>
+        <h2>35.2 Appendix B: Operator Precedence</h2>
+        <p>The table below mirrors the descent order of the reference parser (<code>MaldaLang/Parser/Parser.cs</code>), from <strong>highest</strong> precedence (binds tightest) to <strong>lowest</strong>.</p>
+        <table>
+            <thead>
+                <tr><th>#</th><th>Level</th><th>Operators</th><th>Associativity</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>1</td><td>Primary</td><td>Literals, identifiers, <code>(</code>&hellip;<code>)</code>, array / <code>dict</code> / <code>graph</code> / object literals, comprehensions, <code>new</code>, <code>spawn</code>, <code>receive</code></td><td>&ndash;</td></tr>
+                <tr><td>2</td><td>Postfix</td><td>Call <code>f(...)</code>, index <code>a[i]</code>, member <code>a.b</code>, null-conditional <code>a?.b</code> and <code>a?[i]</code>, postfix <code>++</code> / <code>--</code></td><td>Left</td></tr>
+                <tr><td>3</td><td>Unary (prefix)</td><td><code>await</code>, <code>async</code>, <code>not</code> (<code>!</code>), unary <code>-</code>, prefix <code>++</code> / <code>--</code></td><td>Right</td></tr>
+                <tr><td>4</td><td>Multiplicative</td><td><code>*</code>, <code>/</code>, <code>%</code></td><td>Left</td></tr>
+                <tr><td>5</td><td>Additive</td><td><code>+</code>, <code>-</code></td><td>Left</td></tr>
+                <tr><td>6</td><td>Comparison</td><td><code>&lt;</code>, <code>&gt;</code>, <code>&lt;=</code>, <code>&gt;=</code></td><td>Left</td></tr>
+                <tr><td>7</td><td>Equality</td><td><code>==</code>, <code>!=</code></td><td>Left</td></tr>
+                <tr><td>8</td><td>Logical AND</td><td><code>and</code> (<code>&amp;&amp;</code>)</td><td>Left</td></tr>
+                <tr><td>9</td><td>Logical OR</td><td><code>or</code> (<code>||</code>)</td><td>Left</td></tr>
+                <tr><td>10</td><td>Match expression</td><td><code>match</code> &hellip; <code>{ case</code> &hellip; <code>}</code></td><td>&ndash;</td></tr>
+                <tr><td>11</td><td>Ternary conditional</td><td><code>?</code> <code>:</code></td><td>Right</td></tr>
+                <tr><td>12</td><td>Pipe forward</td><td><code>|&gt;</code></td><td>Left</td></tr>
+                <tr><td>13</td><td>Assignment</td><td><code>=</code>, <code>+=</code>, <code>-=</code>, <code>*=</code>, <code>/=</code></td><td>Right</td></tr>
+            </tbody>
+        </table>
+        <div class="info-box">
+            <strong>Two consequences worth remembering:</strong> <code>|&gt;</code> binds <em>looser</em> than the ternary conditional, so <code>a ? b : c |&gt; f</code> pipes the whole conditional into <code>f</code>. And <code>await</code> is a unary prefix operator, so <code>await a.b()</code> awaits the result of the call, while <code>(await a).b()</code> needs explicit parentheses.
+        </div>
+        <h2>35.3 Appendix C: Object-Oriented Concepts Summary</h2>
+        <h3>Classes</h3>
+        <ul>
+            <li>Blueprint for creating objects</li>
+            <li>Contains fields (data) and methods (behavior)</li>
+            <li>Can have constructors for initialization</li>
+        </ul>
+        <h3>Objects</h3>
+        <ul>
+            <li>Instances of classes created with <code>new</code> keyword</li>
+            <li>Each object has its own copy of instance fields</li>
+            <li>Share methods defined in the class</li>
+        </ul>
+        <h3>Inheritance</h3>
+        <ul>
+            <li>Classes can extend other classes using <code>extends</code></li>
+            <li>Child classes inherit parent's public members</li>
+            <li>Can override parent methods</li>
+            <li>Use <code>super</code> to call parent constructor/methods</li>
+        </ul>
+        <h3>Encapsulation</h3>
+        <ul>
+            <li>Access modifiers control visibility:
+                <ul>
+                    <li><code>public</code>: Accessible from anywhere</li>
+                    <li><code>private</code>: Accessible only within the class</li>
+                </ul>
+            </li>
+            <li>Fields should typically be private, accessed via public methods</li>
+        </ul>
+        <h3>Polymorphism</h3>
+        <ul>
+            <li>Method overriding allows child classes to provide different implementations</li>
+            <li>Objects of child type can be treated as parent type</li>
+        </ul>
+        <h3>Static Members</h3>
+        <ul>
+            <li>Belong to the class, not instances</li>
+            <li>Accessed via class name</li>
+            <li>Shared across all instances</li>
+        </ul>
+        <div class="see-also">
+            <h3>See Also</h3>
+            <ul>
+                <li><a href="02-lexical-structure.html">3. Lexical Structure</a> - Keywords and operators</li>
+                <li><a href="10-classes-objects.html">10. Classes & Objects</a> - OOP features</li>
+            </ul>
+        </div>
+        <h2>35.4 Appendix D: Command-line reference</h2>
+        <p>Summary of <code>malda</code> CLI commands. See <a href="26-personal-assistant.html">28. Personal Assistant and CLI</a> for details on the assistant, config, and cron.</p>
+        <table>
+            <tr><th>Command</th><th>Description</th></tr>
+            <tr><td><code>malda &lt;file.malda&gt;</code></td><td>Run a MALDA file</td></tr>
+            <tr><td><code>malda &lt;file.malda&gt; --profile</code></td><td>Run a MALDA file with the built-in profiler enabled</td></tr>
+            <tr><td><code>malda compile &lt;file.malda&gt;</code></td><td>Compile to executable or DLL</td></tr>
+            <tr><td><code>malda compile &lt;file.malda&gt; --profile</code></td><td>Compile a transpiled executable with profiler instrumentation enabled</td></tr>
+            <tr><td><code>malda -e "&lt;code&gt;"</code></td><td>Execute code directly</td></tr>
+            <tr><td><code>malda -c "&lt;code&gt;"</code></td><td>Compile code directly</td></tr>
+            <tr><td><code>malda --symbols &lt;file.malda&gt;</code></td><td>Print symbols (classes, functions, actors)</td></tr>
+            <tr><td><code>malda agent</code></td><td>Interactive chat with the default assistant</td></tr>
+            <tr><td><code>malda agent -m "&lt;message&gt;"</code></td><td>One-shot: send message and print response</td></tr>
+            <tr><td><code>malda cron add --name &lt;n&gt; --message &lt;msg&gt; --cron &lt;expr&gt;</code></td><td>Add a scheduled job</td></tr>
+            <tr><td><code>malda cron list</code></td><td>List cron jobs</td></tr>
+            <tr><td><code>malda cron remove &lt;job-id&gt;</code></td><td>Remove a cron job</td></tr>
+            <tr><td><code>malda onboard</code></td><td>Initialize ~/.malda and config.json</td></tr>
+            <tr><td><code>malda status</code></td><td>Show config path, API key, cron jobs</td></tr>
+            <tr><td><code>malda deploy [--config ... --profile ... --observability ...]</code></td><td>Validate deploy and observability contracts (safe skeleton mode)</td></tr>
+            <tr><td><code>malda install / uninstall / list / search / init</code></td><td>Package manager commands</td></tr>
+            <tr><td><code>malda trace summary|show|replay &lt;file&gt;</code></td><td>Trace inspection and replay</td></tr>
+        </table>
+        <h2>35.5 Appendix E: Deploy and observability contract baseline</h2>
+        <p>The <code>malda deploy</code> command in this baseline validates configuration contracts and exits without starting deployment orchestration.</p>
+        <p>Default input contracts:</p>
+        <ul>
+            <li><code>config/deploy.example.json</code></li>
+            <li><code>config/environments/prod.json</code> (or <code>--profile dev|test|prod</code>)</li>
+            <li><code>config/observability.example.json</code></li>
+        </ul>
+        <p>Minimum validated expectations:</p>
+        <ul>
+            <li>Health/readiness paths are present and wired consistently between deploy and environment profile contracts.</li>
+            <li>Structured logging baseline uses JSON format and includes core fields (timestamp, level, message, environment/profile, optional correlation).</li>
+            <li>Metrics endpoint wiring is present and consistent across profile and observability contracts.</li>
+        </ul>
+        <h2>35.6 Appendix F: Profiling MALDA programs</h2>
+        <p>MALDA includes a built-in profiler for performance investigations. It can profile interpreted runs and transpiled executables and reports hotspots in terms of MALDA built-ins, functions, and statement locations.</p>
+        <p>Supported CLI flags:</p>
+        <ul>
+            <li><code>--profile</code> - Enable profiling for the run or for the compiled executable.</li>
+            <li><code>--profile-output &lt;path&gt;</code> - Write the report to a file path.</li>
+            <li><code>--profile-format text|json|both</code> - Choose human-readable text, structured JSON, or both.</li>
+            <li><code>--profile-periodic-seconds &lt;N&gt;</code> - While running, rewrite the profile file(s) every <code>N</code> seconds of wall-clock time. Use <code>0</code> (default) for end-of-run only. Useful for long jobs so an interrupted run still leaves a recent partial report on disk.</li>
+        </ul>
+        <p>JSON reports include a <code>Partial</code> field: <code>true</code> for periodic snapshots, <code>false</code> for the final write at exit. Periodic snapshots overwrite the same output path; they do not spam the console.</p>
+        <p>Examples:</p>
+        <pre><code>malda my-script.malda --profile
+malda my-script.malda --profile --profile-output profile.json --profile-format json
+malda my-script.malda --profile --profile-output profile.json --profile-format json --profile-periodic-seconds 60
+malda compile my-script.malda --mode transpile -o my-script.exe --profile --profile-output profile.json --profile-format json</code></pre>
+        <p>The profiler currently reports:</p>
+        <ul>
+            <li><code>BuiltIns</code> - aggregated built-in function timing</li>
+            <li><code>Functions</code> - aggregated MALDA function timing</li>
+            <li><code>Statements</code> - aggregated statement timing by MALDA source location</li>
+        </ul>
+        <p>Each report entry includes call count, total time, average time, and self time. Expression-level profiling is intentionally not included in this first version to keep overhead practical.</p>
+        <h2 id="optional-packs">35.7 Appendix G: Optional packs</h2>
+        <p>Core MALDA keeps domain-specific packs out of the public core. The compiler still has string-only emit hooks for optional packs so separately distributed assemblies can plug in without becoming ProjectReferences of the core.</p>
+        <p>Vertical packs are not included in this open-source repository. If you maintain such a pack, load it with <code>loadNativeModule(...)</code> and ship the DLLs beside your app; core does not auto-register pack globals.</p>
+        <div class="nav-footer">
+            <a href="22-grammar.html">← Previous: 34. Grammar</a>
+            <span></span>
+        </div>
+
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, at your option.</p>
+        </footer>
+    </main>
+    <script src="malda-highlight.js"></script>
+    <script src="navigation.js"></script>
+</body>
+</html>

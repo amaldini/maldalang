@@ -1,0 +1,39 @@
+// LLM Server - Basic Example
+// Simple local model server with minimal configuration
+
+var MODEL_PATH = "models/qwen2.5-0.5b-instruct-q4_k_m.gguf";
+var localAppData = getEnv("LOCALAPPDATA");
+if (localAppData != null && localAppData != "") {
+    MODEL_PATH = localAppData + "/MaldaLang/Models/default/qwen2.5-0.5b-instruct-q4_k_m.gguf";
+}
+var PORT = 8080;
+
+print("=== LLM Server - Basic Example ===");
+print("Starting server on port " + string(PORT) + "...");
+
+// Create server with model path
+var server = new LLMServer(MODEL_PATH, PORT);
+server.start();
+
+print("Server started successfully!");
+print("");
+print("Available endpoints:");
+print("  GET  /health                    - Health check");
+print("  POST /v1/chat/completions      - OpenAI-compatible chat completions");
+print("  POST /api/complete             - Simple text completion");
+print("  GET  /api/model                 - Get model information");
+print("  POST /api/model/settings        - Update model settings");
+print("");
+print("Example request:");
+print("  curl -X POST http://localhost:" + string(PORT) + "/v1/chat/completions \\");
+print("    -H 'Content-Type: application/json' \\");
+print("    -d '{\"messages\": [{\"role\": \"user\", \"content\": \"Hello!\"}]}'");
+print("");
+print("Server running. Press Ctrl+C to stop.");
+
+// Keep server running
+while (server.isRunning) {
+    sleep(1000);
+}
+
+print("Server stopped.");

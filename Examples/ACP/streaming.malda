@@ -1,0 +1,33 @@
+// ACP Streaming Example
+// Demonstrates streaming execution with Server-Sent Events
+
+var client = new OpenRouterClient();
+var agent = new Agent(
+    "Streamer",
+    "assistant",
+    "You are a helpful assistant that provides detailed responses.",
+    client
+);
+
+// Expose agent as ACP server
+var server = new ACPServer(8083);
+server.registerAgent("streamer-agent", agent);
+server.start();
+
+print("ACP Server started on http://localhost:8083/");
+print("");
+
+// In another process or client, you would use:
+// var acpClient = new ACPClient("http://localhost:8083");
+// 
+// // Stream execution
+// var response = acpClient.sendMessageStream("streamer-agent", "Explain how ACP streaming works");
+// print("Streamed response: " + response);
+// 
+// // The stream mode automatically accumulates message parts and returns the final result
+
+// Keep server running
+print("Server running. Press Ctrl+C to stop.");
+while (server.isRunning) {
+    sleep(1000);
+}

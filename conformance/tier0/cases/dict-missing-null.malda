@@ -1,0 +1,2 @@
+var d = dict { "a": 1 };
+print(d.missing == null);

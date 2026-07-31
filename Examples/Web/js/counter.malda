@@ -1,0 +1,32 @@
+var root = dom.query("#app");
+
+if (root == null) {
+    println("No #app container found.");
+} else {
+    dom.clear(root);
+
+    var count = 0;
+
+    var title = dom.create("h1");
+    dom.setText(title, "Counter example");
+    dom.append(root, title);
+
+    var valueLabel = dom.create("p");
+    dom.append(root, valueLabel);
+
+    function renderCount() {
+        dom.setText(valueLabel, "Count: " + string(count));
+    }
+
+    var button = dom.create("button");
+    dom.setText(button, "Increment");
+    dom.append(root, button);
+
+    function onIncrementClick() {
+        count = count + 1;
+        renderCount();
+    }
+
+    dom.on(button, "click", onIncrementClick);
+    renderCount();
+}

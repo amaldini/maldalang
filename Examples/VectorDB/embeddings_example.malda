@@ -1,0 +1,182 @@
+// VectorDB Embeddings Example
+// Demonstrates built-in text embedding functions for VectorDB
+
+print("=== VectorDB Built-in Embeddings ===\n");
+
+// Sample documents
+var docs = [
+    "The quick brown fox jumps over the lazy dog",
+    "Machine learning is a subset of artificial intelligence",
+    "Vector databases enable semantic search and similarity matching",
+    "Natural language processing uses neural networks",
+    "The dog was lazy and the fox was quick"
+];
+
+print("Sample documents:\n");
+for (var i = 0; i < docs.length; i = i + 1) {
+    print((i + 1) + ". " + docs[i]);
+}
+print("");
+
+// ============================================
+// 1. Bag-of-Words Embedding
+// ============================================
+print("=== 1. Bag-of-Words Embedding ===\n");
+
+// Create wrapper function that provides the dimension parameter
+function bagOfWordsEmbed(text) {
+    return embedBagOfWords(text, 1000);
+}
+
+var db1 = new VectorDB(1000, bagOfWordsEmbed, "double");
+
+print("Adding documents with bag-of-words embeddings...");
+for (var i = 0; i < docs.length; i = i + 1) {
+    db1.add(bagOfWordsEmbed(docs[i]), docs[i]);
+}
+print("Added " + docs.length + " documents\n");
+
+print("Searching for 'machine learning':");
+var results1 = db1.searchSimilar("machine learning", 3);
+for (var i = 0; i < results1.length; i = i + 1) {
+    var result = results1[i];
+    print((i + 1) + ". \"" + result.data + "\" (similarity: " + formatNumber(result.similarity, 4) + ")");
+}
+print("");
+
+// ============================================
+// 2. Character N-Grams Embedding
+// ============================================
+print("=== 2. Character N-Grams Embedding ===\n");
+
+var db2 = new VectorDB(500, function(text) {
+    return embedCharacterNGrams(text, 3, 500);
+}, "double");
+
+print("Adding documents with character trigram embeddings...");
+for (var i = 0; i < docs.length; i = i + 1) {
+    var vec = embedCharacterNGrams(docs[i], 3, 500);
+    db2.add(vec, docs[i]);
+}
+print("Added " + docs.length + " documents\n");
+
+print("Searching for 'artificial intelligence':");
+var results2 = db2.searchSimilar("artificial intelligence", 3);
+for (var i = 0; i < results2.length; i = i + 1) {
+    var result = results2[i];
+    print((i + 1) + ". \"" + result.data + "\" (similarity: " + formatNumber(result.similarity, 4) + ")");
+}
+print("");
+
+// ============================================
+// 3. Hash-based Embedding
+// ============================================
+print("=== 3. Hash-based Embedding ===\n");
+
+// Create wrapper function that provides the dimension parameter
+function hashEmbed(text) {
+    return embedHash(text, 128);
+}
+
+var db3 = new VectorDB(128, hashEmbed, "double");
+
+print("Adding documents with hash-based embeddings...");
+for (var i = 0; i < docs.length; i = i + 1) {
+    db3.add(hashEmbed(docs[i]), docs[i]);
+}
+print("Added " + docs.length + " documents\n");
+
+print("Searching for 'vector database':");
+var results3 = db3.searchSimilar("vector database", 3);
+for (var i = 0; i < results3.length; i = i + 1) {
+    var result = results3[i];
+    print((i + 1) + ". \"" + result.data + "\" (similarity: " + formatNumber(result.similarity, 4) + ")");
+}
+print("");
+
+// ============================================
+// 4. TF-IDF Embedding (with corpus)
+// ============================================
+print("=== 4. TF-IDF Embedding (with corpus) ===\n");
+
+// Use all documents as corpus for IDF calculation
+function tfidfEmbed(text) {
+    return embedTFIDF(text, docs, 1000);
+}
+
+var db4 = new VectorDB(1000, tfidfEmbed, "double");
+
+print("Adding documents with TF-IDF embeddings (using corpus for IDF)...");
+for (var i = 0; i < docs.length; i = i + 1) {
+    db4.add(tfidfEmbed(docs[i]), docs[i]);
+}
+print("Added " + docs.length + " documents\n");
+
+print("Searching for 'neural networks':");
+var results4 = db4.searchSimilar("neural networks", 3);
+for (var i = 0; i < results4.length; i = i + 1) {
+    var result = results4[i];
+    print((i + 1) + ". \"" + result.data + "\" (similarity: " + formatNumber(result.similarity, 4) + ")");
+}
+print("");
+
+// ============================================
+// 5. Bag-of-Words with Custom Vocabulary
+// ============================================
+print("=== 5. Bag-of-Words with Custom Vocabulary ===\n");
+
+var vocabulary = ["machine", "learning", "artificial", "intelligence", "neural", "network", 
+                  "vector", "database", "semantic", "search", "natural", "language", "processing"];
+
+function vocabEmbed(text) {
+    return embedBagOfWords(text, vocabulary.length, vocabulary);
+}
+
+var db5 = new VectorDB(vocabulary.length, vocabEmbed, "double");
+
+print("Adding documents with vocabulary-based embeddings...");
+for (var i = 0; i < docs.length; i = i + 1) {
+    db5.add(vocabEmbed(docs[i]), docs[i]);
+}
+print("Added " + docs.length + " documents\n");
+
+print("Searching for 'machine learning':");
+var results5 = db5.searchSimilar("machine learning", 3);
+for (var i = 0; i < results5.length; i = i + 1) {
+    var result = results5[i];
+    print((i + 1) + ". \"" + result.data + "\" (similarity: " + formatNumber(result.similarity, 4) + ")");
+}
+print("");
+
+// ============================================
+// 6. File-based Embedding (if files exist)
+// ============================================
+print("=== 6. File-based Embedding ===\n");
+
+// Example: Create a test file
+var testContent = "This is a test document for file-based embedding.";
+writeFile("test_embedding.txt", testContent);
+
+if (hasFile("test_embedding.txt")) {
+    print("Reading and embedding from file...");
+    var fileVec = embedFromFile("test_embedding.txt", "bagOfWords", 1000);
+    print("Embedding dimension: " + fileVec.length);
+    print("First 5 values: [" + formatNumber(fileVec[0], 4) + ", " + formatNumber(fileVec[1], 4) + ", " + 
+          formatNumber(fileVec[2], 4) + ", " + formatNumber(fileVec[3], 4) + ", " + formatNumber(fileVec[4], 4) + ", ...]");
+    print("");
+}
+
+// ============================================
+// Summary
+// ============================================
+print("=== Summary ===\n");
+print("Demonstrated embedding types:");
+print("1. Bag-of-Words: Word frequency vectors with feature hashing");
+print("2. Character N-Grams: Character-level n-gram frequency vectors");
+print("3. Hash-based: Simple hash-based feature vectors");
+print("4. TF-IDF: Term frequency-inverse document frequency with corpus support");
+print("5. Vocabulary-based: Bag-of-words with explicit vocabulary");
+print("6. File-based: Embedding from file paths");
+print("");
+print("All embeddings are L2-normalized for proper cosine similarity.");
+print("Embeddings require wrapper functions to be used as VectorDB calculator functions.");

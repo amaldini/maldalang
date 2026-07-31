@@ -1,0 +1,60 @@
+// LLM Server - With Bridge Example
+// Using LLMClientBridge with multiple backends and proxy features
+
+var PORT = 8080;
+var MODEL_PATH = "models/qwen2.5-0.5b-instruct-q4_k_m.gguf";
+var localAppData = getEnv("LOCALAPPDATA");
+if (localAppData != null && localAppData != "") {
+    MODEL_PATH = localAppData + "/MaldaLang/Models/default/qwen2.5-0.5b-instruct-q4_k_m.gguf";
+}
+
+print("=== LLM Server - With Bridge Example ===");
+print("Creating bridge with multiple backends...");
+
+// Create bridge with multiple backends
+var bridge = new LLMClientBridge([
+    {
+        "type": "local",
+        "modelPath": MODEL_PATH,
+        "priority": 1
+    },
+    {
+        "type": "server",
+        "url": "http://localhost:11434",  // Ollama server
+        "priority": 2
+    }
+]);
+
+// Configure proxy features
+bridge.setRoutingStrategy("round-robin");
+bridge.setRateLimit(100, 60);  // 100 requests per minute
+bridge.enableHealthCheck(5000);  // Check health every 5 seconds
+bridge.setRetryPolicy(3, 1000);  // 3 retries with 1 second delay
+
+print("Bridge configured with:");
+print("  - Round-robin routing");
+print("  - Rate limiting: 100 req/min");
+print("  - Health checking: every 5s");
+print("  - Retry policy: 3 retries, 1s delay");
+print("");
+
+print("Starting server on port " + string(PORT) + "...");
+var server = new LLMServer(bridge, PORT);
+server.start();
+
+print("Server started successfully!");
+print("");
+print("All LLMClientBridge proxy features are available through the REST API:");
+print("  - Automatic failover if a backend fails");
+print("  - Load balancing across backends");
+print("  - Rate limiting protection");
+print("  - Health checking");
+print("");
+print("Server running. Press Ctrl+C to stop.");
+
+// Keep server running
+while (server.isRunning) {
+    sleep(1000);
+}
+
+print("Server stopped.");

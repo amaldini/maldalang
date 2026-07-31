@@ -1,0 +1,13 @@
+// Note: Requires OPENROUTER_API_KEY environment variable
+// OpenRouterClient automatically reads the API key and uses the correct endpoint
+var client = new OpenRouterClient();
+
+var conv = new Conversation(client, "You are a helpful assistant.");
+    
+conv.addUserMessage("Write a function to calculate factorial.");
+var response = conv.send();
+print(response.content);
+
+conv.addUserMessage("Now make it iterative instead of recursive.");
+var response2 = conv.send();
+print(response2.content);

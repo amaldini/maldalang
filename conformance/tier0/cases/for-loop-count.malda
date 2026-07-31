@@ -1,0 +1,5 @@
+var n = 0;
+for (var i = 0; i < 3; i = i + 1) {
+    n = n + 1;
+}
+print(n);

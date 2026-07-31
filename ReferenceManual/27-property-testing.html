@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MALDA Property Testing - deterministic, seed-based generative testing and regressions">
+    <title>33. Property Testing - MALDA Reference Manual</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="syntax.css">
+    <link rel="stylesheet" href="print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>MALDA&trade; Reference Manual</h1>
+        <p>The AI-First Programming Language - Version 0.1</p>
+    </header>
+
+    <nav></nav>
+
+    <main>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>33. Property Testing</span></div>
+
+        <h1>33. Property Testing</h1>
+
+        <p>MALDA supports language-level <code>property</code> declarations for deterministic, seed-based generative testing through <code>malda test</code>.</p>
+
+        <h2>33.1 Declaring and Running Properties</h2>
+
+        <pre><code>property intIdentity(x) {
+    return (x + 0) == x;
+}</code></pre>
+
+        <p>Run properties with deterministic replay metadata:</p>
+        <pre><code>malda test --iterations 100 --seed 1337</code></pre>
+
+        <h2>33.2 Failure -> Shrunk Counterexample -> Regression Artifact</h2>
+        <p>Use deterministic seeds for reproducible failures, then opt-in artifact generation to capture the canonical (shrunk) counterexample as a standalone regression file.</p>
+        <pre><code># Run property tests with deterministic replay metadata
+malda test ./tests --iterations 100 --seed 1337
+
+# Generate regression artifacts for failing properties
+malda test ./tests --iterations 100 --seed 1337 --write-regression
+
+# Optional custom output directory
+malda test ./tests --write-regression --regression-dir ./artifacts/regressions
+
+# Emit CI JSON consumed by IDE/Desktop "Create Regression" action
+malda test ./tests --format ci --iterations 100 --seed 1337</code></pre>
+        <p>Default artifact location is <code>tests/regressions</code>. Generated files are deterministic <code>.spec.malda</code> repro artifacts and MALDA prints each path with <code>Generated regression: ...</code>.</p>
+        <p>IDE/Desktop <strong>Create Regression</strong> treats CI suggestions as untrusted: recommended paths are sanitized and clamped to the active workspace before writing files.</p>
+        <p>CI JSON includes property metadata fields for tooling integrations, including <code>shrunkCounterexample</code>, <code>canGenerateRegression</code>, and <code>recommendedRegressionPath</code>.</p>
+
+        <h2>33.3 Running a Property Inside a Script</h2>
+        <p>You can execute a declared property directly inside a MALDA script using <code>runProperty(name, iterations?, seed?)</code>.</p>
+        <pre><code>property stableIdentity(x) {
+    return (x + 0) == x;
+}
+
+var result = runProperty("stableIdentity", 40, 1337);
+print("Passed: " + string(result.passed));
+</code></pre>
+
+        <p><code>runProperty(...)</code> returns an object with these fields:</p>
+        <ul>
+            <li><code>propertyName</code>, <code>passed</code>, <code>iterations</code>, <code>seed</code></li>
+            <li><code>failedTrial</code>, <code>error</code>, <code>counterexample</code>, <code>shrunkCounterexample</code></li>
+        </ul>
+
+        <h2>33.4 Capability Model</h2>
+        <p>Properties can declare capability requirements and explicit backend targets using decorators:</p>
+        <pre><code>@requires("core", "actors")
+@targets("interpreter", "csharp", "js")
+property actorSafetyInvariant(x) {
+    return x == x;
+}</code></pre>
+
+        <ul>
+            <li><code>@requires(...)</code>: Declares required capability tags for the property.</li>
+            <li><code>@targets(...)</code>: Declares the backend modes where the property is expected to run.</li>
+        </ul>
+
+        <p>Supported capability module tags for <code>@requires(...)</code> are:</p>
+        <ul>
+            <li><strong>Interpreter</strong>: <code>core</code>, <code>file-io</code>, <code>actors</code>, <code>workflows</code>, <code>dotnet-interop</code>, <code>host-interop</code></li>
+            <li><strong>CSharp</strong>: <code>core</code>, <code>file-io</code>, <code>actors</code>, <code>workflows</code>, <code>dotnet-interop</code>, <code>host-interop</code></li>
+            <li><strong>JS</strong>: <code>core</code>, <code>web-dom</code>, <code>game-canvas</code></li>
+        </ul>
+        <p>If a property requires a capability not supported by a backend, that backend is reported as <strong>not applicable</strong> (not as a failure).</p>
+
+        <p>The capability matrix is the source of truth for backend eligibility across <code>interpreter</code>, <code>csharp</code>, and <code>js</code>.</p>
+
+        <h2>33.5 JavaScript Limitations and Skip Semantics</h2>
+        <p>JavaScript backend parity is capability-gated. If a property requires unsupported JS capabilities, MALDA reports the JS mode as <strong>not applicable</strong> with a reason. This does not count as a parity failure for supported backends.</p>
+        <p>For JS-eligible properties where a JS property harness is not enabled yet, MALDA reports JS as <strong>skipped</strong> with an explicit TODO-style reason instead of failing parity.</p>
+
+        <div class="see-also">
+            <h3>See Also</h3>
+            <ul>
+                <li><a href="25-tools.html">2. Tools & Tooling</a> - CLI test commands and workflow context</li>
+                <li><a href="20-examples.html">29. Examples</a> - End-to-end usage samples</li>
+                <li><a href="22-grammar.html">33. Grammar</a> - Property declaration syntax</li>
+            </ul>
+        </div>
+
+        <div class="nav-footer">
+            <a href="31-durable-workflows.html">← Previous: 32. Durable Workflows</a>
+            <a href="22-grammar.html">Next: 34. Grammar→</a>
+        </div>
+
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, at your option.</p>
+        </footer>
+    </main>
+    <script src="malda-highlight.js"></script>
+    <script src="navigation.js"></script>
+</body>
+</html>

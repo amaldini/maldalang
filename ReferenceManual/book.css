@@ -1,0 +1,569 @@
+/* MALDA Reference Manual - bound edition stylesheet
+ *
+ * Used only by the single-file book produced by
+ * scripts/build-reference-manual-book.ps1. Page geometry (trim size and
+ * margins) is emitted by that script into an inline <style> block so the same
+ * stylesheet serves A4, Letter, 7x10 and 6x9; everything below is geometry
+ * independent.
+ *
+ * Running heads, folios and the paginated table of contents need a paged media
+ * engine. Paged.js provides one; without it the file still prints correctly,
+ * just without those refinements.
+ */
+
+:root {
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Text',
+        'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --font-serif: 'Iowan Old Style', 'Charter', 'Georgia', 'Times New Roman', serif;
+    --font-mono: 'JetBrains Mono', 'Cascadia Code', 'SF Mono', 'Consolas',
+        'Liberation Mono', Menlo, monospace;
+
+    --rule: #b9c4ca;
+    --rule-soft: #d8e0e4;
+    --ink: #101a22;
+    --ink-soft: #3d4b55;
+    --brand: #0e7c86;
+
+    --code-size: 9pt;
+    --code-leading: 1.45;
+    --hang: 2.6ch;
+}
+
+/* ------------------------------------------------- Running heads / folios */
+
+@page {
+    @top-left { content: none; }
+    @top-right { content: none; }
+    @bottom-left { content: none; }
+    @bottom-right { content: none; }
+}
+
+@page :left {
+    @top-left {
+        content: "MALDA Reference Manual";
+        font-family: var(--font-sans);
+        font-size: 7.5pt;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: #6a7882;
+        vertical-align: bottom;
+        padding-bottom: 4mm;
+    }
+
+    @bottom-left {
+        content: counter(page);
+        font-family: var(--font-sans);
+        font-size: 8.5pt;
+        color: #44525c;
+        vertical-align: top;
+        padding-top: 5mm;
+    }
+}
+
+@page :right {
+    @top-right {
+        content: string(chapter-title);
+        font-family: var(--font-sans);
+        font-size: 7.5pt;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: #6a7882;
+        vertical-align: bottom;
+        padding-bottom: 4mm;
+        text-align: right;
+    }
+
+    @bottom-right {
+        content: counter(page);
+        font-family: var(--font-sans);
+        font-size: 8.5pt;
+        color: #44525c;
+        vertical-align: top;
+        padding-top: 5mm;
+        text-align: right;
+    }
+}
+
+/* Front matter carries no running head and no folio. */
+@page frontmatter {
+    @top-left { content: none; }
+    @top-right { content: none; }
+    @bottom-left { content: none; }
+    @bottom-right { content: none; }
+}
+
+/* --------------------------------------------------------------- Document */
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: var(--font-serif);
+    font-size: 10.5pt;
+    line-height: 1.5;
+    color: var(--ink);
+    background: #ffffff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    hyphens: auto;
+}
+
+/* Paged.js preview backdrop; irrelevant once the pages reach paper. */
+@media screen {
+    body {
+        background: #e9edf0;
+    }
+
+    .pagedjs_page {
+        margin: 10mm auto;
+        background: #ffffff;
+        box-shadow: 0 2px 14px rgba(16, 33, 43, 0.18);
+    }
+}
+
+/* ------------------------------------------------------------ Front matter */
+
+.book-cover,
+.book-copyright {
+    page: frontmatter;
+    break-after: page;
+}
+
+.book-cover {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 200mm;
+    text-align: left;
+}
+
+.book-cover .cover-rule {
+    width: 28mm;
+    height: 3pt;
+    background: var(--brand);
+    margin-bottom: 10mm;
+}
+
+.book-cover h1 {
+    font-family: var(--font-sans);
+    font-size: 34pt;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+    margin: 0 0 6mm;
+    color: var(--ink);
+}
+
+/* At display sizes the trademark glyph is far too heavy left at full scale. Shrink
+   it and lift it back to the cap height of the title beside it. */
+.book-cover h1 .tm {
+    font-size: 0.38em;
+    font-weight: 500;
+    letter-spacing: 0;
+    vertical-align: 0.95em;
+}
+
+.book-cover .cover-subtitle {
+    font-family: var(--font-sans);
+    font-size: 13pt;
+    font-weight: 400;
+    color: var(--ink-soft);
+    margin: 0 0 20mm;
+}
+
+.book-cover .cover-meta {
+    font-family: var(--font-sans);
+    font-size: 9.5pt;
+    color: var(--ink-soft);
+    margin: 0;
+}
+
+.book-copyright {
+    font-family: var(--font-sans);
+    font-size: 8.5pt;
+    line-height: 1.6;
+    color: var(--ink-soft);
+}
+
+.book-copyright h2 {
+    font-size: 9pt;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink);
+    margin: 0 0 3mm;
+    border: none;
+}
+
+.book-copyright p {
+    margin: 0 0 3mm;
+}
+
+/* ------------------------------------------------------- Table of contents */
+
+.book-toc {
+    page: frontmatter;
+    break-after: page;
+}
+
+.book-toc h1 {
+    font-family: var(--font-sans);
+    font-size: 20pt;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    margin: 0 0 8mm;
+    padding-bottom: 3mm;
+    border-bottom: 1pt solid var(--rule);
+}
+
+.book-toc ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.book-toc li {
+    margin: 0 0 1.6mm;
+}
+
+.book-toc a {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4em;
+    text-decoration: none;
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 9.5pt;
+}
+
+.book-toc .toc-dots {
+    flex: 1 1 auto;
+    border-bottom: 0.75pt dotted var(--rule);
+    transform: translateY(-0.28em);
+}
+
+/* Resolved by the paged media engine; silently empty without one. */
+.book-toc a::after {
+    content: target-counter(attr(href), page);
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-soft);
+}
+
+/* Screen-only pagination report, injected after Paged.js finishes. */
+.build-status {
+    position: fixed;
+    right: 12px;
+    bottom: 12px;
+    z-index: 999;
+    max-width: 22rem;
+    padding: 0.6rem 0.9rem;
+    border-radius: 8px;
+    background: #101a22;
+    color: #ffffff;
+    font-family: var(--font-sans);
+    font-size: 12px;
+    line-height: 1.4;
+    box-shadow: 0 6px 20px rgba(16, 33, 43, 0.3);
+}
+
+@media print {
+    .build-status {
+        display: none;
+    }
+}
+
+/* ----------------------------------------------------------------- Chapters */
+
+.chapter {
+    break-before: right;
+}
+
+/* Feeds the recto running head. */
+.chapter > h1 {
+    string-set: chapter-title content(text);
+    font-family: var(--font-sans);
+    font-size: 23pt;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin: 0 0 8mm;
+    padding-bottom: 4mm;
+    border-bottom: 1.5pt solid var(--brand);
+    break-after: avoid-page;
+}
+
+/* ------------------------------------------------------------- Typography */
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-sans);
+    color: var(--ink);
+    break-after: avoid-page;
+    break-inside: avoid;
+}
+
+h2 {
+    font-size: 13.5pt;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    margin: 8mm 0 2.5mm;
+    padding-bottom: 1.5mm;
+    border-bottom: 0.5pt solid var(--rule-soft);
+}
+
+h3 {
+    font-size: 11pt;
+    font-weight: 650;
+    margin: 5mm 0 1.5mm;
+}
+
+h4 {
+    font-size: 10pt;
+    font-weight: 650;
+    margin: 4mm 0 1mm;
+}
+
+h5 {
+    font-size: 9.5pt;
+    font-weight: 650;
+    color: var(--ink-soft);
+    margin: 3.5mm 0 1mm;
+}
+
+p {
+    margin: 0 0 2.2mm;
+    orphans: 2;
+    widows: 2;
+}
+
+ul, ol {
+    margin: 0 0 3mm 5.5mm;
+    padding: 0;
+}
+
+li {
+    margin-bottom: 0.8mm;
+    orphans: 2;
+    widows: 2;
+}
+
+strong {
+    font-weight: 700;
+}
+
+blockquote {
+    margin: 3mm 0 3mm 4mm;
+    padding-left: 4mm;
+    border-left: 1.5pt solid var(--rule);
+    color: var(--ink-soft);
+    break-inside: avoid;
+}
+
+hr {
+    border: none;
+    border-top: 0.5pt solid var(--rule-soft);
+    margin: 5mm 0;
+}
+
+/* Internal cross-references print as plain text; outbound URLs are spelled
+   out because a reader on paper cannot follow a hyperlink. */
+a {
+    color: var(--ink);
+    text-decoration: none;
+}
+
+.chapter a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-family: var(--font-mono);
+    font-size: 0.78em;
+    color: #55636f;
+    word-break: break-all;
+}
+
+/* ----------------------------------------------------------------- Code */
+
+pre {
+    background: #f4f7f9;
+    border: 0.5pt solid #c8d2d8;
+    border-radius: 3pt;
+    padding: 2mm 2.5mm;
+    margin: 2.5mm 0;
+    overflow: visible;
+    orphans: 3;
+    widows: 3;
+    break-inside: auto;
+}
+
+pre[data-short] {
+    break-inside: avoid;
+}
+
+pre code {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: var(--code-size);
+    line-height: var(--code-leading);
+    tab-size: 4;
+    color: var(--ink);
+}
+
+/* Hanging indent so a wrapped line reads as a continuation, not as new code.
+   `--i` is the line's own indentation in columns, set by the highlighter. */
+pre code .ln {
+    display: block;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    --lead: calc(var(--i, 0) * 1ch);
+    padding-left: calc(var(--lead) + var(--hang));
+    text-indent: calc(-1 * (var(--lead) + var(--hang)));
+}
+
+code {
+    font-family: var(--font-mono);
+    font-size: 0.87em;
+    color: var(--ink);
+    word-break: break-word;
+}
+
+/* --------------------------------------------------------------- Tables */
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 0.5pt solid var(--rule);
+    font-family: var(--font-sans);
+    font-size: 8.5pt;
+    margin: 3mm 0;
+    break-inside: auto;
+}
+
+thead {
+    display: table-header-group;
+}
+
+tr {
+    break-inside: avoid;
+}
+
+th, td {
+    padding: 1.2mm 1.8mm;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 0.5pt solid var(--rule-soft);
+}
+
+th {
+    background: #eef2f4;
+    font-size: 7.5pt;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+}
+
+/* ------------------------------------------------------------- Callouts */
+
+.info-box,
+.warning-box,
+.error-box,
+.success-box,
+.quick-ref,
+.see-also,
+.hub-path-card {
+    padding: 2mm 3mm;
+    margin: 3mm 0;
+    border-radius: 2pt;
+    font-size: 9.5pt;
+    break-inside: avoid;
+}
+
+.info-box > :last-child,
+.warning-box > :last-child,
+.error-box > :last-child,
+.success-box > :last-child,
+.see-also > :last-child {
+    margin-bottom: 0;
+}
+
+.info-box {
+    background: #eef5f6;
+    border: 0.5pt solid #b9d4d7;
+    border-left: 2pt solid #0e7c86;
+}
+
+.warning-box {
+    background: #fbf5e9;
+    border: 0.5pt solid #ddc9a0;
+    border-left: 2pt solid #c07c1e;
+}
+
+.error-box {
+    background: #fbf0ef;
+    border: 0.5pt solid #ddbfbc;
+    border-left: 2pt solid #c0433d;
+}
+
+.success-box {
+    background: #eef8f3;
+    border: 0.5pt solid #bcdccd;
+    border-left: 2pt solid #2f9e79;
+}
+
+.warning-box h2 {
+    margin-top: 0;
+    border: none;
+    font-size: 11pt;
+}
+
+.see-also {
+    background: #f5f7f8;
+    border: 0.5pt solid var(--rule-soft);
+    margin-top: 5mm;
+}
+
+.see-also h3 {
+    margin: 0 0 1.5mm;
+    font-size: 7.5pt;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #6a7882;
+}
+
+.see-also ul {
+    list-style: none;
+    margin: 0;
+}
+
+.see-also li {
+    padding-left: 4mm;
+    position: relative;
+    font-size: 9pt;
+}
+
+.see-also li::before {
+    content: "\2192";
+    position: absolute;
+    left: 0;
+    color: var(--brand);
+}
+
+.hub-path-grid {
+    display: block;
+}
+
+.hub-path-card {
+    background: #f7f9fa;
+    border: 0.5pt solid var(--rule-soft);
+}
+
+.hub-path-card h3 {
+    margin-top: 0;
+}
+
+/* Chapter-level navigation has no meaning on paper. */
+.breadcrumbs,
+.nav-footer,
+.copy-btn,
+.chapter > footer {
+    display: none;
+}

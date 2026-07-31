@@ -1,0 +1,63 @@
+// State Isolation Example
+// Demonstrates that each actor instance has isolated state
+
+actor BankAccount {
+    var balance = 0;
+    var accountName;
+    
+    function BankAccount(name) {
+        accountName = name;
+    }
+    
+    on deposit(amount) {
+        balance = balance + amount;
+        print($"{accountName}: Deposited {amount}, balance is now {balance}");
+    }
+    
+    on withdraw(amount) {
+        if (balance >= amount) {
+            balance = balance - amount;
+            print($"{accountName}: Withdrew {amount}, balance is now {balance}");
+        } else {
+            print($"{accountName}: Insufficient funds! Balance: {balance}, Requested: {amount}");
+        }
+    }
+    
+    on balance() {
+        print($"{accountName}: Current balance is {balance}");
+    }
+}
+
+// Create multiple bank accounts (each with isolated state)
+print("Creating bank accounts...");
+var account1 = spawn BankAccount("Alice's Account");
+var account2 = spawn BankAccount("Bob's Account");
+var account3 = spawn BankAccount("Charlie's Account");
+
+// Small initial delay to ensure actor loops have started
+sleep(100);
+
+// Each account operates independently
+print("\nOperating on Alice's account:");
+send account1.deposit(100);
+send account1.deposit(50);
+send account1.withdraw(30);
+
+print("\nOperating on Bob's account:");
+send account2.deposit(200);
+send account2.withdraw(75);
+
+print("\nOperating on Charlie's account:");
+send account3.deposit(500);
+send account3.withdraw(1000);  // Should fail - insufficient funds
+
+// Check final balances
+print("\nFinal balances:");
+send account1.balance();
+send account2.balance();
+send account3.balance();
+
+// Give actors time to process
+sleep(500);
+
+print("\nState isolation demonstrated - each account maintains its own balance!");

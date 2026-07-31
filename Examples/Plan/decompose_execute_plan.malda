@@ -1,0 +1,20 @@
+// Note: Requires OPENROUTER_API_KEY environment variable
+// Structured task planning: decomposeTask + executePlan
+
+// Decompose a high-level instruction into a plan (uses LLM)
+var plan = decomposeTask("Add unit tests for getSymbols and run the test suite");
+if (plan.error != null) {
+    print("Decompose failed: " + plan.error);
+} else {
+    print("Plan steps: " + string(plan.steps.length));
+    for (var i = 0; i < plan.steps.length; i = i + 1) {
+        var step = plan.steps[i];
+        print("  " + step.id + ": " + step.description);
+    }
+
+    // Execute the plan with a DevAgent
+    var agent = new DevAgent("Dev", "developer", "You are a developer.", null, ".");
+    var result = executePlan(plan, agent);
+    print("\nCompleted steps: " + string(result.completed.length));
+    print("Failed steps: " + string(result.failed.length));
+}

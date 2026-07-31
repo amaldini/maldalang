@@ -1,0 +1,63 @@
+{
+  "examples": [
+    {
+      "name": "Classes and Objects",
+      "description": "Object-oriented programming with implicit member access",
+      "file": "classes_objects.malda",
+      "track": "student",
+      "difficulty": "intermediate",
+      "minutes": 14,
+      "concepts": ["class", "object", "methods", "this"],
+      "prerequisites": ["Basics/lambda.malda"],
+      "learningGoal": "Learn how MALDA groups data and behavior into classes and objects.",
+      "expectedOutput": "Creates objects and calls methods on them.",
+      "next": "OOP/inheritance.malda",
+      "documentationPath": "/?lesson=oop-classes#lesson-oop-classes",
+      "documentationTitle": "Classes and Objects",
+      "featured": true
+    },
+    {
+      "name": "Inheritance",
+      "description": "Class inheritance and polymorphism with implicit member access",
+      "file": "inheritance.malda",
+      "track": "student",
+      "difficulty": "intermediate",
+      "minutes": 15,
+      "concepts": ["extends", "inheritance", "polymorphism", "super"],
+      "prerequisites": ["OOP/classes_objects.malda"],
+      "learningGoal": "See how one class can reuse and extend another class in MALDA.",
+      "expectedOutput": "Demonstrates inherited behavior and overridden methods.",
+      "next": "OOP/calculator.malda",
+      "documentationPath": "/?lesson=oop-classes#lesson-oop-classes",
+      "documentationTitle": "Inheritance"
+    },
+    {
+      "name": "Static Members",
+      "description": "Static variables and methods",
+      "file": "static_members.malda",
+      "track": "student",
+      "difficulty": "intermediate",
+      "minutes": 12,
+      "concepts": ["static", "shared state", "class-level members"],
+      "prerequisites": ["OOP/classes_objects.malda"],
+      "learningGoal": "Understand when data belongs to the class itself instead of to a specific object.",
+      "expectedOutput": "Shows shared values or methods accessed through the class."
+    },
+    {
+      "name": "Complex Example - Calculator",
+      "description": "Complete example with classes, methods, and logic",
+      "file": "calculator.malda",
+      "track": "student",
+      "difficulty": "intermediate",
+      "minutes": 18,
+      "concepts": ["class design", "methods", "logic reuse", "error handling"],
+      "prerequisites": ["OOP/inheritance.malda"],
+      "learningGoal": "Practice OOP with a complete but approachable program that still feels like real software.",
+      "expectedOutput": "Prints calculator results for several operations, including division-by-zero handling.",
+      "next": "Prompts/basic_prompt.malda",
+      "documentationPath": "/?lesson=oop-classes#lesson-oop-classes",
+      "documentationTitle": "OOP Practice",
+      "featured": true
+    }
+  ]
+}

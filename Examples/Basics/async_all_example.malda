@@ -1,0 +1,23 @@
+// Example: Structured concurrency with all()
+
+function computeA() {
+    return 1;
+}
+
+function computeB() {
+    return 2;
+}
+
+// Create tasks using async
+var taskA = async computeA();
+var taskB = async computeB();
+
+// Combine tasks with all() (variadic form)
+var allTask = all(taskA, taskB);
+
+// Wait for both to complete
+var results = await allTask;
+
+var sum = results[0] + results[1];
+print(sum); // Expected output: 3
+

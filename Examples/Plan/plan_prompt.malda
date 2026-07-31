@@ -1,0 +1,19 @@
+// Planning Prompt Example
+// Build a planning prompt with task and docs, optionally with return type hint
+
+prompt planTask(task, docs) -> Plan {
+    system: "You are a project planner."
+    user: """
+    Task: {task}
+
+    Documentation:
+    {docs}
+
+    Create a detailed implementation plan.
+    """
+}
+
+// Use the prompt (no LLM call here; just the constructed prompt)
+var plan = planTask("Add error handling to the parser", "See docs/parsing.md");
+print("Plan prompt (system): " + plan.system);
+print("Plan prompt (user): " + plan.user);
