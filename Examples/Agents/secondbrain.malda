@@ -7,8 +7,8 @@
 //   1) BUILD   a CodingAgent explores documentation (.md / .html) in a user-chosen
 //              folder, proposes a theme taxonomy, then distills a "second brain":
 //              hierarchical linked .md notes (index -> topic hubs -> notes).
-//   2) ASK     answers user questions using the produced second brain
-//              (catalog + token-overlap retrieval).
+//   2) ASK     local HttpServer web UI: catalog + token-overlap retrieval, LLM
+//              answers in Markdown (rendered with markdownToHtml).
 //
 // Run:   malda Examples/Agents/secondbrain.malda
 //
@@ -18,6 +18,7 @@
 //
 // UI:    at startup, choose UI message language (English / Italian).
 //        Notes stay in the source document language; technical terms are unchanged.
+//        ASK opens http://localhost:39018/ (Stop server / menu returns to console).
 //
 // Compile (ASK-only portable exe with embedded brain, no disk extract):
 //   malda compile Examples/Agents/secondbrain.malda -o dist/secondbrain.exe --mode transpile --embed-folder secondbrain
@@ -31,6 +32,10 @@ var TOP_K = 5;                  // notes retrieved per question
 var MAX_EXPLORE_DOCS = 300;     // documents listed for the explorer agent
 var CATALOG_NAME = "brain.json";
 var UI_LANG = "it";             // "en" | "it" — UI messages
+var ASK_HTTP_PORT = 39018;
+var ASK_SESSION_ID = "secondbrain-ask-lexical";
+var ASK_STORE = "SecondBrainAsk";
+var askHttpServer = null;
 
 // ---------------------------------------------------------------- UI i18n
 
@@ -68,6 +73,7 @@ function chooseLanguage() {
     } else {
         UI_LANG = "it";
     }
+    ui.setState(ASK_STORE, "lang", UI_LANG, ASK_SESSION_ID);
     AnsiConsole.markupLine(t(
         "[dim]UI language: English[/]",
         "[dim]Lingua interfaccia: Italiano[/]"));
@@ -1420,7 +1426,49 @@ function answerInstructions() {
         "si avvicina di piu'. Non inventare API, parametri o comportamenti. " +
         "Puoi usare gli strumenti read_file, grep e list_directory per aprire altre note " +
         "del second brain se il contesto fornito non basta. Rispondi nella lingua della domanda, " +
-        "in modo conciso e strutturato.";
+        "in modo conciso e strutturato. Formatta la risposta in Markdown " +
+        "(grassetto, elenchi, tabelle se utili); non usare HTML grezzo.";
+}
+
+function chatOnlyInstructions() {
+    return "Sei un assistente utile in chat diretta. Non c'e' un second brain / knowledge base " +
+        "disponibile per questa sessione: rispondi con le tue conoscenze generali. " +
+        "Rispondi nella lingua della domanda, in modo conciso e strutturato. " +
+        "Formatta la risposta in Markdown (grassetto, elenchi, tabelle se utili); " +
+        "non usare HTML grezzo.";
+}
+
+function catalogNoteCount(catalog) {
+    if (catalog == null or catalog.notes == null) {
+        return 0;
+    }
+    return catalog.notes.length;
+}
+
+function runChatOnlyTurn(question) {
+    AnsiConsole.markupLine("[dim]" + t(
+        "direct chat (no second-brain retrieval)",
+        "chat diretta (nessun recupero dal second brain)") + "[/]");
+    var responder = newPlainAgent(
+        "ChatAssistant",
+        "assistente in chat",
+        chatOnlyInstructions()
+    );
+    var answer = str.trim(tryThink(responder, question));
+    if (answer == "") {
+        return {
+            "question": question,
+            "answer": "",
+            "sources": [],
+            "error": t("No answer from the LLM.", "Nessuna risposta dall'LLM.")
+        };
+    }
+    return {
+        "question": question,
+        "answer": answer,
+        "sources": [],
+        "error": ""
+    };
 }
 
 function resolveAskBrainRoot() {
@@ -1440,30 +1488,46 @@ function resolveAskBrainRoot() {
     return brainDir;
 }
 
-function askBrain() {
-    AnsiConsole.markupLine("");
-    AnsiConsole.panel(
-        t("Answers questions using the second brain produced by mode 1.",
-            "Risponde alle domande usando il second brain prodotto dalla modalita' 1."),
-        t("[bold]Mode 2 - ASK[/]", "[bold]Modalita' 2 - CHIEDI[/]"), "rounded");
-
-    var brainDir = resolveAskBrainRoot();
-    var catalog = loadCatalog(brainDir);
-    if (catalog == null) {
-        AnsiConsole.markupLine("[red]" + t("No valid second brain in", "Nessun second brain valido in") +
-            "[/] " + brainDir +
-            " [red](" + t("missing", "manca") + " " + CATALOG_NAME + ").[/] " +
-            t("Run mode 1 first.", "Esegui prima la modalita' 1."));
-        return false;
+function askSourcesFromPicked(picked) {
+    var sources = [];
+    foreach (var entry in picked) {
+        sources.append({
+            "slug": entry.note.slug,
+            "title": entry.note.title,
+            "path": entry.note.path,
+            "source": entry.note.source,
+            "score": entry.score,
+            "scoreHint": ""
+        });
     }
-    AnsiConsole.markupLine("Second brain: [bold]" + string(catalog.notes.length) + "[/] " +
-        t("notes", "note") + ", [bold]" +
-        string(catalog.topics.length) + "[/] " + t("themes", "temi") +
-        t(", from `", ", da `") + string(catalog.sourceFolder) + "`");
-    AnsiConsole.markupLine("LLM: [bold]" + modelLabel() + "[/]");
-    AnsiConsole.markupLine("[dim]" + t(
-        "Empty input returns to the menu.",
-        "Invio vuoto per tornare al menu.") + "[/]");
+    return sources;
+}
+
+// Called from the shared ASK web UI on each POST /ask.
+function runAskTurn(question) {
+    var session = askGetSession();
+    var brainDir = askAsText(session.brainDir);
+    var catalog = ui.state(ASK_STORE, "catalog", null, ASK_SESSION_ID);
+    var chatOnly = session.chatOnly == true or catalogNoteCount(catalog) == 0;
+    if (chatOnly) {
+        return runChatOnlyTurn(question);
+    }
+
+    var picked = selectNotes(brainDir, catalog, question);
+    if (picked.length == 0) {
+        AnsiConsole.markupLine("[yellow]" + t(
+            "No relevant notes; falling back to direct chat.",
+            "Nessuna nota pertinente; passo alla chat diretta.") + "[/]");
+        return runChatOnlyTurn(question);
+    }
+
+    var sources = askSourcesFromPicked(picked);
+    var names = [];
+    foreach (var entry in picked) {
+        names.append(entry.note.slug);
+    }
+    AnsiConsole.markupLine("[dim]" + t("retrieved notes: ", "note recuperate: ") +
+        str.join(names, ", ") + "[/]");
 
     var responder = newReaderAgent(
         "BrainReader",
@@ -1471,49 +1535,118 @@ function askBrain() {
         answerInstructions(),
         brainDir
     );
+    var context = buildContext(brainDir, picked);
+    var answer = str.trim(tryThink(responder,
+        "SECOND BRAIN (estratti pertinenti):\n\n" + context +
+        "\n\n----\nDOMANDA: " + question));
+    if (answer == "") {
+        return {
+            "question": question,
+            "answer": "",
+            "sources": sources,
+            "error": t("No answer from the LLM.", "Nessuna risposta dall'LLM.")
+        };
+    }
+    return {
+        "question": question,
+        "answer": answer,
+        "sources": sources,
+        "error": ""
+    };
+}
 
-    while (true) {
-        io.print("");
-        var question = str.trim(io.input(t("Question: ", "Domanda: ")));
-        if (question == "") {
-            return true;
-        }
+include "secondbrain_ask_ui_lib.malda";
 
-        var picked = selectNotes(brainDir, catalog, question);
-        if (picked.length == 0) {
-            AnsiConsole.markupLine("[yellow]" + t(
-                "No relevant notes found in the second brain.",
-                "Nessuna nota pertinente trovata nel second brain.") + "[/]");
-            continue;
-        }
+function askBrain() {
+    AnsiConsole.markupLine("");
+    AnsiConsole.panel(
+        t("Opens a local web UI to ask questions against the second brain from mode 1.",
+            "Apre una UI web locale per fare domande sul second brain della modalita' 1."),
+        t("[bold]Mode 2 - ASK (web)[/]", "[bold]Modalita' 2 - CHIEDI (web)[/]"), "rounded");
 
-        var names = [];
-        foreach (var entry in picked) {
-            names.append(entry.note.slug);
+    var brainDir = resolveAskBrainRoot();
+    var catalog = loadCatalog(brainDir);
+    var noteCount = catalogNoteCount(catalog);
+    var topicCount = 0;
+    var sourceFolder = brainDir;
+    var chatOnly = noteCount == 0;
+    if (catalog != null) {
+        if (catalog.topics != null) {
+            topicCount = catalog.topics.length;
         }
-        AnsiConsole.markupLine("[dim]" + t("retrieved notes: ", "note recuperate: ") +
-            str.join(names, ", ") + "[/]");
-
-        var context = buildContext(brainDir, picked);
-        responder.reset();
-        var answer = str.trim(tryThink(responder,
-            "SECOND BRAIN (estratti pertinenti):\n\n" + context +
-            "\n\n----\nDOMANDA: " + question));
-        io.print("");
-        if (answer == "") {
-            AnsiConsole.markupLine("[red]" + t("No answer from the LLM.", "Nessuna risposta dall'LLM.") + "[/]");
-        } else {
-            AnsiConsole.markupLine("[bold green]" + t("Answer", "Risposta") + "[/]");
-            io.print(answer);
-        }
-        io.print("");
-        AnsiConsole.markupLine("[dim]" + t("Sources:", "Fonti:") + "[/]");
-        foreach (var entry in picked) {
-            io.print("  - " + entry.note.title + "  ->  " +
-                io.pathJoin(brainDir, entry.note.path) +
-                "  (" + t("source:", "origine:") + " " + entry.note.source + ")");
+        if (catalog.sourceFolder != null and askAsText(catalog.sourceFolder) != "") {
+            sourceFolder = catalog.sourceFolder;
         }
     }
+
+    if (chatOnly) {
+        AnsiConsole.markupLine("[yellow]" + t(
+            "No second brain notes found — ASK will open as direct chat with the model.",
+            "Nessuna nota di second brain — ASK si apre in chat diretta col modello.") + "[/]");
+        if (catalog == null) {
+            AnsiConsole.markupLine("[dim]" + t("Missing", "Manca") + " " + CATALOG_NAME +
+                t(" in ", " in ") + brainDir +
+                t(". Run mode 1 later to enable retrieval.",
+                    ". Esegui dopo la modalita' 1 per abilitare il recupero.") + "[/]");
+        }
+    }
+
+    var retrieval = t("none (direct chat)", "nessuno (chat diretta)");
+    var subtitle = t(
+        "Direct chat with the model (no second-brain retrieval).",
+        "Chat diretta col modello (nessun recupero dal second brain).");
+    if (not chatOnly) {
+        retrieval = t("lexical token overlap", "sovrapposizione lessicale di token");
+        subtitle = t(
+            "Lexical retrieval over the distilled note tree.",
+            "Recupero lessicale sull'albero di note distillate.");
+    }
+
+    ui.setState(ASK_STORE, "lang", UI_LANG, ASK_SESSION_ID);
+    ui.setState(ASK_STORE, "catalog", catalog, ASK_SESSION_ID);
+    ui.setState(ASK_STORE, "pendingStop", false, ASK_SESSION_ID);
+    askClearHistory();
+    askSetSession({
+        "brainDir": brainDir,
+        "chatOnly": chatOnly,
+        "noteCount": noteCount,
+        "topicCount": topicCount,
+        "sourceFolder": sourceFolder,
+        "retrieval": retrieval,
+        "llm": modelLabel(),
+        "title": t("Second brain — ASK", "Second brain — CHIEDI"),
+        "subtitle": subtitle
+    });
+
+    if (chatOnly) {
+        AnsiConsole.markupLine(t("Mode:", "Modalita':") + " [bold]" +
+            t("direct chat", "chat diretta") + "[/]");
+    } else {
+        AnsiConsole.markupLine("Second brain: [bold]" + string(noteCount) + "[/] " +
+            t("notes", "note") + ", [bold]" +
+            string(topicCount) + "[/] " + t("themes", "temi") +
+            t(", from `", ", da `") + string(sourceFolder) + "`");
+    }
+    AnsiConsole.markupLine("LLM: [bold]" + modelLabel() + "[/]");
+
+    askHttpServer = new HttpServer(ASK_HTTP_PORT);
+    askHttpServer.start();
+    AnsiConsole.markupLine("");
+    AnsiConsole.markupLine(t("Open:", "Apri:") + " [bold blue]http://localhost:" +
+        string(ASK_HTTP_PORT) + "/[/]");
+    AnsiConsole.markupLine("[dim]" + t(
+        "Use Stop server / menu in the page (or Ctrl+C) to return here.",
+        "Usa Ferma server / menu nella pagina (o Ctrl+C) per tornare qui.") + "[/]");
+
+    while (askHttpServer != null and askHttpServer.isRunning) {
+        if (askConsumePendingStop()) {
+            askHttpServer.stop();
+            break;
+        }
+        sleep(200);
+    }
+    askHttpServer = null;
+    AnsiConsole.markupLine(t("ASK server stopped.", "Server ASK fermato."));
     return true;
 }
 
@@ -1523,11 +1656,11 @@ function showMenu() {
     AnsiConsole.markupLine("");
     AnsiConsole.panel(
         t("[bold]1[/]  BUILD   a CodingAgent reads .md/.html and distills the second brain\n" +
-            "[bold]2[/]  ASK     answers questions using the second brain\n" +
+            "[bold]2[/]  ASK     web UI — questions against the second brain\n" +
             "[bold]3[/]  language  switch UI language (English / Italian)\n" +
             "[bold]0[/]  quit",
             "[bold]1[/]  COSTRUISCI  un CodingAgent legge .md/.html e distilla il second brain\n" +
-            "[bold]2[/]  CHIEDI      risponde alle domande usando il second brain\n" +
+            "[bold]2[/]  CHIEDI      UI web — domande sul second brain\n" +
             "[bold]3[/]  lingua      cambia lingua interfaccia (English / Italiano)\n" +
             "[bold]0[/]  esci"),
         "[bold blue]MALDA second brain[/]", "double");

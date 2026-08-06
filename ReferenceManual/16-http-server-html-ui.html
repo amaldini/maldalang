@@ -197,11 +197,16 @@ function oldPage() {
         <p><code>extractHTML(markdown)</code> extracts HTML from markdown code fences or returns HTML as-is.</p>
         <pre><code>var html = extractHTML(markdown);</code></pre>
 
-        <h3>20.8.3 generateUI Function</h3>
+        <h3>20.8.3 markdownToHtml Function</h3>
+        <p><code>markdownToHtml(markdown)</code> converts Markdown to an HTML fragment (headings, emphasis, lists, tables, fenced code, and similar). Raw HTML tags in the input are disabled so untrusted model output is safer to embed in a page. Returns a string; wrap it in your own document chrome.</p>
+        <pre><code>var body = markdownToHtml("**Hello** and a table:\n\n| A | B |\n|---|---|\n| 1 | 2 |");
+return "&lt;html&gt;&lt;body class='md'&gt;" + body + "&lt;/body&gt;&lt;/html&gt;";</code></pre>
+
+        <h3>20.8.4 generateUI Function</h3>
         <p><code>generateUI</code> is a convenience helper for prompt-driven HTML generation with optional caching and a custom agent.</p>
         <pre><code>var html = generateUI(description, cache?, agent?);</code></pre>
 
-        <h3>20.8.4 ui.generate Function</h3>
+        <h3>20.8.5 ui.generate Function</h3>
         <p>Use <code>ui.generate</code> when AI should return a structured server UI tree instead of an HTML string.</p>
         <pre><code>var tree = ui.generate("Dashboard with title, filter row, and data grid", uiAgent, cache);
 var envelope = ui.mountEnvelope(tree, "dashboard-session");

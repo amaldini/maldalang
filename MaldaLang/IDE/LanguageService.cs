@@ -520,7 +520,7 @@ public class LanguageService : ILanguageService
             "getParseErrors", "createGetParseErrorsTool",
             "createSubmitPlanTool", "executePlan", "decomposeTask",
             "runPrompt", "loadDocuments", "splitDocuments", "formatRetrievedDocs", "composePipe", "parallelRun", "mergeRetrievedDocs", "withExamples", "indexInto",
-            "extractHTML", "generateUI",
+            "extractHTML", "markdownToHtml", "generateUI",
             "uiRow", "uiColumn", "uiStack", "uiSpacer", "uiPanel",
             "uiText", "uiHeading", "uiImage", "uiIcon",
             "uiButton", "uiTextField", "uiCheckbox", "uiSelect", "uiSlider", "uiDatePicker",

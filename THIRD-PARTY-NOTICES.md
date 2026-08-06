@@ -35,7 +35,7 @@ note in the table below.
 | AvalonEdit | 6.3.0 | MIT | Desktop IDE (code editor) |
 | LLamaSharp | 0.26.0 | MIT | Local model inference |
 | LLamaSharp.Backend.Cpu | 0.26.0 | MIT | Local model inference (CPU backend) |
-| Markdig | 0.33.0 | BSD-2-Clause | Markdown rendering |
+| Markdig | 0.33.0 | BSD-2-Clause | Markdown rendering (`markdownToHtml` builtin; Desktop/Web IDE chat) |
 | Microsoft.Build | 17.8.3 | MIT | Project/build integration |
 | Microsoft.Build.Utilities.Core | 17.8.3 | MIT | Project/build integration |
 | Microsoft.Data.SqlClient | 5.2.2 | MIT | SQL Server client |

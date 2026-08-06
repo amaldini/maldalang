@@ -189,7 +189,8 @@ public static class BuiltInRegistry
             "loadAssembly" or
             "getDotNetType" or
             "dotnetNew" or
-            "uiGenerate" => Descriptor(
+            "uiGenerate" or
+            "markdownToHtml" => Descriptor(
                 name,
                 BuiltInTranspilerStrategy.SupportedByTranspiler,
                 isAlwaysSynchronousForCodegen: true),

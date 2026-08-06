@@ -1,0 +1,388 @@
+// secondbrain_ask_ui_lib.malda - shared ASK web UI for secondbrain*.malda
+//
+// Included by the host program. Host must define:
+//   ASK_HTTP_PORT, ASK_SESSION_ID, ASK_STORE  (vars)
+//   askHttpServer                            (var, initially null)
+//   runAskTurn(question) -> { question, answer, sources, error }
+//   UI_LANG                                  (existing)
+//
+// HttpServer isolates each request: session fields live in ui.state.
+
+function askAsText(value) {
+    if (value == null) {
+        return "";
+    }
+    return string(value);
+}
+
+function askEscapeHtml(value) {
+    var s = askAsText(value);
+    s = str.replace(s, "&", "&amp;");
+    s = str.replace(s, "<", "&lt;");
+    s = str.replace(s, ">", "&gt;");
+    s = str.replace(s, "\"", "&quot;");
+    s = str.replace(s, "'", "&#39;");
+    return s;
+}
+
+function askGetLang() {
+    var lang = askAsText(ui.state(ASK_STORE, "lang", "", ASK_SESSION_ID));
+    if (lang == "en" or lang == "it") {
+        return lang;
+    }
+    return UI_LANG;
+}
+
+function askSetLang(raw) {
+    var lang = str.lower(str.trim(askAsText(raw)));
+    if (lang == "it" or lang == "italiano" or lang == "2") {
+        ui.setState(ASK_STORE, "lang", "it", ASK_SESSION_ID);
+        UI_LANG = "it";
+    } else if (lang == "en" or lang == "english" or lang == "1") {
+        ui.setState(ASK_STORE, "lang", "en", ASK_SESSION_ID);
+        UI_LANG = "en";
+    }
+}
+
+function askT(en, it) {
+    if (askGetLang() == "en") {
+        return en;
+    }
+    return it;
+}
+
+function askGetHistory() {
+    var history = ui.state(ASK_STORE, "history", [], ASK_SESSION_ID);
+    if (history == null) {
+        return [];
+    }
+    return history;
+}
+
+function askSetHistory(history) {
+    ui.setState(ASK_STORE, "history", history, ASK_SESSION_ID);
+}
+
+function askGetFlashError() {
+    return askAsText(ui.state(ASK_STORE, "flashError", "", ASK_SESSION_ID));
+}
+
+function askSetFlashError(message) {
+    ui.setState(ASK_STORE, "flashError", askAsText(message), ASK_SESSION_ID);
+}
+
+function askClearHistory() {
+    askSetHistory([]);
+    askSetFlashError("");
+}
+
+function askAppendTurn(turn) {
+    var history = askGetHistory();
+    history.append(turn);
+    askSetHistory(history);
+}
+
+function askGetSession() {
+    return ui.state(ASK_STORE, "session", {}, ASK_SESSION_ID);
+}
+
+function askSetSession(session) {
+    ui.setState(ASK_STORE, "session", session, ASK_SESSION_ID);
+}
+
+function askIsChatOnly() {
+    var session = askGetSession();
+    return session != null and session.chatOnly == true;
+}
+
+function askRenderSourcesHtml(sources) {
+    if (sources == null or sources.length == 0) {
+        if (askIsChatOnly()) {
+            return "<p class='muted'>" + askEscapeHtml(askT(
+                "Direct chat — no second-brain notes used.",
+                "Chat diretta — nessuna nota del second brain usata.")) + "</p>";
+        }
+        return "<p class='muted'>" + askEscapeHtml(askT(
+            "No notes retrieved for this question.",
+            "Nessuna nota recuperata per questa domanda.")) + "</p>";
+    }
+    var html = "<ul class='sources'>";
+    foreach (var note in sources) {
+        var scoreBit = "";
+        if (note.scoreHint != null and askAsText(note.scoreHint) != "") {
+            scoreBit = " · <span class='meta'>" + askEscapeHtml(note.scoreHint) + "</span>";
+        } else if (note.score != null) {
+            scoreBit = " · <span class='meta'>score " + askEscapeHtml(string(note.score)) + "</span>";
+        }
+        html = html + "<li><strong>" + askEscapeHtml(note.title) + "</strong>" +
+            " <span class='slug'>[" + askEscapeHtml(note.slug) + "]</span>" +
+            "<br><span class='path'>" + askEscapeHtml(note.path) + "</span>" +
+            " · <span class='meta'>" + askEscapeHtml(askT("source:", "origine:")) + " " +
+            askEscapeHtml(note.source) + "</span>" + scoreBit + "</li>";
+    }
+    html = html + "</ul>";
+    return html;
+}
+
+function askRenderTurnHtml(turn, index) {
+    var question = askAsText(turn.question);
+    var answer = askAsText(turn.answer);
+    var error = askAsText(turn.error);
+    var sources = turn.sources;
+    if (sources == null) {
+        sources = [];
+    }
+
+    var html = "<article class='turn' id='turn-" + string(index) + "'>";
+    html = html + "<div class='bubble q'><div class='bubble-label'>" +
+        askEscapeHtml(askT("Question", "Domanda")) + "</div>" +
+        "<p class='question-text'>" + askEscapeHtml(question) + "</p></div>";
+
+    if (error != "") {
+        html = html + "<div class='bubble a error-bubble'><p class='error'>" +
+            askEscapeHtml(error) + "</p></div>";
+    } else {
+        html = html + "<div class='bubble a'><div class='bubble-label'>" +
+            askEscapeHtml(askT("Answer", "Risposta")) + "</div>" +
+            "<div class='answer md'>" + markdownToHtml(answer) + "</div>" +
+            "<details class='sources-details'><summary>" +
+            askEscapeHtml(askT("Sources", "Fonti")) + " (" + string(sources.length) + ")</summary>" +
+            askRenderSourcesHtml(sources) + "</details></div>";
+    }
+    html = html + "</article>";
+    return html;
+}
+
+function askPageStyles() {
+    return "<style>" +
+        ":root{--ink:#1c2430;--muted:#5c6b7a;--line:#d5dde6;--paper:#f7f4ef;" +
+        "--panel:#fffdf9;--accent:#0f6a5b;--accent-ink:#083f38;--warn:#8a5a12;" +
+        "--danger:#8b2e2e;--focus:#c9e7e1;--q-bg:#e8f2ef;--sticky-bg:rgba(247,244,239,0.92)}" +
+        "*{box-sizing:border-box}" +
+        "html{scroll-behavior:smooth}" +
+        "body{margin:0;font-family:Georgia,'Times New Roman',serif;color:var(--ink);" +
+        "background:radial-gradient(1200px 500px at 10% -10%,#e7efe9 0%,transparent 55%)," +
+        "linear-gradient(180deg,#eef2f5,#f7f4ef 40%,#f3efe8);min-height:100vh}" +
+        "main{max-width:760px;margin:0 auto;padding:0 18px 48px}" +
+        ".sticky-header{position:sticky;top:0;z-index:20;padding:16px 0 12px;" +
+        "margin:0 -18px;padding-left:18px;padding-right:18px;" +
+        "background:var(--sticky-bg);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);" +
+        "border-bottom:1px solid var(--line);box-shadow:0 8px 18px rgba(28,36,48,0.04)}" +
+        ".sticky-header-inner{display:flex;justify-content:space-between;gap:16px;" +
+        "align-items:flex-start;flex-wrap:wrap}" +
+        "h1{font-size:1.55rem;margin:0 0 4px;letter-spacing:-0.02em}" +
+        ".subtitle{margin:0;color:var(--muted);font-family:system-ui,sans-serif;font-size:0.9rem}" +
+        ".lang{font-family:system-ui,sans-serif;display:flex;gap:8px;align-items:center;padding-top:4px}" +
+        ".lang a{color:var(--accent-ink);text-decoration:none;border-bottom:1px solid transparent}" +
+        ".lang a.active{border-bottom-color:var(--accent);font-weight:600}" +
+        ".meta-bar,.panel,.composer{background:var(--panel);border:1px solid var(--line);border-radius:10px;" +
+        "padding:14px 16px;margin:14px 0 0}" +
+        ".meta-bar{font-family:system-ui,sans-serif;font-size:0.9rem;color:var(--muted);" +
+        "display:grid;gap:4px}" +
+        ".meta-bar strong{color:var(--ink)}" +
+        ".thread{display:flex;flex-direction:column;gap:16px;margin-top:18px}" +
+        ".turn{display:flex;flex-direction:column;gap:10px}" +
+        ".bubble{border:1px solid var(--line);border-radius:12px;padding:12px 14px}" +
+        ".bubble.q{background:var(--q-bg);border-color:#c5ddd6}" +
+        ".bubble.a{background:var(--panel)}" +
+        ".bubble-label{font-family:system-ui,sans-serif;font-size:0.75rem;text-transform:uppercase;" +
+        "letter-spacing:0.04em;color:var(--muted);margin:0 0 6px}" +
+        ".question-text{margin:0;line-height:1.45;font-size:1.05rem}" +
+        ".answer{line-height:1.55;margin:0}" +
+        ".answer.md p{margin:0 0 0.75em}" +
+        ".answer.md p:last-child{margin-bottom:0}" +
+        ".answer.md h3{font-size:1.05rem;margin:1em 0 0.45em}" +
+        ".answer.md strong{font-weight:700}" +
+        ".answer.md code{font-family:ui-monospace,Consolas,monospace;font-size:0.9em;" +
+        "background:#eef2f5;padding:0.1em 0.35em;border-radius:4px}" +
+        ".answer.md table{border-collapse:collapse;width:100%;margin:0.6em 0 0.2em;" +
+        "font-family:system-ui,sans-serif;font-size:0.9rem}" +
+        ".answer.md th,.answer.md td{border:1px solid var(--line);padding:6px 8px;text-align:left}" +
+        ".answer.md th{background:#eef2f5;font-weight:600}" +
+        ".answer.md ul,.answer.md ol{margin:0.4em 0 0.8em;padding-left:1.3em}" +
+        ".sources-details{margin-top:12px;font-family:system-ui,sans-serif;font-size:0.9rem}" +
+        ".sources-details summary{cursor:pointer;color:var(--accent-ink);user-select:none}" +
+        ".sources{list-style:none;padding:0;margin:10px 0 0;font-size:0.92rem}" +
+        ".sources li{padding:10px 0;border-top:1px solid var(--line)}" +
+        ".sources li:first-child{border-top:none;padding-top:0}" +
+        ".slug,.path,.meta,.muted{color:var(--muted)}" +
+        ".slug{font-family:ui-monospace,Consolas,monospace;font-size:0.85rem}" +
+        ".path{font-family:ui-monospace,Consolas,monospace;font-size:0.82rem}" +
+        "label{display:block;font-family:system-ui,sans-serif;font-size:0.85rem;margin:0 0 8px;" +
+        "color:var(--muted)}" +
+        "textarea{width:100%;min-height:96px;resize:vertical;padding:12px 14px;border-radius:8px;" +
+        "border:1px solid var(--line);background:#fff;color:var(--ink);font:1rem/1.45 Georgia,serif}" +
+        "textarea:focus{outline:2px solid var(--focus);border-color:var(--accent)}" +
+        ".actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}" +
+        "button,.ghost{font-family:system-ui,sans-serif;border-radius:8px;padding:10px 14px;" +
+        "border:1px solid var(--accent);cursor:pointer}" +
+        "button{background:var(--accent);color:#fff}" +
+        "button:hover{background:var(--accent-ink)}" +
+        ".ghost{background:transparent;color:var(--accent-ink);text-decoration:none;display:inline-block}" +
+        ".error{color:var(--danger);font-family:system-ui,sans-serif;margin:0}" +
+        ".error-bubble{background:#fff5f5;border-color:#efc4c4}" +
+        ".empty{color:var(--muted);font-family:system-ui,sans-serif;margin:0}" +
+        ".composer{position:sticky;bottom:0;z-index:15;margin-top:18px;" +
+        "box-shadow:0 -10px 24px rgba(28,36,48,0.05)}" +
+        ".busy{font-family:system-ui,sans-serif;font-size:0.85rem;color:var(--muted);margin:8px 0 0}" +
+        "</style>";
+}
+
+function askRenderPage() {
+    var lang = askGetLang();
+    var history = askGetHistory();
+    var flashError = askGetFlashError();
+    var session = askGetSession();
+    var title = askAsText(session.title);
+    if (title == "") {
+        title = askT("Second brain — ASK", "Second brain — CHIEDI");
+    }
+    var enClass = "";
+    var itClass = "";
+    if (lang == "en") {
+        enClass = " active";
+    } else {
+        itClass = " active";
+    }
+
+    var html = "<!DOCTYPE html><html lang='" + lang + "'><head>" +
+        "<meta charset='utf-8'>" +
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>" +
+        "<title>" + askEscapeHtml(title) + "</title>" +
+        askPageStyles() +
+        "</head><body><main>";
+
+    html = html + "<header class='sticky-header'><div class='sticky-header-inner'><div>" +
+        "<h1>" + askEscapeHtml(title) + "</h1>" +
+        "<p class='subtitle'>" + askEscapeHtml(askAsText(session.subtitle)) + "</p></div>" +
+        "<div class='lang'>" +
+        "<a class='" + str.trim(enClass) + "' href='/?lang=en'>English</a>" +
+        "<span aria-hidden='true'>·</span>" +
+        "<a class='" + str.trim(itClass) + "' href='/?lang=it'>Italiano</a>" +
+        "</div></div></header>";
+
+    html = html + "<div class='meta-bar'>" +
+        "<div>" + askEscapeHtml(askT("Notes", "Note")) + ": <strong>" +
+        askEscapeHtml(string(session.noteCount)) +
+        "</strong> · " + askEscapeHtml(askT("Themes", "Temi")) + ": <strong>" +
+        askEscapeHtml(string(session.topicCount)) + "</strong> · " +
+        askEscapeHtml(askT("from", "da")) +
+        " <strong>" + askEscapeHtml(session.sourceFolder) + "</strong></div>" +
+        "<div>" + askEscapeHtml(askT("Retrieval", "Recupero")) + ": <strong>" +
+        askEscapeHtml(session.retrieval) + "</strong> · LLM: <strong>" +
+        askEscapeHtml(session.llm) + "</strong></div>" +
+        "</div>";
+
+    if (flashError != "") {
+        html = html + "<section class='panel'><p class='error'>" +
+            askEscapeHtml(flashError) + "</p></section>";
+    }
+
+    html = html + "<section class='thread' id='thread'>";
+    if (history.length == 0) {
+        var emptyHint = askT(
+            "Ask a question below. Answers use the second brain; scroll up for earlier turns.",
+            "Fai una domanda qui sotto. Le risposte usano il second brain; scorri in alto per i turni precedenti.");
+        if (session.chatOnly == true) {
+            emptyHint = askT(
+                "No second brain loaded — chat directly with the model below.",
+                "Nessun second brain caricato — chatta direttamente col modello qui sotto.");
+        }
+        html = html + "<div class='panel'><p class='empty'>" + askEscapeHtml(emptyHint) + "</p></div>";
+    } else {
+        var i = 0;
+        foreach (var turn in history) {
+            html = html + askRenderTurnHtml(turn, i);
+            i = i + 1;
+        }
+    }
+    html = html + "</section>";
+
+    var placeholder = askT(
+        "Ask about the distilled notes…",
+        "Chiedi sulle note distillate…");
+    if (session.chatOnly == true) {
+        placeholder = askT(
+            "Ask the model anything…",
+            "Chiedi qualsiasi cosa al modello…");
+    }
+
+    html = html + "<section class='composer'>" +
+        "<form method='post' action='/ask'>" +
+        "<label for='question'>" + askEscapeHtml(askT("New question", "Nuova domanda")) + "</label>" +
+        "<textarea id='question' name='question' required autofocus placeholder='" +
+        askEscapeHtml(placeholder) +
+        "'></textarea>" +
+        "<p class='busy'>" + askEscapeHtml(askT(
+            "Each ask may take a while (LLM). Keep this tab open.",
+            "Ogni domanda puo' richiedere tempo (LLM). Lascia aperta questa scheda.")) + "</p>" +
+        "<div class='actions'>" +
+        "<button type='submit'>" + askEscapeHtml(askT("Ask", "Chiedi")) + "</button>" +
+        "<a class='ghost' href='/?clear=1'>" + askEscapeHtml(askT("Clear thread", "Svuota thread")) + "</a>" +
+        "<a class='ghost' href='/stop'>" + askEscapeHtml(askT("Stop server / menu", "Ferma server / menu")) + "</a>" +
+        "</div></form></section>";
+
+    if (history.length > 0) {
+        html = html + "<script>location.hash='turn-" + string(history.length - 1) + "';</script>";
+    }
+
+    html = html + "</main></body></html>";
+    return html;
+}
+
+@PAGE("/")
+function askUiHome(queryParams) {
+    if (queryParams != null and queryParams["lang"] != null) {
+        askSetLang(queryParams["lang"]);
+    }
+    if (queryParams != null and queryParams["clear"] != null) {
+        askClearHistory();
+        return RedirectTo("/");
+    }
+    return askRenderPage();
+}
+
+function askRequestStop() {
+    // Defer stop to the host wait-loop so this response can finish first.
+    // Stopping the listener inside the route aborts the HTTP reply.
+    ui.setState(ASK_STORE, "pendingStop", true, ASK_SESSION_ID);
+}
+
+function askConsumePendingStop() {
+    var pending = ui.state(ASK_STORE, "pendingStop", false, ASK_SESSION_ID);
+    if (pending == true) {
+        ui.setState(ASK_STORE, "pendingStop", false, ASK_SESSION_ID);
+        return true;
+    }
+    return false;
+}
+
+@PAGE("/stop")
+function askUiStop() {
+    askRequestStop();
+    return "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Stopped</title></head>" +
+        "<body style='font-family:system-ui;padding:2rem'><p>" +
+        askEscapeHtml(askT(
+            "ASK server stopped. Return to the console menu.",
+            "Server ASK fermato. Torna al menu della console.")) +
+        "</p></body></html>";
+}
+
+@POST("/ask")
+function askUiSubmit(body) {
+    var question = str.trim(askAsText(body.question));
+    askSetFlashError("");
+
+    if (question == "") {
+        askSetFlashError(askT("Enter a question.", "Inserisci una domanda."));
+        return RedirectTo("/");
+    }
+
+    var turn = runAskTurn(question);
+    if (turn == null) {
+        askSetFlashError(askT("Ask failed.", "Domanda fallita."));
+        return RedirectTo("/");
+    }
+    askAppendTurn(turn);
+    return RedirectTo("/");
+}

@@ -9956,6 +9956,7 @@ public class CSharpTranspiler
             case "executePlan":
             case "decomposeTask":
             case "extractHTML":
+            case "markdownToHtml":
             case "renderTemplate":
             case "componentFragment":
             case "componentLiveEmit":

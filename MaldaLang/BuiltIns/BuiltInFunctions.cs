@@ -29,6 +29,7 @@ using MaldaLang.IDE;
 using ValueType = MaldaLang.Interpreter.ValueType;
 using Spectre.Console;
 using Spectre.Console.Rendering;
+using Markdig;
 
 public static class BuiltInFunctions
 {
@@ -1083,6 +1084,7 @@ public static class BuiltInFunctions
             "executePlan" => BuiltInExecutePlan(args),
             "decomposeTask" => BuiltInDecomposeTask(args),
             "extractHTML" => BuiltInExtractHTML(args),
+            "markdownToHtml" => BuiltInMarkdownToHtml(args),
             "renderTemplate" => BuiltInRenderTemplate(args),
             "componentFragment" => BuiltInComponentFragment(args),
             "componentLiveEmit" => BuiltInComponentLiveEmit(args),
@@ -1440,6 +1442,7 @@ public static class BuiltInFunctions
             "executePlan" => BuiltInExecutePlan(args),
             "decomposeTask" => BuiltInDecomposeTask(args),
             "extractHTML" => BuiltInExtractHTML(args),
+            "markdownToHtml" => BuiltInMarkdownToHtml(args),
             "renderTemplate" => BuiltInRenderTemplate(args),
             "componentFragment" => BuiltInComponentFragment(args),
             "componentLiveEmit" => BuiltInComponentLiveEmit(args),
@@ -8252,25 +8255,44 @@ public static class BuiltInFunctions
         return validation;
     }
     
+    private static readonly MarkdownPipeline MarkdownToHtmlPipeline = new MarkdownPipelineBuilder()
+        .UseAdvancedExtensions()
+        .DisableHtml()
+        .Build();
+
+    private static RuntimeValue BuiltInMarkdownToHtml(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("markdownToHtml", args, 1, 1, "markdown");
+        if (args[0].Type != ValueType.String)
+            throw new Exception("markdownToHtml() expects 1 string argument: (markdown)");
+
+        var markdown = args[0].AsString();
+        if (string.IsNullOrEmpty(markdown))
+            return RuntimeValue.String("");
+
+        var html = Markdown.ToHtml(markdown, MarkdownToHtmlPipeline);
+        return RuntimeValue.String(html);
+    }
+
     private static RuntimeValue BuiltInExtractHTML(List<RuntimeValue> args)
     {
         if (args.Count != 1 || args[0].Type != ValueType.String)
             throw new Exception("extractHTML() expects 1 string argument");
-        
+
         var markdown = args[0].AsString();
-        
+
         // Extract HTML from markdown code blocks
         var htmlPattern = @"```html\s*(.*?)\s*```";
         var match = System.Text.RegularExpressions.Regex.Match(
-            markdown, 
-            htmlPattern, 
-            System.Text.RegularExpressions.RegexOptions.Singleline | 
+            markdown,
+            htmlPattern,
+            System.Text.RegularExpressions.RegexOptions.Singleline |
             System.Text.RegularExpressions.RegexOptions.IgnoreCase
         );
-        
+
         if (match.Success)
             return RuntimeValue.String(match.Groups[1].Value.Trim());
-        
+
         // If no code block, check if it's already HTML
         if (markdown.Contains("<html") || markdown.Contains("<!DOCTYPE"))
             return RuntimeValue.String(markdown);
