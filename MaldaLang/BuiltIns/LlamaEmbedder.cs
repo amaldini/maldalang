@@ -237,6 +237,8 @@ public class LlamaEmbedderInstance : ObjectInstance, IDisposable
             
             try
             {
+                LlamaCppLog.EnsureQuietByDefault();
+
                 // Create model parameters
                 // Note: EmbeddingMode is not needed in LLamaSharp 0.25.0 - LLamaEmbedder handles it automatically
                 _modelParams = new ModelParams(ModelPath)

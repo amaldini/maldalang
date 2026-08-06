@@ -488,6 +488,11 @@ public class VectorDBInstance : ObjectInstance
             throw new RuntimeException("serialize() file path must be a string");
         
         var filePath = filePathValue.AsString();
+        if (EmbeddedFolderStore.IsEmbedPath(filePath))
+        {
+            throw new RuntimeException(
+                $"serialize() cannot write to embedded path '{filePath}' (embed: folders are read-only).");
+        }
         
         try
         {
@@ -553,63 +558,77 @@ public class VectorDBInstance : ObjectInstance
         
         try
         {
-            using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
-            using var reader = new BinaryReader(fileStream, Encoding.UTF8);
-            
-            // Read and validate magic number
-            var magicBytes = reader.ReadBytes(4);
-            var magic = Encoding.UTF8.GetString(magicBytes);
-            
-            if (magic != "VDB2")
-                throw new RuntimeException("Invalid VectorDB file format: incorrect magic number. Expected VDB2 format.");
-            
-            // Read dimension
-            var dimension = reader.ReadInt32();
-            
-            // Read precision
-            var precisionByte = reader.ReadByte();
-            var precision = precisionByte == 0 ? "single" : "double";
-            
-            // Read entry count
-            var entryCount = reader.ReadInt32();
-            
-            // Read entries
-            var entries = new List<VectorEntry>();
-            for (int i = 0; i < entryCount; i++)
+            Stream stream;
+            if (EmbeddedFolderStore.IsEmbedPath(filePath))
             {
-                var entry = new VectorEntry();
-                
-                if (precisionByte == 0)
-                {
-                    var floatVector = new float[dimension];
-                    for (int j = 0; j < dimension; j++)
-                    {
-                        floatVector[j] = reader.ReadSingle();
-                    }
-                    entry.FloatVector = floatVector;
-                }
-                else
-                {
-                    var doubleVector = new double[dimension];
-                    for (int j = 0; j < dimension; j++)
-                    {
-                        doubleVector[j] = reader.ReadDouble();
-                    }
-                    entry.DoubleVector = doubleVector;
-                }
-                
-                // Read data
-                var dataLength = reader.ReadInt32();
-                var dataBytes = reader.ReadBytes(dataLength);
-                var dataJson = Encoding.UTF8.GetString(dataBytes);
-                entry.Data = DeserializeRuntimeValue(dataJson);
-                
-                entries.Add(entry);
+                var bytes = EmbeddedFolderStore.ReadBytes(filePath);
+                if (bytes == null)
+                    throw new FileNotFoundException($"VectorDB file not found: {filePath}", filePath);
+                stream = new MemoryStream(bytes, writable: false);
             }
-            
-            // Create and return new VectorDBInstance (calculator not set, must call init after)
-            var vectorDB = new VectorDBInstance(dimension, precision, entries);
-            return RuntimeValue.Object(vectorDB);
+            else
+            {
+                stream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+            }
+
+            using (stream)
+            using (var reader = new BinaryReader(stream, Encoding.UTF8))
+            {
+                // Read and validate magic number
+                var magicBytes = reader.ReadBytes(4);
+                var magic = Encoding.UTF8.GetString(magicBytes);
+                
+                if (magic != "VDB2")
+                    throw new RuntimeException("Invalid VectorDB file format: incorrect magic number. Expected VDB2 format.");
+                
+                // Read dimension
+                var dimension = reader.ReadInt32();
+                
+                // Read precision
+                var precisionByte = reader.ReadByte();
+                var precision = precisionByte == 0 ? "single" : "double";
+                
+                // Read entry count
+                var entryCount = reader.ReadInt32();
+                
+                // Read entries
+                var entries = new List<VectorEntry>();
+                for (int i = 0; i < entryCount; i++)
+                {
+                    var entry = new VectorEntry();
+                    
+                    if (precisionByte == 0)
+                    {
+                        var floatVector = new float[dimension];
+                        for (int j = 0; j < dimension; j++)
+                        {
+                            floatVector[j] = reader.ReadSingle();
+                        }
+                        entry.FloatVector = floatVector;
+                    }
+                    else
+                    {
+                        var doubleVector = new double[dimension];
+                        for (int j = 0; j < dimension; j++)
+                        {
+                            doubleVector[j] = reader.ReadDouble();
+                        }
+                        entry.DoubleVector = doubleVector;
+                    }
+                    
+                    // Read data
+                    var dataLength = reader.ReadInt32();
+                    var dataBytes = reader.ReadBytes(dataLength);
+                    var dataJson = Encoding.UTF8.GetString(dataBytes);
+                    entry.Data = DeserializeRuntimeValue(dataJson);
+                    
+                    entries.Add(entry);
+                }
+                
+                // Create and return new VectorDBInstance (calculator not set, must call init after)
+                var vectorDB = new VectorDBInstance(dimension, precision, entries);
+                return RuntimeValue.Object(vectorDB);
+            }
         }
         catch (FileNotFoundException)
         {

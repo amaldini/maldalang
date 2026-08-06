@@ -364,6 +364,8 @@ public class LlamaCppClientInstance : ObjectInstance, IDisposable
             
             try
             {
+                LlamaCppLog.EnsureQuietByDefault();
+
                 _modelParams = new ModelParams(resolvedModelPath)
                 {
                     ContextSize = 4096, // Default context size, can be adjusted

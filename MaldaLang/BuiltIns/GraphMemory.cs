@@ -3004,6 +3004,27 @@ public class GraphMemoryInstance : ObjectInstance
     /// </summary>
     private static string ResolveMemoryBasePath(string filePath)
     {
+        if (EmbeddedFolderStore.IsEmbedPath(filePath))
+        {
+            // Avoid System.IO.Path APIs that mis-handle the embed: scheme on Windows.
+            var normalized = filePath.Replace('\\', '/');
+            ReadOnlySpan<string> suffixes =
+            [
+                ".graph.json",
+                ".metadata.json",
+                ".vectordb.bin",
+                ".bundle.json",
+                ".mem"
+            ];
+            foreach (var suffix in suffixes)
+            {
+                if (normalized.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+                    return normalized.Substring(0, normalized.Length - suffix.Length);
+            }
+
+            return normalized;
+        }
+
         var fileName = Path.GetFileName(filePath);
         if (!string.IsNullOrEmpty(fileName) && fileName.StartsWith('.'))
             return filePath;
@@ -3025,6 +3046,35 @@ public class GraphMemoryInstance : ObjectInstance
         return string.IsNullOrEmpty(dir) ? "." : dir;
     }
 
+    private static bool MemoryPathExists(string path)
+    {
+        if (EmbeddedFolderStore.IsEmbedPath(path))
+            return EmbeddedFolderStore.HasFile(path);
+        return File.Exists(path);
+    }
+
+    private static string ReadMemoryText(string path)
+    {
+        if (EmbeddedFolderStore.IsEmbedPath(path))
+        {
+            var text = EmbeddedFolderStore.ReadText(path);
+            if (text == null)
+                throw new RuntimeException($"Embedded memory artifact not found: {path}");
+            return text;
+        }
+
+        return File.ReadAllText(path);
+    }
+
+    private static void RejectEmbedWrite(string path, string operation)
+    {
+        if (EmbeddedFolderStore.IsEmbedPath(path))
+        {
+            throw new RuntimeException(
+                $"{operation} cannot write to embedded path '{path}' (embed: folders are read-only).");
+        }
+    }
+
     private static void ResolveMemoryArtifactPaths(
         string canonicalBasePath,
         out string graphPath,
@@ -3034,6 +3084,10 @@ public class GraphMemoryInstance : ObjectInstance
         graphPath = $"{canonicalBasePath}.graph.json";
         metadataPath = $"{canonicalBasePath}.metadata.json";
         vectordbPath = $"{canonicalBasePath}.vectordb.bin";
+
+        // embed: paths must not use Path.Combine legacy fallback (breaks the scheme).
+        if (EmbeddedFolderStore.IsEmbedPath(canonicalBasePath))
+            return;
 
         if (File.Exists(graphPath))
             return;
@@ -3107,6 +3161,7 @@ public class GraphMemoryInstance : ObjectInstance
         
         var filePath = args[0].AsString();
         var basePath = ResolveMemoryBasePath(filePath);
+        RejectEmbedWrite(basePath, "exportBundle()");
         WriteMemoryArtifacts(basePath);
         
         ResolveMemoryArtifactPaths(basePath, out var graphPath, out var metadataPath, out var vectordbPath);
@@ -3137,11 +3192,11 @@ public class GraphMemoryInstance : ObjectInstance
         var basePath = ResolveMemoryBasePath(filePath);
         var manifestPath = $"{basePath}.bundle.json";
         
-        if (!File.Exists(manifestPath))
+        if (!MemoryPathExists(manifestPath))
             throw new RuntimeException($"importBundle() manifest not found: {manifestPath}");
         
         ResolveMemoryArtifactPaths(basePath, out var graphPath, out var metadataPath, out var vectordbPath);
-        if (!File.Exists(graphPath) || !File.Exists(metadataPath) || !File.Exists(vectordbPath))
+        if (!MemoryPathExists(graphPath) || !MemoryPathExists(metadataPath) || !MemoryPathExists(vectordbPath))
             throw new RuntimeException("importBundle() requires graph, metadata, and vectordb artifacts for the bundle base path");
         
         return CallLoad(args);
@@ -3243,6 +3298,7 @@ public class GraphMemoryInstance : ObjectInstance
 
     private void WriteMemoryArtifacts(string basePath)
     {
+        RejectEmbedWrite(basePath, "save()");
         var graphJson = _knowledgeGraph!.CallMethod("serialize", new List<RuntimeValue>(), _interpreter!).AsString();
         File.WriteAllText($"{basePath}.graph.json", graphJson);
         
@@ -3273,6 +3329,7 @@ public class GraphMemoryInstance : ObjectInstance
 
         var filePath = args[0].AsString();
         var basePath = ResolveMemoryBasePath(filePath);
+        RejectEmbedWrite(basePath, "save()");
         MaybeRotateBackups(basePath, ResolveBackupOptions(saveOptions));
         WriteMemoryArtifacts(basePath);
         
@@ -3298,9 +3355,9 @@ public class GraphMemoryInstance : ObjectInstance
         var initialized = false;
         
         // Load graph
-        if (File.Exists(graphPath))
+        if (MemoryPathExists(graphPath))
         {
-            var graphJson = File.ReadAllText(graphPath);
+            var graphJson = ReadMemoryText(graphPath);
             InitializeWithPreservedEmbedding(new List<RuntimeValue>());
             initialized = true;
             var graphResult = _knowledgeGraph!.CallMethod("deserialize", new List<RuntimeValue> { RuntimeValue.String(graphJson) }, _interpreter!);
@@ -3309,7 +3366,7 @@ public class GraphMemoryInstance : ObjectInstance
         }
         
         // Load VectorDB
-        if (File.Exists(vectordbPath))
+        if (MemoryPathExists(vectordbPath))
         {
             if (!initialized)
             {
@@ -3336,13 +3393,13 @@ public class GraphMemoryInstance : ObjectInstance
             }
         }
         
-        if (!initialized && File.Exists(metadataPath))
+        if (!initialized && MemoryPathExists(metadataPath))
             InitializeWithPreservedEmbedding(new List<RuntimeValue>());
         
         // Load metadata
-        if (File.Exists(metadataPath))
+        if (MemoryPathExists(metadataPath))
         {
-            var metadataJson = File.ReadAllText(metadataPath);
+            var metadataJson = ReadMemoryText(metadataPath);
             var doc = System.Text.Json.JsonDocument.Parse(metadataJson);
             var root = doc.RootElement;
             

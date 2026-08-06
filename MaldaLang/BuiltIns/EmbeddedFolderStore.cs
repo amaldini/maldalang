@@ -306,18 +306,42 @@ public static class EmbeddedFolderStore
             throw new ArgumentException($"Invalid embed alias '{alias}'.", nameof(alias));
         }
 
+        var map = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
+        foreach (var pair in textFiles)
+        {
+            if (!TryNormalizeRelative(pair.Key, out var rel) || string.IsNullOrEmpty(rel))
+            {
+                continue;
+            }
+
+            map[rel] = Encoding.UTF8.GetBytes(pair.Value ?? "");
+        }
+
+        RegisterForTests(alias, map);
+    }
+
+    /// <summary>
+    /// Test helper that registers binary files (e.g. GraphMemory <c>.vectordb.bin</c>) under an embed alias.
+    /// </summary>
+    public static void RegisterForTests(string alias, IReadOnlyDictionary<string, byte[]> binaryFiles)
+    {
+        if (!IsValidAlias(alias))
+        {
+            throw new ArgumentException($"Invalid embed alias '{alias}'.", nameof(alias));
+        }
+
         lock (Gate)
         {
             _initialized = true;
             var map = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
-            foreach (var pair in textFiles)
+            foreach (var pair in binaryFiles)
             {
                 if (!TryNormalizeRelative(pair.Key, out var rel) || string.IsNullOrEmpty(rel))
                 {
                     continue;
                 }
 
-                map[rel] = Encoding.UTF8.GetBytes(pair.Value ?? "");
+                map[rel] = pair.Value ?? Array.Empty<byte>();
             }
 
             Folders[alias] = map;

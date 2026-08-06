@@ -33,7 +33,9 @@
 //
 // Compile (ASK-only portable exe with embedded brain, no disk extract):
 //   malda compile Examples/Agents/secondbrain_semantic.malda -o dist/secondbrain_semantic.exe --mode transpile --embed-folder secondbrain_semantic
-//   (copy the .gguf next to the .exe for neural retrieval)
+//   Embeds notes + GraphMemory artifacts (brain_memory.*) for read-only hybrid ASK.
+//   (copy the .gguf next to the .exe for neural retrieval; GGUF is not embedded)
+//   Native llama.cpp load chatter is quiet by default; set MALDA_LLAMA_LOG=1 to see it.
 
 // ---------------------------------------------------------------- configuration
 

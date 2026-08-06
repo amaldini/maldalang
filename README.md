@@ -177,6 +177,7 @@ Community help on the Web IDE (Monaco UX, diagnostics, examples browser) is welc
 | [`docs/releases/v0.1.0.md`](docs/releases/v0.1.0.md) | Notes for the first public tag |
 | [`docs/releases/v0.1.1.md`](docs/releases/v0.1.1.md) | Notes for `--embed-folder` and Second Brain |
 | [`docs/releases/v0.1.2.md`](docs/releases/v0.1.2.md) | Semantic Second Brain, BGE-M3, `getProgramDirectory()` |
+| [`docs/releases/v0.1.3.md`](docs/releases/v0.1.3.md) | GraphMemory read-only load from `embed:` |
 | [`Examples/Basics`](Examples/Basics) | Language basics |
 | [`Examples/Prompts`](Examples/Prompts) | Prompts and agents |
 | [`Examples/Web`](Examples/Web) | REST and UI examples |
