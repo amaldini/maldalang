@@ -175,6 +175,7 @@ Community help on the Web IDE (Monaco UX, diagnostics, examples browser) is welc
 | [`docs/start-here.md`](docs/start-here.md) | Guided onboarding |
 | [`llms.txt`](llms.txt) | Compact doc index for LLM tools |
 | [`docs/releases/v0.1.0.md`](docs/releases/v0.1.0.md) | Notes for the first public tag |
+| [`docs/releases/v0.1.1.md`](docs/releases/v0.1.1.md) | Notes for `--embed-folder` and Second Brain |
 | [`Examples/Basics`](Examples/Basics) | Language basics |
 | [`Examples/Prompts`](Examples/Prompts) | Prompts and agents |
 | [`Examples/Web`](Examples/Web) | REST and UI examples |
