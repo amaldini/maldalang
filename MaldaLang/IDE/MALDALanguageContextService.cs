@@ -106,7 +106,7 @@ BUILT-IN FUNCTIONS:
 - JSON: parseJSON(), toJSON()
 - File: readFile(), writeFile(), listDirectory(), replaceInFile()
 - Git: gitStatus(), gitAdd(), gitCommit(), gitLog(), gitDiff(), gitBranch(), gitCheckout(), gitPush(), gitPull()
-- Environment: getEnv(), getCommandLineArgs(), hasEnv()
+- Environment: getEnv(), getCommandLineArgs(), hasEnv(), getProgramDirectory()
 - HTTP: httpGet(url, headers?, queryParams?), httpPost(url, body?, headers?, queryParams?), httpPut(url, body?, headers?, queryParams?), httpDelete(url, headers?, queryParams?), httpPatch(url, body?, headers?, queryParams?)
 - Web UI: extractHTML(markdown), generateUI(description, cache?, agent?), ui.generate(description, agent?, cache?)
 

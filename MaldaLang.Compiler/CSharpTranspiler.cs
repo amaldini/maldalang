@@ -10123,6 +10123,7 @@ public class CSharpTranspiler
             case "toIntOrNull":
             case "toCsv":
             case "getMaldaHome":
+            case "getProgramDirectory":
             case "getMaldaConfig":
             case "getAssistantMemory":
             case "getSkillNames":

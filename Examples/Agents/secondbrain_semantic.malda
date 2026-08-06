@@ -1,26 +1,39 @@
-// secondbrain.malda - MALDA 0.1.0
+// secondbrain_semantic.malda - MALDA 0.1.0
 //
-// Lexical-retrieval second brain. For GraphMemory + embedding ASK (synonyms /
-// paraphrases), see the sibling: Examples/Agents/secondbrain_semantic.malda
+// Sibling of Examples/Agents/secondbrain.malda for A/B comparison:
+//   - secondbrain.malda          ASK retrieves notes with lexical token overlap
+//   - secondbrain_semantic.malda ASK retrieves via GraphMemory (vector + BM25 hybrid)
 //
 // Two-mode program:
-//   1) BUILD   a CodingAgent explores documentation (.md / .html) in a user-chosen
-//              folder, proposes a theme taxonomy, then distills a "second brain":
-//              hierarchical linked .md notes (index -> topic hubs -> notes).
-//   2) ASK     answers user questions using the produced second brain
-//              (catalog + token-overlap retrieval).
+//   1) BUILD   same distillation as the lexical sibling, then indexes each note
+//              into GraphMemory (saved beside the markdown tree).
+//   2) ASK     answers questions using GraphMemory.query (hybridLexical / BM25),
+//              falling back to the lexical catalog scorer if memory is missing.
 //
-// Run:   malda Examples/Agents/secondbrain.malda
+// Run:   malda Examples/Agents/secondbrain_semantic.malda
 //
 // LLM:   if OPENROUTER_API_KEY is set, uses OpenRouter (client default model,
 //        override with MALDA_BRAIN_MODEL); otherwise MALDA's default local model
 //        (downloaded on first use).
 //
+// Embeddings (ASK quality for synonyms / paraphrases / cross-language):
+//   Place this multilingual GGUF next to this .malda (or next to the compiled .exe):
+//     bge-m3-Q4_K_M.gguf   (~438 MB, 1024-dim, BGE-M3, 100+ languages)
+//   Download:
+//     https://huggingface.co/gpustack/bge-m3-GGUF/resolve/main/bge-m3-Q4_K_M.gguf
+//   If the file is present, llama embeddings are used automatically.
+//   If missing, ASK/BUILD fall back to embedHash and the UI shows the download link.
+//   Rebuild the brain after changing the embedding model (vector index is not portable).
+//   Overrides:
+//     MALDA_MEMORY_EMBED=hash|bow|llama
+//     MALDA_BRAIN_EMBED_MODEL=/path/to/embedding.gguf
+//
 // UI:    at startup, choose UI message language (English / Italian).
 //        Notes stay in the source document language; technical terms are unchanged.
 //
 // Compile (ASK-only portable exe with embedded brain, no disk extract):
-//   malda compile Examples/Agents/secondbrain.malda -o dist/secondbrain.exe --mode transpile --embed-folder secondbrain
+//   malda compile Examples/Agents/secondbrain_semantic.malda -o dist/secondbrain_semantic.exe --mode transpile --embed-folder secondbrain_semantic
+//   (copy the .gguf next to the .exe for neural retrieval)
 
 // ---------------------------------------------------------------- configuration
 
@@ -30,7 +43,16 @@ var MAX_NOTE_CHARS = 5000;      // characters per note in an answer context
 var TOP_K = 5;                  // notes retrieved per question
 var MAX_EXPLORE_DOCS = 300;     // documents listed for the explorer agent
 var CATALOG_NAME = "brain.json";
+var DEFAULT_BRAIN_DIR = "secondbrain_semantic";
+var MEMORY_BASE_NAME = "brain_memory";  // -> brain_memory.graph.json (+ metadata / vectordb)
+var EMBED_DIM = 1024;
+var EMBED_FILE_NAME = "bge-m3-Q4_K_M.gguf";
+var EMBED_DOWNLOAD_PAGE = "https://huggingface.co/gpustack/bge-m3-GGUF";
+var EMBED_DOWNLOAD_FILE = "https://huggingface.co/gpustack/bge-m3-GGUF/resolve/main/bge-m3-Q4_K_M.gguf";
 var UI_LANG = "it";             // "en" | "it" — UI messages
+var embedMode = "hash";
+var memoryEmbedder = null;
+var embedHintShown = false;
 
 // ---------------------------------------------------------------- UI i18n
 
@@ -139,6 +161,348 @@ function tryThink(agent, question) {
     } catch (e) {
         AnsiConsole.markupLine("  [red]" + t("LLM error:", "errore LLM:") + "[/] " + string(e));
         return "";
+    }
+}
+
+// ---------------------------------------------------------------- GraphMemory + embeddings
+
+function localEmbedModelPath() {
+    return io.pathJoin(getProgramDirectory(), EMBED_FILE_NAME);
+}
+
+function resolveEmbedModelPath() {
+    if (io.hasEnv("MALDA_BRAIN_EMBED_MODEL")) {
+        var p = str.trim(string(io.getEnv("MALDA_BRAIN_EMBED_MODEL")));
+        if (p != "") {
+            return p;
+        }
+    }
+    if (io.hasEnv("MALDA_EMBED_MODEL_PATH")) {
+        var p2 = str.trim(string(io.getEnv("MALDA_EMBED_MODEL_PATH")));
+        if (p2 != "") {
+            return p2;
+        }
+    }
+    var localPath = localEmbedModelPath();
+    if (io.hasFile(localPath)) {
+        return localPath;
+    }
+    return "";
+}
+
+function showEmbedDownloadHint(reason) {
+    if (embedHintShown) {
+        return;
+    }
+    embedHintShown = true;
+    var target = localEmbedModelPath();
+    AnsiConsole.panel(
+        t("Multilingual neural embeddings need this GGUF next to the .malda / .exe:\n",
+            "Per gli embedding neurali multilingue serve questo GGUF accanto al .malda / .exe:\n") +
+        "[bold]" + EMBED_FILE_NAME + "[/]\n" +
+        t("BGE-M3 · ~438 MB · 1024-dim · 100+ languages (IT/EN and more)\n",
+            "BGE-M3 · ~438 MB · 1024-dim · 100+ lingue (IT/EN e altre)\n") +
+        t("Expected path: ", "Percorso atteso: ") + target + "\n\n" +
+        t("Download (direct file):\n", "Download (file diretto):\n") +
+        EMBED_DOWNLOAD_FILE + "\n\n" +
+        t("Model page:\n", "Pagina del modello:\n") +
+        EMBED_DOWNLOAD_PAGE + "\n\n" +
+        t("Until then, retrieval uses embedHash (weaker on synonyms / cross-language).",
+            "Finche' manca, il recupero usa embedHash (piu' debole su sinonimi / cross-lingua).") +
+        (reason != "" ? "\n[dim]" + reason + "[/]" : ""),
+        t("[bold yellow]Embedding model missing[/]", "[bold yellow]Modello embedding assente[/]"),
+        "rounded");
+}
+
+function resolveEmbedMode() {
+    if (io.hasEnv("MALDA_MEMORY_EMBED")) {
+        var mode = str.lower(str.trim(string(io.getEnv("MALDA_MEMORY_EMBED"))));
+        if (mode == "hash" or mode == "bow" or mode == "llama") {
+            return mode;
+        }
+    }
+    // Auto: prefer local GGUF beside the program when present.
+    if (resolveEmbedModelPath() != "") {
+        return "llama";
+    }
+    return "hash";
+}
+
+function brainEmbed(text) {
+    if (embedMode == "bow") {
+        return embedBagOfWords(text, EMBED_DIM);
+    }
+    if (embedMode == "llama" and memoryEmbedder != null) {
+        return memoryEmbedder.getEmbeddings(text);
+    }
+    return embedHash(text, EMBED_DIM);
+}
+
+function embedLabel() {
+    if (embedMode == "llama" and memoryEmbedder != null) {
+        return "llama (" + resolveEmbedModelPath() + ")";
+    }
+    return embedMode;
+}
+
+function createBrainMemory() {
+    embedMode = resolveEmbedMode();
+    memoryEmbedder = null;
+    if (embedMode == "llama") {
+        var embedPath = resolveEmbedModelPath();
+        if (embedPath != "") {
+            try {
+                memoryEmbedder = new LlamaEmbedder(embedPath);
+            } catch (e) {
+                AnsiConsole.markupLine("[yellow]" + t(
+                    "LlamaEmbedder failed; falling back to hash:",
+                    "LlamaEmbedder non disponibile; uso hash:") + "[/] " + string(e));
+                showEmbedDownloadHint(string(e));
+                embedMode = "hash";
+                memoryEmbedder = null;
+            }
+        } else {
+            showEmbedDownloadHint(t(
+                "MALDA_MEMORY_EMBED=llama but no model file was found.",
+                "MALDA_MEMORY_EMBED=llama ma nessun file modello trovato."));
+            embedMode = "hash";
+        }
+    } else if (embedMode == "hash" and not io.hasEnv("MALDA_MEMORY_EMBED")) {
+        // Auto mode with missing GGUF: tell the user once how to enable neural search.
+        showEmbedDownloadHint("");
+    }
+    var memory = new GraphMemory();
+    memory.initialize(EMBED_DIM, "single", brainEmbed);
+    return memory;
+}
+
+function memoryBasePath(brainDir) {
+    return io.pathJoin(brainDir, MEMORY_BASE_NAME);
+}
+
+function memoryArtifactsExist(brainDir) {
+    return io.hasFile(memoryBasePath(brainDir) + ".graph.json");
+}
+
+function noteIndexText(note) {
+    var parts = [
+        string(note.title),
+        string(note.summary),
+        str.join(note.tags, ", "),
+        str.join(note.headings, "\n")
+    ];
+    var body = str.trim(string(note.body));
+    if (body != "") {
+        if (str.length(body) > 1500) {
+            body = str.substring(body, 0, 1500);
+        }
+        parts.append(body);
+    }
+    return str.join(parts, "\n");
+}
+
+function indexBrainMemory(brainDir, notes) {
+    var memory = createBrainMemory();
+    AnsiConsole.markupLine(t(
+        "Indexing notes into GraphMemory (embed=" + embedLabel() + ")...",
+        "Indicizzazione note in GraphMemory (embed=" + embedLabel() + ")..."));
+    var indexed = 0;
+    foreach (var note in notes) {
+        var fact = noteIndexText(note);
+        var path = "notes/" + note.slug + ".md";
+        memory.remember(fact, string(note.topic), {
+            "type": "semantic",
+            "source": "secondbrain",
+            "category": string(note.topic),
+            "filePath": path
+        });
+        indexed = indexed + 1;
+    }
+    memory.save(memoryBasePath(brainDir));
+    AnsiConsole.markupLine("  [green]" + t("indexed", "indicizzate") + "[/] " +
+        string(indexed) + " " + t("notes ->", "note ->") + " " +
+        MEMORY_BASE_NAME + ".graph.json");
+    return memory;
+}
+
+function loadBrainMemory(brainDir) {
+    if (not memoryArtifactsExist(brainDir)) {
+        return null;
+    }
+    try {
+        var memory = createBrainMemory();
+        memory.load(memoryBasePath(brainDir));
+        return memory;
+    } catch (e) {
+        AnsiConsole.markupLine("[yellow]" + t(
+            "GraphMemory load failed; lexical fallback:",
+            "Caricamento GraphMemory fallito; fallback lessicale:") + "[/] " + string(e));
+        return null;
+    }
+}
+
+function findCatalogNoteByPath(catalog, path) {
+    foreach (var note in catalog.notes) {
+        if (note.path == path) {
+            return note;
+        }
+    }
+    return null;
+}
+
+function slugsOf(picked) {
+    var slugs = [];
+    foreach (var entry in picked) {
+        slugs.append(entry.note.slug);
+    }
+    return slugs;
+}
+
+function slugsOnlyIn(left, right) {
+    var only = [];
+    foreach (var slug in left) {
+        if (not str.includes(right, slug)) {
+            only.append(slug);
+        }
+    }
+    return only;
+}
+
+function compareRetrieval(semanticPicked, lexicalPicked) {
+    var sem = slugsOf(semanticPicked);
+    var lex = slugsOf(lexicalPicked);
+    var semanticOnly = slugsOnlyIn(sem, lex);
+    var lexicalOnly = slugsOnlyIn(lex, sem);
+    var overlap = sem.length - semanticOnly.length;
+    return {
+        "semanticOnly": semanticOnly,
+        "lexicalOnly": lexicalOnly,
+        "overlap": overlap
+    };
+}
+
+// Returns { picked, channel, compare? } so ASK can show when GraphMemory helped.
+// channel: "graphmemory" | "lexical-fallback" | "lexical-only"
+function selectNotesSemantic(brainDir, catalog, memory, question) {
+    var lexicalPicked = selectNotes(brainDir, catalog, question);
+    if (memory == null) {
+        return {
+            "picked": lexicalPicked,
+            "channel": "lexical-only",
+            "compare": null
+        };
+    }
+    var results = [];
+    try {
+        results = memory.query(question, TOP_K, {
+            "hybridLexical": true,
+            "lexicalMode": "bm25",
+            "lexicalWeight": 0.3,
+            "type": "semantic",
+            "minScore": 0.0,
+            "explain": true
+        });
+    } catch (e) {
+        AnsiConsole.markupLine("[yellow]" + t(
+            "GraphMemory query failed; lexical fallback:",
+            "Query GraphMemory fallita; fallback lessicale:") + "[/] " + string(e));
+        return {
+            "picked": lexicalPicked,
+            "channel": "lexical-fallback",
+            "compare": null
+        };
+    }
+
+    var picked = [];
+    var used = [];
+    foreach (var result in results) {
+        var path = "";
+        if (result.filePath != null) {
+            path = string(result.filePath);
+        }
+        if (path == "" or str.includes(used, path)) {
+            continue;
+        }
+        var note = findCatalogNoteByPath(catalog, path);
+        if (note == null) {
+            continue;
+        }
+        used.append(path);
+        var score = 0.0;
+        if (result.score != null) {
+            score = float(result.score);
+        }
+        var vectorScore = null;
+        var lexicalScore = null;
+        if (result.explain != null) {
+            if (result.explain.vectorScore != null) {
+                vectorScore = float(result.explain.vectorScore);
+            }
+            if (result.explain.lexicalScore != null) {
+                lexicalScore = float(result.explain.lexicalScore);
+            }
+        }
+        picked.append({
+            "note": note,
+            "score": score,
+            "vectorScore": vectorScore,
+            "lexicalScore": lexicalScore
+        });
+        if (picked.length >= TOP_K) {
+            break;
+        }
+    }
+    if (picked.length == 0) {
+        AnsiConsole.markupLine("[dim]" + t(
+            "No GraphMemory hits; trying lexical retrieval.",
+            "Nessun hit GraphMemory; provo il recupero lessicale.") + "[/]");
+        return {
+            "picked": lexicalPicked,
+            "channel": "lexical-fallback",
+            "compare": null
+        };
+    }
+    return {
+        "picked": picked,
+        "channel": "graphmemory",
+        "compare": compareRetrieval(picked, lexicalPicked)
+    };
+}
+
+function showRetrievalHint(selection) {
+    if (selection.channel == "lexical-only") {
+        AnsiConsole.markupLine("[dim]" + t(
+            "retrieval: lexical only (no GraphMemory index)",
+            "recupero: solo lessicale (nessun indice GraphMemory)") + "[/]");
+        return;
+    }
+    if (selection.channel == "lexical-fallback") {
+        AnsiConsole.markupLine("[yellow]" + t(
+            "retrieval: lexical fallback (GraphMemory unused this turn)",
+            "recupero: fallback lessicale (GraphMemory non usata in questo turno)") + "[/]");
+        return;
+    }
+    var cmp = selection.compare;
+    if (cmp == null) {
+        AnsiConsole.markupLine("[dim]" + t(
+            "retrieval: GraphMemory",
+            "recupero: GraphMemory") + "[/]");
+        return;
+    }
+    if (cmp.semanticOnly.length > 0) {
+        AnsiConsole.markupLine("[bold cyan]" + t(
+            "GraphMemory helped:",
+            "GraphMemory ha aiutato:") + "[/] " +
+            string(cmp.semanticOnly.length) + t(
+            " note(s) outside lexical top-" + string(TOP_K) + ": ",
+            " nota/e fuori dal top-" + string(TOP_K) + " lessicale: ") +
+            str.join(cmp.semanticOnly, ", "));
+    } else {
+        AnsiConsole.markupLine("[dim]" + t(
+            "GraphMemory: same notes as lexical top-" + string(TOP_K) +
+            " (useful when synonyms diverge)",
+            "GraphMemory: stesse note del top-" + string(TOP_K) +
+            " lessicale (utile quando i sinonimi divergono)") + "[/]");
     }
 }
 
@@ -352,7 +716,7 @@ function frontmatter(note) {
         "topic: " + note.topic + "\n" +
         "source: " + note.source + "\n" +
         "tags: [" + str.join(note.tags, ", ") + "]\n" +
-        "generated_by: secondbrain.malda\n" +
+        "generated_by: secondbrain_semantic.malda\n" +
         "---\n";
 }
 
@@ -559,7 +923,7 @@ function writeIndex(brainDir, docsRoot, notes, topics, skipped, truncated, taxon
         lines.append("## Documenti distillati solo in parte");
         lines.append("");
         lines.append("Oltre " + string(MAX_CHUNKS) + " parti da " + string(MAX_DOC_CHARS) +
-            " caratteri la coda del documento non e' stata distillata (alza MAX_CHUNKS in `secondbrain.malda`):");
+            " caratteri la coda del documento non e' stata distillata (alza MAX_CHUNKS in `secondbrain_semantic.malda`):");
         lines.append("");
         foreach (var item in truncated) {
             lines.append("- `" + item.source + "` - distillati " + string(item.used) +
@@ -569,8 +933,10 @@ function writeIndex(brainDir, docsRoot, notes, topics, skipped, truncated, taxon
     }
     lines.append("## Come si usa");
     lines.append("");
-    lines.append("- Modalita' 2 di `secondbrain.malda`: domande in linguaggio naturale su queste note.");
-    lines.append("- `" + CATALOG_NAME + "`: catalogo leggibile a macchina usato dal recupero.");
+    lines.append("- Modalita' 2 di `secondbrain_semantic.malda`: domande via GraphMemory (vettoriale + BM25).");
+    lines.append("- Sibling lessicale per confronto: `Examples/Agents/secondbrain.malda`.");
+    lines.append("- `" + CATALOG_NAME + "`: catalogo leggibile a macchina.");
+    lines.append("- `" + MEMORY_BASE_NAME + ".*`: indici GraphMemory usati dal recupero ASK.");
     lines.append("");
     io.writeFile(io.pathJoin(brainDir, "index.md"), str.join(lines, "\n"));
 }
@@ -605,6 +971,8 @@ function writeCatalog(brainDir, docsRoot, notes, topics, taxonomySource) {
         "sourceFolder": docsRoot,
         "taxonomy": taxonomySource,
         "model": modelLabel(),
+        "retrieval": "graphmemory",
+        "embed": embedLabel(),
         "notes": slimNotes,
         "topics": slimTopics
     };
@@ -876,10 +1244,10 @@ function buildBrain() {
     }
 
     var brainDir = str.trim(io.input(t(
-        "Second brain folder [secondbrain]: ",
-        "Cartella del second brain [secondbrain]: ")));
+        "Second brain folder [" + DEFAULT_BRAIN_DIR + "]: ",
+        "Cartella del second brain [" + DEFAULT_BRAIN_DIR + "]: ")));
     if (brainDir == "") {
-        brainDir = "secondbrain";
+        brainDir = DEFAULT_BRAIN_DIR;
     }
     if (io.hasFile(io.pathJoin(brainDir, CATALOG_NAME))) {
         var confirm = str.trim(io.input(t(
@@ -907,6 +1275,9 @@ function buildBrain() {
     AnsiConsole.markupLine("");
     AnsiConsole.markupLine(t("Documents found:", "Documenti trovati:") + " [bold]" + string(docs.length) + "[/]");
     AnsiConsole.markupLine("LLM: [bold]" + modelLabel() + "[/]");
+    AnsiConsole.markupLine("Embed: [bold]" + resolveEmbedMode() + "[/]" + t(
+        " (drop " + EMBED_FILE_NAME + " next to this .malda/.exe for neural synonyms)",
+        " (metti " + EMBED_FILE_NAME + " accanto a questo .malda/.exe per sinonimi neurali)"));
     AnsiConsole.markupLine("[dim]" + t(
         "One exploration call, one per document, one per theme: paid models incur a cost.",
         "Una chiamata di esplorazione, una per documento, una per tema: con modelli a pagamento questo ha un costo.") + "[/]");
@@ -1051,6 +1422,8 @@ function buildBrain() {
         AnsiConsole.markupLine("  [green]hub[/] topics/" + topic.slug + ".md");
     }
 
+    // Index first so embedLabel() reflects llama->hash fallbacks before catalog write.
+    indexBrainMemory(brainDir, notes);
     writeIndex(brainDir, docsRoot, notes, topics, skipped, truncated, taxonomySource);
     writeCatalog(brainDir, docsRoot, notes, topics, taxonomySource);
 
@@ -1083,9 +1456,13 @@ function buildBrain() {
     r6[colVal] = taxonomySource;
     summaryRows.append(r6);
     var r7 = {};
-    r7[colKey] = t("folder", "cartella");
-    r7[colVal] = brainDir;
+    r7[colKey] = t("retrieval", "recupero");
+    r7[colVal] = "GraphMemory / " + embedLabel();
     summaryRows.append(r7);
+    var r8 = {};
+    r8[colKey] = t("folder", "cartella");
+    r8[colVal] = brainDir;
+    summaryRows.append(r8);
     AnsiConsole.table(summaryRows, t("Second brain built", "Second brain costruito"), [colKey, colVal]);
     AnsiConsole.markupLine(t("Index:", "Indice:") + " [bold]" + io.pathJoin(brainDir, "index.md") + "[/]");
     return true;
@@ -1229,18 +1606,18 @@ function answerInstructions() {
 }
 
 function resolveAskBrainRoot() {
-    if (io.hasEmbeddedFolder("secondbrain")) {
-        var root = io.embeddedFolderRoot("secondbrain");
+    if (io.hasEmbeddedFolder("secondbrain_semantic")) {
+        var root = io.embeddedFolderRoot("secondbrain_semantic");
         AnsiConsole.markupLine("[dim]" + t(
             "Using embedded second brain (no disk folder).",
             "Uso il second brain incorporato (nessuna cartella su disco).") + "[/]");
         return root;
     }
     var brainDir = str.trim(io.input(t(
-        "Second brain folder [secondbrain]: ",
-        "Cartella del second brain [secondbrain]: ")));
+        "Second brain folder [" + DEFAULT_BRAIN_DIR + "]: ",
+        "Cartella del second brain [" + DEFAULT_BRAIN_DIR + "]: ")));
     if (brainDir == "") {
-        brainDir = "secondbrain";
+        brainDir = DEFAULT_BRAIN_DIR;
     }
     return brainDir;
 }
@@ -1248,9 +1625,9 @@ function resolveAskBrainRoot() {
 function askBrain() {
     AnsiConsole.markupLine("");
     AnsiConsole.panel(
-        t("Answers questions using the second brain produced by mode 1.",
-            "Risponde alle domande usando il second brain prodotto dalla modalita' 1."),
-        t("[bold]Mode 2 - ASK[/]", "[bold]Modalita' 2 - CHIEDI[/]"), "rounded");
+        t("Answers questions using GraphMemory retrieval over the second brain from mode 1.",
+            "Risponde alle domande con recupero GraphMemory sul second brain della modalita' 1."),
+        t("[bold]Mode 2 - ASK (semantic)[/]", "[bold]Modalita' 2 - CHIEDI (semantico)[/]"), "rounded");
 
     var brainDir = resolveAskBrainRoot();
     var catalog = loadCatalog(brainDir);
@@ -1261,14 +1638,24 @@ function askBrain() {
             t("Run mode 1 first.", "Esegui prima la modalita' 1."));
         return false;
     }
+    var memory = loadBrainMemory(brainDir);
+    var retrievalLabel = t("lexical fallback", "fallback lessicale");
+    if (memory != null) {
+        retrievalLabel = "GraphMemory / " + embedLabel();
+    } else {
+        AnsiConsole.markupLine("[yellow]" + t(
+            "GraphMemory artifacts missing; ASK will use lexical catalog scoring.",
+            "Artifact GraphMemory assenti; ASK usera' lo scoring lessicale del catalogo.") + "[/]");
+    }
     AnsiConsole.markupLine("Second brain: [bold]" + string(catalog.notes.length) + "[/] " +
         t("notes", "note") + ", [bold]" +
         string(catalog.topics.length) + "[/] " + t("themes", "temi") +
         t(", from `", ", da `") + string(catalog.sourceFolder) + "`");
     AnsiConsole.markupLine("LLM: [bold]" + modelLabel() + "[/]");
+    AnsiConsole.markupLine(t("Retrieval:", "Recupero:") + " [bold]" + retrievalLabel + "[/]");
     AnsiConsole.markupLine("[dim]" + t(
-        "Empty input returns to the menu.",
-        "Invio vuoto per tornare al menu.") + "[/]");
+        "Empty input returns to the menu. Compare with secondbrain.malda (lexical ASK).",
+        "Invio vuoto per tornare al menu. Confronta con secondbrain.malda (ASK lessicale).") + "[/]");
 
     var responder = newReaderAgent(
         "BrainReader",
@@ -1284,7 +1671,8 @@ function askBrain() {
             return true;
         }
 
-        var picked = selectNotes(brainDir, catalog, question);
+        var selection = selectNotesSemantic(brainDir, catalog, memory, question);
+        var picked = selection.picked;
         if (picked.length == 0) {
             AnsiConsole.markupLine("[yellow]" + t(
                 "No relevant notes found in the second brain.",
@@ -1298,6 +1686,7 @@ function askBrain() {
         }
         AnsiConsole.markupLine("[dim]" + t("retrieved notes: ", "note recuperate: ") +
             str.join(names, ", ") + "[/]");
+        showRetrievalHint(selection);
 
         var context = buildContext(brainDir, picked);
         responder.reset();
@@ -1314,9 +1703,18 @@ function askBrain() {
         io.print("");
         AnsiConsole.markupLine("[dim]" + t("Sources:", "Fonti:") + "[/]");
         foreach (var entry in picked) {
-            io.print("  - " + entry.note.title + "  ->  " +
+            var scoreHint = "";
+            if (entry.vectorScore != null) {
+                scoreHint = "  [dim](vec " + string(entry.vectorScore);
+                if (entry.lexicalScore != null) {
+                    scoreHint = scoreHint + " · lex " + string(entry.lexicalScore);
+                }
+                scoreHint = scoreHint + ")[/]";
+            }
+            AnsiConsole.markupLine("  - " + entry.note.title + "  ->  " +
                 io.pathJoin(brainDir, entry.note.path) +
-                "  (" + t("source:", "origine:") + " " + entry.note.source + ")");
+                "  (" + t("source:", "origine:") + " " + entry.note.source + ")" +
+                scoreHint);
         }
     }
     return true;
@@ -1327,15 +1725,17 @@ function askBrain() {
 function showMenu() {
     AnsiConsole.markupLine("");
     AnsiConsole.panel(
-        t("[bold]1[/]  BUILD   a CodingAgent reads .md/.html and distills the second brain\n" +
-            "[bold]2[/]  ASK     answers questions using the second brain\n" +
+        t("[bold]1[/]  BUILD   distill notes + index GraphMemory\n" +
+            "[bold]2[/]  ASK     GraphMemory hybrid retrieval (vector + BM25)\n" +
             "[bold]3[/]  language  switch UI language (English / Italian)\n" +
-            "[bold]0[/]  quit",
-            "[bold]1[/]  COSTRUISCI  un CodingAgent legge .md/.html e distilla il second brain\n" +
-            "[bold]2[/]  CHIEDI      risponde alle domande usando il second brain\n" +
+            "[bold]0[/]  quit\n\n" +
+            "[dim]Lexical sibling: Examples/Agents/secondbrain.malda[/]",
+            "[bold]1[/]  COSTRUISCI  distilla note + indicizza GraphMemory\n" +
+            "[bold]2[/]  CHIEDI      recupero ibrido GraphMemory (vettore + BM25)\n" +
             "[bold]3[/]  lingua      cambia lingua interfaccia (English / Italiano)\n" +
-            "[bold]0[/]  esci"),
-        "[bold blue]MALDA second brain[/]", "double");
+            "[bold]0[/]  esci\n\n" +
+            "[dim]Sibling lessicale: Examples/Agents/secondbrain.malda[/]"),
+        "[bold blue]MALDA second brain (semantic)[/]", "double");
 }
 
 chooseLanguage();

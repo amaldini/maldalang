@@ -102,6 +102,7 @@ getHostPlatform	getHostPlatform	0 arguments
 getMaldaConfig	getMaldaConfig	0 arguments		
 getMaldaHome	getMaldaHome	0 arguments		
 getParseErrors	getParseErrors	1 argument: sourceOrFilePath (string)		
+getProgramDirectory	getProgramDirectory	0 arguments		
 getSkillNames	getSkillNames	0 arguments		
 getSymbols	getSymbols	1 argument: sourceOrFilePath (string)		
 getWorkflow	getWorkflow	at least 1 argument: (instanceId)		

@@ -24,7 +24,7 @@ public static class PureEffectsBuiltIns
         "gitStatus", "gitAdd", "gitCommit", "gitDiff", "gitLog", "gitBranch", "gitCheckout", "gitPush", "gitPull",
         "embedFromFile", "embedFromFiles",
         "enableAgentVerboseLogging", "setAgentVerbosePhase", "setAgentStatusBanner", "reportRalphStatus",
-        "loadSkill", "loadSkillsFromDir", "getMaldaHome", "getMaldaConfig", "getAssistantMemory", "getHostPlatform",
+        "loadSkill", "loadSkillsFromDir", "getMaldaHome", "getProgramDirectory", "getMaldaConfig", "getAssistantMemory", "getHostPlatform",
         "uiGenerate", "generateUI", "uiMount", "uiInvalidate", "uiSetState",
         "dotnetNew", "loadAssembly",
     }.ToFrozenSet();

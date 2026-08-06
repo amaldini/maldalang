@@ -103,6 +103,7 @@ public static class BuiltInRegistry
             "regexReplace" or
             "regexFind" or
             "getMaldaHome" or
+            "getProgramDirectory" or
             "getMaldaConfig" or
             "getAssistantMemory" or
             "enableAgentVerboseLogging" or

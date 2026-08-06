@@ -269,7 +269,7 @@ var skills = loadSkillsFromDir(); // Scans ~/.malda/skills/*.malda; each entry h
         <pre><code>var apiKey = getEnv("OPENAI_API_KEY");  // Get environment variable
 var hasKey = hasEnv("API_KEY");         // Check if environment variable exists</code></pre>
         <h3>12.5.1 Host Information</h3>
-        <p>Two argument-less built-ins describe the machine and invocation the program is running under. Passing any argument to either one raises an error.</p>
+        <p>Argument-less built-ins describe the machine and invocation the program is running under. Passing any argument raises an error.</p>
         <pre><code>var host = getHostPlatform();
 print(host.os);              // Operating system identifier
 print(host.arch);            // Process architecture
@@ -280,8 +280,12 @@ var args = getCommandLineArgs();
 // Arguments passed to the program, excluding the program name itself
 if (args.length > 0) {
     print("first argument: " + args[0]);
-}</code></pre>
-        <p><code>getHostPlatform()</code> returns an object with the four fields shown above. <code>getCommandLineArgs()</code> returns an array of strings and is the way to read CLI arguments from a MALDA program, in both interpreted and transpiled runs.</p>
+}
+
+// Folder of the .malda script (interpreter) or of the compiled .exe (transpile)
+var programDir = getProgramDirectory();
+var modelPath = io.pathJoin(programDir, "bge-m3-Q4_K_M.gguf");</code></pre>
+        <p><code>getHostPlatform()</code> returns an object with the four fields shown above. <code>getCommandLineArgs()</code> returns an array of strings and is the way to read CLI arguments from a MALDA program, in both interpreted and transpiled runs. <code>getProgramDirectory()</code> returns the absolute directory of the running <code>.malda</code> source file under the interpreter, or <code>AppContext.BaseDirectory</code> (the folder containing the compiled executable) after <code>malda compile</code>.</p>
         <h3>12.5.2 Web search (Brave Search API)</h3>
         <p><code>webSearch(query, apiKey?)</code> — Performs a web search using the Brave Search API. <code>query</code> is the search string. <code>apiKey</code> is optional; if omitted, the key is taken from (in order) the <code>apiKey</code> argument, the <code>BRAVE_SEARCH_API_KEY</code> environment variable, or <code>tools.web.search.apiKey</code> in <code>~/.malda/config.json</code> (see <a href="26-personal-assistant.html">Personal Assistant and CLI</a>). Returns an object: <code>{ ok: true, results: [{ title, url, description }, ...], moreResultsAvailable: bool }</code> on success, or <code>{ ok: false, error: "message" }</code> on failure.</p>
         <pre><code>var r = webSearch("MALDA programming language");           // Uses BRAVE_SEARCH_API_KEY or config

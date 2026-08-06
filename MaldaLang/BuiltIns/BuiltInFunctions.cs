@@ -984,6 +984,7 @@ public static class BuiltInFunctions
             "getFileName" => BuiltInGetFileName(args),
             "getDirectoryName" => BuiltInGetDirectoryName(args),
             "getMaldaHome" => BuiltInGetMaldaHome(args),
+            "getProgramDirectory" => BuiltInGetProgramDirectory(args, interpreter),
             "getMaldaConfig" => BuiltInGetMaldaConfig(args),
             "getAssistantMemory" => BuiltInGetAssistantMemory(args, interpreter),
             "enableAgentVerboseLogging" => BuiltInEnableAgentVerboseLogging(args),
@@ -1340,6 +1341,7 @@ public static class BuiltInFunctions
             "getFileName" => BuiltInGetFileName(args),
             "getDirectoryName" => BuiltInGetDirectoryName(args),
             "getMaldaHome" => BuiltInGetMaldaHome(args),
+            "getProgramDirectory" => BuiltInGetProgramDirectory(args, interpreter),
             "getMaldaConfig" => BuiltInGetMaldaConfig(args),
             "getAssistantMemory" => BuiltInGetAssistantMemory(args, interpreter),
             "enableAgentVerboseLogging" => BuiltInEnableAgentVerboseLogging(args),
@@ -2871,6 +2873,46 @@ public static class BuiltInFunctions
             return RuntimeValue.String("");
         var maldaHome = Path.Combine(userProfile, ".malda");
         return RuntimeValue.String(maldaHome);
+    }
+
+    /// <summary>
+    /// Directory of the running .malda script (interpreter) or of the compiled executable
+    /// (<see cref="AppContext.BaseDirectory"/>). Useful for bundling assets next to the program.
+    /// </summary>
+    private static RuntimeValue BuiltInGetProgramDirectory(List<RuntimeValue> args, Interpreter? interpreter)
+    {
+        BuiltInArity.Require("getProgramDirectory", args, 0, 0);
+
+        var currentFile = interpreter?.GetCurrentFile();
+        if (!string.IsNullOrWhiteSpace(currentFile))
+        {
+            try
+            {
+                var full = Path.GetFullPath(currentFile);
+                var dir = Path.GetDirectoryName(full);
+                if (!string.IsNullOrEmpty(dir))
+                    return RuntimeValue.String(dir);
+            }
+            catch
+            {
+                // Fall through to executable / cwd.
+            }
+        }
+
+        var baseDir = AppContext.BaseDirectory;
+        if (!string.IsNullOrWhiteSpace(baseDir))
+        {
+            try
+            {
+                return RuntimeValue.String(Path.GetFullPath(baseDir));
+            }
+            catch
+            {
+                return RuntimeValue.String(baseDir.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+            }
+        }
+
+        return RuntimeValue.String(Directory.GetCurrentDirectory());
     }
 
     private static RuntimeValue BuiltInGetAssistantMemory(List<RuntimeValue> args, Interpreter? interpreter)

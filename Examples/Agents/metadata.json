@@ -142,6 +142,19 @@
       "learningGoal": "Build a personal knowledge base from a docs folder and query it with an agent.",
       "expectedOutput": "Interactive BUILD/ASK flows; optional compile with --embed-folder secondbrain.",
       "featured": true
+    },
+    {
+      "name": "Second Brain (semantic)",
+      "description": "Same BUILD as Second Brain, but ASK retrieves notes via GraphMemory (vector + BM25 hybrid). Compare with secondbrain.malda for synonym/paraphrase search.",
+      "file": "secondbrain_semantic.malda",
+      "track": "showcase",
+      "difficulty": "advanced",
+      "minutes": 30,
+      "concepts": ["CodingAgent", "GraphMemory", "VectorDB", "embeddings", "hybrid retrieval"],
+      "prerequisites": ["Agents/secondbrain.malda"],
+      "learningGoal": "See how GraphMemory + embeddings improve ASK over lexical token overlap on the same distilled notes.",
+      "expectedOutput": "Interactive BUILD/ASK with GraphMemory index; place bge-m3-Q4_K_M.gguf beside the script/exe for multilingual neural retrieval.",
+      "featured": true
     }
   ]
 }
