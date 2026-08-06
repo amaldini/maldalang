@@ -1356,7 +1356,7 @@ class Program
     {
         if (args.Length < 2)
         {
-            Console.WriteLine("Usage: malda compile|publish <input.malda|input.malda.html> [-o <output.exe|output.dll|output.js|output-dir>] [--mode interpreter|transpile|dll|js|pwa|fullstack] [--target js|pwa|fullstack] [--include-ui-host] [--with-trading] [--typed-transpile-level 0|1|2] [--profile] [--profile-output <path>] [--profile-format text|json|both] [--profile-periodic-seconds N]");
+            Console.WriteLine("Usage: malda compile|publish <input.malda|input.malda.html> [-o <output.exe|output.dll|output.js|output-dir>] [--mode interpreter|transpile|dll|js|pwa|fullstack] [--target js|pwa|fullstack] [--include-ui-host] [--embed-folder <dir[=alias]>] [--with-trading] [--typed-transpile-level 0|1|2] [--profile] [--profile-output <path>] [--profile-format text|json|both] [--profile-periodic-seconds N]");
             Console.WriteLine("  publish       - Alias for compile --mode transpile (executable publish layout)");
             Console.WriteLine("  --with-trading - Bundle MaldaLang.Timeseries, Trading.Core, Trading.Plugin, and Trading.Abstractions DLLs");
             Console.WriteLine("  input.malda    - Source file to compile (.malda.html supported in --mode js, --mode pwa, and --mode fullstack)");
@@ -1366,6 +1366,7 @@ class Program
             Console.WriteLine("  --target js   - Alias for --mode js");
             Console.WriteLine("  --target fullstack - Alias for --mode fullstack (output is a deployable directory)");
             Console.WriteLine("  --include-ui-host - Force embedding UIHost runtime in transpiled executable");
+            Console.WriteLine("  --embed-folder - Embed a directory as embed:<alias>/... (alias defaults to folder name; repeatable; path=alias optional)");
             Console.WriteLine("  --typed-transpile-level - 0=legacy dynamic transpile, 1=typed-safe (default), 2=typed-aggressive");
             Console.WriteLine("  --profile     - Enable MALDA profiling in the compiled executable");
             Console.WriteLine("  --profile-output - Write the profile report to a path");
@@ -1386,6 +1387,7 @@ class Program
         bool includeUiHost = false;
         bool includeOptionalPacks = false;
         int typedTranspileLevel = 1;
+        var embedFolderArgs = new List<string>();
         var profilingSettings = new CliProfilingSettings();
 
         if (forceTranspilePublish)
@@ -1464,6 +1466,20 @@ class Program
             {
                 includeUiHost = true;
             }
+            else if (arg == "--embed-folder")
+            {
+                if (i + 1 < args.Length)
+                {
+                    embedFolderArgs.Add(args[i + 1]);
+                    i++;
+                }
+                else
+                {
+                    Console.WriteLine("Error: --embed-folder requires a directory path (optional =alias)");
+                    SystemEnvironment.Exit(1);
+                    return;
+                }
+            }
             else if (arg == "--with-trading")
             {
                 includeOptionalPacks = true;
@@ -1528,6 +1544,10 @@ class Program
         {
             Console.WriteLine("UI Host: forced embedded");
         }
+        if (embedFolderArgs.Count > 0)
+        {
+            Console.WriteLine("Embed folders: " + string.Join(", ", embedFolderArgs));
+        }
         Console.WriteLine($"Typed transpile level: {typedTranspileLevel}");
         var profilingOptions = BuildProfilingOptions(profilingSettings);
 
@@ -1568,7 +1588,11 @@ class Program
             MethodInfo? compileMethod = null;
             if (compilationModeType != null && compilationMode != null)
             {
-                compileMethod = compilerType.GetMethod("Compile", new[] { typeof(string), typeof(string), compilationModeType, typeof(bool), typeof(bool), typeof(ProfilingOptions), typeof(int), typeof(bool) });
+                compileMethod = compilerType.GetMethod("Compile", new[] { typeof(string), typeof(string), compilationModeType, typeof(bool), typeof(bool), typeof(ProfilingOptions), typeof(int), typeof(bool), typeof(string[]) });
+                if (compileMethod == null)
+                {
+                    compileMethod = compilerType.GetMethod("Compile", new[] { typeof(string), typeof(string), compilationModeType, typeof(bool), typeof(bool), typeof(ProfilingOptions), typeof(int), typeof(bool) });
+                }
                 if (compileMethod == null)
                 {
                     compileMethod = compilerType.GetMethod("Compile", new[] { typeof(string), typeof(string), compilationModeType, typeof(bool), typeof(bool), typeof(ProfilingOptions), typeof(int) });
@@ -1630,7 +1654,12 @@ class Program
             {
                 // Use new method signature with compilation mode
                 object? result;
-                if (compileMethod!.GetParameters().Length == 8)
+                var embedArgsArray = embedFolderArgs.Count > 0 ? embedFolderArgs.ToArray() : null;
+                if (compileMethod!.GetParameters().Length == 9)
+                {
+                    result = compileMethod.Invoke(compiler, new object?[] { inputPath, outputPath, compilationMode!, false, includeUiHost, profilingOptions, typedTranspileLevel, includeOptionalPacks, embedArgsArray });
+                }
+                else if (compileMethod!.GetParameters().Length == 8)
                 {
                     result = compileMethod.Invoke(compiler, new object?[] { inputPath, outputPath, compilationMode!, false, includeUiHost, profilingOptions, typedTranspileLevel, includeOptionalPacks });
                 }
@@ -3932,12 +3961,13 @@ class Program
 
     static void ShowCompileHelp()
     {
-        Console.WriteLine("Usage: malda compile|publish <input.malda|input.malda.html> [-o <output.exe|output.dll|output.js|output-dir>] [--mode interpreter|transpile|dll|js|pwa|fullstack] [--target js|pwa|fullstack] [--include-ui-host] [--with-trading] [--profile] [--profile-output <path>] [--profile-format text|json|both] [--profile-periodic-seconds N]");
+        Console.WriteLine("Usage: malda compile|publish <input.malda|input.malda.html> [-o <output.exe|output.dll|output.js|output-dir>] [--mode interpreter|transpile|dll|js|pwa|fullstack] [--target js|pwa|fullstack] [--include-ui-host] [--embed-folder <dir[=alias]>] [--with-trading] [--profile] [--profile-output <path>] [--profile-format text|json|both] [--profile-periodic-seconds N]");
         Console.WriteLine("  publish                       Alias for compile --mode transpile (executable publish layout)");
         Console.WriteLine("  -o <path>                     Output executable, DLL, JS file, or PWA directory");
         Console.WriteLine("  --mode <mode>                 interpreter (default), transpile, dll, js, pwa, or fullstack");
         Console.WriteLine("  --target <js|pwa|fullstack>   Alias for --mode js, --mode pwa, or --mode fullstack");
         Console.WriteLine("  --include-ui-host             Force embedding UIHost runtime in transpiled executable");
+        Console.WriteLine("  --embed-folder <dir[=alias]>  Embed a directory as embed:<alias>/... (repeatable)");
         Console.WriteLine("  --with-trading                Bundle optional timeseries and trading pack DLLs beside the executable");
         Console.WriteLine("  --profile                     Enable MALDA profiling in the compiled executable");
         Console.WriteLine("  --profile-output <path>       Write the profile report to a file path");

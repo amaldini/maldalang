@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
@@ -28,6 +29,7 @@ public enum CompilationMode
 public class Compiler
 {
     private const string EmbeddedUiHostStartMarker = "RegisterDecoratedFunctions();";
+    private static readonly Regex EmbedAliasPattern = new("^[a-zA-Z0-9_-]+$", RegexOptions.Compiled);
 
     public class CompilationResult
     {
@@ -58,9 +60,31 @@ public class Compiler
 
     public CompilationResult Compile(string sourcePath, string outputPath, CompilationMode mode, bool includeLLamaSharp, bool includeUiHost, ProfilingOptions? profilingOptions, int typedTranspileLevel, bool includeOptionalPacks)
     {
+        return Compile(sourcePath, outputPath, mode, includeLLamaSharp, includeUiHost, profilingOptions, typedTranspileLevel, includeOptionalPacks, embedFolderArgs: null);
+    }
+
+    /// <summary>
+    /// <paramref name="embedFolderArgs"/> entries are <c>path</c> or <c>path=alias</c>.
+    /// </summary>
+    public CompilationResult Compile(string sourcePath, string outputPath, CompilationMode mode, bool includeLLamaSharp, bool includeUiHost, ProfilingOptions? profilingOptions, int typedTranspileLevel, bool includeOptionalPacks, string[]? embedFolderArgs)
+    {
+        IReadOnlyList<EmbeddedFolderSpec> folders;
+        try
+        {
+            folders = NormalizeEmbedFolders(ParseEmbedFolderArgs(embedFolderArgs));
+        }
+        catch (Exception ex)
+        {
+            return new CompilationResult
+            {
+                Success = false,
+                ErrorMessage = ex.Message
+            };
+        }
+
         if (mode == CompilationMode.TranspileToCSharp)
         {
-            return CompileWithTranspilation(sourcePath, outputPath, includeLLamaSharp, includeUiHost, profilingOptions, typedTranspileLevel, includeOptionalPacks);
+            return CompileWithTranspilation(sourcePath, outputPath, includeLLamaSharp, includeUiHost, profilingOptions, typedTranspileLevel, includeOptionalPacks, folders);
         }
         
         if (mode == CompilationMode.TranspileToDll)
@@ -97,7 +121,7 @@ public class Compiler
             try
             {
                 // Generate project files
-                GenerateProjectFiles(tempDir, source, sourcePath, includeLLamaSharp, profilingOptions);
+                GenerateProjectFiles(tempDir, source, sourcePath, includeLLamaSharp, profilingOptions, folders);
 
                 // Compile executable
                 var exePath = CompileExecutable(tempDir, outputPath, includeLLamaSharp);
@@ -331,7 +355,141 @@ public class Compiler
         return $"{message} (+{remaining} more error{(remaining == 1 ? "" : "s")}; full list in build_errors.txt next to -o)";
     }
 
-    private void GenerateProjectFiles(string tempDir, string source, string sourcePath, bool includeLLamaSharp = false, ProfilingOptions? profilingOptions = null)
+    private static IReadOnlyList<EmbeddedFolderSpec> ParseEmbedFolderArgs(string[]? embedFolderArgs)
+    {
+        if (embedFolderArgs == null || embedFolderArgs.Length == 0)
+        {
+            return Array.Empty<EmbeddedFolderSpec>();
+        }
+
+        var list = new List<EmbeddedFolderSpec>();
+        foreach (var raw in embedFolderArgs)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                continue;
+            }
+
+            var eq = raw.LastIndexOf('=');
+            if (eq > 0)
+            {
+                list.Add(new EmbeddedFolderSpec(raw.Substring(0, eq), raw.Substring(eq + 1)));
+            }
+            else
+            {
+                list.Add(new EmbeddedFolderSpec(raw, ""));
+            }
+        }
+
+        return list;
+    }
+
+    private static IReadOnlyList<EmbeddedFolderSpec> NormalizeEmbedFolders(IReadOnlyList<EmbeddedFolderSpec>? embedFolders)
+    {
+        if (embedFolders == null || embedFolders.Count == 0)
+        {
+            return Array.Empty<EmbeddedFolderSpec>();
+        }
+
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var normalized = new List<EmbeddedFolderSpec>();
+        foreach (var spec in embedFolders)
+        {
+            if (spec == null || string.IsNullOrWhiteSpace(spec.Path))
+            {
+                throw new Exception("--embed-folder requires a directory path.");
+            }
+
+            var fullPath = Path.GetFullPath(spec.Path);
+            if (!Directory.Exists(fullPath))
+            {
+                throw new Exception($"--embed-folder directory not found: {spec.Path}");
+            }
+
+            var alias = string.IsNullOrWhiteSpace(spec.Alias)
+                ? Path.GetFileName(fullPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
+                : spec.Alias.Trim();
+            if (string.IsNullOrEmpty(alias) || !EmbedAliasPattern.IsMatch(alias))
+            {
+                throw new Exception($"Invalid --embed-folder alias '{alias}'. Use letters, digits, '_' or '-'.");
+            }
+
+            if (!seen.Add(alias))
+            {
+                throw new Exception($"Duplicate --embed-folder alias '{alias}'.");
+            }
+
+            normalized.Add(new EmbeddedFolderSpec(fullPath, alias));
+        }
+
+        return normalized;
+    }
+
+    private static void StageEmbeddedFolders(string tempDir, IReadOnlyList<EmbeddedFolderSpec> embedFolders)
+    {
+        if (embedFolders.Count == 0)
+        {
+            return;
+        }
+
+        var foldersRoot = Path.Combine(tempDir, "Resources", "folders");
+        Directory.CreateDirectory(foldersRoot);
+        foreach (var spec in embedFolders)
+        {
+            var destRoot = Path.Combine(foldersRoot, spec.Alias);
+            Directory.CreateDirectory(destRoot);
+            foreach (var file in Directory.GetFiles(spec.Path, "*", SearchOption.AllDirectories))
+            {
+                var relative = Path.GetRelativePath(spec.Path, file);
+                var destPath = Path.Combine(destRoot, relative);
+                var destDir = Path.GetDirectoryName(destPath);
+                if (!string.IsNullOrEmpty(destDir))
+                {
+                    Directory.CreateDirectory(destDir);
+                }
+
+                File.Copy(file, destPath, overwrite: true);
+            }
+        }
+    }
+
+    private static string BuildEmbeddedFolderResourceItems(string tempDir)
+    {
+        var foldersDir = Path.Combine(tempDir, "Resources", "folders");
+        if (!Directory.Exists(foldersDir))
+        {
+            return "";
+        }
+
+        var sb = new StringBuilder();
+        foreach (var file in Directory.GetFiles(foldersDir, "*", SearchOption.AllDirectories))
+        {
+            var relativeFromResources = Path.GetRelativePath(Path.Combine(tempDir, "Resources"), file)
+                .Replace('/', '\\');
+            var relativeFromFolders = Path.GetRelativePath(foldersDir, file).Replace('\\', '/');
+            var slash = relativeFromFolders.IndexOf('/');
+            if (slash <= 0)
+            {
+                continue;
+            }
+
+            var alias = relativeFromFolders.Substring(0, slash);
+            var relativeFile = relativeFromFolders.Substring(slash + 1);
+            if (string.IsNullOrEmpty(alias) || string.IsNullOrEmpty(relativeFile))
+            {
+                continue;
+            }
+
+            var logicalName = $"malda.embed.{alias}/{relativeFile}";
+            sb.AppendLine($"    <EmbeddedResource Include=\"Resources\\{relativeFromResources}\">");
+            sb.AppendLine($"      <LogicalName>{logicalName}</LogicalName>");
+            sb.AppendLine("    </EmbeddedResource>");
+        }
+
+        return sb.ToString();
+    }
+
+    private void GenerateProjectFiles(string tempDir, string source, string sourcePath, bool includeLLamaSharp = false, ProfilingOptions? profilingOptions = null, IReadOnlyList<EmbeddedFolderSpec>? embedFolders = null)
     {
         // Create Resources directory
         var resourcesDir = Path.Combine(tempDir, "Resources");
@@ -341,6 +499,7 @@ public class Compiler
         var resourceFileName = "program.malda";
         var resourcePath = Path.Combine(resourcesDir, resourceFileName);
         File.WriteAllText(resourcePath, source, Encoding.UTF8);
+        StageEmbeddedFolders(tempDir, embedFolders ?? Array.Empty<EmbeddedFolderSpec>());
         
         // Analyze and bundle package dependencies
         try
@@ -772,6 +931,8 @@ public class Compiler
                 embeddedResources.AppendLine($"    <EmbeddedResource Include=\"Resources\\{normalizedPath}\" />");
             }
         }
+
+        embeddedResources.Append(BuildEmbeddedFolderResourceItems(tempDir));
         
         embeddedResources.AppendLine("  </ItemGroup>");
         
@@ -2053,7 +2214,7 @@ self.addEventListener("fetch", (event) => {
         }
     }
 
-    private CompilationResult CompileWithTranspilation(string sourcePath, string outputPath, bool includeLLamaSharp = false, bool includeUiHost = false, ProfilingOptions? profilingOptions = null, int typedTranspileLevel = 1, bool includeOptionalPacks = false)
+    private CompilationResult CompileWithTranspilation(string sourcePath, string outputPath, bool includeLLamaSharp = false, bool includeUiHost = false, ProfilingOptions? profilingOptions = null, int typedTranspileLevel = 1, bool includeOptionalPacks = false, IReadOnlyList<EmbeddedFolderSpec>? embedFolders = null)
     {
         try
         {
@@ -2118,7 +2279,7 @@ self.addEventListener("fetch", (event) => {
                 }
 
                 // Generate project files for transpiled C#
-                GenerateTranspiledProjectFiles(tempDir, csharpCode, includeLLamaSharp, shouldEmbedUiHost);
+                GenerateTranspiledProjectFiles(tempDir, csharpCode, includeLLamaSharp, shouldEmbedUiHost, embedFolders ?? Array.Empty<EmbeddedFolderSpec>());
 
                 // Compile executable
                 var exePath = CompileExecutable(tempDir, outputPath, includeLLamaSharp, includeOptionalPacks);
@@ -2196,7 +2357,7 @@ self.addEventListener("fetch", (event) => {
             .Replace("\"", "\\\"", StringComparison.Ordinal) + "\"";
     }
 
-    private void GenerateTranspiledProjectFiles(string tempDir, string csharpCode, bool includeLLamaSharp = false, bool includeUiHost = false)
+    private void GenerateTranspiledProjectFiles(string tempDir, string csharpCode, bool includeLLamaSharp = false, bool includeUiHost = false, IReadOnlyList<EmbeddedFolderSpec>? embedFolders = null)
     {
         // Write transpiled C# code to Program.cs
         var programCsPath = Path.Combine(tempDir, "Program.cs");
@@ -2210,6 +2371,7 @@ self.addEventListener("fetch", (event) => {
             File.Copy(MaldaLangDllPath, dllDestPath, true);
         }
 
+        StageEmbeddedFolders(tempDir, embedFolders ?? Array.Empty<EmbeddedFolderSpec>());
         StageTranspilePackReferences(tempDir, out var extraProjectReferences);
 
         // Generate .csproj file
@@ -2295,6 +2457,12 @@ self.addEventListener("fetch", (event) => {
   </ItemGroup>"
             : string.Empty;
 
+        var folderResources = BuildEmbeddedFolderResourceItems(tempDir);
+        var embeddedResources = string.IsNullOrEmpty(folderResources)
+            ? ""
+            : $@"  <ItemGroup>
+{folderResources}  </ItemGroup>";
+
         return $@"<Project Sdk=""Microsoft.NET.Sdk"">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -2311,6 +2479,7 @@ self.addEventListener("fetch", (event) => {
   {extraProjectReferences}
   {uiHostFrameworkReference}
   {packageReferences}
+{embeddedResources}
 </Project>";
     }
 

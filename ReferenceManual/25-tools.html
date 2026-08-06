@@ -200,6 +200,13 @@ malda compile &lt;file.malda&gt; --mode dll</code></pre>
 
         <p>Selects the compilation mode. If not specified, <code>interpreter</code> mode is used by default.</p>
 
+        <h4>Embed a Folder into the Executable</h4>
+
+        <pre><code>malda compile app.malda -o app.exe --mode transpile --embed-folder secondbrain
+malda compile app.malda -o app.exe --mode transpile --embed-folder ./data=assets</code></pre>
+
+        <p>Packs a directory into the published executable as assembly resources. At runtime, programs read those files with the virtual scheme <code>embed:&lt;alias&gt;/&lt;relative&gt;</code> (see <a href="11-built-in-functions.html">Built-in Functions</a> §12.8.0). The alias defaults to the folder name; use <code>path=alias</code> to rename. The flag is repeatable. Files are not extracted to disk.</p>
+
         <h4>Compile Code Directly</h4>
 
         <pre><code>malda -c "&lt;code&gt;" -o output.exe --mode transpile

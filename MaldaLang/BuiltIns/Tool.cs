@@ -86,6 +86,8 @@ public class ToolInstance : ObjectInstance
         
         try
         {
+            if (EmbeddedFolderStore.IsEmbedPath(WorkingDirectory))
+                return ResolveEmbedPathUnderWorkingDirectory(path) != null;
             return GetFullPathUnderWorkingDirectory(path) != null;
         }
         catch
@@ -107,6 +109,24 @@ public class ToolInstance : ObjectInstance
         
         if (string.IsNullOrEmpty(WorkingDirectory))
             return path;
+
+        if (EmbeddedFolderStore.IsEmbedPath(WorkingDirectory))
+        {
+            var resolved = ResolveEmbedPathUnderWorkingDirectory(path);
+            if (resolved == null)
+                return null;
+
+            if (EmbeddedFolderStore.IsEmbedPath(path))
+            {
+                var root = WorkingDirectory.TrimEnd('/');
+                if (resolved.Equals(root, StringComparison.OrdinalIgnoreCase))
+                    return ".";
+                if (resolved.StartsWith(root + "/", StringComparison.OrdinalIgnoreCase))
+                    return resolved.Substring(root.Length + 1);
+            }
+
+            return path.Replace('\\', '/').TrimStart('/');
+        }
         
         var targetFull = GetFullPathUnderWorkingDirectory(path);
         if (targetFull == null)
@@ -119,6 +139,60 @@ public class ToolInstance : ObjectInstance
         }
         
         return path;
+    }
+
+    /// <summary>
+    /// Resolve a tool path against this tool's working directory (disk or <c>embed:</c>).
+    /// </summary>
+    public string? ResolvePathAgainstWorkingDirectory(string path)
+    {
+        if (string.IsNullOrEmpty(WorkingDirectory))
+            return path;
+
+        if (EmbeddedFolderStore.IsEmbedPath(WorkingDirectory))
+            return ResolveEmbedPathUnderWorkingDirectory(path);
+
+        if (Path.IsPathRooted(path))
+            return path;
+
+        return Path.Combine(WorkingDirectory, path);
+    }
+
+    private string? ResolveEmbedPathUnderWorkingDirectory(string path)
+    {
+        if (string.IsNullOrEmpty(path) || path == ".")
+            return WorkingDirectory.TrimEnd('/');
+
+        if (EmbeddedFolderStore.IsEmbedPath(path))
+        {
+            if (!EmbeddedFolderStore.TryParsePath(WorkingDirectory, out var workAlias, out var workRel) ||
+                !EmbeddedFolderStore.TryParsePath(path, out var pathAlias, out var pathRel))
+            {
+                return null;
+            }
+
+            if (!string.Equals(workAlias, pathAlias, StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            if (string.IsNullOrEmpty(workRel))
+                return EmbeddedFolderStore.MakeRoot(workAlias) + (string.IsNullOrEmpty(pathRel) ? "" : "/" + pathRel);
+
+            if (string.IsNullOrEmpty(pathRel))
+                return string.IsNullOrEmpty(workRel) ? EmbeddedFolderStore.MakeRoot(workAlias) : null;
+
+            if (!pathRel.Equals(workRel, StringComparison.OrdinalIgnoreCase) &&
+                !pathRel.StartsWith(workRel + "/", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            return EmbeddedFolderStore.Join(EmbeddedFolderStore.MakeRoot(workAlias), pathRel);
+        }
+
+        var cleaned = path.Replace('\\', '/').Trim('/');
+        return EmbeddedFolderStore.TryJoin(WorkingDirectory, new[] { cleaned }, out var joined)
+            ? joined
+            : null;
     }
     
     private static bool IsUnderWorkingDirectory(string workingDirFull, string targetPath)

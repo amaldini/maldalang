@@ -139,6 +139,8 @@ public static class BuiltInRegistry
             "hasDirectory" or
             "ensureDir" or
             "listDirectory" or
+            "hasEmbeddedFolder" or
+            "embeddedFolderRoot" or
             "glob" or
             "grep" or
             "replaceInFile" or

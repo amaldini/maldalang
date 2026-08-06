@@ -2059,20 +2059,13 @@ public partial class ConversationInstance : ObjectInstance
                 return RuntimeValue.String($"Error: Path '{pathToCheck}' is outside the allowed working directory '{tool.WorkingDirectory}'");
             }
             
-            // Resolve relative paths relative to working directory
+            // Resolve relative paths relative to working directory (disk or embed:)
             string? resolvedFilePath = null;
             string? resolvedDirPath = null;
             
             if (filePath != null && !string.IsNullOrEmpty(tool.WorkingDirectory))
             {
-                if (!Path.IsPathRooted(filePath))
-                {
-                    resolvedFilePath = Path.Combine(tool.WorkingDirectory, filePath);
-                }
-                else
-                {
-                    resolvedFilePath = filePath;
-                }
+                resolvedFilePath = tool.ResolvePathAgainstWorkingDirectory(filePath) ?? filePath;
             }
             else if (filePath != null)
             {
@@ -2081,14 +2074,7 @@ public partial class ConversationInstance : ObjectInstance
             
             if (dirPath != null && !string.IsNullOrEmpty(tool.WorkingDirectory))
             {
-                if (!Path.IsPathRooted(dirPath))
-                {
-                    resolvedDirPath = Path.Combine(tool.WorkingDirectory, dirPath);
-                }
-                else
-                {
-                    resolvedDirPath = dirPath;
-                }
+                resolvedDirPath = tool.ResolvePathAgainstWorkingDirectory(dirPath) ?? dirPath;
             }
             else if (dirPath != null)
             {
@@ -2623,11 +2609,11 @@ public partial class ConversationInstance : ObjectInstance
                         var useRegexFromArgs = argsObj.Get("useRegex", null);
                         var useRegexExplicit = useRegexFromArgs != null && useRegexFromArgs.Type == ValueType.Boolean;
                         
-                        // Resolve path relative to working directory
+                        // Resolve path relative to working directory (disk or embed:)
                         string localResolvedFilePath;
                         if (!string.IsNullOrEmpty(tool.WorkingDirectory))
                         {
-                            localResolvedFilePath = Path.Combine(tool.WorkingDirectory, localFilePath);
+                            localResolvedFilePath = tool.ResolvePathAgainstWorkingDirectory(localFilePath) ?? localFilePath;
                         }
                         else
                         {

@@ -1,0 +1,1357 @@
+// secondbrain.malda - MALDA 0.1.0
+//
+// Two-mode program:
+//   1) BUILD   a CodingAgent explores documentation (.md / .html) in a user-chosen
+//              folder, proposes a theme taxonomy, then distills a "second brain":
+//              hierarchical linked .md notes (index -> topic hubs -> notes).
+//   2) ASK     answers user questions using the produced second brain.
+//
+// Run:   malda Examples/Agents/secondbrain.malda
+//
+// LLM:   if OPENROUTER_API_KEY is set, uses OpenRouter (client default model,
+//        override with MALDA_BRAIN_MODEL); otherwise MALDA's default local model
+//        (downloaded on first use).
+//
+// UI:    at startup, choose UI message language (English / Italian).
+//        Notes stay in the source document language; technical terms are unchanged.
+//
+// Compile (ASK-only portable exe with embedded brain, no disk extract):
+//   malda compile Examples/Agents/secondbrain.malda -o dist/secondbrain.exe --mode transpile --embed-folder secondbrain
+
+// ---------------------------------------------------------------- configuration
+
+var MAX_DOC_CHARS = 12000;      // document characters sent per LLM call
+var MAX_CHUNKS = 3;             // max parts for a very long document
+var MAX_NOTE_CHARS = 5000;      // characters per note in an answer context
+var TOP_K = 5;                  // notes retrieved per question
+var MAX_EXPLORE_DOCS = 300;     // documents listed for the explorer agent
+var CATALOG_NAME = "brain.json";
+var UI_LANG = "it";             // "en" | "it" — UI messages
+
+// ---------------------------------------------------------------- UI i18n
+
+function t(en, it) {
+    if (UI_LANG == "en") {
+        return en;
+    }
+    return it;
+}
+
+function ynHint() {
+    return t("(y/n)", "(s/n)");
+}
+
+function isAffirmative(answer) {
+    var a = str.lower(str.trim(string(answer)));
+    return a == "y" or a == "yes" or a == "s" or a == "si";
+}
+
+function isNegative(answer) {
+    var a = str.lower(str.trim(string(answer)));
+    return a == "n" or a == "no";
+}
+
+function chooseLanguage() {
+    AnsiConsole.markupLine("");
+    AnsiConsole.panel(
+        "[bold]1[/]  English\n" +
+        "[bold]2[/]  Italiano\n\n" +
+        "[dim]Enter = Italiano[/]",
+        "[bold blue]Language / Lingua[/]", "rounded");
+    var choice = str.lower(str.trim(io.input("Language / Lingua (1/2) [2]: ")));
+    if (choice == "1" or choice == "en" or choice == "english" or choice == "e") {
+        UI_LANG = "en";
+    } else {
+        UI_LANG = "it";
+    }
+    AnsiConsole.markupLine(t(
+        "[dim]UI language: English[/]",
+        "[dim]Lingua interfaccia: Italiano[/]"));
+}
+
+// ---------------------------------------------------------------- LLM helpers
+
+function makeClient() {
+    if (not io.hasEnv("OPENROUTER_API_KEY")) {
+        return null;
+    }
+    if (io.hasEnv("MALDA_BRAIN_MODEL")) {
+        var m = str.trim(string(io.getEnv("MALDA_BRAIN_MODEL")));
+        if (m != "") {
+            return new OpenRouterClient(m);
+        }
+    }
+    return new OpenRouterClient();
+}
+
+function modelLabel() {
+    if (not io.hasEnv("OPENROUTER_API_KEY")) {
+        return t("default local model (MALDA)", "modello locale di default (MALDA)");
+    }
+    if (io.hasEnv("MALDA_BRAIN_MODEL")) {
+        var m = str.trim(string(io.getEnv("MALDA_BRAIN_MODEL")));
+        if (m != "") {
+            return "OpenRouter / " + m;
+        }
+    }
+    return t("OpenRouter / client default model", "OpenRouter / modello di default del client");
+}
+
+// CodingAgent: full file tools, with working directory limited to the docs root.
+function newCodingAgent(name, role, instructions, workDir) {
+    var client = makeClient();
+    if (client == null) {
+        return new CodingAgent(name, role, instructions, workDir);
+    }
+    return new CodingAgent(name, role, instructions, client, workDir);
+}
+
+// Read-only agent for ASK mode (no write tools).
+function newReaderAgent(name, role, instructions, brainDir) {
+    var client = makeClient();
+    var agent = null;
+    if (client == null) {
+        agent = new Agent(name, role, instructions);
+    } else {
+        agent = new Agent(name, role, instructions, client);
+    }
+    agent.addTool(createReadFileTool(brainDir));
+    agent.addTool(createGrepTool(brainDir));
+    agent.addTool(createListDirectoryTool(brainDir));
+    return agent;
+}
+
+// A failed LLM call must not abort the whole run.
+function tryThink(agent, question) {
+    try {
+        var response = agent.think(question);
+        if (response == null) {
+            return "";
+        }
+        if (response.content == null) {
+            return "";
+        }
+        return string(response.content);
+    } catch (e) {
+        AnsiConsole.markupLine("  [red]" + t("LLM error:", "errore LLM:") + "[/] " + string(e));
+        return "";
+    }
+}
+
+// ---------------------------------------------------------------- text helpers
+
+function normalizePath(p) {
+    return str.replace(string(p), "\\", "/");
+}
+
+function slugify(text) {
+    var s = str.lower(str.trim(string(text)));
+    s = str.regexReplace(s, "[^a-z0-9]+", "-");
+    s = str.regexReplace(s, "^-+", "");
+    s = str.regexReplace(s, "-+$", "");
+    if (s == "") {
+        s = "nota";
+    }
+    if (str.length(s) > 60) {
+        s = str.substring(s, 0, 60);
+        s = str.regexReplace(s, "-+$", "");
+    }
+    return s;
+}
+
+function htmlToText(raw) {
+    var t = str.regexReplace(raw, "(?is)<(script|style|noscript)[^>]*>.*?</\\1>", " ");
+    t = str.regexReplace(t, "(?is)<!--.*?-->", " ");
+    t = str.regexReplace(t, "(?i)<br[^>]*>", "\n");
+    t = str.regexReplace(t, "(?i)</(p|div|li|h1|h2|h3|h4|h5|h6|tr|section|article|pre|blockquote)>", "\n");
+    t = str.regexReplace(t, "<[^>]+>", " ");
+    t = str.replace(t, "&nbsp;", " ");
+    t = str.replace(t, "&amp;", "&");
+    t = str.replace(t, "&lt;", "<");
+    t = str.replace(t, "&gt;", ">");
+    t = str.replace(t, "&quot;", "\"");
+    t = str.replace(t, "&#39;", "'");
+    t = str.replace(t, "&rsquo;", "'");
+    t = str.replace(t, "&mdash;", "-");
+    t = str.regexReplace(t, "[ \\t]+", " ");
+    t = str.regexReplace(t, "\n{3,}", "\n\n");
+    return str.trim(t);
+}
+
+function extractText(absPath) {
+    var raw = io.readFile(absPath);
+    var ext = str.lower(io.pathGetExtension(absPath));
+    if (ext == ".html" or ext == ".htm") {
+        return htmlToText(raw);
+    }
+    return raw;
+}
+
+// Split long text into chunks, cutting on the last available paragraph break.
+function chunkText(text, maxChars, maxChunks) {
+    var chunks = [];
+    var rest = text;
+    while (str.length(rest) > 0 and chunks.length < maxChunks) {
+        if (str.length(rest) <= maxChars) {
+            chunks.append(rest);
+            rest = "";
+        } else {
+            var head = str.substring(rest, 0, maxChars);
+            var cut = str.indexOf(head, "\n\n");
+            var lastBreak = -1;
+            var probe = cut;
+            while (probe >= 0) {
+                lastBreak = probe;
+                var tail = str.substring(head, probe + 2, str.length(head));
+                var next = str.indexOf(tail, "\n\n");
+                if (next < 0) {
+                    probe = -1;
+                } else {
+                    probe = probe + 2 + next;
+                }
+            }
+            if (lastBreak < int(maxChars / 2)) {
+                lastBreak = maxChars;
+            }
+            chunks.append(str.substring(rest, 0, lastBreak));
+            rest = str.substring(rest, lastBreak, str.length(rest));
+        }
+    }
+    return chunks;
+}
+
+function firstLines(text, count) {
+    var lines = str.split(text, "\n");
+    var taken = [];
+    var i = 0;
+    while (i < lines.length and taken.length < count) {
+        var line = str.trim(lines[i]);
+        if (line != "") {
+            taken.append(line);
+        }
+        i = i + 1;
+    }
+    return str.join(taken, " ");
+}
+
+function headingsOf(markdown) {
+    var found = str.regexFind(markdown, "(?m)^#{1,4} +(.+)$");
+    var titles = [];
+    foreach (var hit in found) {
+        var text = str.trim(hit.groups[1]);
+        if (text != "" and titles.length < 12) {
+            titles.append(text);
+        }
+    }
+    return titles;
+}
+
+function tagsFromLine(line) {
+    var tags = [];
+    foreach (var part in str.split(line, ",")) {
+        var tag = str.lower(str.trim(part));
+        tag = str.regexReplace(tag, "[^a-z0-9 \\-]+", "");
+        tag = str.trim(tag);
+        if (tag != "" and tags.length < 8 and not str.includes(tags, tag)) {
+            tags.append(tag);
+        }
+    }
+    return tags;
+}
+
+// ---------------------------------------------------------------- distillation
+
+function distillInstructions() {
+    return "Sei un knowledge engineer. Distilli documentazione tecnica in note atomiche " +
+        "per un second brain. Rispetti sempre alla lettera il formato di risposta richiesto. " +
+        "Scrivi la nota nella stessa lingua del documento di origine e mantieni invariati i " +
+        "termini tecnici, i nomi di API e i frammenti di codice. Non inventi nulla: usi solo " +
+        "cio' che il documento contiene. Non usi gli strumenti sui file: il testo del " +
+        "documento ti viene fornito direttamente nel messaggio.";
+}
+
+function distillQuestion(sourceRel, partLabel, text) {
+    return "Documento: " + sourceRel + partLabel + "\n\n" +
+        "Distilla il documento seguente in una nota di second brain.\n\n" +
+        "Rispondi ESATTAMENTE in questo formato, senza altro testo prima o dopo:\n" +
+        "TITLE: <titolo breve e specifico>\n" +
+        "TAGS: <da 3 a 6 tag minuscoli separati da virgola>\n" +
+        "SUMMARY: <1-3 frasi che dicono cosa insegna il documento>\n" +
+        "BODY:\n" +
+        "## Concetti chiave\n" +
+        "- <fatto essenziale, uno per riga>\n" +
+        "## Dettagli\n" +
+        "<paragrafi o elenchi con le regole operative, la sintassi, i parametri>\n" +
+        "## Esempi\n" +
+        "<solo esempi presenti nel documento, in blocchi di codice; ometti la sezione se non ce ne sono>\n" +
+        "## Trappole\n" +
+        "<errori, limiti, avvertenze; ometti la sezione se il documento non ne parla>\n\n" +
+        "--- INIZIO DOCUMENTO ---\n" + text + "\n--- FINE DOCUMENTO ---";
+}
+
+// Map the agent reply into note fields, with fallbacks if the format is missing.
+function parseDistilled(response, fallbackTitle, fallbackText) {
+    var note = {
+        "title": "",
+        "tags": [],
+        "summary": "",
+        "body": ""
+    };
+    var bodyLines = [];
+    var inBody = false;
+    foreach (var rawLine in str.split(string(response), "\n")) {
+        var line = rawLine;
+        if (inBody) {
+            bodyLines.append(line);
+        } else if (str.startsWith(str.upper(str.trim(line)), "TITLE:")) {
+            note.title = str.trim(str.substring(str.trim(line), 6, str.length(str.trim(line))));
+        } else if (str.startsWith(str.upper(str.trim(line)), "TAGS:")) {
+            note.tags = tagsFromLine(str.substring(str.trim(line), 5, str.length(str.trim(line))));
+        } else if (str.startsWith(str.upper(str.trim(line)), "SUMMARY:")) {
+            note.summary = str.trim(str.substring(str.trim(line), 8, str.length(str.trim(line))));
+        } else if (str.startsWith(str.upper(str.trim(line)), "BODY:")) {
+            inBody = true;
+        }
+    }
+    note.body = str.trim(str.join(bodyLines, "\n"));
+
+    if (note.title == "") {
+        note.title = fallbackTitle;
+    }
+    if (note.body == "") {
+        // Format not followed: keep the raw reply, or an extract of the document.
+        var raw = str.trim(string(response));
+        if (raw == "") {
+            note.body = "## Estratto non distillato\n\nL'agente non ha prodotto una nota per questo documento.\n\n```\n" +
+                str.substring(fallbackText, 0, 1500) + "\n```";
+        } else {
+            note.body = raw;
+        }
+    }
+    if (note.summary == "") {
+        note.summary = firstLines(note.body, 2);
+        if (str.length(note.summary) > 300) {
+            note.summary = str.substring(note.summary, 0, 300) + "...";
+        }
+    }
+    if (note.tags.length == 0) {
+        note.tags = tagsFromLine(fallbackTitle);
+    }
+    return note;
+}
+
+// ---------------------------------------------------------------- note writing
+
+function frontmatter(note) {
+    return "---\n" +
+        "title: " + note.title + "\n" +
+        "topic: " + note.topic + "\n" +
+        "source: " + note.source + "\n" +
+        "tags: [" + str.join(note.tags, ", ") + "]\n" +
+        "generated_by: secondbrain.malda\n" +
+        "---\n";
+}
+
+function writeNoteFile(brainDir, note) {
+    var text = frontmatter(note) +
+        "\n# " + note.title + "\n\n" +
+        "> " + note.summary + "\n\n" +
+        note.body + "\n\n" +
+        "## Note collegate\n\n" +
+        "<!--related-->\n\n" +
+        "---\n\n" +
+        "- Hub tematico: [" + note.topic + "](../topics/" + slugify(note.topic) + ".md)\n" +
+        "- Indice: [second brain](../index.md)\n" +
+        "- Documento di origine: `" + note.source + "`\n";
+    io.writeFile(io.pathJoin(brainDir, "notes", note.slug + ".md"), text);
+}
+
+// Links between notes: overlap of tags, title, and summary (deterministic,
+// so links always point at files that really exist).
+function relatednessScore(a, b) {
+    var score = 0.0;
+    foreach (var tag in a.tags) {
+        if (str.includes(b.tags, tag)) {
+            score = score + 2.0;
+        }
+    }
+    if (a.topic == b.topic) {
+        score = score + 1.0;
+    }
+    if (a.sourceKey == b.sourceKey) {
+        score = score + 4.0;
+    }
+    var overlap = str.tokenOverlap(a.title + " " + a.summary, b.title + " " + b.summary);
+    score = score + overlap.jaccard * 3.0;
+    return score;
+}
+
+function writeRelatedSections(brainDir, notes) {
+    var i = 0;
+    while (i < notes.length) {
+        var current = notes[i];
+        var picked = [];
+        var used = [];
+        var slot = 0;
+        while (slot < 4) {
+            var bestIndex = -1;
+            var bestScore = 0.5;
+            var j = 0;
+            while (j < notes.length) {
+                if (j != i and not str.includes(used, j)) {
+                    var score = relatednessScore(current, notes[j]);
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestIndex = j;
+                    }
+                }
+                j = j + 1;
+            }
+            if (bestIndex < 0) {
+                slot = 4;
+            } else {
+                used.append(bestIndex);
+                picked.append(notes[bestIndex]);
+                slot = slot + 1;
+            }
+        }
+        var lines = [];
+        foreach (var related in picked) {
+            lines.append("- [" + related.title + "](" + related.slug + ".md) - " + related.topic);
+        }
+        if (lines.length == 0) {
+            lines.append("- nessuna nota affine rilevata");
+        }
+        io.replaceInFile(io.pathJoin(brainDir, "notes", current.slug + ".md"),
+            "<!--related-->", str.join(lines, "\n"));
+        i = i + 1;
+    }
+}
+
+// ---------------------------------------------------------------- hubs and index
+
+function topicsOf(notes) {
+    var topics = [];
+    foreach (var note in notes) {
+        var known = false;
+        foreach (var topic in topics) {
+            if (topic.title == note.topic) {
+                known = true;
+                topic.count = topic.count + 1;
+                topic.notes.append(note);
+            }
+        }
+        if (not known) {
+            topics.append({
+                "title": note.topic,
+                "slug": slugify(note.topic),
+                "description": "",
+                "count": 1,
+                "notes": [note]
+            });
+        }
+    }
+    return topics;
+}
+
+function writeTopicHub(brainDir, topic, agent) {
+    var listing = [];
+    foreach (var note in topic.notes) {
+        listing.append("- " + note.title + ": " + note.summary);
+    }
+    var overview = "";
+    var themeIntro = "";
+    if (topic.description != null and str.trim(string(topic.description)) != "") {
+        themeIntro = "Il tema e' stato definito cosi' in fase di esplorazione: " +
+            str.trim(string(topic.description)) + "\n\n";
+    }
+    var question = "Sei davanti a un gruppo di note di un second brain sul tema \"" + topic.title + "\".\n\n" +
+        themeIntro +
+        str.join(listing, "\n") + "\n\n" +
+        "Scrivi in markdown, senza titolo di primo livello e senza inventare contenuti:\n" +
+        "1. due o tre frasi che spiegano di cosa si occupa questo tema;\n" +
+        "2. una sezione \"### Ordine di lettura consigliato\" con un elenco numerato dei titoli " +
+        "nell'ordine in cui conviene leggerli, ciascuno con mezza riga di motivazione.\n" +
+        "Usa la stessa lingua delle note.";
+    if (agent != null) {
+        overview = str.trim(tryThink(agent, question));
+    }
+    if (overview == "") {
+        overview = str.trim(string(topic.description));
+        if (overview == "") {
+            overview = "Raccolta di " + string(topic.count) +
+                " note distillate dai documenti di questo gruppo.";
+        }
+    }
+
+    var lines = [];
+    foreach (var note in topic.notes) {
+        lines.append("- [" + note.title + "](../notes/" + note.slug + ".md) - " + note.summary);
+    }
+    var text = "---\n" +
+        "title: " + topic.title + "\n" +
+        "kind: hub\n" +
+        "notes: " + string(topic.count) + "\n" +
+        "---\n\n" +
+        "# " + topic.title + "\n\n" +
+        overview + "\n\n" +
+        "## Note di questo tema\n\n" +
+        str.join(lines, "\n") + "\n\n" +
+        "---\n\n" +
+        "- Indice: [second brain](../index.md)\n";
+    io.writeFile(io.pathJoin(brainDir, "topics", topic.slug + ".md"), text);
+}
+
+function writeIndex(brainDir, docsRoot, notes, topics, skipped, truncated, taxonomySource) {
+    var lines = [];
+    lines.append("---");
+    lines.append("title: Second brain");
+    lines.append("kind: index");
+    lines.append("source_folder: " + docsRoot);
+    lines.append("notes: " + string(notes.length));
+    lines.append("topics: " + string(topics.length));
+    lines.append("taxonomy: " + taxonomySource);
+    lines.append("model: " + modelLabel());
+    lines.append("---");
+    lines.append("");
+    lines.append("# Second brain");
+    lines.append("");
+    lines.append("Conoscenza distillata da `" + docsRoot + "` (" + string(notes.length) +
+        " note, " + string(topics.length) + " temi).");
+    lines.append("");
+    lines.append("Temi ricavati da: " + taxonomySource + ".");
+    lines.append("");
+    lines.append("## Temi");
+    lines.append("");
+    foreach (var topic in topics) {
+        var suffix = "";
+        if (str.trim(string(topic.description)) != "") {
+            suffix = " - " + str.trim(string(topic.description));
+        }
+        lines.append("- [" + topic.title + "](topics/" + topic.slug + ".md) - " +
+            string(topic.count) + " note" + suffix);
+    }
+    lines.append("");
+    lines.append("## Tutte le note");
+    lines.append("");
+    foreach (var topic in topics) {
+        lines.append("### " + topic.title);
+        lines.append("");
+        foreach (var note in topic.notes) {
+            lines.append("- [" + note.title + "](notes/" + note.slug + ".md) - " + note.summary);
+            lines.append("  - origine: `" + note.source + "`");
+        }
+        lines.append("");
+    }
+    if (skipped.length > 0) {
+        lines.append("## Documenti non distillati");
+        lines.append("");
+        foreach (var item in skipped) {
+            lines.append("- `" + item + "`");
+        }
+        lines.append("");
+    }
+    if (truncated.length > 0) {
+        lines.append("## Documenti distillati solo in parte");
+        lines.append("");
+        lines.append("Oltre " + string(MAX_CHUNKS) + " parti da " + string(MAX_DOC_CHARS) +
+            " caratteri la coda del documento non e' stata distillata (alza MAX_CHUNKS in `secondbrain.malda`):");
+        lines.append("");
+        foreach (var item in truncated) {
+            lines.append("- `" + item.source + "` - distillati " + string(item.used) +
+                " di " + string(item.total) + " caratteri");
+        }
+        lines.append("");
+    }
+    lines.append("## Come si usa");
+    lines.append("");
+    lines.append("- Modalita' 2 di `secondbrain.malda`: domande in linguaggio naturale su queste note.");
+    lines.append("- `" + CATALOG_NAME + "`: catalogo leggibile a macchina usato dal recupero.");
+    lines.append("");
+    io.writeFile(io.pathJoin(brainDir, "index.md"), str.join(lines, "\n"));
+}
+
+function writeCatalog(brainDir, docsRoot, notes, topics, taxonomySource) {
+    var slimNotes = [];
+    foreach (var note in notes) {
+        slimNotes.append({
+            "slug": note.slug,
+            "title": note.title,
+            "path": "notes/" + note.slug + ".md",
+            "source": note.source,
+            "topic": note.topic,
+            "tags": note.tags,
+            "summary": note.summary,
+            "headings": note.headings
+        });
+    }
+    var slimTopics = [];
+    foreach (var topic in topics) {
+        slimTopics.append({
+            "title": topic.title,
+            "slug": topic.slug,
+            "path": "topics/" + topic.slug + ".md",
+            "description": topic.description,
+            "count": topic.count
+        });
+    }
+    var catalog = {
+        "version": 1,
+        "generatedAt": now(),
+        "sourceFolder": docsRoot,
+        "taxonomy": taxonomySource,
+        "model": modelLabel(),
+        "notes": slimNotes,
+        "topics": slimTopics
+    };
+    io.writeFile(io.pathJoin(brainDir, CATALOG_NAME), toJSON(catalog));
+}
+
+// ---------------------------------------------------------------- mode 1
+
+function collectDocs(root) {
+    var patterns = ["**/*.md", "**/*.markdown", "**/*.html", "**/*.htm"];
+    var found = [];
+    var truncated = false;
+    foreach (var pattern in patterns) {
+        var result = io.glob(pattern, root);
+        if (result.truncated) {
+            truncated = true;
+        }
+        foreach (var item in result.items) {
+            if (item.type == "file") {
+                var rel = normalizePath(item.path);
+                if (not str.includes(found, rel)) {
+                    found.append(rel);
+                }
+            }
+        }
+    }
+    return { "files": sort(found), "truncated": truncated };
+}
+
+function topicOf(relPath) {
+    var parts = str.split(relPath, "/");
+    if (parts.length > 1) {
+        return parts[0];
+    }
+    return "documenti principali";
+}
+
+// ---------------------------------------------------------------- exploration
+
+// Pull a JSON object out of a reply that may include prose or code fences.
+function extractJsonObject(response) {
+    var hits = str.regexFind(string(response), "(?s)\\{.*\\}");
+    if (hits.length == 0) {
+        return null;
+    }
+    try {
+        return parseJSON(hits[0].text);
+    } catch (e) {
+        return null;
+    }
+}
+
+function findDoc(docs, candidate) {
+    var wanted = str.lower(normalizePath(str.trim(string(candidate))));
+    wanted = str.regexReplace(wanted, "^\\./", "");
+    foreach (var rel in docs) {
+        if (str.lower(rel) == wanted) {
+            return rel;
+        }
+    }
+    // The model sometimes cites only the file name: accept it when unambiguous.
+    var matches = [];
+    foreach (var rel in docs) {
+        if (str.lower(io.getFileName(rel)) == wanted) {
+            matches.append(rel);
+        }
+    }
+    if (matches.length == 1) {
+        return matches[0];
+    }
+    return null;
+}
+
+function exploreInstructions() {
+    return "Sei un architetto della documentazione. Il tuo compito e' capire come e' " +
+        "organizzato un corpus di documenti e proporne una tassonomia per temi. " +
+        "Puoi usare gli strumenti list_directory, read_file e grep per ispezionare la " +
+        "cartella: apri indici, README, sommari o qualche documento rappresentativo prima " +
+        "di decidere. Raggruppa per argomento reale, non per struttura di cartelle. " +
+        "Rispondi solo con JSON valido, senza commenti ne' testo aggiuntivo.";
+}
+
+// Step 0: the agent inspects the folder on its own and proposes themes.
+function exploreTaxonomy(docsRoot, docs) {
+    var listed = docs;
+    var listTruncated = false;
+    if (docs.length > MAX_EXPLORE_DOCS) {
+        listed = [];
+        var i = 0;
+        while (i < MAX_EXPLORE_DOCS) {
+            listed.append(docs[i]);
+            i = i + 1;
+        }
+        listTruncated = true;
+        AnsiConsole.markupLine(t(
+            "[yellow]Explorer list limited to[/] " + string(MAX_EXPLORE_DOCS) +
+            " [yellow]of[/] " + string(docs.length) +
+            "[yellow] documents; the rest will use subfolders as theme.[/]",
+            "[yellow]Elenco per l'esploratore limitato a[/] " + string(MAX_EXPLORE_DOCS) +
+            " [yellow]documenti su[/] " + string(docs.length) +
+            "[yellow]; i restanti useranno le sottocartelle come tema.[/]"));
+    }
+
+    var explorer = newCodingAgent("Explorer", "architetto della documentazione",
+        exploreInstructions(), docsRoot);
+
+    var question = "Cartella della documentazione: " + docsRoot + "\n\n" +
+        "Documenti (percorsi relativi a quella cartella):\n" +
+        str.join(listed, "\n") + "\n\n" +
+        "Ispeziona la cartella se ti serve, poi proponi da 2 a 12 temi che coprano tutti i " +
+        "documenti elencati. Ogni documento va in esattamente un tema. Usa i percorsi " +
+        "esattamente come compaiono nell'elenco. Dai ai temi nomi nella lingua della " +
+        "documentazione.\n\n" +
+        "Rispondi solo con questo JSON:\n" +
+        "{\"themes\": [{\"title\": \"nome del tema\", \"description\": " +
+        "\"una o due frasi su cosa copre\", \"documents\": [\"percorso1\", \"percorso2\"]}]}";
+
+    var response = tryThink(explorer, question);
+    var parsed = extractJsonObject(response);
+    if (parsed == null) {
+        AnsiConsole.markupLine("  [yellow]" + t(
+            "explorer did not return valid JSON",
+            "l'esploratore non ha restituito JSON valido") + "[/]");
+        return null;
+    }
+    if (parsed.themes == null) {
+        AnsiConsole.markupLine("  [yellow]" + t(
+            "explorer response missing 'themes' field",
+            "risposta dell'esploratore senza campo 'themes'") + "[/]");
+        return null;
+    }
+
+    var themes = [];
+    var assigned = [];
+    var unknown = [];
+    foreach (var raw in parsed.themes) {
+        var title = "";
+        if (raw.title != null) {
+            title = str.trim(string(raw.title));
+        }
+        if (title == "") {
+            continue;
+        }
+        var description = "";
+        if (raw.description != null) {
+            description = str.trim(string(raw.description));
+        }
+        var members = [];
+        if (raw.documents != null) {
+            foreach (var candidate in raw.documents) {
+                var rel = findDoc(docs, candidate);
+                if (rel == null) {
+                    unknown.append(string(candidate));
+                } else if (not str.includes(assigned, rel)) {
+                    // First theme that claims a document wins: avoid double assignment.
+                    assigned.append(rel);
+                    members.append(rel);
+                }
+            }
+        }
+        if (members.length > 0) {
+            themes.append({
+                "title": title,
+                "slug": slugify(title),
+                "description": description,
+                "documents": members
+            });
+        }
+    }
+
+    if (themes.length == 0) {
+        AnsiConsole.markupLine("  [yellow]" + t(
+            "no usable themes in the explorer response",
+            "nessun tema utilizzabile nella risposta dell'esploratore") + "[/]");
+        return null;
+    }
+    return {
+        "themes": themes,
+        "assignedCount": assigned.length,
+        "unknownCount": unknown.length,
+        "listTruncated": listTruncated
+    };
+}
+
+function themeTopicOf(rel, taxonomy) {
+    if (taxonomy != null) {
+        foreach (var theme in taxonomy.themes) {
+            if (str.includes(theme.documents, rel)) {
+                return theme.title;
+            }
+        }
+    }
+    return topicOf(rel);
+}
+
+function describeTaxonomy(taxonomy, docs) {
+    var colTheme = t("theme", "tema");
+    var colDocs = t("documents", "documenti");
+    var colDesc = t("description", "descrizione");
+    var rows = [];
+    foreach (var theme in taxonomy.themes) {
+        var row = {};
+        row[colTheme] = theme.title;
+        row[colDocs] = string(theme.documents.length);
+        row[colDesc] = theme.description;
+        rows.append(row);
+    }
+    AnsiConsole.table(rows, t("Taxonomy proposed by the explorer", "Tassonomia proposta dall'esploratore"),
+        [colTheme, colDocs, colDesc]);
+    var leftover = docs.length - taxonomy.assignedCount;
+    if (leftover > 0) {
+        AnsiConsole.markupLine("[yellow]" + string(leftover) + t(
+            " unassigned documents:[/] they will use the subfolder as theme.",
+            " documenti non assegnati:[/] useranno la sottocartella come tema."));
+    }
+    if (taxonomy.unknownCount > 0) {
+        AnsiConsole.markupLine("[yellow]" + string(taxonomy.unknownCount) + t(
+            " paths cited by the explorer do not exist:[/] ignored.",
+            " percorsi citati dall'esploratore non esistono:[/] ignorati."));
+    }
+}
+
+function descriptionOfTheme(taxonomy, title) {
+    if (taxonomy == null) {
+        return "";
+    }
+    foreach (var theme in taxonomy.themes) {
+        if (theme.title == title) {
+            return theme.description;
+        }
+    }
+    return "";
+}
+
+function uniqueSlug(base, notes) {
+    var candidate = base;
+    var suffix = 2;
+    var clash = true;
+    while (clash) {
+        clash = false;
+        foreach (var note in notes) {
+            if (note.slug == candidate) {
+                clash = true;
+            }
+        }
+        if (clash) {
+            candidate = base + "-" + string(suffix);
+            suffix = suffix + 1;
+        }
+    }
+    return candidate;
+}
+
+function buildBrain() {
+    AnsiConsole.markupLine("");
+    AnsiConsole.panel(
+        t("Reads .md and .html and distills a second brain of linked notes.",
+            "Legge .md e .html e distilla un second brain di note collegate."),
+        t("[bold]Mode 1 - BUILD[/]", "[bold]Modalita' 1 - COSTRUISCI[/]"), "rounded");
+
+    var docsRoot = str.trim(io.input(t("Documentation folder: ", "Cartella della documentazione: ")));
+    if (docsRoot == "") {
+        io.print(t("Cancelled.", "Annullato."));
+        return false;
+    }
+    if (not io.hasDirectory(docsRoot)) {
+        AnsiConsole.markupLine("[red]" + t("Folder not found:", "Cartella non trovata:") + "[/] " + docsRoot);
+        return false;
+    }
+
+    var brainDir = str.trim(io.input(t(
+        "Second brain folder [secondbrain]: ",
+        "Cartella del second brain [secondbrain]: ")));
+    if (brainDir == "") {
+        brainDir = "secondbrain";
+    }
+    if (io.hasFile(io.pathJoin(brainDir, CATALOG_NAME))) {
+        var confirm = str.trim(io.input(t(
+            "A second brain already exists in this folder: matching files will be overwritten. Proceed? " + ynHint() + ": ",
+            "Esiste gia' un second brain in questa cartella: i file omonimi verranno sovrascritti. Procedo? " + ynHint() + ": ")));
+        if (not isAffirmative(confirm)) {
+            io.print(t("Cancelled.", "Annullato."));
+            return false;
+        }
+    }
+
+    var scan = collectDocs(docsRoot);
+    var docs = scan.files;
+    if (docs.length == 0) {
+        AnsiConsole.markupLine("[yellow]" + t("No .md / .html files found in", "Nessun file .md / .html trovato in") +
+            "[/] " + docsRoot);
+        return false;
+    }
+    if (scan.truncated) {
+        AnsiConsole.markupLine("[yellow]" + t("Warning:", "Attenzione:") + "[/] " + t(
+            "file search was truncated by the runtime; some documents are missing from the list.",
+            "la ricerca dei file e' stata troncata dal runtime; alcuni documenti non sono nell'elenco."));
+    }
+
+    AnsiConsole.markupLine("");
+    AnsiConsole.markupLine(t("Documents found:", "Documenti trovati:") + " [bold]" + string(docs.length) + "[/]");
+    AnsiConsole.markupLine("LLM: [bold]" + modelLabel() + "[/]");
+    AnsiConsole.markupLine("[dim]" + t(
+        "One exploration call, one per document, one per theme: paid models incur a cost.",
+        "Una chiamata di esplorazione, una per documento, una per tema: con modelli a pagamento questo ha un costo.") + "[/]");
+    var go = str.trim(io.input(t(
+        "Start distillation? " + ynHint() + ": ",
+        "Avvio la distillazione? " + ynHint() + ": ")));
+    if (not isAffirmative(go)) {
+        io.print(t("Cancelled.", "Annullato."));
+        return false;
+    }
+
+    io.print("");
+    io.print(t("Exploring documentation...", "Esplorazione della documentazione..."));
+    var taxonomy = exploreTaxonomy(docsRoot, docs);
+    var taxonomySource = t("subfolders", "sottocartelle");
+    if (taxonomy != null) {
+        io.print("");
+        describeTaxonomy(taxonomy, docs);
+        var keep = str.trim(io.input(t(
+            "Use this taxonomy? (y = yes, n = group by subfolder): ",
+            "Uso questa tassonomia? (s = si, n = raggruppa per sottocartella): ")));
+        if (isNegative(keep)) {
+            taxonomy = null;
+        } else {
+            taxonomySource = t("LLM exploration", "esplorazione LLM");
+        }
+    }
+    if (taxonomy == null) {
+        AnsiConsole.markupLine("[dim]" + t(
+            "Themes derived from folder structure.",
+            "Temi ricavati dalla struttura di cartelle.") + "[/]");
+    }
+
+    io.ensureDir(brainDir);
+    io.ensureDir(io.pathJoin(brainDir, "notes"));
+    io.ensureDir(io.pathJoin(brainDir, "topics"));
+
+    var distiller = newCodingAgent(
+        "Distiller",
+        "knowledge engineer",
+        distillInstructions(),
+        docsRoot
+    );
+
+    var notes = [];
+    var skipped = [];
+    var truncated = [];
+    var index = 0;
+    foreach (var rel in docs) {
+        index = index + 1;
+        AnsiConsole.markupLine("[dim][[" + string(index) + "/" + string(docs.length) + "]][/] " + rel);
+
+        var absPath = io.pathJoin(docsRoot, rel);
+        var text = "";
+        try {
+            text = extractText(absPath);
+        } catch (e) {
+            AnsiConsole.markupLine("  [red]" + t("read failed:", "lettura fallita:") + "[/] " + string(e));
+            skipped.append(rel);
+            text = "";
+        }
+        if (str.trim(text) == "") {
+            if (not str.includes(skipped, rel)) {
+                skipped.append(rel);
+                AnsiConsole.markupLine("  [yellow]" + t(
+                    "empty or non-text, skipped",
+                    "vuoto o non testuale, ignorato") + "[/]");
+            }
+            continue;
+        }
+
+        var chunks = chunkText(text, MAX_DOC_CHARS, MAX_CHUNKS);
+        var consumed = 0;
+        foreach (var piece in chunks) {
+            consumed = consumed + str.length(piece);
+        }
+        if (consumed < str.length(text)) {
+            truncated.append({
+                "source": rel,
+                "used": consumed,
+                "total": str.length(text)
+            });
+            AnsiConsole.markupLine("  [yellow]" + t("document too long:", "documento troppo lungo:") +
+                "[/] " + t("distilled ", "distillati ") +
+                string(consumed) + t(" of ", " di ") + string(str.length(text)) +
+                t(" characters", " caratteri"));
+        }
+        var partIndex = 0;
+        foreach (var chunk in chunks) {
+            partIndex = partIndex + 1;
+            var partLabel = "";
+            if (chunks.length > 1) {
+                partLabel = t(
+                    " (part " + string(partIndex) + " of " + string(chunks.length) + ")",
+                    " (parte " + string(partIndex) + " di " + string(chunks.length) + ")");
+            }
+            distiller.reset();
+            var response = tryThink(distiller, distillQuestion(rel, partLabel, chunk));
+            var fallbackTitle = io.getFileName(rel) + partLabel;
+            var parsed = parseDistilled(response, fallbackTitle, chunk);
+
+            var note = {
+                "slug": uniqueSlug(slugify(parsed.title), notes),
+                "title": parsed.title,
+                "summary": parsed.summary,
+                "tags": parsed.tags,
+                "body": parsed.body,
+                "topic": themeTopicOf(rel, taxonomy),
+                "source": rel + partLabel,
+                "sourceKey": rel,
+                "headings": headingsOf(parsed.body)
+            };
+            notes.append(note);
+            writeNoteFile(brainDir, note);
+            AnsiConsole.markupLine("  [green]" + t("note", "nota") + "[/] notes/" + note.slug + ".md");
+        }
+    }
+
+    if (notes.length == 0) {
+        AnsiConsole.markupLine("[red]" + t("No notes produced.", "Nessuna nota prodotta.") + "[/]");
+        return false;
+    }
+
+    io.print("");
+    io.print(t("Linking notes...", "Collegamento delle note..."));
+    writeRelatedSections(brainDir, notes);
+
+    io.print(t("Building topic hubs...", "Costruzione degli hub tematici..."));
+    var topics = topicsOf(notes);
+    var curator = newCodingAgent(
+        "Curator",
+        "curatore di knowledge base",
+        "Scrivi introduzioni brevi e concrete per gli hub tematici di un second brain. " +
+        "Non inventare contenuti: usa solo i titoli e i riassunti forniti. " +
+        "Non usare gli strumenti sui file.",
+        brainDir
+    );
+    foreach (var topic in topics) {
+        topic.description = descriptionOfTheme(taxonomy, topic.title);
+        curator.reset();
+        writeTopicHub(brainDir, topic, curator);
+        AnsiConsole.markupLine("  [green]hub[/] topics/" + topic.slug + ".md");
+    }
+
+    writeIndex(brainDir, docsRoot, notes, topics, skipped, truncated, taxonomySource);
+    writeCatalog(brainDir, docsRoot, notes, topics, taxonomySource);
+
+    io.print("");
+    var colKey = t("item", "voce");
+    var colVal = t("value", "valore");
+    var summaryRows = [];
+    var r1 = {};
+    r1[colKey] = t("documents read", "documenti letti");
+    r1[colVal] = string(docs.length - skipped.length);
+    summaryRows.append(r1);
+    var r2 = {};
+    r2[colKey] = t("documents skipped", "documenti ignorati");
+    r2[colVal] = string(skipped.length);
+    summaryRows.append(r2);
+    var r3 = {};
+    r3[colKey] = t("documents truncated", "documenti troncati");
+    r3[colVal] = string(truncated.length);
+    summaryRows.append(r3);
+    var r4 = {};
+    r4[colKey] = t("notes produced", "note prodotte");
+    r4[colVal] = string(notes.length);
+    summaryRows.append(r4);
+    var r5 = {};
+    r5[colKey] = t("themes", "temi");
+    r5[colVal] = string(topics.length);
+    summaryRows.append(r5);
+    var r6 = {};
+    r6[colKey] = t("taxonomy", "tassonomia");
+    r6[colVal] = taxonomySource;
+    summaryRows.append(r6);
+    var r7 = {};
+    r7[colKey] = t("folder", "cartella");
+    r7[colVal] = brainDir;
+    summaryRows.append(r7);
+    AnsiConsole.table(summaryRows, t("Second brain built", "Second brain costruito"), [colKey, colVal]);
+    AnsiConsole.markupLine(t("Index:", "Indice:") + " [bold]" + io.pathJoin(brainDir, "index.md") + "[/]");
+    return true;
+}
+
+// ---------------------------------------------------------------- mode 2
+
+function loadCatalog(brainDir) {
+    var catalogPath = io.pathJoin(brainDir, CATALOG_NAME);
+    if (not io.hasFile(catalogPath)) {
+        return null;
+    }
+    try {
+        return parseJSON(io.readFile(catalogPath));
+    } catch (e) {
+        AnsiConsole.markupLine("[red]" + t("Unreadable catalog:", "Catalogo illeggibile:") + "[/] " + string(e));
+        return null;
+    }
+}
+
+function metadataScore(questionTokens, note) {
+    var haystack = str.lower(note.title + " " + note.topic + " " +
+        str.join(note.tags, " ") + " " + note.summary + " " + str.join(note.headings, " "));
+    var haystackTokens = str.tokenize(haystack);
+    var titleTokens = str.tokenize(str.lower(note.title + " " + str.join(note.tags, " ")));
+    var score = 0.0;
+    foreach (var token in questionTokens) {
+        if (str.length(token) < 3) {
+            continue;
+        }
+        if (str.includes(haystackTokens, token)) {
+            score = score + 1.0;
+        } else if (str.indexOf(haystack, token) >= 0) {
+            score = score + 0.5;
+        }
+        if (str.includes(titleTokens, token)) {
+            score = score + 1.0;
+        }
+    }
+    return score;
+}
+
+function bodyScore(brainDir, questionTokens, note) {
+    var path = io.pathJoin(brainDir, note.path);
+    if (not io.hasFile(path)) {
+        return 0.0;
+    }
+    var body = "";
+    try {
+        body = str.lower(io.readFile(path));
+    } catch (e) {
+        return 0.0;
+    }
+    var bodyTokens = str.tokenize(body);
+    var score = 0.0;
+    foreach (var token in questionTokens) {
+        if (str.length(token) < 3) {
+            continue;
+        }
+        if (str.includes(bodyTokens, token)) {
+            score = score + 0.5;
+        }
+    }
+    return score;
+}
+
+// Retrieval: catalog metadata first, then note bodies if needed.
+function selectNotes(brainDir, catalog, question) {
+    var questionTokens = str.tokenize(str.lower(question));
+    var scored = [];
+    var best = 0.0;
+    foreach (var note in catalog.notes) {
+        var score = metadataScore(questionTokens, note);
+        if (score > best) {
+            best = score;
+        }
+        scored.append({ "note": note, "score": score });
+    }
+    if (best < 1.5) {
+        foreach (var entry in scored) {
+            entry.score = entry.score + bodyScore(brainDir, questionTokens, entry.note);
+        }
+    }
+
+    var picked = [];
+    var used = [];
+    var slot = 0;
+    while (slot < TOP_K) {
+        var bestIndex = -1;
+        var bestScore = 0.0;
+        var i = 0;
+        while (i < scored.length) {
+            if (not str.includes(used, i) and scored[i].score > bestScore) {
+                bestScore = scored[i].score;
+                bestIndex = i;
+            }
+            i = i + 1;
+        }
+        if (bestIndex < 0) {
+            slot = TOP_K;
+        } else {
+            used.append(bestIndex);
+            picked.append(scored[bestIndex]);
+            slot = slot + 1;
+        }
+    }
+    return picked;
+}
+
+function buildContext(brainDir, picked) {
+    var blocks = [];
+    foreach (var entry in picked) {
+        var note = entry.note;
+        var path = io.pathJoin(brainDir, note.path);
+        var body = "";
+        try {
+            body = io.readFile(path);
+        } catch (e) {
+            body = "";
+        }
+        if (str.length(body) > MAX_NOTE_CHARS) {
+            body = str.substring(body, 0, MAX_NOTE_CHARS) + "\n[...nota troncata...]";
+        }
+        blocks.append("### NOTA " + note.slug + "\n" +
+            "titolo: " + note.title + "\n" +
+            "tema: " + note.topic + "\n" +
+            "file: " + note.path + "\n" +
+            "origine: " + note.source + "\n\n" + body);
+    }
+    return str.join(blocks, "\n\n");
+}
+
+function answerInstructions() {
+    return "Rispondi alle domande usando esclusivamente il second brain fornito. " +
+        "Cita le note su cui ti basi con la forma [nota: slug]. " +
+        "Se le note non contengono la risposta, dillo esplicitamente e indica quale nota " +
+        "si avvicina di piu'. Non inventare API, parametri o comportamenti. " +
+        "Puoi usare gli strumenti read_file, grep e list_directory per aprire altre note " +
+        "del second brain se il contesto fornito non basta. Rispondi nella lingua della domanda, " +
+        "in modo conciso e strutturato.";
+}
+
+function resolveAskBrainRoot() {
+    if (io.hasEmbeddedFolder("secondbrain")) {
+        var root = io.embeddedFolderRoot("secondbrain");
+        AnsiConsole.markupLine("[dim]" + t(
+            "Using embedded second brain (no disk folder).",
+            "Uso il second brain incorporato (nessuna cartella su disco).") + "[/]");
+        return root;
+    }
+    var brainDir = str.trim(io.input(t(
+        "Second brain folder [secondbrain]: ",
+        "Cartella del second brain [secondbrain]: ")));
+    if (brainDir == "") {
+        brainDir = "secondbrain";
+    }
+    return brainDir;
+}
+
+function askBrain() {
+    AnsiConsole.markupLine("");
+    AnsiConsole.panel(
+        t("Answers questions using the second brain produced by mode 1.",
+            "Risponde alle domande usando il second brain prodotto dalla modalita' 1."),
+        t("[bold]Mode 2 - ASK[/]", "[bold]Modalita' 2 - CHIEDI[/]"), "rounded");
+
+    var brainDir = resolveAskBrainRoot();
+    var catalog = loadCatalog(brainDir);
+    if (catalog == null) {
+        AnsiConsole.markupLine("[red]" + t("No valid second brain in", "Nessun second brain valido in") +
+            "[/] " + brainDir +
+            " [red](" + t("missing", "manca") + " " + CATALOG_NAME + ").[/] " +
+            t("Run mode 1 first.", "Esegui prima la modalita' 1."));
+        return false;
+    }
+    AnsiConsole.markupLine("Second brain: [bold]" + string(catalog.notes.length) + "[/] " +
+        t("notes", "note") + ", [bold]" +
+        string(catalog.topics.length) + "[/] " + t("themes", "temi") +
+        t(", from `", ", da `") + string(catalog.sourceFolder) + "`");
+    AnsiConsole.markupLine("LLM: [bold]" + modelLabel() + "[/]");
+    AnsiConsole.markupLine("[dim]" + t(
+        "Empty input returns to the menu.",
+        "Invio vuoto per tornare al menu.") + "[/]");
+
+    var responder = newReaderAgent(
+        "BrainReader",
+        "assistente di knowledge base",
+        answerInstructions(),
+        brainDir
+    );
+
+    while (true) {
+        io.print("");
+        var question = str.trim(io.input(t("Question: ", "Domanda: ")));
+        if (question == "") {
+            return true;
+        }
+
+        var picked = selectNotes(brainDir, catalog, question);
+        if (picked.length == 0) {
+            AnsiConsole.markupLine("[yellow]" + t(
+                "No relevant notes found in the second brain.",
+                "Nessuna nota pertinente trovata nel second brain.") + "[/]");
+            continue;
+        }
+
+        var names = [];
+        foreach (var entry in picked) {
+            names.append(entry.note.slug);
+        }
+        AnsiConsole.markupLine("[dim]" + t("retrieved notes: ", "note recuperate: ") +
+            str.join(names, ", ") + "[/]");
+
+        var context = buildContext(brainDir, picked);
+        responder.reset();
+        var answer = str.trim(tryThink(responder,
+            "SECOND BRAIN (estratti pertinenti):\n\n" + context +
+            "\n\n----\nDOMANDA: " + question));
+        io.print("");
+        if (answer == "") {
+            AnsiConsole.markupLine("[red]" + t("No answer from the LLM.", "Nessuna risposta dall'LLM.") + "[/]");
+        } else {
+            AnsiConsole.markupLine("[bold green]" + t("Answer", "Risposta") + "[/]");
+            io.print(answer);
+        }
+        io.print("");
+        AnsiConsole.markupLine("[dim]" + t("Sources:", "Fonti:") + "[/]");
+        foreach (var entry in picked) {
+            io.print("  - " + entry.note.title + "  ->  " +
+                io.pathJoin(brainDir, entry.note.path) +
+                "  (" + t("source:", "origine:") + " " + entry.note.source + ")");
+        }
+    }
+    return true;
+}
+
+// ---------------------------------------------------------------- menu
+
+function showMenu() {
+    AnsiConsole.markupLine("");
+    AnsiConsole.panel(
+        t("[bold]1[/]  BUILD   a CodingAgent reads .md/.html and distills the second brain\n" +
+            "[bold]2[/]  ASK     answers questions using the second brain\n" +
+            "[bold]3[/]  language  switch UI language (English / Italian)\n" +
+            "[bold]0[/]  quit",
+            "[bold]1[/]  COSTRUISCI  un CodingAgent legge .md/.html e distilla il second brain\n" +
+            "[bold]2[/]  CHIEDI      risponde alle domande usando il second brain\n" +
+            "[bold]3[/]  lingua      cambia lingua interfaccia (English / Italiano)\n" +
+            "[bold]0[/]  esci"),
+        "[bold blue]MALDA second brain[/]", "double");
+}
+
+chooseLanguage();
+showMenu();
+while (true) {
+    var choice = str.trim(io.input(t("Choice (1/2/3/0): ", "Scelta (1/2/3/0): ")));
+    if (choice == "" or choice == "0") {
+        io.print(t("Goodbye.", "A presto."));
+        break;
+    }
+    if (choice == "1") {
+        buildBrain();
+        showMenu();
+    } else if (choice == "2") {
+        askBrain();
+        showMenu();
+    } else if (choice == "3") {
+        chooseLanguage();
+        showMenu();
+    } else {
+        AnsiConsole.markupLine("[yellow]" + t("Invalid choice.", "Scelta non valida.") + "[/]");
+    }
+}

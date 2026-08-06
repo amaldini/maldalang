@@ -53,6 +53,7 @@ public static class StdLibNamespaces
         "glob", "grep", "replaceInFile",
         "pathExists", "pathJoin", "pathNormalize", "pathGetExtension",
         "getEnv", "hasEnv", "getFileName", "getDirectoryName",
+        "hasEmbeddedFolder", "embeddedFolderRoot",
         "gitStatus", "gitAdd", "gitCommit", "gitDiff", "gitLog", "gitBranch", "gitCheckout", "gitPull", "gitPush"
     };
 

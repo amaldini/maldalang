@@ -129,6 +129,19 @@
       "expectedOutput": "Runs a MALDA-focused agent workflow with execution and compilation support.",
       "documentationPath": "/?lesson=build-ai-apps#lesson-build-ai-apps",
       "documentationTitle": "Developer Workflow Showcase"
+    },
+    {
+      "name": "Second Brain",
+      "description": "CodingAgent explores docs, distills a hierarchical second-brain note tree, then answers questions from it (OpenRouter or local LLM).",
+      "file": "secondbrain.malda",
+      "track": "showcase",
+      "difficulty": "advanced",
+      "minutes": 25,
+      "concepts": ["CodingAgent", "tools", "documentation distillation", "embedded folder"],
+      "prerequisites": ["Agents/agent_file_reading.malda"],
+      "learningGoal": "Build a personal knowledge base from a docs folder and query it with an agent.",
+      "expectedOutput": "Interactive BUILD/ASK flows; optional compile with --embed-folder secondbrain.",
+      "featured": true
     }
   ]
 }

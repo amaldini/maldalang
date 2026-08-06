@@ -1031,6 +1031,8 @@ public static class BuiltInFunctions
             "hasDirectory" => BuiltInHasDirectory(args),
             "ensureDir" => BuiltInEnsureDir(args),
             "listDirectory" => BuiltInListDirectory(args),
+            "hasEmbeddedFolder" => BuiltInHasEmbeddedFolder(args),
+            "embeddedFolderRoot" => BuiltInEmbeddedFolderRoot(args),
             "replaceInFile" => BuiltInReplaceInFile(args),
             "editFile" => BuiltInEditFile(args),
             "createReadFileTool" => BuiltInCreateReadFileTool(args),
@@ -1385,6 +1387,8 @@ public static class BuiltInFunctions
             "hasDirectory" => BuiltInHasDirectory(args),
             "ensureDir" => BuiltInEnsureDir(args),
             "listDirectory" => BuiltInListDirectory(args),
+            "hasEmbeddedFolder" => BuiltInHasEmbeddedFolder(args),
+            "embeddedFolderRoot" => BuiltInEmbeddedFolderRoot(args),
             "replaceInFile" => BuiltInReplaceInFile(args),
             "editFile" => BuiltInEditFile(args),
             "createReadFileTool" => BuiltInCreateReadFileTool(args),
@@ -3909,7 +3913,39 @@ public static class BuiltInFunctions
                 throw new Exception("pathJoin() all arguments must be strings");
             parts.Add(arg.AsString());
         }
+
+        if (parts.Count > 0 && EmbeddedFolderStore.IsEmbedPath(parts[0]))
+        {
+            var rest = parts.Skip(1).ToArray();
+            return RuntimeValue.String(EmbeddedFolderStore.Join(parts[0], rest));
+        }
+
         return RuntimeValue.String(Path.Combine(parts.ToArray()));
+    }
+
+    private static RuntimeValue BuiltInHasEmbeddedFolder(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("hasEmbeddedFolder", args, 1, 1, "alias");
+        if (args[0].Type != ValueType.String)
+            throw new Exception("hasEmbeddedFolder() expects a string alias");
+        return RuntimeValue.Boolean(EmbeddedFolderStore.HasAlias(args[0].AsString()));
+    }
+
+    private static RuntimeValue BuiltInEmbeddedFolderRoot(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("embeddedFolderRoot", args, 1, 1, "alias");
+        if (args[0].Type != ValueType.String)
+            throw new Exception("embeddedFolderRoot() expects a string alias");
+        var alias = args[0].AsString();
+        if (!EmbeddedFolderStore.HasAlias(alias))
+            return RuntimeValue.Null();
+        return RuntimeValue.String(EmbeddedFolderStore.MakeRoot(alias));
+    }
+
+    private static void RejectEmbedWrite(string path, string operation)
+    {
+        if (EmbeddedFolderStore.IsEmbedPath(path))
+            throw new Exception($"{operation}() cannot write to embedded path '{path}'");
     }
     
     private static RuntimeValue BuiltInPathNormalize(List<RuntimeValue> args)
@@ -3929,6 +3965,10 @@ public static class BuiltInFunctions
             throw new Exception("pathExists() expects a string argument");
         
         var path = args[0].AsString();
+        if (EmbeddedFolderStore.IsEmbedPath(path))
+        {
+            return RuntimeValue.Boolean(EmbeddedFolderStore.HasFile(path) || EmbeddedFolderStore.HasDirectory(path));
+        }
         return RuntimeValue.Boolean(File.Exists(path) || Directory.Exists(path));
     }
     
@@ -4546,10 +4586,20 @@ public static class BuiltInFunctions
         try
         {
             var filePath = args[0].AsString();
-            if (!File.Exists(filePath))
-                return RuntimeValue.Null();
-            
-            var content = File.ReadAllText(filePath);
+            string content;
+            if (EmbeddedFolderStore.IsEmbedPath(filePath))
+            {
+                var embedded = EmbeddedFolderStore.ReadText(filePath);
+                if (embedded == null)
+                    return RuntimeValue.Null();
+                content = embedded;
+            }
+            else
+            {
+                if (!File.Exists(filePath))
+                    return RuntimeValue.Null();
+                content = File.ReadAllText(filePath);
+            }
             
             // If line range is specified, extract only those lines
             if (args.Count >= 2)
@@ -4684,10 +4734,11 @@ public static class BuiltInFunctions
     private static RuntimeValue BuiltInWriteFile(List<RuntimeValue> args)
     {
         if (args.Count != 2) throw new Exception("writeFile() expects 2 arguments");
+        var filePath = CoerceWriteFilePath(args[0]);
+        RejectEmbedWrite(filePath, "writeFile");
         
         try
         {
-            var filePath = CoerceWriteFilePath(args[0]);
             var content = CoerceWriteFileContent(args[1]);
             
             string? beforeContent = null;
@@ -4752,6 +4803,8 @@ public static class BuiltInFunctions
         try
         {
             var filePath = args[0].AsString();
+            if (EmbeddedFolderStore.IsEmbedPath(filePath))
+                return RuntimeValue.Boolean(EmbeddedFolderStore.HasFile(filePath));
             return RuntimeValue.Boolean(File.Exists(filePath));
         }
         catch
@@ -4768,6 +4821,7 @@ public static class BuiltInFunctions
         try
         {
             var filePath = args[0].AsString();
+            RejectEmbedWrite(filePath, "deleteFile");
             if (string.IsNullOrEmpty(filePath)) return RuntimeValue.Boolean(false);
             if (!File.Exists(filePath)) return RuntimeValue.Boolean(true);
             File.Delete(filePath);
@@ -4787,6 +4841,7 @@ public static class BuiltInFunctions
         try
         {
             var filePath = args[0].AsString();
+            RejectEmbedWrite(filePath, "writeFileBase64");
             var base64 = args[1].AsString();
             var bytes = Convert.FromBase64String(base64 ?? "");
             File.WriteAllBytes(filePath, bytes);
@@ -4806,6 +4861,12 @@ public static class BuiltInFunctions
         try
         {
             var filePath = args[0].AsString();
+            if (EmbeddedFolderStore.IsEmbedPath(filePath))
+            {
+                var embedded = EmbeddedFolderStore.ReadBytes(filePath);
+                if (embedded == null) return RuntimeValue.Null();
+                return RuntimeValue.String(Convert.ToBase64String(embedded));
+            }
             if (!File.Exists(filePath)) return RuntimeValue.Null();
             var bytes = File.ReadAllBytes(filePath);
             return RuntimeValue.String(Convert.ToBase64String(bytes));
@@ -4825,6 +4886,8 @@ public static class BuiltInFunctions
         try
         {
             var dirPath = args[0].AsString();
+            if (EmbeddedFolderStore.IsEmbedPath(dirPath))
+                return RuntimeValue.Boolean(EmbeddedFolderStore.HasDirectory(dirPath));
             return RuntimeValue.Boolean(Directory.Exists(dirPath));
         }
         catch
@@ -4839,6 +4902,7 @@ public static class BuiltInFunctions
         if (args[0].Type != MaldaLang.Interpreter.ValueType.String)
             throw new Exception("ensureDir() expects a string argument");
         var dirPath = args[0].AsString();
+        RejectEmbedWrite(dirPath, "ensureDir");
         if (string.IsNullOrEmpty(dirPath)) return RuntimeValue.Null();
         try
         {
@@ -4860,6 +4924,20 @@ public static class BuiltInFunctions
         try
         {
             var dirPath = args[0].AsString();
+
+            if (EmbeddedFolderStore.IsEmbedPath(dirPath))
+            {
+                var embedItems = new List<RuntimeValue>();
+                foreach (var entry in EmbeddedFolderStore.List(dirPath))
+                {
+                    var itemObj = new JsonObject();
+                    itemObj.Set("name", RuntimeValue.String(entry.Name));
+                    itemObj.Set("type", RuntimeValue.String(entry.IsDirectory ? "directory" : "file"));
+                    itemObj.Set("path", RuntimeValue.String(entry.Path));
+                    embedItems.Add(RuntimeValue.Object(itemObj));
+                }
+                return RuntimeValue.Array(embedItems);
+            }
             
             // Handle empty string - treat as current directory
             if (string.IsNullOrWhiteSpace(dirPath))
@@ -4943,10 +5021,12 @@ public static class BuiltInFunctions
             throw new Exception("replaceInFile() expects 3 or 4 arguments");
         if (args[0].Type != MaldaLang.Interpreter.ValueType.String || args[1].Type != MaldaLang.Interpreter.ValueType.String || args[2].Type != MaldaLang.Interpreter.ValueType.String)
             throw new Exception("replaceInFile() expects (string, string, string, int?)");
+
+        var filePath = args[0].AsString();
+        RejectEmbedWrite(filePath, "replaceInFile");
         
         try
         {
-            var filePath = args[0].AsString();
             var oldText = args[1].AsString();
             var newText = args[2].AsString();
             var contextLines = args.Count == 4 && args[3].Type == MaldaLang.Interpreter.ValueType.Integer 
@@ -5264,6 +5344,90 @@ public static class BuiltInFunctions
             var matches = new List<RuntimeValue>();
             var filesSearched = 0;
             var totalMatches = 0;
+
+            // Prepare regex or string matching
+            System.Text.RegularExpressions.Regex? regex = null;
+            string? searchPattern = null;
+            
+            if (useRegex)
+            {
+                try
+                {
+                    var options = RegexOptions.None;
+                    if (caseInsensitive)
+                    {
+                        options |= RegexOptions.IgnoreCase;
+                    }
+                    regex = new Regex(pattern, options);
+                }
+                catch (Exception ex)
+                {
+                    return RuntimeValue.String($"Error: Invalid regex pattern: {ex.Message}");
+                }
+            }
+            else
+            {
+                searchPattern = caseInsensitive ? pattern.ToLowerInvariant() : pattern;
+            }
+
+            if (EmbeddedFolderStore.IsEmbedPath(filePath))
+            {
+                var embedFiles = EmbeddedFolderStore.EnumerateFiles(filePath, recursive);
+                if (embedFiles.Count == 0 &&
+                    !EmbeddedFolderStore.HasFile(filePath) &&
+                    !EmbeddedFolderStore.HasDirectory(filePath))
+                {
+                    return RuntimeValue.String($"Error: Path '{filePath}' does not exist");
+                }
+
+                foreach (var file in embedFiles)
+                {
+                    filesSearched++;
+                    var text = EmbeddedFolderStore.ReadText(file);
+                    if (text == null)
+                    {
+                        continue;
+                    }
+
+                    var pathForResult = file;
+                    if (!string.IsNullOrEmpty(workingDirectory) &&
+                        EmbeddedFolderStore.IsEmbedPath(workingDirectory) &&
+                        file.StartsWith(workingDirectory.TrimEnd('/') + "/", StringComparison.OrdinalIgnoreCase))
+                    {
+                        pathForResult = file.Substring(workingDirectory.TrimEnd('/').Length + 1);
+                    }
+
+                    var fileMatches = SearchLines(
+                        text.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None),
+                        pathForResult,
+                        pattern,
+                        regex,
+                        searchPattern,
+                        useRegex,
+                        caseInsensitive,
+                        includeLineNumbers,
+                        contextLines);
+
+                    if (countOnly)
+                    {
+                        totalMatches += fileMatches.Count;
+                    }
+                    else
+                    {
+                        matches.AddRange(fileMatches);
+                    }
+                }
+
+                if (countOnly)
+                {
+                    var embedResult = new JsonObject();
+                    embedResult.Set("count", RuntimeValue.Integer(totalMatches));
+                    embedResult.Set("filesSearched", RuntimeValue.Integer(filesSearched));
+                    return RuntimeValue.Object(embedResult);
+                }
+
+                return RuntimeValue.Array(matches);
+            }
             
             // Determine if filePath is a file or directory
             var isDirectory = Directory.Exists(filePath);
@@ -5307,31 +5471,6 @@ public static class BuiltInFunctions
                         return RuntimeValue.String($"Error accessing directory: {ex.Message}");
                     }
                 }
-            }
-            
-            // Prepare regex or string matching
-            System.Text.RegularExpressions.Regex? regex = null;
-            string? searchPattern = null;
-            
-            if (useRegex)
-            {
-                try
-                {
-                    var options = RegexOptions.None;
-                    if (caseInsensitive)
-                    {
-                        options |= RegexOptions.IgnoreCase;
-                    }
-                    regex = new Regex(pattern, options);
-                }
-                catch (Exception ex)
-                {
-                    return RuntimeValue.String($"Error: Invalid regex pattern: {ex.Message}");
-                }
-            }
-            else
-            {
-                searchPattern = caseInsensitive ? pattern.ToLowerInvariant() : pattern;
             }
             
             // Search each file
@@ -5388,8 +5527,6 @@ public static class BuiltInFunctions
         int contextLines,
         string workingDirectory = "")
     {
-        var matches = new List<RuntimeValue>();
-        
         try
         {
             var lines = File.ReadAllLines(filePath);
@@ -5407,74 +5544,96 @@ public static class BuiltInFunctions
                     /* keep absolute path if GetRelativePath fails */
                 }
             }
-            
-            for (int i = 0; i < lines.Length; i++)
-            {
-                var line = lines[i];
-                var lineNumber = i + 1; // 1-indexed
-                bool isMatch = false;
-                
-                if (useRegex && regex != null)
-                {
-                    isMatch = regex.IsMatch(line);
-                }
-                else if (searchPattern != null)
-                {
-                    var lineToSearch = caseInsensitive ? line.ToLowerInvariant() : line;
-                    isMatch = lineToSearch.Contains(searchPattern);
-                }
-                
-                if (isMatch)
-                {
-                    var matchObj = new JsonObject();
-                    matchObj.Set("filePath", RuntimeValue.String(pathForResult));
-                    
-                    if (includeLineNumbers)
-                    {
-                        matchObj.Set("lineNumber", RuntimeValue.Integer(lineNumber));
-                    }
-                    
-                    matchObj.Set("content", RuntimeValue.String(line));
-                    
-                    // Add context lines if requested
-                    if (contextLines > 0)
-                    {
-                        var contextBefore = new List<RuntimeValue>();
-                        var contextAfter = new List<RuntimeValue>();
-                        
-                        // Context before
-                        for (int j = Math.Max(0, i - contextLines); j < i; j++)
-                        {
-                            contextBefore.Add(RuntimeValue.String(lines[j]));
-                        }
-                        
-                        // Context after
-                        for (int j = i + 1; j < Math.Min(lines.Length, i + 1 + contextLines); j++)
-                        {
-                            contextAfter.Add(RuntimeValue.String(lines[j]));
-                        }
-                        
-                        if (contextBefore.Count > 0)
-                        {
-                            matchObj.Set("contextBefore", RuntimeValue.Array(contextBefore));
-                        }
-                        
-                        if (contextAfter.Count > 0)
-                        {
-                            matchObj.Set("contextAfter", RuntimeValue.Array(contextAfter));
-                        }
-                    }
-                    
-                    matches.Add(RuntimeValue.Object(matchObj));
-                }
-            }
+
+            return SearchLines(
+                lines,
+                pathForResult,
+                originalPattern,
+                regex,
+                searchPattern,
+                useRegex,
+                caseInsensitive,
+                includeLineNumbers,
+                contextLines);
         }
         catch (Exception)
         {
-            // Return empty list if file can't be read
             return new List<RuntimeValue>();
         }
-        
+    }
+
+    private static List<RuntimeValue> SearchLines(
+        string[] lines,
+        string pathForResult,
+        string originalPattern,
+        Regex? regex,
+        string? searchPattern,
+        bool useRegex,
+        bool caseInsensitive,
+        bool includeLineNumbers,
+        int contextLines)
+    {
+        var matches = new List<RuntimeValue>();
+        for (int i = 0; i < lines.Length; i++)
+        {
+            var line = lines[i];
+            var lineNumber = i + 1; // 1-indexed
+            bool isMatch = false;
+
+            if (useRegex && regex != null)
+            {
+                isMatch = regex.IsMatch(line);
+            }
+            else if (searchPattern != null)
+            {
+                var lineToSearch = caseInsensitive ? line.ToLowerInvariant() : line;
+                isMatch = lineToSearch.Contains(searchPattern);
+            }
+
+            if (!isMatch)
+            {
+                continue;
+            }
+
+            var matchObj = new JsonObject();
+            matchObj.Set("filePath", RuntimeValue.String(pathForResult));
+
+            if (includeLineNumbers)
+            {
+                matchObj.Set("lineNumber", RuntimeValue.Integer(lineNumber));
+            }
+
+            matchObj.Set("content", RuntimeValue.String(line));
+
+            if (contextLines > 0)
+            {
+                var contextBefore = new List<RuntimeValue>();
+                var contextAfter = new List<RuntimeValue>();
+
+                for (int j = Math.Max(0, i - contextLines); j < i; j++)
+                {
+                    contextBefore.Add(RuntimeValue.String(lines[j]));
+                }
+
+                for (int j = i + 1; j < Math.Min(lines.Length, i + 1 + contextLines); j++)
+                {
+                    contextAfter.Add(RuntimeValue.String(lines[j]));
+                }
+
+                if (contextBefore.Count > 0)
+                {
+                    matchObj.Set("contextBefore", RuntimeValue.Array(contextBefore));
+                }
+
+                if (contextAfter.Count > 0)
+                {
+                    matchObj.Set("contextAfter", RuntimeValue.Array(contextAfter));
+                }
+            }
+
+            matches.Add(RuntimeValue.Object(matchObj));
+        }
+
         return matches;
     }
     

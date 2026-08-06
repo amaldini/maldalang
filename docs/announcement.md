@@ -65,6 +65,10 @@ because the repo ships a language pack for that reader (docs/llm/: idioms,
 a parser-aligned BNF, a minimal built-in list, few-shots, with a load order
 for a token budget). An agent reads a few thousand tokens and writes
 idiomatic MALDA; when it does not, the interpreter is the feedback loop.
+A smaller sibling in Examples/Agents/secondbrain.malda does the other half
+of the same idea: CodingAgents distill a docs folder into a linked note
+tree, then answer questions from it — and malda compile --embed-folder can
+ship that brain inside a single .exe with no extract-to-disk.
 
 I think that changes the arithmetic on small languages. "New language" used
 to mean "no tooling, no docs your editor understands, and nobody who can
@@ -186,7 +190,10 @@ over an existing language?") and anything else.
 > handler invokes. The largest thing written this way is in the repo: a PRD-driven autonomous
 > coding agent in `Examples/RalphWiggum/`, 4,049 lines of MALDA, which reads a checklist,
 > implements one item per iteration, validates its own output, keeps a resumable knowledge
-> graph between iterations and can commit.
+> graph between iterations and can commit. A companion showcase,
+> `Examples/Agents/secondbrain.malda`, uses CodingAgents to distill documentation into a
+> hierarchical note tree and answer questions from it — including compile-time
+> `--embed-folder` so ASK mode can run from a portable `.exe` without unpacking notes to disk.
 >
 > Two things about how this was made, because they are the fair question. My background is
 > business software in C# and Java, and this is the first compiler or interpreter I have
@@ -286,12 +293,15 @@ technique that convinced me a language was buildable is the thing the language's
 example implements. And it was written entirely by a coding agent, in a language that
 appears nowhere in any model's training data — which turned out to be the most interesting
 result in the project, and is the part I would argue about first. More on that below.
+`Examples/Agents/secondbrain.malda` is the quieter sibling: same agent-and-tools surface,
+aimed at knowledge instead of a coding loop — explore docs, distill linked notes, ask them
+questions, optionally embed the brain into the published binary.
 
 That loop is what the last two letters of the name carry. MALDA is a Multi Agent Language with
 Development Automation, and the automation runs in both directions: coding agents write MALDA
 programs, which is why `docs/llm/` ships a language pack for a reader that has never seen the
 syntax, and MALDA programs automate development work in turn — RalphWiggum is one of them
-doing exactly that.
+doing exactly that; Second Brain is another, for documentation rather than a PRD checklist.
 
 **And how it was built, since that is the first question anyone should ask.** Heavily with
 coding agents. The grammar, the semantics, the tier split and every "no, not like that" are
@@ -464,13 +474,15 @@ a deployment that has to carry all of it. In MALDA a single program can be, simu
 - an **MCP client** — consuming tools from other MCP servers over STDIO,
 - a **durable workflow host** — long-running `workflow` instances persisted to SQLite,
 - a **coding agent** — an autonomous loop that reads a spec, edits files, runs validation
-  and commits.
+  and commits,
+- a **second brain** — CodingAgents that distill a docs folder into linked notes and answer
+  questions from the catalog (optional `--embed-folder` for a portable ASK-only `.exe`).
 
 There is no adapter between those roles: a function decorated with `@MCPTool` is the same
 function an agent can call as a tool and the same function a `@POST` handler can invoke.
 Composition across files is `include`, which splices at parse time.
 
-The existence proof for the last item is in the repository. `Examples/RalphWiggum/` is a
+The existence proof for the coding-agent item is in the repository. `Examples/RalphWiggum/` is a
 PRD-driven autonomous coding agent — **4,049 lines of MALDA** across eleven files, nine of
 them the agent loop and two an interactive interview entry point — that reads a markdown
 checklist, implements one open item per iteration using an agent with file and git tools,
@@ -488,7 +500,12 @@ include "ralph/06-report.malda";
 include "ralph/07-notify.malda";
 ```
 
-One detail matters more than the line count: **those 4,049 lines were written entirely by a
+The second-brain item is `Examples/Agents/secondbrain.malda` (~1,350 lines): explore a
+documentation tree, propose a theme taxonomy, distill hierarchical notes, then run an ASK
+loop over the catalog — English/Italian UI, and `malda compile … --embed-folder secondbrain`
+to bake the notes into the executable so ASK does not need a folder on disk.
+
+One detail matters more than the line count: **those 4,049 lines of Ralph were written entirely by a
 coding agent.** So were two private applications of mine, one of them substantial. MALDA does
 not exist in any model's training data, so this is not recall — it works because the repo
 ships a language pack for exactly that purpose (`docs/llm/`: idioms, a parser-aligned BNF, a
@@ -630,8 +647,9 @@ dotnet run --project MaldaLang -- Examples/Basics/hello_world.malda
 ```
 
 Then the contact form above, then `Examples/Prompts/` and `Examples/Workflows/`. The
-browser playground (`dotnet run --project MaldaLang.IDE`) is the fastest way to poke at the
-language without installing an editor extension.
+agent showcases are `Examples/RalphWiggum/` (PRD loop) and `Examples/Agents/secondbrain.malda`
+(docs → notes → ASK). The browser playground (`dotnet run --project MaldaLang.IDE`) is the
+fastest way to poke at the language without installing an editor extension.
 
 I would especially like to hear where the syntax feels wrong, and which of the
 limitations above you consider disqualifying.

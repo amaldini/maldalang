@@ -10139,6 +10139,8 @@ public class CSharpTranspiler
             case "deleteFile":
             case "hasDirectory":
             case "listDirectory":
+            case "hasEmbeddedFolder":
+            case "embeddedFolderRoot":
             case "glob":
             case "grep":
             case "replaceInFile":

@@ -71,6 +71,7 @@ dotnetNew	dotnetNew	at least 1 argument: (typeOrTypeName, ...ctorArgs)
 editFile	editFile	(string, array)		
 embedBagOfWords	embedBagOfWords	at least 1 argument (text, dimension?, vocabulary?)		
 embedCharacterNGrams	embedCharacterNGrams	at least 1 argument (text, n?, dimension?)		
+embeddedFolderRoot	io.embeddedFolderRoot	1 argument: (alias)		
 embedFromFile	embedFromFile	at least 2 arguments (filePath, method, ...)		
 embedFromFiles	embedFromFiles	at least 2 arguments (filePaths, method, ...)		
 embedHash	embedHash	at least 1 argument (text, dimension?)		
@@ -120,6 +121,7 @@ gitStatus	io.gitStatus	0-1 arguments: (repoPath?)
 glob	io.glob	at least 1 argument: (pattern, dirPath?, ...)		
 grep	io.grep	at least 2 arguments: (pattern, filePath, ...)		
 hasDirectory	io.hasDirectory	1 argument		
+hasEmbeddedFolder	io.hasEmbeddedFolder	1 argument: (alias)		
 hasEnv	io.hasEnv	1 argument		
 hasFile	io.hasFile	1 argument		
 hashPassword	hashPassword	1 or 2 arguments: (password, iterations?)		
