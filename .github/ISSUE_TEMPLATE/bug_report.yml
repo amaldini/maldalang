@@ -1,0 +1,76 @@
+name: Bug report
+description: Something in the language, runtime, compiler, IDE, or docs does not work as expected.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug.
+
+        Security issues: use [GitHub Security Advisories](https://github.com/amaldini/maldalang/security/advisories/new) — do not put vulnerability details here.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What went wrong in one or two sentences?
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Language / runtime (interpreter)
+        - Compiler / transpile (C# or JS)
+        - CLI
+        - Desktop IDE
+        - Web IDE
+        - VS Code extension / Language Server
+        - Examples / templates
+        - Documentation / Reference Manual
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps or a small `.malda` snippet that shows the problem.
+      placeholder: |
+        1. Run `malda.exe Examples/...`
+        2. Or paste a short program here
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include error text, exit code, or output. For transpile failures, mention whether `build_errors.txt` was produced (do not paste secrets).
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+      description: Release tag, or `git rev-parse --short HEAD`, or how you built/ran MALDA.
+      placeholder: e.g. v0.1.1 or abc1234
+    validations:
+      required: false
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, .NET SDK version if relevant, and whether you used interpreter or transpile mode.
+      placeholder: |
+        OS: Windows 11
+        .NET: 8.x
+        Mode: interpreter / transpile
+    validations:
+      required: false

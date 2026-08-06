@@ -2,6 +2,8 @@
 
 Thanks for contributing.
 
+By participating, you agree to follow the [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
+
 For a fuller map (architecture, edit locations, agent hard rules), start with [`AGENTS.md`](AGENTS.md) and [`docs/architecture.md`](docs/architecture.md).
 
 ## Good first contributions
