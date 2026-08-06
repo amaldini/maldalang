@@ -285,6 +285,15 @@ public partial class ConversationInstance
                 assistantMsg.Set("content", content);
         }
 
+        // DeepSeek V4 / thinking models require reasoning_content to be replayed on
+        // assistant messages that carried tool_calls; drop it and the next round 400s.
+        var reasoning = jsonResponse.Get("reasoning", null);
+        if (reasoning != null && reasoning.Type == ValueType.String &&
+            !string.IsNullOrWhiteSpace(reasoning.AsString()))
+        {
+            assistantMsg.Set("reasoning", reasoning);
+        }
+
         assistantMsg.Set("tool_calls", RuntimeValue.Array(validToolCalls));
         return assistantMsg;
     }

@@ -180,6 +180,14 @@ public class LLMClientInstance : ObjectInstance
             if (content != null)
                 msgDict["content"] = content;
 
+            // Replay thinking-model CoT when present. DeepSeek V4 requires this as
+            // reasoning_content on assistant turns that included tool_calls.
+            // Only emit non-empty values — empty placeholders are rejected by some routes.
+            var reasoning = GetStringProperty(msgObj, "reasoning")
+                ?? GetStringProperty(msgObj, "reasoning_content");
+            if (role == "assistant" && !string.IsNullOrWhiteSpace(reasoning))
+                msgDict["reasoning_content"] = reasoning;
+
             var toolCalls = GetProperty(msgObj, "tool_calls");
             if (toolCalls != null && toolCalls.Type == ValueType.Array)
             {

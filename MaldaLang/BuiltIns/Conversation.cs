@@ -1275,9 +1275,12 @@ public partial class ConversationInstance : ObjectInstance
             }
             else
             {
-                // No tool calls, add assistant response
+                // No tool calls, add assistant response.
+                // Do not promote reasoning/CoT into content: thinking models keep the
+                // chain-of-thought in "reasoning" and the user-facing answer in "content".
                 var content = jsonResponse.Get("content", null);
-                if (content != null)
+                if (content != null && content.Type == ValueType.String &&
+                    !string.IsNullOrWhiteSpace(content.AsString()))
                 {
                     AddAssistantMessage(content.AsString());
                 }

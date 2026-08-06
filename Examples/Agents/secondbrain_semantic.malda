@@ -147,21 +147,40 @@ function newReaderAgent(name, role, instructions, brainDir) {
     return agent;
 }
 
+// Tool-less agent: safer with thinking models (DeepSeek V4) that break on tool
+// rounds when reasoning_content is not replayed, and enough for taxonomy from a list.
+function newPlainAgent(name, role, instructions) {
+    var client = makeClient();
+    if (client == null) {
+        return new Agent(name, role, instructions);
+    }
+    return new Agent(name, role, instructions, client);
+}
+
 // A failed LLM call must not abort the whole run.
-function tryThink(agent, question) {
+// Returns { content, reasoning }. Never treat CoT as the answer by default.
+function tryThinkParts(agent, question) {
     try {
         var response = agent.think(question);
-        if (response == null) {
-            return "";
+        var content = "";
+        var reasoning = "";
+        if (response != null) {
+            if (response.content != null) {
+                content = str.trim(string(response.content));
+            }
+            if (response.reasoning != null) {
+                reasoning = str.trim(string(response.reasoning));
+            }
         }
-        if (response.content == null) {
-            return "";
-        }
-        return string(response.content);
+        return { "content": content, "reasoning": reasoning };
     } catch (e) {
         AnsiConsole.markupLine("  [red]" + t("LLM error:", "errore LLM:") + "[/] " + string(e));
-        return "";
+        return { "content": "", "reasoning": "" };
     }
+}
+
+function tryThink(agent, question) {
+    return tryThinkParts(agent, question).content;
 }
 
 // ---------------------------------------------------------------- GraphMemory + embeddings
@@ -1012,9 +1031,106 @@ function topicOf(relPath) {
 
 // ---------------------------------------------------------------- exploration
 
+// Balanced {...} slice starting at startIndex, respecting JSON strings.
+function sliceBalancedObject(text, startIndex) {
+    var s = string(text);
+    if (startIndex < 0 || startIndex >= str.length(s)) {
+        return null;
+    }
+    if (str.substring(s, startIndex, startIndex + 1) != "{") {
+        return null;
+    }
+    var depth = 0;
+    var inString = false;
+    var escape = false;
+    var i = startIndex;
+    while (i < str.length(s)) {
+        var c = str.substring(s, i, i + 1);
+        if (inString) {
+            if (escape) {
+                escape = false;
+            } else if (c == "\\") {
+                escape = true;
+            } else if (c == "\"") {
+                inString = false;
+            }
+        } else {
+            if (c == "\"") {
+                inString = true;
+            } else if (c == "{") {
+                depth = depth + 1;
+            } else if (c == "}") {
+                depth = depth - 1;
+                if (depth == 0) {
+                    return str.substring(s, startIndex, i + 1);
+                }
+            }
+        }
+        i = i + 1;
+    }
+    return null;
+}
+
+// Find a JSON object that contains "key", walking brace-balanced from each hit.
+function extractJsonWithKey(text, key) {
+    var s = str.trim(string(text));
+    if (s == "") {
+        return null;
+    }
+    var needle = "\"" + key + "\"";
+    var pos = 0;
+    while (pos < str.length(s)) {
+        var rest = str.substring(s, pos, str.length(s));
+        var rel = str.indexOf(rest, needle);
+        if (rel < 0) {
+            return null;
+        }
+        var keyAt = pos + rel;
+        var start = keyAt;
+        while (start >= 0) {
+            if (str.substring(s, start, start + 1) == "{") {
+                break;
+            }
+            start = start - 1;
+        }
+        if (start >= 0) {
+            var slice = sliceBalancedObject(s, start);
+            if (slice != null) {
+                try {
+                    var parsed = parseJSON(slice);
+                    if (parsed != null) {
+                        return parsed;
+                    }
+                } catch (e) {
+                    // try an earlier '{' / later key occurrence
+                }
+            }
+        }
+        pos = keyAt + 1;
+    }
+    return null;
+}
+
 // Pull a JSON object out of a reply that may include prose or code fences.
 function extractJsonObject(response) {
-    var hits = str.regexFind(string(response), "(?s)\\{.*\\}");
+    var s = str.trim(string(response));
+    if (s == "") {
+        return null;
+    }
+    var fenced = str.regexFind(s, "(?s)^```(?:json)?\\s*(.*?)\\s*```$");
+    if (fenced.length > 0 && fenced[0].groups.length > 1) {
+        s = str.trim(fenced[0].groups[1]);
+    }
+    try {
+        return parseJSON(s);
+    } catch (e) {
+        // fall through
+    }
+    var withThemes = extractJsonWithKey(s, "themes");
+    if (withThemes != null) {
+        return withThemes;
+    }
+    var hits = str.regexFind(s, "(?s)\\{.*\\}");
     if (hits.length == 0) {
         return null;
     }
@@ -1023,6 +1139,72 @@ function extractJsonObject(response) {
     } catch (e) {
         return null;
     }
+}
+
+// Prefer final content; if empty, mine JSON out of reasoning (never use raw CoT as answer).
+function parseExplorerThemes(parts) {
+    var parsed = extractJsonObject(parts.content);
+    if (parsed != null && parsed.themes != null) {
+        return parsed;
+    }
+    parsed = extractJsonWithKey(parts.content, "themes");
+    if (parsed != null && parsed.themes != null) {
+        return parsed;
+    }
+    parsed = extractJsonWithKey(parts.reasoning, "themes");
+    if (parsed != null && parsed.themes != null) {
+        return parsed;
+    }
+    parsed = extractJsonObject(parts.reasoning);
+    if (parsed != null && parsed.themes != null) {
+        return parsed;
+    }
+    return null;
+}
+
+function previewText(text, maxChars) {
+    var s = str.trim(string(text));
+    if (s == "") {
+        return "";
+    }
+    if (str.length(s) <= maxChars) {
+        return s;
+    }
+    return str.substring(s, 0, maxChars) + "\n...[" + string(str.length(s) - maxChars) + " more chars]";
+}
+
+// Dump content + a short reasoning preview (not the full CoT dump).
+function printExplorerReply(parts, reason) {
+    AnsiConsole.markupLine("  [yellow]" + reason + "[/]");
+    var content = "";
+    var reasoning = "";
+    if (parts != null) {
+        if (parts.content != null) {
+            content = string(parts.content);
+        }
+        if (parts.reasoning != null) {
+            reasoning = string(parts.reasoning);
+        }
+    }
+    if (str.trim(content) == "" && str.trim(reasoning) == "") {
+        io.print(t(
+            "  (empty reply — check OpenRouter model, quota, or network)",
+            "  (risposta vuota — controlla modello OpenRouter, quota o rete)"));
+        return;
+    }
+    io.print(t("  --- explorer content ---", "  --- content esploratore ---"));
+    if (str.trim(content) == "") {
+        io.print(t("  (empty — model returned only reasoning/CoT)",
+            "  (vuoto — il modello ha restituito solo reasoning/CoT)"));
+    } else {
+        io.print(previewText(content, 2000));
+    }
+    if (str.trim(reasoning) != "") {
+        io.print(t("  --- explorer reasoning (preview) ---",
+            "  --- reasoning esploratore (anteprima) ---"));
+        io.print(previewText(reasoning, 800));
+    }
+    io.print(t("  --- end explorer reply ---", "  --- fine risposta esploratore ---"));
 }
 
 function findDoc(docs, candidate) {
@@ -1049,10 +1231,10 @@ function findDoc(docs, candidate) {
 function exploreInstructions() {
     return "Sei un architetto della documentazione. Il tuo compito e' capire come e' " +
         "organizzato un corpus di documenti e proporne una tassonomia per temi. " +
-        "Puoi usare gli strumenti list_directory, read_file e grep per ispezionare la " +
-        "cartella: apri indici, README, sommari o qualche documento rappresentativo prima " +
-        "di decidere. Raggruppa per argomento reale, non per struttura di cartelle. " +
-        "Rispondi solo con JSON valido, senza commenti ne' testo aggiuntivo.";
+        "La lista dei documenti e' gia' completa nel messaggio utente: usala cosi' com'e', " +
+        "senza strumenti. Raggruppa per argomento reale (dai nomi e percorsi dei file), " +
+        "non solo per struttura di cartelle. Se usi il reasoning, tienilo separato: " +
+        "la risposta finale (campo content) deve essere SOLO l'oggetto JSON, senza markdown.";
 }
 
 // Step 0: the agent inspects the folder on its own and proposes themes.
@@ -1076,32 +1258,45 @@ function exploreTaxonomy(docsRoot, docs) {
             "[yellow]; i restanti useranno le sottocartelle come tema.[/]"));
     }
 
-    var explorer = newCodingAgent("Explorer", "architetto della documentazione",
-        exploreInstructions(), docsRoot);
+    // Tool-less: document paths are already in the prompt. Avoids DeepSeek V4
+    // tool-loop failures (reasoning_content must be replayed after tool_calls).
+    var explorer = newPlainAgent("Explorer", "architetto della documentazione",
+        exploreInstructions());
+
+    var schemaHint = "{\"themes\": [{\"title\": \"nome del tema\", \"description\": " +
+        "\"una o due frasi su cosa copre\", \"documents\": [\"percorso1\", \"percorso2\"]}]}";
 
     var question = "Cartella della documentazione: " + docsRoot + "\n\n" +
         "Documenti (percorsi relativi a quella cartella):\n" +
         str.join(listed, "\n") + "\n\n" +
-        "Ispeziona la cartella se ti serve, poi proponi da 2 a 12 temi che coprano tutti i " +
-        "documenti elencati. Ogni documento va in esattamente un tema. Usa i percorsi " +
-        "esattamente come compaiono nell'elenco. Dai ai temi nomi nella lingua della " +
-        "documentazione.\n\n" +
-        "Rispondi solo con questo JSON:\n" +
-        "{\"themes\": [{\"title\": \"nome del tema\", \"description\": " +
-        "\"una o due frasi su cosa copre\", \"documents\": [\"percorso1\", \"percorso2\"]}]}";
+        "Proponi da 2 a 12 temi che coprano tutti i documenti elencati. Ogni documento " +
+        "va in esattamente un tema. Usa i percorsi esattamente come compaiono nell'elenco. " +
+        "Dai ai temi nomi nella lingua della documentazione.\n\n" +
+        "Nella risposta finale (non nel reasoning) metti SOLO questo JSON:\n" +
+        schemaHint;
 
-    var response = tryThink(explorer, question);
-    var parsed = extractJsonObject(response);
+    var parts = tryThinkParts(explorer, question);
+    var parsed = parseExplorerThemes(parts);
     if (parsed == null) {
-        AnsiConsole.markupLine("  [yellow]" + t(
+        printExplorerReply(parts, t(
+            "explorer reply is not valid JSON — retrying...",
+            "risposta esploratore non e' JSON valido — secondo tentativo..."));
+        parts = tryThinkParts(explorer,
+            "La risposta precedente non conteneva JSON themes valido nel content. " +
+            "Non usare strumenti. Scrivi ORA nel content SOLO l'oggetto JSON (niente prose, " +
+            "niente markdown). Schema:\n" + schemaHint);
+        parsed = parseExplorerThemes(parts);
+    }
+    if (parsed == null) {
+        printExplorerReply(parts, t(
             "explorer did not return valid JSON",
-            "l'esploratore non ha restituito JSON valido") + "[/]");
+            "l'esploratore non ha restituito JSON valido"));
         return null;
     }
     if (parsed.themes == null) {
-        AnsiConsole.markupLine("  [yellow]" + t(
+        printExplorerReply(parts, t(
             "explorer response missing 'themes' field",
-            "risposta dell'esploratore senza campo 'themes'") + "[/]");
+            "risposta dell'esploratore senza campo 'themes'"));
         return null;
     }
 
@@ -1144,9 +1339,9 @@ function exploreTaxonomy(docsRoot, docs) {
     }
 
     if (themes.length == 0) {
-        AnsiConsole.markupLine("  [yellow]" + t(
+        printExplorerReply(parts, t(
             "no usable themes in the explorer response",
-            "nessun tema utilizzabile nella risposta dell'esploratore") + "[/]");
+            "nessun tema utilizzabile nella risposta dell'esploratore"));
         return null;
     }
     return {
