@@ -49,7 +49,7 @@
 // ---------------------------------------------------------------- configuration
 
 var MAX_DOC_CHARS = 12000;      // document characters sent per LLM call
-var MAX_CHUNKS = 3;             // max parts for a very long document
+var MAX_CHUNKS = 15;            // max parts for a very long document
 var MAX_NOTE_CHARS = 5000;      // characters per note in an answer context
 var TOP_K = 5;                  // notes retrieved per question
 var MAX_EXPLORE_DOCS = 300;     // documents listed for the explorer agent
@@ -385,6 +385,7 @@ function indexBrainMemory(brainDir, notes) {
             "type": "semantic",
             "source": "secondbrain",
             "category": string(note.topic),
+            "tags": note.tags,
             "filePath": path
         });
         indexed = indexed + 1;
@@ -1390,12 +1391,49 @@ function findDoc(docs, candidate) {
 }
 
 function exploreInstructions() {
-    return "Sei un architetto della documentazione. Il tuo compito e' capire come e' " +
-        "organizzato un corpus di documenti e proporne una tassonomia per temi. " +
-        "La lista dei documenti e' gia' completa nel messaggio utente: usala cosi' com'e', " +
-        "senza strumenti. Raggruppa per argomento reale (dai nomi e percorsi dei file), " +
-        "non solo per struttura di cartelle. Se usi il reasoning, tienilo separato: " +
-        "la risposta finale (campo content) deve essere SOLO l'oggetto JSON, senza markdown.";
+    return "Sei un architetto della documentazione. Proponi una tassonomia per temi. " +
+        "La lista documenti e' gia' nel messaggio utente: usala cosi' com'e', senza strumenti. " +
+        "Raggruppa per argomento reale (nomi/percorsi), non solo per cartelle. " +
+        "CRITICO per modelli thinking (DeepSeek): puoi ragionare nel canale reasoning, " +
+        "ma il canale content NON puo' essere vuoto — deve contenere SOLO l'oggetto JSON " +
+        "della tassonomia (niente markdown, niente prose). Se content e' vuoto il task fallisce.";
+}
+
+function exploreSchemaHint() {
+    return "{\"themes\": [{\"title\": \"nome del tema\", \"description\": " +
+        "\"una o due frasi su cosa copre\", \"documents\": [\"percorso1\", \"percorso2\"]}]}";
+}
+
+function exploreDocBlock(docsRoot, listed) {
+    return "Cartella della documentazione: " + docsRoot + "\n\n" +
+        "Documenti (percorsi relativi; usali ESATTAMENTE cosi'):\n" +
+        str.join(listed, "\n");
+}
+
+// Fresh agent + ultra-short ask: helps DeepSeek when the first turn burned tokens on CoT.
+function coerceExplorerThemesJson(docsRoot, listed, draftReasoning) {
+    var schemaHint = exploreSchemaHint();
+    var coercer = newPlainAgent(
+        "ExplorerJson",
+        "emette JSON",
+        "Sei una macchina che emette solo JSON. " +
+        "Il content della risposta deve essere UN oggetto JSON valido e nient'altro. " +
+        "Niente markdown, niente spiegazioni, niente code fence. " +
+        "Inizia il content con { e termina con }."
+    );
+    var question = exploreDocBlock(docsRoot, listed) + "\n\n";
+    if (draftReasoning != null and str.trim(string(draftReasoning)) != "") {
+        question = question +
+            "Bozza di ragionamento (incompleta o senza JSON finale) — usala solo come indizio:\n" +
+            previewText(draftReasoning, 3500) + "\n\n";
+    }
+    question = question +
+        "Compito: da 2 a 12 temi che coprano TUTTI i documenti elencati. " +
+        "Ogni documento in esattamente un tema. Nomi tema nella lingua dei file. " +
+        "Coppia .html/.md con lo stesso stem possono stare nello stesso tema.\n\n" +
+        "OUTPUT OBBLIGATORIO nel content (copia lo schema e riempilo):\n" +
+        schemaHint;
+    return tryThinkParts(coercer, question);
 }
 
 // Step 0: the agent inspects the folder on its own and proposes themes.
@@ -1424,30 +1462,45 @@ function exploreTaxonomy(docsRoot, docs) {
     var explorer = newPlainAgent("Explorer", "architetto della documentazione",
         exploreInstructions());
 
-    var schemaHint = "{\"themes\": [{\"title\": \"nome del tema\", \"description\": " +
-        "\"una o due frasi su cosa copre\", \"documents\": [\"percorso1\", \"percorso2\"]}]}";
-
-    var question = "Cartella della documentazione: " + docsRoot + "\n\n" +
-        "Documenti (percorsi relativi a quella cartella):\n" +
-        str.join(listed, "\n") + "\n\n" +
+    var schemaHint = exploreSchemaHint();
+    var question = exploreDocBlock(docsRoot, listed) + "\n\n" +
         "Proponi da 2 a 12 temi che coprano tutti i documenti elencati. Ogni documento " +
         "va in esattamente un tema. Usa i percorsi esattamente come compaiono nell'elenco. " +
         "Dai ai temi nomi nella lingua della documentazione.\n\n" +
-        "Nella risposta finale (non nel reasoning) metti SOLO questo JSON:\n" +
+        "OBBLIGO: nel content (non solo nel reasoning) metti SOLO questo JSON, " +
+        "iniziando con {\"themes\":\n" +
         schemaHint;
 
     var parts = tryThinkParts(explorer, question);
     var parsed = parseExplorerThemes(parts);
+    var lastReasoning = "";
+    if (parts != null and parts.reasoning != null) {
+        lastReasoning = string(parts.reasoning);
+    }
+
     if (parsed == null) {
         printExplorerReply(parts, t(
-            "explorer reply is not valid JSON — retrying...",
-            "risposta esploratore non e' JSON valido — secondo tentativo..."));
+            "explorer reply is not valid JSON — retrying same agent...",
+            "risposta esploratore non e' JSON valido — ritento sullo stesso agent..."));
         parts = tryThinkParts(explorer,
-            "La risposta precedente non conteneva JSON themes valido nel content. " +
-            "Non usare strumenti. Scrivi ORA nel content SOLO l'oggetto JSON (niente prose, " +
-            "niente markdown). Schema:\n" + schemaHint);
+            "STOP. Il content era vuoto o senza JSON. " +
+            "Ignora ulteriore analisi lunga. Scrivi ORA nel content SOLO l'oggetto JSON " +
+            "(prima carattere { , ultima }). Niente markdown. Schema:\n" + schemaHint +
+            "\nDeve includere tutti i percorsi dell'elenco precedente.");
+        parsed = parseExplorerThemes(parts);
+        if (parts != null and parts.reasoning != null and str.trim(string(parts.reasoning)) != "") {
+            lastReasoning = string(parts.reasoning);
+        }
+    }
+
+    if (parsed == null) {
+        printExplorerReply(parts, t(
+            "explorer still CoT-only — coercing with a fresh JSON-only agent...",
+            "ancora solo CoT — costringo con un agent JSON-only nuovo..."));
+        parts = coerceExplorerThemesJson(docsRoot, listed, lastReasoning);
         parsed = parseExplorerThemes(parts);
     }
+
     if (parsed == null) {
         printExplorerReply(parts, t(
             "explorer did not return valid JSON",

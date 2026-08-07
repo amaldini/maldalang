@@ -2041,4 +2041,139 @@ public class GraphMemoryTests : TestBase
         var output = RunProgram(source);
         Assert.Contains("true", output);
     }
+
+    [Fact]
+    public void Query_TagsFilter_AnyAndAll()
+    {
+        var source = @"
+            var memory = new GraphMemory();
+            memory.initialize();
+            memory.remember(""bom plugin note"", """", { ""type"": ""semantic"", ""tags"": [""bom"", ""plugin""] });
+            memory.remember(""bom only note"", """", { ""type"": ""semantic"", ""tags"": [""bom""] });
+            memory.remember(""untagged note"", """", { ""type"": ""semantic"" });
+            var anyHits = memory.query(""note"", 10, {
+                ""minScore"": 0,
+                ""hybridLexical"": true,
+                ""lexicalMode"": ""bm25"",
+                ""lexicalMinScore"": 0,
+                ""tags"": [""bom"", ""plugin""],
+                ""tagsMode"": ""any""
+            });
+            var allHits = memory.query(""note"", 10, {
+                ""minScore"": 0,
+                ""hybridLexical"": true,
+                ""lexicalMode"": ""bm25"",
+                ""lexicalMinScore"": 0,
+                ""tags"": [""bom"", ""plugin""],
+                ""tagsMode"": ""all""
+            });
+            print(anyHits.length == 2);
+            print(allHits.length == 1);
+            print(allHits[0].fact == ""bom plugin note"");
+        ";
+        var output = RunProgram(source);
+        Assert.Contains("true", output);
+    }
+
+    [Fact]
+    public void Remember_Tags_IndexedForBm25()
+    {
+        var source = @"
+            var memory = new GraphMemory();
+            memory.initialize();
+            memory.remember(""plain body text"", """", {
+                ""type"": ""semantic"",
+                ""tags"": [""zzunique-tag-token""]
+            });
+            var results = memory.query(""zzunique-tag-token"", 1, {
+                ""minScore"": 0,
+                ""hybridLexical"": true,
+                ""lexicalMode"": ""bm25"",
+                ""lexicalMinScore"": 0
+            });
+            print(results.length >= 1);
+            print(results[0].tags[0] == ""zzunique-tag-token"");
+        ";
+        var output = RunProgram(source);
+        Assert.Contains("true", output);
+    }
+
+    [Fact]
+    public void Query_LexicalMinScoreAuto_AdmitsLexicalWhenVectorWeak()
+    {
+        var source = @"
+            var memory = new GraphMemory();
+            memory.initialize();
+            memory.remember(""uuid-lexauto-xyz999 path/module.malda"", """", { ""type"": ""semantic"" });
+            var results = memory.query(""xyz999 malda"", 1, {
+                ""minScore"": 0.99,
+                ""hybridLexical"": true,
+                ""lexicalMode"": ""bm25"",
+                ""lexicalMinScore"": ""auto"",
+                ""diagnostics"": true
+            });
+            var diag = memory.getLastQueryDiagnostics();
+            print(results.length >= 1);
+            print(diag.lexicalMinScoreMode == ""auto-weak-vector"" || diag.lexicalMinScoreApplied == 0);
+            print(diag.returned >= 1);
+        ";
+        var output = RunProgram(source);
+        Assert.Contains("true", output);
+    }
+
+    [Fact]
+    public void Query_GetLastQueryDiagnostics_Populated()
+    {
+        var source = @"
+            var memory = new GraphMemory();
+            memory.initialize();
+            memory.remember(""alpha diagnostic fact"", """", { ""type"": ""semantic"", ""tags"": [""alpha""] });
+            var before = memory.getLastQueryDiagnostics();
+            print(before == null);
+            var results = memory.query(""alpha"", 3, {
+                ""minScore"": 0,
+                ""hybridLexical"": true,
+                ""lexicalMode"": ""bm25"",
+                ""lexicalMinScore"": 0,
+                ""tags"": [""alpha""],
+                ""diagnostics"": true,
+                ""explain"": true
+            });
+            var diag = memory.getLastQueryDiagnostics();
+            print(results.length >= 1);
+            print(diag != null);
+            print(diag.query == ""alpha"");
+            print(diag.returned >= 1);
+            print(results[0].explain.tags[0] == ""alpha"");
+            print(results[0].explain.tagsMatched == true);
+        ";
+        var output = RunProgram(source);
+        Assert.Contains("true", output);
+    }
+
+    [Fact]
+    public void ForgetByTag_RemovesOnlyMatchingNodes()
+    {
+        var source = @"
+            var memory = new GraphMemory();
+            memory.initialize();
+            memory.remember(""keep me"", """", { ""type"": ""semantic"", ""tags"": [""keep""] });
+            memory.remember(""drop me"", """", { ""type"": ""semantic"", ""tags"": [""drop"", ""tmp""] });
+            memory.remember(""also drop"", """", { ""type"": ""semantic"", ""tags"": [""drop""] });
+            var removed = memory.forgetByTag(""drop"");
+            var stats = memory.stats();
+            var remaining = memory.query(""keep"", 5, {
+                ""minScore"": 0,
+                ""hybridLexical"": true,
+                ""lexicalMode"": ""bm25"",
+                ""lexicalMinScore"": 0
+            });
+            print(removed == 2);
+            print(stats.nodes == 1);
+            print(remaining.length >= 1);
+            print(remaining[0].fact == ""keep me"");
+        ";
+        var output = RunProgram(source);
+        Assert.Contains("true", output);
+    }
 }

@@ -27,6 +27,7 @@ public class GraphMemoryInstance : ObjectInstance
     private readonly MemoryBm25Index _bm25Index = new();
     private MemoryOnnxCrossEncoder? _onnxCrossEncoder;
     private string? _onnxCrossEncoderPath;
+    private RuntimeValue _lastQueryDiagnostics = RuntimeValue.Null();
     private const double Bm25ScoreNormalizationCap = 8.0;
     private FunctionValue? _customEmbeddingFunction;
     private int _currentDimension = DefaultDimension;
@@ -80,7 +81,8 @@ public class GraphMemoryInstance : ObjectInstance
             name == "exportBundle" || name == "importBundle" ||
             name == "getNode" || name == "hasNode" || name == "update" ||
             name == "reindexDocuments" || name == "analyzeFile" || name == "save" || name == "load" || name == "initialize" ||
-            name == "forgetByScope" || name == "forgetByCategory" ||
+            name == "forgetByScope" || name == "forgetByCategory" || name == "forgetByTag" ||
+            name == "getLastQueryDiagnostics" ||
             name == "startKbWatch" || name == "stopKbWatch")
         {
             var wrapper = new FunctionValue(null, null, false, null);
@@ -161,6 +163,10 @@ public class GraphMemoryInstance : ObjectInstance
                     return CallForgetByScope(args);
                 case "forgetByCategory":
                     return CallForgetByCategory(args);
+                case "forgetByTag":
+                    return CallForgetByTag(args);
+                case "getLastQueryDiagnostics":
+                    return CallGetLastQueryDiagnostics(args);
                 case "startKbWatch":
                     return CallStartKbWatch(args);
                 case "stopKbWatch":
@@ -1234,6 +1240,10 @@ public class GraphMemoryInstance : ObjectInstance
             if (val != null && val.Type != ValueType.Null)
                 metadata.Set(field, val);
         }
+
+        var tags = NormalizeTagsValue(nodeObj.Get("tags", null));
+        if (tags.Count > 0)
+            metadata.Set("tags", RuntimeValue.Array(tags.Select(RuntimeValue.String).ToList()));
         
         var iterationVal = nodeObj.Get("iteration", null);
         if (iterationVal != null && iterationVal.Type != ValueType.Null)
@@ -1251,6 +1261,62 @@ public class GraphMemoryInstance : ObjectInstance
         }
         
         return metadata;
+    }
+
+    /// <summary>
+    /// Normalize tags from array or CSV string: trim, lowercase, dedupe, drop empties.
+    /// </summary>
+    private static List<string> NormalizeTagsValue(RuntimeValue? tagsVal)
+    {
+        var result = new List<string>();
+        if (tagsVal == null || tagsVal.Type == ValueType.Null)
+            return result;
+
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        void AddOne(string? raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+                return;
+            var tag = raw.Trim().ToLowerInvariant();
+            if (seen.Add(tag))
+                result.Add(tag);
+        }
+
+        if (tagsVal.Type == ValueType.Array)
+        {
+            foreach (var item in tagsVal.AsArray())
+            {
+                if (item.Type == ValueType.String)
+                    AddOne(item.AsString());
+            }
+        }
+        else if (tagsVal.Type == ValueType.String)
+        {
+            foreach (var part in tagsVal.AsString().Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                AddOne(part);
+        }
+
+        return result;
+    }
+
+    private static List<string> GetNodeTags(JsonObject nodeObj) =>
+        NormalizeTagsValue(nodeObj.Get("tags", null));
+
+    private static bool NodeMatchesTags(JsonObject nodeObj, HashSet<string>? tagsFilter, string tagsMode)
+    {
+        if (tagsFilter == null || tagsFilter.Count == 0)
+            return true;
+
+        var nodeTags = GetNodeTags(nodeObj);
+        if (nodeTags.Count == 0)
+            return false;
+
+        var nodeSet = new HashSet<string>(nodeTags, StringComparer.OrdinalIgnoreCase);
+        if (string.Equals(tagsMode, "all", StringComparison.OrdinalIgnoreCase))
+            return tagsFilter.All(t => nodeSet.Contains(t));
+
+        // default: any
+        return tagsFilter.Any(t => nodeSet.Contains(t));
     }
     
     private static string ComputeContentHash(string content)
@@ -1778,6 +1844,11 @@ public class GraphMemoryInstance : ObjectInstance
         var scopeFilter = GetStringOption(options, "scope");
         var excludeTypeFilter = GetStringOption(options, "excludeType");
         var includeTypesFilter = GetStringListOption(options, "includeTypes");
+        var tagsFilter = GetTagsFilterOption(options);
+        var tagsMode = GetStringOption(options, "tagsMode") ?? "any";
+        if (!string.Equals(tagsMode, "all", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(tagsMode, "any", StringComparison.OrdinalIgnoreCase))
+            tagsMode = "any";
         var minScore = GetDoubleOption(options, "minScore", 0);
         var maxDistance = GetIntOption(options, "maxDistance", 0);
         var useSynapse = GetBoolOption(options, "synapse", true);
@@ -1787,23 +1858,53 @@ public class GraphMemoryInstance : ObjectInstance
         var useHybridLexical = GetBoolOption(options, "hybridLexical", false);
         var useBm25 = useHybridLexical && UseBm25Lexical(options);
         var lexicalWeight = GetDoubleOption(options, "lexicalWeight", DefaultLexicalWeight);
-        var lexicalMinScore = GetDoubleOption(options, "lexicalMinScore", DefaultLexicalMinScore);
+        double lexicalMinScore;
+        bool lexicalMinScoreAuto;
+        if (!TryResolveLexicalMinScoreOption(options, out lexicalMinScore, out lexicalMinScoreAuto))
+        {
+            lexicalMinScore = DefaultLexicalMinScore;
+            lexicalMinScoreAuto = false;
+        }
         var excludeNodeIds = GetStringListOption(options, "excludeNodeIds");
         var scopeHierarchy = ResolveScopeHierarchy(scopeFilter, options);
+        var diagnosticsDetailed = GetBoolOption(options, "diagnostics", false);
+        var diagnostics = new QueryDiagnosticsState
+        {
+            Query = query,
+            MaxResults = maxResults,
+            HybridLexical = useHybridLexical,
+            LexicalMode = !useHybridLexical ? "none" : (useBm25 ? "bm25" : "overlap"),
+            LexicalMinScoreAuto = lexicalMinScoreAuto,
+            LexicalMinScoreApplied = lexicalMinScore,
+            LexicalMinScoreMode = lexicalMinScoreAuto ? "auto-default" : "number",
+            Detailed = diagnosticsDetailed
+        };
         
         var rerank = GetBoolOption(options, "rerank", false);
         var rerankMode = GetStringOption(options, "rerankMode") ?? "llm";
         var rerankTopK = Math.Max(maxResults, GetIntOption(options, "rerankTopK", 20));
         var useExplain = GetBoolOption(options, "explain", false);
         var semanticLimit = rerank ? rerankTopK : maxResults;
-        var semanticResults = QuerySemanticNodes(query, semanticLimit, phaseFilter, typeFilter, scopeFilter, scopeHierarchy, excludeTypeFilter, includeTypesFilter, minScore, maxDistance, useSynapse, useActivation, activationDecay, useHybridLexical, useBm25, lexicalWeight, lexicalMinScore, diversity, excludeNodeIds, useExplain);
+        var semanticResults = QuerySemanticNodes(
+            query, semanticLimit, phaseFilter, typeFilter, scopeFilter, scopeHierarchy,
+            excludeTypeFilter, includeTypesFilter, tagsFilter, tagsMode,
+            minScore, maxDistance, useSynapse, useActivation, activationDecay,
+            useHybridLexical, useBm25, lexicalWeight, lexicalMinScore, lexicalMinScoreAuto,
+            diversity, excludeNodeIds, useExplain, diagnostics);
         if (rerank)
             semanticResults = ApplyRerank(query, semanticResults, options, maxResults, rerankMode);
         if (!hybrid || recentCount <= 0)
+        {
+            diagnostics.Returned = semanticResults.Count;
+            _lastQueryDiagnostics = BuildLastQueryDiagnostics(diagnostics);
             return RuntimeValue.Array(semanticResults);
+        }
         
-        var recentResults = CollectRecentEntries(recentCount, phaseFilter, typeFilter, scopeFilter, scopeHierarchy);
-        return RuntimeValue.Array(MergeMemoryResults(semanticResults, recentResults));
+        var recentResults = CollectRecentEntries(recentCount, phaseFilter, typeFilter, scopeFilter, scopeHierarchy, tagsFilter, tagsMode);
+        var merged = MergeMemoryResults(semanticResults, recentResults);
+        diagnostics.Returned = merged.Count;
+        _lastQueryDiagnostics = BuildLastQueryDiagnostics(diagnostics);
+        return RuntimeValue.Array(merged);
     }
 
     private List<RuntimeValue> ApplyRerank(string query, List<RuntimeValue> candidates, JsonObject? options, int maxResults, string rerankMode)
@@ -2059,6 +2160,8 @@ public class GraphMemoryInstance : ObjectInstance
         HashSet<string>? scopeHierarchy,
         string? excludeTypeFilter,
         HashSet<string>? includeTypesFilter,
+        HashSet<string>? tagsFilter = null,
+        string tagsMode = "any",
         double minScore = 0,
         int maxDistance = 0,
         bool useSynapse = true,
@@ -2068,13 +2171,16 @@ public class GraphMemoryInstance : ObjectInstance
         bool useBm25 = false,
         double lexicalWeight = DefaultLexicalWeight,
         double lexicalMinScore = DefaultLexicalMinScore,
+        bool lexicalMinScoreAuto = false,
         double diversity = DefaultDiversity,
         HashSet<string>? excludeNodeIds = null,
-        bool explain = false)
+        bool explain = false,
+        QueryDiagnosticsState? diagnostics = null)
     {
         // Step 1: Use VectorDB to find similar nodes
         RuntimeValue searchResults;
         var searchTopN = useSynapse ? Math.Max(maxResults * 4, 20) : maxResults;
+        var vectorSearchFailed = false;
         
         // Try to use VectorDB's searchSimilar if calculator function is available
         try
@@ -2085,18 +2191,20 @@ public class GraphMemoryInstance : ObjectInstance
                 RuntimeValue.Integer(searchTopN)
             }, _interpreter!);
         }
-        catch (RuntimeException ex)
+        catch (RuntimeException)
         {
             // If calculator function not available or searchSimilar fails for any reason,
             // return empty results array (query will return no results)
             // This can happen if VectorDB wasn't initialized with a calculator function
             // or if there's an issue with the embedding function
             searchResults = RuntimeValue.Array(new List<RuntimeValue>());
+            vectorSearchFailed = true;
         }
         catch
         {
             // Catch any other exceptions and return empty results
             searchResults = RuntimeValue.Array(new List<RuntimeValue>());
+            vectorSearchFailed = true;
         }
         
         if (searchResults.Type != ValueType.Array)
@@ -2161,22 +2269,62 @@ public class GraphMemoryInstance : ObjectInstance
                 }
             }
         }
+
+        if (diagnostics != null)
+        {
+            diagnostics.VectorCandidates = vectorScores.Count;
+            diagnostics.EmbedReady = !vectorSearchFailed && vectorScores.Count > 0;
+        }
+
+        // lexicalMinScore: "auto" — when hybrid and vector channel is empty/weak, admit BM25 hits
+        if (lexicalMinScoreAuto && useHybridLexical)
+        {
+            if (vectorScores.Count == 0 || vectorSearchFailed)
+            {
+                lexicalMinScore = 0.0;
+                if (diagnostics != null)
+                {
+                    diagnostics.LexicalMinScoreApplied = 0.0;
+                    diagnostics.LexicalMinScoreMode = "auto-weak-vector";
+                }
+            }
+            else if (diagnostics != null)
+            {
+                diagnostics.LexicalMinScoreApplied = DefaultLexicalMinScore;
+                diagnostics.LexicalMinScoreMode = "auto-default";
+                lexicalMinScore = DefaultLexicalMinScore;
+            }
+        }
+        else if (diagnostics != null)
+        {
+            diagnostics.LexicalMinScoreApplied = lexicalMinScore;
+            diagnostics.LexicalMinScoreMode = "number";
+        }
         
         if (useHybridLexical)
         {
             if (useBm25)
             {
                 var bm25Scores = _bm25Index.ScoreQuery(query);
+                if (diagnostics != null)
+                    diagnostics.Bm25Candidates = bm25Scores.Count;
                 foreach (var kvp in bm25Scores)
                 {
                     if (!_nodeMetadata.TryGetValue(kvp.Key, out var nodeValue)
-                        || !MatchesMemoryFilters(nodeValue, phaseFilter, typeFilter, scopeFilter, scopeHierarchy, excludeTypeFilter, includeTypesFilter))
+                        || !MatchesMemoryFilters(nodeValue, phaseFilter, typeFilter, scopeFilter, scopeHierarchy, excludeTypeFilter, includeTypesFilter, tagsFilter, tagsMode, diagnostics))
                         continue;
                     if (excludeNodeIds != null && excludeNodeIds.Contains(kvp.Key))
                         continue;
                     var lexicalScore = NormalizeBm25Score(kvp.Value);
                     if (lexicalScore < lexicalMinScore)
+                    {
+                        if (diagnostics != null)
+                        {
+                            diagnostics.DroppedByLexicalMinScore++;
+                            diagnostics.NoteDrop("lexical_min_score", kvp.Key);
+                        }
                         continue;
+                    }
                     var blended = BlendRetrievalScore(kvp.Key, 0.0, query, lexicalWeight, useSynapse, useBm25, lexicalScore);
                     if (!retrievalScores.TryGetValue(kvp.Key, out var existing) || blended > existing)
                         retrievalScores[kvp.Key] = blended;
@@ -2186,19 +2334,28 @@ public class GraphMemoryInstance : ObjectInstance
             {
                 foreach (var kvp in _nodeMetadata)
                 {
-                    if (!MatchesMemoryFilters(kvp.Value, phaseFilter, typeFilter, scopeFilter, scopeHierarchy, excludeTypeFilter, includeTypesFilter))
+                    if (!MatchesMemoryFilters(kvp.Value, phaseFilter, typeFilter, scopeFilter, scopeHierarchy, excludeTypeFilter, includeTypesFilter, tagsFilter, tagsMode, diagnostics))
                         continue;
                     if (excludeNodeIds != null && excludeNodeIds.Contains(kvp.Key))
                         continue;
                     
                     var lexicalScore = ComputeLexicalScore(query, GetStoredDescription(kvp.Key));
                     if (lexicalScore < lexicalMinScore)
+                    {
+                        if (diagnostics != null)
+                        {
+                            diagnostics.DroppedByLexicalMinScore++;
+                            diagnostics.NoteDrop("lexical_min_score", kvp.Key);
+                        }
                         continue;
+                    }
                     
                     var blended = BlendRetrievalScore(kvp.Key, 0.0, query, lexicalWeight, useSynapse, false, lexicalScore);
                     if (!retrievalScores.TryGetValue(kvp.Key, out var existing) || blended > existing)
                         retrievalScores[kvp.Key] = blended;
                 }
+                if (diagnostics != null)
+                    diagnostics.Bm25Candidates = retrievalScores.Count;
             }
         }
         
@@ -2247,7 +2404,8 @@ public class GraphMemoryInstance : ObjectInstance
         {
             if (excludeNodeIds != null && excludeNodeIds.Contains(nodeId))
                 continue;
-            if (_nodeMetadata.TryGetValue(nodeId, out var nodeValue) && MatchesMemoryFilters(nodeValue, phaseFilter, typeFilter, scopeFilter, scopeHierarchy, excludeTypeFilter, includeTypesFilter))
+            if (_nodeMetadata.TryGetValue(nodeId, out var nodeValue)
+                && MatchesMemoryFilters(nodeValue, phaseFilter, typeFilter, scopeFilter, scopeHierarchy, excludeTypeFilter, includeTypesFilter, tagsFilter, tagsMode, diagnostics))
             {
                 if (!retrievalScores.ContainsKey(nodeId))
                     retrievalScores[nodeId] = GetNodeRetrievalScore(nodeId, 0.0, useSynapse);
@@ -2258,6 +2416,9 @@ public class GraphMemoryInstance : ObjectInstance
                 rankedResults.Add((nodeId, nodeValue, score));
             }
         }
+
+        if (diagnostics != null)
+            diagnostics.AfterFilters = rankedResults.Count;
         
         var ordered = rankedResults
             .OrderByDescending(entry => entry.Score)
@@ -2276,7 +2437,8 @@ public class GraphMemoryInstance : ObjectInstance
             useHybridLexical,
             useBm25,
             lexicalWeight,
-            useSynapse)).ToList();
+            useSynapse,
+            tagsFilter)).ToList();
     }
 
     private RuntimeValue AttachQueryExplain(
@@ -2288,7 +2450,8 @@ public class GraphMemoryInstance : ObjectInstance
         bool useHybridLexical,
         bool useBm25,
         double lexicalWeight,
-        bool useSynapse)
+        bool useSynapse,
+        HashSet<string>? tagsFilter = null)
     {
         if (nodeValue.Type != ValueType.Object || nodeValue.AsObject() is not JsonObject src)
             return nodeValue;
@@ -2300,8 +2463,12 @@ public class GraphMemoryInstance : ObjectInstance
         var synapseScore = GetNodeRetrievalScore(nodeId, combined, useSynapse);
         var superseded = HasIncomingEdgeType(nodeId, SupersedesEdgeType) ? SupersededPenalty : 0.0;
         double importanceBonus = 0.0;
+        List<string> nodeTags = new();
         if (_nodeMetadata.TryGetValue(nodeId, out var meta) && meta.Type == ValueType.Object && meta.AsObject() is JsonObject metaObj)
+        {
             importanceBonus = ComputeImportance(metaObj) * 0.05;
+            nodeTags = GetNodeTags(metaObj);
+        }
 
         var copy = CloneJsonObject(src);
         copy.Set("nodeId", RuntimeValue.String(nodeId));
@@ -2316,6 +2483,12 @@ public class GraphMemoryInstance : ObjectInstance
         explain.Set("importanceBonus", RuntimeValue.Float(importanceBonus));
         explain.Set("supersededPenalty", RuntimeValue.Float(superseded));
         explain.Set("finalScore", RuntimeValue.Float(finalScore));
+        explain.Set("tags", RuntimeValue.Array(nodeTags.Select(RuntimeValue.String).ToList()));
+        if (tagsFilter != null && tagsFilter.Count > 0)
+        {
+            var matched = nodeTags.Any(t => tagsFilter.Contains(t));
+            explain.Set("tagsMatched", RuntimeValue.Boolean(matched));
+        }
         copy.Set("explain", RuntimeValue.Object(explain));
         return RuntimeValue.Object(copy);
     }
@@ -3579,6 +3752,49 @@ public class GraphMemoryInstance : ObjectInstance
         }
         return RuntimeValue.Integer(removed);
     }
+
+    private RuntimeValue CallForgetByTag(List<RuntimeValue> args)
+    {
+        if (args.Count < 1 || args[0].Type != ValueType.String)
+            throw new RuntimeException("forgetByTag() expects tag string and optional options object");
+        var tag = args[0].AsString().Trim().ToLowerInvariant();
+        if (string.IsNullOrEmpty(tag))
+            throw new RuntimeException("forgetByTag() expects a non-empty tag string");
+        JsonObject? options = null;
+        if (args.Count >= 2)
+        {
+            if (args[1].Type != ValueType.Object || args[1].AsObject() is not JsonObject opts)
+                throw new RuntimeException("forgetByTag() optional second argument must be options object");
+            options = opts;
+        }
+        EnsureInitialized();
+        var scopeFilter = GetStringOption(options, "scope");
+        var toRemove = new List<string>();
+        foreach (var kvp in _nodeMetadata)
+        {
+            if (kvp.Value.Type != ValueType.Object || kvp.Value.AsObject() is not JsonObject nodeObj)
+                continue;
+            var nodeTags = GetNodeTags(nodeObj);
+            if (!nodeTags.Contains(tag, StringComparer.OrdinalIgnoreCase))
+                continue;
+            if (!string.IsNullOrWhiteSpace(scopeFilter)
+                && !string.Equals(GetNodeScope(nodeObj), scopeFilter, StringComparison.OrdinalIgnoreCase))
+                continue;
+            toRemove.Add(kvp.Key);
+        }
+        var removed = 0;
+        foreach (var nodeId in toRemove)
+        {
+            if (RemoveNodeById(nodeId))
+                removed++;
+        }
+        return RuntimeValue.Integer(removed);
+    }
+
+    private RuntimeValue CallGetLastQueryDiagnostics(List<RuntimeValue> args)
+    {
+        return _lastQueryDiagnostics;
+    }
     
     private void RestoreNodeIdCounter()
     {
@@ -3680,6 +3896,10 @@ public class GraphMemoryInstance : ObjectInstance
             if (val != null && val.Type != ValueType.Null)
                 nodeData.Set(field, val);
         }
+
+        var tags = NormalizeTagsValue(metadataObj.Get("tags", null));
+        if (tags.Count > 0)
+            nodeData.Set("tags", RuntimeValue.Array(tags.Select(RuntimeValue.String).ToList()));
         
         var iterationVal = metadataObj.Get("iteration", null);
         if (iterationVal != null && iterationVal.Type != ValueType.Null)
@@ -3721,6 +3941,9 @@ public class GraphMemoryInstance : ObjectInstance
             if (val != null && val.Type == ValueType.String && !string.IsNullOrWhiteSpace(val.AsString()))
                 description.Append(' ').Append(val.AsString());
         }
+
+        foreach (var tag in NormalizeTagsValue(metadataObj.Get("tags", null)))
+            description.Append(' ').Append(tag);
         
         var iterationVal = metadataObj.Get("iteration", null);
         if (iterationVal != null && (iterationVal.Type == ValueType.Integer || iterationVal.Type == ValueType.String))
@@ -3995,7 +4218,17 @@ public class GraphMemoryInstance : ObjectInstance
         return Math.Min(1.0, matches / (double)Math.Max(1, q.Count - 1));
     }
 
-    private static bool MatchesMemoryFilters(RuntimeValue nodeValue, string? phaseFilter, string? typeFilter, string? scopeFilter = null, HashSet<string>? scopeHierarchy = null, string? excludeTypeFilter = null, HashSet<string>? includeTypesFilter = null)
+    private static bool MatchesMemoryFilters(
+        RuntimeValue nodeValue,
+        string? phaseFilter,
+        string? typeFilter,
+        string? scopeFilter = null,
+        HashSet<string>? scopeHierarchy = null,
+        string? excludeTypeFilter = null,
+        HashSet<string>? includeTypesFilter = null,
+        HashSet<string>? tagsFilter = null,
+        string tagsMode = "any",
+        QueryDiagnosticsState? diagnostics = null)
     {
         if (nodeValue.Type != ValueType.Object || nodeValue.AsObject() is not JsonObject nodeObj)
             return true;
@@ -4005,7 +4238,10 @@ public class GraphMemoryInstance : ObjectInstance
             var phaseVal = nodeObj.Get("phase", null);
             if (phaseVal == null || phaseVal.Type != ValueType.String ||
                 !string.Equals(phaseVal.AsString(), phaseFilter, StringComparison.OrdinalIgnoreCase))
+            {
+                diagnostics?.NoteDrop("type_or_phase_filter");
                 return false;
+            }
         }
         
         if (typeFilter != null)
@@ -4013,7 +4249,11 @@ public class GraphMemoryInstance : ObjectInstance
             var typeVal = nodeObj.Get("type", null);
             if (typeVal == null || typeVal.Type != ValueType.String ||
                 !string.Equals(typeVal.AsString(), typeFilter, StringComparison.OrdinalIgnoreCase))
+            {
+                if (diagnostics != null)
+                    diagnostics.DroppedByTypeFilter++;
                 return false;
+            }
         }
         
         if (includeTypesFilter != null && includeTypesFilter.Count > 0)
@@ -4023,7 +4263,11 @@ public class GraphMemoryInstance : ObjectInstance
                 ? includeTypeVal.AsString()
                 : "";
             if (!includeTypesFilter.Contains(includeType))
+            {
+                if (diagnostics != null)
+                    diagnostics.DroppedByTypeFilter++;
                 return false;
+            }
         }
         
         if (excludeTypeFilter != null)
@@ -4031,7 +4275,11 @@ public class GraphMemoryInstance : ObjectInstance
             var typeVal = nodeObj.Get("type", null);
             if (typeVal != null && typeVal.Type == ValueType.String &&
                 string.Equals(typeVal.AsString(), excludeTypeFilter, StringComparison.OrdinalIgnoreCase))
+            {
+                if (diagnostics != null)
+                    diagnostics.DroppedByTypeFilter++;
                 return false;
+            }
         }
         
         if (scopeHierarchy != null && scopeHierarchy.Count > 0)
@@ -4047,8 +4295,109 @@ public class GraphMemoryInstance : ObjectInstance
                 && !string.Equals(nodeScope, "global", StringComparison.OrdinalIgnoreCase))
                 return false;
         }
+
+        if (!NodeMatchesTags(nodeObj, tagsFilter, tagsMode))
+        {
+            if (diagnostics != null)
+                diagnostics.DroppedByTagFilter++;
+            return false;
+        }
         
         return true;
+    }
+
+    private sealed class QueryDiagnosticsState
+    {
+        public string Query = "";
+        public int MaxResults;
+        public bool HybridLexical;
+        public string LexicalMode = "none";
+        public bool LexicalMinScoreAuto;
+        public double LexicalMinScoreApplied = DefaultLexicalMinScore;
+        public string LexicalMinScoreMode = "number";
+        public int VectorCandidates;
+        public int Bm25Candidates;
+        public int AfterFilters;
+        public int Returned;
+        public int DroppedByLexicalMinScore;
+        public int DroppedByTagFilter;
+        public int DroppedByTypeFilter;
+        public bool EmbedReady = true;
+        public bool Detailed;
+        public readonly List<(string NodeId, string Reason)> DroppedSamples = new();
+
+        public void NoteDrop(string reason, string? nodeId = null)
+        {
+            if (!Detailed || DroppedSamples.Count >= 5 || string.IsNullOrEmpty(nodeId))
+                return;
+            DroppedSamples.Add((nodeId, reason));
+        }
+    }
+
+    private static HashSet<string>? GetTagsFilterOption(JsonObject? options)
+    {
+        if (options == null)
+            return null;
+        var tags = NormalizeTagsValue(options.Get("tags", null));
+        if (tags.Count == 0)
+            return null;
+        return new HashSet<string>(tags, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static bool TryResolveLexicalMinScoreOption(JsonObject? options, out double score, out bool auto)
+    {
+        score = DefaultLexicalMinScore;
+        auto = false;
+        if (options == null)
+            return false;
+        var val = options.Get("lexicalMinScore", null);
+        if (val == null || val.Type == ValueType.Null)
+            return false;
+        if (val.Type == ValueType.String
+            && string.Equals(val.AsString().Trim(), "auto", StringComparison.OrdinalIgnoreCase))
+        {
+            auto = true;
+            score = DefaultLexicalMinScore;
+            return true;
+        }
+        if (val.Type == ValueType.Float || val.Type == ValueType.Integer)
+        {
+            score = val.Type == ValueType.Integer ? val.AsInteger() : val.AsFloat();
+            return true;
+        }
+        return false;
+    }
+
+    private RuntimeValue BuildLastQueryDiagnostics(QueryDiagnosticsState state)
+    {
+        var obj = new JsonObject();
+        obj.Set("query", RuntimeValue.String(state.Query));
+        obj.Set("maxResults", RuntimeValue.Integer(state.MaxResults));
+        obj.Set("hybridLexical", RuntimeValue.Boolean(state.HybridLexical));
+        obj.Set("lexicalMode", RuntimeValue.String(state.LexicalMode));
+        obj.Set("lexicalMinScoreApplied", RuntimeValue.Float(state.LexicalMinScoreApplied));
+        obj.Set("lexicalMinScoreMode", RuntimeValue.String(state.LexicalMinScoreMode));
+        obj.Set("vectorCandidates", RuntimeValue.Integer(state.VectorCandidates));
+        obj.Set("bm25Candidates", RuntimeValue.Integer(state.Bm25Candidates));
+        obj.Set("afterFilters", RuntimeValue.Integer(state.AfterFilters));
+        obj.Set("returned", RuntimeValue.Integer(state.Returned));
+        obj.Set("droppedByLexicalMinScore", RuntimeValue.Integer(state.DroppedByLexicalMinScore));
+        obj.Set("droppedByTagFilter", RuntimeValue.Integer(state.DroppedByTagFilter));
+        obj.Set("droppedByTypeFilter", RuntimeValue.Integer(state.DroppedByTypeFilter));
+        obj.Set("embedReady", RuntimeValue.Boolean(state.EmbedReady));
+        if (state.Detailed && state.DroppedSamples.Count > 0)
+        {
+            var samples = new List<RuntimeValue>();
+            foreach (var sample in state.DroppedSamples)
+            {
+                var row = new JsonObject();
+                row.Set("nodeId", RuntimeValue.String(sample.NodeId));
+                row.Set("reason", RuntimeValue.String(sample.Reason));
+                samples.Add(RuntimeValue.Object(row));
+            }
+            obj.Set("droppedSamples", RuntimeValue.Array(samples));
+        }
+        return RuntimeValue.Object(obj);
     }
     
     private static string GetNodeScope(JsonObject nodeObj)
@@ -4059,7 +4408,14 @@ public class GraphMemoryInstance : ObjectInstance
         return "global";
     }
     
-    private List<RuntimeValue> CollectRecentEntries(int count, string? phaseFilter, string? typeFilter, string? scopeFilter = null, HashSet<string>? scopeHierarchy = null)
+    private List<RuntimeValue> CollectRecentEntries(
+        int count,
+        string? phaseFilter,
+        string? typeFilter,
+        string? scopeFilter = null,
+        HashSet<string>? scopeHierarchy = null,
+        HashSet<string>? tagsFilter = null,
+        string tagsMode = "any")
     {
         scopeHierarchy ??= ResolveScopeHierarchy(scopeFilter, null);
         var entries = new List<(DateTime Timestamp, RuntimeValue Value)>();
@@ -4067,7 +4423,7 @@ public class GraphMemoryInstance : ObjectInstance
         {
             if (kvp.Value.Type != ValueType.Object || kvp.Value.AsObject() is not JsonObject nodeObj)
                 continue;
-            if (!MatchesMemoryFilters(kvp.Value, phaseFilter, typeFilter, scopeFilter, scopeHierarchy))
+            if (!MatchesMemoryFilters(kvp.Value, phaseFilter, typeFilter, scopeFilter, scopeHierarchy, tagsFilter: tagsFilter, tagsMode: tagsMode))
                 continue;
             
             var timestampVal = nodeObj.Get("timestamp", null);

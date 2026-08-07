@@ -109,7 +109,7 @@ print(nodeId3);  // "node_2"</code></pre>
         <ul>
             <li><code>remember(fact)</code> - Store a fact (string or object)</li>
             <li><code>remember(fact, context)</code> - Store a fact with optional context (string)</li>
-            <li><code>remember(fact, context, metadata)</code> - Store with structured metadata (object). Supported fields: <code>phase</code>, <code>iteration</code>, <code>type</code> (e.g. <code>progress</code>, <code>decision</code>, <code>file</code>, <code>error</code>, <code>episodic</code>, <code>semantic</code>), <code>source</code>, <code>scope</code> (e.g. <code>chat:123</code>; omit for <code>global</code>)</li>
+            <li><code>remember(fact, context, metadata)</code> - Store with structured metadata (object). Supported fields: <code>phase</code>, <code>iteration</code>, <code>type</code> (e.g. <code>progress</code>, <code>decision</code>, <code>file</code>, <code>error</code>, <code>episodic</code>, <code>semantic</code>), <code>source</code>, <code>scope</code> (e.g. <code>chat:123</code>; omit for <code>global</code>), <code>category</code> (single string), <code>tags</code> (array of strings or CSV; trimmed, lowercased, deduped and appended to the indexed description for BM25/vector search)</li>
         </ul>
 
         <pre><code>// Structured progress note (used by Ralph Wiggum and custom loops)
@@ -201,7 +201,10 @@ var results = memory.query("files changed decisions", 5, options);
             <li><code>hybridLexical</code> (boolean, default <code>false</code>) - Blend vector similarity with lexical scoring on <code>fact</code>/<code>description</code> (helps proper nouns, paths, IDs)</li>
             <li><code>lexicalMode</code> (string) - <code>lite</code> (default token overlap) or <code>bm25</code> (inverted-index BM25). Also: <code>bm25: true</code> or <code>MALDA_MEMORY_LEXICAL_MODE=bm25</code>.</li>
             <li><code>lexicalWeight</code> (number, default <code>0.25</code>) - Weight of the lexical score when <code>hybridLexical</code> is true</li>
-            <li><code>lexicalMinScore</code> (number, default <code>0.15</code>) - Minimum normalized lexical/BM25 score for a node to enter the hybrid candidate set (use <code>0</code> when vector embeddings are weak or missing)</li>
+            <li><code>lexicalMinScore</code> (number or <code>"auto"</code>, default <code>0.15</code>) - Minimum normalized lexical/BM25 score for a node to enter the hybrid candidate set. Use <code>0</code> to always admit lexical hits. With <code>"auto"</code> and <code>hybridLexical</code>, the floor is <code>0</code> when the vector channel returns no useful seeds (empty/failed <code>searchSimilar</code>), otherwise <code>0.15</code>.</li>
+            <li><code>tags</code> (array or CSV string) - Keep only nodes whose metadata <code>tags</code> match the filter. Nodes without tags never match a non-empty filter.</li>
+            <li><code>tagsMode</code> (string, default <code>any</code>) - <code>any</code>: match if at least one filter tag is present; <code>all</code>: require every filter tag.</li>
+            <li><code>diagnostics</code> (boolean, default <code>false</code>) - When <code>true</code>, <code>getLastQueryDiagnostics()</code> includes richer drop samples (up to 5). A lightweight summary is always stored after each <code>query</code>.</li>
             <li><code>includeTypes</code> (array or comma-separated string) - Allow only listed metadata <code>type</code> values (works with or instead of <code>excludeType</code>)</li>
             <li><code>rerank</code> (boolean, default <code>false</code>) - Enable reranking over retrieved candidates.</li>
             <li><code>rerankMode</code> (string) - <code>llm</code> (default, uses <code>rerankClient</code>/<code>rerankModel</code>), <code>cross</code> (local BM25 + lexical + bigram + vector blend, no LLM call), or <code>onnx</code> (BERT-style ONNX cross-encoder when <code>rerankModelPath</code> / <code>MALDA_MEMORY_RERANK_MODEL_PATH</code> points to <code>model.onnx</code> with <code>vocab.txt</code>; falls back to <code>cross</code> when unavailable).</li>
@@ -209,8 +212,21 @@ var results = memory.query("files changed decisions", 5, options);
             <li><code>rerankTopK</code> (integer, default <code>20</code>) - Number of semantic candidates considered before rerank.</li>
             <li><code>rerankModel</code> / <code>rerankClient</code> - Select model or inject a client instance for reranking.</li>
             <li><code>rerankScores</code> (array) - Test injection scores <code>[{ nodeId, score }]</code> that bypass model calls.</li>
-            <li><code>explain</code> (boolean, default <code>false</code>) - When <code>true</code>, each result includes <code>score</code> and an <code>explain</code> object with <code>vectorScore</code>, <code>lexicalScore</code>, <code>combinedScore</code>, <code>synapseScore</code>, <code>importanceBonus</code>, <code>supersededPenalty</code>, and <code>finalScore</code>.</li>
+            <li><code>explain</code> (boolean, default <code>false</code>) - When <code>true</code>, each result includes <code>score</code> and an <code>explain</code> object with <code>vectorScore</code>, <code>lexicalScore</code>, <code>combinedScore</code>, <code>synapseScore</code>, <code>importanceBonus</code>, <code>supersededPenalty</code>, <code>finalScore</code>, <code>tags</code>, and (when a tags filter was used) <code>tagsMatched</code>.</li>
         </ul>
+        <p><code>query(...)</code> always returns an array of memory nodes. After each query, call <code>getLastQueryDiagnostics()</code> for a summary object (<code>null</code> before the first query) with fields such as <code>vectorCandidates</code>, <code>bm25Candidates</code>, <code>afterFilters</code>, <code>returned</code>, <code>droppedByLexicalMinScore</code>, <code>droppedByTagFilter</code>, <code>droppedByTypeFilter</code>, <code>lexicalMinScoreApplied</code>, <code>lexicalMinScoreMode</code> (<code>number</code> | <code>auto-weak-vector</code> | <code>auto-default</code>), and <code>embedReady</code>.</p>
+        <pre><code>var hits = memory.query("plugin campi", 5, {
+    "hybridLexical": true,
+    "lexicalMode": "bm25",
+    "lexicalMinScore": "auto",
+    "tags": ["bom", "plugin"],
+    "tagsMode": "any",
+    "diagnostics": true,
+    "explain": true
+});
+var diag = memory.getLastQueryDiagnostics();
+print(diag.returned);
+print(diag.lexicalMinScoreMode);</code></pre>
 
         <h3>17.3.2 Recent entries (<code>getRecent</code>)</h3>
         <p>Returns the most recent memory entries sorted by timestamp, without semantic search.</p>
@@ -245,6 +261,8 @@ var removed = memory.forget(nodeId);  // true if the node existed</code></pre>
             <li><code>startKbWatch(dir, pattern?, options?)</code> - Watches a directory and runs <code>reindexDocuments</code> on changes (debounced). Options: <code>scope</code>, <code>savePath</code>, <code>pattern</code>, <code>debounceMs</code>.</li>
             <li><code>stopKbWatch()</code> - Stops the active KB file watcher for this GraphMemory instance.</li>
             <li><code>forgetByCategory(category, options?)</code> - Removes entries by metadata <code>category</code> (optional <code>scope</code> filter).</li>
+            <li><code>forgetByTag(tag, options?)</code> - Removes entries whose metadata <code>tags</code> contain <code>tag</code> (optional <code>scope</code> filter).</li>
+            <li><code>getLastQueryDiagnostics()</code> - Returns diagnostics from the most recent <code>query</code> call, or <code>null</code> if none yet.</li>
         </ul>
 
         <h3>17.3.4 Indexing document files (<code>indexDocuments</code>)</h3>
