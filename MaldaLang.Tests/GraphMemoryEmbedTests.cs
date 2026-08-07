@@ -59,11 +59,21 @@ public class GraphMemoryEmbedTests : TestBase
                 memory.load(""embed:gm_brain/brain_memory"");
                 var s = memory.stats();
                 print(""nodes="" + string(s.nodes));
-                var results = memory.query(""zebra fact unique 42"", 5, { ""hybridLexical"": true });
+                var results = memory.query(""zebra fact unique 42"", 5, {
+                    ""hybridLexical"": true,
+                    ""lexicalMode"": ""bm25"",
+                    ""minScore"": 0,
+                    ""explain"": true
+                });
                 print(""hits="" + string(results.length));
                 if (results.length > 0) {
                     print(string(results[0].fact));
+                    print(""vec="" + string(results[0].explain.vectorScore));
+                    print(""lex="" + string(results[0].explain.lexicalScore));
                 }
+                var diag = memory.getLastQueryDiagnostics();
+                print(""vecCandidates="" + string(diag.vectorCandidates));
+                print(""embedReady="" + string(diag.embedReady));
             ");
 
             Assert.Contains("nodes=2", output);
@@ -72,6 +82,13 @@ public class GraphMemoryEmbedTests : TestBase
                 output.Contains("hits=1", StringComparison.Ordinal) ||
                 output.Contains("hits=2", StringComparison.Ordinal),
                 "Expected hybrid hits after embed load, got:\n" + output);
+            Assert.Contains("embedReady=true", output);
+            Assert.DoesNotContain("vecCandidates=0", output);
+            Assert.DoesNotContain("vec=0\n", output);
+            Assert.DoesNotContain("vec=0\r", output);
+            Assert.False(
+                System.Text.RegularExpressions.Regex.IsMatch(output, @"vec=0(?:\.0+)?(?:\s|$)"),
+                "Expected non-zero vectorScore after embed load, got:\n" + output);
         }
         finally
         {

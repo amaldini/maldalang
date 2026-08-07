@@ -1650,28 +1650,49 @@ public class GraphMemoryInstance : ObjectInstance
     {
         nodeId = "";
         similarity = 0.0;
-        
-        if (result.Type != ValueType.Object || result.AsObject() is not JsonObject resultObj)
+
+        if (result.Type != ValueType.Object)
             return false;
-        
-        var similarityVal = resultObj.Get("similarity");
-        if (similarityVal.Type == ValueType.Float)
-            similarity = similarityVal.AsFloat();
-        else if (similarityVal.Type == ValueType.Integer)
-            similarity = similarityVal.AsInteger();
-        else
-            similarity = 0.0;
-        
-        var data = resultObj.Get("data");
-        if (data.Type != ValueType.Object || data.AsObject() is not JsonObject dataObj)
+
+        var resultObj = result.AsObject();
+        if (TryGetObjectProperty(resultObj, "similarity", out var similarityVal))
+        {
+            if (similarityVal.Type == ValueType.Float)
+                similarity = similarityVal.AsFloat();
+            else if (similarityVal.Type == ValueType.Integer)
+                similarity = similarityVal.AsInteger();
+        }
+
+        if (!TryGetObjectProperty(resultObj, "data", out var data) || data.Type != ValueType.Object)
             return false;
-        
-        var nodeIdVal = dataObj.Get("nodeId");
-        if (nodeIdVal.Type != ValueType.String)
+
+        if (!TryGetObjectProperty(data.AsObject(), "nodeId", out var nodeIdVal) || nodeIdVal.Type != ValueType.String)
             return false;
-        
+
         nodeId = nodeIdVal.AsString();
         return !string.IsNullOrEmpty(nodeId);
+    }
+
+    private static bool TryGetObjectProperty(ObjectInstance? obj, string name, out RuntimeValue value)
+    {
+        value = RuntimeValue.Null();
+        if (obj == null)
+            return false;
+        if (obj is JsonObject jsonObj)
+        {
+            if (!jsonObj.GetProperties().ContainsKey(name))
+                return false;
+            value = jsonObj.Get(name);
+            return true;
+        }
+        if (obj is DictionaryInstance dict)
+            return dict.TryGetEntry(name, out value);
+        if (obj.TryGet(name, out var field) && field != null)
+        {
+            value = field;
+            return true;
+        }
+        return false;
     }
     
     private void AddRelatedEdgeIfMissing(string fromId, string toId, double weight)
@@ -2325,7 +2346,8 @@ public class GraphMemoryInstance : ObjectInstance
                         }
                         continue;
                     }
-                    var blended = BlendRetrievalScore(kvp.Key, 0.0, query, lexicalWeight, useSynapse, useBm25, lexicalScore);
+                    var vectorScore = vectorScores.GetValueOrDefault(kvp.Key);
+                    var blended = BlendRetrievalScore(kvp.Key, vectorScore, query, lexicalWeight, useSynapse, useBm25, lexicalScore);
                     if (!retrievalScores.TryGetValue(kvp.Key, out var existing) || blended > existing)
                         retrievalScores[kvp.Key] = blended;
                 }
@@ -2350,7 +2372,8 @@ public class GraphMemoryInstance : ObjectInstance
                         continue;
                     }
                     
-                    var blended = BlendRetrievalScore(kvp.Key, 0.0, query, lexicalWeight, useSynapse, false, lexicalScore);
+                    var vectorScore = vectorScores.GetValueOrDefault(kvp.Key);
+                    var blended = BlendRetrievalScore(kvp.Key, vectorScore, query, lexicalWeight, useSynapse, false, lexicalScore);
                     if (!retrievalScores.TryGetValue(kvp.Key, out var existing) || blended > existing)
                         retrievalScores[kvp.Key] = blended;
                 }
@@ -2560,21 +2583,20 @@ public class GraphMemoryInstance : ObjectInstance
     
     private static double GetVectorKindWeight(RuntimeValue result)
     {
-        if (result.Type != ValueType.Object || result.AsObject() is not JsonObject resultObj)
+        if (result.Type != ValueType.Object
+            || !TryGetObjectProperty(result.AsObject(), "data", out var data)
+            || data.Type != ValueType.Object)
             return 1.0;
-        var data = resultObj.Get("data");
-        if (data.Type != ValueType.Object || data.AsObject() is not JsonObject dataObj)
-            return 1.0;
-        var explicitWeight = dataObj.Get("vectorWeight", null);
-        if (explicitWeight != null)
+        if (TryGetObjectProperty(data.AsObject(), "vectorWeight", out var explicitWeight))
         {
             if (explicitWeight.Type == ValueType.Float)
                 return explicitWeight.AsFloat();
             if (explicitWeight.Type == ValueType.Integer)
                 return explicitWeight.AsInteger();
         }
-        var kind = dataObj.Get("vectorKind", null);
-        if (kind != null && kind.Type == ValueType.String && string.Equals(kind.AsString(), "body", StringComparison.OrdinalIgnoreCase))
+        if (TryGetObjectProperty(data.AsObject(), "vectorKind", out var kind)
+            && kind.Type == ValueType.String
+            && string.Equals(kind.AsString(), "body", StringComparison.OrdinalIgnoreCase))
             return 0.9;
         return 1.0;
     }
@@ -3553,6 +3575,8 @@ public class GraphMemoryInstance : ObjectInstance
             if (vdbResult.Type == ValueType.Object && vdbResult.AsObject() is VectorDBInstance loadedVdb)
             {
                 _nodeIndex = loadedVdb;
+                if (loadedVdb.Dimension > 0)
+                    _currentDimension = loadedVdb.Dimension;
                 var embedFunc = CreateEmbeddingWrapper(_currentDimension, _interpreter!, _customEmbeddingFunction);
                 if (embedFunc != null)
                 {
@@ -3601,9 +3625,41 @@ public class GraphMemoryInstance : ObjectInstance
         RestoreNodeIdCounter();
         if (migrateDualIndex)
             MigrateDualIndexEntries();
+        RepairUnmappedVectorIndex();
         RebuildBm25Index();
-        
+
         return RuntimeValue.Null();
+    }
+
+    /// <summary>
+    /// Older VectorDB saves wrote JsonObject payloads as "{}". Those entries still have
+    /// vectors but no nodeId mapping, so hybrid ASK falls back to BM25-only (vec 0).
+    /// Rebuild the vector index from metadata when nothing is mapped.
+    /// </summary>
+    private void RepairUnmappedVectorIndex()
+    {
+        if (_nodeIndex == null || _interpreter == null || _nodeMetadata.Count == 0)
+            return;
+
+        var mapped = _nodeIndex.CollectIndexedNodeIds();
+        if (mapped.Count > 0)
+            return;
+
+        // Orphan vectors cannot be matched; drop them before re-embedding from metadata.
+        _nodeIndex.ClearEntries();
+        _currentDimension = _nodeIndex.Dimension > 0 ? _nodeIndex.Dimension : _currentDimension;
+
+        foreach (var kvp in _nodeMetadata.ToList())
+        {
+            var nodeId = kvp.Key;
+            if (kvp.Value.Type != ValueType.Object || kvp.Value.AsObject() is not JsonObject nodeObj)
+                continue;
+            var factVal = nodeObj.Get("fact", null);
+            if (factVal == null || factVal.Type == ValueType.Null)
+                continue;
+            var description = GetStoredDescription(nodeId);
+            IndexNodeVector(nodeId, factVal, description);
+        }
     }
 
     private void MigrateDualIndexEntries()

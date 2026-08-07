@@ -306,6 +306,11 @@ public class VectorDBInstance : ObjectInstance
     }
 
     public int EntryCount => _entries.Count;
+    public int Dimension => _dimension;
+    public string Precision => _precision;
+
+    /// <summary>Drops all indexed vectors (used when payloads lost nodeId mappings).</summary>
+    public void ClearEntries() => _entries.Clear();
 
     /// <summary>Removes all indexed entries whose data object contains the given nodeId.</summary>
     public int RemoveEntriesForNodeId(string nodeId)
@@ -330,10 +335,17 @@ public class VectorDBInstance : ObjectInstance
     private static bool TryExtractNodeId(RuntimeValue data, out string nodeId)
     {
         nodeId = "";
-        if (data.Type != ValueType.Object || data.AsObject() is not JsonObject dataObj)
+        if (data.Type != ValueType.Object)
             return false;
-        
-        var nodeIdVal = dataObj.Get("nodeId");
+
+        var nodeIdVal = data.AsObject() switch
+        {
+            JsonObject jsonObj => jsonObj.Get("nodeId"),
+            DictionaryInstance dict when dict.TryGetEntry("nodeId", out var entry) => entry,
+            ObjectInstance oi when oi.TryGet("nodeId", out var field) && field != null => field,
+            _ => RuntimeValue.Null()
+        };
+
         if (nodeIdVal.Type != ValueType.String)
             return false;
         
@@ -667,8 +679,20 @@ public class VectorDBInstance : ObjectInstance
             case ValueType.Object:
                 var obj = value.AsObject();
                 if (obj is DictionaryInstance dict)
+                    return SerializeObjectProperties(dict.Entries);
+                // GraphMemory indexes JsonObject payloads (nodeId, description, …).
+                // Previously these were written as "{}", which broke vector hits after load.
+                if (obj is BuiltIns.JsonObject jsonObj)
+                    return SerializeObjectProperties(jsonObj.GetProperties());
+                if (obj is ObjectInstance oi)
                 {
-                    return SerializeDictionaryInstance(dict);
+                    var props = new Dictionary<string, RuntimeValue>(StringComparer.Ordinal);
+                    foreach (var key in oi.GetAllKeys())
+                    {
+                        if (oi.TryGet(key, out var field) && field != null)
+                            props[key] = field;
+                    }
+                    return SerializeObjectProperties(props);
                 }
                 return "{}";
             
@@ -677,10 +701,10 @@ public class VectorDBInstance : ObjectInstance
         }
     }
     
-    private string SerializeDictionaryInstance(DictionaryInstance dict)
+    private string SerializeObjectProperties(IReadOnlyDictionary<string, RuntimeValue> entries)
     {
         var props = new List<string>();
-        foreach (var kvp in dict.Entries)
+        foreach (var kvp in entries)
         {
             var key = JsonSerializer.Serialize(kvp.Key);
             var val = SerializeRuntimeValue(kvp.Value);
