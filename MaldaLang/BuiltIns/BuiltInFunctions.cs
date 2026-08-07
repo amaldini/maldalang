@@ -1093,6 +1093,8 @@ public static class BuiltInFunctions
             "componentStateObject" => BuiltInComponentStateObject(args),
             "componentStateClear" => BuiltInComponentStateClear(args),
             "componentStateConfigure" => BuiltInComponentStateConfigure(args),
+            "onAgentProgress" => BuiltInOnAgentProgress(args, interpreter),
+            "clearAgentProgress" => BuiltInClearAgentProgress(args),
             "uiRow" => BuiltInUiRow(args),
             "uiColumn" => BuiltInUiColumn(args),
             "uiStack" => BuiltInUiStack(args),
@@ -1451,6 +1453,8 @@ public static class BuiltInFunctions
             "componentStateObject" => BuiltInComponentStateObject(args),
             "componentStateClear" => BuiltInComponentStateClear(args),
             "componentStateConfigure" => BuiltInComponentStateConfigure(args),
+            "onAgentProgress" => BuiltInOnAgentProgress(args, interpreter),
+            "clearAgentProgress" => BuiltInClearAgentProgress(args),
             "uiRow" => BuiltInUiRow(args),
             "uiColumn" => BuiltInUiColumn(args),
             "uiStack" => BuiltInUiStack(args),
@@ -8460,6 +8464,45 @@ public static class BuiltInFunctions
 
         var json = RuntimeValueToJson(RuntimeValue.Object(msg));
         HttpServerInstance.BroadcastSSEMessage(json, channel);
+        return RuntimeValue.Null();
+    }
+
+    private static RuntimeValue BuiltInOnAgentProgress(List<RuntimeValue> args, Interpreter? interpreter)
+    {
+        BuiltInArity.Require("onAgentProgress", args, 1, 1, "handlerOrChannel");
+        if (args[0].Type == ValueType.String)
+        {
+            // Transpile-friendly: emit progress via componentLiveEmit(channel, …).
+            ConversationInstance.SetAgentProgressLiveChannel(args[0].AsString());
+            return RuntimeValue.Null();
+        }
+
+        if (args[0].Type != ValueType.Function)
+            throw new Exception("onAgentProgress() expects a function handler(event) or a live channel string");
+        if (interpreter == null)
+            throw new Exception("onAgentProgress(handler) requires an interpreter; use onAgentProgress(\"channel\") in transpile");
+
+        var handler = args[0].AsFunction();
+        ConversationInstance.SetAgentProgressHandler(evt =>
+        {
+            try
+            {
+                interpreter.CallFunctionAsync(handler, new List<RuntimeValue> { evt })
+                    .GetAwaiter()
+                    .GetResult();
+            }
+            catch
+            {
+                // Never break the agent loop from a progress handler.
+            }
+        });
+        return RuntimeValue.Null();
+    }
+
+    private static RuntimeValue BuiltInClearAgentProgress(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("clearAgentProgress", args, 0, 0);
+        ConversationInstance.ClearAgentProgressHandler();
         return RuntimeValue.Null();
     }
 

@@ -710,6 +710,43 @@ public class HttpServerTests
             Assert.Equal("true", response.Headers.GetValues("X-Malda-Fragment").FirstOrDefault());
             Assert.Equal("ticket-list", response.Headers.GetValues("X-Malda-Fragment-Target").FirstOrDefault());
             Assert.Contains("phase-b-ticket", html);
+            // Fragment bodies must not receive the full-page AJAX helper payload.
+            Assert.DoesNotContain("spl-ajax-helper", html);
+        }
+        finally
+        {
+            server.CallMethod("stop", new List<RuntimeValue>());
+        }
+    }
+
+    [Fact]
+    public async Task HttpServer_FullPageHtml_InjectsAjaxHelperForFragmentForms()
+    {
+        var port = GetAvailablePort();
+        var source = @"
+            @PAGE(""/"")
+            function home() {
+                return ""<!DOCTYPE html><html><body><form method='post' action='/ask'><button type='submit'>Go</button></form></body></html>"";
+            }
+
+            @ACTION(""/ask"")
+            function ask(body) {
+                return componentFragment(""ask-panel"", ""<p>ok</p>"");
+            }
+        ";
+        var interpreter = LoadInterpreterFromSource(source);
+        var server = new HttpServerInstance(port, null, interpreter);
+        server.CallMethod("start", new List<RuntimeValue>());
+
+        try
+        {
+            using var client = new HttpClient();
+            using var response = await client.GetAsync($"http://localhost:{port}/");
+            var html = await response.Content.ReadAsStringAsync();
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Contains("id=\"spl-ajax-helper\"", html);
+            Assert.Contains("X-Malda-Fragment", html);
         }
         finally
         {

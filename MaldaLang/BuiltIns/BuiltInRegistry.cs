@@ -232,6 +232,8 @@ public static class BuiltInRegistry
             "componentStateObject" or
             "componentStateClear" or
             "componentStateConfigure" or
+            "onAgentProgress" or
+            "clearAgentProgress" or
             "uiRow" or
             "uiColumn" or
             "uiStack" or

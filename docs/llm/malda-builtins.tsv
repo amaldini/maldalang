@@ -23,6 +23,7 @@ base64Encode	str.base64Encode	1 argument
 cancelWorkflow	cancelWorkflow	at least 1 argument: (instanceId, reason?)		
 ceil	math.ceil	1 argument	returns a float even when whole-valued; integer sinks coerce whole floats; wrap with int() if you need an Integer-tagged value	
 clamp	math.clamp	3 arguments		
+clearAgentProgress	clearAgentProgress	0 arguments		
 compileMALDA	compileMALDA	1-4 arguments: (sourcePath, outputPath?, mode?, embedFolder?)		
 componentFragment	componentFragment	targetId and html string		
 componentLiveEmit	componentLiveEmit	channel, payload, optional eventType		
@@ -170,6 +171,7 @@ mergeRetrievedDocs	mergeRetrievedDocs	one or more document arrays
 min	math.min	2 arguments or 1 array		
 normalizeText	str.normalizeText	(string, options?)		
 now	now	0 arguments		
+onAgentProgress	onAgentProgress	1 argument: (handlerOrChannel)		
 padEnd	str.padEnd	2-3 arguments: (str, length, padChar?)		
 padStart	str.padStart	2-3 arguments: (str, length, padChar?)		
 panel	AnsiConsole.panel	at least 1 string argument: (content, title?, borderStyle?)	borderStyle: rounded|double|heavy (anything else -> square, no error); body AND title parse markup; unparseable markup renders literally; piped/non-TTY output collapses Unicode borders to square	

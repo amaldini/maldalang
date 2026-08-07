@@ -219,6 +219,15 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("<img class='logo'", html, StringComparison.Ordinal);
             Assert.Contains("data:image/svg+xml;base64,", html, StringComparison.Ordinal);
             Assert.Contains("Lexical retrieval over notes.", html, StringComparison.Ordinal);
+            Assert.Contains("id='ask-panel'", html, StringComparison.Ordinal);
+            Assert.Contains("id='ask-live-home'", html, StringComparison.Ordinal);
+            Assert.Contains("id='ask-live-dock'", html, StringComparison.Ordinal);
+            Assert.Contains("class='live-timer'", html, StringComparison.Ordinal);
+            Assert.Contains("placeLiveDock(", html, StringComparison.Ordinal);
+            Assert.Contains("startLiveTimer()", html, StringComparison.Ordinal);
+            Assert.Contains("action='/ask'", html, StringComparison.Ordinal);
+            Assert.Contains("action='/clear'", html, StringComparison.Ordinal);
+            Assert.Contains("EventSource('/ask/live?channel=ask')", html, StringComparison.Ordinal);
         }
         finally
         {
@@ -298,6 +307,110 @@ public class SecondBrainAskFeaturesTests
         {
             EmbeddedFolderStore.ResetForTests();
             SafeDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public async Task AskUi_PanelFragment_OmitsDocumentShell()
+    {
+        Assert.True(File.Exists(AskUiLibPath), "missing ask UI lib: " + AskUiLibPath);
+        var libSource = await File.ReadAllTextAsync(AskUiLibPath);
+        Assert.Contains("@ACTION(\"/ask\")", libSource, StringComparison.Ordinal);
+        Assert.Contains("@ACTION(\"/clear\")", libSource, StringComparison.Ordinal);
+        Assert.Contains("@LIVE(\"/ask/live\")", libSource, StringComparison.Ordinal);
+        Assert.Contains("componentFragment(\"ask-panel\"", libSource, StringComparison.Ordinal);
+        Assert.Contains("onAgentProgress(\"ask\")", libSource, StringComparison.Ordinal);
+        Assert.Contains("id='ask-live-status'", libSource, StringComparison.Ordinal);
+        Assert.Contains("id='ask-live-home'", libSource, StringComparison.Ordinal);
+        Assert.Contains("placeLiveDock", libSource, StringComparison.Ordinal);
+        Assert.Contains("startLiveTimer", libSource, StringComparison.Ordinal);
+        Assert.Contains("formatElapsed", libSource, StringComparison.Ordinal);
+        Assert.Contains("function askGetToolsEnabled()", libSource, StringComparison.Ordinal);
+        Assert.Contains("function askSetToolsEnabled(", libSource, StringComparison.Ordinal);
+        Assert.Contains("function askApplyToolsFromBody(", libSource, StringComparison.Ordinal);
+        Assert.Contains("name='useTools'", libSource, StringComparison.Ordinal);
+        Assert.Contains("askApplyToolsFromBody(body)", libSource, StringComparison.Ordinal);
+
+        var tempDir = Path.Combine(Path.GetTempPath(), "malda_sb_ask_panel", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            File.Copy(AskUiLibPath, Path.Combine(tempDir, "secondbrain_ask_ui_lib.malda"));
+            var harnessPath = Path.Combine(tempDir, "harness.malda");
+            File.WriteAllText(harnessPath,
+                """
+                var ASK_HTTP_PORT = 39019;
+                var ASK_SESSION_ID = "secondbrain-ask-panel-test";
+                var ASK_STORE = "SecondBrainAskPanelTest";
+                var ASK_PAGE_TITLE = "Panel Brain";
+                var ASK_POWERED_BY = "";
+                var ASK_POWERED_BY_URL = "";
+                var ASK_LOGO = "";
+                var UI_LANG = "en";
+                var askHttpServer = null;
+
+                function runAskTurn(question) {
+                    return { "question": question, "answer": "ok", "sources": [], "error": "" };
+                }
+
+                include "secondbrain_ask_ui_lib.malda";
+
+                askSetSession({
+                    "brainDir": "secondbrain",
+                    "chatOnly": false,
+                    "noteCount": 1,
+                    "topicCount": 1,
+                    "sourceFolder": "docs",
+                    "retrieval": "lexical",
+                    "llm": "test-model",
+                    "title": ASK_PAGE_TITLE,
+                    "subtitle": "panel"
+                });
+                askAppendTurn({
+                    "question": "hello",
+                    "answer": "world",
+                    "sources": [],
+                    "error": "",
+                    "pending": false
+                });
+                print(askRenderPanelHtml());
+                """,
+                Encoding.UTF8);
+
+            var html = await InterpretAndCaptureAsync(harnessPath);
+            Assert.Contains("id='thread'", html, StringComparison.Ordinal);
+            Assert.Contains("id='turn-0'", html, StringComparison.Ordinal);
+            Assert.Contains("hello", html, StringComparison.Ordinal);
+            Assert.Contains("name='useTools'", html, StringComparison.Ordinal);
+            Assert.Contains("tool-toggle", html, StringComparison.Ordinal);
+            Assert.DoesNotContain(" checked", html, StringComparison.Ordinal);
+            Assert.DoesNotContain("<!DOCTYPE", html, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("<html", html, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            SafeDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public void AskHosts_WireToolsToggle_In_RunAskTurn()
+    {
+        var lexical = Path.Combine(RepoRoot, "Examples", "Agents", "secondbrain.malda");
+        var semantic = Path.Combine(RepoRoot, "Examples", "Agents", "secondbrain_semantic.malda");
+        Assert.True(File.Exists(lexical), "missing " + lexical);
+        Assert.True(File.Exists(semantic), "missing " + semantic);
+
+        foreach (var path in new[] { lexical, semantic })
+        {
+            var source = File.ReadAllText(path);
+            Assert.Contains("askGetToolsEnabled()", source, StringComparison.Ordinal);
+            Assert.Contains("askSetToolsEnabled(false)", source, StringComparison.Ordinal);
+            Assert.Contains("function answerInstructions(useTools)", source, StringComparison.Ordinal);
+            Assert.Contains("newReaderAgent(", source, StringComparison.Ordinal);
+            Assert.Contains("newPlainAgent(", source, StringComparison.Ordinal);
+            Assert.Contains("ASK tools: off", source, StringComparison.Ordinal);
+            Assert.Contains("ASK tools: on", source, StringComparison.Ordinal);
         }
     }
 

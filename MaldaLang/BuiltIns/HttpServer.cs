@@ -2373,10 +2373,28 @@ public class HttpServerInstance : ObjectInstance
     
     private void WriteHtmlResponse(HttpListenerResponse response, string html, HttpListenerRequest? request = null)
     {
+        // Full documents get the form AJAX helper so @ACTION + componentFragment
+        // can patch a target without a classic navigation to the action URL.
+        // Fragment bodies (no doctype/html shell) are left untouched.
+        if (LooksLikeFullHtmlDocument(html))
+        {
+            html = InjectAjaxHelper(html);
+        }
+
         var bytes = Encoding.UTF8.GetBytes(html);
         response.ContentType = "text/html; charset=utf-8";
         response.ContentLength64 = bytes.Length;
         WriteResponseBodyIfAllowed(response, bytes, request);
+    }
+
+    private static bool LooksLikeFullHtmlDocument(string html)
+    {
+        if (string.IsNullOrEmpty(html))
+            return false;
+
+        // Fast path: fragment payloads from componentFragment() are inner HTML only.
+        return html.Contains("<!DOCTYPE", StringComparison.OrdinalIgnoreCase)
+               || html.Contains("<html", StringComparison.OrdinalIgnoreCase);
     }
     
     private string RuntimeValueToJson(RuntimeValue value)

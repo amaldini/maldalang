@@ -9,6 +9,10 @@
 //   UI_LANG                                  (existing)
 //
 // HttpServer isolates each request: session fields live in ui.state.
+// Ask / Clear use @ACTION + componentFragment("ask-panel", ...) so the
+// HttpServer AJAX helper patches only #ask-panel (header/meta stay mounted).
+// Live LLM/tool progress uses @LIVE + componentLiveEmit (SSE) because the
+// POST /ask connection stays blocked until the answer is ready.
 
 function askAsText(value) {
     if (value == null) {
@@ -76,6 +80,24 @@ function askSetFlashError(message) {
 function askClearHistory() {
     askSetHistory([]);
     askSetFlashError("");
+}
+
+// Sticky for the ASK session: default off (faster, no tool loop).
+function askGetToolsEnabled() {
+    return ui.state(ASK_STORE, "toolsEnabled", false, ASK_SESSION_ID) == true;
+}
+
+function askSetToolsEnabled(enabled) {
+    ui.setState(ASK_STORE, "toolsEnabled", enabled == true, ASK_SESSION_ID);
+}
+
+function askApplyToolsFromBody(body) {
+    // HTML checkbox: present when checked, absent when unchecked.
+    var raw = "";
+    if (body != null and body.useTools != null) {
+        raw = str.lower(str.trim(askAsText(body.useTools)));
+    }
+    askSetToolsEnabled(raw == "1" or raw == "on" or raw == "true" or raw == "yes");
 }
 
 function askAppendTurn(turn) {
@@ -152,8 +174,11 @@ function askRenderTurnHtml(turn, index) {
         html = html + "<div class='bubble a'><div class='bubble-label'>" +
             askEscapeHtml(askT("Answer", "Risposta")) + "</div>" +
             "<p class='pending'>" + askEscapeHtml(askT(
-                "Generating answer… keep this tab open. A refresh here shows this placeholder until the LLM finishes.",
-                "Sto generando la risposta… lascia aperta questa scheda. Un refresh mostra questo segnaposto finche' l'LLM non termina.")) +
+                "Generating answer… keep this tab open. Live tool/LLM rounds appear below.",
+                "Sto generando la risposta… lascia aperta questa scheda. I round LLM/tool compaiono sotto.")) +
+            "</p>" +
+            "<p class='live-status' id='ask-live-status' aria-live='polite'>" +
+            askEscapeHtml(askT("Waiting for the model…", "In attesa del modello…")) +
             "</p></div>";
     } else if (error != "") {
         html = html + "<div class='bubble a error-bubble'><p class='error'>" +
@@ -234,6 +259,10 @@ function askPageStyles() {
         ".path{font-family:ui-monospace,Consolas,monospace;font-size:0.82rem}" +
         "label{display:block;font-family:system-ui,sans-serif;font-size:0.85rem;margin:0 0 8px;" +
         "color:var(--muted)}" +
+        "label.tool-toggle{display:flex;align-items:flex-start;gap:10px;margin:10px 0 0;" +
+        "font-size:0.9rem;color:var(--ink);cursor:pointer;line-height:1.35}" +
+        "label.tool-toggle input{margin-top:3px;flex:0 0 auto;accent-color:var(--accent)}" +
+        "label.tool-toggle .hint{display:block;color:var(--muted);font-size:0.82rem;margin-top:2px}" +
         "textarea{width:100%;min-height:96px;resize:vertical;padding:12px 14px;border-radius:8px;" +
         "border:1px solid var(--line);background:#fff;color:var(--ink);font:1rem/1.45 Georgia,serif}" +
         "textarea:focus{outline:2px solid var(--focus);border-color:var(--accent)}" +
@@ -246,6 +275,15 @@ function askPageStyles() {
         ".error{color:var(--danger);font-family:system-ui,sans-serif;margin:0}" +
         ".error-bubble{background:#fff5f5;border-color:#efc4c4}" +
         ".pending{color:var(--warn);font-family:system-ui,sans-serif;margin:0;font-style:italic}" +
+        ".live-status,.live-dock{font-family:system-ui,sans-serif;font-size:0.88rem;margin:8px 0 0;" +
+        "color:var(--accent-ink);background:#e8f2ef;border:1px solid #c5ddd6;border-radius:8px;" +
+        "padding:8px 12px}" +
+        /* Home is only a safe shelf outside #ask-panel; dock is moved next to the latest turn while live. */
+        "#ask-live-home:empty{display:none}" +
+        ".live-dock[hidden]{display:none!important}" +
+        ".live-dock .live-round{font-weight:600;margin-right:6px}" +
+        ".live-dock .live-timer,.live-status .live-timer{font-variant-numeric:tabular-nums;" +
+        "font-weight:600;color:var(--muted);margin-right:6px}" +
         ".empty{color:var(--muted);font-family:system-ui,sans-serif;margin:0}" +
         ".composer{position:sticky;bottom:0;z-index:15;margin-top:18px;" +
         "box-shadow:0 -10px 24px rgba(28,36,48,0.05)}" +
@@ -300,10 +338,300 @@ function askResolveLogoSrc() {
     return src;
 }
 
-function askRenderPage() {
-    var lang = askGetLang();
+// Flash + thread + composer — returned as componentFragment("ask-panel", ...).
+function askRenderPanelHtml() {
     var history = askGetHistory();
     var flashError = askGetFlashError();
+    var session = askGetSession();
+    var html = "";
+
+    if (flashError != "") {
+        html = html + "<section class='panel'><p class='error'>" +
+            askEscapeHtml(flashError) + "</p></section>";
+    }
+
+    html = html + "<section class='thread' id='thread'>";
+    if (history.length == 0) {
+        var emptyHint = askT(
+            "Ask a question below. Answers use the second brain; scroll up for earlier turns.",
+            "Fai una domanda qui sotto. Le risposte usano il second brain; scorri in alto per i turni precedenti.");
+        if (session.chatOnly == true) {
+            emptyHint = askT(
+                "No second brain loaded — chat directly with the model below.",
+                "Nessun second brain caricato — chatta direttamente col modello qui sotto.");
+        }
+        html = html + "<div class='panel'><p class='empty'>" + askEscapeHtml(emptyHint) + "</p></div>";
+    } else {
+        var i = 0;
+        foreach (var turn in history) {
+            html = html + askRenderTurnHtml(turn, i);
+            i = i + 1;
+        }
+    }
+    html = html + "</section>";
+
+    var placeholder = askT(
+        "Ask about the distilled notes…",
+        "Chiedi sulle note distillate…");
+    if (session.chatOnly == true) {
+        placeholder = askT(
+            "Ask the model anything…",
+            "Chiedi qualsiasi cosa al modello…");
+    }
+
+    var toolsEnabled = askGetToolsEnabled();
+    var toolsChecked = "";
+    if (toolsEnabled) {
+        toolsChecked = " checked";
+    }
+    var busyHint = askT(
+        "Each ask may take a while (LLM). Keep this tab open.",
+        "Ogni domanda puo' richiedere tempo (LLM). Lascia aperta questa scheda.");
+    if (toolsEnabled and session.chatOnly != true) {
+        busyHint = askT(
+            "Note search tools are on — the model may take several LLM rounds. Keep this tab open.",
+            "Ricerca nelle note attiva — il modello puo' fare piu' round LLM. Lascia aperta questa scheda.");
+    }
+
+    html = html + "<section class='composer'>" +
+        "<form method='post' action='/ask'>" +
+        "<label for='question'>" + askEscapeHtml(askT("New question", "Nuova domanda")) + "</label>" +
+        "<textarea id='question' name='question' required autofocus placeholder='" +
+        askEscapeHtml(placeholder) +
+        "'></textarea>";
+
+    if (session.chatOnly != true) {
+        html = html + "<label class='tool-toggle' for='useTools'>" +
+            "<input type='checkbox' id='useTools' name='useTools' value='1'" + toolsChecked + ">" +
+            "<span>" + askEscapeHtml(askT(
+                "Search notes with tools (slower)",
+                "Ricerca nelle note con tool (piu' lento)")) +
+            "<span class='hint'>" + askEscapeHtml(askT(
+                "Off: answer from retrieved excerpts only (faster). On: allow read_file / grep / list_directory.",
+                "Off: risponde solo dagli estratti recuperati (piu' veloce). On: consente read_file / grep / list_directory.")) +
+            "</span></span></label>";
+    }
+
+    html = html + "<p class='busy'>" + askEscapeHtml(busyHint) + "</p>" +
+        "<div class='actions'>" +
+        "<button type='submit'>" + askEscapeHtml(askT("Ask", "Chiedi")) + "</button>" +
+        "</div></form>" +
+        "<form method='post' action='/clear' style='margin-top:10px'>" +
+        "<div class='actions'>" +
+        "<button type='submit' class='ghost' style='background:transparent;color:var(--accent-ink)'>" +
+        askEscapeHtml(askT("Clear thread", "Svuota thread")) + "</button>" +
+        "</div></form></section>";
+
+    return html;
+}
+
+function askPanelFragment() {
+    return componentFragment("ask-panel", askRenderPanelHtml());
+}
+
+// Scroll + SSE live progress. Scripts inside fragment bodies do not run via innerHTML.
+// #ask-live-dock lives in #ask-live-home (outside #ask-panel) so it survives the
+// blocking POST; while visible it is moved under the latest turn / above the composer.
+function askPageClientScript() {
+    return "<script>(function(){" +
+        "var es=null;" +
+        "var liveLabel='" + askEscapeHtml(askT("Live", "Live")) + "';" +
+        "var askStartedAt=null;" +
+        "var roundStartedAt=null;" +
+        "var lastRound=null;" +
+        "var lastMsg='';" +
+        "var timerId=null;" +
+        "function formatElapsed(ms){" +
+        "var s=Math.max(0,Math.floor(ms/1000));" +
+        "var m=Math.floor(s/60);" +
+        "s=s%60;" +
+        "return m+':'+(s<10?'0':'')+s;" +
+        "}" +
+        "function scrollLatest(){" +
+        "var dock=document.getElementById('ask-live-dock');" +
+        "if(dock&&!dock.hidden){" +
+        "dock.scrollIntoView({block:'nearest',behavior:'smooth'});" +
+        "return;" +
+        "}" +
+        "var thread=document.getElementById('thread');" +
+        "if(!thread){return;}" +
+        "var turns=thread.querySelectorAll('.turn');" +
+        "if(turns.length===0){return;}" +
+        "var last=turns[turns.length-1];" +
+        "if(last&&last.id){location.hash=last.id;}" +
+        "last.scrollIntoView({block:'nearest',behavior:'smooth'});" +
+        "}" +
+        "function progressMessage(p){" +
+        "if(!p){return '';}" +
+        "if(p.phase==='tool_calls'&&p.tools&&p.tools.length){" +
+        "return 'Tools: '+p.tools.join(', ');" +
+        "}" +
+        "if(p.phase==='tool_done'&&p.tool){" +
+        "return (p.ok===false?'Failed: ':'Done: ')+p.tool;" +
+        "}" +
+        "return p.message||'';" +
+        "}" +
+        "function roundLabel(){" +
+        "if(lastRound==null){return '';}" +
+        "var bit='Round '+lastRound;" +
+        "if(roundStartedAt){bit+=' '+formatElapsed(Date.now()-roundStartedAt);}" +
+        "return bit;" +
+        "}" +
+        "function paintTimers(){" +
+        "var total=askStartedAt?formatElapsed(Date.now()-askStartedAt):'0:00';" +
+        "var roundBit=roundLabel();" +
+        "var bodyText=(roundBit?(roundBit+' · '):'')+(lastMsg||'');" +
+        "var dock=document.getElementById('ask-live-dock');" +
+        "if(dock){" +
+        "var t=dock.querySelector('.live-timer');" +
+        "if(t){t.textContent=total;}" +
+        "var body=dock.querySelector('.live-dock-body');" +
+        "if(body){body.textContent=bodyText;}" +
+        "}" +
+        "var status=document.getElementById('ask-live-status');" +
+        "if(status){status.textContent=total+(bodyText?' · '+bodyText:'');}" +
+        "}" +
+        "function startLiveTimer(){" +
+        "if(!askStartedAt){askStartedAt=Date.now();}" +
+        "if(!roundStartedAt){roundStartedAt=askStartedAt;}" +
+        "if(timerId){return;}" +
+        "paintTimers();" +
+        "timerId=setInterval(paintTimers,1000);" +
+        "}" +
+        "function stopLiveTimer(){" +
+        "if(timerId){clearInterval(timerId);timerId=null;}" +
+        "askStartedAt=null;" +
+        "roundStartedAt=null;" +
+        "lastRound=null;" +
+        "lastMsg='';" +
+        "}" +
+        "function ensureLiveDock(){" +
+        "var dock=document.getElementById('ask-live-dock');" +
+        "if(dock){return dock;}" +
+        "var home=document.getElementById('ask-live-home');" +
+        "if(!home){return null;}" +
+        "dock=document.createElement('div');" +
+        "dock.id='ask-live-dock';" +
+        "dock.className='live-dock';" +
+        "dock.hidden=true;" +
+        "dock.innerHTML='<span class=\"live-round\"></span><span class=\"live-timer\">0:00</span><span class=\"live-dock-body\"></span>';" +
+        "var label=dock.querySelector('.live-round');" +
+        "if(label){label.textContent=liveLabel;}" +
+        "home.appendChild(dock);" +
+        "return dock;" +
+        "}" +
+        "function placeLiveDock(visible){" +
+        "var dock=ensureLiveDock();" +
+        "var home=document.getElementById('ask-live-home');" +
+        "if(!dock){return null;}" +
+        "if(!visible){" +
+        "if(home&&dock.parentNode!==home){home.appendChild(dock);}" +
+        "return dock;" +
+        "}" +
+        "var thread=document.getElementById('thread');" +
+        "var composer=document.querySelector('#ask-panel .composer');" +
+        "if(thread){" +
+        "var turns=thread.querySelectorAll('.turn');" +
+        "if(turns.length){" +
+        "var last=turns[turns.length-1];" +
+        "if(dock.previousSibling!==last){last.after(dock);}" +
+        "}else if(dock.parentNode!==thread){" +
+        "thread.appendChild(dock);" +
+        "}" +
+        "}else if(composer&&dock.parentNode!==composer.parentNode){" +
+        "composer.parentNode.insertBefore(dock,composer);" +
+        "}else if(home&&dock.parentNode!==home){" +
+        "home.appendChild(dock);" +
+        "}" +
+        "return dock;" +
+        "}" +
+        "function showLive(text,visible){" +
+        "var dock=placeLiveDock(visible);" +
+        "if(visible){" +
+        "if(text){lastMsg=text;}" +
+        "startLiveTimer();" +
+        "}else{" +
+        "stopLiveTimer();" +
+        "}" +
+        "if(dock){" +
+        "dock.hidden=!visible;" +
+        "if(visible){" +
+        "paintTimers();" +
+        "dock.scrollIntoView({block:'nearest',behavior:'smooth'});" +
+        "}else{" +
+        "var body=dock.querySelector('.live-dock-body');" +
+        "if(body){body.textContent='';}" +
+        "var t=dock.querySelector('.live-timer');" +
+        "if(t){t.textContent='0:00';}" +
+        "}" +
+        "}" +
+        "var status=document.getElementById('ask-live-status');" +
+        "if(status&&!visible){status.textContent='';}" +
+        "}" +
+        "function onProgressPayload(payload){" +
+        "if(!payload){return;}" +
+        "var done=payload.phase==='done';" +
+        "if(payload.phase==='round_start'||(payload.round!=null&&payload.round!==lastRound)){" +
+        "if(payload.round!=null){" +
+        "lastRound=payload.round;" +
+        "roundStartedAt=Date.now();" +
+        "}" +
+        "}" +
+        "var msg=progressMessage(payload);" +
+        "if(!msg&&!done){return;}" +
+        "if(msg){lastMsg=msg;}" +
+        "showLive(lastMsg,!done);" +
+        "if(done){setTimeout(function(){showLive('',false);},1200);}" +
+        "}" +
+        "function connectLive(){" +
+        "if(es){try{es.close();}catch(e){}}" +
+        "es=new EventSource('/ask/live?channel=ask');" +
+        "es.onmessage=function(evt){" +
+        "try{" +
+        "var data=JSON.parse(evt.data);" +
+        "var payload=data&&data.payload?data.payload:data;" +
+        "if(data&&data.event&&data.event!=='ask-progress'&&data.type==='componentLiveEvent'){" +
+        "/* keep going — payload still useful */" +
+        "}" +
+        "onProgressPayload(payload);" +
+        "}catch(err){}" +
+        "};" +
+        "es.onerror=function(){/* browser will retry EventSource */};" +
+        "}" +
+        "function bind(){" +
+        "var panel=document.getElementById('ask-panel');" +
+        "if(panel&&panel.dataset.askScrollBound!=='1'){" +
+        "panel.dataset.askScrollBound='1';" +
+        "new MutationObserver(function(){" +
+        // Panel replace destroys an in-thread dock; shelve a fresh one, then scroll.
+        "var home=document.getElementById('ask-live-home');" +
+        "var dock=document.getElementById('ask-live-dock');" +
+        "if(!dock||(home&&!home.contains(dock))){" +
+        "showLive('',false);" +
+        "}" +
+        "scrollLatest();" +
+        "}).observe(panel,{childList:true});" +
+        "}" +
+        "document.addEventListener('submit',function(e){" +
+        "var form=e.target;" +
+        "if(!form||!form.action){return;}" +
+        "if(String(form.action).indexOf('/ask')<0){return;}" +
+        "lastRound=null;" +
+        "roundStartedAt=null;" +
+        "askStartedAt=null;" +
+        "showLive('Starting…',true);" +
+        "},true);" +
+        "connectLive();" +
+        "scrollLatest();" +
+        "}" +
+        "if(document.readyState==='loading'){" +
+        "document.addEventListener('DOMContentLoaded',bind);" +
+        "}else{bind();}" +
+        "})();</script>";
+}
+
+function askRenderPage() {
+    var lang = askGetLang();
     var session = askGetSession();
     var title = askAsText(session.title);
     if (title == "") {
@@ -371,59 +699,16 @@ function askRenderPage() {
         askEscapeHtml(session.llm) + "</strong></div>" +
         "</div>";
 
-    if (flashError != "") {
-        html = html + "<section class='panel'><p class='error'>" +
-            askEscapeHtml(flashError) + "</p></section>";
-    }
+    // Shelf outside #ask-panel so the node can be recreated after fragment replace.
+    // While live, client JS moves the dock under the latest turn (above the composer).
+    html = html + "<div id='ask-live-home'>" +
+        "<div id='ask-live-dock' class='live-dock' hidden>" +
+        "<span class='live-round'>" + askEscapeHtml(askT("Live", "Live")) +
+        "</span><span class='live-timer'>0:00</span>" +
+        "<span class='live-dock-body'></span></div></div>";
 
-    html = html + "<section class='thread' id='thread'>";
-    if (history.length == 0) {
-        var emptyHint = askT(
-            "Ask a question below. Answers use the second brain; scroll up for earlier turns.",
-            "Fai una domanda qui sotto. Le risposte usano il second brain; scorri in alto per i turni precedenti.");
-        if (session.chatOnly == true) {
-            emptyHint = askT(
-                "No second brain loaded — chat directly with the model below.",
-                "Nessun second brain caricato — chatta direttamente col modello qui sotto.");
-        }
-        html = html + "<div class='panel'><p class='empty'>" + askEscapeHtml(emptyHint) + "</p></div>";
-    } else {
-        var i = 0;
-        foreach (var turn in history) {
-            html = html + askRenderTurnHtml(turn, i);
-            i = i + 1;
-        }
-    }
-    html = html + "</section>";
-
-    var placeholder = askT(
-        "Ask about the distilled notes…",
-        "Chiedi sulle note distillate…");
-    if (session.chatOnly == true) {
-        placeholder = askT(
-            "Ask the model anything…",
-            "Chiedi qualsiasi cosa al modello…");
-    }
-
-    html = html + "<section class='composer'>" +
-        "<form method='post' action='/ask'>" +
-        "<label for='question'>" + askEscapeHtml(askT("New question", "Nuova domanda")) + "</label>" +
-        "<textarea id='question' name='question' required autofocus placeholder='" +
-        askEscapeHtml(placeholder) +
-        "'></textarea>" +
-        "<p class='busy'>" + askEscapeHtml(askT(
-            "Each ask may take a while (LLM). Keep this tab open.",
-            "Ogni domanda puo' richiedere tempo (LLM). Lascia aperta questa scheda.")) + "</p>" +
-        "<div class='actions'>" +
-        "<button type='submit'>" + askEscapeHtml(askT("Ask", "Chiedi")) + "</button>" +
-        "<a class='ghost' href='/?clear=1'>" + askEscapeHtml(askT("Clear thread", "Svuota thread")) + "</a>" +
-        "<a class='ghost' href='/stop'>" + askEscapeHtml(askT("Stop server / menu", "Ferma server / menu")) + "</a>" +
-        "</div></form></section>";
-
-    if (history.length > 0) {
-        html = html + "<script>location.hash='turn-" + string(history.length - 1) + "';</script>";
-    }
-
+    html = html + "<div id='ask-panel'>" + askRenderPanelHtml() + "</div>";
+    html = html + askPageClientScript();
     html = html + "</main></body></html>";
     return html;
 }
@@ -433,6 +718,7 @@ function askUiHome(queryParams) {
     if (queryParams != null and queryParams["lang"] != null) {
         askSetLang(queryParams["lang"]);
     }
+    // Bookmark / no-JS fallback for clear (AJAX path uses POST /clear).
     if (queryParams != null and queryParams["clear"] != null) {
         askClearHistory();
         return RedirectTo("/");
@@ -440,13 +726,9 @@ function askUiHome(queryParams) {
     return askRenderPage();
 }
 
-function askRequestStop() {
-    // Defer stop to the host wait-loop so this response can finish first.
-    // Stopping the listener inside the route aborts the HTTP reply.
-    ui.setState(ASK_STORE, "pendingStop", true, ASK_SESSION_ID);
-}
-
 function askConsumePendingStop() {
+    // Web UI does not expose stop (multi-user safe). Hosts may still poll this
+    // for a future console/admin signal; nothing in ASK sets pendingStop today.
     var pending = ui.state(ASK_STORE, "pendingStop", false, ASK_SESSION_ID);
     if (pending == true) {
         ui.setState(ASK_STORE, "pendingStop", false, ASK_SESSION_ID);
@@ -455,19 +737,8 @@ function askConsumePendingStop() {
     return false;
 }
 
-@PAGE("/stop")
-function askUiStop() {
-    askRequestStop();
-    return "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Stopped</title></head>" +
-        "<body style='font-family:system-ui;padding:2rem'><p>" +
-        askEscapeHtml(askT(
-            "ASK server stopped. Return to the console menu.",
-            "Server ASK fermato. Torna al menu della console.")) +
-        "</p></body></html>";
-}
-
 function askReplaceLastTurn(turn) {
-    // Rebuild + setState so the completed answer is what GET / renders after redirect.
+    // Rebuild + setState so the completed answer is what the panel fragment shows.
     var history = askGetHistory();
     if (history.length == 0) {
         askAppendTurn(turn);
@@ -484,14 +755,15 @@ function askReplaceLastTurn(turn) {
     askSetHistory(next);
 }
 
-@POST("/ask")
+@ACTION("/ask")
 function askUiSubmit(body) {
     var question = str.trim(askAsText(body.question));
     askSetFlashError("");
+    askApplyToolsFromBody(body);
 
     if (question == "") {
         askSetFlashError(askT("Enter a question.", "Inserisci una domanda."));
-        return RedirectTo("/");
+        return askPanelFragment();
     }
 
     // Visible immediately if the user refreshes while the LLM is still running.
@@ -503,7 +775,18 @@ function askUiSubmit(body) {
         "pending": true
     });
 
+    // Channel form works in interpreter and transpile (SSE via componentLiveEmit).
+    onAgentProgress("ask");
     try {
+        var startMsg = askT("Starting ask…", "Avvio domanda…");
+        if (askGetToolsEnabled()) {
+            startMsg = askT("Starting ask (tools on)…", "Avvio domanda (tool attivi)…");
+        }
+        componentLiveEmit("ask", {
+            "phase": "round_start",
+            "round": 0,
+            "message": startMsg
+        }, "ask-progress");
         var turn = runAskTurn(question);
         if (turn == null) {
             askReplaceLastTurn({
@@ -513,7 +796,7 @@ function askUiSubmit(body) {
                 "error": askT("Ask failed.", "Domanda fallita."),
                 "pending": false
             });
-            return RedirectTo("/");
+            return askPanelFragment();
         }
         turn.pending = false;
         askReplaceLastTurn(turn);
@@ -525,6 +808,19 @@ function askUiSubmit(body) {
             "error": askT("Ask failed: ", "Domanda fallita: ") + askAsText(e),
             "pending": false
         });
+    } finally {
+        clearAgentProgress();
     }
-    return RedirectTo("/");
+    return askPanelFragment();
+}
+
+@ACTION("/clear")
+function askUiClear() {
+    askClearHistory();
+    return askPanelFragment();
+}
+
+@LIVE("/ask/live")
+function askUiLive() {
+    return { "sse": true };
 }

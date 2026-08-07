@@ -22,7 +22,7 @@
 //
 // UI:    at startup, choose UI message language (English / Italian).
 //        Notes stay in the source document language; technical terms are unchanged.
-//        ASK opens http://localhost:39018/ (Stop server / menu returns to console).
+//        ASK opens http://localhost:39018/ (Ctrl+C in console returns to menu).
 //
 // Pack portable ASK exe (menu option 4, or CLI):
 //   malda compile Examples/Agents/secondbrain.malda -o dist/secondbrain.exe --mode transpile --embed-folder secondbrain
@@ -2027,14 +2027,22 @@ function buildContext(brainDir, picked) {
     return str.join(blocks, "\n\n");
 }
 
-function answerInstructions() {
-    return "Rispondi alle domande usando esclusivamente il second brain fornito. " +
+function answerInstructions(useTools) {
+    var text = "Rispondi alle domande usando esclusivamente il second brain fornito. " +
         "Cita le note su cui ti basi con la forma [nota: slug]. " +
         "Se le note non contengono la risposta, dillo esplicitamente e indica quale nota " +
-        "si avvicina di piu'. Non inventare API, parametri o comportamenti. " +
-        "Puoi usare gli strumenti read_file, grep e list_directory per aprire altre note " +
-        "del second brain se il contesto fornito non basta. Rispondi nella lingua della domanda, " +
-        "in modo conciso e strutturato. Formatta la risposta in Markdown " +
+        "si avvicina di piu'. Non inventare API, parametri o comportamenti. ";
+    if (useTools == true) {
+        text = text +
+            "Puoi usare gli strumenti read_file, grep e list_directory per aprire altre note " +
+            "del second brain se il contesto fornito non basta. ";
+    } else {
+        text = text +
+            "Non hai strumenti: usa solo gli estratti forniti nel prompt; non inventare " +
+            "contenuti di altre note. ";
+    }
+    return text +
+        "Rispondi nella lingua della domanda, in modo conciso e strutturato. Formatta la risposta in Markdown " +
         "(grassetto, elenchi, tabelle se utili); non usare HTML grezzo.";
 }
 
@@ -2111,7 +2119,7 @@ function askSourcesFromPicked(picked) {
     return sources;
 }
 
-// Called from the shared ASK web UI on each POST /ask.
+// Called from the shared ASK web UI on each @ACTION /ask.
 function runAskTurn(question) {
     var session = askGetSession();
     var brainDir = askAsText(session.brainDir);
@@ -2137,12 +2145,28 @@ function runAskTurn(question) {
     AnsiConsole.markupLine("[dim]" + t("retrieved notes: ", "note recuperate: ") +
         str.join(names, ", ") + "[/]");
 
-    var responder = newReaderAgent(
-        "BrainReader",
-        "assistente di knowledge base",
-        answerInstructions(),
-        brainDir
-    );
+    var useTools = askGetToolsEnabled();
+    var responder = null;
+    if (useTools) {
+        AnsiConsole.markupLine("[dim]" + t(
+            "ASK tools: on (read_file / grep / list_directory)",
+            "Tool ASK: attivi (read_file / grep / list_directory)") + "[/]");
+        responder = newReaderAgent(
+            "BrainReader",
+            "assistente di knowledge base",
+            answerInstructions(true),
+            brainDir
+        );
+    } else {
+        AnsiConsole.markupLine("[dim]" + t(
+            "ASK tools: off (retrieved excerpts only)",
+            "Tool ASK: disattivi (solo estratti recuperati)") + "[/]");
+        responder = newPlainAgent(
+            "BrainReader",
+            "assistente di knowledge base",
+            answerInstructions(false)
+        );
+    }
     var context = buildContext(brainDir, picked);
     var answer = str.trim(tryThink(responder,
         "SECOND BRAIN (estratti pertinenti):\n\n" + context +
@@ -2213,6 +2237,7 @@ function askBrain() {
     ui.setState(ASK_STORE, "lang", UI_LANG, ASK_SESSION_ID);
     ui.setState(ASK_STORE, "catalog", catalog, ASK_SESSION_ID);
     ui.setState(ASK_STORE, "pendingStop", false, ASK_SESSION_ID);
+    askSetToolsEnabled(false);
     askClearHistory();
     askSetSession({
         "brainDir": brainDir,
@@ -2243,8 +2268,8 @@ function askBrain() {
     AnsiConsole.markupLine(t("Open:", "Apri:") + " [bold blue]http://localhost:" +
         string(ASK_HTTP_PORT) + "/[/]");
     AnsiConsole.markupLine("[dim]" + t(
-        "Use Stop server / menu in the page (or Ctrl+C) to return here.",
-        "Usa Ferma server / menu nella pagina (o Ctrl+C) per tornare qui.") + "[/]");
+        "Stop the process from the console (Ctrl+C) to return here. The web UI cannot stop the server.",
+        "Ferma il processo dalla console (Ctrl+C) per tornare qui. La pagina web non puo' fermare il server.") + "[/]");
 
     while (askHttpServer != null and askHttpServer.isRunning) {
         if (askConsumePendingStop()) {

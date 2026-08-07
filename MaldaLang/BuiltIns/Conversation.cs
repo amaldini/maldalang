@@ -56,6 +56,9 @@ public partial class ConversationInstance : ObjectInstance
     private Dictionary<string, ToolInstance> _tools = new();
     private IInputProvider? _inputProvider;
     private static Action<string, string, string, bool, string?>? _toolCallLogger;
+    private static readonly object AgentProgressLock = new();
+    private static Action<RuntimeValue>? _agentProgressHandler;
+    private static string? _agentProgressLiveChannel;
     private static bool _verboseLoggingResolved;
     private static bool _verboseLoggingEnabled;
     private static string? _verbosePhaseLabel;
@@ -148,6 +151,75 @@ public partial class ConversationInstance : ObjectInstance
     public static void SetToolCallLogger(Action<string, string, string, bool, string?>? logger)
     {
         _toolCallLogger = logger;
+    }
+
+    /// <summary>
+    /// Optional sink for live agent progress (LLM rounds / tool calls).
+    /// Used by ASK UI and other hosts; must never throw into think().
+    /// </summary>
+    public static void SetAgentProgressHandler(Action<RuntimeValue>? handler)
+    {
+        lock (AgentProgressLock)
+        {
+            _agentProgressHandler = handler;
+        }
+    }
+
+    /// <summary>
+    /// When set, progress events are also pushed via componentLiveEmit(channel, …).
+    /// Works in transpiled apps without an interpreter callback.
+    /// </summary>
+    public static void SetAgentProgressLiveChannel(string? channel)
+    {
+        lock (AgentProgressLock)
+        {
+            _agentProgressLiveChannel = string.IsNullOrWhiteSpace(channel) ? null : channel.Trim();
+        }
+    }
+
+    public static void ClearAgentProgressHandler()
+    {
+        lock (AgentProgressLock)
+        {
+            _agentProgressHandler = null;
+            _agentProgressLiveChannel = null;
+        }
+    }
+
+    /// <summary>
+    /// Delivers a progress event to the registered handler and/or live channel.
+    /// Used by the agent loop; also available for focused unit tests.
+    /// </summary>
+    public static void DeliverAgentProgress(RuntimeValue evt)
+    {
+        Action<RuntimeValue>? handler;
+        string? liveChannel;
+        lock (AgentProgressLock)
+        {
+            handler = _agentProgressHandler;
+            liveChannel = _agentProgressLiveChannel;
+        }
+
+        try
+        {
+            handler?.Invoke(evt);
+            if (liveChannel != null)
+            {
+                BuiltInFunctions.CallBuiltIn(
+                    "componentLiveEmit",
+                    new List<RuntimeValue>
+                    {
+                        RuntimeValue.String(liveChannel),
+                        evt,
+                        RuntimeValue.String("ask-progress")
+                    },
+                    null);
+            }
+        }
+        catch
+        {
+            // Progress callbacks must never break the agent loop.
+        }
     }
     
     public static void EnableVerboseLogging(bool enabled)
@@ -803,13 +875,75 @@ public partial class ConversationInstance : ObjectInstance
         WriteVerboseLine($"  result: {TruncateForLog(result, 400)}");
     }
     
+    private void EmitAgentProgress(
+        string phase,
+        string? message = null,
+        IReadOnlyList<string>? tools = null,
+        string? tool = null,
+        bool? ok = null)
+    {
+        Action<RuntimeValue>? handler;
+        string? liveChannel;
+        lock (AgentProgressLock)
+        {
+            handler = _agentProgressHandler;
+            liveChannel = _agentProgressLiveChannel;
+        }
+        if (handler == null && liveChannel == null)
+            return;
+
+        var payload = new JsonObject();
+        payload.Set("phase", RuntimeValue.String(phase));
+        payload.Set("round", RuntimeValue.Integer(_llmRound));
+        if (!string.IsNullOrEmpty(AgentName))
+            payload.Set("agent", RuntimeValue.String(AgentName));
+        if (!string.IsNullOrEmpty(message))
+            payload.Set("message", RuntimeValue.String(message));
+        if (tools != null)
+        {
+            var toolValues = new List<RuntimeValue>(tools.Count);
+            foreach (var name in tools)
+                toolValues.Add(RuntimeValue.String(name));
+            payload.Set("tools", RuntimeValue.Array(toolValues));
+        }
+        if (!string.IsNullOrEmpty(tool))
+            payload.Set("tool", RuntimeValue.String(tool));
+        if (ok.HasValue)
+            payload.Set("ok", RuntimeValue.Boolean(ok.Value));
+        DeliverAgentProgress(RuntimeValue.Object(payload));
+    }
+
+    private List<string> ExtractToolCallNames(RuntimeValue toolCalls)
+    {
+        var names = new List<string>();
+        if (toolCalls.Type != ValueType.Array)
+            return names;
+        foreach (var tc in toolCalls.AsArray())
+        {
+            if (tc.Type != ValueType.Object)
+                continue;
+            var func = GetProperty(tc.AsObject(), "function");
+            if (func != null && func.Type == ValueType.Object)
+            {
+                var toolName = GetStringProperty(func.AsObject(), "name");
+                if (!string.IsNullOrEmpty(toolName))
+                    names.Add(toolName);
+            }
+        }
+        return names;
+    }
+
     private void LogLlmRequest()
     {
+        // Always advance round for max-round enforcement and live progress,
+        // even when verbose CLI logging is off.
+        _llmRound++;
+        EmitAgentProgress("round_start", message: "Calling LLM…");
+
         EnsureVerboseLoggingSetup();
         if (!_verboseLoggingEnabled)
             return;
-        
-        _llmRound++;
+
         MaybeWriteStatusBanner(_llmRound);
         var modelName =
             _client != null ? _client.Model :
@@ -1232,11 +1366,28 @@ public partial class ConversationInstance : ObjectInstance
                     _messages.Add(RuntimeValue.Object(
                         BuildAssistantToolCallHistoryMessage(jsonResponse, validToolCalls)));
                 }
+
+                var toolNames = ExtractToolCallNames(toolCalls);
+                if (toolNames.Count > 0)
+                {
+                    EmitAgentProgress(
+                        "tool_calls",
+                        message: "Running tools: " + string.Join(", ", toolNames),
+                        tools: toolNames);
+                }
                 
                 // Execute tool calls (parallel batches for read-only tools when enabled)
                 foreach (var outcome in ExecuteToolCalls(toolCallsToExecute))
                 {
                     AppendToolResultMessage(outcome);
+                    if (!string.IsNullOrEmpty(outcome.ToolName))
+                    {
+                        EmitAgentProgress(
+                            "tool_done",
+                            message: (outcome.Succeeded ? "Done: " : "Failed: ") + outcome.ToolName,
+                            tool: outcome.ToolName,
+                            ok: outcome.Succeeded);
+                    }
                 }
                 
                 EnsureVerboseLoggingSetup();
@@ -1263,12 +1414,15 @@ public partial class ConversationInstance : ObjectInstance
                                 ? $"[yellow][llm][/] round {_llmRound} · max LLM rounds ({maxLlmRounds}) reached"
                                 : null);
                     }
+                    EmitAgentProgress("done", message: $"Stopped after {maxLlmRounds} LLM rounds");
                     AddAssistantMessage(stopContent);
                     var stopResponse = new JsonObject();
                     stopResponse.Set("content", RuntimeValue.String(stopContent));
                     AttachAccumulatedUsage(RuntimeValue.Object(stopResponse));
                     return RuntimeValue.Object(stopResponse);
                 }
+
+                EmitAgentProgress("continue", message: "Continuing after tools…");
                 
                 // Recursively call send() again with tool results
                 return Send();
@@ -1284,6 +1438,7 @@ public partial class ConversationInstance : ObjectInstance
                 {
                     AddAssistantMessage(content.AsString());
                 }
+                EmitAgentProgress("done", message: "Answer ready");
             }
         }
         

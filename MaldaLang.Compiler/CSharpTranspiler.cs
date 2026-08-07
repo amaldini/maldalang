@@ -10075,6 +10075,8 @@ public class CSharpTranspiler
             case "componentStateObject":
             case "componentStateClear":
             case "componentStateConfigure":
+            case "onAgentProgress":
+            case "clearAgentProgress":
             case "uiRow":
             case "uiColumn":
             case "uiStack":
