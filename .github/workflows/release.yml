@@ -29,9 +29,37 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
+      - name: Resolve and verify release version
+        id: ver
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          if ($tag -notmatch '^v(?<ver>\d+\.\d+\.\d+)$') {
+            throw "Release tags must be vMAJOR.MINOR.PATCH (got '$tag')."
+          }
+          $version = $Matches['ver']
+          $csproj = Get-Content "MaldaLang/MaldaLang.csproj" -Raw
+          if ($csproj -notmatch '<Version>\s*([^<]+?)\s*</Version>') {
+            throw "MaldaLang.csproj has no <Version> element."
+          }
+          $csprojVersion = $Matches[1].Trim()
+          if ($csprojVersion -ne $version) {
+            throw "Tag v$version does not match MaldaLang.csproj <Version>$csprojVersion. Bump both csproj Version fields before tagging."
+          }
+          $desktop = Get-Content "MaldaLang.DesktopIDE/MaldaLang.DesktopIDE.csproj" -Raw
+          if ($desktop -notmatch '<Version>\s*([^<]+?)\s*</Version>') {
+            throw "MaldaLang.DesktopIDE.csproj has no <Version> element."
+          }
+          $desktopVersion = $Matches[1].Trim()
+          if ($desktopVersion -ne $version) {
+            throw "Tag v$version does not match DesktopIDE <Version>$desktopVersion."
+          }
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "version=$version"
+          Write-Host "Release version $version matches csproj."
+
       - name: Build distribution zip
         shell: pwsh
-        run: ./scripts/build-oss-dist.ps1 -Runtime ${{ matrix.rid }}
+        run: ./scripts/build-oss-dist.ps1 -Runtime ${{ matrix.rid }} -Version ${{ steps.ver.outputs.version }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

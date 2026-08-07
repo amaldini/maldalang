@@ -10261,9 +10261,30 @@ public static class BuiltInFunctions
     {
         if (args.Count != 1 || args[0].Type != ValueType.String)
             throw new Exception("markup() expects 1 string argument");
-        
-        AnsiConsole.Markup(args[0].AsString());
+
+        WriteSpectreMarkup(args[0].AsString(), appendNewLine: false);
         return RuntimeValue.Null();
+    }
+
+    /// <summary>
+    /// Renders Spectre markup when valid; otherwise writes the text literally.
+    /// Dynamic paths/errors often contain <c>[...]</c> that must not abort the program.
+    /// </summary>
+    public static void WriteSpectreMarkup(string text, bool appendNewLine)
+    {
+        if (IsParseableSpectreMarkup(text))
+        {
+            if (appendNewLine)
+                AnsiConsole.MarkupLine(text);
+            else
+                AnsiConsole.Markup(text);
+            return;
+        }
+
+        if (appendNewLine)
+            AnsiConsole.WriteLine(text);
+        else
+            AnsiConsole.Write(text);
     }
     
     public static RuntimeValue BuiltInSpectreConsoleTable(List<RuntimeValue> args)

@@ -71,8 +71,9 @@ public class AnsiConsoleInstance : ObjectInstance
         NotifyAnsiConsoleUsed();
         if (args.Count != 1 || args[0].Type != ValueType.String)
             throw new Exception("AnsiConsole.markup() expects 1 string argument");
-        
-        AnsiConsole.Markup(args[0].AsString());
+
+        // Same fallback as panel(): unparseable markup (e.g. Windows paths in errors) prints literally.
+        BuiltInFunctions.WriteSpectreMarkup(args[0].AsString(), appendNewLine: false);
         return RuntimeValue.Null();
     }
 
@@ -82,7 +83,7 @@ public class AnsiConsoleInstance : ObjectInstance
         if (args.Count != 1 || args[0].Type != ValueType.String)
             throw new Exception("AnsiConsole.markupLine() expects 1 string argument");
 
-        AnsiConsole.MarkupLine(args[0].AsString());
+        BuiltInFunctions.WriteSpectreMarkup(args[0].AsString(), appendNewLine: true);
         return RuntimeValue.Null();
     }
     

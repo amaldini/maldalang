@@ -7978,14 +7978,49 @@ public class CSharpTranspiler
         {
             _output.Append(literal.Value);
         }
-        else if (literal.Value is double || literal.Value is float)
+        else if (literal.Value is double d)
         {
-            _output.Append(literal.Value);
+            // StringBuilder.Append(double) uses the current culture; Italian locales emit "0,5"
+            // which is invalid C# (CS1001). Always use invariant for source emission.
+            _output.Append(FormatInvariantCSharpNumber(d));
+        }
+        else if (literal.Value is float f)
+        {
+            _output.Append(FormatInvariantCSharpNumber(f));
+        }
+        else if (literal.Value is decimal m)
+        {
+            _output.Append(FormatInvariantCSharpNumber(m));
         }
         else
         {
-            _output.Append(literal.Value);
+            _output.Append(Convert.ToString(literal.Value, System.Globalization.CultureInfo.InvariantCulture));
         }
+    }
+
+    private static string FormatInvariantCSharpNumber(double value)
+    {
+        var text = value.ToString("G17", System.Globalization.CultureInfo.InvariantCulture);
+        // Keep a fractional form so boxed assignments stay doubles (1.0 -> "1.0", not "1").
+        if (!text.Contains('.') && !text.Contains('e') && !text.Contains('E') &&
+            !double.IsNaN(value) && !double.IsInfinity(value))
+        {
+            text += ".0";
+        }
+        return text;
+    }
+
+    private static string FormatInvariantCSharpNumber(float value)
+        => FormatInvariantCSharpNumber((double)value);
+
+    private static string FormatInvariantCSharpNumber(decimal value)
+    {
+        var text = value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        if (!text.Contains('.') && !text.Contains('e') && !text.Contains('E'))
+        {
+            text += ".0";
+        }
+        return text;
     }
 
     private void TranspileBinary(BinaryExpression binary)

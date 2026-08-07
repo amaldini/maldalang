@@ -54,7 +54,7 @@ The full suite is too slow. Use filtered tests for the area you touch:
 dotnet test MaldaLang.Tests --filter "FullyQualifiedName~RelevantTests"
 ```
 
-CI smoke filter (see `.github/workflows/ci.yml`): `BuiltInRegistryTests`, `CompilerPackDecouplingGuardTests`, `OptionalPackTranspileEmitTests`.
+CI smoke filter (see `.github/workflows/ci.yml`): `BuiltInRegistryTests`, `CompilerPackDecouplingGuardTests`, `OptionalPackTranspileEmitTests`, `LicenseHeaderGuardTests`, `ReleaseVersionGuardTests`, `ReferenceManual`.
 
 ## IDE roles (not interchangeable)
 
@@ -99,6 +99,7 @@ Longer overview: [`docs/architecture.md`](docs/architecture.md).
 6. Keep PRs focused. Prefer filtered tests that match the change.
 7. `docs/planning/` is historical / roadmap notes — not the source of truth for current behavior. Prefer code, `docs/spec/`, and `ReferenceManual/`.
 8. **Licensing is dual `MIT OR Apache-2.0`.** New C# files carry `// SPDX-License-Identifier: MIT OR Apache-2.0` under the copyright line. Never write "All rights reserved", never add a file named `NOTICE`, and never offer only one of the two licences — `LicenseHeaderGuardTests` fails on all three. If you change what the transpilers emit into user programs, update the "Runtime Material" list in `LICENSE-RUNTIME-EXCEPTION`.
+9. **Release version is one number.** When cutting a release, set the same `<Version>` in `MaldaLang/MaldaLang.csproj` and `MaldaLang.DesktopIDE/MaldaLang.DesktopIDE.csproj`, add `docs/releases/vX.Y.Z.md`, then tag `vX.Y.Z`. `ReleaseVersionGuardTests` and the Release workflow fail on drift; `build-oss-dist.ps1` reads the CLI csproj for zip names.
 
 ## New built-in checklist (summary)
 

@@ -2103,6 +2103,14 @@ function packPortableAskExe() {
     if (outputPath == "") {
         outputPath = DEFAULT_PACK_OUTPUT;
     }
+    // If the user types a folder, pack into <folder>/<default exe name>.
+    if (io.hasDirectory(outputPath)) {
+        var packExeName = io.getFileName(DEFAULT_PACK_OUTPUT);
+        if (packExeName == "") {
+            packExeName = "secondbrain_semantic.exe";
+        }
+        outputPath = io.pathJoin(outputPath, packExeName);
+    }
 
     var sourcePath = io.pathJoin(getProgramDirectory(), SOURCE_SCRIPT_NAME);
     if (not io.hasFile(sourcePath)) {
@@ -2134,8 +2142,9 @@ function packPortableAskExe() {
         if (err == "") {
             err = t("Unknown compilation error.", "Errore di compilazione sconosciuto.");
         }
+        // Escape dynamic text: compile errors often contain [paths] that Spectre would treat as styles.
         AnsiConsole.markupLine("[red]" + t("Pack failed:", "Pacchetto non riuscito:") +
-            "[/] " + err);
+            "[/] " + str.replace(str.replace(err, "[", "[["), "]", "]]"));
         return false;
     }
 
@@ -2144,7 +2153,7 @@ function packPortableAskExe() {
         written = string(result.outputPath);
     }
     AnsiConsole.markupLine("[green]" + t("Portable ASK exe ready:", "Exe ASK portatile pronto:") +
-        "[/] [bold]" + written + "[/]");
+        "[/] [bold]" + str.replace(str.replace(string(written), "[", "[["), "]", "]]") + "[/]");
     AnsiConsole.markupLine("[dim]" + t(
         "Run the .exe to open ASK with the embedded brain. Optional logo: put logo.png " +
             "in the brain folder and set ASK_LOGO = \"embed:" + EMBED_ALIAS + "/logo.png\" before packing.",

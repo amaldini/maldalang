@@ -422,4 +422,17 @@ public class SecondBrainAskFeaturesTests
             SafeDeleteDirectory(tempDir);
         }
     }
+
+    [Fact]
+    public void MarkupLine_WithBracketedCompilePath_DoesNotThrow()
+    {
+        // Mode-4 pack used to crash here: Spectre treated [C:\...\foo.csproj] as a style name
+        // and hid the real compileMALDA failure behind "Could not find color or style ...".
+        var csproj = @"C:\Users\amaldini.ENGINEERING\AppData\Local\Temp\spl_transpile_x\MaldaLang.Executable.csproj";
+        var line = "[red]Pack failed:[/] Compilation error: missing [" + csproj + "]";
+
+        var ex = Record.Exception(() =>
+            BuiltInFunctions.WriteSpectreMarkup(line, appendNewLine: true));
+        Assert.Null(ex);
+    }
 }
