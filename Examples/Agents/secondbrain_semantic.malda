@@ -77,6 +77,9 @@ var askHttpServer = null;
 var embedMode = "hash";
 var memoryEmbedder = null;
 var embedHintShown = false;
+// Cached GraphMemory for ASK (avoids reloading GGUF / embed artifacts every turn).
+var askMemoryCache = null;
+var askMemoryCacheDir = "";
 
 // ---------------------------------------------------------------- UI i18n
 
@@ -295,12 +298,25 @@ function createBrainMemory() {
     if (embedMode == "llama") {
         var embedPath = resolveEmbedModelPath();
         if (embedPath != "") {
+            AnsiConsole.markupLine("[dim]" + t(
+                "Loading LlamaEmbedder: ",
+                "Carico LlamaEmbedder: ") + embedPath + "[/]");
             try {
                 memoryEmbedder = new LlamaEmbedder(embedPath);
+                // Force-load now so ASK startup fails loudly instead of on the first query.
+                memoryEmbedder.getEmbeddings("malda embed warmup");
+                AnsiConsole.markupLine("[green]" + t(
+                    "Neural embeddings ready (llama).",
+                    "Embedding neurali pronti (llama).") + "[/]");
             } catch (e) {
                 AnsiConsole.markupLine("[yellow]" + t(
                     "LlamaEmbedder failed; falling back to hash:",
                     "LlamaEmbedder non disponibile; uso hash:") + "[/] " + string(e));
+                AnsiConsole.markupLine("[dim]" + t(
+                    "Portable ASK exes need LLamaSharp backends in the publish folder " +
+                    "(repack with a MALDA build that auto-detects LlamaEmbedder).",
+                    "Gli exe ASK portatili richiedono i backend LLamaSharp nella cartella publish " +
+                    "(ripacka con una build MALDA che rileva automaticamente LlamaEmbedder).") + "[/]");
                 showEmbedDownloadHint(string(e));
                 embedMode = "hash";
                 memoryEmbedder = null;
@@ -325,7 +341,18 @@ function memoryBasePath(brainDir) {
 }
 
 function memoryArtifactsExist(brainDir) {
-    return io.hasFile(memoryBasePath(brainDir) + ".graph.json");
+    var base = memoryBasePath(brainDir);
+    // graph alone is not enough: without metadata BM25/filePath mapping is empty.
+    return io.hasFile(base + ".graph.json") and io.hasFile(base + ".metadata.json");
+}
+
+function getAskMemory(brainDir) {
+    if (askMemoryCache != null and askMemoryCacheDir == brainDir) {
+        return askMemoryCache;
+    }
+    askMemoryCache = loadBrainMemory(brainDir);
+    askMemoryCacheDir = brainDir;
+    return askMemoryCache;
 }
 
 function noteIndexText(note) {
@@ -386,9 +413,53 @@ function loadBrainMemory(brainDir) {
 }
 
 function findCatalogNoteByPath(catalog, path) {
+    var normalized = normalizePath(path);
     foreach (var note in catalog.notes) {
-        if (note.path == path) {
+        if (normalizePath(note.path) == normalized) {
             return note;
+        }
+    }
+    return null;
+}
+
+function findCatalogNoteBySlug(catalog, slug) {
+    if (slug == null or string(slug) == "") {
+        return null;
+    }
+    foreach (var note in catalog.notes) {
+        if (note.slug == slug) {
+            return note;
+        }
+    }
+    return null;
+}
+
+// "notes/foo-bar.md" -> "foo-bar"
+function slugFromNotePath(path) {
+    var p = normalizePath(path);
+    if (str.endsWith(p, ".md")) {
+        p = str.substring(p, 0, str.length(p) - 3);
+    }
+    var parts = str.split(p, "/");
+    if (parts.length == 0) {
+        return p;
+    }
+    return string(parts[parts.length - 1]);
+}
+
+function resolveCatalogNote(catalog, result) {
+    var path = "";
+    if (result.filePath != null) {
+        path = string(result.filePath);
+    }
+    if (path != "") {
+        var byPath = findCatalogNoteByPath(catalog, path);
+        if (byPath != null) {
+            return byPath;
+        }
+        var bySlug = findCatalogNoteBySlug(catalog, slugFromNotePath(path));
+        if (bySlug != null) {
+            return bySlug;
         }
     }
     return null;
@@ -438,10 +509,13 @@ function selectNotesSemantic(brainDir, catalog, memory, question) {
     }
     var results = [];
     try {
+        // lexicalMinScore 0: without the BGE-M3 GGUF, vector scores are weak and the
+        // default BM25 floor (0.15) often yields zero hybrid hits even when notes match.
         results = memory.query(question, TOP_K, {
             "hybridLexical": true,
             "lexicalMode": "bm25",
             "lexicalWeight": 0.3,
+            "lexicalMinScore": 0.0,
             "type": "semantic",
             "minScore": 0.0,
             "explain": true
@@ -459,16 +533,15 @@ function selectNotesSemantic(brainDir, catalog, memory, question) {
 
     var picked = [];
     var used = [];
+    var unmatched = 0;
     foreach (var result in results) {
-        var path = "";
-        if (result.filePath != null) {
-            path = string(result.filePath);
-        }
-        if (path == "" or str.includes(used, path)) {
+        var note = resolveCatalogNote(catalog, result);
+        if (note == null) {
+            unmatched = unmatched + 1;
             continue;
         }
-        var note = findCatalogNoteByPath(catalog, path);
-        if (note == null) {
+        var path = string(note.path);
+        if (path == "" or str.includes(used, path)) {
             continue;
         }
         used.append(path);
@@ -497,9 +570,27 @@ function selectNotesSemantic(brainDir, catalog, memory, question) {
         }
     }
     if (picked.length == 0) {
+        var nodeCount = "?";
+        try {
+            var st = memory.stats();
+            if (st != null and st.nodes != null) {
+                nodeCount = string(st.nodes);
+            }
+        } catch (statsErr) {
+            nodeCount = "?";
+        }
         AnsiConsole.markupLine("[dim]" + t(
             "No GraphMemory hits; trying lexical retrieval.",
-            "Nessun hit GraphMemory; provo il recupero lessicale.") + "[/]");
+            "Nessun hit GraphMemory; provo il recupero lessicale.") + "[/] " +
+            "[dim](query=" + string(results.length) +
+            ", unmatchedPaths=" + string(unmatched) +
+            ", nodes=" + nodeCount +
+            ", embed=" + embedLabel() + ")[/]");
+        if (embedMode != "llama" or memoryEmbedder == null) {
+            AnsiConsole.markupLine("[yellow]" + t(
+                "Tip: place bge-m3-Q4_K_M.gguf next to the .exe (same model used at BUILD) for neural retrieval.",
+                "Suggerimento: metti bge-m3-Q4_K_M.gguf accanto all'.exe (stesso modello del BUILD) per il recupero neurale.") + "[/]");
+        }
         return {
             "picked": lexicalPicked,
             "channel": "lexical-fallback",
@@ -2456,7 +2547,7 @@ function runAskTurn(question) {
         return runChatOnlyTurn(question);
     }
 
-    var memory = loadBrainMemory(brainDir);
+    var memory = getAskMemory(brainDir);
     var selection = selectNotesSemantic(brainDir, catalog, memory, question);
     var picked = selection.picked;
     if (picked.length == 0) {
@@ -2482,10 +2573,16 @@ function runAskTurn(question) {
         brainDir
     );
     var context = buildContext(brainDir, picked);
+    AnsiConsole.markupLine("[dim]" + t(
+        "Calling LLM (" + modelLabel() + ")… keep the browser tab open until redirect.",
+        "Chiamo l'LLM (" + modelLabel() + ")… lascia aperta la scheda del browser fino al redirect.") + "[/]");
     var answer = str.trim(tryThink(responder,
         "SECOND BRAIN (estratti pertinenti):\n\n" + context +
         "\n\n----\nDOMANDA: " + question));
     if (answer == "") {
+        AnsiConsole.markupLine("[yellow]" + t(
+            "LLM returned an empty answer.",
+            "L'LLM ha restituito una risposta vuota.") + "[/]");
         return {
             "question": question,
             "answer": "",
@@ -2493,6 +2590,7 @@ function runAskTurn(question) {
             "error": t("No answer from the LLM.", "Nessuna risposta dall'LLM.")
         };
     }
+    AnsiConsole.markupLine("[dim]" + t("Answer ready.", "Risposta pronta.") + "[/]");
     return {
         "question": question,
         "answer": answer,
@@ -2541,13 +2639,21 @@ function askBrain() {
                     ". Esegui dopo la modalita' 1 per abilitare il recupero.") + "[/]");
         }
     } else {
-        memory = loadBrainMemory(brainDir);
+        askMemoryCache = null;
+        askMemoryCacheDir = "";
+        memory = getAskMemory(brainDir);
         retrievalLabel = t("lexical fallback", "fallback lessicale");
         subtitle = t(
             "GraphMemory hybrid retrieval (vector + BM25) over the distilled notes.",
             "Recupero ibrido GraphMemory (vettore + BM25) sulle note distillate.");
         if (memory != null) {
             retrievalLabel = "GraphMemory / " + embedLabel();
+            try {
+                var st0 = memory.stats();
+                AnsiConsole.markupLine("[dim]GraphMemory: " + string(st0.nodes) + " " +
+                    t("nodes", "nodi") + ", embed=" + embedLabel() + "[/]");
+            } catch (statsBootErr) {
+            }
         } else {
             AnsiConsole.markupLine("[yellow]" + t(
                 "GraphMemory artifacts missing; ASK will use lexical catalog scoring.",

@@ -130,6 +130,7 @@ function askRenderTurnHtml(turn, index) {
     var question = askAsText(turn.question);
     var answer = askAsText(turn.answer);
     var error = askAsText(turn.error);
+    var pending = turn.pending == true;
     var sources = turn.sources;
     if (sources == null) {
         sources = [];
@@ -140,7 +141,14 @@ function askRenderTurnHtml(turn, index) {
         askEscapeHtml(askT("Question", "Domanda")) + "</div>" +
         "<p class='question-text'>" + askEscapeHtml(question) + "</p></div>";
 
-    if (error != "") {
+    if (pending) {
+        html = html + "<div class='bubble a'><div class='bubble-label'>" +
+            askEscapeHtml(askT("Answer", "Risposta")) + "</div>" +
+            "<p class='pending'>" + askEscapeHtml(askT(
+                "Generating answer… keep this tab open. A refresh here shows this placeholder until the LLM finishes.",
+                "Sto generando la risposta… lascia aperta questa scheda. Un refresh mostra questo segnaposto finche' l'LLM non termina.")) +
+            "</p></div>";
+    } else if (error != "") {
         html = html + "<div class='bubble a error-bubble'><p class='error'>" +
             askEscapeHtml(error) + "</p></div>";
     } else {
@@ -230,6 +238,7 @@ function askPageStyles() {
         ".ghost{background:transparent;color:var(--accent-ink);text-decoration:none;display:inline-block}" +
         ".error{color:var(--danger);font-family:system-ui,sans-serif;margin:0}" +
         ".error-bubble{background:#fff5f5;border-color:#efc4c4}" +
+        ".pending{color:var(--warn);font-family:system-ui,sans-serif;margin:0;font-style:italic}" +
         ".empty{color:var(--muted);font-family:system-ui,sans-serif;margin:0}" +
         ".composer{position:sticky;bottom:0;z-index:15;margin-top:18px;" +
         "box-shadow:0 -10px 24px rgba(28,36,48,0.05)}" +
@@ -446,6 +455,16 @@ function askUiStop() {
         "</p></body></html>";
 }
 
+function askReplaceLastTurn(turn) {
+    var history = askGetHistory();
+    if (history.length == 0) {
+        askAppendTurn(turn);
+        return;
+    }
+    history[history.length - 1] = turn;
+    askSetHistory(history);
+}
+
 @POST("/ask")
 function askUiSubmit(body) {
     var question = str.trim(askAsText(body.question));
@@ -456,11 +475,37 @@ function askUiSubmit(body) {
         return RedirectTo("/");
     }
 
-    var turn = runAskTurn(question);
-    if (turn == null) {
-        askSetFlashError(askT("Ask failed.", "Domanda fallita."));
-        return RedirectTo("/");
+    // Visible immediately if the user refreshes while the LLM is still running.
+    askAppendTurn({
+        "question": question,
+        "answer": "",
+        "sources": [],
+        "error": "",
+        "pending": true
+    });
+
+    try {
+        var turn = runAskTurn(question);
+        if (turn == null) {
+            askReplaceLastTurn({
+                "question": question,
+                "answer": "",
+                "sources": [],
+                "error": askT("Ask failed.", "Domanda fallita."),
+                "pending": false
+            });
+            return RedirectTo("/");
+        }
+        turn.pending = false;
+        askReplaceLastTurn(turn);
+    } catch (e) {
+        askReplaceLastTurn({
+            "question": question,
+            "answer": "",
+            "sources": [],
+            "error": askT("Ask failed: ", "Domanda fallita: ") + askAsText(e),
+            "pending": false
+        });
     }
-    askAppendTurn(turn);
     return RedirectTo("/");
 }

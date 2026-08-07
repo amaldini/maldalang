@@ -1930,6 +1930,36 @@ public class GraphMemoryTests : TestBase
     }
 
     [Fact]
+    public void Query_RememberFilePath_SurvivesHybridQuery()
+    {
+        var source = @"
+            var memory = new GraphMemory();
+            memory.initialize();
+            memory.remember(""plugin campi dll note body"", ""plugins"", {
+                ""type"": ""semantic"",
+                ""source"": ""secondbrain"",
+                ""filePath"": ""notes/campiesterni-plugin.md""
+            });
+            var results = memory.query(""plugin campi"", 3, {
+                ""minScore"": 0,
+                ""hybridLexical"": true,
+                ""lexicalMode"": ""bm25"",
+                ""lexicalMinScore"": 0,
+                ""type"": ""semantic"",
+                ""explain"": true
+            });
+            print(""hits="" + string(results.length));
+            if (results.length > 0) {
+                print(""path="" + string(results[0].filePath));
+            }
+        ";
+        var output = RunProgram(source);
+        Assert.Contains("hits=", output);
+        Assert.DoesNotContain("hits=0", output);
+        Assert.Contains("path=notes/campiesterni-plugin.md", output);
+    }
+
+    [Fact]
     public void Query_ScopeHierarchy_FromEnv_IncludesConfiguredScopes()
     {
         var previous = System.Environment.GetEnvironmentVariable("MALDA_MEMORY_SCOPE_HIERARCHY");

@@ -66,6 +66,19 @@ public class Compiler
     /// <summary>
     /// <paramref name="embedFolderArgs"/> entries are <c>path</c> or <c>path=alias</c>.
     /// </summary>
+    /// <summary>
+    /// True when the MALDA source (or a packed ASK brain script) needs LLamaSharp
+    /// native backends at publish time — e.g. <c>new LlamaEmbedder(...)</c>.
+    /// Without this, portable exes find a .gguf beside the exe but fall back to hash
+    /// because the llama.cpp backend DLLs were never copied into the publish folder.
+    /// </summary>
+    public static bool SourceRequiresLLamaSharp(string source)
+    {
+        if (string.IsNullOrEmpty(source))
+            return false;
+        return source.Contains("LlamaEmbedder", StringComparison.Ordinal);
+    }
+
     public CompilationResult Compile(string sourcePath, string outputPath, CompilationMode mode, bool includeLLamaSharp, bool includeUiHost, ProfilingOptions? profilingOptions, int typedTranspileLevel, bool includeOptionalPacks, string[]? embedFolderArgs)
     {
         IReadOnlyList<EmbeddedFolderSpec> folders;
@@ -80,6 +93,19 @@ public class Compiler
                 Success = false,
                 ErrorMessage = ex.Message
             };
+        }
+
+        if (!includeLLamaSharp && File.Exists(sourcePath))
+        {
+            try
+            {
+                if (SourceRequiresLLamaSharp(File.ReadAllText(sourcePath)))
+                    includeLLamaSharp = true;
+            }
+            catch
+            {
+                // Keep caller-provided flag when the source cannot be probed.
+            }
         }
 
         if (mode == CompilationMode.TranspileToCSharp)
@@ -901,8 +927,8 @@ public class Compiler
         if (includeLLamaSharp)
         {
             packageReferences = @"  <ItemGroup>
-    <PackageReference Include=""LLamaSharp"" Version=""0.25.0"" />
-    <PackageReference Include=""LLamaSharp.Backend.Cpu"" Version=""0.25.0"" />
+    <PackageReference Include=""LLamaSharp"" Version=""0.26.0"" />
+    <PackageReference Include=""LLamaSharp.Backend.Cpu"" Version=""0.26.0"" />
     <PackageReference Include=""Markdig"" Version=""0.33.0"" />
     <PackageReference Include=""Microsoft.Data.Sqlite"" Version=""10.0.3"" />
     <PackageReference Include=""Microsoft.Extensions.FileSystemGlobbing"" Version=""8.0.0"" />
@@ -2442,8 +2468,8 @@ self.addEventListener("fetch", (event) => {
         if (includeLLamaSharp)
         {
             packageReferences = @"  <ItemGroup>
-    <PackageReference Include=""LLamaSharp"" Version=""0.25.0"" />
-    <PackageReference Include=""LLamaSharp.Backend.Cpu"" Version=""0.25.0"" />
+    <PackageReference Include=""LLamaSharp"" Version=""0.26.0"" />
+    <PackageReference Include=""LLamaSharp.Backend.Cpu"" Version=""0.26.0"" />
     <PackageReference Include=""Markdig"" Version=""0.33.0"" />
     <PackageReference Include=""Microsoft.Data.Sqlite"" Version=""10.0.3"" />
     <PackageReference Include=""Microsoft.Extensions.FileSystemGlobbing"" Version=""8.0.0"" />
@@ -2851,8 +2877,8 @@ internal static class EmbeddedUiHostRuntime
         if (includeLLamaSharp)
         {
             packageReferences = @"  <ItemGroup>
-    <PackageReference Include=""LLamaSharp"" Version=""0.25.0"" />
-    <PackageReference Include=""LLamaSharp.Backend.Cpu"" Version=""0.25.0"" />
+    <PackageReference Include=""LLamaSharp"" Version=""0.26.0"" />
+    <PackageReference Include=""LLamaSharp.Backend.Cpu"" Version=""0.26.0"" />
     <PackageReference Include=""Markdig"" Version=""0.33.0"" />
     <PackageReference Include=""Microsoft.Data.Sqlite"" Version=""10.0.3"" />
     <PackageReference Include=""Microsoft.Extensions.FileSystemGlobbing"" Version=""8.0.0"" />

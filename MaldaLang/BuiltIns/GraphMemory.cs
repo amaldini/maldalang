@@ -1787,6 +1787,7 @@ public class GraphMemoryInstance : ObjectInstance
         var useHybridLexical = GetBoolOption(options, "hybridLexical", false);
         var useBm25 = useHybridLexical && UseBm25Lexical(options);
         var lexicalWeight = GetDoubleOption(options, "lexicalWeight", DefaultLexicalWeight);
+        var lexicalMinScore = GetDoubleOption(options, "lexicalMinScore", DefaultLexicalMinScore);
         var excludeNodeIds = GetStringListOption(options, "excludeNodeIds");
         var scopeHierarchy = ResolveScopeHierarchy(scopeFilter, options);
         
@@ -1795,7 +1796,7 @@ public class GraphMemoryInstance : ObjectInstance
         var rerankTopK = Math.Max(maxResults, GetIntOption(options, "rerankTopK", 20));
         var useExplain = GetBoolOption(options, "explain", false);
         var semanticLimit = rerank ? rerankTopK : maxResults;
-        var semanticResults = QuerySemanticNodes(query, semanticLimit, phaseFilter, typeFilter, scopeFilter, scopeHierarchy, excludeTypeFilter, includeTypesFilter, minScore, maxDistance, useSynapse, useActivation, activationDecay, useHybridLexical, useBm25, lexicalWeight, diversity, excludeNodeIds, useExplain);
+        var semanticResults = QuerySemanticNodes(query, semanticLimit, phaseFilter, typeFilter, scopeFilter, scopeHierarchy, excludeTypeFilter, includeTypesFilter, minScore, maxDistance, useSynapse, useActivation, activationDecay, useHybridLexical, useBm25, lexicalWeight, lexicalMinScore, diversity, excludeNodeIds, useExplain);
         if (rerank)
             semanticResults = ApplyRerank(query, semanticResults, options, maxResults, rerankMode);
         if (!hybrid || recentCount <= 0)
@@ -2066,6 +2067,7 @@ public class GraphMemoryInstance : ObjectInstance
         bool useHybridLexical = false,
         bool useBm25 = false,
         double lexicalWeight = DefaultLexicalWeight,
+        double lexicalMinScore = DefaultLexicalMinScore,
         double diversity = DefaultDiversity,
         HashSet<string>? excludeNodeIds = null,
         bool explain = false)
@@ -2173,7 +2175,7 @@ public class GraphMemoryInstance : ObjectInstance
                     if (excludeNodeIds != null && excludeNodeIds.Contains(kvp.Key))
                         continue;
                     var lexicalScore = NormalizeBm25Score(kvp.Value);
-                    if (lexicalScore < DefaultLexicalMinScore)
+                    if (lexicalScore < lexicalMinScore)
                         continue;
                     var blended = BlendRetrievalScore(kvp.Key, 0.0, query, lexicalWeight, useSynapse, useBm25, lexicalScore);
                     if (!retrievalScores.TryGetValue(kvp.Key, out var existing) || blended > existing)
@@ -2190,7 +2192,7 @@ public class GraphMemoryInstance : ObjectInstance
                         continue;
                     
                     var lexicalScore = ComputeLexicalScore(query, GetStoredDescription(kvp.Key));
-                    if (lexicalScore < DefaultLexicalMinScore)
+                    if (lexicalScore < lexicalMinScore)
                         continue;
                     
                     var blended = BlendRetrievalScore(kvp.Key, 0.0, query, lexicalWeight, useSynapse, false, lexicalScore);

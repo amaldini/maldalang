@@ -2886,20 +2886,41 @@ public static class BuiltInFunctions
     {
         BuiltInArity.Require("getProgramDirectory", args, 0, 0);
 
+        // Prefer a real on-disk source script (interpreter). Ignore placeholders such as
+        // TranspiledBuiltinRuntime's currentFile "transpiled", which would otherwise resolve
+        // to the process CWD and miss assets placed beside the .exe (e.g. BGE-M3 GGUF).
         var currentFile = interpreter?.GetCurrentFile();
         if (!string.IsNullOrWhiteSpace(currentFile))
         {
             try
             {
                 var full = Path.GetFullPath(currentFile);
-                var dir = Path.GetDirectoryName(full);
-                if (!string.IsNullOrEmpty(dir))
-                    return RuntimeValue.String(dir);
+                if (File.Exists(full))
+                {
+                    var dir = Path.GetDirectoryName(full);
+                    if (!string.IsNullOrEmpty(dir))
+                        return RuntimeValue.String(dir);
+                }
             }
             catch
             {
-                // Fall through to executable / cwd.
+                // Fall through to executable directory.
             }
+        }
+
+        try
+        {
+            var processPath = System.Environment.ProcessPath;
+            if (!string.IsNullOrWhiteSpace(processPath))
+            {
+                var exeDir = Path.GetDirectoryName(Path.GetFullPath(processPath));
+                if (!string.IsNullOrEmpty(exeDir))
+                    return RuntimeValue.String(exeDir);
+            }
+        }
+        catch
+        {
+            // Fall through to AppContext.BaseDirectory.
         }
 
         var baseDir = AppContext.BaseDirectory;
