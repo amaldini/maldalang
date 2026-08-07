@@ -558,7 +558,7 @@ public class LanguageService : ILanguageService
             new { Name = "LlamaCppClient", Detail = "LlamaCppClient(modelPath?)", InsertText = "new LlamaCppClient()" },
             new { Name = "Conversation", Detail = "Conversation(client, systemPrompt)", InsertText = "new Conversation()" },
             new { Name = "Tool", Detail = "Tool(name, description, schema)", InsertText = "new Tool()" },
-            new { Name = "Agent", Detail = "Agent(name, role, instructions, client)", InsertText = "new Agent()" },
+            new { Name = "Agent", Detail = "Agent(name, role, instructions, client?)", InsertText = "new Agent()" },
             new { Name = "CodingAgent", Detail = "CodingAgent(name, role, instructions, client?, workingDirectory?)", InsertText = "new CodingAgent()" },
             new { Name = "GitAgent", Detail = "GitAgent(name, role, instructions, client?, workingDirectory?)", InsertText = "new GitAgent()" },
             new { Name = "DevAgent", Detail = "DevAgent(name, role, instructions, client?, workingDirectory?, includeSymbols?)", InsertText = "new DevAgent()" },

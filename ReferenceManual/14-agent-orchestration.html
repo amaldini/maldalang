@@ -256,7 +256,11 @@ var response = conversation.send();  // LLM will call read_file tool automatical
         <h2>16.7 Agent Class</h2>
         <p>The <code>Agent</code> class represents an autonomous agent with a specific role and instructions.</p>
         <h3>Constructor</h3>
-        <pre><code>var agent = new Agent(name, role, instructions, client);</code></pre>
+        <pre><code>// With default local LLM (auto-download from Hugging Face)
+var agent = new Agent(name, role, instructions);
+
+// With a custom client
+var agent = new Agent(name, role, instructions, client);</code></pre>
         <h3>Methods</h3>
         <ul>
             <li><code>think(prompt)</code> → <code>object</code>: Process a prompt and return response (handles tool calls automatically)</li>

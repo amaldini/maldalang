@@ -3942,39 +3942,58 @@ public partial class Interpreter
     
     private async Task<RuntimeValue> CreateAgentAsync(List<Expression> args)
     {
-        if (args.Count < 4)
-            throw new RuntimeException("Agent() expects 4 arguments: (name, role, instructions, client)");
+        // Agent(name, role, instructions, client?) — client optional; defaults to local LLM
+        // (same convention as CodingAgent / GitAgent / HumanAgent).
+        if (args.Count < 3 || args.Count > 4)
+            throw new RuntimeException("Agent() expects 3 or 4 arguments: (name, role, instructions, client?)");
         
         var name = await EvaluateAsync(args[0]);
         var role = await EvaluateAsync(args[1]);
         var instructions = await EvaluateAsync(args[2]);
-        var client = await EvaluateAsync(args[3]);
         
         if (name.Type != ValueType.String || role.Type != ValueType.String || 
-            instructions.Type != ValueType.String || client.Type != ValueType.Object)
-            throw new RuntimeException("Agent() expects (string, string, string, LLMClient)");
+            instructions.Type != ValueType.String)
+            throw new RuntimeException("Agent() expects (string, string, string, LLMClient?)");
         
-        var clientObj = client.AsObject();
         BuiltIns.LLMClientInstance? llmClient = null;
         BuiltIns.LlamaCppClientInstance? llamaClient = null;
         BuiltIns.LLMClientBridge.LLMClientBridgeInstance? bridgeClient = null;
-        
-        if (clientObj is BuiltIns.LLMClientInstance llm)
+
+        if (args.Count == 4)
         {
-            llmClient = llm;
+            var client = await EvaluateAsync(args[3]);
+            if (client.Type == ValueType.Null)
+            {
+                // Omitted client → default local below.
+            }
+            else if (client.Type != ValueType.Object)
+            {
+                throw new RuntimeException("Agent() fourth argument must be an LLMClient, LlamaCppClient, or LLMClientBridge");
+            }
+            else
+            {
+                var clientObj = client.AsObject();
+                if (clientObj is BuiltIns.LLMClientInstance llm)
+                {
+                    llmClient = llm;
+                }
+                else if (clientObj is BuiltIns.LlamaCppClientInstance llama)
+                {
+                    llamaClient = llama;
+                }
+                else if (clientObj is BuiltIns.LLMClientBridge.LLMClientBridgeInstance bridge)
+                {
+                    bridgeClient = bridge;
+                }
+                else
+                {
+                    throw new RuntimeException("Agent() fourth argument must be an LLMClient, LlamaCppClient, or LLMClientBridge");
+                }
+            }
         }
-        else if (clientObj is BuiltIns.LlamaCppClientInstance llama)
-        {
-            llamaClient = llama;
-        }
-        else if (clientObj is BuiltIns.LLMClientBridge.LLMClientBridgeInstance bridge)
-        {
-            bridgeClient = bridge;
-        }
-        else
-        {
-            throw new RuntimeException("Agent() fourth argument must be an LLMClient, LlamaCppClient, or LLMClientBridge");
-        }
+
+        if (llmClient == null && llamaClient == null && bridgeClient == null)
+            llamaClient = BuiltIns.DefaultLocalLlm.GetDefaultLocalClient();
         
         var agent = new BuiltIns.AgentInstance();
         agent.Initialize(name.AsString(), role.AsString(), instructions.AsString(), llmClient, llamaClient, bridgeClient, _inputProvider);

@@ -7111,6 +7111,52 @@ public class CSharpTranspiler
         _output.AppendLine();
     }
 
+    /// <summary>
+    /// Last-expression-wins returns must not wrap void C# calls (print / MarkupLine, etc.).
+    /// </summary>
+    private void EmitLastExpressionAsReturn(Expression expr, TranspiledClrType blockReturnType)
+    {
+        if (ExpressionTranspilesToVoid(expr))
+        {
+            WriteIndent();
+            TranspileExpression(expr);
+            _output.AppendLine(";");
+            WriteIndent();
+            if (blockReturnType == TranspiledClrType.Double)
+                _output.AppendLine("return 0d;");
+            else
+                _output.AppendLine("return null;");
+            return;
+        }
+
+        WriteIndent();
+        _output.Append("return ");
+        _output.Append(GetCoercionExpressionPrefix(blockReturnType));
+        TranspileExpression(expr);
+        _output.Append(GetCoercionExpressionSuffix(blockReturnType));
+        _output.AppendLine(";");
+    }
+
+    private static bool ExpressionTranspilesToVoid(Expression expr)
+    {
+        if (expr is not FunctionCallExpression call)
+            return false;
+
+        if (call.Callee is IdentifierExpression id)
+            return id.Name is "print";
+
+        if (call.Callee is MemberAccessExpression member &&
+            member.Object is IdentifierExpression obj)
+        {
+            if (obj.Name == "AnsiConsole" && member.Member is "markup" or "markupLine")
+                return true;
+            if (obj.Name == StdLibNamespaces.IoModule && member.Member == "print")
+                return true;
+        }
+
+        return false;
+    }
+
     private void TranspileFunctionBlock(BlockStatement block, string functionName, int line, bool appendImplicitNullReturn = false)
     {
         PushTypedScope();
@@ -7144,12 +7190,7 @@ public class CSharpTranspiler
             var isLast = i == block.Statements.Count - 1;
             if (useLastExprWins && isLast && stmt is ExpressionStatement exprStmt)
             {
-                WriteIndent();
-                _output.Append("return ");
-                _output.Append(GetCoercionExpressionPrefix(blockReturnType));
-                TranspileExpression(exprStmt.Expression);
-                _output.Append(GetCoercionExpressionSuffix(blockReturnType));
-                _output.AppendLine(";");
+                EmitLastExpressionAsReturn(exprStmt.Expression, blockReturnType);
             }
             else
             {
@@ -7302,12 +7343,7 @@ public class CSharpTranspiler
             var isLast = (i == block.Statements.Count - 1);
             if (useLastExprWins && isLast && stmt is ExpressionStatement exprStmt)
             {
-                WriteIndent();
-                _output.Append("return ");
-                _output.Append(GetCoercionExpressionPrefix(blockReturnType));
-                TranspileExpression(exprStmt.Expression);
-                _output.Append(GetCoercionExpressionSuffix(blockReturnType));
-                _output.AppendLine(";");
+                EmitLastExpressionAsReturn(exprStmt.Expression, blockReturnType);
             }
             else
             {
@@ -10394,29 +10430,80 @@ public class CSharpTranspiler
             return;
         }
         
-        if (className == "Agent" && newExpr.Arguments.Count == 4)
+        // OpenRouterClient(model?) — coerce model because locals/params are object-typed.
+        if (className == "OpenRouterClient" && newExpr.Arguments.Count <= 1)
         {
-            // Agent(name, role, instructions, client) -> new AgentInstance() then Initialize()
+            _output.Append("new MaldaLang.BuiltIns.OpenRouterClientInstance(");
+            if (newExpr.Arguments.Count == 1)
+            {
+                _output.Append("RuntimeHelpers.CoerceToString(");
+                TranspileExpression(newExpr.Arguments[0]);
+                _output.Append(")");
+            }
+            _output.Append(")");
+            return;
+        }
+
+        // Agent(name, role, instructions, client?) — same optional-client convention as CodingAgent.
+        // Vars/params are object-typed, so coerce strings and resolve client via runtime type tests.
+        if (className == "Agent" && newExpr.Arguments.Count is 3 or 4)
+        {
             _output.Append("(new System.Func<MaldaLang.BuiltIns.AgentInstance>(() => { ");
             _output.Append("var __agent = new MaldaLang.BuiltIns.AgentInstance(); ");
-            _output.Append("object __clientObj = ");
-            TranspileExpression(newExpr.Arguments[3]);
-            _output.Append("; ");
+            _output.Append("var __name = RuntimeHelpers.CoerceToString(");
+            TranspileExpression(newExpr.Arguments[0]);
+            _output.Append("); ");
+            _output.Append("var __role = RuntimeHelpers.CoerceToString(");
+            TranspileExpression(newExpr.Arguments[1]);
+            _output.Append("); ");
+            _output.Append("var __instructions = RuntimeHelpers.CoerceToString(");
+            TranspileExpression(newExpr.Arguments[2]);
+            _output.Append("); ");
             _output.Append("MaldaLang.BuiltIns.LLMClientInstance? __llmClient = null; ");
             _output.Append("MaldaLang.BuiltIns.LlamaCppClientInstance? __llamaClient = null; ");
             _output.Append("MaldaLang.BuiltIns.LLMClientBridge.LLMClientBridgeInstance? __bridgeClient = null; ");
-            _output.Append("if (__clientObj is MaldaLang.BuiltIns.LLMClientInstance __llm) __llmClient = __llm; ");
-            _output.Append("if (__clientObj is MaldaLang.BuiltIns.LlamaCppClientInstance __llama) __llamaClient = __llama; ");
-            _output.Append("if (__clientObj is MaldaLang.BuiltIns.LLMClientBridge.LLMClientBridgeInstance __bridge) __bridgeClient = __bridge; ");
-            _output.Append("__agent.Initialize(");
-            TranspileExpression(newExpr.Arguments[0]);
-            _output.Append(", ");
-            TranspileExpression(newExpr.Arguments[1]);
-            _output.Append(", ");
-            TranspileExpression(newExpr.Arguments[2]);
-            _output.Append(", __llmClient, __llamaClient, __bridgeClient, null); ");
+            if (newExpr.Arguments.Count == 4)
+            {
+                _output.Append("object __clientObj = ");
+                TranspileExpression(newExpr.Arguments[3]);
+                _output.Append("; ");
+                _output.Append("if (__clientObj is MaldaLang.BuiltIns.LLMClientInstance __llm) __llmClient = __llm; ");
+                _output.Append("else if (__clientObj is MaldaLang.BuiltIns.LlamaCppClientInstance __llama) __llamaClient = __llama; ");
+                _output.Append("else if (__clientObj is MaldaLang.BuiltIns.LLMClientBridge.LLMClientBridgeInstance __bridge) __bridgeClient = __bridge; ");
+                _output.Append("else if (__clientObj != null) throw new System.Exception(\"Agent() fourth argument must be an LLMClient, LlamaCppClient, or LLMClientBridge\"); ");
+            }
+            // No client / null → default local LLM (same as CodingAgent when client is omitted).
+            _output.Append("if (__llmClient == null && __llamaClient == null && __bridgeClient == null) ");
+            _output.Append("__llamaClient = MaldaLang.BuiltIns.DefaultLocalLlm.GetDefaultLocalClient(); ");
+            _output.Append("__agent.Initialize(__name, __role, __instructions, __llmClient, __llamaClient, __bridgeClient, null); ");
             _output.Append("__agent.SetInterpreter(MaldaLang.Runtime.TranspiledBuiltinRuntime.GetOrCreateInterpreter()); ");
             _output.Append("return __agent; })())");
+            return;
+        }
+
+        // CodingAgent(name, role, instructions, client?, workingDirectory?)
+        // 4th arg is either workingDirectory (string) or client (object) — disambiguate at runtime.
+        if (className == "CodingAgent" && newExpr.Arguments.Count is >= 3 and <= 5)
+        {
+            TranspileCodingAgentFamilyNew(newExpr, "MaldaLang.BuiltIns.CodingAgentInstance");
+            return;
+        }
+
+        if (className == "GitAgent" && newExpr.Arguments.Count is >= 3 and <= 5)
+        {
+            TranspileCodingAgentFamilyNew(newExpr, "MaldaLang.BuiltIns.GitAgentInstance");
+            return;
+        }
+
+        if (className == "HumanAgent" && newExpr.Arguments.Count is >= 3 and <= 5)
+        {
+            TranspileCodingAgentFamilyNew(newExpr, "MaldaLang.BuiltIns.HumanAgentInstance");
+            return;
+        }
+
+        if (className == "MALDACodingAgent" && newExpr.Arguments.Count is >= 3 and <= 5)
+        {
+            TranspileCodingAgentFamilyNew(newExpr, "MaldaLang.BuiltIns.MALDACodingAgentInstance");
             return;
         }
 
@@ -10516,6 +10603,74 @@ public class CSharpTranspiler
             TranspileExpression(newExpr.Arguments[i]);
         }
         _output.Append(")");
+    }
+
+    /// <summary>
+    /// CodingAgent / GitAgent / HumanAgent / MALDACodingAgent share the same ctor shape and
+    /// optional 4th-arg disambiguation (workingDirectory string vs LLM client object).
+    /// </summary>
+    private void TranspileCodingAgentFamilyNew(NewExpression newExpr, string instanceTypeName)
+    {
+        _output.Append("(new System.Func<");
+        _output.Append(instanceTypeName);
+        _output.Append(">(() => { ");
+        _output.Append("var __name = RuntimeHelpers.CoerceToString(");
+        TranspileExpression(newExpr.Arguments[0]);
+        _output.Append("); ");
+        _output.Append("var __role = RuntimeHelpers.CoerceToString(");
+        TranspileExpression(newExpr.Arguments[1]);
+        _output.Append("); ");
+        _output.Append("var __instructions = RuntimeHelpers.CoerceToString(");
+        TranspileExpression(newExpr.Arguments[2]);
+        _output.Append("); ");
+        _output.Append("MaldaLang.BuiltIns.LLMClientInstance? __llmClient = null; ");
+        _output.Append("MaldaLang.BuiltIns.LlamaCppClientInstance? __llamaClient = null; ");
+        _output.Append("MaldaLang.BuiltIns.LLMClientBridge.LLMClientBridgeInstance? __bridgeClient = null; ");
+        _output.Append("string? __workDir = null; ");
+
+        if (newExpr.Arguments.Count >= 4)
+        {
+            _output.Append("object __arg3 = ");
+            TranspileExpression(newExpr.Arguments[3]);
+            _output.Append("; ");
+            if (newExpr.Arguments.Count == 4)
+            {
+                // 4th arg: string → workingDirectory; object → client (interpreter parity).
+                _output.Append("if (__arg3 is string __workDirStr) __workDir = __workDirStr; ");
+                _output.Append("else if (__arg3 is MaldaLang.BuiltIns.LLMClientInstance __llm) __llmClient = __llm; ");
+                _output.Append("else if (__arg3 is MaldaLang.BuiltIns.LlamaCppClientInstance __llama) __llamaClient = __llama; ");
+                _output.Append("else if (__arg3 is MaldaLang.BuiltIns.LLMClientBridge.LLMClientBridgeInstance __bridge) __bridgeClient = __bridge; ");
+                _output.Append("else if (__arg3 != null) throw new System.Exception(\"CodingAgent/GitAgent fourth argument must be an LLM client or workingDirectory string\"); ");
+            }
+            else
+            {
+                // 5 args: client + workingDirectory
+                _output.Append("if (__arg3 is MaldaLang.BuiltIns.LLMClientInstance __llm) __llmClient = __llm; ");
+                _output.Append("else if (__arg3 is MaldaLang.BuiltIns.LlamaCppClientInstance __llama) __llamaClient = __llama; ");
+                _output.Append("else if (__arg3 is MaldaLang.BuiltIns.LLMClientBridge.LLMClientBridgeInstance __bridge) __bridgeClient = __bridge; ");
+                _output.Append("else if (__arg3 != null) throw new System.Exception(\"CodingAgent/GitAgent fourth argument must be an LLM client\"); ");
+                _output.Append("__workDir = RuntimeHelpers.CoerceToString(");
+                TranspileExpression(newExpr.Arguments[4]);
+                _output.Append("); ");
+            }
+        }
+
+        _output.Append(instanceTypeName);
+        _output.Append(" __agent; ");
+        _output.Append("if (__llamaClient != null && __llmClient == null && __bridgeClient == null) ");
+        _output.Append("__agent = new ");
+        _output.Append(instanceTypeName);
+        _output.Append("(__name, __role, __instructions, __llamaClient, __workDir, null); ");
+        _output.Append("else if (__bridgeClient != null) ");
+        _output.Append("__agent = new ");
+        _output.Append(instanceTypeName);
+        _output.Append("(__name, __role, __instructions, __llmClient, __llamaClient, __bridgeClient, __workDir ?? \".\", null); ");
+        _output.Append("else ");
+        _output.Append("__agent = new ");
+        _output.Append(instanceTypeName);
+        _output.Append("(__name, __role, __instructions, __llmClient, __workDir, null); ");
+        _output.Append("__agent.SetInterpreter(MaldaLang.Runtime.TranspiledBuiltinRuntime.GetOrCreateInterpreter()); ");
+        _output.Append("return __agent; })())");
     }
 
     private string MapBuiltInClassName(string className)
