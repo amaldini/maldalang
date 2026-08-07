@@ -560,7 +560,11 @@ gitPull(".", "origin", "main");                       // Pull from remote</code>
         // - success (boolean): true if execution completed without errors
         // - output (string): Standard output from the program
         // - error (string): Parse error message if any, empty string otherwise
-        // - runtimeError (string, optional): Runtime error message if any</code></pre>
+        // - runtimeError (string, optional): Runtime error message if any
+
+        // Compile a .malda program to an executable (optional embed folder = CLI --embed-folder)
+        var packed = compileMALDA("app.malda", "dist/app.exe", "transpile", "secondbrain");
+        // embedFolder may be "path" or "path=alias"; result: { success, outputPath, error, errors }</code></pre>
         <h3>12.10.1 getSymbols(sourceOrFilePath)</h3>
         <p>Parses MALDA code and extracts structured symbol information (classes, functions, actors, prompts) with line numbers and signatures. Accepts one string argument: a file path to a <code>.malda</code> file or MALDA source code. If the string looks like a file path (contains path separators or ends with <code>.malda</code>) and the file exists, the file is read and its content is parsed; otherwise the argument is treated as source code. Path traversal (<code>..</code>, <code>~</code>) is rejected. Returns an object with <code>classes</code>, <code>functions</code>, <code>actors</code>, <code>prompts</code>, and <code>parseErrors</code> (all arrays). Each class/actor has <code>name</code>, <code>line</code>, <code>column</code>, <code>members</code>; each function has <code>name</code>, <code>line</code>, <code>column</code>, <code>parameters</code>, <code>signature</code>; each prompt has <code>name</code>, <code>line</code>, <code>column</code>, <code>parameters</code>, <code>returnType?</code>, <code>signature</code>. Parse errors have <code>line</code>, <code>column</code>, <code>message</code>.</p>
         <pre><code>var sym = getSymbols("Examples/OOP/classes_objects.malda");   // From file

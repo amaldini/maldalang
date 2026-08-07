@@ -3,12 +3,14 @@
 // Lexical-retrieval second brain. For GraphMemory + embedding ASK (synonyms /
 // paraphrases), see the sibling: Examples/Agents/secondbrain_semantic.malda
 //
-// Two-mode program:
+// Modes:
 //   1) BUILD   a CodingAgent explores documentation (.md / .html) in a user-chosen
 //              folder, proposes a theme taxonomy, then distills a "second brain":
 //              hierarchical linked .md notes (index -> topic hubs -> notes).
 //   2) ASK     local HttpServer web UI: catalog + token-overlap retrieval, LLM
 //              answers in Markdown (rendered with markdownToHtml).
+//   3) language  switch console/UI language (English / Italian).
+//   4) PACK    compile a portable ASK-only .exe with the brain embedded.
 //
 // Run:   malda Examples/Agents/secondbrain.malda
 //
@@ -20,8 +22,11 @@
 //        Notes stay in the source document language; technical terms are unchanged.
 //        ASK opens http://localhost:39018/ (Stop server / menu returns to console).
 //
-// Compile (ASK-only portable exe with embedded brain, no disk extract):
+// Pack portable ASK exe (menu option 4, or CLI):
 //   malda compile Examples/Agents/secondbrain.malda -o dist/secondbrain.exe --mode transpile --embed-folder secondbrain
+//   When the embedded folder is present at runtime, startup skips the console
+//   menu/language prompt and opens ASK immediately (language is chosen in the
+//   web UI; exits when the server stops).
 
 // ---------------------------------------------------------------- configuration
 
@@ -35,6 +40,15 @@ var UI_LANG = "it";             // "en" | "it" — UI messages
 var ASK_HTTP_PORT = 39018;
 var ASK_SESSION_ID = "secondbrain-ask-lexical";
 var ASK_STORE = "SecondBrainAsk";
+// ASK web header — change these to brand a portable build.
+var ASK_PAGE_TITLE = "Second brain — ASK";
+var ASK_POWERED_BY = "Powered by MALDA: Multi Agent Language with Development Automation";
+var ASK_POWERED_BY_URL = "https://github.com/amaldini/maldalang";
+// Optional logo left of the title: "", file path, embed:alias/..., http(s):, or data:
+var ASK_LOGO = "";
+var SOURCE_SCRIPT_NAME = "secondbrain.malda";
+var EMBED_ALIAS = "secondbrain";
+var DEFAULT_PACK_OUTPUT = "dist/secondbrain.exe";
 var askHttpServer = null;
 
 // ---------------------------------------------------------------- UI i18n
@@ -1614,7 +1628,7 @@ function askBrain() {
         "sourceFolder": sourceFolder,
         "retrieval": retrieval,
         "llm": modelLabel(),
-        "title": t("Second brain — ASK", "Second brain — CHIEDI"),
+        "title": ASK_PAGE_TITLE,
         "subtitle": subtitle
     });
 
@@ -1650,6 +1664,88 @@ function askBrain() {
     return true;
 }
 
+// ---------------------------------------------------------------- pack portable ASK exe
+
+function packPortableAskExe() {
+    AnsiConsole.markupLine("");
+    AnsiConsole.panel(
+        t("Compiles a portable ASK-only .exe that embeds the second brain folder " +
+            "(no disk extract). Requires a brain built with mode 1.",
+            "Compila un .exe ASK portatile che incorpora la cartella del second brain " +
+            "(nessuna estrazione su disco). Serve un brain creato con la modalita' 1."),
+        t("[bold]Mode 4 - PACK[/]", "[bold]Modalita' 4 - PACCHETTO[/]"), "rounded");
+
+    var brainDir = str.trim(io.input(t(
+        "Second brain folder [" + EMBED_ALIAS + "]: ",
+        "Cartella del second brain [" + EMBED_ALIAS + "]: ")));
+    if (brainDir == "") {
+        brainDir = EMBED_ALIAS;
+    }
+    if (not io.hasDirectory(brainDir)) {
+        AnsiConsole.markupLine("[red]" + t("Folder not found:", "Cartella non trovata:") +
+            "[/] " + brainDir);
+        return false;
+    }
+    if (not io.hasFile(io.pathJoin(brainDir, CATALOG_NAME))) {
+        AnsiConsole.markupLine("[red]" + t("Missing", "Manca") + " " + CATALOG_NAME +
+            t(" in ", " in ") + brainDir +
+            t(". Run mode 1 (BUILD) first.", ". Esegui prima la modalita' 1 (COSTRUISCI).") + "[/]");
+        return false;
+    }
+
+    var outputPath = str.trim(io.input(t(
+        "Output exe [" + DEFAULT_PACK_OUTPUT + "]: ",
+        "Exe di output [" + DEFAULT_PACK_OUTPUT + "]: ")));
+    if (outputPath == "") {
+        outputPath = DEFAULT_PACK_OUTPUT;
+    }
+
+    var sourcePath = io.pathJoin(getProgramDirectory(), SOURCE_SCRIPT_NAME);
+    if (not io.hasFile(sourcePath)) {
+        sourcePath = SOURCE_SCRIPT_NAME;
+    }
+    if (not io.hasFile(sourcePath)) {
+        AnsiConsole.markupLine("[red]" + t("Source script not found:", "Sorgente non trovato:") +
+            "[/] " + SOURCE_SCRIPT_NAME);
+        return false;
+    }
+
+    // Keep the runtime alias stable so the packed exe auto-starts ASK.
+    var embedSpec = brainDir + "=" + EMBED_ALIAS;
+    AnsiConsole.markupLine("[dim]" + t("Compiling (this may take a minute)…",
+        "Compilazione in corso (puo' richiedere un minuto)…") + "[/]");
+    AnsiConsole.markupLine("[dim]compileMALDA(\"" + sourcePath + "\", \"" + outputPath +
+        "\", \"transpile\", \"" + embedSpec + "\")[/]");
+
+    var result = compileMALDA(sourcePath, outputPath, "transpile", embedSpec);
+    if (result == null or result.success != true) {
+        var err = "";
+        if (result != null and result.error != null) {
+            err = string(result.error);
+        }
+        if (err == "") {
+            err = t("Unknown compilation error.", "Errore di compilazione sconosciuto.");
+        }
+        AnsiConsole.markupLine("[red]" + t("Pack failed:", "Pacchetto non riuscito:") +
+            "[/] " + err);
+        return false;
+    }
+
+    var written = outputPath;
+    if (result.outputPath != null and string(result.outputPath) != "") {
+        written = string(result.outputPath);
+    }
+    AnsiConsole.markupLine("[green]" + t("Portable ASK exe ready:", "Exe ASK portatile pronto:") +
+        "[/] [bold]" + written + "[/]");
+    AnsiConsole.markupLine("[dim]" + t(
+        "Run the .exe to open ASK with the embedded brain. Optional logo: put logo.png " +
+            "in the brain folder and set ASK_LOGO = \"embed:" + EMBED_ALIAS + "/logo.png\" before packing.",
+        "Avvia l'.exe per aprire ASK col brain incorporato. Logo opzionale: metti logo.png " +
+            "nella cartella del brain e imposta ASK_LOGO = \"embed:" + EMBED_ALIAS +
+            "/logo.png\" prima del pack.") + "[/]");
+    return true;
+}
+
 // ---------------------------------------------------------------- menu
 
 function showMenu() {
@@ -1658,32 +1754,42 @@ function showMenu() {
         t("[bold]1[/]  BUILD   a CodingAgent reads .md/.html and distills the second brain\n" +
             "[bold]2[/]  ASK     web UI — questions against the second brain\n" +
             "[bold]3[/]  language  switch UI language (English / Italian)\n" +
+            "[bold]4[/]  PACK    portable ASK .exe with embedded second brain\n" +
             "[bold]0[/]  quit",
             "[bold]1[/]  COSTRUISCI  un CodingAgent legge .md/.html e distilla il second brain\n" +
             "[bold]2[/]  CHIEDI      UI web — domande sul second brain\n" +
             "[bold]3[/]  lingua      cambia lingua interfaccia (English / Italiano)\n" +
+            "[bold]4[/]  PACCHETTO  .exe ASK portatile con second brain incorporato\n" +
             "[bold]0[/]  esci"),
         "[bold blue]MALDA second brain[/]", "double");
 }
 
-chooseLanguage();
-showMenu();
-while (true) {
-    var choice = str.trim(io.input(t("Choice (1/2/3/0): ", "Scelta (1/2/3/0): ")));
-    if (choice == "" or choice == "0") {
-        io.print(t("Goodbye.", "A presto."));
-        break;
-    }
-    if (choice == "1") {
-        buildBrain();
-        showMenu();
-    } else if (choice == "2") {
-        askBrain();
-        showMenu();
-    } else if (choice == "3") {
-        chooseLanguage();
-        showMenu();
-    } else {
-        AnsiConsole.markupLine("[yellow]" + t("Invalid choice.", "Scelta non valida.") + "[/]");
+if (io.hasEmbeddedFolder("secondbrain")) {
+    // Portable ASK-only exe: skip console menu/language — ASK web UI has EN/IT.
+    askBrain();
+} else {
+    chooseLanguage();
+    showMenu();
+    while (true) {
+        var choice = str.trim(io.input(t("Choice (1/2/3/4/0): ", "Scelta (1/2/3/4/0): ")));
+        if (choice == "" or choice == "0") {
+            io.print(t("Goodbye.", "A presto."));
+            break;
+        }
+        if (choice == "1") {
+            buildBrain();
+            showMenu();
+        } else if (choice == "2") {
+            askBrain();
+            showMenu();
+        } else if (choice == "3") {
+            chooseLanguage();
+            showMenu();
+        } else if (choice == "4") {
+            packPortableAskExe();
+            showMenu();
+        } else {
+            AnsiConsole.markupLine("[yellow]" + t("Invalid choice.", "Scelta non valida.") + "[/]");
+        }
     }
 }

@@ -179,6 +179,7 @@ Community help on the Web IDE (Monaco UX, diagnostics, examples browser) is welc
 | [`docs/releases/v0.1.2.md`](docs/releases/v0.1.2.md) | Semantic Second Brain, BGE-M3, `getProgramDirectory()` |
 | [`docs/releases/v0.1.3.md`](docs/releases/v0.1.3.md) | GraphMemory read-only load from `embed:` |
 | [`docs/releases/v0.1.4.md`](docs/releases/v0.1.4.md) | Second Brain ASK web UI, `markdownToHtml`, empty-brain chat |
+| [`docs/releases/v0.1.5.md`](docs/releases/v0.1.5.md) | Portable ASK branding, menu PACK, `compileMALDA` embedFolder |
 | [`Examples/Basics`](Examples/Basics) | Language basics |
 | [`Examples/Prompts`](Examples/Prompts) | Prompts and agents |
 | [`Examples/Web`](Examples/Web) | REST and UI examples |

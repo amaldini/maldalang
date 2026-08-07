@@ -2,6 +2,8 @@
 //
 // Included by the host program. Host must define:
 //   ASK_HTTP_PORT, ASK_SESSION_ID, ASK_STORE  (vars)
+//   ASK_PAGE_TITLE, ASK_POWERED_BY, ASK_POWERED_BY_URL  (header branding)
+//   ASK_LOGO  (optional header logo: "", file path, embed:..., http(s):, or data:)
 //   askHttpServer                            (var, initially null)
 //   runAskTurn(question) -> { question, answer, sources, error }
 //   UI_LANG                                  (existing)
@@ -170,7 +172,14 @@ function askPageStyles() {
         "border-bottom:1px solid var(--line);box-shadow:0 8px 18px rgba(28,36,48,0.04)}" +
         ".sticky-header-inner{display:flex;justify-content:space-between;gap:16px;" +
         "align-items:flex-start;flex-wrap:wrap}" +
+        ".brand{display:flex;align-items:flex-start;gap:14px;min-width:0;flex:1}" +
+        ".logo{width:56px;height:56px;object-fit:contain;flex-shrink:0;border-radius:8px;" +
+        "background:#fff;border:1px solid var(--line)}" +
+        ".brand-text{min-width:0}" +
         "h1{font-size:1.55rem;margin:0 0 4px;letter-spacing:-0.02em}" +
+        ".powered-by{margin:0 0 6px;font-family:system-ui,sans-serif;font-size:0.82rem;line-height:1.35}" +
+        ".powered-by a{color:var(--accent-ink);text-decoration:none;border-bottom:1px solid transparent}" +
+        ".powered-by a:hover{border-bottom-color:var(--accent)}" +
         ".subtitle{margin:0;color:var(--muted);font-family:system-ui,sans-serif;font-size:0.9rem}" +
         ".lang{font-family:system-ui,sans-serif;display:flex;gap:8px;align-items:center;padding-top:4px}" +
         ".lang a{color:var(--accent-ink);text-decoration:none;border-bottom:1px solid transparent}" +
@@ -228,6 +237,53 @@ function askPageStyles() {
         "</style>";
 }
 
+function askLogoMime(path) {
+    var lower = str.lower(askAsText(path));
+    if (str.endsWith(lower, ".png")) {
+        return "image/png";
+    }
+    if (str.endsWith(lower, ".jpg") or str.endsWith(lower, ".jpeg")) {
+        return "image/jpeg";
+    }
+    if (str.endsWith(lower, ".gif")) {
+        return "image/gif";
+    }
+    if (str.endsWith(lower, ".webp")) {
+        return "image/webp";
+    }
+    if (str.endsWith(lower, ".svg")) {
+        return "image/svg+xml";
+    }
+    if (str.endsWith(lower, ".ico")) {
+        return "image/x-icon";
+    }
+    return "application/octet-stream";
+}
+
+// Resolves ASK_LOGO once per ASK session (cached in ui.state).
+// Accepts "", http(s):/data: URL, or a local/embed file path.
+function askResolveLogoSrc() {
+    var cached = ui.state(ASK_STORE, "logoSrc", null, ASK_SESSION_ID);
+    if (cached != null) {
+        return askAsText(cached);
+    }
+    var logo = str.trim(askAsText(ASK_LOGO));
+    var src = "";
+    if (logo != "") {
+        if (str.startsWith(logo, "http://") or str.startsWith(logo, "https://") or
+                str.startsWith(logo, "data:")) {
+            src = logo;
+        } else if (io.hasFile(logo)) {
+            var b64 = io.readFileBase64(logo);
+            if (b64 != null and askAsText(b64) != "") {
+                src = "data:" + askLogoMime(logo) + ";base64," + askAsText(b64);
+            }
+        }
+    }
+    ui.setState(ASK_STORE, "logoSrc", src, ASK_SESSION_ID);
+    return src;
+}
+
 function askRenderPage() {
     var lang = askGetLang();
     var history = askGetHistory();
@@ -235,8 +291,14 @@ function askRenderPage() {
     var session = askGetSession();
     var title = askAsText(session.title);
     if (title == "") {
-        title = askT("Second brain — ASK", "Second brain — CHIEDI");
+        title = askAsText(ASK_PAGE_TITLE);
     }
+    if (title == "") {
+        title = "Second brain — ASK";
+    }
+    var poweredBy = askAsText(ASK_POWERED_BY);
+    var poweredByUrl = askAsText(ASK_POWERED_BY_URL);
+    var logoSrc = askResolveLogoSrc();
     var enClass = "";
     var itClass = "";
     if (lang == "en") {
@@ -252,9 +314,25 @@ function askRenderPage() {
         askPageStyles() +
         "</head><body><main>";
 
-    html = html + "<header class='sticky-header'><div class='sticky-header-inner'><div>" +
-        "<h1>" + askEscapeHtml(title) + "</h1>" +
-        "<p class='subtitle'>" + askEscapeHtml(askAsText(session.subtitle)) + "</p></div>" +
+    html = html + "<header class='sticky-header'><div class='sticky-header-inner'>" +
+        "<div class='brand'>";
+    if (logoSrc != "") {
+        html = html + "<img class='logo' src='" + askEscapeHtml(logoSrc) +
+            "' alt='' width='56' height='56'>";
+    }
+    html = html + "<div class='brand-text'>" +
+        "<h1>" + askEscapeHtml(title) + "</h1>";
+    if (poweredBy != "") {
+        if (poweredByUrl != "") {
+            html = html + "<p class='powered-by'><a href='" + askEscapeHtml(poweredByUrl) +
+                "' target='_blank' rel='noopener noreferrer'>" +
+                askEscapeHtml(poweredBy) + "</a></p>";
+        } else {
+            html = html + "<p class='powered-by'>" + askEscapeHtml(poweredBy) + "</p>";
+        }
+    }
+    html = html + "<p class='subtitle'>" + askEscapeHtml(askAsText(session.subtitle)) +
+        "</p></div></div>" +
         "<div class='lang'>" +
         "<a class='" + str.trim(enClass) + "' href='/?lang=en'>English</a>" +
         "<span aria-hidden='true'>·</span>" +

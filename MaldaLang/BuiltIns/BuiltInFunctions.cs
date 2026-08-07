@@ -7000,8 +7000,9 @@ public static class BuiltInFunctions
     
     private static RuntimeValue BuiltInCompileMALDA(List<RuntimeValue> args)
     {
-        if (args.Count == 0 || args[0].Type != ValueType.String)
-            throw new Exception("compileMALDA() expects at least 1 argument: sourcePath (string)");
+        BuiltInArity.Require("compileMALDA", args, 1, 4, "sourcePath, outputPath?, mode?, embedFolder?");
+        if (args[0].Type != ValueType.String)
+            throw new Exception("compileMALDA() sourcePath must be a string");
         
         var sourcePath = args[0].AsString();
         if (string.IsNullOrWhiteSpace(sourcePath))
@@ -7012,6 +7013,10 @@ public static class BuiltInFunctions
         if (args.Count > 1 && args[1].Type == ValueType.String)
         {
             outputPath = args[1].AsString();
+        }
+        else if (args.Count > 1 && args[1].Type != ValueType.Null)
+        {
+            throw new Exception("compileMALDA() outputPath must be a string when provided");
         }
         
         // Extract optional mode parameter
@@ -7028,6 +7033,21 @@ public static class BuiltInFunctions
             {
                 throw new Exception($"compileMALDA() mode must be 'interpreter' or 'transpile', got '{modeStr}'");
             }
+        }
+        else if (args.Count > 2 && args[2].Type != ValueType.Null)
+        {
+            throw new Exception("compileMALDA() mode must be a string when provided");
+        }
+
+        // Optional embed folder: "path" or "path=alias" (same as CLI --embed-folder)
+        string[]? embedFolderArgs = null;
+        if (args.Count > 3)
+        {
+            if (args[3].Type != ValueType.String)
+                throw new Exception("compileMALDA() embedFolder must be a string (path or path=alias)");
+            var embedFolder = args[3].AsString();
+            if (!string.IsNullOrWhiteSpace(embedFolder))
+                embedFolderArgs = new[] { embedFolder };
         }
         
         // Resolve file path
@@ -7105,21 +7125,62 @@ public static class BuiltInFunctions
             
             var compiler = Activator.CreateInstance(compilerType);
             var modeEnum = Enum.ToObject(compilationModeType, modeValue);
-            
-            var compileMethod = compilerType.GetMethod("Compile", new[] 
-            { 
-                typeof(string), 
-                typeof(string), 
-                compilationModeType, 
-                typeof(bool) 
-            });
-            
+
+            // Prefer the overload that accepts --embed-folder args so portable ASK builds
+            // can pack a directory without shelling out to the CLI.
+            var compileMethod = compilerType.GetMethods()
+                .FirstOrDefault(m =>
+                {
+                    if (m.Name != "Compile")
+                        return false;
+                    var parameters = m.GetParameters();
+                    return parameters.Length == 9
+                        && parameters[0].ParameterType == typeof(string)
+                        && parameters[1].ParameterType == typeof(string)
+                        && parameters[2].ParameterType == compilationModeType
+                        && parameters[8].ParameterType == typeof(string[]);
+                });
+
+            if (compileMethod == null)
+            {
+                compileMethod = compilerType.GetMethod("Compile", new[]
+                {
+                    typeof(string),
+                    typeof(string),
+                    compilationModeType,
+                    typeof(bool)
+                });
+            }
+
             if (compileMethod == null)
             {
                 throw new Exception("Compiler.Compile method not found.");
             }
-            
-            var result = compileMethod.Invoke(compiler, new object[] { filePath, finalOutputPath, modeEnum, false });
+
+            object? result;
+            if (compileMethod.GetParameters().Length == 9)
+            {
+                result = compileMethod.Invoke(compiler, new object?[]
+                {
+                    filePath,
+                    finalOutputPath,
+                    modeEnum,
+                    false, // includeLLamaSharp
+                    false, // includeUiHost
+                    null,  // profilingOptions
+                    1,     // typedTranspileLevel
+                    false, // includeOptionalPacks
+                    embedFolderArgs
+                });
+            }
+            else
+            {
+                if (embedFolderArgs != null && embedFolderArgs.Length > 0)
+                {
+                    throw new Exception("compileMALDA() embedFolder requires a compiler that supports --embed-folder.");
+                }
+                result = compileMethod.Invoke(compiler, new object[] { filePath, finalOutputPath, modeEnum, false });
+            }
             
             // Access result properties using reflection
             var resultType = result?.GetType();
