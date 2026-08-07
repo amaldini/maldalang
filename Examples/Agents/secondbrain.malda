@@ -7,10 +7,12 @@
 //   1) BUILD   a CodingAgent explores documentation (.md / .html) in a user-chosen
 //              folder, proposes a theme taxonomy, then distills a "second brain":
 //              hierarchical linked .md notes (index -> topic hubs -> notes).
-//   2) ASK     local HttpServer web UI: catalog + token-overlap retrieval, LLM
+//   2) UPDATE  incremental refresh: re-distill only new/changed source files in an
+//              existing brain (content hashes in brain.json); optional orphan cleanup.
+//   3) ASK     local HttpServer web UI: catalog + token-overlap retrieval, LLM
 //              answers in Markdown (rendered with markdownToHtml).
-//   3) language  switch console/UI language (English / Italian).
-//   4) PACK    compile a portable ASK-only .exe with the brain embedded.
+//   4) language  switch console/UI language (English / Italian).
+//   5) PACK    compile a portable ASK-only .exe with the brain embedded.
 //
 // Run:   malda Examples/Agents/secondbrain.malda
 //
@@ -401,12 +403,43 @@ function writeNoteFile(brainDir, note) {
         "> " + note.summary + "\n\n" +
         note.body + "\n\n" +
         "## Note collegate\n\n" +
-        "<!--related-->\n\n" +
+        "<!--related-start-->\n" +
+        "<!--related-end-->\n\n" +
         "---\n\n" +
         "- Hub tematico: [" + note.topic + "](../topics/" + slugify(note.topic) + ".md)\n" +
         "- Indice: [second brain](../index.md)\n" +
         "- Documento di origine: `" + note.source + "`\n";
     io.writeFile(io.pathJoin(brainDir, "notes", note.slug + ".md"), text);
+}
+
+function replaceRelatedBlock(fileText, linksText) {
+    var startMark = "<!--related-start-->";
+    var endMark = "<!--related-end-->";
+    var block = startMark + "\n" + linksText + "\n" + endMark;
+    var start = str.indexOf(fileText, startMark);
+    var end = str.indexOf(fileText, endMark);
+    if (start >= 0 and end > start) {
+        return str.substring(fileText, 0, start) + block +
+            str.substring(fileText, end + str.length(endMark), str.length(fileText));
+    }
+    var oldMark = "<!--related-->";
+    var oldIdx = str.indexOf(fileText, oldMark);
+    if (oldIdx >= 0) {
+        return str.substring(fileText, 0, oldIdx) + block +
+            str.substring(fileText, oldIdx + str.length(oldMark), str.length(fileText));
+    }
+    var section = "\n## Note collegate\n\n";
+    var sectionIdx = str.indexOf(fileText, section);
+    if (sectionIdx >= 0) {
+        var after = sectionIdx + str.length(section);
+        var rest = str.substring(fileText, after, str.length(fileText));
+        var sep = str.indexOf(rest, "\n---\n");
+        if (sep >= 0) {
+            return str.substring(fileText, 0, after) + block + "\n" +
+                str.substring(rest, sep, str.length(rest));
+        }
+    }
+    return fileText;
 }
 
 // Links between notes: overlap of tags, title, and summary (deterministic,
@@ -465,8 +498,11 @@ function writeRelatedSections(brainDir, notes) {
         if (lines.length == 0) {
             lines.append("- nessuna nota affine rilevata");
         }
-        io.replaceInFile(io.pathJoin(brainDir, "notes", current.slug + ".md"),
-            "<!--related-->", str.join(lines, "\n"));
+        var notePath = io.pathJoin(brainDir, "notes", current.slug + ".md");
+        if (io.hasFile(notePath)) {
+            var updated = replaceRelatedBlock(io.readFile(notePath), str.join(lines, "\n"));
+            io.writeFile(notePath, updated);
+        }
         i = i + 1;
     }
 }
@@ -608,7 +644,8 @@ function writeIndex(brainDir, docsRoot, notes, topics, skipped, truncated, taxon
     }
     lines.append("## Come si usa");
     lines.append("");
-    lines.append("- Modalita' 2 di `secondbrain.malda`: domande in linguaggio naturale su queste note.");
+    lines.append("- Modalita' 3 di `secondbrain.malda`: domande in linguaggio naturale su queste note.");
+    lines.append("- Modalita' 2: aggiornamento incrementale da file nuovi/modificati nell'origine.");
     lines.append("- `" + CATALOG_NAME + "`: catalogo leggibile a macchina usato dal recupero.");
     lines.append("");
     io.writeFile(io.pathJoin(brainDir, "index.md"), str.join(lines, "\n"));
@@ -617,11 +654,21 @@ function writeIndex(brainDir, docsRoot, notes, topics, skipped, truncated, taxon
 function writeCatalog(brainDir, docsRoot, notes, topics, taxonomySource) {
     var slimNotes = [];
     foreach (var note in notes) {
+        var sourceKey = note.sourceKey;
+        if (sourceKey == null or str.trim(string(sourceKey)) == "") {
+            sourceKey = sourceKeyOf(note.source);
+        }
+        var contentHash = "";
+        if (note.contentHash != null) {
+            contentHash = string(note.contentHash);
+        }
         slimNotes.append({
             "slug": note.slug,
             "title": note.title,
             "path": "notes/" + note.slug + ".md",
             "source": note.source,
+            "sourceKey": sourceKey,
+            "contentHash": contentHash,
             "topic": note.topic,
             "tags": note.tags,
             "summary": note.summary,
@@ -639,7 +686,7 @@ function writeCatalog(brainDir, docsRoot, notes, topics, taxonomySource) {
         });
     }
     var catalog = {
-        "version": 1,
+        "version": 2,
         "generatedAt": now(),
         "sourceFolder": docsRoot,
         "taxonomy": taxonomySource,
@@ -1073,6 +1120,279 @@ function uniqueSlug(base, notes) {
     return candidate;
 }
 
+function sourceKeyOf(source) {
+    var s = string(source);
+    s = str.regexReplace(s, " \\(part \\d+ of \\d+\\)$", "");
+    s = str.regexReplace(s, " \\(parte \\d+ di \\d+\\)$", "");
+    return s;
+}
+
+function contentHashOf(text) {
+    return str.sha256(string(text));
+}
+
+function catalogEntrySourceKey(entry) {
+    if (entry.sourceKey != null and str.trim(string(entry.sourceKey)) != "") {
+        return string(entry.sourceKey);
+    }
+    return sourceKeyOf(entry.source);
+}
+
+function loadNoteBody(brainDir, entry) {
+    var path = io.pathJoin(brainDir, "notes", entry.slug + ".md");
+    if (not io.hasFile(path)) {
+        return "";
+    }
+    var text = io.readFile(path);
+    var summary = "";
+    if (entry.summary != null) {
+        summary = string(entry.summary);
+    }
+    if (summary != "") {
+        var marker = "\n> " + summary + "\n\n";
+        var start = str.indexOf(text, marker);
+        if (start >= 0) {
+            start = start + str.length(marker);
+            var rest = str.substring(text, start, str.length(text));
+            var end = str.indexOf(rest, "\n## Note collegate");
+            if (end >= 0) {
+                return str.trim(str.substring(rest, 0, end));
+            }
+            return str.trim(rest);
+        }
+    }
+    var found = str.regexFind(text, "(?s)\\n> [^\\n]+\\n\\n([\\s\\S]*?)\\n## Note collegate");
+    if (found.length > 0) {
+        return str.trim(found[0].groups[1]);
+    }
+    return "";
+}
+
+function noteFromCatalogEntry(brainDir, entry) {
+    var tags = [];
+    if (entry.tags != null) {
+        tags = entry.tags;
+    }
+    var headings = [];
+    if (entry.headings != null) {
+        headings = entry.headings;
+    }
+    var hash = "";
+    if (entry.contentHash != null) {
+        hash = string(entry.contentHash);
+    }
+    return {
+        "slug": entry.slug,
+        "title": entry.title,
+        "summary": entry.summary,
+        "tags": tags,
+        "body": loadNoteBody(brainDir, entry),
+        "topic": entry.topic,
+        "source": entry.source,
+        "sourceKey": catalogEntrySourceKey(entry),
+        "contentHash": hash,
+        "headings": headings
+    };
+}
+
+function groupNotesBySource(notes) {
+    var groups = [];
+    foreach (var note in notes) {
+        var key = note.sourceKey;
+        if (key == null or str.trim(string(key)) == "") {
+            key = sourceKeyOf(note.source);
+        }
+        var found = null;
+        foreach (var g in groups) {
+            if (g.key == key) {
+                found = g;
+            }
+        }
+        if (found == null) {
+            found = {
+                "key": key,
+                "hash": "",
+                "notes": []
+            };
+            groups.append(found);
+        }
+        found.notes.append(note);
+        if (note.contentHash != null and str.trim(string(note.contentHash)) != "") {
+            found.hash = string(note.contentHash);
+        }
+    }
+    return groups;
+}
+
+function findSourceGroup(groups, key) {
+    foreach (var g in groups) {
+        if (g.key == key) {
+            return g;
+        }
+    }
+    return null;
+}
+
+function deleteNoteFile(brainDir, slug) {
+    var path = io.pathJoin(brainDir, "notes", slug + ".md");
+    if (io.hasFile(path)) {
+        io.deleteFile(path);
+    }
+}
+
+function topicDescriptionFromCatalog(catalog, title) {
+    if (catalog == null or catalog.topics == null) {
+        return "";
+    }
+    foreach (var topic in catalog.topics) {
+        if (topic.title == title) {
+            if (topic.description != null) {
+                return string(topic.description);
+            }
+            return "";
+        }
+    }
+    return "";
+}
+
+function listContains(items, value) {
+    foreach (var item in items) {
+        if (item == value) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Distill one source document into notes[] and write note files. Returns { skipped, truncated }.
+function distillSourceFile(distiller, docsRoot, brainDir, rel, taxonomy, notes, contentHash) {
+    var absPath = io.pathJoin(docsRoot, rel);
+    var text = "";
+    try {
+        text = extractText(absPath);
+    } catch (e) {
+        AnsiConsole.markupLine("  [red]" + t("read failed:", "lettura fallita:") + "[/] " + string(e));
+        return { "skipped": true, "truncated": null };
+    }
+    if (str.trim(text) == "") {
+        AnsiConsole.markupLine("  [yellow]" + t(
+            "empty or non-text, skipped",
+            "vuoto o non testuale, ignorato") + "[/]");
+        return { "skipped": true, "truncated": null };
+    }
+    if (contentHash == null or str.trim(string(contentHash)) == "") {
+        contentHash = contentHashOf(text);
+    }
+
+    var chunks = chunkText(text, MAX_DOC_CHARS, MAX_CHUNKS);
+    var consumed = 0;
+    foreach (var piece in chunks) {
+        consumed = consumed + str.length(piece);
+    }
+    var truncated = null;
+    if (consumed < str.length(text)) {
+        truncated = {
+            "source": rel,
+            "used": consumed,
+            "total": str.length(text)
+        };
+        AnsiConsole.markupLine("  [yellow]" + t("document too long:", "documento troppo lungo:") +
+            "[/] " + t("distilled ", "distillati ") +
+            string(consumed) + t(" of ", " di ") + string(str.length(text)) +
+            t(" characters", " caratteri"));
+    }
+    var partIndex = 0;
+    foreach (var chunk in chunks) {
+        partIndex = partIndex + 1;
+        var partLabel = "";
+        if (chunks.length > 1) {
+            partLabel = t(
+                " (part " + string(partIndex) + " of " + string(chunks.length) + ")",
+                " (parte " + string(partIndex) + " di " + string(chunks.length) + ")");
+        }
+        distiller.reset();
+        var response = tryThink(distiller, distillQuestion(rel, partLabel, chunk));
+        var fallbackTitle = io.getFileName(rel) + partLabel;
+        var parsed = parseDistilled(response, fallbackTitle, chunk);
+
+        var note = {
+            "slug": uniqueSlug(slugify(parsed.title), notes),
+            "title": parsed.title,
+            "summary": parsed.summary,
+            "tags": parsed.tags,
+            "body": parsed.body,
+            "topic": themeTopicOf(rel, taxonomy),
+            "source": rel + partLabel,
+            "sourceKey": rel,
+            "contentHash": contentHash,
+            "headings": headingsOf(parsed.body)
+        };
+        notes.append(note);
+        writeNoteFile(brainDir, note);
+        AnsiConsole.markupLine("  [green]" + t("note", "nota") + "[/] notes/" + note.slug + ".md");
+    }
+    return { "skipped": false, "truncated": truncated };
+}
+
+// Link notes, rebuild hubs/index/catalog. touchedTopics: null = all hubs use LLM;
+// otherwise only listed topic titles call the curator (others reuse catalog descriptions).
+function finalizeBrain(brainDir, docsRoot, notes, skipped, truncated, taxonomySource, taxonomy, catalog, touchedTopics) {
+    io.print("");
+    io.print(t("Linking notes...", "Collegamento delle note..."));
+    writeRelatedSections(brainDir, notes);
+
+    io.print(t("Building topic hubs...", "Costruzione degli hub tematici..."));
+    var topics = topicsOf(notes);
+    var curator = newCodingAgent(
+        "Curator",
+        "curatore di knowledge base",
+        "Scrivi introduzioni brevi e concrete per gli hub tematici di un second brain. " +
+        "Non inventare contenuti: usa solo i titoli e i riassunti forniti. " +
+        "Non usare gli strumenti sui file.",
+        brainDir
+    );
+    foreach (var topic in topics) {
+        var fromTaxonomy = descriptionOfTheme(taxonomy, topic.title);
+        var fromCatalog = topicDescriptionFromCatalog(catalog, topic.title);
+        if (fromTaxonomy != "") {
+            topic.description = fromTaxonomy;
+        } else {
+            topic.description = fromCatalog;
+        }
+        var useLlm = touchedTopics == null or listContains(touchedTopics, topic.title);
+        if (useLlm) {
+            curator.reset();
+            writeTopicHub(brainDir, topic, curator);
+        } else {
+            writeTopicHub(brainDir, topic, null);
+        }
+        AnsiConsole.markupLine("  [green]hub[/] topics/" + topic.slug + ".md");
+    }
+
+    if (catalog != null and catalog.topics != null) {
+        foreach (var oldTopic in catalog.topics) {
+            var stillThere = false;
+            foreach (var topic in topics) {
+                if (topic.slug == oldTopic.slug) {
+                    stillThere = true;
+                }
+            }
+            if (not stillThere) {
+                var hubPath = io.pathJoin(brainDir, "topics", oldTopic.slug + ".md");
+                if (io.hasFile(hubPath)) {
+                    io.deleteFile(hubPath);
+                    AnsiConsole.markupLine("  [dim]" + t("removed hub", "hub rimosso") +
+                        "[/] topics/" + oldTopic.slug + ".md");
+                }
+            }
+        }
+    }
+
+    writeIndex(brainDir, docsRoot, notes, topics, skipped, truncated, taxonomySource);
+    writeCatalog(brainDir, docsRoot, notes, topics, taxonomySource);
+    return topics;
+}
+
 function buildBrain() {
     AnsiConsole.markupLine("");
     AnsiConsole.panel(
@@ -1173,70 +1493,11 @@ function buildBrain() {
     foreach (var rel in docs) {
         index = index + 1;
         AnsiConsole.markupLine("[dim][[" + string(index) + "/" + string(docs.length) + "]][/] " + rel);
-
-        var absPath = io.pathJoin(docsRoot, rel);
-        var text = "";
-        try {
-            text = extractText(absPath);
-        } catch (e) {
-            AnsiConsole.markupLine("  [red]" + t("read failed:", "lettura fallita:") + "[/] " + string(e));
+        var outcome = distillSourceFile(distiller, docsRoot, brainDir, rel, taxonomy, notes, "");
+        if (outcome.skipped) {
             skipped.append(rel);
-            text = "";
-        }
-        if (str.trim(text) == "") {
-            if (not str.includes(skipped, rel)) {
-                skipped.append(rel);
-                AnsiConsole.markupLine("  [yellow]" + t(
-                    "empty or non-text, skipped",
-                    "vuoto o non testuale, ignorato") + "[/]");
-            }
-            continue;
-        }
-
-        var chunks = chunkText(text, MAX_DOC_CHARS, MAX_CHUNKS);
-        var consumed = 0;
-        foreach (var piece in chunks) {
-            consumed = consumed + str.length(piece);
-        }
-        if (consumed < str.length(text)) {
-            truncated.append({
-                "source": rel,
-                "used": consumed,
-                "total": str.length(text)
-            });
-            AnsiConsole.markupLine("  [yellow]" + t("document too long:", "documento troppo lungo:") +
-                "[/] " + t("distilled ", "distillati ") +
-                string(consumed) + t(" of ", " di ") + string(str.length(text)) +
-                t(" characters", " caratteri"));
-        }
-        var partIndex = 0;
-        foreach (var chunk in chunks) {
-            partIndex = partIndex + 1;
-            var partLabel = "";
-            if (chunks.length > 1) {
-                partLabel = t(
-                    " (part " + string(partIndex) + " of " + string(chunks.length) + ")",
-                    " (parte " + string(partIndex) + " di " + string(chunks.length) + ")");
-            }
-            distiller.reset();
-            var response = tryThink(distiller, distillQuestion(rel, partLabel, chunk));
-            var fallbackTitle = io.getFileName(rel) + partLabel;
-            var parsed = parseDistilled(response, fallbackTitle, chunk);
-
-            var note = {
-                "slug": uniqueSlug(slugify(parsed.title), notes),
-                "title": parsed.title,
-                "summary": parsed.summary,
-                "tags": parsed.tags,
-                "body": parsed.body,
-                "topic": themeTopicOf(rel, taxonomy),
-                "source": rel + partLabel,
-                "sourceKey": rel,
-                "headings": headingsOf(parsed.body)
-            };
-            notes.append(note);
-            writeNoteFile(brainDir, note);
-            AnsiConsole.markupLine("  [green]" + t("note", "nota") + "[/] notes/" + note.slug + ".md");
+        } else if (outcome.truncated != null) {
+            truncated.append(outcome.truncated);
         }
     }
 
@@ -1245,29 +1506,7 @@ function buildBrain() {
         return false;
     }
 
-    io.print("");
-    io.print(t("Linking notes...", "Collegamento delle note..."));
-    writeRelatedSections(brainDir, notes);
-
-    io.print(t("Building topic hubs...", "Costruzione degli hub tematici..."));
-    var topics = topicsOf(notes);
-    var curator = newCodingAgent(
-        "Curator",
-        "curatore di knowledge base",
-        "Scrivi introduzioni brevi e concrete per gli hub tematici di un second brain. " +
-        "Non inventare contenuti: usa solo i titoli e i riassunti forniti. " +
-        "Non usare gli strumenti sui file.",
-        brainDir
-    );
-    foreach (var topic in topics) {
-        topic.description = descriptionOfTheme(taxonomy, topic.title);
-        curator.reset();
-        writeTopicHub(brainDir, topic, curator);
-        AnsiConsole.markupLine("  [green]hub[/] topics/" + topic.slug + ".md");
-    }
-
-    writeIndex(brainDir, docsRoot, notes, topics, skipped, truncated, taxonomySource);
-    writeCatalog(brainDir, docsRoot, notes, topics, taxonomySource);
+    var topics = finalizeBrain(brainDir, docsRoot, notes, skipped, truncated, taxonomySource, taxonomy, null, null);
 
     io.print("");
     var colKey = t("item", "voce");
@@ -1306,7 +1545,307 @@ function buildBrain() {
     return true;
 }
 
-// ---------------------------------------------------------------- mode 2
+function updateBrain() {
+    AnsiConsole.markupLine("");
+    AnsiConsole.panel(
+        t("Updates an existing second brain: only new or changed source files are re-distilled.",
+            "Aggiorna un second brain esistente: ridistilla solo i file di origine nuovi o modificati."),
+        t("[bold]Mode 2 - UPDATE[/]", "[bold]Modalita' 2 - AGGIORNA[/]"), "rounded");
+
+    var brainDir = str.trim(io.input(t(
+        "Second brain folder [secondbrain]: ",
+        "Cartella del second brain [secondbrain]: ")));
+    if (brainDir == "") {
+        brainDir = "secondbrain";
+    }
+    var catalog = loadCatalog(brainDir);
+    if (catalog == null or catalog.notes == null) {
+        AnsiConsole.markupLine("[red]" + t(
+            "No usable catalog in ",
+            "Nessun catalogo utilizzabile in ") + brainDir +
+            t(". Run mode 1 (BUILD) first.", ". Esegui prima la modalita' 1 (COSTRUISCI).") + "[/]");
+        return false;
+    }
+
+    var defaultRoot = "";
+    if (catalog.sourceFolder != null) {
+        defaultRoot = str.trim(string(catalog.sourceFolder));
+    }
+    var docsPrompt = t("Documentation folder", "Cartella della documentazione");
+    if (defaultRoot != "") {
+        docsPrompt = docsPrompt + " [" + defaultRoot + "]";
+    }
+    docsPrompt = docsPrompt + ": ";
+    var docsRoot = str.trim(io.input(docsPrompt));
+    if (docsRoot == "") {
+        docsRoot = defaultRoot;
+    }
+    if (docsRoot == "") {
+        io.print(t("Cancelled.", "Annullato."));
+        return false;
+    }
+    if (not io.hasDirectory(docsRoot)) {
+        AnsiConsole.markupLine("[red]" + t("Folder not found:", "Cartella non trovata:") + "[/] " + docsRoot);
+        return false;
+    }
+
+    var scan = collectDocs(docsRoot);
+    var docs = scan.files;
+    if (docs.length == 0) {
+        AnsiConsole.markupLine("[yellow]" + t("No .md / .html files found in", "Nessun file .md / .html trovato in") +
+            "[/] " + docsRoot);
+        return false;
+    }
+    if (scan.truncated) {
+        AnsiConsole.markupLine("[yellow]" + t("Warning:", "Attenzione:") + "[/] " + t(
+            "file search was truncated by the runtime; some documents are missing from the list.",
+            "la ricerca dei file e' stata troncata dal runtime; alcuni documenti non sono nell'elenco."));
+    }
+
+    var existingNotes = [];
+    foreach (var entry in catalog.notes) {
+        existingNotes.append(noteFromCatalogEntry(brainDir, entry));
+    }
+    var groups = groupNotesBySource(existingNotes);
+
+    var unchanged = [];
+    var changed = [];
+    var added = [];
+    var missingHash = 0;
+    foreach (var rel in docs) {
+        var absPath = io.pathJoin(docsRoot, rel);
+        var text = "";
+        try {
+            text = extractText(absPath);
+        } catch (e) {
+            changed.append(rel);
+            continue;
+        }
+        if (str.trim(text) == "") {
+            changed.append(rel);
+            continue;
+        }
+        var hash = contentHashOf(text);
+        var group = findSourceGroup(groups, rel);
+        if (group == null) {
+            added.append(rel);
+        } else if (group.hash == "" or group.hash == null) {
+            missingHash = missingHash + 1;
+            changed.append(rel);
+        } else if (group.hash != hash) {
+            changed.append(rel);
+        } else {
+            unchanged.append(rel);
+        }
+    }
+
+    var removed = [];
+    foreach (var g in groups) {
+        if (not listContains(docs, g.key)) {
+            removed.append(g.key);
+        }
+    }
+
+    AnsiConsole.markupLine("");
+    AnsiConsole.markupLine(t("Scan:", "Scansione:") + " [bold]" + string(docs.length) + "[/] " +
+        t("source files", "file di origine"));
+    AnsiConsole.markupLine("  [green]" + t("unchanged", "invariati") + "[/] " + string(unchanged.length));
+    AnsiConsole.markupLine("  [yellow]" + t("changed", "modificati") + "[/] " + string(changed.length));
+    AnsiConsole.markupLine("  [cyan]" + t("new", "nuovi") + "[/] " + string(added.length));
+    AnsiConsole.markupLine("  [dim]" + t("removed from source", "rimossi dall'origine") + "[/] " +
+        string(removed.length));
+    if (missingHash > 0) {
+        AnsiConsole.markupLine("[yellow]" + t(
+            "Legacy catalog without content hashes: those sources will be re-distilled once.",
+            "Catalogo legacy senza hash: quelle origini verranno ridistillate una volta.") + "[/]");
+    }
+    AnsiConsole.markupLine("LLM: [bold]" + modelLabel() + "[/]");
+
+    if (changed.length == 0 and added.length == 0 and removed.length == 0) {
+        AnsiConsole.markupLine("[green]" + t(
+            "Already up to date — nothing to do.",
+            "Gia' aggiornato — nulla da fare.") + "[/]");
+        return true;
+    }
+
+    var removeOrphans = false;
+    if (removed.length > 0) {
+        var drop = str.trim(io.input(t(
+            "Remove notes for " + string(removed.length) + " source file(s) missing from the folder? " +
+                ynHint() + ": ",
+            "Rimuovo le note di " + string(removed.length) + " file assenti dalla cartella? " +
+                ynHint() + ": ")));
+        removeOrphans = isAffirmative(drop);
+    }
+
+    var toDistill = added.length + changed.length;
+    AnsiConsole.markupLine("[dim]" + t(
+        "LLM calls: about one per changed/new document (plus hub refresh for touched themes).",
+        "Chiamate LLM: circa una per documento nuovo/modificato (piu' refresh hub dei temi toccati).") + "[/]");
+    var go = str.trim(io.input(t(
+        "Apply update (" + string(toDistill) + " to distill)? " + ynHint() + ": ",
+        "Applico l'aggiornamento (" + string(toDistill) + " da distillare)? " + ynHint() + ": ")));
+    if (not isAffirmative(go)) {
+        io.print(t("Cancelled.", "Annullato."));
+        return false;
+    }
+
+    var notes = [];
+    var touchedTopics = [];
+    foreach (var rel in unchanged) {
+        var group = findSourceGroup(groups, rel);
+        if (group != null) {
+            foreach (var note in group.notes) {
+                notes.append(note);
+            }
+        }
+    }
+
+    if (removeOrphans) {
+        foreach (var rel in removed) {
+            var group = findSourceGroup(groups, rel);
+            if (group != null) {
+                foreach (var note in group.notes) {
+                    if (not listContains(touchedTopics, note.topic)) {
+                        touchedTopics.append(note.topic);
+                    }
+                    deleteNoteFile(brainDir, note.slug);
+                    AnsiConsole.markupLine("  [dim]" + t("removed note", "nota rimossa") +
+                        "[/] notes/" + note.slug + ".md");
+                }
+            }
+        }
+    } else {
+        foreach (var rel in removed) {
+            var group = findSourceGroup(groups, rel);
+            if (group != null) {
+                foreach (var note in group.notes) {
+                    notes.append(note);
+                }
+            }
+        }
+    }
+
+    var distiller = newCodingAgent(
+        "Distiller",
+        "knowledge engineer",
+        distillInstructions(),
+        docsRoot
+    );
+    var skipped = [];
+    var truncated = [];
+    var work = [];
+    foreach (var rel in changed) {
+        work.append(rel);
+    }
+    foreach (var rel in added) {
+        work.append(rel);
+    }
+
+    var index = 0;
+    foreach (var rel in work) {
+        index = index + 1;
+        AnsiConsole.markupLine("[dim][[" + string(index) + "/" + string(work.length) + "]][/] " + rel);
+        var previous = [];
+        var group = findSourceGroup(groups, rel);
+        if (group != null) {
+            foreach (var oldNote in group.notes) {
+                previous.append(oldNote);
+                if (not listContains(touchedTopics, oldNote.topic)) {
+                    touchedTopics.append(oldNote.topic);
+                }
+                deleteNoteFile(brainDir, oldNote.slug);
+            }
+        }
+        var absPath = io.pathJoin(docsRoot, rel);
+        var hash = "";
+        try {
+            hash = contentHashOf(extractText(absPath));
+        } catch (e) {
+            hash = "";
+        }
+        var outcome = distillSourceFile(distiller, docsRoot, brainDir, rel, null, notes, hash);
+        if (outcome.skipped) {
+            skipped.append(rel);
+            foreach (var oldNote in previous) {
+                notes.append(oldNote);
+                writeNoteFile(brainDir, oldNote);
+            }
+        } else {
+            if (outcome.truncated != null) {
+                truncated.append(outcome.truncated);
+            }
+            foreach (var note in notes) {
+                if (note.sourceKey == rel and not listContains(touchedTopics, note.topic)) {
+                    touchedTopics.append(note.topic);
+                }
+            }
+        }
+    }
+
+    if (notes.length == 0) {
+        AnsiConsole.markupLine("[red]" + t("No notes left in the brain.", "Nessuna nota rimasta nel brain.") + "[/]");
+        return false;
+    }
+
+    // Rewrite kept note files so related markers are refreshable.
+    foreach (var note in notes) {
+        var isFresh = listContains(work, note.sourceKey);
+        if (not isFresh) {
+            if (note.body == null or str.trim(string(note.body)) == "") {
+                note.body = loadNoteBody(brainDir, note);
+            }
+            writeNoteFile(brainDir, note);
+        }
+    }
+
+    var taxonomySource = t("subfolders", "sottocartelle");
+    if (catalog.taxonomy != null and str.trim(string(catalog.taxonomy)) != "") {
+        taxonomySource = string(catalog.taxonomy);
+    }
+    taxonomySource = taxonomySource + t(" + incremental update", " + aggiornamento incrementale");
+
+    var topics = finalizeBrain(
+        brainDir, docsRoot, notes, skipped, truncated, taxonomySource, null, catalog, touchedTopics);
+
+    io.print("");
+    var colKey = t("item", "voce");
+    var colVal = t("value", "valore");
+    var summaryRows = [];
+    var u1 = {};
+    u1[colKey] = t("unchanged sources", "origini invariate");
+    u1[colVal] = string(unchanged.length);
+    summaryRows.append(u1);
+    var u2 = {};
+    u2[colKey] = t("re-distilled", "ridistillati");
+    u2[colVal] = string(work.length - skipped.length);
+    summaryRows.append(u2);
+    var u3 = {};
+    u3[colKey] = t("removed sources", "origini rimosse");
+    if (removeOrphans) {
+        u3[colVal] = string(removed.length);
+    } else {
+        u3[colVal] = "0 (" + string(removed.length) + " " + t("kept", "mantenute") + ")";
+    }
+    summaryRows.append(u3);
+    var u4 = {};
+    u4[colKey] = t("notes total", "note totali");
+    u4[colVal] = string(notes.length);
+    summaryRows.append(u4);
+    var u5 = {};
+    u5[colKey] = t("themes", "temi");
+    u5[colVal] = string(topics.length);
+    summaryRows.append(u5);
+    var u6 = {};
+    u6[colKey] = t("folder", "cartella");
+    u6[colVal] = brainDir;
+    summaryRows.append(u6);
+    AnsiConsole.table(summaryRows, t("Second brain updated", "Second brain aggiornato"), [colKey, colVal]);
+    AnsiConsole.markupLine(t("Index:", "Indice:") + " [bold]" + io.pathJoin(brainDir, "index.md") + "[/]");
+    return true;
+}
+
+// ---------------------------------------------------------------- mode 3 (ASK)
 
 function loadCatalog(brainDir) {
     var catalogPath = io.pathJoin(brainDir, CATALOG_NAME);
@@ -1574,9 +2113,9 @@ include "secondbrain_ask_ui_lib.malda";
 function askBrain() {
     AnsiConsole.markupLine("");
     AnsiConsole.panel(
-        t("Opens a local web UI to ask questions against the second brain from mode 1.",
-            "Apre una UI web locale per fare domande sul second brain della modalita' 1."),
-        t("[bold]Mode 2 - ASK (web)[/]", "[bold]Modalita' 2 - CHIEDI (web)[/]"), "rounded");
+        t("Opens a local web UI to ask questions against the second brain from BUILD/UPDATE.",
+            "Apre una UI web locale per fare domande sul second brain di COSTRUISCI/AGGIORNA."),
+        t("[bold]Mode 3 - ASK (web)[/]", "[bold]Modalita' 3 - CHIEDI (web)[/]"), "rounded");
 
     var brainDir = resolveAskBrainRoot();
     var catalog = loadCatalog(brainDir);
@@ -1761,14 +2300,16 @@ function showMenu() {
     AnsiConsole.markupLine("");
     AnsiConsole.panel(
         t("[bold]1[/]  BUILD   a CodingAgent reads .md/.html and distills the second brain\n" +
-            "[bold]2[/]  ASK     web UI — questions against the second brain\n" +
-            "[bold]3[/]  language  switch UI language (English / Italian)\n" +
-            "[bold]4[/]  PACK    portable ASK .exe with embedded second brain\n" +
+            "[bold]2[/]  UPDATE  refresh brain from new/changed source files only\n" +
+            "[bold]3[/]  ASK     web UI — questions against the second brain\n" +
+            "[bold]4[/]  language  switch UI language (English / Italian)\n" +
+            "[bold]5[/]  PACK    portable ASK .exe with embedded second brain\n" +
             "[bold]0[/]  quit",
             "[bold]1[/]  COSTRUISCI  un CodingAgent legge .md/.html e distilla il second brain\n" +
-            "[bold]2[/]  CHIEDI      UI web — domande sul second brain\n" +
-            "[bold]3[/]  lingua      cambia lingua interfaccia (English / Italiano)\n" +
-            "[bold]4[/]  PACCHETTO  .exe ASK portatile con second brain incorporato\n" +
+            "[bold]2[/]  AGGIORNA    aggiorna il brain solo con file nuovi/modificati\n" +
+            "[bold]3[/]  CHIEDI      UI web — domande sul second brain\n" +
+            "[bold]4[/]  lingua      cambia lingua interfaccia (English / Italiano)\n" +
+            "[bold]5[/]  PACCHETTO  .exe ASK portatile con second brain incorporato\n" +
             "[bold]0[/]  esci"),
         "[bold blue]MALDA second brain[/]", "double");
 }
@@ -1780,7 +2321,7 @@ if (io.hasEmbeddedFolder("secondbrain")) {
     chooseLanguage();
     showMenu();
     while (true) {
-        var choice = str.trim(io.input(t("Choice (1/2/3/4/0): ", "Scelta (1/2/3/4/0): ")));
+        var choice = str.trim(io.input(t("Choice (1/2/3/4/5/0): ", "Scelta (1/2/3/4/5/0): ")));
         if (choice == "" or choice == "0") {
             io.print(t("Goodbye.", "A presto."));
             break;
@@ -1789,12 +2330,15 @@ if (io.hasEmbeddedFolder("secondbrain")) {
             buildBrain();
             showMenu();
         } else if (choice == "2") {
-            askBrain();
+            updateBrain();
             showMenu();
         } else if (choice == "3") {
-            chooseLanguage();
+            askBrain();
             showMenu();
         } else if (choice == "4") {
+            chooseLanguage();
+            showMenu();
+        } else if (choice == "5") {
             packPortableAskExe();
             showMenu();
         } else {
