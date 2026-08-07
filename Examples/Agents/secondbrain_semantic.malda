@@ -583,13 +583,26 @@ function selectNotesSemantic(brainDir, catalog, memory, question) {
         } catch (statsErr) {
             nodeCount = "?";
         }
+        var diagHint = "";
+        try {
+            var diag = memory.getLastQueryDiagnostics();
+            if (diag != null) {
+                diagHint = ", hybrid=" + string(diag.hybridLexical) +
+                    ", lexMode=" + string(diag.lexicalMode) +
+                    ", vec=" + string(diag.vectorCandidates) +
+                    ", bm25=" + string(diag.bm25Candidates) +
+                    ", embedReady=" + string(diag.embedReady);
+            }
+        } catch (diagErr) {
+            diagHint = "";
+        }
         AnsiConsole.markupLine("[dim]" + t(
             "No GraphMemory hits; trying lexical retrieval.",
             "Nessun hit GraphMemory; provo il recupero lessicale.") + "[/] " +
             "[dim](query=" + string(results.length) +
             ", unmatchedPaths=" + string(unmatched) +
             ", nodes=" + nodeCount +
-            ", embed=" + embedLabel() + ")[/]");
+            ", embed=" + embedLabel() + diagHint + ")[/]");
         if (embedMode != "llama" or memoryEmbedder == null) {
             AnsiConsole.markupLine("[yellow]" + t(
                 "Tip: place bge-m3-Q4_K_M.gguf next to the .exe (same model used at BUILD) for neural retrieval.",

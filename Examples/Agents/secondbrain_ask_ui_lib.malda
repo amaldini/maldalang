@@ -79,9 +79,16 @@ function askClearHistory() {
 }
 
 function askAppendTurn(turn) {
+    // Rebuild + setState (do not rely on in-place mutation of ui.state arrays).
     var history = askGetHistory();
-    history.append(turn);
-    askSetHistory(history);
+    var next = [];
+    var i = 0;
+    while (i < history.length) {
+        next.append(history[i]);
+        i = i + 1;
+    }
+    next.append(turn);
+    askSetHistory(next);
 }
 
 function askGetSession() {
@@ -173,16 +180,16 @@ function askPageStyles() {
         "body{margin:0;font-family:Georgia,'Times New Roman',serif;color:var(--ink);" +
         "background:radial-gradient(1200px 500px at 10% -10%,#e7efe9 0%,transparent 55%)," +
         "linear-gradient(180deg,#eef2f5,#f7f4ef 40%,#f3efe8);min-height:100vh}" +
-        "main{max-width:760px;margin:0 auto;padding:0 18px 48px}" +
+        "main{max-width:760px;width:100%;margin:0 auto;padding:0 18px 48px}" +
+        "main.has-logo{width:fit-content;min-width:min(760px,100%);max-width:100%}" +
         ".sticky-header{position:sticky;top:0;z-index:20;padding:16px 0 12px;" +
         "margin:0 -18px;padding-left:18px;padding-right:18px;" +
         "background:var(--sticky-bg);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);" +
         "border-bottom:1px solid var(--line);box-shadow:0 8px 18px rgba(28,36,48,0.04)}" +
         ".sticky-header-inner{display:flex;justify-content:space-between;gap:16px;" +
         "align-items:flex-start;flex-wrap:wrap}" +
-        ".brand{display:flex;align-items:flex-start;gap:14px;min-width:0;flex:1}" +
-        ".logo{width:56px;height:56px;object-fit:contain;flex-shrink:0;border-radius:8px;" +
-        "background:#fff;border:1px solid var(--line)}" +
+        ".brand{display:flex;align-items:flex-start;gap:14px;min-width:min-content;flex:1}" +
+        ".logo{height:56px;max-width:min(70vw,100%);object-fit:contain;flex-shrink:0;display:block}" +
         ".brand-text{min-width:0}" +
         "h1{font-size:1.55rem;margin:0 0 4px;letter-spacing:-0.02em}" +
         ".powered-by{margin:0 0 6px;font-family:system-ui,sans-serif;font-size:0.82rem;line-height:1.35}" +
@@ -316,18 +323,22 @@ function askRenderPage() {
         itClass = " active";
     }
 
+    var mainClass = "";
+    if (logoSrc != "") {
+        mainClass = " class='has-logo'";
+    }
     var html = "<!DOCTYPE html><html lang='" + lang + "'><head>" +
         "<meta charset='utf-8'>" +
         "<meta name='viewport' content='width=device-width,initial-scale=1'>" +
         "<title>" + askEscapeHtml(title) + "</title>" +
         askPageStyles() +
-        "</head><body><main>";
+        "</head><body><main" + mainClass + ">";
 
     html = html + "<header class='sticky-header'><div class='sticky-header-inner'>" +
         "<div class='brand'>";
     if (logoSrc != "") {
         html = html + "<img class='logo' src='" + askEscapeHtml(logoSrc) +
-            "' alt='' width='56' height='56'>";
+            "' alt=''>";
     }
     html = html + "<div class='brand-text'>" +
         "<h1>" + askEscapeHtml(title) + "</h1>";
@@ -456,13 +467,21 @@ function askUiStop() {
 }
 
 function askReplaceLastTurn(turn) {
+    // Rebuild + setState so the completed answer is what GET / renders after redirect.
     var history = askGetHistory();
     if (history.length == 0) {
         askAppendTurn(turn);
         return;
     }
-    history[history.length - 1] = turn;
-    askSetHistory(history);
+    var next = [];
+    var i = 0;
+    var last = history.length - 1;
+    while (i < last) {
+        next.append(history[i]);
+        i = i + 1;
+    }
+    next.append(turn);
+    askSetHistory(next);
 }
 
 @POST("/ask")

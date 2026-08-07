@@ -2281,40 +2281,38 @@ public class HttpServerInstance : ObjectInstance
             return;
         }
 
-        // Check if result has a status property (status+data return)
+        // Check if result has a status property (status+data return).
+        // Accept JsonObject and DictionaryInstance (transpile object literals).
         if (result.Type == ValueType.Object)
         {
             var obj = result.AsObject();
-            if (obj is JsonObject jsonObj)
+            if (obj is JsonObject or DictionaryInstance)
             {
                 try
                 {
-                    var statusValue = jsonObj.Get("status", null);
+                    var statusValue = obj.Get("status", null);
                     if (statusValue != null && statusValue.Type == ValueType.Integer)
                     {
                         var statusCode = statusValue.AsInteger();
                         response.StatusCode = statusCode;
                         
                         // Check for custom headers
-                        var headersValue = jsonObj.Get("headers", null);
+                        var headersValue = obj.Get("headers", null);
                         if (headersValue != null && headersValue.Type == ValueType.Object)
                         {
                             var headersObj = headersValue.AsObject();
-                            if (headersObj is JsonObject headersJsonObj)
+                            foreach (var key in headersObj.GetAllKeys())
                             {
-                                var props = headersJsonObj.GetProperties();
-                                foreach (var kvp in props)
+                                var headerVal = headersObj.Get(key, null);
+                                if (headerVal.Type == ValueType.String)
                                 {
-                                    if (kvp.Value.Type == ValueType.String)
+                                    if (key.Equals("Location", StringComparison.OrdinalIgnoreCase))
                                     {
-                                        if (kvp.Key.Equals("Location", StringComparison.OrdinalIgnoreCase))
-                                        {
-                                            WebRuntimeHelpers.ApplyRedirectLocation(response, kvp.Value.AsString(), _pathBase);
-                                        }
-                                        else
-                                        {
-                                            response.Headers.Add(kvp.Key, kvp.Value.AsString());
-                                        }
+                                        WebRuntimeHelpers.ApplyRedirectLocation(response, headerVal.AsString(), _pathBase);
+                                    }
+                                    else
+                                    {
+                                        response.Headers.Add(key, headerVal.AsString());
                                     }
                                 }
                             }
@@ -2327,7 +2325,7 @@ public class HttpServerInstance : ObjectInstance
                         // For redirects (3xx), send minimal body
                         if (statusCode >= 300 && statusCode < 400)
                         {
-                            var bodyValue = jsonObj.Get("body", null);
+                            var bodyValue = obj.Get("body", null);
                             if (bodyValue != null && bodyValue.Type == ValueType.String && !string.IsNullOrEmpty(bodyValue.AsString()))
                             {
                                 WriteHtmlResponse(response, bodyValue.AsString(), request);
@@ -2341,7 +2339,7 @@ public class HttpServerInstance : ObjectInstance
                         }
                         
                         // Get body for non-redirect responses
-                        var body = jsonObj.Get("body", null);
+                        var body = obj.Get("body", null);
                         if (body != null && body.Type == ValueType.String)
                         {
                             WriteHtmlResponse(response, body.AsString(), request);

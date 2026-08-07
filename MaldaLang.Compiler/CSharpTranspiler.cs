@@ -2260,7 +2260,10 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("MaldaLang.Interpreter.ValueType.Boolean => rv.AsBoolean(),");
         WriteIndent();
-        _output.AppendLine("MaldaLang.Interpreter.ValueType.Array => rv.AsArray(),");
+        // Surface a stable List<object> so append / index-assign mutations persist when
+        // the same value is later passed back through ToRuntimeValue (ui.setState, etc.).
+        WriteIndent();
+        _output.AppendLine("MaldaLang.Interpreter.ValueType.Array => GetArray(rv.AsArray()),");
         WriteIndent();
         _output.AppendLine("MaldaLang.Interpreter.ValueType.Object => rv.AsObject(),");
         WriteIndent();
@@ -2401,9 +2404,13 @@ public class CSharpTranspiler
         _output.AppendLine("{");
         _indentLevel++;
         WriteIndent();
-        _output.AppendLine("// First unwrap RuntimeValue if needed");
+        // Unwrap Array via AsArray first — UnwrapRuntimeValue(Array) calls GetArray (bridge).
         WriteIndent();
-        _output.AppendLine("var unwrapped = UnwrapRuntimeValue(value);");
+        _output.AppendLine("if (value is MaldaLang.Interpreter.RuntimeValue arrayRv && arrayRv.Type == MaldaLang.Interpreter.ValueType.Array)");
+        WriteIndent();
+        _output.AppendLine("    value = arrayRv.AsArray();");
+        WriteIndent();
+        _output.AppendLine("var unwrapped = value is MaldaLang.Interpreter.RuntimeValue otherRv ? UnwrapRuntimeValue(otherRv) : value;");
         WriteIndent();
         _output.AppendLine("if (unwrapped is List<object> list)");
         WriteIndent();
@@ -2881,6 +2888,10 @@ public class CSharpTranspiler
         _output.AppendLine("string s => MaldaLang.Interpreter.RuntimeValue.String(s),");
         WriteIndent();
         _output.AppendLine("bool b => MaldaLang.Interpreter.RuntimeValue.Boolean(b),");
+        WriteIndent();
+        _output.AppendLine("System.Func<object, System.Threading.Tasks.Task<object>> funcDel => MaldaLang.Interpreter.RuntimeValue.Function(new MaldaLang.Interpreter.FunctionValue { TranspiledDelegate = funcDel }),");
+        WriteIndent();
+        _output.AppendLine("System.Delegate del => WrapTranspiledDelegate(del),");
         WriteIndent();
         _output.AppendLine("System.Collections.Generic.Dictionary<string, object?> dictObj => MaldaLang.Interpreter.RuntimeValue.Object(new MaldaLang.Interpreter.DictionaryInstance(dictObj.ToDictionary(e => e.Key, e => RuntimeHelpers.ToRuntimeValue(e.Value)))),");
         WriteIndent();
@@ -3746,6 +3757,26 @@ public class CSharpTranspiler
         _output.AppendLine("if (value is MaldaLang.Interpreter.ObjectInstance oi) return MaldaLang.Interpreter.RuntimeValue.Object(oi);");
         WriteIndent();
         _output.AppendLine("if (TryConvertDictionaryLikeToRuntimeValue(value, out var dictionaryValue)) return dictionaryValue;");
+        WriteIndent();
+        // Prefer the mutable List<object> bridge when present so append/index-assign are not lost.
+        WriteIndent();
+        _output.AppendLine("if (value is System.Collections.Generic.List<MaldaLang.Interpreter.RuntimeValue> rvList)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("if (__rvListToObjectListCache.TryGetValue(rvList, out var bridged))");
+        WriteIndent();
+        _output.AppendLine("    return MaldaLang.Interpreter.RuntimeValue.Array(bridged.Select(ToRuntimeValue).ToList());");
+        WriteIndent();
+        _output.AppendLine("return MaldaLang.Interpreter.RuntimeValue.Array(rvList.ToList());");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        WriteIndent();
+        _output.AppendLine("if (value is System.Collections.Generic.List<object> objectList)");
+        WriteIndent();
+        _output.AppendLine("    return MaldaLang.Interpreter.RuntimeValue.Array(objectList.Select(ToRuntimeValue).ToList());");
         WriteIndent();
         _output.AppendLine("if (value is System.Collections.IEnumerable seq && value is not string) return MaldaLang.Interpreter.RuntimeValue.Array(seq.Cast<object?>().Select(ToRuntimeValue).ToList());");
         WriteIndent();
@@ -8977,12 +9008,20 @@ public class CSharpTranspiler
                     if (i > 0) _output.Append(", ");
                     if (call.Arguments[i] is IdentifierExpression argIdExpr && _functionNames.Contains(argIdExpr.Name))
                     {
-                        // ObjectInstance methods (for example HttpServer.use) can accept function-name strings
-                        // in transpiled mode. Emitting a method-group here would be converted to null by
-                        // RuntimeHelpers.ToRuntimeValue, so pass the function name explicitly.
-                        _output.Append("\"");
-                        _output.Append(argIdExpr.Name);
-                        _output.Append("\"");
+                        // Unary user functions → callable delegate (GraphMemory.initialize embedders, etc.).
+                        // Multi-arg (e.g. HttpServer middleware) stay as name strings for runtime resolve.
+                        if (_functionParameterTypes.TryGetValue(argIdExpr.Name, out var paramTypes)
+                            && paramTypes.Count == 1)
+                        {
+                            _output.Append("(System.Func<object, System.Threading.Tasks.Task<object>>)");
+                            _output.Append(EscapeIdentifier(argIdExpr.Name));
+                        }
+                        else
+                        {
+                            _output.Append("\"");
+                            _output.Append(argIdExpr.Name);
+                            _output.Append("\"");
+                        }
                     }
                     else
                     {

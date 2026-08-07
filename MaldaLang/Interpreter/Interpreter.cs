@@ -2910,6 +2910,10 @@ public partial class Interpreter
                 throw new RuntimeException(ex.Message);
             }
         }
+
+        // Transpiled callbacks (e.g. GraphMemory custom embedders) have no Declaration.
+        if (function.TranspiledDelegate != null)
+            return await InvokeTranspiledDelegateAsync(function.TranspiledDelegate, arguments);
         
         if (function.Declaration == null)
         {
@@ -3116,6 +3120,67 @@ public partial class Interpreter
             // ReturnException and normal completion already cleaned up above
             MaldaProfiler.Exit(functionProfileToken);
             _currentFile = previousFile;
+        }
+    }
+
+    private static async Task<RuntimeValue> InvokeTranspiledDelegateAsync(
+        Func<object, Task<object>> delegateFn,
+        List<RuntimeValue> arguments)
+    {
+        // GraphMemory / VectorDB calculators are unary; multi-arg transpiled funcs are rare here.
+        object? input = null;
+        if (arguments.Count > 0)
+        {
+            var arg = arguments[0];
+            input = arg.Type switch
+            {
+                ValueType.Integer => arg.AsInteger(),
+                ValueType.Float => arg.AsFloat(),
+                ValueType.String => arg.AsString(),
+                ValueType.Boolean => arg.AsBoolean(),
+                ValueType.Array => arg.AsArray(),
+                ValueType.Object => arg.AsObject(),
+                ValueType.Function => arg.AsFunction(),
+                ValueType.Null => null,
+                _ => arg
+            };
+        }
+
+        var result = await delegateFn(input!).ConfigureAwait(false);
+        return CoerceTranspiledDelegateResult(result);
+    }
+
+    private static RuntimeValue CoerceTranspiledDelegateResult(object? result)
+    {
+        switch (result)
+        {
+            case RuntimeValue rv:
+                return rv;
+            case null:
+                return RuntimeValue.Null();
+            case int i:
+                return RuntimeValue.Integer(i);
+            case long l:
+                return RuntimeValue.Integer((int)l);
+            case double d:
+                return RuntimeValue.Float(d);
+            case float f:
+                return RuntimeValue.Float(f);
+            case string s:
+                return RuntimeValue.String(s);
+            case bool b:
+                return RuntimeValue.Boolean(b);
+            case FunctionValue fn:
+                return RuntimeValue.Function(fn);
+            case ObjectInstance oi:
+                return RuntimeValue.Object(oi);
+            case IList<RuntimeValue> runtimeList:
+                return RuntimeValue.Array(runtimeList.ToList());
+            case System.Collections.IEnumerable enumerable when result is not string:
+                return RuntimeValue.Array(
+                    enumerable.Cast<object?>().Select(CoerceTranspiledDelegateResult).ToList());
+            default:
+                return RuntimeValue.Object(new BuiltIns.DotNetObjectInstance(result));
         }
     }
     

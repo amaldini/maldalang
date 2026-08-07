@@ -435,4 +435,99 @@ public class SecondBrainAskFeaturesTests
             BuiltInFunctions.WriteSpectreMarkup(line, appendNewLine: true));
         Assert.Null(ex);
     }
+
+    [Fact]
+    public void Transpile_UiStateHistory_AppendAndReplace_PersistAnswer()
+    {
+        // Portable ASK (exe) used to lose the completed turn: append/index-assign mutated a
+        // List<object> bridge while ui.setState re-saved the original List<RuntimeValue>.
+        var tempDir = Path.Combine(Path.GetTempPath(), "malda_sb_ask_history", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        var sourcePath = Path.Combine(tempDir, "history.malda");
+        var outputExe = Path.Combine(tempDir, "history.exe");
+        File.WriteAllText(sourcePath,
+            """
+            var STORE = "AskHistoryBridge";
+            var SESSION = "s1";
+
+            function getHistory() {
+                var history = ui.state(STORE, "history", [], SESSION);
+                if (history == null) {
+                    return [];
+                }
+                return history;
+            }
+
+            function setHistory(history) {
+                ui.setState(STORE, "history", history, SESSION);
+            }
+
+            function appendTurn(turn) {
+                var history = getHistory();
+                history.append(turn);
+                setHistory(history);
+            }
+
+            function replaceLast(turn) {
+                var history = getHistory();
+                if (history.length == 0) {
+                    appendTurn(turn);
+                    return;
+                }
+                history[history.length - 1] = turn;
+                setHistory(history);
+            }
+
+            appendTurn({ "question": "q", "answer": "", "pending": true });
+            replaceLast({ "question": "q", "answer": "final-answer", "pending": false });
+            var h = getHistory();
+            print(h.length);
+            print(h[0].answer);
+            print(h[0].pending);
+            """,
+            Encoding.UTF8);
+
+        try
+        {
+            var result = BuiltInFunctions.CallBuiltIn(
+                "compileMALDA",
+                new List<RuntimeValue>
+                {
+                    RuntimeValue.String(sourcePath),
+                    RuntimeValue.String(outputExe),
+                    RuntimeValue.String("transpile")
+                },
+                null);
+
+            Assert.Equal(ValueType.Object, result.Type);
+            var obj = result.AsObject();
+            var success = obj.Get("success", null)?.AsBoolean() ?? false;
+            var error = obj.Get("error", null)?.AsString() ?? "";
+            Assert.True(success, "compileMALDA history bridge failed: " + error);
+
+            var written = obj.Get("outputPath", null)?.AsString() ?? outputExe;
+            var psi = new ProcessStartInfo
+            {
+                FileName = written,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = tempDir
+            };
+            using var process = Process.Start(psi);
+            Assert.NotNull(process);
+            var stdout = process!.StandardOutput.ReadToEnd();
+            var stderr = process.StandardError.ReadToEnd();
+            Assert.True(process.WaitForExit(120_000), "history exe timed out");
+            Assert.True(process.ExitCode == 0, $"exit={process.ExitCode}\nstdout={stdout}\nstderr={stderr}");
+            Assert.Contains("1", stdout, StringComparison.Ordinal);
+            Assert.Contains("final-answer", stdout, StringComparison.Ordinal);
+            Assert.Contains("false", stdout, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            SafeDeleteDirectory(tempDir);
+        }
+    }
 }

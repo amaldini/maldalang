@@ -282,10 +282,10 @@ public class GraphMemoryInstance : ObjectInstance
         var fact = args[0];
         RuntimeValue? context = args.Count > 1 && args[1].Type != ValueType.Object ? args[1] : null;
         JsonObject? metadataObj = null;
-        if (args.Count >= 3 && args[2].Type == ValueType.Object && args[2].AsObject() is JsonObject metaArg)
-            metadataObj = metaArg;
-        else if (args.Count >= 2 && args[1].Type == ValueType.Object && args[1].AsObject() is JsonObject metaOnly)
-            metadataObj = metaOnly;
+        if (args.Count >= 3 && args[2].Type == ValueType.Object)
+            metadataObj = CoerceToJsonObject(args[2]);
+        else if (args.Count >= 2 && args[1].Type == ValueType.Object)
+            metadataObj = CoerceToJsonObject(args[1]);
         
         var descriptionBuilder = new System.Text.StringBuilder(BuildNodeDescription(fact, context));
         if (metadataObj != null)
@@ -3958,25 +3958,46 @@ public class GraphMemoryInstance : ObjectInstance
     {
         maxResults = 5;
         JsonObject? options = null;
-        
+
         if (args.Count >= 2)
         {
             if (args[1].Type == ValueType.Integer)
                 maxResults = Math.Max(1, args[1].AsInteger());
-            else if (args[1].Type == ValueType.Object && args[1].AsObject() is JsonObject optionsOnly)
-                options = optionsOnly;
+            else if (args[1].Type == ValueType.Object)
+                options = CoerceToJsonObject(args[1]);
         }
-        
-        if (args.Count >= 3 && args[2].Type == ValueType.Object && args[2].AsObject() is JsonObject optionsArg)
-            options = optionsArg;
-        
+
+        if (args.Count >= 3 && args[2].Type == ValueType.Object)
+            options = CoerceToJsonObject(args[2]) ?? options;
+
         if (options != null)
         {
             var maxFromOptions = GetIntOption(options, "maxResults", maxResults);
             maxResults = Math.Max(1, maxFromOptions);
         }
-        
+
         return options;
+    }
+
+    /// <summary>
+    /// Interpreter object literals are <see cref="JsonObject"/>; transpiled ones are
+    /// <see cref="DictionaryInstance"/>. GraphMemory option/metadata helpers expect JsonObject.
+    /// </summary>
+    private static JsonObject? CoerceToJsonObject(RuntimeValue value)
+    {
+        if (value.Type != ValueType.Object)
+            return null;
+        var obj = value.AsObject();
+        if (obj is JsonObject json)
+            return json;
+        if (obj is DictionaryInstance dict)
+        {
+            var copy = new JsonObject();
+            foreach (var kvp in dict.GetEntries())
+                copy.Set(kvp.Key, kvp.Value);
+            return copy;
+        }
+        return null;
     }
     
     private static int GetIntOption(JsonObject? options, string key, int defaultValue)

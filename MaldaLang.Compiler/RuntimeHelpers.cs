@@ -538,7 +538,8 @@ public static class RuntimeHelpers
                 MaldaLang.Interpreter.ValueType.Float => rv.AsFloat(),
                 MaldaLang.Interpreter.ValueType.String => rv.AsString(),
                 MaldaLang.Interpreter.ValueType.Boolean => rv.AsBoolean(),
-                MaldaLang.Interpreter.ValueType.Array => rv.AsArray(),
+                // Stable List<object> so append / index-assign survive round-trips via ToRuntimeValue.
+                MaldaLang.Interpreter.ValueType.Array => GetArray(rv.AsArray()),
                 MaldaLang.Interpreter.ValueType.Object => rv.AsObject(),
                 MaldaLang.Interpreter.ValueType.Variant => rv,
                 MaldaLang.Interpreter.ValueType.Task => rv,
@@ -558,31 +559,39 @@ public static class RuntimeHelpers
         throw new InvalidOperationException("await requires a task value.");
     }
 
+    // One stable List<object> per List<RuntimeValue> identity (matches generated RuntimeHelpers).
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<List<RuntimeValue>, List<object>> RvListToObjectListCache = new();
+
     // Array and dictionary operations
     public static List<object> GetArray(object? value)
     {
-        // First unwrap RuntimeValue if needed
-        var unwrapped = UnwrapRuntimeValue(value);
+        // Avoid UnwrapRuntimeValue here: for Array values it calls GetArray (bridge).
+        if (value is RuntimeValue rv && rv.Type == MaldaLang.Interpreter.ValueType.Array)
+            value = rv.AsArray();
+
+        var unwrapped = value is RuntimeValue other ? UnwrapRuntimeValue(other) : value;
         if (unwrapped is List<object> list)
             return list;
         if (unwrapped is List<RuntimeValue> runtimeValueList)
         {
-            // Convert List<RuntimeValue> to List<object>
-            var result = new List<object>(runtimeValueList.Count);
-            foreach (var rv in runtimeValueList)
+            return RvListToObjectListCache.GetValue(runtimeValueList, static source =>
             {
-                result.Add(rv.Type switch
+                var result = new List<object>(source.Count);
+                foreach (var item in source)
                 {
-                    MaldaLang.Interpreter.ValueType.Integer => rv.AsInteger(),
-                    MaldaLang.Interpreter.ValueType.Float => rv.AsFloat(),
-                    MaldaLang.Interpreter.ValueType.String => rv.AsString(),
-                    MaldaLang.Interpreter.ValueType.Boolean => rv.AsBoolean(),
-                    MaldaLang.Interpreter.ValueType.Array => GetArray(rv.AsArray()), // Recursive for nested arrays
-                    MaldaLang.Interpreter.ValueType.Object => rv.AsObject(),
-                    _ => null
-                });
-            }
-            return result;
+                    result.Add(item.Type switch
+                    {
+                        MaldaLang.Interpreter.ValueType.Integer => item.AsInteger(),
+                        MaldaLang.Interpreter.ValueType.Float => item.AsFloat(),
+                        MaldaLang.Interpreter.ValueType.String => item.AsString(),
+                        MaldaLang.Interpreter.ValueType.Boolean => item.AsBoolean(),
+                        MaldaLang.Interpreter.ValueType.Array => GetArray(item.AsArray()),
+                        MaldaLang.Interpreter.ValueType.Object => item.AsObject(),
+                        _ => null
+                    });
+                }
+                return result;
+            });
         }
         throw new InvalidOperationException($"Value is not an array: {value?.GetType()}");
     }
@@ -772,6 +781,15 @@ public static class RuntimeHelpers
 
     public static RuntimeValue ToRuntimeValue(object? value)
     {
+        if (value is RuntimeValue rv)
+            return rv;
+        if (value is List<RuntimeValue> rvList)
+        {
+            if (RvListToObjectListCache.TryGetValue(rvList, out var bridged))
+                return RuntimeValue.Array(bridged.Select(ToRuntimeValue).ToList());
+            return RuntimeValue.Array(rvList.ToList());
+        }
+
         return value switch
         {
             int i => RuntimeValue.Integer(i),
@@ -787,7 +805,6 @@ public static class RuntimeHelpers
             Delegate del => WrapTranspiledDelegate(del),
             MaldaLang.Interpreter.GraphInstance gi => RuntimeValue.Object(gi),
             MaldaLang.Interpreter.ObjectInstance oi => RuntimeValue.Object(oi),
-            RuntimeValue rv => rv,
             _ => RuntimeValue.Null()
         };
     }
