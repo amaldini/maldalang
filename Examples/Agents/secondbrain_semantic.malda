@@ -38,7 +38,7 @@
 //        ASK opens http://localhost:39019/ (Stop server / menu returns to console).
 //
 // Pack portable ASK exe (menu option 4, or CLI):
-//   malda compile Examples/Agents/secondbrain_semantic.malda -o dist/secondbrain_semantic.exe --mode transpile --embed-folder secondbrain_semantic
+//   malda compile Examples/Agents/secondbrain_semantic.malda -o dist/SecondBrain.exe --mode transpile --embed-folder secondbrain_semantic
 //   Embeds notes + GraphMemory artifacts (brain_memory.*) for read-only hybrid ASK.
 //   (copy the .gguf next to the .exe for neural retrieval; GGUF is not embedded)
 //   Native llama.cpp load chatter is quiet by default; set MALDA_LLAMA_LOG=1 to see it.
@@ -69,10 +69,13 @@ var ASK_PAGE_TITLE = "Second brain — ASK (semantic)";
 var ASK_POWERED_BY = "Powered by MALDA: Multi Agent Language with Development Automation";
 var ASK_POWERED_BY_URL = "https://github.com/amaldini/maldalang";
 // Optional logo left of the title: "", file path, embed:alias/..., http(s):, or data:
+// PACK: put logo.png in the brain folder you pass to mode 4, then set (before packing):
+//   var ASK_LOGO = "embed:secondbrain_semantic/logo.png";
+// (alias is always EMBED_ALIAS below — not the disk path, e.g. not P:\SecondBrain\logo.png)
 var ASK_LOGO = "";
 var SOURCE_SCRIPT_NAME = "secondbrain_semantic.malda";
 var EMBED_ALIAS = "secondbrain_semantic";
-var DEFAULT_PACK_OUTPUT = "dist/secondbrain_semantic.exe";
+var DEFAULT_PACK_OUTPUT = "dist/SecondBrain.exe";
 var askHttpServer = null;
 var embedMode = "hash";
 var memoryEmbedder = null;
@@ -2806,7 +2809,7 @@ function packPortableAskExe() {
     if (io.hasDirectory(outputPath)) {
         var packExeName = io.getFileName(DEFAULT_PACK_OUTPUT);
         if (packExeName == "") {
-            packExeName = "secondbrain_semantic.exe";
+            packExeName = "SecondBrain.exe";
         }
         outputPath = io.pathJoin(outputPath, packExeName);
     }

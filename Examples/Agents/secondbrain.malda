@@ -47,6 +47,9 @@ var ASK_PAGE_TITLE = "Second brain — ASK";
 var ASK_POWERED_BY = "Powered by MALDA: Multi Agent Language with Development Automation";
 var ASK_POWERED_BY_URL = "https://github.com/amaldini/maldalang";
 // Optional logo left of the title: "", file path, embed:alias/..., http(s):, or data:
+// PACK: put logo.png in the brain folder you pass to mode 4, then set (before packing):
+//   var ASK_LOGO = "embed:secondbrain/logo.png";
+// (alias is always EMBED_ALIAS below — not the disk path, e.g. not P:\SecondBrain\logo.png)
 var ASK_LOGO = "";
 var SOURCE_SCRIPT_NAME = "secondbrain.malda";
 var EMBED_ALIAS = "secondbrain";

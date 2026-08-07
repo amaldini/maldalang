@@ -1191,9 +1191,9 @@ class Program
         }
 
         var generatedExePath = Path.Combine(publishOutputDir, "MaldaLang.Executable.exe");
-        var finalExePath = shouldPublishSingleFile
-            ? Path.Combine(requestedOutputDir, exeName)
-            : Path.Combine(requestedOutputDir, "MaldaLang.Executable.exe");
+        // Always honor the named -o executable, including non-single-file publishes
+        // (LLamaSharp / optional packs). Companion DLLs remain beside the exe.
+        var finalExePath = Path.Combine(requestedOutputDir, exeName);
 
         if (includeOptionalPacks)
         {
@@ -1235,6 +1235,16 @@ class Program
                 File.Delete(finalExePath);
             }
             File.Move(generatedExePath, finalExePath);
+
+            // Bulk copy above may also have placed MaldaLang.Executable.exe beside -o;
+            // remove that scaffolding when the shippable name differs.
+            var scaffoldingExe = Path.Combine(requestedOutputDir, "MaldaLang.Executable.exe");
+            if (!string.Equals(scaffoldingExe, finalExePath, StringComparison.OrdinalIgnoreCase)
+                && File.Exists(scaffoldingExe))
+            {
+                try { File.Delete(scaffoldingExe); } catch { /* best-effort */ }
+            }
+
             return finalExePath;
         }
 
