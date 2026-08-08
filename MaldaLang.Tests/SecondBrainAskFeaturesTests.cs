@@ -675,6 +675,11 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("sbCliParseArgs(", source, StringComparison.Ordinal);
             Assert.Contains("build --docs", source, StringComparison.Ordinal);
             Assert.Contains("include \"secondbrain_cli_lib.malda\"", source, StringComparison.Ordinal);
+            if (path.Contains("secondbrain_semantic", StringComparison.Ordinal))
+            {
+                Assert.Contains("find_related_notes", source, StringComparison.Ordinal);
+                Assert.Contains("new Tool(", source, StringComparison.Ordinal);
+            }
             Assert.Contains("product_name.txt", source, StringComparison.Ordinal);
             Assert.Contains("askGetToolsEnabled()", source, StringComparison.Ordinal);
             Assert.Contains("askSetToolsEnabled(false)", source, StringComparison.Ordinal);

@@ -306,6 +306,28 @@ agent.addTool("calculate_sum");
 
 var response = agent.think("What is 15 + 27?");
 print(response.content);</code></pre>
+        <h3>Constructing a tool with <code>new Tool</code></h3>
+        <p>You can also build a <code>Tool</code> instance at runtime and pass a handler function. The usual pattern is a single <code>args</code> parameter (the LLM argument object). Call <code>tool.execute(args)</code> to invoke the handler directly, or <code>agent.addTool(tool)</code> for agent loops.</p>
+        <pre><code>function echoHandler(args) {
+    return "got " + string(args.message);
+}
+
+var echoTool = new Tool(
+    "echo_message",
+    "Echoes a message back",
+    {
+        "type": "object",
+        "properties": {
+            "message": { "type": "string", "description": "Text to echo" }
+        },
+        "required": ["message"]
+    },
+    echoHandler
+);
+
+print(echoTool.execute({ "message": "hello" }));  // got hello
+agent.addTool(echoTool);</code></pre>
+        <p>See <code>Examples/Agents/secondbrain_semantic.malda</code> (<code>find_related_notes</code>) for a GraphMemory-backed example used in ASK when tools are enabled.</p>
         <h2>16.9 CodingAgent</h2>
         <p>The <code>CodingAgent</code> class is a specialized agent for coding tasks that automatically includes all file operation tools.</p>
         <h3>Included Tools</h3>

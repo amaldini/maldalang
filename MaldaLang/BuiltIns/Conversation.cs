@@ -1590,58 +1590,7 @@ public partial class ConversationInstance : ObjectInstance
     
     private RuntimeValue ExecuteSPLToolFunction(FunctionValue function, Interpreter interpreter, RuntimeValue arguments)
     {
-        try
-        {
-            if (function.Declaration == null)
-            {
-                return RuntimeValue.String("Error: Tool function has no declaration");
-            }
-            
-            // Extract arguments from the JSON object
-            if (arguments.Type != ValueType.Object)
-            {
-                return RuntimeValue.String("Error: Tool arguments must be an object");
-            }
-            
-            var argsObj = arguments.AsObject();
-            var functionParams = function.Declaration.Parameters;
-            var functionArgs = new List<RuntimeValue>();
-            
-            // Map JSON object properties to function parameters
-            foreach (var paramName in functionParams)
-            {
-                try
-                {
-                    var paramValue = argsObj.Get(paramName, null);
-                    if (paramValue == null)
-                    {
-                        // Parameter not provided - use null
-                        functionArgs.Add(RuntimeValue.Null());
-                    }
-                    else
-                    {
-                        functionArgs.Add(paramValue);
-                    }
-                }
-                catch
-                {
-                    // Parameter not found - use null
-                    functionArgs.Add(RuntimeValue.Null());
-                }
-            }
-            
-            // Call the MALDA function synchronously
-            // Note: This uses blocking async call which is not ideal but necessary
-            // since ExecuteToolOperation is synchronous
-            var result = interpreter.CallFunctionAsync(function, functionArgs, null).GetAwaiter().GetResult();
-            
-            // Convert result to string if needed for tool response
-            return result;
-        }
-        catch (Exception ex)
-        {
-            return RuntimeValue.String($"Error executing tool function: {ex.Message}");
-        }
+        return ToolInstance.InvokeMaldaToolFunction(function, interpreter, arguments);
     }
     
     private RuntimeValue ExecuteTranspiledToolMethod(System.Reflection.MethodInfo method, RuntimeValue arguments)

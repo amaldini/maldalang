@@ -10510,6 +10510,32 @@ public class CSharpTranspiler
             _output.Append("return __conv; })())");
             return;
         }
+
+        // Tool(name, description, parameters, handler) — parameterless ctor + Initialize/SetFunctionHandler.
+        if (className == "Tool" && newExpr.Arguments.Count == 4)
+        {
+            _output.Append("(new System.Func<MaldaLang.BuiltIns.ToolInstance>(() => { ");
+            _output.Append("var __tool = new MaldaLang.BuiltIns.ToolInstance(); ");
+            _output.Append("var __name = RuntimeHelpers.CoerceToString(");
+            TranspileExpression(newExpr.Arguments[0]);
+            _output.Append("); ");
+            _output.Append("var __desc = RuntimeHelpers.CoerceToString(");
+            TranspileExpression(newExpr.Arguments[1]);
+            _output.Append("); ");
+            _output.Append("var __paramsRv = RuntimeHelpers.ToRuntimeValue(");
+            TranspileExpression(newExpr.Arguments[2]);
+            _output.Append("); ");
+            _output.Append("var __handlerRv = RuntimeHelpers.ToRuntimeValue(");
+            TranspileExpression(newExpr.Arguments[3]);
+            _output.Append("); ");
+            _output.Append("__tool.Initialize(__name, __desc, __paramsRv, null); ");
+            _output.Append("if (__handlerRv.Type == MaldaLang.Interpreter.ValueType.Function) { ");
+            _output.Append("var __interp = MaldaLang.Runtime.TranspiledBuiltinRuntime.GetOrCreateInterpreter(); ");
+            _output.Append("__tool.SetFunctionHandler(__handlerRv.AsFunction(), __interp); ");
+            _output.Append("} ");
+            _output.Append("return __tool; })())");
+            return;
+        }
         
         // OpenRouterClient(model?) — coerce model because locals/params are object-typed.
         if (className == "OpenRouterClient" && newExpr.Arguments.Count <= 1)

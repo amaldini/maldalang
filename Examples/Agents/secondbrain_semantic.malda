@@ -12,6 +12,7 @@
 //   3) ASK     local HttpServer web UI: GraphMemory.query (hybridLexical / BM25),
 //              falling back to the lexical catalog scorer if memory is missing.
 //              LLM answers in Markdown (rendered with markdownToHtml).
+//              Optional ASK tools include find_related_notes (new Tool + GraphMemory.findRelated).
 //   4) language  switch console/UI language (English / Italian).
 //   5) PACK    compile a portable ASK-only .exe with the brain embedded.
 //
@@ -251,7 +252,185 @@ function newCodingAgent(name, role, instructions, workDir) {
     return new CodingAgent(name, role, instructions, client, workDir);
 }
 
-// Read-only agent for ASK mode (no write tools).
+// GraphMemory neighbor lookup via new Tool(...) — example of a custom LLM tool
+// (handler receives the whole args object). Uses findRelated() on related_to edges.
+function findRelatedNotesToolHandler(args) {
+    var slug = "";
+    var maxDistance = 2;
+    if (args != null) {
+        if (args.slug != null) {
+            slug = str.trim(string(args.slug));
+        }
+        if (args.maxDistance != null) {
+            var d = toIntOrNull(args.maxDistance);
+            if (d != null) {
+                maxDistance = d;
+            }
+        }
+    }
+    if (slug == "") {
+        return "Error: slug is required (use a note slug from the retrieved sources).";
+    }
+    if (maxDistance < 1) {
+        maxDistance = 1;
+    }
+    if (maxDistance > 4) {
+        maxDistance = 4;
+    }
+
+    var session = askGetSession();
+    var brainDir = askAsText(session.brainDir);
+    var catalog = ui.state(ASK_STORE, "catalog", null, ASK_SESSION_ID);
+    var memory = getAskMemory(brainDir);
+    if (memory == null) {
+        return "Error: GraphMemory is not available for this brain.";
+    }
+    return runFindRelatedNotes(memory, catalog, slug, maxDistance);
+}
+
+function resolveMemoryNodeId(memory, catalog, slugOrPath) {
+    var raw = str.trim(string(slugOrPath));
+    if (raw == "") {
+        return "";
+    }
+    if (memory.hasNode(raw) == true) {
+        return raw;
+    }
+
+    var wantSlug = slugFromNotePath(raw);
+    var wantPath = normalizePath(raw);
+    if (not str.endsWith(wantPath, ".md") and not str.startsWith(wantPath, "notes/")) {
+        wantPath = normalizePath("notes/" + wantSlug + ".md");
+    } else if (not str.startsWith(wantPath, "notes/") and str.endsWith(wantPath, ".md")) {
+        wantPath = normalizePath("notes/" + wantPath);
+    }
+
+    try {
+        var results = memory.query(wantSlug, 12, {
+            "hybridLexical": true,
+            "lexicalMode": "bm25",
+            "lexicalMinScore": 0.0,
+            "type": "semantic",
+            "minScore": 0.0
+        });
+        foreach (var r in results) {
+            var fp = "";
+            if (r.filePath != null) {
+                fp = normalizePath(string(r.filePath));
+            }
+            if (fp != "" and (fp == wantPath or slugFromNotePath(fp) == wantSlug)) {
+                if (r.nodeId != null and string(r.nodeId) != "") {
+                    return string(r.nodeId);
+                }
+            }
+        }
+        foreach (var r2 in results) {
+            if (r2.nodeId != null and string(r2.nodeId) != "") {
+                var note = resolveCatalogNote(catalog, r2);
+                if (note != null and note.slug == wantSlug) {
+                    return string(r2.nodeId);
+                }
+            }
+        }
+    } catch (e) {
+        return "";
+    }
+    return "";
+}
+
+function formatRelatedMemoryNode(catalog, node) {
+    var path = "";
+    if (node.filePath != null) {
+        path = string(node.filePath);
+    }
+    var note = null;
+    if (catalog != null and path != "") {
+        note = resolveCatalogNote(catalog, node);
+    }
+    var title = "";
+    var slug = "";
+    if (note != null) {
+        title = string(note.title);
+        slug = string(note.slug);
+    }
+    if (slug == "" and path != "") {
+        slug = slugFromNotePath(path);
+    }
+    if (title == "" and node.fact != null) {
+        title = str.trim(str.substring(string(node.fact), 0, 80));
+    }
+    var id = "";
+    if (node.nodeId != null) {
+        id = string(node.nodeId);
+    }
+    var line = "- ";
+    if (slug != "") {
+        line = line + slug;
+    } else {
+        line = line + id;
+    }
+    if (title != "") {
+        line = line + " — " + title;
+    }
+    if (path != "") {
+        line = line + " (" + path + ")";
+    }
+    return line;
+}
+
+function runFindRelatedNotes(memory, catalog, slug, maxDistance) {
+    var nodeId = resolveMemoryNodeId(memory, catalog, slug);
+    if (nodeId == "") {
+        return "No GraphMemory node found for slug/path: " + string(slug);
+    }
+    var related = [];
+    try {
+        related = memory.findRelated(nodeId, maxDistance);
+    } catch (e) {
+        return "findRelated failed: " + string(e);
+    }
+    if (related == null or related.length == 0) {
+        return "No related notes within distance " + string(maxDistance) +
+            " of " + string(slug) + " (" + nodeId + ").";
+    }
+    var lines = [];
+    lines.append("Related notes for " + string(slug) + " (" + nodeId +
+        ", maxDistance=" + string(maxDistance) + "):");
+    var n = 0;
+    foreach (var node in related) {
+        lines.append(formatRelatedMemoryNode(catalog, node));
+        n = n + 1;
+        if (n >= 12) {
+            break;
+        }
+    }
+    return str.join(lines, "\n");
+}
+
+function createFindRelatedNotesTool() {
+    var schema = {
+        "type": "object",
+        "properties": {
+            "slug": {
+                "type": "string",
+                "description": "Note slug from retrieved sources (e.g. my-topic-note), or notes/slug.md"
+            },
+            "maxDistance": {
+                "type": "integer",
+                "description": "Graph hop distance for findRelated (default 2, max 4)"
+            }
+        },
+        "required": ["slug"]
+    };
+    return new Tool(
+        "find_related_notes",
+        "Find notes linked in GraphMemory near a seed note (related_to neighbors via findRelated). Prefer a slug from the sources list.",
+        schema,
+        findRelatedNotesToolHandler
+    );
+}
+
+// Read-only agent for ASK mode (file tools + optional GraphMemory neighbor tool).
 function newReaderAgent(name, role, instructions, brainDir) {
     var client = makeClient();
     var agent = null;
@@ -263,6 +442,10 @@ function newReaderAgent(name, role, instructions, brainDir) {
     agent.addTool(createReadFileTool(brainDir));
     agent.addTool(createGrepTool(brainDir));
     agent.addTool(createListDirectoryTool(brainDir));
+    var memory = getAskMemory(brainDir);
+    if (memory != null) {
+        agent.addTool(createFindRelatedNotesTool());
+    }
     return agent;
 }
 
@@ -2695,7 +2878,9 @@ function answerInstructions(useTools) {
     if (useTools == true) {
         text = text +
             "Puoi usare gli strumenti read_file, grep e list_directory per aprire altre note " +
-            "di " + productName() + " se il contesto fornito non basta. ";
+            "di " + productName() + " se il contesto fornito non basta. " +
+            "Se e' disponibile, usa find_related_notes(slug) per esplorare note collegate " +
+            "nel GraphMemory a partire da uno slug delle fonti. ";
     } else {
         text = text +
             "Non hai strumenti: usa solo gli estratti forniti nel prompt; non inventare " +
@@ -2824,8 +3009,8 @@ function runAskTurn(question) {
     var responder = null;
     if (useTools) {
         AnsiConsole.markupLine("[dim]" + t(
-            "ASK tools: on (read_file / grep / list_directory)",
-            "Tool ASK: attivi (read_file / grep / list_directory)") + "[/]");
+            "ASK tools: on (read_file / grep / list_directory / find_related_notes)",
+            "Tool ASK: attivi (read_file / grep / list_directory / find_related_notes)") + "[/]");
         responder = newReaderAgent(
             "BrainReader",
             "assistente di knowledge base",

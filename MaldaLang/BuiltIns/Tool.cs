@@ -3,6 +3,7 @@
 
 namespace MaldaLang.BuiltIns;
 
+using System.Collections.Generic;
 using System.IO;
 using MaldaLang.Interpreter;
 using ValueType = MaldaLang.Interpreter.ValueType;
@@ -244,6 +245,79 @@ public class ToolInstance : ObjectInstance
         return RuntimeValue.Object(schema);
     }
     
+    /// <summary>
+    /// Invokes a MALDA / transpiled tool handler with LLM-style object arguments.
+    /// Single-parameter handlers receive the whole args object when the param name
+    /// is not present as a property (idiom for <c>new Tool(..., handler)</c>).
+    /// </summary>
+    public static RuntimeValue InvokeMaldaToolFunction(
+        FunctionValue function,
+        Interpreter interpreter,
+        RuntimeValue arguments)
+    {
+        try
+        {
+            if (arguments.Type != ValueType.Object)
+                return RuntimeValue.String("Error: Tool arguments must be an object");
+
+            // Transpiled function values often have no Declaration — pass the args bag.
+            if (function.Declaration == null)
+            {
+                if (function.TranspiledDelegate == null)
+                    return RuntimeValue.String("Error: Tool function has no declaration");
+                return interpreter.CallFunctionAsync(
+                    function,
+                    new List<RuntimeValue> { arguments },
+                    null).GetAwaiter().GetResult();
+            }
+
+            var argsObj = arguments.AsObject();
+            var functionParams = function.Declaration.Parameters;
+            var functionArgs = new List<RuntimeValue>();
+
+            if (functionParams.Count == 1)
+            {
+                var only = functionParams[0];
+                RuntimeValue? direct = null;
+                try
+                {
+                    direct = argsObj.Get(only, null);
+                }
+                catch
+                {
+                    direct = null;
+                }
+
+                // new Tool handlers typically use function(args) { ... args.slug ... }
+                if (direct == null || direct.Type == ValueType.Null)
+                    functionArgs.Add(arguments);
+                else
+                    functionArgs.Add(direct);
+            }
+            else
+            {
+                foreach (var paramName in functionParams)
+                {
+                    try
+                    {
+                        var paramValue = argsObj.Get(paramName, null);
+                        functionArgs.Add(paramValue ?? RuntimeValue.Null());
+                    }
+                    catch
+                    {
+                        functionArgs.Add(RuntimeValue.Null());
+                    }
+                }
+            }
+
+            return interpreter.CallFunctionAsync(function, functionArgs, null).GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            return RuntimeValue.String($"Error executing tool function: {ex.Message}");
+        }
+    }
+
     public virtual RuntimeValue Execute(RuntimeValue arguments, Interpreter? interpreter = null)
     {
         try
@@ -279,15 +353,15 @@ public class ToolInstance : ObjectInstance
                     return RuntimeValue.String($"Error: Path '{pathToCheck}' is outside the allowed working directory '{WorkingDirectory}'");
                 }
             }
+
+            var functionHandler = _functionHandler;
+            var interp = _interpreter ?? interpreter;
+            if (functionHandler != null && interp != null)
+                return InvokeMaldaToolFunction(functionHandler, interp, arguments);
+
+            if (_handler != null && _handler.Type == ValueType.Function && interpreter != null)
+                return InvokeMaldaToolFunction(_handler.AsFunction(), interpreter, arguments);
             
-            // If we have a handler, use it (for future extension)
-            if (_handler != null && _handler.Type == ValueType.Function)
-            {
-                var func = _handler.AsFunction();
-                // Handler execution would go here
-            }
-            
-            // For now, return success - actual execution happens in Conversation
             return RuntimeValue.String("Tool execution validated");
         }
         catch (Exception ex)

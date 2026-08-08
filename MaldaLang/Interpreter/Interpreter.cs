@@ -3630,9 +3630,12 @@ public partial class Interpreter
             throw new RuntimeException("Tool() expects (string, string, object, function?)");
         
         var tool = new BuiltIns.ToolInstance();
-        tool.Initialize(name.AsString(), description.AsString(), parameters, 
-            handler.Type == ValueType.Function ? handler : null);
-        
+        // Keep schema on Initialize; wire the callable handler separately so Conversation
+        // / tool.execute() can invoke it (same path as @Tool registration).
+        tool.Initialize(name.AsString(), description.AsString(), parameters, null);
+        if (handler.Type == ValueType.Function)
+            tool.SetFunctionHandler(handler.AsFunction(), this);
+
         return RuntimeValue.Object(tool);
     }
     
