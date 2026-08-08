@@ -1,0 +1,340 @@
+// secondbrain_cli_lib.malda - shared CLI parsing for secondbrain*.malda
+//
+// Included by the host after t() / UI_LANG helpers. Parses getCommandLineArgs()
+// style arrays (script path + host flags like --strict-types are ignored).
+//
+// Modes: build | update | ask | help
+// Flags: --docs --brain --taxonomy llm|folders --remove-orphans --lang en|it
+//        --port / -p  --mode <name>  --help / -h
+
+function sbCliAsText(value) {
+    if (value == null) {
+        return "";
+    }
+    return string(value);
+}
+
+function sbCliEmptyOptions() {
+    return {
+        "mode": "",
+        "docs": "",
+        "brain": "",
+        "taxonomy": "llm",
+        "removeOrphans": false,
+        "lang": "",
+        "port": null,
+        "portError": false,
+        "error": ""
+    };
+}
+
+function sbCliIsModeName(raw) {
+    var a = str.lower(str.trim(sbCliAsText(raw)));
+    return a == "build" or a == "update" or a == "ask" or a == "help" or a == "pack";
+}
+
+function sbCliEndsWithMalda(raw) {
+    var a = str.lower(str.trim(sbCliAsText(raw)));
+    return str.endsWith(a, ".malda");
+}
+
+function sbCliIsHostSkipFlag(raw) {
+    var a = str.lower(str.trim(sbCliAsText(raw)));
+    return a == "--strict-types" or a == "--profile";
+}
+
+function sbCliIsHostSkipFlagWithValue(raw) {
+    var a = str.lower(str.trim(sbCliAsText(raw)));
+    return a == "--profile-output" or a == "--profile-format" or
+        a == "--profile-periodic-seconds";
+}
+
+function sbCliParsePortNumber(raw) {
+    var s = str.trim(sbCliAsText(raw));
+    if (s == "") {
+        return null;
+    }
+    var n = toIntOrNull(s);
+    if (n == null) {
+        return null;
+    }
+    if (n < 1 or n > 65535) {
+        return null;
+    }
+    return n;
+}
+
+function sbCliNormalizeMode(raw) {
+    var a = str.lower(str.trim(sbCliAsText(raw)));
+    if (a == "build" or a == "update" or a == "ask" or a == "help" or a == "pack") {
+        return a;
+    }
+    return "";
+}
+
+function sbCliNormalizeLang(raw) {
+    var a = str.lower(str.trim(sbCliAsText(raw)));
+    if (a == "en" or a == "english" or a == "e" or a == "1") {
+        return "en";
+    }
+    if (a == "it" or a == "italiano" or a == "italian" or a == "i" or a == "2") {
+        return "it";
+    }
+    return "";
+}
+
+function sbCliNormalizeTaxonomy(raw) {
+    var a = str.lower(str.trim(sbCliAsText(raw)));
+    if (a == "llm" or a == "explore" or a == "exploration") {
+        return "llm";
+    }
+    if (a == "folders" or a == "folder" or a == "subfolders" or a == "subfolder") {
+        return "folders";
+    }
+    return "";
+}
+
+function sbCliTakeFlagValue(args, i, flag) {
+    // Returns { value, nextIndex, ok, missing }
+    var a = str.trim(sbCliAsText(args[i]));
+    var prefix = flag + "=";
+    if (str.startsWith(a, prefix)) {
+        return {
+            "value": str.substring(a, str.length(flag) + 1, str.length(a) - str.length(flag) - 1),
+            "nextIndex": i + 1,
+            "ok": true,
+            "missing": false
+        };
+    }
+    if (a == flag) {
+        if (i + 1 >= args.length) {
+            return { "value": "", "nextIndex": i + 1, "ok": false, "missing": true };
+        }
+        return {
+            "value": sbCliAsText(args[i + 1]),
+            "nextIndex": i + 2,
+            "ok": true,
+            "missing": false
+        };
+    }
+    return { "value": "", "nextIndex": i, "ok": false, "missing": false };
+}
+
+function sbCliParseArgs(args) {
+    var opt = sbCliEmptyOptions();
+    if (args == null) {
+        return opt;
+    }
+    var i = 0;
+    while (i < args.length) {
+        var a = str.trim(sbCliAsText(args[i]));
+        if (a == "" or sbCliEndsWithMalda(a)) {
+            i = i + 1;
+            continue;
+        }
+        if (sbCliIsHostSkipFlag(a)) {
+            i = i + 1;
+            continue;
+        }
+        if (sbCliIsHostSkipFlagWithValue(a)) {
+            if (i + 1 < args.length) {
+                i = i + 2;
+            } else {
+                i = i + 1;
+            }
+            continue;
+        }
+        if (a == "--help" or a == "-h" or a == "help") {
+            opt.mode = "help";
+            i = i + 1;
+            continue;
+        }
+        if (sbCliIsModeName(a) and opt.mode == "") {
+            opt.mode = sbCliNormalizeMode(a);
+            i = i + 1;
+            continue;
+        }
+
+        var taken = sbCliTakeFlagValue(args, i, "--mode");
+        if (taken.ok == true or taken.missing == true) {
+            if (taken.missing == true or sbCliNormalizeMode(taken.value) == "") {
+                opt.error = "Invalid --mode (use build, update, ask, or help).";
+                return opt;
+            }
+            opt.mode = sbCliNormalizeMode(taken.value);
+            i = taken.nextIndex;
+            continue;
+        }
+
+        taken = sbCliTakeFlagValue(args, i, "--docs");
+        if (taken.ok == true or taken.missing == true) {
+            if (taken.missing == true or str.trim(taken.value) == "") {
+                opt.error = "Missing value for --docs.";
+                return opt;
+            }
+            opt.docs = str.trim(taken.value);
+            i = taken.nextIndex;
+            continue;
+        }
+
+        taken = sbCliTakeFlagValue(args, i, "--brain");
+        if (taken.ok == true or taken.missing == true) {
+            if (taken.missing == true or str.trim(taken.value) == "") {
+                opt.error = "Missing value for --brain.";
+                return opt;
+            }
+            opt.brain = str.trim(taken.value);
+            i = taken.nextIndex;
+            continue;
+        }
+
+        taken = sbCliTakeFlagValue(args, i, "--taxonomy");
+        if (taken.ok == true or taken.missing == true) {
+            var tax = sbCliNormalizeTaxonomy(taken.value);
+            if (taken.missing == true or tax == "") {
+                opt.error = "Invalid --taxonomy (use llm or folders).";
+                return opt;
+            }
+            opt.taxonomy = tax;
+            i = taken.nextIndex;
+            continue;
+        }
+
+        taken = sbCliTakeFlagValue(args, i, "--lang");
+        if (taken.ok == true or taken.missing == true) {
+            var lang = sbCliNormalizeLang(taken.value);
+            if (taken.missing == true or lang == "") {
+                opt.error = "Invalid --lang (use en or it).";
+                return opt;
+            }
+            opt.lang = lang;
+            i = taken.nextIndex;
+            continue;
+        }
+
+        if (a == "--remove-orphans") {
+            opt.removeOrphans = true;
+            i = i + 1;
+            continue;
+        }
+        if (a == "--keep-orphans") {
+            opt.removeOrphans = false;
+            i = i + 1;
+            continue;
+        }
+
+        // Port: --port / -p / --port= / -p=
+        taken = sbCliTakeFlagValue(args, i, "--port");
+        if (taken.ok == true or taken.missing == true) {
+            if (taken.missing == true) {
+                opt.portError = true;
+                opt.error = "Missing value for --port.";
+                return opt;
+            }
+            var p = sbCliParsePortNumber(taken.value);
+            if (p == null) {
+                opt.portError = true;
+                opt.error = "Invalid --port value.";
+                return opt;
+            }
+            opt.port = p;
+            i = taken.nextIndex;
+            continue;
+        }
+        taken = sbCliTakeFlagValue(args, i, "-p");
+        if (taken.ok == true or taken.missing == true) {
+            if (taken.missing == true) {
+                opt.portError = true;
+                opt.error = "Missing value for -p.";
+                return opt;
+            }
+            var p2 = sbCliParsePortNumber(taken.value);
+            if (p2 == null) {
+                opt.portError = true;
+                opt.error = "Invalid -p value.";
+                return opt;
+            }
+            opt.port = p2;
+            i = taken.nextIndex;
+            continue;
+        }
+
+        if (str.startsWith(a, "-")) {
+            opt.error = "Unknown flag: " + a;
+            return opt;
+        }
+
+        opt.error = "Unexpected argument: " + a;
+        return opt;
+    }
+    return opt;
+}
+
+function sbCliIsNonInteractive(cli) {
+    if (cli == null) {
+        return false;
+    }
+    var m = str.trim(sbCliAsText(cli.mode));
+    return m == "build" or m == "update" or m == "ask";
+}
+
+function sbCliApplyLang(cli) {
+    if (cli == null) {
+        return;
+    }
+    var lang = str.trim(sbCliAsText(cli.lang));
+    if (lang == "en" or lang == "it") {
+        UI_LANG = lang;
+        ui.setState(ASK_STORE, "lang", UI_LANG, ASK_SESSION_ID);
+    }
+}
+
+function sbCliApplyPort(cli) {
+    if (cli == null or cli.port == null) {
+        return ASK_HTTP_PORT;
+    }
+    ASK_HTTP_PORT = cli.port;
+    AnsiConsole.markupLine("[dim]" + t(
+        "ASK HTTP port from CLI: ",
+        "Porta HTTP ASK da riga di comando: ") +
+        string(ASK_HTTP_PORT) + "[/]");
+    return ASK_HTTP_PORT;
+}
+
+function sbCliPrintHelp(defaultBrain, defaultPort) {
+    var brain = str.trim(sbCliAsText(defaultBrain));
+    if (brain == "") {
+        brain = "secondbrain";
+    }
+    var port = str.trim(sbCliAsText(defaultPort));
+    if (port == "") {
+        port = "39018";
+    }
+    var en =
+        "Second Brain CLI\n\n" +
+        "  build  --docs <folder> [--brain " + brain + "] [--taxonomy llm|folders] [--lang en|it]\n" +
+        "  update [--docs <folder>] [--brain " + brain + "] [--remove-orphans] [--lang en|it]\n" +
+        "  ask    [--brain " + brain + "] [--port " + port + "] [--lang en|it]\n" +
+        "  help\n\n" +
+        "Non-interactive: build/update/ask skip the menu and confirmations.\n" +
+        "Also: --mode build|update|ask   -p <port>   --port=<n>\n" +
+        "Pack remains interactive (menu option 5).";
+    var it =
+        "Second Brain CLI\n\n" +
+        "  build  --docs <cartella> [--brain " + brain + "] [--taxonomy llm|folders] [--lang en|it]\n" +
+        "  update [--docs <cartella>] [--brain " + brain + "] [--remove-orphans] [--lang en|it]\n" +
+        "  ask    [--brain " + brain + "] [--port " + port + "] [--lang en|it]\n" +
+        "  help\n\n" +
+        "Non interattivo: build/update/ask saltano menu e conferme.\n" +
+        "Anche: --mode build|update|ask   -p <porta>   --port=<n>\n" +
+        "PACK resta interattivo (voce di menu 5).";
+    if (UI_LANG == "en") {
+        io.print(en);
+    } else if (UI_LANG == "it") {
+        io.print(it);
+    } else {
+        io.print(en);
+        io.print("");
+        io.print(it);
+    }
+}

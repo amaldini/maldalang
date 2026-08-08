@@ -16,15 +16,27 @@
 //
 // Run:   malda Examples/Agents/secondbrain.malda
 //
+// Non-interactive CLI (skips menu + confirmations; exits when done):
+//   malda Examples/Agents/secondbrain.malda build --docs ./docs [--brain secondbrain]
+//       [--taxonomy llm|folders] [--lang en|it]
+//   malda Examples/Agents/secondbrain.malda update [--docs ./docs] [--brain secondbrain]
+//       [--remove-orphans] [--lang en|it]
+//   malda Examples/Agents/secondbrain.malda ask [--brain secondbrain] [--port 8080] [--lang en|it]
+//   malda Examples/Agents/secondbrain.malda help
+//
 // LLM:   if OPENROUTER_API_KEY is set, uses OpenRouter (client default model,
 //        override with MALDA_BRAIN_MODEL); otherwise MALDA's default local model
 //        (downloaded on first use).
 //
-// UI:    at startup, choose UI message language (English / Italian).
+// UI:    at startup (interactive), choose UI message language (English / Italian).
 //        Notes stay in the source document language; technical terms are unchanged.
-//        ASK opens http://localhost:39018/ (Ctrl+C in console returns to menu).
+//        ASK opens http://localhost:39018/ by default (Ctrl+C in console returns to menu).
+//        Override the ASK port from the command line (menu mode 3, ask CLI, or packed exe):
+//          malda Examples/Agents/secondbrain.malda --port 8080
+//          secondbrain.exe --port 8080
+//          (also: -p 8080, --port=8080)
 //
-// Pack portable ASK exe (menu option 4, or CLI):
+// Pack portable ASK exe (menu option 5, interactive):
 //   malda compile Examples/Agents/secondbrain.malda -o dist/secondbrain.exe --mode transpile --embed-folder secondbrain
 //   When the embedded folder is present at runtime, startup skips the console
 //   menu/language prompt and opens ASK immediately (language is chosen in the
@@ -38,8 +50,9 @@ var MAX_NOTE_CHARS = 5000;      // characters per note in an answer context
 var TOP_K = 5;                  // notes retrieved per question
 var MAX_EXPLORE_DOCS = 300;     // documents listed for the explorer agent
 var CATALOG_NAME = "brain.json";
+var DEFAULT_BRAIN_DIR = "secondbrain";
 var UI_LANG = "it";             // "en" | "it" — UI messages
-var ASK_HTTP_PORT = 39018;
+var ASK_HTTP_PORT = 39018;  // override with --port / -p on the command line
 var ASK_SESSION_ID = "secondbrain-ask-lexical";
 var ASK_STORE = "SecondBrainAsk";
 // Display name for UI / console / generated index (folder aliases stay EMBED_ALIAS).
@@ -172,6 +185,8 @@ function chooseLanguage() {
         "[dim]UI language: English[/]",
         "[dim]Lingua interfaccia: Italiano[/]"));
 }
+
+include "secondbrain_cli_lib.malda";
 
 // ---------------------------------------------------------------- LLM helpers
 
@@ -1523,37 +1538,63 @@ function finalizeBrain(brainDir, docsRoot, notes, skipped, truncated, taxonomySo
     return topics;
 }
 
-function buildBrain() {
+function buildBrain(cli) {
+    var nonInteractive = sbCliIsNonInteractive(cli) and cli.mode == "build";
     AnsiConsole.markupLine("");
     AnsiConsole.panel(
         t("Reads .md and .html and distills linked notes for " + productName() + ".",
             "Legge .md e .html e distilla note collegate per " + productName() + "."),
         t("[bold]Mode 1 - BUILD[/]", "[bold]Modalita' 1 - COSTRUISCI[/]"), "rounded");
 
-    var docsRoot = str.trim(io.input(t("Documentation folder: ", "Cartella della documentazione: ")));
-    if (docsRoot == "") {
-        io.print(t("Cancelled.", "Annullato."));
-        return false;
+    var docsRoot = "";
+    if (nonInteractive) {
+        docsRoot = str.trim(sbCliAsText(cli.docs));
+        if (docsRoot == "") {
+            AnsiConsole.markupLine("[red]" + t(
+                "CLI build requires --docs <folder>.",
+                "Il build da CLI richiede --docs <cartella>.") + "[/]");
+            return false;
+        }
+    } else {
+        docsRoot = str.trim(io.input(t("Documentation folder: ", "Cartella della documentazione: ")));
+        if (docsRoot == "") {
+            io.print(t("Cancelled.", "Annullato."));
+            return false;
+        }
     }
     if (not io.hasDirectory(docsRoot)) {
         AnsiConsole.markupLine("[red]" + t("Folder not found:", "Cartella non trovata:") + "[/] " + docsRoot);
         return false;
     }
 
-    var brainDir = str.trim(io.input(t(
-        productName() + " folder [secondbrain]: ",
-        "Cartella " + productName() + " [secondbrain]: ")));
-    if (brainDir == "") {
-        brainDir = "secondbrain";
+    var brainDir = "";
+    if (nonInteractive) {
+        brainDir = str.trim(sbCliAsText(cli.brain));
+        if (brainDir == "") {
+            brainDir = DEFAULT_BRAIN_DIR;
+        }
+    } else {
+        brainDir = str.trim(io.input(t(
+            productName() + " folder [" + DEFAULT_BRAIN_DIR + "]: ",
+            "Cartella " + productName() + " [" + DEFAULT_BRAIN_DIR + "]: ")));
+        if (brainDir == "") {
+            brainDir = DEFAULT_BRAIN_DIR;
+        }
     }
     applyProductNameFromBrain(brainDir);
     if (io.hasFile(io.pathJoin(brainDir, CATALOG_NAME))) {
-        var confirm = str.trim(io.input(t(
-            productName() + " already exists in this folder: matching files will be overwritten. Proceed? " + ynHint() + ": ",
-            productName() + " esiste gia' in questa cartella: i file omonimi verranno sovrascritti. Procedo? " + ynHint() + ": ")));
-        if (not isAffirmative(confirm)) {
-            io.print(t("Cancelled.", "Annullato."));
-            return false;
+        if (nonInteractive) {
+            AnsiConsole.markupLine("[dim]" + t(
+                "CLI non-interactive: existing brain files with the same names will be overwritten.",
+                "CLI non interattivo: i file omonimi del brain esistente verranno sovrascritti.") + "[/]");
+        } else {
+            var confirm = str.trim(io.input(t(
+                productName() + " already exists in this folder: matching files will be overwritten. Proceed? " + ynHint() + ": ",
+                productName() + " esiste gia' in questa cartella: i file omonimi verranno sovrascritti. Procedo? " + ynHint() + ": ")));
+            if (not isAffirmative(confirm)) {
+                io.print(t("Cancelled.", "Annullato."));
+                return false;
+            }
         }
     }
 
@@ -1576,12 +1617,18 @@ function buildBrain() {
     AnsiConsole.markupLine("[dim]" + t(
         "One exploration call, one per document, one per theme: paid models incur a cost.",
         "Una chiamata di esplorazione, una per documento, una per tema: con modelli a pagamento questo ha un costo.") + "[/]");
-    var go = str.trim(io.input(t(
-        "Start distillation? " + ynHint() + ": ",
-        "Avvio la distillazione? " + ynHint() + ": ")));
-    if (not isAffirmative(go)) {
-        io.print(t("Cancelled.", "Annullato."));
-        return false;
+    if (nonInteractive) {
+        AnsiConsole.markupLine("[dim]" + t(
+            "CLI non-interactive: starting distillation.",
+            "CLI non interattivo: avvio distillazione.") + "[/]");
+    } else {
+        var go = str.trim(io.input(t(
+            "Start distillation? " + ynHint() + ": ",
+            "Avvio la distillazione? " + ynHint() + ": ")));
+        if (not isAffirmative(go)) {
+            io.print(t("Cancelled.", "Annullato."));
+            return false;
+        }
     }
 
     io.print("");
@@ -1591,13 +1638,27 @@ function buildBrain() {
     if (taxonomy != null) {
         io.print("");
         describeTaxonomy(taxonomy, docs);
-        var keep = str.trim(io.input(t(
-            "Use this taxonomy? (y = yes, n = group by subfolder): ",
-            "Uso questa tassonomia? (s = si, n = raggruppa per sottocartella): ")));
-        if (isNegative(keep)) {
-            taxonomy = null;
+        if (nonInteractive) {
+            if (cli.taxonomy == "folders") {
+                taxonomy = null;
+                AnsiConsole.markupLine("[dim]" + t(
+                    "CLI: --taxonomy folders (ignore LLM taxonomy).",
+                    "CLI: --taxonomy folders (ignora tassonomia LLM).") + "[/]");
+            } else {
+                taxonomySource = t("LLM exploration", "esplorazione LLM");
+                AnsiConsole.markupLine("[dim]" + t(
+                    "CLI: keeping LLM taxonomy.",
+                    "CLI: mantengo la tassonomia LLM.") + "[/]");
+            }
         } else {
-            taxonomySource = t("LLM exploration", "esplorazione LLM");
+            var keep = str.trim(io.input(t(
+                "Use this taxonomy? (y = yes, n = group by subfolder): ",
+                "Uso questa tassonomia? (s = si, n = raggruppa per sottocartella): ")));
+            if (isNegative(keep)) {
+                taxonomy = null;
+            } else {
+                taxonomySource = t("LLM exploration", "esplorazione LLM");
+            }
         }
     }
     if (taxonomy == null) {
@@ -1676,18 +1737,27 @@ function buildBrain() {
     return true;
 }
 
-function updateBrain() {
+function updateBrain(cli) {
+    var nonInteractive = sbCliIsNonInteractive(cli) and cli.mode == "update";
     AnsiConsole.markupLine("");
     AnsiConsole.panel(
         t("Updates an existing " + productName() + ": only new or changed source files are re-distilled.",
             "Aggiorna " + productName() + " esistente: ridistilla solo i file di origine nuovi o modificati."),
         t("[bold]Mode 2 - UPDATE[/]", "[bold]Modalita' 2 - AGGIORNA[/]"), "rounded");
 
-    var brainDir = str.trim(io.input(t(
-        productName() + " folder [secondbrain]: ",
-        "Cartella " + productName() + " [secondbrain]: ")));
-    if (brainDir == "") {
-        brainDir = "secondbrain";
+    var brainDir = "";
+    if (nonInteractive) {
+        brainDir = str.trim(sbCliAsText(cli.brain));
+        if (brainDir == "") {
+            brainDir = DEFAULT_BRAIN_DIR;
+        }
+    } else {
+        brainDir = str.trim(io.input(t(
+            productName() + " folder [" + DEFAULT_BRAIN_DIR + "]: ",
+            "Cartella " + productName() + " [" + DEFAULT_BRAIN_DIR + "]: ")));
+        if (brainDir == "") {
+            brainDir = DEFAULT_BRAIN_DIR;
+        }
     }
     applyProductNameFromBrain(brainDir);
     var catalog = loadCatalog(brainDir);
@@ -1703,18 +1773,32 @@ function updateBrain() {
     if (catalog.sourceFolder != null) {
         defaultRoot = str.trim(string(catalog.sourceFolder));
     }
-    var docsPrompt = t("Documentation folder", "Cartella della documentazione");
-    if (defaultRoot != "") {
-        docsPrompt = docsPrompt + " [" + defaultRoot + "]";
-    }
-    docsPrompt = docsPrompt + ": ";
-    var docsRoot = str.trim(io.input(docsPrompt));
-    if (docsRoot == "") {
-        docsRoot = defaultRoot;
-    }
-    if (docsRoot == "") {
-        io.print(t("Cancelled.", "Annullato."));
-        return false;
+    var docsRoot = "";
+    if (nonInteractive) {
+        docsRoot = str.trim(sbCliAsText(cli.docs));
+        if (docsRoot == "") {
+            docsRoot = defaultRoot;
+        }
+        if (docsRoot == "") {
+            AnsiConsole.markupLine("[red]" + t(
+                "CLI update requires --docs <folder> (or sourceFolder in brain.json).",
+                "L'update da CLI richiede --docs <cartella> (o sourceFolder in brain.json).") + "[/]");
+            return false;
+        }
+    } else {
+        var docsPrompt = t("Documentation folder", "Cartella della documentazione");
+        if (defaultRoot != "") {
+            docsPrompt = docsPrompt + " [" + defaultRoot + "]";
+        }
+        docsPrompt = docsPrompt + ": ";
+        docsRoot = str.trim(io.input(docsPrompt));
+        if (docsRoot == "") {
+            docsRoot = defaultRoot;
+        }
+        if (docsRoot == "") {
+            io.print(t("Cancelled.", "Annullato."));
+            return false;
+        }
     }
     if (not io.hasDirectory(docsRoot)) {
         AnsiConsole.markupLine("[red]" + t("Folder not found:", "Cartella non trovata:") + "[/] " + docsRoot);
@@ -1802,24 +1886,39 @@ function updateBrain() {
 
     var removeOrphans = false;
     if (removed.length > 0) {
-        var drop = str.trim(io.input(t(
-            "Remove notes for " + string(removed.length) + " source file(s) missing from the folder? " +
-                ynHint() + ": ",
-            "Rimuovo le note di " + string(removed.length) + " file assenti dalla cartella? " +
-                ynHint() + ": ")));
-        removeOrphans = isAffirmative(drop);
+        if (nonInteractive) {
+            removeOrphans = cli.removeOrphans == true;
+            AnsiConsole.markupLine("[dim]" + t(
+                "CLI: orphan cleanup = ",
+                "CLI: pulizia orfani = ") +
+                string(removeOrphans) +
+                t(" (--remove-orphans to enable).", " (usa --remove-orphans per abilitarla).") + "[/]");
+        } else {
+            var drop = str.trim(io.input(t(
+                "Remove notes for " + string(removed.length) + " source file(s) missing from the folder? " +
+                    ynHint() + ": ",
+                "Rimuovo le note di " + string(removed.length) + " file assenti dalla cartella? " +
+                    ynHint() + ": ")));
+            removeOrphans = isAffirmative(drop);
+        }
     }
 
     var toDistill = added.length + changed.length;
     AnsiConsole.markupLine("[dim]" + t(
         "LLM calls: about one per changed/new document (plus hub refresh for touched themes).",
         "Chiamate LLM: circa una per documento nuovo/modificato (piu' refresh hub dei temi toccati).") + "[/]");
-    var go = str.trim(io.input(t(
-        "Apply update (" + string(toDistill) + " to distill)? " + ynHint() + ": ",
-        "Applico l'aggiornamento (" + string(toDistill) + " da distillare)? " + ynHint() + ": ")));
-    if (not isAffirmative(go)) {
-        io.print(t("Cancelled.", "Annullato."));
-        return false;
+    if (nonInteractive) {
+        AnsiConsole.markupLine("[dim]" + t(
+            "CLI non-interactive: applying update (" + string(toDistill) + " to distill).",
+            "CLI non interattivo: applico aggiornamento (" + string(toDistill) + " da distillare).") + "[/]");
+    } else {
+        var goUp = str.trim(io.input(t(
+            "Apply update (" + string(toDistill) + " to distill)? " + ynHint() + ": ",
+            "Applico l'aggiornamento (" + string(toDistill) + " da distillare)? " + ynHint() + ": ")));
+        if (not isAffirmative(goUp)) {
+            io.print(t("Cancelled.", "Annullato."));
+            return false;
+        }
     }
 
     var notes = [];
@@ -2164,7 +2263,7 @@ function runChatOnlyTurn(question) {
     };
 }
 
-function resolveAskBrainRoot() {
+function resolveAskBrainRoot(cli) {
     if (io.hasEmbeddedFolder("secondbrain")) {
         var root = io.embeddedFolderRoot("secondbrain");
         AnsiConsole.markupLine("[dim]" + t(
@@ -2172,11 +2271,14 @@ function resolveAskBrainRoot() {
             "Uso " + productName() + " incorporato (nessuna cartella su disco).") + "[/]");
         return root;
     }
+    if (cli != null and str.trim(sbCliAsText(cli.brain)) != "") {
+        return str.trim(sbCliAsText(cli.brain));
+    }
     var brainDir = str.trim(io.input(t(
-        productName() + " folder [secondbrain]: ",
-        "Cartella " + productName() + " [secondbrain]: ")));
+        productName() + " folder [" + DEFAULT_BRAIN_DIR + "]: ",
+        "Cartella " + productName() + " [" + DEFAULT_BRAIN_DIR + "]: ")));
     if (brainDir == "") {
-        brainDir = "secondbrain";
+        brainDir = DEFAULT_BRAIN_DIR;
     }
     return brainDir;
 }
@@ -2266,14 +2368,14 @@ function runAskTurn(question) {
 
 include "secondbrain_ask_ui_lib.malda";
 
-function askBrain() {
+function askBrain(cli) {
     AnsiConsole.markupLine("");
     AnsiConsole.panel(
         t("Opens a local web UI to ask questions against " + productName() + " from BUILD/UPDATE.",
             "Apre una UI web locale per fare domande su " + productName() + " di COSTRUISCI/AGGIORNA."),
         t("[bold]Mode 3 - ASK (web)[/]", "[bold]Modalita' 3 - CHIEDI (web)[/]"), "rounded");
 
-    var brainDir = resolveAskBrainRoot();
+    var brainDir = resolveAskBrainRoot(cli);
     askApplyProductNameFromBrain(brainDir);
     askApplyLogoFromBrain(brainDir);
     if (askLogoPathMissing()) {
@@ -2380,10 +2482,10 @@ function packPortableAskExe() {
         t("[bold]Mode 4 - PACK[/]", "[bold]Modalita' 4 - PACCHETTO[/]"), "rounded");
 
     var brainDir = str.trim(io.input(t(
-        productName() + " folder [" + EMBED_ALIAS + "]: ",
-        "Cartella " + productName() + " [" + EMBED_ALIAS + "]: ")));
+        productName() + " folder [" + DEFAULT_BRAIN_DIR + "]: ",
+        "Cartella " + productName() + " [" + DEFAULT_BRAIN_DIR + "]: ")));
     if (brainDir == "") {
-        brainDir = EMBED_ALIAS;
+        brainDir = DEFAULT_BRAIN_DIR;
     }
     applyProductNameFromBrain(brainDir);
     if (not io.hasDirectory(brainDir)) {
@@ -2452,10 +2554,10 @@ function packPortableAskExe() {
     AnsiConsole.markupLine("[green]" + t("Portable ASK exe ready:", "Exe ASK portatile pronto:") +
         "[/] [bold]" + str.replace(str.replace(string(written), "[", "[["), "]", "]]") + "[/]");
     AnsiConsole.markupLine("[dim]" + t(
-        "Run the .exe to open ASK with the embedded brain. Branding in the brain folder " +
-            "(auto-loaded): product_name.txt and optional logo.png / logo.svg.",
-        "Avvia l'.exe per aprire ASK col brain incorporato. Branding nella cartella del brain " +
-            "(auto-caricato): product_name.txt e logo.png / logo.svg opzionale.") + "[/]");
+        "Run the .exe to open ASK with the embedded brain. Optional: --port 8080 (or -p). " +
+            "Branding in the brain folder (auto-loaded): product_name.txt and optional logo.png / logo.svg.",
+        "Avvia l'.exe per aprire ASK col brain incorporato. Opzionale: --port 8080 (o -p). " +
+            "Branding nella cartella del brain (auto-caricato): product_name.txt e logo.png / logo.svg opzionale.") + "[/]");
     return true;
 }
 
@@ -2479,11 +2581,74 @@ function showMenu() {
         "[bold blue]MALDA " + productName() + "[/]", "double");
 }
 
+var cliOpts = sbCliParseArgs(getCommandLineArgs());
+
+if (cliOpts.error != "") {
+    AnsiConsole.markupLine("[red]" + cliOpts.error + "[/]");
+    sbCliPrintHelp(DEFAULT_BRAIN_DIR, ASK_HTTP_PORT);
+    exit(1);
+}
+
 if (io.hasEmbeddedFolder("secondbrain")) {
     // Portable ASK-only exe: skip console menu/language — ASK web UI has EN/IT.
-    askBrain();
+    if (cliOpts.mode == "build" or cliOpts.mode == "update" or cliOpts.mode == "pack") {
+        AnsiConsole.markupLine("[red]" + t(
+            "Packed ASK exe supports ask only (not build/update/pack).",
+            "L'exe ASK packato supporta solo ask (non build/update/pack).") + "[/]");
+        exit(1);
+    }
+    if (cliOpts.mode == "help") {
+        sbCliPrintHelp(DEFAULT_BRAIN_DIR, ASK_HTTP_PORT);
+        exit(0);
+    }
+    sbCliApplyLang(cliOpts);
+    if (cliOpts.port != null) {
+        sbCliApplyPort(cliOpts);
+    } else {
+        applyAskHttpPortFromCli();
+    }
+    askBrain(cliOpts);
+} else if (cliOpts.mode == "help") {
+    sbCliApplyLang(cliOpts);
+    sbCliPrintHelp(DEFAULT_BRAIN_DIR, ASK_HTTP_PORT);
+    exit(0);
+} else if (cliOpts.mode == "pack") {
+    AnsiConsole.markupLine("[yellow]" + t(
+        "PACK is interactive — use menu option 5.",
+        "PACK e' interattivo — usa la voce di menu 5.") + "[/]");
+    exit(1);
+} else if (cliOpts.mode == "build" or cliOpts.mode == "update" or cliOpts.mode == "ask") {
+    sbCliApplyLang(cliOpts);
+    if (cliOpts.lang == "") {
+        // Keep default UI_LANG without prompting.
+        ui.setState(ASK_STORE, "lang", UI_LANG, ASK_SESSION_ID);
+    }
+    if (cliOpts.mode == "ask") {
+        if (cliOpts.port != null) {
+            sbCliApplyPort(cliOpts);
+        } else {
+            applyAskHttpPortFromCli();
+        }
+        askBrain(cliOpts);
+        exit(0);
+    }
+    var ok = false;
+    if (cliOpts.mode == "build") {
+        ok = buildBrain(cliOpts);
+    } else {
+        ok = updateBrain(cliOpts);
+    }
+    if (ok) {
+        exit(0);
+    }
+    exit(1);
 } else {
     chooseLanguage();
+    if (cliOpts.port != null) {
+        sbCliApplyPort(cliOpts);
+    } else {
+        applyAskHttpPortFromCli();
+    }
     showMenu();
     while (true) {
         var choice = str.trim(io.input(t("Choice (1/2/3/4/5/0): ", "Scelta (1/2/3/4/5/0): ")));
@@ -2492,13 +2657,13 @@ if (io.hasEmbeddedFolder("secondbrain")) {
             break;
         }
         if (choice == "1") {
-            buildBrain();
+            buildBrain(null);
             showMenu();
         } else if (choice == "2") {
-            updateBrain();
+            updateBrain(null);
             showMenu();
         } else if (choice == "3") {
-            askBrain();
+            askBrain(null);
             showMenu();
         } else if (choice == "4") {
             chooseLanguage();

@@ -32,6 +32,84 @@ function askAsText(value) {
     return string(value);
 }
 
+// CLI: --port 8080 | -p 8080 | --port=8080 (also works on packed ASK .exe).
+// Scans getCommandLineArgs(); when run via `malda script.malda ...` the script
+// path is present in args and is ignored. Invalid / missing values keep defaultPort.
+function askParsePortNumber(raw) {
+    var s = str.trim(askAsText(raw));
+    if (s == "") {
+        return null;
+    }
+    var n = toIntOrNull(s);
+    if (n == null) {
+        return null;
+    }
+    if (n < 1 or n > 65535) {
+        return null;
+    }
+    return n;
+}
+
+function askParseHttpPortFromArgs(args, defaultPort) {
+    var fallback = defaultPort;
+    if (args == null) {
+        return { "ok": true, "changed": false, "port": fallback, "raw": "" };
+    }
+    var i = 0;
+    while (i < args.length) {
+        var a = str.trim(askAsText(args[i]));
+        if (a == "--port" or a == "-p") {
+            if (i + 1 >= args.length) {
+                return { "ok": false, "changed": false, "port": fallback, "raw": "" };
+            }
+            var next = askAsText(args[i + 1]);
+            var n = askParsePortNumber(next);
+            if (n == null) {
+                return { "ok": false, "changed": false, "port": fallback, "raw": next };
+            }
+            return { "ok": true, "changed": true, "port": n, "raw": next };
+        }
+        if (str.startsWith(a, "--port=")) {
+            var eq = str.substring(a, 7, str.length(a) - 7);
+            var nEq = askParsePortNumber(eq);
+            if (nEq == null) {
+                return { "ok": false, "changed": false, "port": fallback, "raw": eq };
+            }
+            return { "ok": true, "changed": true, "port": nEq, "raw": eq };
+        }
+        if (str.startsWith(a, "-p=") and str.length(a) > 3) {
+            var eqP = str.substring(a, 3, str.length(a) - 3);
+            var nP = askParsePortNumber(eqP);
+            if (nP == null) {
+                return { "ok": false, "changed": false, "port": fallback, "raw": eqP };
+            }
+            return { "ok": true, "changed": true, "port": nP, "raw": eqP };
+        }
+        i = i + 1;
+    }
+    return { "ok": true, "changed": false, "port": fallback, "raw": "" };
+}
+
+function applyAskHttpPortFromCli() {
+    var parsed = askParseHttpPortFromArgs(getCommandLineArgs(), ASK_HTTP_PORT);
+    if (parsed.ok != true) {
+        AnsiConsole.markupLine("[yellow]" + askT(
+            "Invalid --port / -p value; keeping ",
+            "Valore --port / -p non valido; resta ") +
+            string(ASK_HTTP_PORT) +
+            askT(".", ".") + "[/]");
+        return ASK_HTTP_PORT;
+    }
+    if (parsed.changed == true) {
+        ASK_HTTP_PORT = parsed.port;
+        AnsiConsole.markupLine("[dim]" + askT(
+            "ASK HTTP port from CLI: ",
+            "Porta HTTP ASK da riga di comando: ") +
+            string(ASK_HTTP_PORT) + "[/]");
+    }
+    return ASK_HTTP_PORT;
+}
+
 function askSharedScope() {
     return ASK_SESSION_ID;
 }

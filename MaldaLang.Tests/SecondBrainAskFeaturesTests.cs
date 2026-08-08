@@ -670,6 +670,11 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("function applyProductNameFromBrain(", source, StringComparison.Ordinal);
             Assert.Contains("askApplyProductNameFromBrain(", source, StringComparison.Ordinal);
             Assert.Contains("askApplyLogoFromBrain(", source, StringComparison.Ordinal);
+            Assert.Contains("applyAskHttpPortFromCli()", source, StringComparison.Ordinal);
+            Assert.Contains("--port", source, StringComparison.Ordinal);
+            Assert.Contains("sbCliParseArgs(", source, StringComparison.Ordinal);
+            Assert.Contains("build --docs", source, StringComparison.Ordinal);
+            Assert.Contains("include \"secondbrain_cli_lib.malda\"", source, StringComparison.Ordinal);
             Assert.Contains("product_name.txt", source, StringComparison.Ordinal);
             Assert.Contains("askGetToolsEnabled()", source, StringComparison.Ordinal);
             Assert.Contains("askSetToolsEnabled(false)", source, StringComparison.Ordinal);
@@ -678,6 +683,112 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("newPlainAgent(", source, StringComparison.Ordinal);
             Assert.Contains("ASK tools: off", source, StringComparison.Ordinal);
             Assert.Contains("ASK tools: on", source, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public async Task SbCli_ParseArgs_SupportsBuildUpdateFlags()
+    {
+        var cliLibPath = Path.Combine(RepoRoot, "Examples", "Agents", "secondbrain_cli_lib.malda");
+        Assert.True(File.Exists(cliLibPath), "missing cli lib: " + cliLibPath);
+
+        var tempDir = Path.Combine(Path.GetTempPath(), "malda_sb_cli_parse", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            File.Copy(cliLibPath, Path.Combine(tempDir, "secondbrain_cli_lib.malda"));
+            var harnessPath = Path.Combine(tempDir, "harness.malda");
+            File.WriteAllText(harnessPath,
+                """
+                var UI_LANG = "en";
+                var ASK_HTTP_PORT = 39018;
+                var ASK_SESSION_ID = "cli-test";
+                var ASK_STORE = "CliTest";
+
+                function t(en, it) { return en; }
+
+                include "secondbrain_cli_lib.malda";
+
+                var a = sbCliParseArgs(["script.malda", "build", "--docs", "P:/docs", "--brain", "brain1", "--taxonomy", "folders", "--lang", "en", "--strict-types"]);
+                print("A=" + a.mode + "," + a.docs + "," + a.brain + "," + a.taxonomy + "," + a.lang + "," + a.error);
+                var b = sbCliParseArgs(["update", "--remove-orphans", "--docs=./src"]);
+                print("B=" + b.mode + "," + string(b.removeOrphans) + "," + b.docs + "," + b.error);
+                var c = sbCliParseArgs(["--mode", "ask", "-p", "8080"]);
+                print("C=" + c.mode + "," + string(c.port) + "," + c.error);
+                var d = sbCliParseArgs(["build"]);
+                print("D=" + d.mode + "," + d.docs + "," + d.error);
+                var e = sbCliParseArgs(["--unknown"]);
+                print("E=" + e.error);
+                """,
+                Encoding.UTF8);
+
+            var output = await InterpretAndCaptureAsync(harnessPath);
+            Assert.Contains("A=build,P:/docs,brain1,folders,en,", output, StringComparison.Ordinal);
+            Assert.Contains("B=update,true,./src,", output, StringComparison.Ordinal);
+            Assert.Contains("C=ask,8080,", output, StringComparison.Ordinal);
+            Assert.Contains("D=build,,", output, StringComparison.Ordinal);
+            Assert.Contains("E=Unknown flag: --unknown", output, StringComparison.Ordinal);
+        }
+        finally
+        {
+            SafeDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public async Task AskUi_ParseHttpPortFromArgs_SupportsPortFlags()
+    {
+        Assert.True(File.Exists(AskUiLibPath), "missing ask UI lib: " + AskUiLibPath);
+
+        var tempDir = Path.Combine(Path.GetTempPath(), "malda_sb_ask_port", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            File.Copy(AskUiLibPath, Path.Combine(tempDir, "secondbrain_ask_ui_lib.malda"));
+            var harnessPath = Path.Combine(tempDir, "harness.malda");
+            File.WriteAllText(harnessPath,
+                """
+                var ASK_HTTP_PORT = 39018;
+                var ASK_SESSION_ID = "secondbrain-ask-port-test";
+                var ASK_STORE = "SecondBrainAskPortTest";
+                var PRODUCT_NAME = "Port Brain";
+                var ASK_TITLE_SUFFIX = " — ASK";
+                var ASK_PAGE_TITLE = PRODUCT_NAME + ASK_TITLE_SUFFIX;
+                var ASK_POWERED_BY = "";
+                var ASK_POWERED_BY_URL = "";
+                var ASK_LOGO = "";
+                var UI_LANG = "en";
+                var askHttpServer = null;
+
+                function runAskTurn(question) {
+                    return { "question": question, "answer": "ok", "sources": [], "error": "" };
+                }
+
+                include "secondbrain_ask_ui_lib.malda";
+
+                var a = askParseHttpPortFromArgs(["script.malda", "--port", "8080"], 39018);
+                print("A=" + string(a.ok) + "," + string(a.changed) + "," + string(a.port));
+                var b = askParseHttpPortFromArgs(["-p", "41234"], 39018);
+                print("B=" + string(b.ok) + "," + string(b.changed) + "," + string(b.port));
+                var c = askParseHttpPortFromArgs(["--port=9090"], 39018);
+                print("C=" + string(c.ok) + "," + string(c.changed) + "," + string(c.port));
+                var d = askParseHttpPortFromArgs(["--port", "0"], 39018);
+                print("D=" + string(d.ok) + "," + string(d.changed) + "," + string(d.port));
+                var e = askParseHttpPortFromArgs(["--strict-types"], 39018);
+                print("E=" + string(e.ok) + "," + string(e.changed) + "," + string(e.port));
+                """,
+                Encoding.UTF8);
+
+            var output = await InterpretAndCaptureAsync(harnessPath);
+            Assert.Contains("A=true,true,8080", output, StringComparison.Ordinal);
+            Assert.Contains("B=true,true,41234", output, StringComparison.Ordinal);
+            Assert.Contains("C=true,true,9090", output, StringComparison.Ordinal);
+            Assert.Contains("D=false,false,39018", output, StringComparison.Ordinal);
+            Assert.Contains("E=true,false,39018", output, StringComparison.Ordinal);
+        }
+        finally
+        {
+            SafeDeleteDirectory(tempDir);
         }
     }
 
