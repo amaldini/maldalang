@@ -23,16 +23,21 @@
 // is ready.
 //
 // Cookie JWT auth is on by default for ASK. Disable with --no-auth (or
-// MALDA_ASK_AUTH=0). Login: /login  Logout: /logout. Credentials from
-// MALDA_ASK_USER / MALDA_ASK_PASSWORD (or MALDA_ASK_PASSWORD_HASH).
+// MALDA_ASK_AUTH=0). Login: /login  Logout: /logout.
+// Bootstrap credentials: MALDA_ASK_USER / MALDA_ASK_PASSWORD (or HASH).
+// Multi-user store: users.json under the brain folder (writable), else
+// .malda/ask_users.json. Open registration: --allow-register.
 
 var ASK_CONV_COOKIE = "malda_ask_c";
 var ASK_CONV_CURRENT = "";
 var ASK_AUTH_COOKIE = "malda_ask_session";
 var ASK_AUTH_ENABLED = true;
+var ASK_ALLOW_REGISTER = false;
 var ASK_AUTH_USER = "admin";
 var ASK_AUTH_PASSWORD_HASH = "";
 var ASK_AUTH_USING_DEFAULT_PASSWORD = false;
+var ASK_USERS_PATH = "";
+var ASK_USERS_FILE_NAME = "users.json";
 var askAuthJwtSecret = "";
 var askAuthCookieSecret = "";
 var askAuthSessionSecret = "";
@@ -122,7 +127,7 @@ function applyAskHttpPortFromCli() {
     return ASK_HTTP_PORT;
 }
 
-// ---------------------------------------------------------------- ASK auth (cookie JWT)
+// ---------------------------------------------------------------- ASK auth (cookie JWT + users.json)
 
 function askEnvText(name) {
     var key = str.trim(askAsText(name));
@@ -132,27 +137,8 @@ function askEnvText(name) {
     return str.trim(askAsText(io.getEnv(key)));
 }
 
-function askParseAuthFlagFromArgs(args) {
-    // Last --auth / --no-auth wins. Returns true / false / null (unset).
-    if (args == null) {
-        return null;
-    }
-    var flag = null;
-    var i = 0;
-    while (i < args.length) {
-        var a = str.trim(askAsText(args[i]));
-        if (a == "--auth") {
-            flag = true;
-        } else if (a == "--no-auth") {
-            flag = false;
-        }
-        i = i + 1;
-    }
-    return flag;
-}
-
-function askEnvAuthOverride() {
-    var raw = str.lower(askEnvText("MALDA_ASK_AUTH"));
+function askEnvBoolOverride(name) {
+    var raw = str.lower(askEnvText(name));
     if (raw == "") {
         return null;
     }
@@ -165,22 +151,273 @@ function askEnvAuthOverride() {
     return null;
 }
 
-// Resolve ASK_AUTH_ENABLED from cli.auth, CLI flags, then MALDA_ASK_AUTH (default on).
+function askParseBoolFlagFromArgs(args, onFlag, offFlag) {
+    // Last matching flag wins. Returns true / false / null (unset).
+    if (args == null) {
+        return null;
+    }
+    var flag = null;
+    var i = 0;
+    while (i < args.length) {
+        var a = str.trim(askAsText(args[i]));
+        if (a == onFlag) {
+            flag = true;
+        } else if (a == offFlag) {
+            flag = false;
+        }
+        i = i + 1;
+    }
+    return flag;
+}
+
+// Resolve ASK_AUTH_ENABLED + ASK_ALLOW_REGISTER from env, CLI args, then cli opts.
 function askApplyAuthFromCli(cli) {
     var enabled = true;
-    var envFlag = askEnvAuthOverride();
-    if (envFlag != null) {
-        enabled = envFlag;
+    var envAuth = askEnvBoolOverride("MALDA_ASK_AUTH");
+    if (envAuth != null) {
+        enabled = envAuth;
     }
-    var argFlag = askParseAuthFlagFromArgs(getCommandLineArgs());
-    if (argFlag != null) {
-        enabled = argFlag;
+    var argAuth = askParseBoolFlagFromArgs(getCommandLineArgs(), "--auth", "--no-auth");
+    if (argAuth != null) {
+        enabled = argAuth;
     }
     if (cli != null and cli.auth != null) {
         enabled = cli.auth == true;
     }
     ASK_AUTH_ENABLED = enabled == true;
+
+    var allowReg = false;
+    var envReg = askEnvBoolOverride("MALDA_ASK_ALLOW_REGISTER");
+    if (envReg != null) {
+        allowReg = envReg;
+    }
+    var argReg = askParseBoolFlagFromArgs(
+        getCommandLineArgs(), "--allow-register", "--no-register");
+    if (argReg != null) {
+        allowReg = argReg;
+    }
+    if (cli != null and cli.allowRegister != null) {
+        allowReg = cli.allowRegister == true;
+    }
+    ASK_ALLOW_REGISTER = allowReg == true and ASK_AUTH_ENABLED;
     return ASK_AUTH_ENABLED;
+}
+
+// Prefer brainDir/users.json when writable; else .malda/ask_users.json (embed-safe).
+function askSetAuthUsersRoot(brainDir) {
+    var root = str.trim(askAsText(brainDir));
+    if (root != "" and not str.startsWith(root, "embed:") and io.hasDirectory(root)) {
+        ASK_USERS_PATH = io.pathJoin(root, ASK_USERS_FILE_NAME);
+        return ASK_USERS_PATH;
+    }
+    try {
+        io.ensureDir(".malda");
+    } catch (dirErr) {
+    }
+    ASK_USERS_PATH = io.pathJoin(".malda", "ask_users.json");
+    return ASK_USERS_PATH;
+}
+
+function askUsersPath() {
+    if (str.trim(ASK_USERS_PATH) != "") {
+        return ASK_USERS_PATH;
+    }
+    return askSetAuthUsersRoot("");
+}
+
+function askEmptyUsersStore() {
+    return { "users": [] };
+}
+
+function askLoadUsersStore() {
+    var path = askUsersPath();
+    if (path == "" or not io.hasFile(path)) {
+        return askEmptyUsersStore();
+    }
+    try {
+        var parsed = parseJSON(io.readFile(path));
+        if (parsed == null or parsed.users == null) {
+            return askEmptyUsersStore();
+        }
+        return parsed;
+    } catch (loadErr) {
+        return askEmptyUsersStore();
+    }
+}
+
+function askSaveUsersStore(store) {
+    var path = askUsersPath();
+    if (path == "") {
+        return false;
+    }
+    var payload = store;
+    if (payload == null) {
+        payload = askEmptyUsersStore();
+    }
+    if (payload.users == null) {
+        payload.users = [];
+    }
+    try {
+        var parent = io.getDirectoryName(path);
+        if (parent != null and str.trim(askAsText(parent)) != "") {
+            io.ensureDir(parent);
+        }
+        io.writeFile(path, toJSON(payload));
+        return true;
+    } catch (saveErr) {
+        return false;
+    }
+}
+
+function askUsersCount() {
+    var store = askLoadUsersStore();
+    if (store == null or store.users == null) {
+        return 0;
+    }
+    return store.users.length;
+}
+
+function askNormalizeUsername(raw) {
+    return str.trim(askAsText(raw));
+}
+
+function askIsValidUsername(raw) {
+    var name = askNormalizeUsername(raw);
+    if (str.length(name) < 3 or str.length(name) > 32) {
+        return false;
+    }
+    var allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.";
+    var i = 0;
+    while (i < str.length(name)) {
+        var ch = str.substring(name, i, 1);
+        if (str.indexOf(allowed, ch) < 0) {
+            return false;
+        }
+        i = i + 1;
+    }
+    return true;
+}
+
+function askFindStoredUser(username) {
+    var want = str.lower(askNormalizeUsername(username));
+    if (want == "") {
+        return null;
+    }
+    var store = askLoadUsersStore();
+    if (store == null or store.users == null) {
+        return null;
+    }
+    foreach (var u in store.users) {
+        if (u == null) {
+            continue;
+        }
+        if (str.lower(askNormalizeUsername(u.username)) == want) {
+            return u;
+        }
+    }
+    return null;
+}
+
+function askVerifyLogin(username, password) {
+    var name = askNormalizeUsername(username);
+    var pass = askAsText(password);
+    if (name == "" or pass == "") {
+        return { "ok": false, "username": "", "role": "" };
+    }
+    var stored = askFindStoredUser(name);
+    if (stored != null) {
+        if (verifyPassword(pass, askAsText(stored.passwordHash))) {
+            var role = str.trim(askAsText(stored.role));
+            if (role == "") {
+                role = "ask";
+            }
+            return {
+                "ok": true,
+                "username": askNormalizeUsername(stored.username),
+                "role": role
+            };
+        }
+        return { "ok": false, "username": "", "role": "" };
+    }
+    // Bootstrap env user (always available, even when users.json has others).
+    if (str.lower(name) == str.lower(ASK_AUTH_USER) and
+            verifyPassword(pass, ASK_AUTH_PASSWORD_HASH)) {
+        return { "ok": true, "username": ASK_AUTH_USER, "role": "admin" };
+    }
+    return { "ok": false, "username": "", "role": "" };
+}
+
+function askRegisterUser(username, password) {
+    var name = askNormalizeUsername(username);
+    var pass = askAsText(password);
+    if (not askIsValidUsername(name)) {
+        return {
+            "ok": false,
+            "error": askT(
+                "Username must be 3–32 characters: letters, digits, _ - .",
+                "Username: 3–32 caratteri (lettere, cifre, _ - .).")
+        };
+    }
+    if (str.length(pass) < 6) {
+        return {
+            "ok": false,
+            "error": askT(
+                "Password must be at least 6 characters.",
+                "La password deve avere almeno 6 caratteri.")
+        };
+    }
+    if (askFindStoredUser(name) != null) {
+        return {
+            "ok": false,
+            "error": askT("That username is already taken.", "Username gia' in uso.")
+        };
+    }
+    if (str.lower(name) == str.lower(ASK_AUTH_USER)) {
+        return {
+            "ok": false,
+            "error": askT(
+                "That username is reserved for the bootstrap admin.",
+                "Username riservato all'admin di bootstrap.")
+        };
+    }
+    var store = askLoadUsersStore();
+    if (store.users == null) {
+        store.users = [];
+    }
+    store.users.append({
+        "username": name,
+        "passwordHash": hashPassword(pass),
+        "role": "ask",
+        "createdAt": string(now())
+    });
+    if (not askSaveUsersStore(store)) {
+        return {
+            "ok": false,
+            "error": askT(
+                "Could not save users file (is the brain folder writable?).",
+                "Impossibile salvare users.json (cartella brain scrivibile?).")
+        };
+    }
+    return { "ok": true, "error": "" };
+}
+
+function askIssueSessionCookie(res, username, role) {
+    var token = createJwt({
+        "sub": username,
+        "role": role
+    }, askAuthJwtSecret, {
+        "expiresInSeconds": 86400,
+        "issuer": "secondbrain-ask",
+        "audience": "secondbrain-ask"
+    });
+    var setCookie = createSecureCookie(ASK_AUTH_COOKIE, token, askAuthCookieSecret, {
+        "maxAge": 86400,
+        "sameSite": "Lax",
+        "httpOnly": true,
+        "secure": false,
+        "path": "/"
+    });
+    res.header("Set-Cookie", setCookie);
 }
 
 function askLoadAuthCredentials() {
@@ -224,13 +461,25 @@ function askPrintAuthStatus() {
             "Auth ASK: off (--no-auth o MALDA_ASK_AUTH=0).") + "[/]");
         return;
     }
+    var n = askUsersCount();
     AnsiConsole.markupLine("[dim]" + askT(
-        "ASK auth: on (user=",
-        "Auth ASK: on (utente=") + ASK_AUTH_USER + ").[/]");
+        "ASK auth: on — bootstrap user=",
+        "Auth ASK: on — utente bootstrap=") + ASK_AUTH_USER +
+        askT("; registered=", "; registrati=") + string(n) +
+        askT("; users file=", "; file utenti=") + askUsersPath() + "[/]");
+    if (ASK_ALLOW_REGISTER) {
+        AnsiConsole.markupLine("[dim]" + askT(
+            "Open registration: on (/register).",
+            "Registrazione aperta: on (/register).") + "[/]");
+    } else {
+        AnsiConsole.markupLine("[dim]" + askT(
+            "Open registration: off (use --allow-register).",
+            "Registrazione aperta: off (usa --allow-register).") + "[/]");
+    }
     if (ASK_AUTH_USING_DEFAULT_PASSWORD) {
         AnsiConsole.markupLine("[yellow]" + askT(
-            "Using default password 'password'. Set MALDA_ASK_PASSWORD (or MALDA_ASK_PASSWORD_HASH). Disable with --no-auth.",
-            "Password di default 'password'. Imposta MALDA_ASK_PASSWORD (o MALDA_ASK_PASSWORD_HASH). Disattiva con --no-auth.") + "[/]");
+            "Bootstrap password is default 'password'. Set MALDA_ASK_PASSWORD (or HASH).",
+            "Password bootstrap di default 'password'. Imposta MALDA_ASK_PASSWORD (o HASH).") + "[/]");
     }
 }
 
@@ -243,7 +492,7 @@ function askRequireAuth(req, res, next) {
     }
 }
 
-// Call after `new HttpServer(...)` and before `start()` when ASK_AUTH_ENABLED.
+// Call after askSetAuthUsersRoot + `new HttpServer(...)`, before `start()`.
 function askConfigureHttpAuth(server) {
     if (server == null) {
         return false;
@@ -253,48 +502,93 @@ function askConfigureHttpAuth(server) {
         return false;
     }
     askLoadAuthCredentials();
+    if (str.trim(ASK_USERS_PATH) == "") {
+        askSetAuthUsersRoot("");
+    }
     server.enableSession(askAuthSessionSecret);
     server.use(askRequireAuth, {
-        "except": ["/login", "/logout"]
+        "except": ["/login", "/logout", "/register"]
     });
     server.setRateLimit(120, 60, "verifiedSubOrIp");
     askPrintAuthStatus();
     return true;
 }
 
-function askRenderLoginPage(errorMessage) {
+function askAuthFormStyles() {
+    return "<style>.login-wrap{max-width:420px;margin:48px auto;padding:0 16px}" +
+        ".login-wrap h1{font-size:1.35rem;margin:0 0 12px}" +
+        ".login-wrap label{display:block;margin:12px 0 4px;font-size:.9rem}" +
+        ".login-wrap input{width:100%;padding:10px;box-sizing:border-box}" +
+        ".login-wrap button{margin-top:16px;width:100%;padding:10px 14px;cursor:pointer}" +
+        ".login-wrap .hint,.login-wrap .alt{opacity:.85;margin-top:14px}" +
+        ".login-wrap .ok{color:#0f6a5b}</style>";
+}
+
+function askRenderLoginPage(errorMessage, noticeMessage) {
     var title = askProductName() + " — " + askT("Sign in", "Accedi");
     var err = str.trim(askAsText(errorMessage));
+    var notice = str.trim(askAsText(noticeMessage));
     var errHtml = "";
     if (err != "") {
         errHtml = "<p class='flash error'>" + askEscapeHtml(err) + "</p>";
     }
+    var noticeHtml = "";
+    if (notice != "") {
+        noticeHtml = "<p class='ok'>" + askEscapeHtml(notice) + "</p>";
+    }
     var hint = "";
-    if (ASK_AUTH_USING_DEFAULT_PASSWORD) {
+    if (ASK_AUTH_USING_DEFAULT_PASSWORD and askUsersCount() == 0) {
         hint = "<p class='hint'><small>" + askEscapeHtml(askT(
-            "Default: admin / password",
-            "Default: admin / password")) + "</small></p>";
+            "Bootstrap: admin / password",
+            "Bootstrap: admin / password")) + "</small></p>";
+    }
+    var alt = "";
+    if (ASK_ALLOW_REGISTER) {
+        alt = "<p class='alt'><a href='/register'>" + askEscapeHtml(askT(
+            "Create an account", "Crea un account")) + "</a></p>";
     }
     return "<!DOCTYPE html><html lang='" + askGetLang() + "'><head>" +
         "<meta charset='utf-8'>" +
         "<meta name='viewport' content='width=device-width,initial-scale=1'>" +
         "<title>" + askEscapeHtml(title) + "</title>" +
-        askPageStyles() +
-        "<style>.login-wrap{max-width:420px;margin:48px auto;padding:0 16px}" +
-        ".login-wrap h1{font-size:1.35rem;margin:0 0 12px}" +
-        ".login-wrap label{display:block;margin:12px 0 4px;font-size:.9rem}" +
-        ".login-wrap input{width:100%;padding:10px;box-sizing:border-box}" +
-        ".login-wrap button{margin-top:16px;width:100%;padding:10px 14px;cursor:pointer}" +
-        ".login-wrap .hint{opacity:.7;margin-top:12px}</style>" +
+        askPageStyles() + askAuthFormStyles() +
         "</head><body><main class='login-wrap'>" +
-        "<h1>" + askEscapeHtml(title) + "</h1>" + errHtml +
+        "<h1>" + askEscapeHtml(title) + "</h1>" + noticeHtml + errHtml +
         "<form method='post' action='/login'>" +
         "<label for='username'>" + askEscapeHtml(askT("Username", "Utente")) + "</label>" +
         "<input id='username' name='username' autocomplete='username' required>" +
         "<label for='password'>" + askEscapeHtml(askT("Password", "Password")) + "</label>" +
         "<input id='password' name='password' type='password' autocomplete='current-password' required>" +
         "<button type='submit'>" + askEscapeHtml(askT("Sign in", "Accedi")) + "</button>" +
-        "</form>" + hint +
+        "</form>" + hint + alt +
+        "</main></body></html>";
+}
+
+function askRenderRegisterPage(errorMessage) {
+    var title = askProductName() + " — " + askT("Create account", "Crea account");
+    var err = str.trim(askAsText(errorMessage));
+    var errHtml = "";
+    if (err != "") {
+        errHtml = "<p class='flash error'>" + askEscapeHtml(err) + "</p>";
+    }
+    return "<!DOCTYPE html><html lang='" + askGetLang() + "'><head>" +
+        "<meta charset='utf-8'>" +
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>" +
+        "<title>" + askEscapeHtml(title) + "</title>" +
+        askPageStyles() + askAuthFormStyles() +
+        "</head><body><main class='login-wrap'>" +
+        "<h1>" + askEscapeHtml(title) + "</h1>" + errHtml +
+        "<form method='post' action='/register'>" +
+        "<label for='username'>" + askEscapeHtml(askT("Username", "Utente")) + "</label>" +
+        "<input id='username' name='username' autocomplete='username' required minlength='3' maxlength='32'>" +
+        "<label for='password'>" + askEscapeHtml(askT("Password", "Password")) + "</label>" +
+        "<input id='password' name='password' type='password' autocomplete='new-password' required minlength='6'>" +
+        "<label for='password2'>" + askEscapeHtml(askT("Confirm password", "Conferma password")) + "</label>" +
+        "<input id='password2' name='password2' type='password' autocomplete='new-password' required minlength='6'>" +
+        "<button type='submit'>" + askEscapeHtml(askT("Register", "Registrati")) + "</button>" +
+        "</form>" +
+        "<p class='alt'><a href='/login'>" + askEscapeHtml(askT(
+            "Back to sign in", "Torna al login")) + "</a></p>" +
         "</main></body></html>";
 }
 
@@ -307,10 +601,16 @@ function askUiLoginPage(queryParams, response, cookies) {
         askLoadAuthCredentials();
     }
     var err = "";
+    var notice = "";
     if (queryParams != null and queryParams["error"] != null) {
         err = askT("Invalid username or password.", "Utente o password non validi.");
     }
-    return askRenderLoginPage(err);
+    if (queryParams != null and queryParams["registered"] != null) {
+        notice = askT(
+            "Account created. Sign in with your new credentials.",
+            "Account creato. Accedi con le nuove credenziali.");
+    }
+    return askRenderLoginPage(err, notice);
 }
 
 @POST("/login")
@@ -327,31 +627,58 @@ function askUiLoginSubmit(req, res, body) {
         username = str.trim(askAsText(body.username));
         password = askAsText(body.password);
     }
-    if (username != ASK_AUTH_USER or not verifyPassword(password, ASK_AUTH_PASSWORD_HASH)) {
-        if (req != null and req.session != null) {
-            req.session.flash("error", askT(
-                "Invalid username or password.",
-                "Utente o password non validi."));
-        }
+    var verified = askVerifyLogin(username, password);
+    if (verified == null or verified.ok != true) {
         return res.redirect("/login?error=1");
     }
-    var token = createJwt({
-        "sub": username,
-        "role": "ask"
-    }, askAuthJwtSecret, {
-        "expiresInSeconds": 86400,
-        "issuer": "secondbrain-ask",
-        "audience": "secondbrain-ask"
-    });
-    var setCookie = createSecureCookie(ASK_AUTH_COOKIE, token, askAuthCookieSecret, {
-        "maxAge": 86400,
-        "sameSite": "Lax",
-        "httpOnly": true,
-        "secure": false,
-        "path": "/"
-    });
-    res.header("Set-Cookie", setCookie);
+    askIssueSessionCookie(res, verified.username, verified.role);
     return res.redirect("/");
+}
+
+@PAGE("/register")
+function askUiRegisterPage(queryParams, response, cookies) {
+    if (not ASK_AUTH_ENABLED or not ASK_ALLOW_REGISTER) {
+        return RedirectTo("/login");
+    }
+    if (askAuthJwtSecret == "") {
+        askLoadAuthCredentials();
+    }
+    return askRenderRegisterPage("");
+}
+
+@POST("/register")
+function askUiRegisterSubmit(req, res, body) {
+    if (not ASK_AUTH_ENABLED or not ASK_ALLOW_REGISTER) {
+        return res.redirect("/login");
+    }
+    if (askAuthJwtSecret == "" or ASK_AUTH_PASSWORD_HASH == "") {
+        askLoadAuthCredentials();
+    }
+    var username = "";
+    var password = "";
+    var password2 = "";
+    if (body != null) {
+        username = str.trim(askAsText(body.username));
+        password = askAsText(body.password);
+        password2 = askAsText(body.password2);
+    }
+    if (password != password2) {
+        return askRenderRegisterPage(askT(
+            "Passwords do not match.",
+            "Le password non coincidono."));
+    }
+    var result = askRegisterUser(username, password);
+    if (result == null or result.ok != true) {
+        var msg = "";
+        if (result != null) {
+            msg = askAsText(result.error);
+        }
+        if (msg == "") {
+            msg = askT("Registration failed.", "Registrazione fallita.");
+        }
+        return askRenderRegisterPage(msg);
+    }
+    return res.redirect("/login?registered=1");
 }
 
 @GET("/logout")

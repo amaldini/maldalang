@@ -462,10 +462,16 @@ public class SecondBrainAskFeaturesTests
         Assert.Contains("@LIVE(\"/ask/live\")", libSource, StringComparison.Ordinal);
         Assert.Contains("@PAGE(\"/login\")", libSource, StringComparison.Ordinal);
         Assert.Contains("@POST(\"/login\")", libSource, StringComparison.Ordinal);
+        Assert.Contains("@PAGE(\"/register\")", libSource, StringComparison.Ordinal);
+        Assert.Contains("@POST(\"/register\")", libSource, StringComparison.Ordinal);
         Assert.Contains("@GET(\"/logout\")", libSource, StringComparison.Ordinal);
         Assert.Contains("function askConfigureHttpAuth(", libSource, StringComparison.Ordinal);
         Assert.Contains("function askRequireAuth(", libSource, StringComparison.Ordinal);
+        Assert.Contains("function askRegisterUser(", libSource, StringComparison.Ordinal);
+        Assert.Contains("function askSetAuthUsersRoot(", libSource, StringComparison.Ordinal);
+        Assert.Contains("users.json", libSource, StringComparison.Ordinal);
         Assert.Contains("--no-auth", libSource, StringComparison.Ordinal);
+        Assert.Contains("--allow-register", libSource, StringComparison.Ordinal);
         Assert.Contains("malda_ask_session", libSource, StringComparison.Ordinal);
         Assert.Contains("componentFragment(\"ask-panel\"", libSource, StringComparison.Ordinal);
         Assert.Contains("malda_ask_c", libSource, StringComparison.Ordinal);
@@ -679,9 +685,11 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("askApplyLogoFromBrain(", source, StringComparison.Ordinal);
             Assert.Contains("applyAskHttpPortFromCli()", source, StringComparison.Ordinal);
             Assert.Contains("askApplyAuthFromCli(", source, StringComparison.Ordinal);
+            Assert.Contains("askSetAuthUsersRoot(", source, StringComparison.Ordinal);
             Assert.Contains("askConfigureHttpAuth(", source, StringComparison.Ordinal);
             Assert.Contains("--port", source, StringComparison.Ordinal);
             Assert.Contains("--no-auth", source, StringComparison.Ordinal);
+            Assert.Contains("--allow-register", source, StringComparison.Ordinal);
             Assert.Contains("sbCliParseArgs(", source, StringComparison.Ordinal);
             Assert.Contains("build --docs", source, StringComparison.Ordinal);
             Assert.Contains("include \"secondbrain_cli_lib.malda\"", source, StringComparison.Ordinal);
@@ -738,6 +746,10 @@ public class SecondBrainAskFeaturesTests
                 print("F=" + f.mode + "," + string(f.auth) + "," + string(f.port) + "," + f.error);
                 var g = sbCliParseArgs(["ask", "--auth"]);
                 print("G=" + g.mode + "," + string(g.auth) + "," + g.error);
+                var h = sbCliParseArgs(["ask", "--allow-register"]);
+                print("H=" + h.mode + "," + string(h.allowRegister) + "," + h.error);
+                var i = sbCliParseArgs(["ask", "--allow-register", "--no-register"]);
+                print("I=" + i.mode + "," + string(i.allowRegister) + "," + i.error);
                 """,
                 Encoding.UTF8);
 
@@ -749,6 +761,76 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("E=Unknown flag: --unknown", output, StringComparison.Ordinal);
             Assert.Contains("F=ask,false,9090,", output, StringComparison.Ordinal);
             Assert.Contains("G=ask,true,", output, StringComparison.Ordinal);
+            Assert.Contains("H=ask,true,", output, StringComparison.Ordinal);
+            Assert.Contains("I=ask,false,", output, StringComparison.Ordinal);
+        }
+        finally
+        {
+            SafeDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public async Task AskUi_UsersStore_RegisterAndVerifyLogin()
+    {
+        Assert.True(File.Exists(AskUiLibPath), "missing ask UI lib: " + AskUiLibPath);
+
+        var tempDir = Path.Combine(Path.GetTempPath(), "malda_sb_ask_users", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            File.Copy(AskUiLibPath, Path.Combine(tempDir, "secondbrain_ask_ui_lib.malda"));
+            var harnessPath = Path.Combine(tempDir, "harness.malda");
+            File.WriteAllText(harnessPath,
+                $$"""
+                var ASK_HTTP_PORT = 39018;
+                var ASK_SESSION_ID = "secondbrain-ask-users-test";
+                var ASK_STORE = "SecondBrainAskUsersTest";
+                var PRODUCT_NAME = "Users Brain";
+                var ASK_TITLE_SUFFIX = " — ASK";
+                var ASK_PAGE_TITLE = PRODUCT_NAME + ASK_TITLE_SUFFIX;
+                var ASK_POWERED_BY = "";
+                var ASK_POWERED_BY_URL = "";
+                var ASK_LOGO = "";
+                var UI_LANG = "en";
+                var askHttpServer = null;
+
+                function runAskTurn(question) {
+                    return { "question": question, "answer": "ok", "sources": [], "error": "" };
+                }
+
+                include "secondbrain_ask_ui_lib.malda";
+
+                askSetAuthUsersRoot("{{tempDir.Replace("\\", "/")}}");
+                askLoadAuthCredentials();
+                print("PATH=" + askUsersPath());
+                print("COUNT0=" + string(askUsersCount()));
+                var reg = askRegisterUser("alice", "secret1");
+                print("REG=" + string(reg.ok) + "," + reg.error);
+                print("COUNT1=" + string(askUsersCount()));
+                var dup = askRegisterUser("Alice", "other99");
+                print("DUP=" + string(dup.ok));
+                var reserved = askRegisterUser("admin", "secret1");
+                print("RESERVED=" + string(reserved.ok));
+                var okUser = askVerifyLogin("alice", "secret1");
+                print("LOGIN_USER=" + string(okUser.ok) + "," + okUser.username + "," + okUser.role);
+                var badUser = askVerifyLogin("alice", "wrong");
+                print("LOGIN_BAD=" + string(badUser.ok));
+                var boot = askVerifyLogin("admin", "password");
+                print("LOGIN_BOOT=" + string(boot.ok) + "," + boot.role);
+                """,
+                Encoding.UTF8);
+
+            var output = await InterpretAndCaptureAsync(harnessPath);
+            Assert.Contains("COUNT0=0", output, StringComparison.Ordinal);
+            Assert.Contains("REG=true,", output, StringComparison.Ordinal);
+            Assert.Contains("COUNT1=1", output, StringComparison.Ordinal);
+            Assert.Contains("DUP=false", output, StringComparison.Ordinal);
+            Assert.Contains("RESERVED=false", output, StringComparison.Ordinal);
+            Assert.Contains("LOGIN_USER=true,alice,ask", output, StringComparison.Ordinal);
+            Assert.Contains("LOGIN_BAD=false", output, StringComparison.Ordinal);
+            Assert.Contains("LOGIN_BOOT=true,admin", output, StringComparison.Ordinal);
+            Assert.True(File.Exists(Path.Combine(tempDir, "users.json")), "users.json should be written");
         }
         finally
         {

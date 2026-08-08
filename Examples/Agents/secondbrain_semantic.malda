@@ -24,12 +24,13 @@
 //   malda Examples/Agents/secondbrain_semantic.malda update [--docs ./docs] [--brain secondbrain_semantic]
 //       [--remove-orphans] [--lang en|it]
 //   malda Examples/Agents/secondbrain_semantic.malda ask [--brain secondbrain_semantic] [--port 8080] [--lang en|it]
-//       [--auth|--no-auth]
+//       [--auth|--no-auth] [--allow-register|--no-register]
 //   malda Examples/Agents/secondbrain_semantic.malda help
 //
 // ASK auth (cookie JWT) is on by default. Disable with --no-auth or MALDA_ASK_AUTH=0.
-// Credentials: MALDA_ASK_USER / MALDA_ASK_PASSWORD (or MALDA_ASK_PASSWORD_HASH).
-// Default demo login: admin / password.
+// Bootstrap: MALDA_ASK_USER / MALDA_ASK_PASSWORD (or HASH); default admin / password.
+// Multi-user: users.json in the brain folder (or .malda/ask_users.json for embed).
+// Open registration: --allow-register (or MALDA_ASK_ALLOW_REGISTER=1).
 //
 // LLM:   if OPENROUTER_API_KEY is set, uses OpenRouter (client default model,
 //        override with MALDA_BRAIN_MODEL); otherwise MALDA's default local model
@@ -3159,6 +3160,7 @@ function askBrain(cli) {
     AnsiConsole.markupLine(t("Retrieval:", "Recupero:") + " [bold]" + retrievalLabel + "[/]");
 
     askApplyAuthFromCli(cli);
+    askSetAuthUsersRoot(brainDir);
     askHttpServer = new HttpServer(ASK_HTTP_PORT);
     askConfigureHttpAuth(askHttpServer);
     askHttpServer.start();

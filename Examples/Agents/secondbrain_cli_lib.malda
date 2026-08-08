@@ -5,7 +5,8 @@
 //
 // Modes: build | update | ask | help
 // Flags: --docs --brain --taxonomy llm|folders --remove-orphans --lang en|it
-//        --port / -p  --mode <name>  --auth / --no-auth  --help / -h
+//        --port / -p  --mode <name>  --auth / --no-auth
+//        --allow-register / --no-register  --help / -h
 
 function sbCliAsText(value) {
     if (value == null) {
@@ -25,6 +26,7 @@ function sbCliEmptyOptions() {
         "port": null,
         "portError": false,
         "auth": null,
+        "allowRegister": null,
         "error": ""
     };
 }
@@ -235,6 +237,17 @@ function sbCliParseArgs(args) {
             i = i + 1;
             continue;
         }
+        // Open self-registration into users.json (default off)
+        if (a == "--allow-register") {
+            opt.allowRegister = true;
+            i = i + 1;
+            continue;
+        }
+        if (a == "--no-register") {
+            opt.allowRegister = false;
+            i = i + 1;
+            continue;
+        }
 
         // Port: --port / -p / --port= / -p=
         taken = sbCliTakeFlagValue(args, i, "--port");
@@ -327,23 +340,29 @@ function sbCliPrintHelp(defaultBrain, defaultPort) {
         "Second Brain CLI\n\n" +
         "  build  --docs <folder> [--brain " + brain + "] [--taxonomy llm|folders] [--lang en|it]\n" +
         "  update [--docs <folder>] [--brain " + brain + "] [--remove-orphans] [--lang en|it]\n" +
-        "  ask    [--brain " + brain + "] [--port " + port + "] [--lang en|it] [--auth|--no-auth]\n" +
+        "  ask    [--brain " + brain + "] [--port " + port + "] [--lang en|it]\n" +
+        "         [--auth|--no-auth] [--allow-register|--no-register]\n" +
         "  help\n\n" +
         "Non-interactive: build/update/ask skip the menu and confirmations.\n" +
         "Also: --mode build|update|ask   -p <port>   --port=<n>\n" +
         "ASK auth is on by default (cookie JWT). Disable with --no-auth.\n" +
-        "Credentials: MALDA_ASK_USER / MALDA_ASK_PASSWORD (or MALDA_ASK_PASSWORD_HASH).\n" +
+        "Bootstrap: MALDA_ASK_USER / MALDA_ASK_PASSWORD (or MALDA_ASK_PASSWORD_HASH).\n" +
+        "Multi-user: users.json in the brain folder (or .malda/ask_users.json).\n" +
+        "Open registration: --allow-register (or MALDA_ASK_ALLOW_REGISTER=1).\n" +
         "Pack remains interactive (menu option 5).";
     var it =
         "Second Brain CLI\n\n" +
         "  build  --docs <cartella> [--brain " + brain + "] [--taxonomy llm|folders] [--lang en|it]\n" +
         "  update [--docs <cartella>] [--brain " + brain + "] [--remove-orphans] [--lang en|it]\n" +
-        "  ask    [--brain " + brain + "] [--port " + port + "] [--lang en|it] [--auth|--no-auth]\n" +
+        "  ask    [--brain " + brain + "] [--port " + port + "] [--lang en|it]\n" +
+        "         [--auth|--no-auth] [--allow-register|--no-register]\n" +
         "  help\n\n" +
         "Non interattivo: build/update/ask saltano menu e conferme.\n" +
         "Anche: --mode build|update|ask   -p <porta>   --port=<n>\n" +
         "Auth ASK attiva di default (cookie JWT). Disattiva con --no-auth.\n" +
-        "Credenziali: MALDA_ASK_USER / MALDA_ASK_PASSWORD (o MALDA_ASK_PASSWORD_HASH).\n" +
+        "Bootstrap: MALDA_ASK_USER / MALDA_ASK_PASSWORD (o MALDA_ASK_PASSWORD_HASH).\n" +
+        "Multi-utente: users.json nella cartella del brain (o .malda/ask_users.json).\n" +
+        "Registrazione aperta: --allow-register (o MALDA_ASK_ALLOW_REGISTER=1).\n" +
         "PACK resta interattivo (voce di menu 5).";
     if (UI_LANG == "en") {
         io.print(en);
