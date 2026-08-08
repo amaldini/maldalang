@@ -18,7 +18,7 @@ public static class StrictTypesAnalysis
         List<Diagnostic> diagnostics)
     {
         TypeHintDiagnostics.Validate(statements, diagnostics, options);
-        TypeCompatibilityDiagnostics.Validate(statements, diagnostics);
+        TypeCompatibilityDiagnostics.Validate(statements, diagnostics, options);
         var index = SumTypeIndex.Build(statements);
         MatchExhaustivenessDiagnostics.Validate(statements, index, options, diagnostics);
         PureEffectsDiagnostics.Validate(statements, options, diagnostics);

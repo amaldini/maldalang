@@ -1,6 +1,6 @@
-﻿# MALDA grammar (plain text)
+# MALDA grammar (plain text)
 
-*Applies to: MALDA 0.1.20*
+*Applies to: MALDA 0.1.21*
 
 Extracted from `ReferenceManual/22-grammar.html` for LLM ingestion.
 If this file disagrees with the parser (`MaldaLang/Parser/Parser.cs`), the **parser wins**.
@@ -64,7 +64,7 @@ AccessModifier ::= ("public" | "private")? "static"?
 TypeHint      ::= ":" Identifier
 ParamList     ::= Param ("," Param)*
 Param         ::= Decorator* Identifier TypeHint?
-CallExpr      ::= Expression PostfixSuffix*   /* see Â§34.4 */
+CallExpr      ::= Expression PostfixSuffix*   /* see §34.4 */
 
 Statement   ::= VarDecl | DestructuringVarDecl
               | Assignment | DestructuringAssignment
@@ -145,7 +145,7 @@ GraphLiteral ::= "graph" ("directed" | "undirected") "{"
 ObjectLiteral ::= "{" (ObjectEntry ("," ObjectEntry)*)? "}"
 ObjectEntry  ::= (StringLiteral | Identifier) ":" Expression
 
-InterpolatedString ::= '$"' â€¦ '"' | '$"""' â€¦ '"""'
+InterpolatedString ::= '$"' … '"' | '$"""' … '"""'
 
 Pattern     ::= LiteralPattern | IdentifierPattern | WildcardPattern
               | VariantPattern | ArrayPattern | ObjectPattern

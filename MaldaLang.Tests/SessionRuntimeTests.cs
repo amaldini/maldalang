@@ -1,6 +1,9 @@
 // Copyright (c) 2026 Andrea Maldini
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+using System.Net;
+using System.Net.Http;
+using System.Net.Sockets;
 using MaldaLang.BuiltIns;
 using MaldaLang.Interpreter;
 using ValueType = MaldaLang.Interpreter.ValueType;
@@ -9,6 +12,15 @@ namespace MaldaLang.Tests;
 
 public class SessionRuntimeTests
 {
+    private static int GetAvailablePort()
+    {
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        listener.Stop();
+        return port;
+    }
+
     [Fact]
     public void Session_SetGet_PersistsAcrossCommitAndReload()
     {
@@ -118,6 +130,77 @@ public class SessionRuntimeTests
         SessionRuntime.CommitSession(req, res, false);
         // No cookie headers expected when disabled
         Assert.False(res.HasHeaders);
+    }
+
+    [Fact]
+    public async Task Interpreter_DispatchesSessionGetFlashOnRequest()
+    {
+        var port = GetAvailablePort();
+        var source = @"
+@PAGE(""/"")
+function home(req, res) {
+    var flash = req.session.getFlash(""error"");
+    if (flash == null) {
+        return res.text(""empty"");
+    }
+    return res.text(flash);
+}
+
+@POST(""/set"")
+function setFlash(req, res) {
+    req.session.flash(""error"", ""bad form"");
+    return res.redirect(""/"");
+}
+";
+        var lexer = new Lexer(source);
+        var statements = new Parser.Parser(lexer.Tokenize()).Parse();
+        var interpreter = new Interpreter.Interpreter();
+        await interpreter.InterpretAsync(statements);
+
+        var server = new HttpServerInstance(port, null, interpreter);
+        server.CallMethod("enableSession", new List<RuntimeValue> { RuntimeValue.String("test-session-secret") });
+        server.CallMethod("start", new List<RuntimeValue>());
+
+        try
+        {
+            using var handler = new HttpClientHandler { AllowAutoRedirect = false };
+            using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(10) };
+            var baseUrl = $"http://localhost:{port}";
+
+            using var first = await client.GetAsync(baseUrl + "/");
+            Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+            Assert.Equal("empty", await first.Content.ReadAsStringAsync());
+
+            using var post = await client.PostAsync(baseUrl + "/set", new StringContent(""));
+            Assert.True(
+                (int)post.StatusCode is >= 300 and < 400,
+                $"unexpected status {post.StatusCode}");
+
+            using var secondReq = new HttpRequestMessage(HttpMethod.Get, baseUrl + "/");
+            if (post.Headers.TryGetValues("Set-Cookie", out var postCookies))
+            {
+                foreach (var cookie in postCookies)
+                {
+                    secondReq.Headers.TryAddWithoutValidation("Cookie", cookie.Split(';')[0]);
+                }
+            }
+
+            if (first.Headers.TryGetValues("Set-Cookie", out var firstCookies))
+            {
+                foreach (var cookie in firstCookies)
+                {
+                    secondReq.Headers.TryAddWithoutValidation("Cookie", cookie.Split(';')[0]);
+                }
+            }
+
+            using var second = await client.SendAsync(secondReq);
+            Assert.Equal(HttpStatusCode.OK, second.StatusCode);
+            Assert.Equal("bad form", await second.Content.ReadAsStringAsync());
+        }
+        finally
+        {
+            server.CallMethod("stop", new List<RuntimeValue>());
+        }
     }
 
     [Fact]

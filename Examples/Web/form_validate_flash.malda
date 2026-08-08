@@ -1,0 +1,98 @@
+// form_validate_flash.malda — CSRF + bindForm + schema validate + session flash
+//
+// Run: malda Examples/Web/form_validate_flash.malda
+// Open: http://localhost:8082/
+//
+// CSRF note: cookie value must equal form _csrf. Do not call csrfField(secret) alone
+// after enableCsrf — that generates a *new* token. Reuse req.cookie("csrf_token")
+// when valid, or generate once and set both cookie and field to that token.
+
+var sessionSecret = "dev-only-session-secret";
+var csrfSecret = "dev-only-csrf-secret";
+
+schema Contact {
+    name: string;
+    email: string;
+}
+
+function csrfHidden(token) {
+    return "<input type=\"hidden\" name=\"_csrf\" value=\"" + token + "\">";
+}
+
+function csrfForRequest(req, res) {
+    var token = req.cookie("csrf_token", "");
+    if (token == "" or not verifyCsrfToken(token, csrfSecret)) {
+        token = generateCsrfToken(csrfSecret);
+        res.cookie("csrf_token", token, {
+            "httpOnly": false,
+            "sameSite": "Lax",
+            "secure": false
+        });
+    }
+    return token;
+}
+
+@PAGE("/")
+function contactForm(req, res) {
+    var flash = req.session.getFlash("error");
+    var notice = "";
+    if (flash != null) {
+        notice = "<p class=\"err\">" + flash + "</p>";
+    }
+
+    var token = csrfForRequest(req, res);
+    var body =
+        "<h1>Contact</h1>" +
+        notice +
+        "<form method=\"post\" action=\"/submit\">" +
+        csrfHidden(token) +
+        "<label>Name <input name=\"name\" required></label>" +
+        "<label>Email <input name=\"email\" type=\"email\" required></label>" +
+        "<button type=\"submit\">Send</button>" +
+        "</form>";
+
+    return pageLayout("Contact", body, {
+        "css": "body{font-family:system-ui,sans-serif;max-width:420px;margin:48px auto;padding:0 16px}" +
+            "label{display:block;margin:12px 0}input{width:100%;padding:8px;box-sizing:border-box}" +
+            "button{margin-top:12px;padding:10px 16px}.err{color:#a11}.ok{color:#0f6a5b}"
+    });
+}
+
+@POST("/submit")
+function submitContact(req, res, body) {
+    var form = bindForm(body, [
+        {"name": "name", "required": true, "trim": true, "minLength": 1, "maxLength": 80},
+        {"name": "email", "required": true, "trim": true, "pattern": "email"}
+    ]);
+
+    if (not form.ok) {
+        req.session.flash("error", "Check the form fields and try again.");
+        return res.redirect("/");
+    }
+
+    var checked = validate("Contact", form.values);
+    if (not checked.ok) {
+        req.session.flash("error", "Validation failed: " + checked.error);
+        return res.redirect("/");
+    }
+
+    var person = checked.data;
+    var bodyHtml =
+        "<h1>Thanks</h1>" +
+        "<p class=\"ok\">Saved <strong>" + person.name + "</strong> &lt;" + person.email + "&gt;.</p>" +
+        "<p><a href=\"/\">Back</a></p>";
+    return pageLayout("Thanks", bodyHtml, {
+        "css": "body{font-family:system-ui,sans-serif;max-width:420px;margin:48px auto;padding:0 16px}.ok{color:#0f6a5b}"
+    });
+}
+
+var server = new HttpServer(8082);
+server.enableSession(sessionSecret);
+server.enableCsrf(csrfSecret);
+server.start();
+print("Form validate + flash demo at http://localhost:8082/");
+print("Press Ctrl+C to stop.");
+
+while (server.isRunning) {
+    sleep(1000);
+}

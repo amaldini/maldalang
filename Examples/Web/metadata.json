@@ -154,9 +154,36 @@
                                            ],
                          "learningGoal":  "Replace demo plaintext login with production-shaped password hashing and JWT cookie auth on HttpServer.",
                          "expectedOutput":  "Serves a login form; successful sign-in sets a signed JWT cookie and opens a protected dashboard.",
-                         "next":  "Web/rest_bearer_jwt.malda",
+                         "next":  "Web/form_validate_flash.malda",
                          "documentationPath":  "/?lesson=build-ai-apps#lesson-build-ai-apps",
                          "documentationTitle":  "Web Auth"
+                     },
+                     {
+                         "name":  "Form Validate Flash",
+                         "description":  "CSRF-safe form with bindForm, schema validate, and session flash errors",
+                         "file":  "form_validate_flash.malda",
+                         "track":  "ai-builder",
+                         "difficulty":  "intermediate",
+                         "minutes":  12,
+                         "requires":  [
+                                          "network"
+                                      ],
+                         "concepts":  [
+                                          "enableCsrf",
+                                          "bindForm",
+                                          "validate",
+                                          "schema",
+                                          "session flash",
+                                          "pageLayout"
+                                      ],
+                         "prerequisites":  [
+                                               "Web/auth_cookie_login.malda"
+                                           ],
+                         "learningGoal":  "Combine CSRF cookie matching, form binding, schema validate, and flash redirects on HttpServer.",
+                         "expectedOutput":  "Serves a contact form on port 8082; invalid submit flashes an error; valid submit shows a thank-you page.",
+                         "next":  "Web/rest_bearer_jwt.malda",
+                         "documentationPath":  "/docs/tutorials/fullstack-sessions-auth.md",
+                         "documentationTitle":  "Fullstack sessions auth"
                      },
                      {
                          "name":  "Job Queue Basic",

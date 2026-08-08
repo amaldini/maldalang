@@ -46,7 +46,21 @@ malda Examples/Web/rest_bearer_jwt.malda
 
 Follow the printed curl examples (default port **8081**).
 
-## 3. Job queue (not durable workflows)
+## 3. Form → bindForm → validate → flash
+
+```bash
+malda Examples/Web/form_validate_flash.malda
+```
+
+Open `http://localhost:8082/`.
+
+What to notice:
+
+- CSRF cookie and form `_csrf` set to the **same** token (do not call `csrfField(secret)` alone)
+- `bindForm` for field checks, then `validate("Contact", …)` for schema shape
+- Failures use `req.session.flash` + redirect; success shows a thank-you page
+
+## 4. Job queue (not durable workflows)
 
 ```bash
 malda Examples/Web/job_queue_basic.malda
@@ -56,15 +70,15 @@ This uses `enqueueJob` / `claimJob` / `completeJob` / `listJobs` against `./.mal
 It is a fire-and-forget worker queue. For step/retry/compensate persistence, use
 `workflow { }` — see `Examples/Workflows/` and Reference Manual chapter 31.
 
-## 4. Suggested learning order
+## 5. Suggested learning order
 
 1. `malda new fullstack …` — mount, sessions, form helpers in one app
 2. `Examples/Web/auth_cookie_login.malda` — cookie + session flash
-3. `Examples/Web/rest_bearer_jwt.malda` — API Bearer JWT
-4. `Examples/Web/job_queue_basic.malda` — background jobs
+3. `Examples/Web/form_validate_flash.malda` — CSRF + bindForm + schema validate
+4. `Examples/Web/rest_bearer_jwt.malda` — API Bearer JWT
+5. `Examples/Web/job_queue_basic.malda` — background jobs
 
-After `bindForm` (or building an object from request fields), validate shapes with
-`schema` + `validate` — see [`errors-and-validation.md`](errors-and-validation.md).
+More on `schema` / `validate` and tagged errors: [`errors-and-validation.md`](errors-and-validation.md).
 
 Catalog of all sample folders: [`Examples/README.md`](../../Examples/README.md).
 Start-here routes: [`docs/start-here.md`](../start-here.md).

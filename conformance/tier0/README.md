@@ -16,8 +16,10 @@ File-driven semantic tests for Malda Core. Each case is a pair:
 Or:
 
 ```powershell
-dotnet test MaldaLang.Tests --filter "FullyQualifiedName~Tier0MaldaConformanceTests|FullyQualifiedName~Tier0BackendMatrixTests"
+dotnet test MaldaLang.Tests --filter "FullyQualifiedName~Tier0MaldaConformanceTests|FullyQualifiedName~Tier0BackendMatrixTests|FullyQualifiedName~Tier0ConformanceTests"
 ```
+
+On GitHub, the same filter runs via **nightly / workflow_dispatch** (not on every push/PR): [`.github/workflows/tier0-nightly.yml`](../../.github/workflows/tier0-nightly.yml).
 
 ## Add a case
 

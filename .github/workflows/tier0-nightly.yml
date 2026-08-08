@@ -1,0 +1,33 @@
+# Tier 0 conformance (interpreter + C# matrix). Nightly / manual only —
+# not on every PR (see ci.yml smoke filter).
+name: Tier 0 nightly
+
+on:
+  schedule:
+    - cron: "0 4 * * *" # 04:00 UTC
+  workflow_dispatch:
+
+jobs:
+  tier0:
+    name: Tier 0 interpret + C# (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Build
+        run: |
+          dotnet build MaldaLang -c Release --verbosity minimal
+          dotnet build MaldaLang.Compiler -c Release --verbosity minimal
+          dotnet build MaldaLang.Tests -c Release --verbosity minimal
+
+      # Same filter as scripts/run-tier0-conformance.ps1 (JS remains opt-in / skip when absent).
+      - name: Tier 0 conformance
+        run: >
+          dotnet test MaldaLang.Tests -c Release --no-build
+          --filter "FullyQualifiedName~Tier0MaldaConformanceTests|FullyQualifiedName~Tier0BackendMatrixTests|FullyQualifiedName~Tier0ConformanceTests"
+          --verbosity minimal

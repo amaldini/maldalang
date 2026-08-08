@@ -3847,6 +3847,10 @@ public partial class Interpreter
         {
             return requestAuthContext.CallMethod(methodName, arguments);
         }
+        else if (instance is BuiltIns.RequestSessionContextInstance requestSession)
+        {
+            return requestSession.CallMethod(methodName, arguments);
+        }
         else if (instance is BuiltIns.ResponseContextInstance responseContext)
         {
             return responseContext.CallMethod(methodName, arguments);

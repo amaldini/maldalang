@@ -60,8 +60,9 @@ if (checked.ok) {
 ```
 
 - From a JSON string: `parseJson(text, "Person")` (throws on mismatch).
-- After HTML forms: build an object from `bindForm` / request fields, then `validate`.
-- Full example: [`Examples/Basics/schema_validate.malda`](../../Examples/Basics/schema_validate.malda).
+- After HTML forms: `bindForm` → `validate`, with session flash on failure — see
+  [`Examples/Web/form_validate_flash.malda`](../../Examples/Web/form_validate_flash.malda).
+- Offline schema-only sample: [`Examples/Basics/schema_validate.malda`](../../Examples/Basics/schema_validate.malda).
 - Manual: Reference Manual §12.7.1 (`validate`) and schema section in Functions.
 
 ## What not to do

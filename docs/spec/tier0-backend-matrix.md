@@ -13,6 +13,8 @@
 | C# transpile | Yes | ≥ 95% of cases with `"csharp": true` (currently 100% on enabled subset) |
 | JavaScript | Opt-in pilot | 100% of cases with `"javascript": true` when Node + runtime are available; otherwise skipped |
 
+Push/PR CI (`ci.yml`) stays on a small smoke filter. Full Tier 0 interpret + C# runs on the **GitHub nightly** workflow [`.github/workflows/tier0-nightly.yml`](../../.github/workflows/tier0-nightly.yml) (`schedule` + `workflow_dispatch`).
+
 ## JavaScript pilot (101 cases — full Tier 0)
 
 All Tier 0 cases run via `JsTranspiler` + Node.js + `Examples/Web/wwwroot/malda-js-runtime.js`. See [phase-5-js-tier0-pilot.md](../planning/phase-5-js-tier0-pilot.md) and [phase-5-js-tier0-rollout.md](../planning/phase-5-js-tier0-rollout.md).
