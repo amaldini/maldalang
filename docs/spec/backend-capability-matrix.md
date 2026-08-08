@@ -41,9 +41,12 @@ These strings are what `@property` / `runProperty` use via `GetRequiredCapabilit
 | Actors (`spawn` / `send` / `on`) | yes | yes | limited demos only |
 | Durable workflows (`workflow` / `step`) | yes | yes | no |
 | Agents / prompts / MCP / ACP | yes | yes | no |
+| Typed prompt `response_format` (schema → OpenAI structured output) | yes* | yes* | no |
 | HttpServer / RestServer / sessions / jobs | yes | yes | no |
 | Browser `dom.*` / `three.*` / game canvas | n/a | n/a | yes |
 | .NET interop | yes | yes | no |
+
+\* OpenAI-compatible chat APIs receive `response_format` when `await prompt(…) -> Type` has no tools. Llama.cpp ignores the parameter; validation/repair still runs. If a backend rejects `response_format`, the host retries once without it.
 
 When in doubt, smoke both interpreter and transpile for shippable `.exe`s, and treat JS as browser-only. Silent interpreter≠transpile footguns: [`docs/llm/malda-gotchas.md`](../llm/malda-gotchas.md).
 

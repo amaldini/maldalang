@@ -1,0 +1,13 @@
+// Typed prompt: schema return type + await (no tools → response_format).
+schema Item {
+    id: int;
+    label: string;
+}
+
+prompt makeItem(label) -> Item {
+    system: "Return JSON only.";
+    user: "Make an item labeled {label} with id 1.";
+}
+
+var item = await makeItem("widget");
+io.print($"item {item.id}: {item.label}");

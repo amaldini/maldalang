@@ -1,0 +1,24 @@
+// schema_prompt_structured.malda — await typed prompt with schema → response_format
+//
+// Requires a configured LLM (default local client or env/API key). Offline: skip.
+// Run: malda Examples/Prompts/schema_prompt_structured.malda
+//
+// On await with -> Schema and no tools, MALDA sends OpenAI-style response_format
+// and validates the JSON reply (repair retries up to 3).
+
+schema ContactCard {
+    name: string;
+    email: string;
+}
+
+prompt extractContact(raw) -> ContactCard {
+    system: "Extract a contact. Reply with JSON only matching the schema.";
+    user: """
+    Text:
+    {raw}
+    """
+}
+
+var card = await extractContact("Ada Lovelace — ada@example.com");
+print("name=" + card.name);
+print("email=" + card.email);

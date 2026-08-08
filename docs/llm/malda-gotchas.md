@@ -27,6 +27,8 @@ claim a program works.
 | `req.session.getFlash("err")` twice | Flash values are **one-shot**. The first `getFlash` / `getFlashes` consumes them; a second read in the same request returns empty. | Read flash once when rendering the page, or keep a local variable |
 | `new RestServer(8080)` then also `HttpServer` on 8080 | Two listeners fight for the port. For fullstack, use `new RestServer()` (deferred port) and `http.mount(api)`. | One port owner: `HttpServer` + `mount` |
 | `enqueueJob` expecting durable workflow semantics | Jobs are a **lightweight SQLite queue** (`./.malda/jobs.db`), not `workflow` / `step` / compensate. | Use `workflow { }` for durable steps; use jobs for fire-and-forget workers |
+| `prompt p() -> MySchema { tools: [...]; … }` expecting structured `response_format` | For v1, **tools and `response_format` are mutually exclusive**. If the prompt body lists tools, the schema is **not** sent to the LLM. | Omit tools for typed structured output, or validate the free-form reply yourself |
+| Treating `-> Type` as compile-time typing | Hints are not static types. On **`await`**, the runtime validates JSON against the resolved schema (and may send OpenAI `response_format`). Without `await`, you only build a `PromptInstance`. | Prefer `schema Name { … }` + `await prompt(...) -> Name`; see `Examples/Prompts/schema_prompt_structured.malda` |
 
 ## Half-truths
 
@@ -68,6 +70,10 @@ you want an integer value, not only an integer-accepting call.
 **Flat built-in names are deprecated aliases.** `sqrt(16)` and `Math.sqrt(16)` both run, but
 the language server reports both as deprecated. Prefer `math.sqrt(16)`. See the namespace
 rule in [`malda-syntax.md`](malda-syntax.md).
+
+**Typed prompts send `response_format` only to OpenAI-compatible chat APIs.** Llama.cpp
+clients accept the parameter and ignore it; validation + repair retries still run after the
+reply. If a backend rejects `response_format`, the host retries once without it.
 
 ## Before you say it works
 

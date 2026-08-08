@@ -1,5 +1,6 @@
-// Prompt with Return Type Annotation
-// Demonstrates optional return type annotations for type hints
+// Prompt with return type — without await this builds a PromptInstance only.
+// For schema → response_format + validated JSON, see schema_prompt_structured.malda
+// (await + schema declaration, no tools).
 
 prompt planTask(task, docs) -> Plan {
     system: "You are a project planner.",
@@ -18,7 +19,6 @@ prompt codeReview(code) -> Review {
     user: "Review this code:\n\n{code}"
 }
 
-// Return types are currently informational (for future type checking)
 var plan = planTask("Add logging", "See docs/logging.md");
 var review = codeReview("function test() { return 42; }");
 

@@ -192,7 +192,13 @@ public class LocalServerAdapter : IBackendAdapter
             {
                 var errorObj = new JsonObject();
                 errorObj.Set("content", RuntimeValue.String($"Error: Server request failed with status {response.StatusCode}. Response: {responseContent}"));
-                return RuntimeValue.Object(errorObj);
+                var err = RuntimeValue.Object(errorObj);
+                if (LLMClientInstance.ShouldRetryWithoutResponseFormat(responseFormat, err, exceptionMessage: null))
+                {
+                    LLMClientInstance.WarnResponseFormatRejectedOnce();
+                    return Chat(messages, tools, responseFormat: null, overrides);
+                }
+                return err;
             }
             
             var responseDoc = JsonDocument.Parse(responseContent);
@@ -257,6 +263,21 @@ public class LocalServerAdapter : IBackendAdapter
         }
         catch (Exception ex)
         {
+            if (LLMClientInstance.ShouldRetryWithoutResponseFormat(responseFormat, result: null, exceptionMessage: ex.Message))
+            {
+                try
+                {
+                    LLMClientInstance.WarnResponseFormatRejectedOnce();
+                    return Chat(messages, tools, responseFormat: null, overrides);
+                }
+                catch (Exception retryEx)
+                {
+                    var retryError = new JsonObject();
+                    retryError.Set("content", RuntimeValue.String($"Error: Exception during server call: {retryEx.Message}"));
+                    return RuntimeValue.Object(retryError);
+                }
+            }
+
             var errorObj = new JsonObject();
             errorObj.Set("content", RuntimeValue.String($"Error: Exception during server call: {ex.Message}"));
             return RuntimeValue.Object(errorObj);

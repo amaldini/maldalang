@@ -144,8 +144,12 @@ See `Examples/Web/auth_cookie_login.malda`, `Examples/Web/form_validate_flash.ma
 | Pattern | Role |
 |---------|------|
 | `prompt name(args) { user: "..."; }` | Prompt declaration |
+| `prompt name(args) -> SchemaName { … }` + `await` | Typed prompt: JSON Schema → `response_format` (no tools); validate + repair |
 | `new OpenRouterClient(...)` / `LLMClient` | LLM clients (see `Examples/Prompts`, `Examples/AI_LLM`) |
 | `new Agent(...)` / `CodingAgent` | Agents + tools |
+
+Structured await example: `Examples/Prompts/schema_prompt_structured.malda`
+(and few-shot `docs/llm/few-shot/18_schema_prompt.malda`).
 
 ## Actors
 

@@ -15,7 +15,12 @@ Compact rules for generating correct `.malda`. Prefer this over scraping HTML ma
 - Blocks use `{ }` like C-family languages.
 - Dynamic typing; optional type hints exist (`: Type`) but are not required for most examples.
 - **Prompt parameters are name-only** — write `prompt greet(name) { ... }`, never `prompt greet(name: string)`.
-- Prompt `-> ReturnType` is informational only; do not treat it as enforced static typing.
+- Prompt `-> ReturnType` is **not** static typing. On `await prompt(...)` with a
+  return type and **no tools**, MALDA resolves the type to JSON Schema, sends it to
+  OpenAI-compatible backends as `response_format`, then validates the reply (up to 3
+  attempts with a repair instruction). Without `await`, you get a `PromptInstance`
+  (schema attached when resolvable). Prefer a `schema Name { … }` declaration as the
+  return type for structured objects.
 - Interpolate with a **`$`-prefixed** string: `$"total: {n}"`, `$"{a} of {b}"`. The braces
   take any expression (`{n * 2}`, `{math.sqrt(x)}`, `{items[0]}`), and `$` strings compose
   with `AnsiConsole` markup. A plain string does **not** interpolate — `"total: {n}"` prints

@@ -23,6 +23,7 @@ Tiny programs for LLM context. Larger curated samples live under `Examples/`.
 | `15_bearer_jwt_shape.malda` | `createJwt` / `verifyJwt` + Bearer middleware shape (no server loop) |
 | `16_workflow_retry.malda` | `workflow` + `retry`, `startWorkflow`, inspect / dead letters |
 | `17_schema_validate.malda` | `schema` + `validate` (`{ ok, data|error }`) |
+| `18_schema_prompt.malda` | `schema` return type + `await` prompt (structured `response_format`) |
 
 Also useful from the main tree:
 
@@ -32,5 +33,5 @@ Also useful from the main tree:
 - `Examples/Web/http_client_json.malda`, `Examples/Web/rest_bearer_jwt.malda`, `Examples/Web/auth_cookie_login.malda`
 - `Examples/Web/rest_api_server.malda`
 - `Examples/Workflows/retry_and_inspect.malda`
-- `Examples/Prompts/basic_prompt.malda`
+- `Examples/Prompts/basic_prompt.malda`, `Examples/Prompts/schema_prompt_structured.malda`
 - `Examples/Actors/basic_counter.malda`

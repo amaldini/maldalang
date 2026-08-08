@@ -49,8 +49,25 @@
     },
     {
       "name": "Prompt Return Types",
-      "description": "Optional return type annotations for type hints",
-      "file": "prompt_return_type.malda"
+      "description": "Return type on PromptInstance without await (see schema_prompt_structured for await)",
+      "file": "prompt_return_type.malda",
+      "next": "Prompts/schema_prompt_structured.malda"
+    },
+    {
+      "name": "Schema Prompt Structured",
+      "description": "schema + await typed prompt: JSON Schema sent as response_format, reply validated",
+      "file": "schema_prompt_structured.malda",
+      "track": "ai-builder",
+      "difficulty": "intermediate",
+      "minutes": 10,
+      "concepts": ["schema", "prompt", "response_format", "await"],
+      "prerequisites": ["Prompts/basic_prompt.malda", "Basics/schema_validate.malda"],
+      "requires": ["api-key"],
+      "learningGoal": "Use a schema return type so await sends structured output to the LLM.",
+      "expectedOutput": "Prints name and email from a ContactCard JSON reply.",
+      "next": "Prompts/prompt_with_agent.malda",
+      "documentationPath": "/?lesson=first-prompt#lesson-first-prompt",
+      "documentationTitle": "First Prompt"
     },
     {
       "name": "Prompt Reusability",

@@ -98,20 +98,108 @@ public class LLMClientInstance : ObjectInstance
                 return RuntimeValue.Null();
 
             var requestBody = BuildRequestBody(messages, tools, responseFormat, overrides);
+            RuntimeValue result;
             if (ShouldUseStreaming(responseFormat))
             {
                 requestBody["stream"] = true;
-                return ChatStreaming(requestBody);
+                result = ChatStreaming(requestBody);
+            }
+            else
+            {
+                result = ChatNonStreaming(requestBody);
             }
 
-            return ChatNonStreaming(requestBody);
+            if (ShouldRetryWithoutResponseFormat(responseFormat, result, exceptionMessage: null))
+            {
+                WarnResponseFormatRejectedOnce();
+                // Force non-streaming recovery so callers get a normal completion payload.
+                var fallbackBody = BuildRequestBody(messages, tools, responseFormat: null, overrides);
+                return ChatNonStreaming(fallbackBody);
+            }
+
+            return result;
         }
         catch (Exception ex)
         {
+            if (ShouldRetryWithoutResponseFormat(responseFormat, result: null, exceptionMessage: ex.Message))
+            {
+                try
+                {
+                    WarnResponseFormatRejectedOnce();
+                    var fallbackBody = BuildRequestBody(messages, tools, responseFormat: null, overrides);
+                    return ChatNonStreaming(fallbackBody);
+                }
+                catch (Exception retryEx)
+                {
+                    var retryError = new JsonObject();
+                    retryError.Set("content", RuntimeValue.String($"Error: Exception during API call: {retryEx.Message}"));
+                    return RuntimeValue.Object(retryError);
+                }
+            }
+
             var errorObj = new JsonObject();
             errorObj.Set("content", RuntimeValue.String($"Error: Exception during API call: {ex.Message}"));
             return RuntimeValue.Object(errorObj);
         }
+    }
+
+    private static bool _warnedResponseFormatRejected;
+
+    internal static void WarnResponseFormatRejectedOnce()
+    {
+        if (_warnedResponseFormatRejected)
+            return;
+        _warnedResponseFormatRejected = true;
+        Console.Error.WriteLine(
+            "MALDA: LLM rejected response_format / structured output; retrying once without it.");
+    }
+
+    /// <summary>
+    /// True when a chat that included <c>response_format</c> failed in a way that
+    /// suggests the backend does not support structured outputs.
+    /// </summary>
+    internal static bool ShouldRetryWithoutResponseFormat(
+        RuntimeValue? responseFormat,
+        RuntimeValue? result,
+        string? exceptionMessage)
+    {
+        if (responseFormat == null || responseFormat.Type != ValueType.Object)
+            return false;
+
+        if (!string.IsNullOrEmpty(exceptionMessage) &&
+            LooksLikeResponseFormatRejectionText(exceptionMessage))
+        {
+            return true;
+        }
+
+        if (result == null || result.Type != ValueType.Object)
+            return false;
+
+        var content = result.AsObject().Get("content", null);
+        if (content == null || content.Type != ValueType.String)
+            return false;
+
+        var text = content.AsString();
+        if (string.IsNullOrEmpty(text) ||
+            !text.StartsWith("Error:", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        return LooksLikeResponseFormatRejectionText(text);
+    }
+
+    internal static bool LooksLikeResponseFormatRejectionText(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return false;
+
+        var lower = text.ToLowerInvariant();
+        return lower.Contains("response_format", StringComparison.Ordinal)
+            || lower.Contains("json_schema", StringComparison.Ordinal)
+            || lower.Contains("structured output", StringComparison.Ordinal)
+            || lower.Contains("structured_output", StringComparison.Ordinal)
+            || lower.Contains("structured outputs", StringComparison.Ordinal);
     }
 
     internal static bool IsLlmStreamingEnabled()
