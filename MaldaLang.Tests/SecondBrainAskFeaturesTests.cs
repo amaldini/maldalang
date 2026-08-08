@@ -176,6 +176,7 @@ public class SecondBrainAskFeaturesTests
                 var ASK_HTTP_PORT = 39018;
                 var ASK_SESSION_ID = "secondbrain-ask-test";
                 var ASK_STORE = "SecondBrainAskTest";
+                var PRODUCT_NAME = "Acme Knowledge";
                 var ASK_PAGE_TITLE = "Acme Knowledge";
                 var ASK_POWERED_BY = "Powered by MALDA: Multi Agent Language with Development Automation";
                 var ASK_POWERED_BY_URL = "https://github.com/amaldini/maldalang";
@@ -263,6 +264,7 @@ public class SecondBrainAskFeaturesTests
                 var ASK_HTTP_PORT = 39018;
                 var ASK_SESSION_ID = "secondbrain-ask-test-embed-logo";
                 var ASK_STORE = "SecondBrainAskTestEmbedLogo";
+                var PRODUCT_NAME = "Embedded Logo Brain";
                 var ASK_PAGE_TITLE = "Embedded Logo Brain";
                 var ASK_POWERED_BY = "Powered by MALDA";
                 var ASK_POWERED_BY_URL = "https://github.com/amaldini/maldalang";
@@ -342,6 +344,7 @@ public class SecondBrainAskFeaturesTests
                 var ASK_HTTP_PORT = 39019;
                 var ASK_SESSION_ID = "secondbrain-ask-panel-test";
                 var ASK_STORE = "SecondBrainAskPanelTest";
+                var PRODUCT_NAME = "Panel Brain";
                 var ASK_PAGE_TITLE = "Panel Brain";
                 var ASK_POWERED_BY = "";
                 var ASK_POWERED_BY_URL = "";
@@ -404,6 +407,12 @@ public class SecondBrainAskFeaturesTests
         foreach (var path in new[] { lexical, semantic })
         {
             var source = File.ReadAllText(path);
+            Assert.Contains("var PRODUCT_NAME = ", source, StringComparison.Ordinal);
+            Assert.Contains("var ASK_TITLE_SUFFIX = ", source, StringComparison.Ordinal);
+            Assert.Contains("function productName()", source, StringComparison.Ordinal);
+            Assert.Contains("function applyProductNameFromBrain(", source, StringComparison.Ordinal);
+            Assert.Contains("askApplyProductNameFromBrain(", source, StringComparison.Ordinal);
+            Assert.Contains("product_name.txt", source, StringComparison.Ordinal);
             Assert.Contains("askGetToolsEnabled()", source, StringComparison.Ordinal);
             Assert.Contains("askSetToolsEnabled(false)", source, StringComparison.Ordinal);
             Assert.Contains("function answerInstructions(useTools)", source, StringComparison.Ordinal);
@@ -430,6 +439,7 @@ public class SecondBrainAskFeaturesTests
                 var ASK_HTTP_PORT = 39018;
                 var ASK_SESSION_ID = "secondbrain-ask-test-nologo";
                 var ASK_STORE = "SecondBrainAskTestNoLogo";
+                var PRODUCT_NAME = "Acme Hub";
                 var ASK_PAGE_TITLE = "No Logo Brain";
                 var ASK_POWERED_BY = "Powered by MALDA";
                 var ASK_POWERED_BY_URL = "https://github.com/amaldini/maldalang";
@@ -461,10 +471,114 @@ public class SecondBrainAskFeaturesTests
 
             var html = await InterpretAndCaptureAsync(harnessPath);
             Assert.Contains("<h1>No Logo Brain</h1>", html, StringComparison.Ordinal);
+            Assert.Contains("No Acme Hub loaded", html, StringComparison.Ordinal);
+            Assert.DoesNotContain("second brain", html, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("<img class='logo'", html, StringComparison.Ordinal);
         }
         finally
         {
+            SafeDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public async Task AskUi_LoadsProductName_From_BrainFile_DiskAndEmbed()
+    {
+        Assert.True(File.Exists(AskUiLibPath), "missing ask UI lib: " + AskUiLibPath);
+
+        var tempDir = Path.Combine(Path.GetTempPath(), "malda_sb_product_name", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        EmbeddedFolderStore.ResetForTests();
+        try
+        {
+            var brainDir = Path.Combine(tempDir, "brain");
+            Directory.CreateDirectory(brainDir);
+            File.WriteAllText(Path.Combine(brainDir, "product_name.txt"), "Disk Brand\n", Encoding.UTF8);
+            File.Copy(AskUiLibPath, Path.Combine(tempDir, "secondbrain_ask_ui_lib.malda"));
+
+            var brainLiteral = brainDir.Replace("\\", "\\\\");
+            var diskHarness = Path.Combine(tempDir, "disk.malda");
+            File.WriteAllText(diskHarness,
+                $$"""
+                var ASK_HTTP_PORT = 39018;
+                var ASK_SESSION_ID = "secondbrain-ask-product-disk";
+                var ASK_STORE = "SecondBrainAskProductDisk";
+                var PRODUCT_NAME = "Second brain";
+                var ASK_TITLE_SUFFIX = " — ASK";
+                var ASK_PAGE_TITLE = PRODUCT_NAME + ASK_TITLE_SUFFIX;
+                var ASK_POWERED_BY = "";
+                var ASK_POWERED_BY_URL = "";
+                var ASK_LOGO = "";
+                var UI_LANG = "en";
+                var askHttpServer = null;
+
+                function runAskTurn(question) {
+                    return { "question": question, "answer": "ok", "sources": [], "error": "" };
+                }
+
+                include "secondbrain_ask_ui_lib.malda";
+
+                print(askApplyProductNameFromBrain("{{brainLiteral}}"));
+                askSetSession({
+                    "brainDir": "{{brainLiteral}}",
+                    "chatOnly": true,
+                    "noteCount": 0,
+                    "topicCount": 0,
+                    "sourceFolder": "none",
+                    "retrieval": "none",
+                    "llm": "test",
+                    "title": ASK_PAGE_TITLE,
+                    "subtitle": "x"
+                });
+                print("---HTML---");
+                print(askRenderPage());
+                """,
+                Encoding.UTF8);
+
+            var diskOut = await InterpretAndCaptureAsync(diskHarness);
+            Assert.Contains("Disk Brand", diskOut, StringComparison.Ordinal);
+            Assert.Contains("<h1>Disk Brand", diskOut, StringComparison.Ordinal);
+            Assert.Contains("No Disk Brand loaded", diskOut, StringComparison.Ordinal);
+
+            EmbeddedFolderStore.RegisterForTests("secondbrain", new Dictionary<string, string>
+            {
+                ["product_name.txt"] = "Embed Brand\n",
+                ["brain.json"] = "{\"notes\":[]}"
+            });
+
+            var embedHarness = Path.Combine(tempDir, "embed.malda");
+            File.WriteAllText(embedHarness,
+                """
+                var ASK_HTTP_PORT = 39018;
+                var ASK_SESSION_ID = "secondbrain-ask-product-embed";
+                var ASK_STORE = "SecondBrainAskProductEmbed";
+                var PRODUCT_NAME = "Second brain";
+                var ASK_TITLE_SUFFIX = " — ASK";
+                var ASK_PAGE_TITLE = PRODUCT_NAME + ASK_TITLE_SUFFIX;
+                var ASK_POWERED_BY = "";
+                var ASK_POWERED_BY_URL = "";
+                var ASK_LOGO = "";
+                var UI_LANG = "en";
+                var askHttpServer = null;
+
+                function runAskTurn(question) {
+                    return { "question": question, "answer": "ok", "sources": [], "error": "" };
+                }
+
+                include "secondbrain_ask_ui_lib.malda";
+
+                print(askApplyProductNameFromBrain("embed:secondbrain"));
+                print(askProductName());
+                """,
+                Encoding.UTF8);
+
+            var embedOut = await InterpretAndCaptureAsync(embedHarness);
+            Assert.Contains("Embed Brand", embedOut, StringComparison.Ordinal);
+            Assert.DoesNotContain("Second brain", embedOut, StringComparison.Ordinal);
+        }
+        finally
+        {
+            EmbeddedFolderStore.ResetForTests();
             SafeDeleteDirectory(tempDir);
         }
     }

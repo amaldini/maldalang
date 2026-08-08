@@ -337,16 +337,7 @@ public class Lexer
             if (Peek() == '\\')
             {
                 Advance(); // consume '\'
-                char escape = Peek();
-                switch (escape)
-                {
-                    case 'n': value += '\n'; break;
-                    case 't': value += '\t'; break;
-                    case '"': value += '"'; break;
-                    case '\\': value += '\\'; break;
-                    default: value += escape; break;
-                }
-                Advance(); // consume escape character
+                value += DecodeStringEscape(allowBraceEscapes: false);
             }
             else
             {
@@ -375,17 +366,7 @@ public class Lexer
             if (Peek() == '\\')
             {
                 Advance(); // consume '\'
-                char escape = Peek();
-                switch (escape)
-                {
-                    case 'n': value += '\n'; break;
-                    case 't': value += '\t'; break;
-                    case '\'': value += '\''; break;  // Escape single quote
-                    case '"': value += '"'; break;     // Escape double quote (useful in single-quoted strings)
-                    case '\\': value += '\\'; break;
-                    default: value += escape; break;
-                }
-                Advance(); // consume escape character
+                value += DecodeStringEscape(allowBraceEscapes: false);
             }
             else
             {
@@ -421,18 +402,7 @@ public class Lexer
             if (Peek() == '\\')
             {
                 Advance(); // consume '\'
-                char escape = Peek();
-                switch (escape)
-                {
-                    case 'n': currentText.Append('\n'); break;
-                    case 't': currentText.Append('\t'); break;
-                    case '"': currentText.Append('"'); break;
-                    case '\\': currentText.Append('\\'); break;
-                    case '{': currentText.Append('{'); break;
-                    case '}': currentText.Append('}'); break;
-                    default: currentText.Append('\\').Append(escape); break;
-                }
-                Advance(); // consume escape character
+                currentText.Append(DecodeStringEscape(allowBraceEscapes: true));
             }
             else if (Peek() == '{')
             {
@@ -611,18 +581,7 @@ public class Lexer
             if (Peek() == '\\')
             {
                 Advance(); // consume '\'
-                char escape = Peek();
-                switch (escape)
-                {
-                    case 'n': currentText.Append('\n'); break;
-                    case 't': currentText.Append('\t'); break;
-                    case '"': currentText.Append('"'); break;
-                    case '\\': currentText.Append('\\'); break;
-                    case '{': currentText.Append('{'); break;
-                    case '}': currentText.Append('}'); break;
-                    default: currentText.Append('\\').Append(escape); break;
-                }
-                Advance(); // consume escape character
+                currentText.Append(DecodeStringEscape(allowBraceEscapes: true));
             }
             else if (Peek() == '{')
             {
@@ -827,6 +786,35 @@ public class Lexer
         return new Token(type, text, literal, _line, column);
     }
     
+    /// <summary>
+    /// Decode a string escape after the backslash has already been consumed.
+    /// Advances past the escape character. Unknown sequences are hard errors
+    /// (previously plain strings silently dropped the backslash, e.g. <c>"\r"</c> → <c>"r"</c>).
+    /// </summary>
+    private string DecodeStringEscape(bool allowBraceEscapes)
+    {
+        if (IsAtEnd())
+            throw Error("Unterminated escape sequence in string");
+
+        char escape = Advance();
+        switch (escape)
+        {
+            case 'n': return "\n";
+            case 'r': return "\r";
+            case 't': return "\t";
+            case '"': return "\"";
+            case '\'': return "'";
+            case '\\': return "\\";
+            case '{' when allowBraceEscapes: return "{";
+            case '}' when allowBraceEscapes: return "}";
+            default:
+                var supported = allowBraceEscapes
+                    ? "\\n, \\r, \\t, \\\", \\', \\\\, \\{, \\}"
+                    : "\\n, \\r, \\t, \\\", \\', \\\\";
+                throw Error($"Unknown escape sequence '\\{escape}'. Supported: {supported}.");
+        }
+    }
+
     private Exception Error(string message)
     {
         var actualLine = _line + _lineOffset;

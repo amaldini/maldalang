@@ -131,6 +131,7 @@ var my-var = 60;     // Invalid: contains hyphen</code></pre>
 "Line 1\nLine 2"
 'Line 1\nLine 2'
 "Tab\tseparated"
+"CRLF line\r\n"
 "Quote: \"Hello\""
 'Quote: \'Hello\''
 "He said 'hello'"
@@ -153,7 +154,11 @@ var msg4 = "He said \"hello\"";  // Escaping needed</code></pre>
             <tbody>
                 <tr>
                     <td><code>\n</code></td>
-                    <td>Newline</td>
+                    <td>Newline (LF)</td>
+                </tr>
+                <tr>
+                    <td><code>\r</code></td>
+                    <td>Carriage return (CR)</td>
                 </tr>
                 <tr>
                     <td><code>\t</code></td>
@@ -171,9 +176,13 @@ var msg4 = "He said \"hello\"";  // Escaping needed</code></pre>
                     <td><code>\\</code></td>
                     <td>Backslash</td>
                 </tr>
+                <tr>
+                    <td><code>\{</code> / <code>\}</code></td>
+                    <td>Literal braces (interpolated strings only: <code>$"..."</code> / <code>$"""..."""</code>)</td>
+                </tr>
             </tbody>
         </table>
-        <p><strong>Note:</strong> Both <code>\"</code> and <code>\'</code> work in both string types, so you can include either quote type in any string.</p>
+        <p><strong>Note:</strong> Both <code>\"</code> and <code>\'</code> work in both string types, so you can include either quote type in any string. Unknown escape sequences (for example <code>\x</code>) are a lexer error — they are not silently turned into the bare letter.</p>
 
         <h3>Multiline Strings (Triple-Quoted)</h3>
         <p>Multiline string literals use three double quotes (<code>"""</code>) as the opening and closing delimiter. They can span multiple lines and preserve newlines. Inside a triple-quoted string, single and double quotes do not need to be escaped, which makes them convenient for long text, prompts, or content that contains many quotes.</p>

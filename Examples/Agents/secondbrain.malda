@@ -42,14 +42,20 @@ var UI_LANG = "it";             // "en" | "it" — UI messages
 var ASK_HTTP_PORT = 39018;
 var ASK_SESSION_ID = "secondbrain-ask-lexical";
 var ASK_STORE = "SecondBrainAsk";
-// ASK web header — change these to brand a portable build.
-var ASK_PAGE_TITLE = "Second brain — ASK";
+// Display name for UI / console / generated index (folder aliases stay EMBED_ALIAS).
+// Literal name, OR path / embed:… to a utf-8 text file (first non-empty line).
+// Prefer brain file product_name.txt (auto-loaded when the brain root is known).
+var PRODUCT_NAME = "Second brain";
+var ASK_TITLE_SUFFIX = " — ASK";
+// ASK web header — defaults from PRODUCT_NAME; override freely if needed.
+var ASK_PAGE_TITLE = PRODUCT_NAME + ASK_TITLE_SUFFIX;
 var ASK_POWERED_BY = "Powered by MALDA: Multi Agent Language with Development Automation";
 var ASK_POWERED_BY_URL = "https://github.com/amaldini/maldalang";
 // Optional logo left of the title: "", file path, embed:alias/..., http(s):, or data:
-// PACK: put logo.png in the brain folder you pass to mode 4, then set (before packing):
+// PACK: put logo.png + optional product_name.txt in the brain folder, then set (before packing):
 //   var ASK_LOGO = "embed:secondbrain/logo.png";
 // (alias is always EMBED_ALIAS below — not the disk path, e.g. not P:\SecondBrain\logo.png)
+// product_name.txt is read automatically from the embedded/disk brain root at ASK time.
 var ASK_LOGO = "";
 var SOURCE_SCRIPT_NAME = "secondbrain.malda";
 var EMBED_ALIAS = "secondbrain";
@@ -63,6 +69,73 @@ function t(en, it) {
         return en;
     }
     return it;
+}
+
+function readProductNameFile(path) {
+    var p = str.trim(string(path));
+    if (p == "" or not io.hasFile(p)) {
+        return "";
+    }
+    var text = io.readFile(p);
+    if (text == null) {
+        return "";
+    }
+    var lines = str.split(string(text), "\n");
+    foreach (var line in lines) {
+        // trim() also strips trailing CR from CRLF files.
+        var n = str.trim(string(line));
+        if (n != "") {
+            return n;
+        }
+    }
+    return "";
+}
+
+function productNameLooksLikePath(value) {
+    var n = str.trim(string(value));
+    if (n == "") {
+        return false;
+    }
+    if (str.startsWith(n, "embed:")) {
+        return true;
+    }
+    if (str.endsWith(str.lower(n), ".txt")) {
+        return true;
+    }
+    if (str.indexOf(n, "/") >= 0 or str.indexOf(n, "\\") >= 0) {
+        return true;
+    }
+    return io.hasFile(n);
+}
+
+function productName() {
+    var n = str.trim(string(PRODUCT_NAME));
+    if (n != "" and productNameLooksLikePath(n)) {
+        var fromFile = readProductNameFile(n);
+        if (fromFile != "") {
+            return fromFile;
+        }
+    }
+    if (n == "" or productNameLooksLikePath(n)) {
+        return "Second brain";
+    }
+    return n;
+}
+
+// Prefer brainDir/product_name.txt (disk or embed). Keeps ASK_PAGE_TITLE in sync when default-shaped.
+function applyProductNameFromBrain(brainDir) {
+    var root = str.trim(string(brainDir));
+    var loaded = "";
+    if (root != "") {
+        loaded = readProductNameFile(io.pathJoin(root, "product_name.txt"));
+    }
+    if (loaded == "") {
+        return productName();
+    }
+    // Brain file owns display name + default ASK title.
+    PRODUCT_NAME = loaded;
+    ASK_PAGE_TITLE = loaded + ASK_TITLE_SUFFIX;
+    return loaded;
 }
 
 function ynHint() {
@@ -311,7 +384,7 @@ function tagsFromLine(line) {
 
 function distillInstructions() {
     return "Sei un knowledge engineer. Distilli documentazione tecnica in note atomiche " +
-        "per un second brain. Rispetti sempre alla lettera il formato di risposta richiesto. " +
+        "per " + productName() + ". Rispetti sempre alla lettera il formato di risposta richiesto. " +
         "Scrivi la nota nella stessa lingua del documento di origine e mantieni invariati i " +
         "termini tecnici, i nomi di API e i frammenti di codice. Non inventi nulla: usi solo " +
         "cio' che il documento contiene. Non usi gli strumenti sui file: il testo del " +
@@ -320,7 +393,7 @@ function distillInstructions() {
 
 function distillQuestion(sourceRel, partLabel, text) {
     return "Documento: " + sourceRel + partLabel + "\n\n" +
-        "Distilla il documento seguente in una nota di second brain.\n\n" +
+        "Distilla il documento seguente in una nota di " + productName() + ".\n\n" +
         "Rispondi ESATTAMENTE in questo formato, senza altro testo prima o dopo:\n" +
         "TITLE: <titolo breve e specifico>\n" +
         "TAGS: <da 3 a 6 tag minuscoli separati da virgola>\n" +
@@ -410,7 +483,7 @@ function writeNoteFile(brainDir, note) {
         "<!--related-end-->\n\n" +
         "---\n\n" +
         "- Hub tematico: [" + note.topic + "](../topics/" + slugify(note.topic) + ".md)\n" +
-        "- Indice: [second brain](../index.md)\n" +
+        "- Indice: [" + productName() + "](../index.md)\n" +
         "- Documento di origine: `" + note.source + "`\n";
     io.writeFile(io.pathJoin(brainDir, "notes", note.slug + ".md"), text);
 }
@@ -547,7 +620,7 @@ function writeTopicHub(brainDir, topic, agent) {
         themeIntro = "Il tema e' stato definito cosi' in fase di esplorazione: " +
             str.trim(string(topic.description)) + "\n\n";
     }
-    var question = "Sei davanti a un gruppo di note di un second brain sul tema \"" + topic.title + "\".\n\n" +
+    var question = "Sei davanti a un gruppo di note di " + productName() + " sul tema \"" + topic.title + "\".\n\n" +
         themeIntro +
         str.join(listing, "\n") + "\n\n" +
         "Scrivi in markdown, senza titolo di primo livello e senza inventare contenuti:\n" +
@@ -580,14 +653,14 @@ function writeTopicHub(brainDir, topic, agent) {
         "## Note di questo tema\n\n" +
         str.join(lines, "\n") + "\n\n" +
         "---\n\n" +
-        "- Indice: [second brain](../index.md)\n";
+        "- Indice: [" + productName() + "](../index.md)\n";
     io.writeFile(io.pathJoin(brainDir, "topics", topic.slug + ".md"), text);
 }
 
 function writeIndex(brainDir, docsRoot, notes, topics, skipped, truncated, taxonomySource) {
     var lines = [];
     lines.append("---");
-    lines.append("title: Second brain");
+    lines.append("title: " + productName());
     lines.append("kind: index");
     lines.append("source_folder: " + docsRoot);
     lines.append("notes: " + string(notes.length));
@@ -596,7 +669,7 @@ function writeIndex(brainDir, docsRoot, notes, topics, skipped, truncated, taxon
     lines.append("model: " + modelLabel());
     lines.append("---");
     lines.append("");
-    lines.append("# Second brain");
+    lines.append("# " + productName());
     lines.append("");
     lines.append("Conoscenza distillata da `" + docsRoot + "` (" + string(notes.length) +
         " note, " + string(topics.length) + " temi).");
@@ -1401,7 +1474,7 @@ function finalizeBrain(brainDir, docsRoot, notes, skipped, truncated, taxonomySo
     var curator = newCodingAgent(
         "Curator",
         "curatore di knowledge base",
-        "Scrivi introduzioni brevi e concrete per gli hub tematici di un second brain. " +
+        "Scrivi introduzioni brevi e concrete per gli hub tematici di " + productName() + ". " +
         "Non inventare contenuti: usa solo i titoli e i riassunti forniti. " +
         "Non usare gli strumenti sui file.",
         brainDir
@@ -1451,8 +1524,8 @@ function finalizeBrain(brainDir, docsRoot, notes, skipped, truncated, taxonomySo
 function buildBrain() {
     AnsiConsole.markupLine("");
     AnsiConsole.panel(
-        t("Reads .md and .html and distills a second brain of linked notes.",
-            "Legge .md e .html e distilla un second brain di note collegate."),
+        t("Reads .md and .html and distills linked notes for " + productName() + ".",
+            "Legge .md e .html e distilla note collegate per " + productName() + "."),
         t("[bold]Mode 1 - BUILD[/]", "[bold]Modalita' 1 - COSTRUISCI[/]"), "rounded");
 
     var docsRoot = str.trim(io.input(t("Documentation folder: ", "Cartella della documentazione: ")));
@@ -1466,15 +1539,16 @@ function buildBrain() {
     }
 
     var brainDir = str.trim(io.input(t(
-        "Second brain folder [secondbrain]: ",
-        "Cartella del second brain [secondbrain]: ")));
+        productName() + " folder [secondbrain]: ",
+        "Cartella " + productName() + " [secondbrain]: ")));
     if (brainDir == "") {
         brainDir = "secondbrain";
     }
+    applyProductNameFromBrain(brainDir);
     if (io.hasFile(io.pathJoin(brainDir, CATALOG_NAME))) {
         var confirm = str.trim(io.input(t(
-            "A second brain already exists in this folder: matching files will be overwritten. Proceed? " + ynHint() + ": ",
-            "Esiste gia' un second brain in questa cartella: i file omonimi verranno sovrascritti. Procedo? " + ynHint() + ": ")));
+            productName() + " already exists in this folder: matching files will be overwritten. Proceed? " + ynHint() + ": ",
+            productName() + " esiste gia' in questa cartella: i file omonimi verranno sovrascritti. Procedo? " + ynHint() + ": ")));
         if (not isAffirmative(confirm)) {
             io.print(t("Cancelled.", "Annullato."));
             return false;
@@ -1595,7 +1669,7 @@ function buildBrain() {
     r7[colKey] = t("folder", "cartella");
     r7[colVal] = brainDir;
     summaryRows.append(r7);
-    AnsiConsole.table(summaryRows, t("Second brain built", "Second brain costruito"), [colKey, colVal]);
+    AnsiConsole.table(summaryRows, t(productName() + " built", productName() + " costruito"), [colKey, colVal]);
     AnsiConsole.markupLine(t("Index:", "Indice:") + " [bold]" + io.pathJoin(brainDir, "index.md") + "[/]");
     return true;
 }
@@ -1603,16 +1677,17 @@ function buildBrain() {
 function updateBrain() {
     AnsiConsole.markupLine("");
     AnsiConsole.panel(
-        t("Updates an existing second brain: only new or changed source files are re-distilled.",
-            "Aggiorna un second brain esistente: ridistilla solo i file di origine nuovi o modificati."),
+        t("Updates an existing " + productName() + ": only new or changed source files are re-distilled.",
+            "Aggiorna " + productName() + " esistente: ridistilla solo i file di origine nuovi o modificati."),
         t("[bold]Mode 2 - UPDATE[/]", "[bold]Modalita' 2 - AGGIORNA[/]"), "rounded");
 
     var brainDir = str.trim(io.input(t(
-        "Second brain folder [secondbrain]: ",
-        "Cartella del second brain [secondbrain]: ")));
+        productName() + " folder [secondbrain]: ",
+        "Cartella " + productName() + " [secondbrain]: ")));
     if (brainDir == "") {
         brainDir = "secondbrain";
     }
+    applyProductNameFromBrain(brainDir);
     var catalog = loadCatalog(brainDir);
     if (catalog == null or catalog.notes == null) {
         AnsiConsole.markupLine("[red]" + t(
@@ -1895,7 +1970,7 @@ function updateBrain() {
     u6[colKey] = t("folder", "cartella");
     u6[colVal] = brainDir;
     summaryRows.append(u6);
-    AnsiConsole.table(summaryRows, t("Second brain updated", "Second brain aggiornato"), [colKey, colVal]);
+    AnsiConsole.table(summaryRows, t(productName() + " updated", productName() + " aggiornato"), [colKey, colVal]);
     AnsiConsole.markupLine(t("Index:", "Indice:") + " [bold]" + io.pathJoin(brainDir, "index.md") + "[/]");
     return true;
 }
@@ -2028,14 +2103,14 @@ function buildContext(brainDir, picked) {
 }
 
 function answerInstructions(useTools) {
-    var text = "Rispondi alle domande usando esclusivamente il second brain fornito. " +
+    var text = "Rispondi alle domande usando esclusivamente " + productName() + " fornito. " +
         "Cita le note su cui ti basi con la forma [nota: slug]. " +
         "Se le note non contengono la risposta, dillo esplicitamente e indica quale nota " +
         "si avvicina di piu'. Non inventare API, parametri o comportamenti. ";
     if (useTools == true) {
         text = text +
             "Puoi usare gli strumenti read_file, grep e list_directory per aprire altre note " +
-            "del second brain se il contesto fornito non basta. ";
+            "di " + productName() + " se il contesto fornito non basta. ";
     } else {
         text = text +
             "Non hai strumenti: usa solo gli estratti forniti nel prompt; non inventare " +
@@ -2047,8 +2122,8 @@ function answerInstructions(useTools) {
 }
 
 function chatOnlyInstructions() {
-    return "Sei un assistente utile in chat diretta. Non c'e' un second brain / knowledge base " +
-        "disponibile per questa sessione: rispondi con le tue conoscenze generali. " +
+    return "Sei un assistente utile in chat diretta. Non c'e' " + productName() +
+        " / knowledge base disponibile per questa sessione: rispondi con le tue conoscenze generali. " +
         "Rispondi nella lingua della domanda, in modo conciso e strutturato. " +
         "Formatta la risposta in Markdown (grassetto, elenchi, tabelle se utili); " +
         "non usare HTML grezzo.";
@@ -2063,8 +2138,8 @@ function catalogNoteCount(catalog) {
 
 function runChatOnlyTurn(question) {
     AnsiConsole.markupLine("[dim]" + t(
-        "direct chat (no second-brain retrieval)",
-        "chat diretta (nessun recupero dal second brain)") + "[/]");
+        "direct chat (no " + productName() + " retrieval)",
+        "chat diretta (nessun recupero da " + productName() + ")") + "[/]");
     var responder = newPlainAgent(
         "ChatAssistant",
         "assistente in chat",
@@ -2091,13 +2166,13 @@ function resolveAskBrainRoot() {
     if (io.hasEmbeddedFolder("secondbrain")) {
         var root = io.embeddedFolderRoot("secondbrain");
         AnsiConsole.markupLine("[dim]" + t(
-            "Using embedded second brain (no disk folder).",
-            "Uso il second brain incorporato (nessuna cartella su disco).") + "[/]");
+            "Using embedded " + productName() + " (no disk folder).",
+            "Uso " + productName() + " incorporato (nessuna cartella su disco).") + "[/]");
         return root;
     }
     var brainDir = str.trim(io.input(t(
-        "Second brain folder [secondbrain]: ",
-        "Cartella del second brain [secondbrain]: ")));
+        productName() + " folder [secondbrain]: ",
+        "Cartella " + productName() + " [secondbrain]: ")));
     if (brainDir == "") {
         brainDir = "secondbrain";
     }
@@ -2192,11 +2267,12 @@ include "secondbrain_ask_ui_lib.malda";
 function askBrain() {
     AnsiConsole.markupLine("");
     AnsiConsole.panel(
-        t("Opens a local web UI to ask questions against the second brain from BUILD/UPDATE.",
-            "Apre una UI web locale per fare domande sul second brain di COSTRUISCI/AGGIORNA."),
+        t("Opens a local web UI to ask questions against " + productName() + " from BUILD/UPDATE.",
+            "Apre una UI web locale per fare domande su " + productName() + " di COSTRUISCI/AGGIORNA."),
         t("[bold]Mode 3 - ASK (web)[/]", "[bold]Modalita' 3 - CHIEDI (web)[/]"), "rounded");
 
     var brainDir = resolveAskBrainRoot();
+    askApplyProductNameFromBrain(brainDir);
     var catalog = loadCatalog(brainDir);
     var noteCount = catalogNoteCount(catalog);
     var topicCount = 0;
@@ -2213,8 +2289,8 @@ function askBrain() {
 
     if (chatOnly) {
         AnsiConsole.markupLine("[yellow]" + t(
-            "No second brain notes found — ASK will open as direct chat with the model.",
-            "Nessuna nota di second brain — ASK si apre in chat diretta col modello.") + "[/]");
+            "No " + productName() + " notes found — ASK will open as direct chat with the model.",
+            "Nessuna nota di " + productName() + " — ASK si apre in chat diretta col modello.") + "[/]");
         if (catalog == null) {
             AnsiConsole.markupLine("[dim]" + t("Missing", "Manca") + " " + CATALOG_NAME +
                 t(" in ", " in ") + brainDir +
@@ -2225,8 +2301,8 @@ function askBrain() {
 
     var retrieval = t("none (direct chat)", "nessuno (chat diretta)");
     var subtitle = t(
-        "Direct chat with the model (no second-brain retrieval).",
-        "Chat diretta col modello (nessun recupero dal second brain).");
+        "Direct chat with the model (no " + productName() + " retrieval).",
+        "Chat diretta col modello (nessun recupero da " + productName() + ").");
     if (not chatOnly) {
         retrieval = t("lexical token overlap", "sovrapposizione lessicale di token");
         subtitle = t(
@@ -2255,7 +2331,7 @@ function askBrain() {
         AnsiConsole.markupLine(t("Mode:", "Modalita':") + " [bold]" +
             t("direct chat", "chat diretta") + "[/]");
     } else {
-        AnsiConsole.markupLine("Second brain: [bold]" + string(noteCount) + "[/] " +
+        AnsiConsole.markupLine(productName() + ": [bold]" + string(noteCount) + "[/] " +
             t("notes", "note") + ", [bold]" +
             string(topicCount) + "[/] " + t("themes", "temi") +
             t(", from `", ", da `") + string(sourceFolder) + "`");
@@ -2288,18 +2364,19 @@ function askBrain() {
 function packPortableAskExe() {
     AnsiConsole.markupLine("");
     AnsiConsole.panel(
-        t("Compiles a portable ASK-only .exe that embeds the second brain folder " +
+        t("Compiles a portable ASK-only .exe that embeds the " + productName() + " folder " +
             "(no disk extract). Requires a brain built with mode 1.",
-            "Compila un .exe ASK portatile che incorpora la cartella del second brain " +
+            "Compila un .exe ASK portatile che incorpora la cartella di " + productName() + " " +
             "(nessuna estrazione su disco). Serve un brain creato con la modalita' 1."),
         t("[bold]Mode 4 - PACK[/]", "[bold]Modalita' 4 - PACCHETTO[/]"), "rounded");
 
     var brainDir = str.trim(io.input(t(
-        "Second brain folder [" + EMBED_ALIAS + "]: ",
-        "Cartella del second brain [" + EMBED_ALIAS + "]: ")));
+        productName() + " folder [" + EMBED_ALIAS + "]: ",
+        "Cartella " + productName() + " [" + EMBED_ALIAS + "]: ")));
     if (brainDir == "") {
         brainDir = EMBED_ALIAS;
     }
+    applyProductNameFromBrain(brainDir);
     if (not io.hasDirectory(brainDir)) {
         AnsiConsole.markupLine("[red]" + t("Folder not found:", "Cartella non trovata:") +
             "[/] " + brainDir);
@@ -2366,11 +2443,12 @@ function packPortableAskExe() {
     AnsiConsole.markupLine("[green]" + t("Portable ASK exe ready:", "Exe ASK portatile pronto:") +
         "[/] [bold]" + str.replace(str.replace(string(written), "[", "[["), "]", "]]") + "[/]");
     AnsiConsole.markupLine("[dim]" + t(
-        "Run the .exe to open ASK with the embedded brain. Optional logo: put logo.png " +
-            "in the brain folder and set ASK_LOGO = \"embed:" + EMBED_ALIAS + "/logo.png\" before packing.",
-        "Avvia l'.exe per aprire ASK col brain incorporato. Logo opzionale: metti logo.png " +
-            "nella cartella del brain e imposta ASK_LOGO = \"embed:" + EMBED_ALIAS +
-            "/logo.png\" prima del pack.") + "[/]");
+        "Run the .exe to open ASK with the embedded brain. Branding in the brain folder: " +
+            "product_name.txt (display name) and optional logo.png — set ASK_LOGO = \"embed:" +
+            EMBED_ALIAS + "/logo.png\" before packing.",
+        "Avvia l'.exe per aprire ASK col brain incorporato. Branding nella cartella del brain: " +
+            "product_name.txt (nome prodotto) e logo.png opzionale — imposta ASK_LOGO = \"embed:" +
+            EMBED_ALIAS + "/logo.png\" prima del pack.") + "[/]");
     return true;
 }
 
@@ -2379,19 +2457,19 @@ function packPortableAskExe() {
 function showMenu() {
     AnsiConsole.markupLine("");
     AnsiConsole.panel(
-        t("[bold]1[/]  BUILD   a CodingAgent reads .md/.html and distills the second brain\n" +
+        t("[bold]1[/]  BUILD   a CodingAgent reads .md/.html and distills " + productName() + "\n" +
             "[bold]2[/]  UPDATE  refresh brain from new/changed source files only\n" +
-            "[bold]3[/]  ASK     web UI — questions against the second brain\n" +
+            "[bold]3[/]  ASK     web UI — questions against " + productName() + "\n" +
             "[bold]4[/]  language  switch UI language (English / Italian)\n" +
-            "[bold]5[/]  PACK    portable ASK .exe with embedded second brain\n" +
+            "[bold]5[/]  PACK    portable ASK .exe with embedded " + productName() + "\n" +
             "[bold]0[/]  quit",
-            "[bold]1[/]  COSTRUISCI  un CodingAgent legge .md/.html e distilla il second brain\n" +
+            "[bold]1[/]  COSTRUISCI  un CodingAgent legge .md/.html e distilla " + productName() + "\n" +
             "[bold]2[/]  AGGIORNA    aggiorna il brain solo con file nuovi/modificati\n" +
-            "[bold]3[/]  CHIEDI      UI web — domande sul second brain\n" +
+            "[bold]3[/]  CHIEDI      UI web — domande su " + productName() + "\n" +
             "[bold]4[/]  lingua      cambia lingua interfaccia (English / Italiano)\n" +
-            "[bold]5[/]  PACCHETTO  .exe ASK portatile con second brain incorporato\n" +
+            "[bold]5[/]  PACCHETTO  .exe ASK portatile con " + productName() + " incorporato\n" +
             "[bold]0[/]  esci"),
-        "[bold blue]MALDA second brain[/]", "double");
+        "[bold blue]MALDA " + productName() + "[/]", "double");
 }
 
 if (io.hasEmbeddedFolder("secondbrain")) {

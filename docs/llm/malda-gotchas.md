@@ -27,9 +27,11 @@ claim a program works.
 
 **The interpreter and `malda compile --mode transpile` are different backends.** A program that
 runs under the interpreter is not automatically a program that compiles. Prefer smoke-testing
-both when you need a shippable `.exe`. Escape sequences inside `$"..."` (for example `\n`)
-are valid in both; if transpile fails with a C# string error (`CS1039`), inspect
-`GeneratedProgram.cs` next to `-o` — and `build_errors.txt` in that same folder.
+both when you need a shippable `.exe`. Escape sequences inside `$"..."` (for example `\n`,
+`\r`, `\t`) are valid in both; if transpile fails with a C# string error (`CS1039`), inspect
+`GeneratedProgram.cs` next to `-o` — and `build_errors.txt` in that same folder. Unknown
+escapes (e.g. `\x`, or a single `\d` meant for regex) are a **lexer error** — write `\\d` in
+a string when you need a literal backslash for a regex.
 
 **Colour and Unicode borders disappear when you pipe output.** Spectre.Console strips ANSI
 escapes when stdout is not a terminal, and MALDA also turns off Unicode capabilities for

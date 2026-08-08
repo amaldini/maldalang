@@ -2,11 +2,16 @@
 //
 // Included by the host program. Host must define:
 //   ASK_HTTP_PORT, ASK_SESSION_ID, ASK_STORE  (vars)
+//   PRODUCT_NAME                             (display name, OR path/embed: to a utf-8 text file)
+//   ASK_TITLE_SUFFIX                         (e.g. " — ASK"; used when refreshing title from file)
 //   ASK_PAGE_TITLE, ASK_POWERED_BY, ASK_POWERED_BY_URL  (header branding)
 //   ASK_LOGO  (optional header logo: "", file path, embed:..., http(s):, or data:)
 //   askHttpServer                            (var, initially null)
 //   runAskTurn(question) -> { question, answer, sources, error }
 //   UI_LANG                                  (existing)
+//
+// Brain branding file (disk or embed root): product_name.txt — first non-empty line.
+// Hosts should call askApplyProductNameFromBrain(brainDir) after resolving the brain root.
 //
 // HttpServer isolates each request: session fields live in ui.state.
 // Ask / Clear use @ACTION + componentFragment("ask-panel", ...) so the
@@ -19,6 +24,103 @@ function askAsText(value) {
         return "";
     }
     return string(value);
+}
+
+// First non-empty line of a utf-8 text file (disk or embed:). Empty if missing.
+function askReadProductNameFile(path) {
+    var p = str.trim(askAsText(path));
+    if (p == "" or not io.hasFile(p)) {
+        return "";
+    }
+    var text = io.readFile(p);
+    if (text == null) {
+        return "";
+    }
+    var lines = str.split(string(text), "\n");
+    foreach (var line in lines) {
+        // trim() also strips trailing CR from CRLF files.
+        var n = str.trim(askAsText(line));
+        if (n != "") {
+            return n;
+        }
+    }
+    return "";
+}
+
+function askLooksLikeProductNamePath(value) {
+    var n = str.trim(askAsText(value));
+    if (n == "") {
+        return false;
+    }
+    if (str.startsWith(n, "embed:")) {
+        return true;
+    }
+    if (str.endsWith(str.lower(n), ".txt")) {
+        return true;
+    }
+    if (str.indexOf(n, "/") >= 0 or str.indexOf(n, "\\") >= 0) {
+        return true;
+    }
+    return io.hasFile(n);
+}
+
+function askProductNameFromValue(raw) {
+    var n = str.trim(askAsText(raw));
+    if (n == "") {
+        return "";
+    }
+    if (askLooksLikeProductNamePath(n)) {
+        return askReadProductNameFile(n);
+    }
+    return n;
+}
+
+function askTitleSuffix() {
+    var suffix = str.trim(askAsText(ASK_TITLE_SUFFIX));
+    if (suffix == "") {
+        return " — ASK";
+    }
+    return suffix;
+}
+
+// Host PRODUCT_NAME — literal display name, or path/embed: to a text file (empty => "Second brain").
+function askProductName() {
+    var cached = str.trim(askAsText(ui.state(ASK_STORE, "productName", "", ASK_SESSION_ID)));
+    if (cached != "") {
+        return cached;
+    }
+    var n = askProductNameFromValue(PRODUCT_NAME);
+    if (n == "") {
+        return "Second brain";
+    }
+    return n;
+}
+
+// Load brainDir/product_name.txt when present (disk or embed). Updates PRODUCT_NAME + title.
+function askApplyProductNameFromBrain(brainDir) {
+    var root = str.trim(askAsText(brainDir));
+    var fromBrain = "";
+    if (root != "") {
+        fromBrain = askReadProductNameFile(io.pathJoin(root, "product_name.txt"));
+    }
+    var loaded = fromBrain;
+    if (loaded == "") {
+        loaded = askProductNameFromValue(PRODUCT_NAME);
+    }
+    if (loaded == "") {
+        loaded = "Second brain";
+    }
+    var previous = askProductName();
+    var suffix = askTitleSuffix();
+    var title = str.trim(askAsText(ASK_PAGE_TITLE));
+    // Brain file is branding source of truth; otherwise refresh title only if still default-shaped.
+    var titleFollows = (fromBrain != "" or title == "" or title == previous + suffix);
+    PRODUCT_NAME = loaded;
+    ui.setState(ASK_STORE, "productName", loaded, ASK_SESSION_ID);
+    if (titleFollows) {
+        ASK_PAGE_TITLE = loaded + suffix;
+    }
+    return loaded;
 }
 
 function askEscapeHtml(value) {
@@ -130,8 +232,8 @@ function askRenderSourcesHtml(sources) {
     if (sources == null or sources.length == 0) {
         if (askIsChatOnly()) {
             return "<p class='muted'>" + askEscapeHtml(askT(
-                "Direct chat — no second-brain notes used.",
-                "Chat diretta — nessuna nota del second brain usata.")) + "</p>";
+                "Direct chat — no " + askProductName() + " notes used.",
+                "Chat diretta — nessuna nota di " + askProductName() + " usata.")) + "</p>";
         }
         return "<p class='muted'>" + askEscapeHtml(askT(
             "No notes retrieved for this question.",
@@ -353,12 +455,14 @@ function askRenderPanelHtml() {
     html = html + "<section class='thread' id='thread'>";
     if (history.length == 0) {
         var emptyHint = askT(
-            "Ask a question below. Answers use the second brain; scroll up for earlier turns.",
-            "Fai una domanda qui sotto. Le risposte usano il second brain; scorri in alto per i turni precedenti.");
+            "Ask a question below. Answers use " + askProductName() +
+                "; scroll up for earlier turns.",
+            "Fai una domanda qui sotto. Le risposte usano " + askProductName() +
+                "; scorri in alto per i turni precedenti.");
         if (session.chatOnly == true) {
             emptyHint = askT(
-                "No second brain loaded — chat directly with the model below.",
-                "Nessun second brain caricato — chatta direttamente col modello qui sotto.");
+                "No " + askProductName() + " loaded — chat directly with the model below.",
+                askProductName() + " non caricato — chatta direttamente col modello qui sotto.");
         }
         html = html + "<div class='panel'><p class='empty'>" + askEscapeHtml(emptyHint) + "</p></div>";
     } else {
@@ -638,7 +742,7 @@ function askRenderPage() {
         title = askAsText(ASK_PAGE_TITLE);
     }
     if (title == "") {
-        title = "Second brain — ASK";
+        title = askProductName() + " — ASK";
     }
     var poweredBy = askAsText(ASK_POWERED_BY);
     var poweredByUrl = askAsText(ASK_POWERED_BY_URL);
