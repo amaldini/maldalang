@@ -137,6 +137,8 @@ public class HttpServerInstance : ObjectInstance
     private string _csrfSecret = string.Empty;
     private string _csrfCookieName = WebRuntimeHelpers.DefaultCsrfCookieName;
     private string _csrfHeaderName = WebRuntimeHelpers.DefaultCsrfHeaderName;
+    private SessionOptions? _sessionOptions;
+    private RestServerInstance? _mountedRest;
     private bool _trustProxy;
     private string _trustedProxyHeader = "X-Forwarded-For";
     private int _trustedProxyHopIndex;
@@ -273,6 +275,7 @@ public class HttpServerInstance : ObjectInstance
         // Handle method access
         if (name == "start" || name == "stop" || name == "clearCache" || name == "getRoutes" || name == "setHTML" || name == "broadcastSSE" || name == "use" ||
             name == "setRateLimit" || name == "disableRateLimit" || name == "enableCsrf" || name == "disableCsrf" ||
+            name == "enableSession" || name == "disableSession" || name == "mount" ||
             name == "configureTrustedProxy" || name == "setRateLimitHeaders")
         {
             var wrapper = new FunctionValue(null, null, false, null);
@@ -345,6 +348,26 @@ public class HttpServerInstance : ObjectInstance
 
             case "enableCsrf":
                 ConfigureCsrf(args);
+                return RuntimeValue.Null();
+
+            case "enableSession":
+                _sessionOptions = SessionRuntime.ParseEnableSessionArgs(args);
+                return RuntimeValue.Null();
+
+            case "disableSession":
+                if (args.Count != 0)
+                    throw new Exception("disableSession() expects 0 arguments");
+                _sessionOptions = null;
+                return RuntimeValue.Null();
+
+            case "mount":
+                if (args.Count != 1 || args[0].Type != ValueType.Object ||
+                    args[0].AsObject() is not RestServerInstance restServer)
+                    throw new Exception("mount() expects a RestServer instance");
+                if (_mountedRest != null && !ReferenceEquals(_mountedRest, restServer))
+                    throw new Exception("HttpServer already has a mounted RestServer");
+                restServer.AttachToHost(this);
+                _mountedRest = restServer;
                 return RuntimeValue.Null();
 
             case "disableCsrf":
@@ -549,6 +572,7 @@ public class HttpServerInstance : ObjectInstance
             _listener.Prefixes.Add($"http://localhost:{_port}/");
             _listener.Start();
             _isRunning = true;
+            _mountedRest?.NotifyHostStarted();
             
             // Use Task.Run to start async request handling
             _ = Task.Run(async () => await HandleRequestsAsync());
@@ -566,6 +590,7 @@ public class HttpServerInstance : ObjectInstance
             return;
         
         _isRunning = false;
+        _mountedRest?.NotifyHostStopped();
         _listener?.Stop();
         _listener?.Close();
         _listener = null;
@@ -1242,6 +1267,20 @@ public class HttpServerInstance : ObjectInstance
             
             // Extract query parameters
             var queryParams = _routeRegistry.ExtractQueryParams(queryString);
+
+            // Mounted RestServer owns matching API routes on this listener.
+            if (_mountedRest != null)
+            {
+                var mountedHandled = await _mountedRest.TryProcessMountedRequestAsync(
+                    context,
+                    path,
+                    queryParams,
+                    correlationId);
+                if (mountedHandled)
+                {
+                    return;
+                }
+            }
             
             // Parse request body if present
             RuntimeValue? requestBody = null;
@@ -1263,7 +1302,7 @@ public class HttpServerInstance : ObjectInstance
             {
                 if (responseContext.IsCommitted || responseContext.HasStatusOverride)
                 {
-                    responseContext.ApplyTo(response, _pathBase);
+                    CommitAndApplyResponse(requestContext, responseContext, response, request);
                 }
                 return;
             }
@@ -1363,7 +1402,7 @@ public class HttpServerInstance : ObjectInstance
             {
                 if (responseContext.IsCommitted || responseContext.HasStatusOverride)
                 {
-                    responseContext.ApplyTo(response, _pathBase);
+                    CommitAndApplyResponse(requestContext, responseContext, response, request);
                 }
                 return;
             }
@@ -1440,13 +1479,8 @@ public class HttpServerInstance : ObjectInstance
 
             if (responseContext.IsCommitted || responseContext.HasStatusOverride)
             {
-                responseContext.ApplyTo(response, _pathBase);
+                CommitAndApplyResponse(requestContext, responseContext, response, request);
                 return;
-            }
-
-            if (responseContext.HasHeaders)
-            {
-                responseContext.ApplyHeadersTo(response, _pathBase);
             }
             
             // Check if this is an SSE request and result indicates SSE mode
@@ -1458,6 +1492,11 @@ public class HttpServerInstance : ObjectInstance
                     var sseValue = jsonObj.Get("sse", null);
                     if (sseValue != null && sseValue.Type == ValueType.Boolean && sseValue.AsBoolean())
                     {
+                        SessionRuntime.CommitSession(requestContext, responseContext, request.IsSecureConnection);
+                        if (responseContext.HasHeaders)
+                        {
+                            responseContext.ApplyHeadersTo(response, _pathBase);
+                        }
                         // This is an SSE stream - set headers and keep connection open
                         response.StatusCode = 200;
                         response.ContentType = "text/event-stream";
@@ -1536,7 +1575,7 @@ public class HttpServerInstance : ObjectInstance
             }
             
             // Serialize and send HTML response
-            SerializeHtmlResponse(response, result, request, request.Url?.AbsolutePath ?? route.PathPattern);
+            SerializeHtmlResponse(response, result, request, request.Url?.AbsolutePath ?? route.PathPattern, requestContext, responseContext);
         }
         catch (Exception ex)
         {
@@ -1991,7 +2030,18 @@ public class HttpServerInstance : ObjectInstance
             request.Url?.Scheme,
             request.UserHostName ?? request.Headers["Host"] ?? string.Empty,
             request.ContentType ?? string.Empty,
-            pathBase: _pathBase);
+            pathBase: _pathBase,
+            sessionOptions: _sessionOptions);
+    }
+
+    private void CommitAndApplyResponse(
+        RequestContextInstance requestContext,
+        ResponseContextInstance responseContext,
+        HttpListenerResponse response,
+        HttpListenerRequest request)
+    {
+        SessionRuntime.CommitSession(requestContext, responseContext, request.IsSecureConnection);
+        responseContext.ApplyTo(response, _pathBase);
     }
 
     private bool ValidateRateLimit(
@@ -2315,12 +2365,31 @@ public class HttpServerInstance : ObjectInstance
         return null;
     }
     
-    private void SerializeHtmlResponse(HttpListenerResponse response, RuntimeValue result, HttpListenerRequest request, string path)
+    private void SerializeHtmlResponse(
+        HttpListenerResponse response,
+        RuntimeValue result,
+        HttpListenerRequest request,
+        string path,
+        RequestContextInstance? requestContext = null,
+        ResponseContextInstance? pipelineResponse = null)
     {
         if (result.Type == ValueType.Object && result.AsObject() is ResponseContextInstance responseContext)
         {
+            if (requestContext != null)
+            {
+                SessionRuntime.CommitSession(requestContext, responseContext, request.IsSecureConnection);
+            }
             responseContext.ApplyTo(response, _pathBase);
             return;
+        }
+
+        if (requestContext != null && pipelineResponse != null)
+        {
+            SessionRuntime.CommitSession(requestContext, pipelineResponse, request.IsSecureConnection);
+            if (pipelineResponse.HasHeaders)
+            {
+                pipelineResponse.ApplyHeadersTo(response, _pathBase);
+            }
         }
 
         if (WebRuntimeHelpers.TryGetStandardErrorPayload(result, out _, out var errorStatusCode))

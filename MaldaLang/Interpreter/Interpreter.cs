@@ -4676,16 +4676,22 @@ public partial class Interpreter
     
     private async Task<RuntimeValue> CreateRestServerAsync(List<Expression> args)
     {
-        if (args.Count < 1 || args.Count > 2)
-            throw new RuntimeException("RestServer() expects 1-2 arguments: (port, host?)");
+        if (args.Count > 2)
+            throw new RuntimeException("RestServer() expects 0-2 arguments: (port?, host?)");
+
+        if (args.Count == 0)
+        {
+            var deferred = new BuiltIns.RestServerInstance(0, null, this);
+            return RuntimeValue.Object(deferred);
+        }
         
         var port = await EvaluateAsync(args[0]);
         if (port.Type != ValueType.Integer)
             throw new RuntimeException("RestServer() port must be an integer");
         
         var portNum = port.AsInteger();
-        if (portNum < 1024 || portNum > 65535)
-            throw new RuntimeException("RestServer() port must be between 1024 and 65535");
+        if (portNum != 0 && (portNum < 1024 || portNum > 65535))
+            throw new RuntimeException("RestServer() port must be 0 (deferred/mounted) or between 1024 and 65535");
         
         string? host = null;
         if (args.Count == 2)

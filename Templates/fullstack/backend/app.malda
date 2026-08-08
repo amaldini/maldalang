@@ -2,14 +2,9 @@
 include "data/local_first.malda";
 {{/LOCAL_FIRST}}
 
-var api = new RestServer(8080);
-var web = new HttpServer(8081);
+var api = new RestServer();
+var web = new HttpServer(8080);
 var ticketsStateId = "tickets-board";
-
-function htmlLayout(title, content) {
-    var helper = "<script>(function(){document.querySelectorAll('form').forEach(function(form){if(form.dataset.splAjaxBound==='1')return;form.dataset.splAjaxBound='1';form.addEventListener('submit',async function(e){e.preventDefault();var fd=new FormData(form);var r=await fetch(form.action||window.location.pathname,{method:'POST',body:fd});var html=await r.text();var isFrag=(r.headers.get('X-Malda-Fragment')||'').toLowerCase()==='true';var target=r.headers.get('X-Malda-Fragment-Target');if(isFrag&&target&&document.getElementById(target)){document.getElementById(target).innerHTML=html;return;}document.body.innerHTML=html;});});var es=new EventSource('/components/tickets/live?channel=tickets');es.onmessage=function(evt){console.log('tickets live',evt.data);};})();</script>";
-    return "<!DOCTYPE html><html><head><meta charset='utf-8'><title>" + title + "</title></head><body>" + content + helper + "</body></html>";
-}
 
 var jwtSecret = getEnv("MALDA_JWT_SECRET");
 if (jwtSecret == null or jwtSecret == "") {
@@ -18,6 +13,17 @@ if (jwtSecret == null or jwtSecret == "") {
 var csrfSecret = getEnv("MALDA_CSRF_SECRET");
 if (csrfSecret == null or csrfSecret == "") {
     csrfSecret = "change-me-csrf-secret";
+}
+var sessionSecret = getEnv("MALDA_SESSION_SECRET");
+if (sessionSecret == null or sessionSecret == "") {
+    sessionSecret = "change-me-session-secret";
+}
+
+function htmlLayout(title, content) {
+    var helper = "<script>(function(){document.querySelectorAll('form').forEach(function(form){if(form.dataset.splAjaxBound==='1')return;form.dataset.splAjaxBound='1';form.addEventListener('submit',async function(e){e.preventDefault();var fd=new FormData(form);var r=await fetch(form.action||window.location.pathname,{method:'POST',body:fd,headers:{'X-CSRF-Token':(fd.get('_csrf')||'')}});var html=await r.text();var isFrag=(r.headers.get('X-Malda-Fragment')||'').toLowerCase()==='true';var target=r.headers.get('X-Malda-Fragment-Target');if(isFrag&&target&&document.getElementById(target)){document.getElementById(target).innerHTML=html;return;}document.body.innerHTML=html;});});var es=new EventSource('/components/tickets/live?channel=tickets');es.onmessage=function(evt){console.log('tickets live',evt.data);};})();</script>";
+    return pageLayout(title, content + helper, {
+        "css": "body{font-family:system-ui,sans-serif;max-width:720px;margin:32px auto;padding:0 16px}input,button{padding:8px;margin:4px 0}.error-list{color:#a11}"
+    });
 }
 
 function requireAuth(req, res, next) {
@@ -88,11 +94,17 @@ component TicketBoard() {
         items = "<li>No tickets yet</li>";
     }
 
+    var notice = "";
+    // Flash is available when the page is served through a request that binds req;
+    // component render may not have session — keep empty notice here.
+
     var page = "<h1>__PROJECT_NAME__ Ticket Board</h1>";
     {{#LOCAL_FIRST}}
     page = page + "<p>Storage: SQLite local-first starter with migration bootstrap.</p>";
     {{/LOCAL_FIRST}}
+    page = page + notice;
     page = page + "<form method='POST' action='/components/addTicket/action'>";
+    page = page + csrfField(csrfSecret);
     page = page + "<input name='title' placeholder='Ticket title' />";
     page = page + "<button type='submit'>Add</button>";
     page = page + "</form>";
@@ -102,8 +114,15 @@ component TicketBoard() {
 }
 
 @ACTION("/components/addTicket/action")
-function addTicketAction(body) {
-    var title = body.title == null ? "Untitled ticket" : body.title;
+function addTicketAction(req, res, body) {
+    var form = bindForm(body, [
+        {"name": "title", "required": true, "trim": true, "minLength": 1, "maxLength": 120}
+    ]);
+    if (not form.ok) {
+        return componentFragment("ticket-list", formErrors(form.errors));
+    }
+
+    var title = form.values.title;
     {{#LOCAL_FIRST}}
     insertLocalTicket(title);
     var tickets = listLocalTickets();
@@ -134,11 +153,15 @@ function ticketsLive() {
 initLocalDataPlatform();
 {{/LOCAL_FIRST}}
 
+web.mount(api);
+web.enableSession(sessionSecret);
+// CSRF protects Rest API mutations; HTML forms include csrfField for the same secret
+// when you also enableCsrf on the HttpServer and set the csrf_token cookie to match.
 api.enableCsrf(csrfSecret);
 api.setRateLimit(200, 60, "verifiedSubOrIp");
 api.setRateLimitHeaders(true, true);
 api.use(requireAuth, {
     "except": ["/api/health", "/api/readiness", "/metrics"]
 });
-api.start();
 web.start();
+print("__PROJECT_NAME__ fullstack at http://localhost:8080/");

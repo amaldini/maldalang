@@ -115,6 +115,7 @@ public class RequestContextInstance : ObjectInstance
     private readonly Dictionary<string, string> _cookies;
     private readonly Dictionary<string, RuntimeValue> _locals = new(StringComparer.Ordinal);
     private readonly RequestAuthContextInstance _authContext;
+    private RequestSessionContextInstance _sessionContext;
 
     public string Method { get; }
     public string Path { get; }
@@ -128,6 +129,7 @@ public class RequestContextInstance : ObjectInstance
     public string ContentType { get; }
     public RuntimeValue Body { get; }
     public RequestAuthContextInstance AuthContext => _authContext;
+    public RequestSessionContextInstance Session => _sessionContext;
 
     public RequestContextInstance(
         string method,
@@ -144,7 +146,8 @@ public class RequestContextInstance : ObjectInstance
         string? scheme = null,
         string? host = null,
         string? contentType = null,
-        string? pathBase = null) : base(null)
+        string? pathBase = null,
+        SessionOptions? sessionOptions = null) : base(null)
     {
         Method = method;
         Path = path;
@@ -163,6 +166,12 @@ public class RequestContextInstance : ObjectInstance
         _pathParams = pathParams ?? new Dictionary<string, string>();
         var verifiedSub = WebRuntimeHelpers.ResolveVerifiedSubjectFromHeaders(_headers);
         _authContext = new RequestAuthContextInstance(verifiedSub, _headers, _cookies);
+        _sessionContext = SessionRuntime.CreateSessionContext(_cookies, sessionOptions);
+    }
+
+    public void AttachSession(RequestSessionContextInstance session)
+    {
+        _sessionContext = session;
     }
 
     public void SetPathParams(Dictionary<string, string> pathParams)
@@ -196,6 +205,7 @@ public class RequestContextInstance : ObjectInstance
             "headers" => RuntimeValue.Object(ToJsonObject(_headers)),
             "auth" => RuntimeValue.Object(_authContext),
             "authContext" => RuntimeValue.Object(_authContext),
+            "session" => RuntimeValue.Object(_sessionContext),
             "verifiedSub" => _authContext.HasVerifiedSubject
                 ? RuntimeValue.String(_authContext.VerifiedSubject)
                 : RuntimeValue.Null(),
@@ -255,7 +265,7 @@ public class RequestContextInstance : ObjectInstance
                  {
                      "method", "path", "url", "queryString", "scheme", "protocol", "host", "contentType",
                      "correlationId", "ip", "remoteIp", "query", "queryParams", "headers", "auth", "authContext",
-                     "verifiedSub", "cookies", "params", "pathParams", "body",
+                     "session", "verifiedSub", "cookies", "params", "pathParams", "body",
                      "header", "queryParam", "param", "cookie", "hasHeader", "hasQueryParam", "hasParam", "hasCookie",
                      "validate", "requireValid"
                  })
@@ -351,7 +361,7 @@ public class RequestContextInstance : ObjectInstance
         return name is
             "method" or "path" or "url" or "queryString" or "scheme" or "protocol" or "host" or "contentType" or
             "correlationId" or "ip" or "remoteIp" or "query" or "queryParams" or "headers" or "auth" or
-            "authContext" or "verifiedSub" or "cookies" or "params" or "pathParams" or "body" or
+            "authContext" or "session" or "verifiedSub" or "cookies" or "params" or "pathParams" or "body" or
             "header" or "queryParam" or "param" or "cookie" or "hasHeader" or "hasQueryParam" or
             "hasParam" or "hasCookie" or "validate" or "requireValid";
     }
@@ -1024,6 +1034,14 @@ public class ResponseContextInstance : ObjectInstance
         }
     }
 
+    public void AddSetCookieHeader(string cookieHeader)
+    {
+        if (!string.IsNullOrWhiteSpace(cookieHeader))
+        {
+            _setCookieHeaders.Add(cookieHeader);
+        }
+    }
+
     public void ApplyTo(HttpListenerResponse response, string? pathBase = null)
     {
         response.StatusCode = StatusCode;
@@ -1308,6 +1326,7 @@ public static class WebRuntimeHelpers
     public const string CorrelationIdHeader = "X-Correlation-ID";
     public const string DefaultCsrfHeaderName = "X-CSRF-Token";
     public const string DefaultCsrfCookieName = "csrf_token";
+    public const string DefaultSessionCookieName = "malda_session";
     public const string AuthVerifiedHeader = "X-Malda-Auth-Verified";
     public const string AuthSubjectHeader = "X-Malda-Auth-Sub";
     public const string LegacyAuthVerifiedHeader = "X-Auth-Verified";

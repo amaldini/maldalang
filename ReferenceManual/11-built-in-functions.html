@@ -766,8 +766,32 @@ var session = readSecureCookie(urlDecode(cookieValue), "cookie-secret");</code><
                 <li>In HTTP/REST handlers prefer <code>req.auth.authenticateBearerJwt(secret)</code> or <code>req.auth.authenticateCookieJwt(cookieName, jwtSecret, cookieSecret?)</code> — they verify the token and populate <code>req.auth</code> claims/roles. Use <code>req.auth.requireRole</code> / <code>requirePermission</code> for authorization. <code>setVerifiedSub</code> remains for ingress/gateway cases without a local JWT.</li>
                 <li><code>generateCsrfToken(secret, ttlSeconds?)</code> creates signed CSRF tokens for form and API mutation flows</li>
                 <li><code>verifyCsrfToken(token, secret)</code> validates signature + expiration and returns boolean</li>
+                <li><code>csrfField(secret, ttlSeconds?)</code> returns a hidden <code>_csrf</code> input HTML fragment for forms (token matches <code>enableCsrf</code>)</li>
+                <li><code>bindForm(body, fields)</code> binds/validates form fields (<code>name</code>, <code>required</code>, <code>trim</code>, <code>minLength</code>/<code>maxLength</code>, <code>pattern: "email"</code>) into <code>{ ok, values, errors }</code></li>
+                <li><code>formErrors(errors)</code> renders an escaped HTML error list</li>
+                <li><code>pageLayout(title, bodyHtml, options?)</code> thin full-document HTML chrome for <code>@PAGE</code> string apps (prefer <code>ui.layout</code> for rich layouts)</li>
                 <li><code>createSecureCookie(name, value, secret, options?)</code> returns a signed <code>Set-Cookie</code> header string with secure defaults</li>
                 <li><code>readSecureCookie(cookieValue, secret)</code> verifies a signed cookie value and returns plaintext or <code>null</code></li>
+            </ul>
+        </div>
+        <h3>12.16.1a Background jobs (lightweight queue)</h3>
+        <p>Short async units (email, webhooks) use a SQLite queue at <code>./.malda/jobs.db</code>. This is separate from durable <code>workflow</code> processes.</p>
+        <pre><code>var jobId = enqueueJob("mail", {"to": "user@example.com"}, {"maxAttempts": 3});
+var job = claimJob("mail", "worker-1");
+if (job != null) {
+    // ... do work with job.payload ...
+    completeJob(job.id, {"sent": true});
+    // or: failJob(job.id, "SMTP timeout", true);
+}
+var open = listJobs("mail", "pending", 20);
+var one = getJob(jobId);</code></pre>
+        <div class="info-box">
+            <strong>Job helpers:</strong>
+            <ul>
+                <li><code>enqueueJob(queue, payload, options?)</code> — options: <code>runAt</code>, <code>maxAttempts</code>, <code>correlationId</code></li>
+                <li><code>claimJob(queue, workerId?)</code> — returns a running job or <code>null</code></li>
+                <li><code>completeJob(jobId, result?)</code> / <code>failJob(jobId, error?, retry?)</code></li>
+                <li><code>getJob(jobId)</code> / <code>listJobs(queue?, status?, limit?)</code></li>
             </ul>
         </div>
         <h3>12.16.2 Request auth context (<code>req.auth</code>)</h3>

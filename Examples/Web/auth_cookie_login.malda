@@ -1,4 +1,4 @@
-// auth_cookie_login.malda — HttpServer login with password hash + JWT cookie
+// auth_cookie_login.malda — HttpServer login with password hash + JWT cookie + session flash
 //
 // Demo credentials: admin / password
 // Run: malda Examples/Web/auth_cookie_login.malda
@@ -12,11 +12,16 @@ var cookieSecret = getEnv("MALDA_COOKIE_SECRET");
 if (cookieSecret == null or cookieSecret == "") {
     cookieSecret = "dev-only-cookie-secret-change-me";
 }
+var sessionSecret = getEnv("MALDA_SESSION_SECRET");
+if (sessionSecret == null or sessionSecret == "") {
+    sessionSecret = "dev-only-session-secret-change-me";
+}
 
 // Precomputed with hashPassword("password") so the demo starts without a setup step.
 var adminPasswordHash = hashPassword("password");
 
 var server = new HttpServer(8080);
+server.enableSession(sessionSecret);
 
 function requireAuth(req, res, next) {
     req.auth.authenticateCookieJwt("session", jwtSecret, cookieSecret);
@@ -32,14 +37,13 @@ function layout(title, bodyHtml) {
 }
 
 @PAGE("/")
-function loginPage(queryParams) {
-    var err = "";
-    if (queryParams["error"] == "invalid") {
-        err = "<p class='err'>Invalid username or password.</p>";
-    } else if (queryParams["error"] == "auth") {
-        err = "<p class='err'>Please sign in to continue.</p>";
+function loginPage(req, res) {
+    var err = req.session.getFlash("error");
+    var errHtml = "";
+    if (err != null) {
+        errHtml = "<p class='err'>" + err + "</p>";
     }
-    return layout("Login", "<h1>Sign in</h1>" + err +
+    return layout("Login", "<h1>Sign in</h1>" + errHtml +
         "<form method='post' action='/login'>" +
         "<input name='username' placeholder='Username' required>" +
         "<input name='password' type='password' placeholder='Password' required>" +
@@ -52,7 +56,8 @@ function handleLogin(req, res, body) {
     var username = body.username;
     var password = body.password;
     if (username != "admin" or not verifyPassword(password, adminPasswordHash)) {
-        return redirect("/?error=invalid");
+        req.session.flash("error", "Invalid username or password.");
+        return res.redirect("/");
     }
 
     var token = createJwt({
@@ -71,13 +76,19 @@ function handleLogin(req, res, body) {
         "secure": false
     });
     res.header("Set-Cookie", setCookie);
+    req.session.flash("notice", "Signed in successfully.");
     return res.redirect("/dashboard");
 }
 
 @PAGE("/dashboard")
 function dashboard(req, res) {
+    var notice = req.session.getFlash("notice");
+    var noticeHtml = "";
+    if (notice != null) {
+        noticeHtml = "<p class='ok'>" + notice + "</p>";
+    }
     return layout("Dashboard",
-        "<h1>Dashboard</h1>" +
+        "<h1>Dashboard</h1>" + noticeHtml +
         "<p class='ok'>Signed in as <strong>" + req.auth.sub + "</strong> (" +
         req.auth.claim("role", "user") + ").</p>" +
         "<p><a href='/logout'>Logout</a></p>");
@@ -86,6 +97,8 @@ function dashboard(req, res) {
 @GET("/logout")
 function logout(req, res) {
     res.clearCookie("session");
+    req.session.clear();
+    req.session.flash("error", "Please sign in to continue.");
     return res.redirect("/");
 }
 

@@ -347,6 +347,10 @@ public static class BuiltInRegistry
             "verifyJwt" or
             "generateCsrfToken" or
             "verifyCsrfToken" or
+            "csrfField" or
+            "formErrors" or
+            "bindForm" or
+            "pageLayout" or
             "createSecureCookie" or
             "readSecureCookie" or
             "pathJoin" or
@@ -377,7 +381,13 @@ public static class BuiltInRegistry
             "retryWorkflow" or
             "approveWorkflowStep" or
             "signalWorkflow" or
-            "runWorkflowInstance" => Descriptor(
+            "runWorkflowInstance" or
+            "enqueueJob" or
+            "claimJob" or
+            "completeJob" or
+            "failJob" or
+            "getJob" or
+            "listJobs" => Descriptor(
                 name,
                 BuiltInTranspilerStrategy.SupportedByTranspiler),
 

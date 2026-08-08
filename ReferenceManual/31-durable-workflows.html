@@ -19,6 +19,7 @@
         <h1>32. Durable Workflows</h1>
 
         <p>Durable workflows let you run long-lived, restart-safe business processes with persisted state, replay-safe step execution, and external control points such as approvals and signals.</p>
+        <p>For short fire-and-forget work (send email, call a webhook), prefer the lightweight job queue builtins (<code>enqueueJob</code> / <code>claimJob</code> / <code>completeJob</code> / <code>failJob</code>) documented in <a href="11-built-in-functions.html">Built-in Functions</a>. Jobs use <code>./.malda/jobs.db</code> and are not workflow instances.</p>
 
         <h2>32.1 Core Concepts</h2>
         <ul>

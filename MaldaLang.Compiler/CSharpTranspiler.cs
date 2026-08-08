@@ -3234,6 +3234,36 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("}");
         WriteIndent();
+        _output.AppendLine("else if (instance is MaldaLang.BuiltIns.RequestContextInstance requestContext)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("result = requestContext.CallMethod(methodName, runtimeArgs);");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        WriteIndent();
+        _output.AppendLine("else if (instance is MaldaLang.BuiltIns.RequestAuthContextInstance requestAuthContext)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("result = requestAuthContext.CallMethod(methodName, runtimeArgs);");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        WriteIndent();
+        _output.AppendLine("else if (instance is MaldaLang.BuiltIns.RequestSessionContextInstance requestSessionContext)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("result = requestSessionContext.CallMethod(methodName, runtimeArgs);");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        WriteIndent();
         _output.AppendLine("else if (instance is MaldaLang.BuiltIns.MiddlewareNextCallbackInstance nextCallback)");
         WriteIndent();
         _output.AppendLine("{");
@@ -10213,8 +10243,18 @@ public class CSharpTranspiler
             case "verifyJwt":
             case "generateCsrfToken":
             case "verifyCsrfToken":
+            case "csrfField":
+            case "formErrors":
+            case "bindForm":
+            case "pageLayout":
             case "createSecureCookie":
             case "readSecureCookie":
+            case "enqueueJob":
+            case "claimJob":
+            case "completeJob":
+            case "failJob":
+            case "getJob":
+            case "listJobs":
             // Path manipulation
             case "pathJoin":
             case "pathNormalize":

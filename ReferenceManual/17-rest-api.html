@@ -69,6 +69,8 @@ var server = new RestServer(port, host);  // host: "localhost" or "0.0.0.0"</cod
             <li><code>use(middleware)</code>: Register global middleware (function or transpiled function-name string)</li>
             <li><code>enableCsrf(secret, cookieName?, headerName?)</code>: Enable built-in CSRF protection middleware</li>
             <li><code>disableCsrf()</code>: Disable CSRF protection</li>
+            <li><code>enableSession(secret, options?)</code> / <code>disableSession()</code>: Same session/flash surface as HttpServer (<code>req.session</code>)</li>
+            <li>Deferred host: <code>new RestServer()</code> (no port) for <code>HttpServer.mount(api)</code> single-port fullstack apps</li>
             <li><code>setRateLimit(limit, windowSeconds, keyStrategy?)</code>: Enable endpoint rate limiting</li>
             <li><code>setRateLimitHeaders(enabled, includeRemaining?)</code>: Enable/disable rate-limit response headers</li>
             <li><code>configureTrustedProxy(enabled, headerName?, hopIndex?)</code>: Configure trusted proxy source IP behavior</li>

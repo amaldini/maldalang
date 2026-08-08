@@ -20,11 +20,14 @@ atan2	math.atan2	2 arguments
 average	math.average	1 argument: (array)		
 base64Decode	str.base64Decode	1 argument		
 base64Encode	str.base64Encode	1 argument		
+bindForm	bindForm	body and fields array		
 cancelWorkflow	cancelWorkflow	at least 1 argument: (instanceId, reason?)		
 ceil	math.ceil	1 argument	returns a float even when whole-valued; integer sinks coerce whole floats; wrap with int() if you need an Integer-tagged value	
+claimJob	claimJob	1-2 arguments: (queue, workerId?)		
 clamp	math.clamp	3 arguments		
 clearAgentProgress	clearAgentProgress	0 arguments		
 compileMALDA	compileMALDA	1-4 arguments: (sourcePath, outputPath?, mode?, embedFolder?)		
+completeJob	completeJob	1-2 arguments: (jobId, result?)		
 componentFragment	componentFragment	targetId and html string		
 componentLiveEmit	componentLiveEmit	channel, payload, optional eventType		
 componentStateClear	componentStateClear	zero args (all), one componentId, or componentId + scope		
@@ -65,6 +68,7 @@ createSubmitPlanTool	createSubmitPlanTool	0 arguments
 createWebSearchTool	createWebSearchTool	0 arguments		
 createWriteFileTool	createWriteFileTool	0-1 arguments: (workingDir?)		
 crossEntropyFromLogits	math.crossEntropyFromLogits	2 arguments: (logits, targetIndex)		
+csrfField	csrfField	secret and optional ttlSeconds		
 decomposeTask	decomposeTask	at least 1 argument: (instruction, client?)		
 degToRad	math.degToRad	1 argument		
 deleteFile	io.deleteFile	1 argument		
@@ -79,6 +83,7 @@ embedHash	embedHash	at least 1 argument (text, dimension?)
 embedTFIDF	embedTFIDF	at least 1 argument (text, corpus?, dimension?)		
 enableAgentVerboseLogging	enableAgentVerboseLogging	0 or 1 arguments		
 endsWith	str.endsWith	2 arguments: (str, suffix)		
+enqueueJob	enqueueJob	2-3 arguments: (queue, payload, options?)		
 ensureDir	io.ensureDir	1 argument		
 error	error	1 argument: (message)		
 executePlan	executePlan	at least 2 arguments: (plan, agent)		
@@ -86,11 +91,13 @@ exit	exit	0-1 arguments: (code?)	terminates the process immediately; the code mu
 exp	math.exp	1 argument		
 extractHTML	extractHTML	1 string argument		
 extractNumbers	str.extractNumbers	1 argument		
+failJob	failJob	1-3 arguments: (jobId, error?, retry?)		
 float	float	1 argument		
 floor	math.floor	1 argument	returns a float even when whole-valued (print shows 1, not 1.0); integer sinks coerce whole floats, so str.repeat("-", math.floor(n)) works; fractional floats still fail	
 formatDate	formatDate	1-2 arguments: (timestamp, format?)		
 formatNumber	formatNumber	2 arguments (number, decimalPlaces)		
 formatRetrievedDocs	formatRetrievedDocs	a document array		
+formErrors	formErrors	1 argument (array of strings or {field,message} objects)		
 generateCsrfToken	generateCsrfToken	secret and optional ttlSeconds		
 generateUI	generateUI	at least 1 string argument		
 getAssistantMemory	getAssistantMemory	0-1 arguments: (path?)		
@@ -100,6 +107,7 @@ getDotNetType	getDotNetType	either (string fullTypeName) or (assembly, string ty
 getEnv	io.getEnv	1 argument	unlike io.input (which returns empty string at EOF), missing variables yield null — guard before str.trim / string sinks	string, or null when the variable is not set
 getFileName	io.getFileName	1 argument		
 getHostPlatform	getHostPlatform	0 arguments		
+getJob	getJob	1 argument: (jobId)		
 getMaldaConfig	getMaldaConfig	0 arguments		
 getMaldaHome	getMaldaHome	0 arguments		
 getParseErrors	getParseErrors	1 argument: sourceOrFilePath (string)		
@@ -150,6 +158,7 @@ isTag	isTag	2 arguments: (value, tag)
 join	str.join	1-2 arguments: (array, separator?)		
 length	str.length	1 argument	accepts a string or an array	
 listDirectory	io.listDirectory	1 argument		
+listJobs	listJobs	0-3 arguments: (queue?, status?, limit?)		
 listWorkflowDeadLetters	listWorkflowDeadLetters	0-2 arguments: (limit?, includeRequeued?)		
 listWorkflows	listWorkflows	0-3 arguments: (status?, name?, limit?)		
 loadAssembly	loadAssembly	1 string argument (path or assembly name)		
@@ -174,6 +183,7 @@ now	now	0 arguments
 onAgentProgress	onAgentProgress	1 argument: (handlerOrChannel)		
 padEnd	str.padEnd	2-3 arguments: (str, length, padChar?)		
 padStart	str.padStart	2-3 arguments: (str, length, padChar?)		
+pageLayout	pageLayout	title, bodyHtml, and optional options object		
 panel	AnsiConsole.panel	at least 1 string argument: (content, title?, borderStyle?)	borderStyle: rounded|double|heavy (anything else -> square, no error); body AND title parse markup; unparseable markup renders literally; piped/non-TTY output collapses Unicode borders to square	
 parallelRun	parallelRun	(input, branches)		
 parseDate	parseDate	1 argument: (dateString)		

@@ -24,6 +24,7 @@ using MaldaLang.Interpreter;
 using MaldaLang.Runtime.Profiling;
 using MaldaLang.Runtime.UI;
 using MaldaLang.Runtime.Tracing;
+using MaldaLang.Runtime.Jobs;
 using MaldaLang.Runtime.Workflows;
 using MaldaLang.IDE;
 using ValueType = MaldaLang.Interpreter.ValueType;
@@ -1226,6 +1227,10 @@ public static class BuiltInFunctions
             "verifyJwt" => BuiltInVerifyJwt(args),
             "generateCsrfToken" => BuiltInGenerateCsrfToken(args),
             "verifyCsrfToken" => BuiltInVerifyCsrfToken(args),
+            "csrfField" => BuiltInCsrfField(args),
+            "formErrors" => BuiltInFormErrors(args),
+            "bindForm" => BuiltInBindForm(args),
+            "pageLayout" => BuiltInPageLayout(args),
             "createSecureCookie" => BuiltInCreateSecureCookie(args),
             "readSecureCookie" => BuiltInReadSecureCookie(args),
             // Path manipulation
@@ -1259,6 +1264,12 @@ public static class BuiltInFunctions
             "retryWorkflow" => BuiltInRetryWorkflow(args),
             "approveWorkflowStep" => BuiltInApproveWorkflowStep(args),
             "signalWorkflow" => BuiltInSignalWorkflow(args),
+            "enqueueJob" => BuiltInEnqueueJob(args, interpreter),
+            "claimJob" => BuiltInClaimJob(args),
+            "completeJob" => BuiltInCompleteJob(args, interpreter),
+            "failJob" => BuiltInFailJob(args, interpreter),
+            "getJob" => BuiltInGetJob(args),
+            "listJobs" => BuiltInListJobs(args),
             "runProperty" => BuiltInRunProperty(args, interpreter),
             "setDefaultAgent" => BuiltInSetDefaultAgent(args, interpreter),
             "runWorkflowInstance" => throw new Exception("runWorkflowInstance() must be called via CallBuiltInAsync"),
@@ -1587,6 +1598,10 @@ public static class BuiltInFunctions
             "verifyJwt" => BuiltInVerifyJwt(args),
             "generateCsrfToken" => BuiltInGenerateCsrfToken(args),
             "verifyCsrfToken" => BuiltInVerifyCsrfToken(args),
+            "csrfField" => BuiltInCsrfField(args),
+            "formErrors" => BuiltInFormErrors(args),
+            "bindForm" => BuiltInBindForm(args),
+            "pageLayout" => BuiltInPageLayout(args),
             "createSecureCookie" => BuiltInCreateSecureCookie(args),
             "readSecureCookie" => BuiltInReadSecureCookie(args),
             // Path manipulation
@@ -1620,6 +1635,12 @@ public static class BuiltInFunctions
             "retryWorkflow" => BuiltInRetryWorkflow(args),
             "approveWorkflowStep" => BuiltInApproveWorkflowStep(args),
             "signalWorkflow" => BuiltInSignalWorkflow(args),
+            "enqueueJob" => BuiltInEnqueueJob(args, interpreter),
+            "claimJob" => BuiltInClaimJob(args),
+            "completeJob" => BuiltInCompleteJob(args, interpreter),
+            "failJob" => BuiltInFailJob(args, interpreter),
+            "getJob" => BuiltInGetJob(args),
+            "listJobs" => BuiltInListJobs(args),
             "runProperty" => BuiltInRunProperty(args, interpreter),
             "setDefaultAgent" => BuiltInSetDefaultAgent(args, interpreter),
             "startWorkflow" => await BuiltInStartWorkflowAsync(args, interpreter),
@@ -3942,6 +3963,457 @@ public static class BuiltInFunctions
 
         var isValid = WebRuntimeHelpers.VerifyCsrfToken(args[0].AsString(), args[1].AsString());
         return RuntimeValue.Boolean(isValid);
+    }
+
+    private static RuntimeValue BuiltInCsrfField(List<RuntimeValue> args)
+    {
+        if (args.Count < 1 || args.Count > 2)
+            throw new Exception("csrfField() expects secret and optional ttlSeconds");
+        if (args[0].Type != ValueType.String)
+            throw new Exception("csrfField() secret must be a string");
+
+        var ttlSeconds = 7200;
+        if (args.Count == 2)
+        {
+            if (args[1].Type != ValueType.Integer)
+                throw new Exception("csrfField() ttlSeconds must be an integer");
+            ttlSeconds = args[1].AsInteger();
+        }
+
+        var token = WebRuntimeHelpers.GenerateCsrfToken(args[0].AsString(), ttlSeconds);
+        var escaped = System.Net.WebUtility.HtmlEncode(token);
+        return RuntimeValue.String($"<input type=\"hidden\" name=\"_csrf\" value=\"{escaped}\">");
+    }
+
+    private static RuntimeValue BuiltInFormErrors(List<RuntimeValue> args)
+    {
+        if (args.Count != 1)
+            throw new Exception("formErrors() expects 1 argument (array of strings or {field,message} objects)");
+
+        var items = new List<string>();
+        if (args[0].Type == ValueType.Array)
+        {
+            foreach (var item in args[0].AsArray())
+            {
+                if (item.Type == ValueType.String)
+                {
+                    items.Add(item.AsString());
+                }
+                else if (item.Type == ValueType.Object && item.AsObject() is JsonObject obj)
+                {
+                    var field = obj.Get("field", null);
+                    var message = obj.Get("message", null);
+                    if (message.Type == ValueType.String)
+                    {
+                        var fieldName = field.Type == ValueType.String ? field.AsString() : string.Empty;
+                        items.Add(string.IsNullOrEmpty(fieldName)
+                            ? message.AsString()
+                            : $"{fieldName}: {message.AsString()}");
+                    }
+                    else
+                    {
+                        items.Add(item.ToString());
+                    }
+                }
+                else
+                {
+                    items.Add(item.ToString());
+                }
+            }
+        }
+        else if (args[0].Type == ValueType.String)
+        {
+            items.Add(args[0].AsString());
+        }
+        else
+        {
+            throw new Exception("formErrors() expects an array or string");
+        }
+
+        if (items.Count == 0)
+        {
+            return RuntimeValue.String(string.Empty);
+        }
+
+        var sb = new System.Text.StringBuilder();
+        sb.Append("<ul class=\"error-list\">");
+        foreach (var item in items)
+        {
+            sb.Append("<li>");
+            sb.Append(System.Net.WebUtility.HtmlEncode(item));
+            sb.Append("</li>");
+        }
+
+        sb.Append("</ul>");
+        return RuntimeValue.String(sb.ToString());
+    }
+
+    private static RuntimeValue BuiltInBindForm(List<RuntimeValue> args)
+    {
+        if (args.Count != 2)
+            throw new Exception("bindForm() expects body and fields array");
+        if (args[1].Type != ValueType.Array)
+            throw new Exception("bindForm() fields must be an array");
+
+        JsonObject? bodyObj = null;
+        if (args[0].Type == ValueType.Object && args[0].AsObject() is JsonObject jsonBody)
+        {
+            bodyObj = jsonBody;
+        }
+        else if (args[0].Type == ValueType.Object && args[0].AsObject() is DictionaryInstance dictBody)
+        {
+            bodyObj = new JsonObject();
+            foreach (var key in dictBody.GetAllKeys())
+            {
+                if (dictBody.TryGetEntry(key, out var value))
+                {
+                    bodyObj.Set(key, value);
+                }
+            }
+        }
+        else if (args[0].Type != ValueType.Null)
+        {
+            throw new Exception("bindForm() body must be an object or null");
+        }
+
+        var values = new JsonObject();
+        var errors = new List<RuntimeValue>();
+        var ok = true;
+
+        foreach (var fieldSpec in args[1].AsArray())
+        {
+            if (fieldSpec.Type != ValueType.Object || fieldSpec.AsObject() is not JsonObject fieldObj)
+            {
+                throw new Exception("bindForm() each field must be an object with a name");
+            }
+
+            var nameValue = fieldObj.Get("name", null);
+            if (nameValue.Type != ValueType.String || string.IsNullOrWhiteSpace(nameValue.AsString()))
+            {
+                throw new Exception("bindForm() field.name must be a non-empty string");
+            }
+
+            var name = nameValue.AsString();
+            var required = fieldObj.Get("required", null).Type == ValueType.Boolean &&
+                           fieldObj.Get("required", null).AsBoolean();
+            var trim = fieldObj.Get("trim", null).Type != ValueType.Boolean ||
+                       fieldObj.Get("trim", null).AsBoolean();
+
+            RuntimeValue raw = RuntimeValue.Null();
+            if (bodyObj != null)
+            {
+                raw = bodyObj.Get(name, null);
+            }
+
+            string text;
+            if (raw.Type == ValueType.Null)
+            {
+                text = string.Empty;
+            }
+            else if (raw.Type == ValueType.String)
+            {
+                text = raw.AsString();
+            }
+            else
+            {
+                text = raw.ToString();
+            }
+
+            if (trim)
+            {
+                text = text.Trim();
+            }
+
+            values.Set(name, RuntimeValue.String(text));
+
+            if (required && string.IsNullOrEmpty(text))
+            {
+                ok = false;
+                errors.Add(CreateFormFieldError(name, $"{name} is required"));
+                continue;
+            }
+
+            var minLength = fieldObj.Get("minLength", null);
+            if (minLength.Type == ValueType.Integer && text.Length < minLength.AsInteger())
+            {
+                ok = false;
+                errors.Add(CreateFormFieldError(name, $"{name} must be at least {minLength.AsInteger()} characters"));
+            }
+
+            var maxLength = fieldObj.Get("maxLength", null);
+            if (maxLength.Type == ValueType.Integer && text.Length > maxLength.AsInteger())
+            {
+                ok = false;
+                errors.Add(CreateFormFieldError(name, $"{name} must be at most {maxLength.AsInteger()} characters"));
+            }
+
+            var pattern = fieldObj.Get("pattern", null);
+            if (pattern.Type == ValueType.String && !string.IsNullOrEmpty(text))
+            {
+                var patternName = pattern.AsString().Trim().ToLowerInvariant();
+                if (patternName == "email")
+                {
+                    if (!text.Contains('@') || text.IndexOf('@') == 0 || text.IndexOf('@') == text.Length - 1)
+                    {
+                        ok = false;
+                        errors.Add(CreateFormFieldError(name, $"{name} must be a valid email"));
+                    }
+                }
+                else
+                {
+                    throw new Exception("bindForm() pattern must be \"email\" in this release");
+                }
+            }
+        }
+
+        var result = new JsonObject();
+        result.Set("ok", RuntimeValue.Boolean(ok));
+        result.Set("values", RuntimeValue.Object(values));
+        result.Set("errors", RuntimeValue.Array(errors));
+        return RuntimeValue.Object(result);
+    }
+
+    private static RuntimeValue CreateFormFieldError(string field, string message)
+    {
+        var obj = new JsonObject();
+        obj.Set("field", RuntimeValue.String(field));
+        obj.Set("message", RuntimeValue.String(message));
+        return RuntimeValue.Object(obj);
+    }
+
+    private static RuntimeValue BuiltInPageLayout(List<RuntimeValue> args)
+    {
+        if (args.Count < 2 || args.Count > 3)
+            throw new Exception("pageLayout() expects title, bodyHtml, and optional options object");
+        if (args[0].Type != ValueType.String || args[1].Type != ValueType.String)
+            throw new Exception("pageLayout() title and bodyHtml must be strings");
+
+        var title = System.Net.WebUtility.HtmlEncode(args[0].AsString());
+        var bodyHtml = args[1].AsString();
+        var css = string.Empty;
+        var script = string.Empty;
+
+        if (args.Count == 3)
+        {
+            if (args[2].Type != ValueType.Object || args[2].AsObject() is not JsonObject opts)
+            {
+                throw new Exception("pageLayout() options must be an object");
+            }
+
+            var cssValue = opts.Get("css", null);
+            if (cssValue.Type == ValueType.String)
+            {
+                css = cssValue.AsString();
+            }
+
+            var scriptValue = opts.Get("script", null);
+            if (scriptValue.Type == ValueType.String)
+            {
+                script = scriptValue.AsString();
+            }
+        }
+
+        var styleTag = string.IsNullOrEmpty(css) ? string.Empty : $"<style>{css}</style>";
+        var scriptTag = string.IsNullOrEmpty(script) ? string.Empty : $"<script>{script}</script>";
+        return RuntimeValue.String(
+            "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>" + title + "</title>" +
+            styleTag + "</head><body>" + bodyHtml + scriptTag + "</body></html>");
+    }
+
+    private static RuntimeValue BuiltInEnqueueJob(List<RuntimeValue> args, Interpreter? interpreter)
+    {
+        BuiltInArity.Require("enqueueJob", args, 2, 3, "queue, payload, options?");
+        if (args[0].Type != ValueType.String)
+            throw new Exception("enqueueJob() queue must be a string");
+
+        var payloadJson = args[1].Type == ValueType.Null
+            ? "{}"
+            : CallBuiltIn("toJSON", new List<RuntimeValue> { args[1] }, interpreter).AsString();
+
+        DateTimeOffset? runAt = null;
+        var maxAttempts = 3;
+        string? correlationId = null;
+        if (args.Count == 3)
+        {
+            if (args[2].Type != ValueType.Object || args[2].AsObject() is not JsonObject opts)
+                throw new Exception("enqueueJob() options must be an object");
+
+            var runAtValue = opts.Get("runAt", null);
+            if (runAtValue.Type == ValueType.String &&
+                DateTimeOffset.TryParse(runAtValue.AsString(), out var parsedRunAt))
+            {
+                runAt = parsedRunAt;
+            }
+
+            var maxAttemptsValue = opts.Get("maxAttempts", null);
+            if (maxAttemptsValue.Type == ValueType.Integer)
+            {
+                maxAttempts = maxAttemptsValue.AsInteger();
+            }
+
+            var correlationValue = opts.Get("correlationId", null);
+            if (correlationValue.Type == ValueType.String)
+            {
+                correlationId = correlationValue.AsString();
+            }
+        }
+
+        var id = JobStore.Default.Enqueue(args[0].AsString(), payloadJson, runAt, maxAttempts, correlationId);
+        return RuntimeValue.String(id);
+    }
+
+    private static RuntimeValue BuiltInClaimJob(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("claimJob", args, 1, 2, "queue, workerId?");
+        if (args[0].Type != ValueType.String)
+            throw new Exception("claimJob() queue must be a string");
+
+        string? workerId = null;
+        if (args.Count == 2)
+        {
+            if (args[1].Type != ValueType.String)
+                throw new Exception("claimJob() workerId must be a string");
+            workerId = args[1].AsString();
+        }
+
+        var job = JobStore.Default.Claim(args[0].AsString(), workerId);
+        return job == null ? RuntimeValue.Null() : JobRecordToRuntimeValue(job);
+    }
+
+    private static RuntimeValue BuiltInCompleteJob(List<RuntimeValue> args, Interpreter? interpreter)
+    {
+        BuiltInArity.Require("completeJob", args, 1, 2, "jobId, result?");
+        if (args[0].Type != ValueType.String)
+            throw new Exception("completeJob() jobId must be a string");
+
+        string? resultJson = null;
+        if (args.Count == 2 && args[1].Type != ValueType.Null)
+        {
+            resultJson = CallBuiltIn("toJSON", new List<RuntimeValue> { args[1] }, interpreter).AsString();
+        }
+
+        JobStore.Default.Complete(args[0].AsString(), resultJson);
+        return RuntimeValue.Boolean(true);
+    }
+
+    private static RuntimeValue BuiltInFailJob(List<RuntimeValue> args, Interpreter? interpreter)
+    {
+        BuiltInArity.Require("failJob", args, 1, 3, "jobId, error?, retry?");
+        if (args[0].Type != ValueType.String)
+            throw new Exception("failJob() jobId must be a string");
+
+        string? errorJson = null;
+        if (args.Count >= 2 && args[1].Type != ValueType.Null)
+        {
+            errorJson = args[1].Type == ValueType.String
+                ? CallBuiltIn("toJSON", new List<RuntimeValue> { args[1] }, interpreter).AsString()
+                : CallBuiltIn("toJSON", new List<RuntimeValue> { args[1] }, interpreter).AsString();
+        }
+
+        var retry = true;
+        if (args.Count == 3)
+        {
+            if (args[2].Type != ValueType.Boolean)
+                throw new Exception("failJob() retry must be a boolean");
+            retry = args[2].AsBoolean();
+        }
+
+        JobStore.Default.Fail(args[0].AsString(), errorJson, retry);
+        return RuntimeValue.Boolean(true);
+    }
+
+    private static RuntimeValue BuiltInGetJob(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("getJob", args, 1, 1, "jobId");
+        if (args[0].Type != ValueType.String)
+            throw new Exception("getJob() jobId must be a string");
+
+        var job = JobStore.Default.Get(args[0].AsString());
+        return job == null ? RuntimeValue.Null() : JobRecordToRuntimeValue(job);
+    }
+
+    private static RuntimeValue BuiltInListJobs(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("listJobs", args, 0, 3, "queue?, status?, limit?");
+        string? queue = null;
+        string? status = null;
+        var limit = 50;
+
+        if (args.Count >= 1 && args[0].Type != ValueType.Null)
+        {
+            if (args[0].Type != ValueType.String)
+                throw new Exception("listJobs() queue must be a string");
+            queue = args[0].AsString();
+        }
+
+        if (args.Count >= 2 && args[1].Type != ValueType.Null)
+        {
+            if (args[1].Type != ValueType.String)
+                throw new Exception("listJobs() status must be a string");
+            status = args[1].AsString();
+        }
+
+        if (args.Count == 3)
+        {
+            if (args[2].Type != ValueType.Integer)
+                throw new Exception("listJobs() limit must be an integer");
+            limit = args[2].AsInteger();
+        }
+
+        var jobs = JobStore.Default.List(queue, status, limit);
+        return RuntimeValue.Array(jobs.Select(JobRecordToRuntimeValue).ToList());
+    }
+
+    private static RuntimeValue JobRecordToRuntimeValue(JobRecord job)
+    {
+        var obj = new JsonObject();
+        obj.Set("id", RuntimeValue.String(job.Id));
+        obj.Set("queue", RuntimeValue.String(job.Queue));
+        obj.Set("status", RuntimeValue.String(job.Status));
+        obj.Set("attempts", RuntimeValue.Integer(job.Attempts));
+        obj.Set("maxAttempts", RuntimeValue.Integer(job.MaxAttempts));
+        obj.Set("runAt", RuntimeValue.String(job.RunAt.ToString("O")));
+        obj.Set("createdAt", RuntimeValue.String(job.CreatedAt.ToString("O")));
+        obj.Set("updatedAt", RuntimeValue.String(job.UpdatedAt.ToString("O")));
+        if (job.LockedBy != null)
+            obj.Set("lockedBy", RuntimeValue.String(job.LockedBy));
+        if (job.CorrelationId != null)
+            obj.Set("correlationId", RuntimeValue.String(job.CorrelationId));
+
+        try
+        {
+            obj.Set("payload", CallBuiltIn("parseJSON", new List<RuntimeValue> { RuntimeValue.String(job.PayloadJson) }, null));
+        }
+        catch
+        {
+            obj.Set("payload", RuntimeValue.String(job.PayloadJson));
+        }
+
+        if (!string.IsNullOrEmpty(job.ResultJson))
+        {
+            try
+            {
+                obj.Set("result", CallBuiltIn("parseJSON", new List<RuntimeValue> { RuntimeValue.String(job.ResultJson) }, null));
+            }
+            catch
+            {
+                obj.Set("result", RuntimeValue.String(job.ResultJson));
+            }
+        }
+
+        if (!string.IsNullOrEmpty(job.ErrorJson))
+        {
+            try
+            {
+                obj.Set("error", CallBuiltIn("parseJSON", new List<RuntimeValue> { RuntimeValue.String(job.ErrorJson) }, null));
+            }
+            catch
+            {
+                obj.Set("error", RuntimeValue.String(job.ErrorJson));
+            }
+        }
+
+        return RuntimeValue.Object(obj);
     }
 
     private static RuntimeValue BuiltInCreateSecureCookie(List<RuntimeValue> args)

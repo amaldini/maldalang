@@ -17,11 +17,11 @@ To scaffold the same starter with SQLite/local-first groundwork:
 malda new fullstack sales-portal --local-first
 ```
 
-Then open:
+Then open (single port via `web.mount(api)`):
 
 - API health check: `http://localhost:8080/api/health`
 - API auth sample: `http://localhost:8080/api/me`
-- Component UI sample: `http://localhost:8081/components/TicketBoard`
+- Component UI sample: `http://localhost:8080/components/TicketBoard`
 
 If you want machine-readable test output for CI or editor tooling:
 
@@ -42,10 +42,10 @@ malda test --format ci
 
 ## What This Starter Includes Today
 
-- A REST API server on port `8080`
-- A separate HTTP/component server on port `8081`
+- One `HttpServer` on port `8080` with a mounted `RestServer` (API + UI on the same port)
 - Health, readiness, and metrics endpoints
 - A bearer-token-protected `/api/me` example
+- Sessions (`enableSession`) plus form helpers (`csrfField`, `bindForm`, `pageLayout`)
 - A small server-rendered ticket board sample using `component`, `@ACTION`, and `@LIVE`
 - Test defaults that work with `malda test`
 - Security, environment, deploy, and observability example config files
@@ -60,7 +60,7 @@ malda test --format ci
 
 `req` currently exposes:
 
-- Properties: `method`, `path`, `url`, `queryString`, `query`, `params`, `headers`, `cookies`, `body`, `correlationId`, `ip`, `host`, `contentType`, `auth`
+- Properties: `method`, `path`, `url`, `queryString`, `query`, `params`, `headers`, `cookies`, `body`, `correlationId`, `ip`, `host`, `contentType`, `auth`, `session`
 - Helpers: `req.header(name, default?)`, `req.queryParam(name, default?)`, `req.param(name, default?)`, `req.cookie(name, default?)`
 - Middleware can attach request-scoped values such as `req.user`, `req.pageTitle`, or `req.tenant`
 
