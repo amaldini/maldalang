@@ -11,8 +11,17 @@ function htmlLayout(title, content) {
     return "<!DOCTYPE html><html><head><meta charset='utf-8'><title>" + title + "</title></head><body>" + content + helper + "</body></html>";
 }
 
+var jwtSecret = getEnv("MALDA_JWT_SECRET");
+if (jwtSecret == null or jwtSecret == "") {
+    jwtSecret = "change-me-jwt-secret";
+}
+var csrfSecret = getEnv("MALDA_CSRF_SECRET");
+if (csrfSecret == null or csrfSecret == "") {
+    csrfSecret = "change-me-csrf-secret";
+}
+
 function requireAuth(req, res, next) {
-    req.auth.authenticateBearerJwt("change-me-jwt-secret");
+    req.auth.authenticateBearerJwt(jwtSecret);
     next();
 }
 
@@ -125,9 +134,11 @@ function ticketsLive() {
 initLocalDataPlatform();
 {{/LOCAL_FIRST}}
 
-api.enableCsrf("change-me-csrf-secret");
+api.enableCsrf(csrfSecret);
 api.setRateLimit(200, 60, "verifiedSubOrIp");
 api.setRateLimitHeaders(true, true);
-api.use(requireAuth);
+api.use(requireAuth, {
+    "except": ["/api/health", "/api/readiness", "/metrics"]
+});
 api.start();
 web.start();

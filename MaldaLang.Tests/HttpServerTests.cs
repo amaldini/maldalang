@@ -979,4 +979,200 @@ public class HttpServerTests
             server.CallMethod("stop", new List<RuntimeValue>());
         }
     }
+
+    private static string CreateHttpAuthJwt(string secret, string sub, string role = "editor", int expiresInSeconds = 120)
+    {
+        var payload = new JsonObject();
+        payload.Set("sub", RuntimeValue.String(sub));
+        payload.Set("role", RuntimeValue.String(role));
+
+        return BuiltInFunctions.CallBuiltIn(
+                "createJwt",
+                new List<RuntimeValue>
+                {
+                    RuntimeValue.Object(payload),
+                    RuntimeValue.String(secret),
+                    RuntimeValue.Integer(expiresInSeconds)
+                },
+                null!)
+            .AsString();
+    }
+
+    [Fact]
+    public async Task HttpServer_RequestAuthAuthenticateBearerJwt_ExposesVerifiedClaims()
+    {
+        var port = GetAvailablePort();
+        const string secret = "http-auth-bearer-secret";
+        var source = @"
+            function requireAuth(req, res, next) {
+                req.auth.authenticateBearerJwt(""http-auth-bearer-secret"");
+                next();
+            }
+
+            @GET(""/api/secure"")
+            @Use(""requireAuth"")
+            function secure(req, res) {
+                return res.json({
+                    ""verified"": req.auth.verified,
+                    ""sub"": req.auth.sub,
+                    ""role"": req.auth.claims.role,
+                    ""hasToken"": req.auth.token != null
+                });
+            }
+        ";
+
+        var interpreter = LoadInterpreterFromSource(source);
+        var server = new HttpServerInstance(port, null, interpreter);
+        server.CallMethod("start", new List<RuntimeValue>());
+
+        try
+        {
+            var token = CreateHttpAuthJwt(secret, "http-user-11", "editor");
+            using var client = new HttpClient();
+            var request = new HttpRequestMessage(HttpMethod.Get, $"http://localhost:{port}/api/secure");
+            request.Headers.Add("Authorization", $"Bearer {token}");
+            request.Headers.Add("Accept", "application/json");
+
+            using var response = await client.SendAsync(request);
+            var body = await response.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.True(root.GetProperty("verified").GetBoolean());
+            Assert.Equal("http-user-11", root.GetProperty("sub").GetString());
+            Assert.Equal("editor", root.GetProperty("role").GetString());
+            Assert.True(root.GetProperty("hasToken").GetBoolean());
+        }
+        finally
+        {
+            server.CallMethod("stop", new List<RuntimeValue>());
+        }
+    }
+
+    [Fact]
+    public async Task HttpServer_RequestAuthAuthenticateCookieJwt_ExposesVerifiedClaims()
+    {
+        var port = GetAvailablePort();
+        const string jwtSecret = "http-auth-cookie-jwt-secret";
+        const string cookieSecret = "http-auth-cookie-signing-secret";
+        var source = @"
+            function requireCookieAuth(req, res, next) {
+                req.auth.authenticateCookieJwt(""session"", ""http-auth-cookie-jwt-secret"", ""http-auth-cookie-signing-secret"");
+                next();
+            }
+
+            @GET(""/api/me"")
+            @Use(""requireCookieAuth"")
+            function me(req, res) {
+                return res.json({
+                    ""verified"": req.auth.verified,
+                    ""sub"": req.auth.sub,
+                    ""role"": req.auth.claim(""role"", ""unknown"")
+                });
+            }
+        ";
+
+        var interpreter = LoadInterpreterFromSource(source);
+        var server = new HttpServerInstance(port, null, interpreter);
+        server.CallMethod("start", new List<RuntimeValue>());
+
+        try
+        {
+            var token = CreateHttpAuthJwt(jwtSecret, "cookie-user-33", "reviewer");
+            var cookieHeader = BuiltInFunctions.CallBuiltIn(
+                "createSecureCookie",
+                new List<RuntimeValue>
+                {
+                    RuntimeValue.String("session"),
+                    RuntimeValue.String(token),
+                    RuntimeValue.String(cookieSecret)
+                },
+                null!).AsString();
+            var cookiePair = cookieHeader.Split(';')[0];
+
+            using var client = new HttpClient();
+            var request = new HttpRequestMessage(HttpMethod.Get, $"http://localhost:{port}/api/me");
+            request.Headers.Add("Accept", "application/json");
+            request.Headers.Add("Cookie", cookiePair);
+
+            using var response = await client.SendAsync(request);
+            var body = await response.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.True(root.GetProperty("verified").GetBoolean());
+            Assert.Equal("cookie-user-33", root.GetProperty("sub").GetString());
+            Assert.Equal("reviewer", root.GetProperty("role").GetString());
+        }
+        finally
+        {
+            server.CallMethod("stop", new List<RuntimeValue>());
+        }
+    }
+
+    [Fact]
+    public async Task HttpServer_UseMiddleware_ExceptPaths_SkipsAuthOnPublicRoutes()
+    {
+        var port = GetAvailablePort();
+        var source = @"
+            function requireAuth(req, res, next) {
+                req.auth.authenticateBearerJwt(""http-except-secret"");
+                next();
+            }
+
+            @GET(""/api/health"")
+            function health(req, res) {
+                return res.json({ ""status"": ""ok"" });
+            }
+
+            @GET(""/api/private"")
+            function privateRoute(req, res) {
+                return res.json({ ""sub"": req.auth.sub });
+            }
+        ";
+
+        var interpreter = LoadInterpreterFromSource(source);
+        var server = new HttpServerInstance(port, null, interpreter);
+        var except = RuntimeValue.Array(new List<RuntimeValue> { RuntimeValue.String("/api/health") });
+        var options = new JsonObject();
+        options.Set("except", except);
+        server.CallMethod(
+            "use",
+            new List<RuntimeValue>
+            {
+                RuntimeValue.String("requireAuth"),
+                RuntimeValue.Object(options)
+            });
+        server.CallMethod("start", new List<RuntimeValue>());
+
+        try
+        {
+            using var client = new HttpClient();
+
+            using var health = await client.GetAsync($"http://localhost:{port}/api/health");
+            Assert.Equal(HttpStatusCode.OK, health.StatusCode);
+
+            var privateUnauthed = new HttpRequestMessage(HttpMethod.Get, $"http://localhost:{port}/api/private");
+            privateUnauthed.Headers.Add("Accept", "application/json");
+            using var denied = await client.SendAsync(privateUnauthed);
+            Assert.Equal(HttpStatusCode.Unauthorized, denied.StatusCode);
+
+            var token = CreateHttpAuthJwt("http-except-secret", "except-user");
+            var privateAuthed = new HttpRequestMessage(HttpMethod.Get, $"http://localhost:{port}/api/private");
+            privateAuthed.Headers.Add("Authorization", $"Bearer {token}");
+            privateAuthed.Headers.Add("Accept", "application/json");
+            using var ok = await client.SendAsync(privateAuthed);
+            var body = await ok.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(body);
+
+            Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
+            Assert.Equal("except-user", doc.RootElement.GetProperty("sub").GetString());
+        }
+        finally
+        {
+            server.CallMethod("stop", new List<RuntimeValue>());
+        }
+    }
 }

@@ -598,4 +598,107 @@ public class SecurityMiddlewareTests
             server.CallMethod("stop", new List<RuntimeValue>());
         }
     }
+
+    [Fact]
+    public async Task RateLimit_VerifiedSubStrategy_UsesJwtSubjectFromAuthMiddleware()
+    {
+        var port = GetAvailablePort();
+        var path = $"/api/jwt-sub-rate/{Guid.NewGuid():N}";
+        var server = new RestServerInstance(port, "localhost", null);
+
+        RestServerInstance.RegisterTranspiledRoute(
+            "GET",
+            path,
+            "ProtectedRouteHandler",
+            new List<string>(),
+            null,
+            null,
+            null,
+            new List<string> { "AuthGuardMiddleware" },
+            null);
+        server.CallMethod(
+            "setRateLimit",
+            new List<RuntimeValue>
+            {
+                RuntimeValue.Integer(1),
+                RuntimeValue.Integer(60),
+                RuntimeValue.String("verifiedSub")
+            });
+        server.CallMethod("start", new List<RuntimeValue>());
+
+        try
+        {
+            var token = CreateToken(120);
+            using var client = new HttpClient();
+
+            var first = new HttpRequestMessage(HttpMethod.Get, $"http://localhost:{port}{path}");
+            first.Headers.Add("Authorization", $"Bearer {token}");
+            first.Headers.Add("X-Forwarded-For", "10.9.9.1");
+            using var firstResponse = await client.SendAsync(first);
+            Assert.Equal(HttpStatusCode.OK, firstResponse.StatusCode);
+
+            // Different IP, same JWT subject — must share the verifiedSub bucket.
+            var second = new HttpRequestMessage(HttpMethod.Get, $"http://localhost:{port}{path}");
+            second.Headers.Add("Authorization", $"Bearer {token}");
+            second.Headers.Add("X-Forwarded-For", "10.9.9.2");
+            second.Headers.Add("X-Correlation-ID", "corr-jwt-sub-rate");
+            using var secondResponse = await client.SendAsync(second);
+            var secondBody = await secondResponse.Content.ReadAsStringAsync();
+            using var secondDoc = JsonDocument.Parse(secondBody);
+
+            Assert.Equal((HttpStatusCode)429, secondResponse.StatusCode);
+            SecurityTestUtils.AssertStandardErrorPayload(secondDoc.RootElement, "RateLimitExceeded", "corr-jwt-sub-rate", 429);
+        }
+        finally
+        {
+            server.CallMethod("stop", new List<RuntimeValue>());
+        }
+    }
+
+    [Fact]
+    public async Task UseMiddleware_ExceptPaths_SkipsAuthOnPublicRoutes()
+    {
+        var port = GetAvailablePort();
+        var publicPath = $"/api/health/{Guid.NewGuid():N}";
+        var privatePath = $"/api/private/{Guid.NewGuid():N}";
+        var server = new RestServerInstance(port, "localhost", null);
+
+        RestServerInstance.RegisterTranspiledRoute("GET", publicPath, "PublicHealthHandler", new List<string>(), null);
+        RestServerInstance.RegisterTranspiledRoute("GET", privatePath, "ProtectedRouteHandler", new List<string>(), null);
+
+        var except = RuntimeValue.Array(new List<RuntimeValue> { RuntimeValue.String(publicPath) });
+        var options = new JsonObject();
+        options.Set("except", except);
+        server.CallMethod(
+            "use",
+            new List<RuntimeValue>
+            {
+                RuntimeValue.String("AuthGuardMiddleware"),
+                RuntimeValue.Object(options)
+            });
+        server.CallMethod("start", new List<RuntimeValue>());
+
+        try
+        {
+            using var client = new HttpClient();
+
+            using var publicResponse = await client.GetAsync($"http://localhost:{port}{publicPath}");
+            Assert.Equal(HttpStatusCode.OK, publicResponse.StatusCode);
+
+            var privateUnauthed = new HttpRequestMessage(HttpMethod.Get, $"http://localhost:{port}{privatePath}");
+            privateUnauthed.Headers.Add("X-Correlation-ID", "corr-except-private");
+            using var privateResponse = await client.SendAsync(privateUnauthed);
+            Assert.Equal(HttpStatusCode.Unauthorized, privateResponse.StatusCode);
+
+            var token = CreateToken(120);
+            var privateAuthed = new HttpRequestMessage(HttpMethod.Get, $"http://localhost:{port}{privatePath}");
+            privateAuthed.Headers.Add("Authorization", $"Bearer {token}");
+            using var privateOk = await client.SendAsync(privateAuthed);
+            Assert.Equal(HttpStatusCode.OK, privateOk.StatusCode);
+        }
+        finally
+        {
+            server.CallMethod("stop", new List<RuntimeValue>());
+        }
+    }
 }

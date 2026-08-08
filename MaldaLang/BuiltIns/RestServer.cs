@@ -187,9 +187,12 @@ public class RestServerInstance : ObjectInstance
                 return RuntimeValue.Null();
 
             case "use":
-                if (args.Count != 1 || (args[0].Type != ValueType.Function && args[0].Type != ValueType.String))
-                    throw new Exception("use() expects 1 function or function-name string argument");
-                RegisterMiddleware(args[0]);
+                if (args.Count < 1 || args.Count > 2 ||
+                    (args[0].Type != ValueType.Function && args[0].Type != ValueType.String))
+                    throw new Exception("use() expects middleware function/name and optional options object");
+                if (args.Count == 2 && args[1].Type != ValueType.Object)
+                    throw new Exception("use() options must be an object when provided");
+                RegisterMiddleware(args[0], args.Count == 2 ? args[1] : null);
                 return RuntimeValue.Null();
 
             case "setRateLimit":
@@ -295,15 +298,53 @@ public class RestServerInstance : ObjectInstance
         _swaggerEnabled = enabled;
     }
 
-    private void RegisterMiddleware(RuntimeValue middlewareValue)
+    private void RegisterMiddleware(RuntimeValue middlewareValue, RuntimeValue? optionsValue)
     {
+        var exceptPaths = ParseMiddlewareExceptPaths(optionsValue);
         if (middlewareValue.Type == ValueType.Function)
         {
-            _middlewareChain.Add(middlewareValue.AsFunction());
+            _middlewareChain.Add(middlewareValue.AsFunction(), exceptPaths);
             return;
         }
 
-        _middlewareChain.Add(middlewareValue.AsString());
+        _middlewareChain.Add(middlewareValue.AsString(), exceptPaths);
+    }
+
+    private static List<string>? ParseMiddlewareExceptPaths(RuntimeValue? optionsValue)
+    {
+        if (optionsValue == null)
+        {
+            return null;
+        }
+
+        if (optionsValue.Type != ValueType.Object || optionsValue.AsObject() is not JsonObject options)
+        {
+            throw new Exception("use() options must be an object when provided");
+        }
+
+        var exceptValue = options.Get("except", null);
+        if (exceptValue.Type == ValueType.Null)
+        {
+            return null;
+        }
+
+        if (exceptValue.Type != ValueType.Array)
+        {
+            throw new Exception("use() options.except must be an array of path strings");
+        }
+
+        var paths = new List<string>();
+        foreach (var entry in exceptValue.AsArray())
+        {
+            if (entry.Type != ValueType.String || string.IsNullOrWhiteSpace(entry.AsString()))
+            {
+                throw new Exception("use() options.except must contain non-empty path strings");
+            }
+
+            paths.Add(entry.AsString().Trim());
+        }
+
+        return paths;
     }
 
     private void ConfigureRateLimit(List<RuntimeValue> args)
@@ -764,11 +805,6 @@ public class RestServerInstance : ObjectInstance
             var requestContext = CreateRequestContext(request, pathParams, queryParams, requestBody, correlationId);
             var responseContext = new ResponseContextInstance();
 
-            if (!ValidateRateLimit(requestContext, response, correlationId))
-            {
-                return;
-            }
-
             if (!ValidateCsrf(requestContext, responseContext, requestBody, request, response, correlationId))
             {
                 return;
@@ -792,6 +828,12 @@ public class RestServerInstance : ObjectInstance
                 {
                     responseContext.ApplyTo(response);
                 }
+                return;
+            }
+
+            // Rate-limit after auth middleware so verifiedSub* keys see JWT subjects.
+            if (!ValidateRateLimit(requestContext, response, correlationId))
+            {
                 return;
             }
 

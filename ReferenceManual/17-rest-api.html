@@ -135,23 +135,18 @@ function getUser(req, res) {
 var server = new RestServer(8080);
 server.use(logRequest);
 server.start();</code></pre>
-        <p>Auth guards are implemented as composable middleware. A common pattern is: extract bearer token, verify JWT, write canonical request auth context (<code>req.auth</code>), then call <code>next()</code>.</p>
+        <p>Auth guards are composable middleware. Prefer <code>req.auth.authenticateBearerJwt(secret)</code> (or <code>authenticateCookieJwt</code> for browser sessions): it verifies the JWT, populates claims/roles/permissions, and throws standardized 401 errors on failure.</p>
         <pre><code>function requireAuth(req, res, next) {
-    var authHeader = req.headers.Authorization;
-    if (authHeader == null) {
-        return res.status(401).json({
-            "status": 401,
-            "error": "MissingToken",
-            "message": "Missing bearer token.",
-            "correlationId": req.correlationId
-        });
-    }
-
-    var token = replace(authHeader, "Bearer ", "");
-    var claims = verifyJwt(token, "my-jwt-secret"); // throws on invalid/expired
-    req.auth.setVerifiedSub(claims.sub);
+    req.auth.authenticateBearerJwt("my-jwt-secret");
     next();
-}</code></pre>
+}
+
+var server = new RestServer(8080);
+server.use(requireAuth, {
+    "except": ["/api/health", "/api/readiness", "/metrics"]
+});
+server.start();</code></pre>
+        <p>Skip public paths with <code>use(middleware, { "except": [...] })</code>. Exact paths and trailing <code>*</code> prefixes are supported. For ingress/gateway trust boundaries you can still call <code>req.auth.setVerifiedSub(sub)</code> after an upstream check; prefer <code>authenticate*</code> inside application middleware so roles and claims are available.</p>
         <h2>23.9 Response Helper API</h2>
         <p>Response context helper methods:</p>
         <ul>
@@ -169,13 +164,13 @@ server.start();</code></pre>
         <p>Use built-in middleware-style server configuration for request protection without ad-hoc per-route logic:</p>
         <pre><code>var server = new RestServer(8080);
 server.enableCsrf("my-csrf-secret");                 // cookie: csrf_token, header: X-CSRF-Token
-server.setRateLimit(120, 60, "ipOrToken");           // 120 requests / 60 seconds per key
+server.setRateLimit(120, 60, "verifiedSubOrIp");     // after auth middleware; prefer subject when verified
 server.setRateLimitHeaders(true, true);              // add X-RateLimit-* + Retry-After headers
 server.configureTrustedProxy(true, "X-Forwarded-For", 0); // trust first forwarded hop
-server.use(requireAuth);                              // compose with existing auth middleware
+server.use(requireAuth, { "except": ["/api/health", "/metrics"] });
 server.start();</code></pre>
         <p>Rate-limit key strategy supports <code>ip</code>, <code>token</code>, <code>user</code>, <code>sub</code>/<code>verifiedSub</code>/<code>verifiedSubOrIp</code>, and <code>ipOrToken</code> (default fallback).</p>
-        <p>For <code>sub</code>-based keying, MALDA uses the canonical request auth-context surface (<code>req.auth</code>). Set verified subject in middleware with <code>req.auth.setVerifiedSub(claims.sub)</code>; when missing, keying deterministically falls back to IP/token behavior.</p>
+        <p>Rate limiting runs <strong>after</strong> global and route middleware, so <code>verifiedSub*</code> strategies see subjects set by <code>req.auth.authenticateBearerJwt</code> / <code>authenticateCookieJwt</code>. When no verified subject is present, keying falls back to IP/token behavior.</p>
         <p>Header aliases (<code>X-Malda-Auth-Verified</code>/<code>X-Malda-Auth-Sub</code> and legacy <code>X-Auth-*</code>) remain available for compatibility at ingress boundaries, but application middleware should use <code>req.auth</code>.</p>
         <p>Trusted proxy defaults are secure: proxy headers are ignored unless explicitly enabled via <code>configureTrustedProxy(...)</code>.</p>
         <p>When <code>setRateLimitHeaders(true)</code> is enabled, responses include <code>Retry-After</code> (on 429), <code>X-RateLimit-Limit</code>, and optionally <code>X-RateLimit-Remaining</code>.</p>

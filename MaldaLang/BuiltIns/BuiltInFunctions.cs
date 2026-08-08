@@ -3725,7 +3725,7 @@ public static class BuiltInFunctions
     private static RuntimeValue BuiltInCreateJwt(List<RuntimeValue> args)
     {
         if (args.Count < 2 || args.Count > 3)
-            throw new Exception("createJwt() expects 2 or 3 arguments: (payload, secret, expiresInSeconds?)");
+            throw new Exception("createJwt() expects 2 or 3 arguments: (payload, secret, expiresInSeconds? | options?)");
         if (args[1].Type != ValueType.String)
             throw new Exception("createJwt() second argument (secret) must be a string");
 
@@ -3734,15 +3734,78 @@ public static class BuiltInFunctions
         if (string.IsNullOrWhiteSpace(secret))
             throw new Exception("createJwt() secret cannot be empty");
 
-        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        payloadObj.Set("iat", RuntimeValue.Integer((int)now));
+        int? expiresInSeconds = null;
+        string? issuer = null;
+        string? audience = null;
+        int? notBeforeSeconds = null;
 
         if (args.Count == 3)
         {
-            if (args[2].Type != ValueType.Integer)
-                throw new Exception("createJwt() third argument (expiresInSeconds) must be an integer");
-            var expiresInSeconds = args[2].AsInteger();
-            payloadObj.Set("exp", RuntimeValue.Integer((int)(now + expiresInSeconds)));
+            if (args[2].Type == ValueType.Integer)
+            {
+                expiresInSeconds = args[2].AsInteger();
+            }
+            else if (args[2].Type == ValueType.Object && args[2].AsObject() is JsonObject options)
+            {
+                var expiresValue = options.Get("expiresInSeconds", null);
+                if (expiresValue.Type != ValueType.Null)
+                {
+                    if (expiresValue.Type != ValueType.Integer)
+                        throw new Exception("createJwt() options.expiresInSeconds must be an integer");
+                    expiresInSeconds = expiresValue.AsInteger();
+                }
+
+                var issuerValue = options.Get("issuer", null);
+                if (issuerValue.Type != ValueType.Null)
+                {
+                    if (issuerValue.Type != ValueType.String || string.IsNullOrWhiteSpace(issuerValue.AsString()))
+                        throw new Exception("createJwt() options.issuer must be a non-empty string");
+                    issuer = issuerValue.AsString().Trim();
+                }
+
+                var audienceValue = options.Get("audience", null);
+                if (audienceValue.Type != ValueType.Null)
+                {
+                    if (audienceValue.Type != ValueType.String || string.IsNullOrWhiteSpace(audienceValue.AsString()))
+                        throw new Exception("createJwt() options.audience must be a non-empty string");
+                    audience = audienceValue.AsString().Trim();
+                }
+
+                var nbfValue = options.Get("notBeforeSeconds", null);
+                if (nbfValue.Type != ValueType.Null)
+                {
+                    if (nbfValue.Type != ValueType.Integer)
+                        throw new Exception("createJwt() options.notBeforeSeconds must be an integer");
+                    notBeforeSeconds = nbfValue.AsInteger();
+                }
+            }
+            else
+            {
+                throw new Exception("createJwt() third argument must be an integer expiresInSeconds or options object");
+            }
+        }
+
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        payloadObj.Set("iat", RuntimeValue.Integer((int)now));
+
+        if (expiresInSeconds.HasValue)
+        {
+            payloadObj.Set("exp", RuntimeValue.Integer((int)(now + expiresInSeconds.Value)));
+        }
+
+        if (issuer != null)
+        {
+            payloadObj.Set("iss", RuntimeValue.String(issuer));
+        }
+
+        if (audience != null)
+        {
+            payloadObj.Set("aud", RuntimeValue.String(audience));
+        }
+
+        if (notBeforeSeconds.HasValue)
+        {
+            payloadObj.Set("nbf", RuntimeValue.Integer((int)(now + notBeforeSeconds.Value)));
         }
 
         var header = RuntimeValue.String("{\"alg\":\"HS256\",\"typ\":\"JWT\"}");
@@ -3757,13 +3820,37 @@ public static class BuiltInFunctions
 
     private static RuntimeValue BuiltInVerifyJwt(List<RuntimeValue> args)
     {
-        if (args.Count != 2)
-            throw new Exception("verifyJwt() expects 2 arguments: (token, secret)");
+        if (args.Count < 2 || args.Count > 3)
+            throw new Exception("verifyJwt() expects 2 or 3 arguments: (token, secret, options?)");
         if (args[0].Type != ValueType.String || args[1].Type != ValueType.String)
-            throw new Exception("verifyJwt() expects (string, string)");
+            throw new Exception("verifyJwt() expects (string, string, object?)");
 
         var token = args[0].AsString();
         var secret = args[1].AsString();
+        string? expectedIssuer = null;
+        string? expectedAudience = null;
+
+        if (args.Count == 3)
+        {
+            if (args[2].Type != ValueType.Object || args[2].AsObject() is not JsonObject options)
+                throw new Exception("verifyJwt() third argument must be an options object");
+
+            var issuerValue = options.Get("issuer", null);
+            if (issuerValue.Type != ValueType.Null)
+            {
+                if (issuerValue.Type != ValueType.String || string.IsNullOrWhiteSpace(issuerValue.AsString()))
+                    throw new Exception("verifyJwt() options.issuer must be a non-empty string");
+                expectedIssuer = issuerValue.AsString().Trim();
+            }
+
+            var audienceValue = options.Get("audience", null);
+            if (audienceValue.Type != ValueType.Null)
+            {
+                if (audienceValue.Type != ValueType.String || string.IsNullOrWhiteSpace(audienceValue.AsString()))
+                    throw new Exception("verifyJwt() options.audience must be a non-empty string");
+                expectedAudience = audienceValue.AsString().Trim();
+            }
+        }
 
         if (string.IsNullOrWhiteSpace(token))
             throw new WebRuntimeException(401, "MissingToken", "Missing token.");
@@ -3796,11 +3883,32 @@ public static class BuiltInFunctions
         if (payloadValue.Type != ValueType.Object || payloadValue.AsObject() is not JsonObject payloadObject)
             throw new WebRuntimeException(401, "InvalidToken", "Invalid token payload.");
 
-        if (TryReadUnixTimestamp(payloadObject, "exp", out var exp))
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+        if (TryReadUnixTimestamp(payloadObject, "nbf", out var nbf) && now < nbf)
+            throw new WebRuntimeException(401, "InvalidToken", "Token not yet valid.");
+
+        if (TryReadUnixTimestamp(payloadObject, "exp", out var exp) && now >= exp)
+            throw new WebRuntimeException(401, "TokenExpired", "Token expired.");
+
+        if (expectedIssuer != null)
         {
-            var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            if (now >= exp)
-                throw new WebRuntimeException(401, "TokenExpired", "Token expired.");
+            var iss = payloadObject.Get("iss", null);
+            if (iss.Type != ValueType.String ||
+                !string.Equals(iss.AsString().Trim(), expectedIssuer, StringComparison.Ordinal))
+            {
+                throw new WebRuntimeException(401, "InvalidToken", "Invalid token issuer.");
+            }
+        }
+
+        if (expectedAudience != null)
+        {
+            var aud = payloadObject.Get("aud", null);
+            if (aud.Type != ValueType.String ||
+                !string.Equals(aud.AsString().Trim(), expectedAudience, StringComparison.Ordinal))
+            {
+                throw new WebRuntimeException(401, "InvalidToken", "Invalid token audience.");
+            }
         }
 
         return RuntimeValue.Object(payloadObject);

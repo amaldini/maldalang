@@ -736,7 +736,16 @@ var isValid = verifyPassword("my-password", passwordHash);   // true/false
 
 var claims = {"sub": "user-123", "role": "admin"};
 var token = createJwt(claims, "my-jwt-secret", 3600);        // expires in 3600s
-var verifiedClaims = verifyJwt(token, "my-jwt-secret");      // returns payload object
+var token2 = createJwt(claims, "my-jwt-secret", {
+  "expiresInSeconds": 3600,
+  "issuer": "malda-core",
+  "audience": "malda-apps",
+  "notBeforeSeconds": 0
+});
+var verifiedClaims = verifyJwt(token2, "my-jwt-secret", {
+  "issuer": "malda-core",
+  "audience": "malda-apps"
+});
 print(verifiedClaims.sub);
 
 var csrfToken = generateCsrfToken("csrf-secret", 3600);
@@ -751,16 +760,29 @@ var session = readSecureCookie(urlDecode(cookieValue), "cookie-secret");</code><
             <ul>
                 <li><code>hashPassword(password, iterations?)</code> uses PBKDF2 with SHA-256 and random salt</li>
                 <li><code>verifyPassword(password, passwordHash)</code> performs constant-time comparison</li>
-                <li><code>createJwt(payload, secret, expiresInSeconds?)</code> signs HS256 tokens and adds <code>iat</code>; optional <code>exp</code> when expiration is provided</li>
-                <li><code>verifyJwt(token, secret)</code> validates signature + expiration and returns payload object</li>
-                <li><code>verifyJwt</code> throws standardized auth errors for missing, invalid, or expired tokens</li>
-                <li>When composing middleware with REST rate-limit keying by <code>sub</code>, extract <code>verifyJwt(...).sub</code> and write canonical request auth context with <code>req.auth.setVerifiedSub(claims.sub)</code></li>
+                <li><code>createJwt(payload, secret, expiresInSeconds? | options?)</code> signs HS256 tokens and adds <code>iat</code>; options may set <code>expiresInSeconds</code>, <code>issuer</code> (<code>iss</code>), <code>audience</code> (<code>aud</code>), and <code>notBeforeSeconds</code> (<code>nbf</code>)</li>
+                <li><code>verifyJwt(token, secret, options?)</code> validates signature, <code>nbf</code>, <code>exp</code>, and optional expected <code>issuer</code>/<code>audience</code></li>
+                <li><code>verifyJwt</code> throws standardized auth errors for missing, invalid, not-yet-valid, or expired tokens</li>
+                <li>In HTTP/REST handlers prefer <code>req.auth.authenticateBearerJwt(secret)</code> or <code>req.auth.authenticateCookieJwt(cookieName, jwtSecret, cookieSecret?)</code> — they verify the token and populate <code>req.auth</code> claims/roles. Use <code>req.auth.requireRole</code> / <code>requirePermission</code> for authorization. <code>setVerifiedSub</code> remains for ingress/gateway cases without a local JWT.</li>
                 <li><code>generateCsrfToken(secret, ttlSeconds?)</code> creates signed CSRF tokens for form and API mutation flows</li>
                 <li><code>verifyCsrfToken(token, secret)</code> validates signature + expiration and returns boolean</li>
                 <li><code>createSecureCookie(name, value, secret, options?)</code> returns a signed <code>Set-Cookie</code> header string with secure defaults</li>
                 <li><code>readSecureCookie(cookieValue, secret)</code> verifies a signed cookie value and returns plaintext or <code>null</code></li>
             </ul>
         </div>
+        <h3>12.16.2 Request auth context (<code>req.auth</code>)</h3>
+        <p>Both <code>HttpServer</code> and <code>RestServer</code> expose the same <code>req.auth</code> surface on each request:</p>
+        <ul>
+            <li>State: <code>verified</code>, <code>sub</code>/<code>subject</code>, <code>claims</code>, <code>roles</code>, <code>permissions</code>, <code>token</code></li>
+            <li>AuthN: <code>authenticateBearerJwt(secret)</code>, <code>authenticateCookieJwt(cookieName, jwtSecret, cookieSecret?)</code>, <code>setVerifiedSub(sub)</code>, <code>setAnonymous()</code>/<code>clear()</code></li>
+            <li>AuthZ: <code>claim(name, default?)</code>, <code>hasClaim</code>, <code>hasRole</code>/<code>requireRole</code>, <code>hasPermission</code>/<code>requirePermission</code>, <code>requireVerified()</code></li>
+        </ul>
+        <pre><code>function requireAuth(req, res, next) {
+    req.auth.authenticateBearerJwt(getEnv("MALDA_JWT_SECRET"));
+    next();
+}
+
+server.use(requireAuth, { "except": ["/api/health", "/metrics"] });</code></pre>
         <h2>12.18 Range Generation</h2>
         <pre><code>var range1 = range(5);                        // Generate [0, 1, 2, 3, 4]
 var range2 = range(1, 10);                   // Generate [1, 2, 3, 4, 5, 6, 7, 8, 9]

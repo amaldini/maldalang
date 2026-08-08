@@ -3,9 +3,17 @@ include "data/local_first.malda";
 {{/LOCAL_FIRST}}
 
 var server = new RestServer(8080);
+var jwtSecret = getEnv("MALDA_JWT_SECRET");
+if (jwtSecret == null or jwtSecret == "") {
+    jwtSecret = "change-me-jwt-secret";
+}
+var csrfSecret = getEnv("MALDA_CSRF_SECRET");
+if (csrfSecret == null or csrfSecret == "") {
+    csrfSecret = "change-me-csrf-secret";
+}
 
 function requireAuth(req, res, next) {
-    req.auth.authenticateBearerJwt("change-me-jwt-secret");
+    req.auth.authenticateBearerJwt(jwtSecret);
     next();
 }
 
@@ -57,8 +65,10 @@ function dataStatus() {
 initLocalDataPlatform();
 {{/LOCAL_FIRST}}
 
-server.enableCsrf("change-me-csrf-secret");
+server.enableCsrf(csrfSecret);
 server.setRateLimit(120, 60, "verifiedSubOrIp");
 server.setRateLimitHeaders(true, true);
-server.use(requireAuth);
+server.use(requireAuth, {
+    "except": ["/api/health", "/api/readiness", "/metrics"]
+});
 server.start();

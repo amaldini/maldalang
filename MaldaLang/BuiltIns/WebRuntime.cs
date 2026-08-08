@@ -16,15 +16,53 @@ public class WebMiddlewareRegistration
 {
     public FunctionValue? Function { get; }
     public string? FunctionName { get; }
+    public IReadOnlyList<string> ExceptPaths { get; }
 
-    public WebMiddlewareRegistration(FunctionValue function)
+    public WebMiddlewareRegistration(FunctionValue function, IReadOnlyList<string>? exceptPaths = null)
     {
         Function = function;
+        ExceptPaths = exceptPaths ?? Array.Empty<string>();
     }
 
-    public WebMiddlewareRegistration(string functionName)
+    public WebMiddlewareRegistration(string functionName, IReadOnlyList<string>? exceptPaths = null)
     {
         FunctionName = functionName;
+        ExceptPaths = exceptPaths ?? Array.Empty<string>();
+    }
+
+    public bool ShouldSkipPath(string path)
+    {
+        if (ExceptPaths.Count == 0)
+        {
+            return false;
+        }
+
+        var normalizedPath = string.IsNullOrEmpty(path) ? "/" : path;
+        foreach (var pattern in ExceptPaths)
+        {
+            if (string.IsNullOrWhiteSpace(pattern))
+            {
+                continue;
+            }
+
+            if (PathMatchesExceptPattern(normalizedPath, pattern.Trim()))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool PathMatchesExceptPattern(string path, string pattern)
+    {
+        if (pattern.EndsWith("*", StringComparison.Ordinal))
+        {
+            var prefix = pattern[..^1];
+            return path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return string.Equals(path, pattern, StringComparison.OrdinalIgnoreCase);
     }
 }
 
@@ -1094,14 +1132,14 @@ public class WebMiddlewareChain
 
     public int Count => _middlewares.Count;
 
-    public void Add(FunctionValue function)
+    public void Add(FunctionValue function, IReadOnlyList<string>? exceptPaths = null)
     {
-        _middlewares.Add(new WebMiddlewareRegistration(function));
+        _middlewares.Add(new WebMiddlewareRegistration(function, exceptPaths));
     }
 
-    public void Add(string functionName)
+    public void Add(string functionName, IReadOnlyList<string>? exceptPaths = null)
     {
-        _middlewares.Add(new WebMiddlewareRegistration(functionName));
+        _middlewares.Add(new WebMiddlewareRegistration(functionName, exceptPaths));
     }
 
     public async Task<bool> ExecuteAsync(
@@ -1111,6 +1149,12 @@ public class WebMiddlewareChain
     {
         for (var i = 0; i < _middlewares.Count; i++)
         {
+            var registration = _middlewares[i];
+            if (registration.ShouldSkipPath(request.Path))
+            {
+                continue;
+            }
+
             var continuePipeline = false;
             var nextCallback = new MiddlewareNextCallbackInstance(() => continuePipeline = true);
             var args = new List<RuntimeValue>
@@ -1124,7 +1168,7 @@ public class WebMiddlewareChain
                 })
             };
 
-            await invokeMiddleware(_middlewares[i], args);
+            await invokeMiddleware(registration, args);
 
             if (!continuePipeline)
             {

@@ -52,7 +52,7 @@ createGitStatusTool	createGitStatusTool	0-1 arguments: (workingDir?)
 createGlobTool	createGlobTool	0-1 arguments: (workingDir?)		
 createGrepTool	createGrepTool	0-1 arguments: (workingDir?)		
 createInsertAtLineTool	createInsertAtLineTool	0-1 arguments: (workingDir?)		
-createJwt	createJwt	2 or 3 arguments: (payload, secret, expiresInSeconds?)		
+createJwt	createJwt	2 or 3 arguments: (payload, secret, expiresInSeconds? | options?)		
 createListDirectoryTool	createListDirectoryTool	0-1 arguments: (workingDir?)		
 createMcpAgentScript	createMcpAgentScript	at least 5 arguments: (agentName, agentRole, agentInstructions, tools, outputPath, model?)		
 createNativeCallback	createNativeCallback	exactly 1 function argument		
@@ -332,7 +332,7 @@ urlDecode	urlDecode	1 argument
 urlEncode	urlEncode	1 argument		
 validate	validate	2 arguments: (schema, value)		
 verifyCsrfToken	verifyCsrfToken	(string, string)		
-verifyJwt	verifyJwt	2 arguments: (token, secret)		
+verifyJwt	verifyJwt	2 or 3 arguments: (token, secret, options?)		
 verifyPassword	verifyPassword	2 arguments: (password, passwordHash)		
 webSearch	webSearch	at least 1 string argument: (query, apiKey?)		
 withExamples	withExamples	(prompt, examples, options?)		

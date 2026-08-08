@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using MaldaLang.BuiltIns;
@@ -17,38 +16,14 @@ public static class Program
         _ = responseObj as ResponseContextInstance
             ?? throw new WebRuntimeException(401, "InvalidToken", "Invalid response context.");
 
-        var headers = request.Get("headers", null).AsObject() as JsonObject
-            ?? throw new WebRuntimeException(401, "MissingToken", "Missing Authorization header.");
-        var authorization = headers.Get("Authorization", null);
-        if (authorization.Type != MaldaLang.Interpreter.ValueType.String)
-            throw new WebRuntimeException(401, "MissingToken", "Missing bearer token.");
-
-        var headerValue = authorization.AsString().Trim();
-        if (!headerValue.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-            throw new WebRuntimeException(401, "InvalidToken", "Invalid Authorization header format.");
-
-        var token = headerValue["Bearer ".Length..].Trim();
-        var verifiedClaims = BuiltInFunctions.CallBuiltIn(
-            "verifyJwt",
-            new List<RuntimeValue>
-            {
-                RuntimeValue.String(token),
-                RuntimeValue.String(JwtSecret)
-            },
-            null!);
-
-        if (verifiedClaims.Type == MaldaLang.Interpreter.ValueType.Object &&
-            verifiedClaims.AsObject() is JsonObject claims)
+        if (request.Get("auth", null).AsObject() is not RequestAuthContextInstance authContext)
         {
-            var sub = claims.Get("sub", null);
-            if (sub.Type == MaldaLang.Interpreter.ValueType.String &&
-                request.Get("auth", null).AsObject() is RequestAuthContextInstance authContext)
-            {
-                authContext.CallMethod(
-                    "setVerifiedSub",
-                    new List<RuntimeValue> { RuntimeValue.String(sub.AsString()) });
-            }
+            throw new WebRuntimeException(401, "InvalidToken", "Missing request auth context.");
         }
+
+        authContext.CallMethod(
+            "authenticateBearerJwt",
+            new List<RuntimeValue> { RuntimeValue.String(JwtSecret) });
 
         if (nextObj is FunctionValue nextFn && nextFn.BuiltInInstance is MiddlewareNextCallbackInstance callback)
         {
@@ -87,5 +62,12 @@ public static class Program
     public static Task<object> ThrowBadRequestWebError()
     {
         throw new WebRuntimeException(400, "ValidationError", "Page validation failed.");
+    }
+
+    public static Task<object> PublicHealthHandler()
+    {
+        var payload = new JsonObject();
+        payload.Set("status", RuntimeValue.String("ok"));
+        return Task.FromResult<object>(payload);
     }
 }

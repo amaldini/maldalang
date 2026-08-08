@@ -86,6 +86,113 @@ public class AuthBuiltInsTests : TestBase
     }
 
     [Fact]
+    public void CreateJwt_Options_SetsIssuerAudienceAndNotBefore()
+    {
+        var payload = new JsonObject();
+        payload.Set("sub", RuntimeValue.String("user-options"));
+        var options = new JsonObject();
+        options.Set("expiresInSeconds", RuntimeValue.Integer(120));
+        options.Set("issuer", RuntimeValue.String("malda-core"));
+        options.Set("audience", RuntimeValue.String("malda-apps"));
+        options.Set("notBeforeSeconds", RuntimeValue.Integer(0));
+
+        var token = BuiltInFunctions.CallBuiltIn(
+            "createJwt",
+            new List<RuntimeValue>
+            {
+                RuntimeValue.Object(payload),
+                RuntimeValue.String("jwt-secret"),
+                RuntimeValue.Object(options)
+            },
+            null!);
+
+        var verifyOptions = new JsonObject();
+        verifyOptions.Set("issuer", RuntimeValue.String("malda-core"));
+        verifyOptions.Set("audience", RuntimeValue.String("malda-apps"));
+        var claims = BuiltInFunctions.CallBuiltIn(
+            "verifyJwt",
+            new List<RuntimeValue>
+            {
+                token,
+                RuntimeValue.String("jwt-secret"),
+                RuntimeValue.Object(verifyOptions)
+            },
+            null!);
+
+        var obj = (JsonObject)claims.AsObject();
+        Assert.Equal("user-options", obj.Get("sub", null).AsString());
+        Assert.Equal("malda-core", obj.Get("iss", null).AsString());
+        Assert.Equal("malda-apps", obj.Get("aud", null).AsString());
+        Assert.NotEqual(ValueType.Null, obj.Get("nbf", null).Type);
+    }
+
+    [Fact]
+    public void VerifyJwt_WrongIssuer_ThrowsInvalidToken()
+    {
+        var payload = new JsonObject();
+        payload.Set("sub", RuntimeValue.String("user-iss"));
+        var createOptions = new JsonObject();
+        createOptions.Set("expiresInSeconds", RuntimeValue.Integer(120));
+        createOptions.Set("issuer", RuntimeValue.String("expected-iss"));
+
+        var token = BuiltInFunctions.CallBuiltIn(
+            "createJwt",
+            new List<RuntimeValue>
+            {
+                RuntimeValue.Object(payload),
+                RuntimeValue.String("jwt-secret"),
+                RuntimeValue.Object(createOptions)
+            },
+            null!);
+
+        var verifyOptions = new JsonObject();
+        verifyOptions.Set("issuer", RuntimeValue.String("other-iss"));
+        var ex = Assert.Throws<WebRuntimeException>(() =>
+            BuiltInFunctions.CallBuiltIn(
+                "verifyJwt",
+                new List<RuntimeValue>
+                {
+                    token,
+                    RuntimeValue.String("jwt-secret"),
+                    RuntimeValue.Object(verifyOptions)
+                },
+                null!));
+
+        Assert.Equal(401, ex.StatusCode);
+        Assert.Equal("InvalidToken", ex.ErrorCode);
+    }
+
+    [Fact]
+    public void VerifyJwt_NotBeforeInFuture_ThrowsInvalidToken()
+    {
+        var payload = new JsonObject();
+        payload.Set("sub", RuntimeValue.String("user-nbf"));
+        var createOptions = new JsonObject();
+        createOptions.Set("expiresInSeconds", RuntimeValue.Integer(120));
+        createOptions.Set("notBeforeSeconds", RuntimeValue.Integer(3600));
+
+        var token = BuiltInFunctions.CallBuiltIn(
+            "createJwt",
+            new List<RuntimeValue>
+            {
+                RuntimeValue.Object(payload),
+                RuntimeValue.String("jwt-secret"),
+                RuntimeValue.Object(createOptions)
+            },
+            null!);
+
+        var ex = Assert.Throws<WebRuntimeException>(() =>
+            BuiltInFunctions.CallBuiltIn(
+                "verifyJwt",
+                new List<RuntimeValue> { token, RuntimeValue.String("jwt-secret") },
+                null!));
+
+        Assert.Equal(401, ex.StatusCode);
+        Assert.Equal("InvalidToken", ex.ErrorCode);
+        Assert.Contains("not yet valid", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void CsrfBuiltIns_GenerateAndVerify_RoundTrip()
     {
         var token = BuiltInFunctions.CallBuiltIn(

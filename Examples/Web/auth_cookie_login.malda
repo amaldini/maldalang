@@ -1,0 +1,97 @@
+// auth_cookie_login.malda — HttpServer login with password hash + JWT cookie
+//
+// Demo credentials: admin / password
+// Run: malda Examples/Web/auth_cookie_login.malda
+// Then open http://localhost:8080/
+
+var jwtSecret = getEnv("MALDA_JWT_SECRET");
+if (jwtSecret == null or jwtSecret == "") {
+    jwtSecret = "dev-only-jwt-secret-change-me";
+}
+var cookieSecret = getEnv("MALDA_COOKIE_SECRET");
+if (cookieSecret == null or cookieSecret == "") {
+    cookieSecret = "dev-only-cookie-secret-change-me";
+}
+
+// Precomputed with hashPassword("password") so the demo starts without a setup step.
+var adminPasswordHash = hashPassword("password");
+
+var server = new HttpServer(8080);
+
+function requireAuth(req, res, next) {
+    req.auth.authenticateCookieJwt("session", jwtSecret, cookieSecret);
+    next();
+}
+
+function layout(title, bodyHtml) {
+    return "<!DOCTYPE html><html><head><meta charset='utf-8'><title>" + title +
+        "</title><style>body{font-family:system-ui,sans-serif;max-width:420px;margin:48px auto;padding:0 16px;color:#1c2430}" +
+        "input,button{display:block;width:100%;margin:8px 0;padding:10px;box-sizing:border-box}" +
+        "button{background:#0f6a5b;color:#fff;border:0;cursor:pointer}.err{color:#a11}.ok{color:#0f6a5b}</style></head><body>" +
+        bodyHtml + "</body></html>";
+}
+
+@PAGE("/")
+function loginPage(queryParams) {
+    var err = "";
+    if (queryParams["error"] == "invalid") {
+        err = "<p class='err'>Invalid username or password.</p>";
+    } else if (queryParams["error"] == "auth") {
+        err = "<p class='err'>Please sign in to continue.</p>";
+    }
+    return layout("Login", "<h1>Sign in</h1>" + err +
+        "<form method='post' action='/login'>" +
+        "<input name='username' placeholder='Username' required>" +
+        "<input name='password' type='password' placeholder='Password' required>" +
+        "<button type='submit'>Login</button></form>" +
+        "<p><small>Demo: admin / password</small></p>");
+}
+
+@POST("/login")
+function handleLogin(req, res, body) {
+    var username = body.username;
+    var password = body.password;
+    if (username != "admin" or not verifyPassword(password, adminPasswordHash)) {
+        return redirect("/?error=invalid");
+    }
+
+    var token = createJwt({
+        "sub": username,
+        "role": "admin"
+    }, jwtSecret, {
+        "expiresInSeconds": 3600,
+        "issuer": "malda-auth-example",
+        "audience": "malda-web"
+    });
+
+    var setCookie = createSecureCookie("session", token, cookieSecret, {
+        "maxAge": 3600,
+        "sameSite": "Lax",
+        "httpOnly": true,
+        "secure": false
+    });
+    res.header("Set-Cookie", setCookie);
+    return res.redirect("/dashboard");
+}
+
+@PAGE("/dashboard")
+function dashboard(req, res) {
+    return layout("Dashboard",
+        "<h1>Dashboard</h1>" +
+        "<p class='ok'>Signed in as <strong>" + req.auth.sub + "</strong> (" +
+        req.auth.claim("role", "user") + ").</p>" +
+        "<p><a href='/logout'>Logout</a></p>");
+}
+
+@GET("/logout")
+function logout(req, res) {
+    res.clearCookie("session");
+    return res.redirect("/");
+}
+
+server.use(requireAuth, {
+    "except": ["/", "/login", "/logout"]
+});
+server.setRateLimit(60, 60, "verifiedSubOrIp");
+server.start();
+print("Auth cookie login demo at http://localhost:8080/");

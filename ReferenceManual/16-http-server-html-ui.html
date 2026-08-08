@@ -173,6 +173,13 @@ function handleLogin(body) {
 function oldPage() {
     return redirect("/new-page", 302);
 }</code></pre>
+        <p>For production HTML apps, prefer password hashing + JWT in a signed cookie instead of plaintext checks. See <code>Examples/Web/auth_cookie_login.malda</code> and the shared <code>req.auth</code> helpers (same surface as <code>RestServer</code>).</p>
+        <pre><code>function requireAuth(req, res, next) {
+    req.auth.authenticateCookieJwt("session", jwtSecret, cookieSecret);
+    next();
+}
+
+server.use(requireAuth, { "except": ["/", "/login"] });</code></pre>
         <ul>
             <li><code>redirect(location)</code> returns a response object with status <code>303 See Other</code> and a <code>Location</code> header, which is the safest default after a POST action.</li>
             <li>Pass an explicit 3xx status when you need a different redirect semantic, for example <code>redirect("/new-page", 302)</code>.</li>
@@ -228,7 +235,8 @@ return envelope;</code></pre>
         <h2>21.10 Production Hardening</h2>
         <ul>
             <li>Enable CSRF protection on mutating routes with <code>enableCsrf</code>.</li>
-            <li>Apply rate limiting with <code>setRateLimit</code> and choose a key strategy that matches your auth model.</li>
+            <li>Apply rate limiting with <code>setRateLimit</code> (runs after auth middleware so <code>verifiedSubOrIp</code> can key by JWT subject).</li>
+            <li>Protect routes with <code>req.auth.authenticateBearerJwt</code> / <code>authenticateCookieJwt</code> and skip public paths via <code>use(fn, { "except": [...] })</code>.</li>
             <li>Validate request input before persistence or side effects.</li>
             <li>Use correlation IDs in logs for route-level debugging.</li>
             <li>Clear generated HTML caches when the prompt contract or page template changes.</li>

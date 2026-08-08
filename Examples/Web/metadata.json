@@ -80,9 +80,32 @@
                                            ],
                          "learningGoal":  "Teach navigation flow and page-to-page control in a more app-shaped example.",
                          "expectedOutput":  "Runs a multi-page flow with redirects and protected pages.",
-                         "next":  "Web/ui_controls_showcase_minimal.malda",
+                         "next":  "Web/auth_cookie_login.malda",
                          "documentationPath":  "/?lesson=build-ai-apps#lesson-build-ai-apps",
                          "documentationTitle":  "Web Navigation"
+                     },
+                     {
+                         "name":  "Cookie JWT Login",
+                         "description":  "HttpServer login with hashPassword, createJwt, signed session cookie, and req.auth.authenticateCookieJwt",
+                         "file":  "auth_cookie_login.malda",
+                         "track":  "ai-builder",
+                         "difficulty":  "intermediate",
+                         "minutes":  18,
+                         "concepts":  [
+                                          "hashPassword",
+                                          "createJwt",
+                                          "createSecureCookie",
+                                          "req.auth",
+                                          "HttpServer middleware"
+                                      ],
+                         "prerequisites":  [
+                                               "Web/redirect_example.malda"
+                                           ],
+                         "learningGoal":  "Replace demo plaintext login with production-shaped password hashing and JWT cookie auth on HttpServer.",
+                         "expectedOutput":  "Serves a login form; successful sign-in sets a signed JWT cookie and opens a protected dashboard.",
+                         "next":  "Web/ui_controls_showcase_minimal.malda",
+                         "documentationPath":  "/?lesson=build-ai-apps#lesson-build-ai-apps",
+                         "documentationTitle":  "Web Auth"
                      },
                      {
                          "name":  "UI Controls Showcase",
