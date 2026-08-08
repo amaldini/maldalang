@@ -24,7 +24,7 @@ var name = "Alice";
 var isActive = true;
 var pi = 3.14159;</code></pre>
         <p>Variables must be declared before use. The type is inferred from the initial value. For bindings that must never be reassigned, use <code>const</code> instead of <code>var</code> (see <a href="#const">5.3 Constant Declarations</a>).</p>
-        <p>You may optionally add an <strong>informational type hint</strong> after the variable name. Type hints are not enforced at runtime or in the transpiler; they are used by tools, IDEs, and documentation.</p>
+        <p>You may optionally add an <strong>informational type hint</strong> after the variable name. Type hints are not enforced at runtime or in the transpiler. The language server emits a <strong>Warning</strong> when a hint disagrees with a <em>literal</em> initializer (for example <code>var n: int = "abc";</code>); non-literal initializers are not checked yet. Hints are also used by tools, IDEs, and documentation.</p>
         <pre><code>var name: Type? = value;</code></pre>
         <p>Example: <code>var count: int = 0;</code> or <code>var msg: string = "hello";</code></p>
         <h2>5.2 Variable Assignment</h2>

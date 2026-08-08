@@ -69,6 +69,9 @@
                          "track":  "ai-builder",
                          "difficulty":  "intermediate",
                          "minutes":  16,
+                         "requires":  [
+                                          "network"
+                                      ],
                          "concepts":  [
                                           "createJwt",
                                           "authenticateBearerJwt",
@@ -135,12 +138,16 @@
                          "track":  "ai-builder",
                          "difficulty":  "intermediate",
                          "minutes":  18,
+                         "requires":  [
+                                          "network"
+                                      ],
                          "concepts":  [
                                           "hashPassword",
                                           "createJwt",
                                           "createSecureCookie",
                                           "req.auth",
-                                          "HttpServer middleware"
+                                          "HttpServer middleware",
+                                          "enableSession"
                                       ],
                          "prerequisites":  [
                                                "Web/redirect_example.malda"
@@ -150,6 +157,31 @@
                          "next":  "Web/rest_bearer_jwt.malda",
                          "documentationPath":  "/?lesson=build-ai-apps#lesson-build-ai-apps",
                          "documentationTitle":  "Web Auth"
+                     },
+                     {
+                         "name":  "Job Queue Basic",
+                         "description":  "enqueueJob / claimJob / completeJob / listJobs against ./.malda/jobs.db",
+                         "file":  "job_queue_basic.malda",
+                         "track":  "ai-builder",
+                         "difficulty":  "intermediate",
+                         "minutes":  8,
+                         "requires":  [
+                                          "offline"
+                                      ],
+                         "concepts":  [
+                                          "enqueueJob",
+                                          "claimJob",
+                                          "completeJob",
+                                          "listJobs"
+                                      ],
+                         "prerequisites":  [
+                                               "Web/auth_cookie_login.malda"
+                                           ],
+                         "learningGoal":  "Use the lightweight SQLite job queue separately from durable workflows.",
+                         "expectedOutput":  "Enqueues mail jobs, claims and completes them, prints succeeded rows.",
+                         "next":  "Workflows/simple_step.malda",
+                         "documentationPath":  "/docs/tutorials/fullstack-sessions-auth.md",
+                         "documentationTitle":  "Fullstack sessions auth"
                      },
                      {
                          "name":  "UI Controls Showcase",

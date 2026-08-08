@@ -1,0 +1,28 @@
+// schema_validate.malda — schema declaration + validate() without throwing
+//
+// Run: malda Examples/Basics/schema_validate.malda
+// Prefer validate() for already-parsed values; use parseJson(text, "Name") when
+// starting from a JSON string. Form helpers (bindForm) pair well with validate
+// after you coerce request fields into an object.
+
+schema Person {
+    name: string;
+    age: int;
+}
+
+var good = dict { "name": "Ada", "age": 36 };
+var bad = dict { "name": "Ada", "age": "thirty-six" };
+
+var okCheck = validate("Person", good);
+if (okCheck.ok) {
+    print("ok: " + okCheck.data.name + " age=" + string(okCheck.data.age));
+} else {
+    print("unexpected: " + okCheck.error);
+}
+
+var badCheck = validate("Person", bad);
+if (badCheck.ok) {
+    print("unexpected success");
+} else {
+    print("expected failure: " + badCheck.error);
+}

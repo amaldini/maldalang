@@ -182,9 +182,11 @@ Community help on the Web IDE (Monaco UX, diagnostics, examples browser) is welc
 | [`docs/releases/v0.1.5.md`](docs/releases/v0.1.5.md) | Portable ASK branding, menu PACK, `compileMALDA` embedFolder |
 | [`docs/releases/v0.1.6.md`](docs/releases/v0.1.6.md) | Locale-safe float transpile, Spectre markup fallback, release version guard |
 | [`docs/releases/v0.1.7.md`](docs/releases/v0.1.7.md) | Agent/CodingAgent transpile, optional Agent client, Second Brain compile |
+| [`Examples/README.md`](Examples/README.md) | Full examples catalog (`requires`, tracks) |
 | [`Examples/Basics`](Examples/Basics) | Language basics |
 | [`Examples/Prompts`](Examples/Prompts) | Prompts and agents |
-| [`Examples/Web`](Examples/Web) | REST and UI examples |
+| [`Examples/Web`](Examples/Web) | REST, UI, auth, jobs |
+| [`docs/tutorials/fullstack-sessions-auth.md`](docs/tutorials/fullstack-sessions-auth.md) | Sessions / CSRF / jobs walkthrough |
 | [`Templates/`](Templates) | `malda new webapi` / `malda new fullstack` |
 | [`ReferenceManual/`](ReferenceManual) | Language reference (HTML) |
 | [`vscode-malda/`](vscode-malda) | VS Code extension |

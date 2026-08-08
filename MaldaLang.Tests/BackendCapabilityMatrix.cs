@@ -121,4 +121,25 @@ public static class BackendCapabilityMatrix
             _ => backend.ToString().ToLowerInvariant()
         };
     }
+
+    /// <summary>
+    /// Every capability tag registered for any backend. Used by
+    /// <c>BackendCapabilityMatrixGuardTests</c> to keep
+    /// <c>docs/spec/backend-capability-matrix.md</c> from drifting.
+    /// </summary>
+    public static IReadOnlyCollection<string> AllCapabilityTags()
+    {
+        return SupportedCapabilities.Values
+            .SelectMany(set => set)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(tag => tag, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    public static IReadOnlySet<string> CapabilitiesFor(PropertyBackend backend)
+    {
+        return SupportedCapabilities.TryGetValue(backend, out var set)
+            ? set
+            : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    }
 }

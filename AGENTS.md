@@ -101,6 +101,13 @@ Longer overview: [`docs/architecture.md`](docs/architecture.md).
 8. **Licensing is dual `MIT OR Apache-2.0`.** New C# files carry `// SPDX-License-Identifier: MIT OR Apache-2.0` under the copyright line. Never write "All rights reserved", never add a file named `NOTICE`, and never offer only one of the two licences — `LicenseHeaderGuardTests` fails on all three. If you change what the transpilers emit into user programs, update the "Runtime Material" list in `LICENSE-RUNTIME-EXCEPTION`.
 9. **Release version is one number.** When cutting a release, set the same `<Version>` in `MaldaLang/MaldaLang.csproj` and `MaldaLang.DesktopIDE/MaldaLang.DesktopIDE.csproj`, add `docs/releases/vX.Y.Z.md`, then tag `vX.Y.Z`. `ReleaseVersionGuardTests` and the Release workflow fail on drift; `build-oss-dist.ps1` reads the CLI csproj for zip names.
 
+## Built-in surface (soft freeze)
+
+The stdlib is large (~300+ names). Prefer extending existing namespaces (`math` / `str` /
+`io` / web helpers) over adding new top-level globals. Flat aliases are deprecated — do not
+add new ones. Every new built-in must complete the checklist below and land with filtered
+tests; drive-by “nice to have” builtins are out of scope for focused PRs.
+
 ## New built-in checklist (summary)
 
 1. Implement in `MaldaLang/BuiltIns/BuiltInFunctions.cs` (or related BuiltIns type)
@@ -112,6 +119,8 @@ Longer overview: [`docs/architecture.md`](docs/architecture.md).
 6. Name it somewhere in `ReferenceManual/*.html` (the coverage guard fails otherwise)
 7. Regenerate the agent lookup table: `pwsh scripts/sync-llm-builtins-tsv.ps1`
 8. Rebuild and smoke-test interpreted + transpiled paths
+9. Update `docs/llm/` gotchas/syntax when the built-in has agent-facing footguns; bump the
+   pack `Applies to` version when cutting the release that ships it
 
 ## Debugging transpile failures
 

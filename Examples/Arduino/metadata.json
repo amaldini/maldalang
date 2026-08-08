@@ -1,0 +1,22 @@
+{
+  "examples": [
+    {
+      "name": "Arduino serial bridge",
+      "description": "Arduino sketch for the MALDA serial bridge",
+      "file": "arduino_bridge.ino",
+      "track": "showcase",
+      "difficulty": "advanced",
+      "requires": ["network"],
+      "learningGoal": "Pair firmware with MALDA SerialConnection / ArduinoConnection examples elsewhere in the repo."
+    },
+    {
+      "name": "ESP32 bridge",
+      "description": "ESP32 sketch for the MALDA bridge",
+      "file": "esp32_bridge.ino",
+      "track": "showcase",
+      "difficulty": "advanced",
+      "requires": ["network"],
+      "learningGoal": "Run the ESP32 side of the device bridge."
+    }
+  ]
+}

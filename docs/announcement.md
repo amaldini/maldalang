@@ -111,8 +111,8 @@ attribution obligation. No CLA.
 
 Honest about where it is: this is the first public drop of the core (0.1.0)
 and the spec is Draft 1.0. Type annotations parse and feed the language
-server but there is no static checker yet — it is dynamically typed at
-runtime. I do not run it in my day job either; that is large systems already
+server; literal initializer mismatches emit IDE Warnings, but there is
+no full static checker yet — it is dynamically typed at runtime. I do not run it in my day job either; that is large systems already
 in flight, and they do not get rewritten for an experiment. The full IDE is
 WPF, so Windows-only; the CLI, compiler and browser playground build and run
 on Linux in CI, macOS is untested. The JavaScript backend is a real subset —
@@ -226,8 +226,9 @@ over an existing language?") and anything else.
 > Honest about where it is: this is the first public drop of the core (0.1.0), not a 1.0
 > release. I do not run it in my day job either — that is large systems already in flight, and
 > they do not get rewritten for an experiment; MALDA is where I try things out.
-> The language spec is Draft 1.0. Type annotations parse and feed the language server but
-> there is no static checker yet — it is dynamically typed at runtime. The full-featured
+> The language spec is Draft 1.0. Type annotations parse and feed the language server; literal
+> initializer mismatches emit IDE Warnings, but there is no full static checker yet — it is
+> dynamically typed at runtime. The full-featured
 > IDE is WPF, so Windows-only; the CLI, the compiler and the browser playground build and
 > run on Linux in CI, but macOS is untested and the full test suite only runs on Windows.
 > The JavaScript backend is a real subset — no agents or servers in the browser path.

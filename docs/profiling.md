@@ -1,5 +1,8 @@
 # MALDA Profiling
 
+For coarse CLI / transpile / HTTP smoke timings, see [`docs/benchmarks.md`](benchmarks.md) and
+`scripts/run-micro-benchmarks.ps1`.
+
 MALDA includes a built-in profiler for finding performance bottlenecks in both interpreted runs and transpiled executables.
 
 The profiler is designed to help answer three practical questions:

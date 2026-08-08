@@ -119,9 +119,25 @@
       "prerequisites": ["Basics/functions.malda"],
       "learningGoal": "Handle failures and branch on values with match before moving to richer programs.",
       "expectedOutput": "Prints caught errors, cleanup from finally, and match labels for a status code.",
-      "next": "Basics/modules_include.malda",
+      "next": "Basics/schema_validate.malda",
       "documentationPath": "/?lesson=conditionals#lesson-conditionals",
       "documentationTitle": "Control Structures"
+    },
+    {
+      "name": "Schema Validate",
+      "description": "schema declaration plus validate() returning { ok, data|error }",
+      "file": "schema_validate.malda",
+      "track": "student",
+      "difficulty": "beginner",
+      "minutes": 8,
+      "requires": ["offline"],
+      "concepts": ["schema", "validate", "dict"],
+      "prerequisites": ["Basics/errors_and_match.malda"],
+      "learningGoal": "Validate structured values without relying on type hints or thrown parseJson errors.",
+      "expectedOutput": "Prints an ok Person line and an expected age-type failure.",
+      "next": "Basics/modules_include.malda",
+      "documentationPath": "/docs/tutorials/errors-and-validation.md",
+      "documentationTitle": "Errors and validation"
     },
     {
       "name": "Modules with Include",

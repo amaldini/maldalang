@@ -70,9 +70,10 @@ MALDA programs can host HTTP/UI via builtins and decorators (`@GET`, `@PAGE`, �
 |------|-------------|
 | `ReferenceManual/` | User-facing language reference |
 | `docs/spec/` | Spec / matrix notes |
+| `docs/spec/backend-capability-matrix.md` | Interpreter vs C# vs JS product capabilities |
 | `docs/start-here.md`, `docs/architecture.md` | Onboarding |
-| `docs/javascript-backend.md`, `docs/profiling.md`, … | Topic guides |
-| `docs/planning/` | Historical roadmap — verify against code before trusting |
+| `docs/javascript-backend.md`, `docs/profiling.md`, `docs/benchmarks.md`, … | Topic guides |
+| `docs/planning/` | Historical roadmap — verify against code / ReferenceManual / AGENTS.md ([README](planning/README.md)) |
 
 ## Design preferences (OSS)
 

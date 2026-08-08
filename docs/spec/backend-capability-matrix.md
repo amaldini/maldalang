@@ -1,0 +1,54 @@
+# Backend capability matrix (product surface)
+
+**Status:** Active  
+**Code source of truth for property-test tags:** [`MaldaLang.Tests/BackendCapabilityMatrix.cs`](../../MaldaLang.Tests/BackendCapabilityMatrix.cs)  
+**Tier 0 construct suite:** [`tier0-backend-matrix.md`](tier0-backend-matrix.md)
+
+MALDA programs can run as:
+
+| Backend | How |
+|---------|-----|
+| **Interpreter** | `malda prog.malda` |
+| **C# transpile** | `malda compile prog.malda --mode transpile -o out.exe` |
+| **JavaScript** | `malda compile prog.malda --mode js` (browser / Node + runtime) |
+
+Interpreter and C# share the host runtime surface. JavaScript is a **real subset** (DOM / game helpers, not agents or HTTP servers).
+
+## Property-test capability tags
+
+These strings are what `@property` / `runProperty` use via `GetRequiredCapabilities()`. A guard test fails if a tag below is missing from this file.
+
+| Capability tag | Interpreter | C# transpile | JavaScript |
+|----------------|:-----------:|:------------:|:----------:|
+| `core` | yes | yes | yes |
+| `file-io` | yes | yes | no |
+| `actors` | yes | yes | no |
+| `workflows` | yes | yes | no |
+| `dotnet-interop` | yes | yes | no |
+| `host-interop` | yes | yes | no |
+| `web-dom` | no* | no* | yes |
+| `game-canvas` | no* | no* | yes |
+
+\* `web-dom` / `game-canvas` are JS-target capabilities. Host backends may still expose related APIs in other forms; property tests that require these tags only run on JS.
+
+## Product features (what to expect)
+
+| Feature | Interpreter | C# transpile | JavaScript |
+|---------|:-----------:|:------------:|:----------:|
+| Core language (vars, functions, classes, match, async/await) | yes | yes | yes (Tier 0 subset) |
+| Standard library (`math` / `str` / `io`, AnsiConsole) | yes | yes | partial (`io` / console subset) |
+| File I/O | yes | yes | no |
+| Actors (`spawn` / `send` / `on`) | yes | yes | limited demos only |
+| Durable workflows (`workflow` / `step`) | yes | yes | no |
+| Agents / prompts / MCP / ACP | yes | yes | no |
+| HttpServer / RestServer / sessions / jobs | yes | yes | no |
+| Browser `dom.*` / `three.*` / game canvas | n/a | n/a | yes |
+| .NET interop | yes | yes | no |
+
+When in doubt, smoke both interpreter and transpile for shippable `.exe`s, and treat JS as browser-only. Silent interpreter≠transpile footguns: [`docs/llm/malda-gotchas.md`](../llm/malda-gotchas.md).
+
+## Related
+
+- Architecture overview: [`docs/architecture.md`](../architecture.md)
+- JS backend notes: [`docs/javascript-backend.md`](../javascript-backend.md)
+- Examples catalog: [`Examples/README.md`](../../Examples/README.md)

@@ -16,6 +16,11 @@ public class ExampleProgram
     public int? Minutes { get; set; }
     public List<string> Concepts { get; set; } = new();
     public List<string> Prerequisites { get; set; } = new();
+    /// <summary>
+    /// Optional dependency tags from metadata (<c>offline</c>, <c>network</c>, <c>api-key</c>, <c>db</c>).
+    /// Empty means treat as offline-friendly for the Web IDE playground filter.
+    /// </summary>
+    public List<string> Requires { get; set; } = new();
     public string LearningGoal { get; set; } = string.Empty;
     public string ExpectedOutput { get; set; } = string.Empty;
     public string Next { get; set; } = string.Empty;

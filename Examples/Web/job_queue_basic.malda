@@ -1,0 +1,25 @@
+// job_queue_basic.malda — lightweight SQLite job queue (not durable workflows)
+//
+// Run: malda Examples/Web/job_queue_basic.malda
+// Writes under ./.malda/jobs.db relative to the process working directory.
+
+print("Enqueue two mail jobs...");
+var id1 = enqueueJob("mail", { "to": "ada@example.com", "subject": "Hello" });
+var id2 = enqueueJob("mail", { "to": "grace@example.com", "subject": "Hi" }, { "maxAttempts": 2 });
+print("ids: " + id1 + ", " + id2);
+
+print("Worker claims and completes...");
+var job = claimJob("mail", "worker-demo");
+while (job != null) {
+    print("claimed " + job.id + " payload=" + toJSON(job.payload));
+    completeJob(job.id, { "sent": true });
+    job = claimJob("mail", "worker-demo");
+}
+
+print("Succeeded jobs:");
+var done = listJobs("mail", "succeeded", 10);
+foreach (var row in done) {
+    print("  " + row.id + " result=" + toJSON(row.result));
+}
+
+print("Done. This queue is separate from workflow { } durable steps.");

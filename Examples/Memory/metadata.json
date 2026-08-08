@@ -1,0 +1,24 @@
+{
+  "examples": [
+    {
+      "name": "Shared GraphMemory",
+      "description": "Two agents share one GraphMemory instance",
+      "file": "shared_memory.malda",
+      "track": "ai-builder",
+      "difficulty": "intermediate",
+      "requires": ["api-key"],
+      "concepts": ["GraphMemory", "Agent", "remember", "query"],
+      "learningGoal": "Share memory across agents with persist/load."
+    },
+    {
+      "name": "Multi-agent shared memory",
+      "description": "Multi-agent GraphMemory collaboration sample",
+      "file": "multi_agent_shared.malda",
+      "track": "ai-builder",
+      "difficulty": "intermediate",
+      "requires": ["api-key"],
+      "concepts": ["GraphMemory", "multi-agent"],
+      "learningGoal": "Coordinate several agents on one memory store."
+    }
+  ]
+}

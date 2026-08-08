@@ -68,6 +68,7 @@ public class ExampleProgramsService
                                 Minutes = exampleMeta.Minutes,
                                 Concepts = exampleMeta.Concepts ?? new List<string>(),
                                 Prerequisites = exampleMeta.Prerequisites ?? new List<string>(),
+                                Requires = exampleMeta.Requires ?? new List<string>(),
                                 LearningGoal = exampleMeta.LearningGoal,
                                 ExpectedOutput = exampleMeta.ExpectedOutput,
                                 Next = exampleMeta.Next,
@@ -190,6 +191,7 @@ public class ExampleProgramsService
         public int? Minutes { get; set; }
         public List<string>? Concepts { get; set; }
         public List<string>? Prerequisites { get; set; }
+        public List<string>? Requires { get; set; }
         public string LearningGoal { get; set; } = string.Empty;
         public string ExpectedOutput { get; set; } = string.Empty;
         public string Next { get; set; } = string.Empty;
@@ -286,6 +288,25 @@ public class ExampleProgramsService
         return GetExamplesSorted()
             .Where(example => example.Track.Equals(track, StringComparison.OrdinalIgnoreCase))
             .ToList();
+    }
+
+    /// <summary>
+    /// True when the example is suitable for the browser playground without API keys,
+    /// databases, or a long-lived network server. Missing <c>requires</c> counts as offline.
+    /// </summary>
+    public static bool IsOfflineFriendly(ExampleProgram example)
+    {
+        if (example.Requires == null || example.Requires.Count == 0)
+            return true;
+
+        foreach (var tag in example.Requires)
+        {
+            if (string.Equals(tag, "offline", StringComparison.OrdinalIgnoreCase))
+                continue;
+            return false;
+        }
+
+        return true;
     }
     
     /// <summary>

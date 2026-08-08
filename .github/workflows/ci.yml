@@ -24,7 +24,7 @@ jobs:
       - name: Smoke tests (filtered)
         run: >
           dotnet test MaldaLang.Tests -c Release --no-build
-          --filter "FullyQualifiedName~BuiltInRegistryTests|FullyQualifiedName~CompilerPackDecouplingGuardTests|FullyQualifiedName~OptionalPackTranspileEmitTests|FullyQualifiedName~LicenseHeaderGuardTests|FullyQualifiedName~ReleaseVersionGuardTests|FullyQualifiedName~ReferenceManual"
+          --filter "FullyQualifiedName~BuiltInRegistryTests|FullyQualifiedName~CompilerPackDecouplingGuardTests|FullyQualifiedName~OptionalPackTranspileEmitTests|FullyQualifiedName~LicenseHeaderGuardTests|FullyQualifiedName~ReleaseVersionGuardTests|FullyQualifiedName~ReferenceManual|FullyQualifiedName~BackendCapabilityMatrixGuardTests"
           --verbosity minimal
 
   build-linux:
@@ -51,6 +51,37 @@ jobs:
       # Deliberately narrower than the Windows job: these two guards are pure source and
       # registry scans, so they are the subset known to be platform-neutral. Broadening
       # Linux test coverage is tracked work, not a solved problem.
+      - name: Platform-neutral guard tests
+        run: >
+          dotnet test MaldaLang.Tests -c Release --no-build
+          --filter "FullyQualifiedName~BuiltInRegistryTests|FullyQualifiedName~LicenseHeaderGuardTests|FullyQualifiedName~ReleaseVersionGuardTests"
+          --verbosity minimal
+
+      - name: Run an example through the CLI
+        run: |
+          dotnet build MaldaLang -c Release -o artifacts/malda-cli --verbosity minimal
+          ./artifacts/malda-cli/malda Examples/Basics/hello_world.malda
+
+  build-macos:
+    name: Build and run CLI (macOS)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      # Same cross-platform set as Linux (no WPF Desktop IDE).
+      - name: Build cross-platform projects
+        run: |
+          dotnet build MaldaLang -c Release --verbosity minimal
+          dotnet build MaldaLang.Compiler -c Release --verbosity minimal
+          dotnet build MaldaLang.LanguageServer -c Release --verbosity minimal
+          dotnet build MaldaLang.IDE -c Release --verbosity minimal
+          dotnet build MaldaLang.Tests -c Release --verbosity minimal
+
       - name: Platform-neutral guard tests
         run: >
           dotnet test MaldaLang.Tests -c Release --no-build

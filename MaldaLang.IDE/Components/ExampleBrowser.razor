@@ -25,6 +25,12 @@
                             @track.Label
                         </button>
                     }
+                    <button type="button"
+                            class="track-chip @(offlineOnly ? "active" : "")"
+                            @onclick="ToggleOfflineOnly"
+                            title="Hide examples that need API keys, databases, or a network server">
+                        Offline-friendly
+                    </button>
                 </div>
                 
                 <!-- Main Content: Categories, Examples, Preview -->
@@ -67,7 +73,7 @@
                                             }
                                         </div>
                                         <div style="font-size: 0.9em; color: #666;">@example.Description</div>
-                                        @if (example.Minutes.HasValue || !string.IsNullOrEmpty(example.Track))
+                                        @if (example.Minutes.HasValue || !string.IsNullOrEmpty(example.Track) || example.Requires.Count > 0)
                                         {
                                             <div class="example-meta-line">
                                                 @if (example.Minutes.HasValue)
@@ -77,6 +83,10 @@
                                                 @if (!string.IsNullOrEmpty(example.Track))
                                                 {
                                                     <span>@GetTrackLabel(example.Track)</span>
+                                                }
+                                                @if (example.Requires.Count > 0)
+                                                {
+                                                    <span>requires: @string.Join(", ", example.Requires)</span>
                                                 }
                                             </div>
                                         }
@@ -247,6 +257,7 @@
     private ExampleProgram? selectedExample;
     private string searchQuery = string.Empty;
     private string selectedTrack = "all";
+    private bool offlineOnly = true;
     private string previewEditorId = "monaco-preview-" + Guid.NewGuid().ToString("N")[..8];
     private bool editorInitialized = false;
     private readonly (string Id, string Label)[] trackFilters =
@@ -367,6 +378,7 @@
         selectedExample = null;
         searchQuery = string.Empty;
         selectedTrack = "all";
+        offlineOnly = true;
 
         // Get examples sorted by category order (matching reference manual)
         var examples = ExampleProgramsService.GetExamplesSorted();
@@ -438,6 +450,13 @@
         ApplyFilters();
     }
 
+    private void ToggleOfflineOnly()
+    {
+        offlineOnly = !offlineOnly;
+        selectedExample = null;
+        ApplyFilters();
+    }
+
     private void ApplyFilters()
     {
         filteredExamples.Clear();
@@ -453,6 +472,11 @@
         if (!string.Equals(selectedTrack, "all", StringComparison.OrdinalIgnoreCase))
         {
             filtered = filtered.Where(ex => ex.Track.Equals(selectedTrack, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (offlineOnly)
+        {
+            filtered = filtered.Where(ExampleProgramsService.IsOfflineFriendly);
         }
 
         // Filter by search query

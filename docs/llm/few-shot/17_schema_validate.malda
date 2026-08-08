@@ -1,0 +1,15 @@
+// schema + validate — failure is { ok: false, error }, not an exception.
+// parseJson(text, "Name") throws on mismatch; validate does not.
+
+schema Item {
+    id: int;
+    label: string;
+}
+
+var candidate = dict { "id": 1, "label": "widget" };
+var checked = validate("Item", candidate);
+if (checked.ok) {
+    io.print($"item {checked.data.id}: {checked.data.label}");
+} else {
+    io.print("invalid: " + checked.error);
+}

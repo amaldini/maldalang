@@ -32,4 +32,4 @@ dotnet test MaldaLang.Tests --filter "FullyQualifiedName~Tier0MaldaConformanceTe
 |---------|-----|-------|
 | Interpreter | Yes | Default gate |
 | C# transpile | Yes | Subset with documented skips |
-| JavaScript | Pilot (89 cases) | Opt-in when Node + runtime present; see [phase-5-js-tier0-rollout.md](../../docs/planning/phase-5-js-tier0-rollout.md) |
+| JavaScript | Pilot (101 cases) | Opt-in when Node + runtime present; see [phase-5-js-tier0-rollout.md](../../docs/planning/phase-5-js-tier0-rollout.md) |

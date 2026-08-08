@@ -72,6 +72,12 @@ What to expect today:
 
 This path emphasizes **MALDA Web** plus the scaffolding and deploy baseline from **MALDA Workflow/Cloud**.
 
+For sessions, cookie login, CSRF forms, and the lightweight job queue, follow the end-to-end
+walkthrough: [`docs/tutorials/fullstack-sessions-auth.md`](tutorials/fullstack-sessions-auth.md).
+
+For tagged `catch`, `result`/`option`, and `schema`/`validate`, see
+[`docs/tutorials/errors-and-validation.md`](tutorials/errors-and-validation.md).
+
 ## 4. Build Workflows
 
 Choose this path if your first use case is durable background processing, instance inspection, retries, and operational workflow tooling.

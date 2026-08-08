@@ -558,7 +558,7 @@ malda test --write-regression --regression-dir ./artifacts/regressions</code></p
             <li><strong>Invented built-ins.</strong> A plausible name from another language will not resolve. <code>println</code> is the usual casualty; the call is <code>print</code>. Grep <code>docs/llm/malda-builtins.tsv</code>, which is generated from the engine, or read <a href="11-built-in-functions.html">12. Built-in Functions</a>.</li>
             <li><strong>String interpolation outside a prompt body.</strong> <code>"n is {n}"</code> prints literally; it does not raise. Concatenate with <code>+ string(n)</code>.</li>
             <li><strong>Interpreter-only built-ins in compiled targets.</strong> A program that runs interpreted may fail to transpile. Verify with <code>malda compile</code> before promising an executable.</li>
-            <li><strong>Type annotations treated as enforcement.</strong> Annotations parse and feed the language server, but nothing checks them at runtime, so an agent should not rely on them for validation.</li>
+            <li><strong>Type annotations treated as enforcement.</strong> Annotations parse and feed the language server. Literal initializer mismatches produce a Warning in the IDE/LSP, but nothing checks hints at runtime, so an agent should not rely on them for validation.</li>
         </ul>
 
         <div class="see-also">

@@ -2,7 +2,8 @@
 
 **Status:** Active (2026-06-04)  
 **Suite:** `conformance/tier0/`  
-**Runner:** `MaldaLang.Tests/Conformance/Tier0/Tier0ConformanceRunner.cs`
+**Runner:** `MaldaLang.Tests/Conformance/Tier0/Tier0ConformanceRunner.cs`  
+**Product-level features (agents, HTTP, DOM):** see [backend-capability-matrix.md](backend-capability-matrix.md)
 
 ## Backends in CI
 
