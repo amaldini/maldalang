@@ -10,16 +10,25 @@ Tiny programs for LLM context. Larger curated samples live under `Examples/`.
 | `02_vars_control.malda` | vars, if, loops |
 | `03_functions.malda` | functions + lambda |
 | `04_prompt.malda` | prompt block |
-| `05_rest_get.malda` | `@GET` handler shape |
+| `05_rest_get.malda` | `@GET` handler shape (no `RestServer.start`) |
 | `06_actor_counter.malda` | actor + send + sleep (flat `print` inside handlers — `io` is out of scope there) |
 | `07_input_loop.malda` | `io.input` + validation + seeded randomness, testable from a piped transcript |
 | `08_ansi_console.malda` | `AnsiConsole` markup, panel, table, tree, status, progress (+ prompt shape) |
 | `09_collections.malda` | array mutation, `.length`, object fields, foreach |
 | `10_strings.malda` | `$"..."` interpolation vs plain strings and concatenation |
+| `11_errors_match.malda` | `try` / `catch` / `finally`, tagged catch, `match` |
+| `12_include.malda` | `include` splice (+ `helpers/greet_lib.malda`) |
+| `13_http_client.malda` | `httpGet` / `httpPost` against a local echo `RestServer` |
+| `14_assert_test.malda` | `assert` unit checks (`malda test` needs `*.test.malda`) |
+| `15_bearer_jwt_shape.malda` | `createJwt` / `verifyJwt` + Bearer middleware shape (no server loop) |
+| `16_workflow_retry.malda` | `workflow` + `retry`, `startWorkflow`, inspect / dead letters |
 
 Also useful from the main tree:
 
-- `Examples/Basics/*`
-- `Examples/Prompts/basic_prompt.malda`
+- `Examples/Basics/errors_and_match.malda`, `Examples/Basics/modules_include.malda`
+- `Examples/Testing/unit_test_basics.test.malda`
+- `Examples/Web/http_client_json.malda`, `Examples/Web/rest_bearer_jwt.malda`, `Examples/Web/auth_cookie_login.malda`
 - `Examples/Web/rest_api_server.malda`
+- `Examples/Workflows/retry_and_inspect.malda`
+- `Examples/Prompts/basic_prompt.malda`
 - `Examples/Actors/basic_counter.malda`

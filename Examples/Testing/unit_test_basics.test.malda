@@ -1,0 +1,34 @@
+// unit_test_basics.test.malda — assert-based unit checks (no property decls)
+// Run: malda test Examples/Testing/unit_test_basics.test.malda
+//
+// Discovery: *.test.malda / *.spec.malda (or files under tests/).
+// The runner executes the whole script; assert(...) throws on failure.
+
+function add(a, b) {
+    return a + b;
+}
+
+function factorial(n) {
+    if (n <= 1) {
+        return 1;
+    }
+    return n * factorial(n - 1);
+}
+
+function bound(value, lo, hi) {
+    if (value < lo) {
+        return lo;
+    }
+    if (value > hi) {
+        return hi;
+    }
+    return value;
+}
+
+assert(add(2, 3) == 5, "add(2, 3) should be 5");
+assert(factorial(5) == 120, "factorial(5) should be 120");
+assert(bound(15, 0, 10) == 10, "bound should cap at hi");
+assert(bound(-3, 0, 10) == 0, "bound should floor at lo");
+assert(bound(7, 0, 10) == 7, "bound should pass through in-range values");
+
+print("unit_test_basics: all asserts passed");

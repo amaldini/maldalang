@@ -1,0 +1,44 @@
+// Durable workflow with retry + inspect. Local SQLite at ./.malda/workflows.db.
+// Larger sample: Examples/Workflows/retry_and_inspect.malda
+
+var attempt = 0;
+
+function flakyThenOk() {
+    attempt = attempt + 1;
+    if (attempt < 2) {
+        error("temporary glitch");
+    }
+    return "ok on attempt " + attempt;
+}
+
+function alwaysFail() {
+    error("storage unavailable");
+}
+
+workflow RecoverableJob(input) {
+    step result = flakyThenOk() retry 2 backoff "fixed" delay 1;
+    return result;
+}
+
+workflow TerminalFailJob(input) {
+    step task = alwaysFail() retry 1 backoff "fixed" delay 1;
+    return task;
+}
+
+var okId = startWorkflow("RecoverableJob", null);
+io.print($"ok id={okId} status={getWorkflowStatus(okId)}");
+
+try {
+    startWorkflow("TerminalFailJob", null);
+} catch (err) {
+    io.print("terminal failure (expected): " + err);
+}
+
+var failed = listWorkflows("FAILED", "TerminalFailJob", 5);
+if (length(failed) > 0) {
+    var id = failed[0].id;
+    var steps = getWorkflowSteps(id);
+    io.print($"failed id={id} steps={length(steps)}");
+}
+
+io.print($"dead letters={length(listWorkflowDeadLetters(10, false))}");

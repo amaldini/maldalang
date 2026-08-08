@@ -36,9 +36,53 @@
                                            ],
                          "learningGoal":  "Move from scripts to server capabilities using MALDA\u0027s built-in REST features.",
                          "expectedOutput":  "Starts a REST server with MALDA-defined endpoints.",
-                         "next":  "Web/ui_controls_showcase_minimal.malda",
+                         "next":  "Web/http_client_json.malda",
                          "documentationPath":  "/?lesson=build-ai-apps#lesson-build-ai-apps",
                          "documentationTitle":  "Build AI Apps"
+                     },
+                     {
+                         "name":  "HTTP Client JSON",
+                         "description":  "httpGet/httpPost against a local RestServer echo endpoint",
+                         "file":  "http_client_json.malda",
+                         "track":  "ai-builder",
+                         "difficulty":  "intermediate",
+                         "minutes":  12,
+                         "concepts":  [
+                                          "httpGet",
+                                          "httpPost",
+                                          "toJSON",
+                                          "RestServer"
+                                      ],
+                         "prerequisites":  [
+                                               "Web/rest_api_server.malda"
+                                           ],
+                         "learningGoal":  "Call HTTP APIs from MALDA using the outbound client helpers against a loopback echo server.",
+                         "expectedOutput":  "Starts a short-lived echo server, prints GET/POST JSON responses, then stops.",
+                         "next":  "Web/rest_bearer_jwt.malda",
+                         "documentationPath":  "/?lesson=build-ai-apps#lesson-build-ai-apps",
+                         "documentationTitle":  "REST Client"
+                     },
+                     {
+                         "name":  "REST Bearer JWT",
+                         "description":  "RestServer login issuing JWT plus authenticateBearerJwt middleware",
+                         "file":  "rest_bearer_jwt.malda",
+                         "track":  "ai-builder",
+                         "difficulty":  "intermediate",
+                         "minutes":  16,
+                         "concepts":  [
+                                          "createJwt",
+                                          "authenticateBearerJwt",
+                                          "requireRole",
+                                          "RestServer middleware"
+                                      ],
+                         "prerequisites":  [
+                                               "Web/http_client_json.malda"
+                                           ],
+                         "learningGoal":  "Protect REST routes with Bearer JWT after learning cookie-based HttpServer auth.",
+                         "expectedOutput":  "Serves login/profile/admin routes on port 8081 and prints curl examples.",
+                         "next":  "Web/ui_controls_showcase_minimal.malda",
+                         "documentationPath":  "/?lesson=build-ai-apps#lesson-build-ai-apps",
+                         "documentationTitle":  "Web Auth"
                      },
                      {
                          "name":  "HttpServer with Static and Dynamic Pages",
@@ -103,7 +147,7 @@
                                            ],
                          "learningGoal":  "Replace demo plaintext login with production-shaped password hashing and JWT cookie auth on HttpServer.",
                          "expectedOutput":  "Serves a login form; successful sign-in sets a signed JWT cookie and opens a protected dashboard.",
-                         "next":  "Web/ui_controls_showcase_minimal.malda",
+                         "next":  "Web/rest_bearer_jwt.malda",
                          "documentationPath":  "/?lesson=build-ai-apps#lesson-build-ai-apps",
                          "documentationTitle":  "Web Auth"
                      },

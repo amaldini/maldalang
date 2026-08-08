@@ -1,0 +1,6 @@
+// include splices another .malda at top level (relative to this file).
+// Different from import/export packaging — see the Reference Manual.
+
+include "helpers/greet_lib.malda";
+
+io.print(greet("MALDA"));

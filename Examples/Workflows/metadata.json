@@ -1,0 +1,34 @@
+{
+  "examples": [
+    {
+      "name": "Simple Step",
+      "description": "Minimal workflow with a single step",
+      "file": "simple_step.malda",
+      "track": "ai-builder",
+      "difficulty": "beginner",
+      "minutes": 8,
+      "concepts": ["workflow", "step"],
+      "prerequisites": ["Basics/functions.malda"],
+      "learningGoal": "See the smallest durable workflow declaration.",
+      "expectedOutput": "Declares a one-step workflow (use retry_and_inspect to run and inspect).",
+      "next": "Workflows/retry_and_inspect.malda",
+      "documentationPath": "/?lesson=build-ai-apps#lesson-build-ai-apps",
+      "documentationTitle": "Durable Workflows"
+    },
+    {
+      "name": "Retry and Inspect",
+      "description": "startWorkflow with retry, inspect FAILED instances, peek dead letters",
+      "file": "retry_and_inspect.malda",
+      "track": "ai-builder",
+      "difficulty": "intermediate",
+      "minutes": 15,
+      "concepts": ["startWorkflow", "retry", "listWorkflows", "getWorkflowSteps", "listWorkflowDeadLetters"],
+      "prerequisites": ["Workflows/simple_step.malda", "Basics/errors_and_match.malda"],
+      "learningGoal": "Run local durable workflows, recover from flaky steps, and inspect failures without cloud infra.",
+      "expectedOutput": "Prints a successful retry run, then FAILED inspection and dead-letter count; exits 0.",
+      "documentationPath": "/?lesson=build-ai-apps#lesson-build-ai-apps",
+      "documentationTitle": "Durable Workflows",
+      "featured": true
+    }
+  ]
+}

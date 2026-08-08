@@ -1,0 +1,60 @@
+// http_client_json.malda — outbound httpGet/httpPost against a local echo server
+// Run: malda Examples/Web/http_client_json.malda
+// Uses loopback only (no external network).
+
+var port = 8091;
+var baseUrl = "http://localhost:" + port;
+
+@GET("/api/echo")
+function echoGet(msg) {
+    var text = msg;
+    if (text == null) {
+        text = "";
+    }
+    return {
+        "ok": true,
+        "echo": text
+    };
+}
+
+@POST("/api/echo")
+function echoPost(body) {
+    return {
+        "ok": true,
+        "received": body
+    };
+}
+
+var server = new RestServer(port, "localhost");
+server.start();
+sleep(200);
+
+print("=== httpGet ===");
+var getRes = httpGet(baseUrl + "/api/echo?msg=hello");
+print("ok=" + getRes.ok + " status=" + getRes.status);
+if (getRes.ok) {
+    print("body=" + toJSON(getRes.body));
+} else {
+    print("error=" + getRes.error);
+}
+
+print("=== httpPost JSON ===");
+var payload = {
+    "name": "Ada",
+    "role": "builder"
+};
+var headers = {
+    "Content-Type": "application/json"
+};
+var postRes = httpPost(baseUrl + "/api/echo", payload, headers);
+print("ok=" + postRes.ok + " status=" + postRes.status);
+if (postRes.ok) {
+    print("body=" + toJSON(postRes.body));
+    var parsed = postRes.body;
+    print("received.name=" + parsed.received.name);
+} else {
+    print("error=" + postRes.error);
+}
+
+server.stop();
+print("Done.");

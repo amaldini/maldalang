@@ -1,0 +1,10 @@
+// Shared helpers included by modules_include.malda
+// include splices this file into the caller (top-level only).
+
+function greet(name) {
+    return "Hello, " + name + "!";
+}
+
+function add(a, b) {
+    return a + b;
+}

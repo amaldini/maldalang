@@ -1,0 +1,35 @@
+// try/catch/finally and match. Prefer io.print outside actor handlers.
+
+try {
+    throw "something went wrong";
+} catch (error) {
+    io.print("caught: " + error);
+}
+
+try {
+    throw dict { "kind": "IO", "message": "disk full" };
+} catch (e if e.kind == "IO") {
+    io.print("IO: " + e.message);
+} catch (e) {
+    io.print("other: " + e);
+}
+
+try {
+    io.print("in try");
+} finally {
+    io.print("cleanup");
+}
+
+var status = 404;
+var label = match status {
+    case 200: "ok";
+    case 404: "not found";
+    default: "other";
+};
+io.print($"status {status} => {label}");
+
+match status {
+    case 200: io.print("success path");
+    case 404: io.print("missing resource");
+    default: io.print("unexpected status");
+}

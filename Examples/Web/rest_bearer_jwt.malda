@@ -1,0 +1,97 @@
+// rest_bearer_jwt.malda — RestServer login + Bearer JWT middleware
+// Run: malda Examples/Web/rest_bearer_jwt.malda
+// Then try the curl examples printed below (port 8081).
+//
+// Demo users: alice / password  (role: user)
+//             admin / password  (role: admin)
+
+var port = 8081;
+var jwtSecret = getEnv("MALDA_JWT_SECRET");
+if (jwtSecret == null or jwtSecret == "") {
+    jwtSecret = "dev-only-jwt-secret-change-me";
+}
+
+var passwordHash = hashPassword("password");
+var users = dict {
+    "alice": dict { "hash": passwordHash, "role": "user" },
+    "admin": dict { "hash": passwordHash, "role": "admin" }
+};
+
+function requireAuth(req, res, next) {
+    req.auth.authenticateBearerJwt(jwtSecret);
+    next();
+}
+
+@GET("/api/health")
+function health() {
+    return {
+        "status": "ok"
+    };
+}
+
+@POST("/api/login")
+function login(body) {
+    var username = body.username;
+    var password = body.password;
+    var user = users[username];
+    if (user == null or not verifyPassword(password, user.hash)) {
+        return {
+            "error": "invalid credentials"
+        };
+    }
+
+    var token = createJwt({
+        "sub": username,
+        "role": user.role
+    }, jwtSecret, {
+        "expiresInSeconds": 3600,
+        "issuer": "malda-bearer-example",
+        "audience": "malda-api"
+    });
+
+    return {
+        "token": token,
+        "tokenType": "Bearer",
+        "expiresInSeconds": 3600
+    };
+}
+
+@GET("/api/profile")
+function profile(req) {
+    return {
+        "verified": req.auth.verified,
+        "sub": req.auth.sub,
+        "role": req.auth.claim("role", "user"),
+        "isAdmin": req.auth.hasRole("admin")
+    };
+}
+
+@GET("/api/admin/stats")
+function adminStats(req) {
+    req.auth.requireRole("admin");
+    return {
+        "users": 2,
+        "note": "admin-only route"
+    };
+}
+
+var server = new RestServer(port, "localhost");
+server.use(requireAuth, {
+    "except": ["/api/health", "/api/login"]
+});
+server.start();
+
+print("Bearer JWT API at http://localhost:" + port + "/");
+print("Demo: alice/password (user) or admin/password (admin)");
+print("");
+print("curl examples:");
+print("  curl http://localhost:" + port + "/api/health");
+print("  curl -X POST http://localhost:" + port + "/api/login -H \"Content-Type: application/json\" -d \"{\\\"username\\\":\\\"alice\\\",\\\"password\\\":\\\"password\\\"}\"");
+print("  curl http://localhost:" + port + "/api/profile -H \"Authorization: Bearer <token>\"");
+print("  curl http://localhost:" + port + "/api/admin/stats -H \"Authorization: Bearer <admin-token>\"");
+print("");
+print("Press Ctrl+C to stop.");
+
+while (server.isRunning) {
+    sleep(1000);
+}

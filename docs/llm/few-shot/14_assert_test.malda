@@ -1,0 +1,18 @@
+// assert-based checks. Run: malda 14_assert_test.malda
+// For malda test discovery, name the file *.test.malda (or put it under tests/).
+// Do not declare property { } here — that switches the runner to property mode.
+
+function add(a, b) {
+    return a + b;
+}
+
+function bound(value, lo, hi) {
+    if (value < lo) { return lo; }
+    if (value > hi) { return hi; }
+    return value;
+}
+
+assert(add(2, 3) == 5, "add(2, 3)");
+assert(bound(15, 0, 10) == 10, "bound caps at hi");
+assert(bound(-1, 0, 10) == 0, "bound floors at lo");
+io.print("asserts passed");

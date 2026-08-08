@@ -1,0 +1,5 @@
+// Included by 12_include.malda (path relative to the including file).
+
+function greet(name) {
+    return "Hello, " + name + "!";
+}

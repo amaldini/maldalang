@@ -1,0 +1,78 @@
+// retry_and_inspect.malda — durable workflow retry, inspect, and dead-letter peek
+// Run: malda Examples/Workflows/retry_and_inspect.malda
+// Persistence: ./.malda/workflows.db (local SQLite; no cloud).
+//
+// CLI footnote (not used here): malda workflow list|get|steps|dlq|maintenance run ...
+
+var attempt = 0;
+
+function flakyThenOk() {
+    attempt = attempt + 1;
+    if (attempt < 2) {
+        error("temporary glitch on attempt " + attempt);
+    }
+    return "recovered on attempt " + attempt;
+}
+
+function alwaysFail() {
+    error("storage unavailable");
+}
+
+workflow RecoverableJob(input) {
+    step result = flakyThenOk() retry 2 backoff "fixed" delay 1;
+    return result;
+}
+
+workflow TerminalFailJob(input) {
+    step task = alwaysFail() retry 1 backoff "fixed" delay 1;
+    return task;
+}
+
+print("=== recoverable workflow (retries then succeeds) ===");
+var okId = startWorkflow("RecoverableJob", null);
+print("id=" + okId + " status=" + getWorkflowStatus(okId));
+var okSteps = getWorkflowSteps(okId);
+print("steps:");
+for (var k = 0; k < length(okSteps); k = k + 1) {
+    var okStep = okSteps[k];
+    print("  " + okStep.step_name + " state=" + okStep.state + " attempt=" + okStep.attempt +
+        " output=" + okStep.output_json);
+}
+
+print("=== terminal failure (caught so the script exits 0) ===");
+var failId = null;
+try {
+    failId = startWorkflow("TerminalFailJob", null);
+} catch (err) {
+    print("startWorkflow threw (expected): " + err);
+}
+
+var failed = listWorkflows("FAILED", "TerminalFailJob", 5);
+print("FAILED TerminalFailJob count=" + length(failed));
+if (length(failed) > 0) {
+    failId = failed[0].id;
+    print("inspect id=" + failId + " status=" + getWorkflowStatus(failId));
+
+    var steps = getWorkflowSteps(failId);
+    print("steps:");
+    for (var i = 0; i < length(steps); i = i + 1) {
+        var s = steps[i];
+        print("  " + s.step_name + " state=" + s.state + " attempt=" + s.attempt);
+    }
+
+    var events = getWorkflowEvents(failId, 20);
+    print("events:");
+    for (var j = 0; j < length(events); j = j + 1) {
+        var e = events[j];
+        print("  " + e.event_type);
+    }
+}
+
+var deadLetters = listWorkflowDeadLetters(20, false);
+print("pending dead letters=" + length(deadLetters));
+if (length(deadLetters) > 0) {
+    var dl = deadLetters[0];
+    print("  dlq step=" + dl.step_name + " workflow=" + dl.workflow_instance_id);
+}
+
+print("Done.");

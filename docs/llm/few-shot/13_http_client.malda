@@ -1,0 +1,30 @@
+// Outbound httpGet/httpPost against a local echo server (loopback only).
+// httpGet/httpPost/parseJSON/toJSON/sleep stay bare (no io./math. namespace).
+
+var port = 8092;
+var baseUrl = "http://localhost:" + port;
+
+@GET("/api/echo")
+function echoGet(msg) {
+    var text = msg == null ? "" : msg;
+    return { "ok": true, "echo": text };
+}
+
+@POST("/api/echo")
+function echoPost(body) {
+    return { "ok": true, "received": body };
+}
+
+var server = new RestServer(port, "localhost");
+server.start();
+sleep(200);
+
+var getRes = httpGet(baseUrl + "/api/echo?msg=hello");
+io.print($"GET ok={getRes.ok} body={toJSON(getRes.body)}");
+
+var postRes = httpPost(baseUrl + "/api/echo", { "name": "Ada" }, {
+    "Content-Type": "application/json"
+});
+io.print($"POST ok={postRes.ok} name={postRes.body.received.name}");
+
+server.stop();

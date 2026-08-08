@@ -1,6 +1,22 @@
 {
   "examples": [
     {
+      "name": "Unit Test Basics",
+      "description": "assert-based unit checks discovered via *.test.malda",
+      "file": "unit_test_basics.test.malda",
+      "track": "student",
+      "difficulty": "beginner",
+      "minutes": 8,
+      "concepts": ["assert", "malda test", "unit tests"],
+      "prerequisites": ["Basics/errors_and_match.malda"],
+      "learningGoal": "Learn the simplest MALDA test path: pure functions plus assert, run with malda test.",
+      "expectedOutput": "malda test reports a passing script after all asserts succeed.",
+      "next": "Testing/property_core_identity.malda",
+      "documentationPath": "/?lesson=testing-track#lesson-testing-track",
+      "documentationTitle": "Testing Track",
+      "featured": true
+    },
+    {
       "name": "Property Core Identity",
       "description": "Basic property tests with deterministic seed and iterations",
       "file": "property_core_identity.malda",
@@ -8,7 +24,7 @@
       "difficulty": "intermediate",
       "minutes": 10,
       "concepts": ["property", "deterministic testing", "invariants"],
-      "prerequisites": ["OOP/calculator.malda"],
+      "prerequisites": ["Testing/unit_test_basics.test.malda"],
       "learningGoal": "Introduce testing as a way to describe rules that should always stay true.",
       "expectedOutput": "Runs a property test with a deterministic seed and reports whether it passed.",
       "next": "Testing/run_property_inline.malda",
