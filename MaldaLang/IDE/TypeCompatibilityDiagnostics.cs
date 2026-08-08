@@ -11,7 +11,8 @@ using MaldaLang.Parser.AST.Expressions;
 using MaldaLang.Parser.AST.Statements;
 
 /// <summary>
-/// Checks type hints vs literal values on var/field initializers, call arguments, and returns.
+/// Checks type hints vs known values (literals and identifiers with hints) on
+/// var/field initializers, assignments, call arguments, and returns.
 /// Default severity is Warning (IDE/LSP). Under <c>--strict-types</c> mismatches are Errors.
 /// Does not enforce hints at runtime.
 /// </summary>
@@ -20,6 +21,53 @@ public static class TypeCompatibilityDiagnostics
     private sealed record FunctionHints(
         IReadOnlyList<string?> ParameterHints,
         string? ReturnType);
+
+    private sealed class HintEnv
+    {
+        private readonly Stack<Dictionary<string, string>> _scopes = new();
+
+        public HintEnv()
+        {
+            PushScope();
+        }
+
+        public void PushScope() =>
+            _scopes.Push(new Dictionary<string, string>(StringComparer.Ordinal));
+
+        public void PopScope()
+        {
+            if (_scopes.Count > 1)
+                _scopes.Pop();
+        }
+
+        public void Declare(string name, string typeHint)
+        {
+            if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(typeHint))
+                return;
+            if (string.Equals(typeHint, "any", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(typeHint, "void", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            if (Tier0TypeTags.NormalizeToCanonical(typeHint) == null)
+                return;
+
+            _scopes.Peek()[name] = typeHint;
+        }
+
+        public bool TryLookup(string name, out string typeHint)
+        {
+            foreach (var scope in _scopes)
+            {
+                if (scope.TryGetValue(name, out typeHint!))
+                    return true;
+            }
+
+            typeHint = null!;
+            return false;
+        }
+    }
 
     public static void Validate(
         IEnumerable<Statement> statements,
@@ -30,9 +78,10 @@ public static class TypeCompatibilityDiagnostics
         var list = statements as IList<Statement> ?? statements.ToList();
         var functions = new Dictionary<string, FunctionHints>(StringComparer.Ordinal);
         CollectFunctions(list, functions);
+        var env = new HintEnv();
 
         foreach (var stmt in list)
-            VisitStatement(stmt, functions, currentReturn: null, diagnostics, options);
+            VisitStatement(stmt, functions, env, currentReturn: null, diagnostics, options);
     }
 
     private static void CollectFunctions(
@@ -70,9 +119,23 @@ public static class TypeCompatibilityDiagnostics
         }
     }
 
+    private static void BindFunctionParameters(FunctionDeclaration funcDecl, HintEnv env)
+    {
+        var hints = funcDecl.ParameterTypeHints;
+        if (hints == null)
+            return;
+
+        for (var i = 0; i < funcDecl.Parameters.Count && i < hints.Count; i++)
+        {
+            if (hints[i] != null)
+                env.Declare(funcDecl.Parameters[i], hints[i]!);
+        }
+    }
+
     private static void VisitStatement(
         Statement stmt,
         Dictionary<string, FunctionHints> functions,
+        HintEnv env,
         string? currentReturn,
         List<Diagnostic> diagnostics,
         StrictTypesOptions options)
@@ -80,103 +143,148 @@ public static class TypeCompatibilityDiagnostics
         switch (stmt)
         {
             case FunctionDeclaration funcDecl:
+                env.PushScope();
+                BindFunctionParameters(funcDecl, env);
                 foreach (var inner in funcDecl.Body.Statements)
-                    VisitStatement(inner, functions, funcDecl.ReturnType, diagnostics, options);
+                    VisitStatement(inner, functions, env, funcDecl.ReturnType, diagnostics, options);
+                env.PopScope();
                 break;
             case VarDeclStatement varDecl:
                 if (varDecl.TypeHint != null)
                 {
-                    CheckLiteralCompatibility(
+                    CheckValueCompatibility(
                         varDecl.TypeHint,
                         varDecl.Initializer,
                         $"variable '{varDecl.Name}'",
                         varDecl.Line,
                         varDecl.Column,
+                        env,
                         diagnostics,
                         options);
+                    env.Declare(varDecl.Name, varDecl.TypeHint);
                 }
-                VisitExpression(varDecl.Initializer, functions, diagnostics, options);
+                VisitExpression(varDecl.Initializer, functions, env, diagnostics, options);
                 break;
             case ClassDeclaration classDecl:
                 foreach (var member in classDecl.Members)
                 {
                     if (member.TypeHint != null && member.Value is Expression fieldInit)
                     {
-                        CheckLiteralCompatibility(
+                        CheckValueCompatibility(
                             member.TypeHint,
                             fieldInit,
                             $"field '{member.Name}'",
                             classDecl.Line,
                             classDecl.Column,
+                            env,
                             diagnostics,
                             options);
-                        VisitExpression(fieldInit, functions, diagnostics, options);
+                        VisitExpression(fieldInit, functions, env, diagnostics, options);
                     }
                     if (member.Value is FunctionDeclaration method)
                     {
+                        env.PushScope();
+                        BindFunctionParameters(method, env);
                         foreach (var inner in method.Body.Statements)
-                            VisitStatement(inner, functions, method.ReturnType, diagnostics, options);
+                            VisitStatement(inner, functions, env, method.ReturnType, diagnostics, options);
+                        env.PopScope();
                     }
                 }
                 break;
             case BlockStatement block:
+                env.PushScope();
                 foreach (var inner in block.Statements)
-                    VisitStatement(inner, functions, currentReturn, diagnostics, options);
+                    VisitStatement(inner, functions, env, currentReturn, diagnostics, options);
+                env.PopScope();
                 break;
             case ExpressionStatement exprStmt:
-                VisitExpression(exprStmt.Expression, functions, diagnostics, options);
+                VisitExpression(exprStmt.Expression, functions, env, diagnostics, options);
                 break;
             case ReturnStatement returnStmt:
                 if (currentReturn != null && returnStmt.Value != null)
                 {
-                    CheckLiteralCompatibility(
+                    CheckValueCompatibility(
                         currentReturn,
                         returnStmt.Value,
                         "return value",
                         returnStmt.Line,
                         returnStmt.Column,
+                        env,
                         diagnostics,
                         options);
                 }
                 if (returnStmt.Value != null)
-                    VisitExpression(returnStmt.Value, functions, diagnostics, options);
+                    VisitExpression(returnStmt.Value, functions, env, diagnostics, options);
                 break;
             case IfStatement ifStmt:
-                VisitExpression(ifStmt.Condition, functions, diagnostics, options);
-                VisitStatement(ifStmt.ThenBranch, functions, currentReturn, diagnostics, options);
+                VisitExpression(ifStmt.Condition, functions, env, diagnostics, options);
+                env.PushScope();
+                VisitStatement(ifStmt.ThenBranch, functions, env, currentReturn, diagnostics, options);
+                env.PopScope();
                 if (ifStmt.ElseBranch != null)
-                    VisitStatement(ifStmt.ElseBranch, functions, currentReturn, diagnostics, options);
+                {
+                    env.PushScope();
+                    VisitStatement(ifStmt.ElseBranch, functions, env, currentReturn, diagnostics, options);
+                    env.PopScope();
+                }
                 break;
             case WhileStatement whileStmt:
-                VisitExpression(whileStmt.Condition, functions, diagnostics, options);
-                VisitStatement(whileStmt.Body, functions, currentReturn, diagnostics, options);
+                VisitExpression(whileStmt.Condition, functions, env, diagnostics, options);
+                env.PushScope();
+                VisitStatement(whileStmt.Body, functions, env, currentReturn, diagnostics, options);
+                env.PopScope();
                 break;
             case ForStatement forStmt:
+                env.PushScope();
                 if (forStmt.Initializer != null)
-                    VisitStatement(forStmt.Initializer, functions, currentReturn, diagnostics, options);
+                    VisitStatement(forStmt.Initializer, functions, env, currentReturn, diagnostics, options);
                 if (forStmt.Condition != null)
-                    VisitExpression(forStmt.Condition, functions, diagnostics, options);
+                    VisitExpression(forStmt.Condition, functions, env, diagnostics, options);
                 if (forStmt.Increment != null)
-                    VisitExpression(forStmt.Increment, functions, diagnostics, options);
-                VisitStatement(forStmt.Body, functions, currentReturn, diagnostics, options);
+                    VisitExpression(forStmt.Increment, functions, env, diagnostics, options);
+                VisitStatement(forStmt.Body, functions, env, currentReturn, diagnostics, options);
+                env.PopScope();
                 break;
             case ForInStatement forInStmt:
-                VisitExpression(forInStmt.Collection, functions, diagnostics, options);
-                VisitStatement(forInStmt.Body, functions, currentReturn, diagnostics, options);
+                VisitExpression(forInStmt.Collection, functions, env, diagnostics, options);
+                env.PushScope();
+                VisitStatement(forInStmt.Body, functions, env, currentReturn, diagnostics, options);
+                env.PopScope();
                 break;
             case TryStatement tryStmt:
+                env.PushScope();
                 foreach (var inner in tryStmt.TryBlock.Statements)
-                    VisitStatement(inner, functions, currentReturn, diagnostics, options);
+                    VisitStatement(inner, functions, env, currentReturn, diagnostics, options);
+                env.PopScope();
                 foreach (var catchClause in tryStmt.CatchClauses)
-                    VisitStatement(catchClause.Body, functions, currentReturn, diagnostics, options);
+                {
+                    env.PushScope();
+                    VisitStatement(catchClause.Body, functions, env, currentReturn, diagnostics, options);
+                    env.PopScope();
+                }
                 if (tryStmt.FinallyBlock != null)
                 {
+                    env.PushScope();
                     foreach (var inner in tryStmt.FinallyBlock.Statements)
-                        VisitStatement(inner, functions, currentReturn, diagnostics, options);
+                        VisitStatement(inner, functions, env, currentReturn, diagnostics, options);
+                    env.PopScope();
                 }
                 break;
             case AssignmentStatement assign:
-                VisitExpression(assign.Value, functions, diagnostics, options);
+                if (assign.Target is IdentifierExpression targetId &&
+                    env.TryLookup(targetId.Name, out var targetHint))
+                {
+                    CheckValueCompatibility(
+                        targetHint,
+                        assign.Value,
+                        $"variable '{targetId.Name}'",
+                        assign.Line > 0 ? assign.Line : assign.Value.Line,
+                        assign.Column > 0 ? assign.Column : assign.Value.Column,
+                        env,
+                        diagnostics,
+                        options);
+                }
+                VisitExpression(assign.Value, functions, env, diagnostics, options);
                 break;
         }
     }
@@ -184,6 +292,7 @@ public static class TypeCompatibilityDiagnostics
     private static void VisitExpression(
         Expression expression,
         Dictionary<string, FunctionHints> functions,
+        HintEnv env,
         List<Diagnostic> diagnostics,
         StrictTypesOptions options)
     {
@@ -202,76 +311,78 @@ public static class TypeCompatibilityDiagnostics
                             continue;
 
                         var paramName = $"argument {i + 1} of '{id.Name}'";
-                        CheckLiteralCompatibility(
+                        CheckValueCompatibility(
                             paramHint,
                             call.Arguments[i],
                             paramName,
                             call.Arguments[i].Line > 0 ? call.Arguments[i].Line : call.Line,
                             call.Arguments[i].Column > 0 ? call.Arguments[i].Column : call.Column,
+                            env,
                             diagnostics,
                             options);
                     }
                 }
                 foreach (var arg in call.Arguments)
-                    VisitExpression(arg, functions, diagnostics, options);
-                VisitExpression(call.Callee, functions, diagnostics, options);
+                    VisitExpression(arg, functions, env, diagnostics, options);
+                VisitExpression(call.Callee, functions, env, diagnostics, options);
                 break;
             case BinaryExpression binary:
-                VisitExpression(binary.Left, functions, diagnostics, options);
-                VisitExpression(binary.Right, functions, diagnostics, options);
+                VisitExpression(binary.Left, functions, env, diagnostics, options);
+                VisitExpression(binary.Right, functions, env, diagnostics, options);
                 break;
             case UnaryExpression unary:
-                VisitExpression(unary.Right, functions, diagnostics, options);
+                VisitExpression(unary.Right, functions, env, diagnostics, options);
                 break;
             case TernaryExpression ternary:
-                VisitExpression(ternary.Condition, functions, diagnostics, options);
-                VisitExpression(ternary.ThenBranch, functions, diagnostics, options);
-                VisitExpression(ternary.ElseBranch, functions, diagnostics, options);
+                VisitExpression(ternary.Condition, functions, env, diagnostics, options);
+                VisitExpression(ternary.ThenBranch, functions, env, diagnostics, options);
+                VisitExpression(ternary.ElseBranch, functions, env, diagnostics, options);
                 break;
             case ArrayLiteralExpression array:
                 foreach (var el in array.Elements)
-                    VisitExpression(el, functions, diagnostics, options);
+                    VisitExpression(el, functions, env, diagnostics, options);
                 break;
             case ObjectLiteralExpression obj:
                 foreach (var (_, value) in obj.Properties)
-                    VisitExpression(value, functions, diagnostics, options);
+                    VisitExpression(value, functions, env, diagnostics, options);
                 break;
             case DictionaryLiteralExpression dict:
                 foreach (var (key, value) in dict.Entries)
                 {
-                    VisitExpression(key, functions, diagnostics, options);
-                    VisitExpression(value, functions, diagnostics, options);
+                    VisitExpression(key, functions, env, diagnostics, options);
+                    VisitExpression(value, functions, env, diagnostics, options);
                 }
                 break;
             case ArrayAccessExpression access:
-                VisitExpression(access.Array, functions, diagnostics, options);
-                VisitExpression(access.Index, functions, diagnostics, options);
+                VisitExpression(access.Array, functions, env, diagnostics, options);
+                VisitExpression(access.Index, functions, env, diagnostics, options);
                 break;
             case MemberAccessExpression member:
-                VisitExpression(member.Object, functions, diagnostics, options);
+                VisitExpression(member.Object, functions, env, diagnostics, options);
                 break;
             case InterpolatedStringExpression interpolated:
                 foreach (var segment in interpolated.Segments)
                 {
                     if (segment.IsExpression && segment.Expression != null)
-                        VisitExpression(segment.Expression, functions, diagnostics, options);
+                        VisitExpression(segment.Expression, functions, env, diagnostics, options);
                 }
                 break;
             case AwaitExpression awaitExpr:
-                VisitExpression(awaitExpr.Expression, functions, diagnostics, options);
+                VisitExpression(awaitExpr.Expression, functions, env, diagnostics, options);
                 break;
             case AsyncExpression asyncExpr:
-                VisitExpression(asyncExpr.Expression, functions, diagnostics, options);
+                VisitExpression(asyncExpr.Expression, functions, env, diagnostics, options);
                 break;
         }
     }
 
-    private static void CheckLiteralCompatibility(
+    private static void CheckValueCompatibility(
         string typeHint,
-        Expression initializer,
+        Expression value,
         string bindingName,
         int line,
         int column,
+        HintEnv env,
         List<Diagnostic> diagnostics,
         StrictTypesOptions options)
     {
@@ -285,14 +396,14 @@ public static class TypeCompatibilityDiagnostics
         if (expected == null)
             return; // unknown hint names are handled by TypeHintDiagnostics
 
-        var actual = InferLiteralTag(initializer);
+        var actual = InferKnownTag(value, env);
         if (actual == null)
-            return; // non-literal — out of scope
+            return; // not a literal or known identifier — out of scope
 
         if (string.Equals(expected, actual, StringComparison.Ordinal))
             return;
 
-        // int/float: a float hint accepts int literals.
+        // int/float: a float hint accepts int values.
         if (expected == "float" && actual == "int")
             return;
 
@@ -300,13 +411,31 @@ public static class TypeCompatibilityDiagnostics
         {
             Severity = options.StrictTypes ? DiagnosticSeverity.Error : DiagnosticSeverity.Warning,
             Message = options.StrictTypes
-                ? $"Type hint '{typeHint}' on {bindingName} does not match literal (got {actual})."
-                : $"Type hint '{typeHint}' on {bindingName} does not match literal (got {actual}). Hints are not enforced at runtime.",
+                ? $"Type hint '{typeHint}' on {bindingName} does not match value (got {actual})."
+                : $"Type hint '{typeHint}' on {bindingName} does not match value (got {actual}). Hints are not enforced at runtime.",
             Line = line,
             Column = column,
             Length = Math.Max(1, typeHint.Length),
             Source = "malda-types"
         });
+    }
+
+    /// <summary>
+    /// Returns a canonical Tier 0 tag for a literal or an identifier with a known hint, else null.
+    /// </summary>
+    private static string? InferKnownTag(Expression expression, HintEnv env)
+    {
+        var literal = InferLiteralTag(expression);
+        if (literal != null)
+            return literal;
+
+        if (expression is IdentifierExpression id &&
+            env.TryLookup(id.Name, out var hint))
+        {
+            return Tier0TypeTags.NormalizeToCanonical(hint);
+        }
+
+        return null;
     }
 
     /// <summary>

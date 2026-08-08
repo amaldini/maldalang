@@ -3842,7 +3842,7 @@ class Program
         Console.WriteLine("  malda <file.malda> [--strict-types] [--profile ...]");
         Console.WriteLine("  malda <command> [options]");
         Console.WriteLine("  malda -e \"<code>\" [--strict-types] | malda -c \"<code>\" | malda --check \"<code>\"");
-        Console.WriteLine("  --strict-types                Reject unknown type hints, non-exhaustive sum-type match, and literal type-hint mismatches");
+        Console.WriteLine("  --strict-types                Reject unknown type hints, non-exhaustive sum-type match, and type-hint mismatches (literals + known identifiers)");
         Console.WriteLine("  echo \"<code>\" | malda");
         Console.WriteLine();
         Console.WriteLine("Getting started:");

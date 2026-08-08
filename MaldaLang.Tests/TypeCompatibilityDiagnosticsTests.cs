@@ -20,7 +20,7 @@ public class TypeCompatibilityDiagnosticsTests
         Assert.Contains(diagnostics, d =>
             d.Source == "malda-types" &&
             d.Severity == DiagnosticSeverity.Warning &&
-            d.Message.Contains("does not match literal", StringComparison.Ordinal));
+            d.Message.Contains("does not match value", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -128,5 +128,107 @@ public class TypeCompatibilityDiagnosticsTests
             d.Severity == DiagnosticSeverity.Error &&
             d.Message.Contains("argument 1", StringComparison.Ordinal));
         Assert.True(StrictTypesAnalysis.HasErrors(diagnostics));
+    }
+
+    [Fact]
+    public void GetDiagnostics_AssignmentIdentifierMismatch_EmitsWarning()
+    {
+        var service = new LanguageService();
+        var source = """
+            var n: int = 1;
+            n = "a";
+            """;
+        var diagnostics = service.GetDiagnostics(source);
+        Assert.Contains(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Severity == DiagnosticSeverity.Warning &&
+            d.Message.Contains("variable 'n'", StringComparison.Ordinal) &&
+            d.Message.Contains("string", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void GetDiagnostics_CallSiteIdentifierMismatch_EmitsWarning()
+    {
+        var service = new LanguageService();
+        var source = """
+            var s: string = "x";
+            function f(x: int) { }
+            f(s);
+            """;
+        var diagnostics = service.GetDiagnostics(source);
+        Assert.Contains(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Severity == DiagnosticSeverity.Warning &&
+            d.Message.Contains("argument 1", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void GetDiagnostics_ReturnIdentifierMismatch_EmitsWarning()
+    {
+        var service = new LanguageService();
+        var source = """
+            function f(n: int) -> string {
+                return n;
+            }
+            """;
+        var diagnostics = service.GetDiagnostics(source);
+        Assert.Contains(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Severity == DiagnosticSeverity.Warning &&
+            d.Message.Contains("return value", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void GetDiagnostics_AssignmentAndCallCompatible_NoWarning()
+    {
+        var service = new LanguageService();
+        var source = """
+            var n: int = 1;
+            n = 2;
+            function f(x: int) { }
+            f(n);
+            """;
+        var diagnostics = service.GetDiagnostics(source);
+        Assert.DoesNotContain(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Severity == DiagnosticSeverity.Warning);
+    }
+
+    [Fact]
+    public void Analyze_StrictTypes_ElevatesAssignmentMismatchToError()
+    {
+        var source = """
+            var n: int = 1;
+            n = "a";
+            """;
+        var lexer = new Lexer(source);
+        var tokens = lexer.Tokenize();
+        var parser = new Parser.Parser(tokens);
+        var statements = parser.Parse();
+        Assert.Empty(parser.Errors);
+        var diagnostics = new List<Diagnostic>();
+        StrictTypesAnalysis.Analyze(statements, StrictTypesOptions.Enabled, diagnostics);
+        Assert.Contains(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Severity == DiagnosticSeverity.Error &&
+            d.Message.Contains("variable 'n'", StringComparison.Ordinal));
+        Assert.True(StrictTypesAnalysis.HasErrors(diagnostics));
+    }
+
+    [Fact]
+    public void GetDiagnostics_UninferableRhs_NoWarning()
+    {
+        var service = new LanguageService();
+        var source = """
+            var n: int = 1;
+            var a = 1;
+            n = unknownIdent;
+            n = a + 1;
+            """;
+        var diagnostics = service.GetDiagnostics(source);
+        Assert.DoesNotContain(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Severity == DiagnosticSeverity.Warning &&
+            d.Message.Contains("does not match value", StringComparison.Ordinal));
     }
 }
