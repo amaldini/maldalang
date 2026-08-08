@@ -460,6 +460,13 @@ public class SecondBrainAskFeaturesTests
         Assert.Contains("@ACTION(\"/ask\")", libSource, StringComparison.Ordinal);
         Assert.Contains("@ACTION(\"/clear\")", libSource, StringComparison.Ordinal);
         Assert.Contains("@LIVE(\"/ask/live\")", libSource, StringComparison.Ordinal);
+        Assert.Contains("@PAGE(\"/login\")", libSource, StringComparison.Ordinal);
+        Assert.Contains("@POST(\"/login\")", libSource, StringComparison.Ordinal);
+        Assert.Contains("@GET(\"/logout\")", libSource, StringComparison.Ordinal);
+        Assert.Contains("function askConfigureHttpAuth(", libSource, StringComparison.Ordinal);
+        Assert.Contains("function askRequireAuth(", libSource, StringComparison.Ordinal);
+        Assert.Contains("--no-auth", libSource, StringComparison.Ordinal);
+        Assert.Contains("malda_ask_session", libSource, StringComparison.Ordinal);
         Assert.Contains("componentFragment(\"ask-panel\"", libSource, StringComparison.Ordinal);
         Assert.Contains("malda_ask_c", libSource, StringComparison.Ordinal);
         Assert.Contains("function askLiveChannel()", libSource, StringComparison.Ordinal);
@@ -671,7 +678,10 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("askApplyProductNameFromBrain(", source, StringComparison.Ordinal);
             Assert.Contains("askApplyLogoFromBrain(", source, StringComparison.Ordinal);
             Assert.Contains("applyAskHttpPortFromCli()", source, StringComparison.Ordinal);
+            Assert.Contains("askApplyAuthFromCli(", source, StringComparison.Ordinal);
+            Assert.Contains("askConfigureHttpAuth(", source, StringComparison.Ordinal);
             Assert.Contains("--port", source, StringComparison.Ordinal);
+            Assert.Contains("--no-auth", source, StringComparison.Ordinal);
             Assert.Contains("sbCliParseArgs(", source, StringComparison.Ordinal);
             Assert.Contains("build --docs", source, StringComparison.Ordinal);
             Assert.Contains("include \"secondbrain_cli_lib.malda\"", source, StringComparison.Ordinal);
@@ -724,6 +734,10 @@ public class SecondBrainAskFeaturesTests
                 print("D=" + d.mode + "," + d.docs + "," + d.error);
                 var e = sbCliParseArgs(["--unknown"]);
                 print("E=" + e.error);
+                var f = sbCliParseArgs(["ask", "--no-auth", "--port", "9090"]);
+                print("F=" + f.mode + "," + string(f.auth) + "," + string(f.port) + "," + f.error);
+                var g = sbCliParseArgs(["ask", "--auth"]);
+                print("G=" + g.mode + "," + string(g.auth) + "," + g.error);
                 """,
                 Encoding.UTF8);
 
@@ -733,6 +747,8 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("C=ask,8080,", output, StringComparison.Ordinal);
             Assert.Contains("D=build,,", output, StringComparison.Ordinal);
             Assert.Contains("E=Unknown flag: --unknown", output, StringComparison.Ordinal);
+            Assert.Contains("F=ask,false,9090,", output, StringComparison.Ordinal);
+            Assert.Contains("G=ask,true,", output, StringComparison.Ordinal);
         }
         finally
         {

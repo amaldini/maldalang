@@ -21,9 +21,21 @@
 // only #ask-panel. Live progress uses @LIVE + per-conversation SSE channel
 // ask-{c} because the POST /ask connection stays blocked until the answer
 // is ready.
+//
+// Cookie JWT auth is on by default for ASK. Disable with --no-auth (or
+// MALDA_ASK_AUTH=0). Login: /login  Logout: /logout. Credentials from
+// MALDA_ASK_USER / MALDA_ASK_PASSWORD (or MALDA_ASK_PASSWORD_HASH).
 
 var ASK_CONV_COOKIE = "malda_ask_c";
 var ASK_CONV_CURRENT = "";
+var ASK_AUTH_COOKIE = "malda_ask_session";
+var ASK_AUTH_ENABLED = true;
+var ASK_AUTH_USER = "admin";
+var ASK_AUTH_PASSWORD_HASH = "";
+var ASK_AUTH_USING_DEFAULT_PASSWORD = false;
+var askAuthJwtSecret = "";
+var askAuthCookieSecret = "";
+var askAuthSessionSecret = "";
 
 function askAsText(value) {
     if (value == null) {
@@ -108,6 +120,252 @@ function applyAskHttpPortFromCli() {
             string(ASK_HTTP_PORT) + "[/]");
     }
     return ASK_HTTP_PORT;
+}
+
+// ---------------------------------------------------------------- ASK auth (cookie JWT)
+
+function askEnvText(name) {
+    var key = str.trim(askAsText(name));
+    if (key == "" or not io.hasEnv(key)) {
+        return "";
+    }
+    return str.trim(askAsText(io.getEnv(key)));
+}
+
+function askParseAuthFlagFromArgs(args) {
+    // Last --auth / --no-auth wins. Returns true / false / null (unset).
+    if (args == null) {
+        return null;
+    }
+    var flag = null;
+    var i = 0;
+    while (i < args.length) {
+        var a = str.trim(askAsText(args[i]));
+        if (a == "--auth") {
+            flag = true;
+        } else if (a == "--no-auth") {
+            flag = false;
+        }
+        i = i + 1;
+    }
+    return flag;
+}
+
+function askEnvAuthOverride() {
+    var raw = str.lower(askEnvText("MALDA_ASK_AUTH"));
+    if (raw == "") {
+        return null;
+    }
+    if (raw == "0" or raw == "false" or raw == "off" or raw == "no") {
+        return false;
+    }
+    if (raw == "1" or raw == "true" or raw == "on" or raw == "yes") {
+        return true;
+    }
+    return null;
+}
+
+// Resolve ASK_AUTH_ENABLED from cli.auth, CLI flags, then MALDA_ASK_AUTH (default on).
+function askApplyAuthFromCli(cli) {
+    var enabled = true;
+    var envFlag = askEnvAuthOverride();
+    if (envFlag != null) {
+        enabled = envFlag;
+    }
+    var argFlag = askParseAuthFlagFromArgs(getCommandLineArgs());
+    if (argFlag != null) {
+        enabled = argFlag;
+    }
+    if (cli != null and cli.auth != null) {
+        enabled = cli.auth == true;
+    }
+    ASK_AUTH_ENABLED = enabled == true;
+    return ASK_AUTH_ENABLED;
+}
+
+function askLoadAuthCredentials() {
+    askAuthJwtSecret = askEnvText("MALDA_JWT_SECRET");
+    if (askAuthJwtSecret == "") {
+        askAuthJwtSecret = "dev-only-jwt-secret-change-me";
+    }
+    askAuthCookieSecret = askEnvText("MALDA_COOKIE_SECRET");
+    if (askAuthCookieSecret == "") {
+        askAuthCookieSecret = "dev-only-cookie-secret-change-me";
+    }
+    askAuthSessionSecret = askEnvText("MALDA_SESSION_SECRET");
+    if (askAuthSessionSecret == "") {
+        askAuthSessionSecret = "dev-only-session-secret-change-me";
+    }
+
+    var user = askEnvText("MALDA_ASK_USER");
+    if (user == "") {
+        user = "admin";
+    }
+    ASK_AUTH_USER = user;
+
+    var hash = askEnvText("MALDA_ASK_PASSWORD_HASH");
+    ASK_AUTH_USING_DEFAULT_PASSWORD = false;
+    if (hash != "") {
+        ASK_AUTH_PASSWORD_HASH = hash;
+        return;
+    }
+    var password = askEnvText("MALDA_ASK_PASSWORD");
+    if (password == "") {
+        password = "password";
+        ASK_AUTH_USING_DEFAULT_PASSWORD = true;
+    }
+    ASK_AUTH_PASSWORD_HASH = hashPassword(password);
+}
+
+function askPrintAuthStatus() {
+    if (not ASK_AUTH_ENABLED) {
+        AnsiConsole.markupLine("[dim]" + askT(
+            "ASK auth: off (--no-auth or MALDA_ASK_AUTH=0).",
+            "Auth ASK: off (--no-auth o MALDA_ASK_AUTH=0).") + "[/]");
+        return;
+    }
+    AnsiConsole.markupLine("[dim]" + askT(
+        "ASK auth: on (user=",
+        "Auth ASK: on (utente=") + ASK_AUTH_USER + ").[/]");
+    if (ASK_AUTH_USING_DEFAULT_PASSWORD) {
+        AnsiConsole.markupLine("[yellow]" + askT(
+            "Using default password 'password'. Set MALDA_ASK_PASSWORD (or MALDA_ASK_PASSWORD_HASH). Disable with --no-auth.",
+            "Password di default 'password'. Imposta MALDA_ASK_PASSWORD (o MALDA_ASK_PASSWORD_HASH). Disattiva con --no-auth.") + "[/]");
+    }
+}
+
+function askRequireAuth(req, res, next) {
+    try {
+        req.auth.authenticateCookieJwt(ASK_AUTH_COOKIE, askAuthJwtSecret, askAuthCookieSecret);
+        next();
+    } catch (authErr) {
+        return res.redirect("/login");
+    }
+}
+
+// Call after `new HttpServer(...)` and before `start()` when ASK_AUTH_ENABLED.
+function askConfigureHttpAuth(server) {
+    if (server == null) {
+        return false;
+    }
+    if (not ASK_AUTH_ENABLED) {
+        askPrintAuthStatus();
+        return false;
+    }
+    askLoadAuthCredentials();
+    server.enableSession(askAuthSessionSecret);
+    server.use(askRequireAuth, {
+        "except": ["/login", "/logout"]
+    });
+    server.setRateLimit(120, 60, "verifiedSubOrIp");
+    askPrintAuthStatus();
+    return true;
+}
+
+function askRenderLoginPage(errorMessage) {
+    var title = askProductName() + " — " + askT("Sign in", "Accedi");
+    var err = str.trim(askAsText(errorMessage));
+    var errHtml = "";
+    if (err != "") {
+        errHtml = "<p class='flash error'>" + askEscapeHtml(err) + "</p>";
+    }
+    var hint = "";
+    if (ASK_AUTH_USING_DEFAULT_PASSWORD) {
+        hint = "<p class='hint'><small>" + askEscapeHtml(askT(
+            "Default: admin / password",
+            "Default: admin / password")) + "</small></p>";
+    }
+    return "<!DOCTYPE html><html lang='" + askGetLang() + "'><head>" +
+        "<meta charset='utf-8'>" +
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>" +
+        "<title>" + askEscapeHtml(title) + "</title>" +
+        askPageStyles() +
+        "<style>.login-wrap{max-width:420px;margin:48px auto;padding:0 16px}" +
+        ".login-wrap h1{font-size:1.35rem;margin:0 0 12px}" +
+        ".login-wrap label{display:block;margin:12px 0 4px;font-size:.9rem}" +
+        ".login-wrap input{width:100%;padding:10px;box-sizing:border-box}" +
+        ".login-wrap button{margin-top:16px;width:100%;padding:10px 14px;cursor:pointer}" +
+        ".login-wrap .hint{opacity:.7;margin-top:12px}</style>" +
+        "</head><body><main class='login-wrap'>" +
+        "<h1>" + askEscapeHtml(title) + "</h1>" + errHtml +
+        "<form method='post' action='/login'>" +
+        "<label for='username'>" + askEscapeHtml(askT("Username", "Utente")) + "</label>" +
+        "<input id='username' name='username' autocomplete='username' required>" +
+        "<label for='password'>" + askEscapeHtml(askT("Password", "Password")) + "</label>" +
+        "<input id='password' name='password' type='password' autocomplete='current-password' required>" +
+        "<button type='submit'>" + askEscapeHtml(askT("Sign in", "Accedi")) + "</button>" +
+        "</form>" + hint +
+        "</main></body></html>";
+}
+
+@PAGE("/login")
+function askUiLoginPage(queryParams, response, cookies) {
+    if (not ASK_AUTH_ENABLED) {
+        return RedirectTo("/");
+    }
+    if (askAuthJwtSecret == "") {
+        askLoadAuthCredentials();
+    }
+    var err = "";
+    if (queryParams != null and queryParams["error"] != null) {
+        err = askT("Invalid username or password.", "Utente o password non validi.");
+    }
+    return askRenderLoginPage(err);
+}
+
+@POST("/login")
+function askUiLoginSubmit(req, res, body) {
+    if (not ASK_AUTH_ENABLED) {
+        return res.redirect("/");
+    }
+    if (askAuthJwtSecret == "" or ASK_AUTH_PASSWORD_HASH == "") {
+        askLoadAuthCredentials();
+    }
+    var username = "";
+    var password = "";
+    if (body != null) {
+        username = str.trim(askAsText(body.username));
+        password = askAsText(body.password);
+    }
+    if (username != ASK_AUTH_USER or not verifyPassword(password, ASK_AUTH_PASSWORD_HASH)) {
+        if (req != null and req.session != null) {
+            req.session.flash("error", askT(
+                "Invalid username or password.",
+                "Utente o password non validi."));
+        }
+        return res.redirect("/login?error=1");
+    }
+    var token = createJwt({
+        "sub": username,
+        "role": "ask"
+    }, askAuthJwtSecret, {
+        "expiresInSeconds": 86400,
+        "issuer": "secondbrain-ask",
+        "audience": "secondbrain-ask"
+    });
+    var setCookie = createSecureCookie(ASK_AUTH_COOKIE, token, askAuthCookieSecret, {
+        "maxAge": 86400,
+        "sameSite": "Lax",
+        "httpOnly": true,
+        "secure": false,
+        "path": "/"
+    });
+    res.header("Set-Cookie", setCookie);
+    return res.redirect("/");
+}
+
+@GET("/logout")
+function askUiLogout(req, res) {
+    if (res != null) {
+        res.clearCookie(ASK_AUTH_COOKIE);
+    }
+    if (req != null and req.session != null) {
+        req.session.clear();
+    }
+    if (not ASK_AUTH_ENABLED) {
+        return res.redirect("/");
+    }
+    return res.redirect("/login");
 }
 
 function askSharedScope() {
@@ -1258,8 +1516,13 @@ function askRenderPage() {
         "' hreflang='it' data-ask-lang='it'>IT</a>" +
         "</nav>" +
         "<a class='new-conv' href='/?" + askEscapeHtml("c=" + askMintConvId()) + "'>" +
-        askEscapeHtml(askT("New conversation", "Nuova conversazione")) + "</a>" +
-        "</div></div></header>";
+        askEscapeHtml(askT("New conversation", "Nuova conversazione")) + "</a>";
+    if (ASK_AUTH_ENABLED) {
+        html = html +
+            "<a class='new-conv' href='/logout'>" +
+            askEscapeHtml(askT("Log out", "Esci")) + "</a>";
+    }
+    html = html + "</div></div></header>";
 
     var subtitle = askAsText(session.subtitle);
     html = html + "<div class='meta-bar'>" +

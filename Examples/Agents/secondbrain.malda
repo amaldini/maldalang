@@ -22,7 +22,12 @@
 //   malda Examples/Agents/secondbrain.malda update [--docs ./docs] [--brain secondbrain]
 //       [--remove-orphans] [--lang en|it]
 //   malda Examples/Agents/secondbrain.malda ask [--brain secondbrain] [--port 8080] [--lang en|it]
+//       [--auth|--no-auth]
 //   malda Examples/Agents/secondbrain.malda help
+//
+// ASK auth (cookie JWT) is on by default. Disable with --no-auth or MALDA_ASK_AUTH=0.
+// Credentials: MALDA_ASK_USER / MALDA_ASK_PASSWORD (or MALDA_ASK_PASSWORD_HASH).
+// Default demo login: admin / password.
 //
 // LLM:   if OPENROUTER_API_KEY is set, uses OpenRouter (client default model,
 //        override with MALDA_BRAIN_MODEL); otherwise MALDA's default local model
@@ -2449,7 +2454,9 @@ function askBrain(cli) {
     }
     AnsiConsole.markupLine("LLM: [bold]" + modelLabel() + "[/]");
 
+    askApplyAuthFromCli(cli);
     askHttpServer = new HttpServer(ASK_HTTP_PORT);
+    askConfigureHttpAuth(askHttpServer);
     askHttpServer.start();
     AnsiConsole.markupLine("");
     AnsiConsole.markupLine(t("Open:", "Apri:") + " [bold blue]http://localhost:" +
