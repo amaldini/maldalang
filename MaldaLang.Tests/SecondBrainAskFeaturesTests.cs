@@ -237,6 +237,135 @@ public class SecondBrainAskFeaturesTests
     }
 
     [Fact]
+    public async Task AskUi_ResolvesRelativeAskLogo_Under_DiskBrainFolder()
+    {
+        Assert.True(File.Exists(AskUiLibPath), "missing ask UI lib: " + AskUiLibPath);
+
+        var svg =
+            "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\"><rect width=\"16\" height=\"16\" fill=\"#2f6f5e\"/></svg>";
+        var expectedPrefix = "data:image/svg+xml;base64,";
+        var expectedB64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(svg));
+        var utf8NoBom = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+
+        var tempDir = Path.Combine(Path.GetTempPath(), "malda_sb_ask_rel_logo", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            var brainDir = Path.Combine(tempDir, "brain");
+            Directory.CreateDirectory(brainDir);
+            File.WriteAllText(Path.Combine(brainDir, "logo.png"), svg, utf8NoBom);
+            File.Copy(AskUiLibPath, Path.Combine(tempDir, "secondbrain_ask_ui_lib.malda"));
+
+            var brainLiteral = brainDir.Replace("\\", "/");
+            var harnessPath = Path.Combine(tempDir, "harness.malda");
+            File.WriteAllText(harnessPath,
+                $$"""
+                var ASK_HTTP_PORT = 39018;
+                var ASK_SESSION_ID = "secondbrain-ask-rel-logo";
+                var ASK_STORE = "SecondBrainAskRelLogo";
+                var PRODUCT_NAME = "Rel Logo";
+                var ASK_TITLE_SUFFIX = " — ASK";
+                var ASK_PAGE_TITLE = PRODUCT_NAME + ASK_TITLE_SUFFIX;
+                var ASK_POWERED_BY = "";
+                var ASK_POWERED_BY_URL = "";
+                var ASK_LOGO = "logo.png";
+                var UI_LANG = "en";
+                var askHttpServer = null;
+
+                function runAskTurn(question) {
+                    return { "question": question, "answer": "ok", "sources": [], "error": "" };
+                }
+
+                include "secondbrain_ask_ui_lib.malda";
+
+                print(askApplyLogoFromBrain("{{brainLiteral}}"));
+                print(askResolveLogoSrc());
+                """,
+                utf8NoBom);
+
+            var output = await InterpretAndCaptureAsync(harnessPath);
+            Assert.Contains("logo.png", output, StringComparison.OrdinalIgnoreCase);
+            // Basename resolves under brain; MIME follows the filename (.png), not the bytes.
+            Assert.Contains("data:image/png;base64," + expectedB64, output, StringComparison.Ordinal);
+            Assert.DoesNotContain("ASK_LOGO not found", output, StringComparison.Ordinal);
+        }
+        finally
+        {
+            SafeDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public async Task AskUi_AutoLoadsLogo_From_DiskBrainFolder_When_ASK_LOGO_Empty()
+    {
+        Assert.True(File.Exists(AskUiLibPath), "missing ask UI lib: " + AskUiLibPath);
+
+        var svg =
+            "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\"><rect width=\"16\" height=\"16\" fill=\"#2f6f5e\"/></svg>";
+        var expectedPrefix = "data:image/svg+xml;base64,";
+        var expectedB64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(svg));
+
+        var tempDir = Path.Combine(Path.GetTempPath(), "malda_sb_ask_ui_disk_logo", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            var brainDir = Path.Combine(tempDir, "brain");
+            Directory.CreateDirectory(brainDir);
+            var utf8NoBom = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+            File.WriteAllText(Path.Combine(brainDir, "logo.svg"), svg, utf8NoBom);
+            File.Copy(AskUiLibPath, Path.Combine(tempDir, "secondbrain_ask_ui_lib.malda"));
+
+            var brainLiteral = brainDir.Replace("\\", "\\\\");
+            var harnessPath = Path.Combine(tempDir, "harness.malda");
+            File.WriteAllText(harnessPath,
+                $$"""
+                var ASK_HTTP_PORT = 39018;
+                var ASK_SESSION_ID = "secondbrain-ask-disk-logo";
+                var ASK_STORE = "SecondBrainAskDiskLogo";
+                var PRODUCT_NAME = "Disk Logo Brain";
+                var ASK_TITLE_SUFFIX = " — ASK";
+                var ASK_PAGE_TITLE = PRODUCT_NAME + ASK_TITLE_SUFFIX;
+                var ASK_POWERED_BY = "";
+                var ASK_POWERED_BY_URL = "";
+                var ASK_LOGO = "";
+                var UI_LANG = "en";
+                var askHttpServer = null;
+
+                function runAskTurn(question) {
+                    return { "question": question, "answer": "ok", "sources": [], "error": "" };
+                }
+
+                include "secondbrain_ask_ui_lib.malda";
+
+                print(askApplyLogoFromBrain("{{brainLiteral}}"));
+                askSetSession({
+                    "brainDir": "{{brainLiteral}}",
+                    "chatOnly": false,
+                    "noteCount": 1,
+                    "topicCount": 1,
+                    "sourceFolder": "docs",
+                    "retrieval": "lexical",
+                    "llm": "test",
+                    "title": ASK_PAGE_TITLE,
+                    "subtitle": "disk logo"
+                });
+                print("---HTML---");
+                print(askRenderPage());
+                """,
+                utf8NoBom);
+
+            var output = await InterpretAndCaptureAsync(harnessPath);
+            Assert.Contains("logo.svg", output, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains(expectedPrefix + expectedB64, output, StringComparison.Ordinal);
+            Assert.Contains("<img class='logo'", output, StringComparison.Ordinal);
+        }
+        finally
+        {
+            SafeDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
     public async Task AskUi_RendersLogo_From_EmbeddedFolder()
     {
         Assert.True(File.Exists(AskUiLibPath), "missing ask UI lib: " + AskUiLibPath);
@@ -268,7 +397,7 @@ public class SecondBrainAskFeaturesTests
                 var ASK_PAGE_TITLE = "Embedded Logo Brain";
                 var ASK_POWERED_BY = "Powered by MALDA";
                 var ASK_POWERED_BY_URL = "https://github.com/amaldini/maldalang";
-                var ASK_LOGO = "embed:secondbrain/logo.svg";
+                var ASK_LOGO = "";
                 var UI_LANG = "en";
                 var askHttpServer = null;
 
@@ -278,6 +407,7 @@ public class SecondBrainAskFeaturesTests
 
                 include "secondbrain_ask_ui_lib.malda";
 
+                print(askApplyLogoFromBrain("embed:secondbrain"));
                 askSetSession({
                     "brainDir": "embed:secondbrain",
                     "chatOnly": false,
@@ -297,6 +427,7 @@ public class SecondBrainAskFeaturesTests
                 Encoding.UTF8);
 
             var output = await InterpretAndCaptureAsync(harnessPath);
+            Assert.Contains("embed:secondbrain/logo.svg", output, StringComparison.Ordinal);
             Assert.Contains(expectedPrefix + expectedB64, output, StringComparison.Ordinal);
 
             var htmlPart = output.Contains("---HTML---", StringComparison.Ordinal)
@@ -412,6 +543,7 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("function productName()", source, StringComparison.Ordinal);
             Assert.Contains("function applyProductNameFromBrain(", source, StringComparison.Ordinal);
             Assert.Contains("askApplyProductNameFromBrain(", source, StringComparison.Ordinal);
+            Assert.Contains("askApplyLogoFromBrain(", source, StringComparison.Ordinal);
             Assert.Contains("product_name.txt", source, StringComparison.Ordinal);
             Assert.Contains("askGetToolsEnabled()", source, StringComparison.Ordinal);
             Assert.Contains("askSetToolsEnabled(false)", source, StringComparison.Ordinal);

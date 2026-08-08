@@ -10,8 +10,9 @@
 //   runAskTurn(question) -> { question, answer, sources, error }
 //   UI_LANG                                  (existing)
 //
-// Brain branding file (disk or embed root): product_name.txt — first non-empty line.
-// Hosts should call askApplyProductNameFromBrain(brainDir) after resolving the brain root.
+// Brain branding (disk or embed root), auto-loaded when hosts call askApply*FromBrain:
+//   product_name.txt — first non-empty line
+//   logo.png / .svg / .jpg / .jpeg / .webp / .gif / .ico — if ASK_LOGO is empty
 //
 // HttpServer isolates each request: session fields live in ui.state.
 // Ask / Clear use @ACTION + componentFragment("ask-panel", ...) so the
@@ -416,27 +417,143 @@ function askLogoMime(path) {
     return "application/octet-stream";
 }
 
+function askInvalidateLogoCache() {
+    ui.setState(ASK_STORE, "logoSrcCached", false, ASK_SESSION_ID);
+}
+
+// Normalize disk paths: accept / or \ ; strip accidental quotes.
+function askNormalizeLogoPath(path) {
+    var p = str.trim(askAsText(path));
+    if (p == "") {
+        return "";
+    }
+    if (str.startsWith(p, "\"") and str.endsWith(p, "\"") and str.length(p) >= 2) {
+        // substring(s, start, length) — drop both quotes.
+        p = str.substring(p, 1, str.length(p) - 2);
+        p = str.trim(p);
+    }
+    if (str.startsWith(p, "http://") or str.startsWith(p, "https://") or
+            str.startsWith(p, "data:") or str.startsWith(p, "embed:")) {
+        return p;
+    }
+    // File.Exists accepts / on Windows; normalize \ for consistency in joins.
+    p = str.replace(p, "\\", "/");
+    return p;
+}
+
+function askLogoFileExists(path) {
+    var p = askNormalizeLogoPath(path);
+    if (p == "") {
+        return false;
+    }
+    return io.hasFile(p);
+}
+
+// Prefer brainDir/logo.* when ASK_LOGO is empty; resolve relative ASK_LOGO under brainDir.
+// Call after the brain root is known (disk folder or embed:alias).
+// Returns the resolved path (may be "") — does not print; hosts may warn on miss.
+function askApplyLogoFromBrain(brainDir) {
+    var root = askNormalizeLogoPath(brainDir);
+    var current = askNormalizeLogoPath(ASK_LOGO);
+    ASK_LOGO = current;
+    askInvalidateLogoCache();
+
+    if (current != "") {
+        if (str.startsWith(current, "http://") or str.startsWith(current, "https://") or
+                str.startsWith(current, "data:")) {
+            return current;
+        }
+        if (askLogoFileExists(current)) {
+            ASK_LOGO = current;
+            return current;
+        }
+        if (root != "") {
+            var underBrain = io.pathJoin(root, current);
+            // pathJoin may reintroduce \; normalize again for hasFile.
+            underBrain = askNormalizeLogoPath(underBrain);
+            if (askLogoFileExists(underBrain)) {
+                ASK_LOGO = underBrain;
+                return underBrain;
+            }
+            // If ASK_LOGO was a basename like logo.png, also try root + filename only.
+            var baseName = io.getFileName(current);
+            if (baseName != "" and baseName != current) {
+                var underBrainBase = askNormalizeLogoPath(io.pathJoin(root, baseName));
+                if (askLogoFileExists(underBrainBase)) {
+                    ASK_LOGO = underBrainBase;
+                    return underBrainBase;
+                }
+            }
+        }
+        return current;
+    }
+
+    if (root == "") {
+        return "";
+    }
+    var names = ["logo.png", "logo.svg", "logo.jpg", "logo.jpeg", "logo.webp", "logo.gif", "logo.ico"];
+    foreach (var name in names) {
+        var path = askNormalizeLogoPath(io.pathJoin(root, name));
+        if (askLogoFileExists(path)) {
+            ASK_LOGO = path;
+            return path;
+        }
+    }
+    return "";
+}
+
+// True when ASK_LOGO is set to a local/embed path that could not be opened.
+function askLogoPathMissing() {
+    var logo = askNormalizeLogoPath(ASK_LOGO);
+    if (logo == "") {
+        return false;
+    }
+    if (str.startsWith(logo, "http://") or str.startsWith(logo, "https://") or
+            str.startsWith(logo, "data:")) {
+        return false;
+    }
+    return not askLogoFileExists(logo);
+}
+
 // Resolves ASK_LOGO once per ASK session (cached in ui.state).
 // Accepts "", http(s):/data: URL, or a local/embed file path.
 function askResolveLogoSrc() {
-    var cached = ui.state(ASK_STORE, "logoSrc", null, ASK_SESSION_ID);
-    if (cached != null) {
-        return askAsText(cached);
+    if (ui.state(ASK_STORE, "logoSrcCached", false, ASK_SESSION_ID) == true) {
+        return askAsText(ui.state(ASK_STORE, "logoSrc", "", ASK_SESSION_ID));
     }
-    var logo = str.trim(askAsText(ASK_LOGO));
+    var logo = askNormalizeLogoPath(ASK_LOGO);
     var src = "";
     if (logo != "") {
         if (str.startsWith(logo, "http://") or str.startsWith(logo, "https://") or
                 str.startsWith(logo, "data:")) {
             src = logo;
-        } else if (io.hasFile(logo)) {
+        } else if (askLogoFileExists(logo)) {
             var b64 = io.readFileBase64(logo);
             if (b64 != null and askAsText(b64) != "") {
                 src = "data:" + askLogoMime(logo) + ";base64," + askAsText(b64);
             }
+        } else {
+            // Last chance: relative to session brainDir (if apply was skipped).
+            var session = askGetSession();
+            var root = "";
+            if (session != null) {
+                root = askNormalizeLogoPath(session.brainDir);
+            }
+            if (root != "") {
+                var underBrain = askNormalizeLogoPath(io.pathJoin(root, logo));
+                if (askLogoFileExists(underBrain)) {
+                    logo = underBrain;
+                    ASK_LOGO = logo;
+                    var b64b = io.readFileBase64(logo);
+                    if (b64b != null and askAsText(b64b) != "") {
+                        src = "data:" + askLogoMime(logo) + ";base64," + askAsText(b64b);
+                    }
+                }
+            }
         }
     }
     ui.setState(ASK_STORE, "logoSrc", src, ASK_SESSION_ID);
+    ui.setState(ASK_STORE, "logoSrcCached", true, ASK_SESSION_ID);
     return src;
 }
 

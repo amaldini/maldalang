@@ -51,11 +51,13 @@ var ASK_TITLE_SUFFIX = " — ASK";
 var ASK_PAGE_TITLE = PRODUCT_NAME + ASK_TITLE_SUFFIX;
 var ASK_POWERED_BY = "Powered by MALDA: Multi Agent Language with Development Automation";
 var ASK_POWERED_BY_URL = "https://github.com/amaldini/maldalang";
-// Optional logo left of the title: "", file path, embed:alias/..., http(s):, or data:
-// PACK: put logo.png + optional product_name.txt in the brain folder, then set (before packing):
-//   var ASK_LOGO = "embed:secondbrain/logo.png";
-// (alias is always EMBED_ALIAS below — not the disk path, e.g. not P:\SecondBrain\logo.png)
-// product_name.txt is read automatically from the embedded/disk brain root at ASK time.
+// Optional logo left of the title (works in normal ASK and in packed/embed exe):
+//   ""              -> auto-load logo.png/.svg/.jpg/… from the brain folder
+//   "logo.png"      -> same folder as the brain (resolved at ASK start)
+//   "P:/brain/logo.png" or "P:\\brain\\logo.png"  -> absolute disk path
+//      Prefer / or \\ — a single \ in "P:\Second..." is a string escape, not a folder slash.
+//   "embed:ALIAS/logo.png" -> packed brain only
+//   "https://..." / "data:..." -> remote or inline
 var ASK_LOGO = "";
 var SOURCE_SCRIPT_NAME = "secondbrain.malda";
 var EMBED_ALIAS = "secondbrain";
@@ -2273,6 +2275,13 @@ function askBrain() {
 
     var brainDir = resolveAskBrainRoot();
     askApplyProductNameFromBrain(brainDir);
+    askApplyLogoFromBrain(brainDir);
+    if (askLogoPathMissing()) {
+        AnsiConsole.markupLine("[yellow]" + t(
+            "ASK_LOGO not found (check path; use / or \\\\ in Windows strings): ",
+            "ASK_LOGO non trovato (controlla il path; in stringhe Windows usa / o \\\\): ") +
+            ASK_LOGO + "[/]");
+    }
     var catalog = loadCatalog(brainDir);
     var noteCount = catalogNoteCount(catalog);
     var topicCount = 0;
@@ -2443,12 +2452,10 @@ function packPortableAskExe() {
     AnsiConsole.markupLine("[green]" + t("Portable ASK exe ready:", "Exe ASK portatile pronto:") +
         "[/] [bold]" + str.replace(str.replace(string(written), "[", "[["), "]", "]]") + "[/]");
     AnsiConsole.markupLine("[dim]" + t(
-        "Run the .exe to open ASK with the embedded brain. Branding in the brain folder: " +
-            "product_name.txt (display name) and optional logo.png — set ASK_LOGO = \"embed:" +
-            EMBED_ALIAS + "/logo.png\" before packing.",
-        "Avvia l'.exe per aprire ASK col brain incorporato. Branding nella cartella del brain: " +
-            "product_name.txt (nome prodotto) e logo.png opzionale — imposta ASK_LOGO = \"embed:" +
-            EMBED_ALIAS + "/logo.png\" prima del pack.") + "[/]");
+        "Run the .exe to open ASK with the embedded brain. Branding in the brain folder " +
+            "(auto-loaded): product_name.txt and optional logo.png / logo.svg.",
+        "Avvia l'.exe per aprire ASK col brain incorporato. Branding nella cartella del brain " +
+            "(auto-caricato): product_name.txt e logo.png / logo.svg opzionale.") + "[/]");
     return true;
 }
 
