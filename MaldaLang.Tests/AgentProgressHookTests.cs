@@ -1,7 +1,9 @@
 // Copyright (c) 2026 Andrea Maldini
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using MaldaLang.BuiltIns;
 using MaldaLang.Interpreter;
 using ValueType = MaldaLang.Interpreter.ValueType;
@@ -84,5 +86,45 @@ public class AgentProgressHookTests
         ConversationInstance.DeliverAgentProgress(RuntimeValue.Object(payload));
 
         Assert.Empty(received);
+    }
+
+    [Fact]
+    public async Task OnAgentProgress_LiveChannel_IsIsolatedPerAsyncFlow()
+    {
+        var seen = new ConcurrentDictionary<string, string>();
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        async Task RunFlow(string channel)
+        {
+            ConversationInstance.SetAgentProgressLiveChannel(channel);
+            await gate.Task.ConfigureAwait(false);
+            // Prefer AsyncLocal over the process-wide fallback while peers run.
+            seen[channel] = ConversationInstance.GetAgentProgressLiveChannel() ?? "";
+            var payload = new JsonObject();
+            payload.Set("phase", RuntimeValue.String("round_start"));
+            payload.Set("round", RuntimeValue.Integer(1));
+            payload.Set("message", RuntimeValue.String(channel));
+            // Deliver must still resolve this flow's channel (not the peer's).
+            ConversationInstance.DeliverAgentProgress(RuntimeValue.Object(payload));
+            Assert.Equal(channel, ConversationInstance.GetAgentProgressLiveChannel());
+            // Clear only this async flow's AsyncLocal; do not await peers first.
+            ConversationInstance.SetAgentProgressLiveChannel(null);
+        }
+
+        try
+        {
+            var a = Task.Run(() => RunFlow("ask-aaa"));
+            var b = Task.Run(() => RunFlow("ask-bbb"));
+            await Task.Delay(50);
+            gate.SetResult();
+            await Task.WhenAll(a, b);
+
+            Assert.Equal("ask-aaa", seen["ask-aaa"]);
+            Assert.Equal("ask-bbb", seen["ask-bbb"]);
+        }
+        finally
+        {
+            ConversationInstance.ClearAgentProgressHandler();
+        }
     }
 }

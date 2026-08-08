@@ -14,17 +14,133 @@
 //   product_name.txt — first non-empty line
 //   logo.png / .svg / .jpg / .jpeg / .webp / .gif / .ico — if ASK_LOGO is empty
 //
-// HttpServer isolates each request: session fields live in ui.state.
-// Ask / Clear use @ACTION + componentFragment("ask-panel", ...) so the
-// HttpServer AJAX helper patches only #ask-panel (header/meta stay mounted).
-// Live LLM/tool progress uses @LIVE + componentLiveEmit (SSE) because the
-// POST /ask connection stays blocked until the answer is ready.
+// HttpServer isolates each request: brain/catalog live in shared ui.state
+// (ASK_SESSION_ID); per-browser conversations use scope askConvScope() from
+// query/body/cookie `c` (malda_ask_c). Ask / Clear use @ACTION +
+// componentFragment("ask-panel", ...) so the HttpServer AJAX helper patches
+// only #ask-panel. Live progress uses @LIVE + per-conversation SSE channel
+// ask-{c} because the POST /ask connection stays blocked until the answer
+// is ready.
+
+var ASK_CONV_COOKIE = "malda_ask_c";
+var ASK_CONV_CURRENT = "";
 
 function askAsText(value) {
     if (value == null) {
         return "";
     }
     return string(value);
+}
+
+function askSharedScope() {
+    return ASK_SESSION_ID;
+}
+
+function askConvScope() {
+    var id = str.trim(askAsText(ASK_CONV_CURRENT));
+    if (id == "") {
+        return askSharedScope();
+    }
+    return id;
+}
+
+function askLiveChannel() {
+    return "ask-" + askConvScope();
+}
+
+function askNormalizeConvId(raw) {
+    var id = str.trim(askAsText(raw));
+    if (str.length(id) < 8 or str.length(id) > 64) {
+        return "";
+    }
+    var allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-";
+    var i = 0;
+    while (i < str.length(id)) {
+        var ch = str.substring(id, i, 1);
+        if (str.indexOf(allowed, ch) < 0) {
+            return "";
+        }
+        i = i + 1;
+    }
+    return id;
+}
+
+function askMintConvId() {
+    var hex = "0123456789abcdef";
+    var id = "";
+    var i = 0;
+    while (i < 32) {
+        id = id + str.substring(hex, math.randomInt(0, 15), 1);
+        i = i + 1;
+    }
+    return id;
+}
+
+function askCookieGet(cookies, name) {
+    if (cookies == null) {
+        return "";
+    }
+    var key = str.trim(askAsText(name));
+    if (key == "") {
+        return "";
+    }
+    if (cookies[key] != null) {
+        return askAsText(cookies[key]);
+    }
+    return "";
+}
+
+function askPickConvId(queryParams, body, cookies) {
+    var id = "";
+    if (queryParams != null and queryParams["c"] != null) {
+        id = askNormalizeConvId(queryParams["c"]);
+    }
+    if (id == "" and body != null and body.c != null) {
+        id = askNormalizeConvId(body.c);
+    }
+    if (id == "") {
+        id = askNormalizeConvId(askCookieGet(cookies, ASK_CONV_COOKIE));
+    }
+    if (id == "") {
+        id = askMintConvId();
+    }
+    return id;
+}
+
+function askSetConvCookie(response, id) {
+    if (response == null) {
+        return;
+    }
+    // Local ASK is plain HTTP — Secure cookies would be dropped by the browser.
+    response.cookie(ASK_CONV_COOKIE, id, {
+        "httpOnly": true,
+        "secure": false,
+        "sameSite": "Lax",
+        "path": "/",
+        "maxAge": 2592000
+    });
+}
+
+// Bind conversation id for this request; optionally set cookie on response.
+function askBeginRequest(queryParams, body, cookies, response) {
+    var id = askPickConvId(queryParams, body, cookies);
+    ASK_CONV_CURRENT = id;
+    askSetConvCookie(response, id);
+    return id;
+}
+
+function askConvQuery(extra) {
+    var q = "c=" + askConvScope();
+    var more = str.trim(askAsText(extra));
+    if (more != "") {
+        if (str.startsWith(more, "&") or str.startsWith(more, "?")) {
+            more = str.substring(more, 1, str.length(more) - 1);
+        }
+        if (more != "") {
+            q = q + "&" + more;
+        }
+    }
+    return q;
 }
 
 // First non-empty line of a utf-8 text file (disk or embed:). Empty if missing.
@@ -134,8 +250,12 @@ function askEscapeHtml(value) {
     return s;
 }
 
+function askHiddenConvField() {
+    return "<input type='hidden' name='c' value='" + askEscapeHtml(askConvScope()) + "'>";
+}
+
 function askGetLang() {
-    var lang = askAsText(ui.state(ASK_STORE, "lang", "", ASK_SESSION_ID));
+    var lang = askAsText(ui.state(ASK_STORE, "lang", "", askConvScope()));
     if (lang == "en" or lang == "it") {
         return lang;
     }
@@ -145,11 +265,9 @@ function askGetLang() {
 function askSetLang(raw) {
     var lang = str.lower(str.trim(askAsText(raw)));
     if (lang == "it" or lang == "italiano" or lang == "2") {
-        ui.setState(ASK_STORE, "lang", "it", ASK_SESSION_ID);
-        UI_LANG = "it";
+        ui.setState(ASK_STORE, "lang", "it", askConvScope());
     } else if (lang == "en" or lang == "english" or lang == "1") {
-        ui.setState(ASK_STORE, "lang", "en", ASK_SESSION_ID);
-        UI_LANG = "en";
+        ui.setState(ASK_STORE, "lang", "en", askConvScope());
     }
 }
 
@@ -161,7 +279,7 @@ function askT(en, it) {
 }
 
 function askGetHistory() {
-    var history = ui.state(ASK_STORE, "history", [], ASK_SESSION_ID);
+    var history = ui.state(ASK_STORE, "history", [], askConvScope());
     if (history == null) {
         return [];
     }
@@ -169,15 +287,15 @@ function askGetHistory() {
 }
 
 function askSetHistory(history) {
-    ui.setState(ASK_STORE, "history", history, ASK_SESSION_ID);
+    ui.setState(ASK_STORE, "history", history, askConvScope());
 }
 
 function askGetFlashError() {
-    return askAsText(ui.state(ASK_STORE, "flashError", "", ASK_SESSION_ID));
+    return askAsText(ui.state(ASK_STORE, "flashError", "", askConvScope()));
 }
 
 function askSetFlashError(message) {
-    ui.setState(ASK_STORE, "flashError", askAsText(message), ASK_SESSION_ID);
+    ui.setState(ASK_STORE, "flashError", askAsText(message), askConvScope());
 }
 
 function askClearHistory() {
@@ -185,13 +303,13 @@ function askClearHistory() {
     askSetFlashError("");
 }
 
-// Sticky for the ASK session: default off (faster, no tool loop).
+// Sticky per conversation: default off (faster, no tool loop).
 function askGetToolsEnabled() {
-    return ui.state(ASK_STORE, "toolsEnabled", false, ASK_SESSION_ID) == true;
+    return ui.state(ASK_STORE, "toolsEnabled", false, askConvScope()) == true;
 }
 
 function askSetToolsEnabled(enabled) {
-    ui.setState(ASK_STORE, "toolsEnabled", enabled == true, ASK_SESSION_ID);
+    ui.setState(ASK_STORE, "toolsEnabled", enabled == true, askConvScope());
 }
 
 function askApplyToolsFromBody(body) {
@@ -229,6 +347,19 @@ function askIsChatOnly() {
     return session != null and session.chatOnly == true;
 }
 
+function askSourceScoreLabel(note) {
+    if (note == null) {
+        return "";
+    }
+    if (note.scoreHint != null and askAsText(note.scoreHint) != "") {
+        return askAsText(note.scoreHint);
+    }
+    if (note.score != null) {
+        return askAsText(note.score);
+    }
+    return "";
+}
+
 function askRenderSourcesHtml(sources) {
     if (sources == null or sources.length == 0) {
         if (askIsChatOnly()) {
@@ -240,21 +371,31 @@ function askRenderSourcesHtml(sources) {
             "No notes retrieved for this question.",
             "Nessuna nota recuperata per questa domanda.")) + "</p>";
     }
-    var html = "<ul class='sources'>";
+    var html = "<div class='sources-chips' role='list'>";
     foreach (var note in sources) {
-        var scoreBit = "";
-        if (note.scoreHint != null and askAsText(note.scoreHint) != "") {
-            scoreBit = " · <span class='meta'>" + askEscapeHtml(note.scoreHint) + "</span>";
-        } else if (note.score != null) {
-            scoreBit = " · <span class='meta'>score " + askEscapeHtml(string(note.score)) + "</span>";
+        var score = askSourceScoreLabel(note);
+        var scoreHtml = "";
+        if (score != "") {
+            scoreHtml = "<span class='score-pill'>" + askEscapeHtml(score) + "</span>";
         }
-        html = html + "<li><strong>" + askEscapeHtml(note.title) + "</strong>" +
-            " <span class='slug'>[" + askEscapeHtml(note.slug) + "]</span>" +
-            "<br><span class='path'>" + askEscapeHtml(note.path) + "</span>" +
-            " · <span class='meta'>" + askEscapeHtml(askT("source:", "origine:")) + " " +
-            askEscapeHtml(note.source) + "</span>" + scoreBit + "</li>";
+        var tip = askAsText(note.slug);
+        if (note.source != null and askAsText(note.source) != "") {
+            if (tip != "") {
+                tip = tip + " · ";
+            }
+            tip = tip + askT("source:", "origine:") + " " + askAsText(note.source);
+        }
+        var tipAttr = "";
+        if (tip != "") {
+            tipAttr = " title='" + askEscapeHtml(tip) + "'";
+        }
+        html = html + "<div class='source-chip' role='listitem'" + tipAttr + ">" +
+            "<div class='source-chip-body'>" +
+            "<div class='source-chip-title'>" + askEscapeHtml(note.title) + "</div>" +
+            "<div class='path'>" + askEscapeHtml(note.path) + "</div>" +
+            "</div>" + scoreHtml + "</div>";
     }
-    html = html + "</ul>";
+    html = html + "</div>";
     return html;
 }
 
@@ -290,9 +431,11 @@ function askRenderTurnHtml(turn, index) {
         html = html + "<div class='bubble a'><div class='bubble-label'>" +
             askEscapeHtml(askT("Answer", "Risposta")) + "</div>" +
             "<div class='answer md'>" + markdownToHtml(answer) + "</div>" +
-            "<details class='sources-details'><summary>" +
-            askEscapeHtml(askT("Sources", "Fonti")) + " (" + string(sources.length) + ")</summary>" +
-            askRenderSourcesHtml(sources) + "</details></div>";
+            "<div class='sources-block'>" +
+            "<div class='sources-label'>" +
+            askEscapeHtml(askT("Sources", "Fonti")) +
+            " <span class='meta'>(" + string(sources.length) + ")</span></div>" +
+            askRenderSourcesHtml(sources) + "</div></div>";
     }
     html = html + "</article>";
     return html;
@@ -301,96 +444,142 @@ function askRenderTurnHtml(turn, index) {
 function askPageStyles() {
     return "<style>" +
         ":root{--ink:#1c2430;--muted:#5c6b7a;--line:#d5dde6;--paper:#f7f4ef;" +
-        "--panel:#fffdf9;--accent:#0f6a5b;--accent-ink:#083f38;--warn:#8a5a12;" +
-        "--danger:#8b2e2e;--focus:#c9e7e1;--q-bg:#e8f2ef;--sticky-bg:rgba(247,244,239,0.92)}" +
+        "--panel:#fffcf8;--accent:#0f6a5b;--accent-ink:#083f38;--warn:#8a5a12;" +
+        "--danger:#8b2e2e;--focus:#c9e7e1;--q-bg:#e8f2ef;--sticky-bg:rgba(247,244,239,0.92);" +
+        "--ui:system-ui,-apple-system,Segoe UI,sans-serif;" +
+        "--serif:Georgia,'Times New Roman',serif}" +
         "*{box-sizing:border-box}" +
         "html{scroll-behavior:smooth}" +
-        "body{margin:0;font-family:Georgia,'Times New Roman',serif;color:var(--ink);" +
+        "body{margin:0;font-family:var(--ui);color:var(--ink);" +
         "background:radial-gradient(1200px 500px at 10% -10%,#e7efe9 0%,transparent 55%)," +
         "linear-gradient(180deg,#eef2f5,#f7f4ef 40%,#f3efe8);min-height:100vh}" +
         "main{max-width:760px;width:100%;margin:0 auto;padding:0 18px 48px}" +
         "main.has-logo{width:fit-content;min-width:min(760px,100%);max-width:100%}" +
-        ".sticky-header{position:sticky;top:0;z-index:20;padding:16px 0 12px;" +
+        ".sticky-header{position:sticky;top:0;z-index:20;padding:14px 0 10px;" +
         "margin:0 -18px;padding-left:18px;padding-right:18px;" +
         "background:var(--sticky-bg);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);" +
-        "border-bottom:1px solid var(--line);box-shadow:0 8px 18px rgba(28,36,48,0.04)}" +
+        "border-bottom:1px solid var(--line)}" +
         ".sticky-header-inner{display:flex;justify-content:space-between;gap:16px;" +
         "align-items:flex-start;flex-wrap:wrap}" +
-        ".brand{display:flex;align-items:flex-start;gap:14px;min-width:min-content;flex:1}" +
-        ".logo{height:56px;max-width:min(70vw,100%);object-fit:contain;flex-shrink:0;display:block}" +
+        ".brand{display:flex;align-items:flex-start;gap:12px;min-width:min-content;flex:1}" +
+        ".logo{height:48px;max-width:min(70vw,100%);object-fit:contain;flex-shrink:0;display:block}" +
         ".brand-text{min-width:0}" +
-        "h1{font-size:1.55rem;margin:0 0 4px;letter-spacing:-0.02em}" +
-        ".powered-by{margin:0 0 6px;font-family:system-ui,sans-serif;font-size:0.82rem;line-height:1.35}" +
-        ".powered-by a{color:var(--accent-ink);text-decoration:none;border-bottom:1px solid transparent}" +
-        ".powered-by a:hover{border-bottom-color:var(--accent)}" +
-        ".subtitle{margin:0;color:var(--muted);font-family:system-ui,sans-serif;font-size:0.9rem}" +
-        ".lang{font-family:system-ui,sans-serif;display:flex;gap:8px;align-items:center;padding-top:4px}" +
-        ".lang a{color:var(--accent-ink);text-decoration:none;border-bottom:1px solid transparent}" +
-        ".lang a.active{border-bottom-color:var(--accent);font-weight:600}" +
-        ".meta-bar,.panel,.composer{background:var(--panel);border:1px solid var(--line);border-radius:10px;" +
+        "h1{font-family:var(--serif);font-size:1.55rem;font-weight:700;margin:0;" +
+        "letter-spacing:-0.02em;line-height:1.2}" +
+        ".powered-by{margin:4px 0 0;font-size:0.75rem;line-height:1.35;color:var(--muted);" +
+        "max-width:42rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}" +
+        ".powered-by a{color:var(--muted);text-decoration:none;border-bottom:1px solid transparent}" +
+        ".powered-by a:hover{color:var(--accent-ink);border-bottom-color:var(--accent)}" +
+        ".header-actions{display:flex;flex-direction:column;align-items:flex-end;gap:8px;padding-top:2px}" +
+        ".lang{display:flex;gap:6px;align-items:center}" +
+        ".lang a{color:var(--muted);text-decoration:none;font-size:0.82rem;font-weight:600;" +
+        "padding:5px 10px;border-radius:7px;border:1px solid transparent;letter-spacing:0.02em}" +
+        ".lang a:hover{color:var(--accent-ink);background:rgba(15,106,91,0.06)}" +
+        ".lang a.active{color:var(--accent-ink);background:var(--q-bg);border-color:#c5ddd6;" +
+        "box-shadow:inset 0 -2px 0 var(--accent)}" +
+        ".new-conv{font-size:0.78rem;font-weight:600;color:var(--accent-ink);text-decoration:none;" +
+        "border-bottom:1px solid transparent}" +
+        ".new-conv:hover{border-bottom-color:var(--accent)}" +
+        ".meta-bar{font-size:0.82rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px 0;" +
+        "align-items:baseline;padding:10px 2px 0;margin:4px 0 0;border:none;background:transparent}" +
+        ".meta-bar strong{color:var(--ink);font-weight:600}" +
+        ".meta-bar .dot{margin:0 8px;opacity:0.55}" +
+        ".meta-bar .meta-sub{width:100%;margin:2px 0 0;font-size:0.78rem}" +
+        ".panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;" +
         "padding:14px 16px;margin:14px 0 0}" +
-        ".meta-bar{font-family:system-ui,sans-serif;font-size:0.9rem;color:var(--muted);" +
-        "display:grid;gap:4px}" +
-        ".meta-bar strong{color:var(--ink)}" +
-        ".thread{display:flex;flex-direction:column;gap:16px;margin-top:18px}" +
-        ".turn{display:flex;flex-direction:column;gap:10px}" +
-        ".bubble{border:1px solid var(--line);border-radius:12px;padding:12px 14px}" +
-        ".bubble.q{background:var(--q-bg);border-color:#c5ddd6}" +
+        ".thread{display:flex;flex-direction:column;gap:22px;margin-top:20px}" +
+        ".turn{display:flex;flex-direction:column;gap:12px}" +
+        ".bubble{border:1px solid var(--line);border-radius:12px;padding:14px 16px}" +
+        ".bubble.q{background:var(--q-bg);border-color:#c5ddd6;border-left:3px solid var(--accent)}" +
         ".bubble.a{background:var(--panel)}" +
-        ".bubble-label{font-family:system-ui,sans-serif;font-size:0.75rem;text-transform:uppercase;" +
-        "letter-spacing:0.04em;color:var(--muted);margin:0 0 6px}" +
-        ".question-text{margin:0;line-height:1.45;font-size:1.05rem}" +
-        ".answer{line-height:1.55;margin:0}" +
+        ".bubble-label{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.06em;" +
+        "color:var(--muted);margin:0 0 8px;font-weight:600}" +
+        ".question-text{margin:0;line-height:1.45;font-size:1.02rem;font-weight:500}" +
+        ".answer{font-family:var(--serif);line-height:1.6;margin:0;font-size:1.02rem}" +
         ".answer.md p{margin:0 0 0.75em}" +
         ".answer.md p:last-child{margin-bottom:0}" +
         ".answer.md h3{font-size:1.05rem;margin:1em 0 0.45em}" +
         ".answer.md strong{font-weight:700}" +
-        ".answer.md code{font-family:ui-monospace,Consolas,monospace;font-size:0.9em;" +
-        "background:#eef2f5;padding:0.1em 0.35em;border-radius:4px}" +
+        ".answer.md code{font-family:ui-monospace,Consolas,monospace;font-size:0.88em;" +
+        "background:#eef2f5;padding:0.12em 0.4em;border-radius:4px}" +
         ".answer.md table{border-collapse:collapse;width:100%;margin:0.6em 0 0.2em;" +
-        "font-family:system-ui,sans-serif;font-size:0.9rem}" +
+        "font-family:var(--ui);font-size:0.9rem}" +
         ".answer.md th,.answer.md td{border:1px solid var(--line);padding:6px 8px;text-align:left}" +
         ".answer.md th{background:#eef2f5;font-weight:600}" +
         ".answer.md ul,.answer.md ol{margin:0.4em 0 0.8em;padding-left:1.3em}" +
-        ".sources-details{margin-top:12px;font-family:system-ui,sans-serif;font-size:0.9rem}" +
-        ".sources-details summary{cursor:pointer;color:var(--accent-ink);user-select:none}" +
-        ".sources{list-style:none;padding:0;margin:10px 0 0;font-size:0.92rem}" +
-        ".sources li{padding:10px 0;border-top:1px solid var(--line)}" +
-        ".sources li:first-child{border-top:none;padding-top:0}" +
+        ".sources-block{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}" +
+        ".sources-label{font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;" +
+        "color:var(--muted);font-weight:600;margin:0 0 10px}" +
+        ".sources-chips{display:flex;flex-wrap:wrap;gap:8px}" +
+        ".source-chip{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;" +
+        "flex:1 1 200px;min-width:min(100%,200px);max-width:100%;" +
+        "background:#f4f7f8;border:1px solid var(--line);border-radius:10px;padding:10px 12px}" +
+        ".source-chip-body{min-width:0;flex:1}" +
+        ".source-chip-title{font-size:0.88rem;font-weight:600;line-height:1.3;margin:0 0 4px;" +
+        "color:var(--ink)}" +
+        ".score-pill{flex:0 0 auto;font-size:0.72rem;font-weight:700;font-variant-numeric:tabular-nums;" +
+        "color:var(--accent-ink);background:#dceee9;border:1px solid #c5ddd6;" +
+        "border-radius:999px;padding:3px 8px;white-space:nowrap;max-width:9rem;" +
+        "overflow:hidden;text-overflow:ellipsis}" +
         ".slug,.path,.meta,.muted{color:var(--muted)}" +
         ".slug{font-family:ui-monospace,Consolas,monospace;font-size:0.85rem}" +
-        ".path{font-family:ui-monospace,Consolas,monospace;font-size:0.82rem}" +
-        "label{display:block;font-family:system-ui,sans-serif;font-size:0.85rem;margin:0 0 8px;" +
-        "color:var(--muted)}" +
-        "label.tool-toggle{display:flex;align-items:flex-start;gap:10px;margin:10px 0 0;" +
-        "font-size:0.9rem;color:var(--ink);cursor:pointer;line-height:1.35}" +
-        "label.tool-toggle input{margin-top:3px;flex:0 0 auto;accent-color:var(--accent)}" +
-        "label.tool-toggle .hint{display:block;color:var(--muted);font-size:0.82rem;margin-top:2px}" +
-        "textarea{width:100%;min-height:96px;resize:vertical;padding:12px 14px;border-radius:8px;" +
-        "border:1px solid var(--line);background:#fff;color:var(--ink);font:1rem/1.45 Georgia,serif}" +
+        ".path{font-family:ui-monospace,Consolas,monospace;font-size:0.75rem;word-break:break-all}" +
+        "label{display:block;font-size:0.82rem;margin:0 0 8px;color:var(--muted);font-weight:500}" +
+        "label.tool-toggle{display:inline-flex;align-items:center;gap:10px;margin:0;" +
+        "font-size:0.88rem;color:var(--ink);cursor:pointer;line-height:1.3;font-weight:500;" +
+        "user-select:none}" +
+        "label.tool-toggle input{position:absolute;opacity:0;width:1px;height:1px;overflow:hidden}" +
+        "label.tool-toggle .switch{width:36px;height:20px;border-radius:999px;background:#cfd8e0;" +
+        "border:1px solid #b8c4d0;position:relative;flex:0 0 auto;transition:background .15s ease}" +
+        "label.tool-toggle .switch::after{content:'';position:absolute;top:1px;left:1px;" +
+        "width:16px;height:16px;border-radius:50%;background:#fff;" +
+        "box-shadow:0 1px 2px rgba(28,36,48,0.2);transition:transform .15s ease}" +
+        "label.tool-toggle input:checked+.switch{background:var(--accent);border-color:var(--accent)}" +
+        "label.tool-toggle input:checked+.switch::after{transform:translateX(16px)}" +
+        "label.tool-toggle input:focus-visible+.switch{outline:2px solid var(--focus);outline-offset:2px}" +
+        "textarea{width:100%;min-height:88px;resize:vertical;padding:12px 14px;border-radius:8px;" +
+        "border:1px solid var(--line);background:#fff;color:var(--ink);font:1rem/1.45 var(--ui)}" +
         "textarea:focus{outline:2px solid var(--focus);border-color:var(--accent)}" +
-        ".actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}" +
-        "button,.ghost{font-family:system-ui,sans-serif;border-radius:8px;padding:10px 14px;" +
-        "border:1px solid var(--accent);cursor:pointer}" +
+        ".composer-bar{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:12px}" +
+        ".composer-bar .actions{display:flex;gap:10px;flex-wrap:wrap;margin-left:auto}" +
+        ".composer-bar .actions button:not(.ghost){order:2}" +
+        ".composer-bar .actions .ghost{order:1}" +
+        "button,.ghost{font-family:var(--ui);border-radius:8px;padding:10px 14px;" +
+        "border:1px solid var(--accent);cursor:pointer;font-size:0.92rem;font-weight:600}" +
         "button{background:var(--accent);color:#fff}" +
         "button:hover{background:var(--accent-ink)}" +
         ".ghost{background:transparent;color:var(--accent-ink);text-decoration:none;display:inline-block}" +
-        ".error{color:var(--danger);font-family:system-ui,sans-serif;margin:0}" +
+        ".ghost:hover{background:rgba(15,106,91,0.06)}" +
+        ".error{color:var(--danger);margin:0}" +
         ".error-bubble{background:#fff5f5;border-color:#efc4c4}" +
-        ".pending{color:var(--warn);font-family:system-ui,sans-serif;margin:0;font-style:italic}" +
-        ".live-status,.live-dock{font-family:system-ui,sans-serif;font-size:0.88rem;margin:8px 0 0;" +
+        ".pending{color:var(--warn);margin:0;font-style:italic;font-family:var(--ui)}" +
+        ".live-status,.live-dock{font-size:0.88rem;margin:8px 0 0;" +
         "color:var(--accent-ink);background:#e8f2ef;border:1px solid #c5ddd6;border-radius:8px;" +
         "padding:8px 12px}" +
-        /* Home is only a safe shelf outside #ask-panel; dock is moved next to the latest turn while live. */
+        /* Home is only a safe shelf outside #ask-panel; while live the dock sits in the sticky composer. */
         "#ask-live-home:empty{display:none}" +
         ".live-dock[hidden]{display:none!important}" +
+        ".composer>.live-dock{margin:0 0 12px;position:relative;z-index:1}" +
         ".live-dock .live-round{font-weight:600;margin-right:6px}" +
         ".live-dock .live-timer,.live-status .live-timer{font-variant-numeric:tabular-nums;" +
         "font-weight:600;color:var(--muted);margin-right:6px}" +
-        ".empty{color:var(--muted);font-family:system-ui,sans-serif;margin:0}" +
-        ".composer{position:sticky;bottom:0;z-index:15;margin-top:18px;" +
-        "box-shadow:0 -10px 24px rgba(28,36,48,0.05)}" +
-        ".busy{font-family:system-ui,sans-serif;font-size:0.85rem;color:var(--muted);margin:8px 0 0}" +
+        ".live-dock .live-dock-body{font-variant-numeric:tabular-nums}" +
+        ".empty-state{background:var(--panel);border:1px solid var(--line);border-radius:12px;" +
+        "padding:22px 20px;margin:0}" +
+        ".empty-lead{margin:0 0 14px;color:var(--ink);font-size:1rem;line-height:1.45;font-weight:500}" +
+        ".empty-hint{margin:0 0 14px;color:var(--muted);font-size:0.9rem;line-height:1.4}" +
+        ".examples{display:flex;flex-wrap:wrap;gap:8px}" +
+        ".example{font-family:var(--ui);font-size:0.86rem;font-weight:500;color:var(--accent-ink);" +
+        "background:#fff;border:1px solid #c5ddd6;border-radius:999px;padding:8px 12px;cursor:pointer;" +
+        "text-align:left;line-height:1.3}" +
+        ".example:hover{background:var(--q-bg);border-color:var(--accent)}" +
+        ".composer{position:sticky;bottom:0;z-index:15;margin-top:20px;" +
+        "background:var(--panel);border:1px solid var(--line);border-radius:12px;" +
+        "padding:14px 16px;box-shadow:0 -10px 28px rgba(28,36,48,0.06)}" +
+        ".composer .clear-form{position:absolute;width:1px;height:1px;padding:0;margin:-1px;" +
+        "overflow:hidden;clip:rect(0,0,0,0);border:0}" +
+        ".busy{font-size:0.8rem;color:var(--muted);margin:0}" +
+        ".busy.ready{color:var(--muted)}" +
         "</style>";
 }
 
@@ -557,6 +746,47 @@ function askResolveLogoSrc() {
     return src;
 }
 
+function askRenderEmptyStateHtml(session) {
+    var lead = "";
+    var hint = "";
+    var examples = [];
+    if (session != null and session.chatOnly == true) {
+        lead = askT(
+            "No " + askProductName() + " loaded.",
+            askProductName() + " non caricato.");
+        hint = askT(
+            "Chat directly with the model below — or try an example.",
+            "Chatta direttamente col modello qui sotto — oppure prova un esempio.");
+        examples = [
+            askT("Summarize what you can help with.", "Riassumi in cosa puoi aiutarmi."),
+            askT("Explain a concept step by step.", "Spiega un concetto passo per passo."),
+            askT("Draft a short checklist for me.", "Prepara una breve checklist.")
+        ];
+    } else {
+        lead = askT(
+            "Ask " + askProductName() + ".",
+            "Interroga " + askProductName() + ".");
+        hint = askT(
+            "Answers use the distilled notes. Pick an example or type below.",
+            "Le risposte usano le note distillate. Scegli un esempio o scrivi qui sotto.");
+        examples = [
+            askT("What are the main themes?", "Quali sono i temi principali?"),
+            askT("How does authentication work?", "Come funziona l'autenticazione?"),
+            askT("Where should I start reading?", "Da dove conviene iniziare a leggere?")
+        ];
+    }
+    var html = "<div class='empty-state'>" +
+        "<p class='empty-lead'>" + askEscapeHtml(lead) + "</p>" +
+        "<p class='empty-hint'>" + askEscapeHtml(hint) + "</p>" +
+        "<div class='examples'>";
+    foreach (var example in examples) {
+        html = html + "<button type='button' class='example' data-ask-example='" +
+            askEscapeHtml(example) + "'>" + askEscapeHtml(example) + "</button>";
+    }
+    html = html + "</div></div>";
+    return html;
+}
+
 // Flash + thread + composer — returned as componentFragment("ask-panel", ...).
 function askRenderPanelHtml() {
     var history = askGetHistory();
@@ -571,17 +801,7 @@ function askRenderPanelHtml() {
 
     html = html + "<section class='thread' id='thread'>";
     if (history.length == 0) {
-        var emptyHint = askT(
-            "Ask a question below. Answers use " + askProductName() +
-                "; scroll up for earlier turns.",
-            "Fai una domanda qui sotto. Le risposte usano " + askProductName() +
-                "; scorri in alto per i turni precedenti.");
-        if (session.chatOnly == true) {
-            emptyHint = askT(
-                "No " + askProductName() + " loaded — chat directly with the model below.",
-                askProductName() + " non caricato — chatta direttamente col modello qui sotto.");
-        }
-        html = html + "<div class='panel'><p class='empty'>" + askEscapeHtml(emptyHint) + "</p></div>";
+        html = html + askRenderEmptyStateHtml(session);
     } else {
         var i = 0;
         foreach (var turn in history) {
@@ -605,43 +825,48 @@ function askRenderPanelHtml() {
     if (toolsEnabled) {
         toolsChecked = " checked";
     }
-    var busyHint = askT(
-        "Each ask may take a while (LLM). Keep this tab open.",
-        "Ogni domanda puo' richiedere tempo (LLM). Lascia aperta questa scheda.");
+    var statusHint = askT("Ready", "Pronto");
     if (toolsEnabled and session.chatOnly != true) {
-        busyHint = askT(
-            "Note search tools are on — the model may take several LLM rounds. Keep this tab open.",
-            "Ricerca nelle note attiva — il modello puo' fare piu' round LLM. Lascia aperta questa scheda.");
+        statusHint = askT(
+            "Note search on — may take several LLM rounds.",
+            "Ricerca note attiva — puo' richiedere piu' round LLM.");
     }
 
     html = html + "<section class='composer'>" +
-        "<form method='post' action='/ask'>" +
+        "<form method='post' action='/ask' id='ask-form'>" +
+        askHiddenConvField() +
         "<label for='question'>" + askEscapeHtml(askT("New question", "Nuova domanda")) + "</label>" +
         "<textarea id='question' name='question' required autofocus placeholder='" +
         askEscapeHtml(placeholder) +
-        "'></textarea>";
+        "'></textarea>" +
+        "<div class='composer-bar'>";
 
     if (session.chatOnly != true) {
-        html = html + "<label class='tool-toggle' for='useTools'>" +
-            "<input type='checkbox' id='useTools' name='useTools' value='1'" + toolsChecked + ">" +
-            "<span>" + askEscapeHtml(askT(
-                "Search notes with tools (slower)",
-                "Ricerca nelle note con tool (piu' lento)")) +
-            "<span class='hint'>" + askEscapeHtml(askT(
+        html = html + "<label class='tool-toggle' for='useTools' title='" +
+            askEscapeHtml(askT(
                 "Off: answer from retrieved excerpts only (faster). On: allow read_file / grep / list_directory.",
                 "Off: risponde solo dagli estratti recuperati (piu' veloce). On: consente read_file / grep / list_directory.")) +
-            "</span></span></label>";
+            "'>" +
+            "<input type='checkbox' id='useTools' name='useTools' value='1'" + toolsChecked + ">" +
+            "<span class='switch' aria-hidden='true'></span>" +
+            "<span>" + askEscapeHtml(askT("Search notes", "Ricerca note")) + "</span></label>";
     }
 
-    html = html + "<p class='busy'>" + askEscapeHtml(busyHint) + "</p>" +
+    var busyClass = "busy";
+    if (not (toolsEnabled and session.chatOnly != true)) {
+        busyClass = "busy ready";
+    }
+    // Ask button first in DOM (HttpServer AJAX disables the first submit control).
+    // CSS order keeps Clear visually to the left. Clear uses form= (no nested forms).
+    html = html + "<p class='" + busyClass + "'>" + askEscapeHtml(statusHint) + "</p>" +
         "<div class='actions'>" +
         "<button type='submit'>" + askEscapeHtml(askT("Ask", "Chiedi")) + "</button>" +
-        "</div></form>" +
-        "<form method='post' action='/clear' style='margin-top:10px'>" +
-        "<div class='actions'>" +
-        "<button type='submit' class='ghost' style='background:transparent;color:var(--accent-ink)'>" +
-        askEscapeHtml(askT("Clear thread", "Svuota thread")) + "</button>" +
-        "</div></form></section>";
+        "<button type='submit' class='ghost' form='ask-clear-form'>" +
+        askEscapeHtml(askT("Clear", "Cancella")) + "</button>" +
+        "</div></div></form>" +
+        "<form method='post' action='/clear' class='clear-form' id='ask-clear-form'>" +
+        askHiddenConvField() +
+        "</form></section>";
 
     return html;
 }
@@ -652,10 +877,13 @@ function askPanelFragment() {
 
 // Scroll + SSE live progress. Scripts inside fragment bodies do not run via innerHTML.
 // #ask-live-dock lives in #ask-live-home (outside #ask-panel) so it survives the
-// blocking POST; while visible it is moved under the latest turn / above the composer.
+// blocking POST; while visible it is moved to the top of the sticky composer.
 function askPageClientScript() {
     return "<script>(function(){" +
         "var es=null;" +
+        "var liveClosing=false;" +
+        "var askConvId='" + askEscapeHtml(askConvScope()) + "';" +
+        "var askLiveChannel='" + askEscapeHtml(askLiveChannel()) + "';" +
         "var liveLabel='" + askEscapeHtml(askT("Live", "Live")) + "';" +
         "var askStartedAt=null;" +
         "var roundStartedAt=null;" +
@@ -685,7 +913,8 @@ function askPageClientScript() {
         "function progressMessage(p){" +
         "if(!p){return '';}" +
         "if(p.phase==='tool_calls'&&p.tools&&p.tools.length){" +
-        "return 'Tools: '+p.tools.join(', ');" +
+        "try{return 'Tools: '+(Array.isArray(p.tools)?p.tools.join(', '):String(p.tools));}" +
+        "catch(err){return 'Tools…';}" +
         "}" +
         "if(p.phase==='tool_done'&&p.tool){" +
         "return (p.ok===false?'Failed: ':'Done: ')+p.tool;" +
@@ -749,18 +978,13 @@ function askPageClientScript() {
         "if(home&&dock.parentNode!==home){home.appendChild(dock);}" +
         "return dock;" +
         "}" +
-        "var thread=document.getElementById('thread');" +
+        // Keep progress in the sticky composer so rounds stay visible above the
+        // input (placing it after the last turn hid it under the composer).
         "var composer=document.querySelector('#ask-panel .composer');" +
-        "if(thread){" +
-        "var turns=thread.querySelectorAll('.turn');" +
-        "if(turns.length){" +
-        "var last=turns[turns.length-1];" +
-        "if(dock.previousSibling!==last){last.after(dock);}" +
-        "}else if(dock.parentNode!==thread){" +
-        "thread.appendChild(dock);" +
+        "if(composer){" +
+        "if(dock.parentNode!==composer||composer.firstChild!==dock){" +
+        "composer.insertBefore(dock,composer.firstChild);" +
         "}" +
-        "}else if(composer&&dock.parentNode!==composer.parentNode){" +
-        "composer.parentNode.insertBefore(dock,composer);" +
         "}else if(home&&dock.parentNode!==home){" +
         "home.appendChild(dock);" +
         "}" +
@@ -804,9 +1028,15 @@ function askPageClientScript() {
         "showLive(lastMsg,!done);" +
         "if(done){setTimeout(function(){showLive('',false);},1200);}" +
         "}" +
+        "function disconnectLive(){" +
+        "liveClosing=true;" +
+        "if(es){try{es.close();}catch(e){} es=null;}" +
+        "stopLiveTimer();" +
+        "}" +
         "function connectLive(){" +
+        "liveClosing=false;" +
         "if(es){try{es.close();}catch(e){}}" +
-        "es=new EventSource('/ask/live?channel=ask');" +
+        "es=new EventSource('/ask/live?channel='+encodeURIComponent(askLiveChannel));" +
         "es.onmessage=function(evt){" +
         "try{" +
         "var data=JSON.parse(evt.data);" +
@@ -817,26 +1047,67 @@ function askPageClientScript() {
         "onProgressPayload(payload);" +
         "}catch(err){}" +
         "};" +
-        "es.onerror=function(){/* browser will retry EventSource */};" +
+        "es.onerror=function(){" +
+        // Avoid reconnect storms while navigating away (lang switch / unload).
+        "if(liveClosing){try{es&&es.close();}catch(e){} es=null;}" +
+        "};" +
+        "}" +
+        "function fillExample(text){" +
+        "var ta=document.getElementById('question');" +
+        "if(!ta||!text){return;}" +
+        "ta.value=text;" +
+        "ta.focus();" +
+        "try{ta.setSelectionRange(text.length,text.length);}catch(err){}" +
+        "}" +
+        "function navigateLang(href){" +
+        "if(!href){return;}" +
+        // Close SSE before full navigation — an open event-stream can stall
+        // the next document request on HttpListener (browser appears to hang).
+        "disconnectLive();" +
+        "setTimeout(function(){window.location.assign(href);},50);" +
+        "}" +
+        "function convUrl(extra){" +
+        "var q='c='+encodeURIComponent(askConvId||'');" +
+        "if(extra){q+='&'+extra;}" +
+        "return '/?'+q;" +
         "}" +
         "function bind(){" +
         "var panel=document.getElementById('ask-panel');" +
         "if(panel&&panel.dataset.askScrollBound!=='1'){" +
         "panel.dataset.askScrollBound='1';" +
         "new MutationObserver(function(){" +
-        // Panel replace destroys an in-thread dock; shelve a fresh one, then scroll.
-        "var home=document.getElementById('ask-live-home');" +
+        // Fragment replace destroys a dock that was mounted inside the composer.
         "var dock=document.getElementById('ask-live-dock');" +
-        "if(!dock||(home&&!home.contains(dock))){" +
+        "if(!dock){" +
         "showLive('',false);" +
         "}" +
         "scrollLatest();" +
         "}).observe(panel,{childList:true});" +
         "}" +
+        "if(document.documentElement.dataset.askNavBound!=='1'){" +
+        "document.documentElement.dataset.askNavBound='1';" +
+        "document.addEventListener('click',function(e){" +
+        "var t=e.target;" +
+        "if(!t||!t.closest){return;}" +
+        "var lang=t.closest('a[data-ask-lang]');" +
+        "if(lang){" +
+        "e.preventDefault();" +
+        "navigateLang(lang.getAttribute('href')||'');" +
+        "return;" +
+        "}" +
+        "var btn=t.closest('[data-ask-example]');" +
+        "if(!btn){return;}" +
+        "e.preventDefault();" +
+        "fillExample(btn.getAttribute('data-ask-example')||'');" +
+        "},true);" +
+        "window.addEventListener('pagehide',disconnectLive);" +
+        "window.addEventListener('beforeunload',disconnectLive);" +
+        "}" +
         "document.addEventListener('submit',function(e){" +
         "var form=e.target;" +
         "if(!form||!form.action){return;}" +
         "if(String(form.action).indexOf('/ask')<0){return;}" +
+        "if(String(form.action).indexOf('/ask/live')>=0){return;}" +
         "lastRound=null;" +
         "roundStartedAt=null;" +
         "askStartedAt=null;" +
@@ -900,28 +1171,40 @@ function askRenderPage() {
             html = html + "<p class='powered-by'>" + askEscapeHtml(poweredBy) + "</p>";
         }
     }
-    html = html + "<p class='subtitle'>" + askEscapeHtml(askAsText(session.subtitle)) +
-        "</p></div></div>" +
-        "<div class='lang'>" +
-        "<a class='" + str.trim(enClass) + "' href='/?lang=en'>English</a>" +
-        "<span aria-hidden='true'>·</span>" +
-        "<a class='" + str.trim(itClass) + "' href='/?lang=it'>Italiano</a>" +
+    html = html + "</div></div>" +
+        "<div class='header-actions'>" +
+        "<nav class='lang' aria-label='" + askEscapeHtml(askT("Language", "Lingua")) + "'>" +
+        "<a class='" + str.trim(enClass) + "' href='/?" + askEscapeHtml(askConvQuery("lang=en")) +
+        "' hreflang='en' data-ask-lang='en'>EN</a>" +
+        "<a class='" + str.trim(itClass) + "' href='/?" + askEscapeHtml(askConvQuery("lang=it")) +
+        "' hreflang='it' data-ask-lang='it'>IT</a>" +
+        "</nav>" +
+        "<a class='new-conv' href='/?" + askEscapeHtml("c=" + askMintConvId()) + "'>" +
+        askEscapeHtml(askT("New conversation", "Nuova conversazione")) + "</a>" +
         "</div></div></header>";
 
+    var subtitle = askAsText(session.subtitle);
     html = html + "<div class='meta-bar'>" +
-        "<div>" + askEscapeHtml(askT("Notes", "Note")) + ": <strong>" +
-        askEscapeHtml(string(session.noteCount)) +
-        "</strong> · " + askEscapeHtml(askT("Themes", "Temi")) + ": <strong>" +
-        askEscapeHtml(string(session.topicCount)) + "</strong> · " +
-        askEscapeHtml(askT("from", "da")) +
-        " <strong>" + askEscapeHtml(session.sourceFolder) + "</strong></div>" +
-        "<div>" + askEscapeHtml(askT("Retrieval", "Recupero")) + ": <strong>" +
-        askEscapeHtml(session.retrieval) + "</strong> · LLM: <strong>" +
-        askEscapeHtml(session.llm) + "</strong></div>" +
-        "</div>";
+        "<span>" + askEscapeHtml(askT("Notes", "Note")) + " <strong>" +
+        askEscapeHtml(string(session.noteCount)) + "</strong></span>" +
+        "<span class='dot' aria-hidden='true'>·</span>" +
+        "<span>" + askEscapeHtml(askT("Themes", "Temi")) + " <strong>" +
+        askEscapeHtml(string(session.topicCount)) + "</strong></span>" +
+        "<span class='dot' aria-hidden='true'>·</span>" +
+        "<span>" + askEscapeHtml(askT("from", "da")) +
+        " <strong>" + askEscapeHtml(session.sourceFolder) + "</strong></span>" +
+        "<span class='dot' aria-hidden='true'>·</span>" +
+        "<span>" + askEscapeHtml(askT("Retrieval", "Recupero")) + " <strong>" +
+        askEscapeHtml(session.retrieval) + "</strong></span>" +
+        "<span class='dot' aria-hidden='true'>·</span>" +
+        "<span>LLM <strong>" + askEscapeHtml(session.llm) + "</strong></span>";
+    if (subtitle != "") {
+        html = html + "<div class='meta-sub'>" + askEscapeHtml(subtitle) + "</div>";
+    }
+    html = html + "</div>";
 
     // Shelf outside #ask-panel so the node can be recreated after fragment replace.
-    // While live, client JS moves the dock under the latest turn (above the composer).
+    // While live, client JS moves the dock into the sticky composer (always visible).
     html = html + "<div id='ask-live-home'>" +
         "<div id='ask-live-dock' class='live-dock' hidden>" +
         "<span class='live-round'>" + askEscapeHtml(askT("Live", "Live")) +
@@ -935,14 +1218,24 @@ function askRenderPage() {
 }
 
 @PAGE("/")
-function askUiHome(queryParams) {
+function askUiHome(queryParams, response, cookies) {
+    var id = askBeginRequest(queryParams, null, cookies, response);
+    var hasC = queryParams != null and queryParams["c"] != null and
+        askNormalizeConvId(queryParams["c"]) != "";
+    if (not hasC) {
+        var redirect = "/?c=" + id;
+        if (queryParams != null and queryParams["lang"] != null) {
+            redirect = redirect + "&lang=" + askAsText(queryParams["lang"]);
+        }
+        return RedirectTo(redirect);
+    }
     if (queryParams != null and queryParams["lang"] != null) {
         askSetLang(queryParams["lang"]);
     }
     // Bookmark / no-JS fallback for clear (AJAX path uses POST /clear).
     if (queryParams != null and queryParams["clear"] != null) {
         askClearHistory();
-        return RedirectTo("/");
+        return RedirectTo("/?c=" + id);
     }
     return askRenderPage();
 }
@@ -977,7 +1270,9 @@ function askReplaceLastTurn(turn) {
 }
 
 @ACTION("/ask")
-function askUiSubmit(body) {
+function askUiSubmit(body, response, cookies) {
+    askBeginRequest(null, body, cookies, response);
+    var liveChannel = askLiveChannel();
     var question = str.trim(askAsText(body.question));
     askSetFlashError("");
     askApplyToolsFromBody(body);
@@ -996,14 +1291,14 @@ function askUiSubmit(body) {
         "pending": true
     });
 
-    // Channel form works in interpreter and transpile (SSE via componentLiveEmit).
-    onAgentProgress("ask");
+    // Per-conversation channel (AsyncLocal) so concurrent asks stay isolated.
+    onAgentProgress(liveChannel);
     try {
         var startMsg = askT("Starting ask…", "Avvio domanda…");
         if (askGetToolsEnabled()) {
             startMsg = askT("Starting ask (tools on)…", "Avvio domanda (tool attivi)…");
         }
-        componentLiveEmit("ask", {
+        componentLiveEmit(liveChannel, {
             "phase": "round_start",
             "round": 0,
             "message": startMsg
@@ -1036,7 +1331,8 @@ function askUiSubmit(body) {
 }
 
 @ACTION("/clear")
-function askUiClear() {
+function askUiClear(body, response, cookies) {
+    askBeginRequest(null, body, cookies, response);
     askClearHistory();
     return askPanelFragment();
 }

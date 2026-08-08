@@ -228,7 +228,16 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("startLiveTimer()", html, StringComparison.Ordinal);
             Assert.Contains("action='/ask'", html, StringComparison.Ordinal);
             Assert.Contains("action='/clear'", html, StringComparison.Ordinal);
-            Assert.Contains("EventSource('/ask/live?channel=ask')", html, StringComparison.Ordinal);
+            Assert.Contains("name='c'", html, StringComparison.Ordinal);
+            Assert.Contains("var askLiveChannel='ask-secondbrain-ask-test';", html, StringComparison.Ordinal);
+            Assert.Contains("EventSource('/ask/live?channel='+encodeURIComponent(askLiveChannel))", html, StringComparison.Ordinal);
+            Assert.Contains("class='new-conv'", html, StringComparison.Ordinal);
+            Assert.Contains("New conversation", html, StringComparison.Ordinal);
+            Assert.Contains("href='/?c=", html, StringComparison.Ordinal);
+            Assert.Contains("data-ask-lang='en'", html, StringComparison.Ordinal);
+            Assert.Contains("data-ask-lang='it'", html, StringComparison.Ordinal);
+            Assert.Contains("navigateLang(", html, StringComparison.Ordinal);
+            Assert.Contains("disconnectLive(", html, StringComparison.Ordinal);
         }
         finally
         {
@@ -452,7 +461,13 @@ public class SecondBrainAskFeaturesTests
         Assert.Contains("@ACTION(\"/clear\")", libSource, StringComparison.Ordinal);
         Assert.Contains("@LIVE(\"/ask/live\")", libSource, StringComparison.Ordinal);
         Assert.Contains("componentFragment(\"ask-panel\"", libSource, StringComparison.Ordinal);
-        Assert.Contains("onAgentProgress(\"ask\")", libSource, StringComparison.Ordinal);
+        Assert.Contains("malda_ask_c", libSource, StringComparison.Ordinal);
+        Assert.Contains("function askLiveChannel()", libSource, StringComparison.Ordinal);
+        Assert.Contains("function askConvScope()", libSource, StringComparison.Ordinal);
+        Assert.Contains("function askBeginRequest(", libSource, StringComparison.Ordinal);
+        Assert.Contains("RedirectTo(\"/?c=\"", libSource, StringComparison.Ordinal);
+        Assert.Contains("onAgentProgress(liveChannel)", libSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("onAgentProgress(\"ask\")", libSource, StringComparison.Ordinal);
         Assert.Contains("id='ask-live-status'", libSource, StringComparison.Ordinal);
         Assert.Contains("id='ask-live-home'", libSource, StringComparison.Ordinal);
         Assert.Contains("placeLiveDock", libSource, StringComparison.Ordinal);
@@ -520,6 +535,117 @@ public class SecondBrainAskFeaturesTests
             Assert.DoesNotContain(" checked", html, StringComparison.Ordinal);
             Assert.DoesNotContain("<!DOCTYPE", html, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("<html", html, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            SafeDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public async Task AskUi_ConversationScopes_IsolateHistory_ShareCatalog()
+    {
+        Assert.True(File.Exists(AskUiLibPath), "missing ask UI lib: " + AskUiLibPath);
+
+        var tempDir = Path.Combine(Path.GetTempPath(), "malda_sb_ask_conv", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            File.Copy(AskUiLibPath, Path.Combine(tempDir, "secondbrain_ask_ui_lib.malda"));
+            var harnessPath = Path.Combine(tempDir, "harness.malda");
+            File.WriteAllText(harnessPath,
+                """
+                var ASK_HTTP_PORT = 39020;
+                var ASK_SESSION_ID = "secondbrain-ask-conv-shared";
+                var ASK_STORE = "SecondBrainAskConvIso";
+                var PRODUCT_NAME = "Conv Iso";
+                var ASK_PAGE_TITLE = "Conv Iso";
+                var ASK_POWERED_BY = "";
+                var ASK_POWERED_BY_URL = "";
+                var ASK_LOGO = "";
+                var UI_LANG = "en";
+                var askHttpServer = null;
+
+                function runAskTurn(question) {
+                    return { "question": question, "answer": "ok", "sources": [], "error": "" };
+                }
+
+                include "secondbrain_ask_ui_lib.malda";
+
+                askSetSession({
+                    "brainDir": "secondbrain",
+                    "chatOnly": false,
+                    "noteCount": 2,
+                    "topicCount": 1,
+                    "sourceFolder": "docs",
+                    "retrieval": "lexical",
+                    "llm": "test-model",
+                    "title": ASK_PAGE_TITLE,
+                    "subtitle": "iso"
+                });
+                ui.setState(ASK_STORE, "catalog", { "notes": ["shared-note"] }, ASK_SESSION_ID);
+
+                ASK_CONV_CURRENT = "conv-aaaa-1111";
+                askAppendTurn({
+                    "question": "from-a",
+                    "answer": "answer-a",
+                    "sources": [],
+                    "error": "",
+                    "pending": false
+                });
+                askSetLang("it");
+
+                ASK_CONV_CURRENT = "conv-bbbb-2222";
+                askAppendTurn({
+                    "question": "from-b",
+                    "answer": "answer-b",
+                    "sources": [],
+                    "error": "",
+                    "pending": false
+                });
+                askSetLang("en");
+
+                ASK_CONV_CURRENT = "conv-aaaa-1111";
+                var histA = askGetHistory();
+                print("A_LEN=" + string(histA.length));
+                print("A_Q=" + histA[0].question);
+                print("A_LANG=" + askGetLang());
+                print("A_CH=" + askLiveChannel());
+
+                ASK_CONV_CURRENT = "conv-bbbb-2222";
+                var histB = askGetHistory();
+                print("B_LEN=" + string(histB.length));
+                print("B_Q=" + histB[0].question);
+                print("B_LANG=" + askGetLang());
+                print("B_CH=" + askLiveChannel());
+
+                askClearHistory();
+                print("B_AFTER_CLEAR=" + string(askGetHistory().length));
+
+                ASK_CONV_CURRENT = "conv-aaaa-1111";
+                print("A_AFTER_B_CLEAR=" + string(askGetHistory().length));
+                print("A_Q2=" + askGetHistory()[0].question);
+
+                var catalog = ui.state(ASK_STORE, "catalog", null, ASK_SESSION_ID);
+                print("CATALOG=" + catalog.notes[0]);
+                print("SHARED=" + askSharedScope());
+                """,
+                Encoding.UTF8);
+
+            var output = await InterpretAndCaptureAsync(harnessPath);
+            Assert.Contains("A_LEN=1", output, StringComparison.Ordinal);
+            Assert.Contains("A_Q=from-a", output, StringComparison.Ordinal);
+            Assert.Contains("A_LANG=it", output, StringComparison.Ordinal);
+            Assert.Contains("A_CH=ask-conv-aaaa-1111", output, StringComparison.Ordinal);
+            Assert.Contains("B_LEN=1", output, StringComparison.Ordinal);
+            Assert.Contains("B_Q=from-b", output, StringComparison.Ordinal);
+            Assert.Contains("B_LANG=en", output, StringComparison.Ordinal);
+            Assert.Contains("B_CH=ask-conv-bbbb-2222", output, StringComparison.Ordinal);
+            Assert.Contains("B_AFTER_CLEAR=0", output, StringComparison.Ordinal);
+            Assert.Contains("A_AFTER_B_CLEAR=1", output, StringComparison.Ordinal);
+            Assert.Contains("A_Q2=from-a", output, StringComparison.Ordinal);
+            Assert.Contains("CATALOG=shared-note", output, StringComparison.Ordinal);
+            Assert.Contains("SHARED=secondbrain-ask-conv-shared", output, StringComparison.Ordinal);
         }
         finally
         {

@@ -9,6 +9,7 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using MaldaLang.Interpreter;
 using MaldaLang.Runtime;
@@ -58,7 +59,10 @@ public partial class ConversationInstance : ObjectInstance
     private static Action<string, string, string, bool, string?>? _toolCallLogger;
     private static readonly object AgentProgressLock = new();
     private static Action<RuntimeValue>? _agentProgressHandler;
+    /// <summary>Process-wide fallback (single-threaded hosts / tests).</summary>
     private static string? _agentProgressLiveChannel;
+    /// <summary>Per-request/async flow channel so concurrent ASK sessions do not clash.</summary>
+    private static readonly AsyncLocal<string?> AgentProgressLiveChannelLocal = new();
     private static bool _verboseLoggingResolved;
     private static bool _verboseLoggingEnabled;
     private static string? _verbosePhaseLabel;
@@ -168,21 +172,40 @@ public partial class ConversationInstance : ObjectInstance
     /// <summary>
     /// When set, progress events are also pushed via componentLiveEmit(channel, …).
     /// Works in transpiled apps without an interpreter callback.
+    /// Uses <see cref="AsyncLocal{T}"/> so concurrent HTTP asks keep distinct channels.
     /// </summary>
     public static void SetAgentProgressLiveChannel(string? channel)
     {
+        var normalized = string.IsNullOrWhiteSpace(channel) ? null : channel.Trim();
+        AgentProgressLiveChannelLocal.Value = normalized;
         lock (AgentProgressLock)
         {
-            _agentProgressLiveChannel = string.IsNullOrWhiteSpace(channel) ? null : channel.Trim();
+            // Keep static fallback for hosts that are not concurrent / unit tests.
+            _agentProgressLiveChannel = normalized;
         }
     }
 
     public static void ClearAgentProgressHandler()
     {
+        AgentProgressLiveChannelLocal.Value = null;
         lock (AgentProgressLock)
         {
             _agentProgressHandler = null;
             _agentProgressLiveChannel = null;
+        }
+    }
+
+    /// <summary>
+    /// Active live channel for this async flow, else process-wide fallback.
+    /// </summary>
+    public static string? GetAgentProgressLiveChannel()
+    {
+        var local = AgentProgressLiveChannelLocal.Value;
+        if (!string.IsNullOrWhiteSpace(local))
+            return local;
+        lock (AgentProgressLock)
+        {
+            return _agentProgressLiveChannel;
         }
     }
 
@@ -193,12 +216,11 @@ public partial class ConversationInstance : ObjectInstance
     public static void DeliverAgentProgress(RuntimeValue evt)
     {
         Action<RuntimeValue>? handler;
-        string? liveChannel;
         lock (AgentProgressLock)
         {
             handler = _agentProgressHandler;
-            liveChannel = _agentProgressLiveChannel;
         }
+        var liveChannel = GetAgentProgressLiveChannel();
 
         try
         {
@@ -883,12 +905,11 @@ public partial class ConversationInstance : ObjectInstance
         bool? ok = null)
     {
         Action<RuntimeValue>? handler;
-        string? liveChannel;
         lock (AgentProgressLock)
         {
             handler = _agentProgressHandler;
-            liveChannel = _agentProgressLiveChannel;
         }
+        var liveChannel = GetAgentProgressLiveChannel();
         if (handler == null && liveChannel == null)
             return;
 
