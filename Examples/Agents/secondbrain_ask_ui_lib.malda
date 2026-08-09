@@ -23,13 +23,20 @@
 // is ready.
 //
 // Cookie JWT auth is on by default for ASK. Disable with --no-auth (or
-// MALDA_ASK_AUTH=0). Login: /login  Logout: /logout.
+// MALDA_ASK_AUTH=0). Login: /login  Logout: /logout  Register: /register.
 // Bootstrap credentials: MALDA_ASK_USER / MALDA_ASK_PASSWORD (or HASH).
 // Multi-user store: users.json under the brain folder (writable), else
 // .malda/ask_users.json. Open registration: --allow-register.
+// Per-user history scope: u:{sub}:{convId}. Admin: /admin/users, /admin/upload.
+// Health: GET /health. Audit: ask_audit.jsonl. Feedback: /feedback + ask_feedback.jsonl.
+// Host must define runAskTurn(question) and runAskUpdateFromUpload(body).
 
 var ASK_CONV_COOKIE = "malda_ask_c";
 var ASK_CONV_CURRENT = "";
+var ASK_HISTORY_CURRENT = "";
+var ASK_CURRENT_SUB = "";
+var ASK_CURRENT_ROLE = "";
+var ASK_CURRENT_IS_ADMIN = false;
 var ASK_AUTH_COOKIE = "malda_ask_session";
 var ASK_AUTH_ENABLED = true;
 var ASK_ALLOW_REGISTER = false;
@@ -38,6 +45,11 @@ var ASK_AUTH_PASSWORD_HASH = "";
 var ASK_AUTH_USING_DEFAULT_PASSWORD = false;
 var ASK_USERS_PATH = "";
 var ASK_USERS_FILE_NAME = "users.json";
+var ASK_AUDIT_PATH = "";
+var ASK_FEEDBACK_PATH = "";
+var ASK_SERVICE_VERSION = "0.1.23";
+var ASK_MIN_RETRIEVAL_SCORE = 0.15;
+var ASK_MIN_LEXICAL_SCORE = 1.0;
 var askAuthJwtSecret = "";
 var askAuthCookieSecret = "";
 var askAuthSessionSecret = "";
@@ -208,6 +220,8 @@ function askSetAuthUsersRoot(brainDir) {
     var root = str.trim(askAsText(brainDir));
     if (root != "" and not str.startsWith(root, "embed:") and io.hasDirectory(root)) {
         ASK_USERS_PATH = io.pathJoin(root, ASK_USERS_FILE_NAME);
+        ASK_AUDIT_PATH = io.pathJoin(root, "ask_audit.jsonl");
+        ASK_FEEDBACK_PATH = io.pathJoin(root, "ask_feedback.jsonl");
         return ASK_USERS_PATH;
     }
     try {
@@ -215,7 +229,57 @@ function askSetAuthUsersRoot(brainDir) {
     } catch (dirErr) {
     }
     ASK_USERS_PATH = io.pathJoin(".malda", "ask_users.json");
+    ASK_AUDIT_PATH = io.pathJoin(".malda", "ask_audit.jsonl");
+    ASK_FEEDBACK_PATH = io.pathJoin(".malda", "ask_feedback.jsonl");
     return ASK_USERS_PATH;
+}
+
+function askAppendJsonl(path, obj) {
+    var p = str.trim(askAsText(path));
+    if (p == "" or obj == null) {
+        return false;
+    }
+    try {
+        var parent = io.getDirectoryName(p);
+        if (parent != null and str.trim(askAsText(parent)) != "") {
+            io.ensureDir(parent);
+        }
+        var line = toJSON(obj) + "\n";
+        var prev = "";
+        if (io.hasFile(p)) {
+            prev = askAsText(io.readFile(p));
+        }
+        io.writeFile(p, prev + line);
+        return true;
+    } catch (logErr) {
+        return false;
+    }
+}
+
+function askAudit(action, req, meta) {
+    var sub = ASK_CURRENT_SUB;
+    var role = ASK_CURRENT_ROLE;
+    if (req != null and req.auth != null) {
+        try {
+            if (req.auth.verified == true) {
+                sub = str.trim(askAsText(req.auth.sub));
+                role = str.trim(askAsText(req.auth.claim("role", "")));
+            }
+        } catch (aErr) {
+        }
+    }
+    var m = meta;
+    if (m == null) {
+        m = {};
+    }
+    askAppendJsonl(ASK_AUDIT_PATH, {
+        "ts": string(now()),
+        "sub": sub,
+        "role": role,
+        "conv": askConvScope(),
+        "action": askAsText(action),
+        "meta": m
+    });
 }
 
 function askUsersPath() {
@@ -326,6 +390,9 @@ function askVerifyLogin(username, password) {
     }
     var stored = askFindStoredUser(name);
     if (stored != null) {
+        if (stored.enabled == false) {
+            return { "ok": false, "username": "", "role": "", "disabled": true };
+        }
         if (verifyPassword(pass, askAsText(stored.passwordHash))) {
             var role = str.trim(askAsText(stored.role));
             if (role == "") {
@@ -388,6 +455,7 @@ function askRegisterUser(username, password) {
         "username": name,
         "passwordHash": hashPassword(pass),
         "role": "ask",
+        "enabled": true,
         "createdAt": string(now())
     });
     if (not askSaveUsersStore(store)) {
@@ -397,6 +465,173 @@ function askRegisterUser(username, password) {
                 "Could not save users file (is the brain folder writable?).",
                 "Impossibile salvare users.json (cartella brain scrivibile?).")
         };
+    }
+    return { "ok": true, "error": "" };
+}
+
+function askListUsers() {
+    var store = askLoadUsersStore();
+    var out = [];
+    if (store == null or store.users == null) {
+        return out;
+    }
+    foreach (var u in store.users) {
+        if (u == null) {
+            continue;
+        }
+        var role = str.trim(askAsText(u.role));
+        if (role == "") {
+            role = "ask";
+        }
+        var enabled = true;
+        if (u.enabled == false) {
+            enabled = false;
+        }
+        out.append({
+            "username": askNormalizeUsername(u.username),
+            "role": role,
+            "enabled": enabled,
+            "createdAt": askAsText(u.createdAt)
+        });
+    }
+    return out;
+}
+
+function askCountEnabledAdmins(store) {
+    var n = 0;
+    if (store == null or store.users == null) {
+        return 0;
+    }
+    foreach (var u in store.users) {
+        if (u == null) {
+            continue;
+        }
+        if (u.enabled == false) {
+            continue;
+        }
+        if (str.trim(askAsText(u.role)) == "admin") {
+            n = n + 1;
+        }
+    }
+    return n;
+}
+
+function askSetUserRole(username, role) {
+    var name = askNormalizeUsername(username);
+    var r = str.lower(str.trim(askAsText(role)));
+    if (r != "ask" and r != "admin") {
+        return { "ok": false, "error": askT("Invalid role.", "Ruolo non valido.") };
+    }
+    var store = askLoadUsersStore();
+    var u = askFindStoredUser(name);
+    if (u == null) {
+        return { "ok": false, "error": askT("User not found.", "Utente non trovato.") };
+    }
+    var prev = str.trim(askAsText(u.role));
+    if (prev == "") {
+        prev = "ask";
+    }
+    if (prev == "admin" and r != "admin" and askCountEnabledAdmins(store) <= 1) {
+        return {
+            "ok": false,
+            "error": askT("Cannot demote the last admin.", "Non puoi declassare l'ultimo admin.")
+        };
+    }
+    foreach (var row in store.users) {
+        if (row != null and str.lower(askNormalizeUsername(row.username)) == str.lower(name)) {
+            row.role = r;
+        }
+    }
+    if (not askSaveUsersStore(store)) {
+        return { "ok": false, "error": askT("Save failed.", "Salvataggio fallito.") };
+    }
+    return { "ok": true, "error": "" };
+}
+
+function askSetUserEnabled(username, enabled) {
+    var name = askNormalizeUsername(username);
+    var store = askLoadUsersStore();
+    var u = askFindStoredUser(name);
+    if (u == null) {
+        return { "ok": false, "error": askT("User not found.", "Utente non trovato.") };
+    }
+    var role = str.trim(askAsText(u.role));
+    if (role == "") {
+        role = "ask";
+    }
+    if (enabled != true and role == "admin" and askCountEnabledAdmins(store) <= 1) {
+        return {
+            "ok": false,
+            "error": askT("Cannot disable the last admin.", "Non puoi disabilitare l'ultimo admin.")
+        };
+    }
+    foreach (var row in store.users) {
+        if (row != null and str.lower(askNormalizeUsername(row.username)) == str.lower(name)) {
+            row.enabled = enabled == true;
+        }
+    }
+    if (not askSaveUsersStore(store)) {
+        return { "ok": false, "error": askT("Save failed.", "Salvataggio fallito.") };
+    }
+    return { "ok": true, "error": "" };
+}
+
+function askResetUserPassword(username, newPassword) {
+    var name = askNormalizeUsername(username);
+    var pass = askAsText(newPassword);
+    if (str.length(pass) < 6) {
+        return {
+            "ok": false,
+            "error": askT(
+                "Password must be at least 6 characters.",
+                "La password deve avere almeno 6 caratteri.")
+        };
+    }
+    var store = askLoadUsersStore();
+    if (askFindStoredUser(name) == null) {
+        return { "ok": false, "error": askT("User not found.", "Utente non trovato.") };
+    }
+    foreach (var row in store.users) {
+        if (row != null and str.lower(askNormalizeUsername(row.username)) == str.lower(name)) {
+            row.passwordHash = hashPassword(pass);
+        }
+    }
+    if (not askSaveUsersStore(store)) {
+        return { "ok": false, "error": askT("Save failed.", "Salvataggio fallito.") };
+    }
+    return { "ok": true, "error": "" };
+}
+
+function askDeleteUser(username) {
+    var name = askNormalizeUsername(username);
+    var store = askLoadUsersStore();
+    var u = askFindStoredUser(name);
+    if (u == null) {
+        return { "ok": false, "error": askT("User not found.", "Utente non trovato.") };
+    }
+    var role = str.trim(askAsText(u.role));
+    if (role == "") {
+        role = "ask";
+    }
+    if (role == "admin" and askCountEnabledAdmins(store) <= 1 and u.enabled != false) {
+        return {
+            "ok": false,
+            "error": askT("Cannot delete the last admin.", "Non puoi eliminare l'ultimo admin.")
+        };
+    }
+    var next = [];
+    foreach (var row in store.users) {
+        if (row == null) {
+            continue;
+        }
+        if (str.lower(askNormalizeUsername(row.username)) == str.lower(name)) {
+            continue;
+        }
+        next.append(row);
+    }
+    store.users = next;
+    if (not askSaveUsersStore(store)) {
+        return { "ok": false, "error": askT("Save failed.", "Salvataggio fallito.") };
     }
     return { "ok": true, "error": "" };
 }
@@ -507,11 +742,34 @@ function askConfigureHttpAuth(server) {
     }
     server.enableSession(askAuthSessionSecret);
     server.use(askRequireAuth, {
-        "except": ["/login", "/logout", "/register"]
+        "except": ["/login", "/logout", "/register", "/health"]
     });
     server.setRateLimit(120, 60, "verifiedSubOrIp");
     askPrintAuthStatus();
     return true;
+}
+
+function askIsAdminReq(req) {
+    if (req == null or req.auth == null) {
+        return false;
+    }
+    try {
+        return req.auth.verified == true and req.auth.hasRole("admin");
+    } catch (roleErr) {
+        return false;
+    }
+}
+
+// Returns true when admin; otherwise redirects to / and returns false.
+// Admin routes stay closed when ASK auth is disabled (--no-auth).
+function askRequireAdmin(req, res) {
+    if (ASK_AUTH_ENABLED and askIsAdminReq(req)) {
+        return true;
+    }
+    if (res != null) {
+        res.redirect("/");
+    }
+    return false;
 }
 
 function askAuthFormStyles() {
@@ -629,9 +887,11 @@ function askUiLoginSubmit(req, res, body) {
     }
     var verified = askVerifyLogin(username, password);
     if (verified == null or verified.ok != true) {
+        askAudit("login_fail", req, { "username": username });
         return res.redirect("/login?error=1");
     }
     askIssueSessionCookie(res, verified.username, verified.role);
+    askAudit("login", req, { "username": verified.username, "role": verified.role });
     return res.redirect("/");
 }
 
@@ -678,6 +938,7 @@ function askUiRegisterSubmit(req, res, body) {
         }
         return askRenderRegisterPage(msg);
     }
+    askAudit("register", req, { "username": username });
     return res.redirect("/login?registered=1");
 }
 
@@ -707,8 +968,74 @@ function askConvScope() {
     return id;
 }
 
+function askSanitizeScopeUser(sub) {
+    var name = askNormalizeUsername(sub);
+    if (name == "") {
+        return "anon";
+    }
+    // Scope keys: keep username charset only.
+    if (not askIsValidUsername(name)) {
+        var cleaned = "";
+        var allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.";
+        var i = 0;
+        while (i < str.length(name) and str.length(cleaned) < 32) {
+            var ch = str.substring(name, i, 1);
+            if (str.indexOf(allowed, ch) >= 0) {
+                cleaned = cleaned + ch;
+            }
+            i = i + 1;
+        }
+        if (cleaned == "") {
+            return "user";
+        }
+        return cleaned;
+    }
+    return name;
+}
+
+// Per-user history when auth is on: u:{sub}:{convId}. --no-auth keeps conv-only scope.
+function askHistoryScope(req) {
+    if (ASK_AUTH_ENABLED and req != null and req.auth != null) {
+        try {
+            if (req.auth.verified == true) {
+                var sub = str.trim(askAsText(req.auth.sub));
+                if (sub != "") {
+                    return "u:" + askSanitizeScopeUser(sub) + ":" + askConvScope();
+                }
+            }
+        } catch (scopeErr) {
+        }
+    }
+    return askConvScope();
+}
+
+function askActiveHistoryScope() {
+    var s = str.trim(askAsText(ASK_HISTORY_CURRENT));
+    if (s != "") {
+        return s;
+    }
+    return askConvScope();
+}
+
 function askLiveChannel() {
-    return "ask-" + askConvScope();
+    return "ask-" + askActiveHistoryScope();
+}
+
+function askCaptureAuthContext(req) {
+    ASK_CURRENT_SUB = "";
+    ASK_CURRENT_ROLE = "";
+    ASK_CURRENT_IS_ADMIN = false;
+    if (req == null or req.auth == null) {
+        return;
+    }
+    try {
+        if (req.auth.verified == true) {
+            ASK_CURRENT_SUB = str.trim(askAsText(req.auth.sub));
+            ASK_CURRENT_ROLE = str.trim(askAsText(req.auth.claim("role", "ask")));
+            ASK_CURRENT_IS_ADMIN = req.auth.hasRole("admin");
+        }
+    } catch (ctxErr) {
+    }
 }
 
 function askNormalizeConvId(raw) {
@@ -784,11 +1111,13 @@ function askSetConvCookie(response, id) {
     });
 }
 
-// Bind conversation id for this request; optionally set cookie on response.
-function askBeginRequest(queryParams, body, cookies, response) {
+// Bind conversation id + per-user history scope for this request.
+function askBeginRequest(queryParams, body, cookies, response, req) {
     var id = askPickConvId(queryParams, body, cookies);
     ASK_CONV_CURRENT = id;
     askSetConvCookie(response, id);
+    askCaptureAuthContext(req);
+    ASK_HISTORY_CURRENT = askHistoryScope(req);
     return id;
 }
 
@@ -918,7 +1247,7 @@ function askHiddenConvField() {
 }
 
 function askGetLang() {
-    var lang = askAsText(ui.state(ASK_STORE, "lang", "", askConvScope()));
+    var lang = askAsText(ui.state(ASK_STORE, "lang", "", askActiveHistoryScope()));
     if (lang == "en" or lang == "it") {
         return lang;
     }
@@ -928,9 +1257,9 @@ function askGetLang() {
 function askSetLang(raw) {
     var lang = str.lower(str.trim(askAsText(raw)));
     if (lang == "it" or lang == "italiano" or lang == "2") {
-        ui.setState(ASK_STORE, "lang", "it", askConvScope());
+        ui.setState(ASK_STORE, "lang", "it", askActiveHistoryScope());
     } else if (lang == "en" or lang == "english" or lang == "1") {
-        ui.setState(ASK_STORE, "lang", "en", askConvScope());
+        ui.setState(ASK_STORE, "lang", "en", askActiveHistoryScope());
     }
 }
 
@@ -942,7 +1271,7 @@ function askT(en, it) {
 }
 
 function askGetHistory() {
-    var history = ui.state(ASK_STORE, "history", [], askConvScope());
+    var history = ui.state(ASK_STORE, "history", [], askActiveHistoryScope());
     if (history == null) {
         return [];
     }
@@ -950,15 +1279,15 @@ function askGetHistory() {
 }
 
 function askSetHistory(history) {
-    ui.setState(ASK_STORE, "history", history, askConvScope());
+    ui.setState(ASK_STORE, "history", history, askActiveHistoryScope());
 }
 
 function askGetFlashError() {
-    return askAsText(ui.state(ASK_STORE, "flashError", "", askConvScope()));
+    return askAsText(ui.state(ASK_STORE, "flashError", "", askActiveHistoryScope()));
 }
 
 function askSetFlashError(message) {
-    ui.setState(ASK_STORE, "flashError", askAsText(message), askConvScope());
+    ui.setState(ASK_STORE, "flashError", askAsText(message), askActiveHistoryScope());
 }
 
 function askClearHistory() {
@@ -966,13 +1295,117 @@ function askClearHistory() {
     askSetFlashError("");
 }
 
-// Sticky per conversation: default off (faster, no tool loop).
+// Sticky per conversation (+ user when auth on): default off (faster, no tool loop).
 function askGetToolsEnabled() {
-    return ui.state(ASK_STORE, "toolsEnabled", false, askConvScope()) == true;
+    return ui.state(ASK_STORE, "toolsEnabled", false, askActiveHistoryScope()) == true;
 }
 
 function askSetToolsEnabled(enabled) {
-    ui.setState(ASK_STORE, "toolsEnabled", enabled == true, askConvScope());
+    ui.setState(ASK_STORE, "toolsEnabled", enabled == true, askActiveHistoryScope());
+}
+
+function askGetTagFilter() {
+    var tags = ui.state(ASK_STORE, "tagFilter", [], askActiveHistoryScope());
+    if (tags == null) {
+        return [];
+    }
+    return tags;
+}
+
+function askSetTagFilter(tags) {
+    if (tags == null) {
+        tags = [];
+    }
+    ui.setState(ASK_STORE, "tagFilter", tags, askActiveHistoryScope());
+}
+
+function askApplyTagFilterFromBody(body) {
+    var next = [];
+    if (body != null and body.tags != null) {
+        var raw = body.tags;
+        if (typeOf(raw) == "array" or (raw != null and raw.length != null)) {
+            foreach (var t in raw) {
+                var s = str.trim(askAsText(t));
+                if (s != "") {
+                    next.append(s);
+                }
+            }
+        } else {
+            var one = str.trim(askAsText(raw));
+            if (one != "") {
+                // comma-separated fallback
+                var parts = str.split(one, ",");
+                foreach (var p in parts) {
+                    var s2 = str.trim(askAsText(p));
+                    if (s2 != "") {
+                        next.append(s2);
+                    }
+                }
+            }
+        }
+    }
+    askSetTagFilter(next);
+}
+
+function askWeakRetrievalMessage() {
+    return askT(
+        "I could not find notes relevant enough for this question. Try rephrasing, clearing tag filters, or enable Force answer.",
+        "Non ho trovato note abbastanza rilevanti per questa domanda. Prova a riformulare, togliere i filtri tag, oppure attiva Forza risposta.");
+}
+
+function askGetForceAnswer() {
+    return ui.state(ASK_STORE, "forceAnswer", false, askActiveHistoryScope()) == true;
+}
+
+function askNoteMatchesTagFilter(note, tags) {
+    if (tags == null or tags.length == 0) {
+        return true;
+    }
+    if (note == null) {
+        return false;
+    }
+    var hay = [];
+    if (note.tags != null) {
+        foreach (var t in note.tags) {
+            hay.append(str.lower(str.trim(askAsText(t))));
+        }
+    }
+    var cat = str.lower(str.trim(askAsText(note.category)));
+    if (cat != "") {
+        hay.append(cat);
+    }
+    var topic = str.lower(str.trim(askAsText(note.topic)));
+    if (topic != "") {
+        hay.append(topic);
+    }
+    foreach (var want in tags) {
+        var w = str.lower(str.trim(askAsText(want)));
+        if (w == "") {
+            continue;
+        }
+        var hit = false;
+        foreach (var h in hay) {
+            if (h == w) {
+                hit = true;
+            }
+        }
+        if (hit) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function askSetForceAnswer(enabled) {
+    ui.setState(ASK_STORE, "forceAnswer", enabled == true, askActiveHistoryScope());
+}
+
+function askApplyForceAnswerFromBody(body) {
+    var raw = "";
+    if (body != null and body.forceAnswer != null) {
+        raw = str.lower(str.trim(askAsText(body.forceAnswer)));
+    }
+    askSetForceAnswer(raw == "1" or raw == "on" or raw == "true" or raw == "yes");
 }
 
 function askApplyToolsFromBody(body) {
@@ -1098,7 +1531,16 @@ function askRenderTurnHtml(turn, index) {
             "<div class='sources-label'>" +
             askEscapeHtml(askT("Sources", "Fonti")) +
             " <span class='meta'>(" + string(sources.length) + ")</span></div>" +
-            askRenderSourcesHtml(sources) + "</div></div>";
+            askRenderSourcesHtml(sources) + "</div>" +
+            "<div class='feedback-bar'>" +
+            "<form method='post' action='/feedback' class='feedback-form'>" +
+            askHiddenConvField() +
+            "<input type='hidden' name='turnIndex' value='" + string(index) + "'>" +
+            "<button type='submit' name='vote' value='up' class='ghost' title='" +
+            askEscapeHtml(askT("Helpful", "Utile")) + "'>👍</button>" +
+            "<button type='submit' name='vote' value='down' class='ghost' title='" +
+            askEscapeHtml(askT("Not helpful", "Non utile")) + "'>👎</button>" +
+            "</form></div></div>";
     }
     html = html + "</article>";
     return html;
@@ -1143,6 +1585,14 @@ function askPageStyles() {
         ".new-conv{font-size:0.78rem;font-weight:600;color:var(--accent-ink);text-decoration:none;" +
         "border-bottom:1px solid transparent}" +
         ".new-conv:hover{border-bottom-color:var(--accent)}" +
+        ".feedback-bar{margin-top:10px}.feedback-form{display:flex;gap:8px}" +
+        ".feedback-form button{font-size:1rem;padding:4px 10px}" +
+        ".tag-filters{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 4px}" +
+        ".tag-filters label{font-size:0.78rem;color:var(--muted);display:flex;gap:4px;align-items:center}" +
+        ".admin-table{width:100%;border-collapse:collapse;font-size:0.9rem}" +
+        ".admin-table th,.admin-table td{border-bottom:1px solid var(--line);padding:8px;text-align:left}" +
+        ".admin-wrap{max-width:900px;margin:24px auto;padding:0 16px}" +
+        ".admin-actions form{display:inline}" +
         ".meta-bar{font-size:0.82rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px 0;" +
         "align-items:baseline;padding:10px 2px 0;margin:4px 0 0;border:none;background:transparent}" +
         ".meta-bar strong{color:var(--ink);font-weight:600}" +
@@ -1450,6 +1900,63 @@ function askRenderEmptyStateHtml(session) {
     return html;
 }
 
+function askCollectAvailableTags() {
+    var catalog = ui.state(ASK_STORE, "catalog", null, ASK_SESSION_ID);
+    var seen = {};
+    var out = [];
+    if (catalog == null) {
+        return out;
+    }
+    if (catalog.topics != null) {
+        foreach (var topic in catalog.topics) {
+            if (topic == null) {
+                continue;
+            }
+            var slug = str.trim(askAsText(topic.slug));
+            if (slug == "") {
+                slug = str.trim(askAsText(topic.name));
+            }
+            if (slug != "" and seen[slug] == null) {
+                seen[slug] = true;
+                out.append(slug);
+            }
+        }
+    }
+    if (catalog.notes != null) {
+        foreach (var note in catalog.notes) {
+            if (note == null or note.tags == null) {
+                continue;
+            }
+            foreach (var tag in note.tags) {
+                var t = str.trim(askAsText(tag));
+                if (t != "" and seen[t] == null) {
+                    seen[t] = true;
+                    out.append(t);
+                }
+            }
+            var cat = str.trim(askAsText(note.category));
+            if (cat != "" and seen[cat] == null) {
+                seen[cat] = true;
+                out.append(cat);
+            }
+        }
+    }
+    return out;
+}
+
+function askTagSelected(tag, selected) {
+    var want = str.lower(str.trim(askAsText(tag)));
+    if (selected == null) {
+        return false;
+    }
+    foreach (var s in selected) {
+        if (str.lower(str.trim(askAsText(s))) == want) {
+            return true;
+        }
+    }
+    return false;
+}
+
 // Flash + thread + composer — returned as componentFragment("ask-panel", ...).
 function askRenderPanelHtml() {
     var history = askGetHistory();
@@ -1488,6 +1995,10 @@ function askRenderPanelHtml() {
     if (toolsEnabled) {
         toolsChecked = " checked";
     }
+    var forceChecked = "";
+    if (askGetForceAnswer()) {
+        forceChecked = " checked";
+    }
     var statusHint = askT("Ready", "Pronto");
     if (toolsEnabled and session.chatOnly != true) {
         statusHint = askT(
@@ -1501,8 +2012,28 @@ function askRenderPanelHtml() {
         "<label for='question'>" + askEscapeHtml(askT("New question", "Nuova domanda")) + "</label>" +
         "<textarea id='question' name='question' required autofocus placeholder='" +
         askEscapeHtml(placeholder) +
-        "'></textarea>" +
-        "<div class='composer-bar'>";
+        "'></textarea>";
+
+    if (session.chatOnly != true) {
+        var available = askCollectAvailableTags();
+        var selected = askGetTagFilter();
+        if (available.length > 0) {
+            html = html + "<div class='tag-filters' aria-label='" +
+                askEscapeHtml(askT("Filter by tag", "Filtra per tag")) + "'>";
+            foreach (var tag in available) {
+                var checked = "";
+                if (askTagSelected(tag, selected)) {
+                    checked = " checked";
+                }
+                html = html + "<label><input type='checkbox' name='tags' value='" +
+                    askEscapeHtml(tag) + "'" + checked + "> " +
+                    askEscapeHtml(tag) + "</label>";
+            }
+            html = html + "</div>";
+        }
+    }
+
+    html = html + "<div class='composer-bar'>";
 
     if (session.chatOnly != true) {
         html = html + "<label class='tool-toggle' for='useTools' title='" +
@@ -1513,6 +2044,14 @@ function askRenderPanelHtml() {
             "<input type='checkbox' id='useTools' name='useTools' value='1'" + toolsChecked + ">" +
             "<span class='switch' aria-hidden='true'></span>" +
             "<span>" + askEscapeHtml(askT("Search notes", "Ricerca note")) + "</span></label>";
+        html = html + "<label class='tool-toggle' for='forceAnswer' title='" +
+            askEscapeHtml(askT(
+                "Answer even when retrieval scores are below the minimum threshold.",
+                "Rispondi anche se i punteggi di recupero sono sotto soglia.")) +
+            "'>" +
+            "<input type='checkbox' id='forceAnswer' name='forceAnswer' value='1'" + forceChecked + ">" +
+            "<span class='switch' aria-hidden='true'></span>" +
+            "<span>" + askEscapeHtml(askT("Force answer", "Forza risposta")) + "</span></label>";
     }
 
     var busyClass = "busy";
@@ -1844,6 +2383,13 @@ function askRenderPage() {
         "</nav>" +
         "<a class='new-conv' href='/?" + askEscapeHtml("c=" + askMintConvId()) + "'>" +
         askEscapeHtml(askT("New conversation", "Nuova conversazione")) + "</a>";
+    if (ASK_CURRENT_IS_ADMIN) {
+        html = html +
+            "<a class='new-conv' href='/admin/users'>" +
+            askEscapeHtml(askT("Admin", "Admin")) + "</a>" +
+            "<a class='new-conv' href='/admin/upload'>" +
+            askEscapeHtml(askT("Upload", "Upload")) + "</a>";
+    }
     if (ASK_AUTH_ENABLED) {
         html = html +
             "<a class='new-conv' href='/logout'>" +
@@ -1886,8 +2432,8 @@ function askRenderPage() {
 }
 
 @PAGE("/")
-function askUiHome(queryParams, response, cookies) {
-    var id = askBeginRequest(queryParams, null, cookies, response);
+function askUiHome(queryParams, response, cookies, req) {
+    var id = askBeginRequest(queryParams, null, cookies, response, req);
     var hasC = queryParams != null and queryParams["c"] != null and
         askNormalizeConvId(queryParams["c"]) != "";
     if (not hasC) {
@@ -1903,6 +2449,7 @@ function askUiHome(queryParams, response, cookies) {
     // Bookmark / no-JS fallback for clear (AJAX path uses POST /clear).
     if (queryParams != null and queryParams["clear"] != null) {
         askClearHistory();
+        askAudit("clear", req, {});
         return RedirectTo("/?c=" + id);
     }
     return askRenderPage();
@@ -1938,12 +2485,14 @@ function askReplaceLastTurn(turn) {
 }
 
 @ACTION("/ask")
-function askUiSubmit(body, response, cookies) {
-    askBeginRequest(null, body, cookies, response);
+function askUiSubmit(body, response, cookies, req) {
+    askBeginRequest(null, body, cookies, response, req);
     var liveChannel = askLiveChannel();
     var question = str.trim(askAsText(body.question));
     askSetFlashError("");
     askApplyToolsFromBody(body);
+    askApplyTagFilterFromBody(body);
+    askApplyForceAnswerFromBody(body);
 
     if (question == "") {
         askSetFlashError(askT("Enter a question.", "Inserisci una domanda."));
@@ -1959,7 +2508,7 @@ function askUiSubmit(body, response, cookies) {
         "pending": true
     });
 
-    // Per-conversation channel (AsyncLocal) so concurrent asks stay isolated.
+    // Per-user+conversation channel (AsyncLocal) so concurrent asks stay isolated.
     onAgentProgress(liveChannel);
     try {
         var startMsg = askT("Starting ask…", "Avvio domanda…");
@@ -1984,6 +2533,16 @@ function askUiSubmit(body, response, cookies) {
         }
         turn.pending = false;
         askReplaceLastTurn(turn);
+        var srcCount = 0;
+        if (turn.sources != null) {
+            srcCount = turn.sources.length;
+        }
+        askAudit("ask", req, {
+            "qLen": str.length(question),
+            "sources": srcCount,
+            "weak": turn.weakRetrieval == true,
+            "tags": askGetTagFilter()
+        });
     } catch (e) {
         askReplaceLastTurn({
             "question": question,
@@ -1999,13 +2558,333 @@ function askUiSubmit(body, response, cookies) {
 }
 
 @ACTION("/clear")
-function askUiClear(body, response, cookies) {
-    askBeginRequest(null, body, cookies, response);
+function askUiClear(body, response, cookies, req) {
+    askBeginRequest(null, body, cookies, response, req);
     askClearHistory();
+    askAudit("clear", req, {});
+    return askPanelFragment();
+}
+
+@ACTION("/feedback")
+function askUiFeedback(body, response, cookies, req) {
+    askBeginRequest(null, body, cookies, response, req);
+    var vote = "";
+    var turnIndex = -1;
+    if (body != null) {
+        vote = str.lower(str.trim(askAsText(body.vote)));
+        turnIndex = toIntOrNull(askAsText(body.turnIndex));
+        if (turnIndex == null) {
+            turnIndex = -1;
+        }
+    }
+    if (vote != "up" and vote != "down") {
+        return askPanelFragment();
+    }
+    var history = askGetHistory();
+    var qSnippet = "";
+    if (turnIndex >= 0 and turnIndex < history.length) {
+        qSnippet = str.trim(askAsText(history[turnIndex].question));
+        if (str.length(qSnippet) > 120) {
+            qSnippet = str.substring(qSnippet, 0, 120);
+        }
+    }
+    askAudit("feedback", req, {
+        "vote": vote,
+        "turnIndex": turnIndex,
+        "qSnippet": qSnippet
+    });
+    askAppendJsonl(ASK_FEEDBACK_PATH, {
+        "ts": string(now()),
+        "sub": ASK_CURRENT_SUB,
+        "vote": vote,
+        "turnIndex": turnIndex,
+        "qSnippet": qSnippet,
+        "conv": askConvScope()
+    });
     return askPanelFragment();
 }
 
 @LIVE("/ask/live")
 function askUiLive() {
     return { "sse": true };
+}
+
+@GET("/health")
+function askUiHealth(req, res, queryParams) {
+    var ready = true;
+    if (queryParams != null and queryParams["ready"] != null) {
+        var catalog = ui.state(ASK_STORE, "catalog", null, ASK_SESSION_ID);
+        ready = catalog != null;
+    }
+    return res.json({
+        "ok": true,
+        "ready": ready,
+        "service": "secondbrain-ask",
+        "auth": ASK_AUTH_ENABLED,
+        "product": askProductName(),
+        "version": ASK_SERVICE_VERSION
+    });
+}
+
+function askRenderAdminUsersPage(flash) {
+    var users = askListUsers();
+    var msg = str.trim(askAsText(flash));
+    var flashHtml = "";
+    if (msg != "") {
+        flashHtml = "<p class='flash error'>" + askEscapeHtml(msg) + "</p>";
+    }
+    var html = "<!DOCTYPE html><html lang='" + askGetLang() + "'><head>" +
+        "<meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>" +
+        "<title>" + askEscapeHtml(askT("Users", "Utenti")) + "</title>" +
+        askPageStyles() + "</head><body><main class='admin-wrap'>" +
+        "<p><a href='/'>" + askEscapeHtml(askT("← Back to ASK", "← Torna ad ASK")) +
+        "</a> · <a href='/admin/upload'>" + askEscapeHtml(askT("Upload", "Upload")) +
+        "</a></p>" +
+        "<h1>" + askEscapeHtml(askT("User admin", "Amministrazione utenti")) + "</h1>" +
+        flashHtml +
+        "<p class='hint'>" + askEscapeHtml(askT(
+            "Bootstrap admin is configured via env and is not listed here.",
+            "L'admin di bootstrap e' configurato via env e non compare qui.")) + "</p>" +
+        "<table class='admin-table'><thead><tr>" +
+        "<th>" + askEscapeHtml(askT("User", "Utente")) + "</th>" +
+        "<th>" + askEscapeHtml(askT("Role", "Ruolo")) + "</th>" +
+        "<th>" + askEscapeHtml(askT("Status", "Stato")) + "</th>" +
+        "<th>" + askEscapeHtml(askT("Actions", "Azioni")) + "</th>" +
+        "</tr></thead><tbody>";
+    if (users.length == 0) {
+        html = html + "<tr><td colspan='4'>" + askEscapeHtml(askT(
+            "No registered users yet.",
+            "Nessun utente registrato.")) + "</td></tr>";
+    }
+    foreach (var u in users) {
+        var status = askT("Enabled", "Attivo");
+        if (u.enabled != true) {
+            status = askT("Disabled", "Disabilitato");
+        }
+        html = html + "<tr><td>" + askEscapeHtml(u.username) + "</td><td>" +
+            askEscapeHtml(u.role) + "</td><td>" + askEscapeHtml(status) +
+            "</td><td class='admin-actions'>";
+        var askSel = "";
+        var adminSel = "";
+        if (u.role == "ask") {
+            askSel = " selected";
+        }
+        if (u.role == "admin") {
+            adminSel = " selected";
+        }
+        html = html + "<form method='post' action='/admin/users/role'>" +
+            "<input type='hidden' name='username' value='" + askEscapeHtml(u.username) + "'>" +
+            "<select name='role'><option value='ask'" + askSel + ">ask</option>" +
+            "<option value='admin'" + adminSel + ">admin</option></select> " +
+            "<button type='submit'>" + askEscapeHtml(askT("Set role", "Imposta ruolo")) +
+            "</button></form> ";
+        if (u.enabled == true) {
+            html = html + "<form method='post' action='/admin/users/disable'>" +
+                "<input type='hidden' name='username' value='" + askEscapeHtml(u.username) + "'>" +
+                "<button type='submit'>" + askEscapeHtml(askT("Disable", "Disabilita")) +
+                "</button></form> ";
+        } else {
+            html = html + "<form method='post' action='/admin/users/enable'>" +
+                "<input type='hidden' name='username' value='" + askEscapeHtml(u.username) + "'>" +
+                "<button type='submit'>" + askEscapeHtml(askT("Enable", "Abilita")) +
+                "</button></form> ";
+        }
+        html = html + "<form method='post' action='/admin/users/reset-password'>" +
+            "<input type='hidden' name='username' value='" + askEscapeHtml(u.username) + "'>" +
+            "<input type='password' name='password' placeholder='" +
+            askEscapeHtml(askT("New password", "Nuova password")) +
+            "' minlength='6' required> " +
+            "<button type='submit'>" + askEscapeHtml(askT("Reset", "Reset")) +
+            "</button></form> ";
+        html = html + "<form method='post' action='/admin/users/delete'>" +
+            "<input type='hidden' name='username' value='" + askEscapeHtml(u.username) + "'>" +
+            "<button type='submit'>" + askEscapeHtml(askT("Delete", "Elimina")) +
+            "</button></form>";
+        html = html + "</td></tr>";
+    }
+    html = html + "</tbody></table></main></body></html>";
+    return html;
+}
+
+@PAGE("/admin/users")
+function askUiAdminUsers(req, res) {
+    if (not askRequireAdmin(req, res)) {
+        return "";
+    }
+    return askRenderAdminUsersPage("");
+}
+
+@POST("/admin/users/role")
+function askUiAdminSetRole(req, res, body) {
+    if (not askRequireAdmin(req, res)) {
+        return "";
+    }
+    var username = "";
+    var role = "";
+    if (body != null) {
+        username = askAsText(body.username);
+        role = askAsText(body.role);
+    }
+    var result = askSetUserRole(username, role);
+    askAudit("admin_set_role", req, { "username": username, "role": role, "ok": result.ok });
+    if (result.ok != true) {
+        return askRenderAdminUsersPage(result.error);
+    }
+    return res.redirect("/admin/users");
+}
+
+@POST("/admin/users/disable")
+function askUiAdminDisable(req, res, body) {
+    if (not askRequireAdmin(req, res)) {
+        return "";
+    }
+    var username = "";
+    if (body != null) {
+        username = askAsText(body.username);
+    }
+    var result = askSetUserEnabled(username, false);
+    askAudit("admin_disable", req, { "username": username, "ok": result.ok });
+    if (result.ok != true) {
+        return askRenderAdminUsersPage(result.error);
+    }
+    return res.redirect("/admin/users");
+}
+
+@POST("/admin/users/enable")
+function askUiAdminEnable(req, res, body) {
+    if (not askRequireAdmin(req, res)) {
+        return "";
+    }
+    var username = "";
+    if (body != null) {
+        username = askAsText(body.username);
+    }
+    var result = askSetUserEnabled(username, true);
+    askAudit("admin_enable", req, { "username": username, "ok": result.ok });
+    if (result.ok != true) {
+        return askRenderAdminUsersPage(result.error);
+    }
+    return res.redirect("/admin/users");
+}
+
+@POST("/admin/users/reset-password")
+function askUiAdminResetPassword(req, res, body) {
+    if (not askRequireAdmin(req, res)) {
+        return "";
+    }
+    var username = "";
+    var password = "";
+    if (body != null) {
+        username = askAsText(body.username);
+        password = askAsText(body.password);
+    }
+    var result = askResetUserPassword(username, password);
+    askAudit("admin_reset_password", req, { "username": username, "ok": result.ok });
+    if (result.ok != true) {
+        return askRenderAdminUsersPage(result.error);
+    }
+    return res.redirect("/admin/users");
+}
+
+@POST("/admin/users/delete")
+function askUiAdminDelete(req, res, body) {
+    if (not askRequireAdmin(req, res)) {
+        return "";
+    }
+    var username = "";
+    if (body != null) {
+        username = askAsText(body.username);
+    }
+    var result = askDeleteUser(username);
+    askAudit("admin_delete", req, { "username": username, "ok": result.ok });
+    if (result.ok != true) {
+        return askRenderAdminUsersPage(result.error);
+    }
+    return res.redirect("/admin/users");
+}
+
+function askBrainIsEmbedded() {
+    var session = askGetSession();
+    var brainDir = str.trim(askAsText(session.brainDir));
+    return str.startsWith(brainDir, "embed:");
+}
+
+function askRenderAdminUploadPage(flash, okMsg) {
+    var err = str.trim(askAsText(flash));
+    var ok = str.trim(askAsText(okMsg));
+    var banner = "";
+    if (err != "") {
+        banner = "<p class='flash error'>" + askEscapeHtml(err) + "</p>";
+    } else if (ok != "") {
+        banner = "<p class='ok'>" + askEscapeHtml(ok) + "</p>";
+    }
+    var body = "";
+    if (askBrainIsEmbedded()) {
+        body = "<p>" + askEscapeHtml(askT(
+            "UPDATE is not available for embedded (packed) brains. Rebuild on disk and re-pack.",
+            "UPDATE non disponibile per brain embeddati (pack). Aggiorna su disco e rifai il pack.")) + "</p>";
+    } else {
+        body = "<form method='post' action='/admin/upload' enctype='multipart/form-data'>" +
+            "<label for='docs'>" + askEscapeHtml(askT(
+                "Upload .md / .html into the docs folder, then run UPDATE",
+                "Carica .md / .html nella cartella docs, poi esegui UPDATE")) + "</label>" +
+            "<input id='docs' name='docs' type='file' multiple accept='.md,.html,.htm' required>" +
+            "<p><button type='submit'>" + askEscapeHtml(askT(
+                "Upload and update", "Carica e aggiorna")) + "</button></p></form>";
+    }
+    return "<!DOCTYPE html><html lang='" + askGetLang() + "'><head>" +
+        "<meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>" +
+        "<title>" + askEscapeHtml(askT("Upload", "Upload")) + "</title>" +
+        askPageStyles() + askAuthFormStyles() +
+        "</head><body><main class='admin-wrap'>" +
+        "<p><a href='/'>" + askEscapeHtml(askT("← Back to ASK", "← Torna ad ASK")) +
+        "</a> · <a href='/admin/users'>" + askEscapeHtml(askT("Users", "Utenti")) +
+        "</a></p>" +
+        "<h1>" + askEscapeHtml(askT("Upload documents", "Carica documenti")) + "</h1>" +
+        banner + body + "</main></body></html>";
+}
+
+@PAGE("/admin/upload")
+function askUiAdminUploadPage(req, res) {
+    if (not askRequireAdmin(req, res)) {
+        return "";
+    }
+    return askRenderAdminUploadPage("", "");
+}
+
+@POST("/admin/upload")
+function askUiAdminUploadSubmit(req, res, body) {
+    if (not askRequireAdmin(req, res)) {
+        return "";
+    }
+    if (askBrainIsEmbedded()) {
+        return askRenderAdminUploadPage(askT(
+            "UPDATE is not available for embedded brains.",
+            "UPDATE non disponibile per brain embeddati."), "");
+    }
+    var result = runAskUpdateFromUpload(body);
+    if (result == null or result.ok != true) {
+        var err = askT("Update failed.", "Aggiornamento fallito.");
+        if (result != null and askAsText(result.error) != "") {
+            err = askAsText(result.error);
+        }
+        askAudit("upload", req, { "ok": false, "error": err });
+        return askRenderAdminUploadPage(err, "");
+    }
+    askAudit("upload", req, {
+        "ok": true,
+        "added": result.added,
+        "changed": result.changed,
+        "files": result.files
+    });
+    askAudit("update", req, {
+        "ok": true,
+        "added": result.added,
+        "changed": result.changed
+    });
+    return askRenderAdminUploadPage("", askT(
+        "Upload and UPDATE completed.",
+        "Upload e UPDATE completati.") + " " +
+        askT("Added/changed:", "Aggiunti/modificati:") + " " +
+        string(result.added) + "/" + string(result.changed));
 }

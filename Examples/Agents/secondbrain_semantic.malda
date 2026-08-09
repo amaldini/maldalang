@@ -31,6 +31,8 @@
 // Bootstrap: MALDA_ASK_USER / MALDA_ASK_PASSWORD (or HASH); default admin / password.
 // Multi-user: users.json in the brain folder (or .malda/ask_users.json for embed).
 // Open registration: --allow-register (or MALDA_ASK_ALLOW_REGISTER=1).
+// Admin (role admin): /admin/users, /admin/upload (sync UPDATE; not for embed packs).
+// Also: per-user history, tag filters, force-answer, /health, ask_audit.jsonl, thumbs.
 //
 // LLM:   if OPENROUTER_API_KEY is set, uses OpenRouter (client default model,
 //        override with MALDA_BRAIN_MODEL); otherwise MALDA's default local model
@@ -779,8 +781,8 @@ function compareRetrieval(semanticPicked, lexicalPicked) {
 
 // Returns { picked, channel, compare? } so ASK can show when GraphMemory helped.
 // channel: "graphmemory" | "lexical-fallback" | "lexical-only"
-function selectNotesSemantic(brainDir, catalog, memory, question) {
-    var lexicalPicked = selectNotes(brainDir, catalog, question);
+function selectNotesSemantic(brainDir, catalog, memory, question, tagFilter) {
+    var lexicalPicked = selectNotes(brainDir, catalog, question, tagFilter);
     if (memory == null) {
         return {
             "picked": lexicalPicked,
@@ -792,7 +794,7 @@ function selectNotesSemantic(brainDir, catalog, memory, question) {
     try {
         // lexicalMinScore 0: without the BGE-M3 GGUF, vector scores are weak and the
         // default BM25 floor (0.15) often yields zero hybrid hits even when notes match.
-        results = memory.query(question, TOP_K, {
+        var queryOpts = {
             "hybridLexical": true,
             "lexicalMode": "bm25",
             "lexicalWeight": 0.3,
@@ -800,7 +802,12 @@ function selectNotesSemantic(brainDir, catalog, memory, question) {
             "type": "semantic",
             "minScore": 0.0,
             "explain": true
-        });
+        };
+        if (tagFilter != null and tagFilter.length > 0) {
+            queryOpts.tags = tagFilter;
+            queryOpts.tagsMode = "any";
+        }
+        results = memory.query(question, TOP_K, queryOpts);
     } catch (e) {
         AnsiConsole.markupLine("[yellow]" + t(
             "GraphMemory query failed; lexical fallback:",
@@ -819,6 +826,10 @@ function selectNotesSemantic(brainDir, catalog, memory, question) {
         var note = resolveCatalogNote(catalog, result);
         if (note == null) {
             unmatched = unmatched + 1;
+            continue;
+        }
+        if (tagFilter != null and tagFilter.length > 0 and
+                not askNoteMatchesTagFilter(note, tagFilter)) {
             continue;
         }
         var path = string(note.path);
@@ -2811,11 +2822,15 @@ function bodyScore(brainDir, questionTokens, note) {
 }
 
 // Retrieval: catalog metadata first, then note bodies if needed.
-function selectNotes(brainDir, catalog, question) {
+function selectNotes(brainDir, catalog, question, tagFilter) {
     var questionTokens = str.tokenize(str.lower(question));
     var scored = [];
     var best = 0.0;
     foreach (var note in catalog.notes) {
+        if (tagFilter != null and tagFilter.length > 0 and
+                not askNoteMatchesTagFilter(note, tagFilter)) {
+            continue;
+        }
         var score = metadataScore(questionTokens, note);
         if (score > best) {
             best = score;
@@ -2992,14 +3007,34 @@ function runAskTurn(question) {
         return runChatOnlyTurn(question);
     }
 
+    var tagFilter = askGetTagFilter();
     var memory = getAskMemory(brainDir);
-    var selection = selectNotesSemantic(brainDir, catalog, memory, question);
+    var selection = selectNotesSemantic(brainDir, catalog, memory, question, tagFilter);
     var picked = selection.picked;
-    if (picked.length == 0) {
+    var topScore = 0.0;
+    if (picked.length > 0) {
+        topScore = float(picked[0].score);
+    }
+    var minScore = ASK_MIN_RETRIEVAL_SCORE;
+    if (selection.channel != "graphmemory") {
+        minScore = ASK_MIN_LEXICAL_SCORE;
+    }
+    if (picked.length == 0 or
+            (topScore < minScore and not askGetForceAnswer())) {
         AnsiConsole.markupLine("[yellow]" + t(
-            "No relevant notes; falling back to direct chat.",
-            "Nessuna nota pertinente; passo alla chat diretta.") + "[/]");
-        return runChatOnlyTurn(question);
+            "Weak / empty retrieval (score=",
+            "Recupero debole / vuoto (score=") + string(topScore) +
+            ", channel=" + askAsText(selection.channel) + ").[/]");
+        if (askGetForceAnswer()) {
+            return runChatOnlyTurn(question);
+        }
+        return {
+            "question": question,
+            "answer": askWeakRetrievalMessage(),
+            "sources": askSourcesFromPicked(picked),
+            "error": "",
+            "weakRetrieval": true
+        };
     }
 
     var sources = askSourcesFromPicked(picked);
@@ -3057,6 +3092,89 @@ function runAskTurn(question) {
         "answer": answer,
         "sources": sources,
         "error": ""
+    };
+}
+
+// Admin ASK upload → write into docs folder, then non-interactive UPDATE.
+function runAskUpdateFromUpload(body) {
+    var session = askGetSession();
+    var brainDir = str.trim(askAsText(session.brainDir));
+    if (brainDir == "" or str.startsWith(brainDir, "embed:")) {
+        return {
+            "ok": false,
+            "error": t("Embedded brain cannot be updated from the UI.",
+                "Il brain embeddato non si aggiorna dalla UI."),
+            "added": 0,
+            "changed": 0,
+            "files": 0
+        };
+    }
+    var catalog = loadCatalog(brainDir);
+    if (catalog == null) {
+        return {
+            "ok": false,
+            "error": t("Missing catalog.", "Catalogo mancante."),
+            "added": 0,
+            "changed": 0,
+            "files": 0
+        };
+    }
+    var docsRoot = "";
+    if (catalog.sourceFolder != null) {
+        docsRoot = str.trim(askAsText(catalog.sourceFolder));
+    }
+    if (docsRoot == "" or not io.hasDirectory(docsRoot)) {
+        return {
+            "ok": false,
+            "error": t("Documentation folder not found (sourceFolder in brain.json).",
+                "Cartella documentazione non trovata (sourceFolder in brain.json)."),
+            "added": 0,
+            "changed": 0,
+            "files": 0
+        };
+    }
+    var filesWritten = 0;
+    if (body != null and body.docs != null) {
+        var fileObj = body.docs;
+        var fileName = "";
+        var content = "";
+        if (fileObj.fileName != null) {
+            fileName = io.getFileName(askAsText(fileObj.fileName));
+            content = askAsText(fileObj.content);
+        }
+        var lower = str.lower(fileName);
+        if (fileName != "" and (str.endsWith(lower, ".md") or str.endsWith(lower, ".html") or
+                str.endsWith(lower, ".htm"))) {
+            io.writeFile(io.pathJoin(docsRoot, fileName), content);
+            filesWritten = 1;
+        }
+    }
+    if (filesWritten == 0) {
+        return {
+            "ok": false,
+            "error": t("No .md/.html file uploaded.", "Nessun file .md/.html caricato."),
+            "added": 0,
+            "changed": 0,
+            "files": 0
+        };
+    }
+    var ok = updateBrain({
+        "mode": "update",
+        "docs": docsRoot,
+        "brain": brainDir,
+        "removeOrphans": false,
+        "lang": "",
+        "port": null,
+        "auth": null,
+        "allowRegister": null,
+        "error": ""
+    });
+    return {
+        "ok": ok == true,
+        "error": "",
+        "added": filesWritten,
+        "changed": filesWritten,
+        "files": filesWritten
     };
 }
 

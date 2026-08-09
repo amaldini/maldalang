@@ -465,11 +465,21 @@ public class SecondBrainAskFeaturesTests
         Assert.Contains("@PAGE(\"/register\")", libSource, StringComparison.Ordinal);
         Assert.Contains("@POST(\"/register\")", libSource, StringComparison.Ordinal);
         Assert.Contains("@GET(\"/logout\")", libSource, StringComparison.Ordinal);
+        Assert.Contains("@GET(\"/health\")", libSource, StringComparison.Ordinal);
+        Assert.Contains("@PAGE(\"/admin/users\")", libSource, StringComparison.Ordinal);
+        Assert.Contains("@PAGE(\"/admin/upload\")", libSource, StringComparison.Ordinal);
+        Assert.Contains("@ACTION(\"/feedback\")", libSource, StringComparison.Ordinal);
         Assert.Contains("function askConfigureHttpAuth(", libSource, StringComparison.Ordinal);
         Assert.Contains("function askRequireAuth(", libSource, StringComparison.Ordinal);
+        Assert.Contains("function askRequireAdmin(", libSource, StringComparison.Ordinal);
+        Assert.Contains("function askHistoryScope(", libSource, StringComparison.Ordinal);
         Assert.Contains("function askRegisterUser(", libSource, StringComparison.Ordinal);
+        Assert.Contains("function askSetUserEnabled(", libSource, StringComparison.Ordinal);
         Assert.Contains("function askSetAuthUsersRoot(", libSource, StringComparison.Ordinal);
+        Assert.Contains("function askAudit(", libSource, StringComparison.Ordinal);
+        Assert.Contains("function askWeakRetrievalMessage(", libSource, StringComparison.Ordinal);
         Assert.Contains("users.json", libSource, StringComparison.Ordinal);
+        Assert.Contains("ask_audit.jsonl", libSource, StringComparison.Ordinal);
         Assert.Contains("--no-auth", libSource, StringComparison.Ordinal);
         Assert.Contains("--allow-register", libSource, StringComparison.Ordinal);
         Assert.Contains("malda_ask_session", libSource, StringComparison.Ordinal);
@@ -687,6 +697,7 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("askApplyAuthFromCli(", source, StringComparison.Ordinal);
             Assert.Contains("askSetAuthUsersRoot(", source, StringComparison.Ordinal);
             Assert.Contains("askConfigureHttpAuth(", source, StringComparison.Ordinal);
+            Assert.Contains("runAskUpdateFromUpload(", source, StringComparison.Ordinal);
             Assert.Contains("--port", source, StringComparison.Ordinal);
             Assert.Contains("--no-auth", source, StringComparison.Ordinal);
             Assert.Contains("--allow-register", source, StringComparison.Ordinal);
@@ -818,6 +829,20 @@ public class SecondBrainAskFeaturesTests
                 print("LOGIN_BAD=" + string(badUser.ok));
                 var boot = askVerifyLogin("admin", "password");
                 print("LOGIN_BOOT=" + string(boot.ok) + "," + boot.role);
+                var dis = askSetUserEnabled("alice", false);
+                print("DIS=" + string(dis.ok));
+                var disabledLogin = askVerifyLogin("alice", "secret1");
+                print("LOGIN_DIS=" + string(disabledLogin.ok));
+                askSetUserEnabled("alice", true);
+                var role = askSetUserRole("alice", "admin");
+                print("ROLE=" + string(role.ok));
+                ASK_CONV_CURRENT = "abcdef0123456789abcdef0123456789";
+                ASK_AUTH_ENABLED = false;
+                print("SCOPE_OFF=" + askHistoryScope(null));
+                ASK_AUTH_ENABLED = true;
+                print("WEAK=" + askWeakRetrievalMessage());
+                askAudit("test", null, { "n": 1 });
+                print("AUDIT=" + string(io.hasFile(ASK_AUDIT_PATH)));
                 """,
                 Encoding.UTF8);
 
@@ -830,7 +855,13 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("LOGIN_USER=true,alice,ask", output, StringComparison.Ordinal);
             Assert.Contains("LOGIN_BAD=false", output, StringComparison.Ordinal);
             Assert.Contains("LOGIN_BOOT=true,admin", output, StringComparison.Ordinal);
+            Assert.Contains("ROLE=true", output, StringComparison.Ordinal);
+            Assert.Contains("DIS=true", output, StringComparison.Ordinal);
+            Assert.Contains("LOGIN_DIS=false", output, StringComparison.Ordinal);
+            Assert.Contains("SCOPE_OFF=abcdef0123456789abcdef0123456789", output, StringComparison.Ordinal);
+            Assert.Contains("AUDIT=true", output, StringComparison.Ordinal);
             Assert.True(File.Exists(Path.Combine(tempDir, "users.json")), "users.json should be written");
+            Assert.True(File.Exists(Path.Combine(tempDir, "ask_audit.jsonl")), "audit log should be written");
         }
         finally
         {
