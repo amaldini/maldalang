@@ -6,9 +6,9 @@
 .DESCRIPTION
   Publishes a self-contained CLI under bin/malda, and on Windows also the
   Desktop IDE under bin/desktop-ide (layout expected by FindRepoRoot). Packs
-  Examples, ReferenceManual, Templates, docs/llm (language pack), docs/spec,
-  agent entrypoints (AGENTS.md, llms.txt), and licence files into a zip under
-  artifacts/dist/.
+  Examples, ReferenceManual, program.html (Desktop IDE Preview web host),
+  Templates, docs/llm (language pack), docs/spec, agent entrypoints
+  (AGENTS.md, llms.txt), and licence files into a zip under artifacts/dist/.
 
 .PARAMETER Version
   Version label used in folder/zip names (default: from MaldaLang.csproj, else 0.1.0).
@@ -98,6 +98,7 @@ function Write-DistReadme {
     $included += @(
         "Examples\ - sample programs",
         "ReferenceManual\ - HTML language reference (open index.html)",
+        "program.html - Desktop IDE Preview web host page",
         "docs\llm\ - language pack for coding agents writing .malda",
         "docs\spec\ - language spec notes",
         "Templates\ - scaffolds for malda new webapi|fullstack",
@@ -403,6 +404,17 @@ foreach ($rid in $rids) {
         Copy-Item -LiteralPath $cheatSheet -Destination (Join-Path $stage "malda-cheat-sheet.html") -Force
     }
 
+    $webPreviewHost = Join-Path $repoRoot "program.html"
+    if (-not (Test-Path $webPreviewHost)) {
+        throw "Expected Desktop IDE web preview host missing: $webPreviewHost"
+    }
+    Copy-Item -LiteralPath $webPreviewHost -Destination (Join-Path $stage "program.html") -Force
+
+    $webPreviewFallbackHost = Join-Path $repoRoot "host.html"
+    if (Test-Path $webPreviewFallbackHost) {
+        Copy-Item -LiteralPath $webPreviewFallbackHost -Destination (Join-Path $stage "host.html") -Force
+    }
+
     foreach ($lic in @(
             "LICENSE-MIT",
             "LICENSE-APACHE",
@@ -423,11 +435,15 @@ foreach ($rid in $rids) {
 
     $syntaxPack = Join-Path $stage "docs\llm\malda-syntax.md"
     $webapiTemplate = Join-Path $stage "Templates\webapi"
+    $stagedPreviewHost = Join-Path $stage "program.html"
     if (-not (Test-Path $syntaxPack)) {
         throw "Expected language pack missing: $syntaxPack"
     }
     if (-not (Test-Path $webapiTemplate)) {
         throw "Expected Templates/webapi missing: $webapiTemplate"
+    }
+    if (-not (Test-Path $stagedPreviewHost)) {
+        throw "Expected web preview host missing from stage: $stagedPreviewHost"
     }
 
     $exe = if ($rid -like "win-*") { Join-Path $cliDir "malda.exe" } else { Join-Path $cliDir "malda" }

@@ -4973,16 +4973,174 @@ public partial class MainWindow : Window
             return fallbackHost;
         }
 
-        throw new FileNotFoundException("Could not find a MALDA web preview host page.", preferredHost);
+        return EnsureGeneratedWebPreviewHost(repoRoot);
+    }
+
+    private static string EnsureGeneratedWebPreviewHost(string repoRoot)
+    {
+        var previewDir = Path.Combine(repoRoot, PreviewArtifactsDirectoryName);
+        Directory.CreateDirectory(previewDir);
+
+        var generatedHost = Path.Combine(previewDir, DefaultWebPreviewHostFileName);
+        File.WriteAllText(
+            generatedHost,
+            GeneratedWebPreviewHostHtml,
+            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        return generatedHost;
     }
 
     private static Uri BuildWebPreviewHostUri(string hostPath, string repoRoot, string scriptPath, string title)
     {
-        var relativeScriptPath = Path.GetRelativePath(repoRoot, scriptPath).Replace('\\', '/');
+        var hostDirectory = Path.GetDirectoryName(Path.GetFullPath(hostPath))
+            ?? throw new InvalidOperationException("Could not resolve the web preview host directory.");
+        var relativeScriptPath = Path.GetRelativePath(hostDirectory, scriptPath).Replace('\\', '/');
         var baseUri = new Uri(Path.GetFullPath(hostPath));
         var query = $"?script={Uri.EscapeDataString(relativeScriptPath)}&title={Uri.EscapeDataString(title)}";
+
+        // Generated host lives under .malda-preview/; runtime assets stay at repo root.
+        if (!string.Equals(Path.GetFullPath(hostDirectory), Path.GetFullPath(repoRoot), StringComparison.OrdinalIgnoreCase))
+        {
+            query +=
+                "&runtime=" + Uri.EscapeDataString("../Examples/Web/wwwroot/malda-js-runtime.js") +
+                "&three=" + Uri.EscapeDataString("../Examples/Web/wwwroot/vendor/three.min.js");
+        }
+
         return new Uri(baseUri.AbsoluteUri + query);
     }
+
+    private const string GeneratedWebPreviewHostHtml =
+        """
+        <!doctype html>
+        <html lang="en">
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>MALDA JavaScript App</title>
+          <style>
+            :root {
+              color-scheme: dark;
+              font-family: Arial, sans-serif;
+            }
+
+            body {
+              margin: 0;
+              background: #020617;
+              color: #e2e8f0;
+            }
+
+            #status {
+              padding: 10px 14px;
+              border-bottom: 1px solid #1e293b;
+              background: #0f172a;
+              color: #94a3b8;
+              font-size: 14px;
+            }
+
+            #status.error {
+              color: #fecaca;
+              background: #450a0a;
+              border-bottom-color: #7f1d1d;
+            }
+
+            #app {
+              min-height: calc(100vh - 45px);
+            }
+          </style>
+        </head>
+        <body>
+          <div id="status">Loading MALDA web preview...</div>
+          <div id="app"></div>
+          <script>
+            (function () {
+              var params = new URLSearchParams(window.location.search);
+              var config = {
+                title: params.get("title") || "MALDA JavaScript App",
+                three: params.get("three") || "../Examples/Web/wwwroot/vendor/three.min.js",
+                runtime: params.get("runtime") || "../Examples/Web/wwwroot/malda-js-runtime.js",
+                script: params.get("script") || "program.js",
+                rootSelector: params.get("root") || "#app",
+                entry: params.get("entry") || "auto"
+              };
+
+              var statusElement = document.getElementById("status");
+              document.title = config.title;
+
+              function setStatus(message, isError) {
+                statusElement.textContent = message;
+                statusElement.className = isError ? "error" : "";
+              }
+
+              function loadScript(src) {
+                return new Promise(function (resolve, reject) {
+                  var script = document.createElement("script");
+                  script.src = src;
+                  script.onload = resolve;
+                  script.onerror = function () {
+                    reject(new Error("Could not load script: " + src));
+                  };
+                  document.head.appendChild(script);
+                });
+              }
+
+              async function runEntryPoint() {
+                if (!window.MaldaApp) {
+                  throw new Error("MaldaApp was not registered by " + config.script + ".");
+                }
+
+                if (config.entry === "bootstrap" && typeof window.MaldaApp.bootstrap === "function") {
+                  await window.MaldaApp.bootstrap(config.rootSelector);
+                  return;
+                }
+
+                if (config.entry === "main" && typeof window.MaldaApp.main === "function") {
+                  await window.MaldaApp.main();
+                  return;
+                }
+
+                if (config.entry === "renderRoot" && typeof window.MaldaApp.renderRoot === "function") {
+                  await window.MaldaApp.renderRoot(config.rootSelector);
+                  return;
+                }
+
+                if (typeof window.MaldaApp.bootstrap === "function") {
+                  await window.MaldaApp.bootstrap(config.rootSelector);
+                  return;
+                }
+
+                if (typeof window.MaldaApp.main === "function") {
+                  await window.MaldaApp.main();
+                  return;
+                }
+
+                if (typeof window.MaldaApp.renderRoot === "function") {
+                  await window.MaldaApp.renderRoot(config.rootSelector);
+                  return;
+                }
+
+                throw new Error("No supported MALDA entry point was found. Expected bootstrap(), main(), or renderRoot().");
+              }
+
+              async function start() {
+                setStatus("Loading browser runtime...", false);
+                await loadScript(config.three);
+                await loadScript(config.runtime);
+
+                setStatus("Loading " + config.script + "...", false);
+                await loadScript(config.script);
+                await runEntryPoint();
+
+                setStatus("Loaded " + config.script, false);
+              }
+
+              start().catch(function (error) {
+                console.error(error);
+                setStatus(error && error.message ? error.message : "Web preview failed.", true);
+              });
+            })();
+          </script>
+        </body>
+        </html>
+        """;
 
     private static string WriteWebPreviewJavaScriptArtifact(string repoRoot, string source, string sourceFilePath)
     {
