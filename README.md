@@ -24,8 +24,8 @@ means. Those decisions were not made alone either — the grammar and the semant
 out with models, so the project ended up being its own subject: how you design a programming
 language now that agents write most of the code. The push to try came from Geoff Huntley's
 [Ralph Wiggum technique](https://ghuntley.com/ralph/) and the
-[`cursed`](https://ghuntley.com/cursed/) language he built with it — hence the name of the
-largest example in this repo. What I wanted was different from an esoteric language: one whose
+[`cursed`](https://ghuntley.com/cursed/) language he built with it — hence the name of
+`Examples/RalphWiggum/`. What I wanted was different from an esoteric language: one whose
 subject is the work I spend my days around, so prompts, tools, agents, endpoints and durable
 workflows are syntax instead of glue code. I am not running MALDA in that work today — my day
 job is large systems already in flight, and those do not get rewritten for an experiment. For
@@ -34,9 +34,11 @@ now it is where I experiment with what building on AI looks like.
 Two things worth knowing up front. **This repository was built heavily with coding agents** —
 the grammar and semantics decisions are mine to defend, but the typing and much of the argument
 that produced them were shared with models; guard tests, the conformance matrix and the
-executed reference-manual snippets are there so the consistency claims do not rest on my word. And **`Examples/RalphWiggum/` (4,049 lines of MALDA) was written
-entirely by a coding agent**, even though MALDA is in no model's training data, because
-[`docs/llm/`](docs/llm/) ships a compact language pack for that reader.
+executed reference-manual snippets are there so the consistency claims do not rest on my word.
+And the two largest showcases were written entirely by coding agents, even though MALDA is in
+no model's training data, because [`docs/llm/`](docs/llm/) ships a compact language pack for
+that reader: **`Examples/Agents/secondbrain_semantic.malda`** (~6,500 lines with shared libs)
+and **`Examples/RalphWiggum/`** (4,049 lines).
 
 Longer version, with the objections and the current weaknesses stated up front:
 [`docs/announcement.md`](docs/announcement.md).

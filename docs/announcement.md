@@ -56,19 +56,22 @@ what makes prompts testable. A tool is a decorated function: @Tool exposes
 it to an agent, @MCPTool exposes the same function over the Model Context
 Protocol, and new MCPServer().start() is the whole server.
 
-The part I did not expect is about who writes it. The largest MALDA program
-in the repo is a PRD-driven coding agent — 4,049 lines across eleven files,
-which reads a checklist, implements one item per iteration, validates its
-own output and can commit — and it was written entirely by a coding agent,
-in a language that appears nowhere in any model's training data. That works
-because the repo ships a language pack for that reader (docs/llm/: idioms,
-a parser-aligned BNF, a minimal built-in list, few-shots, with a load order
-for a token budget). An agent reads a few thousand tokens and writes
-idiomatic MALDA; when it does not, the interpreter is the feedback loop.
-A smaller sibling in Examples/Agents/secondbrain.malda does the other half
-of the same idea: CodingAgents distill a docs folder into a linked note
-tree, then answer questions from it — and malda compile --embed-folder can
-ship that brain inside a single .exe with no extract-to-disk.
+The part I did not expect is about who writes it. The two largest programs
+in the repo were written entirely by coding agents, in a language that
+appears nowhere in any model's training data. The bigger one is Second
+Brain (Examples/Agents/secondbrain_semantic.malda, ~6,500 lines with shared
+libs): CodingAgents distill a docs folder into a linked note tree, then
+serve an ASK web UI over it — auth, CLI modes, GraphMemory retrieval —
+and malda compile --embed-folder ships that brain inside a single .exe
+with no extract-to-disk. Examples/RalphWiggum/ is the other — a PRD-driven
+coding agent, 4,049 lines across eleven files — which reads a checklist,
+implements one item per iteration, validates its own output and can
+commit. That works because the repo ships a language pack for that reader
+(docs/llm/: idioms, a parser-aligned BNF, a minimal built-in list,
+few-shots, with a load order for a token budget). An agent reads a few
+thousand tokens and writes idiomatic MALDA; when it does not, the
+interpreter is the feedback loop. The same pack is what the Desktop and
+Web IDE Ask modes load now, embedded in the runtime rather than hardcoded.
 
 I think that changes the arithmetic on small languages. "New language" used
 to mean "no tooling, no docs your editor understands, and nobody who can
@@ -105,143 +108,27 @@ undocumented, every runnable snippet in the 35-chapter reference manual
 executed by the test suite, and a 100-case conformance matrix across
 backends. That catches drift, not bad taste. Implementation is C# on
 .NET 8 — hand-written lexer and recursive-descent parser, no ANTLR, a
-tree-walking interpreter, ~300 built-ins, ~1,370 tests. Dual licensed
+tree-walking interpreter, ~300 built-ins, ~1,520 tests. Dual licensed
 MIT OR Apache-2.0 with a runtime exception, so compiled programs carry no
 attribution obligation. No CLA.
 
-Honest about where it is: this is the first public drop of the core (0.1.0)
-and the spec is Draft 1.0. Type annotations parse and feed the language
-server; literal initializer mismatches emit IDE Warnings, but there is
-no full static checker yet — it is dynamically typed at runtime. I do not run it in my day job either; that is large systems already
-in flight, and they do not get rewritten for an experiment. The full IDE is
-WPF, so Windows-only; the CLI, compiler and browser playground build and run
-on Linux in CI, macOS is untested. The JavaScript backend is a real subset —
-no agents or servers in the browser path. Durable workflows are the local
-end of durable execution: step-level memoization on one SQLite file, durable
-across a restart but not highly available, and the determinism check is a
-deny-list of 16 built-in names. No benchmarks yet.
+Honest about where it is: the public core is at 0.1.30 — still 0.1.x, not
+a 1.0 — and the spec is Draft 1.0. Type annotations parse and feed the
+language server; mismatches on literals, assignments and known identifiers
+emit IDE Warnings (errors under --strict-types), but there is no full
+static checker yet — it is dynamically typed at runtime. I do not run it
+in my day job either; that is large systems already in flight, and they do
+not get rewritten for an experiment. The full IDE is WPF, so Windows-only;
+the CLI, compiler and browser playground build and run on Linux and macOS
+in CI (smoke, not the full suite). The JavaScript backend is a real
+subset — no agents or servers in the browser path. Durable workflows are
+the local end of durable execution: step-level memoization on one SQLite
+file, durable across a restart but not highly available, and the
+determinism check is a deny-list of 16 built-in names. No benchmarks yet.
 
 Happy to answer the obvious questions ("why not a library?", "why not macros
 over an existing language?") and anything else.
 ```
-
-<details>
-<summary>Earlier longer draft of the same comment (kept for reference)</summary>
-
-> Hi HN. MALDA is a programming language I've been building where the things I kept
-> writing glue code for — LLM prompts, tools, HTTP endpoints, durable workflows, actors —
-> are language constructs instead of library calls. `prompt`, `workflow`, `step`,
-> `compensate`, `chain`, `schema`, `actor` and `spawn` are keywords; agents, tools and
-> endpoints are declarations the parser understands.
->
-> A prompt is a declaration, not a string in a dictionary:
->
-> ```malda
-> setDefaultAgent(new Agent("Reviewer", "helper", "You review code.", new OpenRouterClient()));
->
-> prompt codeReview(code, language) {
->     system: "You are an expert code reviewer specializing in {language}.",
->     user: "Review this {language} code:\n\n{code}"
-> }
->
-> var review = await codeReview(source, "python");
-> ```
->
-> Call it without `await` and you get the rendered prompt back instead, which is what makes
-> prompts testable.
->
-> A durable workflow is a block of statements, not a set of decorators you have to apply
-> correctly. `retry`, `compensate`, `approval` and `awaitSignal` are part of the grammar,
-> `now()` outside a step is a diagnostic rather than a footgun, and state persists to a local
-> SQLite file, so there is no cluster to operate:
->
-> ```malda
-> workflow OnboardCustomer(input) {
->     step validated = validateInput(input)
->         retry 3 backoff "exponential" delay 1000 maxDelay 30000
->         timeout 120000;
->
->     approval approved = approval("sales-manager", {"customerId": input.customerId})
->         timeout 86400000
->         onReject notifyRejected(input.customerId);
->
->     wait docs = awaitSignal("docs_uploaded", {"customerId": input.customerId})
->         timeout 259200000;
->
->     step account = createAccount(validated)
->         retry 2 backoff "linear" delay 1000
->         compensate deleteAccount(account.id);
->
->     return {"accountId": account.id, "status": "onboarded"};
-> }
-> ```
->
-> The same source runs three ways: interpreted (`malda app.malda`), transpiled to C# and
-> built into a .NET executable (`malda compile app.malda --mode transpile -o app.exe`), or
-> compiled to browser JavaScript/PWA. There are also actors with `spawn`/`send`/`on`
-> handlers, `@GET`/`@POST` REST decorators, an `@AIPAGE` decorator that generates a page
-> from a natural-language description, and an MCP server/client you get by decorating a
-> function with `@MCPTool`.
->
-> What I actually wanted was for those to compose. One program can be a REST service, a
-> multi-agent system, an MCP server exposing its own functions as tools, an MCP client
-> consuming someone else's, and a durable workflow host — with no adapter between the roles,
-> because a `@MCPTool` function is the same function an agent calls as a tool and a `@POST`
-> handler invokes. The largest thing written this way is in the repo: a PRD-driven autonomous
-> coding agent in `Examples/RalphWiggum/`, 4,049 lines of MALDA, which reads a checklist,
-> implements one item per iteration, validates its own output, keeps a resumable knowledge
-> graph between iterations and can commit. A companion showcase,
-> `Examples/Agents/secondbrain.malda`, uses CodingAgents to distill documentation into a
-> hierarchical note tree and answer questions from it — including compile-time
-> `--embed-folder` so ASK mode can run from a portable `.exe` without unpacking notes to disk.
->
-> Two things about how this was made, because they are the fair question. My background is
-> business software in C# and Java, and this is the first compiler or interpreter I have
-> written — the durable-workflow vocabulary comes from years of processes that wait for
-> someone to approve them, not from language research. I also write much less code by hand
-> than I did two years ago, and a language is the project where what is left is the deciding:
-> an agent will type a parser, but someone still has to decide what the grammar means — and I
-> made those calls in a running argument with models, so this is also an experiment in
-> designing a language when the design conversation includes one. Geoff Huntley's "Ralph
-> Wiggum" loop and the `cursed` language he got out of it (https://ghuntley.com/cursed/)
-> convinced me one person could attempt this, which is what the example above is named after.
-> So: MALDA was built heavily with coding agents, the grammar and semantics decisions are mine
-> to defend and much of the typing — and of the argument — was not. And those 4,049 lines of MALDA
-> were written entirely by a coding agent, even though MALDA is in no model's training data,
-> because the repo ships a language pack for that reader (`docs/llm/`: idioms, a parser-aligned
-> BNF, a minimal built-in list, few-shots). A few thousand tokens in, an agent writes idiomatic
-> MALDA and the interpreter is the feedback loop. That does not conjure an ecosystem, but the
-> learning curve is no longer the main cost of a small language.
->
-> Implementation is C# on .NET 8: a lexer and a recursive-descent parser written directly
-> rather than generated (no ANTLR, no yacc), a tree-walking interpreter, a C# transpiler, and
-> a narrower JavaScript backend. Roughly 300 built-in
-> functions, ~1,370 tests, a 35-chapter HTML reference manual kept in sync with the code by
-> guard tests, and a 100-case conformance suite for the Tier 0 kernel across backends. Dual
-> licensed MIT OR Apache-2.0, with a runtime exception so programs you compile carry no
-> attribution obligation. The core stays under those licences: no CLA, no relicensing plan.
-> Those guard tests and the conformance matrix are also the answer to "who checked the
-> agent-written parts" — they fail the build on drift, which is not the same as good taste.
->
-> Honest about where it is: this is the first public drop of the core (0.1.0), not a 1.0
-> release. I do not run it in my day job either — that is large systems already in flight, and
-> they do not get rewritten for an experiment; MALDA is where I try things out.
-> The language spec is Draft 1.0. Type annotations parse and feed the language server; literal
-> initializer mismatches emit IDE Warnings, but there is no full static checker yet — it is
-> dynamically typed at runtime. The full-featured
-> IDE is WPF, so Windows-only; the CLI, the compiler and the browser playground build and
-> run on Linux in CI, but macOS is untested and the full test suite only runs on Windows.
-> The JavaScript backend is a real subset — no agents or servers in the browser path.
-> Workflow recovery is step-level memoization on one SQLite file — durable across a restart,
-> not highly available — and the determinism check is a deny-list of 16 built-in names, so a
-> model call outside a `step` is not caught for you. There are no benchmarks yet.
->
-> Repo, examples and the reference manual: https://github.com/amaldini/maldalang
->
-> Happy to answer the obvious questions ("why not a library?", "why not macros over an
-> existing language?") and anything else.
-
-</details>
 
 ---
 
@@ -288,21 +175,24 @@ leaves every invariant with the caller; each library also brings its own idea of
 What I wanted instead was for the *parser* to know what a prompt is, so that completion,
 hover, diagnostics and a second backend all came out of one definition.
 
-There is a loop in this that I did not plan. `Examples/RalphWiggum/` — the largest program
-written in MALDA — is a PRD-driven coding agent named after Huntley's technique. The
-technique that convinced me a language was buildable is the thing the language's biggest
-example implements. And it was written entirely by a coding agent, in a language that
-appears nowhere in any model's training data — which turned out to be the most interesting
-result in the project, and is the part I would argue about first. More on that below.
-`Examples/Agents/secondbrain.malda` is the quieter sibling: same agent-and-tools surface,
-aimed at knowledge instead of a coding loop — explore docs, distill linked notes, ask them
-questions, optionally embed the brain into the published binary.
+There is a loop in this that I did not plan. `Examples/RalphWiggum/` — a PRD-driven coding
+agent named after Huntley's technique — is where that shows up most clearly. The technique
+that convinced me a language was buildable is the thing one of the language's main examples
+implements. Both it and the larger Second Brain showcase were written entirely by coding
+agents, in a language that appears nowhere in any model's training data — which turned out
+to be the most interesting result in the project, and is the part I would argue about first.
+More on that below. `Examples/Agents/secondbrain_semantic.malda` is the larger of the two by
+line count (~6,500 with shared libs): same agent-and-tools surface, aimed at knowledge
+instead of a coding loop — explore docs, distill linked notes, serve an ASK web UI (auth,
+admin, tag filters, CLI modes), retrieve with GraphMemory, optionally embed the brain into a
+published binary.
 
 That loop is what the last two letters of the name carry. MALDA is a Multi Agent Language with
 Development Automation, and the automation runs in both directions: coding agents write MALDA
 programs, which is why `docs/llm/` ships a language pack for a reader that has never seen the
-syntax, and MALDA programs automate development work in turn — RalphWiggum is one of them
-doing exactly that; Second Brain is another, for documentation rather than a PRD checklist.
+syntax (and why Desktop / Web IDE Ask now load that same pack from the embedded runtime),
+and MALDA programs automate development work in turn — RalphWiggum is one of them doing
+exactly that; Second Brain is another, for documentation rather than a PRD checklist.
 
 **And how it was built, since that is the first question anyone should ask.** Heavily with
 coding agents. The grammar, the semantics, the tier split and every "no, not like that" are
@@ -476,8 +366,8 @@ a deployment that has to carry all of it. In MALDA a single program can be, simu
 - a **durable workflow host** — long-running `workflow` instances persisted to SQLite,
 - a **coding agent** — an autonomous loop that reads a spec, edits files, runs validation
   and commits,
-- a **second brain** — CodingAgents that distill a docs folder into linked notes and answer
-  questions from the catalog (optional `--embed-folder` for a portable ASK-only `.exe`).
+- a **second brain** — CodingAgents that distill a docs folder into linked notes and serve
+  an ASK web UI over the catalog (optional `--embed-folder` for a portable ASK-only `.exe`).
 
 There is no adapter between those roles: a function decorated with `@MCPTool` is the same
 function an agent can call as a tool and the same function a `@POST` handler can invoke.
@@ -501,18 +391,23 @@ include "ralph/06-report.malda";
 include "ralph/07-notify.malda";
 ```
 
-The second-brain item is `Examples/Agents/secondbrain.malda` (~1,350 lines): explore a
-documentation tree, propose a theme taxonomy, distill hierarchical notes, then run an ASK
-loop over the catalog — English/Italian UI, and `malda compile … --embed-folder secondbrain`
-to bake the notes into the executable so ASK does not need a folder on disk.
+The second-brain item is larger by source size: `Examples/Agents/secondbrain_semantic.malda`
+(~6,500 lines with `secondbrain_ask_ui_lib.malda` and `secondbrain_cli_lib.malda`) explores a
+documentation tree, proposes a theme taxonomy, distills hierarchical notes, indexes them in
+GraphMemory, then serves ASK over HTTP — cookie JWT auth, multi-user admin, tag filters,
+non-interactive `build` / `update` / `ask` CLI, English/Italian UI — with a lexical sibling at
+`secondbrain.malda` for A/B retrieval. `malda compile … --embed-folder secondbrain_semantic`
+bakes the notes into the executable so ASK does not need a folder on disk.
 
-One detail matters more than the line count: **those 4,049 lines of Ralph were written entirely by a
-coding agent.** So were two private applications of mine, one of them substantial. MALDA does
-not exist in any model's training data, so this is not recall — it works because the repo
-ships a language pack for exactly that purpose (`docs/llm/`: idioms, a parser-aligned BNF, a
-minimal built-in list, and a few-shot folder, with a suggested load order for a token budget).
-An agent reads a few thousand tokens and writes idiomatic MALDA; when it does not, the
-interpreter is the feedback loop.
+One detail matters more than the line count: **both showcases were written entirely by coding
+agents** — Ralph at 4,049 lines, Second Brain at ~6,500 with its shared libs. So were two
+private applications of mine, one of them substantial. MALDA does not exist in any model's
+training data, so this is not recall — it works because the repo ships a language pack for
+exactly that purpose (`docs/llm/`: idioms, a parser-aligned BNF, a minimal built-in list, and
+a few-shot folder, with a suggested load order for a token budget). An agent reads a few
+thousand tokens and writes idiomatic MALDA; when it does not, the interpreter is the feedback
+loop. Desktop and Web IDE Ask sessions materialize the same pack — embedded in
+`malda.dll`, not a checkout-path prompt.
 
 That points at the thing I did not expect when I started. "New language" used to imply "no
 documentation your tools understand, and nobody who can write it"; a compact, machine-readable
@@ -520,9 +415,9 @@ language pack turns that into a solved onboarding problem for the one collaborat
 now work with. It does not conjure an ecosystem — an agent cannot import NumPy for you — but
 it does mean the learning curve is no longer the main cost of a small language.
 
-I am not claiming Ralph is better than the coding agents you already use. The claim is
-narrower: it is the largest program in the language, it is written *in* the language rather
-than in the host runtime, and it was produced the same way the language was.
+I am not claiming either showcase is better than the coding agents you already use. The claim
+is narrower: they are substantial programs written *in* the language rather than in the host
+runtime, and they were produced the same way the language was.
 
 #### Why a language instead of a library?
 
@@ -585,24 +480,27 @@ Language intelligence lives in one shared service consumed by the WPF Desktop ID
 Blazor browser playground and the LSP server, so the three do not drift.
 
 Current numbers, all checkable in the repo: ~300 built-in functions in the registry,
-~1,370 tests, 137 `.malda` examples, a 35-chapter HTML reference manual whose runnable
+~1,520 tests, 153 `.malda` examples, a 35-chapter HTML reference manual whose runnable
 snippets are executed by the test suite, and a 100-case conformance matrix for the Tier 0
 kernel across backends. Guard tests also fail the build if the manual's reserved-word list
 drifts from the lexer or if a built-in is added without being documented anywhere.
 
 #### What is not good yet
 
-- **This is a first public drop (0.1.0), not a 1.0 release.** Tagged `v0.1.0`. The
-  language spec (`docs/spec/malda-language-1.0.md`) is Draft 1.0: the Tier 0
-  kernel is normative, while prompts, workflows and HTTP are specified as platform tiers.
+- **This is still 0.1.x (currently 0.1.30), not a 1.0 release.** The first public tag was
+  `v0.1.0`; the language spec (`docs/spec/malda-language-1.0.md`) remains Draft 1.0: the
+  Tier 0 kernel is normative, while prompts, workflows and HTTP are specified as platform
+  tiers.
 - **Type annotations are hints.** `var count: int = 0;` and `function add(a: int) -> int`
-  parse and feed the IDE, but nothing enforces them at runtime or during transpilation.
-  There are sum types and `match`, and `schema` declarations for JSON, but there is no
-  static type checker. If you want a checked language today, this is not one.
+  parse and feed the IDE. Mismatches on literals, assignments, known identifiers, and
+  declared class/schema names emit Warnings (Errors under `--strict-types`), but nothing
+  enforces hints at runtime. There are sum types and `match`, and `schema` declarations for
+  JSON, but there is no full static type checker. If you want a checked language today, this
+  is not one.
 - **Windows tilt.** The reference IDE is WPF, so Windows-only, and `MaldaLang.sln` cannot
-  build on other platforms because of it. CI does build the CLI, compiler, language server
-  and browser playground on Linux and runs an example through the CLI there, but only a
-  two-test guard subset runs on Linux, and macOS is not tested at all.
+  build on other platforms because of it. CI builds the CLI, compiler, language server and
+  browser playground on Linux and macOS and runs an example through the CLI there, but only
+  a small guard subset runs outside Windows — not the full suite.
 - **The JavaScript backend is a genuine subset.** Tier 0 language plus DOM, game and
   three.js bindings. No agents, LLM clients, MCP or HTTP servers in the browser path.
 - **C# transpile covers the built-in registry** (including tool factories, git helpers,
@@ -648,8 +546,9 @@ dotnet run --project MaldaLang -- Examples/Basics/hello_world.malda
 ```
 
 Then the contact form above, then `Examples/Prompts/` and `Examples/Workflows/`. The
-agent showcases are `Examples/RalphWiggum/` (PRD loop) and `Examples/Agents/secondbrain.malda`
-(docs → notes → ASK). The browser playground (`dotnet run --project MaldaLang.IDE`) is the
+agent showcases are `Examples/RalphWiggum/` (PRD loop) and
+`Examples/Agents/secondbrain_semantic.malda` (docs → notes → ASK; lexical sibling at
+`secondbrain.malda`). The browser playground (`dotnet run --project MaldaLang.IDE`) is the
 fastest way to poke at the language without installing an editor extension.
 
 I would especially like to hear where the syntax feels wrong, and which of the
