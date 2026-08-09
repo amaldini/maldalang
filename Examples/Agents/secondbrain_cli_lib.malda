@@ -6,7 +6,9 @@
 // Modes: build | update | ask | help
 // Flags: --docs --brain --taxonomy llm|folders --remove-orphans --lang en|it
 //        --port / -p  --mode <name>  --auth / --no-auth
-//        --allow-register / --no-register  --help / -h
+//        --allow-register / --no-register
+//        --product-name / --name  (display name; overrides product_name.txt)
+//        --help / -h
 
 function sbCliAsText(value) {
     if (value == null) {
@@ -27,6 +29,7 @@ function sbCliEmptyOptions() {
         "portError": false,
         "auth": null,
         "allowRegister": null,
+        "productName": "",
         "error": ""
     };
 }
@@ -215,6 +218,27 @@ function sbCliParseArgs(args) {
             continue;
         }
 
+        taken = sbCliTakeFlagValue(args, i, "--product-name");
+        if (taken.ok == true or taken.missing == true) {
+            if (taken.missing == true or str.trim(taken.value) == "") {
+                opt.error = "Missing value for --product-name.";
+                return opt;
+            }
+            opt.productName = str.trim(taken.value);
+            i = taken.nextIndex;
+            continue;
+        }
+        taken = sbCliTakeFlagValue(args, i, "--name");
+        if (taken.ok == true or taken.missing == true) {
+            if (taken.missing == true or str.trim(taken.value) == "") {
+                opt.error = "Missing value for --name.";
+                return opt;
+            }
+            opt.productName = str.trim(taken.value);
+            i = taken.nextIndex;
+            continue;
+        }
+
         if (a == "--remove-orphans") {
             opt.removeOrphans = true;
             i = i + 1;
@@ -327,6 +351,26 @@ function sbCliApplyPort(cli) {
     return ASK_HTTP_PORT;
 }
 
+// Override PRODUCT_NAME / ASK title from --product-name / --name.
+// Call after applyProductNameFromBrain / askApplyProductNameFromBrain so CLI wins.
+function sbCliApplyProductName(cli) {
+    if (cli == null) {
+        return "";
+    }
+    var n = str.trim(sbCliAsText(cli.productName));
+    if (n == "") {
+        return "";
+    }
+    PRODUCT_NAME = n;
+    var suffix = str.trim(sbCliAsText(ASK_TITLE_SUFFIX));
+    ASK_PAGE_TITLE = n + suffix;
+    ui.setState(ASK_STORE, "productName", n, ASK_SESSION_ID);
+    AnsiConsole.markupLine("[dim]" + t(
+        "Product name from CLI: ",
+        "Nome prodotto da riga di comando: ") + n + "[/]");
+    return n;
+}
+
 function sbCliPrintHelp(defaultBrain, defaultPort) {
     var brain = str.trim(sbCliAsText(defaultBrain));
     if (brain == "") {
@@ -339,12 +383,15 @@ function sbCliPrintHelp(defaultBrain, defaultPort) {
     var en =
         "Second Brain CLI\n\n" +
         "  build  --docs <folder> [--brain " + brain + "] [--taxonomy llm|folders] [--lang en|it]\n" +
+        "         [--product-name <name>]\n" +
         "  update [--docs <folder>] [--brain " + brain + "] [--remove-orphans] [--lang en|it]\n" +
+        "         [--product-name <name>]\n" +
         "  ask    [--brain " + brain + "] [--port " + port + "] [--lang en|it]\n" +
-        "         [--auth|--no-auth] [--allow-register|--no-register]\n" +
+        "         [--product-name <name>] [--auth|--no-auth] [--allow-register|--no-register]\n" +
         "  help\n\n" +
         "Non-interactive: build/update/ask skip the menu and confirmations.\n" +
-        "Also: --mode build|update|ask   -p <port>   --port=<n>\n" +
+        "Also: --mode build|update|ask   -p <port>   --port=<n>   --name <name>\n" +
+        "--product-name / --name overrides brain product_name.txt and the default title.\n" +
         "ASK auth is on by default (cookie JWT). Disable with --no-auth.\n" +
         "Bootstrap: MALDA_ASK_USER / MALDA_ASK_PASSWORD (or MALDA_ASK_PASSWORD_HASH).\n" +
         "Multi-user: users.json in the brain folder (or .malda/ask_users.json).\n" +
@@ -353,12 +400,15 @@ function sbCliPrintHelp(defaultBrain, defaultPort) {
     var it =
         "Second Brain CLI\n\n" +
         "  build  --docs <cartella> [--brain " + brain + "] [--taxonomy llm|folders] [--lang en|it]\n" +
+        "         [--product-name <nome>]\n" +
         "  update [--docs <cartella>] [--brain " + brain + "] [--remove-orphans] [--lang en|it]\n" +
+        "         [--product-name <nome>]\n" +
         "  ask    [--brain " + brain + "] [--port " + port + "] [--lang en|it]\n" +
-        "         [--auth|--no-auth] [--allow-register|--no-register]\n" +
+        "         [--product-name <nome>] [--auth|--no-auth] [--allow-register|--no-register]\n" +
         "  help\n\n" +
         "Non interattivo: build/update/ask saltano menu e conferme.\n" +
-        "Anche: --mode build|update|ask   -p <porta>   --port=<n>\n" +
+        "Anche: --mode build|update|ask   -p <porta>   --port=<n>   --name <nome>\n" +
+        "--product-name / --name ha priorita' su product_name.txt e sul titolo di default.\n" +
         "Auth ASK attiva di default (cookie JWT). Disattiva con --no-auth.\n" +
         "Bootstrap: MALDA_ASK_USER / MALDA_ASK_PASSWORD (o MALDA_ASK_PASSWORD_HASH).\n" +
         "Multi-utente: users.json nella cartella del brain (o .malda/ask_users.json).\n" +

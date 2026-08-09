@@ -3,16 +3,19 @@
 // Included by the host program. Host must define:
 //   ASK_HTTP_PORT, ASK_SESSION_ID, ASK_STORE  (vars)
 //   PRODUCT_NAME                             (display name, OR path/embed: to a utf-8 text file)
-//   ASK_TITLE_SUFFIX                         (e.g. " — ASK"; used when refreshing title from file)
+//   ASK_TITLE_SUFFIX                         (optional; default ""; used when refreshing title from file)
 //   ASK_PAGE_TITLE, ASK_POWERED_BY, ASK_POWERED_BY_URL  (header branding)
 //   ASK_LOGO  (optional logo left of title: "", file path, embed:..., http(s):, or data:)
 //   ASK_LOGO_RIGHT  (optional logo right of title — same path forms as ASK_LOGO)
+//   ASK_LOGO_RIGHT_HEIGHT  (optional; CSS height in px, default 48 — number, "64"/"64px",
+//                           OR path/embed: to a utf-8 text file like PRODUCT_NAME)
 //   askHttpServer                            (var, initially null)
 //   runAskTurn(question) -> { question, answer, sources, error }
 //   UI_LANG                                  (existing)
 //
 // Brain branding (disk or embed root), auto-loaded when hosts call askApply*FromBrain:
 //   product_name.txt — first non-empty line
+//   logo_right_height.txt — first non-empty line (px; overrides ASK_LOGO_RIGHT_HEIGHT)
 //   logo.png / .svg / .jpg / .jpeg / .webp / .gif / .ico — if ASK_LOGO is empty
 //   logo_right.png / .svg / .jpg / .jpeg / .webp / .gif / .ico — if ASK_LOGO_RIGHT is empty
 //
@@ -1257,11 +1260,7 @@ function askProductNameFromValue(raw) {
 }
 
 function askTitleSuffix() {
-    var suffix = str.trim(askAsText(ASK_TITLE_SUFFIX));
-    if (suffix == "") {
-        return " — ASK";
-    }
-    return suffix;
+    return str.trim(askAsText(ASK_TITLE_SUFFIX));
 }
 
 // Host PRODUCT_NAME — literal display name, or path/embed: to a text file (empty => "Second brain").
@@ -1641,7 +1640,73 @@ function askRenderTurnHtml(turn, index) {
     return html;
 }
 
+// Normalize a height token ("72", "72px") to a clamped px int string, or "".
+function askNormalizeLogoRightHeightToken(raw) {
+    var s = str.trim(askAsText(raw));
+    if (s == "") {
+        return "";
+    }
+    var lower = str.lower(s);
+    if (str.endsWith(lower, "px")) {
+        s = str.trim(str.substring(s, 0, str.length(s) - 2));
+    }
+    var n = toIntOrNull(s);
+    if (n == null) {
+        return "";
+    }
+    if (n < 8) {
+        n = 8;
+    }
+    if (n > 256) {
+        n = 256;
+    }
+    return string(n);
+}
+
+function askLogoRightHeightFromValue(raw) {
+    var n = str.trim(askAsText(raw));
+    if (n == "") {
+        return "";
+    }
+    if (askLooksLikeProductNamePath(n)) {
+        return askReadProductNameFile(n);
+    }
+    return n;
+}
+
+// Prefer brainDir/logo_right_height.txt (disk or embed). Else host value / path file.
+function askApplyLogoRightHeightFromBrain(brainDir) {
+    var root = str.trim(askAsText(brainDir));
+    var fromBrain = "";
+    if (root != "") {
+        fromBrain = askReadProductNameFile(io.pathJoin(root, "logo_right_height.txt"));
+    }
+    var loaded = fromBrain;
+    if (loaded == "") {
+        loaded = askLogoRightHeightFromValue(ASK_LOGO_RIGHT_HEIGHT);
+    }
+    var normalized = askNormalizeLogoRightHeightToken(loaded);
+    if (normalized == "") {
+        return "48";
+    }
+    ASK_LOGO_RIGHT_HEIGHT = normalized;
+    return normalized;
+}
+
+// CSS height for .logo-right from host ASK_LOGO_RIGHT_HEIGHT (default 48px).
+function askLogoRightHeightCss() {
+    var n = askNormalizeLogoRightHeightToken(askLogoRightHeightFromValue(ASK_LOGO_RIGHT_HEIGHT));
+    if (n == "") {
+        n = askNormalizeLogoRightHeightToken(ASK_LOGO_RIGHT_HEIGHT);
+    }
+    if (n == "") {
+        return "48px";
+    }
+    return n + "px";
+}
+
 function askPageStyles() {
+    var logoRightH = askLogoRightHeightCss();
     return "<style>" +
         ":root,:root[data-theme=light]{--ink:#1c2430;--muted:#5c6b7a;--line:#d5dde6;--paper:#f7f4ef;" +
         "--panel:#fffcf8;--surface:#ffffff;--surface-2:#eef2f5;--chip:#f4f7f8;" +
@@ -1681,12 +1746,16 @@ function askPageStyles() {
         "align-items:flex-start;flex-wrap:wrap}" +
         ".brand{display:flex;align-items:center;gap:12px;min-width:min-content;flex:1}" +
         ".logo{height:48px;max-width:min(40vw,220px);object-fit:contain;flex-shrink:0;display:block}" +
-        ".logo-right{height:48px;max-width:min(40vw,220px);object-fit:contain;flex-shrink:0;display:block}" +
-        ".brand-text{min-width:0}" +
+        ".logo-right{height:" + logoRightH + ";max-width:min(40vw,220px);object-fit:contain;" +
+        "flex-shrink:0;display:block}" +
+        ".brand-text{min-width:0;display:flex;flex-direction:column;align-items:stretch}" +
+        ".brand-title-row{display:flex;align-items:center;gap:12px;min-width:0}" +
+        ".brand-title-row h1{min-width:0}" +
         "h1{font-family:var(--serif);font-size:1.55rem;font-weight:700;margin:0;" +
         "letter-spacing:-0.02em;line-height:1.2;color:var(--ink)}" +
         ".powered-by{margin:4px 0 0;font-size:0.75rem;line-height:1.35;color:var(--muted);" +
-        "max-width:42rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}" +
+        "max-width:42rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" +
+        "align-self:flex-start}" +
         ".powered-by a{color:var(--muted);text-decoration:none;border-bottom:1px solid transparent}" +
         ".powered-by a:hover{color:var(--accent-ink);border-bottom-color:var(--accent)}" +
         ".header-actions{display:flex;flex-direction:column;align-items:flex-end;gap:8px;padding-top:2px}" +
@@ -1951,10 +2020,12 @@ function askApplyLogoFromBrain(brainDir) {
 }
 
 // Prefer brainDir/logo_right.* when ASK_LOGO_RIGHT is empty; resolve relative path under brainDir.
+// Also loads logo_right_height.txt into ASK_LOGO_RIGHT_HEIGHT when present.
 function askApplyLogoRightFromBrain(brainDir) {
     askInvalidateLogoRightCache();
     ASK_LOGO_RIGHT = askResolveLogoPathAgainstBrain(
         brainDir, ASK_LOGO_RIGHT, askLogoAutoNamesRight());
+    askApplyLogoRightHeightFromBrain(brainDir);
     return ASK_LOGO_RIGHT;
 }
 
@@ -2598,26 +2669,25 @@ function askRenderPage() {
         title = askAsText(ASK_PAGE_TITLE);
     }
     if (title == "") {
-        title = askProductName() + " — ASK";
+        title = askProductName();
     }
     var poweredBy = askAsText(ASK_POWERED_BY);
     var poweredByUrl = askAsText(ASK_POWERED_BY_URL);
     var logoSrc = askResolveLogoSrc();
     var logoRightSrc = askResolveLogoRightSrc();
     var theme = askGetTheme();
-    var enClass = "";
-    var itClass = "";
-    if (lang == "en") {
-        enClass = " active";
-    } else {
-        itClass = " active";
+    // One toggle each: label = current; href switches to the other.
+    var nextLang = "it";
+    var langLabel = "EN";
+    if (lang == "it") {
+        nextLang = "en";
+        langLabel = "IT";
     }
-    var lightClass = "";
-    var darkClass = "";
+    var nextTheme = "dark";
+    var themeLabel = askT("Light", "Chiaro");
     if (theme == "dark") {
-        darkClass = " active";
-    } else {
-        lightClass = " active";
+        nextTheme = "light";
+        themeLabel = askT("Dark", "Scuro");
     }
 
     var mainClass = "";
@@ -2637,8 +2707,15 @@ function askRenderPage() {
         html = html + "<img class='logo' src='" + askEscapeHtml(logoSrc) +
             "' alt=''>";
     }
+    // Title + right logo on one row; powered-by below, left-aligned with the product name.
     html = html + "<div class='brand-text'>" +
+        "<div class='brand-title-row'>" +
         "<h1>" + askEscapeHtml(title) + "</h1>";
+    if (logoRightSrc != "") {
+        html = html + "<img class='logo-right' src='" + askEscapeHtml(logoRightSrc) +
+            "' alt=''>";
+    }
+    html = html + "</div>";
     if (poweredBy != "") {
         if (poweredByUrl != "") {
             html = html + "<p class='powered-by'><a href='" + askEscapeHtml(poweredByUrl) +
@@ -2648,26 +2725,18 @@ function askRenderPage() {
             html = html + "<p class='powered-by'>" + askEscapeHtml(poweredBy) + "</p>";
         }
     }
-    html = html + "</div>";
-    if (logoRightSrc != "") {
-        html = html + "<img class='logo-right' src='" + askEscapeHtml(logoRightSrc) +
-            "' alt=''>";
-    }
-    html = html + "</div>" +
+    html = html + "</div></div>" +
         "<div class='header-actions'>" +
-        "<nav class='lang' aria-label='" + askEscapeHtml(askT("Language", "Lingua")) + "'>" +
-        "<a class='" + str.trim(enClass) + "' href='/?" + askEscapeHtml(askConvQuery("lang=en")) +
-        "' hreflang='en' data-ask-lang='en'>EN</a>" +
-        "<a class='" + str.trim(itClass) + "' href='/?" + askEscapeHtml(askConvQuery("lang=it")) +
-        "' hreflang='it' data-ask-lang='it'>IT</a>" +
-        "</nav>" +
-        "<nav class='lang' aria-label='" + askEscapeHtml(askT("Theme", "Tema")) + "'>" +
-        "<a class='" + str.trim(lightClass) + "' href='/?" +
-        askEscapeHtml(askConvQuery("theme=light")) +
-        "' data-ask-theme='light'>" + askEscapeHtml(askT("Light", "Chiaro")) + "</a>" +
-        "<a class='" + str.trim(darkClass) + "' href='/?" +
-        askEscapeHtml(askConvQuery("theme=dark")) +
-        "' data-ask-theme='dark'>" + askEscapeHtml(askT("Dark", "Scuro")) + "</a>" +
+        "<nav class='lang' aria-label='" +
+        askEscapeHtml(askT("Language and theme", "Lingua e tema")) + "'>" +
+        "<a class='active' href='/?" + askEscapeHtml(askConvQuery("lang=" + nextLang)) +
+        "' hreflang='" + nextLang + "' data-ask-lang='" + lang + "' title='" +
+        askEscapeHtml(askT("Switch language", "Cambia lingua")) + "'>" +
+        langLabel + "</a>" +
+        "<a class='active' href='/?" + askEscapeHtml(askConvQuery("theme=" + nextTheme)) +
+        "' data-ask-theme='" + theme + "' title='" +
+        askEscapeHtml(askT("Switch theme", "Cambia tema")) + "'>" +
+        askEscapeHtml(themeLabel) + "</a>" +
         "</nav>" +
         "<a class='new-conv' href='/?" + askEscapeHtml("c=" + askMintConvId()) + "'>" +
         askEscapeHtml(askT("New conversation", "Nuova conversazione")) + "</a>";

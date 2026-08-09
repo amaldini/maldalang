@@ -236,10 +236,12 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("New conversation", html, StringComparison.Ordinal);
             Assert.Contains("href='/?c=", html, StringComparison.Ordinal);
             Assert.Contains("data-ask-lang='en'", html, StringComparison.Ordinal);
-            Assert.Contains("data-ask-lang='it'", html, StringComparison.Ordinal);
+            Assert.DoesNotContain("data-ask-lang='it'", html, StringComparison.Ordinal);
+            Assert.Contains("lang=it", html, StringComparison.Ordinal);
             Assert.Contains("data-theme='light'", html, StringComparison.Ordinal);
             Assert.Contains("data-ask-theme='light'", html, StringComparison.Ordinal);
-            Assert.Contains("data-ask-theme='dark'", html, StringComparison.Ordinal);
+            Assert.DoesNotContain("data-ask-theme='dark'", html, StringComparison.Ordinal);
+            Assert.Contains("theme=dark", html, StringComparison.Ordinal);
             Assert.Contains("data-theme=dark", html, StringComparison.Ordinal);
             Assert.Contains("navigateLang(", html, StringComparison.Ordinal);
             Assert.Contains("disconnectLive(", html, StringComparison.Ordinal);
@@ -786,6 +788,7 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("askApplyProductNameFromBrain(", source, StringComparison.Ordinal);
             Assert.Contains("askApplyLogoFromBrain(", source, StringComparison.Ordinal);
             Assert.Contains("var ASK_LOGO_RIGHT = ", source, StringComparison.Ordinal);
+            Assert.Contains("var ASK_LOGO_RIGHT_HEIGHT = ", source, StringComparison.Ordinal);
             Assert.Contains("askApplyLogoRightFromBrain(", source, StringComparison.Ordinal);
             Assert.Contains("applyAskHttpPortFromCli()", source, StringComparison.Ordinal);
             Assert.Contains("askApplyAuthFromCli(", source, StringComparison.Ordinal);
@@ -795,7 +798,9 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("--port", source, StringComparison.Ordinal);
             Assert.Contains("--no-auth", source, StringComparison.Ordinal);
             Assert.Contains("--allow-register", source, StringComparison.Ordinal);
+            Assert.Contains("--product-name", source, StringComparison.Ordinal);
             Assert.Contains("sbCliParseArgs(", source, StringComparison.Ordinal);
+            Assert.Contains("sbCliApplyProductName(", source, StringComparison.Ordinal);
             Assert.Contains("build --docs", source, StringComparison.Ordinal);
             Assert.Contains("include \"secondbrain_cli_lib.malda\"", source, StringComparison.Ordinal);
             if (path.Contains("secondbrain_semantic", StringComparison.Ordinal))
@@ -804,6 +809,7 @@ public class SecondBrainAskFeaturesTests
                 Assert.Contains("new Tool(", source, StringComparison.Ordinal);
             }
             Assert.Contains("product_name.txt", source, StringComparison.Ordinal);
+            Assert.Contains("logo_right_height.txt", source, StringComparison.Ordinal);
             Assert.Contains("askGetToolsEnabled()", source, StringComparison.Ordinal);
             Assert.Contains("askSetToolsEnabled(false)", source, StringComparison.Ordinal);
             Assert.Contains("function answerInstructions(useTools)", source, StringComparison.Ordinal);
@@ -855,6 +861,14 @@ public class SecondBrainAskFeaturesTests
                 print("H=" + h.mode + "," + string(h.allowRegister) + "," + h.error);
                 var i = sbCliParseArgs(["ask", "--allow-register", "--no-register"]);
                 print("I=" + i.mode + "," + string(i.allowRegister) + "," + i.error);
+                var j = sbCliParseArgs(["ask", "--product-name", "Acme Brain"]);
+                print("J=" + j.mode + "," + j.productName + "," + j.error);
+                var k = sbCliParseArgs(["build", "--docs", "./d", "--name", "Alias Name"]);
+                print("K=" + k.mode + "," + k.productName + "," + k.error);
+                var l = sbCliParseArgs(["ask", "--product-name"]);
+                print("L=" + l.error);
+                var m = sbCliParseArgs(["ask", "--product-name=Brand"]);
+                print("M=" + m.mode + "," + m.productName + "," + m.error);
                 """,
                 Encoding.UTF8);
 
@@ -868,6 +882,10 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("G=ask,true,", output, StringComparison.Ordinal);
             Assert.Contains("H=ask,true,", output, StringComparison.Ordinal);
             Assert.Contains("I=ask,false,", output, StringComparison.Ordinal);
+            Assert.Contains("J=ask,Acme Brain,", output, StringComparison.Ordinal);
+            Assert.Contains("K=build,Alias Name,", output, StringComparison.Ordinal);
+            Assert.Contains("L=Missing value for --product-name.", output, StringComparison.Ordinal);
+            Assert.Contains("M=ask,Brand,", output, StringComparison.Ordinal);
         }
         finally
         {
@@ -1155,13 +1173,16 @@ public class SecondBrainAskFeaturesTests
             var lightHtml = output.Substring(lightIdx, darkIdx - lightIdx);
             var darkHtml = output.Substring(darkIdx);
             Assert.Contains("data-theme='light'", lightHtml, StringComparison.Ordinal);
-            Assert.Contains("data-ask-theme='dark'", lightHtml, StringComparison.Ordinal);
+            Assert.Contains("data-ask-theme='light'", lightHtml, StringComparison.Ordinal);
             Assert.Contains(">Light</a>", lightHtml, StringComparison.Ordinal);
-            Assert.Contains(">Dark</a>", lightHtml, StringComparison.Ordinal);
+            Assert.DoesNotContain(">Dark</a>", lightHtml, StringComparison.Ordinal);
+            Assert.Contains("theme=dark", lightHtml, StringComparison.Ordinal);
             Assert.Contains("data-theme='dark'", darkHtml, StringComparison.Ordinal);
-            Assert.Contains("data-ask-theme='light'", darkHtml, StringComparison.Ordinal);
+            Assert.Contains("data-ask-theme='dark'", darkHtml, StringComparison.Ordinal);
+            Assert.Contains(">Dark</a>", darkHtml, StringComparison.Ordinal);
+            Assert.DoesNotContain(">Light</a>", darkHtml, StringComparison.Ordinal);
+            Assert.Contains("theme=light", darkHtml, StringComparison.Ordinal);
             Assert.Contains("class='active' href='/?c=", darkHtml, StringComparison.Ordinal);
-            Assert.Contains("theme=dark", darkHtml, StringComparison.Ordinal);
         }
         finally
         {
@@ -1190,6 +1211,8 @@ public class SecondBrainAskFeaturesTests
             Directory.CreateDirectory(brainDir);
             File.WriteAllText(Path.Combine(brainDir, "logo.svg"), leftSvg, utf8NoBom);
             File.WriteAllText(Path.Combine(brainDir, "logo_right.svg"), rightSvg, utf8NoBom);
+            // Brain file overrides host ASK_LOGO_RIGHT_HEIGHT (96).
+            File.WriteAllText(Path.Combine(brainDir, "logo_right_height.txt"), "96px\n", utf8NoBom);
             File.Copy(AskUiLibPath, Path.Combine(tempDir, "secondbrain_ask_ui_lib.malda"));
 
             var brainLiteral = brainDir.Replace("\\", "\\\\");
@@ -1200,12 +1223,13 @@ public class SecondBrainAskFeaturesTests
                 var ASK_SESSION_ID = "secondbrain-ask-disk-logo-right";
                 var ASK_STORE = "SecondBrainAskDiskLogoRight";
                 var PRODUCT_NAME = "Dual Logo Brain";
-                var ASK_TITLE_SUFFIX = " — ASK";
+                var ASK_TITLE_SUFFIX = "";
                 var ASK_PAGE_TITLE = PRODUCT_NAME + ASK_TITLE_SUFFIX;
-                var ASK_POWERED_BY = "";
-                var ASK_POWERED_BY_URL = "";
+                var ASK_POWERED_BY = "Powered by MALDA";
+                var ASK_POWERED_BY_URL = "https://example.com/malda";
                 var ASK_LOGO = "";
                 var ASK_LOGO_RIGHT = "";
+                var ASK_LOGO_RIGHT_HEIGHT = 72;
                 var UI_LANG = "en";
                 var askHttpServer = null;
 
@@ -1217,6 +1241,7 @@ public class SecondBrainAskFeaturesTests
 
                 print(askApplyLogoFromBrain("{{brainLiteral}}"));
                 print(askApplyLogoRightFromBrain("{{brainLiteral}}"));
+                print("HEIGHT=" + ASK_LOGO_RIGHT_HEIGHT);
                 askSetSession({
                     "brainDir": "{{brainLiteral}}",
                     "chatOnly": false,
@@ -1240,11 +1265,17 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("data:image/svg+xml;base64," + rightB64, output, StringComparison.Ordinal);
             Assert.Contains("<img class='logo'", output, StringComparison.Ordinal);
             Assert.Contains("<img class='logo-right'", output, StringComparison.Ordinal);
-            // Right logo sits after the title block (brand-text closes before logo-right).
-            var brandTextClose = output.IndexOf("</div><img class='logo-right'", StringComparison.Ordinal);
-            Assert.True(brandTextClose >= 0, "expected logo-right immediately after brand-text");
-            var h1Pos = output.IndexOf("<h1>Dual Logo Brain — ASK</h1>", StringComparison.Ordinal);
-            Assert.True(h1Pos >= 0 && h1Pos < brandTextClose, "title should appear before right logo");
+            Assert.Contains("HEIGHT=96", output, StringComparison.Ordinal);
+            Assert.Contains(".logo-right{height:96px;", output, StringComparison.Ordinal);
+            Assert.Contains("class='brand-title-row'", output, StringComparison.Ordinal);
+            // Title + right logo share a row; powered-by comes after that row.
+            var h1Pos = output.IndexOf("<h1>Dual Logo Brain</h1>", StringComparison.Ordinal);
+            var logoRightPos = output.IndexOf("<img class='logo-right'", StringComparison.Ordinal);
+            var poweredPos = output.IndexOf("<p class='powered-by'", StringComparison.Ordinal);
+            Assert.True(h1Pos >= 0, "expected product title");
+            Assert.True(logoRightPos > h1Pos, "right logo should follow product name in title row");
+            Assert.True(poweredPos > logoRightPos, "powered-by markup should be below title row / right logo");
+            Assert.Contains("</h1><img class='logo-right'", output, StringComparison.Ordinal);
         }
         finally
         {

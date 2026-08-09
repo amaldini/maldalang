@@ -20,12 +20,13 @@
 //
 // Non-interactive CLI (skips menu + confirmations; exits when done):
 //   malda Examples/Agents/secondbrain_semantic.malda build --docs ./docs [--brain secondbrain_semantic]
-//       [--taxonomy llm|folders] [--lang en|it]
+//       [--taxonomy llm|folders] [--lang en|it] [--product-name "Acme Brain"]
 //   malda Examples/Agents/secondbrain_semantic.malda update [--docs ./docs] [--brain secondbrain_semantic]
-//       [--remove-orphans] [--lang en|it]
+//       [--remove-orphans] [--lang en|it] [--product-name "Acme Brain"]
 //   malda Examples/Agents/secondbrain_semantic.malda ask [--brain secondbrain_semantic] [--port 8080] [--lang en|it]
-//       [--auth|--no-auth] [--allow-register|--no-register]
+//       [--product-name "Acme Brain"] [--auth|--no-auth] [--allow-register|--no-register]
 //   malda Examples/Agents/secondbrain_semantic.malda help
+//   (--name is an alias for --product-name; overrides brain product_name.txt)
 //
 // ASK auth (cookie JWT) is on by default. Disable with --no-auth or MALDA_ASK_AUTH=0.
 // Bootstrap: MALDA_ASK_USER / MALDA_ASK_PASSWORD (or HASH); default admin / password.
@@ -89,7 +90,7 @@ var ASK_STORE = "SecondBrainAskSemantic";
 // Literal name, OR path / embed:… to a utf-8 text file (first non-empty line).
 // Prefer brain file product_name.txt (auto-loaded when the brain root is known).
 var PRODUCT_NAME = "Second brain";
-var ASK_TITLE_SUFFIX = " — ASK (semantic)";
+var ASK_TITLE_SUFFIX = "";
 // ASK web header — defaults from PRODUCT_NAME; override freely if needed.
 var ASK_PAGE_TITLE = PRODUCT_NAME + ASK_TITLE_SUFFIX;
 var ASK_POWERED_BY = "Powered by MALDA: Multi Agent Language with Development Automation";
@@ -97,6 +98,8 @@ var ASK_POWERED_BY_URL = "https://github.com/amaldini/maldalang";
 // Optional logos beside the title (works in normal ASK and in packed/embed exe):
 //   ASK_LOGO       -> left of title (company); auto-load logo.png/.svg/.jpg/…
 //   ASK_LOGO_RIGHT -> right of title (product); auto-load logo_right.png/.svg/.jpg/…
+//   ASK_LOGO_RIGHT_HEIGHT -> CSS height in px (default 48; also "64"/"64px", or path/embed: text file)
+//      Brain file logo_right_height.txt (first line) overrides this when present.
 // Path forms for either:
 //   ""              -> auto-load from the brain folder
 //   "logo.png"      -> same folder as the brain (resolved at ASK start)
@@ -106,6 +109,7 @@ var ASK_POWERED_BY_URL = "https://github.com/amaldini/maldalang";
 //   "https://..." / "data:..." -> remote or inline
 var ASK_LOGO = "";
 var ASK_LOGO_RIGHT = "";
+var ASK_LOGO_RIGHT_HEIGHT = 48;
 var SOURCE_SCRIPT_NAME = "secondbrain_semantic.malda";
 var EMBED_ALIAS = "secondbrain_semantic";
 var DEFAULT_PACK_OUTPUT = "dist/SecondBrain.exe";
@@ -2259,6 +2263,7 @@ function buildBrain(cli) {
         }
     }
     applyProductNameFromBrain(brainDir);
+    sbCliApplyProductName(cli);
     if (io.hasFile(io.pathJoin(brainDir, CATALOG_NAME))) {
         if (nonInteractive) {
             AnsiConsole.markupLine("[dim]" + t(
@@ -2444,6 +2449,7 @@ function updateBrain(cli) {
         }
     }
     applyProductNameFromBrain(brainDir);
+    sbCliApplyProductName(cli);
     var catalog = loadCatalog(brainDir);
     if (catalog == null or catalog.notes == null) {
         AnsiConsole.markupLine("[red]" + t(
@@ -3193,6 +3199,7 @@ function askBrain(cli) {
 
     var brainDir = resolveAskBrainRoot(cli);
     askApplyProductNameFromBrain(brainDir);
+    sbCliApplyProductName(cli);
     askApplyLogoFromBrain(brainDir);
     askApplyLogoRightFromBrain(brainDir);
     if (askLogoPathMissing()) {
@@ -3334,6 +3341,7 @@ function packPortableAskExe() {
         brainDir = EMBED_ALIAS;
     }
     applyProductNameFromBrain(brainDir);
+    sbCliApplyProductName(cli);
     if (not io.hasDirectory(brainDir)) {
         AnsiConsole.markupLine("[red]" + t("Folder not found:", "Cartella non trovata:") +
             "[/] " + brainDir);
@@ -3405,9 +3413,9 @@ function packPortableAskExe() {
         "[/] [bold]" + str.replace(str.replace(string(written), "[", "[["), "]", "]]") + "[/]");
     AnsiConsole.markupLine("[dim]" + t(
         "Run the .exe to open ASK with the embedded brain. Optional: --port 8080 (or -p). " +
-            "Branding in the brain folder (auto-loaded): product_name.txt and optional logo.png / logo.svg.",
+            "Branding in the brain folder (auto-loaded): product_name.txt, logo_right_height.txt, and optional logo.png / logo_right.png.",
         "Avvia l'.exe per aprire ASK col brain incorporato. Opzionale: --port 8080 (o -p). " +
-            "Branding nella cartella del brain (auto-caricato): product_name.txt e logo.png / logo.svg opzionale.") + "[/]");
+            "Branding nella cartella del brain (auto-caricato): product_name.txt, logo_right_height.txt e logo.png / logo_right.png opzionali.") + "[/]");
     return true;
 }
 
@@ -3454,6 +3462,7 @@ if (io.hasEmbeddedFolder("secondbrain_semantic")) {
         exit(0);
     }
     sbCliApplyLang(cliOpts);
+    sbCliApplyProductName(cliOpts);
     if (cliOpts.port != null) {
         sbCliApplyPort(cliOpts);
     } else {
@@ -3462,6 +3471,7 @@ if (io.hasEmbeddedFolder("secondbrain_semantic")) {
     askBrain(cliOpts);
 } else if (cliOpts.mode == "help") {
     sbCliApplyLang(cliOpts);
+    sbCliApplyProductName(cliOpts);
     sbCliPrintHelp(DEFAULT_BRAIN_DIR, ASK_HTTP_PORT);
     exit(0);
 } else if (cliOpts.mode == "pack") {
@@ -3471,6 +3481,7 @@ if (io.hasEmbeddedFolder("secondbrain_semantic")) {
     exit(1);
 } else if (cliOpts.mode == "build" or cliOpts.mode == "update" or cliOpts.mode == "ask") {
     sbCliApplyLang(cliOpts);
+    sbCliApplyProductName(cliOpts);
     if (cliOpts.lang == "") {
         ui.setState(ASK_STORE, "lang", UI_LANG, ASK_SESSION_ID);
     }
@@ -3495,6 +3506,7 @@ if (io.hasEmbeddedFolder("secondbrain_semantic")) {
     exit(1);
 } else {
     chooseLanguage();
+    sbCliApplyProductName(cliOpts);
     if (cliOpts.port != null) {
         sbCliApplyPort(cliOpts);
     } else {
