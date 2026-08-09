@@ -93,9 +93,9 @@ public class AIChatService
             // Create messages for LLM
             var messages = new List<RuntimeValue>();
             
-            // Add system message with language spec
+            // Add system message with compact language-pack boot context (syntax + gotchas)
             var systemPrompt = "You are an AI assistant helping developers write code in MALDA (Multi Agent Language with Development Automation).\n\n" +
-                            _languageContextService.GetLanguageSpecification() +
+                            _languageContextService.GetInlineBootContext() +
                             "\n\nCRITICAL RULES FOR CODE GENERATION:\n" +
                             "1. ALWAYS generate code in MALDA syntax ONLY. NEVER generate JavaScript, Python, C#, or any other language.\n" +
                             "2. For Agent operations, use agent.think(prompt) method, NOT agent.executeTask(). The correct syntax is:\n" +
@@ -353,16 +353,19 @@ public class AIChatService
             var currentFilePath = Path.Combine(tempDir, "current.malda");
             await File.WriteAllTextAsync(currentFilePath, currentCode ?? "");
 
-            // Write language spec to a file so the agent can read it with read_file (saves tokens vs embedding in instructions)
-            var specFilePath = Path.Combine(tempDir, "MALDA_SPEC.md");
-            await File.WriteAllTextAsync(specFilePath, _languageContextService.GetLanguageSpecification());
+            // Materialize docs/llm (+ live DECORATORS.md) so the agent can read/grep without bloating the system prompt
+            _languageContextService.MaterializeLanguagePack(tempDir);
 
             var client = GetLLMClient();
             var inputProvider = new AskMaldaInputProvider();
-            var instructions = "You are a MALDA code assistant. Working directory contains current.malda (the user's file) and MALDA_SPEC.md (the MALDA language specification). " +
-                "When you need syntax or semantics from the spec, prefer partial reads to save tokens: use grep on MALDA_SPEC.md with a pattern for the section (e.g. \"ACTORS\", \"actor\", \"AGENTS\", \"function\", \"built-in\") and includeLineNumbers: true, and use caseInsensitive: true so section headers like FUNCTIONS or ACTORS match; then read_file(\"MALDA_SPEC.md\", startLine, endLine) for just that range. Read the full file only when you need broad context. " +
-                "Use getSymbols, getParseErrors, read_file, replace_in_file, edit_file, grep as needed. Prefer suggesting edits on current.malda. " +
-                "ALWAYS generate code in MALDA only; never JavaScript, Python, C#, or other languages.";
+            var instructions =
+                "You are a MALDA code assistant. Working directory contains current.malda (the user's file) and llm/ (the MALDA language pack). "
+                + "Start with llm/INDEX.md for load order. Prefer llm/malda-syntax.md and llm/malda-gotchas.md first; "
+                + "then matching llm/few-shot/ samples; llm/malda-grammar.md for unfamiliar constructs; "
+                + "llm/malda-builtins-min.md / grep llm/malda-builtins.tsv for builtins; llm/DECORATORS.md for @decorators. "
+                + "Prefer grep + partial read_file over reading large files whole. "
+                + "Use getSymbols, getParseErrors, read_file, replace_in_file, edit_file, grep as needed. Prefer suggesting edits on current.malda. "
+                + "ALWAYS generate code in MALDA only; never JavaScript, Python, C#, or other languages.";
             var agent = new DevAgentInstance("AskMalda", "MALDA code assistant", instructions, client, tempDir, includeSymbols: true, inputProvider);
 
             var prompt = BuildAskMaldaPrompt(userMessage, currentCode, cursorLine, cursorColumn, errors, selectedCode);

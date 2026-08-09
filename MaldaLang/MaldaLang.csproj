@@ -9,7 +9,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>0.1.28</Version>
+    <Version>0.1.29</Version>
     <Copyright>© 2026 - Andrea Maldini</Copyright>
     <AssemblyName>malda</AssemblyName>
   </PropertyGroup>
@@ -29,6 +29,15 @@
     <PackageReference Include="Microsoft.ML.Tokenizers" Version="0.22.0" />
     <PackageReference Include="Spectre.Console" Version="0.49.1" />
     <PackageReference Include="System.IO.Ports" Version="8.0.0" />
+  </ItemGroup>
+
+  <!-- Language pack for IDE AI (docs/llm): stable LogicalName MaldaLang.LanguagePack.<relative-path> -->
+  <ItemGroup>
+    <LlmLanguagePackFile Include="..\docs\llm\**\*" />
+    <EmbeddedResource Include="@(LlmLanguagePackFile)">
+      <Link>LanguagePack\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <LogicalName>MaldaLang.LanguagePack.$([System.String]::Copy('%(RecursiveDir)%(Filename)%(Extension)').Replace('\', '/'))</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
 
 </Project>

@@ -297,22 +297,26 @@ public class AIChatService
             var currentFilePath = Path.Combine(tempDir, "current.malda");
             await File.WriteAllTextAsync(currentFilePath, currentCode ?? "");
 
-            // Write language spec to a file so the agent can read it with read_file (saves tokens vs embedding in instructions)
-            var specFilePath = Path.Combine(tempDir, "MALDA_SPEC.md");
-            await File.WriteAllTextAsync(specFilePath, _languageContextService.GetLanguageSpecification());
+            // Materialize docs/llm (+ live DECORATORS.md) so the agent can read/grep without bloating the system prompt
+            _languageContextService.MaterializeLanguagePack(tempDir);
 
             var client = GetLLMClient();
             var inputProvider = new AskMaldaInputProvider();
+            var packGuidance =
+                "Working directory contains current.malda (the user's file) and llm/ (the MALDA language pack). "
+                + "Start with llm/INDEX.md for load order. Prefer llm/malda-syntax.md and llm/malda-gotchas.md first; "
+                + "then matching llm/few-shot/ samples; llm/malda-grammar.md for unfamiliar constructs; "
+                + "llm/malda-builtins-min.md / grep llm/malda-builtins.tsv for builtins; llm/DECORATORS.md for @decorators. "
+                + "Prefer grep + partial read_file over reading large files whole. ";
             var instructions = readOnly
                 ? "You are a MALDA code assistant in READ-ONLY mode. You have access to getSymbols, getParseErrors, read_file, grep, list_directory only; you cannot modify files. "
-                  + "Working directory contains current.malda (the user's file) and MALDA_SPEC.md (the MALDA language specification). "
-                  + "When you need syntax or semantics from the spec, prefer partial reads: use grep on MALDA_SPEC.md with a pattern (e.g. \"ACTORS\", \"function\", \"built-in\") and includeLineNumbers: true, caseInsensitive: true; then read_file(\"MALDA_SPEC.md\", startLine, endLine) for that range. "
+                  + packGuidance
                   + "Use getSymbols, getParseErrors, read_file, grep as needed to answer. Suggest any code changes or improvements in your response as text or code blocks; do not apply edits. "
                   + "ALWAYS generate code in MALDA only; never JavaScript, Python, C#, or other languages."
-                : "You are a MALDA code assistant. Working directory contains current.malda (the user's file) and MALDA_SPEC.md (the MALDA language specification). " +
-                  "When you need syntax or semantics from the spec, prefer partial reads to save tokens: use grep on MALDA_SPEC.md with a pattern for the section (e.g. \"ACTORS\", \"actor\", \"AGENTS\", \"function\", \"built-in\") and includeLineNumbers: true, and use caseInsensitive: true so section headers like FUNCTIONS or ACTORS match; then read_file(\"MALDA_SPEC.md\", startLine, endLine) for just that range. Read the full file only when you need broad context. " +
-                  "Use getSymbols, getParseErrors, read_file, replace_in_file, edit_file, grep as needed. Prefer suggesting edits on current.malda. " +
-                  "ALWAYS generate code in MALDA only; never JavaScript, Python, C#, or other languages.";
+                : "You are a MALDA code assistant. "
+                  + packGuidance
+                  + "Use getSymbols, getParseErrors, read_file, replace_in_file, edit_file, grep as needed. Prefer suggesting edits on current.malda. "
+                  + "ALWAYS generate code in MALDA only; never JavaScript, Python, C#, or other languages.";
             DevAgentInstance agent;
             if (client is LLMClientInstance llmClient)
             {
