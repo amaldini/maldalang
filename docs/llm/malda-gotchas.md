@@ -1,6 +1,6 @@
 # MALDA gotchas: the mistakes the interpreter will not catch
 
-*Applies to: MALDA 0.1.28*
+*Applies to: MALDA 0.1.32*
 
 `malda-syntax.md` lists the JS-isms an agent might guess — `const`, `console.log`, `def`.
 Those are cheap: the parser rejects them immediately and you fix them on the next run.
@@ -26,6 +26,8 @@ claim a program works.
 | `csrfField(secret)` under `enableCsrf(secret)` | CSRF requires **cookie value == form `_csrf`**. `csrfField(secret)` generates a *new* token; if the CSRF cookie was already set to a different token, mutating requests 403. | On the GET that renders the form, reuse `req.cookie("csrf_token")` when valid, or generate once and set both the cookie and the field to that same token |
 | `req.session.getFlash("err")` twice | Flash values are **one-shot**. The first `getFlash` / `getFlashes` consumes them; a second read in the same request returns empty. | Read flash once when rendering the page, or keep a local variable |
 | `new RestServer(8080)` then also `HttpServer` on 8080 | Two listeners fight for the port. For fullstack, use `new RestServer()` (deferred port) and `http.mount(api)`. | One port owner: `HttpServer` + `mount` |
+| `ui.dispatchEvent(...)` then `ui.render(...)` without `pullEvent` / state update | The event sits in the session queue. The next tree is built from unchanged state, so the UI looks “stuck”. | `pullEvent` → update `ui.setState` / locals → rebuild tree → `ui.render` |
+| Mixing `@PAGE` HTML strings with `ui.*` trees as if they were the same model | Both run, but they are different UIs: `@PAGE` returns HTML; `ui.mount` / `ui.render` expect node trees from `ui.button(props, …)`, not `"<button>…"`. | Pick one model per surface; see `ReferenceManual/16-web-ui-hub.html` |
 | `enqueueJob` expecting durable workflow semantics | Jobs are a **lightweight SQLite queue** (`./.malda/jobs.db`), not `workflow` / `step` / compensate. | Use `workflow { }` for durable steps; use jobs for fire-and-forget workers |
 | `prompt p() -> MySchema { tools: [...]; … }` expecting structured `response_format` | For v1, **tools and `response_format` are mutually exclusive**. If the prompt body lists tools, the schema is **not** sent to the LLM. | Omit tools for typed structured output, or validate the free-form reply yourself |
 | Treating `-> Type` as compile-time typing | Hints are not static types. On **`await`**, the runtime validates JSON against the resolved schema (and may send OpenAI `response_format`). Without `await`, you only build a `PromptInstance`. | Prefer `schema Name { … }` + `await prompt(...) -> Name`; see `Examples/Prompts/schema_prompt_structured.malda` |

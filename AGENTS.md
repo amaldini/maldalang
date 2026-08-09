@@ -76,6 +76,7 @@ Web IDE improvements (Monaco UX, examples browser, diagnostics presentation) are
 | Built-in functions | `MaldaLang/BuiltIns/BuiltInFunctions.cs`, `BuiltInRegistry.cs` |
 | C# transpile | `MaldaLang.Compiler/CSharpTranspiler.cs`, `Compiler.cs` |
 | JS / PWA transpile | `MaldaLang.Compiler/JsTranspiler.cs` |
+| Server-driven UI (`ui.*` / UIHost) | `MaldaLang/Runtime/UI/`, `MaldaLang.UIHost/` — [`docs/ui-framework.md`](docs/ui-framework.md) |
 | Optional pack emit (string-only) | `MaldaLang.Compiler/OptionalPack/` |
 | CLI | `MaldaLang/Program.cs` |
 | Language intelligence (IDE/LSP shared) | `MaldaLang/IDE/LanguageService.cs` |

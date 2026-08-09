@@ -110,6 +110,9 @@ componentLiveEmit("tickets", {"count": 8}, "ticket-added");</code></pre>
             <li><code>patches</code> - incremental patch operations (<code>ReplaceNode</code>, <code>SetProp</code>, <code>RemoveProp</code>, <code>InsertChild</code>, <code>RemoveChild</code>).</li>
         </ul>
         <p>Clients should acknowledge processed envelopes and request resync when sequence gaps are detected.</p>
+        <div class="info-box">
+            <strong>Implementation notes:</strong> Runtime kernel (<code>UiNode</code>, diff, sessions), host endpoints, and env vars are documented in <a href="../docs/ui-framework.md"><code>docs/ui-framework.md</code></a>. This chapter stays focused on the language API.
+        </div>
         <h3>19.1.6 Component API V2 direction</h3>
         <p>The server UI framework now includes a broader component set for forms, navigation, data, and feedback. Prefer the <code>ui.*</code> API in this chapter for component-centric server UI flows, and keep <code>@PAGE</code>/<code>@AIPAGE</code> for route-first HTML generation patterns.</p>
         <p>Advanced controls include <code>ui.dataGrid</code> (sorting/filtering/pagination, row selection, viewport virtualization events, drag/drop hooks) and <code>ui.treeView</code> (hierarchical nodes, expand/collapse, keyboard-friendly selection, optional lazy loading). In both controls, keep business state server-side and use client-side transient state for scroll/viewport responsiveness.</p>

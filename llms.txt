@@ -30,6 +30,7 @@ Canonical reading order for tools and agents working on this repository.
 ## Tooling topics
 
 - docs/javascript-backend.md — JS/PWA backend
+- docs/ui-framework.md — server-driven UI runtime / UIHost
 - docs/native-numeric-rollout.md — typed transpile levels
 - docs/profiling.md — profiler usage
 - MaldaLang.LanguageServer/README.md — LSP capabilities

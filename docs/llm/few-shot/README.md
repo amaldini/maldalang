@@ -1,6 +1,6 @@
 # Few-shot snippets
 
-*Applies to: MALDA 0.1.22*
+*Applies to: MALDA 0.1.32*
 
 Tiny programs for LLM context. Larger curated samples live under `Examples/`.
 
@@ -24,6 +24,7 @@ Tiny programs for LLM context. Larger curated samples live under `Examples/`.
 | `16_workflow_retry.malda` | `workflow` + `retry`, `startWorkflow`, inspect / dead letters |
 | `17_schema_validate.malda` | `schema` + `validate` (`{ ok, data|error }`) |
 | `18_schema_prompt.malda` | `schema` return type + `await` prompt (structured `response_format`) |
+| `19_ui_tree.malda` | `ui.*` tree composition (`props` / children; no host loop) |
 
 Also useful from the main tree:
 
@@ -31,7 +32,8 @@ Also useful from the main tree:
 - Recipe: [`docs/tutorials/errors-and-validation.md`](../tutorials/errors-and-validation.md)
 - `Examples/Testing/unit_test_basics.test.malda`
 - `Examples/Web/http_client_json.malda`, `Examples/Web/rest_bearer_jwt.malda`, `Examples/Web/auth_cookie_login.malda`
-- `Examples/Web/rest_api_server.malda`
+- `Examples/Web/rest_api_server.malda`, `Examples/Web/ui_form_workflow.malda`, `Examples/Web/ui_counter_dashboard.malda`
+- Language API: `ReferenceManual/16-web-ui.html` (hub: `16-web-ui-hub.html`)
 - `Examples/Workflows/retry_and_inspect.malda`
 - `Examples/Prompts/basic_prompt.malda`, `Examples/Prompts/schema_prompt_structured.malda`
 - `Examples/Actors/basic_counter.malda`

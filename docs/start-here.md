@@ -111,3 +111,4 @@ This path emphasizes **MALDA Workflow/Cloud**.
 - Profiling guide: `docs/profiling.md`
 - Native numeric transpile rollout: `docs/native-numeric-rollout.md`
 - JavaScript/browser backend notes: `docs/javascript-backend.md`
+- Server-driven UI runtime / UIHost: `docs/ui-framework.md`

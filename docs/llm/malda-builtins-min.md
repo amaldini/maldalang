@@ -1,6 +1,6 @@
 # MALDA builtins (minimum set for codegen)
 
-*Applies to: MALDA 0.1.22*
+*Applies to: MALDA 0.1.32*
 
 **If a name is not in [`malda-builtins.tsv`](malda-builtins.tsv), it does not exist — do not
 invent it.** The TSV is generated from the engine and guarded by a test, so absence from it
@@ -127,7 +127,7 @@ than guessing.
 | Pattern | Role |
 |---------|------|
 | `@GET("/path")` / `@POST(...)` | REST handlers on functions |
-| `@PAGE("/path")` | HTML/page handler |
+| `@PAGE("/path")` | HTML/page handler (route-first HTML strings) |
 | `RedirectTo(url)` | Redirect response helper (see web examples) |
 | `http.enableSession(secret)` / `disableSession` | Signed session cookie; `req.session` get/set/flash |
 | `http.enableCsrf(secret)` + `csrfField(...)` | Cookie + form `_csrf` must match (see gotchas) |
@@ -135,9 +135,30 @@ than guessing.
 | `bindForm` / `formErrors` / `pageLayout` | CSRF-aware forms and simple `@PAGE` chrome |
 | `enqueueJob` / `claimJob` / `completeJob` / `failJob` / `getJob` / `listJobs` | Lightweight job queue in `./.malda/jobs.db` (not durable workflows) |
 
-See `Examples/Web/auth_cookie_login.malda`, `Examples/Web/form_validate_flash.malda`
-(CSRF + `bindForm` + `validate` + flash), `Templates/fullstack/`, and
-`docs/tutorials/fullstack-sessions-auth.md`.
+### Server-driven UI (`ui.*`)
+
+Prefer this when building component trees (not raw HTML pages). There is **no JSX** and no
+HTML-string children — compose nodes with `ui.*` helpers.
+
+| Pattern | Role |
+|---------|------|
+| `ui.control(props, children?, key?)` | V2 signature for controls (`ui.button`, `ui.column`, `ui.text`, …). `props` is an object/dict |
+| `ui.mount(root, sessionId?)` / `ui.render(root, sessionId?)` | Mount or diff a tree; returns a patch envelope |
+| `ui.mountEnvelope(root, sessionId?, options?)` | Mount + snapshot + resync helper in one call |
+| `ui.dispatchEvent(event, sessionId?)` / `ui.pullEvent(sessionId?)` | Client → server event queue |
+| `ui.state` / `ui.setState` (or `componentState*`) | Server-side component state |
+| `component Name(...) { … }` + `@ACTION` / `@LIVE` | Full-stack component model (see Reference Manual) |
+
+Use `@PAGE` + `pageLayout` for route-first HTML; use `ui.*` (+ optional `component`) for
+tree/patch UI. Grep `malda-builtins.tsv` for a control name (`uiButton`, `uiDataGrid`, …);
+call it as `ui.button(...)`, `ui.dataGrid(...)`.
+
+API reference: `ReferenceManual/16-web-ui.html` (start at `16-web-ui-hub.html`).
+Runnable shapes: `docs/llm/few-shot/19_ui_tree.malda`, `Examples/Web/ui_*.malda`,
+`Templates/fullstack/`.
+
+See also `Examples/Web/auth_cookie_login.malda`, `Examples/Web/form_validate_flash.malda`
+(CSRF + `bindForm` + `validate` + flash), and `docs/tutorials/fullstack-sessions-auth.md`.
 
 ## AI
 

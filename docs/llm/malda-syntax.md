@@ -1,6 +1,6 @@
 # MALDA syntax pack (for writing programs)
 
-*Applies to: MALDA 0.1.22*
+*Applies to: MALDA 0.1.32*
 
 Compact rules for generating correct `.malda`. Prefer this over scraping HTML manuals.
 
@@ -162,7 +162,9 @@ Prefer a single listener for UI + API: construct `new RestServer()` (no port), t
 `http.mount(api)` on an `HttpServer` that owns the port. Call `http.enableSession(secret)`
 (and optionally `http.enableCsrf(secret)`) before `start`. Session data is on `req.session`
 (`get` / `set` / `flash` / `getFlash`). For HTML forms use `csrfField`, `bindForm`,
-`formErrors`, and `pageLayout` (or `ui.layout` for richer pages). Background work that is
+`formErrors`, and `pageLayout` (or `ui.layout` for richer pages). Server-driven component
+trees use `ui.*` with signature `ui.control(props, children?, key?)` — no JSX; see
+`few-shot/19_ui_tree.malda` and `ReferenceManual/16-web-ui.html`. Background work that is
 not a durable workflow uses `enqueueJob` / `claimJob` / `completeJob` / `failJob` against
 `./.malda/jobs.db`. See `Examples/Web/auth_cookie_login.malda` and
 `docs/tutorials/fullstack-sessions-auth.md`.

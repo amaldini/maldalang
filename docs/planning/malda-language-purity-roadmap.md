@@ -7,7 +7,7 @@
 **Related plans**
 
 - [core-builtin-inventory.txt](core-builtin-inventory.txt) — symbols in `BuiltInRegistry` (regenerate via `scripts/generate-core-builtin-inventory.ps1`)
-- [newpotentialfeatures.md](../../ReferenceManual/newpotentialfeatures.md) — feature candidates
+- [newpotentialfeatures.md](newpotentialfeatures.md) — feature candidates
 - [schema-to-llm-feature-plan.md](schema-to-llm-feature-plan.md) — Phase 6 overlap
 
 **Source of truth (precedence)**
@@ -315,9 +315,9 @@ gantt
 20. [x] **JavaScript Tier 0 batch 4** — append, `for-in`, try/catch, null-conditional, desugared-for `continue` + 89-case subset ([phase-5-js-tier0-rollout.md](phase-5-js-tier0-rollout.md)).
 21. [x] **JavaScript Tier 0 batch 5** — close remaining 12 JS gaps (101/101 parity) ([phase-5-js-tier0-rollout.md](phase-5-js-tier0-rollout.md)).
 
-22. [x] **Optional-pack emit plugin split** — `MaldaLang.Compiler/OptionalPack/` emit plugins ([phase-1.1-optional-pack-emit-split.md](phase-1.1-optional-pack-emit-split.md)).
+22. [x] **Optional-pack emit plugin split** — `MaldaLang.Compiler/OptionalPack/` emit plugins ([phase-1.1-pack-hardening.md](phase-1.1-pack-hardening.md)).
 
-**Next:** No further steps in this roadmap; future work lives in [newpotentialfeatures.md](../../ReferenceManual/newpotentialfeatures.md) and pack-specific plans.
+**Next:** No further steps in this roadmap; future work lives in [newpotentialfeatures.md](newpotentialfeatures.md) and pack-specific plans.
 
 ---
 

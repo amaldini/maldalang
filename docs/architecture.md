@@ -31,7 +31,7 @@ Language intelligence (completions, diagnostics, hover) shares `MaldaLang/IDE/La
 |---------|----------------|
 | `MaldaLang` | CLI (`malda`), lexer/parser/interpreter, builtins, shared `LanguageService` |
 | `MaldaLang.Compiler` | C# / JS / PWA compile and publish orchestration |
-| `MaldaLang.UIHost` | Server-driven UI host support used by runtime / Desktop |
+| `MaldaLang.UIHost` | Server-driven UI host support used by runtime / Desktop — see [`docs/ui-framework.md`](ui-framework.md) |
 | `MaldaLang.IDE` | Blazor **Web IDE** (playground) |
 | `MaldaLang.DesktopIDE` | WPF **Desktop IDE** (reference) |
 | `MaldaLang.LanguageServer` | LSP server process |
@@ -64,6 +64,8 @@ Missing one registration site is a common bug (works interpreted XOR transpiled)
 
 MALDA programs can host HTTP/UI via builtins and decorators (`@GET`, `@PAGE`, …). Examples live under `Examples/Web/` and `Templates/`. This is separate from the **Web IDE** Blazor app in `MaldaLang.IDE`.
 
+Server-driven `ui.*` trees, patch protocol, and `MaldaLang.UIHost` wiring are documented in [`docs/ui-framework.md`](ui-framework.md). Language API for components and controls: [`ReferenceManual/16-web-ui.html`](../ReferenceManual/16-web-ui.html).
+
 ## Docs layout
 
 | Path | Trust level |
@@ -72,7 +74,7 @@ MALDA programs can host HTTP/UI via builtins and decorators (`@GET`, `@PAGE`, �
 | `docs/spec/` | Spec / matrix notes |
 | `docs/spec/backend-capability-matrix.md` | Interpreter vs C# vs JS product capabilities |
 | `docs/start-here.md`, `docs/architecture.md` | Onboarding |
-| `docs/javascript-backend.md`, `docs/profiling.md`, `docs/benchmarks.md`, … | Topic guides |
+| `docs/javascript-backend.md`, `docs/ui-framework.md`, `docs/profiling.md`, `docs/benchmarks.md`, … | Topic guides |
 | `docs/planning/` | Historical roadmap — verify against code / ReferenceManual / AGENTS.md ([README](planning/README.md)) |
 
 ## Design preferences (OSS)

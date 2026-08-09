@@ -25,7 +25,7 @@
 | **Parser** | `Parser.cs` — `Declaration()`, `Statement()`, `MatchExpression()`, `ParsePattern()`, `Primary()`, workflow/actor/prompt/type blocks |
 | **Interpreter semantics** | `Interpreter.cs` dictionary indexing; `BuiltInTypeOf` in `BuiltInFunctions.cs` |
 | **Reference Manual** | Read/grep: `02-lexical-structure.html`, `03-data-types.html`, `07-expressions.html`, `08-control-structures.html`, `09-functions.html`, `22-grammar.html`, `23-appendix.html`, cross-chapters (`01-introduction.html` include/using, `06-graphs.html`, `13-actors.html`, `31-durable-workflows.html`) |
-| **Secondary** | `SimpleProgrammingLanguage.md` §2.3 keywords; `ReferenceManual/newpotentialfeatures.md` |
+| **Secondary** | `SimpleProgrammingLanguage.md` §2.3 keywords; `docs/planning/newpotentialfeatures.md` |
 | **Tests** | `MaldaLang.Tests/Conformance/Tier0/Tier0ConformanceTests.cs` (documented runtime tags) |
 
 Precedence per roadmap: **parser/interpreter > Reference Manual > SimpleProgrammingLanguage.md**.

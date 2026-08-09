@@ -12,3 +12,7 @@ Before trusting anything here:
 
 Completed phase summaries may still name deferred work that has since shipped or been abandoned.
 Treat status lines as historical unless you confirm them in code.
+
+**Keep:** inventory files (`core-builtin-inventory.txt`, `optional-pack-builtin-inventory.txt`),
+`parser-manual-drift-audit.md`, and notes still linked from `docs/spec/` or the purity roadmap.
+One-off sprint/proposal notes with no inbound links were removed.

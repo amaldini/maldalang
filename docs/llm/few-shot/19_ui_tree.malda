@@ -1,0 +1,13 @@
+// Server-driven UI tree shape (no host loop, no ui.mount).
+// Controls take (props, children?, key?) — props is an object, not a bare string.
+
+var tree = ui.column(
+    {"componentId": "HelloRoot"},
+    [
+        ui.heading({"value": "Hello"}),
+        ui.text({"value": "Compose ui.* nodes; do not pass HTML strings as children."}),
+        ui.button({"label": "OK", "onClick": "ok"})
+    ]
+);
+
+io.print(tree);
