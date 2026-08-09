@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -294,11 +294,11 @@ malda test --iterations 80 --seed 1337</code></pre>
         <h2>30.17 AI Pipeline (RAG)</h2>
         <p>End-to-end retrieval-augmented generation using the pipe operator (<code>|&gt;</code>), VectorDB retriever, prompts, and typed JSON output. Examples:</p>
         <ul>
-            <li><code>Examples/Prompts/rag_pipeline.malda</code> — inline pipes (v1)</li>
-            <li><code>Examples/Prompts/rag_chain_pipeline.malda</code> — named <code>chain</code> declarations (v2)</li>
+            <li><code>Examples/Prompts/rag_pipeline.malda</code> — inline pipes</li>
+            <li><code>Examples/Prompts/rag_function_pipeline.malda</code> — named <code>function</code> pipelines</li>
         </ul>
         <pre><code>dotnet run --project MaldaLang -- Examples/Prompts/rag_pipeline.malda
-dotnet run --project MaldaLang -- Examples/Prompts/rag_chain_pipeline.malda</code></pre>
+dotnet run --project MaldaLang -- Examples/Prompts/rag_function_pipeline.malda</code></pre>
         <p>Pipeline sketch:</p>
         <pre><code>schema Answer {
     text: string;
@@ -322,13 +322,13 @@ var retriever = vdb.asRetriever({ topK: 2 });
 var context = question |> retriever.get |> formatRetrievedDocs;
 var parsed = mockResponse |> parseJson("Answer");
 
-// With an LLM client (inline pipe or chain):
+// With an LLM client (inline pipe or named function):
 // await (question |> retriever.get |> formatRetrievedDocs
 //     |> (ctx) => answerPrompt(question, ctx) |> runPrompt(client) |> parseJson("Answer"));
 
-chain ragAnswer(question, client) -> Answer {
-    question |> retriever.get |> formatRetrievedDocs
-        |> (ctx) => answerPrompt(question, ctx) |> runPrompt(client) |> parseJson("Answer")
+function ragAnswer(question, client) -> Answer {
+    return question |> retriever.get |> formatRetrievedDocs
+        |> (ctx) => answerPrompt(question, ctx) |> runPrompt(client) |> parseJson("Answer");
 }
 // var result = await ragAnswer(question, client);</code></pre>
         <p>See also: <a href="07-expressions.html">6. Expressions</a> (pipe operator), <a href="11-built-in-functions.html">12. Built-in Functions</a> (AI pipeline helpers), <a href="06-vectordb.html">14. VectorDB</a> (<code>asRetriever</code>), and <a href="09-functions.html">8. Functions</a> (schema declarations).</p>

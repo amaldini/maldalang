@@ -250,7 +250,7 @@ print(length(p.examples));  // 2</code></pre>
         <p>When the prompt is executed (via <code>agent.think</code>, <code>await prompt(...)</code>, or <code>runPrompt</code>), each example is sent as a user message followed by an assistant message, then the interpolated <code>user</code> field.</p>
 
         <h4>Dynamic Few-Shot at Runtime</h4>
-        <p>Use <code>withExamples()</code> to attach or replace examples on a <code>PromptInstance</code> built at runtime. Works in pipe/chain pipelines:</p>
+        <p>Use <code>withExamples()</code> to attach or replace examples on a <code>PromptInstance</code> built at runtime. Works in pipe pipelines:</p>
         <pre><code>prompt classify(text) {
     user: "Classify: {text}"
 }
@@ -367,39 +367,39 @@ var parsed = parseJson('{"text":"hi","sources":["a.md"]}', "Answer");</code></pr
         <p>Supported field types: <code>string</code>, <code>int</code>, <code>float</code>, <code>bool</code>, <code>object</code>, and array forms such as <code>string[]</code>. Use <code>?</code> after the type for optional fields.</p>
         <p>For end-to-end RAG pipelines combining schemas, prompts, retrievers, and pipes, see <code>Examples/Prompts/rag_pipeline.malda</code> and <a href="11-built-in-functions.html">12. Built-in Functions</a> (AI pipeline helpers).</p>
 
-        <h3>8.8.3.3 Chain Declarations (LCEL-style Pipelines)</h3>
-        <p>Use <code>chain</code> to name and reuse multi-step AI pipelines built from the pipe operator (<code>|&gt;</code>). Chains compile to callable functions; expression bodies return the final pipe result implicitly.</p>
-        <pre><code>chain ragContext(question, retriever) {
-    question |> retriever.get |> formatRetrievedDocs
+        <h3>8.8.3.3 Reusable Pipe Pipelines</h3>
+        <p>Name and reuse multi-step AI pipelines with ordinary <code>function</code> declarations and the pipe operator (<code>|&gt;</code>). Return the final pipe result explicitly.</p>
+        <pre><code>function ragContext(question, retriever) {
+    return question |> retriever.get |> formatRetrievedDocs;
 }
 
-chain ragPrompt(question, context) {
-    context |> (ctx) => answerPrompt(question, ctx)
+function ragPrompt(question, context) {
+    return context |> (ctx) => answerPrompt(question, ctx);
 }
 
 var context = ragContext("What is GraphMemory?", retriever);
 var prompt = ragPrompt("What is GraphMemory?", context);</code></pre>
         <p>With an LLM client and typed output:</p>
-        <pre><code>chain ragAnswer(question, client) -> Answer {
-    question |> retriever.get |> formatRetrievedDocs
+        <pre><code>function ragAnswer(question, client) -> Answer {
+    return question |> retriever.get |> formatRetrievedDocs
         |> (ctx) => answerPrompt(question, ctx)
         |> runPrompt(client)
-        |> parseJson("Answer")
+        |> parseJson("Answer");
 }
 
 var answer = await ragAnswer("How does retrieval work?", client);</code></pre>
-        <p>Named steps for readable multi-stage bodies (retrieval, branching, reuse of intermediate values):</p>
-        <pre><code>chain buildContext(question, retriever, fallback) {
-    step hits = question |> retriever.get;
+        <p>Local bindings for readable multi-stage bodies (retrieval, branching, reuse of intermediate values):</p>
+        <pre><code>function buildContext(question, retriever, fallback) {
+    var hits = question |> retriever.get;
     if (length(hits) == 0) {
         return fallback;
     }
-    step text = formatRetrievedDocs(hits);
+    var text = formatRetrievedDocs(hits);
     return text;
 }</code></pre>
         <p>Stream tokens during <code>runPrompt</code> in interpreted and transpiled mode: pass <code>{ onToken: (token) =&gt; ... }</code> for content and <code>{ onReasoning: (token) =&gt; ... }</code> for reasoning deltas (see <a href="11-built-in-functions.html">12. Built-in Functions</a>).</p>
-        <p>See <a href="07-expressions.html">6. Expressions</a> (pipe + chain) and <code>Examples/Prompts/rag_chain_pipeline.malda</code>.</p>
-        <p><strong>Advanced composition:</strong> <code>composePipe</code> (RunnableSequence), <code>parallelRun</code> (RunnableParallel), and <code>mergeRetrievedDocs</code> compose with chains and pipes for parallel retrieval and reusable pipeline functions. See <code>Examples/Prompts/rag_compose_pipeline.malda</code> and <a href="11-built-in-functions.html">12. Built-in Functions</a>.</p>
+        <p>See <a href="07-expressions.html">6. Expressions</a> (pipe operator) and <code>Examples/Prompts/rag_function_pipeline.malda</code>.</p>
+        <p><strong>Advanced composition:</strong> <code>composePipe</code>, <code>parallelRun</code>, and <code>mergeRetrievedDocs</code> compose with functions and pipes for parallel retrieval and reusable pipeline functions. See <code>Examples/Prompts/rag_compose_pipeline.malda</code> and <a href="11-built-in-functions.html">12. Built-in Functions</a>.</p>
 
         <h4>Typed Await Example (Validated Output)</h4>
         <pre><code>prompt planTask(task) -&gt; Plan {

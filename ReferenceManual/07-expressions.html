@@ -376,33 +376,8 @@ var p = question
             <li>Pipe has lower precedence than most operators; use parentheses when mixing with arithmetic or logical expressions</li>
         </ul>
         <p>See <a href="11-built-in-functions.html">12. Built-in Functions</a> (AI pipeline helpers) and <a href="06-vectordb.html">14. VectorDB</a> (<code>asRetriever</code>) for RAG examples. Full walkthrough: <code>Examples/Prompts/rag_pipeline.malda</code>.</p>
-        <p><strong>Advanced LCEL composition:</strong> use <code>composePipe(f, g, …)</code> to build a reusable RunnableSequence function; <code>parallelRun(input, { branch: fn, … })</code> for RunnableParallel fan-out; <code>mergeRetrievedDocs</code> to combine parallel retrieval hits before <code>formatRetrievedDocs</code>. Example: <code>Examples/Prompts/rag_compose_pipeline.malda</code>.</p>
-
-        <h2>6.16 Chain Declarations (<code>chain</code>)</h2>
-        <p>The <code>chain</code> keyword declares a named, reusable AI pipeline (LCEL-style). A chain composes the same v1 primitives as inline pipes: prompts, retrievers, built-ins (<code>runPrompt</code>, <code>parseJson</code>, …), and lambda adapters. Chains are callable like functions; use <code>await</code> when the pipeline includes async steps.</p>
-        <pre><code>chain ragContext(question, retriever) {
-    question |> retriever.get |> formatRetrievedDocs
-}
-
-chain ragAnswer(question, client) -> Answer {
-    question |> retriever.get |> formatRetrievedDocs
-        |> (ctx) => answerPrompt(question, ctx)
-        |> runPrompt(client)
-        |> parseJson("Answer")
-}
-
-var context = ragContext("How does GraphMemory work?", retriever);
-var result = await ragAnswer(question, client);</code></pre>
-        <p><strong>Syntax:</strong></p>
-        <ul>
-            <li><code>chain name(params) { ... }</code> — parameters like <code>function</code> or <code>prompt</code></li>
-            <li>Optional return type: <code>chain name(params) -&gt; Type { ... }</code> (informational; same as function return hints)</li>
-            <li><strong>Expression body:</strong> a single pipe expression without <code>return</code> is implicitly returned</li>
-            <li><strong>Named steps:</strong> <code>step name = expr;</code> binds an intermediate result; later steps and <code>return</code> can reference <code>name</code></li>
-            <li><strong>Statement body:</strong> use <code>return</code>, <code>if</code>, and named <code>step</code> bindings for multi-stage pipelines</li>
-            <li>Chains close over globals (e.g. a module-level <code>retriever</code>) like functions</li>
-        </ul>
-        <p>See <code>Examples/Prompts/rag_chain_pipeline.malda</code> and <a href="09-functions.html">8. Functions</a> (chain vs prompt).</p>
+        <p><strong>Advanced composition:</strong> use <code>composePipe(f, g, …)</code> to build a reusable sequence function; <code>parallelRun(input, { branch: fn, … })</code> for parallel fan-out; <code>mergeRetrievedDocs</code> to combine parallel retrieval hits before <code>formatRetrievedDocs</code>. Example: <code>Examples/Prompts/rag_compose_pipeline.malda</code>.</p>
+        <p>To name and reuse a pipeline, wrap the pipe expression in an ordinary <code>function</code> and <code>return</code> the result. See <code>Examples/Prompts/rag_function_pipeline.malda</code> and <a href="09-functions.html">8. Functions</a>.</p>
 
         <div class="see-also">
             <h3>See Also</h3>

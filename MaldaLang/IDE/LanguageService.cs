@@ -468,10 +468,8 @@ public class LanguageService : ILanguageService
             "print", "input", "true", "false", "and", "or", "not", "break", "continue",
             "class", "new", "this", "super", "extends", "public", "private", "static", "null",
             "import", "export", "include", "using", "await",
-            "prompt", "chain", "schema",
+            "prompt", "schema",
             "workflow", "step", "approval", "wait", "retry", "backoff", "delay", "maxDelay", "compensate", "onReject" };
-        
-        var inChainBlock = AiPipelineIdeHelpers.IsInsideChainBlock(source, line, column);
         
         foreach (var keyword in keywords)
         {
@@ -488,11 +486,6 @@ public class LanguageService : ILanguageService
                 insertText = "foreach (var item in collection) {\n\t\n}";
                 detail = "foreach (var x in collection) — iteration";
             }
-            else if (keyword == "chain")
-            {
-                insertText = "chain name(arg1) {\n\t\n}";
-                detail = "LCEL-style AI pipeline declaration";
-            }
             else if (keyword == "prompt")
             {
                 insertText = "prompt name(arg1) {\n\tuser: \"\"\n}";
@@ -502,11 +495,6 @@ public class LanguageService : ILanguageService
             {
                 insertText = "schema Name {\n\tfield: string;\n}";
                 detail = "JSON schema for parseJson / typed prompts";
-            }
-            else if (keyword == "step" && inChainBlock)
-            {
-                insertText = "step name = ";
-                detail = "Named chain pipeline step";
             }
             completions.Add(new CompletionItem
             {
@@ -608,16 +596,6 @@ public class LanguageService : ILanguageService
             cancellationToken.ThrowIfCancellationRequested();
             
             ExtractSymbols(statements, completions, line, column);
-            foreach (var stepName in AiPipelineIdeHelpers.GetInScopeChainStepNames(statements, source, line, column))
-            {
-                completions.Add(new CompletionItem
-                {
-                    Label = stepName,
-                    Kind = "variable",
-                    Detail = "chain step",
-                    InsertText = stepName
-                });
-            }
             var imported = ModuleSymbolResolver.LoadImportedSymbols(statements, sourceFileName);
             ExtractImportedSymbols(imported, completions);
         }
@@ -763,11 +741,6 @@ public class LanguageService : ILanguageService
             if (stmt is PromptDeclaration pd && pd.Name == name)
             {
                 return pd.Parameters;
-            }
-
-            if (stmt is ChainDeclaration chainDeclParams && chainDeclParams.Name == name)
-            {
-                return chainDeclParams.Parameters;
             }
 
             if (stmt is ClassDeclaration cd)
@@ -1241,16 +1214,6 @@ public class LanguageService : ILanguageService
                     InsertText = promptDecl.Name + "()"
                 });
             }
-            else if (stmt is MaldaLang.Parser.AST.Declarations.ChainDeclaration chainDecl)
-            {
-                completions.Add(new CompletionItem
-                {
-                    Label = chainDecl.Name,
-                    Kind = "function",
-                    Detail = $"chain {chainDecl.Name}({string.Join(", ", chainDecl.Parameters)})",
-                    InsertText = chainDecl.Name + "()"
-                });
-            }
             else if (stmt is WorkflowDeclaration workflowDecl)
             {
                 completions.Add(new CompletionItem
@@ -1324,21 +1287,14 @@ public class LanguageService : ILanguageService
     
     private static string? GetKeywordHoverInfo(Token token, string source, int line, int column, List<Statement>? statements = null)
     {
-        if (token.Type == TokenType.Step &&
-            AiPipelineIdeHelpers.IsInsideChainBlock(source, line, column, statements))
-        {
-            return "**step** — Named chain pipeline binding.\n\n`step hits = question |> retriever.get;`\n\nLater steps and `return` can reference the bound name.";
-        }
-
         return token.Type switch
         {
-            TokenType.Await => "**await** — Await async results, including pipe/chain steps with `runPrompt`.\n\n`var text = await (prompt() |> runPrompt(client));`",
+            TokenType.Await => "**await** — Await async results, including pipe steps with `runPrompt`.\n\n`var text = await (prompt() |> runPrompt(client));`",
             TokenType.Foreach => "**foreach** — Iterate over each element in an array.\n\n`foreach (var item in collection) { ... }`\n\nSame as `for (var item in collection)`.",
             TokenType.For => "**for** — Loop: traditional (init; condition; increment) or for-in over array.\n\n`for (var i = 0; i < n; i = i + 1) { ... }`\n`for (var x in array) { ... }`",
             TokenType.While => "**while** — Loop while condition is true.\n\n`while (condition) { ... }`",
             TokenType.If => "**if** — Conditional execution.\n\n`if (condition) { ... } else { ... }`",
             TokenType.Workflow => "**workflow** — Durable workflow declaration.\n\n`workflow Name(input) { ... }`",
-            TokenType.Chain => "**chain** — LCEL-style AI pipeline declaration.\n\n`chain Name(args) -> Type? { expr |> step |> ... }`\n\nBody may be a single pipe expression (implicit return), named `step name = expr;` bindings, or statements with `return`/`if`. Callable like a function; use `await` for async steps.",
             TokenType.Prompt => "**prompt** — Reusable LLM prompt template.\n\n`prompt Name(params) -> Type? { system: \"...\", user: \"...\" }`",
             TokenType.Step => "**step** — Durable step boundary with journaling and replay semantics.\n\n`step stepName = call() retry 2 timeout 1000;`",
             TokenType.Approval => "**approval** — Pause workflow until externally approved/rejected.\n\n`approval gate = approval(\"manager\", payload) timeout 60000;`",
@@ -1374,14 +1330,6 @@ public class LanguageService : ILanguageService
                 promptDecl.Name == name)
             {
                 return $"prompt {promptDecl.Name}({string.Join(", ", promptDecl.Parameters)})";
-            }
-            if (stmt is MaldaLang.Parser.AST.Declarations.ChainDeclaration chainDecl &&
-                chainDecl.Name == name)
-            {
-                var sig = $"chain {chainDecl.Name}({string.Join(", ", chainDecl.Parameters)})";
-                if (chainDecl.ReturnType != null)
-                    sig += $" -> {chainDecl.ReturnType}";
-                return sig;
             }
             if (stmt is MaldaLang.Parser.AST.Declarations.ClassDeclaration classDecl && 
                 classDecl.Name == name)

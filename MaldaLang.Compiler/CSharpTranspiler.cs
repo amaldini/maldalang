@@ -162,8 +162,6 @@ public class CSharpTranspiler
                 actors.Add(actorDecl);
             else if (statement is FunctionDeclaration funcDecl)
                 functions.Add(funcDecl);
-            else if (statement is ChainDeclaration chainDecl)
-                functions.Add(chainDecl.ToFunctionDeclaration());
             else if (statement is PromptDeclaration promptDecl)
                 prompts.Add(promptDecl);
             else if (statement is PropertyDeclaration propertyDecl)
@@ -5251,9 +5249,6 @@ public class CSharpTranspiler
                 break;
             case FunctionDeclaration funcDecl:
                 // Functions are handled separately
-                break;
-            case ChainDeclaration:
-                // Chains are transpiled as functions
                 break;
             case ReturnStatement returnStmt:
                 if (!ProfilingEnabled)

@@ -1,4 +1,4 @@
-// RAG Pipeline — advanced LCEL composition (composePipe + parallelRun + mergeRetrievedDocs)
+// RAG Pipeline — composePipe / parallelRun over |> primitives
 // Runs without a live LLM (structure demo)
 
 schema Answer {
@@ -15,7 +15,6 @@ function embedText(text) {
     return embedBagOfWords(text, 16);
 }
 
-// --- Setup knowledge base ---
 var vdb = new VectorDB(16, "single");
 vdb.init(embedText);
 
@@ -27,31 +26,36 @@ var docs = [
 indexInto(vdb, docs);
 var retriever = vdb.asRetriever({ topK: 2 });
 
-// --- RunnableParallel: same query, multiple retrieval branches ---
-chain buildContext(question) {
-    step parallel = parallelRun(question, {
+// --- parallelRun: same query, multiple retrieval branches ---
+function buildContext(question) {
+    var parallel = parallelRun(question, {
         primary: (q) => q |> retriever.get,
         secondary: (q) => q |> retriever.get
     });
-    step merged = mergeRetrievedDocs(parallel.primary, parallel.secondary);
-    step text = formatRetrievedDocs(merged);
+    var merged = mergeRetrievedDocs(parallel.primary, parallel.secondary);
+    var text = formatRetrievedDocs(merged);
     return text;
 }
 
-// --- RunnableSequence via composePipe (retriever closed over in buildContext) ---
 var question = "How does GraphMemory work?";
-var toPrompt = composePipe(
+var context = buildContext(question);
+
+// composePipe builds a reusable sequence. Ending on a PromptInstance would
+// auto-run the LLM via composePipe coercion — keep the demo offline:
+var summarize = composePipe(
     buildContext,
-    (ctx) => answerPrompt(question, ctx)
+    (ctx) => "chars=" + string(length(ctx))
 );
 
-var context = buildContext(question);
-var p = toPrompt(question);
+var p = answerPrompt(question, context);
 
 print("=== parallelRun + mergeRetrievedDocs ===");
 print(context);
 print("");
-print("=== composePipe → prompt ===");
+print("=== composePipe ===");
+print(summarize(question));
+print("");
+print("=== prompt template ===");
 print(p.user);
 
 print("");

@@ -24,7 +24,6 @@ public class Parser
     private readonly HashSet<string> _includeResolutionStack;
     private int _blockDepth = 0;
     private bool _inWorkflowBlock;
-    private bool _inChainBlock;
     private HashSet<string>? _workflowStepIds;
     
     public Parser(List<Token> tokens, string? sourceFileName = null, HashSet<string>? includeResolutionStack = null)
@@ -159,14 +158,6 @@ public class Parser
             
             if (Match(TokenType.Prompt))
                 return PromptDeclaration([]);
-
-            if (Check(TokenType.Chain) &&
-                IsIdentifierLikeExpressionToken(Peek(1)?.Type) &&
-                Peek(2)?.Type == TokenType.LeftParen)
-            {
-                Match(TokenType.Chain);
-                return ChainDeclaration();
-            }
 
             if (Match(TokenType.Property))
                 return PropertyDeclaration();
@@ -929,103 +920,6 @@ public class Parser
             
             return new PromptDeclaration(name, parameters, body, returnType, decorators, nameToken.Line, nameToken.Column);
         }
-    }
-
-    private Statement ChainDeclaration()
-    {
-        var nameToken = ConsumeIdentifierTokenLike("Expect chain name.");
-        var name = nameToken.Lexeme;
-        Consume(TokenType.LeftParen, "Expect '(' after chain name.");
-        var parameters = new List<string>();
-        if (!Check(TokenType.RightParen))
-        {
-            do
-            {
-                parameters.Add(ConsumeIdentifierLike("Expect parameter name."));
-            } while (Match(TokenType.Comma));
-        }
-        Consume(TokenType.RightParen, "Expect ')' after parameters.");
-
-        string? returnType = null;
-        if (Match(TokenType.Arrow))
-        {
-            returnType = Consume(TokenType.Identifier, "Expect return type name after '->'.").Lexeme;
-        }
-        else if (Check(TokenType.Minus) && _current + 1 < _tokens.Count && _tokens[_current + 1].Type == TokenType.GreaterThan)
-        {
-            Advance();
-            Advance();
-            returnType = Consume(TokenType.Identifier, "Expect return type name after '->'.").Lexeme;
-        }
-
-        Consume(TokenType.LeftBrace, "Expect '{' before chain body.");
-        var body = ParseChainBody(nameToken.Line, nameToken.Column);
-        return new ChainDeclaration(name, parameters, body, returnType, nameToken.Line, nameToken.Column);
-    }
-
-    private BlockStatement ParseChainBody(int line, int column)
-    {
-        _inChainBlock = true;
-        try
-        {
-            var statements = new List<Statement>();
-            if (Check(TokenType.RightBrace))
-            {
-                Consume(TokenType.RightBrace, "Expect '}' after chain body.");
-                return new BlockStatement(statements, line, column);
-            }
-
-            if (!Check(TokenType.Return) && !Check(TokenType.Step))
-            {
-                var expr = Expression();
-                if (Check(TokenType.RightBrace))
-                {
-                    statements.Add(new ReturnStatement(expr, expr.Line, expr.Column));
-                    Consume(TokenType.RightBrace, "Expect '}' after chain body.");
-                    return new BlockStatement(statements, line, column);
-                }
-
-                if (Match(TokenType.Semicolon))
-                {
-                    statements.Add(new ExpressionStatement(expr, expr.Line, expr.Column));
-                    while (!Check(TokenType.RightBrace) && !IsAtEnd())
-                    {
-                        if (Match(TokenType.Step))
-                            statements.Add(ParseChainStepStatement());
-                        else
-                            statements.Add(Statement());
-                    }
-                    Consume(TokenType.RightBrace, "Expect '}' after chain body.");
-                    return new BlockStatement(statements, line, column);
-                }
-
-                throw Error(Peek(), "Expect '}' or ';' after chain expression.");
-            }
-
-            while (!Check(TokenType.RightBrace) && !IsAtEnd())
-            {
-                if (Match(TokenType.Step))
-                    statements.Add(ParseChainStepStatement());
-                else
-                    statements.Add(Statement());
-            }
-            Consume(TokenType.RightBrace, "Expect '}' after chain body.");
-            return new BlockStatement(statements, line, column);
-        }
-        finally
-        {
-            _inChainBlock = false;
-        }
-    }
-
-    private Statement ParseChainStepStatement()
-    {
-        var token = Previous();
-        var name = ConsumeIdentifierLike("Expect step name after 'step'.");
-        Consume(TokenType.Assign, "Expect '=' after chain step name.");
-        var expr = Expression();
-        Consume(TokenType.Semicolon, "Expect ';' after chain step expression.");
-        return new VarDeclStatement(name, expr, line: token.Line, column: token.Column);
     }
 
     private Statement PropertyDeclaration()

@@ -413,7 +413,7 @@ var p = classify("query") |> withExamples(dynamicExamples);
 // Validate LLM JSON output against a schema
 var parsed = response |> parseJson("Answer");
 
-// LCEL advanced composition: RunnableSequence + RunnableParallel
+// Advanced composition: sequence + parallel branches
 var pipeline = composePipe(formatRetrievedDocs, (ctx) => answerPrompt(q, ctx));
 var context = question |> pipeline;
 
@@ -431,11 +431,11 @@ var merged = mergeRetrievedDocs(branches.context, branches.tags);</code></pre>
                 <tr><td><code>splitDocuments(docs, chunkSize, overlap?)</code></td><td>Splits document content into overlapping chunks; copies metadata to each chunk</td></tr>
                 <tr><td><code>indexInto(vdb, docs)</code></td><td>Embeds and adds each document to a VectorDB via its calculator; stores metadata with hits</td></tr>
                 <tr><td><code>formatRetrievedDocs(docs)</code></td><td>Formats document arrays as <code>[source: …]</code> blocks joined for prompt context</td></tr>
-                <tr><td><code>composePipe(step1, step2, …)</code></td><td>RunnableSequence: composes 2+ callables (functions, chains, lambdas, built-ins, prompts) left-to-right into a reusable function <code>(input) =&gt; …</code>. Awaits async steps. Pipe-friendly: <code>input |> composePipe(f, g)</code></td></tr>
+                <tr><td><code>composePipe(step1, step2, …)</code></td><td>Composes 2+ callables (functions, lambdas, built-ins, prompts) left-to-right into a reusable function <code>(input) =&gt; …</code>. Awaits async steps. Pipe-friendly: <code>input |> composePipe(f, g)</code></td></tr>
                 <tr><td><code>parallelRun(input, branches)</code></td><td>RunnableParallel: feeds the same <code>input</code> to each named branch concurrently; returns an object/map of results. Use <code>await</code> when branches include async steps.</td></tr>
                 <tr><td><code>mergeRetrievedDocs(docArrays…)</code></td><td>Flattens multiple <code>Document[]</code> arrays (e.g. from <code>parallelRun</code>) into one array; dedupes by <code>source+chunk</code> metadata or content</td></tr>
                 <tr><td><code>withExamples(prompt, examples, options?)</code></td><td>Returns a copy of a <code>PromptInstance</code> with runtime few-shot examples. Pass <code>{ merge: true }</code> to append after any static <code>examples</code> from the prompt declaration. Pipe-friendly.</td></tr>
-                <tr><td><code>runPrompt(prompt, client?, options?)</code></td><td>Async: runs a <code>PromptInstance</code> through an LLM; returns response text. Optional <code>options</code>: <code>{ onToken: (token) =&gt; ... }</code> for streamed content tokens; <code>{ onReasoning: (token) =&gt; ... }</code> for streamed reasoning/thinking tokens. Both work in interpreted and transpiled mode with <code>await</code> and pipe/chain steps.</td></tr>
+                <tr><td><code>runPrompt(prompt, client?, options?)</code></td><td>Async: runs a <code>PromptInstance</code> through an LLM; returns response text. Optional <code>options</code>: <code>{ onToken: (token) =&gt; ... }</code> for streamed content tokens; <code>{ onReasoning: (token) =&gt; ... }</code> for streamed reasoning/thinking tokens. Both work in interpreted and transpiled mode with <code>await</code> and pipe steps.</td></tr>
                 <tr><td><code>parseJson(json, schemaName)</code></td><td>Parses and validates JSON against a <code>schema</code> declaration; returns a typed object</td></tr>
             </tbody>
         </table>

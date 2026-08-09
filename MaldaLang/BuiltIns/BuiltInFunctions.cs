@@ -8209,25 +8209,6 @@ public static class BuiltInFunctions
                     actorObj.Set("members", RuntimeValue.Array(members));
                     actors.Add(RuntimeValue.Object(actorObj));
                 }
-                else if (stmt is MaldaLang.Parser.AST.Declarations.ChainDeclaration chainDecl)
-                {
-                    var funcObj = new JsonObject();
-                    funcObj.Set("name", RuntimeValue.String(chainDecl.Name));
-                    funcObj.Set("line", RuntimeValue.Integer(chainDecl.Line));
-                    funcObj.Set("column", RuntimeValue.Integer(chainDecl.Column));
-
-                    var paramsArray = new List<RuntimeValue>();
-                    foreach (var param in chainDecl.Parameters)
-                        paramsArray.Add(RuntimeValue.String(param));
-                    funcObj.Set("parameters", RuntimeValue.Array(paramsArray));
-                    funcObj.Set("returnType", chainDecl.ReturnType != null ? RuntimeValue.String(chainDecl.ReturnType) : RuntimeValue.Null());
-
-                    var sig = $"chain {chainDecl.Name}({string.Join(", ", chainDecl.Parameters)})";
-                    if (chainDecl.ReturnType != null)
-                        sig += $" -> {chainDecl.ReturnType}";
-                    funcObj.Set("signature", RuntimeValue.String(sig));
-                    functions.Add(RuntimeValue.Object(funcObj));
-                }
                 else if (stmt is MaldaLang.Parser.AST.Declarations.PromptDeclaration promptDecl)
                 {
                     var promptObj = new JsonObject();

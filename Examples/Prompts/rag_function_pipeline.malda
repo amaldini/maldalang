@@ -1,4 +1,4 @@
-// RAG Pipeline — chain keyword (LCEL-style) over v1 |> primitives
+// RAG Pipeline — named functions over |> primitives
 // Runs without a live LLM (structure demo + mock parseJson)
 
 schema Answer {
@@ -27,42 +27,42 @@ var docs = [
 indexInto(vdb, docs);
 var retriever = vdb.asRetriever({ topK: 2 });
 
-// --- LCEL-style chain declaration ---
-chain ragContext(question, retriever) {
-    step hits = question |> retriever.get;
-    step text = formatRetrievedDocs(hits);
+// --- Named pipeline functions ---
+function ragContext(question, retriever) {
+    var hits = question |> retriever.get;
+    var text = formatRetrievedDocs(hits);
     return text;
 }
 
-chain ragPrompt(question, context) {
-    context |> (ctx) => answerPrompt(question, ctx)
+function ragPrompt(question, context) {
+    return context |> (ctx) => answerPrompt(question, ctx);
 }
 
-chain ragParse(mockResponse) {
-    mockResponse |> parseJson("Answer")
+function ragParse(mockResponse) {
+    return mockResponse |> parseJson("Answer");
 }
 
 var question = "How does GraphMemory work?";
 var context = ragContext(question, retriever);
 var p = ragPrompt(question, context);
 
-print("=== Chain: ragContext ===");
+print("=== Function: ragContext ===");
 print(context);
 print("");
-print("=== Chain: ragPrompt ===");
+print("=== Function: ragPrompt ===");
 print(p.user);
 
 var mockResponse = "{\"text\":\"GraphMemory stores facts with semantic retrieval.\",\"sources\":[\"memory.md\"]}";
 var parsed = ragParse(mockResponse);
 print("");
-print("=== Chain: ragParse ===");
+print("=== Function: ragParse ===");
 print(parsed.text);
 print(join(parsed.sources, ", "));
 
 print("");
 print("End-to-end with LLM (set OPENROUTER_API_KEY):");
-print("  chain ragAnswer(question, client) {");
-print("      question |> retriever.get |> formatRetrievedDocs");
-print("          |> (ctx) => answerPrompt(question, ctx) |> runPrompt(client) |> parseJson(\"Answer\")");
+print("  function ragAnswer(question, client) {");
+print("      return question |> retriever.get |> formatRetrievedDocs");
+print("          |> (ctx) => answerPrompt(question, ctx) |> runPrompt(client) |> parseJson(\"Answer\");");
 print("  }");
 print("  var result = await ragAnswer(question, client);");

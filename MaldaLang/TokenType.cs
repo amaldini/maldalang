@@ -65,7 +65,6 @@ public enum TokenType
     Export,
     Include,
     Prompt,
-    Chain,
     Property,
     Match,
     Case,

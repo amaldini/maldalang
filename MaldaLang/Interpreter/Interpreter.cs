@@ -460,10 +460,6 @@ public partial class Interpreter
                 {
                     DefinePrompt(promptDecl);
                 }
-                else if (stmt is ChainDeclaration chainDecl)
-                {
-                    DefineChain(chainDecl);
-                }
                 else if (stmt is TypeDeclaration typeDecl)
                 {
                     DefineSumType(typeDecl);
@@ -496,7 +492,7 @@ public partial class Interpreter
             {
                 var stmt = statements[i];
                 
-                if (stmt is not ClassDeclaration && stmt is not FunctionDeclaration && stmt is not PromptDeclaration && stmt is not ChainDeclaration && stmt is not TypeDeclaration && stmt is not SchemaDeclaration && stmt is not WorkflowDeclaration && stmt is not PropertyDeclaration)
+                if (stmt is not ClassDeclaration && stmt is not FunctionDeclaration && stmt is not PromptDeclaration && stmt is not TypeDeclaration && stmt is not SchemaDeclaration && stmt is not WorkflowDeclaration && stmt is not PropertyDeclaration)
                 {
                     topLevelFrame.StatementIndex = i;
                     await ExecuteAsync(stmt);
@@ -963,11 +959,6 @@ public partial class Interpreter
         var prompt = new PromptValue(decl, _globals);
         // Always define prompts in the global environment to ensure they're accessible
         _globals.Define(decl.Name, RuntimeValue.Prompt(prompt));
-    }
-
-    private void DefineChain(ChainDeclaration decl)
-    {
-        DefineFunction(decl.ToFunctionDeclaration());
     }
 
     private void DefineWorkflow(WorkflowDeclaration decl)
@@ -1572,7 +1563,6 @@ public partial class Interpreter
                 ClassDeclaration classDecl => null, // Already handled
                 ActorDeclaration actorDecl => null, // Already handled
                 PromptDeclaration => null, // Already handled
-                ChainDeclaration => null, // Already handled
                 TypeDeclaration => null, // Already handled
                 SchemaDeclaration => null, // Already handled
                 WorkflowDeclaration => null, // Already handled in declaration pass

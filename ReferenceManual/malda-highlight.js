@@ -17,7 +17,7 @@
         'class', 'new', 'this', 'super', 'extends', 'public', 'private',
         'static', 'actor', 'message', 'spawn', 'send', 'receive', 'self', 'on',
         'then', 'timeout', 'dict', 'graph', 'directed', 'undirected', 'in',
-        'using', 'import', 'export', 'include', 'prompt', 'chain', 'property',
+        'using', 'import', 'export', 'include', 'prompt', 'property',
         'match', 'case', 'default', 'type', 'schema', 'await', 'async',
         'workflow', 'step', 'approval', 'wait', 'retry', 'backoff', 'delay',
         'maxDelay', 'compensate', 'onReject'

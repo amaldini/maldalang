@@ -11,19 +11,6 @@ public class AiPipelineIdeTests
     private readonly LanguageService _service = new();
 
     [Fact]
-    public void GetHover_StepInsideChain_ShowsChainStepHelp()
-    {
-        var source = """
-            chain buildContext(question, retriever) {
-                step hits = question |> retriever.get;
-            }
-            """;
-        var hover = _service.GetHoverInformation(source, 1, 4);
-        Assert.NotNull(hover);
-        Assert.Contains("Named chain pipeline binding", hover);
-    }
-
-    [Fact]
     public void GetHover_StepInsideWorkflow_ShowsWorkflowStepHelp()
     {
         var source = """
@@ -37,26 +24,14 @@ public class AiPipelineIdeTests
     }
 
     [Fact]
-    public void GetCompletions_InsideChain_IncludesPriorStepNames()
-    {
-        var source = """
-            chain buildContext(question, retriever) {
-                step hits = question |> retriever.get;
-                step text = formatRetrievedDocs();
-            }
-            """;
-        var completions = _service.GetCompletions(source, 2, 20);
-        Assert.Contains(completions, c => c.Label == "hits");
-    }
-
-    [Fact]
-    public void GetCompletions_IncludesChainPromptSchemaKeywords()
+    public void GetCompletions_IncludesPromptSchemaKeywords()
     {
         var completions = _service.GetCompletions("var x = ", 0, 8);
-        Assert.Contains(completions, c => c.Label == "chain");
+        Assert.DoesNotContain(completions, c => c.Label == "chain");
         Assert.Contains(completions, c => c.Label == "prompt");
         Assert.Contains(completions, c => c.Label == "schema");
         Assert.Contains(completions, c => c.Label == "await");
+        Assert.Contains(completions, c => c.Label == "function");
     }
 
     [Fact]

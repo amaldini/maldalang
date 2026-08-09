@@ -26,7 +26,7 @@ public class AiComposeTests : TestBase
     }
 
     [Fact]
-    public void ComposePipe_WithChainReference()
+    public void ComposePipe_WithFunctionReference()
     {
         var source = """
             function embedText(text) {
@@ -38,8 +38,8 @@ public class AiComposeTests : TestBase
             vdb.add("GraphMemory stores semantic facts");
             var retriever = vdb.asRetriever({ topK: 1 });
 
-            chain fetchHits(question) {
-                question |> retriever.get
+            function fetchHits(question) {
+                return question |> retriever.get;
             }
 
             var pipeline = composePipe(fetchHits, formatRetrievedDocs);
@@ -145,15 +145,15 @@ public class AiComposeTests : TestBase
     }
 
     [Fact]
-    public void ComposePipe_InsideChainBlock()
+    public void ComposePipe_InsideFunctionBody()
     {
         var source = """
             function wrap(text) {
                 return "<<" + text + ">>";
             }
 
-            chain tagged(question) {
-                step pipeline = composePipe(wrap, upper);
+            function tagged(question) {
+                var pipeline = composePipe(wrap, upper);
                 return pipeline(question);
             }
 

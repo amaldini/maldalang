@@ -19,13 +19,13 @@
         <h1>34. Grammar</h1>
         <p>This chapter is a BNF-style summary of MALDA syntax accepted by the reference parser (<code>MaldaLang/Parser/Parser.cs</code>, <code>MaldaLang/Lexer.cs</code>). Tier 0 semantics are defined in <a href="../docs/spec/malda-language-1.0.md">Malda Language Specification 1.0</a>.</p>
         <div class="info-box">
-            <strong>Scope:</strong> the productions below cover top-level declarations, control flow, exceptions, resource cleanup, actors, workflows, sum types and schemas, <code>async</code>/<code>await</code>, pipes and chains, comprehensions, <code>dict</code>/<code>graph</code>/object literals, variant patterns, and <code>send</code>/<code>spawn</code>/<code>receive</code>. Narrative examples stay in the topic chapters (for example <a href="31-durable-workflows.html">Durable Workflows</a> and <a href="13-actors.html">Actors</a>). If the grammar and the parser disagree, the parser wins until a spec amendment.
+            <strong>Scope:</strong> the productions below cover top-level declarations, control flow, exceptions, resource cleanup, actors, workflows, sum types and schemas, <code>async</code>/<code>await</code>, pipes, comprehensions, <code>dict</code>/<code>graph</code>/object literals, variant patterns, and <code>send</code>/<code>spawn</code>/<code>receive</code>. Narrative examples stay in the topic chapters (for example <a href="31-durable-workflows.html">Durable Workflows</a> and <a href="13-actors.html">Actors</a>). If the grammar and the parser disagree, the parser wins until a spec amendment.
         </div>
         <h2>34.1 Program</h2>
         <pre><code>Program     ::= TopLevelItem*
 TopLevelItem::= IncludeStmt | UsingStmt | ImportStmt
               | WorkflowDecl | ActorDecl | ClassDecl | PromptDecl | TypeDecl | ComponentDecl
-              | SchemaDecl | ChainDecl
+              | SchemaDecl
               | DecoratedFunctionDecl | DecoratedPropertyDecl | PropertyDecl
               | ExportableDecl | Statement
 
@@ -53,10 +53,6 @@ Constructor   ::= Identifier ("(" ParamList? ")")?
 SchemaDecl    ::= "schema" Identifier "{" SchemaField* "}"
 SchemaField   ::= Identifier ":" SchemaType ";"
 SchemaType    ::= Identifier "[]"? "?"?   /* e.g. string, int[], string? */
-
-ChainDecl     ::= "chain" Identifier "(" ParamList? ")" ReturnType? ChainBody
-ChainBody     ::= "{" ( ChainStep* ReturnStmt | Statement* | Expression ) "}"
-ChainStep     ::= "step" Identifier "=" Expression ";"
 
 ActorDecl     ::= "actor" Identifier "{" ActorBodyItem* "}"
 ActorBodyItem ::= MessageDecl | ActorMember

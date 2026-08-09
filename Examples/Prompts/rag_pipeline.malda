@@ -50,4 +50,4 @@ print("");
 print("To run end-to-end with an LLM, set OPENROUTER_API_KEY and use:");
 print("  await (question |> retriever.get |> formatRetrievedDocs |> (ctx) => answerPrompt(question, ctx) |> runPrompt(client) |> parseJson(\"Answer\"));");
 print("");
-print("Or use named chains — see Examples/Prompts/rag_chain_pipeline.malda");
+print("Or use named functions — see Examples/Prompts/rag_function_pipeline.malda");

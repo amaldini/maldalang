@@ -35,7 +35,7 @@ verbatim.
 ```text
 Hi HN. MALDA is a programming language where the things I kept writing glue
 code for — LLM prompts, tools, agents, HTTP endpoints — are language
-constructs instead of library calls. prompt, chain, schema, actor, spawn and
+constructs instead of library calls. prompt, schema, actor, spawn and
 send are keywords; tools, endpoints and pages are declarations the parser
 understands.
 
@@ -444,13 +444,13 @@ be walked by an interpreter, emitted as C# and built into an executable, or emit
 browser JavaScript. If I only wanted prompts to be syntax, macros would have been the right
 answer, and I would have kept an ecosystem.
 
-Putting a fast-moving vocabulary in a grammar is the other real risk, and the repository
-shows it: `chain` is 2023 vocabulary, MCP arrived later, ACP later still. Grammar is the
+Putting a fast-moving vocabulary in a grammar is the other real risk. An earlier revision
+had a `chain` keyword for LCEL-style pipelines; MCP arrived later, ACP later still, and
+`chain` turned out to be ordinary `function` + `|>` with fashion naming. Grammar is the
 worst layer to be wrong in, so the split I aim for is that syntax covers the parts that have
 stopped moving — a template with holes, `step` / `retry` / `compensate`, message passing —
 while everything model-facing (providers, tool protocols, model names) stays in the library
-layer where it can be replaced without a language change. Where that line is drawn wrong,
-`chain` is the honest example.
+layer where it can be replaced without a language change. Dropping `chain` is the correction.
 
 And the cost, which is real: no ecosystem. No NumPy, no crates.io, no npm. A new language
 starts with whatever its standard library has — about 300 built-ins here, spanning
@@ -553,7 +553,7 @@ limitations above you consider disqualifying.
 
 | Stack | Real overlap | How MALDA differs | What they do better |
 |---|---|---|---|
-| **Python + LangChain / LlamaIndex** | prompts, agents, tools, RAG chains | prompts, chains and tools are declarations the parser and language server understand, not runtime-configured objects | ecosystem, ML libraries, hiring pool, everything about maturity |
+| **Python + LangChain / LlamaIndex** | prompts, agents, tools, RAG pipelines | prompts, pipe pipelines and tools are declarations the parser and language server understand, not runtime-configured objects | ecosystem, ML libraries, hiring pool, everything about maturity |
 | **BAML / DSPy / Pydantic AI** | prompts and tool schemas as declarations with real editor tooling — the closest thing to MALDA's central claim | one general-purpose language covers prompts *and* workflows, actors, endpoints and a compiled binary, instead of a DSL embedded in a host program | BAML actually type-checks prompt inputs and outputs and generates clients for languages you already use; adopting any of them costs you nothing else |
 | **TypeScript + AI SDKs** | agents, streaming, web endpoints | one language covers browser, server and a compiled binary, with `@client`/`@server` partitioning | a real type system, npm, editor tooling that took a decade to build |
 | **Temporal / Restate / Inngest** | durable execution, retries, signals, compensation | `step`/`retry`/`compensate`/`approval`/`awaitSignal` are grammar, and the determinism boundary is a diagnostic; state is a local SQLite file, no cluster | proven at scale, polyglot SDKs, real replay with non-determinism detection over the whole workflow, failover across machines, serious observability |

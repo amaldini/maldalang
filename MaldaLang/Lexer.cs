@@ -81,7 +81,6 @@ public class Lexer
         { "export", TokenType.Export },
         { "include", TokenType.Include },
         { "prompt", TokenType.Prompt },
-        { "chain", TokenType.Chain },
         { "property", TokenType.Property },
         { "match", TokenType.Match },
         { "case", TokenType.Case },

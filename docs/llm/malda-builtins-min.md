@@ -1,8 +1,8 @@
-# MALDA builtins (minimum set for codegen)
+﻿# MALDA builtins (minimum set for codegen)
 
-*Applies to: MALDA 0.1.32*
+*Applies to: MALDA 0.1.33*
 
-**If a name is not in [`malda-builtins.tsv`](malda-builtins.tsv), it does not exist — do not
+**If a name is not in [`malda-builtins.tsv`](malda-builtins.tsv), it does not exist â€” do not
 invent it.** The TSV is generated from the engine and guarded by a test, so absence from it
 is authoritative, not merely a documentation gap.
 
@@ -15,7 +15,7 @@ awk -F'\t' '$1 == "randomInt"' docs/llm/malda-builtins.tsv
 ```
 
 The third column is the arity the built-in enforces, in its own words: call it wrongly and
-the runtime error says exactly that. An empty third column means the built-in is variadic —
+the runtime error says exactly that. An empty third column means the built-in is variadic â€”
 `all(...tasks)` and the `ui*` component builders, which all take `(props?, ...children)`.
 
 Full prose catalog: `ReferenceManual/11-built-in-functions.html` and `MaldaLang/BuiltIns/`.
@@ -55,19 +55,19 @@ Built-in classes you instantiate with `new`: `LLMClient`, `OpenRouterClient`,
 
 | Call | Role |
 |------|------|
-| `parseJSON(text)` | Parse a JSON string → object/array |
+| `parseJSON(text)` | Parse a JSON string â†’ object/array |
 | `toJSON(value)` | Serialize to a JSON string |
 | `str.upper/lower/trim/split/join/replace` | Common string ops |
 | `str.repeat(s, count)` | Repeat a string; `count` must be an integer or a **whole-valued** float |
-| `+` / `$"…"` | Concatenation, or `$`-prefixed interpolation (`$"n={n}"`). Plain `"n={n}"` prints the braces literally. Prompt bodies interpolate without `$` |
+| `+` / `$"â€¦"` | Concatenation, or `$`-prefixed interpolation (`$"n={n}"`). Plain `"n={n}"` prints the braces literally. Prompt bodies interpolate without `$` |
 
-`parseJson` (lowercase `s`) is a **different** built-in — a schema-validating parser for LLM
+`parseJson` (lowercase `s`) is a **different** built-in â€” a schema-validating parser for LLM
 output. Do not reach for it to read JSON.
 
 ## Arrays / maps
 
 Arrays use **member-style** methods (`items.append(x)`), not free functions. That is a
-different convention from `str.length(s)` / `math.sqrt(x)`. There is no `arr` namespace —
+different convention from `str.length(s)` / `math.sqrt(x)`. There is no `arr` namespace â€”
 `arr.append(history, x)` and `arr.length(history)` do not exist. In
 [`malda-builtins.tsv`](malda-builtins.tsv) the preferred-call column writes these as
 `<array>.append` / `<array>.pop` / `<array>.shift` to mark a method on the receiver.
@@ -78,7 +78,7 @@ different convention from `str.length(s)` / `math.sqrt(x)`. There is no `arr` na
 | `dict { "a": 1 }` | Dict literal |
 | `{ "a": 1 }` | Object literal (common in APIs) |
 | index `items[i]`, member `obj.field` | Access |
-| `items.length` | Element count — a **property**, not a call (`items.length()` errors). Also `str.length(items)` |
+| `items.length` | Element count â€” a **property**, not a call (`items.length()` errors). Also `str.length(items)` |
 | `items.append(x)` | Append one item (method on the array) |
 | `items.pop()` / `items.shift()` | Remove last / first element |
 
@@ -87,7 +87,7 @@ different convention from `str.length(s)` / `math.sqrt(x)`. There is no `arr` na
 | Call | Role |
 |------|------|
 | `math.abs/round/floor/ceil/sqrt/pow/min/max/sum/average` | Arithmetic |
-| `math.floor` / `round` / `ceil` / `sqrt` | Always return a **float**; whole-valued results coerce at integer sinks (`repeat`, indexes, …) |
+| `math.floor` / `round` / `ceil` / `sqrt` | Always return a **float**; whole-valued results coerce at integer sinks (`repeat`, indexes, â€¦) |
 | `math.randomInt(min, max)` | Random integer, **both endpoints included** |
 | `math.random()` / `math.randomFloat(min, max)` | Random floats |
 | `math.seed(n)` | Pin the sequence so a run is reproducible and testable |
@@ -103,18 +103,18 @@ different convention from `str.length(s)` / `math.sqrt(x)`. There is no `arr` na
 | `AnsiConsole.tree(label, items?)` | Tree; items are strings or `{ "label", "children"? }` |
 | `AnsiConsole.status(message, action?)` | Spinner around optional 0-arg callback |
 | `AnsiConsole.progress(callback)` | `ctx.addTask` / `increment` / `isFinished` |
-| `AnsiConsole.prompt(config)` | Interactive `{ type, message, defaultValue? }` — not pipe-friendly |
+| `AnsiConsole.prompt(config)` | Interactive `{ type, message, defaultValue? }` â€” not pipe-friendly |
 
 `io.getEnv(name)` returns **`null`** when unset (not `""`). See the TSV `returns` column.
 
 Markup tags (Spectre.Console): styles `bold`, `dim`, `italic`, `underline`, `strikethrough`;
 colours `black`, `red`, `green`, `yellow`, `blue`, `magenta`, `cyan`, `white`, `grey` /
-`gray`, plus `bright*` forms (`brightred`, …); close with `[/]`. Combine as
-`[bold blue]…[/]`. Double a bracket to print it literally: `[[` / `]]`.
+`gray`, plus `bright*` forms (`brightred`, â€¦); close with `[/]`. Combine as
+`[bold blue]â€¦[/]`. Double a bracket to print it literally: `[[` / `]]`.
 
 `panel` `borderStyle` values that mean something: `"rounded"`, `"double"`, `"heavy"`.
 Anything else silently becomes square. Piped / redirected output also collapses Unicode
-borders to square — see [`malda-gotchas.md`](malda-gotchas.md).
+borders to square â€” see [`malda-gotchas.md`](malda-gotchas.md).
 
 ## Files / OS (when needed)
 
@@ -138,19 +138,19 @@ than guessing.
 ### Server-driven UI (`ui.*`)
 
 Prefer this when building component trees (not raw HTML pages). There is **no JSX** and no
-HTML-string children — compose nodes with `ui.*` helpers.
+HTML-string children â€” compose nodes with `ui.*` helpers.
 
 | Pattern | Role |
 |---------|------|
-| `ui.control(props, children?, key?)` | V2 signature for controls (`ui.button`, `ui.column`, `ui.text`, …). `props` is an object/dict |
+| `ui.control(props, children?, key?)` | V2 signature for controls (`ui.button`, `ui.column`, `ui.text`, â€¦). `props` is an object/dict |
 | `ui.mount(root, sessionId?)` / `ui.render(root, sessionId?)` | Mount or diff a tree; returns a patch envelope |
 | `ui.mountEnvelope(root, sessionId?, options?)` | Mount + snapshot + resync helper in one call |
-| `ui.dispatchEvent(event, sessionId?)` / `ui.pullEvent(sessionId?)` | Client → server event queue |
+| `ui.dispatchEvent(event, sessionId?)` / `ui.pullEvent(sessionId?)` | Client â†’ server event queue |
 | `ui.state` / `ui.setState` (or `componentState*`) | Server-side component state |
-| `component Name(...) { … }` + `@ACTION` / `@LIVE` | Full-stack component model (see Reference Manual) |
+| `component Name(...) { â€¦ }` + `@ACTION` / `@LIVE` | Full-stack component model (see Reference Manual) |
 
 Use `@PAGE` + `pageLayout` for route-first HTML; use `ui.*` (+ optional `component`) for
-tree/patch UI. Grep `malda-builtins.tsv` for a control name (`uiButton`, `uiDataGrid`, …);
+tree/patch UI. Grep `malda-builtins.tsv` for a control name (`uiButton`, `uiDataGrid`, â€¦);
 call it as `ui.button(...)`, `ui.dataGrid(...)`.
 
 API reference: `ReferenceManual/16-web-ui.html` (start at `16-web-ui-hub.html`).
@@ -165,7 +165,7 @@ See also `Examples/Web/auth_cookie_login.malda`, `Examples/Web/form_validate_fla
 | Pattern | Role |
 |---------|------|
 | `prompt name(args) { user: "..."; }` | Prompt declaration |
-| `prompt name(args) -> SchemaName { … }` + `await` | Typed prompt: JSON Schema → `response_format` (no tools); validate + repair |
+| `prompt name(args) -> SchemaName { â€¦ }` + `await` | Typed prompt: JSON Schema â†’ `response_format` (no tools); validate + repair |
 | `new OpenRouterClient(...)` / `LLMClient` | LLM clients (see `Examples/Prompts`, `Examples/AI_LLM`) |
 | `new Agent(...)` / `CodingAgent` | Agents + tools |
 

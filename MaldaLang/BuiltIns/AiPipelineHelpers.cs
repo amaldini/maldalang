@@ -801,7 +801,7 @@ public static class AiPipelineHelpers
                 continue;
             if (callable.Type == MaldaLangValueType.Function)
                 continue;
-            throw new RuntimeException($"{context} steps must be callables (functions, chains, lambdas, prompts, or built-ins).");
+            throw new RuntimeException($"{context} steps must be callables (functions, lambdas, prompts, or built-ins).");
         }
     }
 
