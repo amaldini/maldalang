@@ -27,7 +27,7 @@
 function double(n) -> int n * 2;</code></pre>
         <p>This is equivalent to <code>function square(x) { return x*x; }</code>.</p>
         <p>You may use <code>fn</code> or <code>def</code> instead of <code>function</code>; all three are equivalent. In documentation and examples, <code>function</code> is preferred.</p>
-        <p>You may optionally add <strong>informational type hints</strong> to parameters and a return type. These are not enforced at runtime or in the transpiler. Mismatches on literals and identifiers with known hints (variables, fields, assignment, call arguments, and <code>return</code> vs <code>-&gt; T</code>) produce an IDE/LSP <strong>Warning</strong> (or an error under CLI <code>--strict-types</code>). Operators and call results are not inferred. Hints are also used by tools (e.g. <code>getSymbols</code>), IDEs, and documentation.</p>
+        <p>You may optionally add <strong>informational type hints</strong> to parameters and a return type. These are not enforced at runtime or in the transpiler. Known names include Tier 0 primitives, declared class/schema names, and built-in host classes. Mismatches on literals, <code>new ClassName()</code>, and identifiers with known hints (variables, fields, assignment, call arguments, and <code>return</code> vs <code>-&gt; T</code>) produce an IDE/LSP <strong>Warning</strong> (or an error under CLI <code>--strict-types</code>). Operators and call results are not inferred. Hints are also used by tools (e.g. <code>getSymbols</code>), IDEs, and documentation.</p>
         <pre><code>function name(param: Type?, ...) -> ReturnType? {
     // param and return type hints are optional and informational only
 }</code></pre>

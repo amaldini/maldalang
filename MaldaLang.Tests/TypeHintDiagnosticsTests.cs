@@ -27,4 +27,47 @@ public class TypeHintDiagnosticsTests
         var diagnostics = service.GetDiagnostics(source);
         Assert.DoesNotContain(diagnostics, d => d.Source == "malda-types");
     }
+
+    [Fact]
+    public void GetDiagnostics_DeclaredClassTypeHint_NoUnknownDiagnostic()
+    {
+        var service = new LanguageService();
+        var source = """
+            class Person {
+                var name: string = "";
+            }
+            function f(p: Person) -> Person { return p; }
+            """;
+        var diagnostics = service.GetDiagnostics(source);
+        Assert.DoesNotContain(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Message.Contains("Unknown type hint", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void GetDiagnostics_DeclaredSchemaTypeHint_NoUnknownDiagnostic()
+    {
+        var service = new LanguageService();
+        var source = """
+            schema Contact {
+                name: string;
+            }
+            var c: Contact = null;
+            """;
+        var diagnostics = service.GetDiagnostics(source);
+        Assert.DoesNotContain(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Message.Contains("Unknown type hint", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void GetDiagnostics_HostClassTypeHint_NoUnknownDiagnostic()
+    {
+        var service = new LanguageService();
+        var source = "var server: RestServer = null;";
+        var diagnostics = service.GetDiagnostics(source);
+        Assert.DoesNotContain(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Message.Contains("Unknown type hint", StringComparison.Ordinal));
+    }
 }

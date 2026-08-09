@@ -9,7 +9,8 @@ using MaldaLang.Parser.AST.Statements;
 using MaldaLang.IDE.Models;
 
 /// <summary>
-/// Phase 4.1: informational validation of Tier 0 type hints (no runtime enforcement).
+/// Phase 4.1: informational validation of type hints (no runtime enforcement).
+/// Recognizes Tier 0 names, declared class/schema names, and built-in host classes.
 /// </summary>
 public static class TypeHintDiagnostics
 {
@@ -19,17 +20,23 @@ public static class TypeHintDiagnostics
         StrictTypesOptions? options = null)
     {
         options ??= StrictTypesOptions.Default;
-        foreach (var stmt in statements)
-            ValidateStatement(stmt, diagnostics, options);
+        var list = statements as IList<Statement> ?? statements.ToList();
+        var index = TypeHintNameIndex.Build(list);
+        foreach (var stmt in list)
+            ValidateStatement(stmt, diagnostics, options, index);
     }
 
-    private static void ValidateStatement(Statement stmt, List<Diagnostic> diagnostics, StrictTypesOptions options)
+    private static void ValidateStatement(
+        Statement stmt,
+        List<Diagnostic> diagnostics,
+        StrictTypesOptions options,
+        TypeHintNameIndex index)
     {
         switch (stmt)
         {
             case FunctionDeclaration funcDecl:
                 if (funcDecl.ReturnType != null)
-                    ValidateTypeName(funcDecl.ReturnType, funcDecl.Line, funcDecl.Column, "return type", diagnostics, options);
+                    ValidateTypeName(funcDecl.ReturnType, funcDecl.Line, funcDecl.Column, "return type", diagnostics, options, index);
                 if (funcDecl.ParameterTypeHints != null)
                 {
                     for (var i = 0; i < funcDecl.ParameterTypeHints.Count; i++)
@@ -38,39 +45,50 @@ public static class TypeHintDiagnostics
                         if (hint != null)
                         {
                             var paramName = i < funcDecl.Parameters.Count ? funcDecl.Parameters[i] : "parameter";
-                            ValidateTypeName(hint, funcDecl.Line, funcDecl.Column, $"parameter '{paramName}'", diagnostics, options);
+                            ValidateTypeName(hint, funcDecl.Line, funcDecl.Column, $"parameter '{paramName}'", diagnostics, options, index);
                         }
                     }
                 }
                 foreach (var inner in funcDecl.Body.Statements)
-                    ValidateStatement(inner, diagnostics, options);
+                    ValidateStatement(inner, diagnostics, options, index);
                 break;
             case VarDeclStatement varDecl:
-                ValidateVarDecl(varDecl, diagnostics, options);
+                ValidateVarDecl(varDecl, diagnostics, options, index);
                 break;
             case ClassDeclaration classDecl:
                 foreach (var member in classDecl.Members)
                 {
                     if (member.TypeHint != null)
-                        ValidateTypeName(member.TypeHint, classDecl.Line, classDecl.Column, $"field '{member.Name}'", diagnostics, options);
+                        ValidateTypeName(member.TypeHint, classDecl.Line, classDecl.Column, $"field '{member.Name}'", diagnostics, options, index);
                     if (member.Value is FunctionDeclaration method)
                     {
                         foreach (var inner in method.Body.Statements)
-                            ValidateStatement(inner, diagnostics, options);
+                            ValidateStatement(inner, diagnostics, options, index);
                     }
                 }
                 break;
             case BlockStatement block:
                 foreach (var inner in block.Statements)
-                    ValidateStatement(inner, diagnostics, options);
+                    ValidateStatement(inner, diagnostics, options, index);
                 break;
         }
     }
 
-    public static void ValidateVarDecl(VarDeclStatement varDecl, List<Diagnostic> diagnostics, StrictTypesOptions options)
+    public static void ValidateVarDecl(
+        VarDeclStatement varDecl,
+        List<Diagnostic> diagnostics,
+        StrictTypesOptions options,
+        TypeHintNameIndex? index = null)
     {
         if (varDecl.TypeHint != null)
-            ValidateTypeName(varDecl.TypeHint, varDecl.Line, varDecl.Column, "variable", diagnostics, options);
+            ValidateTypeName(
+                varDecl.TypeHint,
+                varDecl.Line,
+                varDecl.Column,
+                "variable",
+                diagnostics,
+                options,
+                index ?? new TypeHintNameIndex());
     }
 
     private static void ValidateTypeName(
@@ -79,9 +97,10 @@ public static class TypeHintDiagnostics
         int column,
         string context,
         List<Diagnostic> diagnostics,
-        StrictTypesOptions options)
+        StrictTypesOptions options,
+        TypeHintNameIndex index)
     {
-        if (Tier0TypeHints.IsKnown(typeName))
+        if (index.IsKnown(typeName))
             return;
 
         var strict = options.StrictTypes;

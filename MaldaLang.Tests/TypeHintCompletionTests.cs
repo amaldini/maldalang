@@ -68,4 +68,29 @@ public class TypeHintCompletionTests
         Assert.Contains(completions, c => c.Kind == "type" && c.Label == "int");
         Assert.Contains(completions, c => c.Kind == "type" && c.Label == "integer");
     }
+
+    [Fact]
+    public void GetCompletions_AfterVarColon_OffersDeclaredClass()
+    {
+        var source = """
+            class Person {
+                var name: string = "";
+            }
+            var p: 
+            """;
+        var line = 3;
+        var column = "var p: ".Length;
+        var completions = _service.GetCompletions(source, line, column);
+        Assert.Contains(completions, c => c.Kind == "type" && c.Label == "Person");
+        Assert.Contains(completions, c => c.Kind == "type" && c.Label == "int");
+    }
+
+    [Fact]
+    public void GetCompletions_AfterVarColon_OffersHostClass()
+    {
+        var source = "var s: Rest";
+        var completions = _service.GetCompletions(source, 0, source.Length);
+        Assert.Contains(completions, c => c.Kind == "type" && c.Label == "RestServer");
+        Assert.Contains(completions, c => c.Kind == "type" && c.Label == "RestClient");
+    }
 }

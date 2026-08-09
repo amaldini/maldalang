@@ -1,6 +1,6 @@
 # MALDA gotchas: the mistakes the interpreter will not catch
 
-*Applies to: MALDA 0.1.22*
+*Applies to: MALDA 0.1.28*
 
 `malda-syntax.md` lists the JS-isms an agent might guess — `const`, `console.log`, `def`.
 Those are cheap: the parser rejects them immediately and you fix them on the next run.
@@ -20,7 +20,7 @@ claim a program works.
 | `validate("Name", value)` expecting a throw | Mismatch returns `{ ok: false, error }` — it does **not** throw. Unknown schema name does throw. | Check `checked.ok`; use `parseJson(text, "Name")` when you want throw-on-mismatch from JSON text |
 | `randomInt(1, 100)` | Returns `100` too. Both endpoints are included, unlike half-open ranges elsewhere. | Fine as written — just do not subtract 1 |
 | `println(x)` | `Undefined variable 'println'`. It does not exist. | `print(x)` |
-| `var n: int = "abc";`, `n = "a"`, or `f(s)` when `f(x: int)` and `s: string` | Runs at runtime. The language server emits a **Warning** for mismatches on literals and identifiers with known hints (variables, fields, assignment, call arguments, `return` vs `-> T`). With `--strict-types` those mismatches are **Errors**. Operators / call results are not inferred. Nothing enforces hints at runtime. | Fix the value, validate explicitly, or use `toIntOrNull` |
+| `var n: int = "abc";`, `n = "a"`, `var p: Person = 1`, or `f(s)` when `f(x: int)` and `s: string` | Runs at runtime. The language server emits a **Warning** for mismatches on literals, `new ClassName()`, and identifiers with known hints (Tier 0 names, declared class/schema names, host classes; variables, fields, assignment, call arguments, `return` vs `-> T`). With `--strict-types` those mismatches are **Errors**; unknown hint names are also errors. Operators / call results are not inferred. Nothing enforces hints at runtime. | Fix the value, validate explicitly, or use `toIntOrNull` |
 | `str.repeat("-", n / 2)` when `n` is odd | `Error: repeat() expects (string, integer)`. `/` always yields a float; a fractional float is **not** coerced at integer sinks. Whole-valued floats from `math.floor` / `round` / `ceil` (and exact `n / 2`) are accepted. | `str.repeat("-", int(n / 2))` or `math.floor(n / 2)` |
 | `str.trim(io.getEnv("MISSING"))` | `getEnv` returns **`null`** when the variable is unset (unlike `io.input`, which returns `""` at EOF). `trim` then errors. | `var v = io.getEnv("MISSING"); if (v == null) { v = ""; }` — or check before string sinks |
 | `csrfField(secret)` under `enableCsrf(secret)` | CSRF requires **cookie value == form `_csrf`**. `csrfField(secret)` generates a *new* token; if the CSRF cookie was already set to a different token, mutating requests 403. | On the GET that renders the form, reuse `req.cookie("csrf_token")` when valid, or generate once and set both the cookie and the field to that same token |

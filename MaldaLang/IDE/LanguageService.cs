@@ -384,7 +384,20 @@ public class LanguageService : ILanguageService
 
         if (TypeHintCompletions.GetTypeHintPartialPrefix(source, line, column) is { } typeHintPrefix)
         {
-            return Tier0TypeHints.GetCompletions(typeHintPrefix);
+            TypeHintNameIndex? typeHintIndex = null;
+            try
+            {
+                var hintLexer = new Lexer(source, sourceFileName);
+                var hintTokens = hintLexer.Tokenize();
+                var hintParser = new MaldaLang.Parser.Parser(hintTokens, sourceFileName);
+                typeHintIndex = TypeHintNameIndex.Build(hintParser.Parse());
+            }
+            catch
+            {
+                // Completions still offer Tier 0 + host classes when the buffer does not parse.
+            }
+
+            return TypeHintNameIndex.GetCompletions(typeHintIndex, typeHintPrefix);
         }
         
         // Check if we're in a decorator context (after @)

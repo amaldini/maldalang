@@ -25,11 +25,15 @@ public static class TypeCompatibilityDiagnostics
     private sealed class HintEnv
     {
         private readonly Stack<Dictionary<string, string>> _scopes = new();
+        private readonly TypeHintNameIndex _index;
 
-        public HintEnv()
+        public HintEnv(TypeHintNameIndex index)
         {
+            _index = index;
             PushScope();
         }
+
+        public TypeHintNameIndex Index => _index;
 
         public void PushScope() =>
             _scopes.Push(new Dictionary<string, string>(StringComparer.Ordinal));
@@ -50,7 +54,8 @@ public static class TypeCompatibilityDiagnostics
                 return;
             }
 
-            if (Tier0TypeTags.NormalizeToCanonical(typeHint) == null)
+            // Only bind identifiers whose hints are known (Tier 0, declared, or host).
+            if (!_index.IsKnown(typeHint))
                 return;
 
             _scopes.Peek()[name] = typeHint;
@@ -76,9 +81,10 @@ public static class TypeCompatibilityDiagnostics
     {
         options ??= StrictTypesOptions.Default;
         var list = statements as IList<Statement> ?? statements.ToList();
+        var index = TypeHintNameIndex.Build(list);
         var functions = new Dictionary<string, FunctionHints>(StringComparer.Ordinal);
         CollectFunctions(list, functions);
-        var env = new HintEnv();
+        var env = new HintEnv(index);
 
         foreach (var stmt in list)
             VisitStatement(stmt, functions, env, currentReturn: null, diagnostics, options);
@@ -367,6 +373,10 @@ public static class TypeCompatibilityDiagnostics
                         VisitExpression(segment.Expression, functions, env, diagnostics, options);
                 }
                 break;
+            case NewExpression newExpr:
+                foreach (var arg in newExpr.Arguments)
+                    VisitExpression(arg, functions, env, diagnostics, options);
+                break;
             case AwaitExpression awaitExpr:
                 VisitExpression(awaitExpr.Expression, functions, env, diagnostics, options);
                 break;
@@ -392,19 +402,27 @@ public static class TypeCompatibilityDiagnostics
             return;
         }
 
-        var expected = Tier0TypeTags.NormalizeToCanonical(typeHint);
+        var expected = env.Index.NormalizeKnown(typeHint);
         if (expected == null)
             return; // unknown hint names are handled by TypeHintDiagnostics
 
-        var actual = InferKnownTag(value, env);
+        var actual = InferKnownType(value, env);
         if (actual == null)
-            return; // not a literal or known identifier — out of scope
+            return; // not a literal, new, or known identifier — out of scope
 
         if (string.Equals(expected, actual, StringComparison.Ordinal))
             return;
 
         // int/float: a float hint accepts int values.
         if (expected == "float" && actual == "int")
+            return;
+
+        // Tier 0 aliases that NormalizeKnown left as written (void/any already returned).
+        var expectedCanonical = Tier0TypeTags.NormalizeToCanonical(expected) ?? expected;
+        var actualCanonical = Tier0TypeTags.NormalizeToCanonical(actual) ?? actual;
+        if (string.Equals(expectedCanonical, actualCanonical, StringComparison.Ordinal))
+            return;
+        if (expectedCanonical == "float" && actualCanonical == "int")
             return;
 
         diagnostics.Add(new Diagnostic
@@ -421,18 +439,26 @@ public static class TypeCompatibilityDiagnostics
     }
 
     /// <summary>
-    /// Returns a canonical Tier 0 tag for a literal or an identifier with a known hint, else null.
+    /// Returns a Tier 0 tag, declared/host class name, or null when the expression is out of scope.
     /// </summary>
-    private static string? InferKnownTag(Expression expression, HintEnv env)
+    private static string? InferKnownType(Expression expression, HintEnv env)
     {
         var literal = InferLiteralTag(expression);
         if (literal != null)
             return literal;
 
+        if (expression is NewExpression newExpr &&
+            env.Index.IsKnown(newExpr.ClassName) &&
+            !Tier0TypeHints.IsKnown(newExpr.ClassName))
+        {
+            // Prefer the declared/host spelling (ordinal) when known.
+            return newExpr.ClassName;
+        }
+
         if (expression is IdentifierExpression id &&
             env.TryLookup(id.Name, out var hint))
         {
-            return Tier0TypeTags.NormalizeToCanonical(hint);
+            return env.Index.NormalizeKnown(hint);
         }
 
         return null;

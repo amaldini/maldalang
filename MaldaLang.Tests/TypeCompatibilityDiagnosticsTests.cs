@@ -231,4 +231,103 @@ public class TypeCompatibilityDiagnosticsTests
             d.Severity == DiagnosticSeverity.Warning &&
             d.Message.Contains("does not match value", StringComparison.Ordinal));
     }
+
+    [Fact]
+    public void GetDiagnostics_ClassHint_NewExpressionMatch_NoWarning()
+    {
+        var service = new LanguageService();
+        var source = """
+            class Person {
+                function Person() { }
+            }
+            var p: Person = new Person();
+            """;
+        var diagnostics = service.GetDiagnostics(source);
+        Assert.DoesNotContain(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Severity == DiagnosticSeverity.Warning &&
+            d.Message.Contains("does not match value", StringComparison.Ordinal));
+        Assert.DoesNotContain(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Message.Contains("Unknown type hint", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void GetDiagnostics_ClassHint_LiteralMismatch_EmitsWarning()
+    {
+        var service = new LanguageService();
+        var source = """
+            class Person {
+                function Person() { }
+            }
+            var p: Person = 1;
+            """;
+        var diagnostics = service.GetDiagnostics(source);
+        Assert.Contains(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Severity == DiagnosticSeverity.Warning &&
+            d.Message.Contains("Person", StringComparison.Ordinal) &&
+            d.Message.Contains("int", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void GetDiagnostics_ClassHint_IdentifierMatch_NoWarning()
+    {
+        var service = new LanguageService();
+        var source = """
+            class Person {
+                function Person() { }
+            }
+            var q: Person = new Person();
+            var p: Person = q;
+            """;
+        var diagnostics = service.GetDiagnostics(source);
+        Assert.DoesNotContain(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Severity == DiagnosticSeverity.Warning &&
+            d.Message.Contains("does not match value", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void GetDiagnostics_ClassHint_IdentifierMismatch_EmitsWarning()
+    {
+        var service = new LanguageService();
+        var source = """
+            class Person {
+                function Person() { }
+            }
+            var q: string = "x";
+            var p: Person = q;
+            """;
+        var diagnostics = service.GetDiagnostics(source);
+        Assert.Contains(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Severity == DiagnosticSeverity.Warning &&
+            d.Message.Contains("variable 'p'", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Analyze_StrictTypes_ClassHintMismatch_IsError_AndNotUnknown()
+    {
+        var source = """
+            class Person {
+                function Person() { }
+            }
+            var p: Person = 1;
+            """;
+        var lexer = new Lexer(source);
+        var tokens = lexer.Tokenize();
+        var parser = new Parser.Parser(tokens);
+        var statements = parser.Parse();
+        Assert.Empty(parser.Errors);
+        var diagnostics = new List<Diagnostic>();
+        StrictTypesAnalysis.Analyze(statements, StrictTypesOptions.Enabled, diagnostics);
+        Assert.DoesNotContain(diagnostics, d =>
+            d.Message.Contains("Unknown type hint", StringComparison.Ordinal));
+        Assert.Contains(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Severity == DiagnosticSeverity.Error &&
+            d.Message.Contains("does not match value", StringComparison.Ordinal));
+        Assert.True(StrictTypesAnalysis.HasErrors(diagnostics));
+    }
 }
