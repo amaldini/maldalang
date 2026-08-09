@@ -3035,11 +3035,23 @@ public class HttpServerInstance : ObjectInstance
             form.dataset.splAjaxBound = '1';
             form.addEventListener('submit', function(e) {
                 e.preventDefault();
-                
-                var formData = new FormData(form);
-                
+
+                // Include the clicked submit control (e.g. name=vote value=up/down).
+                // FormData(form) alone omits submitter buttons.
+                var submitter = e.submitter || null;
+                var formData = submitter ? new FormData(form, submitter) : new FormData(form);
+                if (submitter && submitter.name) {
+                    var hasSubmitter = false;
+                    formData.forEach(function(_v, k) {
+                        if (k === submitter.name) { hasSubmitter = true; }
+                    });
+                    if (!hasSubmitter) {
+                        formData.append(submitter.name, submitter.value || '');
+                    }
+                }
+
                 var action = form.action || '/submit';
-                var submitButton = form.querySelector('button[type=""submit""], input[type=""submit""]');
+                var submitButton = submitter || form.querySelector('button[type=""submit""], input[type=""submit""]');
                 var originalText = submitButton ? submitButton.textContent || submitButton.value : '';
                 
                 if (submitButton) {

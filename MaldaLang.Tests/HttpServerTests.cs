@@ -747,6 +747,9 @@ public class HttpServerTests
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             Assert.Contains("id=\"spl-ajax-helper\"", html);
             Assert.Contains("X-Malda-Fragment", html);
+            // Submit buttons with name/value (e.g. vote=up) must be posted via AJAX.
+            Assert.Contains("e.submitter", html, StringComparison.Ordinal);
+            Assert.Contains("new FormData(form, submitter)", html, StringComparison.Ordinal);
         }
         finally
         {
