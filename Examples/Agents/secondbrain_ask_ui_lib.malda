@@ -47,7 +47,7 @@ var ASK_USERS_PATH = "";
 var ASK_USERS_FILE_NAME = "users.json";
 var ASK_AUDIT_PATH = "";
 var ASK_FEEDBACK_PATH = "";
-var ASK_SERVICE_VERSION = "0.1.23";
+var ASK_SERVICE_VERSION = "0.1.24";
 var ASK_MIN_RETRIEVAL_SCORE = 0.15;
 var ASK_MIN_LEXICAL_SCORE = 1.0;
 var askAuthJwtSecret = "";
@@ -719,8 +719,13 @@ function askPrintAuthStatus() {
 }
 
 function askRequireAuth(req, res, next) {
+    // authenticateCookieJwt throws WebRuntimeException (401) when the session
+    // cookie is missing/invalid — that must be catchable so we can redirect.
     try {
         req.auth.authenticateCookieJwt(ASK_AUTH_COOKIE, askAuthJwtSecret, askAuthCookieSecret);
+        if (req.auth.verified != true) {
+            return res.redirect("/login");
+        }
         next();
     } catch (authErr) {
         return res.redirect("/login");
@@ -1323,7 +1328,10 @@ function askApplyTagFilterFromBody(body) {
     var next = [];
     if (body != null and body.tags != null) {
         var raw = body.tags;
-        if (typeOf(raw) == "array" or (raw != null and raw.length != null)) {
+        // Form checkboxes often arrive as a string (or as an array when several
+        // share name="tags"). Do not use `.length != null` — strings have length too,
+        // and foreach requires a real array.
+        if (typeOf(raw) == "array") {
             foreach (var t in raw) {
                 var s = str.trim(askAsText(t));
                 if (s != "") {

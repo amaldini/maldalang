@@ -2744,10 +2744,32 @@ public class HttpServerInstance : ObjectInstance
 
             var key = DecodeFormValue(parts[0]);
             var value = DecodeFormValue(parts[1]);
-            jsonObj.Set(key, RuntimeValue.String(value));
+            AppendFormField(jsonObj, key, RuntimeValue.String(value));
         }
 
         return jsonObj;
+    }
+
+    /// <summary>
+    /// HTML forms may repeat the same name (e.g. checkbox group <c>tags=a&amp;tags=b</c>).
+    /// First value stays a string; further values promote/append to an array.
+    /// </summary>
+    private static void AppendFormField(JsonObject jsonObj, string key, RuntimeValue value)
+    {
+        if (!jsonObj.TryGet(key, out var existing) || existing == null || existing.Type == ValueType.Null)
+        {
+            jsonObj.Set(key, value);
+            return;
+        }
+
+        if (existing.Type == ValueType.Array)
+        {
+            var list = new List<RuntimeValue>(existing.AsArray()) { value };
+            jsonObj.Set(key, RuntimeValue.Array(list));
+            return;
+        }
+
+        jsonObj.Set(key, RuntimeValue.Array(new List<RuntimeValue> { existing, value }));
     }
 
     private static string DecodeFormValue(string value)
@@ -2826,11 +2848,11 @@ public class HttpServerInstance : ObjectInstance
                 var fileObj = new JsonObject();
                 fileObj.Set("fileName", RuntimeValue.String(fileNameMatch.Groups["f"].Value));
                 fileObj.Set("content", RuntimeValue.String(content));
-                result.Set(fieldName, RuntimeValue.Object(fileObj));
+                AppendFormField(result, fieldName, RuntimeValue.Object(fileObj));
             }
             else
             {
-                result.Set(fieldName, RuntimeValue.String(content));
+                AppendFormField(result, fieldName, RuntimeValue.String(content));
             }
         }
 

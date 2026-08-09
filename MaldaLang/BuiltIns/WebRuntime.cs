@@ -1212,7 +1212,12 @@ public class RouteValidationError
     }
 }
 
-public class WebRuntimeException : Exception
+/// <summary>
+/// HTTP/auth failures thrown from web helpers (e.g. missing JWT cookie).
+/// Extends <see cref="RuntimeException"/> so Malda <c>try/catch</c> can redirect
+/// (ASK <c>askRequireAuth</c>) instead of always surfacing a raw 401.
+/// </summary>
+public class WebRuntimeException : RuntimeException
 {
     public int StatusCode { get; }
     public string ErrorCode { get; }
@@ -1223,7 +1228,7 @@ public class WebRuntimeException : Exception
         string errorCode,
         string message,
         List<RouteValidationError>? details = null,
-        Exception? innerException = null) : base(message, innerException)
+        Exception? innerException = null) : base(message, null, null, null, innerException)
     {
         StatusCode = statusCode;
         ErrorCode = errorCode;

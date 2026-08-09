@@ -155,11 +155,13 @@ public partial class Interpreter
             }
             catch (RuntimeException ex)
             {
-                if (ex.Line == null)
+                // Keep WebRuntimeException identity (status/code) for HTTP error mapping
+                // and for Malda try/catch redirects (e.g. ASK askRequireAuth → /login).
+                if (ex is WebRuntimeException || ex.Line != null)
                 {
-                    throw new RuntimeException(ex.Message, expr.Line, _currentFile);
+                    throw;
                 }
-                throw;
+                throw new RuntimeException(ex.Message, expr.Line, _currentFile);
             }
         }
         else if (callee.Type == ValueType.Function)
@@ -191,11 +193,11 @@ public partial class Interpreter
             }
             catch (RuntimeException ex)
             {
-                if (ex.Line == null)
+                if (ex is WebRuntimeException || ex.Line != null)
                 {
-                    throw new RuntimeException(ex.Message, expr.Line, _currentFile);
+                    throw;
                 }
-                throw;
+                throw new RuntimeException(ex.Message, expr.Line, _currentFile);
             }
         }
         else if (callee.Type == ValueType.Class)

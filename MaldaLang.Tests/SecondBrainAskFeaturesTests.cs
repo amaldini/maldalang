@@ -471,6 +471,8 @@ public class SecondBrainAskFeaturesTests
         Assert.Contains("@ACTION(\"/feedback\")", libSource, StringComparison.Ordinal);
         Assert.Contains("function askConfigureHttpAuth(", libSource, StringComparison.Ordinal);
         Assert.Contains("function askRequireAuth(", libSource, StringComparison.Ordinal);
+        Assert.Contains("res.redirect(\"/login\")", libSource, StringComparison.Ordinal);
+        Assert.Contains("authenticateCookieJwt(ASK_AUTH_COOKIE", libSource, StringComparison.Ordinal);
         Assert.Contains("function askRequireAdmin(", libSource, StringComparison.Ordinal);
         Assert.Contains("function askHistoryScope(", libSource, StringComparison.Ordinal);
         Assert.Contains("function askRegisterUser(", libSource, StringComparison.Ordinal);
@@ -501,6 +503,11 @@ public class SecondBrainAskFeaturesTests
         Assert.Contains("function askApplyToolsFromBody(", libSource, StringComparison.Ordinal);
         Assert.Contains("name='useTools'", libSource, StringComparison.Ordinal);
         Assert.Contains("askApplyToolsFromBody(body)", libSource, StringComparison.Ordinal);
+        Assert.Contains("function askApplyTagFilterFromBody(", libSource, StringComparison.Ordinal);
+        Assert.Contains("name='tags'", libSource, StringComparison.Ordinal);
+        // Regression: strings have .length; foreach must only run on typeOf == "array".
+        Assert.Contains("typeOf(raw) == \"array\"", libSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("raw.length != null", libSource, StringComparison.Ordinal);
 
         var tempDir = Path.Combine(Path.GetTempPath(), "malda_sb_ask_panel", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(tempDir);
@@ -558,6 +565,77 @@ public class SecondBrainAskFeaturesTests
             Assert.DoesNotContain(" checked", html, StringComparison.Ordinal);
             Assert.DoesNotContain("<!DOCTYPE", html, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("<html", html, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            SafeDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public async Task AskUi_TagFilterFromBody_AcceptsStringAndArray()
+    {
+        // HTML checkbox groups post tags as a string (single) or array (multi after form parser).
+        // The old guard used `raw.length != null`, which is true for strings and crashed foreach.
+        Assert.True(File.Exists(AskUiLibPath), "missing ask UI lib: " + AskUiLibPath);
+
+        var tempDir = Path.Combine(Path.GetTempPath(), "malda_sb_ask_tags", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            File.Copy(AskUiLibPath, Path.Combine(tempDir, "secondbrain_ask_ui_lib.malda"));
+            var harnessPath = Path.Combine(tempDir, "harness.malda");
+            File.WriteAllText(harnessPath,
+                """
+                var ASK_HTTP_PORT = 39021;
+                var ASK_SESSION_ID = "secondbrain-ask-tags";
+                var ASK_STORE = "SecondBrainAskTags";
+                var PRODUCT_NAME = "Tags";
+                var ASK_PAGE_TITLE = "Tags";
+                var ASK_POWERED_BY = "";
+                var ASK_POWERED_BY_URL = "";
+                var ASK_LOGO = "";
+                var UI_LANG = "en";
+                var askHttpServer = null;
+
+                function runAskTurn(question) {
+                    return { "question": question, "answer": "ok", "sources": [], "error": "" };
+                }
+
+                include "secondbrain_ask_ui_lib.malda";
+
+                askApplyTagFilterFromBody({ "tags": "alpha" });
+                var one = askGetTagFilter();
+                print("ONE_LEN=" + string(one.length));
+                print("ONE_0=" + one[0]);
+
+                askApplyTagFilterFromBody({ "tags": "beta, gamma" });
+                var csv = askGetTagFilter();
+                print("CSV_LEN=" + string(csv.length));
+                print("CSV_0=" + csv[0]);
+                print("CSV_1=" + csv[1]);
+
+                askApplyTagFilterFromBody({ "tags": ["delta", "epsilon"] });
+                var arr = askGetTagFilter();
+                print("ARR_LEN=" + string(arr.length));
+                print("ARR_0=" + arr[0]);
+                print("ARR_1=" + arr[1]);
+
+                askApplyTagFilterFromBody({ "question": "no tags field" });
+                print("EMPTY_LEN=" + string(askGetTagFilter().length));
+                """,
+                Encoding.UTF8);
+
+            var output = await InterpretAndCaptureAsync(harnessPath);
+            Assert.Contains("ONE_LEN=1", output, StringComparison.Ordinal);
+            Assert.Contains("ONE_0=alpha", output, StringComparison.Ordinal);
+            Assert.Contains("CSV_LEN=2", output, StringComparison.Ordinal);
+            Assert.Contains("CSV_0=beta", output, StringComparison.Ordinal);
+            Assert.Contains("CSV_1=gamma", output, StringComparison.Ordinal);
+            Assert.Contains("ARR_LEN=2", output, StringComparison.Ordinal);
+            Assert.Contains("ARR_0=delta", output, StringComparison.Ordinal);
+            Assert.Contains("ARR_1=epsilon", output, StringComparison.Ordinal);
+            Assert.Contains("EMPTY_LEN=0", output, StringComparison.Ordinal);
         }
         finally
         {

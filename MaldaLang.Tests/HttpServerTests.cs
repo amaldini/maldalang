@@ -980,6 +980,119 @@ public class HttpServerTests
         }
     }
 
+    [Fact]
+    public async Task HttpServer_UseMiddleware_CatchAuthFailure_RedirectsToLogin()
+    {
+        // Regression: WebRuntimeException used to subclass Exception (not RuntimeException),
+        // so Malda try/catch never ran and ASK showed a 401 instead of redirecting to /login.
+        var port = GetAvailablePort();
+        var source = @"
+            function requireAuth(req, res, next) {
+                try {
+                    req.auth.authenticateCookieJwt(""session"", ""cookie-jwt-secret"", ""cookie-sign-secret"");
+                    next();
+                } catch (authErr) {
+                    return res.redirect(""/login"");
+                }
+            }
+
+            @GET(""/"")
+            function home(req, res) {
+                return res.html(""<html><body>home</body></html>"");
+            }
+
+            @GET(""/login"")
+            function login(req, res) {
+                return res.html(""<html><body>login</body></html>"");
+            }
+        ";
+
+        var interpreter = LoadInterpreterFromSource(source);
+        var server = new HttpServerInstance(port, null, interpreter);
+        var except = RuntimeValue.Array(new List<RuntimeValue> { RuntimeValue.String("/login") });
+        var options = new JsonObject();
+        options.Set("except", except);
+        server.CallMethod(
+            "use",
+            new List<RuntimeValue>
+            {
+                RuntimeValue.String("requireAuth"),
+                RuntimeValue.Object(options)
+            });
+        server.CallMethod("start", new List<RuntimeValue>());
+
+        try
+        {
+            using var client = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false });
+            using var denied = await client.GetAsync($"http://localhost:{port}/");
+            Assert.Equal(HttpStatusCode.SeeOther, denied.StatusCode);
+            Assert.Equal("/login", denied.Headers.Location?.OriginalString);
+
+            using var login = await client.GetAsync($"http://localhost:{port}/login");
+            Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+            var loginBody = await login.Content.ReadAsStringAsync();
+            Assert.Contains("login", loginBody, StringComparison.Ordinal);
+        }
+        finally
+        {
+            server.CallMethod("stop", new List<RuntimeValue>());
+        }
+    }
+
+    [Fact]
+    public async Task HttpServer_FormUrlEncoded_DuplicateKeys_BecomeArray()
+    {
+        // Checkbox groups (name="tags") post tags=a&tags=b; last-wins used to drop all but one.
+        var port = GetAvailablePort();
+        var source = @"
+            @POST(""/tags"")
+            function submit(body, res) {
+                var tags = body.tags;
+                if (typeOf(tags) == ""array"") {
+                    return res.json({
+                        ""kind"": ""array"",
+                        ""len"": tags.length,
+                        ""a"": tags[0],
+                        ""b"": tags[1]
+                    });
+                }
+                return res.json({ ""kind"": typeOf(tags), ""value"": tags });
+            }
+        ";
+
+        var interpreter = LoadInterpreterFromSource(source);
+        var server = new HttpServerInstance(port, null, interpreter);
+        server.CallMethod("start", new List<RuntimeValue>());
+
+        try
+        {
+            using var client = new HttpClient();
+            using var multi = await client.PostAsync(
+                $"http://localhost:{port}/tags",
+                new StringContent("tags=alpha&tags=beta&question=hi", Encoding.UTF8, "application/x-www-form-urlencoded"));
+            var multiBody = await multi.Content.ReadAsStringAsync();
+            using var multiDoc = JsonDocument.Parse(multiBody);
+            Assert.Equal(HttpStatusCode.OK, multi.StatusCode);
+            Assert.Equal("array", multiDoc.RootElement.GetProperty("kind").GetString());
+            Assert.Equal(2, multiDoc.RootElement.GetProperty("len").GetInt32());
+            Assert.Equal("alpha", multiDoc.RootElement.GetProperty("a").GetString());
+            Assert.Equal("beta", multiDoc.RootElement.GetProperty("b").GetString());
+
+            using var single = await client.PostAsync(
+                $"http://localhost:{port}/tags",
+                new StringContent("tags=only&question=hi", Encoding.UTF8, "application/x-www-form-urlencoded"));
+            var singleBody = await single.Content.ReadAsStringAsync();
+            using var singleDoc = JsonDocument.Parse(singleBody);
+            Assert.Equal(HttpStatusCode.OK, single.StatusCode);
+            Assert.Equal("string", singleDoc.RootElement.GetProperty("kind").GetString());
+            Assert.Equal("only", singleDoc.RootElement.GetProperty("value").GetString());
+        }
+        finally
+        {
+            server.CallMethod("stop", new List<RuntimeValue>());
+        }
+    }
+
     private static string CreateHttpAuthJwt(string secret, string sub, string role = "editor", int expiresInSeconds = 120)
     {
         var payload = new JsonObject();

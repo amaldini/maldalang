@@ -42,14 +42,16 @@ public static class RuntimeDiagnostics
     {
         var normalized = Unwrap(ex);
 
-        if (normalized is RuntimeException runtimeException)
-        {
-            return EnsureSourceLine(runtimeException, interpreter);
-        }
-
+        // WebRuntimeException subclasses RuntimeException (catchable in Malda) but
+        // must keep its identity for HTTP status mapping — never rewrite it.
         if (normalized is WebRuntimeException webRuntimeException)
         {
             return webRuntimeException;
+        }
+
+        if (normalized is RuntimeException runtimeException)
+        {
+            return EnsureSourceLine(runtimeException, interpreter);
         }
 
         if (normalized is MALDAException maldaException)
