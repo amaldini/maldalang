@@ -4697,8 +4697,8 @@ public partial class Interpreter
             throw new RuntimeException("RestServer() port must be an integer");
         
         var portNum = port.AsInteger();
-        if (portNum != 0 && (portNum < 1024 || portNum > 65535))
-            throw new RuntimeException("RestServer() port must be 0 (deferred/mounted) or between 1024 and 65535");
+        if (portNum != 0 && (portNum < 1 || portNum > 65535))
+            throw new RuntimeException("RestServer() port must be 0 (deferred/mounted) or between 1 and 65535");
         
         string? host = null;
         if (args.Count == 2)
@@ -4748,8 +4748,8 @@ public partial class Interpreter
             throw new RuntimeException("HttpServer() port must be an integer");
         
         var portNum = port.AsInteger();
-        if (portNum < 1024 || portNum > 65535)
-            throw new RuntimeException("HttpServer() port must be between 1024 and 65535");
+        if (portNum < 1 || portNum > 65535)
+            throw new RuntimeException("HttpServer() port must be between 1 and 65535");
         
         string? webDirectory = null;
         if (args.Count >= 2)
@@ -4800,8 +4800,8 @@ public partial class Interpreter
                 throw new RuntimeException("MCPServer() port must be an integer");
             
             var portNum = portValue.AsInteger();
-            if (portNum < 1024 || portNum > 65535)
-                throw new RuntimeException("MCPServer() port must be between 1024 and 65535");
+            if (portNum < 1 || portNum > 65535)
+                throw new RuntimeException("MCPServer() port must be between 1 and 65535");
             
             port = portNum;
         }
@@ -4869,8 +4869,8 @@ public partial class Interpreter
             throw new RuntimeException("ACPServer() port must be an integer");
         
         var port = portValue.AsInteger();
-        if (port < 1024 || port > 65535)
-            throw new RuntimeException("ACPServer() port must be between 1024 and 65535");
+        if (port < 1 || port > 65535)
+            throw new RuntimeException("ACPServer() port must be between 1 and 65535");
         
         var server = new BuiltIns.ACP.ACPServerInstance(port);
         return RuntimeValue.Object(server);

@@ -2525,14 +2525,18 @@ self.addEventListener("fetch", (event) => {
 
     private static bool UsesUiFramework(string source)
     {
-        return source.Contains("ui.") ||
-               source.Contains("uiMount(") ||
-               source.Contains("uiMountEnvelope(") ||
-               source.Contains("uiRender(") ||
-               source.Contains("uiDispatchEvent(") ||
-               source.Contains("uiPullEvent(") ||
-               source.Contains("uiState(") ||
-               source.Contains("uiSetState(");
+        // In-memory ui.state / ui.setState (HttpServer components) does not need UIHost.
+        // Only the browser UI protocol (mount / events) requires the embedded host.
+        return source.Contains("ui.mount(", StringComparison.Ordinal) ||
+               source.Contains("ui.mountEnvelope(", StringComparison.Ordinal) ||
+               source.Contains("uiMount(", StringComparison.Ordinal) ||
+               source.Contains("uiMountEnvelope(", StringComparison.Ordinal) ||
+               source.Contains("ui.render(", StringComparison.Ordinal) ||
+               source.Contains("uiRender(", StringComparison.Ordinal) ||
+               source.Contains("ui.dispatchEvent(", StringComparison.Ordinal) ||
+               source.Contains("uiDispatchEvent(", StringComparison.Ordinal) ||
+               source.Contains("ui.pullEvent(", StringComparison.Ordinal) ||
+               source.Contains("uiPullEvent(", StringComparison.Ordinal);
     }
 
     private static string AddEmbeddedUiHostToTranspiledCode(string csharpCode)
@@ -2549,6 +2553,10 @@ self.addEventListener("fetch", (event) => {
         if (!patched.Contains("using Microsoft.AspNetCore.Http;", StringComparison.Ordinal))
         {
             patched = "using Microsoft.AspNetCore.Http;\n" + patched;
+        }
+        if (!patched.Contains("using Microsoft.Extensions.Logging;", StringComparison.Ordinal))
+        {
+            patched = "using Microsoft.Extensions.Logging;\n" + patched;
         }
 
         if (patched.Contains(EmbeddedUiHostStartMarker, StringComparison.Ordinal))
@@ -2601,6 +2609,8 @@ internal static class EmbeddedUiHostRuntime
         {{
             var baseUrl = ResolveBaseUrl();
             var builder = Microsoft.AspNetCore.Builder.WebApplication.CreateBuilder();
+            // Embedded host must not spam the MALDA console (e.g. CLI --help).
+            builder.Logging.ClearProviders();
             builder.WebHost.UseUrls(baseUrl);
             var app = builder.Build();
             app.UseWebSockets();

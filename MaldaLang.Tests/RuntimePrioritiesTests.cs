@@ -22,6 +22,27 @@ public class RuntimePrioritiesTests : TestBase
     }
 
     [Fact]
+    public void RuntimeDiagnostics_FormatExceptionForConsole_IncludesPasteableStack()
+    {
+        Exception caught;
+        try
+        {
+            throw new InvalidOperationException("boom");
+        }
+        catch (Exception ex)
+        {
+            caught = ex;
+        }
+
+        var formatted = RuntimeDiagnostics.FormatExceptionForConsole(caught);
+
+        Assert.Contains("Error: boom", formatted);
+        Assert.Contains("--- stack ---", formatted);
+        Assert.Contains("System.InvalidOperationException: boom", formatted);
+        Assert.Contains("RuntimeDiagnostics_FormatExceptionForConsole_IncludesPasteableStack", formatted);
+    }
+
+    [Fact]
     public void WebRuntime_CreateErrorFromException_CanIncludeDiagnostics()
     {
         var payload = WebRuntimeHelpers.CreateErrorFromException(

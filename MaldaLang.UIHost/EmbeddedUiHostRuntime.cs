@@ -12,6 +12,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 
 namespace MaldaLang.UIHost;
 
@@ -48,6 +49,8 @@ public static class EmbeddedUiHostRuntime
             LoadEmbeddedAssets();
             var baseUrl = ResolveBaseUrl();
             var builder = WebApplication.CreateBuilder();
+            // Embedded host must not spam the MALDA console (e.g. secondbrain --help).
+            builder.Logging.ClearProviders();
             builder.WebHost.UseUrls(baseUrl);
             var app = builder.Build();
             app.UseWebSockets();

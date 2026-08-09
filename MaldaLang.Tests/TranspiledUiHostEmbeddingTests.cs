@@ -43,6 +43,19 @@ public class TranspiledUiHostEmbeddingTests
         Assert.DoesNotContain("EmbeddedUiHostRuntime", generatedCode);
     }
 
+    [Fact]
+    public void Transpiled_DoesNotIncludeUiHost_WhenOnlyUiStateIsUsed()
+    {
+        // HttpServer component state helpers must not pull in the browser UIHost.
+        var source = @"
+            ui.setState(""AskStore"", ""lang"", ""it"", ""session"");
+            print(ui.state(""AskStore"", ""lang"", ""en"", ""session""));
+        ";
+
+        var generatedCode = CompileAndReadGeneratedProgram(source, includeUiHost: false);
+        Assert.DoesNotContain("EmbeddedUiHostRuntime", generatedCode);
+    }
+
     private static string CompileAndReadGeneratedProgram(string source, bool includeUiHost)
     {
         var tempDir = Path.Combine(Path.GetTempPath(), "malda_uihost_tests", Guid.NewGuid().ToString("N"));

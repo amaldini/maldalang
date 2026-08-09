@@ -59,6 +59,7 @@ function getUserById(id, req, res) {
         <pre><code>var server = new RestServer(port);
 // OR
 var server = new RestServer(port, host);  // host: "localhost" or "0.0.0.0"</code></pre>
+        <p><code>port</code> must be <code>0</code> (deferred/mounted) or an integer in <code>1-65535</code>. Privileged ports (<code>1-1023</code>) are allowed; binding may still require elevated permissions or OS URL reservations.</p>
         <h3>Methods</h3>
         <ul>
             <li><code>start()</code>: Start the REST server and discover decorated functions</li>

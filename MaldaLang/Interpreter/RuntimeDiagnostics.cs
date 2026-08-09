@@ -155,6 +155,18 @@ public static class RuntimeDiagnostics
         return builder.ToString().TrimEnd();
     }
 
+    /// <summary>
+    /// MALDA-friendly summary plus a pasteable exception dump (type, message, stack, inners).
+    /// </summary>
+    public static string FormatExceptionForConsole(Exception ex, Interpreter? interpreter = null)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine(FormatForConsole(ex, interpreter));
+        builder.AppendLine("--- stack ---");
+        builder.Append(ex.ToString());
+        return builder.ToString().TrimEnd();
+    }
+
     private static string? ResolveSourceLine(int? line, string? file, Interpreter? interpreter)
     {
         if (!line.HasValue || line.Value < 1)

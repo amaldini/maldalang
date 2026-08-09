@@ -85,8 +85,8 @@ public class RestServerInstance : ObjectInstance
     
     public RestServerInstance(int port = 0, string? host = null, Interpreter? interpreter = null) : base(null)
     {
-        if (port != 0 && (port < 1024 || port > 65535))
-            throw new Exception("RestServer() port must be 0 (deferred/mounted) or between 1024 and 65535");
+        if (port != 0 && (port < 1 || port > 65535))
+            throw new Exception("RestServer() port must be 0 (deferred/mounted) or between 1 and 65535");
 
         _port = port;
         _host = host ?? "localhost";
@@ -917,7 +917,18 @@ public class RestServerInstance : ObjectInstance
                 // Use async version to avoid blocking
                 var context = await _listener.GetContextAsync();
                 // Fire and forget - each request processes concurrently
-                _ = Task.Run(async () => await ProcessRequestAsync(context));
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await ProcessRequestAsync(context);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.Error.WriteLine("REST Server unhandled request error");
+                        Console.Error.WriteLine(RuntimeDiagnostics.FormatExceptionForConsole(ex, _interpreter));
+                    }
+                });
             }
             catch (HttpListenerException)
             {
@@ -929,9 +940,10 @@ public class RestServerInstance : ObjectInstance
                 // Listener was disposed
                 break;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Ignore other errors and continue
+                Console.Error.WriteLine("REST Server accept loop error");
+                Console.Error.WriteLine(RuntimeDiagnostics.FormatExceptionForConsole(ex, _interpreter));
             }
         }
     }
@@ -2486,10 +2498,16 @@ public class RestServerInstance : ObjectInstance
     private void HandleError(HttpListenerResponse response, Exception ex, string correlationId)
     {
         var normalized = RuntimeDiagnostics.PreserveContext(ex, _interpreter);
-        Console.Error.WriteLine($"REST Server Error [{correlationId}]");
-        Console.Error.WriteLine(RuntimeDiagnostics.FormatForConsole(normalized, _interpreter));
-        if (ex.StackTrace != null)
-            Console.Error.WriteLine(ex.StackTrace);
+        if (normalized is WebRuntimeException webRuntimeException && webRuntimeException.StatusCode < 500)
+        {
+            Console.Error.WriteLine(
+                $"REST Server [{correlationId}] {webRuntimeException.StatusCode} {webRuntimeException.ErrorCode}: {webRuntimeException.Message}");
+        }
+        else
+        {
+            Console.Error.WriteLine($"REST Server Error [{correlationId}]");
+            Console.Error.WriteLine(RuntimeDiagnostics.FormatExceptionForConsole(ex, _interpreter));
+        }
 
         var payload = WebRuntimeHelpers.CreateErrorFromException(
             normalized,

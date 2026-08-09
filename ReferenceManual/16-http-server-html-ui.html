@@ -42,6 +42,7 @@
         <pre><code>var server = new HttpServer(port);
 // OR
 var server = new HttpServer(port, webDirectory);  // Custom web directory</code></pre>
+        <p><code>port</code> must be an integer in <code>1-65535</code>. Privileged ports (<code>1-1023</code>, e.g. <code>80</code>/<code>443</code>) are allowed; binding may still require elevated permissions or OS URL reservations.</p>
 
         <h3>20.2.2 Core methods</h3>
         <ul>

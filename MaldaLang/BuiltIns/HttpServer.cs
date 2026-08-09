@@ -1210,7 +1210,18 @@ public class HttpServerInstance : ObjectInstance
                 // Use async version to avoid blocking
                 var context = await _listener.GetContextAsync();
                 // Fire and forget - each request processes concurrently
-                _ = Task.Run(async () => await ProcessRequestAsync(context));
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await ProcessRequestAsync(context);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.Error.WriteLine("HttpServer unhandled request error");
+                        Console.Error.WriteLine(RuntimeDiagnostics.FormatExceptionForConsole(ex, _interpreter));
+                    }
+                });
             }
             catch (HttpListenerException)
             {
@@ -1222,9 +1233,10 @@ public class HttpServerInstance : ObjectInstance
                 // Listener was disposed
                 break;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Ignore other errors and continue
+                Console.Error.WriteLine("HttpServer accept loop error");
+                Console.Error.WriteLine(RuntimeDiagnostics.FormatExceptionForConsole(ex, _interpreter));
             }
         }
     }
@@ -2644,12 +2656,18 @@ public class HttpServerInstance : ObjectInstance
     
     private void HandleError(HttpListenerResponse response, Exception ex, string correlationId, HttpListenerRequest request)
     {
-        // Log error
         var normalized = RuntimeDiagnostics.PreserveContext(ex, _interpreter);
-        Console.Error.WriteLine($"HttpServer Error [{correlationId}]");
-        Console.Error.WriteLine(RuntimeDiagnostics.FormatForConsole(normalized, _interpreter));
-        if (ex.StackTrace != null)
-            Console.Error.WriteLine(ex.StackTrace);
+        if (normalized is WebRuntimeException webRuntimeException && webRuntimeException.StatusCode < 500)
+        {
+            // Expected client/auth failures — keep console readable.
+            Console.Error.WriteLine(
+                $"HttpServer [{correlationId}] {webRuntimeException.StatusCode} {webRuntimeException.ErrorCode}: {webRuntimeException.Message}");
+        }
+        else
+        {
+            Console.Error.WriteLine($"HttpServer Error [{correlationId}]");
+            Console.Error.WriteLine(RuntimeDiagnostics.FormatExceptionForConsole(ex, _interpreter));
+        }
 
         var path = request.Url?.AbsolutePath ?? "/";
         var payload = WebRuntimeHelpers.CreateErrorFromException(
