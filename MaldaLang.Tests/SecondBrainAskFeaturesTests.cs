@@ -504,7 +504,10 @@ public class SecondBrainAskFeaturesTests
         Assert.Contains("name='useTools'", libSource, StringComparison.Ordinal);
         Assert.Contains("askApplyToolsFromBody(body)", libSource, StringComparison.Ordinal);
         Assert.Contains("function askApplyTagFilterFromBody(", libSource, StringComparison.Ordinal);
+        Assert.Contains("function askRenderTagPickerHtml(", libSource, StringComparison.Ordinal);
+        Assert.Contains("class='tag-picker'", libSource, StringComparison.Ordinal);
         Assert.Contains("name='tags'", libSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("class='tag-filters'", libSource, StringComparison.Ordinal);
         // Regression: strings have .length; foreach must only run on typeOf == "array".
         Assert.Contains("typeOf(raw) == \"array\"", libSource, StringComparison.Ordinal);
         Assert.DoesNotContain("raw.length != null", libSource, StringComparison.Ordinal);

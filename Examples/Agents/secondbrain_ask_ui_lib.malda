@@ -47,7 +47,7 @@ var ASK_USERS_PATH = "";
 var ASK_USERS_FILE_NAME = "users.json";
 var ASK_AUDIT_PATH = "";
 var ASK_FEEDBACK_PATH = "";
-var ASK_SERVICE_VERSION = "0.1.25";
+var ASK_SERVICE_VERSION = "0.1.26";
 var ASK_MIN_RETRIEVAL_SCORE = 0.15;
 var ASK_MIN_LEXICAL_SCORE = 1.0;
 var askAuthJwtSecret = "";
@@ -1595,8 +1595,27 @@ function askPageStyles() {
         ".new-conv:hover{border-bottom-color:var(--accent)}" +
         ".feedback-bar{margin-top:10px}.feedback-form{display:flex;gap:8px}" +
         ".feedback-form button{font-size:1rem;padding:4px 10px}" +
-        ".tag-filters{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 4px}" +
-        ".tag-filters label{font-size:0.78rem;color:var(--muted);display:flex;gap:4px;align-items:center}" +
+        ".tag-picker{position:relative;margin:8px 0 2px;z-index:16}" +
+        ".tag-picker>summary{list-style:none;cursor:pointer;display:flex;align-items:center;" +
+        "justify-content:space-between;gap:10px;padding:8px 12px;border:1px solid var(--line);" +
+        "border-radius:9px;background:#fff;font-size:0.82rem;color:var(--ink);user-select:none}" +
+        ".tag-picker>summary::-webkit-details-marker{display:none}" +
+        ".tag-picker>summary::marker{content:''}" +
+        ".tag-picker>summary:hover{border-color:#c5ddd6;background:var(--q-bg)}" +
+        ".tag-picker[open]>summary{border-color:#c5ddd6;background:var(--q-bg);" +
+        "box-shadow:inset 0 -2px 0 var(--accent)}" +
+        ".tag-picker-label{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}" +
+        ".tag-picker-label strong{font-weight:650;color:var(--accent-ink)}" +
+        ".tag-picker-label .muted{color:var(--muted);font-weight:500}" +
+        ".tag-picker-chevron{flex:0 0 auto;color:var(--muted);font-size:0.75rem;line-height:1}" +
+        ".tag-picker-panel{position:absolute;left:0;right:0;bottom:calc(100% + 6px);" +
+        "max-height:min(38vh,220px);overflow:auto;display:flex;flex-wrap:wrap;gap:8px;" +
+        "padding:10px 12px;background:var(--panel);border:1px solid var(--line);border-radius:10px;" +
+        "box-shadow:0 10px 28px rgba(28,36,48,0.14);z-index:20}" +
+        ".tag-picker-panel label{font-size:0.78rem;color:var(--muted);display:flex;gap:5px;" +
+        "align-items:center;padding:3px 2px;max-width:100%}" +
+        ".tag-picker-panel label span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}" +
+        ".tag-picker-empty{font-size:0.78rem;color:var(--muted);margin:0}" +
         ".admin-table{width:100%;border-collapse:collapse;font-size:0.9rem}" +
         ".admin-table th,.admin-table td{border-bottom:1px solid var(--line);padding:8px;text-align:left}" +
         ".admin-wrap{max-width:900px;margin:24px auto;padding:0 16px}" +
@@ -1965,6 +1984,62 @@ function askTagSelected(tag, selected) {
     return false;
 }
 
+function askTagPickerSummaryLabel(selected) {
+    var n = 0;
+    if (selected != null) {
+        n = selected.length;
+    }
+    if (n == 0) {
+        return "<span class='muted'>" +
+            askEscapeHtml(askT("Filter by tag", "Filtra per tag")) +
+            "</span>";
+    }
+    var shown = [];
+    var i = 0;
+    while (i < selected.length and shown.length < 2) {
+        var t = str.trim(askAsText(selected[i]));
+        if (t != "") {
+            shown.append(t);
+        }
+        i = i + 1;
+    }
+    var preview = str.join(shown, ", ");
+    var more = n - shown.length;
+    var extra = "";
+    if (more > 0) {
+        extra = " +" + string(more);
+    }
+    return "<strong>" + askEscapeHtml(askT("Tags", "Tag")) +
+        " (" + string(n) + ")</strong> · " +
+        askEscapeHtml(preview) + askEscapeHtml(extra);
+}
+
+function askRenderTagPickerHtml(available, selected) {
+    if (available == null or available.length == 0) {
+        return "";
+    }
+    var html = "<details class='tag-picker'>" +
+        "<summary>" +
+        "<span class='tag-picker-label' data-ask-tag-label='1'>" +
+        askTagPickerSummaryLabel(selected) +
+        "</span>" +
+        "<span class='tag-picker-chevron' aria-hidden='true'>▾</span>" +
+        "</summary>" +
+        "<div class='tag-picker-panel' role='group' aria-label='" +
+        askEscapeHtml(askT("Filter by tag", "Filtra per tag")) + "'>";
+    foreach (var tag in available) {
+        var checked = "";
+        if (askTagSelected(tag, selected)) {
+            checked = " checked";
+        }
+        html = html + "<label><input type='checkbox' name='tags' value='" +
+            askEscapeHtml(tag) + "'" + checked + "> <span>" +
+            askEscapeHtml(tag) + "</span></label>";
+    }
+    html = html + "</div></details>";
+    return html;
+}
+
 // Flash + thread + composer — returned as componentFragment("ask-panel", ...).
 function askRenderPanelHtml() {
     var history = askGetHistory();
@@ -2023,22 +2098,7 @@ function askRenderPanelHtml() {
         "'></textarea>";
 
     if (session.chatOnly != true) {
-        var available = askCollectAvailableTags();
-        var selected = askGetTagFilter();
-        if (available.length > 0) {
-            html = html + "<div class='tag-filters' aria-label='" +
-                askEscapeHtml(askT("Filter by tag", "Filtra per tag")) + "'>";
-            foreach (var tag in available) {
-                var checked = "";
-                if (askTagSelected(tag, selected)) {
-                    checked = " checked";
-                }
-                html = html + "<label><input type='checkbox' name='tags' value='" +
-                    askEscapeHtml(tag) + "'" + checked + "> " +
-                    askEscapeHtml(tag) + "</label>";
-            }
-            html = html + "</div>";
-        }
+        html = html + askRenderTagPickerHtml(askCollectAvailableTags(), askGetTagFilter());
     }
 
     html = html + "<div class='composer-bar'>";
@@ -2306,10 +2366,42 @@ function askPageClientScript() {
         "return;" +
         "}" +
         "var btn=t.closest('[data-ask-example]');" +
-        "if(!btn){return;}" +
+        "if(btn){" +
         "e.preventDefault();" +
         "fillExample(btn.getAttribute('data-ask-example')||'');" +
+        "return;" +
+        "}" +
+        // Close tag combo when clicking outside (keeps sticky composer compact).
+        "var picker=document.querySelector('#ask-panel details.tag-picker[open]');" +
+        "if(picker&&!picker.contains(t)){picker.open=false;}" +
         "},true);" +
+        "document.addEventListener('change',function(e){" +
+        "var t=e.target;" +
+        "if(!t||t.name!=='tags'){return;}" +
+        "var picker=t.closest('details.tag-picker');" +
+        "if(!picker){return;}" +
+        "var label=picker.querySelector('[data-ask-tag-label]');" +
+        "if(!label){return;}" +
+        "function esc(s){" +
+        "return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')" +
+        ".replace(/>/g,'&gt;').replace(/\"/g,'&quot;');" +
+        "}" +
+        "var boxes=picker.querySelectorAll(\"input[name='tags']\");" +
+        "var names=[];" +
+        "for(var i=0;i<boxes.length;i++){" +
+        "if(boxes[i].checked){names.push(boxes[i].value||'');}" +
+        "}" +
+        "var isIt=(document.documentElement.lang||'').toLowerCase().indexOf('it')===0;" +
+        "if(names.length===0){" +
+        "label.innerHTML=\"<span class='muted'>\"+(isIt?'Filtra per tag':'Filter by tag')+\"</span>\";" +
+        "return;" +
+        "}" +
+        "var shown=names.slice(0,2).map(esc);" +
+        "var extra=names.length>shown.length?' +'+(names.length-shown.length):'';" +
+        "var title=isIt?'Tag':'Tags';" +
+        "label.innerHTML='<strong>'+title+' ('+names.length+')</strong> · '+" +
+        "shown.join(', ')+extra;" +
+        "});" +
         "window.addEventListener('pagehide',disconnectLive);" +
         "window.addEventListener('beforeunload',disconnectLive);" +
         "}" +
@@ -2318,6 +2410,8 @@ function askPageClientScript() {
         "if(!form||!form.action){return;}" +
         "if(String(form.action).indexOf('/ask')<0){return;}" +
         "if(String(form.action).indexOf('/ask/live')>=0){return;}" +
+        "var openPicker=document.querySelector('#ask-panel details.tag-picker[open]');" +
+        "if(openPicker){openPicker.open=false;}" +
         "lastRound=null;" +
         "roundStartedAt=null;" +
         "askStartedAt=null;" +
