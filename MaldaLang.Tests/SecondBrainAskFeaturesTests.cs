@@ -1265,13 +1265,16 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("data:image/svg+xml;base64," + rightB64, output, StringComparison.Ordinal);
             Assert.Contains("<img class='logo'", output, StringComparison.Ordinal);
             Assert.Contains("<img class='logo-right'", output, StringComparison.Ordinal);
+            Assert.Contains("class='brand has-left-logo'", output, StringComparison.Ordinal);
             Assert.Contains("HEIGHT=96", output, StringComparison.Ordinal);
             Assert.Contains(".logo-right{height:96px;", output, StringComparison.Ordinal);
             Assert.Contains("class='brand-title-row'", output, StringComparison.Ordinal);
-            // Title + right logo share a row; powered-by comes after that row.
+            // Left logo + title row share grid row 1; powered-by is under the title column.
+            var logoPos = output.IndexOf("<img class='logo'", StringComparison.Ordinal);
             var h1Pos = output.IndexOf("<h1>Dual Logo Brain</h1>", StringComparison.Ordinal);
             var logoRightPos = output.IndexOf("<img class='logo-right'", StringComparison.Ordinal);
             var poweredPos = output.IndexOf("<p class='powered-by'", StringComparison.Ordinal);
+            Assert.True(logoPos >= 0 && logoPos < h1Pos, "left logo should precede title in brand grid");
             Assert.True(h1Pos >= 0, "expected product title");
             Assert.True(logoRightPos > h1Pos, "right logo should follow product name in title row");
             Assert.True(poweredPos > logoRightPos, "powered-by markup should be below title row / right logo");

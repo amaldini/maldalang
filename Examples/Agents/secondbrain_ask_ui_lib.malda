@@ -1674,6 +1674,24 @@ function askLogoRightHeightFromValue(raw) {
     return n;
 }
 
+// Host ASK_LOGO_RIGHT_HEIGHT may be omitted in older harnesses.
+function askLogoRightHeightHostRaw() {
+    try {
+        return ASK_LOGO_RIGHT_HEIGHT;
+    } catch (missing) {
+        return "";
+    }
+}
+
+function askLogoRightHeightHostSet(value) {
+    try {
+        ASK_LOGO_RIGHT_HEIGHT = value;
+        return true;
+    } catch (missing) {
+        return false;
+    }
+}
+
 // Prefer brainDir/logo_right_height.txt (disk or embed). Else host value / path file.
 function askApplyLogoRightHeightFromBrain(brainDir) {
     var root = str.trim(askAsText(brainDir));
@@ -1683,21 +1701,22 @@ function askApplyLogoRightHeightFromBrain(brainDir) {
     }
     var loaded = fromBrain;
     if (loaded == "") {
-        loaded = askLogoRightHeightFromValue(ASK_LOGO_RIGHT_HEIGHT);
+        loaded = askLogoRightHeightFromValue(askLogoRightHeightHostRaw());
     }
     var normalized = askNormalizeLogoRightHeightToken(loaded);
     if (normalized == "") {
         return "48";
     }
-    ASK_LOGO_RIGHT_HEIGHT = normalized;
+    askLogoRightHeightHostSet(normalized);
     return normalized;
 }
 
 // CSS height for .logo-right from host ASK_LOGO_RIGHT_HEIGHT (default 48px).
 function askLogoRightHeightCss() {
-    var n = askNormalizeLogoRightHeightToken(askLogoRightHeightFromValue(ASK_LOGO_RIGHT_HEIGHT));
+    var host = askLogoRightHeightHostRaw();
+    var n = askNormalizeLogoRightHeightToken(askLogoRightHeightFromValue(host));
     if (n == "") {
-        n = askNormalizeLogoRightHeightToken(ASK_LOGO_RIGHT_HEIGHT);
+        n = askNormalizeLogoRightHeightToken(host);
     }
     if (n == "") {
         return "48px";
@@ -1744,18 +1763,26 @@ function askPageStyles() {
         "border-bottom:1px solid var(--line)}" +
         ".sticky-header-inner{display:flex;justify-content:space-between;gap:16px;" +
         "align-items:flex-start;flex-wrap:wrap}" +
-        ".brand{display:flex;align-items:center;gap:12px;min-width:min-content;flex:1}" +
-        ".logo{height:48px;max-width:min(40vw,220px);object-fit:contain;flex-shrink:0;display:block}" +
-        ".logo-right{height:" + logoRightH + ";max-width:min(40vw,220px);object-fit:contain;" +
+        /* Brand grid: left logo shares row 1 with title+right logo (vertical center);
+           powered-by is row 2 under the product name only (not under the left logo). */
+        ".brand{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto;" +
+        "column-gap:12px;row-gap:4px;align-items:center;min-width:min-content;flex:1}" +
+        ".brand.has-left-logo{grid-template-columns:auto minmax(0,1fr)}" +
+        ".brand .logo{grid-column:1;grid-row:1;align-self:center}" +
+        ".brand .brand-title-row{grid-column:1;grid-row:1;min-width:0}" +
+        ".brand.has-left-logo .brand-title-row{grid-column:2;grid-row:1}" +
+        ".brand .powered-by{grid-column:1;grid-row:2;align-self:start;margin:0}" +
+        ".brand.has-left-logo .powered-by{grid-column:2;grid-row:2}" +
+        ".logo{height:48px;max-width:min(40vw,220px);width:auto;object-fit:contain;" +
         "flex-shrink:0;display:block}" +
-        ".brand-text{min-width:0;display:flex;flex-direction:column;align-items:stretch}" +
+        ".logo-right{height:" + logoRightH + ";max-width:min(40vw,220px);width:auto;" +
+        "object-fit:contain;flex-shrink:0;display:block}" +
         ".brand-title-row{display:flex;align-items:center;gap:12px;min-width:0}" +
         ".brand-title-row h1{min-width:0}" +
         "h1{font-family:var(--serif);font-size:1.55rem;font-weight:700;margin:0;" +
         "letter-spacing:-0.02em;line-height:1.2;color:var(--ink)}" +
-        ".powered-by{margin:4px 0 0;font-size:0.75rem;line-height:1.35;color:var(--muted);" +
-        "max-width:42rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" +
-        "align-self:flex-start}" +
+        ".powered-by{font-size:0.75rem;line-height:1.35;color:var(--muted);" +
+        "max-width:42rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}" +
         ".powered-by a{color:var(--muted);text-decoration:none;border-bottom:1px solid transparent}" +
         ".powered-by a:hover{color:var(--accent-ink);border-bottom-color:var(--accent)}" +
         ".header-actions{display:flex;flex-direction:column;align-items:flex-end;gap:8px;padding-top:2px}" +
@@ -2701,15 +2728,18 @@ function askRenderPage() {
         askPageStyles() +
         "</head><body><main" + mainClass + ">";
 
-    html = html + "<header class='sticky-header'><div class='sticky-header-inner'>" +
-        "<div class='brand'>";
+    var brandClass = "brand";
     if (logoSrc != "") {
+        brandClass = "brand has-left-logo";
+    }
+    html = html + "<header class='sticky-header'><div class='sticky-header-inner'>" +
+        "<div class='" + brandClass + "'>";
+    if (logoSrc != "") {
+        // Same grid row as title + right logo → shared vertical centering.
         html = html + "<img class='logo' src='" + askEscapeHtml(logoSrc) +
             "' alt=''>";
     }
-    // Title + right logo on one row; powered-by below, left-aligned with the product name.
-    html = html + "<div class='brand-text'>" +
-        "<div class='brand-title-row'>" +
+    html = html + "<div class='brand-title-row'>" +
         "<h1>" + askEscapeHtml(title) + "</h1>";
     if (logoRightSrc != "") {
         html = html + "<img class='logo-right' src='" + askEscapeHtml(logoRightSrc) +
@@ -2725,7 +2755,7 @@ function askRenderPage() {
             html = html + "<p class='powered-by'>" + askEscapeHtml(poweredBy) + "</p>";
         }
     }
-    html = html + "</div></div>" +
+    html = html + "</div>" +
         "<div class='header-actions'>" +
         "<nav class='lang' aria-label='" +
         askEscapeHtml(askT("Language and theme", "Lingua e tema")) + "'>" +
