@@ -3632,6 +3632,17 @@ public partial class Interpreter
     private RuntimeValue HandleBuiltInMemberAccess(ObjectInstance instance, string member)
     {
         // Handle property access
+        if (instance is BuiltIns.OpenRouterClientInstance openRouterProps)
+        {
+            if (member == "httpReferer")
+                return RuntimeValue.String(openRouterProps.HttpReferer ?? "");
+            if (member == "appTitle")
+                return RuntimeValue.String(openRouterProps.AppTitle ?? "");
+            if (member == "appCategories")
+                return RuntimeValue.String(openRouterProps.AppCategories ?? "");
+            // Shared LLMClient properties fall through below.
+        }
+
         if (instance is BuiltIns.LLMClientInstance llmClient)
         {
             if (member == "apiUrl")

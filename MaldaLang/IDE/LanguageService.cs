@@ -891,6 +891,12 @@ public class LanguageService : ILanguageService
             members.Add(new CompletionItem { Label = "temperature", Kind = "property", Detail = "float", InsertText = "temperature" });
             members.Add(new CompletionItem { Label = "maxTokens", Kind = "property", Detail = "int", InsertText = "maxTokens" });
             members.Add(new CompletionItem { Label = "examples", Kind = "property", Detail = "array", InsertText = "examples" });
+            if (typeToCheck == "OpenRouterClient")
+            {
+                members.Add(new CompletionItem { Label = "httpReferer", Kind = "property", Detail = "string (HTTP-Referer)", InsertText = "httpReferer" });
+                members.Add(new CompletionItem { Label = "appTitle", Kind = "property", Detail = "string (X-OpenRouter-Title)", InsertText = "appTitle" });
+                members.Add(new CompletionItem { Label = "appCategories", Kind = "property", Detail = "string (X-OpenRouter-Categories)", InsertText = "appCategories" });
+            }
             // Methods
             members.Add(new CompletionItem { Label = "chat", Kind = "method", Detail = "chat(messages, tools?)", InsertText = "chat()" });
             members.Add(new CompletionItem { Label = "complete", Kind = "method", Detail = "complete(prompt)", InsertText = "complete()" });

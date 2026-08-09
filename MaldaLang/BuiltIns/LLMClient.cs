@@ -381,6 +381,8 @@ public class LLMClientInstance : ObjectInstance
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", ApiKey);
         }
 
+        ApplyRequestHeaders(request);
+
         var response = _httpClient.Send(request);
         var responseContent = response.Content.ReadAsStringAsync().Result;
 
@@ -410,6 +412,8 @@ public class LLMClientInstance : ObjectInstance
         {
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", ApiKey);
         }
+
+        ApplyRequestHeaders(request);
 
         using var response = _httpClient.Send(request, HttpCompletionOption.ResponseHeadersRead);
         if (!response.IsSuccessStatusCode)
@@ -551,6 +555,13 @@ public class LLMClientInstance : ObjectInstance
         return RuntimeValue.Object(resultObj);
     }
     
+    /// <summary>
+    /// Hook for subclasses (e.g. OpenRouterClient) to add provider-specific HTTP headers.
+    /// </summary>
+    protected virtual void ApplyRequestHeaders(HttpRequestMessage request)
+    {
+    }
+
     public RuntimeValue Complete(string prompt)
     {
         var messages = new List<RuntimeValue>

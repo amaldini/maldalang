@@ -152,6 +152,15 @@ var client = new OpenRouterClient("openai/gpt-4");</code></pre>
         <div class="info-box">
             <strong>Automatic Configuration:</strong> OpenRouterClient automatically reads the API key from the <code>OPENROUTER_API_KEY</code> environment variable and uses the correct OpenRouter endpoint.
         </div>
+        <h3>App attribution (OpenRouter analytics)</h3>
+        <p>Set these properties so OpenRouter can attribute token usage to each of your apps
+        (<a href="https://openrouter.ai/docs/app-attribution">App Attribution</a>). Use a distinct
+        <code>httpReferer</code> URL per application. Analytics appear at
+        <code>https://openrouter.ai/apps?url=&lt;your-url&gt;</code>.</p>
+        <pre><code>var client = new OpenRouterClient();
+client.httpReferer = "https://example.com/secondbrain";  // HTTP-Referer (required for attribution)
+client.appTitle = "Second Brain ASK";                     // X-OpenRouter-Title
+client.appCategories = "cli-agent";                       // optional X-OpenRouter-Categories</code></pre>
         <h3>16.3.1 Default local LLM (when no client is provided)</h3>
         <p>When you create an agent, prompt, or use built-ins like <code>decomposeTask</code> without passing an LLM client, MALDA uses a <strong>default local LLM</strong>: Qwen/Qwen2.5-0.5B-Instruct, downloaded as the GGUF build <code>qwen2.5-0.5b-instruct-q4_k_m.gguf</code> from Hugging Face on first use. The model is cached under your user profile (e.g. <code>%LOCALAPPDATA%\MaldaLang\Models\default</code> on Windows). No API key or network is required after the first download. To use a remote model instead, pass an <code>OpenRouterClient</code>, <code>LLMClient</code>, or <code>LlamaCppClient</code> explicitly.</p>
         <p>You can override the default model with the environment variable <code>MALDA_DEFAULT_LOCAL_MODEL</code>. Set it to <code>modelId/fileName.gguf</code> (e.g. <code>org/repo/MyModel-Q4_K_M.gguf</code>) to use a different Hugging Face GGUF model; that model will be downloaded and cached in a subfolder named after the model ID. If unset, the built-in default Qwen/Qwen2.5-0.5B-Instruct GGUF build is used.</p>

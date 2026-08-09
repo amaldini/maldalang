@@ -5,7 +5,8 @@
 //   PRODUCT_NAME                             (display name, OR path/embed: to a utf-8 text file)
 //   ASK_TITLE_SUFFIX                         (e.g. " — ASK"; used when refreshing title from file)
 //   ASK_PAGE_TITLE, ASK_POWERED_BY, ASK_POWERED_BY_URL  (header branding)
-//   ASK_LOGO  (optional header logo: "", file path, embed:..., http(s):, or data:)
+//   ASK_LOGO  (optional logo left of title: "", file path, embed:..., http(s):, or data:)
+//   ASK_LOGO_RIGHT  (optional logo right of title — same path forms as ASK_LOGO)
 //   askHttpServer                            (var, initially null)
 //   runAskTurn(question) -> { question, answer, sources, error }
 //   UI_LANG                                  (existing)
@@ -13,6 +14,7 @@
 // Brain branding (disk or embed root), auto-loaded when hosts call askApply*FromBrain:
 //   product_name.txt — first non-empty line
 //   logo.png / .svg / .jpg / .jpeg / .webp / .gif / .ico — if ASK_LOGO is empty
+//   logo_right.png / .svg / .jpg / .jpeg / .webp / .gif / .ico — if ASK_LOGO_RIGHT is empty
 //
 // HttpServer isolates each request: brain/catalog live in shared ui.state
 // (ASK_SESSION_ID); per-browser conversations use scope askConvScope() from
@@ -21,6 +23,10 @@
 // only #ask-panel. Live progress uses @LIVE + per-conversation SSE channel
 // ask-{c} because the POST /ask connection stays blocked until the answer
 // is ready.
+//
+// Theme: query `theme=light|dark` (header toggle). Persisted in cookie
+// malda_ask_theme (browser-wide, survives conversations); also mirrored in
+// ui.state for the active scope. Default light. CSS: html[data-theme=...].
 //
 // Cookie JWT auth is on by default for ASK. Disable with --no-auth (or
 // MALDA_ASK_AUTH=0). Login: /login  Logout: /logout  Register: /register.
@@ -32,7 +38,9 @@
 // Host must define runAskTurn(question) and runAskUpdateFromUpload(body).
 
 var ASK_CONV_COOKIE = "malda_ask_c";
+var ASK_THEME_COOKIE = "malda_ask_theme";
 var ASK_CONV_CURRENT = "";
+var ASK_THEME_CURRENT = "";
 var ASK_HISTORY_CURRENT = "";
 var ASK_CURRENT_SUB = "";
 var ASK_CURRENT_ROLE = "";
@@ -781,10 +789,11 @@ function askAuthFormStyles() {
     return "<style>.login-wrap{max-width:420px;margin:48px auto;padding:0 16px}" +
         ".login-wrap h1{font-size:1.35rem;margin:0 0 12px}" +
         ".login-wrap label{display:block;margin:12px 0 4px;font-size:.9rem}" +
-        ".login-wrap input{width:100%;padding:10px;box-sizing:border-box}" +
+        ".login-wrap input{width:100%;padding:10px;box-sizing:border-box;" +
+        "border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}" +
         ".login-wrap button{margin-top:16px;width:100%;padding:10px 14px;cursor:pointer}" +
         ".login-wrap .hint,.login-wrap .alt{opacity:.85;margin-top:14px}" +
-        ".login-wrap .ok{color:#0f6a5b}</style>";
+        ".login-wrap .ok{color:var(--accent)}</style>";
 }
 
 function askRenderLoginPage(errorMessage, noticeMessage) {
@@ -810,7 +819,8 @@ function askRenderLoginPage(errorMessage, noticeMessage) {
         alt = "<p class='alt'><a href='/register'>" + askEscapeHtml(askT(
             "Create an account", "Crea un account")) + "</a></p>";
     }
-    return "<!DOCTYPE html><html lang='" + askGetLang() + "'><head>" +
+    return "<!DOCTYPE html><html lang='" + askGetLang() + "' data-theme='" +
+        askGetTheme() + "'><head>" +
         "<meta charset='utf-8'>" +
         "<meta name='viewport' content='width=device-width,initial-scale=1'>" +
         "<title>" + askEscapeHtml(title) + "</title>" +
@@ -834,7 +844,8 @@ function askRenderRegisterPage(errorMessage) {
     if (err != "") {
         errHtml = "<p class='flash error'>" + askEscapeHtml(err) + "</p>";
     }
-    return "<!DOCTYPE html><html lang='" + askGetLang() + "'><head>" +
+    return "<!DOCTYPE html><html lang='" + askGetLang() + "' data-theme='" +
+        askGetTheme() + "'><head>" +
         "<meta charset='utf-8'>" +
         "<meta name='viewport' content='width=device-width,initial-scale=1'>" +
         "<title>" + askEscapeHtml(title) + "</title>" +
@@ -863,6 +874,8 @@ function askUiLoginPage(queryParams, response, cookies) {
     if (askAuthJwtSecret == "") {
         askLoadAuthCredentials();
     }
+    askLoadThemeFromCookie(cookies);
+    askSetThemeCookie(response, askGetTheme());
     var err = "";
     var notice = "";
     if (queryParams != null and queryParams["error"] != null) {
@@ -908,6 +921,8 @@ function askUiRegisterPage(queryParams, response, cookies) {
     if (askAuthJwtSecret == "") {
         askLoadAuthCredentials();
     }
+    askLoadThemeFromCookie(cookies);
+    askSetThemeCookie(response, askGetTheme());
     return askRenderRegisterPage("");
 }
 
@@ -1116,6 +1131,56 @@ function askSetConvCookie(response, id) {
     });
 }
 
+function askNormalizeTheme(raw) {
+    var theme = str.lower(str.trim(askAsText(raw)));
+    if (theme == "dark" or theme == "scuro" or theme == "night") {
+        return "dark";
+    }
+    if (theme == "light" or theme == "chiaro" or theme == "day") {
+        return "light";
+    }
+    return "";
+}
+
+function askSetThemeCookie(response, theme) {
+    if (response == null) {
+        return;
+    }
+    var t = askNormalizeTheme(theme);
+    if (t == "") {
+        return;
+    }
+    // Not httpOnly: preference cookie is not secret; keep readable/writable by UI if needed.
+    response.cookie(ASK_THEME_COOKIE, t, {
+        "httpOnly": false,
+        "secure": false,
+        "sameSite": "Lax",
+        "path": "/",
+        "maxAge": 31536000
+    });
+}
+
+function askLoadThemeFromCookie(cookies) {
+    var fromCookie = askNormalizeTheme(askCookieGet(cookies, ASK_THEME_COOKIE));
+    // Always refresh request cache (empty clears a prior request's value).
+    ASK_THEME_CURRENT = fromCookie;
+    if (fromCookie != "") {
+        ui.setState(ASK_STORE, "theme", fromCookie, askActiveHistoryScope());
+    }
+    return fromCookie;
+}
+
+function askLoadThemeFromRequest(req) {
+    if (req == null) {
+        return "";
+    }
+    try {
+        return askLoadThemeFromCookie(req.cookies);
+    } catch (themeCookieErr) {
+        return "";
+    }
+}
+
 // Bind conversation id + per-user history scope for this request.
 function askBeginRequest(queryParams, body, cookies, response, req) {
     var id = askPickConvId(queryParams, body, cookies);
@@ -1123,6 +1188,8 @@ function askBeginRequest(queryParams, body, cookies, response, req) {
     askSetConvCookie(response, id);
     askCaptureAuthContext(req);
     ASK_HISTORY_CURRENT = askHistoryScope(req);
+    askLoadThemeFromCookie(cookies);
+    askSetThemeCookie(response, askGetTheme());
     return id;
 }
 
@@ -1266,6 +1333,26 @@ function askSetLang(raw) {
     } else if (lang == "en" or lang == "english" or lang == "1") {
         ui.setState(ASK_STORE, "lang", "en", askActiveHistoryScope());
     }
+}
+
+function askGetTheme() {
+    if (ASK_THEME_CURRENT == "dark" or ASK_THEME_CURRENT == "light") {
+        return ASK_THEME_CURRENT;
+    }
+    var theme = askNormalizeTheme(ui.state(ASK_STORE, "theme", "", askActiveHistoryScope()));
+    if (theme != "") {
+        return theme;
+    }
+    return "light";
+}
+
+function askSetTheme(raw) {
+    var theme = askNormalizeTheme(raw);
+    if (theme == "") {
+        return;
+    }
+    ASK_THEME_CURRENT = theme;
+    ui.setState(ASK_STORE, "theme", theme, askActiveHistoryScope());
 }
 
 function askT(en, it) {
@@ -1556,16 +1643,34 @@ function askRenderTurnHtml(turn, index) {
 
 function askPageStyles() {
     return "<style>" +
-        ":root{--ink:#1c2430;--muted:#5c6b7a;--line:#d5dde6;--paper:#f7f4ef;" +
-        "--panel:#fffcf8;--accent:#0f6a5b;--accent-ink:#083f38;--warn:#8a5a12;" +
-        "--danger:#8b2e2e;--focus:#c9e7e1;--q-bg:#e8f2ef;--sticky-bg:rgba(247,244,239,0.92);" +
+        ":root,:root[data-theme=light]{--ink:#1c2430;--muted:#5c6b7a;--line:#d5dde6;--paper:#f7f4ef;" +
+        "--panel:#fffcf8;--surface:#ffffff;--surface-2:#eef2f5;--chip:#f4f7f8;" +
+        "--accent:#0f6a5b;--accent-ink:#083f38;--accent-strong:#083f38;--accent-line:#c5ddd6;--pill:#dceee9;" +
+        "--warn:#8a5a12;--danger:#8b2e2e;--focus:#c9e7e1;--q-bg:#e8f2ef;" +
+        "--sticky-bg:rgba(247,244,239,0.92);--hover:rgba(15,106,91,0.06);" +
+        "--error-bg:#fff5f5;--error-border:#efc4c4;--live-bg:#e8f2ef;" +
+        "--switch-off:#cfd8e0;--switch-off-border:#b8c4d0;--knob:#fff;" +
+        "--shadow:rgba(28,36,48,0.14);--shadow-soft:rgba(28,36,48,0.06);" +
+        "--body-glow:#e7efe9;--body-a:#eef2f5;--body-b:#f7f4ef;--body-c:#f3efe8;" +
+        "--btn-fg:#fff;" +
         "--ui:system-ui,-apple-system,Segoe UI,sans-serif;" +
         "--serif:Georgia,'Times New Roman',serif}" +
+        ":root[data-theme=dark]{--ink:#e8eef4;--muted:#9aabba;--line:#2f3b48;--paper:#121820;" +
+        "--panel:#1a222c;--surface:#222b36;--surface-2:#1e2630;--chip:#243038;" +
+        "--accent:#3d9b88;--accent-ink:#a8e0d4;--accent-strong:#2d7a6b;--accent-line:#2f5a50;--pill:#1e3a35;" +
+        "--warn:#e0b060;--danger:#e08080;--focus:#2a5a52;--q-bg:#1e3330;" +
+        "--sticky-bg:rgba(18,24,32,0.92);--hover:rgba(61,155,136,0.14);" +
+        "--error-bg:#3a2222;--error-border:#6a3a3a;--live-bg:#1e3330;" +
+        "--switch-off:#3a4654;--switch-off-border:#4a5664;--knob:#e8eef4;" +
+        "--shadow:rgba(0,0,0,0.4);--shadow-soft:rgba(0,0,0,0.28);" +
+        "--body-glow:#1a2e28;--body-a:#0f141a;--body-b:#121820;--body-c:#151c24;" +
+        "--btn-fg:#061510}" +
         "*{box-sizing:border-box}" +
-        "html{scroll-behavior:smooth}" +
+        "html{scroll-behavior:smooth;color-scheme:light}" +
+        "html[data-theme=dark]{color-scheme:dark}" +
         "body{margin:0;font-family:var(--ui);color:var(--ink);" +
-        "background:radial-gradient(1200px 500px at 10% -10%,#e7efe9 0%,transparent 55%)," +
-        "linear-gradient(180deg,#eef2f5,#f7f4ef 40%,#f3efe8);min-height:100vh}" +
+        "background:radial-gradient(1200px 500px at 10% -10%,var(--body-glow) 0%,transparent 55%)," +
+        "linear-gradient(180deg,var(--body-a),var(--body-b) 40%,var(--body-c));min-height:100vh}" +
         "main{max-width:760px;width:100%;margin:0 auto;padding:0 18px 48px}" +
         "main.has-logo{width:fit-content;min-width:min(760px,100%);max-width:100%}" +
         ".sticky-header{position:sticky;top:0;z-index:20;padding:14px 0 10px;" +
@@ -1574,11 +1679,12 @@ function askPageStyles() {
         "border-bottom:1px solid var(--line)}" +
         ".sticky-header-inner{display:flex;justify-content:space-between;gap:16px;" +
         "align-items:flex-start;flex-wrap:wrap}" +
-        ".brand{display:flex;align-items:flex-start;gap:12px;min-width:min-content;flex:1}" +
-        ".logo{height:48px;max-width:min(70vw,100%);object-fit:contain;flex-shrink:0;display:block}" +
+        ".brand{display:flex;align-items:center;gap:12px;min-width:min-content;flex:1}" +
+        ".logo{height:48px;max-width:min(40vw,220px);object-fit:contain;flex-shrink:0;display:block}" +
+        ".logo-right{height:48px;max-width:min(40vw,220px);object-fit:contain;flex-shrink:0;display:block}" +
         ".brand-text{min-width:0}" +
         "h1{font-family:var(--serif);font-size:1.55rem;font-weight:700;margin:0;" +
-        "letter-spacing:-0.02em;line-height:1.2}" +
+        "letter-spacing:-0.02em;line-height:1.2;color:var(--ink)}" +
         ".powered-by{margin:4px 0 0;font-size:0.75rem;line-height:1.35;color:var(--muted);" +
         "max-width:42rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}" +
         ".powered-by a{color:var(--muted);text-decoration:none;border-bottom:1px solid transparent}" +
@@ -1587,8 +1693,8 @@ function askPageStyles() {
         ".lang{display:flex;gap:6px;align-items:center}" +
         ".lang a{color:var(--muted);text-decoration:none;font-size:0.82rem;font-weight:600;" +
         "padding:5px 10px;border-radius:7px;border:1px solid transparent;letter-spacing:0.02em}" +
-        ".lang a:hover{color:var(--accent-ink);background:rgba(15,106,91,0.06)}" +
-        ".lang a.active{color:var(--accent-ink);background:var(--q-bg);border-color:#c5ddd6;" +
+        ".lang a:hover{color:var(--accent-ink);background:var(--hover)}" +
+        ".lang a.active{color:var(--accent-ink);background:var(--q-bg);border-color:var(--accent-line);" +
         "box-shadow:inset 0 -2px 0 var(--accent)}" +
         ".new-conv{font-size:0.78rem;font-weight:600;color:var(--accent-ink);text-decoration:none;" +
         "border-bottom:1px solid transparent}" +
@@ -1598,11 +1704,11 @@ function askPageStyles() {
         ".tag-picker{position:relative;margin:8px 0 2px;z-index:16}" +
         ".tag-picker>summary{list-style:none;cursor:pointer;display:flex;align-items:center;" +
         "justify-content:space-between;gap:10px;padding:8px 12px;border:1px solid var(--line);" +
-        "border-radius:9px;background:#fff;font-size:0.82rem;color:var(--ink);user-select:none}" +
+        "border-radius:9px;background:var(--surface);font-size:0.82rem;color:var(--ink);user-select:none}" +
         ".tag-picker>summary::-webkit-details-marker{display:none}" +
         ".tag-picker>summary::marker{content:''}" +
-        ".tag-picker>summary:hover{border-color:#c5ddd6;background:var(--q-bg)}" +
-        ".tag-picker[open]>summary{border-color:#c5ddd6;background:var(--q-bg);" +
+        ".tag-picker>summary:hover{border-color:var(--accent-line);background:var(--q-bg)}" +
+        ".tag-picker[open]>summary{border-color:var(--accent-line);background:var(--q-bg);" +
         "box-shadow:inset 0 -2px 0 var(--accent)}" +
         ".tag-picker-label{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}" +
         ".tag-picker-label strong{font-weight:650;color:var(--accent-ink)}" +
@@ -1611,7 +1717,7 @@ function askPageStyles() {
         ".tag-picker-panel{position:absolute;left:0;right:0;bottom:calc(100% + 6px);" +
         "max-height:min(38vh,220px);overflow:auto;display:flex;flex-wrap:wrap;gap:8px;" +
         "padding:10px 12px;background:var(--panel);border:1px solid var(--line);border-radius:10px;" +
-        "box-shadow:0 10px 28px rgba(28,36,48,0.14);z-index:20}" +
+        "box-shadow:0 10px 28px var(--shadow);z-index:20}" +
         ".tag-picker-panel label{font-size:0.78rem;color:var(--muted);display:flex;gap:5px;" +
         "align-items:center;padding:3px 2px;max-width:100%}" +
         ".tag-picker-panel label span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}" +
@@ -1630,7 +1736,7 @@ function askPageStyles() {
         ".thread{display:flex;flex-direction:column;gap:22px;margin-top:20px}" +
         ".turn{display:flex;flex-direction:column;gap:12px}" +
         ".bubble{border:1px solid var(--line);border-radius:12px;padding:14px 16px}" +
-        ".bubble.q{background:var(--q-bg);border-color:#c5ddd6;border-left:3px solid var(--accent)}" +
+        ".bubble.q{background:var(--q-bg);border-color:var(--accent-line);border-left:3px solid var(--accent)}" +
         ".bubble.a{background:var(--panel)}" +
         ".bubble-label{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.06em;" +
         "color:var(--muted);margin:0 0 8px;font-weight:600}" +
@@ -1641,11 +1747,11 @@ function askPageStyles() {
         ".answer.md h3{font-size:1.05rem;margin:1em 0 0.45em}" +
         ".answer.md strong{font-weight:700}" +
         ".answer.md code{font-family:ui-monospace,Consolas,monospace;font-size:0.88em;" +
-        "background:#eef2f5;padding:0.12em 0.4em;border-radius:4px}" +
+        "background:var(--surface-2);padding:0.12em 0.4em;border-radius:4px}" +
         ".answer.md table{border-collapse:collapse;width:100%;margin:0.6em 0 0.2em;" +
         "font-family:var(--ui);font-size:0.9rem}" +
         ".answer.md th,.answer.md td{border:1px solid var(--line);padding:6px 8px;text-align:left}" +
-        ".answer.md th{background:#eef2f5;font-weight:600}" +
+        ".answer.md th{background:var(--surface-2);font-weight:600}" +
         ".answer.md ul,.answer.md ol{margin:0.4em 0 0.8em;padding-left:1.3em}" +
         ".sources-block{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}" +
         ".sources-label{font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;" +
@@ -1653,12 +1759,12 @@ function askPageStyles() {
         ".sources-chips{display:flex;flex-wrap:wrap;gap:8px}" +
         ".source-chip{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;" +
         "flex:1 1 200px;min-width:min(100%,200px);max-width:100%;" +
-        "background:#f4f7f8;border:1px solid var(--line);border-radius:10px;padding:10px 12px}" +
+        "background:var(--chip);border:1px solid var(--line);border-radius:10px;padding:10px 12px}" +
         ".source-chip-body{min-width:0;flex:1}" +
         ".source-chip-title{font-size:0.88rem;font-weight:600;line-height:1.3;margin:0 0 4px;" +
         "color:var(--ink)}" +
         ".score-pill{flex:0 0 auto;font-size:0.72rem;font-weight:700;font-variant-numeric:tabular-nums;" +
-        "color:var(--accent-ink);background:#dceee9;border:1px solid #c5ddd6;" +
+        "color:var(--accent-ink);background:var(--pill);border:1px solid var(--accent-line);" +
         "border-radius:999px;padding:3px 8px;white-space:nowrap;max-width:9rem;" +
         "overflow:hidden;text-overflow:ellipsis}" +
         ".slug,.path,.meta,.muted{color:var(--muted)}" +
@@ -1669,16 +1775,16 @@ function askPageStyles() {
         "font-size:0.88rem;color:var(--ink);cursor:pointer;line-height:1.3;font-weight:500;" +
         "user-select:none}" +
         "label.tool-toggle input{position:absolute;opacity:0;width:1px;height:1px;overflow:hidden}" +
-        "label.tool-toggle .switch{width:36px;height:20px;border-radius:999px;background:#cfd8e0;" +
-        "border:1px solid #b8c4d0;position:relative;flex:0 0 auto;transition:background .15s ease}" +
+        "label.tool-toggle .switch{width:36px;height:20px;border-radius:999px;background:var(--switch-off);" +
+        "border:1px solid var(--switch-off-border);position:relative;flex:0 0 auto;transition:background .15s ease}" +
         "label.tool-toggle .switch::after{content:'';position:absolute;top:1px;left:1px;" +
-        "width:16px;height:16px;border-radius:50%;background:#fff;" +
-        "box-shadow:0 1px 2px rgba(28,36,48,0.2);transition:transform .15s ease}" +
+        "width:16px;height:16px;border-radius:50%;background:var(--knob);" +
+        "box-shadow:0 1px 2px var(--shadow-soft);transition:transform .15s ease}" +
         "label.tool-toggle input:checked+.switch{background:var(--accent);border-color:var(--accent)}" +
         "label.tool-toggle input:checked+.switch::after{transform:translateX(16px)}" +
         "label.tool-toggle input:focus-visible+.switch{outline:2px solid var(--focus);outline-offset:2px}" +
         "textarea{width:100%;min-height:88px;resize:vertical;padding:12px 14px;border-radius:8px;" +
-        "border:1px solid var(--line);background:#fff;color:var(--ink);font:1rem/1.45 var(--ui)}" +
+        "border:1px solid var(--line);background:var(--surface);color:var(--ink);font:1rem/1.45 var(--ui)}" +
         "textarea:focus{outline:2px solid var(--focus);border-color:var(--accent)}" +
         ".composer-bar{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:12px}" +
         ".composer-bar .actions{display:flex;gap:10px;flex-wrap:wrap;margin-left:auto}" +
@@ -1686,15 +1792,15 @@ function askPageStyles() {
         ".composer-bar .actions .ghost{order:1}" +
         "button,.ghost{font-family:var(--ui);border-radius:8px;padding:10px 14px;" +
         "border:1px solid var(--accent);cursor:pointer;font-size:0.92rem;font-weight:600}" +
-        "button{background:var(--accent);color:#fff}" +
-        "button:hover{background:var(--accent-ink)}" +
+        "button{background:var(--accent);color:var(--btn-fg)}" +
+        "button:hover{background:var(--accent-strong);color:var(--btn-fg)}" +
         ".ghost{background:transparent;color:var(--accent-ink);text-decoration:none;display:inline-block}" +
-        ".ghost:hover{background:rgba(15,106,91,0.06)}" +
+        ".ghost:hover{background:var(--hover)}" +
         ".error{color:var(--danger);margin:0}" +
-        ".error-bubble{background:#fff5f5;border-color:#efc4c4}" +
+        ".error-bubble{background:var(--error-bg);border-color:var(--error-border)}" +
         ".pending{color:var(--warn);margin:0;font-style:italic;font-family:var(--ui)}" +
         ".live-status,.live-dock{font-size:0.88rem;margin:8px 0 0;" +
-        "color:var(--accent-ink);background:#e8f2ef;border:1px solid #c5ddd6;border-radius:8px;" +
+        "color:var(--accent-ink);background:var(--live-bg);border:1px solid var(--accent-line);border-radius:8px;" +
         "padding:8px 12px}" +
         /* Home is only a safe shelf outside #ask-panel; while live the dock sits in the sticky composer. */
         "#ask-live-home:empty{display:none}" +
@@ -1710,12 +1816,12 @@ function askPageStyles() {
         ".empty-hint{margin:0 0 14px;color:var(--muted);font-size:0.9rem;line-height:1.4}" +
         ".examples{display:flex;flex-wrap:wrap;gap:8px}" +
         ".example{font-family:var(--ui);font-size:0.86rem;font-weight:500;color:var(--accent-ink);" +
-        "background:#fff;border:1px solid #c5ddd6;border-radius:999px;padding:8px 12px;cursor:pointer;" +
+        "background:var(--surface);border:1px solid var(--accent-line);border-radius:999px;padding:8px 12px;cursor:pointer;" +
         "text-align:left;line-height:1.3}" +
         ".example:hover{background:var(--q-bg);border-color:var(--accent)}" +
         ".composer{position:sticky;bottom:0;z-index:15;margin-top:20px;" +
         "background:var(--panel);border:1px solid var(--line);border-radius:12px;" +
-        "padding:14px 16px;box-shadow:0 -10px 28px rgba(28,36,48,0.06)}" +
+        "padding:14px 16px;box-shadow:0 -10px 28px var(--shadow-soft)}" +
         ".composer .clear-form{position:absolute;width:1px;height:1px;padding:0;margin:-1px;" +
         "overflow:hidden;clip:rect(0,0,0,0);border:0}" +
         ".busy{font-size:0.8rem;color:var(--muted);margin:0}" +
@@ -1750,6 +1856,10 @@ function askInvalidateLogoCache() {
     ui.setState(ASK_STORE, "logoSrcCached", false, ASK_SESSION_ID);
 }
 
+function askInvalidateLogoRightCache() {
+    ui.setState(ASK_STORE, "logoRightSrcCached", false, ASK_SESSION_ID);
+}
+
 // Normalize disk paths: accept / or \ ; strip accidental quotes.
 function askNormalizeLogoPath(path) {
     var p = str.trim(askAsText(path));
@@ -1778,14 +1888,11 @@ function askLogoFileExists(path) {
     return io.hasFile(p);
 }
 
-// Prefer brainDir/logo.* when ASK_LOGO is empty; resolve relative ASK_LOGO under brainDir.
-// Call after the brain root is known (disk folder or embed:alias).
+// Resolve current logo against brainDir; when empty, try autoNames under the brain root.
 // Returns the resolved path (may be "") — does not print; hosts may warn on miss.
-function askApplyLogoFromBrain(brainDir) {
+function askResolveLogoPathAgainstBrain(brainDir, current, autoNames) {
     var root = askNormalizeLogoPath(brainDir);
-    var current = askNormalizeLogoPath(ASK_LOGO);
-    ASK_LOGO = current;
-    askInvalidateLogoCache();
+    current = askNormalizeLogoPath(current);
 
     if (current != "") {
         if (str.startsWith(current, "http://") or str.startsWith(current, "https://") or
@@ -1793,23 +1900,18 @@ function askApplyLogoFromBrain(brainDir) {
             return current;
         }
         if (askLogoFileExists(current)) {
-            ASK_LOGO = current;
             return current;
         }
         if (root != "") {
-            var underBrain = io.pathJoin(root, current);
-            // pathJoin may reintroduce \; normalize again for hasFile.
-            underBrain = askNormalizeLogoPath(underBrain);
+            var underBrain = askNormalizeLogoPath(io.pathJoin(root, current));
             if (askLogoFileExists(underBrain)) {
-                ASK_LOGO = underBrain;
                 return underBrain;
             }
-            // If ASK_LOGO was a basename like logo.png, also try root + filename only.
+            // Basename like logo.png → also try root + filename only.
             var baseName = io.getFileName(current);
             if (baseName != "" and baseName != current) {
                 var underBrainBase = askNormalizeLogoPath(io.pathJoin(root, baseName));
                 if (askLogoFileExists(underBrainBase)) {
-                    ASK_LOGO = underBrainBase;
                     return underBrainBase;
                 }
             }
@@ -1820,20 +1922,45 @@ function askApplyLogoFromBrain(brainDir) {
     if (root == "") {
         return "";
     }
-    var names = ["logo.png", "logo.svg", "logo.jpg", "logo.jpeg", "logo.webp", "logo.gif", "logo.ico"];
-    foreach (var name in names) {
+    foreach (var name in autoNames) {
         var path = askNormalizeLogoPath(io.pathJoin(root, name));
         if (askLogoFileExists(path)) {
-            ASK_LOGO = path;
             return path;
         }
     }
     return "";
 }
 
-// True when ASK_LOGO is set to a local/embed path that could not be opened.
-function askLogoPathMissing() {
-    var logo = askNormalizeLogoPath(ASK_LOGO);
+function askLogoAutoNamesLeft() {
+    return ["logo.png", "logo.svg", "logo.jpg", "logo.jpeg", "logo.webp", "logo.gif", "logo.ico"];
+}
+
+function askLogoAutoNamesRight() {
+    return [
+        "logo_right.png", "logo_right.svg", "logo_right.jpg", "logo_right.jpeg",
+        "logo_right.webp", "logo_right.gif", "logo_right.ico"
+    ];
+}
+
+// Prefer brainDir/logo.* when ASK_LOGO is empty; resolve relative ASK_LOGO under brainDir.
+// Call after the brain root is known (disk folder or embed:alias).
+function askApplyLogoFromBrain(brainDir) {
+    askInvalidateLogoCache();
+    ASK_LOGO = askResolveLogoPathAgainstBrain(brainDir, ASK_LOGO, askLogoAutoNamesLeft());
+    return ASK_LOGO;
+}
+
+// Prefer brainDir/logo_right.* when ASK_LOGO_RIGHT is empty; resolve relative path under brainDir.
+function askApplyLogoRightFromBrain(brainDir) {
+    askInvalidateLogoRightCache();
+    ASK_LOGO_RIGHT = askResolveLogoPathAgainstBrain(
+        brainDir, ASK_LOGO_RIGHT, askLogoAutoNamesRight());
+    return ASK_LOGO_RIGHT;
+}
+
+// True when a local/embed logo path is set but could not be opened.
+function askLogoConfiguredPathMissing(logoPath) {
+    var logo = askNormalizeLogoPath(logoPath);
     if (logo == "") {
         return false;
     }
@@ -1844,45 +1971,76 @@ function askLogoPathMissing() {
     return not askLogoFileExists(logo);
 }
 
+function askLogoPathMissing() {
+    return askLogoConfiguredPathMissing(ASK_LOGO);
+}
+
+function askLogoRightPathMissing() {
+    return askLogoConfiguredPathMissing(ASK_LOGO_RIGHT);
+}
+
+// Load logo bytes/URL into a data: or remote src string. When side is "right", updates
+// ASK_LOGO_RIGHT if a relative path is resolved under the session brain; else ASK_LOGO.
+function askLoadLogoSrc(logoPath, side) {
+    var logo = askNormalizeLogoPath(logoPath);
+    var src = "";
+    if (logo == "") {
+        return src;
+    }
+    if (str.startsWith(logo, "http://") or str.startsWith(logo, "https://") or
+            str.startsWith(logo, "data:")) {
+        return logo;
+    }
+    if (askLogoFileExists(logo)) {
+        var b64 = io.readFileBase64(logo);
+        if (b64 != null and askAsText(b64) != "") {
+            return "data:" + askLogoMime(logo) + ";base64," + askAsText(b64);
+        }
+        return "";
+    }
+    // Last chance: relative to session brainDir (if apply was skipped).
+    var session = askGetSession();
+    var root = "";
+    if (session != null) {
+        root = askNormalizeLogoPath(session.brainDir);
+    }
+    if (root != "") {
+        var underBrain = askNormalizeLogoPath(io.pathJoin(root, logo));
+        if (askLogoFileExists(underBrain)) {
+            logo = underBrain;
+            if (side == "right") {
+                ASK_LOGO_RIGHT = logo;
+            } else {
+                ASK_LOGO = logo;
+            }
+            var b64b = io.readFileBase64(logo);
+            if (b64b != null and askAsText(b64b) != "") {
+                src = "data:" + askLogoMime(logo) + ";base64," + askAsText(b64b);
+            }
+        }
+    }
+    return src;
+}
+
 // Resolves ASK_LOGO once per ASK session (cached in ui.state).
-// Accepts "", http(s):/data: URL, or a local/embed file path.
 function askResolveLogoSrc() {
     if (ui.state(ASK_STORE, "logoSrcCached", false, ASK_SESSION_ID) == true) {
         return askAsText(ui.state(ASK_STORE, "logoSrc", "", ASK_SESSION_ID));
     }
-    var logo = askNormalizeLogoPath(ASK_LOGO);
-    var src = "";
-    if (logo != "") {
-        if (str.startsWith(logo, "http://") or str.startsWith(logo, "https://") or
-                str.startsWith(logo, "data:")) {
-            src = logo;
-        } else if (askLogoFileExists(logo)) {
-            var b64 = io.readFileBase64(logo);
-            if (b64 != null and askAsText(b64) != "") {
-                src = "data:" + askLogoMime(logo) + ";base64," + askAsText(b64);
-            }
-        } else {
-            // Last chance: relative to session brainDir (if apply was skipped).
-            var session = askGetSession();
-            var root = "";
-            if (session != null) {
-                root = askNormalizeLogoPath(session.brainDir);
-            }
-            if (root != "") {
-                var underBrain = askNormalizeLogoPath(io.pathJoin(root, logo));
-                if (askLogoFileExists(underBrain)) {
-                    logo = underBrain;
-                    ASK_LOGO = logo;
-                    var b64b = io.readFileBase64(logo);
-                    if (b64b != null and askAsText(b64b) != "") {
-                        src = "data:" + askLogoMime(logo) + ";base64," + askAsText(b64b);
-                    }
-                }
-            }
-        }
-    }
+    var src = askLoadLogoSrc(ASK_LOGO, "left");
     ui.setState(ASK_STORE, "logoSrc", src, ASK_SESSION_ID);
     ui.setState(ASK_STORE, "logoSrcCached", true, ASK_SESSION_ID);
+    return src;
+}
+
+// Resolves ASK_LOGO_RIGHT once per ASK session (cached in ui.state).
+function askResolveLogoRightSrc() {
+    if (ui.state(ASK_STORE, "logoRightSrcCached", false, ASK_SESSION_ID) == true) {
+        return askAsText(ui.state(ASK_STORE, "logoRightSrc", "", ASK_SESSION_ID));
+    }
+    var src = askLoadLogoSrc(ASK_LOGO_RIGHT, "right");
+    ui.setState(ASK_STORE, "logoRightSrc", src, ASK_SESSION_ID);
+    ui.setState(ASK_STORE, "logoRightSrcCached", true, ASK_SESSION_ID);
     return src;
 }
 
@@ -2365,6 +2523,12 @@ function askPageClientScript() {
         "navigateLang(lang.getAttribute('href')||'');" +
         "return;" +
         "}" +
+        "var theme=t.closest('a[data-ask-theme]');" +
+        "if(theme){" +
+        "e.preventDefault();" +
+        "navigateLang(theme.getAttribute('href')||'');" +
+        "return;" +
+        "}" +
         "var btn=t.closest('[data-ask-example]');" +
         "if(btn){" +
         "e.preventDefault();" +
@@ -2439,6 +2603,8 @@ function askRenderPage() {
     var poweredBy = askAsText(ASK_POWERED_BY);
     var poweredByUrl = askAsText(ASK_POWERED_BY_URL);
     var logoSrc = askResolveLogoSrc();
+    var logoRightSrc = askResolveLogoRightSrc();
+    var theme = askGetTheme();
     var enClass = "";
     var itClass = "";
     if (lang == "en") {
@@ -2446,12 +2612,19 @@ function askRenderPage() {
     } else {
         itClass = " active";
     }
+    var lightClass = "";
+    var darkClass = "";
+    if (theme == "dark") {
+        darkClass = " active";
+    } else {
+        lightClass = " active";
+    }
 
     var mainClass = "";
-    if (logoSrc != "") {
+    if (logoSrc != "" or logoRightSrc != "") {
         mainClass = " class='has-logo'";
     }
-    var html = "<!DOCTYPE html><html lang='" + lang + "'><head>" +
+    var html = "<!DOCTYPE html><html lang='" + lang + "' data-theme='" + theme + "'><head>" +
         "<meta charset='utf-8'>" +
         "<meta name='viewport' content='width=device-width,initial-scale=1'>" +
         "<title>" + askEscapeHtml(title) + "</title>" +
@@ -2475,13 +2648,26 @@ function askRenderPage() {
             html = html + "<p class='powered-by'>" + askEscapeHtml(poweredBy) + "</p>";
         }
     }
-    html = html + "</div></div>" +
+    html = html + "</div>";
+    if (logoRightSrc != "") {
+        html = html + "<img class='logo-right' src='" + askEscapeHtml(logoRightSrc) +
+            "' alt=''>";
+    }
+    html = html + "</div>" +
         "<div class='header-actions'>" +
         "<nav class='lang' aria-label='" + askEscapeHtml(askT("Language", "Lingua")) + "'>" +
         "<a class='" + str.trim(enClass) + "' href='/?" + askEscapeHtml(askConvQuery("lang=en")) +
         "' hreflang='en' data-ask-lang='en'>EN</a>" +
         "<a class='" + str.trim(itClass) + "' href='/?" + askEscapeHtml(askConvQuery("lang=it")) +
         "' hreflang='it' data-ask-lang='it'>IT</a>" +
+        "</nav>" +
+        "<nav class='lang' aria-label='" + askEscapeHtml(askT("Theme", "Tema")) + "'>" +
+        "<a class='" + str.trim(lightClass) + "' href='/?" +
+        askEscapeHtml(askConvQuery("theme=light")) +
+        "' data-ask-theme='light'>" + askEscapeHtml(askT("Light", "Chiaro")) + "</a>" +
+        "<a class='" + str.trim(darkClass) + "' href='/?" +
+        askEscapeHtml(askConvQuery("theme=dark")) +
+        "' data-ask-theme='dark'>" + askEscapeHtml(askT("Dark", "Scuro")) + "</a>" +
         "</nav>" +
         "<a class='new-conv' href='/?" + askEscapeHtml("c=" + askMintConvId()) + "'>" +
         askEscapeHtml(askT("New conversation", "Nuova conversazione")) + "</a>";
@@ -2543,10 +2729,17 @@ function askUiHome(queryParams, response, cookies, req) {
         if (queryParams != null and queryParams["lang"] != null) {
             redirect = redirect + "&lang=" + askAsText(queryParams["lang"]);
         }
+        if (queryParams != null and queryParams["theme"] != null) {
+            redirect = redirect + "&theme=" + askAsText(queryParams["theme"]);
+        }
         return RedirectTo(redirect);
     }
     if (queryParams != null and queryParams["lang"] != null) {
         askSetLang(queryParams["lang"]);
+    }
+    if (queryParams != null and queryParams["theme"] != null) {
+        askSetTheme(queryParams["theme"]);
+        askSetThemeCookie(response, askGetTheme());
     }
     // Bookmark / no-JS fallback for clear (AJAX path uses POST /clear).
     if (queryParams != null and queryParams["clear"] != null) {
@@ -2735,7 +2928,8 @@ function askRenderAdminUsersPage(flash) {
     if (msg != "") {
         flashHtml = "<p class='flash error'>" + askEscapeHtml(msg) + "</p>";
     }
-    var html = "<!DOCTYPE html><html lang='" + askGetLang() + "'><head>" +
+    var html = "<!DOCTYPE html><html lang='" + askGetLang() + "' data-theme='" +
+        askGetTheme() + "'><head>" +
         "<meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>" +
         "<title>" + askEscapeHtml(askT("Users", "Utenti")) + "</title>" +
         askPageStyles() + "</head><body><main class='admin-wrap'>" +
@@ -2813,6 +3007,8 @@ function askUiAdminUsers(req, res) {
     if (not askRequireAdmin(req, res)) {
         return "";
     }
+    askLoadThemeFromRequest(req);
+    askSetThemeCookie(res, askGetTheme());
     return askRenderAdminUsersPage("");
 }
 
@@ -2934,7 +3130,8 @@ function askRenderAdminUploadPage(flash, okMsg) {
             "<p><button type='submit'>" + askEscapeHtml(askT(
                 "Upload and update", "Carica e aggiorna")) + "</button></p></form>";
     }
-    return "<!DOCTYPE html><html lang='" + askGetLang() + "'><head>" +
+    return "<!DOCTYPE html><html lang='" + askGetLang() + "' data-theme='" +
+        askGetTheme() + "'><head>" +
         "<meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>" +
         "<title>" + askEscapeHtml(askT("Upload", "Upload")) + "</title>" +
         askPageStyles() + askAuthFormStyles() +
@@ -2951,6 +3148,8 @@ function askUiAdminUploadPage(req, res) {
     if (not askRequireAdmin(req, res)) {
         return "";
     }
+    askLoadThemeFromRequest(req);
+    askSetThemeCookie(res, askGetTheme());
     return askRenderAdminUploadPage("", "");
 }
 

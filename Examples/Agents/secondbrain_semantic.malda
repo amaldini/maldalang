@@ -94,14 +94,18 @@ var ASK_TITLE_SUFFIX = " — ASK (semantic)";
 var ASK_PAGE_TITLE = PRODUCT_NAME + ASK_TITLE_SUFFIX;
 var ASK_POWERED_BY = "Powered by MALDA: Multi Agent Language with Development Automation";
 var ASK_POWERED_BY_URL = "https://github.com/amaldini/maldalang";
-// Optional logo left of the title (works in normal ASK and in packed/embed exe):
-//   ""              -> auto-load logo.png/.svg/.jpg/… from the brain folder
+// Optional logos beside the title (works in normal ASK and in packed/embed exe):
+//   ASK_LOGO       -> left of title (company); auto-load logo.png/.svg/.jpg/…
+//   ASK_LOGO_RIGHT -> right of title (product); auto-load logo_right.png/.svg/.jpg/…
+// Path forms for either:
+//   ""              -> auto-load from the brain folder
 //   "logo.png"      -> same folder as the brain (resolved at ASK start)
 //   "P:/brain/logo.png" or "P:\\brain\\logo.png"  -> absolute disk path
 //      Prefer / or \\ — a single \ in "P:\Second..." is a string escape, not a folder slash.
 //   "embed:ALIAS/logo.png" -> packed brain only
 //   "https://..." / "data:..." -> remote or inline
 var ASK_LOGO = "";
+var ASK_LOGO_RIGHT = "";
 var SOURCE_SCRIPT_NAME = "secondbrain_semantic.malda";
 var EMBED_ALIAS = "secondbrain_semantic";
 var DEFAULT_PACK_OUTPUT = "dist/SecondBrain.exe";
@@ -3190,11 +3194,18 @@ function askBrain(cli) {
     var brainDir = resolveAskBrainRoot(cli);
     askApplyProductNameFromBrain(brainDir);
     askApplyLogoFromBrain(brainDir);
+    askApplyLogoRightFromBrain(brainDir);
     if (askLogoPathMissing()) {
         AnsiConsole.markupLine("[yellow]" + t(
             "ASK_LOGO not found (check path; use / or \\\\ in Windows strings): ",
             "ASK_LOGO non trovato (controlla il path; in stringhe Windows usa / o \\\\): ") +
             ASK_LOGO + "[/]");
+    }
+    if (askLogoRightPathMissing()) {
+        AnsiConsole.markupLine("[yellow]" + t(
+            "ASK_LOGO_RIGHT not found (check path; use / or \\\\ in Windows strings): ",
+            "ASK_LOGO_RIGHT non trovato (controlla il path; in stringhe Windows usa / o \\\\): ") +
+            ASK_LOGO_RIGHT + "[/]");
     }
     var catalog = loadCatalog(brainDir);
     var noteCount = catalogNoteCount(catalog);

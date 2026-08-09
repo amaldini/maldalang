@@ -181,6 +181,7 @@ public class SecondBrainAskFeaturesTests
                 var ASK_POWERED_BY = "Powered by MALDA: Multi Agent Language with Development Automation";
                 var ASK_POWERED_BY_URL = "https://github.com/amaldini/maldalang";
                 var ASK_LOGO = "{{logoLiteral}}";
+                var ASK_LOGO_RIGHT = "";
                 var UI_LANG = "en";
                 var askHttpServer = null;
 
@@ -236,6 +237,10 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("href='/?c=", html, StringComparison.Ordinal);
             Assert.Contains("data-ask-lang='en'", html, StringComparison.Ordinal);
             Assert.Contains("data-ask-lang='it'", html, StringComparison.Ordinal);
+            Assert.Contains("data-theme='light'", html, StringComparison.Ordinal);
+            Assert.Contains("data-ask-theme='light'", html, StringComparison.Ordinal);
+            Assert.Contains("data-ask-theme='dark'", html, StringComparison.Ordinal);
+            Assert.Contains("data-theme=dark", html, StringComparison.Ordinal);
             Assert.Contains("navigateLang(", html, StringComparison.Ordinal);
             Assert.Contains("disconnectLive(", html, StringComparison.Ordinal);
         }
@@ -278,6 +283,7 @@ public class SecondBrainAskFeaturesTests
                 var ASK_POWERED_BY = "";
                 var ASK_POWERED_BY_URL = "";
                 var ASK_LOGO = "logo.png";
+                var ASK_LOGO_RIGHT = "";
                 var UI_LANG = "en";
                 var askHttpServer = null;
 
@@ -337,6 +343,7 @@ public class SecondBrainAskFeaturesTests
                 var ASK_POWERED_BY = "";
                 var ASK_POWERED_BY_URL = "";
                 var ASK_LOGO = "";
+                var ASK_LOGO_RIGHT = "";
                 var UI_LANG = "en";
                 var askHttpServer = null;
 
@@ -407,6 +414,7 @@ public class SecondBrainAskFeaturesTests
                 var ASK_POWERED_BY = "Powered by MALDA";
                 var ASK_POWERED_BY_URL = "https://github.com/amaldini/maldalang";
                 var ASK_LOGO = "";
+                var ASK_LOGO_RIGHT = "";
                 var UI_LANG = "en";
                 var askHttpServer = null;
 
@@ -528,6 +536,7 @@ public class SecondBrainAskFeaturesTests
                 var ASK_POWERED_BY = "";
                 var ASK_POWERED_BY_URL = "";
                 var ASK_LOGO = "";
+                var ASK_LOGO_RIGHT = "";
                 var UI_LANG = "en";
                 var askHttpServer = null;
 
@@ -598,6 +607,7 @@ public class SecondBrainAskFeaturesTests
                 var ASK_POWERED_BY = "";
                 var ASK_POWERED_BY_URL = "";
                 var ASK_LOGO = "";
+                var ASK_LOGO_RIGHT = "";
                 var UI_LANG = "en";
                 var askHttpServer = null;
 
@@ -667,6 +677,7 @@ public class SecondBrainAskFeaturesTests
                 var ASK_POWERED_BY = "";
                 var ASK_POWERED_BY_URL = "";
                 var ASK_LOGO = "";
+                var ASK_LOGO_RIGHT = "";
                 var UI_LANG = "en";
                 var askHttpServer = null;
 
@@ -774,6 +785,8 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("function applyProductNameFromBrain(", source, StringComparison.Ordinal);
             Assert.Contains("askApplyProductNameFromBrain(", source, StringComparison.Ordinal);
             Assert.Contains("askApplyLogoFromBrain(", source, StringComparison.Ordinal);
+            Assert.Contains("var ASK_LOGO_RIGHT = ", source, StringComparison.Ordinal);
+            Assert.Contains("askApplyLogoRightFromBrain(", source, StringComparison.Ordinal);
             Assert.Contains("applyAskHttpPortFromCli()", source, StringComparison.Ordinal);
             Assert.Contains("askApplyAuthFromCli(", source, StringComparison.Ordinal);
             Assert.Contains("askSetAuthUsersRoot(", source, StringComparison.Ordinal);
@@ -884,6 +897,7 @@ public class SecondBrainAskFeaturesTests
                 var ASK_POWERED_BY = "";
                 var ASK_POWERED_BY_URL = "";
                 var ASK_LOGO = "";
+                var ASK_LOGO_RIGHT = "";
                 var UI_LANG = "en";
                 var askHttpServer = null;
 
@@ -972,6 +986,7 @@ public class SecondBrainAskFeaturesTests
                 var ASK_POWERED_BY = "";
                 var ASK_POWERED_BY_URL = "";
                 var ASK_LOGO = "";
+                var ASK_LOGO_RIGHT = "";
                 var UI_LANG = "en";
                 var askHttpServer = null;
 
@@ -1028,6 +1043,7 @@ public class SecondBrainAskFeaturesTests
                 var ASK_POWERED_BY = "Powered by MALDA";
                 var ASK_POWERED_BY_URL = "https://github.com/amaldini/maldalang";
                 var ASK_LOGO = "";
+                var ASK_LOGO_RIGHT = "";
                 var UI_LANG = "en";
                 var askHttpServer = null;
 
@@ -1058,6 +1074,177 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("No Acme Hub loaded", html, StringComparison.Ordinal);
             Assert.DoesNotContain("second brain", html, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("<img class='logo'", html, StringComparison.Ordinal);
+            Assert.DoesNotContain("<img class='logo-right'", html, StringComparison.Ordinal);
+        }
+        finally
+        {
+            SafeDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public async Task AskUi_ThemeToggle_DefaultsLight_And_AppliesDark()
+    {
+        Assert.True(File.Exists(AskUiLibPath), "missing ask UI lib: " + AskUiLibPath);
+
+        var tempDir = Path.Combine(Path.GetTempPath(), "malda_sb_ask_ui_theme", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            File.Copy(AskUiLibPath, Path.Combine(tempDir, "secondbrain_ask_ui_lib.malda"));
+            var harnessPath = Path.Combine(tempDir, "harness.malda");
+            File.WriteAllText(harnessPath,
+                """
+                var ASK_HTTP_PORT = 39018;
+                var ASK_SESSION_ID = "secondbrain-ask-theme";
+                var ASK_STORE = "SecondBrainAskTheme";
+                var PRODUCT_NAME = "Theme Brain";
+                var ASK_TITLE_SUFFIX = " — ASK";
+                var ASK_PAGE_TITLE = PRODUCT_NAME + ASK_TITLE_SUFFIX;
+                var ASK_POWERED_BY = "";
+                var ASK_POWERED_BY_URL = "";
+                var ASK_LOGO = "";
+                var ASK_LOGO_RIGHT = "";
+                var UI_LANG = "en";
+                var askHttpServer = null;
+
+                function runAskTurn(question) {
+                    return { "question": question, "answer": "ok", "sources": [], "error": "" };
+                }
+
+                include "secondbrain_ask_ui_lib.malda";
+
+                askSetSession({
+                    "brainDir": "secondbrain",
+                    "chatOnly": true,
+                    "noteCount": 0,
+                    "topicCount": 0,
+                    "sourceFolder": "none",
+                    "retrieval": "none",
+                    "llm": "test",
+                    "title": ASK_PAGE_TITLE,
+                    "subtitle": "theme"
+                });
+                print("THEME=" + askGetTheme());
+                print("---LIGHT---");
+                print(askRenderPage());
+                askSetTheme("dark");
+                print("THEME2=" + askGetTheme());
+                print("---DARK---");
+                print(askRenderPage());
+                ASK_THEME_CURRENT = "";
+                print("COOKIE_LOAD=" + askLoadThemeFromCookie({ "malda_ask_theme": "dark" }));
+                print("THEME3=" + askGetTheme());
+                ASK_THEME_CURRENT = "";
+                print("COOKIE_CLEAR=" + askLoadThemeFromCookie({}));
+                print("THEME4=" + askGetTheme());
+                """,
+                Encoding.UTF8);
+
+            var output = await InterpretAndCaptureAsync(harnessPath);
+            Assert.Contains("THEME=light", output, StringComparison.Ordinal);
+            Assert.Contains("THEME2=dark", output, StringComparison.Ordinal);
+            Assert.Contains("COOKIE_LOAD=dark", output, StringComparison.Ordinal);
+            Assert.Contains("THEME3=dark", output, StringComparison.Ordinal);
+            // Cookie clear leaves ui.state theme=dark from prior set/load.
+            Assert.Contains("COOKIE_CLEAR=", output, StringComparison.Ordinal);
+            Assert.Contains("THEME4=dark", output, StringComparison.Ordinal);
+            var lightIdx = output.IndexOf("---LIGHT---", StringComparison.Ordinal);
+            var darkIdx = output.IndexOf("---DARK---", StringComparison.Ordinal);
+            Assert.True(lightIdx >= 0 && darkIdx > lightIdx);
+            var lightHtml = output.Substring(lightIdx, darkIdx - lightIdx);
+            var darkHtml = output.Substring(darkIdx);
+            Assert.Contains("data-theme='light'", lightHtml, StringComparison.Ordinal);
+            Assert.Contains("data-ask-theme='dark'", lightHtml, StringComparison.Ordinal);
+            Assert.Contains(">Light</a>", lightHtml, StringComparison.Ordinal);
+            Assert.Contains(">Dark</a>", lightHtml, StringComparison.Ordinal);
+            Assert.Contains("data-theme='dark'", darkHtml, StringComparison.Ordinal);
+            Assert.Contains("data-ask-theme='light'", darkHtml, StringComparison.Ordinal);
+            Assert.Contains("class='active' href='/?c=", darkHtml, StringComparison.Ordinal);
+            Assert.Contains("theme=dark", darkHtml, StringComparison.Ordinal);
+        }
+        finally
+        {
+            SafeDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public async Task AskUi_AutoLoadsLogoRight_From_DiskBrainFolder_When_ASK_LOGO_RIGHT_Empty()
+    {
+        Assert.True(File.Exists(AskUiLibPath), "missing ask UI lib: " + AskUiLibPath);
+
+        var leftSvg =
+            "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\"><rect width=\"16\" height=\"16\" fill=\"#2f6f5e\"/></svg>";
+        var rightSvg =
+            "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\"><circle cx=\"8\" cy=\"8\" r=\"7\" fill=\"#8a5a12\"/></svg>";
+        var leftB64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(leftSvg));
+        var rightB64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(rightSvg));
+        var utf8NoBom = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+
+        var tempDir = Path.Combine(Path.GetTempPath(), "malda_sb_ask_ui_disk_logo_right", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            var brainDir = Path.Combine(tempDir, "brain");
+            Directory.CreateDirectory(brainDir);
+            File.WriteAllText(Path.Combine(brainDir, "logo.svg"), leftSvg, utf8NoBom);
+            File.WriteAllText(Path.Combine(brainDir, "logo_right.svg"), rightSvg, utf8NoBom);
+            File.Copy(AskUiLibPath, Path.Combine(tempDir, "secondbrain_ask_ui_lib.malda"));
+
+            var brainLiteral = brainDir.Replace("\\", "\\\\");
+            var harnessPath = Path.Combine(tempDir, "harness.malda");
+            File.WriteAllText(harnessPath,
+                $$"""
+                var ASK_HTTP_PORT = 39018;
+                var ASK_SESSION_ID = "secondbrain-ask-disk-logo-right";
+                var ASK_STORE = "SecondBrainAskDiskLogoRight";
+                var PRODUCT_NAME = "Dual Logo Brain";
+                var ASK_TITLE_SUFFIX = " — ASK";
+                var ASK_PAGE_TITLE = PRODUCT_NAME + ASK_TITLE_SUFFIX;
+                var ASK_POWERED_BY = "";
+                var ASK_POWERED_BY_URL = "";
+                var ASK_LOGO = "";
+                var ASK_LOGO_RIGHT = "";
+                var UI_LANG = "en";
+                var askHttpServer = null;
+
+                function runAskTurn(question) {
+                    return { "question": question, "answer": "ok", "sources": [], "error": "" };
+                }
+
+                include "secondbrain_ask_ui_lib.malda";
+
+                print(askApplyLogoFromBrain("{{brainLiteral}}"));
+                print(askApplyLogoRightFromBrain("{{brainLiteral}}"));
+                askSetSession({
+                    "brainDir": "{{brainLiteral}}",
+                    "chatOnly": false,
+                    "noteCount": 1,
+                    "topicCount": 1,
+                    "sourceFolder": "docs",
+                    "retrieval": "lexical",
+                    "llm": "test",
+                    "title": ASK_PAGE_TITLE,
+                    "subtitle": "dual logo"
+                });
+                print("---HTML---");
+                print(askRenderPage());
+                """,
+                utf8NoBom);
+
+            var output = await InterpretAndCaptureAsync(harnessPath);
+            Assert.Contains("logo.svg", output, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("logo_right.svg", output, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("data:image/svg+xml;base64," + leftB64, output, StringComparison.Ordinal);
+            Assert.Contains("data:image/svg+xml;base64," + rightB64, output, StringComparison.Ordinal);
+            Assert.Contains("<img class='logo'", output, StringComparison.Ordinal);
+            Assert.Contains("<img class='logo-right'", output, StringComparison.Ordinal);
+            // Right logo sits after the title block (brand-text closes before logo-right).
+            var brandTextClose = output.IndexOf("</div><img class='logo-right'", StringComparison.Ordinal);
+            Assert.True(brandTextClose >= 0, "expected logo-right immediately after brand-text");
+            var h1Pos = output.IndexOf("<h1>Dual Logo Brain — ASK</h1>", StringComparison.Ordinal);
+            Assert.True(h1Pos >= 0 && h1Pos < brandTextClose, "title should appear before right logo");
         }
         finally
         {
@@ -1093,6 +1280,7 @@ public class SecondBrainAskFeaturesTests
                 var ASK_POWERED_BY = "";
                 var ASK_POWERED_BY_URL = "";
                 var ASK_LOGO = "";
+                var ASK_LOGO_RIGHT = "";
                 var UI_LANG = "en";
                 var askHttpServer = null;
 
@@ -1142,6 +1330,7 @@ public class SecondBrainAskFeaturesTests
                 var ASK_POWERED_BY = "";
                 var ASK_POWERED_BY_URL = "";
                 var ASK_LOGO = "";
+                var ASK_LOGO_RIGHT = "";
                 var UI_LANG = "en";
                 var askHttpServer = null;
 

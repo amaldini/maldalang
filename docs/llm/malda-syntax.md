@@ -1,6 +1,6 @@
-﻿# MALDA syntax pack (for writing programs)
+# MALDA syntax pack (for writing programs)
 
-*Applies to: MALDA 0.1.33*
+*Applies to: MALDA 0.1.34*
 
 Compact rules for generating correct `.malda`. Prefer this over scraping HTML manuals.
 
@@ -14,16 +14,16 @@ Compact rules for generating correct `.malda`. Prefer this over scraping HTML ma
   `;`.
 - Blocks use `{ }` like C-family languages.
 - Dynamic typing; optional type hints exist (`: Type`) but are not required for most examples.
-- **Prompt parameters are name-only** â€” write `prompt greet(name) { ... }`, never `prompt greet(name: string)`.
+- **Prompt parameters are name-only** — write `prompt greet(name) { ... }`, never `prompt greet(name: string)`.
 - Prompt `-> ReturnType` is **not** static typing. On `await prompt(...)` with a
   return type and **no tools**, MALDA resolves the type to JSON Schema, sends it to
   OpenAI-compatible backends as `response_format`, then validates the reply (up to 3
   attempts with a repair instruction). Without `await`, you get a `PromptInstance`
-  (schema attached when resolvable). Prefer a `schema Name { â€¦ }` declaration as the
+  (schema attached when resolvable). Prefer a `schema Name { … }` declaration as the
   return type for structured objects.
 - Interpolate with a **`$`-prefixed** string: `$"total: {n}"`, `$"{a} of {b}"`. The braces
   take any expression (`{n * 2}`, `{math.sqrt(x)}`, `{items[0]}`), and `$` strings compose
-  with `AnsiConsole` markup. A plain string does **not** interpolate â€” `"total: {n}"` prints
+  with `AnsiConsole` markup. A plain string does **not** interpolate — `"total: {n}"` prints
   the literal `{n}`. Prompt bodies interpolate without the `$`. Concatenation (`+ string(x)`)
   still works when you prefer it.
 
@@ -37,15 +37,15 @@ io.print(Math.sqrt(16));      // deprecated module alias (capital M)
 io.print(sqrt(16));           // deprecated flat alias
 ```
 
-The language server emits a `malda-style` warning on the last two â€” *Prefer 'math.sqrt(...)'
-instead of 'sqrt(...)' (deprecated flat alias)* â€” so code written with them arrives with
+The language server emits a `malda-style` warning on the last two — *Prefer 'math.sqrt(...)'
+instead of 'sqrt(...)' (deprecated flat alias)* — so code written with them arrives with
 warnings attached. Use `math.`, `str.` and `io.` in new code. The `few-shot/` snippets model
 that preferred style. `Examples/` and the reference manual still use flat spellings in many
 places; read those as equivalent, do not copy the style.
 
 Which names are namespaced is listed in the `call` column of
-[`malda-builtins.tsv`](malda-builtins.tsv). Names that never had a namespace â€” `parseJSON`,
-`toJSON`, `sleep`, `range`, `exit` â€” are written bare.
+[`malda-builtins.tsv`](malda-builtins.tsv). Names that never had a namespace — `parseJSON`,
+`toJSON`, `sleep`, `range`, `exit` — are written bare.
 
 ## Core constructs
 
@@ -55,7 +55,7 @@ io.print("Hello");
 var x = 10;
 var name = "Ada";
 var items = [1, 2, 3];
-items.append(4);          // member-style method â€” NOT a free function, and there is no `arr` namespace
+items.append(4);          // member-style method — NOT a free function, and there is no `arr` namespace
 var last = items.pop();   // remove last;  items.shift() removes first
 var first = items[0];
 var n = items.length;     // property, not a call: items.length() is an error
@@ -122,7 +122,7 @@ io.print(g.user);
 
 ## Actors (concurrency)
 
-Actor handlers do not see the `io` / `math` / `str` namespaces â€” use the flat `print`
+Actor handlers do not see the `io` / `math` / `str` namespaces — use the flat `print`
 alias inside `on` handlers. Outside the actor, prefer `io.print`.
 
 ```malda
@@ -163,7 +163,7 @@ Prefer a single listener for UI + API: construct `new RestServer()` (no port), t
 (and optionally `http.enableCsrf(secret)`) before `start`. Session data is on `req.session`
 (`get` / `set` / `flash` / `getFlash`). For HTML forms use `csrfField`, `bindForm`,
 `formErrors`, and `pageLayout` (or `ui.layout` for richer pages). Server-driven component
-trees use `ui.*` with signature `ui.control(props, children?, key?)` â€” no JSX; see
+trees use `ui.*` with signature `ui.control(props, children?, key?)` — no JSX; see
 `few-shot/19_ui_tree.malda` and `ReferenceManual/16-web-ui.html`. Background work that is
 not a durable workflow uses `enqueueJob` / `claimJob` / `completeJob` / `failJob` against
 `./.malda/jobs.db`. See `Examples/Web/auth_cookie_login.malda` and
@@ -177,11 +177,11 @@ not a durable workflow uses `enqueueJob` / `claimJob` / `completeJob` / `failJob
 | `let x = 1` | `var x = 1` |
 | `function f(x: number)` on prompts | `prompt f(x)` name-only |
 | `console.log(x)` | `io.print(x)` |
-| `println(x)` | `io.print(x)` â€” `println` does not exist |
+| `println(x)` | `io.print(x)` — `println` does not exist |
 | `fn f() {}` in docs | prefer `function f() {}` |
-| Omitting `;` on statements | Required â€” without it the CLI reports a parse error and exits non-zero |
+| Omitting `;` on statements | Required — without it the CLI reports a parse error and exits non-zero |
 | Inventing Python `def` style indent blocks | use `{ }` |
-| `"total: {n}"` | `$"total: {n}"` â€” or `"total: " + string(n)`. Plain strings do not interpolate |
+| `"total: {n}"` | `$"total: {n}"` — or `"total: " + string(n)`. Plain strings do not interpolate |
 
 Those are the errors the parser catches for you. The ones it does not catch are in
 [`malda-gotchas.md`](malda-gotchas.md); read that before declaring a program correct.
