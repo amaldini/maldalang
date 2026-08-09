@@ -92,27 +92,24 @@ step/retry/compensate/approval in the grammar — with no adapter between the
 roles, because a @MCPTool function is the same function an agent calls as a
 tool and a @POST handler invokes.
 
-How it was built, since that is the fair question. Heavily with coding
-agents. My background is business software in C# and Java, and this is the
-first compiler or interpreter I have written. The grammar and semantics
-calls are mine to defend, but the typing and much of the argument that
-produced them were shared with models, which makes this partly an
-experiment in designing a language when the design conversation includes
-one. Geoff Huntley's "Ralph Wiggum" loop and the cursed language he got out
-of it (https://ghuntley.com/cursed/) convinced me one person could attempt
-it; the agent example above is named after it.
+How the language itself was built, since that is the fair question. My
+background is business software in C# and Java, and this is the first
+compiler or interpreter I have written. The grammar and semantics calls
+are mine to defend; the typing and much of the argument that produced them
+were shared with models — same arrangement as the showcases above. Geoff
+Huntley's "Ralph Wiggum" loop and the cursed language he got out of it
+(https://ghuntley.com/cursed/) convinced me one person could attempt it;
+the agent example above is named after it. In place of asking for trust:
+guard tests that fail the build if the manual's reserved words drift from
+the lexer or a built-in goes undocumented, every runnable snippet in the
+35-chapter reference manual executed by the test suite, and a 100-case
+conformance matrix across backends. That catches drift, not bad taste.
+Implementation is C# on .NET 8 — hand-written lexer and recursive-descent
+parser, no ANTLR, a tree-walking interpreter, ~300 built-ins, ~1,520
+tests. Dual licensed MIT OR Apache-2.0 with a runtime exception, so
+compiled programs carry no attribution obligation. No CLA.
 
-In place of asking for trust: guard tests that fail the build if the
-manual's reserved words drift from the lexer or a built-in goes
-undocumented, every runnable snippet in the 35-chapter reference manual
-executed by the test suite, and a 100-case conformance matrix across
-backends. That catches drift, not bad taste. Implementation is C# on
-.NET 8 — hand-written lexer and recursive-descent parser, no ANTLR, a
-tree-walking interpreter, ~300 built-ins, ~1,520 tests. Dual licensed
-MIT OR Apache-2.0 with a runtime exception, so compiled programs carry no
-attribution obligation. No CLA.
-
-Honest about where it is: the public core is at 0.1.30 — still 0.1.x, not
+Honest about where it is: the public core is at 0.1.31 — still 0.1.x, not
 a 1.0 — and the spec is Draft 1.0. Type annotations parse and feed the
 language server; mismatches on literals, assignments and known identifiers
 emit IDE Warnings (errors under --strict-types), but there is no full
@@ -194,15 +191,11 @@ syntax (and why Desktop / Web IDE Ask now load that same pack from the embedded 
 and MALDA programs automate development work in turn — RalphWiggum is one of them doing
 exactly that; Second Brain is another, for documentation rather than a PRD checklist.
 
-**And how it was built, since that is the first question anyone should ask.** Heavily with
-coding agents. The grammar, the semantics, the tier split and every "no, not like that" are
-mine to defend, and I have read what went in — but much of the typing was not mine, and neither
-were all the arguments that got me to those calls; pretending otherwise would be absurd for a
-project whose premise is that agents changed how code gets written. What I can offer in place of trust is machine-checked consistency: guard tests that
-fail the build if the manual's reserved words drift from the lexer or a built-in is
-undocumented, every runnable snippet in the reference manual executed by the test suite, and
-a 100-case conformance matrix run across backends. That catches drift, not bad taste. Judge
-the taste from the syntax below.
+In place of asking for trust on the agent-written parts: guard tests that fail the build if
+the manual's reserved words drift from the lexer or a built-in is undocumented, every
+runnable snippet in the reference manual executed by the test suite, and a 100-case
+conformance matrix run across backends. That catches drift, not bad taste. Judge the taste
+from the syntax below.
 
 #### What that actually means
 
@@ -399,15 +392,15 @@ non-interactive `build` / `update` / `ask` CLI, English/Italian UI — with a le
 `secondbrain.malda` for A/B retrieval. `malda compile … --embed-folder secondbrain_semantic`
 bakes the notes into the executable so ASK does not need a folder on disk.
 
-One detail matters more than the line count: **both showcases were written entirely by coding
-agents** — Ralph at 4,049 lines, Second Brain at ~6,500 with its shared libs. So were two
-private applications of mine, one of them substantial. MALDA does not exist in any model's
-training data, so this is not recall — it works because the repo ships a language pack for
-exactly that purpose (`docs/llm/`: idioms, a parser-aligned BNF, a minimal built-in list, and
-a few-shot folder, with a suggested load order for a token budget). An agent reads a few
-thousand tokens and writes idiomatic MALDA; when it does not, the interpreter is the feedback
-loop. Desktop and Web IDE Ask sessions materialize the same pack — embedded in
-`malda.dll`, not a checkout-path prompt.
+The detail that matters more than the line count is *how* those agent-written showcases
+were possible (the same is true of two private applications of mine, one of them
+substantial). MALDA does not exist in any model's training data, so this is not recall —
+it works because the repo ships a language pack for exactly that purpose (`docs/llm/`:
+idioms, a parser-aligned BNF, a minimal built-in list, and a few-shot folder, with a
+suggested load order for a token budget). An agent reads a few thousand tokens and writes
+idiomatic MALDA; when it does not, the interpreter is the feedback loop. Desktop and Web
+IDE Ask sessions materialize the same pack — embedded in `malda.dll`, not a
+checkout-path prompt.
 
 That points at the thing I did not expect when I started. "New language" used to imply "no
 documentation your tools understand, and nobody who can write it"; a compact, machine-readable
@@ -487,7 +480,7 @@ drifts from the lexer or if a built-in is added without being documented anywher
 
 #### What is not good yet
 
-- **This is still 0.1.x (currently 0.1.30), not a 1.0 release.** The first public tag was
+- **This is still 0.1.x (currently 0.1.31), not a 1.0 release.** The first public tag was
   `v0.1.0`; the language spec (`docs/spec/malda-language-1.0.md`) remains Draft 1.0: the
   Tier 0 kernel is normative, while prompts, workflows and HTTP are specified as platform
   tiers.

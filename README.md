@@ -31,14 +31,12 @@ workflows are syntax instead of glue code. I am not running MALDA in that work t
 job is large systems already in flight, and those do not get rewritten for an experiment. For
 now it is where I experiment with what building on AI looks like.
 
-Two things worth knowing up front. **This repository was built heavily with coding agents** —
-the grammar and semantics decisions are mine to defend, but the typing and much of the argument
-that produced them were shared with models; guard tests, the conformance matrix and the
-executed reference-manual snippets are there so the consistency claims do not rest on my word.
-And the two largest showcases were written entirely by coding agents, even though MALDA is in
-no model's training data, because [`docs/llm/`](docs/llm/) ships a compact language pack for
-that reader: **`Examples/Agents/secondbrain_semantic.malda`** (~6,500 lines with shared libs)
-and **`Examples/RalphWiggum/`** (4,049 lines).
+Two things worth knowing up front. Guard tests, the conformance matrix and the executed
+reference-manual snippets are there so the consistency claims do not rest on my word. And the
+two largest showcases were written entirely by coding agents, even though MALDA is in no
+model's training data, because [`docs/llm/`](docs/llm/) ships a compact language pack for that
+reader: **`Examples/Agents/secondbrain_semantic.malda`** (~6,500 lines with shared libs) and
+**`Examples/RalphWiggum/`** (4,049 lines).
 
 Longer version, with the objections and the current weaknesses stated up front:
 [`docs/announcement.md`](docs/announcement.md).
