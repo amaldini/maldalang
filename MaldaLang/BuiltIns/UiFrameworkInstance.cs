@@ -22,7 +22,7 @@ public sealed class UiFrameworkInstance : ObjectInstance
         "slot", "withSlot", "when", "choose", "each",
         "template", "partial", "layout", "renderList", "crudModel", "crudControls", "crudSchema",
         "mount", "mountEnvelope", "render", "dispatchEvent", "pullEvent",
-        "state", "setState", "invalidate",
+        "state", "getState", "setState", "pinState", "unpinState", "invalidate",
         "onInit", "onPreRender", "onLoad", "onDispose",
         "onMount", "onUpdate", "onUnmount", "onError",
         "configure", "snapshot", "resync", "sessionId", "redirectWithSession", "generate"

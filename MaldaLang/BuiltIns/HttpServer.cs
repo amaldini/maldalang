@@ -111,11 +111,13 @@ public class HttpServerInstance : ObjectInstance
     {
         public Dictionary<string, RuntimeValue> Values { get; }
         public DateTime LastAccessUtc { get; set; }
+        public bool Pinned { get; set; }
 
         public ComponentStateEntry()
         {
             Values = new Dictionary<string, RuntimeValue>(StringComparer.Ordinal);
             LastAccessUtc = DateTime.UtcNow;
+            Pinned = false;
         }
     }
 
@@ -3179,7 +3181,7 @@ public class HttpServerInstance : ObjectInstance
             CleanupExpiredComponentStateLocked();
             if (!_componentStateStore.TryGetValue(componentId, out var entry))
             {
-                EnsureComponentCapacityLocked();
+                EnsureComponentCapacityLocked(throwIfCannotEvict: true);
                 entry = new ComponentStateEntry();
                 _componentStateStore[componentId] = entry;
             }
@@ -3195,6 +3197,45 @@ public class HttpServerInstance : ObjectInstance
             }
 
             entry.Values[key] = SnapshotComponentStateValue(value);
+        }
+    }
+
+    public static void PinComponentState(string componentId)
+    {
+        lock (_componentStateLock)
+        {
+            CleanupExpiredComponentStateLocked();
+            if (!_componentStateStore.TryGetValue(componentId, out var entry))
+            {
+                EnsureComponentCapacityLocked(throwIfCannotEvict: true);
+                entry = new ComponentStateEntry();
+                _componentStateStore[componentId] = entry;
+            }
+
+            entry.Pinned = true;
+            entry.LastAccessUtc = DateTime.UtcNow;
+        }
+    }
+
+    public static void UnpinComponentState(string componentId)
+    {
+        lock (_componentStateLock)
+        {
+            CleanupExpiredComponentStateLocked();
+            if (_componentStateStore.TryGetValue(componentId, out var entry))
+            {
+                entry.Pinned = false;
+                entry.LastAccessUtc = DateTime.UtcNow;
+            }
+        }
+    }
+
+    public static bool IsComponentStatePinned(string componentId)
+    {
+        lock (_componentStateLock)
+        {
+            CleanupExpiredComponentStateLocked();
+            return _componentStateStore.TryGetValue(componentId, out var entry) && entry.Pinned;
         }
     }
 
@@ -3415,7 +3456,8 @@ public class HttpServerInstance : ObjectInstance
             _componentStateMaxKeysPerComponent = maxKeysPerComponent;
             _componentStateTtl = TimeSpan.FromMilliseconds(ttlMilliseconds);
             CleanupExpiredComponentStateLocked();
-            EnsureComponentCapacityLocked();
+            // Shrinking maxComponents must not throw when pinned entries exceed the new cap.
+            EnsureComponentCapacityLocked(throwIfCannotEvict: false);
         }
     }
 
@@ -3428,7 +3470,7 @@ public class HttpServerInstance : ObjectInstance
 
         var now = DateTime.UtcNow;
         var expired = _componentStateStore
-            .Where(kvp => (now - kvp.Value.LastAccessUtc) > _componentStateTtl)
+            .Where(kvp => !kvp.Value.Pinned && (now - kvp.Value.LastAccessUtc) > _componentStateTtl)
             .Select(kvp => kvp.Key)
             .ToList();
         foreach (var key in expired)
@@ -3437,15 +3479,23 @@ public class HttpServerInstance : ObjectInstance
         }
     }
 
-    private static void EnsureComponentCapacityLocked()
+    private static void EnsureComponentCapacityLocked(bool throwIfCannotEvict)
     {
         while (_componentStateStore.Count >= _componentStateMaxComponents)
         {
             var oldest = _componentStateStore
+                .Where(kvp => !kvp.Value.Pinned)
                 .OrderBy(kvp => kvp.Value.LastAccessUtc)
                 .FirstOrDefault();
             if (string.IsNullOrEmpty(oldest.Key))
             {
+                if (throwIfCannotEvict)
+                {
+                    throw new Exception(
+                        "Component state store is full of pinned entries. " +
+                        "Call componentStateConfigure() to raise maxComponents, or componentStateUnpin()/ui.unpinState().");
+                }
+
                 break;
             }
             _componentStateStore.Remove(oldest.Key);

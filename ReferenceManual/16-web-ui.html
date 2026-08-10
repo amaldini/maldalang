@@ -38,7 +38,7 @@
             <li><code>component Name(...) { ... }</code> - component entry function (syntax sugar for <code>@COMPONENT()</code>)</li>
             <li><code>@ACTION(path)</code> - POST action for form/button interactions (typically returns a fragment)</li>
             <li><code>@LIVE(path)</code> - live endpoint for SSE clients (return <code>{"sse": true}</code>)</li>
-            <li><code>componentStateGet/Set/Object/Clear</code> - server-side state helpers per component key</li>
+            <li><code>componentStateGet/Set/Object/Clear/Configure/Pin/Unpin</code> - server-side state helpers per component key (pin = process-lifetime, exempt from TTL/LRU)</li>
             <li><code>componentFragment(targetId, html)</code> - tells the client which DOM target should be replaced</li>
             <li><code>componentLiveEmit(channel, payload, eventType?)</code> - broadcasts live events to connected SSE clients</li>
         </ul>
@@ -281,11 +281,12 @@ var controlsHtml = ui.crudControls(normalized, sessionId, queryParams, lookups);
 
         <h3>19.2.2 Server component state helpers</h3>
         <ul>
-            <li><code>componentStateGet(componentId, key, defaultValue?, scope?)</code></li>
+            <li><code>componentStateGet(componentId, key, defaultValue?, scope?)</code> — peek (default is not written)</li>
             <li><code>componentStateSet(componentId, key, value, scope?)</code></li>
             <li><code>componentStateObject(componentId, scope?)</code></li>
             <li><code>componentStateClear(componentId?, scope?)</code> (when omitted, clears all component state)</li>
             <li><code>componentStateConfigure(maxComponents, maxKeysPerComponent, ttlMs?)</code></li>
+            <li><code>componentStatePin(componentId, scope?)</code> / <code>componentStateUnpin(componentId, scope?)</code> — pin exempts the scoped entry from TTL and LRU eviction</li>
         </ul>
         <pre><code>var items = componentStateGet("board", "items", []);
 items.append({"title": "Login issue"});
@@ -298,14 +299,18 @@ componentStateSet("board", "count", 1, "tenantA");
 componentStateSet("board", "count", 2, "tenantB");
 
 // Safety policy tuning (defaults are conservative)
-componentStateConfigure(512, 128, 1800000);</code></pre>
+componentStateConfigure(512, 128, 1800000);
+
+// Process-lifetime shared data (catalog, boot config): pin after write
+componentStateSet("brain", "catalog", catalog, "ask-shared");
+componentStatePin("brain", "ask-shared");</code></pre>
         <h3>19.2.3 Server UI runtime and lifecycle APIs</h3>
         <ul>
             <li>Render lifecycle: <code>ui.mount(rootNode, sessionId?)</code>, <code>ui.render(rootNode, sessionId?)</code></li>
             <li>Envelope helper: <code>ui.mountEnvelope(rootNode, sessionId?, options?)</code> for mount + snapshot + resync in one call.</li>
             <li>Lifecycle subscriptions: <code>ui.onInit(componentId, sessionId?)</code>, <code>ui.onPreRender(componentId, sessionId?)</code>, <code>ui.onLoad(componentId, sessionId?)</code>, <code>ui.onDispose(componentId, sessionId?)</code>, <code>ui.onMount(componentId, sessionId?)</code>, <code>ui.onUpdate(componentId, sessionId?)</code>, <code>ui.onUnmount(componentId, sessionId?)</code>, <code>ui.onError(componentId, sessionId?)</code></li>
             <li>Event pipeline: <code>ui.dispatchEvent(eventObj, sessionId?)</code>, <code>ui.pullEvent(sessionId?)</code></li>
-            <li>State: <code>ui.state(componentId, key, defaultValue, scope?)</code>, <code>ui.setState(componentId, key, value, scope?)</code></li>
+            <li>State: <code>ui.state(componentId, key, defaultValue, scope?)</code> (get-or-create — persists default), <code>ui.getState(componentId, key, defaultValue?, scope?)</code> (peek — does not write), <code>ui.setState(componentId, key, value, scope?)</code>, <code>ui.pinState(componentId, scope?)</code>, <code>ui.unpinState(componentId, scope?)</code></li>
             <li>Invalidation: <code>ui.invalidate(channel, payload?)</code></li>
             <li>Diagnostics/recovery: <code>ui.snapshot(sessionId?)</code>, <code>ui.resync(sessionId?)</code></li>
             <li>Policy controls: <code>ui.configure(settingName, value, sessionId?)</code></li>
@@ -520,20 +525,24 @@ var statusBadge = ui.when(isOpen, ui.badge({"value": "Open"}), ui.badge({"value"
 var alertByType = ui.choose(status, {"success": ui.alert({"variant": "success"}, [ui.text({"value": "OK"})])}, ui.alert({"variant": "info"}, [ui.text({"value": "Unknown"})]));
 var list = ui.each(["a", "b", "c"], "value");</code></pre>
         <h3>19.2.9 State management patterns</h3>
-        <p>Choose the right state store for your use case:</p>
+        <p>HttpServer request handlers run in an isolated interpreter, so top-level variables are not shared across requests. Use the component state store (via <code>ui.*</code> or <code>componentState*</code>) for cross-request data.</p>
         <ul>
-            <li><strong>componentStateGet/Set/Object/Clear</strong>: server-side, per-component key, scoped by session. Use for business data (e.g. ticket list, filters) persisted across requests.</li>
-            <li><strong>ui.state / ui.setState</strong>: runtime state for the server UI protocol tree. Use for transient UI state (e.g. selected tab, expanded nodes) during a session.</li>
+            <li><strong>Peek vs get-or-create:</strong> <code>ui.getState</code> / <code>componentStateGet</code> return an optional default without writing. <code>ui.state</code> <em>persists</em> the default when the key is missing — never use <code>null</code> or <code>{}</code> as the default for critical keys after a possible TTL/LRU miss.</li>
+            <li><strong>Pin for process-lifetime data:</strong> after writing shared catalog/config, call <code>ui.pinState(componentId, scope)</code> (or <code>componentStatePin</code>) so TTL and LRU eviction skip that entry. Leave per-conversation history unpinned.</li>
+            <li><strong>ui.setState / componentStateSet</strong>: write values for both short-lived UI flags and durable server data.</li>
         </ul>
-        <p><strong>Rule of thumb:</strong> keep business invariants (what the user created, updated, deleted) in <code>componentState*</code> or the database. Keep client-side transient state (scroll position, selection, open modals) in <code>ui.state</code> or let the client manage it.</p>
-        <pre><code>// Server-side business state
-var items = componentStateGet("board", "items", []);
-items.append({"title": "New", "status": "open"});
-componentStateSet("board", "items", items);
+        <p><strong>Rule of thumb:</strong> peek with <code>ui.getState</code> when reading; use <code>ui.state</code> only when you intentionally want get-or-create. Pin shared brain/config scopes; keep conversation scopes under normal TTL/LRU. Persist long-term invariants in files or a database when the process may restart.</p>
+        <pre><code>// Peek (safe): missing key does not poison the store
+var catalog = ui.getState("AskStore", "catalog", null, sharedScope);
 
-// Runtime UI state (session-scoped)
-ui.setState("TicketGrid", "selectedId", 42, sessionId);
-var selected = ui.state("TicketGrid", "selectedId", 0, sessionId);</code></pre>
+// Get-or-create (OK for lists you always want initialized)
+var items = ui.state("board", "items", [], convScope);
+items.append({"title": "New", "status": "open"});
+ui.setState("board", "items", items, convScope);
+
+// Process-lifetime shared meta
+ui.setState("AskStore", "session", meta, sharedScope);
+ui.pinState("AskStore", sharedScope);</code></pre>
         <h3>19.2.10 Routing and query param patterns</h3>
         <p>For master-detail and multi-page flows, use query parameters:</p>
         <ul>

@@ -43,8 +43,20 @@ Patch operations: `ReplaceNode`, `SetProp`, `RemoveProp`, `InsertChild`, `Remove
 
 State uses the component state store (`HttpServerInstance`), wrapped by:
 
-- `ui.state(componentId, key, defaultValue, scope?)`
-- `ui.setState(componentId, key, value, scope?)`
+| API | Behavior |
+|-----|----------|
+| `ui.state(id, key, default, scope?)` | **Get-or-create** — if the key is missing, **persists** `default` |
+| `ui.getState(id, key, default?, scope?)` | **Peek** — returns `default` without writing (same as `componentStateGet`) |
+| `ui.setState(id, key, value, scope?)` | Write |
+| `ui.pinState(id, scope?)` | Mark the scoped entry as **pinned** (exempt from TTL + LRU) |
+| `ui.unpinState(id, scope?)` | Clear the pin flag (values kept) |
+
+Flat aliases: `componentStateGet/Set/Object/Clear/Configure/Pin/Unpin`.
+
+Defaults are conservative (`maxComponents=512`, TTL 30 minutes). Conversation-scoped
+entries should stay unpinned; process-lifetime data (brain catalog, server config)
+should be **pinned** after the first write. Anti-pattern: `ui.state(id, "x", null)` or
+`ui.state(id, "x", {})` on critical keys — after eviction that poisons the store.
 
 `ui.invalidate(channel, payload?)` emits a live invalidation message over SSE.
 

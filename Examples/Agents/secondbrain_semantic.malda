@@ -296,7 +296,7 @@ function findRelatedNotesToolHandler(args) {
 
     var session = askGetSession();
     var brainDir = askAsText(session.brainDir);
-    var catalog = ui.state(ASK_STORE, "catalog", null, ASK_SESSION_ID);
+    var catalog = askGetCatalog();
     var memory = getAskMemory(brainDir);
     if (memory == null) {
         return "Error: GraphMemory is not available for this brain.";
@@ -3082,7 +3082,7 @@ function askSourcesFromPicked(picked) {
 function runAskTurn(question) {
     var session = askGetSession();
     var brainDir = askAsText(session.brainDir);
-    var catalog = ui.state(ASK_STORE, "catalog", null, ASK_SESSION_ID);
+    var catalog = askGetCatalog();
     var chatOnly = session.chatOnly == true or catalogNoteCount(catalog) == 0;
     if (chatOnly) {
         return runChatOnlyTurn(question);
@@ -3338,7 +3338,7 @@ function askBrain(cli) {
     }
 
     ui.setState(ASK_STORE, "lang", UI_LANG, ASK_SESSION_ID);
-    ui.setState(ASK_STORE, "catalog", catalog, ASK_SESSION_ID);
+    askSetCatalog(catalog);
     ui.setState(ASK_STORE, "pendingStop", false, ASK_SESSION_ID);
     askSetToolsEnabled(false);
     askClearHistory();

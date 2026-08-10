@@ -146,7 +146,7 @@ HTML-string children — compose nodes with `ui.*` helpers.
 | `ui.mount(root, sessionId?)` / `ui.render(root, sessionId?)` | Mount or diff a tree; returns a patch envelope |
 | `ui.mountEnvelope(root, sessionId?, options?)` | Mount + snapshot + resync helper in one call |
 | `ui.dispatchEvent(event, sessionId?)` / `ui.pullEvent(sessionId?)` | Client → server event queue |
-| `ui.state` / `ui.setState` (or `componentState*`) | Server-side component state |
+| `ui.state` / `ui.getState` / `ui.setState` / `ui.pinState` (or `componentState*`) | Server-side component state (peek vs get-or-create; pin = no TTL/LRU) |
 | `component Name(...) { … }` + `@ACTION` / `@LIVE` | Full-stack component model (see Reference Manual) |
 
 Use `@PAGE` + `pageLayout` for route-first HTML; use `ui.*` (+ optional `component`) for

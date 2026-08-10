@@ -10100,6 +10100,8 @@ public class CSharpTranspiler
             case "componentStateObject":
             case "componentStateClear":
             case "componentStateConfigure":
+            case "componentStatePin":
+            case "componentStateUnpin":
             case "onAgentProgress":
             case "clearAgentProgress":
             case "uiRow":
@@ -10158,7 +10160,10 @@ public class CSharpTranspiler
             case "uiDispatchEvent":
             case "uiPullEvent":
             case "uiState":
+            case "uiGetState":
             case "uiSetState":
+            case "uiPinState":
+            case "uiUnpinState":
             case "uiInvalidate":
             case "uiOnInit":
             case "uiOnPreRender":

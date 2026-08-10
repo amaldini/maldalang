@@ -533,7 +533,7 @@ public class LanguageService : ILanguageService
             "uiSlot", "uiWithSlot", "uiWhen", "uiChoose", "uiEach",
             "uiCrudModel", "uiCrudControls", "uiCrudSchema",
             "uiMount", "uiMountEnvelope", "uiRender", "uiDispatchEvent", "uiPullEvent",
-            "uiState", "uiSetState", "uiInvalidate",
+            "uiState", "uiGetState", "uiSetState", "uiPinState", "uiUnpinState", "uiInvalidate",
             "uiOnInit", "uiOnPreRender", "uiOnLoad", "uiOnDispose",
             "uiOnMount", "uiOnUpdate", "uiOnUnmount", "uiOnError",
             "uiConfigure", "uiSnapshot", "uiResync", "uiGenerate"

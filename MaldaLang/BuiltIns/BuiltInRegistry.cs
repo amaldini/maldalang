@@ -232,6 +232,8 @@ public static class BuiltInRegistry
             "componentStateObject" or
             "componentStateClear" or
             "componentStateConfigure" or
+            "componentStatePin" or
+            "componentStateUnpin" or
             "onAgentProgress" or
             "clearAgentProgress" or
             "uiRow" or
@@ -290,7 +292,10 @@ public static class BuiltInRegistry
             "uiDispatchEvent" or
             "uiPullEvent" or
             "uiState" or
+            "uiGetState" or
             "uiSetState" or
+            "uiPinState" or
+            "uiUnpinState" or
             "uiInvalidate" or
             "uiOnInit" or
             "uiOnPreRender" or

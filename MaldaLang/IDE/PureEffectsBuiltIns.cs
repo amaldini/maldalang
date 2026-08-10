@@ -25,7 +25,7 @@ public static class PureEffectsBuiltIns
         "embedFromFile", "embedFromFiles",
         "enableAgentVerboseLogging", "setAgentVerbosePhase", "setAgentStatusBanner", "reportRalphStatus",
         "loadSkill", "loadSkillsFromDir", "getMaldaHome", "getProgramDirectory", "getMaldaConfig", "getAssistantMemory", "getHostPlatform",
-        "uiGenerate", "generateUI", "uiMount", "uiInvalidate", "uiSetState",
+        "uiGenerate", "generateUI", "uiMount", "uiInvalidate", "uiSetState", "uiPinState", "uiUnpinState",
         "dotnetNew", "loadAssembly",
     }.ToFrozenSet();
 

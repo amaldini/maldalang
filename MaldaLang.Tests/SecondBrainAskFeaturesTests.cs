@@ -500,6 +500,22 @@ public class SecondBrainAskFeaturesTests
         Assert.Contains("function askLiveChannel()", libSource, StringComparison.Ordinal);
         Assert.Contains("function askConvScope()", libSource, StringComparison.Ordinal);
         Assert.Contains("function askBeginRequest(", libSource, StringComparison.Ordinal);
+        Assert.Contains("function askGetCatalog()", libSource, StringComparison.Ordinal);
+        Assert.Contains("function askSetCatalog(", libSource, StringComparison.Ordinal);
+        Assert.Contains("function askConfigureSharedStore()", libSource, StringComparison.Ordinal);
+        Assert.Contains("function askPinSharedStore()", libSource, StringComparison.Ordinal);
+        Assert.Contains("ui.pinState(ASK_STORE, ASK_SESSION_ID)", libSource, StringComparison.Ordinal);
+        Assert.Contains("ui.getState(ASK_STORE, \"session\"", libSource, StringComparison.Ordinal);
+        Assert.Contains("ui.getState(ASK_STORE, \"catalog\"", libSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("ASK_BOOT_SESSION", libSource, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "ui.state(ASK_STORE, \"session\", {}",
+            libSource,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "ui.state(ASK_STORE, \"catalog\", null",
+            libSource,
+            StringComparison.Ordinal);
         Assert.Contains("RedirectTo(\"/?c=\"", libSource, StringComparison.Ordinal);
         Assert.Contains("onAgentProgress(liveChannel)", libSource, StringComparison.Ordinal);
         Assert.DoesNotContain("onAgentProgress(\"ask\")", libSource, StringComparison.Ordinal);
@@ -743,7 +759,7 @@ public class SecondBrainAskFeaturesTests
                 print("A_AFTER_B_CLEAR=" + string(askGetHistory().length));
                 print("A_Q2=" + askGetHistory()[0].question);
 
-                var catalog = ui.state(ASK_STORE, "catalog", null, ASK_SESSION_ID);
+                var catalog = askGetCatalog();
                 print("CATALOG=" + catalog.notes[0]);
                 print("SHARED=" + askSharedScope());
                 """,
@@ -1561,6 +1577,111 @@ public class SecondBrainAskFeaturesTests
         }
         finally
         {
+            SafeDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public async Task AskUi_SessionMeta_PinnedSharedStoreSurvivesLruPressure()
+    {
+        // Regression: unpinned shared meta + ui.state(..., {}) left the meta bar
+        // as "Note null · Temi null" after TTL/LRU. ASK now pins the shared scope.
+        Assert.True(File.Exists(AskUiLibPath), "missing ask UI lib: " + AskUiLibPath);
+
+        var tempDir = Path.Combine(Path.GetTempPath(), "malda_sb_ask_session_pin", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        HttpServerInstance.ClearAllComponentState();
+        HttpServerInstance.ConfigureComponentStatePolicy(512, 128, 1_800_000);
+        try
+        {
+            File.Copy(AskUiLibPath, Path.Combine(tempDir, "secondbrain_ask_ui_lib.malda"));
+            var harnessPath = Path.Combine(tempDir, "harness.malda");
+            File.WriteAllText(harnessPath,
+                """
+                var ASK_HTTP_PORT = 39029;
+                var ASK_SESSION_ID = "secondbrain-ask-pin-test";
+                var ASK_STORE = "SecondBrainAskPinTest";
+                var PRODUCT_NAME = "Pin Brain";
+                var ASK_PAGE_TITLE = "Pin Brain";
+                var ASK_POWERED_BY = "";
+                var ASK_POWERED_BY_URL = "";
+                var ASK_LOGO = "";
+                var ASK_LOGO_RIGHT = "";
+                var UI_LANG = "it";
+                var askHttpServer = null;
+
+                function runAskTurn(question) {
+                    return { "question": question, "answer": "ok", "sources": [], "error": "" };
+                }
+
+                include "secondbrain_ask_ui_lib.malda";
+
+                // Isolate from other Sequential tests that leave component state.
+                componentStateClear();
+
+                askSetCatalog({
+                    "notes": [{ "title": "n1", "tags": ["t"] }],
+                    "topics": [{ "slug": "tema" }],
+                    "sourceFolder": "docs"
+                });
+                askSetSession({
+                    "brainDir": "secondbrain",
+                    "chatOnly": false,
+                    "noteCount": 7,
+                    "topicCount": 3,
+                    "sourceFolder": "docs",
+                    "retrieval": "GraphMemory",
+                    "llm": "test-model",
+                    "title": ASK_PAGE_TITLE,
+                    "subtitle": "meta"
+                });
+
+                // Tiny store: flood with unpinned conversation scopes. Pinned shared
+                // entry must survive (askPinSharedStore already ran).
+                componentStateConfigure(4, 256, 86400000);
+                var i = 0;
+                while (i < 12) {
+                    ui.setState(ASK_STORE, "history", [], "conv-" + string(i));
+                    i = i + 1;
+                }
+
+                var session = askGetSession();
+                var catalog = askGetCatalog();
+                print(string(session.noteCount));
+                print(string(session.topicCount));
+                print(askAsText(session.retrieval));
+                print(askAsText(session.llm));
+                if (catalog == null) {
+                    print("catalog-missing");
+                } else {
+                    print(string(catalog.notes.length));
+                }
+                print(askRenderPage());
+
+                // Explicit clear still wipes; peek must not resurrect via get-or-create.
+                componentStateClear(ASK_STORE, ASK_SESSION_ID);
+                var empty = askGetSession();
+                print("after-clear:" + askMetaCount(empty.noteCount));
+                """,
+                Encoding.UTF8);
+
+            var output = await InterpretAndCaptureAsync(harnessPath);
+            Assert.Contains("7", output, StringComparison.Ordinal);
+            Assert.Contains("3", output, StringComparison.Ordinal);
+            Assert.Contains("GraphMemory", output, StringComparison.Ordinal);
+            Assert.Contains("test-model", output, StringComparison.Ordinal);
+            Assert.Contains("1", output, StringComparison.Ordinal); // catalog notes length
+            Assert.DoesNotContain("catalog-missing", output, StringComparison.Ordinal);
+            Assert.Contains("Note <strong>7</strong>", output, StringComparison.Ordinal);
+            Assert.Contains("Temi <strong>3</strong>", output, StringComparison.Ordinal);
+            Assert.DoesNotContain("Note <strong>null</strong>", output, StringComparison.Ordinal);
+            Assert.DoesNotContain("Temi <strong>null</strong>", output, StringComparison.Ordinal);
+            Assert.Contains("after-clear:0", output, StringComparison.Ordinal);
+        }
+        finally
+        {
+            HttpServerInstance.ClearAllComponentState();
+            HttpServerInstance.ConfigureComponentStatePolicy(512, 128, 1_800_000);
             SafeDeleteDirectory(tempDir);
         }
     }

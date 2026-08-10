@@ -1094,6 +1094,8 @@ public static class BuiltInFunctions
             "componentStateObject" => BuiltInComponentStateObject(args),
             "componentStateClear" => BuiltInComponentStateClear(args),
             "componentStateConfigure" => BuiltInComponentStateConfigure(args),
+            "componentStatePin" => BuiltInComponentStatePin(args),
+            "componentStateUnpin" => BuiltInComponentStateUnpin(args),
             "onAgentProgress" => BuiltInOnAgentProgress(args, interpreter),
             "clearAgentProgress" => BuiltInClearAgentProgress(args),
             "uiRow" => BuiltInUiRow(args),
@@ -1152,7 +1154,10 @@ public static class BuiltInFunctions
             "uiDispatchEvent" => BuiltInUiDispatchEvent(args),
             "uiPullEvent" => BuiltInUiPullEvent(args),
             "uiState" => BuiltInUiState(args),
+            "uiGetState" => BuiltInUiGetState(args),
             "uiSetState" => BuiltInUiSetState(args),
+            "uiPinState" => BuiltInUiPinState(args),
+            "uiUnpinState" => BuiltInUiUnpinState(args),
             "uiInvalidate" => BuiltInUiInvalidate(args),
             "uiOnInit" => BuiltInUiOnInit(args),
             "uiOnPreRender" => BuiltInUiOnPreRender(args),
@@ -1464,6 +1469,8 @@ public static class BuiltInFunctions
             "componentStateObject" => BuiltInComponentStateObject(args),
             "componentStateClear" => BuiltInComponentStateClear(args),
             "componentStateConfigure" => BuiltInComponentStateConfigure(args),
+            "componentStatePin" => BuiltInComponentStatePin(args),
+            "componentStateUnpin" => BuiltInComponentStateUnpin(args),
             "onAgentProgress" => BuiltInOnAgentProgress(args, interpreter),
             "clearAgentProgress" => BuiltInClearAgentProgress(args),
             "uiRow" => BuiltInUiRow(args),
@@ -1522,7 +1529,10 @@ public static class BuiltInFunctions
             "uiDispatchEvent" => BuiltInUiDispatchEvent(args),
             "uiPullEvent" => BuiltInUiPullEvent(args),
             "uiState" => BuiltInUiState(args),
+            "uiGetState" => BuiltInUiGetState(args),
             "uiSetState" => BuiltInUiSetState(args),
+            "uiPinState" => BuiltInUiPinState(args),
+            "uiUnpinState" => BuiltInUiUnpinState(args),
             "uiInvalidate" => BuiltInUiInvalidate(args),
             "uiOnInit" => BuiltInUiOnInit(args),
             "uiOnPreRender" => BuiltInUiOnPreRender(args),
@@ -9132,6 +9142,26 @@ public static class BuiltInFunctions
         return RuntimeValue.Null();
     }
 
+    private static RuntimeValue BuiltInComponentStatePin(List<RuntimeValue> args)
+    {
+        if ((args.Count != 1 && args.Count != 2) || args[0].Type != ValueType.String)
+            throw new Exception("componentStatePin() expects componentId and optional scope");
+
+        var componentId = ComposeScopedComponentId(args[0].AsString(), args.Count == 2 ? args[1] : RuntimeValue.Null());
+        HttpServerInstance.PinComponentState(componentId);
+        return RuntimeValue.Null();
+    }
+
+    private static RuntimeValue BuiltInComponentStateUnpin(List<RuntimeValue> args)
+    {
+        if ((args.Count != 1 && args.Count != 2) || args[0].Type != ValueType.String)
+            throw new Exception("componentStateUnpin() expects componentId and optional scope");
+
+        var componentId = ComposeScopedComponentId(args[0].AsString(), args.Count == 2 ? args[1] : RuntimeValue.Null());
+        HttpServerInstance.UnpinComponentState(componentId);
+        return RuntimeValue.Null();
+    }
+
     private static RuntimeValue BuiltInUiRow(List<RuntimeValue> args) => UiFrameworkInstance.BuildNode("row", args);
     private static RuntimeValue BuiltInUiColumn(List<RuntimeValue> args) => UiFrameworkInstance.BuildNode("column", args);
     private static RuntimeValue BuiltInUiStack(List<RuntimeValue> args) => UiFrameworkInstance.BuildNode("stack", args);
@@ -9909,6 +9939,20 @@ public static class BuiltInFunctions
         return args[2];
     }
 
+    private static RuntimeValue BuiltInUiGetState(List<RuntimeValue> args)
+    {
+        // Peek: default is return-only and is never persisted (unlike ui.state).
+        if (args.Count < 2 || args.Count > 4 || args[0].Type != ValueType.String || args[1].Type != ValueType.String)
+            throw new Exception("uiGetState() expects componentId, key, optional defaultValue, optional scope");
+
+        var componentId = ComposeScopedComponentId(args[0].AsString(), args.Count == 4 ? args[3] : RuntimeValue.Null());
+        var key = args[1].AsString();
+        var value = HttpServerInstance.GetComponentState(componentId, key);
+        if (value.Type == ValueType.Null && args.Count >= 3)
+            return args[2];
+        return value;
+    }
+
     private static RuntimeValue BuiltInUiSetState(List<RuntimeValue> args)
     {
         if (args.Count < 3 || args.Count > 4 || args[0].Type != ValueType.String || args[1].Type != ValueType.String)
@@ -9917,6 +9961,26 @@ public static class BuiltInFunctions
         var componentId = ComposeScopedComponentId(args[0].AsString(), args.Count == 4 ? args[3] : RuntimeValue.Null());
         HttpServerInstance.SetComponentState(componentId, args[1].AsString(), args[2]);
         return args[2];
+    }
+
+    private static RuntimeValue BuiltInUiPinState(List<RuntimeValue> args)
+    {
+        if ((args.Count != 1 && args.Count != 2) || args[0].Type != ValueType.String)
+            throw new Exception("uiPinState() expects componentId and optional scope");
+
+        var componentId = ComposeScopedComponentId(args[0].AsString(), args.Count == 2 ? args[1] : RuntimeValue.Null());
+        HttpServerInstance.PinComponentState(componentId);
+        return RuntimeValue.Null();
+    }
+
+    private static RuntimeValue BuiltInUiUnpinState(List<RuntimeValue> args)
+    {
+        if ((args.Count != 1 && args.Count != 2) || args[0].Type != ValueType.String)
+            throw new Exception("uiUnpinState() expects componentId and optional scope");
+
+        var componentId = ComposeScopedComponentId(args[0].AsString(), args.Count == 2 ? args[1] : RuntimeValue.Null());
+        HttpServerInstance.UnpinComponentState(componentId);
+        return RuntimeValue.Null();
     }
 
     private static RuntimeValue BuiltInUiInvalidate(List<RuntimeValue> args)

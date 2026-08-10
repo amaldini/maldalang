@@ -20,12 +20,16 @@
 //   logo_right.png / .svg / .jpg / .jpeg / .webp / .gif / .ico — if ASK_LOGO_RIGHT is empty
 //
 // HttpServer isolates each request: brain/catalog live in shared ui.state
-// (ASK_SESSION_ID); per-browser conversations use scope askConvScope() from
-// query/body/cookie `c` (malda_ask_c). Ask / Clear use @ACTION +
+// (ASK_SESSION_ID), pinned so TTL/LRU cannot drop process-lifetime meta.
+// Per-browser conversations use scope askConvScope() from query/body/cookie
+// `c` (malda_ask_c). Ask / Clear use @ACTION +
 // componentFragment("ask-panel", ...) so the HttpServer AJAX helper patches
 // only #ask-panel. Live progress uses @LIVE + per-conversation SSE channel
 // ask-{c} because the POST /ask connection stays blocked until the answer
 // is ready.
+//
+// Shared reads use ui.getState (peek). Do not ui.state(..., {}) / null on
+// session/catalog — that get-or-create path poisons the store after a miss.
 //
 // Theme: query `theme=light|dark` (header toggle). Persisted in cookie
 // malda_ask_theme (browser-wide, survives conversations); also mirrored in
@@ -64,6 +68,7 @@ var ASK_MIN_LEXICAL_SCORE = 1.0;
 var askAuthJwtSecret = "";
 var askAuthCookieSecret = "";
 var askAuthSessionSecret = "";
+var ASK_SHARED_STORE_CONFIGURED = false;
 
 function askAsText(value) {
     if (value == null) {
@@ -1524,12 +1529,48 @@ function askAppendTurn(turn) {
     askSetHistory(next);
 }
 
+function askConfigureSharedStore() {
+    // Conversation scopes create many unpinned entries; keep headroom. Shared
+    // brain meta is also ui.pinState'd so LRU/TTL cannot drop it.
+    if (ASK_SHARED_STORE_CONFIGURED) {
+        return;
+    }
+    componentStateConfigure(4096, 256, 86400000);
+    ASK_SHARED_STORE_CONFIGURED = true;
+}
+
+function askPinSharedStore() {
+    askConfigureSharedStore();
+    ui.pinState(ASK_STORE, ASK_SESSION_ID);
+}
+
 function askGetSession() {
-    return ui.state(ASK_STORE, "session", {}, ASK_SESSION_ID);
+    var session = ui.getState(ASK_STORE, "session", null, ASK_SESSION_ID);
+    if (session == null) {
+        return {};
+    }
+    return session;
 }
 
 function askSetSession(session) {
+    askPinSharedStore();
     ui.setState(ASK_STORE, "session", session, ASK_SESSION_ID);
+}
+
+function askGetCatalog() {
+    return ui.getState(ASK_STORE, "catalog", null, ASK_SESSION_ID);
+}
+
+function askSetCatalog(catalog) {
+    askPinSharedStore();
+    ui.setState(ASK_STORE, "catalog", catalog, ASK_SESSION_ID);
+}
+
+function askMetaCount(value) {
+    if (value == null) {
+        return "0";
+    }
+    return string(value);
 }
 
 function askIsChatOnly() {
@@ -2184,7 +2225,7 @@ function askRenderEmptyStateHtml(session) {
 }
 
 function askCollectAvailableTags() {
-    var catalog = ui.state(ASK_STORE, "catalog", null, ASK_SESSION_ID);
+    var catalog = askGetCatalog();
     var seen = {};
     var out = [];
     if (catalog == null) {
@@ -2787,18 +2828,18 @@ function askRenderPage() {
     var subtitle = askAsText(session.subtitle);
     html = html + "<div class='meta-bar'>" +
         "<span>" + askEscapeHtml(askT("Notes", "Note")) + " <strong>" +
-        askEscapeHtml(string(session.noteCount)) + "</strong></span>" +
+        askEscapeHtml(askMetaCount(session.noteCount)) + "</strong></span>" +
         "<span class='dot' aria-hidden='true'>·</span>" +
         "<span>" + askEscapeHtml(askT("Themes", "Temi")) + " <strong>" +
-        askEscapeHtml(string(session.topicCount)) + "</strong></span>" +
+        askEscapeHtml(askMetaCount(session.topicCount)) + "</strong></span>" +
         "<span class='dot' aria-hidden='true'>·</span>" +
         "<span>" + askEscapeHtml(askT("from", "da")) +
-        " <strong>" + askEscapeHtml(session.sourceFolder) + "</strong></span>" +
+        " <strong>" + askEscapeHtml(askAsText(session.sourceFolder)) + "</strong></span>" +
         "<span class='dot' aria-hidden='true'>·</span>" +
         "<span>" + askEscapeHtml(askT("Retrieval", "Recupero")) + " <strong>" +
-        askEscapeHtml(session.retrieval) + "</strong></span>" +
+        askEscapeHtml(askAsText(session.retrieval)) + "</strong></span>" +
         "<span class='dot' aria-hidden='true'>·</span>" +
-        "<span>LLM <strong>" + askEscapeHtml(session.llm) + "</strong></span>";
+        "<span>LLM <strong>" + askEscapeHtml(askAsText(session.llm)) + "</strong></span>";
     if (subtitle != "") {
         html = html + "<div class='meta-sub'>" + askEscapeHtml(subtitle) + "</div>";
     }
@@ -3007,7 +3048,9 @@ function askUiLive() {
 function askUiHealth(req, res, queryParams) {
     var ready = true;
     if (queryParams != null and queryParams["ready"] != null) {
-        var catalog = ui.state(ASK_STORE, "catalog", null, ASK_SESSION_ID);
+        // askGetCatalog peeks — never ui.state(..., null) which would persist a
+        // null catalog after a shared-store miss.
+        var catalog = askGetCatalog();
         ready = catalog != null;
     }
     return res.json({
