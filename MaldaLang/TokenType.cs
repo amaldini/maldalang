@@ -100,6 +100,7 @@ public enum TokenType
     GreaterThanOrEqual,
     Assign,
     QuestionMark,
+    NullCoalesce,
     Increment,
     Decrement,
     PlusAssign,

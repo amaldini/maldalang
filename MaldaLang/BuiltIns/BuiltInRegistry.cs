@@ -90,6 +90,8 @@ public static class BuiltInRegistry
             "upper" or
             "lower" or
             "trim" or
+            "text" or
+            "trimText" or
             "substring" or
             "indexOf" or
             "replace" or
@@ -114,6 +116,7 @@ public static class BuiltInRegistry
             "loadSkill" or
             "loadSkillsFromDir" or
             "getEnv" or
+            "getEnvOr" or
             "getHostPlatform" or
             "getCommandLineArgs" or
             "hasEnv" or

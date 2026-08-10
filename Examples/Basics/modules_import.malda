@@ -1,0 +1,14 @@
+// modules_import.malda — compose programs with import / export
+// Run: malda Examples/Basics/modules_import.malda
+//
+// import "path"; loads a file module in an isolated environment and merges
+// only `export` bindings into this program. That is different from include,
+// which splices source and shares host globals (see modules_include.malda).
+
+import "helpers/math_lib.malda";
+
+io.print(addOne(41));
+io.print(label(null));
+io.print(str.trimText("  hi  "));
+io.print(io.getEnvOr("MALDA_IMPORT_DEMO_MISSING", "fallback"));
+io.print("Done.");

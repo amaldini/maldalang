@@ -1476,6 +1476,32 @@ public class CSharpTranspiler
         _output.AppendLine();
 
         WriteIndent();
+        _output.AppendLine("public static bool IsMaldaNull(object? value)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("if (value == null) return true;");
+        WriteIndent();
+        _output.AppendLine("return value is MaldaLang.Interpreter.RuntimeValue rv && rv.Type == MaldaLang.Interpreter.ValueType.Null;");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        _output.AppendLine();
+
+        WriteIndent();
+        _output.AppendLine("public static object? NullCoalesce(object? left, System.Func<object?> rightFactory)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("return IsMaldaNull(left) ? rightFactory() : left;");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        _output.AppendLine();
+
+        WriteIndent();
         _output.AppendLine("public static MaldaLang.Interpreter.RuntimeValue UnwrapMaldaExceptionValue(Exception ex)");
         WriteIndent();
         _output.AppendLine("{");
@@ -8181,6 +8207,16 @@ public class CSharpTranspiler
             return;
         }
 
+        if (binary.Operator == TokenType.NullCoalesce)
+        {
+            _output.Append("RuntimeHelpers.NullCoalesce(");
+            TranspileExpression(binary.Left);
+            _output.Append(", () => ");
+            TranspileExpression(binary.Right);
+            _output.Append(")");
+            return;
+        }
+
         _output.Append("(");
         TranspileExpression(binary.Left);
         _output.Append(" ");
@@ -9701,6 +9737,45 @@ public class CSharpTranspiler
             case "getEnv":
                 _output.Append("RuntimeHelpers.UnwrapRuntimeValue(MaldaLang.BuiltIns.BuiltInFunctions.CallBuiltIn(\"");
                 _output.Append("getEnv");
+                _output.Append("\", new List<MaldaLang.Interpreter.RuntimeValue> { ");
+                for (int i = 0; i < arguments.Count; i++)
+                {
+                    if (i > 0) _output.Append(", ");
+                    _output.Append("RuntimeHelpers.ToRuntimeValue(");
+                    TranspileExpression(arguments[i]);
+                    _output.Append(")");
+                }
+                _output.Append(" }, null))");
+                break;
+            case "getEnvOr":
+                _output.Append("RuntimeHelpers.UnwrapRuntimeValue(MaldaLang.BuiltIns.BuiltInFunctions.CallBuiltIn(\"");
+                _output.Append("getEnvOr");
+                _output.Append("\", new List<MaldaLang.Interpreter.RuntimeValue> { ");
+                for (int i = 0; i < arguments.Count; i++)
+                {
+                    if (i > 0) _output.Append(", ");
+                    _output.Append("RuntimeHelpers.ToRuntimeValue(");
+                    TranspileExpression(arguments[i]);
+                    _output.Append(")");
+                }
+                _output.Append(" }, null))");
+                break;
+            case "text":
+                _output.Append("RuntimeHelpers.UnwrapRuntimeValue(MaldaLang.BuiltIns.BuiltInFunctions.CallBuiltIn(\"");
+                _output.Append("text");
+                _output.Append("\", new List<MaldaLang.Interpreter.RuntimeValue> { ");
+                for (int i = 0; i < arguments.Count; i++)
+                {
+                    if (i > 0) _output.Append(", ");
+                    _output.Append("RuntimeHelpers.ToRuntimeValue(");
+                    TranspileExpression(arguments[i]);
+                    _output.Append(")");
+                }
+                _output.Append(" }, null))");
+                break;
+            case "trimText":
+                _output.Append("RuntimeHelpers.UnwrapRuntimeValue(MaldaLang.BuiltIns.BuiltInFunctions.CallBuiltIn(\"");
+                _output.Append("trimText");
                 _output.Append("\", new List<MaldaLang.Interpreter.RuntimeValue> { ");
                 for (int i = 0; i < arguments.Count; i++)
                 {

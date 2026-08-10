@@ -28,7 +28,7 @@ public static class StdLibNamespaces
 
     public static readonly IReadOnlySet<string> StrMethodNames = new HashSet<string>(StringComparer.Ordinal)
     {
-        "length", "upper", "lower", "trim", "substring", "indexOf", "replace", "split",
+        "length", "upper", "lower", "trim", "text", "trimText", "substring", "indexOf", "replace", "split",
         "normalizeText", "tokenize", "tokenOverlap", "similarity", "extractNumbers",
         "regexMatch", "regexReplace", "regexFind",
         "startsWith", "endsWith", "padStart", "padEnd", "includes", "join", "repeat",
@@ -52,7 +52,7 @@ public static class StdLibNamespaces
         "deleteFile", "hasFile", "hasDirectory", "ensureDir", "listDirectory",
         "glob", "grep", "replaceInFile",
         "pathExists", "pathJoin", "pathNormalize", "pathGetExtension", "isPathUnder",
-        "getEnv", "hasEnv", "getFileName", "getDirectoryName",
+        "getEnv", "getEnvOr", "hasEnv", "getFileName", "getDirectoryName",
         "hasEmbeddedFolder", "embeddedFolderRoot",
         "gitStatus", "gitAdd", "gitCommit", "gitDiff", "gitLog", "gitBranch", "gitCheckout", "gitPull", "gitPush"
     };

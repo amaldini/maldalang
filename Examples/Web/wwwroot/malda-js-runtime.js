@@ -492,6 +492,13 @@
     return array;
   }
 
+  function nullCoalesce(left, rightFactory) {
+    if (left === null || left === undefined) {
+      return rightFactory();
+    }
+    return left;
+  }
+
   function getMemberNullSafe(object, member) {
     if (object === null || object === undefined) {
       return null;
@@ -973,6 +980,7 @@
     arrayAppend,
     getMemberNullSafe,
     getIndexNullSafe,
+    nullCoalesce,
     matchPattern,
     pushDeferFrame,
     registerDefer,

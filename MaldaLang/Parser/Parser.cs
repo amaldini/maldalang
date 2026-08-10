@@ -1687,7 +1687,7 @@ public class Parser
     
     private Expression Ternary()
     {
-        var expr = MatchExpression();
+        var expr = NullCoalesce();
         
         if (Match(TokenType.QuestionMark))
         {
@@ -1698,6 +1698,24 @@ public class Parser
             return new TernaryExpression(expr, thenBranch, elseBranch, questionToken.Line, questionToken.Column);
         }
         
+        return expr;
+    }
+
+    /// <summary>
+    /// Null-coalescing <c>??</c>: between logical OR and the ternary. Right-associative;
+    /// only <c>null</c> triggers the right side (unlike <c>or</c>, which uses truthiness).
+    /// </summary>
+    private Expression NullCoalesce()
+    {
+        var expr = MatchExpression();
+
+        if (Match(TokenType.NullCoalesce))
+        {
+            var op = Previous();
+            var right = NullCoalesce();
+            return new BinaryExpression(expr, TokenType.NullCoalesce, right, op.Line, op.Column);
+        }
+
         return expr;
     }
     

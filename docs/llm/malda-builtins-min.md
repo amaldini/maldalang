@@ -1,6 +1,6 @@
 # MALDA builtins (minimum set for codegen)
 
-*Applies to: MALDA 0.1.34*
+*Applies to: MALDA 0.1.47*
 
 **If a name is not in [`malda-builtins.tsv`](malda-builtins.tsv), it does not exist — do not
 invent it.** The TSV is generated from the engine and guarded by a test, so absence from it
@@ -49,6 +49,8 @@ Built-in classes you instantiate with `new`: `LLMClient`, `OpenRouterClient`,
 | `io.input(prompt?)` | Read one line from stdin |
 | `sleep(ms)` | Real-time delay (prefer over busy loops) |
 | `string(x)` / `int(x)` / `float(x)` / `bool(x)` | Coerce. `toIntOr(x, fallback)` / `toIntOrNull(x)` do not throw |
+| `str.text(x)` / `str.trimText(x)` | Null-safe coerce / trim (`null` → `""`; unlike `string(null)` → `"null"`) |
+| `io.getEnvOr(name, default?)` | Env lookup that never returns `null` (default `""`) |
 | `str.length(s)`, array `.length`, indexing `a[i]` | Size and access |
 
 ## Strings / JSON

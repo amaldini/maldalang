@@ -114,7 +114,7 @@ public partial class Interpreter
     private RuntimeValue? MergeModuleSymbols(ModuleLoadResult loadResult, string targetName, bool useNamespaceObject)
     {
         var moduleSymbols = ModuleExports.FilterExportedSymbols(
-            loadResult.Environment.GetAllVariables(),
+            loadResult.Environment.GetOwnVariables(),
             loadResult.ExplicitExports);
         return MergeRawSymbols(moduleSymbols, targetName, useNamespaceObject);
     }

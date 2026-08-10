@@ -147,7 +147,10 @@ public class Lexer
             case '*': return HandleMultiply();
             case '/': return HandleSlash();
             case '%': return CreateToken(TokenType.Modulo);
-            case '?': return CreateToken(TokenType.QuestionMark);
+            case '?':
+                return Match('?')
+                    ? CreateToken(TokenType.NullCoalesce)
+                    : CreateToken(TokenType.QuestionMark);
             case ':': return CreateToken(TokenType.Colon);
             case '_':
                 // Keep standalone '_' for wildcard patterns, but allow identifiers like '__add__'.

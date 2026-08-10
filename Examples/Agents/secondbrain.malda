@@ -146,7 +146,7 @@ function productNameLooksLikePath(value) {
 }
 
 function productName() {
-    var n = str.trim(string(PRODUCT_NAME));
+    var n = str.trimText(PRODUCT_NAME);
     if (n != "" and productNameLooksLikePath(n)) {
         var fromFile = readProductNameFile(n);
         if (fromFile != "") {
@@ -208,7 +208,8 @@ function chooseLanguage() {
         "[dim]Lingua interfaccia: Italiano[/]"));
 }
 
-include "secondbrain_cli_lib.malda";
+import "secondbrain_cli_lib.malda";
+include "secondbrain_cli_apply_lib.malda";
 
 // ---------------------------------------------------------------- LLM helpers
 
@@ -217,7 +218,7 @@ function makeClient() {
         return null;
     }
     if (io.hasEnv("MALDA_BRAIN_MODEL")) {
-        var m = str.trim(string(io.getEnv("MALDA_BRAIN_MODEL")));
+        var m = str.trim(io.getEnvOr("MALDA_BRAIN_MODEL"));
         if (m != "") {
             return new OpenRouterClient(m);
         }
@@ -230,7 +231,7 @@ function modelLabel() {
         return t("default local model (MALDA)", "modello locale di default (MALDA)");
     }
     if (io.hasEnv("MALDA_BRAIN_MODEL")) {
-        var m = str.trim(string(io.getEnv("MALDA_BRAIN_MODEL")));
+        var m = str.trim(io.getEnvOr("MALDA_BRAIN_MODEL"));
         if (m != "") {
             return "OpenRouter / " + m;
         }
@@ -277,17 +278,10 @@ function newPlainAgent(name, role, instructions) {
 function tryThinkParts(agent, question) {
     try {
         var response = agent.think(question);
-        var content = "";
-        var reasoning = "";
-        if (response != null) {
-            if (response.content != null) {
-                content = str.trim(string(response.content));
-            }
-            if (response.reasoning != null) {
-                reasoning = str.trim(string(response.reasoning));
-            }
-        }
-        return { "content": content, "reasoning": reasoning };
+        return {
+            "content": str.trimText(response?.content),
+            "reasoning": str.trimText(response?.reasoning)
+        };
     } catch (e) {
         AnsiConsole.markupLine("  [red]" + t("LLM error:", "errore LLM:") + "[/] " + string(e));
         return { "content": "", "reasoning": "" };

@@ -78,10 +78,7 @@ var askAuthSessionSecret = "";
 var ASK_SHARED_STORE_CONFIGURED = false;
 
 function askAsText(value) {
-    if (value == null) {
-        return "";
-    }
-    return string(value);
+    return str.text(value);
 }
 
 // CLI: --port 8080 | -p 8080 | --port=8080 (also works on packed ASK .exe).
@@ -365,11 +362,11 @@ function askPrintOpenUrlHint() {
 // ---------------------------------------------------------------- ASK auth (cookie JWT + users.json)
 
 function askEnvText(name) {
-    var key = str.trim(askAsText(name));
-    if (key == "" or not io.hasEnv(key)) {
+    var key = str.trimText(name);
+    if (key == "") {
         return "";
     }
-    return str.trim(askAsText(io.getEnv(key)));
+    return str.trim(io.getEnvOr(key));
 }
 
 function askEnvBoolOverride(name) {
@@ -1110,10 +1107,10 @@ function askUiLoginPage(queryParams, response, cookies) {
     askSetThemeCookie(response, askGetTheme());
     var err = "";
     var notice = "";
-    if (queryParams != null and queryParams["error"] != null) {
+    if (queryParams?["error"] != null) {
         err = askT("Invalid username or password.", "Utente o password non validi.");
     }
-    if (queryParams != null and queryParams["registered"] != null) {
+    if (queryParams?["registered"] != null) {
         notice = askT(
             "Account created. Sign in with your new credentials.",
             "Account creato. Accedi con le nuove credenziali.");
@@ -3208,27 +3205,26 @@ function askRenderPage() {
 @PAGE("/")
 function askUiHome(queryParams, response, cookies, req) {
     var id = askBeginRequest(queryParams, null, cookies, response, req);
-    var hasC = queryParams != null and queryParams["c"] != null and
-        askNormalizeConvId(queryParams["c"]) != "";
+    var hasC = askNormalizeConvId(queryParams?["c"] ?? "") != "";
     if (not hasC) {
         var redirect = "/?c=" + id;
-        if (queryParams != null and queryParams["lang"] != null) {
+        if (queryParams?["lang"] != null) {
             redirect = redirect + "&lang=" + askAsText(queryParams["lang"]);
         }
-        if (queryParams != null and queryParams["theme"] != null) {
+        if (queryParams?["theme"] != null) {
             redirect = redirect + "&theme=" + askAsText(queryParams["theme"]);
         }
         return RedirectTo(redirect);
     }
-    if (queryParams != null and queryParams["lang"] != null) {
+    if (queryParams?["lang"] != null) {
         askSetLang(queryParams["lang"]);
     }
-    if (queryParams != null and queryParams["theme"] != null) {
+    if (queryParams?["theme"] != null) {
         askSetTheme(queryParams["theme"]);
         askSetThemeCookie(response, askGetTheme());
     }
     // Bookmark / no-JS fallback for clear (AJAX path uses POST /clear).
-    if (queryParams != null and queryParams["clear"] != null) {
+    if (queryParams?["clear"] != null) {
         askClearHistory();
         askAudit("clear", req, {});
         return RedirectTo("/?c=" + id);

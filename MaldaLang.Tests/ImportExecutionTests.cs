@@ -479,6 +479,61 @@ public class ImportExecutionTests : TestBase
     }
 
     [Fact]
+    public async Task ImportFileModule_CanUseStdLibNamespaces()
+    {
+        var tempDir = CreateTempDirectory("import_file_stdlib_");
+        try
+        {
+            var modulePath = Path.Combine(tempDir, "lib.malda");
+            File.WriteAllText(
+                modulePath,
+                """
+                export function describe(value) {
+                    return str.trimText(value);
+                }
+                """);
+
+            var mainPath = Path.Combine(tempDir, "main.malda");
+            File.WriteAllText(
+                mainPath,
+                """
+                import "lib.malda";
+                print("a=" + describe(null));
+                print("b=" + describe("  ok  "));
+                """);
+
+            var source = File.ReadAllText(mainPath);
+            var lexer = new Lexer(source, mainPath);
+            var tokens = lexer.Tokenize();
+            var parser = new Parser.Parser(tokens, mainPath);
+            var statements = parser.Parse();
+            Assert.Empty(parser.Errors);
+
+            var interpreter = new Interpreter.Interpreter();
+            var moduleLoader = new ModuleLoader();
+            var moduleLoaderField = typeof(Interpreter.Interpreter).GetField("_moduleLoader", BindingFlags.Instance | BindingFlags.NonPublic);
+            moduleLoaderField!.SetValue(interpreter, moduleLoader);
+
+            RedirectConsole();
+            try
+            {
+                await interpreter.InterpretAsync(statements);
+                var lines = GetOutput().Replace("\r", "").Split('\n', StringSplitOptions.RemoveEmptyEntries);
+                Assert.Equal("a=", lines[0]);
+                Assert.Equal("b=ok", lines[1]);
+            }
+            finally
+            {
+                RestoreConsole();
+            }
+        }
+        finally
+        {
+            SafeDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
     public async Task ImportFileModule_ExportsOnlyMarkedBindings()
     {
         var tempDir = CreateTempDirectory("import_file_export_");

@@ -1283,6 +1283,7 @@ public class JsTranspiler
             TokenType.NotEqual => $"(!mlRuntime.equals({left}, {right}))",
             TokenType.And => $"(mlRuntime.isTruthy({left}) && mlRuntime.isTruthy({right}))",
             TokenType.Or => $"(mlRuntime.isTruthy({left}) || mlRuntime.isTruthy({right}))",
+            TokenType.NullCoalesce => $"mlRuntime.nullCoalesce({left}, () => {right})",
             TokenType.Minus => $"(mlRuntime.coerceToFloat({left}) - mlRuntime.coerceToFloat({right}))",
             TokenType.Multiply => $"(mlRuntime.coerceToFloat({left}) * mlRuntime.coerceToFloat({right}))",
             TokenType.Divide => $"(mlRuntime.coerceToFloat({left}) / mlRuntime.coerceToFloat({right}))",

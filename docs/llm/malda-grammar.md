@@ -111,7 +111,8 @@ Block       ::= "{" (TopLevelItem | Statement)* "}"
 
 Expression  ::= MatchExpr | Ternary
 MatchExpr   ::= "match" Expression "{" MatchCase* DefaultCase? "}"
-Ternary     ::= LogicalOr ("?" Expression ":" Expression)?
+Ternary     ::= NullCoalesce ("?" Expression ":" Expression)?
+NullCoalesce ::= MatchExpr ("??" NullCoalesce)?
 LogicalOr   ::= LogicalAnd (("or" | "||") LogicalAnd)*
 LogicalAnd  ::= Equality (("and" | "&&") Equality)*
 Equality    ::= Comparison (("==" | "!=") Comparison)*

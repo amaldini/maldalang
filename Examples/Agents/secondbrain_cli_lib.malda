@@ -1,7 +1,8 @@
 // secondbrain_cli_lib.malda - shared CLI parsing for secondbrain*.malda
 //
-// Included by the host after t() / UI_LANG helpers. Parses getCommandLineArgs()
-// style arrays (script path + host flags like --strict-types are ignored).
+// Pure helpers: import this module (isolated env; only export bindings merge).
+// Host-bound apply/help that assign UI_LANG / ASK_* live in
+// secondbrain_cli_apply_lib.malda (include after this import).
 //
 // Modes: build | update | ask | help
 // Flags: --docs --brain --taxonomy llm|folders --remove-orphans --lang en|it
@@ -14,16 +15,13 @@
 // Host: localhost (default), 127.0.0.1, IP/hostname, 0.0.0.0 or * (all interfaces).
 // HTTPS: --https requires --cert (.pfx/.p12 or .pem/.crt + .key).
 
-function sbCliAsText(value) {
-    if (value == null) {
-        return "";
-    }
-    return string(value);
+export function sbCliAsText(value) {
+    return str.text(value);
 }
 
 // Path confinement: return path when it resolves under root (disk or embed:), else null.
 // Use after io.pathJoin so ../ and rooted overrides cannot escape the intended tree.
-function sbAssertUnderRoot(root, path) {
+export function sbAssertUnderRoot(root, path) {
     var r = str.trim(sbCliAsText(root));
     var p = str.trim(sbCliAsText(path));
     if (r == "" or p == "") {
@@ -35,19 +33,19 @@ function sbAssertUnderRoot(root, path) {
     return p;
 }
 
-function sbJoinUnderRoot(root, part1) {
+export function sbJoinUnderRoot(root, part1) {
     return sbAssertUnderRoot(root, io.pathJoin(root, part1));
 }
 
-function sbJoinUnderRoot2(root, part1, part2) {
+export function sbJoinUnderRoot2(root, part1, part2) {
     return sbAssertUnderRoot(root, io.pathJoin(root, part1, part2));
 }
 
-function sbJoinUnderRoot3(root, part1, part2, part3) {
+export function sbJoinUnderRoot3(root, part1, part2, part3) {
     return sbAssertUnderRoot(root, io.pathJoin(root, part1, part2, part3));
 }
 
-function sbCliEmptyOptions() {
+export function sbCliEmptyOptions() {
     return {
         "mode": "",
         "docs": "",
@@ -70,7 +68,7 @@ function sbCliEmptyOptions() {
     };
 }
 
-function sbCliNormalizeHost(raw) {
+export function sbCliNormalizeHost(raw) {
     var s = str.trim(sbCliAsText(raw));
     if (s == "") {
         return "";
@@ -81,28 +79,28 @@ function sbCliNormalizeHost(raw) {
     return s;
 }
 
-function sbCliIsModeName(raw) {
+export function sbCliIsModeName(raw) {
     var a = str.lower(str.trim(sbCliAsText(raw)));
     return a == "build" or a == "update" or a == "ask" or a == "help" or a == "pack";
 }
 
-function sbCliEndsWithMalda(raw) {
+export function sbCliEndsWithMalda(raw) {
     var a = str.lower(str.trim(sbCliAsText(raw)));
     return str.endsWith(a, ".malda");
 }
 
-function sbCliIsHostSkipFlag(raw) {
+export function sbCliIsHostSkipFlag(raw) {
     var a = str.lower(str.trim(sbCliAsText(raw)));
     return a == "--strict-types" or a == "--profile";
 }
 
-function sbCliIsHostSkipFlagWithValue(raw) {
+export function sbCliIsHostSkipFlagWithValue(raw) {
     var a = str.lower(str.trim(sbCliAsText(raw)));
     return a == "--profile-output" or a == "--profile-format" or
         a == "--profile-periodic-seconds";
 }
 
-function sbCliParsePortNumber(raw) {
+export function sbCliParsePortNumber(raw) {
     var s = str.trim(sbCliAsText(raw));
     if (s == "") {
         return null;
@@ -117,7 +115,7 @@ function sbCliParsePortNumber(raw) {
     return n;
 }
 
-function sbCliNormalizeMode(raw) {
+export function sbCliNormalizeMode(raw) {
     var a = str.lower(str.trim(sbCliAsText(raw)));
     if (a == "build" or a == "update" or a == "ask" or a == "help" or a == "pack") {
         return a;
@@ -125,7 +123,7 @@ function sbCliNormalizeMode(raw) {
     return "";
 }
 
-function sbCliNormalizeLang(raw) {
+export function sbCliNormalizeLang(raw) {
     var a = str.lower(str.trim(sbCliAsText(raw)));
     if (a == "en" or a == "english" or a == "e" or a == "1") {
         return "en";
@@ -136,7 +134,7 @@ function sbCliNormalizeLang(raw) {
     return "";
 }
 
-function sbCliNormalizeTaxonomy(raw) {
+export function sbCliNormalizeTaxonomy(raw) {
     var a = str.lower(str.trim(sbCliAsText(raw)));
     if (a == "llm" or a == "explore" or a == "exploration") {
         return "llm";
@@ -147,7 +145,7 @@ function sbCliNormalizeTaxonomy(raw) {
     return "";
 }
 
-function sbCliTakeFlagValue(args, i, flag) {
+export function sbCliTakeFlagValue(args, i, flag) {
     // Returns { value, nextIndex, ok, missing }
     var a = str.trim(sbCliAsText(args[i]));
     var prefix = flag + "=";
@@ -179,7 +177,7 @@ function sbCliTakeFlagValue(args, i, flag) {
     return { "value": "", "nextIndex": i, "ok": false, "missing": false };
 }
 
-function sbCliParseArgs(args) {
+export function sbCliParseArgs(args) {
     var opt = sbCliEmptyOptions();
     if (args == null) {
         return opt;
@@ -434,7 +432,7 @@ function sbCliParseArgs(args) {
     return opt;
 }
 
-function sbCliIsNonInteractive(cli) {
+export function sbCliIsNonInteractive(cli) {
     if (cli == null) {
         return false;
     }
@@ -442,151 +440,3 @@ function sbCliIsNonInteractive(cli) {
     return m == "build" or m == "update" or m == "ask";
 }
 
-function sbCliApplyLang(cli) {
-    if (cli == null) {
-        return;
-    }
-    var lang = str.trim(sbCliAsText(cli.lang));
-    if (lang == "en" or lang == "it") {
-        UI_LANG = lang;
-        ui.setState(ASK_STORE, "lang", UI_LANG, ASK_SESSION_ID);
-    }
-}
-
-function sbCliApplyPort(cli) {
-    if (cli == null or cli.port == null) {
-        return ASK_HTTP_PORT;
-    }
-    ASK_HTTP_PORT = cli.port;
-    AnsiConsole.markupLine("[dim]" + t(
-        "ASK HTTP port from CLI: ",
-        "Porta HTTP ASK da riga di comando: ") +
-        string(ASK_HTTP_PORT) + "[/]");
-    return ASK_HTTP_PORT;
-}
-
-function sbCliApplyHost(cli) {
-    if (cli == null or cli.host == null) {
-        return ASK_HTTP_HOST;
-    }
-    ASK_HTTP_HOST = sbCliNormalizeHost(cli.host);
-    AnsiConsole.markupLine("[dim]" + t(
-        "ASK HTTP host from CLI: ",
-        "Host HTTP ASK da riga di comando: ") +
-        ASK_HTTP_HOST + "[/]");
-    return ASK_HTTP_HOST;
-}
-
-function sbCliApplyHttps(cli) {
-    if (cli == null) {
-        return ASK_HTTPS;
-    }
-    if (cli.https == true) {
-        ASK_HTTPS = true;
-        ASK_CERT_PATH = str.trim(sbCliAsText(cli.cert));
-        ASK_CERT_PASSWORD = sbCliAsText(cli.certPassword);
-        if (ASK_CERT_PASSWORD == "") {
-            var envPwd = getEnv("MALDA_HTTP_CERT_PASSWORD");
-            if (envPwd != null and str.trim(string(envPwd)) != "") {
-                ASK_CERT_PASSWORD = string(envPwd);
-            }
-        }
-        AnsiConsole.markupLine("[dim]" + t(
-            "ASK HTTPS from CLI; cert: ",
-            "ASK HTTPS da riga di comando; cert: ") +
-            ASK_CERT_PATH + "[/]");
-    }
-    return ASK_HTTPS;
-}
-
-// Override PRODUCT_NAME / ASK title from --product-name / --name.
-// Call after applyProductNameFromBrain / askApplyProductNameFromBrain so CLI wins.
-function sbCliApplyProductName(cli) {
-    if (cli == null) {
-        return "";
-    }
-    var n = str.trim(sbCliAsText(cli.productName));
-    if (n == "") {
-        return "";
-    }
-    PRODUCT_NAME = n;
-    var suffix = str.trim(sbCliAsText(ASK_TITLE_SUFFIX));
-    ASK_PAGE_TITLE = n + suffix;
-    ui.setState(ASK_STORE, "productName", n, ASK_SESSION_ID);
-    AnsiConsole.markupLine("[dim]" + t(
-        "Product name from CLI: ",
-        "Nome prodotto da riga di comando: ") + n + "[/]");
-    return n;
-}
-
-function sbCliPrintHelp(defaultBrain, defaultPort) {
-    var brain = str.trim(sbCliAsText(defaultBrain));
-    if (brain == "") {
-        brain = "secondbrain";
-    }
-    var port = str.trim(sbCliAsText(defaultPort));
-    if (port == "") {
-        port = "39018";
-    }
-    var en =
-        "Second Brain CLI\n\n" +
-        "  build  --docs <folder> [--brain " + brain + "] [--taxonomy llm|folders] [--lang en|it]\n" +
-        "         [--product-name <name>]\n" +
-        "  update [--docs <folder>] [--brain " + brain + "] [--remove-orphans] [--lang en|it]\n" +
-        "         [--product-name <name>]\n" +
-        "  ask    [--brain " + brain + "] [--port " + port + "] [--host localhost] [--lang en|it]\n" +
-        "         [--https --cert <pfx|pem>] [--cert-password <pwd>]\n" +
-        "         [--product-name <name>] [--auth|--no-auth] [--allow-register|--no-register]\n" +
-        "         [--examples|--no-examples]\n" +
-        "  help\n\n" +
-        "Non-interactive: build/update/ask skip the menu and confirmations.\n" +
-        "Also: --mode build|update|ask   -p <port>   --port=<n>   --host=<addr>   --name <name>\n" +
-        "--host defaults to localhost; use 0.0.0.0 or * to listen on all interfaces.\n" +
-        "--https requires --cert (.pfx/.p12 or .pem/.crt with sibling .key).\n" +
-        "Optional: --cert-password or MALDA_HTTP_CERT_PASSWORD.\n" +
-        "Privileged ports / non-localhost binds on Windows may need admin or\n" +
-        "  netsh http add urlacl url=http://+:PORT/ user=Everyone\n" +
-        "--product-name / --name overrides brain product_name.txt and the default title.\n" +
-        "ASK auth is on by default (cookie JWT). Disable with --no-auth.\n" +
-        "Bootstrap: MALDA_ASK_USER / MALDA_ASK_PASSWORD (or MALDA_ASK_PASSWORD_HASH).\n" +
-        "Multi-user: users.json in the brain folder (or .malda/ask_users.json).\n" +
-        "Open registration: --allow-register (or MALDA_ASK_ALLOW_REGISTER=1).\n" +
-        "Sample questions on empty ASK UI: on by default; hide with --no-examples\n" +
-        "  (or MALDA_ASK_EXAMPLES=0).\n" +
-        "Pack remains interactive (menu option 5).";
-    var it =
-        "Second Brain CLI\n\n" +
-        "  build  --docs <cartella> [--brain " + brain + "] [--taxonomy llm|folders] [--lang en|it]\n" +
-        "         [--product-name <nome>]\n" +
-        "  update [--docs <cartella>] [--brain " + brain + "] [--remove-orphans] [--lang en|it]\n" +
-        "         [--product-name <nome>]\n" +
-        "  ask    [--brain " + brain + "] [--port " + port + "] [--host localhost] [--lang en|it]\n" +
-        "         [--https --cert <pfx|pem>] [--cert-password <pwd>]\n" +
-        "         [--product-name <nome>] [--auth|--no-auth] [--allow-register|--no-register]\n" +
-        "         [--examples|--no-examples]\n" +
-        "  help\n\n" +
-        "Non interattivo: build/update/ask saltano menu e conferme.\n" +
-        "Anche: --mode build|update|ask   -p <porta>   --port=<n>   --host=<addr>   --name <nome>\n" +
-        "--host di default e' localhost; usa 0.0.0.0 o * per tutte le interfacce.\n" +
-        "--https richiede --cert (.pfx/.p12 o .pem/.crt con .key accanto).\n" +
-        "Opzionale: --cert-password o MALDA_HTTP_CERT_PASSWORD.\n" +
-        "Porte privilegiate / bind non-localhost su Windows possono richiedere admin o\n" +
-        "  netsh http add urlacl url=http://+:PORTA/ user=Everyone\n" +
-        "--product-name / --name ha priorita' su product_name.txt e sul titolo di default.\n" +
-        "Auth ASK attiva di default (cookie JWT). Disattiva con --no-auth.\n" +
-        "Bootstrap: MALDA_ASK_USER / MALDA_ASK_PASSWORD (o MALDA_ASK_PASSWORD_HASH).\n" +
-        "Multi-utente: users.json nella cartella del brain (o .malda/ask_users.json).\n" +
-        "Registrazione aperta: --allow-register (o MALDA_ASK_ALLOW_REGISTER=1).\n" +
-        "Domande di esempio nella UI ASK vuota: on di default; nascondi con --no-examples\n" +
-        "  (o MALDA_ASK_EXAMPLES=0).\n" +
-        "PACK resta interattivo (voce di menu 5).";
-    if (UI_LANG == "en") {
-        io.print(en);
-    } else if (UI_LANG == "it") {
-        io.print(it);
-    } else {
-        io.print(en);
-        io.print("");
-        io.print(it);
-    }
-}

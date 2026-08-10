@@ -496,6 +496,20 @@ public static class RuntimeHelpers
         };
     }
 
+    /// <summary>True for C# null or a MALDA <see cref="RuntimeValue"/> tagged Null.</summary>
+    public static bool IsMaldaNull(object? value)
+    {
+        if (value == null)
+            return true;
+        return value is RuntimeValue rv && rv.Type == MaldaLang.Interpreter.ValueType.Null;
+    }
+
+    /// <summary>Null-coalescing with a lazy right side (short-circuit).</summary>
+    public static object? NullCoalesce(object? left, Func<object?> rightFactory)
+    {
+        return IsMaldaNull(left) ? rightFactory() : left;
+    }
+
     // Type checking
     public static bool IsInt(object? value)
     {

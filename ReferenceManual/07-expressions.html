@@ -262,6 +262,18 @@ var response = dict { "items": null };
 print(response["items"]?[0]);    // null</code></pre>
         <p>Null-conditional access reads a value; it is not an assignment form. Use it to traverse optional data such as parsed JSON, dictionary lookups that may miss, and object fields that are only populated in some code paths.</p>
 
+        <h2 id="null-coalesce">6.12.1 Null-Coalescing <code>??</code></h2>
+        <p><code>a ?? b</code> evaluates to <code>a</code> when <code>a</code> is not <code>null</code>; otherwise it evaluates <code>b</code>. Unlike <code>or</code>/<code>||</code>, only <code>null</code> triggers the right side — <code>0</code>, <code>false</code>, and <code>""</code> are kept:</p>
+        <pre><code data-run="true" data-expect="0\nfalse\nhi\nfallback">print(0 ?? 1);
+print(false ?? true);
+print("hi" ?? "x");
+print(null ?? "fallback");</code></pre>
+        <p>Combine with null-conditional access for optional chains:</p>
+        <pre><code data-run="true" data-expect="guest\n||">var user = null;
+print(user?.name ?? "guest");
+print("|" + str.trimText(user?.name) + "|");</code></pre>
+        <p>Precedence sits between logical OR and the ternary conditional; <code>??</code> is right-associative.</p>
+
         <h2>6.13 Operator Precedence</h2>
         <p>Operators are evaluated in order of precedence. See <a href="23-appendix.html">Appendix B</a> for the complete precedence table, which mirrors the reference parser.</p>
         

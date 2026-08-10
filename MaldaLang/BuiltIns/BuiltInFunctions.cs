@@ -971,6 +971,8 @@ public static class BuiltInFunctions
             "upper" => BuiltInUpper(args),
             "lower" => BuiltInLower(args),
             "trim" => BuiltInTrim(args),
+            "text" => BuiltInText(args),
+            "trimText" => BuiltInTrimText(args),
             "substring" => BuiltInSubstring(args),
             "indexOf" => BuiltInIndexOf(args),
             "replace" => BuiltInReplace(args),
@@ -1007,6 +1009,7 @@ public static class BuiltInFunctions
             "domHtml" => BuiltInDomUnavailable("domHtml"),
             "domOn" => BuiltInDomUnavailable("domOn"),
             "getEnv" => BuiltInGetEnv(args),
+            "getEnvOr" => BuiltInGetEnvOr(args),
             "getHostPlatform" => BuiltInGetHostPlatform(args),
             "getCommandLineArgs" => BuiltInGetCommandLineArgs(args),
             "hasEnv" => BuiltInHasEnv(args),
@@ -1347,6 +1350,8 @@ public static class BuiltInFunctions
             "upper" => BuiltInUpper(args),
             "lower" => BuiltInLower(args),
             "trim" => BuiltInTrim(args),
+            "text" => BuiltInText(args),
+            "trimText" => BuiltInTrimText(args),
             "substring" => BuiltInSubstring(args),
             "indexOf" => BuiltInIndexOf(args),
             "replace" => BuiltInReplace(args),
@@ -1383,6 +1388,7 @@ public static class BuiltInFunctions
             "domHtml" => BuiltInDomUnavailable("domHtml"),
             "domOn" => BuiltInDomUnavailable("domOn"),
             "getEnv" => BuiltInGetEnv(args),
+            "getEnvOr" => BuiltInGetEnvOr(args),
             "getHostPlatform" => BuiltInGetHostPlatform(args),
             "getCommandLineArgs" => BuiltInGetCommandLineArgs(args),
             "hasEnv" => BuiltInHasEnv(args),
@@ -2578,6 +2584,27 @@ public static class BuiltInFunctions
         if (arg.Type == MaldaLang.Interpreter.ValueType.String)
             return RuntimeValue.String(arg.AsString().Trim());
         throw new Exception("trim() expects a string");
+    }
+
+    /// <summary>
+    /// Null-safe stringification for boundary values. Unlike <c>string(null)</c> (which yields
+    /// the literal "null"), <c>str.text(null)</c> returns an empty string.
+    /// </summary>
+    private static RuntimeValue BuiltInText(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("text", args, 1, 1, "value");
+        if (args[0].Type == MaldaLang.Interpreter.ValueType.Null)
+            return RuntimeValue.String("");
+        return RuntimeValue.String(args[0].ToString());
+    }
+
+    /// <summary>Null-safe trim: <c>str.trim(str.text(value))</c> in one call.</summary>
+    private static RuntimeValue BuiltInTrimText(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("trimText", args, 1, 1, "value");
+        if (args[0].Type == MaldaLang.Interpreter.ValueType.Null)
+            return RuntimeValue.String("");
+        return RuntimeValue.String(args[0].ToString().Trim());
     }
     
     private static RuntimeValue BuiltInSubstring(List<RuntimeValue> args)
@@ -5091,6 +5118,26 @@ public static class BuiltInFunctions
         var varName = args[0].AsString();
         var value = GetEnvCache.GetOrAdd(varName, static n => ResolveEnvironmentVariable(n));
         return value == null ? RuntimeValue.Null() : RuntimeValue.String(value);
+    }
+
+    /// <summary>
+    /// Like <c>getEnv</c>, but never returns null — missing variables yield the optional default
+    /// (empty string when omitted). Safe to pass straight into <c>str.trim</c>.
+    /// </summary>
+    private static RuntimeValue BuiltInGetEnvOr(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("getEnvOr", args, 1, 2, "name, default?");
+        if (args[0].Type != MaldaLang.Interpreter.ValueType.String)
+            throw new Exception("getEnvOr() expects a string name");
+
+        var varName = args[0].AsString();
+        var value = GetEnvCache.GetOrAdd(varName, static n => ResolveEnvironmentVariable(n));
+        if (value != null)
+            return RuntimeValue.String(value);
+
+        if (args.Count < 2 || args[1].Type == MaldaLang.Interpreter.ValueType.Null)
+            return RuntimeValue.String("");
+        return RuntimeValue.String(args[1].ToString());
     }
 
     private static RuntimeValue BuiltInGetHostPlatform(List<RuntimeValue> args)

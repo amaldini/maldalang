@@ -1,6 +1,6 @@
 # MALDA syntax pack (for writing programs)
 
-*Applies to: MALDA 0.1.34*
+*Applies to: MALDA 0.1.47*
 
 Compact rules for generating correct `.malda`. Prefer this over scraping HTML manuals.
 
@@ -168,6 +168,32 @@ trees use `ui.*` with signature `ui.control(props, children?, key?)` — no JSX;
 not a durable workflow uses `enqueueJob` / `claimJob` / `completeJob` / `failJob` against
 `./.malda/jobs.db`. See `Examples/Web/auth_cookie_login.malda` and
 `docs/tutorials/fullstack-sessions-auth.md`.
+
+## Modules (`import` / `export` vs `include`)
+
+```malda
+// File module: isolated env; only `export` bindings merge into the importer.
+// Modules still see math / str / io (stdlib is the enclosing environment).
+import "helpers/math_lib.malda";
+io.print(addOne(41));
+
+// include splices source into the host (shared globals). Prefer import when the
+// library is self-contained; keep include for host-contract helpers that assign
+// importer globals (e.g. UI_LANG = …).
+```
+
+See `Examples/Basics/modules_import.malda` and `Examples/Basics/modules_include.malda`.
+
+## Null-safe boundaries
+
+- `obj?.field` / `arr?[i]` — null-conditional member / index (yields `null` when the
+  receiver is `null`).
+- `a ?? b` — null coalescing: use `b` only when `a` is `null` (keeps `0` / `false` / `""`).
+- `str.text(v)` — coerce to string; `null` → `""` (unlike `string(null)` → `"null"`).
+- `str.trimText(v)` — `str.trim(str.text(v))`.
+- `io.getEnvOr(name, default?)` — never `null`; default is `""` when omitted.
+
+Prefer `str.trimText(response?.content)` over nested `if (response != null) { if (response.content != null) … }`.
 
 ## Common mistakes (avoid)
 

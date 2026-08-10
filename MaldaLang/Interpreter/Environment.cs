@@ -124,6 +124,15 @@ public class Environment
         CollectVariables(variables);
         return variables;
     }
+
+    /// <summary>
+    /// Bindings defined in this frame only (no enclosing walk). Used when merging
+    /// module exports so stdlib parents (<c>math</c>/<c>str</c>/<c>io</c>) are not re-exported.
+    /// </summary>
+    public Dictionary<string, RuntimeValue> GetOwnVariables()
+    {
+        return new Dictionary<string, RuntimeValue>(_values, StringComparer.Ordinal);
+    }
     
     private void CollectVariables(Dictionary<string, RuntimeValue> variables)
     {

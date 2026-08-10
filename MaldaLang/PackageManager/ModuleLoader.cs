@@ -146,8 +146,11 @@ public class ModuleLoader
 
         var explicitExports = ModuleExports.CollectExplicitExports(statements);
 
-        var moduleEnvironment = new Environment();
+        // Fresh interpreter registers math/str/io (and other builtins) on _globals.
+        // Module bindings live in a child environment so lookups see stdlib, while
+        // export merge uses GetOwnVariables and does not re-export those parents.
         var moduleInterpreter = new Interpreter();
+        var moduleEnvironment = new Environment(moduleInterpreter._globals);
         moduleInterpreter._environment = moduleEnvironment;
         moduleInterpreter._globals = moduleEnvironment;
 

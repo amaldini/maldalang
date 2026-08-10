@@ -2193,6 +2193,14 @@ public partial class Interpreter
             var right = await EvaluateAsync(expr.Right);
             return RuntimeValue.Boolean(right.IsTruthy());
         }
+
+        if (expr.Operator == TokenType.NullCoalesce)
+        {
+            var left = await EvaluateAsync(expr.Left);
+            if (left.Type != ValueType.Null)
+                return left;
+            return await EvaluateAsync(expr.Right);
+        }
         
         // For all other operators, evaluate both sides
         var leftVal = await EvaluateAsync(expr.Left);

@@ -1,6 +1,6 @@
 # Few-shot snippets
 
-*Applies to: MALDA 0.1.34*
+*Applies to: MALDA 0.1.47*
 
 Tiny programs for LLM context. Larger curated samples live under `Examples/`.
 
@@ -28,7 +28,7 @@ Tiny programs for LLM context. Larger curated samples live under `Examples/`.
 
 Also useful from the main tree:
 
-- `Examples/Basics/errors_and_match.malda`, `Examples/Basics/schema_validate.malda`, `Examples/Basics/modules_include.malda`
+- `Examples/Basics/errors_and_match.malda`, `Examples/Basics/schema_validate.malda`, `Examples/Basics/modules_include.malda`, `Examples/Basics/modules_import.malda`
 - Recipe: [`docs/tutorials/errors-and-validation.md`](../tutorials/errors-and-validation.md)
 - `Examples/Testing/unit_test_basics.test.malda`
 - `Examples/Web/http_client_json.malda`, `Examples/Web/rest_bearer_jwt.malda`, `Examples/Web/auth_cookie_login.malda`

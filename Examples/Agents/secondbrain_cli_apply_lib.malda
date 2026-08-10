@@ -1,0 +1,154 @@
+// secondbrain_cli_apply_lib.malda - host-bound CLI apply/help for secondbrain*.malda
+//
+// Included (not imported) after import "secondbrain_cli_lib.malda" and after the
+// host defines t() / UI_LANG / ASK_* / PRODUCT_NAME globals. Assignments here
+// must run in the host environment — import isolation would not see those vars.
+
+function sbCliApplyLang(cli) {
+    if (cli == null) {
+        return;
+    }
+    var lang = str.trim(sbCliAsText(cli.lang));
+    if (lang == "en" or lang == "it") {
+        UI_LANG = lang;
+        ui.setState(ASK_STORE, "lang", UI_LANG, ASK_SESSION_ID);
+    }
+}
+
+function sbCliApplyPort(cli) {
+    if (cli == null or cli.port == null) {
+        return ASK_HTTP_PORT;
+    }
+    ASK_HTTP_PORT = cli.port;
+    AnsiConsole.markupLine("[dim]" + t(
+        "ASK HTTP port from CLI: ",
+        "Porta HTTP ASK da riga di comando: ") +
+        string(ASK_HTTP_PORT) + "[/]");
+    return ASK_HTTP_PORT;
+}
+
+function sbCliApplyHost(cli) {
+    if (cli == null or cli.host == null) {
+        return ASK_HTTP_HOST;
+    }
+    ASK_HTTP_HOST = sbCliNormalizeHost(cli.host);
+    AnsiConsole.markupLine("[dim]" + t(
+        "ASK HTTP host from CLI: ",
+        "Host HTTP ASK da riga di comando: ") +
+        ASK_HTTP_HOST + "[/]");
+    return ASK_HTTP_HOST;
+}
+
+function sbCliApplyHttps(cli) {
+    if (cli == null) {
+        return ASK_HTTPS;
+    }
+    if (cli.https == true) {
+        ASK_HTTPS = true;
+        ASK_CERT_PATH = str.trim(sbCliAsText(cli.cert));
+        ASK_CERT_PASSWORD = sbCliAsText(cli.certPassword);
+        if (ASK_CERT_PASSWORD == "") {
+            var envPwd = io.getEnvOr("MALDA_HTTP_CERT_PASSWORD");
+            if (str.trim(envPwd) != "") {
+                ASK_CERT_PASSWORD = envPwd;
+            }
+        }
+        AnsiConsole.markupLine("[dim]" + t(
+            "ASK HTTPS from CLI; cert: ",
+            "ASK HTTPS da riga di comando; cert: ") +
+            ASK_CERT_PATH + "[/]");
+    }
+    return ASK_HTTPS;
+}
+
+// Override PRODUCT_NAME / ASK title from --product-name / --name.
+// Call after applyProductNameFromBrain / askApplyProductNameFromBrain so CLI wins.
+function sbCliApplyProductName(cli) {
+    if (cli == null) {
+        return "";
+    }
+    var n = str.trim(sbCliAsText(cli.productName));
+    if (n == "") {
+        return "";
+    }
+    PRODUCT_NAME = n;
+    var suffix = str.trim(sbCliAsText(ASK_TITLE_SUFFIX));
+    ASK_PAGE_TITLE = n + suffix;
+    ui.setState(ASK_STORE, "productName", n, ASK_SESSION_ID);
+    AnsiConsole.markupLine("[dim]" + t(
+        "Product name from CLI: ",
+        "Nome prodotto da riga di comando: ") + n + "[/]");
+    return n;
+}
+
+function sbCliPrintHelp(defaultBrain, defaultPort) {
+    var brain = str.trim(sbCliAsText(defaultBrain));
+    if (brain == "") {
+        brain = "secondbrain";
+    }
+    var port = str.trim(sbCliAsText(defaultPort));
+    if (port == "") {
+        port = "39018";
+    }
+    var en =
+        "Second Brain CLI\n\n" +
+        "  build  --docs <folder> [--brain " + brain + "] [--taxonomy llm|folders] [--lang en|it]\n" +
+        "         [--product-name <name>]\n" +
+        "  update [--docs <folder>] [--brain " + brain + "] [--remove-orphans] [--lang en|it]\n" +
+        "         [--product-name <name>]\n" +
+        "  ask    [--brain " + brain + "] [--port " + port + "] [--host localhost] [--lang en|it]\n" +
+        "         [--https --cert <pfx|pem>] [--cert-password <pwd>]\n" +
+        "         [--product-name <name>] [--auth|--no-auth] [--allow-register|--no-register]\n" +
+        "         [--examples|--no-examples]\n" +
+        "  help\n\n" +
+        "Non-interactive: build/update/ask skip the menu and confirmations.\n" +
+        "Also: --mode build|update|ask   -p <port>   --port=<n>   --host=<addr>   --name <name>\n" +
+        "--host defaults to localhost; use 0.0.0.0 or * to listen on all interfaces.\n" +
+        "--https requires --cert (.pfx/.p12 or .pem/.crt with sibling .key).\n" +
+        "Optional: --cert-password or MALDA_HTTP_CERT_PASSWORD.\n" +
+        "Privileged ports / non-localhost binds on Windows may need admin or\n" +
+        "  netsh http add urlacl url=http://+:PORT/ user=Everyone\n" +
+        "--product-name / --name overrides brain product_name.txt and the default title.\n" +
+        "ASK auth is on by default (cookie JWT). Disable with --no-auth.\n" +
+        "Bootstrap: MALDA_ASK_USER / MALDA_ASK_PASSWORD (or MALDA_ASK_PASSWORD_HASH).\n" +
+        "Multi-user: users.json in the brain folder (or .malda/ask_users.json).\n" +
+        "Open registration: --allow-register (or MALDA_ASK_ALLOW_REGISTER=1).\n" +
+        "Sample questions on empty ASK UI: on by default; hide with --no-examples\n" +
+        "  (or MALDA_ASK_EXAMPLES=0).\n" +
+        "Pack remains interactive (menu option 5).";
+    var it =
+        "Second Brain CLI\n\n" +
+        "  build  --docs <cartella> [--brain " + brain + "] [--taxonomy llm|folders] [--lang en|it]\n" +
+        "         [--product-name <nome>]\n" +
+        "  update [--docs <cartella>] [--brain " + brain + "] [--remove-orphans] [--lang en|it]\n" +
+        "         [--product-name <nome>]\n" +
+        "  ask    [--brain " + brain + "] [--port " + port + "] [--host localhost] [--lang en|it]\n" +
+        "         [--https --cert <pfx|pem>] [--cert-password <pwd>]\n" +
+        "         [--product-name <nome>] [--auth|--no-auth] [--allow-register|--no-register]\n" +
+        "         [--examples|--no-examples]\n" +
+        "  help\n\n" +
+        "Non interattivo: build/update/ask saltano menu e conferme.\n" +
+        "Anche: --mode build|update|ask   -p <porta>   --port=<n>   --host=<addr>   --name <nome>\n" +
+        "--host di default e' localhost; usa 0.0.0.0 o * per tutte le interfacce.\n" +
+        "--https richiede --cert (.pfx/.p12 o .pem/.crt con .key accanto).\n" +
+        "Opzionale: --cert-password o MALDA_HTTP_CERT_PASSWORD.\n" +
+        "Porte privilegiate / bind non-localhost su Windows possono richiedere admin o\n" +
+        "  netsh http add urlacl url=http://+:PORTA/ user=Everyone\n" +
+        "--product-name / --name ha priorita' su product_name.txt e sul titolo di default.\n" +
+        "Auth ASK attiva di default (cookie JWT). Disattiva con --no-auth.\n" +
+        "Bootstrap: MALDA_ASK_USER / MALDA_ASK_PASSWORD (o MALDA_ASK_PASSWORD_HASH).\n" +
+        "Multi-utente: users.json nella cartella del brain (o .malda/ask_users.json).\n" +
+        "Registrazione aperta: --allow-register (o MALDA_ASK_ALLOW_REGISTER=1).\n" +
+        "Domande di esempio nella UI ASK vuota: on di default; nascondi con --no-examples\n" +
+        "  (o MALDA_ASK_EXAMPLES=0).\n" +
+        "PACK resta interattivo (voce di menu 5).";
+    if (UI_LANG == "en") {
+        io.print(en);
+    } else if (UI_LANG == "it") {
+        io.print(it);
+    } else {
+        io.print(en);
+        io.print("");
+        io.print(it);
+    }
+}

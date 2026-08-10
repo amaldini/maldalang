@@ -2,7 +2,7 @@
 // Run: malda Examples/Basics/modules_include.malda
 //
 // include "path"; splices another .malda file at the top level (relative to this file).
-// That is different from import/export module packaging — see the Reference Manual.
+// That is different from import/export — see modules_import.malda and the Reference Manual.
 
 include "helpers/greet_lib.malda";
 

@@ -175,7 +175,7 @@ function productNameLooksLikePath(value) {
 }
 
 function productName() {
-    var n = str.trim(string(PRODUCT_NAME));
+    var n = str.trimText(PRODUCT_NAME);
     if (n != "" and productNameLooksLikePath(n)) {
         var fromFile = readProductNameFile(n);
         if (fromFile != "") {
@@ -236,7 +236,8 @@ function chooseLanguage() {
         "[dim]Lingua interfaccia: Italiano[/]"));
 }
 
-include "secondbrain_cli_lib.malda";
+import "secondbrain_cli_lib.malda";
+include "secondbrain_cli_apply_lib.malda";
 
 // ---------------------------------------------------------------- LLM helpers
 
@@ -245,7 +246,7 @@ function makeClient() {
         return null;
     }
     if (io.hasEnv("MALDA_BRAIN_MODEL")) {
-        var m = str.trim(string(io.getEnv("MALDA_BRAIN_MODEL")));
+        var m = str.trim(io.getEnvOr("MALDA_BRAIN_MODEL"));
         if (m != "") {
             return new OpenRouterClient(m);
         }
@@ -258,7 +259,7 @@ function modelLabel() {
         return t("default local model (MALDA)", "modello locale di default (MALDA)");
     }
     if (io.hasEnv("MALDA_BRAIN_MODEL")) {
-        var m = str.trim(string(io.getEnv("MALDA_BRAIN_MODEL")));
+        var m = str.trim(io.getEnvOr("MALDA_BRAIN_MODEL"));
         if (m != "") {
             return "OpenRouter / " + m;
         }
@@ -487,17 +488,10 @@ function newPlainAgent(name, role, instructions) {
 function tryThinkParts(agent, question) {
     try {
         var response = agent.think(question);
-        var content = "";
-        var reasoning = "";
-        if (response != null) {
-            if (response.content != null) {
-                content = str.trim(string(response.content));
-            }
-            if (response.reasoning != null) {
-                reasoning = str.trim(string(response.reasoning));
-            }
-        }
-        return { "content": content, "reasoning": reasoning };
+        return {
+            "content": str.trimText(response?.content),
+            "reasoning": str.trimText(response?.reasoning)
+        };
     } catch (e) {
         AnsiConsole.markupLine("  [red]" + t("LLM error:", "errore LLM:") + "[/] " + string(e));
         return { "content": "", "reasoning": "" };
@@ -516,13 +510,13 @@ function localEmbedModelPath() {
 
 function resolveEmbedModelPath() {
     if (io.hasEnv("MALDA_BRAIN_EMBED_MODEL")) {
-        var p = str.trim(string(io.getEnv("MALDA_BRAIN_EMBED_MODEL")));
+        var p = str.trim(io.getEnvOr("MALDA_BRAIN_EMBED_MODEL"));
         if (p != "") {
             return p;
         }
     }
     if (io.hasEnv("MALDA_EMBED_MODEL_PATH")) {
-        var p2 = str.trim(string(io.getEnv("MALDA_EMBED_MODEL_PATH")));
+        var p2 = str.trim(io.getEnvOr("MALDA_EMBED_MODEL_PATH"));
         if (p2 != "") {
             return p2;
         }
@@ -560,7 +554,7 @@ function showEmbedDownloadHint(reason) {
 
 function resolveEmbedMode() {
     if (io.hasEnv("MALDA_MEMORY_EMBED")) {
-        var mode = str.lower(str.trim(string(io.getEnv("MALDA_MEMORY_EMBED"))));
+        var mode = str.lower(str.trim(io.getEnvOr("MALDA_MEMORY_EMBED")));
         if (mode == "hash" or mode == "bow" or mode == "llama") {
             return mode;
         }

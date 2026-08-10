@@ -136,7 +136,7 @@ ExpressionStmt ::= Expression ";"
 Block       ::= "{" (TopLevelItem | Statement)* "}"</code></pre>
         <p>A bare <code>match { ... }</code> expression may appear as a statement without a trailing semicolon after <code>}</code>.</p>
         <h2>34.4 Expressions (precedence)</h2>
-        <p>Lowest to highest: assignment, pipe <code>|&gt;</code>, ternary <code>? :</code>, <code>match</code> expression, <code>or</code>/<code>||</code>, <code>and</code>/<code>&amp;&amp;</code>, equality, comparison, additive, multiplicative, unary (<code>await</code>, <code>async</code>, <code>not</code>/<code>!</code>, <code>-</code>, <code>++</code>/<code>--</code>), postfix (<code>()</code>, <code>[]</code>, <code>.</code>, <code>?.</code>, <code>?[]</code>, <code>++</code>/<code>--</code>). The full table is in <a href="23-appendix.html">Appendix B</a>.</p>
+        <p>Lowest to highest: assignment, pipe <code>|&gt;</code>, ternary <code>? :</code>, null coalescing <code>??</code>, <code>match</code> expression, <code>or</code>/<code>||</code>, <code>and</code>/<code>&amp;&amp;</code>, equality, comparison, additive, multiplicative, unary (<code>await</code>, <code>async</code>, <code>not</code>/<code>!</code>, <code>-</code>, <code>++</code>/<code>--</code>), postfix (<code>()</code>, <code>[]</code>, <code>.</code>, <code>?.</code>, <code>?[]</code>, <code>++</code>/<code>--</code>). The full table is in <a href="23-appendix.html">Appendix B</a>.</p>
         <pre><code>Expression  ::= AssignExpr
 AssignExpr  ::= Pipe (AssignOp Expression)?
 Pipe        ::= Ternary ("|&gt;" Ternary)*

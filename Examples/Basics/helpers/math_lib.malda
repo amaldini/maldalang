@@ -1,0 +1,16 @@
+// Shared by Examples/Basics/modules_import.malda
+// Only exported bindings are visible to importers.
+
+export function addOne(x) {
+    return x + 1;
+}
+
+export function label(value) {
+    // Modules see math/str/io like the host (stdlib is the module's enclosing env).
+    return "n=" + str.text(value);
+}
+
+// Not exported — importers cannot see this name.
+function secretHelper() {
+    return 99;
+}

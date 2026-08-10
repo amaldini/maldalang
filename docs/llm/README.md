@@ -1,6 +1,6 @@
 # LLM pack: writing MALDA programs
 
-*Applies to: MALDA 0.1.34*
+*Applies to: MALDA 0.1.47*
 
 Use this folder when an LLM should **author or review `.malda` source**, not when editing the C# compiler/runtime.
 
