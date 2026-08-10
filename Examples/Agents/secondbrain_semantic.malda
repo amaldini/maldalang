@@ -662,12 +662,68 @@ function noteIndexText(note) {
     return str.join(parts, "\n");
 }
 
+// Human duration for GraphMemory index progress / ETA (ms -> "12s", "3m 20s", …).
+function formatDurationMs(ms) {
+    if (ms == null or ms < 0) {
+        ms = 0;
+    }
+    var totalSec = int(ms / 1000);
+    if (totalSec < 1) {
+        return string(int(ms)) + "ms";
+    }
+    if (totalSec < 60) {
+        return string(totalSec) + "s";
+    }
+    var hours = int(totalSec / 3600);
+    var mins = int((totalSec % 3600) / 60);
+    var secs = totalSec % 60;
+    if (hours > 0) {
+        return string(hours) + "h " + string(mins) + "m";
+    }
+    if (secs == 0) {
+        return string(mins) + "m";
+    }
+    return string(mins) + "m " + string(secs) + "s";
+}
+
+function indexBrainMemoryProgressLine(indexed, total, startedAt) {
+    var pct = 0;
+    if (total > 0) {
+        pct = int((indexed * 100) / total);
+    }
+    var line = "[dim][[" + string(indexed) + "/" + string(total) + "]][/] " +
+        string(pct) + "%";
+    if (indexed <= 0) {
+        return line;
+    }
+    var elapsed = now() - startedAt;
+    var avgMs = elapsed / indexed;
+    var remaining = total - indexed;
+    line = line + "  ~" + formatDurationMs(avgMs) + t("/note", "/nota");
+    if (remaining <= 0) {
+        return line + "  " + t("elapsed ", "trascorsi ") + formatDurationMs(elapsed);
+    }
+    var etaMs = avgMs * remaining;
+    var finishAt = formatDate(now() + etaMs, "HH:mm");
+    return line + "  " + t(
+        "ETA " + formatDurationMs(etaMs) + " left (~" + finishAt + ")",
+        "fine tra " + formatDurationMs(etaMs) + " (~" + finishAt + ")");
+}
+
 function indexBrainMemory(brainDir, notes) {
     var memory = createBrainMemory();
+    var total = 0;
+    if (notes != null) {
+        total = notes.length;
+    }
     AnsiConsole.markupLine(t(
-        "Indexing notes into GraphMemory (embed=" + embedLabel() + ")...",
-        "Indicizzazione note in GraphMemory (embed=" + embedLabel() + ")..."));
+        "Indexing notes into GraphMemory (embed=" + embedLabel() + ", " +
+            string(total) + " notes)...",
+        "Indicizzazione note in GraphMemory (embed=" + embedLabel() + ", " +
+            string(total) + " note)..."));
     var indexed = 0;
+    var startedAt = now();
+    var lastProgressAt = 0;
     foreach (var note in notes) {
         var fact = noteIndexText(note);
         var path = "notes/" + note.slug + ".md";
@@ -679,11 +735,26 @@ function indexBrainMemory(brainDir, notes) {
             "filePath": path
         });
         indexed = indexed + 1;
+        // Refresh at least every ~1.5s (hash can be fast); always show first + last.
+        var due = (now() - lastProgressAt) >= 1500;
+        if (indexed == 1 or indexed == total or due) {
+            AnsiConsole.markupLine("  " +
+                indexBrainMemoryProgressLine(indexed, total, startedAt));
+            lastProgressAt = now();
+        }
     }
+    AnsiConsole.markupLine("[dim]" + t(
+        "Saving GraphMemory artifacts...",
+        "Salvataggio artefatti GraphMemory...") + "[/]");
+    var saveStarted = now();
     memory.save(memoryBasePath(brainDir));
+    var elapsed = now() - startedAt;
     AnsiConsole.markupLine("  [green]" + t("indexed", "indicizzate") + "[/] " +
         string(indexed) + " " + t("notes ->", "note ->") + " " +
-        MEMORY_BASE_NAME + ".graph.json");
+        MEMORY_BASE_NAME + ".graph.json" +
+        "  [dim](" + formatDurationMs(elapsed) +
+        t("; save ", "; salvataggio ") + formatDurationMs(now() - saveStarted) +
+        ")[/]");
     return memory;
 }
 
