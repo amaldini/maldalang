@@ -29,7 +29,7 @@ public abstract class StdLibModuleInstance : ObjectInstance
         return base.Get(name, accessingClass);
     }
 
-    public RuntimeValue CallMethod(string methodName, List<RuntimeValue> args, Interpreter interpreter) =>
+    public virtual RuntimeValue CallMethod(string methodName, List<RuntimeValue> args, Interpreter interpreter) =>
         BuiltInFunctions.CallBuiltIn(methodName, args, interpreter);
 
     /// <summary>
@@ -37,7 +37,7 @@ public abstract class StdLibModuleInstance : ObjectInstance
     /// namespaced spelling the language server recommends would fail where the flat alias
     /// works.
     /// </summary>
-    public Task<RuntimeValue> CallMethodAsync(string methodName, List<RuntimeValue> args, Interpreter interpreter) =>
+    public virtual Task<RuntimeValue> CallMethodAsync(string methodName, List<RuntimeValue> args, Interpreter interpreter) =>
         BuiltInFunctions.CallBuiltInAsync(methodName, args, interpreter);
 
     public static bool RequiresAsyncCall(string methodName)

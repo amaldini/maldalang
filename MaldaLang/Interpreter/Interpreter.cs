@@ -3939,6 +3939,14 @@ public partial class Interpreter
         {
             return ioModule.CallMethod(methodName, arguments, this);
         }
+        else if (instance is BuiltIns.PdfInstance pdfModule)
+        {
+            return pdfModule.CallMethod(methodName, arguments, this);
+        }
+        else if (instance is BuiltIns.DocInstance docModule)
+        {
+            return docModule.CallMethod(methodName, arguments, this);
+        }
         else if (instance is BuiltIns.ResultInstance resultModule)
         {
             return resultModule.CallMethod(methodName, arguments, this);

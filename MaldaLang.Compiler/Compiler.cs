@@ -920,6 +920,8 @@ public class Compiler
         
         string packageReferences = @"  <ItemGroup>
     <PackageReference Include=""Markdig"" Version=""0.33.0"" />
+    <PackageReference Include=""PdfPig"" Version=""0.1.15"" />
+    <PackageReference Include=""DocumentFormat.OpenXml"" Version=""3.5.1"" />
     <PackageReference Include=""Microsoft.Data.Sqlite"" Version=""10.0.3"" />
     <PackageReference Include=""Microsoft.Extensions.FileSystemGlobbing"" Version=""8.0.0"" />
     <PackageReference Include=""Spectre.Console"" Version=""0.49.1"" />
@@ -930,6 +932,8 @@ public class Compiler
     <PackageReference Include=""LLamaSharp"" Version=""0.26.0"" />
     <PackageReference Include=""LLamaSharp.Backend.Cpu"" Version=""0.26.0"" />
     <PackageReference Include=""Markdig"" Version=""0.33.0"" />
+    <PackageReference Include=""PdfPig"" Version=""0.1.15"" />
+    <PackageReference Include=""DocumentFormat.OpenXml"" Version=""3.5.1"" />
     <PackageReference Include=""Microsoft.Data.Sqlite"" Version=""10.0.3"" />
     <PackageReference Include=""Microsoft.Extensions.FileSystemGlobbing"" Version=""8.0.0"" />
     <PackageReference Include=""Spectre.Console"" Version=""0.49.1"" />
@@ -2471,6 +2475,8 @@ self.addEventListener("fetch", (event) => {
         
         string packageReferences = @"  <ItemGroup>
     <PackageReference Include=""Markdig"" Version=""0.33.0"" />
+    <PackageReference Include=""PdfPig"" Version=""0.1.15"" />
+    <PackageReference Include=""DocumentFormat.OpenXml"" Version=""3.5.1"" />
     <PackageReference Include=""Microsoft.Data.Sqlite"" Version=""10.0.3"" />
     <PackageReference Include=""Microsoft.Extensions.FileSystemGlobbing"" Version=""8.0.0"" />
     <PackageReference Include=""Spectre.Console"" Version=""0.49.1"" />
@@ -2481,6 +2487,8 @@ self.addEventListener("fetch", (event) => {
     <PackageReference Include=""LLamaSharp"" Version=""0.26.0"" />
     <PackageReference Include=""LLamaSharp.Backend.Cpu"" Version=""0.26.0"" />
     <PackageReference Include=""Markdig"" Version=""0.33.0"" />
+    <PackageReference Include=""PdfPig"" Version=""0.1.15"" />
+    <PackageReference Include=""DocumentFormat.OpenXml"" Version=""3.5.1"" />
     <PackageReference Include=""Microsoft.Data.Sqlite"" Version=""10.0.3"" />
     <PackageReference Include=""Microsoft.Extensions.FileSystemGlobbing"" Version=""8.0.0"" />
     <PackageReference Include=""Spectre.Console"" Version=""0.49.1"" />

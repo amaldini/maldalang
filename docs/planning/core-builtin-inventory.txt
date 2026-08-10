@@ -4,7 +4,7 @@
 # Format: symbol -> tier | note
 # Optional-pack / vertical symbols must NOT appear here (enforced by OptionalPackRegistryGuardTests)
 
-# count: 342
+# count: 347
 
 abs -> tier1-core | BuiltInRegistry
 acos -> stdlib-general | BuiltInRegistry
@@ -93,8 +93,10 @@ error -> stdlib-general | BuiltInRegistry
 executePlan -> platform-ai | BuiltInRegistry
 exit -> stdlib-general | BuiltInRegistry
 exp -> stdlib-general | BuiltInRegistry
+extractDocxText -> stdlib-general | BuiltInRegistry
 extractHTML -> stdlib-general | BuiltInRegistry
 extractNumbers -> stdlib-general | BuiltInRegistry
+extractPdfText -> stdlib-io | BuiltInRegistry
 failJob -> stdlib-general | BuiltInRegistry
 float -> tier1-core | BuiltInRegistry
 floor -> tier1-core | BuiltInRegistry
@@ -109,6 +111,7 @@ getCommandLineArgs -> stdlib-general | BuiltInRegistry
 getDirectoryName -> stdlib-general | BuiltInRegistry
 getDotNetType -> core-interop | BuiltInRegistry
 getEnv -> stdlib-io | BuiltInRegistry
+getEnvOr -> stdlib-io | BuiltInRegistry
 getFileName -> stdlib-general | BuiltInRegistry
 getHostPlatform -> stdlib-general | BuiltInRegistry
 getJob -> stdlib-general | BuiltInRegistry
@@ -253,6 +256,7 @@ string -> tier1-core | BuiltInRegistry
 substring -> stdlib-general | BuiltInRegistry
 sum -> tier1-core | BuiltInRegistry
 tan -> tier1-core | BuiltInRegistry
+text -> stdlib-general | BuiltInRegistry
 toCsv -> stdlib-general | BuiltInRegistry
 toIntOr -> stdlib-general | BuiltInRegistry
 toIntOrNull -> stdlib-general | BuiltInRegistry
@@ -260,6 +264,7 @@ toJSON -> stdlib-general | BuiltInRegistry
 tokenize -> stdlib-general | BuiltInRegistry
 tokenOverlap -> stdlib-general | BuiltInRegistry
 trim -> stdlib-general | BuiltInRegistry
+trimText -> stdlib-general | BuiltInRegistry
 trunc -> stdlib-general | BuiltInRegistry
 typeOf -> tier1-core | BuiltInRegistry
 uiAccordion -> platform-ui | BuiltInRegistry

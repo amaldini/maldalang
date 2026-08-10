@@ -8548,6 +8548,24 @@ public class CSharpTranspiler
                 TranspileBuiltInFunction(memberAccess2.Member, call.Arguments);
                 return;
             }
+            if (memberAccess2.Object is IdentifierExpression pdfIdExpr &&
+                pdfIdExpr.Name == StdLibNamespaces.PdfModule &&
+                StdLibNamespaces.PdfMethodNames.Contains(memberAccess2.Member))
+            {
+                TranspileBuiltInFunction(
+                    StdLibNamespaces.ResolvePdfBuiltInName(memberAccess2.Member),
+                    call.Arguments);
+                return;
+            }
+            if (memberAccess2.Object is IdentifierExpression docIdExpr &&
+                docIdExpr.Name == StdLibNamespaces.DocModule &&
+                StdLibNamespaces.DocMethodNames.Contains(memberAccess2.Member))
+            {
+                TranspileBuiltInFunction(
+                    StdLibNamespaces.ResolveDocBuiltInName(memberAccess2.Member),
+                    call.Arguments);
+                return;
+            }
             if (TryTranspileVariantStdLibCall(memberAccess2, call))
             {
                 return;
@@ -10167,6 +10185,8 @@ public class CSharpTranspiler
             case "decomposeTask":
             case "extractHTML":
             case "markdownToHtml":
+            case "extractPdfText":
+            case "extractDocxText":
             case "renderTemplate":
             case "componentFragment":
             case "componentLiveEmit":

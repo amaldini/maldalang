@@ -193,7 +193,9 @@ public static class BuiltInRegistry
             "getDotNetType" or
             "dotnetNew" or
             "uiGenerate" or
-            "markdownToHtml" => Descriptor(
+            "markdownToHtml" or
+            "extractPdfText" or
+            "extractDocxText" => Descriptor(
                 name,
                 BuiltInTranspilerStrategy.SupportedByTranspiler,
                 isAlwaysSynchronousForCodegen: true),

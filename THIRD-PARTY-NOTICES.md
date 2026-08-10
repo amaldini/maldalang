@@ -36,6 +36,10 @@ note in the table below.
 | LLamaSharp | 0.26.0 | MIT | Local model inference |
 | LLamaSharp.Backend.Cpu | 0.26.0 | MIT | Local model inference (CPU backend) |
 | Markdig | 0.33.0 | BSD-2-Clause | Markdown rendering (`markdownToHtml` builtin; Desktop/Web IDE chat) |
+| PdfPig | 0.1.15 | Apache-2.0 | PDF text extraction (`pdf.extractText` / `extractPdfText` builtin) |
+| DocumentFormat.OpenXml | 3.5.1 | MIT | Word `.docx` text extraction (`doc.extractText` / `extractDocxText` builtin) |
+| DocumentFormat.OpenXml.Framework | 3.5.1 | MIT | Open XML SDK shared framework (dependency of DocumentFormat.OpenXml) |
+| System.IO.Packaging | 8.0.1 | MIT | OPC package IO for Open XML (dependency of DocumentFormat.OpenXml) |
 | Microsoft.Build | 17.8.3 | MIT | Project/build integration |
 | Microsoft.Build.Utilities.Core | 17.8.3 | MIT | Project/build integration |
 | Microsoft.Data.SqlClient | 5.2.2 | MIT | SQL Server client |

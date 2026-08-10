@@ -4,7 +4,7 @@
 // paraphrases), see the sibling: Examples/Agents/secondbrain_semantic.malda
 //
 // Modes:
-//   1) BUILD   a CodingAgent explores documentation (.md / .html) in a user-chosen
+//   1) BUILD   a CodingAgent explores documentation (.md / .html / .pdf / .docx) in a user-chosen
 //              folder, proposes a theme taxonomy, then distills a "second brain":
 //              hierarchical linked .md notes (index -> topic hubs -> notes).
 //   2) UPDATE  incremental refresh: re-distill only new/changed source files in an
@@ -333,8 +333,14 @@ function htmlToText(raw) {
 }
 
 function extractText(absPath) {
-    var raw = io.readFile(absPath);
     var ext = str.lower(io.pathGetExtension(absPath));
+    if (ext == ".pdf") {
+        return pdf.extractText(absPath);
+    }
+    if (ext == ".docx") {
+        return doc.extractText(absPath);
+    }
+    var raw = io.readFile(absPath);
     if (ext == ".html" or ext == ".htm") {
         return htmlToText(raw);
     }
@@ -815,7 +821,7 @@ function writeCatalog(brainDir, docsRoot, notes, topics, taxonomySource) {
 // ---------------------------------------------------------------- mode 1
 
 function collectDocs(root) {
-    var patterns = ["**/*.md", "**/*.markdown", "**/*.html", "**/*.htm"];
+    var patterns = ["**/*.md", "**/*.markdown", "**/*.html", "**/*.htm", "**/*.pdf", "**/*.docx"];
     var found = [];
     var truncated = false;
     foreach (var pattern in patterns) {
@@ -1569,8 +1575,8 @@ function buildBrain(cli) {
     var nonInteractive = sbCliIsNonInteractive(cli) and cli.mode == "build";
     AnsiConsole.markupLine("");
     AnsiConsole.panel(
-        t("Reads .md and .html and distills linked notes for " + productName() + ".",
-            "Legge .md e .html e distilla note collegate per " + productName() + "."),
+        t("Reads .md, .html, .pdf and .docx and distills linked notes for " + productName() + ".",
+            "Legge .md, .html, .pdf e .docx e distilla note collegate per " + productName() + "."),
         t("[bold]Mode 1 - BUILD[/]", "[bold]Modalita' 1 - COSTRUISCI[/]"), "rounded");
 
     var docsRoot = "";
@@ -1629,7 +1635,7 @@ function buildBrain(cli) {
     var scan = collectDocs(docsRoot);
     var docs = scan.files;
     if (docs.length == 0) {
-        AnsiConsole.markupLine("[yellow]" + t("No .md / .html files found in", "Nessun file .md / .html trovato in") +
+        AnsiConsole.markupLine("[yellow]" + t("No .md / .html / .pdf / .docx files found in", "Nessun file .md / .html / .pdf / .docx trovato in") +
             "[/] " + docsRoot);
         return false;
     }
@@ -1837,7 +1843,7 @@ function updateBrain(cli) {
     var scan = collectDocs(docsRoot);
     var docs = scan.files;
     if (docs.length == 0) {
-        AnsiConsole.markupLine("[yellow]" + t("No .md / .html files found in", "Nessun file .md / .html trovato in") +
+        AnsiConsole.markupLine("[yellow]" + t("No .md / .html / .pdf / .docx files found in", "Nessun file .md / .html / .pdf / .docx trovato in") +
             "[/] " + docsRoot);
         return false;
     }
@@ -2725,13 +2731,13 @@ function packPortableAskExe() {
 function showMenu() {
     AnsiConsole.markupLine("");
     AnsiConsole.panel(
-        t("[bold]1[/]  BUILD   a CodingAgent reads .md/.html and distills " + productName() + "\n" +
+        t("[bold]1[/]  BUILD   a CodingAgent reads .md/.html/.pdf/.docx and distills " + productName() + "\n" +
             "[bold]2[/]  UPDATE  refresh brain from new/changed source files only\n" +
             "[bold]3[/]  ASK     web UI — questions against " + productName() + "\n" +
             "[bold]4[/]  language  switch UI language (English / Italian)\n" +
             "[bold]5[/]  PACK    portable ASK .exe with embedded " + productName() + "\n" +
             "[bold]0[/]  quit",
-            "[bold]1[/]  COSTRUISCI  un CodingAgent legge .md/.html e distilla " + productName() + "\n" +
+            "[bold]1[/]  COSTRUISCI  un CodingAgent legge .md/.html/.pdf/.docx e distilla " + productName() + "\n" +
             "[bold]2[/]  AGGIORNA    aggiorna il brain solo con file nuovi/modificati\n" +
             "[bold]3[/]  CHIEDI      UI web — domande su " + productName() + "\n" +
             "[bold]4[/]  lingua      cambia lingua interfaccia (English / Italiano)\n" +

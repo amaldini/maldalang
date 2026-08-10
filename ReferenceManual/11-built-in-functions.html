@@ -48,6 +48,8 @@ print(io.readFile("config.json"));</code></pre>
                 <tr><td><code>math</code></td><td>Rounding, trigonometry, aggregates, random helpers, LLM math, and the constants <code>math.PI</code>, <code>math.E</code>, <code>math.TAU</code>, <code>math.INF</code>, <code>math.NaN</code></td></tr>
                 <tr><td><code>str</code></td><td>Case, trimming, splitting and joining, padding, regex helpers, similarity, base64, <code>md5</code> / <code>sha256</code></td></tr>
                 <tr><td><code>io</code></td><td><code>print</code>, <code>input</code>, file and path helpers, <code>glob</code>, <code>grep</code>, environment variables, git helpers</td></tr>
+                <tr><td><code>pdf</code></td><td><code>extractText</code> &mdash; read text from a PDF file (digital text layer; no OCR)</td></tr>
+                <tr><td><code>doc</code></td><td><code>extractText</code> &mdash; read text from a Word <code>.docx</code> (Open XML; not legacy <code>.doc</code>)</td></tr>
                 <tr><td><code>result</code></td><td><code>ok</code>, <code>err</code>, <code>map</code>, <code>unwrapOr</code>, <code>isOk</code>, <code>isErr</code></td></tr>
                 <tr><td><code>option</code></td><td><code>some</code>, <code>none</code>, <code>map</code>, <code>unwrapOr</code>, <code>isSome</code>, <code>isNone</code></td></tr>
             </tbody>
@@ -470,12 +472,14 @@ var files = listDirectory(".");                            // List directory con
 var edits = [{"oldText": "old1", "newText": "new1"}, {"oldText": "old2", "newText": "new2"}];
 var result = editFile("file.txt", edits);                 // Apply multiple edits to file</code></pre>
 
-        <h3>12.8.1 Line, Binary, and Delete Operations</h3>
+        <h3>12.8.1 Line, Binary, Delete, and PDF Text</h3>
         <table>
             <thead>
                 <tr><th>Function</th><th>Returns</th><th>Behavior</th></tr>
             </thead>
             <tbody>
+                <tr><td><code>pdf.extractText(path, password?)</code></td><td>string</td><td>Extracts text from a PDF using PdfPig (<code>ContentOrderTextExtractor</code>). Optional <code>password</code> for encrypted files. Throws when the path is missing or the PDF cannot be opened. Digital text only &mdash; scanned/image PDFs need OCR elsewhere. Prefer the namespaced spelling; the CallBuiltIn name is <code>extractPdfText</code>.</td></tr>
+                <tr><td><code>doc.extractText(path)</code></td><td>string</td><td>Extracts body paragraph text from a Word <code>.docx</code> using the Open XML SDK. Throws when the path is missing, the file is not <code>.docx</code>, or the package cannot be opened. Legacy binary <code>.doc</code> is not supported. Prefer the namespaced spelling; the CallBuiltIn name is <code>extractDocxText</code>.</td></tr>
                 <tr><td><code>readTextFileLines(path)</code></td><td>array of strings, or <code>null</code></td><td>Reads the file as UTF-8 and splits it into lines. Returns <code>null</code> when the file is missing or cannot be read.</td></tr>
                 <tr><td><code>deleteFile(path)</code></td><td>boolean</td><td>Deletes the file. Returns <code>true</code> when the file was deleted <em>or was already absent</em>; <code>false</code> on an empty path or an I/O failure.</td></tr>
                 <tr><td><code>insertAtLine(path, lineNumber, content, insertAfter?)</code></td><td>boolean</td><td>Inserts <code>content</code> (which may span several lines) at a 1-indexed line. Returns <code>false</code> if the file does not exist.</td></tr>
@@ -494,12 +498,16 @@ insertAtLine("notes.txt", 3, "appended", true);  // Insert after line 3
 var encoded = readFileBase64("logo.png");
 writeFileBase64("logo-copy.png", encoded);
 
-deleteFile("scratch.txt");</code></pre>
+deleteFile("scratch.txt");
+
+var pdfText = pdf.extractText("manual.pdf");
+// var unlocked = pdf.extractText("secret.pdf", "password");
+var docText = doc.extractText("brief.docx");</code></pre>
         <p>For <code>insertAtLine</code>, a <code>lineNumber</code> of <code>0</code> or less inserts at the start of the file, and a value beyond the last line appends to the end. <code>insertAfter</code> defaults to <code>false</code>, meaning the content is inserted <em>before</em> the given line.</p>
         <div class="warning-box">
-            <strong>Failure style:</strong> these functions report ordinary failures through their return value (<code>false</code> or <code>null</code>) rather than by throwing. They only raise an error when called with the wrong number of arguments or the wrong argument types. Check the result rather than relying on <code>try</code>/<code>catch</code>.
+            <strong>Failure style:</strong> <code>readTextFileLines</code>, <code>deleteFile</code>, <code>insertAtLine</code>, and the base64 helpers report ordinary failures through their return value (<code>false</code> or <code>null</code>) rather than by throwing. They only raise an error when called with the wrong number of arguments or the wrong argument types. Check the result rather than relying on <code>try</code>/<code>catch</code>. <code>pdf.extractText</code> and <code>doc.extractText</code> throw on missing files and parse failures.
         </div>
-        <p><code>insertAtLine</code> is interpreter-only: it is not available in transpiled executables. The other four are supported by the C# transpiler.</p>
+        <p><code>insertAtLine</code> is interpreter-only: it is not available in transpiled executables. The other file helpers, <code>pdf.extractText</code> / <code>extractPdfText</code>, and <code>doc.extractText</code> / <code>extractDocxText</code> are supported by the C# transpiler.</p>
 
         <h3>12.8.2 Searching Files: glob and grep</h3>
         <p><code>glob</code> finds paths by pattern, and <code>grep</code> searches file contents. Both take a required argument first and then a series of optional, positional arguments.</p>

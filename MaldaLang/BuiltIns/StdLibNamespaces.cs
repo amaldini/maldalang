@@ -11,6 +11,8 @@ public static class StdLibNamespaces
     public const string MathModule = "math";
     public const string StrModule = "str";
     public const string IoModule = "io";
+    public const string PdfModule = "pdf";
+    public const string DocModule = "doc";
     public const string ResultModule = "result";
     public const string OptionModule = "option";
     public const string DeprecatedMathModuleAlias = "Math";
@@ -57,6 +59,28 @@ public static class StdLibNamespaces
         "gitStatus", "gitAdd", "gitCommit", "gitDiff", "gitLog", "gitBranch", "gitCheckout", "gitPull", "gitPush"
     };
 
+    /// <summary>
+    /// pdf.* methods. CallBuiltIn uses <c>extractPdfText</c>; the module exposes <c>extractText</c>.
+    /// </summary>
+    public static readonly IReadOnlySet<string> PdfMethodNames = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "extractText"
+    };
+
+    public static string ResolvePdfBuiltInName(string methodName) =>
+        methodName == "extractText" ? "extractPdfText" : methodName;
+
+    /// <summary>
+    /// doc.* methods. CallBuiltIn uses <c>extractDocxText</c>; the module exposes <c>extractText</c>.
+    /// </summary>
+    public static readonly IReadOnlySet<string> DocMethodNames = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "extractText"
+    };
+
+    public static string ResolveDocBuiltInName(string methodName) =>
+        methodName == "extractText" ? "extractDocxText" : methodName;
+
     public static bool TryGetDeprecatedFlatAliasMessage(string flatName, out string message)
     {
         if (MathMethodNames.Contains(flatName))
@@ -87,6 +111,8 @@ public static class StdLibNamespaces
             MathModule or DeprecatedMathModuleAlias => MathMethodNames.Contains(methodName),
             StrModule => StrMethodNames.Contains(methodName),
             IoModule => IoMethodNames.Contains(methodName),
+            PdfModule => PdfMethodNames.Contains(methodName),
+            DocModule => DocMethodNames.Contains(methodName),
             ResultModule => ResultMethodNames.Contains(methodName),
             OptionModule => OptionMethodNames.Contains(methodName),
             _ => false

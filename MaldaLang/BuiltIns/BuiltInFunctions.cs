@@ -31,6 +31,9 @@ using ValueType = MaldaLang.Interpreter.ValueType;
 using Spectre.Console;
 using Spectre.Console.Rendering;
 using Markdig;
+using UglyToad.PdfPig;
+using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
+using DocumentFormat.OpenXml.Packaging;
 
 public static class BuiltInFunctions
 {
@@ -121,6 +124,8 @@ public static class BuiltInFunctions
 
         env.Define(StdLibNamespaces.StrModule, RuntimeValue.Object(new StrInstance()));
         env.Define(StdLibNamespaces.IoModule, RuntimeValue.Object(new IoInstance()));
+        env.Define(StdLibNamespaces.PdfModule, RuntimeValue.Object(new PdfInstance()));
+        env.Define(StdLibNamespaces.DocModule, RuntimeValue.Object(new DocInstance()));
         env.Define(StdLibNamespaces.ResultModule, RuntimeValue.Object(new ResultInstance()));
         env.Define(StdLibNamespaces.OptionModule, RuntimeValue.Object(new OptionInstance()));
     }
@@ -1089,6 +1094,8 @@ public static class BuiltInFunctions
             "decomposeTask" => BuiltInDecomposeTask(args),
             "extractHTML" => BuiltInExtractHTML(args),
             "markdownToHtml" => BuiltInMarkdownToHtml(args),
+            "extractPdfText" => BuiltInExtractPdfText(args),
+            "extractDocxText" => BuiltInExtractDocxText(args),
             "renderTemplate" => BuiltInRenderTemplate(args),
             "componentFragment" => BuiltInComponentFragment(args),
             "componentLiveEmit" => BuiltInComponentLiveEmit(args),
@@ -1468,6 +1475,8 @@ public static class BuiltInFunctions
             "decomposeTask" => BuiltInDecomposeTask(args),
             "extractHTML" => BuiltInExtractHTML(args),
             "markdownToHtml" => BuiltInMarkdownToHtml(args),
+            "extractPdfText" => BuiltInExtractPdfText(args),
+            "extractDocxText" => BuiltInExtractDocxText(args),
             "renderTemplate" => BuiltInRenderTemplate(args),
             "componentFragment" => BuiltInComponentFragment(args),
             "componentLiveEmit" => BuiltInComponentLiveEmit(args),
@@ -9040,6 +9049,119 @@ public static class BuiltInFunctions
 
         var html = Markdown.ToHtml(markdown, MarkdownToHtmlPipeline);
         return RuntimeValue.String(html);
+    }
+
+    /// <summary>
+    /// Extract text from a PDF via PdfPig (digital text layer only; no OCR).
+    /// Prefer <c>pdf.extractText(path, password?)</c>; flat <c>extractPdfText</c> is the CallBuiltIn name.
+    /// </summary>
+    private static RuntimeValue BuiltInExtractPdfText(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("extractPdfText", args, 1, 2, "path, password?");
+        if (args[0].Type != ValueType.String)
+            throw new Exception("extractPdfText() expects (string path, string password?)");
+
+        var path = args[0].AsString();
+        if (string.IsNullOrWhiteSpace(path))
+            throw new Exception("extractPdfText() path cannot be empty");
+
+        string? password = null;
+        if (args.Count > 1 && args[1].Type != ValueType.Null)
+        {
+            if (args[1].Type != ValueType.String)
+                throw new Exception("extractPdfText() password must be a string when provided");
+            password = args[1].AsString();
+        }
+
+        try
+        {
+            path = Path.GetFullPath(path);
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"extractPdfText() invalid path: {ex.Message}");
+        }
+
+        if (!File.Exists(path))
+            throw new Exception($"extractPdfText() file not found: {path}");
+
+        try
+        {
+            var options = string.IsNullOrEmpty(password)
+                ? new ParsingOptions()
+                : new ParsingOptions { Password = password };
+
+            using var document = PdfDocument.Open(path, options);
+            var sb = new StringBuilder();
+            foreach (var page in document.GetPages())
+            {
+                var pageText = ContentOrderTextExtractor.GetText(page) ?? "";
+                if (sb.Length > 0)
+                    sb.Append('\n');
+                sb.Append(pageText);
+            }
+
+            return RuntimeValue.String(sb.ToString());
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"extractPdfText() failed for '{path}': {ex.Message}", ex);
+        }
+    }
+
+    /// <summary>
+    /// Extract text from a Word .docx via Open XML SDK (body paragraphs; not legacy .doc).
+    /// Prefer <c>doc.extractText(path)</c>; flat <c>extractDocxText</c> is the CallBuiltIn name.
+    /// </summary>
+    private static RuntimeValue BuiltInExtractDocxText(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("extractDocxText", args, 1, 1, "path");
+        if (args[0].Type != ValueType.String)
+            throw new Exception("extractDocxText() expects 1 string argument: (path)");
+
+        var path = args[0].AsString();
+        if (string.IsNullOrWhiteSpace(path))
+            throw new Exception("extractDocxText() path cannot be empty");
+
+        try
+        {
+            path = Path.GetFullPath(path);
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"extractDocxText() invalid path: {ex.Message}");
+        }
+
+        if (!File.Exists(path))
+            throw new Exception($"extractDocxText() file not found: {path}");
+
+        var ext = Path.GetExtension(path);
+        if (!ext.Equals(".docx", StringComparison.OrdinalIgnoreCase))
+            throw new Exception("extractDocxText() expects a .docx file (legacy .doc is not supported)");
+
+        try
+        {
+            using var document = WordprocessingDocument.Open(path, false);
+            var body = document.MainDocumentPart?.Document?.Body;
+            if (body == null)
+                return RuntimeValue.String("");
+
+            var sb = new StringBuilder();
+            // Fully qualify: DocumentFormat.OpenXml.Wordprocessing.* clashes with Spectre.Console.
+            foreach (var paragraph in body.Descendants<DocumentFormat.OpenXml.Wordprocessing.Paragraph>())
+            {
+                var line = paragraph.InnerText ?? "";
+                if (sb.Length > 0)
+                    sb.Append('\n');
+                sb.Append(line);
+            }
+
+            return RuntimeValue.String(sb.ToString());
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"extractDocxText() failed for '{path}': {ex.Message}", ex);
+        }
     }
 
     private static RuntimeValue BuiltInExtractHTML(List<RuntimeValue> args)
