@@ -155,6 +155,7 @@ int	int	1 argument	throws when the value will not parse; use toIntOr or toIntOrN
 isArray	isArray	1 argument		
 isNumber	isNumber	1 argument		
 isObject	isObject	1 argument		
+isPathUnder	io.isPathUnder	2 arguments: (root, path)		
 isString	isString	1 argument		
 isTag	isTag	2 arguments: (value, tag)		
 join	str.join	1-2 arguments: (array, separator?)		

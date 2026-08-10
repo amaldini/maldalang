@@ -1,8 +1,10 @@
 // Copyright (c) 2026 Andrea Maldini
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+using System.Collections.Generic;
 using System.IO;
 using MaldaLang.BuiltIns;
+using MaldaLang.Interpreter;
 using Xunit;
 
 namespace MaldaLang.Tests;
@@ -237,5 +239,37 @@ public class FileOperationsTests : TestBase
 
         Assert.True(tool.IsPathAllowed("."));
         Assert.Equal(".", tool.NormalizePathForWorkingDirectory("."));
+    }
+
+    [Fact]
+    public void IsPathUnder_AllowsDescendantAndBlocksTraversal()
+    {
+        var brain = Path.Combine(_testDirectory, "secondbrain");
+        var notes = Path.Combine(brain, "notes");
+        Directory.CreateDirectory(notes);
+        var note = Path.Combine(notes, "ok.md");
+        File.WriteAllText(note, "body");
+
+        var outside = Path.Combine(_testDirectory, "secret.txt");
+        File.WriteAllText(outside, "nope");
+
+        Assert.True(BuiltInFunctions.IsPathUnderRoot(brain, note));
+        Assert.True(BuiltInFunctions.IsPathUnderRoot(brain, Path.Combine(brain, "notes", "..", "notes", "ok.md")));
+        Assert.False(BuiltInFunctions.IsPathUnderRoot(brain, outside));
+        Assert.False(BuiltInFunctions.IsPathUnderRoot(brain, Path.Combine(brain, "..", "secret.txt")));
+
+        var sibling = Path.Combine(_testDirectory, "secondbrain-evil");
+        Directory.CreateDirectory(sibling);
+        Assert.False(BuiltInFunctions.IsPathUnderRoot(brain, Path.Combine(sibling, "x.md")));
+
+        var viaBuiltin = BuiltInFunctions.CallBuiltIn(
+            "isPathUnder",
+            new List<RuntimeValue>
+            {
+                RuntimeValue.String(brain),
+                RuntimeValue.String(Path.Combine(brain, "..", "secret.txt"))
+            },
+            null);
+        Assert.False(viaBuiltin.AsBoolean());
     }
 }

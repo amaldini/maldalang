@@ -1243,6 +1243,7 @@ public static class BuiltInFunctions
             "pathNormalize" => BuiltInPathNormalize(args),
             "pathExists" => BuiltInPathExists(args),
             "pathGetExtension" => BuiltInPathGetExtension(args),
+            "isPathUnder" => BuiltInIsPathUnder(args),
             // Range generation
             "range" => BuiltInRange(args),
             // Error handling
@@ -1619,6 +1620,7 @@ public static class BuiltInFunctions
             "pathNormalize" => BuiltInPathNormalize(args),
             "pathExists" => BuiltInPathExists(args),
             "pathGetExtension" => BuiltInPathGetExtension(args),
+            "isPathUnder" => BuiltInIsPathUnder(args),
             // Range generation
             "range" => BuiltInRange(args),
             // Error handling
@@ -4640,6 +4642,68 @@ public static class BuiltInFunctions
         
         var path = args[0].AsString();
         return RuntimeValue.String(Path.GetExtension(path));
+    }
+
+    /// <summary>
+    /// True when <paramref name="path"/> resolves under <paramref name="root"/>
+    /// (disk or <c>embed:</c>). Uses full-path comparison with a separator boundary
+    /// so sibling prefix names (e.g. <c>demo</c> vs <c>demo-evil</c>) do not match.
+    /// </summary>
+    internal static bool IsPathUnderRoot(string root, string path)
+    {
+        if (string.IsNullOrWhiteSpace(root) || string.IsNullOrWhiteSpace(path))
+            return false;
+
+        if (EmbeddedFolderStore.IsEmbedPath(root) || EmbeddedFolderStore.IsEmbedPath(path))
+        {
+            if (!EmbeddedFolderStore.IsEmbedPath(root) ||
+                !EmbeddedFolderStore.TryParsePath(root, out var rootAlias, out var rootRel))
+            {
+                return false;
+            }
+
+            if (!EmbeddedFolderStore.TryParsePath(path, out var pathAlias, out var pathRel))
+                return false;
+
+            if (!string.Equals(rootAlias, pathAlias, StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            if (string.IsNullOrEmpty(rootRel))
+                return true;
+
+            if (string.IsNullOrEmpty(pathRel))
+                return false;
+
+            return pathRel.Equals(rootRel, StringComparison.OrdinalIgnoreCase) ||
+                   pathRel.StartsWith(rootRel + "/", StringComparison.OrdinalIgnoreCase);
+        }
+
+        try
+        {
+            var rootFull = Path.GetFullPath(root)
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var pathFull = Path.GetFullPath(path)
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+            if (pathFull.Equals(rootFull, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            var prefix = rootFull + Path.DirectorySeparatorChar;
+            return pathFull.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static RuntimeValue BuiltInIsPathUnder(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("isPathUnder", args, 2, 2, "root, path");
+        if (args[0].Type != ValueType.String || args[1].Type != ValueType.String)
+            throw new Exception("isPathUnder() expects (string, string)");
+
+        return RuntimeValue.Boolean(IsPathUnderRoot(args[0].AsString(), args[1].AsString()));
     }
     
     // ========== Range Generation ==========

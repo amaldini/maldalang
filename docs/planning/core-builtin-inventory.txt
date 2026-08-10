@@ -4,7 +4,7 @@
 # Format: symbol -> tier | note
 # Optional-pack / vertical symbols must NOT appear here (enforced by OptionalPackRegistryGuardTests)
 
-# count: 320
+# count: 342
 
 abs -> tier1-core | BuiltInRegistry
 acos -> stdlib-general | BuiltInRegistry
@@ -22,17 +22,23 @@ atan2 -> stdlib-general | BuiltInRegistry
 average -> tier1-core | BuiltInRegistry
 base64Decode -> stdlib-general | BuiltInRegistry
 base64Encode -> stdlib-general | BuiltInRegistry
+bindForm -> stdlib-general | BuiltInRegistry
 cancelWorkflow -> platform-workflow | BuiltInRegistry
 ceil -> tier1-core | BuiltInRegistry
+claimJob -> stdlib-general | BuiltInRegistry
 clamp -> tier1-core | BuiltInRegistry
+clearAgentProgress -> stdlib-general | BuiltInRegistry
 compileMALDA -> platform-ai | BuiltInRegistry
+completeJob -> stdlib-general | BuiltInRegistry
 componentFragment -> platform-ui | BuiltInRegistry
 componentLiveEmit -> platform-ui | BuiltInRegistry
 componentStateClear -> platform-ui | BuiltInRegistry
 componentStateConfigure -> platform-ui | BuiltInRegistry
 componentStateGet -> platform-ui | BuiltInRegistry
 componentStateObject -> platform-ui | BuiltInRegistry
+componentStatePin -> platform-ui | BuiltInRegistry
 componentStateSet -> platform-ui | BuiltInRegistry
+componentStateUnpin -> platform-ui | BuiltInRegistry
 composePipe -> stdlib-general | BuiltInRegistry
 cos -> tier1-core | BuiltInRegistry
 createAskUserTool -> platform-ai | BuiltInRegistry
@@ -66,6 +72,7 @@ createSubmitPlanTool -> platform-ai | BuiltInRegistry
 createWebSearchTool -> platform-ai | BuiltInRegistry
 createWriteFileTool -> platform-ai | BuiltInRegistry
 crossEntropyFromLogits -> stdlib-general | BuiltInRegistry
+csrfField -> stdlib-general | BuiltInRegistry
 decomposeTask -> platform-ai | BuiltInRegistry
 degToRad -> stdlib-general | BuiltInRegistry
 deleteFile -> stdlib-io | BuiltInRegistry
@@ -73,12 +80,14 @@ dotnetNew -> core-interop | BuiltInRegistry
 editFile -> stdlib-general | BuiltInRegistry
 embedBagOfWords -> platform-embed | BuiltInRegistry
 embedCharacterNGrams -> platform-embed | BuiltInRegistry
+embeddedFolderRoot -> platform-embed | BuiltInRegistry
 embedFromFile -> platform-embed | BuiltInRegistry
 embedFromFiles -> platform-embed | BuiltInRegistry
 embedHash -> platform-embed | BuiltInRegistry
 embedTFIDF -> platform-embed | BuiltInRegistry
 enableAgentVerboseLogging -> platform-ai | BuiltInRegistry
 endsWith -> stdlib-general | BuiltInRegistry
+enqueueJob -> stdlib-general | BuiltInRegistry
 ensureDir -> stdlib-general | BuiltInRegistry
 error -> stdlib-general | BuiltInRegistry
 executePlan -> platform-ai | BuiltInRegistry
@@ -86,11 +95,13 @@ exit -> stdlib-general | BuiltInRegistry
 exp -> stdlib-general | BuiltInRegistry
 extractHTML -> stdlib-general | BuiltInRegistry
 extractNumbers -> stdlib-general | BuiltInRegistry
+failJob -> stdlib-general | BuiltInRegistry
 float -> tier1-core | BuiltInRegistry
 floor -> tier1-core | BuiltInRegistry
 formatDate -> stdlib-general | BuiltInRegistry
 formatNumber -> stdlib-general | BuiltInRegistry
 formatRetrievedDocs -> stdlib-general | BuiltInRegistry
+formErrors -> stdlib-general | BuiltInRegistry
 generateCsrfToken -> stdlib-general | BuiltInRegistry
 generateUI -> stdlib-general | BuiltInRegistry
 getAssistantMemory -> stdlib-general | BuiltInRegistry
@@ -100,9 +111,11 @@ getDotNetType -> core-interop | BuiltInRegistry
 getEnv -> stdlib-io | BuiltInRegistry
 getFileName -> stdlib-general | BuiltInRegistry
 getHostPlatform -> stdlib-general | BuiltInRegistry
+getJob -> stdlib-general | BuiltInRegistry
 getMaldaConfig -> stdlib-general | BuiltInRegistry
 getMaldaHome -> stdlib-general | BuiltInRegistry
 getParseErrors -> platform-ai | BuiltInRegistry
+getProgramDirectory -> stdlib-general | BuiltInRegistry
 getSkillNames -> platform-ai | BuiltInRegistry
 getSymbols -> platform-ai | BuiltInRegistry
 getWorkflow -> platform-workflow | BuiltInRegistry
@@ -122,6 +135,7 @@ gitStatus -> stdlib-io | BuiltInRegistry
 glob -> stdlib-io | BuiltInRegistry
 grep -> stdlib-io | BuiltInRegistry
 hasDirectory -> stdlib-general | BuiltInRegistry
+hasEmbeddedFolder -> stdlib-general | BuiltInRegistry
 hasEnv -> stdlib-general | BuiltInRegistry
 hasFile -> stdlib-io | BuiltInRegistry
 hashPassword -> stdlib-general | BuiltInRegistry
@@ -143,11 +157,13 @@ int -> tier1-core | BuiltInRegistry
 isArray -> stdlib-general | BuiltInRegistry
 isNumber -> tier1-core | BuiltInRegistry
 isObject -> stdlib-general | BuiltInRegistry
+isPathUnder -> stdlib-general | BuiltInRegistry
 isString -> stdlib-general | BuiltInRegistry
 isTag -> tier1-core | BuiltInRegistry
 join -> stdlib-general | BuiltInRegistry
 length -> stdlib-general | BuiltInRegistry
 listDirectory -> stdlib-io | BuiltInRegistry
+listJobs -> stdlib-general | BuiltInRegistry
 listWorkflowDeadLetters -> platform-workflow | BuiltInRegistry
 listWorkflows -> platform-workflow | BuiltInRegistry
 loadAssembly -> core-interop | BuiltInRegistry
@@ -160,14 +176,17 @@ log10 -> stdlib-general | BuiltInRegistry
 log2 -> stdlib-general | BuiltInRegistry
 logSumExp -> stdlib-general | BuiltInRegistry
 lower -> stdlib-general | BuiltInRegistry
+markdownToHtml -> stdlib-general | BuiltInRegistry
 max -> tier1-core | BuiltInRegistry
 md5 -> stdlib-general | BuiltInRegistry
 mergeRetrievedDocs -> stdlib-general | BuiltInRegistry
 min -> tier1-core | BuiltInRegistry
 normalizeText -> stdlib-general | BuiltInRegistry
 now -> stdlib-general | BuiltInRegistry
+onAgentProgress -> stdlib-general | BuiltInRegistry
 padEnd -> stdlib-general | BuiltInRegistry
 padStart -> stdlib-general | BuiltInRegistry
+pageLayout -> stdlib-general | BuiltInRegistry
 parallelRun -> stdlib-general | BuiltInRegistry
 parseDate -> stdlib-general | BuiltInRegistry
 parseJson -> tier1-core | BuiltInRegistry
@@ -265,6 +284,7 @@ uiErrorBoundary -> platform-ui | BuiltInRegistry
 uiField -> platform-ui | BuiltInRegistry
 uiForm -> platform-ui | BuiltInRegistry
 uiGenerate -> platform-ui | BuiltInRegistry
+uiGetState -> platform-ui | BuiltInRegistry
 uiHeading -> platform-ui | BuiltInRegistry
 uiIcon -> platform-ui | BuiltInRegistry
 uiImage -> platform-ui | BuiltInRegistry
@@ -285,6 +305,7 @@ uiOnUpdate -> platform-ui | BuiltInRegistry
 uiPaginator -> platform-ui | BuiltInRegistry
 uiPanel -> platform-ui | BuiltInRegistry
 uiPartial -> platform-ui | BuiltInRegistry
+uiPinState -> platform-ui | BuiltInRegistry
 uiProgress -> platform-ui | BuiltInRegistry
 uiPullEvent -> platform-ui | BuiltInRegistry
 uiRadioGroup -> platform-ui | BuiltInRegistry
@@ -313,6 +334,7 @@ uiTextArea -> platform-ui | BuiltInRegistry
 uiTextField -> platform-ui | BuiltInRegistry
 uiToast -> platform-ui | BuiltInRegistry
 uiTreeView -> platform-ui | BuiltInRegistry
+uiUnpinState -> platform-ui | BuiltInRegistry
 uiWhen -> platform-ui | BuiltInRegistry
 uiWithSlot -> platform-ui | BuiltInRegistry
 upper -> stdlib-general | BuiltInRegistry

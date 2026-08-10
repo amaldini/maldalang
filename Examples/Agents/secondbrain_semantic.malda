@@ -1258,7 +1258,10 @@ function writeNoteFile(brainDir, note) {
         "- Hub tematico: [" + note.topic + "](../topics/" + slugify(note.topic) + ".md)\n" +
         "- Indice: [" + productName() + "](../index.md)\n" +
         "- Documento di origine: `" + note.source + "`\n";
-    io.writeFile(io.pathJoin(brainDir, "notes", note.slug + ".md"), text);
+    var notePath = sbJoinUnderRoot2(brainDir, "notes", note.slug + ".md");
+    if (notePath != null) {
+        io.writeFile(notePath, text);
+    }
 }
 
 function replaceRelatedBlock(fileText, linksText) {
@@ -1427,7 +1430,10 @@ function writeTopicHub(brainDir, topic, agent) {
         str.join(lines, "\n") + "\n\n" +
         "---\n\n" +
         "- Indice: [" + productName() + "](../index.md)\n";
-    io.writeFile(io.pathJoin(brainDir, "topics", topic.slug + ".md"), text);
+    var topicPath = sbJoinUnderRoot2(brainDir, "topics", topic.slug + ".md");
+    if (topicPath != null) {
+        io.writeFile(topicPath, text);
+    }
 }
 
 function writeIndex(brainDir, docsRoot, notes, topics, skipped, truncated, taxonomySource) {
@@ -2044,8 +2050,8 @@ function catalogEntrySourceKey(entry) {
 }
 
 function loadNoteBody(brainDir, entry) {
-    var path = io.pathJoin(brainDir, "notes", entry.slug + ".md");
-    if (not io.hasFile(path)) {
+    var path = sbJoinUnderRoot2(brainDir, "notes", entry.slug + ".md");
+    if (path == null or not io.hasFile(path)) {
         return "";
     }
     var text = io.readFile(path);
@@ -2139,8 +2145,8 @@ function findSourceGroup(groups, key) {
 }
 
 function deleteNoteFile(brainDir, slug) {
-    var path = io.pathJoin(brainDir, "notes", slug + ".md");
-    if (io.hasFile(path)) {
+    var path = sbJoinUnderRoot2(brainDir, "notes", slug + ".md");
+    if (path != null and io.hasFile(path)) {
         io.deleteFile(path);
     }
 }
@@ -2170,7 +2176,12 @@ function listContains(items, value) {
 }
 
 function distillSourceFile(distiller, docsRoot, brainDir, rel, taxonomy, notes, contentHash) {
-    var absPath = io.pathJoin(docsRoot, rel);
+    var absPath = sbAssertUnderRoot(docsRoot, io.pathJoin(docsRoot, rel));
+    if (absPath == null) {
+        AnsiConsole.markupLine("  [red]" + t("path outside docs folder:", "percorso fuori dalla cartella docs:") +
+            "[/] " + string(rel));
+        return { "skipped": true, "truncated": null };
+    }
     var text = "";
     try {
         text = extractText(absPath);
@@ -2597,7 +2608,11 @@ function updateBrain(cli) {
     var added = [];
     var missingHash = 0;
     foreach (var rel in docs) {
-        var absPath = io.pathJoin(docsRoot, rel);
+        var absPath = sbAssertUnderRoot(docsRoot, io.pathJoin(docsRoot, rel));
+        if (absPath == null) {
+            changed.append(rel);
+            continue;
+        }
         var text = "";
         try {
             text = extractText(absPath);
@@ -2757,12 +2772,14 @@ function updateBrain(cli) {
                 deleteNoteFile(brainDir, oldNote.slug);
             }
         }
-        var absPath = io.pathJoin(docsRoot, rel);
+        var absPath = sbAssertUnderRoot(docsRoot, io.pathJoin(docsRoot, rel));
         var hash = "";
-        try {
-            hash = contentHashOf(extractText(absPath));
-        } catch (e) {
-            hash = "";
+        if (absPath != null) {
+            try {
+                hash = contentHashOf(extractText(absPath));
+            } catch (e) {
+                hash = "";
+            }
         }
         var outcome = distillSourceFile(distiller, docsRoot, brainDir, rel, null, notes, hash);
         if (outcome.skipped) {
@@ -2886,8 +2903,8 @@ function metadataScore(questionTokens, note) {
 }
 
 function bodyScore(brainDir, questionTokens, note) {
-    var path = io.pathJoin(brainDir, note.path);
-    if (not io.hasFile(path)) {
+    var path = sbJoinUnderRoot(brainDir, note.path);
+    if (path == null or not io.hasFile(path)) {
         return 0.0;
     }
     var body = "";
@@ -2960,12 +2977,14 @@ function buildContext(brainDir, picked) {
     var blocks = [];
     foreach (var entry in picked) {
         var note = entry.note;
-        var path = io.pathJoin(brainDir, note.path);
+        var path = sbJoinUnderRoot(brainDir, note.path);
         var body = "";
-        try {
-            body = io.readFile(path);
-        } catch (e) {
-            body = "";
+        if (path != null) {
+            try {
+                body = io.readFile(path);
+            } catch (e) {
+                body = "";
+            }
         }
         if (str.length(body) > MAX_NOTE_CHARS) {
             body = str.substring(body, 0, MAX_NOTE_CHARS) + "\n[...nota troncata...]";
@@ -3233,8 +3252,11 @@ function runAskUpdateFromUpload(body) {
         var lower = str.lower(fileName);
         if (fileName != "" and (str.endsWith(lower, ".md") or str.endsWith(lower, ".html") or
                 str.endsWith(lower, ".htm"))) {
-            io.writeFile(io.pathJoin(docsRoot, fileName), content);
-            filesWritten = 1;
+            var dest = sbAssertUnderRoot(docsRoot, io.pathJoin(docsRoot, fileName));
+            if (dest != null) {
+                io.writeFile(dest, content);
+                filesWritten = 1;
+            }
         }
     }
     if (filesWritten == 0) {

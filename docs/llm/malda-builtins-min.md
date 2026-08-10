@@ -118,7 +118,7 @@ borders to square — see [`malda-gotchas.md`](malda-gotchas.md).
 
 ## Files / OS (when needed)
 
-`io.readFile`, `io.writeFile`, `io.pathExists`, `io.pathJoin`, `io.listDirectory`, `io.glob`,
+`io.readFile`, `io.writeFile`, `io.pathExists`, `io.pathJoin`, `io.isPathUnder`, `io.listDirectory`, `io.glob`,
 `io.grep`, `io.getEnv`, and the `io.git*` family. Grep the TSV for exact arguments rather
 than guessing.
 

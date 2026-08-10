@@ -362,6 +362,7 @@ public static class BuiltInRegistry
             "pathNormalize" or
             "pathExists" or
             "pathGetExtension" or
+            "isPathUnder" or
             "range" or
             "exit" or
             "error" or

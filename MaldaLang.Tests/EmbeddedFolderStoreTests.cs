@@ -138,4 +138,15 @@ public class EmbeddedFolderStoreTests : IDisposable
         Assert.Equal("embed:fixture/notes/a.md", tool!.ResolvePathAgainstWorkingDirectory("notes/a.md"));
         Assert.Null(tool.NormalizePathForWorkingDirectory("../outside.txt"));
     }
+
+    [Fact]
+    public void IsPathUnder_Embed_AllowsInsideAndBlocksTraversal()
+    {
+        Assert.True(BuiltInFunctions.IsPathUnderRoot("embed:fixture", "embed:fixture/notes/a.md"));
+        Assert.True(BuiltInFunctions.IsPathUnderRoot("embed:fixture/notes", "embed:fixture/notes/a.md"));
+        Assert.False(BuiltInFunctions.IsPathUnderRoot("embed:fixture/notes", "embed:fixture/hello.txt"));
+        Assert.False(BuiltInFunctions.IsPathUnderRoot("embed:fixture", "embed:other/x.md"));
+        Assert.False(BuiltInFunctions.IsPathUnderRoot("embed:fixture", "embed:fixture/../outside.txt"));
+        Assert.False(BuiltInFunctions.IsPathUnderRoot("embed:fixture", @"C:\Windows\win.ini"));
+    }
 }

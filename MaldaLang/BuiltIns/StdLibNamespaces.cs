@@ -51,7 +51,7 @@ public static class StdLibNamespaces
         "readFile", "writeFile", "readFileBase64", "writeFileBase64", "readTextFileLines",
         "deleteFile", "hasFile", "hasDirectory", "ensureDir", "listDirectory",
         "glob", "grep", "replaceInFile",
-        "pathExists", "pathJoin", "pathNormalize", "pathGetExtension",
+        "pathExists", "pathJoin", "pathNormalize", "pathGetExtension", "isPathUnder",
         "getEnv", "hasEnv", "getFileName", "getDirectoryName",
         "hasEmbeddedFolder", "embeddedFolderRoot",
         "gitStatus", "gitAdd", "gitCommit", "gitDiff", "gitLog", "gitBranch", "gitCheckout", "gitPull", "gitPush"

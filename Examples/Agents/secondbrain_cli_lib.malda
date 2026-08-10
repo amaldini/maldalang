@@ -21,6 +21,32 @@ function sbCliAsText(value) {
     return string(value);
 }
 
+// Path confinement: return path when it resolves under root (disk or embed:), else null.
+// Use after io.pathJoin so ../ and rooted overrides cannot escape the intended tree.
+function sbAssertUnderRoot(root, path) {
+    var r = str.trim(sbCliAsText(root));
+    var p = str.trim(sbCliAsText(path));
+    if (r == "" or p == "") {
+        return null;
+    }
+    if (not io.isPathUnder(r, p)) {
+        return null;
+    }
+    return p;
+}
+
+function sbJoinUnderRoot(root, part1) {
+    return sbAssertUnderRoot(root, io.pathJoin(root, part1));
+}
+
+function sbJoinUnderRoot2(root, part1, part2) {
+    return sbAssertUnderRoot(root, io.pathJoin(root, part1, part2));
+}
+
+function sbJoinUnderRoot3(root, part1, part2, part3) {
+    return sbAssertUnderRoot(root, io.pathJoin(root, part1, part2, part3));
+}
+
 function sbCliEmptyOptions() {
     return {
         "mode": "",

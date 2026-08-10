@@ -10260,6 +10260,7 @@ public class CSharpTranspiler
             case "pathNormalize":
             case "pathExists":
             case "pathGetExtension":
+            case "isPathUnder":
             // Range generation
             case "range":
             // Error handling
