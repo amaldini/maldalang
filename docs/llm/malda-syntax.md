@@ -1,6 +1,6 @@
 # MALDA syntax pack (for writing programs)
 
-*Applies to: MALDA 0.1.47*
+*Applies to: MALDA 0.1.48*
 
 Compact rules for generating correct `.malda`. Prefer this over scraping HTML manuals.
 
