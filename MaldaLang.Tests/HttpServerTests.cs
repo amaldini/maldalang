@@ -284,8 +284,10 @@ public class HttpServerTests
                 _ = await ReadLineWithTimeoutAsync(reader, 3000);
                 _ = await ReadLineWithTimeoutAsync(reader, 3000);
 
+                // Mimic ASK rounds: progress arrives after the stream has been idle.
+                await Task.Delay(250);
                 HttpServerInstance.BroadcastSSEMessage(
-                    "{\"type\":\"https-live\",\"channel\":\"alpha\"}", "alpha");
+                    "{\"type\":\"https-live\",\"channel\":\"alpha\",\"round\":1}", "alpha");
 
                 string? progressLine = null;
                 for (var i = 0; i < 6; i++)
@@ -299,6 +301,21 @@ public class HttpServerTests
                 }
 
                 Assert.NotNull(progressLine);
+
+                await Task.Delay(250);
+                HttpServerInstance.BroadcastSSEMessage(
+                    "{\"type\":\"https-live\",\"channel\":\"alpha\",\"round\":2}", "alpha");
+                string? roundTwo = null;
+                for (var i = 0; i < 6; i++)
+                {
+                    var line = await ReadLineWithTimeoutAsync(reader, 2000);
+                    if (!string.IsNullOrEmpty(line) && line.Contains("\"round\":2", StringComparison.Ordinal))
+                    {
+                        roundTwo = line;
+                        break;
+                    }
+                }
+                Assert.NotNull(roundTwo);
             }
             finally
             {

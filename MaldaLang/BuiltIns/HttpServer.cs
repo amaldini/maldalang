@@ -99,15 +99,50 @@ public partial class HttpServerInstance : ObjectInstance
     
     private sealed class SseConnection
     {
-        public HttpListenerResponse Response { get; }
+        private readonly object _writeLock = new();
+        private readonly Action<byte[]> _write;
+
         public HashSet<string> Channels { get; }
 
         public SseConnection(HttpListenerResponse response, HashSet<string> channels)
+            : this(bytes =>
+                {
+                    response.OutputStream.Write(bytes, 0, bytes.Length);
+                    response.OutputStream.Flush();
+                }, channels)
         {
-            Response = response;
+        }
+
+        public SseConnection(Action<byte[]> write, HashSet<string> channels)
+        {
+            _write = write ?? throw new ArgumentNullException(nameof(write));
             Channels = channels;
         }
+
+        public bool TryWrite(byte[] bytes)
+        {
+            lock (_writeLock)
+            {
+                try
+                {
+                    _write(bytes);
+                    return true;
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+        }
     }
+
+    /// <summary>
+    /// HTTPS proxy asks the loopback pipeline to authorize/register the LIVE route,
+    /// then serves the long-lived event stream from Kestrel (avoids HttpClient buffering).
+    /// </summary>
+    internal const string SseDelegateHeaderName = "X-Malda-Sse-Delegate";
+    internal const string SseReadyHeaderName = "X-Malda-Sse-Ready";
+    internal const string SseChannelsHeaderName = "X-Malda-Sse-Channels";
 
     // Store active SSE connections (connection ID -> connection metadata)
     private static readonly Dictionary<string, SseConnection> _sseConnections = new();
@@ -1628,54 +1663,84 @@ public partial class HttpServerInstance : ObjectInstance
                         {
                             responseContext.ApplyHeadersTo(response, _pathBase);
                         }
-                        // This is an SSE stream - set headers and keep connection open
+
+                        var subscribedChannels = ParseSseChannels(queryParams);
+
+                        // HTTPS front-end: authorize via loopback, then stream from Kestrel.
+                        var delegateSse = string.Equals(
+                            request.Headers[SseDelegateHeaderName],
+                            "1",
+                            StringComparison.Ordinal);
+                        if (delegateSse)
+                        {
+                            response.StatusCode = 200;
+                            response.ContentType = "application/json; charset=utf-8";
+                            response.Headers.Add(SseReadyHeaderName, "1");
+                            if (subscribedChannels.Count > 0)
+                            {
+                                response.Headers.Add(
+                                    SseChannelsHeaderName,
+                                    string.Join(",", subscribedChannels));
+                            }
+                            response.Headers.Add("Cache-Control", "no-cache");
+                            var readyBytes = Encoding.UTF8.GetBytes("{\"sse\":true}");
+                            response.ContentLength64 = readyBytes.Length;
+                            response.OutputStream.Write(readyBytes, 0, readyBytes.Length);
+                            response.Close();
+                            return;
+                        }
+
+                        // Direct HttpListener SSE (plain HTTP).
                         response.StatusCode = 200;
                         response.ContentType = "text/event-stream";
                         response.Headers.Add("Cache-Control", "no-cache");
                         response.Headers.Add("Connection", "keep-alive");
-                        
-                        // Generate connection ID and store response with optional channel subscriptions.
-                        var subscribedChannels = ParseSseChannels(queryParams);
+                        response.SendChunked = true;
+
                         var connectionId = $"sse_{Interlocked.Increment(ref _sseConnectionCounter)}_{DateTime.UtcNow.Ticks}";
+                        var listenerConnection = new SseConnection(response, subscribedChannels);
                         lock (_sseConnectionsLock)
                         {
-                            _sseConnections[connectionId] = new SseConnection(response, subscribedChannels);
+                            _sseConnections[connectionId] = listenerConnection;
                         }
-                        
-                        // Send initial connection message
-                        var channels = subscribedChannels.Count == 0
+
+                        var channelsJson = subscribedChannels.Count == 0
                             ? "[]"
                             : "[" + string.Join(",", subscribedChannels.Select(c => JsonSerializer.Serialize(c))) + "]";
-                        var initMessage = $"data: {{\"type\":\"connected\",\"connectionId\":\"{connectionId}\",\"channels\":{channels}}}\n\n";
+                        var initMessage = $"data: {{\"type\":\"connected\",\"connectionId\":\"{connectionId}\",\"channels\":{channelsJson}}}\n\n";
                         var initBytes = Encoding.UTF8.GetBytes(initMessage);
-                        response.OutputStream.Write(initBytes, 0, initBytes.Length);
-                        response.OutputStream.Flush();
-                        
-                        // Don't close the connection - it will be closed when the client disconnects or explicitly closed
-                        // The connection will be cleaned up when the client disconnects
+                        if (!listenerConnection.TryWrite(initBytes))
+                        {
+                            lock (_sseConnectionsLock)
+                            {
+                                _sseConnections.Remove(connectionId);
+                            }
+                            return;
+                        }
+
                         _ = Task.Run(async () =>
                         {
                             try
                             {
-                                while (response.OutputStream.CanWrite)
+                                while (true)
                                 {
-                                    await Task.Delay(30000); // 30 second heartbeat
+                                    await Task.Delay(30000).ConfigureAwait(false);
+                                    SseConnection? connection;
                                     lock (_sseConnectionsLock)
                                     {
-                                        if (!_sseConnections.ContainsKey(connectionId))
+                                        if (!_sseConnections.TryGetValue(connectionId, out connection))
                                             break;
-                                        try
-                                        {
-                                            var heartbeat = "data: {\"type\":\"heartbeat\"}\n\n";
-                                            var heartbeatBytes = Encoding.UTF8.GetBytes(heartbeat);
-                                            response.OutputStream.Write(heartbeatBytes, 0, heartbeatBytes.Length);
-                                            response.OutputStream.Flush();
-                                        }
-                                        catch
+                                    }
+
+                                    var heartbeat = "data: {\"type\":\"heartbeat\"}\n\n";
+                                    var heartbeatBytes = Encoding.UTF8.GetBytes(heartbeat);
+                                    if (!connection.TryWrite(heartbeatBytes))
+                                    {
+                                        lock (_sseConnectionsLock)
                                         {
                                             _sseConnections.Remove(connectionId);
-                                            break;
                                         }
+                                        break;
                                     }
                                 }
                             }
@@ -1699,7 +1764,7 @@ public partial class HttpServerInstance : ObjectInstance
                                 }
                             }
                         });
-                        
+
                         return; // Don't close response here
                     }
                 }
@@ -1727,20 +1792,14 @@ public partial class HttpServerInstance : ObjectInstance
     /// </summary>
     public static void WriteSSEMessage(string connectionId, string data)
     {
+        var message = $"data: {data}\n\n";
+        var bytes = Encoding.UTF8.GetBytes(message);
         lock (_sseConnectionsLock)
         {
             if (_sseConnections.TryGetValue(connectionId, out var connection))
             {
-                try
+                if (!connection.TryWrite(bytes))
                 {
-                    var message = $"data: {data}\n\n";
-                    var bytes = Encoding.UTF8.GetBytes(message);
-                    connection.Response.OutputStream.Write(bytes, 0, bytes.Length);
-                    connection.Response.OutputStream.Flush();
-                }
-                catch
-                {
-                    // Connection closed, remove it
                     _sseConnections.Remove(connectionId);
                 }
             }
@@ -1760,31 +1819,32 @@ public partial class HttpServerInstance : ObjectInstance
     /// </summary>
     public static void BroadcastSSEMessage(string data, string? channel)
     {
+        var message = $"data: {data}\n\n";
+        var bytes = Encoding.UTF8.GetBytes(message);
+        List<KeyValuePair<string, SseConnection>> targets;
         lock (_sseConnectionsLock)
         {
-            var toRemove = new List<string>();
-            foreach (var kvp in _sseConnections)
-            {
-                if (!ConnectionMatchesChannel(kvp.Value, channel))
-                {
-                    continue;
-                }
+            targets = _sseConnections
+                .Where(kvp => ConnectionMatchesChannel(kvp.Value, channel))
+                .ToList();
+        }
 
-                try
-                {
-                    var message = $"data: {data}\n\n";
-                    var bytes = Encoding.UTF8.GetBytes(message);
-                    kvp.Value.Response.OutputStream.Write(bytes, 0, bytes.Length);
-                    kvp.Value.Response.OutputStream.Flush();
-                }
-                catch
-                {
-                    // Connection closed, mark for removal
-                    toRemove.Add(kvp.Key);
-                }
+        var toRemove = new List<string>();
+        foreach (var kvp in targets)
+        {
+            if (!kvp.Value.TryWrite(bytes))
+            {
+                toRemove.Add(kvp.Key);
             }
-            
-            // Remove closed connections
+        }
+
+        if (toRemove.Count == 0)
+        {
+            return;
+        }
+
+        lock (_sseConnectionsLock)
+        {
             foreach (var id in toRemove)
             {
                 _sseConnections.Remove(id);

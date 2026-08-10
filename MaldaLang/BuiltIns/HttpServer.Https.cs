@@ -3,10 +3,16 @@
 
 namespace MaldaLang.BuiltIns;
 
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
 using System.Security.Cryptography.X509Certificates;
+using System.Text;
+using System.Text.Json;
+using System.Threading;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -139,6 +145,8 @@ public partial class HttpServerInstance
         }
 
         var request = context.Request;
+        var accept = request.Headers.Accept.ToString();
+        var wantsSse = accept.Contains("text/event-stream", StringComparison.OrdinalIgnoreCase);
         var target = request.Path + request.QueryString;
         using var proxyRequest = new HttpRequestMessage(new HttpMethod(request.Method), target);
 
@@ -176,6 +184,11 @@ public partial class HttpServerInstance
 
         proxyRequest.Headers.Remove("X-Forwarded-Proto");
         proxyRequest.Headers.TryAddWithoutValidation("X-Forwarded-Proto", "https");
+        if (wantsSse)
+        {
+            proxyRequest.Headers.Remove(SseDelegateHeaderName);
+            proxyRequest.Headers.TryAddWithoutValidation(SseDelegateHeaderName, "1");
+        }
 
         var remoteIp = context.Connection.RemoteIpAddress?.ToString();
         if (!string.IsNullOrEmpty(remoteIp))
@@ -184,65 +197,178 @@ public partial class HttpServerInstance
             proxyRequest.Headers.TryAddWithoutValidation("X-Forwarded-For", remoteIp);
         }
 
-        using var proxyResponse = await _httpsProxyClient.SendAsync(
-            proxyRequest,
-            HttpCompletionOption.ResponseHeadersRead,
-            context.RequestAborted).ConfigureAwait(false);
+        var serveKestrelSse = false;
+        HashSet<string>? sseChannels = null;
 
-        context.Response.StatusCode = (int)proxyResponse.StatusCode;
-
-        // Disable ASP.NET response buffering so progressive writes (SSE heartbeats /
-        // ask-progress) reach the browser instead of arriving only at stream close.
-        context.Features.Get<IHttpResponseBodyFeature>()?.DisableBuffering();
-
-        var contentType = proxyResponse.Content.Headers.ContentType?.MediaType;
-        var isEventStream = string.Equals(
-            contentType, "text/event-stream", StringComparison.OrdinalIgnoreCase);
-
-        foreach (var header in proxyResponse.Headers)
+        using (var proxyResponse = await _httpsProxyClient.SendAsync(
+                   proxyRequest,
+                   HttpCompletionOption.ResponseHeadersRead,
+                   context.RequestAborted).ConfigureAwait(false))
         {
-            if (header.Key.Equals("Transfer-Encoding", StringComparison.OrdinalIgnoreCase))
-                continue;
-            context.Response.Headers[header.Key] = header.Value.ToArray();
-        }
-        foreach (var header in proxyResponse.Content.Headers)
-        {
-            if (header.Key.Equals("Transfer-Encoding", StringComparison.OrdinalIgnoreCase))
-                continue;
-            // Chunked streaming must not advertise a fixed length (SSE stays open).
-            if (isEventStream &&
-                header.Key.Equals("Content-Length", StringComparison.OrdinalIgnoreCase))
+            // LIVE endpoints: loopback only authorizes; Kestrel owns the event stream so
+            // ask-progress is not trapped in HttpClient/HttpListener response buffering.
+            if (wantsSse &&
+                proxyResponse.IsSuccessStatusCode &&
+                proxyResponse.Headers.Contains(SseReadyHeaderName))
             {
-                continue;
+                sseChannels = ParseSseChannelsFromHeader(
+                    proxyResponse.Headers.TryGetValues(SseChannelsHeaderName, out var values)
+                        ? values.FirstOrDefault()
+                        : null);
+                // Drain the short JSON ready body, then release the loopback connection.
+                await proxyResponse.Content.CopyToAsync(Stream.Null, context.RequestAborted)
+                    .ConfigureAwait(false);
+                serveKestrelSse = true;
             }
-            context.Response.Headers[header.Key] = header.Value.ToArray();
+            else
+            {
+                context.Response.StatusCode = (int)proxyResponse.StatusCode;
+                context.Features.Get<IHttpResponseBodyFeature>()?.DisableBuffering();
+
+                var contentType = proxyResponse.Content.Headers.ContentType?.MediaType;
+                var isEventStream = string.Equals(
+                    contentType, "text/event-stream", StringComparison.OrdinalIgnoreCase);
+
+                foreach (var header in proxyResponse.Headers)
+                {
+                    if (header.Key.Equals("Transfer-Encoding", StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    context.Response.Headers[header.Key] = header.Value.ToArray();
+                }
+                foreach (var header in proxyResponse.Content.Headers)
+                {
+                    if (header.Key.Equals("Transfer-Encoding", StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    if (isEventStream &&
+                        header.Key.Equals("Content-Length", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+                    context.Response.Headers[header.Key] = header.Value.ToArray();
+                }
+
+                if (isEventStream)
+                {
+                    context.Response.Headers["Cache-Control"] = "no-cache, no-transform";
+                    context.Response.Headers["X-Accel-Buffering"] = "no";
+                }
+
+                await using var upstream = await proxyResponse.Content
+                    .ReadAsStreamAsync(context.RequestAborted)
+                    .ConfigureAwait(false);
+                var buffer = new byte[8192];
+                while (true)
+                {
+                    var read = await upstream
+                        .ReadAsync(buffer.AsMemory(0, buffer.Length), context.RequestAborted)
+                        .ConfigureAwait(false);
+                    if (read <= 0)
+                        break;
+
+                    await context.Response.Body
+                        .WriteAsync(buffer.AsMemory(0, read), context.RequestAborted)
+                        .ConfigureAwait(false);
+                    await context.Response.Body
+                        .FlushAsync(context.RequestAborted)
+                        .ConfigureAwait(false);
+                }
+            }
         }
 
-        if (isEventStream)
+        if (serveKestrelSse)
         {
-            context.Response.Headers["Cache-Control"] = "no-cache, no-transform";
-            context.Response.Headers["X-Accel-Buffering"] = "no";
+            var channels = sseChannels ?? new HashSet<string>(StringComparer.Ordinal);
+            if (channels.Count == 0)
+            {
+                channels = ParseSseChannelsFromHeader(context.Request.Query["channel"].ToString());
+            }
+            await ServeKestrelSseAsync(context, channels).ConfigureAwait(false);
         }
+    }
 
-        await using var upstream = await proxyResponse.Content
-            .ReadAsStreamAsync(context.RequestAborted)
-            .ConfigureAwait(false);
-        var buffer = new byte[8192];
-        while (true)
+    private async Task ServeKestrelSseAsync(HttpContext context, HashSet<string> subscribedChannels)
+    {
+        context.Features.Get<IHttpResponseBodyFeature>()?.DisableBuffering();
+        context.Response.StatusCode = StatusCodes.Status200OK;
+        context.Response.ContentType = "text/event-stream";
+        context.Response.Headers["Cache-Control"] = "no-cache, no-transform";
+        context.Response.Headers["X-Accel-Buffering"] = "no";
+        context.Response.Headers["Connection"] = "keep-alive";
+
+        var body = context.Response.Body;
+        var connectionId = $"sse_{Interlocked.Increment(ref _sseConnectionCounter)}_{DateTime.UtcNow.Ticks}";
+        var connection = new SseConnection(
+            bytes =>
+            {
+                body.WriteAsync(bytes.AsMemory(), context.RequestAborted).AsTask().GetAwaiter().GetResult();
+                body.FlushAsync(context.RequestAborted).GetAwaiter().GetResult();
+            },
+            subscribedChannels);
+
+        lock (_sseConnectionsLock)
         {
-            var read = await upstream
-                .ReadAsync(buffer.AsMemory(0, buffer.Length), context.RequestAborted)
-                .ConfigureAwait(false);
-            if (read <= 0)
-                break;
-
-            await context.Response.Body
-                .WriteAsync(buffer.AsMemory(0, read), context.RequestAborted)
-                .ConfigureAwait(false);
-            await context.Response.Body
-                .FlushAsync(context.RequestAborted)
-                .ConfigureAwait(false);
+            _sseConnections[connectionId] = connection;
         }
+
+        var channelsJson = subscribedChannels.Count == 0
+            ? "[]"
+            : "[" + string.Join(",", subscribedChannels.Select(c => JsonSerializer.Serialize(c))) + "]";
+        var initMessage =
+            $"data: {{\"type\":\"connected\",\"connectionId\":\"{connectionId}\",\"channels\":{channelsJson}}}\n\n";
+        var initBytes = Encoding.UTF8.GetBytes(initMessage);
+        await body.WriteAsync(initBytes, context.RequestAborted).ConfigureAwait(false);
+        await body.FlushAsync(context.RequestAborted).ConfigureAwait(false);
+
+        try
+        {
+            while (!context.RequestAborted.IsCancellationRequested)
+            {
+                await Task.Delay(30000, context.RequestAborted).ConfigureAwait(false);
+                SseConnection? current;
+                lock (_sseConnectionsLock)
+                {
+                    if (!_sseConnections.TryGetValue(connectionId, out current))
+                        break;
+                }
+
+                var heartbeat = "data: {\"type\":\"heartbeat\"}\n\n";
+                var heartbeatBytes = Encoding.UTF8.GetBytes(heartbeat);
+                if (!current.TryWrite(heartbeatBytes))
+                {
+                    break;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Browser closed EventSource.
+        }
+        finally
+        {
+            lock (_sseConnectionsLock)
+            {
+                _sseConnections.Remove(connectionId);
+            }
+        }
+    }
+
+    private static HashSet<string> ParseSseChannelsFromHeader(string? headerValue)
+    {
+        var channels = new HashSet<string>(StringComparer.Ordinal);
+        if (string.IsNullOrWhiteSpace(headerValue))
+        {
+            return channels;
+        }
+
+        foreach (var value in headerValue.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                channels.Add(value);
+            }
+        }
+
+        return channels;
     }
 
     private void StopHttpsFront()
