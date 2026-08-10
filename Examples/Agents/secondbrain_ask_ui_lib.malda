@@ -1873,8 +1873,8 @@ function askRenderTurnHtml(turn, index) {
         html = html + "<div class='bubble a'><div class='bubble-label'>" +
             askEscapeHtml(askT("Answer", "Risposta")) + "</div>" +
             "<p class='pending'>" + askEscapeHtml(askT(
-                "Generating answer… keep this tab open. Live tool/LLM rounds appear below.",
-                "Sto generando la risposta… lascia aperta questa scheda. I round LLM/tool compaiono sotto.")) +
+                "Generating answer… keep this tab open. Live tool/LLM rounds appear here and above the Ask box.",
+                "Sto generando la risposta… lascia aperta questa scheda. I round LLM/tool compaiono qui e sopra il box Chiedi.")) +
             "</p>" +
             "<p class='live-status' id='ask-live-status' aria-live='polite'>" +
             askEscapeHtml(askT("Waiting for the model…", "In attesa del modello…")) +
@@ -2183,14 +2183,19 @@ function askPageStyles() {
         ".live-status,.live-dock{font-size:0.88rem;margin:8px 0 0;" +
         "color:var(--accent-ink);background:var(--live-bg);border:1px solid var(--accent-line);border-radius:8px;" +
         "padding:8px 12px;overflow-wrap:anywhere}" +
-        /* Home is only a safe shelf outside #ask-panel; while live the dock sits in the sticky composer. */
+        /* Home holds the dock outside #ask-panel so fragment replace cannot destroy it.
+           While live it is position:fixed above the sticky composer (see syncLiveDockPosition). */
         "#ask-live-home:empty{display:none}" +
         ".live-dock[hidden]{display:none!important}" +
-        ".composer>.live-dock{margin:0 0 12px;position:relative;z-index:1}" +
-        ".live-dock .live-round{font-weight:600;margin-right:6px}" +
+        ".live-dock.is-floating{position:fixed;left:max(12px,env(safe-area-inset-left));" +
+        "right:max(12px,env(safe-area-inset-right));z-index:28;margin:0;" +
+        "box-shadow:0 8px 24px var(--shadow);max-height:min(30vh,9rem);overflow:auto;" +
+        "-webkit-overflow-scrolling:touch}" +
+        ".live-dock .live-round{font-weight:600;margin-right:6px;white-space:nowrap}" +
         ".live-dock .live-timer,.live-status .live-timer{font-variant-numeric:tabular-nums;" +
-        "font-weight:600;color:var(--muted);margin-right:6px}" +
+        "font-weight:600;color:var(--muted);margin-right:6px;white-space:nowrap}" +
         ".live-dock .live-dock-body{font-variant-numeric:tabular-nums}" +
+        ".live-status{display:block}" +
         ".empty-state{background:var(--panel);border:1px solid var(--line);border-radius:12px;" +
         "padding:22px 20px;margin:0}" +
         ".empty-lead{margin:0 0 14px;color:var(--ink);font-size:1rem;line-height:1.45;font-weight:500}" +
@@ -2249,6 +2254,10 @@ function askPageStyles() {
         ".admin-table th,.admin-table td{padding:6px 4px}" +
         ".login-wrap{margin:24px auto;padding:0 12px}" +
         ".login-wrap h1{font-size:1.15rem;overflow-wrap:anywhere}" +
+        ".live-dock.is-floating{max-height:min(22vh,7.5rem);font-size:0.84rem;padding:8px 10px}" +
+        ".live-status{margin-top:10px;padding:8px 10px;border-radius:8px;" +
+        "background:var(--live-bg);border:1px solid var(--accent-line);color:var(--accent-ink);" +
+        "font-size:0.84rem;font-family:var(--ui);font-style:normal}" +
         "}" +
         "</style>";
 }
@@ -2745,8 +2754,9 @@ function askPanelFragment() {
 }
 
 // Scroll + SSE live progress. Scripts inside fragment bodies do not run via innerHTML.
-// #ask-live-dock lives in #ask-live-home (outside #ask-panel) so it survives the
-// blocking POST; while visible it is moved to the top of the sticky composer.
+// #ask-live-dock stays in #ask-live-home (outside #ask-panel) so panel fragment
+// replace cannot destroy it. While visible it is position:fixed just above the
+// sticky composer — mounting inside the composer hid rounds on tall phone layouts.
 function askPageClientScript() {
     return "<script>(function(){" +
         "var es=null;" +
@@ -2759,6 +2769,7 @@ function askPageClientScript() {
         "var lastRound=null;" +
         "var lastMsg='';" +
         "var timerId=null;" +
+        "var dockPosBound=false;" +
         "function formatElapsed(ms){" +
         "var s=Math.max(0,Math.floor(ms/1000));" +
         "var m=Math.floor(s/60);" +
@@ -2766,9 +2777,9 @@ function askPageClientScript() {
         "return m+':'+(s<10?'0':'')+s;" +
         "}" +
         "function scrollLatest(){" +
-        "var dock=document.getElementById('ask-live-dock');" +
-        "if(dock&&!dock.hidden){" +
-        "dock.scrollIntoView({block:'nearest',behavior:'smooth'});" +
+        "var status=document.getElementById('ask-live-status');" +
+        "if(status){" +
+        "status.scrollIntoView({block:'nearest',behavior:'smooth'});" +
         "return;" +
         "}" +
         "var thread=document.getElementById('thread');" +
@@ -2833,30 +2844,54 @@ function askPageClientScript() {
         "dock.id='ask-live-dock';" +
         "dock.className='live-dock';" +
         "dock.hidden=true;" +
+        "dock.setAttribute('role','status');" +
+        "dock.setAttribute('aria-live','polite');" +
         "dock.innerHTML='<span class=\"live-round\"></span><span class=\"live-timer\">0:00</span><span class=\"live-dock-body\"></span>';" +
         "var label=dock.querySelector('.live-round');" +
         "if(label){label.textContent=liveLabel;}" +
         "home.appendChild(dock);" +
         "return dock;" +
         "}" +
+        "function syncLiveDockPosition(){" +
+        "var dock=document.getElementById('ask-live-dock');" +
+        "if(!dock||dock.hidden){return;}" +
+        "var home=document.getElementById('ask-live-home');" +
+        "if(home&&dock.parentNode!==home){home.appendChild(dock);}" +
+        "dock.classList.add('is-floating');" +
+        "var gap=8;" +
+        "var composer=document.querySelector('#ask-panel .composer');" +
+        "var bottom=gap;" +
+        "if(composer){" +
+        "var rect=composer.getBoundingClientRect();" +
+        "bottom=Math.max(gap,Math.round(window.innerHeight-rect.top)+gap);" +
+        "}" +
+        "dock.style.bottom=bottom+'px';" +
+        "}" +
+        "function bindLiveDockPosition(){" +
+        "if(dockPosBound){return;}" +
+        "dockPosBound=true;" +
+        "var sync=function(){syncLiveDockPosition();};" +
+        "window.addEventListener('resize',sync);" +
+        "window.addEventListener('scroll',sync,{passive:true});" +
+        "try{" +
+        "if(window.visualViewport){" +
+        "window.visualViewport.addEventListener('resize',sync);" +
+        "window.visualViewport.addEventListener('scroll',sync);" +
+        "}" +
+        "}catch(vvErr){}" +
+        "}" +
         "function placeLiveDock(visible){" +
         "var dock=ensureLiveDock();" +
         "var home=document.getElementById('ask-live-home');" +
         "if(!dock){return null;}" +
-        "if(!visible){" +
         "if(home&&dock.parentNode!==home){home.appendChild(dock);}" +
+        "if(!visible){" +
+        "dock.classList.remove('is-floating');" +
+        "dock.style.bottom='';" +
         "return dock;" +
         "}" +
-        // Keep progress in the sticky composer so rounds stay visible above the
-        // input (placing it after the last turn hid it under the composer).
-        "var composer=document.querySelector('#ask-panel .composer');" +
-        "if(composer){" +
-        "if(dock.parentNode!==composer||composer.firstChild!==dock){" +
-        "composer.insertBefore(dock,composer.firstChild);" +
-        "}" +
-        "}else if(home&&dock.parentNode!==home){" +
-        "home.appendChild(dock);" +
-        "}" +
+        "bindLiveDockPosition();" +
+        "syncLiveDockPosition();" +
         "return dock;" +
         "}" +
         "function showLive(text,visible){" +
@@ -2871,8 +2906,10 @@ function askPageClientScript() {
         "dock.hidden=!visible;" +
         "if(visible){" +
         "paintTimers();" +
-        "dock.scrollIntoView({block:'nearest',behavior:'smooth'});" +
+        "syncLiveDockPosition();" +
         "}else{" +
+        "dock.classList.remove('is-floating');" +
+        "dock.style.bottom='';" +
         "var body=dock.querySelector('.live-dock-body');" +
         "if(body){body.textContent='';}" +
         "var t=dock.querySelector('.live-timer');" +
@@ -2880,21 +2917,27 @@ function askPageClientScript() {
         "}" +
         "}" +
         "var status=document.getElementById('ask-live-status');" +
-        "if(status&&!visible){status.textContent='';}" +
+        "if(status){" +
+        "if(!visible){status.textContent='';}" +
+        "else{paintTimers();}" +
+        "}" +
         "}" +
         "function onProgressPayload(payload){" +
         "if(!payload){return;}" +
         "var done=payload.phase==='done';" +
+        "var roundChanged=false;" +
         "if(payload.phase==='round_start'||(payload.round!=null&&payload.round!==lastRound)){" +
         "if(payload.round!=null){" +
         "lastRound=payload.round;" +
         "roundStartedAt=Date.now();" +
+        "roundChanged=true;" +
         "}" +
         "}" +
         "var msg=progressMessage(payload);" +
-        "if(!msg&&!done){return;}" +
+        // Still refresh the dock on round-only events (empty message).
+        "if(!msg&&!done&&!roundChanged){return;}" +
         "if(msg){lastMsg=msg;}" +
-        "showLive(lastMsg,!done);" +
+        "showLive(lastMsg||roundLabel()||'…',!done);" +
         "if(done){setTimeout(function(){showLive('',false);},1200);}" +
         "}" +
         "function disconnectLive(){" +
@@ -2945,10 +2988,11 @@ function askPageClientScript() {
         "if(panel&&panel.dataset.askScrollBound!=='1'){" +
         "panel.dataset.askScrollBound='1';" +
         "new MutationObserver(function(){" +
-        // Fragment replace destroys a dock that was mounted inside the composer.
+        // Dock lives outside #ask-panel; keep it pinned above the new composer.
         "var dock=document.getElementById('ask-live-dock');" +
-        "if(!dock){" +
-        "showLive('',false);" +
+        "if(dock&&!dock.hidden){" +
+        "syncLiveDockPosition();" +
+        "paintTimers();" +
         "}" +
         "scrollLatest();" +
         "}).observe(panel,{childList:true});" +
@@ -3147,10 +3191,10 @@ function askRenderPage() {
     }
     html = html + "</div>";
 
-    // Shelf outside #ask-panel so the node can be recreated after fragment replace.
-    // While live, client JS moves the dock into the sticky composer (always visible).
+    // Shelf outside #ask-panel so fragment replace cannot destroy live progress.
+    // While live, client JS floats the dock fixed above the sticky composer.
     html = html + "<div id='ask-live-home'>" +
-        "<div id='ask-live-dock' class='live-dock' hidden>" +
+        "<div id='ask-live-dock' class='live-dock' hidden role='status' aria-live='polite'>" +
         "<span class='live-round'>" + askEscapeHtml(askT("Live", "Live")) +
         "</span><span class='live-timer'>0:00</span>" +
         "<span class='live-dock-body'></span></div></div>";

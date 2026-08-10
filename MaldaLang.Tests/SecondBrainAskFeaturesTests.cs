@@ -226,6 +226,8 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("id='ask-live-dock'", html, StringComparison.Ordinal);
             Assert.Contains("class='live-timer'", html, StringComparison.Ordinal);
             Assert.Contains("placeLiveDock(", html, StringComparison.Ordinal);
+            Assert.Contains("syncLiveDockPosition(", html, StringComparison.Ordinal);
+            Assert.Contains("is-floating", html, StringComparison.Ordinal);
             Assert.Contains("startLiveTimer()", html, StringComparison.Ordinal);
             Assert.Contains("action='/ask'", html, StringComparison.Ordinal);
             Assert.Contains("action='/clear'", html, StringComparison.Ordinal);
@@ -530,6 +532,10 @@ public class SecondBrainAskFeaturesTests
         Assert.Contains("id='ask-live-status'", libSource, StringComparison.Ordinal);
         Assert.Contains("id='ask-live-home'", libSource, StringComparison.Ordinal);
         Assert.Contains("placeLiveDock", libSource, StringComparison.Ordinal);
+        Assert.Contains("syncLiveDockPosition", libSource, StringComparison.Ordinal);
+        Assert.Contains("is-floating", libSource, StringComparison.Ordinal);
+        // Must not mount the dock inside the sticky composer (hidden on tall phone UIs).
+        Assert.DoesNotContain("composer.insertBefore(dock", libSource, StringComparison.Ordinal);
         Assert.Contains("startLiveTimer", libSource, StringComparison.Ordinal);
         Assert.Contains("formatElapsed", libSource, StringComparison.Ordinal);
         Assert.Contains("function askGetToolsEnabled()", libSource, StringComparison.Ordinal);
