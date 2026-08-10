@@ -433,6 +433,15 @@ foreach ($rid in $rids) {
     Write-DistLlmsTxt -Path (Join-Path $stage "llms.txt")
     Write-LauncherScripts -Stage $stage -Rid $rid -IncludeDesktop:$includeDesktop
 
+    if ($rid -like "win-*") {
+        $updateScript = Join-Path $repoRoot "scripts\update-local-win-x64-release.ps1"
+        if (Test-Path -LiteralPath $updateScript) {
+            $stageScripts = Join-Path $stage "scripts"
+            New-Item -ItemType Directory -Force -Path $stageScripts | Out-Null
+            Copy-Item -LiteralPath $updateScript -Destination (Join-Path $stageScripts "update-local-win-x64-release.ps1") -Force
+        }
+    }
+
     $syntaxPack = Join-Path $stage "docs\llm\malda-syntax.md"
     $webapiTemplate = Join-Path $stage "Templates\webapi"
     $stagedPreviewHost = Join-Path $stage "program.html"
