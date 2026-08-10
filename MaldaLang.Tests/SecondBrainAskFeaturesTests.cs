@@ -245,6 +245,12 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("data-theme=dark", html, StringComparison.Ordinal);
             Assert.Contains("navigateLang(", html, StringComparison.Ordinal);
             Assert.Contains("disconnectLive(", html, StringComparison.Ordinal);
+            // Mobile layout: brand must shrink; has-logo fit-content only on desktop.
+            Assert.Contains("min-width:0;flex:1 1 12rem", html, StringComparison.Ordinal);
+            Assert.Contains("@media (min-width:641px){main.has-logo{", html, StringComparison.Ordinal);
+            Assert.Contains("@media (max-width:640px){", html, StringComparison.Ordinal);
+            Assert.Contains("font-size:16px", html, StringComparison.Ordinal); // avoid iOS input zoom
+            Assert.DoesNotContain("min-width:min-content", html, StringComparison.Ordinal);
         }
         finally
         {
