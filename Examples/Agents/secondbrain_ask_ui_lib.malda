@@ -1,7 +1,8 @@
 // secondbrain_ask_ui_lib.malda - shared ASK web UI for secondbrain*.malda
 //
 // Included by the host program. Host must define:
-//   ASK_HTTP_PORT, ASK_SESSION_ID, ASK_STORE  (vars)
+//   ASK_HTTP_PORT, ASK_HTTP_HOST, ASK_HTTPS, ASK_CERT_PATH, ASK_CERT_PASSWORD,
+//   ASK_SESSION_ID, ASK_STORE  (vars)
 //   PRODUCT_NAME                             (display name, OR path/embed: to a utf-8 text file)
 //   ASK_TITLE_SUFFIX                         (optional; default ""; used when refreshing title from file)
 //   ASK_PAGE_TITLE, ASK_POWERED_BY, ASK_POWERED_BY_URL  (header branding)
@@ -44,6 +45,11 @@
 // Health: GET /health. Audit: ask_audit.jsonl. Feedback: /feedback + ask_feedback.jsonl.
 // Host must define runAskTurn(question) and runAskUpdateFromUpload(body).
 
+// HTTPS defaults (hosts may override after include, or via --https CLI apply).
+var ASK_HTTPS = false;
+var ASK_CERT_PATH = "";
+var ASK_CERT_PASSWORD = "";
+
 var ASK_CONV_COOKIE = "malda_ask_c";
 var ASK_THEME_COOKIE = "malda_ask_theme";
 var ASK_CONV_CURRENT = "";
@@ -78,6 +84,8 @@ function askAsText(value) {
 }
 
 // CLI: --port 8080 | -p 8080 | --port=8080 (also works on packed ASK .exe).
+//      --host 0.0.0.0 | --host=* | --host=localhost
+//      --https --cert path.pfx [--cert-password pwd]
 // Scans getCommandLineArgs(); when run via `malda script.malda ...` the script
 // path is present in args and is ignored. Invalid / missing values keep defaultPort.
 function askParsePortNumber(raw) {
@@ -93,6 +101,17 @@ function askParsePortNumber(raw) {
         return null;
     }
     return n;
+}
+
+function askNormalizeHttpHost(raw) {
+    var s = str.trim(askAsText(raw));
+    if (s == "") {
+        return "";
+    }
+    if (s == "*" or str.lower(s) == "all") {
+        return "0.0.0.0";
+    }
+    return s;
 }
 
 function askParseHttpPortFromArgs(args, defaultPort) {
@@ -135,6 +154,43 @@ function askParseHttpPortFromArgs(args, defaultPort) {
     return { "ok": true, "changed": false, "port": fallback, "raw": "" };
 }
 
+function askParseHttpHostFromArgs(args, defaultHost) {
+    var fallback = askNormalizeHttpHost(defaultHost);
+    if (fallback == "") {
+        fallback = "localhost";
+    }
+    if (args == null) {
+        return { "ok": true, "changed": false, "host": fallback, "raw": "" };
+    }
+    var i = 0;
+    while (i < args.length) {
+        var a = str.trim(askAsText(args[i]));
+        if (a == "--host") {
+            if (i + 1 >= args.length) {
+                return { "ok": false, "changed": false, "host": fallback, "raw": "" };
+            }
+            var next = askNormalizeHttpHost(args[i + 1]);
+            if (next == "") {
+                return { "ok": false, "changed": false, "host": fallback, "raw": askAsText(args[i + 1]) };
+            }
+            return { "ok": true, "changed": true, "host": next, "raw": next };
+        }
+        if (str.startsWith(a, "--host=")) {
+            var rawEq = "";
+            if (str.length(a) > 7) {
+                rawEq = str.substring(a, 7, str.length(a) - 7);
+            }
+            var eq = askNormalizeHttpHost(rawEq);
+            if (eq == "") {
+                return { "ok": false, "changed": false, "host": fallback, "raw": rawEq };
+            }
+            return { "ok": true, "changed": true, "host": eq, "raw": eq };
+        }
+        i = i + 1;
+    }
+    return { "ok": true, "changed": false, "host": fallback, "raw": "" };
+}
+
 function applyAskHttpPortFromCli() {
     var parsed = askParseHttpPortFromArgs(getCommandLineArgs(), ASK_HTTP_PORT);
     if (parsed.ok != true) {
@@ -153,6 +209,156 @@ function applyAskHttpPortFromCli() {
             string(ASK_HTTP_PORT) + "[/]");
     }
     return ASK_HTTP_PORT;
+}
+
+function applyAskHttpHostFromCli() {
+    var parsed = askParseHttpHostFromArgs(getCommandLineArgs(), ASK_HTTP_HOST);
+    if (parsed.ok != true) {
+        AnsiConsole.markupLine("[yellow]" + askT(
+            "Invalid --host value; keeping ",
+            "Valore --host non valido; resta ") +
+            ASK_HTTP_HOST +
+            askT(".", ".") + "[/]");
+        return ASK_HTTP_HOST;
+    }
+    if (parsed.changed == true) {
+        ASK_HTTP_HOST = parsed.host;
+        AnsiConsole.markupLine("[dim]" + askT(
+            "ASK HTTP host from CLI: ",
+            "Host HTTP ASK da riga di comando: ") +
+            ASK_HTTP_HOST + "[/]");
+    }
+    return ASK_HTTP_HOST;
+}
+
+function askParseHttpsFromArgs(args) {
+    var result = {
+        "ok": true,
+        "https": false,
+        "cert": "",
+        "certPassword": "",
+        "error": ""
+    };
+    if (args == null) {
+        return result;
+    }
+    var i = 0;
+    while (i < args.length) {
+        var a = str.trim(askAsText(args[i]));
+        if (a == "--https") {
+            result.https = true;
+            i = i + 1;
+            continue;
+        }
+        if (a == "--cert") {
+            if (i + 1 >= args.length or str.trim(askAsText(args[i + 1])) == "") {
+                result.ok = false;
+                result.error = "Missing value for --cert.";
+                return result;
+            }
+            result.cert = str.trim(askAsText(args[i + 1]));
+            i = i + 2;
+            continue;
+        }
+        if (str.startsWith(a, "--cert=")) {
+            var rawCert = "";
+            if (str.length(a) > 7) {
+                rawCert = str.substring(a, 7, str.length(a) - 7);
+            }
+            if (str.trim(rawCert) == "") {
+                result.ok = false;
+                result.error = "Missing value for --cert.";
+                return result;
+            }
+            result.cert = str.trim(rawCert);
+            i = i + 1;
+            continue;
+        }
+        if (a == "--cert-password") {
+            if (i + 1 >= args.length) {
+                result.ok = false;
+                result.error = "Missing value for --cert-password.";
+                return result;
+            }
+            result.certPassword = askAsText(args[i + 1]);
+            i = i + 2;
+            continue;
+        }
+        if (str.startsWith(a, "--cert-password=")) {
+            var rawPwd = "";
+            if (str.length(a) > 16) {
+                rawPwd = str.substring(a, 16, str.length(a) - 16);
+            }
+            result.certPassword = rawPwd;
+            i = i + 1;
+            continue;
+        }
+        i = i + 1;
+    }
+    if (result.https == true and str.trim(result.cert) == "") {
+        result.ok = false;
+        result.error = "--https requires --cert <path>.";
+    }
+    return result;
+}
+
+function applyAskHttpsFromCli() {
+    var parsed = askParseHttpsFromArgs(getCommandLineArgs());
+    if (parsed.ok != true) {
+        AnsiConsole.markupLine("[red]" + askAsText(parsed.error) + "[/]");
+        return false;
+    }
+    if (parsed.https == true) {
+        ASK_HTTPS = true;
+        ASK_CERT_PATH = str.trim(askAsText(parsed.cert));
+        ASK_CERT_PASSWORD = askAsText(parsed.certPassword);
+        if (ASK_CERT_PASSWORD == "") {
+            var envPwd = askEnvText("MALDA_HTTP_CERT_PASSWORD");
+            if (envPwd != "") {
+                ASK_CERT_PASSWORD = envPwd;
+            }
+        }
+        AnsiConsole.markupLine("[dim]" + askT(
+            "ASK HTTPS from CLI; cert: ",
+            "ASK HTTPS da riga di comando; cert: ") +
+            ASK_CERT_PATH + "[/]");
+    }
+    return true;
+}
+
+function askCookieSecureFlag() {
+    return ASK_HTTPS == true;
+}
+
+// Console "Open:" URL for the ASK server (loopback vs all-interfaces).
+function askFormatOpenUrl() {
+    var scheme = "http";
+    if (ASK_HTTPS == true) {
+        scheme = "https";
+    }
+    var host = askNormalizeHttpHost(ASK_HTTP_HOST);
+    if (host == "") {
+        host = "localhost";
+    }
+    if (host == "0.0.0.0") {
+        return scheme + "://0.0.0.0:" + string(ASK_HTTP_PORT) + "/";
+    }
+    return scheme + "://" + host + ":" + string(ASK_HTTP_PORT) + "/";
+}
+
+function askPrintOpenUrlHint() {
+    AnsiConsole.markupLine(askT("Open:", "Apri:") + " [bold blue]" + askFormatOpenUrl() + "[/]");
+    var host = askNormalizeHttpHost(ASK_HTTP_HOST);
+    if (host == "0.0.0.0") {
+        AnsiConsole.markupLine("[dim]" + askT(
+            "Listening on all interfaces — use this machine's LAN IP from other devices.",
+            "In ascolto su tutte le interfacce — usa l'IP LAN di questa macchina dagli altri dispositivi.") + "[/]");
+    }
+    if (ASK_HTTPS == true) {
+        AnsiConsole.markupLine("[dim]" + askT(
+            "HTTPS enabled (self-signed certs need a browser exception).",
+            "HTTPS attivo (i certificati self-signed richiedono un'eccezione nel browser).") + "[/]");
+    }
 }
 
 // ---------------------------------------------------------------- ASK auth (cookie JWT + users.json)
@@ -665,7 +871,7 @@ function askIssueSessionCookie(res, username, role) {
         "maxAge": 86400,
         "sameSite": "Lax",
         "httpOnly": true,
-        "secure": false,
+        "secure": askCookieSecureFlag(),
         "path": "/"
     });
     res.header("Set-Cookie", setCookie);
@@ -1129,10 +1335,10 @@ function askSetConvCookie(response, id) {
     if (response == null) {
         return;
     }
-    // Local ASK is plain HTTP — Secure cookies would be dropped by the browser.
+    // Secure cookies only when ASK serves HTTPS (otherwise browsers drop them on http://).
     response.cookie(ASK_CONV_COOKIE, id, {
         "httpOnly": true,
-        "secure": false,
+        "secure": askCookieSecureFlag(),
         "sameSite": "Lax",
         "path": "/",
         "maxAge": 2592000
@@ -1161,7 +1367,7 @@ function askSetThemeCookie(response, theme) {
     // Not httpOnly: preference cookie is not secret; keep readable/writable by UI if needed.
     response.cookie(ASK_THEME_COOKIE, t, {
         "httpOnly": false,
-        "secure": false,
+        "secure": askCookieSecureFlag(),
         "sameSite": "Lax",
         "path": "/",
         "maxAge": 31536000

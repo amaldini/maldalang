@@ -10666,7 +10666,7 @@ public class CSharpTranspiler
             return;
         }
 
-        // HttpServer(port, webDirectory?, pathBase?) needs explicit coercion because top-level vars are object-typed.
+        // HttpServer(port, webDirectory?, pathBase?, host?) needs explicit coercion because top-level vars are object-typed.
         if (className == "HttpServer" && newExpr.Arguments.Count >= 1)
         {
             _output.Append("new MaldaLang.BuiltIns.HttpServerInstance(RuntimeHelpers.CoerceToInt(");
@@ -10684,12 +10684,22 @@ public class CSharpTranspiler
                 _output.Append(", (string)null");
             }
 
-            // Transpiled code has no interpreter; pathBase is 3rd MALDA arg.
+            // Transpiled code has no interpreter; pathBase is 3rd MALDA arg, host is 4th.
             _output.Append(", (MaldaLang.Interpreter.Interpreter)null");
             if (newExpr.Arguments.Count >= 3)
             {
                 _output.Append(", ");
                 TranspileExpression(newExpr.Arguments[2]);
+            }
+            else
+            {
+                _output.Append(", (object)null");
+            }
+            if (newExpr.Arguments.Count >= 4)
+            {
+                _output.Append(", RuntimeHelpers.CoerceToString(");
+                TranspileExpression(newExpr.Arguments[3]);
+                _output.Append(")");
             }
             else
             {

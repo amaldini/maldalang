@@ -5,10 +5,13 @@
 //
 // Modes: build | update | ask | help
 // Flags: --docs --brain --taxonomy llm|folders --remove-orphans --lang en|it
-//        --port / -p  --mode <name>  --auth / --no-auth
+//        --port / -p  --host <addr>  --https --cert <path> --cert-password <pwd>
+//        --mode <name>  --auth / --no-auth
 //        --allow-register / --no-register
 //        --product-name / --name  (display name; overrides product_name.txt)
 //        --help / -h
+// Host: localhost (default), 127.0.0.1, IP/hostname, 0.0.0.0 or * (all interfaces).
+// HTTPS: --https requires --cert (.pfx/.p12 or .pem/.crt + .key).
 
 function sbCliAsText(value) {
     if (value == null) {
@@ -27,11 +30,27 @@ function sbCliEmptyOptions() {
         "lang": "",
         "port": null,
         "portError": false,
+        "host": null,
+        "hostError": false,
+        "https": false,
+        "cert": "",
+        "certPassword": "",
         "auth": null,
         "allowRegister": null,
         "productName": "",
         "error": ""
     };
+}
+
+function sbCliNormalizeHost(raw) {
+    var s = str.trim(sbCliAsText(raw));
+    if (s == "") {
+        return "";
+    }
+    if (s == "*" or str.lower(s) == "all") {
+        return "0.0.0.0";
+    }
+    return s;
 }
 
 function sbCliIsModeName(raw) {
@@ -105,8 +124,14 @@ function sbCliTakeFlagValue(args, i, flag) {
     var a = str.trim(sbCliAsText(args[i]));
     var prefix = flag + "=";
     if (str.startsWith(a, prefix)) {
+        // Empty value after '=' (e.g. --host=) — avoid str.substring(start >= length).
+        var valueLen = str.length(a) - str.length(flag) - 1;
+        var value = "";
+        if (valueLen > 0) {
+            value = str.substring(a, str.length(flag) + 1, valueLen);
+        }
         return {
-            "value": str.substring(a, str.length(flag) + 1, str.length(a) - str.length(flag) - 1),
+            "value": value,
             "nextIndex": i + 1,
             "ok": true,
             "missing": false
@@ -309,6 +334,53 @@ function sbCliParseArgs(args) {
             continue;
         }
 
+        // Bind host: --host / --host=  (localhost default; 0.0.0.0 / * = all interfaces)
+        taken = sbCliTakeFlagValue(args, i, "--host");
+        if (taken.ok == true or taken.missing == true) {
+            if (taken.missing == true) {
+                opt.hostError = true;
+                opt.error = "Missing value for --host.";
+                return opt;
+            }
+            var h = sbCliNormalizeHost(taken.value);
+            if (h == "") {
+                opt.hostError = true;
+                opt.error = "Invalid --host value.";
+                return opt;
+            }
+            opt.host = h;
+            i = taken.nextIndex;
+            continue;
+        }
+
+        if (a == "--https") {
+            opt.https = true;
+            i = i + 1;
+            continue;
+        }
+
+        taken = sbCliTakeFlagValue(args, i, "--cert");
+        if (taken.ok == true or taken.missing == true) {
+            if (taken.missing == true or str.trim(taken.value) == "") {
+                opt.error = "Missing value for --cert.";
+                return opt;
+            }
+            opt.cert = str.trim(taken.value);
+            i = taken.nextIndex;
+            continue;
+        }
+
+        taken = sbCliTakeFlagValue(args, i, "--cert-password");
+        if (taken.ok == true or taken.missing == true) {
+            if (taken.missing == true) {
+                opt.error = "Missing value for --cert-password.";
+                return opt;
+            }
+            opt.certPassword = taken.value;
+            i = taken.nextIndex;
+            continue;
+        }
+
         if (str.startsWith(a, "-")) {
             opt.error = "Unknown flag: " + a;
             return opt;
@@ -316,6 +388,9 @@ function sbCliParseArgs(args) {
 
         opt.error = "Unexpected argument: " + a;
         return opt;
+    }
+    if (opt.https == true and str.trim(sbCliAsText(opt.cert)) == "") {
+        opt.error = "--https requires --cert <path>.";
     }
     return opt;
 }
@@ -349,6 +424,40 @@ function sbCliApplyPort(cli) {
         "Porta HTTP ASK da riga di comando: ") +
         string(ASK_HTTP_PORT) + "[/]");
     return ASK_HTTP_PORT;
+}
+
+function sbCliApplyHost(cli) {
+    if (cli == null or cli.host == null) {
+        return ASK_HTTP_HOST;
+    }
+    ASK_HTTP_HOST = sbCliNormalizeHost(cli.host);
+    AnsiConsole.markupLine("[dim]" + t(
+        "ASK HTTP host from CLI: ",
+        "Host HTTP ASK da riga di comando: ") +
+        ASK_HTTP_HOST + "[/]");
+    return ASK_HTTP_HOST;
+}
+
+function sbCliApplyHttps(cli) {
+    if (cli == null) {
+        return ASK_HTTPS;
+    }
+    if (cli.https == true) {
+        ASK_HTTPS = true;
+        ASK_CERT_PATH = str.trim(sbCliAsText(cli.cert));
+        ASK_CERT_PASSWORD = sbCliAsText(cli.certPassword);
+        if (ASK_CERT_PASSWORD == "") {
+            var envPwd = getEnv("MALDA_HTTP_CERT_PASSWORD");
+            if (envPwd != null and str.trim(string(envPwd)) != "") {
+                ASK_CERT_PASSWORD = string(envPwd);
+            }
+        }
+        AnsiConsole.markupLine("[dim]" + t(
+            "ASK HTTPS from CLI; cert: ",
+            "ASK HTTPS da riga di comando; cert: ") +
+            ASK_CERT_PATH + "[/]");
+    }
+    return ASK_HTTPS;
 }
 
 // Override PRODUCT_NAME / ASK title from --product-name / --name.
@@ -386,11 +495,17 @@ function sbCliPrintHelp(defaultBrain, defaultPort) {
         "         [--product-name <name>]\n" +
         "  update [--docs <folder>] [--brain " + brain + "] [--remove-orphans] [--lang en|it]\n" +
         "         [--product-name <name>]\n" +
-        "  ask    [--brain " + brain + "] [--port " + port + "] [--lang en|it]\n" +
+        "  ask    [--brain " + brain + "] [--port " + port + "] [--host localhost] [--lang en|it]\n" +
+        "         [--https --cert <pfx|pem>] [--cert-password <pwd>]\n" +
         "         [--product-name <name>] [--auth|--no-auth] [--allow-register|--no-register]\n" +
         "  help\n\n" +
         "Non-interactive: build/update/ask skip the menu and confirmations.\n" +
-        "Also: --mode build|update|ask   -p <port>   --port=<n>   --name <name>\n" +
+        "Also: --mode build|update|ask   -p <port>   --port=<n>   --host=<addr>   --name <name>\n" +
+        "--host defaults to localhost; use 0.0.0.0 or * to listen on all interfaces.\n" +
+        "--https requires --cert (.pfx/.p12 or .pem/.crt with sibling .key).\n" +
+        "Optional: --cert-password or MALDA_HTTP_CERT_PASSWORD.\n" +
+        "Privileged ports / non-localhost binds on Windows may need admin or\n" +
+        "  netsh http add urlacl url=http://+:PORT/ user=Everyone\n" +
         "--product-name / --name overrides brain product_name.txt and the default title.\n" +
         "ASK auth is on by default (cookie JWT). Disable with --no-auth.\n" +
         "Bootstrap: MALDA_ASK_USER / MALDA_ASK_PASSWORD (or MALDA_ASK_PASSWORD_HASH).\n" +
@@ -403,11 +518,17 @@ function sbCliPrintHelp(defaultBrain, defaultPort) {
         "         [--product-name <nome>]\n" +
         "  update [--docs <cartella>] [--brain " + brain + "] [--remove-orphans] [--lang en|it]\n" +
         "         [--product-name <nome>]\n" +
-        "  ask    [--brain " + brain + "] [--port " + port + "] [--lang en|it]\n" +
+        "  ask    [--brain " + brain + "] [--port " + port + "] [--host localhost] [--lang en|it]\n" +
+        "         [--https --cert <pfx|pem>] [--cert-password <pwd>]\n" +
         "         [--product-name <nome>] [--auth|--no-auth] [--allow-register|--no-register]\n" +
         "  help\n\n" +
         "Non interattivo: build/update/ask saltano menu e conferme.\n" +
-        "Anche: --mode build|update|ask   -p <porta>   --port=<n>   --name <nome>\n" +
+        "Anche: --mode build|update|ask   -p <porta>   --port=<n>   --host=<addr>   --name <nome>\n" +
+        "--host di default e' localhost; usa 0.0.0.0 o * per tutte le interfacce.\n" +
+        "--https richiede --cert (.pfx/.p12 o .pem/.crt con .key accanto).\n" +
+        "Opzionale: --cert-password o MALDA_HTTP_CERT_PASSWORD.\n" +
+        "Porte privilegiate / bind non-localhost su Windows possono richiedere admin o\n" +
+        "  netsh http add urlacl url=http://+:PORTA/ user=Everyone\n" +
         "--product-name / --name ha priorita' su product_name.txt e sul titolo di default.\n" +
         "Auth ASK attiva di default (cookie JWT). Disattiva con --no-auth.\n" +
         "Bootstrap: MALDA_ASK_USER / MALDA_ASK_PASSWORD (o MALDA_ASK_PASSWORD_HASH).\n" +

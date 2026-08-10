@@ -4742,7 +4742,7 @@ public partial class Interpreter
     private async Task<RuntimeValue> CreateHttpServerAsync(List<Expression> args)
     {
         if (args.Count < 1 || args.Count > 3)
-            throw new RuntimeException("HttpServer() expects 1-3 arguments: (port, webDirectory?, pathBase?)");
+            throw new RuntimeException("HttpServer() expects 1-4 arguments: (port, webDirectory?, pathBase?, host?)");
         
         var port = await EvaluateAsync(args[0]);
         if (port.Type != ValueType.Integer)
@@ -4769,8 +4769,17 @@ public partial class Interpreter
                 throw new RuntimeException("HttpServer() pathBase must be a string or null");
             pathBase = pathBaseValue.Type == ValueType.String ? pathBaseValue.AsString() : null;
         }
+
+        string? host = null;
+        if (args.Count >= 4)
+        {
+            var hostValue = await EvaluateAsync(args[3]);
+            if (hostValue.Type != ValueType.Null && hostValue.Type != ValueType.String)
+                throw new RuntimeException("HttpServer() host must be a string or null");
+            host = hostValue.Type == ValueType.String ? hostValue.AsString() : null;
+        }
         
-        var server = new BuiltIns.HttpServerInstance(portNum, webDirectory, this, pathBase);
+        var server = new BuiltIns.HttpServerInstance(portNum, webDirectory, this, pathBase, host);
         return RuntimeValue.Object(server);
     }
     

@@ -21,8 +21,9 @@
 //       [--taxonomy llm|folders] [--lang en|it] [--product-name "Acme Brain"]
 //   malda Examples/Agents/secondbrain.malda update [--docs ./docs] [--brain secondbrain]
 //       [--remove-orphans] [--lang en|it] [--product-name "Acme Brain"]
-//   malda Examples/Agents/secondbrain.malda ask [--brain secondbrain] [--port 8080] [--lang en|it]
-//       [--product-name "Acme Brain"] [--auth|--no-auth] [--allow-register|--no-register]
+//   malda Examples/Agents/secondbrain.malda ask [--brain secondbrain] [--port 8080] [--host 0.0.0.0]
+//       [--https --cert ask.pfx [--cert-password secret]]
+//       [--lang en|it] [--product-name "Acme Brain"] [--auth|--no-auth] [--allow-register|--no-register]
 //   malda Examples/Agents/secondbrain.malda help
 //   (--name is an alias for --product-name; overrides brain product_name.txt)
 //
@@ -40,10 +41,11 @@
 // UI:    at startup (interactive), choose UI message language (English / Italian).
 //        Notes stay in the source document language; technical terms are unchanged.
 //        ASK opens http://localhost:39018/ by default (Ctrl+C in console returns to menu).
-//        Override the ASK port from the command line (menu mode 3, ask CLI, or packed exe):
+//        Override ASK port/host from the command line (menu mode 3, ask CLI, or packed exe):
 //          malda Examples/Agents/secondbrain.malda --port 8080
-//          secondbrain.exe --port 8080
-//          (also: -p 8080, --port=8080)
+//          malda Examples/Agents/secondbrain.malda ask --port 80 --host 0.0.0.0
+//          secondbrain.exe --port 8080 --host 0.0.0.0
+//          (also: -p 8080, --port=8080, --host=0.0.0.0 / --host=*)
 //
 // Pack portable ASK exe (menu option 5, interactive):
 //   malda compile Examples/Agents/secondbrain.malda -o dist/secondbrain.exe --mode transpile --embed-folder secondbrain
@@ -62,6 +64,8 @@ var CATALOG_NAME = "brain.json";
 var DEFAULT_BRAIN_DIR = "secondbrain";
 var UI_LANG = "it";             // "en" | "it" — UI messages
 var ASK_HTTP_PORT = 39018;  // override with --port / -p on the command line
+var ASK_HTTP_HOST = "localhost";  // override with --host (0.0.0.0 / * = all interfaces)
+// ASK_HTTPS / ASK_CERT_* defaults live in secondbrain_ask_ui_lib.malda
 var ASK_SESSION_ID = "secondbrain-ask-lexical";
 var ASK_STORE = "SecondBrainAsk";
 // Display name for UI / console / generated index (folder aliases stay EMBED_ALIAS).
@@ -2581,11 +2585,14 @@ function askBrain(cli) {
     askApplyAuthFromCli(cli);
     askSetAuthUsersRoot(brainDir);
     askHttpServer = new HttpServer(ASK_HTTP_PORT);
+    askHttpServer.setHost(ASK_HTTP_HOST);
+    if (ASK_HTTPS) {
+        askHttpServer.enableHttps(ASK_CERT_PATH, ASK_CERT_PASSWORD);
+    }
     askConfigureHttpAuth(askHttpServer);
     askHttpServer.start();
     AnsiConsole.markupLine("");
-    AnsiConsole.markupLine(t("Open:", "Apri:") + " [bold blue]http://localhost:" +
-        string(ASK_HTTP_PORT) + "/[/]");
+    askPrintOpenUrlHint();
     AnsiConsole.markupLine("[dim]" + t(
         "Stop the process from the console (Ctrl+C) to return here. The web UI cannot stop the server.",
         "Ferma il processo dalla console (Ctrl+C) per tornare qui. La pagina web non puo' fermare il server.") + "[/]");
@@ -2687,9 +2694,9 @@ function packPortableAskExe() {
     AnsiConsole.markupLine("[green]" + t("Portable ASK exe ready:", "Exe ASK portatile pronto:") +
         "[/] [bold]" + str.replace(str.replace(string(written), "[", "[["), "]", "]]") + "[/]");
     AnsiConsole.markupLine("[dim]" + t(
-        "Run the .exe to open ASK with the embedded brain. Optional: --port 8080 (or -p). " +
+        "Run the .exe to open ASK with the embedded brain. Optional: --port 8080 (or -p), --host 0.0.0.0. " +
             "Branding in the brain folder (auto-loaded): product_name.txt, logo_right_height.txt, and optional logo.png / logo_right.png.",
-        "Avvia l'.exe per aprire ASK col brain incorporato. Opzionale: --port 8080 (o -p). " +
+        "Avvia l'.exe per aprire ASK col brain incorporato. Opzionale: --port 8080 (o -p), --host 0.0.0.0. " +
             "Branding nella cartella del brain (auto-caricato): product_name.txt, logo_right_height.txt e logo.png / logo_right.png opzionali.") + "[/]");
     return true;
 }
@@ -2741,6 +2748,18 @@ if (io.hasEmbeddedFolder("secondbrain")) {
     } else {
         applyAskHttpPortFromCli();
     }
+    if (cliOpts.host != null) {
+        sbCliApplyHost(cliOpts);
+    } else {
+        applyAskHttpHostFromCli();
+    }
+    if (cliOpts.https == true) {
+        sbCliApplyHttps(cliOpts);
+    } else {
+        if (applyAskHttpsFromCli() != true) {
+            exit(1);
+        }
+    }
     askBrain(cliOpts);
 } else if (cliOpts.mode == "help") {
     sbCliApplyLang(cliOpts);
@@ -2765,6 +2784,18 @@ if (io.hasEmbeddedFolder("secondbrain")) {
         } else {
             applyAskHttpPortFromCli();
         }
+        if (cliOpts.host != null) {
+            sbCliApplyHost(cliOpts);
+        } else {
+            applyAskHttpHostFromCli();
+        }
+        if (cliOpts.https == true) {
+            sbCliApplyHttps(cliOpts);
+        } else {
+            if (applyAskHttpsFromCli() != true) {
+                exit(1);
+            }
+        }
         askBrain(cliOpts);
         exit(0);
     }
@@ -2785,6 +2816,18 @@ if (io.hasEmbeddedFolder("secondbrain")) {
         sbCliApplyPort(cliOpts);
     } else {
         applyAskHttpPortFromCli();
+    }
+    if (cliOpts.host != null) {
+        sbCliApplyHost(cliOpts);
+    } else {
+        applyAskHttpHostFromCli();
+    }
+    if (cliOpts.https == true) {
+        sbCliApplyHttps(cliOpts);
+    } else {
+        if (applyAskHttpsFromCli() != true) {
+            exit(1);
+        }
     }
     showMenu();
     while (true) {

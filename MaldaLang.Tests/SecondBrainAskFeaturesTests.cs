@@ -807,11 +807,18 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("var ASK_LOGO_RIGHT_HEIGHT = ", source, StringComparison.Ordinal);
             Assert.Contains("askApplyLogoRightFromBrain(", source, StringComparison.Ordinal);
             Assert.Contains("applyAskHttpPortFromCli()", source, StringComparison.Ordinal);
+            Assert.Contains("applyAskHttpHostFromCli()", source, StringComparison.Ordinal);
+            Assert.Contains("applyAskHttpsFromCli()", source, StringComparison.Ordinal);
+            Assert.Contains("var ASK_HTTP_HOST = ", source, StringComparison.Ordinal);
+            Assert.Contains("askHttpServer.setHost(", source, StringComparison.Ordinal);
+            Assert.Contains("askHttpServer.enableHttps(", source, StringComparison.Ordinal);
+            Assert.Contains("--https", source, StringComparison.Ordinal);
             Assert.Contains("askApplyAuthFromCli(", source, StringComparison.Ordinal);
             Assert.Contains("askSetAuthUsersRoot(", source, StringComparison.Ordinal);
             Assert.Contains("askConfigureHttpAuth(", source, StringComparison.Ordinal);
             Assert.Contains("runAskUpdateFromUpload(", source, StringComparison.Ordinal);
             Assert.Contains("--port", source, StringComparison.Ordinal);
+            Assert.Contains("--host", source, StringComparison.Ordinal);
             Assert.Contains("--no-auth", source, StringComparison.Ordinal);
             Assert.Contains("--allow-register", source, StringComparison.Ordinal);
             Assert.Contains("--product-name", source, StringComparison.Ordinal);
@@ -852,6 +859,10 @@ public class SecondBrainAskFeaturesTests
                 """
                 var UI_LANG = "en";
                 var ASK_HTTP_PORT = 39018;
+                var ASK_HTTP_HOST = "localhost";
+                var ASK_HTTPS = false;
+                var ASK_CERT_PATH = "";
+                var ASK_CERT_PASSWORD = "";
                 var ASK_SESSION_ID = "cli-test";
                 var ASK_STORE = "CliTest";
 
@@ -885,6 +896,18 @@ public class SecondBrainAskFeaturesTests
                 print("L=" + l.error);
                 var m = sbCliParseArgs(["ask", "--product-name=Brand"]);
                 print("M=" + m.mode + "," + m.productName + "," + m.error);
+                var n = sbCliParseArgs(["ask", "--host", "0.0.0.0", "--port", "80"]);
+                print("N=" + n.mode + "," + n.host + "," + string(n.port) + "," + n.error);
+                var o = sbCliParseArgs(["ask", "--host=*"]);
+                print("O=" + o.mode + "," + o.host + "," + o.error);
+                var p = sbCliParseArgs(["ask", "--host"]);
+                print("P=" + p.error);
+                var q = sbCliParseArgs(["ask", "--host="]);
+                print("Q=" + q.error);
+                var r = sbCliParseArgs(["ask", "--https", "--cert", "./ask.pfx", "--cert-password", "secret"]);
+                print("R=" + r.mode + "," + string(r.https) + "," + r.cert + "," + r.certPassword + "," + r.error);
+                var s = sbCliParseArgs(["ask", "--https"]);
+                print("S=" + s.error);
                 """,
                 Encoding.UTF8);
 
@@ -902,6 +925,12 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("K=build,Alias Name,", output, StringComparison.Ordinal);
             Assert.Contains("L=Missing value for --product-name.", output, StringComparison.Ordinal);
             Assert.Contains("M=ask,Brand,", output, StringComparison.Ordinal);
+            Assert.Contains("N=ask,0.0.0.0,80,", output, StringComparison.Ordinal);
+            Assert.Contains("O=ask,0.0.0.0,", output, StringComparison.Ordinal);
+            Assert.Contains("P=Missing value for --host.", output, StringComparison.Ordinal);
+            Assert.Contains("Q=Invalid --host value.", output, StringComparison.Ordinal);
+            Assert.Contains("R=ask,true,./ask.pfx,secret,", output, StringComparison.Ordinal);
+            Assert.Contains("S=--https requires --cert <path>.", output, StringComparison.Ordinal);
         }
         finally
         {
@@ -1012,6 +1041,7 @@ public class SecondBrainAskFeaturesTests
             File.WriteAllText(harnessPath,
                 """
                 var ASK_HTTP_PORT = 39018;
+                var ASK_HTTP_HOST = "localhost";
                 var ASK_SESSION_ID = "secondbrain-ask-port-test";
                 var ASK_STORE = "SecondBrainAskPortTest";
                 var PRODUCT_NAME = "Port Brain";
@@ -1040,6 +1070,23 @@ public class SecondBrainAskFeaturesTests
                 print("D=" + string(d.ok) + "," + string(d.changed) + "," + string(d.port));
                 var e = askParseHttpPortFromArgs(["--strict-types"], 39018);
                 print("E=" + string(e.ok) + "," + string(e.changed) + "," + string(e.port));
+                var f = askParseHttpHostFromArgs(["script.malda", "--host", "0.0.0.0"], "localhost");
+                print("F=" + string(f.ok) + "," + string(f.changed) + "," + f.host);
+                var g = askParseHttpHostFromArgs(["--host=*"], "localhost");
+                print("G=" + string(g.ok) + "," + string(g.changed) + "," + g.host);
+                var h = askParseHttpHostFromArgs(["--host="], "localhost");
+                print("H=" + string(h.ok) + "," + string(h.changed) + "," + h.host);
+                var i = askParseHttpHostFromArgs(["--strict-types"], "localhost");
+                print("I=" + string(i.ok) + "," + string(i.changed) + "," + i.host);
+                print("J=" + askFormatOpenUrl());
+                ASK_HTTP_HOST = "0.0.0.0";
+                print("K=" + askFormatOpenUrl());
+                var l = askParseHttpsFromArgs(["ask", "--https", "--cert", "./a.pfx", "--cert-password", "x"]);
+                print("L=" + string(l.ok) + "," + string(l.https) + "," + l.cert + "," + l.certPassword + "," + l.error);
+                var m = askParseHttpsFromArgs(["ask", "--https"]);
+                print("M=" + string(m.ok) + "," + m.error);
+                ASK_HTTPS = true;
+                print("N=" + askFormatOpenUrl());
                 """,
                 Encoding.UTF8);
 
@@ -1049,6 +1096,15 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("C=true,true,9090", output, StringComparison.Ordinal);
             Assert.Contains("D=false,false,39018", output, StringComparison.Ordinal);
             Assert.Contains("E=true,false,39018", output, StringComparison.Ordinal);
+            Assert.Contains("F=true,true,0.0.0.0", output, StringComparison.Ordinal);
+            Assert.Contains("G=true,true,0.0.0.0", output, StringComparison.Ordinal);
+            Assert.Contains("H=false,false,localhost", output, StringComparison.Ordinal);
+            Assert.Contains("I=true,false,localhost", output, StringComparison.Ordinal);
+            Assert.Contains("J=http://localhost:39018/", output, StringComparison.Ordinal);
+            Assert.Contains("K=http://0.0.0.0:39018/", output, StringComparison.Ordinal);
+            Assert.Contains("L=true,true,./a.pfx,x,", output, StringComparison.Ordinal);
+            Assert.Contains("M=false,--https requires --cert <path>.", output, StringComparison.Ordinal);
+            Assert.Contains("N=https://0.0.0.0:39018/", output, StringComparison.Ordinal);
         }
         finally
         {

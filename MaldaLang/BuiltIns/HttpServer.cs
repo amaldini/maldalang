@@ -29,7 +29,7 @@ public class CachedFile
     }
 }
 
-public class HttpServerInstance : ObjectInstance
+public partial class HttpServerInstance : ObjectInstance
 {
     private static readonly List<HttpServerInstance> _instances = new();
     private static readonly object _instancesLock = new object();
@@ -70,12 +70,19 @@ public class HttpServerInstance : ObjectInstance
     
     private HttpListener? _listener;
     private int _port;
+    private string _host;
     private string _webDirectory;
     private bool _isRunning = false;
+    private bool _httpsEnabled;
+    private string _certPath = string.Empty;
+    private string _certPassword = string.Empty;
     
     public int Port => _port;
+    public string Host => _host;
     public string WebDirectory => _webDirectory;
     public bool IsRunning => _isRunning;
+    public bool HttpsEnabled => _httpsEnabled;
+    public string CertPath => _certPath;
     private Thread? _serverThread;
     private RouteRegistry _routeRegistry;
     private Interpreter? _interpreter;
@@ -150,7 +157,7 @@ public class HttpServerInstance : ObjectInstance
     private int _rateLimitWindowSeconds = 60;
     private readonly string _pathBase;
     
-    public HttpServerInstance(int port, string? webDirectory = null, Interpreter? interpreter = null, string? pathBase = null) : base(null)
+    public HttpServerInstance(int port, string? webDirectory = null, Interpreter? interpreter = null, string? pathBase = null, string? host = null) : base(null)
     {
         _port = port;
         _interpreter = interpreter; // Allow null for transpiled code
@@ -158,6 +165,9 @@ public class HttpServerInstance : ObjectInstance
         
         // Path base for reverse-proxy deployments (e.g. /schoolprep). Read from MALDA_PATH_BASE env if not passed.
         _pathBase = NormalizePathBase(pathBase ?? System.Environment.GetEnvironmentVariable("MALDA_PATH_BASE") ?? string.Empty);
+
+        // Bind host: explicit ctor arg, else MALDA_HTTP_HOST, else localhost (loopback-only).
+        _host = ResolveHost(host);
         
         // Apply any pending routes that were registered before this instance was created
         lock (_pendingRoutesLock)
@@ -206,14 +216,14 @@ public class HttpServerInstance : ObjectInstance
     }
 
     // Transpiled MALDA top-level vars are object-typed; allow constructor coercion.
-    public HttpServerInstance(object? port, string? webDirectory = null, Interpreter? interpreter = null, string? pathBase = null)
-        : this(CoercePort(port), webDirectory, interpreter, pathBase)
+    public HttpServerInstance(object? port, string? webDirectory = null, Interpreter? interpreter = null, string? pathBase = null, string? host = null)
+        : this(CoercePort(port), webDirectory, interpreter, pathBase, host)
     {
     }
 
-    // Overload for transpiled code where pathBase may come from getEnv() (RuntimeValue).
-    public HttpServerInstance(object? port, object? webDirectory, Interpreter? interpreter, object? pathBase)
-        : this(CoercePort(port), CoerceWebDirectory(webDirectory), interpreter, CoercePathBase(pathBase))
+    // Overload for transpiled code where pathBase/host may come from getEnv() (RuntimeValue).
+    public HttpServerInstance(object? port, object? webDirectory, Interpreter? interpreter, object? pathBase, object? host = null)
+        : this(CoercePort(port), CoerceWebDirectory(webDirectory), interpreter, CoercePathBase(pathBase), CoerceHost(host))
     {
     }
 
@@ -236,6 +246,51 @@ public class HttpServerInstance : ObjectInstance
         }
         var str = value.ToString();
         return string.IsNullOrWhiteSpace(str) ? null : str.Trim();
+    }
+
+    private static string? CoerceHost(object? value)
+    {
+        if (value == null) return null;
+        if (value is RuntimeValue rv)
+        {
+            if (rv.Type == ValueType.Null) return null;
+            var s = rv.AsString();
+            return string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+        }
+        var str = value.ToString();
+        return string.IsNullOrWhiteSpace(str) ? null : str.Trim();
+    }
+
+    /// <summary>
+    /// Resolve bind host: explicit value, else MALDA_HTTP_HOST, else localhost.
+    /// Normalizes "*" / "all" to "0.0.0.0" (HttpListener wildcard prefix).
+    /// </summary>
+    internal static string ResolveHost(string? host)
+    {
+        var raw = host;
+        if (string.IsNullOrWhiteSpace(raw))
+            raw = System.Environment.GetEnvironmentVariable("MALDA_HTTP_HOST");
+        if (string.IsNullOrWhiteSpace(raw))
+            return "localhost";
+        return NormalizeHost(raw);
+    }
+
+    internal static string NormalizeHost(string host)
+    {
+        var h = (host ?? string.Empty).Trim();
+        if (string.IsNullOrEmpty(h))
+            throw new Exception("HttpServer host cannot be empty");
+        if (string.Equals(h, "*", StringComparison.Ordinal) ||
+            string.Equals(h, "all", StringComparison.OrdinalIgnoreCase))
+            return "0.0.0.0";
+        return h;
+    }
+
+    /// <summary>HttpListener prefix for the given bind host and port (RestServer-compatible).</summary>
+    internal static string BuildListenerPrefix(string host, int port)
+    {
+        var h = NormalizeHost(host);
+        return h == "0.0.0.0" ? $"http://*:{port}/" : $"http://{h}:{port}/";
     }
 
     private static int CoercePort(object? value)
@@ -267,6 +322,12 @@ public class HttpServerInstance : ObjectInstance
         // Handle property access
         if (name == "port")
             return RuntimeValue.Integer(_port);
+        if (name == "host")
+            return RuntimeValue.String(_host);
+        if (name == "https")
+            return RuntimeValue.Boolean(_httpsEnabled);
+        if (name == "certPath")
+            return RuntimeValue.String(_certPath);
         if (name == "isRunning")
             return RuntimeValue.Boolean(_isRunning);
         if (name == "webDirectory")
@@ -278,7 +339,8 @@ public class HttpServerInstance : ObjectInstance
         if (name == "start" || name == "stop" || name == "clearCache" || name == "getRoutes" || name == "setHTML" || name == "broadcastSSE" || name == "use" ||
             name == "setRateLimit" || name == "disableRateLimit" || name == "enableCsrf" || name == "disableCsrf" ||
             name == "enableSession" || name == "disableSession" || name == "mount" ||
-            name == "configureTrustedProxy" || name == "setRateLimitHeaders")
+            name == "configureTrustedProxy" || name == "setRateLimitHeaders" || name == "setHost" ||
+            name == "enableHttps" || name == "disableHttps")
         {
             var wrapper = new FunctionValue(null, null, false, null);
             wrapper.BuiltInInstance = this;
@@ -386,10 +448,57 @@ public class HttpServerInstance : ObjectInstance
             case "setRateLimitHeaders":
                 ConfigureRateLimitHeaders(args);
                 return RuntimeValue.Null();
+
+            case "setHost":
+                if (args.Count != 1 || args[0].Type != ValueType.String)
+                    throw new Exception("setHost() expects 1 string argument");
+                SetHost(args[0].AsString());
+                return RuntimeValue.Null();
+
+            case "enableHttps":
+                if (args.Count < 1 || args.Count > 2 || args[0].Type != ValueType.String)
+                    throw new Exception("enableHttps() expects certPath string and optional password string");
+                if (args.Count == 2 && args[1].Type != ValueType.String)
+                    throw new Exception("enableHttps() password must be a string when provided");
+                EnableHttps(args[0].AsString(), args.Count == 2 ? args[1].AsString() : string.Empty);
+                return RuntimeValue.Null();
+
+            case "disableHttps":
+                if (args.Count != 0)
+                    throw new Exception("disableHttps() expects 0 arguments");
+                DisableHttps();
+                return RuntimeValue.Null();
             
             default:
                 throw new Exception($"Unknown method: {methodName}");
         }
+    }
+
+    public void SetHost(string host)
+    {
+        if (_isRunning)
+            throw new Exception("Cannot setHost() while HttpServer is running");
+        _host = NormalizeHost(host);
+    }
+
+    public void EnableHttps(string certPath, string? password = null)
+    {
+        if (_isRunning)
+            throw new Exception("Cannot enableHttps() while HttpServer is running");
+        if (string.IsNullOrWhiteSpace(certPath))
+            throw new Exception("enableHttps() certPath cannot be empty");
+        _httpsEnabled = true;
+        _certPath = certPath.Trim();
+        _certPassword = password ?? string.Empty;
+    }
+
+    public void DisableHttps()
+    {
+        if (_isRunning)
+            throw new Exception("Cannot disableHttps() while HttpServer is running");
+        _httpsEnabled = false;
+        _certPath = string.Empty;
+        _certPassword = string.Empty;
     }
 
     private void RegisterMiddleware(RuntimeValue middlewareValue, RuntimeValue? optionsValue)
@@ -569,19 +678,26 @@ public class HttpServerInstance : ObjectInstance
             
             // Load static files into cache
             LoadStaticFiles();
-            
-            _listener = new HttpListener();
-            _listener.Prefixes.Add($"http://localhost:{_port}/");
-            _listener.Start();
-            _isRunning = true;
-            _mountedRest?.NotifyHostStarted();
-            
-            // Use Task.Run to start async request handling
-            _ = Task.Run(async () => await HandleRequestsAsync());
+
+            ResolveHttpsFromEnvironment();
+            if (_httpsEnabled)
+            {
+                StartHttpsFrontAndLoopback();
+            }
+            else
+            {
+                _listener = new HttpListener();
+                _listener.Prefixes.Add(BuildListenerPrefix(_host, _port));
+                _listener.Start();
+                _isRunning = true;
+                _mountedRest?.NotifyHostStarted();
+                _ = Task.Run(async () => await HandleRequestsAsync());
+            }
         }
         catch (Exception ex)
         {
             _isRunning = false;
+            StopHttpsFront();
             throw new Exception($"Failed to start HttpServer: {ex.Message}");
         }
     }
@@ -593,6 +709,7 @@ public class HttpServerInstance : ObjectInstance
         
         _isRunning = false;
         _mountedRest?.NotifyHostStopped();
+        StopHttpsFront();
         _listener?.Stop();
         _listener?.Close();
         _listener = null;
@@ -1506,7 +1623,7 @@ public class HttpServerInstance : ObjectInstance
                     var sseValue = jsonObj.Get("sse", null);
                     if (sseValue != null && sseValue.Type == ValueType.Boolean && sseValue.AsBoolean())
                     {
-                        SessionRuntime.CommitSession(requestContext, responseContext, request.IsSecureConnection);
+                        SessionRuntime.CommitSession(requestContext, responseContext, IsRequestSecure(request));
                         if (responseContext.HasHeaders)
                         {
                             responseContext.ApplyHeadersTo(response, _pathBase);
@@ -2054,7 +2171,7 @@ public class HttpServerInstance : ObjectInstance
         HttpListenerResponse response,
         HttpListenerRequest request)
     {
-        SessionRuntime.CommitSession(requestContext, responseContext, request.IsSecureConnection);
+        SessionRuntime.CommitSession(requestContext, responseContext, IsRequestSecure(request));
         responseContext.ApplyTo(response, _pathBase);
     }
 
@@ -2236,7 +2353,7 @@ public class HttpServerInstance : ObjectInstance
         {
             var csrfToken = WebRuntimeHelpers.GenerateCsrfToken(_csrfSecret);
             var cookieOptions = new JsonObject();
-            cookieOptions.Set("secure", RuntimeValue.Boolean(request.IsSecureConnection));
+            cookieOptions.Set("secure", RuntimeValue.Boolean(IsRequestSecure(request)));
             cookieOptions.Set("httpOnly", RuntimeValue.Boolean(false));
             responseContext.CallMethod(
                 "cookie",
@@ -2391,7 +2508,7 @@ public class HttpServerInstance : ObjectInstance
         {
             if (requestContext != null)
             {
-                SessionRuntime.CommitSession(requestContext, responseContext, request.IsSecureConnection);
+                SessionRuntime.CommitSession(requestContext, responseContext, IsRequestSecure(request));
             }
             responseContext.ApplyTo(response, _pathBase);
             return;
@@ -2399,7 +2516,7 @@ public class HttpServerInstance : ObjectInstance
 
         if (requestContext != null && pipelineResponse != null)
         {
-            SessionRuntime.CommitSession(requestContext, pipelineResponse, request.IsSecureConnection);
+            SessionRuntime.CommitSession(requestContext, pipelineResponse, IsRequestSecure(request));
             if (pipelineResponse.HasHeaders)
             {
                 pipelineResponse.ApplyHeadersTo(response, _pathBase);

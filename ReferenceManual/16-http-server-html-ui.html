@@ -41,13 +41,19 @@
         <h3>20.2.1 Constructor</h3>
         <pre><code>var server = new HttpServer(port);
 // OR
-var server = new HttpServer(port, webDirectory);  // Custom web directory</code></pre>
+var server = new HttpServer(port, webDirectory);  // Custom web directory
+// OR
+var server = new HttpServer(port, webDirectory, pathBase, host);</code></pre>
         <p><code>port</code> must be an integer in <code>1-65535</code>. Privileged ports (<code>1-1023</code>, e.g. <code>80</code>/<code>443</code>) are allowed; binding may still require elevated permissions or OS URL reservations.</p>
+        <p>Bind host defaults to <code>localhost</code> (loopback only). Pass <code>host</code> as the optional fourth argument, call <code>setHost(host)</code> before <code>start()</code>, or set the <code>MALDA_HTTP_HOST</code> environment variable. Use <code>0.0.0.0</code> or <code>*</code> to listen on all interfaces (same prefix rules as <code>RestServer</code>). The current bind host is available as the <code>host</code> property.</p>
+        <p>HTTPS is optional and cross-platform. Call <code>enableHttps(certPath, password?)</code> before <code>start()</code> with a <code>.pfx</code>/<code>.p12</code> file, or a PEM <code>.pem</code>/<code>.crt</code> (private key beside it as <code>.key</code>). Environment alternatives: <code>MALDA_HTTP_HTTPS=1</code>, <code>MALDA_HTTP_CERT</code>, and optional <code>MALDA_HTTP_CERT_PASSWORD</code>. Properties: <code>https</code>, <code>certPath</code>. TLS is terminated by Kestrel; the existing request pipeline still runs on a loopback <code>HttpListener</code>.</p>
 
         <h3>20.2.2 Core methods</h3>
         <ul>
             <li><code>start()</code>: Start the server and scan for decorated routes.</li>
             <li><code>stop()</code>: Stop the server gracefully.</li>
+            <li><code>setHost(host)</code>: Set the bind host before <code>start()</code> (<code>localhost</code>, IP/hostname, or <code>0.0.0.0</code>/<code>*</code> for all interfaces).</li>
+            <li><code>enableHttps(certPath, password?)</code> / <code>disableHttps()</code>: Enable or disable TLS before <code>start()</code>.</li>
             <li><code>getRoutes()</code>: Return the registered route table.</li>
             <li><code>clearCache()</code>: Clear the static file cache.</li>
             <li><code>setHTML(html)</code>: Set HTML content for the root path.</li>
@@ -66,7 +72,14 @@ print("Server running at http://localhost:8080");
 
 while (server.isRunning) {
     sleep(1000);
-}</code></pre>
+}
+
+// HTTPS (optional):
+// var tls = new HttpServer(8443);
+// tls.setHost("0.0.0.0");
+// tls.enableHttps("ask.pfx", "secret");
+// tls.start();
+// print("Server running at https://localhost:8443");</code></pre>
 
         <h2>21.3 Request and Response Objects</h2>
         <p>Page and route handlers can receive request context and return either raw HTML or a structured response object.</p>

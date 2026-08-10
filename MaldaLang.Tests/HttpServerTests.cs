@@ -67,6 +67,217 @@ public class HttpServerTests
         Assert.Equal(8080, server.Get("port", null).AsInteger());
         Assert.False(server.Get("isRunning", null).AsBoolean());
     }
+
+    [Fact]
+    public void HttpServer_Host_DefaultsToLocalhost_AndSetHostNormalizesWildcard()
+    {
+        var previous = System.Environment.GetEnvironmentVariable("MALDA_HTTP_HOST");
+        try
+        {
+            System.Environment.SetEnvironmentVariable("MALDA_HTTP_HOST", null);
+            var interpreter = new Interpreter.Interpreter();
+            var server = new HttpServerInstance(8096, null, interpreter);
+            Assert.Equal("localhost", server.Get("host", null).AsString());
+            Assert.Equal("http://localhost:8096/", HttpServerInstance.BuildListenerPrefix(server.Host, server.Port));
+
+            server.CallMethod("setHost", new List<RuntimeValue> { RuntimeValue.String("*") });
+            Assert.Equal("0.0.0.0", server.Get("host", null).AsString());
+            Assert.Equal("http://" + "*:8096/", HttpServerInstance.BuildListenerPrefix(server.Host, server.Port));
+
+            server.CallMethod("setHost", new List<RuntimeValue> { RuntimeValue.String("all") });
+            Assert.Equal("0.0.0.0", server.Host);
+            Assert.Equal("http://" + "*:8096/", HttpServerInstance.BuildListenerPrefix("0.0.0.0", 8096));
+        }
+        finally
+        {
+            System.Environment.SetEnvironmentVariable("MALDA_HTTP_HOST", previous);
+        }
+    }
+
+    [Fact]
+    public void HttpServer_Creation_WithExplicitHost_AndEnvFallback()
+    {
+        var previous = System.Environment.GetEnvironmentVariable("MALDA_HTTP_HOST");
+        try
+        {
+            System.Environment.SetEnvironmentVariable("MALDA_HTTP_HOST", "127.0.0.1");
+            var interpreter = new Interpreter.Interpreter();
+            var fromEnv = new HttpServerInstance(8097, null, interpreter);
+            Assert.Equal("127.0.0.1", fromEnv.Host);
+
+            var withHost = new HttpServerInstance(8098, null, interpreter, null, "0.0.0.0");
+            Assert.Equal("0.0.0.0", withHost.Host);
+            Assert.Equal("http://" + "*:8098/", HttpServerInstance.BuildListenerPrefix(withHost.Host, withHost.Port));
+        }
+        finally
+        {
+            System.Environment.SetEnvironmentVariable("MALDA_HTTP_HOST", previous);
+        }
+    }
+
+    [Fact]
+    public void HttpServer_SetHost_ThrowsWhenRunning_OrEmpty()
+    {
+        var previous = System.Environment.GetEnvironmentVariable("MALDA_HTTP_HOST");
+        try
+        {
+            System.Environment.SetEnvironmentVariable("MALDA_HTTP_HOST", null);
+            var interpreter = new Interpreter.Interpreter();
+            var server = new HttpServerInstance(8099, null, interpreter);
+            Assert.Throws<Exception>(() =>
+                server.CallMethod("setHost", new List<RuntimeValue> { RuntimeValue.String("") }));
+
+            server.CallMethod("start", new List<RuntimeValue>());
+            try
+            {
+                Assert.Throws<Exception>(() =>
+                    server.CallMethod("setHost", new List<RuntimeValue> { RuntimeValue.String("0.0.0.0") }));
+            }
+            finally
+            {
+                server.CallMethod("stop", new List<RuntimeValue>());
+            }
+        }
+        finally
+        {
+            System.Environment.SetEnvironmentVariable("MALDA_HTTP_HOST", previous);
+        }
+    }
+
+    [Fact]
+    public async Task HttpServer_EnableHttps_ServesOverTls()
+    {
+        var previousHttps = System.Environment.GetEnvironmentVariable("MALDA_HTTP_HTTPS");
+        var previousCert = System.Environment.GetEnvironmentVariable("MALDA_HTTP_CERT");
+        try
+        {
+            System.Environment.SetEnvironmentVariable("MALDA_HTTP_HTTPS", null);
+            System.Environment.SetEnvironmentVariable("MALDA_HTTP_CERT", null);
+
+            var tempDir = Path.Combine(Path.GetTempPath(), "malda_https_" + Guid.NewGuid().ToString("N")[..8]);
+            Directory.CreateDirectory(tempDir);
+            var pfxPath = Path.Combine(tempDir, "test.pfx");
+            const string pfxPassword = "test-pass";
+            WriteSelfSignedPfx(pfxPath, pfxPassword);
+
+            var port = GetFreeTcpPort();
+            var interpreter = new Interpreter.Interpreter();
+            var server = new HttpServerInstance(port, null, interpreter);
+            server.SetHost("127.0.0.1");
+            server.EnableHttps(pfxPath, pfxPassword);
+            Assert.True(server.Get("https", null).AsBoolean());
+            Assert.Equal(pfxPath, server.Get("certPath", null).AsString());
+
+            server.CallMethod("setHTML", new List<RuntimeValue> { RuntimeValue.String("<html><body>https-ok</body></html>") });
+            server.CallMethod("start", new List<RuntimeValue>());
+            try
+            {
+                using var handler = new HttpClientHandler
+                {
+                    ServerCertificateCustomValidationCallback = (_, _, _, _) => true
+                };
+                using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(10) };
+                HttpResponseMessage? response = null;
+                Exception? lastError = null;
+                for (var attempt = 0; attempt < 20; attempt++)
+                {
+                    try
+                    {
+                        response = await client.GetAsync($"https://127.0.0.1:{port}/");
+                        lastError = null;
+                        break;
+                    }
+                    catch (Exception ex) when (attempt < 19)
+                    {
+                        lastError = ex;
+                        await Task.Delay(50);
+                    }
+                }
+                if (response == null)
+                    throw lastError ?? new Exception("HTTPS request failed with no response");
+                var body = await response.Content.ReadAsStringAsync();
+                Assert.True(response.IsSuccessStatusCode);
+                Assert.Contains("https-ok", body, StringComparison.Ordinal);
+            }
+            finally
+            {
+                server.CallMethod("stop", new List<RuntimeValue>());
+                try { Directory.Delete(tempDir, true); } catch { /* ignore */ }
+            }
+        }
+        finally
+        {
+            System.Environment.SetEnvironmentVariable("MALDA_HTTP_HTTPS", previousHttps);
+            System.Environment.SetEnvironmentVariable("MALDA_HTTP_CERT", previousCert);
+        }
+    }
+
+    [Fact]
+    public void HttpServer_EnableHttps_MissingCert_FailsAtStart()
+    {
+        var previousHttps = System.Environment.GetEnvironmentVariable("MALDA_HTTP_HTTPS");
+        var previousCert = System.Environment.GetEnvironmentVariable("MALDA_HTTP_CERT");
+        try
+        {
+            System.Environment.SetEnvironmentVariable("MALDA_HTTP_HTTPS", null);
+            System.Environment.SetEnvironmentVariable("MALDA_HTTP_CERT", null);
+
+            var port = GetFreeTcpPort();
+            var interpreter = new Interpreter.Interpreter();
+            var server = new HttpServerInstance(port, null, interpreter);
+            server.SetHost("127.0.0.1");
+            server.EnableHttps(Path.Combine(Path.GetTempPath(), "missing-malda-cert-" + Guid.NewGuid().ToString("N") + ".pfx"), "");
+            var ex = Assert.Throws<Exception>(() => server.CallMethod("start", new List<RuntimeValue>()));
+            Assert.Contains("certificate", ex.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.False(server.IsRunning);
+        }
+        finally
+        {
+            System.Environment.SetEnvironmentVariable("MALDA_HTTP_HTTPS", previousHttps);
+            System.Environment.SetEnvironmentVariable("MALDA_HTTP_CERT", previousCert);
+        }
+    }
+
+    private static int GetFreeTcpPort()
+    {
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        try
+        {
+            return ((IPEndPoint)listener.LocalEndpoint).Port;
+        }
+        finally
+        {
+            listener.Stop();
+        }
+    }
+
+    private static void WriteSelfSignedPfx(string path, string password)
+    {
+        using var rsa = System.Security.Cryptography.RSA.Create(2048);
+        var req = new System.Security.Cryptography.X509Certificates.CertificateRequest(
+            "CN=localhost",
+            rsa,
+            System.Security.Cryptography.HashAlgorithmName.SHA256,
+            System.Security.Cryptography.RSASignaturePadding.Pkcs1);
+        req.CertificateExtensions.Add(
+            new System.Security.Cryptography.X509Certificates.X509BasicConstraintsExtension(false, false, 0, false));
+        req.CertificateExtensions.Add(
+            new System.Security.Cryptography.X509Certificates.X509SubjectKeyIdentifierExtension(req.PublicKey, false));
+        req.CertificateExtensions.Add(
+            new System.Security.Cryptography.X509Certificates.X509EnhancedKeyUsageExtension(
+                new System.Security.Cryptography.OidCollection
+                {
+                    new System.Security.Cryptography.Oid("1.3.6.1.5.5.7.3.1") // serverAuth
+                },
+                false));
+        var san = new System.Security.Cryptography.X509Certificates.SubjectAlternativeNameBuilder();
+        san.AddDnsName("localhost");
+        san.AddIpAddress(IPAddress.Loopback);
+        req.CertificateExtensions.Add(san.Build());
+        using var cert = req.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(1));
+        File.WriteAllBytes(path, cert.Export(System.Security.Cryptography.X509Certificates.X509ContentType.Pfx, password));
+    }
     
     [Fact]
     public void HttpServer_Creation_WithWebDirectory()
