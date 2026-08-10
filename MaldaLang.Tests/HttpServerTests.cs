@@ -213,6 +213,107 @@ public class HttpServerTests
     }
 
     [Fact]
+    public async Task HttpServer_EnableHttps_SseBroadcast_StreamsBeforeClose()
+    {
+        // Regression: HTTPS front-end used to buffer the loopback SSE body, so ASK
+        // live progress only appeared after the stream ended (final answer only).
+        var previousHttps = System.Environment.GetEnvironmentVariable("MALDA_HTTP_HTTPS");
+        var previousCert = System.Environment.GetEnvironmentVariable("MALDA_HTTP_CERT");
+        try
+        {
+            System.Environment.SetEnvironmentVariable("MALDA_HTTP_HTTPS", null);
+            System.Environment.SetEnvironmentVariable("MALDA_HTTP_CERT", null);
+
+            var tempDir = Path.Combine(Path.GetTempPath(), "malda_https_sse_" + Guid.NewGuid().ToString("N")[..8]);
+            Directory.CreateDirectory(tempDir);
+            var pfxPath = Path.Combine(tempDir, "test.pfx");
+            const string pfxPassword = "test-pass";
+            WriteSelfSignedPfx(pfxPath, pfxPassword);
+
+            var port = GetFreeTcpPort();
+            var source = @"
+            @LIVE(""/events"")
+            function eventsLive() {
+                return {""sse"": true};
+            }
+            ";
+            var interpreter = LoadInterpreterFromSource(source);
+            var server = new HttpServerInstance(port, null, interpreter);
+            server.SetHost("127.0.0.1");
+            server.EnableHttps(pfxPath, pfxPassword);
+            server.CallMethod("start", new List<RuntimeValue>());
+
+            try
+            {
+                using var handler = new HttpClientHandler
+                {
+                    ServerCertificateCustomValidationCallback = (_, _, _, _) => true
+                };
+                using var client = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
+
+                HttpResponseMessage? response = null;
+                Exception? lastError = null;
+                for (var attempt = 0; attempt < 20; attempt++)
+                {
+                    try
+                    {
+                        var req = new HttpRequestMessage(
+                            HttpMethod.Get,
+                            $"https://127.0.0.1:{port}/events?channel=alpha");
+                        req.Headers.Add("Accept", "text/event-stream");
+                        response = await client.SendAsync(req, HttpCompletionOption.ResponseHeadersRead);
+                        lastError = null;
+                        break;
+                    }
+                    catch (Exception ex) when (attempt < 19)
+                    {
+                        lastError = ex;
+                        await Task.Delay(50);
+                    }
+                }
+                if (response == null)
+                    throw lastError ?? new Exception("HTTPS SSE request failed with no response");
+
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                Assert.Equal("text/event-stream", response.Content.Headers.ContentType?.MediaType);
+
+                await using var stream = await response.Content.ReadAsStreamAsync();
+                using var reader = new StreamReader(stream);
+
+                // Consume initial "connected" event lines.
+                _ = await ReadLineWithTimeoutAsync(reader, 3000);
+                _ = await ReadLineWithTimeoutAsync(reader, 3000);
+
+                HttpServerInstance.BroadcastSSEMessage(
+                    "{\"type\":\"https-live\",\"channel\":\"alpha\"}", "alpha");
+
+                string? progressLine = null;
+                for (var i = 0; i < 6; i++)
+                {
+                    var line = await ReadLineWithTimeoutAsync(reader, 2000);
+                    if (!string.IsNullOrEmpty(line) && line.Contains("https-live", StringComparison.Ordinal))
+                    {
+                        progressLine = line;
+                        break;
+                    }
+                }
+
+                Assert.NotNull(progressLine);
+            }
+            finally
+            {
+                server.CallMethod("stop", new List<RuntimeValue>());
+                try { Directory.Delete(tempDir, true); } catch { /* ignore */ }
+            }
+        }
+        finally
+        {
+            System.Environment.SetEnvironmentVariable("MALDA_HTTP_HTTPS", previousHttps);
+            System.Environment.SetEnvironmentVariable("MALDA_HTTP_CERT", previousCert);
+        }
+    }
+
+    [Fact]
     public void HttpServer_EnableHttps_MissingCert_FailsAtStart()
     {
         var previousHttps = System.Environment.GetEnvironmentVariable("MALDA_HTTP_HTTPS");

@@ -61,6 +61,7 @@ var ASK_CURRENT_IS_ADMIN = false;
 var ASK_AUTH_COOKIE = "malda_ask_session";
 var ASK_AUTH_ENABLED = true;
 var ASK_ALLOW_REGISTER = false;
+var ASK_SHOW_EXAMPLES = true;
 var ASK_AUTH_USER = "admin";
 var ASK_AUTH_PASSWORD_HASH = "";
 var ASK_AUTH_USING_DEFAULT_PASSWORD = false;
@@ -404,7 +405,8 @@ function askParseBoolFlagFromArgs(args, onFlag, offFlag) {
     return flag;
 }
 
-// Resolve ASK_AUTH_ENABLED + ASK_ALLOW_REGISTER from env, CLI args, then cli opts.
+// Resolve ASK_AUTH_ENABLED + ASK_ALLOW_REGISTER + ASK_SHOW_EXAMPLES from env,
+// CLI args, then cli opts.
 function askApplyAuthFromCli(cli) {
     var enabled = true;
     var envAuth = askEnvBoolOverride("MALDA_ASK_AUTH");
@@ -434,6 +436,21 @@ function askApplyAuthFromCli(cli) {
         allowReg = cli.allowRegister == true;
     }
     ASK_ALLOW_REGISTER = allowReg == true and ASK_AUTH_ENABLED;
+
+    var showExamples = true;
+    var envExamples = askEnvBoolOverride("MALDA_ASK_EXAMPLES");
+    if (envExamples != null) {
+        showExamples = envExamples;
+    }
+    var argExamples = askParseBoolFlagFromArgs(
+        getCommandLineArgs(), "--examples", "--no-examples");
+    if (argExamples != null) {
+        showExamples = argExamples;
+    }
+    if (cli != null and cli.showExamples != null) {
+        showExamples = cli.showExamples == true;
+    }
+    ASK_SHOW_EXAMPLES = showExamples == true;
     return ASK_AUTH_ENABLED;
 }
 
@@ -569,10 +586,11 @@ function askNormalizeUsername(raw) {
 
 function askIsValidUsername(raw) {
     var name = askNormalizeUsername(raw);
-    if (str.length(name) < 3 or str.length(name) > 32) {
+    // 128 allows typical email-as-username (letters, digits, _ - . @).
+    if (str.length(name) < 3 or str.length(name) > 128) {
         return false;
     }
-    var allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.";
+    var allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.@";
     var i = 0;
     while (i < str.length(name)) {
         var ch = str.substring(name, i, 1);
@@ -643,8 +661,8 @@ function askRegisterUser(username, password) {
         return {
             "ok": false,
             "error": askT(
-                "Username must be 3–32 characters: letters, digits, _ - .",
-                "Username: 3–32 caratteri (lettere, cifre, _ - .).")
+                "Username must be 3–128 characters: letters, digits, _ - . @ (email ok).",
+                "Username: 3–128 caratteri (lettere, cifre, _ - . @; email ok).")
         };
     }
     if (str.length(pass) < 6) {
@@ -1068,7 +1086,7 @@ function askRenderRegisterPage(errorMessage) {
         "<h1>" + askEscapeHtml(title) + "</h1>" + errHtml +
         "<form method='post' action='/register'>" +
         "<label for='username'>" + askEscapeHtml(askT("Username", "Utente")) + "</label>" +
-        "<input id='username' name='username' autocomplete='username' required minlength='3' maxlength='32'>" +
+        "<input id='username' name='username' autocomplete='username' required minlength='3' maxlength='128'>" +
         "<label for='password'>" + askEscapeHtml(askT("Password", "Password")) + "</label>" +
         "<input id='password' name='password' type='password' autocomplete='new-password' required minlength='6'>" +
         "<label for='password2'>" + askEscapeHtml(askT("Confirm password", "Conferma password")) + "</label>" +
@@ -1207,12 +1225,12 @@ function askSanitizeScopeUser(sub) {
     if (name == "") {
         return "anon";
     }
-    // Scope keys: keep username charset only.
+    // Scope keys: keep username charset only (includes @ for email logins).
     if (not askIsValidUsername(name)) {
         var cleaned = "";
-        var allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.";
+        var allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.@";
         var i = 0;
-        while (i < str.length(name) and str.length(cleaned) < 32) {
+        while (i < str.length(name) and str.length(cleaned) < 128) {
             var ch = str.substring(name, i, 1);
             if (str.indexOf(allowed, ch) >= 0) {
                 cleaned = cleaned + ch;
@@ -2397,36 +2415,51 @@ function askRenderEmptyStateHtml(session) {
         lead = askT(
             "No " + askProductName() + " loaded.",
             askProductName() + " non caricato.");
-        hint = askT(
-            "Chat directly with the model below — or try an example.",
-            "Chatta direttamente col modello qui sotto — oppure prova un esempio.");
-        examples = [
-            askT("Summarize what you can help with.", "Riassumi in cosa puoi aiutarmi."),
-            askT("Explain a concept step by step.", "Spiega un concetto passo per passo."),
-            askT("Draft a short checklist for me.", "Prepara una breve checklist.")
-        ];
+        if (ASK_SHOW_EXAMPLES) {
+            hint = askT(
+                "Chat directly with the model below — or try an example.",
+                "Chatta direttamente col modello qui sotto — oppure prova un esempio.");
+            examples = [
+                askT("Summarize what you can help with.", "Riassumi in cosa puoi aiutarmi."),
+                askT("Explain a concept step by step.", "Spiega un concetto passo per passo."),
+                askT("Draft a short checklist for me.", "Prepara una breve checklist.")
+            ];
+        } else {
+            hint = askT(
+                "Chat directly with the model below.",
+                "Chatta direttamente col modello qui sotto.");
+        }
     } else {
         lead = askT(
             "Ask " + askProductName() + ".",
             "Interroga " + askProductName() + ".");
-        hint = askT(
-            "Answers use the distilled notes. Pick an example or type below.",
-            "Le risposte usano le note distillate. Scegli un esempio o scrivi qui sotto.");
-        examples = [
-            askT("What are the main themes?", "Quali sono i temi principali?"),
-            askT("How does authentication work?", "Come funziona l'autenticazione?"),
-            askT("Where should I start reading?", "Da dove conviene iniziare a leggere?")
-        ];
+        if (ASK_SHOW_EXAMPLES) {
+            hint = askT(
+                "Answers use the distilled notes. Pick an example or type below.",
+                "Le risposte usano le note distillate. Scegli un esempio o scrivi qui sotto.");
+            examples = [
+                askT("What are the main themes?", "Quali sono i temi principali?"),
+                askT("How does authentication work?", "Come funziona l'autenticazione?"),
+                askT("Where should I start reading?", "Da dove conviene iniziare a leggere?")
+            ];
+        } else {
+            hint = askT(
+                "Answers use the distilled notes. Type a question below.",
+                "Le risposte usano le note distillate. Scrivi una domanda qui sotto.");
+        }
     }
     var html = "<div class='empty-state'>" +
         "<p class='empty-lead'>" + askEscapeHtml(lead) + "</p>" +
-        "<p class='empty-hint'>" + askEscapeHtml(hint) + "</p>" +
-        "<div class='examples'>";
-    foreach (var example in examples) {
-        html = html + "<button type='button' class='example' data-ask-example='" +
-            askEscapeHtml(example) + "'>" + askEscapeHtml(example) + "</button>";
+        "<p class='empty-hint'>" + askEscapeHtml(hint) + "</p>";
+    if (ASK_SHOW_EXAMPLES and examples.length > 0) {
+        html = html + "<div class='examples'>";
+        foreach (var example in examples) {
+            html = html + "<button type='button' class='example' data-ask-example='" +
+                askEscapeHtml(example) + "'>" + askEscapeHtml(example) + "</button>";
+        }
+        html = html + "</div>";
     }
-    html = html + "</div></div>";
+    html = html + "</div>";
     return html;
 }
 

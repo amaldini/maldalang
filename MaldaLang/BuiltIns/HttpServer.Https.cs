@@ -10,6 +10,7 @@ using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -189,16 +190,59 @@ public partial class HttpServerInstance
             context.RequestAborted).ConfigureAwait(false);
 
         context.Response.StatusCode = (int)proxyResponse.StatusCode;
+
+        // Disable ASP.NET response buffering so progressive writes (SSE heartbeats /
+        // ask-progress) reach the browser instead of arriving only at stream close.
+        context.Features.Get<IHttpResponseBodyFeature>()?.DisableBuffering();
+
+        var contentType = proxyResponse.Content.Headers.ContentType?.MediaType;
+        var isEventStream = string.Equals(
+            contentType, "text/event-stream", StringComparison.OrdinalIgnoreCase);
+
         foreach (var header in proxyResponse.Headers)
-            context.Response.Headers[header.Key] = header.Value.ToArray();
-        foreach (var header in proxyResponse.Content.Headers)
         {
             if (header.Key.Equals("Transfer-Encoding", StringComparison.OrdinalIgnoreCase))
                 continue;
             context.Response.Headers[header.Key] = header.Value.ToArray();
         }
+        foreach (var header in proxyResponse.Content.Headers)
+        {
+            if (header.Key.Equals("Transfer-Encoding", StringComparison.OrdinalIgnoreCase))
+                continue;
+            // Chunked streaming must not advertise a fixed length (SSE stays open).
+            if (isEventStream &&
+                header.Key.Equals("Content-Length", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+            context.Response.Headers[header.Key] = header.Value.ToArray();
+        }
 
-        await proxyResponse.Content.CopyToAsync(context.Response.Body, context.RequestAborted).ConfigureAwait(false);
+        if (isEventStream)
+        {
+            context.Response.Headers["Cache-Control"] = "no-cache, no-transform";
+            context.Response.Headers["X-Accel-Buffering"] = "no";
+        }
+
+        await using var upstream = await proxyResponse.Content
+            .ReadAsStreamAsync(context.RequestAborted)
+            .ConfigureAwait(false);
+        var buffer = new byte[8192];
+        while (true)
+        {
+            var read = await upstream
+                .ReadAsync(buffer.AsMemory(0, buffer.Length), context.RequestAborted)
+                .ConfigureAwait(false);
+            if (read <= 0)
+                break;
+
+            await context.Response.Body
+                .WriteAsync(buffer.AsMemory(0, read), context.RequestAborted)
+                .ConfigureAwait(false);
+            await context.Response.Body
+                .FlushAsync(context.RequestAborted)
+                .ConfigureAwait(false);
+        }
     }
 
     private void StopHttpsFront()

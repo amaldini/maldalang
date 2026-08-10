@@ -27,6 +27,7 @@
 //       [--host 0.0.0.0] [--https --cert ask.pfx [--cert-password secret]]
 //       [--lang en|it] [--product-name "Acme Brain"]
 //       [--auth|--no-auth] [--allow-register|--no-register]
+//       [--examples|--no-examples]
 //   malda Examples/Agents/secondbrain_semantic.malda help
 //   (--name is an alias for --product-name; overrides brain product_name.txt)
 //
@@ -34,6 +35,7 @@
 // Bootstrap: MALDA_ASK_USER / MALDA_ASK_PASSWORD (or HASH); default admin / password.
 // Multi-user: users.json in the brain folder (or .malda/ask_users.json for embed).
 // Open registration: --allow-register (or MALDA_ASK_ALLOW_REGISTER=1).
+// Sample questions on empty ASK UI: on by default; hide with --no-examples (or MALDA_ASK_EXAMPLES=0).
 // Admin (role admin): /admin/users, /admin/upload (sync UPDATE; not for embed packs).
 // Also: per-user history, tag filters, force-answer, /health, ask_audit.jsonl, thumbs.
 //
@@ -3253,6 +3255,7 @@ function runAskUpdateFromUpload(body) {
         "port": null,
         "auth": null,
         "allowRegister": null,
+        "showExamples": null,
         "error": ""
     });
     return {

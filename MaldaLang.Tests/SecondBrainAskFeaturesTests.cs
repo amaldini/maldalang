@@ -494,6 +494,8 @@ public class SecondBrainAskFeaturesTests
         Assert.Contains("ask_audit.jsonl", libSource, StringComparison.Ordinal);
         Assert.Contains("--no-auth", libSource, StringComparison.Ordinal);
         Assert.Contains("--allow-register", libSource, StringComparison.Ordinal);
+        Assert.Contains("--no-examples", libSource, StringComparison.Ordinal);
+        Assert.Contains("ASK_SHOW_EXAMPLES", libSource, StringComparison.Ordinal);
         Assert.Contains("malda_ask_session", libSource, StringComparison.Ordinal);
         Assert.Contains("componentFragment(\"ask-panel\"", libSource, StringComparison.Ordinal);
         Assert.Contains("malda_ask_c", libSource, StringComparison.Ordinal);
@@ -821,6 +823,7 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("--host", source, StringComparison.Ordinal);
             Assert.Contains("--no-auth", source, StringComparison.Ordinal);
             Assert.Contains("--allow-register", source, StringComparison.Ordinal);
+            Assert.Contains("--no-examples", source, StringComparison.Ordinal);
             Assert.Contains("--product-name", source, StringComparison.Ordinal);
             Assert.Contains("sbCliParseArgs(", source, StringComparison.Ordinal);
             Assert.Contains("sbCliApplyProductName(", source, StringComparison.Ordinal);
@@ -908,6 +911,10 @@ public class SecondBrainAskFeaturesTests
                 print("R=" + r.mode + "," + string(r.https) + "," + r.cert + "," + r.certPassword + "," + r.error);
                 var s = sbCliParseArgs(["ask", "--https"]);
                 print("S=" + s.error);
+                var tEx = sbCliParseArgs(["ask", "--no-examples"]);
+                print("T=" + tEx.mode + "," + string(tEx.showExamples) + "," + tEx.error);
+                var uEx = sbCliParseArgs(["ask", "--no-examples", "--examples"]);
+                print("U=" + uEx.mode + "," + string(uEx.showExamples) + "," + uEx.error);
                 """,
                 Encoding.UTF8);
 
@@ -931,6 +938,8 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("Q=Invalid --host value.", output, StringComparison.Ordinal);
             Assert.Contains("R=ask,true,./ask.pfx,secret,", output, StringComparison.Ordinal);
             Assert.Contains("S=--https requires --cert <path>.", output, StringComparison.Ordinal);
+            Assert.Contains("T=ask,false,", output, StringComparison.Ordinal);
+            Assert.Contains("U=ask,true,", output, StringComparison.Ordinal);
         }
         finally
         {
@@ -977,6 +986,10 @@ public class SecondBrainAskFeaturesTests
                 var reg = askRegisterUser("alice", "secret1");
                 print("REG=" + string(reg.ok) + "," + reg.error);
                 print("COUNT1=" + string(askUsersCount()));
+                var regEmail = askRegisterUser("alice@example.com", "secret1");
+                print("REG_EMAIL=" + string(regEmail.ok) + "," + regEmail.error);
+                var okEmail = askVerifyLogin("alice@example.com", "secret1");
+                print("LOGIN_EMAIL=" + string(okEmail.ok) + "," + okEmail.username);
                 var dup = askRegisterUser("Alice", "other99");
                 print("DUP=" + string(dup.ok));
                 var reserved = askRegisterUser("admin", "secret1");
@@ -1008,6 +1021,8 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("COUNT0=0", output, StringComparison.Ordinal);
             Assert.Contains("REG=true,", output, StringComparison.Ordinal);
             Assert.Contains("COUNT1=1", output, StringComparison.Ordinal);
+            Assert.Contains("REG_EMAIL=true,", output, StringComparison.Ordinal);
+            Assert.Contains("LOGIN_EMAIL=true,alice@example.com", output, StringComparison.Ordinal);
             Assert.Contains("DUP=false", output, StringComparison.Ordinal);
             Assert.Contains("RESERVED=false", output, StringComparison.Ordinal);
             Assert.Contains("LOGIN_USER=true,alice,ask", output, StringComparison.Ordinal);

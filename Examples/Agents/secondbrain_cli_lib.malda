@@ -8,6 +8,7 @@
 //        --port / -p  --host <addr>  --https --cert <path> --cert-password <pwd>
 //        --mode <name>  --auth / --no-auth
 //        --allow-register / --no-register
+//        --examples / --no-examples  (sample questions on empty ASK UI)
 //        --product-name / --name  (display name; overrides product_name.txt)
 //        --help / -h
 // Host: localhost (default), 127.0.0.1, IP/hostname, 0.0.0.0 or * (all interfaces).
@@ -37,6 +38,7 @@ function sbCliEmptyOptions() {
         "certPassword": "",
         "auth": null,
         "allowRegister": null,
+        "showExamples": null,
         "productName": "",
         "error": ""
     };
@@ -297,6 +299,17 @@ function sbCliParseArgs(args) {
             i = i + 1;
             continue;
         }
+        // Sample questions on the empty ASK UI (default on)
+        if (a == "--examples") {
+            opt.showExamples = true;
+            i = i + 1;
+            continue;
+        }
+        if (a == "--no-examples") {
+            opt.showExamples = false;
+            i = i + 1;
+            continue;
+        }
 
         // Port: --port / -p / --port= / -p=
         taken = sbCliTakeFlagValue(args, i, "--port");
@@ -498,6 +511,7 @@ function sbCliPrintHelp(defaultBrain, defaultPort) {
         "  ask    [--brain " + brain + "] [--port " + port + "] [--host localhost] [--lang en|it]\n" +
         "         [--https --cert <pfx|pem>] [--cert-password <pwd>]\n" +
         "         [--product-name <name>] [--auth|--no-auth] [--allow-register|--no-register]\n" +
+        "         [--examples|--no-examples]\n" +
         "  help\n\n" +
         "Non-interactive: build/update/ask skip the menu and confirmations.\n" +
         "Also: --mode build|update|ask   -p <port>   --port=<n>   --host=<addr>   --name <name>\n" +
@@ -511,6 +525,8 @@ function sbCliPrintHelp(defaultBrain, defaultPort) {
         "Bootstrap: MALDA_ASK_USER / MALDA_ASK_PASSWORD (or MALDA_ASK_PASSWORD_HASH).\n" +
         "Multi-user: users.json in the brain folder (or .malda/ask_users.json).\n" +
         "Open registration: --allow-register (or MALDA_ASK_ALLOW_REGISTER=1).\n" +
+        "Sample questions on empty ASK UI: on by default; hide with --no-examples\n" +
+        "  (or MALDA_ASK_EXAMPLES=0).\n" +
         "Pack remains interactive (menu option 5).";
     var it =
         "Second Brain CLI\n\n" +
@@ -521,6 +537,7 @@ function sbCliPrintHelp(defaultBrain, defaultPort) {
         "  ask    [--brain " + brain + "] [--port " + port + "] [--host localhost] [--lang en|it]\n" +
         "         [--https --cert <pfx|pem>] [--cert-password <pwd>]\n" +
         "         [--product-name <nome>] [--auth|--no-auth] [--allow-register|--no-register]\n" +
+        "         [--examples|--no-examples]\n" +
         "  help\n\n" +
         "Non interattivo: build/update/ask saltano menu e conferme.\n" +
         "Anche: --mode build|update|ask   -p <porta>   --port=<n>   --host=<addr>   --name <nome>\n" +
@@ -534,6 +551,8 @@ function sbCliPrintHelp(defaultBrain, defaultPort) {
         "Bootstrap: MALDA_ASK_USER / MALDA_ASK_PASSWORD (o MALDA_ASK_PASSWORD_HASH).\n" +
         "Multi-utente: users.json nella cartella del brain (o .malda/ask_users.json).\n" +
         "Registrazione aperta: --allow-register (o MALDA_ASK_ALLOW_REGISTER=1).\n" +
+        "Domande di esempio nella UI ASK vuota: on di default; nascondi con --no-examples\n" +
+        "  (o MALDA_ASK_EXAMPLES=0).\n" +
         "PACK resta interattivo (voce di menu 5).";
     if (UI_LANG == "en") {
         io.print(en);
