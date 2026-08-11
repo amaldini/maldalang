@@ -26,6 +26,12 @@ public static class SchemaRegistry
                 $"Name '{decl.Name}' is already registered as a sum type; cannot also declare a schema.");
         }
 
+        if (ApiRegistry.IsRegistered(decl.Name))
+        {
+            throw new Exception(
+                $"Name '{decl.Name}' is already registered as an api; cannot also declare a schema.");
+        }
+
         Schemas[decl.Name] = BuildSchema(decl);
     }
 
@@ -36,6 +42,12 @@ public static class SchemaRegistry
         {
             throw new Exception(
                 $"Name '{name}' is already registered as a sum type; cannot also register a schema.");
+        }
+
+        if (ApiRegistry.IsRegistered(name))
+        {
+            throw new Exception(
+                $"Name '{name}' is already registered as an api; cannot also register a schema.");
         }
 
         Schemas[name] = schema;

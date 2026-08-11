@@ -468,6 +468,10 @@ public partial class Interpreter
                 {
                     SchemaRegistry.Register(schemaDecl);
                 }
+                else if (stmt is ApiDeclaration apiDecl)
+                {
+                    MaldaLang.BuiltIns.ApiRegistry.Register(apiDecl);
+                }
                 else if (stmt is WorkflowDeclaration wfDecl)
                 {
                     DefineWorkflow(wfDecl);
@@ -492,7 +496,7 @@ public partial class Interpreter
             {
                 var stmt = statements[i];
                 
-                if (stmt is not ClassDeclaration && stmt is not FunctionDeclaration && stmt is not PromptDeclaration && stmt is not TypeDeclaration && stmt is not SchemaDeclaration && stmt is not WorkflowDeclaration && stmt is not PropertyDeclaration)
+                if (stmt is not ClassDeclaration && stmt is not FunctionDeclaration && stmt is not PromptDeclaration && stmt is not TypeDeclaration && stmt is not SchemaDeclaration && stmt is not ApiDeclaration && stmt is not WorkflowDeclaration && stmt is not PropertyDeclaration)
                 {
                     topLevelFrame.StatementIndex = i;
                     await ExecuteAsync(stmt);
@@ -1566,6 +1570,7 @@ public partial class Interpreter
                 PromptDeclaration => null, // Already handled
                 TypeDeclaration => null, // Already handled
                 SchemaDeclaration => null, // Already handled
+                ApiDeclaration => null, // Already handled
                 WorkflowDeclaration => null, // Already handled in declaration pass
                 PropertyDeclaration => null, // Already handled in declaration pass
                 WorkflowStepStatement stepStmt => await ExecuteWorkflowStepAsync(stepStmt),

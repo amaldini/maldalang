@@ -19,7 +19,7 @@ public static class PureEffectsBuiltIns
         "httpGet", "httpPost", "httpPut", "httpDelete", "httpPatch",
         "spawn", "send", "receive",
         "getEnv", "hasEnv", "getCommandLineArgs", "loadNativeModule", "createNativeCallback",
-        "runMALDA", "compileMALDA", "executePlan", "decomposeTask",
+        "runMALDA", "compileMALDA", "executePlan", "runProgram", "decomposeTask",
         "startWorkflow", "runWorkflowInstance", "cancelWorkflow", "approveWorkflowStep",
         "gitStatus", "gitAdd", "gitCommit", "gitDiff", "gitLog", "gitBranch", "gitCheckout", "gitPush", "gitPull",
         "embedFromFile", "embedFromFiles",

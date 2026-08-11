@@ -1,0 +1,13 @@
+// Closed api + program JSON + runProgram (deterministic; no LLM in this snippet).
+api Calc {
+    function add(a, b);
+    function mul(a, b);
+}
+
+function add(a, b) { return a + b; }
+function mul(a, b) { return a * b; }
+
+var prog = parseJSON("""
+{"@api":"Calc","steps":[{"call":"add","args":[2,3],"as":"t0"},{"call":"mul","args":["$t0",4],"as":"r"}],"return":"$r"}
+""");
+io.print(runProgram(prog));

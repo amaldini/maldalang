@@ -168,6 +168,9 @@ public class Parser
             if (Match(TokenType.Schema))
                 return SchemaDeclaration();
 
+            if (Match(TokenType.Api))
+                return ApiDeclaration();
+
             if (Match(TokenType.Component))
                 return ComponentDeclaration();
             
@@ -820,17 +823,17 @@ public class Parser
         }
         Consume(TokenType.RightParen, "Expect ')' after parameters.");
         
-        // Parse optional return type: -> ReturnType or => ReturnType
+        // Parse optional return type: -> ReturnType, => ReturnType, or -> program(ApiName)
         string? returnType = null;
         if (Match(TokenType.Arrow))
         {
-            returnType = Consume(TokenType.Identifier, "Expect return type name after '->'.").Lexeme;
+            returnType = ParsePromptReturnTypeName();
         }
         else if (Check(TokenType.Minus) && _current + 1 < _tokens.Count && _tokens[_current + 1].Type == TokenType.GreaterThan)
         {
             Advance(); // consume Minus
             Advance(); // consume GreaterThan
-            returnType = Consume(TokenType.Identifier, "Expect return type name after '->'.").Lexeme;
+            returnType = ParsePromptReturnTypeName();
         }
         
         // Parse body - detect if statement-based or object literal
@@ -974,6 +977,47 @@ public class Parser
         }
         Consume(TokenType.RightBrace, "Expect '}' after schema fields.");
         return new SchemaDeclaration(schemaName, fields, schemaToken.Line, schemaToken.Column);
+    }
+
+    private Statement ApiDeclaration()
+    {
+        var apiToken = Previous();
+        var apiName = ConsumeIdentifierLike("Expect api name after 'api'.");
+        Consume(TokenType.LeftBrace, "Expect '{' after api name.");
+        var methods = new List<ApiMethodSignature>();
+        while (!Check(TokenType.RightBrace) && !IsAtEnd())
+        {
+            Consume(TokenType.Function, "Expect 'function' method signature in api body.");
+            var methodName = ConsumeIdentifierLike("Expect method name in api.");
+            Consume(TokenType.LeftParen, "Expect '(' after api method name.");
+            var paramNames = new List<string>();
+            if (!Check(TokenType.RightParen))
+            {
+                do
+                {
+                    paramNames.Add(ConsumeIdentifierOrKeyword("Expect parameter name in api method."));
+                } while (Match(TokenType.Comma));
+            }
+            Consume(TokenType.RightParen, "Expect ')' after api method parameters.");
+            Consume(TokenType.Semicolon, "Expect ';' after api method signature (bodies are separate top-level functions).");
+            methods.Add(new ApiMethodSignature(methodName, paramNames));
+        }
+        Consume(TokenType.RightBrace, "Expect '}' after api methods.");
+        return new ApiDeclaration(apiName, methods, apiToken.Line, apiToken.Column);
+    }
+
+    private string ParsePromptReturnTypeName()
+    {
+        var nameToken = Consume(TokenType.Identifier, "Expect return type name after '->'.");
+        var name = nameToken.Lexeme;
+        if (string.Equals(name, "program", StringComparison.Ordinal) && Match(TokenType.LeftParen))
+        {
+            var apiName = ConsumeIdentifierLike("Expect api name in program(ApiName).");
+            Consume(TokenType.RightParen, "Expect ')' after program(ApiName).");
+            return "program(" + apiName + ")";
+        }
+
+        return name;
     }
 
     private Statement TypeDeclaration()

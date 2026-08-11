@@ -36,6 +36,7 @@ public class CSharpTranspiler
     private readonly HashSet<string> _promptNames;
     private readonly HashSet<string> _variantConstructorNames;
     private readonly List<TypeDeclaration> _typeDeclarations;
+    private readonly List<ApiDeclaration> _apiDeclarations;
     private bool _isInWorkflowBody;
     private bool _isInActorHandler;
     private bool _transpileCallAsTask;
@@ -65,6 +66,7 @@ public class CSharpTranspiler
         _promptNames = new HashSet<string>();
         _variantConstructorNames = new HashSet<string>();
         _typeDeclarations = new List<TypeDeclaration>();
+        _apiDeclarations = new List<ApiDeclaration>();
         _isInWorkflowBody = false;
         _profilingOptions = profilingOptions?.Clone();
         _typedScopeStack = new Stack<Dictionary<string, TranspiledClrType>>();
@@ -96,6 +98,7 @@ public class CSharpTranspiler
         _promptNames.Clear();
         _variantConstructorNames.Clear();
         _typeDeclarations.Clear();
+        _apiDeclarations.Clear();
         _canAwait = false;
         _isInWorkflowBody = false;
         _emitLineDirectives = true;
@@ -173,6 +176,10 @@ public class CSharpTranspiler
                 _typeDeclarations.Add(typeDecl);
                 foreach (var ctor in typeDecl.Constructors)
                     _variantConstructorNames.Add(ctor.Name);
+            }
+            else if (statement is ApiDeclaration apiDecl)
+            {
+                _apiDeclarations.Add(apiDecl);
             }
             else if (statement is VarDeclStatement varDecl)
             {
@@ -359,6 +366,7 @@ public class CSharpTranspiler
             }
             GenerateSchemaRegistration(schemas);
             GenerateSumTypeRegistration();
+            GenerateApiRegistration();
 
             // Transpile top-level statements (assignments, function calls, etc.)
             var previousCanAwaitInInitialize = _canAwait;
@@ -456,6 +464,7 @@ public class CSharpTranspiler
             }
             GenerateSchemaRegistration(schemas);
             GenerateSumTypeRegistration();
+            GenerateApiRegistration();
 
             EmitProfilingSessionStart();
 
@@ -6441,6 +6450,67 @@ public class CSharpTranspiler
         _output.AppendLine();
     }
 
+    private void GenerateApiRegistration()
+    {
+        if (_apiDeclarations.Count == 0)
+            return;
+
+        foreach (var apiDecl in _apiDeclarations)
+        {
+            WriteIndent();
+            _output.Append("MaldaLang.BuiltIns.ApiRegistry.RegisterCompiled(\"");
+            _output.Append(apiDecl.Name.Replace("\\", "\\\\").Replace("\"", "\\\""));
+            _output.Append("\", new System.Collections.Generic.List<MaldaLang.Parser.AST.Declarations.ApiMethodSignature> { ");
+            for (int i = 0; i < apiDecl.Methods.Count; i++)
+            {
+                if (i > 0) _output.Append(", ");
+                var method = apiDecl.Methods[i];
+                _output.Append("new MaldaLang.Parser.AST.Declarations.ApiMethodSignature(\"");
+                _output.Append(method.Name.Replace("\\", "\\\\").Replace("\"", "\\\""));
+                _output.Append("\", new System.Collections.Generic.List<string> { ");
+                for (int p = 0; p < method.ParameterNames.Count; p++)
+                {
+                    if (p > 0) _output.Append(", ");
+                    _output.Append("\"");
+                    _output.Append(method.ParameterNames[p].Replace("\\", "\\\\").Replace("\"", "\\\""));
+                    _output.Append("\"");
+                }
+                _output.Append(" })");
+            }
+            _output.AppendLine(" });");
+
+            foreach (var method in apiDecl.Methods)
+            {
+                if (!_functionNames.Contains(method.Name))
+                    continue;
+
+                WriteIndent();
+                _output.Append("MaldaLang.BuiltIns.ApiRegistry.BindImplementation(\"");
+                _output.Append(method.Name.Replace("\\", "\\\\").Replace("\"", "\\\""));
+                _output.Append("\", __args => { ");
+                _output.Append("if (__args.Count != ");
+                _output.Append(method.ParameterNames.Count);
+                _output.Append(") throw new System.Exception(\"runProgram: wrong arity for ");
+                _output.Append(method.Name.Replace("\\", "\\\\").Replace("\"", "\\\""));
+                _output.Append("\"); ");
+                _output.Append("return RuntimeHelpers.ToRuntimeValue(");
+                _output.Append(EscapeIdentifier(method.Name));
+                _output.Append("(");
+                for (int p = 0; p < method.ParameterNames.Count; p++)
+                {
+                    if (p > 0) _output.Append(", ");
+                    _output.Append("RuntimeHelpers.UnwrapRuntimeValue(__args[");
+                    _output.Append(p);
+                    _output.Append("])");
+                }
+                _output.Append(")); });");
+                _output.AppendLine();
+            }
+        }
+
+        _output.AppendLine();
+    }
+
     private void EmitParseJsonSchemaLiteral(MaldaLang.Interpreter.RuntimeValue schema)
     {
         var schemaJson = BuiltInFunctions.SerializeToJson(schema);
@@ -6861,20 +6931,29 @@ public class CSharpTranspiler
         SchemaDeclaration? schemaDecl = null;
         ClassDeclaration? schemaClassDecl = null;
         TypeDeclaration? sumTypeDecl = null;
+        ApiDeclaration? programApiDecl = null;
         if (isCustomReturnType)
         {
             var returnName = promptDecl.ReturnType!.Trim();
-            schemaDecl = schemas.FirstOrDefault(s => string.Equals(s.Name, returnName, StringComparison.Ordinal));
-            if (schemaDecl == null)
+            if (ApiRegistry.TryParseProgramReturnType(returnName, out var programApiName))
             {
-                sumTypeDecl = _typeDeclarations.FirstOrDefault(t =>
-                    string.Equals(t.TypeName, returnName, StringComparison.Ordinal));
+                programApiDecl = _apiDeclarations.FirstOrDefault(a =>
+                    string.Equals(a.Name, programApiName, StringComparison.Ordinal));
             }
-            if (schemaDecl == null && sumTypeDecl == null)
+            else
             {
-                var classesByName = classes.ToDictionary(c => c.Name, c => c);
-                if (classesByName.TryGetValue(returnName, out var cd))
-                    schemaClassDecl = cd;
+                schemaDecl = schemas.FirstOrDefault(s => string.Equals(s.Name, returnName, StringComparison.Ordinal));
+                if (schemaDecl == null)
+                {
+                    sumTypeDecl = _typeDeclarations.FirstOrDefault(t =>
+                        string.Equals(t.TypeName, returnName, StringComparison.Ordinal));
+                }
+                if (schemaDecl == null && sumTypeDecl == null)
+                {
+                    var classesByName = classes.ToDictionary(c => c.Name, c => c);
+                    if (classesByName.TryGetValue(returnName, out var cd))
+                        schemaClassDecl = cd;
+                }
             }
         }
         if (schemaDecl != null)
@@ -6882,6 +6961,21 @@ public class CSharpTranspiler
             WriteIndent();
             _output.Append("var __schema = ");
             EmitParseJsonSchemaLiteral(SchemaRegistry.BuildSchema(schemaDecl));
+            _output.AppendLine(";");
+            WriteIndent();
+            _output.AppendLine("__responseFormatSchema = MaldaLang.BuiltIns.TypedPromptValidator.BuildResponseFormat(__schema);");
+            WriteIndent();
+            _output.Append("system = MaldaLang.BuiltIns.TypedPromptValidator.ApplySchemaAppendix(system, \"");
+            _output.Append(promptDecl.ReturnType!.Replace("\\", "\\\\").Replace("\"", "\\\""));
+            _output.AppendLine("\", __schema);");
+        }
+        else if (programApiDecl != null)
+        {
+            var programSchema = ApiRegistry.BuildProgramSchema(
+                new ApiRegistry.ApiDefinition(programApiDecl.Name, programApiDecl.Methods));
+            WriteIndent();
+            _output.Append("var __schema = ");
+            EmitParseJsonSchemaLiteral(programSchema);
             _output.AppendLine(";");
             WriteIndent();
             _output.AppendLine("__responseFormatSchema = MaldaLang.BuiltIns.TypedPromptValidator.BuildResponseFormat(__schema);");
@@ -7023,20 +7117,29 @@ public class CSharpTranspiler
             SchemaDeclaration? returnSchemaDecl = null;
             ClassDeclaration? returnClassDecl = null;
             TypeDeclaration? returnSumTypeDecl = null;
+            ApiDeclaration? returnProgramApiDecl = null;
             if (customReturnType)
             {
                 var returnName = promptDecl.ReturnType!.Trim();
-                returnSchemaDecl = schemas.FirstOrDefault(s => string.Equals(s.Name, returnName, StringComparison.Ordinal));
-                if (returnSchemaDecl == null)
+                if (ApiRegistry.TryParseProgramReturnType(returnName, out var programApiName))
                 {
-                    returnSumTypeDecl = _typeDeclarations.FirstOrDefault(t =>
-                        string.Equals(t.TypeName, returnName, StringComparison.Ordinal));
+                    returnProgramApiDecl = _apiDeclarations.FirstOrDefault(a =>
+                        string.Equals(a.Name, programApiName, StringComparison.Ordinal));
                 }
-                if (returnSchemaDecl == null && returnSumTypeDecl == null)
+                else
                 {
-                    var classesByName = classes.ToDictionary(c => c.Name, c => c);
-                    if (classesByName.TryGetValue(returnName, out var classDecl))
-                        returnClassDecl = classDecl;
+                    returnSchemaDecl = schemas.FirstOrDefault(s => string.Equals(s.Name, returnName, StringComparison.Ordinal));
+                    if (returnSchemaDecl == null)
+                    {
+                        returnSumTypeDecl = _typeDeclarations.FirstOrDefault(t =>
+                            string.Equals(t.TypeName, returnName, StringComparison.Ordinal));
+                    }
+                    if (returnSchemaDecl == null && returnSumTypeDecl == null)
+                    {
+                        var classesByName = classes.ToDictionary(c => c.Name, c => c);
+                        if (classesByName.TryGetValue(returnName, out var classDecl))
+                            returnClassDecl = classDecl;
+                    }
                 }
             }
             if (returnSchemaDecl != null)
@@ -7044,6 +7147,15 @@ public class CSharpTranspiler
                 WriteIndent();
                 _output.Append("MaldaLang.Interpreter.RuntimeValue? __resolvedSchema = ");
                 EmitParseJsonSchemaLiteral(SchemaRegistry.BuildSchema(returnSchemaDecl));
+                _output.AppendLine(";");
+            }
+            else if (returnProgramApiDecl != null)
+            {
+                var programSchema = ApiRegistry.BuildProgramSchema(
+                    new ApiRegistry.ApiDefinition(returnProgramApiDecl.Name, returnProgramApiDecl.Methods));
+                WriteIndent();
+                _output.Append("MaldaLang.Interpreter.RuntimeValue? __resolvedSchema = ");
+                EmitParseJsonSchemaLiteral(programSchema);
                 _output.AppendLine(";");
             }
             else if (returnSumTypeDecl != null)
@@ -10249,6 +10361,7 @@ public class CSharpTranspiler
             case "createCreateMcpAgentScriptTool":
             case "createSubmitPlanTool":
             case "executePlan":
+            case "runProgram":
             case "decomposeTask":
             case "extractHTML":
             case "markdownToHtml":

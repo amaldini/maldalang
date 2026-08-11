@@ -20,12 +20,15 @@ Compact rules for generating correct `.malda`. Prefer this over scraping HTML ma
   compact schema appendix to the **system** message (helps local models that ignore
   `response_format`), sends OpenAI-compatible backends `response_format`, then
   validates the reply (up to 3 attempts with a repair instruction). Without `await`,
-  you get a `PromptInstance` (schema attached when resolvable). Prefer a
+  you get a `PromptInstance` (schema attached when resolvable).   Prefer a
   `schema Name { … }` for structured objects, or a **sum type**
   (`type Intent = Search(q) | Buy(sku, qty)`) when the model must pick one of several
   shapes — success yields a real variant for `match`. Sum-type JSON wire shape:
   `{ "tag": "Buy", "sku": "...", "qty": 2 }` (tag = constructor name; payload fields
-  use the constructor parameter names).
+  use the constructor parameter names). For closed call plans use
+  `api Calc { function add(a, b); }` with `prompt p(...) -> program(Calc)` then
+  `runProgram(prog)` — deterministic, no tool loop. Program JSON:
+  `{ "@api":"Calc", "steps":[{"call":"add","args":[2,3],"as":"t0"}], "return":"$t0" }`.
 - Interpolate with a **`$`-prefixed** string: `$"total: {n}"`, `$"{a} of {b}"`. The braces
   take any expression (`{n * 2}`, `{math.sqrt(x)}`, `{items[0]}`), and `$` strings compose
   with `AnsiConsole` markup. A plain string does **not** interpolate — `"total: {n}"` prints

@@ -41,6 +41,12 @@ public static class SumTypeRegistry
                 $"Name '{decl.TypeName}' is already registered as a schema; cannot also declare a sum type.");
         }
 
+        if (ApiRegistry.IsRegistered(decl.TypeName))
+        {
+            throw new Exception(
+                $"Name '{decl.TypeName}' is already registered as an api; cannot also declare a sum type.");
+        }
+
         var def = new SumTypeDefinition(decl.TypeName, decl.Constructors.ToList());
         Definitions[decl.TypeName] = def;
         Schemas[decl.TypeName] = BuildSchema(def);
@@ -53,6 +59,12 @@ public static class SumTypeRegistry
         {
             throw new Exception(
                 $"Name '{name}' is already registered as a schema; cannot also register a sum type.");
+        }
+
+        if (ApiRegistry.IsRegistered(name))
+        {
+            throw new Exception(
+                $"Name '{name}' is already registered as an api; cannot also register a sum type.");
         }
 
         Definitions[name] = ReconstructDefinition(name, schema);

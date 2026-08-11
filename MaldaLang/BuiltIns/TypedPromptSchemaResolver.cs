@@ -21,6 +21,17 @@ public static class TypedPromptSchemaResolver
             return false;
         }
 
+        if (ApiRegistry.TryParseProgramReturnType(normalized, out var apiName))
+        {
+            if (!ApiRegistry.TryResolveProgramSchema(apiName, out schema))
+            {
+                error = $"Unknown api '{apiName}' for program return type.";
+                return false;
+            }
+
+            return true;
+        }
+
         switch (normalized)
         {
             case "string":

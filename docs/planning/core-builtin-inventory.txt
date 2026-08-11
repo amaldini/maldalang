@@ -4,7 +4,7 @@
 # Format: symbol -> tier | note
 # Optional-pack / vertical symbols must NOT appear here (enforced by OptionalPackRegistryGuardTests)
 
-# count: 347
+# count: 348
 
 abs -> tier1-core | BuiltInRegistry
 acos -> stdlib-general | BuiltInRegistry
@@ -231,6 +231,7 @@ round -> tier1-core | BuiltInRegistry
 rsqrt -> stdlib-general | BuiltInRegistry
 runCommand -> stdlib-general | BuiltInRegistry
 runMALDA -> platform-ai | BuiltInRegistry
+runProgram -> stdlib-general | BuiltInRegistry
 runPrompt -> stdlib-general | BuiltInRegistry
 runProperty -> stdlib-general | BuiltInRegistry
 runWorkflowInstance -> platform-workflow | BuiltInRegistry

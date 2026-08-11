@@ -234,6 +234,7 @@ round	math.round	1 argument	returns a float even when whole-valued; integer sink
 rsqrt	math.rsqrt	1 argument		
 runCommand	runCommand	at least 1 argument: command (string)		
 runMALDA	runMALDA	at least 1 argument: sourceOrFilePath (string)		
+runProgram	runProgram	1 argument: (program)		
 runPrompt	runPrompt	at least 1 argument (promptInstance or text)		
 runProperty	runProperty	1-3 arguments: (name, iterations?, seed?)		
 runWorkflowInstance	runWorkflowInstance	at least 1 argument: (instanceId)		

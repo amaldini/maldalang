@@ -18,7 +18,7 @@
         'static', 'actor', 'message', 'spawn', 'send', 'receive', 'self', 'on',
         'then', 'timeout', 'dict', 'graph', 'directed', 'undirected', 'in',
         'using', 'import', 'export', 'include', 'prompt', 'property',
-        'match', 'case', 'default', 'type', 'schema', 'await', 'async',
+        'match', 'case', 'default', 'type', 'schema', 'api', 'await', 'async',
         'workflow', 'step', 'approval', 'wait', 'retry', 'backoff', 'delay',
         'maxDelay', 'compensate', 'onReject'
     ];

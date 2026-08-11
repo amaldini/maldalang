@@ -71,6 +71,7 @@ public enum TokenType
     Default,
     Type,
     Schema,
+    Api,
     Await,
     Async,
     

@@ -351,7 +351,7 @@ print(summary);  // Prints the LLM response directly</code></pre>
             <li>If a return type is declared (<code>prompt name(...) -&gt; Type</code>), the return value is <strong>enforced</strong>: MALDA extracts JSON from the response (including from markdown or code fences), validates it against the declared type schema, and returns the parsed value on success</li>
             <li>When <code>-&gt; Type</code> is present and the prompt body has <strong>no tools</strong>, the JSON schema is sent to the LLM backend (e.g. OpenAI <code>response_format</code>) so the model returns schema-conforming JSON on the first attempt. The same gate also appends a compact <strong>schema appendix</strong> to the system message (marker <code>MALDA_OUTPUT_SCHEMA</code>) so local backends that ignore <code>response_format</code> still see the expected shape. For v1, <code>response_format</code> and <code>tools</code> are mutually exclusive: if the prompt requests tools, the schema is not sent and the appendix is not added.</li>
             <li>On validation failure, MALDA appends a repair instruction to the prompt and retries (up to a fixed maximum of attempts); after exhaustion, a runtime error is thrown</li>
-            <li>Supported return types include primitives (<code>string</code>, <code>int</code>, <code>number</code>, <code>bool</code>, <code>array</code>, <code>object</code>), the built-in <code>Plan</code> type, custom class names (e.g. <code>-&gt; MyClass</code>), <code>schema</code> names, and <strong>sum types</strong> (e.g. <code>-&gt; Intent</code>); these work in both interpreter and transpiled mode</li>
+            <li>Supported return types include primitives (<code>string</code>, <code>int</code>, <code>number</code>, <code>bool</code>, <code>array</code>, <code>object</code>), the built-in <code>Plan</code> type, custom class names (e.g. <code>-&gt; MyClass</code>), <code>schema</code> names, <strong>sum types</strong> (e.g. <code>-&gt; Intent</code>), and <strong>programs</strong> (<code>-&gt; program(ApiName)</code>); these work in both interpreter and transpiled mode</li>
             <li>This provides a cleaner syntax than <code>agent.think(prompt(...)).content</code></li>
         </ul>
 
@@ -386,6 +386,34 @@ match intent {
     case Help(): print("help");
 }</code></pre>
         <p>Wire JSON uses a <code>tag</code> field equal to the constructor name, plus payload fields named like the constructor parameters — for example <code>{"tag":"Buy","sku":"SKU-9","qty":2}</code> or <code>{"tag":"Help"}</code>. A name cannot be both a <code>schema</code> and a <code>type</code> (sum type). See <code>Examples/Prompts/sum_type_intent_prompt.malda</code> and <a href="03-data-types.html">Data Types</a> for sum types.</p>
+
+        <h3>8.8.3.2.2 Closed APIs and Deterministic Programs</h3>
+        <p>Declare a closed <code>api</code> of method signatures. Implementations are ordinary top-level <code>function</code>s with the same names. A typed prompt may return <code>program(ApiName)</code>; on success you get a program value that <code>runProgram</code> executes with <strong>no further LLM calls</strong> (unlike <code>@Tool</code> agent loops or <code>executePlan</code>):</p>
+        <pre><code>api Calc {
+    function add(a, b);
+    function mul(a, b);
+}
+
+function add(a, b) { return a + b; }
+function mul(a, b) { return a * b; }
+
+prompt solve(expr) -&gt; program(Calc) {
+    system: "Translate into Calc steps. JSON only.";
+    user: expr;
+}
+
+var prog = await solve("(2 + 3) * 4");
+var result = runProgram(prog);</code></pre>
+        <p>Wire JSON shape:</p>
+        <pre><code>{
+  "@api": "Calc",
+  "steps": [
+    { "call": "add", "args": [2, 3], "as": "t0" },
+    { "call": "mul", "args": ["$t0", 4], "as": "result" }
+  ],
+  "return": "$result"
+}</code></pre>
+        <p><code>args</code> entries are JSON literals or <code>"$alias"</code> references to a prior step's <code>as</code>. See <code>Examples/Prompts/api_program_calc.malda</code> and <a href="11-built-in-functions.html">12. Built-in Functions</a> (<code>runProgram</code>). A name cannot be both an <code>api</code> and a <code>schema</code> / sum <code>type</code>.</p>
 
         <h3>8.8.3.3 Reusable Pipe Pipelines</h3>
         <p>Name and reuse multi-step AI pipelines with ordinary <code>function</code> declarations and the pipe operator (<code>|&gt;</code>). Return the final pipe result explicitly.</p>

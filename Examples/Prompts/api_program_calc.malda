@@ -1,0 +1,32 @@
+// api_program_calc.malda — closed api + program JSON + deterministic runProgram
+//
+// Offline demo: same wire shape as await prompt(...) -> program(Calc), no LLM required.
+// Run: malda Examples/Prompts/api_program_calc.malda
+
+api Calc {
+    function add(a, b);
+    function mul(a, b);
+}
+
+function add(a, b) {
+    return a + b;
+}
+
+function mul(a, b) {
+    return a * b;
+}
+
+// Simulated model output for (2+3)*4
+var prog = parseJSON("""
+{
+  "@api": "Calc",
+  "steps": [
+    { "call": "add", "args": [2, 3], "as": "t0" },
+    { "call": "mul", "args": ["$t0", 4], "as": "result" }
+  ],
+  "return": "$result"
+}
+""");
+
+var result = runProgram(prog);
+io.print(result);

@@ -118,6 +118,9 @@ public static class TypedPromptValidator
         if (IsSumSchema(schema))
             return TryValidateAndCoerceSum(value, schema, out validated, out error);
 
+        if (IsProgramSchema(schema))
+            return TryValidateAndCoerceProgram(value, schema, out validated, out error);
+
         if (!TryValidateAgainstSchema(value, schema, "$", out error))
             return false;
 
@@ -161,12 +164,43 @@ public static class TypedPromptValidator
                string.Equals(kind.AsString(), "sum", StringComparison.Ordinal);
     }
 
+    public static bool IsProgramSchema(RuntimeValue schema)
+    {
+        if (schema.Type != ValueType.Object || schema.AsObject() is not JsonObject obj)
+            return false;
+        var kind = obj.Get("x-malda-kind");
+        return kind.Type == ValueType.String &&
+               string.Equals(kind.AsString(), "program", StringComparison.Ordinal);
+    }
+
     public static string FormatSchemaAppendix(string returnType, RuntimeValue schema)
     {
         var sb = new StringBuilder();
         sb.Append("Return type: ");
         sb.Append(returnType);
         sb.AppendLine(".");
+
+        if (IsProgramSchema(schema) && schema.AsObject() is JsonObject progObj)
+        {
+            var apiName = progObj.Get("x-malda-api");
+            var api = apiName.Type == ValueType.String ? apiName.AsString() : "?";
+            sb.AppendLine($"Program for api {api} — return JSON:");
+            sb.AppendLine($"{{\"@api\":\"{api}\",\"steps\":[{{\"call\":\"<method>\",\"args\":[...],\"as\":\"t0\"}}],\"return\":\"$t0\"}}");
+            sb.AppendLine("Allowed calls:");
+            if (ApiRegistry.TryGet(api, out var def))
+            {
+                foreach (var method in def.Methods)
+                {
+                    sb.Append("- ");
+                    sb.Append(method.Name);
+                    sb.Append('(');
+                    sb.Append(string.Join(", ", method.ParameterNames));
+                    sb.AppendLine(")");
+                }
+            }
+
+            return sb.ToString().TrimEnd();
+        }
 
         if (IsSumSchema(schema) && schema.AsObject() is JsonObject sumObj)
         {
@@ -298,6 +332,154 @@ public static class TypedPromptValidator
             return "any";
 
         return "any";
+    }
+
+    private static bool TryValidateAndCoerceProgram(
+        RuntimeValue value,
+        RuntimeValue schema,
+        out RuntimeValue validated,
+        out string error)
+    {
+        validated = RuntimeValue.Null();
+        error = "";
+
+        if (schema.Type != ValueType.Object || schema.AsObject() is not JsonObject schemaObj)
+        {
+            error = "Invalid program schema object.";
+            return false;
+        }
+
+        if (!TryValidateAgainstSchema(value, schema, "$", out error))
+            return false;
+
+        if (value.Type != ValueType.Object || value.AsObject() is not JsonObject jsonObj)
+        {
+            error = "$. must be a JSON program object.";
+            return false;
+        }
+
+        var expectedApi = schemaObj.Get("x-malda-api");
+        var expectedApiName = expectedApi.Type == ValueType.String ? expectedApi.AsString() : "";
+        var apiVal = jsonObj.Get("@api");
+        if (apiVal.Type != ValueType.String)
+        {
+            error = "$.@api is required and must be a string.";
+            return false;
+        }
+
+        var apiName = apiVal.AsString();
+        if (!string.Equals(apiName, expectedApiName, StringComparison.Ordinal))
+        {
+            error = $"$.@api must be '{expectedApiName}', got '{apiName}'.";
+            return false;
+        }
+
+        if (!ApiRegistry.TryGet(apiName, out var apiDef))
+        {
+            error = $"Unknown api '{apiName}'.";
+            return false;
+        }
+
+        var stepsVal = jsonObj.Get("steps");
+        if (stepsVal.Type != ValueType.Array)
+        {
+            error = "$.steps must be an array.";
+            return false;
+        }
+
+        var aliases = new HashSet<string>(StringComparer.Ordinal);
+        var steps = new List<ProgramInstance.Step>();
+        var stepList = stepsVal.AsArray();
+        for (int i = 0; i < stepList.Count; i++)
+        {
+            var stepVal = stepList[i];
+            if (stepVal.Type != ValueType.Object || stepVal.AsObject() is not JsonObject stepObj)
+            {
+                error = $"$.steps[{i}] must be an object.";
+                return false;
+            }
+
+            var callVal = stepObj.Get("call");
+            if (callVal.Type != ValueType.String)
+            {
+                error = $"$.steps[{i}].call must be a string.";
+                return false;
+            }
+
+            var call = callVal.AsString();
+            if (!apiDef.TryGetMethod(call, out var method))
+            {
+                error = $"$.steps[{i}].call '{call}' is not a method on api '{apiName}'.";
+                return false;
+            }
+
+            var argsVal = stepObj.Get("args");
+            if (argsVal.Type != ValueType.Array)
+            {
+                error = $"$.steps[{i}].args must be an array.";
+                return false;
+            }
+
+            var args = argsVal.AsArray();
+            if (args.Count != method.ParameterNames.Count)
+            {
+                error = $"$.steps[{i}].args length must be {method.ParameterNames.Count} for {call}, got {args.Count}.";
+                return false;
+            }
+
+            for (int a = 0; a < args.Count; a++)
+            {
+                if (!TryValidateProgramArgRef(args[a], aliases, $"$.steps[{i}].args[{a}]", out error))
+                    return false;
+            }
+
+            var asVal = stepObj.Get("as");
+            if (asVal.Type != ValueType.String || string.IsNullOrWhiteSpace(asVal.AsString()))
+            {
+                error = $"$.steps[{i}].as must be a non-empty string.";
+                return false;
+            }
+
+            var alias = asVal.AsString();
+            if (!aliases.Add(alias))
+            {
+                error = $"$.steps[{i}].as '{alias}' is duplicated.";
+                return false;
+            }
+
+            steps.Add(new ProgramInstance.Step(call, new List<RuntimeValue>(args), alias));
+        }
+
+        var returnVal = jsonObj.Get("return");
+        if (!TryValidateProgramArgRef(returnVal, aliases, "$.return", out error))
+            return false;
+
+        validated = RuntimeValue.Object(new ProgramInstance(apiName, steps, returnVal));
+        return true;
+    }
+
+    private static bool TryValidateProgramArgRef(
+        RuntimeValue arg,
+        HashSet<string> definedAliases,
+        string path,
+        out string error)
+    {
+        error = "";
+        if (arg.Type == ValueType.String)
+        {
+            var s = arg.AsString();
+            if (s.StartsWith("$", StringComparison.Ordinal))
+            {
+                var alias = s.Substring(1);
+                if (string.IsNullOrEmpty(alias) || !definedAliases.Contains(alias))
+                {
+                    error = $"{path} references unknown step alias '{s}'.";
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     private static bool TryValidateAndCoerceSum(

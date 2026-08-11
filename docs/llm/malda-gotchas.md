@@ -33,6 +33,8 @@ claim a program works.
 | Treating `-> Type` as compile-time typing | Hints are not static types. On **`await`**, the runtime validates JSON against the resolved schema (and may send OpenAI `response_format`). Without `await`, you only build a `PromptInstance`. | Prefer `schema Name { … }` + `await prompt(...) -> Name`; see `Examples/Prompts/schema_prompt_structured.malda` |
 | Sum-type prompt returning a plain object | `prompt p() -> Intent` with `type Intent = …` coerces JSON into a **variant**. Object field access like `intent.tag` is wrong. | Use `match intent { case Buy(sku, qty): … }`. Wire JSON must be `{ "tag": "Buy", …payload }` |
 | Same name for `schema Foo` and `type Foo` | Registration throws — a name cannot be both. | Pick one spelling / rename one of them |
+| `runProgram` vs `executePlan` / `@Tool` | `runProgram` only calls api methods (no LLM). `executePlan` drives an agent per task step. `@Tool` is a multi-round tool loop. | Use `api` + `program(Api)` + `runProgram` for closed deterministic plans |
+| `api` method without a top-level `function` of the same name | `runProgram` fails at the call step. | Declare `function add(a, b) { … }` matching the signature |
 | `pdf.extractText(scanned.pdf)` expecting OCR | Extracts the **digital text layer** only (PdfPig). Image-only / scanned PDFs often return empty or near-empty text with no error. | OCR first, or convert to `.md` / `.txt` before BUILD |
 | `doc.extractText("old.doc")` | Only **`.docx`** (Office Open XML) is supported. Legacy binary `.doc` throws. | Save as `.docx`, or convert before BUILD |
 

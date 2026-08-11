@@ -1091,6 +1091,7 @@ public static class BuiltInFunctions
             "createCreateMcpAgentScriptTool" => BuiltInCreateCreateMcpAgentScriptTool(args),
             "createSubmitPlanTool" => BuiltInCreateSubmitPlanTool(args),
             "executePlan" => BuiltInExecutePlan(args),
+            "runProgram" => BuiltInRunProgram(args, interpreter),
             "decomposeTask" => BuiltInDecomposeTask(args),
             "extractHTML" => BuiltInExtractHTML(args),
             "markdownToHtml" => BuiltInMarkdownToHtml(args),
@@ -1472,6 +1473,7 @@ public static class BuiltInFunctions
             "createCreateMcpAgentScriptTool" => BuiltInCreateCreateMcpAgentScriptTool(args),
             "createSubmitPlanTool" => BuiltInCreateSubmitPlanTool(args),
             "executePlan" => BuiltInExecutePlan(args),
+            "runProgram" => BuiltInRunProgram(args, interpreter),
             "decomposeTask" => BuiltInDecomposeTask(args),
             "extractHTML" => BuiltInExtractHTML(args),
             "markdownToHtml" => BuiltInMarkdownToHtml(args),
@@ -8827,6 +8829,12 @@ public static class BuiltInFunctions
         return BuiltInTools.CreateSubmitPlanTool();
     }
     
+    private static RuntimeValue BuiltInRunProgram(List<RuntimeValue> args, Interpreter? interpreter)
+    {
+        BuiltInArity.Require("runProgram", args, 1, 1, "program");
+        return ProgramRunner.Run(args[0], interpreter);
+    }
+
     private static RuntimeValue BuiltInExecutePlan(List<RuntimeValue> args)
     {
         BuiltInArity.Require("executePlan", args, 2, BuiltInArity.Unbounded, "plan, agent");

@@ -87,6 +87,7 @@ public class Lexer
         { "default", TokenType.Default },
         { "type", TokenType.Type },
         { "schema", TokenType.Schema },
+        { "api", TokenType.Api },
         { "await", TokenType.Await },
         { "async", TokenType.Async },
         { "workflow", TokenType.Workflow },
