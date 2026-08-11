@@ -147,20 +147,7 @@
 
         <p>This architecture makes MALDA truly "AI-first" - not a language with AI features added, but a language where AI is fundamental to the runtime architecture itself.</p>
 
-        <h2>1.3 Implementation Status</h2>
-
-        <div class="success-box">
-            <strong>Status:</strong> ✅ <strong>FULLY IMPLEMENTED</strong> (C# Interpreter + Desktop IDE + Compiler)
-        </div>
-
-        <h3>Implementation Components</h3>
-        <ul>
-            <li>✅ <strong>Core Language</strong>: C# Interpreter (Lexer, Parser, Interpreter)</li>
-            <li>✅ <strong>WPF Desktop IDE</strong>: Desktop development environment</li>
-            <li>✅ <strong>Compiler</strong>: Dual-mode MALDA to .exe compilation service (Interpreter mode and Transpiler mode)</li>
-        </ul>
-
-        <h2>1.4 Language Features</h2>
+        <h2>1.3 Language Features</h2>
 
         <h3>Core Language Capabilities</h3>
         <p>MALDA includes:</p>
@@ -218,7 +205,7 @@
             <li><strong>LLM Server</strong>: <code>LLMServer</code> class for creating LLM REST API servers</li>
         </ul>
 
-        <h2>1.5 Development Environments</h2>
+        <h2>1.4 Development Environments</h2>
 
         <h3>WPF Desktop IDE</h3>
         <ul>
@@ -234,7 +221,7 @@
             <li>Coexists with classic multi-file composition through <code>include</code> (included files remain normal physical files)</li>
         </ul>
 
-        <h2>1.6 Compiler</h2>
+        <h2>1.5 Compiler</h2>
 
         <p>The MALDA compiler supports dual-mode compilation:</p>
         <ul>
@@ -244,7 +231,7 @@
 
         <p>Both modes produce standalone .exe files with the MALDA runtime embedded. Some external dependencies (e.g., SQL Server/PostgreSQL client libraries, LLamaSharp native DLLs) may require additional DLLs alongside the executable.</p>
 
-        <h2 id="modules">1.7 Source Composition: include, using, import, export</h2>
+        <h2 id="modules">1.6 Source Composition: include, using, import, export</h2>
 
         <p>MALDA has three ways to bring code in from elsewhere, and one way to control what a file offers to others. All four are top-level only.</p>
         <table>
@@ -320,7 +307,7 @@ using CRM.Core;
 // Package import behind a namespace object
 using UI = CRM.Web.Components;</code></pre>
 
-        <h2>1.8 Quick Example</h2>
+        <h2>1.7 Quick Example</h2>
 
         <p>Here's a simple example demonstrating basic MALDA syntax:</p>
 

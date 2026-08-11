@@ -540,7 +540,7 @@ malda test --write-regression --regression-dir ./artifacts/regressions</code></p
 
         <pre><code>dotnet run --project MaldaLang -- path/to/program.malda</code></pre>
 
-        <p>Two habits make the loop converge faster. Keep generated programs small enough to run in isolation and compose them with <code>include</code> (see <a href="01-introduction.html#modules">1.7 Source Composition</a>) rather than generating one large file. And install the language server (<a href="#language-server">2.6 Language Server (LSP)</a>) in the editor the agent runs in, so diagnostics appear on the source as it is written instead of only when it runs.</p>
+        <p>Two habits make the loop converge faster. Keep generated programs small enough to run in isolation and compose them with <code>include</code> (see <a href="01-introduction.html#modules">1.6 Source Composition</a>) rather than generating one large file. And install the language server (<a href="#language-server">2.6 Language Server (LSP)</a>) in the editor the agent runs in, so diagnostics appear on the source as it is written instead of only when it runs.</p>
 
         <p>Programs that read input or use randomness look unverifiable to an agent, which cannot sit at a prompt. They are not. Seed the generator with <code>math.seed(n)</code> so every branch is reachable on purpose, then feed <code>input()</code> a scripted transcript on stdin:</p>
 
