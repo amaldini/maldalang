@@ -861,9 +861,44 @@ print(result.completed);   // step ids that succeeded
 print(result.failed);      // step ids that threw
 print(result.results);     // per-step outcome</code></pre>
         <h3>12.20.2.1 runProgram(program)</h3>
-        <p>Runs a validated program from <code>await prompt(...) -&gt; program(ApiName)</code>. Each step calls a top-level <code>function</code> named like the api method (no LLM). Returns the evaluated <code>return</code> expression. Distinct from <code>executePlan</code> (agent-driven task DAG) and from <code>@Tool</code> loops.</p>
-        <pre><code>var prog = await solve("(2+3)*4");  // prompt … -&gt; program(Calc)
+        <p>Runs a validated program from <code>await prompt(...) -&gt; program(ApiName)</code> (or equivalent wire JSON). Each step calls a top-level <code>function</code> named like the api method (no LLM). Returns the evaluated <code>return</code> expression. Distinct from <code>executePlan</code> (agent-driven task DAG) and from <code>@Tool</code> loops. See <a href="09-functions.html">8. Functions</a> (§ Closed APIs and Deterministic Programs) for the full <code>api</code> / <code>program(ApiName)</code> declaration pattern.</p>
+        <pre><code>api Calc {
+    function add(a, b);
+    function mul(a, b);
+}
+
+function add(a, b) { return a + b; }
+function mul(a, b) { return a * b; }
+
+prompt solve(expr) -&gt; program(Calc) {
+    system: "Translate into Calc steps. JSON only.";
+    user: expr;
+}
+
+var prog = await solve("(2 + 3) * 4");
 var result = runProgram(prog);</code></pre>
+        <p>Offline (no LLM): the same wire shape can be passed directly — <code>args</code> are JSON literals or <code>"$alias"</code> references to a prior step's <code>as</code>:</p>
+        <pre><code data-run="true" data-expect="20">api Calc {
+    function add(a, b);
+    function mul(a, b);
+}
+
+function add(a, b) { return a + b; }
+function mul(a, b) { return a * b; }
+
+var prog = parseJSON("""
+{
+  "@api": "Calc",
+  "steps": [
+    { "call": "add", "args": [2, 3], "as": "t0" },
+    { "call": "mul", "args": ["$t0", 4], "as": "result" }
+  ],
+  "return": "$result"
+}
+""");
+
+var result = runProgram(prog);
+print(result);</code></pre>
         <h3>12.20.3 createSubmitPlanTool()</h3>
         <p>Creates a tool that agents can call to submit a plan (e.g. after a first &quot;think&quot; that produces the plan). The tool accepts <code>plan</code> (object with <code>steps</code>) or <code>steps</code> (array), and optional <code>taskSummary</code>. Returns <code>{ accepted: true, planId, stepCount }</code> or <code>{ accepted: false, error }</code>. No working directory; add to agents with <code>agent.addTool(createSubmitPlanTool())</code>. DevAgent includes this tool by default.</p>
         <h2>12.21 Tool Creation Functions</h2>
