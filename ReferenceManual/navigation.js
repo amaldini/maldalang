@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', function() {
     injectNavbar().then(function() {
         initNavigation();
         initCollapsibleNav();
+        initNavDrawer();
     });
 
     initHeaderActions();
@@ -201,24 +202,96 @@ function escapeAttr(text) {
 
 function initHeaderActions() {
     const header = document.querySelector('header');
-    if (!header || header.querySelector('.manual-actions')) {
+    if (!header) {
         return;
     }
 
-    const actions = document.createElement('div');
-    actions.className = 'manual-actions';
+    if (!header.querySelector('.nav-toggle')) {
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'nav-toggle';
+        toggle.setAttribute('aria-label', 'Open contents');
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.setAttribute('aria-controls', 'manual-nav');
+        toggle.innerHTML = '<span class="nav-toggle-bars" aria-hidden="true"></span>';
+        toggle.addEventListener('click', function() {
+            toggleMobileMenu();
+        });
+        header.insertBefore(toggle, header.firstChild);
+    }
 
-    const printButton = document.createElement('button');
-    printButton.type = 'button';
-    printButton.className = 'manual-action';
-    printButton.textContent = 'Print / PDF';
-    printButton.title = 'Print this chapter (A4, code wrapped to the page)';
-    printButton.addEventListener('click', function() {
-        window.print();
+    if (!header.querySelector('.manual-actions')) {
+        const actions = document.createElement('div');
+        actions.className = 'manual-actions';
+
+        const printButton = document.createElement('button');
+        printButton.type = 'button';
+        printButton.className = 'manual-action';
+        printButton.textContent = 'Print / PDF';
+        printButton.title = 'Print this chapter (A4, code wrapped to the page)';
+        printButton.addEventListener('click', function() {
+            window.print();
+        });
+
+        actions.appendChild(printButton);
+        header.appendChild(actions);
+    }
+}
+
+function initNavDrawer() {
+    const nav = document.querySelector('nav');
+    if (!nav) {
+        return;
+    }
+
+    nav.id = nav.id || 'manual-nav';
+
+    if (!document.querySelector('.nav-backdrop')) {
+        const backdrop = document.createElement('div');
+        backdrop.className = 'nav-backdrop';
+        backdrop.setAttribute('hidden', '');
+        backdrop.addEventListener('click', function() {
+            setNavDrawerOpen(false);
+        });
+        document.body.appendChild(backdrop);
+    }
+
+    nav.querySelectorAll('a').forEach(function(link) {
+        link.addEventListener('click', function() {
+            setNavDrawerOpen(false);
+        });
     });
 
-    actions.appendChild(printButton);
-    header.appendChild(actions);
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            setNavDrawerOpen(false);
+        }
+    });
+}
+
+function setNavDrawerOpen(open) {
+    const nav = document.querySelector('nav');
+    const toggle = document.querySelector('.nav-toggle');
+    const backdrop = document.querySelector('.nav-backdrop');
+    if (!nav) {
+        return;
+    }
+
+    document.body.classList.toggle('nav-drawer-open', open);
+    nav.classList.toggle('mobile-open', open);
+
+    if (toggle) {
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        toggle.setAttribute('aria-label', open ? 'Close contents' : 'Open contents');
+    }
+
+    if (backdrop) {
+        if (open) {
+            backdrop.removeAttribute('hidden');
+        } else {
+            backdrop.setAttribute('hidden', '');
+        }
+    }
 }
 
 // The highlighter wraps each source line in a block-level <span class="ln">,
@@ -337,6 +410,5 @@ function highlightActiveSection() {
 }
 
 function toggleMobileMenu() {
-    const nav = document.querySelector('nav');
-    nav.classList.toggle('mobile-open');
+    setNavDrawerOpen(!document.body.classList.contains('nav-drawer-open'));
 }

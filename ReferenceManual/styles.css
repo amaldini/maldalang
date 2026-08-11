@@ -120,6 +120,68 @@ header p {
 }
 
 /* Injected by navigation.js */
+.nav-toggle {
+    display: none;
+    position: absolute;
+    top: 50%;
+    left: 0.85rem;
+    transform: translateY(-50%);
+    align-items: center;
+    justify-content: center;
+    width: 2.4rem;
+    height: 2.4rem;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    cursor: pointer;
+    transition: background 0.18s, border-color 0.18s;
+}
+
+.nav-toggle:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.6);
+}
+
+.nav-toggle:focus-visible {
+    outline: 2px solid #ffffff;
+    outline-offset: 2px;
+}
+
+.nav-toggle-bars,
+.nav-toggle-bars::before,
+.nav-toggle-bars::after {
+    display: block;
+    width: 1.05rem;
+    height: 2px;
+    background: currentColor;
+    border-radius: 1px;
+}
+
+.nav-toggle-bars {
+    position: relative;
+}
+
+.nav-toggle-bars::before,
+.nav-toggle-bars::after {
+    content: "";
+    position: absolute;
+    left: 0;
+}
+
+.nav-toggle-bars::before {
+    top: -5px;
+}
+
+.nav-toggle-bars::after {
+    top: 5px;
+}
+
+.nav-backdrop {
+    display: none;
+}
+
 .manual-actions {
     position: absolute;
     top: 50%;
@@ -846,33 +908,92 @@ footer {
     }
 }
 
-@media (max-width: 860px) {
+/* Narrow phones/tablets, and short landscape viewports: off-canvas drawer.
+ * The old inline nav (max-height: 20rem) ate most of a phone landscape height
+ * and nested scrolling made the chapter content feel unreachable. */
+@media (max-width: 860px), (max-height: 520px) {
+    :root {
+        --header-h: 3.75rem;
+    }
+
     body {
         grid-template-columns: 1fr;
-        grid-template-rows: var(--header-h) auto 1fr;
+        grid-template-rows: var(--header-h) 1fr;
+    }
+
+    body.nav-drawer-open {
+        overflow: hidden;
     }
 
     header {
-        padding: 0 1.1rem;
+        /* Keep toggle/print above the drawer backdrop. */
+        z-index: 170;
+        padding: 0 4.5rem 0 3.5rem;
+    }
+
+    .nav-toggle {
+        display: inline-flex;
     }
 
     .manual-actions {
-        right: 1.1rem;
+        right: 0.75rem;
+    }
+
+    .manual-action {
+        padding: 0.35rem 0.65rem;
+        font-size: 0.72rem;
+    }
+
+    .nav-backdrop {
+        display: block;
+        position: fixed;
+        top: var(--header-h);
+        right: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 150;
+        background: rgba(16, 33, 43, 0.42);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+    }
+
+    body.nav-drawer-open .nav-backdrop {
+        opacity: 1;
+        pointer-events: auto;
     }
 
     nav {
-        position: relative;
-        top: 0;
+        position: fixed;
+        top: var(--header-h);
+        left: 0;
+        bottom: 0;
+        z-index: 160;
+        width: min(20rem, 86vw);
         height: auto;
-        max-height: 20rem;
-        border-right: none;
-        border-bottom: 1px solid var(--border-color);
-        padding: 0.75rem 0;
+        max-height: none;
+        border-right: 1px solid var(--border-color);
+        border-bottom: none;
+        padding: 0.75rem 0 1.5rem;
+        background-color: var(--bg-sidebar);
+        box-shadow: var(--shadow-lg);
+        transform: translateX(-105%);
+        visibility: hidden;
+        transition: transform 0.22s ease, visibility 0.22s;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    body.nav-drawer-open nav {
+        transform: translateX(0);
+        visibility: visible;
     }
 
     main {
+        grid-column: 1;
         padding: 1.75rem 1.25rem 3rem;
         font-size: 1rem;
+        min-width: 0;
     }
 
     h1 {
@@ -886,6 +1007,24 @@ footer {
     pre {
         border-radius: var(--radius-sm);
         padding: 0.9rem;
+    }
+}
+
+@media (max-height: 420px) and (orientation: landscape) {
+    :root {
+        --header-h: 3.1rem;
+    }
+
+    header h1 {
+        font-size: 0.95rem;
+    }
+
+    header p {
+        display: none;
+    }
+
+    main {
+        padding: 1.25rem 1.1rem 2.5rem;
     }
 }
 

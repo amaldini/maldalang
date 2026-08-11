@@ -43,6 +43,8 @@ body {
 /* ------------------------------------------------------- Screen-only UI */
 
 nav,
+.nav-toggle,
+.nav-backdrop,
 .copy-btn,
 .manual-actions,
 .breadcrumbs,
