@@ -38,7 +38,7 @@ const staticChapters = [
     { file: "24-device-integration.html", title: "Device Integration", num: "28", category: "Built-in Features", description: "Control physical devices (Arduino, ESP32, IoT, etc.)" },
     { file: "26-personal-assistant.html", title: "Personal Assistant and CLI", num: "29", category: "Reference", description: "Assistant commands, scheduling, and channels" },
     { file: "20-examples.html", title: "Examples", num: "30", category: "Reference", description: "Complete code examples" },
-    { file: "30-full-stack-development.html", title: "Full-Stack Development with MALDA", num: "31", category: "Reference", description: "End-to-end CRM/ticketing architecture and implementation flow" },
+    { file: "30-full-stack-development.html", title: "Full-Stack Development with MALDA", num: "31", category: "Reference", description: "End-to-end full-stack architecture and implementation flow" },
     { file: "31-durable-workflows.html", title: "Durable Workflows", num: "32", category: "Reference", description: "Durable workflow syntax, runtime model, CLI, DLQ, and operations" },
     { file: "27-property-testing.html", title: "Property Testing", num: "33", category: "Reference", description: "Deterministic property tests, shrinking, and regression workflows" },
     { file: "22-grammar.html", title: "Grammar", num: "34", category: "Reference", description: "BNF-like grammar specification" },

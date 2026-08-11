@@ -232,7 +232,7 @@
                                            ],
                          "learningGoal":  "See how MALDA scales from language basics into full-stack UI delivery.",
                          "expectedOutput":  "Renders a compact UI showcase in the browser.",
-                         "next":  "Web/crm_modern_sqlite.malda",
+                         "next":  "Web/ui_form_workflow.malda",
                          "documentationPath":  "/?lesson=fullstack-demo#lesson-fullstack-demo",
                          "documentationTitle":  "Full-Stack Demo",
                          "featured":  true

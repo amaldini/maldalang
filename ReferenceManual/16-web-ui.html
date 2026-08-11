@@ -43,7 +43,7 @@
             <li><code>componentLiveEmit(channel, payload, eventType?)</code> - broadcasts live events to connected SSE clients</li>
         </ul>
         <h3>19.1.1 Minimal server-side example</h3>
-        <pre><code>component TicketBoard() {
+        <pre><code>component ItemBoard() {
     var items = componentStateGet("board", "items", []);
     var list = "";
     var i = 0;
@@ -51,38 +51,38 @@
         list = list + "&lt;li&gt;" + items[i].title + "&lt;/li&gt;";
         i = i + 1;
     }
-    return "&lt;h1&gt;Tickets&lt;/h1&gt;&lt;div id='ticket-list'&gt;&lt;ul&gt;" + list + "&lt;/ul&gt;&lt;/div&gt;";
+    return "&lt;h1&gt;Items&lt;/h1&gt;&lt;div id='item-list'&gt;&lt;ul&gt;" + list + "&lt;/ul&gt;&lt;/div&gt;";
 }
 
-@ACTION("/tickets/add")
-function addTicket(body) {
+@ACTION("/items/add")
+function addItem(body) {
     var items = componentStateGet("board", "items", []);
     items.append({"title": body.title, "status": "open"});
     componentStateSet("board", "items", items);
-    componentLiveEmit("tickets", {"count": items.length}, "ticket-added");
-    return componentFragment("ticket-list", "&lt;ul&gt;&lt;li&gt;" + body.title + "&lt;/li&gt;&lt;/ul&gt;");
+    componentLiveEmit("items", {"count": items.length}, "item-added");
+    return componentFragment("item-list", "&lt;ul&gt;&lt;li&gt;" + body.title + "&lt;/li&gt;&lt;/ul&gt;");
 }
 
-@LIVE("/tickets/live")
-function ticketsLive() {
+@LIVE("/items/live")
+function itemsLive() {
     return {"sse": true};
 }</code></pre>
         <h3>19.1.2 Tiny browser integration example</h3>
-        <pre><code>&lt;form id="ticket-form"&gt;
+        <pre><code>&lt;form id="item-form"&gt;
   &lt;input name="title" /&gt;
   &lt;button type="submit"&gt;Add&lt;/button&gt;
 &lt;/form&gt;
-&lt;div id="ticket-list"&gt;&lt;/div&gt;
+&lt;div id="item-list"&gt;&lt;/div&gt;
 &lt;script&gt;
-document.getElementById("ticket-form").addEventListener("submit", async (e) =&gt; {
+document.getElementById("item-form").addEventListener("submit", async (e) =&gt; {
   e.preventDefault();
   const fd = new FormData(e.target);
-  const r = await fetch("/tickets/add", { method: "POST", body: fd });
+  const r = await fetch("/items/add", { method: "POST", body: fd });
   const html = await r.text();
-  document.getElementById("ticket-list").innerHTML = html;
+  document.getElementById("item-list").innerHTML = html;
 });
 
-const es = new EventSource("/tickets/live");
+const es = new EventSource("/items/live");
 es.onmessage = (evt) =&gt; console.log("live update", evt.data);
 &lt;/script&gt;</code></pre>
         <h3>19.1.3 Fragment contract</h3>
@@ -95,12 +95,12 @@ es.onmessage = (evt) =&gt; console.log("live update", evt.data);
         <p>The built-in AJAX helper checks these headers and updates only the target element. If headers are missing, it falls back to full-page replacement.</p>
         <h3>19.1.4 LIVE channel subscription</h3>
         <p>Use query parameter <code>?channel=...</code> on LIVE endpoints to scope events:</p>
-        <pre><code>// Client subscribes only to ticket events
-var es = new EventSource("/tickets/live?channel=tickets");
+        <pre><code>// Client subscribes only to item events
+var es = new EventSource("/items/live?channel=items");
 
-// Server emits only to channel "tickets"
-componentLiveEmit("tickets", {"count": 8}, "ticket-added");</code></pre>
-        <p>Multiple channels can be subscribed as comma-separated values, for example <code>?channel=tickets,alerts</code>.</p>
+// Server emits only to channel "items"
+componentLiveEmit("items", {"count": 8}, "item-added");</code></pre>
+        <p>Multiple channels can be subscribed as comma-separated values, for example <code>?channel=items,alerts</code>.</p>
         <h3>19.1.5 Server UI protocol envelopes</h3>
         <p>The server UI host uses versioned envelopes for mount/patch/event transport. Important fields include:</p>
         <ul>
@@ -134,15 +134,15 @@ componentLiveEmit("tickets", {"count": 8}, "ticket-added");</code></pre>
         </ul>
         <pre><code>var html = renderTemplate(
     "&lt;h1&gt;{{title}}&lt;/h1&gt;&lt;p&gt;{{count}} items&lt;/p&gt;",
-    {"title": "Tickets", "count": 4}
+    {"title": "Items", "count": 4}
 );
 
-@ACTION("/tickets/add")
-function addTicket(body) {
-    return componentFragment("ticket-list", "&lt;ul&gt;&lt;li&gt;" + body.title + "&lt;/li&gt;&lt;/ul&gt;");
+@ACTION("/items/add")
+function addItem(body) {
+    return componentFragment("item-list", "&lt;ul&gt;&lt;li&gt;" + body.title + "&lt;/li&gt;&lt;/ul&gt;");
 }
 
-componentLiveEmit("tickets", {"count": 7}, "ticket-added");</code></pre>
+componentLiveEmit("items", {"count": 7}, "item-added");</code></pre>
         <h3>19.2.1.1 UI-native template workflow (transparent UX)</h3>
         <p>For larger apps, use the UI template helpers to keep HTML in external files and MALDA logic in code:</p>
         <ul>
@@ -151,16 +151,16 @@ componentLiveEmit("tickets", {"count": 7}, "ticket-added");</code></pre>
             <li><code>ui.layout(source, slots, model?)</code> - render layout + named slots with <code>{{slot:name}}</code> placeholders.</li>
             <li><code>ui.renderList(items, source, itemName?)</code> - render repeated items with a shared item template.</li>
         </ul>
-        <pre><code>var base = "Examples/Web/templates/crm/";
+        <pre><code>var base = "templates/";
 
 var sidebar = ui.template(base + "sidebar.html", {
     "overviewClass": "nav-link active",
-    "ticketsClass": "nav-link"
+    "itemsClass": "nav-link"
 });
 
-var rowsHtml = ui.renderList(tickets, base + "ticket_row.html", "ticket");
+var rowsHtml = ui.renderList(items, base + "item_row.html", "item");
 
-var body = ui.partial(base + "tickets_body.html", {
+var body = ui.partial(base + "items_body.html", {
     "rows": rowsHtml
 });
 
@@ -169,11 +169,11 @@ return ui.layout(
     {
         "sidebar": sidebar,
         "pageBody": body,
-        "pageScript": "initTickets();"
+        "pageScript": "initItems();"
     },
     {
-        "pageTitle": "Tickets",
-        "crmCssPublicPath": "/crm/crm.css"
+        "pageTitle": "Items",
+        "appCssPublicPath": "/static/app.css"
     }
 );</code></pre>
         <p><strong>Template syntax:</strong></p>
@@ -184,36 +184,36 @@ return ui.layout(
             <li><code>{{#each items as item}}...{{/each}}</code> - list rendering with alias</li>
         </ul>
         <pre><code>&lt;ul&gt;
-{{#each tickets as ticket}}
-  {{#if ticket.open}}
-    &lt;li&gt;{{ticket.title}} - {{{ticket.badgeHtml}}}&lt;/li&gt;
+{{#each items as item}}
+  {{#if item.open}}
+    &lt;li&gt;{{item.title}} - {{{item.badgeHtml}}}&lt;/li&gt;
   {{/if}}
 {{/each}}
 &lt;/ul&gt;</code></pre>
         <p><strong>Compatibility:</strong> pass <code>{"compatRaw": true}</code> to <code>ui.template(..., ..., options)</code> to preserve legacy raw behavior for <code>{{key}}</code> during migration.</p>
         <p><strong>Caching:</strong> template files are cached by default. Pass <code>{"cache": false}</code> as the third argument to <code>ui.template</code> for development-time reload behavior.</p>
-        <p><strong>Recommended structure:</strong> keep template files under <code>templates/</code> (for example, <code>Examples/Web/templates/crm/layout.html</code>) and reference them by path.</p>
-        <h3>19.2.1.2 Schema-driven CRUD helper pattern (CRM)</h3>
+        <p><strong>Recommended structure:</strong> keep template files under a project-local <code>templates/</code> directory (for example, <code>templates/layout.html</code>) and reference them by path. Runnable Web samples live under <code>Examples/Web/</code> (for example <code>ui_form_workflow.malda</code> and <code>ui_controls_showcase_minimal.malda</code>).</p>
+        <h3>19.2.1.2 Schema-driven CRUD helper pattern</h3>
         <p>For CRUD pages that share the same UI skeleton (filters, add/edit dialogs, list controls), use the built-in schema pipeline:</p>
         <ul>
             <li><code>ui.crudModel(schema, sessionId?, queryParams?, lookups?)</code> - builds the controls model consumed by shared CRUD templates.</li>
             <li><code>ui.crudControls(schema, sessionId?, queryParams?, lookups?, options?)</code> - builds the model and renders HTML in one step.</li>
             <li><code>ui.crudSchema(schema, defaults?)</code> - normalizes schema defaults (template paths, filter arrays, labels) before rendering.</li>
         </ul>
-        <p><strong>Default behavior:</strong> <code>ui.crudControls</code> renders <code>Examples/Web/templates/crm/entity_controls.html</code> when no template override is provided.</p>
+        <p><strong>Default behavior:</strong> <code>ui.crudControls</code> resolves <code>entity_controls.html</code> under the schema <code>templateBasePath</code> (default <code>templates</code>) when no template override is provided.</p>
         <ul>
             <li>Define a <strong>data-only schema</strong> per entity: labels, routes, filter descriptors, template paths, lookup requirements.</li>
             <li>Use <code>ui.crudModel</code> when you need direct control over template rendering or composition.</li>
             <li>Use <code>ui.crudControls</code> for the common end-to-end path.</li>
             <li>Keep entity page handlers focused on: parse query, fetch rows/lookups, call one built-in, render layout.</li>
         </ul>
-        <pre><code>var schema = ticketsCrudSchema; // data only
+        <pre><code>var schema = itemsCrudSchema; // data only
 var sessionId = queryParams["session"] == null || queryParams["session"] == "" ? schema.sessionDefault : queryParams["session"];
-var lookups = {"customers": allCustomers(), "agents": listAgents()};
+var lookups = {"owners": allOwners(), "tags": listTags()};
 var controlsHtml = ui.crudControls(schema, sessionId, queryParams, lookups);</code></pre>
         <pre><code>var normalized = ui.crudSchema(schema, {
-  "templateBasePath": "Examples/Web/templates/crm",
-  "controlsTemplatePath": "Examples/Web/templates/crm/entity_controls.html"
+  "templateBasePath": "templates",
+  "controlsTemplatePath": "templates/entity_controls.html"
 });
 var controlsHtml = ui.crudControls(normalized, sessionId, queryParams, lookups);</code></pre>
         <p><strong>Overrides:</strong> pass <code>{"templatePath": "...", "templateBasePath": "...", "cache": false}</code> in <code>ui.crudControls(..., options)</code> when you need a different controls template, base path, or cache behavior.</p>
@@ -228,15 +228,15 @@ var controlsHtml = ui.crudControls(normalized, sessionId, queryParams, lookups);
                 <tr><th>Property</th><th>Type</th><th>Description / default</th></tr>
             </thead>
             <tbody>
-                <tr><td><code>entityPluralLower</code></td><td>string</td><td>Entity name plural, e.g. <code>"tickets"</code>. Passed to the controls template.</td></tr>
-                <tr><td><code>entitySingularLower</code></td><td>string</td><td>Entity name singular, e.g. <code>"ticket"</code>. Used by <code>ui.crudSchema</code> to derive default <code>openAddLabel</code> / <code>openEditLabel</code> when omitted (default <code>"item"</code>).</td></tr>
+                <tr><td><code>entityPluralLower</code></td><td>string</td><td>Entity name plural, e.g. <code>"items"</code>. Passed to the controls template.</td></tr>
+                <tr><td><code>entitySingularLower</code></td><td>string</td><td>Entity name singular, e.g. <code>"item"</code>. Used by <code>ui.crudSchema</code> to derive default <code>openAddLabel</code> / <code>openEditLabel</code> when omitted (default <code>"item"</code>).</td></tr>
                 <tr><td><code>sessionDefault</code></td><td>string</td><td>Default session id when <code>sessionId</code> is not passed to <code>ui.crudControls</code> / <code>ui.crudModel</code>. Default <code>"default"</code>.</td></tr>
-                <tr><td><code>templateBasePath</code></td><td>string</td><td>Base directory for dialog and lookup option templates. <code>ui.crudSchema</code> default: <code>Examples/Web/templates/crm</code> (or from <code>defaults.templateBasePath</code>).</td></tr>
+                <tr><td><code>templateBasePath</code></td><td>string</td><td>Base directory for dialog and lookup option templates. <code>ui.crudSchema</code> default: <code>templates</code> (or from <code>defaults.templateBasePath</code>).</td></tr>
                 <tr><td><code>controlsTemplatePath</code></td><td>string</td><td>Path to the entity controls template (filters + buttons + grid host). Default: <code>templateBasePath + "/entity_controls.html"</code>. Fallback: <code>controlsTemplate</code>.</td></tr>
-                <tr><td><code>listAction</code></td><td>string</td><td>URL or path for the list page, e.g. <code>"/web/crm/tickets"</code>. Passed to the controls template.</td></tr>
+                <tr><td><code>listAction</code></td><td>string</td><td>URL or path for the list page, e.g. <code>"/web/items"</code>. Passed to the controls template.</td></tr>
                 <tr><td><code>filterGridColumns</code></td><td>string</td><td>CSS grid columns for the filter bar, e.g. <code>"2fr 1fr auto"</code>. Passed to the controls template.</td></tr>
-                <tr><td><code>openAddButtonId</code></td><td>string</td><td>DOM id of the button that opens the add dialog, e.g. <code>"openTicketAddDialog"</code>.</td></tr>
-                <tr><td><code>openEditButtonId</code></td><td>string</td><td>DOM id of the button that opens the edit dialog, e.g. <code>"openTicketEditDialog"</code>.</td></tr>
+                <tr><td><code>openAddButtonId</code></td><td>string</td><td>DOM id of the button that opens the add dialog, e.g. <code>"openItemAddDialog"</code>.</td></tr>
+                <tr><td><code>openEditButtonId</code></td><td>string</td><td>DOM id of the button that opens the edit dialog, e.g. <code>"openItemEditDialog"</code>.</td></tr>
                 <tr><td><code>openAddLabel</code></td><td>string</td><td>Label for the add action. <code>ui.crudSchema</code> default: <code>"Add " + entitySingularLower</code> (or from <code>defaults.openAddLabel</code>).</td></tr>
                 <tr><td><code>openEditLabel</code></td><td>string</td><td>Label for the edit action. <code>ui.crudSchema</code> default: <code>"Edit selected " + entitySingularLower</code> (or from <code>defaults.openEditLabel</code>).</td></tr>
                 <tr><td><code>addDialogTemplate</code></td><td>string</td><td>Template filename for the add dialog HTML (resolved under <code>templateBasePath</code>).</td></tr>
@@ -244,8 +244,8 @@ var controlsHtml = ui.crudControls(normalized, sessionId, queryParams, lookups);
                 <tr><td><code>dialogScriptTemplate</code></td><td>string</td><td>Template filename for the dialog script (resolved under <code>templateBasePath</code>).</td></tr>
                 <tr><td><code>filterDefs</code></td><td>array</td><td>List of filter definitions (see below). <code>ui.crudSchema</code> coerces non-array to <code>[]</code>.</td></tr>
                 <tr><td><code>dialogLookupOptions</code></td><td>array</td><td>List of lookup bindings for add/edit dialogs (see below). <code>ui.crudSchema</code> coerces non-array to <code>[]</code>. Each <code>source</code> must exist in the <code>lookups</code> object passed to <code>ui.crudControls</code> / <code>ui.crudModel</code> or dropdowns will be empty.</td></tr>
-                <tr><td><code>gridDescription</code></td><td>string</td><td>Optional. Description for the grid host; used by app layouts (e.g. CRM) for accessibility or layout.</td></tr>
-                <tr><td><code>envelopeApiPath</code></td><td>string</td><td>Optional. API path for the UI envelope; used by app layouts (e.g. CRM) that mount the grid via <code>ui.mountEnvelope</code>.</td></tr>
+                <tr><td><code>gridDescription</code></td><td>string</td><td>Optional. Description for the grid host; used by app layouts for accessibility or layout.</td></tr>
+                <tr><td><code>envelopeApiPath</code></td><td>string</td><td>Optional. API path for the UI envelope; used by app layouts that mount the grid via <code>ui.mountEnvelope</code>.</td></tr>
             </tbody>
         </table>
 
@@ -317,7 +317,7 @@ componentStatePin("brain", "ask-shared");</code></pre>
             <li>Session helpers: <code>ui.sessionId(source, defaultSessionId?)</code>, <code>ui.redirectWithSession(path, source, defaultSessionId?)</code></li>
         </ul>
         <p><code>ui.configure</code> supports <code>maxPatchCount</code>, <code>maxPayloadBytes</code>, <code>maxEventQueueDepth</code>, and <code>sessionTtlMs</code>.</p>
-        <pre><code>var envelope = ui.mountEnvelope(rootNode, "crm-session", {
+        <pre><code>var envelope = ui.mountEnvelope(rootNode, "app-session", {
   "maxPatchCount": 1024,
   "maxEventQueueDepth": 1024,
   "sessionTtlMs": 1800000
@@ -326,8 +326,8 @@ print(envelope.mount.type);
 print(envelope.snapshot.version);
 print(envelope.resync.type);</code></pre>
         <pre><code>// source can be request object, body object, or query/body map containing "session"
-var sessionId = ui.sessionId(req, "crm-tickets-ui");
-return ui.redirectWithSession("/web/crm/tickets", body, "crm-tickets-ui");</code></pre>
+var sessionId = ui.sessionId(req, "items-ui");
+return ui.redirectWithSession("/web/items", body, "items-ui");</code></pre>
         <p>Lifecycle events are emitted through <code>ui.pullEvent()</code> as <code>type = "lifecycle"</code> payloads. Typical ordering is:</p>
         <ul>
             <li><code>ui.mount</code>: <code>onInit</code>, then <code>onMount</code></li>
@@ -414,18 +414,18 @@ var tree = ui.treeView({
         </ul>
         <p>Event props (<code>onClick</code>, <code>onSubmit</code>, <code>onChange</code>, etc.) are action-name strings included in the emitted event payload. Keep action names stable across renders so your server-side event loop can handle them consistently.</p>
         <h3>19.2.4.3 Control usage examples</h3>
-        <p>Implementation-ready snippets for common CRM-style patterns:</p>
+        <p>Implementation-ready snippets for common form and list patterns:</p>
         <pre><code>// Button with primary variant and action
-ui.button({"label": "Save", "variant": "primary", "onClick": "saveTicket"})
+ui.button({"label": "Save", "variant": "primary", "onClick": "saveItem"})
 
 // Form with submit action and validation
-ui.form({"componentId": "TicketForm", "onSubmit": "submitTicket"}, [
+ui.form({"componentId": "ItemForm", "onSubmit": "submitItem"}, [
     ui.field({}, [ui.text({"value": "Title"}), ui.textField({"name": "title", "required": true})]),
     ui.button({"label": "Create", "variant": "primary", "onClick": "submit"})
 ])
 
 // Modal with close handler
-ui.modal({"open": true, "title": "Edit ticket", "onClose": "closeEditDialog"}, [
+ui.modal({"open": true, "title": "Edit item", "onClose": "closeEditDialog"}, [
     ui.text({"value": "Form content here"})
 ])
 
@@ -466,18 +466,18 @@ ui.errorBoundary({}, [ui.text({"value": "Something went wrong. Please try again.
         </ul>
         <p>Action names are strings your server-side event loop maps to behavior. In server UI flows, process the pulled event payload, update state, and then emit fragments or re-render.</p>
 <pre><code>// Client: form submits; server returns fragment or JSON
-ui.form({"onSubmit": "submitTicket"}, [
+ui.form({"onSubmit": "submitItem"}, [
     ui.textField({"name": "title", "onChange": "validateTitle"}),
     ui.button({"label": "Submit"})
 ])
 
 // Server: process events from the queue
-ui.dispatchEvent({"type": "submit", "targetPath": "/", "payload": {"action": "submitTicket", "title": "Bug report"}}, sessionId, 1);
+ui.dispatchEvent({"type": "submit", "targetPath": "/", "payload": {"action": "submitItem", "title": "Bug report"}}, sessionId, 1);
 var evt = ui.pullEvent(sessionId);
-if (evt != null && evt.payload != null && evt.payload.action == "submitTicket") {
+if (evt != null && evt.payload != null && evt.payload.action == "submitItem") {
     // validate/persist, then ui.setState(...) or return componentFragment(...)
 }</code></pre>
-        <p>For template-based forms (CRM-style), use <code>method="post"</code> and <code>action="/path/..."</code> with the built-in AJAX helper. See <a href="30-full-stack-development.html">30. Full-Stack Development with MALDA</a> for end-to-end patterns.</p>
+        <p>For template-based forms, use <code>method="post"</code> and <code>action="/path/..."</code> with the built-in AJAX helper. See <a href="30-full-stack-development.html">30. Full-Stack Development with MALDA</a> for end-to-end patterns.</p>
         <h3>19.2.7 Form validation patterns and error rendering</h3>
         <p>Validate input on the server before persisting. Return validation errors in the response and render them next to fields:</p>
         <ul>
@@ -485,8 +485,8 @@ if (evt != null && evt.payload != null && evt.payload.action == "submitTicket") 
             <li>Server-side: validate in <code>@ACTION</code> or <code>@POST</code> handlers; return <code>componentFragment(...)</code> with inline error markup.</li>
             <li>Render errors with <code>ui.alert</code> or <code>ui.text</code> with <code>variant="error"</code> / <code>className="error"</code>.</li>
         </ul>
-        <pre><code>@ACTION("/tickets/add")
-function addTicket(body) {
+        <pre><code>@ACTION("/items/add")
+function addItem(body) {
     var errors = [];
     if (body.title == null || body.title == "") {
         errors.append("Title is required");
@@ -502,10 +502,10 @@ function addTicket(body) {
             i = i + 1;
         }
         errHtml = errHtml + "&lt;/ul&gt;";
-        return componentFragment("ticket-form-errors", errHtml);
+        return componentFragment("item-form-errors", errHtml);
     }
     // persist and return success fragment
-    return componentFragment("ticket-list", "&lt;ul&gt;&lt;li&gt;" + body.title + "&lt;/li&gt;&lt;/ul&gt;");
+    return componentFragment("item-list", "&lt;ul&gt;&lt;li&gt;" + body.title + "&lt;/li&gt;&lt;/ul&gt;");
 }</code></pre>
         <p><strong>Security:</strong> Always escape user-supplied content before embedding in HTML. Use <code>{{key}}</code> (escaped interpolation) in templates, or use a trusted escaping helper for raw string concatenation. Never use <code>{{{key}}}</code> for user input.</p>
         <h3>19.2.8 Composition patterns</h3>
@@ -546,18 +546,18 @@ ui.pinState("AskStore", sharedScope);</code></pre>
         <h3>19.2.10 Routing and query param patterns</h3>
         <p>For master-detail and multi-page flows, use query parameters:</p>
         <ul>
-            <li><strong>List page</strong>: <code>/web/crm/tickets?search=...&amp;status=open&amp;sort=id_desc</code></li>
-            <li><strong>Detail page</strong>: <code>/web/crm/tickets?id=42</code> or path param <code>/web/crm/tickets/42</code></li>
+            <li><strong>List page</strong>: <code>/web/items?search=...&amp;status=open&amp;sort=id_desc</code></li>
+            <li><strong>Detail page</strong>: <code>/web/items?id=42</code> or path param <code>/web/items/42</code></li>
             <li>Parse <code>req.query</code> in page handlers; pass to <code>ui.crudControls</code> or <code>ui.crudModel</code> when using schema-driven CRUD.</li>
         </ul>
-        <pre><code>@PAGE("/web/crm/tickets")
-function ticketsPage(req) {
+        <pre><code>@PAGE("/web/items")
+function itemsPage(req) {
     var queryParams = req.query == null ? {} : req.query;
-    var sessionId = ui.sessionId(req, "crm-tickets-ui");
-    var schema = ticketsCrudSchema;
-    var lookups = {"customers": listCustomers(), "agents": listAgents()};
+    var sessionId = ui.sessionId(req, "items-ui");
+    var schema = itemsCrudSchema;
+    var lookups = {"owners": listOwners(), "tags": listTags()};
     var controlsHtml = ui.crudControls(schema, sessionId, queryParams, lookups);
-    return crmLayoutHtml("tickets", "Tickets", controlsHtml, "");
+    return appLayoutHtml("items", "Items", controlsHtml, "");
 }</code></pre>
         <p>For REST API calls from the client, use <code>fetch</code> or <code>RestClient</code>; see <a href="18-rest-web-client.html">23. REST Web Client</a> for server-side HTTP calls and <a href="17-rest-api.html">22. REST API Server</a> for API design.</p>
         <h3>19.2.11 Error and security notes</h3>
@@ -566,17 +566,17 @@ function ticketsPage(req) {
             <li><strong>CSRF</strong>: Enable <code>enableCsrf(secret, cookieName?, headerName?)</code> on <code>HttpServer</code> for mutating routes. The client must send the CSRF token in the header or form field.</li>
             <li><strong>Validation</strong>: Validate all request input in <code>@ACTION</code> and <code>@POST</code> handlers; return 400 with structured errors for API clients.</li>
         </ul>
-        <h3>19.2.12 Styling guidance (CRM conventions)</h3>
-        <p>Align with CRM framework patterns for consistent look and feel:</p>
+        <h3>19.2.12 Styling guidance</h3>
+        <p>Keep layout and CSS conventions consistent across pages:</p>
         <ul>
             <li>Use <code>className</code> for semantic classes: <code>btn primary</code>, <code>nav-link</code>, <code>panel stack</code>, <code>muted</code>.</li>
             <li>Layout: <code>stack</code> for vertical stacking, <code>row</code> for horizontal flow; use <code>style</code> for grid columns (<code>grid-template-columns</code>).</li>
             <li>App templates can provide layout, sidebar, and entity controls; reference shared CSS via a public path helper.</li>
         </ul>
         <pre><code>var body = ui.layout(
-    "Examples/Web/templates/crm/layout.html",
+    "templates/layout.html",
     {"sidebar": sidebarHtml, "pageBody": bodyHtml},
-    {"pageTitle": "Tickets", "crmCssPublicPath": "/crm/crm.css"}
+    {"pageTitle": "Items", "appCssPublicPath": "/static/app.css"}
 );</code></pre>
         <h3>19.2.13 Common pitfalls and debugging</h3>
         <ul>

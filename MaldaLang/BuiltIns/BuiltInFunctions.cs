@@ -9611,8 +9611,8 @@ public static class BuiltInFunctions
             normalized,
             "templateBasePath",
             defaults == null
-                ? Path.Combine("Examples", "Web", "templates", "crm")
-                : GetStringValueFromObject(defaults, "templateBasePath", Path.Combine("Examples", "Web", "templates", "crm")));
+                ? "templates"
+                : GetStringValueFromObject(defaults, "templateBasePath", "templates"));
         normalized.Set("templateBasePath", RuntimeValue.String(templateBasePath));
 
         var controlsDefault = defaults == null
@@ -9861,7 +9861,7 @@ public static class BuiltInFunctions
             return schemaTemplatePath;
         }
 
-        return Path.Combine("Examples", "Web", "templates", "crm", "entity_controls.html");
+        return Path.Combine("templates", "entity_controls.html");
     }
 
     private static string ResolveCrudTemplateBasePath(JsonObject schema, JsonObject? options)
@@ -9881,7 +9881,7 @@ public static class BuiltInFunctions
             return schemaBasePath;
         }
 
-        return Path.Combine("Examples", "Web", "templates", "crm");
+        return "templates";
     }
 
     private static string ResolveCrudTemplatePath(string templatePathOrName, string templateBasePath)

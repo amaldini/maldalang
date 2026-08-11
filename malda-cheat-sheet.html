@@ -797,7 +797,7 @@ malda new fullstack my-app</code></pre>
       <h2 class="page-title">MALDA UI Framework Cheat Sheet</h2>
       <p class="page-subtitle">
         Focused reference for server-side UI composition in MALDA using <code>ui.*</code>,
-        runtime lifecycle APIs, event pipeline, forms, routing/session helpers, and CRM-style CRUD helpers.
+        runtime lifecycle APIs, event pipeline, forms, routing/session helpers, and schema-driven CRUD helpers.
       </p>
       <nav class="mini-toc">
         <a href="#ui-components">Components</a>
@@ -816,24 +816,24 @@ malda new fullstack my-app</code></pre>
           <p class="hint">Build a tree with layout/display/input controls using <code>ui.control(props, children?, key?)</code>.</p>
         </div>
         <pre><code class="language-malda">// Step 1: create a reusable action row
-function ticketActions() {
+function itemActions() {
   return ui.row({"gap": 8}, [
-    ui.button({"label": "Assign", "variant": "primary", "onClick": "assignTicket"}),
-    ui.button({"label": "Close", "variant": "danger", "onClick": "closeTicket"})
+    ui.button({"label": "Assign", "variant": "primary", "onClick": "assignItem"}),
+    ui.button({"label": "Close", "variant": "danger", "onClick": "closeItem"})
   ]);
 }
 
 // Step 2: compose a card component
-var ticketCard = ui.panel({"componentId": "TicketCard", "className": "card"}, [
-  ui.heading({"level": 2, "value": "Ticket #123"}),
-  ui.text({"value": "Login issue reported by customer"}),
-  ticketActions()
+var itemCard = ui.panel({"componentId": "ItemCard", "className": "card"}, [
+  ui.heading({"level": 2, "value": "Item #123"}),
+  ui.text({"value": "Login issue reported by user"}),
+  itemActions()
 ]);
 
 // Step 3: compose page root
 var root = ui.column({"gap": 12}, [
-  ui.heading({"level": 1, "value": "Support Dashboard"}),
-  ticketCard
+  ui.heading({"level": 1, "value": "Items Dashboard"}),
+  itemCard
 ]);</code></pre>
       </section>
 
@@ -842,7 +842,7 @@ var root = ui.column({"gap": 12}, [
           <h2>UI 2) Runtime + Lifecycle</h2>
           <p class="hint">Mount/render, snapshot/resync, state helpers, and lifecycle event hooks.</p>
         </div>
-        <pre><code class="language-malda">var sessionId = "crm-ui";
+        <pre><code class="language-malda">var sessionId = "app-ui";
 
 // 1) runtime guardrails
 ui.configure("maxPayloadBytes", 250000, sessionId);
@@ -852,17 +852,17 @@ ui.configure("sessionTtlMs", 1800000, sessionId);
 var envelope = ui.mountEnvelope(root, sessionId, {"includeSnapshot": true});
 
 // 3) server-side state
-var wasOpen = ui.state("TicketPanel", "open", false, "session");
-ui.setState("TicketPanel", "open", !wasOpen, "session");
+var wasOpen = ui.state("ItemPanel", "open", false, "session");
+ui.setState("ItemPanel", "open", !wasOpen, "session");
 
 // 4) lifecycle hooks
-ui.onInit("TicketPanel", sessionId);
-ui.onPreRender("TicketPanel", sessionId);
-ui.onUpdate("TicketPanel", sessionId);
-ui.onError("TicketPanel", sessionId);
+ui.onInit("ItemPanel", sessionId);
+ui.onPreRender("ItemPanel", sessionId);
+ui.onUpdate("ItemPanel", sessionId);
+ui.onError("ItemPanel", sessionId);
 
 // 5) refresh pipeline + inspect emitted event
-ui.invalidate("tickets", {"reason": "server-update"});
+ui.invalidate("items", {"reason": "server-update"});
 var ev = ui.pullEvent(sessionId);</code></pre>
       </section>
 
@@ -872,7 +872,7 @@ var ev = ui.pullEvent(sessionId);</code></pre>
           <p class="hint">Server-driven form handling with validation feedback rendering.</p>
         </div>
         <pre><code class="language-malda">// Form component
-var form = ui.form({"componentId": "CreateTicketForm", "onSubmit": "submitTicket"}, [
+var form = ui.form({"componentId": "CreateItemForm", "onSubmit": "submitItem"}, [
   ui.field({}, [
     ui.text({"value": "Title"}),
     ui.textField({"name": "title", "required": true, "onChange": "validateTitle"})
@@ -890,20 +890,20 @@ var form = ui.form({"componentId": "CreateTicketForm", "onSubmit": "submitTicket
 // Called by onChange
 function validateTitle(event) {
   if (event.value == null || length(event.value) < 3) {
-    ui.setState("CreateTicketForm", "titleError", "Title must be at least 3 chars", "session");
+    ui.setState("CreateItemForm", "titleError", "Title must be at least 3 chars", "session");
   } else {
-    ui.setState("CreateTicketForm", "titleError", "", "session");
+    ui.setState("CreateItemForm", "titleError", "", "session");
   }
 }
 
 // Called by onSubmit
-function submitTicket(event) {
+function submitItem(event) {
   // event.values typically carries form values
-  ui.setState("CreateTicketForm", "saved", true, "session");
+  ui.setState("CreateItemForm", "saved", true, "session");
 }
 
 // In production, host/framework dispatches this automatically
-ui.dispatchEvent({"type": "submit", "componentId": "CreateTicketForm", "values": {"title": "VPN issue"}}, "crm-ui");</code></pre>
+ui.dispatchEvent({"type": "submit", "componentId": "CreateItemForm", "values": {"title": "VPN issue"}}, "app-ui");</code></pre>
       </section>
 
       <section id="ui-routing">
@@ -912,21 +912,21 @@ ui.dispatchEvent({"type": "submit", "componentId": "CreateTicketForm", "values":
           <p class="hint">Preserve user UI session across server routes and redirects.</p>
         </div>
         <pre><code class="language-malda">// GET route: mount UI with stable session id
-@GET("/web/crm/tickets")
-function ticketsPage(req) {
-  var sessionId = ui.sessionId(req, "crm-tickets-ui");
+@GET("/web/items")
+function itemsPage(req) {
+  var sessionId = ui.sessionId(req, "items-ui");
   var app = ui.column({}, [
-    ui.heading({"level": 1, "value": "Tickets"}),
-    ui.text({"value": "Filter and manage support tickets"})
+    ui.heading({"level": 1, "value": "Items"}),
+    ui.text({"value": "Filter and manage items"})
   ]);
   return ui.mountEnvelope(app, sessionId, {"includeSnapshot": true});
 }
 
 // POST route: persist then redirect while preserving session
-@POST("/web/crm/tickets/create")
-function createTicket(body) {
+@POST("/web/items/create")
+function createItem(body) {
   // ... persist body.title/body.priority ...
-  return ui.redirectWithSession("/web/crm/tickets", body, "crm-tickets-ui");
+  return ui.redirectWithSession("/web/items", body, "items-ui");
 }</code></pre>
       </section>
 
@@ -935,17 +935,17 @@ function createTicket(body) {
           <h2>UI 5) Templates + CRUD Helpers</h2>
           <p class="hint">Compose templates and generate schema-driven CRUD controls quickly.</p>
         </div>
-        <pre><code class="language-malda">var base = "Examples/Web/templates/crm/";
+        <pre><code class="language-malda">var base = "templates/";
 
 // Compose full page from templates
-var sidebar = ui.template(base + "sidebar.html", {"active": "tickets"}, {"cache": false});
-var body = ui.partial(base + "tickets_body.html", {"rowsHtml": rowsHtml});
-var page = ui.layout(base + "layout.html", {"sidebar": sidebar, "body": body}, {"title": "CRM"});
+var sidebar = ui.template(base + "sidebar.html", {"active": "items"}, {"cache": false});
+var body = ui.partial(base + "items_body.html", {"rowsHtml": rowsHtml});
+var page = ui.layout(base + "layout.html", {"sidebar": sidebar, "body": body}, {"title": "App"});
 
 // Normalize schema + defaults once
 var schema = ui.crudSchema({
-  "entityName": "Ticket",
-  "entitySingularLower": "ticket",
+  "entityName": "Item",
+  "entitySingularLower": "item",
   "columns": ["id", "title", "priority"],
   "filterDefs": [{"name": "priority", "type": "select"}]
 });
@@ -953,9 +953,9 @@ var schema = ui.crudSchema({
 // Generate CRUD controls html from schema + query + lookups
 var controlsHtml = ui.crudControls(
   schema,
-  "crm-session",
+  "app-session",
   {"page": "1"},
-  {"agents": []},
+  {"owners": []},
   {"cache": false}
 );</code></pre>
       </section>
@@ -967,8 +967,8 @@ var controlsHtml = ui.crudControls(
         </div>
         <pre><code class="language-malda">// Grid for tabular data
 var grid = ui.dataGrid({
-  "componentId": "TicketsGrid",
-  "rows": tickets,
+  "componentId": "ItemsGrid",
+  "rows": items,
   "columns": [
     {"field": "id", "title": "ID"},
     {"field": "title", "title": "Title"},
@@ -977,7 +977,7 @@ var grid = ui.dataGrid({
   "sortable": true,
   "filterable": true,
   "pagination": true,
-  "onRowClick": "openTicket"
+  "onRowClick": "openItem"
 });
 
 // Tree for hierarchical data
@@ -988,8 +988,8 @@ var tree = ui.treeView({
   "onExpand": "loadNodeChildren"
 });
 
-function openTicket(event) {
-  ui.setState("TicketPanel", "selectedTicketId", event.row.id, "session");
+function openItem(event) {
+  ui.setState("ItemPanel", "selectedItemId", event.row.id, "session");
 }
 
 function selectNode(event) {

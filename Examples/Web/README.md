@@ -25,7 +25,6 @@ JS / PWA samples under `js/` need `malda compile … --mode js` (or the Desktop/
 | `rest_bearer_jwt.malda` | 8081 |
 | `job_queue_basic.malda` | Writes `./.malda/jobs.db`; offline |
 | `ai_generated_*` / `@AIPAGE` | Needs LLM provider (`api-key`) |
-| `crm_modern_sqlite.malda` | SQLite file (`db`) |
 
 Fullstack scaffold with mount + sessions: `malda new fullstack my-app`.  
 Walkthrough: [`docs/tutorials/fullstack-sessions-auth.md`](../../docs/tutorials/fullstack-sessions-auth.md).

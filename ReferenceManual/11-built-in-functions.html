@@ -305,13 +305,13 @@ if (r.ok) { for (var i = 0; i &lt; r.results.length; i++) print(r.results[i].tit
         <h3>12.5.3 HTTP auth token helpers</h3>
         <p>These helpers extract tokens from request-like objects used by <code>HttpServer</code> handlers.</p>
         <pre><code>var bearer = httpBearerToken(req); // Reads Authorization: Bearer &lt;token&gt;
-var cookie = httpCookieToken(req, "crm_session", "cookie-secret"); // Signed cookie token
+var cookie = httpCookieToken(req, "app_session", "cookie-secret"); // Signed cookie token
 
 var token = httpAuthToken(req, {
   "allowBearer": true,
   "allowCookie": true,
   "allowBody": true,
-  "cookieName": "crm_session",
+  "cookieName": "app_session",
   "cookieSecret": "cookie-secret",
   "bodyKey": "auth"
 });</code></pre>

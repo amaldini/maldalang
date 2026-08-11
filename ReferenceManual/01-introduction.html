@@ -283,8 +283,8 @@ print(VERSION);        // "1.0"
 print(mathUtils.add(2, 3));   // 5
 print(mathUtils.VERSION);     // "1.0"</code></pre>
         <p>The same two forms apply to packages, with a dotted package name in place of the string path:</p>
-        <pre><code>import CRM.Core;
-import UI = CRM.Web.Components;</code></pre>
+        <pre><code>import App.Core;
+import UI = App.Web.Components;</code></pre>
         <p>Package names beginning with <code>System</code>, <code>Microsoft</code>, or <code>Windows</code> are resolved as .NET namespaces through the interop layer rather than the package manager. See <a href="21-dotnet-interop.html">27. .NET Interop</a>.</p>
         <p>Failing to resolve a target is a runtime error: <em>Package or module not found: Name</em> for packages, and the underlying file-not-found message for file imports.</p>
 
@@ -302,10 +302,10 @@ include "shared/math_utils.malda";
 include "features/orders.malda";
 
 // Package import into the current scope
-using CRM.Core;
+using App.Core;
 
 // Package import behind a namespace object
-using UI = CRM.Web.Components;</code></pre>
+using UI = App.Web.Components;</code></pre>
 
         <h2>1.7 Quick Example</h2>
 

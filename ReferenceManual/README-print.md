@@ -116,8 +116,8 @@ the line it belongs to:
 
 ```
     var insert = dbExecute(
-        "INSERT INTO Tickets (customerName, email, subject, description,
-          status, priority, createdAt) VALUES (@customerName, @email, ...)",
+        "INSERT INTO Items (ownerName, email, title, description,
+          status, priority, createdAt) VALUES (@ownerName, @email, ...)",
 ```
 
 The indent comes from a `--i` custom property that the highlighter writes on
