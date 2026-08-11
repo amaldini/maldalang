@@ -836,11 +836,15 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("--no-auth", source, StringComparison.Ordinal);
             Assert.Contains("--allow-register", source, StringComparison.Ordinal);
             Assert.Contains("--no-examples", source, StringComparison.Ordinal);
+            Assert.Contains("--no-powered-by", source, StringComparison.Ordinal);
+            Assert.Contains("--powered-by", source, StringComparison.Ordinal);
             Assert.Contains("--product-name", source, StringComparison.Ordinal);
             Assert.Contains("sbCliParseArgs(", source, StringComparison.Ordinal);
             Assert.Contains("sbCliApplyProductName(", source, StringComparison.Ordinal);
+            Assert.Contains("sbCliApplyPoweredBy(", source, StringComparison.Ordinal);
             Assert.Contains("build --docs", source, StringComparison.Ordinal);
-            Assert.Contains("include \"secondbrain_cli_lib.malda\"", source, StringComparison.Ordinal);
+            Assert.Contains("import \"secondbrain_cli_lib.malda\"", source, StringComparison.Ordinal);
+            Assert.Contains("include \"secondbrain_cli_apply_lib.malda\"", source, StringComparison.Ordinal);
             if (path.Contains("secondbrain_semantic", StringComparison.Ordinal))
             {
                 Assert.Contains("find_related_notes", source, StringComparison.Ordinal);
@@ -927,6 +931,14 @@ public class SecondBrainAskFeaturesTests
                 print("T=" + tEx.mode + "," + string(tEx.showExamples) + "," + tEx.error);
                 var uEx = sbCliParseArgs(["ask", "--no-examples", "--examples"]);
                 print("U=" + uEx.mode + "," + string(uEx.showExamples) + "," + uEx.error);
+                var vPb = sbCliParseArgs(["ask", "--no-powered-by"]);
+                print("V=" + vPb.mode + "," + vPb.poweredBy + "," + vPb.poweredByUrl + "," + vPb.error);
+                var wPb = sbCliParseArgs(["ask", "--powered-by", "Internal KB", "--powered-by-url", "https://example.local"]);
+                print("W=" + wPb.mode + "," + wPb.poweredBy + "," + wPb.poweredByUrl + "," + wPb.error);
+                var xPb = sbCliParseArgs(["ask", "--powered-by"]);
+                print("X=" + xPb.error);
+                var yPb = sbCliParseArgs(["ask", "--no-powered-by", "--powered-by", "Shown again"]);
+                print("Y=" + yPb.mode + "," + yPb.poweredBy + "," + yPb.poweredByUrl + "," + yPb.error);
                 """,
                 Encoding.UTF8);
 
@@ -952,6 +964,10 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("S=--https requires --cert <path>.", output, StringComparison.Ordinal);
             Assert.Contains("T=ask,false,", output, StringComparison.Ordinal);
             Assert.Contains("U=ask,true,", output, StringComparison.Ordinal);
+            Assert.Contains("V=ask,,,", output, StringComparison.Ordinal);
+            Assert.Contains("W=ask,Internal KB,https://example.local,", output, StringComparison.Ordinal);
+            Assert.Contains("X=Missing value for --powered-by.", output, StringComparison.Ordinal);
+            Assert.Contains("Y=ask,Shown again,,", output, StringComparison.Ordinal);
         }
         finally
         {

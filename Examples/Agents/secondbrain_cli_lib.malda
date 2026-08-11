@@ -11,6 +11,7 @@
 //        --allow-register / --no-register
 //        --examples / --no-examples  (sample questions on empty ASK UI)
 //        --product-name / --name  (display name; overrides product_name.txt)
+//        --no-powered-by / --powered-by <text> / --powered-by-url <url>
 //        --help / -h
 // Host: localhost (default), 127.0.0.1, IP/hostname, 0.0.0.0 or * (all interfaces).
 // HTTPS: --https requires --cert (.pfx/.p12 or .pem/.crt + .key).
@@ -64,6 +65,8 @@ export function sbCliEmptyOptions() {
         "allowRegister": null,
         "showExamples": null,
         "productName": "",
+        "poweredBy": null,
+        "poweredByUrl": null,
         "error": ""
     };
 }
@@ -332,6 +335,34 @@ export function sbCliParseArgs(args) {
         if (a == "--no-examples") {
             opt.showExamples = false;
             i = i + 1;
+            continue;
+        }
+
+        // ASK header "Powered by …" line (default from script globals)
+        if (a == "--no-powered-by") {
+            opt.poweredBy = "";
+            opt.poweredByUrl = "";
+            i = i + 1;
+            continue;
+        }
+        taken = sbCliTakeFlagValue(args, i, "--powered-by");
+        if (taken.ok == true or taken.missing == true) {
+            if (taken.missing == true or str.trim(taken.value) == "") {
+                opt.error = "Missing value for --powered-by.";
+                return opt;
+            }
+            opt.poweredBy = str.trim(taken.value);
+            i = taken.nextIndex;
+            continue;
+        }
+        taken = sbCliTakeFlagValue(args, i, "--powered-by-url");
+        if (taken.ok == true or taken.missing == true) {
+            if (taken.missing == true) {
+                opt.error = "Missing value for --powered-by-url.";
+                return opt;
+            }
+            opt.poweredByUrl = str.trim(taken.value);
+            i = taken.nextIndex;
             continue;
         }
 

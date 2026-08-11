@@ -81,6 +81,37 @@ function sbCliApplyProductName(cli) {
     return n;
 }
 
+// Override ASK_POWERED_BY / ASK_POWERED_BY_URL from env + CLI.
+// MALDA_ASK_POWERED_BY=0|false|off|no hides the line; CLI flags win over env.
+// Call from askBrain after branding defaults are loaded.
+function sbCliApplyPoweredBy(cli) {
+    var env = str.trim(str.lower(io.getEnvOr("MALDA_ASK_POWERED_BY")));
+    if (env == "0" or env == "false" or env == "off" or env == "no") {
+        ASK_POWERED_BY = "";
+        ASK_POWERED_BY_URL = "";
+    }
+    if (cli == null) {
+        return;
+    }
+    if (cli.poweredBy != null) {
+        ASK_POWERED_BY = str.trim(sbCliAsText(cli.poweredBy));
+    }
+    if (cli.poweredByUrl != null) {
+        ASK_POWERED_BY_URL = str.trim(sbCliAsText(cli.poweredByUrl));
+    }
+    if (cli.poweredBy != null or cli.poweredByUrl != null) {
+        if (ASK_POWERED_BY == "") {
+            AnsiConsole.markupLine("[dim]" + t(
+                "ASK powered-by line hidden (CLI/env).",
+                "Riga powered-by ASK nascosta (CLI/env).") + "[/]");
+        } else {
+            AnsiConsole.markupLine("[dim]" + t(
+                "ASK powered-by from CLI: ",
+                "Powered-by ASK da riga di comando: ") + ASK_POWERED_BY + "[/]");
+        }
+    }
+}
+
 function sbCliPrintHelp(defaultBrain, defaultPort) {
     var brain = str.trim(sbCliAsText(defaultBrain));
     if (brain == "") {
@@ -100,6 +131,7 @@ function sbCliPrintHelp(defaultBrain, defaultPort) {
         "         [--https --cert <pfx|pem>] [--cert-password <pwd>]\n" +
         "         [--product-name <name>] [--auth|--no-auth] [--allow-register|--no-register]\n" +
         "         [--examples|--no-examples]\n" +
+        "         [--no-powered-by | --powered-by <text>] [--powered-by-url <url>]\n" +
         "  help\n\n" +
         "Non-interactive: build/update/ask skip the menu and confirmations.\n" +
         "Also: --mode build|update|ask   -p <port>   --port=<n>   --host=<addr>   --name <name>\n" +
@@ -115,6 +147,8 @@ function sbCliPrintHelp(defaultBrain, defaultPort) {
         "Open registration: --allow-register (or MALDA_ASK_ALLOW_REGISTER=1).\n" +
         "Sample questions on empty ASK UI: on by default; hide with --no-examples\n" +
         "  (or MALDA_ASK_EXAMPLES=0).\n" +
+        "Header powered-by line: hide with --no-powered-by (or MALDA_ASK_POWERED_BY=0);\n" +
+        "  override text/URL with --powered-by / --powered-by-url.\n" +
         "Pack remains interactive (menu option 5).";
     var it =
         "Second Brain CLI\n\n" +
@@ -126,6 +160,7 @@ function sbCliPrintHelp(defaultBrain, defaultPort) {
         "         [--https --cert <pfx|pem>] [--cert-password <pwd>]\n" +
         "         [--product-name <nome>] [--auth|--no-auth] [--allow-register|--no-register]\n" +
         "         [--examples|--no-examples]\n" +
+        "         [--no-powered-by | --powered-by <testo>] [--powered-by-url <url>]\n" +
         "  help\n\n" +
         "Non interattivo: build/update/ask saltano menu e conferme.\n" +
         "Anche: --mode build|update|ask   -p <porta>   --port=<n>   --host=<addr>   --name <nome>\n" +
@@ -141,6 +176,8 @@ function sbCliPrintHelp(defaultBrain, defaultPort) {
         "Registrazione aperta: --allow-register (o MALDA_ASK_ALLOW_REGISTER=1).\n" +
         "Domande di esempio nella UI ASK vuota: on di default; nascondi con --no-examples\n" +
         "  (o MALDA_ASK_EXAMPLES=0).\n" +
+        "Riga powered-by in header: nascondi con --no-powered-by (o MALDA_ASK_POWERED_BY=0);\n" +
+        "  testo/URL con --powered-by / --powered-by-url.\n" +
         "PACK resta interattivo (voce di menu 5).";
     if (UI_LANG == "en") {
         io.print(en);
