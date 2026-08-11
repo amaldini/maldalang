@@ -233,6 +233,7 @@ public partial class PromptValue
                 if (TypedPromptSchemaResolver.TryResolve(Declaration.ReturnType!, interpreter, out var schema, out _))
                 {
                     responseFormatSchema = TypedPromptValidator.BuildResponseFormat(schema);
+                    system = TypedPromptValidator.ApplySchemaAppendix(system, Declaration.ReturnType!, schema);
                 }
             }
 
@@ -329,13 +330,13 @@ public partial class PromptValue
                 continue;
             }
 
-            if (!TypedPromptValidator.TryValidateReturnType(parsed, returnType, interpreter, out var validationError))
+            if (!TypedPromptValidator.TryValidateReturnType(parsed, returnType, interpreter, out var validated, out var validationError))
             {
                 lastError = validationError;
                 continue;
             }
 
-            return parsed;
+            return validated;
         }
 
         throw new RuntimeException(

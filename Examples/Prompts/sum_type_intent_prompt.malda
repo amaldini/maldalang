@@ -1,0 +1,29 @@
+// sum_type_intent_prompt.malda — typed prompt returning a sum type (intent union)
+//
+// Requires a configured LLM (default local client or env/API key). Offline: skip.
+// Run: malda Examples/Prompts/sum_type_intent_prompt.malda
+//
+// On await with -> SumType and no tools, MALDA:
+//   - appends a compact schema appendix to the system message (helps local models)
+//   - sends OpenAI-style response_format when the backend supports it
+//   - validates JSON { "tag": "Buy", ... } into a real variant for match
+
+type Intent =
+    Search(query)
+  | Buy(sku, qty)
+  | Help();
+
+prompt parseUtterance(text) -> Intent {
+    system: "Map the user utterance to exactly one Intent variant. JSON only.";
+    user: text;
+}
+
+var intent = await parseUtterance("buy 2 of SKU-9");
+match intent {
+    case Search(q):
+        print("search: " + q);
+    case Buy(sku, qty):
+        print("buy sku=" + sku + " qty=" + string(qty));
+    case Help():
+        print("help");
+}

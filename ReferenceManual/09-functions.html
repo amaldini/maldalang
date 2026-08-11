@@ -349,9 +349,9 @@ print(summary);  // Prints the LLM response directly</code></pre>
             <li>The system uses the default agent (set via <code>setDefaultAgent(agent)</code>) or creates a temporary agent with the <strong>default local LLM</strong> (Qwen/Qwen2.5-0.5B-Instruct, downloaded as a GGUF build from Hugging Face on first use) if none is set</li>
             <li>If no return type is declared, the LLM response content is returned as a string</li>
             <li>If a return type is declared (<code>prompt name(...) -&gt; Type</code>), the return value is <strong>enforced</strong>: MALDA extracts JSON from the response (including from markdown or code fences), validates it against the declared type schema, and returns the parsed value on success</li>
-            <li>When <code>-&gt; Type</code> is present and the prompt body has <strong>no tools</strong>, the JSON schema is sent to the LLM backend (e.g. OpenAI <code>response_format</code>) so the model returns schema-conforming JSON on the first attempt. For v1, <code>response_format</code> and <code>tools</code> are mutually exclusive: if the prompt requests tools, the schema is not sent.</li>
+            <li>When <code>-&gt; Type</code> is present and the prompt body has <strong>no tools</strong>, the JSON schema is sent to the LLM backend (e.g. OpenAI <code>response_format</code>) so the model returns schema-conforming JSON on the first attempt. The same gate also appends a compact <strong>schema appendix</strong> to the system message (marker <code>MALDA_OUTPUT_SCHEMA</code>) so local backends that ignore <code>response_format</code> still see the expected shape. For v1, <code>response_format</code> and <code>tools</code> are mutually exclusive: if the prompt requests tools, the schema is not sent and the appendix is not added.</li>
             <li>On validation failure, MALDA appends a repair instruction to the prompt and retries (up to a fixed maximum of attempts); after exhaustion, a runtime error is thrown</li>
-            <li>Supported return types include primitives (<code>string</code>, <code>int</code>, <code>number</code>, <code>bool</code>, <code>array</code>, <code>object</code>), the built-in <code>Plan</code> type, and custom class names (e.g. <code>-&gt; MyClass</code>); custom classes work in both interpreter and transpiled mode</li>
+            <li>Supported return types include primitives (<code>string</code>, <code>int</code>, <code>number</code>, <code>bool</code>, <code>array</code>, <code>object</code>), the built-in <code>Plan</code> type, custom class names (e.g. <code>-&gt; MyClass</code>), <code>schema</code> names, and <strong>sum types</strong> (e.g. <code>-&gt; Intent</code>); these work in both interpreter and transpiled mode</li>
             <li>This provides a cleaner syntax than <code>agent.think(prompt(...)).content</code></li>
         </ul>
 
@@ -366,6 +366,26 @@ print(summary);  // Prints the LLM response directly</code></pre>
 var parsed = parseJson('{"text":"hi","sources":["a.md"]}', "Answer");</code></pre>
         <p>Supported field types: <code>string</code>, <code>int</code>, <code>float</code>, <code>bool</code>, <code>object</code>, and array forms such as <code>string[]</code>. Use <code>?</code> after the type for optional fields.</p>
         <p>For end-to-end RAG pipelines combining schemas, prompts, retrievers, and pipes, see <code>Examples/Prompts/rag_pipeline.malda</code> and <a href="11-built-in-functions.html">12. Built-in Functions</a> (AI pipeline helpers).</p>
+
+        <h3>8.8.3.2.1 Sum Types as Prompt Return Types</h3>
+        <p>When the model must choose <strong>one of several shapes</strong> (intents), declare a sum type and use it as the prompt return type. On success, <code>await</code> returns a real variant value for <code>match</code>:</p>
+        <pre><code>type Intent =
+    Search(query)
+  | Buy(sku, qty)
+  | Help();
+
+prompt parseUtterance(text) -&gt; Intent {
+    system: "Map the user to exactly one Intent variant. JSON only.";
+    user: text;
+}
+
+var intent = await parseUtterance("buy 2 of SKU-9");
+match intent {
+    case Search(q): print("search: " + q);
+    case Buy(sku, qty): print("buy " + sku);
+    case Help(): print("help");
+}</code></pre>
+        <p>Wire JSON uses a <code>tag</code> field equal to the constructor name, plus payload fields named like the constructor parameters — for example <code>{"tag":"Buy","sku":"SKU-9","qty":2}</code> or <code>{"tag":"Help"}</code>. A name cannot be both a <code>schema</code> and a <code>type</code> (sum type). See <code>Examples/Prompts/sum_type_intent_prompt.malda</code> and <a href="03-data-types.html">Data Types</a> for sum types.</p>
 
         <h3>8.8.3.3 Reusable Pipe Pipelines</h3>
         <p>Name and reuse multi-step AI pipelines with ordinary <code>function</code> declarations and the pipe operator (<code>|&gt;</code>). Return the final pipe result explicitly.</p>

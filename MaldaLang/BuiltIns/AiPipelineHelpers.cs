@@ -181,13 +181,13 @@ public static class AiPipelineHelpers
                 continue;
             }
 
-            if (!TypedPromptValidator.TryValidateReturnType(parsed, schemaRef, interpreter, out var validationError))
+            if (!TypedPromptValidator.TryValidateReturnType(parsed, schemaRef, interpreter, out var validated, out var validationError))
             {
                 lastError = validationError;
                 continue;
             }
 
-            return parsed;
+            return validated;
         }
 
         throw new RuntimeException(

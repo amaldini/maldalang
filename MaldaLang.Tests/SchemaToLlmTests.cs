@@ -23,6 +23,7 @@ public class SchemaToLlmTests
     public void TypedPromptSchemaResolver_ResolvesRegisteredSchemaDeclaration()
     {
         SchemaRegistry.ClearForTesting();
+        SumTypeRegistry.ClearForTesting();
         SchemaRegistry.Register(new SchemaDeclaration("ToolInput", new List<SchemaField>
         {
             new("name", "string", required: true)
@@ -35,6 +36,55 @@ public class SchemaToLlmTests
         var obj = schema.AsObject() as JsonObject;
         Assert.NotNull(obj);
         Assert.Equal("object", obj!.Get("type").AsString());
+    }
+
+    [Fact]
+    public void TypedPromptSchemaResolver_ResolvesSumType_WithOneOfAndMaldaKind()
+    {
+        SchemaRegistry.ClearForTesting();
+        SumTypeRegistry.ClearForTesting();
+        SumTypeRegistry.Register(new TypeDeclaration(
+            "Intent",
+            new List<VariantConstructor>
+            {
+                new("Search", new List<string> { "query" }),
+                new("Buy", new List<string> { "sku", "qty" })
+            }));
+
+        var ok = TypedPromptSchemaResolver.TryResolve("Intent", interpreter: null, out var schema, out var error);
+        Assert.True(ok, error);
+        var obj = schema.AsObject() as JsonObject;
+        Assert.NotNull(obj);
+        Assert.Equal("sum", obj!.Get("x-malda-kind").AsString());
+        Assert.Equal(ValueType.Array, obj.Get("oneOf").Type);
+        Assert.Equal(2, obj.Get("oneOf").AsArray().Count);
+
+        var responseFormat = TypedPromptValidator.BuildResponseFormat(schema);
+        var wrapper = responseFormat.AsObject() as JsonObject;
+        Assert.NotNull(wrapper);
+        Assert.Equal("json_schema", wrapper!.Get("type").AsString());
+        var jsonSchema = wrapper.Get("json_schema").AsObject() as JsonObject;
+        Assert.NotNull(jsonSchema);
+        var nested = jsonSchema!.Get("schema").AsObject() as JsonObject;
+        Assert.NotNull(nested);
+        Assert.Equal("sum", nested!.Get("x-malda-kind").AsString());
+    }
+
+    [Fact]
+    public void SchemaAndSumType_SameName_RegisterThrows()
+    {
+        SchemaRegistry.ClearForTesting();
+        SumTypeRegistry.ClearForTesting();
+        SchemaRegistry.Register(new SchemaDeclaration("Foo", new List<SchemaField>
+        {
+            new("x", "string", required: true)
+        }));
+
+        var ex = Assert.Throws<Exception>(() =>
+            SumTypeRegistry.Register(new TypeDeclaration(
+                "Foo",
+                new List<VariantConstructor> { new("A", new List<string>()) })));
+        Assert.Contains("schema", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -95,6 +145,46 @@ public class SchemaToLlmTests
             Assert.Contains("SchemaRegistry.RegisterCompiled(\"ToolInput\"", generated);
             Assert.Contains("__responseFormatSchema", generated);
             Assert.Contains("__resolvedSchema", generated);
+            Assert.Contains("ApplySchemaAppendix", generated);
+        }
+        finally
+        {
+            try { Directory.Delete(tempDir, true); } catch { }
+        }
+    }
+
+    [Fact]
+    public void Transpiler_EmitsSumTypeRegistration_AndResponseFormat_ForSumReturnType()
+    {
+        var source = """
+            type Intent = Search(query) | Buy(sku, qty) | Help();
+
+            prompt parseUtterance(text) -> Intent {
+                user "Utterance: " + text;
+            }
+
+            var result = await parseUtterance("help");
+            print(result);
+            """;
+
+        var tempDir = Path.Combine(Path.GetTempPath(), "malda_schema_to_llm_tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        var sourcePath = Path.Combine(tempDir, "sum_prompt.malda");
+        var generatedPath = Path.Combine(tempDir, "GeneratedProgram.cs");
+        File.WriteAllText(sourcePath, source);
+
+        try
+        {
+            var compiler = new Compiler.Compiler();
+            var csharpResult = compiler.CompileToCSharp(sourcePath, generatedPath);
+            Assert.True(csharpResult.Success, csharpResult.ErrorMessage ?? "Transpile failed.");
+
+            var generated = File.ReadAllText(generatedPath);
+            Assert.Contains("SumTypeRegistry.RegisterCompiled(\"Intent\"", generated);
+            Assert.Contains("x-malda-kind", generated);
+            Assert.Contains("__responseFormatSchema", generated);
+            Assert.Contains("ApplySchemaAppendix", generated);
+            Assert.Contains("TryValidateReturnType(__parsed, __resolvedSchema!, out __validated, out __validationError)", generated);
         }
         finally
         {

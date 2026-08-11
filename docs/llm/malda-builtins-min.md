@@ -174,7 +174,8 @@ See also `Examples/Web/auth_cookie_login.malda`, `Examples/Web/form_validate_fla
 | `new Agent(...)` / `CodingAgent` | Agents + tools |
 
 Structured await example: `Examples/Prompts/schema_prompt_structured.malda`
-(and few-shot `docs/llm/few-shot/18_schema_prompt.malda`).
+(and few-shot `docs/llm/few-shot/18_schema_prompt.malda`). Sum-type intents:
+`Examples/Prompts/sum_type_intent_prompt.malda` (few-shot `20_sum_type_prompt.malda`).
 
 ## Actors
 

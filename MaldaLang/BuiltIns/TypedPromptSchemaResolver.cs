@@ -64,8 +64,25 @@ public static class TypedPromptSchemaResolver
                 return true;
         }
 
-        if (SchemaRegistry.TryResolve(normalized, out schema))
+        var schemaRegistered = SchemaRegistry.TryResolve(normalized, out var schemaFromRegistry);
+        var sumRegistered = SumTypeRegistry.TryResolve(normalized, out var sumSchema);
+        if (schemaRegistered && sumRegistered)
+        {
+            error = $"Name '{normalized}' is registered as both a schema and a sum type.";
+            return false;
+        }
+
+        if (schemaRegistered)
+        {
+            schema = schemaFromRegistry;
             return true;
+        }
+
+        if (sumRegistered)
+        {
+            schema = sumSchema;
+            return true;
+        }
 
         if (interpreter != null && interpreter._classes.TryGetValue(normalized, out var classDef))
         {

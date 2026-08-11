@@ -16,12 +16,30 @@ public static class SchemaRegistry
 
     public static void ClearForTesting() => Schemas.Clear();
 
-    public static void Register(SchemaDeclaration decl) =>
+    public static bool IsRegistered(string name) => Schemas.ContainsKey(name);
+
+    public static void Register(SchemaDeclaration decl)
+    {
+        if (SumTypeRegistry.IsRegistered(decl.Name))
+        {
+            throw new Exception(
+                $"Name '{decl.Name}' is already registered as a sum type; cannot also declare a schema.");
+        }
+
         Schemas[decl.Name] = BuildSchema(decl);
+    }
 
     /// <summary>Transpiled programs register pre-built schema values at startup.</summary>
-    public static void RegisterCompiled(string name, RuntimeValue schema) =>
+    public static void RegisterCompiled(string name, RuntimeValue schema)
+    {
+        if (SumTypeRegistry.IsRegistered(name))
+        {
+            throw new Exception(
+                $"Name '{name}' is already registered as a sum type; cannot also register a schema.");
+        }
+
         Schemas[name] = schema;
+    }
 
     public static bool TryResolve(string name, out RuntimeValue schema)
     {

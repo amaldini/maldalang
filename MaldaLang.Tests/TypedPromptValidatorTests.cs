@@ -150,6 +150,146 @@ public class TypedPromptValidatorTests
         Assert.NotNull(jsonSchema.Get("schema"));
     }
 
+    [Fact]
+    public void FormatSchemaAppendix_ObjectSchema_ListsFields()
+    {
+        SchemaRegistry.ClearForTesting();
+        SumTypeRegistry.ClearForTesting();
+        SchemaRegistry.Register(new MaldaLang.Parser.AST.Declarations.SchemaDeclaration(
+            "Contact",
+            new List<MaldaLang.Parser.AST.Declarations.SchemaField>
+            {
+                new("name", "string", required: true),
+                new("email", "string", required: false)
+            }));
+
+        Assert.True(TypedPromptSchemaResolver.TryResolve("Contact", null, out var schema, out _));
+        var text = TypedPromptValidator.FormatSchemaAppendix("Contact", schema);
+        Assert.Contains("Return type: Contact", text);
+        Assert.Contains("name: string", text);
+        Assert.Contains("email?: string", text);
+    }
+
+    [Fact]
+    public void ApplySchemaAppendix_IsIdempotent()
+    {
+        var schema = new JsonObject();
+        schema.Set("type", RuntimeValue.String("string"));
+        var once = TypedPromptValidator.ApplySchemaAppendix("You are helpful.", "string", RuntimeValue.Object(schema));
+        Assert.Contains(TypedPromptValidator.SchemaAppendixMarker, once);
+        var twice = TypedPromptValidator.ApplySchemaAppendix(once, "string", RuntimeValue.Object(schema));
+        Assert.Equal(once, twice);
+    }
+
+    [Fact]
+    public void ValidateReturnType_SumType_CoercesToVariant()
+    {
+        SchemaRegistry.ClearForTesting();
+        SumTypeRegistry.ClearForTesting();
+        SumTypeRegistry.Register(new MaldaLang.Parser.AST.Declarations.TypeDeclaration(
+            "Intent",
+            new List<MaldaLang.Parser.AST.Declarations.VariantConstructor>
+            {
+                new("Search", new List<string> { "query" }),
+                new("Buy", new List<string> { "sku", "qty" }),
+                new("Help", new List<string>())
+            }));
+
+        Assert.True(TypedPromptSchemaResolver.TryResolve("Intent", null, out var schema, out var resolveError), resolveError);
+
+        var buy = new JsonObject();
+        buy.Set("tag", RuntimeValue.String("Buy"));
+        buy.Set("sku", RuntimeValue.String("SKU-9"));
+        buy.Set("qty", RuntimeValue.Integer(2));
+
+        var ok = TypedPromptValidator.TryValidateReturnType(
+            RuntimeValue.Object(buy),
+            schema,
+            out var validated,
+            out var error);
+
+        Assert.True(ok, error);
+        Assert.Equal(ValueType.Variant, validated.Type);
+        var variant = validated.AsVariant();
+        Assert.Equal("Buy", variant.Tag);
+        Assert.Equal(2, variant.Payload.Count);
+        Assert.Equal("SKU-9", variant.Payload[0].AsString());
+        Assert.Equal(2, variant.Payload[1].AsInteger());
+    }
+
+    [Fact]
+    public void ValidateReturnType_SumType_FailsOnUnknownTag()
+    {
+        SchemaRegistry.ClearForTesting();
+        SumTypeRegistry.ClearForTesting();
+        SumTypeRegistry.Register(new MaldaLang.Parser.AST.Declarations.TypeDeclaration(
+            "Intent",
+            new List<MaldaLang.Parser.AST.Declarations.VariantConstructor>
+            {
+                new("Help", new List<string>())
+            }));
+
+        Assert.True(TypedPromptSchemaResolver.TryResolve("Intent", null, out var schema, out _));
+        var bad = new JsonObject();
+        bad.Set("tag", RuntimeValue.String("Nope"));
+
+        var ok = TypedPromptValidator.TryValidateReturnType(
+            RuntimeValue.Object(bad),
+            schema,
+            out _,
+            out var error);
+
+        Assert.False(ok);
+        Assert.Contains("Nope", error);
+    }
+
+    [Fact]
+    public void ValidateReturnType_SumType_FailsWhenPayloadMissing()
+    {
+        SchemaRegistry.ClearForTesting();
+        SumTypeRegistry.ClearForTesting();
+        SumTypeRegistry.Register(new MaldaLang.Parser.AST.Declarations.TypeDeclaration(
+            "Intent",
+            new List<MaldaLang.Parser.AST.Declarations.VariantConstructor>
+            {
+                new("Buy", new List<string> { "sku", "qty" })
+            }));
+
+        Assert.True(TypedPromptSchemaResolver.TryResolve("Intent", null, out var schema, out _));
+        var incomplete = new JsonObject();
+        incomplete.Set("tag", RuntimeValue.String("Buy"));
+        incomplete.Set("sku", RuntimeValue.String("SKU-9"));
+
+        var ok = TypedPromptValidator.TryValidateReturnType(
+            RuntimeValue.Object(incomplete),
+            schema,
+            out _,
+            out var error);
+
+        Assert.False(ok);
+        Assert.Contains("qty", error);
+    }
+
+    [Fact]
+    public void FormatSchemaAppendix_SumType_ListsConstructors()
+    {
+        SchemaRegistry.ClearForTesting();
+        SumTypeRegistry.ClearForTesting();
+        SumTypeRegistry.Register(new MaldaLang.Parser.AST.Declarations.TypeDeclaration(
+            "Intent",
+            new List<MaldaLang.Parser.AST.Declarations.VariantConstructor>
+            {
+                new("Search", new List<string> { "query" }),
+                new("Help", new List<string>())
+            }));
+
+        Assert.True(TypedPromptSchemaResolver.TryResolve("Intent", null, out var schema, out _));
+        var text = TypedPromptValidator.FormatSchemaAppendix("Intent", schema);
+        Assert.Contains("Search(query)", text);
+        Assert.Contains("Help()", text);
+        Assert.Contains("tag", text);
+    }
+
     private static JsonObject MakeTypeObj(string typeName)
     {
         var o = new JsonObject();

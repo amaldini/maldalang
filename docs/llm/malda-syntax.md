@@ -16,11 +16,16 @@ Compact rules for generating correct `.malda`. Prefer this over scraping HTML ma
 - Dynamic typing; optional type hints exist (`: Type`) but are not required for most examples.
 - **Prompt parameters are name-only** — write `prompt greet(name) { ... }`, never `prompt greet(name: string)`.
 - Prompt `-> ReturnType` is **not** static typing. On `await prompt(...)` with a
-  return type and **no tools**, MALDA resolves the type to JSON Schema, sends it to
-  OpenAI-compatible backends as `response_format`, then validates the reply (up to 3
-  attempts with a repair instruction). Without `await`, you get a `PromptInstance`
-  (schema attached when resolvable). Prefer a `schema Name { … }` declaration as the
-  return type for structured objects.
+  return type and **no tools**, MALDA resolves the type to JSON Schema, appends a
+  compact schema appendix to the **system** message (helps local models that ignore
+  `response_format`), sends OpenAI-compatible backends `response_format`, then
+  validates the reply (up to 3 attempts with a repair instruction). Without `await`,
+  you get a `PromptInstance` (schema attached when resolvable). Prefer a
+  `schema Name { … }` for structured objects, or a **sum type**
+  (`type Intent = Search(q) | Buy(sku, qty)`) when the model must pick one of several
+  shapes — success yields a real variant for `match`. Sum-type JSON wire shape:
+  `{ "tag": "Buy", "sku": "...", "qty": 2 }` (tag = constructor name; payload fields
+  use the constructor parameter names).
 - Interpolate with a **`$`-prefixed** string: `$"total: {n}"`, `$"{a} of {b}"`. The braces
   take any expression (`{n * 2}`, `{math.sqrt(x)}`, `{items[0]}`), and `$` strings compose
   with `AnsiConsole` markup. A plain string does **not** interpolate — `"total: {n}"` prints

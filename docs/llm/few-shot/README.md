@@ -25,6 +25,7 @@ Tiny programs for LLM context. Larger curated samples live under `Examples/`.
 | `17_schema_validate.malda` | `schema` + `validate` (`{ ok, data|error }`) |
 | `18_schema_prompt.malda` | `schema` return type + `await` prompt (structured `response_format`) |
 | `19_ui_tree.malda` | `ui.*` tree composition (`props` / children; no host loop) |
+| `20_sum_type_prompt.malda` | sum-type return + `await` → variant + `match` (`{tag,…}` JSON) |
 
 Also useful from the main tree:
 
@@ -35,5 +36,5 @@ Also useful from the main tree:
 - `Examples/Web/rest_api_server.malda`, `Examples/Web/ui_form_workflow.malda`, `Examples/Web/ui_counter_dashboard.malda`
 - Language API: `ReferenceManual/16-web-ui.html` (hub: `16-web-ui-hub.html`)
 - `Examples/Workflows/retry_and_inspect.malda`
-- `Examples/Prompts/basic_prompt.malda`, `Examples/Prompts/schema_prompt_structured.malda`
+- `Examples/Prompts/basic_prompt.malda`, `Examples/Prompts/schema_prompt_structured.malda`, `Examples/Prompts/sum_type_intent_prompt.malda`
 - `Examples/Actors/basic_counter.malda`

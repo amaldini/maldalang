@@ -1,0 +1,15 @@
+// Typed prompt: sum-type return + await → variant for match.
+// JSON wire shape: { "tag": "Buy", "sku": "...", "qty": 2 }
+type Intent = Search(query) | Buy(sku, qty) | Help();
+
+prompt parseUtterance(text) -> Intent {
+    system: "Return one Intent as JSON with tag + payload fields.";
+    user: text;
+}
+
+var intent = await parseUtterance("buy 2 of SKU-9");
+match intent {
+    case Search(q): io.print($"search {q}");
+    case Buy(sku, qty): io.print($"buy {sku} x {qty}");
+    case Help(): io.print("help");
+}

@@ -84,7 +84,7 @@ public class TranspiledTypedPromptTests
 
             var generated = File.ReadAllText(generatedPath);
             Assert.Contains("__resolvedSchema", generated);
-            Assert.Contains("TryValidateReturnType(__parsed, __resolvedSchema!", generated);
+            Assert.Contains("TryValidateReturnType(__parsed, __resolvedSchema!, out __validated, out __validationError)", generated);
             Assert.Contains("type", generated);
             Assert.Contains("properties", generated);
             Assert.Contains("required", generated);
@@ -92,7 +92,8 @@ public class TranspiledTypedPromptTests
             Assert.Contains("title", generated);
             // Schema-to-LLM: typed prompts should pass response_format to PromptInstance
             Assert.Contains("__responseFormatSchema", generated);
-            Assert.Contains("maxTokens, __responseFormatSchema, __withinTimeoutMs)", generated);
+            Assert.Contains("ApplySchemaAppendix", generated);
+            Assert.Contains("__responseFormatSchema, examples, __withinTimeoutMs)", generated);
 
             var boundedSource = """
                 @within(1500)

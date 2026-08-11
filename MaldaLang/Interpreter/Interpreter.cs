@@ -1363,6 +1363,7 @@ public partial class Interpreter
 
     private void DefineSumType(TypeDeclaration decl)
     {
+        MaldaLang.BuiltIns.SumTypeRegistry.Register(decl);
         foreach (var ctor in decl.Constructors)
         {
             var fv = new FunctionValue(null, null)

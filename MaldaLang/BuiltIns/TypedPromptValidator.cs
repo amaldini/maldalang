@@ -3,11 +3,14 @@
 
 namespace MaldaLang.BuiltIns;
 
+using System.Text;
 using MaldaLang.Interpreter;
 using ValueType = MaldaLang.Interpreter.ValueType;
 
 public static class TypedPromptValidator
 {
+    public const string SchemaAppendixMarker = "---\nMALDA_OUTPUT_SCHEMA\n";
+
     public static bool TryExtractJsonCandidate(string content, out string jsonCandidate, out string error)
     {
         jsonCandidate = "";
@@ -74,6 +77,17 @@ public static class TypedPromptValidator
 
     public static bool TryValidateReturnType(RuntimeValue value, string returnType, Interpreter? interpreter, out string error)
     {
+        return TryValidateReturnType(value, returnType, interpreter, out _, out error);
+    }
+
+    public static bool TryValidateReturnType(
+        RuntimeValue value,
+        string returnType,
+        Interpreter? interpreter,
+        out RuntimeValue validated,
+        out string error)
+    {
+        validated = value;
         error = "";
         if (!TypedPromptSchemaResolver.TryResolve(returnType, interpreter, out var schema, out var schemaError))
         {
@@ -81,10 +95,7 @@ public static class TypedPromptValidator
             return false;
         }
 
-        if (!TryValidateAgainstSchema(value, schema, "$", out error))
-            return false;
-
-        return true;
+        return TryValidateReturnType(value, schema, out validated, out error);
     }
 
     /// <summary>
@@ -92,8 +103,26 @@ public static class TypedPromptValidator
     /// </summary>
     public static bool TryValidateReturnType(RuntimeValue value, RuntimeValue schema, out string error)
     {
+        return TryValidateReturnType(value, schema, out _, out error);
+    }
+
+    public static bool TryValidateReturnType(
+        RuntimeValue value,
+        RuntimeValue schema,
+        out RuntimeValue validated,
+        out string error)
+    {
+        validated = value;
         error = "";
-        return TryValidateAgainstSchema(value, schema, "$", out error);
+
+        if (IsSumSchema(schema))
+            return TryValidateAndCoerceSum(value, schema, out validated, out error);
+
+        if (!TryValidateAgainstSchema(value, schema, "$", out error))
+            return false;
+
+        validated = value;
+        return true;
     }
 
     public static string BuildRepairInstruction(string returnType, string validationError)
@@ -107,7 +136,7 @@ public static class TypedPromptValidator
 
     /// <summary>
     /// Wraps a resolved JSON schema into OpenAI response_format structure.
-    /// The schema from TypedPromptSchemaResolver is { type, properties?, required? };
+    /// The schema from TypedPromptSchemaResolver is { type, properties?, required? } or a sum oneOf;
     /// OpenAI expects it nested under json_schema.schema.
     /// </summary>
     public static RuntimeValue BuildResponseFormat(RuntimeValue resolvedSchema)
@@ -123,6 +152,251 @@ public static class TypedPromptValidator
         return RuntimeValue.Object(wrapper);
     }
 
+    public static bool IsSumSchema(RuntimeValue schema)
+    {
+        if (schema.Type != ValueType.Object || schema.AsObject() is not JsonObject obj)
+            return false;
+        var kind = obj.Get("x-malda-kind");
+        return kind.Type == ValueType.String &&
+               string.Equals(kind.AsString(), "sum", StringComparison.Ordinal);
+    }
+
+    public static string FormatSchemaAppendix(string returnType, RuntimeValue schema)
+    {
+        var sb = new StringBuilder();
+        sb.Append("Return type: ");
+        sb.Append(returnType);
+        sb.AppendLine(".");
+
+        if (IsSumSchema(schema) && schema.AsObject() is JsonObject sumObj)
+        {
+            sb.AppendLine("Sum type — return exactly ONE variant as JSON:");
+            sb.AppendLine("Shape: {\"tag\":\"<Constructor>\", ...payload fields by name}");
+            var oneOf = sumObj.Get("oneOf");
+            if (oneOf.Type == ValueType.Array)
+            {
+                foreach (var armVal in oneOf.AsArray())
+                {
+                    if (armVal.Type != ValueType.Object || armVal.AsObject() is not JsonObject arm)
+                        continue;
+                    var propsVal = arm.Get("properties");
+                    if (propsVal.Type != ValueType.Object || propsVal.AsObject() is not JsonObject props)
+                        continue;
+                    var tagProp = props.Get("tag");
+                    var tagName = "?";
+                    if (tagProp.Type == ValueType.Object && tagProp.AsObject() is JsonObject tagSchema)
+                    {
+                        var constVal = tagSchema.Get("const");
+                        if (constVal.Type == ValueType.String)
+                            tagName = constVal.AsString();
+                    }
+
+                    var payloadNames = new List<string>();
+                    foreach (var key in props.GetAllKeys())
+                    {
+                        if (string.Equals(key, "tag", StringComparison.Ordinal))
+                            continue;
+                        payloadNames.Add(key);
+                    }
+
+                    sb.Append("- ");
+                    sb.Append(tagName);
+                    sb.Append('(');
+                    sb.Append(string.Join(", ", payloadNames));
+                    sb.AppendLine(")");
+                }
+            }
+
+            return sb.ToString().TrimEnd();
+        }
+
+        if (schema.Type == ValueType.Object && schema.AsObject() is JsonObject obj)
+        {
+            var typeVal = obj.Get("type");
+            if (typeVal.Type == ValueType.String && typeVal.AsString() != "object")
+            {
+                sb.Append("JSON type: ");
+                sb.Append(typeVal.AsString());
+                sb.Append('.');
+                return sb.ToString();
+            }
+
+            sb.AppendLine("Object fields:");
+            var propsVal = obj.Get("properties");
+            var requiredNames = new HashSet<string>(StringComparer.Ordinal);
+            var requiredVal = obj.Get("required");
+            if (requiredVal.Type == ValueType.Array)
+            {
+                foreach (var r in requiredVal.AsArray())
+                {
+                    if (r.Type == ValueType.String)
+                        requiredNames.Add(r.AsString());
+                }
+            }
+
+            if (propsVal.Type == ValueType.Object && propsVal.AsObject() is JsonObject props)
+            {
+                foreach (var key in props.GetAllKeys())
+                {
+                    var fieldSchema = props.Get(key);
+                    var fieldType = DescribeSchemaType(fieldSchema);
+                    var optional = !requiredNames.Contains(key);
+                    sb.Append("- ");
+                    sb.Append(key);
+                    sb.Append(optional ? "?: " : ": ");
+                    sb.AppendLine(fieldType);
+                }
+            }
+            else
+            {
+                sb.AppendLine("(no field list)");
+            }
+        }
+
+        return sb.ToString().TrimEnd();
+    }
+
+    public static string? ApplySchemaAppendix(string? system, string returnType, RuntimeValue schema)
+    {
+        var appendixBody = FormatSchemaAppendix(returnType, schema);
+        var block = "\n\n" + SchemaAppendixMarker + appendixBody + "\n---";
+        if (!string.IsNullOrEmpty(system) &&
+            system.Contains(SchemaAppendixMarker, StringComparison.Ordinal))
+        {
+            return system;
+        }
+
+        return (system ?? "") + block;
+    }
+
+    private static string DescribeSchemaType(RuntimeValue fieldSchema)
+    {
+        if (fieldSchema.Type != ValueType.Object || fieldSchema.AsObject() is not JsonObject obj)
+            return "any";
+
+        var typeVal = obj.Get("type");
+        if (typeVal.Type == ValueType.String)
+        {
+            var t = typeVal.AsString();
+            if (t == "array")
+            {
+                var items = obj.Get("items");
+                if (items.Type == ValueType.Object && items.AsObject() is JsonObject itemsObj)
+                {
+                    var itemType = itemsObj.Get("type");
+                    if (itemType.Type == ValueType.String)
+                        return itemType.AsString() + "[]";
+                }
+
+                return "array";
+            }
+
+            return t;
+        }
+
+        if (typeVal.Type == ValueType.Array)
+            return "any";
+
+        return "any";
+    }
+
+    private static bool TryValidateAndCoerceSum(
+        RuntimeValue value,
+        RuntimeValue schema,
+        out RuntimeValue validated,
+        out string error)
+    {
+        validated = RuntimeValue.Null();
+        error = "";
+
+        if (schema.Type != ValueType.Object || schema.AsObject() is not JsonObject schemaObj)
+        {
+            error = "Invalid sum-type schema object.";
+            return false;
+        }
+
+        if (value.Type != ValueType.Object || value.AsObject() is not JsonObject jsonObj)
+        {
+            error = "$. must be a JSON object with a sum-type tag.";
+            return false;
+        }
+
+        var tagVal = jsonObj.Get("tag");
+        if (tagVal.Type != ValueType.String)
+        {
+            error = "$.tag is required and must be a string constructor name.";
+            return false;
+        }
+
+        var tag = tagVal.AsString();
+        var oneOf = schemaObj.Get("oneOf");
+        if (oneOf.Type != ValueType.Array || oneOf.AsArray().Count == 0)
+        {
+            error = "Sum-type schema has no oneOf arms.";
+            return false;
+        }
+
+        JsonObject? matchedArm = null;
+        var knownTags = new List<string>();
+        foreach (var armVal in oneOf.AsArray())
+        {
+            if (armVal.Type != ValueType.Object || armVal.AsObject() is not JsonObject arm)
+                continue;
+            var propsVal = arm.Get("properties");
+            if (propsVal.Type != ValueType.Object || propsVal.AsObject() is not JsonObject props)
+                continue;
+            var tagProp = props.Get("tag");
+            if (tagProp.Type != ValueType.Object || tagProp.AsObject() is not JsonObject tagSchema)
+                continue;
+            var constVal = tagSchema.Get("const");
+            if (constVal.Type != ValueType.String)
+                continue;
+            var armTag = constVal.AsString();
+            knownTags.Add(armTag);
+            if (string.Equals(armTag, tag, StringComparison.Ordinal))
+                matchedArm = arm;
+        }
+
+        if (matchedArm == null)
+        {
+            error = $"$.tag '{tag}' is not a known constructor. Expected one of: {string.Join(", ", knownTags)}.";
+            return false;
+        }
+
+        if (!TryValidateAgainstSchema(value, RuntimeValue.Object(matchedArm), "$", out error))
+            return false;
+
+        var payload = new List<RuntimeValue>();
+        var armProps = matchedArm.Get("properties");
+        if (armProps.Type == ValueType.Object && armProps.AsObject() is JsonObject armPropsObj)
+        {
+            foreach (var key in armPropsObj.GetAllKeys())
+            {
+                if (string.Equals(key, "tag", StringComparison.Ordinal))
+                    continue;
+                payload.Add(jsonObj.Get(key));
+            }
+        }
+
+        // Prefer declaration order from registry when available.
+        var typeNameVal = schemaObj.Get("x-malda-sum-type");
+        if (typeNameVal.Type == ValueType.String &&
+            SumTypeRegistry.TryGetDefinition(typeNameVal.AsString(), out var def))
+        {
+            var ctor = def.Constructors.FirstOrDefault(c =>
+                string.Equals(c.Name, tag, StringComparison.Ordinal));
+            if (ctor != null)
+            {
+                payload = new List<RuntimeValue>();
+                foreach (var param in ctor.ParameterNames)
+                    payload.Add(jsonObj.Get(param));
+            }
+        }
+
+        validated = RuntimeValue.Variant(tag, payload);
+        return true;
+    }
+
     private static bool TryValidateAgainstSchema(RuntimeValue value, RuntimeValue schema, string path, out string error)
     {
         error = "";
@@ -132,7 +406,31 @@ public static class TypedPromptValidator
             return false;
         }
 
+        var constVal = schemaObj.Get("const");
+        if (constVal.Type != ValueType.Null)
+        {
+            if (!ValuesEqualForConst(value, constVal))
+            {
+                error = $"{path} must equal {FormatConst(constVal)}.";
+                return false;
+            }
+        }
+
         var typeNameVal = schemaObj.Get("type");
+        if (typeNameVal.Type == ValueType.Array)
+        {
+            foreach (var alt in typeNameVal.AsArray())
+            {
+                if (alt.Type != ValueType.String)
+                    continue;
+                if (MatchesJsonType(value, alt.AsString()))
+                    return true;
+            }
+
+            error = $"{path} does not match any allowed type.";
+            return false;
+        }
+
         var typeName = typeNameVal.Type == ValueType.String ? typeNameVal.AsString() : "object";
 
         switch (typeName)
@@ -165,6 +463,13 @@ public static class TypedPromptValidator
                     return false;
                 }
                 return true;
+            case "null":
+                if (value.Type != ValueType.Null)
+                {
+                    error = $"{path} must be null, got {value.Type}.";
+                    return false;
+                }
+                return true;
             case "array":
                 return ValidateArray(value, schemaObj, path, out error);
             case "object":
@@ -174,6 +479,37 @@ public static class TypedPromptValidator
                 return false;
         }
     }
+
+    private static bool MatchesJsonType(RuntimeValue value, string typeName) =>
+        typeName switch
+        {
+            "string" => value.Type == ValueType.String,
+            "integer" => value.Type == ValueType.Integer,
+            "number" => value.Type == ValueType.Integer || value.Type == ValueType.Float,
+            "boolean" => value.Type == ValueType.Boolean,
+            "null" => value.Type == ValueType.Null,
+            "array" => value.Type == ValueType.Array,
+            "object" => value.Type == ValueType.Object,
+            _ => false
+        };
+
+    private static bool ValuesEqualForConst(RuntimeValue value, RuntimeValue constVal)
+    {
+        if (value.Type != constVal.Type)
+            return false;
+        return value.Type switch
+        {
+            ValueType.String => value.AsString() == constVal.AsString(),
+            ValueType.Integer => value.AsInteger() == constVal.AsInteger(),
+            ValueType.Float => Math.Abs(value.AsFloat() - constVal.AsFloat()) < double.Epsilon,
+            ValueType.Boolean => value.AsBoolean() == constVal.AsBoolean(),
+            ValueType.Null => true,
+            _ => value.ToString() == constVal.ToString()
+        };
+    }
+
+    private static string FormatConst(RuntimeValue constVal) =>
+        constVal.Type == ValueType.String ? $"\"{constVal.AsString()}\"" : constVal.ToString();
 
     private static bool ValidateArray(RuntimeValue value, JsonObject schemaObj, string path, out string error)
     {
@@ -209,11 +545,12 @@ public static class TypedPromptValidator
 
         var obj = value.AsObject();
         if (obj is JsonObject jsonObj)
-            return ValidateObjectProperties(key => jsonObj.Get(key), schemaObj, path, out error);
+            return ValidateObjectProperties(key => jsonObj.Get(key), jsonObj.GetAllKeys(), schemaObj, path, out error);
 
         if (obj is DictionaryInstance dict)
             return ValidateObjectProperties(
                 key => dict.TryGetEntry(key, out var entry) ? entry : RuntimeValue.Null(),
+                dict.Entries.Keys,
                 schemaObj,
                 path,
                 out error);
@@ -224,6 +561,7 @@ public static class TypedPromptValidator
 
     private static bool ValidateObjectProperties(
         Func<string, RuntimeValue> getProperty,
+        IEnumerable<string> presentKeys,
         JsonObject schemaObj,
         string path,
         out string error)
@@ -248,7 +586,25 @@ public static class TypedPromptValidator
         }
 
         var propertiesVal = schemaObj.Get("properties");
-        if (propertiesVal.Type != ValueType.Object || propertiesVal.AsObject() is not JsonObject propertiesObj)
+        JsonObject? propertiesObj = null;
+        if (propertiesVal.Type == ValueType.Object && propertiesVal.AsObject() is JsonObject props)
+            propertiesObj = props;
+
+        var additional = schemaObj.Get("additionalProperties");
+        if (additional.Type == ValueType.Boolean && !additional.AsBoolean() && propertiesObj != null)
+        {
+            var allowed = new HashSet<string>(propertiesObj.GetAllKeys(), StringComparer.Ordinal);
+            foreach (var key in presentKeys)
+            {
+                if (!allowed.Contains(key))
+                {
+                    error = $"{path}.{key} is not allowed.";
+                    return false;
+                }
+            }
+        }
+
+        if (propertiesObj == null)
             return true;
 
         foreach (var key in propertiesObj.GetAllKeys())

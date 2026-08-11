@@ -358,6 +358,7 @@ public class CSharpTranspiler
                 _output.AppendLine("RegisterTranspiledWorkflows();");
             }
             GenerateSchemaRegistration(schemas);
+            GenerateSumTypeRegistration();
 
             // Transpile top-level statements (assignments, function calls, etc.)
             var previousCanAwaitInInitialize = _canAwait;
@@ -454,6 +455,7 @@ public class CSharpTranspiler
                 _output.AppendLine("RegisterTranspiledWorkflows();");
             }
             GenerateSchemaRegistration(schemas);
+            GenerateSumTypeRegistration();
 
             EmitProfilingSessionStart();
 
@@ -6421,6 +6423,24 @@ public class CSharpTranspiler
         _output.AppendLine();
     }
 
+    private void GenerateSumTypeRegistration()
+    {
+        if (_typeDeclarations.Count == 0)
+            return;
+
+        foreach (var typeDecl in _typeDeclarations)
+        {
+            WriteIndent();
+            _output.Append("MaldaLang.BuiltIns.SumTypeRegistry.RegisterCompiled(\"");
+            _output.Append(typeDecl.TypeName.Replace("\\", "\\\\").Replace("\"", "\\\""));
+            _output.Append("\", ");
+            EmitParseJsonSchemaLiteral(SumTypeRegistry.BuildSchema(typeDecl));
+            _output.AppendLine(");");
+        }
+
+        _output.AppendLine();
+    }
+
     private void EmitParseJsonSchemaLiteral(MaldaLang.Interpreter.RuntimeValue schema)
     {
         var schemaJson = BuiltInFunctions.SerializeToJson(schema);
@@ -6825,7 +6845,8 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("}");
 
-        // Build response_format schema when ReturnType is present and tools is empty (§4.10)
+        // Build response_format schema when ReturnType is present and tools is empty (§4.10).
+        // Also inject a compact schema appendix into system (schema-in-prompt for local models).
         WriteIndent();
         _output.AppendLine("MaldaLang.Interpreter.RuntimeValue? __responseFormatSchema = null;");
         WriteIndent();
@@ -6839,11 +6860,17 @@ public class CSharpTranspiler
         bool isCustomReturnType = !string.IsNullOrWhiteSpace(promptDecl.ReturnType) && !IsBuiltInPromptReturnType(promptDecl.ReturnType);
         SchemaDeclaration? schemaDecl = null;
         ClassDeclaration? schemaClassDecl = null;
+        TypeDeclaration? sumTypeDecl = null;
         if (isCustomReturnType)
         {
             var returnName = promptDecl.ReturnType!.Trim();
             schemaDecl = schemas.FirstOrDefault(s => string.Equals(s.Name, returnName, StringComparison.Ordinal));
             if (schemaDecl == null)
+            {
+                sumTypeDecl = _typeDeclarations.FirstOrDefault(t =>
+                    string.Equals(t.TypeName, returnName, StringComparison.Ordinal));
+            }
+            if (schemaDecl == null && sumTypeDecl == null)
             {
                 var classesByName = classes.ToDictionary(c => c.Name, c => c);
                 if (classesByName.TryGetValue(returnName, out var cd))
@@ -6858,6 +6885,23 @@ public class CSharpTranspiler
             _output.AppendLine(";");
             WriteIndent();
             _output.AppendLine("__responseFormatSchema = MaldaLang.BuiltIns.TypedPromptValidator.BuildResponseFormat(__schema);");
+            WriteIndent();
+            _output.Append("system = MaldaLang.BuiltIns.TypedPromptValidator.ApplySchemaAppendix(system, \"");
+            _output.Append(promptDecl.ReturnType!.Replace("\\", "\\\\").Replace("\"", "\\\""));
+            _output.AppendLine("\", __schema);");
+        }
+        else if (sumTypeDecl != null)
+        {
+            WriteIndent();
+            _output.Append("var __schema = ");
+            EmitParseJsonSchemaLiteral(SumTypeRegistry.BuildSchema(sumTypeDecl));
+            _output.AppendLine(";");
+            WriteIndent();
+            _output.AppendLine("__responseFormatSchema = MaldaLang.BuiltIns.TypedPromptValidator.BuildResponseFormat(__schema);");
+            WriteIndent();
+            _output.Append("system = MaldaLang.BuiltIns.TypedPromptValidator.ApplySchemaAppendix(system, \"");
+            _output.Append(promptDecl.ReturnType!.Replace("\\", "\\\\").Replace("\"", "\\\""));
+            _output.AppendLine("\", __schema);");
         }
         else if (schemaClassDecl != null)
         {
@@ -6868,6 +6912,10 @@ public class CSharpTranspiler
             _output.AppendLine(";");
             WriteIndent();
             _output.AppendLine("__responseFormatSchema = MaldaLang.BuiltIns.TypedPromptValidator.BuildResponseFormat(__schema);");
+            WriteIndent();
+            _output.Append("system = MaldaLang.BuiltIns.TypedPromptValidator.ApplySchemaAppendix(system, \"");
+            _output.Append(promptDecl.ReturnType!.Replace("\\", "\\\\").Replace("\"", "\\\""));
+            _output.AppendLine("\", __schema);");
         }
         else if (!string.IsNullOrWhiteSpace(promptDecl.ReturnType))
         {
@@ -6880,6 +6928,10 @@ public class CSharpTranspiler
             _indentLevel++;
             WriteIndent();
             _output.AppendLine("__responseFormatSchema = MaldaLang.BuiltIns.TypedPromptValidator.BuildResponseFormat(__schema);");
+            WriteIndent();
+            _output.Append("system = MaldaLang.BuiltIns.TypedPromptValidator.ApplySchemaAppendix(system, \"");
+            _output.Append(promptDecl.ReturnType!.Replace("\\", "\\\\").Replace("\"", "\\\""));
+            _output.AppendLine("\", __schema);");
             _indentLevel--;
             WriteIndent();
             _output.AppendLine("}");
@@ -6970,11 +7022,17 @@ public class CSharpTranspiler
             bool customReturnType = !IsBuiltInPromptReturnType(promptDecl.ReturnType);
             SchemaDeclaration? returnSchemaDecl = null;
             ClassDeclaration? returnClassDecl = null;
+            TypeDeclaration? returnSumTypeDecl = null;
             if (customReturnType)
             {
                 var returnName = promptDecl.ReturnType!.Trim();
                 returnSchemaDecl = schemas.FirstOrDefault(s => string.Equals(s.Name, returnName, StringComparison.Ordinal));
                 if (returnSchemaDecl == null)
+                {
+                    returnSumTypeDecl = _typeDeclarations.FirstOrDefault(t =>
+                        string.Equals(t.TypeName, returnName, StringComparison.Ordinal));
+                }
+                if (returnSchemaDecl == null && returnSumTypeDecl == null)
                 {
                     var classesByName = classes.ToDictionary(c => c.Name, c => c);
                     if (classesByName.TryGetValue(returnName, out var classDecl))
@@ -6986,6 +7044,13 @@ public class CSharpTranspiler
                 WriteIndent();
                 _output.Append("MaldaLang.Interpreter.RuntimeValue? __resolvedSchema = ");
                 EmitParseJsonSchemaLiteral(SchemaRegistry.BuildSchema(returnSchemaDecl));
+                _output.AppendLine(";");
+            }
+            else if (returnSumTypeDecl != null)
+            {
+                WriteIndent();
+                _output.Append("MaldaLang.Interpreter.RuntimeValue? __resolvedSchema = ");
+                EmitParseJsonSchemaLiteral(SumTypeRegistry.BuildSchema(returnSumTypeDecl));
                 _output.AppendLine(";");
             }
             else if (returnClassDecl != null)
@@ -7110,12 +7175,14 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("string __validationError;");
         WriteIndent();
+        _output.AppendLine("MaldaLang.Interpreter.RuntimeValue __validated;");
+        WriteIndent();
         _output.AppendLine("if (__resolvedSchema != null)");
         WriteIndent();
         _output.AppendLine("{");
         _indentLevel++;
         WriteIndent();
-        _output.AppendLine("if (!MaldaLang.BuiltIns.TypedPromptValidator.TryValidateReturnType(__parsed, __resolvedSchema!, out __validationError))");
+        _output.AppendLine("if (!MaldaLang.BuiltIns.TypedPromptValidator.TryValidateReturnType(__parsed, __resolvedSchema!, out __validated, out __validationError))");
         WriteIndent();
         _output.AppendLine("{");
         _indentLevel++;
@@ -7135,7 +7202,7 @@ public class CSharpTranspiler
         _output.AppendLine("{");
         _indentLevel++;
         WriteIndent();
-        _output.AppendLine("if (!MaldaLang.BuiltIns.TypedPromptValidator.TryValidateReturnType(__parsed, __typedReturnType!, null, out __validationError))");
+        _output.AppendLine("if (!MaldaLang.BuiltIns.TypedPromptValidator.TryValidateReturnType(__parsed, __typedReturnType!, null, out __validated, out __validationError))");
         WriteIndent();
         _output.AppendLine("{");
         _indentLevel++;
@@ -7151,7 +7218,7 @@ public class CSharpTranspiler
         _output.AppendLine("}");
 
         WriteIndent();
-        _output.AppendLine("return RuntimeHelpers.UnwrapRuntimeValue(__parsed);");
+        _output.AppendLine("return RuntimeHelpers.UnwrapRuntimeValue(__validated);");
 
         _indentLevel--;
         WriteIndent();

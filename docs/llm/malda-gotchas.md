@@ -31,6 +31,8 @@ claim a program works.
 | `enqueueJob` expecting durable workflow semantics | Jobs are a **lightweight SQLite queue** (`./.malda/jobs.db`), not `workflow` / `step` / compensate. | Use `workflow { }` for durable steps; use jobs for fire-and-forget workers |
 | `prompt p() -> MySchema { tools: [...]; … }` expecting structured `response_format` | For v1, **tools and `response_format` are mutually exclusive**. If the prompt body lists tools, the schema is **not** sent to the LLM. | Omit tools for typed structured output, or validate the free-form reply yourself |
 | Treating `-> Type` as compile-time typing | Hints are not static types. On **`await`**, the runtime validates JSON against the resolved schema (and may send OpenAI `response_format`). Without `await`, you only build a `PromptInstance`. | Prefer `schema Name { … }` + `await prompt(...) -> Name`; see `Examples/Prompts/schema_prompt_structured.malda` |
+| Sum-type prompt returning a plain object | `prompt p() -> Intent` with `type Intent = …` coerces JSON into a **variant**. Object field access like `intent.tag` is wrong. | Use `match intent { case Buy(sku, qty): … }`. Wire JSON must be `{ "tag": "Buy", …payload }` |
+| Same name for `schema Foo` and `type Foo` | Registration throws — a name cannot be both. | Pick one spelling / rename one of them |
 | `pdf.extractText(scanned.pdf)` expecting OCR | Extracts the **digital text layer** only (PdfPig). Image-only / scanned PDFs often return empty or near-empty text with no error. | OCR first, or convert to `.md` / `.txt` before BUILD |
 | `doc.extractText("old.doc")` | Only **`.docx`** (Office Open XML) is supported. Legacy binary `.doc` throws. | Save as `.docx`, or convert before BUILD |
 
@@ -76,8 +78,10 @@ the language server reports both as deprecated. Prefer `math.sqrt(16)`. See the 
 rule in [`malda-syntax.md`](malda-syntax.md).
 
 **Typed prompts send `response_format` only to OpenAI-compatible chat APIs.** Llama.cpp
-clients accept the parameter and ignore it; validation + repair retries still run after the
-reply. If a backend rejects `response_format`, the host retries once without it.
+clients accept the parameter and ignore it. For every typed prompt with no tools, MALDA
+also appends a compact **schema appendix** to the system message so local models still
+see the expected shape. Validation + repair retries still run after the reply. If a
+backend rejects `response_format`, the host retries once without it.
 
 ## Before you say it works
 
