@@ -188,7 +188,7 @@ Community help on the Web IDE (Monaco UX, diagnostics, examples browser) is welc
 | [`Examples/Web`](Examples/Web) | REST, UI, auth, jobs |
 | [`docs/tutorials/fullstack-sessions-auth.md`](docs/tutorials/fullstack-sessions-auth.md) | Sessions / CSRF / jobs walkthrough |
 | [`Templates/`](Templates) | `malda new webapi` / `malda new fullstack` |
-| [`ReferenceManual/`](ReferenceManual) | Language reference (HTML) |
+| [`ReferenceManual/`](ReferenceManual) | Language reference (HTML); published at [amaldini.github.io/maldalang](https://amaldini.github.io/maldalang/) |
 | [`vscode-malda/`](vscode-malda) | VS Code extension |
 
 ## Solution layout

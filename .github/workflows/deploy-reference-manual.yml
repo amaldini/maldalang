@@ -1,0 +1,50 @@
+name: Deploy Reference Manual
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "ReferenceManual/**"
+      - ".github/workflows/deploy-reference-manual.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Publish ReferenceManual to GitHub Pages
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Prepare site
+        run: |
+          mkdir -p _site
+          # Static HTML/CSS/JS/JSON only — skip authoring helpers.
+          find ReferenceManual -maxdepth 1 -type f \
+            \( -name '*.html' -o -name '*.css' -o -name '*.js' -o -name '*.json' \) \
+            -exec cp {} _site/ \;
+          touch _site/.nojekyll
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
