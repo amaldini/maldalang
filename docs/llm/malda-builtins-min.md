@@ -1,6 +1,6 @@
 # MALDA builtins (minimum set for codegen)
 
-*Applies to: MALDA 0.1.51*
+*Applies to: MALDA 0.1.52*
 
 **If a name is not in [`malda-builtins.tsv`](malda-builtins.tsv), it does not exist — do not
 invent it.** The TSV is generated from the engine and guarded by a test, so absence from it

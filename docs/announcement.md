@@ -102,26 +102,29 @@ Huntley's "Ralph Wiggum" loop and the cursed language he got out of it
 the agent example above is named after it. In place of asking for trust:
 guard tests that fail the build if the manual's reserved words drift from
 the lexer or a built-in goes undocumented, every runnable snippet in the
-35-chapter reference manual executed by the test suite, and a 100-case
+reference manual executed by the test suite, and a ~100-case Tier 0
 conformance matrix across backends. That catches drift, not bad taste.
 Implementation is C# on .NET 8 — hand-written lexer and recursive-descent
-parser, no ANTLR, a tree-walking interpreter, ~300 built-ins, ~1,520
+parser, no ANTLR, a tree-walking interpreter, ~300 built-ins, ~1,600
 tests. Dual licensed MIT OR Apache-2.0 with a runtime exception, so
 compiled programs carry no attribution obligation. No CLA.
 
-Honest about where it is: the public core is at 0.1.31 — still 0.1.x, not
-a 1.0 — and the spec is Draft 1.0. Type annotations parse and feed the
-language server; mismatches on literals, assignments and known identifiers
-emit IDE Warnings (errors under --strict-types), but there is no full
-static checker yet — it is dynamically typed at runtime. I do not run it
-in my day job either; that is large systems already in flight, and they do
-not get rewritten for an experiment. The full IDE is WPF, so Windows-only;
-the CLI, compiler and browser playground build and run on Linux and macOS
-in CI (smoke, not the full suite). The JavaScript backend is a real
-subset — no agents or servers in the browser path. Durable workflows are
-the local end of durable execution: step-level memoization on one SQLite
-file, durable across a restart but not highly available, and the
-determinism check is a deny-list of 16 built-in names. No benchmarks yet.
+Honest about where it is: the public core is at 0.1.51 — still 0.1.x
+toolchain numbering — while the language Spec is Final 1.0. Type
+annotations parse and feed the language server; mismatches on literals,
+assignments, known identifiers, operators and selected builtins emit IDE
+Errors by default (opt-out; CLI --strict-types adds match/@pure/bounds),
+but there is no full static checker yet — it is dynamically typed at
+runtime. I do not run it in my day job either; that is large systems
+already in flight, and they do not get rewritten for an experiment. The
+full IDE is WPF, so Windows-only; the CLI, compiler and browser playground
+build and run on Linux and macOS in CI (smoke, not the full suite). The
+JavaScript backend is a real subset — no agents or servers in the browser
+path. Durable workflows are the local end of durable execution:
+step-level memoization on one SQLite file, durable across a restart but
+not highly available, and the determinism check is a fixed deny-list of
+built-in names (not Temporal-style history detection). Micro-benchmark
+samples exist under docs/benchmarks.md — modest, not a leaderboard.
 
 Happy to answer the obvious questions ("why not a library?", "why not macros
 over an existing language?") and anything else.
@@ -193,8 +196,8 @@ exactly that; Second Brain is another, for documentation rather than a PRD check
 
 In place of asking for trust on the agent-written parts: guard tests that fail the build if
 the manual's reserved words drift from the lexer or a built-in is undocumented, every
-runnable snippet in the reference manual executed by the test suite, and a 100-case
-conformance matrix run across backends. That catches drift, not bad taste. Judge the taste
+runnable snippet in the reference manual executed by the test suite, and a ~100-case
+Tier 0 conformance matrix run across backends. That catches drift, not bad taste. Judge the taste
 from the syntax below.
 
 #### What that actually means
@@ -335,13 +338,12 @@ Worth stating precisely, because "durable" is an overloaded word. Recovery is st
 memoization: a `step` that already succeeded returns its persisted result instead of
 re-executing, and its output round-trips through JSON, so it must be JSON-shaped. The
 determinism boundary is enforced by refusal rather than by a replay-time detector, and what
-does the refusing is a deny-list of sixteen names — four non-deterministic built-ins (`now`,
-`random`, `randomInt`, `randomFloat`) and twelve side-effecting ones (`writeFile`,
-`runCommand`, `http*` and friends). Everything else is deterministic by default, so a model
-call, a SQL write or .NET interop placed outside a `step` is *not* caught for you. And one
-SQLite file means durability across a process restart on one machine, not high availability:
-lose the machine and you lose the instance. This is the small, local end of durable
-execution, not a Temporal replacement.
+does the refusing is a fixed deny-list — non-deterministic names such as `now`, `random*`,
+`randn` and `sleep`, plus side-effecting ones (`writeFile`, `runCommand`, `http*` and
+friends). Everything else is deterministic by default, so a model call, a SQL write or .NET
+interop placed outside a `step` is *not* caught for you. And one SQLite file means durability
+across a process restart on one machine, not high availability: lose the machine and you lose
+the instance. This is the small, local end of durable execution, not a Temporal replacement.
 
 #### The point is that these compose
 
@@ -364,7 +366,8 @@ a deployment that has to carry all of it. In MALDA a single program can be, simu
 
 There is no adapter between those roles: a function decorated with `@MCPTool` is the same
 function an agent can call as a tool and the same function a `@POST` handler can invoke.
-Composition across files is `include`, which splices at parse time.
+Composition across files is `include` (parse-time splice) or `import` / selective
+`import { … } from` (module export surface, including `export type` / `export schema`).
 
 The existence proof for the coding-agent item is in the repository. `Examples/RalphWiggum/` is a
 PRD-driven autonomous coding agent — **4,049 lines of MALDA** across eleven files, nine of
@@ -473,23 +476,22 @@ Language intelligence lives in one shared service consumed by the WPF Desktop ID
 Blazor browser playground and the LSP server, so the three do not drift.
 
 Current numbers, all checkable in the repo: ~300 built-in functions in the registry,
-~1,520 tests, 153 `.malda` examples, a 35-chapter HTML reference manual whose runnable
-snippets are executed by the test suite, and a 100-case conformance matrix for the Tier 0
-kernel across backends. Guard tests also fail the build if the manual's reserved-word list
-drifts from the lexer or if a built-in is added without being documented anywhere.
+~1,600 tests, a multi-chapter HTML reference manual whose runnable snippets are executed by
+the test suite, and a ~100-case conformance matrix for the Tier 0 kernel across backends.
+Guard tests also fail the build if the manual's reserved-word list drifts from the lexer or
+if a built-in is added without being documented anywhere.
 
 #### What is not good yet
 
-- **This is still 0.1.x (currently 0.1.31), not a 1.0 release.** The first public tag was
-  `v0.1.0`; the language spec (`docs/spec/malda-language-1.0.md`) remains Draft 1.0: the
-  Tier 0 kernel is normative, while prompts, workflows and HTTP are specified as platform
-  tiers.
+- **Toolchain is still 0.1.x (currently 0.1.51), not a 1.0 product release.** The language
+  Spec is **Final 1.0** (`docs/spec/malda-language-1.0.md`): Tier 0 is the conformance gate;
+  prompts, workflows and HTTP remain platform tiers with an honest backend capability matrix.
 - **Type annotations are hints.** `var count: int = 0;` and `function add(a: int) -> int`
-  parse and feed the IDE. Mismatches on literals, assignments, known identifiers, and
-  declared class/schema names emit Warnings (Errors under `--strict-types`), but nothing
-  enforces hints at runtime. There are sum types and `match`, and `schema` declarations for
-  JSON, but there is no full static type checker. If you want a checked language today, this
-  is not one.
+  parse and feed the IDE. Mismatches on literals, assignments, known identifiers, operators,
+  selected builtins and `->` call results emit **Errors** by default in LSP/Desktop (opt-out;
+  CLI `--strict-types` also enables match/`@pure`/bounds/const). Nothing enforces hints at
+  runtime. There are sum types and `match`, and `schema` / `validate` for JSON, but there is
+  no full static type checker. If you want a checked language today, this is not one.
 - **Windows tilt.** The reference IDE is WPF, so Windows-only, and `MaldaLang.sln` cannot
   build on other platforms because of it. CI builds the CLI, compiler, language server and
   browser playground on Linux and macOS and runs an example through the CLI there, but only
@@ -501,14 +503,15 @@ drifts from the lexer or if a built-in is added without being documented anywher
   for example static calls on a `DotNetTypeInstance` handle — not “built-in not emitted.”
   The Ralph agent compiles to a working `.exe`.
 - **Durable workflows are the local end of durable execution.** Step-level memoized
-  recovery, JSON-shaped step outputs, a 16-name deny-list for the determinism check, and a
-  single SQLite file with no failover. Good enough for a workflow that waits three days on
-  one box; not a distributed engine.
+  recovery, JSON-shaped step outputs, a fixed deny-list for the determinism check, and a
+  single SQLite file with no failover (documented single-writer / read-only ops model). Good
+  enough for a workflow that waits three days on one box; not a distributed engine.
 - **Transpiled executables need .NET 8** on the target unless you publish self-contained.
-- **No benchmarks.** The interpreter walks the AST, and I have not published performance
-  numbers. Treat throughput claims as absent, not as good.
-- **The package manager needs a registry** and there is no public package ecosystem yet.
-  In practice you compose with `include` and `import` over local files.
+- **Benchmarks are modest samples only.** Micro timings live under `docs/benchmarks.md` /
+  `docs/benchmarks-sample-results.json` — useful as regression smoke, not as a performance
+  claim.
+- **No public package registry yet.** Workspace `packages/`, selective `import { … } from`,
+  and `export type` / `export schema` cover local composition; there is no npm-like hub.
 - **Model access** is OpenRouter-first, with a small local GGUF model (Qwen2.5-0.5B, via
   LLamaSharp) auto-downloaded as an offline fallback. The fallback proves the pipeline
   works without an API key; it is not a production-quality model.
