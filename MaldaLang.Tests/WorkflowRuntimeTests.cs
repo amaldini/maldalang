@@ -337,6 +337,55 @@ var id = startWorkflow(""Bad"", null);
     }
 
     [Fact]
+    public void WF1001_SleepInWorkflowBody_Throws()
+    {
+        WorkflowEngine.ResetForTesting("Data Source=" + GetTestDbPath());
+        var source = @"
+workflow Bad(input) {
+    sleep(10);
+    print(1);
+}
+var id = startWorkflow(""Bad"", null);
+";
+        var lexer = new Lexer(source);
+        var tokens = lexer.Tokenize();
+        var parser = new Parser.Parser(tokens);
+        var statements = parser.Parse();
+        var interp = new Interpreter.Interpreter();
+        var ex = Assert.Throws<RuntimeException>(() =>
+            interp.InterpretAsync(statements).GetAwaiter().GetResult());
+        Assert.Contains("WF1001", ex.Message);
+        Assert.Contains("sleep", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WF1001_SleepInsideStep_Allowed()
+    {
+        WorkflowEngine.ResetForTesting("Data Source=" + GetTestDbPath());
+        var source = @"
+function pause() {
+    sleep(5);
+    return 1;
+}
+workflow Ok(input) {
+    step x = pause();
+    print(x);
+}
+var id = startWorkflow(""Ok"", null);
+";
+        var lexer = new Lexer(source);
+        var tokens = lexer.Tokenize();
+        var parser = new Parser.Parser(tokens);
+        var statements = parser.Parse();
+        var interp = new Interpreter.Interpreter();
+        interp.InterpretAsync(statements).GetAwaiter().GetResult();
+
+        var inst = WorkflowEngine.Instance.ListInstances(name: "Ok", limit: 1).FirstOrDefault();
+        Assert.NotNull(inst);
+        Assert.Equal("COMPLETED", inst!.Status);
+    }
+
+    [Fact]
     public void Workflow_RetryMath_FixedLinearExponentialAndCap()
     {
         WorkflowEngine.ResetForTesting("Data Source=" + GetTestDbPath());

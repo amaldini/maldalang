@@ -161,7 +161,7 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 - **Call-site checking:** IDE/LSP default elevates type mismatches to **Error** (`StrictTypesOptions.Default` / `malda.types.strict`); covers literals, hinted ids, `new`, call `-> T` (same unit + imports), operators (when both sides inferable), and selected Tier-1 builtin returns (`math` / `str` / `io`). CLI `--strict-types` remains explicit and also enables match/`@pure`/bounds/const.  
 - **Nested schemas:** field types may name other schemas (`Other` / `Other[]`); unknown field types and cycles error on resolve; IDE `malda-schema` diagnostics on unknown field types; import + `validate` covered by tests.  
-- **Workflow (minimal):** WF1001 also denies `randomChoiceWeighted` and `randn`; durability remains single-box SQLite + deny-list (not Temporal replay detection).
+- **Workflow (minimal):** WF1001 denies `now` / `random*` / `randn` / `sleep`; WF1002 denies filesystem/process/HTTP built-ins outside `step`; IDE/LSP static WF1001/WF1002 on direct calls; durability remains single-box SQLite + fixed deny-list (not Temporal replay detection).
 
 #### Final checklist (2026-08-12) — Draft 1.0 → Final
 

@@ -90,5 +90,6 @@ Server-driven `ui.*` trees, patch protocol, and `MaldaLang.UIHost` wiring are do
 
 - Call-site type hints: [`MaldaLang/IDE/TypeCompatibilityDiagnostics.cs`](../MaldaLang/IDE/TypeCompatibilityDiagnostics.cs) infers declared callee return types (imports via [`ModuleSymbolResolver`](../MaldaLang/IDE/ModuleSymbolResolver.cs)).
 - Nested `schema` fields: [`SchemaRegistry`](../MaldaLang/BuiltIns/SchemaRegistry.cs) expands sibling schemas inline; unknown names / cycles fail on resolve.
-- Forward plan (strict-as-errors default, workflow ops/HA, backend contracts, AI/UI/packages): [`docs/roadmap-p0-maturity.md`](roadmap-p0-maturity.md).
+- Forward plan (backend contracts, AI/UI/packages, toolchain): [`docs/roadmap-p0-maturity.md`](roadmap-p0-maturity.md).
 - Workflow HA / multi-worker (single writer + read-only ops, SQLite limits): [`docs/workflows-ha.md`](workflows-ha.md).
+- Workflow determinism: fixed WF1001/WF1002 deny-list in [`BuiltInRegistry.GetWorkflowBehavior`](../MaldaLang/BuiltIns/BuiltInRegistry.cs); IDE static checks in [`WorkflowDeterminismDiagnostics`](../MaldaLang/IDE/WorkflowDeterminismDiagnostics.cs) (not Temporal-style history detection).

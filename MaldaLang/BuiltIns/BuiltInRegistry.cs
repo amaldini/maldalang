@@ -407,17 +407,48 @@ public static class BuiltInRegistry
         };
     }
 
+    /// <summary>Built-ins that raise WF1001 outside a workflow <c>step</c> (fixed deny-list).</summary>
+    public static readonly IReadOnlyList<string> WorkflowNonDeterministicBuiltIns =
+    [
+        "now",
+        "random",
+        "randomInt",
+        "randomFloat",
+        "randomChoiceWeighted",
+        "randn",
+        "sleep"
+    ];
+
+    /// <summary>Built-ins that raise WF1002 outside a workflow <c>step</c> (fixed deny-list).</summary>
+    public static readonly IReadOnlyList<string> WorkflowSideEffectingBuiltIns =
+    [
+        "runCommand",
+        "writeFile",
+        "replaceInFile",
+        "editFile",
+        "deleteFile",
+        "runMALDA",
+        "compileMALDA",
+        "httpGet",
+        "httpPost",
+        "httpPut",
+        "httpDelete",
+        "httpPatch"
+    ];
+
+    private static readonly HashSet<string> WorkflowNonDeterministicBuiltInSet =
+        new(WorkflowNonDeterministicBuiltIns, StringComparer.Ordinal);
+
+    private static readonly HashSet<string> WorkflowSideEffectingBuiltInSet =
+        new(WorkflowSideEffectingBuiltIns, StringComparer.Ordinal);
+
     public static WorkflowBuiltInBehavior GetWorkflowBehavior(string name)
     {
-        return name switch
-        {
-            "now" or "random" or "randomInt" or "randomFloat" or
-            "randomChoiceWeighted" or "randn" => WorkflowBuiltInBehavior.NonDeterministic,
-            "runCommand" or "writeFile" or "replaceInFile" or "editFile" or "deleteFile" or
-            "runMALDA" or "compileMALDA" or "httpGet" or "httpPost" or "httpPut" or
-            "httpDelete" or "httpPatch" => WorkflowBuiltInBehavior.SideEffecting,
-            _ => WorkflowBuiltInBehavior.Deterministic
-        };
+        if (WorkflowNonDeterministicBuiltInSet.Contains(name))
+            return WorkflowBuiltInBehavior.NonDeterministic;
+        if (WorkflowSideEffectingBuiltInSet.Contains(name))
+            return WorkflowBuiltInBehavior.SideEffecting;
+        return WorkflowBuiltInBehavior.Deterministic;
     }
 
     private static BuiltInDescriptor Descriptor(
