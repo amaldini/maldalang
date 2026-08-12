@@ -96,3 +96,16 @@ public sealed class WorkflowMaintenanceReport
     public int CompactedSteps { get; set; }
     public bool DryRun { get; set; }
 }
+
+/// <summary>
+/// Unified ops view for one workflow instance (CLI <c>malda workflow report</c>).
+/// </summary>
+public sealed class WorkflowOpsReport
+{
+    public WorkflowInstanceRecord Instance { get; set; } = new();
+    public IReadOnlyList<WorkflowStepRecord> Steps { get; set; } = Array.Empty<WorkflowStepRecord>();
+    public IReadOnlyList<WorkflowEventRecord> Events { get; set; } = Array.Empty<WorkflowEventRecord>();
+    public IReadOnlyList<WorkflowDeadLetterRecord> DeadLetters { get; set; } = Array.Empty<WorkflowDeadLetterRecord>();
+    public string GeneratedAtUtc { get; set; } = "";
+    public int EventLimit { get; set; }
+}

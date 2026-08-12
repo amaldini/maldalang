@@ -2,7 +2,8 @@
 // Run: malda Examples/Workflows/retry_and_inspect.malda
 // Persistence: ./.malda/workflows.db (local SQLite; no cloud).
 //
-// CLI footnote (not used here): malda workflow list|get|steps|dlq|maintenance run ...
+// CLI footnote (not used here): malda workflow report|list|get|steps|dlq|maintenance run ...
+// For a CLI-first ops smoke, see ops_report.malda.
 
 var attempt = 0;
 

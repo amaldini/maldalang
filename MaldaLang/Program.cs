@@ -3199,19 +3199,20 @@ class Program
     {
         static void PrintWorkflowUsage()
         {
-            Console.Error.WriteLine("Usage: malda workflow <start|list|get|steps|events|metrics|resume|retry|cancel|approve|signal|dlq|maintenance> [options]");
+            Console.Error.WriteLine("Usage: malda workflow <start|list|get|steps|events|report|metrics|resume|retry|cancel|approve|signal|dlq|maintenance> [options]");
             Console.Error.WriteLine("  malda workflow start <file.malda> <workflowName> [--input file.json]");
             Console.Error.WriteLine("  malda workflow list [--status ...] [--name ...] [--limit ...]");
             Console.Error.WriteLine("  malda workflow get <instanceId>");
             Console.Error.WriteLine("  malda workflow steps <instanceId>");
             Console.Error.WriteLine("  malda workflow events <instanceId> [--limit ...]");
+            Console.Error.WriteLine("  malda workflow report <instanceId> [--events-limit ...]");
             Console.Error.WriteLine("  malda workflow metrics");
             Console.Error.WriteLine("  malda workflow resume <instanceId>");
             Console.Error.WriteLine("  malda workflow retry <instanceId>");
             Console.Error.WriteLine("  malda workflow cancel <instanceId> [--reason \"...\"]");
             Console.Error.WriteLine("  malda workflow approve <instanceId> <stepId> [--decision approve|reject|timeout] [--payload file.json]");
             Console.Error.WriteLine("  malda workflow signal <instanceId> <signalName> [--payload file.json]");
-            Console.Error.WriteLine("  malda workflow dlq list [--limit ...]");
+            Console.Error.WriteLine("  malda workflow dlq list [--limit ...] [--pending-only]");
             Console.Error.WriteLine("  malda workflow dlq requeue <deadLetterId> [--reason \"...\"] [--by \"operator\"] [--correlation-id \"...\"]");
             Console.Error.WriteLine("  malda workflow maintenance run [--operational-days ...] [--audit-days ...] [--compaction-days ...] [--batch ...] [--dry-run]");
             Console.Error.WriteLine("  global options: --format human|json, --json");
@@ -3381,6 +3382,81 @@ class Program
                 {
                     foreach (var evt in events)
                         Console.WriteLine($"{evt.CreatedAtUtc}  {evt.EventType}  {evt.PayloadJson}");
+                }
+                return 0;
+            }
+            if (sub == "report")
+            {
+                if (args.Length < 2)
+                {
+                    Console.Error.WriteLine("Usage: malda workflow report <instanceId> [--events-limit ...]");
+                    return 1;
+                }
+
+                var eventLimit = 200;
+                for (var i = 2; i < args.Length; i++)
+                {
+                    if ((args[i] == "--events-limit" || args[i] == "--limit" || args[i] == "-l") && i + 1 < args.Length)
+                    {
+                        int.TryParse(args[i + 1], out eventLimit);
+                        i++;
+                    }
+                }
+
+                var report = engine.GetOpsReport(args[1], eventLimit);
+                if (report == null)
+                {
+                    Console.Error.WriteLine($"Workflow instance not found: {args[1]}");
+                    return 2;
+                }
+
+                if (jsonMode)
+                {
+                    Console.WriteLine(JsonSerializer.Serialize(report, new JsonSerializerOptions
+                    {
+                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                    }));
+                }
+                else
+                {
+                    var inst = report.Instance;
+                    Console.WriteLine("=== Instance ===");
+                    Console.WriteLine($"id: {inst.Id}");
+                    Console.WriteLine($"name: {inst.Name}");
+                    Console.WriteLine($"status: {inst.Status}");
+                    Console.WriteLine($"created_at_utc: {inst.CreatedAtUtc}");
+                    Console.WriteLine($"updated_at_utc: {inst.UpdatedAtUtc}");
+                    if (!string.IsNullOrWhiteSpace(inst.StartedAtUtc)) Console.WriteLine($"started_at_utc: {inst.StartedAtUtc}");
+                    if (!string.IsNullOrWhiteSpace(inst.FinishedAtUtc)) Console.WriteLine($"finished_at_utc: {inst.FinishedAtUtc}");
+                    if (!string.IsNullOrWhiteSpace(inst.CorrelationId)) Console.WriteLine($"correlation_id: {inst.CorrelationId}");
+                    if (inst.InputJson != null) Console.WriteLine($"input: {inst.InputJson}");
+                    if (inst.ResultJson != null) Console.WriteLine($"result: {inst.ResultJson}");
+                    if (inst.ErrorJson != null) Console.WriteLine($"error: {inst.ErrorJson}");
+                    Console.WriteLine($"generated_at_utc: {report.GeneratedAtUtc}");
+
+                    Console.WriteLine();
+                    Console.WriteLine("=== Steps ===");
+                    if (report.Steps.Count == 0)
+                        Console.WriteLine("(none)");
+                    else
+                        foreach (var s in report.Steps)
+                            Console.WriteLine($"{s.StepName}  {s.State}  attempt={s.Attempt}/{s.MaxAttempts}  kind={s.StepKind}  output={s.OutputJson ?? s.ErrorJson ?? "-"}");
+
+                    Console.WriteLine();
+                    Console.WriteLine("=== Timeline events ===");
+                    if (report.Events.Count == 0)
+                        Console.WriteLine("(none)");
+                    else
+                        foreach (var evt in report.Events)
+                            Console.WriteLine($"{evt.CreatedAtUtc}  {evt.EventType}  {evt.PayloadJson}");
+
+                    Console.WriteLine();
+                    Console.WriteLine("=== Dead letters ===");
+                    if (report.DeadLetters.Count == 0)
+                        Console.WriteLine("(none)");
+                    else
+                        foreach (var dlq in report.DeadLetters)
+                            Console.WriteLine($"{dlq.Id}  step={dlq.StepName}  reason={dlq.Reason}  requeued={dlq.RequeuedAtUtc ?? "-"}  created={dlq.CreatedAtUtc}");
                 }
                 return 0;
             }
@@ -4017,12 +4093,13 @@ class Program
 
     static void ShowWorkflowHelp()
     {
-        Console.WriteLine("Usage: malda workflow <start|list|get|steps|events|metrics|resume|retry|cancel|approve|signal|dlq|maintenance> [options]");
+        Console.WriteLine("Usage: malda workflow <start|list|get|steps|events|report|metrics|resume|retry|cancel|approve|signal|dlq|maintenance> [options]");
         Console.WriteLine("  start       Start a workflow instance from a MALDA file");
         Console.WriteLine("  list        List workflow instances");
         Console.WriteLine("  get         Show workflow instance details");
         Console.WriteLine("  steps       Show persisted step state");
         Console.WriteLine("  events      Show workflow events");
+        Console.WriteLine("  report      Unified ops report (instance, steps, timeline, DLQ)");
         Console.WriteLine("  metrics     Show workflow metrics");
         Console.WriteLine("  resume      Resume a paused workflow");
         Console.WriteLine("  retry       Retry a workflow instance");

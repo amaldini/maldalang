@@ -2,9 +2,12 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 using System.IO;
+using System.Linq;
 using System.Reflection;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using MaldaLang;
+using MaldaLang.Interpreter;
 using MaldaLang.Runtime.Workflows;
 using Xunit;
 
@@ -370,6 +373,106 @@ public class WorkflowCliTests : TestBase
                     Assert.Equal(0, code);
                     Assert.StartsWith("{", output.ToString().Trim());
                     Assert.Contains("\"dryRun\":true", output.ToString(), StringComparison.OrdinalIgnoreCase);
+                }
+                finally
+                {
+                    Console.SetOut(originalOut);
+                    Console.SetError(originalErr);
+                }
+            }
+        }
+        finally
+        {
+            SafeDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public void WorkflowCli_Report_ReturnsUnifiedOpsView()
+    {
+        var tempDir = CreateTempDirectory("workflow_cli_report_");
+        var dbPath = Path.Combine(tempDir, "workflows.db");
+
+        try
+        {
+            WorkflowEngine.ResetForTesting("Data Source=" + dbPath);
+
+            var source = """
+                function alwaysFail() { error("storage unavailable"); }
+                workflow ReportFailFlow(input) {
+                    step task = alwaysFail() retry 1 backoff "fixed" delay 1;
+                    return task;
+                }
+                startWorkflow("ReportFailFlow", null);
+                """;
+            var parser = new Parser.Parser(new Lexer(source).Tokenize());
+            var statements = parser.Parse();
+            var interpreter = new Interpreter.Interpreter();
+            Assert.ThrowsAny<Exception>(() => interpreter.InterpretAsync(statements).GetAwaiter().GetResult());
+
+            var instance = WorkflowEngine.Instance.ListInstances(name: "ReportFailFlow", limit: 1).FirstOrDefault();
+            Assert.NotNull(instance);
+            var instanceId = instance!.Id;
+
+            var programType = typeof(Lexer).Assembly.GetType("MaldaLang.Program");
+            Assert.NotNull(programType);
+            var workflowCommand = programType!.GetMethod("WorkflowCommand", BindingFlags.Static | BindingFlags.NonPublic);
+            Assert.NotNull(workflowCommand);
+            static int InvokeWorkflow(MethodInfo method, string[] args) =>
+                (int)(method.Invoke(null, new object[] { args }) ?? -1);
+
+            lock (_consoleLock)
+            {
+                var originalOut = Console.Out;
+                var originalErr = Console.Error;
+                using var output = new StringWriter();
+                using var error = new StringWriter();
+                Console.SetOut(output);
+                Console.SetError(error);
+
+                try
+                {
+                    var missingCode = InvokeWorkflow(workflowCommand!, new[] { "report", "missing-instance-id" });
+                    Assert.Equal(2, missingCode);
+                    Assert.Contains("not found", error.ToString(), StringComparison.OrdinalIgnoreCase);
+
+                    output.GetStringBuilder().Clear();
+                    error.GetStringBuilder().Clear();
+
+                    var jsonCode = InvokeWorkflow(workflowCommand!, new[] { "report", instanceId, "--json" });
+                    Assert.Equal(0, jsonCode);
+                    var jsonOut = output.ToString().Trim();
+                    Assert.StartsWith("{", jsonOut);
+
+                    using (var doc = JsonDocument.Parse(jsonOut))
+                    {
+                        var root = doc.RootElement;
+                        Assert.True(root.TryGetProperty("instance", out var instEl));
+                        Assert.Equal(instanceId, instEl.GetProperty("id").GetString());
+                        Assert.Equal("FAILED", instEl.GetProperty("status").GetString());
+                        Assert.True(root.TryGetProperty("steps", out var stepsEl));
+                        Assert.True(stepsEl.GetArrayLength() > 0);
+                        Assert.True(root.TryGetProperty("events", out var eventsEl));
+                        Assert.True(eventsEl.GetArrayLength() > 0);
+                        Assert.True(root.TryGetProperty("deadLetters", out var dlqEl));
+                        Assert.True(dlqEl.GetArrayLength() > 0);
+                        Assert.True(root.TryGetProperty("generatedAtUtc", out _));
+                        Assert.True(root.TryGetProperty("eventLimit", out _));
+                    }
+
+                    output.GetStringBuilder().Clear();
+                    error.GetStringBuilder().Clear();
+
+                    var humanCode = InvokeWorkflow(workflowCommand!, new[] { "report", instanceId });
+                    Assert.Equal(0, humanCode);
+                    var humanOut = output.ToString().Replace("\r", "");
+                    Assert.Contains("=== Instance ===", humanOut);
+                    Assert.Contains("=== Steps ===", humanOut);
+                    Assert.Contains("=== Timeline events ===", humanOut);
+                    Assert.Contains("=== Dead letters ===", humanOut);
+                    Assert.Contains($"id: {instanceId}", humanOut);
+                    Assert.Contains("status: FAILED", humanOut);
+                    Assert.Contains("workflow_started", humanOut);
                 }
                 finally
                 {

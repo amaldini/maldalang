@@ -27,7 +27,7 @@
             <li><strong>Determinism:</strong> replay avoids duplicate successful step execution.</li>
             <li><strong>Recovery:</strong> stale running work is reconciled on restart and can resume safely.</li>
             <li><strong>Control:</strong> approval/signal flows can be driven from CLI or built-ins.</li>
-            <li><strong>Operations:</strong> DLQ, requeue, metrics, and maintenance commands are available.</li>
+            <li><strong>Operations:</strong> unified <code>malda workflow report</code>, DLQ, requeue, metrics, and maintenance commands are available.</li>
         </ul>
 
         <h2>32.2 Workflow Syntax</h2>
@@ -145,6 +145,7 @@ malda workflow list --status FAILED --limit 50
 malda workflow get &lt;instanceId&gt;
 malda workflow steps &lt;instanceId&gt;
 malda workflow events &lt;instanceId&gt; --limit 200
+malda workflow report &lt;instanceId&gt; --events-limit 200
 malda workflow metrics
 malda workflow cancel &lt;instanceId&gt; --reason "operator cancel"
 malda workflow resume &lt;instanceId&gt;
@@ -161,6 +162,10 @@ malda workflow maintenance run --operational-days 30 --audit-days 180 --compacti
 malda workflow maintenance run --dry-run --format json</code></pre>
 
         <p>For automation, use <code>--json</code> or <code>--format json</code>.</p>
+
+        <h3>Reading an ops report</h3>
+        <p><code>malda workflow report &lt;instanceId&gt;</code> returns one operator-facing document: instance status, persisted step attempts, journaled timeline events, and dead-letter rows for that instance (including requeue audit when present). Human mode prints four sections; <code>--json</code> emits a single object with camelCase keys <code>instance</code>, <code>steps</code>, <code>events</code>, <code>deadLetters</code>, <code>generatedAtUtc</code>, and <code>eventLimit</code>.</p>
+        <p>The timeline is the append-only event journal (what happened on this box), not a Temporal-style replay debugger. Pending DLQ rows for the instance appear under Dead letters; use <code>malda workflow dlq requeue</code> to act on them. Seed a FAILED instance with <code>Examples/Workflows/ops_report.malda</code>, then run <code>malda workflow report</code> against the printed <code>instanceId</code>.</p>
 
         <h2>32.7 Reliability and Parity Notes</h2>
         <ul>

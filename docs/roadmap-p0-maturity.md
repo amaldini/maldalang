@@ -142,3 +142,4 @@ Rough sequencing. Items can overlap when owners differ; gates below are the acce
 | Date | Change |
 |------|--------|
 | 2026-08-12 | Initial active P0 maturity roadmap (types, workflows, parity, AI, UI, packages, toolchain) |
+| 2026-08-12 | W1 Observability landed: `malda workflow report`, `Examples/Workflows/ops_report.malda`, RM §32.6 |

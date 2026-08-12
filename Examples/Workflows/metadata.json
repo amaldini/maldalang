@@ -26,9 +26,24 @@
       "prerequisites": ["Workflows/simple_step.malda", "Basics/errors_and_match.malda"],
       "learningGoal": "Run local durable workflows, recover from flaky steps, and inspect failures without cloud infra.",
       "expectedOutput": "Prints a successful retry run, then FAILED inspection and dead-letter count; exits 0.",
+      "next": "Workflows/ops_report.malda",
       "documentationPath": "/?lesson=build-ai-apps#lesson-build-ai-apps",
       "documentationTitle": "Durable Workflows",
       "featured": true
+    },
+    {
+      "name": "Ops Report",
+      "description": "Seed a FAILED instance for malda workflow report (timeline + steps + DLQ)",
+      "file": "ops_report.malda",
+      "track": "ai-builder",
+      "difficulty": "intermediate",
+      "minutes": 10,
+      "concepts": ["startWorkflow", "listWorkflows", "workflow report", "DLQ"],
+      "prerequisites": ["Workflows/retry_and_inspect.malda"],
+      "learningGoal": "Use the unified CLI ops report after a terminal failure.",
+      "expectedOutput": "Prints instanceId and CLI report commands; exits 0 after expected failure.",
+      "documentationPath": "/?lesson=build-ai-apps#lesson-build-ai-apps",
+      "documentationTitle": "Durable Workflows"
     }
   ]
 }

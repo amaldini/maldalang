@@ -5,6 +5,7 @@ namespace MaldaLang.Runtime.Workflows;
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 
@@ -264,6 +265,35 @@ public sealed class WorkflowEngine
     public IReadOnlyList<WorkflowEventRecord> GetEvents(string instanceId, int limit = 200) => Persistence.GetEvents(instanceId, limit);
     public IReadOnlyList<WorkflowDeadLetterRecord> ListDeadLetters(int limit = 100, bool includeRequeued = true) =>
         Persistence.ListDeadLetters(limit, includeRequeued);
+
+    /// <summary>
+    /// Compose instance + steps + timeline events + related dead letters for ops inspection.
+    /// Returns null when the instance does not exist.
+    /// </summary>
+    public WorkflowOpsReport? GetOpsReport(string instanceId, int eventLimit = 200)
+    {
+        if (eventLimit < 1) eventLimit = 1;
+        if (eventLimit > 10000) eventLimit = 10000;
+
+        var instance = Persistence.GetInstance(instanceId);
+        if (instance == null) return null;
+
+        var steps = Persistence.GetSteps(instanceId);
+        var events = Persistence.GetEvents(instanceId, eventLimit);
+        var deadLetters = Persistence.ListDeadLetters(1000, includeRequeued: true)
+            .Where(d => string.Equals(d.WorkflowInstanceId, instanceId, StringComparison.Ordinal))
+            .ToList();
+
+        return new WorkflowOpsReport
+        {
+            Instance = instance,
+            Steps = steps,
+            Events = events,
+            DeadLetters = deadLetters,
+            GeneratedAtUtc = Persistence.UtcNow(),
+            EventLimit = eventLimit
+        };
+    }
     public bool RequeueDeadLetter(string deadLetterId) =>
         RequeueDeadLetter(deadLetterId, requeueReason: null, requestedBy: null, requeueCorrelationId: null, out _);
 

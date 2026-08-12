@@ -1,0 +1,42 @@
+// ops_report.malda — leave a FAILED instance for malda workflow report
+// Run: malda Examples/Workflows/ops_report.malda
+// Then (same working directory / DB):
+//   malda workflow report <instanceId>
+//   malda workflow report <instanceId> --json
+//   malda workflow dlq list --pending-only
+// Persistence: ./.malda/workflows.db (local SQLite; no cloud).
+
+function alwaysFail() {
+    error("ops smoke: storage unavailable");
+}
+
+workflow OpsReportJob(input) {
+    step task = alwaysFail() retry 1 backoff "fixed" delay 1;
+    return task;
+}
+
+print("=== ops report smoke (terminal failure expected) ===");
+var failId = null;
+try {
+    failId = startWorkflow("OpsReportJob", null);
+} catch (err) {
+    print("startWorkflow threw (expected): " + err);
+}
+
+var failed = listWorkflows("FAILED", "OpsReportJob", 5);
+if (length(failed) > 0) {
+    failId = failed[0].id;
+}
+
+if (failId == null) {
+    error("ops_report: expected a FAILED OpsReportJob instance");
+}
+
+print("instanceId=" + failId);
+print("status=" + getWorkflowStatus(failId));
+print("");
+print("Inspect with:");
+print("  malda workflow report " + failId);
+print("  malda workflow report " + failId + " --json");
+print("  malda workflow dlq list --pending-only");
+print("Done.");
