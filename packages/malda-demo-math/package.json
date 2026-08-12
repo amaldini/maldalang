@@ -1,0 +1,7 @@
+{
+  "name": "malda-demo-math",
+  "version": "1.0.0",
+  "description": "OSS demo workspace package for local packages/ resolution (not a public registry pack)",
+  "main": "demo-math.malda",
+  "license": "MIT OR Apache-2.0"
+}

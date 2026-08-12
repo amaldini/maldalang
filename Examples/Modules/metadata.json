@@ -19,6 +19,26 @@
             "expectedOutput": "Prints 5 and 1.0",
             "documentationPath": "/docs/selective-imports.md",
             "documentationTitle": "Selective imports"
+        },
+        {
+            "name": "Workspace Package",
+            "description": "import { clamp, VERSION } from malda-demo-math via repo packages/ (no install)",
+            "file": "workspace_package.malda",
+            "track": "student",
+            "difficulty": "beginner",
+            "minutes": 5,
+            "concepts": [
+                "import",
+                "workspace packages",
+                "selective import"
+            ],
+            "prerequisites": [
+                "Modules/selective_import.malda"
+            ],
+            "learningGoal": "Load a library from workspace packages/ without a public registry.",
+            "expectedOutput": "Prints 10 and 1.0.0",
+            "documentationPath": "/docs/workspace-packages.md",
+            "documentationTitle": "Workspace packages"
         }
     ]
 }

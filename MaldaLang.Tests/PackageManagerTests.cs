@@ -12,6 +12,7 @@ using PM = MaldaLang.PackageManager.PackageManager;
 
 namespace MaldaLang.Tests;
 
+[Collection("Sequential")]
 public class PackageManagerTests
 {
     private PackageStorage CreateTestStorage()
@@ -23,24 +24,31 @@ public class PackageManagerTests
     
     private PM CreateTestPackageManager(PackageStorage? storage = null)
     {
-        // Set test registry URL for tests (PackageManager creates PackageRegistry in constructor)
-        var originalValue = Environment.GetEnvironmentVariable("MALDA_REGISTRY_URL");
-        Environment.SetEnvironmentVariable("MALDA_REGISTRY_URL", "https://test-registry.maldalang.com");
-        try
+        // Offline-capable: registry is created lazily only for remote install/search.
+        // Silence CLI chatter so parallel TestBase console capture is not polluted.
+        var pm = storage != null ? new PM(storage) : new PM();
+        pm.Out = TextWriter.Null;
+        return pm;
+    }
+
+    private static IDisposable WithTestRegistryUrl()
+    {
+        return new RegistryUrlScope("https://test-registry.maldalang.com");
+    }
+
+    private sealed class RegistryUrlScope : IDisposable
+    {
+        private readonly string? _previous;
+
+        public RegistryUrlScope(string url)
         {
-            return storage != null ? new PM(storage) : new PM();
+            _previous = Environment.GetEnvironmentVariable("MALDA_REGISTRY_URL");
+            Environment.SetEnvironmentVariable("MALDA_REGISTRY_URL", url);
         }
-        finally
+
+        public void Dispose()
         {
-            // Restore original value
-            if (originalValue != null)
-            {
-                Environment.SetEnvironmentVariable("MALDA_REGISTRY_URL", originalValue);
-            }
-            else
-            {
-                Environment.SetEnvironmentVariable("MALDA_REGISTRY_URL", null);
-            }
+            Environment.SetEnvironmentVariable("MALDA_REGISTRY_URL", _previous);
         }
     }
     
@@ -129,12 +137,7 @@ public class PackageManagerTests
     public void List_NoPackages_ShowsNoPackages()
     {
         var pm = CreateTestPackageManager();
-        
-        // This test verifies the method doesn't throw
-        // Actual output testing would require Console capture
         pm.List();
-        
-        Assert.True(true); // If we get here, it didn't throw
     }
     
     [Fact]
@@ -153,21 +156,22 @@ public class PackageManagerTests
         
         var sourceDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
         Directory.CreateDirectory(sourceDir);
-        storage.InstallPackage("test-package", "1.0.0", sourceDir);
-        storage.SavePackageMetadata("test-package", "1.0.0", metadata);
-        
-        // This test verifies the method doesn't throw
-        pm.List();
-        
-        Assert.True(true); // If we get here, it didn't throw
-        
-        // Cleanup
-        Directory.Delete(sourceDir, true);
+        try
+        {
+            storage.InstallPackage("test-package", "1.0.0", sourceDir);
+            storage.SavePackageMetadata("test-package", "1.0.0", metadata);
+            pm.List();
+        }
+        finally
+        {
+            Directory.Delete(sourceDir, true);
+        }
     }
     
     [Fact]
     public async Task SearchAsync_WithQuery_ReturnsResults()
     {
+        using var _ = WithTestRegistryUrl();
         var pm = CreateTestPackageManager();
         
         // This will attempt to search the registry
@@ -182,6 +186,7 @@ public class PackageManagerTests
     [Fact]
     public async Task ListAllPackagesAsync_ReturnsPackages()
     {
+        using var _ = WithTestRegistryUrl();
         var pm = CreateTestPackageManager();
         
         // This will attempt to list packages from the registry
@@ -198,7 +203,6 @@ public class PackageManagerTests
     {
         var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
         Directory.CreateDirectory(tempDir);
-        
         try
         {
             var pm = CreateTestPackageManager();
@@ -226,7 +230,6 @@ public class PackageManagerTests
     {
         var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
         Directory.CreateDirectory(tempDir);
-        
         try
         {
             // Create existing package.json

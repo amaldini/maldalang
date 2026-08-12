@@ -43,7 +43,7 @@ public class PackageRegistryTests
     }
     
     [Fact]
-    public void PackageRegistry_WithoutEnvironmentVariable_ThrowsException()
+    public async Task PackageRegistry_WithoutEnvironmentVariable_Constructs_ButRemoteOpsThrow()
     {
         var storage = CreateTestStorage();
         
@@ -53,7 +53,11 @@ public class PackageRegistryTests
         
         try
         {
-            Assert.Throws<InvalidOperationException>(() => new PackageRegistry(storage));
+            var registry = new PackageRegistry(storage);
+            Assert.NotNull(registry);
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                registry.SearchPackagesAsync("x"));
+            Assert.Contains("MALDA_REGISTRY_URL", ex.Message, StringComparison.Ordinal);
         }
         finally
         {

@@ -103,6 +103,26 @@ This path emphasizes **MALDA Workflow/Cloud**.
 - Choose `Build An AI App` if prompts and agents are your first priority
 - Choose `Build An API Or Full-Stack App` if you want a scaffold you can extend immediately
 - Choose `Build Workflows` if durable operations are the main reason you are evaluating MALDA
+- Choose `Share Code With Workspace Packages` if you are splitting libs across `packages/` or file modules
+
+## 5. Share Code With Workspace Packages
+
+Choose this path if you want multi-file libraries without publishing to a registry.
+
+Start with:
+
+1. `Examples/Modules/selective_import.malda` (file module + selective import)
+2. `Examples/Modules/workspace_package.malda` (repo `packages/malda-demo-math`)
+3. [`docs/workspace-packages.md`](workspace-packages.md)
+
+Quick checks from the repo root:
+
+```bash
+malda Examples/Modules/workspace_package.malda
+malda list --workspace
+```
+
+Put your own libs under `packages/<name>/`. Installed copies live in `~/.maldalang/packages` if you run `malda install ./path`. There is no public MALDA package hub yet.
 
 ## Useful Reference Docs
 
@@ -112,3 +132,4 @@ This path emphasizes **MALDA Workflow/Cloud**.
 - Native numeric transpile rollout: `docs/native-numeric-rollout.md`
 - JavaScript/browser backend notes: `docs/javascript-backend.md`
 - Server-driven UI runtime / UIHost: `docs/ui-framework.md`
+- Workspace packages: `docs/workspace-packages.md`

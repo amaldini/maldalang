@@ -106,6 +106,32 @@ public static class WorkspacePackageResolver
         return roots;
     }
 
+    /// <summary>
+    /// Lists package folders under workspace roots that resolve to a .malda entry.
+    /// </summary>
+    public static IReadOnlyList<(string Name, string EntryPath)> ListWorkspacePackages()
+    {
+        var results = new List<(string Name, string EntryPath)>();
+        var seenNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var root in GetPackagesRoots())
+        {
+            foreach (var dir in Directory.GetDirectories(root))
+            {
+                var name = Path.GetFileName(dir);
+                if (string.IsNullOrEmpty(name) || !seenNames.Add(name))
+                    continue;
+
+                var entry = TryResolveModulePath(name);
+                if (entry != null)
+                    results.Add((name, entry));
+            }
+        }
+
+        results.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
+        return results;
+    }
+
     private static IEnumerable<string> DiscoverPackagesDirsWalkUp(string startDirectory)
     {
         var current = Path.GetFullPath(startDirectory);

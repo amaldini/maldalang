@@ -3941,11 +3941,11 @@ class Program
         Console.WriteLine("  cron        Add, list, remove, or install scheduled jobs");
         Console.WriteLine();
         Console.WriteLine("Packages and diagnostics:");
-        Console.WriteLine("  init        Initialize package metadata");
-        Console.WriteLine("  install     Install a package");
-        Console.WriteLine("  uninstall   Remove a package");
-        Console.WriteLine("  list        List installed packages");
-        Console.WriteLine("  search      Search published packages");
+        Console.WriteLine("  init        Initialize package.json (offline)");
+        Console.WriteLine("  install     Install from local path or remote registry");
+        Console.WriteLine("  uninstall   Remove an installed package (offline)");
+        Console.WriteLine("  list        List installed packages; list --workspace for packages/");
+        Console.WriteLine("  search      Search a remote registry (needs MALDA_REGISTRY_URL)");
         Console.WriteLine("  trace       Summarize, inspect, or replay trace files");
         Console.WriteLine("  symbols     Print classes, functions, and actors from a MALDA file");
         Console.WriteLine("  help        Show top-level help or help for a specific command");
@@ -4440,16 +4440,24 @@ class Program
             case "install":
                 if (args.Length < 2)
                 {
-                    Console.WriteLine("Usage: malda install <package>[@<version>]");
+                    Console.WriteLine("Usage: malda install <local-path>");
+                    Console.WriteLine("       malda install <package>[@<version>]   (needs MALDA_REGISTRY_URL)");
                     SystemEnvironment.Exit(1);
                     return;
                 }
                 
                 var packageSpec = args[1];
+                if (LooksLikeLocalPackagePath(packageSpec))
+                {
+                    var localSuccess = pm.InstallFromPath(packageSpec);
+                    SystemEnvironment.Exit(localSuccess ? 0 : 1);
+                    break;
+                }
+
                 string? packageName = null;
                 string? version = null;
                 
-                if (packageSpec.Contains("@"))
+                if (packageSpec.Contains('@'))
                 {
                     var parts = packageSpec.Split('@', 2);
                     packageName = parts[0];
@@ -4476,7 +4484,7 @@ class Program
                 string? uninstallPackageName = null;
                 string? uninstallVersion = null;
                 
-                if (uninstallSpec.Contains("@"))
+                if (uninstallSpec.Contains('@'))
                 {
                     var parts = uninstallSpec.Split('@', 2);
                     uninstallPackageName = parts[0];
@@ -4492,31 +4500,42 @@ class Program
                 break;
                 
             case "list":
-                pm.List();
+                if (args.Length > 1 && string.Equals(args[1], "--workspace", StringComparison.OrdinalIgnoreCase))
+                    pm.ListWorkspace();
+                else
+                    pm.List();
                 break;
                 
             case "search":
                 if (args.Length < 2)
                 {
-                    Console.WriteLine("Usage: malda search <query>");
+                    Console.WriteLine("Usage: malda search <query>   (needs MALDA_REGISTRY_URL)");
                     SystemEnvironment.Exit(1);
                     return;
                 }
                 
                 var query = args[1];
-                var results = await pm.SearchAsync(query);
-                if (results == null || results.Count == 0)
+                try
                 {
-                    Console.WriteLine("No packages found");
-                }
-                else
-                {
-                    var count = results.Count;
-                    Console.WriteLine($"Found {count} package(s):");
-                    foreach (var pkg in results)
+                    var results = await pm.SearchAsync(query);
+                    if (results == null || results.Count == 0)
                     {
-                        Console.WriteLine($"  {pkg.Name}@{pkg.Version} - {pkg.Description ?? "No description"}");
+                        Console.WriteLine("No packages found");
                     }
+                    else
+                    {
+                        var count = results.Count;
+                        Console.WriteLine($"Found {count} package(s):");
+                        foreach (var pkg in results)
+                        {
+                            Console.WriteLine($"  {pkg.Name}@{pkg.Version} - {pkg.Description ?? "No description"}");
+                        }
+                    }
+                }
+                catch (InvalidOperationException ex)
+                {
+                    Console.Error.WriteLine(ex.Message);
+                    SystemEnvironment.Exit(1);
                 }
                 break;
                 
@@ -4532,15 +4551,50 @@ class Program
                 break;
         }
     }
+
+    static bool LooksLikeLocalPackagePath(string spec)
+    {
+        if (string.IsNullOrWhiteSpace(spec))
+            return false;
+
+        // name@version is always remote-style
+        if (spec.Contains('@') && !spec.Contains('/') && !spec.Contains('\\'))
+            return false;
+
+        if (spec.StartsWith('.') ||
+            spec.Contains('/') ||
+            spec.Contains('\\') ||
+            spec.EndsWith(".malda", StringComparison.OrdinalIgnoreCase) ||
+            spec.EndsWith("package.json", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        try
+        {
+            var full = Path.GetFullPath(spec);
+            return Directory.Exists(full) || File.Exists(full);
+        }
+        catch
+        {
+            return false;
+        }
+    }
     
     static void ShowPackageManagerHelp()
     {
         Console.WriteLine("Package Manager Commands:");
-        Console.WriteLine("  malda install <package>[@<version>]  - Install a package");
-        Console.WriteLine("  malda uninstall <package>[@<version>] - Uninstall a package");
-        Console.WriteLine("  malda list                          - List installed packages");
-        Console.WriteLine("  malda search <query>                - Search for packages");
-        Console.WriteLine("  malda init [directory]              - Initialize package.json");
+        Console.WriteLine("  Workspace packages (no registry; preferred for OSS):");
+        Console.WriteLine("    Put libs under packages/<name>/ and import them, or:");
+        Console.WriteLine("    malda list --workspace                 - List packages/ visible from cwd");
+        Console.WriteLine("    malda install <local-path>             - Copy a local package into ~/.maldalang/packages");
+        Console.WriteLine("    malda init [directory]                 - Write package.json");
+        Console.WriteLine("    malda list                             - List installed packages");
+        Console.WriteLine("    malda uninstall <package>[@<version>]  - Remove installed package");
+        Console.WriteLine();
+        Console.WriteLine("  Remote registry (optional; needs MALDA_REGISTRY_URL):");
+        Console.WriteLine("    malda install <package>[@<version>]    - Install from registry");
+        Console.WriteLine("    malda search <query>                   - Search registry");
+        Console.WriteLine();
+        Console.WriteLine("  Docs: docs/workspace-packages.md");
     }
 
     static void NewCommand(string[] args)

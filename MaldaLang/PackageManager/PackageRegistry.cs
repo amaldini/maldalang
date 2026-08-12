@@ -24,12 +24,20 @@ public class PackageRegistry
     {
         _storage = storage ?? new PackageStorage();
         _httpClient = new HttpClient();
-        
-        // Read registry URL from environment variable (only source of truth)
-        _registryUrl = Environment.GetEnvironmentVariable("MALDA_REGISTRY_URL") 
-            ?? throw new InvalidOperationException(
-                "MALDA_REGISTRY_URL environment variable is not set. " +
-                "Please set it to your package registry URL (e.g., https://registry.maldalang.com)");
+        // Optional: only remote install/search need MALDA_REGISTRY_URL.
+        // Local metadata, workspace packages, list/init/uninstall work offline.
+        _registryUrl = Environment.GetEnvironmentVariable("MALDA_REGISTRY_URL") ?? string.Empty;
+    }
+
+    private void RequireRegistryUrl()
+    {
+        if (!string.IsNullOrWhiteSpace(_registryUrl))
+            return;
+
+        throw new InvalidOperationException(
+            "MALDA_REGISTRY_URL is not set. Remote install/search need a registry URL. " +
+            "For workspace packages, put libs under packages/ and import them (no install). " +
+            "Or install a local folder: malda install ./path-to-package");
     }
     
     public PackageMetadata? GetPackageMetadata(string packageName, string? version = null)
@@ -82,6 +90,7 @@ public class PackageRegistry
     
     public async Task<PackageMetadata?> FetchPackageMetadataAsync(string packageName, string? version = null)
     {
+        RequireRegistryUrl();
         try
         {
             var url = $"{_registryUrl}/api/packages/{packageName}";
@@ -117,6 +126,7 @@ public class PackageRegistry
     
     public async Task<string?> DownloadPackageAsync(string packageName, string version, string destinationPath)
     {
+        RequireRegistryUrl();
         try
         {
             var url = $"{_registryUrl}/api/packages/{packageName}/{version}/download";
@@ -147,6 +157,7 @@ public class PackageRegistry
     
     public async Task<List<PackageInfo>> SearchPackagesAsync(string query)
     {
+        RequireRegistryUrl();
         try
         {
             var url = $"{_registryUrl}/api/packages/search?q={Uri.EscapeDataString(query)}";
@@ -173,6 +184,7 @@ public class PackageRegistry
     
     public async Task<List<PackageInfo>> ListAllPackagesAsync()
     {
+        RequireRegistryUrl();
         // Use empty search query to get all packages, or try a dedicated endpoint
         try
         {

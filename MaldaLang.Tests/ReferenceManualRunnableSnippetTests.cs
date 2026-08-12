@@ -16,6 +16,7 @@ namespace MaldaLang.Tests;
 /// <c>data-expect="..."</c> to also assert the printed output, using <c>\n</c> to separate
 /// lines. Blocks without the attribute are ignored, so pseudo-code and fragments are fine.
 /// </summary>
+[Collection("Sequential")]
 public class ReferenceManualRunnableSnippetTests : TestBase
 {
     private const int MinimumExpectedSnippets = 8;

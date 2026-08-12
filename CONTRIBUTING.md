@@ -43,6 +43,16 @@ dotnet test MaldaLang.Tests --filter "FullyQualifiedName~BuiltInRegistryTests"
 dotnet test MaldaLang.Tests --filter "FullyQualifiedName~OptionalPackTranspileEmitTests"
 ```
 
+## Workspace packages
+
+Reuse libraries locally without a public registry:
+
+1. Put a pack under `packages/<name>/` (see `packages/malda-demo-math/` and `packages/README.md`).
+2. From the repo root, `import malda-demo-math;` resolves via walk-up to `packages/` (or set `MALDA_PACKAGES_DIR`).
+3. Smoke: `malda Examples/Modules/workspace_package.malda` and `malda list --workspace`.
+
+Design note: [`docs/workspace-packages.md`](docs/workspace-packages.md). Remote `malda install <name>` / `search` need an optional `MALDA_REGISTRY_URL` for *your* registry only — this repo does not host a public hub.
+
 ## Coding notes
 
 - Prefer fixing behavior in MALDA sources (`.malda`) over editing generated artifacts such as `GeneratedProgram.cs` or generated `.js`.

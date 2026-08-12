@@ -257,115 +257,71 @@ Compilation successful! DLL saved to: library.dll</code></pre>
 
         <h2>2.3 Package Manager</h2>
 
-        <p>MALDA includes a native package management system that enables code reuse, dependency management, and ecosystem growth. Packages can be installed from a registry, managed locally, and imported into MALDA programs using <code>using</code> statements.</p>
+        <p>MALDA reuses libraries through <strong>workspace packages</strong> under a local <code>packages/</code> directory, optional copies in the installed store (<code>~/.maldalang/packages</code>), and <code>import</code> in source. There is <strong>no project-hosted public package hub</strong>; remote registry commands are optional for private or self-hosted registries.</p>
 
-        <h3>2.3.1 Configuring the Package Registry</h3>
+        <h3>2.3.1 Workspace Packages (preferred)</h3>
 
-        <p>The package manager requires the <code>MALDA_REGISTRY_URL</code> environment variable to be set before using package manager commands. This environment variable specifies the URL of the package registry server.</p>
+        <p>Place a library under <code>packages/&lt;name&gt;/</code> with an entry <code>.malda</code> file (for <code>malda-foo</code>, typically <code>foo.malda</code>, else <code>index.malda</code> / <code>main.malda</code>). From a working directory inside that tree — or with <code>MALDA_PACKAGES_DIR</code> / <code>MALDA_SDK_ROOT</code> set — import without installing:</p>
 
-        <h4>Setting the Registry URL</h4>
+        <pre><code>import malda-demo-math;
+import { clamp, VERSION } from malda-demo-math;</code></pre>
 
-        <p><strong>Windows PowerShell:</strong></p>
-        <pre><code>$env:MALDA_REGISTRY_URL = "https://registry.maldalang.com"</code></pre>
+        <p>Resolution order: installed store first, then workspace roots (env vars, then walk-up looking for <code>packages/</code>). See the OSS demo under <code>packages/malda-demo-math/</code> and the design note <code>docs/workspace-packages.md</code>.</p>
 
-        <p><strong>Windows CMD:</strong></p>
-        <pre><code>set MALDA_REGISTRY_URL=https://registry.maldalang.com</code></pre>
+        <pre><code>malda list --workspace
+malda Examples/Modules/workspace_package.malda</code></pre>
 
-        <p><strong>Linux/Mac:</strong></p>
-        <pre><code>export MALDA_REGISTRY_URL=https://registry.maldalang.com</code></pre>
+        <h3>2.3.2 Offline Package Commands</h3>
 
-        <div class="info-box">
-            <strong>Note:</strong> The <code>MALDA_REGISTRY_URL</code> environment variable must be set before running any package manager commands. If it is not set, package manager operations will fail with an error message indicating that the environment variable is required.
-        </div>
+        <p>These commands do <strong>not</strong> require <code>MALDA_REGISTRY_URL</code>:</p>
 
-        <p><strong>To make the setting persistent:</strong></p>
-        <ul>
-            <li><strong>Windows:</strong> Set it in System Properties → Environment Variables, or add it to your PowerShell profile</li>
-            <li><strong>Linux/Mac:</strong> Add the <code>export</code> command to your <code>~/.bashrc</code>, <code>~/.zshrc</code>, or equivalent shell configuration file</li>
-        </ul>
+        <h4>List Workspace or Installed Packages</h4>
 
-        <h3>2.3.2 Package Manager Commands</h3>
+        <pre><code>malda list --workspace
+malda list</code></pre>
 
-        <p>All package manager commands are accessed through the <code>malda</code> command-line tool.</p>
+        <p><code>list --workspace</code> shows packages visible from workspace roots. <code>list</code> shows packages already copied into <code>~/.maldalang/packages</code>.</p>
 
-        <h4>Install a Package</h4>
+        <h4>Install From a Local Path</h4>
 
-        <pre><code>malda install &lt;package&gt;[@&lt;version&gt;]</code></pre>
+        <pre><code>malda install ./packages/malda-demo-math
+malda install ./my-lib/package.json</code></pre>
 
-        <p>Installs a package from the registry. If a version is specified, installs that specific version; otherwise installs the latest version.</p>
+        <p>Copies a local directory, <code>package.json</code>, or <code>.malda</code> entry into the installed store so <code>import</code> can resolve it without a workspace <code>packages/</code> tree.</p>
 
-        <p><strong>Examples:</strong></p>
-
-        <pre><code>malda install mypackage
-malda install mypackage@1.2.3</code></pre>
-
-        <p><strong>Features:</strong></p>
-        <ul>
-            <li>Automatic dependency resolution</li>
-            <li>Version management</li>
-            <li>Package metadata storage</li>
-        </ul>
-
-        <h4>Uninstall a Package</h4>
-
-        <pre><code>malda uninstall &lt;package&gt;[@&lt;version&gt;]</code></pre>
-
-        <p>Uninstalls a package. If a version is specified, uninstalls only that version; otherwise uninstalls all versions of the package.</p>
-
-        <p><strong>Examples:</strong></p>
+        <h4>Uninstall / Init</h4>
 
         <pre><code>malda uninstall mypackage
-malda uninstall mypackage@1.2.3</code></pre>
+malda uninstall mypackage@1.2.3
+malda init [directory]</code></pre>
 
-        <h4>List Installed Packages</h4>
+        <p><code>init</code> writes a starter <code>package.json</code> in the target directory.</p>
 
-        <pre><code>malda list</code></pre>
+        <h3>2.3.3 Optional Remote Registry</h3>
 
-        <p>Lists all packages currently installed in the local package store, along with their versions.</p>
+        <p>Remote <code>install &lt;name&gt;</code> and <code>search</code> need <code>MALDA_REGISTRY_URL</code> pointing at <em>your</em> registry API. The OSS project does not operate a public npm-like hub. If the variable is unset, only remote commands fail; workspace import, <code>list</code>, <code>list --workspace</code>, local <code>install &lt;path&gt;</code>, <code>uninstall</code>, and <code>init</code> keep working.</p>
 
-        <h4>Search for Packages</h4>
+        <pre><code># Optional — only for a private/self-hosted registry
+export MALDA_REGISTRY_URL=https://your-registry.example.com
 
-        <pre><code>malda search &lt;query&gt;</code></pre>
+malda install mypackage
+malda install mypackage@1.2.3
+malda search http</code></pre>
 
-        <p>Searches the package registry for packages matching the query string. Returns a list of matching packages with their names, versions, and descriptions.</p>
+        <h3>2.3.4 Using Packages in Code</h3>
 
-        <p><strong>Example:</strong></p>
+        <p>Prefer <code>import</code> (canonical). <code>using</code> remains an alias for package loads:</p>
 
-        <pre><code>$ malda search http
-Found 2 package(s):
-  http-client@1.0.0 - HTTP client library for MALDA
-  http-server@2.1.0 - HTTP server framework</code></pre>
+        <pre><code>import mypackage;
+import { helper } from mypackage;
 
-        <h4>Initialize Package Configuration</h4>
+var result = helper();</code></pre>
 
-        <pre><code>malda init [directory]</code></pre>
+        <h3>2.3.5 Package Dependencies and Storage</h3>
 
-        <p>Initializes a <code>package.json</code> file in the specified directory (or current directory if not specified). This file is used to manage project dependencies and metadata.</p>
+        <p>When installing from a remote registry, declared dependencies in package metadata are resolved and installed first. Local path installs copy the selected folder as-is.</p>
 
-        <h3>2.3.3 Using Packages in Code</h3>
-
-        <p>Once a package is installed, you can import it into your MALDA code using the <code>using</code> statement:</p>
-
-        <pre><code>using mypackage;
-
-// Now you can use functions, classes, and other symbols from mypackage
-var result = mypackage.doSomething();</code></pre>
-
-        <h3>2.3.4 Package Dependencies</h3>
-
-        <p>The package manager automatically resolves and installs dependencies when you install a package. If package A depends on package B, installing A will also install B automatically.</p>
-
-        <p>Dependencies are managed through the package metadata and are resolved to compatible versions automatically.</p>
-
-        <h3>2.3.5 Package Storage</h3>
-
-        <p>Packages are stored locally in a package store directory. The package manager maintains:</p>
-
-        <ul>
-            <li>Package files and code</li>
-            <li>Package metadata (version, dependencies, etc.)</li>
-            <li>Version information</li>
-        </ul>
+        <p>The installed store keeps package files, <code>package.json</code> metadata, and versions under <code>~/.maldalang/packages</code>. Workspace packs under repo <code>packages/</code> need not be copied there.</p>
 
         <h2>2.4 Development Workflow</h2>
 
@@ -381,16 +337,7 @@ var result = mypackage.doSomething();</code></pre>
             <li><strong>Run Full Program</strong>: Execute your complete program:
                 <pre><code>malda app.malda</code></pre>
             </li>
-            <li><strong>Configure Registry</strong>: Set the <code>MALDA_REGISTRY_URL</code> environment variable:
-                <pre><code># Windows PowerShell
-$env:MALDA_REGISTRY_URL = "https://registry.maldalang.com"
-
-# Linux/Mac
-export MALDA_REGISTRY_URL=https://registry.maldalang.com</code></pre>
-            </li>
-            <li><strong>Install Dependencies</strong>: If your program uses packages:
-                <pre><code>malda install mypackage</code></pre>
-            </li>
+            <li><strong>Share Libraries</strong>: Put reusable code under <code>packages/&lt;name&gt;/</code> and <code>import</code> it (or <code>malda install ./path</code> into the local store). Use <code>malda list --workspace</code> to confirm discovery.</li>
             <li><strong>Compile for Distribution</strong>: Create a standalone executable:
                 <pre><code>malda compile app.malda -o app.exe --mode transpile</code></pre>
             </li>

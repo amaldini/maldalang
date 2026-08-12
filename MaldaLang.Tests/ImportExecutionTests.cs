@@ -419,7 +419,7 @@ public class ImportExecutionTests : TestBase
     }
 
     [Fact]
-    public async Task ImportPackage_WorkspaceSdk_ExposesTimeseriesHelpers()
+    public async Task ImportPackage_WorkspaceSdk_ExposesDemoMathHelpers()
     {
         var repoPackages = PlanningPaths.ResolveRepoPath("packages");
         var previous = System.Environment.GetEnvironmentVariable("MALDA_PACKAGES_DIR");
@@ -429,12 +429,15 @@ public class ImportExecutionTests : TestBase
             var storage = new PackageStorage(Path.Combine(Path.GetTempPath(), "import_ws_empty_" + Guid.NewGuid().ToString("N")));
             var output = await RunProgramWithModuleLoaderAsync(
                 """
-                import malda-timeseries;
-                print(typeOf(taSma));
+                import { clamp, VERSION } from malda-demo-math;
+                print(clamp(15, 0, 10));
+                print(VERSION);
                 """,
                 new ModuleLoader(new ModuleResolver(storage)));
 
-            Assert.Contains("function", output.Trim(), StringComparison.OrdinalIgnoreCase);
+            var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            Assert.Equal("10", lines[0]);
+            Assert.Equal("1.0.0", lines[1]);
         }
         finally
         {

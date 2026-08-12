@@ -1,0 +1,8 @@
+// P2 golden — import a workspace package from repo packages/ (no install).
+// Requires cwd under the repo (walk-up finds packages/) or MALDA_PACKAGES_DIR.
+// Design: docs/workspace-packages.md
+
+import { clamp, VERSION } from malda-demo-math;
+
+print(clamp(15, 0, 10));
+print(VERSION);

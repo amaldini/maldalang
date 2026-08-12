@@ -14,43 +14,52 @@ using MaldaLang.PackageManager.Models;
 public class PackageManager
 {
     private readonly PackageStorage _storage;
-    private readonly PackageRegistry _registry;
-    private readonly DependencyResolver _dependencyResolver;
+    private PackageRegistry? _registry;
+    private DependencyResolver? _dependencyResolver;
+
+    /// <summary>Output for CLI messages. Defaults to <see cref="Console.Out"/>; tests may redirect.</summary>
+    public TextWriter Out { get; set; } = Console.Out;
     
     public PackageManager()
     {
         _storage = new PackageStorage();
-        _registry = new PackageRegistry(_storage);
-        _dependencyResolver = new DependencyResolver(_registry, _storage);
     }
     
     public PackageManager(PackageStorage storage)
     {
-        _storage = storage;
-        _registry = new PackageRegistry(storage);
-        _dependencyResolver = new DependencyResolver(_registry, _storage);
+        _storage = storage ?? throw new ArgumentNullException(nameof(storage));
+    }
+
+    private PackageRegistry GetRegistry()
+    {
+        return _registry ??= new PackageRegistry(_storage);
+    }
+
+    private DependencyResolver GetDependencyResolver()
+    {
+        return _dependencyResolver ??= new DependencyResolver(GetRegistry(), _storage);
     }
     
     public async Task<bool> InstallAsync(string packageName, string? version = null)
     {
         try
         {
-            Console.WriteLine($"Installing {packageName}...");
+            Out.WriteLine($"Installing {packageName}...");
             
             // Fetch package metadata
             PackageMetadata? metadata;
             if (version != null)
             {
-                metadata = await _registry.FetchPackageMetadataAsync(packageName, version);
+                metadata = await GetRegistry().FetchPackageMetadataAsync(packageName, version);
             }
             else
             {
-                metadata = await _registry.FetchPackageMetadataAsync(packageName);
+                metadata = await GetRegistry().FetchPackageMetadataAsync(packageName);
             }
             
             if (metadata == null)
             {
-                Console.WriteLine($"Error: Package {packageName} not found in registry");
+                Out.WriteLine($"Error: Package {packageName} not found in registry");
                 return false;
             }
             
@@ -59,7 +68,7 @@ public class PackageManager
             // Check if already installed
             if (_storage.IsPackageInstalled(packageName, installVersion))
             {
-                Console.WriteLine($"Package {packageName}@{installVersion} is already installed");
+                Out.WriteLine($"Package {packageName}@{installVersion} is already installed");
                 return true;
             }
             
@@ -73,8 +82,8 @@ public class PackageManager
                 }
             }
             
-            var resolved = _dependencyResolver.ResolveDependencies(dependencies);
-            var installOrder = _dependencyResolver.GetInstallOrder();
+            var resolved = GetDependencyResolver().ResolveDependencies(dependencies);
+            var installOrder = GetDependencyResolver().GetInstallOrder();
             
             // Install dependencies first
             foreach (var packageNameToInstall in installOrder)
@@ -94,14 +103,116 @@ public class PackageManager
             // Install the main package
             await InstallPackageAsync(packageName, installVersion, metadata);
             
-            Console.WriteLine($"Successfully installed {packageName}@{installVersion}");
+            Out.WriteLine($"Successfully installed {packageName}@{installVersion}");
             return true;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error installing {packageName}: {ex.Message}");
+            Out.WriteLine($"Error installing {packageName}: {ex.Message}");
             return false;
         }
+    }
+
+    /// <summary>
+    /// Installs a package from a local directory, package.json, or .malda entry (no registry).
+    /// </summary>
+    public bool InstallFromPath(string path)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                Out.WriteLine("Error: path is required");
+                return false;
+            }
+
+            var full = Path.GetFullPath(path);
+            string sourceDir;
+            string? singleFileName = null;
+
+            if (File.Exists(full))
+            {
+                var fileName = Path.GetFileName(full);
+                if (fileName.Equals("package.json", StringComparison.OrdinalIgnoreCase))
+                {
+                    sourceDir = Path.GetDirectoryName(full)
+                        ?? throw new InvalidOperationException("Could not resolve package directory");
+                }
+                else if (fileName.EndsWith(".malda", StringComparison.OrdinalIgnoreCase))
+                {
+                    sourceDir = Path.GetDirectoryName(full)
+                        ?? throw new InvalidOperationException("Could not resolve package directory");
+                    singleFileName = fileName;
+                }
+                else
+                {
+                    Out.WriteLine($"Error: unsupported local package file: {full}");
+                    return false;
+                }
+            }
+            else if (Directory.Exists(full))
+            {
+                sourceDir = full;
+            }
+            else
+            {
+                Out.WriteLine($"Error: path not found: {full}");
+                return false;
+            }
+
+            var metadata = LoadOrCreateLocalMetadata(sourceDir, singleFileName);
+            var packageName = metadata.Name;
+            var version = string.IsNullOrWhiteSpace(metadata.Version) ? "1.0.0" : metadata.Version;
+
+            if (_storage.IsPackageInstalled(packageName, version))
+            {
+                Out.WriteLine($"Package {packageName}@{version} is already installed; reinstalling...");
+            }
+
+            Out.WriteLine($"Installing {packageName}@{version} from {sourceDir}...");
+            _storage.InstallPackage(packageName, version, sourceDir);
+            _storage.SavePackageMetadata(packageName, version, metadata);
+            Out.WriteLine($"Successfully installed {packageName}@{version}");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Out.WriteLine($"Error installing from path: {ex.Message}");
+            return false;
+        }
+    }
+
+    private static PackageMetadata LoadOrCreateLocalMetadata(string sourceDir, string? singleFileName)
+    {
+        var packageJsonPath = Path.Combine(sourceDir, "package.json");
+        if (File.Exists(packageJsonPath))
+        {
+            var json = File.ReadAllText(packageJsonPath);
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var metadata = JsonSerializer.Deserialize<PackageMetadata>(json, options);
+            if (metadata != null && !string.IsNullOrWhiteSpace(metadata.Name))
+            {
+                if (string.IsNullOrWhiteSpace(metadata.Main) && !string.IsNullOrEmpty(singleFileName))
+                    metadata.Main = singleFileName;
+                if (string.IsNullOrWhiteSpace(metadata.Version))
+                    metadata.Version = "1.0.0";
+                return metadata;
+            }
+        }
+
+        var folderName = Path.GetFileName(sourceDir.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        var main = singleFileName
+            ?? (File.Exists(Path.Combine(sourceDir, "index.malda")) ? "index.malda"
+                : File.Exists(Path.Combine(sourceDir, "main.malda")) ? "main.malda"
+                : Directory.GetFiles(sourceDir, "*.malda").Select(Path.GetFileName).FirstOrDefault());
+
+        return new PackageMetadata
+        {
+            Name = string.IsNullOrWhiteSpace(folderName) ? "local-package" : folderName,
+            Version = "1.0.0",
+            Description = "Installed from local path",
+            Main = main
+        };
     }
     
     private async Task InstallPackageAsync(string packageName, string version, PackageMetadata? metadata = null)
@@ -113,7 +224,7 @@ public class PackageManager
         try
         {
             // Download package
-            var downloadedPath = await _registry.DownloadPackageAsync(packageName, version, tempDir);
+            var downloadedPath = await GetRegistry().DownloadPackageAsync(packageName, version, tempDir);
             if (downloadedPath == null)
             {
                 throw new Exception("Failed to download package");
@@ -167,19 +278,19 @@ public class PackageManager
             {
                 if (!_storage.IsPackageInstalled(packageName, version))
                 {
-                    Console.WriteLine($"Package {packageName}@{version} is not installed");
+                    Out.WriteLine($"Package {packageName}@{version} is not installed");
                     return false;
                 }
                 
                 _storage.UninstallPackage(packageName, version);
-                Console.WriteLine($"Successfully uninstalled {packageName}@{version}");
+                Out.WriteLine($"Successfully uninstalled {packageName}@{version}");
             }
             else
             {
                 var versions = _storage.GetInstalledVersions(packageName);
                 if (versions.Length == 0)
                 {
-                    Console.WriteLine($"Package {packageName} is not installed");
+                    Out.WriteLine($"Package {packageName} is not installed");
                     return false;
                 }
                 
@@ -188,14 +299,14 @@ public class PackageManager
                     _storage.UninstallPackage(packageName, v);
                 }
                 
-                Console.WriteLine($"Successfully uninstalled {packageName}");
+                Out.WriteLine($"Successfully uninstalled {packageName}");
             }
             
             return true;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error uninstalling {packageName}: {ex.Message}");
+            Out.WriteLine($"Error uninstalling {packageName}: {ex.Message}");
             return false;
         }
     }
@@ -205,11 +316,11 @@ public class PackageManager
         var packages = _storage.GetInstalledPackages();
         if (packages.Length == 0)
         {
-            Console.WriteLine("No packages installed");
+            Out.WriteLine("No packages installed");
             return;
         }
         
-        Console.WriteLine("Installed packages:");
+        Out.WriteLine("Installed packages:");
         foreach (var packageName in packages)
         {
             var versions = _storage.GetInstalledVersions(packageName);
@@ -217,19 +328,36 @@ public class PackageManager
             {
                 var metadata = _storage.LoadPackageMetadata(packageName, version);
                 var description = metadata?.Description ?? "No description";
-                Console.WriteLine($"  {packageName}@{version} - {description}");
+                Out.WriteLine($"  {packageName}@{version} - {description}");
             }
+        }
+    }
+
+    public void ListWorkspace()
+    {
+        var packages = WorkspacePackageResolver.ListWorkspacePackages();
+        if (packages.Count == 0)
+        {
+            Out.WriteLine("No workspace packages found");
+            Out.WriteLine("Hint: create packages/<name>/*.malda, or set MALDA_PACKAGES_DIR");
+            return;
+        }
+
+        Out.WriteLine("Workspace packages:");
+        foreach (var (name, entryPath) in packages)
+        {
+            Out.WriteLine($"  {name} -> {entryPath}");
         }
     }
     
     public async Task<List<PackageInfo>> SearchAsync(string query)
     {
-        return await _registry.SearchPackagesAsync(query);
+        return await GetRegistry().SearchPackagesAsync(query);
     }
     
     public async Task<List<PackageInfo>> ListAllPackagesAsync()
     {
-        return await _registry.ListAllPackagesAsync();
+        return await GetRegistry().ListAllPackagesAsync();
     }
     
     public bool Init(string? directory = null)
@@ -259,17 +387,17 @@ public class PackageManager
             
             if (existed)
             {
-                Console.WriteLine($"Overwritten package.json in {targetDir}");
+                Out.WriteLine($"Overwritten package.json in {targetDir}");
             }
             else
             {
-                Console.WriteLine($"Initialized package.json in {targetDir}");
+                Out.WriteLine($"Initialized package.json in {targetDir}");
             }
             return true;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error initializing package.json: {ex.Message}");
+            Out.WriteLine($"Error initializing package.json: {ex.Message}");
             return false;
         }
     }

@@ -10,17 +10,17 @@ namespace MaldaLang.Tests;
 public class WorkspacePackageResolverTests
 {
     [Fact]
-    public void TryResolveModulePath_FromRepoPackages_FindsMaldaTimeseries()
+    public void TryResolveModulePath_FromRepoPackages_FindsMaldaDemoMath()
     {
         var repoPackages = PlanningPaths.ResolveRepoPath("packages");
         var previous = Environment.GetEnvironmentVariable("MALDA_PACKAGES_DIR");
         try
         {
             Environment.SetEnvironmentVariable("MALDA_PACKAGES_DIR", repoPackages);
-            var path = WorkspacePackageResolver.TryResolveModulePath("malda-timeseries");
+            var path = WorkspacePackageResolver.TryResolveModulePath("malda-demo-math");
             Assert.NotNull(path);
             Assert.True(File.Exists(path!), path);
-            Assert.EndsWith("timeseries.malda", path!, StringComparison.OrdinalIgnoreCase);
+            Assert.EndsWith("demo-math.malda", path!, StringComparison.OrdinalIgnoreCase);
         }
         finally
         {
@@ -38,9 +38,9 @@ public class WorkspacePackageResolverTests
             Environment.SetEnvironmentVariable("MALDA_PACKAGES_DIR", repoPackages);
             var storage = new PackageStorage(Path.Combine(Path.GetTempPath(), "malda_empty_pkgs_" + Guid.NewGuid().ToString("N")));
             var resolver = new ModuleResolver(storage);
-            var path = resolver.ResolveModulePath("malda-timeseries");
+            var path = resolver.ResolveModulePath("malda-demo-math");
             Assert.NotNull(path);
-            Assert.EndsWith("timeseries.malda", path!, StringComparison.OrdinalIgnoreCase);
+            Assert.EndsWith("demo-math.malda", path!, StringComparison.OrdinalIgnoreCase);
         }
         finally
         {
