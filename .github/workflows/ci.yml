@@ -24,7 +24,7 @@ jobs:
       - name: Smoke tests (filtered)
         run: >
           dotnet test MaldaLang.Tests -c Release --no-build
-          --filter "FullyQualifiedName~BuiltInRegistryTests|FullyQualifiedName~CompilerPackDecouplingGuardTests|FullyQualifiedName~OptionalPackTranspileEmitTests|FullyQualifiedName~LicenseHeaderGuardTests|FullyQualifiedName~ReleaseVersionGuardTests|FullyQualifiedName~ReferenceManual|FullyQualifiedName~BackendCapabilityMatrixGuardTests"
+          --filter "FullyQualifiedName~BuiltInRegistryTests|FullyQualifiedName~CompilerPackDecouplingGuardTests|FullyQualifiedName~OptionalPackTranspileEmitTests|FullyQualifiedName~LicenseHeaderGuardTests|FullyQualifiedName~ReleaseVersionGuardTests|FullyQualifiedName~ReferenceManual|FullyQualifiedName~BackendCapabilityMatrixGuardTests|FullyQualifiedName~TranspileSmokeTests"
           --verbosity minimal
 
   build-linux:
@@ -48,13 +48,12 @@ jobs:
           dotnet build MaldaLang.IDE -c Release --verbosity minimal
           dotnet build MaldaLang.Tests -c Release --verbosity minimal
 
-      # Deliberately narrower than the Windows job: these two guards are pure source and
-      # registry scans, so they are the subset known to be platform-neutral. Broadening
-      # Linux test coverage is tracked work, not a solved problem.
+      # Narrower than Windows (no ReferenceManual / Desktop-tied guards). Includes
+      # transpile smoke: C# emit is cross-platform and does not require WPF.
       - name: Platform-neutral guard tests
         run: >
           dotnet test MaldaLang.Tests -c Release --no-build
-          --filter "FullyQualifiedName~BuiltInRegistryTests|FullyQualifiedName~LicenseHeaderGuardTests|FullyQualifiedName~ReleaseVersionGuardTests"
+          --filter "FullyQualifiedName~BuiltInRegistryTests|FullyQualifiedName~LicenseHeaderGuardTests|FullyQualifiedName~ReleaseVersionGuardTests|FullyQualifiedName~TranspileSmokeTests"
           --verbosity minimal
 
       - name: Run an example through the CLI
@@ -85,7 +84,7 @@ jobs:
       - name: Platform-neutral guard tests
         run: >
           dotnet test MaldaLang.Tests -c Release --no-build
-          --filter "FullyQualifiedName~BuiltInRegistryTests|FullyQualifiedName~LicenseHeaderGuardTests|FullyQualifiedName~ReleaseVersionGuardTests"
+          --filter "FullyQualifiedName~BuiltInRegistryTests|FullyQualifiedName~LicenseHeaderGuardTests|FullyQualifiedName~ReleaseVersionGuardTests|FullyQualifiedName~TranspileSmokeTests"
           --verbosity minimal
 
       - name: Run an example through the CLI
