@@ -74,7 +74,7 @@ Server-driven `ui.*` trees, patch protocol, and `MaldaLang.UIHost` wiring are do
 | `docs/spec/` | Spec / matrix notes |
 | `docs/spec/backend-capability-matrix.md` | Interpreter vs C# vs JS product capabilities |
 | `docs/start-here.md`, `docs/architecture.md` | Onboarding |
-| [`docs/roadmap-p0-maturity.md`](roadmap-p0-maturity.md) | **Active** 3–6 month maturity roadmap (types, workflows, parity, AI, UI, packages) |
+| [`docs/roadmap-p0-maturity.md`](roadmap-p0-maturity.md) | P0 maturity roadmap (workstreams complete 2026-08-12; next = post-Final / deferred) |
 | [`docs/workflows-ha.md`](workflows-ha.md) | Durable workflows: single-writer + read-only ops model (W2) |
 | `docs/javascript-backend.md`, `docs/ui-framework.md`, `docs/profiling.md`, `docs/benchmarks.md`, … | Topic guides |
 | `docs/planning/` | Historical roadmap — verify against code / ReferenceManual / AGENTS.md ([README](planning/README.md)) |
@@ -90,6 +90,6 @@ Server-driven `ui.*` trees, patch protocol, and `MaldaLang.UIHost` wiring are do
 
 - Call-site type hints: [`MaldaLang/IDE/TypeCompatibilityDiagnostics.cs`](../MaldaLang/IDE/TypeCompatibilityDiagnostics.cs) infers declared callee return types (imports via [`ModuleSymbolResolver`](../MaldaLang/IDE/ModuleSymbolResolver.cs)).
 - Nested `schema` fields: [`SchemaRegistry`](../MaldaLang/BuiltIns/SchemaRegistry.cs) expands sibling schemas inline; unknown names / cycles fail on resolve.
-- Forward plan (backend contracts, AI/UI/packages, toolchain): [`docs/roadmap-p0-maturity.md`](roadmap-p0-maturity.md).
+- P0 maturity plan (landed): [`docs/roadmap-p0-maturity.md`](roadmap-p0-maturity.md). Post-Final gaps: [`docs/spec/CHANGELOG.md`](spec/CHANGELOG.md).
 - Workflow HA / multi-worker (single writer + read-only ops, SQLite limits): [`docs/workflows-ha.md`](workflows-ha.md).
 - Workflow determinism: fixed WF1001/WF1002 deny-list in [`BuiltInRegistry.GetWorkflowBehavior`](../MaldaLang/BuiltIns/BuiltInRegistry.cs); IDE static checks in [`WorkflowDeterminismDiagnostics`](../MaldaLang/IDE/WorkflowDeterminismDiagnostics.cs) (not Temporal-style history detection).

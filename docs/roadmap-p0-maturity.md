@@ -1,13 +1,14 @@
 # MALDA P0 maturity roadmap (3–6 months)
 
-**Status:** Active  
+**Status:** P0 workstreams complete (2026-08-12); next work is post–Final 1.0 / deferred  
 **Created:** 2026-08-12  
 **Horizon:** ~3–6 months from creation  
 **Audience:** maintainers prioritizing the OSS core (language, runtime, toolchain)
 
 This is the forward plan after the purity / expressiveness phases in
 [`docs/planning/malda-language-purity-roadmap.md`](planning/malda-language-purity-roadmap.md)
-(historical; Phases 0–7 largely complete). Prefer this file for *what to strengthen next*.
+(historical; Phases 0–7 largely complete). All ranked P0 themes below are landed; prefer
+[`docs/spec/CHANGELOG.md`](spec/CHANGELOG.md) post-Final gaps and the deferred list for *what next*.
 
 **Not in scope here:** vertical domain packs, product apps outside OSS, drive-by stdlib growth
 (stdlib remains soft-frozen — deepen `math` / `str` / `io` / web helpers; do not add flat aliases).
@@ -49,16 +50,16 @@ Rough sequencing. Items can overlap when owners differ; gates below are the acce
 
 | Workstream | Concrete work | Done when |
 |------------|---------------|-----------|
-| **T1 Call-site / return inference** | Extend IDE/CLI checking beyond declared/`->` callees where cheap: common operators, selected Tier 1 builtins (`math` / `str` / `io` returns) | Filtered tests cover new sites; `docs/llm/malda-gotchas.md` updated if behavior changes |
-| **T2 Strict default in tooling** | LSP + Desktop: type mismatches as **Errors** by default (opt-out setting); CLI keeps `--strict-types` explicit unless documented otherwise | Setting documented in LSP/Desktop READMEs; guard or smoke test that default severity is Error |
-| **T3 Nested schema hardening** | Nested schema fields, unknown names, cycles already erroring — close remaining gaps (arrays of nested schemas, import of schema names, diagnostics quality) | `SchemaNested*` / validate example tests green; Reference Manual schema chapter matches resolve rules |
+| **T1 Call-site / return inference** | Extend IDE/CLI checking beyond declared/`->` callees where cheap: common operators, selected Tier 1 builtins (`math` / `str` / `io` returns) | **Landed 2026-08-12:** operator + Tier-1 builtin return hints (`TypeCompatibilityDiagnostics`, `Tier1BuiltinReturnHints`); see [`roadmap-p0-types-impl.md`](roadmap-p0-types-impl.md) |
+| **T2 Strict default in tooling** | LSP + Desktop: type mismatches as **Errors** by default (opt-out setting); CLI keeps `--strict-types` explicit unless documented otherwise | **Landed 2026-08-12:** `StrictTypesOptions.Default` / `TypeErrors=true`; LSP `malda.types.strict`; Desktop View → Type Errors as Errors |
+| **T3 Nested schema hardening** | Nested schema fields, unknown names, cycles already erroring — close remaining gaps (arrays of nested schemas, import of schema names, diagnostics quality) | **Landed 2026-08-12:** IDE `malda-schema` field diagnostics; `SchemaNested*` / import+validate tests; RM schema resolve rules |
 | **T4 Spec Final gate** | Promote Draft 1.0 → Final: Tier 0 conformance green; P0 type/schema notes in CHANGELOG closed or explicitly deferred with owner/version | **Landed 2026-08-12:** Spec **Final 1.0**; Tier 0 316 passed; gaps owned (`maintainers` / post-1.0) |
 
 ### Month 2–4 — Workflow ops + backend contracts
 
 | Workstream | Concrete work | Done when |
 |------------|---------------|-----------|
-| **W1 Observability** | Instance timeline, step status, DLQ/requeue visibility beyond CLI one-liners (dashboard or structured `malda workflow …` report) | At least one Examples/Workflows ops smoke + Reference Manual § ops updated |
+| **W1 Observability** | Instance timeline, step status, DLQ/requeue visibility beyond CLI one-liners (dashboard or structured `malda workflow …` report) | **Landed 2026-08-12:** `malda workflow report`; `Examples/Workflows/ops_report.malda`; RM §32.6 |
 | **W2 HA / multi-worker path** | Documented model for more than one worker against durable store (even if v1 is “single writer + lease” or “read replica ops only”); identify SQLite limits and the migration story | Architecture note in `docs/` or workflows chapter: failure modes, lease/locking, what is *not* Temporal yet — **landed:** [`workflows-ha.md`](workflows-ha.md), WAL/`busy_timeout`, RM §32.10 |
 | **W3 Determinism & replay** | Strengthen deny-list / replay detection beyond name list where feasible; document loop-in-step rules already in manual | Conformance or filtered workflow tests for new checks; gotcha for jobs vs workflows stays accurate — **landed:** `sleep` → WF1001; IDE static WF1001/WF1002; deny-list drift tests; RM + gotchas |
 | **B1 Product capability matrix** | Extend [`backend-capability-matrix.md`](spec/backend-capability-matrix.md) with rows for schema/validate, typed prompts, HttpServer, UIHost, jobs — each marked yes/partial/no per backend | Matrix file + `BackendCapabilityMatrix` tests stay in sync — **landed:** split product rows + product-feature guard markers |
@@ -102,9 +103,9 @@ Rough sequencing. Items can overlap when owners differ; gates below are the acce
 | Metric | Target |
 |--------|--------|
 | Spec | **Final 1.0 declared** (2026-08-12); post-Final gaps owned in CHANGELOG |
-| Types | IDE/LSP default: type mismatch = Error; call-site + selected builtin returns covered by tests |
-| Workflows | Ops path documented + one observability surface; HA/multi-worker story written (even if limited) |
-| Backends | Product capability matrix complete; transpile smoke set in CI filter |
+| Types | **T1–T3 done:** IDE/LSP default type mismatch = Error; call-site + Tier-1 builtin returns covered by tests |
+| Workflows | **W1–W3 done:** ops report + HA note + determinism/replay checks |
+| Backends | **B1+B2 done:** product capability matrix + transpile smoke set in CI filter |
 | AI | **A1+A2 done:** structured + tools + sequence examples; governance golden with validate + `@pure`/`@effects` |
 | UI | **U1+U2 done:** event-loop + UI1001/UI1002; state lifecycle + UI1003 poison defaults |
 | Modules | **P1+P2 done:** selective imports + workspace `packages/` story; `export type` still deferred |
@@ -126,7 +127,7 @@ Rough sequencing. Items can overlap when owners differ; gates below are the acce
 
 | Doc | Role |
 |-----|------|
-| [`docs/architecture.md`](architecture.md) | Engine map; points here for open P0 |
+| [`docs/architecture.md`](architecture.md) | Engine map; points here for P0 status + post-Final gaps |
 | [`docs/spec/backend-capability-matrix.md`](spec/backend-capability-matrix.md) | Interpreter / C# / JS product surface |
 | [`docs/spec/CHANGELOG.md`](spec/CHANGELOG.md) | Spec semver + Final 1.0 + post-Final gaps |
 | [`docs/planning/malda-language-purity-roadmap.md`](planning/malda-language-purity-roadmap.md) | Completed purity phases (historical) |
@@ -153,7 +154,9 @@ Rough sequencing. Items can overlap when owners differ; gates below are the acce
 | 2026-08-12 | W3 Determinism & replay landed: `sleep` WF1001, IDE `WorkflowDeterminismDiagnostics`, deny-list guard tests, RM + gotchas |
 | 2026-08-12 | B1 Product capability matrix landed: schema/validate, HttpServer, UIHost, jobs rows + guard tests |
 | 2026-08-12 | B2 Transpile smoke landed: `TranspileSmokeTests` for schema/agents/workflow/jobs Examples in CI |
-| 2026-08-12 | T4 Spec Final landed: **Final 1.0**; Tier 0 green via `run-tier0-conformance.ps1` (316); next open theme **A1** |
+| 2026-08-12 | T4 Spec Final landed: **Final 1.0**; Tier 0 green via `run-tier0-conformance.ps1` (316) |
+| 2026-08-12 | T1–T3 landed (table sync): call-site/Tier-1 inference, strict type Errors default, nested schema IDE diagnostics — see [`roadmap-p0-types-impl.md`](roadmap-p0-types-impl.md) |
+| 2026-08-12 | P0 maturity horizon closed: all ranked workstreams landed; next = post-Final gaps in [`docs/spec/CHANGELOG.md`](spec/CHANGELOG.md) + explicitly deferred list |
 | 2026-08-12 | A1 Structured output + tools policy landed: Modes A/B/C docs + `prompt_tools_mode.malda` / `prompt_tools_then_structured.malda` |
 | 2026-08-12 | A2 Agent governance landed: `agent_governance_golden.malda`, README/metadata, RM `@pure`/`@effects`, gotcha for unvalidated tool JSON |
 | 2026-08-12 | U1 UI loop DX landed: `UiLoopDiagnostics` UI1001/UI1002, `ui_event_loop.malda`, ui-framework event-loop + one-model cross-links |

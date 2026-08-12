@@ -1,7 +1,8 @@
 # Planning notes (historical)
 
-**Active forward roadmap:** [`docs/roadmap-p0-maturity.md`](../roadmap-p0-maturity.md)
-(3–6 month P0 maturity plan). Prefer that file over status lines below.
+**P0 maturity roadmap (complete):** [`docs/roadmap-p0-maturity.md`](../roadmap-p0-maturity.md).
+Next work: post-Final gaps in [`docs/spec/CHANGELOG.md`](../spec/CHANGELOG.md) and the deferred
+list in that roadmap. Prefer those over status lines below.
 
 **These files are roadmap and sprint notes, not the source of truth for current behavior.**
 
