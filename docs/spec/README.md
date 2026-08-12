@@ -4,13 +4,13 @@ Formal, versioned contracts for the Malda language. Implementation precedence is
 
 | Document | Status | Scope |
 |----------|--------|--------|
-| [malda-language-1.0.md](malda-language-1.0.md) | **Draft 1.0** (2026-06-04) | Tier 0 core semantics |
+| [malda-language-1.0.md](malda-language-1.0.md) | **Final 1.0** (2026-08-12) | Tier 0 core semantics |
 | [backend-capability-matrix.md](backend-capability-matrix.md) | **Active** | Interpreter / C# / JS product + property-test capabilities |
 | [tier0-backend-matrix.md](tier0-backend-matrix.md) | **Active** | Tier 0 conformance suite thresholds |
 | [ReferenceManual/22-grammar.html](../../ReferenceManual/22-grammar.html) | Phase 2.2 | BNF-style syntax (parser-aligned) |
-| [CHANGELOG.md](CHANGELOG.md) | **Active** (2026-06-04) | Semver policy, deprecation, release notes |
+| [CHANGELOG.md](CHANGELOG.md) | **Active** | Semver policy, deprecation, release notes |
 
-**Draft→Final readiness (P0 types/schema):** see the dated **Final checklist** in [`CHANGELOG.md`](CHANGELOG.md). Implementation detail: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.md). Broader maturity themes: [`docs/roadmap-p0-maturity.md`](../roadmap-p0-maturity.md).
+**Spec Final 1.0** declared 2026-08-12 (see [`CHANGELOG.md`](CHANGELOG.md) `[1.0.0]`). Types implementation: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.md). Broader maturity themes: [`docs/roadmap-p0-maturity.md`](../roadmap-p0-maturity.md).
 
 ## Verification
 

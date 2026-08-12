@@ -23,7 +23,7 @@ Malda uses **semantic versioning** for the **language specification** (`MAJOR.MI
 | **Draft X.Y** | Normative intent documented; Tier 0 conformance may still be incomplete |
 | **Final X.Y** | Tier 0 conformance suite is the acceptance gate for that spec line |
 
-Current line: **Draft 1.0** ([malda-language-1.0.md](malda-language-1.0.md), 2026-06-04).
+Current line: **Final 1.0** ([malda-language-1.0.md](malda-language-1.0.md), declared 2026-08-12; Draft since 2026-06-04).
 
 ---
 
@@ -99,7 +99,7 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 4. If syntax changes: update [22-grammar.html](../../ReferenceManual/22-grammar.html) and `ReferenceManualGrammarCoverageTests`.  
 5. Phase 2.4: `scripts/verify-spec-parser-drift.ps1` and `bitbucket-pipelines.yml` fail PRs that touch `Parser.cs` or `Lexer.cs` without spec/grammar/CHANGELOG update.
 
-**Implementation precedence during Draft 1.0:** interpreter + Tier 0 tests → spec prose → Reference Manual.
+**Implementation precedence for Final 1.0:** interpreter + Tier 0 tests → spec prose → Reference Manual.
 
 ---
 
@@ -107,7 +107,13 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
-#### Added
+_(empty — open post-Final work goes here)_
+
+### [1.0.0] — 2026-08-12 (Final)
+
+**Status:** Final 1.0 declared 2026-08-12. Tier 0 conformance green on interpreter + C# (`scripts/run-tier0-conformance.ps1`: 316 passed, 0 failed). JavaScript Tier 0 remains a separate matrix subset and is **not** Final-gated.
+
+#### Added (shipped under Draft; absorbed into Final without Tier 0 semantic change)
 
 - **CI:** `scripts/verify-spec-parser-drift.ps1`, `scripts/verify-spec-guards.ps1`, `SpecParserDriftGuardTests`, `bitbucket-pipelines.yml` (Phase 2.4).
 - **Phase 4.2:** Canonical `typeOf` tags (`int`, `bool`, `dict`, `variant`, `task`, …); `isTag()` with legacy alias matching; `Tier0TypeTags` — see [phase-4.2-type-tags.md](../planning/phase-4.2-type-tags.md).
@@ -122,11 +128,21 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 | `typeOf` comparison to `"integer"` / `"boolean"` | `"int"` / `"bool"` or `isTag(x, "integer")` during window | Next **MAJOR** after deprecation release |
 | Expecting `typeOf(dict)` → `"object"` | `"dict"` or `isTag(x, "dict")` | Same |
 
-#### Planned (documented in spec §15 and roadmap Phase 4)
+#### Final checklist (completed 2026-08-12) — Draft 1.0 → Final
 
-- ~~**MINOR** (with deprecation): `typeOf` tags `int`, `dict`, `bool`, `variant`, `task`~~ — **shipped** (4.2).  
-- ~~**MINOR**: `--strict-types` mode; exhaustive `match` diagnostics~~ — **shipped** (4.3).  
-- ~~**MINOR**: `Result` / `Option` stdlib~~ — **shipped** (4.4).
+- [x] Tier 0 conformance green on interpreter + C# (`scripts/run-tier0-conformance.ps1` / matrix thresholds) — verified 2026-08-12 (316 passed)
+- [x] T1 operator + selected Tier-1 builtin return inference shipped (IDE analysis)
+- [x] T2 IDE/LSP type Errors by default + opt-out (`malda.types.strict` / Desktop menu)
+- [x] T3 nested schema resolve + IDE field diagnostics (`malda-schema`)
+- [x] Remaining draft gaps below marked defer-post-Final with owner/version
+
+Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.md).
+
+#### Known gaps (defer post-Final — do not block Final 1.0)
+
+- `typeOf(variant)` and `typeOf(task)` return `"unknown"` — **defer post-Final**; owner **maintainers**; target **≥1.1** (MINOR if distinct tags land).
+- Concurrent `async` user calls with `sleep` between consecutive `var` bindings (documented limitation) — **defer post-Final**; owner **maintainers**; target **post-1.0** (doc-only until a design exists).
+- Multi-backend product parity (agents/HTTP/workflows on JS) — **not Final-gated**; owner **maintainers**; Tier 0 JS tracked separately via the backend matrix.
 
 ### [1.0.0-draft] — 2026-06-04 (Phase 3 modules)
 
@@ -142,7 +158,7 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [1.0.0-draft] — 2026-06-04
 
-**Status:** Draft — Tier 0 conformance in progress (Phase 5).
+**Status:** Historical Draft entry. Superseded by **[1.0.0] Final** (2026-08-12).
 
 #### Added (normative documentation)
 
@@ -157,30 +173,11 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 - **Phase 1.2:** `math`, `str`, `io` namespaces; flat globals deprecated (one-release policy).  
 - **Interpreter:** `WrapCallAsTask` for `async userFn()` environment binding (2026-06-04).
 
-#### P0 readiness notes (2026-08-12, updated) — types / schema (not Final yet)
+#### P0 readiness notes (2026-08-12) — types / schema (landed before Final)
 
 - **Call-site checking:** IDE/LSP default elevates type mismatches to **Error** (`StrictTypesOptions.Default` / `malda.types.strict`); covers literals, hinted ids, `new`, call `-> T` (same unit + imports), operators (when both sides inferable), and selected Tier-1 builtin returns (`math` / `str` / `io`). CLI `--strict-types` remains explicit and also enables match/`@pure`/bounds/const.  
 - **Nested schemas:** field types may name other schemas (`Other` / `Other[]`); unknown field types and cycles error on resolve; IDE `malda-schema` diagnostics on unknown field types; import + `validate` covered by tests.  
 - **Workflow (minimal):** WF1001 denies `now` / `random*` / `randn` / `sleep`; WF1002 denies filesystem/process/HTTP built-ins outside `step`; IDE/LSP static WF1001/WF1002 on direct calls; durability remains single-box SQLite + fixed deny-list (not Temporal replay detection).
-
-#### Final checklist (2026-08-12) — Draft 1.0 → Final
-
-Do **not** declare Final until every row is checked or explicitly deferred with a post-Final version.
-
-- [ ] Tier 0 conformance green on interpreter + C# (`scripts/run-tier0-conformance.ps1` / matrix thresholds)
-- [x] T1 operator + selected Tier-1 builtin return inference shipped (IDE analysis)
-- [x] T2 IDE/LSP type Errors by default + opt-out (`malda.types.strict` / Desktop menu)
-- [x] T3 nested schema resolve + IDE field diagnostics (`malda-schema`)
-- [ ] Remaining draft gaps below resolved **or** marked defer-post-Final with owner/version
-
-Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.md).
-
-#### Known draft gaps (not version bumps until fixed or declared Final)
-
-- `typeOf(variant)` and `typeOf(task)` return `"unknown"` — **defer post-Final** (no owner yet).  
-- Concurrent `async` user calls with `sleep` between consecutive `var` bindings (documented limitation) — **defer post-Final**.  
-- Multi-backend product parity (agents/HTTP/workflows on JS) not gated on Spec Final — **defer** (Tier 0 JS tracked separately).  
-- Spec remains **Draft 1.0** until Tier 0 conformance stays green and the Final checklist above is complete.
 
 ### Pre-spec baseline (reference only)
 
@@ -200,3 +197,4 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-06-04 | Phase 2.4: parser/spec drift CI script and Bitbucket pipeline |
 | 2026-08-12 | P0 readiness notes: call-site return hints, nested schemas, WF1001 aliases |
 | 2026-08-12 | Final checklist + T1/T2/T3 type maturity updates; link `roadmap-p0-types-impl.md` |
+| 2026-08-12 | Declared **Final 1.0**; Tier 0 green (316); post-Final gaps owned (maintainers) |

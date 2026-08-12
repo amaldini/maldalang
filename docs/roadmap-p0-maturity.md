@@ -52,7 +52,7 @@ Rough sequencing. Items can overlap when owners differ; gates below are the acce
 | **T1 Call-site / return inference** | Extend IDE/CLI checking beyond declared/`->` callees where cheap: common operators, selected Tier 1 builtins (`math` / `str` / `io` returns) | Filtered tests cover new sites; `docs/llm/malda-gotchas.md` updated if behavior changes |
 | **T2 Strict default in tooling** | LSP + Desktop: type mismatches as **Errors** by default (opt-out setting); CLI keeps `--strict-types` explicit unless documented otherwise | Setting documented in LSP/Desktop READMEs; guard or smoke test that default severity is Error |
 | **T3 Nested schema hardening** | Nested schema fields, unknown names, cycles already erroring — close remaining gaps (arrays of nested schemas, import of schema names, diagnostics quality) | `SchemaNested*` / validate example tests green; Reference Manual schema chapter matches resolve rules |
-| **T4 Spec Final gate draft** | Checklist to promote Draft 1.0 → Final: Tier 0 conformance green; P0 type/schema notes in CHANGELOG closed or explicitly deferred with version | `docs/spec/CHANGELOG.md` has a dated Final checklist; open draft gaps either fixed or listed as out-of-Final |
+| **T4 Spec Final gate** | Promote Draft 1.0 → Final: Tier 0 conformance green; P0 type/schema notes in CHANGELOG closed or explicitly deferred with owner/version | **Landed 2026-08-12:** Spec **Final 1.0**; Tier 0 316 passed; gaps owned (`maintainers` / post-1.0) |
 
 ### Month 2–4 — Workflow ops + backend contracts
 
@@ -101,7 +101,7 @@ Rough sequencing. Items can overlap when owners differ; gates below are the acce
 
 | Metric | Target |
 |--------|--------|
-| Spec | Final 1.0 declared **or** CHANGELOG lists only intentional non-Final gaps with owners |
+| Spec | **Final 1.0 declared** (2026-08-12); post-Final gaps owned in CHANGELOG |
 | Types | IDE/LSP default: type mismatch = Error; call-site + selected builtin returns covered by tests |
 | Workflows | Ops path documented + one observability surface; HA/multi-worker story written (even if limited) |
 | Backends | Product capability matrix complete; transpile smoke set in CI filter |
@@ -128,7 +128,7 @@ Rough sequencing. Items can overlap when owners differ; gates below are the acce
 |-----|------|
 | [`docs/architecture.md`](architecture.md) | Engine map; points here for open P0 |
 | [`docs/spec/backend-capability-matrix.md`](spec/backend-capability-matrix.md) | Interpreter / C# / JS product surface |
-| [`docs/spec/CHANGELOG.md`](spec/CHANGELOG.md) | Spec semver + draft gaps |
+| [`docs/spec/CHANGELOG.md`](spec/CHANGELOG.md) | Spec semver + Final 1.0 + post-Final gaps |
 | [`docs/planning/malda-language-purity-roadmap.md`](planning/malda-language-purity-roadmap.md) | Completed purity phases (historical) |
 | [`docs/planning/phase-3-modules-summary.md`](planning/phase-3-modules-summary.md) | Deferred module items |
 | [`docs/llm/malda-gotchas.md`](llm/malda-gotchas.md) | Silent failures to shrink |
@@ -148,3 +148,4 @@ Rough sequencing. Items can overlap when owners differ; gates below are the acce
 | 2026-08-12 | W3 Determinism & replay landed: `sleep` WF1001, IDE `WorkflowDeterminismDiagnostics`, deny-list guard tests, RM + gotchas |
 | 2026-08-12 | B1 Product capability matrix landed: schema/validate, HttpServer, UIHost, jobs rows + guard tests |
 | 2026-08-12 | B2 Transpile smoke landed: `TranspileSmokeTests` for schema/agents/workflow/jobs Examples in CI |
+| 2026-08-12 | T4 Spec Final landed: **Final 1.0**; Tier 0 green via `run-tier0-conformance.ps1` (316); next open theme **A1** |

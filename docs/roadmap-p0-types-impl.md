@@ -1,8 +1,8 @@
 # P0 types implementation plan (T1–T4)
 
-**Status:** Implemented (2026-08-12)  
+**Status:** Implemented (2026-08-12); Spec **Final 1.0** declared  
 **Parent roadmap:** [`docs/roadmap-p0-maturity.md`](roadmap-p0-maturity.md) (priority 1)  
-**Spec checklist:** [`docs/spec/CHANGELOG.md`](spec/CHANGELOG.md) — Final checklist section
+**Spec:** [`docs/spec/CHANGELOG.md`](spec/CHANGELOG.md) — `[1.0.0]` Final + completed Final checklist
 
 ## Design (fixed)
 
@@ -19,7 +19,7 @@
 | T2 / Fase 0 | `TypeErrors` on `StrictTypesOptions`; `LanguageService.GetDiagnostics(..., options)`; LSP full path + settings; Desktop setting | `StrictTypesOptions.cs`, `LanguageService.cs`, `MaldaTextDocumentSyncHandler.cs`, `TypeAnalysisSettingsService.cs` |
 | T1 / Fase 1 | Operator + curated Tier-1 builtin return inference | `TypeCompatibilityDiagnostics.cs`, `Tier1BuiltinReturnHints.cs` |
 | T3 / Fase 2 | IDE `malda-schema` field diagnostics; import+validate test | `SchemaDeclarationDiagnostics.cs`, `SchemaNestedTests` |
-| T4 / Fase 3 | Final checklist in CHANGELOG (Final **not** declared) | `docs/spec/CHANGELOG.md` |
+| T4 / Fase 3 | Spec Final 1.0 declared; Tier 0 green; post-Final gaps owned | `docs/spec/CHANGELOG.md`, `malda-language-1.0.md` |
 
 ## Filtered tests
 

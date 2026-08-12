@@ -1,8 +1,8 @@
 # Malda Language Specification 1.0 — Tier 0 Core
 
 **Document:** `docs/spec/malda-language-1.0.md`  
-**Status:** Draft 1.0 (2026-06-04)  
-**Applies to:** Malda Core interpreter and Tier 0 conformance tests (C# / JS parity is Phase 5)  
+**Status:** Final 1.0 (declared 2026-08-12; Draft from 2026-06-04)  
+**Applies to:** Malda Core interpreter and Tier 0 conformance tests (JS Tier 0 is a separate matrix subset; not Final-gated)  
 **Normative implementation:** `MaldaLang/Lexer.cs`, `MaldaLang/Parser/Parser.cs`, `MaldaLang/Interpreter/Interpreter.cs`, `MaldaLang/BuiltIns/BuiltInFunctions.cs`
 
 ---
@@ -474,3 +474,4 @@ Versioning and deprecation rules: [CHANGELOG.md](CHANGELOG.md).
 | 2026-06-04 | Draft 1.0 | Initial Tier 0 spec (Phase 2.1); anchors Tier0ConformanceTests |
 | 2026-06-04 | Draft 1.0 | §14 modules: `import`, `export`, sum-type scoping (Phase 3) |
 | 2026-06-05 | Draft 1.0 | §18 expressiveness: pipe, comprehensions, `using`/`defer`, `const` (Phase 7) |
+| 2026-08-12 | Final 1.0 | Spec Final declared; Tier 0 interpreter + C# conformance green (`run-tier0-conformance.ps1`) |
