@@ -12,8 +12,9 @@ using MaldaLang.Parser.AST.Expressions;
 using MaldaLang.Parser.AST.Statements;
 
 /// <summary>
-/// Static UI loop footgun checks: dispatch without pull before render (UI1001),
-/// and mixed @PAGE / ui.* surface in one file (UI1002 Info). Heuristic name walk; no call-graph.
+/// Static UI footgun checks: dispatch without pull before render (UI1001),
+/// mixed @PAGE / ui.* surface (UI1002 Info), and poison get-or-create defaults
+/// on <c>ui.state</c> (UI1003). Heuristic name walk; no call-graph / dataflow.
 /// </summary>
 public static class UiLoopDiagnostics
 {
@@ -30,6 +31,7 @@ public static class UiLoopDiagnostics
     {
         var list = statements as IList<Statement> ?? statements.ToList();
         CheckMixedSurface(list, diagnostics);
+        CheckPoisonStateDefaults(list, diagnostics);
 
         AnalyzeStatementList(list, diagnostics);
         foreach (var stmt in list)
@@ -37,6 +39,184 @@ public static class UiLoopDiagnostics
             if (stmt is FunctionDeclaration func)
                 AnalyzeStatementList(func.Body.Statements, diagnostics);
         }
+    }
+
+    /// <summary>
+    /// UI1003: <c>ui.state(id, key, null)</c> / <c>ui.state(id, key, {})</c> persist the
+    /// default on miss — after TTL/LRU eviction that poisons the store. Literals only.
+    /// </summary>
+    private static void CheckPoisonStateDefaults(IList<Statement> statements, List<Diagnostic> diagnostics)
+    {
+        foreach (var stmt in statements)
+            CollectPoisonStateDefaults(stmt, diagnostics);
+    }
+
+    private static void CollectPoisonStateDefaults(Statement statement, List<Diagnostic> diagnostics)
+    {
+        switch (statement)
+        {
+            case BlockStatement block:
+                foreach (var inner in block.Statements)
+                    CollectPoisonStateDefaults(inner, diagnostics);
+                break;
+            case FunctionDeclaration func:
+                foreach (var inner in func.Body.Statements)
+                    CollectPoisonStateDefaults(inner, diagnostics);
+                break;
+            case ExpressionStatement exprStmt:
+                CollectPoisonStateDefaultsInExpression(exprStmt.Expression, diagnostics);
+                break;
+            case PrintStatement print:
+                CollectPoisonStateDefaultsInExpression(print.Expression, diagnostics);
+                break;
+            case VarDeclStatement varDecl when varDecl.Initializer != null:
+                CollectPoisonStateDefaultsInExpression(varDecl.Initializer, diagnostics);
+                break;
+            case AssignmentStatement assign:
+                CollectPoisonStateDefaultsInExpression(assign.Value, diagnostics);
+                break;
+            case ReturnStatement ret when ret.Value != null:
+                CollectPoisonStateDefaultsInExpression(ret.Value, diagnostics);
+                break;
+            case IfStatement ifStmt:
+                CollectPoisonStateDefaultsInExpression(ifStmt.Condition, diagnostics);
+                CollectPoisonStateDefaults(ifStmt.ThenBranch, diagnostics);
+                if (ifStmt.ElseBranch != null)
+                    CollectPoisonStateDefaults(ifStmt.ElseBranch, diagnostics);
+                break;
+            case WhileStatement whileStmt:
+                CollectPoisonStateDefaultsInExpression(whileStmt.Condition, diagnostics);
+                CollectPoisonStateDefaults(whileStmt.Body, diagnostics);
+                break;
+            case ForStatement forStmt:
+                if (forStmt.Initializer != null)
+                    CollectPoisonStateDefaults(forStmt.Initializer, diagnostics);
+                if (forStmt.Condition != null)
+                    CollectPoisonStateDefaultsInExpression(forStmt.Condition, diagnostics);
+                if (forStmt.Increment != null)
+                    CollectPoisonStateDefaultsInExpression(forStmt.Increment, diagnostics);
+                CollectPoisonStateDefaults(forStmt.Body, diagnostics);
+                break;
+            case ForInStatement forIn:
+                CollectPoisonStateDefaultsInExpression(forIn.Collection, diagnostics);
+                CollectPoisonStateDefaults(forIn.Body, diagnostics);
+                break;
+            case TryStatement tryStmt:
+                CollectPoisonStateDefaults(tryStmt.TryBlock, diagnostics);
+                foreach (var clause in tryStmt.CatchClauses)
+                    CollectPoisonStateDefaults(clause.Body, diagnostics);
+                if (tryStmt.FinallyBlock != null)
+                    CollectPoisonStateDefaults(tryStmt.FinallyBlock, diagnostics);
+                break;
+        }
+    }
+
+    private static void CollectPoisonStateDefaultsInExpression(Expression expression, List<Diagnostic> diagnostics)
+    {
+        if (expression is FunctionCallExpression call &&
+            TryGetUiStateGetOrCreateCall(call, out var displayName) &&
+            call.Arguments.Count >= 3)
+        {
+            var defaultArg = call.Arguments[2];
+            if (IsPoisonDefaultLiteral(defaultArg))
+            {
+                diagnostics.Add(new Diagnostic
+                {
+                    Severity = DiagnosticSeverity.Warning,
+                    Message =
+                        "UI1003: " + displayName + " get-or-create with null/{} default persists that value on miss — " +
+                        "after TTL/LRU eviction the store is poisoned. Prefer ui.getState (peek) for optional reads, " +
+                        "or a non-null initializer ([] / 0 / \"\"); pin process-lifetime data with ui.pinState.",
+                    Line = Math.Max(0, call.Line - 1),
+                    Column = Math.Max(0, call.Column - 1),
+                    Length = Math.Max(1, displayName.Length),
+                    Source = "UI1003",
+                    RelatedExamplePath = "Examples/Web/ui_state_lifecycle.malda",
+                    RelatedExampleTitle = "UI state lifecycle",
+                    RelatedDocumentationPath = "docs/ui-framework.md",
+                    RelatedDocumentationTitle = "UI state model (pin / TTL)"
+                });
+            }
+        }
+
+        switch (expression)
+        {
+            case FunctionCallExpression callExpr:
+                CollectPoisonStateDefaultsInExpression(callExpr.Callee, diagnostics);
+                foreach (var arg in callExpr.Arguments)
+                    CollectPoisonStateDefaultsInExpression(arg, diagnostics);
+                break;
+            case MemberAccessExpression memberAccess:
+                CollectPoisonStateDefaultsInExpression(memberAccess.Object, diagnostics);
+                break;
+            case BinaryExpression binary:
+                CollectPoisonStateDefaultsInExpression(binary.Left, diagnostics);
+                CollectPoisonStateDefaultsInExpression(binary.Right, diagnostics);
+                break;
+            case UnaryExpression unary:
+                CollectPoisonStateDefaultsInExpression(unary.Right, diagnostics);
+                break;
+            case TernaryExpression ternary:
+                CollectPoisonStateDefaultsInExpression(ternary.Condition, diagnostics);
+                CollectPoisonStateDefaultsInExpression(ternary.ThenBranch, diagnostics);
+                CollectPoisonStateDefaultsInExpression(ternary.ElseBranch, diagnostics);
+                break;
+            case ArrayLiteralExpression arrayLit:
+                foreach (var el in arrayLit.Elements)
+                    CollectPoisonStateDefaultsInExpression(el, diagnostics);
+                break;
+            case ObjectLiteralExpression objectLit:
+                foreach (var (_, value) in objectLit.Properties)
+                    CollectPoisonStateDefaultsInExpression(value, diagnostics);
+                break;
+            case DictionaryLiteralExpression dictLit:
+                foreach (var (_, value) in dictLit.Entries)
+                    CollectPoisonStateDefaultsInExpression(value, diagnostics);
+                break;
+            case AwaitExpression awaitExpr:
+                CollectPoisonStateDefaultsInExpression(awaitExpr.Expression, diagnostics);
+                break;
+            case LambdaExpression lambda:
+                if (lambda.ExpressionBody != null)
+                    CollectPoisonStateDefaultsInExpression(lambda.ExpressionBody, diagnostics);
+                if (lambda.BlockBody != null)
+                    CollectPoisonStateDefaults(lambda.BlockBody, diagnostics);
+                break;
+        }
+    }
+
+    private static bool TryGetUiStateGetOrCreateCall(FunctionCallExpression call, out string displayName)
+    {
+        displayName = "";
+        if (TryGetUiMemberCall(call, out var member) &&
+            string.Equals(member, "state", StringComparison.Ordinal))
+        {
+            displayName = "ui.state";
+            return true;
+        }
+
+        if (call.Callee is IdentifierExpression id &&
+            string.Equals(id.Name, "uiState", StringComparison.Ordinal))
+        {
+            displayName = "uiState";
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool IsPoisonDefaultLiteral(Expression expression)
+    {
+        if (expression is LiteralExpression lit && lit.Value is null)
+            return true;
+
+        if (expression is ObjectLiteralExpression obj && obj.Properties.Count == 0)
+            return true;
+
+        if (expression is DictionaryLiteralExpression dict && dict.Entries.Count == 0)
+            return true;
+
+        return false;
     }
 
     private static void CheckMixedSurface(IList<Statement> statements, List<Diagnostic> diagnostics)

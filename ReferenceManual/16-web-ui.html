@@ -528,11 +528,11 @@ var list = ui.each(["a", "b", "c"], "value");</code></pre>
         <h3>19.2.9 State management patterns</h3>
         <p>HttpServer request handlers run in an isolated interpreter, so top-level variables are not shared across requests. Use the component state store (via <code>ui.*</code> or <code>componentState*</code>) for cross-request data.</p>
         <ul>
-            <li><strong>Peek vs get-or-create:</strong> <code>ui.getState</code> / <code>componentStateGet</code> return an optional default without writing. <code>ui.state</code> <em>persists</em> the default when the key is missing — never use <code>null</code> or <code>{}</code> as the default for critical keys after a possible TTL/LRU miss.</li>
+            <li><strong>Peek vs get-or-create:</strong> <code>ui.getState</code> / <code>componentStateGet</code> return an optional default without writing. <code>ui.state</code> <em>persists</em> the default when the key is missing — never use <code>null</code> or <code>{}</code> as the default for critical keys after a possible TTL/LRU miss. IDE/LSP reports <strong>UI1003</strong> (Warning) for those literal poison defaults (also flat <code>uiState</code>).</li>
             <li><strong>Pin for process-lifetime data:</strong> after writing shared catalog/config, call <code>ui.pinState(componentId, scope)</code> (or <code>componentStatePin</code>) so TTL and LRU eviction skip that entry. Leave per-conversation history unpinned.</li>
             <li><strong>ui.setState / componentStateSet</strong>: write values for both short-lived UI flags and durable server data.</li>
         </ul>
-        <p><strong>Rule of thumb:</strong> peek with <code>ui.getState</code> when reading; use <code>ui.state</code> only when you intentionally want get-or-create. Pin shared brain/config scopes; keep conversation scopes under normal TTL/LRU. Persist long-term invariants in files or a database when the process may restart.</p>
+        <p><strong>Rule of thumb:</strong> peek with <code>ui.getState</code> when reading; use <code>ui.state</code> only when you intentionally want get-or-create. Pin shared brain/config scopes; keep conversation scopes under normal TTL/LRU. Persist long-term invariants in files or a database when the process may restart. Offline golden: <code>Examples/Web/ui_state_lifecycle.malda</code> — also <a href="../docs/ui-framework.md">docs/ui-framework.md</a> § State model.</p>
         <pre><code>// Peek (safe): missing key does not poison the store
 var catalog = ui.getState("AskStore", "catalog", null, sharedScope);
 

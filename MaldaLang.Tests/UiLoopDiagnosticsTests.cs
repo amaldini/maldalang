@@ -79,4 +79,70 @@ public class UiLoopDiagnosticsTests : TestBase
         var diagnostics = Analyze(File.ReadAllText(path));
         Assert.DoesNotContain(diagnostics, d => d.Source == "UI1001");
     }
+
+    [Fact]
+    public void UiStateNullDefault_IsUI1003()
+    {
+        var diagnostics = Analyze("""
+            var x = ui.state("Store", "catalog", null, "shared");
+            print(x);
+            """);
+        Assert.Contains(diagnostics, d =>
+            d.Source == "UI1003" && d.Severity == DiagnosticSeverity.Warning);
+    }
+
+    [Fact]
+    public void UiStateEmptyObjectDefault_IsUI1003()
+    {
+        var diagnostics = Analyze("""
+            var x = ui.state("Store", "session", {}, "shared");
+            print(x);
+            """);
+        Assert.Contains(diagnostics, d =>
+            d.Source == "UI1003" && d.Severity == DiagnosticSeverity.Warning);
+    }
+
+    [Fact]
+    public void UiStateFlatAliasNullDefault_IsUI1003()
+    {
+        var diagnostics = Analyze("""
+            var x = uiState("Store", "catalog", null);
+            print(x);
+            """);
+        Assert.Contains(diagnostics, d =>
+            d.Source == "UI1003" && d.Severity == DiagnosticSeverity.Warning);
+    }
+
+    [Fact]
+    public void UiStateSafeDefaults_NoUI1003()
+    {
+        var diagnostics = Analyze("""
+            var n = ui.state("Store", "count", 0, "s");
+            var items = ui.state("Store", "items", [], "s");
+            var name = ui.state("Store", "name", "", "s");
+            print(n);
+            print(items);
+            print(name);
+            """);
+        Assert.DoesNotContain(diagnostics, d => d.Source == "UI1003");
+    }
+
+    [Fact]
+    public void UiGetStateNullDefault_NoUI1003()
+    {
+        var diagnostics = Analyze("""
+            var catalog = ui.getState("Store", "catalog", null, "shared");
+            print(catalog);
+            """);
+        Assert.DoesNotContain(diagnostics, d => d.Source == "UI1003");
+    }
+
+    [Fact]
+    public void StateLifecycleExample_NoUI1003()
+    {
+        var path = Path.Combine(RepoRoot, "Examples", "Web", "ui_state_lifecycle.malda");
+        Assert.True(File.Exists(path), "ui_state_lifecycle.malda should exist");
+        var diagnostics = Analyze(File.ReadAllText(path));
+        Assert.DoesNotContain(diagnostics, d => d.Source == "UI1003");
+    }
 }

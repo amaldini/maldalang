@@ -82,6 +82,11 @@ Defaults are conservative (`maxComponents=512`, TTL 30 minutes). Conversation-sc
 entries should stay unpinned; process-lifetime data (brain catalog, server config)
 should be **pinned** after the first write. Anti-pattern: `ui.state(id, "x", null)` or
 `ui.state(id, "x", {})` on critical keys — after eviction that poisons the store.
+IDE/LSP reports **UI1003** (Warning) when the get-or-create default is a literal
+`null` or `{}` (flat alias `uiState` included). Prefer `ui.getState` for optional
+reads, or non-null initializers (`[]` / `0` / `""`).
+
+Canonical offline example: [`Examples/Web/ui_state_lifecycle.malda`](../Examples/Web/ui_state_lifecycle.malda)
 
 `ui.invalidate(channel, payload?)` emits a live invalidation message over SSE.
 

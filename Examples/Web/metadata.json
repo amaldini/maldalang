@@ -211,6 +211,27 @@
                          "documentationTitle":  "Fullstack sessions auth"
                      },
                      {
+                         "name":  "UI State Lifecycle",
+                         "description":  "Peek vs get-or-create, pin for process-lifetime data, and safe ui.state defaults (offline)",
+                         "file":  "ui_state_lifecycle.malda",
+                         "track":  "showcase",
+                         "difficulty":  "intermediate",
+                         "minutes":  8,
+                         "concepts":  [
+                                          "ui.state",
+                                          "ui.getState",
+                                          "ui.pinState",
+                                          "TTL/LRU"
+                                      ],
+                         "prerequisites":  [
+                                               "Web/ui_event_loop.malda"
+                                           ],
+                         "learningGoal":  "Avoid poison defaults after TTL/LRU eviction; pin shared server meta.",
+                         "expectedOutput":  "Prints peek, pinned product name, items length, and incremented count.",
+                         "documentationPath":  "/docs/ui-framework.md",
+                         "documentationTitle":  "UI state model"
+                     },
+                     {
                          "name":  "UI Controls Showcase",
                          "description":  "Comprehensive server-side UI example covering the full ui.* control catalog",
                          "file":  "ui_controls_showcase.malda"

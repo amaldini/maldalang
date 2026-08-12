@@ -21,6 +21,14 @@ Correct `ui.*` loop: `mount` → `dispatchEvent` → `pullEvent` → state → r
 malda Examples/Web/ui_event_loop.malda
 ```
 
+### UI state lifecycle (offline)
+
+Peek vs get-or-create, `ui.pinState` for process-lifetime data, safe defaults (IDE **UI1003** on `ui.state(..., null|{})`).
+
+```bash
+malda Examples/Web/ui_state_lifecycle.malda
+```
+
 Longer showcase: `ui_counter_dashboard.malda`. Engine notes: [`docs/ui-framework.md`](../../docs/ui-framework.md).
 
 JS / PWA samples under `js/` need `malda compile … --mode js` (or the Desktop/Web IDE browser path). See [`docs/spec/backend-capability-matrix.md`](../../docs/spec/backend-capability-matrix.md).

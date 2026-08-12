@@ -1,0 +1,26 @@
+// U2 golden — safe component state lifecycle (offline).
+// Peek optional reads; get-or-create only with non-poison defaults; pin process-lifetime data.
+// IDE: UI1003 warns on ui.state(..., null) / ui.state(..., {}).
+// Engine notes: docs/ui-framework.md § State model
+
+var sharedScope = "shared";
+var convScope = "conv-1";
+
+// Peek (safe): missing key does not write null into the store
+var catalog = ui.getState("LifeStore", "catalog", null, sharedScope);
+print("catalog_peek=" + string(catalog == null));
+
+// Process-lifetime shared meta — write then pin (TTL/LRU skip)
+ui.setState("LifeStore", "productName", "DemoApp", sharedScope);
+ui.pinState("LifeStore", sharedScope);
+print("pinned=" + string(ui.getState("LifeStore", "productName", "", sharedScope)));
+
+// Get-or-create OK for lists / counters you always want initialized
+var items = ui.state("LifeStore", "items", [], convScope);
+items.append({"title": "first"});
+ui.setState("LifeStore", "items", items, convScope);
+print("items=" + string(items.length));
+
+var count = ui.state("LifeStore", "count", 0, convScope);
+ui.setState("LifeStore", "count", count + 1, convScope);
+print("count=" + string(ui.state("LifeStore", "count", 0, convScope)));
