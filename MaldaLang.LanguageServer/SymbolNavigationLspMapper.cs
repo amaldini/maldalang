@@ -41,6 +41,7 @@ internal static class SymbolNavigationLspMapper
             SymbolItemKind.Step => SymbolKind.Method,
             SymbolItemKind.Event => SymbolKind.Event,
             SymbolItemKind.Object => SymbolKind.Object,
+            SymbolItemKind.Schema => SymbolKind.Struct,
             _ => SymbolKind.Object
         };
     }

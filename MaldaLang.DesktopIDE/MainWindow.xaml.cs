@@ -2099,10 +2099,15 @@ public partial class MainWindow : Window
                 return;
             }
 
+            var activeDocument = GetActiveDocument();
+            var sourceFileName = string.IsNullOrWhiteSpace(activeDocument.PhysicalFilePath)
+                ? activeDocument.FilePath
+                : activeDocument.PhysicalFilePath;
             var hover = _languageService.GetHoverInformation(
                 CodeEditor.Text,
                 position.Value.Line - 1,
                 position.Value.Column - 1,
+                sourceFileName,
                 CancellationToken.None);
 
             if (string.IsNullOrWhiteSpace(hover))

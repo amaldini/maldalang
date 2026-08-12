@@ -15,6 +15,11 @@ public interface ILanguageService
         MaldaLang.IDE.StrictTypesOptions? strictTypesOptions = null);
     List<CompletionItem> GetCompletions(string source, int line, int column, string? sourceFileName = null, CancellationToken cancellationToken = default);
     SignatureHelpInfo? GetSignatureHelp(string source, int line, int column, CancellationToken cancellationToken = default);
-    string? GetHoverInformation(string source, int line, int column, CancellationToken cancellationToken = default);
+    string? GetHoverInformation(
+        string source,
+        int line,
+        int column,
+        string? sourceFileName = null,
+        CancellationToken cancellationToken = default);
     AutoFixInfo? GetAutoFix(string source, Diagnostic diagnostic, MaldaLang.Parser.ParseException? parseException = null, CancellationToken cancellationToken = default);
 }

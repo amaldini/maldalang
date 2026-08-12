@@ -1,0 +1,12 @@
+{
+  "note": "Sample local run — not an SLA. Prefer same-machine deltas after a change. Regenerate with: powershell -File scripts/run-micro-benchmarks.ps1 -OutJson artifacts/bench.json",
+  "machine": "sample-dev",
+  "os": "Microsoft Windows 10.0.26200",
+  "configuration": "Release CLI via scripts/run-micro-benchmarks.ps1",
+  "recorded": "2026-08-12",
+  "interpret_hello_seconds": 0.85,
+  "transpile_starter_seconds": 4.2,
+  "health_requests": 50,
+  "health_loop_seconds": 1.1,
+  "health_requests_per_second": 45.5
+}

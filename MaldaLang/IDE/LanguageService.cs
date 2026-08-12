@@ -1263,14 +1263,19 @@ public class LanguageService : ILanguageService
         }
     }
     
-    public string? GetHoverInformation(string source, int line, int column, CancellationToken cancellationToken = default)
+    public string? GetHoverInformation(
+        string source,
+        int line,
+        int column,
+        string? sourceFileName = null,
+        CancellationToken cancellationToken = default)
     {
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var lexer = new Lexer(source);
+            var lexer = new Lexer(source, sourceFileName);
             var tokens = lexer.Tokenize();
-            var parser = new MaldaLang.Parser.Parser(tokens);
+            var parser = new MaldaLang.Parser.Parser(tokens, sourceFileName);
             var statements = parser.Parse();
             cancellationToken.ThrowIfCancellationRequested();
             
@@ -1292,8 +1297,8 @@ public class LanguageService : ILanguageService
                 return keywordInfo;
             }
             
-            // Look up symbol information
-            return GetSymbolInfo(statements, token.Lexeme);
+            // Look up symbol information (local + imported schemas/types when path known)
+            return GetSymbolInfo(statements, token.Lexeme, sourceFileName);
         }
         catch (OperationCanceledException)
         {
@@ -1332,11 +1337,15 @@ public class LanguageService : ILanguageService
             TokenType.Compensate => "**compensate** — Compensation action run if workflow fails after this step.",
             TokenType.OnReject => "**onReject** — Handler expression executed when approval decision is reject.",
             TokenType.Timeout => "**timeout** — Timeout limit in milliseconds for step/approval/signal waits.",
+            TokenType.Schema => "**schema** — Declarative object shape for `validate` / structured I/O.\n\n`schema Person { name: string, age?: number }`",
             _ => null
         };
     }
     
-    private string? GetSymbolInfo(List<MaldaLang.Parser.AST.Statements.Statement> statements, string name)
+    private string? GetSymbolInfo(
+        List<MaldaLang.Parser.AST.Statements.Statement> statements,
+        string name,
+        string? sourceFileName = null)
     {
         // Check for built-in functions first
         var builtInInfo = GetBuiltInFunctionInfo(name);
@@ -1367,8 +1376,78 @@ public class LanguageService : ILanguageService
             {
                 return $"workflow {workflowDecl.Name}({string.Join(", ", workflowDecl.Parameters)})";
             }
+            if (stmt is SchemaDeclaration schemaDecl &&
+                schemaDecl.Name == name)
+            {
+                return FormatSchemaHover(schemaDecl);
+            }
+            if (stmt is TypeDeclaration typeDecl &&
+                typeDecl.TypeName == name)
+            {
+                return FormatTypeHover(typeDecl);
+            }
         }
+
+        if (!string.IsNullOrWhiteSpace(sourceFileName))
+        {
+            try
+            {
+                var imported = ModuleSymbolResolver.LoadImportedSymbols(statements, sourceFileName);
+                var importedSchema = imported.Schemas.FirstOrDefault(s =>
+                    string.Equals(s.Name, name, StringComparison.Ordinal));
+                if (importedSchema != null)
+                {
+                    return FormatSchemaHover(importedSchema);
+                }
+
+                var importedType = imported.Types.FirstOrDefault(t =>
+                    string.Equals(t.TypeName, name, StringComparison.Ordinal));
+                if (importedType != null)
+                {
+                    return FormatTypeHover(importedType);
+                }
+
+                var importedClass = imported.Classes.FirstOrDefault(c =>
+                    string.Equals(c.Name, name, StringComparison.Ordinal));
+                if (importedClass != null)
+                {
+                    return $"class {importedClass.Name}";
+                }
+
+                var importedFunction = imported.Functions.FirstOrDefault(f =>
+                    string.Equals(f.Name, name, StringComparison.Ordinal));
+                if (importedFunction != null)
+                {
+                    return $"function {importedFunction.Name}({string.Join(", ", importedFunction.Parameters)})";
+                }
+            }
+            catch
+            {
+                // Best-effort import resolution for hover.
+            }
+        }
+
         return null;
+    }
+
+    private static string FormatSchemaHover(SchemaDeclaration schema)
+    {
+        var fields = schema.Fields.Count == 0
+            ? "(no fields)"
+            : string.Join(", ", schema.Fields.Select(f =>
+                f.Required ? $"{f.Name}: {f.TypeName}" : $"{f.Name}: {f.TypeName}?"));
+        return $"schema {schema.Name} {{ {fields} }}";
+    }
+
+    private static string FormatTypeHover(TypeDeclaration typeDecl)
+    {
+        var variants = typeDecl.Constructors.Count == 0
+            ? "(no variants)"
+            : string.Join(" | ", typeDecl.Constructors.Select(c =>
+                c.ParameterNames.Count == 0
+                    ? c.Name
+                    : $"{c.Name}({string.Join(", ", c.ParameterNames)})"));
+        return $"type {typeDecl.TypeName} = {variants}";
     }
     
     private string? GetBuiltInFunctionInfo(string name)

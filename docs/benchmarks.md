@@ -27,4 +27,14 @@ Requirements: .NET 8 SDK. The script builds `MaldaLang` into `artifacts/malda-be
 - The health loop is single-threaded client requests; it is a regression smoke, not peak throughput.
 - CI machines vary; publish sample ranges in release notes when useful, not as SLAs.
 
+## Sample results (not an SLA)
+
+Checked-in template: [`docs/benchmarks-sample-results.json`](benchmarks-sample-results.json). Values below are one illustrative local Release run — replace with your machine’s output when comparing.
+
+| Metric | Sample (seconds) |
+|--------|------------------|
+| Interpret `hello_world` | 0.85 |
+| Transpile `complete_starter_program` | 4.2 |
+| HTTP health loop (50 GETs) | 1.1 (~45.5 req/s) |
+
 Related: built-in profiler docs in [`docs/profiling.md`](profiling.md).

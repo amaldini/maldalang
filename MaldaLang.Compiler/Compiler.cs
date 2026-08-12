@@ -297,8 +297,15 @@ public class Compiler
             paths += $"\nBuild errors written to: {errorLogPath}";
         }
 
+        paths += "\n" + TranspileFailureDebugHint;
         return paths;
     }
+
+    /// <summary>
+    /// Footer printed after GeneratedProgram / build_errors paths on transpile failure.
+    /// </summary>
+    internal const string TranspileFailureDebugHint =
+        "Open the .malda line from the diagnostic when present; otherwise inspect GeneratedProgram.cs (unmapped #line default). See docs/debugging-transpile.md";
 
     private static string ResolveBuildReportDirectory(string outputPath, string fallbackDir)
     {

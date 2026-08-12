@@ -22,8 +22,21 @@ filtered tests that match a narrow change. Open an issue before a large design c
 2. Clone this repository.
 3. Build:
 
+**Windows** (full solution, including Desktop IDE):
+
 ```bash
 dotnet build MaldaLang.sln
+```
+
+**Linux / macOS** — build the cross-platform projects instead of the solution.
+`MaldaLang.sln` includes the WPF Desktop IDE (`net8.0-windows`), which does not build elsewhere:
+
+```bash
+dotnet build MaldaLang/MaldaLang.csproj
+dotnet build MaldaLang.Compiler/MaldaLang.Compiler.csproj
+dotnet build MaldaLang.LanguageServer/MaldaLang.LanguageServer.csproj
+dotnet build MaldaLang.IDE/MaldaLang.IDE.csproj
+dotnet build MaldaLang.Tests/MaldaLangTests.csproj
 ```
 
 4. Run a smoke example:
@@ -31,6 +44,22 @@ dotnet build MaldaLang.sln
 ```bash
 dotnet run --project MaldaLang -- Examples/Basics/hello_world.malda
 ```
+
+Stable CLI output (any OS):
+
+```bash
+dotnet build MaldaLang -o artifacts/malda-cli
+# Windows: artifacts/malda-cli/malda.exe
+# Linux/macOS: artifacts/malda-cli/malda
+artifacts/malda-cli/malda Examples/Basics/hello_world.malda
+```
+
+### Contribute without Desktop
+
+You do **not** need the Windows Desktop IDE to contribute. Use the CLI, VS Code + LSP
+(`MaldaLang.LanguageServer` / `vscode-malda`), and/or the Web IDE (`MaldaLang.IDE`) on
+Linux or macOS. CI already builds those projects on Linux and macOS. Desktop remains the
+reference full IDE on Windows only.
 
 ## Tests
 
@@ -58,11 +87,13 @@ Design note: [`docs/workspace-packages.md`](docs/workspace-packages.md). Remote 
 - Prefer fixing behavior in MALDA sources (`.malda`) over editing generated artifacts such as `GeneratedProgram.cs` or generated `.js`.
 - Prefer the `function` keyword (not `fn` / `def`) in examples and docs.
 - Prompt declarations use name-only parameters (no typed prompt params).
+- Transpile failure debugging: [`docs/debugging-transpile.md`](docs/debugging-transpile.md).
 
 ## IDEs
 
-- **Desktop IDE** is the reference IDE (Windows). Prefer it when validating full editor workflows.
+- **Desktop IDE** is the reference IDE (**Windows only**). Prefer it when validating full editor workflows on Windows.
 - **Web IDE** is a browser playground (learn/run/debug). See [Good first contributions](#good-first-contributions) above.
+- **VS Code + LSP** is the cross-platform editing path when Desktop is unavailable.
 
 ## Pull requests
 

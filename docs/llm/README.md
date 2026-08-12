@@ -57,6 +57,7 @@ The named `-o` path is the shippable artifact. The output directory may also con
 `MaldaLang.Executable.pdb` — safe to ignore or delete when shipping only the named exe.
 On failure, `build_errors.txt` and `GeneratedProgram.cs` land next to `-o` (the CLI prints
 their full paths). A successful compile removes a stale `build_errors.txt` from that folder.
+See [`docs/debugging-transpile.md`](../debugging-transpile.md) for `#line` mapping and what to open first.
 
 **Interpreter ≠ transpile.** `malda prog.malda` and `malda compile --mode transpile` are
 different backends. Smoke both when the deliverable is an `.exe`.

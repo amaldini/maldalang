@@ -15,7 +15,8 @@ public enum SymbolItemKind
     Workflow,
     Step,
     Event,
-    Object
+    Object,
+    Schema
 }
 
 public sealed class TextSpanInfo

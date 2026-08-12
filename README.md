@@ -114,7 +114,8 @@ Or build a reusable CLI output:
 
 ```bash
 dotnet build MaldaLang -o artifacts/malda-cli
-artifacts/malda-cli/malda.exe Examples/Basics/hello_world.malda
+# Windows: malda.exe — Linux/macOS: malda
+artifacts/malda-cli/malda Examples/Basics/hello_world.malda
 ```
 
 Compile to an executable:

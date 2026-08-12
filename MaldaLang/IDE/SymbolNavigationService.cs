@@ -39,6 +39,9 @@ public class SymbolNavigationService : ISymbolNavigationService
                 case WorkflowDeclaration workflowDecl:
                     symbols.Add(MakeWorkflowSymbol(workflowDecl));
                     break;
+                case SchemaDeclaration schemaDecl:
+                    symbols.Add(MakeSchemaSymbol(schemaDecl));
+                    break;
             }
         }
 
@@ -93,6 +96,9 @@ public class SymbolNavigationService : ISymbolNavigationService
                                     break;
                             }
                         }
+                        break;
+                    case SchemaDeclaration schemaDecl:
+                        AddWorkspaceSymbol(symbols, trimmedQuery, document.SourceKey, schemaDecl.Name, SymbolItemKind.Schema, schemaDecl.Line, schemaDecl.Column, null);
                         break;
                 }
             }
@@ -387,6 +393,28 @@ public class SymbolNavigationService : ISymbolNavigationService
         };
     }
 
+    private static DocumentSymbolInfo MakeSchemaSymbol(SchemaDeclaration declaration)
+    {
+        var children = declaration.Fields
+            .Select(field => new DocumentSymbolInfo
+            {
+                Name = field.Name,
+                Kind = SymbolItemKind.Field,
+                Detail = field.Required ? field.TypeName : $"{field.TypeName} (optional)",
+                Span = CreateSpan(declaration.Line - 1, declaration.Column - 1, field.Name.Length)
+            })
+            .ToList();
+
+        return new DocumentSymbolInfo
+        {
+            Name = declaration.Name,
+            Kind = SymbolItemKind.Schema,
+            Detail = $"schema ({declaration.Fields.Count} field{(declaration.Fields.Count == 1 ? "" : "s")})",
+            Span = CreateSpan(declaration.Line - 1, declaration.Column - 1, declaration.Name.Length),
+            Children = children
+        };
+    }
+
     private static DocumentSymbolInfo MakeWorkflowSymbol(WorkflowDeclaration declaration)
     {
         var children = new List<DocumentSymbolInfo>();
@@ -501,6 +529,8 @@ public class SymbolNavigationService : ISymbolNavigationService
                     return (promptDeclaration.Line, promptDeclaration.Column, promptDeclaration.Name);
                 case WorkflowDeclaration workflowDeclaration when workflowDeclaration.Name == name:
                     return (workflowDeclaration.Line, workflowDeclaration.Column, workflowDeclaration.Name);
+                case SchemaDeclaration schemaDeclaration when schemaDeclaration.Name == name:
+                    return (schemaDeclaration.Line, schemaDeclaration.Column, schemaDeclaration.Name);
                 case VarDeclStatement variableDeclaration when variableDeclaration.Name == name:
                     return (variableDeclaration.Line, variableDeclaration.Column, variableDeclaration.Name);
             }
@@ -610,6 +640,9 @@ public class SymbolNavigationService : ISymbolNavigationService
                     break;
                 case WorkflowDeclaration workflowDeclaration:
                     yield return CreateWorkspaceDeclaration(sourceKey, workflowDeclaration.Name, SymbolItemKind.Workflow, workflowDeclaration.Line, workflowDeclaration.Column);
+                    break;
+                case SchemaDeclaration schemaDeclaration:
+                    yield return CreateWorkspaceDeclaration(sourceKey, schemaDeclaration.Name, SymbolItemKind.Schema, schemaDeclaration.Line, schemaDeclaration.Column);
                     break;
             }
         }

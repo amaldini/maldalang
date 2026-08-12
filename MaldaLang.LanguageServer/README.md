@@ -36,17 +36,20 @@ Desktop IDE: **View → Type Errors as Errors** (persisted under AppData `MaldaL
 ## Capabilities
 
 - **textDocument/didOpen, didChange, didClose**: Document sync (full document).
-- **textDocument/publishDiagnostics**: Parser errors, type analysis, and decorator validation for the current file (full file path so imports resolve), plus a slower workspace pass that republishes diagnostics for sibling `.malda` files on save and after idle edits.
-- **textDocument/completion**: Keywords (including `for`, `foreach`, `while`, `if`, etc. with snippet-style insert text), built-ins, decorators, symbols (classes, functions, variables), member completion.
-- **textDocument/hover**: Documentation for symbols, decorators, and keywords (e.g. `foreach`, `for`, `while`, `if`).
-- **textDocument/documentSymbol**: Outline with classes, functions, actors, prompts (and their members).
-- **textDocument/definition**: Go to definition for classes, functions, actors, prompts, and variables. Top-level declarations resolve across workspace files when a unique match is available; local symbols stay single-file.
+- **textDocument/publishDiagnostics**: Parser errors, type analysis, and decorator validation for the current file (full file path so imports resolve), plus a slower workspace pass that republishes diagnostics for sibling `.malda` files on save and after idle edits. Type mismatches default to **Error** (`malda.types.strict`); this is not Desktop UIHost parity.
+- **textDocument/completion**: Keywords (including `for`, `foreach`, `while`, `if`, etc. with snippet-style insert text), built-ins, decorators, symbols (classes, functions, variables), member completion; imports resolve when the document URI is a `file://` path.
+- **textDocument/hover**: Documentation for symbols (including `schema` / sum `type`), decorators, and keywords (e.g. `foreach`, `for`, `while`, `if`, `schema`). Imported schema/type names resolve when the document path is known.
+- **textDocument/documentSymbol**: Outline with classes, functions, actors, prompts, workflows, and schemas (schema fields as children).
+- **textDocument/documentHighlight**: Highlights other occurrences of the identifier under the cursor in the current document.
+- **textDocument/definition**: Go to definition for classes, functions, actors, prompts, schemas, workflows, and variables. Top-level declarations resolve across workspace files when a unique match is available; local symbols stay single-file.
 - **textDocument/references**: Find references to the symbol at position. Top-level symbols aggregate references across workspace files; local symbols stay single-file.
 - **textDocument/rename**: Rename symbol with validation. Top-level symbols rename across workspace files; local symbols stay single-file.
 - **textDocument/codeAction**: Quick fixes for parser errors (e.g. insert missing brace/semicolon).
 - **textDocument/signatureHelp**: Function signature and active parameter at call site.
 - **textDocument/formatting**, **textDocument/rangeFormatting**: Indentation based on brace nesting (spaces or tabs).
-- **workspace/symbol**: Go to symbol in workspace across discovered `.malda` files under the active workspace root, not just open documents.
+- **workspace/symbol**: Go to symbol in workspace across discovered `.malda` files under the active workspace root (includes schemas), not just open documents.
+
+Web IDE remains a learning playground and does not claim Desktop or LSP feature parity.
 
 ## Testing
 

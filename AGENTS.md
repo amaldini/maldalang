@@ -125,8 +125,10 @@ tests; drive-by “nice to have” builtins are out of scope for focused PRs.
 
 ## Debugging transpile failures
 
+Full guide: [`docs/debugging-transpile.md`](docs/debugging-transpile.md).
+
 1. Check `build_errors.txt` if present (gitignored locally)
-2. Inspect generated `GeneratedProgram.cs` (gitignored; regenerate via compile)
+2. Prefer `.malda(line)` from the CLI / Roslyn `#line` mapping; otherwise inspect `GeneratedProgram.cs`
 3. Fix the transpiler method — do not patch generated output as the fix
 
 ## Chapter numbering

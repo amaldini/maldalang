@@ -79,10 +79,10 @@ Rough sequencing. Items can overlap when owners differ; gates below are the acce
 
 | Workstream | Concrete work | Done when |
 |------------|---------------|-----------|
-| **D1 Debug story** | Source-map or line mapping for transpile failures; document “how to debug” beyond GeneratedProgram spelunking | Doc section + one improved CLI hint on transpile failure |
-| **D2 Benchmarks** | Publish a small bench suite (interpreter vs transpile) under `docs/benchmarks.md` / artifacts — numbers may be modest; absence is worse | Script + checked-in result template or CI-optional job |
-| **D3 LSP ≈ language intelligence** | Close highest-impact Desktop-only language features in LSP (strict defaults, module symbols, schema/type hover) — not UIHost parity | LSP README capability table updated; Web IDE remains playground |
-| **D4 Cross-platform honesty** | Keep Desktop WPF Windows-only; ensure CLI/LSP/Web CI smoke stays green on Linux; document contributor path without Desktop | CI + CONTRIBUTING already true; fix any drift |
+| **D1 Debug story** | Source-map or line mapping for transpile failures; document “how to debug” beyond GeneratedProgram spelunking | **Landed 2026-08-12:** [`docs/debugging-transpile.md`](debugging-transpile.md); CLI hint via `Compiler.TranspileFailureDebugHint`; `#line` already emitted |
+| **D2 Benchmarks** | Publish a small bench suite (interpreter vs transpile) under `docs/benchmarks.md` / artifacts — numbers may be modest; absence is worse | **Landed 2026-08-12:** `scripts/run-micro-benchmarks.ps1` + [`docs/benchmarks-sample-results.json`](benchmarks-sample-results.json) sample table |
+| **D3 LSP ≈ language intelligence** | Close highest-impact Desktop-only language features in LSP (strict defaults, module symbols, schema/type hover) — not UIHost parity | **Landed 2026-08-12:** schema/type hover + schema outline/workspace symbols; LSP README capability table; Web IDE stays playground |
+| **D4 Cross-platform honesty** | Keep Desktop WPF Windows-only; ensure CLI/LSP/Web CI smoke stays green on Linux; document contributor path without Desktop | **Landed 2026-08-12:** CONTRIBUTING Linux/macOS build + “contribute without Desktop”; README CLI binary name note |
 
 ---
 
@@ -108,7 +108,7 @@ Rough sequencing. Items can overlap when owners differ; gates below are the acce
 | AI | **A1+A2 done:** structured + tools + sequence examples; governance golden with validate + `@pure`/`@effects` |
 | UI | **U1+U2 done:** event-loop + UI1001/UI1002; state lifecycle + UI1003 poison defaults |
 | Modules | **P1+P2 done:** selective imports + workspace `packages/` story; `export type` still deferred |
-| Perf story | Public micro-benchmark numbers exist (not “absent”) |
+| Perf story | **D2 done:** public sample micro-benchmark numbers in `docs/benchmarks.md` / `benchmarks-sample-results.json` |
 
 ---
 
@@ -137,6 +137,8 @@ Rough sequencing. Items can overlap when owners differ; gates below are the acce
 | [`docs/workflows-ha.md`](workflows-ha.md) | W2 single-writer + read-only ops HA model |
 | [`docs/selective-imports.md`](selective-imports.md) | P1 `import { … } from` design + semantics |
 | [`docs/workspace-packages.md`](workspace-packages.md) | P2 workspace `packages/` + offline CLI |
+| [`docs/debugging-transpile.md`](debugging-transpile.md) | D1 transpile `#line` / build_errors debug guide |
+| [`docs/benchmarks.md`](benchmarks.md) | D2 micro-benchmarks + sample results |
 | [`docs/planning/phase-3-modules-summary.md`](planning/phase-3-modules-summary.md) | Historical Phase 3; selective import now shipped in P1 |
 
 ---
@@ -158,3 +160,7 @@ Rough sequencing. Items can overlap when owners differ; gates below are the acce
 | 2026-08-12 | U2 State lifecycle landed: UI1003 poison `ui.state` defaults, `ui_state_lifecycle.malda`, RM §19.2.9 + gotchas + ui-framework |
 | 2026-08-12 | P1 Selective imports landed: `import { a, b } from`, `docs/selective-imports.md`, `Examples/Modules/selective_import.malda`; `export type` deferred |
 | 2026-08-12 | P2 Package story landed: `packages/malda-demo-math`, local install/`list --workspace`, offline PM, `docs/workspace-packages.md`, CONTRIBUTING/start-here/RM §2.3 |
+| 2026-08-12 | D1 Debug story landed: `docs/debugging-transpile.md`, CLI `TranspileFailureDebugHint`, AGENTS/start-here links |
+| 2026-08-12 | D2 Benchmarks landed: checked-in `docs/benchmarks-sample-results.json` + sample table in `docs/benchmarks.md` |
+| 2026-08-12 | D3 LSP intelligence landed: schema/type hover (incl. imports), schema document/workspace symbols, LSP README capabilities |
+| 2026-08-12 | D4 Cross-platform honesty landed: CONTRIBUTING Linux/macOS + no-Desktop path; README `malda` vs `malda.exe` note |

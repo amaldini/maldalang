@@ -38,7 +38,14 @@ public class MaldaHoverHandler : IHoverHandler
         string? info;
         try
         {
-            info = _languageService.GetHoverInformation(text, line, character, cancellationToken);
+            string? sourceFileName = null;
+            var uriString = uri.ToString();
+            if (uriString.StartsWith("file://", StringComparison.OrdinalIgnoreCase))
+            {
+                sourceFileName = new Uri(uriString).LocalPath;
+            }
+
+            info = _languageService.GetHoverInformation(text, line, character, sourceFileName, cancellationToken);
         }
         catch (OperationCanceledException)
         {
