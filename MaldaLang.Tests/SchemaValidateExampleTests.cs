@@ -17,4 +17,15 @@ public class SchemaValidateExampleTests : TestBase
         Assert.Contains("ok: Ada", output, StringComparison.Ordinal);
         Assert.Contains("expected failure", output, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Basics_SchemaNestedValidate_RunsUnderInterpreter()
+    {
+        var path = PlanningPaths.ResolveRepoFile("Examples", "Basics", "schema_nested_validate.malda");
+        var source = File.ReadAllText(path);
+        var output = RunProgram(source);
+        Assert.Contains("ok: Ada", output, StringComparison.Ordinal);
+        Assert.Contains("London", output, StringComparison.Ordinal);
+        Assert.Contains("expected failure", output, StringComparison.Ordinal);
+    }
 }

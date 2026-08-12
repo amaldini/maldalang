@@ -157,11 +157,18 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 - **Phase 1.2:** `math`, `str`, `io` namespaces; flat globals deprecated (one-release policy).  
 - **Interpreter:** `WrapCallAsTask` for `async userFn()` environment binding (2026-06-04).
 
+#### P0 readiness notes (2026-08-12) — types / schema (not Final yet)
+
+- **Call-site checking:** `--strict-types` / IDE warnings cover callee return hints for same-unit and imported functions (operators and built-in returns still not inferred).  
+- **Nested schemas:** field types may name other schemas (`Other` / `Other[]`); unknown field types and cycles error on resolve; no silent map-to-`string`.  
+- **Workflow (minimal):** WF1001 also denies `randomChoiceWeighted` and `randn`; durability remains single-box SQLite + deny-list (not Temporal replay detection).
+
 #### Known draft gaps (not version bumps until fixed or declared Final)
 
 - `typeOf(variant)` and `typeOf(task)` return `"unknown"`.  
 - Concurrent `async` user calls with `sleep` between consecutive `var` bindings (documented limitation).  
-- Multi-backend parity (C#/JS) not yet gated on spec Final.
+- Multi-backend parity (C#/JS) not yet gated on spec Final.  
+- Spec remains **Draft 1.0** until Tier 0 conformance + the P0 gates above stay green and Final is declared.
 
 ### Pre-spec baseline (reference only)
 
@@ -179,3 +186,4 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 |------|--------|
 | 2026-06-04 | Initial CHANGELOG and semver policy (Phase 2.3) |
 | 2026-06-04 | Phase 2.4: parser/spec drift CI script and Bitbucket pipeline |
+| 2026-08-12 | P0 readiness notes: call-site return hints, nested schemas, WF1001 aliases |

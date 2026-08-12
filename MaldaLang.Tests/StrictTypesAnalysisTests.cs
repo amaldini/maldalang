@@ -116,6 +116,35 @@ public class StrictTypesAnalysisTests
     }
 
     [Fact]
+    public void StrictMode_CallReturnMismatch_IsError()
+    {
+        var source = """
+            function make() -> string { return "x"; }
+            var n: int = make();
+            """;
+        var diagnostics = Analyze(source, strict: true);
+        Assert.Contains(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Severity == DiagnosticSeverity.Error &&
+            d.Message.Contains("variable 'n'", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void StrictMode_TypedCallArgFromCalleeReturn_Match_NoError()
+    {
+        var source = """
+            function make() -> int { return 1; }
+            function take(x: int) { return x; }
+            var n: int = take(make());
+            """;
+        var diagnostics = Analyze(source, strict: true);
+        Assert.DoesNotContain(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Severity == DiagnosticSeverity.Error &&
+            d.Message.Contains("does not match value", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void LanguageService_DefaultMode_StillInformationalForUnknownHint()
     {
         var service = new LanguageService();

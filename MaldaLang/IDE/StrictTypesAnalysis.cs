@@ -15,11 +15,25 @@ public static class StrictTypesAnalysis
     public static void Analyze(
         IEnumerable<Statement> statements,
         StrictTypesOptions options,
-        List<Diagnostic> diagnostics)
+        List<Diagnostic> diagnostics,
+        string? sourceFileName = null)
     {
-        TypeHintDiagnostics.Validate(statements, diagnostics, options);
-        TypeCompatibilityDiagnostics.Validate(statements, diagnostics, options);
+        TypeHintDiagnostics.Validate(statements, diagnostics, options, sourceFileName);
+        TypeCompatibilityDiagnostics.Validate(statements, diagnostics, options, sourceFileName);
         var index = SumTypeIndex.Build(statements);
+        if (!string.IsNullOrWhiteSpace(sourceFileName))
+        {
+            try
+            {
+                var imported = ModuleSymbolResolver.LoadImportedSymbols(statements, sourceFileName);
+                index.MergeImported(imported);
+            }
+            catch
+            {
+                // Best-effort
+            }
+        }
+
         MatchExhaustivenessDiagnostics.Validate(statements, index, options, diagnostics);
         PureEffectsDiagnostics.Validate(statements, options, diagnostics);
         BoundsDiagnostics.Validate(statements, options, diagnostics);

@@ -77,17 +77,62 @@ public static class TypeCompatibilityDiagnostics
     public static void Validate(
         IEnumerable<Statement> statements,
         List<Diagnostic> diagnostics,
-        StrictTypesOptions? options = null)
+        StrictTypesOptions? options = null,
+        string? sourceFileName = null)
     {
         options ??= StrictTypesOptions.Default;
         var list = statements as IList<Statement> ?? statements.ToList();
         var index = TypeHintNameIndex.Build(list);
         var functions = new Dictionary<string, FunctionHints>(StringComparer.Ordinal);
         CollectFunctions(list, functions);
+        MergeImportedHints(list, sourceFileName, index, functions);
         var env = new HintEnv(index);
 
         foreach (var stmt in list)
             VisitStatement(stmt, functions, env, currentReturn: null, diagnostics, options);
+    }
+
+    private static void MergeImportedHints(
+        IList<Statement> hostStatements,
+        string? sourceFileName,
+        TypeHintNameIndex index,
+        Dictionary<string, FunctionHints> functions)
+    {
+        if (string.IsNullOrWhiteSpace(sourceFileName))
+            return;
+
+        try
+        {
+            var imported = ModuleSymbolResolver.LoadImportedSymbols(hostStatements, sourceFileName);
+            index.MergeImported(imported);
+            foreach (var func in imported.Functions)
+            {
+                if (!functions.ContainsKey(func.Name))
+                {
+                    functions[func.Name] = new FunctionHints(
+                        func.ParameterTypeHints ?? new List<string?>(),
+                        func.ReturnType);
+                }
+            }
+
+            foreach (var classDecl in imported.Classes)
+            {
+                foreach (var member in classDecl.Members)
+                {
+                    if (member.Value is FunctionDeclaration method &&
+                        !functions.ContainsKey(method.Name))
+                    {
+                        functions[method.Name] = new FunctionHints(
+                            method.ParameterTypeHints ?? new List<string?>(),
+                            method.ReturnType);
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // Best-effort: broken imports are reported elsewhere.
+        }
     }
 
     private static void CollectFunctions(
@@ -123,6 +168,31 @@ public static class TypeCompatibilityDiagnostics
                     break;
             }
         }
+    }
+
+    private static bool TryGetCalleeHints(
+        Expression callee,
+        Dictionary<string, FunctionHints> functions,
+        out string calleeName,
+        out FunctionHints hints)
+    {
+        if (callee is IdentifierExpression id &&
+            functions.TryGetValue(id.Name, out hints!))
+        {
+            calleeName = id.Name;
+            return true;
+        }
+
+        if (callee is MemberAccessExpression member &&
+            functions.TryGetValue(member.Member, out hints!))
+        {
+            calleeName = member.Member;
+            return true;
+        }
+
+        calleeName = "";
+        hints = null!;
+        return false;
     }
 
     private static void BindFunctionParameters(FunctionDeclaration funcDecl, HintEnv env)
@@ -165,6 +235,7 @@ public static class TypeCompatibilityDiagnostics
                         varDecl.Line,
                         varDecl.Column,
                         env,
+                        functions,
                         diagnostics,
                         options);
                     env.Declare(varDecl.Name, varDecl.TypeHint);
@@ -183,6 +254,7 @@ public static class TypeCompatibilityDiagnostics
                             classDecl.Line,
                             classDecl.Column,
                             env,
+                            functions,
                             diagnostics,
                             options);
                         VisitExpression(fieldInit, functions, env, diagnostics, options);
@@ -216,6 +288,7 @@ public static class TypeCompatibilityDiagnostics
                         returnStmt.Line,
                         returnStmt.Column,
                         env,
+                        functions,
                         diagnostics,
                         options);
                 }
@@ -287,6 +360,7 @@ public static class TypeCompatibilityDiagnostics
                         assign.Line > 0 ? assign.Line : assign.Value.Line,
                         assign.Column > 0 ? assign.Column : assign.Value.Column,
                         env,
+                        functions,
                         diagnostics,
                         options);
                 }
@@ -305,8 +379,7 @@ public static class TypeCompatibilityDiagnostics
         switch (expression)
         {
             case FunctionCallExpression call:
-                if (call.Callee is IdentifierExpression id &&
-                    functions.TryGetValue(id.Name, out var hints))
+                if (TryGetCalleeHints(call.Callee, functions, out var calleeName, out var hints))
                 {
                     for (var i = 0; i < call.Arguments.Count; i++)
                     {
@@ -316,7 +389,7 @@ public static class TypeCompatibilityDiagnostics
                         if (paramHint == null)
                             continue;
 
-                        var paramName = $"argument {i + 1} of '{id.Name}'";
+                        var paramName = $"argument {i + 1} of '{calleeName}'";
                         CheckValueCompatibility(
                             paramHint,
                             call.Arguments[i],
@@ -324,6 +397,7 @@ public static class TypeCompatibilityDiagnostics
                             call.Arguments[i].Line > 0 ? call.Arguments[i].Line : call.Line,
                             call.Arguments[i].Column > 0 ? call.Arguments[i].Column : call.Column,
                             env,
+                            functions,
                             diagnostics,
                             options);
                     }
@@ -393,6 +467,7 @@ public static class TypeCompatibilityDiagnostics
         int line,
         int column,
         HintEnv env,
+        Dictionary<string, FunctionHints> functions,
         List<Diagnostic> diagnostics,
         StrictTypesOptions options)
     {
@@ -406,9 +481,9 @@ public static class TypeCompatibilityDiagnostics
         if (expected == null)
             return; // unknown hint names are handled by TypeHintDiagnostics
 
-        var actual = InferKnownType(value, env);
+        var actual = InferKnownType(value, env, functions);
         if (actual == null)
-            return; // not a literal, new, or known identifier — out of scope
+            return; // not a literal, new, known identifier, or typed call — out of scope
 
         if (string.Equals(expected, actual, StringComparison.Ordinal))
             return;
@@ -439,9 +514,12 @@ public static class TypeCompatibilityDiagnostics
     }
 
     /// <summary>
-    /// Returns a Tier 0 tag, declared/host class name, or null when the expression is out of scope.
+    /// Returns a Tier 0 tag, declared/host class name, call return hint, or null when out of scope.
     /// </summary>
-    private static string? InferKnownType(Expression expression, HintEnv env)
+    private static string? InferKnownType(
+        Expression expression,
+        HintEnv env,
+        Dictionary<string, FunctionHints> functions)
     {
         var literal = InferLiteralTag(expression);
         if (literal != null)
@@ -459,6 +537,16 @@ public static class TypeCompatibilityDiagnostics
             env.TryLookup(id.Name, out var hint))
         {
             return env.Index.NormalizeKnown(hint);
+        }
+
+        if (expression is AwaitExpression awaitExpr)
+            return InferKnownType(awaitExpr.Expression, env, functions);
+
+        if (expression is FunctionCallExpression call &&
+            TryGetCalleeHints(call.Callee, functions, out _, out var calleeHints) &&
+            !string.IsNullOrWhiteSpace(calleeHints.ReturnType))
+        {
+            return env.Index.NormalizeKnown(calleeHints.ReturnType);
         }
 
         return null;

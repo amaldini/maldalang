@@ -22,6 +22,12 @@ public sealed class SumTypeIndex
         return index;
     }
 
+    public void MergeImported(ModuleSymbolResolver.ImportedSymbolSet imported)
+    {
+        foreach (var typeDecl in imported.Types)
+            RegisterType(typeDecl);
+    }
+
     public bool IsSumType(string typeName) => _typeToConstructors.ContainsKey(typeName);
 
     public bool TryGetSumTypeForConstructor(string constructorName, out string sumTypeName) =>

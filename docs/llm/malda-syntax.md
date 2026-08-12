@@ -14,6 +14,9 @@ Compact rules for generating correct `.malda`. Prefer this over scraping HTML ma
   `;`.
 - Blocks use `{ }` like C-family languages.
 - Dynamic typing; optional type hints exist (`: Type`) but are not required for most examples.
+  Under `--strict-types` (and as IDE Warnings otherwise), mismatches include call results
+  when the callee declares `-> T`. Schema fields may nest other schema names (`address: Address`
+  / `Tag[]`); unknown field types error on resolve (they are not silently `string`).
 - **Prompt parameters are name-only** — write `prompt greet(name) { ... }`, never `prompt greet(name: string)`.
 - Prompt `-> ReturnType` is **not** static typing. On `await prompt(...)` with a
   return type and **no tools**, MALDA resolves the type to JSON Schema, appends a

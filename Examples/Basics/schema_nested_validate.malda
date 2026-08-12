@@ -1,0 +1,38 @@
+// schema_nested_validate.malda — nested schema field types + validate()
+//
+// Run: malda Examples/Basics/schema_nested_validate.malda
+// Field types may name other schemas (or schema[]). Unknown names error when
+// the schema is resolved; cycles are rejected.
+
+schema Address {
+    city: string;
+    zip: string?;
+}
+
+schema Person {
+    name: string;
+    address: Address;
+}
+
+var good = dict {
+    "name": "Ada",
+    "address": dict { "city": "London", "zip": "SW1" }
+};
+var bad = dict {
+    "name": "Ada",
+    "address": dict { "city": 99 }
+};
+
+var okCheck = validate("Person", good);
+if (okCheck.ok) {
+    print("ok: " + okCheck.data.name + " @ " + okCheck.data.address.city);
+} else {
+    print("unexpected: " + okCheck.error);
+}
+
+var badCheck = validate("Person", bad);
+if (badCheck.ok) {
+    print("unexpected success");
+} else {
+    print("expected failure: " + badCheck.error);
+}

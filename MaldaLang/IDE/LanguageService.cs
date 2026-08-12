@@ -278,7 +278,7 @@ public class LanguageService : ILanguageService
             var statements = parser.Parse(); // This will collect errors in parser.Errors
             cancellationToken.ThrowIfCancellationRequested();
             StdLibNamespaceDiagnostics.Validate(statements, diagnostics);
-            StrictTypesAnalysis.Analyze(statements, StrictTypesOptions.Default, diagnostics);
+            StrictTypesAnalysis.Analyze(statements, StrictTypesOptions.Default, diagnostics, sourceFileName);
             
             // Report all parser errors
             foreach (var error in parser.Errors)
@@ -390,7 +390,20 @@ public class LanguageService : ILanguageService
                 var hintLexer = new Lexer(source, sourceFileName);
                 var hintTokens = hintLexer.Tokenize();
                 var hintParser = new MaldaLang.Parser.Parser(hintTokens, sourceFileName);
-                typeHintIndex = TypeHintNameIndex.Build(hintParser.Parse());
+                var hintStatements = hintParser.Parse();
+                typeHintIndex = TypeHintNameIndex.Build(hintStatements);
+                if (!string.IsNullOrWhiteSpace(sourceFileName))
+                {
+                    try
+                    {
+                        typeHintIndex.MergeImported(
+                            ModuleSymbolResolver.LoadImportedSymbols(hintStatements, sourceFileName));
+                    }
+                    catch
+                    {
+                        // Best-effort import merge for completions
+                    }
+                }
             }
             catch
             {

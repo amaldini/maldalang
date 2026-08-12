@@ -330,4 +330,73 @@ public class TypeCompatibilityDiagnosticsTests
             d.Message.Contains("does not match value", StringComparison.Ordinal));
         Assert.True(StrictTypesAnalysis.HasErrors(diagnostics));
     }
+
+    [Fact]
+    public void GetDiagnostics_CallReturnMismatch_EmitsWarning()
+    {
+        var service = new LanguageService();
+        var source = """
+            function make() -> string { return "x"; }
+            var n: int = make();
+            """;
+        var diagnostics = service.GetDiagnostics(source);
+        Assert.Contains(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Severity == DiagnosticSeverity.Warning &&
+            d.Message.Contains("variable 'n'", StringComparison.Ordinal) &&
+            d.Message.Contains("string", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void GetDiagnostics_CallReturnMatch_NoWarning()
+    {
+        var service = new LanguageService();
+        var source = """
+            function make() -> int { return 1; }
+            var n: int = make();
+            function take(x: int) { }
+            take(make());
+            """;
+        var diagnostics = service.GetDiagnostics(source);
+        Assert.DoesNotContain(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Severity == DiagnosticSeverity.Warning &&
+            d.Message.Contains("does not match value", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Analyze_StrictTypes_CallReturnMismatch_IsError()
+    {
+        var source = """
+            function make() -> string { return "x"; }
+            var n: int = make();
+            """;
+        var lexer = new Lexer(source);
+        var tokens = lexer.Tokenize();
+        var parser = new Parser.Parser(tokens);
+        var statements = parser.Parse();
+        Assert.Empty(parser.Errors);
+        var diagnostics = new List<Diagnostic>();
+        StrictTypesAnalysis.Analyze(statements, StrictTypesOptions.Enabled, diagnostics);
+        Assert.Contains(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Severity == DiagnosticSeverity.Error &&
+            d.Message.Contains("variable 'n'", StringComparison.Ordinal));
+        Assert.True(StrictTypesAnalysis.HasErrors(diagnostics));
+    }
+
+    [Fact]
+    public void GetDiagnostics_AwaitCallReturnMismatch_EmitsWarning()
+    {
+        var service = new LanguageService();
+        var source = """
+            function make() -> string { return "x"; }
+            var n: int = await make();
+            """;
+        var diagnostics = service.GetDiagnostics(source);
+        Assert.Contains(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Severity == DiagnosticSeverity.Warning &&
+            d.Message.Contains("variable 'n'", StringComparison.Ordinal));
+    }
 }

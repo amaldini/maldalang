@@ -10,8 +10,8 @@ using MaldaLang.Parser.AST.Declarations;
 using MaldaLang.Parser.AST.Statements;
 
 /// <summary>
-/// Known informational type-hint names beyond Tier 0: declared classes/schemas
-/// in the current unit plus built-in host class names.
+/// Known informational type-hint names beyond Tier 0: declared classes/schemas/sum types
+/// in the current unit (plus imported exports) and built-in host class names.
 /// </summary>
 public sealed class TypeHintNameIndex
 {
@@ -68,6 +68,19 @@ public sealed class TypeHintNameIndex
         foreach (var stmt in statements)
             index.Register(stmt);
         return index;
+    }
+
+    /// <summary>
+    /// Merges exported class/schema/sum-type names from imported modules into this index.
+    /// </summary>
+    public void MergeImported(ModuleSymbolResolver.ImportedSymbolSet imported)
+    {
+        foreach (var classDecl in imported.Classes)
+            AddDeclared(classDecl.Name, "class");
+        foreach (var schemaDecl in imported.Schemas)
+            AddDeclared(schemaDecl.Name, "schema");
+        foreach (var typeDecl in imported.Types)
+            AddDeclared(typeDecl.TypeName, "type");
     }
 
     public static bool IsHostClass(string name) =>
@@ -163,13 +176,17 @@ public sealed class TypeHintNameIndex
                     continue;
                 }
 
+                var detail = kind switch
+                {
+                    "schema" => "Schema (informational type hint)",
+                    "type" => "Sum type (informational type hint)",
+                    _ => "Class (informational type hint)"
+                };
                 items.Add(new CompletionItem
                 {
                     Label = name,
                     Kind = "type",
-                    Detail = kind == "schema"
-                        ? "Schema (informational type hint)"
-                        : "Class (informational type hint)",
+                    Detail = detail,
                     InsertText = name
                 });
             }
@@ -199,6 +216,9 @@ public sealed class TypeHintNameIndex
                 break;
             case SchemaDeclaration schemaDecl:
                 AddDeclared(schemaDecl.Name, "schema");
+                break;
+            case TypeDeclaration typeDecl:
+                AddDeclared(typeDecl.TypeName, "type");
                 break;
             case FunctionDeclaration funcDecl:
                 foreach (var inner in funcDecl.Body.Statements)

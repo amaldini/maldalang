@@ -6419,13 +6419,14 @@ public class CSharpTranspiler
         if (schemas.Count == 0)
             return;
 
+        var known = schemas.ToDictionary(s => s.Name, StringComparer.Ordinal);
         foreach (var schemaDecl in schemas)
         {
             WriteIndent();
             _output.Append("MaldaLang.BuiltIns.SchemaRegistry.RegisterCompiled(\"");
             _output.Append(schemaDecl.Name.Replace("\\", "\\\\").Replace("\"", "\\\""));
             _output.Append("\", ");
-            EmitParseJsonSchemaLiteral(SchemaRegistry.BuildSchema(schemaDecl));
+            EmitParseJsonSchemaLiteral(SchemaRegistry.BuildSchema(schemaDecl, known));
             _output.AppendLine(");");
         }
 
@@ -6958,9 +6959,10 @@ public class CSharpTranspiler
         }
         if (schemaDecl != null)
         {
+            var knownSchemas = schemas.ToDictionary(s => s.Name, StringComparer.Ordinal);
             WriteIndent();
             _output.Append("var __schema = ");
-            EmitParseJsonSchemaLiteral(SchemaRegistry.BuildSchema(schemaDecl));
+            EmitParseJsonSchemaLiteral(SchemaRegistry.BuildSchema(schemaDecl, knownSchemas));
             _output.AppendLine(";");
             WriteIndent();
             _output.AppendLine("__responseFormatSchema = MaldaLang.BuiltIns.TypedPromptValidator.BuildResponseFormat(__schema);");
@@ -7144,9 +7146,10 @@ public class CSharpTranspiler
             }
             if (returnSchemaDecl != null)
             {
+                var knownSchemas = schemas.ToDictionary(s => s.Name, StringComparer.Ordinal);
                 WriteIndent();
                 _output.Append("MaldaLang.Interpreter.RuntimeValue? __resolvedSchema = ");
-                EmitParseJsonSchemaLiteral(SchemaRegistry.BuildSchema(returnSchemaDecl));
+                EmitParseJsonSchemaLiteral(SchemaRegistry.BuildSchema(returnSchemaDecl, knownSchemas));
                 _output.AppendLine(";");
             }
             else if (returnProgramApiDecl != null)

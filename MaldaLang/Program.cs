@@ -4282,7 +4282,7 @@ class Program
         if (runOptions?.StrictTypes == true)
         {
             var strictDiagnostics = new List<Diagnostic>();
-            StrictTypesAnalysis.Analyze(statements, StrictTypesOptions.Enabled, strictDiagnostics);
+            StrictTypesAnalysis.Analyze(statements, StrictTypesOptions.Enabled, strictDiagnostics, sourceFileName);
             if (StrictTypesAnalysis.HasErrors(strictDiagnostics))
             {
                 Console.Error.WriteLine(StrictTypesAnalysis.FormatErrorsForConsole(strictDiagnostics));

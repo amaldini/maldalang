@@ -27,7 +27,7 @@
 function double(n) -> int n * 2;</code></pre>
         <p>This is equivalent to <code>function square(x) { return x*x; }</code>.</p>
         <p>You may use <code>fn</code> or <code>def</code> instead of <code>function</code>; all three are equivalent. In documentation and examples, <code>function</code> is preferred.</p>
-        <p>You may optionally add <strong>informational type hints</strong> to parameters and a return type. These are not enforced at runtime or in the transpiler. Known names include Tier 0 primitives, declared class/schema names, and built-in host classes. Mismatches on literals, <code>new ClassName()</code>, and identifiers with known hints (variables, fields, assignment, call arguments, and <code>return</code> vs <code>-&gt; T</code>) produce an IDE/LSP <strong>Warning</strong> (or an error under CLI <code>--strict-types</code>). Operators and call results are not inferred. Hints are also used by tools (e.g. <code>getSymbols</code>), IDEs, and documentation.</p>
+        <p>You may optionally add <strong>informational type hints</strong> to parameters and a return type. These are not enforced at runtime or in the transpiler. Known names include Tier 0 primitives, declared class/schema/sum-type names (including those imported from other modules), and built-in host classes. Mismatches on literals, <code>new ClassName()</code>, identifiers with known hints, call arguments, <code>return</code> vs <code>-&gt; T</code>, and <strong>results of calls</strong> whose callee declares a return hint produce an IDE/LSP <strong>Warning</strong> (or an error under CLI <code>--strict-types</code>). Operators and built-in return types are not inferred. Hints are also used by tools (e.g. <code>getSymbols</code>), IDEs, and documentation.</p>
         <pre><code>function name(param: Type?, ...) -> ReturnType? {
     // param and return type hints are optional and informational only
 }</code></pre>
@@ -363,8 +363,17 @@ print(summary);  // Prints the LLM response directly</code></pre>
     score: float?;       // optional field
 }
 
+schema Address {
+    city: string;
+}
+
+schema Person {
+    name: string;
+    address: Address;    // nested schema (expanded for validate / typed prompts)
+}
+
 var parsed = parseJson('{"text":"hi","sources":["a.md"]}', "Answer");</code></pre>
-        <p>Supported field types: <code>string</code>, <code>int</code>, <code>float</code>, <code>bool</code>, <code>object</code>, and array forms such as <code>string[]</code>. Use <code>?</code> after the type for optional fields.</p>
+        <p>Supported field types: JSON primitives (<code>string</code>, <code>int</code>, <code>float</code>, <code>bool</code>, <code>object</code>, <code>array</code>), array forms such as <code>string[]</code> or <code>Address[]</code>, and <strong>other declared schema names</strong> (nested objects are expanded inline). Use <code>?</code> after the type for optional fields. Unknown field type names error when the schema is resolved; cyclic schema references are rejected. See <code>Examples/Basics/schema_nested_validate.malda</code>.</p>
         <p>For end-to-end RAG pipelines combining schemas, prompts, retrievers, and pipes, see <code>Examples/Prompts/rag_pipeline.malda</code> and <a href="11-built-in-functions.html">12. Built-in Functions</a> (AI pipeline helpers).</p>
 
         <h3>8.8.3.2.1 Sum Types as Prompt Return Types</h3>

@@ -27,6 +27,8 @@ public static class ModuleSymbolResolver
         public List<ClassDeclaration> Classes { get; } = new();
         public List<FunctionDeclaration> Functions { get; } = new();
         public List<VarDeclStatement> Variables { get; } = new();
+        public List<SchemaDeclaration> Schemas { get; } = new();
+        public List<TypeDeclaration> Types { get; } = new();
         public List<ResolvedImport> Imports { get; } = new();
     }
 
@@ -196,6 +198,13 @@ public static class ModuleSymbolResolver
                 case VarDeclStatement vd when explicitExports == null || vd.IsExported:
                     exported.Add(vd);
                     break;
+                // schema / type have no export keyword; always surface them for hint indexing.
+                case SchemaDeclaration sd:
+                    exported.Add(sd);
+                    break;
+                case TypeDeclaration td:
+                    exported.Add(td);
+                    break;
             }
         }
 
@@ -219,6 +228,12 @@ public static class ModuleSymbolResolver
                     break;
                 case VarDeclStatement vd:
                     result.Variables.Add(vd);
+                    break;
+                case SchemaDeclaration sd:
+                    result.Schemas.Add(sd);
+                    break;
+                case TypeDeclaration td:
+                    result.Types.Add(td);
                     break;
             }
         }

@@ -272,6 +272,50 @@ var id = startWorkflow(""Bad"", null);
     }
 
     [Fact]
+    public void WF1001_RandomChoiceWeightedInWorkflowBody_Throws()
+    {
+        WorkflowEngine.ResetForTesting("Data Source=" + GetTestDbPath());
+        var source = @"
+workflow Bad(input) {
+    var i = randomChoiceWeighted([1.0, 2.0]);
+    print(i);
+}
+var id = startWorkflow(""Bad"", null);
+";
+        var lexer = new Lexer(source);
+        var tokens = lexer.Tokenize();
+        var parser = new Parser.Parser(tokens);
+        var statements = parser.Parse();
+        var interp = new Interpreter.Interpreter();
+        var ex = Assert.Throws<RuntimeException>(() =>
+            interp.InterpretAsync(statements).GetAwaiter().GetResult());
+        Assert.Contains("WF1001", ex.Message);
+        Assert.Contains("randomChoiceWeighted", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WF1001_RandnInWorkflowBody_Throws()
+    {
+        WorkflowEngine.ResetForTesting("Data Source=" + GetTestDbPath());
+        var source = @"
+workflow Bad(input) {
+    var x = randn();
+    print(x);
+}
+var id = startWorkflow(""Bad"", null);
+";
+        var lexer = new Lexer(source);
+        var tokens = lexer.Tokenize();
+        var parser = new Parser.Parser(tokens);
+        var statements = parser.Parse();
+        var interp = new Interpreter.Interpreter();
+        var ex = Assert.Throws<RuntimeException>(() =>
+            interp.InterpretAsync(statements).GetAwaiter().GetResult());
+        Assert.Contains("WF1001", ex.Message);
+        Assert.Contains("randn", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void WF1002_WriteFileOutsideStep_Throws()
     {
         WorkflowEngine.ResetForTesting("Data Source=" + GetTestDbPath());

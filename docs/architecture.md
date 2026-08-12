@@ -83,3 +83,9 @@ Server-driven `ui.*` trees, patch protocol, and `MaldaLang.UIHost` wiring are do
 - Prompt params are untyped names only.
 - Keep Desktop vs Web IDE documentation honest about parity.
 - Prefer filtered tests and small smoke programs over whole-suite runs.
+
+## P0 types / schema (post–Phase 6)
+
+- Call-site type hints: [`MaldaLang/IDE/TypeCompatibilityDiagnostics.cs`](../MaldaLang/IDE/TypeCompatibilityDiagnostics.cs) infers declared callee return types (imports via [`ModuleSymbolResolver`](../MaldaLang/IDE/ModuleSymbolResolver.cs)).
+- Nested `schema` fields: [`SchemaRegistry`](../MaldaLang/BuiltIns/SchemaRegistry.cs) expands sibling schemas inline; unknown names / cycles fail on resolve.
+- Post-P0 still open: IDE strict-as-errors by default, Temporal-class workflow observability / HA.

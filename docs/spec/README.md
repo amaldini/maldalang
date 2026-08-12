@@ -10,7 +10,7 @@ Formal, versioned contracts for the Malda language. Implementation precedence is
 | [ReferenceManual/22-grammar.html](../../ReferenceManual/22-grammar.html) | Phase 2.2 | BNF-style syntax (parser-aligned) |
 | [CHANGELOG.md](CHANGELOG.md) | **Active** (2026-06-04) | Semver policy, deprecation, release notes |
 
-Toward a 1.0 language release, keep the Draft status until call-site type checking and schema/`validate` are stable; also track literal type warnings (IDE), this capability matrix + guard, a versioned `docs/llm/` pack per release, and macOS CI smoke.
+**Draft→Final readiness (P0 types/schema):** call-site checking now covers callee return hints (same unit and imported modules) under `--strict-types` / IDE warnings, and `schema`/`validate` support nested schema field types with explicit errors for unknown names and cycles. Remaining Draft holdouts: mark Final only after Tier 0 conformance + these gates stay green; also track IDE strict-as-errors default, richer workflow observability, a versioned `docs/llm/` pack per release, and macOS CI smoke.
 
 ## Verification
 

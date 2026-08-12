@@ -411,7 +411,8 @@ public static class BuiltInRegistry
     {
         return name switch
         {
-            "now" or "random" or "randomInt" or "randomFloat" => WorkflowBuiltInBehavior.NonDeterministic,
+            "now" or "random" or "randomInt" or "randomFloat" or
+            "randomChoiceWeighted" or "randn" => WorkflowBuiltInBehavior.NonDeterministic,
             "runCommand" or "writeFile" or "replaceInFile" or "editFile" or "deleteFile" or
             "runMALDA" or "compileMALDA" or "httpGet" or "httpPost" or "httpPut" or
             "httpDelete" or "httpPatch" => WorkflowBuiltInBehavior.SideEffecting,

@@ -17,11 +17,25 @@ public static class TypeHintDiagnostics
     public static void Validate(
         IEnumerable<Statement> statements,
         List<Diagnostic> diagnostics,
-        StrictTypesOptions? options = null)
+        StrictTypesOptions? options = null,
+        string? sourceFileName = null)
     {
         options ??= StrictTypesOptions.Default;
         var list = statements as IList<Statement> ?? statements.ToList();
         var index = TypeHintNameIndex.Build(list);
+        if (!string.IsNullOrWhiteSpace(sourceFileName))
+        {
+            try
+            {
+                var imported = ModuleSymbolResolver.LoadImportedSymbols(list, sourceFileName);
+                index.MergeImported(imported);
+            }
+            catch
+            {
+                // Best-effort for IDE/CLI tooling
+            }
+        }
+
         foreach (var stmt in list)
             ValidateStatement(stmt, diagnostics, options, index);
     }

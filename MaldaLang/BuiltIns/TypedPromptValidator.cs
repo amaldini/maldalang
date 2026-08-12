@@ -315,14 +315,22 @@ public static class TypedPromptValidator
             if (t == "array")
             {
                 var items = obj.Get("items");
-                if (items.Type == ValueType.Object && items.AsObject() is JsonObject itemsObj)
-                {
-                    var itemType = itemsObj.Get("type");
-                    if (itemType.Type == ValueType.String)
-                        return itemType.AsString() + "[]";
-                }
+                if (items.Type == ValueType.Object)
+                    return DescribeSchemaType(items) + "[]";
 
                 return "array";
+            }
+
+            if (t == "object")
+            {
+                var propsVal = obj.Get("properties");
+                if (propsVal.Type == ValueType.Object && propsVal.AsObject() is JsonObject props)
+                {
+                    var parts = new List<string>();
+                    foreach (var key in props.GetAllKeys())
+                        parts.Add(key + ": " + DescribeSchemaType(props.Get(key)));
+                    return "{ " + string.Join(", ", parts) + " }";
+                }
             }
 
             return t;
