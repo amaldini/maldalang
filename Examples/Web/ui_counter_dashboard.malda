@@ -1,4 +1,5 @@
-// Server-side UI framework example using ui.* controls and session render envelopes.
+// Server-side UI framework showcase (ui.* controls + session envelopes).
+// Golden loop (slim): ui_event_loop.malda — mount → dispatch → pull → setState → render
 
 var sessionId = "counter-demo";
 ui.configure("maxPatchCount", 512, sessionId);

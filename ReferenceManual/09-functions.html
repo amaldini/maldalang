@@ -171,6 +171,22 @@ print(addFive(10));  // Prints 15</code></pre>
         </div>
         <h2>8.7 Decorators</h2>
         <p>MALDA supports decorators for functions, enabling features like custom tools and REST API endpoints:</p>
+        <h3>@pure and @effects</h3>
+        <p>Use <code>@pure()</code> on helpers that must not perform I/O. Use <code>@effects("print", …)</code> to declare an allow-list of side effects on a handler. These are checked under CLI <code>--strict-types</code> / full strict analysis (<code>malda-pure</code> / <code>malda-effects</code>). Prefer <code>validate()</code> on tool or LLM-shaped payloads before impure work — see <code>Examples/Agents/agent_governance_golden.malda</code> and <a href="14-agent-orchestration.html">16. Agent Orchestration</a>.</p>
+        <pre><code>@pure()
+function normalizeName(name) {
+    return upper(trim(name));
+}
+
+@effects("print")
+function handleToolArgs(raw) {
+    var check = validate("ToolInput", raw);
+    if (!check.ok) {
+        print("invalid: " + check.error);
+        return;
+    }
+    print(normalizeName(check.data.name));
+}</code></pre>
         <h3>@Tool Decorator</h3>
         <pre><code>@Tool("tool_name", "Tool description")
 function myTool(param1, param2) {

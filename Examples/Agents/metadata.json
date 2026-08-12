@@ -1,6 +1,34 @@
 {
   "examples": [
     {
+      "name": "Agent governance golden (offline)",
+      "description": "schema + validate + @pure helpers + @effects on a tool handler (no LLM key)",
+      "file": "agent_governance_golden.malda",
+      "track": "ai-builder",
+      "difficulty": "beginner",
+      "minutes": 8,
+      "concepts": ["schema", "validate()", "@pure", "@effects", "tool governance"],
+      "prerequisites": ["Prompts/schema_prompt_structured.malda"],
+      "learningGoal": "Validate tool/LLM-shaped payloads and mark pure vs effectful helpers before side effects.",
+      "expectedOutput": "Prints normalized summary/steps, then an invalid: validate error.",
+      "next": "Agents/single_agent_code_generator.malda",
+      "documentationPath": "/?lesson=first-agent#lesson-first-agent",
+      "documentationTitle": "Agent Governance",
+      "featured": true
+    },
+    {
+      "name": "Phase 6 pure + validate (unit)",
+      "description": "Minimal @pure helper + validate() on a tool input schema",
+      "file": "phase6_pure_validate.malda",
+      "track": "ai-builder",
+      "difficulty": "beginner",
+      "minutes": 5,
+      "concepts": ["@pure", "validate()", "schema"],
+      "prerequisites": ["Agents/agent_governance_golden.malda"],
+      "learningGoal": "See the smallest offline unit of governance used by CI smoke.",
+      "expectedOutput": "Prints a normalized name from validated tool input."
+    },
+    {
       "name": "Single Agent - Code Generator",
       "description": "Agent that generates code",
       "file": "single_agent_code_generator.malda",
@@ -16,6 +44,7 @@
       "documentationTitle": "First Agent",
       "featured": true
     },
+
     {
       "name": "Multi-Agent Code Review",
       "description": "Writer and reviewer agents working together",

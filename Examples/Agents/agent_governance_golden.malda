@@ -1,0 +1,45 @@
+// A2 golden — agent tool governance (offline).
+// Pattern: schema + validate() + @pure helpers + @effects on the impure tool handler.
+// Unit smoke twin: phase6_pure_validate.malda
+// Structured LLM output (no tools): Examples/Prompts/schema_prompt_structured.malda (Mode A)
+// Tools then structured: Examples/Prompts/prompt_tools_then_structured.malda (Mode C)
+//
+// Live agents: apply the same validate + pure helpers to tool args / think() JSON before side effects.
+// Example wiring (not run here — needs an LLM client):
+//   var tool = new Tool("normalize_reply", "Normalize a reply payload", schemaObj, handleToolArgs);
+//   agent.addTool(tool);
+
+schema AgentReply {
+    summary: string;
+    steps: string[];
+}
+
+@pure()
+function normalizeSummary(text) {
+    return upper(trim(text));
+}
+
+@pure()
+function joinSteps(steps) {
+    return join(steps, " | ");
+}
+
+@effects("print")
+function handleToolArgs(raw) {
+    var check = validate("AgentReply", raw);
+    if (!check.ok) {
+        print("invalid: " + check.error);
+        return;
+    }
+    var data = check.data;
+    print("summary=" + normalizeSummary(data.summary));
+    print("steps=" + joinSteps(data.steps));
+}
+
+// Simulated LLM / tool payload (no API key required).
+handleToolArgs(dict {
+    "summary": "  ship governance defaults  ",
+    "steps": ["validate", "pure helpers", "effects"]
+});
+
+handleToolArgs(dict { "summary": 1 });

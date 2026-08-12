@@ -69,8 +69,8 @@ Rough sequencing. Items can overlap when owners differ; gates below are the acce
 | Workstream | Concrete work | Done when |
 |------------|---------------|-----------|
 | **A1 Structured output + tools policy** | Document and sequence tools vs `response_format` exclusivity; keep validation/repair path for local models | **Landed 2026-08-12:** Modes A/B/C in gotchas/RM/matrix; `prompt_tools_mode.malda` + `prompt_tools_then_structured.malda` + existing structured example |
-| **A2 Agent governance defaults** | Promote `@pure` / `@effects` / `validate()` in agent examples; optional CI example already exists — expand to one “golden” agent template | Template or Examples/Agents golden path uses validate + pure helpers |
-| **U1 UI loop DX** | Reduce footguns: clearer APIs or diagnostics for “dispatch without pull/render”, document single model per surface (`@PAGE` vs `ui.*`) | Diagnostics or gotcha + Example that demonstrates correct loop; `docs/ui-framework.md` cross-links |
+| **A2 Agent governance defaults** | Promote `@pure` / `@effects` / `validate()` in agent examples; optional CI example already exists — expand to one “golden” agent template | **Landed 2026-08-12:** `Examples/Agents/agent_governance_golden.malda` + README/metadata; RM `@pure`/`@effects` + validate callout |
+| **U1 UI loop DX** | Reduce footguns: clearer APIs or diagnostics for “dispatch without pull/render”, document single model per surface (`@PAGE` vs `ui.*`) | **Landed 2026-08-12:** UI1001/UI1002 + `ui_event_loop.malda` + `docs/ui-framework.md` event-loop / one-model sections |
 | **U2 State lifecycle** | Pin/TTL guidance enforced in docs + at least one diagnostic or runtime warning for poison defaults (`ui.state(id, k, null)`) | Manual + filtered test or documented warning |
 | **P1 Selective imports** | `import { a, b } from "…"` and/or `export type` (from Phase 3 deferred list) | Design note + interpreter + transpile + `ModuleSymbolResolver` + filtered tests |
 | **P2 Package story** | Local/workspace registry story without claiming a public npm-like hub yet: `malda` commands + docs for workspace `packages/` | CONTRIBUTING or start-here documents the supported workflow |
@@ -105,8 +105,8 @@ Rough sequencing. Items can overlap when owners differ; gates below are the acce
 | Types | IDE/LSP default: type mismatch = Error; call-site + selected builtin returns covered by tests |
 | Workflows | Ops path documented + one observability surface; HA/multi-worker story written (even if limited) |
 | Backends | Product capability matrix complete; transpile smoke set in CI filter |
-| AI | **A1 done:** structured + tools + sequence examples; gotchas match exclusivity + await validate |
-| UI | Correct event/state loop example + documented single-surface rule |
+| AI | **A1+A2 done:** structured + tools + sequence examples; governance golden with validate + `@pure`/`@effects` |
+| UI | **U1 done:** event-loop example + UI1001/UI1002 + single-surface rule in ui-framework |
 | Modules | At least one Phase-3 deferred item shipped (`import {…}` or `export type`) |
 | Perf story | Public micro-benchmark numbers exist (not “absent”) |
 
@@ -150,3 +150,5 @@ Rough sequencing. Items can overlap when owners differ; gates below are the acce
 | 2026-08-12 | B2 Transpile smoke landed: `TranspileSmokeTests` for schema/agents/workflow/jobs Examples in CI |
 | 2026-08-12 | T4 Spec Final landed: **Final 1.0**; Tier 0 green via `run-tier0-conformance.ps1` (316); next open theme **A1** |
 | 2026-08-12 | A1 Structured output + tools policy landed: Modes A/B/C docs + `prompt_tools_mode.malda` / `prompt_tools_then_structured.malda` |
+| 2026-08-12 | A2 Agent governance landed: `agent_governance_golden.malda`, README/metadata, RM `@pure`/`@effects`, gotcha for unvalidated tool JSON |
+| 2026-08-12 | U1 UI loop DX landed: `UiLoopDiagnostics` UI1001/UI1002, `ui_event_loop.malda`, ui-framework event-loop + one-model cross-links |

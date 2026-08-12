@@ -24,6 +24,31 @@ Engine and host notes for MALDA’s Blazor-like server-driven UI. For the langua
 4. Browser interactions are sent back as `event` messages.
 5. Server code calls `ui.dispatchEvent(...)` and `ui.pullEvent(...)` to drain event queues.
 
+## Event loop contract
+
+For interactive `ui.*` sessions, keep this order after each client event:
+
+1. `ui.dispatchEvent(...)` (host/runtime enqueues; examples may simulate)
+2. `ui.pullEvent(sessionId)` — drain before rebuilding
+3. Update `ui.setState` / locals from the payload
+4. Rebuild the tree
+5. `ui.render(nextTree, sessionId)`
+
+Skipping `pullEvent` (or updating state) before `render` leaves the queue full and the UI looks stuck. IDE/LSP reports **UI1001** for linear `dispatchEvent` → `render`/`mount` without an intervening `pullEvent`.
+
+Canonical offline example: [`Examples/Web/ui_event_loop.malda`](../Examples/Web/ui_event_loop.malda)  
+Showcase: [`Examples/Web/ui_counter_dashboard.malda`](../Examples/Web/ui_counter_dashboard.malda)  
+Agent-facing gotcha: [`docs/llm/malda-gotchas.md`](llm/malda-gotchas.md)
+
+## One model per surface
+
+| Model | Use when |
+|-------|----------|
+| `@PAGE` / `@AIPAGE` + HTML strings | Route-first pages (`pageLayout`, forms, redirects) |
+| `ui.*` trees + `ui.mount` / `ui.render` | Server-driven component patches / UIHost |
+
+Do not pass HTML strings into `ui.mount`/`ui.render`, or treat a `@PAGE` return value as a `UiNode` tree. Combining models in one product is fine when boundaries are explicit (e.g. marketing `@PAGE` + app shell `ui.*`). IDE reports **UI1002** (Info) when a file mixes `@PAGE`/`@AIPAGE` with `ui.mount`/`ui.render`. Chooser: [`ReferenceManual/16-web-ui-hub.html`](../ReferenceManual/16-web-ui-hub.html).
+
 ## Protocol shape
 
 `mount` and `patch` envelopes include:

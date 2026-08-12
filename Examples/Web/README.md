@@ -13,6 +13,16 @@ malda Examples/Web/rest_bearer_jwt.malda     # port 8081; see printed curls
 malda Examples/Web/job_queue_basic.malda     # exits after enqueue/claim/complete
 ```
 
+### UI event loop (offline)
+
+Correct `ui.*` loop: `mount` → `dispatchEvent` → `pullEvent` → state → rebuild → `render`.
+
+```bash
+malda Examples/Web/ui_event_loop.malda
+```
+
+Longer showcase: `ui_counter_dashboard.malda`. Engine notes: [`docs/ui-framework.md`](../../docs/ui-framework.md).
+
 JS / PWA samples under `js/` need `malda compile … --mode js` (or the Desktop/Web IDE browser path). See [`docs/spec/backend-capability-matrix.md`](../../docs/spec/backend-capability-matrix.md).
 
 ## Dependencies

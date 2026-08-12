@@ -301,6 +301,9 @@ agent.addTool(createWriteFileTool("."));
 var response = agent.think("Read example.txt and add a comment to the add function.");
 print(response.content);</code></pre>
         <h2>16.8 Custom Tools with @Tool Decorator</h2>
+        <div class="info-box">
+            <strong>Governance defaults:</strong> Validate tool / LLM-shaped payloads with a <code>schema</code> and <code>validate()</code> before side effects. Mark normalize/derive helpers <code>@pure()</code> and impure handlers <code>@effects(...)</code>. Offline golden: <code>Examples/Agents/agent_governance_golden.malda</code> (see also <a href="09-functions.html">8.7 Decorators</a>).
+        </div>
         <p>MALDA supports defining custom tools for LLMs using the <code>@Tool</code> decorator on functions.</p>
         <h3>Decorator Syntax</h3>
         <pre><code>@Tool(name, description, schema?)</code></pre>

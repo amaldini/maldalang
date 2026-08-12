@@ -284,6 +284,7 @@ public class LanguageService : ILanguageService
             cancellationToken.ThrowIfCancellationRequested();
             StdLibNamespaceDiagnostics.Validate(statements, diagnostics);
             WorkflowDeterminismDiagnostics.Validate(statements, diagnostics);
+            UiLoopDiagnostics.Validate(statements, diagnostics);
             StrictTypesAnalysis.Analyze(statements, typeOptions, diagnostics, sourceFileName);
             
             // Report all parser errors

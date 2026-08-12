@@ -1,0 +1,36 @@
+// U1 golden — correct server UI event loop (offline).
+// Order: mount → dispatchEvent → pullEvent → update state → rebuild → render
+// Showcase twin: ui_counter_dashboard.malda
+// Gotcha: docs/llm/malda-gotchas.md (dispatch without pull)
+// Engine notes: docs/ui-framework.md
+
+var sessionId = "event-loop-demo";
+
+var count = ui.state("LoopRoot", "count", 0, sessionId);
+
+function buildView(value) {
+    return ui.column(
+        {"componentId": "LoopRoot"},
+        [
+            ui.text({"value": "count=" + string(value)}),
+            ui.button({"label": "Inc", "onClick": "increment"})
+        ]
+    );
+}
+
+print(ui.mount(buildView(count), sessionId));
+
+// Client click simulation
+ui.dispatchEvent(
+    {"type": "click", "targetPath": "/1/", "payload": {"action": "increment"}},
+    sessionId,
+    1
+);
+
+var evt = ui.pullEvent(sessionId);
+if (evt != null) {
+    count = count + 1;
+    ui.setState("LoopRoot", "count", count, sessionId);
+}
+
+print(ui.render(buildView(count), sessionId));

@@ -310,6 +310,7 @@ componentStatePin("brain", "ask-shared");</code></pre>
             <li>Envelope helper: <code>ui.mountEnvelope(rootNode, sessionId?, options?)</code> for mount + snapshot + resync in one call.</li>
             <li>Lifecycle subscriptions: <code>ui.onInit(componentId, sessionId?)</code>, <code>ui.onPreRender(componentId, sessionId?)</code>, <code>ui.onLoad(componentId, sessionId?)</code>, <code>ui.onDispose(componentId, sessionId?)</code>, <code>ui.onMount(componentId, sessionId?)</code>, <code>ui.onUpdate(componentId, sessionId?)</code>, <code>ui.onUnmount(componentId, sessionId?)</code>, <code>ui.onError(componentId, sessionId?)</code></li>
             <li>Event pipeline: <code>ui.dispatchEvent(eventObj, sessionId?)</code>, <code>ui.pullEvent(sessionId?)</code></li>
+            <li><strong>Correct loop:</strong> <code>pullEvent</code> → update state → rebuild tree → <code>ui.render</code>. Skipping pull leaves the queue full (IDE <code>UI1001</code>). Offline golden: <code>Examples/Web/ui_event_loop.malda</code>. Engine notes: <code>docs/ui-framework.md</code>.</li>
             <li>State: <code>ui.state(componentId, key, defaultValue, scope?)</code> (get-or-create — persists default), <code>ui.getState(componentId, key, defaultValue?, scope?)</code> (peek — does not write), <code>ui.setState(componentId, key, value, scope?)</code>, <code>ui.pinState(componentId, scope?)</code>, <code>ui.unpinState(componentId, scope?)</code></li>
             <li>Invalidation: <code>ui.invalidate(channel, payload?)</code></li>
             <li>Diagnostics/recovery: <code>ui.snapshot(sessionId?)</code>, <code>ui.resync(sessionId?)</code></li>
@@ -582,7 +583,8 @@ function itemsPage(req) {
         <ul>
             <li><strong>Fragment not updating</strong>: Ensure <code>X-Malda-Fragment</code> and <code>X-Malda-Fragment-Target</code> headers are set; the client script must read them and update the target element.</li>
             <li><strong>State lost between requests</strong>: <code>componentState*</code> is session-scoped; pass <code>session</code> in query/body or use a cookie.</li>
-            <li><strong>Event handler not firing</strong>: Verify <code>componentId</code> matches the handler registration; check that <code>ui.dispatchEvent</code> and <code>ui.pullEvent</code> are used correctly.</li>
+            <li><strong>Event handler not firing / UI stuck after dispatch</strong>: Drain with <code>ui.pullEvent</code>, update state, rebuild, then <code>ui.render</code>. IDE warning <code>UI1001</code> flags dispatch→render without pull. See <code>Examples/Web/ui_event_loop.malda</code>.</li>
+            <li><strong>Mixed @PAGE and ui.* trees</strong>: Prefer one model per surface; IDE <code>UI1002</code> (Info) when a file mixes both. Hub: <a href="16-web-ui-hub.html">19. Web UI Overview</a>.</li>
             <li><strong>Template cache</strong>: Pass <code>{"cache": false}</code> to <code>ui.template</code> for development reload.</li>
             <li><strong>Tree divergence</strong>: Use <code>ui.snapshot</code> and <code>ui.resync</code> when client and server trees diverge.</li>
         </ul>
