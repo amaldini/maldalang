@@ -32,7 +32,7 @@ claim a program works.
 | `enqueueJob` expecting durable workflow semantics | Jobs are a **lightweight SQLite queue** (`./.malda/jobs.db`), not `workflow` / `step` / compensate. | Use `workflow { }` for durable steps; use jobs for fire-and-forget workers |
 | `step` inside `while` / `for` expecting N executions | Steps are memoized by **name**. After the first success, replay returns the journaled result and the body of that step does not run again. | Put the loop **inside** the step callee, or use distinct step names per iteration |
 | `now()` / `sleep()` / `writeFile()` outside a workflow `step` “should be fine if my helper is pure-ish” | Outside `step`, only a **fixed deny-list of built-in names** raises `WF1001`/`WF1002` (runtime + IDE on direct calls). There is no call-graph or Temporal-style history detector — other effects are assumed safe. | Put clock, sleep, I/O, HTTP, and any other effect inside a `step` |
-| `prompt p() -> MySchema { tools: [...]; … }` expecting structured `response_format` | For v1, **tools and `response_format` are mutually exclusive**. If the prompt body lists tools, the schema is **not** sent to the LLM. | Omit tools for typed structured output, or validate the free-form reply yourself |
+| `prompt p() -> MySchema { tools: [...]; … }` expecting structured `response_format` | For v1, **tools and `response_format` are mutually exclusive**. With tools, MALDA omits OpenAI `response_format` **and** the `MALDA_OUTPUT_SCHEMA` appendix. On **`await`**, validate + repair still run if `-> Type` is set (harder for local models without the appendix). | Mode A: omit tools for typed structured output (`Examples/Prompts/schema_prompt_structured.malda`). Mode C: tools gather first, then a second typed prompt **without** tools (`Examples/Prompts/prompt_tools_then_structured.malda`) |
 | Treating `-> Type` as compile-time typing | Hints are not static types. On **`await`**, the runtime validates JSON against the resolved schema (and may send OpenAI `response_format`). Without `await`, you only build a `PromptInstance`. | Prefer `schema Name { … }` + `await prompt(...) -> Name`; see `Examples/Prompts/schema_prompt_structured.malda` |
 | Sum-type prompt returning a plain object | `prompt p() -> Intent` with `type Intent = …` coerces JSON into a **variant**. Object field access like `intent.tag` is wrong. | Use `match intent { case Buy(sku, qty): … }`. Wire JSON must be `{ "tag": "Buy", …payload }` |
 | Same name for `schema Foo` and `type Foo` | Registration throws — a name cannot be both. | Pick one spelling / rename one of them |
@@ -83,10 +83,14 @@ the language server reports both as deprecated. Prefer `math.sqrt(16)`. See the 
 rule in [`malda-syntax.md`](malda-syntax.md).
 
 **Typed prompts send `response_format` only to OpenAI-compatible chat APIs.** Llama.cpp
-clients accept the parameter and ignore it. For every typed prompt with no tools, MALDA
+clients accept the parameter and ignore it. For every typed prompt with **no tools**, MALDA
 also appends a compact **schema appendix** to the system message so local models still
-see the expected shape. Validation + repair retries still run after the reply. If a
-backend rejects `response_format`, the host retries once without it.
+see the expected shape. Validation + repair retries still run after the reply (even when
+tools are listed — only format/appendix are gated). If a backend rejects `response_format`,
+the host retries once without it. Supported modes: **A** typed structured (no tools);
+**B** tools listed (no format/appendix); **C** sequence — tools prompt then typed prompt
+without tools — see `Examples/Prompts/prompt_tools_mode.malda` and
+`prompt_tools_then_structured.malda`.
 
 ## Before you say it works
 

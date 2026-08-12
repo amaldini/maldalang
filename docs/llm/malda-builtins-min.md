@@ -169,7 +169,7 @@ See also `Examples/Web/auth_cookie_login.malda`, `Examples/Web/form_validate_fla
 | Pattern | Role |
 |---------|------|
 | `prompt name(args) { user: "..."; }` | Prompt declaration |
-| `prompt name(args) -> SchemaName { … }` + `await` | Typed prompt: JSON Schema → `response_format` (no tools); validate + repair |
+| `prompt name(args) -> SchemaName { … }` + `await` | Typed prompt Mode A: no tools → `response_format` + schema appendix + validate/repair. With `tools:` (Mode B) format/appendix omitted; await still validates. Mode C: tools then typed prompt — see gotchas |
 | `new OpenRouterClient(...)` / `LLMClient` | LLM clients (see `Examples/Prompts`, `Examples/AI_LLM`). OpenRouter: set `httpReferer` / `appTitle` / `appCategories` for app attribution stats. |
 | `new Agent(...)` / `CodingAgent` | Agents + tools |
 

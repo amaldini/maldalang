@@ -68,7 +68,7 @@ Rough sequencing. Items can overlap when owners differ; gates below are the acce
 
 | Workstream | Concrete work | Done when |
 |------------|---------------|-----------|
-| **A1 Structured output + tools policy** | Document and, if design allows, soften or sequence tools vs `response_format` exclusivity; keep validation/repair path for local models | Spec/manual/gotchas agree; one example for each supported mode |
+| **A1 Structured output + tools policy** | Document and sequence tools vs `response_format` exclusivity; keep validation/repair path for local models | **Landed 2026-08-12:** Modes A/B/C in gotchas/RM/matrix; `prompt_tools_mode.malda` + `prompt_tools_then_structured.malda` + existing structured example |
 | **A2 Agent governance defaults** | Promote `@pure` / `@effects` / `validate()` in agent examples; optional CI example already exists — expand to one “golden” agent template | Template or Examples/Agents golden path uses validate + pure helpers |
 | **U1 UI loop DX** | Reduce footguns: clearer APIs or diagnostics for “dispatch without pull/render”, document single model per surface (`@PAGE` vs `ui.*`) | Diagnostics or gotcha + Example that demonstrates correct loop; `docs/ui-framework.md` cross-links |
 | **U2 State lifecycle** | Pin/TTL guidance enforced in docs + at least one diagnostic or runtime warning for poison defaults (`ui.state(id, k, null)`) | Manual + filtered test or documented warning |
@@ -105,7 +105,7 @@ Rough sequencing. Items can overlap when owners differ; gates below are the acce
 | Types | IDE/LSP default: type mismatch = Error; call-site + selected builtin returns covered by tests |
 | Workflows | Ops path documented + one observability surface; HA/multi-worker story written (even if limited) |
 | Backends | Product capability matrix complete; transpile smoke set in CI filter |
-| AI | One golden structured-prompt example + one tools example; gotchas match code |
+| AI | **A1 done:** structured + tools + sequence examples; gotchas match exclusivity + await validate |
 | UI | Correct event/state loop example + documented single-surface rule |
 | Modules | At least one Phase-3 deferred item shipped (`import {…}` or `export type`) |
 | Perf story | Public micro-benchmark numbers exist (not “absent”) |
@@ -149,3 +149,4 @@ Rough sequencing. Items can overlap when owners differ; gates below are the acce
 | 2026-08-12 | B1 Product capability matrix landed: schema/validate, HttpServer, UIHost, jobs rows + guard tests |
 | 2026-08-12 | B2 Transpile smoke landed: `TranspileSmokeTests` for schema/agents/workflow/jobs Examples in CI |
 | 2026-08-12 | T4 Spec Final landed: **Final 1.0**; Tier 0 green via `run-tier0-conformance.ps1` (316); next open theme **A1** |
+| 2026-08-12 | A1 Structured output + tools policy landed: Modes A/B/C docs + `prompt_tools_mode.malda` / `prompt_tools_then_structured.malda` |

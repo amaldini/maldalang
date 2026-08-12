@@ -107,7 +107,9 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
-_(empty — open post-Final work goes here)_
+#### Clarified (PATCH — product / Tier-2 docs only; no Tier 0 semantic change)
+
+- **A1 tools vs `response_format`:** exclusivity = no OpenAI `response_format` and no `MALDA_OUTPUT_SCHEMA` appendix when the prompt lists tools; `await` + `-> Type` still validates/repairs. Supported modes A/B/C documented in [`docs/llm/malda-gotchas.md`](../llm/malda-gotchas.md), [`ReferenceManual/09-functions.html`](../../ReferenceManual/09-functions.html) §8.8.3.1, and `Examples/Prompts/prompt_tools_*.malda`.
 
 ### [1.0.0] — 2026-08-12 (Final)
 
@@ -198,3 +200,4 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-08-12 | P0 readiness notes: call-site return hints, nested schemas, WF1001 aliases |
 | 2026-08-12 | Final checklist + T1/T2/T3 type maturity updates; link `roadmap-p0-types-impl.md` |
 | 2026-08-12 | Declared **Final 1.0**; Tier 0 green (316); post-Final gaps owned (maintainers) |
+| 2026-08-12 | A1: tools vs `response_format` Modes A/B/C clarified (PATCH docs; Unreleased) |

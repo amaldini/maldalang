@@ -1,0 +1,36 @@
+// prompt_tools_then_structured.malda — Mode C: tools gather, then typed structured prompt
+//
+// Offline-first: builds both PromptInstances and prints the sequence recipe.
+// With a configured LLM you can await extractAnswer(...) for Mode A structured output.
+// Run: malda Examples/Prompts/prompt_tools_then_structured.malda
+//
+// Sequence (do not put tools on the typed prompt):
+//   1) tools prompt — gather facts (no response_format)
+//   2) typed prompt without tools — schema + response_format + validate/repair
+
+schema ResearchAnswer {
+    summary: string;
+    sources: string[];
+}
+
+// Step 1 — Mode B: tools allowed; structured format is NOT applied here.
+prompt gatherNotes(question) {
+    system: "Use tools to collect facts. Reply with free-form notes.",
+    user: "Question: {question}",
+    tools: ["read_file", "grep"]
+}
+
+// Step 2 — Mode A: no tools → response_format + MALDA_OUTPUT_SCHEMA + validate/repair.
+prompt extractAnswer(notes) -> ResearchAnswer {
+    system: "Turn notes into JSON matching the ResearchAnswer shape. Reply with JSON only.",
+    user: "Notes:\n{notes}"
+}
+
+var gather = gatherNotes("What is Mode C for typed prompts?");
+var extract = extractAnswer("Mode C = tools first, then typed prompt without tools.");
+
+print("Mode C sequence (offline PromptInstances):");
+print("1) gather.tools=" + toJSON(gather.tools));
+print("2) extract has -> ResearchAnswer and no tools → structured path on await");
+print("extract.user preview: " + str.substring(extract.user, 0, 40) + "...");
+print("Live: await extractAnswer(notesFromTools) after a tools round.");

@@ -49,7 +49,7 @@ These strings are what `@property` / `runProperty` use via `GetRequiredCapabilit
 | Browser `dom.*` / `three.*` / game canvas | n/a | n/a | yes |
 | .NET interop | yes | yes | no |
 
-\* OpenAI-compatible chat APIs receive `response_format` when `await prompt(…) -> Type` has no tools. Llama.cpp ignores the parameter; validation/repair still runs. If a backend rejects `response_format`, the host retries once without it.
+\* OpenAI-compatible chat APIs receive `response_format` (and the host appends a `MALDA_OUTPUT_SCHEMA` appendix) when `await prompt(…) -> Type` has **no tools** (Mode A). With `tools:` listed (Mode B), format and appendix are omitted; on `await` with `-> Type`, validation/repair still runs. Mode C: tools gather, then a typed prompt without tools. Llama.cpp ignores `response_format`; if a backend rejects it, the host retries once without it.
 
 † Host embed on interpret/transpile via `MaldaLang.UIHost` when the program uses `ui.mount` / related APIs — see [`docs/ui-framework.md`](../ui-framework.md). Not available on the JS backend.
 

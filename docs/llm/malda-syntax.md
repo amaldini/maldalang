@@ -18,13 +18,17 @@ Compact rules for generating correct `.malda`. Prefer this over scraping HTML ma
   when the callee declares `-> T`. Schema fields may nest other schema names (`address: Address`
   / `Tag[]`); unknown field types error on resolve (they are not silently `string`).
 - **Prompt parameters are name-only** — write `prompt greet(name) { ... }`, never `prompt greet(name: string)`.
-- Prompt `-> ReturnType` is **not** static typing. On `await prompt(...)` with a
-  return type and **no tools**, MALDA resolves the type to JSON Schema, appends a
-  compact schema appendix to the **system** message (helps local models that ignore
-  `response_format`), sends OpenAI-compatible backends `response_format`, then
-  validates the reply (up to 3 attempts with a repair instruction). Without `await`,
-  you get a `PromptInstance` (schema attached when resolvable).   Prefer a
-  `schema Name { … }` for structured objects, or a **sum type**
+- Prompt `-> ReturnType` is **not** static typing. Three supported modes:
+  - **A Structured** — `await` + `-> Type` + **no tools**: resolve JSON Schema, append
+    `MALDA_OUTPUT_SCHEMA` appendix, send OpenAI-compatible `response_format`, then
+    validate/repair (≤3). Example: `Examples/Prompts/schema_prompt_structured.malda`.
+  - **B Tools** — prompt body lists `tools: [...]`: no `response_format` and no appendix.
+    On `await` with `-> Type`, validate/repair still runs (fragile for local models).
+    Example: `Examples/Prompts/prompt_tools_mode.malda`.
+  - **C Sequence** — tools gather first, then a second typed prompt **without** tools
+    (Mode A). Example: `Examples/Prompts/prompt_tools_then_structured.malda`.
+  Without `await`, you get a `PromptInstance` (schema attached when resolvable and no
+  tools). Prefer a `schema Name { … }` for structured objects, or a **sum type**
   (`type Intent = Search(q) | Buy(sku, qty)`) when the model must pick one of several
   shapes — success yields a real variant for `match`. Sum-type JSON wire shape:
   `{ "tag": "Buy", "sku": "...", "qty": 2 }` (tag = constructor name; payload fields
