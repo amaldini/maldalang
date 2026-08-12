@@ -41,4 +41,27 @@ public class BackendCapabilityMatrixGuardTests
                 $"backend-capability-matrix.md should mention '{marker}'");
         }
     }
+
+    [Fact]
+    public void ProductMatrixDoc_MentionsRequiredProductFeatureRows()
+    {
+        var path = PlanningPaths.ResolveRepoFile("docs", "spec", "backend-capability-matrix.md");
+        var markdown = File.ReadAllText(path);
+
+        // Stable markers for B1 product-feature rows (not property-test tags).
+        AssertContains(markdown, "`schema`", "schema/validate row");
+        AssertContains(markdown, "`validate()`", "schema/validate row");
+        AssertContains(markdown, "Typed prompt", "typed prompts row");
+        AssertContains(markdown, "HttpServer", "HttpServer row");
+        AssertContains(markdown, "UIHost", "UIHost row");
+        AssertContains(markdown, "Jobs", "Jobs row");
+        AssertContains(markdown, "`enqueueJob`", "Jobs row");
+    }
+
+    private static void AssertContains(string markdown, string marker, string rowLabel)
+    {
+        Assert.True(
+            markdown.Contains(marker, StringComparison.Ordinal),
+            $"backend-capability-matrix.md product features must mention '{marker}' ({rowLabel}).");
+    }
 }

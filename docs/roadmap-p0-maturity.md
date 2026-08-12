@@ -61,7 +61,7 @@ Rough sequencing. Items can overlap when owners differ; gates below are the acce
 | **W1 Observability** | Instance timeline, step status, DLQ/requeue visibility beyond CLI one-liners (dashboard or structured `malda workflow …` report) | At least one Examples/Workflows ops smoke + Reference Manual § ops updated |
 | **W2 HA / multi-worker path** | Documented model for more than one worker against durable store (even if v1 is “single writer + lease” or “read replica ops only”); identify SQLite limits and the migration story | Architecture note in `docs/` or workflows chapter: failure modes, lease/locking, what is *not* Temporal yet — **landed:** [`workflows-ha.md`](workflows-ha.md), WAL/`busy_timeout`, RM §32.10 |
 | **W3 Determinism & replay** | Strengthen deny-list / replay detection beyond name list where feasible; document loop-in-step rules already in manual | Conformance or filtered workflow tests for new checks; gotcha for jobs vs workflows stays accurate — **landed:** `sleep` → WF1001; IDE static WF1001/WF1002; deny-list drift tests; RM + gotchas |
-| **B1 Product capability matrix** | Extend [`backend-capability-matrix.md`](spec/backend-capability-matrix.md) with rows for schema/validate, typed prompts, HttpServer, UIHost, jobs — each marked yes/partial/no per backend | Matrix file + `BackendCapabilityMatrix` tests stay in sync |
+| **B1 Product capability matrix** | Extend [`backend-capability-matrix.md`](spec/backend-capability-matrix.md) with rows for schema/validate, typed prompts, HttpServer, UIHost, jobs — each marked yes/partial/no per backend | Matrix file + `BackendCapabilityMatrix` tests stay in sync — **landed:** split product rows + product-feature guard markers |
 | **B2 Transpile smoke set** | Small curated `.malda` set (agents/web/workflow/schema) that must pass `malda compile --mode transpile` in CI smoke filter | Named filter or script; failures point at `build_errors.txt` paths as today |
 
 ### Month 3–5 — AI, UI, packages
@@ -146,3 +146,4 @@ Rough sequencing. Items can overlap when owners differ; gates below are the acce
 | 2026-08-12 | W1 Observability landed: `malda workflow report`, `Examples/Workflows/ops_report.malda`, RM §32.6 |
 | 2026-08-12 | W2 HA / multi-worker landed: `docs/workflows-ha.md`, SQLite WAL + `busy_timeout`, RM §32.10 |
 | 2026-08-12 | W3 Determinism & replay landed: `sleep` WF1001, IDE `WorkflowDeterminismDiagnostics`, deny-list guard tests, RM + gotchas |
+| 2026-08-12 | B1 Product capability matrix landed: schema/validate, HttpServer, UIHost, jobs rows + guard tests |
