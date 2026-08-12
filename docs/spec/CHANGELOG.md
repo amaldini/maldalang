@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — additive module syntax)
+
+- **Selective imports:** `import { a, b } from "path.malda"` / `from package` — merge only named export-surface bindings; missing names error. Design: [`docs/selective-imports.md`](../selective-imports.md); example `Examples/Modules/selective_import.malda`. `export type` remains deferred.
+
 #### Clarified (PATCH — product / Tier-2 docs only; no Tier 0 semantic change)
 
 - **A1 tools vs `response_format`:** exclusivity = no OpenAI `response_format` and no `MALDA_OUTPUT_SCHEMA` appendix when the prompt lists tools; `await` + `-> Type` still validates/repairs. Supported modes A/B/C documented in [`docs/llm/malda-gotchas.md`](../llm/malda-gotchas.md), [`ReferenceManual/09-functions.html`](../../ReferenceManual/09-functions.html) §8.8.3.1, and `Examples/Prompts/prompt_tools_*.malda`.

@@ -26,7 +26,7 @@ This specification defines **Tier 0** semantics: the teachable kernel that runs 
 - Optional packs and platform Tier 2 surfaces (AI tools, workflows, HTTP servers, etc.) — not part of Tier 0
 - Full grammar productions — Phase 2.2 (`ReferenceManual/22-grammar.html` expansion)
 - Workflows, prompts, components, HTTP server — platform Tier 2
-- Full `module { }` blocks and selective `import { … } from` — Phase 3.3+
+- Full `module { }` blocks and `export type` — deferred past Final 1.0 (selective `import { … } from` shipped; see §14.1)
 
 ---
 
@@ -363,9 +363,13 @@ Tier 0 includes structured exception statements. Catch clauses are **type-agnost
 | Form | Semantics |
 |------|-----------|
 | `import "path/to/module.malda";` | Resolve `path` relative to the importer file (same rules as `include`), execute module, merge exports |
+| `import { a, b } from "path/to/module.malda";` | Same load; merge **only** named bindings from the export surface (error if a name is absent) |
+| `import { a, b } from package;` | Same selective merge for an installed / workspace package |
 | `import package;` | Load installed package entry (same resolver as `using`) |
-| `import alias = package;` | Merge exports into a single namespace object bound to `alias` |
+| `import alias = package;` | Merge exports into a single namespace object bound to `alias` (not combinable with `{ … } from`) |
 | `using package;` | **Deprecated alias** of `import package;` for packages (unchanged behavior) |
+
+Design note: [selective-imports.md](../selective-imports.md).
 
 `include` remains parse-time textual inclusion (all top-level symbols become globals in the host unit).
 

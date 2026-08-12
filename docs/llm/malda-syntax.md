@@ -192,12 +192,15 @@ not a durable workflow uses `enqueueJob` / `claimJob` / `completeJob` / `failJob
 import "helpers/math_lib.malda";
 io.print(addOne(41));
 
+// Selective: merge only named exports (error if missing / not exported).
+import { add, VERSION } from "helpers/math_lib.malda";
+
 // include splices source into the host (shared globals). Prefer import when the
 // library is self-contained; keep include for host-contract helpers that assign
 // importer globals (e.g. UI_LANG = …).
 ```
 
-See `Examples/Basics/modules_import.malda` and `Examples/Basics/modules_include.malda`.
+See `Examples/Modules/selective_import.malda`, `Examples/Basics/modules_import.malda`, and `Examples/Basics/modules_include.malda`.
 
 ## Null-safe boundaries
 

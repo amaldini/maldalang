@@ -31,7 +31,11 @@ TopLevelItem::= IncludeStmt | UsingStmt | ImportStmt
 
 IncludeStmt ::= "include" StringLiteral ";"
 UsingStmt   ::= "using" (Identifier "=")? QualifiedName ";"
-ImportStmt  ::= "import" ( (Identifier "=")? StringLiteral | (Identifier "=")? QualifiedName ) ";"
+ImportStmt  ::= "import" (
+                  "{" Identifier ("," Identifier)* "}" "from" ( StringLiteral | QualifiedName )
+                | (Identifier "=")? StringLiteral
+                | (Identifier "=")? QualifiedName
+                ) ";"
 ExportableDecl ::= "export"? ( FunctionDecl | ClassDecl | "var" Identifier TypeHint? "=" Expression ";" )
 QualifiedName ::= Identifier ("." Identifier)*</code></pre>
         <p><code>function</code> / <code>fn</code> / <code>def</code> and decorated declarations are parsed at <strong>top level</strong> (and inside blocks via <code>Declaration()</code>). They are not valid as nested <code>Statement</code> forms inside ordinary blocks.</p>

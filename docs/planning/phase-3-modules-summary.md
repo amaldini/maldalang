@@ -24,8 +24,10 @@ Installed packages in `~/.malda` take precedence; workspace is the fallback.
 
 ## Deferred
 
-- `module { }` blocks, `export type`, selective `import { … } from`
+- `module { }` blocks, `export type`
 - Per-module C# namespaces in transpiler
 - Embedded-package symbol load in IDE (`embedded:` paths)
+
+**Shipped later (P0 maturity P1):** selective `import { … } from` — see [`docs/selective-imports.md`](../selective-imports.md).
 
 **Next:** [Phase 4 — Gradual types](malda-language-purity-roadmap.md#phase-4--gradual-types--correctness-10-12-weeks) (4.1 started: `TypeHintDiagnostics`).

@@ -8,6 +8,7 @@ using MaldaLang.Parser.AST.Statements;
 using MaldaLang.Parser.AST.Expressions;
 using MaldaLang.Parser.AST.Declarations;
 using MaldaLang;
+using System;
 using System.IO;
 using System.Linq;
 using System.Collections;
@@ -129,8 +130,14 @@ public class Parser
 
             if (Match(TokenType.Using))
             {
+                // Disambiguate: `using alias = package;` vs `using name = expr { … }`
                 if (Check(TokenType.Identifier) && Peek(1)?.Type == TokenType.Assign)
+                {
+                    if (LooksLikePackageUsingAlias())
+                        return UsingStatement();
                     return UsingResourceStatement();
+                }
+
                 return UsingStatement();
             }
 
@@ -1531,6 +1538,10 @@ public class Parser
         if (_blockDepth > 0)
             throw Error(token, "'import' is only allowed at top-level scope.");
 
+        // Selective: import { a, b } from "…" | package
+        if (Check(TokenType.LeftBrace))
+            return ParseSelectiveImport(token);
+
         string? alias = null;
         if (Check(TokenType.Identifier) && Peek(1)?.Type == TokenType.Assign)
         {
@@ -1563,6 +1574,112 @@ public class Parser
         Consume(TokenType.Semicolon, "Expect ';' after import statement.");
 
         return new ImportStatement(null, packageName, subModule, alias, token.Line, token.Column);
+    }
+
+    private Statement ParseSelectiveImport(Token importToken)
+    {
+        Consume(TokenType.LeftBrace, "Expect '{' after 'import' for selective import.");
+        var selected = new List<string>();
+        if (!Check(TokenType.RightBrace))
+        {
+            do
+            {
+                selected.Add(ConsumeIdentifierLike("Expect imported binding name."));
+            } while (Match(TokenType.Comma));
+        }
+
+        Consume(TokenType.RightBrace, "Expect '}' after selective import list.");
+        if (selected.Count == 0)
+            throw Error(Previous(), "Selective import list must contain at least one name.");
+
+        // Contextual 'from' — not a reserved keyword.
+        if (!Check(TokenType.Identifier) ||
+            !string.Equals(Peek().Lexeme, "from", StringComparison.Ordinal))
+        {
+            throw Error(Peek(), "Expect 'from' after selective import list.");
+        }
+
+        Advance();
+
+        if (Check(TokenType.String))
+        {
+            var pathToken = Consume(TokenType.String, "Expect string literal path after 'from'.");
+            Consume(TokenType.Semicolon, "Expect ';' after import statement.");
+
+            var filePath = pathToken.Literal as string;
+            if (string.IsNullOrWhiteSpace(filePath))
+                filePath = pathToken.Lexeme.Trim('"');
+
+            return new ImportStatement(
+                filePath, null, null, null,
+                importToken.Line, importToken.Column,
+                selected);
+        }
+
+        var packageName = ConsumePackageName("Expect package name after 'from'.");
+        string? subModule = null;
+        while (Match(TokenType.Dot))
+        {
+            if (subModule == null)
+                subModule = ConsumeIdentifierLike("Expect sub-module name.");
+            else
+                subModule += "." + ConsumeIdentifierLike("Expect sub-module name.");
+        }
+
+        Consume(TokenType.Semicolon, "Expect ';' after import statement.");
+
+        return new ImportStatement(
+            null, packageName, subModule, null,
+            importToken.Line, importToken.Column,
+            selected);
+    }
+
+    /// <summary>
+    /// After <c>using</c>, with look-ahead at <c>Identifier Assign …</c>: true when the
+    /// RHS is a package name ending in <c>;</c> (not a resource <c>using</c> initializer).
+    /// </summary>
+    private bool LooksLikePackageUsingAlias()
+    {
+        // Peek(0)=alias, Peek(1)='=', Peek(2)=package start
+        var index = 2;
+        if (!IsPackageNameStart(Peek(index)))
+            return false;
+        index++;
+
+        while (true)
+        {
+            var token = Peek(index);
+            if (token?.Type == TokenType.Minus)
+            {
+                index++;
+                if (!IsPackageNameStart(Peek(index)))
+                    return false;
+                index++;
+                continue;
+            }
+
+            if (token?.Type == TokenType.Dot)
+            {
+                index++;
+                if (!IsPackageNameStart(Peek(index)))
+                    return false;
+                index++;
+                continue;
+            }
+
+            break;
+        }
+
+        return Peek(index)?.Type == TokenType.Semicolon;
+    }
+
+    private bool IsPackageNameStart(Token? token)
+    {
+        if (token == null)
+            return false;
+        return token.Type == TokenType.Identifier ||
+               token.Type == TokenType.Input ||
+               IsKeyword(token.Type);
     }
 
     private Statement UsingResourceStatement()

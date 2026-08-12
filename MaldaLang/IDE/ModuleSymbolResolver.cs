@@ -20,7 +20,8 @@ public static class ModuleSymbolResolver
         string? Alias,
         bool IsFileImport,
         string? PackageName,
-        string? SubModule);
+        string? SubModule,
+        IReadOnlyList<string>? SelectedNames = null);
 
     public sealed class ImportedSymbolSet
     {
@@ -46,7 +47,8 @@ public static class ModuleSymbolResolver
                         importStmt.Alias,
                         true,
                         null,
-                        null));
+                        null,
+                        importStmt.SelectedNames));
                     break;
                 case ImportStatement importStmt:
                     imports.Add(new ResolvedImport(
@@ -57,7 +59,8 @@ public static class ModuleSymbolResolver
                         importStmt.Alias,
                         false,
                         importStmt.PackageName,
-                        importStmt.SubModule));
+                        importStmt.SubModule,
+                        importStmt.SelectedNames));
                     break;
                 case UsingStatement usingStmt:
                     imports.Add(new ResolvedImport(
@@ -127,8 +130,18 @@ public static class ModuleSymbolResolver
             try
             {
                 var moduleStatements = ParseModuleStatements(resolvedPath);
-                var expanded = ExpandFileImportsForTranspile(moduleStatements, resolvedPath, visited);
-                AppendExportedStatements(result, expanded, import.Alias ?? Path.GetFileNameWithoutExtension(resolvedPath));
+                if (import.SelectedNames != null)
+                {
+                    AppendExportedStatements(
+                        result,
+                        GetExportedStatements(moduleStatements),
+                        import.SelectedNames);
+                }
+                else
+                {
+                    var expanded = ExpandFileImportsForTranspile(moduleStatements, resolvedPath, visited);
+                    AppendExportedStatements(result, expanded, selectedNames: null);
+                }
             }
             catch
             {
@@ -160,7 +173,20 @@ public static class ModuleSymbolResolver
                         continue;
 
                     var moduleStatements = ParseModuleStatements(resolvedPath);
-                    result.AddRange(ExpandFileImportsForTranspile(moduleStatements, resolvedPath, visited));
+                    if (importStmt.IsSelective)
+                    {
+                        var selected = new HashSet<string>(importStmt.SelectedNames!, StringComparer.Ordinal);
+                        foreach (var exported in GetExportedStatements(moduleStatements))
+                        {
+                            var name = GetDeclarationName(exported);
+                            if (name != null && selected.Contains(name))
+                                result.Add(exported);
+                        }
+                    }
+                    else
+                    {
+                        result.AddRange(ExpandFileImportsForTranspile(moduleStatements, resolvedPath, visited));
+                    }
                 }
                 catch
                 {
@@ -214,10 +240,18 @@ public static class ModuleSymbolResolver
     private static void AppendExportedStatements(
         ImportedSymbolSet result,
         IEnumerable<Statement> statements,
-        string moduleLabel)
+        IReadOnlyList<string>? selectedNames)
     {
+        HashSet<string>? selected = selectedNames == null
+            ? null
+            : new HashSet<string>(selectedNames, StringComparer.Ordinal);
+
         foreach (var stmt in GetExportedStatements(statements))
         {
+            var name = GetDeclarationName(stmt);
+            if (selected != null && (name == null || !selected.Contains(name)))
+                continue;
+
             switch (stmt)
             {
                 case FunctionDeclaration fd:
@@ -238,6 +272,16 @@ public static class ModuleSymbolResolver
             }
         }
     }
+
+    private static string? GetDeclarationName(Statement stmt) => stmt switch
+    {
+        FunctionDeclaration fd => fd.Name,
+        ClassDeclaration cd => cd.Name,
+        VarDeclStatement vd => vd.Name,
+        SchemaDeclaration sd => sd.Name,
+        TypeDeclaration td => td.TypeName,
+        _ => null
+    };
 
     private static List<Statement> ParseModuleStatements(string resolvedPath)
     {

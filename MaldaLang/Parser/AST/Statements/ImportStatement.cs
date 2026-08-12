@@ -3,6 +3,8 @@
 
 namespace MaldaLang.Parser.AST.Statements;
 
+using System.Collections.Generic;
+
 public class ImportStatement : Statement
 {
     public string? FilePath { get; }
@@ -10,7 +12,14 @@ public class ImportStatement : Statement
     public string? SubModule { get; }
     public string? Alias { get; }
 
+    /// <summary>
+    /// When non-null, only these export-surface names are merged into the importer
+    /// (<c>import { a, b } from …</c>).
+    /// </summary>
+    public IReadOnlyList<string>? SelectedNames { get; }
+
     public bool IsFileImport => !string.IsNullOrEmpty(FilePath);
+    public bool IsSelective => SelectedNames != null;
 
     public ImportStatement(
         string? filePath,
@@ -18,12 +27,14 @@ public class ImportStatement : Statement
         string? subModule,
         string? alias,
         int line = 0,
-        int column = 0)
+        int column = 0,
+        IReadOnlyList<string>? selectedNames = null)
         : base(line, column)
     {
         FilePath = filePath;
         PackageName = packageName;
         SubModule = subModule;
         Alias = alias;
+        SelectedNames = selectedNames;
     }
 }

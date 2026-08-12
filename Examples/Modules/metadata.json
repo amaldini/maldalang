@@ -1,0 +1,24 @@
+{
+    "examples": [
+        {
+            "name": "Selective Import",
+            "description": "import { add, VERSION } from a local module — only named exports merge",
+            "file": "selective_import.malda",
+            "track": "student",
+            "difficulty": "beginner",
+            "minutes": 5,
+            "concepts": [
+                "import",
+                "export",
+                "selective import"
+            ],
+            "prerequisites": [
+                "Basics/functions.malda"
+            ],
+            "learningGoal": "Pull a subset of a module export surface into the host program.",
+            "expectedOutput": "Prints 5 and 1.0",
+            "documentationPath": "/docs/selective-imports.md",
+            "documentationTitle": "Selective imports"
+        }
+    ]
+}

@@ -1,0 +1,8 @@
+// P1 golden — selective import { … } from "…".
+// Merges only named exports; unused / internalHelper stay out of host scope.
+// Design: docs/selective-imports.md
+
+import { add, VERSION } from "math_utils.malda";
+
+print(add(2, 3));
+print(VERSION);

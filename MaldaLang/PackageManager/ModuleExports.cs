@@ -53,4 +53,28 @@ public static class ModuleExports
 
         return filtered;
     }
+
+    /// <summary>
+    /// Intersect an export surface with a selective <c>import { … } from</c> name list.
+    /// Throws if any requested name is absent.
+    /// </summary>
+    public static Dictionary<string, RuntimeValue> FilterSelectedSymbols(
+        Dictionary<string, RuntimeValue> exportSurface,
+        IReadOnlyList<string> selectedNames)
+    {
+        var filtered = new Dictionary<string, RuntimeValue>(System.StringComparer.Ordinal);
+        foreach (var name in selectedNames)
+        {
+            if (!exportSurface.TryGetValue(name, out var value))
+            {
+                throw new RuntimeException(
+                    $"Selective import: '{name}' is not exported by the module " +
+                    "(missing or not marked export when the module uses export).");
+            }
+
+            filtered[name] = value;
+        }
+
+        return filtered;
+    }
 }

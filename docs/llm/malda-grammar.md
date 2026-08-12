@@ -15,7 +15,11 @@ TopLevelItem::= IncludeStmt | UsingStmt | ImportStmt
 
 IncludeStmt ::= "include" StringLiteral ";"
 UsingStmt   ::= "using" (Identifier "=")? QualifiedName ";"
-ImportStmt  ::= "import" ( (Identifier "=")? StringLiteral | (Identifier "=")? QualifiedName ) ";"
+ImportStmt  ::= "import" (
+                  "{" Identifier ("," Identifier)* "}" "from" ( StringLiteral | QualifiedName )
+                | (Identifier "=")? StringLiteral
+                | (Identifier "=")? QualifiedName
+                ) ";"
 ExportableDecl ::= "export"? ( FunctionDecl | ClassDecl | "var" Identifier TypeHint? "=" Expression ";" )
 QualifiedName ::= Identifier ("." Identifier)*
 

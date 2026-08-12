@@ -1,0 +1,14 @@
+// Shared module for selective_import.malda (P1).
+export function add(a, b) {
+    return a + b;
+}
+
+export var VERSION = "1.0";
+
+export function unused() {
+    return 0;
+}
+
+function internalHelper(x) {
+    return x * 2;
+}

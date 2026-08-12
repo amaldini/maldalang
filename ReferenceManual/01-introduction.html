@@ -242,6 +242,7 @@
                 <tr><td><code>include "path/file.malda";</code></td><td>Composes source: loads and parses another MALDA file <em>into the current program</em>, as if its text were part of it.</td></tr>
                 <tr><td><code>using PackageName;</code></td><td>Loads an installed package module and merges its exported symbols into the current scope.</td></tr>
                 <tr><td><code>import "path/file.malda";</code></td><td>Loads a local file <em>as a module</em> and merges only its exported symbols.</td></tr>
+                <tr><td><code>import { a, b } from "path/file.malda";</code></td><td>Same load, but merges <em>only</em> the named exports into the current scope.</td></tr>
                 <tr><td><code>import alias = ...;</code></td><td>Same, but binds the exported symbols to a single namespace object instead of the current scope.</td></tr>
                 <tr><td><code>export function/class/var</code></td><td>Marks a declaration as part of this file's public surface.</td></tr>
             </tbody>
@@ -277,6 +278,12 @@ function internalHelper(x) {   // not exported
 print(add(2, 3));      // 5
 print(VERSION);        // "1.0"
 // internalHelper(2);  // not available: never exported</code></pre>
+        <p>Selective import pulls a subset of that surface (missing or non-exported names are errors). Offline golden: <code>Examples/Modules/selective_import.malda</code> — see also <a href="../docs/selective-imports.md"><code>docs/selective-imports.md</code></a>.</p>
+        <pre><code>import { add, VERSION } from "shared/math_utils.malda";
+
+print(add(2, 3));
+print(VERSION);
+// unused();           // not imported, even if exported by the module</code></pre>
         <p>With an alias, the same symbols are grouped into one object, which avoids collisions entirely:</p>
         <pre><code>import mathUtils = "shared/math_utils.malda";
 

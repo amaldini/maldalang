@@ -3,6 +3,7 @@
 
 namespace MaldaLang.Interpreter;
 
+using System.Collections.Generic;
 using System.IO;
 using MaldaLang.PackageManager;
 using MaldaLang.Parser.AST.Statements;
@@ -15,24 +16,34 @@ public partial class Interpreter
             stmt.PackageName,
             stmt.SubModule,
             stmt.Alias,
-            stmt.SourceFile ?? _currentFile);
+            stmt.SourceFile ?? _currentFile,
+            selectedNames: null);
     }
 
     private async Task<RuntimeValue?> ExecuteImportViaImportExecutorAsync(ImportStatement stmt)
     {
         if (stmt.IsFileImport)
         {
-            return await MergeImportedFileModuleAsync(stmt.FilePath!, stmt.Alias, stmt.SourceFile ?? _currentFile);
+            return await MergeImportedFileModuleAsync(
+                stmt.FilePath!,
+                stmt.Alias,
+                stmt.SourceFile ?? _currentFile,
+                stmt.SelectedNames);
         }
 
         return await MergeImportedModuleAsync(
             stmt.PackageName!,
             stmt.SubModule,
             stmt.Alias,
-            stmt.SourceFile ?? _currentFile);
+            stmt.SourceFile ?? _currentFile,
+            stmt.SelectedNames);
     }
 
-    private async Task<RuntimeValue?> MergeImportedFileModuleAsync(string filePath, string? alias, string? sourceFileName)
+    private async Task<RuntimeValue?> MergeImportedFileModuleAsync(
+        string filePath,
+        string? alias,
+        string? sourceFileName,
+        IReadOnlyList<string>? selectedNames)
     {
         if (_moduleLoader == null)
             throw new RuntimeException("Module loader not initialized");
@@ -50,14 +61,21 @@ public partial class Interpreter
         var moduleKey = "file:" + ModulePathResolver.ResolveRelativeModulePath(filePath, sourceFileName);
         _importedModules[moduleKey] = loadResult.Environment;
 
-        return MergeModuleSymbols(loadResult, alias ?? Path.GetFileNameWithoutExtension(filePath), alias != null);
+        // Selective imports always merge into the current scope (no alias form).
+        var useNamespace = alias != null && selectedNames == null;
+        return MergeModuleSymbols(
+            loadResult,
+            alias ?? Path.GetFileNameWithoutExtension(filePath),
+            useNamespace,
+            selectedNames);
     }
 
     private async Task<RuntimeValue?> MergeImportedModuleAsync(
         string packageName,
         string? subModule,
         string? alias,
-        string? sourceFileName)
+        string? sourceFileName,
+        IReadOnlyList<string>? selectedNames)
     {
         Environment? moduleEnvironment = null;
         ModuleLoadResult? loadResult = null;
@@ -104,18 +122,27 @@ public partial class Interpreter
 
         _importedModules[moduleKey] = moduleEnvironment;
 
+        var useNamespace = alias != null && selectedNames == null;
         if (loadResult != null)
-            return MergeModuleSymbols(loadResult, alias ?? packageName, alias != null);
+            return MergeModuleSymbols(loadResult, alias ?? packageName, useNamespace, selectedNames);
 
         var dotNetSymbols = moduleEnvironment.GetAllVariables();
-        return MergeRawSymbols(dotNetSymbols, alias ?? packageName, alias != null);
+        if (selectedNames != null)
+            dotNetSymbols = ModuleExports.FilterSelectedSymbols(dotNetSymbols, selectedNames);
+        return MergeRawSymbols(dotNetSymbols, alias ?? packageName, useNamespace);
     }
 
-    private RuntimeValue? MergeModuleSymbols(ModuleLoadResult loadResult, string targetName, bool useNamespaceObject)
+    private RuntimeValue? MergeModuleSymbols(
+        ModuleLoadResult loadResult,
+        string targetName,
+        bool useNamespaceObject,
+        IReadOnlyList<string>? selectedNames)
     {
         var moduleSymbols = ModuleExports.FilterExportedSymbols(
             loadResult.Environment.GetOwnVariables(),
             loadResult.ExplicitExports);
+        if (selectedNames != null)
+            moduleSymbols = ModuleExports.FilterSelectedSymbols(moduleSymbols, selectedNames);
         return MergeRawSymbols(moduleSymbols, targetName, useNamespaceObject);
     }
 
