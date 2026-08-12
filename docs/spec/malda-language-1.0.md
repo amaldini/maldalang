@@ -26,7 +26,7 @@ This specification defines **Tier 0** semantics: the teachable kernel that runs 
 - Optional packs and platform Tier 2 surfaces (AI tools, workflows, HTTP servers, etc.) — not part of Tier 0
 - Full grammar productions — Phase 2.2 (`ReferenceManual/22-grammar.html` expansion)
 - Workflows, prompts, components, HTTP server — platform Tier 2
-- Full `module { }` blocks and `export type` — deferred past Final 1.0 (selective `import { … } from` shipped; see §14.1)
+- Full `module { }` blocks — deferred past Final 1.0 (`export type` / `export schema` and selective `import { … } from` shipped; see §14)
 
 ---
 
@@ -375,16 +375,18 @@ Design note: [selective-imports.md](../selective-imports.md).
 
 ### 14.2 Export
 
-Top-level `export` on `function`, `var`, or `class` marks a binding as visible to importers.
+Top-level `export` on `function`, `var`, `class`, `type`, or `schema` marks a name as visible to importers.
 
-- If a module file contains **any** `export` declaration, **only** exported names are merged.
-- If a module file contains **no** `export` declaration, **all** top-level bindings are merged (backward compatible with SDK preludes).
+- If a module file contains **any** `export` declaration, **only** exported names are merged (and surfaced to IDE / transpile expand).
+- If a module file contains **no** `export` declaration, **all** top-level bindings / types / schemas are merged (backward compatible with SDK preludes).
+- `export type T` includes **T** and all of T’s **constructors** on the export surface. Selecting `T` in `import { T } from …` merges those constructors into the importer.
+- `export schema S` includes **S** on the export surface (no runtime binding required for selective import; `validate("S", …)` uses the registry populated when the module loaded).
 
 ### 14.3 Sum types and modules
 
-Sum-type constructors are **scoped to the module file** where the `type` is declared. Cross-module use requires importing the module and using exported functions or values; `export type` is deferred to a later minor release.
+Sum-type constructors are defined in the module file where the `type` is declared. Cross-module use: `export type` (or an open module with no exports) plus import / selective import. Constructor tags remain match subjects; `typeOf` returns the kind tag `"variant"`.
 
-Design reference: [phase-3-modules-design.md](../planning/phase-3-modules-design.md).
+Design notes: [selective-imports.md](../selective-imports.md), [phase-3-modules-design.md](../planning/phase-3-modules-design.md).
 
 ---
 

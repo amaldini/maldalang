@@ -7,6 +7,7 @@ File modules with `export` / `import`, selective `import { … } from`, and work
 ```bash
 # From repo root
 malda Examples/Modules/selective_import.malda
+malda Examples/Modules/export_type_schema.malda
 malda Examples/Modules/workspace_package.malda
 ```
 

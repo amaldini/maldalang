@@ -729,7 +729,7 @@ var pinned = math.randomInt(1, 100);         // Always 39 after seed(7)</code></
 var isStr = isString("hello");               // Check if value is a string
 var isArr = isArray([1, 2, 3]);              // Check if value is an array
 var isObj = isObject({name: "Alice"});       // Check if value is an object
-var type = typeOf(42);                       // Canonical tag string ("int", "string", "dict", "object", "null", ...)
+var type = typeOf(42);                       // Canonical tag ("int", "string", "dict", "object", "variant", "task", "null", ...)
 var isInt = isTag(42, "int");                 // true; isTag also accepts legacy names like "integer" during deprecation</code></pre>
         <h2>12.16 Encoding and Decoding Functions</h2>
         <pre><code>var encoded = base64Encode("Hello World");    // Base64 encode string

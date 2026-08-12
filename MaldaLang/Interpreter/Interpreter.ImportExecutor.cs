@@ -142,7 +142,12 @@ public partial class Interpreter
             loadResult.Environment.GetOwnVariables(),
             loadResult.ExplicitExports);
         if (selectedNames != null)
-            moduleSymbols = ModuleExports.FilterSelectedSymbols(moduleSymbols, selectedNames);
+        {
+            var expanded = ModuleExports.ExpandSelectedNames(selectedNames, loadResult.Statements);
+            var nonValueNames = ModuleExports.CollectNonValueExportNames(loadResult.Statements);
+            moduleSymbols = ModuleExports.FilterSelectedSymbols(moduleSymbols, expanded, nonValueNames);
+        }
+
         return MergeRawSymbols(moduleSymbols, targetName, useNamespaceObject);
     }
 

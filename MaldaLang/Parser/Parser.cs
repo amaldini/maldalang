@@ -150,8 +150,12 @@ public class Parser
                     return FunctionDeclaration(isExported);
                 if (Match(TokenType.Var, TokenType.Const))
                     return VarDeclaration(isExported, Previous().Type == TokenType.Const);
+                if (Match(TokenType.Type))
+                    return TypeDeclaration(isExported);
+                if (Match(TokenType.Schema))
+                    return SchemaDeclaration(isExported);
                 var exportToken = Previous();
-                throw Error(exportToken, "'export' must be followed by 'function', 'var', 'const', or 'class'.");
+                throw Error(exportToken, "'export' must be followed by 'function', 'var', 'const', 'class', 'type', or 'schema'.");
             }
             
             if (Match(TokenType.Workflow))
@@ -960,7 +964,7 @@ public class Parser
         return new PropertyDeclaration(name, parameters, body, decorators, token.Line, token.Column);
     }
     
-    private Statement SchemaDeclaration()
+    private Statement SchemaDeclaration(bool isExported = false)
     {
         var schemaToken = Previous();
         var schemaName = ConsumeIdentifierLike("Expect schema name after 'schema'.");
@@ -983,7 +987,7 @@ public class Parser
             fields.Add(new SchemaField(fieldName, typeName, required));
         }
         Consume(TokenType.RightBrace, "Expect '}' after schema fields.");
-        return new SchemaDeclaration(schemaName, fields, schemaToken.Line, schemaToken.Column);
+        return new SchemaDeclaration(schemaName, fields, isExported, schemaToken.Line, schemaToken.Column);
     }
 
     private Statement ApiDeclaration()
@@ -1027,7 +1031,7 @@ public class Parser
         return name;
     }
 
-    private Statement TypeDeclaration()
+    private Statement TypeDeclaration(bool isExported = false)
     {
         var typeToken = Previous();
         var typeName = ConsumeIdentifierLike("Expect type name after 'type'.");
@@ -1051,7 +1055,7 @@ public class Parser
             constructors.Add(new VariantConstructor(ctorName, paramNames));
         } while (Match(TokenType.Pipe));
         Consume(TokenType.Semicolon, "Expect ';' after type declaration.");
-        return new TypeDeclaration(typeName, constructors, typeToken.Line, typeToken.Column);
+        return new TypeDeclaration(typeName, constructors, isExported, typeToken.Line, typeToken.Column);
     }
     
     private Statement Statement()

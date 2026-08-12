@@ -1,0 +1,11 @@
+// Shared types for export_type_schema.malda — explicit export surface.
+
+export type Result = Ok(value) | Err(msg);
+
+export schema Contact {
+    name: string;
+}
+
+export function unusedHelper() {
+    return 0;
+}

@@ -10,6 +10,7 @@ using Xunit;
 
 namespace MaldaLang.Tests;
 
+[Collection("Sequential")]
 public class SchemaNestedTests : TestBase
 {
     public SchemaNestedTests()

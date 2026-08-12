@@ -24,7 +24,7 @@ Installed packages in `~/.malda` take precedence; workspace is the fallback.
 
 ## Deferred
 
-- `module { }` blocks, `export type`
+- `module { }` blocks (historical; `export type` / `export schema` shipped post-Final — see [`docs/selective-imports.md`](../selective-imports.md))
 - Per-module C# namespaces in transpiler
 - Embedded-package symbol load in IDE (`embedded:` paths)
 

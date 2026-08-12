@@ -175,7 +175,9 @@ public static class ModuleSymbolResolver
                     var moduleStatements = ParseModuleStatements(resolvedPath);
                     if (importStmt.IsSelective)
                     {
-                        var selected = new HashSet<string>(importStmt.SelectedNames!, StringComparer.Ordinal);
+                        var selected = new HashSet<string>(
+                            ModuleExports.ExpandSelectedNames(importStmt.SelectedNames!, moduleStatements),
+                            StringComparer.Ordinal);
                         foreach (var exported in GetExportedStatements(moduleStatements))
                         {
                             var name = GetDeclarationName(exported);
@@ -224,11 +226,10 @@ public static class ModuleSymbolResolver
                 case VarDeclStatement vd when explicitExports == null || vd.IsExported:
                     exported.Add(vd);
                     break;
-                // schema / type have no export keyword; always surface them for hint indexing.
-                case SchemaDeclaration sd:
+                case SchemaDeclaration sd when explicitExports == null || sd.IsExported:
                     exported.Add(sd);
                     break;
-                case TypeDeclaration td:
+                case TypeDeclaration td when explicitExports == null || td.IsExported:
                     exported.Add(td);
                     break;
             }
@@ -242,9 +243,12 @@ public static class ModuleSymbolResolver
         IEnumerable<Statement> statements,
         IReadOnlyList<string>? selectedNames)
     {
-        HashSet<string>? selected = selectedNames == null
-            ? null
-            : new HashSet<string>(selectedNames, StringComparer.Ordinal);
+        HashSet<string>? selected = null;
+        if (selectedNames != null)
+        {
+            var expanded = ModuleExports.ExpandSelectedNames(selectedNames, statements);
+            selected = new HashSet<string>(expanded, StringComparer.Ordinal);
+        }
 
         foreach (var stmt in GetExportedStatements(statements))
         {

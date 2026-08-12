@@ -66,5 +66,5 @@ Named imports from a package use the same resolver as full `import pkg;` — see
 ## Non-goals (this release)
 
 - Public package registry hosted by the project / `malda publish`
-- `export type`, `module { }` blocks, import rename (`as`)
+- `module { }` blocks, import rename (`as`) (see `export type` / `export schema` in [`selective-imports.md`](selective-imports.md))
 - Vertical domain packs inside this OSS tree

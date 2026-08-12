@@ -156,6 +156,6 @@ public class ModuleLoader
 
         await moduleInterpreter.InterpretAsync(statements);
 
-        return new ModuleLoadResult(moduleEnvironment, explicitExports);
+        return new ModuleLoadResult(moduleEnvironment, explicitExports, statements);
     }
 }

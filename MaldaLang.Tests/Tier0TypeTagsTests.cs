@@ -32,4 +32,18 @@ public class Tier0TypeTagsTests
         Assert.False(Tier0TypeTags.MatchesTag(Tier0TypeTags.GetTag(dict), "object"));
         Assert.True(Tier0TypeTags.MatchesTag(Tier0TypeTags.GetTag(dict), "dict"));
     }
+
+    [Fact]
+    public void GetTag_Variant_ReturnsVariant()
+    {
+        var v = RuntimeValue.Variant("Ok", new List<RuntimeValue> { RuntimeValue.Integer(1) });
+        Assert.Equal("variant", Tier0TypeTags.GetTag(v));
+    }
+
+    [Fact]
+    public void GetTag_Task_ReturnsTask()
+    {
+        var t = RuntimeValue.Task(Task.FromResult(RuntimeValue.Integer(1)));
+        Assert.Equal("task", Tier0TypeTags.GetTag(t));
+    }
 }

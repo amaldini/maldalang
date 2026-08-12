@@ -231,7 +231,7 @@ if (isNumber(x)) {
 if (x == null) {
     print("x is null");
 }</code></pre>
-        <p><code>typeOf()</code> returns canonical tags such as <code>"int"</code>, <code>"float"</code>, <code>"string"</code>, <code>"bool"</code>, <code>"array"</code>, <code>"dict"</code> (for <code>dict { }</code>), or <code>"object"</code> (class instances). Use <code>isTag(x, "integer")</code> during migration if older literal names are still in use.</p>
+        <p><code>typeOf()</code> returns canonical kind tags such as <code>"int"</code>, <code>"float"</code>, <code>"string"</code>, <code>"bool"</code>, <code>"array"</code>, <code>"dict"</code> (for <code>dict { }</code>), <code>"object"</code> (class instances), <code>"variant"</code> (sum-type values), <code>"task"</code>, <code>"function"</code>, <code>"class"</code>, <code>"actor"</code>, or <code>"null"</code>. Constructor names (e.g. <code>Ok</code>) are not <code>typeOf</code> tags — use <code>match</code>. Use <code>isTag(x, "integer")</code> during migration if older literal names are still in use.</p>
 
         <div class="see-also">
             <h3>See Also</h3>

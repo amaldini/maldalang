@@ -10,11 +10,18 @@ public class TypeDeclaration : Statement
 {
     public string TypeName { get; }
     public List<VariantConstructor> Constructors { get; }
+    public bool IsExported { get; }
 
-    public TypeDeclaration(string typeName, List<VariantConstructor> constructors, int line = 0, int column = 0)
+    public TypeDeclaration(
+        string typeName,
+        List<VariantConstructor> constructors,
+        bool isExported = false,
+        int line = 0,
+        int column = 0)
         : base(line, column)
     {
         TypeName = typeName;
         Constructors = constructors ?? new List<VariantConstructor>();
+        IsExported = isExported;
     }
 }

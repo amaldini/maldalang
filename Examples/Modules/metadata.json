@@ -21,6 +21,28 @@
             "documentationTitle": "Selective imports"
         },
         {
+            "name": "Export Type and Schema",
+            "description": "export type / export schema with selective import { Result, Contact }",
+            "file": "export_type_schema.malda",
+            "track": "student",
+            "difficulty": "beginner",
+            "minutes": 5,
+            "concepts": [
+                "export type",
+                "export schema",
+                "selective import",
+                "sum types",
+                "validate"
+            ],
+            "prerequisites": [
+                "Modules/selective_import.malda"
+            ],
+            "learningGoal": "Cross-module sum types and schemas via the same export surface as values.",
+            "expectedOutput": "Prints 42 and true",
+            "documentationPath": "/docs/selective-imports.md",
+            "documentationTitle": "Selective imports"
+        },
+        {
             "name": "Workspace Package",
             "description": "import { clamp, VERSION } from malda-demo-math via repo packages/ (no install)",
             "file": "workspace_package.malda",

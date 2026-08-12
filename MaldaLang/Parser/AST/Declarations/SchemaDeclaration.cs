@@ -26,11 +26,18 @@ public sealed class SchemaDeclaration : Statement
 {
     public string Name { get; }
     public List<SchemaField> Fields { get; }
+    public bool IsExported { get; }
 
-    public SchemaDeclaration(string name, List<SchemaField> fields, int line = 0, int column = 0)
+    public SchemaDeclaration(
+        string name,
+        List<SchemaField> fields,
+        bool isExported = false,
+        int line = 0,
+        int column = 0)
         : base(line, column)
     {
         Name = name;
         Fields = fields;
+        IsExported = isExported;
     }
 }

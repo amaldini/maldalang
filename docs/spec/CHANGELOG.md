@@ -109,7 +109,12 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 #### Added (MINOR — additive module syntax)
 
-- **Selective imports:** `import { a, b } from "path.malda"` / `from package` — merge only named export-surface bindings; missing names error. Design: [`docs/selective-imports.md`](../selective-imports.md); example `Examples/Modules/selective_import.malda`. `export type` remains deferred.
+- **Selective imports:** `import { a, b } from "path.malda"` / `from package` — merge only named export-surface bindings; missing names error. Design: [`docs/selective-imports.md`](../selective-imports.md); example `Examples/Modules/selective_import.malda`.
+- **`export type` / `export schema`:** same export surface as values; `export type T` includes constructors; selective import expands type↔ctors; IDE/transpile gate types/schemas when the module uses any `export`. Example: `Examples/Modules/export_type_schema.malda`.
+
+#### Clarified (PATCH — docs / tracking only)
+
+- **`typeOf(variant)` / `typeOf(task)`:** already return `"variant"` / `"task"` (Tier 0 T0-096/T0-097); removed stale post-Final gap bullet. Concurrent `async` + `sleep` between `var` bindings remains doc-only (gotchas + RM §6.14).
 
 #### Clarified (PATCH — product / Tier-2 docs only; no Tier 0 semantic change)
 
@@ -146,9 +151,12 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 
 #### Known gaps (defer post-Final — do not block Final 1.0)
 
-- `typeOf(variant)` and `typeOf(task)` return `"unknown"` — **defer post-Final**; owner **maintainers**; target **≥1.1** (MINOR if distinct tags land).
-- Concurrent `async` user calls with `sleep` between consecutive `var` bindings (documented limitation) — **defer post-Final**; owner **maintainers**; target **post-1.0** (doc-only until a design exists).
+- Concurrent `async` user calls with `sleep` between consecutive `var` bindings (documented limitation) — **defer post-Final**; owner **maintainers**; target **post-1.0** (doc-only until a design exists). See gotchas + RM §6.14.
 - Multi-backend product parity (agents/HTTP/workflows on JS) — **not Final-gated**; owner **maintainers**; Tier 0 JS tracked separately via the backend matrix.
+
+#### Closed post-Final (already shipped at Final)
+
+- `typeOf(variant)` / `typeOf(task)` return canonical kind tags `"variant"` / `"task"` (not `"unknown"`); Tier 0 T0-096 / T0-097. Constructor tags stay in `match`, not `typeOf`.
 
 ### [1.0.0-draft] — 2026-06-04 (Phase 3 modules)
 

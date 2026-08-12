@@ -73,7 +73,7 @@ Rough sequencing. Items can overlap when owners differ; gates below are the acce
 | **A2 Agent governance defaults** | Promote `@pure` / `@effects` / `validate()` in agent examples; optional CI example already exists — expand to one “golden” agent template | **Landed 2026-08-12:** `Examples/Agents/agent_governance_golden.malda` + README/metadata; RM `@pure`/`@effects` + validate callout |
 | **U1 UI loop DX** | Reduce footguns: clearer APIs or diagnostics for “dispatch without pull/render”, document single model per surface (`@PAGE` vs `ui.*`) | **Landed 2026-08-12:** UI1001/UI1002 + `ui_event_loop.malda` + `docs/ui-framework.md` event-loop / one-model sections |
 | **U2 State lifecycle** | Pin/TTL guidance enforced in docs + at least one diagnostic or runtime warning for poison defaults (`ui.state(id, k, null)`) | **Landed 2026-08-12:** UI1003 + `ui_state_lifecycle.malda` + ui-framework / RM / gotchas |
-| **P1 Selective imports** | `import { a, b } from "…"` and/or `export type` (from Phase 3 deferred list) | **Landed 2026-08-12:** `import { … } from` (file + package); design note; interpreter + transpile + `ModuleSymbolResolver`; `export type` still deferred |
+| **P1 Selective imports** | `import { a, b } from "…"` and/or `export type` (from Phase 3 deferred list) | **Landed 2026-08-12:** `import { … } from` (file + package); **post-Final:** `export type` / `export schema` + selective expand; design note; interpreter + transpile + `ModuleSymbolResolver` |
 | **P2 Package story** | Local/workspace registry story without claiming a public npm-like hub yet: `malda` commands + docs for workspace `packages/` | **Landed 2026-08-12:** `packages/malda-demo-math`, `malda install <path>` / `list --workspace`, offline `list`/`init`/`uninstall`, [`docs/workspace-packages.md`](workspace-packages.md), CONTRIBUTING + start-here |
 
 ### Month 4–6 — Toolchain maturity
@@ -108,7 +108,7 @@ Rough sequencing. Items can overlap when owners differ; gates below are the acce
 | Backends | **B1+B2 done:** product capability matrix + transpile smoke set in CI filter |
 | AI | **A1+A2 done:** structured + tools + sequence examples; governance golden with validate + `@pure`/`@effects` |
 | UI | **U1+U2 done:** event-loop + UI1001/UI1002; state lifecycle + UI1003 poison defaults |
-| Modules | **P1+P2 done:** selective imports + workspace `packages/` story; `export type` still deferred |
+| Modules | **P1+P2 done:** selective imports + workspace `packages/` story; `export type` / `export schema` shipped post-Final |
 | Perf story | **D2 done:** public sample micro-benchmark numbers in `docs/benchmarks.md` / `benchmarks-sample-results.json` |
 
 ---
@@ -161,7 +161,8 @@ Rough sequencing. Items can overlap when owners differ; gates below are the acce
 | 2026-08-12 | A2 Agent governance landed: `agent_governance_golden.malda`, README/metadata, RM `@pure`/`@effects`, gotcha for unvalidated tool JSON |
 | 2026-08-12 | U1 UI loop DX landed: `UiLoopDiagnostics` UI1001/UI1002, `ui_event_loop.malda`, ui-framework event-loop + one-model cross-links |
 | 2026-08-12 | U2 State lifecycle landed: UI1003 poison `ui.state` defaults, `ui_state_lifecycle.malda`, RM §19.2.9 + gotchas + ui-framework |
-| 2026-08-12 | P1 Selective imports landed: `import { a, b } from`, `docs/selective-imports.md`, `Examples/Modules/selective_import.malda`; `export type` deferred |
+| 2026-08-12 | P1 Selective imports landed: `import { a, b } from`, `docs/selective-imports.md`, `Examples/Modules/selective_import.malda` |
+| 2026-08-12 | Post-Final: `export type` / `export schema` + selective expand; hygiene for stale `typeOf` gap + async race gotcha/RM |
 | 2026-08-12 | P2 Package story landed: `packages/malda-demo-math`, local install/`list --workspace`, offline PM, `docs/workspace-packages.md`, CONTRIBUTING/start-here/RM §2.3 |
 | 2026-08-12 | D1 Debug story landed: `docs/debugging-transpile.md`, CLI `TranspileFailureDebugHint`, AGENTS/start-here links |
 | 2026-08-12 | D2 Benchmarks landed: checked-in `docs/benchmarks-sample-results.json` + sample table in `docs/benchmarks.md` |

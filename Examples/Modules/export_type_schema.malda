@@ -1,0 +1,15 @@
+// Selective import of export type / export schema.
+// Selecting Result merges constructors Ok / Err; Contact enables validate("Contact", …).
+// Design: docs/selective-imports.md
+
+import { Result, Contact } from "types_lib.malda";
+
+var r = Ok(42);
+match r {
+    case Ok(v): print(v);
+    case Err(m): print(m);
+}
+
+var person = dict { "name": "Ada" };
+var check = validate("Contact", person);
+print(check.ok);
