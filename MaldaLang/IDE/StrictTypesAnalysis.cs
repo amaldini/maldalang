@@ -20,6 +20,7 @@ public static class StrictTypesAnalysis
     {
         TypeHintDiagnostics.Validate(statements, diagnostics, options, sourceFileName);
         TypeCompatibilityDiagnostics.Validate(statements, diagnostics, options, sourceFileName);
+        SchemaDeclarationDiagnostics.Validate(statements, diagnostics, options, sourceFileName);
         var index = SumTypeIndex.Build(statements);
         if (!string.IsNullOrWhiteSpace(sourceFileName))
         {

@@ -23,10 +23,20 @@ dotnet run --project MaldaLang.LanguageServer
 
 Or run the built executable; it will read LSP messages from stdin and write responses to stdout.
 
+## Settings
+
+| Setting | Default | Meaning |
+|---------|---------|---------|
+| `malda.types.strict` | `true` | Type-hint mismatches and unknown hints are **Errors**. Set `false` for lenient mode (Warning / Information). Does **not** enable CLI `--strict-types` extras (match exhaustiveness, `@pure`, bounds, const). |
+
+The VS Code extension sends this via `initializationOptions.typeStrict` and `workspace/didChangeConfiguration`.
+
+Desktop IDE: **View → Type Errors as Errors** (persisted under AppData `MaldaLang/type-analysis-settings.json`).
+
 ## Capabilities
 
 - **textDocument/didOpen, didChange, didClose**: Document sync (full document).
-- **textDocument/publishDiagnostics**: Parser errors and decorator validation for the current file, plus a slower workspace pass that republishes diagnostics for sibling `.malda` files on save and after idle edits.
+- **textDocument/publishDiagnostics**: Parser errors, type analysis, and decorator validation for the current file (full file path so imports resolve), plus a slower workspace pass that republishes diagnostics for sibling `.malda` files on save and after idle edits.
 - **textDocument/completion**: Keywords (including `for`, `foreach`, `while`, `if`, etc. with snippet-style insert text), built-ins, decorators, symbols (classes, functions, variables), member completion.
 - **textDocument/hover**: Documentation for symbols, decorators, and keywords (e.g. `foreach`, `for`, `while`, `if`).
 - **textDocument/documentSymbol**: Outline with classes, functions, actors, prompts (and their members).

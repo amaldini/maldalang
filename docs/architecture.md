@@ -74,6 +74,7 @@ Server-driven `ui.*` trees, patch protocol, and `MaldaLang.UIHost` wiring are do
 | `docs/spec/` | Spec / matrix notes |
 | `docs/spec/backend-capability-matrix.md` | Interpreter vs C# vs JS product capabilities |
 | `docs/start-here.md`, `docs/architecture.md` | Onboarding |
+| [`docs/roadmap-p0-maturity.md`](roadmap-p0-maturity.md) | **Active** 3–6 month maturity roadmap (types, workflows, parity, AI, UI, packages) |
 | `docs/javascript-backend.md`, `docs/ui-framework.md`, `docs/profiling.md`, `docs/benchmarks.md`, … | Topic guides |
 | `docs/planning/` | Historical roadmap — verify against code / ReferenceManual / AGENTS.md ([README](planning/README.md)) |
 
@@ -88,4 +89,4 @@ Server-driven `ui.*` trees, patch protocol, and `MaldaLang.UIHost` wiring are do
 
 - Call-site type hints: [`MaldaLang/IDE/TypeCompatibilityDiagnostics.cs`](../MaldaLang/IDE/TypeCompatibilityDiagnostics.cs) infers declared callee return types (imports via [`ModuleSymbolResolver`](../MaldaLang/IDE/ModuleSymbolResolver.cs)).
 - Nested `schema` fields: [`SchemaRegistry`](../MaldaLang/BuiltIns/SchemaRegistry.cs) expands sibling schemas inline; unknown names / cycles fail on resolve.
-- Post-P0 still open: IDE strict-as-errors by default, Temporal-class workflow observability / HA.
+- Forward plan (strict-as-errors default, workflow ops/HA, backend contracts, AI/UI/packages): [`docs/roadmap-p0-maturity.md`](roadmap-p0-maturity.md).

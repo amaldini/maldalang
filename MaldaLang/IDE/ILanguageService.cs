@@ -8,7 +8,11 @@ namespace MaldaLang.IDE.Services;
 
 public interface ILanguageService
 {
-    List<Diagnostic> GetDiagnostics(string source, string? sourceFileName = null, CancellationToken cancellationToken = default);
+    List<Diagnostic> GetDiagnostics(
+        string source,
+        string? sourceFileName = null,
+        CancellationToken cancellationToken = default,
+        MaldaLang.IDE.StrictTypesOptions? strictTypesOptions = null);
     List<CompletionItem> GetCompletions(string source, int line, int column, string? sourceFileName = null, CancellationToken cancellationToken = default);
     SignatureHelpInfo? GetSignatureHelp(string source, int line, int column, CancellationToken cancellationToken = default);
     string? GetHoverInformation(string source, int line, int column, CancellationToken cancellationToken = default);

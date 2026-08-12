@@ -13,10 +13,23 @@ namespace MaldaLang.Tests;
 public class TypeCompatibilityDiagnosticsTests
 {
     [Fact]
-    public void GetDiagnostics_LiteralMismatch_EmitsWarning()
+    public void GetDiagnostics_LiteralMismatch_EmitsError()
     {
         var service = new LanguageService();
         var diagnostics = service.GetDiagnostics("var n: int = \"abc\";");
+        Assert.Contains(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Severity == DiagnosticSeverity.Error &&
+            d.Message.Contains("does not match value", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void GetDiagnostics_Lenient_LiteralMismatch_EmitsWarning()
+    {
+        var service = new LanguageService();
+        var diagnostics = service.GetDiagnostics(
+            "var n: int = \"abc\";",
+            strictTypesOptions: StrictTypesOptions.Lenient);
         Assert.Contains(diagnostics, d =>
             d.Source == "malda-types" &&
             d.Severity == DiagnosticSeverity.Warning &&
@@ -24,13 +37,13 @@ public class TypeCompatibilityDiagnosticsTests
     }
 
     [Fact]
-    public void GetDiagnostics_LiteralMatch_NoCompatibilityWarning()
+    public void GetDiagnostics_LiteralMatch_NoCompatibilityError()
     {
         var service = new LanguageService();
         var diagnostics = service.GetDiagnostics("var n: int = 1;");
         Assert.DoesNotContain(diagnostics, d =>
             d.Source == "malda-types" &&
-            d.Severity == DiagnosticSeverity.Warning);
+            d.Severity == DiagnosticSeverity.Error);
     }
 
     [Fact]
@@ -40,11 +53,32 @@ public class TypeCompatibilityDiagnosticsTests
         var diagnostics = service.GetDiagnostics("var x: float = 1;");
         Assert.DoesNotContain(diagnostics, d =>
             d.Source == "malda-types" &&
-            d.Severity == DiagnosticSeverity.Warning);
+            d.Severity == DiagnosticSeverity.Error);
     }
 
     [Fact]
-    public void Analyze_FieldLiteralMismatch_EmitsWarning()
+    public void Analyze_FieldLiteralMismatch_Lenient_EmitsWarning()
+    {
+        var source = """
+            class Box {
+                var label: string = 42;
+            }
+            """;
+        var lexer = new Lexer(source);
+        var tokens = lexer.Tokenize();
+        var parser = new Parser.Parser(tokens);
+        var statements = parser.Parse();
+        Assert.Empty(parser.Errors);
+        var diagnostics = new List<Diagnostic>();
+        StrictTypesAnalysis.Analyze(statements, StrictTypesOptions.Lenient, diagnostics);
+        Assert.Contains(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Severity == DiagnosticSeverity.Warning &&
+            d.Message.Contains("label", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Analyze_FieldLiteralMismatch_Default_EmitsError()
     {
         var source = """
             class Box {
@@ -60,12 +94,12 @@ public class TypeCompatibilityDiagnosticsTests
         StrictTypesAnalysis.Analyze(statements, StrictTypesOptions.Default, diagnostics);
         Assert.Contains(diagnostics, d =>
             d.Source == "malda-types" &&
-            d.Severity == DiagnosticSeverity.Warning &&
+            d.Severity == DiagnosticSeverity.Error &&
             d.Message.Contains("label", StringComparison.Ordinal));
     }
 
     [Fact]
-    public void GetDiagnostics_CallSiteLiteralMismatch_EmitsWarning()
+    public void GetDiagnostics_CallSiteLiteralMismatch_EmitsError()
     {
         var service = new LanguageService();
         var source = """
@@ -75,12 +109,12 @@ public class TypeCompatibilityDiagnosticsTests
         var diagnostics = service.GetDiagnostics(source);
         Assert.Contains(diagnostics, d =>
             d.Source == "malda-types" &&
-            d.Severity == DiagnosticSeverity.Warning &&
+            d.Severity == DiagnosticSeverity.Error &&
             d.Message.Contains("argument 1", StringComparison.Ordinal));
     }
 
     [Fact]
-    public void GetDiagnostics_ReturnLiteralMismatch_EmitsWarning()
+    public void GetDiagnostics_ReturnLiteralMismatch_EmitsError()
     {
         var service = new LanguageService();
         var source = """
@@ -91,12 +125,12 @@ public class TypeCompatibilityDiagnosticsTests
         var diagnostics = service.GetDiagnostics(source);
         Assert.Contains(diagnostics, d =>
             d.Source == "malda-types" &&
-            d.Severity == DiagnosticSeverity.Warning &&
+            d.Severity == DiagnosticSeverity.Error &&
             d.Message.Contains("return value", StringComparison.Ordinal));
     }
 
     [Fact]
-    public void GetDiagnostics_CallSiteLiteralMatch_NoWarning()
+    public void GetDiagnostics_CallSiteLiteralMatch_NoError()
     {
         var service = new LanguageService();
         var source = """
@@ -106,7 +140,7 @@ public class TypeCompatibilityDiagnosticsTests
         var diagnostics = service.GetDiagnostics(source);
         Assert.DoesNotContain(diagnostics, d =>
             d.Source == "malda-types" &&
-            d.Severity == DiagnosticSeverity.Warning);
+            d.Severity == DiagnosticSeverity.Error);
     }
 
     [Fact]
@@ -131,7 +165,7 @@ public class TypeCompatibilityDiagnosticsTests
     }
 
     [Fact]
-    public void GetDiagnostics_AssignmentIdentifierMismatch_EmitsWarning()
+    public void GetDiagnostics_AssignmentIdentifierMismatch_EmitsError()
     {
         var service = new LanguageService();
         var source = """
@@ -141,13 +175,13 @@ public class TypeCompatibilityDiagnosticsTests
         var diagnostics = service.GetDiagnostics(source);
         Assert.Contains(diagnostics, d =>
             d.Source == "malda-types" &&
-            d.Severity == DiagnosticSeverity.Warning &&
+            d.Severity == DiagnosticSeverity.Error &&
             d.Message.Contains("variable 'n'", StringComparison.Ordinal) &&
             d.Message.Contains("string", StringComparison.Ordinal));
     }
 
     [Fact]
-    public void GetDiagnostics_CallSiteIdentifierMismatch_EmitsWarning()
+    public void GetDiagnostics_CallSiteIdentifierMismatch_EmitsError()
     {
         var service = new LanguageService();
         var source = """
@@ -158,12 +192,12 @@ public class TypeCompatibilityDiagnosticsTests
         var diagnostics = service.GetDiagnostics(source);
         Assert.Contains(diagnostics, d =>
             d.Source == "malda-types" &&
-            d.Severity == DiagnosticSeverity.Warning &&
+            d.Severity == DiagnosticSeverity.Error &&
             d.Message.Contains("argument 1", StringComparison.Ordinal));
     }
 
     [Fact]
-    public void GetDiagnostics_ReturnIdentifierMismatch_EmitsWarning()
+    public void GetDiagnostics_ReturnIdentifierMismatch_EmitsError()
     {
         var service = new LanguageService();
         var source = """
@@ -174,12 +208,12 @@ public class TypeCompatibilityDiagnosticsTests
         var diagnostics = service.GetDiagnostics(source);
         Assert.Contains(diagnostics, d =>
             d.Source == "malda-types" &&
-            d.Severity == DiagnosticSeverity.Warning &&
+            d.Severity == DiagnosticSeverity.Error &&
             d.Message.Contains("return value", StringComparison.Ordinal));
     }
 
     [Fact]
-    public void GetDiagnostics_AssignmentAndCallCompatible_NoWarning()
+    public void GetDiagnostics_AssignmentAndCallCompatible_NoError()
     {
         var service = new LanguageService();
         var source = """
@@ -191,7 +225,7 @@ public class TypeCompatibilityDiagnosticsTests
         var diagnostics = service.GetDiagnostics(source);
         Assert.DoesNotContain(diagnostics, d =>
             d.Source == "malda-types" &&
-            d.Severity == DiagnosticSeverity.Warning);
+            d.Severity == DiagnosticSeverity.Error);
     }
 
     [Fact]
@@ -216,7 +250,7 @@ public class TypeCompatibilityDiagnosticsTests
     }
 
     [Fact]
-    public void GetDiagnostics_UninferableRhs_NoWarning()
+    public void GetDiagnostics_UninferableRhs_NoError()
     {
         var service = new LanguageService();
         var source = """
@@ -228,12 +262,70 @@ public class TypeCompatibilityDiagnosticsTests
         var diagnostics = service.GetDiagnostics(source);
         Assert.DoesNotContain(diagnostics, d =>
             d.Source == "malda-types" &&
-            d.Severity == DiagnosticSeverity.Warning &&
+            d.Severity == DiagnosticSeverity.Error &&
             d.Message.Contains("does not match value", StringComparison.Ordinal));
     }
 
     [Fact]
-    public void GetDiagnostics_ClassHint_NewExpressionMatch_NoWarning()
+    public void GetDiagnostics_InferredIntPlus_Compatible_NoError()
+    {
+        var service = new LanguageService();
+        var source = """
+            var n: int = 1;
+            var a: int = 1;
+            n = a + 1;
+            """;
+        var diagnostics = service.GetDiagnostics(source);
+        Assert.DoesNotContain(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Message.Contains("does not match value", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void GetDiagnostics_DivisionAssignedToInt_EmitsError()
+    {
+        var service = new LanguageService();
+        var source = """
+            var n: int = 1;
+            var a: int = 2;
+            n = a / 2;
+            """;
+        var diagnostics = service.GetDiagnostics(source);
+        Assert.Contains(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Severity == DiagnosticSeverity.Error &&
+            d.Message.Contains("float", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void GetDiagnostics_MathFloorAssignedToString_EmitsError()
+    {
+        var service = new LanguageService();
+        var source = """
+            var s: string = math.floor(1.5);
+            """;
+        var diagnostics = service.GetDiagnostics(source);
+        Assert.Contains(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Severity == DiagnosticSeverity.Error &&
+            d.Message.Contains("does not match value", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void GetDiagnostics_StrTrimAssignedToString_NoError()
+    {
+        var service = new LanguageService();
+        var source = """
+            var s: string = str.trim(" x ");
+            """;
+        var diagnostics = service.GetDiagnostics(source);
+        Assert.DoesNotContain(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Message.Contains("does not match value", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void GetDiagnostics_ClassHint_NewExpressionMatch_NoError()
     {
         var service = new LanguageService();
         var source = """
@@ -245,7 +337,7 @@ public class TypeCompatibilityDiagnosticsTests
         var diagnostics = service.GetDiagnostics(source);
         Assert.DoesNotContain(diagnostics, d =>
             d.Source == "malda-types" &&
-            d.Severity == DiagnosticSeverity.Warning &&
+            d.Severity == DiagnosticSeverity.Error &&
             d.Message.Contains("does not match value", StringComparison.Ordinal));
         Assert.DoesNotContain(diagnostics, d =>
             d.Source == "malda-types" &&
@@ -253,7 +345,7 @@ public class TypeCompatibilityDiagnosticsTests
     }
 
     [Fact]
-    public void GetDiagnostics_ClassHint_LiteralMismatch_EmitsWarning()
+    public void GetDiagnostics_ClassHint_LiteralMismatch_EmitsError()
     {
         var service = new LanguageService();
         var source = """
@@ -265,13 +357,13 @@ public class TypeCompatibilityDiagnosticsTests
         var diagnostics = service.GetDiagnostics(source);
         Assert.Contains(diagnostics, d =>
             d.Source == "malda-types" &&
-            d.Severity == DiagnosticSeverity.Warning &&
+            d.Severity == DiagnosticSeverity.Error &&
             d.Message.Contains("Person", StringComparison.Ordinal) &&
             d.Message.Contains("int", StringComparison.Ordinal));
     }
 
     [Fact]
-    public void GetDiagnostics_ClassHint_IdentifierMatch_NoWarning()
+    public void GetDiagnostics_ClassHint_IdentifierMatch_NoError()
     {
         var service = new LanguageService();
         var source = """
@@ -284,12 +376,12 @@ public class TypeCompatibilityDiagnosticsTests
         var diagnostics = service.GetDiagnostics(source);
         Assert.DoesNotContain(diagnostics, d =>
             d.Source == "malda-types" &&
-            d.Severity == DiagnosticSeverity.Warning &&
+            d.Severity == DiagnosticSeverity.Error &&
             d.Message.Contains("does not match value", StringComparison.Ordinal));
     }
 
     [Fact]
-    public void GetDiagnostics_ClassHint_IdentifierMismatch_EmitsWarning()
+    public void GetDiagnostics_ClassHint_IdentifierMismatch_EmitsError()
     {
         var service = new LanguageService();
         var source = """
@@ -302,7 +394,7 @@ public class TypeCompatibilityDiagnosticsTests
         var diagnostics = service.GetDiagnostics(source);
         Assert.Contains(diagnostics, d =>
             d.Source == "malda-types" &&
-            d.Severity == DiagnosticSeverity.Warning &&
+            d.Severity == DiagnosticSeverity.Error &&
             d.Message.Contains("variable 'p'", StringComparison.Ordinal));
     }
 
@@ -332,7 +424,7 @@ public class TypeCompatibilityDiagnosticsTests
     }
 
     [Fact]
-    public void GetDiagnostics_CallReturnMismatch_EmitsWarning()
+    public void GetDiagnostics_CallReturnMismatch_EmitsError()
     {
         var service = new LanguageService();
         var source = """
@@ -342,13 +434,13 @@ public class TypeCompatibilityDiagnosticsTests
         var diagnostics = service.GetDiagnostics(source);
         Assert.Contains(diagnostics, d =>
             d.Source == "malda-types" &&
-            d.Severity == DiagnosticSeverity.Warning &&
+            d.Severity == DiagnosticSeverity.Error &&
             d.Message.Contains("variable 'n'", StringComparison.Ordinal) &&
             d.Message.Contains("string", StringComparison.Ordinal));
     }
 
     [Fact]
-    public void GetDiagnostics_CallReturnMatch_NoWarning()
+    public void GetDiagnostics_CallReturnMatch_NoError()
     {
         var service = new LanguageService();
         var source = """
@@ -360,7 +452,7 @@ public class TypeCompatibilityDiagnosticsTests
         var diagnostics = service.GetDiagnostics(source);
         Assert.DoesNotContain(diagnostics, d =>
             d.Source == "malda-types" &&
-            d.Severity == DiagnosticSeverity.Warning &&
+            d.Severity == DiagnosticSeverity.Error &&
             d.Message.Contains("does not match value", StringComparison.Ordinal));
     }
 
@@ -386,7 +478,7 @@ public class TypeCompatibilityDiagnosticsTests
     }
 
     [Fact]
-    public void GetDiagnostics_AwaitCallReturnMismatch_EmitsWarning()
+    public void GetDiagnostics_AwaitCallReturnMismatch_EmitsError()
     {
         var service = new LanguageService();
         var source = """
@@ -396,7 +488,7 @@ public class TypeCompatibilityDiagnosticsTests
         var diagnostics = service.GetDiagnostics(source);
         Assert.Contains(diagnostics, d =>
             d.Source == "malda-types" &&
-            d.Severity == DiagnosticSeverity.Warning &&
+            d.Severity == DiagnosticSeverity.Error &&
             d.Message.Contains("variable 'n'", StringComparison.Ordinal));
     }
 }

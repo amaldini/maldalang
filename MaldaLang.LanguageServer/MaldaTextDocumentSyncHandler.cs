@@ -25,6 +25,7 @@ public class MaldaTextDocumentSyncHandler : ITextDocumentSyncHandler
     private readonly ILanguageService _languageService;
     private readonly IDiagnosticsPublisher _diagnosticsPublisher;
     private readonly WorkspaceSymbolIndex _workspaceSymbolIndex;
+    private readonly MaldaLspTypeSettings _typeSettings;
     private readonly ConcurrentDictionary<DocumentUri, CancellationTokenSource> _diagnosticCancellation = new();
     private readonly ConcurrentDictionary<DocumentUri, CancellationTokenSource> _workspaceDiagnosticCancellation = new();
 
@@ -33,13 +34,15 @@ public class MaldaTextDocumentSyncHandler : ITextDocumentSyncHandler
         WorkspaceDocumentManager workspaceDocuments,
         ILanguageService languageService,
         IDiagnosticsPublisher diagnosticsPublisher,
-        WorkspaceSymbolIndex workspaceSymbolIndex)
+        WorkspaceSymbolIndex workspaceSymbolIndex,
+        MaldaLspTypeSettings typeSettings)
     {
         _store = store;
         _workspaceDocuments = workspaceDocuments;
         _languageService = languageService;
         _diagnosticsPublisher = diagnosticsPublisher;
         _workspaceSymbolIndex = workspaceSymbolIndex;
+        _typeSettings = typeSettings;
     }
 
     public OmniSharpShim.TextDocumentSyncOptions Options { get; } = new()
@@ -190,12 +193,16 @@ public class MaldaTextDocumentSyncHandler : ITextDocumentSyncHandler
         if (cancellationToken.IsCancellationRequested)
             return;
 
-        // Extract filename from URI for better error messages
-        var fileName = uri.Path != null ? Path.GetFileName(uri.Path) : null;
+        // Full local path so ModuleSymbolResolver can resolve relative imports for type analysis.
+        var sourcePath = ResolveSourcePath(uri);
         List<MaldaLang.IDE.Models.Diagnostic> maldaDiagnostics;
         try
         {
-            maldaDiagnostics = _languageService.GetDiagnostics(text, fileName, cancellationToken);
+            maldaDiagnostics = _languageService.GetDiagnostics(
+                text,
+                sourcePath,
+                cancellationToken,
+                _typeSettings.ToOptions());
         }
         catch (OperationCanceledException)
         {
@@ -218,13 +225,18 @@ public class MaldaTextDocumentSyncHandler : ITextDocumentSyncHandler
             return;
         }
 
+        var typeOptions = _typeSettings.ToOptions();
         foreach (var document in documents)
         {
             cancellationToken.ThrowIfCancellationRequested();
             List<MaldaLang.IDE.Models.Diagnostic> diagnostics;
             try
             {
-                diagnostics = _languageService.GetDiagnostics(document.Text, document.SourceKey, cancellationToken);
+                diagnostics = _languageService.GetDiagnostics(
+                    document.Text,
+                    document.SourceKey,
+                    cancellationToken,
+                    typeOptions);
             }
             catch (OperationCanceledException)
             {
@@ -259,5 +271,21 @@ public class MaldaTextDocumentSyncHandler : ITextDocumentSyncHandler
             Message = d.Message,
             Source = d.Source ?? "parser"
         };
+    }
+
+    private static string? ResolveSourcePath(DocumentUri uri)
+    {
+        try
+        {
+            var uriString = uri.ToString();
+            if (Uri.TryCreate(uriString, UriKind.Absolute, out var created) && created.IsFile)
+                return created.LocalPath;
+        }
+        catch
+        {
+            // fall through
+        }
+
+        return uri.Path;
     }
 }

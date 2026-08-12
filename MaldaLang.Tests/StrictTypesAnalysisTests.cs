@@ -13,7 +13,7 @@ namespace MaldaLang.Tests;
 
 public class StrictTypesAnalysisTests
 {
-    private static List<Diagnostic> Analyze(string source, bool strict)
+    private static List<Diagnostic> Analyze(string source, StrictTypesOptions options)
     {
         var lexer = new Lexer(source);
         var tokens = lexer.Tokenize();
@@ -22,27 +22,32 @@ public class StrictTypesAnalysisTests
         Assert.Empty(parser.Errors);
 
         var diagnostics = new List<Diagnostic>();
-        StrictTypesAnalysis.Analyze(
-            statements,
-            strict ? StrictTypesOptions.Enabled : StrictTypesOptions.Default,
-            diagnostics);
+        StrictTypesAnalysis.Analyze(statements, options, diagnostics);
         return diagnostics;
     }
 
     [Fact]
     public void StrictMode_UnknownTypeHint_IsError()
     {
-        var diagnostics = Analyze("function f(x: NotARealType) -> int { return x; }", strict: true);
+        var diagnostics = Analyze("function f(x: NotARealType) -> int { return x; }", StrictTypesOptions.Enabled);
         Assert.Contains(diagnostics, d =>
             d.Source == "malda-types" && d.Severity == DiagnosticSeverity.Error);
     }
 
     [Fact]
-    public void DefaultMode_UnknownTypeHint_IsInformation()
+    public void LenientMode_UnknownTypeHint_IsInformation()
     {
-        var diagnostics = Analyze("function f(x: NotARealType) -> int { return x; }", strict: false);
+        var diagnostics = Analyze("function f(x: NotARealType) -> int { return x; }", StrictTypesOptions.Lenient);
         Assert.Contains(diagnostics, d =>
             d.Source == "malda-types" && d.Severity == DiagnosticSeverity.Info);
+    }
+
+    [Fact]
+    public void DefaultMode_UnknownTypeHint_IsError()
+    {
+        var diagnostics = Analyze("function f(x: NotARealType) -> int { return x; }", StrictTypesOptions.Default);
+        Assert.Contains(diagnostics, d =>
+            d.Source == "malda-types" && d.Severity == DiagnosticSeverity.Error);
     }
 
     [Fact]
@@ -55,11 +60,25 @@ public class StrictTypesAnalysisTests
                 case Ok(v): v;
             };
             """;
-        var diagnostics = Analyze(source, strict: true);
+        var diagnostics = Analyze(source, StrictTypesOptions.Enabled);
         Assert.Contains(diagnostics, d =>
             d.Source == "malda-match" &&
             d.Severity == DiagnosticSeverity.Error &&
             d.Message.Contains("Err", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void DefaultMode_NonExhaustiveSumMatch_NoMatchDiagnostic()
+    {
+        var source = """
+            type Result = Ok(value) | Err(message);
+            var r = Ok(1);
+            var out = match r {
+                case Ok(v): v;
+            };
+            """;
+        var diagnostics = Analyze(source, StrictTypesOptions.Default);
+        Assert.DoesNotContain(diagnostics, d => d.Source == "malda-match");
     }
 
     [Fact]
@@ -73,7 +92,7 @@ public class StrictTypesAnalysisTests
                 case Err(m): -1;
             };
             """;
-        var diagnostics = Analyze(source, strict: true);
+        var diagnostics = Analyze(source, StrictTypesOptions.Enabled);
         Assert.DoesNotContain(diagnostics, d => d.Source == "malda-match");
     }
 
@@ -110,7 +129,7 @@ public class StrictTypesAnalysisTests
 
         foreach (var source in snippets)
         {
-            var diagnostics = Analyze(source, strict: true);
+            var diagnostics = Analyze(source, StrictTypesOptions.Enabled);
             Assert.DoesNotContain(diagnostics, d => d.Severity == DiagnosticSeverity.Error);
         }
     }
@@ -122,7 +141,7 @@ public class StrictTypesAnalysisTests
             function make() -> string { return "x"; }
             var n: int = make();
             """;
-        var diagnostics = Analyze(source, strict: true);
+        var diagnostics = Analyze(source, StrictTypesOptions.Enabled);
         Assert.Contains(diagnostics, d =>
             d.Source == "malda-types" &&
             d.Severity == DiagnosticSeverity.Error &&
@@ -137,7 +156,7 @@ public class StrictTypesAnalysisTests
             function take(x: int) { return x; }
             var n: int = take(make());
             """;
-        var diagnostics = Analyze(source, strict: true);
+        var diagnostics = Analyze(source, StrictTypesOptions.Enabled);
         Assert.DoesNotContain(diagnostics, d =>
             d.Source == "malda-types" &&
             d.Severity == DiagnosticSeverity.Error &&
@@ -145,10 +164,31 @@ public class StrictTypesAnalysisTests
     }
 
     [Fact]
-    public void LanguageService_DefaultMode_StillInformationalForUnknownHint()
+    public void LanguageService_DefaultMode_UnknownHint_IsError()
     {
         var service = new LanguageService();
         var diagnostics = service.GetDiagnostics("function f(x: NotARealType) -> int { return x; }");
+        Assert.Contains(diagnostics, d => d.Source == "malda-types" && d.Severity == DiagnosticSeverity.Error);
+    }
+
+    [Fact]
+    public void LanguageService_Lenient_UnknownHint_IsInformation()
+    {
+        var service = new LanguageService();
+        var diagnostics = service.GetDiagnostics(
+            "function f(x: NotARealType) -> int { return x; }",
+            strictTypesOptions: StrictTypesOptions.Lenient);
         Assert.Contains(diagnostics, d => d.Source == "malda-types" && d.Severity == DiagnosticSeverity.Info);
+    }
+
+    [Fact]
+    public void LanguageService_DefaultMode_Mismatch_IsError()
+    {
+        var service = new LanguageService();
+        var diagnostics = service.GetDiagnostics("var n: int = \"abc\";");
+        Assert.Contains(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Severity == DiagnosticSeverity.Error &&
+            d.Message.Contains("does not match value", StringComparison.Ordinal));
     }
 }

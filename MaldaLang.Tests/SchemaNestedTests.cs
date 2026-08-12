@@ -3,6 +3,7 @@
 
 using MaldaLang.BuiltIns;
 using MaldaLang.Interpreter;
+using MaldaLang.PackageManager;
 using MaldaLang.Parser;
 using MaldaLang.Parser.AST.Declarations;
 using Xunit;
@@ -140,6 +141,55 @@ public class SchemaNestedTests : TestBase
             _ = SchemaRegistry.TryResolve("A", out _);
         });
         Assert.Contains("Cyclic schema reference", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task NestedSchema_ImportedSchema_ValidateWorks()
+    {
+        var dir = CreateTempDirectory("schema_import_");
+        try
+        {
+            File.WriteAllText(Path.Combine(dir, "types.malda"), """
+                schema Contact {
+                    name: string;
+                }
+                """);
+
+            var mainPath = Path.Combine(dir, "main.malda");
+            File.WriteAllText(mainPath, """
+                import "types.malda";
+                var good = dict { "name": "Ada" };
+                var check = validate("Contact", good);
+                print(check.ok);
+                """);
+
+            var source = File.ReadAllText(mainPath);
+            var lexer = new Lexer(source, mainPath);
+            var parser = new Parser.Parser(lexer.Tokenize(), mainPath);
+            var statements = parser.Parse();
+            Assert.Empty(parser.Errors);
+
+            var interpreter = new Interpreter.Interpreter(currentFile: mainPath);
+            var moduleLoaderField = typeof(Interpreter.Interpreter).GetField(
+                "_moduleLoader",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            moduleLoaderField!.SetValue(interpreter, new ModuleLoader());
+
+            RedirectConsole();
+            try
+            {
+                await interpreter.InterpretAsync(statements);
+                Assert.Contains("true", GetOutput(), StringComparison.OrdinalIgnoreCase);
+            }
+            finally
+            {
+                RestoreConsole();
+            }
+        }
+        finally
+        {
+            SafeDeleteDirectory(dir);
+        }
     }
 
     [Fact]

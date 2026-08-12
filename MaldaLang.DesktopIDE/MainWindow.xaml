@@ -547,6 +547,9 @@
                 <MenuItem Header="Show _AI Panel" IsCheckable="True" Click="ViewToggleAIPanel_Click"/>
                 <MenuItem Header="Show _Web UI Panel" IsCheckable="True" Click="ViewToggleWebUIPanel_Click"/>
                 <Separator/>
+                <MenuItem Header="_Type Errors as Errors" IsCheckable="True" IsChecked="True" Click="ViewToggleTypeErrors_Click"
+                          ToolTip="When checked, type-hint mismatches are Errors. Uncheck for Warning/Info (lenient)."/>
+                <Separator/>
                 <MenuItem Header="Open _Trace..." Click="ViewOpenTrace_Click"/>
             </MenuItem>
             

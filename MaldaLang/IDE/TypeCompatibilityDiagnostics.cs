@@ -9,12 +9,14 @@ using MaldaLang.Interpreter;
 using MaldaLang.Parser.AST.Declarations;
 using MaldaLang.Parser.AST.Expressions;
 using MaldaLang.Parser.AST.Statements;
+using TokenType = MaldaLang.TokenType;
 
 /// <summary>
-/// Checks type hints vs known values (literals and identifiers with hints) on
-/// var/field initializers, assignments, call arguments, and returns.
-/// Default severity is Warning (IDE/LSP). Under <c>--strict-types</c> mismatches are Errors.
-/// Does not enforce hints at runtime.
+/// Checks type hints vs known values (literals, identifiers with hints, operators,
+/// selected Tier-1 builtins, and typed call returns) on var/field initializers,
+/// assignments, call arguments, and returns.
+/// IDE/LSP default elevates mismatches to Error (<see cref="StrictTypesOptions.Default"/>);
+/// use <see cref="StrictTypesOptions.Lenient"/> for Warning. Does not enforce hints at runtime.
 /// </summary>
 public static class TypeCompatibilityDiagnostics
 {
@@ -500,10 +502,11 @@ public static class TypeCompatibilityDiagnostics
         if (expectedCanonical == "float" && actualCanonical == "int")
             return;
 
+        var elevate = options.ElevateTypeSeverity;
         diagnostics.Add(new Diagnostic
         {
-            Severity = options.StrictTypes ? DiagnosticSeverity.Error : DiagnosticSeverity.Warning,
-            Message = options.StrictTypes
+            Severity = elevate ? DiagnosticSeverity.Error : DiagnosticSeverity.Warning,
+            Message = elevate
                 ? $"Type hint '{typeHint}' on {bindingName} does not match value (got {actual})."
                 : $"Type hint '{typeHint}' on {bindingName} does not match value (got {actual}). Hints are not enforced at runtime.",
             Line = line,
@@ -542,15 +545,109 @@ public static class TypeCompatibilityDiagnostics
         if (expression is AwaitExpression awaitExpr)
             return InferKnownType(awaitExpr.Expression, env, functions);
 
-        if (expression is FunctionCallExpression call &&
-            TryGetCalleeHints(call.Callee, functions, out _, out var calleeHints) &&
-            !string.IsNullOrWhiteSpace(calleeHints.ReturnType))
+        if (expression is BinaryExpression binary)
+            return InferOperatorResultType(binary, env, functions);
+
+        if (expression is UnaryExpression unary)
+            return InferUnaryResultType(unary, env, functions);
+
+        if (expression is FunctionCallExpression call)
         {
-            return env.Index.NormalizeKnown(calleeHints.ReturnType);
+            if (TryGetCalleeHints(call.Callee, functions, out _, out var calleeHints) &&
+                !string.IsNullOrWhiteSpace(calleeHints.ReturnType))
+            {
+                return env.Index.NormalizeKnown(calleeHints.ReturnType);
+            }
+
+            var builtin = Tier1BuiltinReturnHints.TryGetReturnType(call.Callee);
+            if (builtin != null)
+                return env.Index.NormalizeKnown(builtin) ?? builtin;
         }
+
+        if (expression is InterpolatedStringExpression)
+            return "string";
 
         return null;
     }
+
+    private static string? InferOperatorResultType(
+        BinaryExpression binary,
+        HintEnv env,
+        Dictionary<string, FunctionHints> functions)
+    {
+        var left = InferKnownType(binary.Left, env, functions);
+        var right = InferKnownType(binary.Right, env, functions);
+
+        switch (binary.Operator)
+        {
+            case TokenType.Equal:
+            case TokenType.NotEqual:
+            case TokenType.LessThan:
+            case TokenType.GreaterThan:
+            case TokenType.LessThanOrEqual:
+            case TokenType.GreaterThanOrEqual:
+            case TokenType.And:
+            case TokenType.Or:
+                // Comparisons/logicals yield bool when both sides are at least present as expressions;
+                // only require inferable sides for consistency with numeric ops.
+                if (left == null || right == null)
+                    return null;
+                return "bool";
+
+            case TokenType.Plus:
+                if (left == null || right == null)
+                    return null;
+                if (left == "string" || right == "string")
+                    return "string";
+                return PromoteNumeric(left, right);
+
+            case TokenType.Minus:
+            case TokenType.Multiply:
+            case TokenType.Modulo:
+                if (left == null || right == null)
+                    return null;
+                return PromoteNumeric(left, right);
+
+            case TokenType.Divide:
+                if (left == null || right == null)
+                    return null;
+                if (IsNumericTag(left) && IsNumericTag(right))
+                    return "float";
+                return null;
+
+            default:
+                return null;
+        }
+    }
+
+    private static string? InferUnaryResultType(
+        UnaryExpression unary,
+        HintEnv env,
+        Dictionary<string, FunctionHints> functions)
+    {
+        var operand = InferKnownType(unary.Right, env, functions);
+        if (operand == null)
+            return null;
+
+        return unary.Operator switch
+        {
+            TokenType.Minus when IsNumericTag(operand) => operand,
+            TokenType.Not => "bool",
+            _ => null
+        };
+    }
+
+    private static string? PromoteNumeric(string left, string right)
+    {
+        if (!IsNumericTag(left) || !IsNumericTag(right))
+            return null;
+        if (left == "float" || right == "float")
+            return "float";
+        return "int";
+    }
+
+    private static bool IsNumericTag(string tag) =>
+        tag is "int" or "float";
 
     /// <summary>
     /// Returns a canonical Tier 0 tag for a literal expression, or null if not a checked literal.

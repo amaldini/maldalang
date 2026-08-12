@@ -117,13 +117,13 @@ public static class TypeHintDiagnostics
         if (index.IsKnown(typeName))
             return;
 
-        var strict = options.StrictTypes;
+        var elevate = options.ElevateTypeSeverity;
         diagnostics.Add(new Diagnostic
         {
-            Severity = strict ? DiagnosticSeverity.Error : DiagnosticSeverity.Info,
-            Message = strict
+            Severity = elevate ? DiagnosticSeverity.Error : DiagnosticSeverity.Info,
+            Message = elevate
                 ? $"Unknown type hint '{typeName}' on {context}."
-                : $"Unknown type hint '{typeName}' on {context}. Hints are informational until --strict-types.",
+                : $"Unknown type hint '{typeName}' on {context}. Hints are informational until type errors are enabled.",
             Line = line,
             Column = column,
             Length = typeName.Length,

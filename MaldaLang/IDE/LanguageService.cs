@@ -262,9 +262,14 @@ public class LanguageService : ILanguageService
         return SupportedDecorators;
     }
     
-    public List<Diagnostic> GetDiagnostics(string source, string? sourceFileName = null, CancellationToken cancellationToken = default)
+    public List<Diagnostic> GetDiagnostics(
+        string source,
+        string? sourceFileName = null,
+        CancellationToken cancellationToken = default,
+        StrictTypesOptions? strictTypesOptions = null)
     {
         var diagnostics = new List<Diagnostic>();
+        var typeOptions = strictTypesOptions ?? StrictTypesOptions.Default;
         
         try
         {
@@ -278,7 +283,7 @@ public class LanguageService : ILanguageService
             var statements = parser.Parse(); // This will collect errors in parser.Errors
             cancellationToken.ThrowIfCancellationRequested();
             StdLibNamespaceDiagnostics.Validate(statements, diagnostics);
-            StrictTypesAnalysis.Analyze(statements, StrictTypesOptions.Default, diagnostics, sourceFileName);
+            StrictTypesAnalysis.Analyze(statements, typeOptions, diagnostics, sourceFileName);
             
             // Report all parser errors
             foreach (var error in parser.Errors)

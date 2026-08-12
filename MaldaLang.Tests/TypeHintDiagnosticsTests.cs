@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Andrea Maldini
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+using MaldaLang.IDE.Models;
 using MaldaLang.IDE.Services;
 using Xunit;
 
@@ -9,13 +10,14 @@ namespace MaldaLang.Tests;
 public class TypeHintDiagnosticsTests
 {
     [Fact]
-    public void GetDiagnostics_UnknownTypeHint_EmitsMaldaTypesInformation()
+    public void GetDiagnostics_UnknownTypeHint_EmitsMaldaTypesError()
     {
         var service = new LanguageService();
         var source = "function f(x: NotARealType) -> int { return x; }";
         var diagnostics = service.GetDiagnostics(source);
         Assert.Contains(diagnostics, d =>
             d.Source == "malda-types" &&
+            d.Severity == DiagnosticSeverity.Error &&
             d.Message.Contains("NotARealType", StringComparison.Ordinal));
     }
 

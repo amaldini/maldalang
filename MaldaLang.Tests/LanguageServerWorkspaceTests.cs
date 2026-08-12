@@ -164,7 +164,13 @@ function sharedHelper() {
         var symbolNavigationService = new SymbolNavigationService();
         var diagnosticsPublisher = new RecordingDiagnosticsPublisher();
         var index = new WorkspaceSymbolIndex(workspaceDocuments, symbolNavigationService);
-        var handler = new MaldaTextDocumentSyncHandler(store, workspaceDocuments, new LanguageService(), diagnosticsPublisher, index);
+        var handler = new MaldaTextDocumentSyncHandler(
+            store,
+            workspaceDocuments,
+            new LanguageService(),
+            diagnosticsPublisher,
+            index,
+            new MaldaLspTypeSettings());
         var mainPath = workspace.GetPath("main.malda");
         var brokenPath = workspace.GetPath("broken.malda");
         var mainUri = CreateUri(mainPath);

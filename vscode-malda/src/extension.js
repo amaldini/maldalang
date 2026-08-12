@@ -6,6 +6,10 @@ const {
 
 let client;
 
+function readTypeStrict() {
+  return vscode.workspace.getConfiguration("malda").get("types.strict", true);
+}
+
 function activate() {
   const config = vscode.workspace.getConfiguration("maldaLanguageServer");
   const serverPath = config.get("path") ?? "malda-lsp";
@@ -20,6 +24,10 @@ function activate() {
     documentSelector: [{ scheme: "file", language: "malda" }],
     synchronize: {
       fileEvents: vscode.workspace.createFileSystemWatcher("**/*.malda"),
+      configurationSection: ["malda", "malda.types"],
+    },
+    initializationOptions: {
+      typeStrict: readTypeStrict(),
     },
   };
 
@@ -34,6 +42,21 @@ function activate() {
   );
 
   client.start();
+
+  vscode.workspace.onDidChangeConfiguration((e) => {
+    if (!e.affectsConfiguration("malda.types.strict") || !client) {
+      return;
+    }
+    void client.sendNotification("workspace/didChangeConfiguration", {
+      settings: {
+        malda: {
+          types: {
+            strict: readTypeStrict(),
+          },
+        },
+      },
+    });
+  });
 }
 
 function deactivate() {

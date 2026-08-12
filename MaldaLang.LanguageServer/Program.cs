@@ -17,6 +17,7 @@ var server = await LanguageServer.From(
             {
                 services.AddSingleton<DocumentStore>();
                 services.AddSingleton<WorkspaceDocumentManager>();
+                services.AddSingleton<MaldaLspTypeSettings>();
                 services.AddSingleton<ILanguageService, LanguageService>();
                 services.AddSingleton<ISymbolNavigationService, SymbolNavigationService>();
                 services.AddSingleton<WorkspaceSymbolIndex>();
@@ -35,6 +36,13 @@ var server = await LanguageServer.From(
             .WithHandler<MaldaSignatureHelpHandler>()
             .WithHandler<MaldaDocumentFormattingHandler>()
             .WithHandler<MaldaWorkspaceSymbolHandler>()
+            .WithHandler<MaldaConfigurationHandler>()
+            .OnInitialize((server, request, token) =>
+            {
+                var typeSettings = server.Services.GetService(typeof(MaldaLspTypeSettings)) as MaldaLspTypeSettings;
+                typeSettings?.ApplyFromInitializationOptions(request.InitializationOptions);
+                return Task.CompletedTask;
+            })
             .ConfigureLogging(logging => logging.SetMinimumLevel(LogLevel.Warning));
     });
 

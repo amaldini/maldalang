@@ -117,6 +117,7 @@ public partial class MainWindow : Window
     private readonly VirtualDocumentSegmentationService _virtualDocumentSegmentationService;
     private readonly ToolCallLogService _toolCallLogService;
     private readonly ThemeService _themeService;
+    private readonly TypeAnalysisSettingsService _typeAnalysisSettingsService;
     private readonly CodeDiffService _codeDiffService;
     private readonly MCPServerConfigService _mcpConfigService;
     private readonly MCPServerConnectionService _mcpConnectionService;
@@ -181,6 +182,8 @@ public partial class MainWindow : Window
         _virtualDocumentSegmentationService = new VirtualDocumentSegmentationService();
         _toolCallLogService = new ToolCallLogService();
         _themeService = new ThemeService();
+        _typeAnalysisSettingsService = new TypeAnalysisSettingsService();
+        _typeAnalysisSettingsService.Load();
         _codeDiffService = new Services.CodeDiffService();
         _mcpConfigService = new MCPServerConfigService();
         _mcpConnectionService = new MCPServerConnectionService(_mcpConfigService);
@@ -3416,7 +3419,10 @@ public partial class MainWindow : Window
     {
         var activeDocument = GetActiveDocument();
         var (source, sourceKey) = GetSourceForAnalysis(activeDocument);
-        var diagnostics = _languageService.GetDiagnostics(source, sourceKey);
+        var diagnostics = _languageService.GetDiagnostics(
+            source,
+            sourceKey,
+            strictTypesOptions: _typeAnalysisSettingsService.ToOptions());
         if (IsVirtualDocument(activeDocument))
         {
             diagnostics = diagnostics
@@ -5556,10 +5562,22 @@ public partial class MainWindow : Window
                         childMenuItem.IsChecked = _activeTab == "ai";
                     else if (itemHeader == "Show Web UI Panel")
                         childMenuItem.IsChecked = _activeTab == "webui";
+                    else if (itemHeader == "Type Errors as Errors")
+                        childMenuItem.IsChecked = _typeAnalysisSettingsService.TypeErrors;
                 }
                 break;
             }
         }
+    }
+
+    private void ViewToggleTypeErrors_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem menuItem)
+            return;
+
+        _typeAnalysisSettingsService.SetTypeErrors(menuItem.IsChecked);
+        UpdateViewMenuStates();
+        UpdateDiagnostics();
     }
     
     private void UpdateTabButtonBackgrounds()
@@ -5927,7 +5945,10 @@ public partial class MainWindow : Window
             // Get all diagnostics with autofix suggestions
             var activeDocument = GetActiveDocument();
             var (source, sourceKey) = GetSourceForAnalysis(activeDocument);
-            var diagnostics = _languageService.GetDiagnostics(source, sourceKey);
+            var diagnostics = _languageService.GetDiagnostics(
+                source,
+                sourceKey,
+                strictTypesOptions: _typeAnalysisSettingsService.ToOptions());
             var autofixableDiagnostics = diagnostics
                 .Where(d => d.AutoFix != null && d.AutoFix.IsSimpleCharacterFix)
                 .ToList();
@@ -6065,7 +6086,10 @@ public partial class MainWindow : Window
             _aiChatPanel.SelectedCode = GetSelectedText();
             var activeDocument = GetActiveDocument();
             var (source, sourceKey) = GetSourceForAnalysis(activeDocument);
-            _aiChatPanel.Errors = _languageService.GetDiagnostics(source, sourceKey);
+            _aiChatPanel.Errors = _languageService.GetDiagnostics(
+                source,
+                sourceKey,
+                strictTypesOptions: _typeAnalysisSettingsService.ToOptions());
         }
     }
     

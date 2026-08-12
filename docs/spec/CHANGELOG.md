@@ -157,18 +157,30 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 - **Phase 1.2:** `math`, `str`, `io` namespaces; flat globals deprecated (one-release policy).  
 - **Interpreter:** `WrapCallAsTask` for `async userFn()` environment binding (2026-06-04).
 
-#### P0 readiness notes (2026-08-12) — types / schema (not Final yet)
+#### P0 readiness notes (2026-08-12, updated) — types / schema (not Final yet)
 
-- **Call-site checking:** `--strict-types` / IDE warnings cover callee return hints for same-unit and imported functions (operators and built-in returns still not inferred).  
-- **Nested schemas:** field types may name other schemas (`Other` / `Other[]`); unknown field types and cycles error on resolve; no silent map-to-`string`.  
+- **Call-site checking:** IDE/LSP default elevates type mismatches to **Error** (`StrictTypesOptions.Default` / `malda.types.strict`); covers literals, hinted ids, `new`, call `-> T` (same unit + imports), operators (when both sides inferable), and selected Tier-1 builtin returns (`math` / `str` / `io`). CLI `--strict-types` remains explicit and also enables match/`@pure`/bounds/const.  
+- **Nested schemas:** field types may name other schemas (`Other` / `Other[]`); unknown field types and cycles error on resolve; IDE `malda-schema` diagnostics on unknown field types; import + `validate` covered by tests.  
 - **Workflow (minimal):** WF1001 also denies `randomChoiceWeighted` and `randn`; durability remains single-box SQLite + deny-list (not Temporal replay detection).
+
+#### Final checklist (2026-08-12) — Draft 1.0 → Final
+
+Do **not** declare Final until every row is checked or explicitly deferred with a post-Final version.
+
+- [ ] Tier 0 conformance green on interpreter + C# (`scripts/run-tier0-conformance.ps1` / matrix thresholds)
+- [x] T1 operator + selected Tier-1 builtin return inference shipped (IDE analysis)
+- [x] T2 IDE/LSP type Errors by default + opt-out (`malda.types.strict` / Desktop menu)
+- [x] T3 nested schema resolve + IDE field diagnostics (`malda-schema`)
+- [ ] Remaining draft gaps below resolved **or** marked defer-post-Final with owner/version
+
+Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.md).
 
 #### Known draft gaps (not version bumps until fixed or declared Final)
 
-- `typeOf(variant)` and `typeOf(task)` return `"unknown"`.  
-- Concurrent `async` user calls with `sleep` between consecutive `var` bindings (documented limitation).  
-- Multi-backend parity (C#/JS) not yet gated on spec Final.  
-- Spec remains **Draft 1.0** until Tier 0 conformance + the P0 gates above stay green and Final is declared.
+- `typeOf(variant)` and `typeOf(task)` return `"unknown"` — **defer post-Final** (no owner yet).  
+- Concurrent `async` user calls with `sleep` between consecutive `var` bindings (documented limitation) — **defer post-Final**.  
+- Multi-backend product parity (agents/HTTP/workflows on JS) not gated on Spec Final — **defer** (Tier 0 JS tracked separately).  
+- Spec remains **Draft 1.0** until Tier 0 conformance stays green and the Final checklist above is complete.
 
 ### Pre-spec baseline (reference only)
 
@@ -187,3 +199,4 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 | 2026-06-04 | Initial CHANGELOG and semver policy (Phase 2.3) |
 | 2026-06-04 | Phase 2.4: parser/spec drift CI script and Bitbucket pipeline |
 | 2026-08-12 | P0 readiness notes: call-site return hints, nested schemas, WF1001 aliases |
+| 2026-08-12 | Final checklist + T1/T2/T3 type maturity updates; link `roadmap-p0-types-impl.md` |

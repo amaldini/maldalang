@@ -162,4 +162,5 @@ See [`ReferenceManual/README-print.md`](ReferenceManual/README-print.md). Short 
 - [`README.md`](README.md) — product overview
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — contributor workflow
 - [`docs/start-here.md`](docs/start-here.md) — learning paths
+- [`docs/roadmap-p0-maturity.md`](docs/roadmap-p0-maturity.md) — active 3–6 month maturity roadmap
 - [`llms.txt`](llms.txt) — compact doc index for LLM tools

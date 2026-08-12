@@ -38,6 +38,11 @@
           "enum": ["off", "messages", "verbose"],
           "default": "off",
           "description": "Traces the communication between the editor and the language server."
+        },
+        "malda.types.strict": {
+          "type": "boolean",
+          "default": true,
+          "description": "When true (default), type-hint mismatches and unknown hints are reported as Errors. When false, mismatches are Warnings and unknown hints are Information (lenient). Does not enable CLI --strict-types extras (match exhaustiveness, @pure, bounds)."
         }
       }
     }
