@@ -166,4 +166,23 @@ startWorkflow(""DlqFlow"", null);
             Assert.Contains(steps, s => s.StepName == "work" && s.State == StepState.TimedOut);
         }
     }
+
+    [Fact]
+    public void WorkflowPersistence_AppliesWalAndBusyTimeout()
+    {
+        var dbPath = GetTestDbPath();
+        try
+        {
+            using var persistence = new WorkflowPersistence("Data Source=" + dbPath);
+            var (journalMode, busyTimeoutMs) = persistence.ReadSqlitePragmasForTests();
+            Assert.Equal("wal", journalMode, ignoreCase: true);
+            Assert.Equal(WorkflowPersistence.SqliteBusyTimeoutMs, busyTimeoutMs);
+        }
+        finally
+        {
+            try { File.Delete(dbPath); } catch { /* best effort */ }
+            try { File.Delete(dbPath + "-wal"); } catch { /* best effort */ }
+            try { File.Delete(dbPath + "-shm"); } catch { /* best effort */ }
+        }
+    }
 }

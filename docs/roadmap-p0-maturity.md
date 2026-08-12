@@ -59,7 +59,7 @@ Rough sequencing. Items can overlap when owners differ; gates below are the acce
 | Workstream | Concrete work | Done when |
 |------------|---------------|-----------|
 | **W1 Observability** | Instance timeline, step status, DLQ/requeue visibility beyond CLI one-liners (dashboard or structured `malda workflow …` report) | At least one Examples/Workflows ops smoke + Reference Manual § ops updated |
-| **W2 HA / multi-worker path** | Documented model for more than one worker against durable store (even if v1 is “single writer + lease” or “read replica ops only”); identify SQLite limits and the migration story | Architecture note in `docs/` or workflows chapter: failure modes, lease/locking, what is *not* Temporal yet |
+| **W2 HA / multi-worker path** | Documented model for more than one worker against durable store (even if v1 is “single writer + lease” or “read replica ops only”); identify SQLite limits and the migration story | Architecture note in `docs/` or workflows chapter: failure modes, lease/locking, what is *not* Temporal yet — **landed:** [`workflows-ha.md`](workflows-ha.md), WAL/`busy_timeout`, RM §32.10 |
 | **W3 Determinism & replay** | Strengthen deny-list / replay detection beyond name list where feasible; document loop-in-step rules already in manual | Conformance or filtered workflow tests for new checks; gotcha for jobs vs workflows stays accurate |
 | **B1 Product capability matrix** | Extend [`backend-capability-matrix.md`](spec/backend-capability-matrix.md) with rows for schema/validate, typed prompts, HttpServer, UIHost, jobs — each marked yes/partial/no per backend | Matrix file + `BackendCapabilityMatrix` tests stay in sync |
 | **B2 Transpile smoke set** | Small curated `.malda` set (agents/web/workflow/schema) that must pass `malda compile --mode transpile` in CI smoke filter | Named filter or script; failures point at `build_errors.txt` paths as today |
@@ -134,6 +134,7 @@ Rough sequencing. Items can overlap when owners differ; gates below are the acce
 | [`docs/llm/malda-gotchas.md`](llm/malda-gotchas.md) | Silent failures to shrink |
 | [`docs/ui-framework.md`](ui-framework.md) | Server-driven UI host |
 | [`ReferenceManual/31-durable-workflows.html`](../ReferenceManual/31-durable-workflows.html) | Workflow user reference |
+| [`docs/workflows-ha.md`](workflows-ha.md) | W2 single-writer + read-only ops HA model |
 
 ---
 
@@ -143,3 +144,4 @@ Rough sequencing. Items can overlap when owners differ; gates below are the acce
 |------|--------|
 | 2026-08-12 | Initial active P0 maturity roadmap (types, workflows, parity, AI, UI, packages, toolchain) |
 | 2026-08-12 | W1 Observability landed: `malda workflow report`, `Examples/Workflows/ops_report.malda`, RM §32.6 |
+| 2026-08-12 | W2 HA / multi-worker landed: `docs/workflows-ha.md`, SQLite WAL + `busy_timeout`, RM §32.10 |

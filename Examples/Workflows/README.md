@@ -27,6 +27,7 @@ See also root README sections on durable workflow CLI operations (`malda workflo
 ## Notes
 
 - Local durable execution (memoized steps on one SQLite file), not a highly available cluster.
+- **Single writer** per database; a second process may run **read-only** ops (`list` / `get` / `report` / …) against the same absolute `MALDA_WORKFLOW_CONNECTION`. See [`docs/workflows-ha.md`](../../docs/workflows-ha.md).
 - Distinct from the lightweight job queue (`enqueueJob` / `claimJob` in `Examples/Web/job_queue_basic.malda`).
 
 Catalog: [`metadata.json`](metadata.json).

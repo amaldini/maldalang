@@ -23,6 +23,7 @@ public sealed class WorkflowPersistence : IWorkflowStorageProvider
     private bool _disposed;
 
     public const string DefaultConnectionString = "Data Source=./.malda/workflows.db";
+    internal const int SqliteBusyTimeoutMs = 5000;
 
     public WorkflowPersistence(string? connectionString = null)
     {
@@ -31,7 +32,32 @@ public sealed class WorkflowPersistence : IWorkflowStorageProvider
         EnsureWorkflowDbDirectory();
         _connection = new SqliteConnection(_connectionString);
         _connection.Open();
+        ApplyConnectionPragmas();
         EnsureSchema();
+    }
+
+    /// <summary>
+    /// WAL lets a second process run read-only ops against the same DB while a writer
+    /// is active; busy_timeout softens brief lock contention. See docs/workflows-ha.md.
+    /// </summary>
+    private void ApplyConnectionPragmas()
+    {
+        using var pragma = _connection.CreateCommand();
+        pragma.CommandText = "PRAGMA journal_mode=WAL;";
+        pragma.ExecuteNonQuery();
+        pragma.CommandText = $"PRAGMA busy_timeout={SqliteBusyTimeoutMs};";
+        pragma.ExecuteNonQuery();
+    }
+
+    /// <summary>Test hook: journal_mode is DB-persisted; busy_timeout is per-connection.</summary>
+    internal (string JournalMode, long BusyTimeoutMs) ReadSqlitePragmasForTests()
+    {
+        using var cmd = _connection.CreateCommand();
+        cmd.CommandText = "PRAGMA journal_mode;";
+        var journalMode = Convert.ToString(cmd.ExecuteScalar()) ?? string.Empty;
+        cmd.CommandText = "PRAGMA busy_timeout;";
+        var busyTimeout = Convert.ToInt64(cmd.ExecuteScalar());
+        return (journalMode, busyTimeout);
     }
 
     private static void EnsureSqliteProviderInitialized()

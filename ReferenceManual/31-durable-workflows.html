@@ -179,6 +179,7 @@ malda workflow maintenance run --dry-run --format json</code></pre>
         <p>Every durable workflow writes to one SQLite database file. By default:</p>
         <pre><code>./.malda/workflows.db</code></pre>
         <p>The <code>.malda</code> directory is created on first use, and the schema is created and upgraded automatically when the engine opens the connection. There is no separate install or migration step, and nothing to provision before <code>malda workflow start</code>.</p>
+        <p>On open, the runtime sets SQLite <code>journal_mode=WAL</code> and <code>busy_timeout=5000</code> so a second process can run <strong>read-only</strong> ops (<code>list</code>, <code>get</code>, <code>report</code>, …) against the same database while a writer is active. See <a href="#ha">32.10 High Availability and Multi-Worker</a>.</p>
 
         <div class="warning-box">
             <strong>The default path is relative to the working directory</strong>, not to your home directory. A run started in <code>/srv/app</code> uses <code>/srv/app/.malda/workflows.db</code>, while the same program started from another directory opens a different, empty database and reports zero instances instead of an error. If you start workflows from one place and inspect them from another, set an absolute path as shown below.
@@ -244,6 +245,15 @@ setx MALDA_WORKFLOW_CONNECTION "Data Source=C:\ProgramData\malda\workflows.db"</
             </tbody>
         </table>
         <p>Retention values are validated against each other, so an inconsistent combination (for example an audit window shorter than the operational one) is rejected instead of quietly discarding history.</p>
+
+        <h2 id="ha">32.10 High Availability and Multi-Worker</h2>
+        <p>v1 supports <strong>one writer process</strong> per database file, plus an optional second process for <strong>read-only</strong> CLI ops against the same absolute <code>MALDA_WORKFLOW_CONNECTION</code>. Two mutating processes on one file are unsupported.</p>
+        <ul>
+            <li><strong>Locking:</strong> process singleton + SQLite file lock; WAL for concurrent readers. Stale <code>RUNNING</code> recovery after restart is not a worker ownership lease.</li>
+            <li><strong>Limits:</strong> local SQLite durability on one machine — not a cluster, not Temporal-style task queues or multi-machine failover.</li>
+            <li><strong>Migration:</strong> storage goes through <code>IWorkflowStorageProvider</code>; a future multi-writer backend would need claim/lease and conditional status updates.</li>
+        </ul>
+        <p>Full failure-mode matrix and migration notes: <code>docs/workflows-ha.md</code> in the repository.</p>
 
         <div class="see-also">
             <h3>See Also</h3>
