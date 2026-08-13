@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — primary constructors)
+
+- **`class Name(params)`:** parameter list after the class name desugars to public fields plus a synthesized constructor. Body optional (`class Point(x, y);` or `{ methods }`). Cannot combine with `extends` or an explicit `function Name(...)`. Grammar: [`22-grammar.html`](../../ReferenceManual/22-grammar.html); narrative: [`10-classes-objects.html`](../../ReferenceManual/10-classes-objects.html) §10.11.
+
 #### Added (MINOR — additive module syntax)
 
 - **Selective imports:** `import { a, b } from "path.malda"` / `from package` — merge only named export-surface bindings; missing names error. Design: [`docs/selective-imports.md`](../selective-imports.md); example `Examples/Modules/selective_import.malda`.

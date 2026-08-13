@@ -459,6 +459,26 @@ Normative summary; implementation detail: [phase-7-expressiveness.md](../plannin
 
 ---
 
+## 19. Classes — primary constructor
+
+Additive syntax; classic `class Name { … }` is unchanged.
+
+```malda
+class Point(x, y);
+class Point(x, y) { function total() { return this.x + this.y; } }
+```
+
+- After `class Identifier`, `(` starts a **primary constructor**. Each parameter is a **public** instance field of the same name (optional `: Type` hints are stored on those fields).
+- MALDA synthesizes a constructor named like the class whose body is `this.param = param;` for each parameter, in source order.
+- A body is optional: `class Point(x, y);` or `class Point(x, y) { … }`. Body members are appended after the synthesized fields and constructor.
+- **Illegal in v1:** combining a primary constructor with `extends`; declaring `function ClassName(...)` in the same class; declaring `var` with a primary parameter's name.
+- Construction is still `new Point(3, 4)`. Equality remains identity unless the class defines `__eq__`.
+- This form is distinct from sum types (`type Point = Point(x, y);`, constructed without `new`) and from schemas (`schema Point { x: int; y: int; }`).
+
+**Implementation:** parser desugar in `Parser.ClassDeclaration`; interpreter and transpilers see a normal class.
+
+---
+
 ## 16. Planned amendments (non-normative roadmap)
 
 Versioning and deprecation rules: [CHANGELOG.md](CHANGELOG.md).
@@ -481,3 +501,4 @@ Versioning and deprecation rules: [CHANGELOG.md](CHANGELOG.md).
 | 2026-06-04 | Draft 1.0 | §14 modules: `import`, `export`, sum-type scoping (Phase 3) |
 | 2026-06-05 | Draft 1.0 | §18 expressiveness: pipe, comprehensions, `using`/`defer`, `const` (Phase 7) |
 | 2026-08-12 | Final 1.0 | Spec Final declared; Tier 0 interpreter + C# conformance green (`run-tier0-conformance.ps1`) |
+| 2026-08-13 | Final 1.0 | §19 primary constructors: `class Name(params)` desugars to public fields + constructor (additive) |

@@ -28,11 +28,14 @@ FunctionDecl  ::= ("function" | "fn" | "def") Identifier "(" ParamList? ")" Retu
 DecoratedFunctionDecl ::= Decorator+ FunctionDecl
 ReturnType    ::= ("->" | "=>") Identifier
 
-ClassDecl     ::= "class" Identifier ("extends" Identifier)? "{" ClassMember* "}"
+ClassDecl     ::= "class" Identifier (
+                    "(" ParamList? ")" ( "{" ClassMember* "}" | ";" )
+                  | ("extends" Identifier)? "{" ClassMember* "}"
+                  )
 ClassMember   ::= AccessModifier? (FieldDecl | MethodDecl | ConstructorDecl)
 FieldDecl     ::= "var" Identifier TypeHint? ("=" Expression)? ";"
 MethodDecl    ::= AccessModifier? FunctionDecl
-ConstructorDecl ::= AccessModifier? FunctionDecl   /* name equals class name */
+ConstructorDecl ::= AccessModifier? FunctionDecl   /* name equals class name; forbidden when a primary constructor is present */
 
 TypeDecl      ::= "type" Identifier "=" Constructor ("|" Constructor)* ";"
 Constructor   ::= Identifier ("(" ParamList? ")")?

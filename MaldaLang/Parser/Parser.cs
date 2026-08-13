@@ -222,23 +222,140 @@ public class Parser
     {
         var nameToken = ConsumeIdentifierTokenLike("Expect class name.");
         var name = nameToken.Lexeme;
-        
+
+        List<string>? primaryParams = null;
+        List<string?>? primaryHints = null;
+        if (Match(TokenType.LeftParen))
+        {
+            (primaryParams, primaryHints) = ParsePrimaryConstructorParams();
+            if (Check(TokenType.Extends))
+            {
+                throw Error(Peek(),
+                    "A primary constructor cannot be combined with 'extends'. Write a classic class body and call super(...) explicitly.");
+            }
+        }
+
         string? superclass = null;
         if (Match(TokenType.Extends))
         {
             superclass = ConsumeIdentifierLike("Expect superclass name.");
         }
-        
-        Consume(TokenType.LeftBrace, "Expect '{' after class name.");
-        
+
         var members = new List<ClassMember>();
-        while (!Check(TokenType.RightBrace) && !IsAtEnd())
+        if (primaryParams != null && Match(TokenType.Semicolon))
         {
-            members.Add(ClassMember(name));
+            // Data-only form: class Point(x, y);
         }
-        
-        Consume(TokenType.RightBrace, "Expect '}' after class body.");
+        else
+        {
+            Consume(TokenType.LeftBrace, primaryParams != null
+                ? "Expect '{' or ';' after primary constructor."
+                : "Expect '{' after class name.");
+            while (!Check(TokenType.RightBrace) && !IsAtEnd())
+            {
+                members.Add(ClassMember(name));
+            }
+            Consume(TokenType.RightBrace, "Expect '}' after class body.");
+        }
+
+        if (primaryParams != null)
+        {
+            ValidatePrimaryConstructor(name, nameToken, primaryParams, members);
+            members = DesugarPrimaryConstructor(name, nameToken, primaryParams, primaryHints!, members);
+        }
+
         return new ClassDeclaration(name, superclass, members, isExported, nameToken.Line, nameToken.Column);
+    }
+
+    private (List<string> Names, List<string?> Hints) ParsePrimaryConstructorParams()
+    {
+        var names = new List<string>();
+        var hints = new List<string?>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        if (!Check(TokenType.RightParen))
+        {
+            do
+            {
+                var paramToken = ConsumeIdentifierTokenLike("Expect parameter name in primary constructor.");
+                var paramName = paramToken.Lexeme;
+                if (!seen.Add(paramName))
+                    throw Error(paramToken, $"Duplicate primary constructor parameter '{paramName}'.");
+                names.Add(paramName);
+                if (Match(TokenType.Colon))
+                    hints.Add(Consume(TokenType.Identifier, "Expect type name after ':'.").Lexeme);
+                else
+                    hints.Add(null);
+            } while (Match(TokenType.Comma));
+        }
+        Consume(TokenType.RightParen, "Expect ')' after primary constructor parameters.");
+        return (names, hints);
+    }
+
+    private void ValidatePrimaryConstructor(string className, Token nameToken, List<string> primaryParams, List<ClassMember> members)
+    {
+        var primaryNames = new HashSet<string>(primaryParams, StringComparer.Ordinal);
+        foreach (var member in members)
+        {
+            if (member.Type == MemberType.Constructor)
+            {
+                throw Error(nameToken,
+                    $"Class '{className}' already has a primary constructor; do not declare function {className}(...).");
+            }
+
+            if (member.Type == MemberType.Field && primaryNames.Contains(member.Name))
+            {
+                throw Error(nameToken,
+                    $"Field '{member.Name}' duplicates a primary constructor parameter.");
+            }
+        }
+    }
+
+    private static List<ClassMember> DesugarPrimaryConstructor(
+        string className,
+        Token nameToken,
+        List<string> primaryParams,
+        List<string?> primaryHints,
+        List<ClassMember> bodyMembers)
+    {
+        var line = nameToken.Line;
+        var column = nameToken.Column;
+        var synthesized = new List<ClassMember>(primaryParams.Count + 1 + bodyMembers.Count);
+
+        for (var i = 0; i < primaryParams.Count; i++)
+        {
+            synthesized.Add(new ClassMember(
+                AccessModifier.Public,
+                isStatic: false,
+                MemberType.Field,
+                primaryParams[i],
+                value: null,
+                primaryHints[i]));
+        }
+
+        var assignments = new List<Statement>(primaryParams.Count);
+        foreach (var paramName in primaryParams)
+        {
+            var thisExpr = new ThisExpression(line, column);
+            var target = new MemberAccessExpression(thisExpr, paramName, isNullConditional: false, line, column);
+            var value = new IdentifierExpression(paramName, line, column);
+            assignments.Add(new AssignmentStatement(target, value, TokenType.Assign, line, column));
+        }
+
+        var ctorBody = new BlockStatement(assignments, line, column);
+        var ctorDecl = new FunctionDeclaration(
+            className,
+            new List<string>(primaryParams),
+            ctorBody,
+            decorators: null,
+            parameterDecorators: null,
+            parameterTypeHints: new List<string?>(primaryHints),
+            returnType: null,
+            isExported: false,
+            line,
+            column);
+        synthesized.Add(new ClassMember(AccessModifier.Default, isStatic: false, MemberType.Constructor, className, ctorDecl));
+        synthesized.AddRange(bodyMembers);
+        return synthesized;
     }
 
     private MessageDeclaration ParseMessageDeclaration()

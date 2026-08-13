@@ -174,6 +174,36 @@ print(a + b); // 5</code></pre>
 
 var rhs = new RightValue(7);
 print(5 + rhs); // 12</code></pre>
+        <h2>10.11 Primary constructors</h2>
+        <p>A parameter list after the class name is a <strong>primary constructor</strong>. Each parameter becomes a public field of the same name, and MALDA synthesizes a constructor that assigns those fields. The optional body is a normal class body (methods, extra fields, <code>static</code> members, operator overloads). There is no extra keyword: <code>class Name(</code> is distinct from <code>class Name {</code> and from <code>class Name extends</code>.</p>
+        <pre><code>class Point(x, y);
+
+class Point(x, y) {
+    function distance() {
+        return math.sqrt(this.x * this.x + this.y * this.y);
+    }
+}
+
+var p = new Point(3, 4);
+print(p.x);
+print(p.distance());</code></pre>
+        <p>The forms above desugar to a classic class: public fields, a constructor with the same name as the class that assigns <code>this.x = x</code> (and so on), then any members from the body. Optional type hints on parameters are stored on those fields: <code>class Point(x: float, y: float)</code>.</p>
+        <ul>
+            <li>Data-only: <code>class Point(x, y);</code> or <code>class Point(x, y) { }</code>.</li>
+            <li>Do not declare <code>function Point(...)</code> in the same class (duplicate constructor).</li>
+            <li>Do not declare <code>var x</code> in the body when <code>x</code> is already a primary parameter.</li>
+            <li><code>extends</code> cannot be combined with a primary constructor. Use a classic class and call <code>super(...)</code>.</li>
+            <li>Instances still use identity equality unless you define <code>__eq__</code>.</li>
+        </ul>
+        <pre><code data-run="true" data-expect="7">class Point(x, y);
+var p = new Point(3, 4);
+print(p.x + p.y);</code></pre>
+        <pre><code data-run="true" data-expect="7">class Point(x, y) {
+    function total() {
+        return this.x + this.y;
+    }
+}
+print(new Point(3, 4).total());</code></pre>
         <div class="see-also">
             <h3>See Also</h3>
             <ul>

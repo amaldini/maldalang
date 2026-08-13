@@ -124,6 +124,19 @@ var c = new Counter();
 io.print(c.inc());
 ```
 
+A parameter list after the class name is a primary constructor: each parameter becomes a public field, and `new Name(...)` assigns them. The body is optional (`class Point(x, y);`) and may add methods. Do not mix this form with `extends` or with an explicit `function Point(...)`.
+
+```malda
+class Point(x, y) {
+    function total() {
+        return this.x + this.y;
+    }
+}
+
+var p = new Point(3, 4);
+io.print(p.total());
+```
+
 ## Prompts (AI)
 
 ```malda
