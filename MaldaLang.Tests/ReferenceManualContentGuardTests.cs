@@ -121,6 +121,26 @@ public class ReferenceManualContentGuardTests
     }
 
     [Fact]
+    public void WebUiChapter_NamesEveryRegisteredControlType()
+    {
+        var specSource = File.ReadAllText(
+            PlanningPaths.ResolveRepoPath("MaldaLang", "Runtime", "UI", "UiControlSpecRegistry.cs"));
+        var types = Regex.Matches(specSource, @"\[""(?<type>[A-Za-z][A-Za-z0-9]*)""\]")
+            .Select(m => m.Groups["type"].Value)
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(t => t, StringComparer.Ordinal)
+            .ToList();
+        Assert.True(types.Count > 20, $"Expected a full control catalog, got {types.Count}.");
+
+        var chapter = File.ReadAllText(Path.Combine(ManualDir, "16-web-ui.html"));
+        var missing = types.Where(type => !chapter.Contains($"ui.{type}", StringComparison.Ordinal)).ToList();
+        Assert.True(
+            missing.Count == 0,
+            "16-web-ui.html must name every UiControlSpecRegistry type as ui.<type>: " +
+            string.Join(", ", missing));
+    }
+
+    [Fact]
     public void NavigationFallback_MatchesChaptersJson()
     {
         var expected = ChaptersJsonEntries();

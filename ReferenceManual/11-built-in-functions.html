@@ -1012,11 +1012,11 @@ enableAgentVerboseLogging(false);</code></pre>
         <pre><code>reportRalphStatus("Ralph", "implement", 3, 10, 45, true, 12000, 1800, 640, 0.02);</code></pre>
 
         <h2>12.24 Web UI Functions (Moved)</h2>
-        <p>Web UI helper functions are documented in <a href="16-web-ui.html">19. Web UI Server Components</a> to keep this chapter focused on general-purpose built-ins.</p>
+        <p>Web UI helper functions are documented in <a href="16-web-ui.html">20. Web UI Server Components</a> to keep this chapter focused on general-purpose built-ins.</p>
         <ul>
             <li>Server component helpers: <code>renderTemplate</code>, <code>componentFragment</code>, <code>componentLiveEmit</code>, <code>componentState*</code> (including <code>componentStatePin</code> / <code>componentStateUnpin</code>), <code>onAgentProgress</code> (handler or live channel string), and <code>clearAgentProgress</code></li>
             <li>Server UI framework: <code>ui.mount</code>, <code>ui.render</code>, <code>ui.dispatchEvent</code>, <code>ui.state</code>, <code>ui.getState</code>, <code>ui.setState</code>, <code>ui.pinState</code>, <code>ui.unpinState</code>, <code>ui.configure</code>, template helpers (<code>ui.template</code>, <code>ui.partial</code>, <code>ui.layout</code>, <code>ui.renderList</code>, <code>ui.crudModel</code>, <code>ui.crudControls</code>), and UI controls (including <code>ui.dataGrid</code> and <code>ui.treeView</code>)</li>
-            <li>Template helpers support escaped interpolation <code>{{key}}</code>, raw interpolation <code>{{{key}}}</code>, and blocks (<code>{{#if}}</code>, <code>{{#each}}</code>) as documented in chapter 19.</li>
+            <li>Template helpers support escaped interpolation <code>{{key}}</code>, raw interpolation <code>{{{key}}}</code>, and blocks (<code>{{#if}}</code>, <code>{{#each}}</code>) as documented in chapter 20.</li>
         </ul>
         <h2 id="optional-pack-builtins">12.25 Optional packs (not in core)</h2>
         <p>Core <code>BuiltInRegistry</code> lists only open-source core symbols. Domain-specific builtins may ship in separately distributed packs; load them with <code>loadNativeModule(...)</code> and ship any required assemblies beside your app. Core does not auto-register pack globals.</p>

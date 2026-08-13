@@ -17,6 +17,7 @@ dotnet test MaldaLang.Tests --filter "FullyQualifiedName~ReferenceManual"
 | `ReferenceManualContentGuardTests.EveryRegistryBuiltIn_IsMentionedSomewhereInTheManual` | Every `BuiltInRegistry` name appears somewhere in the manual |
 | `ReferenceManualContentGuardTests.InternalLinks_ResolveToExistingPages` | No `href` points at a missing chapter file |
 | `ReferenceManualContentGuardTests.SectionNumbers_AreUniqueWithinEachChapter` | No chapter reuses a section number such as two `35.5` headings |
+| `ReferenceManualContentGuardTests.WebUiChapter_NamesEveryRegisteredControlType` | Every `UiControlSpecRegistry` control type appears as `ui.<type>` in `16-web-ui.html` |
 | `ReferenceManualContentGuardTests.NavigationFallback_MatchesChaptersJson` | `FALLBACK_NAV_ITEMS` in `navigation.js` matches `chapters.json` |
 | `ReferenceManualRunnableSnippetTests` | Every snippet marked runnable actually runs and prints what the manual claims |
 

@@ -19,7 +19,7 @@
         <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>19. Web UI Overview</span></div>
         <h1>19. Web UI Overview</h1>
 
-        <p>MALDA supports more than one way to build user interfaces. The three models below share HTTP and routing concepts but target different runtimes and delivery styles. Start here before diving into a specific chapter.</p>
+        <p>MALDA supports more than one way to build user interfaces. The models below share HTTP and routing concepts but target different runtimes and delivery styles. Start here before diving into a specific chapter. Prefer <strong>one model per surface</strong> (IDE <code>UI1002</code> when a file mixes <code>@PAGE</code>/<code>@AIPAGE</code> with <code>ui.mount</code>/<code>ui.render</code>).</p>
 
         <div class="info-box">
             <strong>Full-stack context:</strong> For how UI, API, database, and agents fit together, see <a href="30-full-stack-development.html">31. Full-Stack Development with MALDA</a>.
@@ -36,10 +36,16 @@
                 <th>Chapter</th>
             </tr>
             <tr>
-                <td><strong>Server components</strong></td>
-                <td>MALDA-native full stack with partial page updates, forms, and live SSE refresh</td>
-                <td><code>component</code>, <code>@ACTION</code>, <code>@LIVE</code>, <code>ui.*</code>, <code>componentState*</code></td>
-                <td><a href="16-web-ui.html">20. Web UI Server Components</a></td>
+                <td><strong>HTML fragment components</strong></td>
+                <td>Form and list pages that return HTML strings, with targeted fragment updates and optional SSE</td>
+                <td><code>component</code>, <code>@ACTION</code>, <code>@LIVE</code>, <code>componentFragment</code>, <code>componentState*</code></td>
+                <td><a href="16-web-ui.html">20. Web UI Server Components</a> (§ 20.2)</td>
+            </tr>
+            <tr>
+                <td><strong>Server-driven <code>ui.*</code> trees</strong></td>
+                <td>Incremental patch UI hosted by UIHost; controls are node trees, not HTML strings</td>
+                <td><code>ui.button(props, …)</code>, <code>ui.mount</code> / <code>ui.render</code>, <code>ui.state</code></td>
+                <td><a href="16-web-ui.html">20. Web UI Server Components</a> (§ 20.3)</td>
             </tr>
             <tr>
                 <td><strong>HttpServer pages</strong></td>
@@ -57,11 +63,18 @@
 
         <h2>19.2 Decision guide</h2>
 
-        <h3>Pick server components when…</h3>
+        <h3>Pick HTML fragment components when…</h3>
         <ul>
             <li>You want server-rendered HTML with targeted fragment updates instead of full page reloads.</li>
             <li>Forms post to <code>@ACTION</code> handlers and you need <code>@LIVE</code> push updates.</li>
-            <li>You are building a MALDA-native app and can keep UI logic on the server.</li>
+            <li>You already think in HTML templates and <code>componentFragment(targetId, html)</code>.</li>
+        </ul>
+
+        <h3>Pick server-driven <code>ui.*</code> trees when…</h3>
+        <ul>
+            <li>You want incremental patches (<code>ui.mount</code> / <code>ui.render</code>) instead of HTML strings.</li>
+            <li>You compose controls as <code>ui.control(props, children?, key?)</code> and keep state in <code>ui.state</code>.</li>
+            <li>You will use the embedded UIHost (a program that calls <code>ui.mount</code> can start it). Do not pass HTML into <code>ui.mount</code>.</li>
         </ul>
 
         <h3>Pick HttpServer / @PAGE when…</h3>
@@ -84,18 +97,18 @@
                     │         MALDA Web UI choices          │
                     └─────────────────────────────────────┘
                                       │
-          ┌───────────────────────────┼───────────────────────────┐
-          ▼                           ▼                           ▼
-   Server components            HttpServer / @PAGE           Browser JS backend
-   (server HTML +              (full pages + AI HTML)        (transpile to JS +
-    fragments + SSE)                                          dom.* / canvas)
-          │                           │                           │
-          └───────────────────────────┴───────────────────────────┘
+     ┌───────────────┬────────────────┼────────────────┬────────────────┐
+     ▼               ▼                ▼                ▼
+ HTML fragments   ui.* trees     HttpServer / @PAGE   Browser JS
+ (component +     (mount/render  (full pages +        (transpile +
+  ACTION + LIVE)   + UIHost)      AI HTML)             dom.* / canvas)
+     │               │                │                │
+     └───────────────┴────────────────┴────────────────┘
                                       │
                               HTTP / REST API layer
                          (see REST API + REST Web Client)</code></pre>
 
-        <p>You can combine models in one product: for example, <code>@PAGE</code> for marketing routes, server components for an authenticated app shell, and a browser JS bundle for a interactive widget. Keep API boundaries explicit—see <a href="17-rest-api.html">23. REST API Server</a> for JSON endpoints that any UI model can call.</p>
+        <p>You can combine models in one product when boundaries are explicit: for example, <code>@PAGE</code> for marketing routes, a <code>ui.*</code> app shell, and a browser JS bundle for an interactive widget. See <a href="17-rest-api.html">23. REST API Server</a> for JSON endpoints that any UI model can call.</p>
 
         <h2>19.4 Runtime boundary reminder</h2>
         <ul>
@@ -108,7 +121,7 @@
         <div class="see-also">
             <h3>See Also</h3>
             <ul>
-                <li><a href="16-web-ui.html">20. Web UI Server Components</a> - Components, actions, live updates</li>
+                <li><a href="16-web-ui.html">20. Web UI Server Components</a> - HTML fragments and <code>ui.*</code> trees</li>
                 <li><a href="16-http-server-html-ui.html">21. HttpServer &amp; HTML UI Generation</a> - @PAGE, @AIPAGE, HTML cache</li>
                 <li><a href="16-browser-javascript-backend.html">22. Browser JavaScript UI Backend</a> - JS transpile and dom.*</li>
                 <li><a href="30-full-stack-development.html">31. Full-Stack Development with MALDA</a> - End-to-end architecture</li>

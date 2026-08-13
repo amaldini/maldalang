@@ -332,12 +332,24 @@ function ragAnswer(question, client) -> Answer {
 }
 // var result = await ragAnswer(question, client);</code></pre>
         <p>See also: <a href="07-expressions.html">6. Expressions</a> (pipe operator), <a href="11-built-in-functions.html">12. Built-in Functions</a> (AI pipeline helpers), <a href="06-vectordb.html">14. VectorDB</a> (<code>asRetriever</code>), and <a href="09-functions.html">8. Functions</a> (schema declarations).</p>
+        <h2>30.18 Server-driven UI (<code>ui.*</code>)</h2>
+        <p>Language API: <a href="16-web-ui.html">20. Web UI Server Components</a> (start at <a href="16-web-ui-hub.html">19. Web UI Overview</a>). Offline samples under <code>Examples/Web/</code>:</p>
+        <ul>
+            <li><code>ui_event_loop.malda</code> — correct mount → dispatch → pull → setState → render loop</li>
+            <li><code>ui_counter_dashboard.malda</code> — counter plus lifecycle hooks and snapshot</li>
+            <li><code>ui_state_lifecycle.malda</code> — peek vs get-or-create, pin, poison defaults</li>
+            <li><code>ui_form_workflow.malda</code> / <code>ui_controls_showcase_minimal.malda</code> — forms and control catalog</li>
+            <li><code>ui_resync_flow.malda</code> — snapshot / resync when trees diverge</li>
+        </ul>
+        <pre><code>dotnet run --project MaldaLang -- Examples/Web/ui_event_loop.malda
+dotnet run --project MaldaLang -- Examples/Web/ui_counter_dashboard.malda</code></pre>
         <div class="see-also">
             <h3>See Also</h3>
             <ul>
                 <li><a href="10-classes-objects.html">10. Classes & Objects</a> - More class examples</li>
                 <li><a href="06-vectordb.html">14. VectorDB</a> - Vector search and retriever API</li>
                 <li><a href="11-built-in-functions.html">12. Built-in Functions</a> - <code>loadDocuments</code>, <code>indexInto</code>, <code>runPrompt</code>, <code>parseJson</code></li>
+                <li><a href="16-web-ui.html">20. Web UI Server Components</a> - <code>ui.*</code> trees, fragments, and control props</li>
             </ul>
         </div>
         <div class="nav-footer">

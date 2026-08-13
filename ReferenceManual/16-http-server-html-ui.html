@@ -24,21 +24,22 @@
 
         <h2>21.1 Chapter Map</h2>
         <ul>
-            <li><strong>20.1</strong> <code>HttpServer</code> lifecycle and route model</li>
-            <li><strong>20.2</strong> Request and response objects</li>
-            <li><strong>20.3</strong> Dynamic pages with <code>@PAGE</code></li>
-            <li><strong>20.4</strong> AI-generated pages with <code>@AIPAGE</code></li>
-            <li><strong>20.5</strong> <code>@GET</code>/<code>@POST</code> in page-hosting flows</li>
-            <li><strong>20.6</strong> Redirects and multi-step page flows</li>
-            <li><strong>20.7</strong> HTML generation helpers and caching</li>
-            <li><strong>20.8</strong> Request-to-render lifecycle and production notes</li>
-            <li><strong>20.9</strong> Testing and troubleshooting</li>
+            <li><strong>21.2</strong> <code>HttpServer</code> lifecycle and route model</li>
+            <li><strong>21.3</strong> Request and response objects</li>
+            <li><strong>21.4</strong> Dynamic pages with <code>@PAGE</code></li>
+            <li><strong>21.5</strong> AI-generated pages with <code>@AIPAGE</code></li>
+            <li><strong>21.6</strong> <code>@GET</code>/<code>@POST</code> in page-hosting flows</li>
+            <li><strong>21.7</strong> Redirects and multi-step page flows</li>
+            <li><strong>21.8</strong> HTML generation helpers and caching</li>
+            <li><strong>21.9</strong> Request-to-render lifecycle and production notes</li>
+            <li><strong>21.10</strong> Production hardening</li>
+            <li><strong>21.11</strong> Testing and troubleshooting</li>
         </ul>
 
         <h2>21.2 HttpServer Class</h2>
         <p>The <code>HttpServer</code> class provides a built-in HTTP server for static assets, server-generated HTML, AI-generated pages, form handling, and route handlers. It works well for route-first applications where each request returns a full document or a targeted response.</p>
 
-        <h3>20.2.1 Constructor</h3>
+        <h3>21.2.1 Constructor</h3>
         <pre><code>var server = new HttpServer(port);
 // OR
 var server = new HttpServer(port, webDirectory);  // Custom web directory
@@ -48,7 +49,7 @@ var server = new HttpServer(port, webDirectory, pathBase, host);</code></pre>
         <p>Bind host defaults to <code>localhost</code> (loopback only). Pass <code>host</code> as the optional fourth argument, call <code>setHost(host)</code> before <code>start()</code>, or set the <code>MALDA_HTTP_HOST</code> environment variable. Use <code>0.0.0.0</code> or <code>*</code> to listen on all interfaces (same prefix rules as <code>RestServer</code>). The current bind host is available as the <code>host</code> property.</p>
         <p>HTTPS is optional and cross-platform. Call <code>enableHttps(certPath, password?)</code> before <code>start()</code> with a <code>.pfx</code>/<code>.p12</code> file, or a PEM <code>.pem</code>/<code>.crt</code> (private key beside it as <code>.key</code>). Environment alternatives: <code>MALDA_HTTP_HTTPS=1</code>, <code>MALDA_HTTP_CERT</code>, and optional <code>MALDA_HTTP_CERT_PASSWORD</code>. Properties: <code>https</code>, <code>certPath</code>. TLS is terminated by Kestrel; the existing request pipeline still runs on a loopback <code>HttpListener</code>.</p>
 
-        <h3>20.2.2 Core methods</h3>
+        <h3>21.2.2 Core methods</h3>
         <ul>
             <li><code>start()</code>: Start the server and scan for decorated routes.</li>
             <li><code>stop()</code>: Stop the server gracefully.</li>
@@ -64,7 +65,7 @@ var server = new HttpServer(port, webDirectory, pathBase, host);</code></pre>
             <li><code>setRateLimit(limit, windowSeconds, keyStrategy?)</code> / <code>disableRateLimit()</code>: Toggle endpoint rate limiting.</li>
         </ul>
 
-        <h3>20.2.3 Minimal host example</h3>
+        <h3>21.2.3 Minimal host example</h3>
         <pre><code>var server = new HttpServer(8080);
 server.start();
 
@@ -119,7 +120,7 @@ function homePage() {
             <li>If no model is configured, the UI generation agent uses the default local LLM (Qwen/Qwen2.5-0.5B-Instruct, downloaded as a GGUF build from Hugging Face); you can also provide an <code>OpenRouterClient</code> and <code>Agent</code>.</li>
         </ul>
 
-        <h3>20.5.1 Complete AI form example</h3>
+        <h3>21.5.1 Complete AI form example</h3>
         <pre><code>var server = new HttpServer(8080);
 
 @AIPAGE("/", "Contact form with name, email, and message fields")
@@ -145,7 +146,7 @@ server.start();</code></pre>
         <h2>21.6 GET/POST Routes in Page-Hosting Flows</h2>
         <p><code>HttpServer</code> can host <code>@GET</code> and <code>@POST</code> routes alongside pages. That is useful for AJAX handlers, small JSON endpoints, or Server-Sent Events used by a page. For full API design guidance, advanced validation, and endpoint organization, use <a href="17-rest-api.html">REST API Server</a> as the primary reference.</p>
 
-        <h3>20.6.1 GET handlers</h3>
+        <h3>21.6.1 GET handlers</h3>
         <pre><code>@GET("/api/users")
 function getUsers() {
     return {"status": 200, "users": ["Alice", "Bob", "Charlie"]};
@@ -161,7 +162,7 @@ function getEvents() {
             <li>Use path parameters such as <code>@GET("/api/users/{id}")</code> when needed.</li>
         </ul>
 
-        <h3>20.6.2 POST handlers</h3>
+        <h3>21.6.2 POST handlers</h3>
         <pre><code>@POST("/submit")
 function handleSubmit(body) {
     print("Name: " + body.name);
@@ -208,7 +209,7 @@ server.use(requireAuth, { "except": ["/", "/login"] });</code></pre>
         <h2>21.8 HTML Generation Helpers</h2>
         <p>MALDA includes helper utilities for generated HTML and server-rendered UI prototypes.</p>
 
-        <h3>20.8.1 HTMLCache Class</h3>
+        <h3>21.8.1 HTMLCache Class</h3>
         <p>The <code>HTMLCache</code> class stores generated HTML to reduce repeated LLM work and improve response times.</p>
         <pre><code>var cache = new HTMLCache(cacheDirectory?, maxSize?, expirationHours?);</code></pre>
         <ul>
@@ -218,20 +219,20 @@ server.use(requireAuth, { "except": ["/", "/login"] });</code></pre>
             <li><code>clear()</code>: Clear all cached entries.</li>
         </ul>
 
-        <h3>20.8.2 extractHTML Function</h3>
+        <h3>21.8.2 extractHTML Function</h3>
         <p><code>extractHTML(markdown)</code> extracts HTML from markdown code fences or returns HTML as-is.</p>
         <pre><code>var html = extractHTML(markdown);</code></pre>
 
-        <h3>20.8.3 markdownToHtml Function</h3>
+        <h3>21.8.3 markdownToHtml Function</h3>
         <p><code>markdownToHtml(markdown)</code> converts Markdown to an HTML fragment (headings, emphasis, lists, tables, fenced code, and similar). Raw HTML tags in the input are disabled so untrusted model output is safer to embed in a page. Returns a string; wrap it in your own document chrome.</p>
         <pre><code>var body = markdownToHtml("**Hello** and a table:\n\n| A | B |\n|---|---|\n| 1 | 2 |");
 return "&lt;html&gt;&lt;body class='md'&gt;" + body + "&lt;/body&gt;&lt;/html&gt;";</code></pre>
 
-        <h3>20.8.4 generateUI Function</h3>
+        <h3>21.8.4 generateUI Function</h3>
         <p><code>generateUI</code> is a convenience helper for prompt-driven HTML generation with optional caching and a custom agent.</p>
         <pre><code>var html = generateUI(description, cache?, agent?);</code></pre>
 
-        <h3>20.8.5 ui.generate Function</h3>
+        <h3>21.8.5 ui.generate Function</h3>
         <p>Use <code>ui.generate</code> when AI should return a structured server UI tree instead of an HTML string.</p>
         <pre><code>var tree = ui.generate("Dashboard with title, filter row, and data grid", uiAgent, cache);
 var envelope = ui.mountEnvelope(tree, "dashboard-session");

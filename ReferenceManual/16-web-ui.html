@@ -19,20 +19,24 @@
         <h1>20. Web UI Server Components</h1>
         <p>MALDA includes native support for server-rendered UI using components, fragments, live updates, and the <code>ui.*</code> runtime.</p>
         <div class="info-box">
-            <strong>Start here:</strong> Read <a href="16-web-ui-hub.html">19. Web UI Overview</a> to choose between server components, HttpServer pages, and browser JavaScript. This chapter covers the <strong>component-oriented server UI model</strong>: <code>component</code>, <code>@ACTION</code>, <code>@LIVE</code>, <code>componentState*</code>, and <code>ui.*</code>.
+            <strong>Start here:</strong> Read <a href="16-web-ui-hub.html">19. Web UI Overview</a> to choose a UI model. This chapter covers two related but distinct <strong>server-side</strong> APIs. Do not pass HTML strings into <code>ui.mount</code> / <code>ui.render</code>, and do not treat a <code>@PAGE</code> return value as a <code>ui.*</code> tree (IDE <code>UI1002</code>).
+            <ul>
+                <li><strong>HTML fragments (20.2):</strong> <code>component</code>, <code>@ACTION</code>, <code>@LIVE</code>, <code>componentFragment</code> — form/list pages that return HTML and optional SSE.</li>
+                <li><strong>Server-driven trees (20.3):</strong> <code>ui.button(props, children?, key?)</code>, <code>ui.mount</code> / <code>ui.render</code> — incremental patches hosted by UIHost.</li>
+            </ul>
         </div>
         <h2>20.1 Chapter Map</h2>
         <ul>
-            <li><strong>19.1</strong> Server components and migration path</li>
-            <li><strong>19.2</strong> Web UI helper API reference (<code>component*</code> and <code>ui.*</code>)</li>
-            <li><strong>19.2.4.2-19.2.4.3</strong> Control props reference and usage examples</li>
-            <li><strong>19.2.6-19.2.10</strong> Event handling, form validation, composition, state, and routing</li>
-            <li><strong>19.2.11-19.2.13</strong> Error/security notes, styling guidance, and common pitfalls</li>
-            <li><strong>19.4-19.6</strong> Lifecycle, production hardening, and troubleshooting for server components</li>
-            <li><strong>19.7</strong> Related chapters for <code>HttpServer</code> and browser JavaScript UI</li>
+            <li><strong>20.2</strong> HTML fragment components and migration from <code>@PAGE</code></li>
+            <li><strong>20.3</strong> Web UI helper API (<code>component*</code> and <code>ui.*</code>)</li>
+            <li><strong>20.3.3</strong> Runtime, lifecycle, event loop, and how a <code>ui.*</code> session is hosted</li>
+            <li><strong>20.3.4-20.3.7</strong> Control catalog, styling, data controls, and props reference</li>
+            <li><strong>20.3.8-20.3.15</strong> Events, validation, composition, state, routing, security, styling, pitfalls</li>
+            <li><strong>20.4-20.6</strong> Request lifecycle, production hardening, and troubleshooting</li>
+            <li><strong>20.7</strong> Related chapters and runnable examples</li>
         </ul>
-        <h2>20.2 Server Components</h2>
-        <p>This section introduces a small, explicit component model for MALDA-native full-stack apps. It is additive and backward-compatible with existing <code>@PAGE</code>/<code>@AIPAGE</code> routes.</p>
+        <h2>20.2 HTML Fragment Components</h2>
+        <p>This section is the <strong>HTML fragment</strong> model: the server returns HTML strings (full page or a targeted fragment). It is additive and backward-compatible with existing <code>@PAGE</code>/<code>@AIPAGE</code> routes. For node trees and <code>ui.mount</code>, skip to 20.3.</p>
         <p><strong>Mental model:</strong> render on the server, mutate via action endpoints, optionally push updates through a live channel.</p>
         <ul>
             <li><code>component Name(...) { ... }</code> - component entry function (syntax sugar for <code>@COMPONENT()</code>)</li>
@@ -42,7 +46,7 @@
             <li><code>componentFragment(targetId, html)</code> - tells the client which DOM target should be replaced</li>
             <li><code>componentLiveEmit(channel, payload, eventType?)</code> - broadcasts live events to connected SSE clients</li>
         </ul>
-        <h3>19.1.1 Minimal server-side example</h3>
+        <h3>20.2.1 Minimal server-side example</h3>
         <pre><code>component ItemBoard() {
     var items = componentStateGet("board", "items", []);
     var list = "";
@@ -67,7 +71,7 @@ function addItem(body) {
 function itemsLive() {
     return {"sse": true};
 }</code></pre>
-        <h3>19.1.2 Tiny browser integration example</h3>
+        <h3>20.2.2 Tiny browser integration example</h3>
         <pre><code>&lt;form id="item-form"&gt;
   &lt;input name="title" /&gt;
   &lt;button type="submit"&gt;Add&lt;/button&gt;
@@ -85,7 +89,7 @@ document.getElementById("item-form").addEventListener("submit", async (e) =&gt; 
 const es = new EventSource("/items/live");
 es.onmessage = (evt) =&gt; console.log("live update", evt.data);
 &lt;/script&gt;</code></pre>
-        <h3>19.1.3 Fragment contract</h3>
+        <h3>20.2.3 Fragment contract</h3>
         <p>When an <code>@ACTION</code> returns <code>componentFragment(targetId, html)</code>, the HTTP response includes:</p>
         <ul>
             <li><code>X-Malda-Fragment: true</code></li>
@@ -93,7 +97,7 @@ es.onmessage = (evt) =&gt; console.log("live update", evt.data);
             <li>Body containing the fragment HTML</li>
         </ul>
         <p>The built-in AJAX helper checks these headers and updates only the target element. If headers are missing, it falls back to full-page replacement.</p>
-        <h3>19.1.4 LIVE channel subscription</h3>
+        <h3>20.2.4 LIVE channel subscription</h3>
         <p>Use query parameter <code>?channel=...</code> on LIVE endpoints to scope events:</p>
         <pre><code>// Client subscribes only to item events
 var es = new EventSource("/items/live?channel=items");
@@ -101,7 +105,7 @@ var es = new EventSource("/items/live?channel=items");
 // Server emits only to channel "items"
 componentLiveEmit("items", {"count": 8}, "item-added");</code></pre>
         <p>Multiple channels can be subscribed as comma-separated values, for example <code>?channel=items,alerts</code>.</p>
-        <h3>19.1.5 Server UI protocol envelopes</h3>
+        <h3>20.2.5 Server UI protocol envelopes</h3>
         <p>The server UI host uses versioned envelopes for mount/patch/event transport. Important fields include:</p>
         <ul>
             <li><code>version</code> - protocol version string.</li>
@@ -113,10 +117,10 @@ componentLiveEmit("items", {"count": 8}, "item-added");</code></pre>
         <div class="info-box">
             <strong>Implementation notes:</strong> Runtime kernel (<code>UiNode</code>, diff, sessions), host endpoints, and env vars are documented in <a href="../docs/ui-framework.md"><code>docs/ui-framework.md</code></a>. This chapter stays focused on the language API.
         </div>
-        <h3>19.1.6 Component API V2 direction</h3>
+        <h3>20.2.6 Component API V2 direction</h3>
         <p>The server UI framework now includes a broader component set for forms, navigation, data, and feedback. Prefer the <code>ui.*</code> API in this chapter for component-centric server UI flows, and keep <code>@PAGE</code>/<code>@AIPAGE</code> for route-first HTML generation patterns.</p>
         <p>Advanced controls include <code>ui.dataGrid</code> (sorting/filtering/pagination, row selection, viewport virtualization events, drag/drop hooks) and <code>ui.treeView</code> (hierarchical nodes, expand/collapse, keyboard-friendly selection, optional lazy loading). In both controls, keep business state server-side and use client-side transient state for scroll/viewport responsiveness.</p>
-        <h3>Migration guide: @PAGE to component</h3>
+        <h3>20.2.7 Migration guide: @PAGE to component</h3>
         <ol>
             <li>Keep your existing <code>@PAGE</code> route as-is for compatibility.</li>
             <li>Move reusable rendering logic into a new <code>component</code> function.</li>
@@ -125,8 +129,8 @@ componentLiveEmit("items", {"count": 8}, "item-added");</code></pre>
             <li>Add <code>@LIVE</code> + <code>componentLiveEmit(...)</code> if the page needs push updates.</li>
         </ol>
         <h2>20.3 Web UI Helper API Reference</h2>
-        <p>This section centralizes the Web UI built-ins that were previously split across chapters.</p>
-        <h3>19.2.1 Server component helper functions</h3>
+        <p>This section is the language API for both fragment helpers (<code>componentFragment</code>, templates, CRUD HTML) and <strong>server-driven <code>ui.*</code> trees</strong> (<code>ui.mount</code>, controls, event loop). Shared state helpers (<code>componentState*</code> / <code>ui.state</code>) apply to both.</p>
+        <h3>20.3.1 Server component helper functions</h3>
         <ul>
             <li><code>renderTemplate(template, model?)</code> - Token replacement using <code>{{key}}</code> placeholders.</li>
             <li><code>componentFragment(targetId, html)</code> - Returns a standardized fragment envelope for partial DOM updates.</li>
@@ -143,7 +147,7 @@ function addItem(body) {
 }
 
 componentLiveEmit("items", {"count": 7}, "item-added");</code></pre>
-        <h3>19.2.1.1 UI-native template workflow (transparent UX)</h3>
+        <h3>20.3.1.1 UI-native template workflow (transparent UX)</h3>
         <p>For larger apps, use the UI template helpers to keep HTML in external files and MALDA logic in code:</p>
         <ul>
             <li><code>ui.template(source, model?, options?)</code> - render a template file (or inline source) with interpolation and block helpers.</li>
@@ -193,7 +197,7 @@ return ui.layout(
         <p><strong>Compatibility:</strong> pass <code>{"compatRaw": true}</code> to <code>ui.template(..., ..., options)</code> to preserve legacy raw behavior for <code>{{key}}</code> during migration.</p>
         <p><strong>Caching:</strong> template files are cached by default. Pass <code>{"cache": false}</code> as the third argument to <code>ui.template</code> for development-time reload behavior.</p>
         <p><strong>Recommended structure:</strong> keep template files under a project-local <code>templates/</code> directory (for example, <code>templates/layout.html</code>) and reference them by path. Runnable Web samples live under <code>Examples/Web/</code> (for example <code>ui_form_workflow.malda</code> and <code>ui_controls_showcase_minimal.malda</code>).</p>
-        <h3>19.2.1.2 Schema-driven CRUD helper pattern</h3>
+        <h3>20.3.1.2 Schema-driven CRUD helper pattern</h3>
         <p>For CRUD pages that share the same UI skeleton (filters, add/edit dialogs, list controls), use the built-in schema pipeline:</p>
         <ul>
             <li><code>ui.crudModel(schema, sessionId?, queryParams?, lookups?)</code> - builds the controls model consumed by shared CRUD templates.</li>
@@ -219,7 +223,7 @@ var controlsHtml = ui.crudControls(normalized, sessionId, queryParams, lookups);
         <p><strong>Overrides:</strong> pass <code>{"templatePath": "...", "templateBasePath": "...", "cache": false}</code> in <code>ui.crudControls(..., options)</code> when you need a different controls template, base path, or cache behavior.</p>
         <p><strong>Migration note:</strong> if your app currently normalizes CRUD schema fields manually, migrate that logic to <code>ui.crudSchema</code> to keep schema defaults consistent across apps.</p>
 
-        <h4>19.2.1.3 CRUD schema reference</h4>
+        <h4>20.3.1.3 CRUD schema reference</h4>
         <p>The object passed to <code>ui.crudSchema</code>, <code>ui.crudModel</code>, and <code>ui.crudControls</code> may contain the following properties. Values are copied into the model used to render the controls template; missing properties get defaults as described.</p>
 
         <p><strong>Top-level schema properties</strong></p>
@@ -279,7 +283,7 @@ var controlsHtml = ui.crudControls(normalized, sessionId, queryParams, lookups);
 
         <p><strong>Template resolution:</strong> When calling <code>ui.crudControls(schema, ...)</code>, the controls template can be overridden per call via <code>options.templatePath</code>. The base path for dialog/lookup templates can be overridden via <code>options.templateBasePath</code>. Schema values <code>templateBasePath</code> and <code>controlsTemplatePath</code> (or <code>controlsTemplate</code>) are used when options do not provide overrides.</p>
 
-        <h3>19.2.2 Server component state helpers</h3>
+        <h3>20.3.2 Server component state helpers</h3>
         <ul>
             <li><code>componentStateGet(componentId, key, defaultValue?, scope?)</code> — peek (default is not written)</li>
             <li><code>componentStateSet(componentId, key, value, scope?)</code></li>
@@ -304,7 +308,7 @@ componentStateConfigure(512, 128, 1800000);
 // Process-lifetime shared data (catalog, boot config): pin after write
 componentStateSet("brain", "catalog", catalog, "ask-shared");
 componentStatePin("brain", "ask-shared");</code></pre>
-        <h3>19.2.3 Server UI runtime and lifecycle APIs</h3>
+        <h3>20.3.3 Server UI runtime and lifecycle APIs</h3>
         <ul>
             <li>Render lifecycle: <code>ui.mount(rootNode, sessionId?)</code>, <code>ui.render(rootNode, sessionId?)</code></li>
             <li>Envelope helper: <code>ui.mountEnvelope(rootNode, sessionId?, options?)</code> for mount + snapshot + resync in one call.</li>
@@ -338,7 +342,53 @@ return ui.redirectWithSession("/web/items", body, "items-ui");</code></pre>
             <li>Removed component: <code>onUnmount</code>, then <code>onDispose</code></li>
             <li>Session disposal/expiry: tracked components emit <code>onDispose</code></li>
         </ul>
-        <h3>19.2.4 UI control catalog</h3>
+        <p>Subscribe by calling the matching helper with the component id (and optional session). That registers the hook; the payload still arrives on <code>ui.pullEvent</code> as <code>type = "lifecycle"</code>. Offline showcase: <code>Examples/Web/ui_counter_dashboard.malda</code>.</p>
+        <pre><code>ui.onMount("CounterRoot", sessionId);
+ui.onUpdate("CounterRoot", sessionId);
+ui.onUnmount("CounterRoot", sessionId);</code></pre>
+        <h4>20.3.3.1 How a ui.* session is hosted</h4>
+        <p>A program that calls <code>ui.mount</code> or <code>ui.mountEnvelope</code> can start the embedded UIHost (CLI and Desktop). That host is <em>not</em> <code>HttpServer</code> / <code>@PAGE</code> — those stay in <a href="16-http-server-html-ui.html">21. HttpServer &amp; HTML UI Generation</a>.</p>
+        <ul>
+            <li>The browser client is <code>malda-ui-client.js</code>. The session key is the <code>sessionId</code> you pass to <code>ui.mount</code>.</li>
+            <li>Typical endpoints: WebSocket <code>/ui/ws/{sessionId}</code>, plus HTTP mount/patch forwarding under <code>/ui/mount/{sessionId}</code> and <code>/ui/patch/{sessionId}</code>.</li>
+            <li>Optional environment: <code>MALDA_UI_AUTH_TOKEN</code> (shared secret) and <code>MALDA_UI_ALLOWED_ORIGIN</code> (CORS).</li>
+            <li>Patch protocol, envelope fields, and host internals: <a href="../docs/ui-framework.md"><code>docs/ui-framework.md</code></a>.</li>
+        </ul>
+        <p>To try a tree without a browser, run the offline loop below (or <code>Examples/Web/ui_event_loop.malda</code>). AI-generated trees use <code>ui.generate</code> — see <a href="16-http-server-html-ui.html">21.8.5</a>.</p>
+        <h4>20.3.3.2 Event loop (mount → pull → render)</h4>
+        <p>After each client event: <code>dispatchEvent</code> (the host enqueues; examples may simulate) → <code>pullEvent</code> → update state → rebuild the tree → <code>ui.render</code>. Skipping <code>pullEvent</code> leaves the queue full and the UI looks stuck (IDE <code>UI1001</code>).</p>
+        <pre><code data-run="true" data-expect="mount\npatch\n1">var sessionId = "rm-event-loop";
+var count = ui.state("LoopRoot", "count", 0, sessionId);
+
+function buildView(value) {
+    return ui.column(
+        {"componentId": "LoopRoot"},
+        [
+            ui.text({"value": "count=" + string(value)}),
+            ui.button({"label": "Inc", "onClick": "increment"})
+        ]
+    );
+}
+
+var mounted = ui.mount(buildView(count), sessionId);
+print(mounted.type);
+
+ui.dispatchEvent(
+    {"type": "click", "targetPath": "/1/", "payload": {"action": "increment"}},
+    sessionId,
+    1
+);
+
+var evt = ui.pullEvent(sessionId);
+if (evt != null) {
+    count = count + 1;
+    ui.setState("LoopRoot", "count", count, sessionId);
+}
+
+var patched = ui.render(buildView(count), sessionId);
+print(patched.type);
+print(count);</code></pre>
+        <h3>20.3.4 UI control catalog</h3>
         <p>UI controls follow a consistent signature: <code>ui.control(props, children?, key?)</code>.</p>
         <ul>
             <li>Layout: <code>ui.row</code>, <code>ui.column</code>, <code>ui.stack</code>, <code>ui.spacer</code>, <code>ui.panel</code></li>
@@ -349,7 +399,7 @@ return ui.redirectWithSession("/web/items", body, "items-ui");</code></pre>
             <li>Composition: <code>ui.slot</code>, <code>ui.withSlot</code>, <code>ui.when</code>, <code>ui.choose</code>, <code>ui.each</code>, <code>ui.template</code>, <code>ui.partial</code>, <code>ui.layout</code>, <code>ui.renderList</code>, <code>ui.crudModel</code>, <code>ui.crudControls</code>, <code>ui.crudSchema</code>, <code>ui.mountEnvelope</code></li>
         </ul>
         <p><strong><code>ui.datePicker(props, children?, key?)</code></strong> renders a native date (or date+time) input. Props: <code>name</code>, <code>value</code>, <code>defaultValue</code>, <code>placeholder</code>, <code>disabled</code>, <code>includeTime</code>. Set <code>includeTime</code> to true for a date-and-time picker. Use ISO date strings for <code>value</code>/<code>defaultValue</code>: <code>YYYY-MM-DD</code> or <code>YYYY-MM-DDTHH:mm</code>. Events: <code>onChange</code>, <code>onInput</code>.</p>
-        <h3>19.2.4.1 Styling controls</h3>
+        <h3>20.3.4.1 Styling controls</h3>
         <p>Use a hybrid styling approach for Web UI controls: apply reusable design rules with <code>className</code>, and apply per-instance/dynamic tweaks with <code>style</code>.</p>
         <ul>
             <li><code>className</code>: CSS class string applied directly to the rendered element.</li>
@@ -363,7 +413,7 @@ return ui.redirectWithSession("/web/items", body, "items-ui");</code></pre>
 }, [
     ui.text({"value": "Hybrid styling example"})
 ]);</code></pre>
-        <h3>19.2.5 Advanced data controls</h3>
+        <h3>20.3.5 Advanced data controls</h3>
         <p><strong><code>ui.dataGrid(props, children?, key?)</code></strong> supports sorting/filtering/pagination, row selection, optional virtualization, and drag/drop row interaction events.</p>
         <p>Sorting by clicking column headers works with <code>sortable</code> columns. If <code>onSort</code> is provided, the grid emits sort events for server-side/state-managed sorting; otherwise the client applies local sorting using the current <code>sort</code> state.</p>
         <ul>
@@ -401,20 +451,34 @@ var tree = ui.treeView({
     "onLoadChildren": "loadTreeChildren",
     "onDrop": "moveTreeNode"
 });</code></pre>
-        <h3>19.2.4.2 Control props reference (common controls)</h3>
-        <p>Common controls share a consistent props pattern. Use these for wiring actions and styling:</p>
-        <ul>
-            <li><strong>ui.button</strong>: <code>label</code>, <code>variant</code> ("primary"|"secondary"|"danger"), <code>disabled</code>, <code>onClick</code> (action name string)</li>
-            <li><strong>ui.form</strong>: <code>componentId</code>, <code>onSubmit</code> (action name)</li>
-            <li><strong>ui.textField</strong> / <strong>ui.textArea</strong>: <code>name</code>, <code>placeholder</code>, <code>value</code>, <code>required</code>, <code>onInput</code> / <code>onChange</code></li>
-            <li><strong>ui.select</strong>: <code>name</code>, <code>value</code>, <code>options</code> (array of <code>{"label","value"}</code>), <code>onChange</code></li>
-            <li><strong>ui.modal</strong>: <code>open</code>, <code>title</code>, <code>onClose</code> (action name)</li>
-            <li><strong>ui.tabs</strong>: <code>value</code> (active tab key), children as <code>ui.panel</code> with <code>key</code></li>
-            <li><strong>ui.toast</strong>: <code>open</code>, <code>message</code>, <code>variant</code> ("success"|"warning"|"error"|"info"), <code>onClose</code></li>
-            <li><strong>ui.errorBoundary</strong>: children as fallback content when an error occurs</li>
-        </ul>
-        <p>Event props (<code>onClick</code>, <code>onSubmit</code>, <code>onChange</code>, etc.) are action-name strings included in the emitted event payload. Keep action names stable across renders so your server-side event loop can handle them consistently.</p>
-        <h3>19.2.4.3 Control usage examples</h3>
+        <h3>20.3.6 Control props reference</h3>
+        <p>Contracts below match <code>UiControlSpecRegistry</code>. Every control also accepts the shared props <code>className</code>, <code>id</code>, <code>role</code>, <code>ariaLabel</code>, <code>componentId</code>, <code>key</code>, <code>disabled</code>, and <code>style</code>. Event props are action-name strings in the emitted payload — keep those names stable across renders.</p>
+        <p><strong>Layout</strong> (<code>ui.row</code>, <code>ui.column</code>, <code>ui.stack</code>, <code>ui.spacer</code>, <code>ui.panel</code>, <code>ui.field</code>, <code>ui.drawer</code>, <code>ui.tabs</code>, <code>ui.accordion</code>, <code>ui.breadcrumbs</code>, <code>ui.list</code>, <code>ui.table</code>, <code>ui.emptyState</code>, <code>ui.badge</code>, <code>ui.alert</code>, <code>ui.progress</code>, <code>ui.skeleton</code>, <code>ui.spinner</code>, <code>ui.errorBoundary</code>, <code>ui.slot</code>, <code>ui.when</code>, <code>ui.choose</code>, <code>ui.each</code>): shared props only. <code>ui.tabs</code> commonly uses a custom <code>value</code> (active tab key) with <code>ui.panel</code> children that have a <code>key</code>.</p>
+        <table>
+            <thead>
+                <tr><th>Control</th><th>Extra props</th><th>Events</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>ui.text</code> / <code>ui.heading</code></td><td><code>value</code> (required)</td><td>—</td></tr>
+                <tr><td><code>ui.image</code></td><td><code>src</code>, <code>alt</code>, <code>width</code>, <code>height</code></td><td>—</td></tr>
+                <tr><td><code>ui.icon</code></td><td><code>name</code>, <code>size</code></td><td>—</td></tr>
+                <tr><td><code>ui.button</code></td><td><code>label</code>, <code>variant</code> (<code>primary</code>|<code>secondary</code>|<code>danger</code>)</td><td><code>onClick</code></td></tr>
+                <tr><td><code>ui.textField</code></td><td><code>name</code>, <code>value</code>, <code>defaultValue</code>, <code>placeholder</code></td><td><code>onChange</code>, <code>onInput</code></td></tr>
+                <tr><td><code>ui.textArea</code></td><td>same as textField, plus <code>rows</code></td><td><code>onChange</code>, <code>onInput</code></td></tr>
+                <tr><td><code>ui.checkbox</code> / <code>ui.switch</code></td><td><code>name</code>, <code>checked</code>, <code>defaultChecked</code>, <code>label</code></td><td><code>onChange</code></td></tr>
+                <tr><td><code>ui.select</code> / <code>ui.radioGroup</code></td><td><code>name</code>, <code>value</code>, <code>defaultValue</code>, <code>options</code> (array of <code>{"label","value"}</code>)</td><td><code>onChange</code></td></tr>
+                <tr><td><code>ui.slider</code></td><td><code>name</code>, <code>value</code>, <code>min</code>, <code>max</code>, <code>step</code></td><td><code>onChange</code>, <code>onInput</code></td></tr>
+                <tr><td><code>ui.datePicker</code></td><td><code>name</code>, <code>value</code>, <code>defaultValue</code>, <code>placeholder</code>, <code>includeTime</code> (ISO <code>YYYY-MM-DD</code> or <code>YYYY-MM-DDTHH:mm</code>)</td><td><code>onChange</code>, <code>onInput</code></td></tr>
+                <tr><td><code>ui.form</code></td><td><code>method</code>, <code>action</code> (plus shared <code>componentId</code>)</td><td><code>onSubmit</code></td></tr>
+                <tr><td><code>ui.modal</code></td><td><code>open</code>, <code>title</code></td><td><code>onClose</code></td></tr>
+                <tr><td><code>ui.toast</code></td><td><code>open</code>, <code>message</code>, <code>variant</code> (<code>success</code>|<code>warning</code>|<code>error</code>|<code>info</code>)</td><td><code>onClose</code></td></tr>
+                <tr><td><code>ui.paginator</code></td><td><code>page</code>, <code>pageSize</code>, <code>totalItems</code></td><td><code>onChange</code></td></tr>
+                <tr><td><code>ui.dataGrid</code></td><td>see 20.3.5</td><td>see 20.3.5</td></tr>
+                <tr><td><code>ui.treeView</code></td><td>see 20.3.5</td><td>see 20.3.5</td></tr>
+            </tbody>
+        </table>
+        <p>Unknown custom attributes are accepted (permissive mode). Event names that are not in the table throw at tree construction.</p>
+        <h3>20.3.7 Control usage examples</h3>
         <p>Implementation-ready snippets for common form and list patterns:</p>
         <pre><code>// Button with primary variant and action
 ui.button({"label": "Save", "variant": "primary", "onClick": "saveItem"})
@@ -458,7 +522,7 @@ ui.treeView({
 // Toast and error boundary
 ui.toast({"open": true, "message": "Saved", "variant": "success", "onClose": "dismissToast"})
 ui.errorBoundary({}, [ui.text({"value": "Something went wrong. Please try again."})])</code></pre>
-        <h3>19.2.6 Event handling patterns</h3>
+        <h3>20.3.8 Event handling patterns</h3>
         <p>Wire user interactions to server actions using consistent patterns:</p>
         <ul>
             <li><strong>onClick</strong>: button clicks and link-like triggers. Pass <code>{"action": "handlerName"}</code> in payload when dispatching.</li>
@@ -479,7 +543,7 @@ if (evt != null && evt.payload != null && evt.payload.action == "submitItem") {
     // validate/persist, then ui.setState(...) or return componentFragment(...)
 }</code></pre>
         <p>For template-based forms, use <code>method="post"</code> and <code>action="/path/..."</code> with the built-in AJAX helper. See <a href="30-full-stack-development.html">30. Full-Stack Development with MALDA</a> for end-to-end patterns.</p>
-        <h3>19.2.7 Form validation patterns and error rendering</h3>
+        <h3>20.3.9 Form validation patterns and error rendering</h3>
         <p>Validate input on the server before persisting. Return validation errors in the response and render them next to fields:</p>
         <ul>
             <li>Use <code>required</code> on inputs for mandatory fields; HTML5 validation runs before submit.</li>
@@ -509,23 +573,25 @@ function addItem(body) {
     return componentFragment("item-list", "&lt;ul&gt;&lt;li&gt;" + body.title + "&lt;/li&gt;&lt;/ul&gt;");
 }</code></pre>
         <p><strong>Security:</strong> Always escape user-supplied content before embedding in HTML. Use <code>{{key}}</code> (escaped interpolation) in templates, or use a trusted escaping helper for raw string concatenation. Never use <code>{{{key}}}</code> for user input.</p>
-        <h3>19.2.8 Composition patterns</h3>
+        <h3>20.3.10 Composition patterns</h3>
         <p>Build reusable UI from smaller pieces using <code>ui.slot</code>, <code>ui.withSlot</code>, <code>ui.when</code>, <code>ui.choose</code>, and <code>ui.each</code>:</p>
         <ul>
-            <li><strong>ui.slot(name)</strong>: placeholder for content injected later.</li>
-            <li><strong>ui.withSlot(parent, name, content)</strong>: injects content into a slot.</li>
-            <li><strong>ui.when(condition, thenNode, elseNode)</strong>: conditional rendering.</li>
-            <li><strong>ui.choose(key, options, fallback?)</strong>: switch-like rendering by key.</li>
-            <li><strong>ui.each(items, itemName?)</strong>: render a list of items; each item is passed as children.</li>
+            <li><strong>ui.slot({"name": name})</strong>: placeholder node. Inject later with <code>ui.withSlot(parent, name, content)</code>.</li>
+            <li><strong>ui.when(condition, thenNode, elseNode?)</strong>: returns <code>thenNode</code> when the condition is true; otherwise <code>elseNode</code>, or <code>null</code> if omitted.</li>
+            <li><strong>ui.choose(key, casesObject, defaultNode?)</strong>: picks <code>casesObject[string(key)]</code>, or <code>defaultNode</code> / <code>null</code>.</li>
+            <li><strong>ui.each(items, propName?)</strong>: returns an <em>array of <code>ui.text</code> nodes</em>, not a list control. Each item is stored in <code>props[propName]</code> (default <code>"value"</code>). Pass that array as children of <code>ui.column</code> / <code>ui.list</code>.</li>
         </ul>
         <pre><code>var card = ui.panel({}, [ui.slot({"name": "title"}), ui.slot({"name": "body"})]);
 var cardWithTitle = ui.withSlot(card, "title", ui.heading({"value": "Card Title"}));
 var cardComplete = ui.withSlot(cardWithTitle, "body", ui.text({"value": "Body content"}));
 
+var isOpen = true;
+var status = "success";
 var statusBadge = ui.when(isOpen, ui.badge({"value": "Open"}), ui.badge({"value": "Closed"}));
 var alertByType = ui.choose(status, {"success": ui.alert({"variant": "success"}, [ui.text({"value": "OK"})])}, ui.alert({"variant": "info"}, [ui.text({"value": "Unknown"})]));
-var list = ui.each(["a", "b", "c"], "value");</code></pre>
-        <h3>19.2.9 State management patterns</h3>
+var labels = ui.each(["a", "b", "c"]);
+var list = ui.column({}, labels);</code></pre>
+        <h3>20.3.11 State management patterns</h3>
         <p>HttpServer request handlers run in an isolated interpreter, so top-level variables are not shared across requests. Use the component state store (via <code>ui.*</code> or <code>componentState*</code>) for cross-request data.</p>
         <ul>
             <li><strong>Peek vs get-or-create:</strong> <code>ui.getState</code> / <code>componentStateGet</code> return an optional default without writing. <code>ui.state</code> <em>persists</em> the default when the key is missing — never use <code>null</code> or <code>{}</code> as the default for critical keys after a possible TTL/LRU miss. IDE/LSP reports <strong>UI1003</strong> (Warning) for those literal poison defaults (also flat <code>uiState</code>).</li>
@@ -544,7 +610,7 @@ ui.setState("board", "items", items, convScope);
 // Process-lifetime shared meta
 ui.setState("AskStore", "session", meta, sharedScope);
 ui.pinState("AskStore", sharedScope);</code></pre>
-        <h3>19.2.10 Routing and query param patterns</h3>
+        <h3>20.3.12 Routing and query param patterns</h3>
         <p>For master-detail and multi-page flows, use query parameters:</p>
         <ul>
             <li><strong>List page</strong>: <code>/web/items?search=...&amp;status=open&amp;sort=id_desc</code></li>
@@ -561,13 +627,13 @@ function itemsPage(req) {
     return appLayoutHtml("items", "Items", controlsHtml, "");
 }</code></pre>
         <p>For REST API calls from the client, use <code>fetch</code> or <code>RestClient</code>; see <a href="18-rest-web-client.html">23. REST Web Client</a> for server-side HTTP calls and <a href="17-rest-api.html">22. REST API Server</a> for API design.</p>
-        <h3>19.2.11 Error and security notes</h3>
+        <h3>20.3.13 Error and security notes</h3>
         <ul>
             <li><strong>Escaping</strong>: Use <code>{{key}}</code> in templates for user-supplied content (escaped by default). Use <code>{{{key}}}</code> only when you intentionally need raw HTML (e.g. pre-rendered badges from trusted sources).</li>
             <li><strong>CSRF</strong>: Enable <code>enableCsrf(secret, cookieName?, headerName?)</code> on <code>HttpServer</code> for mutating routes. The client must send the CSRF token in the header or form field.</li>
             <li><strong>Validation</strong>: Validate all request input in <code>@ACTION</code> and <code>@POST</code> handlers; return 400 with structured errors for API clients.</li>
         </ul>
-        <h3>19.2.12 Styling guidance</h3>
+        <h3>20.3.14 Styling guidance</h3>
         <p>Keep layout and CSS conventions consistent across pages:</p>
         <ul>
             <li>Use <code>className</code> for semantic classes: <code>btn primary</code>, <code>nav-link</code>, <code>panel stack</code>, <code>muted</code>.</li>
@@ -579,12 +645,12 @@ function itemsPage(req) {
     {"sidebar": sidebarHtml, "pageBody": bodyHtml},
     {"pageTitle": "Items", "appCssPublicPath": "/static/app.css"}
 );</code></pre>
-        <h3>19.2.13 Common pitfalls and debugging</h3>
+        <h3>20.3.15 Common pitfalls and debugging</h3>
         <ul>
             <li><strong>Fragment not updating</strong>: Ensure <code>X-Malda-Fragment</code> and <code>X-Malda-Fragment-Target</code> headers are set; the client script must read them and update the target element.</li>
             <li><strong>State lost between requests</strong>: <code>componentState*</code> is session-scoped; pass <code>session</code> in query/body or use a cookie.</li>
             <li><strong>Event handler not firing / UI stuck after dispatch</strong>: Drain with <code>ui.pullEvent</code>, update state, rebuild, then <code>ui.render</code>. IDE warning <code>UI1001</code> flags dispatch→render without pull. See <code>Examples/Web/ui_event_loop.malda</code>.</li>
-            <li><strong>Mixed @PAGE and ui.* trees</strong>: Prefer one model per surface; IDE <code>UI1002</code> (Info) when a file mixes both. Hub: <a href="16-web-ui-hub.html">19. Web UI Overview</a>.</li>
+            <li><strong>Mixed @PAGE and ui.* trees</strong>: Prefer one model per surface; IDE <code>UI1002</code> (Info) when a file mixes both. Do not pass HTML strings into <code>ui.mount</code> / <code>ui.render</code>. Hub: <a href="16-web-ui-hub.html">19. Web UI Overview</a>.</li>
             <li><strong>Template cache</strong>: Pass <code>{"cache": false}</code> to <code>ui.template</code> for development reload.</li>
             <li><strong>Tree divergence</strong>: Use <code>ui.snapshot</code> and <code>ui.resync</code> when client and server trees diverge.</li>
         </ul>
@@ -614,18 +680,28 @@ function itemsPage(req) {
             <li>When client trees diverge, inspect <code>ui.snapshot</code> output and trigger <code>ui.resync</code>.</li>
             <li>For generated server-component trees, review the result of <code>ui.mountEnvelope</code> and re-run <code>ui.resync</code> if a client falls behind.</li>
         </ul>
-        <h2>20.7 Related Chapters</h2>
+        <h2>20.7 Related Chapters and Examples</h2>
         <ul>
-            <li><a href="16-http-server-html-ui.html">HttpServer &amp; HTML UI Generation</a> covers <code>HttpServer</code>, <code>@PAGE</code>, <code>@AIPAGE</code>, redirects, <code>HTMLCache</code>, <code>extractHTML</code>, and <code>generateUI</code>.</li>
-            <li><a href="16-browser-javascript-backend.html">Browser JavaScript UI Backend</a> covers MALDA-to-JavaScript compilation, <code>dom.*</code>, template mode, browser actors, and <code>game.*</code>.</li>
+            <li><a href="16-http-server-html-ui.html">21. HttpServer &amp; HTML UI Generation</a> covers <code>HttpServer</code>, <code>@PAGE</code>, <code>@AIPAGE</code>, redirects, <code>HTMLCache</code>, <code>extractHTML</code>, <code>generateUI</code>, and <code>ui.generate</code> (21.8.5) for AI-built <code>ui.*</code> trees.</li>
+            <li><a href="16-browser-javascript-backend.html">22. Browser JavaScript UI Backend</a> covers MALDA-to-JavaScript compilation, <code>dom.*</code>, template mode, browser actors, and <code>game.*</code>.</li>
             <li><a href="17-rest-api.html">REST API Server</a> remains the main reference for API design, middleware, validation, and API-first <code>@GET</code>/<code>@POST</code> routes.</li>
+        </ul>
+        <p>Offline and hosted samples under <code>Examples/Web/</code>:</p>
+        <ul>
+            <li><code>ui_event_loop.malda</code> — mount → dispatch → pull → setState → render</li>
+            <li><code>ui_counter_dashboard.malda</code> — same loop plus lifecycle hooks and snapshot</li>
+            <li><code>ui_state_lifecycle.malda</code> — peek vs get-or-create, pin, poison defaults</li>
+            <li><code>ui_form_workflow.malda</code> / <code>ui_controls_showcase_minimal.malda</code> — forms and control catalog</li>
+            <li><code>ui_resync_flow.malda</code> — snapshot / resync when client and server diverge</li>
         </ul>
         <div class="see-also">
             <h3>See Also</h3>
             <ul>
+                <li><a href="16-web-ui-hub.html">19. Web UI Overview</a> - Choose a UI model</li>
                 <li><a href="16-http-server-html-ui.html">21. HttpServer & HTML UI Generation</a> - Route-first hosting, <code>@PAGE</code>, and AI HTML generation</li>
-                <li><a href="16-browser-javascript-backend.html">Browser JavaScript UI Backend</a> - MALDA transpiled to JavaScript for browser-hosted UI</li>
-                <li><a href="30-full-stack-development.html">Full-Stack Development with MALDA</a> - Architecture and delivery models</li>
+                <li><a href="16-browser-javascript-backend.html">22. Browser JavaScript UI Backend</a> - MALDA transpiled to JavaScript for browser-hosted UI</li>
+                <li><a href="20-examples.html">30. Examples</a> - Server-driven UI sample index</li>
+                <li><a href="30-full-stack-development.html">31. Full-Stack Development with MALDA</a> - Architecture and delivery models</li>
             </ul>
         </div>
         <div class="nav-footer">

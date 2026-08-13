@@ -220,7 +220,7 @@ function addItem(req, body, res) {
     var id = dbExecute("INSERT INTO items (...) VALUES (...)", body).lastInsertId;
     return RedirectTo("/web/items?added=" + id);
 }</code></pre>
-        <p>For full schema structure and template paths, see <a href="16-web-ui.html">19. Web UI Server Components</a> (19.2.1.3 CRUD schema reference).</p>
+        <p>For full schema structure and template paths, see <a href="16-web-ui.html">20. Web UI Server Components</a> (20.3.1.3 CRUD schema reference).</p>
 
         <h2>31.6 Database integration pattern</h2>
         <p>A practical approach is to use:</p>
@@ -286,7 +286,7 @@ function triageItem(item) {
             <li><strong>CSRF</strong>: If <code>enableCsrf</code> is on, the client must send the token. Check that forms include the hidden field and fetch requests use the correct header.</li>
             <li><strong>Lookups</strong>: For schema-driven CRUD, ensure <code>lookups</code> contains all keys referenced in <code>dialogLookupOptions</code> (e.g. <code>owners</code>, <code>tags</code>). Missing lookups produce empty dropdowns.</li>
         </ul>
-        <p>For Web UI-specific debugging (tree divergence, event handlers, template cache), see <a href="16-web-ui.html">19. Web UI Server Components</a> (19.2.13 Common pitfalls and debugging, 19.9 Testing and Troubleshooting).</p>
+        <p>For Web UI-specific debugging (tree divergence, event handlers, template cache), see <a href="16-web-ui.html">20. Web UI Server Components</a> (20.3.15 Common pitfalls and debugging, 20.6 Testing and Troubleshooting).</p>
 
         <div class="see-also">
             <h3>See Also</h3>
