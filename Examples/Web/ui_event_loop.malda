@@ -20,7 +20,7 @@ function buildView(value) {
 
 print(ui.mount(buildView(count), sessionId));
 
-// Client click simulation
+// Client click simulation (sessionId is 2nd; optional inbound sequence is 3rd)
 ui.dispatchEvent(
     {"type": "click", "targetPath": "/1/", "payload": {"action": "increment"}},
     sessionId,

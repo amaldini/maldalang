@@ -10120,7 +10120,9 @@ public static class BuiltInFunctions
         if (args.Count < 1 || args.Count > 3 || args[0].Type != ValueType.Object)
             throw new Exception("uiDispatchEvent() expects event object, optional sessionId, optional sequence");
 
-        var sessionId = args.Count == 2 && args[1].Type == ValueType.String ? args[1].AsString() : "default";
+        // Signature: ui.dispatchEvent(event, sessionId?, sequence?). sessionId is always
+        // the second argument when it is a string — including the three-argument form.
+        var sessionId = args.Count >= 2 && args[1].Type == ValueType.String ? args[1].AsString() : "default";
         var session = UiSessionRegistry.GetOrCreate(sessionId);
         var evtObject = args[0].AsObject() as JsonObject;
         if (evtObject == null)

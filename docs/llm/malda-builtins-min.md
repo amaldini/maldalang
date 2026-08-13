@@ -149,7 +149,7 @@ HTML-string children — compose nodes with `ui.*` helpers.
 | `ui.control(props, children?, key?)` | V2 signature for controls (`ui.button`, `ui.column`, `ui.text`, …). `props` is an object/dict |
 | `ui.mount(root, sessionId?)` / `ui.render(root, sessionId?)` | Mount or diff a tree; returns a patch envelope |
 | `ui.mountEnvelope(root, sessionId?, options?)` | Mount + snapshot + resync helper in one call |
-| `ui.dispatchEvent(event, sessionId?)` / `ui.pullEvent(sessionId?)` | Client → server event queue |
+| `ui.dispatchEvent(event, sessionId?, sequence?)` / `ui.pullEvent(sessionId?)` | Client → server event queue. `sessionId` is always 2nd; `sequence` is optional 3rd |
 | `ui.state` / `ui.getState` / `ui.setState` / `ui.pinState` (or `componentState*`) | Server-side component state (peek vs get-or-create; pin = no TTL/LRU) |
 | `component Name(...) { … }` + `@ACTION` / `@LIVE` | Full-stack component model (see Reference Manual) |
 

@@ -28,7 +28,7 @@ Engine and host notes for MALDA’s Blazor-like server-driven UI. For the langua
 
 For interactive `ui.*` sessions, keep this order after each client event:
 
-1. `ui.dispatchEvent(...)` (host/runtime enqueues; examples may simulate)
+1. `ui.dispatchEvent(event, sessionId?, sequence?)` (host/runtime enqueues; examples may simulate). `sessionId` is always the second argument.
 2. `ui.pullEvent(sessionId)` — drain before rebuilding
 3. Update `ui.setState` / locals from the payload
 4. Rebuild the tree

@@ -473,4 +473,37 @@ public class UiFrameworkTests : TestBase
         Assert.Contains("1.0", result.StdOut);
         Assert.Contains("resync", result.StdOut);
     }
+
+    [Fact]
+    public void Interpreter_DispatchEvent_ThreeArgFormUsesNamedSession()
+    {
+        var source = @"
+            var sid = ""named-dispatch"";
+            var tree = ui.column({""componentId"": ""Root""}, [
+                ui.button({""label"": ""Inc"", ""onClick"": ""inc""})
+            ]);
+            ui.mount(tree, sid);
+            while (ui.pullEvent(sid) != null) { }
+
+            ui.dispatchEvent({
+                ""type"": ""click"",
+                ""targetPath"": ""/0/"",
+                ""payload"": {""action"": ""inc""}
+            }, sid, 1);
+
+            var named = ui.pullEvent(sid);
+            var leftover = ui.pullEvent(""default"");
+            print(named != null);
+            print(named.payload.action);
+            print(leftover == null);
+        ";
+
+        var output = RunProgram(source);
+        Assert.Contains("true", output);
+        Assert.Contains("inc", output);
+        var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        Assert.Equal("true", lines[0]);
+        Assert.Equal("inc", lines[1]);
+        Assert.Equal("true", lines[2]);
+    }
 }
