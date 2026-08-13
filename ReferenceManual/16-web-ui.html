@@ -375,8 +375,7 @@ print(mounted.type);
 
 ui.dispatchEvent(
     {"type": "click", "targetPath": "/1/", "payload": {"action": "increment"}},
-    sessionId,
-    1
+    sessionId
 );
 
 var evt = ui.pullEvent(sessionId);
@@ -537,7 +536,7 @@ ui.form({"onSubmit": "submitItem"}, [
 ])
 
 // Server: process events from the queue
-ui.dispatchEvent({"type": "submit", "targetPath": "/", "payload": {"action": "submitItem", "title": "Bug report"}}, sessionId, 1);
+ui.dispatchEvent({"type": "submit", "targetPath": "/", "payload": {"action": "submitItem", "title": "Bug report"}}, sessionId);
 var evt = ui.pullEvent(sessionId);
 if (evt != null && evt.payload != null && evt.payload.action == "submitItem") {
     // validate/persist, then ui.setState(...) or return componentFragment(...)
