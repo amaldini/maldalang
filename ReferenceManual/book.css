@@ -4,7 +4,8 @@
  * scripts/build-reference-manual-book.ps1. Page geometry (trim size and
  * margins) is emitted by that script into an inline <style> block so the same
  * stylesheet serves A4, Letter, 7x10 and 6x9; everything below is geometry
- * independent.
+ * independent. The cover plate is ReferenceManual/assets/cover.svg, inlined as
+ * a data URI; @page cover has zero margin so the graphic reaches the trim.
  *
  * Running heads, folios and the paginated table of contents need a paged media
  * engine. Paged.js provides one; without it the file still prints correctly,
@@ -27,6 +28,10 @@
     --code-size: 9pt;
     --code-leading: 1.45;
     --hang: 2.6ch;
+
+    /* Overridden by the build script to the selected trim. */
+    --page-width: 210mm;
+    --page-height: 297mm;
 }
 
 /* ------------------------------------------------- Running heads / folios */
@@ -92,6 +97,15 @@
     @bottom-right { content: none; }
 }
 
+/* Graphic cover: full bleed to the trim. Size comes from the default @page. */
+@page cover {
+    margin: 0;
+    @top-left { content: none; }
+    @top-right { content: none; }
+    @bottom-left { content: none; }
+    @bottom-right { content: none; }
+}
+
 /* --------------------------------------------------------------- Document */
 
 * {
@@ -125,62 +139,50 @@ body {
 
 /* ------------------------------------------------------------ Front matter */
 
-.book-cover,
+.book-cover {
+    page: cover;
+    position: relative;
+    width: 100%;
+    height: var(--page-height);
+    overflow: hidden;
+    break-after: page;
+    break-inside: avoid;
+    color: #e8f4f5;
+}
+
+.book-cover .cover-plate {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+/* Edition line is injected by the build script. Keep the bottom of the plate
+   dark, or this will not read. Inset from the trim so Chrome's lack of bleed
+   does not clip the type. */
+.book-cover .cover-meta {
+    position: absolute;
+    left: 18mm;
+    right: 18mm;
+    bottom: 16mm;
+    z-index: 1;
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 9.5pt;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #f4fbfc;
+    text-shadow: 0 1px 2px rgba(10, 18, 24, 0.7);
+}
+
 .book-copyright {
     page: frontmatter;
     break-after: page;
-}
-
-.book-cover {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    min-height: 200mm;
-    text-align: left;
-}
-
-.book-cover .cover-rule {
-    width: 28mm;
-    height: 3pt;
-    background: var(--brand);
-    margin-bottom: 10mm;
-}
-
-.book-cover h1 {
-    font-family: var(--font-sans);
-    font-size: 34pt;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    line-height: 1.05;
-    margin: 0 0 6mm;
-    color: var(--ink);
-}
-
-/* At display sizes the trademark glyph is far too heavy left at full scale. Shrink
-   it and lift it back to the cap height of the title beside it. */
-.book-cover h1 .tm {
-    font-size: 0.38em;
-    font-weight: 500;
-    letter-spacing: 0;
-    vertical-align: 0.95em;
-}
-
-.book-cover .cover-subtitle {
-    font-family: var(--font-sans);
-    font-size: 13pt;
-    font-weight: 400;
-    color: var(--ink-soft);
-    margin: 0 0 20mm;
-}
-
-.book-cover .cover-meta {
-    font-family: var(--font-sans);
-    font-size: 9.5pt;
-    color: var(--ink-soft);
-    margin: 0;
-}
-
-.book-copyright {
     font-family: var(--font-sans);
     font-size: 8.5pt;
     line-height: 1.6;

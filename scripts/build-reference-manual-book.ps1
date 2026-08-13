@@ -7,10 +7,12 @@
     chapter, rewrites cross-chapter links into internal anchors and emits a
     single self-contained folder that can be printed to PDF from a browser.
 
+    The cover plate is ReferenceManual/assets/cover.svg, inlined as a data URI
+    so the book stays a single file. Replace that SVG and rebuild to change the
+    graphic; version, date and trim stay HTML overlaid at the bottom of the page.
+
     Output folder (default artifacts/reference-manual):
         malda-reference-manual.html   the book
-        book.css, syntax.css          styling
-        malda-highlight.js            syntax highlighting
 
     Producing the PDF:
         1. Open malda-reference-manual.html in Chrome or Edge.
@@ -162,6 +164,12 @@ $bookCss = [System.IO.File]::ReadAllText((Join-Path $manualDir "book.css"))
 $syntaxCss = [System.IO.File]::ReadAllText((Join-Path $manualDir "syntax.css"))
 $highlightJs = [System.IO.File]::ReadAllText((Join-Path $manualDir "malda-highlight.js"))
 
+$coverPath = Join-Path $manualDir "assets\cover.svg"
+if (-not (Test-Path $coverPath)) {
+    throw "Cover plate missing: $coverPath. Add ReferenceManual/assets/cover.svg and rebuild."
+}
+$coverSrc = "data:image/svg+xml;base64," + [Convert]::ToBase64String([System.IO.File]::ReadAllBytes($coverPath))
+
 $pagedJsTag = if ($NoPagedJs) {
     "    <!-- Paged.js omitted (-NoPagedJs) -->"
 } else {
@@ -170,6 +178,10 @@ $pagedJsTag = if ($NoPagedJs) {
 
 $buildDate = Get-Date -Format "MMMM yyyy"
 $year = Get-Date -Format "yyyy"
+
+$sizeParts = $preset.Size -split '\s+', 2
+$pageWidth = $sizeParts[0]
+$pageHeight = $sizeParts[1]
 
 $pageGeometry = @"
         @page {
@@ -187,8 +199,14 @@ $pageGeometry = @"
             margin-right: $($preset.Outer);
         }
 
+        @page cover {
+            margin: 0;
+        }
+
         :root {
             --code-size: $($preset.CodeSize);
+            --page-width: $pageWidth;
+            --page-height: $pageHeight;
         }
 
         body {
@@ -216,9 +234,7 @@ $pageGeometry
 </head>
 <body>
     <section class="book-cover">
-        <div class="cover-rule"></div>
-        <h1>MALDA<span class="tm">&trade;</span><br>Reference Manual</h1>
-        <p class="cover-subtitle">Multi Agent Language with Development Automation<br>The AI-First Programming Language</p>
+        <img class="cover-plate" alt="MALDA Reference Manual" src="@@COVER_SRC@@" />
         <p class="cover-meta">Version 0.1 &middot; $buildDate &middot; $Trim edition</p>
     </section>
 
@@ -314,7 +330,8 @@ $pagedJsTag
 $bookHtml = $bookHtml.
     Replace('@@BOOK_CSS@@', $bookCss).
     Replace('@@SYNTAX_CSS@@', $syntaxCss).
-    Replace('@@HIGHLIGHT_JS@@', $highlightJs)
+    Replace('@@HIGHLIGHT_JS@@', $highlightJs).
+    Replace('@@COVER_SRC@@', $coverSrc)
 
 $outputPath = Join-Path $OutputDirectory "malda-reference-manual.html"
 [System.IO.File]::WriteAllText($outputPath, $bookHtml, [System.Text.UTF8Encoding]::new($false))

@@ -84,7 +84,7 @@ The current manual comes to roughly 326 A4 pages.
 
 ### What the bound edition adds
 
-- A cover and copyright page, and a contents page with real page numbers.
+- A cover (graphic plate plus edition line), a copyright page, and a contents page with real page numbers.
 - Running heads: book title on the left-hand page, chapter title on the right.
 - Folios in the outer bottom corner.
 - Every chapter opens on a right-hand page.
@@ -104,6 +104,20 @@ powershell -File scripts/build-reference-manual-book.ps1 -Trim 7x10
 `A4` (default), `Letter`, `7x10` and `6x9`. Each preset carries its own margins
 and code size; the smaller trims shrink code to keep a usable number of
 characters per line.
+
+### Graphic cover
+
+The first page is a full-bleed plate from `ReferenceManual/assets/cover.svg`.
+The build script inlines it as a data URI so the book stays a single file.
+Title and subtitle live in the SVG; version, date and trim are HTML overlaid
+at the bottom of the page (`@page cover` has zero margin so the graphic
+reaches the trim).
+
+To change the cover, replace that SVG and rebuild. The viewBox is 7:10;
+`object-fit: cover` crops it to the other trims. Keep live content inside
+roughly x 80–620, y 120–880, and leave the bottom band dark so the edition
+line still reads. A PNG wrap for a print shop (front + spine + back) is a
+separate artifact — do not fold it into this interior PDF.
 
 ## Why code wraps instead of scrolling
 
