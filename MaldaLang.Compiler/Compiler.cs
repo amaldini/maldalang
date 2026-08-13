@@ -1190,18 +1190,18 @@ class Program
             // Keep it for zip creation fallback
         }
 
-        // Find the generated exe (name will be MaldaLang.Executable.exe)
+        // Windows publish emits MaldaLang.Executable.exe; Unix emits an extensionless apphost.
         var exeName = Path.GetFileName(outputPath);
         if (string.IsNullOrEmpty(exeName))
         {
-            exeName = "MaldaLang.Executable.exe";
+            exeName = OperatingSystem.IsWindows() ? "MaldaLang.Executable.exe" : "MaldaLang.Executable";
         }
-        else if (!exeName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+        else if (OperatingSystem.IsWindows() && !exeName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
         {
             exeName += ".exe";
         }
 
-        var generatedExePath = Path.Combine(publishOutputDir, "MaldaLang.Executable.exe");
+        var generatedExePath = ResolvePublishedAppHost(publishOutputDir);
         // Always honor the named -o executable, including non-single-file publishes
         // (LLamaSharp / optional packs). Companion DLLs remain beside the exe.
         var finalExePath = Path.Combine(requestedOutputDir, exeName);
@@ -1247,19 +1247,48 @@ class Program
             }
             File.Move(generatedExePath, finalExePath);
 
-            // Bulk copy above may also have placed MaldaLang.Executable.exe beside -o;
+            // Bulk copy above may also have placed the publish apphost beside -o;
             // remove that scaffolding when the shippable name differs.
-            var scaffoldingExe = Path.Combine(requestedOutputDir, "MaldaLang.Executable.exe");
-            if (!string.Equals(scaffoldingExe, finalExePath, StringComparison.OrdinalIgnoreCase)
-                && File.Exists(scaffoldingExe))
+            foreach (var scaffoldingName in new[] { "MaldaLang.Executable.exe", "MaldaLang.Executable" })
             {
-                try { File.Delete(scaffoldingExe); } catch { /* best-effort */ }
+                var scaffoldingExe = Path.Combine(requestedOutputDir, scaffoldingName);
+                if (!string.Equals(scaffoldingExe, finalExePath, StringComparison.OrdinalIgnoreCase)
+                    && File.Exists(scaffoldingExe))
+                {
+                    try { File.Delete(scaffoldingExe); } catch { /* best-effort */ }
+                }
             }
 
             return finalExePath;
         }
 
-        return generatedExePath;
+        throw new Exception(
+            "dotnet publish succeeded but the apphost was missing after copy. " +
+            $"Looked for: {generatedExePath}");
+    }
+
+    /// <summary>
+    /// <c>dotnet publish</c> names the apphost <c>MaldaLang.Executable.exe</c> on Windows
+    /// and <c>MaldaLang.Executable</c> on Linux/macOS. Returning a missing <c>.exe</c>
+    /// path made transpile report success on Unix while TranspileSmokeTests saw no file.
+    /// </summary>
+    private static string ResolvePublishedAppHost(string publishOutputDir)
+    {
+        var windowsName = Path.Combine(publishOutputDir, "MaldaLang.Executable.exe");
+        if (File.Exists(windowsName))
+        {
+            return windowsName;
+        }
+
+        var unixName = Path.Combine(publishOutputDir, "MaldaLang.Executable");
+        if (File.Exists(unixName))
+        {
+            return unixName;
+        }
+
+        throw new Exception(
+            "dotnet publish succeeded but MaldaLang.Executable(.exe) was not in the publish folder. " +
+            $"Looked in: {publishOutputDir}");
     }
 
     private string CompileDll(string tempDir, string outputPath, bool includeLLamaSharp = false)
