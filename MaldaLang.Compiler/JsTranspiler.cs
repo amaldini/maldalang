@@ -1079,6 +1079,11 @@ public class JsTranspiler
                 {
                     return variantCall;
                 }
+
+                if (memberObjectIdentifier.Name == "grounded" && memberCall.Member == "wrap")
+                {
+                    return $"mlRuntime.grounded.wrap({JoinArguments(functionCall.Arguments)})";
+                }
             }
 
             if (ArrayPipelineMethods.Contains(memberCall.Member))

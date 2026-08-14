@@ -128,6 +128,7 @@ public static class BuiltInFunctions
         env.Define(StdLibNamespaces.DocModule, RuntimeValue.Object(new DocInstance()));
         env.Define(StdLibNamespaces.ResultModule, RuntimeValue.Object(new ResultInstance()));
         env.Define(StdLibNamespaces.OptionModule, RuntimeValue.Object(new OptionInstance()));
+        env.Define(StdLibNamespaces.GroundedModule, RuntimeValue.Object(new GroundedInstance()));
     }
     
     private static RuntimeValue BuiltInAll(List<RuntimeValue> args)

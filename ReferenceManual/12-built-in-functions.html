@@ -881,6 +881,19 @@ print(option.isNone(missing));</code></pre>
             <li><code>option.isSome(o)</code> / <code>option.isNone(o)</code> / <code>option.unwrapOr(o, fallback)</code> / <code>option.map(o, fn)</code> — the same pattern for optional values</li>
         </ul>
         <p>Do not treat type hints (<code>var n: int = …</code>) as runtime validation. For JSON-shaped payloads use <code>schema</code> and <a href="#validate"><code>validate()</code></a>. Tutorial: <a href="../docs/tutorials/errors-and-validation.md">errors, Result/Option, and schema validate</a>.</p>
+        <h3 id="grounded-values">12.19.2 <code>grounded.wrap</code></h3>
+        <p>Retrieval citations (GraphMemory, files, tools) are not a <code>match</code>-visible value kind. Wrap a payload so provenance is a dict you can read:</p>
+        <pre><code data-run="true" data-expect="the sky is blue\ntrue\nwiki">var g = grounded.wrap("the sky is blue", [
+    { "source": "wiki", "id": "p1", "span": "12-40" }
+]);
+print(g.value);
+print(g.sourced);
+print(g.citations[0].source);</code></pre>
+        <ul>
+            <li><code>grounded.wrap(value, citations?)</code> — returns <code>{ value, citations, sourced }</code>. <code>sourced</code> is true when the citation list is non-empty after normalization.</li>
+            <li>Each citation is <code>{ source, id?, span? }</code>. A string citation becomes <code>{ source }</code>. There is no flat <code>grounded()</code> alias.</li>
+            <li>GraphMemory opt-in ASK: <code>memory.ask(query, maxResults?, options?)</code> (or <code>query(..., { grounded: true })</code>) wraps hits with citations from <code>filePath</code> / <code>source</code> / <code>nodeId</code>. Plain <code>query()</code> still returns an array. See <a href="18-graph-memory.html">18. GraphMemory</a> §18.3.15.</li>
+        </ul>
         <h2>12.20 Structured Task Planning</h2>
         <p><code>decomposeTask</code>, <code>executePlan</code>, and <code>createSubmitPlanTool</code> live in <a href="17-agent-orchestration.html">17. Agent Orchestration</a> (§ 17.13). <code>runProgram</code> runs a closed <code>api</code> / <code>program(ApiName)</code> value with no further LLM calls — see <a href="09-functions.html">9. Functions</a> (§ Closed APIs and Deterministic Programs).</p>
         <h2>12.21 Tool Creation Functions</h2>

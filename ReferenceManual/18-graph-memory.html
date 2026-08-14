@@ -213,8 +213,9 @@ var results = memory.query("files changed decisions", 5, options);
             <li><code>rerankModel</code> / <code>rerankClient</code> - Select model or inject a client instance for reranking.</li>
             <li><code>rerankScores</code> (array) - Test injection scores <code>[{ nodeId, score }]</code> that bypass model calls.</li>
             <li><code>explain</code> (boolean, default <code>false</code>) - When <code>true</code>, each result includes <code>score</code> and an <code>explain</code> object with <code>vectorScore</code>, <code>lexicalScore</code>, <code>combinedScore</code>, <code>synapseScore</code>, <code>importanceBonus</code>, <code>supersededPenalty</code>, <code>finalScore</code>, <code>tags</code>, and (when a tags filter was used) <code>tagsMatched</code>.</li>
+            <li><code>grounded</code> (boolean, default <code>false</code>) - When <code>true</code>, return a <a href="12-built-in-functions.html#grounded-values"><code>grounded.wrap</code></a> wrapper instead of the hit array. See §18.3.15.</li>
         </ul>
-        <p><code>query(...)</code> always returns an array of memory nodes. After each query, call <code>getLastQueryDiagnostics()</code> for a summary object (<code>null</code> before the first query) with fields such as <code>vectorCandidates</code>, <code>bm25Candidates</code>, <code>afterFilters</code>, <code>returned</code>, <code>droppedByLexicalMinScore</code>, <code>droppedByTagFilter</code>, <code>droppedByTypeFilter</code>, <code>lexicalMinScoreApplied</code>, <code>lexicalMinScoreMode</code> (<code>number</code> | <code>auto-weak-vector</code> | <code>auto-default</code>), and <code>embedReady</code>.</p>
+        <p><code>query(...)</code> returns an array of memory nodes unless <code>grounded: true</code> is set (then a wrapper — §18.3.15). After each query, call <code>getLastQueryDiagnostics()</code> for a summary object (<code>null</code> before the first query) with fields such as <code>vectorCandidates</code>, <code>bm25Candidates</code>, <code>afterFilters</code>, <code>returned</code>, <code>droppedByLexicalMinScore</code>, <code>droppedByTagFilter</code>, <code>droppedByTypeFilter</code>, <code>lexicalMinScoreApplied</code>, <code>lexicalMinScoreMode</code> (<code>number</code> | <code>auto-weak-vector</code> | <code>auto-default</code>), and <code>embedReady</code>.</p>
         <pre><code>var hits = memory.query("plugin campi", 5, {
     "hybridLexical": true,
     "lexicalMode": "bm25",
@@ -388,6 +389,21 @@ malda memory export-bundle -o ./backup/team_memory
 malda memory watch --dir ./kb --pattern "**/*.md"
 malda memory download-rerank</code></pre>
         <p><code>download-rerank</code> fetches the default Hugging Face cross-encoder (<code>cross-encoder/ms-marco-MiniLM-L6-v2</code>) into <code>~/.malda/models/cross-encoder</code> (<code>model.onnx</code> + <code>vocab.txt</code>). Override the repo with <code>MALDA_CROSS_ENCODER_MODEL</code>.</p>
+
+        <h3>18.3.15 Grounded ASK (<code>ask</code> / <code>grounded.wrap</code>)</h3>
+        <p>Citations from GraphMemory hits are not a first-class <code>match</code> value. Opt in so the retrieval result is a wrapper with <code>value</code>, <code>citations</code> (<code>{ source, id?, span? }</code>), and <code>sourced</code>:</p>
+        <pre><code>var memory = new GraphMemory();
+memory.initialize();
+memory.remember("Alice prefers dark mode", "", { "source": "notes.md" });
+var g = memory.ask("What are Alice's preferences?", 5, { "minScore": 0 });
+print(g.sourced);
+print(g.citations[0].source);
+print(g.value.length);
+
+// Same wrap on the existing query path:
+var also = memory.query("preferences", 5, { "minScore": 0, "grounded": true });
+var manual = grounded.wrap(also.value, also.citations);</code></pre>
+        <p><code>ask(query, maxResults?, options?)</code> uses the same retrieval as <code>query</code>, then wraps hits. Plain <code>query</code> without <code>grounded: true</code> still returns an array. There is no flat <code>grounded()</code> alias. Example: <code>Examples/Memory/grounded_ask.malda</code>.</p>
 
         <h2>18.4 Finding Related Nodes</h2>
         <p>The <code>findRelated()</code> method returns memory objects reachable from a node via graph traversal (BFS over outgoing edges, including auto-linked <code>related_to</code> neighbors):</p>

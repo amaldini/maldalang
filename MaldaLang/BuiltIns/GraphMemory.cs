@@ -83,7 +83,8 @@ public class GraphMemoryInstance : ObjectInstance
             name == "reindexDocuments" || name == "analyzeFile" || name == "save" || name == "load" || name == "initialize" ||
             name == "forgetByScope" || name == "forgetByCategory" || name == "forgetByTag" ||
             name == "getLastQueryDiagnostics" ||
-            name == "startKbWatch" || name == "stopKbWatch")
+            name == "startKbWatch" || name == "stopKbWatch" ||
+            name == "ask")
         {
             var wrapper = new FunctionValue(null, null, false, null);
             wrapper.BuiltInInstance = this;
@@ -109,6 +110,8 @@ public class GraphMemoryInstance : ObjectInstance
                     return CallRemember(args);
                 case "query":
                     return CallQuery(args);
+                case "ask":
+                    return CallAsk(args);
                 case "getRecent":
                     return CallGetRecent(args);
                 case "addCodeElement":
@@ -1918,14 +1921,28 @@ public class GraphMemoryInstance : ObjectInstance
         {
             diagnostics.Returned = semanticResults.Count;
             _lastQueryDiagnostics = BuildLastQueryDiagnostics(diagnostics);
-            return RuntimeValue.Array(semanticResults);
+            return FinishQueryResult(semanticResults, options);
         }
         
         var recentResults = CollectRecentEntries(recentCount, phaseFilter, typeFilter, scopeFilter, scopeHierarchy, tagsFilter, tagsMode);
         var merged = MergeMemoryResults(semanticResults, recentResults);
         diagnostics.Returned = merged.Count;
         _lastQueryDiagnostics = BuildLastQueryDiagnostics(diagnostics);
-        return RuntimeValue.Array(merged);
+        return FinishQueryResult(merged, options);
+    }
+
+    private RuntimeValue CallAsk(List<RuntimeValue> args)
+    {
+        var hits = CallQuery(args);
+        return GroundedStdLib.EnsureMemoryHitsWrapped(hits);
+    }
+
+    private static RuntimeValue FinishQueryResult(List<RuntimeValue> hits, JsonObject? options)
+    {
+        var array = RuntimeValue.Array(hits);
+        return GetBoolOption(options, "grounded", false)
+            ? GroundedStdLib.WrapMemoryHits(array)
+            : array;
     }
 
     private List<RuntimeValue> ApplyRerank(string query, List<RuntimeValue> candidates, JsonObject? options, int maxResults, string rerankMode)

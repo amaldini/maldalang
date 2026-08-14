@@ -632,7 +632,8 @@ public class LanguageService : ILanguageService
             new { Name = "PostgresClient", Detail = "PostgresClient(connectionString?)", InsertText = "new PostgresClient()" },
             new { Name = "SqliteClient", Detail = "SqliteClient(connectionString?)", InsertText = "new SqliteClient()" },
             new { Name = "SerialConnection", Detail = "SerialConnection()", InsertText = "new SerialConnection()" },
-            new { Name = "ArduinoConnection", Detail = "ArduinoConnection(url) or ArduinoConnection(port, baudRate)", InsertText = "new ArduinoConnection()" }
+            new { Name = "ArduinoConnection", Detail = "ArduinoConnection(url) or ArduinoConnection(port, baudRate)", InsertText = "new ArduinoConnection()" },
+            new { Name = "GraphMemory", Detail = "GraphMemory() — semantic memory; ask() returns grounded citations", InsertText = "new GraphMemory()" }
         };
         
         foreach (var cls in builtInClasses)
@@ -646,6 +647,14 @@ public class LanguageService : ILanguageService
                 InsertText = cls.InsertText
             });
         }
+
+        completions.Add(new CompletionItem
+        {
+            Label = "grounded",
+            Kind = "module",
+            Detail = "grounded.wrap(value, citations?) — payload plus citations",
+            InsertText = "grounded"
+        });
         
         // Try to parse and extract symbols
         try
@@ -845,6 +854,8 @@ public class LanguageService : ILanguageService
             "parallelRun" => new List<string> { "input", "branches" },
             "mergeRetrievedDocs" => new List<string> { "docArrays..." },
             "indexInto" => new List<string> { "vectorDb", "documents" },
+            "wrap" => new List<string> { "value", "citations?" },
+            "ask" => new List<string> { "query", "maxResults?", "options?" },
             "uiOnInit" => new List<string> { "componentId", "sessionId?" },
             "uiOnPreRender" => new List<string> { "componentId", "sessionId?" },
             "uiOnLoad" => new List<string> { "componentId", "sessionId?" },
@@ -985,6 +996,25 @@ public class LanguageService : ILanguageService
             members.Add(new CompletionItem { Label = "getFailedWriteTools", Kind = "method", Detail = "getFailedWriteTools()", InsertText = "getFailedWriteTools()" });
             members.Add(new CompletionItem { Label = "clear", Kind = "method", Detail = "clear()", InsertText = "clear()" });
             members.Add(new CompletionItem { Label = "getHistory", Kind = "method", Detail = "getHistory()", InsertText = "getHistory()" });
+        }
+        else if (typeToCheck == "grounded")
+        {
+            members.Add(new CompletionItem
+            {
+                Label = "wrap",
+                Kind = "method",
+                Detail = "wrap(value, citations?) — payload plus { source, id?, span? }",
+                InsertText = "wrap()"
+            });
+        }
+        else if (typeToCheck == "GraphMemory")
+        {
+            members.Add(new CompletionItem { Label = "initialize", Kind = "method", Detail = "initialize(dimension?, precision?, embedFn?)", InsertText = "initialize()" });
+            members.Add(new CompletionItem { Label = "remember", Kind = "method", Detail = "remember(fact, context?, metadata?)", InsertText = "remember()" });
+            members.Add(new CompletionItem { Label = "query", Kind = "method", Detail = "query(query, maxResults?, options?) — array of hits; options.grounded wraps citations", InsertText = "query()" });
+            members.Add(new CompletionItem { Label = "ask", Kind = "method", Detail = "ask(query, maxResults?, options?) — grounded wrapper with citations", InsertText = "ask()" });
+            members.Add(new CompletionItem { Label = "getRecent", Kind = "method", Detail = "getRecent(count?)", InsertText = "getRecent()" });
+            members.Add(new CompletionItem { Label = "getLastQueryDiagnostics", Kind = "method", Detail = "getLastQueryDiagnostics()", InsertText = "getLastQueryDiagnostics()" });
         }
         else if (typeToCheck == "Agent" || typeToCheck == "CodingAgent" || typeToCheck == "GitAgent" || typeToCheck == "DevAgent" || typeToCheck == "HumanAgent")
         {
@@ -1585,6 +1615,8 @@ public class LanguageService : ILanguageService
             "runPrompt" => "function runPrompt(prompt, client?, options?) -> string\nRuns a PromptInstance through an LLM. Options: `{ onToken: fn, onReasoning: fn }` for streaming callbacks.",
             "withExamples" => "function withExamples(prompt, examples, options?) -> PromptInstance\nReturns a copy of a prompt with runtime few-shot examples. Use `{ merge: true }` to append after static prompt examples.",
             "parseJson" => "function parseJson(value, schemaRef, options?) -> object\nParses and validates JSON against a schema declaration.",
+            "wrap" => "function grounded.wrap(value, citations?) -> object\nWraps a payload with citation provenance: { value, citations, sourced }. Citations are { source, id?, span? }. No flat grounded() alias.",
+            "ask" => "function GraphMemory.ask(query, maxResults?, options?) -> object\nOpt-in GraphMemory ASK: same retrieval as query(), then a grounded wrapper with citations. query(..., { grounded: true }) is the same wrap.",
             "loadDocuments" => "function loadDocuments(pattern, dirPath?) -> array\nGlob-loads files as `{ content, metadata: { source } }` documents.",
             "splitDocuments" => "function splitDocuments(documents, chunkSize?, overlap?) -> array\nSplits documents into overlapping chunks.",
             "formatRetrievedDocs" => "function formatRetrievedDocs(documents) -> string\nFormats retrieved documents for prompt context.",

@@ -15,6 +15,7 @@ public static class StdLibNamespaces
     public const string DocModule = "doc";
     public const string ResultModule = "result";
     public const string OptionModule = "option";
+    public const string GroundedModule = "grounded";
     public const string DeprecatedMathModuleAlias = "Math";
 
     public static readonly IReadOnlySet<string> MathMethodNames = new HashSet<string>(StringComparer.Ordinal)
@@ -45,6 +46,11 @@ public static class StdLibNamespaces
     public static readonly IReadOnlySet<string> OptionMethodNames = new HashSet<string>(StringComparer.Ordinal)
     {
         "some", "none", "map", "unwrapOr", "isSome", "isNone"
+    };
+
+    public static readonly IReadOnlySet<string> GroundedMethodNames = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "wrap"
     };
 
     public static readonly IReadOnlySet<string> IoMethodNames = new HashSet<string>(StringComparer.Ordinal)
@@ -115,6 +121,7 @@ public static class StdLibNamespaces
             DocModule => DocMethodNames.Contains(methodName),
             ResultModule => ResultMethodNames.Contains(methodName),
             OptionModule => OptionMethodNames.Contains(methodName),
+            GroundedModule => GroundedMethodNames.Contains(methodName),
             _ => false
         };
 }

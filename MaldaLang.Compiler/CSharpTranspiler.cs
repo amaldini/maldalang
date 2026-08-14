@@ -3010,6 +3010,16 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("}");
         WriteIndent();
+        _output.AppendLine("else if (instance is MaldaLang.BuiltIns.GroundedInstance grounded)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("result = grounded.CallMethod(methodName, runtimeArgs, MaldaLang.Runtime.TranspiledBuiltinRuntime.GetOrCreateInterpreter());");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        WriteIndent();
         _output.AppendLine("else if (instance is MaldaLang.BuiltIns.AgentInstance agent)");
         WriteIndent();
         _output.AppendLine("{");
@@ -9049,6 +9059,10 @@ public class CSharpTranspiler
             {
                 return;
             }
+            if (TryTranspileGroundedStdLibCall(memberAccess2, call))
+            {
+                return;
+            }
             if (memberAccess2.Object is IdentifierExpression taIdExpr &&
                 taIdExpr.Name == "ta" &&
                 OptionalPackTranspilerBuiltIns.IsTimeseriesName(memberAccess2.Member))
@@ -13077,6 +13091,27 @@ public class CSharpTranspiler
         }
 
         _output.Append(" })");
+        return true;
+    }
+
+    private bool TryTranspileGroundedStdLibCall(MemberAccessExpression memberAccess, FunctionCallExpression call)
+    {
+        if (memberAccess.Object is not IdentifierExpression moduleId)
+            return false;
+        if (moduleId.Name != StdLibNamespaces.GroundedModule || memberAccess.Member != "wrap")
+            return false;
+
+        _output.Append("RuntimeHelpers.FromRuntimeValue(MaldaLang.BuiltIns.GroundedStdLib.Wrap(new List<MaldaLang.Interpreter.RuntimeValue> { ");
+        for (int i = 0; i < call.Arguments.Count; i++)
+        {
+            if (i > 0)
+                _output.Append(", ");
+            _output.Append("RuntimeHelpers.ToRuntimeValue(");
+            TranspileExpression(call.Arguments[i]);
+            _output.Append(")");
+        }
+
+        _output.Append(" }))");
         return true;
     }
 }

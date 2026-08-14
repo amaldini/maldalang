@@ -35,6 +35,10 @@ Compact rules for generating correct `.malda`. Prefer this over scraping HTML ma
   Bounds: `@within(ms)` is wall-clock; `@budget(tokens: N, tools: N, cost: N?)` aborts when a
   resource bound trips (`tools` = invocations, not allow-list length). Env
   `MALDA_AGENT_CONTEXT_BUDGET_TOKENS` only trims undeclared agent context.
+  GraphMemory citations are a wrapper, not a keyword: `grounded.wrap(value, citations?)`
+  returns `{ value, citations, sourced }` (`citations` = `{ source, id?, span? }`).
+  Opt-in ASK: `memory.ask(q, n?, options?)` or `query(..., { grounded: true })`.
+  No flat `grounded()` alias. Example: `Examples/Memory/grounded_ask.malda`.
   Without `await`, you get a `PromptInstance` (schema attached when resolvable and no
   tools). Prefer a `schema Name { … }` for structured objects, or a **sum type**
   (`type Intent = Search(query: string) | Buy(sku: string, qty: int)`) when the model must pick one of several
