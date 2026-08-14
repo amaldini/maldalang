@@ -22,7 +22,7 @@ public class InterpretDebugAdapterTests : TestBase
     {
         var dir = CreateTempDirectory("dap_");
         var program = Path.Combine(dir, "sample.malda");
-        await File.WriteAllTextAsync(program, "var x = 1\nprint(x)\n");
+        await File.WriteAllTextAsync(program, "var x = 1;\nprint(x);\n");
         program = Path.GetFullPath(program);
 
         await using var harness = DapHarness.Start();
@@ -103,7 +103,7 @@ public class InterpretDebugAdapterTests : TestBase
     {
         var dir = CreateTempDirectory("dap_map_");
         var program = Path.Combine(dir, "map.malda");
-        await File.WriteAllTextAsync(program, "function f() {\nvar x = 1\nprint(x)\n}\nf()\n");
+        await File.WriteAllTextAsync(program, "function f() {\nvar x = 1;\nprint(x);\n}\nf();\n");
         program = Path.GetFullPath(program);
 
         await using var harness = DapHarness.Start();
