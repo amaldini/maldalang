@@ -21,6 +21,7 @@ public class TranspileSmokeTests
     [InlineData("Examples/Prompts/prompt_tools_then_structured.malda")]
     [InlineData("Examples/Prompts/prompt_budget.malda")]
     [InlineData("Examples/Memory/grounded_ask.malda")]
+    [InlineData("Examples/Tools/capability_tokens.malda")]
     public void Example_TranspileToCSharp_Succeeds(string relativePath)
     {
         var parts = relativePath.Split('/', StringSplitOptions.RemoveEmptyEntries);

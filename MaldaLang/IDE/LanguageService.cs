@@ -655,6 +655,13 @@ public class LanguageService : ILanguageService
             Detail = "grounded.wrap(value, citations?) — payload plus citations",
             InsertText = "grounded"
         });
+        completions.Add(new CompletionItem
+        {
+            Label = "cap",
+            Kind = "module",
+            Detail = "cap.fileRead(path) — unforgeable file capability tokens",
+            InsertText = "cap"
+        });
         
         // Try to parse and extract symbols
         try
@@ -855,6 +862,10 @@ public class LanguageService : ILanguageService
             "mergeRetrievedDocs" => new List<string> { "docArrays..." },
             "indexInto" => new List<string> { "vectorDb", "documents" },
             "wrap" => new List<string> { "value", "citations?" },
+            "fileRead" => new List<string> { "path" },
+            "fileWrite" => new List<string> { "path" },
+            "dirList" => new List<string> { "path" },
+            "confine" => new List<string> { "token", "relativePath" },
             "ask" => new List<string> { "query", "maxResults?", "options?" },
             "uiOnInit" => new List<string> { "componentId", "sessionId?" },
             "uiOnPreRender" => new List<string> { "componentId", "sessionId?" },
@@ -1006,6 +1017,17 @@ public class LanguageService : ILanguageService
                 Detail = "wrap(value, citations?) — payload plus { source, id?, span? }",
                 InsertText = "wrap()"
             });
+        }
+        else if (typeToCheck == "cap")
+        {
+            members.Add(new CompletionItem { Label = "fileRead", Kind = "method", Detail = "fileRead(path) — mint an unforgeable FileRead token", InsertText = "fileRead()" });
+            members.Add(new CompletionItem { Label = "fileWrite", Kind = "method", Detail = "fileWrite(path) — mint an unforgeable FileWrite token", InsertText = "fileWrite()" });
+            members.Add(new CompletionItem { Label = "dirList", Kind = "method", Detail = "dirList(path) — mint an unforgeable DirList token", InsertText = "dirList()" });
+            members.Add(new CompletionItem { Label = "is", Kind = "method", Detail = "is(value, kind?) — true only for a real capability token", InsertText = "is()" });
+            members.Add(new CompletionItem { Label = "confine", Kind = "method", Detail = "confine(token, relativePath) — attenuate a token under its path", InsertText = "confine()" });
+            members.Add(new CompletionItem { Label = "read", Kind = "method", Detail = "read(token) — read using FileRead only (rejects strings and dicts)", InsertText = "read()" });
+            members.Add(new CompletionItem { Label = "write", Kind = "method", Detail = "write(token, content) — write using FileWrite only", InsertText = "write()" });
+            members.Add(new CompletionItem { Label = "list", Kind = "method", Detail = "list(token) — list using DirList only", InsertText = "list()" });
         }
         else if (typeToCheck == "GraphMemory")
         {
@@ -1616,6 +1638,10 @@ public class LanguageService : ILanguageService
             "withExamples" => "function withExamples(prompt, examples, options?) -> PromptInstance\nReturns a copy of a prompt with runtime few-shot examples. Use `{ merge: true }` to append after static prompt examples.",
             "parseJson" => "function parseJson(value, schemaRef, options?) -> object\nParses and validates JSON against a schema declaration.",
             "wrap" => "function grounded.wrap(value, citations?) -> object\nWraps a payload with citation provenance: { value, citations, sourced }. Citations are { source, id?, span? }. No flat grounded() alias.",
+            "fileRead" => "function cap.fileRead(path) -> cap\nMints an unforgeable FileRead token for that path. Object literals cannot forge one. No flat cap() alias.",
+            "fileWrite" => "function cap.fileWrite(path) -> cap\nMints an unforgeable FileWrite token for that path.",
+            "dirList" => "function cap.dirList(path) -> cap\nMints an unforgeable DirList token for that path.",
+            "confine" => "function cap.confine(token, relativePath) -> cap\nReturns a narrower token of the same kind whose path is under the parent. Paths outside the parent throw.",
             "ask" => "function GraphMemory.ask(query, maxResults?, options?) -> object\nOpt-in GraphMemory ASK: same retrieval as query(), then a grounded wrapper with citations. query(..., { grounded: true }) is the same wrap.",
             "loadDocuments" => "function loadDocuments(pattern, dirPath?) -> array\nGlob-loads files as `{ content, metadata: { source } }` documents.",
             "splitDocuments" => "function splitDocuments(documents, chunkSize?, overlap?) -> array\nSplits documents into overlapping chunks.",

@@ -31,7 +31,7 @@ public static class PureEffectsBuiltIns
 
     private static readonly FrozenSet<string> IoNamespaces = new HashSet<string>(StringComparer.Ordinal)
     {
-        "io", "file",
+        "io", "file", "cap",
     }.ToFrozenSet();
 
     public static bool IsIoEffect(string name) => IoNames.Contains(name);

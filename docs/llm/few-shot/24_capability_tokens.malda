@@ -1,0 +1,11 @@
+// Mint an unforgeable FileRead token. Object literals cannot forge one.
+var notes = cap.fileRead("notes.md");
+io.print(notes.kind);
+io.print(cap.is(notes, "fileRead"));
+var forged = false;
+try {
+    cap.read({ "kind": "fileRead", "path": "notes.md" });
+} catch (e) {
+    forged = true;
+}
+io.print(forged);

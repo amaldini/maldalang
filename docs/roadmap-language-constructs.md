@@ -1,6 +1,6 @@
 # MALDA language constructs plan (post–Final 1.0)
 
-**Status:** L1a, L1b, L2, L3, L4, and L5 landed; L1c–L6 plan (L6 remaining)  
+**Status:** L1a, L1b, L2, L3, L4, L5, and L6 landed; L1c remains gated  
 **Created:** 2026-08-14  
 **Audience:** maintainers choosing the next *language* work after P0 maturity  
 **Spec line:** Final 1.0 stays; each landed workstream is a **MINOR** additive contract (or PATCH if docs-only). Breaking parse/runtime is **MAJOR** and is out of scope here.
@@ -40,7 +40,7 @@ Web IDE Desktop parity, JS agents/HTTP/workflows.
 | 3 | **L3** Resource budget beside `@within` | Time bounds exist; token/tool/cost bounds are env hacks on agents | Decorator only |
 | 4 | **L4** Workflow determinism beyond the deny-list | WF1001/WF1002 miss helper calls; documented post-Final gap adjacent | No (diagnostics + runtime) |
 | 5 | **L5** Grounded values | GraphMemory/RAG citations are not values `match` / `validate` can see | Library first |
-| 6 | **L6** Capability tokens | `@effects` is a string allow-list; agents can still invent paths | Deferred until L5/L4 demand it |
+| 6 | **L6** Capability tokens | `@effects` is a string allow-list; agents can still invent paths | Library first |
 
 Kernel completeness (nested `function`, full `module { }`, JS product parity) is **parallel
 and useful**, not this plan. Track those in the spec CHANGELOG / backend matrix, not here.
@@ -62,7 +62,7 @@ L4   independent; static call-graph then runtime stack mark
 
 L5   library wrapper; grammar only if match/validate must see provenance
 
-L6   not started in this plan
+L6   library tokens; no new keyword (string allow-list stays)
 ```
 
 Land **L1a** before any new prompt syntax. Do not start L1c, L5 grammar, or L6 in the same
@@ -309,11 +309,31 @@ visible to `match`. That is a spec MINOR of its own.
 
 ---
 
-## L6 — Capability tokens (deferred)
+## L6 — Capability tokens (library first)
 
-`@effects("io")` is a name allow-list. Unforgeable capabilities (`FileRead` passed into a
-tool) need a new value model and three-backend story. **Do not start** until L4 nested
-effects and L5 provenance show that string allow-lists are the actual incident class.
+`@effects("io")` is a name allow-list. An agent with IO still invents paths
+(`readFile("/etc/passwd")`). Unforgeable tokens close that hole without a new keyword.
+
+```malda
+var notes = cap.fileRead("notes.md");
+function read_allowed(fileCap) {
+    return cap.read(fileCap);
+}
+print(read_allowed(notes));
+// cap.read({ kind: "fileRead", path: "notes.md" }) throws — not a token
+```
+
+- `cap.fileRead(path)` / `cap.fileWrite(path)` / `cap.dirList(path)` mint sealed host objects (`kind`, `path`).
+- `cap.read` / `cap.write` / `cap.list` consume **matching tokens only** — not strings, not dicts.
+- `cap.is(value, kind?)` is the check; `cap.confine(token, relativePath)` attenuates under the parent path.
+- `io.readFile` / `io.writeFile` / `io.listDirectory` also accept a matching token (strings remain for ordinary programs).
+- JSON round-trip cannot rehydrate a token. No `Capability` keyword and no flat `cap()` alias.
+- `@effects("cap")` allow-lists the namespace; `@pure` cannot mint or consume.
+
+**Done when (L6 — landed)**
+
+- Forged dicts and path strings fail `cap.read`; a helper that takes a token cannot invent a path.
+- Interpreter and C# transpile agree. JS: mint / `is` / `confine` only (file consume is host-only).
 
 ---
 
@@ -351,6 +371,7 @@ Follow [`docs/spec/CHANGELOG.md`](spec/CHANGELOG.md) “How to propose a spec ch
 | L3 | `Phase6Effects` / `Bounds` |
 | L4 | `WorkflowDeterminism` / `WorkflowRuntime` |
 | L5 | `GraphMemory` / a new `Grounded*` test class |
+| L6 | `CapabilityToken` / `Phase6Effects` |
 
 6. Transpile smoke for any new example that must ship as `.exe`.
 7. Dual licence header on new C# files (`MIT OR Apache-2.0`). No new top-level builtin
@@ -368,7 +389,7 @@ Follow [`docs/spec/CHANGELOG.md`](spec/CHANGELOG.md) “How to propose a spec ch
 | L3 | `@budget` trips in tests without breaking `@within` — **landed** |
 | L4 | In-file helper calling `now()` from a workflow body is WF1001 — **landed** |
 | L5 | At least one opt-in ASK/GraphMemory path returns citations on a wrapper — **landed** |
-| L6 | Still deferred |
+| L6 | Token-only consume rejects forged paths; `@effects("io")` unchanged — **landed** |
 
 The language win is not more keywords. It is: **LLM output is a schema, a variant, or a
 `program(Api)`**, gather/extract is a declaration, bounds and determinism are enforced
@@ -401,3 +422,4 @@ through helpers, and provenance is a value when we need it.
 | 2026-08-14 | L2 landed: `gather:` + `-> Type` gather-then-extract prompts |
 | 2026-08-14 | L3 landed: `@budget(tokens, tools, cost?)` beside `@within` |
 | 2026-08-14 | L5 landed: `grounded.wrap` plus opt-in GraphMemory `ask` / `query(..., { grounded: true })` |
+| 2026-08-14 | L6 landed: unforgeable `cap.fileRead` / `cap.read` tokens (string `@effects` allow-list unchanged) |

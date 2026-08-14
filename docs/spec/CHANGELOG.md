@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — capability tokens)
+
+- **L6:** namespaced helper `cap.fileRead(path)` / `cap.fileWrite(path)` / `cap.dirList(path)` mints an unforgeable capability token (`kind`, `path`). `cap.read` / `cap.write` / `cap.list` consume matching tokens only — strings and object literals are rejected, so a tool cannot invent a path. `cap.is(value, kind?)` and `cap.confine(token, relativePath)` inspect and attenuate. `io.readFile` / `io.writeFile` / `io.listDirectory` also accept a matching token. No flat `cap()` alias and no new keyword. Interpreter and C# transpile agree. JS: mint / `is` / `confine` only (file consume is host-only). Example: `Examples/Tools/capability_tokens.malda`. Plan: [`docs/roadmap-language-constructs.md`](../roadmap-language-constructs.md).
+
 #### Added (MINOR — grounded values)
 
 - **L5:** namespaced helper `grounded.wrap(value, citations?)` returns `{ value, citations, sourced }` with citations `{ source, id?, span? }`. No flat `grounded()` alias and no new keyword (v2 `grounded<T>` / match-visible kind stays gated). Opt-in GraphMemory ASK: `memory.ask(query, maxResults?, options?)` (or `query(..., { grounded: true })`) wraps hits with citations from `filePath` / `source` / `nodeId`. Interpreter and C# transpile agree. JS: `grounded.wrap` only (GraphMemory is host-only). Example: `Examples/Memory/grounded_ask.malda`. Plan: [`docs/roadmap-language-constructs.md`](../roadmap-language-constructs.md).
@@ -140,7 +144,7 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 #### Clarified (PATCH — docs / tracking only)
 
 - **`typeOf(variant)` / `typeOf(task)`:** already return `"variant"` / `"task"` (Tier 0 T0-096/T0-097); removed stale post-Final gap bullet. Concurrent `async` + `sleep` between `var` bindings remains doc-only (gotchas + RM §6.14).
-- **Post-Final language constructs plan:** ranked workstreams L1–L6 (schema/sum-type unification, gather-then-extract prompts, `@budget`, workflow call-graph determinism, grounded values, deferred capabilities). Tracking only — no Tier 0 semantic change. See [`docs/roadmap-language-constructs.md`](../roadmap-language-constructs.md).
+- **Post-Final language constructs plan:** ranked workstreams L1–L6 (schema/sum-type unification, gather-then-extract prompts, `@budget`, workflow call-graph determinism, grounded values, capability tokens). Tracking only — no Tier 0 semantic change. See [`docs/roadmap-language-constructs.md`](../roadmap-language-constructs.md).
 
 #### Clarified (PATCH — product / Tier-2 docs only; no Tier 0 semantic change)
 

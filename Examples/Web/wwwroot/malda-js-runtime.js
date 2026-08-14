@@ -418,6 +418,100 @@
     }
   };
 
+  const capStamp = Symbol("malda.capability");
+
+  function mintCap(kind, path, callee) {
+    if (typeof path !== "string") {
+      throw new Error((callee || kind) + "() path must be a string");
+    }
+    const token = markDict({ kind, path });
+    Object.defineProperty(token, capStamp, {
+      value: true,
+      enumerable: false,
+      configurable: false
+    });
+    return Object.freeze(token);
+  }
+
+  function isCapToken(value, kind) {
+    if (!value || typeof value !== "object" || value[capStamp] !== true) return false;
+    if (kind == null || kind === undefined) return true;
+    return value.kind === kind;
+  }
+
+  function requireCapToken(value, kind, callee) {
+    if (!isCapToken(value)) {
+      throw new Error(callee + "() expects an unforgeable capability token, not a string or object literal");
+    }
+    if (kind && value.kind !== kind) {
+      throw new Error(callee + "() capability kind is '" + value.kind + "', expected '" + kind + "'");
+    }
+    return value;
+  }
+
+  function normalizeCapPath(path) {
+    const raw = String(path == null ? "" : path).replace(/\\/g, "/");
+    const isAbs = raw.startsWith("/");
+    const parts = raw.split("/");
+    const out = [];
+    for (const part of parts) {
+      if (part === "" || part === ".") continue;
+      if (part === "..") {
+        if (out.length > 0) out.pop();
+        continue;
+      }
+      out.push(part);
+    }
+    const joined = out.join("/");
+    return isAbs ? "/" + joined : joined;
+  }
+
+  function isPathUnderCap(root, path) {
+    const r = normalizeCapPath(root);
+    const p = normalizeCapPath(path);
+    if (p === r) return true;
+    if (r === "" || r === ".") return !p.startsWith("../") && p.indexOf("/../") < 0;
+    return p.startsWith(r.endsWith("/") ? r : r + "/");
+  }
+
+  function capHostIoUnavailable(callee) {
+    throw new Error(callee + "() file I/O is not available on the JavaScript backend");
+  }
+
+  const capStdLib = {
+    fileRead(path) {
+      return mintCap("fileRead", path, "fileRead");
+    },
+    fileWrite(path) {
+      return mintCap("fileWrite", path, "fileWrite");
+    },
+    dirList(path) {
+      return mintCap("dirList", path, "dirList");
+    },
+    is(value, kind) {
+      return isCapToken(value, kind);
+    },
+    confine(token, relativePath) {
+      const parent = requireCapToken(token, null, "confine");
+      if (typeof relativePath !== "string") {
+        throw new Error("confine() path must be a string");
+      }
+      const rooted = relativePath.startsWith("/") || /^[A-Za-z]:[\\/]/.test(relativePath);
+      const combined = rooted
+        ? relativePath
+        : (parent.path === "" || parent.path === "."
+          ? relativePath
+          : String(parent.path).replace(/[/\\]+$/, "") + "/" + relativePath.replace(/^[/\\]+/, ""));
+      if (!isPathUnderCap(parent.path, combined)) {
+        throw new Error("confine() path '" + relativePath + "' is not under capability path '" + parent.path + "'");
+      }
+      return mintCap(parent.kind, combined, "confine");
+    },
+    read() { capHostIoUnavailable("read"); },
+    write() { capHostIoUnavailable("write"); },
+    list() { capHostIoUnavailable("list"); }
+  };
+
   function normalizeGroundedCitation(item) {
     if (item == null || item === undefined) return null;
     if (typeof item === "string") {
@@ -1034,6 +1128,7 @@
     result: resultStdLib,
     option: optionStdLib,
     grounded: groundedStdLib,
+    cap: capStdLib,
     runProperty: runPropertyBuiltin,
     actors: actorsRuntime,
     builtins: {

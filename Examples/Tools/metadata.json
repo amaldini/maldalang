@@ -9,6 +9,16 @@
       "name": "Custom Tools with @Tool Decorator",
       "description": "Define custom LLM tools using @Tool decorator",
       "file": "custom_tools_decorator.malda"
+    },
+    {
+      "name": "Capability tokens",
+      "description": "Unforgeable FileRead tokens so tools cannot invent paths",
+      "file": "capability_tokens.malda",
+      "track": "ai-builder",
+      "difficulty": "intermediate",
+      "requires": ["offline"],
+      "concepts": ["cap.fileRead", "cap.read", "@effects"],
+      "learningGoal": "Pass an unforgeable capability into a helper instead of a free-form path string."
     }
   ]
 }

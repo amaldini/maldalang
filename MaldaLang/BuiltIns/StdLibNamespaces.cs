@@ -16,6 +16,7 @@ public static class StdLibNamespaces
     public const string ResultModule = "result";
     public const string OptionModule = "option";
     public const string GroundedModule = "grounded";
+    public const string CapModule = "cap";
     public const string DeprecatedMathModuleAlias = "Math";
 
     public static readonly IReadOnlySet<string> MathMethodNames = new HashSet<string>(StringComparer.Ordinal)
@@ -51,6 +52,13 @@ public static class StdLibNamespaces
     public static readonly IReadOnlySet<string> GroundedMethodNames = new HashSet<string>(StringComparer.Ordinal)
     {
         "wrap"
+    };
+
+    public static readonly IReadOnlySet<string> CapMethodNames = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "fileRead", "fileWrite", "dirList",
+        "is", "confine",
+        "read", "write", "list"
     };
 
     public static readonly IReadOnlySet<string> IoMethodNames = new HashSet<string>(StringComparer.Ordinal)
@@ -122,6 +130,7 @@ public static class StdLibNamespaces
             ResultModule => ResultMethodNames.Contains(methodName),
             OptionModule => OptionMethodNames.Contains(methodName),
             GroundedModule => GroundedMethodNames.Contains(methodName),
+            CapModule => CapMethodNames.Contains(methodName),
             _ => false
         };
 }

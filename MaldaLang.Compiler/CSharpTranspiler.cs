@@ -3020,6 +3020,16 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("}");
         WriteIndent();
+        _output.AppendLine("else if (instance is MaldaLang.BuiltIns.CapInstance cap)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("result = cap.CallMethod(methodName, runtimeArgs, MaldaLang.Runtime.TranspiledBuiltinRuntime.GetOrCreateInterpreter());");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        WriteIndent();
         _output.AppendLine("else if (instance is MaldaLang.BuiltIns.AgentInstance agent)");
         WriteIndent();
         _output.AppendLine("{");
@@ -9063,6 +9073,10 @@ public class CSharpTranspiler
             {
                 return;
             }
+            if (TryTranspileCapStdLibCall(memberAccess2, call))
+            {
+                return;
+            }
             if (memberAccess2.Object is IdentifierExpression taIdExpr &&
                 taIdExpr.Name == "ta" &&
                 OptionalPackTranspilerBuiltIns.IsTimeseriesName(memberAccess2.Member))
@@ -13112,6 +13126,46 @@ public class CSharpTranspiler
         }
 
         _output.Append(" }))");
+        return true;
+    }
+
+    private bool TryTranspileCapStdLibCall(MemberAccessExpression memberAccess, FunctionCallExpression call)
+    {
+        if (memberAccess.Object is not IdentifierExpression moduleId)
+            return false;
+        if (moduleId.Name != StdLibNamespaces.CapModule
+            || !StdLibNamespaces.CapMethodNames.Contains(memberAccess.Member))
+            return false;
+
+        var method = memberAccess.Member switch
+        {
+            "fileRead" => nameof(CapStdLib.FileRead),
+            "fileWrite" => nameof(CapStdLib.FileWrite),
+            "dirList" => nameof(CapStdLib.DirList),
+            "is" => nameof(CapStdLib.Is),
+            "confine" => nameof(CapStdLib.Confine),
+            "read" => nameof(CapStdLib.Read),
+            "write" => nameof(CapStdLib.Write),
+            "list" => nameof(CapStdLib.List),
+            _ => null
+        };
+        if (method == null)
+            return false;
+
+        var needsInterpreter = method is nameof(CapStdLib.Read) or nameof(CapStdLib.Write) or nameof(CapStdLib.List);
+        _output.Append("RuntimeHelpers.UnwrapRuntimeValue(MaldaLang.BuiltIns.CapStdLib.");
+        _output.Append(method);
+        _output.Append("(new List<MaldaLang.Interpreter.RuntimeValue> { ");
+        for (int i = 0; i < call.Arguments.Count; i++)
+        {
+            if (i > 0)
+                _output.Append(", ");
+            _output.Append("RuntimeHelpers.ToRuntimeValue(");
+            TranspileExpression(call.Arguments[i]);
+            _output.Append(")");
+        }
+
+        _output.Append(needsInterpreter ? " }, null))" : " }))");
         return true;
     }
 }

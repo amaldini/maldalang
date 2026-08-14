@@ -75,7 +75,7 @@ Server-driven `ui.*` trees, patch protocol, and `MaldaLang.UIHost` wiring are do
 | `docs/spec/backend-capability-matrix.md` | Interpreter vs C# vs JS product capabilities |
 | `docs/start-here.md`, `docs/architecture.md` | Onboarding |
 | [`docs/roadmap-p0-maturity.md`](roadmap-p0-maturity.md) | P0 maturity roadmap (workstreams complete 2026-08-12; next = post-Final / deferred) |
-| [`docs/roadmap-language-constructs.md`](roadmap-language-constructs.md) | Post-Final language constructs (schema/sum types, Mode C, budget, workflow determinism, grounded values) |
+| [`docs/roadmap-language-constructs.md`](roadmap-language-constructs.md) | Post-Final language constructs (schema/sum types, Mode C, budget, workflow determinism, grounded values, capability tokens) |
 | [`docs/workflows-ha.md`](workflows-ha.md) | Durable workflows: single-writer + read-only ops model (W2) |
 | `docs/javascript-backend.md`, `docs/ui-framework.md`, `docs/profiling.md`, `docs/benchmarks.md`, … | Topic guides |
 | `docs/planning/` | Historical roadmap — verify against code / ReferenceManual / AGENTS.md ([README](planning/README.md)) |
@@ -96,3 +96,4 @@ Server-driven `ui.*` trees, patch protocol, and `MaldaLang.UIHost` wiring are do
 - Workflow determinism: fixed WF1001/WF1002 deny-list in [`BuiltInRegistry.GetWorkflowBehavior`](../MaldaLang/BuiltIns/BuiltInRegistry.cs); IDE same-file call-graph in [`WorkflowDeterminismDiagnostics`](../MaldaLang/IDE/WorkflowDeterminismDiagnostics.cs) (imported/unknown callees are WF1005 Info; not Temporal-style history detection).
 - Resource bounds: [`@within(ms)`](../MaldaLang/Interpreter/WithinBoundsContext.cs) for wall-clock; [`@budget(tokens, tools, cost?)`](../MaldaLang/Interpreter/ResourceBoundsContext.cs) for prompt/agent-turn abort (env `MALDA_AGENT_CONTEXT_BUDGET_TOKENS` remains context-trim only).
 - Grounded values: [`grounded.wrap`](../MaldaLang/BuiltIns/GroundedStdLib.cs) wraps a payload with `{ source, id?, span? }` citations; GraphMemory [`ask`](../MaldaLang/BuiltIns/GraphMemory.cs) / `query(..., { grounded: true })` is the opt-in ASK path. Not a `match`-visible kind.
+- Capability tokens: [`cap.fileRead`](../MaldaLang/BuiltIns/CapStdLib.cs) mints an unforgeable FileRead handle; `cap.read` / `io.readFile` consume it. Object literals cannot forge a token. `@effects("io")` stays a name allow-list.
