@@ -1180,10 +1180,10 @@ public class Parser
                         paramNames.Add(ConsumeIdentifierOrKeyword("Expect parameter name in constructor."));
                         if (Match(TokenType.Colon))
                         {
-                            var typeName = ParseSchemaType(
+                            var payloadType = ParseSchemaType(
                                 "Expect constructor payload type after ':'.",
                                 out var required);
-                            paramTypes.Add(typeName);
+                            paramTypes.Add(payloadType);
                             paramRequired.Add(required);
                         }
                         else
