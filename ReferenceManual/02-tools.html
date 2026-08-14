@@ -123,7 +123,7 @@ malda -h</code></pre>
             <tr><td><code>HttpServer</code>, <code>RestServer</code>, <code>@PAGE</code></td><td>Yes</td><td>Yes</td><td>Server-side only; browser uses HTTP to MALDA API</td></tr>
             <tr><td>Database clients (<code>SqliteClient</code>, etc.)</td><td>Yes</td><td>Yes</td><td>No (keep on server)</td></tr>
             <tr><td>Target decorators (<code>@server()</code>, <code>@client()</code>, <code>@shared()</code>)</td><td>N/A at runtime</td><td>C# target</td><td>JS + C# split at transpile time</td></tr>
-            <tr><td>Desktop IDE debugger</td><td>Full support</td><td>Transpiled runs supported</td><td>N/A</td></tr>
+            <tr><td>Desktop IDE debugger</td><td>Full support (Desktop/Web IDE; VS Code/Cursor F5 via <code>malda debug-adapter</code>)</td><td>Transpiled runs supported via <code>#line</code> mapping — not DAP</td><td>N/A</td></tr>
             <tr><td>Typical performance</td><td>Fast iteration</td><td>Best for production .exe</td><td>Browser-dependent</td></tr>
         </table>
         <p><strong>Rule of thumb:</strong> develop and debug with the interpreter; ship performance-sensitive server apps with transpile mode; use the JavaScript backend when the UI must run in the browser and MALDA stays on the server or in a JS bundle.</p>
@@ -350,7 +350,7 @@ var result = helper();</code></pre>
         <ul>
             <li><strong>Desktop IDE</strong>: Native Windows application — the <strong>reference</strong> IDE (full project workflows, package UI, local models / MCP where available, virtual <code>@malda-section</code> tabs, richer compile)</li>
             <li><strong>Web IDE</strong>: Browser learning playground (Monaco) for edit / run / debug and examples — useful cross-platform, but <strong>not</strong> Desktop parity</li>
-            <li><strong>VS Code / LSP</strong>: Cross-platform editing via the language server (see below)</li>
+            <li><strong>VS Code / LSP</strong>: Cross-platform editing via the language server, plus interpret-mode F5 debugging through <code>vscode-malda</code> (see <a href="#interpret-mode-debug">2.6.5</a>)</li>
         </ul>
 
         <p>The Desktop IDE provides:</p>
@@ -413,7 +413,7 @@ var result = helper();</code></pre>
   }
 }</code></pre>
 
-        <p>Ensure <code>.malda</code> files are associated with language id <code>malda</code> (e.g. via “Change Language Mode” or an extension that registers the <code>malda</code> language).</p>
+        <p>Ensure <code>.malda</code> files are associated with language id <code>malda</code> (e.g. via “Change Language Mode” or an extension that registers the <code>malda</code> language). Interpret-mode F5 debugging is a second process — see <a href="#interpret-mode-debug">2.6.5 Interpret-mode debug</a>.</p>
 
         <h3>2.6.3 Setting Up Cursor</h3>
 
@@ -439,6 +439,14 @@ var result = helper();</code></pre>
         <h3>2.6.4 Other Editors</h3>
 
         <p>Any editor that can start a language server via <strong>stdio</strong> and send LSP requests (e.g. Sublime Text with LSP plugin, Vim/Neovim with LSP client, Emacs with eglot/lsp-mode) can use the MALDA language server. Configure the editor to run <code>malda-lsp.exe</code> (or the path to your <code>malda-lsp</code> executable) as the language server for <code>.malda</code> files and, if required, set the language id to <code>malda</code>.</p>
+
+        <h3 id="interpret-mode-debug">2.6.5 Interpret-mode debug</h3>
+
+        <p><code>malda debug-adapter</code> speaks the <strong>Debug Adapter Protocol (DAP)</strong> on stdin/stdout. It is a separate process from the language server: do not send DAP on the <code>malda-lsp</code> stdio pipe, and do not print CLI banners on the adapter’s stdout.</p>
+
+        <p>The in-repo <code>vscode-malda</code> extension contributes debugger type <code>malda</code>. Press <strong>F5</strong> on a <code>.malda</code> file to launch the interpreter under the adapter (<code>malda.cli.path</code> points at a <code>malda</code> executable that understands <code>debug-adapter</code>). Language intelligence stays on <code>malda-lsp</code>.</p>
+
+        <p>This path is <strong>interpret-only</strong>. There is no <code>debugger</code> keyword. Transpile failures and <code>#line</code> mapping stay in <a href="../docs/debugging-transpile.md"><code>docs/debugging-transpile.md</code></a>. Procedures, breakpoints, and what will not stop are in <a href="../docs/debugging-interpret.md"><code>docs/debugging-interpret.md</code></a>.</p>
 
         <h2>2.7 Property Testing (Overview)</h2>
 
