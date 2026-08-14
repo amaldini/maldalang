@@ -248,12 +248,12 @@ public static class UiLoopDiagnostics
             Severity = DiagnosticSeverity.Info,
             Message =
                 "UI1002: This file mixes @PAGE/@AIPAGE with ui.mount/ui.render. Prefer one model per surface " +
-                "(@PAGE HTML vs ui.* trees). Intentional hybrids need clear boundaries — see ReferenceManual/16-web-ui-hub.html.",
+                "(@PAGE HTML vs ui.* trees). Intentional hybrids need clear boundaries — see ReferenceManual/22-web-ui-hub.html.",
             Line = Math.Max(0, pageDecorator.Line - 1),
             Column = Math.Max(0, pageDecorator.Column - 1),
             Length = Math.Max(1, pageDecorator.Name.Length + 1),
             Source = "UI1002",
-            RelatedDocumentationPath = "ReferenceManual/16-web-ui-hub.html",
+            RelatedDocumentationPath = "ReferenceManual/22-web-ui-hub.html",
             RelatedDocumentationTitle = "Web UI Overview",
             RelatedExamplePath = "Examples/Web/ui_event_loop.malda",
             RelatedExampleTitle = "UI event loop"

@@ -40,7 +40,7 @@ class when detection guesses wrong:
 ```
 
 Blocks that already contain markup, such as the linked keyword index in
-`02-lexical-structure.html`, are left untouched.
+`03-lexical-structure.html`, are left untouched.
 
 Each source line is wrapped in `<span class="ln">`. That is what makes the
 hanging indent below possible, and it is why `navigation.js` rebuilds newlines

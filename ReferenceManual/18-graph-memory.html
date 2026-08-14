@@ -541,7 +541,7 @@ var linked = memory.findRelated("node_0");  // graph edges persist across save/l
             <li><code>load(filePath)</code> - Load memory from disk (string path, extension is ignored)</li>
         </ul>
 
-        <p><strong>Note:</strong> Call <code>initialize(dimension, precision, embeddingFunction)</code> <em>before</em> <code>load()</code> when using a custom embedder; <code>load()</code> preserves the embedding function across its internal re-initialization. The personal assistant defaults to <code>embedHash</code> (384 dimensions) and supports <code>MALDA_MEMORY_EMBED</code> or <code>config.agents.memory.embed</code> values <code>hash</code>, <code>bow</code>, or <code>llama</code> (see <a href="26-personal-assistant.html">31. Personal Assistant</a>).</p>
+        <p><strong>Note:</strong> Call <code>initialize(dimension, precision, embeddingFunction)</code> <em>before</em> <code>load()</code> when using a custom embedder; <code>load()</code> preserves the embedding function across its internal re-initialization. The personal assistant defaults to <code>embedHash</code> (384 dimensions) and supports <code>MALDA_MEMORY_EMBED</code> or <code>config.agents.memory.embed</code> values <code>hash</code>, <code>bow</code>, or <code>llama</code> (see <a href="31-personal-assistant.html">31. Personal Assistant</a>).</p>
 
         <h2>18.7 Graph Export and Import</h2>
         <p>GraphMemory provides methods to export and import the knowledge graph separately from the full persistence system.</p>
@@ -727,7 +727,7 @@ print("Found " + results2.length + " results after loading");</code></pre>
             <li><strong>Codebase Understanding:</strong> Analyzing and understanding relationships in codebases</li>
             <li><strong>RAG Systems:</strong> Retrieval-Augmented Generation with graph-based relationship understanding</li>
             <li><strong>Knowledge Bases:</strong> Building semantic knowledge bases with relationship tracking</li>
-            <li><strong>PRD-Driven Autonomous Loops:</strong> Ralph Wiggum (<code>Examples/RalphWiggum/RalphWiggum.malda</code>) persists structured iteration summaries and indexes modified files — see <a href="14-agent-orchestration.html#ralph-wiggum">17.18 Ralph Wiggum</a></li>
+            <li><strong>PRD-Driven Autonomous Loops:</strong> Ralph Wiggum (<code>Examples/RalphWiggum/RalphWiggum.malda</code>) persists structured iteration summaries and indexes modified files — see <a href="17-agent-orchestration.html#ralph-wiggum">17.18 Ralph Wiggum</a></li>
             <li><strong>Multi-Session Conversations:</strong> Maintaining context across conversation sessions</li>
             <li><strong>Document Analysis:</strong> Understanding relationships between documents and concepts</li>
         </ul>
@@ -744,7 +744,7 @@ print("Found " + results2.length + " results after loading");</code></pre>
         </ul>
 
         <div class="nav-footer">
-            <a href="14-agent-orchestration.html">← Previous: 17. Agent Orchestration</a>
+            <a href="17-agent-orchestration.html">← Previous: 17. Agent Orchestration</a>
             <a href="19-mcp-server.html">Next: 19. MCP Server→</a>
         </div>
 

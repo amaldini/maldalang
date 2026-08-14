@@ -35,7 +35,7 @@ Also useful from the main tree:
 - `Examples/Testing/unit_test_basics.test.malda`
 - `Examples/Web/http_client_json.malda`, `Examples/Web/rest_bearer_jwt.malda`, `Examples/Web/auth_cookie_login.malda`
 - `Examples/Web/rest_api_server.malda`, `Examples/Web/ui_form_workflow.malda`, `Examples/Web/ui_counter_dashboard.malda`
-- Language API: `ReferenceManual/16-web-ui.html` (hub: `16-web-ui-hub.html`)
+- Language API: `ReferenceManual/23-web-ui.html` (hub: `22-web-ui-hub.html`)
 - `Examples/Workflows/retry_and_inspect.malda`
 - `Examples/Prompts/basic_prompt.malda`, `Examples/Prompts/schema_prompt_structured.malda`, `Examples/Prompts/sum_type_intent_prompt.malda`, `Examples/Prompts/api_program_calc.malda`
 - `Examples/Actors/basic_counter.malda`

@@ -55,7 +55,7 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 | Change type | Tier |
 |-------------|------|
-| [22-grammar.html](../../ReferenceManual/22-grammar.html) aligned with parser | **PATCH** (spec 1.0 unchanged) |
+| [34-grammar.html](../../ReferenceManual/34-grammar.html) aligned with parser | **PATCH** (spec 1.0 unchanged) |
 | Reference Manual narrative | Not spec versioned; track in manual changelog if needed |
 
 ---
@@ -96,7 +96,7 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 1. Update [malda-language-1.0.md](malda-language-1.0.md) (or fork `malda-language-1.1.md` for large drafts).  
 2. Add a **Conformance** row and test in `MaldaLang.Tests/Conformance/Tier0/` when behavior is normative.  
 3. Add an entry under `[Unreleased]` below with **MAJOR** / **MINOR** / **PATCH** label.  
-4. If syntax changes: update [22-grammar.html](../../ReferenceManual/22-grammar.html) and `ReferenceManualGrammarCoverageTests`.  
+4. If syntax changes: update [34-grammar.html](../../ReferenceManual/34-grammar.html) and `ReferenceManualGrammarCoverageTests`.  
 5. Phase 2.4: `scripts/verify-spec-parser-drift.ps1` and `bitbucket-pipelines.yml` fail PRs that touch `Parser.cs` or `Lexer.cs` without spec/grammar/CHANGELOG update.
 
 **Implementation precedence for Final 1.0:** interpreter + Tier 0 tests → spec prose → Reference Manual.
@@ -109,7 +109,7 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 #### Added (MINOR — primary constructors)
 
-- **`class Name(params)`:** parameter list after the class name desugars to public fields plus a synthesized constructor. Body optional (`class Point(x, y);` or `{ methods }`). Cannot combine with `extends` or an explicit `function Name(...)`. Grammar: [`22-grammar.html`](../../ReferenceManual/22-grammar.html); narrative: [`10-classes-objects.html`](../../ReferenceManual/10-classes-objects.html) §10.11.
+- **`class Name(params)`:** parameter list after the class name desugars to public fields plus a synthesized constructor. Body optional (`class Point(x, y);` or `{ methods }`). Cannot combine with `extends` or an explicit `function Name(...)`. Grammar: [`34-grammar.html`](../../ReferenceManual/34-grammar.html); narrative: [`10-classes-objects.html`](../../ReferenceManual/10-classes-objects.html) §10.11.
 
 #### Added (MINOR — additive module syntax)
 
@@ -168,7 +168,7 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 
 - Keywords `import` and `export`; file and package import with isolated module environments.  
 - Spec §14 and [phase-3-modules-design.md](../planning/phase-3-modules-design.md).  
-- Grammar: `ImportStmt`, `ExportableDecl` in [22-grammar.html](../../ReferenceManual/22-grammar.html).
+- Grammar: `ImportStmt`, `ExportableDecl` in [34-grammar.html](../../ReferenceManual/34-grammar.html).
 
 #### Implementation (Phase 3.2)
 
@@ -181,7 +181,7 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 #### Added (normative documentation)
 
 - Initial [malda-language-1.0.md](malda-language-1.0.md): value model, null, truthiness, `match`, sum types, `async`/`await`/`all`, actors, `typeOf`/`isNumber`, dictionary missing-key → `null`.  
-- Expanded [22-grammar.html](../../ReferenceManual/22-grammar.html) (Phase 2.2).  
+- Expanded [34-grammar.html](../../ReferenceManual/34-grammar.html) (Phase 2.2).  
 - This CHANGELOG and semver policy (Phase 2.3).
 
 #### Implementation alignment (already shipped in toolchain)

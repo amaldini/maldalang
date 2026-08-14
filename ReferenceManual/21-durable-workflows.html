@@ -19,7 +19,7 @@
         <h1>21. Durable Workflows</h1>
 
         <p>Durable workflows let you run long-lived, restart-safe business processes with persisted state, replay-safe step execution, and external control points such as approvals and signals.</p>
-        <p>For short fire-and-forget work (send email, call a webhook), prefer the lightweight job queue builtins (<code>enqueueJob</code> / <code>claimJob</code> / <code>completeJob</code> / <code>failJob</code>) documented in <a href="11-built-in-functions.html">Built-in Functions</a>. Jobs use <code>./.malda/jobs.db</code> and are not workflow instances.</p>
+        <p>For short fire-and-forget work (send email, call a webhook), prefer the lightweight job queue builtins (<code>enqueueJob</code> / <code>claimJob</code> / <code>completeJob</code> / <code>failJob</code>) documented in <a href="12-built-in-functions.html">Built-in Functions</a>. Jobs use <code>./.malda/jobs.db</code> and are not workflow instances.</p>
 
         <h2>21.1 Core Concepts</h2>
         <ul>
@@ -258,15 +258,15 @@ setx MALDA_WORKFLOW_CONNECTION "Data Source=C:\ProgramData\malda\workflows.db"</
         <div class="see-also">
             <h3>See Also</h3>
             <ul>
-                <li><a href="11-built-in-functions.html">12. Built-in Functions</a> - workflow built-in API reference</li>
-                <li><a href="26-personal-assistant.html">31. Personal Assistant and CLI</a> - CLI configuration and usage</li>
-                <li><a href="22-grammar.html">Grammar</a> — partial BNF only; workflow syntax is documented here and in <code>Parser.cs</code></li>
+                <li><a href="12-built-in-functions.html">12. Built-in Functions</a> - workflow built-in API reference</li>
+                <li><a href="31-personal-assistant.html">31. Personal Assistant and CLI</a> - CLI configuration and usage</li>
+                <li><a href="34-grammar.html">Grammar</a> — partial BNF only; workflow syntax is documented here and in <code>Parser.cs</code></li>
             </ul>
         </div>
 
         <div class="nav-footer">
             <a href="20-acp.html">← Previous: 20. ACP (Agent Communication Protocol)</a>
-            <a href="16-web-ui-hub.html">Next: 22. Web UI Overview→</a>
+            <a href="22-web-ui-hub.html">Next: 22. Web UI Overview→</a>
         </div>
 
         <footer>

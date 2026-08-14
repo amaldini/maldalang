@@ -2,7 +2,7 @@
 
 **Status:** Active (W2)  
 **Audience:** operators and maintainers deploying `workflow` persistence  
-**Related:** [`ReferenceManual/31-durable-workflows.html`](../ReferenceManual/31-durable-workflows.html) §32.10, [`roadmap-p0-maturity.md`](roadmap-p0-maturity.md)
+**Related:** [`ReferenceManual/21-durable-workflows.html`](../ReferenceManual/21-durable-workflows.html) §32.10, [`roadmap-p0-maturity.md`](roadmap-p0-maturity.md)
 
 This note documents the **supported** concurrency model for the OSS workflow store. It is intentionally narrower than Temporal-class clusters (deferred on the P0 roadmap).
 

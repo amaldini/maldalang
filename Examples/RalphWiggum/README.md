@@ -282,4 +282,4 @@ malda run Examples/RalphWiggum/RalphWiggum.malda
 
 ## Reference
 
-- Reference Manual §16.18 (Ralph Wiggum) — [`ReferenceManual/14-agent-orchestration.html`](../../ReferenceManual/14-agent-orchestration.html)
+- Reference Manual §16.18 (Ralph Wiggum) — [`ReferenceManual/17-agent-orchestration.html`](../../ReferenceManual/17-agent-orchestration.html)

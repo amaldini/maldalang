@@ -18,7 +18,7 @@ The third column is the arity the built-in enforces, in its own words: call it w
 the runtime error says exactly that. An empty third column means the built-in is variadic —
 `all(...tasks)` and the `ui*` component builders, which all take `(props?, ...children)`.
 
-Full prose catalog: `ReferenceManual/11-built-in-functions.html` and `MaldaLang/BuiltIns/`.
+Full prose catalog: `ReferenceManual/12-built-in-functions.html` and `MaldaLang/BuiltIns/`.
 
 ## What exists at the top level
 
@@ -157,7 +157,7 @@ Use `@PAGE` + `pageLayout` for route-first HTML; use `ui.*` (+ optional `compone
 tree/patch UI. Grep `malda-builtins.tsv` for a control name (`uiButton`, `uiDataGrid`, …);
 call it as `ui.button(...)`, `ui.dataGrid(...)`.
 
-API reference: `ReferenceManual/16-web-ui.html` (start at `16-web-ui-hub.html`).
+API reference: `ReferenceManual/23-web-ui.html` (start at `22-web-ui-hub.html`).
 Runnable shapes: `docs/llm/few-shot/19_ui_tree.malda`, `Examples/Web/ui_*.malda`,
 `Templates/fullstack/`.
 

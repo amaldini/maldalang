@@ -290,7 +290,7 @@ function render() {
 }
 
 malda test --iterations 80 --seed 1337</code></pre>
-        <p>For full property-testing guidance (capability decorators, parity semantics, shrinking, and regression workflows), see <a href="27-property-testing.html">Property Testing</a>.</p>
+        <p>For full property-testing guidance (capability decorators, parity semantics, shrinking, and regression workflows), see <a href="33-property-testing.html">Property Testing</a>.</p>
         <h2>32.17 AI Pipeline (RAG)</h2>
         <p>End-to-end retrieval-augmented generation using the pipe operator (<code>|&gt;</code>), VectorDB retriever, prompts, and typed JSON output. Examples:</p>
         <ul>
@@ -331,9 +331,9 @@ function ragAnswer(question, client) -> Answer {
         |> (ctx) => answerPrompt(question, ctx) |> runPrompt(client) |> parseJson("Answer");
 }
 // var result = await ragAnswer(question, client);</code></pre>
-        <p>See also: <a href="07-expressions.html">7. Expressions</a> (pipe operator), <a href="11-built-in-functions.html">12. Built-in Functions</a> (AI pipeline helpers), <a href="06-vectordb.html">14. VectorDB</a> (<code>asRetriever</code>), and <a href="09-functions.html">9. Functions</a> (schema declarations).</p>
+        <p>See also: <a href="07-expressions.html">7. Expressions</a> (pipe operator), <a href="12-built-in-functions.html">12. Built-in Functions</a> (AI pipeline helpers), <a href="14-vectordb.html">14. VectorDB</a> (<code>asRetriever</code>), and <a href="09-functions.html">9. Functions</a> (schema declarations).</p>
         <h2>32.18 Server-driven UI (<code>ui.*</code>)</h2>
-        <p>Language API: <a href="16-web-ui.html">23. Web UI Server Components</a> (start at <a href="16-web-ui-hub.html">22. Web UI Overview</a>). Offline samples under <code>Examples/Web/</code>:</p>
+        <p>Language API: <a href="23-web-ui.html">23. Web UI Server Components</a> (start at <a href="22-web-ui-hub.html">22. Web UI Overview</a>). Offline samples under <code>Examples/Web/</code>:</p>
         <ul>
             <li><code>ui_event_loop.malda</code> — correct mount → dispatch → pull → setState → render loop</li>
             <li><code>ui_counter_dashboard.malda</code> — counter plus lifecycle hooks and snapshot</li>
@@ -347,14 +347,14 @@ dotnet run --project MaldaLang -- Examples/Web/ui_counter_dashboard.malda</code>
             <h3>See Also</h3>
             <ul>
                 <li><a href="10-classes-objects.html">10. Classes & Objects</a> - More class examples</li>
-                <li><a href="06-vectordb.html">14. VectorDB</a> - Vector search and retriever API</li>
-                <li><a href="11-built-in-functions.html">12. Built-in Functions</a> - <code>loadDocuments</code>, <code>indexInto</code>, <code>runPrompt</code>, <code>parseJson</code></li>
-                <li><a href="16-web-ui.html">23. Web UI Server Components</a> - <code>ui.*</code> trees, fragments, and control props</li>
+                <li><a href="14-vectordb.html">14. VectorDB</a> - Vector search and retriever API</li>
+                <li><a href="12-built-in-functions.html">12. Built-in Functions</a> - <code>loadDocuments</code>, <code>indexInto</code>, <code>runPrompt</code>, <code>parseJson</code></li>
+                <li><a href="23-web-ui.html">23. Web UI Server Components</a> - <code>ui.*</code> trees, fragments, and control props</li>
             </ul>
         </div>
         <div class="nav-footer">
-            <a href="26-personal-assistant.html">← Previous: 31. Personal Assistant and CLI</a>
-            <a href="27-property-testing.html">Next: 33. Property Testing→</a>
+            <a href="31-personal-assistant.html">← Previous: 31. Personal Assistant and CLI</a>
+            <a href="33-property-testing.html">Next: 33. Property Testing→</a>
         </div>
 
         <footer>

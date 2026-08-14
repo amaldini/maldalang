@@ -12,16 +12,17 @@ dotnet test MaldaLang.Tests --filter "FullyQualifiedName~ReferenceManual"
 | Test | Guarantee |
 |------|-----------|
 | `ReferenceManualChapterSyncTests` | Chapter titles, breadcrumbs, and `<h1>` match `chapters.json` order |
-| `ReferenceManualGrammarCoverageTests` | `22-grammar.html` names the parser constructs it must cover |
+| `ReferenceManualGrammarCoverageTests` | `34-grammar.html` names the parser constructs it must cover |
 | `ReferenceManualContentGuardTests.ReservedWordLists_CoverEveryLexerKeyword` | Reserved word lists in ch. 3 and the appendix equal `Lexer.Keywords` exactly |
 | `ReferenceManualContentGuardTests.EveryRegistryBuiltIn_IsMentionedSomewhereInTheManual` | Every `BuiltInRegistry` name appears somewhere in the manual |
 | `ReferenceManualContentGuardTests.InternalLinks_ResolveToExistingPages` | No `href` points at a missing chapter file |
 | `ReferenceManualContentGuardTests.SectionNumbers_AreUniqueWithinEachChapter` | No chapter reuses a section number such as two `35.5` headings |
-| `ReferenceManualContentGuardTests.WebUiChapter_NamesEveryRegisteredControlType` | Every `UiControlSpecRegistry` control type appears as `ui.<type>` in `16-web-ui.html` |
+| `ReferenceManualContentGuardTests.WebUiChapter_NamesEveryRegisteredControlType` | Every `UiControlSpecRegistry` control type appears as `ui.<type>` in `23-web-ui.html` |
 | `ReferenceManualContentGuardTests.NavigationFallback_MatchesChaptersJson` | `FALLBACK_NAV_ITEMS` in `navigation.js` matches `chapters.json` |
 | `ReferenceManualContentGuardTests.IndexTocFallback_MatchesChaptersJson` | `FALLBACK_TOC_CHAPTERS` in `index-toc.js` matches `chapters.json` |
 | `ReferenceManualContentGuardTests.ChapterCategories_AreContiguousInReadingOrder` | Each menu category is a contiguous number range in `chapters.json` |
 | `ReferenceManualContentGuardTests.NavAndTocCategoryOrder_ListsEveryChapterCategory` | Sidebar and home TOC category lists match first-seen `chapters.json` categories |
+| `ReferenceManualContentGuardTests.ChapterFilenames_MatchDisplayNumbers` | Each numbered chapter file starts with `{nn}-` matching its `chapters.json` order |
 | `ReferenceManualContentGuardTests.ChapterMastheads_MatchCliVersion` | Chapter headers, the Tools REPL banner, the home “What ships today” line, and the book script stamp the CLI `<Version>` |
 | `ReferenceManualRunnableSnippetTests` | Every snippet marked runnable actually runs and prints what the manual claims |
 

@@ -119,7 +119,7 @@ function updateItemStatus(id, body) {
     dbExecute("UPDATE Items SET status = @status WHERE id = @id", {"id": id, "status": body.status});
     return ok({"id": id, "status": body.status});
 }</code></pre>
-        <p>Production recommendation: add validation, auth middleware, and consistent error payloads. See <a href="17-rest-api.html">26. REST API Server</a>.</p>
+        <p>Production recommendation: add validation, auth middleware, and consistent error payloads. See <a href="26-rest-api.html">26. REST API Server</a>.</p>
 
         <h2>28.5 UI layer (what technology to use)</h2>
         <p>You have two common approaches:</p>
@@ -198,7 +198,7 @@ async function closeItem(id) {
             <li><strong>List page</strong>: an <code>@PAGE</code> handler builds filters/buttons/grid host via <code>ui.crudControls(...)</code>.</li>
             <li><strong>Detail / relation navigation</strong>: query params drive master-detail views (for example <code>?ownerId=5</code>).</li>
             <li><strong>CRUD</strong>: forms use <code>method="post"</code> with matching <code>@POST</code> handlers that validate, persist, and redirect or return a fragment.</li>
-            <li><strong>API calls</strong>: the grid host fetches envelope JSON; the server builds <code>ui.dataGrid</code> from rows and returns a mount/patch envelope. For external APIs, use <code>RestClient</code>; see <a href="18-rest-web-client.html">27. REST Web Client</a>.</li>
+            <li><strong>API calls</strong>: the grid host fetches envelope JSON; the server builds <code>ui.dataGrid</code> from rows and returns a mount/patch envelope. For external APIs, use <code>RestClient</code>; see <a href="27-rest-web-client.html">27. REST Web Client</a>.</li>
             <li><strong>Optimistic / error handling</strong>: show a toast on success; on validation or server error, return <code>componentFragment("form-errors", errorHtml)</code> and re-render the form with inline errors.</li>
         </ul>
         <pre><code>function crudPage(req, schema, pageTitle, lookups) {
@@ -220,7 +220,7 @@ function addItem(req, body, res) {
     var id = dbExecute("INSERT INTO items (...) VALUES (...)", body).lastInsertId;
     return RedirectTo("/web/items?added=" + id);
 }</code></pre>
-        <p>For full schema structure and template paths, see <a href="16-web-ui.html">23. Web UI Server Components</a> (23.3.1.3 CRUD schema reference).</p>
+        <p>For full schema structure and template paths, see <a href="23-web-ui.html">23. Web UI Server Components</a> (23.3.1.3 CRUD schema reference).</p>
 
         <h2>28.6 Database integration pattern</h2>
         <p>A practical approach is to use:</p>
@@ -265,7 +265,7 @@ function triageItem(item) {
             <li>Use <code>getMaldaConfig()</code> for local project/user configuration where appropriate</li>
             <li>Centralize endpoint URLs and model names in one config module</li>
         </ul>
-        <p>Relevant built-ins are documented in <a href="11-built-in-functions.html">12. Built-in Functions</a>.</p>
+        <p>Relevant built-ins are documented in <a href="12-built-in-functions.html">12. Built-in Functions</a>.</p>
 
         <h2>28.10 Practical checklist for new full-stack apps</h2>
         <ul>
@@ -282,26 +282,26 @@ function triageItem(item) {
         <ul>
             <li><strong>Fragment responses</strong>: Verify <code>X-Malda-Fragment</code> and <code>X-Malda-Fragment-Target</code> headers when testing <code>@ACTION</code> or <code>@POST</code> handlers. The client must update only the target element.</li>
             <li><strong>Session continuity</strong>: Pass <code>session</code> in query or form; <code>ui.sessionId(req, default)</code> reads it. Without it, <code>componentState*</code> and <code>ui.state</code> may not persist across requests.</li>
-            <li><strong>API errors</strong>: When the UI calls <code>GET /api/items</code>, ensure the API returns consistent JSON (<code>{"status": 200, "data": [...]}</code>). Use <a href="17-rest-api.html">26. REST API Server</a> validation and error payloads.</li>
+            <li><strong>API errors</strong>: When the UI calls <code>GET /api/items</code>, ensure the API returns consistent JSON (<code>{"status": 200, "data": [...]}</code>). Use <a href="26-rest-api.html">26. REST API Server</a> validation and error payloads.</li>
             <li><strong>CSRF</strong>: If <code>enableCsrf</code> is on, the client must send the token. Check that forms include the hidden field and fetch requests use the correct header.</li>
             <li><strong>Lookups</strong>: For schema-driven CRUD, ensure <code>lookups</code> contains all keys referenced in <code>dialogLookupOptions</code> (e.g. <code>owners</code>, <code>tags</code>). Missing lookups produce empty dropdowns.</li>
         </ul>
-        <p>For Web UI-specific debugging (tree divergence, event handlers, template cache), see <a href="16-web-ui.html">23. Web UI Server Components</a> (23.3.15 Common pitfalls and debugging, 23.6 Testing and Troubleshooting).</p>
+        <p>For Web UI-specific debugging (tree divergence, event handlers, template cache), see <a href="23-web-ui.html">23. Web UI Server Components</a> (23.3.15 Common pitfalls and debugging, 23.6 Testing and Troubleshooting).</p>
 
         <div class="see-also">
             <h3>See Also</h3>
             <ul>
-                <li><a href="16-web-ui.html">23. Web UI Server Components</a> - Building browser-facing pages and UI flows</li>
-                <li><a href="17-rest-api.html">26. REST API Server</a> - Route decorators, middleware, validation, responses</li>
-                <li><a href="18-rest-web-client.html">27. REST Web Client</a> - Calling APIs from UI/services</li>
+                <li><a href="23-web-ui.html">23. Web UI Server Components</a> - Building browser-facing pages and UI flows</li>
+                <li><a href="26-rest-api.html">26. REST API Server</a> - Route decorators, middleware, validation, responses</li>
+                <li><a href="27-rest-web-client.html">27. REST Web Client</a> - Calling APIs from UI/services</li>
                 <li><a href="15-database.html">15. Database Support</a> - Persistence patterns and providers</li>
-                <li><a href="14-agent-orchestration.html">17. Agent Orchestration</a> - AI agents and tool-based workflows</li>
+                <li><a href="17-agent-orchestration.html">17. Agent Orchestration</a> - AI agents and tool-based workflows</li>
             </ul>
         </div>
 
         <div class="nav-footer">
-            <a href="18-rest-web-client.html">← Previous: 27. REST Web Client</a>
-            <a href="21-dotnet-interop.html">Next: 29. .NET Interop→</a>
+            <a href="27-rest-web-client.html">← Previous: 27. REST Web Client</a>
+            <a href="29-dotnet-interop.html">Next: 29. .NET Interop→</a>
         </div>
 
         <footer>

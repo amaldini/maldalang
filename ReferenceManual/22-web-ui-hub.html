@@ -22,7 +22,7 @@
         <p>MALDA supports more than one way to build user interfaces. The models below share HTTP and routing concepts but target different runtimes and delivery styles. Start here before diving into a specific chapter. Prefer <strong>one model per surface</strong> (IDE <code>UI1002</code> when a file mixes <code>@PAGE</code>/<code>@AIPAGE</code> with <code>ui.mount</code>/<code>ui.render</code>).</p>
 
         <div class="info-box">
-            <strong>Full-stack context:</strong> For how UI, API, database, and agents fit together, see <a href="30-full-stack-development.html">28. Full-Stack Development with MALDA</a>.
+            <strong>Full-stack context:</strong> For how UI, API, database, and agents fit together, see <a href="28-full-stack-development.html">28. Full-Stack Development with MALDA</a>.
             For server-driven UI runtime/host internals (patch protocol, <code>UIHost</code>), see <a href="../docs/ui-framework.md"><code>docs/ui-framework.md</code></a>.
         </div>
 
@@ -39,25 +39,25 @@
                 <td><strong>HTML fragment components</strong></td>
                 <td>Form and list pages that return HTML strings, with targeted fragment updates and optional SSE</td>
                 <td><code>component</code>, <code>@ACTION</code>, <code>@LIVE</code>, <code>componentFragment</code>, <code>componentState*</code></td>
-                <td><a href="16-web-ui.html">23. Web UI Server Components</a> (§ 23.2)</td>
+                <td><a href="23-web-ui.html">23. Web UI Server Components</a> (§ 23.2)</td>
             </tr>
             <tr>
                 <td><strong>Server-driven <code>ui.*</code> trees</strong></td>
                 <td>Incremental patch UI hosted by UIHost; controls are node trees, not HTML strings</td>
                 <td><code>ui.button(props, …)</code>, <code>ui.mount</code> / <code>ui.render</code>, <code>ui.state</code></td>
-                <td><a href="16-web-ui.html">23. Web UI Server Components</a> (§ 23.3)</td>
+                <td><a href="23-web-ui.html">23. Web UI Server Components</a> (§ 23.3)</td>
             </tr>
             <tr>
                 <td><strong>HttpServer pages</strong></td>
                 <td>Route-first apps that return full HTML documents, AI-generated pages, or classic server-rendered sites</td>
                 <td><code>HttpServer</code>, <code>@PAGE</code>, <code>@AIPAGE</code>, <code>HTMLCache</code>, <code>generateUI()</code></td>
-                <td><a href="16-http-server-html-ui.html">24. HttpServer &amp; HTML UI Generation</a></td>
+                <td><a href="24-http-server-html-ui.html">24. HttpServer &amp; HTML UI Generation</a></td>
             </tr>
             <tr>
                 <td><strong>Browser JavaScript</strong></td>
                 <td>UI that runs in the browser from MALDA transpiled to JavaScript (games, DOM apps, hybrid frontends)</td>
                 <td><code>dom.*</code>, template mode, <code>@client()</code>, canvas/game APIs</td>
-                <td><a href="16-browser-javascript-backend.html">25. Browser JavaScript UI Backend</a></td>
+                <td><a href="25-browser-javascript-backend.html">25. Browser JavaScript UI Backend</a></td>
             </tr>
         </table>
 
@@ -108,7 +108,7 @@
                               HTTP / REST API layer
                          (see REST API + REST Web Client)</code></pre>
 
-        <p>You can combine models in one product when boundaries are explicit: for example, <code>@PAGE</code> for marketing routes, a <code>ui.*</code> app shell, and a browser JS bundle for an interactive widget. See <a href="17-rest-api.html">26. REST API Server</a> for JSON endpoints that any UI model can call.</p>
+        <p>You can combine models in one product when boundaries are explicit: for example, <code>@PAGE</code> for marketing routes, a <code>ui.*</code> app shell, and a browser JS bundle for an interactive widget. See <a href="26-rest-api.html">26. REST API Server</a> for JSON endpoints that any UI model can call.</p>
 
         <h2>22.4 Runtime boundary reminder</h2>
         <ul>
@@ -116,21 +116,21 @@
             <li><strong>Browser (JS transpile):</strong> DOM helpers, canvas/game APIs, local actors—no direct SQL or filesystem on the server from browser code.</li>
             <li><strong>Hybrid:</strong> browser UI calls MALDA REST routes; server keeps secrets and persistence.</li>
         </ul>
-        <p>See <a href="25-tools.html">2. Tools &amp; Tooling</a> (Runtime modes at a glance) for interpreter vs transpile vs JavaScript trade-offs.</p>
+        <p>See <a href="02-tools.html">2. Tools &amp; Tooling</a> (Runtime modes at a glance) for interpreter vs transpile vs JavaScript trade-offs.</p>
 
         <div class="see-also">
             <h3>See Also</h3>
             <ul>
-                <li><a href="16-web-ui.html">23. Web UI Server Components</a> - HTML fragments and <code>ui.*</code> trees</li>
-                <li><a href="16-http-server-html-ui.html">24. HttpServer &amp; HTML UI Generation</a> - @PAGE, @AIPAGE, HTML cache</li>
-                <li><a href="16-browser-javascript-backend.html">25. Browser JavaScript UI Backend</a> - JS transpile and dom.*</li>
-                <li><a href="30-full-stack-development.html">28. Full-Stack Development with MALDA</a> - End-to-end architecture</li>
+                <li><a href="23-web-ui.html">23. Web UI Server Components</a> - HTML fragments and <code>ui.*</code> trees</li>
+                <li><a href="24-http-server-html-ui.html">24. HttpServer &amp; HTML UI Generation</a> - @PAGE, @AIPAGE, HTML cache</li>
+                <li><a href="25-browser-javascript-backend.html">25. Browser JavaScript UI Backend</a> - JS transpile and dom.*</li>
+                <li><a href="28-full-stack-development.html">28. Full-Stack Development with MALDA</a> - End-to-end architecture</li>
             </ul>
         </div>
 
         <div class="nav-footer">
-            <a href="31-durable-workflows.html">← Previous: 21. Durable Workflows</a>
-            <a href="16-web-ui.html">Next: 23. Web UI Server Components→</a>
+            <a href="21-durable-workflows.html">← Previous: 21. Durable Workflows</a>
+            <a href="23-web-ui.html">Next: 23. Web UI Server Components→</a>
         </div>
 
         <footer>

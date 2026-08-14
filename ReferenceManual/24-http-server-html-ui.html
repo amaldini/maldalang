@@ -19,7 +19,7 @@
         <h1>24. HttpServer & HTML UI Generation</h1>
         <p>This chapter covers MALDA's route-first web server, HTML page handlers, AI-generated page helpers, and HTML caching utilities. Use it when you want to serve pages with <code>HttpServer</code> and traditional request/response routes.</p>
         <div class="info-box">
-            <strong>Start here:</strong> Read <a href="16-web-ui-hub.html">22. Web UI Overview</a> to compare UI models. This chapter focuses on <code>HttpServer</code>, <code>@PAGE</code>, <code>@AIPAGE</code>, and HTML generation helpers. For server components and <code>ui.*</code>, see <a href="16-web-ui.html">Web UI Server Components</a>. For API-first routes, see <a href="17-rest-api.html">REST API Server</a>.
+            <strong>Start here:</strong> Read <a href="22-web-ui-hub.html">22. Web UI Overview</a> to compare UI models. This chapter focuses on <code>HttpServer</code>, <code>@PAGE</code>, <code>@AIPAGE</code>, and HTML generation helpers. For server components and <code>ui.*</code>, see <a href="23-web-ui.html">Web UI Server Components</a>. For API-first routes, see <a href="26-rest-api.html">REST API Server</a>.
         </div>
 
         <h2>24.1 Chapter Map</h2>
@@ -144,7 +144,7 @@ function handleSubmit(body) {
 server.start();</code></pre>
 
         <h2>24.6 GET/POST Routes in Page-Hosting Flows</h2>
-        <p><code>HttpServer</code> can host <code>@GET</code> and <code>@POST</code> routes alongside pages. That is useful for AJAX handlers, small JSON endpoints, or Server-Sent Events used by a page. For full API design guidance, advanced validation, and endpoint organization, use <a href="17-rest-api.html">REST API Server</a> as the primary reference.</p>
+        <p><code>HttpServer</code> can host <code>@GET</code> and <code>@POST</code> routes alongside pages. That is useful for AJAX handlers, small JSON endpoints, or Server-Sent Events used by a page. For full API design guidance, advanced validation, and endpoint organization, use <a href="26-rest-api.html">REST API Server</a> as the primary reference.</p>
 
         <h3>24.6.1 GET handlers</h3>
         <pre><code>@GET("/api/users")
@@ -240,7 +240,7 @@ return envelope;</code></pre>
         <ul>
             <li>The result is a root node object with <code>type</code>, <code>props</code>, <code>children</code>, and an optional <code>key</code>.</li>
             <li>The UI runtime validates the generated tree before it is returned.</li>
-            <li>Use this when you want AI assistance but still want the server-components protocol described in <a href="16-web-ui.html">Web UI Server Components</a>.</li>
+            <li>Use this when you want AI assistance but still want the server-components protocol described in <a href="23-web-ui.html">Web UI Server Components</a>.</li>
         </ul>
 
         <h2>24.9 Request-to-Render Lifecycle</h2>
@@ -272,15 +272,15 @@ return envelope;</code></pre>
         <div class="see-also">
             <h3>See Also</h3>
             <ul>
-                <li><a href="16-web-ui.html">23. Web UI Server Components</a> - Component-oriented server UI, fragments, live updates, and <code>ui.*</code></li>
-                <li><a href="17-rest-api.html">REST API Server</a> - API-focused route design, middleware, validation, and policies</li>
-                <li><a href="30-full-stack-development.html">Full-Stack Development with MALDA</a> - Architecture guidance for mixing pages, APIs, and browser UI</li>
+                <li><a href="23-web-ui.html">23. Web UI Server Components</a> - Component-oriented server UI, fragments, live updates, and <code>ui.*</code></li>
+                <li><a href="26-rest-api.html">REST API Server</a> - API-focused route design, middleware, validation, and policies</li>
+                <li><a href="28-full-stack-development.html">Full-Stack Development with MALDA</a> - Architecture guidance for mixing pages, APIs, and browser UI</li>
             </ul>
         </div>
 
         <div class="nav-footer">
-            <a href="16-web-ui.html">← Previous: 23. Web UI Server Components</a>
-            <a href="16-browser-javascript-backend.html">Next: 25. Browser JavaScript UI Backend→</a>
+            <a href="23-web-ui.html">← Previous: 23. Web UI Server Components</a>
+            <a href="25-browser-javascript-backend.html">Next: 25. Browser JavaScript UI Backend→</a>
         </div>
 
         <footer>

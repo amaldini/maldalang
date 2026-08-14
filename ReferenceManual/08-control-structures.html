@@ -143,7 +143,7 @@ print(result);  // result is null (block ends with statement, not expression)</c
         <h3>Pattern Types</h3>
 
         <h4>Variant Patterns</h4>
-        <p>For values built from <a href="03-data-types.html">sum types</a>, use a variant pattern: <code>ConstructorName(binding, ...)</code>. The value must be that variant and have the same number of payload slots; payloads are bound to the names in the pattern.</p>
+        <p>For values built from <a href="04-data-types.html">sum types</a>, use a variant pattern: <code>ConstructorName(binding, ...)</code>. The value must be that variant and have the same number of payload slots; payloads are bound to the names in the pattern.</p>
         <pre><code>type Result = Ok(value) | Err(message);
 var r = divide(10, 0);
 match r {
@@ -411,7 +411,7 @@ using tmp = new TempFile("scratch.txt") {
             <h3>See Also</h3>
             <ul>
                 <li><a href="07-expressions.html">7. Expressions</a> - Expressions used in conditions</li>
-                <li><a href="04-variables.html">5. Variables</a> - Variable scope in control structures and destructuring</li>
+                <li><a href="05-variables.html">5. Variables</a> - Variable scope in control structures and destructuring</li>
             </ul>
         </div>
         <div class="nav-footer">

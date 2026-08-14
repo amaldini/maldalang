@@ -19,7 +19,7 @@
         <h1>23. Web UI Server Components</h1>
         <p>MALDA includes native support for server-rendered UI using components, fragments, live updates, and the <code>ui.*</code> runtime.</p>
         <div class="info-box">
-            <strong>Start here:</strong> Read <a href="16-web-ui-hub.html">22. Web UI Overview</a> to choose a UI model. This chapter covers two related but distinct <strong>server-side</strong> APIs. Do not pass HTML strings into <code>ui.mount</code> / <code>ui.render</code>, and do not treat a <code>@PAGE</code> return value as a <code>ui.*</code> tree (IDE <code>UI1002</code>).
+            <strong>Start here:</strong> Read <a href="22-web-ui-hub.html">22. Web UI Overview</a> to choose a UI model. This chapter covers two related but distinct <strong>server-side</strong> APIs. Do not pass HTML strings into <code>ui.mount</code> / <code>ui.render</code>, and do not treat a <code>@PAGE</code> return value as a <code>ui.*</code> tree (IDE <code>UI1002</code>).
             <ul>
                 <li><strong>HTML fragments (23.2):</strong> <code>component</code>, <code>@ACTION</code>, <code>@LIVE</code>, <code>componentFragment</code> — form/list pages that return HTML and optional SSE.</li>
                 <li><strong>Server-driven trees (23.3):</strong> <code>ui.button(props, children?, key?)</code>, <code>ui.mount</code> / <code>ui.render</code> — incremental patches hosted by UIHost.</li>
@@ -349,14 +349,14 @@ return ui.redirectWithSession("/web/items", body, "items-ui");</code></pre>
 ui.onUpdate("CounterRoot", sessionId);
 ui.onUnmount("CounterRoot", sessionId);</code></pre>
         <h4>23.3.3.1 How a ui.* session is hosted</h4>
-        <p>A program that calls <code>ui.mount</code> or <code>ui.mountEnvelope</code> can start the embedded UIHost (CLI and Desktop). That host is <em>not</em> <code>HttpServer</code> / <code>@PAGE</code> — those stay in <a href="16-http-server-html-ui.html">24. HttpServer &amp; HTML UI Generation</a>.</p>
+        <p>A program that calls <code>ui.mount</code> or <code>ui.mountEnvelope</code> can start the embedded UIHost (CLI and Desktop). That host is <em>not</em> <code>HttpServer</code> / <code>@PAGE</code> — those stay in <a href="24-http-server-html-ui.html">24. HttpServer &amp; HTML UI Generation</a>.</p>
         <ul>
             <li>The browser client is <code>malda-ui-client.js</code>. The session key is the <code>sessionId</code> you pass to <code>ui.mount</code>.</li>
             <li>Typical endpoints: WebSocket <code>/ui/ws/{sessionId}</code>, plus HTTP mount/patch forwarding under <code>/ui/mount/{sessionId}</code> and <code>/ui/patch/{sessionId}</code>.</li>
             <li>Optional environment: <code>MALDA_UI_AUTH_TOKEN</code> (shared secret) and <code>MALDA_UI_ALLOWED_ORIGIN</code> (CORS).</li>
             <li>Patch protocol, envelope fields, and host internals: <a href="../docs/ui-framework.md"><code>docs/ui-framework.md</code></a>.</li>
         </ul>
-        <p>To try a tree without a browser, run the offline loop below (or <code>Examples/Web/ui_event_loop.malda</code>). AI-generated trees use <code>ui.generate</code> — see <a href="16-http-server-html-ui.html">24.8.5</a>.</p>
+        <p>To try a tree without a browser, run the offline loop below (or <code>Examples/Web/ui_event_loop.malda</code>). AI-generated trees use <code>ui.generate</code> — see <a href="24-http-server-html-ui.html">24.8.5</a>.</p>
         <h4>23.3.3.2 Event loop (mount → pull → render)</h4>
         <p>After each client event: <code>dispatchEvent</code> (the host enqueues; examples may simulate) → <code>pullEvent</code> → update state → rebuild the tree → <code>ui.render</code>. Skipping <code>pullEvent</code> leaves the queue full and the UI looks stuck (IDE <code>UI1001</code>).</p>
         <pre><code data-run="true" data-expect="mount\npatch\n1">var sessionId = "rm-event-loop";
@@ -543,7 +543,7 @@ var evt = ui.pullEvent(sessionId);
 if (evt != null && evt.payload != null && evt.payload.action == "submitItem") {
     // validate/persist, then ui.setState(...) or return componentFragment(...)
 }</code></pre>
-        <p>For template-based forms, use <code>method="post"</code> and <code>action="/path/..."</code> with the built-in AJAX helper. See <a href="30-full-stack-development.html">28. Full-Stack Development with MALDA</a> for end-to-end patterns.</p>
+        <p>For template-based forms, use <code>method="post"</code> and <code>action="/path/..."</code> with the built-in AJAX helper. See <a href="28-full-stack-development.html">28. Full-Stack Development with MALDA</a> for end-to-end patterns.</p>
         <h3>23.3.9 Form validation patterns and error rendering</h3>
         <p>Validate input on the server before persisting. Return validation errors in the response and render them next to fields:</p>
         <ul>
@@ -627,7 +627,7 @@ function itemsPage(req) {
     var controlsHtml = ui.crudControls(schema, sessionId, queryParams, lookups);
     return appLayoutHtml("items", "Items", controlsHtml, "");
 }</code></pre>
-        <p>For REST API calls from the client, use <code>fetch</code> or <code>RestClient</code>; see <a href="18-rest-web-client.html">27. REST Web Client</a> for server-side HTTP calls and <a href="17-rest-api.html">26. REST API Server</a> for API design.</p>
+        <p>For REST API calls from the client, use <code>fetch</code> or <code>RestClient</code>; see <a href="27-rest-web-client.html">27. REST Web Client</a> for server-side HTTP calls and <a href="26-rest-api.html">26. REST API Server</a> for API design.</p>
         <h3>23.3.13 Error and security notes</h3>
         <ul>
             <li><strong>Escaping</strong>: Use <code>{{key}}</code> in templates for user-supplied content (escaped by default). Use <code>{{{key}}}</code> only when you intentionally need raw HTML (e.g. pre-rendered badges from trusted sources).</li>
@@ -651,7 +651,7 @@ function itemsPage(req) {
             <li><strong>Fragment not updating</strong>: Ensure <code>X-Malda-Fragment</code> and <code>X-Malda-Fragment-Target</code> headers are set; the client script must read them and update the target element.</li>
             <li><strong>State lost between requests</strong>: <code>componentState*</code> is session-scoped; pass <code>session</code> in query/body or use a cookie.</li>
             <li><strong>Event handler not firing / UI stuck after dispatch</strong>: Drain with <code>ui.pullEvent</code>, update state, rebuild, then <code>ui.render</code>. IDE warning <code>UI1001</code> flags dispatch→render without pull. See <code>Examples/Web/ui_event_loop.malda</code>.</li>
-            <li><strong>Mixed @PAGE and ui.* trees</strong>: Prefer one model per surface; IDE <code>UI1002</code> (Info) when a file mixes both. Do not pass HTML strings into <code>ui.mount</code> / <code>ui.render</code>. Hub: <a href="16-web-ui-hub.html">22. Web UI Overview</a>.</li>
+            <li><strong>Mixed @PAGE and ui.* trees</strong>: Prefer one model per surface; IDE <code>UI1002</code> (Info) when a file mixes both. Do not pass HTML strings into <code>ui.mount</code> / <code>ui.render</code>. Hub: <a href="22-web-ui-hub.html">22. Web UI Overview</a>.</li>
             <li><strong>Template cache</strong>: Pass <code>{"cache": false}</code> to <code>ui.template</code> for development reload.</li>
             <li><strong>Tree divergence</strong>: Use <code>ui.snapshot</code> and <code>ui.resync</code> when client and server trees diverge.</li>
         </ul>
@@ -663,7 +663,7 @@ function itemsPage(req) {
             <li>Server returns either a full document, fragment response, or protocol patch envelope.</li>
             <li>Optional: SSE subscribers receive <code>componentLiveEmit</code>/<code>ui.invalidate</code> messages for live updates.</li>
         </ol>
-        <p>For the route-first parts of this lifecycle, including <code>HttpServer</code>, <code>@PAGE</code>, and AI-generated HTML, see <a href="16-http-server-html-ui.html">HttpServer &amp; HTML UI Generation</a>.</p>
+        <p>For the route-first parts of this lifecycle, including <code>HttpServer</code>, <code>@PAGE</code>, and AI-generated HTML, see <a href="24-http-server-html-ui.html">HttpServer &amp; HTML UI Generation</a>.</p>
         <h2>23.5 Production Hardening Checklist</h2>
         <ul>
             <li>Enable CSRF protection on mutating routes (<code>enableCsrf</code>) and verify header/cookie flow end-to-end.</li>
@@ -683,9 +683,9 @@ function itemsPage(req) {
         </ul>
         <h2>23.7 Related Chapters and Examples</h2>
         <ul>
-            <li><a href="16-http-server-html-ui.html">24. HttpServer &amp; HTML UI Generation</a> covers <code>HttpServer</code>, <code>@PAGE</code>, <code>@AIPAGE</code>, redirects, <code>HTMLCache</code>, <code>extractHTML</code>, <code>generateUI</code>, and <code>ui.generate</code> (24.8.5) for AI-built <code>ui.*</code> trees.</li>
-            <li><a href="16-browser-javascript-backend.html">25. Browser JavaScript UI Backend</a> covers MALDA-to-JavaScript compilation, <code>dom.*</code>, template mode, browser actors, and <code>game.*</code>.</li>
-            <li><a href="17-rest-api.html">REST API Server</a> remains the main reference for API design, middleware, validation, and API-first <code>@GET</code>/<code>@POST</code> routes.</li>
+            <li><a href="24-http-server-html-ui.html">24. HttpServer &amp; HTML UI Generation</a> covers <code>HttpServer</code>, <code>@PAGE</code>, <code>@AIPAGE</code>, redirects, <code>HTMLCache</code>, <code>extractHTML</code>, <code>generateUI</code>, and <code>ui.generate</code> (24.8.5) for AI-built <code>ui.*</code> trees.</li>
+            <li><a href="25-browser-javascript-backend.html">25. Browser JavaScript UI Backend</a> covers MALDA-to-JavaScript compilation, <code>dom.*</code>, template mode, browser actors, and <code>game.*</code>.</li>
+            <li><a href="26-rest-api.html">REST API Server</a> remains the main reference for API design, middleware, validation, and API-first <code>@GET</code>/<code>@POST</code> routes.</li>
         </ul>
         <p>Offline and hosted samples under <code>Examples/Web/</code>:</p>
         <ul>
@@ -698,16 +698,16 @@ function itemsPage(req) {
         <div class="see-also">
             <h3>See Also</h3>
             <ul>
-                <li><a href="16-web-ui-hub.html">22. Web UI Overview</a> - Choose a UI model</li>
-                <li><a href="16-http-server-html-ui.html">24. HttpServer & HTML UI Generation</a> - Route-first hosting, <code>@PAGE</code>, and AI HTML generation</li>
-                <li><a href="16-browser-javascript-backend.html">25. Browser JavaScript UI Backend</a> - MALDA transpiled to JavaScript for browser-hosted UI</li>
-                <li><a href="20-examples.html">32. Examples</a> - Server-driven UI sample index</li>
-                <li><a href="30-full-stack-development.html">28. Full-Stack Development with MALDA</a> - Architecture and delivery models</li>
+                <li><a href="22-web-ui-hub.html">22. Web UI Overview</a> - Choose a UI model</li>
+                <li><a href="24-http-server-html-ui.html">24. HttpServer & HTML UI Generation</a> - Route-first hosting, <code>@PAGE</code>, and AI HTML generation</li>
+                <li><a href="25-browser-javascript-backend.html">25. Browser JavaScript UI Backend</a> - MALDA transpiled to JavaScript for browser-hosted UI</li>
+                <li><a href="32-examples.html">32. Examples</a> - Server-driven UI sample index</li>
+                <li><a href="28-full-stack-development.html">28. Full-Stack Development with MALDA</a> - Architecture and delivery models</li>
             </ul>
         </div>
         <div class="nav-footer">
-            <a href="16-web-ui-hub.html">← Previous: 22. Web UI Overview</a>
-            <a href="16-http-server-html-ui.html">Next: 24. HttpServer & HTML UI Generation→</a>
+            <a href="22-web-ui-hub.html">← Previous: 22. Web UI Overview</a>
+            <a href="24-http-server-html-ui.html">Next: 24. HttpServer & HTML UI Generation→</a>
         </div>
 
         <footer>

@@ -65,18 +65,18 @@ var my-var = 60;     // Invalid: contains hyphen</code></pre>
 
         <h2 id="keywords">3.3 Keywords</h2>
 
-        <p>Keywords are reserved words that have special meaning in MALDA. They cannot be used as identifiers. The authoritative list is in <code>MaldaLang/Lexer.cs</code>; the same set appears in <a href="23-appendix.html">Appendix A: Reserved Words</a>.</p>
+        <p>Keywords are reserved words that have special meaning in MALDA. They cannot be used as identifiers. The authoritative list is in <code>MaldaLang/Lexer.cs</code>; the same set appears in <a href="35-appendix.html">Appendix A: Reserved Words</a>.</p>
 
         <h3>Complete Keyword List</h3>
-        <pre><code><a href="08-control-structures.html">if</a>, <a href="08-control-structures.html">else</a>, <a href="08-control-structures.html">while</a>, <a href="08-control-structures.html">for</a>, <a href="08-control-structures.html">foreach</a>, <a href="09-functions.html">function</a>, <a href="09-functions.html">fn</a>, <a href="09-functions.html">def</a>, <a href="09-functions.html">return</a>, <a href="04-variables.html">var</a>, <a href="04-variables.html">const</a>, <a href="12-input-output.html">print</a>, <a href="12-input-output.html">input</a>,
-<a href="03-data-types.html">true</a>, <a href="03-data-types.html">false</a>, <a href="07-expressions.html">and</a>, <a href="07-expressions.html">or</a>, <a href="07-expressions.html">not</a>, <a href="08-control-structures.html">break</a>, <a href="08-control-structures.html">continue</a>, <a href="08-control-structures.html">try</a>, <a href="08-control-structures.html">catch</a>, <a href="08-control-structures.html">finally</a>, <a href="08-control-structures.html">throw</a>,
+        <pre><code><a href="08-control-structures.html">if</a>, <a href="08-control-structures.html">else</a>, <a href="08-control-structures.html">while</a>, <a href="08-control-structures.html">for</a>, <a href="08-control-structures.html">foreach</a>, <a href="09-functions.html">function</a>, <a href="09-functions.html">fn</a>, <a href="09-functions.html">def</a>, <a href="09-functions.html">return</a>, <a href="05-variables.html">var</a>, <a href="05-variables.html">const</a>, <a href="11-input-output.html">print</a>, <a href="11-input-output.html">input</a>,
+<a href="04-data-types.html">true</a>, <a href="04-data-types.html">false</a>, <a href="07-expressions.html">and</a>, <a href="07-expressions.html">or</a>, <a href="07-expressions.html">not</a>, <a href="08-control-structures.html">break</a>, <a href="08-control-structures.html">continue</a>, <a href="08-control-structures.html">try</a>, <a href="08-control-structures.html">catch</a>, <a href="08-control-structures.html">finally</a>, <a href="08-control-structures.html">throw</a>,
 <a href="08-control-structures.html">match</a>, <a href="08-control-structures.html">case</a>, <a href="08-control-structures.html">default</a>, <a href="08-control-structures.html">defer</a>,
-<a href="10-classes-objects.html">class</a>, <a href="10-classes-objects.html">new</a>, <a href="10-classes-objects.html">this</a>, <a href="10-classes-objects.html">super</a>, <a href="10-classes-objects.html">extends</a>, <a href="10-classes-objects.html">public</a>, <a href="10-classes-objects.html">private</a>, <a href="10-classes-objects.html">static</a>, <a href="03-data-types.html">null</a>, <a href="03-data-types.html">type</a>, <a href="09-functions.html">schema</a>, <a href="09-functions.html">api</a>,
+<a href="10-classes-objects.html">class</a>, <a href="10-classes-objects.html">new</a>, <a href="10-classes-objects.html">this</a>, <a href="10-classes-objects.html">super</a>, <a href="10-classes-objects.html">extends</a>, <a href="10-classes-objects.html">public</a>, <a href="10-classes-objects.html">private</a>, <a href="10-classes-objects.html">static</a>, <a href="04-data-types.html">null</a>, <a href="04-data-types.html">type</a>, <a href="09-functions.html">schema</a>, <a href="09-functions.html">api</a>,
 <a href="09-functions.html">prompt</a>, <a href="07-expressions.html">async</a>, <a href="07-expressions.html">await</a>,
-<a href="13-actors.html">actor</a>, <a href="13-actors.html">spawn</a>, <a href="13-actors.html">send</a>, <a href="13-actors.html">receive</a>, <a href="13-actors.html">self</a>, <a href="13-actors.html">on</a>, <a href="13-actors.html">then</a>, <a href="13-actors.html">timeout</a>, <a href="13-actors.html">message</a>,
-<a href="31-durable-workflows.html">workflow</a>, <a href="31-durable-workflows.html">step</a>, <a href="31-durable-workflows.html">approval</a>, <a href="31-durable-workflows.html">wait</a>, <a href="31-durable-workflows.html">retry</a>, <a href="31-durable-workflows.html">backoff</a>, <a href="31-durable-workflows.html">delay</a>, <a href="31-durable-workflows.html">maxDelay</a>, <a href="31-durable-workflows.html">compensate</a>, <a href="31-durable-workflows.html">onReject</a>,
-<a href="16-web-ui.html">component</a>, <a href="16-web-ui.html">property</a>,
-<a href="07-expressions.html">dict</a>, <a href="06-graphs.html">graph</a>, <a href="06-graphs.html">directed</a>, <a href="06-graphs.html">undirected</a>, <a href="08-control-structures.html">in</a>,
+<a href="16-actors.html">actor</a>, <a href="16-actors.html">spawn</a>, <a href="16-actors.html">send</a>, <a href="16-actors.html">receive</a>, <a href="16-actors.html">self</a>, <a href="16-actors.html">on</a>, <a href="16-actors.html">then</a>, <a href="16-actors.html">timeout</a>, <a href="16-actors.html">message</a>,
+<a href="21-durable-workflows.html">workflow</a>, <a href="21-durable-workflows.html">step</a>, <a href="21-durable-workflows.html">approval</a>, <a href="21-durable-workflows.html">wait</a>, <a href="21-durable-workflows.html">retry</a>, <a href="21-durable-workflows.html">backoff</a>, <a href="21-durable-workflows.html">delay</a>, <a href="21-durable-workflows.html">maxDelay</a>, <a href="21-durable-workflows.html">compensate</a>, <a href="21-durable-workflows.html">onReject</a>,
+<a href="23-web-ui.html">component</a>, <a href="23-web-ui.html">property</a>,
+<a href="07-expressions.html">dict</a>, <a href="13-graphs.html">graph</a>, <a href="13-graphs.html">directed</a>, <a href="13-graphs.html">undirected</a>, <a href="08-control-structures.html">in</a>,
 <a href="01-introduction.html">using</a>, <a href="01-introduction.html">include</a>, <a href="01-introduction.html">import</a>, <a href="01-introduction.html">export</a></code></pre>
         <p><code>fn</code> and <code>def</code> are aliases of <code>function</code>. <code>reply</code> is a built-in function, not a keyword.</p>
         <p><code>using</code> serves two unrelated purposes: a top-level package alias (<code>using json = System.Text.Json;</code>) and a scoped resource block (<code>using conn = openDb() { ... }</code>). See <a href="01-introduction.html">1. Introduction</a> and <a href="08-control-structures.html">8. Control Structures</a> respectively.</p>
@@ -86,24 +86,24 @@ var my-var = 60;     // Invalid: contains hyphen</code></pre>
             <li><strong>Control Flow:</strong> <a href="08-control-structures.html"><code>if</code></a>, <a href="08-control-structures.html"><code>else</code></a>, <a href="08-control-structures.html"><code>while</code></a>, <a href="08-control-structures.html"><code>for</code></a>, <a href="08-control-structures.html"><code>foreach</code></a>, <a href="08-control-structures.html"><code>break</code></a>, <a href="08-control-structures.html"><code>continue</code></a>, <a href="08-control-structures.html"><code>match</code></a>, <a href="08-control-structures.html"><code>case</code></a>, <a href="08-control-structures.html"><code>default</code></a></li>
             <li><strong>Functions:</strong> <a href="09-functions.html"><code>function</code></a> (<code>fn</code>, <code>def</code>), <a href="09-functions.html"><code>return</code></a>, <a href="09-functions.html"><code>prompt</code></a></li>
             <li><strong>Modules:</strong> <a href="01-introduction.html"><code>include</code></a>, <a href="01-introduction.html"><code>using</code></a>, <a href="01-introduction.html"><code>import</code></a>, <a href="01-introduction.html"><code>export</code></a></li>
-            <li><strong>Sum types:</strong> <a href="03-data-types.html"><code>type</code></a></li>
+            <li><strong>Sum types:</strong> <a href="04-data-types.html"><code>type</code></a></li>
             <li><strong>Schemas:</strong> <a href="09-functions.html"><code>schema</code></a></li>
             <li><strong>Closed APIs:</strong> <a href="09-functions.html"><code>api</code></a></li>
-            <li><strong>Variables:</strong> <a href="04-variables.html"><code>var</code></a>, <a href="04-variables.html"><code>const</code></a></li>
+            <li><strong>Variables:</strong> <a href="05-variables.html"><code>var</code></a>, <a href="05-variables.html"><code>const</code></a></li>
             <li><strong>Resource cleanup:</strong> <a href="08-control-structures.html"><code>defer</code></a>, <a href="08-control-structures.html"><code>using</code></a> (resource form)</li>
-            <li><strong>I/O:</strong> <a href="12-input-output.html"><code>print</code></a>, <a href="12-input-output.html"><code>input</code></a></li>
-            <li><strong>Booleans:</strong> <a href="03-data-types.html"><code>true</code></a>, <a href="03-data-types.html"><code>false</code></a></li>
+            <li><strong>I/O:</strong> <a href="11-input-output.html"><code>print</code></a>, <a href="11-input-output.html"><code>input</code></a></li>
+            <li><strong>Booleans:</strong> <a href="04-data-types.html"><code>true</code></a>, <a href="04-data-types.html"><code>false</code></a></li>
             <li><strong>Logical Operators:</strong> <a href="07-expressions.html"><code>and</code></a> (<code>&amp;&amp;</code>), <a href="07-expressions.html"><code>or</code></a> (<code>||</code>), <a href="07-expressions.html"><code>not</code></a> (<code>!</code>)</li>
             <li><strong>Exception Handling:</strong> <a href="08-control-structures.html"><code>try</code></a>, <a href="08-control-structures.html"><code>catch</code></a>, <a href="08-control-structures.html"><code>finally</code></a>, <a href="08-control-structures.html"><code>throw</code></a></li>
             <li><strong>Classes:</strong> <a href="10-classes-objects.html"><code>class</code></a>, <a href="10-classes-objects.html"><code>new</code></a>, <a href="10-classes-objects.html"><code>this</code></a>, <a href="10-classes-objects.html"><code>super</code></a>, <a href="10-classes-objects.html"><code>extends</code></a></li>
             <li><strong>Access Modifiers:</strong> <a href="10-classes-objects.html"><code>public</code></a>, <a href="10-classes-objects.html"><code>private</code></a></li>
             <li><strong>Static:</strong> <a href="10-classes-objects.html"><code>static</code></a></li>
-            <li><strong>Null:</strong> <a href="03-data-types.html"><code>null</code></a></li>
-            <li><strong>Actors:</strong> <a href="13-actors.html"><code>actor</code></a>, <a href="13-actors.html"><code>message</code></a>, <a href="13-actors.html"><code>spawn</code></a>, <a href="13-actors.html"><code>send</code></a>, <a href="13-actors.html"><code>receive</code></a>, <a href="13-actors.html"><code>self</code></a>, <a href="13-actors.html"><code>on</code></a>, <a href="13-actors.html"><code>then</code></a>, <a href="13-actors.html"><code>timeout</code></a></li>
-            <li><strong>Workflows:</strong> <a href="31-durable-workflows.html"><code>workflow</code></a>, <a href="31-durable-workflows.html"><code>step</code></a>, <a href="31-durable-workflows.html"><code>approval</code></a>, <a href="31-durable-workflows.html"><code>wait</code></a>, <a href="31-durable-workflows.html"><code>retry</code></a>, <a href="31-durable-workflows.html"><code>backoff</code></a>, <a href="31-durable-workflows.html"><code>delay</code></a>, <a href="31-durable-workflows.html"><code>maxDelay</code></a>, <a href="31-durable-workflows.html"><code>compensate</code></a>, <a href="31-durable-workflows.html"><code>onReject</code></a></li>
-            <li><strong>Web UI:</strong> <a href="16-web-ui.html"><code>component</code></a>, <a href="16-web-ui.html"><code>property</code></a></li>
+            <li><strong>Null:</strong> <a href="04-data-types.html"><code>null</code></a></li>
+            <li><strong>Actors:</strong> <a href="16-actors.html"><code>actor</code></a>, <a href="16-actors.html"><code>message</code></a>, <a href="16-actors.html"><code>spawn</code></a>, <a href="16-actors.html"><code>send</code></a>, <a href="16-actors.html"><code>receive</code></a>, <a href="16-actors.html"><code>self</code></a>, <a href="16-actors.html"><code>on</code></a>, <a href="16-actors.html"><code>then</code></a>, <a href="16-actors.html"><code>timeout</code></a></li>
+            <li><strong>Workflows:</strong> <a href="21-durable-workflows.html"><code>workflow</code></a>, <a href="21-durable-workflows.html"><code>step</code></a>, <a href="21-durable-workflows.html"><code>approval</code></a>, <a href="21-durable-workflows.html"><code>wait</code></a>, <a href="21-durable-workflows.html"><code>retry</code></a>, <a href="21-durable-workflows.html"><code>backoff</code></a>, <a href="21-durable-workflows.html"><code>delay</code></a>, <a href="21-durable-workflows.html"><code>maxDelay</code></a>, <a href="21-durable-workflows.html"><code>compensate</code></a>, <a href="21-durable-workflows.html"><code>onReject</code></a></li>
+            <li><strong>Web UI:</strong> <a href="23-web-ui.html"><code>component</code></a>, <a href="23-web-ui.html"><code>property</code></a></li>
             <li><strong>Async Operations:</strong> <a href="07-expressions.html"><code>async</code></a>, <a href="07-expressions.html"><code>await</code></a></li>
-            <li><strong>Data Structures:</strong> <a href="07-expressions.html"><code>dict</code></a>, <a href="06-graphs.html"><code>graph</code></a>, <a href="06-graphs.html"><code>directed</code></a>, <a href="06-graphs.html"><code>undirected</code></a>, <a href="08-control-structures.html"><code>in</code></a></li>
+            <li><strong>Data Structures:</strong> <a href="07-expressions.html"><code>dict</code></a>, <a href="13-graphs.html"><code>graph</code></a>, <a href="13-graphs.html"><code>directed</code></a>, <a href="13-graphs.html"><code>undirected</code></a>, <a href="08-control-structures.html"><code>in</code></a></li>
         </ul>
 
         <h2>3.4 Literals</h2>
@@ -335,7 +335,7 @@ x += 5;    // equivalent to x = x + 5
 x -= 3;    // x = x - 3
 x *= 2;    // x = x * 2
 x /= 4;    // x = x / 4</code></pre>
-        <p>Assigning to a name declared with <code>const</code> is a runtime error. See <a href="04-variables.html">5. Variables</a>.</p>
+        <p>Assigning to a name declared with <code>const</code> is a runtime error. See <a href="05-variables.html">5. Variables</a>.</p>
 
         <h3>Increment and Decrement</h3>
         <p><code>++</code> and <code>--</code> adjust a numeric variable by one, in prefix or postfix position:</p>
@@ -432,13 +432,13 @@ print(user?["name"]);   // null, no error</code></pre>
             <h3>See Also</h3>
             <ul>
                 <li><a href="07-expressions.html">7. Expressions</a> - How operators are used in expressions</li>
-                <li><a href="23-appendix.html">35. Appendix</a> - Operator precedence table</li>
+                <li><a href="35-appendix.html">35. Appendix</a> - Operator precedence table</li>
             </ul>
         </div>
 
         <div class="nav-footer">
-            <a href="25-tools.html">← Previous: 2. Tools & Tooling</a>
-            <a href="03-data-types.html">Next: 4. Data Types→</a>
+            <a href="02-tools.html">← Previous: 2. Tools & Tooling</a>
+            <a href="04-data-types.html">Next: 4. Data Types→</a>
         </div>
 
         <footer>

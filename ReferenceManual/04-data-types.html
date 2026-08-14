@@ -88,7 +88,7 @@ var message = "Name: " + name + ", Age: " + age;
 // message = "Name: Alice, Age: 25"</code></pre>
 
         <h4>Explicit Type Conversion</h4>
-        <p>Use built-in functions for explicit type conversion (see <a href="11-built-in-functions.html">Built-in Functions</a>):</p>
+        <p>Use built-in functions for explicit type conversion (see <a href="12-built-in-functions.html">Built-in Functions</a>):</p>
         <pre><code>var num = int("123");      // Convert string to integer
 var floatVal = float("3.14");  // Convert string to float
 var str = string(42);     // Convert number to string</code></pre>
@@ -203,11 +203,11 @@ var result = match r {
     case Err(msg): "error: " + msg;
 };
 print(result);   // "ok: 5"</code></pre>
-        <p>See <a href="08-control-structures.html">8. Control Structures</a> for the full <code>match</code> syntax. The stdlib modules <code>result</code> and <code>option</code> wrap the same <code>Ok</code>/<code>Err</code> and <code>Some</code>/<code>None</code> tags without a <code>type</code> declaration — see <a href="11-built-in-functions.html#result-option">12.19.1</a>.</p>
+        <p>See <a href="08-control-structures.html">8. Control Structures</a> for the full <code>match</code> syntax. The stdlib modules <code>result</code> and <code>option</code> wrap the same <code>Ok</code>/<code>Err</code> and <code>Some</code>/<code>None</code> tags without a <code>type</code> declaration — see <a href="12-built-in-functions.html#result-option">12.19.1</a>.</p>
 
         <h2>4.6 Type Checking</h2>
 
-        <p>While MALDA is dynamically typed, you can inspect types at runtime with built-in helpers (see <a href="11-built-in-functions.html">Built-in Functions</a>):</p>
+        <p>While MALDA is dynamically typed, you can inspect types at runtime with built-in helpers (see <a href="12-built-in-functions.html">Built-in Functions</a>):</p>
         <pre><code>var x = 10;
 
 // Preferred: type tag from typeOf()
@@ -229,17 +229,17 @@ if (x == null) {
         <div class="see-also">
             <h3>See Also</h3>
             <ul>
-                <li><a href="04-variables.html">5. Variables</a> - How to declare and use variables</li>
-                <li><a href="05-arrays.html">6. Arrays</a> - Array data structures</li>
-                <li><a href="06-graphs.html">13. Graphs</a> - Graph data structures</li>
+                <li><a href="05-variables.html">5. Variables</a> - How to declare and use variables</li>
+                <li><a href="06-arrays.html">6. Arrays</a> - Array data structures</li>
+                <li><a href="13-graphs.html">13. Graphs</a> - Graph data structures</li>
                 <li><a href="10-classes-objects.html">10. Classes & Objects</a> - Creating custom object types</li>
-                <li><a href="11-built-in-functions.html">12. Built-in Functions</a> - Type conversion functions</li>
+                <li><a href="12-built-in-functions.html">12. Built-in Functions</a> - Type conversion functions</li>
             </ul>
         </div>
 
         <div class="nav-footer">
-            <a href="02-lexical-structure.html">← Previous: 3. Lexical Structure</a>
-            <a href="04-variables.html">Next: 5. Variables→</a>
+            <a href="03-lexical-structure.html">← Previous: 3. Lexical Structure</a>
+            <a href="05-variables.html">Next: 5. Variables→</a>
         </div>
 
         <footer>

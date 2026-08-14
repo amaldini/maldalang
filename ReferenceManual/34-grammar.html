@@ -19,7 +19,7 @@
         <h1>34. Grammar</h1>
         <p>This chapter is a BNF-style summary of MALDA syntax accepted by the reference parser (<code>MaldaLang/Parser/Parser.cs</code>, <code>MaldaLang/Lexer.cs</code>). Tier 0 semantics are defined in <a href="../docs/spec/malda-language-1.0.md">Malda Language Specification 1.0</a>.</p>
         <div class="info-box">
-            <strong>Scope:</strong> the productions below cover top-level declarations, control flow, exceptions, resource cleanup, actors, workflows, sum types, schemas, closed <code>api</code> declarations, <code>async</code>/<code>await</code>, pipes, comprehensions, <code>dict</code>/<code>graph</code>/object literals, variant patterns, and <code>send</code>/<code>spawn</code>/<code>receive</code>. Narrative examples stay in the topic chapters (for example <a href="31-durable-workflows.html">Durable Workflows</a> and <a href="13-actors.html">Actors</a>). If the grammar and the parser disagree, the parser wins until a spec amendment.
+            <strong>Scope:</strong> the productions below cover top-level declarations, control flow, exceptions, resource cleanup, actors, workflows, sum types, schemas, closed <code>api</code> declarations, <code>async</code>/<code>await</code>, pipes, comprehensions, <code>dict</code>/<code>graph</code>/object literals, variant patterns, and <code>send</code>/<code>spawn</code>/<code>receive</code>. Narrative examples stay in the topic chapters (for example <a href="21-durable-workflows.html">Durable Workflows</a> and <a href="16-actors.html">Actors</a>). If the grammar and the parser disagree, the parser wins until a spec amendment.
         </div>
         <h2>34.1 Program</h2>
         <pre><code>Program     ::= TopLevelItem*
@@ -147,7 +147,7 @@ ExpressionStmt ::= Expression ";"
 Block       ::= "{" (TopLevelItem | Statement)* "}"</code></pre>
         <p>A bare <code>match { ... }</code> expression may appear as a statement without a trailing semicolon after <code>}</code>.</p>
         <h2>34.4 Expressions (precedence)</h2>
-        <p>Lowest to highest: assignment, pipe <code>|&gt;</code>, ternary <code>? :</code>, null coalescing <code>??</code>, <code>match</code> expression, <code>or</code>/<code>||</code>, <code>and</code>/<code>&amp;&amp;</code>, equality, comparison, additive, multiplicative, unary (<code>await</code>, <code>async</code>, <code>not</code>/<code>!</code>, <code>-</code>, <code>++</code>/<code>--</code>), postfix (<code>()</code>, <code>[]</code>, <code>.</code>, <code>?.</code>, <code>?[]</code>, <code>++</code>/<code>--</code>). The full table is in <a href="23-appendix.html">Appendix B</a>.</p>
+        <p>Lowest to highest: assignment, pipe <code>|&gt;</code>, ternary <code>? :</code>, null coalescing <code>??</code>, <code>match</code> expression, <code>or</code>/<code>||</code>, <code>and</code>/<code>&amp;&amp;</code>, equality, comparison, additive, multiplicative, unary (<code>await</code>, <code>async</code>, <code>not</code>/<code>!</code>, <code>-</code>, <code>++</code>/<code>--</code>), postfix (<code>()</code>, <code>[]</code>, <code>.</code>, <code>?.</code>, <code>?[]</code>, <code>++</code>/<code>--</code>). The full table is in <a href="35-appendix.html">Appendix B</a>.</p>
         <pre><code>Expression  ::= AssignExpr
 AssignExpr  ::= Pipe (AssignOp Expression)?
 Pipe        ::= Ternary ("|&gt;" Ternary)*
@@ -209,22 +209,22 @@ ObjectPatternEntry ::= (Identifier | StringLiteral) (":" Pattern)?
 
 DestructuringPattern ::= ArrayPattern | ObjectPattern</code></pre>
         <h2>34.6 Lexical and tokens</h2>
-        <p>Keywords, operators, comments, strings, and numeric literals are defined in <a href="02-lexical-structure.html">Lexical Structure</a>. Function aliases: <code>fn</code> and <code>def</code> tokenize as <code>function</code>. Both <code>=&gt;</code> and <code>-&gt;</code> produce the same <code>Arrow</code> token (lambda bodies and return types).</p>
+        <p>Keywords, operators, comments, strings, and numeric literals are defined in <a href="03-lexical-structure.html">Lexical Structure</a>. Function aliases: <code>fn</code> and <code>def</code> tokenize as <code>function</code>. Both <code>=&gt;</code> and <code>-&gt;</code> produce the same <code>Arrow</code> token (lambda bodies and return types).</p>
         <pre><code>Identifier  ::= [A-Za-z_][A-Za-z0-9_]*
 ArgList     ::= Expression ("," Expression)*</code></pre>
         <div class="see-also">
             <h3>See Also</h3>
             <ul>
-                <li><a href="02-lexical-structure.html">Lexical Structure</a> — tokens and keywords</li>
-                <li><a href="23-appendix.html">Appendix</a> — operator precedence table</li>
+                <li><a href="03-lexical-structure.html">Lexical Structure</a> — tokens and keywords</li>
+                <li><a href="35-appendix.html">Appendix</a> — operator precedence table</li>
                 <li><a href="../docs/spec/malda-language-1.0.md">Language spec 1.0</a> — Tier 0 semantics</li>
-                <li><a href="31-durable-workflows.html">Durable Workflows</a> — workflow examples</li>
-                <li><a href="13-actors.html">Actors</a> — actor messaging examples</li>
+                <li><a href="21-durable-workflows.html">Durable Workflows</a> — workflow examples</li>
+                <li><a href="16-actors.html">Actors</a> — actor messaging examples</li>
             </ul>
         </div>
         <div class="nav-footer">
-            <a href="27-property-testing.html">← Previous: 33. Property Testing</a>
-            <a href="23-appendix.html">Next: 35. Appendix→</a>
+            <a href="33-property-testing.html">← Previous: 33. Property Testing</a>
+            <a href="35-appendix.html">Next: 35. Appendix→</a>
         </div>
 
         <footer>

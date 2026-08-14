@@ -12,7 +12,8 @@ namespace MaldaLang.Tests;
 /// Guards that keep ReferenceManual content aligned with the code it documents:
 /// reserved words versus the lexer, built-in coverage versus the registry,
 /// internal links, section numbering, navigation/TOC fallbacks, contiguous categories,
-/// and the shipping version stamped in chapter headers.
+/// chapter filenames matching display numbers, and the shipping version stamped in
+/// chapter headers.
 /// </summary>
 public class ReferenceManualContentGuardTests
 {
@@ -35,7 +36,7 @@ public class ReferenceManualContentGuardTests
         var keywords = LexerKeywords();
         Assert.NotEmpty(keywords);
 
-        foreach (var page in new[] { "02-lexical-structure.html", "23-appendix.html" })
+        foreach (var page in new[] { "03-lexical-structure.html", "35-appendix.html" })
         {
             var listed = ReservedWordsListedIn(page);
             var missing = keywords.Except(listed, StringComparer.Ordinal).OrderBy(k => k, StringComparer.Ordinal).ToList();
@@ -133,11 +134,11 @@ public class ReferenceManualContentGuardTests
             .ToList();
         Assert.True(types.Count > 20, $"Expected a full control catalog, got {types.Count}.");
 
-        var chapter = File.ReadAllText(Path.Combine(ManualDir, "16-web-ui.html"));
+        var chapter = File.ReadAllText(Path.Combine(ManualDir, "23-web-ui.html"));
         var missing = types.Where(type => !chapter.Contains($"ui.{type}", StringComparison.Ordinal)).ToList();
         Assert.True(
             missing.Count == 0,
-            "16-web-ui.html must name every UiControlSpecRegistry type as ui.<type>: " +
+            "23-web-ui.html must name every UiControlSpecRegistry type as ui.<type>: " +
             string.Join(", ", missing));
     }
 
@@ -198,6 +199,20 @@ public class ReferenceManualContentGuardTests
     }
 
     [Fact]
+    public void ChapterFilenames_MatchDisplayNumbers()
+    {
+        var mismatched = NumberedChapters()
+            .Where(ch => !ch.File.StartsWith($"{ch.Number:00}-", StringComparison.Ordinal))
+            .Select(ch => $"{ch.File} is chapter {ch.Number}")
+            .ToList();
+
+        Assert.True(
+            mismatched.Count == 0,
+            "ReferenceManual HTML filenames must start with the display chapter number: " +
+            string.Join("; ", mismatched));
+    }
+
+    [Fact]
     public void ChapterMastheads_MatchCliVersion()
     {
         var csproj = File.ReadAllText(PlanningPaths.ResolveRepoPath("MaldaLang", "MaldaLang.csproj"));
@@ -230,7 +245,7 @@ public class ReferenceManualContentGuardTests
         var index = File.ReadAllText(Path.Combine(ManualDir, "index.html"));
         Assert.Contains($"MALDA <strong>{version}</strong>", index, StringComparison.Ordinal);
 
-        var tools = File.ReadAllText(Path.Combine(ManualDir, "25-tools.html"));
+        var tools = File.ReadAllText(Path.Combine(ManualDir, "02-tools.html"));
         Assert.Matches(
             new Regex(@"Interpreter\r?\nVersion " + Regex.Escape(version) + @"\r?\n", RegexOptions.CultureInvariant),
             tools);
@@ -269,7 +284,7 @@ public class ReferenceManualContentGuardTests
     private static HashSet<string> ReservedWordsListedIn(string page)
     {
         var html = File.ReadAllText(Path.Combine(ManualDir, page));
-        var marker = page == "23-appendix.html" ? "Appendix A: Reserved Words" : "Complete Keyword List";
+        var marker = page == "35-appendix.html" ? "Appendix A: Reserved Words" : "Complete Keyword List";
         var markerIndex = html.IndexOf(marker, StringComparison.Ordinal);
         Assert.True(markerIndex >= 0, $"Could not find the reserved words section in {page}.");
 
