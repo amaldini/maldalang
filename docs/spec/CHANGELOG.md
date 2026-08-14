@@ -143,6 +143,7 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 #### Clarified (PATCH — docs / tracking only)
 
+- **Closed `api` / `program(Api)` / `runProgram`:** already shipped (v0.1.50). `api Name { function m(params); }` plus `prompt … -> program(Name)` validates TypeChat-style JSON (`@api`, `steps[{call,args,as}]`, `return`); `runProgram` executes those steps with no further LLM calls. Interpreter and C# transpile agree. JS: n/a (prompts are host-only; JS transpile rejects `api`). Example: `Examples/Prompts/api_program_calc.malda`. Narrative: [`ReferenceManual/09-functions.html`](../../ReferenceManual/09-functions.html) §9.9.3.2.2.
 - **`typeOf(variant)` / `typeOf(task)`:** already return `"variant"` / `"task"` (Tier 0 T0-096/T0-097); removed stale post-Final gap bullet. Concurrent `async` + `sleep` between `var` bindings remains doc-only (gotchas + RM §6.14).
 - **Post-Final language constructs plan:** ranked workstreams L1–L6 (schema/sum-type unification, gather-then-extract prompts, `@budget`, workflow call-graph determinism, grounded values, capability tokens). Tracking only — no Tier 0 semantic change. See [`docs/roadmap-language-constructs.md`](../roadmap-language-constructs.md).
 

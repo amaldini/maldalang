@@ -352,6 +352,9 @@ public class JsTranspiler
                 case TypeDeclaration:
                     // Type declarations are emitted as constructor helpers at module scope.
                     break;
+                case ApiDeclaration:
+                    throw new NotSupportedException(
+                        "Closed api / program(Api) / runProgram is host-only (interpreter and C# transpile). JavaScript does not support api declarations.");
                 case ActorDeclaration actorDeclaration:
                     // Top-level actor declarations are emitted before main.
                     // Nested actor declarations (inside blocks/functions) must be emitted inline.

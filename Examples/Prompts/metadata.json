@@ -80,6 +80,11 @@
       "file": "prompt_budget.malda"
     },
     {
+      "name": "Closed API program",
+      "description": "api + program JSON + runProgram (offline, no LLM)",
+      "file": "api_program_calc.malda"
+    },
+    {
       "name": "Prompt Reusability",
       "description": "How prompt blocks enable code reuse and maintainability",
       "file": "prompt_reusability.malda"

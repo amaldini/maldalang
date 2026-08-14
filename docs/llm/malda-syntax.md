@@ -51,7 +51,7 @@ Compact rules for generating correct `.malda`. Prefer this over scraping HTML ma
   `{ "tag": "Buy", "sku": "...", "qty": 2 }` (tag = constructor name; payload fields
   use the constructor parameter names). For closed call plans use
   `api Calc { function add(a, b); }` with `prompt p(...) -> program(Calc)` then
-  `runProgram(prog)` — deterministic, no tool loop. Program JSON:
+  `runProgram(prog)` — deterministic, no tool loop (interpreter and C# transpile; not JS). Program JSON:
   `{ "@api":"Calc", "steps":[{"call":"add","args":[2,3],"as":"t0"}], "return":"$t0" }`.
 - Interpolate with a **`$`-prefixed** string: `$"total: {n}"`, `$"{a} of {b}"`. The braces
   take any expression (`{n * 2}`, `{math.sqrt(x)}`, `{items[0]}`), and `$` strings compose

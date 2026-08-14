@@ -513,7 +513,7 @@ public class LanguageService : ILanguageService
             "print", "input", "true", "false", "and", "or", "not", "break", "continue",
             "class", "new", "this", "super", "extends", "public", "private", "static", "null",
             "import", "export", "include", "using", "await",
-            "prompt", "schema",
+            "prompt", "schema", "api",
             "workflow", "step", "approval", "wait", "retry", "backoff", "delay", "maxDelay", "compensate", "onReject" };
         
         foreach (var keyword in keywords)
@@ -540,6 +540,11 @@ public class LanguageService : ILanguageService
             {
                 insertText = "schema Name {\n\tfield: string;\n}";
                 detail = "JSON schema for parseJson / typed prompts";
+            }
+            else if (keyword == "api")
+            {
+                insertText = "api Name {\n\tfunction method(a, b);\n}";
+                detail = "Closed API for prompt ... -> program(Api) / runProgram";
             }
             completions.Add(new CompletionItem
             {
@@ -1510,6 +1515,7 @@ public class LanguageService : ILanguageService
             TokenType.OnReject => "**onReject** — Handler expression executed when approval decision is reject.",
             TokenType.Timeout => "**timeout** — Timeout limit in milliseconds for step/approval/signal waits.",
             TokenType.Schema => "**schema** — Declarative object shape for `validate` / structured I/O.\n\n`schema Person { name: string, age?: number }`",
+            TokenType.Api => "**api** — Closed callable surface for deterministic programs.\n\n`api Calc { function add(a, b); }`\n\nUse `prompt p(...) -> program(Calc)` then `runProgram(prog)`. Implementations are top-level `function`s of the same name.",
             _ => null
         };
     }
@@ -1557,6 +1563,11 @@ public class LanguageService : ILanguageService
                 typeDecl.TypeName == name)
             {
                 return FormatTypeHover(typeDecl);
+            }
+            if (stmt is ApiDeclaration apiDecl &&
+                apiDecl.Name == name)
+            {
+                return FormatApiHover(apiDecl);
             }
         }
 
@@ -1620,6 +1631,17 @@ public class LanguageService : ILanguageService
                     ? c.Name
                     : $"{c.Name}({string.Join(", ", c.ParameterNames.Select((_, i) => c.FormatParameter(i)))})"));
         return $"type {typeDecl.TypeName} = {variants}";
+    }
+
+    private static string FormatApiHover(ApiDeclaration api)
+    {
+        var methods = api.Methods.Count == 0
+            ? "(no methods)"
+            : string.Join("; ", api.Methods.Select(m =>
+                m.ParameterNames.Count == 0
+                    ? $"function {m.Name}()"
+                    : $"function {m.Name}({string.Join(", ", m.ParameterNames)})"));
+        return $"api {api.Name} {{ {methods} }}";
     }
     
     private string? GetBuiltInFunctionInfo(string name)

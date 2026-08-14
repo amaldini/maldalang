@@ -53,6 +53,8 @@ public class BackendCapabilityMatrixGuardTests
         AssertContains(markdown, "`validate()`", "schema/validate row");
         AssertContains(markdown, "Typed prompt", "typed prompts row");
         AssertContains(markdown, "Gather-then-extract", "gather-then-extract prompts row");
+        AssertContains(markdown, "`runProgram`", "closed api / program(Api) / runProgram row");
+        AssertContains(markdown, "`program(Api)`", "closed api / program(Api) / runProgram row");
         AssertContains(markdown, "`@budget`", "@budget resource bounds row");
         AssertContains(markdown, "`grounded.wrap`", "grounded values row");
         AssertContains(markdown, "`cap.fileRead`", "capability tokens row");

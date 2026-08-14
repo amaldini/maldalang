@@ -1,6 +1,6 @@
 ﻿# MALDA grammar (plain text)
 
-*Applies to: MALDA 0.1.22*
+*Applies to: MALDA 0.1.53*
 
 Extracted from `ReferenceManual/34-grammar.html` for LLM ingestion.
 If this file disagrees with the parser (`MaldaLang/Parser/Parser.cs`), the **parser wins**.
@@ -21,13 +21,14 @@ ImportStmt  ::= "import" (
                 | (Identifier "=")? StringLiteral
                 | (Identifier "=")? QualifiedName
                 ) ";"
-ExportableDecl ::= "export"? ( FunctionDecl | ClassDecl | "var" Identifier TypeHint? "=" Expression ";" )
+ExportableDecl ::= "export"? ( FunctionDecl | ClassDecl | TypeDecl | SchemaDecl
+                | "var" Identifier TypeHint? "=" Expression ";" )
 QualifiedName ::= Identifier ("." Identifier)*
 
 FunctionDecl  ::= ("function" | "fn" | "def") Identifier "(" ParamList? ")" ReturnType?
                   ( Block | Expression ";" )
 DecoratedFunctionDecl ::= Decorator+ FunctionDecl
-ReturnType    ::= ("->" | "=>") Identifier
+ReturnType    ::= ("->" | "=>") (Identifier | "program" "(" Identifier ")")
 
 ClassDecl     ::= "class" Identifier (
                     "(" ParamList? ")" ( "{" ClassMember* "}" | ";" )
@@ -46,6 +47,9 @@ CtorParam     ::= Identifier (":" SchemaType)?
 SchemaDecl    ::= "schema" Identifier "{" SchemaField* "}"
 SchemaField   ::= Identifier ":" SchemaType ";"
 SchemaType    ::= Identifier "[]"? "?"?   /* e.g. string, int[], string? */
+
+ApiDecl       ::= "api" Identifier "{" ApiMethodSig* "}"
+ApiMethodSig  ::= "function" Identifier "(" ParamList? ")" ";"   /* impl = top-level function of same name */
 
 ActorDecl     ::= "actor" Identifier "{" ActorBodyItem* "}"
 ActorBodyItem ::= MessageDecl | ActorMember

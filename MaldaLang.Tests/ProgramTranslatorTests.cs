@@ -141,6 +141,75 @@ public class ProgramTranslatorTests : TestBase
     }
 
     [Fact]
+    public void RunProgram_Transpile_ComputesExpression()
+    {
+        var source = """
+            api Calc {
+                function add(a, b);
+                function mul(a, b);
+            }
+
+            function add(a, b) { return a + b; }
+            function mul(a, b) { return a * b; }
+
+            var prog = parseJSON("{\"@api\":\"Calc\",\"steps\":[{\"call\":\"add\",\"args\":[2,3],\"as\":\"t0\"},{\"call\":\"mul\",\"args\":[\"$t0\",4],\"as\":\"r\"}],\"return\":\"$r\"}");
+            io.print(runProgram(prog));
+            """;
+
+        var tempDir = Path.Combine(Path.GetTempPath(), "malda_program_translator_tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        var sourcePath = Path.Combine(tempDir, "api_run.malda");
+        var outputPath = Path.Combine(tempDir, "api_run.exe");
+        File.WriteAllText(sourcePath, source);
+
+        try
+        {
+            var compiler = new Compiler.Compiler();
+            var result = compiler.Compile(
+                sourcePath,
+                outputPath,
+                CompilationMode.TranspileToCSharp,
+                includeLLamaSharp: false,
+                includeUiHost: false);
+            Assert.True(result.Success, result.ErrorMessage ?? "Transpile failed.");
+            Assert.True(!string.IsNullOrEmpty(result.OutputPath) && File.Exists(result.OutputPath));
+
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = result.OutputPath!,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = tempDir
+            };
+            using var process = System.Diagnostics.Process.Start(psi);
+            Assert.NotNull(process);
+            var stdout = process!.StandardOutput.ReadToEnd();
+            var stderr = process.StandardError.ReadToEnd();
+            Assert.True(process.WaitForExit(60000), "transpiled runProgram timed out");
+            Assert.True(process.ExitCode == 0, $"exit={process.ExitCode}\nstdout={stdout}\nstderr={stderr}");
+            Assert.Equal("20", stdout.Trim());
+        }
+        finally
+        {
+            try { Directory.Delete(tempDir, true); } catch { }
+        }
+    }
+
+    [Fact]
+    public void JsTranspile_ApiDeclaration_ThrowsHostOnly()
+    {
+        var source = """
+            api Calc { function add(a, b); }
+            function add(a, b) { return a + b; }
+            """;
+        var compiler = new Compiler.Compiler();
+        var ex = Assert.ThrowsAny<Exception>(() => compiler.TranspileToJavaScriptFromSource(source));
+        Assert.Contains("api", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void Transpiler_EmitsApiRegistration_AndProgramSchema()
     {
         var source = """
@@ -173,6 +242,7 @@ public class ProgramTranslatorTests : TestBase
             var generated = File.ReadAllText(generatedPath);
             Assert.Contains("ApiRegistry.RegisterCompiled(\"Calc\"", generated);
             Assert.Contains("BindImplementation(\"add\"", generated);
+            Assert.Contains("GetAwaiter().GetResult()", generated);
             Assert.Contains("x-malda-kind", generated);
             Assert.Contains("program(Calc)", generated);
             Assert.Contains("ApplySchemaAppendix", generated);
