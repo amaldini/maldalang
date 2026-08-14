@@ -116,7 +116,7 @@ public static class TypedPromptValidator
         error = "";
 
         if (IsSumSchema(schema))
-            return TryValidateAndCoerceSum(value, schema, out validated, out error);
+            return TryValidateAndCoerceSum(value, schema, "$", out validated, out error);
 
         if (IsProgramSchema(schema))
             return TryValidateAndCoerceProgram(value, schema, out validated, out error);
@@ -493,10 +493,78 @@ public static class TypedPromptValidator
     private static bool TryValidateAndCoerceSum(
         RuntimeValue value,
         RuntimeValue schema,
+        string path,
         out RuntimeValue validated,
         out string error)
     {
         validated = RuntimeValue.Null();
+        if (!TryMatchSumArm(value, schema, path, out var tag, out var getProperty, out var matchedArm, out error))
+            return false;
+
+        if (!TryValidateAgainstSchema(value, RuntimeValue.Object(matchedArm), path, out error))
+            return false;
+
+        var payload = new List<RuntimeValue>();
+        var armProps = matchedArm.Get("properties");
+        if (armProps.Type == ValueType.Object && armProps.AsObject() is JsonObject armPropsObj)
+        {
+            foreach (var key in armPropsObj.GetAllKeys())
+            {
+                if (string.Equals(key, "tag", StringComparison.Ordinal))
+                    continue;
+                payload.Add(getProperty(key));
+            }
+        }
+
+        // Prefer declaration order from registry when available.
+        if (schema.Type == ValueType.Object && schema.AsObject() is JsonObject schemaObj)
+        {
+            var typeNameVal = schemaObj.Get("x-malda-sum-type");
+            if (typeNameVal.Type == ValueType.String &&
+                SumTypeRegistry.TryGetDefinition(typeNameVal.AsString(), out var def))
+            {
+                var ctor = def.Constructors.FirstOrDefault(c =>
+                    string.Equals(c.Name, tag, StringComparison.Ordinal));
+                if (ctor != null)
+                {
+                    payload = new List<RuntimeValue>();
+                    foreach (var param in ctor.ParameterNames)
+                        payload.Add(getProperty(param));
+                }
+            }
+        }
+
+        validated = RuntimeValue.Variant(tag, payload);
+        return true;
+    }
+
+    /// <summary>
+    /// Validates a sum-type JSON/dict shape at <paramref name="path"/> without coercing to a variant.
+    /// Used for nested <c>schema { field: Intent }</c> fields and <c>validate("Intent", dict)</c>.
+    /// </summary>
+    private static bool TryValidateSumShape(
+        RuntimeValue value,
+        RuntimeValue schema,
+        string path,
+        out string error)
+    {
+        if (!TryMatchSumArm(value, schema, path, out _, out _, out var matchedArm, out error))
+            return false;
+        return TryValidateAgainstSchema(value, RuntimeValue.Object(matchedArm), path, out error);
+    }
+
+    private static bool TryMatchSumArm(
+        RuntimeValue value,
+        RuntimeValue schema,
+        string path,
+        out string tag,
+        out Func<string, RuntimeValue> getProperty,
+        out JsonObject matchedArm,
+        out string error)
+    {
+        tag = "";
+        getProperty = static _ => RuntimeValue.Null();
+        matchedArm = null!;
         error = "";
 
         if (schema.Type != ValueType.Object || schema.AsObject() is not JsonObject schemaObj)
@@ -505,20 +573,21 @@ public static class TypedPromptValidator
             return false;
         }
 
-        if (value.Type != ValueType.Object || value.AsObject() is not JsonObject jsonObj)
+        if (value.Type != ValueType.Object || value.AsObject() is not ObjectInstance obj)
         {
-            error = "$. must be a JSON object with a sum-type tag.";
+            error = $"{path} must be a JSON object with a sum-type tag.";
             return false;
         }
 
-        var tagVal = jsonObj.Get("tag");
+        getProperty = key => obj.Get(key);
+        var tagVal = getProperty("tag");
         if (tagVal.Type != ValueType.String)
         {
-            error = "$.tag is required and must be a string constructor name.";
+            error = $"{path}.tag is required and must be a string constructor name.";
             return false;
         }
 
-        var tag = tagVal.AsString();
+        tag = tagVal.AsString();
         var oneOf = schemaObj.Get("oneOf");
         if (oneOf.Type != ValueType.Array || oneOf.AsArray().Count == 0)
         {
@@ -526,7 +595,7 @@ public static class TypedPromptValidator
             return false;
         }
 
-        JsonObject? matchedArm = null;
+        JsonObject? found = null;
         var knownTags = new List<string>();
         foreach (var armVal in oneOf.AsArray())
         {
@@ -544,52 +613,25 @@ public static class TypedPromptValidator
             var armTag = constVal.AsString();
             knownTags.Add(armTag);
             if (string.Equals(armTag, tag, StringComparison.Ordinal))
-                matchedArm = arm;
+                found = arm;
         }
 
-        if (matchedArm == null)
+        if (found == null)
         {
-            error = $"$.tag '{tag}' is not a known constructor. Expected one of: {string.Join(", ", knownTags)}.";
+            error = $"{path}.tag '{tag}' is not a known constructor. Expected one of: {string.Join(", ", knownTags)}.";
             return false;
         }
 
-        if (!TryValidateAgainstSchema(value, RuntimeValue.Object(matchedArm), "$", out error))
-            return false;
-
-        var payload = new List<RuntimeValue>();
-        var armProps = matchedArm.Get("properties");
-        if (armProps.Type == ValueType.Object && armProps.AsObject() is JsonObject armPropsObj)
-        {
-            foreach (var key in armPropsObj.GetAllKeys())
-            {
-                if (string.Equals(key, "tag", StringComparison.Ordinal))
-                    continue;
-                payload.Add(jsonObj.Get(key));
-            }
-        }
-
-        // Prefer declaration order from registry when available.
-        var typeNameVal = schemaObj.Get("x-malda-sum-type");
-        if (typeNameVal.Type == ValueType.String &&
-            SumTypeRegistry.TryGetDefinition(typeNameVal.AsString(), out var def))
-        {
-            var ctor = def.Constructors.FirstOrDefault(c =>
-                string.Equals(c.Name, tag, StringComparison.Ordinal));
-            if (ctor != null)
-            {
-                payload = new List<RuntimeValue>();
-                foreach (var param in ctor.ParameterNames)
-                    payload.Add(jsonObj.Get(param));
-            }
-        }
-
-        validated = RuntimeValue.Variant(tag, payload);
+        matchedArm = found;
         return true;
     }
 
     private static bool TryValidateAgainstSchema(RuntimeValue value, RuntimeValue schema, string path, out string error)
     {
         error = "";
+        if (IsSumSchema(schema))
+            return TryValidateSumShape(value, schema, path, out error);
+
         if (schema.Type != ValueType.Object || schema.AsObject() is not JsonObject schemaObj)
         {
             error = "Invalid schema object.";

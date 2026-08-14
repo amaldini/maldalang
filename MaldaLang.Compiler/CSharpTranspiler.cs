@@ -6420,13 +6420,14 @@ public class CSharpTranspiler
             return;
 
         var known = schemas.ToDictionary(s => s.Name, StringComparer.Ordinal);
+        var knownSumTypes = _typeDeclarations.ToDictionary(t => t.TypeName, StringComparer.Ordinal);
         foreach (var schemaDecl in schemas)
         {
             WriteIndent();
             _output.Append("MaldaLang.BuiltIns.SchemaRegistry.RegisterCompiled(\"");
             _output.Append(schemaDecl.Name.Replace("\\", "\\\\").Replace("\"", "\\\""));
             _output.Append("\", ");
-            EmitParseJsonSchemaLiteral(SchemaRegistry.BuildSchema(schemaDecl, known));
+            EmitParseJsonSchemaLiteral(SchemaRegistry.BuildSchema(schemaDecl, known, knownSumTypes));
             _output.AppendLine(");");
         }
 
@@ -6960,9 +6961,10 @@ public class CSharpTranspiler
         if (schemaDecl != null)
         {
             var knownSchemas = schemas.ToDictionary(s => s.Name, StringComparer.Ordinal);
+            var knownSumTypes = _typeDeclarations.ToDictionary(t => t.TypeName, StringComparer.Ordinal);
             WriteIndent();
             _output.Append("var __schema = ");
-            EmitParseJsonSchemaLiteral(SchemaRegistry.BuildSchema(schemaDecl, knownSchemas));
+            EmitParseJsonSchemaLiteral(SchemaRegistry.BuildSchema(schemaDecl, knownSchemas, knownSumTypes));
             _output.AppendLine(";");
             WriteIndent();
             _output.AppendLine("__responseFormatSchema = MaldaLang.BuiltIns.TypedPromptValidator.BuildResponseFormat(__schema);");
@@ -7147,9 +7149,10 @@ public class CSharpTranspiler
             if (returnSchemaDecl != null)
             {
                 var knownSchemas = schemas.ToDictionary(s => s.Name, StringComparer.Ordinal);
+                var knownSumTypes = _typeDeclarations.ToDictionary(t => t.TypeName, StringComparer.Ordinal);
                 WriteIndent();
                 _output.Append("MaldaLang.Interpreter.RuntimeValue? __resolvedSchema = ");
-                EmitParseJsonSchemaLiteral(SchemaRegistry.BuildSchema(returnSchemaDecl, knownSchemas));
+                EmitParseJsonSchemaLiteral(SchemaRegistry.BuildSchema(returnSchemaDecl, knownSchemas, knownSumTypes));
                 _output.AppendLine(";");
             }
             else if (returnProgramApiDecl != null)

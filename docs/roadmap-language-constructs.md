@@ -1,6 +1,6 @@
 # MALDA language constructs plan (post–Final 1.0)
 
-**Status:** Plan (not implemented)  
+**Status:** L1a landed (validate + nested sum-type fields); L1b–L6 plan  
 **Created:** 2026-08-14  
 **Audience:** maintainers choosing the next *language* work after P0 maturity  
 **Spec line:** Final 1.0 stays; each landed workstream is a **MINOR** additive contract (or PATCH if docs-only). Breaking parse/runtime is **MAJOR** and is out of scope here.
@@ -78,8 +78,8 @@ change as L1a.
 - `type Intent = Search(q) | Buy(sku, qty)` → `SumTypeRegistry` → `oneOf` + `{ "tag": "Buy", ... }`
   for typed prompts. Constructors are **name-only** (no payload types).
 - The same name cannot be both (`SchemaRegistry` / `SumTypeRegistry` throw).
-- `validate("Intent", v)` throws **unknown schema** — it never consults `SumTypeRegistry`.
-- Nested schema fields may name other **schemas**, not sum types.
+- `validate("Intent", v)` resolves the sum-type `oneOf` schema (**L1a**). Success returns the original dict, not a variant.
+- Nested schema fields may name a sum type (`intent: Intent` / `Intent[]`) (**L1a**).
 - Typed prompts already accept either a schema name or a sum-type name as `-> Type`
   (`TypedPromptSchemaResolver`).
 
@@ -103,12 +103,12 @@ LLM output are two languages.
 `TypedPromptSchemaResolver.cs`, `MaldaLang/IDE/` schema diagnostics, RM schema + data-types
 chapters, `docs/llm/malda-gotchas.md` / `malda-syntax.md`.
 
-**Done when**
+**Done when (L1a — landed)**
 
 - Filtered tests cover `validate` on a sum type, nested `schema { field: Intent }`, and the
   existing name-clash throw.
-- Interpreter and C# transpile agree (transpile already registers compiled sum schemas).
-- JS: `n/a` unless Tier 0 `validate` is already on the JS matrix — if it is, add a case.
+- Interpreter and C# transpile agree (transpile inlines nested sum schemas at emit time).
+- JS: `n/a` (`schema` / `validate()` is host-only on the product matrix).
 
 **Risk:** `validate` success still returns a **dict**, not a variant. Coercion to
 `Search(q)` / `Buy(sku, qty)` stays on `await prompt … -> Intent`. Document that; do not
@@ -377,3 +377,4 @@ through helpers, and provenance is a value when we need it.
 | Date | Change |
 |------|--------|
 | 2026-08-14 | Initial plan: L1–L6 from post-P0 language-construct discussion (Graph vs Tree, no macros, AI-first grammar filter) |
+| 2026-08-14 | L1a landed: `validate` + nested schema fields resolve sum-type names |

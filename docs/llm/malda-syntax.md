@@ -16,7 +16,10 @@ Compact rules for generating correct `.malda`. Prefer this over scraping HTML ma
 - Dynamic typing; optional type hints exist (`: Type`) but are not required for most examples.
   Under `--strict-types` (and as IDE Warnings otherwise), mismatches include call results
   when the callee declares `-> T`. Schema fields may nest other schema names (`address: Address`
-  / `Tag[]`); unknown field types error on resolve (they are not silently `string`).
+  / `Tag[]`) or a declared **sum type** (`intent: Intent`); unknown field types error on
+  resolve (they are not silently `string`). `validate("Intent", dict)` checks the tagged
+  JSON shape and returns the original dict — it does not coerce to a variant (`await prompt
+  … -> Intent` still does).
 - **Prompt parameters are name-only** — write `prompt greet(name) { ... }`, never `prompt greet(name: string)`.
 - Prompt `-> ReturnType` is **not** static typing. Three supported modes:
   - **A Structured** — `await` + `-> Type` + **no tools**: resolve JSON Schema, append

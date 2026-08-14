@@ -9,7 +9,8 @@ using ValueType = MaldaLang.Interpreter.ValueType;
 
 /// <summary>
 /// Phase 6.2 / P0: resolves <c>schema</c> declarations to JSON-schema RuntimeValues for <c>validate()</c>.
-/// Nested schema field types are expanded inline (forward references allowed).
+/// Nested field types expand inline (forward references allowed) and may name another
+/// schema or a sum type (<c>type Intent = …</c>). Names stay exclusive across the two registries.
 /// </summary>
 public static class SchemaRegistry
 {
@@ -73,26 +74,36 @@ public static class SchemaRegistry
             return false;
         }
 
-        schema = ExpandDeclaration(decl, Declarations, new HashSet<string>(StringComparer.Ordinal));
+        schema = ExpandDeclaration(
+            decl,
+            Declarations,
+            knownSumTypes: null,
+            new HashSet<string>(StringComparer.Ordinal));
         Schemas[name] = schema;
         return true;
     }
 
     /// <summary>
     /// Builds a JSON-schema object for <paramref name="decl"/>, expanding nested schema
-    /// references using sibling declarations when provided (transpile path).
+    /// and sum-type references using sibling declarations when provided (transpile path).
     /// </summary>
     public static RuntimeValue BuildSchema(
         SchemaDeclaration decl,
-        IReadOnlyDictionary<string, SchemaDeclaration>? knownSchemas = null)
+        IReadOnlyDictionary<string, SchemaDeclaration>? knownSchemas = null,
+        IReadOnlyDictionary<string, TypeDeclaration>? knownSumTypes = null)
     {
         var lookup = knownSchemas ?? Declarations;
-        return ExpandDeclaration(decl, lookup, new HashSet<string>(StringComparer.Ordinal));
+        return ExpandDeclaration(
+            decl,
+            lookup,
+            knownSumTypes,
+            new HashSet<string>(StringComparer.Ordinal));
     }
 
     private static RuntimeValue ExpandDeclaration(
         SchemaDeclaration decl,
         IReadOnlyDictionary<string, SchemaDeclaration> lookup,
+        IReadOnlyDictionary<string, TypeDeclaration>? knownSumTypes,
         HashSet<string> expanding)
     {
         if (!expanding.Add(decl.Name))
@@ -106,7 +117,7 @@ public static class SchemaRegistry
 
         foreach (var field in decl.Fields)
         {
-            var propertySchema = BuildFieldSchema(field.TypeName, lookup, expanding);
+            var propertySchema = BuildFieldSchema(field.TypeName, lookup, knownSumTypes, expanding);
             properties.Set(field.Name, RuntimeValue.Object(propertySchema));
             if (field.Required)
                 required.Add(RuntimeValue.String(field.Name));
@@ -125,6 +136,7 @@ public static class SchemaRegistry
     private static JsonObject BuildFieldSchema(
         string typeName,
         IReadOnlyDictionary<string, SchemaDeclaration> lookup,
+        IReadOnlyDictionary<string, TypeDeclaration>? knownSumTypes,
         HashSet<string> expanding)
     {
         var trimmed = typeName.Trim();
@@ -133,16 +145,17 @@ public static class SchemaRegistry
             var elementType = trimmed[..^2].Trim();
             var arraySchema = new JsonObject();
             arraySchema.Set("type", RuntimeValue.String("array"));
-            arraySchema.Set("items", RuntimeValue.Object(ResolveNamedType(elementType, lookup, expanding)));
+            arraySchema.Set("items", RuntimeValue.Object(ResolveNamedType(elementType, lookup, knownSumTypes, expanding)));
             return arraySchema;
         }
 
-        return ResolveNamedType(trimmed, lookup, expanding);
+        return ResolveNamedType(trimmed, lookup, knownSumTypes, expanding);
     }
 
     private static JsonObject ResolveNamedType(
         string typeName,
         IReadOnlyDictionary<string, SchemaDeclaration> lookup,
+        IReadOnlyDictionary<string, TypeDeclaration>? knownSumTypes,
         HashSet<string> expanding)
     {
         if (TryNormalizePrimitive(typeName, out var jsonType))
@@ -154,20 +167,55 @@ public static class SchemaRegistry
 
         if (lookup.TryGetValue(typeName, out var nestedDecl))
         {
-            var expanded = ExpandDeclaration(nestedDecl, lookup, expanding);
+            var expanded = ExpandDeclaration(nestedDecl, lookup, knownSumTypes, expanding);
             if (expanded.Type != ValueType.Object || expanded.AsObject() is not JsonObject nestedObj)
             {
                 throw new Exception($"Schema '{typeName}' did not expand to an object schema.");
             }
 
-            var copy = new JsonObject();
-            foreach (var key in nestedObj.GetAllKeys())
-                copy.Set(key, nestedObj.Get(key));
-            return copy;
+            return CopyObject(nestedObj);
         }
 
+        if (TryResolveSumTypeSchema(typeName, knownSumTypes, out var sumSchema))
+            return sumSchema;
+
         throw new Exception(
-            $"Unknown schema field type '{typeName}'. Use a Tier-0 JSON type (string, int, float, bool, array, object) or a declared schema name.");
+            $"Unknown schema field type '{typeName}'. Use a Tier-0 JSON type (string, int, float, bool, array, object), a declared schema name, or a declared sum type.");
+    }
+
+    private static bool TryResolveSumTypeSchema(
+        string typeName,
+        IReadOnlyDictionary<string, TypeDeclaration>? knownSumTypes,
+        out JsonObject schema)
+    {
+        if (knownSumTypes != null && knownSumTypes.TryGetValue(typeName, out var typeDecl))
+        {
+            var built = SumTypeRegistry.BuildSchema(typeDecl);
+            if (built.Type == ValueType.Object && built.AsObject() is JsonObject fromDecl)
+            {
+                schema = CopyObject(fromDecl);
+                return true;
+            }
+        }
+
+        if (SumTypeRegistry.TryResolve(typeName, out var registered) &&
+            registered.Type == ValueType.Object &&
+            registered.AsObject() is JsonObject fromRegistry)
+        {
+            schema = CopyObject(fromRegistry);
+            return true;
+        }
+
+        schema = null!;
+        return false;
+    }
+
+    private static JsonObject CopyObject(JsonObject source)
+    {
+        var copy = new JsonObject();
+        foreach (var key in source.GetAllKeys())
+            copy.Set(key, source.Get(key));
+        return copy;
     }
 
     private static bool TryNormalizePrimitive(string typeName, out string jsonType)
@@ -193,12 +241,14 @@ public static class SchemaRegistry
             var name = schemaArg.AsString();
             if (TryResolve(name, out var resolved))
                 return resolved;
+            if (SumTypeRegistry.TryResolve(name, out var sumSchema))
+                return sumSchema;
             throw new Exception($"Unknown schema '{name}'.");
         }
 
         if (schemaArg.Type == ValueType.Object)
             return schemaArg;
 
-        throw new Exception("validate() expects a schema object or registered schema name.");
+        throw new Exception("validate() expects a schema object or a registered schema or sum-type name.");
     }
 }

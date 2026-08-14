@@ -366,7 +366,7 @@ var obj = parseJSON('{"name":"Alice","age":30}');  // Parse JSON string to objec
 var parsed = parseJson('{"text":"ok","sources":["a.md"]}', "Answer");
 print(parsed.text);           // ok
 print(parsed.sources[0]);       // a.md</code></pre>
-        <p>Array field types use <code>type[]</code> syntax (e.g. <code>string[]</code>, <code>int[]</code>, or <code>OtherSchema[]</code>). Field types may also name another declared <code>schema</code> (nested object shapes are expanded for validation and typed prompts). Optional fields append <code>?</code> after the type. Unknown field type names and cyclic schema references raise an error when the schema is resolved.</p>
+        <p>Array field types use <code>type[]</code> syntax (e.g. <code>string[]</code>, <code>int[]</code>, or <code>OtherSchema[]</code>). Field types may also name another declared <code>schema</code> (nested object shapes are expanded for validation and typed prompts) or a declared <strong>sum type</strong> (tagged <code>oneOf</code> JSON). Optional fields append <code>?</code> after the type. Unknown field type names and cyclic schema references raise an error when the schema is resolved.</p>
 
         <h3 id="validate">12.7.1 validate(schema, value)</h3>
         <p>Checks a value that you already have against a schema, without parsing JSON. Unlike <code>parseJson</code>, a validation failure is <strong>not</strong> an exception: the result is always an object reporting the outcome.</p>
@@ -374,7 +374,7 @@ print(parsed.sources[0]);       // a.md</code></pre>
             <li>On success: <code>{ ok: true, data: value }</code></li>
             <li>On failure: <code>{ ok: false, error: "message" }</code></li>
         </ul>
-        <p>The first argument is either the <strong>name</strong> of a registered <code>schema</code> declaration or an inline schema object. An unknown schema name raises <em>Unknown schema 'Name'</em>, and so does passing anything that is neither a string nor an object.</p>
+        <p>The first argument is either the <strong>name</strong> of a registered <code>schema</code> or <strong>sum type</strong>, or an inline schema object. An unknown name raises <em>Unknown schema 'Name'</em>. On success, <code>data</code> is the original value — a tagged dict stays a dict (it is not coerced to a variant). Use <code>await prompt … -&gt; Intent</code> when you need a variant for <code>match</code>.</p>
         <pre><code data-run="true" data-expect="ok">schema Answer {
     text: string;
     sources: string[];
@@ -387,6 +387,12 @@ if (checked.ok) {
     print(checked.data.text);      // ok
 } else {
     print("invalid: " + checked.error);
+}</code></pre>
+        <pre><code data-run="true" data-expect="Buy">type Intent = Search(query) | Buy(sku, qty);
+var tagged = dict { "tag": "Buy", "sku": "SKU-9", "qty": 2 };
+var checkedIntent = validate("Intent", tagged);
+if (checkedIntent.ok) {
+    print(checkedIntent.data.tag);
 }</code></pre>
         <div class="info-box">
             <strong>Not to be confused with:</strong> <code>memory.validate()</code> on a <a href="18-graph-memory.html">GraphMemory</a> instance, which checks graph integrity rather than a schema. The two share a name but are unrelated.

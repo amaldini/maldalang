@@ -1,0 +1,38 @@
+// schema_sumtype_validate.malda — validate() on a sum type, and nested schema fields
+//
+// Run: malda Examples/Basics/schema_sumtype_validate.malda
+// `validate("Intent", dict)` checks the tagged JSON shape and returns the original
+// dict (it does not coerce to a variant). `await prompt … -> Intent` still yields
+// a variant for `match`. A name cannot be both a schema and a sum type.
+
+type Intent = Search(query) | Buy(sku, qty) | Help();
+
+schema Order {
+    intent: Intent;
+}
+
+var tagged = dict { "tag": "Buy", "sku": "SKU-9", "qty": 2 };
+var intentCheck = validate("Intent", tagged);
+if (intentCheck.ok) {
+    print("intent: " + intentCheck.data.tag);
+} else {
+    print("unexpected: " + intentCheck.error);
+}
+
+var order = dict {
+    "intent": dict { "tag": "Search", "query": "shoes" }
+};
+var orderCheck = validate("Order", order);
+if (orderCheck.ok) {
+    print("order: " + orderCheck.data.intent.query);
+} else {
+    print("unexpected: " + orderCheck.error);
+}
+
+var bad = dict { "tag": "Nope" };
+var badCheck = validate("Intent", bad);
+if (badCheck.ok) {
+    print("unexpected success");
+} else {
+    print("expected failure");
+}

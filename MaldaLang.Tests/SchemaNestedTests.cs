@@ -245,4 +245,106 @@ public class SchemaNestedTests : TestBase
                 out _,
                 out _));
     }
+
+    [Fact]
+    public void Validate_SumTypeName_AcceptsTaggedDict()
+    {
+        var source = """
+            type Intent = Search(query) | Buy(sku, qty) | Help();
+            var good = dict { "tag": "Buy", "sku": "SKU-9", "qty": 2 };
+            var check = validate("Intent", good);
+            print(check.ok);
+            print(check.data.tag);
+            var bad = dict { "tag": "Nope" };
+            print(validate("Intent", bad).ok);
+            """;
+        var result = RunProgram(source);
+        Assert.Contains("true", result, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Buy", result, StringComparison.Ordinal);
+        Assert.Contains("false", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void NestedSchema_SumTypeField_ValidatesTagShape()
+    {
+        var source = """
+            type Intent = Search(query) | Buy(sku, qty);
+            schema Order {
+                intent: Intent;
+            }
+            var good = dict {
+                "intent": dict { "tag": "Search", "query": "shoes" }
+            };
+            var bad = dict {
+                "intent": dict { "tag": "Nope" }
+            };
+            print(validate("Order", good).ok);
+            print(validate("Order", bad).ok);
+            """;
+        var result = RunProgram(source);
+        var lines = result.Trim().Replace("\r", "").Split('\n');
+        Assert.Equal("true", lines[0].Trim());
+        Assert.Equal("false", lines[1].Trim());
+    }
+
+    [Fact]
+    public void NestedSchema_ArrayOfSumType_ValidatesItems()
+    {
+        var source = """
+            type Tag = Label(text) | Empty();
+            schema Bundle {
+                tags: Tag[];
+            }
+            var good = dict {
+                "tags": [
+                    dict { "tag": "Label", "text": "a" },
+                    dict { "tag": "Empty" }
+                ]
+            };
+            var bad = dict {
+                "tags": [dict { "tag": "Missing" }]
+            };
+            print(validate("Bundle", good).ok);
+            print(validate("Bundle", bad).ok);
+            """;
+        var result = RunProgram(source);
+        var lines = result.Trim().Replace("\r", "").Split('\n');
+        Assert.Equal("true", lines[0].Trim());
+        Assert.Equal("false", lines[1].Trim());
+    }
+
+    [Fact]
+    public void SchemaAndSumType_SameName_Throws()
+    {
+        var source = """
+            schema Foo {
+                x: string;
+            }
+            type Foo = A() | B();
+            """;
+        var ex = Assert.ThrowsAny<Exception>(() => RunProgram(source));
+        Assert.Contains("already registered as a schema", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Transpiled_ValidateSumTypeAndNestedField_Works()
+    {
+        var source = """
+            type Intent = Search(query) | Buy(sku, qty);
+            schema Order {
+                intent: Intent;
+            }
+            var tagged = dict { "tag": "Buy", "sku": "SKU-9", "qty": 2 };
+            print(validate("Intent", tagged).ok);
+            var order = dict {
+                "intent": dict { "tag": "Search", "query": "hats" }
+            };
+            print(validate("Order", order).ok);
+            """;
+        var result = TranspiledTestRunner.CompileAndRunFromSource(source);
+        Assert.Equal(0, result.ExitCode);
+        var lines = result.StdOut.Trim().Replace("\r", "").Split('\n');
+        Assert.Equal("true", lines[0].Trim());
+        Assert.Equal("true", lines[1].Trim());
+    }
 }

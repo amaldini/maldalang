@@ -394,7 +394,7 @@ schema Person {
 }
 
 var parsed = parseJson('{"text":"hi","sources":["a.md"]}', "Answer");</code></pre>
-        <p>Supported field types: JSON primitives (<code>string</code>, <code>int</code>, <code>float</code>, <code>bool</code>, <code>object</code>, <code>array</code>), array forms such as <code>string[]</code> or <code>Address[]</code>, and <strong>other declared schema names</strong> (nested objects are expanded inline). Use <code>?</code> after the type for optional fields. Unknown field type names error when the schema is resolved; cyclic schema references are rejected. See <code>Examples/Basics/schema_nested_validate.malda</code>.</p>
+        <p>Supported field types: JSON primitives (<code>string</code>, <code>int</code>, <code>float</code>, <code>bool</code>, <code>object</code>, <code>array</code>), array forms such as <code>string[]</code> or <code>Address[]</code>, <strong>other declared schema names</strong> (nested objects are expanded inline), and <strong>declared sum types</strong> (<code>intent: Intent</code> / <code>Intent[]</code> — tagged JSON <code>oneOf</code>). Use <code>?</code> after the type for optional fields. Unknown field type names error when the schema is resolved; cyclic schema references are rejected. See <code>Examples/Basics/schema_nested_validate.malda</code> and <code>Examples/Basics/schema_sumtype_validate.malda</code>.</p>
         <p>For end-to-end RAG pipelines combining schemas, prompts, retrievers, and pipes, see <code>Examples/Prompts/rag_pipeline.malda</code> and <a href="12-built-in-functions.html">12. Built-in Functions</a> (AI pipeline helpers).</p>
 
         <h3>9.9.3.2.1 Sum Types as Prompt Return Types</h3>
@@ -415,7 +415,7 @@ match intent {
     case Buy(sku, qty): print("buy " + sku);
     case Help(): print("help");
 }</code></pre>
-        <p>Wire JSON uses a <code>tag</code> field equal to the constructor name, plus payload fields named like the constructor parameters — for example <code>{"tag":"Buy","sku":"SKU-9","qty":2}</code> or <code>{"tag":"Help"}</code>. A name cannot be both a <code>schema</code> and a <code>type</code> (sum type). See <code>Examples/Prompts/sum_type_intent_prompt.malda</code> and <a href="04-data-types.html">Data Types</a> for sum types.</p>
+        <p>Wire JSON uses a <code>tag</code> field equal to the constructor name, plus payload fields named like the constructor parameters — for example <code>{"tag":"Buy","sku":"SKU-9","qty":2}</code> or <code>{"tag":"Help"}</code>. The same name cannot be both a <code>schema</code> and a <code>type</code> (sum type). <code>validate("Intent", dict)</code> accepts that tagged shape and returns the original dict; it does not produce a variant. See <code>Examples/Prompts/sum_type_intent_prompt.malda</code>, <code>Examples/Basics/schema_sumtype_validate.malda</code>, and <a href="04-data-types.html">Data Types</a> for sum types.</p>
 
         <h3>9.9.3.2.2 Closed APIs and Deterministic Programs</h3>
         <p>Declare a closed <code>api</code> of method signatures. Implementations are ordinary top-level <code>function</code>s with the same names. A typed prompt may return <code>program(ApiName)</code>; on success you get a program value that <code>runProgram</code> executes with <strong>no further LLM calls</strong> (unlike <code>@Tool</code> agent loops or <code>executePlan</code>):</p>

@@ -182,7 +182,7 @@ print(first[1]);          // value</code></pre>
         <p>Declare a sum type with <code>type</code>, a type name, and one or more constructors separated by <code>|</code>. Each constructor has a name and optional parameters (in parentheses):</p>
         <pre><code>type Result = Ok(value) | Err(message);
 type Option = Some(x) | None();</code></pre>
-        <p>Constructor names (e.g. <code>Ok</code>, <code>Err</code>) become global functions that build values of that variant.</p>
+        <p>Constructor names (e.g. <code>Ok</code>, <code>Err</code>) become global functions that build values of that variant. The same name cannot also be a <code>schema</code>. <code>validate("Result", taggedDict)</code> checks the JSON wire shape (<code>{"tag":"Ok","value":…}</code>) without turning the dict into a variant — see <a href="12-built-in-functions.html#validate">validate()</a>.</p>
 
         <h3>Constructing Values</h3>
         <p>Call a constructor like a function. It returns a tagged value carrying the arguments as payload:</p>

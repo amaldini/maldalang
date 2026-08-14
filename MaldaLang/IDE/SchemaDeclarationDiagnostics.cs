@@ -9,7 +9,7 @@ using MaldaLang.Parser.AST.Declarations;
 using MaldaLang.Parser.AST.Statements;
 
 /// <summary>
-/// IDE checks for <c>schema</c> field type names (primitives, declared/imported schemas).
+/// IDE checks for <c>schema</c> field type names (primitives, declared/imported schemas and sum types).
 /// Complements runtime <see cref="MaldaLang.BuiltIns.SchemaRegistry"/> resolve errors.
 /// </summary>
 public static class SchemaDeclarationDiagnostics
@@ -70,7 +70,7 @@ public static class SchemaDeclarationDiagnostics
             Severity = elevate ? DiagnosticSeverity.Error : DiagnosticSeverity.Warning,
             Message = elevate
                 ? $"Unknown schema field type '{field.TypeName}' on '{schema.Name}.{field.Name}'."
-                : $"Unknown schema field type '{field.TypeName}' on '{schema.Name}.{field.Name}'. Use a JSON primitive or a declared schema name.",
+                : $"Unknown schema field type '{field.TypeName}' on '{schema.Name}.{field.Name}'. Use a JSON primitive, a declared schema name, or a declared sum type.",
             Line = schema.Line,
             Column = schema.Column,
             Length = Math.Max(1, typeName.Length),

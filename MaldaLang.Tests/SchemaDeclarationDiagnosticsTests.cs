@@ -52,4 +52,24 @@ public class SchemaDeclarationDiagnosticsTests
         StrictTypesAnalysis.Analyze(statements, StrictTypesOptions.Default, diagnostics);
         Assert.DoesNotContain(diagnostics, d => d.Source == "malda-schema");
     }
+
+    [Fact]
+    public void SumTypeField_Known_NoDiagnostic()
+    {
+        var source = """
+            type Intent = Search(query) | Buy(sku, qty);
+            schema Order {
+                intent: Intent;
+                extras: Intent[];
+            }
+            """;
+        var lexer = new Lexer(source);
+        var parser = new Parser.Parser(lexer.Tokenize());
+        var statements = parser.Parse();
+        Assert.Empty(parser.Errors);
+
+        var diagnostics = new List<Diagnostic>();
+        StrictTypesAnalysis.Analyze(statements, StrictTypesOptions.Default, diagnostics);
+        Assert.DoesNotContain(diagnostics, d => d.Source == "malda-schema");
+    }
 }

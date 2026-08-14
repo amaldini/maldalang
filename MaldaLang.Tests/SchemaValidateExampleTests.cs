@@ -28,4 +28,15 @@ public class SchemaValidateExampleTests : TestBase
         Assert.Contains("London", output, StringComparison.Ordinal);
         Assert.Contains("expected failure", output, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Basics_SchemaSumTypeValidate_RunsUnderInterpreter()
+    {
+        var path = PlanningPaths.ResolveRepoFile("Examples", "Basics", "schema_sumtype_validate.malda");
+        var source = File.ReadAllText(path);
+        var output = RunProgram(source);
+        Assert.Contains("intent: Buy", output, StringComparison.Ordinal);
+        Assert.Contains("order: shoes", output, StringComparison.Ordinal);
+        Assert.Contains("expected failure", output, StringComparison.Ordinal);
+    }
 }
