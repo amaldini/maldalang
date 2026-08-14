@@ -580,7 +580,8 @@ public static class AiPipelineHelpers
             prompt.MaxTokens,
             prompt.ResponseFormatSchema,
             examples,
-            prompt.WithinTimeoutMs);
+            prompt.WithinTimeoutMs,
+            prompt.Gather);
     }
 
     private static bool ResolveWithExamplesMerge(List<RuntimeValue> args)

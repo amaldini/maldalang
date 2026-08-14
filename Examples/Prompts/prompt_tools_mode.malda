@@ -7,7 +7,7 @@
 // response_format and does not append MALDA_OUTPUT_SCHEMA. On await with
 // -> Type, validate + repair still run (fragile for local models).
 // Prefer Mode A (schema_prompt_structured.malda) or Mode C
-// (prompt_tools_then_structured.malda) for reliable structured JSON.
+// (prompt_tools_then_structured.malda — gather: + -> Type) for reliable structured JSON.
 
 prompt researchWithTools(topic) {
     system: "You are a research assistant with file tools.",

@@ -75,6 +75,8 @@ ActorMember   ::= AccessModifier? ( FieldDecl | "on" Identifier "(" ParamList? "
 
 PromptDecl    ::= "prompt" Identifier "(" ParamList? ")" ReturnType? PromptBody
 PromptBody    ::= Block | ObjectLiteral   /* statement body or object-literal config */
+PromptBodyField ::= "system" | "user" | "model" | "temperature" | "tools" | "gather" | "maxTokens" | "examples"
+                  /* gather + -> Type = Mode C (tool round, then typed extract). tools: stays Mode B. */
 
 ComponentDecl ::= "component" Identifier ComponentParams? Block
 ComponentParams ::= "(" ParamList? ")"

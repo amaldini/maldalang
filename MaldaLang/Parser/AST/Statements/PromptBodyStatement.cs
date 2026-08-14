@@ -7,7 +7,7 @@ using MaldaLang.Parser.AST.Expressions;
 
 public class PromptBodyStatement : Statement
 {
-    public string Keyword { get; }  // system, user, model, temperature, tools, maxTokens, examples
+    public string Keyword { get; }  // system, user, model, temperature, tools, gather, maxTokens, examples
     public Expression Expression { get; }
     
     public PromptBodyStatement(string keyword, Expression expression, int line = 0, int column = 0)

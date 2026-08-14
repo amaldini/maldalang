@@ -972,9 +972,7 @@ public class Parser
         if (Check(TokenType.Identifier))
         {
             var keyword = Peek().Lexeme;
-            if (keyword == "system" || keyword == "user" || keyword == "model" || 
-                keyword == "temperature" || keyword == "tools" || keyword == "maxTokens" ||
-                keyword == "examples")
+            if (PromptBodyFields.IsName(keyword))
             {
                 // Check if next token after identifier is NOT colon (statement-based)
                 if (_current + 1 < _tokens.Count && _tokens[_current + 1].Type != TokenType.Colon)
@@ -993,15 +991,13 @@ public class Parser
                 // Parse prompt body statements: system "...", user text, etc.
                 if (!Match(TokenType.Identifier))
                 {
-                    throw Error(Peek(), "Expect prompt body keyword (system, user, model, temperature, tools, maxTokens, examples).");
+                    throw Error(Peek(), $"Expect prompt body keyword ({PromptBodyFields.DisplayList}).");
                 }
                 
                 var keyword = Previous().Lexeme;
-                if (keyword != "system" && keyword != "user" && keyword != "model" && 
-                    keyword != "temperature" && keyword != "tools" && keyword != "maxTokens" &&
-                    keyword != "examples")
+                if (!PromptBodyFields.IsName(keyword))
                 {
-                    throw Error(Previous(), $"Unexpected keyword '{keyword}' in prompt body. Expected: system, user, model, temperature, tools, maxTokens, or examples.");
+                    throw Error(Previous(), $"Unexpected keyword '{keyword}' in prompt body. Expected: {PromptBodyFields.DisplayList}.");
                 }
                 
                 // Parse expression after keyword

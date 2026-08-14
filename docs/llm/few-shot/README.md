@@ -27,6 +27,7 @@ Tiny programs for LLM context. Larger curated samples live under `Examples/`.
 | `19_ui_tree.malda` | `ui.*` tree composition (`props` / children; no host loop) |
 | `20_sum_type_prompt.malda` | sum-type return + optional payload types + `await` → variant + `match` (`{tag,…}` JSON) |
 | `21_api_program.malda` | `api` + program JSON + `runProgram` (deterministic) |
+| `22_gather_extract_prompt.malda` | `gather:` + `-> Type` Mode C (offline PromptInstance) |
 
 Also useful from the main tree:
 
@@ -37,5 +38,5 @@ Also useful from the main tree:
 - `Examples/Web/rest_api_server.malda`, `Examples/Web/ui_form_workflow.malda`, `Examples/Web/ui_counter_dashboard.malda`
 - Language API: `ReferenceManual/23-web-ui.html` (hub: `22-web-ui-hub.html`)
 - `Examples/Workflows/retry_and_inspect.malda`
-- `Examples/Prompts/basic_prompt.malda`, `Examples/Prompts/schema_prompt_structured.malda`, `Examples/Prompts/sum_type_intent_prompt.malda`, `Examples/Prompts/api_program_calc.malda`
+- `Examples/Prompts/basic_prompt.malda`, `Examples/Prompts/schema_prompt_structured.malda`, `Examples/Prompts/sum_type_intent_prompt.malda`, `Examples/Prompts/api_program_calc.malda`, `Examples/Prompts/prompt_tools_then_structured.malda`
 - `Examples/Actors/basic_counter.malda`

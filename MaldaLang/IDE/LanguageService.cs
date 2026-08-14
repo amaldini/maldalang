@@ -524,6 +524,22 @@ public class LanguageService : ILanguageService
                 Detail = detail
             });
         }
+
+        if (IsInsidePromptBody(source, line, column))
+        {
+            foreach (var field in PromptBodyFields.Names)
+            {
+                completions.Add(new CompletionItem
+                {
+                    Label = field,
+                    Kind = "property",
+                    InsertText = field == "gather" ? "gather: [\"read_file\"]" : field,
+                    Detail = field == "gather"
+                        ? "Mode C: tool round, then typed extract on await"
+                        : "prompt field"
+                });
+            }
+        }
         
         // Add ALL built-in functions
         var builtIns = new[] { 
@@ -923,6 +939,17 @@ public class LanguageService : ILanguageService
             members.Add(new CompletionItem { Label = "setTemperature", Kind = "method", Detail = "setTemperature(temp)", InsertText = "setTemperature()" });
             members.Add(new CompletionItem { Label = "setMaxTokens", Kind = "method", Detail = "setMaxTokens(tokens)", InsertText = "setMaxTokens()" });
         }
+        else if (typeToCheck == "PromptInstance")
+        {
+            members.Add(new CompletionItem { Label = "system", Kind = "property", Detail = "string?", InsertText = "system" });
+            members.Add(new CompletionItem { Label = "user", Kind = "property", Detail = "string", InsertText = "user" });
+            members.Add(new CompletionItem { Label = "model", Kind = "property", Detail = "string?", InsertText = "model" });
+            members.Add(new CompletionItem { Label = "temperature", Kind = "property", Detail = "float?", InsertText = "temperature" });
+            members.Add(new CompletionItem { Label = "tools", Kind = "property", Detail = "array?", InsertText = "tools" });
+            members.Add(new CompletionItem { Label = "gather", Kind = "property", Detail = "array of tool names (Mode C)", InsertText = "gather" });
+            members.Add(new CompletionItem { Label = "maxTokens", Kind = "property", Detail = "int?", InsertText = "maxTokens" });
+            members.Add(new CompletionItem { Label = "examples", Kind = "property", Detail = "array?", InsertText = "examples" });
+        }
         else if (typeToCheck == "Conversation")
         {
             members.Add(new CompletionItem { Label = "addUserMessage", Kind = "method", Detail = "addUserMessage(content)", InsertText = "addUserMessage()" });
@@ -1310,6 +1337,68 @@ public class LanguageService : ILanguageService
         }
     }
     
+    private static bool IsInsidePromptBody(string source, int line, int column)
+    {
+        var offset = GetSourceOffset(source, line, column);
+        if (offset <= 0)
+            return false;
+
+        var prefix = source.Substring(0, Math.Min(offset, source.Length));
+        var lastPrompt = LastIndexOfPromptKeyword(prefix);
+        if (lastPrompt < 0)
+            return false;
+
+        var brace = prefix.IndexOf('{', lastPrompt);
+        if (brace < 0)
+            return false;
+
+        var depth = 0;
+        for (var i = brace; i < prefix.Length; i++)
+        {
+            var ch = prefix[i];
+            if (ch == '{')
+                depth++;
+            else if (ch == '}')
+                depth--;
+        }
+
+        return depth > 0;
+    }
+
+    private static int LastIndexOfPromptKeyword(string prefix)
+    {
+        for (var i = prefix.Length - 6; i >= 0; i--)
+        {
+            if (i + 6 > prefix.Length)
+                continue;
+            if (!prefix.AsSpan(i, 6).Equals("prompt", StringComparison.Ordinal))
+                continue;
+            var beforeOk = i == 0 || !IsIdentifierContinue(prefix[i - 1]);
+            var afterOk = i + 6 >= prefix.Length || !IsIdentifierContinue(prefix[i + 6]);
+            if (beforeOk && afterOk)
+                return i;
+        }
+
+        return -1;
+    }
+
+    private static bool IsIdentifierContinue(char ch) =>
+        char.IsLetterOrDigit(ch) || ch == '_';
+
+    private static int GetSourceOffset(string source, int line, int column)
+    {
+        var currentLine = 0;
+        var i = 0;
+        while (i < source.Length && currentLine < line)
+        {
+            if (source[i] == '\n')
+                currentLine++;
+            i++;
+        }
+
+        return Math.Min(i + Math.Max(column, 0), source.Length);
+    }
+
     private Token? FindTokenAtPosition(List<Token> tokens, int line, int column)
     {
         return tokens.FirstOrDefault(t => t.Line == line && t.Column <= column && 
@@ -1318,6 +1407,12 @@ public class LanguageService : ILanguageService
     
     private static string? GetKeywordHoverInfo(Token token, string source, int line, int column, List<Statement>? statements = null)
     {
+        if (token.Type == TokenType.Identifier &&
+            string.Equals(token.Lexeme, "gather", StringComparison.Ordinal))
+        {
+            return "**gather** — Mode C marker: tool round, then a typed extract (`-> Type`) without tools on `await`.\n\n`prompt p(q) -> Answer { gather: [\"read_file\"]; user: q; }`\n\nDo not combine with `tools:` (that stays Mode B).";
+        }
+
         return token.Type switch
         {
             TokenType.Await => "**await** — Await async results, including pipe steps with `runPrompt`.\n\n`var text = await (prompt() |> runPrompt(client));`",
@@ -1326,7 +1421,7 @@ public class LanguageService : ILanguageService
             TokenType.While => "**while** — Loop while condition is true.\n\n`while (condition) { ... }`",
             TokenType.If => "**if** — Conditional execution.\n\n`if (condition) { ... } else { ... }`",
             TokenType.Workflow => "**workflow** — Durable workflow declaration.\n\n`workflow Name(input) { ... }`",
-            TokenType.Prompt => "**prompt** — Reusable LLM prompt template.\n\n`prompt Name(params) -> Type? { system: \"...\", user: \"...\" }`",
+            TokenType.Prompt => "**prompt** — Reusable LLM prompt template.\n\n`prompt Name(params) -> Type? { gather: [\"read_file\"]; system: \"...\"; user: \"...\" }`\n\n`gather:` + `-> Type` is Mode C (tool round, then typed extract). Plain `tools:` stays Mode B.",
             TokenType.Step => "**step** — Durable step boundary with journaling and replay semantics.\n\n`step stepName = call() retry 2 timeout 1000;`",
             TokenType.Approval => "**approval** — Pause workflow until externally approved/rejected.\n\n`approval gate = approval(\"manager\", payload) timeout 60000;`",
             TokenType.Wait => "**wait/awaitSignal** — Pause workflow until a named signal arrives.\n\n`wait docs = awaitSignal(\"docs_uploaded\", payload) timeout 60000;`",
