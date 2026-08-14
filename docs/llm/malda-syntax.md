@@ -203,7 +203,10 @@ Prefer a single listener for UI + API: construct `new RestServer()` (no port), t
 trees use `ui.*` with signature `ui.control(props, children?, key?)` — no JSX; see
 `few-shot/19_ui_tree.malda` and `ReferenceManual/23-web-ui.html`. Background work that is
 not a durable workflow uses `enqueueJob` / `claimJob` / `completeJob` / `failJob` against
-`./.malda/jobs.db`. See `Examples/Web/auth_cookie_login.malda` and
+`./.malda/jobs.db`. Durable `workflow` bodies outside `step` refuse deny-listed built-ins
+(`now`, `sleep`, `writeFile`, …) as `WF1001`/`WF1002` **including through same-file helpers**;
+imported/unknown callees are `WF1005` Info. See `Examples/Workflows/determinism_helpers.malda`.
+See `Examples/Web/auth_cookie_login.malda` and
 `docs/tutorials/fullstack-sessions-auth.md`.
 
 ## Modules (`import` / `export` vs `include`)

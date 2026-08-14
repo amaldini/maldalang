@@ -40,6 +40,7 @@ These strings are what `@property` / `runProperty` use via `GetRequiredCapabilit
 | File I/O | yes | yes | no |
 | Actors (`spawn` / `send` / `on`) | yes | yes | limited demos only |
 | Durable workflows (`workflow` / `step`) | yes | yes | no |
+| Workflow call-graph determinism (WF1001/WF1002 via in-file helpers) | yes | yes | n/a |
 | Agents / prompts / MCP / ACP | yes | yes | no |
 | `schema` / `validate()` | yes | yes | no |
 | Typed prompt `response_format` (schema → OpenAI structured output) | yes* | yes* | no |

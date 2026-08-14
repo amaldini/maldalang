@@ -892,6 +892,10 @@ public static class BuiltInFunctions
         }
     }
 
+    /// <summary>
+    /// WF1001/WF1002 when a deny-listed built-in runs in a deterministic workflow section,
+    /// including nested helpers (L4). Step / onReject frames skip the check.
+    /// </summary>
     private static void CheckWorkflowDeterminism(string name, Interpreter? interpreter)
     {
         if (interpreter != null)

@@ -54,6 +54,7 @@ public class BackendCapabilityMatrixGuardTests
         AssertContains(markdown, "Typed prompt", "typed prompts row");
         AssertContains(markdown, "Gather-then-extract", "gather-then-extract prompts row");
         AssertContains(markdown, "`@budget`", "@budget resource bounds row");
+        AssertContains(markdown, "call-graph determinism", "workflow call-graph determinism row");
         AssertContains(markdown, "HttpServer", "HttpServer row");
         AssertContains(markdown, "UIHost", "UIHost row");
         AssertContains(markdown, "Jobs", "Jobs row");

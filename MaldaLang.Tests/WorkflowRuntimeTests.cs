@@ -386,6 +386,107 @@ var id = startWorkflow(""Ok"", null);
     }
 
     [Fact]
+    public void WF1001_NowInHelperFromWorkflowBody_Throws()
+    {
+        WorkflowEngine.ResetForTesting("Data Source=" + GetTestDbPath());
+        var source = @"
+function stamp() {
+    return now();
+}
+workflow Bad(input) {
+    stamp();
+}
+var id = startWorkflow(""Bad"", null);
+";
+        var lexer = new Lexer(source);
+        var tokens = lexer.Tokenize();
+        var parser = new Parser.Parser(tokens);
+        var statements = parser.Parse();
+        var interp = new Interpreter.Interpreter();
+        var ex = Assert.Throws<RuntimeException>(() =>
+            interp.InterpretAsync(statements).GetAwaiter().GetResult());
+        Assert.Contains("WF1001", ex.Message);
+        Assert.Contains("now", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WF1001_NowInNestedHelperFromWorkflowBody_Throws()
+    {
+        WorkflowEngine.ResetForTesting("Data Source=" + GetTestDbPath());
+        var source = @"
+function inner() {
+    return now();
+}
+function stamp() {
+    return inner();
+}
+workflow Bad(input) {
+    stamp();
+}
+var id = startWorkflow(""Bad"", null);
+";
+        var lexer = new Lexer(source);
+        var tokens = lexer.Tokenize();
+        var parser = new Parser.Parser(tokens);
+        var statements = parser.Parse();
+        var interp = new Interpreter.Interpreter();
+        var ex = Assert.Throws<RuntimeException>(() =>
+            interp.InterpretAsync(statements).GetAwaiter().GetResult());
+        Assert.Contains("WF1001", ex.Message);
+        Assert.Contains("now", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WF1002_WriteFileInHelperFromWorkflowBody_Throws()
+    {
+        WorkflowEngine.ResetForTesting("Data Source=" + GetTestDbPath());
+        var source = @"
+function persist() {
+    writeFile(""x.txt"", ""data"");
+}
+workflow Bad(input) {
+    persist();
+}
+var id = startWorkflow(""Bad"", null);
+";
+        var lexer = new Lexer(source);
+        var tokens = lexer.Tokenize();
+        var parser = new Parser.Parser(tokens);
+        var statements = parser.Parse();
+        var interp = new Interpreter.Interpreter();
+        var ex = Assert.Throws<RuntimeException>(() =>
+            interp.InterpretAsync(statements).GetAwaiter().GetResult());
+        Assert.Contains("WF1002", ex.Message);
+        Assert.Contains("writeFile", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WF1001_NowInHelperInsideStep_Allowed()
+    {
+        WorkflowEngine.ResetForTesting("Data Source=" + GetTestDbPath());
+        var source = @"
+function stamp() {
+    return now();
+}
+workflow Ok(input) {
+    step t = stamp();
+    print(t);
+}
+var id = startWorkflow(""Ok"", null);
+";
+        var lexer = new Lexer(source);
+        var tokens = lexer.Tokenize();
+        var parser = new Parser.Parser(tokens);
+        var statements = parser.Parse();
+        var interp = new Interpreter.Interpreter();
+        interp.InterpretAsync(statements).GetAwaiter().GetResult();
+
+        var inst = WorkflowEngine.Instance.ListInstances(name: "Ok", limit: 1).FirstOrDefault();
+        Assert.NotNull(inst);
+        Assert.Equal("COMPLETED", inst!.Status);
+    }
+
+    [Fact]
     public void Workflow_RetryMath_FixedLinearExponentialAndCap()
     {
         WorkflowEngine.ResetForTesting("Data Source=" + GetTestDbPath());

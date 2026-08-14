@@ -70,7 +70,7 @@ Malda durable workflows do **not** provide:
 
 - Multi-worker task queues or poll/claim
 - Cluster membership / history server
-- Full history non-determinism detection comparable to Temporal’s replay tooling
+- Full history non-determinism detection comparable to Temporal’s replay tooling (L4 walks same-file helpers for the deny-list; it is not HA and not history comparison)
 - Multi-machine failover or geo replication
 - Schedule-to-start / worker heartbeats as ownership leases
 
