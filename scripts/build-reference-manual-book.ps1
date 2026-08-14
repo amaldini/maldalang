@@ -49,6 +49,16 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $manualDir = Join-Path $repoRoot "ReferenceManual"
 $configPath = Join-Path $manualDir "chapters.json"
+$cliCsproj = Join-Path (Join-Path $repoRoot "MaldaLang") "MaldaLang.csproj"
+if (-not (Test-Path -LiteralPath $cliCsproj)) {
+    throw "Missing MaldaLang.csproj; cannot stamp the manual version."
+}
+$cliCsprojText = Get-Content -LiteralPath $cliCsproj -Raw
+$versionMatch = [regex]::Match($cliCsprojText, '<Version>\s*([^<]+?)\s*</Version>')
+if (-not $versionMatch.Success) {
+    throw "MaldaLang.csproj must contain <Version>x.y.z</Version>"
+}
+$manualVersion = $versionMatch.Groups[1].Value.Trim()
 
 if (-not $OutputDirectory) {
     $OutputDirectory = Join-Path $repoRoot "artifacts\reference-manual"
@@ -235,12 +245,12 @@ $pageGeometry
 <body>
     <section class="book-cover">
         <img class="cover-plate" alt="MALDA Reference Manual" src="@@COVER_SRC@@" />
-        <p class="cover-meta">Version 0.1 &middot; $buildDate &middot; $Trim edition</p>
+        <p class="cover-meta">Version $manualVersion &middot; $buildDate &middot; $Trim edition</p>
     </section>
 
     <section class="book-copyright">
         <h2>MALDA Reference Manual</h2>
-        <p>Version 0.1, $buildDate. $Trim print edition.</p>
+        <p>Version $manualVersion, $buildDate. $Trim print edition.</p>
         <p>Copyright (c) $year Andrea Maldini.</p>
         <p>MALDA is free and open source software. The language implementation,
            this manual, and the code examples it contains are dual licensed: you

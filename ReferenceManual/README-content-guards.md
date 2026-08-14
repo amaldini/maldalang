@@ -22,6 +22,7 @@ dotnet test MaldaLang.Tests --filter "FullyQualifiedName~ReferenceManual"
 | `ReferenceManualContentGuardTests.IndexTocFallback_MatchesChaptersJson` | `FALLBACK_TOC_CHAPTERS` in `index-toc.js` matches `chapters.json` |
 | `ReferenceManualContentGuardTests.ChapterCategories_AreContiguousInReadingOrder` | Each menu category is a contiguous number range in `chapters.json` |
 | `ReferenceManualContentGuardTests.NavAndTocCategoryOrder_ListsEveryChapterCategory` | Sidebar and home TOC category lists match first-seen `chapters.json` categories |
+| `ReferenceManualContentGuardTests.ChapterMastheads_MatchCliVersion` | Chapter headers, the Tools REPL banner, the home “What ships today” line, and the book script stamp the CLI `<Version>` |
 | `ReferenceManualRunnableSnippetTests` | Every snippet marked runnable actually runs and prints what the manual claims |
 
 ## Adding a built-in

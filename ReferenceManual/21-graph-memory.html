@@ -12,7 +12,7 @@
 <body>
     <header>
         <h1>MALDA&trade; Reference Manual</h1>
-        <p>The AI-First Programming Language - Version 0.1</p>
+        <p>The AI-First Programming Language - Version 0.1.52</p>
     </header>
     <nav></nav>
     <main>
@@ -245,13 +245,13 @@ var scoped = memory.getRecent(5, "", "", "chat:123");    // optional scope filte
 
         <p><strong>How it works:</strong></p>
         <ol>
-            <li>Uses vector similarity search to find the top matching memory nodes</li>
-            <li>Includes those semantic hits in the result set</li>
-            <li>Expands each hit with breadth-first search (BFS) over graph edges (including <code>related_to</code> links created by <code>remember()</code>)</li>
-            <li>Returns deduplicated memory objects, optionally filtered by <code>phase</code> / <code>type</code> in <code>options</code></li>
+            <li>Scans stored memory metadata (this is <strong>not</strong> a semantic or vector search; use <code>query()</code> for that)</li>
+            <li>Keeps entries that match the optional <code>phase</code>, <code>type</code>, and <code>scope</code> filters (empty string means no filter for that argument)</li>
+            <li>Sorts remaining entries by <code>timestamp</code>, newest first</li>
+            <li>Returns up to <code>count</code> memory objects in that order</li>
         </ol>
 
-        <h2>18.3.3 Forgetting entries (<code>forget</code>)</h2>
+        <h3>18.3.3 Forgetting entries (<code>forget</code>)</h3>
         <p>Removes a memory node by ID from the knowledge graph, vector index, and metadata store. Connected edges are removed with the node.</p>
         <pre><code>var nodeId = memory.remember("Outdated fact");
 var removed = memory.forget(nodeId);  // true if the node existed</code></pre>

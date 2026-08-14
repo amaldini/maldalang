@@ -19,7 +19,7 @@ namespace MaldaLang.Tests;
 [Collection("Sequential")]
 public class ReferenceManualRunnableSnippetTests : TestBase
 {
-    private const int MinimumExpectedSnippets = 8;
+    private const int MinimumExpectedSnippets = 20;
 
     public static IEnumerable<object[]> RunnableSnippets =>
         DiscoverSnippets().Select(s => new object[] { s.Id });

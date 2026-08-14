@@ -11,7 +11,7 @@
 <body>
     <header>
         <h1>MALDA&trade; Reference Manual</h1>
-        <p>The AI-First Programming Language - Version 0.1</p>
+        <p>The AI-First Programming Language - Version 0.1.52</p>
     </header>
     <nav></nav>
     <main>
@@ -113,9 +113,12 @@ function findValue(arr, target) {
         <p>MALDA supports lambda expressions (anonymous functions) using arrow function syntax. Lambdas are first-class values that can be assigned to variables, passed as arguments, and returned from functions.</p>
         <h3>Expression Body</h3>
         <p>Lambdas with a single expression automatically return that expression:</p>
-        <pre><code>var add = (a, b) => a + b;
-var square = x => x * x;  // Single parameter can omit parentheses
-var getValue = () => 42;   // Empty parameter list</code></pre>
+        <pre><code data-run="true" data-expect="5\n9\n42">var add = (a, b) => a + b;
+var square = x => x * x;
+var getValue = () => 42;
+print(add(2, 3));
+print(square(3));
+print(getValue());</code></pre>
         <h3>Block Body</h3>
         <p>Lambdas with multiple statements use braces. You can use explicit <code>return</code>, or rely on <strong>last expression wins</strong>: if the last statement is an expression, its value is implicitly returned.</p>
         <pre><code>var process = (x) => {

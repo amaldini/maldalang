@@ -11,7 +11,7 @@
 <body>
     <header>
         <h1>MALDA&trade; Reference Manual</h1>
-        <p>The AI-First Programming Language - Version 0.1</p>
+        <p>The AI-First Programming Language - Version 0.1.52</p>
     </header>
     <nav></nav>
     <main>
@@ -101,13 +101,13 @@ foreach (var x in results) {
 };</code></pre>
         
         <p><strong>Example:</strong></p>
-        <pre><code>var x = 42;
+        <pre><code data-run="true" data-expect="matched 42">var x = 42;
 var result = match x {
     case 42: "matched 42";
     case 10: "matched 10";
     default: "no match";
 };
-print(result);  // Prints: "matched 42"</code></pre>
+print(result);</code></pre>
         
         <p>Match expressions can also be used as statements (without assigning to a variable):</p>
         <pre><code>match x {
@@ -302,6 +302,9 @@ try {
 } catch (e) {
     print("Other: " + e);
 }
+
+// For expected success/failure in a return value, prefer result / option
+// instead of throw — see Built-in Functions 12.19.1.
 
 // Try-catch-finally
 try {

@@ -11,7 +11,7 @@
 <body>
     <header>
         <h1>MALDA&trade; Reference Manual</h1>
-        <p>The AI-First Programming Language - Version 0.1</p>
+        <p>The AI-First Programming Language - Version 0.1.52</p>
     </header>
     <nav></nav>
     <main>
@@ -50,8 +50,8 @@ print(io.readFile("config.json"));</code></pre>
                 <tr><td><code>io</code></td><td><code>print</code>, <code>input</code>, file and path helpers, <code>glob</code>, <code>grep</code>, environment variables, git helpers</td></tr>
                 <tr><td><code>pdf</code></td><td><code>extractText</code> &mdash; read text from a PDF file (digital text layer; no OCR)</td></tr>
                 <tr><td><code>doc</code></td><td><code>extractText</code> &mdash; read text from a Word <code>.docx</code> (Open XML; not legacy <code>.doc</code>)</td></tr>
-                <tr><td><code>result</code></td><td><code>ok</code>, <code>err</code>, <code>map</code>, <code>unwrapOr</code>, <code>isOk</code>, <code>isErr</code></td></tr>
-                <tr><td><code>option</code></td><td><code>some</code>, <code>none</code>, <code>map</code>, <code>unwrapOr</code>, <code>isSome</code>, <code>isNone</code></td></tr>
+                <tr><td><code>result</code></td><td><code>ok</code>, <code>err</code>, <code>map</code>, <code>unwrapOr</code>, <code>isOk</code>, <code>isErr</code> — see <a href="#result-option">12.19.1</a></td></tr>
+                <tr><td><code>option</code></td><td><code>some</code>, <code>none</code>, <code>map</code>, <code>unwrapOr</code>, <code>isSome</code>, <code>isNone</code> — see <a href="#result-option">12.19.1</a></td></tr>
             </tbody>
         </table>
         <p><code>Math</code> (capital M) is a deprecated alias for the same object as <code>math</code>.</p>
@@ -367,7 +367,7 @@ print(parsed.text);           // ok
 print(parsed.sources[0]);       // a.md</code></pre>
         <p>Array field types use <code>type[]</code> syntax (e.g. <code>string[]</code>, <code>int[]</code>, or <code>OtherSchema[]</code>). Field types may also name another declared <code>schema</code> (nested object shapes are expanded for validation and typed prompts). Optional fields append <code>?</code> after the type. Unknown field type names and cyclic schema references raise an error when the schema is resolved.</p>
 
-        <h3>12.7.1 validate(schema, value)</h3>
+        <h3 id="validate">12.7.1 validate(schema, value)</h3>
         <p>Checks a value that you already have against a schema, without parsing JSON. Unlike <code>parseJson</code>, a validation failure is <strong>not</strong> an exception: the result is always an object reporting the outcome.</p>
         <ul>
             <li>On success: <code>{ ok: true, data: value }</code></li>
@@ -843,6 +843,33 @@ assert(isValid, "Validation failed");        // Assert without custom message</c
                 <li><code>assert(condition, message?)</code> is useful for debugging and validation - throws an error if condition is false</li>
             </ul>
         </div>
+        <h3 id="result-option">12.19.1 <code>result</code> and <code>option</code></h3>
+        <p>Prefer these modules when a function should report success or absence without throwing. They return <strong>variants</strong> with tags <code>Ok</code>/<code>Err</code> and <code>Some</code>/<code>None</code> — the same shape as a <code>type Result = Ok(value) | Err(message)</code> declaration, but you do not need to declare the type. The module names are lowercase (<code>result</code>, <code>option</code>); a user-declared <code>type Result</code> is a different name.</p>
+        <p>Use <code>try</code>/<code>catch</code> for unexpected failures (see <a href="08-control-structures.html">8. Control Structures</a>). Use <code>result</code>/<code>option</code> for expected outcomes in the return value.</p>
+        <pre><code data-run="true" data-expect="12\ntrue\nhi\ntrue">function parseAge(raw) {
+    var n = toIntOrNull(raw);
+    if (n == null) {
+        return result.err("not an int");
+    }
+    return result.ok(n);
+}
+
+print(result.unwrapOr(parseAge("12"), 0));
+print(result.isErr(parseAge("x")));
+
+var present = option.some("hi");
+var missing = option.none();
+print(option.unwrapOr(present, "no"));
+print(option.isNone(missing));</code></pre>
+        <ul>
+            <li><code>result.ok(value)</code> / <code>result.err(value)</code> — construct an <code>Ok</code> or <code>Err</code> variant</li>
+            <li><code>result.isOk(r)</code> / <code>result.isErr(r)</code> — tag tests</li>
+            <li><code>result.unwrapOr(r, fallback)</code> — payload of <code>Ok</code>, otherwise <code>fallback</code></li>
+            <li><code>result.map(r, fn)</code> — apply <code>fn</code> to an <code>Ok</code> payload; leave <code>Err</code> unchanged</li>
+            <li><code>option.some(value)</code> / <code>option.none()</code> — construct a <code>Some</code> or <code>None</code> variant</li>
+            <li><code>option.isSome(o)</code> / <code>option.isNone(o)</code> / <code>option.unwrapOr(o, fallback)</code> / <code>option.map(o, fn)</code> — the same pattern for optional values</li>
+        </ul>
+        <p>Do not treat type hints (<code>var n: int = …</code>) as runtime validation. For JSON-shaped payloads use <code>schema</code> and <a href="#validate"><code>validate()</code></a>. Tutorial: <a href="../docs/tutorials/errors-and-validation.md">errors, Result/Option, and schema validate</a>.</p>
         <h2>12.20 Structured Task Planning</h2>
         <p>MALDA provides built-ins for breaking tasks into steps and executing them in order via an agent. A <strong>plan</strong> is an object <code>{ steps: [{ id, description, dependsOn? }, ...], planId?, taskSummary? }</code>. Each step has a unique <code>id</code> (string), <code>description</code> (string), and optional <code>dependsOn</code> (array of step ids that must complete first). Steps are executed in topological order (dependencies first).</p>
         <h3>12.20.1 decomposeTask(instruction, client?)</h3>
@@ -1011,13 +1038,8 @@ enableAgentVerboseLogging(false);</code></pre>
         <p><code>reportRalphStatus</code> requires its first five arguments; the remaining five default to <code>false</code>, <code>0</code>, <code>0</code>, <code>0</code>, and <code>0.0</code> respectively. It is used by the PRD-driven autonomous loop described in <a href="14-agent-orchestration.html#ralph-wiggum">17.18 Ralph Wiggum</a>.</p>
         <pre><code>reportRalphStatus("Ralph", "implement", 3, 10, 45, true, 12000, 1800, 640, 0.02);</code></pre>
 
-        <h2>12.24 Web UI Functions (Moved)</h2>
-        <p>Web UI helper functions are documented in <a href="16-web-ui.html">23. Web UI Server Components</a> to keep this chapter focused on general-purpose built-ins.</p>
-        <ul>
-            <li>Server component helpers: <code>renderTemplate</code>, <code>componentFragment</code>, <code>componentLiveEmit</code>, <code>componentState*</code> (including <code>componentStatePin</code> / <code>componentStateUnpin</code>), <code>onAgentProgress</code> (handler or live channel string), and <code>clearAgentProgress</code></li>
-            <li>Server UI framework: <code>ui.mount</code>, <code>ui.render</code>, <code>ui.dispatchEvent</code>, <code>ui.state</code>, <code>ui.getState</code>, <code>ui.setState</code>, <code>ui.pinState</code>, <code>ui.unpinState</code>, <code>ui.configure</code>, template helpers (<code>ui.template</code>, <code>ui.partial</code>, <code>ui.layout</code>, <code>ui.renderList</code>, <code>ui.crudModel</code>, <code>ui.crudControls</code>), and UI controls (including <code>ui.dataGrid</code> and <code>ui.treeView</code>)</li>
-            <li>Template helpers support escaped interpolation <code>{{key}}</code>, raw interpolation <code>{{{key}}}</code>, and blocks (<code>{{#if}}</code>, <code>{{#each}}</code>) as documented in chapter 20.</li>
-        </ul>
+        <h2>12.24 Web UI Functions</h2>
+        <p>Server component helpers and <code>ui.*</code> controls live in <a href="16-web-ui.html">23. Web UI Server Components</a>. Start from <a href="16-web-ui-hub.html">22. Web UI Overview</a> if you are choosing a UI model.</p>
         <h2 id="optional-pack-builtins">12.25 Optional packs (not in core)</h2>
         <p>Core <code>BuiltInRegistry</code> lists only open-source core symbols. Domain-specific builtins may ship in separately distributed packs; load them with <code>loadNativeModule(...)</code> and ship any required assemblies beside your app. Core does not auto-register pack globals.</p>
         <div class="see-also">

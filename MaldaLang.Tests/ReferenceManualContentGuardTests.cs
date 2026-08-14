@@ -11,7 +11,8 @@ namespace MaldaLang.Tests;
 /// <summary>
 /// Guards that keep ReferenceManual content aligned with the code it documents:
 /// reserved words versus the lexer, built-in coverage versus the registry,
-/// internal links, section numbering, navigation/TOC fallbacks, and contiguous categories.
+/// internal links, section numbering, navigation/TOC fallbacks, contiguous categories,
+/// and the shipping version stamped in chapter headers.
 /// </summary>
 public class ReferenceManualContentGuardTests
 {
@@ -194,6 +195,50 @@ public class ReferenceManualContentGuardTests
 
         Assert.Equal(expected, navOrder);
         Assert.Equal(expected, tocOrder);
+    }
+
+    [Fact]
+    public void ChapterMastheads_MatchCliVersion()
+    {
+        var csproj = File.ReadAllText(PlanningPaths.ResolveRepoPath("MaldaLang", "MaldaLang.csproj"));
+        var versionMatch = Regex.Match(csproj, @"<Version>\s*(?<ver>[^<]+?)\s*</Version>");
+        Assert.True(versionMatch.Success, "MaldaLang.csproj must contain <Version>x.y.z</Version>.");
+        var version = versionMatch.Groups["ver"].Value.Trim();
+        Assert.False(string.IsNullOrWhiteSpace(version));
+
+        var masthead = new Regex(
+            @"The AI-First Programming Language - Version (?<ver>[\d.]+)",
+            RegexOptions.CultureInvariant);
+        var mismatched = new List<string>();
+        var stamped = 0;
+        foreach (var path in ManualPages)
+        {
+            var html = File.ReadAllText(path);
+            foreach (Match match in masthead.Matches(html))
+            {
+                stamped++;
+                if (!string.Equals(match.Groups["ver"].Value, version, StringComparison.Ordinal))
+                    mismatched.Add($"{Path.GetFileName(path)} stamps {match.Groups["ver"].Value}");
+            }
+        }
+
+        Assert.True(stamped >= 30, $"Expected chapter mastheads on most manual pages, found {stamped}.");
+        Assert.True(
+            mismatched.Count == 0,
+            "Chapter headers must stamp the CLI <Version> (" + version + "): " + string.Join(", ", mismatched));
+
+        var index = File.ReadAllText(Path.Combine(ManualDir, "index.html"));
+        Assert.Contains($"MALDA <strong>{version}</strong>", index, StringComparison.Ordinal);
+
+        var tools = File.ReadAllText(Path.Combine(ManualDir, "25-tools.html"));
+        Assert.Matches(
+            new Regex(@"Interpreter\r?\nVersion " + Regex.Escape(version) + @"\r?\n", RegexOptions.CultureInvariant),
+            tools);
+
+        var script = File.ReadAllText(PlanningPaths.ResolveRepoPath("scripts", "build-reference-manual-book.ps1"));
+        Assert.Contains("MaldaLang.csproj", script, StringComparison.Ordinal);
+        Assert.Contains("$manualVersion", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("Version 0.1 &middot;", script, StringComparison.Ordinal);
     }
 
     private static bool IsDocumentedAsUiMember(string registryName, HashSet<string> namespacedUiMembers)
