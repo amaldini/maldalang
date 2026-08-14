@@ -226,6 +226,15 @@ print(response.content);</code></pre>
                 <tr><td><code>MALDA_RALPH_*</code></td><td>—</td><td>Aliases for the agent settings above in Ralph runs</td></tr>
             </tbody>
         </table>
+        <p>The same diagnostics can be toggled from code. These helpers change presentation only and never change an agent's result:</p>
+        <ul>
+            <li><code>enableAgentVerboseLogging(enabled?)</code> — turns verbose conversation logging on or off. Called with no argument it enables logging and returns <code>true</code>.</li>
+            <li><code>setAgentVerbosePhase(phase)</code> — labels the phase shown alongside verbose output, for example <code>"planning"</code> or <code>"review"</code>.</li>
+            <li><code>setAgentStatusBanner(banner)</code> — sets the banner text displayed above agent progress output.</li>
+        </ul>
+        <pre><code>enableAgentVerboseLogging();
+setAgentStatusBanner("Nightly refactor run");
+setAgentVerbosePhase("planning");</code></pre>
         <h2>17.6 Tool System</h2>
         <p>Tools allow LLMs to call functions during conversations. Tools are defined using the <code>Tool</code> class and follow the OpenAI function calling format.</p>
         <h3>Built-in Tool Creators</h3>
@@ -250,8 +259,14 @@ print(response.content);</code></pre>
             <li><code>createRunCommandTool(workingDirectory?)</code> → <code>Tool</code> - Execute shell commands (e.g., <code>dotnet</code>, <code>npm</code>, <code>python</code>) with safety checks. Parameters: <code>command</code> (string), <code>args</code> (array of strings, optional), <code>workingDirectory</code> (optional), <code>timeoutMs</code> (optional). Returns object with <code>exitCode</code>, <code>stdout</code>, and <code>stderr</code>.</li>
             <li><code>createRunMALDATool(workingDirectory?)</code> → <code>Tool</code> - Execute MALDA code from a file path or source string. Parameters: <code>sourceOrFilePath</code> (string), <code>input</code> (optional string for stdin). Returns object with <code>success</code> (boolean), <code>output</code> (string), <code>error</code> (string for parse errors), and optional <code>runtimeError</code> (string).</li>
             <li><code>createCompileMALDATool(workingDirectory?)</code> → <code>Tool</code> - Compile MALDA source code to executable. Parameters: <code>sourcePath</code> (string), <code>outputPath</code> (optional string), <code>mode</code> (optional: <code>"interpreter"</code> | <code>"transpile"</code>). Returns object with <code>success</code> (boolean), <code>outputPath</code> (string or null), <code>error</code> (string), and <code>errors</code> (array of error objects).</li>
+            <li><code>createGetSymbolsTool(workingDirectory?)</code> → <code>Tool</code> - Extract classes, functions, actors, and prompts from a file</li>
+            <li><code>createGetParseErrorsTool(workingDirectory?)</code> → <code>Tool</code> - Validate syntax without running the file</li>
+            <li><code>createWebSearchTool()</code> → <code>Tool</code> - Brave Search API (no working directory)</li>
+            <li><code>createGlobTool(workingDirectory?)</code> → <code>Tool</code> - Pattern-based path search. Interpreter-only; not available in transpiled executables</li>
+            <li><code>createCreateMcpAgentScriptTool(workingDirectory?)</code> → <code>Tool</code> - Generates MCP agent scripts</li>
             <li><code>createSubmitPlanTool()</code> → <code>Tool</code> - Submit a structured plan (steps with <code>id</code>, <code>description</code>, optional <code>dependsOn</code>). Parameters: <code>plan</code> (object with <code>steps</code>) or <code>steps</code> (array), optional <code>taskSummary</code>. Returns <code>{ accepted: true, planId, stepCount }</code> or <code>{ accepted: false, error }</code>. No working directory.</li>
         </ul>
+        <p>All of these factories accept an optional <code>workingDirectory</code> except <code>createSubmitPlanTool</code>, <code>createAskUserTool</code>, and <code>createWebSearchTool</code>. When a directory is set, file and path operations stay inside it and its subdirectories.</p>
         <h3>Example</h3>
         <pre><code>var workingDir = ".";
 var readTool = createReadFileTool(workingDir);
@@ -559,7 +574,7 @@ print(response.content);</code></pre>
         <p>MALDA supports breaking complex tasks into ordered steps and executing them via an agent. A <strong>plan</strong> is an object <code>{ steps: [{ id, description, dependsOn? }, ...], planId?, taskSummary? }</code>. Each step has a unique <code>id</code> (string), <code>description</code> (string), and optional <code>dependsOn</code> (array of step ids that must complete first).</p>
         <ul>
             <li><strong>decomposeTask(instruction, client?)</strong> – Uses an LLM to turn a high-level instruction into a plan. Optional second argument is an LLM client; if omitted, the default local LLM (Qwen/Qwen2.5-0.5B-Instruct, auto-downloaded as a GGUF build from Hugging Face) is used. Returns a plan object or <code>{ error }</code> on failure.</li>
-            <li><strong>executePlan(plan, agent)</strong> – Validates the plan, topo-sorts steps by <code>dependsOn</code>, then runs <code>agent.think(step.description)</code> for each step in order. Returns <code>{ planId, completed, failed, results }</code> (see <a href="12-built-in-functions.html">12. Built-in Functions</a>).</li>
+            <li><strong>executePlan(plan, agent)</strong> – Validates the plan, topo-sorts steps by <code>dependsOn</code>, then runs <code>agent.think(step.description)</code> for each step in order. Returns <code>{ planId, completed, failed, results }</code>.</li>
             <li><strong>submit_plan</strong> tool – Agents can call this tool to submit a plan (e.g. after a first &quot;think&quot; that produces the plan). DevAgent includes this tool by default. Parameters: <code>plan</code> (object with <code>steps</code>) or <code>steps</code> (array), optional <code>taskSummary</code>. Returns <code>{ accepted: true, planId, stepCount }</code> or <code>{ accepted: false, error }</code>.</li>
             <li><strong>PromptInstance metadata</strong> – When calling <code>agent.think(promptInstance)</code>, optional fields <code>model</code>, <code>temperature</code>, <code>maxTokens</code>, and <code>tools</code> (array of tool names) apply to that single LLM request.</li>
             <li><strong>DevAgent code memory</strong> – <code>devAgent.enableCodeMemory(path?, scope?)</code> loads GraphMemory at <code>.dev-agent-memory</code> under the workdir (by default), sets scope <code>code:&lt;workdir-name&gt;</code>, and registers <code>index_code_file</code> / <code>find_code_relationships</code> tools. <code>devAgent.indexCodebase(extensions?)</code> bulk-indexes source files (default: <code>.cs,.malda,.js,.ts,.py,.html,.css,.json,.md</code>).</li>
@@ -1105,6 +1120,8 @@ send stateManager.queryAgent("Helper", "What is MALDA?");</code></pre>
         <h3>Execution strategy</h3>
         <p>Ralph prompts the agent to complete <strong>one PRD checklist item per iteration</strong> in as few LLM rounds as possible: batch read-only exploration (<code>list_directory</code>, <code>grep</code>, <code>read_file</code>) in one response, then batch edits and verification. This pairs with parallel read-only tool execution (17.5) and streamed <code>[think]</code> feedback during verbose runs.</p>
         <p>See also <a href="18-graph-memory.html">18. GraphMemory</a> for <code>remember</code> metadata, <code>getRecent</code>, and hybrid <code>query</code> options.</p>
+        <p><code>reportRalphStatus(agentName, phase, iteration, maxIter, prdPercent, validationOk?, elapsedMs?, promptTokens?, completionTokens?, costUsd?)</code> publishes one iteration of progress to the agent dashboard. The first five arguments are required; the rest default to <code>false</code>, <code>0</code>, <code>0</code>, <code>0</code>, and <code>0.0</code>.</p>
+        <pre><code>reportRalphStatus("Ralph", "implement", 3, 10, 45, true, 12000, 1800, 640, 0.02);</code></pre>
 
         <div class="nav-footer">
             <a href="16-actors.html">← Previous: 16. Actors</a>

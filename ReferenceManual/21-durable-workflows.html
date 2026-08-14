@@ -113,6 +113,7 @@ var wf = getWorkflow(id);
 var steps = getWorkflowSteps(id);
 var events = getWorkflowEvents(id, 200);
 var metrics = getWorkflowMetrics();
+var rows = listWorkflows("FAILED", null, 50);
 
 var okCancel = cancelWorkflow(id, "operator requested");
 var okResume = resumeWorkflow(id);
@@ -137,6 +138,15 @@ if (length(rows) > 0) {
     print(requeued);
 }</code></pre>
         <p>Dead-letter rows are created on terminal failure paths and can be requeued with audit metadata.</p>
+        <p><code>runWorkflowInstance(instanceId)</code> drives an existing instance forward. It is <strong>async only</strong>: call it with <code>await</code>. Calling it synchronously raises an error.</p>
+        <pre><code>var advanced = await runWorkflowInstance(id);
+print(advanced);   // true when the instance ran</code></pre>
+        <ul>
+            <li><code>null</code> — no instance with that id exists.</li>
+            <li><code>false</code> — the instance is in a status that cannot be advanced, or an internal retry/resume attempt failed.</li>
+            <li><code>true</code> — the instance ran.</li>
+        </ul>
+        <p>Runnable statuses are <code>RUNNING</code>, <code>FAILED</code> (retried first), <code>WAITING_APPROVAL</code>, and <code>WAITING_SIGNAL</code> (resumed first). If the workflow itself throws during execution, the instance is marked failed and the error is rethrown to the caller, so wrap the call in <code>try</code>/<code>catch</code> when driving instances in a loop.</p>
 
         <h2>21.6 CLI Commands</h2>
         <pre><code># Core lifecycle

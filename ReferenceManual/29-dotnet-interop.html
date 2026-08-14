@@ -158,6 +158,13 @@ var list = dotnetNew("System.Collections.Generic.List");
 list.Add("item1");
 list.Add("item2");
 print("List count: " + string(list.Count));</code></pre>
+        <h3>Native callbacks</h3>
+        <p><code>createNativeCallback(fn)</code> wraps a MALDA function so it can be handed to .NET code that expects a delegate, for example an event handler or a callback parameter on an interop object. The argument must be a function value; anything else raises an error.</p>
+        <pre><code>var callback = createNativeCallback((value) => {
+    print("called back with " + value);
+});
+
+nativeObject.onChanged(callback);</code></pre>
         
         <h2>29.5 Using NuGet Packages</h2>
         

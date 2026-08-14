@@ -434,16 +434,29 @@ prompt solve(expr) -&gt; program(Calc) {
 
 var prog = await solve("(2 + 3) * 4");
 var result = runProgram(prog);</code></pre>
-        <p>Wire JSON shape:</p>
-        <pre><code>{
+        <p>Wire JSON shape. Offline (no LLM), pass the same object to <code>runProgram</code> directly — <code>args</code> are JSON literals or <code>"$alias"</code> references to a prior step's <code>as</code>:</p>
+        <pre><code data-run="true" data-expect="20">api Calc {
+    function add(a, b);
+    function mul(a, b);
+}
+
+function add(a, b) { return a + b; }
+function mul(a, b) { return a * b; }
+
+var prog = parseJSON("""
+{
   "@api": "Calc",
   "steps": [
     { "call": "add", "args": [2, 3], "as": "t0" },
     { "call": "mul", "args": ["$t0", 4], "as": "result" }
   ],
   "return": "$result"
-}</code></pre>
-        <p><code>args</code> entries are JSON literals or <code>"$alias"</code> references to a prior step's <code>as</code>. See <code>Examples/Prompts/api_program_calc.malda</code> and <a href="12-built-in-functions.html">12. Built-in Functions</a> (<code>runProgram</code>). A name cannot be both an <code>api</code> and a <code>schema</code> / sum <code>type</code>.</p>
+}
+""");
+
+var result = runProgram(prog);
+print(result);</code></pre>
+        <p>See <code>Examples/Prompts/api_program_calc.malda</code>. A name cannot be both an <code>api</code> and a <code>schema</code> / sum <code>type</code>.</p>
 
         <h3>9.9.3.3 Reusable Pipe Pipelines</h3>
         <p>Name and reuse multi-step AI pipelines with ordinary <code>function</code> declarations and the pipe operator (<code>|&gt;</code>). Return the final pipe result explicitly.</p>

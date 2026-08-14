@@ -17,6 +17,7 @@
     <main>
         <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>12. Built-in Functions</span></div>
         <h1>12. Built-in Functions</h1>
+        <p>This chapter is the <strong>stdlib catalog</strong>: conversion, math, strings, files, JSON, dates, and error helpers. Agent tools, task plans, durable workflow operations, and <code>ui.*</code> are indexed at the end of the chapter and documented in their home chapters.</p>
         <h2>12.1 Type Conversion</h2>
         <pre><code>var num = int("123");      // Convert string to integer
 var floatVal = float("3.14");  // Convert string to float
@@ -871,173 +872,13 @@ print(option.isNone(missing));</code></pre>
         </ul>
         <p>Do not treat type hints (<code>var n: int = …</code>) as runtime validation. For JSON-shaped payloads use <code>schema</code> and <a href="#validate"><code>validate()</code></a>. Tutorial: <a href="../docs/tutorials/errors-and-validation.md">errors, Result/Option, and schema validate</a>.</p>
         <h2>12.20 Structured Task Planning</h2>
-        <p>MALDA provides built-ins for breaking tasks into steps and executing them in order via an agent. A <strong>plan</strong> is an object <code>{ steps: [{ id, description, dependsOn? }, ...], planId?, taskSummary? }</code>. Each step has a unique <code>id</code> (string), <code>description</code> (string), and optional <code>dependsOn</code> (array of step ids that must complete first). Steps are executed in topological order (dependencies first).</p>
-        <h3>12.20.1 decomposeTask(instruction, client?)</h3>
-        <p>Uses an LLM to decompose a high-level task into a structured plan. Optional second argument is an LLM client instance; if omitted, the <strong>default local LLM</strong> is used (Qwen/Qwen2.5-0.5B-Instruct, auto-downloaded as a GGUF build from Hugging Face on first use). Pass an <code>OpenRouterClient</code> or other client to use a remote model. Returns a plan object or an object with <code>error</code> (string) on failure.</p>
-        <pre><code>var plan = decomposeTask("Add unit tests for getSymbols and run the test suite");
-// plan = { steps: [{ id: "1", description: "...", dependsOn: [] }, ...], planId, taskSummary? }
-
-// With explicit client
-var plan = decomposeTask("Refactor the parser", myClient);</code></pre>
-        <h3>12.20.2 executePlan(plan, agent)</h3>
-        <p>Validates the plan, topo-sorts steps by <code>dependsOn</code>, then runs <code>agent.think(step.description)</code> for each step in order. Returns <code>{ planId, completed, failed, results }</code> where <code>completed</code> and <code>failed</code> are arrays of step ids, and <code>results</code> is an array of <code>{ stepId, success, output?, error? }</code>. If the plan is invalid (e.g. duplicate ids, cycle), returns an object with <code>error</code>.</p>
-        <pre><code>var agent = new DevAgent("Dev", "developer", "You are a developer.", null, ".");
-var plan = decomposeTask("Add tests and run them");
-var result = executePlan(plan, agent);
-print(result.completed);   // step ids that succeeded
-print(result.failed);      // step ids that threw
-print(result.results);     // per-step outcome</code></pre>
-        <h3>12.20.2.1 runProgram(program)</h3>
-        <p>Runs a validated program from <code>await prompt(...) -&gt; program(ApiName)</code> (or equivalent wire JSON). Each step calls a top-level <code>function</code> named like the api method (no LLM). Returns the evaluated <code>return</code> expression. Distinct from <code>executePlan</code> (agent-driven task DAG) and from <code>@Tool</code> loops. See <a href="09-functions.html">9. Functions</a> (§ Closed APIs and Deterministic Programs) for the full <code>api</code> / <code>program(ApiName)</code> declaration pattern.</p>
-        <pre><code>api Calc {
-    function add(a, b);
-    function mul(a, b);
-}
-
-function add(a, b) { return a + b; }
-function mul(a, b) { return a * b; }
-
-prompt solve(expr) -&gt; program(Calc) {
-    system: "Translate into Calc steps. JSON only.";
-    user: expr;
-}
-
-var prog = await solve("(2 + 3) * 4");
-var result = runProgram(prog);</code></pre>
-        <p>Offline (no LLM): the same wire shape can be passed directly — <code>args</code> are JSON literals or <code>"$alias"</code> references to a prior step's <code>as</code>:</p>
-        <pre><code data-run="true" data-expect="20">api Calc {
-    function add(a, b);
-    function mul(a, b);
-}
-
-function add(a, b) { return a + b; }
-function mul(a, b) { return a * b; }
-
-var prog = parseJSON("""
-{
-  "@api": "Calc",
-  "steps": [
-    { "call": "add", "args": [2, 3], "as": "t0" },
-    { "call": "mul", "args": ["$t0", 4], "as": "result" }
-  ],
-  "return": "$result"
-}
-""");
-
-var result = runProgram(prog);
-print(result);</code></pre>
-        <h3>12.20.3 createSubmitPlanTool()</h3>
-        <p>Creates a tool that agents can call to submit a plan (e.g. after a first &quot;think&quot; that produces the plan). The tool accepts <code>plan</code> (object with <code>steps</code>) or <code>steps</code> (array), and optional <code>taskSummary</code>. Returns <code>{ accepted: true, planId, stepCount }</code> or <code>{ accepted: false, error }</code>. No working directory; add to agents with <code>agent.addTool(createSubmitPlanTool())</code>. DevAgent includes this tool by default.</p>
+        <p><code>decomposeTask</code>, <code>executePlan</code>, and <code>createSubmitPlanTool</code> live in <a href="17-agent-orchestration.html">17. Agent Orchestration</a> (§ 17.13). <code>runProgram</code> runs a closed <code>api</code> / <code>program(ApiName)</code> value with no further LLM calls — see <a href="09-functions.html">9. Functions</a> (§ Closed APIs and Deterministic Programs).</p>
         <h2>12.21 Tool Creation Functions</h2>
-        <pre><code>var readTool = createReadFileTool(".");              // Restrict to current directory
-var writeTool = createWriteFileTool("./workspace");  // Restrict to workspace
-var replaceTool = createReplaceInFileTool(".");      // Replace in file tool (single replacement)
-var editTool = createEditFileTool(".");              // Edit file tool (multiple replacements)
-var listTool = createListDirectoryTool(".");         // List directory tool
-var askTool = createAskUserTool();                    // Ask user tool
-var webSearchTool = createWebSearchTool();            // Web search tool (Brave Search API)
-var grepTool = createGrepTool(".");                   // Grep tool
-var insertTool = createInsertAtLineTool(".");        // Insert at line tool
-
-// Git tools
-var gitStatusTool = createGitStatusTool(".");
-var gitAddTool = createGitAddTool(".");
-var gitCommitTool = createGitCommitTool(".");
-var gitLogTool = createGitLogTool(".");
-var gitDiffTool = createGitDiffTool(".");
-var gitBranchTool = createGitBranchTool(".");
-var gitCheckoutTool = createGitCheckoutTool(".");
-var gitPushTool = createGitPushTool(".");
-var gitPullTool = createGitPullTool(".");
-
-// Command execution tool
-var runCommandTool = createRunCommandTool(".");       // Command execution tool (restricted to current directory)
-
-// MALDA execution and compilation tools
-var runMALDATool = createRunMALDATool(".");             // MALDA execution tool
-var compileMALDATool = createCompileMALDATool(".");      // MALDA compilation tool
-var getSymbolsTool = createGetSymbolsTool(".");         // Symbol extraction tool (classes, functions, actors, prompts)
-var getParseErrorsTool = createGetParseErrorsTool("."); // Parse-error-only tool (validate syntax without running)
-
-// Structured task planning (no working directory)
-var submitPlanTool = createSubmitPlanTool();            // Submit-plan tool for agents
-
-// Path search and MCP scaffolding tools
-var globTool = createGlobTool(".");                     // Pattern-based path search tool
-var mcpScriptTool = createCreateMcpAgentScriptTool("."); // Generates MCP agent scripts</code></pre>
-        <div class="info-box">
-            <strong>Working Directory Safety:</strong> All tool creation functions accept an optional <code>workingDirectory</code> parameter (except <code>createSubmitPlanTool</code>, <code>createAskUserTool</code>, and <code>createWebSearchTool</code>). When specified, tools will only allow file/directory operations within the specified directory and its subdirectories.
-        </div>
-        <p><code>createGlobTool</code> is interpreter-only and is not available in transpiled executables; the other tool factories in this section are supported by the C# transpiler.</p>
-
-        <h3>12.21.1 createNativeCallback(fn)</h3>
-        <p>Wraps a MALDA function so it can be handed to .NET code that expects a delegate, for example an event handler or a callback parameter on an interop object. The argument must be a function value; anything else raises an error.</p>
-        <pre><code>var callback = createNativeCallback((value) => {
-    print("called back with " + value);
-});
-
-nativeObject.onChanged(callback);</code></pre>
-        <p>See <a href="29-dotnet-interop.html">29. .NET Interop</a> for the surrounding interop model.</p>
+        <p>Agent tool factories (<code>createReadFileTool</code>, <code>createWriteFileTool</code>, <code>createReplaceInFileTool</code>, <code>createEditFileTool</code>, <code>createInsertAtLineTool</code>, <code>createGrepTool</code>, <code>createListDirectoryTool</code>, <code>createAskUserTool</code>, <code>createWebSearchTool</code>, <code>createGitStatusTool</code>, <code>createGitAddTool</code>, <code>createGitCommitTool</code>, <code>createGitLogTool</code>, <code>createGitDiffTool</code>, <code>createGitBranchTool</code>, <code>createGitCheckoutTool</code>, <code>createGitPushTool</code>, <code>createGitPullTool</code>, <code>createRunCommandTool</code>, <code>createRunMALDATool</code>, <code>createCompileMALDATool</code>, <code>createGetSymbolsTool</code>, <code>createGetParseErrorsTool</code>, <code>createSubmitPlanTool</code>, <code>createGlobTool</code>, <code>createCreateMcpAgentScriptTool</code>) live in <a href="17-agent-orchestration.html">17. Agent Orchestration</a> (§ 17.6). <code>createNativeCallback</code> wraps a MALDA function as a .NET delegate — see <a href="29-dotnet-interop.html">29. .NET Interop</a>.</p>
         <h2>12.22 Durable Workflow Operations</h2>
-        <p>Durable workflow built-ins expose runtime/query/control operations that are supported in both interpreted and transpiled mode.</p>
-        <p>For the full workflow language and operational model, see <a href="21-durable-workflows.html">21. Durable Workflows</a>.</p>
-        <pre><code>var id = startWorkflow("OnboardCustomer", {"customerId": 101, "correlationId": "corr-101"});
-var status = getWorkflowStatus(id);          // PENDING|RUNNING|WAITING_*|COMPLETED|FAILED|...
-var wf = getWorkflow(id);                    // Full workflow record object
-var steps = getWorkflowSteps(id);            // Step journal rows
-var events = getWorkflowEvents(id, 200);     // Timeline events
-var metrics = getWorkflowMetrics();          // Minimum operational metrics
-var rows = listWorkflows("FAILED", null, 50);
-
-var dlq = listWorkflowDeadLetters(100, false); // false = pending only
-if (length(dlq) > 0) {
-    var ok = requeueDeadLetter(dlq[0].id, "operator replay", "oncall", "corr-requeue-101");
-    print(ok);
-}</code></pre>
-        <ul>
-            <li><code>listWorkflowDeadLetters(limit?, includeRequeued?)</code> returns dead-letter rows with requeue audit metadata.</li>
-            <li><code>requeueDeadLetter(id, reason?, requestedBy?, requeueCorrelationId?)</code> marks the row as requeued and transitions legal terminal instances back to <code>RUNNING</code>.</li>
-            <li>Requeue is idempotent-safe: already requeued rows return <code>false</code>.</li>
-            <li>Dead-letter rows are populated on terminal step failure/timeout and timeout-based wait failures.</li>
-        </ul>
-        <h3>12.22.1 runWorkflowInstance(instanceId)</h3>
-        <p>Drives an existing workflow instance forward. This built-in is <strong>async only</strong>: call it with <code>await</code>. Calling it synchronously raises an error.</p>
-        <pre><code>var advanced = await runWorkflowInstance(id);
-print(advanced);   // true when the instance ran</code></pre>
-        <p>Return values distinguish three outcomes:</p>
-        <ul>
-            <li><code>null</code> — no instance with that id exists.</li>
-            <li><code>false</code> — the instance is in a status that cannot be advanced, or an internal retry/resume attempt failed.</li>
-            <li><code>true</code> — the instance ran.</li>
-        </ul>
-        <p>Runnable statuses are <code>RUNNING</code>, <code>FAILED</code> (retried first), <code>WAITING_APPROVAL</code>, and <code>WAITING_SIGNAL</code> (resumed first). If the workflow itself throws during execution, the instance is marked failed and the error is rethrown to the caller, so wrap the call in <code>try</code>/<code>catch</code> when driving instances in a loop.</p>
-
+        <p>Runtime, query, and control helpers (<code>startWorkflow</code>, <code>getWorkflowStatus</code>, <code>getWorkflow</code>, <code>getWorkflowSteps</code>, <code>getWorkflowEvents</code>, <code>getWorkflowMetrics</code>, <code>listWorkflows</code>, <code>listWorkflowDeadLetters</code>, <code>requeueDeadLetter</code>, <code>runWorkflowInstance</code>) live in <a href="21-durable-workflows.html">21. Durable Workflows</a>.</p>
         <h2>12.23 Agent Runtime Logging</h2>
-        <p>These built-ins control the diagnostic output that agents and the agent dashboard produce during a run. They affect presentation only and never change an agent's result.</p>
-        <table>
-            <thead>
-                <tr><th>Function</th><th>Returns</th><th>Purpose</th></tr>
-            </thead>
-            <tbody>
-                <tr><td><code>enableAgentVerboseLogging(enabled?)</code></td><td>boolean</td><td>Turns verbose conversation logging on or off. Called with no argument it enables logging and returns <code>true</code>.</td></tr>
-                <tr><td><code>setAgentVerbosePhase(phase)</code></td><td><code>null</code></td><td>Labels the phase shown alongside verbose output, for example <code>"planning"</code> or <code>"review"</code>.</td></tr>
-                <tr><td><code>setAgentStatusBanner(banner)</code></td><td><code>null</code></td><td>Sets the banner text displayed above agent progress output.</td></tr>
-                <tr><td><code>reportRalphStatus(agentName, phase, iteration, maxIter, prdPercent, validationOk?, elapsedMs?, promptTokens?, completionTokens?, costUsd?)</code></td><td><code>null</code></td><td>Publishes one iteration of progress to the agent dashboard.</td></tr>
-            </tbody>
-        </table>
-        <pre><code>enableAgentVerboseLogging();
-setAgentStatusBanner("Nightly refactor run");
-setAgentVerbosePhase("planning");
-
-var plan = decomposeTask("Add tests for the parser");
-
-setAgentVerbosePhase("execution");
-var result = executePlan(plan, agent);
-
-enableAgentVerboseLogging(false);</code></pre>
-        <p><code>reportRalphStatus</code> requires its first five arguments; the remaining five default to <code>false</code>, <code>0</code>, <code>0</code>, <code>0</code>, and <code>0.0</code> respectively. It is used by the PRD-driven autonomous loop described in <a href="17-agent-orchestration.html#ralph-wiggum">17.18 Ralph Wiggum</a>.</p>
-        <pre><code>reportRalphStatus("Ralph", "implement", 3, 10, 45, true, 12000, 1800, 640, 0.02);</code></pre>
-
+        <p>Diagnostic helpers (<code>enableAgentVerboseLogging</code>, <code>setAgentVerbosePhase</code>, <code>setAgentStatusBanner</code>, <code>reportRalphStatus</code>) live in <a href="17-agent-orchestration.html">17. Agent Orchestration</a> (§ 17.5 and <a href="17-agent-orchestration.html#ralph-wiggum">17.18 Ralph Wiggum</a>). They affect presentation only and never change an agent's result.</p>
         <h2>12.24 Web UI Functions</h2>
         <p>Server component helpers (<code>renderTemplate</code>, <code>componentFragment</code>, <code>componentLiveEmit</code>, <code>componentState*</code>, <code>onAgentProgress</code>, <code>clearAgentProgress</code>) and <code>ui.*</code> controls live in <a href="23-web-ui.html">23. Web UI Server Components</a>. Start from <a href="22-web-ui-hub.html">22. Web UI Overview</a> if you are choosing a UI model.</p>
         <h2 id="optional-pack-builtins">12.25 Optional packs (not in core)</h2>
@@ -1047,8 +888,10 @@ enableAgentVerboseLogging(false);</code></pre>
             <ul>
                 <li><a href="35-appendix.html#optional-packs">Appendix — Optional packs</a></li>
                 <li><a href="11-input-output.html">Input/Output</a> — console I/O; prefer <code>io.print</code> / <code>io.input</code></li>
+                <li><a href="09-functions.html">Functions</a> — <code>runProgram</code> and closed <code>api</code> / <code>program(ApiName)</code></li>
                 <li><a href="23-web-ui.html">Web UI Server Components</a> — Server-side UI and component APIs</li>
-                <li><a href="17-agent-orchestration.html">Agent Orchestration</a> — Using tools with agents</li>
+                <li><a href="17-agent-orchestration.html">Agent Orchestration</a> — Tools, task plans, and agent logging</li>
+                <li><a href="21-durable-workflows.html">Durable Workflows</a> — Workflow runtime built-ins</li>
             </ul>
         </div>
         <div class="nav-footer">
