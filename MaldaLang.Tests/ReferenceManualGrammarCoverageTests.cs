@@ -33,6 +33,7 @@ public class ReferenceManualGrammarCoverageTests
             "ImportStmt",
             "ExportableDecl",
             "PromptBodyField",
+            "DecoratorArgList",
         }.Select(anchor => new object[] { anchor });
 
     [Theory]

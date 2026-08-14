@@ -19,6 +19,7 @@ public class PromptInstance : ObjectInstance
     public RuntimeValue? ResponseFormatSchema { get; }
     public IReadOnlyList<PromptExample>? Examples { get; }
     public int? WithinTimeoutMs { get; }
+    public ResourceBudget? Budget { get; }
     public bool HasGather => Gather != null && Gather.Count > 0;
     public bool HasTools => Tools != null && Tools.Count > 0;
 
@@ -32,7 +33,8 @@ public class PromptInstance : ObjectInstance
         RuntimeValue? responseFormatSchema = null,
         IReadOnlyList<PromptExample>? examples = null,
         int? withinTimeoutMs = null,
-        List<string>? gather = null)
+        List<string>? gather = null,
+        ResourceBudget? budget = null)
         : base(null)
     {
         System = system;
@@ -45,6 +47,7 @@ public class PromptInstance : ObjectInstance
         ResponseFormatSchema = responseFormatSchema;
         Examples = examples;
         WithinTimeoutMs = withinTimeoutMs;
+        Budget = budget;
     }
     
     public override RuntimeValue Get(string name, ClassDefinition? accessingClass = null)

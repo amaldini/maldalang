@@ -75,6 +75,11 @@
       "file": "prompt_tools_then_structured.malda"
     },
     {
+      "name": "Prompt resource budget",
+      "description": "@budget(tokens, tools) beside @within (offline PromptInstance)",
+      "file": "prompt_budget.malda"
+    },
+    {
       "name": "Prompt Reusability",
       "description": "How prompt blocks enable code reuse and maintainability",
       "file": "prompt_reusability.malda"

@@ -328,6 +328,13 @@ public class AgentInstance : ObjectInstance
         ConversationInstance.ThinkDeadlineUtc = timeoutMs > 0
             ? DateTime.UtcNow.AddMilliseconds(timeoutMs)
             : null;
+        var thinkBudget = promptOrInstance.Type == ValueType.Object &&
+                          promptOrInstance.AsObject() is PromptInstance budgetPrompt
+            ? budgetPrompt.Budget
+            : null;
+        var pushedThinkBudget = thinkBudget != null && thinkBudget.HasAnyBound;
+        if (pushedThinkBudget)
+            ResourceBoundsContext.Push(thinkBudget!, Name);
         RuntimeValue response;
         try
         {
@@ -336,6 +343,8 @@ public class AgentInstance : ObjectInstance
         finally
         {
             ConversationInstance.ThinkDeadlineUtc = null;
+            if (pushedThinkBudget)
+                ResourceBoundsContext.Pop();
         }
         
         // After getting response, optionally remember the interaction

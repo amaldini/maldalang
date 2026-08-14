@@ -44,6 +44,7 @@ These strings are what `@property` / `runProperty` use via `GetRequiredCapabilit
 | `schema` / `validate()` | yes | yes | no |
 | Typed prompt `response_format` (schema → OpenAI structured output) | yes* | yes* | no |
 | Gather-then-extract prompts (`gather:` + `-> Type`) | yes | yes | n/a |
+| `@budget` resource bounds (tokens / tools / cost) | yes | yes | n/a |
 | HttpServer / RestServer / sessions | yes | yes | no |
 | UIHost / `ui.*` server-driven UI | yes† | yes† | no |
 | Jobs (`enqueueJob` / `claimJob` / `completeJob` / `failJob`) | yes | yes | no |

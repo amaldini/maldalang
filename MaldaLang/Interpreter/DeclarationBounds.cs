@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using MaldaLang.IDE;
 using MaldaLang.Parser.AST.Declarations;
 
-internal static class DeclarationBounds
+public static class DeclarationBounds
 {
     public static int? TryGetWithinTimeoutMs(FunctionDeclaration? declaration) =>
         TryGetWithinTimeoutMs(declaration?.Decorators);
@@ -25,5 +25,26 @@ internal static class DeclarationBounds
             return null;
 
         return DecoratorArgs.TryReadPositiveIntArgument(decorator, out var ms) ? ms : null;
+    }
+
+    public static ResourceBudget? TryGetResourceBudget(FunctionDeclaration? declaration) =>
+        TryGetResourceBudget(declaration?.Decorators);
+
+    public static ResourceBudget? TryGetResourceBudget(PromptDeclaration? declaration) =>
+        TryGetResourceBudget(declaration?.Decorators);
+
+    public static ResourceBudget? TryGetResourceBudget(IReadOnlyList<Decorator>? decorators)
+    {
+        if (decorators == null || decorators.Count == 0)
+            return null;
+
+        var decorator = DecoratorArgs.FindDecoratorFromList(decorators, "budget");
+        if (decorator == null)
+            return null;
+
+        if (!DecoratorArgs.TryReadResourceBudget(decorator, out var budget) || budget == null || !budget.HasAnyBound)
+            return null;
+
+        return budget;
     }
 }

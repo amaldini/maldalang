@@ -1,0 +1,24 @@
+// prompt_budget.malda — L3: @budget beside @within
+//
+// Offline-first: builds a PromptInstance (no LLM). With a configured LLM,
+// `await answer(...)` aborts if the turn exceeds the declared token or tool bound.
+// Run: malda Examples/Prompts/prompt_budget.malda
+//
+// `@budget` is not `@within`: milliseconds stay positional on `@within`.
+// `MALDA_AGENT_CONTEXT_BUDGET_TOKENS` only trims undeclared agent context.
+
+schema Answer {
+    text: string;
+}
+
+@within(5000)
+@budget(tokens: 4000, tools: 8)
+prompt answer(q) -> Answer {
+    user: "Question: {q}"
+}
+
+var inst = answer("What is @budget?");
+
+print("Offline PromptInstance with @budget + @within:");
+print("user preview: " + str.substring(inst.user, 0, 40) + "...");
+print("Live: await answer(q) — abort if tokens or tool invocations trip.");

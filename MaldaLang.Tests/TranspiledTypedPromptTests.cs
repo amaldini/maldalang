@@ -93,7 +93,7 @@ public class TranspiledTypedPromptTests
             // Schema-to-LLM: typed prompts should pass response_format to PromptInstance
             Assert.Contains("__responseFormatSchema", generated);
             Assert.Contains("ApplySchemaAppendix", generated);
-            Assert.Contains("__responseFormatSchema, examples, __withinTimeoutMs, gather)", generated);
+            Assert.Contains("__responseFormatSchema, examples, __withinTimeoutMs, gather, __resourceBudget)", generated);
 
             var boundedSource = """
                 @within(1500)
@@ -108,7 +108,22 @@ public class TranspiledTypedPromptTests
             Assert.True(boundedResult.Success, boundedResult.ErrorMessage ?? "Bounded prompt transpile failed.");
             var boundedGenerated = File.ReadAllText(boundedGenPath);
             Assert.Contains("__withinTimeoutMs = 1500", boundedGenerated);
-            Assert.Contains("__withinTimeoutMs, gather));", boundedGenerated);
+            Assert.Contains("__withinTimeoutMs, gather, __resourceBudget));", boundedGenerated);
+
+            var budgetSource = """
+                @budget(tokens: 4000, tools: 8)
+                prompt bounded(name) -> TaskResult {
+                    user "Get task: " + name;
+                }
+                """;
+            var budgetPath = Path.Combine(tempDir, "budget_prompt.malda");
+            File.WriteAllText(budgetPath, budgetSource);
+            var budgetGenPath = Path.Combine(tempDir, "BudgetProgram.cs");
+            var budgetResult = compiler.CompileToCSharp(budgetPath, budgetGenPath);
+            Assert.True(budgetResult.Success, budgetResult.ErrorMessage ?? "Budget prompt transpile failed.");
+            var budgetGenerated = File.ReadAllText(budgetGenPath);
+            Assert.Contains("ResourceBudget(4000, 8, null)", budgetGenerated);
+            Assert.Contains("__resourceBudget));", budgetGenerated);
 
             var buildResult = compiler.Compile(sourcePath, Path.Combine(tempDir, "out.exe"), CompilationMode.TranspileToCSharp, includeLLamaSharp: false, includeUiHost: false);
             Assert.True(buildResult.Success, buildResult.ErrorMessage ?? "Full compilation failed.");
