@@ -1,6 +1,6 @@
 # Interpret-mode source-level debug (implementation plan)
 
-**Status:** Plan — D0 shared `DebugSession` landed (PR1); D1–D5 not started  
+**Status:** Plan — D0 shared `DebugSession` and D1 inspect (scopes, lazy children, watches, D1.5 conditions) landed; D2–D5 not started  
 **Created:** 2026-08-14  
 **Audience:** maintainers implementing DAP + a shared interpreter debug core  
 **Spec line:** Final 1.0 stays. This is **tooling**, not a language change. No new keyword, no builtin, no spec MINOR unless a later phase adds a `debugger` statement (out of v1).
@@ -29,11 +29,11 @@ This is the plan for **source-level debugging of interpreted `.malda`**. It is n
 | Hook interface | [`MaldaLang/Interpreter/IDebuggerHook.cs`](../MaldaLang/Interpreter/IDebuggerHook.cs) | `OnStatement` / `OnPause` / enter-exit / breakpoint / `DebugMode` |
 | Pause site | [`Interpreter.ExecuteAsync`](../MaldaLang/Interpreter/Interpreter.cs) | Every statement; **converts `stmt.Line - 1`** for `OnStatement`, then `OnPause(stmt.Line)` (1-based). Busy-wait `Task.Delay(50)` up to **5 minutes** |
 | Call stack | `Interpreter._callStack` / `GetCallStack()` | Pushed on function enter; **stores declaration line**, not current statement |
-| Variables | `GetVariables()` | **`_globals` only**, stringified `ToString()`; locals in `_environment` are invisible |
+| Variables | `GetVariables()` / `DebugSession.GetFrameScopes` | D1 inspect: Locals / Closure / Globals / This + lazy `variablesReference`. Legacy `GetVariables()` remains globals-as-strings for IDE panels until D4. |
 | Source file | `stmt.SourceFile` / `_currentFile` | Set around `ExecuteAsync`; imports/includes can switch file |
 | Desktop hook | [`MaldaLang.DesktopIDE/Services/DebuggerHook.cs`](../MaldaLang.DesktopIDE/Services/DebuggerHook.cs) | Full UI debug (F5 continue, step over/into/out). Breakpoints **0-based** |
 | Web hook | [`MaldaLang.IDE/Services/DebuggerHook.cs`](../MaldaLang.IDE/Services/DebuggerHook.cs) | Near-duplicate of Desktop. Playground only |
-| Condition eval | both `CheckBreakpointCondition` | Interpreter passes `() => true`; conditions are **stubs** |
+| Condition eval | `DebugSession` watch evaluator | D1.5: non-empty `condition` is evaluated in the current environment; truthy breaks; eval error breaks and emits `breakpoint condition error:` |
 | CLI | `malda program.malda` | No debug subcommand; `--profile` exists, `--debug` does not |
 | LSP / VS Code | `MaldaLang.LanguageServer`, `vscode-malda` | Diagnostics/complete/hover only; **no `contributes.debuggers`** |
 | Tests | — | **Zero** tests for `IDebuggerHook` / pause / step |
@@ -203,7 +203,7 @@ Do **not** claim Desktop UIHost / MCP UI / virtual `@malda-section` tabs in the 
 
 **Risk:** Desktop breakpoint persistence (if any) stored 0-based — convert on load.
 
-### D1 — Inspect
+### D1 — Inspect — landed
 
 **Concrete work**
 
@@ -217,7 +217,7 @@ Do **not** claim Desktop UIHost / MCP UI / virtual `@malda-section` tabs in the 
 - Tests cover nested dict/array children, locals inside a function, globals excluding `math`/`str`/`io` by default.
 - Watch `1 + 2` and `x` in a paused function.
 
-### D1.5 — Conditional breakpoints (optional, same PR as D1 if small)
+### D1.5 — Conditional breakpoints — landed (same PR as D1)
 
 Evaluate `breakpoint.Condition` with the watch evaluator in the current environment; break when truthy. On eval error, **break** (today’s stub already breaks on throw) and emit output `breakpoint condition error`.
 
@@ -373,3 +373,4 @@ Desktop Windows debug keeps working via the same `DebugSession`. Web IDE remains
 |------|--------|
 | 2026-08-14 | Initial plan: shared `DebugSession`, DAP via `malda debug-adapter`, VS Code client; D0–D5 split |
 | 2026-08-14 | D0 landed: `Interpreter/Debug/DebugSession` pause gate, 1-based lines, IDE wrappers, `InterpretDebugSessionTests` |
+| 2026-08-14 | D1 / D1.5 landed: DAP-shaped scopes, lazy children, watches, conditional breakpoints (`InterpretDebugInspectTests`) |

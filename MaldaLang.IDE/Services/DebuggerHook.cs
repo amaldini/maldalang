@@ -11,7 +11,7 @@ namespace MaldaLang.IDE.Services;
 /// <summary>
 /// Thin UI adapter: stepping and the pause gate live on <see cref="DebugSession"/>.
 /// </summary>
-public class DebuggerHook : IDebuggerHook
+public class DebuggerHook : IDebuggerHook, IHasDebugSession
 {
     private readonly DebuggerService _debuggerService;
 
@@ -39,6 +39,8 @@ public class DebuggerHook : IDebuggerHook
 
     public void SetInterpreter(Interpreter.Interpreter? interpreter)
     {
+        if (interpreter != null)
+            Session.Bind(interpreter);
     }
 
     public void OnFunctionEnter(string functionName, string? className, int line)

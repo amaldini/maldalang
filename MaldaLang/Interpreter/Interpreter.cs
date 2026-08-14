@@ -113,6 +113,11 @@ public partial class Interpreter
         // Initialize module loader and .NET wrapper
         _moduleLoader = new MaldaLang.PackageManager.ModuleLoader();
         _dotNetWrapper = new MaldaLang.PackageManager.DotNetPackageWrapper();
+
+        if (debuggerHook is DebugSession debugSession)
+            debugSession.Bind(this);
+        else if (debuggerHook is IHasDebugSession hasSession)
+            hasSession.Session.Bind(this);
     }
     
     public void SetInputProvider(IInputProvider inputProvider)
@@ -443,7 +448,8 @@ public partial class Interpreter
         {
             FunctionName = "<script>",
             Line = scriptLine,
-            File = scriptFile
+            File = scriptFile,
+            Environment = _environment
         };
         _callStack.Add(scriptFrame);
         try
@@ -1545,6 +1551,8 @@ public partial class Interpreter
                     var frame = _callStack[_callStack.Count - 1];
                     frame.Line = stmt.Line;
                     frame.File = _currentFile ?? frame.File;
+                    frame.Environment = _environment;
+                    frame.ThisObject = _currentObject;
                 }
 
                 if (!_debuggerHook.OnStatement(stmt.Line, _currentFile))
@@ -2055,6 +2063,27 @@ public partial class Interpreter
         }
     }
     
+    internal async Task<RuntimeValue> EvaluateInEnvironmentAsync(Expression expr, Environment env, ObjectInstance? thisObject = null)
+    {
+        var previousEnv = _environment;
+        var previousObject = _currentObject;
+        _environment = env;
+        _currentObject = thisObject;
+        try
+        {
+            return await EvaluateAsync(expr);
+        }
+        finally
+        {
+            _environment = previousEnv;
+            _currentObject = previousObject;
+        }
+    }
+
+    internal Environment GlobalsEnvironment => _globals;
+    internal Environment CurrentEnvironment => _environment;
+    internal ObjectInstance? CurrentThisObject => _currentObject;
+
     internal async Task<RuntimeValue> EvaluateAsync(Expression expr, bool returnTask = false)
     {
         return expr switch
@@ -2970,7 +2999,8 @@ public partial class Interpreter
             FunctionName = function.Declaration.Name,
             ClassName = function.ClassName,
             Line = function.Declaration.Line,
-            File = functionFile ?? "main.malda"
+            File = functionFile ?? "main.malda",
+            Environment = environment
         };
         _callStack.Add(callStackFrame);
         
@@ -3041,6 +3071,8 @@ public partial class Interpreter
                 // If class doesn't exist, it's likely an actor handler - skip setting _currentClass
             }
             
+            callStackFrame.ThisObject = _currentObject;
+
             for (int i = 0; i < function.Declaration.Parameters.Count; i++)
             {
                 environment.Define(function.Declaration.Parameters[i], arguments[i]);
@@ -6291,4 +6323,6 @@ public class InterpreterCallStackFrame
     public string? ClassName { get; set; }
     public int Line { get; set; }
     public string File { get; set; } = string.Empty;
+    public Environment? Environment { get; set; }
+    public ObjectInstance? ThisObject { get; set; }
 }
