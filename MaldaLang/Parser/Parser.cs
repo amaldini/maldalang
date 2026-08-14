@@ -1039,6 +1039,7 @@ public class Parser
                     Consume(TokenType.Colon, "Expect ':' after object key.");
                     var value = Expression();
                     properties.Add((key, value));
+                    Match(TokenType.Semicolon); // optional; object-literal prompts also accept key: value;
                     // Continue on comma, or when next token is a key (allow missing comma between properties)
                 } while (Match(TokenType.Comma) || (!Check(TokenType.RightBrace) && (Check(TokenType.Identifier) || Check(TokenType.String))));
             }
