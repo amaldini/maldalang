@@ -25,18 +25,18 @@ Short map of how the open-source core fits together. For agent workflow rules, s
 
 Language intelligence (completions, diagnostics, hover) shares `MaldaLang/IDE/LanguageService.cs` across Desktop IDE, Web IDE, and the LSP project.
 
-Interpret-mode debug core: [`MaldaLang/Interpreter/Debug/DebugSession.cs`](../MaldaLang/Interpreter/Debug/DebugSession.cs) (breakpoints, step mode, pause gate, 1-based lines, DAP-shaped scopes / lazy children / watches / conditional breakpoints). Desktop and Web wrap that session via `IHasDebugSession`. DAP / VS Code work is planned in [`docs/roadmap-interpret-debug.md`](roadmap-interpret-debug.md). Transpile failures stay on [`docs/debugging-transpile.md`](debugging-transpile.md).
+Interpret-mode debug core: [`MaldaLang/Interpreter/Debug/DebugSession.cs`](../MaldaLang/Interpreter/Debug/DebugSession.cs) (breakpoints, step mode, pause gate, 1-based lines, DAP-shaped scopes / lazy children / watches / conditional breakpoints). Desktop and Web wrap that session via `IHasDebugSession`. DAP stdio is `malda debug-adapter` ([`MaldaLang/DebugAdapter/`](../MaldaLang/DebugAdapter/)); LSP stays `malda-lsp`. User notes: [`docs/debugging-interpret.md`](debugging-interpret.md). Transpile failures stay on [`docs/debugging-transpile.md`](debugging-transpile.md).
 
 ## Projects
 
 | Project | Responsibility |
 |---------|----------------|
-| `MaldaLang` | CLI (`malda`), lexer/parser/interpreter, builtins, shared `LanguageService` |
+| `MaldaLang` | CLI (`malda`), lexer/parser/interpreter, builtins, shared `LanguageService`, `malda debug-adapter` (DAP stdio) |
 | `MaldaLang.Compiler` | C# / JS / PWA compile and publish orchestration |
 | `MaldaLang.UIHost` | Server-driven UI host support used by runtime / Desktop — see [`docs/ui-framework.md`](ui-framework.md) |
 | `MaldaLang.IDE` | Blazor **Web IDE** (playground) |
 | `MaldaLang.DesktopIDE` | WPF **Desktop IDE** (reference) |
-| `MaldaLang.LanguageServer` | LSP server process |
+| `MaldaLang.LanguageServer` | LSP server process (`malda-lsp`; not DAP) |
 | `MaldaLang.TestLib` / `MaldaLang.Tests` | Shared test helpers and automated tests |
 | `vscode-malda` | VS Code extension (client) |
 | `Examples/`, `Templates/` | Samples and `malda new` scaffolds |
@@ -78,7 +78,7 @@ Server-driven `ui.*` trees, patch protocol, and `MaldaLang.UIHost` wiring are do
 | `docs/start-here.md`, `docs/architecture.md` | Onboarding |
 | [`docs/roadmap-p0-maturity.md`](roadmap-p0-maturity.md) | P0 maturity roadmap (workstreams complete 2026-08-12; next = post-Final / deferred) |
 | [`docs/roadmap-language-constructs.md`](roadmap-language-constructs.md) | Post-Final language constructs (schema/sum types, Mode C, budget, workflow determinism, grounded values, capability tokens) |
-| [`docs/roadmap-interpret-debug.md`](roadmap-interpret-debug.md) | Interpret-mode source-level debug — D0 pause gate + D1 inspect landed; DAP later |
+| [`docs/roadmap-interpret-debug.md`](roadmap-interpret-debug.md) | Interpret-mode source-level debug — D0–D2 landed (DAP `malda debug-adapter`); D3 VS Code client next |
 | [`docs/workflows-ha.md`](workflows-ha.md) | Durable workflows: single-writer + read-only ops model (W2) |
 | `docs/javascript-backend.md`, `docs/ui-framework.md`, `docs/profiling.md`, `docs/benchmarks.md`, … | Topic guides |
 | `docs/planning/` | Historical roadmap — verify against code / ReferenceManual / AGENTS.md ([README](planning/README.md)) |

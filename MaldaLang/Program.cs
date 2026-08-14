@@ -27,6 +27,7 @@ using MaldaLang.Cli;
 using MaldaLang.IDE;
 using MaldaLang.IDE.Models;
 using MaldaLang.BuiltIns;
+using MaldaLang.DebugAdapter;
 using SystemEnvironment = System.Environment;
 using PackageManager = MaldaLang.PackageManager.PackageManager;
 
@@ -124,6 +125,19 @@ class Program
     {
         // Configure console for Unicode support
         ConfigureConsoleEncoding();
+
+        // DAP owns stdin/stdout. Branch before help, banners, or stdin reads.
+        if (args.Length > 0 && args[0].Equals("debug-adapter", StringComparison.OrdinalIgnoreCase))
+        {
+            if (args.Length > 1 && IsHelpFlag(args[1]))
+            {
+                TryShowCommandHelp("debug-adapter");
+                return;
+            }
+
+            DebugAdapterSession.RunStdioAsync().GetAwaiter().GetResult();
+            return;
+        }
         
         // Check for help command
         if (args.Length > 0)
@@ -3948,6 +3962,7 @@ class Program
         Console.WriteLine("  search      Search a remote registry (needs MALDA_REGISTRY_URL)");
         Console.WriteLine("  trace       Summarize, inspect, or replay trace files");
         Console.WriteLine("  symbols     Print classes, functions, and actors from a MALDA file");
+        Console.WriteLine("  debug-adapter  DAP stdio (editors; do not mix with malda-lsp)");
         Console.WriteLine("  help        Show top-level help or help for a specific command");
         Console.WriteLine();
         Console.WriteLine("Examples:");
@@ -4017,6 +4032,9 @@ class Program
                 return true;
             case "symbols":
                 ShowSymbolsHelp();
+                return true;
+            case "debug-adapter":
+                ShowDebugAdapterHelp();
                 return true;
             case "install":
             case "uninstall":
@@ -4152,6 +4170,14 @@ class Program
     {
         Console.WriteLine("Usage: malda --symbols <file.malda>");
         Console.WriteLine("  Print classes, functions, actors, and other top-level symbols from a MALDA file.");
+    }
+
+    static void ShowDebugAdapterHelp()
+    {
+        Console.WriteLine("Usage: malda debug-adapter");
+        Console.WriteLine("  Speaks Debug Adapter Protocol on stdin/stdout for editors.");
+        Console.WriteLine("  Do not mix with malda-lsp — LSP and DAP each need exclusive stdio.");
+        Console.WriteLine("  Interpret-mode only. VS Code F5 wiring is a separate extension contribution.");
     }
     
     static void RunPrompt()

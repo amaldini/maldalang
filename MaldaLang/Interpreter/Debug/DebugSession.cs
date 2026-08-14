@@ -93,6 +93,12 @@ public sealed class DebugSession : IDebuggerHook
     public string? CurrentFile { get; private set; }
 
     /// <summary>
+    /// DAP <c>stopped.reason</c> for the last pause: <c>entry</c>, <c>breakpoint</c>,
+    /// <c>step</c>, or <c>pause</c>. Exception stops are D5.
+    /// </summary>
+    public string LastStopReason { get; private set; } = "step";
+
+    /// <summary>
     /// File used when one side of a breakpoint compare is null/empty.
     /// Defaults to the first <see cref="OnStatement"/> file or <c>main.malda</c>.
     /// </summary>
@@ -216,6 +222,7 @@ public sealed class DebugSession : IDebuggerHook
 
         if (mode == DebugMode.Paused)
         {
+            LastStopReason = "pause";
             EnterPause(line, file);
             return false;
         }
@@ -223,6 +230,7 @@ public sealed class DebugSession : IDebuggerHook
         if (stopOnEntry)
         {
             _stopOnEntry = false;
+            LastStopReason = "entry";
             EnterPause(line, file);
             return false;
         }
@@ -232,6 +240,7 @@ public sealed class DebugSession : IDebuggerHook
             if (!ShouldBreakOnBreakpoint(line, file))
                 return true;
 
+            LastStopReason = "breakpoint";
             EnterPause(line, file);
             return false;
         }
@@ -239,18 +248,21 @@ public sealed class DebugSession : IDebuggerHook
         if (_pauseOnNextStatement)
         {
             _pauseOnNextStatement = false;
+            LastStopReason = "step";
             EnterPause(line, file);
             return false;
         }
 
         if (mode == DebugMode.StepOver && _currentDepth <= _stepOverDepth)
         {
+            LastStopReason = "step";
             EnterPause(line, file);
             return false;
         }
 
         if (mode == DebugMode.StepInto)
         {
+            LastStopReason = "step";
             EnterPause(line, file);
             return false;
         }

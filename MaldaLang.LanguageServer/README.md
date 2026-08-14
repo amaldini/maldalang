@@ -51,6 +51,8 @@ Desktop IDE: **View → Type Errors as Errors** (persisted under AppData `MaldaL
 
 Web IDE remains a learning playground and does not claim Desktop or LSP feature parity.
 
+This process is **LSP only**. Interpret-mode debugging is `malda debug-adapter` (Debug Adapter Protocol on its own stdio). Do not mix DAP into `malda-lsp`.
+
 ## Testing
 
 Use VS Code with the "LSP Inspector" extension, or any LSP client that can launch a server via stdio. Configure the client to run `malda-lsp` (or `dotnet run --project MaldaLang.LanguageServer`) and use language id `malda` for `.malda` files.

@@ -1,6 +1,6 @@
 # Interpret-mode source-level debug (implementation plan)
 
-**Status:** Plan — D0 shared `DebugSession` and D1 inspect (scopes, lazy children, watches, D1.5 conditions) landed; D2–D5 not started  
+**Status:** D0 shared `DebugSession`, D1 inspect, and D2 `malda debug-adapter` landed; D3–D5 not started  
 **Created:** 2026-08-14  
 **Audience:** maintainers implementing DAP + a shared interpreter debug core  
 **Spec line:** Final 1.0 stays. This is **tooling**, not a language change. No new keyword, no builtin, no spec MINOR unless a later phase adds a `debugger` statement (out of v1).
@@ -221,7 +221,7 @@ Do **not** claim Desktop UIHost / MCP UI / virtual `@malda-section` tabs in the 
 
 Evaluate `breakpoint.Condition` with the watch evaluator in the current environment; break when truthy. On eval error, **break** (today’s stub already breaks on throw) and emit output `breakpoint condition error`.
 
-### D2 — `malda debug-adapter`
+### D2 — `malda debug-adapter` — landed
 
 **Concrete work**
 
@@ -374,3 +374,4 @@ Desktop Windows debug keeps working via the same `DebugSession`. Web IDE remains
 | 2026-08-14 | Initial plan: shared `DebugSession`, DAP via `malda debug-adapter`, VS Code client; D0–D5 split |
 | 2026-08-14 | D0 landed: `Interpreter/Debug/DebugSession` pause gate, 1-based lines, IDE wrappers, `InterpretDebugSessionTests` |
 | 2026-08-14 | D1 / D1.5 landed: DAP-shaped scopes, lazy children, watches, conditional breakpoints (`InterpretDebugInspectTests`) |
+| 2026-08-14 | D2 landed: `malda debug-adapter` DAP stdio session + `InterpretDebugAdapterTests` |

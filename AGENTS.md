@@ -62,7 +62,7 @@ CI smoke filter (see `.github/workflows/ci.yml`): `BuiltInRegistryTests`, `Compi
 |------|------|
 | `MaldaLang.DesktopIDE` | **Reference** full Windows IDE |
 | `MaldaLang.IDE` | Browser **learning playground** (Monaco) — not Desktop parity |
-| `vscode-malda` + `MaldaLang.LanguageServer` | Cross-platform editor integration |
+| `vscode-malda` + `MaldaLang.LanguageServer` | Cross-platform editor integration (`malda-lsp`). Interpret debug is `malda debug-adapter`, not the language server |
 
 Web IDE improvements (Monaco UX, examples browser, diagnostics presentation) are good first contributions. Do not assume Desktop-only features exist on Web (virtual `@malda-section` tabs, MCP UI, local model browser, UIHost preview).
 
@@ -74,6 +74,7 @@ Web IDE improvements (Monaco UX, examples browser, diagnostics presentation) are
 | Parser / AST | `MaldaLang/Parser/` |
 | Interpreter | `MaldaLang/Interpreter/Interpreter.cs` (+ partials) |
 | Interpret debug core | `MaldaLang/Interpreter/Debug/DebugSession.cs` — pause gate / 1-based lines; IDE hooks wrap this |
+| DAP (interpret) | `MaldaLang/DebugAdapter/` — `malda debug-adapter` on stdio. Do not mix DAP into `malda-lsp` |
 | Built-in functions | `MaldaLang/BuiltIns/BuiltInFunctions.cs`, `BuiltInRegistry.cs` |
 | C# transpile | `MaldaLang.Compiler/CSharpTranspiler.cs`, `Compiler.cs` |
 | JS / PWA transpile | `MaldaLang.Compiler/JsTranspiler.cs` |
@@ -81,7 +82,7 @@ Web IDE improvements (Monaco UX, examples browser, diagnostics presentation) are
 | Optional pack emit (string-only) | `MaldaLang.Compiler/OptionalPack/` |
 | CLI | `MaldaLang/Program.cs` |
 | Language intelligence (IDE/LSP shared) | `MaldaLang/IDE/LanguageService.cs` |
-| LSP host | `MaldaLang.LanguageServer/` |
+| LSP host | `MaldaLang.LanguageServer/` (`malda-lsp`; not the debugger) |
 | Web IDE | `MaldaLang.IDE/` |
 | Desktop IDE | `MaldaLang.DesktopIDE/` |
 | Examples | `Examples/` |
