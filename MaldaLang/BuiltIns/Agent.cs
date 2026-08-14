@@ -473,6 +473,8 @@ public class AgentInstance : ObjectInstance
         HashSet<string>? toolNames = null;
         if (promptInst.Tools != null && promptInst.Tools.Count > 0)
             toolNames = new HashSet<string>(promptInst.Tools, StringComparer.OrdinalIgnoreCase);
+        else if (promptInst.Gather != null && promptInst.Gather.Count > 0)
+            toolNames = new HashSet<string>(promptInst.Gather, StringComparer.OrdinalIgnoreCase);
 
         if (promptInst.Model == null
             && !promptInst.Temperature.HasValue

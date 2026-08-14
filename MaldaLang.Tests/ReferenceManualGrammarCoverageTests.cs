@@ -32,6 +32,7 @@ public class ReferenceManualGrammarCoverageTests
             "awaitSignal",
             "ImportStmt",
             "ExportableDecl",
+            "PromptBodyField",
         }.Select(anchor => new object[] { anchor });
 
     [Theory]

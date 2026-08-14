@@ -14,10 +14,13 @@ public class PromptInstance : ObjectInstance
     public string? Model { get; }
     public double? Temperature { get; }
     public List<string>? Tools { get; }
+    public List<string>? Gather { get; }
     public int? MaxTokens { get; }
     public RuntimeValue? ResponseFormatSchema { get; }
     public IReadOnlyList<PromptExample>? Examples { get; }
     public int? WithinTimeoutMs { get; }
+    public bool HasGather => Gather != null && Gather.Count > 0;
+    public bool HasTools => Tools != null && Tools.Count > 0;
 
     public PromptInstance(
         string? system,
@@ -28,7 +31,8 @@ public class PromptInstance : ObjectInstance
         int? maxTokens = null,
         RuntimeValue? responseFormatSchema = null,
         IReadOnlyList<PromptExample>? examples = null,
-        int? withinTimeoutMs = null)
+        int? withinTimeoutMs = null,
+        List<string>? gather = null)
         : base(null)
     {
         System = system;
@@ -36,6 +40,7 @@ public class PromptInstance : ObjectInstance
         Model = model;
         Temperature = temperature;
         Tools = tools;
+        Gather = gather;
         MaxTokens = maxTokens;
         ResponseFormatSchema = responseFormatSchema;
         Examples = examples;
@@ -55,14 +60,9 @@ public class PromptInstance : ObjectInstance
             case "temperature":
                 return Temperature.HasValue ? RuntimeValue.Float(Temperature.Value) : RuntimeValue.Null();
             case "tools":
-                if (Tools == null)
-                    return RuntimeValue.Null();
-                var toolsArray = new List<RuntimeValue>();
-                foreach (var tool in Tools)
-                {
-                    toolsArray.Add(RuntimeValue.String(tool));
-                }
-                return RuntimeValue.Array(toolsArray);
+                return ToStringArray(Tools);
+            case "gather":
+                return ToStringArray(Gather);
             case "maxTokens":
                 return MaxTokens.HasValue ? RuntimeValue.Integer(MaxTokens.Value) : RuntimeValue.Null();
             case "examples":
@@ -88,6 +88,16 @@ public class PromptInstance : ObjectInstance
         }
     }
     
+    private static RuntimeValue ToStringArray(List<string>? items)
+    {
+        if (items == null)
+            return RuntimeValue.Null();
+        var array = new List<RuntimeValue>(items.Count);
+        foreach (var item in items)
+            array.Add(RuntimeValue.String(item));
+        return RuntimeValue.Array(array);
+    }
+
     public RuntimeValue CallMethod(string methodName, List<RuntimeValue> args, Interpreter interpreter)
     {
         switch (methodName)

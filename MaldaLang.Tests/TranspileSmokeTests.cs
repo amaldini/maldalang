@@ -17,6 +17,7 @@ public class TranspileSmokeTests
     [InlineData("Examples/Agents/phase6_pure_validate.malda")]
     [InlineData("Examples/Workflows/simple_step.malda")]
     [InlineData("Examples/Web/job_queue_basic.malda")]
+    [InlineData("Examples/Prompts/prompt_tools_then_structured.malda")]
     public void Example_TranspileToCSharp_Succeeds(string relativePath)
     {
         var parts = relativePath.Split('/', StringSplitOptions.RemoveEmptyEntries);

@@ -93,7 +93,7 @@ public class TranspiledTypedPromptTests
             // Schema-to-LLM: typed prompts should pass response_format to PromptInstance
             Assert.Contains("__responseFormatSchema", generated);
             Assert.Contains("ApplySchemaAppendix", generated);
-            Assert.Contains("__responseFormatSchema, examples, __withinTimeoutMs)", generated);
+            Assert.Contains("__responseFormatSchema, examples, __withinTimeoutMs, gather)", generated);
 
             var boundedSource = """
                 @within(1500)
@@ -108,7 +108,7 @@ public class TranspiledTypedPromptTests
             Assert.True(boundedResult.Success, boundedResult.ErrorMessage ?? "Bounded prompt transpile failed.");
             var boundedGenerated = File.ReadAllText(boundedGenPath);
             Assert.Contains("__withinTimeoutMs = 1500", boundedGenerated);
-            Assert.Contains("__withinTimeoutMs));", boundedGenerated);
+            Assert.Contains("__withinTimeoutMs, gather));", boundedGenerated);
 
             var buildResult = compiler.Compile(sourcePath, Path.Combine(tempDir, "out.exe"), CompilationMode.TranspileToCSharp, includeLLamaSharp: false, includeUiHost: false);
             Assert.True(buildResult.Success, buildResult.ErrorMessage ?? "Full compilation failed.");

@@ -70,6 +70,11 @@
       "documentationTitle": "First Prompt"
     },
     {
+      "name": "Gather-then-extract prompt",
+      "description": "Mode C: gather: + -> Type on one prompt (offline PromptInstance)",
+      "file": "prompt_tools_then_structured.malda"
+    },
+    {
       "name": "Prompt Reusability",
       "description": "How prompt blocks enable code reuse and maintainability",
       "file": "prompt_reusability.malda"

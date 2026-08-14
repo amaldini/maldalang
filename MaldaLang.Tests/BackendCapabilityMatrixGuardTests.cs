@@ -52,6 +52,7 @@ public class BackendCapabilityMatrixGuardTests
         AssertContains(markdown, "`schema`", "schema/validate row");
         AssertContains(markdown, "`validate()`", "schema/validate row");
         AssertContains(markdown, "Typed prompt", "typed prompts row");
+        AssertContains(markdown, "Gather-then-extract", "gather-then-extract prompts row");
         AssertContains(markdown, "HttpServer", "HttpServer row");
         AssertContains(markdown, "UIHost", "UIHost row");
         AssertContains(markdown, "Jobs", "Jobs row");

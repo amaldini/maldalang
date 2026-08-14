@@ -9,6 +9,10 @@ using MaldaLang.Parser.AST.Statements;
 
 public partial class PromptValue
 {
+    public const string GatherNotesMarker = "\n\nGathered notes:\n";
+    public const string GatherExtractSystemSuffix =
+        "\nThe gather step already used tools. Reply with structured JSON only; do not call tools.";
+
     private async Task<RuntimeValue> BuildPromptInstanceAsync(List<RuntimeValue> arguments, Interpreter interpreter)
     {
         if (arguments.Count != Declaration.Parameters.Count)
@@ -33,6 +37,7 @@ public partial class PromptValue
             string? model = null;
             double? temperature = null;
             List<string>? tools = null;
+            List<string>? gather = null;
             int? maxTokens = null;
             List<PromptExample>? examples = null;
 
@@ -56,6 +61,7 @@ public partial class PromptValue
                 var modelValue = jsonObj.Get("model");
                 var temperatureValue = jsonObj.Get("temperature");
                 var toolsValue = jsonObj.Get("tools");
+                var gatherValue = jsonObj.Get("gather");
                 var maxTokensValue = jsonObj.Get("maxTokens");
                 var examplesValue = jsonObj.Get("examples");
 
@@ -88,17 +94,8 @@ public partial class PromptValue
                     }
                 }
 
-                if (toolsValue.Type == ValueType.Array)
-                {
-                    tools = new List<string>();
-                    foreach (var tool in toolsValue.AsArray())
-                    {
-                        if (tool.Type == ValueType.String)
-                        {
-                            tools.Add(tool.AsString());
-                        }
-                    }
-                }
+                tools = ReadOptionalStringList(toolsValue, "tools", requireNonEmpty: false);
+                gather = ReadOptionalStringList(gatherValue, "gather", requireNonEmpty: true);
 
                 if (maxTokensValue.Type != ValueType.Null)
                 {
@@ -165,14 +162,14 @@ public partial class PromptValue
                                 {
                                     throw new RuntimeException("Prompt 'tools' field must be an array.");
                                 }
-                                tools = new List<string>();
-                                foreach (var tool in value.AsArray())
+                                tools = ReadRequiredStringList(value, "tools", requireNonEmpty: false);
+                                break;
+                            case "gather":
+                                if (value.Type != ValueType.Array)
                                 {
-                                    if (tool.Type == ValueType.String)
-                                    {
-                                        tools.Add(tool.AsString());
-                                    }
+                                    throw new RuntimeException("Prompt 'gather' field must be an array.");
                                 }
+                                gather = ReadRequiredStringList(value, "gather", requireNonEmpty: true);
                                 break;
                             case "maxTokens":
                                 if (value.Type == ValueType.Integer)
@@ -201,6 +198,8 @@ public partial class PromptValue
                 }
             }
 
+            ValidateGatherContract(Declaration.Name, Declaration.ReturnType, tools, gather);
+
             for (int i = 0; i < Declaration.Parameters.Count; i++)
             {
                 var paramName = Declaration.Parameters[i];
@@ -227,8 +226,10 @@ public partial class PromptValue
                     arguments);
             }
 
+            var hasTools = tools != null && tools.Count > 0;
+            var hasGather = gather != null && gather.Count > 0;
             RuntimeValue? responseFormatSchema = null;
-            if (!string.IsNullOrWhiteSpace(Declaration.ReturnType) && (tools == null || tools.Count == 0))
+            if (!string.IsNullOrWhiteSpace(Declaration.ReturnType) && !hasTools && !hasGather)
             {
                 if (TypedPromptSchemaResolver.TryResolve(Declaration.ReturnType!, interpreter, out var schema, out _))
                 {
@@ -247,7 +248,8 @@ public partial class PromptValue
                 maxTokens,
                 responseFormatSchema,
                 examples,
-                withinTimeoutMs);
+                withinTimeoutMs,
+                gather);
             return RuntimeValue.Object(promptInstance);
         }
         finally
@@ -265,8 +267,7 @@ public partial class PromptValue
             throw new RuntimeException("Failed to create PromptInstance.");
         }
 
-        AgentInstance? agent = null;
-
+        AgentInstance agent;
         if (interpreter._defaultAgent != null)
         {
             agent = interpreter._defaultAgent;
@@ -276,6 +277,12 @@ public partial class PromptValue
             var defaultClient = DefaultLocalLlm.GetDefaultLocalClient();
             agent = new AgentInstance();
             agent.Initialize("PromptAgent", "AI Assistant", "You are a helpful AI assistant.", null, defaultClient, null, null);
+        }
+
+        if (promptInstance.HasGather)
+        {
+            promptInstance = RunGatherThenBuildExtract(promptInstance, agent, interpreter);
+            promptInstanceValue = RuntimeValue.Object(promptInstance);
         }
 
         if (string.IsNullOrWhiteSpace(Declaration.ReturnType))
@@ -306,19 +313,20 @@ public partial class PromptValue
                     promptInstance.MaxTokens,
                     promptInstance.ResponseFormatSchema,
                     promptInstance.Examples,
-                    promptInstance.WithinTimeoutMs);
+                    promptInstance.WithinTimeoutMs,
+                    promptInstance.Gather);
                 promptInstanceValue = RuntimeValue.Object(promptInstance);
             }
 
             var response = agent.Think(promptInstanceValue);
-            var content = TryExtractResponseContent(response);
-            if (content == null)
+            var attemptContent = TryExtractResponseContent(response);
+            if (attemptContent == null)
             {
                 lastError = "No string content in LLM response.";
                 continue;
             }
 
-            if (!TypedPromptValidator.TryExtractJsonCandidate(content, out var jsonCandidate, out var extractError))
+            if (!TypedPromptValidator.TryExtractJsonCandidate(attemptContent, out var jsonCandidate, out var extractError))
             {
                 lastError = extractError;
                 continue;
@@ -342,5 +350,120 @@ public partial class PromptValue
         throw new RuntimeException(
             $"Typed prompt '{Declaration.Name}' output validation failed after {maxAttempts} attempts. " +
             $"Return type: {returnType}. Last error: {lastError ?? "Unknown error."}");
+    }
+
+    private PromptInstance RunGatherThenBuildExtract(
+        PromptInstance promptInstance,
+        AgentInstance agent,
+        Interpreter interpreter)
+    {
+        string notes;
+        try
+        {
+            WithinBoundsContext.EnsureWithinBound(Declaration.Name);
+            var gatherInstance = new PromptInstance(
+                promptInstance.System,
+                promptInstance.User,
+                promptInstance.Model,
+                promptInstance.Temperature,
+                promptInstance.Gather,
+                promptInstance.MaxTokens,
+                responseFormatSchema: null,
+                promptInstance.Examples,
+                promptInstance.WithinTimeoutMs,
+                promptInstance.Gather);
+            var gatherResponse = agent.Think(RuntimeValue.Object(gatherInstance));
+            var content = TryExtractResponseContent(gatherResponse);
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                throw new RuntimeException(
+                    $"Gather step of prompt '{Declaration.Name}' failed: no string content in LLM response.");
+            }
+
+            notes = content;
+        }
+        catch (RuntimeException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new RuntimeException($"Gather step of prompt '{Declaration.Name}' failed: {ex.Message}");
+        }
+
+        var extractSystem = promptInstance.System;
+        RuntimeValue? responseFormatSchema = null;
+        if (!string.IsNullOrWhiteSpace(Declaration.ReturnType) &&
+            TypedPromptSchemaResolver.TryResolve(Declaration.ReturnType!, interpreter, out var schema, out _))
+        {
+            responseFormatSchema = TypedPromptValidator.BuildResponseFormat(schema);
+            extractSystem = TypedPromptValidator.ApplySchemaAppendix(extractSystem, Declaration.ReturnType!, schema);
+        }
+
+        extractSystem = (extractSystem ?? "") + GatherExtractSystemSuffix;
+        var extractUser = promptInstance.User + GatherNotesMarker + notes;
+        return new PromptInstance(
+            extractSystem,
+            extractUser,
+            promptInstance.Model,
+            promptInstance.Temperature,
+            tools: null,
+            promptInstance.MaxTokens,
+            responseFormatSchema,
+            promptInstance.Examples,
+            promptInstance.WithinTimeoutMs,
+            gather: null);
+    }
+
+    internal static void ValidateGatherContract(
+        string promptName,
+        string? returnType,
+        List<string>? tools,
+        List<string>? gather)
+    {
+        var hasTools = tools != null && tools.Count > 0;
+        var hasGather = gather != null && gather.Count > 0;
+        if (!hasGather)
+            return;
+
+        if (hasTools)
+        {
+            throw new RuntimeException(
+                $"Prompt '{promptName}' cannot list both gather: and tools:. " +
+                "Use gather: with -> Type for two-phase extract, or tools: for Mode B.");
+        }
+
+        if (string.IsNullOrWhiteSpace(returnType))
+        {
+            throw new RuntimeException(
+                $"Prompt '{promptName}' uses gather: which requires a -> Type extract target " +
+                "(schema, sum type, or program(Api)).");
+        }
+    }
+
+    private static List<string>? ReadOptionalStringList(RuntimeValue value, string fieldName, bool requireNonEmpty)
+    {
+        if (value.Type == ValueType.Null)
+            return null;
+        if (value.Type != ValueType.Array)
+            throw new RuntimeException($"Prompt '{fieldName}' field must be an array.");
+        return ReadRequiredStringList(value, fieldName, requireNonEmpty);
+    }
+
+    private static List<string> ReadRequiredStringList(RuntimeValue value, string fieldName, bool requireNonEmpty)
+    {
+        var list = new List<string>();
+        foreach (var item in value.AsArray())
+        {
+            if (item.Type == ValueType.String)
+                list.Add(item.AsString());
+        }
+
+        if (requireNonEmpty && list.Count == 0)
+        {
+            throw new RuntimeException($"Prompt '{fieldName}' field must be a non-empty array of tool name strings.");
+        }
+
+        return list;
     }
 }

@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — gather-then-extract prompts)
+
+- **L2:** `gather: ["tool", …]` on a `prompt` with `-> Type` is Mode C in one declaration: a tool round, then a **fresh** typed prompt without tools (Mode A validate/repair). Plain `tools:` + `-> Type` stays Mode B (no silent two-call reinterpret). `gather:` requires `-> Type` (schema, sum type, or `program(Api)`) and cannot combine with `tools:`. Offline `prompt(...)` without `await` does not call the model. Example: `Examples/Prompts/prompt_tools_then_structured.malda`. Plan: [`docs/roadmap-language-constructs.md`](../roadmap-language-constructs.md).
+
 #### Added (MINOR — primary constructors)
 
 - **`class Name(params)`:** parameter list after the class name desugars to public fields plus a synthesized constructor. Body optional (`class Point(x, y);` or `{ methods }`). Cannot combine with `extends` or an explicit `function Name(...)`. Grammar: [`34-grammar.html`](../../ReferenceManual/34-grammar.html); narrative: [`10-classes-objects.html`](../../ReferenceManual/10-classes-objects.html) §10.11.
@@ -128,7 +132,7 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 #### Clarified (PATCH — product / Tier-2 docs only; no Tier 0 semantic change)
 
-- **A1 tools vs `response_format`:** exclusivity = no OpenAI `response_format` and no `MALDA_OUTPUT_SCHEMA` appendix when the prompt lists tools; `await` + `-> Type` still validates/repairs. Supported modes A/B/C documented in [`docs/llm/malda-gotchas.md`](../llm/malda-gotchas.md), [`ReferenceManual/09-functions.html`](../../ReferenceManual/09-functions.html) §8.8.3.1, and `Examples/Prompts/prompt_tools_*.malda`.
+- **A1 tools vs `response_format`:** exclusivity = no OpenAI `response_format` and no `MALDA_OUTPUT_SCHEMA` appendix when the prompt lists `tools:` (Mode B); `await` + `-> Type` still validates/repairs. Mode C is `gather:` + `-> Type` (one declaration). Supported modes A/B/C documented in [`docs/llm/malda-gotchas.md`](../llm/malda-gotchas.md), [`ReferenceManual/09-functions.html`](../../ReferenceManual/09-functions.html) §9.9.3.1, and `Examples/Prompts/prompt_tools_*.malda`.
 
 ### [1.0.0] — 2026-08-12 (Final)
 

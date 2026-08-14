@@ -24,7 +24,7 @@ malda Examples/Prompts/prompt_with_agent.malda
 | `prompt_return_type.malda` | — | Offline; `-> Type` without `await` |
 | `schema_prompt_structured.malda` | **A Structured** | `requires: api-key`; `schema` + `await`, no tools → `response_format` |
 | `prompt_tools_mode.malda` | **B Tools** | Offline; `tools:` listed → no format/appendix |
-| `prompt_tools_then_structured.malda` | **C Sequence** | Offline recipe: tools gather, then typed prompt without tools |
+| `prompt_tools_then_structured.malda` | **C Gather-then-extract** | Offline: one prompt with `gather:` + `-> Type` |
 | RAG / agent demos | — | Need LLM provider |
 
 See [`docs/spec/backend-capability-matrix.md`](../../docs/spec/backend-capability-matrix.md)

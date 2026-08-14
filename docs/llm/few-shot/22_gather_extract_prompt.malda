@@ -1,0 +1,14 @@
+// Mode C: gather-then-extract as one declaration (offline PromptInstance).
+schema ResearchAnswer {
+    summary: string;
+    sources: string[];
+}
+
+prompt research(question) -> ResearchAnswer {
+    gather: ["read_file", "grep"];
+    system: "Use tools, then the extract step will structure the answer.";
+    user: question;
+}
+
+var inst = research("What is Mode C?");
+io.print("gather=" + toJSON(inst.gather));

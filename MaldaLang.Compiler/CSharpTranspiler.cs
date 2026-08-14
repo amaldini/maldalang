@@ -6628,6 +6628,8 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("var toolsValue = RuntimeHelpers.GetPromptObjectField(bodyValue, \"tools\");");
         WriteIndent();
+        _output.AppendLine("var gatherValue = RuntimeHelpers.GetPromptObjectField(bodyValue, \"gather\");");
+        WriteIndent();
         _output.AppendLine("var maxTokensValue = RuntimeHelpers.GetPromptObjectField(bodyValue, \"maxTokens\");");
         WriteIndent();
         _output.AppendLine("var examplesValue = RuntimeHelpers.GetPromptObjectField(bodyValue, \"examples\");");
@@ -6739,6 +6741,37 @@ public class CSharpTranspiler
         _output.AppendLine("}");
         
         WriteIndent();
+        _output.AppendLine("System.Collections.Generic.List<string>? gather = null;");
+        WriteIndent();
+        _output.AppendLine("if (gatherValue.Type == MaldaLang.Interpreter.ValueType.Array)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("gather = new System.Collections.Generic.List<string>();");
+        WriteIndent();
+        _output.AppendLine("foreach (var tool in RuntimeHelpers.UnwrapRuntimeValue(gatherValue) as System.Collections.Generic.List<RuntimeValue>)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("if (tool.Type == MaldaLang.Interpreter.ValueType.String)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("gather.Add(RuntimeHelpers.CoerceToString(tool));");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        
+        WriteIndent();
         _output.AppendLine("int? maxTokens = null;");
         WriteIndent();
         _output.AppendLine("if (maxTokensValue.Type != MaldaLang.Interpreter.ValueType.Null)");
@@ -6783,6 +6816,8 @@ public class CSharpTranspiler
             _output.AppendLine("double? temperature = null;");
             WriteIndent();
             _output.AppendLine("System.Collections.Generic.List<string>? tools = null;");
+            WriteIndent();
+            _output.AppendLine("System.Collections.Generic.List<string>? gather = null;");
             WriteIndent();
             _output.AppendLine("int? maxTokens = null;");
             WriteIndent();
@@ -6849,6 +6884,27 @@ public class CSharpTranspiler
                                 WriteIndent();
                                 _output.AppendLine("}");
                                 break;
+                            case "gather":
+                                _output.AppendLine("if (" + keyword + "Value.Type == MaldaLang.Interpreter.ValueType.Array)");
+                                WriteIndent();
+                                _output.AppendLine("{");
+                                _indentLevel++;
+                                WriteIndent();
+                                _output.AppendLine("gather = new System.Collections.Generic.List<string>();");
+                                WriteIndent();
+                                _output.AppendLine("foreach (var tool in RuntimeHelpers.UnwrapRuntimeValue(" + keyword + "Value) as System.Collections.Generic.List<RuntimeValue>)");
+                                WriteIndent();
+                                _output.AppendLine("{");
+                                _indentLevel++;
+                                WriteIndent();
+                                _output.AppendLine("if (tool.Type == MaldaLang.Interpreter.ValueType.String) gather.Add(RuntimeHelpers.CoerceToString(tool));");
+                                _indentLevel--;
+                                WriteIndent();
+                                _output.AppendLine("}");
+                                _indentLevel--;
+                                WriteIndent();
+                                _output.AppendLine("}");
+                                break;
                             case "maxTokens":
                                 _output.AppendLine("if (" + keyword + "Value.Type == MaldaLang.Interpreter.ValueType.Integer) maxTokens = (int)RuntimeHelpers.CoerceToInt(" + keyword + "Value);");
                                 WriteIndent();
@@ -6869,6 +6925,23 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("if (user == null) throw new Exception(\"Prompt body must have a 'user' field.\");");
         }
+
+        WriteIndent();
+        _output.AppendLine("if (gather != null && gather.Count > 0 && tools != null && tools.Count > 0)");
+        WriteIndent();
+        _output.Append("throw new Exception(\"Prompt '");
+        _output.Append(promptDecl.Name.Replace("\\", "\\\\").Replace("\"", "\\\""));
+        _output.AppendLine("' cannot list both gather: and tools:. Use gather: with -> Type for two-phase extract, or tools: for Mode B.\");");
+        WriteIndent();
+        _output.AppendLine("if (gather != null && gather.Count > 0 && string.IsNullOrWhiteSpace(\"" + (promptDecl.ReturnType ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"))");
+        WriteIndent();
+        _output.Append("throw new Exception(\"Prompt '");
+        _output.Append(promptDecl.Name.Replace("\\", "\\\\").Replace("\"", "\\\""));
+        _output.AppendLine("' uses gather: which requires a -> Type extract target (schema, sum type, or program(Api)).\");");
+        WriteIndent();
+        _output.AppendLine("if (gather != null && gather.Count == 0)");
+        WriteIndent();
+        _output.AppendLine("throw new Exception(\"Prompt 'gather' field must be a non-empty array of tool name strings.\");");
 
         for (int i = 0; i < promptDecl.Parameters.Count; i++)
         {
@@ -6924,14 +6997,14 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("}");
 
-        // Build response_format schema when ReturnType is present and tools is empty (§4.10).
+        // Build response_format schema when ReturnType is present and tools/gather are empty (§4.10 / L2).
         // Also inject a compact schema appendix into system (schema-in-prompt for local models).
         WriteIndent();
         _output.AppendLine("MaldaLang.Interpreter.RuntimeValue? __responseFormatSchema = null;");
         WriteIndent();
         _output.Append("if (!string.IsNullOrWhiteSpace(\"");
         _output.Append((promptDecl.ReturnType ?? "").Replace("\\", "\\\\").Replace("\"", "\\\""));
-        _output.Append("\") && (tools == null || tools.Count == 0))");
+        _output.Append("\") && (tools == null || tools.Count == 0) && (gather == null || gather.Count == 0))");
         _output.AppendLine();
         WriteIndent();
         _output.AppendLine("{");
@@ -7061,7 +7134,7 @@ public class CSharpTranspiler
 
         // Create and return PromptInstance
         WriteIndent();
-        _output.Append("return RuntimeHelpers.ToRuntimeValue(new MaldaLang.BuiltIns.PromptInstance(system, user, model, temperature, tools, maxTokens, __responseFormatSchema, examples, __withinTimeoutMs));");
+        _output.Append("return RuntimeHelpers.ToRuntimeValue(new MaldaLang.BuiltIns.PromptInstance(system, user, model, temperature, tools, maxTokens, __responseFormatSchema, examples, __withinTimeoutMs, gather));");
         _output.AppendLine();
         
         _indentLevel--;
@@ -7198,6 +7271,98 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("string __baseUser = __promptInstance.User;");
         WriteIndent();
+        _output.AppendLine("if (__promptInstance.HasGather)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("var __gatherInstance = new MaldaLang.BuiltIns.PromptInstance(__promptInstance.System, __promptInstance.User, __promptInstance.Model, __promptInstance.Temperature, __promptInstance.Gather, __promptInstance.MaxTokens, null, __promptInstance.Examples, __promptInstance.WithinTimeoutMs, __promptInstance.Gather);");
+        WriteIndent();
+        _output.AppendLine("MaldaLang.Interpreter.RuntimeValue __gatherResponse;");
+        WriteIndent();
+        _output.AppendLine("try");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("__gatherResponse = __agent.Think(RuntimeHelpers.ToRuntimeValue(__gatherInstance));");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        WriteIndent();
+        _output.AppendLine("catch (Exception __gatherEx)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.Append("throw new Exception(\"Gather step of prompt '");
+        _output.Append(promptDecl.Name.Replace("\\", "\\\\").Replace("\"", "\\\""));
+        _output.AppendLine("' failed: \" + __gatherEx.Message);");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        WriteIndent();
+        _output.AppendLine("string? __gatherNotes = null;");
+        WriteIndent();
+        _output.AppendLine("if (__gatherResponse.Type == MaldaLang.Interpreter.ValueType.Object && RuntimeHelpers.UnwrapRuntimeValue(__gatherResponse) is MaldaLang.BuiltIns.JsonObject __gatherResponseObj)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("var __gatherContentValue = __gatherResponseObj.Get(\"content\");");
+        WriteIndent();
+        _output.AppendLine("if (__gatherContentValue.Type == MaldaLang.Interpreter.ValueType.String) __gatherNotes = RuntimeHelpers.CoerceToString(__gatherContentValue);");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        WriteIndent();
+        _output.AppendLine("else if (__gatherResponse.Type == MaldaLang.Interpreter.ValueType.String)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("__gatherNotes = RuntimeHelpers.CoerceToString(__gatherResponse);");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        WriteIndent();
+        _output.Append("if (string.IsNullOrWhiteSpace(__gatherNotes)) throw new Exception(\"Gather step of prompt '");
+        _output.Append(promptDecl.Name.Replace("\\", "\\\\").Replace("\"", "\\\""));
+        _output.AppendLine("' failed: no string content in LLM response.\");");
+        WriteIndent();
+        _output.AppendLine("var __extractSystem = __promptInstance.System;");
+        WriteIndent();
+        _output.AppendLine("MaldaLang.Interpreter.RuntimeValue? __extractFormat = null;");
+        WriteIndent();
+        _output.AppendLine("if (__resolvedSchema != null)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("__extractFormat = MaldaLang.BuiltIns.TypedPromptValidator.BuildResponseFormat(__resolvedSchema);");
+        WriteIndent();
+        _output.Append("__extractSystem = MaldaLang.BuiltIns.TypedPromptValidator.ApplySchemaAppendix(__extractSystem, \"");
+        _output.Append((promptDecl.ReturnType ?? "").Replace("\\", "\\\\").Replace("\"", "\\\""));
+        _output.AppendLine("\", __resolvedSchema);");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        WriteIndent();
+        _output.Append("__extractSystem = (__extractSystem ?? \"\") + \"");
+        _output.Append(MaldaLang.Interpreter.PromptValue.GatherExtractSystemSuffix.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\n", "\\n"));
+        _output.AppendLine("\";");
+        WriteIndent();
+        _output.Append("var __extractUser = __baseUser + \"");
+        _output.Append(MaldaLang.Interpreter.PromptValue.GatherNotesMarker.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\n", "\\n"));
+        _output.AppendLine("\" + __gatherNotes;");
+        WriteIndent();
+        _output.AppendLine("__promptInstance = new MaldaLang.BuiltIns.PromptInstance(__extractSystem, __extractUser, __promptInstance.Model, __promptInstance.Temperature, null, __promptInstance.MaxTokens, __extractFormat, __promptInstance.Examples, __promptInstance.WithinTimeoutMs, null);");
+        WriteIndent();
+        _output.AppendLine("__baseUser = __promptInstance.User;");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        WriteIndent();
         _output.AppendLine("string __lastError = \"Unknown validation error.\";");
         WriteIndent();
         _output.AppendLine("for (int __attempt = 1; __attempt <= __maxAttempts; __attempt++)");
@@ -7213,7 +7378,7 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("var __repair = MaldaLang.BuiltIns.TypedPromptValidator.BuildRepairInstruction(__typedReturnType!, __lastError);");
         WriteIndent();
-        _output.AppendLine("__promptInstance = new MaldaLang.BuiltIns.PromptInstance(__promptInstance.System, __baseUser + \"\\n\\n\" + __repair, __promptInstance.Model, __promptInstance.Temperature, __promptInstance.Tools, __promptInstance.MaxTokens, __promptInstance.ResponseFormatSchema, __promptInstance.Examples, __promptInstance.WithinTimeoutMs);");
+        _output.AppendLine("__promptInstance = new MaldaLang.BuiltIns.PromptInstance(__promptInstance.System, __baseUser + \"\\n\\n\" + __repair, __promptInstance.Model, __promptInstance.Temperature, __promptInstance.Tools, __promptInstance.MaxTokens, __promptInstance.ResponseFormatSchema, __promptInstance.Examples, __promptInstance.WithinTimeoutMs, __promptInstance.Gather);");
         _indentLevel--;
         WriteIndent();
         _output.AppendLine("}");

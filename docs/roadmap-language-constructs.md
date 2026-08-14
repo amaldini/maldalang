@@ -1,6 +1,6 @@
 # MALDA language constructs plan (post–Final 1.0)
 
-**Status:** L1a and L1b landed; L1c–L6 plan  
+**Status:** L1a, L1b, and L2 landed; L1c–L6 plan (L3–L6 remaining)  
 **Created:** 2026-08-14  
 **Audience:** maintainers choosing the next *language* work after P0 maturity  
 **Spec line:** Final 1.0 stays; each landed workstream is a **MINOR** additive contract (or PATCH if docs-only). Breaking parse/runtime is **MAJOR** and is out of scope here.
@@ -200,8 +200,13 @@ Requirements:
 `CSharpTranspiler` prompt emit, IDE hover/diagnostics, RM §9, gotchas (replace the ritual
 row with the new form), `Examples/Prompts/`.
 
-**Done when:** interpreter + transpile smoke; offline example; gotcha updated; matrix row
-“gather-then-extract prompts” = yes / yes / n/a.
+**Done when (L2 — landed)**
+
+- One `prompt` with `gather:` + `-> Type` replaces the two-prompt Mode C ritual.
+- Plain `tools:` + `-> Type` remains Mode B (not two LLM calls).
+- Interpreter and C# transpile agree. JS: `n/a` (prompts are host-only).
+- Offline `prompt(...)` without `await` does not call the model.
+- Spec CHANGELOG **MINOR**. `scripts/verify-spec-parser-drift.ps1` in the same PR.
 
 **Risk:** two LLM round-trips and repair loops need a clear error if gather fails. Do not
 feed tool JSON into `validate` until the extract step.
@@ -350,7 +355,7 @@ Follow [`docs/spec/CHANGELOG.md`](spec/CHANGELOG.md) “How to propose a spec ch
 |--------|--------|
 | L1a | `validate` + nested fields work for sum-type names; clash still throws |
 | L1b | Optional constructor types in schema emit; name-only still parses — **landed** |
-| L2 | One declaration replaces the two-prompt Mode C example; Mode B unchanged |
+| L2 | One declaration replaces the two-prompt Mode C example; Mode B unchanged — **landed** |
 | L3 | `@budget` trips in tests without breaking `@within` |
 | L4 | In-file helper calling `now()` from a workflow body is WF1001 |
 | L5 | At least one opt-in ASK/GraphMemory path returns citations on a wrapper |
@@ -384,3 +389,4 @@ through helpers, and provenance is a value when we need it.
 |------|--------|
 | 2026-08-14 | Initial plan: L1–L6 from post-P0 language-construct discussion (Graph vs Tree, no macros, AI-first grammar filter) |
 | 2026-08-14 | L1a landed: `validate` + nested schema fields resolve sum-type names |
+| 2026-08-14 | L2 landed: `gather:` + `-> Type` gather-then-extract prompts |
