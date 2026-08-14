@@ -641,13 +641,31 @@ public class Parser
             {
                 do
                 {
-                    args.Add(Expression());
+                    args.Add(ParseDecoratorArgument());
                 } while (Match(TokenType.Comma));
             }
             Consume(TokenType.RightParen, "Expect ')' after decorator arguments");
             decorators.Add(new Decorator(name, args, Current()?.Line ?? 0, Current()?.Column ?? 0));
         }
         return decorators;
+    }
+
+    /// <summary>
+    /// Decorator arguments may be positional expressions or named <c>key: value</c> pairs
+    /// (<c>@budget(tokens: 4000, tools: 8)</c>). Named form is decorator-only so it does
+    /// not change general call-site <c>ArgList</c> parsing.
+    /// </summary>
+    private Expression ParseDecoratorArgument()
+    {
+        if (IsIdentifierLikeExpressionToken(Peek()?.Type) && Peek(1)?.Type == TokenType.Colon)
+        {
+            var nameToken = ConsumeIdentifierTokenLike("Expect named decorator argument.");
+            Consume(TokenType.Colon, "Expect ':' after named decorator argument.");
+            var value = Expression();
+            return new NamedArgumentExpression(nameToken.Lexeme, value, nameToken.Line, nameToken.Column);
+        }
+
+        return Expression();
     }
     
     private Statement FunctionDeclaration(bool isExported = false)

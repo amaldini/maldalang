@@ -137,6 +137,8 @@ public partial class ConversationInstance : ObjectInstance
     private int _turnTotalTokens;
     private double _turnCost;
     private bool _turnHasUsage;
+    private int _recordedTurnTokens;
+    private double _recordedTurnCost;
     private readonly List<FailedWriteToolRecord> _turnFailedWriteTools = new();
     
     /// <summary>
@@ -1296,6 +1298,7 @@ public partial class ConversationInstance : ObjectInstance
         {
             LogLlmResponse(jsonResponse);
             AccumulateTurnUsage(jsonResponse);
+            RecordBudgetUsageAfterLlmResponse(jsonResponse);
             
             // Record LLM response in trace (if enabled)
             try
@@ -1475,6 +1478,8 @@ public partial class ConversationInstance : ObjectInstance
         _turnTotalTokens = 0;
         _turnCost = 0;
         _turnHasUsage = false;
+        _recordedTurnTokens = 0;
+        _recordedTurnCost = 0;
     }
 
     private static void AddNormalizedUsage(JsonObject usageSource, ref int promptTokens, ref int completionTokens, ref int totalTokens, ref double cost, ref bool hasUsage)
@@ -1536,6 +1541,59 @@ public partial class ConversationInstance : ObjectInstance
         if (_turnCost > 0)
             usageObj.Set("cost", RuntimeValue.Float(_turnCost));
         jsonResponse.Set("usage", RuntimeValue.Object(usageObj));
+    }
+
+    private void RecordBudgetUsageAfterLlmResponse(JsonObject jsonResponse)
+    {
+        if (!ResourceBoundsContext.HasActiveBound)
+            return;
+
+        if (_turnHasUsage)
+        {
+            var tokens = _turnTotalTokens > 0
+                ? _turnTotalTokens
+                : _turnPromptTokens + _turnCompletionTokens;
+            var tokenDelta = tokens - _recordedTurnTokens;
+            if (tokenDelta > 0)
+                ResourceBoundsContext.RecordTokens(tokenDelta);
+            _recordedTurnTokens = tokens;
+
+            var costDelta = _turnCost - _recordedTurnCost;
+            if (costDelta > 0)
+                ResourceBoundsContext.RecordCost(costDelta);
+            _recordedTurnCost = _turnCost;
+            return;
+        }
+
+        // Best-effort: chars/4 of conversation payload plus this response, as a running delta.
+        var estimated = EstimateContextTokens() + EstimateResponseTokens(jsonResponse);
+        var estimateDelta = estimated - _recordedTurnTokens;
+        if (estimateDelta > 0)
+            ResourceBoundsContext.RecordTokens(estimateDelta);
+        _recordedTurnTokens = estimated;
+    }
+
+    private int EstimateResponseTokens(JsonObject jsonResponse)
+    {
+        var chars = 0;
+        var content = jsonResponse.Get("content", null);
+        if (content != null && content.Type == ValueType.String)
+            chars += content.AsString()?.Length ?? 0;
+
+        var toolCalls = jsonResponse.Get("tool_calls", null);
+        if (toolCalls != null && toolCalls.Type != ValueType.Null)
+        {
+            try
+            {
+                chars += SerializeRuntimeValueToJson(toolCalls).Length;
+            }
+            catch
+            {
+                chars += 256;
+            }
+        }
+
+        return chars <= 0 ? 0 : (int)Math.Ceiling(chars / 4.0);
     }
     
     public RuntimeValue GetMessages()
@@ -3583,6 +3641,8 @@ public partial class ConversationInstance : ObjectInstance
                 {
                     if (inner is InputRequiredException)
                         throw inner;
+                    if (inner is RuntimeException)
+                        throw inner;
                 }
                 throw;
             }
@@ -3625,6 +3685,7 @@ public partial class ConversationInstance : ObjectInstance
 
     private ToolCallOutcome ExecuteSingleToolCall(RuntimeValue tc)
     {
+        ResourceBoundsContext.RecordToolInvocation();
         var tcObj = tc.AsObject();
         var toolCallId = GetStringProperty(tcObj, "id") ?? "";
         var func = GetProperty(tcObj, "function");

@@ -239,6 +239,7 @@ public partial class PromptValue
             }
 
             var withinTimeoutMs = DeclarationBounds.TryGetWithinTimeoutMs(Declaration);
+            var budget = DeclarationBounds.TryGetResourceBudget(Declaration);
             var promptInstance = new PromptInstance(
                 system,
                 user!,
@@ -249,7 +250,8 @@ public partial class PromptValue
                 responseFormatSchema,
                 examples,
                 withinTimeoutMs,
-                gather);
+                gather,
+                budget);
             return RuntimeValue.Object(promptInstance);
         }
         finally
@@ -279,77 +281,91 @@ public partial class PromptValue
             agent.Initialize("PromptAgent", "AI Assistant", "You are a helpful AI assistant.", null, defaultClient, null, null);
         }
 
-        if (promptInstance.HasGather)
-        {
-            promptInstance = RunGatherThenBuildExtract(promptInstance, agent, interpreter);
-            promptInstanceValue = RuntimeValue.Object(promptInstance);
-        }
+        var budget = promptInstance.Budget;
+        var pushedBudget = budget != null && budget.HasAnyBound;
+        if (pushedBudget)
+            ResourceBoundsContext.Push(budget!, Declaration.Name);
 
-        if (string.IsNullOrWhiteSpace(Declaration.ReturnType))
+        try
         {
-            WithinBoundsContext.EnsureWithinBound(Declaration.Name);
-            var untypedResponse = agent.Think(promptInstanceValue);
-            var content = TryExtractResponseContent(untypedResponse);
-            return content != null ? RuntimeValue.String(content) : RuntimeValue.String(untypedResponse.ToString());
-        }
-
-        const int maxAttempts = 3;
-        var returnType = Declaration.ReturnType!;
-        var originalUser = promptInstance.User;
-        string? lastError = null;
-
-        for (int attempt = 1; attempt <= maxAttempts; attempt++)
-        {
-            WithinBoundsContext.EnsureWithinBound(Declaration.Name);
-            if (attempt > 1)
+            if (promptInstance.HasGather)
             {
-                var repair = TypedPromptValidator.BuildRepairInstruction(returnType, lastError ?? "Unknown validation error.");
-                promptInstance = new PromptInstance(
-                    promptInstance.System,
-                    originalUser + "\n\n" + repair,
-                    promptInstance.Model,
-                    promptInstance.Temperature,
-                    promptInstance.Tools,
-                    promptInstance.MaxTokens,
-                    promptInstance.ResponseFormatSchema,
-                    promptInstance.Examples,
-                    promptInstance.WithinTimeoutMs,
-                    promptInstance.Gather);
+                promptInstance = RunGatherThenBuildExtract(promptInstance, agent, interpreter);
                 promptInstanceValue = RuntimeValue.Object(promptInstance);
             }
 
-            var response = agent.Think(promptInstanceValue);
-            var attemptContent = TryExtractResponseContent(response);
-            if (attemptContent == null)
+            if (string.IsNullOrWhiteSpace(Declaration.ReturnType))
             {
-                lastError = "No string content in LLM response.";
-                continue;
+                WithinBoundsContext.EnsureWithinBound(Declaration.Name);
+                var untypedResponse = agent.Think(promptInstanceValue);
+                var content = TryExtractResponseContent(untypedResponse);
+                return content != null ? RuntimeValue.String(content) : RuntimeValue.String(untypedResponse.ToString());
             }
 
-            if (!TypedPromptValidator.TryExtractJsonCandidate(attemptContent, out var jsonCandidate, out var extractError))
+            const int maxAttempts = 3;
+            var returnType = Declaration.ReturnType!;
+            var originalUser = promptInstance.User;
+            string? lastError = null;
+
+            for (int attempt = 1; attempt <= maxAttempts; attempt++)
             {
-                lastError = extractError;
-                continue;
+                WithinBoundsContext.EnsureWithinBound(Declaration.Name);
+                if (attempt > 1)
+                {
+                    var repair = TypedPromptValidator.BuildRepairInstruction(returnType, lastError ?? "Unknown validation error.");
+                    promptInstance = new PromptInstance(
+                        promptInstance.System,
+                        originalUser + "\n\n" + repair,
+                        promptInstance.Model,
+                        promptInstance.Temperature,
+                        promptInstance.Tools,
+                        promptInstance.MaxTokens,
+                        promptInstance.ResponseFormatSchema,
+                        promptInstance.Examples,
+                        promptInstance.WithinTimeoutMs,
+                        promptInstance.Gather,
+                        promptInstance.Budget);
+                    promptInstanceValue = RuntimeValue.Object(promptInstance);
+                }
+
+                var response = agent.Think(promptInstanceValue);
+                var attemptContent = TryExtractResponseContent(response);
+                if (attemptContent == null)
+                {
+                    lastError = "No string content in LLM response.";
+                    continue;
+                }
+
+                if (!TypedPromptValidator.TryExtractJsonCandidate(attemptContent, out var jsonCandidate, out var extractError))
+                {
+                    lastError = extractError;
+                    continue;
+                }
+
+                if (!TypedPromptValidator.TryParseJson(jsonCandidate, out var parsed, out var parseError))
+                {
+                    lastError = parseError;
+                    continue;
+                }
+
+                if (!TypedPromptValidator.TryValidateReturnType(parsed, returnType, interpreter, out var validated, out var validationError))
+                {
+                    lastError = validationError;
+                    continue;
+                }
+
+                return validated;
             }
 
-            if (!TypedPromptValidator.TryParseJson(jsonCandidate, out var parsed, out var parseError))
-            {
-                lastError = parseError;
-                continue;
-            }
-
-            if (!TypedPromptValidator.TryValidateReturnType(parsed, returnType, interpreter, out var validated, out var validationError))
-            {
-                lastError = validationError;
-                continue;
-            }
-
-            return validated;
+            throw new RuntimeException(
+                $"Typed prompt '{Declaration.Name}' output validation failed after {maxAttempts} attempts. " +
+                $"Return type: {returnType}. Last error: {lastError ?? "Unknown error."}");
         }
-
-        throw new RuntimeException(
-            $"Typed prompt '{Declaration.Name}' output validation failed after {maxAttempts} attempts. " +
-            $"Return type: {returnType}. Last error: {lastError ?? "Unknown error."}");
+        finally
+        {
+            if (pushedBudget)
+                ResourceBoundsContext.Pop();
+        }
     }
 
     private PromptInstance RunGatherThenBuildExtract(
@@ -371,7 +387,8 @@ public partial class PromptValue
                 responseFormatSchema: null,
                 promptInstance.Examples,
                 promptInstance.WithinTimeoutMs,
-                promptInstance.Gather);
+                promptInstance.Gather,
+                promptInstance.Budget);
             var gatherResponse = agent.Think(RuntimeValue.Object(gatherInstance));
             var content = TryExtractResponseContent(gatherResponse);
             if (string.IsNullOrWhiteSpace(content))
@@ -412,7 +429,8 @@ public partial class PromptValue
             responseFormatSchema,
             promptInstance.Examples,
             promptInstance.WithinTimeoutMs,
-            gather: null);
+            gather: null,
+            promptInstance.Budget);
     }
 
     internal static void ValidateGatherContract(

@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — resource budget decorator)
+
+- **L3:** `@budget(tokens: N, tools: N, cost: N?)` beside `@within(ms)` on functions and prompts. Named keys only; unknown keys are errors under `--strict-types` (`malda-bounds`). Runtime aborts with a dedicated message when a bound trips. `tokens` is prompt+completion when the backend reports usage, otherwise a documented chars/4 best-effort count. `tools` is invocation count in that prompt/agent turn, not allow-list length. Optional `cost` when the backend exposes it. Interpreter and C# transpile agree. JS: n/a (prompts are host-only). `MALDA_AGENT_CONTEXT_BUDGET_TOKENS` remains a context-trim fallback for undeclared agents, not a second abort API. Example: `Examples/Prompts/prompt_budget.malda`. Plan: [`docs/roadmap-language-constructs.md`](../roadmap-language-constructs.md).
+
 #### Added (MINOR — gather-then-extract prompts)
 
 - **L2:** `gather: ["tool", …]` on a `prompt` with `-> Type` is Mode C in one declaration: a tool round, then a **fresh** typed prompt without tools (Mode A validate/repair). Plain `tools:` + `-> Type` stays Mode B (no silent two-call reinterpret). `gather:` requires `-> Type` (schema, sum type, or `program(Api)`) and cannot combine with `tools:`. Offline `prompt(...)` without `await` does not call the model. Example: `Examples/Prompts/prompt_tools_then_structured.malda`. Plan: [`docs/roadmap-language-constructs.md`](../roadmap-language-constructs.md).

@@ -174,6 +174,19 @@ print(addFive(10));  // Prints 15</code></pre>
         </div>
         <h2>9.7 Decorators</h2>
         <p>MALDA supports decorators for functions, enabling features like custom tools and REST API endpoints:</p>
+        <h3>@within and @budget</h3>
+        <p>Use <code>@within(ms)</code> for a wall-clock deadline on a function body or <code>await prompt(...)</code> / <code>agent.think()</code> turn. Use <code>@budget(tokens: N, tools: N, cost: N?)</code> for resource limits on the same declarations. Do not overload <code>@within</code>’s positional milliseconds argument — budget keys are named. Unknown <code>@budget</code> keys are errors under CLI <code>--strict-types</code> (<code>malda-bounds</code>), same strictness as <code>@within</code>.</p>
+        <pre><code>@within(5000)
+@budget(tokens: 4000, tools: 8)
+prompt answer(q) -> Answer {
+    user: "Question: {q}"
+}</code></pre>
+        <ul>
+            <li><code>tokens</code> — prompt+completion when the backend reports usage; otherwise a best-effort <code>ceil(chars / 4)</code> count. Abort, not context trim.</li>
+            <li><code>tools</code> — number of <strong>invocations</strong> in that prompt/agent turn, not the length of the <code>tools:</code> / <code>gather:</code> allow-list.</li>
+            <li><code>cost</code> — optional; enforced only when the backend already exposes usage cost. Omit the key when unused.</li>
+        </ul>
+        <p><code>MALDA_AGENT_CONTEXT_BUDGET_TOKENS</code> still trims undeclared agent context. It is not a second abort API; declare <code>@budget</code> when you want a hard bound. See <code>Examples/Prompts/prompt_budget.malda</code>.</p>
         <h3>@pure and @effects</h3>
         <p>Use <code>@pure()</code> on helpers that must not perform I/O. Use <code>@effects("print", …)</code> to declare an allow-list of side effects on a handler. These are checked under CLI <code>--strict-types</code> / full strict analysis (<code>malda-pure</code> / <code>malda-effects</code>). Prefer <code>validate()</code> on tool or LLM-shaped payloads before impure work — see <code>Examples/Agents/agent_governance_golden.malda</code> and <a href="17-agent-orchestration.html">17. Agent Orchestration</a>.</p>
         <pre><code>@pure()

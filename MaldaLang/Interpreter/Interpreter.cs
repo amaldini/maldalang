@@ -2073,6 +2073,7 @@ public partial class Interpreter
             PipeExpression pipe => await EvaluatePipeAsync(pipe),
             ListComprehensionExpression comprehension => await EvaluateListComprehensionAsync(comprehension),
             DictComprehensionExpression dictComprehension => await EvaluateDictComprehensionAsync(dictComprehension),
+            NamedArgumentExpression => throw new RuntimeException("Named decorator arguments cannot be evaluated as expressions."),
             _ => throw new RuntimeException($"Unknown expression type: {expr.GetType()}")
         };
     }
@@ -2975,6 +2976,11 @@ public partial class Interpreter
         if (withinMs is > 0)
             WithinBoundsContext.Push(withinMs.Value);
 
+        var budget = DeclarationBounds.TryGetResourceBudget(function.Declaration);
+        var pushedBudget = budget != null && budget.HasAnyBound;
+        if (pushedBudget)
+            ResourceBoundsContext.Push(budget!, function.Declaration.Name);
+
         PushDeferFrame();
         try
         {
@@ -3119,6 +3125,9 @@ public partial class Interpreter
 
             if (withinMs is > 0)
                 WithinBoundsContext.Pop();
+
+            if (pushedBudget)
+                ResourceBoundsContext.Pop();
 
             // Clean up environment if function completed normally (not InputRequiredException or ReturnException)
             // ReturnException and normal completion already cleaned up above

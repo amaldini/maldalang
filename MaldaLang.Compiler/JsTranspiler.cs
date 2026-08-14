@@ -418,6 +418,8 @@ public class JsTranspiler
                 return TranspileLiteral(literal.Value);
             case IdentifierExpression identifier:
                 return EscapeIdentifier(identifier.Name);
+            case NamedArgumentExpression named:
+                return TranspileExpression(named.Value);
             case BinaryExpression binary:
                 return TranspileBinaryExpression(binary);
             case UnaryExpression unary:

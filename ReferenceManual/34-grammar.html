@@ -83,7 +83,10 @@ ComponentParams ::= "(" ParamList? ")"
 
 PropertyDecl  ::= "property" Identifier PropertyParams? Block
 DecoratedPropertyDecl ::= Decorator+ PropertyDecl
-Decorator     ::= "@" Identifier "(" ArgList? ")"
+Decorator     ::= "@" Identifier "(" DecoratorArgList? ")"
+DecoratorArgList ::= DecoratorArg ("," DecoratorArg)*
+DecoratorArg  ::= (Identifier ":")? Expression
+                  /* named keys are decorator-only; @budget(tokens: 4000, tools: 8). Call-site ArgList stays positional. */
 
 WorkflowDecl  ::= "workflow" Identifier "(" ParamList? ")" "{" WorkflowStmt* "}"
 WorkflowStmt  ::= StepStmt | ApprovalStmt | WaitStmt | Statement

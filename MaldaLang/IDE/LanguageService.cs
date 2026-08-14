@@ -250,6 +250,31 @@ public class LanguageService : ILanguageService
             MinArgs = 0,
             MaxArgs = 0,
             ArgDescriptions = new List<string>()
+        },
+        ["within"] = new DecoratorInfo
+        {
+            Name = "within",
+            Description = "Wall-clock bound decorator",
+            Format = "@within(ms)",
+            Documentation = "Enforces a wall-clock timeout on a function body or await prompt(...) / agent.think() turn. Expects a single positive integer literal (milliseconds).",
+            MinArgs = 1,
+            MaxArgs = 1,
+            ArgDescriptions = new List<string> { "ms (positive int): Deadline in milliseconds" }
+        },
+        ["budget"] = new DecoratorInfo
+        {
+            Name = "budget",
+            Description = "Resource budget decorator",
+            Format = "@budget(tokens: N, tools: N, cost: N)",
+            Documentation = "Aborts a function or prompt/agent turn when a declared resource bound trips. Named keys only: tokens (prompt+completion, or chars/4 best-effort), tools (invocation count, not allow-list length), optional cost when the backend reports it. Unknown keys are errors under --strict-types. MALDA_AGENT_CONTEXT_BUDGET_TOKENS remains a context-trim fallback for undeclared agents.",
+            MinArgs = 1,
+            MaxArgs = 3,
+            ArgDescriptions = new List<string>
+            {
+                "tokens (positive int, optional): Max prompt+completion tokens for the turn",
+                "tools (positive int, optional): Max tool invocations in the turn",
+                "cost (positive number, optional): Max reported usage cost when the backend exposes it"
+            }
         }
     };
     

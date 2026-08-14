@@ -1,6 +1,6 @@
 # MALDA language constructs plan (post–Final 1.0)
 
-**Status:** L1a, L1b, and L2 landed; L1c–L6 plan (L3–L6 remaining)  
+**Status:** L1a, L1b, L2, and L3 landed; L1c–L6 plan (L4–L6 remaining)  
 **Created:** 2026-08-14  
 **Audience:** maintainers choosing the next *language* work after P0 maturity  
 **Spec line:** Final 1.0 stays; each landed workstream is a **MINOR** additive contract (or PATCH if docs-only). Breaking parse/runtime is **MAJOR** and is out of scope here.
@@ -242,8 +242,9 @@ prompt answer(q) -> Answer { ... }
 `ResourceBoundsContext`), `BoundsDiagnostics.cs`, `PromptValue.Execution.cs`, `Agent.cs` /
 `Conversation.cs` usage hooks, RM §9.7, Phase 6 tests style (`Phase6EffectsTests`).
 
-**Done when:** decorator parse + diagnostics + runtime abort tests; transpile honors the
-same decorator; env var remains a **fallback** for undeclared agents, not a second API.
+**Done when (L3 — landed)**
+
+- Decorator parse + diagnostics + runtime abort tests; transpile honors the same decorator; env var remains a **fallback** for undeclared agents, not a second API.
 
 **Out of L3:** making `@pure` follow a call-graph (that is L4-shaped work for effects).
 
@@ -356,7 +357,7 @@ Follow [`docs/spec/CHANGELOG.md`](spec/CHANGELOG.md) “How to propose a spec ch
 | L1a | `validate` + nested fields work for sum-type names; clash still throws |
 | L1b | Optional constructor types in schema emit; name-only still parses — **landed** |
 | L2 | One declaration replaces the two-prompt Mode C example; Mode B unchanged — **landed** |
-| L3 | `@budget` trips in tests without breaking `@within` |
+| L3 | `@budget` trips in tests without breaking `@within` — **landed** |
 | L4 | In-file helper calling `now()` from a workflow body is WF1001 |
 | L5 | At least one opt-in ASK/GraphMemory path returns citations on a wrapper |
 | L6 | Still deferred |
@@ -390,3 +391,4 @@ through helpers, and provenance is a value when we need it.
 | 2026-08-14 | Initial plan: L1–L6 from post-P0 language-construct discussion (Graph vs Tree, no macros, AI-first grammar filter) |
 | 2026-08-14 | L1a landed: `validate` + nested schema fields resolve sum-type names |
 | 2026-08-14 | L2 landed: `gather:` + `-> Type` gather-then-extract prompts |
+| 2026-08-14 | L3 landed: `@budget(tokens, tools, cost?)` beside `@within` |

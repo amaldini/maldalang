@@ -58,4 +58,80 @@ internal static class DecoratorArgs
 
         return value > 0;
     }
+
+    public static IReadOnlyList<NamedArgumentExpression> ReadNamedArguments(Decorator decorator)
+    {
+        var named = new List<NamedArgumentExpression>();
+        foreach (var arg in decorator.Arguments)
+        {
+            if (arg is NamedArgumentExpression namedArg)
+                named.Add(namedArg);
+        }
+
+        return named;
+    }
+
+    public static bool TryReadResourceBudget(Decorator decorator, out MaldaLang.Interpreter.ResourceBudget? budget)
+    {
+        budget = null;
+        if (decorator.Arguments.Count == 0)
+            return false;
+
+        int? tokens = null;
+        int? tools = null;
+        double? cost = null;
+
+        foreach (var arg in decorator.Arguments)
+        {
+            if (arg is not NamedArgumentExpression named)
+                return false;
+
+            if (!TryReadPositiveNumberLiteral(named.Value, out var number))
+                return false;
+
+            if (string.Equals(named.Name, "tokens", StringComparison.OrdinalIgnoreCase))
+            {
+                if (tokens.HasValue || number != Math.Floor(number))
+                    return false;
+                tokens = (int)number;
+            }
+            else if (string.Equals(named.Name, "tools", StringComparison.OrdinalIgnoreCase))
+            {
+                if (tools.HasValue || number != Math.Floor(number))
+                    return false;
+                tools = (int)number;
+            }
+            else if (string.Equals(named.Name, "cost", StringComparison.OrdinalIgnoreCase))
+            {
+                if (cost.HasValue)
+                    return false;
+                cost = number;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        budget = new MaldaLang.Interpreter.ResourceBudget(tokens, tools, cost);
+        return budget.HasAnyBound;
+    }
+
+    public static bool TryReadPositiveNumberLiteral(Expression expression, out double value)
+    {
+        value = 0;
+        if (expression is not LiteralExpression literal)
+            return false;
+
+        value = literal.Value switch
+        {
+            int i => i,
+            long l => l,
+            float f => f,
+            double d => d,
+            _ => 0
+        };
+
+        return value > 0;
+    }
 }

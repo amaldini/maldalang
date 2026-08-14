@@ -168,6 +168,102 @@ public class Phase6EffectsTests : TestBase
     }
 
     [Fact]
+    public void StrictMode_BudgetDecorator_UnknownKey_IsError()
+    {
+        var diagnostics = AnalyzeStrict("""
+            @budget(tokens: 4000, widgets: 2)
+            prompt bad() {
+                user "nope";
+            }
+            """);
+        Assert.Contains(diagnostics, d =>
+            d.Source == "malda-bounds" &&
+            d.Severity == DiagnosticSeverity.Error &&
+            d.Message.Contains("unknown key", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void StrictMode_BudgetDecorator_Positional_IsError()
+    {
+        var diagnostics = AnalyzeStrict("""
+            @budget(4000)
+            function bad() {
+                return 1;
+            }
+            """);
+        Assert.Contains(diagnostics, d =>
+            d.Source == "malda-bounds" &&
+            d.Severity == DiagnosticSeverity.Error &&
+            d.Message.Contains("positional", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void StrictMode_BudgetDecorator_Valid_Passes()
+    {
+        var diagnostics = AnalyzeStrict("""
+            @within(2000)
+            @budget(tokens: 4000, tools: 8)
+            prompt bounded() {
+                user "ok";
+            }
+            """);
+        Assert.DoesNotContain(diagnostics, d => d.Source == "malda-bounds");
+    }
+
+    [Fact]
+    public void PromptBudget_ParsesNamedKeys()
+    {
+        var lexer = new Lexer("""
+            @budget(tokens: 4000, tools: 8, cost: 1.5)
+            prompt bounded() {
+                user "hello";
+            }
+            """);
+        var tokens = lexer.Tokenize();
+        var parser = new Parser.Parser(tokens);
+        var statements = parser.Parse();
+        Assert.Empty(parser.Errors);
+
+        var prompt = Assert.IsType<MaldaLang.Parser.AST.Declarations.PromptDeclaration>(statements[0]);
+        var budget = DeclarationBounds.TryGetResourceBudget(prompt);
+        Assert.NotNull(budget);
+        Assert.Equal(4000, budget!.MaxTokens);
+        Assert.Equal(8, budget.MaxTools);
+        Assert.Equal(1.5, budget.MaxCost);
+    }
+
+    [Fact]
+    public void WithinBound_WithBudget_StillThrowsOnTimeout()
+    {
+        var source = """
+            @within(20)
+            @budget(tokens: 4000)
+            function slow() {
+                sleep(100);
+            }
+            slow();
+            """;
+        var ex = Assert.Throws<RuntimeException>(() => RunProgram(source));
+        Assert.Contains("exceeded @within", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("@budget", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void PromptBudget_OfflineInstance_DoesNotCallModel()
+    {
+        var output = RunProgram("""
+            schema Answer { text: string; }
+            @budget(tokens: 4000, tools: 8)
+            prompt answer(q) -> Answer {
+                user: "Question: {q}"
+            }
+            var inst = answer("hi");
+            print(inst.user);
+            """);
+        Assert.Contains("Question: hi", output);
+    }
+
+    [Fact]
     public void Phase6Example_PureHelperAndValidate()
     {
         SchemaRegistry.ClearForTesting();

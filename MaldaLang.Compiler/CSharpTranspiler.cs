@@ -13,6 +13,7 @@ using MaldaLang.Parser.AST.Expressions;
 using MaldaLang.Parser.AST.Statements;
 using MaldaLang.Parser.AST.Declarations;
 using MaldaLang.IDE;
+using MaldaLang.Interpreter;
 using MaldaLang.Runtime.Profiling;
 
 using MaldaLang.Compiler.OptionalPack;
@@ -6196,7 +6197,8 @@ public class CSharpTranspiler
         var previousCanAwait = _canAwait;
         _canAwait = true;
         _currentFunctionReturnType.Push(returnType);
-        TranspileFunctionBlock(funcDecl.Body, funcDecl.Name, funcDecl.Line, appendImplicitNullReturn: true);
+        TranspileFunctionBlock(funcDecl.Body, funcDecl.Name, funcDecl.Line, appendImplicitNullReturn: true,
+            budget: DeclarationBounds.TryGetResourceBudget(funcDecl));
         _currentFunctionReturnType.Pop();
         PopTypedScope();
         _canAwait = previousCanAwait;
@@ -6548,6 +6550,38 @@ public class CSharpTranspiler
         };
 
         return ms > 0 ? ms : null;
+    }
+
+    private void EmitResourceBudgetPush(ResourceBudget budget, string label)
+    {
+        _output.Append("MaldaLang.Interpreter.ResourceBoundsContext.Push(");
+        EmitResourceBudgetNew(budget);
+        _output.Append(", \"");
+        _output.Append(label.Replace("\\", "\\\\").Replace("\"", "\\\""));
+        _output.AppendLine("\");");
+    }
+
+    private void EmitResourceBudgetNew(ResourceBudget budget)
+    {
+        _output.Append("new MaldaLang.Interpreter.ResourceBudget(");
+        if (budget.MaxTokens is int tokens)
+            _output.Append(tokens);
+        else
+            _output.Append("null");
+        _output.Append(", ");
+        if (budget.MaxTools is int tools)
+            _output.Append(tools);
+        else
+            _output.Append("null");
+        _output.Append(", ");
+        if (budget.MaxCost is double cost)
+        {
+            _output.Append(cost.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            _output.Append("d");
+        }
+        else
+            _output.Append("null");
+        _output.Append(")");
     }
 
     private static bool IsBuiltInPromptReturnType(string? returnType)
@@ -7132,9 +7166,22 @@ public class CSharpTranspiler
             _output.AppendLine("int? __withinTimeoutMs = null;");
         }
 
+        var promptBudget = DeclarationBounds.TryGetResourceBudget(promptDecl);
+        WriteIndent();
+        if (promptBudget != null && promptBudget.HasAnyBound)
+        {
+            _output.Append("MaldaLang.Interpreter.ResourceBudget? __resourceBudget = ");
+            EmitResourceBudgetNew(promptBudget);
+            _output.AppendLine(";");
+        }
+        else
+        {
+            _output.AppendLine("MaldaLang.Interpreter.ResourceBudget? __resourceBudget = null;");
+        }
+
         // Create and return PromptInstance
         WriteIndent();
-        _output.Append("return RuntimeHelpers.ToRuntimeValue(new MaldaLang.BuiltIns.PromptInstance(system, user, model, temperature, tools, maxTokens, __responseFormatSchema, examples, __withinTimeoutMs, gather));");
+        _output.Append("return RuntimeHelpers.ToRuntimeValue(new MaldaLang.BuiltIns.PromptInstance(system, user, model, temperature, tools, maxTokens, __responseFormatSchema, examples, __withinTimeoutMs, gather, __resourceBudget));");
         _output.AppendLine();
         
         _indentLevel--;
@@ -7178,6 +7225,18 @@ public class CSharpTranspiler
         _indentLevel--;
         WriteIndent();
         _output.AppendLine("}");
+
+        WriteIndent();
+        _output.AppendLine("var __pushedBudget = __promptInstance.Budget != null && __promptInstance.Budget.HasAnyBound;");
+        WriteIndent();
+        _output.Append("if (__pushedBudget) MaldaLang.Interpreter.ResourceBoundsContext.Push(__promptInstance.Budget!, \"");
+        _output.Append(promptDecl.Name.Replace("\\", "\\\\").Replace("\"", "\\\""));
+        _output.AppendLine("\");");
+        WriteIndent();
+        _output.AppendLine("try");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
 
         WriteIndent();
         _output.AppendLine("var __defaultClient = MaldaLang.BuiltIns.DefaultLocalLlm.GetDefaultLocalClient();");
@@ -7276,7 +7335,7 @@ public class CSharpTranspiler
         _output.AppendLine("{");
         _indentLevel++;
         WriteIndent();
-        _output.AppendLine("var __gatherInstance = new MaldaLang.BuiltIns.PromptInstance(__promptInstance.System, __promptInstance.User, __promptInstance.Model, __promptInstance.Temperature, __promptInstance.Gather, __promptInstance.MaxTokens, null, __promptInstance.Examples, __promptInstance.WithinTimeoutMs, __promptInstance.Gather);");
+        _output.AppendLine("var __gatherInstance = new MaldaLang.BuiltIns.PromptInstance(__promptInstance.System, __promptInstance.User, __promptInstance.Model, __promptInstance.Temperature, __promptInstance.Gather, __promptInstance.MaxTokens, null, __promptInstance.Examples, __promptInstance.WithinTimeoutMs, __promptInstance.Gather, __promptInstance.Budget);");
         WriteIndent();
         _output.AppendLine("MaldaLang.Interpreter.RuntimeValue __gatherResponse;");
         WriteIndent();
@@ -7294,6 +7353,8 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("{");
         _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("if (__gatherEx is MaldaLang.Interpreter.RuntimeException) throw;");
         WriteIndent();
         _output.Append("throw new Exception(\"Gather step of prompt '");
         _output.Append(promptDecl.Name.Replace("\\", "\\\\").Replace("\"", "\\\""));
@@ -7356,7 +7417,7 @@ public class CSharpTranspiler
         _output.Append(MaldaLang.Interpreter.PromptValue.GatherNotesMarker.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\n", "\\n"));
         _output.AppendLine("\" + __gatherNotes;");
         WriteIndent();
-        _output.AppendLine("__promptInstance = new MaldaLang.BuiltIns.PromptInstance(__extractSystem, __extractUser, __promptInstance.Model, __promptInstance.Temperature, null, __promptInstance.MaxTokens, __extractFormat, __promptInstance.Examples, __promptInstance.WithinTimeoutMs, null);");
+        _output.AppendLine("__promptInstance = new MaldaLang.BuiltIns.PromptInstance(__extractSystem, __extractUser, __promptInstance.Model, __promptInstance.Temperature, null, __promptInstance.MaxTokens, __extractFormat, __promptInstance.Examples, __promptInstance.WithinTimeoutMs, null, __promptInstance.Budget);");
         WriteIndent();
         _output.AppendLine("__baseUser = __promptInstance.User;");
         _indentLevel--;
@@ -7378,7 +7439,7 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("var __repair = MaldaLang.BuiltIns.TypedPromptValidator.BuildRepairInstruction(__typedReturnType!, __lastError);");
         WriteIndent();
-        _output.AppendLine("__promptInstance = new MaldaLang.BuiltIns.PromptInstance(__promptInstance.System, __baseUser + \"\\n\\n\" + __repair, __promptInstance.Model, __promptInstance.Temperature, __promptInstance.Tools, __promptInstance.MaxTokens, __promptInstance.ResponseFormatSchema, __promptInstance.Examples, __promptInstance.WithinTimeoutMs, __promptInstance.Gather);");
+        _output.AppendLine("__promptInstance = new MaldaLang.BuiltIns.PromptInstance(__promptInstance.System, __baseUser + \"\\n\\n\" + __repair, __promptInstance.Model, __promptInstance.Temperature, __promptInstance.Tools, __promptInstance.MaxTokens, __promptInstance.ResponseFormatSchema, __promptInstance.Examples, __promptInstance.WithinTimeoutMs, __promptInstance.Gather, __promptInstance.Budget);");
         _indentLevel--;
         WriteIndent();
         _output.AppendLine("}");
@@ -7520,6 +7581,20 @@ public class CSharpTranspiler
         _indentLevel--;
         WriteIndent();
         _output.AppendLine("}");
+        WriteIndent();
+        _output.AppendLine("finally");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("if (__pushedBudget) MaldaLang.Interpreter.ResourceBoundsContext.Pop();");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
     }
 
     private void TranspileReturn(ReturnStatement returnStmt)
@@ -7596,7 +7671,12 @@ public class CSharpTranspiler
         return false;
     }
 
-    private void TranspileFunctionBlock(BlockStatement block, string functionName, int line, bool appendImplicitNullReturn = false)
+    private void TranspileFunctionBlock(
+        BlockStatement block,
+        string functionName,
+        int line,
+        bool appendImplicitNullReturn = false,
+        ResourceBudget? budget = null)
     {
         PushTypedScope();
         PushConstScope();
@@ -7607,6 +7687,18 @@ public class CSharpTranspiler
         _output.AppendLine();
         _indentLevel++;
         string? functionProfile = null;
+        var emitBudget = budget != null && budget.HasAnyBound;
+
+        if (emitBudget)
+        {
+            WriteIndent();
+            EmitResourceBudgetPush(budget!, functionName);
+            WriteIndent();
+            _output.AppendLine("try");
+            WriteIndent();
+            _output.AppendLine("{");
+            _indentLevel++;
+        }
 
         if (ProfilingEnabled)
         {
@@ -7661,6 +7753,23 @@ public class CSharpTranspiler
             _output.AppendLine("{");
             _indentLevel++;
             EmitFunctionProfileExit(functionProfile!);
+            _indentLevel--;
+            WriteIndent();
+            _output.AppendLine("}");
+        }
+
+        if (emitBudget)
+        {
+            _indentLevel--;
+            WriteIndent();
+            _output.AppendLine("}");
+            WriteIndent();
+            _output.AppendLine("finally");
+            WriteIndent();
+            _output.AppendLine("{");
+            _indentLevel++;
+            WriteIndent();
+            _output.AppendLine("MaldaLang.Interpreter.ResourceBoundsContext.Pop();");
             _indentLevel--;
             WriteIndent();
             _output.AppendLine("}");
@@ -8041,7 +8150,8 @@ public class CSharpTranspiler
                     var previousCanAwait = _canAwait;
                     _canAwait = false;
                     _currentFunctionReturnType.Push(methodReturnType);
-                    TranspileFunctionBlock(func.Body, member.Name, func.Line, appendImplicitNullReturn: true);
+                    TranspileFunctionBlock(func.Body, member.Name, func.Line, appendImplicitNullReturn: true,
+                        budget: DeclarationBounds.TryGetResourceBudget(func));
                     _currentFunctionReturnType.Pop();
                     PopTypedScope();
                     _canAwait = previousCanAwait;
@@ -8111,6 +8221,12 @@ public class CSharpTranspiler
             return;
         }
 
+        if (string.Equals(decorator.Name, "budget", StringComparison.OrdinalIgnoreCase))
+        {
+            // Runtime-enforced via ResourceBoundsContext / PromptInstance.Budget, not a CLR attribute.
+            return;
+        }
+
         _output.Append("[");
         _output.Append(decorator.Name);
         _output.Append("Attribute");
@@ -8120,7 +8236,10 @@ public class CSharpTranspiler
             for (int i = 0; i < decorator.Arguments.Count; i++)
             {
                 if (i > 0) _output.Append(", ");
-                TranspileExpression(decorator.Arguments[i]);
+                if (decorator.Arguments[i] is NamedArgumentExpression named)
+                    TranspileExpression(named.Value);
+                else
+                    TranspileExpression(decorator.Arguments[i]);
             }
             _output.Append(")");
         }
@@ -8145,6 +8264,9 @@ public class CSharpTranspiler
                 {
                     _output.Append(EscapeIdentifier(identifier.Name));
                 }
+                break;
+            case NamedArgumentExpression named:
+                TranspileExpression(named.Value);
                 break;
             case BinaryExpression binary:
                 TranspileBinary(binary);
