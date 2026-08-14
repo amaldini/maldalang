@@ -1,6 +1,6 @@
 # Interpret-mode source-level debug (implementation plan)
 
-**Status:** Plan (not implemented)  
+**Status:** Plan — D0 shared `DebugSession` landed (PR1); D1–D5 not started  
 **Created:** 2026-08-14  
 **Audience:** maintainers implementing DAP + a shared interpreter debug core  
 **Spec line:** Final 1.0 stays. This is **tooling**, not a language change. No new keyword, no builtin, no spec MINOR unless a later phase adds a `debugger` statement (out of v1).
@@ -181,7 +181,7 @@ Do **not** claim Desktop UIHost / MCP UI / virtual `@malda-section` tabs in the 
 
 ## Workstreams
 
-### D0 — Shared debug core (blocking)
+### D0 — Shared debug core (blocking) — landed
 
 **Concrete work**
 
@@ -372,3 +372,4 @@ Desktop Windows debug keeps working via the same `DebugSession`. Web IDE remains
 | Date | Change |
 |------|--------|
 | 2026-08-14 | Initial plan: shared `DebugSession`, DAP via `malda debug-adapter`, VS Code client; D0–D5 split |
+| 2026-08-14 | D0 landed: `Interpreter/Debug/DebugSession` pause gate, 1-based lines, IDE wrappers, `InterpretDebugSessionTests` |

@@ -25,7 +25,7 @@ Short map of how the open-source core fits together. For agent workflow rules, s
 
 Language intelligence (completions, diagnostics, hover) shares `MaldaLang/IDE/LanguageService.cs` across Desktop IDE, Web IDE, and the LSP project.
 
-Interpret-mode source-level debug (DAP / shared `DebugSession`) is planned, not shipped: [`docs/roadmap-interpret-debug.md`](roadmap-interpret-debug.md). Desktop and Web already pause via `IDebuggerHook`; VS Code has no debug adapter yet. Transpile failures stay on [`docs/debugging-transpile.md`](debugging-transpile.md).
+Interpret-mode debug core: [`MaldaLang/Interpreter/Debug/DebugSession.cs`](../MaldaLang/Interpreter/Debug/DebugSession.cs) (breakpoints, step mode, pause gate; 1-based lines). Desktop and Web wrap that session. Later DAP / VS Code work is planned in [`docs/roadmap-interpret-debug.md`](roadmap-interpret-debug.md). Transpile failures stay on [`docs/debugging-transpile.md`](debugging-transpile.md).
 
 ## Projects
 
@@ -78,7 +78,7 @@ Server-driven `ui.*` trees, patch protocol, and `MaldaLang.UIHost` wiring are do
 | `docs/start-here.md`, `docs/architecture.md` | Onboarding |
 | [`docs/roadmap-p0-maturity.md`](roadmap-p0-maturity.md) | P0 maturity roadmap (workstreams complete 2026-08-12; next = post-Final / deferred) |
 | [`docs/roadmap-language-constructs.md`](roadmap-language-constructs.md) | Post-Final language constructs (schema/sum types, Mode C, budget, workflow determinism, grounded values, capability tokens) |
-| [`docs/roadmap-interpret-debug.md`](roadmap-interpret-debug.md) | Interpret-mode source-level debug (DAP + shared debug core) — plan |
+| [`docs/roadmap-interpret-debug.md`](roadmap-interpret-debug.md) | Interpret-mode source-level debug — D0 `DebugSession` landed; DAP later |
 | [`docs/workflows-ha.md`](workflows-ha.md) | Durable workflows: single-writer + read-only ops model (W2) |
 | `docs/javascript-backend.md`, `docs/ui-framework.md`, `docs/profiling.md`, `docs/benchmarks.md`, … | Topic guides |
 | `docs/planning/` | Historical roadmap — verify against code / ReferenceManual / AGENTS.md ([README](planning/README.md)) |

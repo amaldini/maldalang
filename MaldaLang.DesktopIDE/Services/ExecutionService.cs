@@ -858,6 +858,16 @@ public class ExecutionService
                     Error = errorMessage
                 };
             }
+                catch (OperationCanceledException)
+                {
+                    FlushPendingOutputUpdate();
+                    return new ExecutionResult
+                    {
+                        Success = true,
+                        Output = _output.ToString(),
+                        Error = null
+                    };
+                }
                 catch (InputRequiredException inputEx)
                 {
                     // This should not happen here - input should be handled in ExecuteWithInputHandling

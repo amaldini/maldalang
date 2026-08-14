@@ -28,6 +28,8 @@ Some AST nodes are unmapped (`#line default`). In that case Roslyn points at `Ge
 
 `malda compile --mode javascript` already emits VLQ `.map` files and a `//# sourceMappingURL=` comment. Browser DevTools can map stack frames to `.malda`. That path is separate from the C# `#line` story above.
 
+Interpret-mode source-level debug (pause / step while running `.malda` in the interpreter) is a separate plan: [`docs/roadmap-interpret-debug.md`](roadmap-interpret-debug.md).
+
 ## Related
 
 - Agent checklist: [`AGENTS.md`](../AGENTS.md) — Debugging transpile failures

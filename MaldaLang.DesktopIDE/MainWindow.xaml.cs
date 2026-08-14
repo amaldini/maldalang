@@ -1806,7 +1806,7 @@ public partial class MainWindow : Window
             // This works because: if we insert at offset X, line at X in modified doc is where we inserted.
             // If we delete starting at offset X, line at X in modified doc is where deletion started.
             var line = CodeEditor.Document.GetLineByOffset(e.Offset);
-            int startLine = line.LineNumber - 1; // Convert to 0-based
+            int startLine = line.LineNumber; // AvalonEdit is 1-based; DebuggerService stores 1-based
             if (IsVirtualDocument(activeDocument))
             {
                 startLine += activeDocument.VirtualStartLine;
@@ -1912,10 +1912,10 @@ public partial class MainWindow : Window
         var breakpoints = _debuggerService.Breakpoints.Where(bp => bp.FilePath == fileName && bp.Enabled);
         var localBreakpoints = IsVirtualDocument(activeDocument)
             ? breakpoints
-                .Where(bp => bp.Line >= activeDocument.VirtualStartLine && bp.Line <= activeDocument.VirtualEndLine)
-                .Select(bp => bp.Line - activeDocument.VirtualStartLine + 1)
+                .Where(bp => bp.Line - 1 >= activeDocument.VirtualStartLine && bp.Line - 1 <= activeDocument.VirtualEndLine)
+                .Select(bp => bp.Line - activeDocument.VirtualStartLine)
                 .ToList()
-            : breakpoints.Select(bp => bp.Line + 1).ToList();
+            : breakpoints.Select(bp => bp.Line).ToList();
         
         _breakpointLines.Clear();
         _breakpointLines.AddRange(localBreakpoints);
@@ -3474,6 +3474,7 @@ public partial class MainWindow : Window
     
     public void ToggleBreakpointAtLine(int lineNumber)
     {
+        // lineNumber is 1-based (AvalonEdit / DebugSession). VirtualStartLine is a 0-based section offset.
         var activeDocument = GetActiveDocument();
         var fileName = GetPhysicalPath(activeDocument) ?? "main.malda";
         if (IsVirtualDocument(activeDocument))
@@ -3491,7 +3492,7 @@ public partial class MainWindow : Window
         BreakpointsListBox.Items.Clear();
         foreach (var bp in _debuggerService.Breakpoints)
         {
-            var text = $"Line {bp.Line + 1}";
+            var text = $"Line {bp.Line}";
             if (!string.IsNullOrEmpty(bp.Condition))
             {
                 text += $" ({bp.Condition})";
@@ -3503,7 +3504,7 @@ public partial class MainWindow : Window
     private void CodeEditor_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         var line = CodeEditor.Document.GetLineByNumber(CodeEditor.TextArea.Caret.Line);
-        var lineNumber = line.LineNumber - 1; // 0-based
+        var lineNumber = line.LineNumber; // 1-based (same as DebuggerService / core)
         var activeDocument = GetActiveDocument();
         var fileName = GetPhysicalPath(activeDocument) ?? "main.malda";
         if (IsVirtualDocument(activeDocument))
@@ -4372,6 +4373,7 @@ public partial class MainWindow : Window
     private void StopActiveExecution()
     {
         // Stop debug execution if running
+        _debuggerHook?.Stop();
         _debugCancellation?.Cancel();
         _debuggerService.Stop();
         _debuggerHook = null;
@@ -5333,6 +5335,7 @@ public partial class MainWindow : Window
         // Stop debugger if running
         if (_debuggerService.State.IsRunning)
         {
+            _debuggerHook?.Stop();
             _debugCancellation?.Cancel();
             _debuggerService.Stop();
             _debuggerHook = null;
@@ -5442,6 +5445,7 @@ public partial class MainWindow : Window
             // Stop debugger if running
             if (_debuggerService.State.IsRunning)
             {
+                _debuggerHook?.Stop();
                 _debugCancellation?.Cancel();
                 _debuggerService.Stop();
                 _debuggerHook = null;
@@ -6117,6 +6121,7 @@ public partial class MainWindow : Window
         // Stop debugger if running
         if (_debuggerService.State.IsRunning)
         {
+            _debuggerHook?.Stop();
             _debugCancellation?.Cancel();
             _debuggerService.Stop();
             _debuggerHook = null;
@@ -7088,7 +7093,7 @@ public partial class MainWindow : Window
     // Debug Menu
     private void DebugToggleBreakpoint_Click(object sender, RoutedEventArgs e)
     {
-        var line = CodeEditor.TextArea.Caret.Line - 1; // Convert to 0-based
+        var line = CodeEditor.TextArea.Caret.Line; // 1-based (same as DebuggerService / core)
         var activeDocument = GetActiveDocument();
         var filePath = GetPhysicalPath(activeDocument) ?? "main.malda";
         if (IsVirtualDocument(activeDocument))

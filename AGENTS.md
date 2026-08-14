@@ -73,6 +73,7 @@ Web IDE improvements (Monaco UX, examples browser, diagnostics presentation) are
 | Lexer / tokens | `MaldaLang/Lexer.cs`, `MaldaLang/TokenType.cs` |
 | Parser / AST | `MaldaLang/Parser/` |
 | Interpreter | `MaldaLang/Interpreter/Interpreter.cs` (+ partials) |
+| Interpret debug core | `MaldaLang/Interpreter/Debug/DebugSession.cs` — pause gate / 1-based lines; IDE hooks wrap this |
 | Built-in functions | `MaldaLang/BuiltIns/BuiltInFunctions.cs`, `BuiltInRegistry.cs` |
 | C# transpile | `MaldaLang.Compiler/CSharpTranspiler.cs`, `Compiler.cs` |
 | JS / PWA transpile | `MaldaLang.Compiler/JsTranspiler.cs` |

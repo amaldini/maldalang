@@ -75,7 +75,7 @@ public class BreakpointMargin : AbstractMargin
                 if (pos.Y >= lineTop && pos.Y <= lineBottom)
                 {
                     var lineNumber = visualLine.FirstDocumentLine.LineNumber;
-                    _mainWindow.ToggleBreakpointAtLine(lineNumber - 1); // Convert to 0-based
+                    _mainWindow.ToggleBreakpointAtLine(lineNumber); // AvalonEdit line is 1-based; service stores 1-based
                     e.Handled = true;
                     break;
                 }

@@ -11,7 +11,7 @@ public interface IDebuggerHook
     /// <summary>
     /// Called before executing a statement at the given line
     /// </summary>
-    /// <param name="line">Line number of the statement</param>
+    /// <param name="line">1-based line number of the statement</param>
     /// <param name="file">File path (optional)</param>
     /// <returns>True if execution should continue, false if it should pause</returns>
     bool OnStatement(int line, string? file = null);
@@ -19,7 +19,7 @@ public interface IDebuggerHook
     /// <summary>
     /// Called when execution should pause (breakpoint hit, step, etc.)
     /// </summary>
-    /// <param name="line">Current line number</param>
+    /// <param name="line">1-based current line number</param>
     /// <param name="file">File path (optional)</param>
     void OnPause(int line, string? file = null);
     
@@ -40,7 +40,7 @@ public interface IDebuggerHook
     /// <summary>
     /// Checks if there's a breakpoint at the given line
     /// </summary>
-    /// <param name="line">Line number</param>
+    /// <param name="line">1-based line number</param>
     /// <param name="file">File path (optional)</param>
     /// <returns>True if there's a breakpoint, false otherwise</returns>
     bool HasBreakpoint(int line, string? file = null);
@@ -48,11 +48,17 @@ public interface IDebuggerHook
     /// <summary>
     /// Checks if a breakpoint condition is met
     /// </summary>
-    /// <param name="line">Line number</param>
+    /// <param name="line">1-based line number</param>
     /// <param name="file">File path (optional)</param>
     /// <param name="evaluator">Function to evaluate the condition expression</param>
     /// <returns>True if condition is met (or no condition), false otherwise</returns>
     bool CheckBreakpointCondition(int line, string? file, Func<bool> evaluator);
+
+    /// <summary>
+    /// Waits while execution is paused. Continue / step / stop release the gate.
+    /// Must not busy-wait. Cancellation (interpret token or <c>Stop</c>) completes the wait.
+    /// </summary>
+    Task WaitIfPausedAsync(CancellationToken cancellationToken);
     
     /// <summary>
     /// Gets the current debug mode (step over, step into, continue, etc.)

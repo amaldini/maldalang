@@ -21,6 +21,7 @@ using MaldaLang;
 using MaldaLang.Parser;
 using MaldaLang.Runtime.Profiling;
 using MaldaLang.Runtime.Workflows;
+using MaldaLang.Interpreter.Debug;
 
 /// <summary>Context when executing inside a workflow body (for step journaling and WF1001/WF1002 checks).</summary>
 internal sealed class WorkflowExecutionContext
@@ -75,6 +76,7 @@ public partial class Interpreter
     private ActorInstance? _currentActor = null;
     private IDebuggerHook? _debuggerHook;
     private List<InterpreterCallStackFrame> _callStack = new();
+    private CancellationToken _interpretCancellation = CancellationToken.None;
     private string? _currentFile = null;
     private IInputProvider? _inputProvider;
     private Stack<ExecutionFrame> _executionStack = new();
@@ -432,8 +434,18 @@ public partial class Interpreter
         return variables;
     }
     
-    public async Task InterpretAsync(List<Statement> statements)
+    public async Task InterpretAsync(List<Statement> statements, CancellationToken cancellationToken = default)
     {
+        _interpretCancellation = cancellationToken;
+        var scriptFile = _currentFile ?? "main.malda";
+        var scriptLine = statements.Count > 0 && statements[0].Line > 0 ? statements[0].Line : 1;
+        var scriptFrame = new InterpreterCallStackFrame
+        {
+            FunctionName = "<script>",
+            Line = scriptLine,
+            File = scriptFile
+        };
+        _callStack.Add(scriptFrame);
         try
         {
             // For standalone script execution (CLI/tests), always treat each InterpretAsync call
@@ -510,6 +522,11 @@ public partial class Interpreter
         catch (System.Exception)
         {
             throw;
+        }
+        finally
+        {
+            _callStack.Remove(scriptFrame);
+            _interpretCancellation = CancellationToken.None;
         }
     }
     
@@ -1521,23 +1538,19 @@ public partial class Interpreter
         // Check debugger hook before executing
         try
         {
-            if (_debuggerHook != null)
+            if (_debuggerHook != null && DebugStatementClassifier.IsStoppable(stmt))
             {
-                // Convert statement line from 1-based (token line) to 0-based (breakpoint line)
-                // Tokens use 1-based line numbers, but breakpoints are stored as 0-based
-                var statementLine = stmt.Line - 1;
-                if (!_debuggerHook.OnStatement(statementLine, _currentFile))
+                if (_callStack.Count > 0)
                 {
-                    // Execution should pause - notify debugger and wait
-                    // Use 1-based line for display (original statement line)
+                    var frame = _callStack[_callStack.Count - 1];
+                    frame.Line = stmt.Line;
+                    frame.File = _currentFile ?? frame.File;
+                }
+
+                if (!_debuggerHook.OnStatement(stmt.Line, _currentFile))
+                {
                     _debuggerHook.OnPause(stmt.Line, _currentFile);
-                    
-                    // Wait for debugger to continue (with timeout to avoid infinite wait)
-                    var timeout = DateTime.Now.AddSeconds(300); // 5 minute timeout
-                    while (_debuggerHook.GetDebugMode() == DebugMode.Paused && DateTime.Now < timeout)
-                    {
-                        await Task.Delay(50); // Use async delay instead of Thread.Sleep
-                    }
+                    await _debuggerHook.WaitIfPausedAsync(_interpretCancellation);
                 }
             }
 

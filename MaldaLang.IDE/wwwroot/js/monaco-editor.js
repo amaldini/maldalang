@@ -290,7 +290,7 @@ function initializeEditor(elementId, dotNetHelper, resolve) {
                     }, 10);
                 }
                 
-                const startLine = change.range.startLineNumber - 1; // Convert to 0-based
+                const startLine = change.range.startLineNumber; // 1-based (DebuggerService / core)
                 const oldLineCount = change.range.endLineNumber - change.range.startLineNumber + 1;
                 const newLineCount = change.text.split('\n').length;
                 const delta = newLineCount - oldLineCount;
@@ -317,7 +317,7 @@ function initializeEditor(elementId, dotNetHelper, resolve) {
                 e.target.type === monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN) {
                 const line = e.target.position ? e.target.position.lineNumber : e.target.lineNumber;
                 if (line) {
-                    dotNetHelper.invokeMethodAsync('OnBreakpointToggleJS', line - 1).catch(err => console.error(err));
+                    dotNetHelper.invokeMethodAsync('OnBreakpointToggleJS', line).catch(err => console.error(err));
                 }
             }
         }
@@ -490,9 +490,9 @@ window.setMonacoBreakpoints = function (elementId, breakpoints) {
         .filter(bp => bp.enabled !== false) // Only show enabled breakpoints
         .map(bp => ({
             range: {
-                startLineNumber: bp.line + 1,
+                startLineNumber: bp.line,
                 startColumn: 1,
-                endLineNumber: bp.line + 1,
+                endLineNumber: bp.line,
                 endColumn: 1
             },
             options: {

@@ -5,6 +5,7 @@ namespace MaldaLang.DesktopIDE.Models;
 
 public class Breakpoint
 {
+    /// <summary>1-based source line (same as <c>DebugSession</c> / AST <c>Node.Line</c>).</summary>
     public int Line { get; set; }
     public int Column { get; set; }
     public bool Enabled { get; set; } = true;

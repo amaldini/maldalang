@@ -5,6 +5,10 @@ using MaldaLang.IDE.Models;
 
 namespace MaldaLang.IDE.Services;
 
+/// <summary>
+/// Web IDE debug UI state. Breakpoint and current-line numbers are 1-based
+/// (same as the interpreter <c>DebugSession</c>). Convert at Monaco edges only.
+/// </summary>
 public class DebuggerService
 {
     private readonly List<Breakpoint> _breakpoints = new();
@@ -97,7 +101,7 @@ public class DebuggerService
     /// Adjusts breakpoints when lines are inserted or deleted in the document.
     /// </summary>
     /// <param name="filePath">The file path where the change occurred</param>
-    /// <param name="lineNumber">The line number where the change occurred (0-based)</param>
+    /// <param name="lineNumber">The line number where the change occurred (1-based)</param>
     /// <param name="delta">The number of lines added (positive) or removed (negative)</param>
     public void AdjustBreakpointsForLineChange(string filePath, int lineNumber, int delta)
     {

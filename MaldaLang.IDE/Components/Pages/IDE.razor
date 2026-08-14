@@ -662,7 +662,7 @@
                 UpdateDebugInfo();
                 if (codeEditor != null && line > 0)
                 {
-                    await codeEditor.HighlightLine(line);
+                    await codeEditor.HighlightLine(line - 1);
                 }
                 StateHasChanged();
             });
@@ -719,6 +719,7 @@
     
     private void StopProgram()
     {
+        debuggerHook?.Stop();
         debugCancellation?.Cancel();
         DebuggerService.Stop();
         debuggerHook = null;
