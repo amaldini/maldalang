@@ -486,7 +486,9 @@ public sealed class DebugAdapterSession
         {
             Reason = reason,
             ThreadId = 1,
-            AllThreadsStopped = true
+            AllThreadsStopped = true,
+            Text = _debugSession.LastStopText,
+            Description = _debugSession.LastStopText
         });
     }
 

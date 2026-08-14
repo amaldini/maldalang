@@ -521,12 +521,32 @@ public partial class Interpreter
                 }
             }
         }
-        catch (RuntimeException)
+        catch (BreakException)
         {
             throw;
         }
-        catch (System.Exception)
+        catch (ContinueException)
         {
+            throw;
+        }
+        catch (ReturnException)
+        {
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (RuntimeException ex)
+        {
+            // v1: pause only on uncaught interpret exceptions. MALDA try/catch
+            // handles RuntimeException before this outer catch.
+            await PauseForUncaughtExceptionAsync(ex.Message, ex.Line, ex.File);
+            throw;
+        }
+        catch (MALDAException ex)
+        {
+            await PauseForUncaughtExceptionAsync(ex.Message, ex.Line, ex.File);
             throw;
         }
         finally
@@ -534,6 +554,27 @@ public partial class Interpreter
             _callStack.Remove(scriptFrame);
             _interpretCancellation = CancellationToken.None;
         }
+    }
+
+    /// <summary>
+    /// v1: pause on uncaught <see cref="RuntimeException"/> / <see cref="MALDAException"/>
+    /// only. Control-flow exceptions and cancel are not paused. After Continue,
+    /// the original exception is rethrown so the run still fails.
+    /// </summary>
+    private async Task PauseForUncaughtExceptionAsync(string message, int? line, string? file)
+    {
+        if (_debuggerHook == null)
+            return;
+
+        var pauseLine = line is > 0 ? line.Value : (_callStack.Count > 0 ? _callStack[_callStack.Count - 1].Line : 1);
+        var pauseFile = file ?? _currentFile;
+
+        var session = _debuggerHook as DebugSession
+            ?? (_debuggerHook as IHasDebugSession)?.Session;
+        session?.PauseForUncaughtException(message, pauseLine, pauseFile);
+
+        _debuggerHook.OnPause(pauseLine, pauseFile);
+        await _debuggerHook.WaitIfPausedAsync(_interpretCancellation);
     }
     
     public void ResetExecutionState()
@@ -1100,9 +1141,18 @@ public partial class Interpreter
             var stepId = Guid.NewGuid().ToString("N");
             engine.JournalStepStart(stepId, ctx.InstanceId, stmt.StepId, attempt, maxAttempts, timeoutMs, "{}", null);
 
+            InterpreterCallStackFrame? stepFrame = null;
             try
             {
                 _insideWorkflowStep = true;
+                stepFrame = new InterpreterCallStackFrame
+                {
+                    FunctionName = "step " + stmt.StepId,
+                    Line = stmt.Line,
+                    File = _currentFile ?? string.Empty,
+                    Environment = _environment ?? ctx.BodyEnv
+                };
+                _callStack.Add(stepFrame);
                 var (timedOut, result) = await EvaluateWorkflowStepWithTimeoutAsync(stmt.CallExpression, timeoutMs);
                 if (timedOut)
                 {
@@ -1151,6 +1201,13 @@ public partial class Interpreter
             }
             finally
             {
+                if (stepFrame != null)
+                {
+                    if (_callStack.Count > 0 && ReferenceEquals(_callStack[_callStack.Count - 1], stepFrame))
+                        _callStack.RemoveAt(_callStack.Count - 1);
+                    else
+                        _callStack.Remove(stepFrame);
+                }
                 _insideWorkflowStep = false;
             }
         }

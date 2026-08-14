@@ -40,9 +40,11 @@ public class ActorRuntime
         var instance = new ActorInstance(actorDef, id);
         _actors[id] = instance;
         
-        // Create isolated interpreter for this actor
+        // v1: spawned actors are not stepped. Sharing the parent hook across
+        // actor tasks is unsafe (concurrent pause). Debug the actor script as
+        // a single-threaded program instead.
         var actorInterpreter = new Interpreter(
-            debuggerHook: parentInterpreter.GetDebuggerHook(),
+            debuggerHook: null,
             currentFile: parentInterpreter.GetCurrentFile(),
             inputProvider: parentInterpreter.GetInputProvider()
         );

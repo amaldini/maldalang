@@ -1,6 +1,6 @@
 # Interpret-mode source-level debug (implementation plan)
 
-**Status:** D0 shared `DebugSession`, D1 inspect, D2 `malda debug-adapter`, and D3 `vscode-malda` debugger contribution landed; D4–D5 not started  
+**Status:** D0 shared `DebugSession`, D1 inspect, D2 `malda debug-adapter`, D3 `vscode-malda` debugger contribution, and D5 MALDA-specific stops landed; D4 is not a rewrite (Desktop/Web already wrap `DebugSession`)  
 **Created:** 2026-08-14  
 **Audience:** maintainers implementing DAP + a shared interpreter debug core  
 **Spec line:** Final 1.0 stays. This is **tooling**, not a language change. No new keyword, no builtin, no spec MINOR unless a later phase adds a `debugger` statement (out of v1).
@@ -37,7 +37,7 @@ This is the plan for **source-level debugging of interpreted `.malda`**. It is n
 | CLI | `malda program.malda` | `malda debug-adapter` speaks DAP on stdio (D2); `--profile` exists, `--debug` does not |
 | LSP / VS Code | `MaldaLang.LanguageServer`, `vscode-malda` | LSP on `malda-lsp`; debugger type `malda` launches `malda debug-adapter` via `malda.cli.path` (D3) |
 | Tests | — | **Zero** tests for `IDebuggerHook` / pause / step |
-| Actors | [`ActorRuntime.SpawnActor`](../MaldaLang/Interpreter/ActorRuntime.cs) | Child interpreter **shares** the parent hook (concurrent pause is undefined) |
+| Actors | [`ActorRuntime.SpawnActor`](../MaldaLang/Interpreter/ActorRuntime.cs) | Child interpreter is constructed with **no** debugger hook (spawned actors are not stepped) |
 | Transpile debug | [`docs/debugging-transpile.md`](debugging-transpile.md) | `#line` + `build_errors.txt` — keep; do not conflate with this plan |
 
 Desktop and Web already prove the hook can pause and step. The gap is: the core is racy and line-confused, inspect is globals-only, there is no DAP, and VS Code (the cross-platform editor) cannot debug interpret mode at all.
@@ -259,7 +259,7 @@ Evaluate `breakpoint.Condition` with the watch evaluator in the current environm
 
 - One implementation of step-over depth. Filtered tests do not need WPF.
 
-### D5 — MALDA-specific stops (after D0–D3)
+### D5 — MALDA-specific stops (after D0–D3) — landed
 
 Only after VS Code can debug `hello_world.malda`:
 
@@ -304,7 +304,11 @@ dotnet test MaldaLang.Tests --filter "FullyQualifiedName~InterpretDebug"
 | `InterpretDebugSessionTests` | D0 pause gate, step modes, 1-based lines, file paths, skip block |
 | `InterpretDebugInspectTests` | D1 scopes, locals, lazy children, hide stdlib |
 | `InterpretDebugAdapterTests` | D2 DAP launch / breakpoint / stackTrace / continue over anonymous pipes |
-| `InterpretDebugImportTests` | D5 imported file breakpoint |
+| `InterpretDebugImportTests` | D5 imported / included file breakpoint |
+| `InterpretDebugWorkflowTests` | D5 workflow `step` stack frame |
+| `InterpretDebugExceptionTests` | D5 uncaught exception pause |
+| `InterpretDebugActorTests` | D5 spawned actors do not share the hook |
+| `InterpretDebugPromptTests` | D5 `await prompt …` output |
 
 Use a **programmable** hook or `DebugSession` directly in-process. Do not require VS Code. Tiny programs as strings (no new Examples unless useful as a manual recipe).
 
@@ -376,3 +380,4 @@ Desktop Windows debug keeps working via the same `DebugSession`. Web IDE remains
 | 2026-08-14 | D1 / D1.5 landed: DAP-shaped scopes, lazy children, watches, conditional breakpoints (`InterpretDebugInspectTests`) |
 | 2026-08-14 | D2 landed: `malda debug-adapter` DAP stdio session + `InterpretDebugAdapterTests` |
 | 2026-08-14 | D3 landed: `vscode-malda` debugger type `malda`, `malda.cli.path`, F5 docs (`InterpretDebugVscodeContributionTests`) |
+| 2026-08-14 | D5 landed: include/import file breakpoints, workflow `step` stack frames, `await prompt …` output, uncaught exception pause, actors do not share the hook |

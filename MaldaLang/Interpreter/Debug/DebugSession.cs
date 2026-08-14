@@ -94,9 +94,22 @@ public sealed class DebugSession : IDebuggerHook
 
     /// <summary>
     /// DAP <c>stopped.reason</c> for the last pause: <c>entry</c>, <c>breakpoint</c>,
-    /// <c>step</c>, or <c>pause</c>. Exception stops are D5.
+    /// <c>step</c>, <c>pause</c>, or <c>exception</c>.
+    /// v1 pauses only on uncaught interpret exceptions
+    /// (<see cref="RuntimeException"/> / <see cref="MALDAException"/>).
+    /// MALDA <c>try</c>/<c>catch</c> still swallows without a debug pause.
+    /// <c>setExceptionBreakpoints</c> is v1.1.
     /// </summary>
     public string LastStopReason { get; private set; } = "step";
+
+    /// <summary>
+    /// DAP <c>stopped.text</c> / <c>description</c> for the last pause
+    /// (exception message when <see cref="LastStopReason"/> is <c>exception</c>).
+    /// </summary>
+    public string? LastStopText { get; private set; }
+
+    /// <summary>Exception message from the last uncaught interpret stop, if any.</summary>
+    public string? ExceptionMessage => LastStopReason == "exception" ? LastStopText : null;
 
     /// <summary>
     /// File used when one side of a breakpoint compare is null/empty.
@@ -222,7 +235,7 @@ public sealed class DebugSession : IDebuggerHook
 
         if (mode == DebugMode.Paused)
         {
-            LastStopReason = "pause";
+            SetStopReason("pause");
             EnterPause(line, file);
             return false;
         }
@@ -230,7 +243,7 @@ public sealed class DebugSession : IDebuggerHook
         if (stopOnEntry)
         {
             _stopOnEntry = false;
-            LastStopReason = "entry";
+            SetStopReason("entry");
             EnterPause(line, file);
             return false;
         }
@@ -240,7 +253,7 @@ public sealed class DebugSession : IDebuggerHook
             if (!ShouldBreakOnBreakpoint(line, file))
                 return true;
 
-            LastStopReason = "breakpoint";
+            SetStopReason("breakpoint");
             EnterPause(line, file);
             return false;
         }
@@ -248,21 +261,21 @@ public sealed class DebugSession : IDebuggerHook
         if (_pauseOnNextStatement)
         {
             _pauseOnNextStatement = false;
-            LastStopReason = "step";
+            SetStopReason("step");
             EnterPause(line, file);
             return false;
         }
 
         if (mode == DebugMode.StepOver && _currentDepth <= _stepOverDepth)
         {
-            LastStopReason = "step";
+            SetStopReason("step");
             EnterPause(line, file);
             return false;
         }
 
         if (mode == DebugMode.StepInto)
         {
-            LastStopReason = "step";
+            SetStopReason("step");
             EnterPause(line, file);
             return false;
         }
@@ -275,6 +288,23 @@ public sealed class DebugSession : IDebuggerHook
         CurrentLine = line;
         CurrentFile = file;
         Paused?.Invoke(line, file);
+    }
+
+    /// <summary>
+    /// Pause for an uncaught interpret exception. Caller must then
+    /// <see cref="OnPause"/> and <see cref="WaitIfPausedAsync"/>, then rethrow.
+    /// </summary>
+    public void PauseForUncaughtException(string message, int line, string? file)
+    {
+        SetStopReason("exception", message);
+        EnterPause(line, file);
+    }
+
+    /// <summary>Raises <see cref="Output"/> (await-prompt wait, condition errors, …).</summary>
+    public void EmitOutput(string message)
+    {
+        if (!string.IsNullOrEmpty(message))
+            Output?.Invoke(message);
     }
 
     public void OnFunctionEnter(string functionName, string? className, int line)
@@ -725,6 +755,12 @@ public sealed class DebugSession : IDebuggerHook
 
         public static InspectHandle ForValue(RuntimeValue value) =>
             new() { Kind = InspectKind.Value, Value = value };
+    }
+
+    private void SetStopReason(string reason, string? text = null)
+    {
+        LastStopReason = reason;
+        LastStopText = text;
     }
 
     private void EnterPause(int line, string? file)

@@ -262,6 +262,15 @@ public partial class PromptValue
 
     private async Task<RuntimeValue> ExecutePromptAsync(List<RuntimeValue> arguments, Interpreter interpreter)
     {
+        // One statement: do not add a fake LLM stack frame. Emit a wait message
+        // before Think so the debug UI does not look frozen.
+        const string waitMessage = "await prompt …";
+        interpreter.GetOutputCallback()?.Invoke(waitMessage);
+        if (interpreter.GetDebuggerHook() is Debug.DebugSession debugSession)
+            debugSession.EmitOutput(waitMessage);
+        else if (interpreter.GetDebuggerHook() is Debug.IHasDebugSession hasDebug)
+            hasDebug.Session.EmitOutput(waitMessage);
+
         var promptInstanceValue = await BuildPromptInstanceAsync(arguments, interpreter);
         var promptInstance = promptInstanceValue.AsObject() as PromptInstance;
         if (promptInstance == null)

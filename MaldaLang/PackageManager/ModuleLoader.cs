@@ -149,6 +149,9 @@ public class ModuleLoader
         // Fresh interpreter registers math/str/io (and other builtins) on _globals.
         // Module bindings live in a child environment so lookups see stdlib, while
         // export merge uses GetOwnVariables and does not re-export those parents.
+        // No debugger hook: module load must not debug concurrently with the host.
+        // Breakpoints still apply when the host later executes imported function
+        // bodies (those AST nodes have SourceFile = imported path).
         var moduleInterpreter = new Interpreter();
         var moduleEnvironment = new Environment(moduleInterpreter._globals);
         moduleInterpreter._environment = moduleEnvironment;
