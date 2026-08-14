@@ -111,3 +111,4 @@ public class SchemaDeclarationDiagnosticsTests
         StrictTypesAnalysis.Analyze(statements, StrictTypesOptions.Default, diagnostics);
         Assert.DoesNotContain(diagnostics, d => d.Source == "malda-schema");
     }
+}
