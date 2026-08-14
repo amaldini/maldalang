@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="MALDA GraphMemory - Semantic memory system for AI agents">
-    <title>17. GraphMemory - MALDA Reference Manual</title>
+    <title>18. GraphMemory - MALDA Reference Manual</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="syntax.css">
     <link rel="stylesheet" href="print.css" media="print">
@@ -16,15 +16,15 @@
     </header>
     <nav></nav>
     <main>
-        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>17. GraphMemory</span></div>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>18. GraphMemory</span></div>
 
-        <h1>17. GraphMemory</h1>
+        <h1>18. GraphMemory</h1>
 
         <p>GraphMemory is a built-in class that provides semantic memory capabilities for AI agents. It combines a knowledge graph (for relationship modeling) with a vector database (for semantic search) to enable agents to remember facts, understand relationships, and retrieve relevant context based on semantic similarity.</p>
 
         <p>GraphMemory is particularly powerful when used with the <code>Agent</code> class, automatically injecting relevant memories into agent prompts to provide context-aware responses across multiple sessions.</p>
 
-        <h2>17.1 Creating a GraphMemory</h2>
+        <h2>18.1 Creating a GraphMemory</h2>
         <p>GraphMemory instances are created with the <code>new GraphMemory()</code> constructor:</p>
         <pre><code>var memory = new GraphMemory();
 memory.initialize();</code></pre>
@@ -83,7 +83,7 @@ var results = memory.query("What is my job?", 5);
 // related to "job" even though the words don't match exactly</code></pre>
         </div>
 
-        <h2>17.2 Remembering Facts</h2>
+        <h2>18.2 Remembering Facts</h2>
         <p>The <code>remember()</code> method stores facts in the memory system. Facts are indexed in the vector database for semantic search and stored in the knowledge graph for relationship tracking.</p>
         <pre><code>var memory = new GraphMemory();
 memory.initialize();
@@ -132,7 +132,7 @@ memory.remember(
             <li>Returns the node ID for later reference</li>
         </ul>
 
-        <h3>17.2.1 Automatic semantic linking</h3>
+        <h3>18.2.1 Automatic semantic linking</h3>
         <p>After each <code>remember()</code>, GraphMemory searches the vector index for similar prior entries. When cosine similarity is at least <strong>0.6</strong>, it adds bidirectional <code>related_to</code> edges in the knowledge graph (weighted by similarity). This connects conversational memories without extra API calls — the same pattern used in agent-memory research (e.g. Zettelkasten / A-MEM style note linking).</p>
         <pre><code>var memory = new GraphMemory();
 memory.initialize();
@@ -144,7 +144,7 @@ var cluster = memory.findRelated(id1);
 // cluster includes both facts via graph traversal</code></pre>
         <p>Code-structure edges from <code>analyzeFile()</code> use a separate <code>contains</code> edge type; conversational links use <code>related_to</code>.</p>
 
-        <h2>17.3 Querying Memory</h2>
+        <h2>18.3 Querying Memory</h2>
         <p>The <code>query()</code> method performs semantic search to find relevant memories. It uses vector similarity to find similar facts, then uses graph traversal (BFS) to find related nodes.</p>
         <pre><code>var memory = new GraphMemory();
 memory.initialize();
@@ -174,7 +174,7 @@ var topResults = memory.query("programming languages", 3);  // Top 3 results</co
             <li><code>query(queryString, options)</code> - When the second argument is an object, it is treated as <code>options</code> (default maxResults: 5)</li>
         </ul>
 
-        <h3>17.3.1 Hybrid query (semantic + recent)</h3>
+        <h3>18.3.1 Hybrid query (semantic + recent)</h3>
         <p>Pass an <code>options</code> object as the second or third argument to combine semantic search with the most recent structured entries. This is useful when conversation history is reset each iteration (e.g. Ralph Wiggum) but you still need deterministic continuity.</p>
         <pre><code>var options = {
     "recentCount": 3,
@@ -228,7 +228,7 @@ var diag = memory.getLastQueryDiagnostics();
 print(diag.returned);
 print(diag.lexicalMinScoreMode);</code></pre>
 
-        <h3>17.3.2 Recent entries (<code>getRecent</code>)</h3>
+        <h3>18.3.2 Recent entries (<code>getRecent</code>)</h3>
         <p>Returns the most recent memory entries sorted by timestamp, without semantic search.</p>
         <pre><code>var recent = memory.getRecent(5);           // last 5 entries
 var phaseRecent = memory.getRecent(3, "movement");  // last 3 for phase "movement"
@@ -251,7 +251,7 @@ var scoped = memory.getRecent(5, "", "", "chat:123");    // optional scope filte
             <li>Returns deduplicated memory objects, optionally filtered by <code>phase</code> / <code>type</code> in <code>options</code></li>
         </ol>
 
-        <h2>17.3.3 Forgetting entries (<code>forget</code>)</h2>
+        <h2>18.3.3 Forgetting entries (<code>forget</code>)</h2>
         <p>Removes a memory node by ID from the knowledge graph, vector index, and metadata store. Connected edges are removed with the node.</p>
         <pre><code>var nodeId = memory.remember("Outdated fact");
 var removed = memory.forget(nodeId);  // true if the node existed</code></pre>
@@ -265,7 +265,7 @@ var removed = memory.forget(nodeId);  // true if the node existed</code></pre>
             <li><code>getLastQueryDiagnostics()</code> - Returns diagnostics from the most recent <code>query</code> call, or <code>null</code> if none yet.</li>
         </ul>
 
-        <h3>17.3.4 Indexing document files (<code>indexDocuments</code>)</h3>
+        <h3>18.3.4 Indexing document files (<code>indexDocuments</code>)</h3>
         <p>Loads files matching a glob pattern (same as <code>loadDocuments</code>) and stores each file (or chunk) as a semantic memory with <code>type: semantic</code>, <code>source: file</code>, and configurable <code>scope</code> (default <code>global</code>). Large files are split into chunks by default (<code>chunkSize: 2000</code>, <code>overlap: 100</code>). Chunk context is <code>path#chunk-N</code>.</p>
         <pre><code>var count = memory.indexDocuments("**/*.md", "./docs");
 var chunked = memory.indexDocuments("**/*.md", "./docs", {
@@ -277,25 +277,25 @@ var chunked = memory.indexDocuments("**/*.md", "./docs", {
 print("Indexed " + count + " chunks");</code></pre>
         <p>With <code>changedOnly: true</code>, files whose <code>fileHash</code> metadata matches the current content are skipped; changed files replace prior chunks for the same <code>filePath</code>.</p>
 
-        <h3>17.3.5 Memory stats (<code>stats</code>)</h3>
+        <h3>18.3.5 Memory stats (<code>stats</code>)</h3>
         <p>Returns an object with <code>nodes</code>, <code>edges</code>, <code>byType</code>, <code>byScope</code>, <code>oldest</code>, and <code>newest</code> timestamps (ISO 8601).</p>
         <pre><code>var s = memory.stats();
 print(s.nodes);
 print(s.byType.semantic);</code></pre>
 
-        <h3>17.3.5a Health check (<code>validate</code>)</h3>
+        <h3>18.3.5a Health check (<code>validate</code>)</h3>
         <p>Checks consistency between metadata, graph nodes, vector index entries, and edges. Returns <code>{ ok, issues, counts }</code>. Issue types: <code>metadata_without_graph</code>, <code>graph_without_metadata</code>, <code>vector_without_node</code>, <code>node_without_vector</code>, <code>dangling_edge</code>.</p>
         <pre><code>var report = memory.validate();
 if (!report.ok) {
     print(report.issues.length + " issues");
 }</code></pre>
 
-        <h3>17.3.5b Rotating backups on <code>save()</code></h3>
+        <h3>18.3.5b Rotating backups on <code>save()</code></h3>
         <p>Before overwriting artifacts, optionally copy the current files to <code>{base}.backup.{yyyy-MM-dd-HHmmss}.graph.json</code> (and matching <code>.metadata.json</code> / <code>.vectordb.bin</code>) and prune older backups.</p>
         <pre><code>memory.save("~/.malda/memory/assistant", { "backup": true, "maxBackups": 5 });
 // Or: MALDA_MEMORY_BACKUP=true, MALDA_MEMORY_MAX_BACKUPS=5</code></pre>
 
-        <h3>17.3.6 Node lookup and in-place update</h3>
+        <h3>18.3.6 Node lookup and in-place update</h3>
         <p>Use <code>getNode</code>, <code>hasNode</code>, and <code>update</code> to read or revise an existing memory without creating a new node ID.</p>
         <pre><code>var nodeId = memory.remember("My name is Alice", "", { "type": "semantic" });
 if (memory.hasNode(nodeId)) {
@@ -311,7 +311,7 @@ print(revised.fact);</code></pre>
             <li><code>update(nodeId, fact, context?, metadata?)</code> - Re-indexes the node in place; omitted <code>context</code> and metadata fields are preserved from the existing entry</li>
         </ul>
 
-        <h3>17.3.7 Episodic consolidation (<code>consolidate</code>)</h3>
+        <h3>18.3.7 Episodic consolidation (<code>consolidate</code>)</h3>
         <p>Distills recent <code>episodic</code> turns into a single <code>semantic</code> summary node with <code>derived_from</code> edges back to the source episodics. Processed episodics are marked <code>consolidated: true</code> so they can be pruned safely later.</p>
         <pre><code>var result = memory.consolidate({
     "scope": "chat:123",
@@ -321,7 +321,7 @@ print(revised.fact);</code></pre>
 print(result.semanticNodesCreated);
 print(result.semanticNodeId);</code></pre>
 
-        <h3>17.3.8 Batch pruning (<code>prune</code>)</h3>
+        <h3>18.3.8 Batch pruning (<code>prune</code>)</h3>
         <p>Removes matching nodes in bulk. Requires at least one filter in <code>options</code>: <code>type</code>, <code>scope</code>, <code>phase</code>, <code>source</code>, or <code>olderThanDays</code>. Optional <code>consolidated</code> (boolean) keeps only nodes with/without <code>consolidated: true</code>. Returns the number of nodes removed.</p>
         <pre><code>var removed = memory.prune({
     "type": "episodic",
@@ -331,16 +331,16 @@ print(result.semanticNodeId);</code></pre>
 });
 print("Removed " + removed + " memories");</code></pre>
 
-        <h3>17.3.9 Memory size limits (<code>enforceLimits</code>)</h3>
+        <h3>18.3.9 Memory size limits (<code>enforceLimits</code>)</h3>
         <p>When total node count exceeds <code>maxNodes</code>, removes the oldest matching entries (default <code>type: episodic</code>). Returns the number of nodes removed.</p>
         <pre><code>memory.enforceLimits({ "maxNodes": 5000, "type": "episodic", "scope": "chat:123" });</code></pre>
 
-        <h3>17.3.10 Portable bundles (<code>exportBundle</code> / <code>importBundle</code>)</h3>
+        <h3>18.3.10 Portable bundles (<code>exportBundle</code> / <code>importBundle</code>)</h3>
         <p><code>exportBundle(path)</code> writes the same artifacts as <code>save(path)</code> plus a <code>{base}.bundle.json</code> manifest. <code>importBundle(path)</code> validates the manifest and artifacts, then restores graph, metadata, and vector index (same as <code>load(path)</code>).</p>
         <pre><code>var manifest = memory.exportBundle("team_memory");
 memory.importBundle("team_memory");</code></pre>
         
-        <h3>17.3.11 LLM reflection (<code>reflect</code>)</h3>
+        <h3>18.3.11 LLM reflection (<code>reflect</code>)</h3>
         <p><code>reflect(options?)</code> consolidates unconsolidated episodic turns into semantic facts using an LLM-oriented extraction flow. It accepts optional test injection with <code>facts</code> (array of <code>{ fact, confidence, category }</code>) to bypass external model calls.</p>
         <pre><code>var result = memory.reflect({
     "scope": "chat:123",
@@ -359,7 +359,7 @@ print(result.episodicsMarked);</code></pre>
             <li>Falls back to <code>consolidate(options)</code> on reflection parsing/LLM errors</li>
         </ul>
 
-        <h3>17.3.11a Background reflection (<code>reflectAsync</code>)</h3>
+        <h3>18.3.11a Background reflection (<code>reflectAsync</code>)</h3>
         <p><code>reflectAsync(options?)</code> schedules the same work as <code>reflect()</code> on a background thread and returns immediately with <code>{ scheduled, pending }</code>. Pass <code>savePath</code> in <code>options</code> to persist artifacts after reflection completes. If a reflect job is already running, returns <code>pending: true</code>.</p>
         <pre><code>memory.reflectAsync({
     "scope": "chat:123",
@@ -367,17 +367,17 @@ print(result.episodicsMarked);</code></pre>
     "savePath": "~/.malda/memory/assistant"
 });</code></pre>
         
-        <h3>17.3.12 Reindexing documents (<code>reindexDocuments</code>)</h3>
+        <h3>18.3.12 Reindexing documents (<code>reindexDocuments</code>)</h3>
         <p><code>reindexDocuments(pattern, dir?, options?)</code> wraps <code>indexDocuments</code> with <code>changedOnly: true</code> by default and returns detailed counters:</p>
         <pre><code>var r = memory.reindexDocuments("**/*.md", "./docs", { "scope": "global" });
 print(r.indexed);
 print(r.skipped);
 print(r.removed);</code></pre>
         
-        <h3>17.3.13 Retrieval evolution</h3>
+        <h3>18.3.13 Retrieval evolution</h3>
         <p>Memory retrieval now tracks <code>importance</code>, <code>accessCount</code>, and <code>lastAccessed</code> metadata, supports activation controls (<code>activation</code>, <code>activationDecay</code>), MMR diversity (<code>diversity</code>), and exclusion by node IDs (<code>excludeNodeIds</code>). Semantic updates may create <code>supersedes</code> edges; superseded nodes are down-ranked or filtered during query.</p>
 
-        <h3>17.3.14 CLI maintenance (<code>malda memory</code>)</h3>
+        <h3>18.3.14 CLI maintenance (<code>malda memory</code>)</h3>
         <p>Use the CLI to inspect and maintain assistant memory at <code>~/.malda/memory/assistant</code> (override with <code>--path</code>).</p>
         <pre><code>malda memory stats --json
 malda memory validate --json
@@ -389,7 +389,7 @@ malda memory watch --dir ./kb --pattern "**/*.md"
 malda memory download-rerank</code></pre>
         <p><code>download-rerank</code> fetches the default Hugging Face cross-encoder (<code>cross-encoder/ms-marco-MiniLM-L6-v2</code>) into <code>~/.malda/models/cross-encoder</code> (<code>model.onnx</code> + <code>vocab.txt</code>). Override the repo with <code>MALDA_CROSS_ENCODER_MODEL</code>.</p>
 
-        <h2>17.4 Finding Related Nodes</h2>
+        <h2>18.4 Finding Related Nodes</h2>
         <p>The <code>findRelated()</code> method returns memory objects reachable from a node via graph traversal (BFS over outgoing edges, including auto-linked <code>related_to</code> neighbors):</p>
         <pre><code>var memory = new GraphMemory();
 memory.initialize();
@@ -409,10 +409,10 @@ print(related.length);  // e.g. 1 — the second fact</code></pre>
 
         <p><strong>Returns:</strong> An array of memory objects related to the specified node</p>
 
-        <h2>17.5 Code Element Management</h2>
+        <h2>18.5 Code Element Management</h2>
         <p>GraphMemory can store and analyze code elements, making it useful for codebase understanding and relationship mapping.</p>
 
-        <h3>27.5.1 Adding Code Elements</h3>
+        <h3>18.5.1 Adding Code Elements</h3>
         <p>The <code>addCodeElement()</code> method stores code elements (functions, classes, etc.) in the memory:</p>
         <pre><code>var memory = new GraphMemory();
 memory.initialize();
@@ -434,7 +434,7 @@ print(nodeId);  // "code_UserService.createUser"</code></pre>
 
         <p><strong>Returns:</strong> A string node ID (e.g., "code_UserService.createUser")</p>
 
-        <h3>27.5.2 Finding Code Relationships</h3>
+        <h3>18.5.2 Finding Code Relationships</h3>
         <p>The <code>findCodeRelationships()</code> method finds all relationships (edges) connected to a code element:</p>
         <pre><code>var memory = new GraphMemory();
 memory.initialize();
@@ -467,7 +467,7 @@ foreach (var rel in relationships) {
             <li><code>source</code> - Source node (if incoming edge)</li>
         </ul>
 
-        <h3>27.5.3 Analyzing Files</h3>
+        <h3>18.5.3 Analyzing Files</h3>
         <p>The <code>analyzeFile()</code> method automatically extracts code structure from a MALDA source file and stores it in memory:</p>
         <pre><code>var memory = new GraphMemory();
 memory.initialize();
@@ -496,10 +496,10 @@ print("Found " + elementCount + " code elements");
             <li>All stored as nodes in the knowledge graph with proper relationships</li>
         </ul>
 
-        <h2>17.6 Persistence</h2>
+        <h2>18.6 Persistence</h2>
         <p>GraphMemory supports saving and loading memory state to/from disk for persistence across sessions.</p>
 
-        <h3>27.6.1 Saving Memory</h3>
+        <h3>18.6.1 Saving Memory</h3>
         <p>The <code>save()</code> method saves the entire memory state to disk:</p>
         <pre><code>var memory = new GraphMemory();
 memory.initialize();
@@ -525,7 +525,7 @@ memory.save("my_memory");
             <li><code>{basePath}.metadata.json</code> - Node metadata in JSON format</li>
         </ul>
 
-        <h3>27.6.2 Loading Memory</h3>
+        <h3>18.6.2 Loading Memory</h3>
         <p>The <code>load()</code> method restores a previously saved memory state: graph (with edges), vector index, and node metadata. The embedding calculator is re-initialized so <code>query()</code> and future <code>remember()</code> calls work after reload.</p>
         <pre><code>var memory = new GraphMemory();
 
@@ -541,12 +541,12 @@ var linked = memory.findRelated("node_0");  // graph edges persist across save/l
             <li><code>load(filePath)</code> - Load memory from disk (string path, extension is ignored)</li>
         </ul>
 
-        <p><strong>Note:</strong> Call <code>initialize(dimension, precision, embeddingFunction)</code> <em>before</em> <code>load()</code> when using a custom embedder; <code>load()</code> preserves the embedding function across its internal re-initialization. The personal assistant defaults to <code>embedHash</code> (384 dimensions) and supports <code>MALDA_MEMORY_EMBED</code> or <code>config.agents.memory.embed</code> values <code>hash</code>, <code>bow</code>, or <code>llama</code> (see <a href="26-personal-assistant.html">25. Personal Assistant</a>).</p>
+        <p><strong>Note:</strong> Call <code>initialize(dimension, precision, embeddingFunction)</code> <em>before</em> <code>load()</code> when using a custom embedder; <code>load()</code> preserves the embedding function across its internal re-initialization. The personal assistant defaults to <code>embedHash</code> (384 dimensions) and supports <code>MALDA_MEMORY_EMBED</code> or <code>config.agents.memory.embed</code> values <code>hash</code>, <code>bow</code>, or <code>llama</code> (see <a href="26-personal-assistant.html">31. Personal Assistant</a>).</p>
 
-        <h2>17.7 Graph Export and Import</h2>
+        <h2>18.7 Graph Export and Import</h2>
         <p>GraphMemory provides methods to export and import the knowledge graph separately from the full persistence system.</p>
 
-        <h3>27.7.1 Exporting the Graph</h3>
+        <h3>18.7.1 Exporting the Graph</h3>
         <pre><code>var memory = new GraphMemory();
 memory.initialize();
 memory.remember("Test fact");
@@ -562,7 +562,7 @@ print(graphJson);
 
         <p><strong>Returns:</strong> A JSON string representation of the knowledge graph</p>
 
-        <h3>27.7.2 Importing the Graph</h3>
+        <h3>18.7.2 Importing the Graph</h3>
         <pre><code>var memory = new GraphMemory();
 memory.initialize();
 
@@ -579,7 +579,7 @@ memory.importGraph(graphJson);
 
         <p><strong>Note:</strong> <code>importGraph()</code> only restores the graph structure, not the vector database or metadata. Use <code>load()</code> for complete restoration.</p>
 
-        <h2>17.8 Clearing Memory</h2>
+        <h2>18.8 Clearing Memory</h2>
         <p>The <code>clear()</code> method removes all stored memories and resets the memory system:</p>
         <pre><code>var memory = new GraphMemory();
 memory.initialize();
@@ -593,7 +593,7 @@ memory.clear();
 
         <p><strong>Note:</strong> After clearing, the memory is still initialized. You don't need to call <code>initialize()</code> again unless you want to change dimension or precision.</p>
 
-        <h2>17.9 Integration with Agents</h2>
+        <h2>18.9 Integration with Agents</h2>
         <p>GraphMemory is designed to work seamlessly with the <code>Agent</code> class. When memory is enabled on an agent, it automatically:</p>
         <ul>
             <li>Queries relevant memories before each agent response using <strong>hybrid retrieval</strong> (3 recent + 5 semantic matches by default)</li>
@@ -638,7 +638,7 @@ if (memory != null) {
             <li><code>agent.addMemoryProgressTools()</code> - Register <code>remember_progress</code> and <code>recall_progress</code> tools (requires memory enabled first)</li>
         </ul>
 
-        <h3>17.9.1 Progress memory tools</h3>
+        <h3>18.9.1 Progress memory tools</h3>
         <p>After <code>addMemoryProgressTools()</code>, the LLM can read and write progress notes intentionally during a turn:</p>
         <ul>
             <li><code>remember_progress(note, type?, phase?)</code> - Save a concise note (<code>type</code>: <code>progress</code>, <code>decision</code>, <code>file</code>, <code>error</code>)</li>
@@ -649,7 +649,7 @@ if (memory != null) {
 agent.addMemoryProgressTools();
 // LLM can call remember_progress / recall_progress during tool rounds</code></pre>
 
-        <h2>17.10 Shared Memory</h2>
+        <h2>18.10 Shared Memory</h2>
         <p>Multiple agents can share the same GraphMemory instance so they see each other's remembered facts. This is useful for multi-agent workflows, team assistants, or when agents run in different actors and need a common knowledge base.</p>
 
         <p><strong>Pattern:</strong> Create one GraphMemory, optionally load from disk, then attach it to each agent with <code>useMemory(memory)</code>.</p>
@@ -676,7 +676,7 @@ memory.save("shared_memory");</code></pre>
 
         <p><strong>Thread safety:</strong> GraphMemory is thread-safe. When agents that use the same memory run in different actors (or threads), all operations (query, remember, save, load, etc.) are serialized per instance, so shared memory can be used safely from multiple actors.</p>
 
-        <h2>17.11 Complete Example</h2>
+        <h2>18.11 Complete Example</h2>
         <pre><code>// Create and initialize memory
 var memory = new GraphMemory();
 memory.initialize(384, "single");
@@ -720,19 +720,19 @@ memory2.load("my_agent_memory");
 var results2 = memory2.query("user creation");
 print("Found " + results2.length + " results after loading");</code></pre>
 
-        <h2>17.12 Use Cases</h2>
+        <h2>18.12 Use Cases</h2>
         <p>GraphMemory is ideal for:</p>
         <ul>
             <li><strong>Long-Running Agents:</strong> Agents that need to remember context across multiple sessions</li>
             <li><strong>Codebase Understanding:</strong> Analyzing and understanding relationships in codebases</li>
             <li><strong>RAG Systems:</strong> Retrieval-Augmented Generation with graph-based relationship understanding</li>
             <li><strong>Knowledge Bases:</strong> Building semantic knowledge bases with relationship tracking</li>
-            <li><strong>PRD-Driven Autonomous Loops:</strong> Ralph Wiggum (<code>Examples/RalphWiggum/RalphWiggum.malda</code>) persists structured iteration summaries and indexes modified files — see <a href="14-agent-orchestration.html#ralph-wiggum">16.18 Ralph Wiggum</a></li>
+            <li><strong>PRD-Driven Autonomous Loops:</strong> Ralph Wiggum (<code>Examples/RalphWiggum/RalphWiggum.malda</code>) persists structured iteration summaries and indexes modified files — see <a href="14-agent-orchestration.html#ralph-wiggum">17.18 Ralph Wiggum</a></li>
             <li><strong>Multi-Session Conversations:</strong> Maintaining context across conversation sessions</li>
             <li><strong>Document Analysis:</strong> Understanding relationships between documents and concepts</li>
         </ul>
 
-        <h2>17.13 Technical Details</h2>
+        <h2>18.13 Technical Details</h2>
         <ul>
             <li><strong>Vector Dimension:</strong> Default 384, configurable during initialization</li>
             <li><strong>Precision:</strong> "single" (4 bytes per element) or "double" (8 bytes per element)</li>
@@ -744,8 +744,8 @@ print("Found " + results2.length + " results after loading");</code></pre>
         </ul>
 
         <div class="nav-footer">
-            <a href="14-agent-orchestration.html">← Previous: 16. Agent Orchestration</a>
-            <a href="15-database.html">Next: 18. Database Support→</a>
+            <a href="14-agent-orchestration.html">← Previous: 17. Agent Orchestration</a>
+            <a href="19-mcp-server.html">Next: 19. MCP Server→</a>
         </div>
 
         <footer>

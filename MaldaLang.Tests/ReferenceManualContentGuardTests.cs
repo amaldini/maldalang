@@ -11,7 +11,7 @@ namespace MaldaLang.Tests;
 /// <summary>
 /// Guards that keep ReferenceManual content aligned with the code it documents:
 /// reserved words versus the lexer, built-in coverage versus the registry,
-/// internal links, section numbering, and the navigation fallback list.
+/// internal links, section numbering, navigation/TOC fallbacks, and contiguous categories.
 /// </summary>
 public class ReferenceManualContentGuardTests
 {
@@ -153,6 +153,49 @@ public class ReferenceManualContentGuardTests
             $"navigation.js: {string.Join(" | ", actual)}");
     }
 
+    [Fact]
+    public void IndexTocFallback_MatchesChaptersJson()
+    {
+        var expected = ChaptersJsonEntries().Where(e => !e.StartsWith("index.html::", StringComparison.Ordinal)).ToList();
+        var actual = IndexTocFallbackEntries();
+
+        Assert.True(
+            expected.SequenceEqual(actual, StringComparer.Ordinal),
+            "FALLBACK_TOC_CHAPTERS in index-toc.js is out of sync with chapters.json.\n" +
+            $"chapters.json: {string.Join(" | ", expected)}\n" +
+            $"index-toc.js: {string.Join(" | ", actual)}");
+    }
+
+    [Fact]
+    public void ChapterCategories_AreContiguousInReadingOrder()
+    {
+        var numbered = NumberedChapters().ToList();
+        Assert.NotEmpty(numbered);
+
+        foreach (var group in numbered.GroupBy(ch => ch.Category, StringComparer.Ordinal))
+        {
+            var nums = group.Select(ch => ch.Number).ToList();
+            Assert.True(
+                nums.SequenceEqual(Enumerable.Range(nums[0], nums.Count)),
+                $"Category '{group.Key}' is not a contiguous number range in chapters.json: {string.Join(", ", nums)}");
+        }
+    }
+
+    [Fact]
+    public void NavAndTocCategoryOrder_ListsEveryChapterCategory()
+    {
+        var expected = NumberedChapters()
+            .Select(ch => ch.Category)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        var navOrder = JsStringArray(Path.Combine(ManualDir, "navigation.js"), "NAV_CATEGORY_ORDER");
+        var tocOrder = JsStringArray(Path.Combine(ManualDir, "index-toc.js"), "TOC_CATEGORY_ORDER");
+
+        Assert.Equal(expected, navOrder);
+        Assert.Equal(expected, tocOrder);
+    }
+
     private static bool IsDocumentedAsUiMember(string registryName, HashSet<string> namespacedUiMembers)
     {
         if (!registryName.StartsWith("ui", StringComparison.Ordinal) || registryName.Length <= 2)
@@ -251,6 +294,53 @@ public class ReferenceManualContentGuardTests
         var body = source[start..end];
         return Regex.Matches(body, @"href:\s*""(?<file>[^""]+)""\s*,\s*text:\s*""(?<text>[^""]+)""")
             .Select(m => $"{m.Groups["file"].Value}::{m.Groups["text"].Value}")
+            .ToList();
+    }
+
+    private static List<string> IndexTocFallbackEntries()
+    {
+        var source = File.ReadAllText(Path.Combine(ManualDir, "index-toc.js"));
+        var start = source.IndexOf("FALLBACK_TOC_CHAPTERS = [", StringComparison.Ordinal);
+        Assert.True(start >= 0, "Could not locate FALLBACK_TOC_CHAPTERS in index-toc.js.");
+
+        var end = source.IndexOf("];", start, StringComparison.Ordinal);
+        Assert.True(end > start, "Could not locate the end of FALLBACK_TOC_CHAPTERS in index-toc.js.");
+
+        var body = source[start..end];
+        return Regex.Matches(
+                body,
+                @"file:\s*""(?<file>[^""]+)""\s*,\s*title:\s*""(?<title>[^""]+)""\s*,\s*num:\s*""(?<num>[^""]+)""")
+            .Select(m => $"{m.Groups["file"].Value}::{m.Groups["num"].Value}. {m.Groups["title"].Value}")
+            .ToList();
+    }
+
+    private static IEnumerable<(int Number, string File, string Category)> NumberedChapters()
+    {
+        using var doc = JsonDocument.Parse(File.ReadAllText(Path.Combine(ManualDir, "chapters.json")));
+        var number = 0;
+        foreach (var chapter in doc.RootElement.GetProperty("chapters").EnumerateArray())
+        {
+            if (chapter.TryGetProperty("isHome", out var home) && home.GetBoolean())
+                continue;
+
+            number++;
+            var file = chapter.GetProperty("file").GetString()!;
+            var category = chapter.TryGetProperty("category", out var cat) ? cat.GetString() ?? "Reference" : "Reference";
+            yield return (number, file, category);
+        }
+    }
+
+    private static List<string> JsStringArray(string path, string constName)
+    {
+        var source = File.ReadAllText(path);
+        var start = source.IndexOf($"{constName} = [", StringComparison.Ordinal);
+        Assert.True(start >= 0, $"Could not locate {constName} in {Path.GetFileName(path)}.");
+
+        var end = source.IndexOf("];", start, StringComparison.Ordinal);
+        Assert.True(end > start, $"Could not locate the end of {constName} in {Path.GetFileName(path)}.");
+
+        return Regex.Matches(source[start..end], @"'(?<value>[^']+)'")
+            .Select(m => m.Groups["value"].Value)
             .ToList();
     }
 }

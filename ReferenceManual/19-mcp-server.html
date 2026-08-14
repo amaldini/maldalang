@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>25. MCP Server - MALDA Reference Manual</title>
+    <title>19. MCP Server - MALDA Reference Manual</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="syntax.css">
     <link rel="stylesheet" href="print.css" media="print">
@@ -15,10 +15,10 @@
     </header>
     <nav></nav>
     <main>
-        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>25. MCP Server</span></div>
-        <h1>25. MCP Server</h1>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>19. MCP Server</span></div>
+        <h1>19. MCP Server</h1>
         <p>The <code>MCPServer</code> class allows MALDA to function as an MCP (Model Context Protocol) tools server, enabling developers to write custom MCP tools in MALDA and expose them to MCP clients like Claude Desktop or ChatGPT.</p>
-        <h2>25.1 Overview</h2>
+        <h2>19.1 Overview</h2>
         <p>MCP (Model Context Protocol) is a protocol for connecting AI applications with external data sources and tools. MALDA's MCP server implementation allows you to:</p>
         <ul>
             <li>Define custom tools using the <code>@MCPTool</code> decorator</li>
@@ -26,7 +26,7 @@
             <li>Communicate via JSON-RPC 2.0 over STDIO transport</li>
             <li>Automatically generate JSON Schema tool definitions</li>
         </ul>
-        <h2>25.2 @MCPTool Decorator</h2>
+        <h2>19.2 @MCPTool Decorator</h2>
         <p>Functions decorated with <code>@MCPTool</code> are automatically discovered and registered as MCP tools when the server starts.</p>
         <h3>Syntax</h3>
         <pre><code>@MCPTool("tool_name", "Tool description")
@@ -38,7 +38,7 @@ function myTool(param1, param2) {
 function myTool(param1) {
     // ...
 }</code></pre>
-        <h2>25.3 MCPServer Class</h2>
+        <h2>19.3 MCPServer Class</h2>
         <h3>Constructor</h3>
         <pre><code>var server = new MCPServer();                    // STDIO transport (default)
 var server = new MCPServer("stdio");            // Explicit STDIO transport</code></pre>
@@ -48,14 +48,14 @@ var server = new MCPServer("stdio");            // Explicit STDIO transport</cod
             <li><code>stop()</code>: Stop the MCP server</li>
             <li><code>getTools()</code>: Return list of registered tools</li>
         </ul>
-        <h2>25.4 Tool Schema Generation</h2>
+        <h2>19.4 Tool Schema Generation</h2>
         <p>If no custom schema is provided, the tool schema is automatically generated from function parameters:</p>
         <ul>
             <li>All parameters default to type <code>"string"</code> in JSON Schema</li>
             <li>All parameters are marked as required</li>
             <li>Parameter names from the MALDA function are used as property names</li>
         </ul>
-        <h2>25.5 Complete Example</h2>
+        <h2>19.5 Complete Example</h2>
         <pre><code>@MCPTool("add", "Adds two numbers together")
 function add(a, b) {
     return int(a) + int(b);
@@ -78,7 +78,7 @@ server.start();
 while (server.isRunning) {
     sleep(1000);
 }</code></pre>
-        <h2>25.6 MCP Protocol Support</h2>
+        <h2>19.6 MCP Protocol Support</h2>
         <p>The MCP server implements the following JSON-RPC 2.0 methods:</p>
         <ul>
             <li><code>initialize</code>: Capability negotiation and server initialization</li>
@@ -86,7 +86,7 @@ while (server.isRunning) {
             <li><code>tools/call</code>: Executes a tool with provided arguments</li>
             <li><code>notifications/initialized</code>: Notification sent after initialization</li>
         </ul>
-        <h2>25.7 MCP Client</h2>
+        <h2>19.7 MCP Client</h2>
         <p>The <code>MCPClient</code> class allows MALDA scripts to dynamically connect to MCP servers and use their tools. This enables MALDA agents to connect to external MCP servers programmatically and create wrapper agents with MCP tools.</p>
         <h3>Overview</h3>
         <p>The <code>MCPClient</code> class provides:</p>
@@ -216,13 +216,13 @@ if (connected) {
         <div class="see-also">
             <h3>See Also</h3>
             <ul>
-                <li><a href="09-functions.html">8. Functions</a> - Function decorators</li>
+                <li><a href="09-functions.html">9. Functions</a> - Function decorators</li>
                 <li><a href="06-vectordb.html">14. VectorDB</a> - Tool system and agent creation</li>
             </ul>
         </div>
         <div class="nav-footer">
-            <a href="18-rest-web-client.html">← Previous: 24. REST Web Client</a>
-            <a href="20-acp.html">Next: 26. ACP (Agent Communication Protocol)→</a>
+            <a href="21-graph-memory.html">← Previous: 18. GraphMemory</a>
+            <a href="20-acp.html">Next: 20. ACP (Agent Communication Protocol)→</a>
         </div>
 
         <footer>

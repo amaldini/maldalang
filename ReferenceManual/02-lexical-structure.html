@@ -79,7 +79,7 @@ var my-var = 60;     // Invalid: contains hyphen</code></pre>
 <a href="07-expressions.html">dict</a>, <a href="06-graphs.html">graph</a>, <a href="06-graphs.html">directed</a>, <a href="06-graphs.html">undirected</a>, <a href="08-control-structures.html">in</a>,
 <a href="01-introduction.html">using</a>, <a href="01-introduction.html">include</a>, <a href="01-introduction.html">import</a>, <a href="01-introduction.html">export</a></code></pre>
         <p><code>fn</code> and <code>def</code> are aliases of <code>function</code>. <code>reply</code> is a built-in function, not a keyword.</p>
-        <p><code>using</code> serves two unrelated purposes: a top-level package alias (<code>using json = System.Text.Json;</code>) and a scoped resource block (<code>using conn = openDb() { ... }</code>). See <a href="01-introduction.html">1. Introduction</a> and <a href="08-control-structures.html">7. Control Structures</a> respectively.</p>
+        <p><code>using</code> serves two unrelated purposes: a top-level package alias (<code>using json = System.Text.Json;</code>) and a scoped resource block (<code>using conn = openDb() { ... }</code>). See <a href="01-introduction.html">1. Introduction</a> and <a href="08-control-structures.html">8. Control Structures</a> respectively.</p>
 
         <h3>Keyword Categories</h3>
         <ul>
@@ -350,13 +350,13 @@ i--;
         <pre><code>var add = (a, b) => a + b;
 var square = x => x * x;
 var process = (x) => { return x * 2; };</code></pre>
-        <p>See <a href="09-functions.html#lambda-expressions">8.6 Lambda Expressions</a> for more details.</p>
+        <p>See <a href="09-functions.html#lambda-expressions">9.6 Lambda Expressions</a> for more details.</p>
         <p>The same token also spells a function's informational return type, where <code>-&gt;</code> and <code>=&gt;</code> are interchangeable: <code>function parse(text) -&gt; Result { ... }</code>.</p>
 
         <h3>Pipe Forward</h3>
         <p>The <code>|&gt;</code> operator passes the value on its left as the first argument of the call on its right:</p>
         <pre><code>var result = "  hello  " |> trim |> upper;</code></pre>
-        <p>See <a href="07-expressions.html">6. Expressions</a> for precedence and chaining rules.</p>
+        <p>See <a href="07-expressions.html">7. Expressions</a> for precedence and chaining rules.</p>
 
         <h3>Decorator Marker</h3>
         <p><code>@</code> introduces a decorator on a declaration, for example <code>@Tool</code>, <code>@PAGE</code>, or <code>@Route</code>:</p>
@@ -364,7 +364,7 @@ var process = (x) => { return x * 2; };</code></pre>
 function add(a, b) {
     return a + b;
 }</code></pre>
-        <p>See <a href="09-functions.html">8. Functions</a> for the decorator forms.</p>
+        <p>See <a href="09-functions.html">9. Functions</a> for the decorator forms.</p>
 
         <h3>String Concatenation</h3>
         <p>The <code>+</code> operator concatenates strings when both operands are strings:</p>
@@ -387,7 +387,7 @@ object.method()</code></pre>
         <pre><code>var user = null;
 print(user?.name);      // null, no error
 print(user?["name"]);   // null, no error</code></pre>
-        <p>See <a href="07-expressions.html">6. Expressions</a> for how these behave in longer chains.</p>
+        <p>See <a href="07-expressions.html">7. Expressions</a> for how these behave in longer chains.</p>
 
         <h2>3.6 Delimiters</h2>
 
@@ -431,8 +431,8 @@ print(user?["name"]);   // null, no error</code></pre>
         <div class="see-also">
             <h3>See Also</h3>
             <ul>
-                <li><a href="07-expressions.html">6. Expressions</a> - How operators are used in expressions</li>
-                <li><a href="23-appendix.html">34. Appendix</a> - Operator precedence table</li>
+                <li><a href="07-expressions.html">7. Expressions</a> - How operators are used in expressions</li>
+                <li><a href="23-appendix.html">35. Appendix</a> - Operator precedence table</li>
             </ul>
         </div>
 

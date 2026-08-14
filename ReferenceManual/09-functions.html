@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>8. Functions - MALDA Reference Manual</title>
+    <title>9. Functions - MALDA Reference Manual</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="syntax.css">
     <link rel="stylesheet" href="print.css" media="print">
@@ -15,9 +15,9 @@
     </header>
     <nav></nav>
     <main>
-        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>8. Functions</span></div>
-        <h1>8. Functions</h1>
-        <h2>8.1 Function Declaration</h2>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>9. Functions</span></div>
+        <h1>9. Functions</h1>
+        <h2>9.1 Function Declaration</h2>
         <pre><code>function functionName(param1, param2) {
     // function body
     return value;  // optional
@@ -38,17 +38,17 @@ function double(n) -> int n * 2;</code></pre>
 function add(a: int, b: int) -> int {
     return a + b;
 }</code></pre>
-        <h2>8.2 Function Call</h2>
+        <h2>9.2 Function Call</h2>
         <pre><code>var result = functionName(arg1, arg2);
 functionName();  // No return value needed</code></pre>
-        <h2>8.3 Return Statement</h2>
+        <h2>9.3 Return Statement</h2>
         <p>Return statements are <strong>optional</strong> in MALDA functions. A function can:</p>
         <ul>
             <li>Have <code>return value;</code> - returns the specified value</li>
             <li>Have no return statement - <strong>last expression wins</strong>: if the last statement is an expression, its value is implicitly returned; otherwise returns <code>null</code></li>
             <li>Have <code>return;</code> - explicitly returns <code>null</code></li>
         </ul>
-        <p>This applies to <strong>functions</strong>, <strong>methods</strong>, and <strong>lambdas</strong> (but not constructors). The same rule applies to <strong>match case bodies</strong> when the match is used as an expression (see <a href="08-control-structures.html">7. Control Structures</a>).</p>
+        <p>This applies to <strong>functions</strong>, <strong>methods</strong>, and <strong>lambdas</strong> (but not constructors). The same rule applies to <strong>match case bodies</strong> when the match is used as an expression (see <a href="08-control-structures.html">8. Control Structures</a>).</p>
         <h3>Examples</h3>
         <pre><code>// Function with explicit return
 function add(a, b) {
@@ -95,7 +95,7 @@ function findValue(arr, target) {
         <div class="info-box">
             <strong>Note:</strong> With <strong>last expression wins</strong>, a function that ends with an expression returns that value even without <code>return</code>. Only when the last statement is not an expression (e.g. <code>print(...)</code>) does the function return <code>null</code>. You can check for null using <code>result == null</code> or use the return value in conditional expressions.
         </div>
-        <h2>8.4 Recursion</h2>
+        <h2>9.4 Recursion</h2>
         <p>Functions can call themselves recursively:</p>
         <pre><code>function factorial(n) {
     if (n <= 1) {
@@ -103,13 +103,13 @@ function findValue(arr, target) {
     }
     return n * factorial(n - 1);
 }</code></pre>
-        <h2>8.5 Standalone Functions vs Methods</h2>
+        <h2>9.5 Standalone Functions vs Methods</h2>
         <ul>
             <li>Standalone functions (defined outside classes) are global functions</li>
             <li>Methods are functions defined within classes</li>
             <li>Both use the same syntax, but methods have access to <code>this</code></li>
         </ul>
-        <h2 id="lambda-expressions">8.6 Lambda Expressions</h2>
+        <h2 id="lambda-expressions">9.6 Lambda Expressions</h2>
         <p>MALDA supports lambda expressions (anonymous functions) using arrow function syntax. Lambdas are first-class values that can be assigned to variables, passed as arguments, and returned from functions.</p>
         <h3>Expression Body</h3>
         <p>Lambdas with a single expression automatically return that expression:</p>
@@ -169,10 +169,10 @@ print(addFive(10));  // Prints 15</code></pre>
         <div class="info-box">
             <strong>Note:</strong> Lambdas don't have their own <code>this</code> context. If you need <code>this</code> binding, use a regular function or method.
         </div>
-        <h2>8.7 Decorators</h2>
+        <h2>9.7 Decorators</h2>
         <p>MALDA supports decorators for functions, enabling features like custom tools and REST API endpoints:</p>
         <h3>@pure and @effects</h3>
-        <p>Use <code>@pure()</code> on helpers that must not perform I/O. Use <code>@effects("print", …)</code> to declare an allow-list of side effects on a handler. These are checked under CLI <code>--strict-types</code> / full strict analysis (<code>malda-pure</code> / <code>malda-effects</code>). Prefer <code>validate()</code> on tool or LLM-shaped payloads before impure work — see <code>Examples/Agents/agent_governance_golden.malda</code> and <a href="14-agent-orchestration.html">16. Agent Orchestration</a>.</p>
+        <p>Use <code>@pure()</code> on helpers that must not perform I/O. Use <code>@effects("print", …)</code> to declare an allow-list of side effects on a handler. These are checked under CLI <code>--strict-types</code> / full strict analysis (<code>malda-pure</code> / <code>malda-effects</code>). Prefer <code>validate()</code> on tool or LLM-shaped payloads before impure work — see <code>Examples/Agents/agent_governance_golden.malda</code> and <a href="14-agent-orchestration.html">17. Agent Orchestration</a>.</p>
         <pre><code>@pure()
 function normalizeName(name) {
     return upper(trim(name));
@@ -202,10 +202,10 @@ function getUsers() {
 function createUser(body) {
     return {"id": 2, "name": body.name};
 }</code></pre>
-        <h2>8.8 Prompt Blocks</h2>
+        <h2>9.8 Prompt Blocks</h2>
         <p>Prompt blocks enable developers to define reusable prompt templates as first-class language constructs. They compile to runtime values that can be invoked with <code>agent.think(promptBlock(...))</code>, providing structure and IDE support for AI prompts.</p>
         
-        <h3>8.8.1 Prompt Declaration Syntax</h3>
+        <h3>9.9.1 Prompt Declaration Syntax</h3>
         <p>Prompts support two body syntaxes:</p>
         
         <h4>Object Literal Syntax (Backward Compatible)</h4>
@@ -282,7 +282,7 @@ var merged = withExamples(classify("x"), dynamic, { merge: true });
 
 await (p |> runPrompt(client));</code></pre>
         
-        <h3>8.8.2 Basic Prompt Examples</h3>
+        <h3>9.9.2 Basic Prompt Examples</h3>
         <h4>Simple Prompt</h4>
         <pre><code>prompt simple(task) {
     user: "Task: {task}"
@@ -313,7 +313,7 @@ var plan = planTask("Add error handling", readFile("docs.md"));</code></pre>
 
 var greeting = greet("Alice", 25);</code></pre>
         
-        <h3>8.8.3 Using Prompts with Agents</h3>
+        <h3>9.9.3 Using Prompts with Agents</h3>
         <p>Prompt blocks can be passed directly to <code>agent.think()</code>:</p>
         <pre><code>var client = new OpenRouterClient("openai/gpt-4");
 var agent = new CodingAgent("Dev", "developer", "");
@@ -344,7 +344,7 @@ print(review.content);</code></pre>
             <li>Optional metadata (<code>model</code>, <code>temperature</code>, <code>tools</code>, <code>maxTokens</code>) can be applied (future enhancement)</li>
         </ul>
         
-        <h3>8.8.3.1 Direct Await Execution</h3>
+        <h3>9.9.3.1 Direct Await Execution</h3>
         <p>Prompts can be executed directly using <code>await</code>, which calls the LLM and returns the response string:</p>
         <pre><code>// Optional: use OpenRouter; omit to use default local LLM
 var client = new OpenRouterClient();
@@ -373,7 +373,7 @@ print(summary);  // Prints the LLM response directly</code></pre>
             <li>This provides a cleaner syntax than <code>agent.think(prompt(...)).content</code></li>
         </ul>
 
-        <h3>8.8.3.2 Schema Declarations for Structured Output</h3>
+        <h3>9.9.3.2 Schema Declarations for Structured Output</h3>
         <p>Declare reusable JSON schemas with the <code>schema</code> keyword. Schemas are used by <code>parseJson()</code> and typed prompt returns (<code>-&gt; Type</code>):</p>
         <pre><code>schema Answer {
     text: string;
@@ -394,7 +394,7 @@ var parsed = parseJson('{"text":"hi","sources":["a.md"]}', "Answer");</code></pr
         <p>Supported field types: JSON primitives (<code>string</code>, <code>int</code>, <code>float</code>, <code>bool</code>, <code>object</code>, <code>array</code>), array forms such as <code>string[]</code> or <code>Address[]</code>, and <strong>other declared schema names</strong> (nested objects are expanded inline). Use <code>?</code> after the type for optional fields. Unknown field type names error when the schema is resolved; cyclic schema references are rejected. See <code>Examples/Basics/schema_nested_validate.malda</code>.</p>
         <p>For end-to-end RAG pipelines combining schemas, prompts, retrievers, and pipes, see <code>Examples/Prompts/rag_pipeline.malda</code> and <a href="11-built-in-functions.html">12. Built-in Functions</a> (AI pipeline helpers).</p>
 
-        <h3>8.8.3.2.1 Sum Types as Prompt Return Types</h3>
+        <h3>9.9.3.2.1 Sum Types as Prompt Return Types</h3>
         <p>When the model must choose <strong>one of several shapes</strong> (intents), declare a sum type and use it as the prompt return type. On success, <code>await</code> returns a real variant value for <code>match</code>:</p>
         <pre><code>type Intent =
     Search(query)
@@ -414,7 +414,7 @@ match intent {
 }</code></pre>
         <p>Wire JSON uses a <code>tag</code> field equal to the constructor name, plus payload fields named like the constructor parameters — for example <code>{"tag":"Buy","sku":"SKU-9","qty":2}</code> or <code>{"tag":"Help"}</code>. A name cannot be both a <code>schema</code> and a <code>type</code> (sum type). See <code>Examples/Prompts/sum_type_intent_prompt.malda</code> and <a href="03-data-types.html">Data Types</a> for sum types.</p>
 
-        <h3>8.8.3.2.2 Closed APIs and Deterministic Programs</h3>
+        <h3>9.9.3.2.2 Closed APIs and Deterministic Programs</h3>
         <p>Declare a closed <code>api</code> of method signatures. Implementations are ordinary top-level <code>function</code>s with the same names. A typed prompt may return <code>program(ApiName)</code>; on success you get a program value that <code>runProgram</code> executes with <strong>no further LLM calls</strong> (unlike <code>@Tool</code> agent loops or <code>executePlan</code>):</p>
         <pre><code>api Calc {
     function add(a, b);
@@ -442,7 +442,7 @@ var result = runProgram(prog);</code></pre>
 }</code></pre>
         <p><code>args</code> entries are JSON literals or <code>"$alias"</code> references to a prior step's <code>as</code>. See <code>Examples/Prompts/api_program_calc.malda</code> and <a href="11-built-in-functions.html">12. Built-in Functions</a> (<code>runProgram</code>). A name cannot be both an <code>api</code> and a <code>schema</code> / sum <code>type</code>.</p>
 
-        <h3>8.8.3.3 Reusable Pipe Pipelines</h3>
+        <h3>9.9.3.3 Reusable Pipe Pipelines</h3>
         <p>Name and reuse multi-step AI pipelines with ordinary <code>function</code> declarations and the pipe operator (<code>|&gt;</code>). Return the final pipe result explicitly.</p>
         <pre><code>function ragContext(question, retriever) {
     return question |> retriever.get |> formatRetrievedDocs;
@@ -473,7 +473,7 @@ var answer = await ragAnswer("How does retrieval work?", client);</code></pre>
     return text;
 }</code></pre>
         <p>Stream tokens during <code>runPrompt</code> in interpreted and transpiled mode: pass <code>{ onToken: (token) =&gt; ... }</code> for content and <code>{ onReasoning: (token) =&gt; ... }</code> for reasoning deltas (see <a href="11-built-in-functions.html">12. Built-in Functions</a>).</p>
-        <p>See <a href="07-expressions.html">6. Expressions</a> (pipe operator) and <code>Examples/Prompts/rag_function_pipeline.malda</code>.</p>
+        <p>See <a href="07-expressions.html">7. Expressions</a> (pipe operator) and <code>Examples/Prompts/rag_function_pipeline.malda</code>.</p>
         <p><strong>Advanced composition:</strong> <code>composePipe</code>, <code>parallelRun</code>, and <code>mergeRetrievedDocs</code> compose with functions and pipes for parallel retrieval and reusable pipeline functions. See <code>Examples/Prompts/rag_compose_pipeline.malda</code> and <a href="11-built-in-functions.html">12. Built-in Functions</a>.</p>
 
         <h4>Typed Await Example (Validated Output)</h4>
@@ -496,7 +496,7 @@ setDefaultAgent(agent);
 // Now await prompt() calls will use this agent
 var result = await myPrompt("input");</code></pre>
         
-        <h3>8.8.4 PromptInstance Properties</h3>
+        <h3>9.9.4 PromptInstance Properties</h3>
         <p>When a prompt is invoked, it returns a <code>PromptInstance</code> object with the following properties:</p>
         <pre><code>var p = myPrompt("arg1", "arg2");
 
@@ -514,7 +514,7 @@ var userStr = p.getUser();     // Returns user prompt string
 var systemStr = p.getSystem(); // Returns system prompt string or null
 var promptStr = p.toPromptString(); // Returns user prompt (for backward compatibility)</code></pre>
         
-        <h3>8.8.5 Advanced Prompt Features</h3>
+        <h3>9.9.5 Advanced Prompt Features</h3>
         <h4>Prompt with Metadata (Object Literal Syntax)</h4>
         <pre><code>prompt advanced(task) {
     system: "You are an expert.",
@@ -560,7 +560,7 @@ print(result.user);  // Output: First: A, Second: B</code></pre>
     """
 }</code></pre>
         
-        <h3>8.8.6 Prompt Blocks vs String Concatenation</h3>
+        <h3>9.9.6 Prompt Blocks vs String Concatenation</h3>
         <p><strong>Before (String Concatenation):</strong></p>
         <pre><code>var prompt = "Task: " + task + "\n\n" +
              "Documentation:\n" + docs;
@@ -591,13 +591,13 @@ var response = agent.think(planTask(task, docs));</code></pre>
             <h3>See Also</h3>
             <ul>
                 <li><a href="10-classes-objects.html">10. Classes & Objects</a> - Methods in classes</li>
-                <li><a href="14-agent-orchestration.html">16. Agent Orchestration</a> - Using agents with prompts</li>
-                <li><a href="15-database.html">18. Database Support</a> - REST decorators</li>
+                <li><a href="14-agent-orchestration.html">17. Agent Orchestration</a> - Using agents with prompts</li>
+                <li><a href="15-database.html">15. Database Support</a> - REST decorators</li>
             </ul>
         </div>
         <div class="nav-footer">
-            <a href="08-control-structures.html">← Previous: 7. Control Structures</a>
-            <a href="05-arrays.html">Next: 9. Arrays→</a>
+            <a href="08-control-structures.html">← Previous: 8. Control Structures</a>
+            <a href="10-classes-objects.html">Next: 10. Classes & Objects→</a>
         </div>
 
         <footer>

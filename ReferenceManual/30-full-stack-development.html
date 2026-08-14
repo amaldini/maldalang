@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>31. Full-Stack Development with MALDA - MALDA Reference Manual</title>
+    <title>28. Full-Stack Development with MALDA - MALDA Reference Manual</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="syntax.css">
     <link rel="stylesheet" href="print.css" media="print">
@@ -15,11 +15,11 @@
     </header>
     <nav></nav>
     <main>
-        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>31. Full-Stack Development with MALDA</span></div>
-        <h1>31. Full-Stack Development with MALDA</h1>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>28. Full-Stack Development with MALDA</span></div>
+        <h1>28. Full-Stack Development with MALDA</h1>
         <p>This chapter shows how to use MALDA as a complete full-stack platform. The goal is to connect concepts already documented in dedicated chapters into one end-to-end architecture. For runnable starters, use <code>malda new webapi</code>, <code>malda new fullstack</code>, and the examples under <code>Examples/Web/</code> (for example <code>rest_api_server.malda</code> and <code>ui_controls_showcase_minimal.malda</code>).</p>
 
-        <h2>31.1 What "full-stack" means in MALDA</h2>
+        <h2>28.1 What "full-stack" means in MALDA</h2>
         <p>In MALDA, a full-stack app typically combines:</p>
         <ul>
             <li><strong>Web UI</strong> for user interactions (forms, lists, dashboards)</li>
@@ -28,20 +28,20 @@
             <li><strong>Optional AI agent</strong> for triage, summaries, and automation</li>
         </ul>
         <p>These map directly to existing manual chapters: Web UI Generation, REST API Server, REST Web Client, Database Support, and Agent Orchestration.</p>
-        <h3>30.1.1 Runtime boundary: MALDA vs JavaScript</h3>
+        <h3>28.1.1 Runtime boundary: MALDA vs JavaScript</h3>
         <ul>
             <li><strong>MALDA runtime (server-side):</strong> your API handlers, database access, agent orchestration, and optional server-rendered HTML via <code>HttpServer</code>, <code>@PAGE</code>, or <code>@AIPAGE</code></li>
             <li><strong>Browser runtime (client-side):</strong> JavaScript/TypeScript UI code that renders the interface and calls MALDA APIs over HTTP</li>
         </ul>
         <p>So the UI layer can be either server-rendered by MALDA, client-rendered in JavaScript, or a hybrid of both.</p>
-        <h3>30.1.2 Delivery models</h3>
+        <h3>28.1.2 Delivery models</h3>
         <ul>
             <li><strong>MALDA-native full stack:</strong> MALDA backend + MALDA server-rendered UI (<code>@PAGE</code>/<code>@AIPAGE</code>)</li>
             <li><strong>Hybrid full stack:</strong> MALDA backend + external browser framework UI (React/Vue/Angular/Svelte/etc.)</li>
             <li><strong>Backend-only:</strong> MALDA APIs/services without a user-facing UI layer</li>
         </ul>
         <p>Both MALDA-native and hybrid are full-stack because they include UI + API + data layers end to end.</p>
-        <h3>30.1.3 Single-source target decorators</h3>
+        <h3>28.1.3 Single-source target decorators</h3>
         <p>MALDA now supports target decorators so one <code>.malda</code> source can contain server-only, client-only, and shared code in a controlled way:</p>
         <ul>
             <li><code>@server()</code> / <code>@csharp()</code>: include declaration in C# transpilation, exclude from JavaScript transpilation.</li>
@@ -52,7 +52,7 @@
         <p><strong>Validation rules:</strong> combining <code>@client()</code> with route decorators is invalid, and <code>@shared()</code> should only use cross-target-safe helpers. Target-specific operations such as direct filesystem/database/server APIs or browser DOM/local storage helpers should stay in explicit server/client declarations.</p>
         <p><strong>Desktop IDE workflow:</strong> for single-source full-stack files, the Desktop IDE can render one physical <code>.malda</code> as multiple virtual tabs when the source opts in with explicit <code>// @malda-section Name</code> separators. Saving still writes one physical file, and regular <code>include</code> files continue to open/edit as normal physical documents.</p>
 
-        <h2>31.2 Example scenario: Simple items app</h2>
+        <h2>28.2 Example scenario: Simple items app</h2>
         <p>A typical sample app supports:</p>
         <ul>
             <li>Create items from a web form</li>
@@ -72,7 +72,7 @@
   "createdAt": "2026-02-14T09:15:00Z"
 }</code></pre>
 
-        <h2>31.3 Recommended project structure</h2>
+        <h2>28.3 Recommended project structure</h2>
         <pre><code>/app
   /api
     items-api.malda
@@ -85,7 +85,7 @@
         <p>Keep business logic in reusable functions/classes, then expose it through both API handlers and UI handlers. This prevents duplicated logic between front-end and back-end flows.</p>
         <p>When using single-source target decorators, you can also choose a flatter structure (for example one <code>app.malda</code> entry) while still separating concerns by marking declarations with <code>@server()</code>, <code>@client()</code>, and <code>@shared()</code>.</p>
 
-        <h2>31.4 API layer (Item CRUD + workflow)</h2>
+        <h2>28.4 API layer (Item CRUD + workflow)</h2>
         <p>Define REST routes for item operations:</p>
         <pre><code>function ok(data) {
     return {"status": 200, "data": data};
@@ -119,9 +119,9 @@ function updateItemStatus(id, body) {
     dbExecute("UPDATE Items SET status = @status WHERE id = @id", {"id": id, "status": body.status});
     return ok({"id": id, "status": body.status});
 }</code></pre>
-        <p>Production recommendation: add validation, auth middleware, and consistent error payloads. See <a href="17-rest-api.html">22. REST API Server</a>.</p>
+        <p>Production recommendation: add validation, auth middleware, and consistent error payloads. See <a href="17-rest-api.html">26. REST API Server</a>.</p>
 
-        <h2>31.5 UI layer (what technology to use)</h2>
+        <h2>28.5 UI layer (what technology to use)</h2>
         <p>You have two common approaches:</p>
         <ul>
             <li><strong>Server-rendered UI in MALDA</strong>: build pages with <code>@PAGE</code>/<code>@AIPAGE</code> and serve from MALDA directly</li>
@@ -133,7 +133,7 @@ function updateItemStatus(id, body) {
             <tr><td>Hybrid full stack</td><td>Rich SPA UX, large frontend teams, strong JS ecosystem requirements</td></tr>
         </table>
         <p>Framework options for the browser UI include vanilla JavaScript, React, Vue, Angular, Svelte, Next.js (frontend/API-consumer mode), Nuxt, Solid, and lightweight options like HTMX or Alpine.js. MALDA is backend-agnostic here as long as the frontend can call HTTP APIs.</p>
-        <h3>30.5.0 MALDA-native component pattern</h3>
+        <h3>28.5.0 MALDA-native component pattern</h3>
         <p>For MALDA-native full stack, this provides a pragmatic server-component baseline:</p>
         <ul>
             <li><code>component Name(...) { ... }</code> for server-rendered component entry points</li>
@@ -143,7 +143,7 @@ function updateItemStatus(id, body) {
         </ul>
         <p><strong>How to choose transport:</strong> use <strong>fragment HTTP</strong> as the default for user-initiated actions (forms/buttons). Add <strong>LIVE/SSE</strong> when the UI must update without a user action (notifications, counters, queues).</p>
         <p><strong>Note:</strong> LIVE endpoints support channel subscriptions (for example <code>/items/live?channel=items</code>) and <code>componentLiveEmit("items", ...)</code> publishes to that channel only. The <code>malda new fullstack</code> scaffold also ships a sample component at <code>/components/TicketBoard</code> for a quick local demo.</p>
-        <h4>30.5.0.1 Small items example</h4>
+        <h4>28.5.0.1 Small items example</h4>
         <pre><code>component ItemBoard() {
     var items = componentStateGet("board", "items", []);
     return "&lt;h1&gt;Open: " + items.length + "&lt;/h1&gt;";
@@ -162,12 +162,12 @@ function addItem(body) {
 function itemsLive() {
     return {"sse": true};
 }</code></pre>
-        <h3>30.5.1 MALDA server-side page handlers</h3>
+        <h3>28.5.1 MALDA server-side page handlers</h3>
         <pre><code>@PAGE("/items")
 function itemsPage() {
     return "&lt;html&gt;&lt;body&gt;&lt;h1&gt;Items&lt;/h1&gt;&lt;/body&gt;&lt;/html&gt;";
 }</code></pre>
-        <h3>30.5.2 Browser-side JavaScript calling MALDA API</h3>
+        <h3>28.5.2 Browser-side JavaScript calling MALDA API</h3>
         <pre><code>async function loadItems() {
   const r = await fetch("/api/items?status=open");
   const json = await r.json();
@@ -182,7 +182,7 @@ async function closeItem(id) {
   });
 }</code></pre>
         <p>This separation keeps UI concerns focused on rendering and interaction, while MALDA remains the source of truth for business logic and data access.</p>
-        <h3>30.5.3 Migration path from @PAGE to components</h3>
+        <h3>28.5.3 Migration path from @PAGE to components</h3>
         <ol>
             <li>Keep existing <code>@PAGE</code> endpoints stable (no breaking migration required).</li>
             <li>Extract view logic into <code>component</code> functions.</li>
@@ -192,13 +192,13 @@ async function closeItem(id) {
         </ol>
         <p><strong>Incremental migration tip:</strong> start with one form workflow (for example &quot;create item&quot;), validate that fragment updates and state handling are clear to the team, then expand to other pages.</p>
 
-        <h3>30.5.4 End-to-end UI example</h3>
+        <h3>28.5.4 End-to-end UI example</h3>
         <p>For a complete list/detail flow with CRUD-style controls, start from <code>Examples/Web/ui_controls_showcase_minimal.malda</code>, <code>Examples/Web/ui_form_workflow.malda</code>, and <code>Examples/Web/rest_api_server.malda</code>, then compose pages with <code>ui.crudControls</code>, <code>@PAGE</code>, and <code>@POST</code>. Key patterns:</p>
         <ul>
             <li><strong>List page</strong>: an <code>@PAGE</code> handler builds filters/buttons/grid host via <code>ui.crudControls(...)</code>.</li>
             <li><strong>Detail / relation navigation</strong>: query params drive master-detail views (for example <code>?ownerId=5</code>).</li>
             <li><strong>CRUD</strong>: forms use <code>method="post"</code> with matching <code>@POST</code> handlers that validate, persist, and redirect or return a fragment.</li>
-            <li><strong>API calls</strong>: the grid host fetches envelope JSON; the server builds <code>ui.dataGrid</code> from rows and returns a mount/patch envelope. For external APIs, use <code>RestClient</code>; see <a href="18-rest-web-client.html">23. REST Web Client</a>.</li>
+            <li><strong>API calls</strong>: the grid host fetches envelope JSON; the server builds <code>ui.dataGrid</code> from rows and returns a mount/patch envelope. For external APIs, use <code>RestClient</code>; see <a href="18-rest-web-client.html">27. REST Web Client</a>.</li>
             <li><strong>Optimistic / error handling</strong>: show a toast on success; on validation or server error, return <code>componentFragment("form-errors", errorHtml)</code> and re-render the form with inline errors.</li>
         </ul>
         <pre><code>function crudPage(req, schema, pageTitle, lookups) {
@@ -220,18 +220,18 @@ function addItem(req, body, res) {
     var id = dbExecute("INSERT INTO items (...) VALUES (...)", body).lastInsertId;
     return RedirectTo("/web/items?added=" + id);
 }</code></pre>
-        <p>For full schema structure and template paths, see <a href="16-web-ui.html">20. Web UI Server Components</a> (20.3.1.3 CRUD schema reference).</p>
+        <p>For full schema structure and template paths, see <a href="16-web-ui.html">23. Web UI Server Components</a> (23.3.1.3 CRUD schema reference).</p>
 
-        <h2>31.6 Database integration pattern</h2>
+        <h2>28.6 Database integration pattern</h2>
         <p>A practical approach is to use:</p>
         <ul>
             <li>Small repository-like functions per aggregate (for example <code>saveItem</code>, <code>findItemsByStatus</code>)</li>
             <li>Parameterized SQL for all input values</li>
             <li>Simple mapping functions from row objects to domain objects</li>
         </ul>
-        <p>For provider setup and connection details, see <a href="15-database.html">18. Database Support</a>.</p>
+        <p>For provider setup and connection details, see <a href="15-database.html">15. Database Support</a>.</p>
 
-        <h2>31.7 AI triage workflow (optional but powerful)</h2>
+        <h2>28.7 AI triage workflow (optional but powerful)</h2>
         <p>Use an agent to classify incoming item urgency and propose next action:</p>
         <pre><code>var client = new OpenRouterClient();
 var triageAgent = new Agent(
@@ -248,7 +248,7 @@ function triageItem(item) {
 }</code></pre>
         <p>Common integration pattern: call triage right after item creation, then persist <code>priority</code> and <code>queue</code> fields before returning the response.</p>
 
-        <h2>31.8 End-to-end request flow</h2>
+        <h2>28.8 End-to-end request flow</h2>
         <ol>
             <li>User submits item form in Web UI</li>
             <li>UI sends <code>POST /api/items</code></li>
@@ -258,7 +258,7 @@ function triageItem(item) {
             <li>UI refreshes list via <code>GET /api/items</code></li>
         </ol>
 
-        <h2>31.9 Configuration and secrets</h2>
+        <h2>28.9 Configuration and secrets</h2>
         <p>Keep credentials and environment-specific values outside source code:</p>
         <ul>
             <li>Use environment variables for API keys and DB credentials</li>
@@ -267,7 +267,7 @@ function triageItem(item) {
         </ul>
         <p>Relevant built-ins are documented in <a href="11-built-in-functions.html">12. Built-in Functions</a>.</p>
 
-        <h2>31.10 Practical checklist for new full-stack apps</h2>
+        <h2>28.10 Practical checklist for new full-stack apps</h2>
         <ul>
             <li>Define API contracts first (payloads, status codes, error format)</li>
             <li>Implement database access through small reusable functions</li>
@@ -277,31 +277,31 @@ function triageItem(item) {
             <li>Introduce AI automation only where it saves measurable effort</li>
         </ul>
 
-        <h3>30.10.1 Testing and troubleshooting (Web UI + API)</h3>
+        <h3>28.10.1 Testing and troubleshooting (Web UI + API)</h3>
         <p>When integrating Web UI with REST APIs, use these practical checks:</p>
         <ul>
             <li><strong>Fragment responses</strong>: Verify <code>X-Malda-Fragment</code> and <code>X-Malda-Fragment-Target</code> headers when testing <code>@ACTION</code> or <code>@POST</code> handlers. The client must update only the target element.</li>
             <li><strong>Session continuity</strong>: Pass <code>session</code> in query or form; <code>ui.sessionId(req, default)</code> reads it. Without it, <code>componentState*</code> and <code>ui.state</code> may not persist across requests.</li>
-            <li><strong>API errors</strong>: When the UI calls <code>GET /api/items</code>, ensure the API returns consistent JSON (<code>{"status": 200, "data": [...]}</code>). Use <a href="17-rest-api.html">22. REST API Server</a> validation and error payloads.</li>
+            <li><strong>API errors</strong>: When the UI calls <code>GET /api/items</code>, ensure the API returns consistent JSON (<code>{"status": 200, "data": [...]}</code>). Use <a href="17-rest-api.html">26. REST API Server</a> validation and error payloads.</li>
             <li><strong>CSRF</strong>: If <code>enableCsrf</code> is on, the client must send the token. Check that forms include the hidden field and fetch requests use the correct header.</li>
             <li><strong>Lookups</strong>: For schema-driven CRUD, ensure <code>lookups</code> contains all keys referenced in <code>dialogLookupOptions</code> (e.g. <code>owners</code>, <code>tags</code>). Missing lookups produce empty dropdowns.</li>
         </ul>
-        <p>For Web UI-specific debugging (tree divergence, event handlers, template cache), see <a href="16-web-ui.html">20. Web UI Server Components</a> (20.3.15 Common pitfalls and debugging, 20.6 Testing and Troubleshooting).</p>
+        <p>For Web UI-specific debugging (tree divergence, event handlers, template cache), see <a href="16-web-ui.html">23. Web UI Server Components</a> (23.3.15 Common pitfalls and debugging, 23.6 Testing and Troubleshooting).</p>
 
         <div class="see-also">
             <h3>See Also</h3>
             <ul>
-                <li><a href="16-web-ui.html">20. Web UI Server Components</a> - Building browser-facing pages and UI flows</li>
-                <li><a href="17-rest-api.html">22. REST API Server</a> - Route decorators, middleware, validation, responses</li>
-                <li><a href="18-rest-web-client.html">23. REST Web Client</a> - Calling APIs from UI/services</li>
-                <li><a href="15-database.html">18. Database Support</a> - Persistence patterns and providers</li>
-                <li><a href="14-agent-orchestration.html">16. Agent Orchestration</a> - AI agents and tool-based workflows</li>
+                <li><a href="16-web-ui.html">23. Web UI Server Components</a> - Building browser-facing pages and UI flows</li>
+                <li><a href="17-rest-api.html">26. REST API Server</a> - Route decorators, middleware, validation, responses</li>
+                <li><a href="18-rest-web-client.html">27. REST Web Client</a> - Calling APIs from UI/services</li>
+                <li><a href="15-database.html">15. Database Support</a> - Persistence patterns and providers</li>
+                <li><a href="14-agent-orchestration.html">17. Agent Orchestration</a> - AI agents and tool-based workflows</li>
             </ul>
         </div>
 
         <div class="nav-footer">
-            <a href="20-examples.html">← Previous: 30. Examples</a>
-            <a href="31-durable-workflows.html">Next: 32. Durable Workflows→</a>
+            <a href="18-rest-web-client.html">← Previous: 27. REST Web Client</a>
+            <a href="21-dotnet-interop.html">Next: 29. .NET Interop→</a>
         </div>
 
         <footer>

@@ -19,6 +19,9 @@ dotnet test MaldaLang.Tests --filter "FullyQualifiedName~ReferenceManual"
 | `ReferenceManualContentGuardTests.SectionNumbers_AreUniqueWithinEachChapter` | No chapter reuses a section number such as two `35.5` headings |
 | `ReferenceManualContentGuardTests.WebUiChapter_NamesEveryRegisteredControlType` | Every `UiControlSpecRegistry` control type appears as `ui.<type>` in `16-web-ui.html` |
 | `ReferenceManualContentGuardTests.NavigationFallback_MatchesChaptersJson` | `FALLBACK_NAV_ITEMS` in `navigation.js` matches `chapters.json` |
+| `ReferenceManualContentGuardTests.IndexTocFallback_MatchesChaptersJson` | `FALLBACK_TOC_CHAPTERS` in `index-toc.js` matches `chapters.json` |
+| `ReferenceManualContentGuardTests.ChapterCategories_AreContiguousInReadingOrder` | Each menu category is a contiguous number range in `chapters.json` |
+| `ReferenceManualContentGuardTests.NavAndTocCategoryOrder_ListsEveryChapterCategory` | Sidebar and home TOC category lists match first-seen `chapters.json` categories |
 | `ReferenceManualRunnableSnippetTests` | Every snippet marked runnable actually runs and prints what the manual claims |
 
 ## Adding a built-in

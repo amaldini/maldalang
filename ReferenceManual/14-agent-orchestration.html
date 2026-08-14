@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>16. Agent Orchestration - MALDA Reference Manual</title>
+    <title>17. Agent Orchestration - MALDA Reference Manual</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="syntax.css">
     <link rel="stylesheet" href="print.css" media="print">
@@ -15,12 +15,12 @@
     </header>
     <nav></nav>
     <main>
-        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>16. Agent Orchestration</span></div>
-        <h1>16. Agent Orchestration</h1>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>17. Agent Orchestration</span></div>
+        <h1>17. Agent Orchestration</h1>
         <p><strong>MALDA: The AI-First Programming Language</strong> includes native, first-class support for agent orchestration as a core language feature. These capabilities are built directly into the language, making MALDA the simplest way to build AI agents and automation workflows.</p>
         
         <div class="warning-box">
-            <h2>16.1 ⚠️ Critical Security and Risk Disclaimer</h2>
+            <h2>17.1 ⚠️ Critical Security and Risk Disclaimer</h2>
             <p><strong>Autonomous agent systems with tool access pose significant security, safety, and operational risks.</strong> Before deploying agents with tools in production environments, you must understand and mitigate these risks.</p>
             
             <h3>Fundamental Risks</h3>
@@ -120,7 +120,7 @@
             <p><strong>By using MALDA's agent orchestration features, you acknowledge that you understand these risks and are solely responsible for the actions taken by agents you create and deploy.</strong> The developers of MALDA and this reference manual provide no warranties regarding the safety, security, or reliability of autonomous agent systems.</p>
         </div>
         
-        <h2>16.2 LLM Client</h2>
+        <h2>17.2 LLM Client</h2>
         <p>The <code>LLMClient</code> class provides an interface to OpenAI-compatible LLM APIs (OpenAI, OpenRouter, LMStudio, OLLAMA, etc.).</p>
         <h3>Constructor</h3>
         <pre><code>var client = new LLMClient(apiUrl, apiKey, model);</code></pre>
@@ -141,7 +141,7 @@ var client = new LLMClient(
 
 var response = client.complete("Explain quantum computing in one sentence.");
 print(response);</code></pre>
-        <h2>16.3 OpenRouterClient</h2>
+        <h2>17.3 OpenRouterClient</h2>
         <p>For OpenRouter specifically, there's a specialized <code>OpenRouterClient</code> class that simplifies configuration.</p>
         <h3>Constructor</h3>
         <pre><code>// With default model (deepseek/deepseek-v4-flash)
@@ -161,10 +161,10 @@ var client = new OpenRouterClient("openai/gpt-4");</code></pre>
 client.httpReferer = "https://example.com/secondbrain";  // HTTP-Referer (required for attribution)
 client.appTitle = "Second Brain ASK";                     // X-OpenRouter-Title
 client.appCategories = "cli-agent";                       // optional X-OpenRouter-Categories</code></pre>
-        <h3>16.3.1 Default local LLM (when no client is provided)</h3>
+        <h3>17.3.1 Default local LLM (when no client is provided)</h3>
         <p>When you create an agent, prompt, or use built-ins like <code>decomposeTask</code> without passing an LLM client, MALDA uses a <strong>default local LLM</strong>: Qwen/Qwen2.5-0.5B-Instruct, downloaded as the GGUF build <code>qwen2.5-0.5b-instruct-q4_k_m.gguf</code> from Hugging Face on first use. The model is cached under your user profile (e.g. <code>%LOCALAPPDATA%\MaldaLang\Models\default</code> on Windows). No API key or network is required after the first download. To use a remote model instead, pass an <code>OpenRouterClient</code>, <code>LLMClient</code>, or <code>LlamaCppClient</code> explicitly.</p>
         <p>You can override the default model with the environment variable <code>MALDA_DEFAULT_LOCAL_MODEL</code>. Set it to <code>modelId/fileName.gguf</code> (e.g. <code>org/repo/MyModel-Q4_K_M.gguf</code>) to use a different Hugging Face GGUF model; that model will be downloaded and cached in a subfolder named after the model ID. If unset, the built-in default Qwen/Qwen2.5-0.5B-Instruct GGUF build is used.</p>
-        <h2>16.4 LlamaCppClient</h2>
+        <h2>17.4 LlamaCppClient</h2>
         <p>The <code>LlamaCppClient</code> class enables local LLM inference using LLAMA.cpp with GGUF format models. No API keys or network connection required. If you omit <code>modelPath</code>, MALDA uses the default local Qwen/Qwen2.5-0.5B-Instruct GGUF model and auto-downloads it on first use.</p>
         <h3>Constructor</h3>
         <pre><code>var client = new LlamaCppClient(modelPath);   // Custom GGUF file
@@ -179,7 +179,7 @@ var conversation = new Conversation(client, "You are a helpful assistant.");
 conversation.addUserMessage("Explain quantum computing.");
 var response = conversation.send();
 print(response.content);</code></pre>
-        <h2>16.5 Conversation Management</h2>
+        <h2>17.5 Conversation Management</h2>
         <p>The <code>Conversation</code> class manages multi-turn conversations with LLMs, including automatic tool call handling.</p>
         <h3>Constructor</h3>
         <pre><code>var conversation = new Conversation(client, systemPrompt);</code></pre>
@@ -226,7 +226,7 @@ print(response.content);</code></pre>
                 <tr><td><code>MALDA_RALPH_*</code></td><td>—</td><td>Aliases for the agent settings above in Ralph runs</td></tr>
             </tbody>
         </table>
-        <h2>16.6 Tool System</h2>
+        <h2>17.6 Tool System</h2>
         <p>Tools allow LLMs to call functions during conversations. Tools are defined using the <code>Tool</code> class and follow the OpenAI function calling format.</p>
         <h3>Built-in Tool Creators</h3>
         <ul>
@@ -262,7 +262,7 @@ conversation.addTool(writeTool);
 
 conversation.addUserMessage("Read example.txt and summarize it.");
 var response = conversation.send();  // LLM will call read_file tool automatically</code></pre>
-        <h2>16.7 Agent Class</h2>
+        <h2>17.7 Agent Class</h2>
         <p>The <code>Agent</code> class represents an autonomous agent with a specific role and instructions.</p>
         <h3>Constructor</h3>
         <pre><code>// With default local LLM (auto-download from Hugging Face)
@@ -280,7 +280,7 @@ var agent = new Agent(name, role, instructions, client);</code></pre>
             <li><code>getAvailableTools()</code> → <code>array</code>: Get list of available tool names</li>
             <li><code>getConversation()</code> → <code>Conversation</code>: Get the agent's conversation object</li>
             <li><code>reset()</code>: Reset agent's conversation history (tools are preserved)</li>
-            <li><code>enableMemory()</code>, <code>enableMemory(path)</code>, <code>useMemory(memory)</code>, <code>saveMemory(path?)</code>, <code>remember(fact, context?)</code>, <code>getMemory()</code>: GraphMemory integration (see <a href="21-graph-memory.html">17. GraphMemory</a>). <code>enableMemory(path)</code> shares one GraphMemory instance across agents using the same path.</li>
+            <li><code>enableMemory()</code>, <code>enableMemory(path)</code>, <code>useMemory(memory)</code>, <code>saveMemory(path?)</code>, <code>remember(fact, context?)</code>, <code>getMemory()</code>: GraphMemory integration (see <a href="21-graph-memory.html">18. GraphMemory</a>). <code>enableMemory(path)</code> shares one GraphMemory instance across agents using the same path.</li>
             <li><code>setMemoryScope(scope)</code>, <code>setMemoryScopeParent(parentScope)</code>, <code>setMemoryScopeHierarchy(scopes)</code>: Control hierarchical memory visibility during <code>think()</code> (e.g. <code>chat:123</code> → <code>project:foo</code> → <code>org:acme</code> → <code>global</code>). Use <code>setMemoryScopeHierarchy</code> for multi-level config; otherwise parent scope falls back to <code>MALDA_MEMORY_SCOPE_PARENT</code>.</li>
             <li><code>setMemoryRerank(enabled, mode?, modelPath?, topK?)</code>: Enable GraphMemory rerank during <code>think()</code> memory queries (<code>rerankMode</code>: <code>llm</code>, <code>cross</code>, or <code>onnx</code>). Env fallbacks: <code>MALDA_MEMORY_RERANK</code>, <code>MALDA_MEMORY_RERANK_MODE</code>, <code>MALDA_MEMORY_RERANK_MODEL_PATH</code>.</li>
             <li><code>setAutoRememberOnThink(enabled)</code>: When <code>true</code>, each <code>think()</code> stores the full prompt and response in memory (default <code>true</code>)</li>
@@ -300,9 +300,9 @@ agent.addTool(createWriteFileTool("."));
 
 var response = agent.think("Read example.txt and add a comment to the add function.");
 print(response.content);</code></pre>
-        <h2>16.8 Custom Tools with @Tool Decorator</h2>
+        <h2>17.8 Custom Tools with @Tool Decorator</h2>
         <div class="info-box">
-            <strong>Governance defaults:</strong> Validate tool / LLM-shaped payloads with a <code>schema</code> and <code>validate()</code> before side effects. Mark normalize/derive helpers <code>@pure()</code> and impure handlers <code>@effects(...)</code>. Offline golden: <code>Examples/Agents/agent_governance_golden.malda</code> (see also <a href="09-functions.html">8.7 Decorators</a>).
+            <strong>Governance defaults:</strong> Validate tool / LLM-shaped payloads with a <code>schema</code> and <code>validate()</code> before side effects. Mark normalize/derive helpers <code>@pure()</code> and impure handlers <code>@effects(...)</code>. Offline golden: <code>Examples/Agents/agent_governance_golden.malda</code> (see also <a href="09-functions.html">9.7 Decorators</a>).
         </div>
         <p>MALDA supports defining custom tools for LLMs using the <code>@Tool</code> decorator on functions.</p>
         <h3>Decorator Syntax</h3>
@@ -340,7 +340,7 @@ var echoTool = new Tool(
 print(echoTool.execute({ "message": "hello" }));  // got hello
 agent.addTool(echoTool);</code></pre>
         <p>See <code>Examples/Agents/secondbrain_semantic.malda</code> (<code>find_related_notes</code>) for a GraphMemory-backed example used in ASK when tools are enabled.</p>
-        <h2>16.9 CodingAgent</h2>
+        <h2>17.9 CodingAgent</h2>
         <p>The <code>CodingAgent</code> class is a specialized agent for coding tasks that automatically includes all file operation tools.</p>
         <h3>Included Tools</h3>
         <p>CodingAgent automatically includes the following file operation tools and command execution tool:</p>
@@ -376,7 +376,7 @@ var agent = new CodingAgent(name, role, instructions, client, workingDirectory);
 // Agent already has all file tools - ready to use!
 var response = coderAgent.think("Read example.txt and add error handling.");
 print(response.content);</code></pre>
-        <h2>16.10 GitAgent</h2>
+        <h2>17.10 GitAgent</h2>
         <p>The <code>GitAgent</code> class is a specialized agent for git operations that automatically includes all git tools.</p>
         <h3>Included Tools</h3>
         <p>GitAgent automatically includes the following git operation tools:</p>
@@ -413,7 +413,7 @@ var agent = new GitAgent(name, role, instructions, client, workingDirectory);</c
 // Agent already has all git tools - ready to use!
 var response = gitAgent.think("Check git status, stage all changes, and commit with message 'Update code'");
 print(response.content);</code></pre>
-        <h2>16.11 HumanAgent</h2>
+        <h2>17.11 HumanAgent</h2>
         <p>The <code>HumanAgent</code> class is a specialized agent for human interaction that automatically includes the <code>ask_user</code> tool. This makes it easy to create agents that need to interact with humans for clarification, confirmation, or additional information.</p>
         <h3>Included Tools</h3>
         <p>HumanAgent automatically includes the following user interaction tool:</p>
@@ -487,7 +487,7 @@ var response = orchestrator.think(
             <li><strong>Separation of Concerns:</strong> Human interaction logic is isolated in the HumanAgent</li>
             <li><strong>Reusability:</strong> Same HumanAgent can be used by multiple orchestrators</li>
         </ul>
-        <h2>16.12 DevAgent</h2>
+        <h2>17.12 DevAgent</h2>
         <p>The <code>DevAgent</code> class is a specialized agent for full development workflows that automatically includes all file operation tools, git tools, command execution tools, and optional code analysis tools.</p>
         <h3>Included Tools</h3>
         <p>DevAgent automatically includes the following tools:</p>
@@ -555,7 +555,7 @@ var devAgent = new DevAgent(
 // Agent can handle complete development workflow
 var response = devAgent.think("Implement a new feature: add a user authentication system");
 print(response.content);</code></pre>
-        <h2>16.13 Structured task planning</h2>
+        <h2>17.13 Structured task planning</h2>
         <p>MALDA supports breaking complex tasks into ordered steps and executing them via an agent. A <strong>plan</strong> is an object <code>{ steps: [{ id, description, dependsOn? }, ...], planId?, taskSummary? }</code>. Each step has a unique <code>id</code> (string), <code>description</code> (string), and optional <code>dependsOn</code> (array of step ids that must complete first).</p>
         <ul>
             <li><strong>decomposeTask(instruction, client?)</strong> – Uses an LLM to turn a high-level instruction into a plan. Optional second argument is an LLM client; if omitted, the default local LLM (Qwen/Qwen2.5-0.5B-Instruct, auto-downloaded as a GGUF build from Hugging Face) is used. Returns a plan object or <code>{ error }</code> on failure.</li>
@@ -570,7 +570,7 @@ var agent = new DevAgent("Dev", "developer", "You are a developer.", null, ".");
 var result = executePlan(plan, agent);
 print(result.completed);
 print(result.results);</code></pre>
-        <h2>16.14 SPLCodingAgent</h2>
+        <h2>17.14 SPLCodingAgent</h2>
         <p>The <code>SPLCodingAgent</code> class is a specialized agent for MALDA script development and toolchain operations that automatically includes all file operation tools and MALDA execution/compilation tools.</p>
         <h3>Included Tools</h3>
         <p>SPLCodingAgent automatically includes the following tools:</p>
@@ -634,7 +634,7 @@ var response = splAgent.think("List all MALDA files and improve error handling i
             <li>Use <code>CodingAgent</code> when you only need file operations and command execution (lighter weight, fewer tools, for general coding tasks)</li>
             <li>Use <code>GitAgent</code> when you only need git operations</li>
         </ul>
-        <h2>16.15 Agent Dashboard</h2>
+        <h2>17.15 Agent Dashboard</h2>
         <p>MALDA agents automatically report their activities to a central dashboard without requiring any modifications to MALDA scripts. This enables monitoring and observability across all agents, even when they run in different executables or processes.</p>
         <h3>Overview</h3>
         <p>The agent dashboard feature provides:</p>
@@ -790,7 +790,7 @@ var response = agent.think("Write a hello world function");
             <li><strong>Multi-Process Support:</strong> Track agents running in different executables via process ID</li>
             <li><strong>Zero Overhead:</strong> No performance impact on agent execution</li>
         </ul>
-        <h2>16.16 Multi-Agent Orchestration</h2>
+        <h2>17.16 Multi-Agent Orchestration</h2>
         <p>Multiple agents can work together, each with specialized roles and tools.</p>
         <h3>Parallel Agent Workflow</h3>
         <p>Agents can work independently on different tasks:</p>
@@ -876,11 +876,11 @@ print(response.content);</code></pre>
         <div class="see-also">
             <h3>See Also</h3>
             <ul>
-                <li><a href="09-functions.html">8. Functions</a> - @Tool decorator syntax</li>
+                <li><a href="09-functions.html">9. Functions</a> - @Tool decorator syntax</li>
                 <li><a href="12-input-output.html">11. Input/Output</a> - Tool creation functions</li>
             </ul>
         </div>
-        <h2 id="using-agents-with-actors">16.17 Using Agents with Actors</h2>
+        <h2 id="using-agents-with-actors">17.17 Using Agents with Actors</h2>
         <p>Agents and actors are complementary features in MALDA. While agents are classes designed for synchronous AI interactions, actors provide concurrent, message-based processing. Combining them enables powerful patterns for distributed AI systems.</p>
         
         <div class="info-box">
@@ -1047,12 +1047,12 @@ send stateManager.queryAgent("Helper", "What is MALDA?");</code></pre>
         <div class="see-also">
             <h3>See Also</h3>
             <ul>
-                <li><a href="13-actors.html">15. Actors</a> - Actor model and message passing</li>
-                <li><a href="13-actors.html#actor-state-isolation">15.5 Actor State Isolation</a> - Understanding actor state</li>
+                <li><a href="13-actors.html">16. Actors</a> - Actor model and message passing</li>
+                <li><a href="13-actors.html#actor-state-isolation">16.5 Actor State Isolation</a> - Understanding actor state</li>
             </ul>
         </div>
 
-        <h2 id="ralph-wiggum">16.18 Ralph Wiggum (PRD-driven autonomous loop)</h2>
+        <h2 id="ralph-wiggum">17.18 Ralph Wiggum (PRD-driven autonomous loop)</h2>
         <p>The repository includes <code>Examples/RalphWiggum/RalphWiggum.malda</code>, a production-ready autonomous loop for PRD-driven development. It uses <code>DevAgent</code>, a checklist PRD (<code>PRD.md</code>), post-iteration validation, resume state, and <strong>GraphMemory</strong> for continuity across iterations when conversation history is reset each round. See <code>Examples/RalphWiggum/README.md</code> for prerequisites and the Snake demo.</p>
 
         <h3>Running</h3>
@@ -1094,7 +1094,7 @@ send stateManager.queryAgent("Helper", "What is MALDA?");</code></pre>
             <li><code>MALDA_RALPH_REPORT</code>, <code>MALDA_RALPH_NOTIFY</code>, <code>MALDA_RALPH_MAX_PHASE_RETRIES</code>, <code>MALDA_RALPH_ABORT_ON_STALL</code></li>
             <li><code>MALDA_RALPH_GIT_COMMIT</code>, <code>MALDA_RALPH_AUTO_REMEMBER</code> (default <code>false</code>)</li>
             <li><code>MALDA_AGENT_THINK_TIMEOUT_MS</code> / <code>MALDA_RALPH_ITER_TIMEOUT_MS</code> — per-iteration think deadline</li>
-            <li>Verbose CLI: <code>MALDA_AGENT_VERBOSE</code> (default <code>true</code> in Ralph), <code>MALDA_AGENT_RICH</code>, <code>MALDA_AGENT_LLM_THINKING</code>, <code>MALDA_AGENT_LLM_STREAM</code> — see <a href="#conversation-verbose-streaming">16.5 verbose logging</a></li>
+            <li>Verbose CLI: <code>MALDA_AGENT_VERBOSE</code> (default <code>true</code> in Ralph), <code>MALDA_AGENT_RICH</code>, <code>MALDA_AGENT_LLM_THINKING</code>, <code>MALDA_AGENT_LLM_STREAM</code> — see <a href="#conversation-verbose-streaming">17.5 verbose logging</a></li>
             <li><code>OPENROUTER_API_KEY</code> or <code>providers.openrouter</code> in <code>~/.malda/config.json</code></li>
         </ul>
         <p>Implementation modules: <code>Examples/RalphWiggum/ralph/*.malda</code> (see <code>ralph/ARCHITECTURE.md</code>). Full env var list and git-worktree workflow: <code>Examples/RalphWiggum/README.md</code>.</p>
@@ -1103,12 +1103,12 @@ send stateManager.queryAgent("Helper", "What is MALDA?");</code></pre>
         <h3>Custom validation hooks</h3>
         <p>After structural checks, Ralph may run <code>MALDA_RALPH_VALIDATE_CMD</code>, or a project-local <code>.ralph-validate.sh</code> / <code>.ralph-validate.bat</code> / (or <code>.ralph-validate.malda</code>) in the workdir.</p>
         <h3>Execution strategy</h3>
-        <p>Ralph prompts the agent to complete <strong>one PRD checklist item per iteration</strong> in as few LLM rounds as possible: batch read-only exploration (<code>list_directory</code>, <code>grep</code>, <code>read_file</code>) in one response, then batch edits and verification. This pairs with parallel read-only tool execution (16.5) and streamed <code>[think]</code> feedback during verbose runs.</p>
-        <p>See also <a href="21-graph-memory.html">17. GraphMemory</a> for <code>remember</code> metadata, <code>getRecent</code>, and hybrid <code>query</code> options.</p>
+        <p>Ralph prompts the agent to complete <strong>one PRD checklist item per iteration</strong> in as few LLM rounds as possible: batch read-only exploration (<code>list_directory</code>, <code>grep</code>, <code>read_file</code>) in one response, then batch edits and verification. This pairs with parallel read-only tool execution (17.5) and streamed <code>[think]</code> feedback during verbose runs.</p>
+        <p>See also <a href="21-graph-memory.html">18. GraphMemory</a> for <code>remember</code> metadata, <code>getRecent</code>, and hybrid <code>query</code> options.</p>
 
         <div class="nav-footer">
-            <a href="13-actors.html">← Previous: 15. Actors</a>
-            <a href="21-graph-memory.html">Next: 17. GraphMemory→</a>
+            <a href="13-actors.html">← Previous: 16. Actors</a>
+            <a href="21-graph-memory.html">Next: 18. GraphMemory→</a>
         </div>
 
         <footer>

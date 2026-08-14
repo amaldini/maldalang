@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>28. Device Integration - MALDA Reference Manual</title>
+    <title>30. Device Integration - MALDA Reference Manual</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="syntax.css">
     <link rel="stylesheet" href="print.css" media="print">
@@ -15,8 +15,8 @@
     </header>
     <nav></nav>
     <main>
-        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>28. Device Integration</span></div>
-        <h1>28. Device Integration</h1>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>30. Device Integration</span></div>
+        <h1>30. Device Integration</h1>
         
         <div class="info-box">
             <strong>Note:</strong> Device integration is an optional feature. The core language and AI features work independently of hardware support.
@@ -24,7 +24,7 @@
         
         <p>MALDA supports interaction with physical devices through serial communication (USB) and HTTP/REST APIs (WiFi). This enables control of Arduino, ESP32, Raspberry Pi, smart home devices, and other IoT equipment.</p>
         
-        <h2>28.1 Overview</h2>
+        <h2>30.1 Overview</h2>
         
         <h3>Why Device Integration?</h3>
         <p>Device integration allows MALDA programs to:</p>
@@ -64,7 +64,7 @@
             </tr>
         </table>
         
-        <h2>28.2 Serial Communication</h2>
+        <h2>30.2 Serial Communication</h2>
         
         <p>The <code>SerialConnection</code> class provides low-level serial port communication for USB-connected devices.</p>
         
@@ -106,9 +106,9 @@ if (connected) {
             <li><strong>macOS</strong>: <code>"/dev/cu.usbserial-*"</code>, <code>"/dev/cu.usbmodem*"</code>, etc.</li>
         </ul>
         
-        <h2>28.3 HTTP/REST Devices</h2>
+        <h2>30.3 HTTP/REST Devices</h2>
         
-        <p>For WiFi-enabled devices, use the <code>RestClient</code> class (see <a href="18-rest-web-client.html">Section 18</a> for full documentation). This works with any device that exposes HTTP/REST APIs.</p>
+        <p>For WiFi-enabled devices, use the <code>RestClient</code> class (see <a href="18-rest-web-client.html">27. REST Web Client</a> for full documentation). This works with any device that exposes HTTP/REST APIs.</p>
         
         <h3>Example: ESP32 Device</h3>
         <pre><code>var device = new RestClient("http://192.168.1.100");
@@ -128,7 +128,7 @@ device.post("/relay/1", {"state": "on"});</code></pre>
         <pre><code>var device = new RestClient("http://192.168.1.100");
 device.setAuth("Bearer", "your-api-token");</code></pre>
         
-        <h2>28.4 Arduino Integration</h2>
+        <h2>30.4 Arduino Integration</h2>
         
         <p>The <code>ArduinoConnection</code> class provides a high-level interface for controlling Arduino devices, supporting both serial and HTTP communication modes.</p>
         
@@ -201,7 +201,7 @@ arduino.disconnect();</code></pre>
             <li>Responses: <code>OK:value\n</code> or <code>ERROR:message\n</code></li>
         </ul>
         
-        <h2>28.5 ESP32/ESP8266</h2>
+        <h2>30.5 ESP32/ESP8266</h2>
         
         <p>ESP32 and ESP8266 devices can be controlled via HTTP/REST after uploading the bridge sketch.</p>
         
@@ -234,7 +234,7 @@ esp32.digitalWrite(2, true);
 var distance = esp32.analogRead(0);
 print("Distance: " + distance);</code></pre>
         
-        <h2>28.6 Raspberry Pi</h2>
+        <h2>30.6 Raspberry Pi</h2>
         
         <p>Raspberry Pi can be controlled via HTTP API or serial connection.</p>
         
@@ -250,7 +250,7 @@ pi.connect("/dev/ttyUSB0", 115200);
 pi.write("command\n");
 var response = pi.readLine();</code></pre>
         
-        <h2>28.7 Smart Home Devices</h2>
+        <h2>30.7 Smart Home Devices</h2>
         
         <p>Many smart home devices expose REST APIs that can be controlled with <code>RestClient</code>.</p>
         
@@ -303,7 +303,7 @@ homeAssistant.post("/api/services/light/turn_on", {
     "entity_id": "light.living_room"
 });</code></pre>
         
-        <h2>28.8 Multi-Device Coordination</h2>
+        <h2>30.8 Multi-Device Coordination</h2>
         
         <p>MALDA's actor model is ideal for coordinating multiple devices. Each device can be controlled by its own actor, enabling concurrent, coordinated operations.</p>
         
@@ -390,7 +390,7 @@ send coordinator.registerRobot(robot1);
 send coordinator.registerRobot(robot2);
 send coordinator.startAll();</code></pre>
         
-        <h2>28.9 Examples</h2>
+        <h2>30.9 Examples</h2>
         
         <p>Complete examples are available in the <code>Examples/Devices/</code> directory:</p>
         <ul>
@@ -413,7 +413,7 @@ arduino.digitalWrite(13, true);</code></pre>
             </li>
         </ol>
         
-        <h2>28.10 Troubleshooting</h2>
+        <h2>30.10 Troubleshooting</h2>
         
         <h3>Serial Connection Issues</h3>
         <ul>
@@ -437,8 +437,8 @@ arduino.digitalWrite(13, true);</code></pre>
         </ul>
         
         <div class="nav-footer">
-            <a href="21-dotnet-interop.html">← Previous: 27. .NET Interop</a>
-            <a href="26-personal-assistant.html">Next: 29. Personal Assistant and CLI→</a>
+            <a href="21-dotnet-interop.html">← Previous: 29. .NET Interop</a>
+            <a href="26-personal-assistant.html">Next: 31. Personal Assistant and CLI→</a>
         </div>
 
         <footer>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>24. REST Web Client - MALDA Reference Manual</title>
+    <title>27. REST Web Client - MALDA Reference Manual</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="syntax.css">
     <link rel="stylesheet" href="print.css" media="print">
@@ -15,11 +15,11 @@
     </header>
     <nav></nav>
     <main>
-        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>24. REST Web Client</span></div>
-        <h1>24. REST Web Client</h1>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>27. REST Web Client</span></div>
+        <h1>27. REST Web Client</h1>
         <p>MALDA includes native support for making HTTP requests to external REST APIs. This includes both a <code>RestClient</code> class for advanced usage and static convenience functions for simple cases.</p>
         
-        <h2>24.1 RestClient Class</h2>
+        <h2>27.1 RestClient Class</h2>
         <p>The <code>RestClient</code> class provides a full-featured HTTP client for making REST API requests.</p>
         
         <h3>Constructor</h3>
@@ -82,7 +82,7 @@ var client = new RestClient("https://api.example.com", 60000);  // With base URL
             <li><code>ok</code> (bool): false</li>
         </ul>
         
-        <h2>24.2 Static HTTP Functions</h2>
+        <h2>27.2 Static HTTP Functions</h2>
         <p>For simple cases, you can use static convenience functions without creating a RestClient instance:</p>
         <ul>
             <li><code>httpGet(url, headers?, queryParams?)</code> - Simple GET request</li>
@@ -93,7 +93,7 @@ var client = new RestClient("https://api.example.com", 60000);  // With base URL
         </ul>
         <p>These functions create a temporary <code>RestClient</code> internally and return the same response format as RestClient methods.</p>
         
-        <h2>24.3 Examples</h2>
+        <h2>27.3 Examples</h2>
         
         <h3>Using RestClient Class</h3>
         <pre><code>// Create client with base URL
@@ -175,7 +175,7 @@ if (response.ok) {
     print("Content-Type: " + contentType);
 }</code></pre>
         
-        <h2>24.4 Authentication</h2>
+        <h2>27.4 Authentication</h2>
         
         <h3>Bearer Token Authentication</h3>
         <pre><code>var client = new RestClient("https://api.example.com");
@@ -191,7 +191,7 @@ var response = client.get("/protected-endpoint");</code></pre>
         <pre><code>var headers = {"Authorization": "Custom token123"};
 var response = httpGet("https://api.example.com/endpoint", headers);</code></pre>
         
-        <h2>24.5 Timeouts</h2>
+        <h2>27.5 Timeouts</h2>
         <pre><code>// Set timeout to 60 seconds
 var client = new RestClient("https://api.example.com", 60000);
 client.setTimeout(10000);  // Change to 10 seconds
@@ -201,7 +201,7 @@ if (response.error != null && response.error.contains("timeout")) {
     print("Request timed out");
 }</code></pre>
         
-        <h2>24.6 Complete Example</h2>
+        <h2>27.6 Complete Example</h2>
         <pre><code>// Create REST client
 var client = new RestClient("https://jsonplaceholder.typicode.com");
 
@@ -239,15 +239,15 @@ if (response.ok) {
         <div class="see-also">
             <h3>See Also</h3>
             <ul>
-                <li><a href="17-rest-api.html">23. REST API Server</a> - Creating REST API servers</li>
-                <li><a href="16-web-ui.html">20. Web UI Server Components</a> - Web UI + API integration patterns</li>
-                <li><a href="30-full-stack-development.html">30. Full-Stack Development with MALDA</a> - End-to-end architecture and API calls from UI</li>
+                <li><a href="17-rest-api.html">26. REST API Server</a> - Creating REST API servers</li>
+                <li><a href="16-web-ui.html">23. Web UI Server Components</a> - Web UI + API integration patterns</li>
+                <li><a href="30-full-stack-development.html">28. Full-Stack Development with MALDA</a> - End-to-end architecture and API calls from UI</li>
                 <li><a href="12-input-output.html">11. Input/Output</a> - Static HTTP functions</li>
             </ul>
         </div>
         <div class="nav-footer">
-            <a href="17-rest-api.html">← Previous: 23. REST API Server</a>
-            <a href="19-mcp-server.html">Next: 25. MCP Server→</a>
+            <a href="17-rest-api.html">← Previous: 26. REST API Server</a>
+            <a href="30-full-stack-development.html">Next: 28. Full-Stack Development with MALDA→</a>
         </div>
 
         <footer>

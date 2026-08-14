@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>7. Control Structures - MALDA Reference Manual</title>
+    <title>8. Control Structures - MALDA Reference Manual</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="syntax.css">
     <link rel="stylesheet" href="print.css" media="print">
@@ -15,10 +15,10 @@
     </header>
     <nav></nav>
     <main>
-        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>7. Control Structures</span></div>
-        <h1>7. Control Structures</h1>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>8. Control Structures</span></div>
+        <h1>8. Control Structures</h1>
         <p>Control structures allow you to control the flow of execution in your program with conditionals and loops.</p>
-        <h2>7.1 Conditional Statements</h2>
+        <h2>8.1 Conditional Statements</h2>
         <h3>If Statement</h3>
         <pre><code>if (condition) {
     // code block
@@ -37,7 +37,7 @@
 } else {
     // code block
 }</code></pre>
-        <h2>7.2 Loops</h2>
+        <h2>8.2 Loops</h2>
         <h3>While Loop</h3>
         <pre><code>while (condition) {
     // code block
@@ -89,7 +89,7 @@ foreach (var x in results) {
         continue;  // Skip to next iteration
     }
 }</code></pre>
-        <h2>7.3 Pattern Matching</h2>
+        <h2>8.3 Pattern Matching</h2>
         <p>Pattern matching allows you to match values against patterns and execute code based on the match. It's similar to switch statements in other languages but more powerful, supporting pattern matching on arrays, objects, and nested structures.</p>
         
         <h3>Match Expression</h3>
@@ -117,7 +117,7 @@ print(result);  // Prints: "matched 42"</code></pre>
         
         <h4>Block Bodies and Multiple Statements</h4>
         <p>A case body can be a single expression or a block <code>{ ... }</code> with multiple statements. This allows side effects (e.g. <code>print</code>, assignments) before producing the case value.</p>
-        <p><strong>Last expression wins (match case bodies):</strong> When a match is used as an expression, a case block's value is the last statement's value if that statement is an expression. If the last statement is not an expression (e.g. <code>print(...)</code>), the match yields <code>null</code>. The same <em>last expression wins</em> rule also applies to functions, methods, and lambdas (see <a href="09-functions.html">8. Functions</a>). Blocks in <code>if</code>, <code>while</code>, and <code>for</code> do not produce a value; they are purely imperative.</p>
+        <p><strong>Last expression wins (match case bodies):</strong> When a match is used as an expression, a case block's value is the last statement's value if that statement is an expression. If the last statement is not an expression (e.g. <code>print(...)</code>), the match yields <code>null</code>. The same <em>last expression wins</em> rule also applies to functions, methods, and lambdas (see <a href="09-functions.html">9. Functions</a>). Blocks in <code>if</code>, <code>while</code>, and <code>for</code> do not produce a value; they are purely imperative.</p>
         <pre><code>var result = match x {
     case 42: {
         print("side effect");
@@ -263,7 +263,7 @@ match response {
             </ul>
         </div>
         
-        <h2>7.4 Exception Handling</h2>
+        <h2>8.4 Exception Handling</h2>
         <h3>Throw Statement</h3>
         <p>The <code>throw</code> statement throws an exception. The expression can be any value (string, object, etc.).</p>
         <pre><code>throw expression;</code></pre>
@@ -332,7 +332,7 @@ try {
             <li>If no catch clause is present and an exception occurs, it propagates up after the finally block executes</li>
         </ul>
 
-        <h2 id="cleanup">7.5 Deterministic Cleanup</h2>
+        <h2 id="cleanup">8.5 Deterministic Cleanup</h2>
         <p>Besides <code>finally</code>, MALDA offers two dedicated forms for releasing resources: <code>defer</code> registers cleanup next to the code that acquired the resource, and the <code>using</code> resource block ties a resource's lifetime to a scope.</p>
 
         <h3>defer</h3>
@@ -407,13 +407,13 @@ using tmp = new TempFile("scratch.txt") {
         <div class="see-also">
             <h3>See Also</h3>
             <ul>
-                <li><a href="07-expressions.html">6. Expressions</a> - Expressions used in conditions</li>
+                <li><a href="07-expressions.html">7. Expressions</a> - Expressions used in conditions</li>
                 <li><a href="04-variables.html">5. Variables</a> - Variable scope in control structures and destructuring</li>
             </ul>
         </div>
         <div class="nav-footer">
-            <a href="07-expressions.html">← Previous: 6. Expressions</a>
-            <a href="09-functions.html">Next: 8. Functions→</a>
+            <a href="07-expressions.html">← Previous: 7. Expressions</a>
+            <a href="09-functions.html">Next: 9. Functions→</a>
         </div>
 
         <footer>

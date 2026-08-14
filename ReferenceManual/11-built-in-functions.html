@@ -861,7 +861,7 @@ print(result.completed);   // step ids that succeeded
 print(result.failed);      // step ids that threw
 print(result.results);     // per-step outcome</code></pre>
         <h3>12.20.2.1 runProgram(program)</h3>
-        <p>Runs a validated program from <code>await prompt(...) -&gt; program(ApiName)</code> (or equivalent wire JSON). Each step calls a top-level <code>function</code> named like the api method (no LLM). Returns the evaluated <code>return</code> expression. Distinct from <code>executePlan</code> (agent-driven task DAG) and from <code>@Tool</code> loops. See <a href="09-functions.html">8. Functions</a> (§ Closed APIs and Deterministic Programs) for the full <code>api</code> / <code>program(ApiName)</code> declaration pattern.</p>
+        <p>Runs a validated program from <code>await prompt(...) -&gt; program(ApiName)</code> (or equivalent wire JSON). Each step calls a top-level <code>function</code> named like the api method (no LLM). Returns the evaluated <code>return</code> expression. Distinct from <code>executePlan</code> (agent-driven task DAG) and from <code>@Tool</code> loops. See <a href="09-functions.html">9. Functions</a> (§ Closed APIs and Deterministic Programs) for the full <code>api</code> / <code>program(ApiName)</code> declaration pattern.</p>
         <pre><code>api Calc {
     function add(a, b);
     function mul(a, b);
@@ -950,10 +950,10 @@ var mcpScriptTool = createCreateMcpAgentScriptTool("."); // Generates MCP agent 
 });
 
 nativeObject.onChanged(callback);</code></pre>
-        <p>See <a href="21-dotnet-interop.html">27. .NET Interop</a> for the surrounding interop model.</p>
+        <p>See <a href="21-dotnet-interop.html">29. .NET Interop</a> for the surrounding interop model.</p>
         <h2>12.22 Durable Workflow Operations</h2>
         <p>Durable workflow built-ins expose runtime/query/control operations that are supported in both interpreted and transpiled mode.</p>
-        <p>For the full workflow language and operational model, see <a href="31-durable-workflows.html">31. Durable Workflows</a>.</p>
+        <p>For the full workflow language and operational model, see <a href="31-durable-workflows.html">21. Durable Workflows</a>.</p>
         <pre><code>var id = startWorkflow("OnboardCustomer", {"customerId": 101, "correlationId": "corr-101"});
 var status = getWorkflowStatus(id);          // PENDING|RUNNING|WAITING_*|COMPLETED|FAILED|...
 var wf = getWorkflow(id);                    // Full workflow record object
@@ -1008,11 +1008,11 @@ setAgentVerbosePhase("execution");
 var result = executePlan(plan, agent);
 
 enableAgentVerboseLogging(false);</code></pre>
-        <p><code>reportRalphStatus</code> requires its first five arguments; the remaining five default to <code>false</code>, <code>0</code>, <code>0</code>, <code>0</code>, and <code>0.0</code> respectively. It is used by the PRD-driven autonomous loop described in <a href="14-agent-orchestration.html#ralph-wiggum">16.18 Ralph Wiggum</a>.</p>
+        <p><code>reportRalphStatus</code> requires its first five arguments; the remaining five default to <code>false</code>, <code>0</code>, <code>0</code>, <code>0</code>, and <code>0.0</code> respectively. It is used by the PRD-driven autonomous loop described in <a href="14-agent-orchestration.html#ralph-wiggum">17.18 Ralph Wiggum</a>.</p>
         <pre><code>reportRalphStatus("Ralph", "implement", 3, 10, 45, true, 12000, 1800, 640, 0.02);</code></pre>
 
         <h2>12.24 Web UI Functions (Moved)</h2>
-        <p>Web UI helper functions are documented in <a href="16-web-ui.html">20. Web UI Server Components</a> to keep this chapter focused on general-purpose built-ins.</p>
+        <p>Web UI helper functions are documented in <a href="16-web-ui.html">23. Web UI Server Components</a> to keep this chapter focused on general-purpose built-ins.</p>
         <ul>
             <li>Server component helpers: <code>renderTemplate</code>, <code>componentFragment</code>, <code>componentLiveEmit</code>, <code>componentState*</code> (including <code>componentStatePin</code> / <code>componentStateUnpin</code>), <code>onAgentProgress</code> (handler or live channel string), and <code>clearAgentProgress</code></li>
             <li>Server UI framework: <code>ui.mount</code>, <code>ui.render</code>, <code>ui.dispatchEvent</code>, <code>ui.state</code>, <code>ui.getState</code>, <code>ui.setState</code>, <code>ui.pinState</code>, <code>ui.unpinState</code>, <code>ui.configure</code>, template helpers (<code>ui.template</code>, <code>ui.partial</code>, <code>ui.layout</code>, <code>ui.renderList</code>, <code>ui.crudModel</code>, <code>ui.crudControls</code>), and UI controls (including <code>ui.dataGrid</code> and <code>ui.treeView</code>)</li>

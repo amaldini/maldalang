@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>30. Examples - MALDA Reference Manual</title>
+    <title>32. Examples - MALDA Reference Manual</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="syntax.css">
     <link rel="stylesheet" href="print.css" media="print">
@@ -15,15 +15,15 @@
     </header>
     <nav></nav>
     <main>
-        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>30. Examples</span></div>
-        <h1>30. Examples</h1>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>32. Examples</span></div>
+        <h1>32. Examples</h1>
         <div class="info-box">
-            <strong>Suggested order:</strong> if you are learning programming for the first time, begin with 29.1, 29.4, 29.6, 29.7, and 29.8 before moving to the AI and full-stack examples later in this chapter.
+            <strong>Suggested order:</strong> if you are learning programming for the first time, begin with 32.1, 32.4, 32.6, 32.7, and 32.8 before moving to the AI and full-stack examples later in this chapter.
             After the core path, branch into <strong>Testing and Quality</strong>, <strong>Data and Databases</strong>, and <strong>Browser Apps</strong>.
         </div>
-        <h2>30.1 Hello World</h2>
+        <h2>32.1 Hello World</h2>
         <pre><code>print("Hello, World!");</code></pre>
-        <h2>30.2 Simple Class Example</h2>
+        <h2>32.2 Simple Class Example</h2>
         <pre><code>class Person {
     public var name;
     public var age;
@@ -40,7 +40,7 @@
 
 var person = new Person("Alice", 25);
 person.introduce();</code></pre>
-        <h2>30.3 Inheritance Example</h2>
+        <h2>32.3 Inheritance Example</h2>
         <pre><code>class Animal {
     public var name;
     
@@ -65,7 +65,7 @@ class Dog extends Animal {
 
 var dog = new Dog("Buddy");
 dog.speak();</code></pre>
-        <h2>30.4 Factorial Function</h2>
+        <h2>32.4 Factorial Function</h2>
         <pre><code>function factorial(n) {
     if (n <= 1) {
         return 1;
@@ -75,7 +75,7 @@ dog.speak();</code></pre>
 
 var result = factorial(5);
 print($"Factorial of 5: {result}");</code></pre>
-        <h2>30.5 Calculator Class</h2>
+        <h2>32.5 Calculator Class</h2>
         <pre><code>class Calculator {
     private var result;
     
@@ -96,7 +96,7 @@ print($"Factorial of 5: {result}");</code></pre>
 var calc = new Calculator();
 calc.add(10).add(20);
 print($"Result: {calc.getResult()}");</code></pre>
-        <h2>30.6 FizzBuzz</h2>
+        <h2>32.6 FizzBuzz</h2>
         <pre><code>function fizzBuzz(n) {
     var i = 1;
     while (i <= n) {
@@ -114,7 +114,7 @@ print($"Result: {calc.getResult()}");</code></pre>
 }
 
 fizzBuzz(20);</code></pre>
-        <h2>30.7 Array Manipulation</h2>
+        <h2>32.7 Array Manipulation</h2>
         <pre><code>var numbers = [1, 2, 3, 4, 5];
 var sum = 0;
 var i = 0;
@@ -125,7 +125,7 @@ while (i < numbers.length) {
 }
 
 print($"Sum: {sum}");</code></pre>
-        <h2>30.8 Input/Output Example</h2>
+        <h2>32.8 Input/Output Example</h2>
         <pre><code>var name = input("What is your name? ");
 var ageStr = input("What is your age? ");
 var age = int(ageStr);
@@ -137,7 +137,7 @@ if (age >= 18) {
 } else {
     print("You are a minor.");
 }</code></pre>
-        <h2>30.9 Simple Agent Example</h2>
+        <h2>32.9 Simple Agent Example</h2>
         <p>This is a good transition point after the language fundamentals. It shows how MALDA's first-class AI features build on the same syntax introduced in the earlier examples.</p>
         <pre><code>var client = new OpenRouterClient();
 var agent = new Agent(
@@ -149,7 +149,7 @@ var agent = new Agent(
 
 var response = agent.think("What is 2+2?");
 print(response.content);</code></pre>
-        <h2>30.10 Test Command Output Modes</h2>
+        <h2>32.10 Test Command Output Modes</h2>
         <pre><code># Human-readable (default)
 malda test
 
@@ -161,7 +161,7 @@ malda test --write-regression
 
 # Write regressions to a custom directory
 malda test --write-regression --regression-dir ./artifacts/regressions</code></pre>
-        <h2>30.11 Scaffolding Starters</h2>
+        <h2>32.11 Scaffolding Starters</h2>
         <pre><code># Scaffold a secure web API starter
 malda new webapi my-api
 
@@ -177,7 +177,7 @@ malda new fullstack . --force
 # Skip tests scaffolding
 malda new webapi api-lite --no-tests</code></pre>
         <p>Generated starters include default <code>malda test</code> conventions, reusable security helper patterns, baseline security/rate-limit config examples, environment profile files in <code>config/environments/</code>, and deploy/observability placeholder configs.</p>
-        <h2>30.12 JavaScript Backend (API mode)</h2>
+        <h2>32.12 JavaScript Backend (API mode)</h2>
         <p>Compile MALDA source to browser JavaScript and use the DOM helper API:</p>
         <pre><code>malda compile Examples/Web/js/hello_dom.malda --mode js -o Examples/Web/js/hello_dom.js
 malda compile Examples/Web/js/counter.malda --target js -o Examples/Web/js/counter.js</code></pre>
@@ -205,7 +205,7 @@ var text = match r {
 };
 
 println(text);</code></pre>
-        <h2>30.13 JavaScript Backend (template mode)</h2>
+        <h2>32.13 JavaScript Backend (template mode)</h2>
         <p>Template mode source files use the <code>.malda.html</code> extension and support interpolation plus statement blocks:</p>
         <pre><code>malda compile Examples/Web/js/hello_template.malda.html --mode js -o Examples/Web/js/hello_template.generated.js</code></pre>
         <pre><code>&lt;div class="hello-template"&gt;
@@ -214,7 +214,7 @@ println(text);</code></pre>
   &lt;p&gt;Count: {{ count }}&lt;/p&gt;
 &lt;/div&gt;</code></pre>
         <p>Load <code>malda-js-runtime.js</code> before the compiled template script in your host page.</p>
-        <h2>30.14 JavaScript Backend (game canvas API)</h2>
+        <h2>32.14 JavaScript Backend (game canvas API)</h2>
         <p>Build a first interactive browser game using <code>game.*</code> in JavaScript mode:</p>
         <pre><code>malda compile Examples/Web/js/game_bounce.malda --mode js -o Examples/Web/js/game_bounce.js</code></pre>
         <pre><code>var x = 100;
@@ -240,7 +240,7 @@ game.createCanvas(640, 360, "#app");
 game.setBackground("#202830");
 game.start(update, render);</code></pre>
         <p>Key points: create the canvas before drawing/starting, scale movement by <code>dtMs</code>, and load <code>malda-js-runtime.js</code> before the compiled script. See <code>Examples/Web/js/game_runtime_smoke_test.html</code> for a direct browser smoke test host page.</p>
-        <h3>27.14.1 Game Audio (v1 quick sample)</h3>
+        <h3>32.14.1 Game Audio (v1 quick sample)</h3>
         <pre><code>var startedAudio = false;
 
 function update(dtMs) {
@@ -259,7 +259,7 @@ game.createCanvas(640, 360, "#app");
 game.setBackground("#202830");
 game.start(update, null);</code></pre>
         <p>Audio v1 uses <code>game.audio*</code> APIs in JavaScript mode. The API surface is intentionally stable for existing MALDA game scripts.</p>
-        <h2>30.15 JavaScript Backend (three.js scene API)</h2>
+        <h2>32.15 JavaScript Backend (three.js scene API)</h2>
         <p>Build a first 3D browser scene using <code>three.*</code> in JavaScript mode:</p>
         <pre><code>malda compile Examples/Web/js/three_cube.malda --mode js -o Examples/Web/js/three_cube.js</code></pre>
         <pre><code>var width = 800;
@@ -284,14 +284,14 @@ function render() {
     three.render(renderer, scene, camera);
 }</code></pre>
         <p>Key points: load <code>Examples/Web/wwwroot/vendor/three.min.js</code> before <code>malda-js-runtime.js</code>, then the compiled MALDA script, then call <code>MaldaApp.main()</code>. See <code>Examples/Web/js/three_runtime_smoke_test.html</code> for a direct host page.</p>
-        <h2>30.16 Property Testing Quick Example</h2>
+        <h2>32.16 Property Testing Quick Example</h2>
         <pre><code>property intIdentity(x) {
     return (x + 0) == x;
 }
 
 malda test --iterations 80 --seed 1337</code></pre>
         <p>For full property-testing guidance (capability decorators, parity semantics, shrinking, and regression workflows), see <a href="27-property-testing.html">Property Testing</a>.</p>
-        <h2>30.17 AI Pipeline (RAG)</h2>
+        <h2>32.17 AI Pipeline (RAG)</h2>
         <p>End-to-end retrieval-augmented generation using the pipe operator (<code>|&gt;</code>), VectorDB retriever, prompts, and typed JSON output. Examples:</p>
         <ul>
             <li><code>Examples/Prompts/rag_pipeline.malda</code> — inline pipes</li>
@@ -331,9 +331,9 @@ function ragAnswer(question, client) -> Answer {
         |> (ctx) => answerPrompt(question, ctx) |> runPrompt(client) |> parseJson("Answer");
 }
 // var result = await ragAnswer(question, client);</code></pre>
-        <p>See also: <a href="07-expressions.html">6. Expressions</a> (pipe operator), <a href="11-built-in-functions.html">12. Built-in Functions</a> (AI pipeline helpers), <a href="06-vectordb.html">14. VectorDB</a> (<code>asRetriever</code>), and <a href="09-functions.html">8. Functions</a> (schema declarations).</p>
-        <h2>30.18 Server-driven UI (<code>ui.*</code>)</h2>
-        <p>Language API: <a href="16-web-ui.html">20. Web UI Server Components</a> (start at <a href="16-web-ui-hub.html">19. Web UI Overview</a>). Offline samples under <code>Examples/Web/</code>:</p>
+        <p>See also: <a href="07-expressions.html">7. Expressions</a> (pipe operator), <a href="11-built-in-functions.html">12. Built-in Functions</a> (AI pipeline helpers), <a href="06-vectordb.html">14. VectorDB</a> (<code>asRetriever</code>), and <a href="09-functions.html">9. Functions</a> (schema declarations).</p>
+        <h2>32.18 Server-driven UI (<code>ui.*</code>)</h2>
+        <p>Language API: <a href="16-web-ui.html">23. Web UI Server Components</a> (start at <a href="16-web-ui-hub.html">22. Web UI Overview</a>). Offline samples under <code>Examples/Web/</code>:</p>
         <ul>
             <li><code>ui_event_loop.malda</code> — correct mount → dispatch → pull → setState → render loop</li>
             <li><code>ui_counter_dashboard.malda</code> — counter plus lifecycle hooks and snapshot</li>
@@ -349,12 +349,12 @@ dotnet run --project MaldaLang -- Examples/Web/ui_counter_dashboard.malda</code>
                 <li><a href="10-classes-objects.html">10. Classes & Objects</a> - More class examples</li>
                 <li><a href="06-vectordb.html">14. VectorDB</a> - Vector search and retriever API</li>
                 <li><a href="11-built-in-functions.html">12. Built-in Functions</a> - <code>loadDocuments</code>, <code>indexInto</code>, <code>runPrompt</code>, <code>parseJson</code></li>
-                <li><a href="16-web-ui.html">20. Web UI Server Components</a> - <code>ui.*</code> trees, fragments, and control props</li>
+                <li><a href="16-web-ui.html">23. Web UI Server Components</a> - <code>ui.*</code> trees, fragments, and control props</li>
             </ul>
         </div>
         <div class="nav-footer">
-            <a href="26-personal-assistant.html">← Previous: 29. Personal Assistant and CLI</a>
-            <a href="30-full-stack-development.html">Next: 31. Full-Stack Development with MALDA→</a>
+            <a href="26-personal-assistant.html">← Previous: 31. Personal Assistant and CLI</a>
+            <a href="27-property-testing.html">Next: 33. Property Testing→</a>
         </div>
 
         <footer>

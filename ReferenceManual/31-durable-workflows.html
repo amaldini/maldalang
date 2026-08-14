@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>32. Durable Workflows - MALDA Reference Manual</title>
+    <title>21. Durable Workflows - MALDA Reference Manual</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="syntax.css">
     <link rel="stylesheet" href="print.css" media="print">
@@ -15,22 +15,22 @@
     </header>
     <nav></nav>
     <main>
-        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>32. Durable Workflows</span></div>
-        <h1>32. Durable Workflows</h1>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>21. Durable Workflows</span></div>
+        <h1>21. Durable Workflows</h1>
 
         <p>Durable workflows let you run long-lived, restart-safe business processes with persisted state, replay-safe step execution, and external control points such as approvals and signals.</p>
         <p>For short fire-and-forget work (send email, call a webhook), prefer the lightweight job queue builtins (<code>enqueueJob</code> / <code>claimJob</code> / <code>completeJob</code> / <code>failJob</code>) documented in <a href="11-built-in-functions.html">Built-in Functions</a>. Jobs use <code>./.malda/jobs.db</code> and are not workflow instances.</p>
 
-        <h2>32.1 Core Concepts</h2>
+        <h2>21.1 Core Concepts</h2>
         <ul>
-            <li><strong>Durability:</strong> workflow instances, steps, and events are persisted to a SQLite database (see <a href="#storage">32.8 Storage and Persistence</a>).</li>
+            <li><strong>Durability:</strong> workflow instances, steps, and events are persisted to a SQLite database (see <a href="#storage">21.8 Storage and Persistence</a>).</li>
             <li><strong>Determinism:</strong> replay avoids duplicate successful step execution.</li>
             <li><strong>Recovery:</strong> stale running work is reconciled on restart and can resume safely.</li>
             <li><strong>Control:</strong> approval/signal flows can be driven from CLI or built-ins.</li>
             <li><strong>Operations:</strong> unified <code>malda workflow report</code>, DLQ, requeue, metrics, and maintenance commands are available.</li>
         </ul>
 
-        <h2>32.2 Workflow Syntax</h2>
+        <h2>21.2 Workflow Syntax</h2>
         <p>A workflow body is made of ordinary statements plus three durable ones: <code>step</code> for work that must not run twice, <code>approval</code> for a human decision, and <code>wait</code> for an external signal. Each binds its result to a name the rest of the body can read, and each is journaled, which is what lets an instance resume after a restart without repeating work already done.</p>
         <p>Their shapes differ. <code>step</code> takes any call on the right of the <code>=</code>, so the work itself is an ordinary function. <code>approval</code> and <code>wait</code> instead have a fixed right-hand side: an <code>approval</code> statement must call <code>approval(...)</code> and a <code>wait</code> statement must call <code>awaitSignal(...)</code>. Those two names are recognised in that position only — <code>awaitSignal</code> is not a reserved word and cannot be called anywhere else — so <code>var x = awaitSignal("s");</code> is not a signal wait, and anything else after the <code>=</code> is a parse error.</p>
         <pre><code>workflow OnboardCustomer(input) {
@@ -98,7 +98,7 @@
             <strong>The check is a fixed list of names, not an analysis.</strong> Anything outside those nineteen built-ins is assumed replay-safe, so a model call, a database write through another library, or your own function that reads the clock will not be flagged. Put anything with an effect or a fresh value inside a <code>step</code>.
         </div>
 
-        <h2>32.3 Lifecycle and States</h2>
+        <h2>21.3 Lifecycle and States</h2>
         <p>Common workflow states include:</p>
         <pre><code>PENDING, RUNNING, WAITING_APPROVAL, WAITING_SIGNAL, COMPENSATING,
 COMPLETED, FAILED, CANCELLED, COMPENSATED</code></pre>
@@ -106,7 +106,7 @@ COMPLETED, FAILED, CANCELLED, COMPENSATED</code></pre>
         <pre><code>PENDING, RUNNING, SUCCEEDED, FAILED, TIMED_OUT, SKIPPED,
 COMPENSATING, COMPENSATED, COMPENSATION_FAILED</code></pre>
 
-        <h2>32.4 Runtime Operations (Built-ins)</h2>
+        <h2>21.4 Runtime Operations (Built-ins)</h2>
         <pre><code>var id = startWorkflow("OnboardCustomer", {"customerId": 101, "correlationId": "corr-101"});
 var status = getWorkflowStatus(id);
 var wf = getWorkflow(id);
@@ -125,7 +125,7 @@ var okSignal = signalWorkflow(id, "docs_uploaded", {"customerId": 101});</code><
             <strong>Correlation:</strong> pass a <code>correlationId</code> in <code>startWorkflow(...)</code> input to propagate trace metadata across instance/events/operations.
         </div>
 
-        <h2>32.5 Dead Letters and Requeue</h2>
+        <h2>21.5 Dead Letters and Requeue</h2>
         <pre><code>var rows = listWorkflowDeadLetters(100, false);   // false => pending only
 if (length(rows) > 0) {
     var requeued = requeueDeadLetter(
@@ -138,7 +138,7 @@ if (length(rows) > 0) {
 }</code></pre>
         <p>Dead-letter rows are created on terminal failure paths and can be requeued with audit metadata.</p>
 
-        <h2>32.6 CLI Commands</h2>
+        <h2>21.6 CLI Commands</h2>
         <pre><code># Core lifecycle
 malda workflow start workflow.malda OnboardCustomer --input input.json
 malda workflow list --status FAILED --limit 50
@@ -167,19 +167,19 @@ malda workflow maintenance run --dry-run --format json</code></pre>
         <p><code>malda workflow report &lt;instanceId&gt;</code> returns one operator-facing document: instance status, persisted step attempts, journaled timeline events, and dead-letter rows for that instance (including requeue audit when present). Human mode prints four sections; <code>--json</code> emits a single object with camelCase keys <code>instance</code>, <code>steps</code>, <code>events</code>, <code>deadLetters</code>, <code>generatedAtUtc</code>, and <code>eventLimit</code>.</p>
         <p>The timeline is the append-only event journal (what happened on this box), not a Temporal-style replay debugger. Pending DLQ rows for the instance appear under Dead letters; use <code>malda workflow dlq requeue</code> to act on them. Seed a FAILED instance with <code>Examples/Workflows/ops_report.malda</code>, then run <code>malda workflow report</code> against the printed <code>instanceId</code>.</p>
 
-        <h2>32.7 Reliability and Parity Notes</h2>
+        <h2>21.7 Reliability and Parity Notes</h2>
         <ul>
             <li>Retry supports fixed/linear/exponential backoff with caps and deterministic jitter.</li>
             <li>Timeout and retry transitions are persisted and emitted as workflow events.</li>
             <li>Interpreter and transpiled modes are validated with parity tests for core scenarios.</li>
-            <li>State is stored in SQLite; see <a href="#storage">32.8 Storage and Persistence</a> for the database location.</li>
+            <li>State is stored in SQLite; see <a href="#storage">21.8 Storage and Persistence</a> for the database location.</li>
         </ul>
 
-        <h2 id="storage">32.8 Storage and Persistence</h2>
+        <h2 id="storage">21.8 Storage and Persistence</h2>
         <p>Every durable workflow writes to one SQLite database file. By default:</p>
         <pre><code>./.malda/workflows.db</code></pre>
         <p>The <code>.malda</code> directory is created on first use, and the schema is created and upgraded automatically when the engine opens the connection. There is no separate install or migration step, and nothing to provision before <code>malda workflow start</code>.</p>
-        <p>On open, the runtime sets SQLite <code>journal_mode=WAL</code> and <code>busy_timeout=5000</code> so a second process can run <strong>read-only</strong> ops (<code>list</code>, <code>get</code>, <code>report</code>, …) against the same database while a writer is active. See <a href="#ha">32.10 High Availability and Multi-Worker</a>.</p>
+        <p>On open, the runtime sets SQLite <code>journal_mode=WAL</code> and <code>busy_timeout=5000</code> so a second process can run <strong>read-only</strong> ops (<code>list</code>, <code>get</code>, <code>report</code>, …) against the same database while a writer is active. See <a href="#ha">21.10 High Availability and Multi-Worker</a>.</p>
 
         <div class="warning-box">
             <strong>The default path is relative to the working directory</strong>, not to your home directory. A run started in <code>/srv/app</code> uses <code>/srv/app/.malda/workflows.db</code>, while the same program started from another directory opens a different, empty database and reports zero instances instead of an error. If you start workflows from one place and inspect them from another, set an absolute path as shown below.
@@ -225,7 +225,7 @@ setx MALDA_WORKFLOW_CONNECTION "Data Source=C:\ProgramData\malda\workflows.db"</
             <strong>Version control:</strong> <code>.malda/</code> is listed in the repository's <code>.gitignore</code>. Workflow state is local runtime data and should not be committed.
         </div>
 
-        <h2>32.9 Configuration Guardrails</h2>
+        <h2>21.9 Configuration Guardrails</h2>
         <p>All limits are read from the environment when the workflow engine is first used. A value that is missing or cannot be parsed leaves the default in place, silently.</p>
         <table>
             <thead>
@@ -236,8 +236,8 @@ setx MALDA_WORKFLOW_CONNECTION "Data Source=C:\ProgramData\malda\workflows.db"</
                 <tr><td><code>MALDA_WORKFLOW_MAX_RETRIES_PER_STEP</code></td><td><code>10</code></td><td>Ceiling on per-step <code>retry</code>, regardless of what the workflow declares.</td></tr>
                 <tr><td><code>MALDA_WORKFLOW_MAX_PAYLOAD_BYTES</code></td><td><code>1048576</code></td><td>Largest persisted payload (1 MiB). Minimum 128.</td></tr>
                 <tr><td><code>MALDA_WORKFLOW_MAX_DURATION_MS</code></td><td><code>604800000</code></td><td>Longest lifetime of one instance (7 days). Minimum 1000.</td></tr>
-                <tr><td><code>MALDA_WORKFLOW_PROVIDER</code></td><td><code>sqlite</code></td><td>Storage backend; see <a href="#storage">32.8</a>.</td></tr>
-                <tr><td><code>MALDA_WORKFLOW_CONNECTION</code></td><td><code>Data Source=./.malda/workflows.db</code></td><td>Database location; see <a href="#storage">32.8</a>.</td></tr>
+                <tr><td><code>MALDA_WORKFLOW_PROVIDER</code></td><td><code>sqlite</code></td><td>Storage backend; see <a href="#storage">21.8</a>.</td></tr>
+                <tr><td><code>MALDA_WORKFLOW_CONNECTION</code></td><td><code>Data Source=./.malda/workflows.db</code></td><td>Database location; see <a href="#storage">21.8</a>.</td></tr>
                 <tr><td><code>MALDA_WORKFLOW_RETENTION_OPERATIONAL_DAYS</code></td><td><code>30</code></td><td>Age at which finished instances are archived. 1 to 3650.</td></tr>
                 <tr><td><code>MALDA_WORKFLOW_RETENTION_AUDIT_DAYS</code></td><td><code>180</code></td><td>Age at which events and dead letters are deleted. Must be at least the operational window.</td></tr>
                 <tr><td><code>MALDA_WORKFLOW_RETENTION_COMPACTION_DAYS</code></td><td><code>14</code></td><td>Age at which step payloads are cleared. Must not exceed the operational window.</td></tr>
@@ -246,7 +246,7 @@ setx MALDA_WORKFLOW_CONNECTION "Data Source=C:\ProgramData\malda\workflows.db"</
         </table>
         <p>Retention values are validated against each other, so an inconsistent combination (for example an audit window shorter than the operational one) is rejected instead of quietly discarding history.</p>
 
-        <h2 id="ha">32.10 High Availability and Multi-Worker</h2>
+        <h2 id="ha">21.10 High Availability and Multi-Worker</h2>
         <p>v1 supports <strong>one writer process</strong> per database file, plus an optional second process for <strong>read-only</strong> CLI ops against the same absolute <code>MALDA_WORKFLOW_CONNECTION</code>. Two mutating processes on one file are unsupported.</p>
         <ul>
             <li><strong>Locking:</strong> process singleton + SQLite file lock; WAL for concurrent readers. Stale <code>RUNNING</code> recovery after restart is not a worker ownership lease.</li>
@@ -259,14 +259,14 @@ setx MALDA_WORKFLOW_CONNECTION "Data Source=C:\ProgramData\malda\workflows.db"</
             <h3>See Also</h3>
             <ul>
                 <li><a href="11-built-in-functions.html">12. Built-in Functions</a> - workflow built-in API reference</li>
-                <li><a href="26-personal-assistant.html">28. Personal Assistant and CLI</a> - CLI configuration and usage</li>
+                <li><a href="26-personal-assistant.html">31. Personal Assistant and CLI</a> - CLI configuration and usage</li>
                 <li><a href="22-grammar.html">Grammar</a> — partial BNF only; workflow syntax is documented here and in <code>Parser.cs</code></li>
             </ul>
         </div>
 
         <div class="nav-footer">
-            <a href="30-full-stack-development.html">← Previous: 31. Full-Stack Development with MALDA</a>
-            <a href="27-property-testing.html">Next: 33. Property Testing→</a>
+            <a href="20-acp.html">← Previous: 20. ACP (Agent Communication Protocol)</a>
+            <a href="16-web-ui-hub.html">Next: 22. Web UI Overview→</a>
         </div>
 
         <footer>

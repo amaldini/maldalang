@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>6. Expressions - MALDA Reference Manual</title>
+    <title>7. Expressions - MALDA Reference Manual</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="syntax.css">
     <link rel="stylesheet" href="print.css" media="print">
@@ -15,17 +15,17 @@
     </header>
     <nav></nav>
     <main>
-        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>6. Expressions</span></div>
-        <h1>6. Expressions</h1>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>7. Expressions</span></div>
+        <h1>7. Expressions</h1>
         <p>Expressions are combinations of values, variables, operators, and function calls that evaluate to a single value.</p>
-        <h2>6.1 Arithmetic Expressions</h2>
+        <h2>7.1 Arithmetic Expressions</h2>
         <p>Arithmetic expressions perform mathematical operations:</p>
         <pre><code>var sum = 10 + 20;        // 30
 var product = 5 * 6;      // 30
 var quotient = 15 / 3;    // 5
 var remainder = 17 % 5;   // 2
 var difference = 10 - 3;  // 7</code></pre>
-        <h2>6.2 Comparison Expressions</h2>
+        <h2>7.2 Comparison Expressions</h2>
         <p>Comparison expressions return boolean values. Relational operators (<code>&lt;</code>, <code>&gt;</code>, <code>&lt;=</code>, <code>&gt;=</code>) work with both numbers and strings:</p>
         <pre><code>// Numeric comparisons
 var isEqual = (x == y);
@@ -45,16 +45,16 @@ var isSameOrAfter = ("hello" >= "hello");  // true</code></pre>
             <li>Empty strings are less than any non-empty string</li>
             <li>Both operands must be strings (or both numbers) - mixing types causes a runtime error</li>
         </ul>
-        <h2>6.3 Logical Expressions</h2>
+        <h2>7.3 Logical Expressions</h2>
         <p>Logical expressions combine boolean values. The language supports both keyword-based and symbol-based logical operators:</p>
         <pre><code>var result = (x > 0) and (y < 100);    // or: (x > 0) && (y < 100)
 var isValid = not (x == 0);            // or: !(x == 0)
 var condition = (a == 1) or (b == 2);  // or: (a == 1) || (b == 2)</code></pre>
-        <h2>6.4 String Concatenation</h2>
+        <h2>7.4 String Concatenation</h2>
         <p>The <code>+</code> operator concatenates strings:</p>
         <pre><code>var greeting = "Hello, " + "World!";
 var message = "Value: " + x;</code></pre>
-        <h2>6.5 String Repetition</h2>
+        <h2>7.5 String Repetition</h2>
         <p>The <code>*</code> operator repeats strings when one operand is a string and the other is a number:</p>
         <pre><code>var stars = "*" * 20;        // "********************"
 var dashes = "-" * 10;       // "----------"
@@ -77,7 +77,7 @@ print("ha" * n);               // Output: hahaha
 var s = "=";
 s *= 20;                       // s is now "===================="
 print("x" * 0);                // Output: (empty string)</code></pre>
-        <h2>6.6 String Interpolation</h2>
+        <h2>7.6 String Interpolation</h2>
         <p>String interpolation provides a convenient way to embed expressions in strings using <code>$"..."</code> syntax:</p>
         <pre><code>var name = "Alice";
 var age = 25;
@@ -99,7 +99,7 @@ print($"Sum: {10 + 20}");  // Output: Sum: 30</code></pre>
 print($"Hello, {name}!");           // Single quotes in variable
 print($"Text: {'value'}");          // Single quotes in expression
 print($"Nested: {'He said "hello"'");  // Single quotes avoid escaping</code></pre>
-        <h2>6.7 Increment and Decrement Operators</h2>
+        <h2>7.7 Increment and Decrement Operators</h2>
         <p>The increment (<code>++</code>) and decrement (<code>--</code>) operators modify a variable's value by 1. They can be used as prefix or postfix operators:</p>
         <pre><code>var x = 5;
 ++x;        // Prefix: x is now 6, expression evaluates to 6
@@ -117,7 +117,7 @@ arr[0]++;           // arr[0] is now 11
 
 var obj = { count: 5 };
 obj.count++;        // obj.count is now 6</code></pre>
-        <h2>6.8 Compound Assignment Operators</h2>
+        <h2>7.8 Compound Assignment Operators</h2>
         <p>Compound assignment operators combine an arithmetic operation with assignment:</p>
         <pre><code>var x = 10;
 x += 5;     // Equivalent to: x = x + 5;  (x is now 15)
@@ -146,7 +146,7 @@ str += " World";    // str is now "Hello World"</code></pre>
         <p><strong>Note:</strong> For string repetition, <code>*=</code> repeats the string:</p>
         <pre><code>var str = "x";
 str *= 5;           // str is now "xxxxx"</code></pre>
-        <h2>6.9 Ternary Conditional Expression</h2>
+        <h2>7.9 Ternary Conditional Expression</h2>
         <p>The ternary operator (<code>? :</code>) provides a concise way to write conditional expressions. It evaluates a condition and returns one of two values based on whether the condition is true or false.</p>
         <h3>Syntax</h3>
         <pre><code>condition ? valueIfTrue : valueIfFalse</code></pre>
@@ -191,7 +191,7 @@ if (x > 0) {
         <pre><code>var result = (x > 0 and y > 0) ? "both positive" : "at least one non-positive";
 var value = condition ? a + b : c - d;  // Parentheses not needed here</code></pre>
 
-        <h2>6.10 Dictionary Literals and Indexing</h2>
+        <h2>7.10 Dictionary Literals and Indexing</h2>
         <p>Dictionaries use the <code>dict { ... }</code> literal syntax and are indexed with square brackets, similar to arrays but with string keys.</p>
         <h3>Dictionary Literal Syntax</h3>
         <pre><code>var d = dict { "a": 1, "b": 2 };
@@ -214,7 +214,7 @@ print(d["y"]);               // 20
 var keys = d.keys();
 var values = d.values();</code></pre>
 
-        <h2 id="comprehensions">6.11 List and Dictionary Comprehensions</h2>
+        <h2 id="comprehensions">7.11 List and Dictionary Comprehensions</h2>
         <p>A comprehension builds a collection from an existing iterable in a single expression, with an optional filter.</p>
 
         <h3>List Comprehensions</h3>
@@ -243,7 +243,7 @@ print(longOnly.containsKey("beta"));   // false</code></pre>
         <p>Keys must evaluate to strings, as with any dictionary. When two iterations produce the same key, the later one wins.</p>
         <p>Comprehensions are supported by the interpreter, the C# transpiler, and the JavaScript transpiler.</p>
 
-        <h2 id="null-conditional">6.12 Null-Conditional Access</h2>
+        <h2 id="null-conditional">7.12 Null-Conditional Access</h2>
         <p><code>?.</code> and <code>?[</code> perform a member or index access only when the receiver is not <code>null</code>. When it is <code>null</code>, the access evaluates to <code>null</code> instead of raising <em>Accessing members of null</em>:</p>
         <pre><code data-run="true" data-expect="null\nnull">var user = null;
 
@@ -262,7 +262,7 @@ var response = dict { "items": null };
 print(response["items"]?[0]);    // null</code></pre>
         <p>Null-conditional access reads a value; it is not an assignment form. Use it to traverse optional data such as parsed JSON, dictionary lookups that may miss, and object fields that are only populated in some code paths.</p>
 
-        <h2 id="null-coalesce">6.12.1 Null-Coalescing <code>??</code></h2>
+        <h2 id="null-coalesce">7.12.1 Null-Coalescing <code>??</code></h2>
         <p><code>a ?? b</code> evaluates to <code>a</code> when <code>a</code> is not <code>null</code>; otherwise it evaluates <code>b</code>. Unlike <code>or</code>/<code>||</code>, only <code>null</code> triggers the right side — <code>0</code>, <code>false</code>, and <code>""</code> are kept:</p>
         <pre><code data-run="true" data-expect="0\nfalse\nhi\nfallback">print(0 ?? 1);
 print(false ?? true);
@@ -274,10 +274,10 @@ print(user?.name ?? "guest");
 print("|" + str.trimText(user?.name) + "|");</code></pre>
         <p>Precedence sits between logical OR and the ternary conditional; <code>??</code> is right-associative.</p>
 
-        <h2>6.13 Operator Precedence</h2>
+        <h2>7.13 Operator Precedence</h2>
         <p>Operators are evaluated in order of precedence. See <a href="23-appendix.html">Appendix B</a> for the complete precedence table, which mirrors the reference parser.</p>
         
-        <h2>6.14 Async and Await Expressions</h2>
+        <h2>7.14 Async and Await Expressions</h2>
         <p>MALDA supports first-class asynchronous operations through <code>async</code> and <code>await</code> expressions. These allow you to work with asynchronous operations without blocking execution.</p>
         
         <h3>Async Expression</h3>
@@ -359,7 +359,7 @@ print(sum);                       // 3</code></pre>
         <p><strong>Known limitation:</strong> overlapping hot-started <em>user</em> functions that call <code>sleep</code> before the next <code>var</code> binding in the same block can race on the shared interpreter environment. Prefer immediate-return callees when starting several tasks in a row (see <code>Examples/Basics/async_all_example.malda</code>), bind tasks before overlapping sleeps, or <code>await</code> between bindings. Built-in <code>async sleep(...)</code> alone is fine.</p>
         <p><strong>Note:</strong> <code>all()</code> is a compositional building block: it does not start tasks itself, it only combines tasks you create (for example with <code>async</code>).</p>
 
-        <h2>6.15 Pipe Operator (<code>|&gt;</code>)</h2>
+        <h2>7.15 Pipe Operator (<code>|&gt;</code>)</h2>
         <p>The pipe operator passes the value on the left as the <strong>first argument</strong> to the callable on the right. It enables left-to-right data flow for AI pipelines, prompts, and built-in functions.</p>
         <pre><code>// Prompt: left value becomes the first parameter
 prompt greet(name) {
@@ -390,19 +390,19 @@ var p = question
         </ul>
         <p>See <a href="11-built-in-functions.html">12. Built-in Functions</a> (AI pipeline helpers) and <a href="06-vectordb.html">14. VectorDB</a> (<code>asRetriever</code>) for RAG examples. Full walkthrough: <code>Examples/Prompts/rag_pipeline.malda</code>.</p>
         <p><strong>Advanced composition:</strong> use <code>composePipe(f, g, …)</code> to build a reusable sequence function; <code>parallelRun(input, { branch: fn, … })</code> for parallel fan-out; <code>mergeRetrievedDocs</code> to combine parallel retrieval hits before <code>formatRetrievedDocs</code>. Example: <code>Examples/Prompts/rag_compose_pipeline.malda</code>.</p>
-        <p>To name and reuse a pipeline, wrap the pipe expression in an ordinary <code>function</code> and <code>return</code> the result. See <code>Examples/Prompts/rag_function_pipeline.malda</code> and <a href="09-functions.html">8. Functions</a>.</p>
+        <p>To name and reuse a pipeline, wrap the pipe expression in an ordinary <code>function</code> and <code>return</code> the result. See <code>Examples/Prompts/rag_function_pipeline.malda</code> and <a href="09-functions.html">9. Functions</a>.</p>
 
         <div class="see-also">
             <h3>See Also</h3>
             <ul>
                 <li><a href="02-lexical-structure.html">3. Lexical Structure</a> - Operator reference</li>
                 <li><a href="23-appendix.html">35. Appendix</a> - Operator precedence table</li>
-                <li><a href="05-arrays.html">9. Arrays</a> - Array values consumed by comprehensions</li>
+                <li><a href="05-arrays.html">6. Arrays</a> - Array values consumed by comprehensions</li>
             </ul>
         </div>
         <div class="nav-footer">
-            <a href="04-variables.html">← Previous: 5. Variables</a>
-            <a href="08-control-structures.html">Next: 7. Control Structures→</a>
+            <a href="05-arrays.html">← Previous: 6. Arrays</a>
+            <a href="08-control-structures.html">Next: 8. Control Structures→</a>
         </div>
 
         <footer>

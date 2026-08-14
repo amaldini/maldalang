@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>15. Actors - MALDA Reference Manual</title>
+    <title>16. Actors - MALDA Reference Manual</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="syntax.css">
     <link rel="stylesheet" href="print.css" media="print">
@@ -15,12 +15,12 @@
     </header>
     <nav></nav>
     <main>
-        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>15. Actors</span></div>
-        <h1>15. Actors</h1>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>16. Actors</span></div>
+        <h1>16. Actors</h1>
         
         <p>MALDA provides native support for the Actor model of concurrent programming. Actors are independent, isolated units of computation that communicate exclusively through asynchronous message passing. Each actor has its own isolated state and processes messages sequentially, ensuring thread-safe concurrent programming without explicit locking mechanisms.</p>
 
-        <h2>15.1 Actor Declaration</h2>
+        <h2>16.1 Actor Declaration</h2>
         <p>Actors are declared using the <code>actor</code> keyword, similar to class declarations:</p>
         <pre><code>actor ActorName {
     // Fields (state)
@@ -56,7 +56,7 @@
             <li><strong>Default Handler</strong>: A handler named <code>handle</code> that receives messages when no specific handler matches</li>
         </ul>
 
-        <h2>15.2 Spawning Actors</h2>
+        <h2>16.2 Spawning Actors</h2>
         <p>Actors are instantiated using the <code>spawn</code> expression:</p>
         <pre><code>var actorRef = spawn ActorName(arg1, arg2);</code></pre>
 
@@ -83,7 +83,7 @@
 
 var counter = spawn Counter();</code></pre>
 
-        <h2>15.3 Sending Messages</h2>
+        <h2>16.3 Sending Messages</h2>
         <p>Messages are sent to actors using the <code>send</code> statement with call-style syntax:</p>
         <pre><code>// Call-style syntax
 send actorRef.handlerName(arg1, arg2);
@@ -168,7 +168,7 @@ sleep(500);</code></pre>
             <li>The callback runs in the sender actor's context, with <code>self</code> referring to the sender</li>
         </ul>
 
-        <h2>15.4 Message Handlers</h2>
+        <h2>16.4 Message Handlers</h2>
         <p>Message handlers are functions that process incoming messages. They are declared with the <code>on</code> keyword:</p>
         <pre><code>actor MyActor {
     // Handler with no parameters
@@ -226,7 +226,7 @@ send actor("process");</code></pre>
             <li>Handlers can access actor fields and call other handlers</li>
         </ul>
 
-        <h2 id="actor-state-isolation">15.5 Actor State Isolation</h2>
+        <h2 id="actor-state-isolation">16.5 Actor State Isolation</h2>
         <p>Each actor instance has completely isolated state. Fields declared in an actor are private to that instance:</p>
         <pre><code>actor BankAccount {
     var balance = 0;
@@ -254,7 +254,7 @@ var account2 = spawn BankAccount("Bob");
 send account1.deposit(100);  // account1.balance = 100
 send account2.deposit(200);  // account2.balance = 200 (independent)</code></pre>
 
-        <h2>15.6 Self Reference</h2>
+        <h2>16.6 Self Reference</h2>
         <p>Within an actor's message handlers, the <code>self</code> keyword provides a reference to the current actor instance:</p>
         <pre><code>actor PingPong {
     var partner;
@@ -291,7 +291,7 @@ send pong.setPartner(ping);</code></pre>
             <li>Useful for actors to send messages to themselves or pass their reference to other actors</li>
         </ul>
 
-        <h2>15.7 Receiving Messages</h2>
+        <h2>16.7 Receiving Messages</h2>
         <p>Within an actor message handler, you can use the <code>receive()</code> function to wait for and retrieve the next message from the actor's mailbox. However, for most use cases, it's recommended to use call-style messaging with callbacks instead:</p>
         <pre><code>actor Echo {
     on echo(msg) {
@@ -348,7 +348,7 @@ send c("stop");</code></pre>
             <li><strong>No <code>sleep()</code> needed in the loop:</strong> Since <code>receive()</code> blocks until a message arrives, the <code>while</code> loop will automatically wait for messages without consuming CPU. The loop only continues when a message is received and processed.</li>
         </ul>
 
-        <h2>15.8 Message Passing Between Actors</h2>
+        <h2>16.8 Message Passing Between Actors</h2>
         <p>Actors can send messages to each other, enabling complex communication patterns:</p>
         <pre><code>actor Sender {
     on start(receiver) {
@@ -377,7 +377,7 @@ var sender = spawn Sender();
 
 send sender.start(receiver);  // Pass receiver reference</code></pre>
 
-        <h2>15.9 Concurrent Processing</h2>
+        <h2>16.9 Concurrent Processing</h2>
         <p>Actors process messages concurrently. Multiple actors can run simultaneously, and each actor processes its messages sequentially:</p>
         <pre><code>actor Worker {
     var workerId;
@@ -412,7 +412,7 @@ for (var i = 0; i < 10; i = i + 1) {
 // Give workers time to process all tasks
 sleep(500);</code></pre>
 
-        <h2>15.10 Actor Lifecycle</h2>
+        <h2>16.10 Actor Lifecycle</h2>
         <h3>Actor Creation</h3>
         <ul>
             <li>Actors are created with <code>spawn ActorName(args)</code></li>
@@ -468,7 +468,7 @@ send worker.stop();  // Send stop message</code></pre>
         
         <p><strong>Note:</strong> After calling <code>stop()</code> (either externally or via <code>self.stop()</code>), the actor will finish processing its current message (if any) and then exit. Any messages sent to the actor after it has been stopped will be lost.</p>
 
-        <h2>15.11 Actor Features Summary</h2>
+        <h2>16.11 Actor Features Summary</h2>
         <h3>Key Features</h3>
         <ul>
             <li>✅ <strong>Isolated State</strong>: Each actor instance has its own isolated state</li>
@@ -547,7 +547,7 @@ sleep(500);</code></pre>
         
         <p><strong>Note:</strong> When using actors in transpiled mode (compiled executables), it's recommended to add a small delay after spawning actors and at the end of programs to ensure messages are processed before the program exits. Use <code>sleep(100)</code> after spawning actors and <code>sleep(500)</code> at the end of programs that use actors.</p>
 
-        <h2>15.12 Using Actors with Agents</h2>
+        <h2>16.12 Using Actors with Agents</h2>
         <p>Actors and agents work well together. While agents are classes designed for synchronous AI interactions, storing agents in actor state enables concurrent processing and isolated agent sessions. This is particularly useful for:</p>
         <ul>
             <li><strong>Concurrent Agent Processing:</strong> Spawn multiple actor instances, each with its own agent, to process tasks in parallel</li>
@@ -575,8 +575,8 @@ send assistant.ask("What is MALDA?");</code></pre>
         <p>For detailed information about combining agents and actors, including patterns for concurrent agent processing and multi-agent orchestration, see <a href="14-agent-orchestration.html#using-agents-with-actors">Using Agents with Actors</a> in the Agent Orchestration chapter.</p>
 
         <div class="nav-footer">
-            <a href="06-vectordb.html">← Previous: 14. VectorDB</a>
-            <a href="14-agent-orchestration.html">Next: 16. Agent Orchestration→</a>
+            <a href="15-database.html">← Previous: 15. Database Support</a>
+            <a href="14-agent-orchestration.html">Next: 17. Agent Orchestration→</a>
         </div>
 
         <footer>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>9. Arrays - MALDA Reference Manual</title>
+    <title>6. Arrays - MALDA Reference Manual</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="syntax.css">
     <link rel="stylesheet" href="print.css" media="print">
@@ -15,16 +15,16 @@
     </header>
     <nav></nav>
     <main>
-        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>9. Arrays</span></div>
-        <h1>9. Arrays</h1>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>6. Arrays</span></div>
+        <h1>6. Arrays</h1>
         <p>Arrays in MALDA are dynamic, zero-indexed collections that can hold values of any type.</p>
-        <h2>9.1 Array Declaration</h2>
+        <h2>6.1 Array Declaration</h2>
         <p>Arrays are created using square brackets with comma-separated values:</p>
         <pre><code>var arr = [1, 2, 3, 4, 5];
 var names = ["Alice", "Bob", "Charlie"];
 var empty = [];
 var mixed = [1, "two", 3.0, true];  // Arrays can hold mixed types</code></pre>
-        <h2>9.2 Array Access</h2>
+        <h2>6.2 Array Access</h2>
         <p>Array elements are accessed using zero-based indexing:</p>
         <pre><code>var arr = [10, 20, 30];
 var first = arr[0];   // first = 10
@@ -34,7 +34,7 @@ var length = arr.length;  // Built-in property returns array length</code></pre>
         <div class="warning-box">
             <strong>Note:</strong> Accessing an index beyond the array bounds causes a runtime error.
         </div>
-        <h2>9.3 Array Operations</h2>
+        <h2>6.3 Array Operations</h2>
         <h3>Dynamic Resizing</h3>
         <p>Arrays can grow and shrink dynamically:</p>
         <pre><code>var arr = [1, 2, 3];
@@ -45,7 +45,7 @@ arr[3] = 4;  // Array automatically grows
         <pre><code>var matrix = [[1, 2], [3, 4]];
 var value = matrix[0][1];  // value = 2
 matrix[1][0] = 5;          // matrix is now [[1, 2], [5, 4]]</code></pre>
-        <h2>9.4 Array Methods</h2>
+        <h2>6.4 Array Methods</h2>
         <p>Arrays are objects with built-in methods:</p>
         <h3>append(item)</h3>
         <p>Adds an item to the end of the array and returns the array:</p>
@@ -145,7 +145,7 @@ var hasFive = [1, 2, 3].includes(5);  // false</code></pre>
         <pre><code>var arr = ["a", "b", "c"];
 var str = arr.join();  // "a,b,c"
 var str2 = arr.join("-");  // "a-b-c"</code></pre>
-        <h2>9.5 Numeric Array Aggregation</h2>
+        <h2>6.5 Numeric Array Aggregation</h2>
         <p>For numeric arrays, MALDA also provides built-in aggregation helpers:</p>
         <pre><code>var scores = [10, 20, 30];
 var total = sum(scores);       // 60
@@ -160,21 +160,21 @@ var largest2 = scores.max();   // 30</code></pre>
         <p><code>sum(array)</code> returns the total of a numeric array. <code>average(array)</code> returns the arithmetic mean of a non-empty numeric array as a float. <code>min(array)</code> and <code>max(array)</code> return the smallest and largest numeric element in a non-empty numeric array.</p>
         <p>The same operations are also available as array methods: <code>array.sum()</code>, <code>array.average()</code>, <code>array.min()</code>, and <code>array.max()</code>.</p>
         <p>The scalar forms <code>min(a, b)</code> and <code>max(a, b)</code> are still available for comparing two numeric values.</p>
-        <h2>9.6 Array Length</h2>
+        <h2>6.6 Array Length</h2>
         <p>The <code>length</code> property returns the number of elements in the array:</p>
         <pre><code>var arr = [1, 2, 3, 4, 5];
 print(arr.length);  // Prints 5</code></pre>
         <div class="see-also">
             <h3>See Also</h3>
             <ul>
-                <li><a href="08-control-structures.html">7. Control Structures</a> - Iterating over arrays with loops</li>
+                <li><a href="08-control-structures.html">8. Control Structures</a> - Iterating over arrays with loops</li>
                 <li><a href="12-input-output.html">11. Input/Output</a> - Additional array functions</li>
                 <li><a href="03-data-types.html">4. Data Types</a> - Dictionary types and <code>dict { ... }</code> literals</li>
             </ul>
         </div>
         <div class="nav-footer">
-            <a href="09-functions.html">← Previous: 8. Functions</a>
-            <a href="10-classes-objects.html">Next: 10. Classes & Objects→</a>
+            <a href="04-variables.html">← Previous: 5. Variables</a>
+            <a href="07-expressions.html">Next: 7. Expressions→</a>
         </div>
 
         <footer>

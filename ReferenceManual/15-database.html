@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>18. Database Support - MALDA Reference Manual</title>
+    <title>15. Database Support - MALDA Reference Manual</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="syntax.css">
     <link rel="stylesheet" href="print.css" media="print">
@@ -15,11 +15,11 @@
     </header>
     <nav></nav>
     <main>
-        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>18. Database Support</span></div>
-        <h1>18. Database Support</h1>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>15. Database Support</span></div>
+        <h1>15. Database Support</h1>
         <p>MALDA includes native support for database operations with SQL Server, PostgreSQL, and SQLite. All database clients provide connection management, raw SQL queries with parameterization, query builder APIs, and transaction support.</p>
         
-        <h2>18.1 SqlServerClient Class</h2>
+        <h2>15.1 SqlServerClient Class</h2>
         <p>The <code>SqlServerClient</code> class provides a SQL Server database client with full CRUD operations support.</p>
         
         <h3>Constructor</h3>
@@ -104,7 +104,7 @@ try {
 
 db.disconnect();</code></pre>
         
-        <h2>18.2 PostgresClient Class</h2>
+        <h2>15.2 PostgresClient Class</h2>
         <p>The <code>PostgresClient</code> class provides a PostgreSQL database client with the same interface as <code>SqlServerClient</code>.</p>
         
         <h3>Constructor</h3>
@@ -149,7 +149,7 @@ db.insert("users", {name: "Jane", email: "jane@example.com", age: 30});
 
 db.disconnect();</code></pre>
         
-        <h2>18.3 SqliteClient Class</h2>
+        <h2>15.3 SqliteClient Class</h2>
         <p>The <code>SqliteClient</code> class provides a SQLite database client with the same interface as <code>SqlServerClient</code>.</p>
         
         <h3>Constructor</h3>
@@ -191,21 +191,21 @@ var results = db.select("name", "email")
 
 db.disconnect();</code></pre>
         
-        <h2>18.4 Key Differences</h2>
+        <h2>15.4 Key Differences</h2>
         <ul>
             <li><strong>Parameter Syntax</strong>: SQL Server and SQLite use <code>@paramName</code>; PostgreSQL uses <code>$1, $2, $3...</code></li>
             <li><strong>Connection Strings</strong>: Different formats (SQL Server: <code>Server=...;Database=...</code>; PostgreSQL: <code>Host=...;Database=...</code>; SQLite: <code>Data Source=path/to/db.sqlite;</code>)</li>
             <li><strong>Query Builder</strong>: Automatically handles parameter numbering for PostgreSQL</li>
         </ul>
         
-        <h2>18.5 Security</h2>
+        <h2>15.5 Security</h2>
         <p>All database clients use parameterized queries by default, preventing SQL injection attacks. Always use parameters instead of string concatenation when building queries.</p>
         
         <div class="warning-box">
             <p><strong>⚠️ Important:</strong> Never concatenate user input directly into SQL queries. Always use parameterized queries to prevent SQL injection attacks.</p>
         </div>
         
-        <h2>18.6 Result Objects</h2>
+        <h2>15.6 Result Objects</h2>
         <p>Query results are returned as arrays of objects, where each object represents a row with column names as properties:</p>
         <pre><code>var users = db.query("SELECT name, email FROM users");
 // users is an array: [{name: "John", email: "john@example.com"}, ...]
@@ -213,6 +213,10 @@ db.disconnect();</code></pre>
 for (var i = 0; i < users.length; i++) {
     print(users[i].name + " - " + users[i].email);
 }</code></pre>
+        <div class="nav-footer">
+            <a href="06-vectordb.html">← Previous: 14. VectorDB</a>
+            <a href="13-actors.html">Next: 16. Actors→</a>
+        </div>
     </main>
     <script src="malda-highlight.js"></script>
     <script src="navigation.js"></script>
