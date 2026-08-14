@@ -142,6 +142,7 @@ Rough sequencing. Items can overlap when owners differ; gates below are the acce
 | [`docs/selective-imports.md`](selective-imports.md) | P1 `import { … } from` design + semantics |
 | [`docs/workspace-packages.md`](workspace-packages.md) | P2 workspace `packages/` + offline CLI |
 | [`docs/debugging-transpile.md`](debugging-transpile.md) | D1 transpile `#line` / build_errors debug guide |
+| [`docs/roadmap-interpret-debug.md`](roadmap-interpret-debug.md) | Interpret-mode DAP / shared debug core (plan; not the D1 transpile story) |
 | [`docs/benchmarks.md`](benchmarks.md) | D2 micro-benchmarks + sample results |
 | [`docs/planning/phase-3-modules-summary.md`](planning/phase-3-modules-summary.md) | Historical Phase 3; selective import now shipped in P1 |
 

@@ -130,6 +130,7 @@ Put your own libs under `packages/<name>/`. Installed copies live in `~/.maldala
 - Language reference: `ReferenceManual/`
 - Profiling guide: `docs/profiling.md`
 - Debugging transpile failures: `docs/debugging-transpile.md`
+- Interpret-mode source-level debug (plan): `docs/roadmap-interpret-debug.md`
 - Native numeric transpile rollout: `docs/native-numeric-rollout.md`
 - JavaScript/browser backend notes: `docs/javascript-backend.md`
 - Server-driven UI runtime / UIHost: `docs/ui-framework.md`
