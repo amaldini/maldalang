@@ -1,0 +1,34 @@
+// Capability tokens: unforgeable FileRead / FileWrite handles.
+// @effects("io") is still a name allow-list — pass a token so a tool cannot invent a path.
+// Run with: malda Examples/Tools/capability_tokens.malda
+
+var path = "cap_l6_notes.txt";
+cap.write(cap.fileWrite(path), "hello from a FileWrite token");
+var notes = cap.fileRead(path);
+io.print(cap.read(notes));
+io.print(notes.kind);
+io.print(cap.is(notes, "fileRead"));
+
+function read_allowed(fileCap) {
+    return cap.read(fileCap);
+}
+
+io.print(read_allowed(notes));
+
+var forged = false;
+try {
+    cap.read({ "kind": "fileRead", "path": path });
+} catch (e) {
+    forged = true;
+}
+io.print(forged);
+
+var escaped = false;
+try {
+    cap.confine(notes, "../secret.txt");
+} catch (e) {
+    escaped = true;
+}
+io.print(escaped);
+
+io.deleteFile(path);

@@ -188,7 +188,7 @@ prompt answer(q) -> Answer {
         </ul>
         <p><code>MALDA_AGENT_CONTEXT_BUDGET_TOKENS</code> still trims undeclared agent context. It is not a second abort API; declare <code>@budget</code> when you want a hard bound. See <code>Examples/Prompts/prompt_budget.malda</code>.</p>
         <h3>@pure and @effects</h3>
-        <p>Use <code>@pure()</code> on helpers that must not perform I/O. Use <code>@effects("print", …)</code> to declare an allow-list of side effects on a handler. These are checked under CLI <code>--strict-types</code> / full strict analysis (<code>malda-pure</code> / <code>malda-effects</code>). Prefer <code>validate()</code> on tool or LLM-shaped payloads before impure work — see <code>Examples/Agents/agent_governance_golden.malda</code> and <a href="17-agent-orchestration.html">17. Agent Orchestration</a>.</p>
+        <p>Use <code>@pure()</code> on helpers that must not perform I/O. Use <code>@effects("print", …)</code> to declare an allow-list of side effects on a handler. These are checked under CLI <code>--strict-types</code> / full strict analysis (<code>malda-pure</code> / <code>malda-effects</code>). Prefer <code>validate()</code> on tool or LLM-shaped payloads before impure work — see <code>Examples/Agents/agent_governance_golden.malda</code> and <a href="17-agent-orchestration.html">17. Agent Orchestration</a>. <code>@effects("io")</code> is a name allow-list and does not stop a tool from inventing a path; pass a <a href="12-built-in-functions.html#capability-tokens"><code>cap.fileRead</code></a> token into the handler instead.</p>
         <pre><code>@pure()
 function normalizeName(name) {
     return upper(trim(name));

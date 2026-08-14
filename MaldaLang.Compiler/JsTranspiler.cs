@@ -1084,6 +1084,11 @@ public class JsTranspiler
                 {
                     return $"mlRuntime.grounded.wrap({JoinArguments(functionCall.Arguments)})";
                 }
+
+                if (memberObjectIdentifier.Name == "cap")
+                {
+                    return $"mlRuntime.cap.{EscapeIdentifier(memberCall.Member)}({JoinArguments(functionCall.Arguments)})";
+                }
             }
 
             if (ArrayPipelineMethods.Contains(memberCall.Member))

@@ -3974,6 +3974,10 @@ public partial class Interpreter
         {
             return groundedModule.CallMethod(methodName, arguments, this);
         }
+        else if (instance is BuiltIns.CapInstance capModule)
+        {
+            return capModule.CallMethod(methodName, arguments, this);
+        }
         else if (instance.GetType().FullName == "MaldaLang.Timeseries.TaInstance")
         {
             var result = instance.GetType().GetMethod("CallMethod")?.Invoke(instance, new object[] { methodName, arguments, this });

@@ -129,6 +129,7 @@ public static class BuiltInFunctions
         env.Define(StdLibNamespaces.ResultModule, RuntimeValue.Object(new ResultInstance()));
         env.Define(StdLibNamespaces.OptionModule, RuntimeValue.Object(new OptionInstance()));
         env.Define(StdLibNamespaces.GroundedModule, RuntimeValue.Object(new GroundedInstance()));
+        env.Define(StdLibNamespaces.CapModule, RuntimeValue.Object(new CapInstance()));
     }
     
     private static RuntimeValue BuiltInAll(List<RuntimeValue> args)
@@ -5367,12 +5368,16 @@ public static class BuiltInFunctions
     private static RuntimeValue BuiltInReadFile(List<RuntimeValue> args)
     {
         if (args.Count < 1 || args.Count > 3) throw new Exception("readFile() expects 1 to 3 arguments");
-        if (args[0].Type != MaldaLang.Interpreter.ValueType.String)
+        string filePath;
+        if (args[0].Type == MaldaLang.Interpreter.ValueType.String)
+            filePath = args[0].AsString();
+        else if (CapStdLib.TryGetToken(args[0], out var readCap) && readCap.Kind == CapabilityToken.KindFileRead)
+            filePath = readCap.Path;
+        else
             throw new Exception("readFile() expects (string, int?, int?)");
-        
+
         try
         {
-            var filePath = args[0].AsString();
             string content;
             if (EmbeddedFolderStore.IsEmbedPath(filePath))
             {
@@ -5505,7 +5510,16 @@ public static class BuiltInFunctions
     
     private static string CoerceWriteFilePath(RuntimeValue value)
     {
-        return value.Type == ValueType.String ? value.AsString() : value.ToString();
+        if (value.Type == ValueType.String)
+            return value.AsString();
+        if (CapStdLib.TryGetToken(value, out var token))
+        {
+            if (token.Kind != CapabilityToken.KindFileWrite)
+                throw new Exception($"writeFile() capability kind is '{token.Kind}', expected '{CapabilityToken.KindFileWrite}'");
+            return token.Path;
+        }
+
+        return value.ToString();
     }
 
     private static string CoerceWriteFileContent(RuntimeValue value)
@@ -5705,12 +5719,16 @@ public static class BuiltInFunctions
     private static RuntimeValue BuiltInListDirectory(List<RuntimeValue> args)
     {
         if (args.Count != 1) throw new Exception("listDirectory() expects 1 argument");
-        if (args[0].Type != MaldaLang.Interpreter.ValueType.String)
+        string dirPath;
+        if (args[0].Type == MaldaLang.Interpreter.ValueType.String)
+            dirPath = args[0].AsString();
+        else if (CapStdLib.TryGetToken(args[0], out var listCap) && listCap.Kind == CapabilityToken.KindDirList)
+            dirPath = listCap.Path;
+        else
             throw new Exception("listDirectory() expects a string argument");
-        
+
         try
         {
-            var dirPath = args[0].AsString();
 
             if (EmbeddedFolderStore.IsEmbedPath(dirPath))
             {

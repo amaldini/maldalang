@@ -29,6 +29,7 @@ Tiny programs for LLM context. Larger curated samples live under `Examples/`.
 | `21_api_program.malda` | `api` + program JSON + `runProgram` (deterministic) |
 | `22_gather_extract_prompt.malda` | `gather:` + `-> Type` Mode C (offline PromptInstance) |
 | `23_grounded_wrap.malda` | `grounded.wrap` citations wrapper (GraphMemory `ask` is the ASK path) |
+| `24_capability_tokens.malda` | `cap.fileRead` unforgeable token (`cap.read` rejects forged dicts) |
 
 Also useful from the main tree:
 

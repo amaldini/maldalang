@@ -499,7 +499,12 @@ public static class WorkflowDeterminismDiagnostics
     private static bool TryStdLibMemberName(MemberAccessExpression member, out string memberName)
     {
         memberName = member.Member;
-        return member.Object is IdentifierExpression ns &&
-               StdLibNamespaces.IsStdLibModuleMethod(ns.Name, member.Member);
+        if (member.Object is not IdentifierExpression ns
+            || !StdLibNamespaces.IsStdLibModuleMethod(ns.Name, member.Member))
+            return false;
+
+        if (ns.Name == StdLibNamespaces.CapModule)
+            memberName = CapStdLib.ResolveWorkflowBuiltInName(member.Member);
+        return true;
     }
 }
