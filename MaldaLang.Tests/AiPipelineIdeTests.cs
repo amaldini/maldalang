@@ -30,6 +30,7 @@ public class AiPipelineIdeTests
         Assert.DoesNotContain(completions, c => c.Label == "chain");
         Assert.Contains(completions, c => c.Label == "prompt");
         Assert.Contains(completions, c => c.Label == "schema");
+        Assert.Contains(completions, c => c.Label == "api");
         Assert.Contains(completions, c => c.Label == "await");
         Assert.Contains(completions, c => c.Label == "function");
     }
@@ -40,6 +41,34 @@ public class AiPipelineIdeTests
         var completions = _service.GetCompletions("var x = ", 0, 8);
         Assert.Contains(completions, c => c.Label == "runPrompt");
         Assert.Contains(completions, c => c.Label == "withExamples");
+        Assert.Contains(completions, c => c.Label == "runProgram");
+    }
+
+    [Fact]
+    public void GetHover_ApiKeyword_ShowsClosedApiHelp()
+    {
+        var source = """
+            api Calc {
+                function add(a, b);
+            }
+            """;
+        var hover = _service.GetHoverInformation(source, 0, 1);
+        Assert.NotNull(hover);
+        Assert.Contains("runProgram", hover);
+    }
+
+    [Fact]
+    public void GetHover_ApiName_ShowsMethodSignatures()
+    {
+        var source = """
+            api Calc {
+                function add(a, b);
+            }
+            """;
+        var hover = _service.GetHoverInformation(source, 0, 5);
+        Assert.NotNull(hover);
+        Assert.Contains("api Calc", hover);
+        Assert.Contains("function add(a, b)", hover);
     }
 
     [Fact]

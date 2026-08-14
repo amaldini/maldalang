@@ -19,6 +19,7 @@ public class TranspileSmokeTests
     [InlineData("Examples/Workflows/determinism_helpers.malda")]
     [InlineData("Examples/Web/job_queue_basic.malda")]
     [InlineData("Examples/Prompts/prompt_tools_then_structured.malda")]
+    [InlineData("Examples/Prompts/api_program_calc.malda")]
     [InlineData("Examples/Prompts/prompt_budget.malda")]
     [InlineData("Examples/Memory/grounded_ask.malda")]
     [InlineData("Examples/Tools/capability_tokens.malda")]

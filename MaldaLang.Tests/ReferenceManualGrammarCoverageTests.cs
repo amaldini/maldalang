@@ -34,6 +34,8 @@ public class ReferenceManualGrammarCoverageTests
             "ExportableDecl",
             "PromptBodyField",
             "DecoratorArgList",
+            "ApiDecl",
+            "program(",
         }.Select(anchor => new object[] { anchor });
 
     [Theory]

@@ -47,6 +47,7 @@ claim a program works.
 | Same name for `schema Foo` and `type Foo` | Registration throws — a name cannot be both. | Pick one spelling / rename one of them |
 | `validate("Intent", taggedDict)` expecting a variant for `match` | Success returns `{ ok, data }` with **`data` still the dict**. Coercion to `Search(q)` / `Buy(…)` happens on `await prompt … -> Intent`, not on `validate`. | Use `data.tag` / field access, or `await` a typed prompt when you need `match` |
 | `runProgram` vs `executePlan` / `@Tool` | `runProgram` only calls api methods (no LLM). `executePlan` drives an agent per task step. `@Tool` is a multi-round tool loop. | Use `api` + `program(Api)` + `runProgram` for closed deterministic plans |
+| `api` / `runProgram` with `--mode js` | JS transpile rejects `api` declarations (host-only, same as prompts). | Interpreter or `malda compile --mode transpile` |
 | `api` method without a top-level `function` of the same name | `runProgram` fails at the call step. | Declare `function add(a, b) { … }` matching the signature |
 | `pdf.extractText(scanned.pdf)` expecting OCR | Extracts the **digital text layer** only (PdfPig). Image-only / scanned PDFs often return empty or near-empty text with no error. | OCR first, or convert to `.md` / `.txt` before BUILD |
 | `doc.extractText("old.doc")` | Only **`.docx`** (Office Open XML) is supported. Legacy binary `.doc` throws. | Save as `.docx`, or convert before BUILD |
