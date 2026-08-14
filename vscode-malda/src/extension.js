@@ -10,7 +10,19 @@ function readTypeStrict() {
   return vscode.workspace.getConfiguration("malda").get("types.strict", true);
 }
 
-function activate() {
+function readCliPath() {
+  return vscode.workspace.getConfiguration("malda").get("cli.path") ?? "malda";
+}
+
+function activate(context) {
+  context.subscriptions.push(
+    vscode.debug.registerDebugAdapterDescriptorFactory("malda", {
+      createDebugAdapterDescriptor() {
+        return new vscode.DebugAdapterExecutable(readCliPath(), ["debug-adapter"]);
+      },
+    })
+  );
+
   const config = vscode.workspace.getConfiguration("maldaLanguageServer");
   const serverPath = config.get("path") ?? "malda-lsp";
 

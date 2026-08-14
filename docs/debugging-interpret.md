@@ -24,9 +24,35 @@ Launch is interpret-only. Typical request arguments:
 
 Lines are **1-based**. Breakpoints that land on a non-stoppable line (for example a `function` declaration) map to the next stoppable statement in that file, or come back `verified: false`.
 
-## VS Code / Cursor
+## VS Code / Cursor (F5)
 
-F5 and `contributes.debuggers` are **not** in this workstream (D3). Until then, point a DAP client at `malda debug-adapter`.
+The `vscode-malda` extension contributes debugger type `malda`. LSP stays on `malda-lsp` (`maldaLanguageServer.path`). DAP is a **second** process: the extension runs `malda debug-adapter` using `malda.cli.path` (default `"malda"`).
+
+`dotnet run --project MaldaLang` is **not** the adapter. You need a `malda` executable that understands `debug-adapter`:
+
+```bash
+dotnet build MaldaLang -o artifacts/malda-cli
+```
+
+Then put that directory on PATH, or set `malda.cli.path` to `artifacts/malda-cli/malda` (Linux / macOS) or `artifacts/malda-cli/malda.exe` (Windows). There is no compile step for the extension; `package.json` `"main"` is `./src/extension.js`.
+
+1. Install `vscode-malda` (Install from Location or the install script — see [`vscode-malda/README.md`](../vscode-malda/README.md)). This is not a marketplace publish.
+2. Open a `.malda` file (for example `Examples/Basics/hello_world.malda`).
+3. Set a glyph breakpoint on a stoppable statement (for example a `print` line).
+4. Press **F5** (or Run → Start Debugging). Choose **Debug MALDA file** if prompted.
+
+Launch snippet:
+
+```json
+{
+  "type": "malda",
+  "request": "launch",
+  "name": "Debug MALDA file",
+  "program": "${file}"
+}
+```
+
+Interpret-mode only. This extension is not Desktop IDE parity (no UIHost preview, MCP UI, or virtual `@malda-section` tabs).
 
 ## What will not stop
 

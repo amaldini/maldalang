@@ -1,6 +1,6 @@
 # Interpret-mode source-level debug (implementation plan)
 
-**Status:** D0 shared `DebugSession`, D1 inspect, and D2 `malda debug-adapter` landed; D3–D5 not started  
+**Status:** D0 shared `DebugSession`, D1 inspect, D2 `malda debug-adapter`, and D3 `vscode-malda` debugger contribution landed; D4–D5 not started  
 **Created:** 2026-08-14  
 **Audience:** maintainers implementing DAP + a shared interpreter debug core  
 **Spec line:** Final 1.0 stays. This is **tooling**, not a language change. No new keyword, no builtin, no spec MINOR unless a later phase adds a `debugger` statement (out of v1).
@@ -34,8 +34,8 @@ This is the plan for **source-level debugging of interpreted `.malda`**. It is n
 | Desktop hook | [`MaldaLang.DesktopIDE/Services/DebuggerHook.cs`](../MaldaLang.DesktopIDE/Services/DebuggerHook.cs) | Full UI debug (F5 continue, step over/into/out). Breakpoints **0-based** |
 | Web hook | [`MaldaLang.IDE/Services/DebuggerHook.cs`](../MaldaLang.IDE/Services/DebuggerHook.cs) | Near-duplicate of Desktop. Playground only |
 | Condition eval | `DebugSession` watch evaluator | D1.5: non-empty `condition` is evaluated in the current environment; truthy breaks; eval error breaks and emits `breakpoint condition error:` |
-| CLI | `malda program.malda` | No debug subcommand; `--profile` exists, `--debug` does not |
-| LSP / VS Code | `MaldaLang.LanguageServer`, `vscode-malda` | Diagnostics/complete/hover only; **no `contributes.debuggers`** |
+| CLI | `malda program.malda` | `malda debug-adapter` speaks DAP on stdio (D2); `--profile` exists, `--debug` does not |
+| LSP / VS Code | `MaldaLang.LanguageServer`, `vscode-malda` | LSP on `malda-lsp`; debugger type `malda` launches `malda debug-adapter` via `malda.cli.path` (D3) |
 | Tests | — | **Zero** tests for `IDebuggerHook` / pause / step |
 | Actors | [`ActorRuntime.SpawnActor`](../MaldaLang/Interpreter/ActorRuntime.cs) | Child interpreter **shares** the parent hook (concurrent pause is undefined) |
 | Transpile debug | [`docs/debugging-transpile.md`](debugging-transpile.md) | `#line` + `build_errors.txt` — keep; do not conflate with this plan |
@@ -235,7 +235,7 @@ Evaluate `breakpoint.Condition` with the watch evaluator in the current environm
 - A headless test drives the adapter over pipes: launch a tiny `.malda`, hit a breakpoint, `stackTrace` shows the `.malda` line, `continue`, `exited`.
 - `malda debug-adapter` does not print “MALDA” banners on stdout.
 
-### D3 — VS Code / Cursor
+### D3 — VS Code / Cursor — landed
 
 **Concrete work**
 
@@ -363,7 +363,7 @@ Desktop Windows debug keeps working via the same `DebugSession`. Web IDE remains
 | [`docs/architecture.md`](architecture.md) | Engine map |
 | [`docs/roadmap-p0-maturity.md`](roadmap-p0-maturity.md) | D1 there was **transpile** debug docs (landed); this plan is interpret DAP |
 | [`docs/profiling.md`](profiling.md) | `--profile` is not a debugger |
-| [`vscode-malda/README.md`](../vscode-malda/README.md) | LSP client today |
+| [`vscode-malda/README.md`](../vscode-malda/README.md) | LSP client + interpret-mode F5 (`malda debug-adapter`) |
 
 ---
 
@@ -375,3 +375,4 @@ Desktop Windows debug keeps working via the same `DebugSession`. Web IDE remains
 | 2026-08-14 | D0 landed: `Interpreter/Debug/DebugSession` pause gate, 1-based lines, IDE wrappers, `InterpretDebugSessionTests` |
 | 2026-08-14 | D1 / D1.5 landed: DAP-shaped scopes, lazy children, watches, conditional breakpoints (`InterpretDebugInspectTests`) |
 | 2026-08-14 | D2 landed: `malda debug-adapter` DAP stdio session + `InterpretDebugAdapterTests` |
+| 2026-08-14 | D3 landed: `vscode-malda` debugger type `malda`, `malda.cli.path`, F5 docs (`InterpretDebugVscodeContributionTests`) |

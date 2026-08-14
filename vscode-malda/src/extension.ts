@@ -1,4 +1,4 @@
-import { workspace } from "vscode";
+import * as vscode from "vscode";
 import {
   LanguageClient,
   LanguageClientOptions,
@@ -9,11 +9,28 @@ import {
 let client: LanguageClient | undefined;
 
 function readTypeStrict(): boolean {
-  return workspace.getConfiguration("malda").get<boolean>("types.strict", true);
+  return vscode.workspace.getConfiguration("malda").get<boolean>("types.strict", true);
 }
 
-export function activate(): void {
-  const config = workspace.getConfiguration("maldaLanguageServer");
+function readCliPath(): string {
+  return vscode.workspace.getConfiguration("malda").get<string>("cli.path") ?? "malda";
+}
+
+class MaldaDebugAdapterFactory implements vscode.DebugAdapterDescriptorFactory {
+  createDebugAdapterDescriptor(): vscode.ProviderResult<vscode.DebugAdapterDescriptor> {
+    return new vscode.DebugAdapterExecutable(readCliPath(), ["debug-adapter"]);
+  }
+}
+
+export function activate(context: vscode.ExtensionContext): void {
+  context.subscriptions.push(
+    vscode.debug.registerDebugAdapterDescriptorFactory(
+      "malda",
+      new MaldaDebugAdapterFactory()
+    )
+  );
+
+  const config = vscode.workspace.getConfiguration("maldaLanguageServer");
   const serverPath = config.get<string>("path") ?? "malda-lsp";
 
   const serverOptions: ServerOptions = {
@@ -25,7 +42,7 @@ export function activate(): void {
   const clientOptions: LanguageClientOptions = {
     documentSelector: [{ scheme: "file", language: "malda" }],
     synchronize: {
-      fileEvents: workspace.createFileSystemWatcher("**/*.malda"),
+      fileEvents: vscode.workspace.createFileSystemWatcher("**/*.malda"),
       configurationSection: ["malda", "malda.types"],
     },
     initializationOptions: {
@@ -45,7 +62,7 @@ export function activate(): void {
 
   client.start();
 
-  workspace.onDidChangeConfiguration((e) => {
+  vscode.workspace.onDidChangeConfiguration((e) => {
     if (!e.affectsConfiguration("malda.types.strict") || !client) {
       return;
     }

@@ -51,7 +51,7 @@ Desktop IDE: **View → Type Errors as Errors** (persisted under AppData `MaldaL
 
 Web IDE remains a learning playground and does not claim Desktop or LSP feature parity.
 
-This process is **LSP only**. Interpret-mode debugging is `malda debug-adapter` (Debug Adapter Protocol on its own stdio). Do not mix DAP into `malda-lsp`.
+This process is **LSP only** (`malda-lsp` / VS Code setting `maldaLanguageServer.path`). Interpret-mode debugging is a **second** process: `malda debug-adapter` spawned by `vscode-malda` via `malda.cli.path` (Debug Adapter Protocol on its own stdio). Do not mix DAP into `malda-lsp`.
 
 ## Testing
 

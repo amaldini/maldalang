@@ -38,7 +38,7 @@ Interpret-mode debug core: [`MaldaLang/Interpreter/Debug/DebugSession.cs`](../Ma
 | `MaldaLang.DesktopIDE` | WPF **Desktop IDE** (reference) |
 | `MaldaLang.LanguageServer` | LSP server process (`malda-lsp`; not DAP) |
 | `MaldaLang.TestLib` / `MaldaLang.Tests` | Shared test helpers and automated tests |
-| `vscode-malda` | VS Code extension (client) |
+| `vscode-malda` | VS Code / Cursor extension: LSP client + interpret-mode debugger type `malda` (`malda debug-adapter`) |
 | `Examples/`, `Templates/` | Samples and `malda new` scaffolds |
 | `ReferenceManual/` | HTML language reference |
 | `conformance/` | Spec / tier0 conformance assets |
