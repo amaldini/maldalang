@@ -250,7 +250,7 @@ public class WorkflowDeterminismDiagnosticsTests
     {
         var source = """
             workflow Bad(input) {
-                0 |> now;
+                var t = 1 |> now;
             }
             """;
         var diagnostics = Collect(source);
