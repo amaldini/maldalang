@@ -165,4 +165,5 @@ See [`ReferenceManual/README-print.md`](ReferenceManual/README-print.md). Short 
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — contributor workflow
 - [`docs/start-here.md`](docs/start-here.md) — learning paths
 - [`docs/roadmap-p0-maturity.md`](docs/roadmap-p0-maturity.md) — P0 maturity roadmap (complete; next = post-Final / deferred)
+- [`docs/roadmap-language-constructs.md`](docs/roadmap-language-constructs.md) — next language constructs (schema/sum types, Mode C, budget, WF determinism)
 - [`llms.txt`](llms.txt) — compact doc index for LLM tools

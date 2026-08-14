@@ -119,6 +119,7 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 #### Clarified (PATCH — docs / tracking only)
 
 - **`typeOf(variant)` / `typeOf(task)`:** already return `"variant"` / `"task"` (Tier 0 T0-096/T0-097); removed stale post-Final gap bullet. Concurrent `async` + `sleep` between `var` bindings remains doc-only (gotchas + RM §6.14).
+- **Post-Final language constructs plan:** ranked workstreams L1–L6 (schema/sum-type unification, gather-then-extract prompts, `@budget`, workflow call-graph determinism, grounded values, deferred capabilities). Tracking only — no Tier 0 semantic change. See [`docs/roadmap-language-constructs.md`](../roadmap-language-constructs.md).
 
 #### Clarified (PATCH — product / Tier-2 docs only; no Tier 0 semantic change)
 
@@ -217,3 +218,4 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-08-12 | Final checklist + T1/T2/T3 type maturity updates; link `roadmap-p0-types-impl.md` |
 | 2026-08-12 | Declared **Final 1.0**; Tier 0 green (316); post-Final gaps owned (maintainers) |
 | 2026-08-12 | A1: tools vs `response_format` Modes A/B/C clarified (PATCH docs; Unreleased) |
+| 2026-08-14 | Link post-Final language constructs plan (`docs/roadmap-language-constructs.md`; PATCH docs) |

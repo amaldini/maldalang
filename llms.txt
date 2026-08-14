@@ -9,8 +9,9 @@ Canonical reading order for tools and agents working on this repository.
 - CONTRIBUTING.md — contribution workflow
 - docs/start-here.md — learning paths
 - docs/architecture.md — pipeline and project map
-- docs/roadmap-p0-maturity.md — active 3–6 month maturity roadmap (types, workflows, parity, AI, UI)
+- docs/roadmap-p0-maturity.md — P0 maturity roadmap (complete; types, workflows, parity, AI, UI)
 - docs/roadmap-p0-types-impl.md — P0 types T1–T4 implementation plan (status: implemented)
+- docs/roadmap-language-constructs.md — post-Final language constructs plan (schema/sum types, Mode C, budget, WF determinism)
 
 ## Writing MALDA programs (language pack)
 
@@ -49,4 +50,4 @@ Canonical reading order for tools and agents working on this repository.
 
 ## Note
 
-docs/planning/ contains historical design notes. Prefer docs/roadmap-p0-maturity.md for near-term priorities; prefer AGENTS.md, docs/architecture.md, ReferenceManual/, and the code when behavior disagrees with planning docs.
+docs/planning/ contains historical design notes. Prefer docs/roadmap-language-constructs.md for the next language-construct work; prefer docs/roadmap-p0-maturity.md for completed P0 / deferred non-language items; prefer AGENTS.md, docs/architecture.md, ReferenceManual/, and the code when behavior disagrees with planning docs.

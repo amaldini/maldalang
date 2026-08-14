@@ -8,7 +8,9 @@
 This is the forward plan after the purity / expressiveness phases in
 [`docs/planning/malda-language-purity-roadmap.md`](planning/malda-language-purity-roadmap.md)
 (historical; Phases 0–7 largely complete). All ranked P0 themes below are landed; prefer
-[`docs/spec/CHANGELOG.md`](spec/CHANGELOG.md) post-Final gaps and the deferred list for *what next*.
+[`docs/spec/CHANGELOG.md`](spec/CHANGELOG.md) post-Final gaps, the deferred list below, and
+[`docs/roadmap-language-constructs.md`](roadmap-language-constructs.md) for *what next* on
+the language surface.
 
 **Not in scope here:** vertical domain packs, product apps outside OSS, drive-by stdlib growth
 (stdlib remains soft-frozen — deepen `math` / `str` / `io` / web helpers; do not add flat aliases).
@@ -130,6 +132,7 @@ Rough sequencing. Items can overlap when owners differ; gates below are the acce
 | [`docs/architecture.md`](architecture.md) | Engine map; points here for P0 status + post-Final gaps |
 | [`docs/spec/backend-capability-matrix.md`](spec/backend-capability-matrix.md) | Interpreter / C# / JS product surface |
 | [`docs/spec/CHANGELOG.md`](spec/CHANGELOG.md) | Spec semver + Final 1.0 + post-Final gaps |
+| [`docs/roadmap-language-constructs.md`](roadmap-language-constructs.md) | Post-Final language constructs (L1–L6) |
 | [`docs/planning/malda-language-purity-roadmap.md`](planning/malda-language-purity-roadmap.md) | Completed purity phases (historical) |
 | [`docs/planning/phase-3-modules-summary.md`](planning/phase-3-modules-summary.md) | Deferred module items |
 | [`docs/llm/malda-gotchas.md`](llm/malda-gotchas.md) | Silent failures to shrink |
@@ -168,3 +171,4 @@ Rough sequencing. Items can overlap when owners differ; gates below are the acce
 | 2026-08-12 | D2 Benchmarks landed: checked-in `docs/benchmarks-sample-results.json` + sample table in `docs/benchmarks.md` |
 | 2026-08-12 | D3 LSP intelligence landed: schema/type hover (incl. imports), schema document/workspace symbols, LSP README capabilities |
 | 2026-08-12 | D4 Cross-platform honesty landed: CONTRIBUTING Linux/macOS + no-Desktop path; README `malda` vs `malda.exe` note |
+| 2026-08-14 | Pointer to post-Final language constructs plan (`docs/roadmap-language-constructs.md`) |
