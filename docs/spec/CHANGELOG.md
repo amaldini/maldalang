@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — grounded values)
+
+- **L5:** namespaced helper `grounded.wrap(value, citations?)` returns `{ value, citations, sourced }` with citations `{ source, id?, span? }`. No flat `grounded()` alias and no new keyword (v2 `grounded<T>` / match-visible kind stays gated). Opt-in GraphMemory ASK: `memory.ask(query, maxResults?, options?)` (or `query(..., { grounded: true })`) wraps hits with citations from `filePath` / `source` / `nodeId`. Interpreter and C# transpile agree. JS: `grounded.wrap` only (GraphMemory is host-only). Example: `Examples/Memory/grounded_ask.malda`. Plan: [`docs/roadmap-language-constructs.md`](../roadmap-language-constructs.md).
+
 #### Added (MINOR — workflow call-graph determinism)
 
 - **L4:** WF1001/WF1002 apply when a deny-listed built-in runs in a deterministic workflow section **even if nested in a helper**. IDE/LSP walks same-file `function` callees (bounded depth) outside `step` / `onReject`; imported or unknown callees are **WF1005 Info**, not a hard error. Interpreter and C# transpile agree (reuse in-workflow / in-step flags). JS: n/a (workflows are host-only). Not Temporal-style history comparison; durability remains single-writer SQLite ([`docs/workflows-ha.md`](../workflows-ha.md)). Example: `Examples/Workflows/determinism_helpers.malda`. Plan: [`docs/roadmap-language-constructs.md`](../roadmap-language-constructs.md).

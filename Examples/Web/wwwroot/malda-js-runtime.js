@@ -396,6 +396,46 @@
     }
   };
 
+  const groundedStdLib = {
+    wrap(value, citations) {
+      const list = [];
+      if (citations == null || citations === undefined) {
+        // unsourced wrapper
+      } else if (Array.isArray(citations)) {
+        for (const item of citations) {
+          const citation = normalizeGroundedCitation(item);
+          if (citation) list.push(citation);
+        }
+      } else {
+        const citation = normalizeGroundedCitation(citations);
+        if (citation) list.push(citation);
+      }
+      return markDict({
+        value,
+        citations: list,
+        sourced: list.length > 0
+      });
+    }
+  };
+
+  function normalizeGroundedCitation(item) {
+    if (item == null || item === undefined) return null;
+    if (typeof item === "string") {
+      const source = item.trim();
+      return source.length === 0 ? null : markDict({ source });
+    }
+    if (typeof item !== "object" || Array.isArray(item)) return null;
+    const sourceRaw = item.source || item.filePath || "";
+    const source = typeof sourceRaw === "string" && sourceRaw.trim().length > 0
+      ? sourceRaw.trim()
+      : "graph-memory";
+    const citation = { source };
+    const idRaw = item.id || item.nodeId;
+    if (typeof idRaw === "string" && idRaw.trim().length > 0) citation.id = idRaw.trim();
+    if (item.span != null && item.span !== undefined) citation.span = item.span;
+    return markDict(citation);
+  }
+
   function createSeededRandom(seed) {
     let state = (coerceToInt(seed) >>> 0) || 1;
     return {
@@ -993,6 +1033,7 @@
     callArrayMethod,
     result: resultStdLib,
     option: optionStdLib,
+    grounded: groundedStdLib,
     runProperty: runPropertyBuiltin,
     actors: actorsRuntime,
     builtins: {

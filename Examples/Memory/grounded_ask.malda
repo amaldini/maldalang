@@ -1,0 +1,22 @@
+// Grounded GraphMemory ASK: citations ride on a wrapper, not a new keyword.
+// Run with: malda Examples/Memory/grounded_ask.malda
+// query() still returns an array. ask() (or query with grounded: true) is opt-in.
+
+var memory = new GraphMemory();
+memory.initialize();
+memory.remember("Alice prefers dark mode", "", { "source": "notes.md" });
+memory.remember("Alice works as a software engineer");
+
+var g = memory.ask("What are Alice's preferences?", 5, { "minScore": 0 });
+print("sourced=" + string(g.sourced));
+print("hits=" + string(g.value.length));
+print("citations=" + string(g.citations.length));
+if (g.citations.length > 0) {
+    print("source=" + string(g.citations[0].source));
+}
+
+var wrapped = grounded.wrap("the sky is blue", [
+    { "source": "wiki", "id": "p1", "span": "12-40" }
+]);
+print(wrapped.value);
+print("wiki-sourced=" + string(wrapped.sourced));

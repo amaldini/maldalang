@@ -19,6 +19,16 @@
       "requires": ["api-key"],
       "concepts": ["GraphMemory", "multi-agent"],
       "learningGoal": "Coordinate several agents on one memory store."
+    },
+    {
+      "name": "Grounded GraphMemory ASK",
+      "description": "Opt-in GraphMemory.ask returns citations on a grounded.wrap wrapper",
+      "file": "grounded_ask.malda",
+      "track": "ai-builder",
+      "difficulty": "beginner",
+      "requires": ["offline"],
+      "concepts": ["GraphMemory", "grounded.wrap", "citations"],
+      "learningGoal": "Treat retrieval provenance as a value (value / citations / sourced) without a new keyword."
     }
   ]
 }

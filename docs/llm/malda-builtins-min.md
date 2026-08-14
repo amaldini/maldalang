@@ -33,6 +33,7 @@ you call is either a built-in function or a class you construct with `new`.
 | `AnsiConsole` | Rich terminal output: `markupLine`, `markup`, `table`, `panel`, `tree`, `status`, `prompt`, `progress` |
 | `ui` | Server-driven UI composition (web/full-stack apps) |
 | `result` / `option` | `Result` and `Option` constructors and combinators |
+| `grounded` | `grounded.wrap(value, citations?)` — payload plus `{ source, id?, span? }` |
 
 Built-in classes you instantiate with `new`: `LLMClient`, `OpenRouterClient`,
 `LlamaCppClient`, `LlamaEmbedder`, `Agent`, `CodingAgent`, `MALDACodingAgent`, `DevAgent`,

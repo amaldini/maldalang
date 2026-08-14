@@ -1,0 +1,7 @@
+// Wrap a payload with citation provenance. GraphMemory.ask is the opt-in ASK path.
+var g = grounded.wrap("the sky is blue", [
+    { "source": "wiki", "id": "p1", "span": "12-40" }
+]);
+io.print(g.value);
+io.print(g.sourced);
+io.print(g.citations[0].source);

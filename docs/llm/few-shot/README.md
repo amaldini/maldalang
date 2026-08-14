@@ -28,6 +28,7 @@ Tiny programs for LLM context. Larger curated samples live under `Examples/`.
 | `20_sum_type_prompt.malda` | sum-type return + optional payload types + `await` → variant + `match` (`{tag,…}` JSON) |
 | `21_api_program.malda` | `api` + program JSON + `runProgram` (deterministic) |
 | `22_gather_extract_prompt.malda` | `gather:` + `-> Type` Mode C (offline PromptInstance) |
+| `23_grounded_wrap.malda` | `grounded.wrap` citations wrapper (GraphMemory `ask` is the ASK path) |
 
 Also useful from the main tree:
 
