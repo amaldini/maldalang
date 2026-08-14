@@ -11,6 +11,21 @@
       "prerequisites": ["Basics/functions.malda"],
       "learningGoal": "See the smallest durable workflow declaration.",
       "expectedOutput": "Declares a one-step workflow (use retry_and_inspect to run and inspect).",
+      "next": "Workflows/determinism_helpers.malda",
+      "documentationPath": "/?lesson=build-ai-apps#lesson-build-ai-apps",
+      "documentationTitle": "Durable Workflows"
+    },
+    {
+      "name": "Determinism Helpers",
+      "description": "now() inside a helper is allowed in a step; the same helper from the workflow body is WF1001",
+      "file": "determinism_helpers.malda",
+      "track": "ai-builder",
+      "difficulty": "beginner",
+      "minutes": 8,
+      "concepts": ["workflow", "step", "WF1001", "call-graph"],
+      "prerequisites": ["Workflows/simple_step.malda"],
+      "learningGoal": "See that workflow determinism follows in-file helpers, not only direct built-in names.",
+      "expectedOutput": "Prints instance id and COMPLETED status after stamping the clock inside a step.",
       "next": "Workflows/retry_and_inspect.malda",
       "documentationPath": "/?lesson=build-ai-apps#lesson-build-ai-apps",
       "documentationTitle": "Durable Workflows"

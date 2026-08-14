@@ -6,6 +6,7 @@ Durable `workflow` / `step` / retry / compensate patterns with local SQLite pers
 
 ```bash
 malda Examples/Workflows/simple_step.malda
+malda Examples/Workflows/determinism_helpers.malda
 malda Examples/Workflows/retry_and_inspect.malda
 ```
 

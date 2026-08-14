@@ -308,7 +308,7 @@ public class LanguageService : ILanguageService
             var statements = parser.Parse(); // This will collect errors in parser.Errors
             cancellationToken.ThrowIfCancellationRequested();
             StdLibNamespaceDiagnostics.Validate(statements, diagnostics);
-            WorkflowDeterminismDiagnostics.Validate(statements, diagnostics);
+            WorkflowDeterminismDiagnostics.Validate(statements, diagnostics, sourceFileName);
             UiLoopDiagnostics.Validate(statements, diagnostics);
             StrictTypesAnalysis.Analyze(statements, typeOptions, diagnostics, sourceFileName);
             

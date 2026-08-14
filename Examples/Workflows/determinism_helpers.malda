@@ -1,0 +1,18 @@
+// Clock helpers belong inside a step. The same helper called from the
+// workflow body is WF1001 at runtime and in the IDE (same-file call-graph).
+// Imported helpers the analyzer cannot see are WF1005 Info; runtime still
+// raises WF1001/WF1002 if a deny-listed built-in runs.
+// Run: malda Examples/Workflows/determinism_helpers.malda
+// Persistence: ./.malda/workflows.db (local SQLite; not HA).
+
+function stamp() {
+    return now();
+}
+
+workflow StampInsideStep(input) {
+    step t = stamp();
+    return t;
+}
+
+var id = startWorkflow("StampInsideStep", null);
+io.print("id=" + id + " status=" + getWorkflowStatus(id));

@@ -96,6 +96,46 @@ public class WorkflowTranspilerParityTests
     }
 
     [Fact]
+    public void Transpile_NowInHelperFromWorkflowBody_ThrowsWF1001()
+    {
+        var dbPath = NewDbPath("helper_body");
+        var source = """
+            function stamp() {
+                return now();
+            }
+            workflow Bad(input) {
+                stamp();
+            }
+            startWorkflow("Bad", null);
+            """;
+        var env = new Dictionary<string, string>
+        {
+            ["MALDA_WORKFLOW_CONNECTION"] = "Data Source=" + dbPath
+        };
+        var result = TranspiledTestRunner.CompileAndRunFromSource(source, includeUiHost: false, environmentVariables: env);
+        var combined = result.StdOut + result.StdErr;
+        Assert.Contains("WF1001", combined, StringComparison.Ordinal);
+        Assert.Contains("now", combined, StringComparison.Ordinal);
+        Assert.NotEqual(0, result.ExitCode);
+    }
+
+    [Fact]
+    public void Transpile_NowInHelperInsideStep_Completes()
+    {
+        var source = """
+            function stamp() {
+                return now();
+            }
+            workflow Ok(input) {
+                step t = stamp();
+                return t;
+            }
+            startWorkflow("Ok", null);
+            """;
+        AssertParity(source, "Ok");
+    }
+
+    [Fact]
     public void Parity_CompensationOutcome()
     {
         var source = """

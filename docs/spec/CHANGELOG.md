@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — workflow call-graph determinism)
+
+- **L4:** WF1001/WF1002 apply when a deny-listed built-in runs in a deterministic workflow section **even if nested in a helper**. IDE/LSP walks same-file `function` callees (bounded depth) outside `step` / `onReject`; imported or unknown callees are **WF1005 Info**, not a hard error. Interpreter and C# transpile agree (reuse in-workflow / in-step flags). JS: n/a (workflows are host-only). Not Temporal-style history comparison; durability remains single-writer SQLite ([`docs/workflows-ha.md`](../workflows-ha.md)). Example: `Examples/Workflows/determinism_helpers.malda`. Plan: [`docs/roadmap-language-constructs.md`](../roadmap-language-constructs.md).
+
 #### Added (MINOR — resource budget decorator)
 
 - **L3:** `@budget(tokens: N, tools: N, cost: N?)` beside `@within(ms)` on functions and prompts. Named keys only; unknown keys are errors under `--strict-types` (`malda-bounds`). Runtime aborts with a dedicated message when a bound trips. `tokens` is prompt+completion when the backend reports usage, otherwise a documented chars/4 best-effort count. `tools` is invocation count in that prompt/agent turn, not allow-list length. Optional `cost` when the backend exposes it. Interpreter and C# transpile agree. JS: n/a (prompts are host-only). `MALDA_AGENT_CONTEXT_BUDGET_TOKENS` remains a context-trim fallback for undeclared agents, not a second abort API. Example: `Examples/Prompts/prompt_budget.malda`. Plan: [`docs/roadmap-language-constructs.md`](../roadmap-language-constructs.md).
