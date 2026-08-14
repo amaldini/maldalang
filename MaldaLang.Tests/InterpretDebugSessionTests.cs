@@ -38,7 +38,7 @@ public class InterpretDebugSessionTests : TestBase
     [Fact]
     public async Task Breakpoint_HitsPrintLine_OneBased()
     {
-        const string source = "var x = 1\nprint(x)\n";
+        const string source = "var x = 1;\nprint(x);\n";
         var statements = Parse(source, MainFile);
         var session = new DebugSession();
         session.SetBreakpoint(MainFile, 2);
@@ -58,7 +58,7 @@ public class InterpretDebugSessionTests : TestBase
     [Fact]
     public async Task Continue_AfterBreakpoint_CompletesProgram()
     {
-        const string source = "var x = 1\nprint(x)\n";
+        const string source = "var x = 1;\nprint(x);\n";
         var statements = Parse(source, MainFile);
         var session = new DebugSession();
         session.SetBreakpoint(MainFile, 2);
@@ -86,7 +86,7 @@ public class InterpretDebugSessionTests : TestBase
     public async Task StepOver_DoesNotEnterCallee()
     {
         const string source =
-            "function inner() {\nprint(\"in\")\n}\nprint(\"before\")\ninner()\nprint(\"after\")\n";
+            "function inner() {\nprint(\"in\");\n}\nprint(\"before\");\ninner();\nprint(\"after\");\n";
         var statements = Parse(source, MainFile);
         var session = new DebugSession();
         session.SetBreakpoint(MainFile, 5);
@@ -113,7 +113,7 @@ public class InterpretDebugSessionTests : TestBase
     public async Task StepInto_PausesAtFirstBodyStatement_NotFunctionDeclaration()
     {
         const string source =
-            "function inner() {\nprint(\"in\")\n}\ninner()\nprint(\"after\")\n";
+            "function inner() {\nprint(\"in\");\n}\ninner();\nprint(\"after\");\n";
         var statements = Parse(source, MainFile);
         var session = new DebugSession();
         session.SetBreakpoint(MainFile, 4);
@@ -140,7 +140,7 @@ public class InterpretDebugSessionTests : TestBase
     public async Task StepOut_ReturnsToCaller()
     {
         const string source =
-            "function inner() {\nprint(\"in\")\nprint(\"in2\")\n}\ninner()\nprint(\"after\")\n";
+            "function inner() {\nprint(\"in\");\nprint(\"in2\");\n}\ninner();\nprint(\"after\");\n";
         var statements = Parse(source, MainFile);
         var session = new DebugSession();
         session.SetBreakpoint(MainFile, 2);
@@ -166,7 +166,7 @@ public class InterpretDebugSessionTests : TestBase
     [Fact]
     public async Task StopOnEntry_PausesOnFirstStoppableStatement()
     {
-        const string source = "var x = 1\nprint(x)\n";
+        const string source = "var x = 1;\nprint(x);\n";
         var statements = Parse(source, MainFile);
         var session = new DebugSession { StopOnEntry = true };
         var interpreter = new Interpreter.Interpreter(session, MainFile);
@@ -184,7 +184,7 @@ public class InterpretDebugSessionTests : TestBase
     [Fact]
     public async Task CancelDuringPause_InterpretToken_CompletesCanceled()
     {
-        const string source = "var x = 1\nprint(x)\n";
+        const string source = "var x = 1;\nprint(x);\n";
         var statements = Parse(source, MainFile);
         var session = new DebugSession();
         session.SetBreakpoint(MainFile, 2);
@@ -204,7 +204,7 @@ public class InterpretDebugSessionTests : TestBase
     [Fact]
     public async Task StopDuringPause_CancelsInterpretTask()
     {
-        const string source = "var x = 1\nprint(x)\n";
+        const string source = "var x = 1;\nprint(x);\n";
         var statements = Parse(source, MainFile);
         var session = new DebugSession();
         session.SetBreakpoint(MainFile, 2);
@@ -224,7 +224,7 @@ public class InterpretDebugSessionTests : TestBase
         var dir = CreateTempDirectory("interpret_debug_");
         var file = Path.GetFullPath(Path.Combine(dir, "prog.malda"));
         var other = Path.GetFullPath(Path.Combine(dir, "other.malda"));
-        const string source = "var x = 1\nprint(x)\n";
+        const string source = "var x = 1;\nprint(x);\n";
         var statements = Parse(source, file);
 
         var miss = new DebugSession();
@@ -253,7 +253,7 @@ public class InterpretDebugSessionTests : TestBase
     public async Task DoesNotStopOnBlockStatement_FirstInnerStatementIsThePause()
     {
         const string source =
-            "function inner() {\nprint(\"in\")\n}\ninner()\n";
+            "function inner() {\nprint(\"in\");\n}\ninner();\n";
         var statements = Parse(source, MainFile);
         Assert.Contains(statements, s => s is FunctionDeclaration);
         var function = Assert.IsType<FunctionDeclaration>(statements[0]);

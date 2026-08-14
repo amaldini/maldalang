@@ -10,7 +10,7 @@ public class ExpressionStatement : Statement
     public Expression Expression { get; }
     
     public ExpressionStatement(Expression expression, int line = 0, int column = 0)
-        : base(line, column)
+        : base(line > 0 ? line : expression.Line, column > 0 ? column : expression.Column)
     {
         Expression = expression;
     }

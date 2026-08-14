@@ -1249,7 +1249,7 @@ public class Parser
         if (Check(TokenType.Match))
         {
             var matchExpr = MatchExpression();
-            return new ExpressionStatement(matchExpr);
+            return new ExpressionStatement(matchExpr, matchExpr.Line, matchExpr.Column);
         }
         // Check for destructuring assignment before block: [x, y] = ... or { name, age } = ...
         // We use lookahead so plain expression statements like [1,2,3].forEach(...) are not
@@ -1284,7 +1284,7 @@ public class Parser
         
         // Otherwise it's an expression statement
         Consume(TokenType.Semicolon, "Expect ';' after expression.");
-        return new ExpressionStatement(expr);
+        return new ExpressionStatement(expr, expr.Line, expr.Column);
     }
     
     private Statement SendStatement()
@@ -1446,7 +1446,7 @@ public class Parser
                 }
                 else
                 {
-                    loopIncrement = new ExpressionStatement(expr);
+                    loopIncrement = new ExpressionStatement(expr, expr.Line, expr.Column);
                 }
             }
             Consume(TokenType.RightParen, "Expect ')' after for clauses.");
@@ -1485,7 +1485,7 @@ public class Parser
             else
             {
                 if (Match(TokenType.Semicolon)) { }
-                initializer = new ExpressionStatement(expr);
+                initializer = new ExpressionStatement(expr, expr.Line, expr.Column);
             }
         }
         Consume(TokenType.Semicolon, "Expect ';' after loop initializer.");
@@ -1510,7 +1510,7 @@ public class Parser
             }
             else
             {
-                incrementStmt = new ExpressionStatement(expr);
+                incrementStmt = new ExpressionStatement(expr, expr.Line, expr.Column);
             }
         }
         Consume(TokenType.RightParen, "Expect ')' after for clauses.");
