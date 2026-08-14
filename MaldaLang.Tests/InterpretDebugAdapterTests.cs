@@ -4,10 +4,10 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Pipes;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using MaldaLang.DebugAdapter;
 using Xunit;
@@ -25,7 +25,7 @@ public class InterpretDebugAdapterTests : TestBase
         await File.WriteAllTextAsync(program, "var x = 1\nprint(x)\n");
         program = Path.GetFullPath(program);
 
-        await using var harness = await DapHarness.StartAsync();
+        await using var harness = DapHarness.Start();
         try
         {
             var init = await harness.RequestAsync("initialize", new { adapterID = "malda" });
@@ -106,7 +106,7 @@ public class InterpretDebugAdapterTests : TestBase
         await File.WriteAllTextAsync(program, "function f() {\nvar x = 1\nprint(x)\n}\nf()\n");
         program = Path.GetFullPath(program);
 
-        await using var harness = await DapHarness.StartAsync();
+        await using var harness = DapHarness.Start();
         try
         {
             await harness.RequestAsync("initialize", new { adapterID = "malda" });
@@ -136,51 +136,42 @@ public class InterpretDebugAdapterTests : TestBase
 
     private sealed class DapHarness : IAsyncDisposable
     {
-        private readonly AnonymousPipeServerStream _toAdapter;
-        private readonly AnonymousPipeServerStream _fromAdapter;
-        private readonly AnonymousPipeClientStream _adapterInput;
-        private readonly AnonymousPipeClientStream _adapterOutput;
+        private readonly ChannelStream _toAdapterWriter;
+        private readonly ChannelStream _fromAdapterWriter;
         private readonly TeeReadStream _recorded;
         private readonly DapTransport _client;
         private readonly Task _adapterTask;
-        private readonly CancellationTokenSource _cts = new();
         private readonly List<DapIncoming> _inbox = new();
         private int _seq;
 
         public string RawOutput => _recorded.Text;
 
         private DapHarness(
-            AnonymousPipeServerStream toAdapter,
-            AnonymousPipeServerStream fromAdapter,
-            AnonymousPipeClientStream adapterInput,
-            AnonymousPipeClientStream adapterOutput,
+            ChannelStream toAdapterWriter,
+            ChannelStream fromAdapterWriter,
             TeeReadStream recorded,
             DapTransport client,
             Task adapterTask)
         {
-            _toAdapter = toAdapter;
-            _fromAdapter = fromAdapter;
-            _adapterInput = adapterInput;
-            _adapterOutput = adapterOutput;
+            _toAdapterWriter = toAdapterWriter;
+            _fromAdapterWriter = fromAdapterWriter;
             _recorded = recorded;
             _client = client;
             _adapterTask = adapterTask;
         }
 
-        public static Task<DapHarness> StartAsync()
+        public static DapHarness Start()
         {
-            var toAdapter = new AnonymousPipeServerStream(PipeDirection.Out, HandleInheritability.None);
-            var fromAdapter = new AnonymousPipeServerStream(PipeDirection.In, HandleInheritability.None);
-            var adapterInput = new AnonymousPipeClientStream(PipeDirection.In, toAdapter.GetClientHandleAsString());
-            var adapterOutput = new AnonymousPipeClientStream(PipeDirection.Out, fromAdapter.GetClientHandleAsString());
-            toAdapter.DisposeLocalCopyOfClientHandle();
-            fromAdapter.DisposeLocalCopyOfClientHandle();
-
-            var recorded = new TeeReadStream(fromAdapter);
-            var client = new DapTransport(recorded, toAdapter);
-            var adapterTask = DebugAdapterSession.RunAsync(adapterInput, adapterOutput);
-            return Task.FromResult(new DapHarness(
-                toAdapter, fromAdapter, adapterInput, adapterOutput, recorded, client, adapterTask));
+            var (adapterInput, toAdapterWriter) = ChannelStream.CreatePair();
+            var (fromAdapterReader, fromAdapterWriter) = ChannelStream.CreatePair();
+            var recorded = new TeeReadStream(fromAdapterReader);
+            var client = new DapTransport(recorded, toAdapterWriter);
+            var adapterTask = DebugAdapterSession.RunAsync(
+                adapterInput,
+                fromAdapterWriter,
+                CancellationToken.None,
+                redirectConsole: false);
+            return new DapHarness(toAdapterWriter, fromAdapterWriter, recorded, client, adapterTask);
         }
 
         public async Task<DapIncoming> RequestAsync(string command, object? arguments)
@@ -236,8 +227,7 @@ public class InterpretDebugAdapterTests : TestBase
         {
             try
             {
-                _cts.Cancel();
-                await _toAdapter.DisposeAsync();
+                _toAdapterWriter.Complete();
                 await _adapterTask.WaitAsync(TimeSpan.FromSeconds(5));
             }
             catch
@@ -249,11 +239,108 @@ public class InterpretDebugAdapterTests : TestBase
         {
             await ShutdownAsync();
             _client.Dispose();
+            _fromAdapterWriter.Complete();
             await _recorded.DisposeAsync();
-            await _fromAdapter.DisposeAsync();
-            await _adapterInput.DisposeAsync();
-            await _adapterOutput.DisposeAsync();
-            _cts.Dispose();
+        }
+    }
+
+    /// <summary>In-memory duplex byte pipe used instead of anonymous OS pipes.</summary>
+    private sealed class ChannelStream : Stream
+    {
+        private readonly Channel<byte[]> _channel;
+        private readonly bool _isWriter;
+        private byte[] _current = Array.Empty<byte>();
+        private int _offset;
+
+        private ChannelStream(Channel<byte[]> channel, bool isWriter)
+        {
+            _channel = channel;
+            _isWriter = isWriter;
+        }
+
+        public static (Stream Reader, ChannelStream Writer) CreatePair()
+        {
+            var channel = Channel.CreateUnbounded<byte[]>(new UnboundedChannelOptions
+            {
+                SingleReader = true,
+                SingleWriter = true,
+                AllowSynchronousContinuations = false
+            });
+            return (new ChannelStream(channel, isWriter: false), new ChannelStream(channel, isWriter: true));
+        }
+
+        public void Complete()
+        {
+            _channel.Writer.TryComplete();
+        }
+
+        public override bool CanRead => !_isWriter;
+        public override bool CanSeek => false;
+        public override bool CanWrite => _isWriter;
+        public override long Length => throw new NotSupportedException();
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+
+        public override void Flush()
+        {
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            return ReadAsync(buffer.AsMemory(offset, count), CancellationToken.None).AsTask().GetAwaiter().GetResult();
+        }
+
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            if (_isWriter)
+                throw new NotSupportedException();
+            if (buffer.Length == 0)
+                return 0;
+
+            while (_offset >= _current.Length)
+            {
+                if (!await _channel.Reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
+                    return 0;
+                if (!_channel.Reader.TryRead(out var next) || next == null || next.Length == 0)
+                    continue;
+                _current = next;
+                _offset = 0;
+            }
+
+            var n = Math.Min(buffer.Length, _current.Length - _offset);
+            _current.AsSpan(_offset, n).CopyTo(buffer.Span);
+            _offset += n;
+            return n;
+        }
+
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            WriteAsync(buffer.AsMemory(offset, count), CancellationToken.None).AsTask().GetAwaiter().GetResult();
+        }
+
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            if (!_isWriter)
+                throw new NotSupportedException();
+            if (buffer.Length == 0)
+                return ValueTask.CompletedTask;
+            var copy = buffer.ToArray();
+            if (!_channel.Writer.TryWrite(copy))
+                throw new IOException("Debug adapter pipe is closed.");
+            return ValueTask.CompletedTask;
+        }
+
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && _isWriter)
+                Complete();
+            base.Dispose(disposing);
         }
     }
 

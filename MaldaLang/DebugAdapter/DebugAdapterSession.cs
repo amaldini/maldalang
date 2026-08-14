@@ -42,21 +42,29 @@ public sealed class DebugAdapterSession
 
     public static Task RunStdioAsync(CancellationToken cancellationToken = default)
     {
-        return RunAsync(Console.OpenStandardInput(), Console.OpenStandardOutput(), cancellationToken);
+        return RunAsync(Console.OpenStandardInput(), Console.OpenStandardOutput(), cancellationToken, redirectConsole: true);
     }
 
-    public static async Task RunAsync(Stream input, Stream output, CancellationToken cancellationToken = default)
+    public static async Task RunAsync(
+        Stream input,
+        Stream output,
+        CancellationToken cancellationToken = default,
+        bool redirectConsole = true)
     {
         var session = new DebugAdapterSession(input, output);
-        await session.ListenAsync(cancellationToken).ConfigureAwait(false);
+        await session.ListenAsync(redirectConsole, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task ListenAsync(CancellationToken cancellationToken)
+    private async Task ListenAsync(bool redirectConsole, CancellationToken cancellationToken)
     {
-        _originalOut = Console.Out;
-        _originalError = Console.Error;
-        Console.SetOut(new DapOutputWriter(this, "stdout"));
-        Console.SetError(new DapOutputWriter(this, "stderr"));
+        if (redirectConsole)
+        {
+            _originalOut = Console.Out;
+            _originalError = Console.Error;
+            Console.SetOut(new DapOutputWriter(this, "stdout"));
+            Console.SetError(new DapOutputWriter(this, "stderr"));
+        }
+
         try
         {
             while (!cancellationToken.IsCancellationRequested && !Volatile.Read(ref _shutdown))
@@ -71,6 +79,10 @@ public sealed class DebugAdapterSession
                     break;
                 }
                 catch (EndOfStreamException)
+                {
+                    break;
+                }
+                catch (IOException)
                 {
                     break;
                 }
@@ -107,7 +119,8 @@ public sealed class DebugAdapterSession
         finally
         {
             await ShutdownInterpretAsync().ConfigureAwait(false);
-            RestoreConsole();
+            if (redirectConsole)
+                RestoreConsole();
             RestoreProcessState();
             _transport.Dispose();
         }
@@ -518,7 +531,21 @@ public sealed class DebugAdapterSession
         return WriteAsync(json);
     }
 
-    private Task WriteAsync(string json) => _transport.WriteMessageAsync(json);
+    private async Task WriteAsync(string json)
+    {
+        try
+        {
+            await _transport.WriteMessageAsync(json).ConfigureAwait(false);
+        }
+        catch (IOException)
+        {
+            Volatile.Write(ref _shutdown, true);
+        }
+        catch (ObjectDisposedException)
+        {
+            Volatile.Write(ref _shutdown, true);
+        }
+    }
 
     private static DapStackFrame ToDapFrame(int id, InterpreterCallStackFrame frame)
     {
