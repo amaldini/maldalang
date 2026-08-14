@@ -6434,7 +6434,7 @@ public class CSharpTranspiler
         _output.AppendLine();
     }
 
-    private RuntimeValue BuildEmittedSumTypeSchema(TypeDeclaration typeDecl, List<SchemaDeclaration> schemas)
+    private MaldaLang.Interpreter.RuntimeValue BuildEmittedSumTypeSchema(TypeDeclaration typeDecl, List<SchemaDeclaration> schemas)
     {
         var knownSchemas = schemas.ToDictionary(s => s.Name, StringComparer.Ordinal);
         var knownSumTypes = _typeDeclarations.ToDictionary(t => t.TypeName, StringComparer.Ordinal);
