@@ -13101,7 +13101,7 @@ public class CSharpTranspiler
         if (moduleId.Name != StdLibNamespaces.GroundedModule || memberAccess.Member != "wrap")
             return false;
 
-        _output.Append("RuntimeHelpers.FromRuntimeValue(MaldaLang.BuiltIns.GroundedStdLib.Wrap(new List<MaldaLang.Interpreter.RuntimeValue> { ");
+        _output.Append("RuntimeHelpers.UnwrapRuntimeValue(MaldaLang.BuiltIns.GroundedStdLib.Wrap(new List<MaldaLang.Interpreter.RuntimeValue> { ");
         for (int i = 0; i < call.Arguments.Count; i++)
         {
             if (i > 0)
