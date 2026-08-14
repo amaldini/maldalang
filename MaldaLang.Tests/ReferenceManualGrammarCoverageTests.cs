@@ -35,7 +35,7 @@ public class ReferenceManualGrammarCoverageTests
             "PromptBodyField",
             "DecoratorArgList",
             "ApiDecl",
-            "program(",
+            "\"program\" \"(\"",
         }.Select(anchor => new object[] { anchor });
 
     [Theory]

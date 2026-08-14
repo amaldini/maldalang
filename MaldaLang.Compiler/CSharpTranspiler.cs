@@ -6534,7 +6534,7 @@ public class CSharpTranspiler
                     _output.Append(p);
                     _output.Append("])");
                 }
-                _output.Append(")); });");
+                _output.Append(").GetAwaiter().GetResult()); });");
                 _output.AppendLine();
             }
         }

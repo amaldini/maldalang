@@ -242,6 +242,7 @@ public class ProgramTranslatorTests : TestBase
             var generated = File.ReadAllText(generatedPath);
             Assert.Contains("ApiRegistry.RegisterCompiled(\"Calc\"", generated);
             Assert.Contains("BindImplementation(\"add\"", generated);
+            Assert.Contains("GetAwaiter().GetResult()", generated);
             Assert.Contains("x-malda-kind", generated);
             Assert.Contains("program(Calc)", generated);
             Assert.Contains("ApplySchemaAppendix", generated);
