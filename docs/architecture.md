@@ -90,7 +90,7 @@ Server-driven `ui.*` trees, patch protocol, and `MaldaLang.UIHost` wiring are do
 ## P0 types / schema (post–Phase 6)
 
 - Call-site type hints: [`MaldaLang/IDE/TypeCompatibilityDiagnostics.cs`](../MaldaLang/IDE/TypeCompatibilityDiagnostics.cs) infers declared callee return types (imports via [`ModuleSymbolResolver`](../MaldaLang/IDE/ModuleSymbolResolver.cs)).
-- Nested `schema` fields: [`SchemaRegistry`](../MaldaLang/BuiltIns/SchemaRegistry.cs) expands sibling schemas inline and may name a sum type; unknown names / cycles fail on resolve. `validate("Name", …)` resolves both schema and sum-type names.
+- Nested `schema` fields: [`SchemaRegistry`](../MaldaLang/BuiltIns/SchemaRegistry.cs) expands sibling schemas inline and may name a sum type; unknown names / cycles fail on resolve. `validate("Name", …)` resolves both schema and sum-type names. Sum-type constructors may optionally type payloads (`Buy(sku: string, qty: int)`); name-only stays permissive.
 - P0 maturity plan (landed): [`docs/roadmap-p0-maturity.md`](roadmap-p0-maturity.md). Post-Final gaps: [`docs/spec/CHANGELOG.md`](spec/CHANGELOG.md). Next language constructs: [`docs/roadmap-language-constructs.md`](roadmap-language-constructs.md).
 - Workflow HA / multi-worker (single writer + read-only ops, SQLite limits): [`docs/workflows-ha.md`](workflows-ha.md).
 - Workflow determinism: fixed WF1001/WF1002 deny-list in [`BuiltInRegistry.GetWorkflowBehavior`](../MaldaLang/BuiltIns/BuiltInRegistry.cs); IDE static checks in [`WorkflowDeterminismDiagnostics`](../MaldaLang/IDE/WorkflowDeterminismDiagnostics.cs) (not Temporal-style history detection).

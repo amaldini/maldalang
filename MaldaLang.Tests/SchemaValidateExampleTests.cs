@@ -39,4 +39,16 @@ public class SchemaValidateExampleTests : TestBase
         Assert.Contains("order: shoes", output, StringComparison.Ordinal);
         Assert.Contains("expected failure", output, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Basics_SumTypeTypedPayloads_RunsUnderInterpreter()
+    {
+        var path = PlanningPaths.ResolveRepoFile("Examples", "Basics", "sumtype_typed_payloads.malda");
+        var source = File.ReadAllText(path);
+        var output = RunProgram(source);
+        var lines = output.Trim().Replace("\r", "").Split('\n');
+        Assert.Equal("true", lines[0].Trim());
+        Assert.Equal("false", lines[1].Trim());
+        Assert.Equal("Milan", lines[2].Trim());
+    }
 }

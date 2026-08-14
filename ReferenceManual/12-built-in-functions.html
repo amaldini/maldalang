@@ -394,6 +394,10 @@ var checkedIntent = validate("Intent", tagged);
 if (checkedIntent.ok) {
     print(checkedIntent.data.tag);
 }</code></pre>
+        <pre><code data-run="true" data-expect="false">type Intent = Search(query: string) | Buy(sku: string, qty: int);
+var tagged = dict { "tag": "Buy", "sku": "SKU-9", "qty": "x" };
+var checkedTyped = validate("Intent", tagged);
+print(checkedTyped.ok);</code></pre>
         <div class="info-box">
             <strong>Not to be confused with:</strong> <code>memory.validate()</code> on a <a href="18-graph-memory.html">GraphMemory</a> instance, which checks graph integrity rather than a schema. The two share a name but are unrelated.
         </div>

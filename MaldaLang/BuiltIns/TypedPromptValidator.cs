@@ -225,18 +225,34 @@ public static class TypedPromptValidator
                             tagName = constVal.AsString();
                     }
 
-                    var payloadNames = new List<string>();
+                    var requiredNames = new HashSet<string>(StringComparer.Ordinal);
+                    var requiredVal = arm.Get("required");
+                    if (requiredVal.Type == ValueType.Array)
+                    {
+                        foreach (var r in requiredVal.AsArray())
+                        {
+                            if (r.Type == ValueType.String)
+                                requiredNames.Add(r.AsString());
+                        }
+                    }
+
+                    var payloadBits = new List<string>();
                     foreach (var key in props.GetAllKeys())
                     {
                         if (string.Equals(key, "tag", StringComparison.Ordinal))
                             continue;
-                        payloadNames.Add(key);
+                        var described = DescribeSchemaType(props.Get(key));
+                        var optional = !requiredNames.Contains(key);
+                        if (described == "any")
+                            payloadBits.Add(key);
+                        else
+                            payloadBits.Add(optional ? $"{key}: {described}?" : $"{key}: {described}");
                     }
 
                     sb.Append("- ");
                     sb.Append(tagName);
                     sb.Append('(');
-                    sb.Append(string.Join(", ", payloadNames));
+                    sb.Append(string.Join(", ", payloadBits));
                     sb.AppendLine(")");
                 }
             }

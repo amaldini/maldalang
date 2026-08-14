@@ -182,10 +182,14 @@ Tier 1 builtins such as `int()`, `float()`, and `string()` perform explicit conv
 
 ```malda
 type Result = Ok(value) | Err(message);
+type Intent = Search(query: string) | Buy(sku: string, qty: int);
 ```
 
-- Declares a sum type name and one or more **constructors** with parameter names (positional by order at call site).
-- Constructors are invoked as `Ok(7)`, `Err("failed")`, producing **variant** values.
+- Declares a sum type name and one or more **constructors**. Constructor parameters are positional by order at the call site.
+- Each constructor parameter may optionally include a payload type (`name: SchemaType`, the same form as schema fields: primitives, `[]`, `?`, schema or sum-type names). Name-only parameters (`Search(query)`) remain valid and stay untyped in the generated JSON Schema.
+- Mixing typed and untyped arms in one `type` is allowed (`Help()` + `Buy(sku: string, qty: int)`).
+- Payload types are **not** prompt-parameter typing. Prompt parameters stay name-only (`prompt greet(name)`).
+- Constructors are invoked as `Ok(7)`, `Err("failed")`, producing **variant** values. Constructor calls are not statically type-checked; the types feed JSON Schema for `validate` and typed prompts.
 
 ### 8.2 Variant shape
 
@@ -501,4 +505,4 @@ Versioning and deprecation rules: [CHANGELOG.md](CHANGELOG.md).
 | 2026-06-04 | Draft 1.0 | §14 modules: `import`, `export`, sum-type scoping (Phase 3) |
 | 2026-06-05 | Draft 1.0 | §18 expressiveness: pipe, comprehensions, `using`/`defer`, `const` (Phase 7) |
 | 2026-08-12 | Final 1.0 | Spec Final declared; Tier 0 interpreter + C# conformance green (`run-tier0-conformance.ps1`) |
-| 2026-08-13 | Final 1.0 | §19 primary constructors: `class Name(params)` desugars to public fields + constructor (additive) |
+| 2026-08-14 | Final 1.0 | §8.1 optional constructor payload types (`Buy(sku: string, qty: int)`) — additive L1b |

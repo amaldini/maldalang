@@ -1,6 +1,6 @@
 // Typed prompt: sum-type return + await → variant for match.
 // JSON wire shape: { "tag": "Buy", "sku": "...", "qty": 2 }
-type Intent = Search(query) | Buy(sku, qty) | Help();
+type Intent = Search(query: string) | Buy(sku: string, qty: int) | Help();
 
 prompt parseUtterance(text) -> Intent {
     system: "Return one Intent as JSON with tag + payload fields.";

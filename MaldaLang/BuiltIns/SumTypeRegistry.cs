@@ -49,8 +49,13 @@ public static class SumTypeRegistry
 
         var def = new SumTypeDefinition(decl.TypeName, decl.Constructors.ToList());
         Definitions[decl.TypeName] = def;
-        Schemas[decl.TypeName] = BuildSchema(def);
+        // Build lazily on TryResolve so payload types can name schemas declared later
+        // in the first pass (same as SchemaRegistry).
+        Schemas.Remove(decl.TypeName);
     }
+
+    /// <summary>Drop cached JSON schemas so typed payloads re-expand after a new schema lands.</summary>
+    public static void InvalidateCachedSchemas() => Schemas.Clear();
 
     /// <summary>Transpiled programs register pre-built sum-type schemas at startup.</summary>
     public static void RegisterCompiled(string name, RuntimeValue schema)
@@ -115,13 +120,42 @@ public static class SumTypeRegistry
 
     public static bool IsRegistered(string name) => Definitions.ContainsKey(name);
 
-    public static bool TryResolve(string name, out RuntimeValue schema)
+    public static bool TryResolve(string name, out RuntimeValue schema) =>
+        TryResolve(
+            name,
+            knownSchemas: null,
+            knownSumTypes: null,
+            new HashSet<string>(StringComparer.Ordinal),
+            new HashSet<string>(StringComparer.Ordinal),
+            out schema);
+
+    public static bool TryResolve(
+        string name,
+        IReadOnlyDictionary<string, SchemaDeclaration>? knownSchemas,
+        IReadOnlyDictionary<string, TypeDeclaration>? knownSumTypes,
+        HashSet<string> expandingSchemas,
+        HashSet<string> expandingSums,
+        out RuntimeValue schema)
     {
+        if (expandingSums.Contains(name))
+        {
+            schema = RuntimeValue.Object(SchemaRegistry.MakeCyclePlaceholderObject());
+            return true;
+        }
+
         if (Schemas.TryGetValue(name, out schema!))
             return true;
 
-        schema = RuntimeValue.Null();
-        return false;
+        if (!Definitions.TryGetValue(name, out var def))
+        {
+            schema = RuntimeValue.Null();
+            return false;
+        }
+
+        schema = BuildSchema(def, knownSchemas, knownSumTypes, expandingSchemas, expandingSums);
+        if (expandingSums.Count == 0)
+            Schemas[name] = schema;
+        return true;
     }
 
     public static bool TryGetDefinition(string name, out SumTypeDefinition definition)
@@ -134,22 +168,77 @@ public static class SumTypeRegistry
     }
 
     public static RuntimeValue BuildSchema(TypeDeclaration decl) =>
-        BuildSchema(new SumTypeDefinition(decl.TypeName, decl.Constructors));
+        BuildSchema(decl, knownSchemas: null, knownSumTypes: null);
 
-    public static RuntimeValue BuildSchema(SumTypeDefinition def)
+    public static RuntimeValue BuildSchema(
+        TypeDeclaration decl,
+        IReadOnlyDictionary<string, SchemaDeclaration>? knownSchemas,
+        IReadOnlyDictionary<string, TypeDeclaration>? knownSumTypes) =>
+        BuildSchema(
+            new SumTypeDefinition(decl.TypeName, decl.Constructors),
+            knownSchemas,
+            knownSumTypes,
+            new HashSet<string>(StringComparer.Ordinal),
+            new HashSet<string>(StringComparer.Ordinal));
+
+    public static RuntimeValue BuildSchema(
+        TypeDeclaration decl,
+        IReadOnlyDictionary<string, SchemaDeclaration>? knownSchemas,
+        IReadOnlyDictionary<string, TypeDeclaration>? knownSumTypes,
+        HashSet<string> expandingSchemas,
+        HashSet<string> expandingSums) =>
+        BuildSchema(
+            new SumTypeDefinition(decl.TypeName, decl.Constructors),
+            knownSchemas,
+            knownSumTypes,
+            expandingSchemas,
+            expandingSums);
+
+    public static RuntimeValue BuildSchema(SumTypeDefinition def) =>
+        BuildSchema(
+            def,
+            knownSchemas: null,
+            knownSumTypes: null,
+            new HashSet<string>(StringComparer.Ordinal),
+            new HashSet<string>(StringComparer.Ordinal));
+
+    public static RuntimeValue BuildSchema(
+        SumTypeDefinition def,
+        IReadOnlyDictionary<string, SchemaDeclaration>? knownSchemas,
+        IReadOnlyDictionary<string, TypeDeclaration>? knownSumTypes,
+        HashSet<string> expandingSchemas,
+        HashSet<string> expandingSums)
     {
-        var oneOf = new List<RuntimeValue>();
-        foreach (var ctor in def.Constructors)
-            oneOf.Add(RuntimeValue.Object(BuildConstructorArm(ctor)));
+        if (!expandingSums.Add(def.TypeName))
+            return RuntimeValue.Object(SchemaRegistry.MakeCyclePlaceholderObject());
 
-        var root = new JsonObject();
-        root.Set("x-malda-kind", RuntimeValue.String("sum"));
-        root.Set("x-malda-sum-type", RuntimeValue.String(def.TypeName));
-        root.Set("oneOf", RuntimeValue.Array(oneOf));
-        return RuntimeValue.Object(root);
+        try
+        {
+            var oneOf = new List<RuntimeValue>();
+            foreach (var ctor in def.Constructors)
+            {
+                oneOf.Add(RuntimeValue.Object(
+                    BuildConstructorArm(ctor, knownSchemas, knownSumTypes, expandingSchemas, expandingSums)));
+            }
+
+            var root = new JsonObject();
+            root.Set("x-malda-kind", RuntimeValue.String("sum"));
+            root.Set("x-malda-sum-type", RuntimeValue.String(def.TypeName));
+            root.Set("oneOf", RuntimeValue.Array(oneOf));
+            return RuntimeValue.Object(root);
+        }
+        finally
+        {
+            expandingSums.Remove(def.TypeName);
+        }
     }
 
-    private static JsonObject BuildConstructorArm(VariantConstructor ctor)
+    private static JsonObject BuildConstructorArm(
+        VariantConstructor ctor,
+        IReadOnlyDictionary<string, SchemaDeclaration>? knownSchemas,
+        IReadOnlyDictionary<string, TypeDeclaration>? knownSumTypes,
+        HashSet<string> expandingSchemas,
+        HashSet<string> expandingSums)
     {
         var properties = new JsonObject();
         var tagSchema = new JsonObject();
@@ -158,10 +247,28 @@ public static class SumTypeRegistry
         properties.Set("tag", RuntimeValue.Object(tagSchema));
 
         var required = new List<RuntimeValue> { RuntimeValue.String("tag") };
-        foreach (var param in ctor.ParameterNames)
+        for (var i = 0; i < ctor.ParameterNames.Count; i++)
         {
-            properties.Set(param, RuntimeValue.Object(MakePermissiveValueSchema()));
-            required.Add(RuntimeValue.String(param));
+            var param = ctor.ParameterNames[i];
+            var typeName = ctor.ParameterTypeAt(i);
+            JsonObject fieldSchema;
+            if (string.IsNullOrEmpty(typeName))
+            {
+                fieldSchema = MakePermissiveValueSchema();
+            }
+            else
+            {
+                fieldSchema = SchemaRegistry.BuildNamedFieldTypeSchema(
+                    typeName,
+                    knownSchemas,
+                    knownSumTypes,
+                    expandingSchemas,
+                    expandingSums);
+            }
+
+            properties.Set(param, RuntimeValue.Object(fieldSchema));
+            if (ctor.ParameterRequiredAt(i))
+                required.Add(RuntimeValue.String(param));
         }
 
         var arm = new JsonObject();
@@ -172,7 +279,7 @@ public static class SumTypeRegistry
         return arm;
     }
 
-    /// <summary>Payload params are name-only in the language; accept any JSON value.</summary>
+    /// <summary>Untyped payload params accept any JSON value.</summary>
     private static JsonObject MakePermissiveValueSchema()
     {
         var schema = new JsonObject();

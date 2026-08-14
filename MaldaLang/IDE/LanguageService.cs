@@ -1446,7 +1446,7 @@ public class LanguageService : ILanguageService
             : string.Join(" | ", typeDecl.Constructors.Select(c =>
                 c.ParameterNames.Count == 0
                     ? c.Name
-                    : $"{c.Name}({string.Join(", ", c.ParameterNames)})"));
+                    : $"{c.Name}({string.Join(", ", c.ParameterNames.Select((_, i) => c.FormatParameter(i)))})"));
         return $"type {typeDecl.TypeName} = {variants}";
     }
     

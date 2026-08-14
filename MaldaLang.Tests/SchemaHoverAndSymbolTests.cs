@@ -32,6 +32,21 @@ schema Person {
     }
 
     [Fact]
+    public void GetHoverInformation_SumType_ShowsTypedPayloads()
+    {
+        const string source = """
+type Intent = Search(query: string) | Buy(sku, qty);
+""";
+
+        var hover = _language.GetHoverInformation(source, 0, 5);
+
+        Assert.NotNull(hover);
+        Assert.Contains("type Intent", hover);
+        Assert.Contains("Search(query: string)", hover);
+        Assert.Contains("Buy(sku, qty)", hover);
+    }
+
+    [Fact]
     public void GetHoverInformation_TypeHintUsesSchemaName_ShowsSchema()
     {
         const string source = """

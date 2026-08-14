@@ -25,7 +25,7 @@ Tiny programs for LLM context. Larger curated samples live under `Examples/`.
 | `17_schema_validate.malda` | `schema` + `validate` (`{ ok, data|error }`) |
 | `18_schema_prompt.malda` | `schema` return type + `await` prompt (structured `response_format`) |
 | `19_ui_tree.malda` | `ui.*` tree composition (`props` / children; no host loop) |
-| `20_sum_type_prompt.malda` | sum-type return + `await` → variant + `match` (`{tag,…}` JSON) |
+| `20_sum_type_prompt.malda` | sum-type return + optional payload types + `await` → variant + `match` (`{tag,…}` JSON) |
 | `21_api_program.malda` | `api` + program JSON + `runProgram` (deterministic) |
 
 Also useful from the main tree:

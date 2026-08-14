@@ -365,7 +365,7 @@ public class CSharpTranspiler
                 _output.AppendLine("RegisterTranspiledWorkflows();");
             }
             GenerateSchemaRegistration(schemas);
-            GenerateSumTypeRegistration();
+            GenerateSumTypeRegistration(schemas);
             GenerateApiRegistration();
 
             // Transpile top-level statements (assignments, function calls, etc.)
@@ -463,7 +463,7 @@ public class CSharpTranspiler
                 _output.AppendLine("RegisterTranspiledWorkflows();");
             }
             GenerateSchemaRegistration(schemas);
-            GenerateSumTypeRegistration();
+            GenerateSumTypeRegistration(schemas);
             GenerateApiRegistration();
 
             EmitProfilingSessionStart();
@@ -6434,7 +6434,14 @@ public class CSharpTranspiler
         _output.AppendLine();
     }
 
-    private void GenerateSumTypeRegistration()
+    private RuntimeValue BuildEmittedSumTypeSchema(TypeDeclaration typeDecl, List<SchemaDeclaration> schemas)
+    {
+        var knownSchemas = schemas.ToDictionary(s => s.Name, StringComparer.Ordinal);
+        var knownSumTypes = _typeDeclarations.ToDictionary(t => t.TypeName, StringComparer.Ordinal);
+        return SumTypeRegistry.BuildSchema(typeDecl, knownSchemas, knownSumTypes);
+    }
+
+    private void GenerateSumTypeRegistration(List<SchemaDeclaration> schemas)
     {
         if (_typeDeclarations.Count == 0)
             return;
@@ -6445,7 +6452,7 @@ public class CSharpTranspiler
             _output.Append("MaldaLang.BuiltIns.SumTypeRegistry.RegisterCompiled(\"");
             _output.Append(typeDecl.TypeName.Replace("\\", "\\\\").Replace("\"", "\\\""));
             _output.Append("\", ");
-            EmitParseJsonSchemaLiteral(SumTypeRegistry.BuildSchema(typeDecl));
+            EmitParseJsonSchemaLiteral(BuildEmittedSumTypeSchema(typeDecl, schemas));
             _output.AppendLine(");");
         }
 
@@ -6992,7 +6999,7 @@ public class CSharpTranspiler
         {
             WriteIndent();
             _output.Append("var __schema = ");
-            EmitParseJsonSchemaLiteral(SumTypeRegistry.BuildSchema(sumTypeDecl));
+            EmitParseJsonSchemaLiteral(BuildEmittedSumTypeSchema(sumTypeDecl, schemas));
             _output.AppendLine(";");
             WriteIndent();
             _output.AppendLine("__responseFormatSchema = MaldaLang.BuiltIns.TypedPromptValidator.BuildResponseFormat(__schema);");
@@ -7168,7 +7175,7 @@ public class CSharpTranspiler
             {
                 WriteIndent();
                 _output.Append("MaldaLang.Interpreter.RuntimeValue? __resolvedSchema = ");
-                EmitParseJsonSchemaLiteral(SumTypeRegistry.BuildSchema(returnSumTypeDecl));
+                EmitParseJsonSchemaLiteral(BuildEmittedSumTypeSchema(returnSumTypeDecl, schemas));
                 _output.AppendLine(";");
             }
             else if (returnClassDecl != null)

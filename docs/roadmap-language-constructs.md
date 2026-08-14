@@ -1,6 +1,6 @@
 # MALDA language constructs plan (post–Final 1.0)
 
-**Status:** L1a landed (validate + nested sum-type fields); L1b–L6 plan  
+**Status:** L1a and L1b landed; L1c–L6 plan  
 **Created:** 2026-08-14  
 **Audience:** maintainers choosing the next *language* work after P0 maturity  
 **Spec line:** Final 1.0 stays; each landed workstream is a **MINOR** additive contract (or PATCH if docs-only). Breaking parse/runtime is **MAJOR** and is out of scope here.
@@ -76,7 +76,8 @@ change as L1a.
 
 - `schema User { name: string; }` → `SchemaRegistry` → object JSON Schema → `validate("User", v)`.
 - `type Intent = Search(q) | Buy(sku, qty)` → `SumTypeRegistry` → `oneOf` + `{ "tag": "Buy", ... }`
-  for typed prompts. Constructors are **name-only** (no payload types).
+  for typed prompts. Constructors may be **name-only** or carry optional payload types
+  (`Buy(sku: string, qty: int)`) (**L1b**).
 - The same name cannot be both (`SchemaRegistry` / `SumTypeRegistry` throw).
 - `validate("Intent", v)` resolves the sum-type `oneOf` schema (**L1a**). Success returns the original dict, not a variant.
 - Nested schema fields may name a sum type (`intent: Intent` / `Intent[]`) (**L1a**).
@@ -126,8 +127,13 @@ change `validate` to always box variants in L1a (would surprise object-schema ca
 **Primary paths:** `Lexer.cs` / `Parser.cs` (constructor param list), `VariantConstructor`,
 `SumTypeRegistry.BuildSchema`, grammar chapter, `ReferenceManualGrammarCoverageTests`.
 
-**Done when:** parser + schema emit + typed prompt `-> Intent` + a few-shot example. Spec
-CHANGELOG **MINOR**. Run `scripts/verify-spec-parser-drift.ps1` in the same PR.
+**Done when (L1b — landed)**
+
+- Parser accepts name-only and typed constructor payloads in the same `type`.
+- `validate` / typed prompt schemas use those field types; unknown payload types fail like unknown schema fields.
+- Prompt parameters stay name-only (`prompt greet(name)` still rejects `name: string`).
+- Interpreter and C# transpile agree. JS: constructors stay arity-only (`n/a` for schema emit).
+- Spec CHANGELOG **MINOR**. `scripts/verify-spec-parser-drift.ps1` in the same PR.
 
 ### L1c — Tagged schema unions (only if still needed)
 
@@ -343,7 +349,7 @@ Follow [`docs/spec/CHANGELOG.md`](spec/CHANGELOG.md) “How to propose a spec ch
 | Metric | Target |
 |--------|--------|
 | L1a | `validate` + nested fields work for sum-type names; clash still throws |
-| L1b | Optional constructor types in schema emit; name-only still parses |
+| L1b | Optional constructor types in schema emit; name-only still parses — **landed** |
 | L2 | One declaration replaces the two-prompt Mode C example; Mode B unchanged |
 | L3 | `@budget` trips in tests without breaking `@within` |
 | L4 | In-file helper calling `now()` from a workflow body is WF1001 |

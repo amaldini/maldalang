@@ -10,6 +10,7 @@ Narrative examples: topic chapters under `ReferenceManual/` and `Examples/`.
 Program     ::= TopLevelItem*
 TopLevelItem::= IncludeStmt | UsingStmt | ImportStmt
               | WorkflowDecl | ActorDecl | ClassDecl | PromptDecl | TypeDecl | ComponentDecl
+              | SchemaDecl | ApiDecl
               | DecoratedFunctionDecl | DecoratedPropertyDecl | PropertyDecl
               | ExportableDecl | Statement
 
@@ -38,7 +39,13 @@ MethodDecl    ::= AccessModifier? FunctionDecl
 ConstructorDecl ::= AccessModifier? FunctionDecl   /* name equals class name; forbidden when a primary constructor is present */
 
 TypeDecl      ::= "type" Identifier "=" Constructor ("|" Constructor)* ";"
-Constructor   ::= Identifier ("(" ParamList? ")")?
+Constructor   ::= Identifier ("(" CtorParamList? ")")?
+CtorParamList ::= CtorParam ("," CtorParam)*
+CtorParam     ::= Identifier (":" SchemaType)?
+
+SchemaDecl    ::= "schema" Identifier "{" SchemaField* "}"
+SchemaField   ::= Identifier ":" SchemaType ";"
+SchemaType    ::= Identifier "[]"? "?"?   /* e.g. string, int[], string? */
 
 ActorDecl     ::= "actor" Identifier "{" ActorBodyItem* "}"
 ActorBodyItem ::= MessageDecl | ActorMember

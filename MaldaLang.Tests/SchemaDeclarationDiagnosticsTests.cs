@@ -72,4 +72,42 @@ public class SchemaDeclarationDiagnosticsTests
         StrictTypesAnalysis.Analyze(statements, StrictTypesOptions.Default, diagnostics);
         Assert.DoesNotContain(diagnostics, d => d.Source == "malda-schema");
     }
-}
+
+    [Fact]
+    public void UnknownConstructorPayloadType_IsError()
+    {
+        var source = """
+            type Intent = Buy(sku: NotAType);
+            """;
+        var lexer = new Lexer(source);
+        var parser = new Parser.Parser(lexer.Tokenize());
+        var statements = parser.Parse();
+        Assert.Empty(parser.Errors);
+
+        var diagnostics = new List<Diagnostic>();
+        StrictTypesAnalysis.Analyze(statements, StrictTypesOptions.Default, diagnostics);
+        Assert.Contains(diagnostics, d =>
+            d.Source == "malda-schema" &&
+            d.Severity == DiagnosticSeverity.Error &&
+            d.Message.Contains("NotAType", StringComparison.Ordinal) &&
+            d.Message.Contains("constructor payload type", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void TypedConstructorPayload_Known_NoDiagnostic()
+    {
+        var source = """
+            schema Address {
+                city: string;
+            }
+            type Intent = Search(query: string) | Visit(addr: Address) | Help();
+            """;
+        var lexer = new Lexer(source);
+        var parser = new Parser.Parser(lexer.Tokenize());
+        var statements = parser.Parse();
+        Assert.Empty(parser.Errors);
+
+        var diagnostics = new List<Diagnostic>();
+        StrictTypesAnalysis.Analyze(statements, StrictTypesOptions.Default, diagnostics);
+        Assert.DoesNotContain(diagnostics, d => d.Source == "malda-schema");
+    }

@@ -9,7 +9,8 @@ using MaldaLang.Parser.AST.Declarations;
 using MaldaLang.Parser.AST.Statements;
 
 /// <summary>
-/// IDE checks for <c>schema</c> field type names (primitives, declared/imported schemas and sum types).
+/// IDE checks for <c>schema</c> field types and sum-type constructor payload types
+/// (primitives, declared/imported schemas and sum types).
 /// Complements runtime <see cref="MaldaLang.BuiltIns.SchemaRegistry"/> resolve errors.
 /// </summary>
 public static class SchemaDeclarationDiagnostics
@@ -38,22 +39,57 @@ public static class SchemaDeclarationDiagnostics
 
         foreach (var stmt in list)
         {
-            if (stmt is not SchemaDeclaration schema)
-                continue;
+            if (stmt is SchemaDeclaration schema)
+            {
+                foreach (var field in schema.Fields)
+                {
+                    ValidateTypeName(
+                        field.TypeName,
+                        $"'{schema.Name}.{field.Name}'",
+                        "schema field type",
+                        schema.Line,
+                        schema.Column,
+                        index,
+                        diagnostics,
+                        options);
+                }
+            }
+            else if (stmt is TypeDeclaration typeDecl)
+            {
+                foreach (var ctor in typeDecl.Constructors)
+                {
+                    for (var i = 0; i < ctor.ParameterNames.Count; i++)
+                    {
+                        var payloadType = ctor.ParameterTypeAt(i);
+                        if (string.IsNullOrEmpty(payloadType))
+                            continue;
 
-            foreach (var field in schema.Fields)
-                ValidateFieldType(schema, field, index, diagnostics, options);
+                        ValidateTypeName(
+                            payloadType,
+                            $"'{typeDecl.TypeName}.{ctor.Name}({ctor.ParameterNames[i]})'",
+                            "constructor payload type",
+                            typeDecl.Line,
+                            typeDecl.Column,
+                            index,
+                            diagnostics,
+                            options);
+                    }
+                }
+            }
         }
     }
 
-    private static void ValidateFieldType(
-        SchemaDeclaration schema,
-        SchemaField field,
+    private static void ValidateTypeName(
+        string typeName,
+        string site,
+        string kind,
+        int line,
+        int column,
         TypeHintNameIndex index,
         List<Diagnostic> diagnostics,
         StrictTypesOptions options)
     {
-        var typeName = field.TypeName?.Trim() ?? "";
+        typeName = typeName?.Trim() ?? "";
         if (typeName.Length == 0)
             return;
 
@@ -69,10 +105,10 @@ public static class SchemaDeclarationDiagnostics
         {
             Severity = elevate ? DiagnosticSeverity.Error : DiagnosticSeverity.Warning,
             Message = elevate
-                ? $"Unknown schema field type '{field.TypeName}' on '{schema.Name}.{field.Name}'."
-                : $"Unknown schema field type '{field.TypeName}' on '{schema.Name}.{field.Name}'. Use a JSON primitive, a declared schema name, or a declared sum type.",
-            Line = schema.Line,
-            Column = schema.Column,
+                ? $"Unknown {kind} '{typeName}' on {site}."
+                : $"Unknown {kind} '{typeName}' on {site}. Use a JSON primitive, a declared schema name, or a declared sum type.",
+            Line = line,
+            Column = column,
             Length = Math.Max(1, typeName.Length),
             Source = "malda-schema"
         });

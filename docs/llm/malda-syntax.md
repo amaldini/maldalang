@@ -32,8 +32,9 @@ Compact rules for generating correct `.malda`. Prefer this over scraping HTML ma
     (Mode A). Example: `Examples/Prompts/prompt_tools_then_structured.malda`.
   Without `await`, you get a `PromptInstance` (schema attached when resolvable and no
   tools). Prefer a `schema Name { … }` for structured objects, or a **sum type**
-  (`type Intent = Search(q) | Buy(sku, qty)`) when the model must pick one of several
-  shapes — success yields a real variant for `match`. Sum-type JSON wire shape:
+  (`type Intent = Search(query: string) | Buy(sku: string, qty: int)`) when the model must pick one of several
+  shapes — success yields a real variant for `match`. Constructor payload types are optional;
+  name-only (`Search(query)`) stays a permissive JSON field. Sum-type JSON wire shape:
   `{ "tag": "Buy", "sku": "...", "qty": 2 }` (tag = constructor name; payload fields
   use the constructor parameter names). For closed call plans use
   `api Calc { function add(a, b); }` with `prompt p(...) -> program(Calc)` then
@@ -235,7 +236,7 @@ Prefer `str.trimText(response?.content)` over nested `if (response != null) { if
 |-----------------|--------|
 | `const x = 1` | `var x = 1` |
 | `let x = 1` | `var x = 1` |
-| `function f(x: number)` on prompts | `prompt f(x)` name-only |
+| `function f(x: number)` on prompts | `prompt f(x)` name-only. Constructor payloads may use `Buy(sku: string)` — that is not prompt typing. |
 | `console.log(x)` | `io.print(x)` |
 | `println(x)` | `io.print(x)` — `println` does not exist |
 | `fn f() {}` in docs | prefer `function f() {}` |

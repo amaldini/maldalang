@@ -1091,15 +1091,7 @@ public class Parser
         {
             var fieldName = ConsumeIdentifierLike("Expect field name in schema.");
             Consume(TokenType.Colon, "Expect ':' after schema field name.");
-            var typeName = ConsumeIdentifierLike("Expect field type in schema.");
-            if (Match(TokenType.LeftBracket))
-            {
-                Consume(TokenType.RightBracket, "Expect ']' after '[' in schema array type.");
-                typeName += "[]";
-            }
-            var required = true;
-            if (Match(TokenType.QuestionMark))
-                required = false;
+            var typeName = ParseSchemaType("Expect field type in schema.", out var required);
             Consume(TokenType.Semicolon, "Expect ';' after schema field.");
             fields.Add(new SchemaField(fieldName, typeName, required));
         }
@@ -1134,6 +1126,25 @@ public class Parser
         return new ApiDeclaration(apiName, methods, apiToken.Line, apiToken.Column);
     }
 
+    /// <summary>
+    /// Schema field / variant-constructor payload type: Identifier, optional <c>[]</c>, optional <c>?</c>.
+    /// Prompt parameters stay name-only and must not call this.
+    /// </summary>
+    private string ParseSchemaType(string expectTypeMessage, out bool required)
+    {
+        var typeName = ConsumeIdentifierLike(expectTypeMessage);
+        if (Match(TokenType.LeftBracket))
+        {
+            Consume(TokenType.RightBracket, "Expect ']' after '[' in array type.");
+            typeName += "[]";
+        }
+
+        required = true;
+        if (Match(TokenType.QuestionMark))
+            required = false;
+        return typeName;
+    }
+
     private string ParsePromptReturnTypeName()
     {
         var nameToken = Consume(TokenType.Identifier, "Expect return type name after '->'.");
@@ -1158,6 +1169,8 @@ public class Parser
         {
             var ctorName = ConsumeIdentifierLike("Expect constructor name.");
             var paramNames = new List<string>();
+            var paramTypes = new List<string?>();
+            var paramRequired = new List<bool>();
             if (Match(TokenType.LeftParen))
             {
                 if (!Check(TokenType.RightParen))
@@ -1165,11 +1178,24 @@ public class Parser
                     do
                     {
                         paramNames.Add(ConsumeIdentifierOrKeyword("Expect parameter name in constructor."));
+                        if (Match(TokenType.Colon))
+                        {
+                            var typeName = ParseSchemaType(
+                                "Expect constructor payload type after ':'.",
+                                out var required);
+                            paramTypes.Add(typeName);
+                            paramRequired.Add(required);
+                        }
+                        else
+                        {
+                            paramTypes.Add(null);
+                            paramRequired.Add(true);
+                        }
                     } while (Match(TokenType.Comma));
                 }
                 Consume(TokenType.RightParen, "Expect ')' after constructor parameters.");
             }
-            constructors.Add(new VariantConstructor(ctorName, paramNames));
+            constructors.Add(new VariantConstructor(ctorName, paramNames, paramTypes, paramRequired));
         } while (Match(TokenType.Pipe));
         Consume(TokenType.Semicolon, "Expect ';' after type declaration.");
         return new TypeDeclaration(typeName, constructors, isExported, typeToken.Line, typeToken.Column);

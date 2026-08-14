@@ -119,6 +119,7 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 #### Added (MINOR — schema / sum-type validate)
 
 - **L1a:** `validate("Intent", value)` resolves sum-type names against the existing tagged `oneOf` schema. Schema fields may name a sum type (`intent: Intent` / `Intent[]`). Success still returns the original dict (no variant coercion). Exclusive names unchanged. Example: `Examples/Basics/schema_sumtype_validate.malda`. Plan: [`docs/roadmap-language-constructs.md`](../roadmap-language-constructs.md).
+- **L1b:** optional types on variant constructor payloads: `type Intent = Search(query: string) | Buy(sku: string, qty: int)`. Name-only constructors remain valid. Generated JSON Schema uses those field types (primitives, `[]`, schema/sum names). Prompt parameters stay name-only. Example: `Examples/Basics/sumtype_typed_payloads.malda`.
 
 #### Clarified (PATCH — docs / tracking only)
 
@@ -224,3 +225,4 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-08-12 | A1: tools vs `response_format` Modes A/B/C clarified (PATCH docs; Unreleased) |
 | 2026-08-14 | Link post-Final language constructs plan (`docs/roadmap-language-constructs.md`; PATCH docs) |
 | 2026-08-14 | L1a: `validate` + nested schema fields resolve sum-type names (MINOR) |
+| 2026-08-14 | L1b: optional constructor payload types in JSON Schema emit (MINOR) |

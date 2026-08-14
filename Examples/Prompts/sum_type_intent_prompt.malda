@@ -9,8 +9,8 @@
 //   - validates JSON { "tag": "Buy", ... } into a real variant for match
 
 type Intent =
-    Search(query)
-  | Buy(sku, qty)
+    Search(query: string)
+  | Buy(sku: string, qty: int)
   | Help();
 
 prompt parseUtterance(text) -> Intent {

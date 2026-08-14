@@ -1,0 +1,31 @@
+// sumtype_typed_payloads.malda — optional types on variant constructor payloads (L1b)
+//
+// Run: malda Examples/Basics/sumtype_typed_payloads.malda
+// Name-only constructors stay valid. Typed payloads feed JSON Schema for validate()
+// and typed prompts. Prompt parameters remain name-only (prompt greet(name)).
+
+schema Address {
+    city: string;
+}
+
+type Intent =
+    Search(query: string)
+  | Buy(sku: string, qty: int)
+  | Visit(addr: Address)
+  | Help();
+
+var buyOk = dict { "tag": "Buy", "sku": "SKU-9", "qty": 2 };
+var buyBad = dict { "tag": "Buy", "sku": "SKU-9", "qty": "x" };
+print(validate("Intent", buyOk).ok);
+print(validate("Intent", buyBad).ok);
+
+var visit = dict {
+    "tag": "Visit",
+    "addr": dict { "city": "Milan" }
+};
+var visitCheck = validate("Intent", visit);
+if (visitCheck.ok) {
+    print(visitCheck.data.addr.city);
+} else {
+    print("unexpected: " + visitCheck.error);
+}

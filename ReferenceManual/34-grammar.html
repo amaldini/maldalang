@@ -56,7 +56,9 @@ MethodDecl    ::= AccessModifier? FunctionDecl
 ConstructorDecl ::= AccessModifier? FunctionDecl   /* name equals class name; forbidden when a primary constructor is present */
 
 TypeDecl      ::= "type" Identifier "=" Constructor ("|" Constructor)* ";"
-Constructor   ::= Identifier ("(" ParamList? ")")?
+Constructor   ::= Identifier ("(" CtorParamList? ")")?
+CtorParamList ::= CtorParam ("," CtorParam)*
+CtorParam     ::= Identifier (":" SchemaType)?
 
 SchemaDecl    ::= "schema" Identifier "{" SchemaField* "}"
 SchemaField   ::= Identifier ":" SchemaType ";"

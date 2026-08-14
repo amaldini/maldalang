@@ -17,6 +17,7 @@ public class ReferenceManualGrammarCoverageTests
             "WorkflowDecl",
             "ActorDecl",
             "TypeDecl",
+            "CtorParam",
             "VariantPattern",
             "DictLiteral",
             "GraphLiteral",
