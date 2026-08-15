@@ -1103,6 +1103,8 @@ class Program
         bool outputPathExplicitlySet = false;
         bool includeUiHost = false;
         int typedTranspileLevel = 1;
+        bool strictTypes = false;
+        bool lenientTypes = false;
         var profilingSettings = new CliProfilingSettings();
         
         // Parse command-line arguments
@@ -1120,6 +1122,15 @@ class Program
                 else
                 {
                     Console.WriteLine("Error: -o option requires an output path");
+                    SystemEnvironment.Exit(1);
+                    return;
+                }
+            }
+            else if (TryParseCompileTypeFlags(arg, ref strictTypes, ref lenientTypes, out var typeFlagConflict))
+            {
+                if (typeFlagConflict)
+                {
+                    Console.Error.WriteLine("Error: --strict-types and --lenient-types cannot be combined.");
                     SystemEnvironment.Exit(1);
                     return;
                 }
@@ -1232,7 +1243,7 @@ class Program
             outputPath = NormalizeFullStackOutputPath(outputPath);
         }
         
-        CompileFromSource(code, compilationModeStr, outputPath, includeUiHost, BuildProfilingOptions(profilingSettings), typedTranspileLevel);
+        CompileFromSource(code, compilationModeStr, outputPath, includeUiHost, BuildProfilingOptions(profilingSettings), typedTranspileLevel, strictTypes, lenientTypes);
     }
     
     static void CompileFromStdin(string code, string[] args)
@@ -1246,6 +1257,8 @@ class Program
         bool outputPathExplicitlySet = false;
         bool includeUiHost = false;
         int typedTranspileLevel = 1;
+        bool strictTypes = false;
+        bool lenientTypes = false;
         var profilingSettings = new CliProfilingSettings();
         
         // Parse command-line arguments (skip first if it's -c or --compile)
@@ -1301,6 +1314,15 @@ class Program
                     isPwaMode = parsedIsPwaMode;
                     isFullStackMode = parsedIsFullStackMode;
                     i++;
+                }
+            }
+            else if (TryParseCompileTypeFlags(arg, ref strictTypes, ref lenientTypes, out var stdinTypeFlagConflict))
+            {
+                if (stdinTypeFlagConflict)
+                {
+                    Console.Error.WriteLine("Error: --strict-types and --lenient-types cannot be combined.");
+                    SystemEnvironment.Exit(1);
+                    return;
                 }
             }
             else if (arg == "--include-ui-host" || arg == "--with-ui-host")
@@ -1363,14 +1385,14 @@ class Program
             outputPath = NormalizeFullStackOutputPath(outputPath);
         }
         
-        CompileFromSource(code, compilationModeStr, outputPath, includeUiHost, BuildProfilingOptions(profilingSettings), typedTranspileLevel);
+        CompileFromSource(code, compilationModeStr, outputPath, includeUiHost, BuildProfilingOptions(profilingSettings), typedTranspileLevel, strictTypes, lenientTypes);
     }
 
     static void CompileCommand(string[] args, bool forceTranspilePublish = false)
     {
         if (args.Length < 2)
         {
-            Console.WriteLine("Usage: malda compile|publish <input.malda|input.malda.html> [-o <output.exe|output.dll|output.js|output-dir>] [--mode interpreter|transpile|dll|js|pwa|fullstack] [--target js|pwa|fullstack] [--include-ui-host] [--embed-folder <dir[=alias]>] [--with-trading] [--typed-transpile-level 0|1|2] [--profile] [--profile-output <path>] [--profile-format text|json|both] [--profile-periodic-seconds N]");
+            Console.WriteLine("Usage: malda compile|publish <input.malda|input.malda.html> [-o <output.exe|output.dll|output.js|output-dir>] [--mode interpreter|transpile|dll|js|pwa|fullstack] [--target js|pwa|fullstack] [--include-ui-host] [--embed-folder <dir[=alias]>] [--with-trading] [--typed-transpile-level 0|1|2] [--strict-types] [--lenient-types] [--profile] [--profile-output <path>] [--profile-format text|json|both] [--profile-periodic-seconds N]");
             Console.WriteLine("  publish       - Alias for compile --mode transpile (executable publish layout)");
             Console.WriteLine("  --with-trading - Bundle MaldaLang.Timeseries, Trading.Core, Trading.Plugin, and Trading.Abstractions DLLs");
             Console.WriteLine("  input.malda    - Source file to compile (.malda.html supported in --mode js, --mode pwa, and --mode fullstack)");
@@ -1382,6 +1404,8 @@ class Program
             Console.WriteLine("  --include-ui-host - Force embedding UIHost runtime in transpiled executable");
             Console.WriteLine("  --embed-folder - Embed a directory as embed:<alias>/... (alias defaults to folder name; repeatable; path=alias optional)");
             Console.WriteLine("  --typed-transpile-level - 0=legacy dynamic transpile, 1=typed-safe (default), 2=typed-aggressive");
+            Console.WriteLine("  --strict-types - Refuse emit when type/match/@pure/bounds analysis has Errors (default for --mode transpile / dll)");
+            Console.WriteLine("  --lenient-types - Skip that analysis (interpret-style emit). Do not combine with --strict-types");
             Console.WriteLine("  --profile     - Enable MALDA profiling in the compiled executable");
             Console.WriteLine("  --profile-output - Write the profile report to a path");
             Console.WriteLine("  --profile-format - Report format: text, json, or both");
@@ -1401,6 +1425,8 @@ class Program
         bool includeUiHost = false;
         bool includeOptionalPacks = false;
         int typedTranspileLevel = 1;
+        bool strictTypes = false;
+        bool lenientTypes = false;
         var embedFolderArgs = new List<string>();
         var profilingSettings = new CliProfilingSettings();
 
@@ -1498,6 +1524,15 @@ class Program
             {
                 includeOptionalPacks = true;
             }
+            else if (TryParseCompileTypeFlags(arg, ref strictTypes, ref lenientTypes, out var typeFlagConflict))
+            {
+                if (typeFlagConflict)
+                {
+                    Console.Error.WriteLine("Error: --strict-types and --lenient-types cannot be combined.");
+                    SystemEnvironment.Exit(1);
+                    return;
+                }
+            }
             else if (arg == "--typed-transpile-level")
             {
                 if (i + 1 < args.Length && int.TryParse(args[i + 1], out var parsedLevel) && parsedLevel >= 0 && parsedLevel <= 2)
@@ -1523,6 +1558,8 @@ class Program
             SystemEnvironment.Exit(1);
             return;
         }
+
+        RejectCompileOnStrictTypes(File.ReadAllText(inputPath), inputPath, compilationModeStr, strictTypes, lenientTypes);
 
         // Set default output extension based on mode
         if (!outputPathExplicitlySet && isDllMode)
@@ -3745,8 +3782,10 @@ class Program
         }
     }
     
-    static void CompileFromSource(string source, string compilationModeStr, string? outputPath = null, bool includeUiHost = false, ProfilingOptions? profilingOptions = null, int typedTranspileLevel = 1)
+    static void CompileFromSource(string source, string compilationModeStr, string? outputPath = null, bool includeUiHost = false, ProfilingOptions? profilingOptions = null, int typedTranspileLevel = 1, bool strictTypes = false, bool lenientTypes = false)
     {
+        RejectCompileOnStrictTypes(source, null, compilationModeStr, strictTypes, lenientTypes);
+
         // Create temporary source file
         var tempSourceFile = Path.Combine(Path.GetTempPath(), $"malda_prompt_{Guid.NewGuid()}.malda");
         if (outputPath == null)
@@ -3932,7 +3971,7 @@ class Program
         Console.WriteLine("  malda <file.malda> [--strict-types] [--profile ...]");
         Console.WriteLine("  malda <command> [options]");
         Console.WriteLine("  malda -e \"<code>\" [--strict-types] | malda -c \"<code>\" | malda --check \"<code>\"");
-        Console.WriteLine("  --strict-types                Reject unknown type hints, non-exhaustive sum-type match, and type-hint mismatches (literals + known identifiers)");
+        Console.WriteLine("  --strict-types                On run: reject unknown hints, non-exhaustive match, @pure/bounds. On compile --mode transpile: default (refuse emit on Errors). Escape: --lenient-types");
         Console.WriteLine("  echo \"<code>\" | malda");
         Console.WriteLine();
         Console.WriteLine("Getting started:");
@@ -4343,6 +4382,47 @@ class Program
         }
     }
     
+    static bool TryParseCompileTypeFlags(string arg, ref bool strictTypes, ref bool lenientTypes, out bool conflict)
+    {
+        conflict = false;
+        if (arg == "--strict-types")
+        {
+            if (lenientTypes)
+                conflict = true;
+            strictTypes = true;
+            return true;
+        }
+
+        if (arg == "--lenient-types")
+        {
+            if (strictTypes)
+                conflict = true;
+            lenientTypes = true;
+            return true;
+        }
+
+        return false;
+    }
+
+    static void RejectCompileOnStrictTypes(string source, string? sourceFileName, string compilationModeStr, bool strictTypes, bool lenientTypes)
+    {
+        if (strictTypes && lenientTypes)
+        {
+            Console.Error.WriteLine("Error: --strict-types and --lenient-types cannot be combined.");
+            SystemEnvironment.Exit(1);
+            return;
+        }
+
+        if (!CompileStrictTypesGate.ShouldAnalyze(compilationModeStr, strictTypes, lenientTypes))
+            return;
+
+        if (CompileStrictTypesGate.TryGetRejection(source, sourceFileName, out var errorText))
+        {
+            Console.Error.WriteLine(errorText);
+            SystemEnvironment.Exit(1);
+        }
+    }
+
     static bool UsesUiFramework(string source)
     {
         // In-memory ui.state / ui.setState (HttpServer components) does not need UIHost.

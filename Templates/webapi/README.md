@@ -88,6 +88,8 @@ Current limits:
 
 This scaffold is a practical starting point, not a finished production service.
 
+Honest scope of the language underneath: type annotations are IDE/LSP hints (runtime stays dynamic unless you `malda compile --mode transpile`, which refuses hint Errors; `--lenient-types` escapes). Durable workflows are single-writer SQLite, not a cluster. The JavaScript backend is a browser subset (no agents or HTTP servers).
+
 Baseline today:
 
 - The starter gives you a MALDA API entry point plus testing and config structure

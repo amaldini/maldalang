@@ -156,7 +156,7 @@ public static class AiPipelineHelpers
     public static RuntimeValue ParseJsonTyped(List<RuntimeValue> args, Interpreter? interpreter)
     {
         if (args.Count < 2)
-            throw new RuntimeException("parseJson() expects 2 arguments (value, schemaRef) and optional options object.");
+            throw new RuntimeException("parseJson() expects 2 arguments (value, schemaRef) and optional options object. For a plain JSON reader use parseJSON(text).");
 
         var valueArg = args[0];
         var schemaRef = ResolveSchemaRef(args[1]);

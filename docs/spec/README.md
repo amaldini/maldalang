@@ -10,7 +10,7 @@ Formal, versioned contracts for the Malda language. Implementation precedence is
 | [ReferenceManual/34-grammar.html](../../ReferenceManual/34-grammar.html) | Phase 2.2 | BNF-style syntax (parser-aligned) |
 | [CHANGELOG.md](CHANGELOG.md) | **Active** | Semver policy, deprecation, release notes |
 
-**Spec Final 1.0** declared 2026-08-12 (see [`CHANGELOG.md`](CHANGELOG.md) `[1.0.0]`). Types implementation: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.md). Broader maturity themes: [`docs/roadmap-p0-maturity.md`](../roadmap-p0-maturity.md). Next language constructs (plan only): [`docs/roadmap-language-constructs.md`](../roadmap-language-constructs.md).
+**Spec Final 1.0** declared 2026-08-12 (see [`CHANGELOG.md`](CHANGELOG.md) `[1.0.0]`). Types implementation: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.md). Broader maturity themes: [`docs/roadmap-p0-maturity.md`](../roadmap-p0-maturity.md). Next language constructs: [`docs/roadmap-language-constructs.md`](../roadmap-language-constructs.md). Destoy / trust: [`docs/roadmap-detoy.md`](../roadmap-detoy.md) (toolchain 1.0 gated).
 
 ## Verification
 

@@ -310,6 +310,7 @@ public class LanguageService : ILanguageService
             StdLibNamespaceDiagnostics.Validate(statements, diagnostics);
             WorkflowDeterminismDiagnostics.Validate(statements, diagnostics, sourceFileName);
             UiLoopDiagnostics.Validate(statements, diagnostics);
+            InterpolationDiagnostics.Validate(statements, diagnostics);
             StrictTypesAnalysis.Analyze(statements, typeOptions, diagnostics, sourceFileName);
             
             // Report all parser errors

@@ -52,8 +52,10 @@ malda Examples/Basics/first_look.malda
 - **AI** — `prompt` declarations, agents, tools, MCP
 - **Web** — REST decorators and `@PAGE` / `@AIPAGE` on the host runtime
 - **Workflows** — durable `step` / retry / compensate on local SQLite (single writer, not a cluster)
-- **Types** — annotations feed the IDE/LSP (mismatches are Errors by default in the editor); runtime stays dynamic
+- **Types** — annotations feed the IDE/LSP (mismatches are Errors by default in the editor); runtime stays dynamic. `malda compile --mode transpile` / `publish` refuses emit on those Errors (`--lenient-types` to skip)
 - **Tooling** — Desktop IDE (Windows reference), Web IDE (browser playground — not Desktop parity), VS Code + LSP
+
+**What this is not:** a Temporal cluster, a full static type system, or three equal backends. Workflows are local SQLite (single writer). JavaScript is a browser subset. Spec Final 1.0 is the language kernel; the CLI is still 0.1.x until destoy gates land ([`docs/roadmap-detoy.md`](docs/roadmap-detoy.md)).
 
 The two largest showcases were written entirely by coding agents, even though MALDA is in no
 model's training data, because [`docs/llm/`](docs/llm/) ships a compact language pack for that

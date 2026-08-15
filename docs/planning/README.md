@@ -3,7 +3,8 @@
 **P0 maturity roadmap (complete):** [`docs/roadmap-p0-maturity.md`](../roadmap-p0-maturity.md).
 Next work: post-Final gaps in [`docs/spec/CHANGELOG.md`](../spec/CHANGELOG.md), the deferred
 list in that roadmap, and the language-construct plan
-[`docs/roadmap-language-constructs.md`](../roadmap-language-constructs.md). Prefer those over
+[`docs/roadmap-language-constructs.md`](../roadmap-language-constructs.md) and the destoy plan
+[`docs/roadmap-detoy.md`](../roadmap-detoy.md). Prefer those over
 status lines below.
 
 **These files are roadmap and sprint notes, not the source of truth for current behavior.**

@@ -2,6 +2,8 @@
 
 This starter is the fastest way to explore MALDA Web and MALDA Workflow/Cloud together: one MALDA app file, one small UI placeholder, baseline tests, and deploy/security config examples.
 
+Honest scope: type annotations are IDE/LSP hints (runtime stays dynamic; `malda compile --mode transpile` refuses hint Errors, escape `--lenient-types`). Workflows are single-writer SQLite, not a cluster. JavaScript compile is a browser subset (no agents or HTTP servers).
+
 ## Run This First
 
 From the project root:

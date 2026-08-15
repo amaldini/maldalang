@@ -5210,7 +5210,8 @@ public static class BuiltInFunctions
     
     private static RuntimeValue BuiltInParseJSON(List<RuntimeValue> args)
     {
-        if (args.Count != 1) throw new Exception("parseJSON() expects 1 argument");
+        if (args.Count != 1)
+            throw new Exception("parseJSON() expects 1 argument (the JSON string). For schema-validated LLM JSON use parseJson(value, schemaRef).");
         if (args[0].Type != MaldaLang.Interpreter.ValueType.String)
             throw new Exception("parseJSON() expects a string argument");
         

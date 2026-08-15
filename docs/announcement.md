@@ -109,8 +109,10 @@ parser, no ANTLR, a tree-walking interpreter, ~300 built-ins, ~1,600
 tests. Dual licensed MIT OR Apache-2.0 with a runtime exception, so
 compiled programs carry no attribution obligation. No CLA.
 
-Honest about where it is: the public core is at 0.1.51 — still 0.1.x
-toolchain numbering — while the language Spec is Final 1.0. Type
+Honest about where it is: the public core is at 0.1.53 — still 0.1.x
+toolchain numbering — while the language Spec is Final 1.0. Toolchain 1.0
+waits on destoy gates (strict transpile default + showcase smoke); see
+docs/roadmap-detoy.md. Type
 annotations parse and feed the language server; mismatches on literals,
 assignments, known identifiers, operators and selected builtins emit IDE
 Errors by default (opt-out; CLI --strict-types adds match/@pure/bounds),
@@ -483,7 +485,7 @@ if a built-in is added without being documented anywhere.
 
 #### What is not good yet
 
-- **Toolchain is still 0.1.x (currently 0.1.51), not a 1.0 product release.** The language
+- **Toolchain is still 0.1.x (currently 0.1.53), not a 1.0 product release.** Do not tag toolchain 1.0 until destoy DT2-B + DT3 land ([`docs/roadmap-detoy.md`](roadmap-detoy.md)). The language
   Spec is **Final 1.0** (`docs/spec/malda-language-1.0.md`): Tier 0 is the conformance gate;
   prompts, workflows and HTTP remain platform tiers with an honest backend capability matrix.
 - **Type annotations are hints.** `var count: int = 0;` and `function add(a: int) -> int`

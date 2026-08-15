@@ -11,7 +11,7 @@ malda Examples/Basics/first_look.malda
 ```
 
 `first_look.malda` is the characteristic offline sample (`prompt … -> Review` binds the schema; `validate` is the same check without `await`).
-The one-line smoke is still `Examples/Basics/hello_world.malda`.
+Cross-platform CI smoke is `Examples/Basics/first_look.malda`. `hello_world.malda` remains the Learn Programming one-liner.
 
 ## `requires` labels
 
