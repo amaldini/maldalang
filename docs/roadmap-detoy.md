@@ -1,6 +1,6 @@
 # MALDA detoy roadmap (trust before syntax)
 
-**Status:** DT0–DT4 landed 2026-08-15; DT5 is out-of-repo; DT6 gated (do not tag toolchain 1.0 yet)  
+**Status:** DT0–DT4 landed 2026-08-15; DT5 named (Second Brain instance others use; out of repo); DT6 gated (do not tag toolchain 1.0 yet)  
 **Created:** 2026-08-15  
 **Audience:** maintainers prioritizing the OSS core after P0 + L1–L6
 
@@ -138,9 +138,9 @@ documented.
 
 ## DT5 — One service that must stay up (out of repo)
 
-Not a PR in this repository. Success metric: an interpret process or
-transpiled `.exe` (HTTP and/or workflow) that survives restart, has logs,
-and a user who is not only a REPL.
+Not a PR in this repository. The named instance is Second Brain (the
+in-repo showcase, run privately). Announcement copy: *I run a Second
+Brain instance that others use.* No workplace detail in this repo.
 
 OSS core stops at honest templates/docs and a usable
 `malda compile --strict-types`.
@@ -179,7 +179,7 @@ landed.** Then the existing release process: same `<Version>` in
 | Smoke | README “shippable” Examples are in `TranspileSmokeTests` or marked `n/a` |
 | Gotchas | Plain-string interpolation and `parseJson` are no longer total silences |
 | Version | Toolchain 1.0.0 only after DT2-B + DT3 |
-| Use | DT5 true, or announcement still says “not yet” |
+| Use | Announcement: “I run a Second Brain instance that others use.” |
 
 ---
 
@@ -215,3 +215,4 @@ landed.** Then the existing release process: same `<Version>` in
 |------|--------|
 | 2026-08-15 | Initial detoy roadmap (DT0–DT6) |
 | 2026-08-15 | DT0–DT4 landed: roadmap + links; CI `first_look`; compile `--strict-types` / transpile default + `--lenient-types`; smoke + interpret/transpile pair; `malda-interp` + `parseJson`/`parseJSON` errors |
+| 2026-08-15 | DT5 announcement: Second Brain instance that others use (no workplace detail) |

@@ -117,9 +117,9 @@ annotations parse and feed the language server; mismatches on literals,
 assignments, known identifiers, operators and selected builtins emit IDE
 Errors by default (opt-out; CLI --strict-types adds match/@pure/bounds),
 but there is no full static checker yet — it is dynamically typed at
-runtime. I do not run it in my day job either; that is large systems
-already in flight, and they do not get rewritten for an experiment. The
-full IDE is WPF, so Windows-only; the CLI, compiler and browser playground
+runtime. I run a Second Brain instance that others use. The large
+systems already in flight are not being rewritten for an experiment.
+The full IDE is WPF, so Windows-only; the CLI, compiler and browser playground
 build and run on Linux and macOS in CI (smoke, not the full suite). The
 JavaScript backend is a real subset — no agents or servers in the browser
 path. Durable workflows are the local end of durable execution:
@@ -163,11 +163,11 @@ an agent. What I wanted out of it was different: not a language built to prove t
 but one whose subject is the work that has taken over my days — talking to models, giving them
 tools, and wiring several of them together without the program collapsing into glue.
 
-I should be straight about where that leaves MALDA. I do not use it in my day job: that is
-large systems already in flight, and nobody rewrites those for an experiment. MALDA is where I
-experiment — with the AI constructs themselves, and with how a language gets designed now that
-the design conversation includes a model. The claim is that it is a good place to try those
-things, not that it has earned production.
+I should be straight about where that leaves MALDA. I run a Second Brain instance that others
+use. The large systems already in flight are not being rewritten for an experiment. MALDA is
+still where I experiment — with the AI constructs themselves, and with how a language gets
+designed now that the design conversation includes a model. The claim is that one program has
+left the REPL, not that the language has earned a rewrite of everything else.
 
 So the constructs I kept re-gluing became syntax: prompts, tools, agents, HTTP endpoints,
 durable workflows. The obvious alternative was a better library, and I tried that first — a
