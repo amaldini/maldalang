@@ -33,8 +33,6 @@ public class Lexer
         { "for", TokenType.For },
         { "foreach", TokenType.Foreach },
         { "function", TokenType.Function },
-        { "fn", TokenType.Function },
-        { "def", TokenType.Function },
         { "component", TokenType.Component },
         { "return", TokenType.Return },
         { "var", TokenType.Var },
@@ -717,6 +715,9 @@ public class Lexer
             Advance();
         
         string text = _source.Substring(_start, _current - _start);
+        if (text is "fn" or "def")
+            return CreateToken(TokenType.RemovedFunctionAlias);
+
         TokenType type = Keywords.GetValueOrDefault(text, TokenType.Identifier);
         
         if (type == TokenType.True)

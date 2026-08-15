@@ -53,7 +53,7 @@ function initializeEditor(elementId, dotNetHelper, resolve) {
                 ]
             },
             keywords: [
-                'if', 'else', 'while', 'for', 'function', 'fn', 'def', 'return', 'var',
+                'if', 'else', 'while', 'for', 'function', 'return', 'var',
                 'print', 'input', 'true', 'false', 'and', 'or', 'not',
                 'break', 'continue', 'class', 'new', 'this', 'super',
                 'extends', 'public', 'private', 'static', 'null'
@@ -383,7 +383,7 @@ function initializePreviewEditor(elementId, resolve) {
                 ]
             },
             keywords: [
-                'if', 'else', 'while', 'for', 'function', 'fn', 'def', 'return', 'var',
+                'if', 'else', 'while', 'for', 'function', 'return', 'var',
                 'print', 'input', 'true', 'false', 'and', 'or', 'not',
                 'break', 'continue', 'class', 'new', 'this', 'super',
                 'extends', 'public', 'private', 'static', 'null'

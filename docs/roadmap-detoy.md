@@ -20,8 +20,9 @@ package registry, Web IDE Desktop parity, or product apps / vertical packs
 
 Do not confuse `--typed-transpile-level` (numeric CLR emit;
 [`docs/native-numeric-rollout.md`](native-numeric-rollout.md)) with type
-analysis. Removing `fn` / `def` and flat aliases is already scheduled for
-the next **MAJOR** spec line — not detoy v1.
+analysis. Flat aliases remain scheduled for a later **MAJOR**. `fn` / `def`
+were removed (Unreleased MAJOR) because they read as a teaching-language
+costume.
 
 ---
 
@@ -167,7 +168,7 @@ landed.** Then the existing release process: same `<Version>` in
 - Web IDE feature parity with Desktop
 - Public package registry
 - Actor supervision trees
-- Removing `fn` / `def` / flat aliases (next spec **MAJOR**, not this plan)
+- Removing flat aliases (next spec **MAJOR**). `fn` / `def` already removed.
 
 ---
 
@@ -189,7 +190,7 @@ landed.** Then the existing release process: same `<Version>` in
    [`docs/spec/`](spec/) — not against old `docs/planning/` status lines.
 2. Prefer filtered `dotnet test MaldaLang.Tests --filter "…"`.
 3. Do not hand-edit `GeneratedProgram.cs` or generated `.js`.
-4. Prefer `function` (not `fn` / `def`). Prompt params stay name-only.
+4. Use `function` (`fn` / `def` are syntax errors). Prompt params stay name-only.
 5. Desktop IDE = reference; Web IDE = playground.
 6. Dual `MIT OR Apache-2.0`.
 

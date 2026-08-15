@@ -85,7 +85,7 @@ Design note: [`docs/workspace-packages.md`](docs/workspace-packages.md). Remote 
 ## Coding notes
 
 - Prefer fixing behavior in MALDA sources (`.malda`) over editing generated artifacts such as `GeneratedProgram.cs` or generated `.js`.
-- Prefer the `function` keyword (not `fn` / `def`) in examples and docs.
+- Use the `function` keyword (`fn` / `def` are syntax errors).
 - Prompt declarations use name-only parameters (no typed prompt params).
 - Transpile failure debugging: [`docs/debugging-transpile.md`](docs/debugging-transpile.md).
 

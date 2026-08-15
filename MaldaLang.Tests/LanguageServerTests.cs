@@ -794,30 +794,17 @@ public class LanguageServerTests
     }
 
     [Fact]
-    public void LanguageService_GetDiagnostics_WarnsOnFnAndDefFunctionAliases()
+    public void LanguageService_GetDiagnostics_RejectsFnAndDefFunctionAliases()
     {
         var languageService = new LanguageService();
-        var source = """
-            fn add(a, b) {
-                return a + b;
-            }
+        var fnErrors = languageService.GetDiagnostics("fn add(a, b) { return a + b; }\n", "fn_removed.malda");
+        var defErrors = languageService.GetDiagnostics("def sub(a, b) { return a - b; }\n", "def_removed.malda");
 
-            def sub(a, b) {
-                return a - b;
-            }
-
-            function mul(a, b) {
-                return a * b;
-            }
-            """;
-
-        var diagnostics = languageService.GetDiagnostics(source, "fn_def_warn.malda");
-        var styleWarnings = diagnostics
-            .Where(d => d.Source == "malda-style" && d.Severity == MaldaLang.IDE.Models.DiagnosticSeverity.Warning)
-            .ToList();
-
-        Assert.Equal(2, styleWarnings.Count);
-        Assert.Contains(styleWarnings, d => d.Message.Contains("instead of 'fn'", StringComparison.Ordinal));
-        Assert.Contains(styleWarnings, d => d.Message.Contains("instead of 'def'", StringComparison.Ordinal));
+        Assert.Contains(fnErrors, d =>
+            d.Severity == MaldaLang.IDE.Models.DiagnosticSeverity.Error &&
+            d.Message.Contains("'fn' is not a function keyword", StringComparison.Ordinal));
+        Assert.Contains(defErrors, d =>
+            d.Severity == MaldaLang.IDE.Models.DiagnosticSeverity.Error &&
+            d.Message.Contains("'def' is not a function keyword", StringComparison.Ordinal));
     }
 }

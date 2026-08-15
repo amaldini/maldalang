@@ -39,9 +39,9 @@ ImportStmt  ::= "import" (
 ExportableDecl ::= "export"? ( FunctionDecl | ClassDecl | TypeDecl | SchemaDecl
                 | "var" Identifier TypeHint? "=" Expression ";" )
 QualifiedName ::= Identifier ("." Identifier)*</code></pre>
-        <p><code>function</code> / <code>fn</code> / <code>def</code> and decorated declarations are parsed at <strong>top level</strong> (and inside blocks via <code>Declaration()</code>). They are not valid as nested <code>Statement</code> forms inside ordinary blocks.</p>
+        <p><code>function</code> and decorated declarations are parsed at <strong>top level</strong> (and inside blocks via <code>Declaration()</code>). They are not valid as nested <code>Statement</code> forms inside ordinary blocks. <code>fn</code> and <code>def</code> are not productions.</p>
         <h2>34.2 Top-level declarations</h2>
-        <pre><code>FunctionDecl  ::= ("function" | "fn" | "def") Identifier "(" ParamList? ")" ReturnType?
+        <pre><code>FunctionDecl  ::= "function" Identifier "(" ParamList? ")" ReturnType?
                   ( Block | Expression ";" )
 DecoratedFunctionDecl ::= Decorator+ FunctionDecl
 ReturnType    ::= ("->" | "=&gt;") (Identifier | "program" "(" Identifier ")")
@@ -216,7 +216,7 @@ ObjectPatternEntry ::= (Identifier | StringLiteral) (":" Pattern)?
 
 DestructuringPattern ::= ArrayPattern | ObjectPattern</code></pre>
         <h2>34.6 Lexical and tokens</h2>
-        <p>Keywords, operators, comments, strings, and numeric literals are defined in <a href="03-lexical-structure.html">Lexical Structure</a>. Function aliases: <code>fn</code> and <code>def</code> tokenize as <code>function</code>. Both <code>=&gt;</code> and <code>-&gt;</code> produce the same <code>Arrow</code> token (lambda bodies and return types).</p>
+        <p>Keywords, operators, comments, strings, and numeric literals are defined in <a href="03-lexical-structure.html">Lexical Structure</a>. <code>fn</code> and <code>def</code> are not keywords. Both <code>=&gt;</code> and <code>-&gt;</code> produce the same <code>Arrow</code> token (lambda bodies and return types).</p>
         <pre><code>Identifier  ::= [A-Za-z_][A-Za-z0-9_]*
 ArgList     ::= Expression ("," Expression)*</code></pre>
         <div class="see-also">

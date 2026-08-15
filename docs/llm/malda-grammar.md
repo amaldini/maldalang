@@ -25,7 +25,7 @@ ExportableDecl ::= "export"? ( FunctionDecl | ClassDecl | TypeDecl | SchemaDecl
                 | "var" Identifier TypeHint? "=" Expression ";" )
 QualifiedName ::= Identifier ("." Identifier)*
 
-FunctionDecl  ::= ("function" | "fn" | "def") Identifier "(" ParamList? ")" ReturnType?
+FunctionDecl  ::= "function" Identifier "(" ParamList? ")" ReturnType?
                   ( Block | Expression ";" )
 DecoratedFunctionDecl ::= Decorator+ FunctionDecl
 ReturnType    ::= ("->" | "=>") (Identifier | "program" "(" Identifier ")")
@@ -195,6 +195,6 @@ ArgList     ::= Expression ("," Expression)*
 
 ## Notes
 
-- `function` / `fn` / `def` are equivalent; prefer `function` in new code.
+- Only `function` declares a function. `fn` and `def` are syntax errors.
 - Both `=>` and `->` are the same Arrow token (lambdas and return-type hints).
 - Semantics: `docs/spec/malda-language-1.0.md`.

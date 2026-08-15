@@ -51,7 +51,7 @@ A **program** is a list of top-level declarations and statements parsed from one
 
 1. **Declaration pass** — register classes, actors, functions, prompts, workflows, properties, and sum types without running their bodies.
 2. **Statement pass** — execute remaining top-level statements in source order.
-3. **Functions** — `function` / `fn` / `def` at top level only (not as nested statements inside blocks).
+3. **Functions** — `function` at top level only (not as nested statements inside blocks). `fn` and `def` are not keywords.
 
 Functions declared in the first pass are callable during the statement pass. `var` bindings are created when their initializer runs; there is no hoisting of `var` initializers across other top-level statements.
 

@@ -302,8 +302,6 @@ public class LanguageService : ILanguageService
             var lexer = new Lexer(source, sourceFileName);
             var tokens = lexer.Tokenize();
             cancellationToken.ThrowIfCancellationRequested();
-            ValidateDeprecatedFunctionKeywordAliases(tokens, diagnostics);
-
             var parser = new MaldaLang.Parser.Parser(tokens, sourceFileName);
             var statements = parser.Parse(); // This will collect errors in parser.Errors
             cancellationToken.ThrowIfCancellationRequested();
@@ -510,7 +508,7 @@ public class LanguageService : ILanguageService
         }
         
         // Add keywords (MALDA supports both "for (var x in collection)" and "foreach (var x in collection)")
-        var keywords = new[] { "if", "else", "while", "for", "foreach", "function", "fn", "def", "return", "var",
+        var keywords = new[] { "if", "else", "while", "for", "foreach", "function", "return", "var",
             "print", "input", "true", "false", "and", "or", "not", "break", "continue",
             "class", "new", "this", "super", "extends", "public", "private", "static", "null",
             "import", "export", "include", "using", "await",
@@ -2058,28 +2056,6 @@ public class LanguageService : ILanguageService
         return null;
     }
     
-    private static void ValidateDeprecatedFunctionKeywordAliases(List<Token> tokens, List<Diagnostic> diagnostics)
-    {
-        foreach (var token in tokens)
-        {
-            if (token.Type != TokenType.Function)
-                continue;
-
-            if (token.Lexeme is not ("fn" or "def"))
-                continue;
-
-            diagnostics.Add(new Diagnostic
-            {
-                Severity = DiagnosticSeverity.Warning,
-                Message = $"Prefer 'function' instead of '{token.Lexeme}' (deprecated alias).",
-                Line = token.Line - 1,
-                Column = token.Column - 1,
-                Length = token.Lexeme.Length,
-                Source = "malda-style"
-            });
-        }
-    }
-
     private void ValidateDecorators(List<MaldaLang.Parser.AST.Statements.Statement> statements, List<Diagnostic> diagnostics, CancellationToken cancellationToken = default)
     {
         foreach (var stmt in statements)

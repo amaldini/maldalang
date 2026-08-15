@@ -11,7 +11,7 @@
     'use strict';
 
     var KEYWORDS = [
-        'if', 'else', 'while', 'for', 'foreach', 'function', 'fn', 'def',
+        'if', 'else', 'while', 'for', 'foreach', 'function',
         'component', 'return', 'var', 'const', 'print', 'input', 'and', 'or',
         'not', 'break', 'continue', 'try', 'catch', 'finally', 'throw', 'defer',
         'class', 'new', 'this', 'super', 'extends', 'public', 'private',

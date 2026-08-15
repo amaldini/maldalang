@@ -96,7 +96,7 @@ Longer overview: [`docs/architecture.md`](docs/architecture.md).
 
 1. **Never run the full test suite** unless the user explicitly asks.
 2. **Do not hand-edit generated artifacts** such as `GeneratedProgram.cs` or generated `.js` from `.malda` — change the MALDA source and regenerate.
-3. Prefer the keyword **`function`** (not `fn` / `def`) in examples and docs.
+3. Use the keyword **`function`**. `fn` and `def` are syntax errors.
 4. **Prompt declarations** use name-only parameters (no `name: string` style). `-> ReturnType` on prompts is informational only.
 5. When adding a **built-in**, register it in interpreter + transpiler surfaces (see `docs/architecture.md` § Built-ins).
 6. Keep PRs focused. Prefer filtered tests that match the change.

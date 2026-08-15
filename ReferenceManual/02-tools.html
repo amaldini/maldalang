@@ -508,7 +508,7 @@ malda test --write-regression --regression-dir ./artifacts/regressions</code></p
         <p>These are the mistakes an agent makes most often when the pack is not loaded, or is loaded only in part:</p>
 
         <ul>
-            <li><strong>Borrowed keywords.</strong> <code>let</code> does not exist — variables are declared with <code>var</code>. <code>fn</code> and <code>def</code> do parse as aliases of <code>function</code>, but the language server reports them and <code>function</code> is the form used throughout this manual.</li>
+            <li><strong>Borrowed keywords.</strong> <code>let</code> does not exist — variables are declared with <code>var</code>. <code>fn</code> and <code>def</code> are syntax errors; use <code>function</code>.</li>
             <li><strong>Typed prompt parameters.</strong> Prompt declarations take name-only parameters; <code>prompt p(name: string)</code> is not valid. A <code>-&gt; ReturnType</code> on a prompt is informational only.</li>
             <li><strong>Invented built-ins.</strong> A plausible name from another language will not resolve. <code>println</code> is the usual casualty; the call is <code>print</code>. Grep <code>docs/llm/malda-builtins.tsv</code>, which is generated from the engine, or read <a href="12-built-in-functions.html">12. Built-in Functions</a>.</li>
             <li><strong>String interpolation outside a prompt body.</strong> <code>"n is {n}"</code> prints literally; it does not raise. Concatenate with <code>+ string(n)</code>.</li>

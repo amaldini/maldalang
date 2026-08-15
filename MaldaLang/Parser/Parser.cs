@@ -118,10 +118,23 @@ public class Parser
         }
     }
     
+    private static string RemovedFunctionAliasMessage(string lexeme) =>
+        $"'{lexeme}' is not a function keyword. Use 'function'.";
+
+    private void RejectRemovedFunctionAlias()
+    {
+        if (!Check(TokenType.RemovedFunctionAlias))
+            return;
+        var token = Peek();
+        throw Error(token, RemovedFunctionAliasMessage(token.Lexeme));
+    }
+
     private Statement? Declaration()
     {
         try
         {
+            RejectRemovedFunctionAlias();
+
             if (Match(TokenType.Include))
                 return IncludeStatement();
 
@@ -144,6 +157,7 @@ public class Parser
             var isExported = Match(TokenType.Export);
             if (isExported)
             {
+                RejectRemovedFunctionAlias();
                 if (Match(TokenType.Class))
                     return ClassDeclaration(isExported);
                 if (Match(TokenType.Function))
@@ -200,7 +214,8 @@ public class Parser
                         return PropertyDeclarationWithDecorators(decorators);
 
                     var token = Current() ?? new Token(TokenType.EOF, "", null, 0, 0);
-                    throw Error(token, "Decorators must be followed by 'function', 'fn', 'def', 'property', or 'prompt' keyword");
+                    RejectRemovedFunctionAlias();
+                    throw Error(token, "Decorators must be followed by 'function', 'property', or 'prompt' keyword");
                 }
                 // Parse function declaration with the decorators we already parsed
                 return FunctionDeclarationWithDecorators(decorators, false);
@@ -438,6 +453,8 @@ public class Parser
         }
         
         // Check for message handler (on handlerName(...) { ... })
+        RejectRemovedFunctionAlias();
+
         if (Match(TokenType.On))
         {
             var handlerNameToken = ConsumeIdentifierTokenLike("Expect message handler name.");
@@ -510,6 +527,8 @@ public class Parser
         
         if (Match(TokenType.Static))
             isStatic = true;
+
+        RejectRemovedFunctionAlias();
         
         if (Match(TokenType.Function))
         {
@@ -1122,6 +1141,7 @@ public class Parser
         var methods = new List<ApiMethodSignature>();
         while (!Check(TokenType.RightBrace) && !IsAtEnd())
         {
+            RejectRemovedFunctionAlias();
             Consume(TokenType.Function, "Expect 'function' method signature in api body.");
             var methodName = ConsumeIdentifierLike("Expect method name in api.");
             Consume(TokenType.LeftParen, "Expect '(' after api method name.");

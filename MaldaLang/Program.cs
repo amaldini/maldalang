@@ -4342,7 +4342,7 @@ class Program
         var lastWord = trimmed.Split(new[] { ' ', '\t', '\n', '\r', '(', '{', '[' }, StringSplitOptions.RemoveEmptyEntries).LastOrDefault();
         if (lastWord != null)
         {
-            var incompleteKeywords = new[] { "if", "for", "while", "function", "fn", "def", "class", "else", "elif" };
+            var incompleteKeywords = new[] { "if", "for", "while", "function", "class", "else", "elif" };
             if (incompleteKeywords.Contains(lastWord.ToLower()))
                 return true;
         }

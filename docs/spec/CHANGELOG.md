@@ -87,7 +87,7 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 | `Math.*` module alias | `math.*` | Same as flat math |
 | Flat string builtins (`split`, `join`, …) | `str.*` | Same |
 | Flat I/O builtins (`readFile`, `print`, …) | `io.*` | Same |
-| `fn` / `def` function keywords | `function` | Not scheduled (aliases remain; IDE warns only) |
+| `fn` / `def` function keywords | `function` | **Removed** (Unreleased MAJOR) |
 
 ---
 
@@ -106,6 +106,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 ## Release history (spec line)
 
 ### [Unreleased]
+
+#### Removed (MAJOR — function keyword aliases)
+
+- **`fn` / `def`:** no longer tokenize as `function`. The parser rejects them with *`fn`/`def` is not a function keyword. Use `function`.* Previously accepted programs that used the aliases are now syntax errors. IDE no longer offers `fn`/`def` completions. Spec §3 / grammar `FunctionDecl` / reserved-word lists updated.
 
 #### Added (MINOR — capability tokens)
 
@@ -248,5 +252,6 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-08-12 | A1: tools vs `response_format` Modes A/B/C clarified (PATCH docs; Unreleased) |
 | 2026-08-14 | Link post-Final language constructs plan (`docs/roadmap-language-constructs.md`; PATCH docs) |
 | 2026-08-15 | Destoy / trust plan (`docs/roadmap-detoy.md`; PATCH docs). Toolchain 1.0 gated on DT2-B + DT3. |
+| 2026-08-15 | MAJOR: `fn` / `def` removed; only `function` remains |
 | 2026-08-14 | L1a: `validate` + nested schema fields resolve sum-type names (MINOR) |
 | 2026-08-14 | L1b: optional constructor payload types in JSON Schema emit (MINOR) |

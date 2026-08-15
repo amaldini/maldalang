@@ -6,7 +6,7 @@ Compact rules for generating correct `.malda`. Prefer this over scraping HTML ma
 
 ## Style preferences
 
-- Use **`function`**, not `fn` / `def` (all three parse; `function` is preferred in docs/examples).
+- Use **`function`**. `fn` and `def` are syntax errors (removed aliases).
 - Call standard-library functions through their **namespace**: `math.sqrt(16)`, `str.upper(s)`, `io.print(x)`.
 - Statements end with **`;`**. The one optional case is a `match { }` **statement**, whose
   trailing `;` may be omitted (`match expr { ... }` or `match expr { ... };`). A `match`
@@ -256,7 +256,7 @@ Prefer `str.trimText(response?.content)` over nested `if (response != null) { if
 | `function f(x: number)` on prompts | `prompt f(x)` name-only. Constructor payloads may use `Buy(sku: string)` — that is not prompt typing. |
 | `console.log(x)` | `io.print(x)` |
 | `println(x)` | `io.print(x)` — `println` does not exist |
-| `fn f() {}` in docs | prefer `function f() {}` |
+| `fn f() {}` or `def f() {}` | `function f() {}` — aliases are syntax errors |
 | Omitting `;` on statements | Required — without it the CLI reports a parse error and exits non-zero |
 | Inventing Python `def` style indent blocks | use `{ }` |
 | `"total: {n}"` | `$"total: {n}"` — or `"total: " + string(n)`. Plain strings do not interpolate |

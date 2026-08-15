@@ -19,6 +19,7 @@ public enum TokenType
     For,
     Foreach,
     Function,
+    RemovedFunctionAlias,
     Component,
     Return,
     Var,

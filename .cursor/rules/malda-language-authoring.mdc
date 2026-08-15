@@ -15,7 +15,7 @@ Before generating or substantially editing `.malda` files:
 
 Style:
 
-- Prefer `function` over `fn`/`def`
+- Use `function` (`fn`/`def` are syntax errors)
 - Prompt params are name-only (no `name: string`)
 - Call the stdlib through its namespace: `math.sqrt`, `str.upper`, `io.print`. Flat and `Math.` spellings raise style warnings
 - No string interpolation outside prompt bodies — concatenate with `+ string(x)`
