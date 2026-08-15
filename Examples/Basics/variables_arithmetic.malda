@@ -2,5 +2,5 @@ var x = 10;
 var y = 20;
 var sum = x + y;
 var product = x * y;
-print($"Sum: {sum}");
-print($"Product: {product}");
+io.print($"Sum: {sum}");
+io.print($"Product: {product}");

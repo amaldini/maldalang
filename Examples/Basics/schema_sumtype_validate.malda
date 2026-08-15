@@ -14,9 +14,9 @@ schema Order {
 var tagged = dict { "tag": "Buy", "sku": "SKU-9", "qty": 2 };
 var intentCheck = validate("Intent", tagged);
 if (intentCheck.ok) {
-    print("intent: " + intentCheck.data.tag);
+    io.print("intent: " + intentCheck.data.tag);
 } else {
-    print("unexpected: " + intentCheck.error);
+    io.print("unexpected: " + intentCheck.error);
 }
 
 var order = dict {
@@ -24,15 +24,15 @@ var order = dict {
 };
 var orderCheck = validate("Order", order);
 if (orderCheck.ok) {
-    print("order: " + orderCheck.data.intent.query);
+    io.print("order: " + orderCheck.data.intent.query);
 } else {
-    print("unexpected: " + orderCheck.error);
+    io.print("unexpected: " + orderCheck.error);
 }
 
 var bad = dict { "tag": "Nope" };
 var badCheck = validate("Intent", bad);
 if (badCheck.ok) {
-    print("unexpected success");
+    io.print("unexpected success");
 } else {
-    print("expected failure");
+    io.print("expected failure");
 }

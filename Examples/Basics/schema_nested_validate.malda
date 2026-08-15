@@ -25,14 +25,14 @@ var bad = dict {
 
 var okCheck = validate("Person", good);
 if (okCheck.ok) {
-    print("ok: " + okCheck.data.name + " @ " + okCheck.data.address.city);
+    io.print("ok: " + okCheck.data.name + " @ " + okCheck.data.address.city);
 } else {
-    print("unexpected: " + okCheck.error);
+    io.print("unexpected: " + okCheck.error);
 }
 
 var badCheck = validate("Person", bad);
 if (badCheck.ok) {
-    print("unexpected success");
+    io.print("unexpected success");
 } else {
-    print("expected failure: " + badCheck.error);
+    io.print("expected failure: " + badCheck.error);
 }

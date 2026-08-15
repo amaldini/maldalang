@@ -13,6 +13,6 @@ function describeTotal(amount) {
     return "small order";
 }
 
-print($"Items: {cart.length}");
-print($"Total: {total}");
-print($"Summary: {describeTotal(total)}");
+io.print($"Items: {cart.length}");
+io.print($"Total: {total}");
+io.print($"Summary: {describeTotal(total)}");

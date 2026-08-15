@@ -1,0 +1,28 @@
+// first_look.malda — what MALDA looks like (offline, no API key)
+//
+// Run: malda Examples/Basics/first_look.malda
+// A prompt without await is a rendered template. await would call the model.
+// schema + validate() check structured values; type hints are not runtime checks.
+
+schema Review {
+    summary: string;
+    issues: string[];
+}
+
+prompt codeReview(code, language) {
+    system: "You are an expert reviewer of {language}.",
+    user: "Review this {language} code:\n\n{code}"
+}
+
+var rendered = codeReview("function add(a, b) { return a + b; }", "javascript");
+io.print(rendered.user);
+
+var checked = validate("Review", {
+    "summary": "Looks fine",
+    "issues": []
+});
+if (checked.ok) {
+    io.print("schema ok: " + checked.data.summary);
+} else {
+    io.print("schema failed: " + checked.error);
+}

@@ -18,11 +18,35 @@
         <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>32. Examples</span></div>
         <h1>32. Examples</h1>
         <div class="info-box">
-            <strong>Suggested order:</strong> if you are learning programming for the first time, begin with 32.1, 32.4, 32.6, 32.7, and 32.8 before moving to the AI and full-stack examples later in this chapter.
+            <strong>Suggested order:</strong> start with 32.0 if you already program. If you are learning programming, continue with 32.1, 32.4, 32.6, 32.7, and 32.8 before the AI and full-stack examples later in this chapter.
             After the core path, branch into <strong>Testing and Quality</strong>, <strong>Data and Databases</strong>, and <strong>Browser Apps</strong>.
         </div>
+        <h2>32.0 First Look</h2>
+        <p>Characteristic constructs, no API key. Same program as <code>Examples/Basics/first_look.malda</code> and the Home Quick Start. Without <code>await</code>, the prompt is a rendered template.</p>
+        <pre><code data-run="true" data-expect="Review this javascript code:\n\nfunction add(a, b) { return a + b; }\nschema ok: Looks fine">schema Review {
+    summary: string;
+    issues: string[];
+}
+
+prompt codeReview(code, language) {
+    system: "You are an expert reviewer of {language}.",
+    user: "Review this {language} code:\n\n{code}"
+}
+
+var rendered = codeReview("function add(a, b) { return a + b; }", "javascript");
+io.print(rendered.user);
+
+var checked = validate("Review", {
+    "summary": "Looks fine",
+    "issues": []
+});
+if (checked.ok) {
+    io.print("schema ok: " + checked.data.summary);
+} else {
+    io.print("schema failed: " + checked.error);
+}</code></pre>
         <h2>32.1 Hello World</h2>
-        <pre><code>print("Hello, World!");</code></pre>
+        <pre><code>io.print("Hello, World!");</code></pre>
         <h2>32.2 Simple Class Example</h2>
         <pre><code>class Person {
     public var name;
@@ -34,7 +58,7 @@
     }
     
     public function introduce() {
-        print($"Hi, I'm {this.name} and I'm {this.age} years old.");
+        io.print($"Hi, I'm {this.name} and I'm {this.age} years old.");
     }
 }
 
@@ -49,7 +73,7 @@ person.introduce();</code></pre>
     }
     
     public function speak() {
-        print(this.name + " makes a sound");
+        io.print(this.name + " makes a sound");
     }
 }
 
@@ -59,7 +83,7 @@ class Dog extends Animal {
     }
     
     public function speak() {
-        print($"{this.name} barks: Woof!");
+        io.print($"{this.name} barks: Woof!");
     }
 }
 
@@ -74,7 +98,7 @@ dog.speak();</code></pre>
 }
 
 var result = factorial(5);
-print($"Factorial of 5: {result}");</code></pre>
+io.print($"Factorial of 5: {result}");</code></pre>
         <h2>32.5 Calculator Class</h2>
         <pre><code>class Calculator {
     private var result;
@@ -95,19 +119,19 @@ print($"Factorial of 5: {result}");</code></pre>
 
 var calc = new Calculator();
 calc.add(10).add(20);
-print($"Result: {calc.getResult()}");</code></pre>
+io.print($"Result: {calc.getResult()}");</code></pre>
         <h2>32.6 FizzBuzz</h2>
         <pre><code>function fizzBuzz(n) {
     var i = 1;
     while (i <= n) {
         if (i % 15 == 0) {
-            print("FizzBuzz");
+            io.print("FizzBuzz");
         } else if (i % 3 == 0) {
-            print("Fizz");
+            io.print("Fizz");
         } else if (i % 5 == 0) {
-            print("Buzz");
+            io.print("Buzz");
         } else {
-            print(i);
+            io.print(i);
         }
         i = i + 1;
     }
@@ -124,19 +148,19 @@ while (i < numbers.length) {
     i = i + 1;
 }
 
-print($"Sum: {sum}");</code></pre>
+io.print($"Sum: {sum}");</code></pre>
         <h2>32.8 Input/Output Example</h2>
         <p>Console input plus conversion. File, path, and environment how-to: <a href="11-input-output.html">11. Input/Output</a>.</p>
-        <pre><code>var name = input("What is your name? ");
-var ageStr = input("What is your age? ");
+        <pre><code>var name = io.input("What is your name? ");
+var ageStr = io.input("What is your age? ");
 var age = int(ageStr);
 
-print($"Hello, {name}! You are {age} years old.");
+io.print($"Hello, {name}! You are {age} years old.");
 
 if (age >= 18) {
-    print("You are an adult.");
+    io.print("You are an adult.");
 } else {
-    print("You are a minor.");
+    io.print("You are a minor.");
 }</code></pre>
         <h2>32.9 Simple Agent Example</h2>
         <p>This is a good transition point after the language fundamentals. It shows how MALDA's first-class AI features build on the same syntax introduced in the earlier examples.</p>
@@ -149,7 +173,7 @@ var agent = new Agent(
 );
 
 var response = agent.think("What is 2+2?");
-print(response.content);</code></pre>
+io.print(response.content);</code></pre>
         <h2>32.10 Test Command Output Modes</h2>
         <pre><code># Human-readable (default)
 malda test
