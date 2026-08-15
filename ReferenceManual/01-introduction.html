@@ -324,14 +324,14 @@ using UI = App.Web.Components;</code></pre>
 
         <h2>1.7 Quick Example</h2>
 
-        <p>Characteristic constructs first (same program as <code>Examples/Basics/first_look.malda</code>). Without <code>await</code>, the prompt is a rendered template — no API key.</p>
+        <p>Characteristic constructs first (same program as <code>Examples/Basics/first_look.malda</code>). <code>-&gt; Review</code> binds the prompt to the schema. Without <code>await</code>, the call is a rendered template — no API key. <code>validate("Review", …)</code> is the same check <code>await</code> would run on the model JSON.</p>
 
         <pre><code>schema Review {
     summary: string;
     issues: string[];
 }
 
-prompt codeReview(code, language) {
+prompt codeReview(code, language) -> Review {
     system: "You are an expert reviewer of {language}.",
     user: "Review this {language} code:\n\n{code}"
 }

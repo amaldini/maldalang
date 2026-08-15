@@ -22,13 +22,13 @@
             After the core path, branch into <strong>Testing and Quality</strong>, <strong>Data and Databases</strong>, and <strong>Browser Apps</strong>.
         </div>
         <h2>32.0 First Look</h2>
-        <p>Characteristic constructs, no API key. Same program as <code>Examples/Basics/first_look.malda</code> and the Home Quick Start. Without <code>await</code>, the prompt is a rendered template.</p>
+        <p>Characteristic constructs, no API key. Same program as <code>Examples/Basics/first_look.malda</code> and the Home Quick Start. <code>-&gt; Review</code> binds the prompt to the schema. Without <code>await</code>, the call is a rendered template; <code>validate("Review", …)</code> is the same check <code>await</code> would run on the model JSON.</p>
         <pre><code data-run="true" data-expect="Review this javascript code:\n\nfunction add(a, b) { return a + b; }\nschema ok: Looks fine">schema Review {
     summary: string;
     issues: string[];
 }
 
-prompt codeReview(code, language) {
+prompt codeReview(code, language) -> Review {
     system: "You are an expert reviewer of {language}.",
     user: "Review this {language} code:\n\n{code}"
 }

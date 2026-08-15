@@ -6,7 +6,7 @@ This repository is the **open-source core**: language runtime, compiler/transpil
 
 ## MALDA in one file
 
-Verbatim from [`Examples/Basics/first_look.malda`](Examples/Basics/first_look.malda). No API key — a `prompt` without `await` is a rendered template; `await` would call the model. `schema` + `validate()` check structured values (type annotations are IDE/LSP hints, not runtime checks).
+Verbatim from [`Examples/Basics/first_look.malda`](Examples/Basics/first_look.malda). No API key. `-> Review` binds the prompt to the schema. Without `await`, the call is a rendered template; `await` would call the model and validate the JSON against `Review`. `validate("Review", …)` is that same check, shown offline (type annotations elsewhere are IDE/LSP hints, not runtime checks).
 
 ```malda
 schema Review {
@@ -14,7 +14,7 @@ schema Review {
     issues: string[];
 }
 
-prompt codeReview(code, language) {
+prompt codeReview(code, language) -> Review {
     system: "You are an expert reviewer of {language}.",
     user: "Review this {language} code:\n\n{code}"
 }

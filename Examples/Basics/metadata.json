@@ -2,7 +2,7 @@
   "examples": [
     {
       "name": "First Look",
-      "description": "prompt + schema + validate without an API key",
+      "description": "prompt bound to a schema with -> Review, plus offline validate",
       "file": "first_look.malda",
       "track": "student",
       "difficulty": "beginner",
@@ -10,7 +10,7 @@
       "requires": ["offline"],
       "concepts": ["prompt", "schema", "validate", "io.print"],
       "prerequisites": [],
-      "learningGoal": "See MALDA's characteristic constructs before the syntax tutorial.",
+      "learningGoal": "See how -> Review binds a prompt to a schema before the syntax tutorial.",
       "expectedOutput": "Prints a rendered review prompt and a schema-ok line.",
       "next": "Basics/hello_world.malda",
       "documentationPath": "/docs/start-here.md",

@@ -17,7 +17,7 @@ If you already program, run this first. It needs **no API key**:
 malda Examples/Basics/first_look.malda
 ```
 
-That file is a `prompt` declaration, a `schema`, and `validate()` — the constructs the language is for. Without `await`, the prompt is a rendered template (testable, no model call). Type annotations elsewhere are IDE/LSP hints; `schema` + `validate()` is how structured values are checked at runtime.
+That file binds a `prompt` to a `schema` with `-> Review`. Without `await`, the call is a rendered template (testable, no model call). `validate("Review", …)` is the same check `await` would run on the model JSON. Type annotations elsewhere are IDE/LSP hints, not runtime checks.
 
 Then pick a path below. If you are new to programming, start with **Learn Programming**.
 
