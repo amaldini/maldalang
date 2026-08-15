@@ -17,41 +17,182 @@
     <main>
         <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>11. Input/Output</span></div>
         <h1>11. Input/Output</h1>
-        <h2>11.1 Output</h2>
-        <p>Console output uses <code>io.print(...)</code> (preferred) or the deprecated flat alias <code>print(...)</code>:</p>
-        <pre><code>print("Hello, World!");
-print(42);
-print("Value of x: " + x);  // String concatenation
-print($"Value of x: {x}");   // String interpolation (preferred)</code></pre>
-        <h2>11.2 Input</h2>
-        <p>The <code>input()</code> function reads user input from the console:</p>
-        <pre><code>var name = input("Enter your name: ");
-var age = input("Enter your age: ");  // Returns string, convert if needed
-var num = int(input("Enter a number: "));  // Type conversion</code></pre>
-        <div class="info-box">
-            <strong>Input Function Behavior:</strong> The <code>input()</code> function is asynchronous and pauses script execution until user input is provided. Execution resumes exactly from the same statement after input is received. Works correctly within loops, functions, and nested control structures.
-        </div>
-        <h2>11.3 Sleep</h2>
-        <p>The <code>sleep()</code> function pauses script execution for the specified number of milliseconds:</p>
-        <pre><code>sleep(1000);  // Sleep for 1 second (1000 milliseconds)
-sleep(500);   // Sleep for 500 milliseconds (0.5 seconds)</code></pre>
-        <div class="info-box">
-            <strong>Sleep Function Behavior:</strong> The <code>sleep()</code> function is asynchronous and doesn't consume CPU while waiting. Useful for keeping scripts alive in loops without CPU spinning. Commonly used with REST servers and long-running processes.
-        </div>
-        <h3>Example: Keep Server Alive</h3>
-        <pre><code>// Keep server alive without consuming CPU
-while (server.isRunning) {
-    sleep(1000);  // Sleep for 1 second
+        <p>This chapter is the <strong>I/O how-to</strong>: console, files, paths, environment variables, and host process facts. Prefer the <code>io.*</code> namespace. Flat aliases such as <code>print</code> and <code>readFile</code> still run, but the editor warns <code>malda-style</code>. Signatures, git helpers, <code>glob</code> / <code>grep</code>, document extractors, and Spectre.Console live in <a href="12-built-in-functions.html">12. Built-in Functions</a>.</p>
+        <p>File I/O is a host capability. The interpreter and C# transpile support it; the JavaScript backend does not (<code>file-io</code> is <code>no</code> on the <a href="../docs/spec/backend-capability-matrix.md">backend capability matrix</a>).</p>
+
+        <h2>11.1 Console Output</h2>
+        <p><code>io.print(value)</code> takes <strong>exactly one</strong> argument, converts it with <code>string(value)</code>, and writes a line (a trailing newline). There is no <code>println</code>. Concatenate or interpolate before the call if you need several pieces on one line.</p>
+        <pre><code data-run="true" data-expect="Hello, World!\nHello, Alice!\nn is {n}">io.print("Hello, World!");
+
+var name = "Alice";
+io.print($"Hello, {name}!");   // interpolation — the $ is required
+io.print("n is {n}");          // literal braces: a plain string does not interpolate</code></pre>
+        <ul>
+            <li>Use <code>$"…"</code> or <code>"Value of x: " + string(x)</code>. A plain <code>"n is {n}"</code> prints the braces.</li>
+            <li>Numbers, booleans, arrays, and objects print their string form. For JSON text, call <code>toJSON(value)</code> first.</li>
+            <li>Rich colour, tables, panels, and progress bars are <code>AnsiConsole.*</code> — see <a href="12-built-in-functions.html">12.12 Spectre.Console</a>. <code>AnsiConsole.markup</code> does <em>not</em> add a newline; use <code>markupLine</code> for a standalone line.</li>
+            <li>When stdout is not a terminal, Spectre.Console strips ANSI and Unicode panel borders fall back to square corners. That is expected for pipes and redirected files.</li>
+        </ul>
+
+        <h2>11.2 Console Input</h2>
+        <p><code>io.input(prompt?)</code> writes an optional prompt (no extra newline) and reads one line from stdin. The result is always a <strong>string</strong>. Convert it if you need a number.</p>
+        <pre><code>var name = io.input("Enter your name: ");
+var age = int(io.input("Enter your age: "));
+io.print($"Hello, {name}. Next year you will be {age + 1}.");</code></pre>
+        <div class="warning-box">
+            <strong>End of input is an empty string, not <code>null</code>.</strong> At EOF every later <code>io.input</code> also returns <code>""</code>. A loop that only advances on non-empty input never terminates. Treat blank as quit:
+            <pre><code>while (true) {
+    var raw = io.input("? ");
+    if (str.trim(raw) == "") {
+        break;
+    }
+    io.print(raw);
 }</code></pre>
+        </div>
+        <p>The call is asynchronous: execution pauses until a line arrives, then resumes at the same statement. It works inside loops, functions, and nested control structures. Do not mark interactive snippets <code>data-run</code> — the suite has no human at the keyboard.</p>
+        <p>For malformed numbers prefer <code>toIntOr(raw, fallback)</code> or <code>toIntOrNull(raw)</code> over bare <code>int(...)</code>, which throws. See <a href="12-built-in-functions.html">12.1 Type Conversion</a>.</p>
+
+        <h2>11.3 Files</h2>
+        <p>Paths are strings (or a matching <a href="#capability-tokens">capability token</a>). Ordinary failures return <code>null</code> or <code>false</code>; they do not throw. Check the result.</p>
+
+        <h3>11.3.1 Read and write</h3>
+        <p><code>io.writeFile(path, content)</code> overwrites the file and returns <code>true</code> on success, <code>false</code> on I/O failure. Strings are written as UTF-8. Objects and arrays are serialized with <code>toJSON</code> first. <code>io.readFile(path)</code> returns the whole file as a string, or <code>null</code> when the path is missing or unreadable.</p>
+        <pre><code data-run="true" data-expect="true\nhello\nfalse">io.writeFile("_rm_io_notes.txt", "hello");
+io.print(io.hasFile("_rm_io_notes.txt"));
+io.print(io.readFile("_rm_io_notes.txt"));
+io.deleteFile("_rm_io_notes.txt");
+io.print(io.hasFile("_rm_io_notes.txt"));</code></pre>
+        <pre><code data-run="true" data-expect="true">io.writeFile("_rm_io_json.txt", dict { "ok": true });
+var obj = parseJSON(io.readFile("_rm_io_json.txt"));
+io.print(obj.ok);
+io.deleteFile("_rm_io_json.txt");</code></pre>
+        <pre><code data-run="true" data-expect="true">io.print(io.readFile("_rm_io_missing.txt") == null);</code></pre>
+
+        <h3>11.3.2 Line ranges and line arrays</h3>
+        <p>Line numbers are <strong>1-based</strong>.</p>
+        <ul>
+            <li><code>io.readFile(path, start)</code> — from that line to the end. A <em>negative</em> <code>start</code> means the last N lines (<code>-30</code> is the last 30).</li>
+            <li><code>io.readFile(path, start, end)</code> — inclusive range. A negative <code>end</code> counts from the end of the file.</li>
+            <li>If <code>start</code> is past the last line, the result is <code>""</code> (empty string), not <code>null</code>.</li>
+            <li><code>io.readTextFileLines(path)</code> — UTF-8 lines as an array, or <code>null</code> if the file cannot be read. Prefer this over <code>str.split(io.readFile(path), "\n")</code> for large files.</li>
+        </ul>
+        <pre><code data-run="true" data-expect="b\nc">io.writeFile("_rm_io_lines.txt", "a\nb\nc\nd");
+io.print(io.readFile("_rm_io_lines.txt", 2, 3));
+io.deleteFile("_rm_io_lines.txt");</code></pre>
+
+        <h3>11.3.3 Directories, delete, and binary</h3>
+        <table>
+            <thead>
+                <tr><th>Call</th><th>Result</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>io.hasFile(path)</code></td><td><code>true</code> when a file exists (disk or <code>embed:</code>)</td></tr>
+                <tr><td><code>io.hasDirectory(path)</code></td><td><code>true</code> when a directory exists</td></tr>
+                <tr><td><code>io.ensureDir(path)</code></td><td>Creates the directory and missing parents; no-op if it already exists. Throws on failure. Rejects <code>embed:</code></td></tr>
+                <tr><td><code>io.listDirectory(path)</code></td><td>Array of <code>{ name, type, path }</code>. <code>type</code> is <code>"file"</code> or <code>"directory"</code>. Missing directories yield <code>[]</code>. Empty <code>path</code> means <code>"."</code></td></tr>
+                <tr><td><code>io.deleteFile(path)</code></td><td><code>true</code> if the file was deleted <em>or was already absent</em>; <code>false</code> on an empty path or I/O failure</td></tr>
+                <tr><td><code>io.readFileBase64(path)</code> / <code>io.writeFileBase64(path, b64)</code></td><td>Raw bytes as base64. Read returns <code>null</code> when missing; write returns <code>false</code> on invalid base64</td></tr>
+            </tbody>
+        </table>
+        <pre><code data-run="true" data-expect="true">io.writeFile("_rm_io_list.txt", "x");
+var items = io.listDirectory(".");
+var found = false;
+for (var item in items) {
+    if (item.name == "_rm_io_list.txt") {
+        found = true;
+    }
+}
+io.print(found);
+io.deleteFile("_rm_io_list.txt");</code></pre>
+        <p><code>insertAtLine</code>, <code>replaceInFile</code>, and <code>editFile</code> edit text in place — catalog and failure style in <a href="12-built-in-functions.html">12.8</a>. <code>insertAtLine</code> is interpreter-only.</p>
+        <p>Digital text from documents: <code>pdf.extractText(path, password?)</code> (PdfPig text layer, no OCR) and <code>doc.extractText(path)</code> (<code>.docx</code> only). Those <em>do</em> throw on a missing file. See <a href="12-built-in-functions.html">12.8.1</a>.</p>
+
+        <h3>11.3.4 Embedded folders (<code>embed:</code>)</h3>
+        <p>Compile with <code>malda compile … --embed-folder &lt;dir[=alias]&gt;</code> to pack a directory into the executable. At runtime, read with the virtual scheme <code>embed:&lt;alias&gt;/&lt;relative&gt;</code>. Nothing is extracted to disk. Writes (<code>io.writeFile</code>, <code>io.ensureDir</code>, <code>io.deleteFile</code>, …) reject <code>embed:</code> paths. <code>io.hasEmbeddedFolder(alias)</code> / <code>io.embeddedFolderRoot(alias)</code> inspect what was packed. Full example in <a href="12-built-in-functions.html">12.8.0</a>.</p>
+
+        <h2>11.4 Paths</h2>
+        <p>Join and inspect paths instead of concatenating slashes. <code>io.pathJoin</code> uses the host separator. <code>io.pathNormalize</code> returns an absolute path.</p>
+        <pre><code data-run="true" data-expect="notes.md\n.md\ntrue">io.print(io.getFileName("docs/notes.md"));
+io.print(io.pathGetExtension("docs/notes.md"));
+io.print(io.isPathUnder("brain", "brain/notes/a.md"));</code></pre>
+        <ul>
+            <li><code>io.getDirectoryName(path)</code> — parent directory, or <code>""</code> for a bare filename.</li>
+            <li><code>io.pathExists(path)</code> — file <em>or</em> directory.</li>
+            <li><code>io.isPathUnder(root, path)</code> — <code>true</code> when <code>path</code> resolves to <code>root</code> or a descendant. Uses a directory-separator boundary (<code>demo</code> does not match <code>demo-evil</code>). Works for disk paths and <code>embed:</code> roots. Traversal such as <code>brain/../secret.txt</code> is <code>false</code>.</li>
+            <li><code>getProgramDirectory()</code> — folder of the running <code>.malda</code> under the interpreter, or the compiled executable’s directory after <code>malda compile</code>. Not on the <code>io</code> object.</li>
+        </ul>
+
+        <h2>11.5 Environment and Host</h2>
+        <p>These read the process environment and the machine the program is running on. They are not file I/O, but they are how programs find keys, args, and a place to load sidecar files.</p>
+        <pre><code data-run="true" data-expect="fallback\n1">io.print(io.getEnvOr("MALDA_RM_IO_MISSING_VAR_7D05", "fallback"));
+var host = getHostPlatform();
+io.print(str.length(host.pathSeparator));</code></pre>
+        <ul>
+            <li><code>io.getEnv(name)</code> — string, or <code>null</code> when unset. Do not pass that <code>null</code> to <code>str.trim</code>; use <code>io.getEnvOr(name, default?)</code> (empty string when the default is omitted) or <code>str.trimText</code>.</li>
+            <li><code>io.hasEnv(name)</code> — whether the variable is set.</li>
+            <li><code>getHostPlatform()</code> — <code>{ os, arch, pathSeparator, description }</code>. No arguments.</li>
+            <li><code>getCommandLineArgs()</code> — array of strings passed to the program, excluding the program name. Same in interpreted and transpiled runs.</li>
+        </ul>
+        <p>Assistant config under <code>~/.malda</code> (<code>getMaldaHome</code>, <code>getMaldaConfig</code>) is documented with the <a href="31-personal-assistant.html">personal assistant</a>.</p>
+
+        <h2 id="capability-tokens">11.6 Capability Tokens</h2>
+        <p><code>@effects("io")</code> is a <strong>name</strong> allow-list. A tool that takes a path string can still be given <code>"/etc/passwd"</code>. Mint an unforgeable token and pass that instead. Tokens are sealed host objects — a dict <code>{ kind, path }</code> is not a token.</p>
+        <pre><code data-run="true" data-expect="fileRead\ntrue">var notes = cap.fileRead("notes.md");
+io.print(notes.kind);
+io.print(cap.is(notes, "fileRead"));</code></pre>
+        <ul>
+            <li>Mint: <code>cap.fileRead(path)</code>, <code>cap.fileWrite(path)</code>, <code>cap.dirList(path)</code>.</li>
+            <li>Consume: <code>cap.read</code> / <code>cap.write</code> / <code>cap.list</code>, or pass the token to <code>io.readFile</code> / <code>io.writeFile</code> / <code>io.listDirectory</code>. Ordinary string paths still work for non-tool code.</li>
+            <li><code>cap.confine(token, relativePath)</code> narrows a token; paths outside the parent throw.</li>
+        </ul>
+        <p>Full contract and a forged-dict test: <a href="12-built-in-functions.html#capability-tokens">12.19.3</a> and <code>Examples/Tools/capability_tokens.malda</code>.</p>
+
+        <h2>11.7 Searching Files</h2>
+        <p><code>io.glob(pattern, dirPath?)</code> finds paths. <code>io.grep(pattern, filePath)</code> searches contents. Both take a required first argument and then optional positional arguments. On a missing path or a bad regex they return an <em>error string</em>, not a collection — guard with <code>typeOf(result) == "string"</code>.</p>
+        <pre><code data-run="true" data-expect="1">io.writeFile("_rm_io_glob.txt", "needle");
+var found = io.glob("_rm_io_glob.txt", ".");
+io.print(found.count);
+io.deleteFile("_rm_io_glob.txt");</code></pre>
+        <p>Default <code>glob</code> cap is 200 results (hard cap 500); the result is <code>{ items, count, truncated }</code> with each item <code>{ name, type, path }</code>. <code>grep</code> defaults to recursive search with line numbers. Argument lists and the count-only shape are in <a href="12-built-in-functions.html">12.8.2</a>.</p>
+
+        <h2>11.8 Sleep</h2>
+        <p><code>sleep(milliseconds)</code> pauses without spinning the CPU. The argument must be a non-negative integer. It is a built-in, not an <code>io.*</code> member. Useful for keep-alive loops around a server.</p>
+        <pre><code data-run="true" data-expect="awake">sleep(0);
+io.print("awake");</code></pre>
+        <pre><code>while (server.isRunning) {
+    sleep(1000);
+}</code></pre>
+        <div class="warning-box">
+            <strong>Workflows:</strong> <code>sleep</code>, <code>io.writeFile</code>, and other deny-listed effects raise <code>WF1001</code> / <code>WF1002</code> when they run in a deterministic workflow section — including when nested in a helper. Put clock, sleep, and I/O inside a <code>step</code>. See <a href="21-durable-workflows.html">21. Durable Workflows</a>.
+        </div>
+
+        <h2>11.9 What This Chapter Is Not</h2>
+        <table>
+            <thead>
+                <tr><th>Need</th><th>Go to</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>HTTP client / REST calls</td><td><a href="27-rest-web-client.html">27. REST Web Client</a></td></tr>
+                <tr><td>HTTP / HTML / <code>ui.*</code> servers</td><td><a href="22-web-ui-hub.html">22. Web UI Overview</a></td></tr>
+                <tr><td>SQL clients</td><td><a href="15-database.html">15. Database Support</a></td></tr>
+                <tr><td>Shell commands</td><td><code>runCommand</code> in <a href="12-built-in-functions.html">12.10</a> (blocked dangerous names, 1-hour timeout cap)</td></tr>
+                <tr><td>Git</td><td><a href="12-built-in-functions.html">12.9</a></td></tr>
+                <tr><td>Agent file tools</td><td><code>createReadFileTool</code> and siblings in <a href="17-agent-orchestration.html">17. Agent Orchestration</a></td></tr>
+            </tbody>
+        </table>
+
         <div class="see-also">
             <h3>See Also</h3>
             <ul>
-                <li><a href="07-expressions.html">7. Expressions</a> - String interpolation</li>
-                <li><a href="12-built-in-functions.html">12. Built-in Functions</a> - Type conversion functions</li>
+                <li><a href="07-expressions.html">7. Expressions</a> — string interpolation</li>
+                <li><a href="12-built-in-functions.html">12. Built-in Functions</a> — I/O catalog, Spectre.Console, git, <code>runCommand</code></li>
+                <li><a href="09-functions.html">9. Functions</a> — <code>@pure</code> / <code>@effects("io")</code></li>
+                <li><a href="21-durable-workflows.html">21. Durable Workflows</a> — I/O must live inside <code>step</code></li>
+                <li><code>Examples/Tools/file_operations.malda</code>, <code>Examples/Tools/capability_tokens.malda</code></li>
             </ul>
         </div>
         <div class="nav-footer">
-            <a href="10-classes-objects.html">← Previous: 10. Classes & Objects</a>
+            <a href="10-classes-objects.html">← Previous: 10. Classes &amp; Objects</a>
             <a href="12-built-in-functions.html">Next: 12. Built-in Functions→</a>
         </div>
 
