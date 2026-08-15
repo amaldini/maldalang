@@ -38,40 +38,66 @@
 
         <h2>Quick Start</h2>
         
-        <p>Start with these examples in order. Each one adds one more basic idea so the syntax feels more like a small real program instead of isolated fragments.</p>
+        <p>If you already program, start with the characteristic constructs. A <code>prompt</code> without <code>await</code> is a rendered template (no API key). <code>schema</code> + <code>validate()</code> check structured values; type annotations are IDE/LSP hints, not runtime checks. Same file: <code>Examples/Basics/first_look.malda</code>.</p>
 
-        <h3>1. Print Output</h3>
-        <pre><code>print("Hello, World!");</code></pre>
+        <h3>1. First Look</h3>
+        <pre><code data-run="true" data-expect="Review this javascript code:\n\nfunction add(a, b) { return a + b; }\nschema ok: Looks fine">schema Review {
+    summary: string;
+    issues: string[];
+}
 
-        <h3>5. Variables and Arithmetic</h3>
+prompt codeReview(code, language) {
+    system: "You are an expert reviewer of {language}.",
+    user: "Review this {language} code:\n\n{code}"
+}
+
+var rendered = codeReview("function add(a, b) { return a + b; }", "javascript");
+io.print(rendered.user);
+
+var checked = validate("Review", {
+    "summary": "Looks fine",
+    "issues": []
+});
+if (checked.ok) {
+    io.print("schema ok: " + checked.data.summary);
+} else {
+    io.print("schema failed: " + checked.error);
+}</code></pre>
+
+        <p>Then the syntax path, if you want the core language before agents and APIs. Prefer namespaced calls (<code>io.print</code>, <code>math.sqrt</code>, <code>str.upper</code>); flat <code>print</code> still runs.</p>
+
+        <h3>2. Print Output</h3>
+        <pre><code>io.print("Hello, World!");</code></pre>
+
+        <h3>3. Variables and Arithmetic</h3>
         <pre><code>var price = 12;
 var quantity = 3;
 var total = price * quantity;
 
-print("Total: " + total);</code></pre>
+io.print("Total: " + total);</code></pre>
 
-        <h3>3. Conditionals</h3>
+        <h3>4. Conditionals</h3>
         <pre><code>var score = 82;
 
 if (score >= 60) {
-    print("Pass");
+    io.print("Pass");
 } else {
-    print("Fail");
+    io.print("Fail");
 }</code></pre>
 
-        <h3>4. Loops and Functions</h3>
+        <h3>5. Loops and Functions</h3>
         <pre><code>function printCountdown(start) {
     var current = start;
     while (current > 0) {
-        print(current);
+        io.print(current);
         current = current - 1;
     }
-    print("Go!");
+    io.print("Go!");
 }
 
 printCountdown(3);</code></pre>
 
-        <h3>5. Complete Starter Program</h3>
+        <h3>6. Complete Starter Program</h3>
         <p>This example combines variables, arrays, a loop, a function, and an <code>if</code> statement in one linear program:</p>
         <pre><code data-run="true" data-expect="Items: 3\nTotal: 37\nSummary: big order">var cart = [12, 18, 7];
 var total = 0;
@@ -87,17 +113,18 @@ function describeTotal(amount) {
     return "small order";
 }
 
-print("Items: " + cart.length);
-print("Total: " + total);
-print("Summary: " + describeTotal(total));</code></pre>
+io.print("Items: " + cart.length);
+io.print("Total: " + total);
+io.print("Summary: " + describeTotal(total));</code></pre>
 
-        <p>For more runnable beginner programs in the same style, see <a href="32-examples.html">Examples</a>.</p>
+        <p>For more runnable beginner programs in the same style, see <a href="32-examples.html">Examples</a> and <a href="../docs/start-here.md">Start Here</a>.</p>
 
         <h2>Choose Your Path</h2>
 
         <h3>Path 1: Learn Programming With MALDA</h3>
         <p>Start here if you are learning programming for the first time. Follow this sequence:</p>
         <ol>
+            <li>First Look (<code>prompt</code> + <code>schema</code> + <code>validate</code>)</li>
             <li>Hello World</li>
             <li>Variables and Arithmetic</li>
             <li>Conditionals</li>
@@ -162,7 +189,7 @@ print("Summary: " + describeTotal(total));</code></pre>
 
         <h2>Getting Started</h2>
 
-        <p>To get started with MALDA, you can use the <strong>WPF Desktop IDE</strong>, which provides:</p>
+        <p>To get started with MALDA, run <code>malda Examples/Basics/first_look.malda</code> from the CLI. The <strong>Desktop IDE</strong> is the Windows reference (WPF); the Web IDE is a browser playground (not Desktop parity); VS Code + LSP is the cross-platform editor. The Desktop IDE provides:</p>
 
         <ul>
             <li>Syntax highlighting</li>
@@ -184,7 +211,7 @@ print("Summary: " + describeTotal(total));</code></pre>
 var client = new OpenRouterClient();
 var agent = new Agent("Assistant", "helper", "You are a helpful assistant.", client);
 var response = agent.think("What is 2+2?");
-print(response.content);</code></pre>
+io.print(response.content);</code></pre>
         <p>When you use <code>await prompt(...)</code> or specialized agents (e.g. <code>CodingAgent</code>) without passing a client, MALDA uses a <strong>default local LLM</strong> (Qwen/Qwen2.5-0.5B-Instruct, downloaded as a GGUF build from Hugging Face on first use—no API key required).</p>
 
         <div class="nav-footer">

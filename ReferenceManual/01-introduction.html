@@ -31,7 +31,7 @@
         <p>The page header is the shipping toolchain version (the same number as the CLI). Core language semantics are specified in <a href="../docs/spec/malda-language-1.0.md">malda-language-1.0</a>.</p>
 
         <div class="info-box">
-            <strong>How to approach MALDA:</strong> if you are new to programming, learn the core language first: output, variables, input, conditionals, loops, and functions. After the core path, branch into <strong>Testing and Quality</strong>, <strong>Data and Databases</strong>, and <strong>Browser Apps</strong>. If you already know those concepts, jump directly into prompts, agents, APIs, and full-stack examples. Both journeys lead into the same AI-first runtime.
+            <strong>How to approach MALDA:</strong> if you already program, start with <a href="index.html">Home → First Look</a> (<code>prompt</code> + <code>schema</code> + <code>validate</code>, no API key). If you are new to programming, learn the core language next: <code>io.print</code>, variables, input, conditionals, loops, and functions. After the core path, branch into <strong>Testing and Quality</strong>, <strong>Data and Databases</strong>, and <strong>Browser Apps</strong>. Both journeys lead into the same AI-first runtime.
         </div>
 
         <h3>What Does MALDA Stand For?</h3>
@@ -324,29 +324,47 @@ using UI = App.Web.Components;</code></pre>
 
         <h2>1.7 Quick Example</h2>
 
-        <p>Here's a simple example demonstrating basic MALDA syntax:</p>
+        <p>Characteristic constructs first (same program as <code>Examples/Basics/first_look.malda</code>). Without <code>await</code>, the prompt is a rendered template — no API key.</p>
 
-        <pre><code>// Hello World
-print("Hello, World!");
+        <pre><code>schema Review {
+    summary: string;
+    issues: string[];
+}
 
-// Variables and types
+prompt codeReview(code, language) {
+    system: "You are an expert reviewer of {language}.",
+    user: "Review this {language} code:\n\n{code}"
+}
+
+var rendered = codeReview("function add(a, b) { return a + b; }", "javascript");
+io.print(rendered.user);
+
+var checked = validate("Review", {
+    "summary": "Looks fine",
+    "issues": []
+});
+if (checked.ok) {
+    io.print("schema ok: " + checked.data.summary);
+}</code></pre>
+
+        <p>Core syntax uses the same statements. Prefer namespaced calls (<code>io.print</code>); flat <code>print</code> still runs. File, path, and environment I/O: <a href="11-input-output.html">11. Input/Output</a>.</p>
+
+        <pre><code>io.print("Hello, World!");
+
 var name = "Alice";
 var age = 25;
 var pi = 3.14159;
 var isActive = true;
 
-// Arrays
 var numbers = [1, 2, 3, 4, 5];
 numbers.append(6);
 
-// Functions
 function greet(name) {
     return "Hello, " + name + "!";
 }
 
-print(greet("Bob"));
+io.print(greet("Bob"));
 
-// Classes
 class Person {
     public var name;
     public var age;
@@ -357,7 +375,7 @@ class Person {
     }
     
     public function introduce() {
-        print($"Hi, I'm {this.name} and I'm {this.age} years old.");
+        io.print($"Hi, I'm {this.name} and I'm {this.age} years old.");
     }
 }
 
