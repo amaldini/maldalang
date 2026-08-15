@@ -11,7 +11,7 @@
     { "file": "08-control-structures.html", "title": "Control Structures", "category": "Language Fundamentals", "description": "Conditionals and loops" },
     { "file": "09-functions.html", "title": "Functions", "category": "Language Fundamentals", "description": "Function declaration, calls, decorators" },
     { "file": "10-classes-objects.html", "title": "Classes & Objects", "category": "Language Fundamentals", "description": "OOP features, inheritance" },
-    { "file": "11-input-output.html", "title": "Input/Output", "category": "Standard Library", "description": "print, input, sleep functions" },
+    { "file": "11-input-output.html", "title": "Input/Output", "category": "Standard Library", "description": "Console, files, paths, environment, and host I/O" },
     { "file": "12-built-in-functions.html", "title": "Built-in Functions", "category": "Standard Library", "description": "Type conversion, math, string, file operations" },
     { "file": "13-graphs.html", "title": "Graphs", "category": "Standard Library", "description": "Graph data structures and algorithms" },
     { "file": "14-vectordb.html", "title": "VectorDB", "category": "Standard Library", "description": "Vector database for similarity search" },

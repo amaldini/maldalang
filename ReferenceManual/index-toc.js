@@ -21,7 +21,7 @@ const FALLBACK_TOC_CHAPTERS = [
     { file: "08-control-structures.html", title: "Control Structures", num: "8", category: "Language Fundamentals", description: "Conditionals and loops" },
     { file: "09-functions.html", title: "Functions", num: "9", category: "Language Fundamentals", description: "Function declaration, calls, decorators" },
     { file: "10-classes-objects.html", title: "Classes & Objects", num: "10", category: "Language Fundamentals", description: "OOP features, inheritance" },
-    { file: "11-input-output.html", title: "Input/Output", num: "11", category: "Standard Library", description: "print, input, sleep functions" },
+    { file: "11-input-output.html", title: "Input/Output", num: "11", category: "Standard Library", description: "Console, files, paths, environment, and host I/O" },
     { file: "12-built-in-functions.html", title: "Built-in Functions", num: "12", category: "Standard Library", description: "Type conversion, math, string, file operations" },
     { file: "13-graphs.html", title: "Graphs", num: "13", category: "Standard Library", description: "Graph data structures and algorithms" },
     { file: "14-vectordb.html", title: "VectorDB", num: "14", category: "Standard Library", description: "Vector database for similarity search" },
