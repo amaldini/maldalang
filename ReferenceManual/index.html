@@ -38,7 +38,7 @@
 
         <h2>Quick Start</h2>
         
-        <p>If you already program, start with the characteristic constructs. A <code>prompt</code> without <code>await</code> is a rendered template (no API key). <code>schema</code> + <code>validate()</code> check structured values; type annotations are IDE/LSP hints, not runtime checks. Same file: <code>Examples/Basics/first_look.malda</code>.</p>
+        <p>If you already program, start with the characteristic constructs. <code>-&gt; Review</code> binds the <code>prompt</code> to the <code>schema</code>. Without <code>await</code>, the call is a rendered template (no API key). <code>validate("Review", …)</code> is the same check <code>await</code> would run on the model JSON. Type annotations elsewhere are IDE/LSP hints, not runtime checks. Same file: <code>Examples/Basics/first_look.malda</code>.</p>
 
         <h3>1. First Look</h3>
         <pre><code data-run="true" data-expect="Review this javascript code:\n\nfunction add(a, b) { return a + b; }\nschema ok: Looks fine">schema Review {
@@ -46,7 +46,7 @@
     issues: string[];
 }
 
-prompt codeReview(code, language) {
+prompt codeReview(code, language) -> Review {
     system: "You are an expert reviewer of {language}.",
     user: "Review this {language} code:\n\n{code}"
 }

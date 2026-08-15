@@ -63,6 +63,7 @@ if (checked.ok) {
 - After HTML forms: `bindForm` → `validate`, with session flash on failure — see
   [`Examples/Web/form_validate_flash.malda`](../../Examples/Web/form_validate_flash.malda).
 - Offline schema-only sample: [`Examples/Basics/schema_validate.malda`](../../Examples/Basics/schema_validate.malda).
+- Bound to a prompt: `prompt codeReview(...) -> Review` names the schema `await` will validate. Offline stand-in: [`Examples/Basics/first_look.malda`](../../Examples/Basics/first_look.malda).
 - Manual: Reference Manual §12.7.1 (`validate`) and schema section in Functions.
 
 ## What not to do

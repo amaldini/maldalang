@@ -10,7 +10,7 @@ malda Examples/Basics/first_look.malda
 # or: dotnet run --project MaldaLang -- Examples/Basics/first_look.malda
 ```
 
-`first_look.malda` is the characteristic offline sample (`prompt` + `schema` + `validate`).
+`first_look.malda` is the characteristic offline sample (`prompt … -> Review` binds the schema; `validate` is the same check without `await`).
 The one-line smoke is still `Examples/Basics/hello_world.malda`.
 
 ## `requires` labels

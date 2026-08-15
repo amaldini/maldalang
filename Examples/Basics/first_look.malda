@@ -1,15 +1,16 @@
 // first_look.malda — what MALDA looks like (offline, no API key)
 //
 // Run: malda Examples/Basics/first_look.malda
-// A prompt without await is a rendered template. await would call the model.
-// schema + validate() check structured values; type hints are not runtime checks.
+// `-> Review` binds this prompt to the schema. Without await, the call only
+// renders the template. await codeReview(...) would call the model and
+// validate the JSON against Review — the same check as validate("Review", ...) below.
 
 schema Review {
     summary: string;
     issues: string[];
 }
 
-prompt codeReview(code, language) {
+prompt codeReview(code, language) -> Review {
     system: "You are an expert reviewer of {language}.",
     user: "Review this {language} code:\n\n{code}"
 }
