@@ -10,7 +10,7 @@ function factorial(n) {
 }
 
 var result1 = add(5, 3);
-print($"5 + 3 = {result1}");
+io.print($"5 + 3 = {result1}");
 
 var result2 = factorial(5);
-print($"5! = {result2}");
+io.print($"5! = {result2}");

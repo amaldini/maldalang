@@ -7,4 +7,4 @@ prompt greet(name) {
 
 // Use the prompt
 var greeting = greet("Alice");
-print("User prompt: " + greeting.user);
+io.print("User prompt: " + greeting.user);

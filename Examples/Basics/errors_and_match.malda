@@ -1,45 +1,45 @@
 // errors_and_match.malda — try/catch/finally and match expressions
 // Run: malda Examples/Basics/errors_and_match.malda
 
-print("=== try / catch (string throw) ===");
+io.print("=== try / catch (string throw) ===");
 try {
     throw "something went wrong";
 } catch (error) {
-    print("caught: " + error);
+    io.print("caught: " + error);
 }
 
-print("=== tagged catch (dict kind) ===");
+io.print("=== tagged catch (dict kind) ===");
 try {
     throw dict { "kind": "IO", "message": "disk full" };
 } catch (e if e.kind == "IO") {
-    print("IO: " + e.message);
+    io.print("IO: " + e.message);
 } catch (e) {
-    print("other: " + e);
+    io.print("other: " + e);
 }
 
-print("=== finally always runs ===");
+io.print("=== finally always runs ===");
 try {
-    print("in try");
+    io.print("in try");
 } catch (error) {
-    print("caught: " + error);
+    io.print("caught: " + error);
 } finally {
-    print("cleanup");
+    io.print("cleanup");
 }
 
-print("=== match on status code ===");
+io.print("=== match on status code ===");
 var status = 404;
 var label = match status {
     case 200: "ok";
     case 404: "not found";
     default: "other";
 };
-print("status " + status + " => " + label);
+io.print("status " + status + " => " + label);
 
-print("=== match as statement ===");
+io.print("=== match as statement ===");
 match status {
-    case 200: print("success path");
-    case 404: print("missing resource");
-    default: print("unexpected status");
+    case 200: io.print("success path");
+    case 404: io.print("missing resource");
+    default: io.print("unexpected status");
 }
 
-print("Done.");
+io.print("Done.");

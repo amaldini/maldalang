@@ -19,5 +19,4 @@ var allTask = all(taskA, taskB);
 var results = await allTask;
 
 var sum = results[0] + results[1];
-print(sum); // Expected output: 3
-
+io.print(sum); // Expected output: 3

@@ -10,9 +10,9 @@ Throw an object with a `kind` (or any field) and filter in `catch`:
 try {
     throw dict { "kind": "IO", "message": "disk full" };
 } catch (e if e.kind == "IO") {
-    print("IO: " + e.message);
+    io.print("IO: " + e.message);
 } catch (e) {
-    print("other: " + string(e));
+    io.print("other: " + string(e));
 }
 ```
 
@@ -34,9 +34,9 @@ function parseAge(raw) {
 
 var r = parseAge("12");
 if (result.isOk(r)) {
-    print(result.unwrapOr(r, 0));
+    io.print(result.unwrapOr(r, 0));
 } else {
-    print("failed");
+    io.print("failed");
 }
 ```
 
@@ -55,7 +55,7 @@ schema Person {
 
 var checked = validate("Person", dict { "name": "Ada", "age": 36 });
 if (checked.ok) {
-    print(checked.data.name);
+    io.print(checked.data.name);
 }
 ```
 

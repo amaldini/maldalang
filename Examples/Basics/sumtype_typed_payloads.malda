@@ -16,8 +16,8 @@ type Intent =
 
 var buyOk = dict { "tag": "Buy", "sku": "SKU-9", "qty": 2 };
 var buyBad = dict { "tag": "Buy", "sku": "SKU-9", "qty": "x" };
-print(validate("Intent", buyOk).ok);
-print(validate("Intent", buyBad).ok);
+io.print(validate("Intent", buyOk).ok);
+io.print(validate("Intent", buyBad).ok);
 
 var visit = dict {
     "tag": "Visit",
@@ -25,7 +25,7 @@ var visit = dict {
 };
 var visitCheck = validate("Intent", visit);
 if (visitCheck.ok) {
-    print(visitCheck.data.addr.city);
+    io.print(visitCheck.data.addr.city);
 } else {
-    print("unexpected: " + visitCheck.error);
+    io.print("unexpected: " + visitCheck.error);
 }

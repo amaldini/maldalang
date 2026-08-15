@@ -13,6 +13,7 @@ namespace MaldaLang.Tests;
 public class TranspileSmokeTests
 {
     [Theory]
+    [InlineData("Examples/Basics/first_look.malda")]
     [InlineData("Examples/Basics/schema_validate.malda")]
     [InlineData("Examples/Agents/phase6_pure_validate.malda")]
     [InlineData("Examples/Workflows/simple_step.malda")]

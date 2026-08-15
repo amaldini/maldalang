@@ -6,9 +6,12 @@ Fullstack sessions/auth/jobs walkthrough: [`docs/tutorials/fullstack-sessions-au
 Run from the repo root (or a distribution that ships `Examples/`):
 
 ```bash
-malda Examples/Basics/hello_world.malda
-# or: dotnet run --project MaldaLang -- Examples/Basics/hello_world.malda
+malda Examples/Basics/first_look.malda
+# or: dotnet run --project MaldaLang -- Examples/Basics/first_look.malda
 ```
+
+`first_look.malda` is the characteristic offline sample (`prompt` + `schema` + `validate`).
+The one-line smoke is still `Examples/Basics/hello_world.malda`.
 
 ## `requires` labels
 

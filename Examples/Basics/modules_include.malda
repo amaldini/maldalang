@@ -6,6 +6,6 @@
 
 include "helpers/greet_lib.malda";
 
-print(greet("MALDA"));
-print("2 + 3 = " + add(2, 3));
-print("Done.");
+io.print(greet("MALDA"));
+io.print("2 + 3 = " + add(2, 3));
+io.print("Done.");

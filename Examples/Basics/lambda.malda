@@ -4,8 +4,8 @@
 // This example demonstrates lambda expressions (anonymous functions) and
 // their powerful use with arrays in MALDA.
 
-print("=== LAMBDA BASICS ===");
-print("");
+io.print("=== LAMBDA BASICS ===");
+io.print("");
 
 // ----------------------------------------------------------------------------
 // 1. LAMBDA SYNTAX BASICS
@@ -16,11 +16,11 @@ var add = (a, b) => a + b;
 var square = x => x * x;  // Single parameter can omit parentheses
 var getValue = () => 42;  // Empty parameter list
 
-print("1. Basic Lambda Syntax:");
-print($"add(5, 3) = {add(5, 3)}");
-print($"square(4) = {square(4)}");
-print($"getValue() = {getValue()}");
-print("");
+io.print("1. Basic Lambda Syntax:");
+io.print($"add(5, 3) = {add(5, 3)}");
+io.print($"square(4) = {square(4)}");
+io.print($"getValue() = {getValue()}");
+io.print("");
 
 // Block body (multiple statements, explicit return)
 var process = (x) => {
@@ -29,202 +29,202 @@ var process = (x) => {
     return result;
 };
 
-print($"process(5) = {process(5)}");
-print("");
+io.print($"process(5) = {process(5)}");
+io.print("");
 
 // ----------------------------------------------------------------------------
 // 2. ARRAY BASICS
 // ----------------------------------------------------------------------------
 
-print("=== ARRAY BASICS ===");
-print("");
+io.print("=== ARRAY BASICS ===");
+io.print("");
 
 var numbers = [1, 2, 3, 4, 5];
 var names = ["Alice", "Bob", "Charlie", "David"];
 var mixed = [10, "hello", true, 3.14];
 
-print("2. Array Creation:");
-print($"numbers = {numbers}");
-print($"names = {names}");
-print($"mixed = {mixed}");
-print($"Array length: {numbers.length}");
-print("");
+io.print("2. Array Creation:");
+io.print($"numbers = {numbers}");
+io.print($"names = {names}");
+io.print($"mixed = {mixed}");
+io.print($"Array length: {numbers.length}");
+io.print("");
 
 // Array access and modification
-print("3. Array Access:");
-print($"numbers[0] = {numbers[0]}");
-print($"numbers[numbers.length - 1] = {numbers[numbers.length - 1]}");
+io.print("3. Array Access:");
+io.print($"numbers[0] = {numbers[0]}");
+io.print($"numbers[numbers.length - 1] = {numbers[numbers.length - 1]}");
 numbers[2] = 99;
-print($"After numbers[2] = 99: {numbers}");
-print("");
+io.print($"After numbers[2] = 99: {numbers}");
+io.print("");
 
 // ----------------------------------------------------------------------------
 // 3. ARRAY METHODS WITH LAMBDAS - TRANSFORMATION
 // ----------------------------------------------------------------------------
 
-print("=== ARRAY TRANSFORMATION METHODS ===");
-print("");
+io.print("=== ARRAY TRANSFORMATION METHODS ===");
+io.print("");
 
 // map() - Transform each element
-print("4. map() - Transform elements:");
+io.print("4. map() - Transform elements:");
 var doubled = numbers.map(x => x * 2);
-print($"Original: {numbers}");
-print($"Doubled: {doubled}");
+io.print($"Original: {numbers}");
+io.print($"Doubled: {doubled}");
 
 var squared = [1, 2, 3, 4, 5].map(x => x * x);
-print($"Squared: {squared}");
+io.print($"Squared: {squared}");
 
 var upperNames = names.map(name => string(name).upper());
-print($"Uppercase names: {upperNames}");
+io.print($"Uppercase names: {upperNames}");
 
 // Complex transformation with block body
 var formatted = numbers.map(x => {
     var doubled = x * 2;
     return $"Value: {doubled}";
 });
-print($"Formatted: {formatted}");
-print("");
+io.print($"Formatted: {formatted}");
+io.print("");
 
 // ----------------------------------------------------------------------------
 // 4. ARRAY METHODS WITH LAMBDAS - FILTERING
 // ----------------------------------------------------------------------------
 
-print("=== ARRAY FILTERING METHODS ===");
-print("");
+io.print("=== ARRAY FILTERING METHODS ===");
+io.print("");
 
 // filter() - Filter elements based on predicate
-print("5. filter() - Filter elements:");
+io.print("5. filter() - Filter elements:");
 var evens = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].filter(x => x % 2 == 0);
-print($"Even numbers: {evens}");
+io.print($"Even numbers: {evens}");
 
 var odds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].filter(x => x % 2 == 1);
-print($"Odd numbers: {odds}");
+io.print($"Odd numbers: {odds}");
 
 var large = [5, 12, 8, 130, 44].filter(x => x > 10);
-print($"Numbers > 10: {large}");
+io.print($"Numbers > 10: {large}");
 
 var longNames = names.filter(name => string(name).length() > 4);
-print($"Long names (>4 chars): {longNames}");
-print("");
+io.print($"Long names (>4 chars): {longNames}");
+io.print("");
 
 // find() - Find first matching element
-print("6. find() - Find first match:");
+io.print("6. find() - Find first match:");
 var firstEven = [1, 3, 5, 6, 7, 8].find(x => x % 2 == 0);
-print($"First even: {firstEven}");
+io.print($"First even: {firstEven}");
 
 var firstLong = names.find(name => string(name).length() > 4);
-print($"First long name: {firstLong}");
-print("");
+io.print($"First long name: {firstLong}");
+io.print("");
 
 // findIndex() - Find index of first matching element
-print("7. findIndex() - Find index:");
+io.print("7. findIndex() - Find index:");
 var index = [1, 3, 5, 6, 7, 8].findIndex(x => x % 2 == 0);
-print($"Index of first even: {index}");
+io.print($"Index of first even: {index}");
 
 var notFound = [1, 3, 5, 7].findIndex(x => x % 2 == 0);
-print($"Index when not found: {notFound}");
-print("");
+io.print($"Index when not found: {notFound}");
+io.print("");
 
 // ----------------------------------------------------------------------------
 // 5. ARRAY METHODS WITH LAMBDAS - REDUCTION
 // ----------------------------------------------------------------------------
 
-print("=== ARRAY REDUCTION METHODS ===");
-print("");
+io.print("=== ARRAY REDUCTION METHODS ===");
+io.print("");
 
 // reduce() - Reduce array to single value
-print("8. reduce() - Reduce to single value:");
+io.print("8. reduce() - Reduce to single value:");
 var sum = [1, 2, 3, 4, 5].reduce((acc, x) => acc + x, 0);
-print($"Sum: {sum}");
+io.print($"Sum: {sum}");
 
 var product = [1, 2, 3, 4, 5].reduce((acc, x) => acc * x, 1);
-print($"Product: {product}");
+io.print($"Product: {product}");
 
 var max = [3, 7, 2, 9, 1].reduce((acc, x) => x > acc ? x : acc, -999999);
-print($"Max: {max}");
+io.print($"Max: {max}");
 
 var concatenated = names.reduce((acc, name) => acc + " " + name, "");
-print($"Concatenated names: {concatenated}");
+io.print($"Concatenated names: {concatenated}");
 
 // reduce() without initial value (uses first element)
 var sum2 = [1, 2, 3, 4, 5].reduce((acc, x) => acc + x);
-print($"Sum (no initial): {sum2}");
-print("");
+io.print($"Sum (no initial): {sum2}");
+io.print("");
 
 // ----------------------------------------------------------------------------
 // 6. ARRAY METHODS WITH LAMBDAS - ITERATION
 // ----------------------------------------------------------------------------
 
-print("=== ARRAY ITERATION METHODS ===");
-print("");
+io.print("=== ARRAY ITERATION METHODS ===");
+io.print("");
 
 // forEach() - Iterate with side effects
-print("9. forEach() - Iterate:");
-print("Printing numbers:");
-[1, 2, 3, 4, 5].forEach(x => print($"  Number: {x}"));
+io.print("9. forEach() - Iterate:");
+io.print("Printing numbers:");
+[1, 2, 3, 4, 5].forEach(x => io.print($"  Number: {x}"));
 
-print("Printing names with index:");
+io.print("Printing names with index:");
 var index = 0;
 names.forEach(name => {
-    print($"  {index}: {name}");
+    io.print($"  {index}: {name}");
     index = index + 1;
 });
-print("");
+io.print("");
 
 // ----------------------------------------------------------------------------
 // 7. ARRAY METHODS WITH LAMBDAS - TESTING
 // ----------------------------------------------------------------------------
 
-print("=== ARRAY TESTING METHODS ===");
-print("");
+io.print("=== ARRAY TESTING METHODS ===");
+io.print("");
 
 // some() - Test if any element matches
-print("10. some() - Any element matches:");
+io.print("10. some() - Any element matches:");
 var hasEven = [1, 3, 5, 6, 7].some(x => x % 2 == 0);
-print($"Has even: {hasEven}");
+io.print($"Has even: {hasEven}");
 
 var hasEven2 = [1, 3, 5, 7, 9].some(x => x % 2 == 0);
-print($"Has even (all odd): {hasEven2}");
+io.print($"Has even (all odd): {hasEven2}");
 
 var hasLongName = names.some(name => string(name).length() > 5);
-print($"Has long name: {hasLongName}");
-print("");
+io.print($"Has long name: {hasLongName}");
+io.print("");
 
 // every() - Test if all elements match
-print("11. every() - All elements match:");
+io.print("11. every() - All elements match:");
 var allEven = [2, 4, 6, 8].every(x => x % 2 == 0);
-print($"All even: {allEven}");
+io.print($"All even: {allEven}");
 
 var allEven2 = [2, 4, 6, 7, 8].every(x => x % 2 == 0);
-print($"All even (has odd): {allEven2}");
+io.print($"All even (has odd): {allEven2}");
 
 var allPositive = [1, 2, 3, 4, 5].every(x => x > 0);
-print($"All positive: {allPositive}");
-print("");
+io.print($"All positive: {allPositive}");
+io.print("");
 
 // ----------------------------------------------------------------------------
 // 8. ARRAY METHODS WITH LAMBDAS - SORTING
 // ----------------------------------------------------------------------------
 
-print("=== ARRAY SORTING METHODS ===");
-print("");
+io.print("=== ARRAY SORTING METHODS ===");
+io.print("");
 
 // sort() - Sort array (with or without comparator)
-print("12. sort() - Sort array:");
+io.print("12. sort() - Sort array:");
 var unsorted = [3, 1, 4, 1, 5, 9, 2, 6];
-print($"Original: {unsorted}");
+io.print($"Original: {unsorted}");
 
 var sorted = [3, 1, 4, 1, 5, 9, 2, 6];
 sorted.sort();
-print($"Default sort: {sorted}");
+io.print($"Default sort: {sorted}");
 
 var customSorted = [3, 1, 4, 1, 5, 9, 2, 6];
 customSorted.sort((a, b) => a - b);  // Ascending
-print($"Ascending: {customSorted}");
+io.print($"Ascending: {customSorted}");
 
 var descSorted = [3, 1, 4, 1, 5, 9, 2, 6];
 descSorted.sort((a, b) => b - a);  // Descending
-print($"Descending: {descSorted}");
+io.print($"Descending: {descSorted}");
 
 var nameSorted = ["Charlie", "Alice", "David", "Bob"];
 nameSorted.sort((a, b) => {
@@ -232,77 +232,77 @@ nameSorted.sort((a, b) => {
     var bLen = string(b).length();
     return aLen - bLen;  // Sort by length
 });
-print($"Sorted by length: {nameSorted}");
-print("");
+io.print($"Sorted by length: {nameSorted}");
+io.print("");
 
 // reverse() - Reverse array
-print("13. reverse() - Reverse array:");
+io.print("13. reverse() - Reverse array:");
 var reversed = [1, 2, 3, 4, 5];
 reversed.reverse();
-print($"Reversed: {reversed}");
-print("");
+io.print($"Reversed: {reversed}");
+io.print("");
 
 // ----------------------------------------------------------------------------
 // 9. OTHER ARRAY METHODS
 // ----------------------------------------------------------------------------
 
-print("=== OTHER ARRAY METHODS ===");
-print("");
+io.print("=== OTHER ARRAY METHODS ===");
+io.print("");
 
 // slice() - Extract subarray
-print("14. slice() - Extract subarray:");
+io.print("14. slice() - Extract subarray:");
 var arr = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-print($"Original: {arr}");
-print($"slice(2, 5): {arr.slice(2, 5)}");
-print($"slice(0, 3): {arr.slice(0, 3)}");
-print($"slice(5): {arr.slice(5)}");
-print("");
+io.print($"Original: {arr}");
+io.print($"slice(2, 5): {arr.slice(2, 5)}");
+io.print($"slice(0, 3): {arr.slice(0, 3)}");
+io.print($"slice(5): {arr.slice(5)}");
+io.print("");
 
 // indexOf() and includes()
-print("15. indexOf() and includes():");
+io.print("15. indexOf() and includes():");
 var fruits = ["apple", "banana", "orange", "apple"];
-print($"fruits.indexOf(\"banana\"): {fruits.indexOf("banana")}");
-print($"fruits.indexOf(\"apple\"): {fruits.indexOf("apple")}");
-print($"fruits.indexOf(\"grape\"): {fruits.indexOf("grape")}");
-print($"fruits.includes(\"orange\"): {fruits.includes("orange")}");
-print($"fruits.includes(\"grape\"): {fruits.includes("grape")}");
-print("");
+io.print($"fruits.indexOf(\"banana\"): {fruits.indexOf("banana")}");
+io.print($"fruits.indexOf(\"apple\"): {fruits.indexOf("apple")}");
+io.print($"fruits.indexOf(\"grape\"): {fruits.indexOf("grape")}");
+io.print($"fruits.includes(\"orange\"): {fruits.includes("orange")}");
+io.print($"fruits.includes(\"grape\"): {fruits.includes("grape")}");
+io.print("");
 
 // append(), pop(), shift(), concat()
-print("16. Array manipulation:");
+io.print("16. Array manipulation:");
 var stack = [1, 2, 3];
 stack.append(4);
-print($"After append(4): {stack}");
+io.print($"After append(4): {stack}");
 
 var last = stack.pop();
-print($"pop() returned: {last}, array: {stack}");
+io.print($"pop() returned: {last}, array: {stack}");
 
 var first = stack.shift();
-print($"shift() returned: {first}, array: {stack}");
+io.print($"shift() returned: {first}, array: {stack}");
 
 var a = [1, 2];
 var b = [3, 4];
 var c = a.concat(b);
-print($"concat([1,2], [3,4]): {c}");
-print("");
+io.print($"concat([1,2], [3,4]): {c}");
+io.print("");
 
 // ----------------------------------------------------------------------------
 // 10. LAMBDA CLOSURES
 // ----------------------------------------------------------------------------
 
-print("=== LAMBDA CLOSURES ===");
-print("");
+io.print("=== LAMBDA CLOSURES ===");
+io.print("");
 
 // Lambdas capture variables from enclosing scope
-print("17. Closure - Capturing outer variables:");
+io.print("17. Closure - Capturing outer variables:");
 function makeMultiplier(factor) {
     return (x) => x * factor;  // Captures factor in closure
 }
 
 var double = makeMultiplier(2);
 var triple = makeMultiplier(3);
-print($"double(5) = {double(5)}");
-print($"triple(5) = {triple(5)}");
+io.print($"double(5) = {double(5)}");
+io.print($"triple(5) = {triple(5)}");
 
 function makeAdder(n) {
     return (x) => x + n;  // Captures n
@@ -310,12 +310,12 @@ function makeAdder(n) {
 
 var add5 = makeAdder(5);
 var add10 = makeAdder(10);
-print($"add5(3) = {add5(3)}");
-print($"add10(3) = {add10(3)}");
-print("");
+io.print($"add5(3) = {add5(3)}");
+io.print($"add10(3) = {add10(3)}");
+io.print("");
 
 // Closure with changing variable
-print("18. Closure with changing variable:");
+io.print("18. Closure with changing variable:");
 var counter = 0;
 var getCounter = () => counter;
 var incrementCounter = () => {
@@ -323,21 +323,21 @@ var incrementCounter = () => {
     return counter;
 };
 
-print($"Initial counter: {getCounter()}");
+io.print($"Initial counter: {getCounter()}");
 incrementCounter();
 incrementCounter();
-print($"After increments: {getCounter()}");
-print("");
+io.print($"After increments: {getCounter()}");
+io.print("");
 
 // ----------------------------------------------------------------------------
 // 11. CHAINING ARRAY METHODS
 // ----------------------------------------------------------------------------
 
-print("=== CHAINING ARRAY METHODS ===");
-print("");
+io.print("=== CHAINING ARRAY METHODS ===");
+io.print("");
 
 // Chain multiple array methods together
-print("19. Method chaining:");
+io.print("19. Method chaining:");
 var data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 // Filter even numbers, double them, then sum
@@ -345,25 +345,25 @@ var result = data
     .filter(x => x % 2 == 0)
     .map(x => x * 2)
     .reduce((acc, x) => acc + x, 0);
-print($"Filter evens, double, sum: {result}");
+io.print($"Filter evens, double, sum: {result}");
 
 // Filter, map, and find
 var firstLargeEven = data
     .filter(x => x % 2 == 0)
     .map(x => x * 10)
     .find(x => x > 50);
-print($"First large even (after *10): {firstLargeEven}");
-print("");
+io.print($"First large even (after *10): {firstLargeEven}");
+io.print("");
 
 // ----------------------------------------------------------------------------
 // 12. PRACTICAL EXAMPLES
 // ----------------------------------------------------------------------------
 
-print("=== PRACTICAL EXAMPLES ===");
-print("");
+io.print("=== PRACTICAL EXAMPLES ===");
+io.print("");
 
 // Example 1: Processing user data
-print("20. Processing user data:");
+io.print("20. Processing user data:");
 // Note: Object literals use string keys
 var users = [
     {"name": "Alice", "age": 25, "active": true},
@@ -374,24 +374,24 @@ var users = [
 
 // Get active users
 var activeUsers = users.filter(u => u.active);
-print($"Active users count: {activeUsers.length}");
+io.print($"Active users count: {activeUsers.length}");
 
 // Get names of active users
 var activeNames = users
     .filter(u => u.active)
     .map(u => u.name);
-print($"Active user names: {activeNames}");
+io.print($"Active user names: {activeNames}");
 
 // Calculate average age of active users
 var totalAge = users
     .filter(u => u.active)
     .reduce((acc, u) => acc + u.age, 0);
 var avgAge = totalAge / activeUsers.length;
-print($"Average age of active users: {avgAge}");
-print("");
+io.print($"Average age of active users: {avgAge}");
+io.print("");
 
 // Example 2: Number processing
-print("21. Number processing:");
+io.print("21. Number processing:");
 var numbers2 = [12, 45, 8, 23, 56, 9, 34, 67, 2, 91];
 
 // Find all numbers between 20 and 50, square them, then sum
@@ -399,40 +399,40 @@ var processed = numbers2
     .filter(x => x >= 20 && x <= 50)
     .map(x => x * x)
     .reduce((acc, x) => acc + x, 0);
-print($"Filtered (20-50), squared, summed: {processed}");
+io.print($"Filtered (20-50), squared, summed: {processed}");
 
 // Check if all numbers are positive
 var allPositive = numbers2.every(x => x > 0);
-print($"All positive: {allPositive}");
-print("");
+io.print($"All positive: {allPositive}");
+io.print("");
 
 // Example 3: String processing
-print("22. String processing:");
+io.print("22. String processing:");
 var words = ["hello", "world", "lambda", "array", "function", "example"];
 
 // Filter words longer than 5 characters and convert to uppercase
 var longUpper = words
     .filter(w => string(w).length() > 5)
     .map(w => string(w).upper());
-print($"Long words (uppercase): {longUpper}");
+io.print($"Long words (uppercase): {longUpper}");
 
 // Find first word starting with a
 var startsWithA = words.find(w => {
     var s = string(w);
     return s.length() > 0 && s.substring(0, 1).lower() == "a";
 });
-print($"First word starting with \"a\": {startsWithA}");
-print("");
+io.print($"First word starting with \"a\": {startsWithA}");
+io.print("");
 
 // ----------------------------------------------------------------------------
 // 13. NESTED LAMBDAS
 // ----------------------------------------------------------------------------
 
-print("=== NESTED LAMBDAS ===");
-print("");
+io.print("=== NESTED LAMBDAS ===");
+io.print("");
 
 // Lambdas returning lambdas
-print("23. Lambdas returning lambdas:");
+io.print("23. Lambdas returning lambdas:");
 function makeComparator(direction) {
     if (direction == "asc") {
         return (a, b) => a - b;
@@ -446,15 +446,15 @@ var descSort = makeComparator("desc");
 
 var testArr = [3, 1, 4, 1, 5];
 testArr.sort(ascSort);
-print($"Ascending sort: {testArr}");
+io.print($"Ascending sort: {testArr}");
 
 testArr = [3, 1, 4, 1, 5];
 testArr.sort(descSort);
-print($"Descending sort: {testArr}");
-print("");
+io.print($"Descending sort: {testArr}");
+io.print("");
 
 // Higher-order functions
-print("24. Higher-order functions:");
+io.print("24. Higher-order functions:");
 function applyOperation(arr, operation) {
     return arr.map(operation);
 }
@@ -462,19 +462,19 @@ function applyOperation(arr, operation) {
 var nums = [1, 2, 3, 4];
 var doubled2 = applyOperation(nums, x => x * 2);
 var tripled = applyOperation(nums, x => x * 3);
-print($"Doubled: {doubled2}");
-print($"Tripled: {tripled}");
-print("");
+io.print($"Doubled: {doubled2}");
+io.print($"Tripled: {tripled}");
+io.print("");
 
 // ----------------------------------------------------------------------------
 // 14. COMPLEX LAMBDA EXPRESSIONS
 // ----------------------------------------------------------------------------
 
-print("=== COMPLEX LAMBDA EXPRESSIONS ===");
-print("");
+io.print("=== COMPLEX LAMBDA EXPRESSIONS ===");
+io.print("");
 
 // Complex filtering with multiple conditions
-print("25. Complex filtering:");
+io.print("25. Complex filtering:");
 var data2 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
 
 var complex = data2.filter(x => {
@@ -482,7 +482,7 @@ var complex = data2.filter(x => {
     var isMultipleOf3 = x % 3 == 0;
     return isEven && isMultipleOf3;
 });
-print($"Even and multiple of 3: {complex}");
+io.print($"Even and multiple of 3: {complex}");
 
 // Complex transformation
 var transformed = data2.map(x => {
@@ -492,18 +492,18 @@ var transformed = data2.map(x => {
         return x * 3;
     }
 });
-print($"Even*2, Odd*3: {transformed}");
-print("");
+io.print($"Even*2, Odd*3: {transformed}");
+io.print("");
 
 // ----------------------------------------------------------------------------
 // 15. ARRAYS OF LAMBDAS
 // ----------------------------------------------------------------------------
 
-print("=== ARRAYS OF LAMBDAS ===");
-print("");
+io.print("=== ARRAYS OF LAMBDAS ===");
+io.print("");
 
 // Store lambdas in arrays
-print("26. Arrays of lambdas:");
+io.print("26. Arrays of lambdas:");
 var operations = [
     x => x * 2,
     x => x * 3,
@@ -512,16 +512,16 @@ var operations = [
 ];
 
 var value = 5;
-print($"Applying operations to {value}:");
+io.print($"Applying operations to {value}:");
 operations.forEach(op => {
     var result = op(value);
-    print($"  Result: {result}");
+    io.print($"  Result: {result}");
 });
-print("");
+io.print("");
 
 // Apply multiple operations
 var results = operations.map(op => op(5));
-print($"All results: {results}");
-print("");
+io.print($"All results: {results}");
+io.print("");
 
-print("=== END OF EXAMPLES ===");
+io.print("=== END OF EXAMPLES ===");

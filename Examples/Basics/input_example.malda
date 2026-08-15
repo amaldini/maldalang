@@ -3,23 +3,23 @@
 // Alice
 // 25
 
-print("Starting input example...");
+io.print("Starting input example...");
 
-var name = input("Enter your name: ");
-print($"Name received: {name}");
+var name = io.input("Enter your name: ");
+io.print($"Name received: {name}");
 
-var ageStr = input("Enter your age: ");
-print($"Age string received: {ageStr}");
+var ageStr = io.input("Enter your age: ");
+io.print($"Age string received: {ageStr}");
 
 if (ageStr != "") {
     var age = int(ageStr);
-    print($"You are {age} years old.");
+    io.print($"You are {age} years old.");
     
     if (age >= 18) {
-        print("You are an adult.");
+        io.print("You are an adult.");
     } else {
-        print("You are a minor.");
+        io.print("You are a minor.");
     }
 } else {
-    print("No age provided.");
+    io.print("No age provided.");
 }

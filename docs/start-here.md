@@ -9,6 +9,18 @@ MALDA is easiest to learn when you choose the path that matches what you are try
 
 **Editors:** Desktop IDE = full Windows IDE; Web IDE = browser learning playground (not Desktop parity); VS Code + LSP = cross-platform editing. See the root `README.md` IDE section.
 
+## What MALDA looks like
+
+If you already program, run this first. It needs **no API key**:
+
+```bash
+malda Examples/Basics/first_look.malda
+```
+
+That file is a `prompt` declaration, a `schema`, and `validate()` — the constructs the language is for. Without `await`, the prompt is a rendered template (testable, no model call). Type annotations elsewhere are IDE/LSP hints; `schema` + `validate()` is how structured values are checked at runtime.
+
+Then pick a path below. If you are new to programming, start with **Learn Programming**.
+
 Use the route below that matches your immediate goal.
 
 ## 1. Learn Programming
@@ -17,14 +29,15 @@ Choose this path if you are new to programming, new to MALDA syntax, or want to 
 
 Start with:
 
-1. `Examples/Basics/hello_world.malda`
-2. `Examples/Basics/variables_arithmetic.malda`
-3. `Examples/Basics/input_example.malda`
-4. `Examples/Basics/conditionals.malda`
-5. `Examples/Basics/while_loop.malda`
-6. `Examples/Basics/for_loop.malda`
-7. `Examples/Basics/functions.malda`
-8. `Examples/Basics/lambda.malda`
+1. `Examples/Basics/first_look.malda` (characteristic constructs; skip if you just want syntax)
+2. `Examples/Basics/hello_world.malda`
+3. `Examples/Basics/variables_arithmetic.malda`
+4. `Examples/Basics/input_example.malda`
+5. `Examples/Basics/conditionals.malda`
+6. `Examples/Basics/while_loop.malda`
+7. `Examples/Basics/for_loop.malda`
+8. `Examples/Basics/functions.malda`
+9. `Examples/Basics/lambda.malda`
 
 Why this path:
 
@@ -99,6 +112,7 @@ This path emphasizes **MALDA Workflow/Cloud**.
 
 ## Which Path Should I Pick?
 
+- Run `Examples/Basics/first_look.malda` first if you want the characteristic constructs before a tutorial
 - Choose `Learn Programming` if the syntax is new
 - Choose `Build An AI App` if prompts and agents are your first priority
 - Choose `Build An API Or Full-Stack App` if you want a scaffold you can extend immediately
