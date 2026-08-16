@@ -168,5 +168,5 @@ See [`ReferenceManual/README-print.md`](ReferenceManual/README-print.md). Short 
 - [`docs/start-here.md`](docs/start-here.md) — learning paths
 - [`docs/roadmap-p0-maturity.md`](docs/roadmap-p0-maturity.md) — P0 maturity roadmap (complete; next = post-Final / deferred)
 - [`docs/roadmap-language-constructs.md`](docs/roadmap-language-constructs.md) — next language constructs (schema/sum types, Mode C, budget, WF determinism)
-- [`docs/roadmap-detoy.md`](docs/roadmap-detoy.md) — destoy / trust plan (strict compile, smoke, gotchas; toolchain 1.0 gated)
+- [`docs/roadmap-trust.md`](docs/roadmap-trust.md) — trust plan (strict compile, smoke, gotchas; toolchain 1.0.0 landed)
 - [`llms.txt`](llms.txt) — compact doc index for LLM tools

@@ -12,7 +12,7 @@ Canonical reading order for tools and agents working on this repository.
 - docs/roadmap-p0-maturity.md — P0 maturity roadmap (complete; types, workflows, parity, AI, UI)
 - docs/roadmap-p0-types-impl.md — P0 types T1–T4 implementation plan (status: implemented)
 - docs/roadmap-language-constructs.md — post-Final language constructs plan (schema/sum types, Mode C, budget, WF determinism, grounded values, capability tokens)
-- docs/roadmap-detoy.md — destoy / trust plan (strict compile, transpile smoke, loud gotchas; toolchain 1.0 gated)
+- docs/roadmap-trust.md — trust plan (strict compile, transpile smoke, loud gotchas; toolchain 1.0.0 landed)
 - docs/roadmap-interpret-debug.md — interpret-mode source-level debug plan (DAP + shared DebugSession; not transpile `#line`)
 - docs/debugging-interpret.md — `malda debug-adapter` CLI notes (interpret DAP; VS Code F5 is D3)
 
@@ -53,4 +53,4 @@ Canonical reading order for tools and agents working on this repository.
 
 ## Note
 
-docs/planning/ contains historical design notes. Prefer docs/roadmap-language-constructs.md for the next language-construct work; prefer docs/roadmap-detoy.md for destoy / trust (strict compile, smoke, gotchas); prefer docs/roadmap-p0-maturity.md for completed P0 / deferred non-language items; prefer AGENTS.md, docs/architecture.md, ReferenceManual/, and the code when behavior disagrees with planning docs.
+docs/planning/ contains historical design notes. Prefer docs/roadmap-language-constructs.md for the next language-construct work; prefer docs/roadmap-trust.md for publish/trust (strict compile, smoke, gotchas); prefer docs/roadmap-p0-maturity.md for completed P0 / deferred non-language items; prefer AGENTS.md, docs/architecture.md, ReferenceManual/, and the code when behavior disagrees with planning docs.

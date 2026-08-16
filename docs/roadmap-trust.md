@@ -1,6 +1,6 @@
-# MALDA detoy roadmap (trust before syntax)
+# MALDA trust roadmap (trust before syntax)
 
-**Status:** DT0–DT4 landed 2026-08-15; DT5 named (Second Brain instance others use; out of repo); DT6 gated (do not tag toolchain 1.0 yet)  
+**Status:** DT0–DT4 and DT6 landed 2026-08-16; DT5 named (Second Brain instance others use; out of repo)  
 **Created:** 2026-08-15  
 **Audience:** maintainers prioritizing the OSS core after P0 + L1–L6
 
@@ -9,8 +9,8 @@ This is the forward plan after
 [`docs/roadmap-language-constructs.md`](roadmap-language-constructs.md)
 (L1a–L6 landed; L1c gated). The language surface is no longer the toy gap.
 What still reads as toy is **trust**: types that do not bind at publish,
-interpreter ≠ transpile, silent gotchas, toolchain 0.1.x, and no program
-that hurts if it breaks.
+interpreter ≠ transpile, silent gotchas, and no program that hurts if it
+breaks. Toolchain **1.0.0** is tagged.
 
 **Not in scope here:** new syntax / L1c / pipes / keywords, new builtins or
 flat aliases, a full static type system with runtime enforcement of every
@@ -37,13 +37,13 @@ boundary. Interpret stays dynamic.
 
 | Rank | Workstream | Why |
 |------|------------|-----|
-| 0 | **DT0** Roadmap file | One place to track destoy work (this document) |
+| 0 | **DT0** Roadmap file | One place to track this trust work (this document) |
 | 1 | **DT1** First impression | CI / announcement / templates must lead with the characteristic file and say what MALDA is not |
 | 2 | **DT2** Strict compile | `var n: int = "abc"` must not emit an `.exe` |
 | 3 | **DT3** Transpile smoke | Showcases that claim to ship must compile; one interpret/transpile pair catches silent diffs |
 | 4 | **DT4** Loud gotchas | Interpolation and `parseJson` must not succeed wrongly with no feedback |
 | 5 | **DT5** One real service | Out of this repo — a process that must stay up |
-| 6 | **DT6** Toolchain 1.0 | Same `<Version>` + tag **only after** DT2-default and DT3 |
+| 6 | **DT6** Toolchain 1.0 | Same `<Version>` + tag after DT2-default and DT3 — **landed** `v1.0.0` |
 
 ```text
 DT0  roadmap file
@@ -51,7 +51,7 @@ DT0  roadmap file
   └─ DT2  compile --strict-types (opt-in, then transpile default)
        ├─ DT3  expand smoke + interpret/transpile pair
        └─ DT4  interpolation + parseJson diagnostics
-            └─ DT6  toolchain 1.0 (gated)
+            └─ DT6  toolchain 1.0 (landed v1.0.0)
 DT5  one always-on service (out of repo; dashed dependency for DT6 honesty)
 ```
 
@@ -148,14 +148,14 @@ OSS core stops at honest templates/docs and a usable
 
 ---
 
-## DT6 — Toolchain 1.0 (gated)
+## DT6 — Toolchain 1.0
 
-Language Spec is already **Final 1.0**. CLI is 0.1.x.
+**Landed 2026-08-16.** Language Spec was already **Final 1.0**. CLI/Desktop
+are `<Version>1.0.0</Version>`; notes in [`docs/releases/v1.0.0.md`](releases/v1.0.0.md);
+tag `v1.0.0` (`ReleaseVersionGuardTests`).
 
-**Do not tag toolchain 1.0.0 until DT2-B (transpile default) and DT3 are
-landed.** Then the existing release process: same `<Version>` in
-`MaldaLang/MaldaLang.csproj` and `MaldaLang.DesktopIDE/MaldaLang.DesktopIDE.csproj`,
-`docs/releases/v1.0.0.md`, tag `v1.0.0` (`ReleaseVersionGuardTests`).
+DT2-B (transpile default) and DT3 were the hard gates and had already
+landed. DT5 remains out of repo and is not a tag gate.
 
 ---
 
@@ -179,7 +179,7 @@ landed.** Then the existing release process: same `<Version>` in
 | Compile | `malda compile --mode transpile` fails on hint mismatch (default) with documented `--lenient-types` |
 | Smoke | README “shippable” Examples are in `TranspileSmokeTests` or marked `n/a` |
 | Gotchas | Plain-string interpolation and `parseJson` are no longer total silences |
-| Version | Toolchain 1.0.0 only after DT2-B + DT3 |
+| Version | Toolchain **1.0.0** tagged after DT2-B + DT3 |
 | Use | Announcement: “I run a Second Brain instance that others use.” |
 
 ---
@@ -214,6 +214,7 @@ landed.** Then the existing release process: same `<Version>` in
 
 | Date | Change |
 |------|--------|
-| 2026-08-15 | Initial detoy roadmap (DT0–DT6) |
+| 2026-08-15 | Initial trust roadmap (DT0–DT6) |
 | 2026-08-15 | DT0–DT4 landed: roadmap + links; CI `first_look`; compile `--strict-types` / transpile default + `--lenient-types`; smoke + interpret/transpile pair; `malda-interp` + `parseJson`/`parseJSON` errors |
 | 2026-08-15 | DT5 announcement: Second Brain instance that others use (no workplace detail) |
+| 2026-08-16 | DT6 landed: toolchain 1.0.0 (same `<Version>`, `docs/releases/v1.0.0.md`, tag `v1.0.0`) |

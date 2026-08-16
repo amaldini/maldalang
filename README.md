@@ -55,7 +55,7 @@ malda Examples/Basics/first_look.malda
 - **Types** — annotations feed the IDE/LSP (mismatches are Errors by default in the editor); runtime stays dynamic. `malda compile --mode transpile` / `publish` refuses emit on those Errors (`--lenient-types` to skip)
 - **Tooling** — Desktop IDE (Windows reference), Web IDE (browser playground — not Desktop parity), VS Code + LSP
 
-**What this is not:** a Temporal cluster, a full static type system, or three equal backends. Workflows are local SQLite (single writer). JavaScript is a browser subset. Spec Final 1.0 is the language kernel; the CLI is still 0.1.x until destoy gates land ([`docs/roadmap-detoy.md`](docs/roadmap-detoy.md)).
+**What this is not:** a Temporal cluster, a full static type system, or three equal backends. Workflows are local SQLite (single writer). JavaScript is a browser subset. Spec Final 1.0 is the language kernel; the toolchain is **1.0.0** (publish is the type boundary).
 
 The two largest showcases were written entirely by coding agents, even though MALDA is in no
 model's training data, because [`docs/llm/`](docs/llm/) ships a compact language pack for that
@@ -210,6 +210,7 @@ now it is where I experiment with what building on AI looks like.
 | [`docs/architecture.md`](docs/architecture.md) | Pipeline and project layout |
 | [`docs/start-here.md`](docs/start-here.md) | Guided onboarding |
 | [`llms.txt`](llms.txt) | Compact doc index for LLM tools |
+| [`docs/releases/v1.0.0.md`](docs/releases/v1.0.0.md) | Toolchain 1.0.0 (publish is the type boundary) |
 | [`docs/releases/v0.1.0.md`](docs/releases/v0.1.0.md) | Notes for the first public tag |
 | [`docs/releases/v0.1.1.md`](docs/releases/v0.1.1.md) | Notes for `--embed-folder` and Second Brain |
 | [`docs/releases/v0.1.2.md`](docs/releases/v0.1.2.md) | Semantic Second Brain, BGE-M3, `getProgramDirectory()` |

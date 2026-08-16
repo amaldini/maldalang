@@ -78,7 +78,7 @@ Server-driven `ui.*` trees, patch protocol, and `MaldaLang.UIHost` wiring are do
 | `docs/start-here.md`, `docs/architecture.md` | Onboarding |
 | [`docs/roadmap-p0-maturity.md`](roadmap-p0-maturity.md) | P0 maturity roadmap (workstreams complete 2026-08-12; next = post-Final / deferred) |
 | [`docs/roadmap-language-constructs.md`](roadmap-language-constructs.md) | Post-Final language constructs (schema/sum types, Mode C, budget, workflow determinism, grounded values, capability tokens) |
-| [`docs/roadmap-detoy.md`](roadmap-detoy.md) | Post-Final destoy / trust plan (strict compile, transpile smoke, loud gotchas; toolchain 1.0 gated) |
+| [`docs/roadmap-trust.md`](roadmap-trust.md) | Post-Final trust plan (strict compile, transpile smoke, loud gotchas; toolchain 1.0.0 landed) |
 | [`docs/roadmap-interpret-debug.md`](roadmap-interpret-debug.md) | Interpret-mode source-level debug — D0–D3 and D5 landed (`malda debug-adapter`, VS Code type `malda`, MALDA-specific stops) |
 | [`docs/workflows-ha.md`](workflows-ha.md) | Durable workflows: single-writer + read-only ops model (W2) |
 | `docs/javascript-backend.md`, `docs/ui-framework.md`, `docs/profiling.md`, `docs/benchmarks.md`, … | Topic guides |
@@ -95,7 +95,7 @@ Server-driven `ui.*` trees, patch protocol, and `MaldaLang.UIHost` wiring are do
 
 - Call-site type hints: [`MaldaLang/IDE/TypeCompatibilityDiagnostics.cs`](../MaldaLang/IDE/TypeCompatibilityDiagnostics.cs) infers declared callee return types (imports via [`ModuleSymbolResolver`](../MaldaLang/IDE/ModuleSymbolResolver.cs)).
 - Nested `schema` fields: [`SchemaRegistry`](../MaldaLang/BuiltIns/SchemaRegistry.cs) expands sibling schemas inline and may name a sum type; unknown names / cycles fail on resolve. `validate("Name", …)` resolves both schema and sum-type names. Sum-type constructors may optionally type payloads (`Buy(sku: string, qty: int)`); name-only stays permissive.
-- P0 maturity plan (landed): [`docs/roadmap-p0-maturity.md`](roadmap-p0-maturity.md). Post-Final gaps: [`docs/spec/CHANGELOG.md`](spec/CHANGELOG.md). Next language constructs: [`docs/roadmap-language-constructs.md`](roadmap-language-constructs.md). Destoy / trust: [`docs/roadmap-detoy.md`](roadmap-detoy.md).
+- P0 maturity plan (landed): [`docs/roadmap-p0-maturity.md`](roadmap-p0-maturity.md). Post-Final gaps: [`docs/spec/CHANGELOG.md`](spec/CHANGELOG.md). Next language constructs: [`docs/roadmap-language-constructs.md`](roadmap-language-constructs.md). Trust / publish: [`docs/roadmap-trust.md`](roadmap-trust.md).
 - Workflow HA / multi-worker (single writer + read-only ops, SQLite limits): [`docs/workflows-ha.md`](workflows-ha.md).
 - Workflow determinism: fixed WF1001/WF1002 deny-list in [`BuiltInRegistry.GetWorkflowBehavior`](../MaldaLang/BuiltIns/BuiltInRegistry.cs); IDE same-file call-graph in [`WorkflowDeterminismDiagnostics`](../MaldaLang/IDE/WorkflowDeterminismDiagnostics.cs) (imported/unknown callees are WF1005 Info; not Temporal-style history detection).
 - Resource bounds: [`@within(ms)`](../MaldaLang/Interpreter/WithinBoundsContext.cs) for wall-clock; [`@budget(tokens, tools, cost?)`](../MaldaLang/Interpreter/ResourceBoundsContext.cs) for prompt/agent-turn abort (env `MALDA_AGENT_CONTEXT_BUDGET_TOKENS` remains context-trim only).
