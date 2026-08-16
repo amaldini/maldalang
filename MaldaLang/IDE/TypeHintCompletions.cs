@@ -48,10 +48,13 @@ public static class TypeHintCompletions
                 return null;
 
             var prefixBeforeColon = beforeCursor.Substring(0, colonMatch.Index).TrimEnd();
-            if (!IsTypeHintColonContext(prefixBeforeColon))
-                return null;
+            if (IsTypeHintColonContext(prefixBeforeColon) ||
+                (IsBareSchemaFieldName(prefixBeforeColon) && IsInsideSchemaBody(source, line, column)))
+            {
+                return colonMatch.Groups[1].Value;
+            }
 
-            return colonMatch.Groups[1].Value;
+            return null;
         }
         catch
         {
@@ -81,6 +84,66 @@ public static class TypeHintCompletions
 
         return false;
     }
+
+    private static bool IsBareSchemaFieldName(string prefixBeforeColon) =>
+        Regex.IsMatch(prefixBeforeColon, @"^\s*\w+$", RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// True when the cursor is inside a <c>schema Name { ... }</c> body so
+    /// <c>field:</c> can offer type-hint completions.
+    /// </summary>
+    private static bool IsInsideSchemaBody(string source, int line, int column)
+    {
+        var offset = 0;
+        var currentLine = 0;
+        while (offset < source.Length && currentLine < line)
+        {
+            if (source[offset] == '\n')
+                currentLine++;
+            offset++;
+        }
+
+        offset = Math.Min(offset + Math.Max(column, 0), source.Length);
+        var prefix = source.Substring(0, offset);
+        var lastSchema = LastIndexOfKeyword(prefix, "schema");
+        if (lastSchema < 0)
+            return false;
+
+        var brace = prefix.IndexOf('{', lastSchema);
+        if (brace < 0)
+            return false;
+
+        var depth = 0;
+        for (var i = brace; i < prefix.Length; i++)
+        {
+            var ch = prefix[i];
+            if (ch == '{')
+                depth++;
+            else if (ch == '}')
+                depth--;
+        }
+
+        return depth > 0;
+    }
+
+    private static int LastIndexOfKeyword(string prefix, string keyword)
+    {
+        for (var i = prefix.Length - keyword.Length; i >= 0; i--)
+        {
+            if (!prefix.AsSpan(i, keyword.Length).Equals(keyword, StringComparison.Ordinal))
+                continue;
+            var beforeOk = i == 0 || !IsIdentifierContinue(prefix[i - 1]);
+            var afterOk = i + keyword.Length >= prefix.Length ||
+                          !IsIdentifierContinue(prefix[i + keyword.Length]);
+            if (beforeOk && afterOk)
+                return i;
+        }
+
+        return -1;
+    }
+
+    private static bool IsIdentifierContinue(char ch) =>
+        char.IsLetterOrDigit(ch) || ch == '_';
 
     private static bool IsInsideStringLiteral(string text)
     {

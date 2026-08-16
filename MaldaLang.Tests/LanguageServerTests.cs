@@ -312,6 +312,60 @@ public class LanguageServerTests
     }
 
     [Fact]
+    public async Task MaldaCompletionHandler_TopLevel_IncludesPromptSchemaApiKeywords()
+    {
+        var store = new DocumentStore();
+        var uri = CreateUri("/keywords.malda");
+        store.Set(uri, " ");
+        var handler = new MaldaCompletionHandler(store, new LanguageService());
+        var result = await handler.Handle(new CompletionParams
+        {
+            TextDocument = new TextDocumentIdentifier(uri),
+            Position = new Position(0, 1)
+        }, CancellationToken.None);
+
+        Assert.Contains(result.Items, item => item.Label == "prompt");
+        Assert.Contains(result.Items, item => item.Label == "schema");
+        Assert.Contains(result.Items, item => item.Label == "api");
+    }
+
+    [Fact]
+    public async Task MaldaCompletionHandler_PromptBody_OffersUserGatherAndTools()
+    {
+        var store = new DocumentStore();
+        var uri = CreateUri("/prompt_body.malda");
+        var source = "prompt greet(name) {\n    \n}";
+        store.Set(uri, source);
+        var handler = new MaldaCompletionHandler(store, new LanguageService());
+        var result = await handler.Handle(new CompletionParams
+        {
+            TextDocument = new TextDocumentIdentifier(uri),
+            Position = new Position(1, 4)
+        }, CancellationToken.None);
+
+        Assert.Contains(result.Items, item => item.Label == "user");
+        Assert.Contains(result.Items, item => item.Label == "gather");
+        Assert.Contains(result.Items, item => item.Label == "tools");
+        Assert.Contains(result.Items, item => item.Label == "system");
+    }
+
+    [Fact]
+    public async Task MaldaCompletionHandler_PromptDeclaration_AppearsInCompletions()
+    {
+        var store = new DocumentStore();
+        var uri = CreateUri("/prompt_name.malda");
+        store.Set(uri, "prompt greet(name) {\n    user: \"hi\"\n}\nvar x = ");
+        var handler = new MaldaCompletionHandler(store, new LanguageService());
+        var result = await handler.Handle(new CompletionParams
+        {
+            TextDocument = new TextDocumentIdentifier(uri),
+            Position = new Position(3, 8)
+        }, CancellationToken.None);
+
+        Assert.Contains(result.Items, item => item.Label == "greet");
+    }
+
+    [Fact]
     public async Task MaldaCompletionHandler_SchemaDeclaration_AppearsInCompletions()
     {
         var store = new DocumentStore();

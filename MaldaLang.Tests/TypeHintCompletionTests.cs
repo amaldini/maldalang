@@ -93,4 +93,34 @@ public class TypeHintCompletionTests
         Assert.Contains(completions, c => c.Kind == "type" && c.Label == "RestServer");
         Assert.Contains(completions, c => c.Kind == "type" && c.Label == "RestClient");
     }
+
+    [Fact]
+    public void GetCompletions_PromptReturnArrow_OffersDeclaredSchema()
+    {
+        var source = """
+            schema Person {
+                name: string;
+            }
+            prompt greet() -> 
+            """;
+        var line = 3;
+        var column = "prompt greet() -> ".Length;
+        var completions = _service.GetCompletions(source, line, column);
+        Assert.Contains(completions, c => c.Kind == "type" && c.Label == "Person");
+        Assert.Contains(completions, c => c.Kind == "type" && c.Label == "string");
+    }
+
+    [Fact]
+    public void GetCompletions_SchemaFieldColon_OffersTypeHints()
+    {
+        var source = """
+            schema Person {
+                name: 
+            """;
+        var line = 1;
+        var column = "    name: ".Length;
+        var completions = _service.GetCompletions(source, line, column);
+        Assert.Contains(completions, c => c.Kind == "type" && c.Label == "string");
+        Assert.Contains(completions, c => c.Kind == "type" && c.Label == "int");
+    }
 }
