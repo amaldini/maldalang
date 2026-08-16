@@ -41,8 +41,10 @@ public class InterpretDebugPromptTests : TestBase
         agent.Initialize("TestAgent", "assistant", "test", null, null, null, null);
         interpreter._defaultAgent = agent;
 
-        var output = new List<string>();
-        interpreter.SetOutputCallback(s => output.Add(s));
+        var programOutput = new List<string>();
+        var debugOutput = new List<string>();
+        interpreter.SetOutputCallback(s => programOutput.Add(s));
+        session.Output += s => debugOutput.Add(s);
 
         try
         {
@@ -53,6 +55,7 @@ public class InterpretDebugPromptTests : TestBase
             // Missing model / validation failure is OK; the wait message must already be emitted.
         }
 
-        Assert.Contains(output, s => s.Contains("await prompt", StringComparison.Ordinal));
+        Assert.Contains(debugOutput, s => s.Contains("await prompt", StringComparison.Ordinal));
+        Assert.DoesNotContain(programOutput, s => s.Contains("await prompt", StringComparison.Ordinal));
     }
 }

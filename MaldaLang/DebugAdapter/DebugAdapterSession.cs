@@ -38,6 +38,7 @@ public sealed class DebugAdapterSession
         _transport = new DapTransport(input, output);
         _debugSession.Paused += OnPaused;
         _debugSession.ConditionError += OnConditionError;
+        _debugSession.Output += OnDebugOutput;
     }
 
     public static Task RunStdioAsync(CancellationToken cancellationToken = default)
@@ -495,6 +496,13 @@ public sealed class DebugAdapterSession
     private void OnConditionError(string message)
     {
         SendOutput("stderr", message + SysEnv.NewLine);
+    }
+
+    private void OnDebugOutput(string message)
+    {
+        if (string.IsNullOrEmpty(message))
+            return;
+        SendOutput("console", message.EndsWith('\n') ? message : message + SysEnv.NewLine);
     }
 
     private void SendOutput(string category, string text)

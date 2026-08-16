@@ -110,7 +110,7 @@ Fast path: if `_debuggerHook` is null, `ExecuteAsync` stays as cheap as today (o
 
 **Step over / into / out:** keep the existing depth counter (`OnFunctionEnter` / `OnFunctionExit`). Fix StepInto so it does **not** also pause on function-declaration line *and* the first body statement (today both `OnFunctionEnter` and `OnStatement` can pause). One stop per user gesture.
 
-**`await` / prompts:** the expression statement is one stop. After continue, the thread stays paused from DAP’s point of view only if the next statement is reached; while the model runs, emit an OutputEvent (`stdout` or a `telemetry`-style category) `await prompt …` so the UI does not look frozen. Do not add a fake stack frame inside the LLM client in v1.
+**`await` / prompts:** the expression statement is one stop. After continue, the thread stays paused from DAP’s point of view only if the next statement is reached; while the model runs, emit an OutputEvent (`console`, not program stdout) `await prompt …` so the UI does not look frozen. Do not add a fake stack frame inside the LLM client in v1.
 
 ---
 

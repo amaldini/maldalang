@@ -62,4 +62,4 @@ Interpret-mode only. This extension is not Desktop IDE parity (no UIHost preview
 - Transpiled `.exe`s and JS/PWA bundles
 - Spawned actors: v1 does **not** share the debugger hook with child actor interpreters (concurrent pause is unsafe). Debug the actor script as a single-threaded program; spawned actors are not stepped.
 - Caught MALDA `try` / `catch` exceptions. v1 pauses only on **uncaught** interpret exceptions (`RuntimeException` / `MALDAException`) with DAP `stopped` reason `exception`. `setExceptionBreakpoints` is v1.1. Control-flow (`break` / `continue` / `return`) and cancel are not exception stops.
-- `await prompt …` is one statement (no fake LLM stack frame). While the model runs, the adapter/output stream emits `await prompt …` so the UI does not look frozen.
+- `await prompt …` is one statement (no fake LLM stack frame). While the model runs, the adapter emits a DAP OutputEvent (`console`, not program stdout) `await prompt …` so the UI does not look frozen.

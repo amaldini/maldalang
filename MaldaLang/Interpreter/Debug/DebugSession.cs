@@ -68,8 +68,9 @@ public sealed class DebugSession : IDebuggerHook
     public event Action<int, string?>? Paused;
 
     /// <summary>
-    /// DAP-style output (condition errors, later program stdout). Message includes
-    /// the <c>breakpoint condition error:</c> prefix when a condition fails to eval.
+    /// Debugger-only output (await-prompt wait, not program stdout). DAP maps this
+    /// to OutputEvent category <c>console</c>. Condition eval failures use
+    /// <see cref="ConditionError"/>.
     /// </summary>
     public event Action<string>? Output;
 
@@ -300,7 +301,7 @@ public sealed class DebugSession : IDebuggerHook
         EnterPause(line, file);
     }
 
-    /// <summary>Raises <see cref="Output"/> (await-prompt wait, condition errors, …).</summary>
+    /// <summary>Raises <see cref="Output"/> (await-prompt wait; not program stdout).</summary>
     public void EmitOutput(string message)
     {
         if (!string.IsNullOrEmpty(message))
