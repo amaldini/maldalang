@@ -144,6 +144,76 @@ public class TypeCompatibilityDiagnosticsTests
     }
 
     [Fact]
+    public void GetDiagnostics_PrimaryConstructorArgMismatch_EmitsError()
+    {
+        var service = new LanguageService();
+        var source = """
+            class punto(x: int, y: int);
+            var p = new punto(10, "Ciao");
+            """;
+        var diagnostics = service.GetDiagnostics(source);
+        var mismatch = Assert.Single(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Severity == DiagnosticSeverity.Error &&
+            d.Message.Contains("argument 2 of 'new punto'", StringComparison.Ordinal) &&
+            d.Message.Contains("int", StringComparison.Ordinal) &&
+            d.Message.Contains("string", StringComparison.Ordinal));
+        Assert.Equal(1, mismatch.Line);
+    }
+
+    [Fact]
+    public void GetDiagnostics_PrimaryConstructorArgMatch_NoError()
+    {
+        var service = new LanguageService();
+        var source = """
+            class punto(x: int, y: int);
+            var p = new punto(10, 20);
+            """;
+        var diagnostics = service.GetDiagnostics(source);
+        Assert.DoesNotContain(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Severity == DiagnosticSeverity.Error &&
+            d.Message.Contains("does not match value", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void GetDiagnostics_ClassicConstructorArgMismatch_EmitsError()
+    {
+        var service = new LanguageService();
+        var source = """
+            class punto {
+                var x;
+                var y;
+                function punto(x: int, y: int) {
+                    this.x = x;
+                    this.y = y;
+                }
+            }
+            var p = new punto(10, "Ciao");
+            """;
+        var diagnostics = service.GetDiagnostics(source);
+        Assert.Contains(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Severity == DiagnosticSeverity.Error &&
+            d.Message.Contains("argument 2 of 'new punto'", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void GetDiagnostics_Lenient_PrimaryConstructorArgMismatch_EmitsWarning()
+    {
+        var service = new LanguageService();
+        var source = """
+            class punto(x: int, y: int);
+            var p = new punto(10, "Ciao");
+            """;
+        var diagnostics = service.GetDiagnostics(source, strictTypesOptions: StrictTypesOptions.Lenient);
+        Assert.Contains(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Severity == DiagnosticSeverity.Warning &&
+            d.Message.Contains("argument 2 of 'new punto'", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Analyze_StrictTypes_ElevatesLiteralMismatchToError()
     {
         var source = """

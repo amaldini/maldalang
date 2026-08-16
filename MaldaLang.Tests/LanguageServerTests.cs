@@ -132,6 +132,33 @@ public class LanguageServerTests
     }
 
     [Fact]
+    public void TextDocumentLanguageServer_PublishDiagnostics_IsExtensionMethodNotInstanceMethod()
+    {
+        // DiagnosticsPublisher must call the OmniSharp extension method.
+        // Type.GetMethod("PublishDiagnostics") is null and silently dropped every diagnostic.
+        Assert.Null(typeof(OmniSharp.Extensions.LanguageServer.Protocol.Server.ITextDocumentLanguageServer)
+            .GetMethod("PublishDiagnostics"));
+    }
+
+    [Fact]
+    public void LanguageService_PrimaryConstructorArgMismatch_IsOnSecondLineForLsp()
+    {
+        var source = """
+            class punto(x:int,y:int);
+            var p = new punto(10,"Ciao");
+            io.print($"{p.x}, {p.y}");
+            """;
+        var diagnostics = new LanguageService().GetDiagnostics(source);
+        var mismatch = Assert.Single(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Message.Contains("argument 2 of 'new punto'", StringComparison.Ordinal));
+        Assert.Equal(1, mismatch.Line);
+        var range = LspPositionHelper.ToRange(mismatch.Line, mismatch.Column, mismatch.Length);
+        Assert.Equal(1, (int)range.Start.Line);
+        Assert.True(range.Start.Character >= 0);
+    }
+
+    [Fact]
     public void LanguageServerHandlers_ImplementOfficialOmniSharpInterfaces()
     {
         Assert.Contains(

@@ -4,7 +4,9 @@
 namespace MaldaLang.LanguageServer;
 
 using OmniSharp.Extensions.LanguageServer.Protocol;
+using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
+using OmniSharp.Extensions.LanguageServer.Protocol.Server;
 
 /// <summary>
 /// Abstraction for publishing LSP diagnostics. Set the inner implementation after the server is built.
@@ -20,15 +22,18 @@ public interface IDiagnosticsPublisher
 /// </summary>
 public sealed class DiagnosticsPublisher : IDiagnosticsPublisher
 {
-    public static object? InnerTextDocument { get; set; }
+    public static ITextDocumentLanguageServer? InnerTextDocument { get; set; }
 
     public void Publish(DocumentUri uri, Container<OmniSharp.Extensions.LanguageServer.Protocol.Models.Diagnostic> diagnostics)
     {
-        var textDoc = InnerTextDocument;
-        if (textDoc == null)
+        var textDocument = InnerTextDocument;
+        if (textDocument == null)
             return;
-        var params_ = new OmniSharp.Extensions.LanguageServer.Protocol.Models.PublishDiagnosticsParams { Uri = uri, Diagnostics = diagnostics };
-        var method = textDoc.GetType().GetMethod("PublishDiagnostics", new[] { typeof(OmniSharp.Extensions.LanguageServer.Protocol.Models.PublishDiagnosticsParams) });
-        method?.Invoke(textDoc, new object[] { params_ });
+
+        textDocument.PublishDiagnostics(new PublishDiagnosticsParams
+        {
+            Uri = uri,
+            Diagnostics = diagnostics
+        });
     }
 }

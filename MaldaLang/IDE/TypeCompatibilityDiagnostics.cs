@@ -14,7 +14,7 @@ using TokenType = MaldaLang.TokenType;
 /// <summary>
 /// Checks type hints vs known values (literals, identifiers with hints, operators,
 /// selected Tier-1 builtins, and typed call returns) on var/field initializers,
-/// assignments, call arguments, and returns.
+/// assignments, call arguments, <c>new</c> constructor arguments, and returns.
 /// IDE/LSP default elevates mismatches to Error (<see cref="StrictTypesOptions.Default"/>);
 /// use <see cref="StrictTypesOptions.Lenient"/> for Warning. Does not enforce hints at runtime.
 /// </summary>
@@ -36,6 +36,9 @@ public static class TypeCompatibilityDiagnostics
         }
 
         public TypeHintNameIndex Index => _index;
+
+        public Dictionary<string, FunctionHints> Constructors { get; } =
+            new(StringComparer.Ordinal);
 
         public void PushScope() =>
             _scopes.Push(new Dictionary<string, string>(StringComparer.Ordinal));
@@ -86,9 +89,9 @@ public static class TypeCompatibilityDiagnostics
         var list = statements as IList<Statement> ?? statements.ToList();
         var index = TypeHintNameIndex.Build(list);
         var functions = new Dictionary<string, FunctionHints>(StringComparer.Ordinal);
-        CollectFunctions(list, functions);
-        MergeImportedHints(list, sourceFileName, index, functions);
         var env = new HintEnv(index);
+        CollectFunctions(list, functions, env.Constructors);
+        MergeImportedHints(list, sourceFileName, index, functions, env.Constructors);
 
         foreach (var stmt in list)
             VisitStatement(stmt, functions, env, currentReturn: null, diagnostics, options);
@@ -98,7 +101,8 @@ public static class TypeCompatibilityDiagnostics
         IList<Statement> hostStatements,
         string? sourceFileName,
         TypeHintNameIndex index,
-        Dictionary<string, FunctionHints> functions)
+        Dictionary<string, FunctionHints> functions,
+        Dictionary<string, FunctionHints> constructors)
     {
         if (string.IsNullOrWhiteSpace(sourceFileName))
             return;
@@ -121,6 +125,7 @@ public static class TypeCompatibilityDiagnostics
             {
                 foreach (var member in classDecl.Members)
                 {
+                    TryRegisterConstructor(classDecl.Name, member, constructors);
                     if (member.Value is FunctionDeclaration method &&
                         !functions.ContainsKey(method.Name))
                     {
@@ -139,7 +144,8 @@ public static class TypeCompatibilityDiagnostics
 
     private static void CollectFunctions(
         IEnumerable<Statement> statements,
-        Dictionary<string, FunctionHints> functions)
+        Dictionary<string, FunctionHints> functions,
+        Dictionary<string, FunctionHints> constructors)
     {
         foreach (var stmt in statements)
         {
@@ -151,25 +157,55 @@ public static class TypeCompatibilityDiagnostics
                         funcDecl.ReturnType);
                     break;
                 case ClassDeclaration classDecl:
-                    foreach (var member in classDecl.Members)
-                    {
-                        if (member.Value is FunctionDeclaration method)
-                        {
-                            // Index unqualified method name for same-file simple calls; first wins.
-                            if (!functions.ContainsKey(method.Name))
-                            {
-                                functions[method.Name] = new FunctionHints(
-                                    method.ParameterTypeHints ?? new List<string?>(),
-                                    method.ReturnType);
-                            }
-                        }
-                    }
+                    CollectTypeMembers(classDecl.Name, classDecl.Members, functions, constructors);
+                    break;
+                case ActorDeclaration actorDecl:
+                    CollectTypeMembers(actorDecl.Name, actorDecl.Members, functions, constructors);
                     break;
                 case BlockStatement block:
-                    CollectFunctions(block.Statements, functions);
+                    CollectFunctions(block.Statements, functions, constructors);
                     break;
             }
         }
+    }
+
+    private static void CollectTypeMembers(
+        string typeName,
+        IEnumerable<ClassMember> members,
+        Dictionary<string, FunctionHints> functions,
+        Dictionary<string, FunctionHints> constructors)
+    {
+        foreach (var member in members)
+        {
+            TryRegisterConstructor(typeName, member, constructors);
+            if (member.Value is FunctionDeclaration method)
+            {
+                // Index unqualified method name for same-file simple calls; first wins.
+                if (!functions.ContainsKey(method.Name))
+                {
+                    functions[method.Name] = new FunctionHints(
+                        method.ParameterTypeHints ?? new List<string?>(),
+                        method.ReturnType);
+                }
+            }
+        }
+    }
+
+    private static void TryRegisterConstructor(
+        string typeName,
+        ClassMember member,
+        Dictionary<string, FunctionHints> constructors)
+    {
+        if (member.Type != MemberType.Constructor ||
+            member.Value is not FunctionDeclaration ctor ||
+            constructors.ContainsKey(typeName))
+        {
+            return;
+        }
+
+        constructors[typeName] = new FunctionHints(
+            ctor.ParameterTypeHints ?? new List<string?>(),
+            ctor.ReturnType);
     }
 
     private static bool TryGetCalleeHints(
@@ -383,26 +419,16 @@ public static class TypeCompatibilityDiagnostics
             case FunctionCallExpression call:
                 if (TryGetCalleeHints(call.Callee, functions, out var calleeName, out var hints))
                 {
-                    for (var i = 0; i < call.Arguments.Count; i++)
-                    {
-                        string? paramHint = null;
-                        if (hints.ParameterHints != null && i < hints.ParameterHints.Count)
-                            paramHint = hints.ParameterHints[i];
-                        if (paramHint == null)
-                            continue;
-
-                        var paramName = $"argument {i + 1} of '{calleeName}'";
-                        CheckValueCompatibility(
-                            paramHint,
-                            call.Arguments[i],
-                            paramName,
-                            call.Arguments[i].Line > 0 ? call.Arguments[i].Line : call.Line,
-                            call.Arguments[i].Column > 0 ? call.Arguments[i].Column : call.Column,
-                            env,
-                            functions,
-                            diagnostics,
-                            options);
-                    }
+                    CheckCallArguments(
+                        call.Arguments,
+                        hints,
+                        calleeName,
+                        call.Line,
+                        call.Column,
+                        env,
+                        functions,
+                        diagnostics,
+                        options);
                 }
                 foreach (var arg in call.Arguments)
                     VisitExpression(arg, functions, env, diagnostics, options);
@@ -450,6 +476,19 @@ public static class TypeCompatibilityDiagnostics
                 }
                 break;
             case NewExpression newExpr:
+                if (env.Constructors.TryGetValue(newExpr.ClassName, out var ctorHints))
+                {
+                    CheckCallArguments(
+                        newExpr.Arguments,
+                        ctorHints,
+                        $"new {newExpr.ClassName}",
+                        newExpr.Line,
+                        newExpr.Column,
+                        env,
+                        functions,
+                        diagnostics,
+                        options);
+                }
                 foreach (var arg in newExpr.Arguments)
                     VisitExpression(arg, functions, env, diagnostics, options);
                 break;
@@ -459,6 +498,39 @@ public static class TypeCompatibilityDiagnostics
             case AsyncExpression asyncExpr:
                 VisitExpression(asyncExpr.Expression, functions, env, diagnostics, options);
                 break;
+        }
+    }
+
+    private static void CheckCallArguments(
+        IReadOnlyList<Expression> arguments,
+        FunctionHints hints,
+        string calleeName,
+        int fallbackLine,
+        int fallbackColumn,
+        HintEnv env,
+        Dictionary<string, FunctionHints> functions,
+        List<Diagnostic> diagnostics,
+        StrictTypesOptions options)
+    {
+        for (var i = 0; i < arguments.Count; i++)
+        {
+            string? paramHint = null;
+            if (hints.ParameterHints != null && i < hints.ParameterHints.Count)
+                paramHint = hints.ParameterHints[i];
+            if (paramHint == null)
+                continue;
+
+            var argument = arguments[i];
+            CheckValueCompatibility(
+                paramHint,
+                argument,
+                $"argument {i + 1} of '{calleeName}'",
+                argument.Line > 0 ? argument.Line : fallbackLine,
+                argument.Column > 0 ? argument.Column : fallbackColumn,
+                env,
+                functions,
+                diagnostics,
+                options);
         }
     }
 
@@ -509,8 +581,9 @@ public static class TypeCompatibilityDiagnostics
             Message = elevate
                 ? $"Type hint '{typeHint}' on {bindingName} does not match value (got {actual})."
                 : $"Type hint '{typeHint}' on {bindingName} does not match value (got {actual}). Hints are not enforced at runtime.",
-            Line = line,
-            Column = column,
+            // LanguageService / LSP / Desktop IDE all use 0-based coordinates.
+            Line = Math.Max(0, line - 1),
+            Column = Math.Max(0, column - 1),
             Length = Math.Max(1, typeHint.Length),
             Source = "malda-types"
         });
