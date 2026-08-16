@@ -343,6 +343,20 @@ function initHeaderActions() {
         return;
     }
 
+    if (!header.querySelector('.header-text')) {
+        const title = header.querySelector('h1');
+        const subtitle = header.querySelector('p');
+        if (title) {
+            const cluster = document.createElement('div');
+            cluster.className = 'header-text';
+            title.parentNode.insertBefore(cluster, title);
+            cluster.appendChild(title);
+            if (subtitle) {
+                cluster.appendChild(subtitle);
+            }
+        }
+    }
+
     if (!header.querySelector('.nav-toggle')) {
         const toggle = document.createElement('button');
         toggle.type = 'button';
