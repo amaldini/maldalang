@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Catalogo delle funzioni built-in MALDA: conversioni di tipo, math, stringhe, file, JSON, date e helper di errore.">
+    <title>12. Funzioni built-in - Manuale di riferimento MALDA</title>
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../syntax.css">
+    <link rel="stylesheet" href="../print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>Manuale di riferimento MALDA&trade;</h1>
+        <p>Il linguaggio di programmazione AI-First - Versione 1.0.0</p>
+    </header>
+    <nav></nav>
+    <main>
+        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>12. Funzioni built-in</span></div>
+        <h1>12. Funzioni built-in</h1>
+        <p>Questo capitolo è il <strong>catalogo della stdlib</strong>: conversioni, math, stringhe, file, JSON, date e helper di errore. I tool degli agenti, i piani di task, le operazioni dei workflow durevoli e <code>ui.*</code> sono indicizzati in fondo al capitolo e documentati nei rispettivi capitoli di origine.</p>
+        <h2>12.1 Conversioni di tipo</h2>
+        <pre><code>var num = int("123");      // Convert string to integer
+var floatVal = float("3.14");  // Convert string to float
+var str = string(42);      // Convert number to string</code></pre>
+        <h3>12.1.1 Helper di conversione intera sicura</h3>
+        <p>Usa questi helper quando l'input può essere vuoto, null o malformato.</p>
+        <pre><code>var page = toIntOr(query.page, 1);          // Fallback when null/empty/unparseable
+var limit = toIntOr(query.limit, 50);       // Always returns integer
+var ownerId = toIntOrNull(query.ownerId);   // Returns null when missing/unparseable</code></pre>
+        <ul>
+            <li><code>toIntOr(value, fallback)</code> - restituisce l'intero analizzato quando possibile, altrimenti <code>fallback</code>.</li>
+            <li><code>toIntOrNull(value)</code> - restituisce l'intero analizzato o <code>null</code> quando il valore è null/vuoto/non analizzabile.</li>
+            <li>Entrambe le funzioni accettano valori interi, float, boolean e stringhe numeriche.</li>
+        </ul>
+        <h2 id="stdlib-namespaces">12.2 Namespace della stdlib e alias piatti</h2>
+        <p>La maggior parte della libreria standard è raggiungibile in due forme: una chiamata <strong>namespaced</strong> tramite un oggetto modulo, e un globale <strong>piatto</strong> con lo stesso nome. Entrambe risolvono la stessa implementazione e si comportano in modo identico a runtime.</p>
+        <pre><code>print(math.sqrt(16));                          // namespaced
+print(sqrt(16));                               // flat alias, same result
+
+print(str.join(str.split("a,b", ","), "|"));   // a|b
+print(io.readFile("config.json"));</code></pre>
+
+        <h3>Gli oggetti modulo</h3>
+        <table>
+            <thead>
+                <tr><th>Modulo</th><th>Copre</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>math</code></td><td>Arrotondamento, trigonometria, aggregati, helper random, math per LLM e le costanti <code>math.PI</code>, <code>math.E</code>, <code>math.TAU</code>, <code>math.INF</code>, <code>math.NaN</code></td></tr>
+                <tr><td><code>str</code></td><td>Maiuscole/minuscole, trimming, split e join, padding, helper regex, similarità, base64, <code>md5</code> / <code>sha256</code></td></tr>
+                <tr><td><code>io</code></td><td><code>print</code>, <code>input</code>, helper per file e path, <code>glob</code>, <code>grep</code>, variabili d'ambiente, helper git</td></tr>
+                <tr><td><code>pdf</code></td><td><code>extractText</code> &mdash; legge il testo da un file PDF (livello di testo digitale; nessun OCR)</td></tr>
+                <tr><td><code>doc</code></td><td><code>extractText</code> &mdash; legge il testo da un Word <code>.docx</code> (Open XML; non il <code>.doc</code> legacy)</td></tr>
+                <tr><td><code>result</code></td><td><code>ok</code>, <code>err</code>, <code>map</code>, <code>unwrapOr</code>, <code>isOk</code>, <code>isErr</code> — vedi <a href="#result-option">12.19.1</a></td></tr>
+                <tr><td><code>option</code></td><td><code>some</code>, <code>none</code>, <code>map</code>, <code>unwrapOr</code>, <code>isSome</code>, <code>isNone</code> — vedi <a href="#result-option">12.19.1</a></td></tr>
+            </tbody>
+        </table>
+        <p><code>Math</code> (M maiuscola) è un alias deprecato per lo stesso oggetto di <code>math</code>.</p>
+
+        <h3>Quali nomi piatti sono deprecati</h3>
+        <p>Solo i nomi piatti che hanno una controparte <code>math.</code>, <code>str.</code> o <code>io.</code> sono considerati alias deprecati. Chiamarne uno produce un warning nell'IDE e nel language server dalla sorgente <code>malda-style</code>, nella forma <em>Prefer 'io.print(...)' instead of 'print(...)' (deprecated flat alias)</em>. Il warning è solo un avviso: a runtime non viene rimosso nulla e i transpiler accettano entrambe le forme.</p>
+        <p>I nomi interessati, che rispecchiano <code>MaldaLang/BuiltIns/StdLibNamespaces.cs</code>:</p>
+        <ul>
+            <li><strong>math:</strong> <code>abs</code>, <code>sum</code>, <code>average</code>, <code>max</code>, <code>min</code>, <code>pow</code>, <code>sqrt</code>, <code>floor</code>, <code>ceil</code>, <code>round</code>, <code>trunc</code>, <code>sign</code>, <code>exp</code>, <code>log</code>, <code>log10</code>, <code>log2</code>, <code>sin</code>, <code>cos</code>, <code>tan</code>, <code>asin</code>, <code>acos</code>, <code>atan</code>, <code>atan2</code>, <code>hypot</code>, <code>clamp</code>, <code>degToRad</code>, <code>radToDeg</code>, <code>rsqrt</code>, <code>randn</code>, <code>argmax</code>, <code>argmin</code>, <code>logSumExp</code>, <code>softmax</code>, <code>crossEntropyFromLogits</code>, <code>randomChoiceWeighted</code>, <code>seed</code>, <code>random</code>, <code>randomInt</code>, <code>randomFloat</code></li>
+            <li><strong>str:</strong> <code>length</code>, <code>upper</code>, <code>lower</code>, <code>trim</code>, <code>text</code>, <code>trimText</code>, <code>substring</code>, <code>indexOf</code>, <code>replace</code>, <code>split</code>, <code>normalizeText</code>, <code>tokenize</code>, <code>tokenOverlap</code>, <code>similarity</code>, <code>extractNumbers</code>, <code>regexMatch</code>, <code>regexReplace</code>, <code>regexFind</code>, <code>startsWith</code>, <code>endsWith</code>, <code>padStart</code>, <code>padEnd</code>, <code>includes</code>, <code>join</code>, <code>repeat</code>, <code>base64Encode</code>, <code>base64Decode</code>, <code>md5</code>, <code>sha256</code></li>
+            <li><strong>io:</strong> <code>print</code>, <code>input</code>, <code>readFile</code>, <code>writeFile</code>, <code>readFileBase64</code>, <code>writeFileBase64</code>, <code>readTextFileLines</code>, <code>deleteFile</code>, <code>hasFile</code>, <code>hasDirectory</code>, <code>ensureDir</code>, <code>listDirectory</code>, <code>hasEmbeddedFolder</code>, <code>embeddedFolderRoot</code>, <code>glob</code>, <code>grep</code>, <code>replaceInFile</code>, <code>pathExists</code>, <code>pathJoin</code>, <code>pathNormalize</code>, <code>pathGetExtension</code>, <code>isPathUnder</code>, <code>getEnv</code>, <code>getEnvOr</code>, <code>hasEnv</code>, <code>getFileName</code>, <code>getDirectoryName</code>, <code>gitStatus</code>, <code>gitAdd</code>, <code>gitCommit</code>, <code>gitDiff</code>, <code>gitLog</code>, <code>gitBranch</code>, <code>gitCheckout</code>, <code>gitPull</code>, <code>gitPush</code></li>
+        </ul>
+        <p>Ogni altro built-in in questo capitolo &mdash; <code>sleep</code>, <code>runCommand</code>, <code>parseJson</code>, gli helper di agenti e workflow, e così via &mdash; non ha una controparte di modulo e non ha deprecazione associata.</p>
+
+        <div class="info-box">
+            <strong>Convenzione usata in questo manuale:</strong> gli esempi in tutto il manuale e in <code>Examples/</code> usano la forma piatta (<code>print(...)</code>, <code>sqrt(...)</code>) perché è più breve ed è quella del codice MALDA esistente. Leggile come equivalenti alla forma namespaced. Nel codice nuovo, preferisci la forma namespaced se vuoi che l'editor resti senza warning.
+        </div>
+        <h2>12.3 Funzioni matematiche</h2>
+        <p>Le operazioni math sono disponibili come <code>math.*</code> (preferito), built-in piatti deprecati e <code>Math.*</code> (alias deprecato).</p>
+        <pre><code>// Flat built-ins (deprecated flat alias; still supported)
+var absVal = abs(-5);              // Absolute value
+var total = sum([1, 2, 3, 4]);     // 10
+var avg = average([1, 2, 3, 4]);   // 2.5
+var maxVal = max(10, 20);          // Maximum of two values
+var maxArr = max([10, 20, 5]);     // Maximum in a numeric array
+var minVal = min(10, 20);          // Minimum of two values
+var minArr = min([10, 20, 5]);     // Minimum in a numeric array
+var powVal = pow(2, 3);            // Power: 2^3 = 8
+var sqrtVal = sqrt(16);            // Square root: 4
+
+// Extended math (rounding and sign)
+var f = floor(3.7);                // 3
+var c = ceil(3.2);                 // 4
+var r = round(2.5);                // 2 (banker’s rounding, .NET default)
+var t = trunc(-3.9);               // -3
+var s1 = sign(-10);                // -1
+var s2 = sign(0);                  // 0
+var s3 = sign(10);                 // 1
+
+// Extended math (exponential and logarithm)
+var e = exp(1);                    // ~2.718281828 (Math.E)
+var ln = log(Math.E);              // Natural log, ~1
+var lg = log10(1000);              // Base-10 log, 3
+var lb = log2(8);                  // Base-2 log, 3
+
+// Extended math (trigonometry, radians)
+var halfPi = degToRad(90);         // Convert degrees to radians
+var s = sin(halfPi);               // ~1.0
+var c0 = cos(0);                   // ~1.0
+var t = tan(0);                    // 0.0
+var a = atan2(1, 1);               // ~PI/4
+
+// Inverse trigonometry (single argument, result in radians)
+var as1 = asin(1);                 // ~PI/2
+var ac1 = acos(1);                 // 0.0
+var at1 = atan(1);                 // ~PI/4
+var outOfDomain = asin(2);         // NaN: no error is raised
+
+// Extended math (utility)
+var h = hypot(3, 4);               // 5 (sqrt(3*3 + 4*4))
+var cl1 = clamp(-1, 0, 10);        // 0
+var cl2 = clamp(5, 0, 3);          // 3
+var rad = degToRad(180);           // PI
+var deg = radToDeg(Math.PI / 2);   // 90
+
+// LLM-oriented math helpers
+seed(42);                          // Deterministic random stream
+var n = randn(0.1);                // Gaussian random ~ N(0, 0.1^2)
+var inv = rsqrt(16);               // 0.25 (1/sqrt(x))
+var idxMax = argmax([0.1, 0.7, 0.2]); // 1
+var idxMin = argmin([0.1, 0.7, 0.2]); // 0
+var probs = softmax([2.0, 1.0, 0.0]); // Probability array
+var lse = logSumExp([2.0, 1.0, 0.0]); // Stable log(sum(exp(x)))
+var ce = crossEntropyFromLogits([2.0, 1.0, 0.0], 0); // NLL for target index
+var sampled = randomChoiceWeighted([0.1, 0.7, 0.2]); // Weighted sampled index
+
+// All trigonometric functions take angles in radians, accept an integer or a
+// float, and return a float. Out-of-domain input yields NaN rather than an error.
+
+// Preferred: math.* module (Math.* is deprecated alias)
+var cCirc = 2 * math.PI * r;
+var cCircLegacy = 2 * Math.PI * r; // deprecated alias
+var total2 = Math.sum([1, 2, 3]);  // Same as sum(...)
+var avg2 = Math.average([1, 2, 3]); // Same as average(...)
+var powVal2 = Math.pow(2, 3);      // 8
+var sqrtVal2 = Math.sqrt(16);      // 4
+var floorVal = Math.floor(3.7);    // 3
+var sinVal = Math.sin(degToRad(90)); // ~1.0
+var rand = Math.random();          // Random float between 0.0 and 1.0
+var randInt = Math.randomInt(1, 10);   // Random integer between 1 and 10 (inclusive)
+var randFloat = Math.randomFloat(0.0, 100.0); // Random float between 0.0 and 100.0
+var n2 = Math.randn(0.1);          // Same as randn(0.1)
+var probs2 = Math.softmax([2.0, 1.0, 0.0]); // Same as softmax(...)</code></pre>
+        <p><code>sum(values)</code> restituisce il totale di un array numerico. <code>average(values)</code> restituisce la media aritmetica di un array numerico non vuoto come float.</p>
+        <p><code>max</code> e <code>min</code> supportano sia la forma <code>(a, b)</code> sia <code>(values)</code>. Quando si passa un singolo argomento array, l'array deve essere non vuoto e contenere solo numeri.</p>
+        <p>Per gli array numerici, queste operazioni di aggregazione sono disponibili anche come metodi: <code>values.sum()</code>, <code>values.average()</code>, <code>values.min()</code> e <code>values.max()</code>.</p>
+        <h3>12.3.1 Helper matematici orientati agli LLM (riferimento)</h3>
+        <p>Questi helper sono disponibili come <code>math.softmax(values)</code> (preferito), <code>softmax(values)</code> piatto (deprecato) e <code>Math.softmax(values)</code> (alias deprecato).</p>
+        <h4>seed(seedValue)</h4>
+        <p>Imposta il seed pseudo-casuale globale usato da <code>random()</code>, <code>randomInt()</code>, <code>randomFloat()</code>, <code>randn()</code> e <code>randomChoiceWeighted()</code>. L'argomento deve essere un intero. Restituisce <code>null</code>.</p>
+        <pre><code>seed(42);
+print(random());       // Deterministic across runs with same seed
+print(Math.random());</code></pre>
+        <h4>randn(std?, mean?)</h4>
+        <p>Genera un float casuale a distribuzione normale usando la trasformata di Box-Muller. Firma: <code>randn(std = 1.0, mean = 0.0)</code>. Restituisce un float.</p>
+        <pre><code>var z1 = randn();          // N(0, 1)
+var z2 = randn(0.1);       // N(0, 0.1^2)
+var z3 = randn(0.1, 1.5);  // N(1.5, 0.1^2)</code></pre>
+        <h4>rsqrt(x)</h4>
+        <p>Restituisce la radice quadrata reciproca: <code>1 / sqrt(x)</code>. Utile nelle formule di attention e normalizzazione. Restituisce un float.</p>
+        <pre><code>print(rsqrt(16));      // 0.25
+print(Math.rsqrt(4));  // 0.5</code></pre>
+        <h4>argmax(values)</h4>
+        <p>Restituisce l'indice del valore massimo in un array numerico non vuoto. Se più valori sono pari al massimo, restituisce il primo indice. Restituisce un intero.</p>
+        <pre><code>print(argmax([0.1, 0.7, 0.2]));   // 1
+print(argmax([3, 3, 1]));         // 0 (first max)</code></pre>
+        <h4>argmin(values)</h4>
+        <p>Restituisce l'indice del valore minimo in un array numerico non vuoto. Se più valori sono pari al minimo, restituisce il primo indice. Restituisce un intero.</p>
+        <pre><code>print(argmin([0.1, 0.7, 0.2]));   // 0
+print(argmin([3, 1, 1]));         // 1 (first min)</code></pre>
+        <h4>logSumExp(values)</h4>
+        <p>Calcola in modo numericamente stabile <code>log(sum(exp(values[i])))</code> su un array numerico non vuoto. Restituisce un float.</p>
+        <pre><code>var lse = logSumExp([2.0, 1.0, 0.0]);
+print(lse);</code></pre>
+        <h4>softmax(values, temperature?)</h4>
+        <p>Calcola le probabilità softmax da un array numerico non vuoto. <code>temperature</code> opzionale ha default <code>1.0</code> e deve essere <code>&gt; 0</code>. Restituisce un array di float che sommano approssimativamente a 1.</p>
+        <pre><code>var p1 = softmax([2.0, 1.0, 0.0]);      // temperature = 1.0
+var p2 = softmax([2.0, 1.0, 0.0], 0.5); // Sharper distribution
+print(p1);</code></pre>
+        <h4>crossEntropyFromLogits(logits, targetIndex)</h4>
+        <p>Calcola la negative log-likelihood direttamente dai logits per una classe target: <code>-log(softmax(logits)[targetIndex])</code>. <code>targetIndex</code> deve essere un indice intero valido nell'array dei logits. Restituisce un float.</p>
+        <pre><code>var loss = crossEntropyFromLogits([2.0, 1.0, 0.0], 0);
+print(loss);</code></pre>
+        <h4>randomChoiceWeighted(weights)</h4>
+        <p>Campiona e restituisce un indice da un array di pesi numerici non vuoto. Tutti i pesi devono essere <code>&gt;= 0</code> e il loro totale deve essere <code>&gt; 0</code>.</p>
+        <pre><code>var idx = randomChoiceWeighted([0.1, 0.7, 0.2]); // Often 1
+print(idx);</code></pre>
+        <p><strong>Comportamento sugli errori:</strong> questi helper sollevano errori a runtime per conteggi/tipi di argomenti non validi, array vuoti dove non ammessi, indici target fuori range, temperature softmax non positiva, pesi negativi o peso totale zero.</p>
+        <h2>12.4 Funzioni sulle stringhe</h2>
+        <p>Le operazioni sulle stringhe sono disponibili come <strong>funzioni built-in piatte</strong> (es. <code>upper(s)</code>) e come <strong>metodi in stile extension</strong> sui valori stringa (es. <code>s.upper()</code>). Entrambe le forme funzionano nell'interprete e nel codice transpile.</p>
+        <pre><code>var len = length("Hello");      // String length
+var upper = upper("hello");     // Convert to uppercase
+var lower = lower("HELLO");     // Convert to lowercase
+var trimmed = trim("  hello  "); // Remove leading and trailing whitespace (returns "hello")
+var substr = substring("Hello", 0, 3);  // Extract substring: start at index 0, take 3 characters (returns "Hel")
+// substring(text, startIndex, length) - third parameter is COUNT/LENGTH, not end index
+var singleChar = substring("Hello", 1, 1);  // Get single character at index 1 (returns "e")
+var pos = indexOf("hello world", "world");  // Find position (returns 6, 0-indexed)
+var notFound = indexOf("hello", "xyz");     // Returns -1 if not found
+var replaced = replace("Hello world", "world", "MALDA");  // Replace all occurrences (returns "Hello MALDA")
+var parts = split("a,b,c", ",");  // Split string into array (returns ["a", "b", "c"])
+var normalized = normalizeText("  Città, 42! ");  // "citta 42"
+var words = tokenize("Uno, due, tre!");  // ["uno", "due", "tre"]
+var score = similarity("equazione lineare", "equazioni lineari");
+var numbers = extractNumbers("x=12, y=3.5");  // [12, 3.5]
+var joined = parts.join(",");  // Join array into string (returns "a,b,c")
+// Null-safe boundary helpers (prefer str.* spelling):
+var asText = str.text(maybeNull);       // null → "" (unlike string(null) → "null")
+var cleaned = str.trimText(maybeNull);  // null → ""; else string then trim</code></pre>
+        <p><code>str.text(value)</code> converte qualsiasi valore in stringa, mappando <code>null</code> su <code>""</code>. <code>str.trimText(value)</code> è <code>str.trim(str.text(value))</code>. Usale ai confini env / JSON / CLI invece di nidificare controlli su null prima di <code>str.trim</code>.</p>
+        <h3>Metodi stringa in stile extension</h3>
+        <p>Le funzioni <code>length</code>, <code>upper</code>, <code>lower</code>, <code>trim</code>, <code>substring</code>, <code>indexOf</code>, <code>replace</code>, <code>split</code>, <code>startsWith</code>, <code>endsWith</code>, <code>padStart</code>, <code>padEnd</code> e <code>repeat</code> si possono chiamare anche come metodi su qualsiasi valore stringa. Il ricevente è trattato come primo argomento. È analogo ai metodi di extension in VB.NET/C#.</p>
+        <pre><code>var name = "pippo";
+var nameUpper = string(name).upper();   // same as upper(string(name)) or upper(name)
+print("hello".upper());                 // HELLO
+print("HELLO".lower());                 // hello
+var s = "Hello";
+print(s.length());                      // 5
+print(s.substring(0, 3));               // Hel
+print(s.indexOf("ll"));                 // 2
+print(s.replace("He", "Ye"));           // Yello
+print("abc".repeat(2));                 // abcabc
+var f = "world".upper;                  // method as value
+print(f());                             // WORLD</code></pre>
+        <p>Chiamare un membro non supportato su una stringa (es. <code>s.foo()</code>) causa un errore a runtime.</p>
+        <h3>Funzioni per espressioni regolari</h3>
+        <pre><code>var matches = regexMatch("test123", "\\d+");  // Check if pattern matches (returns true)
+var result = regexReplace("abc123", "\\d+", "456");  // Replace matches (returns "abc456")
+// Use $1, $2, etc. for capture groups in replacement
+var swapped = regexReplace("John Doe", "(\\w+) (\\w+)", "$2, $1");  // Returns "Doe, John"
+var matches = regexFind("test123 test456", "\\d+");  // Find all matches (returns array of match objects)</code></pre>
+        <h3>Funzioni stringa aggiuntive</h3>
+        <pre><code>var starts = startsWith("Hello", "He");      // Check if string starts with prefix (returns true)
+var ends = endsWith("Hello", "lo");         // Check if string ends with suffix (returns true)
+var padded = padStart("5", 3, "0");        // Pad string to length from left (returns "005")
+var padded2 = padEnd("5", 3, "0");          // Pad string to length from right (returns "500")
+var repeated = repeat("Hi", 3);             // Repeat string N times (returns "HiHiHi")</code></pre>
+        <h3>Helper di matching del testo</h3>
+        <pre><code>var normalizedText = normalizeText("  Città, 42! ");   // "citta 42"
+var tokens = tokenize("CPU, RAM e disco");            // ["cpu", "ram", "e", "disco"]
+var overlap = tokenOverlap("cpu memoria cache", "cache cpu");
+print(overlap.sharedCount);                           // 2
+print(overlap.jaccard);                               // 0.66...
+var sim1 = similarity("equazione lineare", "equazioni lineari");
+var sim2 = similarity("processore", "processor", "char-ngram");
+var nums = extractNumbers("x=12, y=3.5, z=-2");      // [12, 3.5, -2]</code></pre>
+        <h3>Funzioni sui path</h3>
+        <pre><code>var filename = getFileName("ReferenceManual/09-functions.html");  // Returns "09-functions.html"
+var dir = getDirectoryName("ReferenceManual/09-functions.html");  // Returns "ReferenceManual"
+var dir2 = getDirectoryName("09-functions.html");  // Returns "" (empty for files in current directory)
+var joined = pathJoin("dir1", "dir2", "file.txt");  // Join path segments (returns "dir1/dir2/file.txt" or "dir1\\dir2\\file.txt" on Windows)
+var normalized = pathNormalize("./dir/../file.txt");  // Normalize path (returns absolute path)
+var exists = pathExists("file.txt");        // Check if path exists (file or directory)
+var ext = pathGetExtension("file.txt");     // Get file extension (returns ".txt")
+var under = isPathUnder("brain", "brain/notes/a.md");  // true when path resolves under root (disk or embed:)
+var escape = isPathUnder("brain", "brain/../secret.txt");  // false</code></pre>
+        <p><code>isPathUnder(root, path)</code> — Restituisce <code>true</code> quando <code>path</code> si risolve nella stessa posizione di <code>root</code> o in un discendente. Usa il confronto sul path completo con un confine di separatore di directory (così <code>demo</code> non corrisponde a <code>demo-evil</code>). Funziona per path su disco e per root virtuali <code>embed:&lt;alias&gt;/…</code>. Restituisce <code>false</code> su coppie non valide o con scheme diversi.</p>
+        <h3>Home e config MALDA</h3>
+        <p>Queste funzioni supportano la directory di config <code>~/.malda</code> dell'<a href="31-personal-assistant.html">assistente personale e CLI</a>.</p>
+        <pre><code>var home = getMaldaHome();   // Returns "~/.malda" (e.g. C:\Users\You\.malda on Windows)
+var config = getMaldaConfig(); // Returns config object from ./.malda/config.json or ~/.malda/config.json, or null</code></pre>
+        <p><code>getMaldaHome()</code> — Restituisce il path della directory utente MALDA (nessun argomento).</p>
+        <p><code>getMaldaConfig()</code> — Legge il primo file di config esistente tra <code>./.malda/config.json</code> e <code>~/.malda/config.json</code>, lo analizza come JSON e restituisce il risultato come oggetto. Restituisce <code>null</code> se nessuno dei due file esiste o se l'analisi fallisce. Usala per leggere <code>providers.openrouter.apiKey</code>, <code>agents.defaults.model</code>, <code>tools.web.search.apiKey</code>, ecc.</p>
+        <p><code>getAssistantMemory(path?)</code> — Restituisce un'istanza <code>GraphMemory</code> inizializzata con <code>MALDA_MEMORY_EMBED</code> (default <code>hash</code>) e caricata da <code>~/.malda/memory/assistant</code> quando gli artefatti esistono. Il <code>path</code> opzionale sovrascrive il path base di storage (senza estensione).</p>
+        <h3>Skill</h3>
+        <p>Queste funzioni supportano il caricamento delle <a href="31-personal-assistant.html#skills">skill</a> da <code>~/.malda/skills/</code>.</p>
+        <pre><code>var names = getSkillNames();   // Returns array of skill base names, e.g. ["github", "weather"]
+var skill = loadSkill("github"); // Loads ~/.malda/skills/github.malda, returns object with module globals (e.g. skill.tools, skill.agent)
+var skills = loadSkillsFromDir(); // Scans ~/.malda/skills/*.malda; each entry has name + exports (or error)</code></pre>
+        <p><code>getSkillNames()</code> — Restituisce un array di stringhe: i nomi base (senza <code>.malda</code>) di tutti i file <code>.malda</code> in <code>~/.malda/skills/</code>. Restituisce <code>[]</code> se la directory non esiste o è vuota. Nessun argomento.</p>
+        <p><code>loadSkill(name)</code> — Carica il file skill <code>~/.malda/skills/&lt;name&gt;.malda</code>, lo esegue in un ambiente isolato e restituisce un oggetto le cui proprietà sono le variabili globali del modulo. Convenzione: le skill esportano un array <code>tools</code> (e opzionalmente <code>agent</code>). Restituisce <code>null</code> se il file non esiste o <code>name</code> è vuoto. Un argomento: il nome della skill (stringa).</p>
+        <p><code>loadSkillsFromDir(path?)</code> — Scansiona una directory (default <code>~/.malda/skills</code>) in cerca di file <code>*.malda</code> e restituisce un array di oggetti. Ogni oggetto include <code>name</code> più i globali del modulo skill (<code>tools</code>, <code>agent</code>, ecc.). In caso di fallimento del carico, l'oggetto ha <code>name</code> e <code>error</code> al loro posto. Primo argomento opzionale: path della directory (stringa).</p>
+        <h2>12.5 Ambiente e host</h2>
+        <p>Guida pratica e l'insidia di <code>getEnv</code> / <code>str.trim</code>: <a href="11-input-output.html">11.5 Ambiente e host</a>.</p>
+        <pre><code>var apiKey = getEnv("OPENAI_API_KEY");  // string, or null when unset
+var apiKeyOr = io.getEnvOr("OPENAI_API_KEY");  // "" when unset (optional 2nd arg = default)
+var hasKey = hasEnv("API_KEY");         // Check if environment variable exists</code></pre>
+        <p><code>io.getEnvOr(name, default?)</code> — stessa ricerca di <code>getEnv</code>, ma non restituisce mai <code>null</code>: le variabili assenti producono <code>default</code> (stringa vuota se omesso). Preferiscila prima di <code>str.trim</code> / altre funzioni che si aspettano una stringa.</p>
+        <h3>12.5.1 Informazioni sull'host</h3>
+        <p>I built-in senza argomenti descrivono la macchina e l'invocazione sotto cui gira il programma. Passare un qualsiasi argomento solleva un errore.</p>
+        <pre><code>var host = getHostPlatform();
+print(host.os);              // Operating system identifier
+print(host.arch);            // Process architecture
+print(host.pathSeparator);   // "\" on Windows, "/" elsewhere
+print(host.description);     // Full OS description string
+
+var args = getCommandLineArgs();
+// Arguments passed to the program, excluding the program name itself
+if (args.length > 0) {
+    print("first argument: " + args[0]);
+}
+
+// Folder of the .malda script (interpreter) or of the compiled .exe (transpile)
+var programDir = getProgramDirectory();
+var modelPath = io.pathJoin(programDir, "bge-m3-Q4_K_M.gguf");</code></pre>
+        <p><code>getHostPlatform()</code> restituisce un oggetto con i quattro campi mostrati sopra. <code>getCommandLineArgs()</code> restituisce un array di stringhe ed è il modo per leggere gli argomenti CLI da un programma MALDA, sia in esecuzioni interpretate sia transpile. <code>getProgramDirectory()</code> restituisce la directory assoluta del file sorgente <code>.malda</code> in esecuzione sotto l'interprete, oppure <code>AppContext.BaseDirectory</code> (la cartella che contiene l'eseguibile compilato) dopo <code>malda compile</code>.</p>
+        <h3>12.5.2 Ricerca web (Brave Search API)</h3>
+        <p><code>webSearch(query, apiKey?)</code> — Esegue una ricerca web usando la Brave Search API. <code>query</code> è la stringa di ricerca. <code>apiKey</code> è opzionale; se omessa, la chiave viene presa (in ordine) dall'argomento <code>apiKey</code>, dalla variabile d'ambiente <code>BRAVE_SEARCH_API_KEY</code> o da <code>tools.web.search.apiKey</code> in <code>~/.malda/config.json</code> (vedi <a href="31-personal-assistant.html">Assistente personale e CLI</a>). Restituisce un oggetto: <code>{ ok: true, results: [{ title, url, description }, ...], moreResultsAvailable: bool }</code> in caso di successo, oppure <code>{ ok: false, error: "message" }</code> in caso di fallimento.</p>
+        <pre><code>var r = webSearch("MALDA programming language");           // Uses BRAVE_SEARCH_API_KEY or config
+var r2 = webSearch("weather London", "your-brave-api-key"); // Explicit key
+if (r.ok) { for (var i = 0; i &lt; r.results.length; i++) print(r.results[i].title); }</code></pre>
+        <h3>12.5.3 Helper per token di autenticazione HTTP</h3>
+        <p>Questi helper estraggono token da oggetti simili a request usati dagli handler di <code>HttpServer</code>.</p>
+        <pre><code>var bearer = httpBearerToken(req); // Reads Authorization: Bearer &lt;token&gt;
+var cookie = httpCookieToken(req, "app_session", "cookie-secret"); // Signed cookie token
+
+var token = httpAuthToken(req, {
+  "allowBearer": true,
+  "allowCookie": true,
+  "allowBody": true,
+  "cookieName": "app_session",
+  "cookieSecret": "cookie-secret",
+  "bodyKey": "auth"
+});</code></pre>
+        <ul>
+            <li><code>httpBearerToken(request)</code> - restituisce la stringa del token bearer o la stringa vuota.</li>
+            <li><code>httpCookieToken(request, cookieName, cookieSecret?)</code> - restituisce il token del cookie decodificato (o il valore del cookie sicuro verificato quando è fornito il secret), altrimenti la stringa vuota.</li>
+            <li><code>httpAuthToken(request, options?)</code> - prova bearer/cookie/body in ordine e restituisce il primo token non vuoto.</li>
+        </ul>
+        <h2>12.6 Funzioni di utilità sugli array</h2>
+        <pre><code>var arr = [1, 2, 3, 4, 5];
+var total = sum(arr);                       // 15
+var avg = average(arr);                     // 3.0
+var smallest = min(arr);                    // 1
+var largest = max(arr);                     // 5
+var total2 = arr.sum();                     // 15
+var avg2 = arr.average();                   // 3.0
+var smallest2 = arr.min();                  // 1
+var largest2 = arr.max();                   // 5
+var joined = join(arr, ", ");               // Join array elements into string (returns "1, 2, 3, 4, 5")
+var reversed = reverse(arr);                // Return reversed array (returns [5, 4, 3, 2, 1])
+var sorted = sort([3, 1, 4, 1, 5]);        // Sort array (returns [1, 1, 3, 4, 5])
+var sortedDesc = sort([3, 1, 2], (a, b) => b - a);  // Custom compare: descending (interpreter and transpiled)
+var hasValue = includes(arr, 3);            // Check if array contains value (returns true)</code></pre>
+        <p><strong>sort(array, compareFn?)</strong> — Con un argomento, restituisce un nuovo array ordinato con il confronto di default (numeri poi stringhe). Con un <code>compareFn</code> opzionale, il secondo argomento deve essere una funzione <code>(a, b) =&gt; number</code>: restituire negativo se a prima di b, 0 se uguali, positivo se a dopo b. Il confronto personalizzato è supportato sia nell'interprete sia in modalità transpile.</p>
+        <p><strong>sum(array)</strong> restituisce il totale di un array numerico. <strong>average(array)</strong> restituisce la media aritmetica di un array numerico non vuoto come float. <strong>min(array)</strong> e <strong>max(array)</strong> restituiscono l'elemento numerico più piccolo e più grande in un array non vuoto.</p>
+        <p>Le stesse operazioni di aggregazione supportano anche la sintassi a metodo sull'array: <code>array.sum()</code>, <code>array.average()</code>, <code>array.min()</code> e <code>array.max()</code>.</p>
+        <h3>12.6.1 Helper di esportazione CSV</h3>
+        <pre><code>var rows = [
+  {"name": "Alice", "score": 95},
+  {"name": "Bob", "score": 88}
+];
+
+var csv1 = toCsv(rows, ["name", "score"]); // With explicit column order
+var csv2 = toCsv(rows);                     // Infer columns from first row
+var csv3 = toCsv(rows, ["name", "score"], {
+  "delimiter": ";",
+  "includeHeader": true,
+  "quoteAll": false,
+  "newline": "\n"
+});</code></pre>
+        <p><code>toCsv(rows, columns?, options?)</code> converte un array di righe in testo CSV. Esegue l'escape delle virgolette e racchiude le celle quando serve (delimitatore/newline/virgolette). Utile per report e endpoint di esportazione dati.</p>
+        <h2>12.7 Funzioni JSON</h2>
+        <pre><code>var jsonStr = toJSON(obj);  // Convert object to JSON string
+var obj = parseJSON('{"name":"Alice","age":30}');  // Parse JSON string to object</code></pre>
+        <p><code>parseJSON</code> analizza JSON arbitrario in valori MALDA. <code>parseJson(jsonString, schemaName)</code> analizza JSON e lo valida rispetto a una dichiarazione <code>schema</code> registrata, sollevando un'eccezione in caso di mancata corrispondenza.</p>
+        <pre><code>schema Answer {
+    text: string;
+    sources: string[];
+}
+
+var parsed = parseJson('{"text":"ok","sources":["a.md"]}', "Answer");
+print(parsed.text);           // ok
+print(parsed.sources[0]);       // a.md</code></pre>
+        <p>I tipi di campo array usano la sintassi <code>type[]</code> (es. <code>string[]</code>, <code>int[]</code> o <code>OtherSchema[]</code>). I tipi di campo possono anche nominare un altro <code>schema</code> dichiarato (le forme oggetto nidificate vengono espanse per la validazione e i prompt tipizzati) o un <strong>sum type</strong> dichiarato (JSON <code>oneOf</code> con tag). I campi opzionali aggiungono <code>?</code> dopo il tipo. Nomi di tipo di campo sconosciuti e riferimenti ciclici allo schema sollevano un errore quando lo schema viene risolto.</p>
+
+        <h3 id="validate">12.7.1 validate(schema, value)</h3>
+        <p>Controlla un valore che hai già rispetto a uno schema, senza analizzare JSON. A differenza di <code>parseJson</code>, un fallimento di validazione <strong>non</strong> è un'eccezione: il risultato è sempre un oggetto che riporta l'esito.</p>
+        <ul>
+            <li>In caso di successo: <code>{ ok: true, data: value }</code></li>
+            <li>In caso di fallimento: <code>{ ok: false, error: "message" }</code></li>
+        </ul>
+        <p>Il primo argomento è il <strong>nome</strong> di uno <code>schema</code> o <strong>sum type</strong> registrato, oppure un oggetto schema in linea. Un nome sconosciuto solleva <em>Unknown schema 'Name'</em>. In caso di successo, <code>data</code> è il valore originale — un dict con tag resta un dict (non viene coercizzato a variant). Usa <code>await prompt … -&gt; Intent</code> quando ti serve un variant per <code>match</code>.</p>
+        <pre><code data-run="true" data-expect="ok">schema Answer {
+    text: string;
+    sources: string[];
+}
+
+var candidate = dict { "text": "ok", "sources": ["a.md"] };
+
+var checked = validate("Answer", candidate);
+if (checked.ok) {
+    print(checked.data.text);      // ok
+} else {
+    print("invalid: " + checked.error);
+}</code></pre>
+        <pre><code data-run="true" data-expect="Buy">type Intent = Search(query) | Buy(sku, qty);
+var tagged = dict { "tag": "Buy", "sku": "SKU-9", "qty": 2 };
+var checkedIntent = validate("Intent", tagged);
+if (checkedIntent.ok) {
+    print(checkedIntent.data.tag);
+}</code></pre>
+        <pre><code data-run="true" data-expect="false">type Intent = Search(query: string) | Buy(sku: string, qty: int);
+var tagged = dict { "tag": "Buy", "sku": "SKU-9", "qty": "x" };
+var checkedTyped = validate("Intent", tagged);
+print(checkedTyped.ok);</code></pre>
+        <div class="info-box">
+            <strong>Da non confondere con:</strong> <code>memory.validate()</code> su un'istanza <a href="18-graph-memory.html">GraphMemory</a>, che controlla l'integrità del grafo piuttosto che uno schema. Condividono il nome ma non sono correlati.
+        </div>
+
+        <h2>12.7.2 Funzioni per pipeline AI</h2>
+        <p>Questi built-in si compongono con l'operatore pipe (<code>|&gt;</code>) per la retrieval-augmented generation (RAG) e l'output LLM strutturato. Vedi anche <a href="14-vectordb.html">14. VectorDB</a> (<code>asRetriever</code>) e <code>Examples/Prompts/rag_pipeline.malda</code>.</p>
+        <pre><code>// Load text files matching a glob pattern (default directory: current)
+var docs = loadDocuments("**/*.md", "docs/");
+
+// Split long documents into overlapping chunks
+var chunks = splitDocuments(docs, 512, 64);
+
+// Index documents into a VectorDB (embeds content, preserves metadata)
+indexInto(vdb, chunks);
+
+// Format retrieved documents for prompt context
+var context = query |> retriever.get |> formatRetrievedDocs;
+
+// Execute a PromptInstance with the default or supplied LLM client
+var response = await (promptInstance |> runPrompt(client));
+
+// Stream tokens while the model responds
+var seen = "";
+function onTok(token) { seen = seen + token; }
+var response = await runPrompt(promptInstance, client, { onToken: onTok });
+
+// Stream model reasoning/thinking deltas (OpenRouter-compatible providers)
+var reasoning = "";
+function onReason(token) { reasoning = reasoning + token; }
+var response = await runPrompt(promptInstance, client, { onReasoning: onReason });
+
+// Attach runtime few-shot examples to a prompt instance
+var p = classify("query") |> withExamples(dynamicExamples);
+
+// Validate LLM JSON output against a schema
+var parsed = response |> parseJson("Answer");
+
+// Advanced composition: sequence + parallel branches
+var pipeline = composePipe(formatRetrievedDocs, (ctx) => answerPrompt(q, ctx));
+var context = question |> pipeline;
+
+var branches = parallelRun(question, {
+    context: (q) => q |> retriever.get,
+    tags: classifyIntent
+});
+var merged = mergeRetrievedDocs(branches.context, branches.tags);</code></pre>
+        <table>
+            <thead>
+                <tr><th>Funzione</th><th>Descrizione</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>loadDocuments(pattern, dirPath?)</code></td><td>Corrisponde ai file con glob sotto <code>dirPath</code> (default <code>"."</code>); restituisce <code>{ content, metadata: { source } }</code> per file</td></tr>
+                <tr><td><code>splitDocuments(docs, chunkSize, overlap?)</code></td><td>Divide il contenuto dei documenti in chunk sovrapposti; copia i metadata su ogni chunk</td></tr>
+                <tr><td><code>indexInto(vdb, docs)</code></td><td>Esegue l'embed e aggiunge ogni documento a un VectorDB tramite il suo calculator; memorizza i metadata con gli hit</td></tr>
+                <tr><td><code>formatRetrievedDocs(docs)</code></td><td>Formatta gli array di documenti come blocchi <code>[source: …]</code> uniti per il contesto del prompt</td></tr>
+                <tr><td><code>composePipe(step1, step2, …)</code></td><td>Compone 2+ callable (funzioni, lambda, built-in, prompt) da sinistra a destra in una funzione riutilizzabile <code>(input) =&gt; …</code>. Attende gli step async. Compatibile con la pipe: <code>input |> composePipe(f, g)</code></td></tr>
+                <tr><td><code>parallelRun(input, branches)</code></td><td>RunnableParallel: alimenta lo stesso <code>input</code> a ogni branch nominato in concorrenza; restituisce un oggetto/mappa di risultati. Usa <code>await</code> quando i branch includono step async.</td></tr>
+                <tr><td><code>mergeRetrievedDocs(docArrays…)</code></td><td>Appiattisce più array <code>Document[]</code> (es. da <code>parallelRun</code>) in un unico array; deduplica per metadata <code>source+chunk</code> o per contenuto</td></tr>
+                <tr><td><code>withExamples(prompt, examples, options?)</code></td><td>Restituisce una copia di un <code>PromptInstance</code> con esempi few-shot a runtime. Passa <code>{ merge: true }</code> per accodarli dopo eventuali <code>examples</code> statici dalla dichiarazione del prompt. Compatibile con la pipe.</td></tr>
+                <tr><td><code>runPrompt(prompt, client?, options?)</code></td><td>Async: esegue un <code>PromptInstance</code> tramite un LLM; restituisce il testo della risposta. <code>options</code> opzionali: <code>{ onToken: (token) =&gt; ... }</code> per i token di contenuto in streaming; <code>{ onReasoning: (token) =&gt; ... }</code> per i token di reasoning/thinking in streaming. Entrambe funzionano in modalità interpretata e transpile con <code>await</code> e step di pipe.</td></tr>
+                <tr><td><code>parseJson(json, schemaName)</code></td><td>Analizza e valida JSON rispetto a una dichiarazione <code>schema</code>; restituisce un oggetto tipizzato</td></tr>
+            </tbody>
+        </table>
+        <h2>12.8 Funzioni del file system</h2>
+        <p>Guida pratica, stili di fallimento, intervalli di righe, capability token e note sul backend: <a href="11-input-output.html">11. Input/Output</a>. Questa sezione è il catalogo delle firme.</p>
+        <pre><code>var content = readFile("example.txt");                    // Read entire file
+var lines = readFile("example.txt", 10, 20);              // Read lines 10-20 (1-indexed)
+var fromLine = readFile("example.txt", 5);                // Read from line 5 to end
+writeFile("output.txt", "Hello");                         // Write content to file
+var exists = hasFile("example.txt");                      // Check if file exists
+var dirExists = hasDirectory("mydir");                     // Check if directory exists
+ensureDir("path/to/dir");                                  // Create directory and parents if missing
+var files = listDirectory(".");                            // List directory contents</code></pre>
+        <p><code>ensureDir(path)</code> — Crea la directory e ogni directory padre mancante. Non fa nulla se la directory esiste già. Utile per creare <code>~/.malda/memory</code> prima di salvare la memoria dell'assistente.</p>
+        <h3>12.8.0 Cartelle embedded (<code>embed:</code>)</h3>
+        <p>Compila con <code>malda compile … --embed-folder &lt;dir[=alias]&gt;</code> per impacchettare una directory nell'eseguibile come risorse dell'assembly. A runtime, leggi quei file con lo scheme virtuale <code>embed:&lt;alias&gt;/&lt;relative&gt;</code> — nulla viene estratto su disco. Le scritture (<code>writeFile</code>, <code>ensureDir</code>, …) rifiutano i path <code>embed:</code>.</p>
+        <pre><code>if (io.hasEmbeddedFolder("secondbrain")) {
+    var root = io.embeddedFolderRoot("secondbrain");   // "embed:secondbrain"
+    var catalog = io.readFile(io.pathJoin(root, "brain.json"));
+    var entries = io.listDirectory(root);
+}</code></pre>
+        <p><code>hasEmbeddedFolder(alias)</code> restituisce se quell'alias è stato embedded. <code>embeddedFolderRoot(alias)</code> restituisce <code>embed:&lt;alias&gt;</code>, oppure <code>null</code> quando l'alias manca. I tool degli agenti come <code>createReadFileTool</code>, <code>createGrepTool</code> e <code>createListDirectoryTool</code> accettano una working directory <code>embed:&lt;alias&gt;</code>.</p>
+        <pre><code>replaceInFile("file.txt", "old", "new", 3);               // Replace text in file (single replacement)
+var edits = [{"oldText": "old1", "newText": "new1"}, {"oldText": "old2", "newText": "new2"}];
+var result = editFile("file.txt", edits);                 // Apply multiple edits to file</code></pre>
+
+        <h3>12.8.1 Linee, binario, eliminazione e testo PDF</h3>
+        <table>
+            <thead>
+                <tr><th>Funzione</th><th>Restituisce</th><th>Comportamento</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>pdf.extractText(path, password?)</code></td><td>string</td><td>Estrae il testo da un PDF usando PdfPig (<code>ContentOrderTextExtractor</code>). <code>password</code> opzionale per i file cifrati. Solleva un'eccezione quando il path manca o il PDF non può essere aperto. Solo testo digitale &mdash; i PDF scansionati/immagine richiedono OCR altrove. Preferisci la forma namespaced; il nome CallBuiltIn è <code>extractPdfText</code>.</td></tr>
+                <tr><td><code>doc.extractText(path)</code></td><td>string</td><td>Estrae il testo dei paragrafi del corpo da un Word <code>.docx</code> usando l'Open XML SDK. Solleva un'eccezione quando il path manca, il file non è <code>.docx</code> o il package non può essere aperto. Il <code>.doc</code> binario legacy non è supportato. Preferisci la forma namespaced; il nome CallBuiltIn è <code>extractDocxText</code>.</td></tr>
+                <tr><td><code>readTextFileLines(path)</code></td><td>array di stringhe, oppure <code>null</code></td><td>Legge il file come UTF-8 e lo divide in righe. Restituisce <code>null</code> quando il file manca o non può essere letto.</td></tr>
+                <tr><td><code>deleteFile(path)</code></td><td>boolean</td><td>Elimina il file. Restituisce <code>true</code> quando il file è stato eliminato <em>o era già assente</em>; <code>false</code> su un path vuoto o un fallimento I/O.</td></tr>
+                <tr><td><code>insertAtLine(path, lineNumber, content, insertAfter?)</code></td><td>boolean</td><td>Inserisce <code>content</code> (che può coprire più righe) a una riga con indice a base 1. Restituisce <code>false</code> se il file non esiste.</td></tr>
+                <tr><td><code>readFileBase64(path)</code></td><td>string, oppure <code>null</code></td><td>Legge il file come byte e restituisce base64. Restituisce <code>null</code> quando il file manca.</td></tr>
+                <tr><td><code>writeFileBase64(path, base64Content)</code></td><td>boolean</td><td>Decodifica il base64 e scrive i byte. Restituisce <code>false</code> quando l'input non è base64 valido o la scrittura fallisce.</td></tr>
+            </tbody>
+        </table>
+        <pre><code>var lines = readTextFileLines("notes.txt");
+if (lines != null) {
+    print("line count: " + lines.length);
+}
+
+insertAtLine("notes.txt", 1, "# Header");        // Insert before line 1
+insertAtLine("notes.txt", 3, "appended", true);  // Insert after line 3
+
+var encoded = readFileBase64("logo.png");
+writeFileBase64("logo-copy.png", encoded);
+
+deleteFile("scratch.txt");
+
+var pdfText = pdf.extractText("manual.pdf");
+// var unlocked = pdf.extractText("secret.pdf", "password");
+var docText = doc.extractText("brief.docx");</code></pre>
+        <p>Per <code>insertAtLine</code>, un <code>lineNumber</code> di <code>0</code> o inferiore inserisce all'inizio del file, e un valore oltre l'ultima riga accoda in fondo. <code>insertAfter</code> ha default <code>false</code>, cioè il contenuto viene inserito <em>prima</em> della riga data.</p>
+        <div class="warning-box">
+            <strong>Stile di fallimento:</strong> <code>readTextFileLines</code>, <code>deleteFile</code>, <code>insertAtLine</code> e gli helper base64 segnalano i fallimenti ordinari tramite il valore di ritorno (<code>false</code> o <code>null</code>) anziché sollevando un'eccezione. Sollevano un errore solo se chiamati con il numero sbagliato di argomenti o con tipi di argomenti sbagliati. Controlla il risultato invece di affidarti a <code>try</code>/<code>catch</code>. <code>pdf.extractText</code> e <code>doc.extractText</code> sollevano un'eccezione su file mancanti e fallimenti di analisi.
+        </div>
+        <p><code>insertAtLine</code> è solo interprete: non è disponibile negli eseguibili transpile. Gli altri helper sui file, <code>pdf.extractText</code> / <code>extractPdfText</code> e <code>doc.extractText</code> / <code>extractDocxText</code> sono supportati dal transpiler C#.</p>
+
+        <h3>12.8.2 Ricerca nei file: glob e grep</h3>
+        <p><code>glob</code> trova i path per pattern e <code>grep</code> cerca nel contenuto dei file. Entrambi prendono prima un argomento obbligatorio e poi una serie di argomenti opzionali posizionali.</p>
+        <pre><code>glob(pattern, dirPath?, maxResults?, includeDirectories?, excludeDirs?, workingDirectory?)</code></pre>
+        <ul>
+            <li><code>dirPath</code> ha default <code>"."</code>, <code>maxResults</code> <code>200</code> (limitato a 500), <code>includeDirectories</code> <code>false</code> e i due argomenti stringa rimanenti <code>""</code>.</li>
+            <li>In caso di successo restituisce un oggetto <code>{ items, count, truncated }</code>, dove ogni item è <code>{ name, type, path }</code> e <code>truncated</code> indica se il risultato ha raggiunto <code>maxResults</code>.</li>
+        </ul>
+        <pre><code>var found = glob("**/*.malda", "Examples");
+print(found.count);
+print(found.truncated);
+
+var first = found.items[0];
+print(first.path + " (" + first.type + ")");</code></pre>
+        <pre><code>grep(pattern, filePath, useRegex?, caseInsensitive?, includeLineNumbers?, contextLines?, countOnly?, recursive?, workingDirectory?)</code></pre>
+        <ul>
+            <li>Default: <code>useRegex</code> <code>false</code>, <code>caseInsensitive</code> <code>false</code>, <code>includeLineNumbers</code> <code>true</code>, <code>contextLines</code> <code>3</code>, <code>countOnly</code> <code>false</code>, <code>recursive</code> <code>true</code>.</li>
+            <li>Di norma restituisce un array di match con forma <code>{ filePath, content, lineNumber, contextBefore, contextAfter }</code>. Con <code>countOnly</code> impostato restituisce invece <code>{ count, filesSearched }</code>.</li>
+            <li>I file che non possono essere letti vengono saltati in silenzio.</li>
+        </ul>
+        <pre><code>var matches = grep("function ", "Examples");
+for (var m in matches) {
+    print(m.filePath + ":" + m.lineNumber + " " + m.content);
+}
+
+var summary = grep("TODO", "Examples", false, true, true, 0, true);
+print(summary.count + " hits in " + summary.filesSearched + " files");</code></pre>
+        <div class="warning-box">
+            <strong>Gli errori sono restituiti come stringhe:</strong> quando il path non esiste, o un'espressione regolare non è valida, <code>glob</code> e <code>grep</code> restituiscono un <em>messaggio</em> di errore invece del risultato normale. Proteggi con <code>typeOf(result) == "string"</code> prima di trattare il valore come una collezione.
+        </div>
+        <pre><code>var result = grep("needle", "does-not-exist");
+if (typeOf(result) == "string") {
+    print("search failed: " + result);
+}</code></pre>
+
+        <h2>12.9 Funzioni Git</h2>
+        <pre><code>var status = gitStatus(".");                         // Get repository status
+gitAdd(".", ".");                                     // Stage files
+gitCommit(".", "Fix bug");                            // Create commit
+var commits = gitLog(".", 10);                        // Get last 10 commits
+var diff = gitDiff(".", null, false);                 // Get unstaged diff
+var branches = gitBranch(".", "list");                // List all branches
+gitBranch(".", "create", "feature-x");                // Create new branch
+// Note: Branch deletion is disabled for safety
+gitCheckout(".", "main", false);                      // Switch to branch
+gitPush(".", "origin", "main");                       // Push to remote
+gitPull(".", "origin", "main");                       // Pull from remote</code></pre>
+        <h2>12.10 Funzioni di esecuzione comandi</h2>
+        <pre><code>// Execute shell commands
+        var result = runCommand("dotnet", ["build"], ".", 30000);  // Run dotnet build with 30s timeout
+        // Returns: {exitCode: 0, stdout: "...", stderr: ""}
+
+        var result = runCommand("npm", ["test"]);                  // Run npm test (no timeout)
+        var result = runCommand("python", ["script.py"], "./scripts");  // Run with custom working directory
+
+        // Result object structure:
+        // - exitCode (integer): Process exit code (0 typically indicates success)
+        // - stdout (string): Standard output from the command
+        // - stderr (string): Standard error output from the command</code></pre>
+        <h2>12.11 Funzioni di esecuzione MALDA</h2>
+        <pre><code>        // Execute MALDA code from file or string
+        var result = runMALDA("example.malda");                    // Execute from file
+        var result = runMALDA("print('Hello');");               // Execute from string
+        var result = runMALDA("example.malda", "input data");      // Execute with stdin input
+
+        // Result object structure:
+        // - success (boolean): true if execution completed without errors
+        // - output (string): Standard output from the program
+        // - error (string): Parse error message if any, empty string otherwise
+        // - runtimeError (string, optional): Runtime error message if any
+
+        // Compile a .malda program to an executable (optional embed folder = CLI --embed-folder)
+        var packed = compileMALDA("app.malda", "dist/app.exe", "transpile", "secondbrain");
+        // embedFolder may be "path" or "path=alias"; result: { success, outputPath, error, errors }</code></pre>
+        <h3>12.10.1 getSymbols(sourceOrFilePath)</h3>
+        <p>Analizza codice MALDA ed estrae informazioni strutturate sui simboli (classi, funzioni, actor, prompt) con numeri di riga e firme. Accetta un argomento stringa: un path a un file <code>.malda</code> oppure codice sorgente MALDA. Se la stringa sembra un path di file (contiene separatori di path o termina con <code>.malda</code>) e il file esiste, il file viene letto e il suo contenuto analizzato; altrimenti l'argomento è trattato come codice sorgente. Il path traversal (<code>..</code>, <code>~</code>) è rifiutato. Restituisce un oggetto con <code>classes</code>, <code>functions</code>, <code>actors</code>, <code>prompts</code> e <code>parseErrors</code> (tutti array). Ogni class/actor ha <code>name</code>, <code>line</code>, <code>column</code>, <code>members</code>; ogni funzione ha <code>name</code>, <code>line</code>, <code>column</code>, <code>parameters</code>, <code>signature</code>; ogni prompt ha <code>name</code>, <code>line</code>, <code>column</code>, <code>parameters</code>, <code>returnType?</code>, <code>signature</code>. Gli errori di parse hanno <code>line</code>, <code>column</code>, <code>message</code>.</p>
+        <pre><code>var sym = getSymbols("Examples/OOP/classes_objects.malda");   // From file
+var sym2 = getSymbols("function f() { } class C { }");        // From source
+// sym.classes, sym.functions, sym.actors, sym.prompts, sym.parseErrors</code></pre>
+        <h3>12.10.2 getParseErrors(sourceOrFilePath)</h3>
+        <p>Analizza codice MALDA e restituisce solo gli errori di parse (nessuna esecuzione). Accetta lo stesso argomento di <code>getSymbols</code>: path di file o stringa sorgente. La risoluzione del path e i controlli di sicurezza sono gli stessi. Restituisce <code>{ parseErrors: [{ line, column, message }, ...] }</code>. Usala per validare la sintassi senza eseguire o compilare.</p>
+        <pre><code>var errs = getParseErrors("var x = ;");   // Invalid: empty rhs
+// errs.parseErrors is non-empty with line, column, message
+var ok = getParseErrors("var x = 1;");   // Valid: parseErrors is []</code></pre>
+        <div class="info-box">
+            <strong>Sicurezza dell'esecuzione dei comandi:</strong> La funzione <code>runCommand</code> include controlli di sicurezza completi:
+            <ul>
+                <li>I comandi pericolosi sono bloccati (es. <code>rm</code>, <code>del</code>, <code>format</code>, <code>shutdown</code>, <code>powershell</code>, <code>cmd</code>, ecc.)</li>
+                <li>La working directory è validata e normalizzata per prevenire il path traversal</li>
+                <li>Timeout massimo di 1 ora (3.600.000 ms) per evitare attese indefinite</li>
+                <li>I path dei comandi sono validati per i path assoluti</li>
+                <li>I tentativi di path traversal (<code>..</code>, <code>~</code>) sono rilevati e bloccati</li>
+            </ul>
+        </div>
+        <h2>12.12 Integrazione Spectre.Console</h2>
+        <p>MALDA espone un oggetto globale <code>AnsiConsole</code> che incapsula la libreria .NET <code>Spectre.Console</code> e fornisce output di console ricco:</p>
+        <pre><code>// Markup (colors, bold, links, etc.)
+AnsiConsole.markupLine("[green]Hello[/] [bold red]Spectre.Console[/]!");   // Appends a newline
+AnsiConsole.markup("[dim]no newline, [/]");                                // Stays on the same line
+AnsiConsole.markupLine("[cyan]rest of the line[/]");
+
+// Tables
+var rows = [
+    {"Name": "Alice", "Score": 95},
+    {"Name": "Bob", "Score": 88}
+];
+AnsiConsole.table(rows, "Scores");
+
+// Panels (body and title accept markup)
+AnsiConsole.panel("[bold]Important[/] message", "Info", "rounded");
+
+// Trees
+var treeData = {
+    "root": "Project",
+    "children": [
+        {"label": "src"},
+        {"label": "tests"}
+    ]
+};
+AnsiConsole.tree("Project", treeData);
+
+// Status
+AnsiConsole.status("Processing...", () => {
+    // Long-running work here
+});
+
+// Prompt (configuration object)
+AnsiConsole.prompt({
+    "type": "text",
+    "message": "Enter your name"
+});
+
+// Progress - New callback-based syntax (recommended)
+AnsiConsole.progress((ctx) => {
+    ctx.addTask("Loading World Map", 100);
+    
+    while (!ctx.isFinished()) {
+        ctx.increment("Loading World Map", 1.5);
+        sleep(50);
+    }
+});
+
+// Progress - Object-based syntax (legacy)
+AnsiConsole.progress({
+    "tasks": [
+        {"name": "Task 1", "maxValue": 100}
+    ],
+    "action": (progressObj) => {
+        var current = 0;
+        while (current &lt; 100) {
+            current = current + 10;
+            // Update progress by setting the value
+            progressObj["Task 1"] = current;
+            sleep(50);
+        }
+    }
+});</code></pre>
+        <div class="info-box">
+            <strong>Markup e fine riga:</strong>
+            <ul>
+                <li><code>AnsiConsole.markupLine(text)</code> scrive il testo e accoda un newline. È la chiamata giusta per una riga di output autonoma.</li>
+                <li><code>AnsiConsole.markup(text)</code> scrive il testo <em>senza</em> newline finale, così le chiamate consecutive restano sulla stessa riga. Usala per comporre una riga da più frammenti stilizzati, poi chiudi la riga con <code>markupLine</code>.</li>
+                <li>Entrambe analizzano i tag di markup come <code>[bold]</code>, <code>[green]</code> e <code>[/]</code>. Per stampare una parentesi quadra letterale, raddoppiala: <code>[[</code> e <code>]]</code>.</li>
+                <li><code>AnsiConsole.panel(body, title?, border?)</code> analizza il markup sia nel body sia nel title. Il contenuto che non è markup valido — JSON arbitrario, codice o testo di errore con parentesi quadre — viene reso letteralmente invece di sollevare un errore.</li>
+            </ul>
+        </div>
+        <div class="info-box">
+            <strong>API Progress:</strong>
+            <ul>
+                <li><strong>Sintassi a callback:</strong> Passa una funzione che riceve un oggetto context con i metodi:
+                    <ul>
+                        <li><code>ctx.addTask(name, maxValue)</code> - Aggiunge un task di progresso</li>
+                        <li><code>ctx.increment(taskName, value)</code> - Incrementa il progresso di un task del valore dato</li>
+                        <li><code>ctx.isFinished()</code> - Controlla se tutti i task sono finiti</li>
+                    </ul>
+                </li>
+                <li><strong>Sintassi a oggetto:</strong> Passa un oggetto con un array <code>tasks</code> e un callback <code>action</code>. Il callback riceve un oggetto progresso in cui puoi leggere e aggiornare i valori impostando le proprietà: <code>progressObj["Task Name"] = value</code></li>
+            </ul>
+        </div>
+        <div class="info-box">
+            <strong>Dove Spectre.Console fa il rendering:</strong>
+            <ul>
+                <li><strong>Interprete da riga di comando:</strong> Quando esegui <code>malda</code> in un terminale reale, MALDA configura UTF-8 e abilita le sequenze di escape ANSI sulle console Windows supportate, così il markup Spectre.Console viene reso con colori e stile completi.</li>
+                <li><strong>Eseguibili transpile:</strong> Gli eseguibili C# generati abilitano le sequenze di escape ANSI all'avvio su Windows, così le chiamate <code>AnsiConsole.*</code> vengono rese correttamente nei terminali compatibili.</li>
+                <li><strong>Desktop IDE:</strong> Il pannello di output dell'IDE è testo semplice. Al primo uso di <code>AnsiConsole</code>, MALDA apre automaticamente una finestra di console separata e instrada l'output sia al pannello IDE (testo semplice) sia alla console (rendering ricco Spectre.Console).</li>
+            </ul>
+        </div>
+        <h2>12.13 Funzioni data e ora</h2>
+        <pre><code>var timestamp = now();                       // Get current timestamp in milliseconds (Unix epoch)
+var formatted = formatDate(timestamp, "yyyy-MM-dd HH:mm:ss");  // Format timestamp (default: "yyyy-MM-dd HH:mm:ss")
+var parsed = parseDate("2026-01-26 10:30:00");  // Parse date string to timestamp
+var tomorrow = addDays(timestamp, 1);         // Add days to timestamp
+var inHours = addHours(timestamp, 2);        // Add hours to timestamp</code></pre>
+        <div class="info-box">
+            <strong>Formato data/ora:</strong>
+            <ul>
+                <li>I timestamp sono in millisecondi dall'epoca Unix (1 gennaio 1970 UTC)</li>
+                <li><code>formatDate</code> usa le stringhe di formato data .NET standard (es. "yyyy-MM-dd", "HH:mm:ss", "dd/MM/yyyy")</li>
+                <li><code>parseDate</code> accetta formati data comuni e li converte in timestamp</li>
+            </ul>
+        </div>
+        <h2>12.14 Funzioni per numeri casuali</h2>
+        <pre><code>var rand = math.random();                    // Random float between 0.0 and 1.0
+var randInt = math.randomInt(1, 10);         // Random integer, 1 and 10 both included
+var randFloat = math.randomFloat(0.0, 100.0); // Random float between 0.0 and 100.0
+
+math.seed(7);                                // Pin the sequence for reproducible runs
+var pinned = math.randomInt(1, 100);         // Always 39 after seed(7)</code></pre>
+        <div class="info-box">
+            <strong>Casualità riproducibile:</strong>
+            <ul>
+                <li><code>randomInt(min, max)</code> include <em>entrambi</em> gli estremi, a differenza degli intervalli semiaperti comuni in altri linguaggi.</li>
+                <li><code>math.seed(n)</code> reimposta il generatore condiviso dietro <code>random</code>, <code>randomInt</code>, <code>randomFloat</code> e <code>randn</code>. Imposta il seed in cima a un programma per rendere un'esecuzione deterministica, che è ciò che rende testabile un programma casuale.</li>
+                <li>Le forme piatte <code>randomInt(1, 10)</code> e <code>Math.randomInt(1, 10)</code> continuano a funzionare, ma il language server le segnala entrambe come alias deprecati. Preferisci <code>math.</code>, come descritto in <a href="#stdlib-namespaces">12.2 Namespace della stdlib e alias piatti</a>.</li>
+            </ul>
+        </div>
+        <h2>12.15 Funzioni di controllo del tipo</h2>
+        <pre><code>var isNum = isNumber(42);                    // Check if value is a number (integer or float)
+var isStr = isString("hello");               // Check if value is a string
+var isArr = isArray([1, 2, 3]);              // Check if value is an array
+var isObj = isObject({name: "Alice"});       // Check if value is an object
+var type = typeOf(42);                       // Canonical tag ("int", "string", "dict", "object", "variant", "task", "null", ...)
+var isInt = isTag(42, "int");                 // true; isTag also accepts legacy names like "integer" during deprecation</code></pre>
+        <h2>12.16 Funzioni di encoding e decoding</h2>
+        <pre><code>var encoded = base64Encode("Hello World");    // Base64 encode string
+var decoded = base64Decode(encoded);         // Base64 decode string
+var urlEncoded = urlEncode("Hello World");   // URL encode string (returns "Hello%20World")
+var urlDecoded = urlDecode(urlEncoded);      // URL decode string</code></pre>
+        <h2>12.17 Funzioni hash</h2>
+        <pre><code>var md5Hash = md5("Hello World");             // Calculate MD5 hash (returns hex string)
+var sha256Hash = sha256("Hello World");      // Calculate SHA-256 hash (returns hex string)</code></pre>
+        <div class="info-box">
+            <strong>Funzioni hash:</strong>
+            <ul>
+                <li>Sia <code>md5</code> sia <code>sha256</code> restituiscono stringhe esadecimali in minuscolo</li>
+                <li>MD5 produce stringhe hex di 32 caratteri</li>
+                <li>SHA-256 produce stringhe hex di 64 caratteri</li>
+            </ul>
+        </div>
+        <h3>12.16.1 Funzioni di sicurezza per password e JWT</h3>
+        <pre><code>var passwordHash = hashPassword("my-password");              // PBKDF2-SHA256 hash
+var isValid = verifyPassword("my-password", passwordHash);   // true/false
+
+var claims = {"sub": "user-123", "role": "admin"};
+var token = createJwt(claims, "my-jwt-secret", 3600);        // expires in 3600s
+var token2 = createJwt(claims, "my-jwt-secret", {
+  "expiresInSeconds": 3600,
+  "issuer": "malda-core",
+  "audience": "malda-apps",
+  "notBeforeSeconds": 0
+});
+var verifiedClaims = verifyJwt(token2, "my-jwt-secret", {
+  "issuer": "malda-core",
+  "audience": "malda-apps"
+});
+print(verifiedClaims.sub);
+
+var csrfToken = generateCsrfToken("csrf-secret", 3600);
+var csrfOk = verifyCsrfToken(csrfToken, "csrf-secret");      // true/false
+
+var setCookieHeader = createSecureCookie("session", "user-123", "cookie-secret");
+// send with res.header("Set-Cookie", setCookieHeader) or use res.cookie(...)
+var cookieValue = split(split(setCookieHeader, ";")[0], "=")[1];
+var session = readSecureCookie(urlDecode(cookieValue), "cookie-secret");</code></pre>
+        <div class="info-box">
+            <strong>Note sulle funzioni di sicurezza:</strong>
+            <ul>
+                <li><code>hashPassword(password, iterations?)</code> usa PBKDF2 con SHA-256 e sale casuale</li>
+                <li><code>verifyPassword(password, passwordHash)</code> esegue un confronto in tempo costante</li>
+                <li><code>createJwt(payload, secret, expiresInSeconds? | options?)</code> firma token HS256 e aggiunge <code>iat</code>; le options possono impostare <code>expiresInSeconds</code>, <code>issuer</code> (<code>iss</code>), <code>audience</code> (<code>aud</code>) e <code>notBeforeSeconds</code> (<code>nbf</code>)</li>
+                <li><code>verifyJwt(token, secret, options?)</code> valida la firma, <code>nbf</code>, <code>exp</code> e gli <code>issuer</code>/<code>audience</code> attesi opzionali</li>
+                <li><code>verifyJwt</code> solleva errori di autenticazione standardizzati per token mancanti, non validi, non ancora validi o scaduti</li>
+                <li>Negli handler HTTP/REST preferisci <code>req.auth.authenticateBearerJwt(secret)</code> o <code>req.auth.authenticateCookieJwt(cookieName, jwtSecret, cookieSecret?)</code> — verificano il token e popolano claim/ruoli di <code>req.auth</code>. Usa <code>req.auth.requireRole</code> / <code>requirePermission</code> per l'autorizzazione. <code>setVerifiedSub</code> resta per i casi ingress/gateway senza un JWT locale.</li>
+                <li><code>generateCsrfToken(secret, ttlSeconds?)</code> crea token CSRF firmati per i flussi di mutazione di form e API</li>
+                <li><code>verifyCsrfToken(token, secret)</code> valida firma + scadenza e restituisce boolean</li>
+                <li><code>csrfField(secret, ttlSeconds?)</code> restituisce un frammento HTML di input nascosto <code>_csrf</code> per i form (il token corrisponde a <code>enableCsrf</code>)</li>
+                <li><code>bindForm(body, fields)</code> associa/valida i campi del form (<code>name</code>, <code>required</code>, <code>trim</code>, <code>minLength</code>/<code>maxLength</code>, <code>pattern: "email"</code>) in <code>{ ok, values, errors }</code></li>
+                <li><code>formErrors(errors)</code> rende un elenco HTML di errori con escape</li>
+                <li><code>pageLayout(title, bodyHtml, options?)</code> restituisce un involucro HTML minimale a documento intero per le app stringa <code>@PAGE</code> (preferisci <code>ui.layout</code> per i layout ricchi)</li>
+                <li><code>createSecureCookie(name, value, secret, options?)</code> restituisce una stringa di header <code>Set-Cookie</code> firmata con default sicuri</li>
+                <li><code>readSecureCookie(cookieValue, secret)</code> verifica un valore di cookie firmato e restituisce il plaintext o <code>null</code></li>
+            </ul>
+        </div>
+        <h3>12.16.1a Job in background (coda leggera)</h3>
+        <p>Le unità async brevi (email, webhook) usano una coda SQLite in <code>./.malda/jobs.db</code>. È distinta dai processi <code>workflow</code> durevoli.</p>
+        <pre><code>var jobId = enqueueJob("mail", {"to": "user@example.com"}, {"maxAttempts": 3});
+var job = claimJob("mail", "worker-1");
+if (job != null) {
+    // ... do work with job.payload ...
+    completeJob(job.id, {"sent": true});
+    // or: failJob(job.id, "SMTP timeout", true);
+}
+var open = listJobs("mail", "pending", 20);
+var one = getJob(jobId);</code></pre>
+        <div class="info-box">
+            <strong>Helper per i job:</strong>
+            <ul>
+                <li><code>enqueueJob(queue, payload, options?)</code> — options: <code>runAt</code>, <code>maxAttempts</code>, <code>correlationId</code></li>
+                <li><code>claimJob(queue, workerId?)</code> — restituisce un job in esecuzione o <code>null</code></li>
+                <li><code>completeJob(jobId, result?)</code> / <code>failJob(jobId, error?, retry?)</code></li>
+                <li><code>getJob(jobId)</code> / <code>listJobs(queue?, status?, limit?)</code></li>
+            </ul>
+        </div>
+        <h3>12.16.2 Contesto di autenticazione della richiesta (<code>req.auth</code>)</h3>
+        <p>Sia <code>HttpServer</code> sia <code>RestServer</code> espongono la stessa superficie <code>req.auth</code> su ogni richiesta:</p>
+        <ul>
+            <li>Stato: <code>verified</code>, <code>sub</code>/<code>subject</code>, <code>claims</code>, <code>roles</code>, <code>permissions</code>, <code>token</code></li>
+            <li>AuthN: <code>authenticateBearerJwt(secret)</code>, <code>authenticateCookieJwt(cookieName, jwtSecret, cookieSecret?)</code>, <code>setVerifiedSub(sub)</code>, <code>setAnonymous()</code>/<code>clear()</code></li>
+            <li>AuthZ: <code>claim(name, default?)</code>, <code>hasClaim</code>, <code>hasRole</code>/<code>requireRole</code>, <code>hasPermission</code>/<code>requirePermission</code>, <code>requireVerified()</code></li>
+        </ul>
+        <pre><code>function requireAuth(req, res, next) {
+    req.auth.authenticateBearerJwt(getEnv("MALDA_JWT_SECRET"));
+    next();
+}
+
+server.use(requireAuth, { "except": ["/api/health", "/metrics"] });</code></pre>
+        <h2>12.18 Generazione di range</h2>
+        <pre><code>var range1 = range(5);                        // Generate [0, 1, 2, 3, 4]
+var range2 = range(1, 10);                   // Generate [1, 2, 3, 4, 5, 6, 7, 8, 9]
+var range3 = range(0, 10, 2);                // Generate [0, 2, 4, 6, 8] (step of 2)
+var range4 = range(10, 0, -1);               // Generate [10, 9, 8, 7, 6, 5, 4, 3, 2, 1] (negative step)</code></pre>
+        <h2>12.19 Funzioni di gestione errori</h2>
+        <pre><code>exit(0);                                      // Exit program with exit code 0 (success)
+exit(1);                                      // Exit program with exit code 1 (error)
+error("Something went wrong");                // Throw runtime error with message
+assert(x > 0, "x must be positive");          // Assert condition is true, throw error if false
+assert(isValid, "Validation failed");        // Assert without custom message</code></pre>
+        <div class="info-box">
+            <strong>Gestione degli errori:</strong>
+            <ul>
+                <li><code>exit(code)</code> termina immediatamente il programma con il codice di uscita specificato (0 = successo, non zero = errore)</li>
+                <li><code>error(message)</code> solleva un errore a runtime che può essere catturato dai meccanismi di gestione errori</li>
+                <li><code>assert(condition, message?)</code> è utile per debug e validazione - solleva un errore se la condizione è falsa</li>
+            </ul>
+        </div>
+        <h3 id="result-option">12.19.1 <code>result</code> e <code>option</code></h3>
+        <p>Preferisci questi moduli quando una funzione deve segnalare successo o assenza senza sollevare eccezioni. Restituiscono <strong>variant</strong> con tag <code>Ok</code>/<code>Err</code> e <code>Some</code>/<code>None</code> — la stessa forma di una dichiarazione <code>type Result = Ok(value) | Err(message)</code>, ma non devi dichiarare il tipo. I nomi dei moduli sono in minuscolo (<code>result</code>, <code>option</code>); un <code>type Result</code> dichiarato dall'utente è un nome diverso.</p>
+        <p>Usa <code>try</code>/<code>catch</code> per i fallimenti inattesi (vedi <a href="08-control-structures.html">8. Strutture di controllo</a>). Usa <code>result</code>/<code>option</code> per gli esiti attesi nel valore di ritorno.</p>
+        <pre><code data-run="true" data-expect="12\ntrue\nhi\ntrue">function parseAge(raw) {
+    var n = toIntOrNull(raw);
+    if (n == null) {
+        return result.err("not an int");
+    }
+    return result.ok(n);
+}
+
+print(result.unwrapOr(parseAge("12"), 0));
+print(result.isErr(parseAge("x")));
+
+var present = option.some("hi");
+var missing = option.none();
+print(option.unwrapOr(present, "no"));
+print(option.isNone(missing));</code></pre>
+        <ul>
+            <li><code>result.ok(value)</code> / <code>result.err(value)</code> — costruisce un variant <code>Ok</code> o <code>Err</code></li>
+            <li><code>result.isOk(r)</code> / <code>result.isErr(r)</code> — test sul tag</li>
+            <li><code>result.unwrapOr(r, fallback)</code> — payload di <code>Ok</code>, altrimenti <code>fallback</code></li>
+            <li><code>result.map(r, fn)</code> — applica <code>fn</code> a un payload <code>Ok</code>; lascia <code>Err</code> invariato</li>
+            <li><code>option.some(value)</code> / <code>option.none()</code> — costruisce un variant <code>Some</code> o <code>None</code></li>
+            <li><code>option.isSome(o)</code> / <code>option.isNone(o)</code> / <code>option.unwrapOr(o, fallback)</code> / <code>option.map(o, fn)</code> — lo stesso schema per i valori opzionali</li>
+        </ul>
+        <p>Non trattare i type hint (<code>var n: int = …</code>) come validazione a runtime. Per i payload a forma JSON usa <code>schema</code> e <a href="#validate"><code>validate()</code></a>. Tutorial: <a href="../../docs/tutorials/errors-and-validation.md">errori, Result/Option e validate dello schema</a>.</p>
+        <h3 id="grounded-values">12.19.2 <code>grounded.wrap</code></h3>
+        <p>Le citazioni di retrieval (GraphMemory, file, tool) non sono un kind di valore visibile a <code>match</code>. Avvolgi un payload così la provenienza è un dict che puoi leggere:</p>
+        <pre><code data-run="true" data-expect="the sky is blue\ntrue\nwiki">var g = grounded.wrap("the sky is blue", [
+    { "source": "wiki", "id": "p1", "span": "12-40" }
+]);
+print(g.value);
+print(g.sourced);
+print(g.citations[0].source);</code></pre>
+        <ul>
+            <li><code>grounded.wrap(value, citations?)</code> — restituisce <code>{ value, citations, sourced }</code>. <code>sourced</code> è true quando l'elenco delle citazioni è non vuoto dopo la normalizzazione.</li>
+            <li>Ogni citazione è <code>{ source, id?, span? }</code>. Una citazione stringa diventa <code>{ source }</code>. Non esiste un alias piatto <code>grounded()</code>.</li>
+            <li>ASK opt-in di GraphMemory: <code>memory.ask(query, maxResults?, options?)</code> (oppure <code>query(..., { grounded: true })</code>) avvolge gli hit con citazioni da <code>filePath</code> / <code>source</code> / <code>nodeId</code>. <code>query()</code> semplice restituisce ancora un array. Vedi <a href="18-graph-memory.html">18. GraphMemory</a> §18.3.15.</li>
+        </ul>
+        <h3 id="capability-tokens">12.19.3 <code>cap.fileRead</code></h3>
+        <p><code>@effects("io")</code> è un allow-list di nomi. Passa un token non contraffabile in un tool così il modello non può inventare un path. I token sono oggetti host sigillati, non dict — JSON e object literal non possono rigenerarne uno.</p>
+        <pre><code data-run="true" data-expect="fileRead\ntrue\ntrue">var notes = cap.fileRead("notes.md");
+print(notes.kind);
+print(cap.is(notes, "fileRead"));
+var forged = false;
+try {
+    cap.read({ "kind": "fileRead", "path": "notes.md" });
+} catch (e) {
+    forged = true;
+}
+print(forged);</code></pre>
+        <ul>
+            <li><code>cap.fileRead(path)</code> / <code>cap.fileWrite(path)</code> / <code>cap.dirList(path)</code> — emette un token con <code>kind</code> e <code>path</code>. Non esiste un alias piatto <code>cap()</code>.</li>
+            <li><code>cap.read(token)</code> / <code>cap.write(token, content)</code> / <code>cap.list(token)</code> — consuma solo un token <strong>corrispondente</strong>. Stringhe e dict <code>{ kind, path }</code> sollevano un'eccezione.</li>
+            <li><code>cap.is(value, kind?)</code> — true solo per un token reale. <code>cap.confine(token, relativePath)</code> restituisce un token più stretto dello stesso kind; i path fuori dal padre sollevano un'eccezione.</li>
+            <li><code>io.readFile</code> / <code>io.writeFile</code> / <code>io.listDirectory</code> accettano anche un token corrispondente. I path stringa ordinari continuano a funzionare.</li>
+            <li>Marca gli handler che emettono o consumano token con <code>@effects("cap")</code> (o elenca sia <code>"io"</code> sia <code>"cap"</code>). JavaScript può emettere / <code>is</code> / <code>confine</code>; il consumo dei file è solo host.</li>
+            <li>Esempio: <code>Examples/Tools/capability_tokens.malda</code>.</li>
+        </ul>
+        <h2>12.20 Pianificazione strutturata dei task</h2>
+        <p><code>decomposeTask</code>, <code>executePlan</code> e <code>createSubmitPlanTool</code> vivono in <a href="17-agent-orchestration.html">17. Orchestrazione di agenti</a> (§ 17.13). <code>runProgram</code> esegue un valore chiuso <code>api</code> / <code>program(ApiName)</code> senza ulteriori chiamate LLM — vedi <a href="09-functions.html">9. Funzioni</a> (§ API chiuse e programmi deterministici).</p>
+        <h2>12.21 Funzioni di creazione tool</h2>
+        <p>Le factory di tool per agenti (<code>createReadFileTool</code>, <code>createWriteFileTool</code>, <code>createReplaceInFileTool</code>, <code>createEditFileTool</code>, <code>createInsertAtLineTool</code>, <code>createGrepTool</code>, <code>createListDirectoryTool</code>, <code>createAskUserTool</code>, <code>createWebSearchTool</code>, <code>createGitStatusTool</code>, <code>createGitAddTool</code>, <code>createGitCommitTool</code>, <code>createGitLogTool</code>, <code>createGitDiffTool</code>, <code>createGitBranchTool</code>, <code>createGitCheckoutTool</code>, <code>createGitPushTool</code>, <code>createGitPullTool</code>, <code>createRunCommandTool</code>, <code>createRunMALDATool</code>, <code>createCompileMALDATool</code>, <code>createGetSymbolsTool</code>, <code>createGetParseErrorsTool</code>, <code>createSubmitPlanTool</code>, <code>createGlobTool</code>, <code>createCreateMcpAgentScriptTool</code>) vivono in <a href="17-agent-orchestration.html">17. Orchestrazione di agenti</a> (§ 17.6). <code>createNativeCallback</code> incapsula una funzione MALDA come delegate .NET — vedi <a href="29-dotnet-interop.html">29. Interop .NET</a>.</p>
+        <h2>12.22 Operazioni dei workflow durevoli</h2>
+        <p>Gli helper di runtime, query e controllo (<code>startWorkflow</code>, <code>getWorkflowStatus</code>, <code>getWorkflow</code>, <code>getWorkflowSteps</code>, <code>getWorkflowEvents</code>, <code>getWorkflowMetrics</code>, <code>listWorkflows</code>, <code>listWorkflowDeadLetters</code>, <code>requeueDeadLetter</code>, <code>runWorkflowInstance</code>) vivono in <a href="21-durable-workflows.html">21. Workflow durevoli</a>.</p>
+        <h2>12.23 Logging del runtime degli agenti</h2>
+        <p>Gli helper diagnostici (<code>enableAgentVerboseLogging</code>, <code>setAgentVerbosePhase</code>, <code>setAgentStatusBanner</code>, <code>reportRalphStatus</code>) vivono in <a href="17-agent-orchestration.html">17. Orchestrazione di agenti</a> (§ 17.5 e <a href="17-agent-orchestration.html#ralph-wiggum">17.18 Ralph Wiggum</a>). Influenzano solo la presentazione e non cambiano mai il risultato di un agente.</p>
+        <h2>12.24 Funzioni Web UI</h2>
+        <p>Gli helper dei componenti server (<code>renderTemplate</code>, <code>componentFragment</code>, <code>componentLiveEmit</code>, <code>componentState*</code>, <code>onAgentProgress</code>, <code>clearAgentProgress</code>) e i controlli <code>ui.*</code> vivono in <a href="23-web-ui.html">23. Componenti server Web UI</a>. Parti da <a href="22-web-ui-hub.html">22. Panoramica Web UI</a> se stai scegliendo un modello UI.</p>
+        <h2 id="optional-pack-builtins">12.25 Pacchetti opzionali (non nel core)</h2>
+        <p>Il <code>BuiltInRegistry</code> del core elenca solo i simboli open-source del core. I built-in di dominio possono essere distribuiti in pack separati; caricali con <code>loadNativeModule(...)</code> e distribuisci gli assembly richiesti accanto all'app. Il core non registra automaticamente i globali dei pack.</p>
+        <div class="see-also">
+            <h3>Vedi anche</h3>
+            <ul>
+                <li><a href="35-appendix.html#optional-packs">Appendice — Pacchetti opzionali</a></li>
+                <li><a href="11-input-output.html">Input/Output</a> — console, file, path, ambiente, I/O dell'host; preferisci <code>io.*</code></li>
+                <li><a href="09-functions.html">Funzioni</a> — <code>runProgram</code> e <code>api</code> / <code>program(ApiName)</code> chiusi</li>
+                <li><a href="23-web-ui.html">Componenti server Web UI</a> — UI server-side e API dei componenti</li>
+                <li><a href="17-agent-orchestration.html">Orchestrazione di agenti</a> — Tool, piani di task e logging degli agenti</li>
+                <li><a href="21-durable-workflows.html">Workflow durevoli</a> — Built-in del runtime dei workflow</li>
+            </ul>
+        </div>
+        <div class="nav-footer">
+            <a href="11-input-output.html">← Precedente: 11. Input/Output</a>
+            <a href="13-graphs.html">Successivo: 13. Grafi→</a>
+        </div>
+
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, a tua scelta.</p>
+        </footer>
+    </main>
+    <script src="../malda-highlight.js"></script>
+    <script src="../navigation.js"></script>
+</body>
+</html>

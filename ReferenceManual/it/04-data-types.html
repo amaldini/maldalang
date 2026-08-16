@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Tipi di dati MALDA - tipi primitivi, sistema di tipi, oggetti">
+    <title>4. Tipi di dati - Manuale di riferimento MALDA</title>
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../syntax.css">
+    <link rel="stylesheet" href="../print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>Manuale di riferimento MALDA&trade;</h1>
+        <p>Il linguaggio di programmazione AI-First - Versione 1.0.0</p>
+    </header>
+
+    <nav></nav>
+
+    <main>
+        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>4. Tipi di dati</span></div>
+
+        <h1>4. Tipi di dati</h1>
+
+        <p>MALDA è un linguaggio a typing dinamico, con supporto per tipi primitivi, array e oggetti. Le variabili possono contenere valori di qualsiasi tipo, e i tipi vengono inferiti dai valori.</p>
+
+        <h2>4.1 Tipi primitivi</h2>
+
+        <p>MALDA supporta quattro tipi di dati primitivi:</p>
+
+        <h3>Intero (int)</h3>
+        <p>Interi con segno a 32 bit. Esempi:</p>
+        <pre><code>42
+-10
+0
+12345</code></pre>
+
+        <h3>Float (float)</h3>
+        <p>Numeri in virgola mobile a 64 bit. Esempi:</p>
+        <pre><code>3.14
+-0.5
+2.0
+1e-5</code></pre>
+
+        <h3>Stringa (string)</h3>
+        <p>Sequenze di caratteri racchiuse tra virgolette doppie (<code>"..."</code>) o virgolette singole (<code>'...'</code>). Le due forme sono equivalenti. Esempi:</p>
+        <pre><code>"Hello, World!"
+'Hello, World!'
+"Line 1\nLine 2"
+'Line 1\nLine 2'
+"Tab\tseparated"
+"It's a test"        // Using double quotes when string contains single quote
+'He said "hello"'    // Using single quotes when string contains double quote</code></pre>
+
+        <h3>Booleano (bool)</h3>
+        <p>Valori logici: <code>true</code> o <code>false</code>.</p>
+
+        <h2>4.2 Sistema di tipi</h2>
+
+        <h3>Typing dinamico</h3>
+        <p>Le variabili in MALDA sono a typing dinamico: possono contenere valori di qualsiasi tipo, e il tipo viene determinato a runtime:</p>
+        <pre><code>var x = 10;        // x is an integer
+x = "Hello";      // x is now a string
+x = 3.14;         // x is now a float
+x = true;         // x is now a boolean</code></pre>
+
+        <h3>Inferenza di tipo</h3>
+        <p>I tipi delle variabili vengono inferiti automaticamente dai valori iniziali:</p>
+        <pre><code>var name = "Alice";     // Inferred as string
+var age = 25;          // Inferred as integer
+var pi = 3.14159;     // Inferred as float
+var isActive = true;   // Inferred as boolean</code></pre>
+
+        <h3>Type coercion</h3>
+        <p>MALDA converte automaticamente tra tipi compatibili in certi contesti:</p>
+
+        <h4>Conversione Integer ↔ Float</h4>
+        <p>Gli interi vengono convertiti automaticamente in float quando serve:</p>
+        <pre><code>var x = 10;        // integer
+var y = 3.14;     // float
+var sum = x + y;   // x is converted to float, result is 13.14</code></pre>
+
+        <h4>Concatenazione di stringhe</h4>
+        <p>Quando si usa l'operatore <code>+</code> con le stringhe, i valori non stringa vengono convertiti in stringhe:</p>
+        <pre><code>var name = "Alice";
+var age = 25;
+var message = "Name: " + name + ", Age: " + age;
+// message = "Name: Alice, Age: 25"</code></pre>
+
+        <h4>Conversione di tipo esplicita</h4>
+        <p>Usa le funzioni built-in per la conversione di tipo esplicita (vedi <a href="12-built-in-functions.html">Funzioni built-in</a>):</p>
+        <pre><code>var num = int("123");      // Convert string to integer
+var floatVal = float("3.14");  // Convert string to float
+var str = string(42);     // Convert number to string</code></pre>
+
+        <h2>4.3 Tipi oggetto</h2>
+
+        <h3>Istanze di classe</h3>
+        <p>Gli oggetti sono istanze di classi. Si creano con la keyword <code>new</code>:</p>
+        <pre><code>class Person {
+    public var name;
+    public var age;
+    
+    function Person(name, age) {
+        this.name = name;
+        this.age = age;
+    }
+}
+
+var person = new Person("Alice", 25);  // person is an object</code></pre>
+
+        <p>Vedi <a href="10-classes-objects.html">Classi e oggetti</a> per maggiori informazioni.</p>
+
+        <h3>Null</h3>
+        <p><code>null</code> è un valore speciale che rappresenta l'assenza di un oggetto. Può essere assegnato a qualsiasi variabile oggetto:</p>
+        <pre><code>var obj = null;
+
+if (obj == null) {
+    print("Object is null");
+}</code></pre>
+
+        <div class="warning-box">
+            <strong>Attenzione:</strong> accedere ai membri di <code>null</code> causa un errore a runtime.
+        </div>
+
+        <h3>Tipi riferimento</h3>
+        <p>Gli oggetti sono tipi riferimento: quando assegni un oggetto a una variabile, entrambe le variabili si riferiscono allo stesso oggetto:</p>
+        <pre><code>var person1 = new Person("Alice", 25);
+var person2 = person1;  // person2 refers to the same object
+person2.name = "Bob";
+print(person1.name);    // Prints "Bob" (same object)</code></pre>
+
+        <h2>4.4 Dizionari</h2>
+
+        <p>I dizionari sono mappe chiave–valore mutabili con <strong>chiavi stringa</strong> e valori di qualsiasi tipo. Sono utili per oggetti di configurazione, mappe dinamiche e aggregazione di dati.</p>
+
+        <h3>Letterali dizionario</h3>
+        <p>I dizionari si creano con la sintassi letterale <code>dict { ... }</code>:</p>
+        <pre><code data-run="true" data-expect="1\ntrue">var d = dict { "a": 1, "b": 2 };
+print(d["a"]);
+print(d["missing"] == null);</code></pre>
+
+        <h3>Metodi dei dizionari</h3>
+        <p>I dizionari sono oggetti con metodi built-in:</p>
+        <pre><code>var d = dict { "x": 10 };
+
+// get(key) – returns value or null
+print(d.get("x"));        // 10
+print(d.get("missing"));  // null
+
+// set(key, value) – sets and returns the same dictionary
+d.set("y", 20);
+print(d["y"]);            // 20
+
+// remove(key) – removes entry and returns true/false
+print(d.remove("y"));     // true
+
+// containsKey(key) – membership test
+print(d.containsKey("x"));   // true
+
+// keys() – array of string keys
+var keys = d.keys();
+print(keys.length);
+
+// values() – array of values
+var values = d.values();
+print(values.length);
+
+// entries() – array of [key, value] pairs
+var entries = d.entries();
+var first = entries[0];   // [key, value]
+print(first[0]);          // key
+print(first[1]);          // value</code></pre>
+
+        <p>Negli eseguibili transpile, i letterali dizionario usano <code>Dictionary&lt;string, object?&gt;</code> come backing ma espongono lo stesso comportamento dell'interprete.</p>
+
+        <h2>4.5 Tipi somma (unioni etichettate)</h2>
+
+        <p>I tipi somma consentono di definire un valore che può essere una di diverse varianti, ciascuna con dati di payload opzionali. Sono utili per risultati strutturati (es. successo vs errore) e dati in stile protocollo.</p>
+
+        <h3>Dichiarazione di tipo</h3>
+        <p>Dichiara un tipo somma con <code>type</code>, un nome di tipo e uno o più costruttori separati da <code>|</code>. Ogni costruttore ha un nome e parametri opzionali. I parametri possono essere solo nome oppure portare un tipo di payload (la stessa forma <code>SchemaType</code> dei campi schema: primitivi, <code>[]</code>, <code>?</code>, nomi di schema o di tipo somma):</p>
+        <pre><code>type Result = Ok(value) | Err(message);
+type Intent = Search(query: string) | Buy(sku: string, qty: int) | Help();</code></pre>
+        <p>I costruttori solo-nome restano validi (<code>Search(query)</code>) e restano non tipizzati nello JSON Schema generato. Mescolare bracci tipizzati e non tipizzati in un unico <code>type</code> è consentito. I tipi di payload <strong>non</strong> sono typing dei parametri di prompt — scrivi <code>prompt greet(name)</code>, mai <code>prompt greet(name: string)</code>.</p>
+        <p>I nomi dei costruttori (es. <code>Ok</code>, <code>Err</code>) diventano funzioni globali che costruiscono valori di quella variante. Lo stesso nome non può essere anche uno <code>schema</code>. <code>validate("Result", taggedDict)</code> controlla la forma JSON sul filo (<code>{"tag":"Ok","value":…}</code>) senza trasformare il dict in una variante — vedi <a href="12-built-in-functions.html#validate">validate()</a>. Quando un payload è tipizzato, <code>validate</code> e i prompt tipizzati rifiutano JSON che non corrisponde (per esempio <code>qty: "x"</code> contro <code>qty: int</code>).</p>
+
+        <h3>Costruire valori</h3>
+        <p>Chiama un costruttore come una funzione. Restituisce un valore etichettato che porta gli argomenti come payload:</p>
+        <pre><code>var r = Ok(42);           // variant Ok with payload 42
+var e = Err("failed");    // variant Err with payload "failed"
+var n = None();           // variant None with no payload</code></pre>
+
+        <h3>Match sulle varianti</h3>
+        <p>Usa <code>match</code> con <strong>pattern di variante</strong>: <code>ConstructorName(binding, ...)</code>. Il pattern corrisponde se il valore è quella variante e lega il payload ai nomi dati:</p>
+        <pre><code data-run="true" data-expect="ok: 5">type Result = Ok(value) | Err(message);
+function divide(a, b) {
+    if (b == 0) return Err("divide by zero");
+    return Ok(a / b);
+}
+var r = divide(10, 2);
+var result = match r {
+    case Ok(v): "ok: " + v;
+    case Err(msg): "error: " + msg;
+};
+print(result);   // "ok: 5"</code></pre>
+        <p>Vedi <a href="08-control-structures.html">8. Strutture di controllo</a> per la sintassi completa di <code>match</code>. I moduli della libreria standard <code>result</code> e <code>option</code> incapsulano gli stessi tag <code>Ok</code>/<code>Err</code> e <code>Some</code>/<code>None</code> senza una dichiarazione <code>type</code> — vedi <a href="12-built-in-functions.html#result-option">12.19.1</a>.</p>
+
+        <h2>4.6 Controllo dei tipi</h2>
+
+        <p>Anche se MALDA è a typing dinamico, puoi ispezionare i tipi a runtime con gli helper built-in (vedi <a href="12-built-in-functions.html">Funzioni built-in</a>):</p>
+        <pre><code>var x = 10;
+
+// Preferred: type tag from typeOf()
+if (typeOf(x) == "int") {
+    print("x is an integer");
+}
+
+// Any numeric value (integer or float)
+if (isNumber(x)) {
+    print("x is a number");
+}
+
+// Check for null
+if (x == null) {
+    print("x is null");
+}</code></pre>
+        <p><code>typeOf()</code> restituisce tag di kind canonici come <code>"int"</code>, <code>"float"</code>, <code>"string"</code>, <code>"bool"</code>, <code>"array"</code>, <code>"dict"</code> (per <code>dict { }</code>), <code>"object"</code> (istanze di classe), <code>"variant"</code> (valori di tipo somma), <code>"task"</code>, <code>"function"</code>, <code>"class"</code>, <code>"actor"</code> o <code>"null"</code>. I nomi dei costruttori (es. <code>Ok</code>) non sono tag di <code>typeOf</code> — usa <code>match</code>. Usa <code>isTag(x, "integer")</code> durante la migrazione se sono ancora in uso i nomi letterali più vecchi.</p>
+
+        <div class="see-also">
+            <h3>Vedi anche</h3>
+            <ul>
+                <li><a href="05-variables.html">5. Variabili</a> - Come dichiarare e usare le variabili</li>
+                <li><a href="06-arrays.html">6. Array</a> - Strutture dati array</li>
+                <li><a href="13-graphs.html">13. Grafi</a> - Strutture dati a grafo</li>
+                <li><a href="10-classes-objects.html">10. Classi e oggetti</a> - Creare tipi oggetto personalizzati</li>
+                <li><a href="12-built-in-functions.html">12. Funzioni built-in</a> - Funzioni di conversione di tipo</li>
+            </ul>
+        </div>
+
+        <div class="nav-footer">
+            <a href="03-lexical-structure.html">← Precedente: 3. Struttura lessicale</a>
+            <a href="05-variables.html">Successivo: 5. Variabili→</a>
+        </div>
+
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, a tua scelta.</p>
+        </footer>
+    </main>
+
+    <script src="../malda-highlight.js"></script>
+
+    <script src="../navigation.js"></script>
+</body>
+</html>

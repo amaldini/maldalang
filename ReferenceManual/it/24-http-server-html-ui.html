@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="HttpServer e generazione UI HTML MALDA - Hosting route-first, @PAGE, @AIPAGE e generazione HTML">
+    <title>24. HttpServer e generazione UI HTML - Manuale di riferimento MALDA</title>
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../syntax.css">
+    <link rel="stylesheet" href="../print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>Manuale di riferimento MALDA&trade;</h1>
+        <p>Il linguaggio di programmazione AI-First - Versione 1.0.0</p>
+    </header>
+    <nav></nav>
+    <main>
+        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>24. HttpServer e generazione UI HTML</span></div>
+        <h1>24. HttpServer e generazione UI HTML</h1>
+        <p>Questo capitolo copre il web server route-first di MALDA, gli handler di pagine HTML, gli helper per pagine generate dall'AI e le utility di cache HTML. Usalo quando vuoi servire pagine con <code>HttpServer</code> e route tradizionali richiesta/risposta.</p>
+        <div class="info-box">
+            <strong>Parti da qui:</strong> Leggi <a href="22-web-ui-hub.html">22. Panoramica Web UI</a> per confrontare i modelli UI. Questo capitolo si concentra su <code>HttpServer</code>, <code>@PAGE</code>, <code>@AIPAGE</code> e gli helper di generazione HTML. Per i componenti server e <code>ui.*</code>, vedi <a href="23-web-ui.html">Componenti server Web UI</a>. Per le route API-first, vedi <a href="26-rest-api.html">Server REST API</a>.
+        </div>
+
+        <h2>24.1 Mappa del capitolo</h2>
+        <ul>
+            <li><strong>24.2</strong> Ciclo di vita di <code>HttpServer</code> e modello delle route</li>
+            <li><strong>24.3</strong> Oggetti request e response</li>
+            <li><strong>24.4</strong> Pagine dinamiche con <code>@PAGE</code></li>
+            <li><strong>24.5</strong> Pagine generate dall'AI con <code>@AIPAGE</code></li>
+            <li><strong>24.6</strong> <code>@GET</code>/<code>@POST</code> nei flussi di hosting delle pagine</li>
+            <li><strong>24.7</strong> Redirect e flussi di pagina a più passi</li>
+            <li><strong>24.8</strong> Helper di generazione HTML e caching</li>
+            <li><strong>24.9</strong> Ciclo di vita dalla richiesta al render e note di produzione</li>
+            <li><strong>24.10</strong> Hardening in produzione</li>
+            <li><strong>24.11</strong> Test e risoluzione dei problemi</li>
+        </ul>
+
+        <h2>24.2 Classe HttpServer</h2>
+        <p>La classe <code>HttpServer</code> offre un HTTP server built-in per asset statici, HTML generato sul server, pagine generate dall'AI, gestione dei form e handler di route. Funziona bene per applicazioni route-first in cui ogni richiesta restituisce un documento completo o una risposta mirata.</p>
+
+        <h3>24.2.1 Costruttore</h3>
+        <pre><code>var server = new HttpServer(port);
+// OR
+var server = new HttpServer(port, webDirectory);  // Custom web directory
+// OR
+var server = new HttpServer(port, webDirectory, pathBase, host);</code></pre>
+        <p><code>port</code> deve essere un intero in <code>1-65535</code>. Le porte privilegiate (<code>1-1023</code>, es. <code>80</code>/<code>443</code>) sono ammesse; il bind può comunque richiedere permessi elevati o reservation URL del sistema operativo.</p>
+        <p>L'host di bind di default è <code>localhost</code> (solo loopback). Passa <code>host</code> come quarto argomento opzionale, chiama <code>setHost(host)</code> prima di <code>start()</code>, oppure imposta la variabile d'ambiente <code>MALDA_HTTP_HOST</code>. Usa <code>0.0.0.0</code> o <code>*</code> per ascoltare su tutte le interfacce (stesse regole di prefisso di <code>RestServer</code>). L'host di bind corrente è disponibile come proprietà <code>host</code>.</p>
+        <p>HTTPS è opzionale e cross-platform. Chiama <code>enableHttps(certPath, password?)</code> prima di <code>start()</code> con un file <code>.pfx</code>/<code>.p12</code>, oppure un PEM <code>.pem</code>/<code>.crt</code> (chiave privata accanto come <code>.key</code>). Alternative da ambiente: <code>MALDA_HTTP_HTTPS=1</code>, <code>MALDA_HTTP_CERT</code> e, opzionale, <code>MALDA_HTTP_CERT_PASSWORD</code>. Proprietà: <code>https</code>, <code>certPath</code>. Il TLS è terminato da Kestrel; la pipeline di richiesta esistente continua a girare su un <code>HttpListener</code> in loopback.</p>
+
+        <h3>24.2.2 Metodi core</h3>
+        <ul>
+            <li><code>start()</code>: Avvia il server e scansiona le route decorate.</li>
+            <li><code>stop()</code>: Ferma il server in modo graceful.</li>
+            <li><code>setHost(host)</code>: Imposta l'host di bind prima di <code>start()</code> (<code>localhost</code>, IP/hostname, oppure <code>0.0.0.0</code>/<code>*</code> per tutte le interfacce).</li>
+            <li><code>enableHttps(certPath, password?)</code> / <code>disableHttps()</code>: Abilita o disabilita TLS prima di <code>start()</code>.</li>
+            <li><code>getRoutes()</code>: Restituisce la tabella delle route registrate.</li>
+            <li><code>clearCache()</code>: Svuota la cache dei file statici.</li>
+            <li><code>setHTML(html)</code>: Imposta il contenuto HTML per il path root.</li>
+            <li><code>use(middleware)</code>: Registra middleware globale con <code>req</code>, <code>res</code> e <code>next</code>.</li>
+            <li><code>enableCsrf(secret, cookieName?, headerName?)</code> / <code>disableCsrf()</code>: Attiva o disattiva la protezione CSRF built-in.</li>
+            <li><code>enableSession(secret, options?)</code> / <code>disableSession()</code>: Cookie session-id firmato con store in-memory o SQLite; espone <code>req.session</code> e gli helper flash.</li>
+            <li><code>mount(restServer)</code>: Serve un <code>RestServer</code> sullo stesso listener/porta (prima le route API, poi pagine/componenti/statici).</li>
+            <li><code>setRateLimit(limit, windowSeconds, keyStrategy?)</code> / <code>disableRateLimit()</code>: Attiva o disattiva il rate limiting degli endpoint.</li>
+        </ul>
+
+        <h3>24.2.3 Esempio host minimo</h3>
+        <pre><code>var server = new HttpServer(8080);
+server.start();
+
+print("Server running at http://localhost:8080");
+
+while (server.isRunning) {
+    sleep(1000);
+}
+
+// HTTPS (optional):
+// var tls = new HttpServer(8443);
+// tls.setHost("0.0.0.0");
+// tls.enableHttps("ask.pfx", "secret");
+// tls.start();
+// print("Server running at https://localhost:8443");</code></pre>
+
+        <h2>24.3 Oggetti request e response</h2>
+        <p>Gli handler di pagine e route possono ricevere il contesto della richiesta e restituire HTML grezzo oppure un oggetto response strutturato.</p>
+        <ul>
+            <li><strong>Request:</strong> <code>method</code>, <code>path</code>, <code>query</code>, <code>params</code>, <code>headers</code>, <code>cookies</code>, <code>body</code>, <code>auth</code>, <code>session</code>, <code>correlationId</code>, <code>ip</code> / <code>remoteIp</code>.</li>
+            <li><strong>Session:</strong> <code>req.session.get/set/delete/clear</code>, <code>flash</code> / <code>getFlash</code> / <code>getFlashes</code> (avvisi di una sola richiesta dopo un redirect).</li>
+            <li><strong>Helper di response:</strong> <code>status</code>, <code>json</code>, <code>text</code>, <code>html</code>, <code>redirect</code>, <code>header</code>, <code>cookie</code> e <code>send</code>.</li>
+            <li><strong>Helper di form:</strong> <code>csrfField(secret)</code>, <code>bindForm(body, fields)</code>, <code>formErrors(errors)</code>, <code>pageLayout(title, bodyHtml, options?)</code>. Preferisci <code>ui.layout</code> per i template ricchi.</li>
+            <li><strong>Metadati di route:</strong> <code>@RouteGroup</code> / <code>@Group</code> / <code>@Prefix</code>, <code>@Version</code> / <code>@ApiVersion</code>, <code>@Use</code> / <code>@Middleware</code> e <code>@Validate</code>.</li>
+        </ul>
+        <p>Quando una route è in stile API, i fallimenti del framework restituiscono un payload JSON standardizzato con <code>status</code>, <code>error</code>, <code>message</code> e <code>correlationId</code>, con <code>details</code> opzionale per i fallimenti di validazione.</p>
+
+        <h2>24.4 Pagine dinamiche con @PAGE</h2>
+        <p>Usa <code>@PAGE</code> per pagine HTML guidate dalla richiesta. Un handler di pagina può restituire direttamente un documento HTML completo, e i path parameter vengono bound dall'URL.</p>
+        <pre><code>@PAGE("/")
+function handleHome() {
+    return "&lt;html&gt;&lt;body&gt;&lt;h1&gt;Home&lt;/h1&gt;&lt;/body&gt;&lt;/html&gt;";
+}
+
+@PAGE("/user/{id}")
+function handleUser(id) {
+    return "&lt;html&gt;&lt;body&gt;&lt;h1&gt;User: " + id + "&lt;/h1&gt;&lt;/body&gt;&lt;/html&gt;";
+}</code></pre>
+        <p>Usa <code>@PAGE</code> quando la richiesta deve produrre una pagina completa. Se la pagina ha bisogno di fragment interattivi, aggiornamenti live o stato dei componenti gestito sul server, sposta la UI riutilizzabile in un flusso a componenti e tieni la route come punto di ingresso.</p>
+
+        <h2>24.5 Pagine generate dall'AI con @AIPAGE</h2>
+        <p>Usa <code>@AIPAGE</code> quando vuoi che MALDA generi l'HTML iniziale a partire da una descrizione in stile prompt.</p>
+        <pre><code>@AIPAGE("/", "Contact form with name, email, and message fields")
+function homePage() {
+    // AI generates the HTML automatically on first access
+    return "";
+}</code></pre>
+        <ul>
+            <li>L'AI genera HTML dalla descrizione.</li>
+            <li>L'HTML generato viene messo in cache per le prestazioni.</li>
+            <li>Lo script helper AJAX viene iniettato automaticamente per l'invio moderno dei form.</li>
+            <li>Se non è configurato un modello, l'agente di generazione UI usa l'LLM locale di default (Qwen/Qwen2.5-0.5B-Instruct, scaricato come build GGUF da Hugging Face); puoi anche fornire un <code>OpenRouterClient</code> e un <code>Agent</code>.</li>
+        </ul>
+
+        <h3>24.5.1 Esempio completo di form AI</h3>
+        <pre><code>var server = new HttpServer(8080);
+
+@AIPAGE("/", "Contact form with name, email, and message fields")
+function homePage() {
+    return "";
+}
+
+@POST("/submit")
+function handleSubmit(body) {
+    print("Form submitted!");
+    print("Name: " + body.name);
+    print("Email: " + body.email);
+    print("Message: " + body.message);
+
+    return {
+        "status": 200,
+        "body": "&lt;html&gt;&lt;body&gt;&lt;h1&gt;Thank You!&lt;/h1&gt;&lt;p&gt;Your message has been received.&lt;/p&gt;&lt;p&gt;&lt;a href='/'&gt;Back to form&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;"
+    };
+}
+
+server.start();</code></pre>
+
+        <h2>24.6 Route GET/POST nei flussi di hosting delle pagine</h2>
+        <p><code>HttpServer</code> può ospitare route <code>@GET</code> e <code>@POST</code> insieme alle pagine. È utile per handler AJAX, piccoli endpoint JSON o Server-Sent Events usati da una pagina. Per la progettazione API completa, la validazione avanzata e l'organizzazione degli endpoint, usa <a href="26-rest-api.html">Server REST API</a> come riferimento principale.</p>
+
+        <h3>24.6.1 Handler GET</h3>
+        <pre><code>@GET("/api/users")
+function getUsers() {
+    return {"status": 200, "users": ["Alice", "Bob", "Charlie"]};
+}
+
+@GET("/api/events")
+function getEvents() {
+    return {"sse": true};
+}</code></pre>
+        <ul>
+            <li>Restituisci oggetti JSON per le risposte normali in stile API.</li>
+            <li>Restituisci <code>{"sse": true}</code> per abilitare SSE.</li>
+            <li>Usa path parameter come <code>@GET("/api/users/{id}")</code> quando serve.</li>
+        </ul>
+
+        <h3>24.6.2 Handler POST</h3>
+        <pre><code>@POST("/submit")
+function handleSubmit(body) {
+    print("Name: " + body.name);
+    print("Email: " + body.email);
+    return {
+        "status": 200,
+        "body": "&lt;html&gt;&lt;body&gt;&lt;h1&gt;Thank You!&lt;/h1&gt;&lt;/body&gt;&lt;/html&gt;"
+    };
+}</code></pre>
+        <ul>
+            <li>Il body della richiesta viene parsato automaticamente come JSON o dati form-urlencoded.</li>
+            <li>Il payload parsato è disponibile tramite un parametro <code>body</code>.</li>
+            <li>Gli handler POST funzionano bene per gli invii di form da pagine <code>@PAGE</code> o <code>@AIPAGE</code>.</li>
+        </ul>
+
+        <h2>24.7 Redirect con RedirectTo</h2>
+        <p>Usa <code>redirect(location, status?)</code> per risposte di redirect esplicite, oppure l'alias legacy <code>RedirectTo(location)</code> quando migri codice esistente.</p>
+        <pre><code>@POST("/login")
+function handleLogin(body) {
+    if (body.username == "admin" &amp;&amp; body.password == "secret") {
+        return redirect("/dashboard");
+    }
+    return redirect("/login?error=invalid");
+}
+
+@PAGE("/old-page")
+function oldPage() {
+    return redirect("/new-page", 302);
+}</code></pre>
+        <p>Per le app HTML in produzione, preferisci hashing delle password + JWT in un cookie firmato invece di controlli in chiaro. Vedi <code>Examples/Web/auth_cookie_login.malda</code> e gli helper condivisi <code>req.auth</code> (stessa superficie di <code>RestServer</code>).</p>
+        <pre><code>function requireAuth(req, res, next) {
+    req.auth.authenticateCookieJwt("session", jwtSecret, cookieSecret);
+    next();
+}
+
+server.use(requireAuth, { "except": ["/", "/login"] });</code></pre>
+        <ul>
+            <li><code>redirect(location)</code> restituisce un oggetto response con status <code>303 See Other</code> e un header <code>Location</code>, che è il default più sicuro dopo un'azione POST.</li>
+            <li>Passa uno status 3xx esplicito quando ti serve una semantica di redirect diversa, per esempio <code>redirect("/new-page", 302)</code>.</li>
+            <li><code>RedirectTo(location)</code> resta disponibile come alias di compatibilità e segue lo stesso comportamento di default <code>303</code>.</li>
+            <li>Funziona sia con le richieste browser normali sia con gli invii di form guidati da AJAX.</li>
+        </ul>
+
+        <h2>24.8 Helper di generazione HTML</h2>
+        <p>MALDA include utility helper per HTML generato e prototipi di UI renderizzata sul server.</p>
+
+        <h3>24.8.1 Classe HTMLCache</h3>
+        <p>La classe <code>HTMLCache</code> memorizza l'HTML generato per ridurre il lavoro LLM ripetuto e migliorare i tempi di risposta.</p>
+        <pre><code>var cache = new HTMLCache(cacheDirectory?, maxSize?, expirationHours?);</code></pre>
+        <ul>
+            <li><code>get(prompt)</code>: Ottiene l'HTML in cache oppure <code>null</code>.</li>
+            <li><code>set(prompt, html, metadata?)</code>: Memorizza l'HTML generato.</li>
+            <li><code>has(prompt)</code>: Controlla se un prompt ha una voce in cache.</li>
+            <li><code>clear()</code>: Svuota tutte le voci in cache.</li>
+        </ul>
+
+        <h3>24.8.2 Funzione extractHTML</h3>
+        <p><code>extractHTML(markdown)</code> estrae HTML da code fence markdown oppure restituisce l'HTML così com'è.</p>
+        <pre><code>var html = extractHTML(markdown);</code></pre>
+
+        <h3>24.8.3 Funzione markdownToHtml</h3>
+        <p><code>markdownToHtml(markdown)</code> converte Markdown in un fragment HTML (heading, emphasis, liste, tabelle, codice fenced e simili). I tag HTML grezzi nell'input sono disabilitati, così l'output non attendibile di un modello è più sicuro da incorporare in una pagina. Restituisce una stringa; avvolgila nel chrome del tuo documento.</p>
+        <pre><code>var body = markdownToHtml("**Hello** and a table:\n\n| A | B |\n|---|---|\n| 1 | 2 |");
+return "&lt;html&gt;&lt;body class='md'&gt;" + body + "&lt;/body&gt;&lt;/html&gt;";</code></pre>
+
+        <h3>24.8.4 Funzione generateUI</h3>
+        <p><code>generateUI</code> è un helper di convenienza per la generazione HTML guidata da prompt, con cache opzionale e un agente personalizzato.</p>
+        <pre><code>var html = generateUI(description, cache?, agent?);</code></pre>
+
+        <h3>24.8.5 Funzione ui.generate</h3>
+        <p>Usa <code>ui.generate</code> quando l'AI deve restituire un albero UI server strutturato invece di una stringa HTML.</p>
+        <pre><code>var tree = ui.generate("Dashboard with title, filter row, and data grid", uiAgent, cache);
+var envelope = ui.mountEnvelope(tree, "dashboard-session");
+return envelope;</code></pre>
+        <ul>
+            <li>Il risultato è un oggetto nodo root con <code>type</code>, <code>props</code>, <code>children</code> e un <code>key</code> opzionale.</li>
+            <li>Il runtime UI valida l'albero generato prima di restituirlo.</li>
+            <li>Usalo quando vuoi l'assistenza AI ma vuoi comunque il protocollo dei componenti server descritto in <a href="23-web-ui.html">Componenti server Web UI</a>.</li>
+        </ul>
+
+        <h2>24.9 Ciclo di vita dalla richiesta al render</h2>
+        <ol>
+            <li>Il browser richiede una pagina o una route gestita da <code>@PAGE</code>, <code>@AIPAGE</code>, <code>@GET</code> o <code>@POST</code>.</li>
+            <li><code>HttpServer</code> risolve la route e carica il contesto di richiesta necessario.</li>
+            <li>L'handler restituisce HTML, un redirect, JSON, SSE o un artefatto UI generato.</li>
+            <li>Il browser renderizza il documento restituito, segue il redirect oppure elabora la risposta API.</li>
+        </ol>
+
+        <h2>24.10 Hardening in produzione</h2>
+        <ul>
+            <li>Abilita la protezione CSRF sulle route che mutano con <code>enableCsrf</code>.</li>
+            <li>Applica il rate limiting con <code>setRateLimit</code> (gira dopo il middleware di auth così <code>verifiedSubOrIp</code> può usare il subject JWT come chiave).</li>
+            <li>Proteggi le route con <code>req.auth.authenticateBearerJwt</code> / <code>authenticateCookieJwt</code> e salta i path pubblici via <code>use(fn, { "except": [...] })</code>.</li>
+            <li>Valida l'input della richiesta prima della persistenza o degli effetti collaterali.</li>
+            <li>Usa i correlation ID nei log per il debug a livello di route.</li>
+            <li>Svuota le cache HTML generate quando cambia il contratto del prompt o il template della pagina.</li>
+        </ul>
+
+        <h2>24.11 Test e risoluzione dei problemi</h2>
+        <ul>
+            <li>Usa <code>getRoutes()</code> per verificare che le route di pagina e handler siano state registrate.</li>
+            <li>Se una pagina non si aggiorna dopo cambi al prompt, svuota sia la cache del server sia la voce <code>HTMLCache</code>.</li>
+            <li>Per i problemi sui form, conferma la forma del body che l'handler si aspetta.</li>
+            <li>Per le route SSE, verifica che il client si colleghi all'URL corretto e che l'handler restituisca <code>{"sse": true}</code>.</li>
+        </ul>
+
+        <div class="see-also">
+            <h3>Vedi anche</h3>
+            <ul>
+                <li><a href="23-web-ui.html">23. Componenti server Web UI</a> - UI server orientata ai componenti, fragment, aggiornamenti live e <code>ui.*</code></li>
+                <li><a href="26-rest-api.html">Server REST API</a> - Progettazione delle route API, middleware, validazione e policy</li>
+                <li><a href="28-full-stack-development.html">Sviluppo full-stack con MALDA</a> - Guida all'architettura per mescolare pagine, API e UI nel browser</li>
+            </ul>
+        </div>
+
+        <div class="nav-footer">
+            <a href="23-web-ui.html">← Precedente: 23. Componenti server Web UI</a>
+            <a href="25-browser-javascript-backend.html">Successivo: 25. Backend UI JavaScript nel browser→</a>
+        </div>
+
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, a tua scelta.</p>
+        </footer>
+    </main>
+    <script src="../malda-highlight.js"></script>
+    <script src="../navigation.js"></script>
+</body>
+</html>

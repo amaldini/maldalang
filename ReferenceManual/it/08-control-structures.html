@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Strutture di controllo MALDA: condizionali, cicli, pattern matching, eccezioni, defer e using">
+    <title>8. Strutture di controllo - Manuale di riferimento MALDA</title>
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../syntax.css">
+    <link rel="stylesheet" href="../print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>Manuale di riferimento MALDA&trade;</h1>
+        <p>Il linguaggio di programmazione AI-First - Versione 1.0.0</p>
+    </header>
+    <nav></nav>
+    <main>
+        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>8. Strutture di controllo</span></div>
+        <h1>8. Strutture di controllo</h1>
+        <p>Le strutture di controllo permettono di governare il flusso di esecuzione del programma con condizionali e cicli.</p>
+        <h2>8.1 Istruzioni condizionali</h2>
+        <h3>Istruzione if</h3>
+        <pre><code>if (condition) {
+    // code block
+}</code></pre>
+        <h3>Istruzione if-else</h3>
+        <pre><code>if (condition) {
+    // code block
+} else {
+    // code block
+}</code></pre>
+        <h3>Istruzione if-else if-else</h3>
+        <pre><code>if (condition1) {
+    // code block
+} else if (condition2) {
+    // code block
+} else {
+    // code block
+}</code></pre>
+        <h2>8.2 Cicli</h2>
+        <h3>Ciclo while</h3>
+        <pre><code>while (condition) {
+    // code block
+}</code></pre>
+        <h3>Ciclo for</h3>
+        <p>Il ciclo for tradizionale con inizializzazione, condizione e incremento:</p>
+        <pre><code>for (var i = 0; i < 10; i = i + 1) {
+    // code block
+}</code></pre>
+        <h3>Ciclo for-in</h3>
+        <p>Il ciclo for-in itera su ogni elemento di un array:</p>
+        <pre><code>for (var component in components) {
+    // code block - component is the current element
+}</code></pre>
+        <p><strong>Esempio:</strong></p>
+        <pre><code>var numbers = [1, 2, 3, 4, 5];
+for (var num in numbers) {
+    print(num);  // Prints: 1, 2, 3, 4, 5
+}
+
+var names = ["Alice", "Bob", "Charlie"];
+for (var name in names) {
+    print("Hello, " + name);
+}</code></pre>
+        <p><strong>Note:</strong></p>
+        <ul>
+            <li>La variabile di ciclo si dichiara con <code>var</code> e ha scope nel corpo del ciclo</li>
+            <li>Ogni iterazione assegna l'elemento corrente dell'array alla variabile di ciclo</li>
+            <li>La collezione deve essere un array: altri tipi sollevano un errore a runtime</li>
+            <li><code>break</code> e <code>continue</code> funzionano come negli altri cicli</li>
+        </ul>
+        <h3>Ciclo foreach</h3>
+        <p>Il ciclo <code>foreach</code> equivale al ciclo for-in: itera su ogni elemento di un array. Usa la forma che preferisci.</p>
+        <pre><code>foreach (var item in collection) {
+    // code block - item is the current element
+}</code></pre>
+        <p><strong>Esempio:</strong></p>
+        <pre><code>var results = [10, 20, 30];
+foreach (var x in results) {
+    print(x);  // Prints: 10, 20, 30
+}</code></pre>
+        <p>Valgono le stesse regole del for-in: la variabile di ciclo si dichiara con <code>var</code>, la collezione deve essere un array, e <code>break</code> e <code>continue</code> funzionano come negli altri cicli.</p>
+        <h3>Break e continue</h3>
+        <pre><code>while (true) {
+    if (condition) {
+        break;  // Exit loop
+    }
+    if (skipCondition) {
+        continue;  // Skip to next iteration
+    }
+}</code></pre>
+        <h2>8.3 Pattern matching</h2>
+        <p>Il pattern matching permette di confrontare valori con pattern ed eseguire codice in base alla corrispondenza. È simile alle istruzioni switch di altri linguaggi, ma più potente: supporta il matching su array, oggetti e strutture nidificate.</p>
+        
+        <h3>Espressione match</h3>
+        <p>L'espressione <code>match</code> valuta un valore rispetto a una serie di pattern ed esegue il codice del primo pattern che corrisponde:</p>
+        <pre><code>var result = match value {
+    case pattern1: expression1;
+    case pattern2: expression2;
+    default: defaultExpression;
+};</code></pre>
+        
+        <p><strong>Esempio:</strong></p>
+        <pre><code data-run="true" data-expect="matched 42">var x = 42;
+var result = match x {
+    case 42: "matched 42";
+    case 10: "matched 10";
+    default: "no match";
+};
+print(result);</code></pre>
+        
+        <p>Le espressioni match si possono usare anche come istruzioni (senza assegnarle a una variabile):</p>
+        <pre><code>match x {
+    case 42: print("matched 42");
+    default: print("no match");
+}</code></pre>
+        
+        <h4>Corpi a blocco e istruzioni multiple</h4>
+        <p>Il corpo di un case può essere una singola espressione oppure un blocco <code>{ ... }</code> con più istruzioni. Questo permette effetti collaterali (per esempio <code>print</code>, assegnamenti) prima di produrre il valore del case.</p>
+        <p><strong>Vince l'ultima espressione (corpi dei case di match):</strong> quando un match è usato come espressione, il valore di un blocco case è il valore dell'ultima istruzione se quella istruzione è un'espressione. Se l'ultima istruzione non è un'espressione (per esempio <code>print(...)</code>), il match produce <code>null</code>. La stessa regola <em>vince l'ultima espressione</em> vale anche per funzioni, metodi e lambda (vedi <a href="09-functions.html">9. Funzioni</a>). I blocchi in <code>if</code>, <code>while</code> e <code>for</code> non producono un valore: sono puramente imperativi.</p>
+        <pre><code>var result = match x {
+    case 42: {
+        print("side effect");
+        "result";   // last expression is the case value
+    }
+    default: "no match";
+};
+print(result);  // Prints: "side effect" then "result"</code></pre>
+        <pre><code>var result = match x {
+    case 42: {
+        print("only side effect");
+    }
+    default: "no match";
+};
+print(result);  // result is null (block ends with statement, not expression)</code></pre>
+        <p><strong>Riepilogo:</strong></p>
+        <ul>
+            <li>Espressione singola: <code>case 42: "value";</code> — l'espressione è il valore del case.</li>
+            <li>Blocco con espressione in fondo: <code>case 42: { stmt; expr; }</code> — l'ultima espressione è il valore del case.</li>
+            <li>Blocco con istruzione in fondo: <code>case 42: { print(x); }</code> — il valore del case è <code>null</code>.</li>
+        </ul>
+        
+        <h3>Tipi di pattern</h3>
+
+        <h4>Pattern di variante</h4>
+        <p>Per i valori costruiti da <a href="04-data-types.html">sum type</a>, usa un pattern di variante: <code>ConstructorName(binding, ...)</code>. Il valore deve essere quella variante e avere lo stesso numero di slot di payload; i payload vengono legati ai nomi nel pattern.</p>
+        <pre><code>type Result = Ok(value) | Err(message);
+var r = divide(10, 0);
+match r {
+    case Ok(v): print("value: " + v);
+    case Err(msg): print("error: " + msg);
+}</code></pre>
+
+        <h4>Pattern letterali</h4>
+        <p>Corrispondono a valori esatti (numeri, stringhe, booleani, null):</p>
+        <pre><code>match x {
+    case 42: "number";
+    case "hello": "string";
+    case true: "boolean";
+    case null: "null";
+}</code></pre>
+        
+        <h4>Pattern identificatore</h4>
+        <p>Legano il valore corrispondente a un nome di variabile:</p>
+        <pre><code>match x {
+    case y: y + 10;  // Binds x to y, then evaluates y + 10
+}</code></pre>
+        
+        <h4>Pattern wildcard</h4>
+        <p>Corrispondono a qualsiasi cosa senza fare binding (usa <code>_</code>):</p>
+        <pre><code>match x {
+    case 10: "ten";
+    case _: "other";  // Matches anything else
+}</code></pre>
+        
+        <h4>Pattern di array</h4>
+        <p>Corrispondono agli array per struttura ed estraggono gli elementi:</p>
+        <pre><code>var arr = [1, 2, 3];
+match arr {
+    case [1, 2, 3]: "exact match";
+    case [x, y, z]: "three elements: " + x + ", " + y + ", " + z;
+    case [first, ...rest]: "first is " + first + ", rest has " + length(rest) + " elements";
+    default: "no match";
+}</code></pre>
+        
+        <p><strong>Pattern rest:</strong> usa <code>...rest</code> per catturare gli elementi rimanenti dell'array:</p>
+        <pre><code>var arr = [1, 2, 3, 4, 5];
+match arr {
+    case [first, second, ...rest]: 
+        // first = 1, second = 2, rest = [3, 4, 5]
+        first + second + length(rest);
+}</code></pre>
+        
+        <p><strong>Note:</strong></p>
+        <ul>
+            <li>I pattern di array devono corrispondere alla lunghezza esatta (a meno che non usi il pattern rest)</li>
+            <li>Il pattern rest (<code>...rest</code>) deve stare in fondo al pattern di array</li>
+            <li>Puoi usare pattern nidificati dentro i pattern di array</li>
+        </ul>
+        
+        <h4>Pattern di oggetto</h4>
+        <p>Corrispondono agli oggetti per proprietà ed estraggono i valori:</p>
+        <pre><code>var obj = { name: "Alice", age: 30 };
+match obj {
+    case { name, age }: name + " is " + age;  // Shorthand: binds name and age
+    case { name: userName, age: userAge }: userName + " is " + userAge;  // Explicit binding
+    default: "unknown";
+}</code></pre>
+        
+        <p><strong>Pattern di oggetto nidificati:</strong></p>
+        <pre><code>var obj = { user: { name: "Bob", age: 25 }, role: "admin" };
+match obj {
+    case { user: { name, age }, role }: 
+        name + " (" + age + ") is " + role;
+}</code></pre>
+        
+        <p><strong>Note:</strong></p>
+        <ul>
+            <li>I pattern di oggetto corrispondono se esistono tutte le proprietà specificate</li>
+            <li>La forma breve <code>{ name }</code> equivale a <code>{ name: name }</code></li>
+            <li>Puoi usare pattern nidificati per corrispondere a oggetti nidificati</li>
+            <li>Le proprietà mancanti fanno sì che il pattern non corrisponda</li>
+        </ul>
+        
+        <h3>Case default</h3>
+        <p>Il case <code>default</code> è opzionale e corrisponde quando nessun altro pattern corrisponde:</p>
+        <pre><code>match x {
+    case 1: "one";
+    case 2: "two";
+    default: "other";  // Matches anything else
+}</code></pre>
+        
+        <p>Se nessun pattern corrisponde e non c'è un case default, viene sollevato un errore a runtime.</p>
+        
+        <h3>Pattern matching in pratica</h3>
+        <p>Il pattern matching è particolarmente utile per gestire tipi di messaggio diversi negli actor o per elaborare dati strutturati:</p>
+        <pre><code>// Handle different message types
+var msg = receive();
+match msg {
+    case { type: "Start", payload: p }: handleStart(p);
+    case { type: "Stop" }: handleStop();
+    case { type: "Update", id: id, value: v }: handleUpdate(id, v);
+    default: print("Unknown message type");
+}
+
+// Process API responses
+var response = fetchData();
+match response {
+    case { status: 200, data: d }: processData(d);
+    case { status: 404 }: print("Not found");
+    case { status: 500, error: e }: print("Server error: " + e);
+    default: print("Unexpected response");
+}</code></pre>
+        
+        <div class="info-box">
+            <strong>Consigli sul pattern matching:</strong>
+            <ul>
+                <li>I pattern vengono confrontati in ordine: viene eseguito il primo che corrisponde</li>
+                <li>I pattern identificatore corrispondono sempre, quindi mettili dopo i pattern più specifici</li>
+                <li>Usa i pattern wildcard (<code>_</code>) quando non ti serve il valore</li>
+                <li>I pattern nidificati permettono il matching in profondità di strutture dati complesse</li>
+                <li>Le variabili legate nei pattern hanno scope nel corpo del case</li>
+            </ul>
+        </div>
+        
+        <h2>8.4 Gestione delle eccezioni</h2>
+        <h3>Istruzione throw</h3>
+        <p>L'istruzione <code>throw</code> solleva un'eccezione. L'espressione può essere qualsiasi valore (stringa, oggetto, ecc.).</p>
+        <pre><code>throw expression;</code></pre>
+        <p><strong>Esempio:</strong></p>
+        <pre><code>throw "Error occurred";
+throw "Division by zero";</code></pre>
+        <h3>Try-catch-finally</h3>
+        <p>La gestione delle eccezioni permette di catturare e trattare gli errori in modo controllato.</p>
+        <pre><code>try {
+    // statements that may throw
+} catch (exceptionVar if condition) {
+    // handle when condition is true (guarded catch)
+} catch (exceptionVar) {
+    // fallback handler
+} finally {
+    // cleanup code (always executes)
+}</code></pre>
+        <ul>
+            <li><strong>blocco try</strong>: contiene il codice che può sollevare un'eccezione</li>
+            <li><strong>clausola catch</strong>: gestisce le eccezioni. La variabile di eccezione è opzionale: se presente, contiene il valore dell'eccezione</li>
+            <li><strong>blocco finally</strong>: codice di cleanup opzionale che viene sempre eseguito, che si sia verificata un'eccezione o no</li>
+        </ul>
+        <p><strong>Esempi:</strong></p>
+        <pre><code>// Basic try-catch
+try {
+    var result = 10 / 0;
+} catch (error) {
+    print("Error: " + error);
+}
+
+// Tagged catch (throw dict with kind/message for e.kind filters)
+try {
+    throw dict { "kind": "IO", "message": "disk full" };
+} catch (e if e.kind == "IO") {
+    print("IO: " + e.message);
+} catch (e) {
+    print("Other: " + e);
+}
+
+// For expected success/failure in a return value, prefer result / option
+// instead of throw — see Built-in Functions 12.19.1.
+
+// Try-catch-finally
+try {
+    // risky operation
+} catch (error) {
+    print("Caught: " + error);
+} finally {
+    print("Cleanup always runs");
+}
+
+// Multiple catch clauses (currently only the first one executes)
+try {
+    // code
+} catch (error) {
+    // This catch clause will catch any exception
+    // handle error
+} catch (otherError) {
+    // This catch clause is unreachable - the first one catches all exceptions
+    // Note: Exception type matching may be added in future versions
+} finally {
+    // cleanup
+}</code></pre>
+        <p><strong>Note importanti:</strong></p>
+        <ul>
+            <li>Il blocco finally viene sempre eseguito, che si sia verificata un'eccezione o no</li>
+            <li>Le eccezioni possono essere qualsiasi valore MALDA (stringa, numero, oggetto, ecc.)</li>
+            <li><strong>Più clausole catch:</strong> al momento tutte le clausole catch corrispondono a qualsiasi tipo di eccezione. La prima clausola catch cattura sempre l'eccezione, rendendo irraggiungibili le successive. Il matching per tipo di eccezione potrebbe arrivare in versioni future.</li>
+            <li>Se non c'è alcuna clausola catch e si verifica un'eccezione, questa si propaga verso l'alto dopo l'esecuzione del blocco finally</li>
+        </ul>
+
+        <h2 id="cleanup">8.5 Cleanup deterministico</h2>
+        <p>Oltre a <code>finally</code>, MALDA offre due forme dedicate per rilasciare le risorse: <code>defer</code> registra il cleanup accanto al codice che ha acquisito la risorsa, e il blocco risorsa <code>using</code> lega il ciclo di vita di una risorsa a uno scope.</p>
+
+        <h3>defer</h3>
+        <p>Un blocco <code>defer</code> viene registrato quando l'esecuzione lo raggiunge e gira all'uscita del blocco o della funzione che lo racchiude &mdash; al completamento normale, su <code>return</code> e su un'eccezione allo stesso modo:</p>
+        <pre><code>function process(path) {
+    var handle = openHandle(path);
+    defer {
+        closeHandle(handle);
+    }
+
+    // Any exit path below still closes the handle
+    if (not isValid(handle)) {
+        return null;
+    }
+    return readAll(handle);
+}</code></pre>
+        <p>Più blocchi deferred nello stesso scope girano in <strong>ordine inverso di registrazione</strong> (ultimo registrato, primo eseguito), così puoi smontare le acquisizioni nell'ordine opposto a quello in cui le hai fatte:</p>
+        <pre><code data-run="true" data-expect="body\nsecond registered, runs first\nfirst registered, runs last">function demo() {
+    defer { print("first registered, runs last"); }
+    defer { print("second registered, runs first"); }
+    print("body");
+}
+
+demo();
+// body
+// second registered, runs first
+// first registered, runs last</code></pre>
+        <p>Regole da tenere a mente:</p>
+        <ul>
+            <li><code>defer</code> richiede un blocco, una funzione o un corpo <code>using</code> circostante. A top level senza uno scope che lo racchiude solleva <em>'defer' is only valid inside a block, function, or 'using' body</em>.</li>
+            <li>Un'istruzione <code>defer</code> che non viene mai raggiunta non viene mai registrata, quindi il cleanup avviene solo per le risorse effettivamente acquisite.</li>
+            <li>Un errore sollevato <em>dentro</em> un blocco deferred viene inghiottito, così un cleanup che fallisce non può mascherare l'eccezione già in unwinding. Gestisci gli errori esplicitamente dentro il blocco deferred se ti serve osservarli.</li>
+            <li><code>return</code>, <code>break</code> e <code>continue</code> dentro un blocco deferred si propagano, quindi evitali a meno che tu non intenda cambiare il flusso di controllo dello scope circostante.</li>
+        </ul>
+
+        <h3>Blocchi risorsa using</h3>
+        <p>La forma <code>using name = expression { ... }</code> lega una risorsa per la durata di un blocco e ne esegue il dispose all'uscita del blocco, anche in caso di eccezioni:</p>
+        <pre><code>using conn = openConnection(url) {
+    var rows = conn.query("SELECT 1");
+    print(rows.length);
+}
+// conn has been disposed here</code></pre>
+        <p>All'uscita MALDA cerca un metodo di cleanup sull'oggetto risorsa e chiama il <strong>primo che trova</strong>, in questo ordine:</p>
+        <ol>
+            <li><code>dispose()</code></li>
+            <li><code>close()</code></li>
+            <li><code>disconnect()</code></li>
+        </ol>
+        <p>Se la risorsa è <code>null</code>, o non è un oggetto, o non definisce nessuno di quei metodi, il blocco gira comunque e non viene tentato alcun cleanup. Il nome legato ha scope nel blocco e non è visibile dopo.</p>
+        <pre><code>class TempFile {
+    public var path;
+
+    function TempFile(path) {
+        this.path = path;
+    }
+
+    public function close() {
+        deleteFile(path);
+        print("removed " + path);
+    }
+}
+
+using tmp = new TempFile("scratch.txt") {
+    writeFile(tmp.path, "work in progress");
+}
+// removed scratch.txt</code></pre>
+        <div class="info-box">
+            <strong>Come scegliere:</strong> usa un blocco <code>using</code> quando la risorsa ha un metodo di dispose chiaro e uno scope chiaro. Usa <code>defer</code> quando il cleanup non è una singola chiamata di metodo, quando più risorse vengono acquisite in modo condizionale, o quando il cleanup appartiene a un'intera funzione piuttosto che a un blocco nidificato. Nota che questo <code>using</code> non ha a che fare con il <code>using</code> a top level che crea un alias di pacchetto.
+        </div>
+        <p>Entrambe le forme sono supportate dall'interprete, dal transpiler C# e dal transpiler JavaScript.</p>
+
+        <div class="see-also">
+            <h3>Vedi anche</h3>
+            <ul>
+                <li><a href="07-expressions.html">7. Espressioni</a> - Espressioni usate nelle condizioni</li>
+                <li><a href="05-variables.html">5. Variabili</a> - Scope delle variabili nelle strutture di controllo e destrutturazione</li>
+            </ul>
+        </div>
+        <div class="nav-footer">
+            <a href="07-expressions.html">← Precedente: 7. Espressioni</a>
+            <a href="09-functions.html">Successivo: 9. Funzioni→</a>
+        </div>
+
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, a tua scelta.</p>
+        </footer>
+    </main>
+    <script src="../malda-highlight.js"></script>
+    <script src="../navigation.js"></script>
+</body>
+</html>

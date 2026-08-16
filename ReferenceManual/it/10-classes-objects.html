@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Classi e oggetti MALDA: modificatori di accesso, costruttori, metodi, ereditarietà, membri static, overload degli operatori e costruttori primari.">
+    <title>10. Classi e oggetti - Manuale di riferimento MALDA</title>
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../syntax.css">
+    <link rel="stylesheet" href="../print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>Manuale di riferimento MALDA&trade;</h1>
+        <p>Il linguaggio di programmazione AI-First - Versione 1.0.0</p>
+    </header>
+    <nav></nav>
+    <main>
+        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>10. Classi e oggetti</span></div>
+        <h1>10. Classi e oggetti</h1>
+        <h2>10.1 Dichiarazione di classe</h2>
+        <pre><code>class ClassName {
+    public var field1;
+    private var field2;
+    
+    function ClassName(param1, param2) {
+        this.field1 = param1;
+        this.field2 = param2;
+    }
+    
+    public function method1() {
+        field1 = "value";  // Implicit member access
+    }
+    
+    private function method2() {
+        // method body
+    }
+}</code></pre>
+        <h2>10.2 Modificatori di accesso</h2>
+        <ul>
+            <li><strong>public</strong>: accessibile da qualsiasi punto (default per i metodi)</li>
+            <li><strong>private</strong>: accessibile solo all'interno della classe</li>
+            <li>I campi sono private se non si specifica un modificatore</li>
+        </ul>
+        <h2>10.3 Costruttori</h2>
+        <p>I costruttori hanno lo stesso nome della classe e vengono chiamati automaticamente quando si creano gli oggetti:</p>
+        <pre><code>class Point {
+    public var x;
+    public var y;
+    
+    function Point(x, y) {
+        this.x = x;
+        this.y = y;
+    }
+}</code></pre>
+        <h2>10.4 Metodi</h2>
+        <p>I metodi sono funzioni definite all'interno delle classi. Possono accedere ai campi della classe con <code>this</code> o in modo implicito:</p>
+        <pre><code>class Calculator {
+    public var result;
+    
+    function Calculator() {
+        result = 0;  // Implicit member access
+    }
+    
+    public function add(value) {
+        result = result + value;
+        return result;
+    }
+}</code></pre>
+        <h2>10.5 Istanziazione degli oggetti</h2>
+        <pre><code>var obj = new ClassName(arg1, arg2);
+var person = new Person("Alice", 25);</code></pre>
+        <h2>10.6 Accesso ai membri</h2>
+        <pre><code>var person = new Person("Bob", 30);
+person.name = "Charlie";
+var age = person.age;
+person.setAge(31);</code></pre>
+        <h2>10.7 La keyword <code>this</code></h2>
+        <p><code>this</code> indica l'istanza corrente dell'oggetto. È opzionale quando si accede alle variabili membro (è supportato l'accesso implicito):</p>
+        <pre><code>class Counter {
+    private var count;
+    
+    function Counter() {
+        count = 0;  // Implicit member access
+    }
+    
+    public function setCount(count) {
+        this.count = count;  // 'this.' required due to name conflict
+    }
+}</code></pre>
+        <h2>10.8 Ereditarietà</h2>
+        <p>Le classi possono ereditare da una classe padre con <code>extends</code>:</p>
+        <pre><code>class Animal {
+    public var name;
+    
+    function Animal(name) {
+        this.name = name;
+    }
+    
+    public function speak() {
+        print(name + " makes a sound");
+    }
+}
+
+class Dog extends Animal {
+    function Dog(name) {
+        super(name);  // Call parent constructor
+    }
+    
+    public function speak() {
+        super.speak();  // Call parent method
+        print($"{name} also barks");
+    }
+}</code></pre>
+        <h2>10.9 Membri static</h2>
+        <p>I membri static appartengono alla classe, non alle istanze:</p>
+        <pre><code>class MathUtils {
+    static var PI = 3.14159;
+    
+    static function add(a, b) {
+        return a + b;
+    }
+}
+
+var pi = MathUtils.PI;
+var sum = MathUtils.add(5, 3);</code></pre>
+        <h2>10.10 Overload degli operatori</h2>
+        <p>Le classi possono fare overload di operatori selezionati definendo metodi con nomi riservati. Per gli operatori binari, MALDA prova prima l'overload dell'operando sinistro (<code>__add__</code>, <code>__sub__</code>, ecc.). Se quell'overload non c'è, prova l'overload invertito dell'operando destro (<code>__radd__</code>, <code>__rsub__</code>, ecc.) passando l'operando sinistro come argomento. Per gli operatori unari, l'unico operando è il receiver.</p>
+        <table>
+            <thead>
+                <tr><th>Operatore</th><th>Metodo dell'operando sinistro</th><th>Metodo di fallback dell'operando destro</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>+</code></td><td><code>__add__(other)</code></td><td><code>__radd__(other)</code></td></tr>
+                <tr><td><code>-</code> (binario)</td><td><code>__sub__(other)</code></td><td><code>__rsub__(other)</code></td></tr>
+                <tr><td><code>*</code></td><td><code>__mul__(other)</code></td><td><code>__rmul__(other)</code></td></tr>
+                <tr><td><code>/</code></td><td><code>__div__(other)</code></td><td><code>__rdiv__(other)</code></td></tr>
+                <tr><td><code>%</code></td><td><code>__mod__(other)</code></td><td><code>__rmod__(other)</code></td></tr>
+                <tr><td><code>==</code></td><td><code>__eq__(other)</code></td><td><code>__req__(other)</code></td></tr>
+                <tr><td><code>!=</code></td><td><code>__neq__(other)</code></td><td><code>__rneq__(other)</code></td></tr>
+                <tr><td><code>&lt;</code></td><td><code>__lt__(other)</code></td><td><code>__rlt__(other)</code></td></tr>
+                <tr><td><code>&lt;=</code></td><td><code>__le__(other)</code></td><td><code>__rle__(other)</code></td></tr>
+                <tr><td><code>&gt;</code></td><td><code>__gt__(other)</code></td><td><code>__rgt__(other)</code></td></tr>
+                <tr><td><code>&gt;=</code></td><td><code>__ge__(other)</code></td><td><code>__rge__(other)</code></td></tr>
+                <tr><td><code>-</code> (unario)</td><td><code>__neg__()</code></td><td>n/a</td></tr>
+            </tbody>
+        </table>
+        <p>Se non esiste un metodo di overload corrispondente né a sinistra né a destra, MALDA usa il comportamento built-in dell'operatore.</p>
+        <pre><code data-run="true" data-expect="5">class Value {
+    public var data;
+
+    function Value(data) {
+        this.data = data;
+    }
+
+    public function __add__(other) {
+        return data + other.data;
+    }
+}
+
+var a = new Value(2);
+var b = new Value(3);
+print(a + b); // 5</code></pre>
+        <pre><code data-run="true" data-expect="12">class RightValue {
+    public var data;
+
+    function RightValue(data) {
+        this.data = data;
+    }
+
+    public function __radd__(other) {
+        return other + data;
+    }
+}
+
+var rhs = new RightValue(7);
+print(5 + rhs); // 12</code></pre>
+        <h2>10.11 Costruttori primari</h2>
+        <p>Una lista di parametri dopo il nome della classe è un <strong>costruttore primario</strong>. Ogni parametro diventa un campo public con lo stesso nome, e MALDA sintetizza un costruttore che assegna quei campi. Il corpo opzionale è un corpo di classe normale (metodi, campi extra, membri <code>static</code>, overload degli operatori). Non c'è una keyword aggiuntiva: <code>class Name(</code> è distinto da <code>class Name {</code> e da <code>class Name extends</code>.</p>
+        <pre><code>class Point(x, y);
+
+class Point(x, y) {
+    function distance() {
+        return math.sqrt(this.x * this.x + this.y * this.y);
+    }
+}
+
+var p = new Point(3, 4);
+print(p.x);
+print(p.distance());</code></pre>
+        <p>Le forme sopra si espandono in una classe classica: campi public, un costruttore con lo stesso nome della classe che assegna <code>this.x = x</code> (e così via), poi gli eventuali membri del corpo. I type hint opzionali sui parametri vengono memorizzati su quei campi: <code>class Point(x: float, y: float)</code>.</p>
+        <ul>
+            <li>Solo dati: <code>class Point(x, y);</code> oppure <code>class Point(x, y) { }</code>.</li>
+            <li>Non dichiarare <code>function Point(...)</code> nella stessa classe (costruttore duplicato).</li>
+            <li>Non dichiarare <code>var x</code> nel corpo quando <code>x</code> è già un parametro primario.</li>
+            <li><code>extends</code> non si può combinare con un costruttore primario. Usa una classe classica e chiama <code>super(...)</code>.</li>
+            <li>Le istanze usano ancora l'uguaglianza per identità, a meno che tu non definisca <code>__eq__</code>.</li>
+        </ul>
+        <pre><code data-run="true" data-expect="7">class Point(x, y);
+var p = new Point(3, 4);
+print(p.x + p.y);</code></pre>
+        <pre><code data-run="true" data-expect="7">class Point(x, y) {
+    function total() {
+        return this.x + this.y;
+    }
+}
+print(new Point(3, 4).total());</code></pre>
+        <div class="see-also">
+            <h3>Vedi anche</h3>
+            <ul>
+                <li><a href="04-data-types.html">4. Tipi di dati</a> - Tipi oggetto</li>
+                <li><a href="09-functions.html">9. Funzioni</a> - Metodi e funzioni</li>
+            </ul>
+        </div>
+        <div class="nav-footer">
+            <a href="09-functions.html">← Precedente: 9. Funzioni</a>
+            <a href="11-input-output.html">Successivo: 11. Input/Output→</a>
+        </div>
+
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, a tua scelta.</p>
+        </footer>
+    </main>
+    <script src="../malda-highlight.js"></script>
+    <script src="../navigation.js"></script>
+</body>
+</html>

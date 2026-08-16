@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Sviluppo full-stack con MALDA - architettura end-to-end, UI, REST API, database e agenti">
+    <title>28. Sviluppo full-stack con MALDA - Manuale di riferimento MALDA</title>
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../syntax.css">
+    <link rel="stylesheet" href="../print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>Manuale di riferimento MALDA&trade;</h1>
+        <p>Il linguaggio di programmazione AI-First - Versione 1.0.0</p>
+    </header>
+    <nav></nav>
+    <main>
+        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>28. Sviluppo full-stack con MALDA</span></div>
+        <h1>28. Sviluppo full-stack con MALDA</h1>
+        <p>Questo capitolo mostra come usare MALDA come piattaforma full-stack completa. L'obiettivo è collegare concetti già documentati in capitoli dedicati in un'unica architettura end-to-end. Per starter eseguibili usa <code>malda new webapi</code>, <code>malda new fullstack</code> e gli esempi in <code>Examples/Web/</code> (per esempio <code>rest_api_server.malda</code> e <code>ui_controls_showcase_minimal.malda</code>).</p>
+
+        <h2>28.1 Cosa significa "full-stack" in MALDA</h2>
+        <p>In MALDA un'app full-stack combina in genere:</p>
+        <ul>
+            <li><strong>Web UI</strong> per le interazioni utente (form, elenchi, dashboard)</li>
+            <li><strong>REST API</strong> per le operazioni di business e i confini di integrazione</li>
+            <li><strong>Livello database</strong> per la persistenza</li>
+            <li><strong>Agente AI opzionale</strong> per triage, riepiloghi e automazione</li>
+        </ul>
+        <p>Questi pezzi corrispondono direttamente a capitoli già presenti nel manuale: generazione Web UI, Server REST API, Client REST Web, Supporto database e Orchestrazione di agenti.</p>
+        <h3>28.1.1 Confine di runtime: MALDA vs JavaScript</h3>
+        <ul>
+            <li><strong>Runtime MALDA (lato server):</strong> gli handler delle API, l'accesso al database, l'orchestrazione di agenti e l'HTML opzionale renderizzato sul server tramite <code>HttpServer</code>, <code>@PAGE</code> o <code>@AIPAGE</code></li>
+            <li><strong>Runtime del browser (lato client):</strong> codice UI JavaScript/TypeScript che renderizza l'interfaccia e chiama le API MALDA su HTTP</li>
+        </ul>
+        <p>Il livello UI può quindi essere renderizzato sul server da MALDA, renderizzato nel client in JavaScript, oppure un ibrido dei due.</p>
+        <h3>28.1.2 Modelli di distribuzione</h3>
+        <ul>
+            <li><strong>Full stack nativo MALDA:</strong> backend MALDA + UI MALDA renderizzata sul server (<code>@PAGE</code>/<code>@AIPAGE</code>)</li>
+            <li><strong>Full stack ibrido:</strong> backend MALDA + UI di un framework browser esterno (React/Vue/Angular/Svelte/ecc.)</li>
+            <li><strong>Solo backend:</strong> API/servizi MALDA senza un livello UI rivolto all'utente</li>
+        </ul>
+        <p>Sia lo stack nativo MALDA sia quello ibrido sono full-stack, perché includono i livelli UI + API + dati da un capo all'altro.</p>
+        <h3>28.1.3 Decoratori di target a sorgente unica</h3>
+        <p>MALDA supporta ora i decoratori di target, così un unico sorgente <code>.malda</code> può contenere codice solo-server, solo-client e condiviso in modo controllato:</p>
+        <ul>
+            <li><code>@server()</code> / <code>@csharp()</code>: includi la dichiarazione nella transpile C#, escludila dalla transpile JavaScript.</li>
+            <li><code>@client()</code> / <code>@javascript()</code>: includi la dichiarazione nella transpile JavaScript, escludila dalla transpile C#.</li>
+            <li><code>@shared()</code>: includi la dichiarazione in entrambi i target di transpile C# e JavaScript.</li>
+        </ul>
+        <p>I decoratori di route esistenti (<code>@GET</code>, <code>@POST</code>, <code>@PUT</code>, <code>@DELETE</code>, <code>@PATCH</code>, <code>@OPTIONS</code>, <code>@PAGE</code>, <code>@AIPAGE</code>, <code>@ACTION</code>, <code>@COMPONENT</code>, <code>@LIVE</code>) restano decoratori runtime/web e continuano a implicare la partecipazione del server.</p>
+        <p><strong>Regole di validazione:</strong> combinare <code>@client()</code> con i decoratori di route non è valido, e <code>@shared()</code> dovrebbe usare solo helper sicuri su entrambi i target. Le operazioni specifiche del target, come API dirette su filesystem/database/server oppure helper DOM/local storage del browser, devono restare in dichiarazioni esplicite server/client.</p>
+        <p><strong>Workflow Desktop IDE:</strong> per i file full-stack a sorgente unica, il Desktop IDE può mostrare un <code>.malda</code> fisico come più tab virtuali quando il sorgente lo richiede con separatori espliciti <code>// @malda-section Name</code>. Il salvataggio scrive comunque un unico file fisico, e i file <code>include</code> regolari continuano ad aprirsi e modificarsi come documenti fisici normali.</p>
+
+        <h2>28.2 Scenario di esempio: app semplice di item</h2>
+        <p>Un'app di esempio tipica consente di:</p>
+        <ul>
+            <li>Creare item da un form web</li>
+            <li>Elencare gli item aperti con stato e priorità</li>
+            <li>Aggiornare lo stato (open, in-progress, closed)</li>
+            <li>Usare un helper AI per classificare l'urgenza e suggerire l'azione successiva</li>
+        </ul>
+        <p>Modello dati minimo:</p>
+        <pre><code>{
+  "id": 101,
+  "ownerName": "Alice",
+  "email": "alice@example.com",
+  "title": "Cannot login",
+  "description": "Password reset link expired",
+  "status": "open",
+  "priority": "high",
+  "createdAt": "2026-02-14T09:15:00Z"
+}</code></pre>
+
+        <h2>28.3 Struttura di progetto consigliata</h2>
+        <pre><code>/app
+  /api
+    items-api.malda
+  /ui
+    dashboard.malda
+  /shared
+    item-model.malda
+  /agents
+    triage-agent.malda</code></pre>
+        <p>Tieni la logica di business in funzioni/classi riutilizzabili, poi esponila sia tramite handler API sia tramite handler UI. Così eviti di duplicare la logica tra i flussi front-end e back-end.</p>
+        <p>Quando usi i decoratori di target a sorgente unica, puoi anche scegliere una struttura più piatta (per esempio un unico entry <code>app.malda</code>) continuando a separare le responsabilità marcando le dichiarazioni con <code>@server()</code>, <code>@client()</code> e <code>@shared()</code>.</p>
+
+        <h2>28.4 Livello API (CRUD degli item + workflow)</h2>
+        <p>Definisci le route REST per le operazioni sugli item:</p>
+        <pre><code>function ok(data) {
+    return {"status": 200, "data": data};
+}
+
+@GET("/api/items")
+function getItems(status) {
+    // status can come from query string ?status=open
+    var items = dbQuery("SELECT * FROM Items WHERE (@status IS NULL OR status = @status)", {"status": status});
+    return ok(items);
+}
+
+@POST("/api/items")
+function createItem(body) {
+    var now = dateNow();
+    var insert = dbExecute(
+        "INSERT INTO Items (ownerName, email, title, description, status, priority, createdAt) VALUES (@ownerName, @email, @title, @description, 'open', 'normal', @createdAt)",
+        {
+            "ownerName": body.ownerName,
+            "email": body.email,
+            "title": body.title,
+            "description": body.description,
+            "createdAt": now
+        }
+    );
+    return {"status": 201, "data": {"id": insert.lastInsertId, "createdAt": now}};
+}
+
+@PATCH("/api/items/{id}/status")
+function updateItemStatus(id, body) {
+    dbExecute("UPDATE Items SET status = @status WHERE id = @id", {"id": id, "status": body.status});
+    return ok({"id": id, "status": body.status});
+}</code></pre>
+        <p>Raccomandazione per la produzione: aggiungi validazione, middleware di auth e payload di errore coerenti. Vedi <a href="26-rest-api.html">26. Server REST API</a>.</p>
+
+        <h2>28.5 Livello UI (quale tecnologia usare)</h2>
+        <p>Ci sono due approcci comuni:</p>
+        <ul>
+            <li><strong>UI renderizzata sul server in MALDA</strong>: costruisci le pagine con <code>@PAGE</code>/<code>@AIPAGE</code> e servile direttamente da MALDA</li>
+            <li><strong>UI renderizzata nel client in JavaScript/TypeScript</strong>: costruisci un frontend SPA/statico e chiama gli endpoint REST MALDA</li>
+        </ul>
+        <table>
+            <tr><th>Modello</th><th>Quando sceglierlo</th></tr>
+            <tr><td>Full stack nativo MALDA</td><td>Consegna rapida, meno parti in movimento, le pagine guidate dal server bastano</td></tr>
+            <tr><td>Full stack ibrido</td><td>UX SPA ricca, team frontend numerosi, requisiti forti sull'ecosistema JS</td></tr>
+        </table>
+        <p>Le opzioni di framework per la UI nel browser includono JavaScript vanilla, React, Vue, Angular, Svelte, Next.js (modalità frontend/consumatore di API), Nuxt, Solid e opzioni leggere come HTMX o Alpine.js. MALDA è agnostico rispetto al backend, purché il frontend possa chiamare API HTTP.</p>
+        <h3>28.5.0 Pattern a componenti nativo MALDA</h3>
+        <p>Per il full stack nativo MALDA, questo fornisce una baseline pragmatica a componenti server:</p>
+        <ul>
+            <li><code>component Name(...) { ... }</code> per i punti di ingresso dei componenti renderizzati sul server</li>
+            <li><code>@ACTION(path)</code> per aggiornamenti di fragment/form via POST</li>
+            <li><code>@LIVE(path)</code> per i canali live (contratto SSE)</li>
+            <li>helper <code>componentState*</code>, <code>componentFragment(...)</code> e <code>componentLiveEmit(...)</code></li>
+        </ul>
+        <p><strong>Come scegliere il trasporto:</strong> usa <strong>fragment HTTP</strong> come default per le azioni avviate dall'utente (form/pulsanti). Aggiungi <strong>LIVE/SSE</strong> quando la UI deve aggiornarsi senza un'azione dell'utente (notifiche, contatori, code).</p>
+        <p><strong>Nota:</strong> gli endpoint LIVE supportano le sottoscrizioni a canale (per esempio <code>/items/live?channel=items</code>) e <code>componentLiveEmit("items", ...)</code> pubblica solo su quel canale. Lo scaffold <code>malda new fullstack</code> include anche un componente di esempio in <code>/components/TicketBoard</code> per una demo locale rapida.</p>
+        <h4>28.5.0.1 Piccolo esempio di item</h4>
+        <pre><code>component ItemBoard() {
+    var items = componentStateGet("board", "items", []);
+    return "&lt;h1&gt;Open: " + items.length + "&lt;/h1&gt;";
+}
+
+@ACTION("/items/add")
+function addItem(body) {
+    var items = componentStateGet("board", "items", []);
+    items.append({"title": body.title, "status": "open"});
+    componentStateSet("board", "items", items);
+    componentLiveEmit("items", {"count": items.length}, "item-added");
+    return componentFragment("item-list", "&lt;ul&gt;&lt;li&gt;" + body.title + "&lt;/li&gt;&lt;/ul&gt;");
+}
+
+@LIVE("/items/live")
+function itemsLive() {
+    return {"sse": true};
+}</code></pre>
+        <h3>28.5.1 Handler di pagina lato server MALDA</h3>
+        <pre><code>@PAGE("/items")
+function itemsPage() {
+    return "&lt;html&gt;&lt;body&gt;&lt;h1&gt;Items&lt;/h1&gt;&lt;/body&gt;&lt;/html&gt;";
+}</code></pre>
+        <h3>28.5.2 JavaScript nel browser che chiama l'API MALDA</h3>
+        <pre><code>async function loadItems() {
+  const r = await fetch("/api/items?status=open");
+  const json = await r.json();
+  return json.data;
+}
+
+async function closeItem(id) {
+  await fetch(`/api/items/${id}/status`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status: "closed" })
+  });
+}</code></pre>
+        <p>Questa separazione tiene le preoccupazioni della UI concentrate su rendering e interazione, mentre MALDA resta la fonte di verità per la logica di business e l'accesso ai dati.</p>
+        <h3>28.5.3 Percorso di migrazione da @PAGE ai componenti</h3>
+        <ol>
+            <li>Tieni stabili gli endpoint <code>@PAGE</code> esistenti (non è richiesta una migrazione breaking).</li>
+            <li>Estrai la logica di vista in funzioni <code>component</code>.</li>
+            <li>Aggiungi handler <code>@ACTION</code> per gli aggiornamenti interattivi e restituisci <code>componentFragment(...)</code>.</li>
+            <li>Aggiungi un endpoint <code>@LIVE</code> + <code>componentLiveEmit(...)</code> per le notifiche push.</li>
+            <li>Adotta il percorso in modo incrementale, pagina per pagina, invece di riscrivere l'intera UI.</li>
+        </ol>
+        <p><strong>Suggerimento di migrazione incrementale:</strong> parti da un unico workflow di form (per esempio &quot;create item&quot;), verifica che aggiornamenti dei fragment e gestione dello stato siano chiari al team, poi estendi alle altre pagine.</p>
+
+        <h3>28.5.4 Esempio UI end-to-end</h3>
+        <p>Per un flusso completo elenco/dettaglio con controlli in stile CRUD, parti da <code>Examples/Web/ui_controls_showcase_minimal.malda</code>, <code>Examples/Web/ui_form_workflow.malda</code> e <code>Examples/Web/rest_api_server.malda</code>, poi componi le pagine con <code>ui.crudControls</code>, <code>@PAGE</code> e <code>@POST</code>. Pattern chiave:</p>
+        <ul>
+            <li><strong>Pagina elenco</strong>: un handler <code>@PAGE</code> costruisce filtri/pulsanti/host della griglia tramite <code>ui.crudControls(...)</code>.</li>
+            <li><strong>Navigazione dettaglio / relazione</strong>: i query param guidano le viste master-detail (per esempio <code>?ownerId=5</code>).</li>
+            <li><strong>CRUD</strong>: i form usano <code>method="post"</code> con handler <code>@POST</code> corrispondenti che validano, persistono e fanno redirect oppure restituiscono un fragment.</li>
+            <li><strong>Chiamate API</strong>: l'host della griglia recupera JSON in envelope; il server costruisce <code>ui.dataGrid</code> dalle righe e restituisce un envelope mount/patch. Per API esterne usa <code>RestClient</code>; vedi <a href="27-rest-web-client.html">27. Client REST Web</a>.</li>
+            <li><strong>Gestione ottimistica / errori</strong>: mostra un toast in caso di successo; su errore di validazione o del server, restituisci <code>componentFragment("form-errors", errorHtml)</code> e ri-renderizza il form con errori inline.</li>
+        </ul>
+        <pre><code>function crudPage(req, schema, pageTitle, lookups) {
+    var queryParams = req.query == null ? {} : req.query;
+    var sessionId = ui.sessionId(req, schema.sessionDefault);
+    var controlsHtml = ui.crudControls(schema, sessionId, queryParams, lookups);
+    return controlsHtml;
+}
+
+@PAGE("/web/items")
+function itemsPage(req) { return crudPage(req, itemSchema, "Items", {}); }</code></pre>
+        <pre><code>@POST("/web/items/add")
+function addItem(req, body, res) {
+    var errors = [];
+    if (body.title == null || body.title == "") errors.append("Title required");
+    if (errors.length &gt; 0) {
+        return {"status": 400, "body": "&lt;ul class='error-list'&gt;&lt;li&gt;" + errors[0] + "&lt;/li&gt;&lt;/ul&gt;"};
+    }
+    var id = dbExecute("INSERT INTO items (...) VALUES (...)", body).lastInsertId;
+    return RedirectTo("/web/items?added=" + id);
+}</code></pre>
+        <p>Per la struttura completa dello schema e i path dei template, vedi <a href="23-web-ui.html">23. Componenti server Web UI</a> (23.3.1.3 riferimento allo schema CRUD).</p>
+
+        <h2>28.6 Pattern di integrazione database</h2>
+        <p>Un approccio pratico è usare:</p>
+        <ul>
+            <li>Piccole funzioni in stile repository per aggregato (per esempio <code>saveItem</code>, <code>findItemsByStatus</code>)</li>
+            <li>SQL parametrizzato per tutti i valori in input</li>
+            <li>Semplici funzioni di mapping dagli oggetti riga agli oggetti di dominio</li>
+        </ul>
+        <p>Per setup del provider e dettagli di connessione, vedi <a href="15-database.html">15. Supporto database</a>.</p>
+
+        <h2>28.7 Workflow di triage AI (opzionale ma potente)</h2>
+        <p>Usa un agente per classificare l'urgenza degli item in arrivo e proporre l'azione successiva:</p>
+        <pre><code>var client = new OpenRouterClient();
+var triageAgent = new Agent(
+    "TriageAgent",
+    "item-triage",
+    "Classify items by priority and suggest next action.",
+    client
+);
+
+function triageItem(item) {
+    var prompt = "Classify this item and return JSON with priority and queue: " + toJSON(item);
+    var result = triageAgent.think(prompt);
+    return parseJSON(result.content);
+}</code></pre>
+        <p>Pattern di integrazione comune: chiama il triage subito dopo la creazione dell'item, poi persisti i campi <code>priority</code> e <code>queue</code> prima di restituire la risposta.</p>
+
+        <h2>28.8 Flusso della richiesta end-to-end</h2>
+        <ol>
+            <li>L'utente invia il form dell'item nella Web UI</li>
+            <li>La UI invia <code>POST /api/items</code></li>
+            <li>L'API valida e persiste l'item iniziale</li>
+            <li>L'API chiama opzionalmente l'agente di triage</li>
+            <li>L'API aggiorna priorità/coda e restituisce JSON</li>
+            <li>La UI aggiorna l'elenco via <code>GET /api/items</code></li>
+        </ol>
+
+        <h2>28.9 Configurazione e segreti</h2>
+        <p>Tieni credenziali e valori specifici dell'ambiente fuori dal codice sorgente:</p>
+        <ul>
+            <li>Usa variabili d'ambiente per le API key e le credenziali del DB</li>
+            <li>Usa <code>getMaldaConfig()</code> per la configurazione locale di progetto/utente dove appropriato</li>
+            <li>Centralizza URL degli endpoint e nomi dei modelli in un unico modulo di config</li>
+        </ul>
+        <p>I built-in rilevanti sono documentati in <a href="12-built-in-functions.html">12. Funzioni built-in</a>.</p>
+
+        <h2>28.10 Checklist pratica per nuove app full-stack</h2>
+        <ul>
+            <li>Definisci prima i contratti API (payload, codici di stato, formato degli errori)</li>
+            <li>Implementa l'accesso al database tramite piccole funzioni riutilizzabili</li>
+            <li>Tieni il rendering della UI separato dal trasporto e dalla logica dei dati</li>
+            <li>Aggiungi validazione delle richieste e middleware di auth prima dell'uso in produzione</li>
+            <li>Aggiungi logging/ID di correlazione per tracciare i problemi tra i livelli</li>
+            <li>Introduci l'automazione AI solo dove fa risparmiare sforzo misurabile</li>
+        </ul>
+
+        <h3>28.10.1 Testing e troubleshooting (Web UI + API)</h3>
+        <p>Quando integri la Web UI con le REST API, usa questi controlli pratici:</p>
+        <ul>
+            <li><strong>Risposte fragment</strong>: verifica gli header <code>X-Malda-Fragment</code> e <code>X-Malda-Fragment-Target</code> quando testi handler <code>@ACTION</code> o <code>@POST</code>. Il client deve aggiornare solo l'elemento target.</li>
+            <li><strong>Continuità di sessione</strong>: passa <code>session</code> in query o form; <code>ui.sessionId(req, default)</code> lo legge. Senza di esso, <code>componentState*</code> e <code>ui.state</code> potrebbero non persistere tra le richieste.</li>
+            <li><strong>Errori API</strong>: quando la UI chiama <code>GET /api/items</code>, assicurati che l'API restituisca JSON coerente (<code>{"status": 200, "data": [...]}</code>). Usa validazione e payload di errore di <a href="26-rest-api.html">26. Server REST API</a>.</li>
+            <li><strong>CSRF</strong>: se <code>enableCsrf</code> è attivo, il client deve inviare il token. Controlla che i form includano il campo hidden e che le richieste fetch usino l'header corretto.</li>
+            <li><strong>Lookup</strong>: per il CRUD guidato da schema, assicurati che <code>lookups</code> contenga tutte le chiavi referenziate in <code>dialogLookupOptions</code> (es. <code>owners</code>, <code>tags</code>). Lookup mancanti producono dropdown vuoti.</li>
+        </ul>
+        <p>Per il debugging specifico della Web UI (divergenza dell'albero, event handler, cache dei template), vedi <a href="23-web-ui.html">23. Componenti server Web UI</a> (23.3.15 Insidie comuni e debugging, 23.6 Testing e troubleshooting).</p>
+
+        <div class="see-also">
+            <h3>Vedi anche</h3>
+            <ul>
+                <li><a href="23-web-ui.html">23. Componenti server Web UI</a> - Costruire pagine e flussi UI rivolti al browser</li>
+                <li><a href="26-rest-api.html">26. Server REST API</a> - Decoratori di route, middleware, validazione, risposte</li>
+                <li><a href="27-rest-web-client.html">27. Client REST Web</a> - Chiamare API da UI/servizi</li>
+                <li><a href="15-database.html">15. Supporto database</a> - Pattern di persistenza e provider</li>
+                <li><a href="17-agent-orchestration.html">17. Orchestrazione di agenti</a> - Agenti AI e workflow basati su tool</li>
+            </ul>
+        </div>
+
+        <div class="nav-footer">
+            <a href="27-rest-web-client.html">← Precedente: 27. Client REST Web</a>
+            <a href="29-dotnet-interop.html">Successivo: 29. Interop .NET→</a>
+        </div>
+
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, a tua scelta.</p>
+        </footer>
+    </main>
+    <script src="../malda-highlight.js"></script>
+    <script src="../navigation.js"></script>
+</body>
+</html>
