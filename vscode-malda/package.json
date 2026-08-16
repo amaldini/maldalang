@@ -27,6 +27,13 @@
         "configuration": "./language-configuration.json"
       }
     ],
+    "grammars": [
+      {
+        "language": "malda",
+        "scopeName": "source.malda",
+        "path": "./syntaxes/malda.tmLanguage.json"
+      }
+    ],
     "breakpoints": [
       {
         "language": "malda"

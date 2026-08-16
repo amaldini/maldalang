@@ -1,0 +1,136 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "MALDA",
+  "scopeName": "source.malda",
+  "fileTypes": ["malda"],
+  "patterns": [
+    { "include": "#section-marker" },
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#decorators" },
+    { "include": "#numbers" },
+    { "include": "#literals" },
+    { "include": "#keywords" },
+    { "include": "#stdlib-modules" },
+    { "include": "#operators" },
+    { "include": "#punctuation" }
+  ],
+  "repository": {
+    "section-marker": {
+      "match": "^\\s*//\\s*@malda-section\\b.*$",
+      "name": "meta.section.malda"
+    },
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.malda",
+          "match": "//.*$"
+        },
+        {
+          "name": "comment.block.malda",
+          "begin": "/\\*",
+          "end": "\\*/"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.triple.interpolated.malda",
+          "begin": "\\$\"\"\"",
+          "end": "\"\"\"",
+          "patterns": [
+            { "include": "#escape" },
+            { "include": "#interpolation" }
+          ]
+        },
+        {
+          "name": "string.quoted.triple.malda",
+          "begin": "\"\"\"",
+          "end": "\"\"\"",
+          "patterns": [
+            { "include": "#escape" }
+          ]
+        },
+        {
+          "name": "string.quoted.double.interpolated.malda",
+          "begin": "\\$\"",
+          "end": "\"",
+          "patterns": [
+            { "include": "#escape" },
+            { "include": "#interpolation" }
+          ]
+        },
+        {
+          "name": "string.quoted.double.malda",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            { "include": "#escape" }
+          ]
+        },
+        {
+          "name": "string.quoted.single.malda",
+          "begin": "'",
+          "end": "'",
+          "patterns": [
+            { "include": "#escape" }
+          ]
+        }
+      ]
+    },
+    "escape": {
+      "name": "constant.character.escape.malda",
+      "match": "\\\\."
+    },
+    "interpolation": {
+      "name": "meta.embedded.expression.malda",
+      "begin": "\\{",
+      "beginCaptures": {
+        "0": { "name": "punctuation.section.embedded.begin.malda" }
+      },
+      "end": "\\}",
+      "endCaptures": {
+        "0": { "name": "punctuation.section.embedded.end.malda" }
+      },
+      "patterns": [
+        { "include": "#comments" },
+        { "include": "#strings" },
+        { "include": "#numbers" },
+        { "include": "#literals" },
+        { "include": "#keywords" },
+        { "include": "#stdlib-modules" },
+        { "include": "#operators" },
+        { "include": "#punctuation" }
+      ]
+    },
+    "decorators": {
+      "name": "entity.name.function.decorator.malda",
+      "match": "@[A-Za-z_][A-Za-z0-9_]*"
+    },
+    "numbers": {
+      "name": "constant.numeric.malda",
+      "match": "\\b\\d[\\d_]*(?:\\.\\d+)?(?:[eE][+-]?\\d+)?\\b"
+    },
+    "keywords": {
+      "name": "keyword.control.malda",
+      "match": "\\b(?:maxDelay|onReject|compensate|component|continue|directed|foreach|function|approval|extends|finally|include|message|private|property|receive|timeout|undirected|workflow|backoff|default|export|import|prompt|public|return|schema|static|actor|async|await|break|catch|class|const|defer|delay|graph|input|match|print|retry|spawn|super|throw|using|while|case|dict|else|send|self|step|then|this|type|wait|api|for|new|not|try|var|and|in|if|on|or)\\b"
+    },
+    "literals": {
+      "name": "constant.language.malda",
+      "match": "\\b(?:true|false|null)\\b"
+    },
+    "stdlib-modules": {
+      "name": "support.module.malda",
+      "match": "\\b(?:io|math|str|pdf|doc|result|option|grounded|cap)\\b"
+    },
+    "operators": {
+      "name": "keyword.operator.malda",
+      "match": "\\|>|=>|->|\\+\\+|--|[+\\-*/%]=|[=!<>]=|&&|\\|\\||[+\\-*/%=<>!?&|~^]"
+    },
+    "punctuation": {
+      "name": "punctuation.malda",
+      "match": "[{}()\\[\\];,.:]"
+    }
+  }
+}
