@@ -521,12 +521,14 @@
                 <Separator/>
                 <MenuItem Header="Select _All" Click="EditSelectAll_Click" InputGestureText="Ctrl+A"/>
                 <MenuItem Header="_Find..." Click="EditFind_Click" InputGestureText="Ctrl+F"/>
+                <MenuItem Header="Format _Document" Click="EditFormatDocument_Click" InputGestureText="Ctrl+Alt+F"/>
                 <MenuItem Header="_Rename Symbol..." Click="NavigateRenameSymbol_Click" InputGestureText="Ctrl+Alt+R"/>
             </MenuItem>
 
             <MenuItem Header="_Navigate">
                 <MenuItem Header="Go to _Definition" Click="NavigateGoToDefinition_Click" InputGestureText="F12"/>
                 <MenuItem Header="Find _References" Click="NavigateFindReferences_Click" InputGestureText="Shift+F12"/>
+                <MenuItem Header="Go to _Symbol..." Click="NavigateGoToSymbol_Click" InputGestureText="Ctrl+T"/>
                 <MenuItem Header="_Rename Symbol..." Click="NavigateRenameSymbol_Click" InputGestureText="Ctrl+Alt+R"/>
             </MenuItem>
             

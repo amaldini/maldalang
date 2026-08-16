@@ -16,16 +16,35 @@ namespace MaldaLang.DesktopIDE;
 public sealed class SearchResultsBackgroundRenderer : IBackgroundRenderer
 {
     private readonly TextEditor _editor;
-    private readonly Brush _matchBrush = new SolidColorBrush(Color.FromArgb(72, 255, 225, 140));
-    private readonly Brush _activeMatchBrush = new SolidColorBrush(Color.FromArgb(120, 255, 180, 90));
-    private readonly Pen _matchBorderPen = new(new SolidColorBrush(Color.FromArgb(110, 194, 132, 48)), 1.0);
-    private readonly Pen _activeMatchBorderPen = new(new SolidColorBrush(Color.FromArgb(180, 143, 84, 24)), 1.0);
+    private readonly Brush _matchBrush;
+    private readonly Brush _activeMatchBrush;
+    private readonly Pen _matchBorderPen;
+    private readonly Pen _activeMatchBorderPen;
     private IReadOnlyList<SearchMatchSegment> _segments = new List<SearchMatchSegment>();
     private int? _activeOffset;
 
     public SearchResultsBackgroundRenderer(TextEditor editor)
+        : this(
+            editor,
+            Color.FromArgb(72, 255, 225, 140),
+            Color.FromArgb(120, 255, 180, 90),
+            Color.FromArgb(110, 194, 132, 48),
+            Color.FromArgb(180, 143, 84, 24))
+    {
+    }
+
+    public SearchResultsBackgroundRenderer(
+        TextEditor editor,
+        Color match,
+        Color activeMatch,
+        Color matchBorder,
+        Color activeMatchBorder)
     {
         _editor = editor;
+        _matchBrush = new SolidColorBrush(match);
+        _activeMatchBrush = new SolidColorBrush(activeMatch);
+        _matchBorderPen = new Pen(new SolidColorBrush(matchBorder), 1.0);
+        _activeMatchBorderPen = new Pen(new SolidColorBrush(activeMatchBorder), 1.0);
     }
 
     public KnownLayer Layer => KnownLayer.Selection;

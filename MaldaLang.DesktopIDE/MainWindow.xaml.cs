@@ -108,10 +108,17 @@ public partial class MainWindow : Window
         public List<OutlineNodeItem> Children { get; init; } = new();
     }
 
+    private sealed class WorkspaceSymbolPickItem
+    {
+        public required string Display { get; init; }
+        public required WorkspaceSymbolInfo Symbol { get; init; }
+    }
+
     private readonly ExecutionService _executionService;
     private readonly DebuggerService _debuggerService;
     private readonly LanguageService _languageService;
     private readonly SymbolNavigationService _symbolNavigationService;
+    private readonly WorkspaceFileSet _workspaceFiles = new();
     private readonly FileService _fileService;
     private readonly Services.CompilerService _compilerService;
     private readonly VirtualDocumentSegmentationService _virtualDocumentSegmentationService;
@@ -124,6 +131,8 @@ public partial class MainWindow : Window
     private UserControls.AIChatPanel? _aiChatPanel;
     private CurrentLineBackgroundRenderer? _currentLineRenderer;
     private SearchResultsBackgroundRenderer? _searchResultsRenderer;
+    private SearchResultsBackgroundRenderer? _documentHighlightRenderer;
+    private DispatcherTimer? _documentHighlightTimer;
     private DebuggerHook? _debuggerHook;
     private Task? _debugTask;
     private CancellationTokenSource? _debugCancellation;
@@ -457,6 +466,18 @@ public partial class MainWindow : Window
             findReferencesCommand,
             (s, e) => NavigateFindReferences_Click(s, e)));
         InputBindings.Add(new KeyBinding(findReferencesCommand, Key.F12, ModifierKeys.Shift));
+
+        var formatDocumentCommand = new RoutedCommand("FormatDocument", typeof(MainWindow));
+        CommandBindings.Add(new CommandBinding(
+            formatDocumentCommand,
+            (s, e) => FormatDocumentAtCaret()));
+        InputBindings.Add(new KeyBinding(formatDocumentCommand, Key.F, ModifierKeys.Control | ModifierKeys.Alt));
+
+        var goToSymbolCommand = new RoutedCommand("GoToWorkspaceSymbol", typeof(MainWindow));
+        CommandBindings.Add(new CommandBinding(
+            goToSymbolCommand,
+            (s, e) => GoToWorkspaceSymbol()));
+        InputBindings.Add(new KeyBinding(goToSymbolCommand, Key.T, ModifierKeys.Control));
 
         var renameSymbolCommand = new RoutedCommand("RenameSymbol", typeof(MainWindow));
         CommandBindings.Add(new CommandBinding(
@@ -1874,6 +1895,19 @@ public partial class MainWindow : Window
         // Search results highlight
         _searchResultsRenderer = new SearchResultsBackgroundRenderer(CodeEditor);
         CodeEditor.TextArea.TextView.BackgroundRenderers.Add(_searchResultsRenderer);
+        _documentHighlightRenderer = new SearchResultsBackgroundRenderer(
+            CodeEditor,
+            Color.FromArgb(56, 120, 170, 230),
+            Color.FromArgb(90, 90, 150, 220),
+            Color.FromArgb(90, 70, 120, 190),
+            Color.FromArgb(140, 50, 100, 180));
+        CodeEditor.TextArea.TextView.BackgroundRenderers.Add(_documentHighlightRenderer);
+        _documentHighlightTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(160) };
+        _documentHighlightTimer.Tick += (_, _) =>
+        {
+            _documentHighlightTimer.Stop();
+            UpdateDocumentHighlights();
+        };
         
         // Enable glyph margin for breakpoint indicators
         CodeEditor.TextArea.LeftMargins.Insert(0, new BreakpointMargin(CodeEditor.TextArea, this));
@@ -1894,6 +1928,7 @@ public partial class MainWindow : Window
             }
 
             UpdateSignatureHelp();
+            ScheduleDocumentHighlightRefresh();
         };
         
         CodeEditor.TextArea.SelectionChanged += (s, e) =>
@@ -5711,57 +5746,76 @@ public partial class MainWindow : Window
     {
         SaveEditorIntoActiveDocument();
         var (line, column) = GetCursorPosition();
-        var definition = _symbolNavigationService.GetDefinition(CodeEditor.Text, line, column, GetCurrentSourceKey());
+        var sourceKey = GetCurrentSourceKey();
+        var workspaceDocuments = CollectWorkspaceDocuments();
+        var definition = workspaceDocuments.Count > 1
+            ? _symbolNavigationService.GetWorkspaceDefinition(workspaceDocuments, CodeEditor.Text, line, column, sourceKey)
+            : _symbolNavigationService.GetDefinition(CodeEditor.Text, line, column, sourceKey);
         if (definition == null)
         {
             MessageBox.Show("No definition found at the current cursor position.", "Go to Definition", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
-        NavigateToLocation(_activeDocumentKey, definition.Span.Line, definition.Span.Column, Math.Max(1, definition.Span.Length));
+        NavigateToWorkspaceLocation(definition);
     }
 
     private void FindReferencesAtCaret()
     {
         SaveEditorIntoActiveDocument();
         var (line, column) = GetCursorPosition();
-        var target = _symbolNavigationService.PrepareRename(CodeEditor.Text, line, column, GetCurrentSourceKey());
+        var sourceKey = GetCurrentSourceKey();
+        var target = _symbolNavigationService.PrepareRename(CodeEditor.Text, line, column, sourceKey);
         if (target == null)
         {
             MessageBox.Show("Place the cursor on a symbol to find its references.", "Find References", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
-        var references = _symbolNavigationService.GetReferences(CodeEditor.Text, line, column, GetCurrentSourceKey());
+        var workspaceDocuments = CollectWorkspaceDocuments();
+        var references = workspaceDocuments.Count > 1
+            ? _symbolNavigationService.GetWorkspaceReferences(workspaceDocuments, CodeEditor.Text, line, column, sourceKey)
+            : _symbolNavigationService.GetReferences(CodeEditor.Text, line, column, sourceKey);
         _searchResults.Clear();
         _searchResultNodes.Clear();
         _currentSearchResultIndex = -1;
 
-        var document = new TextDocument(CodeEditor.Text);
-        foreach (var reference in references)
+        var fileCount = 0;
+        foreach (var group in references.GroupBy(reference => reference.SourceKey ?? sourceKey, StringComparer.OrdinalIgnoreCase))
         {
-            if (!TryGetOffsetFromLocation(document, reference.Span.Line, reference.Span.Column, out var offset))
+            var text = TryGetWorkspaceDocumentText(group.Key, workspaceDocuments);
+            if (text == null)
             {
                 continue;
             }
 
-            var location = document.GetLocation(offset);
-            _searchResults.Add(new SearchResultItem
+            fileCount++;
+            var document = new TextDocument(text);
+            foreach (var reference in group)
             {
-                DocumentKey = _activeDocumentKey,
-                Offset = offset,
-                Length = Math.Max(1, reference.Span.Length),
-                Line = location.Line,
-                Column = location.Column,
-                Preview = BuildSearchPreview(document, location.Line)
-            });
+                if (!TryGetOffsetFromLocation(document, reference.Span.Line, reference.Span.Column, out var offset))
+                {
+                    continue;
+                }
+
+                var location = document.GetLocation(offset);
+                _searchResults.Add(new SearchResultItem
+                {
+                    DocumentKey = group.Key,
+                    Offset = offset,
+                    Length = Math.Max(1, reference.Span.Length),
+                    Line = location.Line,
+                    Column = location.Column,
+                    Preview = BuildSearchPreview(document, location.Line)
+                });
+            }
         }
 
         PopulateSearchTree();
         SwitchToTab("search");
         SearchSummaryTextBlock.Text = _searchResults.Count == 0
             ? $"No references found for '{target.Name}'."
-            : $"Found {_searchResults.Count} reference{(_searchResults.Count == 1 ? string.Empty : "s")} for '{target.Name}' in the current document.";
+            : $"Found {_searchResults.Count} reference{(_searchResults.Count == 1 ? string.Empty : "s")} for '{target.Name}' in {fileCount} file{(fileCount == 1 ? string.Empty : "s")}.";
 
         if (_searchResults.Count > 0)
         {
@@ -5778,7 +5832,8 @@ public partial class MainWindow : Window
     {
         SaveEditorIntoActiveDocument();
         var (line, column) = GetCursorPosition();
-        var target = _symbolNavigationService.PrepareRename(CodeEditor.Text, line, column, GetCurrentSourceKey());
+        var sourceKey = GetCurrentSourceKey();
+        var target = _symbolNavigationService.PrepareRename(CodeEditor.Text, line, column, sourceKey);
         if (target == null)
         {
             MessageBox.Show("Place the cursor on a symbol to rename it.", "Rename Symbol", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -5791,7 +5846,24 @@ public partial class MainWindow : Window
             return;
         }
 
-        var edits = _symbolNavigationService.Rename(CodeEditor.Text, line, column, newName, GetCurrentSourceKey());
+        var workspaceDocuments = CollectWorkspaceDocuments();
+        var workspaceEdits = workspaceDocuments.Count > 1
+            ? _symbolNavigationService.RenameWorkspaceSymbol(workspaceDocuments, CodeEditor.Text, line, column, newName, sourceKey)
+            : null;
+        if (workspaceEdits != null && workspaceEdits.Count > 0)
+        {
+            var fileCount = ApplyWorkspaceTextEdits(workspaceEdits, workspaceDocuments);
+            UpdateDiagnostics();
+            RefreshOutline();
+            MessageBox.Show(
+                $"Renamed '{target.Name}' to '{newName}' in {fileCount} file{(fileCount == 1 ? string.Empty : "s")}.",
+                "Rename Symbol",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            return;
+        }
+
+        var edits = _symbolNavigationService.Rename(CodeEditor.Text, line, column, newName, sourceKey);
         if (edits == null || edits.Count == 0)
         {
             MessageBox.Show("Rename could not be applied at the current cursor position.", "Rename Symbol", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -5827,6 +5899,391 @@ public partial class MainWindow : Window
             var maxLength = Math.Max(0, CodeEditor.Document.TextLength - startOffset);
             var replaceLength = Math.Min(edit.Span.Length, maxLength);
             CodeEditor.Document.Replace(startOffset, replaceLength, edit.NewText);
+        }
+    }
+
+    private List<WorkspaceDocumentInfo> CollectWorkspaceDocuments()
+    {
+        var seenPhysical = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var document in _openDocuments.Values)
+        {
+            var path = GetPhysicalPath(document);
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                continue;
+            }
+
+            try
+            {
+                path = Path.GetFullPath(path);
+            }
+            catch
+            {
+                continue;
+            }
+
+            if (!seenPhysical.Add(path))
+            {
+                continue;
+            }
+
+            var text = HasVirtualFamily(path)
+                ? RecomposeVirtualFamily(document)
+                : document.Content;
+            _workspaceFiles.SetOpenDocument(path, text);
+        }
+
+        var seed = GetPhysicalPath(GetActiveDocument());
+        if (!string.IsNullOrWhiteSpace(seed) && File.Exists(seed))
+        {
+            return _workspaceFiles.GetDocumentsFor(seed).ToList();
+        }
+
+        return _workspaceFiles.GetDocuments().ToList();
+    }
+
+    private bool HasVirtualFamily(string physicalPath)
+    {
+        return _openDocuments.Values.Any(document =>
+            IsVirtualDocument(document) &&
+            string.Equals(GetPhysicalPath(document), physicalPath, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private string? TryGetWorkspaceDocumentText(string sourceKey, IReadOnlyList<WorkspaceDocumentInfo> documents)
+    {
+        var match = documents.FirstOrDefault(document =>
+            string.Equals(document.SourceKey, sourceKey, StringComparison.OrdinalIgnoreCase));
+        if (match != null)
+        {
+            return match.Text;
+        }
+
+        if (File.Exists(sourceKey))
+        {
+            try
+            {
+                return File.ReadAllText(sourceKey);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        if (string.Equals(sourceKey, _activeDocumentKey, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(sourceKey, GetCurrentSourceKey(), StringComparison.OrdinalIgnoreCase))
+        {
+            return CodeEditor.Text;
+        }
+
+        return null;
+    }
+
+    private void NavigateToWorkspaceLocation(SymbolLocation location)
+    {
+        var sourceKey = location.SourceKey;
+        if (string.IsNullOrWhiteSpace(sourceKey) ||
+            string.Equals(sourceKey, _activeDocumentKey, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(sourceKey, GetCurrentSourceKey(), StringComparison.OrdinalIgnoreCase))
+        {
+            NavigateToLocation(_activeDocumentKey, location.Span.Line, location.Span.Column, Math.Max(1, location.Span.Length));
+            return;
+        }
+
+        var documentKey = ResolveDocumentKeyForLocation(sourceKey, location.Span.Line);
+        if (documentKey == null)
+        {
+            MessageBox.Show($"Could not open '{sourceKey}'.", "Go to Definition", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        var line = location.Span.Line;
+        if (_openDocuments.TryGetValue(documentKey, out var document) && IsVirtualDocument(document))
+        {
+            line = Math.Max(0, location.Span.Line - document.VirtualStartLine);
+        }
+
+        NavigateToLocation(documentKey, line, location.Span.Column, Math.Max(1, location.Span.Length));
+    }
+
+    private string? ResolveDocumentKeyForLocation(string sourceKey, int zeroBasedLine)
+    {
+        if (_openDocuments.ContainsKey(sourceKey))
+        {
+            return sourceKey;
+        }
+
+        string fullPath;
+        try
+        {
+            if (!File.Exists(sourceKey))
+            {
+                return null;
+            }
+
+            fullPath = Path.GetFullPath(sourceKey);
+        }
+        catch
+        {
+            return null;
+        }
+
+        var virtualMatch = _documentOrder
+            .Select(key => (Key: key, Document: _openDocuments[key]))
+            .Where(item => IsVirtualDocument(item.Document) &&
+                           string.Equals(GetPhysicalPath(item.Document), fullPath, StringComparison.OrdinalIgnoreCase))
+            .FirstOrDefault(item =>
+                zeroBasedLine >= item.Document.VirtualStartLine &&
+                zeroBasedLine <= item.Document.VirtualEndLine);
+        if (virtualMatch.Key != null)
+        {
+            return virtualMatch.Key;
+        }
+
+        var physicalOpen = _documentOrder.FirstOrDefault(key =>
+            _openDocuments.TryGetValue(key, out var document) &&
+            !IsVirtualDocument(document) &&
+            string.Equals(GetPhysicalPath(document), fullPath, StringComparison.OrdinalIgnoreCase));
+        if (physicalOpen != null)
+        {
+            return physicalOpen;
+        }
+
+        OpenFileAndIncludedDocuments(fullPath);
+        return ResolveDocumentKeyForLocation(fullPath, zeroBasedLine) ?? GetDocumentKey(fullPath);
+    }
+
+    private int ApplyWorkspaceTextEdits(List<WorkspaceTextEditInfo> edits, IReadOnlyList<WorkspaceDocumentInfo> documents)
+    {
+        var fileCount = 0;
+        foreach (var group in edits.GroupBy(edit => edit.SourceKey, StringComparer.OrdinalIgnoreCase))
+        {
+            var path = group.Key;
+            var fileEdits = group
+                .Select(edit => new TextEditInfo { Span = edit.Span, NewText = edit.NewText })
+                .ToList();
+
+            var original = TryGetWorkspaceDocumentText(path, documents) ?? string.Empty;
+            var updated = MaldaIndentFormatter.ApplyEdits(original, fileEdits);
+            if (string.Equals(original, updated, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            fileCount++;
+            if (HasVirtualFamily(path) || _openDocuments.ContainsKey(path))
+            {
+                ApplyUpdatedPhysicalDocument(path, updated, markDirty: true);
+            }
+            else if (_documentOrder.Any(key =>
+                         _openDocuments.TryGetValue(key, out var document) &&
+                         string.Equals(GetPhysicalPath(document), path, StringComparison.OrdinalIgnoreCase)))
+            {
+                ApplyUpdatedPhysicalDocument(path, updated, markDirty: true);
+            }
+            else
+            {
+                try
+                {
+                    File.WriteAllText(path, updated);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Could not write '{path}': {ex.Message}", "Rename Symbol", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+            }
+        }
+
+        if (_openDocuments.ContainsKey(_activeDocumentKey))
+        {
+            SyncEditorFromActiveDocument();
+        }
+
+        RefreshDocumentTabs();
+        return fileCount;
+    }
+
+    private void ApplyUpdatedPhysicalDocument(string physicalPath, string updatedText, bool markDirty)
+    {
+        if (HasVirtualFamily(physicalPath))
+        {
+            RebuildVirtualTabsForPhysicalFile(physicalPath, updatedText);
+            if (!markDirty)
+            {
+                return;
+            }
+
+            foreach (var document in _openDocuments.Values.Where(doc =>
+                         string.Equals(GetPhysicalPath(doc), physicalPath, StringComparison.OrdinalIgnoreCase)))
+            {
+                document.IsDirty = true;
+            }
+
+            return;
+        }
+
+        var key = _documentOrder.FirstOrDefault(candidate =>
+            _openDocuments.TryGetValue(candidate, out var document) &&
+            string.Equals(GetPhysicalPath(document), physicalPath, StringComparison.OrdinalIgnoreCase))
+            ?? GetDocumentKey(physicalPath);
+
+        if (!_openDocuments.TryGetValue(key, out var openDocument))
+        {
+            openDocument = CreateDocument(physicalPath, updatedText);
+            _openDocuments[key] = openDocument;
+            if (!_documentOrder.Contains(key))
+            {
+                _documentOrder.Add(key);
+            }
+        }
+        else
+        {
+            openDocument.Content = updatedText;
+        }
+
+        openDocument.IsDirty = markDirty || !string.Equals(openDocument.Content, openDocument.LastSavedContent, StringComparison.Ordinal);
+        if (string.Equals(key, _activeDocumentKey, StringComparison.OrdinalIgnoreCase) && CodeEditor.Document != null)
+        {
+            _isSwitchingDocument = true;
+            try
+            {
+                CodeEditor.Text = updatedText;
+            }
+            finally
+            {
+                _isSwitchingDocument = false;
+            }
+        }
+    }
+
+    private void FormatDocumentAtCaret()
+    {
+        SaveEditorIntoActiveDocument();
+        var formatted = MaldaIndentFormatter.FormatDocument(CodeEditor.Text);
+        if (string.Equals(formatted, CodeEditor.Text, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        CodeEditor.Text = formatted;
+        SaveEditorIntoActiveDocument();
+        UpdateDiagnostics();
+        RefreshOutline();
+        ScheduleDocumentHighlightRefresh();
+    }
+
+    private void GoToWorkspaceSymbol()
+    {
+        SaveEditorIntoActiveDocument();
+        var documents = CollectWorkspaceDocuments();
+        var symbols = _symbolNavigationService.GetWorkspaceSymbols(documents, null);
+        if (symbols.Count == 0)
+        {
+            MessageBox.Show("No workspace symbols found.", "Go to Symbol", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var dialog = new Window
+        {
+            Title = "Go to Symbol",
+            Width = 520,
+            Height = 420,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Owner = this
+        };
+
+        var root = new DockPanel { Margin = new Thickness(12) };
+        var filter = new TextBox { Margin = new Thickness(0, 0, 0, 8) };
+        var list = new ListBox { DisplayMemberPath = "Display" };
+        DockPanel.SetDock(filter, Dock.Top);
+        root.Children.Add(filter);
+        root.Children.Add(list);
+
+        var items = symbols
+            .Select(symbol => new WorkspaceSymbolPickItem
+            {
+                Display = string.IsNullOrWhiteSpace(symbol.ContainerName)
+                    ? $"{symbol.Name}  —  {Path.GetFileName(symbol.Location.SourceKey)}"
+                    : $"{symbol.ContainerName}.{symbol.Name}  —  {Path.GetFileName(symbol.Location.SourceKey)}",
+                Symbol = symbol
+            })
+            .ToList();
+        list.ItemsSource = items;
+
+        filter.TextChanged += (_, _) =>
+        {
+            var query = filter.Text?.Trim() ?? string.Empty;
+            list.ItemsSource = string.IsNullOrEmpty(query)
+                ? items
+                : items.Where(item => item.Display.Contains(query, StringComparison.OrdinalIgnoreCase)).ToList();
+        };
+
+        list.MouseDoubleClick += (_, _) =>
+        {
+            if (list.SelectedItem != null)
+            {
+                dialog.DialogResult = true;
+            }
+        };
+
+        var choose = new Button { Content = "Go", MinWidth = 80, Margin = new Thickness(0, 8, 0, 0), IsDefault = true, HorizontalAlignment = HorizontalAlignment.Right };
+        choose.Click += (_, _) => dialog.DialogResult = true;
+        DockPanel.SetDock(choose, Dock.Bottom);
+        root.Children.Add(choose);
+        dialog.Content = root;
+        filter.Focus();
+
+        if (dialog.ShowDialog() != true || list.SelectedItem == null)
+        {
+            return;
+        }
+
+        if (list.SelectedItem is WorkspaceSymbolPickItem selected)
+        {
+            NavigateToWorkspaceLocation(selected.Symbol.Location);
+        }
+    }
+
+    private void ScheduleDocumentHighlightRefresh()
+    {
+        if (_documentHighlightTimer == null)
+        {
+            return;
+        }
+
+        _documentHighlightTimer.Stop();
+        _documentHighlightTimer.Start();
+    }
+
+    private void UpdateDocumentHighlights()
+    {
+        if (_documentHighlightRenderer == null || CodeEditor.Document == null)
+        {
+            return;
+        }
+
+        try
+        {
+            var (line, column) = GetCursorPosition();
+            var highlights = _symbolNavigationService.GetDocumentHighlights(
+                CodeEditor.Text, line, column, GetCurrentSourceKey());
+            var segments = new List<SearchMatchSegment>();
+            foreach (var span in highlights)
+            {
+                if (!TryGetOffsetFromLocation(CodeEditor.Document, span.Line, span.Column, out var offset))
+                {
+                    continue;
+                }
+
+                segments.Add(new SearchMatchSegment { Offset = offset, Length = Math.Max(1, span.Length) });
+            }
+
+            _documentHighlightRenderer.SetMatches(segments, null);
+            CodeEditor.TextArea.TextView.InvalidateLayer(KnownLayer.Selection);
+        }
+        catch
+        {
+            _documentHighlightRenderer.SetMatches(Array.Empty<SearchMatchSegment>(), null);
         }
     }
 
@@ -6307,6 +6764,16 @@ public partial class MainWindow : Window
         CodeEditor.SelectAll();
     }
     
+    private void EditFormatDocument_Click(object sender, RoutedEventArgs e)
+    {
+        FormatDocumentAtCaret();
+    }
+
+    private void NavigateGoToSymbol_Click(object sender, RoutedEventArgs e)
+    {
+        GoToWorkspaceSymbol();
+    }
+
     private void EditFind_Click(object sender, RoutedEventArgs e)
     {
         SwitchToTab("search");
@@ -6592,7 +7059,22 @@ public partial class MainWindow : Window
             _currentSearchResultIndex = index;
         }
 
-        NavigateToOffset(result.DocumentKey, result.Offset, result.Length);
+        if (_openDocuments.ContainsKey(result.DocumentKey))
+        {
+            NavigateToOffset(result.DocumentKey, result.Offset, result.Length);
+            return;
+        }
+
+        NavigateToWorkspaceLocation(new SymbolLocation
+        {
+            SourceKey = result.DocumentKey,
+            Span = new TextSpanInfo
+            {
+                Line = Math.Max(0, result.Line - 1),
+                Column = Math.Max(0, result.Column - 1),
+                Length = result.Length
+            }
+        });
     }
 
     private void UpdateSearchHighlightsForActiveDocument()

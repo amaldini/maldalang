@@ -258,6 +258,7 @@ function sharedHelper() {
         public TemporaryWorkspace(params (string RelativePath, string Text)[] files)
         {
             Directory.CreateDirectory(_rootPath);
+            Directory.CreateDirectory(Path.Combine(_rootPath, ".git"));
             foreach (var (relativePath, text) in files)
             {
                 var fullPath = GetPath(relativePath);
