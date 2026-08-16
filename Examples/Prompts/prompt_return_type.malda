@@ -1,6 +1,12 @@
 // Prompt with return type — without await this builds a PromptInstance only.
-// For schema → response_format + validated JSON, see schema_prompt_structured.malda
-// (await + schema declaration, no tools).
+// `-> Plan` is the built-in plan shape (steps[{ id, description, dependsOn? }]).
+// `-> Review` binds the schema below. For await + response_format + validated
+// JSON, see schema_prompt_structured.malda (no tools).
+
+schema Review {
+    summary: string;
+    issues: string[];
+}
 
 prompt planTask(task, docs) -> Plan {
     system: "You are a project planner.",

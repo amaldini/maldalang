@@ -330,7 +330,7 @@ dotnet run --project MaldaLang -- Examples/Prompts/rag_function_pipeline.malda</
     sources: string[];
 }
 
-prompt answerPrompt(question, context) {
+prompt answerPrompt(question, context) -> Answer {
     system: "Answer using only the provided context.";
     user: "Context:\n{context}\n\nQuestion: {question}"
 }
