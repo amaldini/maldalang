@@ -46,11 +46,13 @@ function manualStrings() {
             openContents: 'Apri indice',
             closeContents: 'Chiudi indice',
             print: 'Stampa / PDF',
+            printShort: 'PDF',
             printTitle: 'Stampa questo capitolo (A4, codice adattato alla pagina)',
             copy: 'Copia',
             copied: 'Copiato!',
             copyAria: 'Copia il codice negli appunti',
             langSwitch: 'English',
+            langSwitchShort: 'EN',
             langSwitchTitle: 'English version of this page'
         };
     }
@@ -58,11 +60,13 @@ function manualStrings() {
         openContents: 'Open contents',
         closeContents: 'Close contents',
         print: 'Print / PDF',
+        printShort: 'PDF',
         printTitle: 'Print this chapter (A4, code wrapped to the page)',
         copy: 'Copy',
         copied: 'Copied!',
         copyAria: 'Copy code to clipboard',
         langSwitch: 'Italiano',
+        langSwitchShort: 'IT',
         langSwitchTitle: 'Versione italiana di questa pagina'
     };
 }
@@ -81,6 +85,9 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     initHeaderActions();
+    syncHeaderOffset();
+    requestAnimationFrame(syncHeaderOffset);
+    window.addEventListener('resize', syncHeaderOffset);
     initCodeCopy();
     initSmoothScroll();
     highlightActiveSection();
@@ -322,10 +329,32 @@ function escapeAttr(text) {
     return escapeHtml(text).replace(/"/g, '&quot;');
 }
 
+function syncHeaderOffset() {
+    const header = document.querySelector('header');
+    if (!header) {
+        return;
+    }
+    document.documentElement.style.setProperty('--header-offset', header.offsetHeight + 'px');
+}
+
 function initHeaderActions() {
     const header = document.querySelector('header');
     if (!header) {
         return;
+    }
+
+    if (!header.querySelector('.header-text')) {
+        const title = header.querySelector('h1');
+        const subtitle = header.querySelector('p');
+        if (title) {
+            const cluster = document.createElement('div');
+            cluster.className = 'header-text';
+            title.parentNode.insertBefore(cluster, title);
+            cluster.appendChild(title);
+            if (subtitle) {
+                cluster.appendChild(subtitle);
+            }
+        }
     }
 
     if (!header.querySelector('.nav-toggle')) {
@@ -352,16 +381,20 @@ function initHeaderActions() {
         const langSwitch = document.createElement('a');
         langSwitch.className = 'manual-action lang-switch';
         langSwitch.href = peerLocaleHref();
-        langSwitch.textContent = strings.langSwitch;
         langSwitch.title = strings.langSwitchTitle;
+        langSwitch.setAttribute('aria-label', strings.langSwitchTitle);
         langSwitch.setAttribute('hreflang', isItalianManual() ? 'en' : 'it');
         langSwitch.setAttribute('lang', isItalianManual() ? 'en' : 'it');
+        langSwitch.innerHTML = '<span class="action-label-full">' + escapeHtml(strings.langSwitch) + '</span>' +
+            '<span class="action-label-short" aria-hidden="true">' + escapeHtml(strings.langSwitchShort) + '</span>';
 
         const printButton = document.createElement('button');
         printButton.type = 'button';
         printButton.className = 'manual-action';
-        printButton.textContent = strings.print;
         printButton.title = strings.printTitle;
+        printButton.setAttribute('aria-label', strings.print);
+        printButton.innerHTML = '<span class="action-label-full">' + escapeHtml(strings.print) + '</span>' +
+            '<span class="action-label-short" aria-hidden="true">' + escapeHtml(strings.printShort) + '</span>';
         printButton.addEventListener('click', function() {
             window.print();
         });
