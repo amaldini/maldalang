@@ -52,4 +52,47 @@ foreach ($file in Get-ChildItem -Path $manualDir -Filter "*.html") {
     }
 }
 
+$italianDir = Join-Path $manualDir "it"
+if (Test-Path -LiteralPath $italianDir) {
+    foreach ($file in Get-ChildItem -Path $italianDir -Filter "*.html") {
+        $html = [System.IO.File]::ReadAllText($file.FullName)
+        $original = $html
+
+        if ($html -notmatch 'href="\.\./styles\.css"') {
+            Write-Warning "it/$($file.Name): missing ../styles.css link, skipping"
+            continue
+        }
+
+        if ($html -notmatch 'href="\.\./syntax\.css"') {
+            $html = [regex]::Replace(
+                $html,
+                '(?m)^(\s*)<link rel="stylesheet" href="\.\./styles\.css">',
+                '${1}<link rel="stylesheet" href="../styles.css">' + "`r`n" + '${1}<link rel="stylesheet" href="../syntax.css">',
+                1)
+        }
+
+        if ($html -notmatch 'href="\.\./print\.css"') {
+            $html = [regex]::Replace(
+                $html,
+                '(?m)^(\s*)<link rel="stylesheet" href="\.\./syntax\.css">',
+                '${1}<link rel="stylesheet" href="../syntax.css">' + "`r`n" + '${1}<link rel="stylesheet" href="../print.css" media="print">',
+                1)
+        }
+
+        if ($html -notmatch 'src="\.\./malda-highlight\.js"') {
+            $html = [regex]::Replace(
+                $html,
+                '(?m)^(\s*)<script src="\.\./navigation\.js"></script>',
+                '${1}<script src="../malda-highlight.js"></script>' + "`r`n" + '${1}<script src="../navigation.js"></script>',
+                1)
+        }
+
+        if ($html -ne $original) {
+            [System.IO.File]::WriteAllText($file.FullName, $html, $utf8NoBom)
+            Write-Host "Updated it/$($file.Name)"
+            $updated++
+        }
+    }
+}
+
 Write-Host "Done. $updated file(s) updated."

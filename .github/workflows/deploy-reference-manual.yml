@@ -33,11 +33,14 @@ jobs:
 
       - name: Prepare site
         run: |
-          mkdir -p _site
+          mkdir -p _site/it
           # Static HTML/CSS/JS/JSON only — skip authoring helpers.
           find ReferenceManual -maxdepth 1 -type f \
             \( -name '*.html' -o -name '*.css' -o -name '*.js' -o -name '*.json' \) \
             -exec cp {} _site/ \;
+          find ReferenceManual/it -maxdepth 1 -type f \
+            \( -name '*.html' -o -name '*.json' \) \
+            -exec cp {} _site/it/ \;
           touch _site/.nojekyll
 
       - name: Upload artifact

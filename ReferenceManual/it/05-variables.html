@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Variabili MALDA: dichiarazione, assegnamento, const, destrutturazione e scope">
+    <title>5. Variabili - Manuale di riferimento MALDA</title>
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../syntax.css">
+    <link rel="stylesheet" href="../print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>Manuale di riferimento MALDA&trade;</h1>
+        <p>Il linguaggio di programmazione AI-First - Versione 1.0.0</p>
+    </header>
+    <nav></nav>
+    <main>
+        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>5. Variabili</span></div>
+        <h1>5. Variabili</h1>
+        <h2>5.1 Dichiarazione di variabili</h2>
+        <p>In MALDA le variabili si dichiarano con la keyword <code>var</code>, seguita dal nome e da un valore iniziale opzionale:</p>
+        <pre><code>var x = 10;
+var name = "Alice";
+var isActive = true;
+var pi = 3.14159;</code></pre>
+        <p>Le variabili vanno dichiarate prima dell'uso. Il tipo viene inferito dal valore iniziale. Per i binding che non devono mai essere riassegnati, usa <code>const</code> al posto di <code>var</code> (vedi <a href="#const">5.3 Dichiarazioni di costanti</a>).</p>
+        <p>Dopo il nome della variabile puoi aggiungere un <strong>type hint informativo</strong>. I type hint non sono applicati a interpret-time, a meno che non passi il flag CLI <code>--strict-types</code>. <code>malda compile --mode transpile</code> e <code>publish</code> rifiutano l'emit quando l'analisi riporta Error; <code>--lenient-types</code> salta quel gate. I nomi di hint noti includono i primitivi Tier 0 (<code>int</code>, <code>string</code>, …), i <strong>nomi di class/schema/sum-type dichiarati</strong> (stessa unit o moduli importati) e le classi host built-in (per esempio <code>RestServer</code>). Il language server emette un <strong>Error</strong> di default quando un hint non coincide con un letterale, un'espressione <code>new ClassName()</code>, un altro identificatore che porta un hint noto, o un <strong>risultato di chiamata</strong> il cui callee dichiara un hint di ritorno (per esempio <code>var n: int = "abc";</code>, <code>var p: Person = 1;</code>, <code>n = s;</code> quando <code>s: string</code>, oppure <code>var n: int = make();</code> quando <code>make() -&gt; string</code>). Lo stesso controllo copre assegnamenti, argomenti di chiamata e valori di <code>return</code> rispetto agli hint di parametro/<code>-&gt;</code>. Gli operatori e i tipi di ritorno dei built-in non vengono inferiti. Gli hint servono anche a tool, IDE e documentazione.</p>
+        <pre><code>var name: Type? = value;</code></pre>
+        <p>Esempio: <code>var count: int = 0;</code>, <code>var msg: string = "hello";</code>, oppure <code>var p: Person = new Person();</code></p>
+        <h2>5.2 Assegnamento di variabili</h2>
+        <p>Dopo la dichiarazione, le variabili si possono riassegnare con l'operatore di assegnamento <code>=</code>:</p>
+        <pre><code>x = 20;
+name = "Bob";
+x = x + 1;</code></pre>
+        <h2 id="const">5.3 Dichiarazioni di costanti</h2>
+        <p>Un binding dichiarato con <code>const</code> invece di <code>var</code> non può essere riassegnato. L'inizializzatore è obbligatorio:</p>
+        <pre><code data-run="true" data-expect="3">const MAX_RETRIES = 3;
+const APP_NAME = "malda-demo";
+
+print(MAX_RETRIES);   // 3</code></pre>
+        <p>Tentare di assegnare a una costante è un errore a runtime che nomina il binding:</p>
+        <pre><code>const limit = 10;
+limit = 20;   // Runtime error: Cannot assign to const 'limit'.</code></pre>
+        <p>Anche l'assegnamento composto (<code>+=</code>) e gli operatori di incremento sono assegnamenti, quindi su una costante falliscono per lo stesso motivo.</p>
+
+        <h3>Le costanti sono shallow</h3>
+        <p><code>const</code> congela il <em>binding</em>, non il valore a cui punta. Una costante che contiene un array, un dizionario o un oggetto consente comunque di modificare i contenuti:</p>
+        <pre><code data-run="true" data-expect="5">const config = dict { "retries": 3 };
+
+config["retries"] = 5;   // Allowed: the dictionary is mutated, not the binding
+print(config["retries"]); // 5
+
+// config = dict { };    // Runtime error: Cannot assign to const 'config'.</code></pre>
+
+        <h3>Scope e shadowing</h3>
+        <p>Le costanti seguono lo stesso scope di blocco di <code>var</code>, e uno scope interno può fare shadowing di una costante esterna con un proprio binding:</p>
+        <pre><code data-run="true" data-expect="local\nprod">const mode = "prod";
+
+function describe() {
+    var mode = "local";   // Shadows the outer constant inside this function
+    return mode;
+}
+
+print(describe());   // "local"
+print(mode);         // "prod"</code></pre>
+        <div class="info-box">
+            <strong>Quando usarla:</strong> usa <code>const</code> per valori di configurazione, limiti e tabelle di lookup che non devono cambiare durante una run. Tutto il resto resta <code>var</code>; MALDA non obbliga a usare le costanti e non le ottimizza in modo diverso.
+        </div>
+
+        <h2>5.4 Destrutturazione</h2>
+        <p>La destrutturazione permette di estrarre valori da array e oggetti in variabili distinte, in una sola istruzione.</p>
+        
+        <h3>Destrutturazione di array</h3>
+        <p>Estrai gli elementi di un array in variabili:</p>
+        <pre><code>var arr = [10, 20];
+var [x, y] = arr;
+print(x);  // Prints: 10
+print(y);  // Prints: 20</code></pre>
+        
+        <p><strong>Pattern rest:</strong> usa <code>...rest</code> per catturare gli elementi rimanenti:</p>
+        <pre><code>var arr = [1, 2, 3, 4, 5];
+var [first, second, ...rest] = arr;
+// first = 1, second = 2, rest = [3, 4, 5]
+print(length(rest));  // Prints: 3</code></pre>
+        
+        <p><strong>Note:</strong></p>
+        <ul>
+            <li>L'array deve avere almeno tanti elementi quante sono le variabili (a meno che non usi il pattern rest)</li>
+            <li>Il pattern rest deve stare in ultima posizione</li>
+            <li>Puoi saltare elementi con il pattern wildcard <code>_</code></li>
+        </ul>
+        
+        <h3>Destrutturazione di oggetti</h3>
+        <p>Estrai le proprietà di un oggetto in variabili:</p>
+        <pre><code>var user = { name: "Alice", age: 30, role: "admin" };
+var { name, age } = user;
+print(name);  // Prints: "Alice"
+print(age);   // Prints: 30</code></pre>
+        
+        <p><strong>Rinomina:</strong> estrai le proprietà con nomi di variabile diversi:</p>
+        <pre><code>var user = { name: "Bob", age: 25 };
+var { name: userName, age: userAge } = user;
+print(userName);   // Prints: "Bob"
+print(userAge);    // Prints: 25</code></pre>
+        
+        <p><strong>Destrutturazione nidificata:</strong> estrai da oggetti nidificati:</p>
+        <pre><code>var data = {
+    user: { name: "Charlie", age: 35 },
+    role: "admin"
+};
+var { user: { name, age }, role } = data;
+print(name);   // Prints: "Charlie"
+print(age);    // Prints: 35
+print(role);   // Prints: "admin"</code></pre>
+        
+        <h3>Assegnamento con destrutturazione</h3>
+        <p>Puoi usare la destrutturazione anche in assegnamento (su variabili già esistenti):</p>
+        <pre><code>var x = 0;
+var y = 0;
+var arr = [10, 20];
+[x, y] = arr;  // Assigns 10 to x, 20 to y
+print(x + y);  // Prints: 30</code></pre>
+        
+        <pre><code>var name = "";
+var age = 0;
+var user = { name: "David", age: 40 };
+{ name, age } = user;  // Assigns properties to variables
+print(name);  // Prints: "David"
+print(age);   // Prints: 40</code></pre>
+        
+        <h3>Destrutturazione del valore di ritorno di una funzione</h3>
+        <p>Destruttura i valori restituiti dalle funzioni:</p>
+        <pre><code>function getPoint() {
+    return { x: 5, y: 10 };
+}
+
+var { x, y } = getPoint();
+print(x + y);  // Prints: 15</code></pre>
+        
+        <h3>Gestione degli errori</h3>
+        <p>Se un pattern di destrutturazione non corrisponde (per esempio array troppo corto, proprietà dell'oggetto mancante), viene lanciato un errore a runtime:</p>
+        <pre><code>try {
+    var arr = [1, 2];
+    var [x, y, z] = arr;  // Error: array has only 2 elements
+} catch (e) {
+    print("Destructuring failed: " + e);
+}</code></pre>
+        
+        <div class="info-box">
+            <strong>Consigli sulla destrutturazione:</strong>
+            <ul>
+                <li>Usa la destrutturazione per rendere il codice più leggibile quando lavori con dati strutturati</li>
+                <li>È particolarmente utile quando elabori risposte API o valori di ritorno di funzioni</li>
+                <li>Puoi combinare destrutturazione di array e di oggetti in strutture nidificate</li>
+                <li>Usa il pattern rest per catturare gli elementi rimanenti quando non conosci la lunghezza esatta</li>
+            </ul>
+        </div>
+        
+        <h2>5.5 Scope delle variabili</h2>
+        <p>In MALDA le variabili hanno block scope. Una variabile è accessibile nel blocco in cui è dichiarata e in tutti i blocchi nidificati.</p>
+        <h3>Variabili globali</h3>
+        <p>Le variabili dichiarate fuori dalle funzioni sono globali e accessibili in tutto il programma:</p>
+        <pre><code>var globalVar = 10;
+
+function test() {
+    print(globalVar);  // Can access global variable
+}
+
+test();</code></pre>
+        <h3>Variabili locali</h3>
+        <p>Le variabili dichiarate dentro una funzione sono locali a quella funzione:</p>
+        <pre><code>function test() {
+    var localVar = 20;
+    print(localVar);  // Can access local variable
+}
+
+// print(localVar);  // Error: localVar is not accessible here</code></pre>
+        <h3>Shadowing delle variabili</h3>
+        <p>Le variabili locali fanno shadowing delle variabili globali con lo stesso nome:</p>
+        <pre><code>var x = 10;  // Global variable
+
+function test() {
+    var x = 20;  // Local variable shadows global x
+    print(x);    // Prints 20 (local)
+}
+
+test();
+print(x);  // Prints 10 (global)</code></pre>
+        <h3>Scope di blocco</h3>
+        <p>Le variabili dichiarate nei blocchi (<code>if</code>, <code>while</code>, <code>for</code>) hanno scope limitato a quel blocco:</p>
+        <pre><code>if (true) {
+    var blockVar = 30;
+    print(blockVar);  // Can access blockVar
+}
+
+// print(blockVar);  // Error: blockVar is not accessible here</code></pre>
+        <div class="see-also">
+            <h3>Vedi anche</h3>
+            <ul>
+                <li><a href="04-data-types.html">4. Tipi di dati</a> - Tipi che le variabili possono contenere</li>
+                <li><a href="08-control-structures.html">8. Strutture di controllo</a> - Pattern matching e block scoping</li>
+                <li><a href="06-arrays.html">6. Array</a> - Array usati nella destrutturazione</li>
+                <li><a href="09-functions.html">9. Funzioni</a> - Scope delle funzioni e parametri</li>
+            </ul>
+        </div>
+        <div class="nav-footer">
+            <a href="04-data-types.html">← Precedente: 4. Tipi di dati</a>
+            <a href="06-arrays.html">Successivo: 6. Array→</a>
+        </div>
+
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, a tua scelta.</p>
+        </footer>
+    </main>
+    <script src="../malda-highlight.js"></script>
+    <script src="../navigation.js"></script>
+</body>
+</html>

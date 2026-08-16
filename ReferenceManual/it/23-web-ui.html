@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Componenti server Web UI MALDA - Componenti server, fragment, aggiornamenti live e ui.*">
+    <title>23. Componenti server Web UI - Manuale di riferimento MALDA</title>
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../syntax.css">
+    <link rel="stylesheet" href="../print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>Manuale di riferimento MALDA&trade;</h1>
+        <p>Il linguaggio di programmazione AI-First - Versione 1.0.0</p>
+    </header>
+    <nav></nav>
+    <main>
+        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>23. Componenti server Web UI</span></div>
+        <h1>23. Componenti server Web UI</h1>
+        <p>MALDA include il supporto nativo per UI renderizzata sul server usando componenti, fragment, aggiornamenti live e il runtime <code>ui.*</code>.</p>
+        <div class="info-box">
+            <strong>Parti da qui:</strong> Leggi <a href="22-web-ui-hub.html">22. Panoramica Web UI</a> per scegliere un modello UI. Questo capitolo copre due API <strong>lato server</strong> correlate ma distinte. Non passare stringhe HTML a <code>ui.mount</code> / <code>ui.render</code> e non trattare il valore di ritorno di <code>@PAGE</code> come un albero <code>ui.*</code> (IDE <code>UI1002</code>).
+            <ul>
+                <li><strong>Frammenti HTML (23.2):</strong> <code>component</code>, <code>@ACTION</code>, <code>@LIVE</code>, <code>componentFragment</code> — pagine di form/liste che restituiscono HTML e SSE opzionale.</li>
+                <li><strong>Alberi guidati dal server (23.3):</strong> <code>ui.button(props, children?, key?)</code>, <code>ui.mount</code> / <code>ui.render</code> — patch incrementali ospitate da UIHost.</li>
+            </ul>
+        </div>
+        <h2>23.1 Mappa del capitolo</h2>
+        <ul>
+            <li><strong>23.2</strong> Componenti a frammenti HTML e migrazione da <code>@PAGE</code></li>
+            <li><strong>23.3</strong> API helper Web UI (<code>component*</code> e <code>ui.*</code>)</li>
+            <li><strong>23.3.3</strong> Runtime, ciclo di vita, event loop e come viene ospitata una sessione <code>ui.*</code></li>
+            <li><strong>23.3.4-23.3.7</strong> Catalogo dei controlli, stile, controlli dati e riferimento props</li>
+            <li><strong>23.3.8-23.3.15</strong> Eventi, validazione, composizione, stato, routing, sicurezza, stile, insidie</li>
+            <li><strong>23.4-23.6</strong> Ciclo di vita della richiesta, hardening in produzione e risoluzione dei problemi</li>
+            <li><strong>23.7</strong> Capitoli correlati ed esempi eseguibili</li>
+        </ul>
+        <h2>23.2 Componenti a frammenti HTML</h2>
+        <p>Questa sezione è il modello a <strong>frammenti HTML</strong>: il server restituisce stringhe HTML (pagina intera o un fragment mirato). È additivo e retrocompatibile con le route <code>@PAGE</code>/<code>@AIPAGE</code> esistenti. Per gli alberi di nodi e <code>ui.mount</code>, salta a 23.3.</p>
+        <p><strong>Modello mentale:</strong> renderizza sul server, muta tramite endpoint di action, opzionalmente fai push degli aggiornamenti su un canale live.</p>
+        <ul>
+            <li><code>component Name(...) { ... }</code> - funzione di ingresso del componente (zucchero sintattico per <code>@COMPONENT()</code>)</li>
+            <li><code>@ACTION(path)</code> - action POST per interazioni di form/pulsanti (in genere restituisce un fragment)</li>
+            <li><code>@LIVE(path)</code> - endpoint live per client SSE (restituisci <code>{"sse": true}</code>)</li>
+            <li><code>componentStateGet/Set/Object/Clear/Configure/Pin/Unpin</code> - helper di stato lato server per chiave di componente (pin = vita del processo, esente da TTL/LRU)</li>
+            <li><code>componentFragment(targetId, html)</code> - dice al client quale target DOM va sostituito</li>
+            <li><code>componentLiveEmit(channel, payload, eventType?)</code> - trasmette eventi live ai client SSE connessi</li>
+            <li><code>onAgentProgress(handlerOrChannel)</code> - sottoscrivi gli eventi del loop agente (<code>round_start</code>, <code>tool_calls</code>, <code>tool_done</code>, <code>continue</code>, <code>done</code>). Passa una funzione <code>handler(event)</code> (interprete) oppure una stringa di canale live così il progresso viene pubblicato con <code>componentLiveEmit</code> (adatto al transpile)</li>
+            <li><code>clearAgentProgress()</code> - rimuove l'handler di progresso agente corrente o il canale live</li>
+        </ul>
+        <h3>23.2.1 Esempio server minimo</h3>
+        <pre><code>component ItemBoard() {
+    var items = componentStateGet("board", "items", []);
+    var list = "";
+    var i = 0;
+    while (i &lt; items.length) {
+        list = list + "&lt;li&gt;" + items[i].title + "&lt;/li&gt;";
+        i = i + 1;
+    }
+    return "&lt;h1&gt;Items&lt;/h1&gt;&lt;div id='item-list'&gt;&lt;ul&gt;" + list + "&lt;/ul&gt;&lt;/div&gt;";
+}
+
+@ACTION("/items/add")
+function addItem(body) {
+    var items = componentStateGet("board", "items", []);
+    items.append({"title": body.title, "status": "open"});
+    componentStateSet("board", "items", items);
+    componentLiveEmit("items", {"count": items.length}, "item-added");
+    return componentFragment("item-list", "&lt;ul&gt;&lt;li&gt;" + body.title + "&lt;/li&gt;&lt;/ul&gt;");
+}
+
+@LIVE("/items/live")
+function itemsLive() {
+    return {"sse": true};
+}</code></pre>
+        <h3>23.2.2 Esempio minimo di integrazione nel browser</h3>
+        <pre><code>&lt;form id="item-form"&gt;
+  &lt;input name="title" /&gt;
+  &lt;button type="submit"&gt;Add&lt;/button&gt;
+&lt;/form&gt;
+&lt;div id="item-list"&gt;&lt;/div&gt;
+&lt;script&gt;
+document.getElementById("item-form").addEventListener("submit", async (e) =&gt; {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const r = await fetch("/items/add", { method: "POST", body: fd });
+  const html = await r.text();
+  document.getElementById("item-list").innerHTML = html;
+});
+
+const es = new EventSource("/items/live");
+es.onmessage = (evt) =&gt; console.log("live update", evt.data);
+&lt;/script&gt;</code></pre>
+        <h3>23.2.3 Contratto dei fragment</h3>
+        <p>Quando un <code>@ACTION</code> restituisce <code>componentFragment(targetId, html)</code>, la response HTTP include:</p>
+        <ul>
+            <li><code>X-Malda-Fragment: true</code></li>
+            <li><code>X-Malda-Fragment-Target: &lt;targetId&gt;</code></li>
+            <li>Body che contiene l'HTML del fragment</li>
+        </ul>
+        <p>L'helper AJAX built-in controlla questi header e aggiorna solo l'elemento target. Se gli header mancano, ricade sulla sostituzione dell'intera pagina.</p>
+        <h3>23.2.4 Sottoscrizione canale LIVE</h3>
+        <p>Usa il query parameter <code>?channel=...</code> sugli endpoint LIVE per limitare gli eventi:</p>
+        <pre><code>// Client subscribes only to item events
+var es = new EventSource("/items/live?channel=items");
+
+// Server emits only to channel "items"
+componentLiveEmit("items", {"count": 8}, "item-added");</code></pre>
+        <p>Si possono sottoscrivere più canali come valori separati da virgola, per esempio <code>?channel=items,alerts</code>.</p>
+        <h3>23.2.5 Envelope del protocollo UI server</h3>
+        <p>L'host UI server usa envelope versionati per il trasporto mount/patch/event. I campi importanti includono:</p>
+        <ul>
+            <li><code>version</code> - stringa di versione del protocollo.</li>
+            <li><code>sequence</code> - numero di sequenza monotono per l'ordinamento.</li>
+            <li><code>envelopeId</code> - id usato per la correlazione ack/nack.</li>
+            <li><code>patches</code> - operazioni di patch incrementali (<code>ReplaceNode</code>, <code>SetProp</code>, <code>RemoveProp</code>, <code>InsertChild</code>, <code>RemoveChild</code>).</li>
+        </ul>
+        <p>I client dovrebbero confermare gli envelope elaborati e richiedere un resync quando rilevano buchi di sequenza.</p>
+        <div class="info-box">
+            <strong>Note di implementazione:</strong> Il kernel di runtime (<code>UiNode</code>, diff, sessioni), gli endpoint dell'host e le variabili d'ambiente sono documentati in <a href="../../docs/ui-framework.md"><code>docs/ui-framework.md</code></a>. Questo capitolo resta concentrato sull'API del linguaggio.
+        </div>
+        <h3>23.2.6 Direzione API componenti V2</h3>
+        <p>Il framework UI server ora include un set di componenti più ampio per form, navigazione, dati e feedback. Preferisci l'API <code>ui.*</code> di questo capitolo per i flussi UI server centrati sui componenti, e tieni <code>@PAGE</code>/<code>@AIPAGE</code> per i pattern di generazione HTML route-first.</p>
+        <p>I controlli avanzati includono <code>ui.dataGrid</code> (ordinamento/filtro/paginazione, selezione righe, eventi di virtualizzazione del viewport, hook drag/drop) e <code>ui.treeView</code> (nodi gerarchici, expand/collapse, selezione amichevole da tastiera, lazy loading opzionale). In entrambi i controlli, tieni lo stato di business lato server e usa stato transiente lato client per la reattività di scroll/viewport.</p>
+        <h3>23.2.7 Guida alla migrazione: da @PAGE a component</h3>
+        <ol>
+            <li>Tieni la route <code>@PAGE</code> esistente così com'è per compatibilità.</li>
+            <li>Sposta la logica di rendering riutilizzabile in una nuova funzione <code>component</code>.</li>
+            <li>Aggiungi endpoint <code>@ACTION</code> per le interazioni di form e pulsanti.</li>
+            <li>Usa <code>componentFragment(...)</code> per restituire solo il blocco HTML interessato.</li>
+            <li>Aggiungi <code>@LIVE</code> + <code>componentLiveEmit(...)</code> se la pagina ha bisogno di aggiornamenti push.</li>
+        </ol>
+        <h2>23.3 Riferimento API helper Web UI</h2>
+        <p>Questa sezione è l'API del linguaggio sia per gli helper di fragment (<code>componentFragment</code>, template, HTML CRUD) sia per gli <strong>alberi <code>ui.*</code> guidati dal server</strong> (<code>ui.mount</code>, controlli, event loop). Gli helper di stato condivisi (<code>componentState*</code> / <code>ui.state</code>) valgono per entrambi.</p>
+        <h3>23.3.1 Funzioni helper dei componenti server</h3>
+        <ul>
+            <li><code>renderTemplate(template, model?)</code> - Sostituzione di token usando placeholder <code>{{key}}</code>.</li>
+            <li><code>componentFragment(targetId, html)</code> - Restituisce un envelope di fragment standardizzato per aggiornamenti DOM parziali.</li>
+            <li><code>componentLiveEmit(channel, payload, eventType?)</code> - Trasmette un evento live ai subscriber SSE.</li>
+        </ul>
+        <pre><code>var html = renderTemplate(
+    "&lt;h1&gt;{{title}}&lt;/h1&gt;&lt;p&gt;{{count}} items&lt;/p&gt;",
+    {"title": "Items", "count": 4}
+);
+
+@ACTION("/items/add")
+function addItem(body) {
+    return componentFragment("item-list", "&lt;ul&gt;&lt;li&gt;" + body.title + "&lt;/li&gt;&lt;/ul&gt;");
+}
+
+componentLiveEmit("items", {"count": 7}, "item-added");</code></pre>
+        <h3>23.3.1.1 Workflow template nativo UI (UX trasparente)</h3>
+        <p>Per le app più grandi, usa gli helper di template UI per tenere l'HTML in file esterni e la logica MALDA nel codice:</p>
+        <ul>
+            <li><code>ui.template(source, model?, options?)</code> - renderizza un file template (o sorgente inline) con interpolazione e helper di blocco.</li>
+            <li><code>ui.partial(source, model?)</code> - renderizza un template fragment/partial.</li>
+            <li><code>ui.layout(source, slots, model?)</code> - renderizza layout + slot nominati con placeholder <code>{{slot:name}}</code>.</li>
+            <li><code>ui.renderList(items, source, itemName?)</code> - renderizza item ripetuti con un template item condiviso.</li>
+        </ul>
+        <pre><code>var base = "templates/";
+
+var sidebar = ui.template(base + "sidebar.html", {
+    "overviewClass": "nav-link active",
+    "itemsClass": "nav-link"
+});
+
+var rowsHtml = ui.renderList(items, base + "item_row.html", "item");
+
+var body = ui.partial(base + "items_body.html", {
+    "rows": rowsHtml
+});
+
+return ui.layout(
+    base + "layout.html",
+    {
+        "sidebar": sidebar,
+        "pageBody": body,
+        "pageScript": "initItems();"
+    },
+    {
+        "pageTitle": "Items",
+        "appCssPublicPath": "/static/app.css"
+    }
+);</code></pre>
+        <p><strong>Sintassi dei template:</strong></p>
+        <ul>
+            <li><code>{{key}}</code> - interpolazione escaped (sicura di default)</li>
+            <li><code>{{{key}}}</code> - interpolazione raw (usala di proposito)</li>
+            <li><code>{{#if condition}}...{{/if}}</code> - rendering condizionale</li>
+            <li><code>{{#each items as item}}...{{/each}}</code> - rendering di liste con alias</li>
+        </ul>
+        <pre><code>&lt;ul&gt;
+{{#each items as item}}
+  {{#if item.open}}
+    &lt;li&gt;{{item.title}} - {{{item.badgeHtml}}}&lt;/li&gt;
+  {{/if}}
+{{/each}}
+&lt;/ul&gt;</code></pre>
+        <p><strong>Compatibilità:</strong> passa <code>{"compatRaw": true}</code> a <code>ui.template(..., ..., options)</code> per preservare il comportamento raw legacy di <code>{{key}}</code> durante la migrazione.</p>
+        <p><strong>Caching:</strong> i file template sono in cache di default. Passa <code>{"cache": false}</code> come terzo argomento a <code>ui.template</code> per il reload in fase di sviluppo.</p>
+        <p><strong>Struttura consigliata:</strong> tieni i file template in una directory di progetto <code>templates/</code> (per esempio <code>templates/layout.html</code>) e referenziali per path. I sample Web eseguibili stanno sotto <code>Examples/Web/</code> (per esempio <code>ui_form_workflow.malda</code> e <code>ui_controls_showcase_minimal.malda</code>).</p>
+        <h3>23.3.1.2 Pattern helper CRUD guidato da schema</h3>
+        <p>Per le pagine CRUD che condividono lo stesso scheletro UI (filtri, dialog di add/edit, controlli lista), usa la pipeline schema built-in:</p>
+        <ul>
+            <li><code>ui.crudModel(schema, sessionId?, queryParams?, lookups?)</code> - costruisce il modello dei controlli consumato dai template CRUD condivisi.</li>
+            <li><code>ui.crudControls(schema, sessionId?, queryParams?, lookups?, options?)</code> - costruisce il modello e renderizza l'HTML in un solo passo.</li>
+            <li><code>ui.crudSchema(schema, defaults?)</code> - normalizza i default dello schema (path dei template, array di filtri, label) prima del render.</li>
+        </ul>
+        <p><strong>Comportamento di default:</strong> <code>ui.crudControls</code> risolve <code>entity_controls.html</code> sotto lo <code>templateBasePath</code> dello schema (default <code>templates</code>) quando non viene fornito un override di template.</p>
+        <ul>
+            <li>Definisci uno <strong>schema solo-dati</strong> per entità: label, route, descrittori di filtro, path dei template, requisiti di lookup.</li>
+            <li>Usa <code>ui.crudModel</code> quando ti serve il controllo diretto sul rendering o sulla composizione dei template.</li>
+            <li>Usa <code>ui.crudControls</code> per il percorso end-to-end comune.</li>
+            <li>Tieni gli handler di pagina dell'entità concentrati su: parse della query, fetch di righe/lookup, una chiamata built-in, render del layout.</li>
+        </ul>
+        <pre><code>var schema = itemsCrudSchema; // data only
+var sessionId = queryParams["session"] == null || queryParams["session"] == "" ? schema.sessionDefault : queryParams["session"];
+var lookups = {"owners": allOwners(), "tags": listTags()};
+var controlsHtml = ui.crudControls(schema, sessionId, queryParams, lookups);</code></pre>
+        <pre><code>var normalized = ui.crudSchema(schema, {
+  "templateBasePath": "templates",
+  "controlsTemplatePath": "templates/entity_controls.html"
+});
+var controlsHtml = ui.crudControls(normalized, sessionId, queryParams, lookups);</code></pre>
+        <p><strong>Override:</strong> passa <code>{"templatePath": "...", "templateBasePath": "...", "cache": false}</code> in <code>ui.crudControls(..., options)</code> quando ti serve un template dei controlli diverso, un base path diverso o un comportamento di cache diverso.</p>
+        <p><strong>Nota di migrazione:</strong> se la tua app oggi normalizza a mano i campi dello schema CRUD, migra quella logica su <code>ui.crudSchema</code> per tenere i default dello schema coerenti tra le app.</p>
+
+        <h4>23.3.1.3 Riferimento schema CRUD</h4>
+        <p>L'oggetto passato a <code>ui.crudSchema</code>, <code>ui.crudModel</code> e <code>ui.crudControls</code> può contenere le proprietà seguenti. I valori vengono copiati nel modello usato per renderizzare il template dei controlli; le proprietà mancanti ricevono i default descritti.</p>
+
+        <p><strong>Proprietà top-level dello schema</strong></p>
+        <table>
+            <thead>
+                <tr><th>Proprietà</th><th>Tipo</th><th>Descrizione / default</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>entityPluralLower</code></td><td>string</td><td>Nome entità al plurale, es. <code>"items"</code>. Passato al template dei controlli.</td></tr>
+                <tr><td><code>entitySingularLower</code></td><td>string</td><td>Nome entità al singolare, es. <code>"item"</code>. Usato da <code>ui.crudSchema</code> per derivare i default <code>openAddLabel</code> / <code>openEditLabel</code> quando omessi (default <code>"item"</code>).</td></tr>
+                <tr><td><code>sessionDefault</code></td><td>string</td><td>Id di sessione di default quando <code>sessionId</code> non viene passato a <code>ui.crudControls</code> / <code>ui.crudModel</code>. Default <code>"default"</code>.</td></tr>
+                <tr><td><code>templateBasePath</code></td><td>string</td><td>Directory base per i template di dialog e opzioni di lookup. Default di <code>ui.crudSchema</code>: <code>templates</code> (o da <code>defaults.templateBasePath</code>).</td></tr>
+                <tr><td><code>controlsTemplatePath</code></td><td>string</td><td>Path del template dei controlli entità (filtri + pulsanti + host della griglia). Default: <code>templateBasePath + "/entity_controls.html"</code>. Fallback: <code>controlsTemplate</code>.</td></tr>
+                <tr><td><code>listAction</code></td><td>string</td><td>URL o path della pagina lista, es. <code>"/web/items"</code>. Passato al template dei controlli.</td></tr>
+                <tr><td><code>filterGridColumns</code></td><td>string</td><td>Colonne CSS grid della barra filtri, es. <code>"2fr 1fr auto"</code>. Passato al template dei controlli.</td></tr>
+                <tr><td><code>openAddButtonId</code></td><td>string</td><td>Id DOM del pulsante che apre il dialog di add, es. <code>"openItemAddDialog"</code>.</td></tr>
+                <tr><td><code>openEditButtonId</code></td><td>string</td><td>Id DOM del pulsante che apre il dialog di edit, es. <code>"openItemEditDialog"</code>.</td></tr>
+                <tr><td><code>openAddLabel</code></td><td>string</td><td>Label per l'azione add. Default di <code>ui.crudSchema</code>: <code>"Add " + entitySingularLower</code> (o da <code>defaults.openAddLabel</code>).</td></tr>
+                <tr><td><code>openEditLabel</code></td><td>string</td><td>Label per l'azione edit. Default di <code>ui.crudSchema</code>: <code>"Edit selected " + entitySingularLower</code> (o da <code>defaults.openEditLabel</code>).</td></tr>
+                <tr><td><code>addDialogTemplate</code></td><td>string</td><td>Nome file del template per l'HTML del dialog di add (risolto sotto <code>templateBasePath</code>).</td></tr>
+                <tr><td><code>editDialogTemplate</code></td><td>string</td><td>Nome file del template per l'HTML del dialog di edit (risolto sotto <code>templateBasePath</code>).</td></tr>
+                <tr><td><code>dialogScriptTemplate</code></td><td>string</td><td>Nome file del template per lo script del dialog (risolto sotto <code>templateBasePath</code>).</td></tr>
+                <tr><td><code>filterDefs</code></td><td>array</td><td>Elenco delle definizioni di filtro (vedi sotto). <code>ui.crudSchema</code> costringe i non-array a <code>[]</code>.</td></tr>
+                <tr><td><code>dialogLookupOptions</code></td><td>array</td><td>Elenco dei binding di lookup per i dialog add/edit (vedi sotto). <code>ui.crudSchema</code> costringe i non-array a <code>[]</code>. Ogni <code>source</code> deve esistere nell'oggetto <code>lookups</code> passato a <code>ui.crudControls</code> / <code>ui.crudModel</code>, altrimenti i dropdown saranno vuoti.</td></tr>
+                <tr><td><code>gridDescription</code></td><td>string</td><td>Opzionale. Descrizione per l'host della griglia; usata dai layout dell'app per accessibilità o layout.</td></tr>
+                <tr><td><code>envelopeApiPath</code></td><td>string</td><td>Opzionale. Path API per l'envelope UI; usato dai layout dell'app che montano la griglia via <code>ui.mountEnvelope</code>.</td></tr>
+            </tbody>
+        </table>
+
+        <p><strong>filterDefs</strong> — ogni elemento è un oggetto:</p>
+        <table>
+            <thead>
+                <tr><th>Proprietà</th><th>Tipo</th><th>Descrizione</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>kind</code></td><td>string</td><td><code>"input"</code> (testo) o <code>"select"</code> (dropdown).</td></tr>
+                <tr><td><code>name</code></td><td>string</td><td>Nome del query parameter; obbligatorio. Usato per leggere/scrivere il valore del filtro da <code>queryParams</code>.</td></tr>
+                <tr><td><code>placeholder</code></td><td>string</td><td>Testo placeholder per <code>kind === "input"</code>.</td></tr>
+                <tr><td><code>defaultValue</code></td><td>string</td><td>Valore di default quando il query param manca.</td></tr>
+                <tr><td><code>options</code></td><td>array</td><td>Per <code>kind === "select"</code>. Ogni item: <code>{"value": "...", "label": "..."}</code>. Renderizzato come <code>&lt;option&gt;</code> con <code>selected</code> impostato dalla query corrente.</td></tr>
+            </tbody>
+        </table>
+
+        <p><strong>dialogLookupOptions</strong> — ogni elemento è un oggetto che lega un array di lookup a una chiave nel modello del dialog (es. per le opzioni dropdown nei form add/edit):</p>
+        <table>
+            <thead>
+                <tr><th>Proprietà</th><th>Tipo</th><th>Descrizione</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>key</code></td><td>string</td><td>Nome sotto cui l'HTML renderizzato viene impostato nel modello del dialog (es. <code>"customerOptions"</code>). Il template del dialog add/edit lo usa per iniettare l'HTML delle option.</td></tr>
+                <tr><td><code>source</code></td><td>string</td><td>Chiave nell'oggetto <code>lookups</code> passato a <code>ui.crudControls</code> / <code>ui.crudModel</code> (es. <code>"customers"</code>, <code>"agents"</code>). Obbligatoria.</td></tr>
+                <tr><td><code>renderer</code></td><td>string</td><td>Opzionale. Hint built-in: <code>"customerOptions"</code> o <code>"agentOptions"</code> forniscono <code>templatePath</code> e <code>itemName</code> di default quando <code>templatePath</code> è omesso.</td></tr>
+                <tr><td><code>templatePath</code></td><td>string</td><td>Path del template che renderizza una riga option (risolto con <code>templateBasePath</code> se relativo). Obbligatorio a meno che <code>renderer</code> non sia uno dei built-in.</td></tr>
+                <tr><td><code>itemName</code></td><td>string</td><td>Nome della variabile di loop in quel template (default <code>"item"</code>). Per <code>renderer === "customerOptions"</code> / <code>"agentOptions"</code> il default diventa <code>"customer"</code> / <code>"agent"</code>.</td></tr>
+            </tbody>
+        </table>
+
+        <p><strong>Risoluzione dei template:</strong> Quando chiami <code>ui.crudControls(schema, ...)</code>, il template dei controlli può essere sovrascritto per chiamata via <code>options.templatePath</code>. Il path base per i template di dialog/lookup può essere sovrascritto via <code>options.templateBasePath</code>. I valori di schema <code>templateBasePath</code> e <code>controlsTemplatePath</code> (o <code>controlsTemplate</code>) vengono usati quando le options non forniscono override.</p>
+
+        <h3>23.3.2 Helper di stato dei componenti server</h3>
+        <ul>
+            <li><code>componentStateGet(componentId, key, defaultValue?, scope?)</code> — peek (il default non viene scritto)</li>
+            <li><code>componentStateSet(componentId, key, value, scope?)</code></li>
+            <li><code>componentStateObject(componentId, scope?)</code></li>
+            <li><code>componentStateClear(componentId?, scope?)</code> (quando omesso, cancella tutto lo stato dei componenti)</li>
+            <li><code>componentStateConfigure(maxComponents, maxKeysPerComponent, ttlMs?)</code></li>
+            <li><code>componentStatePin(componentId, scope?)</code> / <code>componentStateUnpin(componentId, scope?)</code> — pin esenta la voce nello scope da TTL e eviction LRU</li>
+        </ul>
+        <pre><code>var items = componentStateGet("board", "items", []);
+items.append({"title": "Login issue"});
+componentStateSet("board", "items", items);
+print(componentStateObject("board"));
+componentStateClear("board");
+
+// Tenant/session scoping (optional)
+componentStateSet("board", "count", 1, "tenantA");
+componentStateSet("board", "count", 2, "tenantB");
+
+// Safety policy tuning (defaults are conservative)
+componentStateConfigure(512, 128, 1800000);
+
+// Process-lifetime shared data (catalog, boot config): pin after write
+componentStateSet("brain", "catalog", catalog, "ask-shared");
+componentStatePin("brain", "ask-shared");</code></pre>
+        <h3>23.3.3 API di runtime e ciclo di vita della UI server</h3>
+        <ul>
+            <li>Ciclo di vita del render: <code>ui.mount(rootNode, sessionId?)</code>, <code>ui.render(rootNode, sessionId?)</code></li>
+            <li>Helper envelope: <code>ui.mountEnvelope(rootNode, sessionId?, options?)</code> per mount + snapshot + resync in una sola chiamata.</li>
+            <li>Sottoscrizioni di ciclo di vita: <code>ui.onInit(componentId, sessionId?)</code>, <code>ui.onPreRender(componentId, sessionId?)</code>, <code>ui.onLoad(componentId, sessionId?)</code>, <code>ui.onDispose(componentId, sessionId?)</code>, <code>ui.onMount(componentId, sessionId?)</code>, <code>ui.onUpdate(componentId, sessionId?)</code>, <code>ui.onUnmount(componentId, sessionId?)</code>, <code>ui.onError(componentId, sessionId?)</code></li>
+            <li>Pipeline eventi: <code>ui.dispatchEvent(eventObj, sessionId?, sequence?)</code>, <code>ui.pullEvent(sessionId?)</code>. <code>sessionId</code> è sempre il secondo argomento (stringa); <code>sequence</code> è il terzo opzionale (intero). Non passare sequence come secondo argomento.</li>
+            <li><strong>Loop corretto:</strong> <code>pullEvent</code> → aggiorna lo stato → ricostruisci l'albero → <code>ui.render</code>. Saltare pull lascia la coda piena (IDE <code>UI1001</code>). Golden offline: <code>Examples/Web/ui_event_loop.malda</code>. Note sul motore: <code>docs/ui-framework.md</code>.</li>
+            <li>Stato: <code>ui.state(componentId, key, defaultValue, scope?)</code> (get-or-create — persiste il default), <code>ui.getState(componentId, key, defaultValue?, scope?)</code> (peek — non scrive), <code>ui.setState(componentId, key, value, scope?)</code>, <code>ui.pinState(componentId, scope?)</code>, <code>ui.unpinState(componentId, scope?)</code></li>
+            <li>Invalidazione: <code>ui.invalidate(channel, payload?)</code></li>
+            <li>Diagnostica/recovery: <code>ui.snapshot(sessionId?)</code>, <code>ui.resync(sessionId?)</code></li>
+            <li>Controlli di policy: <code>ui.configure(settingName, value, sessionId?)</code></li>
+            <li>Helper di sessione: <code>ui.sessionId(source, defaultSessionId?)</code>, <code>ui.redirectWithSession(path, source, defaultSessionId?)</code></li>
+        </ul>
+        <p><code>ui.configure</code> supporta <code>maxPatchCount</code>, <code>maxPayloadBytes</code>, <code>maxEventQueueDepth</code> e <code>sessionTtlMs</code>.</p>
+        <pre><code>var envelope = ui.mountEnvelope(rootNode, "app-session", {
+  "maxPatchCount": 1024,
+  "maxEventQueueDepth": 1024,
+  "sessionTtlMs": 1800000
+});
+print(envelope.mount.type);
+print(envelope.snapshot.version);
+print(envelope.resync.type);</code></pre>
+        <pre><code>// source can be request object, body object, or query/body map containing "session"
+var sessionId = ui.sessionId(req, "items-ui");
+return ui.redirectWithSession("/web/items", body, "items-ui");</code></pre>
+        <p>Gli eventi di ciclo di vita vengono emessi tramite <code>ui.pullEvent()</code> come payload <code>type = "lifecycle"</code>. L'ordine tipico è:</p>
+        <ul>
+            <li><code>ui.mount</code>: <code>onInit</code>, poi <code>onMount</code></li>
+            <li><code>ui.render</code> per i componenti tracciati: <code>onPreRender</code> prima del diff</li>
+            <li>Componente esistente al render: <code>onUpdate</code></li>
+            <li>Nuovo componente scoperto durante il render: <code>onMount</code>, poi <code>onLoad</code></li>
+            <li>Componente rimosso: <code>onUnmount</code>, poi <code>onDispose</code></li>
+            <li>Dispose/scadenza della sessione: i componenti tracciati emettono <code>onDispose</code></li>
+        </ul>
+        <p>Sottoscrivi chiamando l'helper corrispondente con l'id del componente (e la sessione opzionale). Quello registra l'hook; il payload arriva comunque su <code>ui.pullEvent</code> come <code>type = "lifecycle"</code>. Showcase offline: <code>Examples/Web/ui_counter_dashboard.malda</code>.</p>
+        <pre><code>ui.onMount("CounterRoot", sessionId);
+ui.onUpdate("CounterRoot", sessionId);
+ui.onUnmount("CounterRoot", sessionId);</code></pre>
+        <h4>23.3.3.1 Come viene ospitata una sessione ui.*</h4>
+        <p>Un programma che chiama <code>ui.mount</code> o <code>ui.mountEnvelope</code> può avviare l'UIHost embedded (CLI e Desktop). Quell'host <em>non</em> è <code>HttpServer</code> / <code>@PAGE</code> — quelli restano in <a href="24-http-server-html-ui.html">24. HttpServer e generazione UI HTML</a>.</p>
+        <ul>
+            <li>Il client browser è <code>malda-ui-client.js</code>. La chiave di sessione è il <code>sessionId</code> che passi a <code>ui.mount</code>.</li>
+            <li>Endpoint tipici: WebSocket <code>/ui/ws/{sessionId}</code>, più il forwarding HTTP mount/patch sotto <code>/ui/mount/{sessionId}</code> e <code>/ui/patch/{sessionId}</code>.</li>
+            <li>Ambiente opzionale: <code>MALDA_UI_AUTH_TOKEN</code> (secret condiviso) e <code>MALDA_UI_ALLOWED_ORIGIN</code> (CORS).</li>
+            <li>Protocollo patch, campi envelope e interni dell'host: <a href="../../docs/ui-framework.md"><code>docs/ui-framework.md</code></a>.</li>
+        </ul>
+        <p>Per provare un albero senza browser, esegui il loop offline sotto (o <code>Examples/Web/ui_event_loop.malda</code>). Gli alberi generati dall'AI usano <code>ui.generate</code> — vedi <a href="24-http-server-html-ui.html">24.8.5</a>.</p>
+        <h4>23.3.3.2 Event loop (mount → pull → render)</h4>
+        <p>Dopo ogni evento client: <code>dispatchEvent</code> (l'host accoda; gli esempi possono simulare) → <code>pullEvent</code> → aggiorna lo stato → ricostruisci l'albero → <code>ui.render</code>. Saltare <code>pullEvent</code> lascia la coda piena e la UI sembra bloccata (IDE <code>UI1001</code>).</p>
+        <pre><code data-run="true" data-expect="mount\npatch\n1">var sessionId = "rm-event-loop";
+var count = ui.state("LoopRoot", "count", 0, sessionId);
+
+function buildView(value) {
+    return ui.column(
+        {"componentId": "LoopRoot"},
+        [
+            ui.text({"value": "count=" + string(value)}),
+            ui.button({"label": "Inc", "onClick": "increment"})
+        ]
+    );
+}
+
+var mounted = ui.mount(buildView(count), sessionId);
+print(mounted.type);
+
+ui.dispatchEvent(
+    {"type": "click", "targetPath": "/1/", "payload": {"action": "increment"}},
+    sessionId
+);
+
+var evt = ui.pullEvent(sessionId);
+if (evt != null) {
+    count = count + 1;
+    ui.setState("LoopRoot", "count", count, sessionId);
+}
+
+var patched = ui.render(buildView(count), sessionId);
+print(patched.type);
+print(count);</code></pre>
+        <h3>23.3.4 Catalogo dei controlli UI</h3>
+        <p>I controlli UI seguono una firma coerente: <code>ui.control(props, children?, key?)</code>.</p>
+        <ul>
+            <li>Layout: <code>ui.row</code>, <code>ui.column</code>, <code>ui.stack</code>, <code>ui.spacer</code>, <code>ui.panel</code></li>
+            <li>Display: <code>ui.text</code>, <code>ui.heading</code>, <code>ui.image</code>, <code>ui.icon</code></li>
+            <li>Input: <code>ui.button</code>, <code>ui.textField</code>, <code>ui.checkbox</code>, <code>ui.select</code>, <code>ui.slider</code>, <code>ui.datePicker</code></li>
+            <li>Form/navigazione: <code>ui.form</code>, <code>ui.field</code>, <code>ui.textArea</code>, <code>ui.radioGroup</code>, <code>ui.switch</code>, <code>ui.tabs</code>, <code>ui.accordion</code>, <code>ui.breadcrumbs</code>, <code>ui.drawer</code></li>
+            <li>Dati/feedback: <code>ui.list</code>, <code>ui.table</code>, <code>ui.alert</code>, <code>ui.progress</code>, <code>ui.modal</code>, <code>ui.dataGrid</code>, <code>ui.treeView</code>, <code>ui.paginator</code>, <code>ui.emptyState</code>, <code>ui.badge</code>, <code>ui.toast</code>, <code>ui.skeleton</code>, <code>ui.spinner</code>, <code>ui.errorBoundary</code></li>
+            <li>Composizione: <code>ui.slot</code>, <code>ui.withSlot</code>, <code>ui.when</code>, <code>ui.choose</code>, <code>ui.each</code>, <code>ui.template</code>, <code>ui.partial</code>, <code>ui.layout</code>, <code>ui.renderList</code>, <code>ui.crudModel</code>, <code>ui.crudControls</code>, <code>ui.crudSchema</code>, <code>ui.mountEnvelope</code></li>
+        </ul>
+        <p><strong><code>ui.datePicker(props, children?, key?)</code></strong> renderizza un input nativo data (o data+ora). Props: <code>name</code>, <code>value</code>, <code>defaultValue</code>, <code>placeholder</code>, <code>disabled</code>, <code>includeTime</code>. Imposta <code>includeTime</code> a true per un picker data-e-ora. Usa stringhe data ISO per <code>value</code>/<code>defaultValue</code>: <code>YYYY-MM-DD</code> o <code>YYYY-MM-DDTHH:mm</code>. Eventi: <code>onChange</code>, <code>onInput</code>.</p>
+        <h3>23.3.4.1 Stile dei controlli</h3>
+        <p>Usa un approccio ibrido allo stile per i controlli Web UI: applica regole di design riutilizzabili con <code>className</code> e ritocchi per-istanza/dinamici con <code>style</code>.</p>
+        <ul>
+            <li><code>className</code>: stringa di classe CSS applicata direttamente all'elemento renderizzato.</li>
+            <li><code>style</code> (stringa): testo CSS, per esempio <code>"margin:8px; color:#1f2937;"</code>.</li>
+            <li><code>style</code> (oggetto): mappa di proprietà, per esempio <code>{"margin": "8px", "backgroundColor": "#f5f7fb"}</code>.</li>
+            <li>Al re-render, l'ultimo valore di <code>style</code> sostituisce il valore di stile precedente per quel controllo.</li>
+        </ul>
+        <pre><code>var card = ui.panel({
+    "className": "dashboard-card",
+    "style": {"padding": "12px", "borderRadius": "10px", "backgroundColor": "#ffffff"}
+}, [
+    ui.text({"value": "Hybrid styling example"})
+]);</code></pre>
+        <h3>23.3.5 Controlli dati avanzati</h3>
+        <p><strong><code>ui.dataGrid(props, children?, key?)</code></strong> supporta ordinamento/filtro/paginazione, selezione righe, virtualizzazione opzionale ed eventi di interazione drag/drop sulle righe.</p>
+        <p>L'ordinamento cliccando le intestazioni di colonna funziona con colonne <code>sortable</code>. Se è fornito <code>onSort</code>, la griglia emette eventi di sort per l'ordinamento lato server/gestito dallo stato; altrimenti il client applica l'ordinamento locale usando lo stato <code>sort</code> corrente.</p>
+        <ul>
+            <li>Props core: <code>columns</code>, <code>rows</code>, <code>rowKey</code>, <code>selectionMode</code>, <code>selectedKeys</code></li>
+            <li>Operazioni sui dati: <code>sortable</code>, <code>sort</code>, <code>filter</code>, <code>page</code>, <code>pageSize</code>, <code>totalItems</code></li>
+            <li>Virtualizzazione: <code>virtualize</code>, <code>rowHeight</code>, <code>overscan</code>, <code>height</code> opzionale</li>
+            <li>Eventi: <code>onRowClick</code>, <code>onSelectionChange</code>, <code>onSort</code>, <code>onFilter</code>, <code>onPageChange</code>, <code>onViewportChange</code>, <code>onDragStart</code>, <code>onDragOver</code>, <code>onDrop</code>, <code>onDragEnd</code></li>
+        </ul>
+        <p><strong><code>ui.treeView(props, children?, key?)</code></strong> offre navigazione gerarchica con expand/collapse, selezione amichevole da tastiera, lazy loading opzionale ed eventi di interazione drag/drop sui nodi.</p>
+        <ul>
+            <li>Props core: <code>nodes</code>, <code>nodeKey</code>, <code>expandedKeys</code>, <code>selectedKeys</code>, <code>selectionMode</code></li>
+            <li>Opzioni: <code>showLines</code>, <code>lazy</code></li>
+            <li>Eventi: <code>onNodeSelect</code>, <code>onNodeToggle</code>, <code>onNodeExpand</code>, <code>onNodeCollapse</code>, <code>onNodeActivate</code>, <code>onLoadChildren</code>, <code>onDragStart</code>, <code>onDragOver</code>, <code>onDrop</code>, <code>onDragEnd</code></li>
+        </ul>
+        <p>Quando <code>lazy</code> è abilitato, espandere un nodo senza figli già caricati dovrebbe innescare il caricamento lato server (in genere tramite <code>onLoadChildren</code>) e poi un re-render con i figli restituiti.</p>
+        <pre><code>var grid = ui.dataGrid({
+    "columns": [{"key": "name", "title": "Name", "sortable": true}],
+    "rows": [{"id": 1, "name": "Andrea"}],
+    "rowKey": "id",
+    "selectionMode": "single",
+    "onSort": "sortUsers",
+    "onSelectionChange": "selectUser",
+    "onDrop": "moveUserRow",
+    "virtualize": true,
+    "rowHeight": 32,
+    "overscan": 4
+});
+
+var tree = ui.treeView({
+    "nodes": [{"id": "root", "label": "Root", "hasChildren": true, "childrenLoaded": false}],
+    "lazy": true,
+    "expandedKeys": ["root"],
+    "onNodeToggle": "toggleNode",
+    "onNodeSelect": "selectNode",
+    "onLoadChildren": "loadTreeChildren",
+    "onDrop": "moveTreeNode"
+});</code></pre>
+        <h3>23.3.6 Riferimento props dei controlli</h3>
+        <p>I contratti sotto coincidono con <code>UiControlSpecRegistry</code>. Ogni controllo accetta anche le props condivise <code>className</code>, <code>id</code>, <code>role</code>, <code>ariaLabel</code>, <code>componentId</code>, <code>key</code>, <code>disabled</code> e <code>style</code>. Le props evento sono stringhe nome-azione nel payload emesso — tieni quei nomi stabili tra i render.</p>
+        <p><strong>Layout</strong> (<code>ui.row</code>, <code>ui.column</code>, <code>ui.stack</code>, <code>ui.spacer</code>, <code>ui.panel</code>, <code>ui.field</code>, <code>ui.drawer</code>, <code>ui.tabs</code>, <code>ui.accordion</code>, <code>ui.breadcrumbs</code>, <code>ui.list</code>, <code>ui.table</code>, <code>ui.emptyState</code>, <code>ui.badge</code>, <code>ui.alert</code>, <code>ui.progress</code>, <code>ui.skeleton</code>, <code>ui.spinner</code>, <code>ui.errorBoundary</code>, <code>ui.slot</code>, <code>ui.when</code>, <code>ui.choose</code>, <code>ui.each</code>): solo props condivise. <code>ui.tabs</code> usa di solito un <code>value</code> personalizzato (chiave del tab attivo) con figli <code>ui.panel</code> che hanno un <code>key</code>.</p>
+        <table>
+            <thead>
+                <tr><th>Controllo</th><th>Props extra</th><th>Eventi</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>ui.text</code> / <code>ui.heading</code></td><td><code>value</code> (obbligatoria)</td><td>—</td></tr>
+                <tr><td><code>ui.image</code></td><td><code>src</code>, <code>alt</code>, <code>width</code>, <code>height</code></td><td>—</td></tr>
+                <tr><td><code>ui.icon</code></td><td><code>name</code>, <code>size</code></td><td>—</td></tr>
+                <tr><td><code>ui.button</code></td><td><code>label</code>, <code>variant</code> (<code>primary</code>|<code>secondary</code>|<code>danger</code>)</td><td><code>onClick</code></td></tr>
+                <tr><td><code>ui.textField</code></td><td><code>name</code>, <code>value</code>, <code>defaultValue</code>, <code>placeholder</code></td><td><code>onChange</code>, <code>onInput</code></td></tr>
+                <tr><td><code>ui.textArea</code></td><td>come textField, più <code>rows</code></td><td><code>onChange</code>, <code>onInput</code></td></tr>
+                <tr><td><code>ui.checkbox</code> / <code>ui.switch</code></td><td><code>name</code>, <code>checked</code>, <code>defaultChecked</code>, <code>label</code></td><td><code>onChange</code></td></tr>
+                <tr><td><code>ui.select</code> / <code>ui.radioGroup</code></td><td><code>name</code>, <code>value</code>, <code>defaultValue</code>, <code>options</code> (array di <code>{"label","value"}</code>)</td><td><code>onChange</code></td></tr>
+                <tr><td><code>ui.slider</code></td><td><code>name</code>, <code>value</code>, <code>min</code>, <code>max</code>, <code>step</code></td><td><code>onChange</code>, <code>onInput</code></td></tr>
+                <tr><td><code>ui.datePicker</code></td><td><code>name</code>, <code>value</code>, <code>defaultValue</code>, <code>placeholder</code>, <code>includeTime</code> (ISO <code>YYYY-MM-DD</code> o <code>YYYY-MM-DDTHH:mm</code>)</td><td><code>onChange</code>, <code>onInput</code></td></tr>
+                <tr><td><code>ui.form</code></td><td><code>method</code>, <code>action</code> (più <code>componentId</code> condivisa)</td><td><code>onSubmit</code></td></tr>
+                <tr><td><code>ui.modal</code></td><td><code>open</code>, <code>title</code></td><td><code>onClose</code></td></tr>
+                <tr><td><code>ui.toast</code></td><td><code>open</code>, <code>message</code>, <code>variant</code> (<code>success</code>|<code>warning</code>|<code>error</code>|<code>info</code>)</td><td><code>onClose</code></td></tr>
+                <tr><td><code>ui.paginator</code></td><td><code>page</code>, <code>pageSize</code>, <code>totalItems</code></td><td><code>onChange</code></td></tr>
+                <tr><td><code>ui.dataGrid</code></td><td>vedi 23.3.5</td><td>vedi 23.3.5</td></tr>
+                <tr><td><code>ui.treeView</code></td><td>vedi 23.3.5</td><td>vedi 23.3.5</td></tr>
+            </tbody>
+        </table>
+        <p>Gli attributi custom sconosciuti sono accettati (modalità permissiva). I nomi di evento che non sono in tabella lanciano un errore alla costruzione dell'albero.</p>
+        <h3>23.3.7 Esempi di uso dei controlli</h3>
+        <p>Snippet pronti all'implementazione per i pattern comuni di form e liste:</p>
+        <pre><code>// Button with primary variant and action
+ui.button({"label": "Save", "variant": "primary", "onClick": "saveItem"})
+
+// Form with submit action and validation
+ui.form({"componentId": "ItemForm", "onSubmit": "submitItem"}, [
+    ui.field({}, [ui.text({"value": "Title"}), ui.textField({"name": "title", "required": true})]),
+    ui.button({"label": "Create", "variant": "primary", "onClick": "submit"})
+])
+
+// Modal with close handler
+ui.modal({"open": true, "title": "Edit item", "onClose": "closeEditDialog"}, [
+    ui.text({"value": "Form content here"})
+])
+
+// Tabs with active state
+ui.tabs({"value": "overview"}, [
+    ui.panel({"key": "overview"}, [ui.text({"value": "Overview content"})]),
+    ui.panel({"key": "details"}, [ui.text({"value": "Details content"})])
+])
+
+// DataGrid with row click and selection
+ui.dataGrid({
+    "columns": [{"key": "name", "title": "Name", "sortable": true}],
+    "rows": [{"id": 1, "name": "Alice"}],
+    "rowKey": "id",
+    "selectionMode": "single",
+    "onRowClick": "openDetail",
+    "onSelectionChange": "selectRow"
+})
+
+// TreeView with lazy loading
+ui.treeView({
+    "nodes": [{"id": "r", "label": "Root", "hasChildren": true, "childrenLoaded": false}],
+    "lazy": true,
+    "expandedKeys": ["r"],
+    "onLoadChildren": "loadChildren",
+    "onNodeSelect": "selectNode"
+})
+
+// Toast and error boundary
+ui.toast({"open": true, "message": "Saved", "variant": "success", "onClose": "dismissToast"})
+ui.errorBoundary({}, [ui.text({"value": "Something went wrong. Please try again."})])</code></pre>
+        <h3>23.3.8 Pattern di gestione eventi</h3>
+        <p>Collega le interazioni utente alle action server usando pattern coerenti:</p>
+        <ul>
+            <li><strong>onClick</strong>: click su pulsanti e trigger in stile link. Passa <code>{"action": "handlerName"}</code> nel payload quando fai dispatch.</li>
+            <li><strong>onSubmit</strong>: invii di form. I dati del form vengono serializzati e inviati nel payload dell'evento.</li>
+            <li><strong>onChange</strong> / <strong>onInput</strong>: cambi di valore dei campi. Usali per validazione in tempo reale o aggiornamenti con debounce.</li>
+        </ul>
+        <p>I nomi delle action sono stringhe che il tuo event loop lato server mappa sul comportamento. Nei flussi UI server, elabora il payload dell'evento estratto, aggiorna lo stato e poi emetti fragment o fai re-render.</p>
+<pre><code>// Client: form submits; server returns fragment or JSON
+ui.form({"onSubmit": "submitItem"}, [
+    ui.textField({"name": "title", "onChange": "validateTitle"}),
+    ui.button({"label": "Submit"})
+])
+
+// Server: process events from the queue
+ui.dispatchEvent({"type": "submit", "targetPath": "/", "payload": {"action": "submitItem", "title": "Bug report"}}, sessionId);
+var evt = ui.pullEvent(sessionId);
+if (evt != null && evt.payload != null && evt.payload.action == "submitItem") {
+    // validate/persist, then ui.setState(...) or return componentFragment(...)
+}</code></pre>
+        <p>Per i form basati su template, usa <code>method="post"</code> e <code>action="/path/..."</code> con l'helper AJAX built-in. Vedi <a href="28-full-stack-development.html">28. Sviluppo full-stack con MALDA</a> per i pattern end-to-end.</p>
+        <h3>23.3.9 Pattern di validazione form e rendering degli errori</h3>
+        <p>Valida l'input sul server prima di persistere. Restituisci gli errori di validazione nella response e renderizzali accanto ai campi:</p>
+        <ul>
+            <li>Usa <code>required</code> sugli input per i campi obbligatori; la validazione HTML5 gira prima del submit.</li>
+            <li>Lato server: valida negli handler <code>@ACTION</code> o <code>@POST</code>; restituisci <code>componentFragment(...)</code> con markup di errore inline.</li>
+            <li>Renderizza gli errori con <code>ui.alert</code> o <code>ui.text</code> con <code>variant="error"</code> / <code>className="error"</code>.</li>
+        </ul>
+        <pre><code>@ACTION("/items/add")
+function addItem(body) {
+    var errors = [];
+    if (body.title == null || body.title == "") {
+        errors.append("Title is required");
+    }
+    if (body.email != null && indexOf(body.email, "@") &lt; 0) {
+        errors.append("Invalid email");
+    }
+    if (errors.length &gt; 0) {
+        var errHtml = "&lt;ul class='error-list'&gt;";
+        var i = 0;
+        while (i &lt; errors.length) {
+            errHtml = errHtml + "&lt;li&gt;" + errors[i] + "&lt;/li&gt;";
+            i = i + 1;
+        }
+        errHtml = errHtml + "&lt;/ul&gt;";
+        return componentFragment("item-form-errors", errHtml);
+    }
+    // persist and return success fragment
+    return componentFragment("item-list", "&lt;ul&gt;&lt;li&gt;" + body.title + "&lt;/li&gt;&lt;/ul&gt;");
+}</code></pre>
+        <p><strong>Sicurezza:</strong> Fai sempre escape del contenuto fornito dall'utente prima di incorporarlo in HTML. Usa <code>{{key}}</code> (interpolazione escaped) nei template, oppure un helper di escape attendibile per la concatenazione di stringhe raw. Non usare mai <code>{{{key}}}</code> per l'input utente.</p>
+        <h3>23.3.10 Pattern di composizione</h3>
+        <p>Costruisci UI riutilizzabile da pezzi più piccoli usando <code>ui.slot</code>, <code>ui.withSlot</code>, <code>ui.when</code>, <code>ui.choose</code> e <code>ui.each</code>:</p>
+        <ul>
+            <li><strong>ui.slot({"name": name})</strong>: nodo placeholder. Inietta dopo con <code>ui.withSlot(parent, name, content)</code>.</li>
+            <li><strong>ui.when(condition, thenNode, elseNode?)</strong>: restituisce <code>thenNode</code> quando la condizione è vera; altrimenti <code>elseNode</code>, o <code>null</code> se omesso.</li>
+            <li><strong>ui.choose(key, casesObject, defaultNode?)</strong>: sceglie <code>casesObject[string(key)]</code>, oppure <code>defaultNode</code> / <code>null</code>.</li>
+            <li><strong>ui.each(items, propName?)</strong>: restituisce un <em>array di nodi <code>ui.text</code></em>, non un controllo lista. Ogni item è memorizzato in <code>props[propName]</code> (default <code>"value"</code>). Passa quell'array come figli di <code>ui.column</code> / <code>ui.list</code>.</li>
+        </ul>
+        <pre><code>var card = ui.panel({}, [ui.slot({"name": "title"}), ui.slot({"name": "body"})]);
+var cardWithTitle = ui.withSlot(card, "title", ui.heading({"value": "Card Title"}));
+var cardComplete = ui.withSlot(cardWithTitle, "body", ui.text({"value": "Body content"}));
+
+var isOpen = true;
+var status = "success";
+var statusBadge = ui.when(isOpen, ui.badge({"value": "Open"}), ui.badge({"value": "Closed"}));
+var alertByType = ui.choose(status, {"success": ui.alert({"variant": "success"}, [ui.text({"value": "OK"})])}, ui.alert({"variant": "info"}, [ui.text({"value": "Unknown"})]));
+var labels = ui.each(["a", "b", "c"]);
+var list = ui.column({}, labels);</code></pre>
+        <h3>23.3.11 Pattern di gestione dello stato</h3>
+        <p>Gli handler di richiesta di HttpServer girano in un interprete isolato, quindi le variabili top-level non sono condivise tra le richieste. Usa lo store di stato dei componenti (via <code>ui.*</code> o <code>componentState*</code>) per i dati cross-request.</p>
+        <ul>
+            <li><strong>Peek vs get-or-create:</strong> <code>ui.getState</code> / <code>componentStateGet</code> restituiscono un default opzionale senza scrivere. <code>ui.state</code> <em>persiste</em> il default quando la chiave manca — non usare mai <code>null</code> o <code>{}</code> come default per chiavi critiche dopo un possibile miss TTL/LRU. IDE/LSP segnala <strong>UI1003</strong> (Warning) per quei default letterali velenosi (anche il <code>uiState</code> piatto).</li>
+            <li><strong>Pin per dati a vita del processo:</strong> dopo aver scritto catalogo/config condivisi, chiama <code>ui.pinState(componentId, scope)</code> (o <code>componentStatePin</code>) così TTL e eviction LRU saltano quella voce. Lascia la history per-conversazione senza pin.</li>
+            <li><strong>ui.setState / componentStateSet</strong>: scrivi valori sia per flag UI di breve vita sia per dati server durevoli.</li>
+        </ul>
+        <p><strong>Regola pratica:</strong> fai peek con <code>ui.getState</code> quando leggi; usa <code>ui.state</code> solo quando vuoi di proposito get-or-create. Fai pin degli scope condivisi di brain/config; tieni gli scope di conversazione sotto TTL/LRU normale. Persisti gli invarianti di lungo periodo in file o in un database quando il processo può riavviarsi. Golden offline: <code>Examples/Web/ui_state_lifecycle.malda</code> — anche <a href="../../docs/ui-framework.md">docs/ui-framework.md</a> § State model.</p>
+        <pre><code>// Peek (safe): missing key does not poison the store
+var catalog = ui.getState("AskStore", "catalog", null, sharedScope);
+
+// Get-or-create (OK for lists you always want initialized)
+var items = ui.state("board", "items", [], convScope);
+items.append({"title": "New", "status": "open"});
+ui.setState("board", "items", items, convScope);
+
+// Process-lifetime shared meta
+ui.setState("AskStore", "session", meta, sharedScope);
+ui.pinState("AskStore", sharedScope);</code></pre>
+        <h3>23.3.12 Pattern di routing e query param</h3>
+        <p>Per i flussi master-detail e multi-pagina, usa i query parameter:</p>
+        <ul>
+            <li><strong>Pagina lista</strong>: <code>/web/items?search=...&amp;status=open&amp;sort=id_desc</code></li>
+            <li><strong>Pagina dettaglio</strong>: <code>/web/items?id=42</code> oppure path param <code>/web/items/42</code></li>
+            <li>Parsa <code>req.query</code> negli handler di pagina; passalo a <code>ui.crudControls</code> o <code>ui.crudModel</code> quando usi CRUD guidato da schema.</li>
+        </ul>
+        <pre><code>@PAGE("/web/items")
+function itemsPage(req) {
+    var queryParams = req.query == null ? {} : req.query;
+    var sessionId = ui.sessionId(req, "items-ui");
+    var schema = itemsCrudSchema;
+    var lookups = {"owners": listOwners(), "tags": listTags()};
+    var controlsHtml = ui.crudControls(schema, sessionId, queryParams, lookups);
+    return appLayoutHtml("items", "Items", controlsHtml, "");
+}</code></pre>
+        <p>Per le chiamate REST API dal client, usa <code>fetch</code> o <code>RestClient</code>; vedi <a href="27-rest-web-client.html">27. Client REST Web</a> per le chiamate HTTP lato server e <a href="26-rest-api.html">26. Server REST API</a> per la progettazione API.</p>
+        <h3>23.3.13 Note su errori e sicurezza</h3>
+        <ul>
+            <li><strong>Escape</strong>: Usa <code>{{key}}</code> nei template per il contenuto fornito dall'utente (escaped di default). Usa <code>{{{key}}}</code> solo quando ti serve di proposito HTML raw (es. badge pre-renderizzati da fonti attendibili).</li>
+            <li><strong>CSRF</strong>: Abilita <code>enableCsrf(secret, cookieName?, headerName?)</code> su <code>HttpServer</code> per le route che mutano. Il client deve inviare il token CSRF nell'header o nel campo del form.</li>
+            <li><strong>Validazione</strong>: Valida tutto l'input della richiesta negli handler <code>@ACTION</code> e <code>@POST</code>; restituisci 400 con errori strutturati per i client API.</li>
+        </ul>
+        <h3>23.3.14 Linee guida sullo stile</h3>
+        <p>Tieni layout e convenzioni CSS coerenti tra le pagine:</p>
+        <ul>
+            <li>Usa <code>className</code> per classi semantiche: <code>btn primary</code>, <code>nav-link</code>, <code>panel stack</code>, <code>muted</code>.</li>
+            <li>Layout: <code>stack</code> per l'impilamento verticale, <code>row</code> per il flusso orizzontale; usa <code>style</code> per le colonne grid (<code>grid-template-columns</code>).</li>
+            <li>I template dell'app possono fornire layout, sidebar e controlli entità; referenzia il CSS condiviso tramite un helper di path pubblico.</li>
+        </ul>
+        <pre><code>var body = ui.layout(
+    "templates/layout.html",
+    {"sidebar": sidebarHtml, "pageBody": bodyHtml},
+    {"pageTitle": "Items", "appCssPublicPath": "/static/app.css"}
+);</code></pre>
+        <h3>23.3.15 Errori comuni e debugging</h3>
+        <ul>
+            <li><strong>Fragment che non si aggiorna</strong>: Assicurati che gli header <code>X-Malda-Fragment</code> e <code>X-Malda-Fragment-Target</code> siano impostati; lo script client deve leggerli e aggiornare l'elemento target.</li>
+            <li><strong>Stato perso tra le richieste</strong>: <code>componentState*</code> è scoped alla sessione; passa <code>session</code> in query/body oppure usa un cookie.</li>
+            <li><strong>Handler evento che non scatta / UI bloccata dopo il dispatch</strong>: Svuota con <code>ui.pullEvent</code>, aggiorna lo stato, ricostruisci, poi <code>ui.render</code>. Il warning IDE <code>UI1001</code> segnala dispatch→render senza pull. Vedi <code>Examples/Web/ui_event_loop.malda</code>.</li>
+            <li><strong>@PAGE e alberi ui.* mescolati</strong>: Preferisci un modello per superficie; IDE <code>UI1002</code> (Info) quando un file mescola entrambi. Non passare stringhe HTML a <code>ui.mount</code> / <code>ui.render</code>. Hub: <a href="22-web-ui-hub.html">22. Panoramica Web UI</a>.</li>
+            <li><strong>Cache dei template</strong>: Passa <code>{"cache": false}</code> a <code>ui.template</code> per il reload in sviluppo.</li>
+            <li><strong>Divergenza degli alberi</strong>: Usa <code>ui.snapshot</code> e <code>ui.resync</code> quando gli alberi client e server divergono.</li>
+        </ul>
+        <h2>23.4 Ciclo di vita dalla richiesta al render</h2>
+        <ol>
+            <li>Il browser invia la richiesta a una route <code>@PAGE</code>, <code>@AIPAGE</code>, <code>@ACTION</code> o <code>@GET/@POST</code>.</li>
+            <li>Il server risolve la route e costruisce HTML o un fragment di componente.</li>
+            <li>Per i flussi a componenti, il server aggiorna lo stato (<code>componentState*</code> o <code>ui.state/setState</code>).</li>
+            <li>Il server restituisce un documento completo, una response fragment oppure un envelope di patch del protocollo.</li>
+            <li>Opzionale: i subscriber SSE ricevono messaggi <code>componentLiveEmit</code>/<code>ui.invalidate</code> per gli aggiornamenti live.</li>
+        </ol>
+        <p>Per le parti route-first di questo ciclo di vita, inclusi <code>HttpServer</code>, <code>@PAGE</code> e HTML generato dall'AI, vedi <a href="24-http-server-html-ui.html">HttpServer e generazione UI HTML</a>.</p>
+        <h2>23.5 Checklist di hardening in produzione</h2>
+        <ul>
+            <li>Abilita la protezione CSRF sulle route che mutano (<code>enableCsrf</code>) e verifica il flusso header/cookie da un capo all'altro.</li>
+            <li>Applica i rate limit (<code>setRateLimit</code>) e imposta una strategia di chiave esplicita per le API autenticate.</li>
+            <li>Valida l'input della richiesta (<code>@Validate</code>) e restituisci errori API standardizzati per i client JSON.</li>
+            <li>Imposta limiti <code>ui.configure</code> ragionevoli (<code>maxPayloadBytes</code>, <code>maxEventQueueDepth</code>, <code>sessionTtlMs</code>).</li>
+            <li>Usa stato gestito sul server per gli invarianti di business e tieni lo stato client transiente.</li>
+            <li>Aggiungi correlation ID nei log per il troubleshooting di route, action e SSE.</li>
+        </ul>
+        <h2>23.6 Test e risoluzione dei problemi</h2>
+        <ul>
+            <li>Usa <code>getRoutes()</code> per verificare la registrazione delle route per gli endpoint page/action/live.</li>
+            <li>Testa le response fragment asserendo gli header <code>X-Malda-Fragment</code> e <code>X-Malda-Fragment-Target</code>.</li>
+            <li>Per i problemi SSE, verifica i query parameter del canale e testa con un client <code>EventSource</code> minimo.</li>
+            <li>Quando gli alberi client divergono, ispeziona l'output di <code>ui.snapshot</code> e innesta <code>ui.resync</code>.</li>
+            <li>Per gli alberi di componenti server generati, rivedi il risultato di <code>ui.mountEnvelope</code> e rilancia <code>ui.resync</code> se un client resta indietro.</li>
+        </ul>
+        <h2>23.7 Capitoli correlati ed esempi</h2>
+        <ul>
+            <li><a href="24-http-server-html-ui.html">24. HttpServer e generazione UI HTML</a> copre <code>HttpServer</code>, <code>@PAGE</code>, <code>@AIPAGE</code>, redirect, <code>HTMLCache</code>, <code>extractHTML</code>, <code>generateUI</code> e <code>ui.generate</code> (24.8.5) per alberi <code>ui.*</code> costruiti dall'AI.</li>
+            <li><a href="25-browser-javascript-backend.html">25. Backend UI JavaScript nel browser</a> copre la compilazione MALDA-verso-JavaScript, <code>dom.*</code>, template mode, actor nel browser e <code>game.*</code>.</li>
+            <li><a href="26-rest-api.html">Server REST API</a> resta il riferimento principale per progettazione API, middleware, validazione e route API-first <code>@GET</code>/<code>@POST</code>.</li>
+        </ul>
+        <p>Sample offline e hosted sotto <code>Examples/Web/</code>:</p>
+        <ul>
+            <li><code>ui_event_loop.malda</code> — mount → dispatch → pull → setState → render</li>
+            <li><code>ui_counter_dashboard.malda</code> — lo stesso loop più hook di ciclo di vita e snapshot</li>
+            <li><code>ui_state_lifecycle.malda</code> — peek vs get-or-create, pin, default velenosi</li>
+            <li><code>ui_form_workflow.malda</code> / <code>ui_controls_showcase_minimal.malda</code> — form e catalogo dei controlli</li>
+            <li><code>ui_resync_flow.malda</code> — snapshot / resync quando client e server divergono</li>
+        </ul>
+        <div class="see-also">
+            <h3>Vedi anche</h3>
+            <ul>
+                <li><a href="22-web-ui-hub.html">22. Panoramica Web UI</a> - Scegliere un modello UI</li>
+                <li><a href="24-http-server-html-ui.html">24. HttpServer e generazione UI HTML</a> - Hosting route-first, <code>@PAGE</code> e generazione HTML AI</li>
+                <li><a href="25-browser-javascript-backend.html">25. Backend UI JavaScript nel browser</a> - MALDA transpile in JavaScript per UI ospitata nel browser</li>
+                <li><a href="32-examples.html">32. Esempi</a> - Indice dei sample di UI guidata dal server</li>
+                <li><a href="28-full-stack-development.html">28. Sviluppo full-stack con MALDA</a> - Architettura e modelli di consegna</li>
+            </ul>
+        </div>
+        <div class="nav-footer">
+            <a href="22-web-ui-hub.html">← Precedente: 22. Panoramica Web UI</a>
+            <a href="24-http-server-html-ui.html">Successivo: 24. HttpServer e generazione UI HTML→</a>
+        </div>
+
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, a tua scelta.</p>
+        </footer>
+    </main>
+    <script src="../malda-highlight.js"></script>
+    <script src="../navigation.js"></script>
+</body>
+</html>

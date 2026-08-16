@@ -83,7 +83,7 @@ public class ReferenceManualRunnableSnippetTests : TestBase
         var manualDir = PlanningPaths.ResolveRepoPath("ReferenceManual");
         var snippets = new List<Snippet>();
 
-        foreach (var path in Directory.EnumerateFiles(manualDir, "*.html").OrderBy(p => p, StringComparer.Ordinal))
+        foreach (var path in Directory.EnumerateFiles(manualDir, "*.html", SearchOption.TopDirectoryOnly).OrderBy(p => p, StringComparer.Ordinal))
         {
             var html = File.ReadAllText(path);
             var page = Path.GetFileNameWithoutExtension(path);

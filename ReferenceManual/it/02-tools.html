@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Strumenti e toolchain MALDA - interprete, compilatore e gestore di pacchetti">
+    <title>2. Strumenti e toolchain - Manuale di riferimento MALDA</title>
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../syntax.css">
+    <link rel="stylesheet" href="../print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>Manuale di riferimento MALDA&trade;</h1>
+        <p>Il linguaggio di programmazione AI-First - Versione 1.0.0</p>
+    </header>
+
+    <nav></nav>
+
+    <main>
+        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>2. Strumenti e toolchain</span></div>
+
+        <h1>2. Strumenti e toolchain</h1>
+
+        <p>MALDA offre un set completo di strumenti di sviluppo: un interprete interattivo, un compilatore dual-mode e un gestore di pacchetti. Questo capitolo spiega come usarli per sviluppare, eseguire e distribuire applicazioni MALDA.</p>
+
+        <h2>2.1 Interprete</h2>
+
+        <p>L'interprete MALDA consente di eseguire codice MALDA in modo interattivo oppure di lanciare file sorgente. Offre sia una modalità REPL interattiva (Read-Eval-Print Loop) sia l'esecuzione da riga di comando.</p>
+
+        <h3>2.1.1 Modalità interattiva</h3>
+
+        <p>Per avviare l'interprete interattivo, esegui semplicemente <code>malda</code> senza argomenti:</p>
+
+        <pre><code>$ malda
+MALDA (Multi Agent Language with Development Automation) Interpreter
+Version 1.0.0
+You can enter multiline code - the interpreter will continue reading until you type 'run', 'compile', or 'transpile'
+Type 'exit' to quit, 'run' to execute, 'compile' or 'transpile' to build executable, 'help' for help
+(c) 2026 - Andrea Maldini
+> </code></pre>
+
+        <p>In modalità interattiva puoi:</p>
+
+        <ul>
+            <li><strong>Inserire codice</strong>: digita codice MALDA riga per riga. L'interprete continua a leggere finché non inserisci un comando.</li>
+            <li><strong><code>run</code></strong>: esegue il codice inserito</li>
+            <li><strong><code>compile</code></strong>: compila il codice inserito in un eseguibile (modalità interpreter)</li>
+            <li><strong><code>transpile</code></strong>: compila il codice inserito in un eseguibile (transpile verso C#)</li>
+            <li><strong><code>help</code></strong>: mostra il messaggio di aiuto con i comandi disponibili e le funzionalità del linguaggio</li>
+            <li><strong><code>exit</code></strong>: esce dall'interprete</li>
+        </ul>
+
+        <h4>Esempio: sessione interattiva</h4>
+
+        <pre><code>> var x = 10;
+> var y = 20;
+> function add(a, b) { return a + b; }
+> print(add(x, y));
+> run
+30
+> </code></pre>
+
+        <h3>2.1.2 Uso da riga di comando</h3>
+
+        <p>L'interprete può anche eseguire codice dalla riga di comando:</p>
+
+        <h4>Eseguire un file MALDA</h4>
+
+        <pre><code>malda &lt;file.malda&gt;</code></pre>
+
+        <p>Esegue il file sorgente MALDA indicato.</p>
+
+        <h4>Eseguire codice direttamente</h4>
+
+        <pre><code>malda -e "&lt;code&gt;"
+malda --eval "&lt;code&gt;"</code></pre>
+
+        <p>Esegue direttamente la stringa di codice fornita.</p>
+
+        <h4>Eseguire da standard input</h4>
+
+        <pre><code>echo "print('Hello, World!');" | malda</code></pre>
+
+        <p>Legge ed esegue il codice dallo standard input.</p>
+
+        <h4>Validare solo la sintassi</h4>
+
+        <pre><code>malda --check "&lt;code&gt;"</code></pre>
+
+        <p>Valida la sintassi del codice fornito senza eseguirlo. Utile per il controllo della sintassi nelle pipeline CI/CD.</p>
+
+        <h3>2.1.3 Ottenere aiuto</h3>
+
+        <p>Per vedere tutti i comandi e le funzionalità del linguaggio disponibili, usa:</p>
+
+        <pre><code>malda help
+malda --help
+malda -h</code></pre>
+
+        <p>Viene mostrato un aiuto completo che include:</p>
+
+        <ul>
+            <li>Comandi interattivi</li>
+            <li>Esempi di uso da riga di comando</li>
+            <li>Opzioni di compilazione</li>
+            <li>Basi del linguaggio e sintassi</li>
+            <li>Funzioni built-in</li>
+            <li>Funzionalità AI</li>
+            <li>Esempi rapidi</li>
+        </ul>
+
+        <h2>2.2 Compilatore</h2>
+
+        <p>Il compilatore MALDA può creare eseguibili standalone dal codice sorgente MALDA. Supporta due modalità di compilazione: <strong>modalità interpreter</strong> e <strong>modalità transpile</strong>.</p>
+
+        <h3>Modalità di runtime in sintesi</h3>
+        <p>Il codice MALDA può girare in tre contesti di esecuzione comuni. Usa questa tabella per scegliere il percorso giusto prima di compilare o distribuire.</p>
+        <table>
+            <tr><th>Capacità</th><th>Interprete<br><code>malda &lt;file.malda&gt;</code></th><th>Eseguibile transpile<br><code>malda compile --mode transpile</code></th><th>Backend JavaScript<br>(vedi <a href="25-browser-javascript-backend.html">25. Backend UI JavaScript nel browser</a>)</th></tr>
+            <tr><td>Linguaggio core (variabili, funzioni, classi, match, async)</td><td>Sì</td><td>Sì</td><td>Sì (sottoinsieme documentato)</td></tr>
+            <tr><td>Prompt, agenti, tool calling</td><td>Sì</td><td>Sì</td><td>Limitato; preferibile sul server</td></tr>
+            <tr><td><code>HttpServer</code>, <code>RestServer</code>, <code>@PAGE</code></td><td>Sì</td><td>Sì</td><td>Solo lato server; il browser usa HTTP verso l'API MALDA</td></tr>
+            <tr><td>Client database (<code>SqliteClient</code>, ecc.)</td><td>Sì</td><td>Sì</td><td>No (restano sul server)</td></tr>
+            <tr><td>Decoratori di target (<code>@server()</code>, <code>@client()</code>, <code>@shared()</code>)</td><td>N/A a runtime</td><td>Target C#</td><td>Split JS + C# al momento del transpile</td></tr>
+            <tr><td>Debugger del Desktop IDE</td><td>Supporto completo (Desktop/Web IDE; VS Code/Cursor F5 tramite <code>malda debug-adapter</code>)</td><td>Le esecuzioni transpile sono supportate tramite mapping <code>#line</code> — non DAP</td><td>N/A</td></tr>
+            <tr><td>Prestazioni tipiche</td><td>Iterazione rapida</td><td>Ideale per .exe di produzione</td><td>Dipende dal browser</td></tr>
+        </table>
+        <p><strong>Regola pratica:</strong> sviluppa e fai debug con l'interprete; distribuisci le app server sensibili alle prestazioni in modalità transpile; usa il backend JavaScript quando la UI deve girare nel browser e MALDA resta sul server o in un bundle JS.</p>
+
+        <h3>2.2.1 Modalità di compilazione</h3>
+
+        <h4>Modalità Interpreter (default)</h4>
+
+        <p>In modalità interpreter, il compilatore incorpora il codice sorgente MALDA e l'interprete del runtime MALDA in un eseguibile standalone. Quando l'eseguibile gira, usa l'interprete incorporato per eseguire il codice sorgente.</p>
+
+        <p><strong>Vantaggi:</strong></p>
+        <ul>
+            <li>Compilazione rapida</li>
+            <li>Piena flessibilità a runtime</li>
+            <li>Debug agevole</li>
+        </ul>
+
+        <p><strong>Usala quando:</strong></p>
+        <ul>
+            <li>Sviluppo e test rapidi</li>
+            <li>Ti servono tutte le funzionalità dell'interprete</li>
+            <li>La dimensione del codice non è un problema</li>
+        </ul>
+
+        <h4>Modalità Transpile</h4>
+
+        <p>In modalità transpile, il compilatore prima fa transpile del codice MALDA verso <code>C#</code>, poi compila il codice <code>C#</code> in un eseguibile nativo <code>.NET</code>. L'eseguibile risultante include il runtime MALDA integrato direttamente nel codice compilato.</p>
+
+        <p><strong>Vantaggi:</strong></p>
+        <ul>
+            <li>Prestazioni migliori (codice <code>.NET</code> nativo)</li>
+            <li>Eseguibile più piccolo (nessun interprete incorporato)</li>
+            <li>Piena integrazione <code>.NET</code></li>
+        </ul>
+
+        <p><strong>Usala quando:</strong></p>
+        <ul>
+            <li>Le prestazioni sono critiche</li>
+            <li>Vuoi eseguibili più piccoli</li>
+            <li>Ti servono le prestazioni native <code>.NET</code></li>
+        </ul>
+
+        <h4>Modalità DLL</h4>
+
+        <p>La modalità DLL fa transpile del codice MALDA verso <code>C#</code> e lo compila come libreria <code>.NET DLL</code> invece che come eseguibile. Così puoi creare librerie MALDA riutilizzabili da referenziare in altri progetti <code>.NET</code>.</p>
+
+        <p><strong>Usala quando:</strong></p>
+        <ul>
+            <li>Crei librerie riutilizzabili</li>
+            <li>Integri codice MALDA in progetti .NET esistenti</li>
+            <li>Costruisci librerie di componenti</li>
+        </ul>
+
+        <h3>2.2.2 Compilare dalla riga di comando</h3>
+
+        <h4>Compilazione di base</h4>
+
+        <pre><code>malda compile &lt;file.malda&gt;</code></pre>
+
+        <p>Compila un file MALDA in un eseguibile usando la modalità interpreter (default). L'eseguibile di output prende il nome dal file di input (es. <code>program.exe</code> da <code>program.malda</code>).</p>
+
+        <h4>Specificare il path di output</h4>
+
+        <pre><code>malda compile &lt;file.malda&gt; -o &lt;output.exe&gt;
+malda compile &lt;file.malda&gt; --output &lt;output.exe&gt;</code></pre>
+
+        <p>Specifica il path dell'eseguibile di output.</p>
+
+        <h4>Scegliere la modalità di compilazione</h4>
+
+        <pre><code>malda compile &lt;file.malda&gt; --mode interpreter
+malda compile &lt;file.malda&gt; --mode transpile
+malda compile &lt;file.malda&gt; --mode dll</code></pre>
+
+        <p>Seleziona la modalità di compilazione. Se non specificata, viene usata di default la modalità <code>interpreter</code>.</p>
+
+        <h4>Incorporare una cartella nell'eseguibile</h4>
+
+        <pre><code>malda compile app.malda -o app.exe --mode transpile --embed-folder secondbrain
+malda compile app.malda -o app.exe --mode transpile --embed-folder ./data=assets</code></pre>
+
+        <p>Impacchetta una directory nell'eseguibile pubblicato come risorse dell'assembly. A runtime, i programmi leggono quei file con lo schema virtuale <code>embed:&lt;alias&gt;/&lt;relative&gt;</code> (vedi <a href="12-built-in-functions.html">Funzioni built-in</a> §12.8.0). L'alias di default è il nome della cartella; usa <code>path=alias</code> per rinominarlo. Il flag è ripetibile. I file non vengono estratti su disco.</p>
+
+        <h4>Compilare codice direttamente</h4>
+
+        <pre><code>malda -c "&lt;code&gt;" -o output.exe --mode transpile
+malda --compile "&lt;code&gt;" -o output.exe --mode interpreter</code></pre>
+
+        <p>Compila il codice fornito direttamente sulla riga di comando invece che da un file. Se <code>--mode</code> non è specificato, viene usata di default la modalità <code>interpreter</code>.</p>
+
+        <h3>2.2.3 Esempi di compilazione</h3>
+
+        <h4>Esempio 1: compilazione di base (modalità Interpreter)</h4>
+
+        <pre><code>$ malda compile hello.malda -o hello.exe
+Compiling hello.malda...
+Output: hello.exe
+Mode: Interpreter
+Compilation successful! Executable saved to: hello.exe</code></pre>
+
+        <h4>Esempio 2: modalità Transpile</h4>
+
+        <pre><code>$ malda compile app.malda -o app.exe --mode transpile
+Compiling app.malda...
+Output: app.exe
+Mode: TranspileToCSharp
+Compilation successful! Executable saved to: app.exe</code></pre>
+
+        <h4>Esempio 3: creare una libreria <code>DLL</code></h4>
+
+        <pre><code>$ malda compile library.malda -o library.dll --mode dll
+Compiling library.malda...
+Output: library.dll
+Mode: TranspileToDll
+Compilation successful! DLL saved to: library.dll</code></pre>
+
+        <h3>2.2.4 Funzionalità degli eseguibili compilati</h3>
+
+        <p>Gli eseguibili compilati includono:</p>
+
+        <ul>
+            <li><strong>Runtime MALDA incorporato</strong>: il runtime MALDA completo è incorporato nell'eseguibile</li>
+            <li><strong>Capacità AI</strong>: tutte le funzionalità AI (client LLM, agenti, tool) sono disponibili negli eseguibili compilati</li>
+            <li><strong>Esecuzione standalone</strong>: non serve installare MALDA sulla macchina di destinazione (per la modalità interpreter)</li>
+            <li><strong>Dipendenze esterne</strong>: alcune dipendenze esterne (es. librerie client SQL Server/PostgreSQL, <code>DLL</code> native LLamaSharp) possono richiedere <code>DLL</code> aggiuntive da distribuire accanto all'eseguibile</li>
+        </ul>
+
+        <div class="info-box">
+            <strong>Nota:</strong> in modalità transpile, l'eseguibile è un'applicazione <code>.NET</code> nativa e richiede il runtime <code>.NET</code> installato sulla macchina di destinazione (a meno che non sia pubblicato come self-contained).
+        </div>
+
+        <h2>2.3 Gestore di pacchetti</h2>
+
+        <p>MALDA riusa le librerie tramite <strong>pacchetti workspace</strong> sotto una directory locale <code>packages/</code>, copie opzionali nello store installato (<code>~/.maldalang/packages</code>) e <code>import</code> nel sorgente. <strong>Non esiste un hub pubblico di pacchetti ospitato dal progetto</strong>; i comandi di registry remoto sono opzionali per registry privati o self-hosted.</p>
+
+        <h3>2.3.1 Pacchetti workspace (preferiti)</h3>
+
+        <p>Metti una libreria sotto <code>packages/&lt;name&gt;/</code> con un file <code>.malda</code> di ingresso (per <code>malda-foo</code>, in genere <code>foo.malda</code>, altrimenti <code>index.malda</code> / <code>main.malda</code>). Da una working directory all'interno di quell'albero — o con <code>MALDA_PACKAGES_DIR</code> / <code>MALDA_SDK_ROOT</code> impostate — importa senza installare:</p>
+
+        <pre><code>import malda-demo-math;
+import { clamp, VERSION } from malda-demo-math;</code></pre>
+
+        <p>Ordine di risoluzione: prima lo store installato, poi le radici workspace (variabili d'ambiente, poi risalita in cerca di <code>packages/</code>). Vedi la demo OSS in <code>packages/malda-demo-math/</code> e la nota di design <code>docs/workspace-packages.md</code>.</p>
+
+        <pre><code>malda list --workspace
+malda Examples/Modules/workspace_package.malda</code></pre>
+
+        <h3>2.3.2 Comandi di pacchetto offline</h3>
+
+        <p>Questi comandi <strong>non</strong> richiedono <code>MALDA_REGISTRY_URL</code>:</p>
+
+        <h4>Elencare i pacchetti workspace o installati</h4>
+
+        <pre><code>malda list --workspace
+malda list</code></pre>
+
+        <p><code>list --workspace</code> mostra i pacchetti visibili dalle radici workspace. <code>list</code> mostra i pacchetti già copiati in <code>~/.maldalang/packages</code>.</p>
+
+        <h4>Installare da un path locale</h4>
+
+        <pre><code>malda install ./packages/malda-demo-math
+malda install ./my-lib/package.json</code></pre>
+
+        <p>Copia una directory locale, un <code>package.json</code> o un ingresso <code>.malda</code> nello store installato, così <code>import</code> può risolverlo senza un albero <code>packages/</code> del workspace.</p>
+
+        <h4>Uninstall / Init</h4>
+
+        <pre><code>malda uninstall mypackage
+malda uninstall mypackage@1.2.3
+malda init [directory]</code></pre>
+
+        <p><code>init</code> scrive un <code>package.json</code> di partenza nella directory di destinazione.</p>
+
+        <h3>2.3.3 Registry remoto opzionale</h3>
+
+        <p>Gli <code>install &lt;name&gt;</code> remoti e <code>search</code> richiedono <code>MALDA_REGISTRY_URL</code> che punti all'API del <em>tuo</em> registry. Il progetto OSS non gestisce un hub pubblico in stile npm. Se la variabile non è impostata, falliscono solo i comandi remoti; l'import workspace, <code>list</code>, <code>list --workspace</code>, l'<code>install &lt;path&gt;</code> locale, <code>uninstall</code> e <code>init</code> continuano a funzionare.</p>
+
+        <pre><code># Optional — only for a private/self-hosted registry
+export MALDA_REGISTRY_URL=https://your-registry.example.com
+
+malda install mypackage
+malda install mypackage@1.2.3
+malda search http</code></pre>
+
+        <h3>2.3.4 Usare i pacchetti nel codice</h3>
+
+        <p>Preferisci <code>import</code> (forma canonica). <code>using</code> resta un alias per i caricamenti di pacchetto:</p>
+
+        <pre><code>import mypackage;
+import { helper } from mypackage;
+
+var result = helper();</code></pre>
+
+        <h3>2.3.5 Dipendenze dei pacchetti e storage</h3>
+
+        <p>Quando si installa da un registry remoto, le dipendenze dichiarate nei metadati del pacchetto vengono risolte e installate per prime. Le installazioni da path locale copiano la cartella selezionata così com'è.</p>
+
+        <p>Lo store installato tiene i file dei pacchetti, i metadati <code>package.json</code> e le versioni sotto <code>~/.maldalang/packages</code>. I pack workspace sotto <code>packages/</code> del repo non devono necessariamente essere copiati lì.</p>
+
+        <h2>2.4 Flusso di lavoro di sviluppo</h2>
+
+        <p>Ecco un flusso di lavoro tipico per sviluppare applicazioni MALDA:</p>
+
+        <ol>
+            <li><strong>Scrivere il codice</strong>: crea i file sorgente MALDA (es. <code>app.malda</code>)</li>
+            <li><strong>Testare in modo interattivo</strong>: usa l'interprete interattivo per provare snippet di codice:
+                <pre><code>malda
+> // Test your code here
+> run</code></pre>
+            </li>
+            <li><strong>Eseguire il programma completo</strong>: lancia il programma intero:
+                <pre><code>malda app.malda</code></pre>
+            </li>
+            <li><strong>Condividere librerie</strong>: metti il codice riutilizzabile sotto <code>packages/&lt;name&gt;/</code> e fai <code>import</code> (oppure <code>malda install ./path</code> nello store locale). Usa <code>malda list --workspace</code> per confermare la discovery.</li>
+            <li><strong>Compilare per la distribuzione</strong>: crea un eseguibile standalone:
+                <pre><code>malda compile app.malda -o app.exe --mode transpile</code></pre>
+            </li>
+        </ol>
+
+        <h2>2.5 Integrazione IDE</h2>
+
+        <p>MALDA distribuisce più di una superficie di editor. Non sono equivalenti per funzionalità:</p>
+
+        <ul>
+            <li><strong>Desktop IDE</strong>: applicazione Windows nativa — l'IDE di <strong>riferimento</strong> (flussi di progetto completi, UI dei pacchetti, modelli locali / MCP dove disponibili, tab virtuali <code>@malda-section</code>, compilazione più ricca)</li>
+            <li><strong>Web IDE</strong>: playground di apprendimento nel browser (Monaco) per modifica / esecuzione / debug ed esempi — utile cross-platform, ma <strong>non</strong> a parità con il Desktop</li>
+            <li><strong>VS Code / LSP</strong>: editing cross-platform tramite il language server, più debug F5 in modalità interpret attraverso <code>vscode-malda</code> (vedi <a href="#interpret-mode-debug">2.6.5</a>)</li>
+        </ul>
+
+        <p>Il Desktop IDE offre:</p>
+
+        <ul>
+            <li>Syntax highlighting</li>
+            <li>Completamento del codice</li>
+            <li>Interprete integrato per eseguire il codice</li>
+            <li>Compilatore integrato per creare eseguibili</li>
+            <li>UI di gestione dei pacchetti</li>
+            <li>Supporto al debugging</li>
+        </ul>
+
+        <h2 id="language-server">2.6 Language Server (LSP)</h2>
+
+        <p>MALDA include un'implementazione del <strong>Language Server Protocol (LSP)</strong> così che editor come <strong>VS Code</strong>, <strong>Cursor</strong> e qualsiasi altro editor compatibile LSP possano offrire supporto avanzato all'editing dei file <code>.malda</code>: diagnostica, completamento, hover, go to definition, find references, rename, code action, signature help, formattazione e ricerca di simboli nel workspace.</p>
+
+        <h3>2.6.1 Cosa offre il language server MALDA</h3>
+
+        <ul>
+            <li><strong>Sincronizzazione dei documenti</strong>: tiene traccia di apertura, modifica e chiusura dei file <code>.malda</code></li>
+            <li><strong>Diagnostica</strong>: errori del parser e validazione dei decoratori (pubblicata dopo un breve debounce in modifica)</li>
+            <li><strong>Completamento</strong>: keyword, built-in, decoratori e simboli (classi, funzioni, variabili, membri)</li>
+            <li><strong>Hover</strong>: documentazione per simboli e decoratori</li>
+            <li><strong>Simboli del documento</strong>: outline (classi, funzioni, actor, prompt e i loro membri)</li>
+            <li><strong>Go to definition</strong>: salta alla dichiarazione di classi, funzioni, actor, prompt e variabili (singolo file)</li>
+            <li><strong>Find references</strong>: tutti i riferimenti al simbolo sotto il cursore (singolo file)</li>
+            <li><strong>Rename</strong>: rinomina il simbolo con validazione (singolo file)</li>
+            <li><strong>Code action</strong>: correzioni rapide per errori del parser (es. inserire una graffa o un punto e virgola mancanti)</li>
+            <li><strong>Signature help</strong>: firma della funzione e parametro attivo nei punti di chiamata</li>
+            <li><strong>Formattazione</strong>: indentazione in base al nidificarsi delle graffe (documento intero o selezione)</li>
+            <li><strong>Simbolo del workspace</strong>: ricerca di simboli (classi, funzioni, actor, prompt) nei documenti aperti</li>
+        </ul>
+
+        <h3>2.6.2 Configurare VS Code</h3>
+
+        <ol>
+            <li>Installa l'<strong>estensione</strong> che aggiunge il supporto client LSP per linguaggi personalizzati (es. “LSP” di roguelynn, oppure il supporto built-in se la tua estensione lo usa). In alternativa, usa un'estensione generica “Language Server” o “MALDA” se ne esiste una.</li>
+            <li>Configura il language server MALDA in VS Code. Per un LSP personalizzato che lancia un eseguibile:
+                <ul>
+                    <li>Apri <strong>Settings</strong> (JSON) e aggiungi una configurazione client che esegue l'eseguibile <code>malda-lsp</code> con <strong>stdio</strong> e language id <code>malda</code> per i file <code>*.malda</code>.</li>
+                </ul>
+            </li>
+        </ol>
+
+        <p>Esempio di snippet <code>settings.json</code> (adatta il path al tuo eseguibile <code>malda-lsp</code>):</p>
+
+        <pre><code>{
+  "malda-lsp.serverPath": "C:\\path\\to\\malda-lsp.exe",
+  "malda-lsp.trace.server": "off"
+}</code></pre>
+
+        <p>Se il setup usa un client LSP generico (es. estensione “LSP”) con una definizione “server”:</p>
+
+        <pre><code>{
+  "lsp.servers.malda": {
+    "command": "C:\\path\\to\\malda-lsp.exe",
+    "fileTypes": ["malda"],
+    "languageId": "malda"
+  }
+}</code></pre>
+
+        <p>Assicurati che i file <code>.malda</code> siano associati al language id <code>malda</code> (es. tramite “Change Language Mode” o un'estensione che registra il linguaggio <code>malda</code>). Il debug F5 in modalità interpret è un secondo processo — vedi <a href="#interpret-mode-debug">2.6.5 Debug in modalità interpret</a>.</p>
+
+        <h3>2.6.3 Configurare Cursor</h3>
+
+        <p>Cursor è basato su VS Code e usa gli stessi meccanismi di configurazione. Usa uno di questi approcci:</p>
+
+        <ol>
+            <li><strong>Come in VS Code</strong>: se usi un'estensione client LSP in Cursor, aggiungi la stessa configurazione del server MALDA dell'esempio VS Code sopra (es. nel <code>settings.json</code> di Cursor o nella config dell'estensione). Punta <code>command</code> / <code>serverPath</code> al tuo eseguibile <code>malda-lsp</code>.</li>
+            <li><strong>Impostazioni del workspace</strong>: nella cartella del progetto, crea o modifica <code>.vscode/settings.json</code> (Cursor lo rispetta) e aggiungi lì la configurazione del server LSP MALDA, così tutti nel repo hanno lo stesso setup.</li>
+        </ol>
+
+        <p>Esempio di <code>.vscode/settings.json</code> nel progetto:</p>
+
+        <pre><code>{
+  "lsp.servers.malda": {
+    "command": "C:\\path\\to\\malda-lsp.exe",
+    "fileTypes": ["malda"],
+    "languageId": "malda"
+  }
+}</code></pre>
+
+        <p>Usa il path completo del tuo eseguibile <code>malda-lsp</code>.</p>
+
+        <h3>2.6.4 Altri editor</h3>
+
+        <p>Qualsiasi editor che possa avviare un language server via <strong>stdio</strong> e inviare richieste LSP (es. Sublime Text con plugin LSP, Vim/Neovim con client LSP, Emacs con eglot/lsp-mode) può usare il language server MALDA. Configura l'editor per eseguire <code>malda-lsp.exe</code> (o il path del tuo eseguibile <code>malda-lsp</code>) come language server per i file <code>.malda</code> e, se richiesto, imposta il language id a <code>malda</code>.</p>
+
+        <h3 id="interpret-mode-debug">2.6.5 Debug in modalità interpret</h3>
+
+        <p><code>malda debug-adapter</code> parla il <strong>Debug Adapter Protocol (DAP)</strong> su stdin/stdout. È un processo separato dal language server: non inviare DAP sulla pipe stdio di <code>malda-lsp</code>, e non stampare banner CLI sullo stdout dell'adapter.</p>
+
+        <p>L'estensione in-repo <code>vscode-malda</code> contribuisce il debugger type <code>malda</code>. Premi <strong>F5</strong> su un file <code>.malda</code> per lanciare l'interprete sotto l'adapter (<code>malda.cli.path</code> punta a un eseguibile <code>malda</code> che comprende <code>debug-adapter</code>). L'intelligenza del linguaggio resta su <code>malda-lsp</code>.</p>
+
+        <p>Questo percorso è <strong>solo interpret</strong>. Non esiste la keyword <code>debugger</code>. I fallimenti di transpile e il mapping <code>#line</code> restano in <a href="../../docs/debugging-transpile.md"><code>docs/debugging-transpile.md</code></a>. Procedure, breakpoint e ciò che non si ferma sono in <a href="../../docs/debugging-interpret.md"><code>docs/debugging-interpret.md</code></a>.</p>
+
+        <h2>2.7 Property testing (panoramica)</h2>
+
+        <p>MALDA offre property testing deterministico, basato su seed, tramite <code>malda test</code>. L'uso tipico nei flussi di tooling include:</p>
+        <ul>
+            <li>Replay stabile con <code>--iterations</code> e <code>--seed</code></li>
+            <li>Output orientato alla CI con <code>--format ci</code></li>
+            <li>Generazione di artifact di regressione con <code>--write-regression</code></li>
+        </ul>
+        <pre><code>malda test --iterations 100 --seed 1337
+malda test --format ci --iterations 100 --seed 1337
+malda test --write-regression --regression-dir ./artifacts/regressions</code></pre>
+        <p>Per la sintassi del linguaggio, i decoratori di capability, <code>runProperty(...)</code>, la semantica di eleggibilità dei backend e i workflow completi, vedi <a href="33-property-testing.html">Property testing</a>.</p>
+
+        <h2>2.8 Scrivere MALDA con un agente di coding</h2>
+
+        <p>MALDA non compare nei dati di addestramento dei modelli di linguaggio attuali, quindi un agente a cui si chiede di scrivere sorgente <code>.malda</code> senza contesto inventerà una sintassi che non esiste. Il repository distribuisce un <strong>language pack</strong> compatto che risolve il problema: qualche migliaio di token di idiomi, grammatica ed esempi che un agente legge prima di scrivere. È un percorso di authoring supportato, non una curiosità — il programma più grande scritto in MALDA, l'agente di coding autonomo in <code>Examples/RalphWiggum/</code> (circa 4.000 righe su undici file), è stato prodotto in questo modo.</p>
+
+        <h3>2.8.1 Il language pack</h3>
+
+        <p>Il pack vive in <code>docs/llm/</code>. Ogni file ha un compito distinto, così carichi solo ciò che serve al compito:</p>
+
+        <table>
+            <tr><th>File</th><th>Contenuti</th><th>Caricalo quando</th></tr>
+            <tr><td><code>docs/llm/malda-syntax.md</code></td><td>Idiomi, stile preferito, coppie do/don't</td><td>Sempre</td></tr>
+            <tr><td><code>docs/llm/malda-gotchas.md</code></td><td>Errori che girano senza errore e producono output sbagliato</td><td>Sempre</td></tr>
+            <tr><td><code>docs/llm/few-shot/</code></td><td>Piccoli programmi eseguibili, un costrutto ciascuno</td><td>Scegline 2-4 che coincidano con il compito</td></tr>
+            <tr><td><code>docs/llm/malda-grammar.md</code></td><td>BNF in testo semplice, allineato al parser</td><td>Costrutti poco familiari o nidificati</td></tr>
+            <tr><td><code>docs/llm/malda-builtins-min.md</code></td><td>Built-in ad alta frequenza e gli oggetti top-level che esistono</td><td>Il programma chiama funzioni di libreria</td></tr>
+            <tr><td><code>docs/llm/malda-builtins.tsv</code></td><td>Ogni built-in con grafia preferita, argomenti e gotcha. Generato dal motore da <code>scripts/sync-llm-builtins-tsv.ps1</code></td><td>Controllo di un nome specifico</td></tr>
+        </table>
+
+        <p>Per domande più approfondite, punta l'agente a <code>Examples/</code>, a questo manuale e alla specifica del linguaggio in <code>docs/spec/malda-language-1.0.md</code>. Il file radice <code>llms.txt</code> è un indice compatto della documentazione per gli strumenti che consumano un solo punto di ingresso.</p>
+
+        <div class="info-box">
+            <p><strong>Due lavori diversi, due contesti diversi.</strong> Usa <code>docs/llm/</code> quando l'agente deve <em>scrivere o revisionare programmi MALDA</em>. Usa <code>AGENTS.md</code> quando l'agente deve <em>modificare il motore stesso</em> — lexer, parser, interprete, transpiler o IDE in C#. Caricare quello sbagliato produce lavoro convinto sullo strato sbagliato.</p>
+        </div>
+
+        <h3>2.8.2 L'interprete è il ciclo di feedback</h3>
+
+        <p>Il MALDA generato va eseguito, non revisionato a occhio. L'interprete parte in fretta e riporta errori di parse e di runtime con riga e colonna, segnale sufficiente perché un agente si corregga senza ulteriori istruzioni:</p>
+
+        <pre><code>malda path/to/program.malda</code></pre>
+
+        <p>Da un checkout del sorgente, l'equivalente è:</p>
+
+        <pre><code>dotnet run --project MaldaLang -- path/to/program.malda</code></pre>
+
+        <p>Due abitudini fanno convergere il ciclo più in fretta. Tieni i programmi generati abbastanza piccoli da girare in isolamento e componili con <code>include</code> (vedi <a href="01-introduction.html#modules">1.6 Composizione del sorgente</a>) invece di generare un file unico enorme. E installa il language server (<a href="#language-server">2.6 Language Server (LSP)</a>) nell'editor in cui gira l'agente, così le diagnostiche appaiono sul sorgente mentre viene scritto, non solo quando viene eseguito.</p>
+
+        <p>I programmi che leggono input o usano casualità sembrano non verificabili a un agente, che non può sedersi a un prompt. Non è così. Semina il generatore con <code>math.seed(n)</code> così ogni ramo è raggiungibile di proposito, poi alimenta <code>input()</code> con un transcript scriptato su stdin:</p>
+
+        <pre><code>printf '50\n25\n39\n' | malda guess_number.malda</code></pre>
+
+        <p>Seme, pipe di un transcript, assert sull'output. Così un programma interattivo passa da qualcosa su cui un agente fa asserzioni a qualcosa che può dimostrare. Nota che Spectre.Console toglie il colore quando stdout non è un terminale, quindi l'output in pipe non porta sequenze di escape anche quando il markup è corretto.</p>
+
+        <h3>2.8.3 Modalità di fallimento note</h3>
+
+        <p>Questi sono gli errori che un agente commette più spesso quando il pack non è caricato, o è caricato solo in parte:</p>
+
+        <ul>
+            <li><strong>Keyword prese in prestito.</strong> <code>let</code> non esiste — le variabili si dichiarano con <code>var</code>. <code>fn</code> e <code>def</code> sono errori di sintassi; usa <code>function</code>.</li>
+            <li><strong>Parametri di prompt tipizzati.</strong> Le dichiarazioni di prompt accettano parametri solo per nome; <code>prompt p(name: string)</code> non è valido. Un <code>-&gt; ReturnType</code> su un prompt è solo informativo.</li>
+            <li><strong>Built-in inventati.</strong> Un nome plausibile di un altro linguaggio non si risolve. <code>println</code> è la vittima più frequente; la chiamata è <code>print</code>. Fai grep su <code>docs/llm/malda-builtins.tsv</code>, che è generato dal motore, oppure leggi <a href="12-built-in-functions.html">12. Funzioni built-in</a>.</li>
+            <li><strong>String interpolation fuori dal corpo di un prompt.</strong> <code>"n is {n}"</code> stampa letteralmente; non solleva un errore. Concatena con <code>+ string(n)</code>.</li>
+            <li><strong>Built-in solo dell'interprete nei target compilati.</strong> Un programma che gira interpretato può fallire il transpile. Verifica con <code>malda compile</code> prima di promettere un eseguibile.</li>
+            <li><strong>Annotazioni di tipo trattate come enforcement.</strong> Le annotazioni vengono parsate e alimentano il language server. I mismatch degli inizializzatori letterali producono un Warning in IDE/LSP, ma a runtime nessuno controlla i type hint, quindi un agente non deve basarsi su di essi per la validazione.</li>
+        </ul>
+
+        <div class="see-also">
+            <h3>Vedi anche</h3>
+            <ul>
+                <li><a href="01-introduction.html">1. Introduzione</a> - Panoramica del linguaggio e delle funzionalità</li>
+                <li><a href="03-lexical-structure.html">3. Struttura lessicale</a> - Sintassi e struttura del linguaggio</li>
+                <li><a href="09-functions.html">9. Funzioni</a> - Definizione e uso delle funzioni</li>
+            </ul>
+        </div>
+
+        <div class="nav-footer">
+            <a href="01-introduction.html">← Precedente: 1. Introduzione</a>
+            <a href="03-lexical-structure.html">Successivo: 3. Struttura lessicale→</a>
+        </div>
+
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, a tua scelta.</p>
+        </footer>
+    </main>
+    <script src="../malda-highlight.js"></script>
+    <script src="../navigation.js"></script>
+</body>
+</html>

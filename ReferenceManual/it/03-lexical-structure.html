@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Struttura lessicale MALDA - commenti, identificatori, keyword, operatori">
+    <title>3. Struttura lessicale - Manuale di riferimento MALDA</title>
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../syntax.css">
+    <link rel="stylesheet" href="../print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>Manuale di riferimento MALDA&trade;</h1>
+        <p>Il linguaggio di programmazione AI-First - Versione 1.0.0</p>
+    </header>
+
+    <nav></nav>
+
+    <main>
+        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>3. Struttura lessicale</span></div>
+
+        <h1>3. Struttura lessicale</h1>
+
+        <p>La struttura lessicale di MALDA definisce i mattoni di base del linguaggio: commenti, identificatori, keyword, letterali, operatori e delimitatori.</p>
+
+        <h2>3.1 Commenti</h2>
+
+        <p>MALDA supporta due tipi di commenti:</p>
+
+        <h3>Commenti su una riga</h3>
+        <p>I commenti su una riga iniziano con <code>//</code> e continuano fino a fine riga:</p>
+        <pre><code>// This is a single-line comment
+var x = 10; // Comments can also appear after code</code></pre>
+
+        <h3>Commenti su più righe</h3>
+        <p>I commenti su più righe sono racchiusi tra <code>/*</code> e <code>*/</code>:</p>
+        <pre><code>/* This is a
+   multi-line comment
+   that spans multiple lines */</code></pre>
+
+        <div class="info-box">
+            <strong>Nota:</strong> i commenti su più righe non si possono nidificare. Un <code>/*</code> dentro un commento su più righe non avvia un nuovo commento.
+        </div>
+
+        <h2>3.2 Identificatori</h2>
+
+        <p>Gli identificatori sono i nomi usati per variabili, funzioni, classi e altre entità definite dall'utente.</p>
+
+        <h3>Regole per gli identificatori</h3>
+        <ul>
+            <li>Devono iniziare con una lettera (a-z, A-Z) o un underscore (_)</li>
+            <li>Possono contenere lettere, cifre (0-9) e underscore</li>
+            <li>Sono case-sensitive</li>
+            <li>Non possono essere una <a href="#keywords">keyword</a></li>
+        </ul>
+
+        <h3>Esempi</h3>
+        <pre><code>var x = 10;           // Valid
+var myVar = 20;       // Valid
+var _temp = 30;       // Valid
+var counter1 = 40;    // Valid
+var 2invalid = 50;   // Invalid: starts with digit
+var my-var = 60;     // Invalid: contains hyphen</code></pre>
+
+        <h2 id="keywords">3.3 Keyword</h2>
+
+        <p>Le keyword sono parole riservate che hanno un significato speciale in MALDA. Non possono essere usate come identificatori. L'elenco autorevole è in <code>MaldaLang/Lexer.cs</code>; lo stesso insieme compare in <a href="35-appendix.html">Appendice A: parole riservate</a>.</p>
+
+        <h3>Elenco completo delle keyword</h3>
+        <pre><code><a href="08-control-structures.html">if</a>, <a href="08-control-structures.html">else</a>, <a href="08-control-structures.html">while</a>, <a href="08-control-structures.html">for</a>, <a href="08-control-structures.html">foreach</a>, <a href="09-functions.html">function</a>, <a href="09-functions.html">return</a>, <a href="05-variables.html">var</a>, <a href="05-variables.html">const</a>, <a href="11-input-output.html">print</a>, <a href="11-input-output.html">input</a>,
+<a href="04-data-types.html">true</a>, <a href="04-data-types.html">false</a>, <a href="07-expressions.html">and</a>, <a href="07-expressions.html">or</a>, <a href="07-expressions.html">not</a>, <a href="08-control-structures.html">break</a>, <a href="08-control-structures.html">continue</a>, <a href="08-control-structures.html">try</a>, <a href="08-control-structures.html">catch</a>, <a href="08-control-structures.html">finally</a>, <a href="08-control-structures.html">throw</a>,
+<a href="08-control-structures.html">match</a>, <a href="08-control-structures.html">case</a>, <a href="08-control-structures.html">default</a>, <a href="08-control-structures.html">defer</a>,
+<a href="10-classes-objects.html">class</a>, <a href="10-classes-objects.html">new</a>, <a href="10-classes-objects.html">this</a>, <a href="10-classes-objects.html">super</a>, <a href="10-classes-objects.html">extends</a>, <a href="10-classes-objects.html">public</a>, <a href="10-classes-objects.html">private</a>, <a href="10-classes-objects.html">static</a>, <a href="04-data-types.html">null</a>, <a href="04-data-types.html">type</a>, <a href="09-functions.html">schema</a>, <a href="09-functions.html">api</a>,
+<a href="09-functions.html">prompt</a>, <a href="07-expressions.html">async</a>, <a href="07-expressions.html">await</a>,
+<a href="16-actors.html">actor</a>, <a href="16-actors.html">spawn</a>, <a href="16-actors.html">send</a>, <a href="16-actors.html">receive</a>, <a href="16-actors.html">self</a>, <a href="16-actors.html">on</a>, <a href="16-actors.html">then</a>, <a href="16-actors.html">timeout</a>, <a href="16-actors.html">message</a>,
+<a href="21-durable-workflows.html">workflow</a>, <a href="21-durable-workflows.html">step</a>, <a href="21-durable-workflows.html">approval</a>, <a href="21-durable-workflows.html">wait</a>, <a href="21-durable-workflows.html">retry</a>, <a href="21-durable-workflows.html">backoff</a>, <a href="21-durable-workflows.html">delay</a>, <a href="21-durable-workflows.html">maxDelay</a>, <a href="21-durable-workflows.html">compensate</a>, <a href="21-durable-workflows.html">onReject</a>,
+<a href="23-web-ui.html">component</a>, <a href="23-web-ui.html">property</a>,
+<a href="07-expressions.html">dict</a>, <a href="13-graphs.html">graph</a>, <a href="13-graphs.html">directed</a>, <a href="13-graphs.html">undirected</a>, <a href="08-control-structures.html">in</a>,
+<a href="01-introduction.html">using</a>, <a href="01-introduction.html">include</a>, <a href="01-introduction.html">import</a>, <a href="01-introduction.html">export</a></code></pre>
+        <p><code>fn</code> e <code>def</code> non sono keyword; il parser le rifiuta a favore di <code>function</code>. <code>reply</code> è una funzione built-in, non una keyword.</p>
+        <p><code>using</code> ha due scopi non correlati: un alias di pacchetto top-level (<code>using json = System.Text.Json;</code>) e un blocco di risorsa con scope (<code>using conn = openDb() { ... }</code>). Vedi rispettivamente <a href="01-introduction.html">1. Introduzione</a> e <a href="08-control-structures.html">8. Strutture di controllo</a>.</p>
+
+        <h3>Categorie di keyword</h3>
+        <ul>
+            <li><strong>Flusso di controllo:</strong> <a href="08-control-structures.html"><code>if</code></a>, <a href="08-control-structures.html"><code>else</code></a>, <a href="08-control-structures.html"><code>while</code></a>, <a href="08-control-structures.html"><code>for</code></a>, <a href="08-control-structures.html"><code>foreach</code></a>, <a href="08-control-structures.html"><code>break</code></a>, <a href="08-control-structures.html"><code>continue</code></a>, <a href="08-control-structures.html"><code>match</code></a>, <a href="08-control-structures.html"><code>case</code></a>, <a href="08-control-structures.html"><code>default</code></a></li>
+            <li><strong>Funzioni:</strong> <a href="09-functions.html"><code>function</code></a>, <a href="09-functions.html"><code>return</code></a>, <a href="09-functions.html"><code>prompt</code></a></li>
+            <li><strong>Moduli:</strong> <a href="01-introduction.html"><code>include</code></a>, <a href="01-introduction.html"><code>using</code></a>, <a href="01-introduction.html"><code>import</code></a>, <a href="01-introduction.html"><code>export</code></a></li>
+            <li><strong>Tipi somma:</strong> <a href="04-data-types.html"><code>type</code></a></li>
+            <li><strong>Schema:</strong> <a href="09-functions.html"><code>schema</code></a></li>
+            <li><strong>API chiuse:</strong> <a href="09-functions.html"><code>api</code></a></li>
+            <li><strong>Variabili:</strong> <a href="05-variables.html"><code>var</code></a>, <a href="05-variables.html"><code>const</code></a></li>
+            <li><strong>Pulizia delle risorse:</strong> <a href="08-control-structures.html"><code>defer</code></a>, <a href="08-control-structures.html"><code>using</code></a> (forma risorsa)</li>
+            <li><strong>I/O:</strong> <a href="11-input-output.html"><code>print</code></a> / <a href="11-input-output.html"><code>io.print</code></a>, <a href="11-input-output.html"><code>input</code></a> / <a href="11-input-output.html"><code>io.input</code></a> (file, path e env sono nello stesso capitolo)</li>
+            <li><strong>Booleani:</strong> <a href="04-data-types.html"><code>true</code></a>, <a href="04-data-types.html"><code>false</code></a></li>
+            <li><strong>Operatori logici:</strong> <a href="07-expressions.html"><code>and</code></a> (<code>&amp;&amp;</code>), <a href="07-expressions.html"><code>or</code></a> (<code>||</code>), <a href="07-expressions.html"><code>not</code></a> (<code>!</code>)</li>
+            <li><strong>Gestione delle eccezioni:</strong> <a href="08-control-structures.html"><code>try</code></a>, <a href="08-control-structures.html"><code>catch</code></a>, <a href="08-control-structures.html"><code>finally</code></a>, <a href="08-control-structures.html"><code>throw</code></a></li>
+            <li><strong>Classi:</strong> <a href="10-classes-objects.html"><code>class</code></a>, <a href="10-classes-objects.html"><code>new</code></a>, <a href="10-classes-objects.html"><code>this</code></a>, <a href="10-classes-objects.html"><code>super</code></a>, <a href="10-classes-objects.html"><code>extends</code></a></li>
+            <li><strong>Modificatori di accesso:</strong> <a href="10-classes-objects.html"><code>public</code></a>, <a href="10-classes-objects.html"><code>private</code></a></li>
+            <li><strong>Static:</strong> <a href="10-classes-objects.html"><code>static</code></a></li>
+            <li><strong>Null:</strong> <a href="04-data-types.html"><code>null</code></a></li>
+            <li><strong>Actor:</strong> <a href="16-actors.html"><code>actor</code></a>, <a href="16-actors.html"><code>message</code></a>, <a href="16-actors.html"><code>spawn</code></a>, <a href="16-actors.html"><code>send</code></a>, <a href="16-actors.html"><code>receive</code></a>, <a href="16-actors.html"><code>self</code></a>, <a href="16-actors.html"><code>on</code></a>, <a href="16-actors.html"><code>then</code></a>, <a href="16-actors.html"><code>timeout</code></a></li>
+            <li><strong>Workflow:</strong> <a href="21-durable-workflows.html"><code>workflow</code></a>, <a href="21-durable-workflows.html"><code>step</code></a>, <a href="21-durable-workflows.html"><code>approval</code></a>, <a href="21-durable-workflows.html"><code>wait</code></a>, <a href="21-durable-workflows.html"><code>retry</code></a>, <a href="21-durable-workflows.html"><code>backoff</code></a>, <a href="21-durable-workflows.html"><code>delay</code></a>, <a href="21-durable-workflows.html"><code>maxDelay</code></a>, <a href="21-durable-workflows.html"><code>compensate</code></a>, <a href="21-durable-workflows.html"><code>onReject</code></a></li>
+            <li><strong>Web UI:</strong> <a href="23-web-ui.html"><code>component</code></a>, <a href="23-web-ui.html"><code>property</code></a></li>
+            <li><strong>Operazioni async:</strong> <a href="07-expressions.html"><code>async</code></a>, <a href="07-expressions.html"><code>await</code></a></li>
+            <li><strong>Strutture dati:</strong> <a href="07-expressions.html"><code>dict</code></a>, <a href="13-graphs.html"><code>graph</code></a>, <a href="13-graphs.html"><code>directed</code></a>, <a href="13-graphs.html"><code>undirected</code></a>, <a href="08-control-structures.html"><code>in</code></a></li>
+        </ul>
+
+        <h2>3.4 Letterali</h2>
+
+        <p>I letterali sono valori costanti scritti direttamente nel codice.</p>
+
+        <h3>Letterali interi</h3>
+        <p>I letterali interi sono sequenze di cifre, opzionalmente prefissate da un segno meno:</p>
+        <pre><code>42
+-10
+0
+12345</code></pre>
+
+        <h3>Letterali float</h3>
+        <p>I letterali float contengono un punto decimale o usano la notazione scientifica:</p>
+        <pre><code>3.14
+-0.5
+2.0
+1e-5
+1.5e10</code></pre>
+
+        <h3>Letterali stringa</h3>
+        <p>I letterali stringa possono essere racchiusi tra virgolette doppie (<code>"..."</code>) o virgolette singole (<code>'...'</code>). Le due forme sono equivalenti e supportano le sequenze di escape:</p>
+        <pre><code>"Hello, World!"
+'Hello, World!'
+"Line 1\nLine 2"
+'Line 1\nLine 2'
+"Tab\tseparated"
+"CRLF line\r\n"
+"Quote: \"Hello\""
+'Quote: \'Hello\''
+"He said 'hello'"
+'He said "hello"'
+"Backslash: \\"</code></pre>
+        <p>Puoi usare le virgolette singole quando la stringa contiene virgolette doppie, o le virgolette doppie quando la stringa contiene virgolette singole, per evitare l'escaping:</p>
+        <pre><code>var msg1 = "It's a test";        // No escaping needed
+var msg2 = 'He said "hello"';    // No escaping needed
+var msg3 = 'It\'s a test';       // Escaping needed
+var msg4 = "He said \"hello\"";  // Escaping needed</code></pre>
+
+        <h3>Sequenze di escape</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Sequenza</th>
+                    <th>Significato</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>\n</code></td>
+                    <td>Newline (LF)</td>
+                </tr>
+                <tr>
+                    <td><code>\r</code></td>
+                    <td>Carriage return (CR)</td>
+                </tr>
+                <tr>
+                    <td><code>\t</code></td>
+                    <td>Tab</td>
+                </tr>
+                <tr>
+                    <td><code>\"</code></td>
+                    <td>Virgoletta doppia (nelle stringhe tra virgolette doppie)</td>
+                </tr>
+                <tr>
+                    <td><code>\'</code></td>
+                    <td>Virgoletta singola (nelle stringhe tra virgolette singole)</td>
+                </tr>
+                <tr>
+                    <td><code>\\</code></td>
+                    <td>Backslash</td>
+                </tr>
+                <tr>
+                    <td><code>\{</code> / <code>\}</code></td>
+                    <td>Graffe letterali (solo stringhe interpolate: <code>$"..."</code> / <code>$"""..."""</code>)</td>
+                </tr>
+            </tbody>
+        </table>
+        <p><strong>Nota:</strong> sia <code>\"</code> sia <code>\'</code> funzionano in entrambi i tipi di stringa, quindi puoi includere entrambi i tipi di virgolette in qualsiasi stringa. Le sequenze di escape sconosciute (per esempio <code>\x</code>) sono un errore del lexer — non vengono convertite in silenzio nella lettera nuda.</p>
+
+        <h3>Stringhe multilinea (triple quote)</h3>
+        <p>I letterali stringa multilinea usano tre virgolette doppie (<code>"""</code>) come delimitatore di apertura e chiusura. Possono estendersi su più righe e conservano i newline. Dentro una stringa tra triple quote, le virgolette singole e doppie non vanno escaped, il che le rende comode per testi lunghi, prompt o contenuti con molte virgolette.</p>
+        <p><strong>Stringa multilinea semplice</strong> — <code>"""..."""</code>:</p>
+        <pre><code>var text = """
+First line.
+Second line with "quotes" and 'apostrophes'.
+No escaping needed.
+""";</code></pre>
+        <p>La <code>"""</code> di chiusura deve comparire da sola (eventualmente dopo contenuto sulla stessa riga). Tutto ciò che sta tra la <code>"""</code> di apertura e quella di chiusura è incluso letteralmente; l'unica sequenza speciale è la <code>"""</code> di chiusura stessa.</p>
+        <p><strong>Stringa multilinea interpolata</strong> — <code>$"""..."""</code>:</p>
+        <p>Usa <code>$"""</code> per avviare una stringa multilinea interpolata. Si comporta come una stringa tra triple quote ma consente espressioni incorporate con <code>{expression}</code>. Sono supportate le sequenze di escape (es. <code>\n</code>, <code>\t</code>, <code>\"</code>, <code>\\</code>).</p>
+        <pre><code>var name = "Alice";
+var greeting = $"""
+Hello, {name}.
+Welcome to line 2.
+""";</code></pre>
+        <p>Riepilogo:</p>
+        <ul>
+            <li><code>"""</code> — stringa multilinea, senza escaping di virgolette o backslash</li>
+            <li><code>$"""</code> — stringa multilinea interpolata con <code>{expr}</code> e sequenze di escape</li>
+        </ul>
+
+        <h3>Letterali booleani</h3>
+        <p>I letterali booleani sono le keyword <code>true</code> e <code>false</code>:</p>
+        <pre><code>true
+false</code></pre>
+
+        <h2>3.5 Operatori</h2>
+
+        <p>Gli operatori sono simboli o keyword che eseguono operazioni sugli operandi.</p>
+
+        <h3>Operatori aritmetici</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Operatore</th>
+                    <th>Descrizione</th>
+                    <th>Esempio</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>+</code></td>
+                    <td>Addizione</td>
+                    <td><code>5 + 3</code> → <code>8</code></td>
+                </tr>
+                <tr>
+                    <td><code>-</code></td>
+                    <td>Sottrazione</td>
+                    <td><code>5 - 3</code> → <code>2</code></td>
+                </tr>
+                <tr>
+                    <td><code>*</code></td>
+                    <td>Moltiplicazione (anche ripetizione di stringhe)</td>
+                    <td><code>5 * 3</code> → <code>15</code><br><code>"*" * 5</code> → <code>"*****"</code></td>
+                </tr>
+                <tr>
+                    <td><code>/</code></td>
+                    <td>Divisione</td>
+                    <td><code>10 / 2</code> → <code>5</code></td>
+                </tr>
+                <tr>
+                    <td><code>%</code></td>
+                    <td>Modulo (resto)</td>
+                    <td><code>10 % 3</code> → <code>1</code></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Operatori di confronto</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Operatore</th>
+                    <th>Descrizione</th>
+                    <th>Esempio</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>==</code></td>
+                    <td>Uguale a</td>
+                    <td><code>5 == 5</code> → <code>true</code>, <code>"hello" == "hello"</code> → <code>true</code></td>
+                </tr>
+                <tr>
+                    <td><code>!=</code></td>
+                    <td>Diverso da</td>
+                    <td><code>5 != 3</code> → <code>true</code>, <code>"hello" != "world"</code> → <code>true</code></td>
+                </tr>
+                <tr>
+                    <td><code>&lt;</code></td>
+                    <td>Minore di</td>
+                    <td><code>3 &lt; 5</code> → <code>true</code>, <code>"apple" &lt; "banana"</code> → <code>true</code></td>
+                </tr>
+                <tr>
+                    <td><code>&gt;</code></td>
+                    <td>Maggiore di</td>
+                    <td><code>5 &gt; 3</code> → <code>true</code>, <code>"zebra" &gt; "apple"</code> → <code>true</code></td>
+                </tr>
+                <tr>
+                    <td><code>&lt;=</code></td>
+                    <td>Minore o uguale</td>
+                    <td><code>5 &lt;= 5</code> → <code>true</code>, <code>"hello" &lt;= "hello"</code> → <code>true</code></td>
+                </tr>
+                <tr>
+                    <td><code>&gt;=</code></td>
+                    <td>Maggiore o uguale</td>
+                    <td><code>5 &gt;= 3</code> → <code>true</code>, <code>"hello" &gt;= "hello"</code> → <code>true</code></td>
+                </tr>
+            </tbody>
+        </table>
+        <p><strong>Nota:</strong> gli operatori relazionali (<code>&lt;</code>, <code>&gt;</code>, <code>&lt;=</code>, <code>&gt;=</code>) funzionano sia con i numeri sia con le stringhe. Per le stringhe i confronti sono lessicografici (ordine alfabetico). Entrambi gli operandi devono essere dello stesso tipo (entrambi numeri o entrambe stringhe).</p>
+
+        <h3>Operatori logici</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Operatore</th>
+                    <th>Descrizione</th>
+                    <th>Esempio</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>and</code> o <code>&amp;&amp;</code></td>
+                    <td>AND logico</td>
+                    <td><code>true and false</code> → <code>false</code></td>
+                </tr>
+                <tr>
+                    <td><code>or</code> o <code>||</code></td>
+                    <td>OR logico</td>
+                    <td><code>true or false</code> → <code>true</code></td>
+                </tr>
+                <tr>
+                    <td><code>not</code> o <code>!</code></td>
+                    <td>NOT logico</td>
+                    <td><code>not true</code> → <code>false</code></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Operatori di assegnamento</h3>
+        <p>L'operatore <code>=</code> assegna un valore a una variabile. Le forme composte combinano un'operazione aritmetica con l'assegnamento:</p>
+        <pre><code>var x = 10;
+x = 20;
+
+x += 5;    // equivalent to x = x + 5
+x -= 3;    // x = x - 3
+x *= 2;    // x = x * 2
+x /= 4;    // x = x / 4</code></pre>
+        <p>Assegnare a un nome dichiarato con <code>const</code> è un errore a runtime. Vedi <a href="05-variables.html">5. Variabili</a>.</p>
+
+        <h3>Incremento e decremento</h3>
+        <p><code>++</code> e <code>--</code> modificano di uno una variabile numerica, in posizione prefissa o postfissa:</p>
+        <pre><code>var i = 0;
+i++;      // postfix: yields 0, then i becomes 1
+++i;      // prefix: i becomes 2, yields 2
+i--;
+--i;</code></pre>
+
+        <h3>Operatore freccia lambda</h3>
+        <p>L'operatore <code>=&gt;</code> si usa nelle espressioni lambda (funzioni anonime):</p>
+        <pre><code>var add = (a, b) => a + b;
+var square = x => x * x;
+var process = (x) => { return x * 2; };</code></pre>
+        <p>Vedi <a href="09-functions.html#lambda-expressions">9.6 Espressioni lambda</a> per i dettagli.</p>
+        <p>Lo stesso token indica anche il tipo di ritorno informativo di una funzione, dove <code>-&gt;</code> e <code>=&gt;</code> sono intercambiabili: <code>function parse(text) -&gt; Result { ... }</code>.</p>
+
+        <h3>Pipe forward</h3>
+        <p>L'operatore <code>|&gt;</code> passa il valore alla sua sinistra come primo argomento della chiamata alla sua destra:</p>
+        <pre><code>var result = "  hello  " |> trim |> upper;</code></pre>
+        <p>Vedi <a href="07-expressions.html">7. Espressioni</a> per precedenza e regole di concatenazione.</p>
+
+        <h3>Marcatore di decoratore</h3>
+        <p><code>@</code> introduce un decoratore su una dichiarazione, per esempio <code>@Tool</code>, <code>@PAGE</code> o <code>@Route</code>:</p>
+        <pre><code>@Tool("Adds two numbers")
+function add(a, b) {
+    return a + b;
+}</code></pre>
+        <p>Vedi <a href="09-functions.html">9. Funzioni</a> per le forme dei decoratori.</p>
+
+        <h3>Concatenazione di stringhe</h3>
+        <p>L'operatore <code>+</code> concatena le stringhe quando entrambi gli operandi sono stringhe:</p>
+        <pre><code>"Hello, " + "World!"  // "Hello, World!"</code></pre>
+
+        <h3>Ripetizione di stringhe</h3>
+        <p>L'operatore <code>*</code> ripete le stringhe quando un operando è una stringa e l'altro è un numero:</p>
+        <pre><code>"*" * 20        // "********************"
+5 * "-"         // "-----"
+"abc" * 3       // "abcabcabc"</code></pre>
+        <p>Sia <code>string * number</code> sia <code>number * string</code> funzionano allo stesso modo. Il valore numerico viene convertito a intero. Se il conteggio è 0 o negativo, viene restituita una stringa vuota.</p>
+
+        <h3>Accesso ai membri</h3>
+        <p>L'operatore <code>.</code> (punto) accede ai membri degli oggetti:</p>
+        <pre><code>object.field
+object.method()</code></pre>
+
+        <h3>Accesso null-conditional</h3>
+        <p><code>?.</code> e <code>?[</code> accedono a un membro o a un indice solo quando il ricevente non è <code>null</code>, altrimenti l'accesso valuta a <code>null</code> invece di sollevare un errore:</p>
+        <pre><code>var user = null;
+print(user?.name);      // null, no error
+print(user?["name"]);   // null, no error</code></pre>
+        <p>Vedi <a href="07-expressions.html">7. Espressioni</a> per il comportamento in catene più lunghe.</p>
+
+        <h2>3.6 Delimitatori</h2>
+
+        <p>I delimitatori sono segni di punteggiatura che strutturano il codice:</p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Delimitatore</th>
+                    <th>Uso</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>;</code></td>
+                    <td>Terminatore di istruzione (opzionale in alcuni contesti)</td>
+                </tr>
+                <tr>
+                    <td><code>()</code></td>
+                    <td>Chiamate di funzione, espressioni, raggruppamento</td>
+                </tr>
+                <tr>
+                    <td><code>{}</code></td>
+                    <td>Blocchi di codice, letterali oggetto</td>
+                </tr>
+                <tr>
+                    <td><code>[]</code></td>
+                    <td>Indicizzazione di array, letterali array</td>
+                </tr>
+                <tr>
+                    <td><code>,</code></td>
+                    <td>Separatori di parametri/argomenti</td>
+                </tr>
+                <tr>
+                    <td><code>.</code></td>
+                    <td>Operatore di accesso ai membri</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="see-also">
+            <h3>Vedi anche</h3>
+            <ul>
+                <li><a href="07-expressions.html">7. Espressioni</a> - Come gli operatori si usano nelle espressioni</li>
+                <li><a href="35-appendix.html">35. Appendice</a> - Tabella di precedenza degli operatori</li>
+            </ul>
+        </div>
+
+        <div class="nav-footer">
+            <a href="02-tools.html">← Precedente: 2. Strumenti e toolchain</a>
+            <a href="04-data-types.html">Successivo: 4. Tipi di dati→</a>
+        </div>
+
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, a tua scelta.</p>
+        </footer>
+    </main>
+
+    <script src="../malda-highlight.js"></script>
+
+    <script src="../navigation.js"></script>
+</body>
+</html>

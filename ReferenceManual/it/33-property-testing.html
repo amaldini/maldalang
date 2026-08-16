@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Property testing MALDA: test generativi deterministici basati su seed, shrinking e regressioni">
+    <title>33. Property testing - Manuale di riferimento MALDA</title>
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../syntax.css">
+    <link rel="stylesheet" href="../print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>Manuale di riferimento MALDA&trade;</h1>
+        <p>Il linguaggio di programmazione AI-First - Versione 1.0.0</p>
+    </header>
+
+    <nav></nav>
+
+    <main>
+        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>33. Property testing</span></div>
+
+        <h1>33. Property testing</h1>
+
+        <p>MALDA supporta dichiarazioni <code>property</code> a livello di linguaggio per il testing generativo deterministico, basato su seed, tramite <code>malda test</code>.</p>
+
+        <h2>33.1 Dichiarare ed eseguire le property</h2>
+
+        <pre><code>property intIdentity(x) {
+    return (x + 0) == x;
+}</code></pre>
+
+        <p>Esegui le property con metadati di replay deterministici:</p>
+        <pre><code>malda test --iterations 100 --seed 1337</code></pre>
+
+        <h2>33.2 Fallimento → controesempio ridotto (shrunk) → artefatto di regressione</h2>
+        <p>Usa seed deterministici per fallimenti riproducibili, poi abilita in opt-in la generazione degli artefatti per catturare il controesempio canonico (shrunk) come file di regressione autonomo.</p>
+        <pre><code># Run property tests with deterministic replay metadata
+malda test ./tests --iterations 100 --seed 1337
+
+# Generate regression artifacts for failing properties
+malda test ./tests --iterations 100 --seed 1337 --write-regression
+
+# Optional custom output directory
+malda test ./tests --write-regression --regression-dir ./artifacts/regressions
+
+# Emit CI JSON consumed by IDE/Desktop "Create Regression" action
+malda test ./tests --format ci --iterations 100 --seed 1337</code></pre>
+        <p>La posizione di default degli artefatti è <code>tests/regressions</code>. I file generati sono artefatti di riproduzione deterministici <code>.spec.malda</code> e MALDA stampa ogni path con <code>Generated regression: ...</code>.</p>
+        <p>L'azione IDE/Desktop <strong>Create Regression</strong> tratta i suggerimenti CI come non attendibili: i path raccomandati vengono sanitizzati e limitati al workspace attivo prima di scrivere i file.</p>
+        <p>Il JSON CI include campi di metadati delle property per le integrazioni di tooling, tra cui <code>shrunkCounterexample</code>, <code>canGenerateRegression</code> e <code>recommendedRegressionPath</code>.</p>
+
+        <h2>33.3 Eseguire una property dentro uno script</h2>
+        <p>Puoi eseguire una property dichiarata direttamente dentro uno script MALDA usando <code>runProperty(name, iterations?, seed?)</code>.</p>
+        <pre><code>property stableIdentity(x) {
+    return (x + 0) == x;
+}
+
+var result = runProperty("stableIdentity", 40, 1337);
+print("Passed: " + string(result.passed));
+</code></pre>
+
+        <p><code>runProperty(...)</code> restituisce un oggetto con questi campi:</p>
+        <ul>
+            <li><code>propertyName</code>, <code>passed</code>, <code>iterations</code>, <code>seed</code></li>
+            <li><code>failedTrial</code>, <code>error</code>, <code>counterexample</code>, <code>shrunkCounterexample</code></li>
+        </ul>
+
+        <h2>33.4 Modello di capability</h2>
+        <p>Le property possono dichiarare requisiti di capability e target di backend espliciti usando i decoratori:</p>
+        <pre><code>@requires("core", "actors")
+@targets("interpreter", "csharp", "js")
+property actorSafetyInvariant(x) {
+    return x == x;
+}</code></pre>
+
+        <ul>
+            <li><code>@requires(...)</code>: dichiara i tag di capability richiesti dalla property.</li>
+            <li><code>@targets(...)</code>: dichiara le modalità di backend in cui la property è attesa.</li>
+        </ul>
+
+        <p>I tag di modulo di capability supportati per <code>@requires(...)</code> sono:</p>
+        <ul>
+            <li><strong>Interprete</strong>: <code>core</code>, <code>file-io</code>, <code>actors</code>, <code>workflows</code>, <code>dotnet-interop</code>, <code>host-interop</code></li>
+            <li><strong>CSharp</strong>: <code>core</code>, <code>file-io</code>, <code>actors</code>, <code>workflows</code>, <code>dotnet-interop</code>, <code>host-interop</code></li>
+            <li><strong>JS</strong>: <code>core</code>, <code>web-dom</code>, <code>game-canvas</code></li>
+        </ul>
+        <p>Se una property richiede una capability non supportata da un backend, quel backend viene riportato come <strong>non applicabile</strong> (non come fallimento).</p>
+
+        <p>La matrice di capability è la fonte di verità per l'idoneità dei backend tra <code>interpreter</code>, <code>csharp</code> e <code>js</code>.</p>
+
+        <h2>33.5 Limitazioni JavaScript e semantica di skip</h2>
+        <p>La parità del backend JavaScript è condizionata dalle capability. Se una property richiede capability JS non supportate, MALDA riporta la modalità JS come <strong>non applicabile</strong> con un motivo. Questo non conta come fallimento di parità per i backend supportati.</p>
+        <p>Per le property idonee a JS in cui un harness JS delle property non è ancora abilitato, MALDA riporta JS come <strong>skipped</strong> con un motivo esplicito in stile TODO, invece di far fallire la parità.</p>
+
+        <div class="see-also">
+            <h3>Vedi anche</h3>
+            <ul>
+                <li><a href="02-tools.html">2. Strumenti e toolchain</a> - Comandi CLI di test e contesto dei workflow</li>
+                <li><a href="32-examples.html">32. Esempi</a> - Campioni d'uso end-to-end</li>
+                <li><a href="34-grammar.html">34. Grammatica</a> - Sintassi delle dichiarazioni property</li>
+            </ul>
+        </div>
+
+        <div class="nav-footer">
+            <a href="32-examples.html">← Precedente: 32. Esempi</a>
+            <a href="34-grammar.html">Successivo: 34. Grammatica→</a>
+        </div>
+
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, a tua scelta.</p>
+        </footer>
+    </main>
+    <script src="../malda-highlight.js"></script>
+    <script src="../navigation.js"></script>
+</body>
+</html>

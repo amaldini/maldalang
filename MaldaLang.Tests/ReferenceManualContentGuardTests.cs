@@ -20,7 +20,15 @@ public class ReferenceManualContentGuardTests
     private static string ManualDir => PlanningPaths.ResolveRepoPath("ReferenceManual");
 
     private static IEnumerable<string> ManualPages =>
-        Directory.EnumerateFiles(ManualDir, "*.html").OrderBy(p => p, StringComparer.Ordinal);
+        Directory.EnumerateFiles(ManualDir, "*.html", SearchOption.TopDirectoryOnly)
+            .OrderBy(p => p, StringComparer.Ordinal);
+
+    /// <summary>
+    /// Locale subtrees such as <c>ReferenceManual/it/</c> are translations of the
+    /// English canonical pages. Built-in coverage, keyword lists, and runnable
+    /// snippets stay scoped to the English root so a second language cannot
+    /// double-count or drift the guards.
+    /// </summary>
 
     /// <summary>
     /// Built-ins that exist in the registry but are deliberately absent from the manual.

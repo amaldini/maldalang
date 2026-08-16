@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Introduzione a MALDA - panoramica del linguaggio e delle funzionalità">
+    <title>1. Introduzione - Manuale di riferimento MALDA</title>
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../syntax.css">
+    <link rel="stylesheet" href="../print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>Manuale di riferimento MALDA&trade;</h1>
+        <p>Il linguaggio di programmazione AI-First - Versione 1.0.0</p>
+    </header>
+
+    <nav></nav>
+
+    <main>
+        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>1. Introduzione</span></div>
+
+        <h1>1. Introduzione</h1>
+
+        <h2>1.1 Panoramica</h2>
+
+        <p><strong>MALDA: The AI-First Programming Language</strong> è un linguaggio di programmazione moderno e orientato agli oggetti, pensato per costruire agenti AI e workflow di automazione. Con supporto nativo all'integrazione LLM, all'orchestrazione di agenti e ai sistemi multi-agente, MALDA rende semplice creare applicazioni intelligenti e autonome.</p>
+
+        <p>Il linguaggio ha una sintassi pulita e leggibile, le strutture di controllo essenziali, capacità di I/O built-in e pieno supporto alla programmazione orientata agli oggetti: classi, ereditarietà e polimorfismo. Ciò che distingue MALDA sono le <strong>capacità AI di prima classe</strong> - classi built-in per client LLM, conversazioni, agenti e tool, con cui si costruiscono applicazioni AI sofisticate con poco codice.</p>
+
+        <p>L'intestazione della pagina riporta la versione della toolchain distribuita (lo stesso numero della CLI). La semantica del linguaggio core è specificata in <a href="../../docs/spec/malda-language-1.0.md">malda-language-1.0</a>.</p>
+
+        <div class="info-box">
+            <strong>Come affrontare MALDA:</strong> se programmi già, parti da <a href="index.html">Indice → First Look</a> (<code>prompt</code> + <code>schema</code> + <code>validate</code>, senza API key). Se stai imparando a programmare, impara prima il linguaggio core: <code>io.print</code>, variabili, input, condizionali, cicli e funzioni. Dopo il percorso core, diramati verso <strong>Testing e qualità</strong>, <strong>Dati e database</strong> e <strong>App nel browser</strong>. Entrambi i percorsi arrivano allo stesso runtime AI-first.
+        </div>
+
+        <h3>Che cosa significa MALDA?</h3>
+
+        <p><strong>MALDA: Multi Agent Language with Development Automation</strong> - Il nome MALDA riflette i principi e la filosofia di progettazione del linguaggio:</p>
+
+        <ul>
+            <li><strong>Multi Agent</strong>: supporto nativo all'orchestrazione di più agenti AI che lavorano insieme. MALDA offre classi built-in e supporto a runtime per creare, coordinare e gestire più agenti autonomi che collaborano su compiti complessi, condividono il contesto e operano in sistemi gerarchici.</li>
+            <li><strong>Language</strong>: un linguaggio di programmazione completo, con sintassi, runtime e tooling. MALDA non è solo un framework o una libreria: è un linguaggio a tutti gli effetti, con sintassi propria, interprete, compilatore, Desktop IDE e strumenti di sviluppo.</li>
+            <li><strong>Development</strong>: una toolchain per costruire e distribuire software reale, non solo per scriptare uno strato AI sopra un altro stack. L'interprete, il compilatore verso eseguibili standalone e JavaScript, gli IDE, il language server e il supporto built-in a test e database coprono l'intero ciclo di build.</li>
+            <li><strong>Automation</strong>: automazione di quel lavoro di sviluppo, in entrambe le direzioni. Gli agenti di coding possono scrivere MALDA: il language pack compatto in <code>docs/llm/</code> insegna la sintassi a un modello che non l'ha mai vista, e le diagnostiche del language server chiudono il ciclo di feedback - MALDA stesso è stato costruito in larga parte con agenti di coding, e i due showcase più grandi di questo repository (<code>Examples/Agents/secondbrain_semantic.malda</code> e <code>Examples/RalphWiggum/</code>) sono stati scritti interamente da agenti di coding. Nell'altra direzione, i programmi MALDA automatizzano a loro volta il lavoro di sviluppo, perché prompt, tool, agenti, endpoint e workflow durevoli sono costrutti del linguaggio e non chiamate di libreria: un programma può leggere una specifica, generare codice, eseguire i test e distribuire il risultato.</li>
+        </ul>
+
+        <p>Il runtime unificato che rende possibile tutto questo è descritto di seguito.</p>
+
+        <h2>1.2 Architettura AI Unified Runtime</h2>
+
+        <p>MALDA poggia sull'<strong>AI Unified Runtime Architecture</strong> - un sistema unificato in cui il runtime del linguaggio, le capacità AI, il framework degli agenti, l'ecosistema di tool e il deployment sono integrati in un'unica architettura coerente. A differenza degli approcci tradizionali che combinano librerie e framework separati, MALDA offre un runtime unificato in cui tutto collabora senza interruzioni.</p>
+
+        <h3>Che cos'è l'AI Unified Runtime Architecture?</h3>
+
+        <p>AI Unified Runtime Architecture significa che le capacità AI non sono aggiunte come librerie o framework esterni, ma sono costruite direttamente nel runtime del linguaggio. Ne risulta un sistema unificato in cui:</p>
+
+        <ul>
+            <li><strong>Language Runtime</strong>: l'interprete esegue il codice e gestisce lo stato del programma</li>
+            <li><strong>AI Runtime</strong>: client LLM, conversazioni, agenti e tool girano nello stesso processo</li>
+            <li><strong>Orchestrazione di agenti</strong>: più agenti si coordinano nello stesso ambiente di runtime</li>
+            <li><strong>Ecosistema di tool</strong>: i tool fanno parte del runtime, non sono plugin esterni</li>
+            <li><strong>Deployment Runtime</strong>: gli eseguibili compilati incorporano il runtime MALDA e le capacità AI. Alcune dipendenze esterne (es. librerie client SQL Server/PostgreSQL, DLL native LLamaSharp) possono richiedere DLL aggiuntive accanto all'eseguibile</li>
+        </ul>
+
+        <h3>Approccio tradizionale e runtime unificato</h3>
+
+        <p>Negli approcci tradizionali, costruire applicazioni AI richiede di combinare più componenti separati:</p>
+
+        <ul>
+            <li>Runtime del linguaggio (es. interprete Python)</li>
+            <li>Libreria di framework AI (es. LangChain)</li>
+            <li>SDK del client LLM (es. OpenAI SDK)</li>
+            <li>Sistema di tool personalizzato</li>
+            <li>Sistema di deployment/packaging separato</li>
+        </ul>
+
+        <p>Questo introduce overhead dalle chiamate di libreria, serializzazione tra i componenti e requisiti di setup complessi.</p>
+
+        <p>Con l'AI Unified Runtime Architecture tutti questi componenti sono integrati in un unico runtime:</p>
+
+        <ul>
+            <li>Nessun setup di framework: le capacità AI sono native del linguaggio</li>
+            <li>Nessun overhead di libreria: esecuzione diretta nel runtime</li>
+            <li>Gestione degli errori e type safety unificate su tutte le operazioni</li>
+            <li>Deployment in un solo eseguibile: runtime MALDA e capacità AI incorporati. Alcune dipendenze esterne possono richiedere DLL aggiuntive</li>
+        </ul>
+
+        <h3>Componenti core</h3>
+
+        <h4>Runtime unificato del linguaggio</h4>
+        <p>L'interprete include le capacità AI come funzionalità di prima classe. Classi come <code>LLMClient</code>, <code>Agent</code> e <code>Conversation</code> sono built-in nel linguaggio, non importate da librerie esterne.</p>
+
+        <h4>Layer AI Runtime integrato</h4>
+        <p>Le operazioni AI si eseguono nello stesso runtime del codice ordinario. Questo offre:</p>
+        <ul>
+            <li>Accesso diretto alla memoria, senza overhead di serializzazione</li>
+            <li>Sistema di tipi unificato: gli stessi tipi per il linguaggio e per le operazioni AI</li>
+            <li>Supporto all'esecuzione sincrona e asincrona</li>
+            <li>Gestione degli errori integrata</li>
+        </ul>
+
+        <h4>Runtime unificato di orchestrazione degli agenti</h4>
+        <p>Più agenti girano nello stesso processo e possono:</p>
+        <ul>
+            <li>Condividere spazio di memoria e contesto</li>
+            <li>Comunicare direttamente, senza protocolli esterni</li>
+            <li>Accedere allo stesso ecosistema di tool</li>
+            <li>Coordinare l'esecuzione in modo efficiente</li>
+        </ul>
+
+        <h4>Runtime unificato dell'ecosistema di tool</h4>
+        <p>I tool sono integrati nel runtime:</p>
+        <ul>
+            <li>I tool built-in (operazioni su file, ecc.) fanno parte del runtime</li>
+            <li>I tool personalizzati creati con il decoratore <code>@Tool</code> vengono registrati automaticamente</li>
+            <li>L'esecuzione dei tool avviene in-process con il runtime del linguaggio</li>
+            <li>Non serve discovery o registrazione esterna dei tool</li>
+        </ul>
+
+        <h4>Runtime unificato di deployment</h4>
+        <p>Il compilatore incorpora il runtime MALDA e le capacità AI in eseguibili standalone:</p>
+        <ul>
+            <li><strong>Modalità Interpreter</strong>: incorpora interprete + codice sorgente + AI runtime</li>
+            <li><strong>Modalità Transpiler</strong>: fa transpile verso C# con integrazione nativa dell'AI runtime</li>
+            <li>Risultato: un singolo file .exe con il runtime MALDA incorporato. Alcune dipendenze esterne (es. librerie client SQL Server/PostgreSQL, DLL native LLamaSharp) possono richiedere DLL aggiuntive da distribuire accanto all'eseguibile</li>
+        </ul>
+
+        <h3>Vantaggi</h3>
+
+        <ul>
+            <li><strong>Prestazioni</strong>: nessun overhead di chiamata di libreria, accesso diretto alla memoria, percorsi di esecuzione ottimizzati</li>
+            <li><strong>Semplicità</strong>: nessun setup di framework, sintassi nativa, meno dipendenze, meno boilerplate</li>
+            <li><strong>Type safety</strong>: gestione degli errori unificata, controllo dei tipi sulle operazioni AI, validazione a compile-time</li>
+            <li><strong>Esperienza di sviluppo</strong>: un solo IDE per linguaggio e AI, debugging integrato, documentazione unificata</li>
+            <li><strong>Deployment</strong>: un solo eseguibile con runtime MALDA e AI incorporati. Alcune dipendenze esterne (es. librerie client di database) possono richiedere DLL aggiuntive, ma la maggior parte delle applicazioni si distribuisce come file singolo</li>
+        </ul>
+
+        <h3>Come MALDA la implementa</h3>
+
+        <p>L'implementazione MALDA dell'AI Unified Runtime Architecture è composta da quattro layer:</p>
+
+        <ul>
+            <li><strong>Layer 1: Core Runtime</strong> - Lexer, Parser, AST, RuntimeValue, Environment, Execution Engine</li>
+            <li><strong>Layer 2: AI Runtime</strong> - LLMClientInstance, Conversation, AgentInstance, ToolInstance e classi di agenti specializzati</li>
+            <li><strong>Layer 3: Integration Layer</strong> - Language Service, AI Chat Service, Debugger, Compiler (tutti unificati)</li>
+            <li><strong>Layer 4: Deployment Runtime</strong> - compilatore che incorpora il runtime MALDA e le capacità AI (modalità interpreter) oppure fa transpile con integrazione nativa (modalità transpiler). Alcune dipendenze esterne possono richiedere DLL aggiuntive</li>
+        </ul>
+
+        <p>Questa architettura rende MALDA davvero "AI-first": non un linguaggio con funzionalità AI aggiunte, ma un linguaggio in cui l'AI è fondamentale per l'architettura del runtime stesso.</p>
+
+        <h2>1.3 Funzionalità del linguaggio</h2>
+
+        <h3>Capacità del linguaggio core</h3>
+        <p>MALDA include:</p>
+        <ul>
+            <li>Variabili e memorizzazione dei dati</li>
+            <li>Operazioni aritmetiche e logiche</li>
+            <li>Diramazione condizionale (if/else)</li>
+            <li>Cicli (while, for)</li>
+            <li>Funzioni/procedure</li>
+            <li>Operazioni di input/output</li>
+            <li>Supporto alla ricorsione</li>
+            <li>Programmazione orientata agli oggetti (classi, oggetti, ereditarietà)</li>
+            <li><strong>Orchestrazione di agenti AI</strong>: supporto nativo all'integrazione LLM, ai sistemi multi-agente e all'automazione intelligente</li>
+        </ul>
+
+        <h3>Funzionalità del linguaggio core</h3>
+        <ul>
+            <li><strong>Typing dinamico</strong>: le variabili possono contenere valori di qualsiasi tipo</li>
+            <li><strong>Type coercion</strong>: conversione automatica tra tipi compatibili (int ↔ float)</li>
+            <li><strong>Block scoping</strong>: le variabili sono in scope dei blocchi, con shadowing corretto</li>
+            <li><strong>Array</strong>: array dinamici con metodi built-in (append, pop, shift, concat)</li>
+            <li><strong>String interpolation</strong>: sintassi <code>$"..."</code> per espressioni incorporate</li>
+            <li><strong>Ricorsione</strong>: pieno supporto alle chiamate di funzione ricorsive</li>
+            <li><strong>Ereditarietà</strong>: ereditarietà singola con override dei metodi</li>
+            <li><strong>Membri static</strong>: campi e metodi a livello di classe</li>
+        </ul>
+
+        <h3>Funzionalità core AI-First</h3>
+        <ul>
+            <li><strong>Client LLM</strong>: classe <code>LLMClient</code> per l'integrazione con API compatibili OpenAI (OpenAI, OpenRouter, LMStudio, OLLAMA, ecc.)</li>
+            <li><strong>LLM locale di default</strong>: se non si passa un client, agenti e prompt usano il modello locale Qwen/Qwen2.5-0.5B-Instruct (scaricato come build GGUF da Hugging Face al primo uso) — nessuna API key</li>
+            <li><strong>LLM locali</strong>: classe <code>LlamaCppClient</code> per l'inferenza locale con LLAMA.cpp e modelli GGUF</li>
+            <li><strong>Client OpenRouter</strong>: classe <code>OpenRouterClient</code> per modelli remoti con configurazione automatica della API key</li>
+            <li><strong>Gestione delle conversazioni</strong>: classe <code>Conversation</code> con gestione automatica delle tool call ed esecuzione parallela dei tool in sola lettura (attiva di default)</li>
+            <li><strong>Sistema di tool</strong>: classe <code>Tool</code> con supporto al formato function calling di OpenAI</li>
+            <li><strong>Tool personalizzati</strong>: decoratore <code>@Tool</code> per definire tool LLM personalizzati a partire da funzioni MALDA</li>
+            <li><strong>Classe Agent</strong>: classe <code>Agent</code> per agenti autonomi con ruoli e istruzioni</li>
+            <li><strong>Agenti specializzati</strong>: <code>CodingAgent</code>, <code>GitAgent</code> e <code>DevAgent</code> con tool preconfigurati</li>
+            <li><strong>Orchestrazione multi-agente</strong>: supporto a più agenti che lavorano insieme, anche in sistemi gerarchici con <code>addSubAgent</code></li>
+            <li><strong>Dashboard degli agenti</strong>: report automatico dello stato a una dashboard centrale (senza modifiche allo script MALDA)</li>
+            <li><strong>Sicurezza della working directory</strong>: validazione dei path per i tool di operazioni su file</li>
+        </ul>
+        <div class="warning-box">
+            <p><strong>⚠️ Importante:</strong> i sistemi di agenti autonomi con accesso ai tool comportano rischi significativi di sicurezza e operativi. Vedi <a href="17-agent-orchestration.html">17. Orchestrazione di agenti</a> per un disclaimer dettagliato e le strategie di mitigazione del rischio prima di distribuire agenti in produzione.</p>
+        </div>
+
+        <h3>Funzionalità Web e API</h3>
+        <ul>
+            <li><strong>Supporto database</strong>: classi <code>SqlServerClient</code>, <code>PostgresClient</code> e <code>SqliteClient</code> per operazioni su database con query parametrizzate e API query builder</li>
+            <li><strong>Web server</strong>: classe <code>HttpServer</code> per servire HTML</li>
+            <li><strong>REST API</strong>: classe <code>RestServer</code> con routing a decoratori (<code>@GET</code>, <code>@POST</code>, ecc.)</li>
+            <li><strong>Framework UI Web</strong>: <code>@PAGE</code> e <code>@AIPAGE</code> con libreria di componenti per applicazioni full-stack con backend MALDA e UI renderizzata sul server</li>
+            <li><strong>Server MCP</strong>: classe <code>MCPServer</code> per esporre funzioni MALDA come tool MCP</li>
+            <li><strong>Generazione UI</strong>: funzione <code>generateUI()</code> e classe <code>HTMLCache</code> per HTML generato da LLM</li>
+            <li><strong>Server LLM</strong>: classe <code>LLMServer</code> per creare server REST API LLM</li>
+        </ul>
+
+        <h2>1.4 Ambienti di sviluppo</h2>
+
+        <h3>Desktop IDE WPF</h3>
+        <ul>
+            <li>Applicazione Windows nativa basata su AvalonEdit</li>
+            <li>Syntax highlighting</li>
+            <li>IntelliSense/auto-completamento</li>
+            <li>Debugger completo con breakpoint, esecuzione passo-passo, watch delle variabili, call stack</li>
+            <li>Diagnostica degli errori con report in tempo reale</li>
+            <li>Integrazione del compilatore</li>
+            <li>Browser e downloader dei modelli</li>
+            <li>Configurazione di server MCP esterni</li>
+            <li>Tab virtuali opt-in per un singolo file fisico <code>.malda</code>, abilitate con i separatori <code>// @malda-section Name</code></li>
+            <li>Coesiste con la composizione classica multi-file tramite <code>include</code> (i file inclusi restano file fisici normali)</li>
+        </ul>
+
+        <h2>1.5 Compilatore</h2>
+
+        <p>Il compilatore MALDA supporta la compilazione in due modalità:</p>
+        <ul>
+            <li><strong>Modalità Interpreter</strong>: incorpora il codice sorgente e usa l'interprete a runtime</li>
+            <li><strong>Modalità Transpiler</strong>: fa transpile di MALDA verso C#, esecuzione nativa</li>
+        </ul>
+
+        <p>Entrambe le modalità producono file .exe standalone con il runtime MALDA incorporato. Alcune dipendenze esterne (es. librerie client SQL Server/PostgreSQL, DLL native LLamaSharp) possono richiedere DLL aggiuntive accanto all'eseguibile.</p>
+
+        <h2 id="modules">1.6 Composizione del sorgente: include, using, import, export</h2>
+
+        <p>MALDA ha tre modi per portare codice da altrove, e uno per controllare cosa un file offre agli altri. Tutti e quattro sono solo a top-level.</p>
+        <table>
+            <thead>
+                <tr><th>Forma</th><th>Cosa fa</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>include "path/file.malda";</code></td><td>Compone il sorgente: carica e fa il parse di un altro file MALDA <em>nel programma corrente</em>, come se il suo testo ne facesse parte.</td></tr>
+                <tr><td><code>using PackageName;</code></td><td>Carica un modulo di pacchetto installato e unisce i suoi simboli esportati nello scope corrente.</td></tr>
+                <tr><td><code>import "path/file.malda";</code></td><td>Carica un file locale <em>come modulo</em> e unisce solo i suoi simboli esportati.</td></tr>
+                <tr><td><code>import { a, b } from "path/file.malda";</code></td><td>Stesso caricamento, ma unisce <em>solo</em> gli export nominati nello scope corrente.</td></tr>
+                <tr><td><code>import alias = ...;</code></td><td>Come sopra, ma lega i simboli esportati a un unico oggetto namespace invece che allo scope corrente.</td></tr>
+                <tr><td><code>export function/class/var/type/schema</code></td><td>Marca una dichiarazione come parte della superficie pubblica di questo file.</td></tr>
+            </tbody>
+        </table>
+
+        <h3>Quando usare ciascuno</h3>
+        <ul>
+            <li>Usa <code>include</code> quando stai semplicemente spezzando un programma su più file e vuoi che tutto sia visibile ovunque.</li>
+            <li>Usa <code>import</code> quando un file è un'unità riutilizzabile con una superficie pubblica deliberata, soprattutto se vuoi i suoi simboli dietro un namespace.</li>
+            <li>Usa <code>using</code> per librerie riutilizzabili esterne installate come pacchetti.</li>
+        </ul>
+
+        <h3>export e la superficie di default</h3>
+        <p><code>export</code> può prefissare una dichiarazione di funzione, classe, <code>var</code>, <code>type</code> o <code>schema</code>:</p>
+        <pre><code>// math_utils.malda
+export function add(a, b) {
+    return a + b;
+}
+
+export var VERSION = "1.0";
+export type Result = Ok(value) | Err(msg);
+export schema Contact { name: string; }
+
+function internalHelper(x) {   // not exported
+    return x * 2;
+}</code></pre>
+        <div class="warning-box">
+            <strong>Default importante:</strong> l'elenco degli export viene applicato solo quando un file contiene <strong>almeno un</strong> <code>export</code>. Un modulo senza alcun <code>export</code> pubblica <em>ogni</em> simbolo top-level (inclusi <code>type</code> / <code>schema</code>). Aggiungere il primo <code>export</code> a un file esistente quindi nasconde tutto ciò che non hai marcato — usa <code>export type</code> / <code>export schema</code> quando il modulo esporta già dei valori.
+        </div>
+
+        <h3>Import nello scope corrente o dietro un namespace</h3>
+        <p>Senza alias, i simboli esportati vengono uniti nello scope corrente. Un nome che esiste già <strong>non</strong> viene sovrascritto, quindi il file che importa vince sempre in caso di collisione:</p>
+        <pre><code>import "shared/math_utils.malda";
+
+print(add(2, 3));      // 5
+print(VERSION);        // "1.0"
+// internalHelper(2);  // not available: never exported</code></pre>
+        <p>L'import selettivo estrae un sottoinsieme di quella superficie (i nomi mancanti o non esportati sono errori). Golden offline: <code>Examples/Modules/selective_import.malda</code>, <code>Examples/Modules/export_type_schema.malda</code> — vedi anche <a href="../../docs/selective-imports.md"><code>docs/selective-imports.md</code></a>.</p>
+        <pre><code>import { add, VERSION } from "shared/math_utils.malda";
+
+print(add(2, 3));
+print(VERSION);
+// unused();           // not imported, even if exported by the module
+
+import { Result, Contact } from "types_lib.malda";
+var r = Ok(42);                 // constructors arrive with export type Result
+var ok = validate("Contact", dict { "name": "Ada" });</code></pre>
+        <p>Con un alias, gli stessi simboli sono raggruppati in un oggetto, il che evita del tutto le collisioni:</p>
+        <pre><code>import mathUtils = "shared/math_utils.malda";
+
+print(mathUtils.add(2, 3));   // 5
+print(mathUtils.VERSION);     // "1.0"</code></pre>
+        <p>Le stesse due forme valgono per i pacchetti, con un nome di pacchetto puntato al posto del path stringa:</p>
+        <pre><code>import App.Core;
+import UI = App.Web.Components;</code></pre>
+        <p>I nomi di pacchetto che iniziano con <code>System</code>, <code>Microsoft</code> o <code>Windows</code> vengono risolti come namespace .NET attraverso il layer di interop, non dal gestore di pacchetti. Vedi <a href="29-dotnet-interop.html">29. Interop .NET</a>.</p>
+        <p>Se non si riesce a risolvere un target è un errore a runtime: <em>Package or module not found: Name</em> per i pacchetti, e il messaggio di file-not-found sottostante per gli import di file.</p>
+
+        <h3>Path e comportamento di sicurezza per <code>include</code></h3>
+        <ul>
+            <li><code>include</code> è consentito solo a scope top-level (non dentro blocchi come <code>if</code>, <code>while</code> o corpi di funzione).</li>
+            <li>I path relativi di include si risolvono dalla directory del file che contiene l'istruzione include.</li>
+            <li>Sono supportati anche i path assoluti.</li>
+            <li>Le catene di include circolari vengono rifiutate con un errore di parse.</li>
+        </ul>
+        <p>Nel Desktop IDE i tab virtuali non sostituiscono <code>include</code>: sono una vista dell'editor su un unico file fisico. Vengono creati solo quando il sorgente contiene i separatori espliciti <code>// @malda-section Name</code>. La risoluzione degli include resta basata sui file e funziona come prima.</p>
+
+        <pre><code>// Local file composition: everything from these files becomes part of this program
+include "shared/math_utils.malda";
+include "features/orders.malda";
+
+// Package import into the current scope
+using App.Core;
+
+// Package import behind a namespace object
+using UI = App.Web.Components;</code></pre>
+
+        <h2>1.7 Esempio rapido</h2>
+
+        <p>Prima i costrutti caratteristici (stesso programma di <code>Examples/Basics/first_look.malda</code>). <code>-&gt; Review</code> lega il prompt allo schema. Senza <code>await</code>, la chiamata è un template reso — nessuna API key. <code>validate("Review", …)</code> è lo stesso controllo che <code>await</code> eseguirebbe sul JSON del modello.</p>
+
+        <pre><code>schema Review {
+    summary: string;
+    issues: string[];
+}
+
+prompt codeReview(code, language) -> Review {
+    system: "You are an expert reviewer of {language}.",
+    user: "Review this {language} code:\n\n{code}"
+}
+
+var rendered = codeReview("function add(a, b) { return a + b; }", "javascript");
+io.print(rendered.user);
+
+var checked = validate("Review", {
+    "summary": "Looks fine",
+    "issues": []
+});
+if (checked.ok) {
+    io.print("schema ok: " + checked.data.summary);
+}</code></pre>
+
+        <p>La sintassi core usa le stesse istruzioni. Preferisci le chiamate namespaced (<code>io.print</code>); il <code>print</code> piatto continua a funzionare. I/O di file, path e ambiente: <a href="11-input-output.html">11. Input/Output</a>.</p>
+
+        <pre><code>io.print("Hello, World!");
+
+var name = "Alice";
+var age = 25;
+var pi = 3.14159;
+var isActive = true;
+
+var numbers = [1, 2, 3, 4, 5];
+numbers.append(6);
+
+function greet(name) {
+    return "Hello, " + name + "!";
+}
+
+io.print(greet("Bob"));
+
+class Person {
+    public var name;
+    public var age;
+    
+    function Person(name, age) {
+        this.name = name;
+        this.age = age;
+    }
+    
+    public function introduce() {
+        io.print($"Hi, I'm {this.name} and I'm {this.age} years old.");
+    }
+}
+
+var person = new Person("Charlie", 30);
+person.introduce();</code></pre>
+
+        <div class="see-also">
+            <h3>Vedi anche</h3>
+            <ul>
+                <li><a href="03-lexical-structure.html">3. Struttura lessicale</a> - Le basi della sintassi</li>
+                <li><a href="04-data-types.html">4. Tipi di dati</a> - Il sistema di tipi di MALDA</li>
+                <li><a href="32-examples.html">32. Esempi</a> - Altri esempi completi</li>
+            </ul>
+        </div>
+
+        <div class="nav-footer">
+            <a href="index.html">← Indice</a>
+            <a href="02-tools.html">Successivo: 2. Strumenti e toolchain→</a>
+        </div>
+
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, a tua scelta.</p>
+        </footer>
+    </main>
+
+    <script src="../malda-highlight.js"></script>
+
+    <script src="../navigation.js"></script>
+</body>
+</html>
