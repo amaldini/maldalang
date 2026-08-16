@@ -40,7 +40,7 @@ Interpret-mode debug core: [`MaldaLang/Interpreter/Debug/DebugSession.cs`](../Ma
 | `MaldaLang.TestLib` / `MaldaLang.Tests` | Shared test helpers and automated tests |
 | `vscode-malda` | VS Code / Cursor extension: LSP client + interpret-mode debugger type `malda` (`malda debug-adapter`) |
 | `Examples/`, `Templates/` | Samples and `malda new` scaffolds |
-| `ReferenceManual/` | HTML language reference |
+| `ReferenceManual/` | HTML language reference (English canonical; Italian in `ReferenceManual/it/`) |
 | `conformance/` | Spec / tier0 conformance assets |
 
 ## Execution modes
@@ -72,7 +72,7 @@ Server-driven `ui.*` trees, patch protocol, and `MaldaLang.UIHost` wiring are do
 
 | Path | Trust level |
 |------|-------------|
-| `ReferenceManual/` | User-facing language reference |
+| `ReferenceManual/` | User-facing language reference (English canonical; Italian in [`ReferenceManual/it/`](../ReferenceManual/it/)) |
 | `docs/spec/` | Spec / matrix notes |
 | `docs/spec/backend-capability-matrix.md` | Interpreter vs C# vs JS product capabilities |
 | `docs/start-here.md`, `docs/architecture.md` | Onboarding |

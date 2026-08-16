@@ -1,6 +1,26 @@
 // Generate Table of Contents on the home page (grouped by category).
 // Prefers chapters.json over HTTP; falls back to FALLBACK_TOC_CHAPTERS offline.
 
+const TOC_CATEGORY_LABELS_IT = {
+    'Language Fundamentals': 'Fondamenti del linguaggio',
+    'Standard Library': 'Libreria standard',
+    'AI & Agents': 'AI e agenti',
+    'Web': 'Web',
+    'Platform': 'Piattaforma',
+    'Reference': 'Riferimento'
+};
+
+function isItalianManual() {
+    return document.documentElement.lang === 'it';
+}
+
+function tocCategoryLabel(category) {
+    if (!isItalianManual()) {
+        return category;
+    }
+    return TOC_CATEGORY_LABELS_IT[category] || category;
+}
+
 const TOC_CATEGORY_ORDER = [
     'Language Fundamentals',
     'Standard Library',
@@ -48,6 +68,44 @@ const FALLBACK_TOC_CHAPTERS = [
     { file: "35-appendix.html", title: "Appendix", num: "35", category: "Reference", description: "Reserved words, operator precedence" }
 ];
 
+const FALLBACK_TOC_CHAPTERS_IT = [
+    { file: "01-introduction.html", title: "Introduzione", num: "1", category: "Language Fundamentals", description: "Panoramica del linguaggio e delle funzionalità" },
+    { file: "02-tools.html", title: "Strumenti e toolchain", num: "2", category: "Language Fundamentals", description: "Interprete, compilatore e gestore di pacchetti" },
+    { file: "03-lexical-structure.html", title: "Struttura lessicale", num: "3", category: "Language Fundamentals", description: "Commenti, identificatori, keyword, operatori" },
+    { file: "04-data-types.html", title: "Tipi di dati", num: "4", category: "Language Fundamentals", description: "Tipi primitivi, sistema di tipi, oggetti" },
+    { file: "05-variables.html", title: "Variabili", num: "5", category: "Language Fundamentals", description: "Dichiarazione, assegnamento, scope" },
+    { file: "06-arrays.html", title: "Array", num: "6", category: "Language Fundamentals", description: "Operazioni e metodi sugli array" },
+    { file: "07-expressions.html", title: "Espressioni", num: "7", category: "Language Fundamentals", description: "Operazioni aritmetiche, di confronto e logiche" },
+    { file: "08-control-structures.html", title: "Strutture di controllo", num: "8", category: "Language Fundamentals", description: "Condizionali e cicli" },
+    { file: "09-functions.html", title: "Funzioni", num: "9", category: "Language Fundamentals", description: "Dichiarazione, chiamate, decoratori" },
+    { file: "10-classes-objects.html", title: "Classi e oggetti", num: "10", category: "Language Fundamentals", description: "Funzionalità OOP, ereditarietà" },
+    { file: "11-input-output.html", title: "Input/Output", num: "11", category: "Standard Library", description: "Console, file, path, ambiente e I/O dell'host" },
+    { file: "12-built-in-functions.html", title: "Funzioni built-in", num: "12", category: "Standard Library", description: "Conversioni di tipo, math, stringhe, operazioni su file" },
+    { file: "13-graphs.html", title: "Grafi", num: "13", category: "Standard Library", description: "Strutture dati a grafo e algoritmi" },
+    { file: "14-vectordb.html", title: "VectorDB", num: "14", category: "Standard Library", description: "Database vettoriale per la similarity search" },
+    { file: "15-database.html", title: "Supporto database", num: "15", category: "Standard Library", description: "Client SQL Server e PostgreSQL" },
+    { file: "16-actors.html", title: "Actor", num: "16", category: "AI & Agents", description: "Modello ad actor e message passing" },
+    { file: "17-agent-orchestration.html", title: "Orchestrazione di agenti", num: "17", category: "AI & Agents", description: "Client LLM, agenti, tool" },
+    { file: "18-graph-memory.html", title: "GraphMemory", num: "18", category: "AI & Agents", description: "Memoria semantica per agenti AI" },
+    { file: "19-mcp-server.html", title: "Server MCP", num: "19", category: "AI & Agents", description: "Supporto del protocollo MCP" },
+    { file: "20-acp.html", title: "ACP (Agent Communication Protocol)", num: "20", category: "AI & Agents", description: "Protocollo di comunicazione e collaborazione tra agenti" },
+    { file: "21-durable-workflows.html", title: "Workflow durevoli", num: "21", category: "AI & Agents", description: "Sintassi dei workflow durevoli, modello di runtime, CLI, DLQ e operazioni" },
+    { file: "22-web-ui-hub.html", title: "Panoramica Web UI", num: "22", category: "Web", description: "Scegliere componenti server, pagine HttpServer o JS nel browser" },
+    { file: "23-web-ui.html", title: "Componenti server Web UI", num: "23", category: "Web", description: "Componenti server, fragment, aggiornamenti live e ui.*" },
+    { file: "24-http-server-html-ui.html", title: "HttpServer e generazione UI HTML", num: "24", category: "Web", description: "Hosting route-first, @PAGE, @AIPAGE e generazione HTML" },
+    { file: "25-browser-javascript-backend.html", title: "Backend UI JavaScript nel browser", num: "25", category: "Web", description: "MALDA ospitato nel browser e compilato in JavaScript" },
+    { file: "26-rest-api.html", title: "Server REST API", num: "26", category: "Web", description: "Creare REST API" },
+    { file: "27-rest-web-client.html", title: "Client REST Web", num: "27", category: "Web", description: "Richieste HTTP verso REST API" },
+    { file: "28-full-stack-development.html", title: "Sviluppo full-stack con MALDA", num: "28", category: "Web", description: "Architettura full-stack end-to-end e flusso di implementazione" },
+    { file: "29-dotnet-interop.html", title: "Interop .NET", num: "29", category: "Platform", description: "Caricare e usare librerie .NET esterne" },
+    { file: "30-device-integration.html", title: "Integrazione dispositivi", num: "30", category: "Platform", description: "Controllare dispositivi fisici (Arduino, ESP32, IoT, ecc.)" },
+    { file: "31-personal-assistant.html", title: "Assistente personale e CLI", num: "31", category: "Platform", description: "Comandi dell'assistente, scheduling e canali" },
+    { file: "32-examples.html", title: "Esempi", num: "32", category: "Reference", description: "Esempi di codice completi" },
+    { file: "33-property-testing.html", title: "Property testing", num: "33", category: "Reference", description: "Property test deterministici, shrinking e workflow di regressione" },
+    { file: "34-grammar.html", title: "Grammatica", num: "34", category: "Reference", description: "Specifica della grammatica in stile BNF" },
+    { file: "35-appendix.html", title: "Appendice", num: "35", category: "Reference", description: "Parole riservate, precedenza degli operatori" }
+];
+
 function chaptersToTocItems(chapters) {
     const items = [];
     let num = 0;
@@ -85,7 +143,7 @@ function renderTableOfContents(tocContainer, chapters) {
         }
 
         tocHTML += '<details class="toc-category" open>\n';
-        tocHTML += '  <summary>' + category + '</summary>\n';
+        tocHTML += '  <summary>' + tocCategoryLabel(category) + '</summary>\n';
         tocHTML += '  <ul>\n';
 
         categoryChapters.forEach(function(chapter) {
@@ -103,7 +161,9 @@ function renderTableOfContents(tocContainer, chapters) {
     const hub = chapters.find(function(ch) { return ch.file === '22-web-ui-hub.html'; });
     if (hub) {
         tocHTML += '\n<div class="info-box" style="margin-top: 20px;">\n';
-        tocHTML += '    <strong>Web UI:</strong> Not sure which UI chapter to read? Start with <a href="' + hub.file + '">' + chapterLabel(hub) + '</a>.\n';
+        tocHTML += '    <strong>Web UI:</strong> ' + (isItalianManual()
+            ? 'Non sai quale capitolo UI leggere? Inizia da <a href="' + hub.file + '">' + chapterLabel(hub) + '</a>.'
+            : 'Not sure which UI chapter to read? Start with <a href="' + hub.file + '">' + chapterLabel(hub) + '</a>.') + '\n';
         tocHTML += '</div>\n';
     }
 
@@ -114,7 +174,7 @@ function renderTableOfContents(tocContainer, chapters) {
         const nextLink = navFooter.querySelector('a[href*="01-introduction"], a:last-child');
         if (nextLink) {
             const firstChapter = chapters[0];
-            nextLink.textContent = 'Next: ' + chapterLabel(firstChapter) + '→';
+            nextLink.textContent = (isItalianManual() ? 'Successivo: ' : 'Next: ') + chapterLabel(firstChapter) + '→';
             nextLink.setAttribute('href', firstChapter.file);
         }
     }
@@ -137,7 +197,7 @@ async function generateTableOfContents() {
         // file:// and other offline contexts fall back to embedded data
     }
 
-    renderTableOfContents(tocContainer, FALLBACK_TOC_CHAPTERS);
+    renderTableOfContents(tocContainer, isItalianManual() ? FALLBACK_TOC_CHAPTERS_IT : FALLBACK_TOC_CHAPTERS);
 }
 
 if (document.readyState === 'loading') {

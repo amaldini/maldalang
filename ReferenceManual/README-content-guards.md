@@ -25,11 +25,13 @@ dotnet test MaldaLang.Tests --filter "FullyQualifiedName~ReferenceManual"
 | `ReferenceManualContentGuardTests.ChapterFilenames_MatchDisplayNumbers` | Each numbered chapter file starts with `{nn}-` matching its `chapters.json` order |
 | `ReferenceManualContentGuardTests.ChapterMastheads_MatchCliVersion` | Chapter headers, the Tools REPL banner, the home “What ships today” line, and the book script stamp the CLI `<Version>` |
 | `ReferenceManualRunnableSnippetTests` | Every snippet marked runnable actually runs and prints what the manual claims |
+| `ReferenceManualItalianTests` | Italian tree in `it/` mirrors English files, keeps code listings identical, uses `../` assets / `../../docs/` links, and `STATUS.md` matches English SHA-256 |
+| `ReferenceManualChapterSyncTests.ItalianManual_ChapterTitlesMatchChaptersJson` | Italian titles, breadcrumbs, and `<h1>` match `it/chapters.json` |
 
 ## Adding a built-in
 
 Registering a name in `BuiltInRegistry` and not mentioning it anywhere in
-`ReferenceManual/*.html` fails the coverage guard. Either document it, or add the
+the English `ReferenceManual/*.html` (not `it/`) fails the coverage guard. Either document it, or add the
 name to `UndocumentedBuiltInAllowList` in `ReferenceManualContentGuardTests`
 together with the reason it should stay undocumented.
 

@@ -214,6 +214,10 @@ header p {
     text-decoration: none;
 }
 
+a.manual-action {
+    text-decoration: none;
+}
+
 /* --------------------------------------------------------------- Sidebar */
 
 nav {

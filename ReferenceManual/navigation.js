@@ -9,10 +9,70 @@ const NAV_CATEGORY_ORDER = [
     'Reference'
 ];
 
+const NAV_CATEGORY_LABELS_IT = {
+    'Language Fundamentals': 'Fondamenti del linguaggio',
+    'Standard Library': 'Libreria standard',
+    'AI & Agents': 'AI e agenti',
+    'Web': 'Web',
+    'Platform': 'Piattaforma',
+    'Reference': 'Riferimento'
+};
+
+function isItalianManual() {
+    return document.documentElement.lang === 'it';
+}
+
+function manualPageName() {
+    const path = window.location.pathname || '';
+    const page = path.split('/').pop() || 'index.html';
+    return page.split('?')[0] || 'index.html';
+}
+
+function peerLocaleHref() {
+    const page = manualPageName();
+    return isItalianManual() ? '../' + page : 'it/' + page;
+}
+
+function categoryLabel(category) {
+    if (!isItalianManual()) {
+        return category;
+    }
+    return NAV_CATEGORY_LABELS_IT[category] || category;
+}
+
+function manualStrings() {
+    if (isItalianManual()) {
+        return {
+            openContents: 'Apri indice',
+            closeContents: 'Chiudi indice',
+            print: 'Stampa / PDF',
+            printTitle: 'Stampa questo capitolo (A4, codice adattato alla pagina)',
+            copy: 'Copia',
+            copied: 'Copiato!',
+            copyAria: 'Copia il codice negli appunti',
+            langSwitch: 'English',
+            langSwitchTitle: 'English version of this page'
+        };
+    }
+    return {
+        openContents: 'Open contents',
+        closeContents: 'Close contents',
+        print: 'Print / PDF',
+        printTitle: 'Print this chapter (A4, code wrapped to the page)',
+        copy: 'Copy',
+        copied: 'Copied!',
+        copyAria: 'Copy code to clipboard',
+        langSwitch: 'Italiano',
+        langSwitchTitle: 'Versione italiana di questa pagina'
+    };
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     if (document.body.style.zoom !== undefined) {
         document.body.style.zoom = '1';
     }
+
+    injectHreflang();
 
     injectNavbar().then(function() {
         initNavigation();
@@ -25,6 +85,27 @@ document.addEventListener('DOMContentLoaded', function() {
     initSmoothScroll();
     highlightActiveSection();
 });
+
+function injectHreflang() {
+    const page = manualPageName();
+    const enHref = isItalianManual() ? '../' + page : page;
+    const itHref = isItalianManual() ? page : 'it/' + page;
+    const links = [
+        { hreflang: 'en', href: enHref },
+        { hreflang: 'it', href: itHref }
+    ];
+    links.forEach(function(item) {
+        const existing = document.head.querySelector('link[rel="alternate"][hreflang="' + item.hreflang + '"]');
+        if (existing) {
+            return;
+        }
+        const link = document.createElement('link');
+        link.rel = 'alternate';
+        link.hreflang = item.hreflang;
+        link.href = item.href;
+        document.head.appendChild(link);
+    });
+}
 
 async function injectNavbar() {
     const nav = document.querySelector('nav');
@@ -69,7 +150,7 @@ function buildNavItemsFromChapters(chapters) {
 }
 
 function getFallbackNavItems() {
-    return FALLBACK_NAV_ITEMS;
+    return isItalianManual() ? FALLBACK_NAV_ITEMS_IT : FALLBACK_NAV_ITEMS;
 }
 
 const FALLBACK_NAV_ITEMS = [
@@ -111,6 +192,45 @@ const FALLBACK_NAV_ITEMS = [
         { href: "35-appendix.html", text: "35. Appendix", category: "Reference" },
 ];
 
+const FALLBACK_NAV_ITEMS_IT = [
+        { href: "index.html", text: "Indice", category: null },
+        { href: "01-introduction.html", text: "1. Introduzione", category: "Language Fundamentals" },
+        { href: "02-tools.html", text: "2. Strumenti e toolchain", category: "Language Fundamentals" },
+        { href: "03-lexical-structure.html", text: "3. Struttura lessicale", category: "Language Fundamentals" },
+        { href: "04-data-types.html", text: "4. Tipi di dati", category: "Language Fundamentals" },
+        { href: "05-variables.html", text: "5. Variabili", category: "Language Fundamentals" },
+        { href: "06-arrays.html", text: "6. Array", category: "Language Fundamentals" },
+        { href: "07-expressions.html", text: "7. Espressioni", category: "Language Fundamentals" },
+        { href: "08-control-structures.html", text: "8. Strutture di controllo", category: "Language Fundamentals" },
+        { href: "09-functions.html", text: "9. Funzioni", category: "Language Fundamentals" },
+        { href: "10-classes-objects.html", text: "10. Classi e oggetti", category: "Language Fundamentals" },
+        { href: "11-input-output.html", text: "11. Input/Output", category: "Standard Library" },
+        { href: "12-built-in-functions.html", text: "12. Funzioni built-in", category: "Standard Library" },
+        { href: "13-graphs.html", text: "13. Grafi", category: "Standard Library" },
+        { href: "14-vectordb.html", text: "14. VectorDB", category: "Standard Library" },
+        { href: "15-database.html", text: "15. Supporto database", category: "Standard Library" },
+        { href: "16-actors.html", text: "16. Actor", category: "AI & Agents" },
+        { href: "17-agent-orchestration.html", text: "17. Orchestrazione di agenti", category: "AI & Agents" },
+        { href: "18-graph-memory.html", text: "18. GraphMemory", category: "AI & Agents" },
+        { href: "19-mcp-server.html", text: "19. Server MCP", category: "AI & Agents" },
+        { href: "20-acp.html", text: "20. ACP (Agent Communication Protocol)", category: "AI & Agents" },
+        { href: "21-durable-workflows.html", text: "21. Workflow durevoli", category: "AI & Agents" },
+        { href: "22-web-ui-hub.html", text: "22. Panoramica Web UI", category: "Web" },
+        { href: "23-web-ui.html", text: "23. Componenti server Web UI", category: "Web" },
+        { href: "24-http-server-html-ui.html", text: "24. HttpServer e generazione UI HTML", category: "Web" },
+        { href: "25-browser-javascript-backend.html", text: "25. Backend UI JavaScript nel browser", category: "Web" },
+        { href: "26-rest-api.html", text: "26. Server REST API", category: "Web" },
+        { href: "27-rest-web-client.html", text: "27. Client REST Web", category: "Web" },
+        { href: "28-full-stack-development.html", text: "28. Sviluppo full-stack con MALDA", category: "Web" },
+        { href: "29-dotnet-interop.html", text: "29. Interop .NET", category: "Platform" },
+        { href: "30-device-integration.html", text: "30. Integrazione dispositivi", category: "Platform" },
+        { href: "31-personal-assistant.html", text: "31. Assistente personale e CLI", category: "Platform" },
+        { href: "32-examples.html", text: "32. Esempi", category: "Reference" },
+        { href: "33-property-testing.html", text: "33. Property testing", category: "Reference" },
+        { href: "34-grammar.html", text: "34. Grammatica", category: "Reference" },
+        { href: "35-appendix.html", text: "35. Appendice", category: "Reference" },
+];
+
 function renderCollapsibleNav(nav, items) {
     const homeItem = items.find(function(item) { return item.href === 'index.html'; });
     const chapterItems = items.filter(function(item) { return item.href !== 'index.html'; });
@@ -137,7 +257,7 @@ function renderCollapsibleNav(nav, items) {
         const categoryId = 'nav-cat-' + category.toLowerCase().replace(/[^a-z0-9]+/g, '-');
         navHTML += '<li class="nav-category" data-category="' + escapeAttr(category) + '">';
         navHTML += '<button type="button" class="nav-category-toggle" aria-expanded="false" aria-controls="' + categoryId + '">';
-        navHTML += '<span class="nav-category-label">' + escapeHtml(category) + '</span>';
+        navHTML += '<span class="nav-category-label">' + escapeHtml(categoryLabel(category)) + '</span>';
         navHTML += '<span class="nav-category-icon" aria-hidden="true"></span>';
         navHTML += '</button>';
         navHTML += '<ul class="nav-category-items" id="' + categoryId + '">';
@@ -212,7 +332,8 @@ function initHeaderActions() {
         const toggle = document.createElement('button');
         toggle.type = 'button';
         toggle.className = 'nav-toggle';
-        toggle.setAttribute('aria-label', 'Open contents');
+        const strings = manualStrings();
+        toggle.setAttribute('aria-label', strings.openContents);
         toggle.setAttribute('aria-expanded', 'false');
         toggle.setAttribute('aria-controls', 'manual-nav');
         toggle.innerHTML = '<span class="nav-toggle-bars" aria-hidden="true"></span>';
@@ -226,15 +347,26 @@ function initHeaderActions() {
         const actions = document.createElement('div');
         actions.className = 'manual-actions';
 
+        const strings = manualStrings();
+
+        const langSwitch = document.createElement('a');
+        langSwitch.className = 'manual-action lang-switch';
+        langSwitch.href = peerLocaleHref();
+        langSwitch.textContent = strings.langSwitch;
+        langSwitch.title = strings.langSwitchTitle;
+        langSwitch.setAttribute('hreflang', isItalianManual() ? 'en' : 'it');
+        langSwitch.setAttribute('lang', isItalianManual() ? 'en' : 'it');
+
         const printButton = document.createElement('button');
         printButton.type = 'button';
         printButton.className = 'manual-action';
-        printButton.textContent = 'Print / PDF';
-        printButton.title = 'Print this chapter (A4, code wrapped to the page)';
+        printButton.textContent = strings.print;
+        printButton.title = strings.printTitle;
         printButton.addEventListener('click', function() {
             window.print();
         });
 
+        actions.appendChild(langSwitch);
         actions.appendChild(printButton);
         header.appendChild(actions);
     }
@@ -284,7 +416,8 @@ function setNavDrawerOpen(open) {
 
     if (toggle) {
         toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-        toggle.setAttribute('aria-label', open ? 'Close contents' : 'Open contents');
+        const strings = manualStrings();
+        toggle.setAttribute('aria-label', open ? strings.closeContents : strings.openContents);
     }
 
     if (backdrop) {
@@ -316,15 +449,16 @@ function initCodeCopy() {
         const pre = block.parentElement;
         if (!pre.querySelector('.copy-btn')) {
             const button = document.createElement('button');
+            const strings = manualStrings();
             button.className = 'copy-btn';
-            button.textContent = 'Copy';
-            button.setAttribute('aria-label', 'Copy code to clipboard');
+            button.textContent = strings.copy;
+            button.setAttribute('aria-label', strings.copyAria);
 
             button.addEventListener('click', function() {
                 copyToClipboard(codeBlockText(block));
-                button.textContent = 'Copied!';
+                button.textContent = strings.copied;
                 setTimeout(function() {
-                    button.textContent = 'Copy';
+                    button.textContent = strings.copy;
                 }, 2000);
             });
 

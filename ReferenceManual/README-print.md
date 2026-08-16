@@ -14,7 +14,7 @@ from a CDN, so the manual works offline and from `file://`.
 | `syntax.css` | Syntax highlighting token colours |
 | `print.css` | Paper presentation, linked with `media="print"` |
 | `malda-highlight.js` | Dependency-free MALDA / shell / REPL / JSON highlighter |
-| `navigation.js` | Sidebar, copy buttons, print action |
+| `navigation.js` | Sidebar, copy buttons, print action, Italiano/English switcher |
 
 `print.css` **must** load after `styles.css`, otherwise the screen rules win the
 cascade in the print medium. After adding a chapter, run:

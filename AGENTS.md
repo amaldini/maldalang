@@ -86,7 +86,7 @@ Web IDE improvements (Monaco UX, examples browser, diagnostics presentation) are
 | Web IDE | `MaldaLang.IDE/` |
 | Desktop IDE | `MaldaLang.DesktopIDE/` |
 | Examples | `Examples/` |
-| Language reference (edit HTML chapters) | `ReferenceManual/*.html` (not generated PDF HTML) |
+| Language reference (edit HTML chapters) | `ReferenceManual/*.html` (not generated PDF HTML). Italian translation: `ReferenceManual/it/` (English remains canonical) |
 | Spec / onboarding docs | `docs/spec/`, `docs/start-here.md`, `docs/architecture.md` |
 | Licensing | `LICENSE-MIT`, `LICENSE-APACHE`, `LICENSE-RUNTIME-EXCEPTION`, `TRADEMARK.md`, `THIRD-PARTY-NOTICES.md` |
 
