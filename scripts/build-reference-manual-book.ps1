@@ -3,19 +3,26 @@
     Assemble the Reference Manual chapters into one print-ready book.
 
 .DESCRIPTION
-    Reads ReferenceManual/chapters.json, lifts the <main> content out of each
-    chapter, rewrites cross-chapter links into internal anchors and emits a
+    Reads chapters.json, lifts the <main> content out of each chapter,
+    rewrites cross-chapter links into internal anchors and emits a
     single self-contained folder that can be printed to PDF from a browser.
 
-    The cover plate is ReferenceManual/assets/cover.svg, inlined as a data URI
-    so the book stays a single file. Replace that SVG and rebuild to change the
-    graphic; version, date and trim stay HTML overlaid at the bottom of the page.
+    English (default) reads ReferenceManual/chapters.json and writes
+    malda-reference-manual.html. -Locale it reads ReferenceManual/it/
+    and writes malda-reference-manual-it.html. Do not translate a second
+    book corpus: the bound edition is a build of the HTML tree.
+
+    The cover plate is ReferenceManual/assets/cover.svg (cover-it.svg for
+    Italian), inlined as a data URI so the book stays a single file.
+    Replace that SVG and rebuild to change the graphic; version, date and
+    trim stay HTML overlaid at the bottom of the page.
 
     Output folder (default artifacts/reference-manual):
-        malda-reference-manual.html   the book
+        malda-reference-manual.html      English book
+        malda-reference-manual-it.html   Italian book (-Locale it)
 
     Producing the PDF:
-        1. Open malda-reference-manual.html in Chrome or Edge.
+        1. Open the HTML file in Chrome or Edge.
         2. Wait for pagination to finish (a banner reports the page count).
         3. Ctrl+P, destination "Save as PDF", margins "None",
            "Background graphics" enabled.
@@ -30,6 +37,10 @@
 .PARAMETER OutputDirectory
     Destination folder. Defaults to artifacts/reference-manual.
 
+.PARAMETER Locale
+    en (default) or it. Italian chrome (cover, copyright, TOC, running head)
+    is generated here; chapter prose comes from ReferenceManual/it/.
+
 .PARAMETER NoPagedJs
     Omit the Paged.js reference entirely.
 #>
@@ -41,21 +52,25 @@ param(
 
     [string]$OutputDirectory,
 
+    [ValidateSet('en', 'it')]
+    [string]$Locale = 'en',
+
     [switch]$NoPagedJs
 )
 
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$manualDir = Join-Path $repoRoot "ReferenceManual"
-$configPath = Join-Path $manualDir "chapters.json"
+$sharedManualDir = Join-Path $repoRoot "ReferenceManual"
+$chapterDir = if ($Locale -eq 'it') { Join-Path $sharedManualDir "it" } else { $sharedManualDir }
+$configPath = Join-Path $chapterDir "chapters.json"
 $cliCsproj = Join-Path (Join-Path $repoRoot "MaldaLang") "MaldaLang.csproj"
 if (-not (Test-Path -LiteralPath $cliCsproj)) {
     throw "Missing MaldaLang.csproj; cannot stamp the manual version."
 }
 $cliCsprojText = Get-Content -LiteralPath $cliCsproj -Raw
 $versionMatch = [regex]::Match($cliCsprojText, '<Version>\s*([^<]+?)\s*</Version>')
-if (-not $versionMatch.Success) {
+if (-not ($versionMatch.Success)) {
     throw "MaldaLang.csproj must contain <Version>x.y.z</Version>"
 }
 $manualVersion = $versionMatch.Groups[1].Value.Trim()
@@ -74,9 +89,121 @@ $trimPresets = @{
 }
 $preset = $trimPresets[$Trim]
 
-Write-Host "Building MALDA Reference Manual book ($Trim, text measure $($preset.Measure))"
+# Book chrome (cover overlay, copyright, TOC heading, Paged.js banner). Chapter
+# prose is not translated here: it is lifted from the HTML tree for $Locale.
+$locales = @{
+    en = @{
+        HtmlLang          = 'en'
+        CultureName       = 'en-US'
+        BookTitle         = 'MALDA Reference Manual'
+        TocHeading        = 'Contents'
+        OutputFile        = 'malda-reference-manual.html'
+        CoverFile         = 'cover.svg'
+        CoverAlt          = 'MALDA Reference Manual'
+        SourcesHint       = 'ReferenceManual/'
+        MetaDescription   = "MALDA Reference Manual - bound edition ($Trim)"
+        HtmlTitle         = "MALDA Reference Manual - $Trim print edition"
+        CoverMeta         = $null  # filled after $buildDate
+        EditionLine       = $null
+        CopyrightLead     = $null
+        CopyrightBody     = $null
+        BannerNoPaged     = 'Paged.js unavailable: printing without running heads, folios or contents page numbers.'
+        TitlePaginating   = 'Paginating... - MALDA Reference Manual'
+        TitleDonePrefix   = 'MALDA Reference Manual ('
+        TitleDoneSuffix   = ' pages)'
+        BannerDoneSuffix  = ' pages. Print with margins "None" and "Background graphics" enabled.'
+    }
+    it = @{
+        HtmlLang          = 'it'
+        CultureName       = 'it-IT'
+        BookTitle         = 'Manuale di riferimento MALDA'
+        TocHeading        = 'Indice'
+        OutputFile        = 'malda-reference-manual-it.html'
+        CoverFile         = 'cover-it.svg'
+        CoverAlt          = 'Manuale di riferimento MALDA'
+        SourcesHint       = 'ReferenceManual/it/'
+        MetaDescription   = "Manuale di riferimento MALDA - edizione rilegata ($Trim)"
+        HtmlTitle         = "Manuale di riferimento MALDA - edizione a stampa $Trim"
+        CoverMeta         = $null
+        EditionLine       = $null
+        CopyrightLead     = $null
+        CopyrightBody     = $null
+        BannerNoPaged     = "Paged.js non disponibile: stampa senza testatine, fogli o numeri di pagina nell'indice."
+        TitlePaginating   = 'Impaginazione... - Manuale di riferimento MALDA'
+        TitleDonePrefix   = 'Manuale di riferimento MALDA ('
+        TitleDoneSuffix   = ' pagine)'
+        BannerDoneSuffix  = ' pagine. Stampa con margini "Nessuno" e "Grafica di sfondo" attiva.'
+    }
+}
+$ui = $locales[$Locale]
+if ($null -eq $ui) {
+    throw "Unknown locale '${Locale}'."
+}
+
+$culture = [Globalization.CultureInfo]::GetCultureInfo($ui.CultureName)
+$buildDate = (Get-Date).ToString('MMMM yyyy', $culture)
+$year = Get-Date -Format "yyyy"
+
+if ($Locale -eq 'it') {
+    $ui.CoverMeta = "Versione $manualVersion &middot; $buildDate &middot; edizione $Trim"
+    $ui.EditionLine = "Versione $manualVersion, $buildDate. Edizione a stampa $Trim."
+    $ui.CopyrightLead = @"
+        <p>MALDA &egrave; software libero e open source. L'implementazione del
+           linguaggio, questo manuale e gli esempi di codice che contiene sono
+           rilasciati con doppia licenza: puoi usarli sotto la licenza MIT o sotto
+           la Apache License 2.0, a tua scelta. In entrambi i casi puoi usarli,
+           copiarli, modificarli e redistribuirli, anche a fini commerciali,
+           purch&eacute; siano conservati l'avviso di copyright e il testo della
+           licenza. Entrambi i testi sono in <code>LICENSE-MIT</code> e
+           <code>LICENSE-APACHE</code> alla radice della distribuzione sorgente.</p>
+        <p>I programmi che scrivi in MALDA sono tuoi. Il compilatore inietta codice
+           di runtime nei programmi che produce, e
+           <code>LICENSE-RUNTIME-EXCEPTION</code> conferma che questo non impone
+           obblighi di attribuzione sul tuo lavoro.</p>
+        <p>Il software e questo manuale sono forniti &laquo;cos&igrave; com'&egrave;&raquo;,
+           senza garanzia di alcun tipo.</p>
+        <p>Questa edizione &egrave; generata dal Reference Manual HTML da
+           <code>scripts/build-reference-manual-book.ps1</code>. Non modificarla a
+           mano: cambia i capitoli in <code>$($ui.SourcesHint)</code> e rigenera.</p>
+        <p>Gli elenchi di codice vanno a capo sulla misura della pagina. Una riga
+           che continua sulla riga stampata successiva &egrave; indentata, cos&igrave;
+           una continuazione indentata non &egrave; mai una nuova istruzione.</p>
+"@
+} else {
+    $ui.CoverMeta = "Version $manualVersion &middot; $buildDate &middot; $Trim edition"
+    $ui.EditionLine = "Version $manualVersion, $buildDate. $Trim print edition."
+    $ui.CopyrightLead = @"
+        <p>MALDA is free and open source software. The language implementation,
+           this manual, and the code examples it contains are dual licensed: you
+           may use them under the MIT License or under the Apache License 2.0,
+           whichever suits you. Either way you may use, copy, modify and
+           redistribute them, including commercially, provided the copyright
+           notice and the licence text are preserved. Both licence texts are in
+           <code>LICENSE-MIT</code> and <code>LICENSE-APACHE</code> at the root of
+           the source distribution.</p>
+        <p>Programs you write in MALDA are yours. The compiler injects runtime
+           code into the programs it produces, and
+           <code>LICENSE-RUNTIME-EXCEPTION</code> confirms that this places no
+           attribution obligation on your own work.</p>
+        <p>The software and this manual are provided &ldquo;as is&rdquo;, without
+           warranty of any kind.</p>
+        <p>This edition is generated from the HTML Reference Manual by
+           <code>scripts/build-reference-manual-book.ps1</code>. Do not edit it by
+           hand: change the chapter sources under <code>$($ui.SourcesHint)</code> and
+           rebuild.</p>
+        <p>Code listings wrap at the page measure. A line that continues onto the
+           next printed line is indented, so an indented continuation is never a
+           new statement.</p>
+"@
+}
+
+Write-Host "Building $($ui.BookTitle) book ($Locale, $Trim, text measure $($preset.Measure))"
 
 # ---------------------------------------------------------------- Chapters
+
+if (-not (Test-Path -LiteralPath $configPath)) {
+    throw "Missing chapters.json for locale '${Locale}': $configPath"
+}
 
 $config = Get-Content $configPath -Raw | ConvertFrom-Json
 
@@ -140,7 +267,7 @@ $sections = New-Object System.Text.StringBuilder
 $tocItems = New-Object System.Text.StringBuilder
 
 foreach ($chapter in $chapters) {
-    $path = Join-Path $manualDir $chapter.File
+    $path = Join-Path $chapterDir $chapter.File
     if (-not (Test-Path $path)) {
         Write-Warning "Missing chapter file: $($chapter.File)"
         continue
@@ -170,13 +297,13 @@ if (-not (Test-Path $OutputDirectory)) {
 # Paged.js re-fetches linked stylesheets over XHR to parse their @page rules, which
 # Chrome blocks under the file:// origin. Linking them makes pagination hang forever
 # at "Paginating..." unless the file is served over HTTP.
-$bookCss = [System.IO.File]::ReadAllText((Join-Path $manualDir "book.css"))
-$syntaxCss = [System.IO.File]::ReadAllText((Join-Path $manualDir "syntax.css"))
-$highlightJs = [System.IO.File]::ReadAllText((Join-Path $manualDir "malda-highlight.js"))
+$bookCss = [System.IO.File]::ReadAllText((Join-Path $sharedManualDir "book.css"))
+$syntaxCss = [System.IO.File]::ReadAllText((Join-Path $sharedManualDir "syntax.css"))
+$highlightJs = [System.IO.File]::ReadAllText((Join-Path $sharedManualDir "malda-highlight.js"))
 
-$coverPath = Join-Path $manualDir "assets\cover.svg"
+$coverPath = Join-Path $sharedManualDir "assets\$($ui.CoverFile)"
 if (-not (Test-Path $coverPath)) {
-    throw "Cover plate missing: $coverPath. Add ReferenceManual/assets/cover.svg and rebuild."
+    throw "Cover plate missing: $coverPath. Add ReferenceManual/assets/$($ui.CoverFile) and rebuild."
 }
 $coverSrc = "data:image/svg+xml;base64," + [Convert]::ToBase64String([System.IO.File]::ReadAllBytes($coverPath))
 
@@ -185,9 +312,6 @@ $pagedJsTag = if ($NoPagedJs) {
 } else {
     '    <script src="https://unpkg.com/pagedjs@0.4.3/dist/paged.polyfill.js"></script>'
 }
-
-$buildDate = Get-Date -Format "MMMM yyyy"
-$year = Get-Date -Format "yyyy"
 
 $sizeParts = $preset.Size -split '\s+', 2
 $pageWidth = $sizeParts[0]
@@ -217,6 +341,7 @@ $pageGeometry = @"
             --code-size: $($preset.CodeSize);
             --page-width: $pageWidth;
             --page-height: $pageHeight;
+            --book-running-title: "$($ui.BookTitle)";
         }
 
         body {
@@ -226,12 +351,12 @@ $pageGeometry = @"
 
 $bookHtml = @"
 <!DOCTYPE html>
-<html lang="en">
+<html lang="$($ui.HtmlLang)">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="MALDA Reference Manual - bound edition ($Trim)">
-    <title>MALDA Reference Manual - $Trim print edition</title>
+    <meta name="description" content="$($ui.MetaDescription)">
+    <title>$($ui.HtmlTitle)</title>
     <style>
 /* ===== book.css ===== */
 @@BOOK_CSS@@
@@ -244,39 +369,19 @@ $pageGeometry
 </head>
 <body>
     <section class="book-cover">
-        <img class="cover-plate" alt="MALDA Reference Manual" src="@@COVER_SRC@@" />
-        <p class="cover-meta">Version $manualVersion &middot; $buildDate &middot; $Trim edition</p>
+        <img class="cover-plate" alt="$($ui.CoverAlt)" src="@@COVER_SRC@@" />
+        <p class="cover-meta">$($ui.CoverMeta)</p>
     </section>
 
     <section class="book-copyright">
-        <h2>MALDA Reference Manual</h2>
-        <p>Version $manualVersion, $buildDate. $Trim print edition.</p>
+        <h2>$($ui.BookTitle)</h2>
+        <p>$($ui.EditionLine)</p>
         <p>Copyright (c) $year Andrea Maldini.</p>
-        <p>MALDA is free and open source software. The language implementation,
-           this manual, and the code examples it contains are dual licensed: you
-           may use them under the MIT License or under the Apache License 2.0,
-           whichever suits you. Either way you may use, copy, modify and
-           redistribute them, including commercially, provided the copyright
-           notice and the licence text are preserved. Both licence texts are in
-           <code>LICENSE-MIT</code> and <code>LICENSE-APACHE</code> at the root of
-           the source distribution.</p>
-        <p>Programs you write in MALDA are yours. The compiler injects runtime
-           code into the programs it produces, and
-           <code>LICENSE-RUNTIME-EXCEPTION</code> confirms that this places no
-           attribution obligation on your own work.</p>
-        <p>The software and this manual are provided &ldquo;as is&rdquo;, without
-           warranty of any kind.</p>
-        <p>This edition is generated from the HTML Reference Manual by
-           <code>scripts/build-reference-manual-book.ps1</code>. Do not edit it by
-           hand: change the chapter sources under <code>ReferenceManual/</code> and
-           rebuild.</p>
-        <p>Code listings wrap at the page measure. A line that continues onto the
-           next printed line is indented, so an indented continuation is never a
-           new statement.</p>
+$($ui.CopyrightLead.TrimEnd())
     </section>
 
     <nav class="book-toc" id="book-toc">
-        <h1>Contents</h1>
+        <h1>$($ui.TocHeading)</h1>
         <ol>
 $($tocItems.ToString().TrimEnd())
         </ol>
@@ -312,15 +417,15 @@ $pagedJsTag
 
                 if (!window.Paged || !window.Paged.Previewer) {
                     document.body.classList.add('no-paged');
-                    banner('Paged.js unavailable: printing without running heads, folios or contents page numbers.');
+                    banner('$($ui.BannerNoPaged.Replace("'", "\'"))');
                     return;
                 }
 
-                document.title = 'Paginating... - MALDA Reference Manual';
+                document.title = '$($ui.TitlePaginating.Replace("'", "\'"))';
                 new window.Paged.Previewer().preview().then(function (flow) {
-                    document.title = 'MALDA Reference Manual (' + flow.total + ' pages)';
+                    document.title = '$($ui.TitleDonePrefix.Replace("'", "\'"))' + flow.total + '$($ui.TitleDoneSuffix.Replace("'", "\'"))';
                     document.body.classList.add('paged-ready');
-                    banner(flow.total + ' pages. Print with margins "None" and "Background graphics" enabled.');
+                    banner(flow.total + '$($ui.BannerDoneSuffix.Replace("'", "\'"))');
                 });
             }
 
@@ -343,7 +448,7 @@ $bookHtml = $bookHtml.
     Replace('@@HIGHLIGHT_JS@@', $highlightJs).
     Replace('@@COVER_SRC@@', $coverSrc)
 
-$outputPath = Join-Path $OutputDirectory "malda-reference-manual.html"
+$outputPath = Join-Path $OutputDirectory $ui.OutputFile
 [System.IO.File]::WriteAllText($outputPath, $bookHtml, [System.Text.UTF8Encoding]::new($false))
 
 Write-Host ""

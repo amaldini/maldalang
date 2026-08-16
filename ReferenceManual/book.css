@@ -32,6 +32,9 @@
     /* Overridden by the build script to the selected trim. */
     --page-width: 210mm;
     --page-height: 297mm;
+
+    /* Overridden by the build script for -Locale it. Quoted string for content:. */
+    --book-running-title: "MALDA Reference Manual";
 }
 
 /* ------------------------------------------------- Running heads / folios */
@@ -45,7 +48,7 @@
 
 @page :left {
     @top-left {
-        content: "MALDA Reference Manual";
+        content: var(--book-running-title);
         font-family: var(--font-sans);
         font-size: 7.5pt;
         letter-spacing: 0.1em;

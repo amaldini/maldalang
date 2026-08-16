@@ -59,13 +59,27 @@ its own) and turn **Headers and footers** off.
 
 ```bash
 powershell -File scripts/build-reference-manual-book.ps1
+powershell -File scripts/build-reference-manual-book.ps1 -Locale it
 ```
 
-This reads `chapters.json`, lifts the `<main>` content out of each chapter,
-turns cross-chapter links into internal anchors and writes one self-contained
-file, `artifacts/reference-manual/malda-reference-manual.html`. Styling
-(`book.css`, `syntax.css`) and the highlighter are inlined into it, so the book
-can be mailed or archived on its own.
+This reads `chapters.json` (or `ReferenceManual/it/chapters.json` with
+`-Locale it`), lifts the `<main>` content out of each chapter, turns
+cross-chapter links into internal anchors and writes one self-contained file:
+
+| Locale | Sources | Output |
+|--------|---------|--------|
+| `en` (default) | `ReferenceManual/*.html` | `artifacts/reference-manual/malda-reference-manual.html` |
+| `it` | `ReferenceManual/it/*.html` | `artifacts/reference-manual/malda-reference-manual-it.html` |
+
+Do not maintain a second translated book file. The bound edition is a **build**
+of the HTML tree: if `ReferenceManual/it/STATUS.md` is stale, the Italian book
+is stale too. Cover, copyright page, contents heading and running heads are
+locale chrome inside the script (plus `assets/cover-it.svg`); chapter prose
+comes from the HTML. GitHub Pages hosts the chapter site, not this 300-page
+file.
+
+Styling (`book.css`, `syntax.css`) and the highlighter are inlined into it, so
+the book can be mailed or archived on its own.
 
 The inlining is not only for convenience: Paged.js re-fetches linked stylesheets
 over XHR in order to parse their `@page` rules, and Chrome blocks those requests
@@ -75,7 +89,7 @@ works when served over HTTP.
 
 Then:
 
-1. Open `malda-reference-manual.html` in Chrome or Edge.
+1. Open `malda-reference-manual.html` (or `malda-reference-manual-it.html`) in Chrome or Edge.
 2. Wait for the banner in the corner to report the page count (about ten
    seconds for the full manual).
 3. Ctrl+P → **Save as PDF**, margins **None**, **Background graphics** on.
@@ -107,11 +121,13 @@ characters per line.
 
 ### Graphic cover
 
-The first page is a full-bleed plate from `ReferenceManual/assets/cover.svg`.
-The build script inlines it as a data URI so the book stays a single file.
-Title and subtitle live in the SVG; version, date and trim are HTML overlaid
-at the bottom of the page (`@page cover` has zero margin so the graphic
-reaches the trim).
+The first page is a full-bleed plate from `ReferenceManual/assets/cover.svg`
+(English) or `ReferenceManual/assets/cover-it.svg` (`-Locale it`). The build
+script inlines it as a data URI so the book stays a single file. Title and
+subtitle live in the SVG; version, date and trim are HTML overlaid at the
+bottom of the page (`@page cover` has zero margin so the graphic reaches the
+trim). The running head string is `--book-running-title` in `book.css`,
+overridden by the script for Italian.
 
 To change the cover, replace that SVG and rebuild. The viewBox is 7:10;
 `object-fit: cover` crops it to the other trims. Keep live content inside
