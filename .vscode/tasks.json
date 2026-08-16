@@ -1,0 +1,23 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run current MALDA file",
+      "type": "process",
+      "command": "${workspaceFolder}/artifacts/malda-cli/malda",
+      "windows": {
+        "command": "${workspaceFolder}/artifacts/malda-cli/malda.exe"
+      },
+      "args": ["${file}"],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

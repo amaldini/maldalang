@@ -1,0 +1,27 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "malda",
+      "request": "launch",
+      "name": "Debug MALDA file",
+      "program": "${file}",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "malda",
+      "request": "launch",
+      "name": "Debug MALDA file (stop on entry)",
+      "program": "${file}",
+      "cwd": "${workspaceFolder}",
+      "stopOnEntry": true
+    },
+    {
+      "type": "malda",
+      "request": "launch",
+      "name": "Debug hello_world.malda",
+      "program": "${workspaceFolder}/Examples/Basics/hello_world.malda",
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}
