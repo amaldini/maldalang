@@ -9848,19 +9848,6 @@ public class CSharpTranspiler
                 TranspileExpression(objectExpr);
                 _output.Append(").Trim()");
                 break;
-            case "substring":
-                _output.Append("RuntimeHelpers.CoerceToString(");
-                TranspileExpression(objectExpr);
-                _output.Append(").Substring((int)RuntimeHelpers.CoerceToInt(");
-                if (arguments.Count > 0)
-                    TranspileExpression(arguments[0]);
-                _output.Append("), (int)RuntimeHelpers.CoerceToInt(");
-                if (arguments.Count > 1)
-                    TranspileExpression(arguments[1]);
-                else
-                    _output.Append("0");
-                _output.Append("))");
-                break;
             case "indexOf":
                 _output.Append("RuntimeHelpers.CoerceToString(");
                 TranspileExpression(objectExpr);
@@ -9869,6 +9856,7 @@ public class CSharpTranspiler
                     TranspileExpression(arguments[0]);
                 _output.Append("))");
                 break;
+            case "substring":
             case "replace":
             case "split":
             case "startsWith":
@@ -10582,16 +10570,17 @@ public class CSharpTranspiler
                 _output.Append(").Trim()");
                 break;
             case "substring":
-                _output.Append("RuntimeHelpers.CoerceToString(");
-                if (arguments.Count > 0)
-                    TranspileExpression(arguments[0]);
-                _output.Append(").Substring((int)RuntimeHelpers.CoerceToInt(");
-                if (arguments.Count > 1)
-                    TranspileExpression(arguments[1]);
-                _output.Append("), (int)RuntimeHelpers.CoerceToInt(");
-                if (arguments.Count > 2)
-                    TranspileExpression(arguments[2]);
-                _output.Append("))");
+                _output.Append("RuntimeHelpers.UnwrapRuntimeValue(MaldaLang.BuiltIns.BuiltInFunctions.CallBuiltIn(\"");
+                _output.Append("substring");
+                _output.Append("\", new List<MaldaLang.Interpreter.RuntimeValue> { ");
+                for (int i = 0; i < arguments.Count; i++)
+                {
+                    if (i > 0) _output.Append(", ");
+                    _output.Append("RuntimeHelpers.ToRuntimeValue(");
+                    TranspileExpression(arguments[i]);
+                    _output.Append(")");
+                }
+                _output.Append(" }, null))");
                 break;
             case "indexOf":
                 _output.Append("RuntimeHelpers.CoerceToString(");

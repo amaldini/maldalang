@@ -9,6 +9,7 @@
 <!-- How you verified the change. Prefer filtered tests; do not run the full suite. -->
 
 - [ ] Built / smoke-tested the affected path (interpreter and/or transpile if relevant)
+- [ ] If the change claims interpret + C# transpile, added an `InterpretTranspilePairTests` case or wrote `n/a`
 - [ ] Filtered tests for the area touched, e.g. `dotnet test MaldaLang.Tests --filter "FullyQualifiedName~RelevantTests"`
 - [ ] Docs / `ReferenceManual/` updated if language or built-in behavior changed
 - [ ] No hand-edits to generated artifacts (`GeneratedProgram.cs`, generated `.js` from `.malda`)

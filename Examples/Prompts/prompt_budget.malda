@@ -21,4 +21,4 @@ var inst = answer("What is @budget?");
 
 print("Offline PromptInstance with @budget + @within:");
 print("user preview: " + str.substring(inst.user, 0, 40) + "...");
-print("Live: await answer(q) — abort if tokens or tool invocations trip.");
+print("Live: await answer(q) - abort if tokens or tool invocations trip.");

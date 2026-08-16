@@ -24,7 +24,7 @@ jobs:
       - name: Smoke tests (filtered)
         run: >
           dotnet test MaldaLang.Tests -c Release --no-build
-          --filter "FullyQualifiedName~BuiltInRegistryTests|FullyQualifiedName~CompilerPackDecouplingGuardTests|FullyQualifiedName~OptionalPackTranspileEmitTests|FullyQualifiedName~LicenseHeaderGuardTests|FullyQualifiedName~ReleaseVersionGuardTests|FullyQualifiedName~ReferenceManual|FullyQualifiedName~BackendCapabilityMatrixGuardTests|FullyQualifiedName~TranspileSmokeTests"
+          --filter "FullyQualifiedName~BuiltInRegistryTests|FullyQualifiedName~CompilerPackDecouplingGuardTests|FullyQualifiedName~OptionalPackTranspileEmitTests|FullyQualifiedName~LicenseHeaderGuardTests|FullyQualifiedName~ReleaseVersionGuardTests|FullyQualifiedName~ReferenceManual|FullyQualifiedName~BackendCapabilityMatrixGuardTests|FullyQualifiedName~TranspileSmokeTests|FullyQualifiedName~InterpretTranspilePairTests"
           --verbosity minimal
 
   build-linux:
@@ -53,7 +53,7 @@ jobs:
       - name: Platform-neutral guard tests
         run: >
           dotnet test MaldaLang.Tests -c Release --no-build
-          --filter "FullyQualifiedName~BuiltInRegistryTests|FullyQualifiedName~LicenseHeaderGuardTests|FullyQualifiedName~ReleaseVersionGuardTests|FullyQualifiedName~TranspileSmokeTests"
+          --filter "FullyQualifiedName~BuiltInRegistryTests|FullyQualifiedName~LicenseHeaderGuardTests|FullyQualifiedName~ReleaseVersionGuardTests|FullyQualifiedName~TranspileSmokeTests|FullyQualifiedName~InterpretTranspilePairTests"
           --verbosity minimal
 
       - name: Run an example through the CLI
@@ -84,7 +84,7 @@ jobs:
       - name: Platform-neutral guard tests
         run: >
           dotnet test MaldaLang.Tests -c Release --no-build
-          --filter "FullyQualifiedName~BuiltInRegistryTests|FullyQualifiedName~LicenseHeaderGuardTests|FullyQualifiedName~ReleaseVersionGuardTests|FullyQualifiedName~TranspileSmokeTests"
+          --filter "FullyQualifiedName~BuiltInRegistryTests|FullyQualifiedName~LicenseHeaderGuardTests|FullyQualifiedName~ReleaseVersionGuardTests|FullyQualifiedName~TranspileSmokeTests|FullyQualifiedName~InterpretTranspilePairTests"
           --verbosity minimal
 
       - name: Run an example through the CLI

@@ -1,6 +1,6 @@
 # MALDA trust roadmap (trust before syntax)
 
-**Status:** DT0–DT4 and DT6 landed 2026-08-16; DT5 named (Second Brain instance others use; out of repo)  
+**Status:** DT0–DT4 and DT6 landed 2026-08-16; DT7 interpret/transpile pairs landed 2026-08-17; DT5 named (Second Brain instance others use; out of repo)  
 **Created:** 2026-08-15  
 **Audience:** maintainers prioritizing the OSS core after P0 + L1–L6
 
@@ -44,6 +44,7 @@ boundary. Interpret stays dynamic.
 | 4 | **DT4** Loud gotchas | Interpolation and `parseJson` must not succeed wrongly with no feedback |
 | 5 | **DT5** One real service | Out of this repo — a process that must stay up |
 | 6 | **DT6** Toolchain 1.0 | Same `<Version>` + tag after DT2-default and DT3 — **landed** `v1.0.0` |
+| 7 | **DT7** Interpret/transpile pairs | Same `.malda`, same stdout and exit on interpret and C# transpile |
 
 ```text
 DT0  roadmap file
@@ -52,6 +53,7 @@ DT0  roadmap file
        ├─ DT3  expand smoke + interpret/transpile pair
        └─ DT4  interpolation + parseJson diagnostics
             └─ DT6  toolchain 1.0 (landed v1.0.0)
+                 └─ DT7  curated interpret/transpile pairs (landed)
 DT5  one always-on service (out of repo; dashed dependency for DT6 honesty)
 ```
 
@@ -159,6 +161,47 @@ landed. DT5 remains out of repo and is not a tag gate.
 
 ---
 
+## DT7 — Interpret/transpile equivalence pairs
+
+DT3 compile-only smoke does not prove the published binary behaves like
+`malda run`. The one-line pair (`io.print("pair-ok")`) was not a contract.
+
+**Contract:** for each listed program, interpret and
+`compile --mode transpile` then run. Compare **exit code** and **stdout**
+after `\r` strip + trim. On compile failure, fail with paths to
+`build_errors.txt` and `GeneratedProgram.cs`. If a pair fails, fix the
+transpiler (or the example). Do not weaken to `Contains`. Mark `n/a` only
+with a one-line reason.
+
+Stderr is out of v1 (Spectre / logging noise). Redirected OEM best-fit of
+Unicode punctuation (em dash vs hyphen) is the same class as the TTY
+gotcha — keep pair fixtures ASCII-punctuation. JS / PWA is out (backend
+matrix). Workflow journals stay in
+[`WorkflowTranspilerParityTests`](../MaldaLang.Tests/WorkflowTranspilerParityTests.cs).
+
+| Surface | Role |
+|---------|------|
+| [`InterpretTranspilePairTests`](../MaldaLang.Tests/InterpretTranspilePairTests.cs) | Named CI filter; Example files + inline gotcha fixtures |
+| [`InterpretTranspilePair`](../MaldaLang.Tests/InterpretTranspilePair.cs) | Shared assert; file cases copy sibling `.malda` into a temp dir |
+| [`TranspileSmokeTests`](../MaldaLang.Tests/TranspileSmokeTests.cs) | Compile-only (unchanged) |
+
+**v1 corpus (offline, deterministic):**
+`first_look`, `schema_validate`, `schema_sumtype_validate`,
+`phase6_pure_validate`, `api_program_calc`, `prompt_budget` (no `await`),
+`selective_import`, `export_type_schema`, plus inline interpolation,
+`validate` returns a dict, and `str.repeat` integer-sink fixtures.
+
+**v1 `n/a` (compile-only smoke):** LLM-awaiting prompts,
+`agent_governance_golden`, workflow/job Examples, `grounded_ask`
+(GraphMemory score drift), `capability_tokens` (cwd file I/O).
+
+**Done when:** filtered tests
+(`FullyQualifiedName~InterpretTranspilePairTests`) are in the CI smoke
+filter on Windows, Linux, and macOS; Unix runs the published apphost
+(no Windows-only skip).
+
+---
+
 ## Explicitly deferred
 
 - New top-level builtins / flat global aliases
@@ -178,6 +221,7 @@ landed. DT5 remains out of repo and is not a tag gate.
 |--------|--------|
 | Compile | `malda compile --mode transpile` fails on hint mismatch (default) with documented `--lenient-types` |
 | Smoke | README “shippable” Examples are in `TranspileSmokeTests` or marked `n/a` |
+| Pairs | Curated offline Examples + gotcha fixtures match interpret vs C# transpile stdout (`InterpretTranspilePairTests`) |
 | Gotchas | Plain-string interpolation and `parseJson` are no longer total silences |
 | Version | Toolchain **1.0.0** tagged after DT2-B + DT3 |
 | Use | Announcement: “I run a Second Brain instance that others use.” |
@@ -218,3 +262,4 @@ landed. DT5 remains out of repo and is not a tag gate.
 | 2026-08-15 | DT0–DT4 landed: roadmap + links; CI `first_look`; compile `--strict-types` / transpile default + `--lenient-types`; smoke + interpret/transpile pair; `malda-interp` + `parseJson`/`parseJSON` errors |
 | 2026-08-15 | DT5 announcement: Second Brain instance that others use (no workplace detail) |
 | 2026-08-16 | DT6 landed: toolchain 1.0.0 (same `<Version>`, `docs/releases/v1.0.0.md`, tag `v1.0.0`) |
+| 2026-08-17 | DT7 landed: `InterpretTranspilePairTests` (curated Examples + gotcha fixtures; CI smoke filter) |

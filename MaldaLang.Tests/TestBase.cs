@@ -106,32 +106,52 @@ public abstract class TestBase : IDisposable
     /// </summary>
     protected async Task<string> RunProgramAsync(string source)
     {
+        return await CaptureInterpretAsync(source);
+    }
+
+    /// <summary>
+    /// Interpret <paramref name="source"/> with stdout capture. Shares the console gate
+    /// with instance <see cref="RunProgramAsync"/> so pair tests do not race other fixtures.
+    /// </summary>
+    internal static async Task<string> CaptureInterpretAsync(string source, string? sourceFileName = null)
+    {
         await _consoleSemaphore.WaitAsync();
         try
         {
             BuiltInFunctions.ClearGetEnvCacheForTesting();
-            RedirectConsole();
-            var lexer = new Lexer(source);
-            var tokens = lexer.Tokenize();
-            var parser = new Parser.Parser(tokens);
-            var statements = parser.Parse();
-            if (parser.Errors.Count > 0)
+            var originalOut = Console.Out;
+            var originalError = Console.Error;
+            using var outputWriter = new StringWriter();
+            using var errorWriter = new StringWriter();
+            Console.SetOut(outputWriter);
+            Console.SetError(errorWriter);
+            try
             {
-                throw parser.Errors.Count == 1
-                    ? parser.Errors[0]
-                    : new Exception(string.Join(System.Environment.NewLine, parser.Errors.Select(e => e.Message)));
+                var lexer = new Lexer(source, sourceFileName);
+                var tokens = lexer.Tokenize();
+                var parser = new Parser.Parser(tokens, sourceFileName);
+                var statements = parser.Parse();
+                if (parser.Errors.Count > 0)
+                {
+                    throw parser.Errors.Count == 1
+                        ? parser.Errors[0]
+                        : new Exception(string.Join(System.Environment.NewLine, parser.Errors.Select(e => e.Message)));
+                }
+
+                var interpreter = new Interpreter.Interpreter(currentFile: sourceFileName);
+                await interpreter.InterpretAsync(statements);
+                await Task.Delay(100);
+                outputWriter.Flush();
+                return outputWriter.ToString().Replace("\r", "").Trim();
             }
-            var interpreter = new Interpreter.Interpreter();
-            await interpreter.InterpretAsync(statements);
-            
-            // Give actors time to process messages
-            await Task.Delay(100);
-            
-            return GetOutput();
+            finally
+            {
+                Console.SetOut(originalOut);
+                Console.SetError(originalError);
+            }
         }
         finally
         {
-            RestoreConsole();
             _consoleSemaphore.Release();
         }
     }

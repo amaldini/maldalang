@@ -54,7 +54,7 @@ The full suite is too slow. Use filtered tests for the area you touch:
 dotnet test MaldaLang.Tests --filter "FullyQualifiedName~RelevantTests"
 ```
 
-CI smoke filter (see `.github/workflows/ci.yml`): `BuiltInRegistryTests`, `CompilerPackDecouplingGuardTests`, `OptionalPackTranspileEmitTests`, `LicenseHeaderGuardTests`, `ReleaseVersionGuardTests`, `ReferenceManual`, `BackendCapabilityMatrixGuardTests`, `TranspileSmokeTests`.
+CI smoke filter (see `.github/workflows/ci.yml`): `BuiltInRegistryTests`, `CompilerPackDecouplingGuardTests`, `OptionalPackTranspileEmitTests`, `LicenseHeaderGuardTests`, `ReleaseVersionGuardTests`, `ReferenceManual`, `BackendCapabilityMatrixGuardTests`, `TranspileSmokeTests`, `InterpretTranspilePairTests`.
 
 ## IDE roles (not interchangeable)
 

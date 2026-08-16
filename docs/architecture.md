@@ -60,7 +60,7 @@ Built-ins are the largest “surface area” for language work:
 - Interpreter recognition: `Interpreter.IsBuiltIn`
 - Transpile recognition + codegen: `CSharpTranspiler.IsBuiltInFunction` / `TranspileBuiltInFunction`
 
-Missing one registration site is a common bug (works interpreted XOR transpiled).
+Missing one registration site is a common bug (works interpreted XOR transpiled). CI `InterpretTranspilePairTests` asserts the same stdout and exit on interpret and C# transpile for a curated offline set ([`docs/roadmap-trust.md`](roadmap-trust.md) DT7).
 
 ## Web stack (language feature, not Web IDE)
 
@@ -78,7 +78,7 @@ Server-driven `ui.*` trees, patch protocol, and `MaldaLang.UIHost` wiring are do
 | `docs/start-here.md`, `docs/architecture.md` | Onboarding |
 | [`docs/roadmap-p0-maturity.md`](roadmap-p0-maturity.md) | P0 maturity roadmap (workstreams complete 2026-08-12; next = post-Final / deferred) |
 | [`docs/roadmap-language-constructs.md`](roadmap-language-constructs.md) | Post-Final language constructs (schema/sum types, Mode C, budget, workflow determinism, grounded values, capability tokens) |
-| [`docs/roadmap-trust.md`](roadmap-trust.md) | Post-Final trust plan (strict compile, transpile smoke, loud gotchas; toolchain 1.0.0 landed) |
+| [`docs/roadmap-trust.md`](roadmap-trust.md) | Post-Final trust plan (strict compile, transpile smoke, interpret/transpile pairs, loud gotchas; toolchain 1.0.0 landed) |
 | [`docs/roadmap-interpret-debug.md`](roadmap-interpret-debug.md) | Interpret-mode source-level debug — D0–D3 and D5 landed (`malda debug-adapter`, VS Code type `malda`, MALDA-specific stops) |
 | [`docs/workflows-ha.md`](workflows-ha.md) | Durable workflows: single-writer + read-only ops model (W2) |
 | `docs/javascript-backend.md`, `docs/ui-framework.md`, `docs/profiling.md`, `docs/benchmarks.md`, … | Topic guides |
