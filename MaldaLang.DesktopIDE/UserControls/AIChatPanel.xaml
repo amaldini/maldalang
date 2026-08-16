@@ -54,12 +54,11 @@
                          FontSize="12"
                          KeyDown="ChatInputTextBox_KeyDown"
                          TextChanged="ChatInputTextBox_TextChanged"/>
-                <!-- Mode selection and Model selection -->
                 <StackPanel Grid.Row="1"
                             Orientation="Horizontal"
                             Margin="0,8,0,0"
                             VerticalAlignment="Center">
-                    <TextBlock Text="Mode:"
+                    <TextBlock Text="Mode"
                                VerticalAlignment="Center"
                                Margin="0,0,8,0"
                                Foreground="{DynamicResource TextSecondaryBrush}"/>
@@ -67,27 +66,24 @@
                                  Content="Ask"
                                  IsChecked="True"
                                  Margin="0,0,8,0"
-                                 VerticalAlignment="Center"
-                                 Foreground="{DynamicResource TextForegroundBrush}"
                                  Checked="AskModeRadioButton_Checked"/>
                     <RadioButton x:Name="AskMaldaModeRadioButton"
                                  Content="Edit"
                                  Margin="0,0,16,0"
-                                 VerticalAlignment="Center"
-                                 Foreground="{DynamicResource TextForegroundBrush}"
                                  Checked="AskMaldaModeRadioButton_Checked"/>
-                    <TextBlock Text="Model:"
+                    <TextBlock Text="Model"
                                VerticalAlignment="Center"
                                Margin="0,0,8,0"
                                Foreground="{DynamicResource TextSecondaryBrush}"/>
                     <Button x:Name="ModelSelectionButton"
-                            Content="Select Model"
-                            Padding="8,4"
                             Click="ModelSelectionButton_Click"
                             VerticalAlignment="Center"
-                            Background="{DynamicResource ButtonBackgroundBrush}"
-                            Foreground="{DynamicResource ButtonForegroundBrush}"
-                            BorderBrush="{DynamicResource ButtonBorderBrush}"/>
+                            Style="{StaticResource ToolbarButton}">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconPackage}"/>
+                            <TextBlock Text="Select Model" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
                     <TextBlock x:Name="CurrentModelTextBlock"
                                VerticalAlignment="Center"
                                Margin="8,0,0,0"
@@ -98,21 +94,22 @@
                 </StackPanel>
                 <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
                     <Button x:Name="ClearButton"
-                            Content="Clear"
-                            Padding="12,6"
                             Margin="0,0,8,0"
-                            Click="ClearButton_Click"
-                            Background="{DynamicResource ButtonBackgroundBrush}"
-                            Foreground="{DynamicResource ButtonForegroundBrush}"
-                            BorderBrush="{DynamicResource ButtonBorderBrush}"/>
+                            Click="ClearButton_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconTrash}"/>
+                            <TextBlock Text="Clear" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
                     <Button x:Name="SendButton"
-                            Content="Send"
-                            Padding="16,6"
                             Click="SendButton_Click"
                             IsEnabled="False"
-                            Background="{DynamicResource PrimaryButtonBackgroundBrush}"
-                            Foreground="{DynamicResource PrimaryButtonForegroundBrush}"
-                            BorderBrush="{DynamicResource PrimaryButtonBorderBrush}"/>
+                            Style="{StaticResource PrimaryButton}">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Style="{StaticResource IdeAccentIcon}" Data="{StaticResource IconSend}" Stroke="{DynamicResource PrimaryButtonForegroundBrush}"/>
+                            <TextBlock Text="Send" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
             </Grid>
         </Border>

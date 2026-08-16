@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Full Screen Message"
+        FontFamily="Segoe UI, Segoe UI Variable, sans-serif"
         WindowStartupLocation="CenterOwner"
         WindowStyle="SingleBorderWindow"
         WindowState="Maximized"
@@ -16,33 +17,32 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- Header -->
         <Border Grid.Row="0"
-                Background="{DynamicResource InputBackgroundBrush}"
-                BorderBrush="{DynamicResource BorderBrush}"
+                Background="{DynamicResource ToolbarBackgroundBrush}"
+                BorderBrush="{DynamicResource ToolbarBorderBrush}"
                 BorderThickness="0,0,0,1"
-                Padding="12">
+                Padding="14,10">
             <DockPanel>
-                <StackPanel Orientation="Vertical"
-                            DockPanel.Dock="Left">
-                    <TextBlock x:Name="TitleTextBlock"
-                               Text="AI Message"
-                               FontWeight="Bold"
-                               FontSize="14"
-                               Foreground="{DynamicResource TextForegroundBrush}"/>
-                    <TextBlock x:Name="SubtitleTextBlock"
-                               FontSize="11"
-                               Margin="0,2,0,0"
-                               Foreground="{DynamicResource TextSecondaryBrush}"/>
-                </StackPanel>
-                <Button Content="Close"
-                        DockPanel.Dock="Right"
-                        Padding="12,6"
+                <Button DockPanel.Dock="Right"
                         HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
                         Click="CloseButton_Click"
-                        Background="{DynamicResource ButtonBackgroundBrush}"
-                        Foreground="{DynamicResource ButtonForegroundBrush}"
-                        BorderBrush="{DynamicResource ButtonBorderBrush}"/>
+                        Content="Close"
+                        MinWidth="88"/>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconSpark}" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                    <StackPanel>
+                        <TextBlock x:Name="TitleTextBlock"
+                                   Text="AI Message"
+                                   FontWeight="SemiBold"
+                                   FontSize="15"
+                                   Foreground="{DynamicResource TextForegroundBrush}"/>
+                        <TextBlock x:Name="SubtitleTextBlock"
+                                   FontSize="11"
+                                   Margin="0,2,0,0"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"/>
+                    </StackPanel>
+                </StackPanel>
             </DockPanel>
         </Border>
 

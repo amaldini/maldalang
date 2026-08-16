@@ -10,48 +10,49 @@
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         mc:Ignorable="d"
         Title="MALDA: The AI-First Programming Language - IDE" Height="800" Width="1200"
+        FontFamily="Segoe UI, Segoe UI Variable, sans-serif"
         Background="{DynamicResource WindowBackgroundBrush}">
     <Window.Resources>
         <converters:AddOneConverter x:Key="AddOneConverter"/>
         <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
         
         <!-- Theme Color Resources -->
-        <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#F5F5F5"/>
-        <SolidColorBrush x:Key="MainBackgroundBrush" Color="#F5F5F5"/>
-        <SolidColorBrush x:Key="SidebarBackgroundBrush" Color="#F5F5F5"/>
+        <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#F4F5F7"/>
+        <SolidColorBrush x:Key="MainBackgroundBrush" Color="#F4F5F7"/>
+        <SolidColorBrush x:Key="SidebarBackgroundBrush" Color="#F4F5F7"/>
         <SolidColorBrush x:Key="ToolbarBackgroundBrush" Color="#FFFFFF"/>
-        <SolidColorBrush x:Key="ToolbarBorderBrush" Color="#D0D0D0"/>
+        <SolidColorBrush x:Key="ToolbarBorderBrush" Color="#E2E4E8"/>
         <SolidColorBrush x:Key="EditorBackgroundBrush" Color="#FFFFFF"/>
-        <SolidColorBrush x:Key="EditorForegroundBrush" Color="#212121"/>
-        <SolidColorBrush x:Key="EditorLineNumbersBrush" Color="#757575"/>
-        <SolidColorBrush x:Key="TextForegroundBrush" Color="#212121"/>
-        <SolidColorBrush x:Key="TextSecondaryBrush" Color="#757575"/>
-        <SolidColorBrush x:Key="ButtonBackgroundBrush" Color="#E8E8E8"/>
-        <SolidColorBrush x:Key="ButtonForegroundBrush" Color="#212121"/>
-        <SolidColorBrush x:Key="ButtonBorderBrush" Color="#B0B0B0"/>
-        <SolidColorBrush x:Key="ButtonHoverBrush" Color="#D0D0D0"/>
-        <SolidColorBrush x:Key="ButtonHoverBorderBrush" Color="#808080"/>
-        <SolidColorBrush x:Key="PrimaryButtonBackgroundBrush" Color="#2196F3"/>
+        <SolidColorBrush x:Key="EditorForegroundBrush" Color="#1F2328"/>
+        <SolidColorBrush x:Key="EditorLineNumbersBrush" Color="#6E7781"/>
+        <SolidColorBrush x:Key="TextForegroundBrush" Color="#1F2328"/>
+        <SolidColorBrush x:Key="TextSecondaryBrush" Color="#656D76"/>
+        <SolidColorBrush x:Key="ButtonBackgroundBrush" Color="#F0F1F3"/>
+        <SolidColorBrush x:Key="ButtonForegroundBrush" Color="#1F2328"/>
+        <SolidColorBrush x:Key="ButtonBorderBrush" Color="#E2E4E8"/>
+        <SolidColorBrush x:Key="ButtonHoverBrush" Color="#E8EAED"/>
+        <SolidColorBrush x:Key="ButtonHoverBorderBrush" Color="#C9CDD4"/>
+        <SolidColorBrush x:Key="PrimaryButtonBackgroundBrush" Color="#2563EB"/>
         <SolidColorBrush x:Key="PrimaryButtonForegroundBrush" Color="#FFFFFF"/>
-        <SolidColorBrush x:Key="PrimaryButtonBorderBrush" Color="#1976D2"/>
-        <SolidColorBrush x:Key="PrimaryButtonHoverBrush" Color="#1976D2"/>
-        <SolidColorBrush x:Key="PrimaryButtonHoverBorderBrush" Color="#1565C0"/>
-        <SolidColorBrush x:Key="TabBackgroundBrush" Color="#E8E8E8"/>
+        <SolidColorBrush x:Key="PrimaryButtonBorderBrush" Color="#1D4ED8"/>
+        <SolidColorBrush x:Key="PrimaryButtonHoverBrush" Color="#1D4ED8"/>
+        <SolidColorBrush x:Key="PrimaryButtonHoverBorderBrush" Color="#1E40AF"/>
+        <SolidColorBrush x:Key="TabBackgroundBrush" Color="#ECEEF1"/>
         <SolidColorBrush x:Key="TabActiveBackgroundBrush" Color="#FFFFFF"/>
-        <SolidColorBrush x:Key="TabForegroundBrush" Color="#212121"/>
-        <SolidColorBrush x:Key="TabHoverBrush" Color="#D8D8D8"/>
+        <SolidColorBrush x:Key="TabForegroundBrush" Color="#1F2328"/>
+        <SolidColorBrush x:Key="TabHoverBrush" Color="#E2E4E8"/>
         <SolidColorBrush x:Key="InputBackgroundBrush" Color="#FFFFFF"/>
-        <SolidColorBrush x:Key="InputForegroundBrush" Color="#212121"/>
-        <SolidColorBrush x:Key="InputBorderBrush" Color="#B0B0B0"/>
-        <SolidColorBrush x:Key="BorderBrush" Color="#D0D0D0"/>
-        <SolidColorBrush x:Key="GridSplitterBackgroundBrush" Color="#E0E0E0"/>
+        <SolidColorBrush x:Key="InputForegroundBrush" Color="#1F2328"/>
+        <SolidColorBrush x:Key="InputBorderBrush" Color="#D0D7DE"/>
+        <SolidColorBrush x:Key="BorderBrush" Color="#E2E4E8"/>
+        <SolidColorBrush x:Key="GridSplitterBackgroundBrush" Color="#E8EAED"/>
         <SolidColorBrush x:Key="ListBackgroundBrush" Color="#FFFFFF"/>
-        <SolidColorBrush x:Key="ListForegroundBrush" Color="#212121"/>
-        <SolidColorBrush x:Key="ListBorderBrush" Color="#D0D0D0"/>
-        <SolidColorBrush x:Key="DebugAccentBrush" Color="#2196F3"/>
-        <SolidColorBrush x:Key="ErrorBrush" Color="#d32f2f"/>
-        <SolidColorBrush x:Key="WarningBrush" Color="#ffc107"/>
-        <SolidColorBrush x:Key="InfoBrush" Color="#2196F3"/>
+        <SolidColorBrush x:Key="ListForegroundBrush" Color="#1F2328"/>
+        <SolidColorBrush x:Key="ListBorderBrush" Color="#E2E4E8"/>
+        <SolidColorBrush x:Key="DebugAccentBrush" Color="#2563EB"/>
+        <SolidColorBrush x:Key="ErrorBrush" Color="#DC2626"/>
+        <SolidColorBrush x:Key="WarningBrush" Color="#D97706"/>
+        <SolidColorBrush x:Key="InfoBrush" Color="#2563EB"/>
         <SolidColorBrush x:Key="ScrollBarTrackBrush" Color="#E0E0E0"/>
         <SolidColorBrush x:Key="ScrollBarThumbBrush" Color="#B0B0B0"/>
         <SolidColorBrush x:Key="ScrollBarThumbHoverBrush" Color="#808080"/>
@@ -289,8 +290,10 @@
             <Setter Property="Padding" Value="12,8"/>
             <Setter Property="Background" Value="{DynamicResource TabBackgroundBrush}"/>
             <Setter Property="Foreground" Value="{DynamicResource TabForegroundBrush}"/>
-            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0,0,0,2"/>
             <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontSize" Value="12"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -298,7 +301,6 @@
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="4,4,0,0"
                                 Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
@@ -312,10 +314,10 @@
             </Setter>
         </Style>
         <Style TargetType="ComboBox">
-            <Setter Property="Background" Value="White"/>
-            <Setter Property="Foreground" Value="#212121"/>
-            <Setter Property="BorderBrush" Value="#B0B0B0"/>
-            <Setter Property="Padding" Value="4"/>
+            <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource InputForegroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}"/>
+            <Setter Property="Padding" Value="6,3"/>
         </Style>
         <Style TargetType="ComboBoxItem">
             <Setter Property="Background" Value="White"/>
@@ -442,38 +444,6 @@
             </Setter>
         </Style>
         
-        <!-- Menu Styles (moved to Window.Resources for better theme integration) -->
-        <Style TargetType="Menu">
-            <Setter Property="Background" Value="{DynamicResource ToolbarBackgroundBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource TextForegroundBrush}"/>
-        </Style>
-        <!-- MenuItem Style -->
-        <Style TargetType="MenuItem">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="{DynamicResource TextForegroundBrush}"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="8,4"/>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource ButtonHoverBrush}"/>
-                </Trigger>
-                <Trigger Property="IsHighlighted" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource ButtonHoverBrush}"/>
-                </Trigger>
-                <Trigger Property="IsChecked" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource PrimaryButtonBackgroundBrush}"/>
-                    <Setter Property="Foreground" Value="{DynamicResource PrimaryButtonForegroundBrush}"/>
-                </Trigger>
-                <Trigger Property="IsEnabled" Value="False">
-                    <Setter Property="Opacity" Value="0.5"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-        <Style TargetType="Separator">
-            <Setter Property="Background" Value="{DynamicResource BorderBrush}"/>
-            <Setter Property="Margin" Value="4,2"/>
-            <Setter Property="Height" Value="1"/>
-        </Style>
     </Window.Resources>
     
     <Grid>
@@ -485,56 +455,111 @@
         
         <!-- Menu Bar -->
         <Menu x:Name="MainMenu" Grid.Row="0" Background="{DynamicResource ToolbarBackgroundBrush}" BorderBrush="{DynamicResource ToolbarBorderBrush}" BorderThickness="0,0,0,1">
-            
-            <!-- File Menu -->
             <MenuItem Header="_File">
                 <MenuItem Header="_New" Click="FileNew_Click" InputGestureText="Ctrl+N">
                     <MenuItem.Icon>
-                        <TextBlock Text="📄" FontSize="14"/>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconNew}"/>
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem Header="_Open..." Click="FileOpen_Click" InputGestureText="Ctrl+O">
                     <MenuItem.Icon>
-                        <TextBlock Text="📂" FontSize="14"/>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconOpen}"/>
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem Header="_Save" Click="FileSave_Click" InputGestureText="Ctrl+S">
                     <MenuItem.Icon>
-                        <TextBlock Text="💾" FontSize="14"/>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconSave}"/>
                     </MenuItem.Icon>
                 </MenuItem>
                 <Separator/>
                 <MenuItem Header="Close _Others" Click="FileCloseOthers_Click"/>
                 <MenuItem Header="Close _All" Click="FileCloseAll_Click"/>
                 <Separator/>
-                <MenuItem Header="E_xit" Click="FileExit_Click" InputGestureText="Alt+F4"/>
+                <MenuItem Header="E_xit" Click="FileExit_Click" InputGestureText="Alt+F4">
+                    <MenuItem.Icon>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconExit}"/>
+                    </MenuItem.Icon>
+                </MenuItem>
             </MenuItem>
-            
-            <!-- Edit Menu -->
+
             <MenuItem Header="_Edit">
-                <MenuItem Header="_Undo" Click="EditUndo_Click" InputGestureText="Ctrl+Z"/>
-                <MenuItem Header="_Redo" Click="EditRedo_Click" InputGestureText="Ctrl+Y"/>
+                <MenuItem Header="_Undo" Click="EditUndo_Click" InputGestureText="Ctrl+Z">
+                    <MenuItem.Icon>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconUndo}"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="_Redo" Click="EditRedo_Click" InputGestureText="Ctrl+Y">
+                    <MenuItem.Icon>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconRedo}"/>
+                    </MenuItem.Icon>
+                </MenuItem>
                 <Separator/>
-                <MenuItem Header="Cu_t" Click="EditCut_Click" InputGestureText="Ctrl+X"/>
-                <MenuItem Header="_Copy" Click="EditCopy_Click" InputGestureText="Ctrl+C"/>
-                <MenuItem Header="_Paste" Click="EditPaste_Click" InputGestureText="Ctrl+V"/>
+                <MenuItem Header="Cu_t" Click="EditCut_Click" InputGestureText="Ctrl+X">
+                    <MenuItem.Icon>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconCut}"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="_Copy" Click="EditCopy_Click" InputGestureText="Ctrl+C">
+                    <MenuItem.Icon>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconCopy}"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="_Paste" Click="EditPaste_Click" InputGestureText="Ctrl+V">
+                    <MenuItem.Icon>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconPaste}"/>
+                    </MenuItem.Icon>
+                </MenuItem>
                 <Separator/>
-                <MenuItem Header="Select _All" Click="EditSelectAll_Click" InputGestureText="Ctrl+A"/>
-                <MenuItem Header="_Find..." Click="EditFind_Click" InputGestureText="Ctrl+F"/>
-                <MenuItem Header="Format _Document" Click="EditFormatDocument_Click" InputGestureText="Ctrl+Alt+F"/>
-                <MenuItem Header="_Rename Symbol..." Click="NavigateRenameSymbol_Click" InputGestureText="Ctrl+Alt+R"/>
+                <MenuItem Header="Select _All" Click="EditSelectAll_Click" InputGestureText="Ctrl+A">
+                    <MenuItem.Icon>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconSelectAll}"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="_Find..." Click="EditFind_Click" InputGestureText="Ctrl+F">
+                    <MenuItem.Icon>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconFind}"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Format _Document" Click="EditFormatDocument_Click" InputGestureText="Ctrl+Alt+F">
+                    <MenuItem.Icon>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconFormat}"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="_Rename Symbol..." Click="NavigateRenameSymbol_Click" InputGestureText="Ctrl+Alt+R">
+                    <MenuItem.Icon>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconRename}"/>
+                    </MenuItem.Icon>
+                </MenuItem>
             </MenuItem>
 
             <MenuItem Header="_Navigate">
-                <MenuItem Header="Go to _Definition" Click="NavigateGoToDefinition_Click" InputGestureText="F12"/>
-                <MenuItem Header="Find _References" Click="NavigateFindReferences_Click" InputGestureText="Shift+F12"/>
-                <MenuItem Header="Go to _Symbol..." Click="NavigateGoToSymbol_Click" InputGestureText="Ctrl+T"/>
-                <MenuItem Header="_Rename Symbol..." Click="NavigateRenameSymbol_Click" InputGestureText="Ctrl+Alt+R"/>
+                <MenuItem Header="Go to _Definition" Click="NavigateGoToDefinition_Click" InputGestureText="F12">
+                    <MenuItem.Icon>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconGoTo}"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Find _References" Click="NavigateFindReferences_Click" InputGestureText="Shift+F12">
+                    <MenuItem.Icon>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconReferences}"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Go to _Symbol..." Click="NavigateGoToSymbol_Click" InputGestureText="Ctrl+T">
+                    <MenuItem.Icon>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconSymbol}"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="_Rename Symbol..." Click="NavigateRenameSymbol_Click" InputGestureText="Ctrl+Alt+R">
+                    <MenuItem.Icon>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconRename}"/>
+                    </MenuItem.Icon>
+                </MenuItem>
             </MenuItem>
-            
-            <!-- View Menu -->
+
             <MenuItem Header="_View">
                 <MenuItem Header="_Theme">
+                    <MenuItem.Icon>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconTheme}"/>
+                    </MenuItem.Icon>
                     <MenuItem Header="Light" Click="ViewThemeLight_Click"/>
                     <MenuItem Header="Dark" Click="ViewThemeDark_Click"/>
                     <MenuItem Header="High Contrast" Click="ViewThemeHighContrast_Click"/>
@@ -552,145 +577,227 @@
                 <MenuItem Header="_Type Errors as Errors" IsCheckable="True" IsChecked="True" Click="ViewToggleTypeErrors_Click"
                           ToolTip="When checked, type-hint mismatches are Errors. Uncheck for Warning/Info (lenient)."/>
                 <Separator/>
-                <MenuItem Header="Open _Trace..." Click="ViewOpenTrace_Click"/>
+                <MenuItem Header="Open _Trace..." Click="ViewOpenTrace_Click">
+                    <MenuItem.Icon>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconTrace}"/>
+                    </MenuItem.Icon>
+                </MenuItem>
             </MenuItem>
-            
-            <!-- Run Menu -->
+
             <MenuItem Header="_Run">
                 <MenuItem Header="_Run" Click="RunButton_Click" InputGestureText="F5">
                     <MenuItem.Icon>
-                        <TextBlock Text="▶" FontSize="14"/>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconPlay}"/>
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem Header="_Debug" Click="DebugButton_Click" InputGestureText="F9">
                     <MenuItem.Icon>
-                        <TextBlock Text="🐛" FontSize="14"/>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconDebug}"/>
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem Header="_Stop" Click="StopButton_Click" InputGestureText="Shift+F5">
                     <MenuItem.Icon>
-                        <TextBlock Text="⏹" FontSize="14"/>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconStop}"/>
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem Header="_Reload Open Files" Click="ReloadOpenFilesButton_Click" InputGestureText="Ctrl+Shift+R">
                     <MenuItem.Icon>
-                        <TextBlock Text="↻" FontSize="14"/>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconReload}"/>
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem Header="_Compile" Click="CompileButton_Click" InputGestureText="Ctrl+Shift+B">
                     <MenuItem.Icon>
-                        <TextBlock Text="⚙" FontSize="14"/>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconCompile}"/>
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem Header="Preview _Web" Click="PreviewWebButton_Click" InputGestureText="F6">
                     <MenuItem.Icon>
-                        <TextBlock Text="🌐" FontSize="14"/>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconWeb}"/>
                     </MenuItem.Icon>
                 </MenuItem>
             </MenuItem>
-            
-            <!-- Debug Menu -->
+
             <MenuItem Header="_Debug">
                 <MenuItem Header="_Continue" Click="ContinueButton_Click" InputGestureText="F5">
                     <MenuItem.Icon>
-                        <TextBlock Text="▶" FontSize="14"/>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconPlay}"/>
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem Header="Step _Over" Click="StepOverButton_Click" InputGestureText="F10">
                     <MenuItem.Icon>
-                        <TextBlock Text="⏭" FontSize="14"/>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconStepOver}"/>
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem Header="Step _Into" Click="StepIntoButton_Click" InputGestureText="F11">
                     <MenuItem.Icon>
-                        <TextBlock Text="⬇" FontSize="14"/>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconStepInto}"/>
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem Header="Step O_ut" Click="StepOutButton_Click" InputGestureText="Shift+F11">
                     <MenuItem.Icon>
-                        <TextBlock Text="⬆" FontSize="14"/>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconStepOut}"/>
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem Header="_Pause" Click="PauseButton_Click">
                     <MenuItem.Icon>
-                        <TextBlock Text="⏸" FontSize="14"/>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconPause}"/>
                     </MenuItem.Icon>
                 </MenuItem>
                 <Separator/>
-                <MenuItem Header="Toggle _Breakpoint" Click="DebugToggleBreakpoint_Click" InputGestureText="F9"/>
-                <MenuItem Header="Clear All _Breakpoints" Click="DebugClearBreakpoints_Click"/>
+                <MenuItem Header="Toggle _Breakpoint" Click="DebugToggleBreakpoint_Click" InputGestureText="F9">
+                    <MenuItem.Icon>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconBreakpoint}"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Clear All _Breakpoints" Click="DebugClearBreakpoints_Click">
+                    <MenuItem.Icon>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconClearBreakpoints}"/>
+                    </MenuItem.Icon>
+                </MenuItem>
             </MenuItem>
-            
-            <!-- Tools Menu -->
+
             <MenuItem Header="_Tools">
                 <MenuItem Header="_Browse Models..." Click="ToolsBrowseModels_Click">
                     <MenuItem.Icon>
-                        <TextBlock Text="📦" FontSize="14"/>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconPackage}"/>
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem Header="Package _Manager..." Click="ToolsPackageManager_Click">
                     <MenuItem.Icon>
-                        <TextBlock Text="📚" FontSize="14"/>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconBook}"/>
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem Header="Configure _MCP Servers..." Click="ToolsConfigureMCPServers_Click">
                     <MenuItem.Icon>
-                        <TextBlock Text="🔌" FontSize="14"/>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconPlug}"/>
                     </MenuItem.Icon>
                 </MenuItem>
                 <Separator/>
-                <MenuItem Header="_Load Example..." Click="ToolsLoadExample_Click"/>
-                <MenuItem Header="_Clear Output" Click="ClearOutputButton_Click"/>
+                <MenuItem Header="_Load Example..." Click="ToolsLoadExample_Click">
+                    <MenuItem.Icon>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconOpen}"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="_Clear Output" Click="ClearOutputButton_Click">
+                    <MenuItem.Icon>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconTrash}"/>
+                    </MenuItem.Icon>
+                </MenuItem>
                 <Separator/>
                 <MenuItem Header="Show _Tool Calls" Click="ToolCallsTabButton_Click"/>
                 <MenuItem Header="Show _AI Chat" Click="AITabButton_Click"/>
             </MenuItem>
-            
-            <!-- Help Menu -->
+
             <MenuItem Header="_Help">
-                <MenuItem Header="_About..." Click="HelpAbout_Click"/>
-                <MenuItem Header="_Reference Manual" Click="HelpReferenceManual_Click"/>
-                <MenuItem Header="_Documentation" Click="HelpDocumentation_Click"/>
-                <MenuItem Header="_Keyboard Shortcuts" Click="HelpShortcuts_Click"/>
+                <MenuItem Header="_About..." Click="HelpAbout_Click">
+                    <MenuItem.Icon>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconAbout}"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="_Reference Manual" Click="HelpReferenceManual_Click">
+                    <MenuItem.Icon>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconManual}"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="_Documentation" Click="HelpDocumentation_Click">
+                    <MenuItem.Icon>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconHelp}"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="_Keyboard Shortcuts" Click="HelpShortcuts_Click">
+                    <MenuItem.Icon>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconKeyboard}"/>
+                    </MenuItem.Icon>
+                </MenuItem>
             </MenuItem>
         </Menu>
-        
+
         <!-- Toolbar -->
-        <Border Grid.Row="1" Background="{DynamicResource ToolbarBackgroundBrush}" BorderBrush="{DynamicResource ToolbarBorderBrush}" BorderThickness="0,0,0,1" Padding="8">
-            <StackPanel Orientation="Horizontal">
-                <Button x:Name="RunButton" Content="Run" Style="{StaticResource PrimaryButton}" Click="RunButton_Click"/>
-                <Button x:Name="DebugButton" Content="Debug" Click="DebugButton_Click"/>
-                <Button x:Name="StopButton" Content="Stop" Click="StopButton_Click"/>
-                <Button x:Name="ReloadOpenFilesButton" Content="Reload Files" Click="ReloadOpenFilesButton_Click" ToolTip="Stop execution and reload all opened files from disk (Ctrl+Shift+R)"/>
-                <Button Content="Compile" Click="CompileButton_Click"/>
-                <Button x:Name="PreviewWebButton" Content="Preview Web" Click="PreviewWebButton_Click" ToolTip="Transpile the current MALDA web file and open it in the built-in browser (F6)"/>
-                
-                <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="8,0"/>
-                
-                <Button x:Name="ContinueButton" Content="▶ Continue" Click="ContinueButton_Click" ToolTip="Continue (F5)"/>
-                <Button x:Name="StepOverButton" Content="⏭ Step Over" Click="StepOverButton_Click" ToolTip="Step Over (F10)"/>
-                <Button x:Name="StepIntoButton" Content="⬇ Step Into" Click="StepIntoButton_Click" ToolTip="Step Into (F11)"/>
-                <Button x:Name="StepOutButton" Content="⬆ Step Out" Click="StepOutButton_Click" ToolTip="Step Out (Shift+F11)"/>
-                <Button x:Name="PauseButton" Content="⏸ Pause" Click="PauseButton_Click"/>
-                
-                <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="8,0"/>
-                
-                <Button Content="Browse Examples..." Click="BrowseExamplesButton_Click" Margin="4,0"/>
-                
-                <Button Content="Clear Output" Click="ClearOutputButton_Click"/>
-                <Button Content="Save" Click="SaveButton_Click"/>
-                <Button Content="Load" Click="LoadButton_Click"/>
-                
-                <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="8,0"/>
-                
-                <Button x:Name="AutofixErrorsButton" Content="🔧 Autofix Errors" Click="AutofixErrorsButton_Click" 
-                        ToolTip="Auto-fix parser errors (missing characters)"/>
-                
-                <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="8,0"/>
-                
-                <TextBlock Text="Theme:" VerticalAlignment="Center" Margin="4,0,4,0" Foreground="{DynamicResource TextForegroundBrush}"/>
-                <ComboBox x:Name="ThemeComboBox" Width="150" Margin="4,0" SelectionChanged="ThemeComboBox_SelectionChanged"/>
-            </StackPanel>
+        <Border Grid.Row="1" Background="{DynamicResource ToolbarBackgroundBrush}" BorderBrush="{DynamicResource ToolbarBorderBrush}" BorderThickness="0,0,0,1" Padding="8,5">
+            <DockPanel LastChildFill="False">
+                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button x:Name="RunButton" Style="{StaticResource ToolbarPrimaryButton}" Click="RunButton_Click" ToolTip="Run (F5)">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Style="{StaticResource IdeAccentIcon}" Data="{StaticResource IconPlay}" Fill="{DynamicResource PrimaryButtonForegroundBrush}" StrokeThickness="0"/>
+                            <TextBlock Text="Run" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="DebugButton" Style="{StaticResource ToolbarButton}" Click="DebugButton_Click" ToolTip="Debug (F9)">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconDebug}"/>
+                            <TextBlock Text="Debug" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="StopButton" Style="{StaticResource ToolbarButton}" Click="StopButton_Click" ToolTip="Stop (Shift+F5)">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Style="{StaticResource IdeDangerIcon}" Data="{StaticResource IconStop}"/>
+                            <TextBlock Text="Stop" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="ReloadOpenFilesButton" Style="{StaticResource ToolbarIconButton}" Click="ReloadOpenFilesButton_Click" ToolTip="Reload open files from disk (Ctrl+Shift+R)">
+                        <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconReload}"/>
+                    </Button>
+                    <Button Style="{StaticResource ToolbarButton}" Click="CompileButton_Click" ToolTip="Compile (Ctrl+Shift+B)">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconCompile}"/>
+                            <TextBlock Text="Compile" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="PreviewWebButton" Style="{StaticResource ToolbarButton}" Click="PreviewWebButton_Click" ToolTip="Preview Web (F6)">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconWeb}"/>
+                            <TextBlock Text="Preview" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Border Style="{StaticResource ToolbarDivider}"/>
+
+                    <Button x:Name="ContinueButton" Style="{StaticResource ToolbarIconButton}" Click="ContinueButton_Click" ToolTip="Continue (F5)">
+                        <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconPlay}"/>
+                    </Button>
+                    <Button x:Name="StepOverButton" Style="{StaticResource ToolbarIconButton}" Click="StepOverButton_Click" ToolTip="Step Over (F10)">
+                        <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconStepOver}"/>
+                    </Button>
+                    <Button x:Name="StepIntoButton" Style="{StaticResource ToolbarIconButton}" Click="StepIntoButton_Click" ToolTip="Step Into (F11)">
+                        <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconStepInto}"/>
+                    </Button>
+                    <Button x:Name="StepOutButton" Style="{StaticResource ToolbarIconButton}" Click="StepOutButton_Click" ToolTip="Step Out (Shift+F11)">
+                        <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconStepOut}"/>
+                    </Button>
+                    <Button x:Name="PauseButton" Style="{StaticResource ToolbarIconButton}" Click="PauseButton_Click" ToolTip="Pause">
+                        <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconPause}"/>
+                    </Button>
+
+                    <Border Style="{StaticResource ToolbarDivider}"/>
+
+                    <Button Style="{StaticResource ToolbarButton}" Click="BrowseExamplesButton_Click" ToolTip="Browse examples">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconBook}"/>
+                            <TextBlock Text="Examples" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource ToolbarIconButton}" Click="SaveButton_Click" ToolTip="Save (Ctrl+S)">
+                        <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconSave}"/>
+                    </Button>
+                    <Button Style="{StaticResource ToolbarIconButton}" Click="LoadButton_Click" ToolTip="Open file (Ctrl+O)">
+                        <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconOpen}"/>
+                    </Button>
+                    <Button Style="{StaticResource ToolbarIconButton}" Click="ClearOutputButton_Click" ToolTip="Clear output">
+                        <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconTrash}"/>
+                    </Button>
+                    <Button x:Name="AutofixErrorsButton" Style="{StaticResource ToolbarButton}" Click="AutofixErrorsButton_Click" ToolTip="Auto-fix parser errors (missing characters)">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconWrench}"/>
+                            <TextBlock Text="Autofix" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
+                    <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconTheme}" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                    <ComboBox x:Name="ThemeComboBox" Style="{StaticResource ToolbarComboBox}" Width="132" SelectionChanged="ThemeComboBox_SelectionChanged"/>
+                </StackPanel>
+            </DockPanel>
         </Border>
         
         <!-- Main Content -->
@@ -810,7 +917,8 @@
                     <ScrollViewer Grid.Row="0"
                                   HorizontalScrollBarVisibility="Disabled"
                                   VerticalScrollBarVisibility="Auto"
-                                  Background="{DynamicResource TabBackgroundBrush}">
+                                  Background="{DynamicResource TabBackgroundBrush}"
+                                  Padding="4,2,4,0">
                         <WrapPanel x:Name="DocumentTabsPanel" Orientation="Horizontal"/>
                     </ScrollViewer>
 

@@ -6,6 +6,7 @@
         xmlns:avalon="http://icsharpcode.net/sharpdevelop/avalonedit"
         mc:Ignorable="d"
         Title="Browse Examples" Height="700" Width="1000"
+        FontFamily="Segoe UI, Segoe UI Variable, sans-serif"
         Background="{DynamicResource WindowBackgroundBrush}">
 
     <Window.Resources>
@@ -96,52 +97,9 @@
             </Setter>
         </Style>
 
-        <Style TargetType="Button">
-            <Setter Property="Padding" Value="8,4"/>
-            <Setter Property="Margin" Value="2"/>
-            <Setter Property="Background" Value="{DynamicResource ButtonBackgroundBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource ButtonForegroundBrush}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style TargetType="Button" x:Key="PrimaryButton" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="{DynamicResource PrimaryButtonBackgroundBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource PrimaryButtonForegroundBrush}"/>
-        </Style>
-
-        <Style TargetType="TextBox">
-            <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource InputForegroundBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="4"/>
-        </Style>
-
-        <Style TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{DynamicResource TextForegroundBrush}"/>
-        </Style>
-
-        <Style TargetType="ListBox">
-            <Setter Property="Background" Value="{DynamicResource ListBackgroundBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource ListForegroundBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource ListBorderBrush}"/>
-        </Style>
-
-        <Style TargetType="ListBoxItem">
-            <Setter Property="Foreground" Value="{DynamicResource ListForegroundBrush}"/>
-        </Style>
     </Window.Resources>
 
-    <Grid Margin="12">
+    <Grid Margin="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -149,15 +107,28 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" Text="Browse Examples" FontSize="18" FontWeight="Bold" Margin="0,0,0,12" Foreground="{DynamicResource TextForegroundBrush}"/>
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,14">
+            <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconBook}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+            <TextBlock Text="Browse Examples" Style="{StaticResource DialogHeader}" VerticalAlignment="Center"/>
+        </StackPanel>
 
         <Grid Grid.Row="1" Margin="0,0,0,12">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <TextBox x:Name="SearchTextBox" Grid.Column="0" TextChanged="SearchTextBox_TextChanged" Padding="8,4"/>
-            <Button x:Name="RefreshButton" Grid.Column="1" Content="Refresh" Click="RefreshButton_Click" Margin="8,0,0,0" MinWidth="80"/>
+            <Border Grid.Column="0" Style="{StaticResource DialogSearchHost}">
+                <DockPanel>
+                    <Path DockPanel.Dock="Left" Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconFind}" Margin="8,0,6,0" VerticalAlignment="Center"/>
+                    <TextBox x:Name="SearchTextBox" TextChanged="SearchTextBox_TextChanged" BorderThickness="0" Background="Transparent" VerticalAlignment="Center"/>
+                </DockPanel>
+            </Border>
+            <Button x:Name="RefreshButton" Grid.Column="1" Click="RefreshButton_Click" Margin="8,0,0,0" ToolTip="Refresh examples">
+                <StackPanel Orientation="Horizontal">
+                    <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconReload}"/>
+                    <TextBlock Text="Refresh" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
         </Grid>
 
         <Grid Grid.Row="2">
@@ -169,11 +140,12 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <Border Grid.Column="0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
-                <ListBox x:Name="CategoriesListBox" SelectionChanged="CategoriesListBox_SelectionChanged" BorderThickness="0">
+            <Border Grid.Column="0" Style="{StaticResource DialogPanel}">
+                <ListBox x:Name="CategoriesListBox" SelectionChanged="CategoriesListBox_SelectionChanged" BorderThickness="0" Background="Transparent"
+                         Foreground="{DynamicResource ListForegroundBrush}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <TextBlock Text="{Binding}" Padding="8,6"/>
+                            <TextBlock Text="{Binding}" Padding="8,6" Foreground="{DynamicResource ListForegroundBrush}"/>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
@@ -181,13 +153,14 @@
 
             <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch" Background="{DynamicResource GridSplitterBackgroundBrush}"/>
 
-            <Border Grid.Column="2" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Margin="5,0,0,0">
-                <ListBox x:Name="ExamplesListBox" SelectionChanged="ExamplesListBox_SelectionChanged" BorderThickness="0">
+            <Border Grid.Column="2" Style="{StaticResource DialogPanel}" Margin="5,0,0,0">
+                <ListBox x:Name="ExamplesListBox" SelectionChanged="ExamplesListBox_SelectionChanged" BorderThickness="0" Background="Transparent"
+                         Foreground="{DynamicResource ListForegroundBrush}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <StackPanel Margin="8,4">
-                                <TextBlock Text="{Binding Name}" FontWeight="Bold"/>
-                                <TextBlock Text="{Binding Description}" FontSize="11" Opacity="0.7" TextWrapping="Wrap"/>
+                            <StackPanel Margin="8,6">
+                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{DynamicResource ListForegroundBrush}"/>
+                                <TextBlock Text="{Binding Description}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,2,0,0"/>
                             </StackPanel>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
@@ -196,7 +169,7 @@
 
             <GridSplitter Grid.Column="3" HorizontalAlignment="Stretch" Background="{DynamicResource GridSplitterBackgroundBrush}"/>
 
-            <Border Grid.Column="4" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Margin="5,0,0,0">
+            <Border Grid.Column="4" Style="{StaticResource DialogPanel}" Margin="5,0,0,0">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*"/>
@@ -211,18 +184,21 @@
                                        Background="{DynamicResource EditorBackgroundBrush}"
                                        Foreground="{DynamicResource EditorForegroundBrush}"
                                        LineNumbersForeground="{DynamicResource EditorLineNumbersBrush}"/>
-                    <Border Grid.Row="1" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource BorderBrush}" Background="{DynamicResource InputBackgroundBrush}">
+                    <Border Grid.Row="1" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource BorderBrush}" Background="{DynamicResource InputBackgroundBrush}" CornerRadius="0,0,8,8">
                         <TextBlock x:Name="DescriptionTextBlock" Padding="12,8" TextWrapping="Wrap" Foreground="{DynamicResource TextForegroundBrush}"/>
                     </Border>
                 </Grid>
             </Border>
         </Grid>
 
-        <Border Grid.Row="3" Padding="12" Margin="0,12,0,0">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button x:Name="LoadButton" Content="Load Example" Click="LoadButton_Click" IsEnabled="False" MinWidth="120" Style="{StaticResource PrimaryButton}" Margin="0,0,8,0"/>
-                <Button x:Name="CloseButton" Content="Close" Click="CloseButton_Click" MinWidth="80"/>
-            </StackPanel>
-        </Border>
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+            <Button x:Name="LoadButton" Click="LoadButton_Click" IsEnabled="False" MinWidth="132" Style="{StaticResource PrimaryButton}" Margin="0,0,8,0">
+                <StackPanel Orientation="Horizontal">
+                    <Path Style="{StaticResource IdeAccentIcon}" Data="{StaticResource IconOpen}" Stroke="{DynamicResource PrimaryButtonForegroundBrush}"/>
+                    <TextBlock Text="Load Example" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
+            <Button x:Name="CloseButton" Content="Close" Click="CloseButton_Click" MinWidth="88"/>
+        </StackPanel>
     </Grid>
 </Window>

@@ -162,6 +162,8 @@ public partial class ExampleBrowserWindow : Window
         Resources["ScrollBarButtonBrush"] = new SolidColorBrush(scrollBarButton);
         
         // Set ListBox selection colors
+        Resources[SystemColors.ControlTextBrushKey] = new SolidColorBrush(theme.ListForeground);
+        Resources[SystemColors.WindowTextBrushKey] = new SolidColorBrush(theme.TextForeground);
         Resources[SystemColors.HighlightBrushKey] = new SolidColorBrush(theme.EditorSelection);
         Resources[SystemColors.HighlightTextBrushKey] = new SolidColorBrush(theme.ListForeground);
         Resources[SystemColors.InactiveSelectionHighlightBrushKey] = new SolidColorBrush(theme.EditorSelection);

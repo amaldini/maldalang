@@ -5,23 +5,9 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Select Model" Height="500" Width="600"
+        FontFamily="Segoe UI, Segoe UI Variable, sans-serif"
         Background="{DynamicResource WindowBackgroundBrush}">
-    <Window.Resources>
-        <!-- Default theme resources (will be overridden if owner window has them) -->
-        <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#F5F5F5"/>
-        <SolidColorBrush x:Key="TextForegroundBrush" Color="#212121"/>
-        <SolidColorBrush x:Key="TextSecondaryBrush" Color="#757575"/>
-        <SolidColorBrush x:Key="BorderBrush" Color="#D0D0D0"/>
-        <SolidColorBrush x:Key="ListBackgroundBrush" Color="#FFFFFF"/>
-        <SolidColorBrush x:Key="ListForegroundBrush" Color="#212121"/>
-        <SolidColorBrush x:Key="ButtonBackgroundBrush" Color="#E8E8E8"/>
-        <SolidColorBrush x:Key="ButtonForegroundBrush" Color="#212121"/>
-        <SolidColorBrush x:Key="ButtonBorderBrush" Color="#B0B0B0"/>
-        <SolidColorBrush x:Key="PrimaryButtonBackgroundBrush" Color="#2196F3"/>
-        <SolidColorBrush x:Key="PrimaryButtonForegroundBrush" Color="#FFFFFF"/>
-        <SolidColorBrush x:Key="PrimaryButtonBorderBrush" Color="#1976D2"/>
-    </Window.Resources>
-    <Grid Margin="12">
+    <Grid Margin="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
@@ -29,34 +15,27 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Header -->
-        <TextBlock Grid.Row="0" 
-                   Text="Select a Local Model"
-                   FontSize="16" 
-                   FontWeight="Bold"
-                   Margin="0,0,0,12"
-                   Foreground="{DynamicResource TextForegroundBrush}"/>
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,14">
+            <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconPackage}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+            <TextBlock Text="Select a Local Model" Style="{StaticResource DialogHeader}" VerticalAlignment="Center"/>
+        </StackPanel>
 
-        <!-- Models List -->
-        <Border Grid.Row="1"
-                BorderBrush="{DynamicResource BorderBrush}"
-                BorderThickness="1"
-                Background="{DynamicResource ListBackgroundBrush}">
+        <Border Grid.Row="1" Style="{StaticResource DialogPanel}">
             <Grid>
                 <ListBox x:Name="ModelsListBox"
-                         Background="{DynamicResource ListBackgroundBrush}"
+                         Background="Transparent"
                          Foreground="{DynamicResource ListForegroundBrush}"
                          BorderThickness="0">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <Grid Margin="8,4">
+                            <Grid Margin="8,6">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Grid.Column="0">
                                     <TextBlock Text="{Binding FileName}"
-                                               FontWeight="Bold"
+                                               FontWeight="SemiBold"
                                                FontSize="12"
                                                Foreground="{DynamicResource TextForegroundBrush}"/>
                                     <TextBlock Text="{Binding Path}"
@@ -86,43 +65,32 @@
             </Grid>
         </Border>
 
-        <!-- Options -->
         <StackPanel Grid.Row="2"
                     Orientation="Horizontal"
-                    Margin="0,12,0,0">
+                    Margin="0,14,0,0">
             <RadioButton x:Name="UseLocalModelRadioButton"
                          Content="Use Local Model"
                          Margin="0,0,16,0"
-                         VerticalAlignment="Center"
                          Checked="UseLocalModelRadioButton_Checked"/>
             <RadioButton x:Name="UseOpenRouterRadioButton"
                          Content="Use OpenRouter (Online)"
-                         VerticalAlignment="Center"
                          Checked="UseOpenRouterRadioButton_Checked"/>
         </StackPanel>
 
-        <!-- Buttons -->
         <StackPanel Grid.Row="3"
                     Orientation="Horizontal"
                     HorizontalAlignment="Right"
-                    Margin="0,12,0,0">
+                    Margin="0,14,0,0">
             <Button Content="Cancel"
                     Click="CancelButton_Click"
-                    Padding="16,6"
                     Margin="0,0,8,0"
-                    MinWidth="80"
-                    Background="{DynamicResource ButtonBackgroundBrush}"
-                    Foreground="{DynamicResource ButtonForegroundBrush}"
-                    BorderBrush="{DynamicResource ButtonBorderBrush}"/>
+                    MinWidth="88"/>
             <Button x:Name="SelectButton"
                     Content="Select"
                     Click="SelectButton_Click"
-                    Padding="16,6"
-                    MinWidth="80"
+                    MinWidth="88"
                     IsEnabled="False"
-                    Background="{DynamicResource PrimaryButtonBackgroundBrush}"
-                    Foreground="{DynamicResource PrimaryButtonForegroundBrush}"
-                    BorderBrush="{DynamicResource PrimaryButtonBorderBrush}"/>
+                    Style="{StaticResource PrimaryButton}"/>
         </StackPanel>
     </Grid>
 </Window>

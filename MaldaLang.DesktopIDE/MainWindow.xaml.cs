@@ -2845,6 +2845,8 @@ public partial class MainWindow : Window
         DocumentTabsPanel.Children.Clear();
         var activeBrush = FindResource("TabActiveBackgroundBrush") as Brush ?? Brushes.White;
         var inactiveBrush = FindResource("TabBackgroundBrush") as Brush ?? Brushes.LightGray;
+        var tabStyle = TryFindResource("DocumentTabButton") as Style;
+        var closeStyle = TryFindResource("DocumentTabCloseButton") as Style;
 
         foreach (var key in _documentOrder)
         {
@@ -2853,15 +2855,15 @@ public partial class MainWindow : Window
                 continue;
             }
 
+            var isActive = key == _activeDocumentKey;
+            var displayName = GetDocumentDisplayName(document);
             var button = new Button
             {
-                Content = document.IsDirty
-                    ? $"{GetDocumentDisplayName(document)} *"
-                    : GetDocumentDisplayName(document),
-                Margin = new Thickness(2, 2, 0, 2),
-                Padding = new Thickness(12, 4, 12, 4),
+                Content = document.IsDirty ? $"{displayName} •" : displayName,
+                Style = tabStyle,
                 ToolTip = GetPhysicalPath(document) ?? "Unsaved file",
-                Background = key == _activeDocumentKey ? activeBrush : inactiveBrush
+                Background = isActive ? activeBrush : Brushes.Transparent,
+                FontWeight = isActive ? FontWeights.SemiBold : FontWeights.Normal
             };
 
             var documentKey = key;
@@ -2870,31 +2872,36 @@ public partial class MainWindow : Window
             var canClose = _documentOrder.Count > 1;
             var tabContainer = new DockPanel
             {
-                Margin = new Thickness(2, 0, 0, 0),
-                LastChildFill = false
+                LastChildFill = true
             };
-
-            DockPanel.SetDock(button, Dock.Left);
-            tabContainer.Children.Add(button);
 
             if (canClose)
             {
                 var closeButton = new Button
                 {
-                    Content = "x",
-                    Width = 22,
-                    Height = 22,
-                    Margin = new Thickness(2, 2, 0, 2),
-                    Padding = new Thickness(0),
-                    ToolTip = $"Close {GetDocumentDisplayName(document)}",
-                    Background = key == _activeDocumentKey ? activeBrush : inactiveBrush
+                    Content = "✕",
+                    Style = closeStyle,
+                    ToolTip = $"Close {displayName}",
+                    Background = Brushes.Transparent
                 };
                 closeButton.Click += (_, _) => CloseDocument(documentKey);
                 DockPanel.SetDock(closeButton, Dock.Right);
                 tabContainer.Children.Add(closeButton);
             }
 
-            DocumentTabsPanel.Children.Add(tabContainer);
+            tabContainer.Children.Add(button);
+
+            var chrome = new Border
+            {
+                Child = tabContainer,
+                Background = isActive ? activeBrush : Brushes.Transparent,
+                CornerRadius = new CornerRadius(6, 6, 0, 0),
+                Margin = new Thickness(4, 4, 0, 0),
+                BorderBrush = isActive ? FindResource("BorderBrush") as Brush : Brushes.Transparent,
+                BorderThickness = new Thickness(1, 1, 1, 0)
+            };
+
+            DocumentTabsPanel.Children.Add(chrome);
         }
     }
 
@@ -5629,15 +5636,24 @@ public partial class MainWindow : Window
         var theme = _themeService.CurrentTheme;
         var activeBrush = new SolidColorBrush(theme.TabActiveBackground);
         var inactiveBrush = new SolidColorBrush(theme.TabBackground);
-        
-        OutputTabButton.Background = _activeTab == "output" ? activeBrush : inactiveBrush;
-        DebugTabButton.Background = _activeTab == "debug" ? activeBrush : inactiveBrush;
-        ToolCallsTabButton.Background = _activeTab == "toolcalls" ? activeBrush : inactiveBrush;
-        ErrorsTabButton.Background = _activeTab == "errors" ? activeBrush : inactiveBrush;
-        SearchTabButton.Background = _activeTab == "search" ? activeBrush : inactiveBrush;
-        AITabButton.Background = _activeTab == "ai" ? activeBrush : inactiveBrush;
-        WebUITabButton.Background = _activeTab == "webui" ? activeBrush : inactiveBrush;
+        var accentBrush = new SolidColorBrush(theme.DebugAccent);
+        var transparent = Brushes.Transparent;
+
+        ApplySidebarTabChrome(OutputTabButton, _activeTab == "output", activeBrush, inactiveBrush, accentBrush, transparent);
+        ApplySidebarTabChrome(DebugTabButton, _activeTab == "debug", activeBrush, inactiveBrush, accentBrush, transparent);
+        ApplySidebarTabChrome(ToolCallsTabButton, _activeTab == "toolcalls", activeBrush, inactiveBrush, accentBrush, transparent);
+        ApplySidebarTabChrome(ErrorsTabButton, _activeTab == "errors", activeBrush, inactiveBrush, accentBrush, transparent);
+        ApplySidebarTabChrome(SearchTabButton, _activeTab == "search", activeBrush, inactiveBrush, accentBrush, transparent);
+        ApplySidebarTabChrome(AITabButton, _activeTab == "ai", activeBrush, inactiveBrush, accentBrush, transparent);
+        ApplySidebarTabChrome(WebUITabButton, _activeTab == "webui", activeBrush, inactiveBrush, accentBrush, transparent);
         RefreshDocumentTabs();
+    }
+
+    private static void ApplySidebarTabChrome(Button button, bool isActive, Brush activeBrush, Brush inactiveBrush, Brush accentBrush, Brush transparent)
+    {
+        button.Background = isActive ? activeBrush : inactiveBrush;
+        button.BorderBrush = isActive ? accentBrush : transparent;
+        button.FontWeight = isActive ? FontWeights.SemiBold : FontWeights.Normal;
     }
 
     private string GetCurrentSourceKey()

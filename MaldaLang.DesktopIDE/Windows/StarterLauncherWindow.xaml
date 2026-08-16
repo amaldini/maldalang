@@ -5,8 +5,9 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Start With MALDA"
-        Height="620"
-        Width="900"
+        Height="640"
+        Width="920"
+        FontFamily="Segoe UI, Segoe UI Variable, sans-serif"
         WindowStartupLocation="CenterOwner"
         Background="{DynamicResource WindowBackgroundBrush}">
     <Window.Resources>
@@ -124,8 +125,8 @@
 
         <StackPanel Grid.Row="0" Margin="0,0,0,16">
             <TextBlock Text="Choose how you want to start with MALDA"
-                       FontSize="24"
-                       FontWeight="Bold"
+                       FontSize="22"
+                       FontWeight="SemiBold"
                        Foreground="{DynamicResource TextBrush}" />
             <TextBlock Text="Follow a linear basics path, jump into AI-native workflows, or open a commercial showcase."
                        Margin="0,8,0,0"
@@ -134,11 +135,33 @@
         </StackPanel>
 
         <StackPanel Grid.Row="1" Margin="0,0,0,16">
-            <StackPanel Orientation="Horizontal">
-                <Button x:Name="StudentTrackButton" Content="Learn programming" Click="StudentTrackButton_Click" />
-                <Button x:Name="AiTrackButton" Content="Build with AI" Click="AiTrackButton_Click" />
-                <Button x:Name="ShowcaseTrackButton" Content="Commercial showcases" Click="ShowcaseTrackButton_Click" />
-            </StackPanel>
+            <Border Background="{DynamicResource PanelBackgroundBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Padding="4"
+                    HorizontalAlignment="Left">
+                <StackPanel Orientation="Horizontal">
+                    <Button x:Name="StudentTrackButton" Click="StudentTrackButton_Click" Margin="0" Padding="12,8">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconLearn}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                            <TextBlock Text="Learn programming" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="AiTrackButton" Click="AiTrackButton_Click" Margin="0" Padding="12,8">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconSpark}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                            <TextBlock Text="Build with AI" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="ShowcaseTrackButton" Click="ShowcaseTrackButton_Click" Margin="0" Padding="12,8">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconStar}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                            <TextBlock Text="Commercial showcases" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Border>
             <TextBlock x:Name="TrackGuidanceTextBlock"
                        Margin="4,8,4,0"
                        Foreground="{DynamicResource SubtleTextBrush}"
@@ -275,12 +298,26 @@
                     Orientation="Horizontal"
                     HorizontalAlignment="Right"
                     Margin="0,16,0,0">
-            <Button Content="Start Blank" Click="StartBlankButton_Click" />
-            <Button Content="Browse Examples" Click="BrowseExamplesButton_Click" />
-            <Button Content="Open Starter"
-                    Click="OpenStarterButton_Click"
+            <Button Click="StartBlankButton_Click">
+                <StackPanel Orientation="Horizontal">
+                    <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconNew}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                    <TextBlock Text="Start Blank" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
+            <Button Click="BrowseExamplesButton_Click">
+                <StackPanel Orientation="Horizontal">
+                    <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconBook}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                    <TextBlock Text="Browse Examples" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
+            <Button Click="OpenStarterButton_Click"
                     Style="{StaticResource PrimaryActionButtonStyle}"
-                    FontWeight="Bold" />
+                    FontWeight="SemiBold">
+                <StackPanel Orientation="Horizontal">
+                    <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconPlay}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="0"/>
+                    <TextBlock Text="Open Starter" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
         </StackPanel>
     </Grid>
 </Window>

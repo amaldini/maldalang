@@ -1,0 +1,42 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Default Light fallbacks. Windows override these keys in ApplyTheme.
+         Keep brushes out of IdeChrome.xaml so DynamicResource in styles
+         resolves from the window instead of this dictionary. -->
+    <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#F4F5F7"/>
+    <SolidColorBrush x:Key="MainBackgroundBrush" Color="#F4F5F7"/>
+    <SolidColorBrush x:Key="SidebarBackgroundBrush" Color="#F4F5F7"/>
+    <SolidColorBrush x:Key="ToolbarBackgroundBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="ToolbarBorderBrush" Color="#E2E4E8"/>
+    <SolidColorBrush x:Key="EditorBackgroundBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="EditorForegroundBrush" Color="#1F2328"/>
+    <SolidColorBrush x:Key="EditorLineNumbersBrush" Color="#6E7781"/>
+    <SolidColorBrush x:Key="TextForegroundBrush" Color="#1F2328"/>
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#656D76"/>
+    <SolidColorBrush x:Key="ButtonBackgroundBrush" Color="#F0F1F3"/>
+    <SolidColorBrush x:Key="ButtonForegroundBrush" Color="#1F2328"/>
+    <SolidColorBrush x:Key="ButtonBorderBrush" Color="#E2E4E8"/>
+    <SolidColorBrush x:Key="ButtonHoverBrush" Color="#E8EAED"/>
+    <SolidColorBrush x:Key="ButtonHoverBorderBrush" Color="#C9CDD4"/>
+    <SolidColorBrush x:Key="PrimaryButtonBackgroundBrush" Color="#2563EB"/>
+    <SolidColorBrush x:Key="PrimaryButtonForegroundBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="PrimaryButtonBorderBrush" Color="#1D4ED8"/>
+    <SolidColorBrush x:Key="PrimaryButtonHoverBrush" Color="#1D4ED8"/>
+    <SolidColorBrush x:Key="PrimaryButtonHoverBorderBrush" Color="#1E40AF"/>
+    <SolidColorBrush x:Key="TabBackgroundBrush" Color="#ECEEF1"/>
+    <SolidColorBrush x:Key="TabActiveBackgroundBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="TabForegroundBrush" Color="#1F2328"/>
+    <SolidColorBrush x:Key="TabHoverBrush" Color="#E2E4E8"/>
+    <SolidColorBrush x:Key="InputBackgroundBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="InputForegroundBrush" Color="#1F2328"/>
+    <SolidColorBrush x:Key="InputBorderBrush" Color="#D0D7DE"/>
+    <SolidColorBrush x:Key="BorderBrush" Color="#E2E4E8"/>
+    <SolidColorBrush x:Key="GridSplitterBackgroundBrush" Color="#E8EAED"/>
+    <SolidColorBrush x:Key="ListBackgroundBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="ListForegroundBrush" Color="#1F2328"/>
+    <SolidColorBrush x:Key="ListBorderBrush" Color="#E2E4E8"/>
+    <SolidColorBrush x:Key="DebugAccentBrush" Color="#2563EB"/>
+    <SolidColorBrush x:Key="ErrorBrush" Color="#DC2626"/>
+    <SolidColorBrush x:Key="WarningBrush" Color="#D97706"/>
+    <SolidColorBrush x:Key="InfoBrush" Color="#2563EB"/>
+</ResourceDictionary>

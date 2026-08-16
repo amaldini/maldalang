@@ -5,110 +5,9 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Model Browser" Height="700" Width="1000"
+        FontFamily="Segoe UI, Segoe UI Variable, sans-serif"
         Background="{DynamicResource WindowBackgroundBrush}">
-    <Window.Resources>
-        <!-- Button Styles matching MainWindow -->
-        <Style TargetType="Button">
-            <Setter Property="Padding" Value="8,4"/>
-            <Setter Property="Margin" Value="2"/>
-            <Setter Property="Background" Value="{DynamicResource ButtonBackgroundBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource ButtonForegroundBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource ButtonBorderBrush}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" 
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="4"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="{DynamicResource ButtonHoverBrush}"/>
-                                <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource ButtonHoverBorderBrush}"/>
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Opacity" Value="0.5"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-        <Style TargetType="Button" x:Key="PrimaryButton" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="{DynamicResource PrimaryButtonBackgroundBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource PrimaryButtonForegroundBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource PrimaryButtonBorderBrush}"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" 
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="4"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="{DynamicResource PrimaryButtonHoverBrush}"/>
-                                <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource PrimaryButtonHoverBorderBrush}"/>
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Opacity" Value="0.5"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-        <Style TargetType="Button" x:Key="ErrorButton" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="{DynamicResource ErrorBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource PrimaryButtonForegroundBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource ErrorBrush}"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" 
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="4"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Opacity" Value="0.8"/>
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Opacity" Value="0.5"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-        <!-- TextBox Style -->
-        <Style TargetType="TextBox">
-            <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource InputForegroundBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="4"/>
-        </Style>
-        <!-- TextBlock Style -->
-        <Style TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{DynamicResource TextForegroundBrush}"/>
-        </Style>
-    </Window.Resources>
-    <Grid Margin="12">
+    <Grid Margin="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -118,44 +17,35 @@
             <RowDefinition Height="200"/>
         </Grid.RowDefinitions>
 
-        <!-- Header -->
-        <TextBlock Grid.Row="0" 
-                   Text="Browse and Download LLM Models"
-                   FontSize="18" 
-                   FontWeight="Bold"
-                   Margin="0,0,0,12"
-                   Foreground="{DynamicResource TextForegroundBrush}"/>
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,14">
+            <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconPackage}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+            <TextBlock Text="Browse and Download LLM Models" Style="{StaticResource DialogHeader}" VerticalAlignment="Center"/>
+        </StackPanel>
 
-        <!-- Search and Filter -->
         <Grid Grid.Row="1" Margin="0,0,0,12">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <TextBox x:Name="SearchTextBox"
-                     Grid.Column="0"
-                     TextChanged="SearchTextBox_TextChanged"
-                     Padding="8,4"
-                     FontSize="12"
-                     Background="{DynamicResource InputBackgroundBrush}"
-                     Foreground="{DynamicResource InputForegroundBrush}"
-                     BorderBrush="{DynamicResource InputBorderBrush}"
-                     BorderThickness="1"/>
-            <Button x:Name="RefreshButton"
-                    Grid.Column="1"
-                    Content="Refresh"
-                    Click="RefreshButton_Click"
-                    Margin="8,0,0,0"
-                    Padding="12,4"
-                    MinWidth="80"/>
-            <Button x:Name="OpenFolderButton"
-                    Grid.Column="2"
-                    Content="Open Models Folder"
-                    Click="OpenFolderButton_Click"
-                    Margin="8,0,0,0"
-                    Padding="12,4"
-                    MinWidth="120"/>
+            <Border Grid.Column="0" Style="{StaticResource DialogSearchHost}" Margin="0,0,8,0">
+                <DockPanel>
+                    <Path DockPanel.Dock="Left" Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconFind}" Margin="8,0,6,0" VerticalAlignment="Center"/>
+                    <TextBox x:Name="SearchTextBox" TextChanged="SearchTextBox_TextChanged" BorderThickness="0" Background="Transparent" VerticalAlignment="Center"/>
+                </DockPanel>
+            </Border>
+            <Button x:Name="RefreshButton" Grid.Column="1" Click="RefreshButton_Click" Margin="0,0,8,0">
+                <StackPanel Orientation="Horizontal">
+                    <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconReload}"/>
+                    <TextBlock Text="Refresh" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
+            <Button x:Name="OpenFolderButton" Grid.Column="2" Click="OpenFolderButton_Click">
+                <StackPanel Orientation="Horizontal">
+                    <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconFolder}"/>
+                    <TextBlock Text="Open Folder" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
         </Grid>
 
         <!-- Main Content: Models List and Details -->
@@ -167,21 +57,13 @@
             </Grid.ColumnDefinitions>
 
             <!-- Models List -->
-            <Border Grid.Column="0"
-                    BorderBrush="{DynamicResource BorderBrush}"
-                    BorderThickness="1"
-                    Background="{DynamicResource ListBackgroundBrush}">
+            <Border Grid.Column="0" Style="{StaticResource DialogPanel}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
-                    <TextBlock Grid.Row="0"
-                               Text="Available Models"
-                               FontWeight="Bold"
-                               Padding="8,4"
-                               Background="{DynamicResource TabBackgroundBrush}"
-                               Foreground="{DynamicResource TextForegroundBrush}"/>
+                    <TextBlock Grid.Row="0" Text="Available Models" Style="{StaticResource DialogSectionHeader}"/>
                     <ListBox x:Name="ModelsListBox"
                              Grid.Row="1"
                              SelectionChanged="ModelsListBox_SelectionChanged"
@@ -262,23 +144,14 @@
                           Background="{DynamicResource GridSplitterBackgroundBrush}"/>
 
             <!-- Model Details -->
-            <Border Grid.Column="2"
-                    BorderBrush="{DynamicResource BorderBrush}"
-                    BorderThickness="1"
-                    Background="{DynamicResource ListBackgroundBrush}"
-                    Margin="5,0,0,0">
+            <Border Grid.Column="2" Style="{StaticResource DialogPanel}" Margin="5,0,0,0">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
-                    <TextBlock Grid.Row="0"
-                               Text="Model Details"
-                               FontWeight="Bold"
-                               Padding="8,4"
-                               Background="{DynamicResource TabBackgroundBrush}"
-                               Foreground="{DynamicResource TextForegroundBrush}"/>
+                    <TextBlock Grid.Row="0" Text="Model Details" Style="{StaticResource DialogSectionHeader}"/>
                     <ScrollViewer Grid.Row="1"
                                   VerticalScrollBarVisibility="Auto"
                                   Padding="12">
@@ -294,11 +167,14 @@
                             Background="{DynamicResource InputBackgroundBrush}">
                         <StackPanel Orientation="Vertical">
                             <Button x:Name="DownloadButton"
-                                    Content="Download Selected File"
                                     Click="DownloadButton_Click"
                                     IsEnabled="False"
-                                    Padding="12,6"
-                                    Style="{StaticResource PrimaryButton}"/>
+                                    Style="{StaticResource PrimaryButton}">
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Style="{StaticResource IdeAccentIcon}" Data="{StaticResource IconDownload}" Stroke="{DynamicResource PrimaryButtonForegroundBrush}"/>
+                                    <TextBlock Text="Download Selected File" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
                         </StackPanel>
                     </Border>
                 </Grid>
@@ -306,22 +182,13 @@
         </Grid>
 
         <!-- Active Downloads -->
-        <Border Grid.Row="4"
-                BorderBrush="{DynamicResource BorderBrush}"
-                BorderThickness="1"
-                Background="{DynamicResource ListBackgroundBrush}"
-                Margin="0,12,0,0">
+        <Border Grid.Row="4" Style="{StaticResource DialogPanel}" Margin="0,12,0,0">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
-                <TextBlock Grid.Row="0"
-                           Text="Active Downloads"
-                           FontWeight="Bold"
-                           Padding="8,4"
-                           Background="{DynamicResource TabBackgroundBrush}"
-                           Foreground="{DynamicResource TextForegroundBrush}"/>
+                <TextBlock Grid.Row="0" Text="Active Downloads" Style="{StaticResource DialogSectionHeader}"/>
                 <ListBox x:Name="ActiveDownloadsListBox"
                          Grid.Row="1"
                          Background="{DynamicResource ListBackgroundBrush}"
@@ -369,22 +236,13 @@
         </Border>
 
         <!-- Installed Models -->
-        <Border Grid.Row="5"
-                BorderBrush="{DynamicResource BorderBrush}"
-                BorderThickness="1"
-                Background="{DynamicResource ListBackgroundBrush}"
-                Margin="0,12,0,0">
+        <Border Grid.Row="5" Style="{StaticResource DialogPanel}" Margin="0,12,0,0">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
-                <TextBlock Grid.Row="0"
-                           Text="Installed Models"
-                           FontWeight="Bold"
-                           Padding="8,4"
-                           Background="{DynamicResource TabBackgroundBrush}"
-                           Foreground="{DynamicResource TextForegroundBrush}"/>
+                <TextBlock Grid.Row="0" Text="Installed Models" Style="{StaticResource DialogSectionHeader}"/>
                 <ListBox x:Name="InstalledModelsListBox"
                          Grid.Row="1"
                          Background="{DynamicResource ListBackgroundBrush}"

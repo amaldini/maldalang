@@ -5,39 +5,51 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Trace Viewer" Height="600" Width="1000"
+        FontFamily="Segoe UI, Segoe UI Variable, sans-serif"
         Background="{DynamicResource WindowBackgroundBrush}">
-    <Window.Resources>
-        <Style TargetType="Button">
-            <Setter Property="Padding" Value="8,4"/>
-            <Setter Property="Margin" Value="2"/>
-            <Setter Property="Background" Value="{DynamicResource ButtonBackgroundBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource ButtonForegroundBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource ButtonBorderBrush}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-        </Style>
-        <Style TargetType="TextBox">
-            <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource InputForegroundBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}"/>
-            <Setter Property="Padding" Value="4,2"/>
-        </Style>
-    </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
-        <!-- Navigation bar: Go to step, Prev, Next -->
-        <Border Grid.Row="0" Padding="8,4" Background="{DynamicResource ToolbarBackgroundBrush}" BorderBrush="{DynamicResource ToolbarBorderBrush}" BorderThickness="0,0,0,1">
-            <StackPanel Orientation="Horizontal">
-                <TextBlock Text="Go to step:" VerticalAlignment="Center" Margin="0,0,4,0" Foreground="{DynamicResource TextForegroundBrush}"/>
-                <TextBox x:Name="GoToStepTextBox" Width="60" VerticalAlignment="Center" KeyDown="GoToStepTextBox_KeyDown"/>
-                <Button x:Name="GoToStepButton" Content="Go" Click="GoToStepButton_Click" Margin="4,0,0,0"/>
-                <Button x:Name="PrevStepButton" Content="◀ Previous" Click="PrevStepButton_Click" Margin="16,0,0,0"/>
-                <Button x:Name="NextStepButton" Content="Next ▶" Click="NextStepButton_Click" Margin="4,0,0,0"/>
-                <Button x:Name="ReplayToHereButton" Content="Replay to Here" Click="ReplayToHereButton_Click" Margin="16,0,0,0" ToolTip="Restore file system state up to selected step"/>
-                <Button x:Name="RunFromHereButton" Content="Run from Here" Click="RunFromHereButton_Click" Margin="4,0,0,0" ToolTip="Start new agent execution from selected step"/>
-                <Button x:Name="BranchFromHereButton" Content="Branch from Here" Click="BranchFromHereButton_Click" Margin="4,0,0,0" ToolTip="Create new trace branch from selected step"/>
+        <Border Grid.Row="0" Padding="8,6" Background="{DynamicResource ToolbarBackgroundBrush}" BorderBrush="{DynamicResource ToolbarBorderBrush}" BorderThickness="0,0,0,1">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconTrace}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <TextBlock Text="Go to step" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                <TextBox x:Name="GoToStepTextBox" Width="64" VerticalAlignment="Center" KeyDown="GoToStepTextBox_KeyDown" Padding="6,4"/>
+                <Button x:Name="GoToStepButton" Style="{StaticResource ToolbarButton}" Click="GoToStepButton_Click" Margin="6,0,0,0" Content="Go"/>
+                <Border Style="{StaticResource ToolbarDivider}"/>
+                <Button x:Name="PrevStepButton" Style="{StaticResource ToolbarButton}" Click="PrevStepButton_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconChevronLeft}"/>
+                        <TextBlock Text="Previous" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+                <Button x:Name="NextStepButton" Style="{StaticResource ToolbarButton}" Click="NextStepButton_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Next" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                        <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconChevron}"/>
+                    </StackPanel>
+                </Button>
+                <Border Style="{StaticResource ToolbarDivider}"/>
+                <Button x:Name="ReplayToHereButton" Style="{StaticResource ToolbarButton}" Click="ReplayToHereButton_Click" ToolTip="Restore file system state up to selected step">
+                    <StackPanel Orientation="Horizontal">
+                        <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconReload}"/>
+                        <TextBlock Text="Replay to Here" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+                <Button x:Name="RunFromHereButton" Style="{StaticResource ToolbarButton}" Click="RunFromHereButton_Click" ToolTip="Start new agent execution from selected step">
+                    <StackPanel Orientation="Horizontal">
+                        <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconPlay}"/>
+                        <TextBlock Text="Run from Here" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+                <Button x:Name="BranchFromHereButton" Style="{StaticResource ToolbarButton}" Click="BranchFromHereButton_Click" ToolTip="Create new trace branch from selected step">
+                    <StackPanel Orientation="Horizontal">
+                        <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconAdd}"/>
+                        <TextBlock Text="Branch from Here" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
             </StackPanel>
         </Border>
         <Grid Grid.Row="1">

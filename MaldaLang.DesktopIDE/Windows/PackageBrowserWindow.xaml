@@ -5,110 +5,10 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Package Manager" Height="600" Width="800"
+        FontFamily="Segoe UI, Segoe UI Variable, sans-serif"
         WindowStartupLocation="CenterOwner"
         Background="{DynamicResource WindowBackgroundBrush}">
     <Window.Resources>
-        <!-- Button Styles matching MainWindow -->
-        <Style TargetType="Button">
-            <Setter Property="Padding" Value="8,4"/>
-            <Setter Property="Margin" Value="2"/>
-            <Setter Property="Background" Value="{DynamicResource ButtonBackgroundBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource ButtonForegroundBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource ButtonBorderBrush}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" 
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="4"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="{DynamicResource ButtonHoverBrush}"/>
-                                <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource ButtonHoverBorderBrush}"/>
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Opacity" Value="0.5"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-        <Style TargetType="Button" x:Key="PrimaryButton" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="{DynamicResource PrimaryButtonBackgroundBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource PrimaryButtonForegroundBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource PrimaryButtonBorderBrush}"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" 
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="4"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="{DynamicResource PrimaryButtonHoverBrush}"/>
-                                <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource PrimaryButtonHoverBorderBrush}"/>
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Opacity" Value="0.5"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-        <Style TargetType="Button" x:Key="ErrorButton" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="{DynamicResource ErrorBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource PrimaryButtonForegroundBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource ErrorBrush}"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" 
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="4"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Opacity" Value="0.8"/>
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Opacity" Value="0.5"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-        <!-- TextBox Style -->
-        <Style TargetType="TextBox">
-            <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource InputForegroundBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="4"/>
-        </Style>
-        <!-- TextBlock Style -->
-        <Style TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{DynamicResource TextForegroundBrush}"/>
-        </Style>
-        <!-- DataGrid Style -->
         <Style TargetType="DataGrid">
             <Setter Property="Background" Value="{DynamicResource ListBackgroundBrush}"/>
             <Setter Property="Foreground" Value="{DynamicResource ListForegroundBrush}"/>
@@ -146,41 +46,52 @@
             <Setter Property="Padding" Value="8,4"/>
         </Style>
     </Window.Resources>
-    <Grid Margin="12">
+    <Grid Margin="16">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-        
-        <!-- Header -->
-        <TextBlock Grid.Row="0" 
-                   Text="Package Manager"
-                   FontSize="18" 
-                   FontWeight="Bold"
-                   Margin="0,0,0,12"
-                   Foreground="{DynamicResource TextForegroundBrush}"/>
-        
-        <!-- Search and Filter -->
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12" VerticalAlignment="Bottom">
-            <TextBox x:Name="SearchTextBox" Width="300" Margin="0,0,10,0" 
-                     TextChanged="SearchTextBox_TextChanged"
-                     Padding="8,4"
-                     FontSize="12"/>
-            <Button Content="Search" Click="SearchButton_Click" Margin="0,0,10,0" Padding="12,4" MinWidth="80"/>
-            <Button Content="Refresh" Click="RefreshButton_Click" Padding="12,4" MinWidth="80"/>
+
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,14">
+            <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconPackage}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+            <TextBlock Text="Package Manager" Style="{StaticResource DialogHeader}" VerticalAlignment="Center"/>
         </StackPanel>
-        
-        <!-- Package List -->
-        <Border Grid.Row="1" 
-                BorderBrush="{DynamicResource BorderBrush}"
-                BorderThickness="1"
-                Background="{DynamicResource ListBackgroundBrush}">
+
+        <Grid Grid.Row="1" Margin="0,0,0,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <Border Grid.Column="0" Style="{StaticResource DialogSearchHost}" Margin="0,0,8,0">
+                <DockPanel>
+                    <Path DockPanel.Dock="Left" Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconFind}" Margin="8,0,6,0" VerticalAlignment="Center"/>
+                    <TextBox x:Name="SearchTextBox" TextChanged="SearchTextBox_TextChanged" BorderThickness="0" Background="Transparent" VerticalAlignment="Center"/>
+                </DockPanel>
+            </Border>
+            <Button Grid.Column="1" Click="SearchButton_Click" Margin="0,0,8,0">
+                <StackPanel Orientation="Horizontal">
+                    <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconFind}"/>
+                    <TextBlock Text="Search" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
+            <Button Grid.Column="2" Click="RefreshButton_Click">
+                <StackPanel Orientation="Horizontal">
+                    <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconReload}"/>
+                    <TextBlock Text="Refresh" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
+        </Grid>
+
+        <Border Grid.Row="2" Style="{StaticResource DialogPanel}">
             <DataGrid x:Name="PackagesDataGrid" 
                       AutoGenerateColumns="False" 
                       SelectionMode="Single"
                       SelectionChanged="PackagesDataGrid_SelectionChanged"
-                      Background="{DynamicResource ListBackgroundBrush}"
+                      Background="Transparent"
+                      BorderThickness="0"
                       Foreground="{DynamicResource ListForegroundBrush}">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Package Name" Binding="{Binding Name}" Width="*"/>
@@ -189,12 +100,21 @@
                 </DataGrid.Columns>
             </DataGrid>
         </Border>
-        
-        <!-- Actions -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
-            <Button Content="Install" Click="InstallButton_Click" Margin="0,0,10,0" Padding="12,6" MinWidth="100" Style="{StaticResource PrimaryButton}"/>
-            <Button Content="Uninstall" Click="UninstallButton_Click" Margin="0,0,10,0" Padding="12,6" MinWidth="100" Style="{StaticResource ErrorButton}"/>
-            <Button Content="Close" Click="CloseButton_Click" Padding="12,6" MinWidth="100"/>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+            <Button Click="InstallButton_Click" Margin="0,0,8,0" MinWidth="100" Style="{StaticResource PrimaryButton}">
+                <StackPanel Orientation="Horizontal">
+                    <Path Style="{StaticResource IdeAccentIcon}" Data="{StaticResource IconDownload}" Stroke="{DynamicResource PrimaryButtonForegroundBrush}"/>
+                    <TextBlock Text="Install" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
+            <Button Click="UninstallButton_Click" Margin="0,0,8,0" MinWidth="100" Style="{StaticResource ErrorButton}">
+                <StackPanel Orientation="Horizontal">
+                    <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconTrash}" Stroke="{DynamicResource PrimaryButtonForegroundBrush}"/>
+                    <TextBlock Text="Uninstall" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
+            <Button Content="Close" Click="CloseButton_Click" MinWidth="88"/>
         </StackPanel>
     </Grid>
 </Window>
