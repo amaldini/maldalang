@@ -4,9 +4,9 @@
 namespace MaldaLang.LanguageServer;
 
 using MaldaLang.IDE.Services;
+using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
+using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
-using OmniSharp.Extensions.LanguageServer.Server;
-using MaldaLang.LanguageServer.OmniSharpShim;
 public class MaldaDocumentSymbolHandler : IDocumentSymbolHandler
 {
     private readonly DocumentStore _store;
@@ -23,33 +23,43 @@ public class MaldaDocumentSymbolHandler : IDocumentSymbolHandler
         _symbolNavigationService = symbolNavigationService;
     }
 
-    public Task<Container<DocumentSymbol>?> Handle(DocumentSymbolParams request, CancellationToken cancellationToken)
+    public DocumentSymbolRegistrationOptions GetRegistrationOptions(DocumentSymbolCapability capability, ClientCapabilities clientCapabilities)
+    {
+        return new DocumentSymbolRegistrationOptions
+        {
+            DocumentSelector = MaldaLspDocuments.Selector
+        };
+    }
+
+    public Task<SymbolInformationOrDocumentSymbolContainer?> Handle(DocumentSymbolParams request, CancellationToken cancellationToken)
     {
         if (cancellationToken.IsCancellationRequested)
         {
-            return Task.FromResult<Container<DocumentSymbol>?>(new Container<DocumentSymbol>());
+            return Task.FromResult<SymbolInformationOrDocumentSymbolContainer?>(new SymbolInformationOrDocumentSymbolContainer());
         }
 
         var uri = request.TextDocument.Uri;
         var text = _store.Get(uri);
         if (string.IsNullOrEmpty(text))
         {
-            return Task.FromResult<Container<DocumentSymbol>?>(null);
+            return Task.FromResult<SymbolInformationOrDocumentSymbolContainer?>(null);
         }
 
         try
         {
             var symbols = _symbolNavigationService.GetDocumentSymbols(text, uri.Path, cancellationToken);
-            var lspSymbols = symbols.Select(SymbolNavigationLspMapper.ToDocumentSymbol);
-            return Task.FromResult<Container<DocumentSymbol>?>(new Container<DocumentSymbol>(lspSymbols));
+            var lspSymbols = symbols.Select(symbol =>
+                (SymbolInformationOrDocumentSymbol)SymbolNavigationLspMapper.ToDocumentSymbol(symbol));
+            return Task.FromResult<SymbolInformationOrDocumentSymbolContainer?>(
+                new SymbolInformationOrDocumentSymbolContainer(lspSymbols));
         }
         catch (OperationCanceledException)
         {
-            return Task.FromResult<Container<DocumentSymbol>?>(new Container<DocumentSymbol>());
+            return Task.FromResult<SymbolInformationOrDocumentSymbolContainer?>(new SymbolInformationOrDocumentSymbolContainer());
         }
         catch
         {
-            return Task.FromResult<Container<DocumentSymbol>?>(new Container<DocumentSymbol>());
+            return Task.FromResult<SymbolInformationOrDocumentSymbolContainer?>(new SymbolInformationOrDocumentSymbolContainer());
         }
 
     }

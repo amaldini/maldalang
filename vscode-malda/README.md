@@ -53,7 +53,7 @@ There is **no compile step**. `package.json` `"main"` is `./src/extension.js` (p
 Two processes, two settings:
 
 - **`maldaLanguageServer.path`** (default: `"malda-lsp"`)  
-  Path to the MALDA language server executable. Use a full path if it's not on your system PATH (e.g. `C:\path\to\malda-lsp.exe` on Windows). LSP only — this is **not** the debugger.
+  Path to the MALDA language server executable. Use a full path if it's not on your system PATH (e.g. `C:\path\to\malda-lsp.exe` on Windows), or `${workspaceFolder}/artifacts/malda-lsp/malda-lsp.exe` in this repo. LSP only — this is **not** the debugger.
 
 - **`malda.cli.path`** (default: `"malda"`)  
   Path to the MALDA CLI used for interpret-mode debug. The extension runs `malda debug-adapter` (stdio DAP). Use a full path if `malda` is not on PATH.

@@ -4,7 +4,6 @@
 using System.Linq;
 using MaldaLang.IDE.Services;
 using MaldaLang.LanguageServer;
-using MaldaLang.LanguageServer.OmniSharpShim;
 using OmniSharp.Extensions.LanguageServer.Protocol;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Xunit;
@@ -130,6 +129,23 @@ public class LanguageServerTests
     {
         var range = LspPositionHelper.ToNameRange(0, 0, null);
         Assert.Equal(0, (int)range.End.Character);
+    }
+
+    [Fact]
+    public void LanguageServerHandlers_ImplementOfficialOmniSharpInterfaces()
+    {
+        Assert.Contains(
+            typeof(OmniSharp.Extensions.LanguageServer.Protocol.Document.ICompletionHandler),
+            typeof(MaldaCompletionHandler).GetInterfaces());
+        Assert.Contains(
+            typeof(OmniSharp.Extensions.LanguageServer.Protocol.Document.IHoverHandler),
+            typeof(MaldaHoverHandler).GetInterfaces());
+        Assert.Contains(
+            typeof(OmniSharp.Extensions.LanguageServer.Protocol.Document.IDefinitionHandler),
+            typeof(MaldaDefinitionHandler).GetInterfaces());
+        Assert.True(
+            typeof(OmniSharp.Extensions.LanguageServer.Protocol.Document.TextDocumentSyncHandlerBase)
+                .IsAssignableFrom(typeof(MaldaTextDocumentSyncHandler)));
     }
 
     [Fact]
@@ -349,7 +365,7 @@ public class LanguageServerTests
         var result = await handler.Handle(request, CancellationToken.None);
         Assert.NotNull(result);
         Assert.NotEmpty(result!);
-        var names = result!.Select(s => s.Name).ToList();
+        var names = result!.Select(s => AsDocumentSymbol(s).Name).ToList();
         Assert.Contains("foo", names);
         Assert.Contains("Bar", names);
     }
@@ -517,9 +533,10 @@ public class LanguageServerTests
 
         var result = await handler.Handle(request, CancellationToken.None);
         Assert.NotNull(result);
-        Assert.Equal(1, (int)result!.Start.Line);
-        Assert.Equal(0, (int)result.Start.Character);
-        Assert.Equal(3, (int)result.End.Character);
+        var range = result!.Range;
+        Assert.Equal(1, (int)range.Start.Line);
+        Assert.Equal(0, (int)range.Start.Character);
+        Assert.Equal(3, (int)range.End.Character);
     }
 
     [Fact]
@@ -750,7 +767,7 @@ public class LanguageServerTests
             TextDocument = new TextDocumentIdentifier(uri)
         }, CancellationToken.None);
         Assert.NotNull(docResult);
-        var workflow = docResult!.FirstOrDefault(s => s.Name == "Onboarding");
+        var workflow = docResult!.Select(AsDocumentSymbol).FirstOrDefault(s => s.Name == "Onboarding");
         Assert.NotNull(workflow);
         Assert.NotNull(workflow!.Children);
         Assert.Contains(workflow.Children!, s => s.Name == "provision");
@@ -806,5 +823,12 @@ public class LanguageServerTests
         Assert.Contains(defErrors, d =>
             d.Severity == MaldaLang.IDE.Models.DiagnosticSeverity.Error &&
             d.Message.Contains("'def' is not a function keyword", StringComparison.Ordinal));
+    }
+
+    private static DocumentSymbol AsDocumentSymbol(SymbolInformationOrDocumentSymbol item)
+    {
+        Assert.True(item.IsDocumentSymbol);
+        Assert.NotNull(item.DocumentSymbol);
+        return item.DocumentSymbol!;
     }
 }

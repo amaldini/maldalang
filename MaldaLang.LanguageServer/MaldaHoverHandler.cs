@@ -4,9 +4,10 @@
 namespace MaldaLang.LanguageServer;
 
 using MaldaLang.IDE.Services;
+using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
+using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
-using OmniSharp.Extensions.LanguageServer.Server;
-using MaldaLang.LanguageServer.OmniSharpShim;
+
 public class MaldaHoverHandler : IHoverHandler
 {
     private readonly DocumentStore _store;
@@ -16,6 +17,14 @@ public class MaldaHoverHandler : IHoverHandler
     {
         _store = store;
         _languageService = languageService;
+    }
+
+    public HoverRegistrationOptions GetRegistrationOptions(HoverCapability capability, ClientCapabilities clientCapabilities)
+    {
+        return new HoverRegistrationOptions
+        {
+            DocumentSelector = MaldaLspDocuments.Selector
+        };
     }
 
     public Task<Hover?> Handle(HoverParams request, CancellationToken cancellationToken)

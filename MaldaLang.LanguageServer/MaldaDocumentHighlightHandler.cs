@@ -4,8 +4,9 @@
 namespace MaldaLang.LanguageServer;
 
 using MaldaLang.IDE.Services;
+using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
+using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
-using MaldaLang.LanguageServer.OmniSharpShim;
 
 /// <summary>
 /// Handles textDocument/documentHighlight: highlights all same-name identifiers in current file.
@@ -26,18 +27,26 @@ public class MaldaDocumentHighlightHandler : IDocumentHighlightHandler
         _symbolNavigationService = symbolNavigationService;
     }
 
-    public Task<Container<DocumentHighlight>?> Handle(DocumentHighlightParams request, CancellationToken cancellationToken)
+    public DocumentHighlightRegistrationOptions GetRegistrationOptions(DocumentHighlightCapability capability, ClientCapabilities clientCapabilities)
+    {
+        return new DocumentHighlightRegistrationOptions
+        {
+            DocumentSelector = MaldaLspDocuments.Selector
+        };
+    }
+
+    public Task<DocumentHighlightContainer?> Handle(DocumentHighlightParams request, CancellationToken cancellationToken)
     {
         if (cancellationToken.IsCancellationRequested)
         {
-            return Task.FromResult<Container<DocumentHighlight>?>(new Container<DocumentHighlight>());
+            return Task.FromResult<DocumentHighlightContainer?>(new DocumentHighlightContainer());
         }
 
         var uri = request.TextDocument.Uri;
         var text = _store.Get(uri);
         if (string.IsNullOrEmpty(text))
         {
-            return Task.FromResult<Container<DocumentHighlight>?>(new Container<DocumentHighlight>());
+            return Task.FromResult<DocumentHighlightContainer?>(new DocumentHighlightContainer());
         }
 
         try
@@ -49,15 +58,15 @@ public class MaldaDocumentHighlightHandler : IDocumentHighlightHandler
                     Range = SymbolNavigationLspMapper.ToRange(span)
                 });
 
-            return Task.FromResult<Container<DocumentHighlight>?>(new Container<DocumentHighlight>(highlights));
+            return Task.FromResult<DocumentHighlightContainer?>(new DocumentHighlightContainer(highlights));
         }
         catch (OperationCanceledException)
         {
-            return Task.FromResult<Container<DocumentHighlight>?>(new Container<DocumentHighlight>());
+            return Task.FromResult<DocumentHighlightContainer?>(new DocumentHighlightContainer());
         }
         catch
         {
-            return Task.FromResult<Container<DocumentHighlight>?>(new Container<DocumentHighlight>());
+            return Task.FromResult<DocumentHighlightContainer?>(new DocumentHighlightContainer());
         }
     }
 }

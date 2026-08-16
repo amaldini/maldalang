@@ -149,7 +149,7 @@ function sharedHelper() {
 
         var result = await handler.Handle(new WorkspaceSymbolParams { Query = "sharedHelper" }, CancellationToken.None);
 
-        Assert.Contains(result, symbol => symbol.Name == "sharedHelper" && GetUriPath(symbol.Location.Uri).EndsWith("/lib.malda", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(result, symbol => symbol.Name == "sharedHelper" && GetUriPath(GetWorkspaceSymbolUri(symbol)).EndsWith("/lib.malda", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -208,6 +208,13 @@ function sharedHelper() {
     }
 
     private static string GetUriPath(DocumentUri uri) => NormalizeUriPath(uri).Replace('\\', '/');
+
+    private static DocumentUri GetWorkspaceSymbolUri(WorkspaceSymbol symbol)
+    {
+        Assert.True(symbol.Location.IsLocation);
+        Assert.NotNull(symbol.Location.Location);
+        return symbol.Location.Location!.Uri;
+    }
 
     private static async Task<Container<Diagnostic>> WaitForDiagnosticsAsync(RecordingDiagnosticsPublisher publisher, DocumentUri uri)
     {

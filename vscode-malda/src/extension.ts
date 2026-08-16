@@ -13,7 +13,15 @@ function readTypeStrict(): boolean {
 }
 
 function readCliPath(): string {
-  return vscode.workspace.getConfiguration("malda").get<string>("cli.path") ?? "malda";
+  return resolveConfiguredPath(vscode.workspace.getConfiguration("malda").get<string>("cli.path") ?? "malda");
+}
+
+function resolveConfiguredPath(value: string): string {
+  const folder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  if (folder) {
+    return value.replace(/\$\{workspaceFolder\}/g, folder);
+  }
+  return value;
 }
 
 class MaldaDebugAdapterFactory implements vscode.DebugAdapterDescriptorFactory {
@@ -31,7 +39,7 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   const config = vscode.workspace.getConfiguration("maldaLanguageServer");
-  const serverPath = config.get<string>("path") ?? "malda-lsp";
+  const serverPath = resolveConfiguredPath(config.get<string>("path") ?? "malda-lsp");
 
   const serverOptions: ServerOptions = {
     command: serverPath,
@@ -60,7 +68,11 @@ export function activate(context: vscode.ExtensionContext): void {
     }
   );
 
-  client.start();
+  void client.start().catch((err) => {
+    void vscode.window.showErrorMessage(
+      `MALDA language server failed to start (${serverPath}). Set maldaLanguageServer.path to malda-lsp.exe. ${err}`
+    );
+  });
 
   vscode.workspace.onDidChangeConfiguration((e) => {
     if (!e.affectsConfiguration("malda.types.strict") || !client) {

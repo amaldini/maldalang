@@ -9,16 +9,17 @@ using System.IO;
 using MaldaLang.IDE.Services;
 using MaldaLang.IDE.Models;
 using OmniSharp.Extensions.LanguageServer.Protocol;
+using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
+using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
-using OmniSharp.Extensions.LanguageServer.Server;
-using MaldaLang.LanguageServer.OmniSharpShim;
+using OmniSharp.Extensions.LanguageServer.Protocol.Server.Capabilities;
 using LspDiagnostic = OmniSharp.Extensions.LanguageServer.Protocol.Models.Diagnostic;
 using Unit = MediatR.Unit;
 
 /// <summary>
 /// Handles textDocument/didOpen, didChange, didClose and publishes diagnostics (debounced).
 /// </summary>
-public class MaldaTextDocumentSyncHandler : ITextDocumentSyncHandler
+public class MaldaTextDocumentSyncHandler : TextDocumentSyncHandlerBase
 {
     private readonly DocumentStore _store;
     private readonly WorkspaceDocumentManager _workspaceDocuments;
@@ -45,14 +46,24 @@ public class MaldaTextDocumentSyncHandler : ITextDocumentSyncHandler
         _typeSettings = typeSettings;
     }
 
-    public OmniSharpShim.TextDocumentSyncOptions Options { get; } = new()
+    public override TextDocumentAttributes GetTextDocumentAttributes(DocumentUri uri)
     {
-        Change = 1, // TextDocumentSyncKind.Full
-        OpenClose = true,
-        Save = new OmniSharpShim.SaveOptions { IncludeText = false }
-    };
+        return new TextDocumentAttributes(uri, MaldaLspDocuments.LanguageId);
+    }
 
-    public Task<Unit> Handle(DidOpenTextDocumentParams request, CancellationToken cancellationToken)
+    protected override TextDocumentSyncRegistrationOptions CreateRegistrationOptions(
+        TextSynchronizationCapability capability,
+        ClientCapabilities clientCapabilities)
+    {
+        return new TextDocumentSyncRegistrationOptions
+        {
+            DocumentSelector = MaldaLspDocuments.Selector,
+            Change = TextDocumentSyncKind.Full,
+            Save = new SaveOptions { IncludeText = false }
+        };
+    }
+
+    public override Task<Unit> Handle(DidOpenTextDocumentParams request, CancellationToken cancellationToken)
     {
         if (cancellationToken.IsCancellationRequested)
         {
@@ -69,7 +80,7 @@ public class MaldaTextDocumentSyncHandler : ITextDocumentSyncHandler
         return Task.FromResult(Unit.Value);
     }
 
-    public Task<Unit> Handle(DidChangeTextDocumentParams request, CancellationToken cancellationToken)
+    public override Task<Unit> Handle(DidChangeTextDocumentParams request, CancellationToken cancellationToken)
     {
         if (cancellationToken.IsCancellationRequested)
         {
@@ -94,7 +105,7 @@ public class MaldaTextDocumentSyncHandler : ITextDocumentSyncHandler
         return Task.FromResult(Unit.Value);
     }
 
-    public Task<Unit> Handle(DidCloseTextDocumentParams request, CancellationToken cancellationToken)
+    public override Task<Unit> Handle(DidCloseTextDocumentParams request, CancellationToken cancellationToken)
     {
         if (cancellationToken.IsCancellationRequested)
         {
@@ -113,7 +124,7 @@ public class MaldaTextDocumentSyncHandler : ITextDocumentSyncHandler
         return Task.FromResult(Unit.Value);
     }
 
-    public Task<Unit> Handle(DidSaveTextDocumentParams request, CancellationToken cancellationToken)
+    public override Task<Unit> Handle(DidSaveTextDocumentParams request, CancellationToken cancellationToken)
     {
         if (cancellationToken.IsCancellationRequested)
         {

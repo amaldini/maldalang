@@ -4,8 +4,9 @@
 namespace MaldaLang.LanguageServer;
 
 using MaldaLang.IDE.Services;
+using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
+using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
-using MaldaLang.LanguageServer.OmniSharpShim;
 
 /// <summary>
 /// Handles textDocument/definition: resolve symbol at position to its declaration (single-file).
@@ -26,6 +27,14 @@ public class MaldaDefinitionHandler : IDefinitionHandler
         _store = store;
         _workspaceDocuments = workspaceDocuments;
         _symbolNavigationService = symbolNavigationService;
+    }
+
+    public DefinitionRegistrationOptions GetRegistrationOptions(DefinitionCapability capability, ClientCapabilities clientCapabilities)
+    {
+        return new DefinitionRegistrationOptions
+        {
+            DocumentSelector = MaldaLspDocuments.Selector
+        };
     }
 
     public Task<LocationOrLocationLinks> Handle(DefinitionParams request, CancellationToken cancellationToken)

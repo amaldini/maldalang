@@ -15,6 +15,8 @@ Output: `MaldaLang.LanguageServer/bin/Debug/net8.0/malda-lsp.exe` (or `Release`)
 
 ## Run
 
+Handlers must implement the official OmniSharp interfaces (including `GetRegistrationOptions`). Otherwise `initialize` advertises no completion/hover and the editor never requests IntelliSense.
+
 The server communicates via **stdio** (stdin/stdout) using JSON-RPC. Start it as a process; the client (editor) connects to it:
 
 ```bash

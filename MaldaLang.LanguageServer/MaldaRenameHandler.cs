@@ -5,8 +5,9 @@ namespace MaldaLang.LanguageServer;
 
 using MaldaLang.IDE.Services;
 using OmniSharp.Extensions.LanguageServer.Protocol;
+using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
+using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
-using MaldaLang.LanguageServer.OmniSharpShim;
 
 /// <summary>
 /// Handles textDocument/rename: return WorkspaceEdit with TextEdit for all references (single-file).
@@ -27,6 +28,15 @@ public class MaldaRenameHandler : IRenameHandler
         _store = store;
         _workspaceDocuments = workspaceDocuments;
         _symbolNavigationService = symbolNavigationService;
+    }
+
+    public RenameRegistrationOptions GetRegistrationOptions(RenameCapability capability, ClientCapabilities clientCapabilities)
+    {
+        return new RenameRegistrationOptions
+        {
+            DocumentSelector = MaldaLspDocuments.Selector,
+            PrepareProvider = true
+        };
     }
 
     public Task<WorkspaceEdit?> Handle(RenameParams request, CancellationToken cancellationToken)

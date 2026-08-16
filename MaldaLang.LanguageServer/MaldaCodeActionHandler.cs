@@ -7,8 +7,9 @@ using System.Collections.Generic;
 using MaldaLang.IDE.Models;
 using MaldaLang.IDE.Services;
 using OmniSharp.Extensions.LanguageServer.Protocol;
+using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
+using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
-using MaldaLang.LanguageServer.OmniSharpShim;
 
 /// <summary>
 /// Handles textDocument/codeAction: expose GetAutoFix quick fixes as LSP Code Actions.
@@ -22,6 +23,14 @@ public class MaldaCodeActionHandler : ICodeActionHandler
     {
         _store = store;
         _languageService = languageService;
+    }
+
+    public CodeActionRegistrationOptions GetRegistrationOptions(CodeActionCapability capability, ClientCapabilities clientCapabilities)
+    {
+        return new CodeActionRegistrationOptions
+        {
+            DocumentSelector = MaldaLspDocuments.Selector
+        };
     }
 
     public Task<CommandOrCodeActionContainer?> Handle(CodeActionParams request, CancellationToken cancellationToken)

@@ -4,8 +4,9 @@
 namespace MaldaLang.LanguageServer;
 
 using System.Collections.Generic;
+using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
+using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
-using MaldaLang.LanguageServer.OmniSharpShim;
 
 /// <summary>
 /// Handles textDocument/formatting and textDocument/rangeFormatting: indent with spaces.
@@ -19,37 +20,53 @@ public class MaldaDocumentFormattingHandler : IDocumentFormattingHandler, IDocum
         _store = store;
     }
 
-    public Task<Container<TextEdit>?> Handle(DocumentFormattingParams request, CancellationToken cancellationToken)
+    public DocumentFormattingRegistrationOptions GetRegistrationOptions(DocumentFormattingCapability capability, ClientCapabilities clientCapabilities)
+    {
+        return new DocumentFormattingRegistrationOptions
+        {
+            DocumentSelector = MaldaLspDocuments.Selector
+        };
+    }
+
+    public DocumentRangeFormattingRegistrationOptions GetRegistrationOptions(DocumentRangeFormattingCapability capability, ClientCapabilities clientCapabilities)
+    {
+        return new DocumentRangeFormattingRegistrationOptions
+        {
+            DocumentSelector = MaldaLspDocuments.Selector
+        };
+    }
+
+    public Task<TextEditContainer?> Handle(DocumentFormattingParams request, CancellationToken cancellationToken)
     {
         if (cancellationToken.IsCancellationRequested)
         {
-            return Task.FromResult<Container<TextEdit>?>(new Container<TextEdit>());
+            return Task.FromResult<TextEditContainer?>(new TextEditContainer());
         }
 
         var uri = request.TextDocument.Uri;
         var text = _store.Get(uri);
         if (string.IsNullOrEmpty(text))
         {
-            return Task.FromResult<Container<TextEdit>?>(new Container<TextEdit>());
+            return Task.FromResult<TextEditContainer?>(new TextEditContainer());
         }
 
         var lines = text.Split('\n');
         var edits = FormatLines(lines, 0, lines.Length, request.Options, cancellationToken);
-        return Task.FromResult<Container<TextEdit>?>(new Container<TextEdit>(edits));
+        return Task.FromResult<TextEditContainer?>(new TextEditContainer(edits));
     }
 
-    public Task<Container<TextEdit>?> Handle(DocumentRangeFormattingParams request, CancellationToken cancellationToken)
+    public Task<TextEditContainer> Handle(DocumentRangeFormattingParams request, CancellationToken cancellationToken)
     {
         if (cancellationToken.IsCancellationRequested)
         {
-            return Task.FromResult<Container<TextEdit>?>(new Container<TextEdit>());
+            return Task.FromResult(new TextEditContainer());
         }
 
         var uri = request.TextDocument.Uri;
         var text = _store.Get(uri);
         if (string.IsNullOrEmpty(text))
         {
-            return Task.FromResult<Container<TextEdit>?>(new Container<TextEdit>());
+            return Task.FromResult(new TextEditContainer());
         }
 
         var lines = text.Split('\n');
@@ -58,7 +75,7 @@ public class MaldaDocumentFormattingHandler : IDocumentFormattingHandler, IDocum
         if (request.Range.End.Character == 0 && endLine > startLine)
             endLine--;
         var edits = FormatLines(lines, startLine, endLine + 1, request.Options, cancellationToken);
-        return Task.FromResult<Container<TextEdit>?>(new Container<TextEdit>(edits));
+        return Task.FromResult(new TextEditContainer(edits));
     }
 
     private static List<TextEdit> FormatLines(string[] lines, int startLine, int endLine, FormattingOptions options, CancellationToken cancellationToken)

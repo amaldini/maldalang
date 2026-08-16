@@ -4,8 +4,9 @@
 namespace MaldaLang.LanguageServer;
 
 using MaldaLang.IDE.Services;
+using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
+using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
-using MaldaLang.LanguageServer.OmniSharpShim;
 
 /// <summary>
 /// Handles textDocument/references: return all references to the symbol at position (single-file).
@@ -28,18 +29,26 @@ public class MaldaReferencesHandler : IReferencesHandler
         _symbolNavigationService = symbolNavigationService;
     }
 
-    public Task<Container<Location>?> Handle(ReferenceParams request, CancellationToken cancellationToken)
+    public ReferenceRegistrationOptions GetRegistrationOptions(ReferenceCapability capability, ClientCapabilities clientCapabilities)
+    {
+        return new ReferenceRegistrationOptions
+        {
+            DocumentSelector = MaldaLspDocuments.Selector
+        };
+    }
+
+    public Task<LocationContainer?> Handle(ReferenceParams request, CancellationToken cancellationToken)
     {
         if (cancellationToken.IsCancellationRequested)
         {
-            return Task.FromResult<Container<Location>?>(new Container<Location>());
+            return Task.FromResult<LocationContainer?>(new LocationContainer());
         }
 
         var uri = request.TextDocument.Uri;
         var text = _store.Get(uri);
         if (string.IsNullOrEmpty(text))
         {
-            return Task.FromResult<Container<Location>?>(new Container<Location>());
+            return Task.FromResult<LocationContainer?>(new LocationContainer());
         }
 
         try
@@ -55,15 +64,15 @@ public class MaldaReferencesHandler : IReferencesHandler
                     : uri;
                 return SymbolNavigationLspMapper.ToLocation(reference, locationUri);
             });
-            return Task.FromResult<Container<Location>?>(new Container<Location>(locations));
+            return Task.FromResult<LocationContainer?>(new LocationContainer(locations));
         }
         catch (OperationCanceledException)
         {
-            return Task.FromResult<Container<Location>?>(new Container<Location>());
+            return Task.FromResult<LocationContainer?>(new LocationContainer());
         }
         catch
         {
-            return Task.FromResult<Container<Location>?>(new Container<Location>());
+            return Task.FromResult<LocationContainer?>(new LocationContainer());
         }
     }
 }

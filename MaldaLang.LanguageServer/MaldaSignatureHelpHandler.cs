@@ -9,8 +9,9 @@ using MaldaLang.Parser;
 using MaldaLang.Parser.AST.Declarations;
 using MaldaLang.Parser.AST.Expressions;
 using MaldaLang.Parser.AST.Statements;
+using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
+using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
-using MaldaLang.LanguageServer.OmniSharpShim;
 
 /// <summary>
 /// Handles textDocument/signatureHelp: show function signature and active parameter at call site.
@@ -22,6 +23,15 @@ public class MaldaSignatureHelpHandler : ISignatureHelpHandler
     public MaldaSignatureHelpHandler(DocumentStore store)
     {
         _store = store;
+    }
+
+    public SignatureHelpRegistrationOptions GetRegistrationOptions(SignatureHelpCapability capability, ClientCapabilities clientCapabilities)
+    {
+        return new SignatureHelpRegistrationOptions
+        {
+            DocumentSelector = MaldaLspDocuments.Selector,
+            TriggerCharacters = new Container<string>("(", ",")
+        };
     }
 
     public Task<SignatureHelp?> Handle(SignatureHelpParams request, CancellationToken cancellationToken)

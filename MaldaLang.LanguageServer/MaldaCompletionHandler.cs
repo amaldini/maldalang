@@ -4,9 +4,10 @@
 namespace MaldaLang.LanguageServer;
 
 using MaldaLang.IDE.Services;
+using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
+using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
-using OmniSharp.Extensions.LanguageServer.Server;
-using MaldaLang.LanguageServer.OmniSharpShim;
+
 public class MaldaCompletionHandler : ICompletionHandler
 {
     private readonly DocumentStore _store;
@@ -16,6 +17,16 @@ public class MaldaCompletionHandler : ICompletionHandler
     {
         _store = store;
         _languageService = languageService;
+    }
+
+    public CompletionRegistrationOptions GetRegistrationOptions(CompletionCapability capability, ClientCapabilities clientCapabilities)
+    {
+        return new CompletionRegistrationOptions
+        {
+            DocumentSelector = MaldaLspDocuments.Selector,
+            TriggerCharacters = new Container<string>(".", "@"),
+            ResolveProvider = false
+        };
     }
 
     public Task<CompletionList> Handle(CompletionParams request, CancellationToken cancellationToken)
