@@ -72,6 +72,12 @@ public class InterpretDebugVscodeContributionTests
         Assert.True(
             properties.TryGetProperty("malda.cli.path", out _),
             "contributes.configuration.properties must include malda.cli.path");
+
+        var commands = contributes.GetProperty("commands")
+            .EnumerateArray()
+            .Select(e => e.GetProperty("command").GetString())
+            .ToList();
+        Assert.Contains("malda.runFile", commands);
     }
 
     [Fact]
@@ -83,5 +89,7 @@ public class InterpretDebugVscodeContributionTests
         var text = File.ReadAllText(jsPath);
         Assert.Contains("debug-adapter", text, StringComparison.Ordinal);
         Assert.Contains("DebugAdapterExecutable", text, StringComparison.Ordinal);
+        Assert.Contains("malda.runFile", text, StringComparison.Ordinal);
+        Assert.Contains("ProcessExecution", text, StringComparison.Ordinal);
     }
 }

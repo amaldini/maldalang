@@ -15,10 +15,34 @@
   ],
   "activationEvents": [
     "onLanguage:malda",
+    "onCommand:malda.runFile",
     "onDebugResolve:malda"
   ],
   "main": "./src/extension.js",
   "contributes": {
+    "commands": [
+      {
+        "command": "malda.runFile",
+        "title": "MALDA: Run File",
+        "icon": "$(play)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "malda.runFile",
+          "when": "resourceLangId == malda",
+          "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "malda.runFile",
+          "when": "resourceLangId == malda",
+          "group": "navigation"
+        }
+      ]
+    },
     "languages": [
       {
         "id": "malda",
@@ -64,7 +88,7 @@
               "cwd": {
                 "type": "string",
                 "description": "Working directory for the debuggee.",
-                "default": "${workspaceFolder}"
+                "default": "${fileDirname}"
               },
               "stopOnEntry": {
                 "type": "boolean",

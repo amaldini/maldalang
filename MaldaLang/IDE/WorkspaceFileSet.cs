@@ -231,6 +231,18 @@ public sealed class WorkspaceFileSet
             if (Directory.EnumerateFiles(current, "*.sln", SearchOption.TopDirectoryOnly).Any() ||
                 RootMarkerDirectories.Any(marker => Directory.Exists(Path.Combine(current, marker))))
             {
+                // The language engine repo is a C# workspace, not one MALDA program.
+                // Scanning Examples/ from here floods the editor with thousands of
+                // unrelated diagnostics. Keep only the open buffer (empty workspace).
+                if (IsMaldaLanguageEngineRepo(current))
+                {
+                    return new WorkspaceRootRegistration
+                    {
+                        Path = Path.GetDirectoryName(fullPath) ?? current,
+                        AllowDiskScan = false
+                    };
+                }
+
                 return new WorkspaceRootRegistration
                 {
                     Path = current,
@@ -279,6 +291,13 @@ public sealed class WorkspaceFileSet
         {
             return null;
         }
+    }
+
+    private static bool IsMaldaLanguageEngineRepo(string root)
+    {
+        return File.Exists(Path.Combine(root, "MaldaLang.sln")) &&
+            Directory.Exists(Path.Combine(root, "Examples")) &&
+            Directory.Exists(Path.Combine(root, "MaldaLang"));
     }
 
     private static bool IsUnderRoot(string path, string root)

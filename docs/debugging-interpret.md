@@ -26,7 +26,7 @@ Lines are **1-based**. Breakpoints that land on a non-stoppable line (for exampl
 
 ## VS Code / Cursor (F5)
 
-The `vscode-malda` extension contributes debugger type `malda`. LSP stays on `malda-lsp` (`maldaLanguageServer.path`). DAP is a **second** process: the extension runs `malda debug-adapter` using `malda.cli.path` (default `"malda"`).
+The `vscode-malda` extension contributes debugger type `malda`. LSP stays on `malda-lsp` (`maldaLanguageServer.path`). DAP is a **second** process: the extension runs `malda debug-adapter` using `malda.cli.path` (default `"malda"`). To run without debugging and see `io.print` in the Terminal, use **MALDA: Run File** (editor play button).
 
 `dotnet run --project MaldaLang` is **not** the adapter. You need a `malda` executable that understands `debug-adapter`:
 

@@ -78,6 +78,16 @@ Then set `malda.cli.path` to:
 1. Open a `.malda` file (or set the language mode to **MALDA**).
 2. The extension will start the language server automatically. If the executable path is wrong, check **View → Output → MALDA** for errors and set `maldaLanguageServer.path` to the correct path.
 
+## Run current file (print output)
+
+The language server only diagnoses. To **run** a few lines and see `io.print` output:
+
+1. Point `malda.cli.path` at a built CLI (`dotnet build MaldaLang -o artifacts/malda-cli`, then the `malda.exe` in that folder).
+2. Open the `.malda` file and click the **play** button in the editor title bar, or Command Palette → **MALDA: Run File**.
+3. Output appears in the **Terminal** panel (`Run MALDA file`).
+
+F5 is interpret-mode **debug** (Debug Console), not this run task.
+
 ## Interpret-mode debug (F5)
 
 Debug is **interpret-mode only**. Transpiled `.exe`s use the C# debugger and `#line` mapping ([`docs/debugging-transpile.md`](../docs/debugging-transpile.md)). JS/PWA stays in browser DevTools. User notes: [`docs/debugging-interpret.md`](../docs/debugging-interpret.md).

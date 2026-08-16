@@ -65,3 +65,6 @@ Desktop.ini
 # Launch crib sheet (title A/B, thread answers, checklist) — keep local only
 docs/announcement-private.md
 Temporary/
+
+# Local few-line MALDA scratch (not the Examples catalog)
+scratch/

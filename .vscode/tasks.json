@@ -4,9 +4,9 @@
     {
       "label": "Run current MALDA file",
       "type": "process",
-      "command": "${workspaceFolder}/artifacts/malda-cli/malda",
+      "command": "${config:malda.cli.path}",
       "windows": {
-        "command": "${workspaceFolder}/artifacts/malda-cli/malda.exe"
+        "command": "${config:malda.cli.path}"
       },
       "args": ["${file}"],
       "group": {

@@ -62,6 +62,23 @@ public class WorkspaceFileSetTests
         Assert.Equal("sharedHelper", definition!.Name);
         Assert.EndsWith("lib.malda", definition.SourceKey, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public void GetDocumentsFor_LanguageEngineRepo_DoesNotScanExamplesCatalog()
+    {
+        using var workspace = new TemporaryMaldaLanguageEngineRepo(
+            ("Examples/Basics/hello_world.malda", "io.print(\"hi\");\n"),
+            ("Examples/Other/unrelated.malda", "function broken( {\n"));
+
+        var files = new WorkspaceFileSet();
+        var helloPath = workspace.GetPath("Examples/Basics/hello_world.malda");
+        files.SetOpenDocument(helloPath, File.ReadAllText(helloPath));
+
+        var documents = files.GetDocumentsFor(helloPath);
+
+        Assert.Single(documents);
+        Assert.EndsWith("hello_world.malda", documents[0].SourceKey, StringComparison.OrdinalIgnoreCase);
+    }
 }
 
 public class MaldaIndentFormatterTests
@@ -104,6 +121,51 @@ internal sealed class TemporaryMaldaWorkspace : IDisposable
     {
         Directory.CreateDirectory(_rootPath);
         Directory.CreateDirectory(Path.Combine(_rootPath, ".git"));
+        foreach (var (relativePath, text) in files)
+        {
+            var fullPath = GetPath(relativePath);
+            var directory = Path.GetDirectoryName(fullPath);
+            if (!string.IsNullOrWhiteSpace(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            File.WriteAllText(fullPath, text);
+        }
+    }
+
+    public string GetPath(string relativePath) => Path.Combine(_rootPath, relativePath);
+
+    public void Dispose()
+    {
+        try
+        {
+            if (Directory.Exists(_rootPath))
+            {
+                Directory.Delete(_rootPath, recursive: true);
+            }
+        }
+        catch
+        {
+            // Best-effort cleanup for temp test workspaces.
+        }
+    }
+}
+
+/// <summary>
+/// Fake clone of this repository: <c>MaldaLang.sln</c> + <c>Examples/</c> + <c>MaldaLang/</c>.
+/// </summary>
+internal sealed class TemporaryMaldaLanguageEngineRepo : IDisposable
+{
+    private readonly string _rootPath = Path.Combine(Path.GetTempPath(), "malda-engine-repo-tests", Guid.NewGuid().ToString("N"));
+
+    public TemporaryMaldaLanguageEngineRepo(params (string RelativePath, string Text)[] files)
+    {
+        Directory.CreateDirectory(_rootPath);
+        Directory.CreateDirectory(Path.Combine(_rootPath, ".git"));
+        Directory.CreateDirectory(Path.Combine(_rootPath, "MaldaLang"));
+        Directory.CreateDirectory(Path.Combine(_rootPath, "Examples"));
+        File.WriteAllText(Path.Combine(_rootPath, "MaldaLang.sln"), string.Empty);
         foreach (var (relativePath, text) in files)
         {
             var fullPath = GetPath(relativePath);

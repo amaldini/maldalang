@@ -1,3 +1,5 @@
+const fs = require("fs");
+const path = require("path");
 const vscode = require("vscode");
 const {
   LanguageClient,
@@ -14,18 +16,97 @@ function readCliPath() {
   return resolveConfiguredPath(vscode.workspace.getConfiguration("malda").get("cli.path") ?? "malda");
 }
 
+function resolveWorkspaceFolder() {
+  const fromWorkspace = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  if (fromWorkspace) {
+    return fromWorkspace;
+  }
+
+  const filePath = vscode.window.activeTextEditor?.document.uri.fsPath;
+  if (!filePath) {
+    return undefined;
+  }
+
+  let current = path.dirname(filePath);
+  while (current) {
+    if (fs.existsSync(path.join(current, "MaldaLang.sln"))) {
+      return current;
+    }
+    const parent = path.dirname(current);
+    if (parent === current) {
+      break;
+    }
+    current = parent;
+  }
+
+  return path.dirname(filePath);
+}
+
 function resolveConfiguredPath(value) {
   if (!value || typeof value !== "string") {
     return value;
   }
-  const folder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  const folder = resolveWorkspaceFolder();
   if (folder) {
     return value.replace(/\$\{workspaceFolder\}/g, folder);
   }
   return value;
 }
 
+async function runCurrentMaldaFile() {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor || editor.document.languageId !== "malda") {
+    void vscode.window.showErrorMessage("Open a .malda file to run.");
+    return;
+  }
+  if (editor.document.isUntitled) {
+    void vscode.window.showErrorMessage("Save the .malda file before running.");
+    return;
+  }
+  if (editor.document.isDirty) {
+    await editor.document.save();
+  }
+
+  const cli = readCliPath();
+  if (!cli) {
+    void vscode.window.showErrorMessage("Set malda.cli.path to a built malda executable.");
+    return;
+  }
+  if (path.isAbsolute(cli) && !fs.existsSync(cli)) {
+    void vscode.window.showErrorMessage(
+      `MALDA CLI not found: ${cli}. Build with: dotnet build MaldaLang -o artifacts/malda-cli`
+    );
+    return;
+  }
+
+  const file = editor.document.uri.fsPath;
+  const cwd = path.dirname(file);
+  const task = new vscode.Task(
+    { type: "malda", task: "run" },
+    vscode.workspace.workspaceFolders?.[0]
+      ? vscode.TaskScope.Workspace
+      : vscode.TaskScope.Global,
+    "Run MALDA file",
+    "malda",
+    new vscode.ProcessExecution(cli, [file], { cwd })
+  );
+  task.presentationOptions = {
+    reveal: vscode.TaskRevealKind.Always,
+    panel: vscode.TaskPanelKind.Shared,
+    focus: true,
+    clear: true,
+  };
+  task.problemMatchers = [];
+  await vscode.tasks.executeTask(task);
+}
+
 function activate(context) {
+  context.subscriptions.push(
+    vscode.commands.registerCommand("malda.runFile", () => {
+      void runCurrentMaldaFile();
+    })
+  );
+
   context.subscriptions.push(
     vscode.debug.registerDebugAdapterDescriptorFactory("malda", {
       createDebugAdapterDescriptor() {

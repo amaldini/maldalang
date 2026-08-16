@@ -38,7 +38,7 @@ Desktop IDE: **View → Type Errors as Errors** (persisted under AppData `MaldaL
 ## Capabilities
 
 - **textDocument/didOpen, didChange, didClose**: Document sync (full document).
-- **textDocument/publishDiagnostics**: Parser errors, type analysis, and decorator validation for the current file (full file path so imports resolve), plus a slower workspace pass that republishes diagnostics for sibling `.malda` files on save and after idle edits. Type mismatches default to **Error** (`malda.types.strict`); this is not Desktop UIHost parity.
+- **textDocument/publishDiagnostics**: Parser errors, type analysis, and decorator validation for the current file (full file path so imports resolve), plus a slower workspace pass that republishes diagnostics for sibling `.malda` files on save and after idle edits. Opening a file inside this language engine repo (`MaldaLang.sln` + `Examples/` + `MaldaLang/`) does **not** scan the examples catalog — only the open buffer is diagnosed, so the Problems panel stays empty except for that file. Type mismatches default to **Error** (`malda.types.strict`); this is not Desktop UIHost parity.
 - **textDocument/completion**: Keywords (including `for`, `foreach`, `while`, `if`, etc. with snippet-style insert text), built-ins, decorators, symbols (classes, functions, variables), member completion; imports resolve when the document URI is a `file://` path.
 - **textDocument/hover**: Documentation for symbols (including `schema` / sum `type`), decorators, and keywords (e.g. `foreach`, `for`, `while`, `if`, `schema`). Imported schema/type names resolve when the document path is known.
 - **textDocument/documentSymbol**: Outline with classes, functions, actors, prompts, workflows, and schemas (schema fields as children).
