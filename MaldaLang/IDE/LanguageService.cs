@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 using MaldaLang;
+using MaldaLang.BuiltIns;
 using MaldaLang.IDE;
 using MaldaLang.IDE.Models;
 using MaldaLang.Parser.AST.Declarations;
@@ -580,11 +581,8 @@ public class LanguageService : ILanguageService
             "input", "getEnv", "getCommandLineArgs", "hasEnv", "parseJSON", "toJSON", "parseJson",
             "readFile", "writeFile", "hasFile", "hasDirectory", "listDirectory",
             "replaceInFile", "editFile", "grep", "insertAtLine",
-            "createReadFileTool", "createWriteFileTool", "createReplaceInFileTool",
-            "createListDirectoryTool", "createAskUserTool", "createGrepTool", "createGlobTool", "createInsertAtLineTool",
-            "getSymbols", "createGetSymbolsTool",
-            "getParseErrors", "createGetParseErrorsTool",
-            "createSubmitPlanTool", "executePlan", "runProgram", "decomposeTask",
+            "getSymbols", "getParseErrors",
+            "executePlan", "runProgram", "decomposeTask",
             "runPrompt", "loadDocuments", "splitDocuments", "formatRetrievedDocs", "composePipe", "parallelRun", "mergeRetrievedDocs", "withExamples", "indexInto",
             "extractHTML", "markdownToHtml", "generateUI",
             "uiRow", "uiColumn", "uiStack", "uiSpacer", "uiPanel",
@@ -604,14 +602,16 @@ public class LanguageService : ILanguageService
             "uiConfigure", "uiSnapshot", "uiResync", "uiGenerate"
         };
         
-        foreach (var builtIn in builtIns)
+        foreach (var builtIn in builtIns.Concat(AgentToolCompletionCatalog.CreateToolFactories))
         {
             cancellationToken.ThrowIfCancellationRequested();
             completions.Add(new CompletionItem
             {
                 Label = builtIn,
                 Kind = "function",
-                Detail = "Built-in function",
+                Detail = AgentToolCompletionCatalog.IsCreateToolFactory(builtIn)
+                    ? "Tool factory for agents"
+                    : "Built-in function",
                 InsertText = builtIn + "()"
             });
         }
@@ -652,37 +652,39 @@ public class LanguageService : ILanguageService
             });
         }
 
-        completions.Add(new CompletionItem
+        foreach (var module in StdLibModuleCompletions)
         {
-            Label = "grounded",
-            Kind = "module",
-            Detail = "grounded.wrap(value, citations?) — payload plus citations",
-            InsertText = "grounded"
-        });
-        completions.Add(new CompletionItem
-        {
-            Label = "cap",
-            Kind = "module",
-            Detail = "cap.fileRead(path) — unforgeable file capability tokens",
-            InsertText = "cap"
-        });
+            cancellationToken.ThrowIfCancellationRequested();
+            completions.Add(new CompletionItem
+            {
+                Label = module.Name,
+                Kind = "module",
+                Detail = module.Detail,
+                InsertText = module.Name
+            });
+        }
         
-        // Try to parse and extract symbols
+        // Try to parse and extract symbols (retry a recovered buffer if the current line is incomplete)
         try
         {
-            var lexer = new Lexer(source, sourceFileName);
-            var tokens = lexer.Tokenize();
-            var parser = new MaldaLang.Parser.Parser(tokens, sourceFileName);
-            var statements = parser.Parse();
-            cancellationToken.ThrowIfCancellationRequested();
-            
-            ExtractSymbols(statements, completions, line, column);
-            var imported = ModuleSymbolResolver.LoadImportedSymbols(statements, sourceFileName);
-            ExtractImportedSymbols(imported, completions);
+            TryExtractDocumentSymbols(source, sourceFileName, completions, line, column, cancellationToken);
         }
         catch
         {
-            // Ignore parse errors for completion
+            try
+            {
+                TryExtractDocumentSymbols(
+                    RecoverIncompleteSource(source, line),
+                    sourceFileName,
+                    completions,
+                    line,
+                    column,
+                    cancellationToken);
+            }
+            catch
+            {
+                // Ignore parse errors for completion
+            }
         }
         
         return completions.OrderBy(c => c.Label).ToList();
@@ -1044,21 +1046,11 @@ public class LanguageService : ILanguageService
         }
         else if (typeToCheck == "Agent" || typeToCheck == "CodingAgent" || typeToCheck == "GitAgent" || typeToCheck == "DevAgent" || typeToCheck == "HumanAgent")
         {
-            members.Add(new CompletionItem { Label = "name", Kind = "property", Detail = "string", InsertText = "name" });
-            members.Add(new CompletionItem { Label = "role", Kind = "property", Detail = "string", InsertText = "role" });
-            members.Add(new CompletionItem { Label = "instructions", Kind = "property", Detail = "string", InsertText = "instructions" });
-            members.Add(new CompletionItem { Label = "think", Kind = "method", Detail = "think(prompt)", InsertText = "think()" });
-            members.Add(new CompletionItem { Label = "addTool", Kind = "method", Detail = "addTool(tool)", InsertText = "addTool()" });
-            members.Add(new CompletionItem { Label = "getConversation", Kind = "method", Detail = "getConversation()", InsertText = "getConversation()" });
-            members.Add(new CompletionItem { Label = "reset", Kind = "method", Detail = "reset()", InsertText = "reset()" });
+            members.AddRange(AgentToolCompletionCatalog.AgentMembers);
         }
         else if (typeToCheck == "Tool")
         {
-            members.Add(new CompletionItem { Label = "name", Kind = "property", Detail = "string", InsertText = "name" });
-            members.Add(new CompletionItem { Label = "description", Kind = "property", Detail = "string", InsertText = "description" });
-            members.Add(new CompletionItem { Label = "getSchema", Kind = "method", Detail = "getSchema()", InsertText = "getSchema()" });
-            members.Add(new CompletionItem { Label = "execute", Kind = "method", Detail = "execute(arguments)", InsertText = "execute()" });
-            members.Add(new CompletionItem { Label = "describe", Kind = "method", Detail = "describe()", InsertText = "describe()" });
+            members.AddRange(AgentToolCompletionCatalog.ToolMembers);
         }
         else if (typeToCheck == "this")
         {
@@ -1111,6 +1103,10 @@ public class LanguageService : ILanguageService
         else if (typeToCheck == "Array")
         {
             AddArrayMembers(members);
+        }
+        else if (TryAddStdLibNamespaceMembers(typeToCheck, members))
+        {
+            // math / str / io / pdf / doc / result / option members
         }
         else
         {
@@ -1223,6 +1219,12 @@ public class LanguageService : ILanguageService
             if (IsArrayReturningBuiltInFunction(identifier.Name))
                 return "Array";
 
+            if (AgentToolCompletionCatalog.IsCreateToolFactory(identifier.Name))
+                return "Tool";
+
+            if (statements.OfType<PromptDeclaration>().Any(p => p.Name == identifier.Name))
+                return "PromptInstance";
+
             var functionDecl = statements.OfType<FunctionDeclaration>().FirstOrDefault(f => f.Name == identifier.Name);
             if (functionDecl != null)
             {
@@ -1266,6 +1268,52 @@ public class LanguageService : ILanguageService
     private static bool IsArrayReturningArrayMethod(string name)
     {
         return name is "concat" or "map" or "filter" or "sort" or "reverse" or "slice";
+    }
+
+    private static readonly (string Name, string Detail)[] StdLibModuleCompletions =
+    {
+        (StdLibNamespaces.IoModule, "io.print, files, env, git"),
+        (StdLibNamespaces.MathModule, "math.sqrt, clamp, random, …"),
+        (StdLibNamespaces.StrModule, "str.upper, trim, split, …"),
+        (StdLibNamespaces.PdfModule, "pdf.extractText(path)"),
+        (StdLibNamespaces.DocModule, "doc.extractText(path)"),
+        (StdLibNamespaces.ResultModule, "result.ok / result.err"),
+        (StdLibNamespaces.OptionModule, "option.some / option.none"),
+        (StdLibNamespaces.GroundedModule, "grounded.wrap(value, citations?) — payload plus citations"),
+        (StdLibNamespaces.CapModule, "cap.fileRead(path) — unforgeable file capability tokens")
+    };
+
+    private static bool TryAddStdLibNamespaceMembers(string moduleName, List<CompletionItem> members)
+    {
+        IReadOnlySet<string>? methods = moduleName switch
+        {
+            StdLibNamespaces.IoModule => StdLibNamespaces.IoMethodNames,
+            StdLibNamespaces.MathModule or StdLibNamespaces.DeprecatedMathModuleAlias => StdLibNamespaces.MathMethodNames,
+            StdLibNamespaces.StrModule => StdLibNamespaces.StrMethodNames,
+            StdLibNamespaces.PdfModule => StdLibNamespaces.PdfMethodNames,
+            StdLibNamespaces.DocModule => StdLibNamespaces.DocMethodNames,
+            StdLibNamespaces.ResultModule => StdLibNamespaces.ResultMethodNames,
+            StdLibNamespaces.OptionModule => StdLibNamespaces.OptionMethodNames,
+            _ => null
+        };
+        if (methods == null)
+            return false;
+
+        var canonical = moduleName == StdLibNamespaces.DeprecatedMathModuleAlias
+            ? StdLibNamespaces.MathModule
+            : moduleName;
+        foreach (var method in methods.OrderBy(name => name, StringComparer.Ordinal))
+        {
+            members.Add(new CompletionItem
+            {
+                Label = method,
+                Kind = "method",
+                Detail = $"{canonical}.{method}()",
+                InsertText = method + "()"
+            });
+        }
+
+        return true;
     }
 
     private static void AddArrayMembers(List<CompletionItem> members)
@@ -1313,6 +1361,45 @@ public class LanguageService : ILanguageService
         return null;
     }
     
+    private void TryExtractDocumentSymbols(
+        string source,
+        string? sourceFileName,
+        List<CompletionItem> completions,
+        int line,
+        int column,
+        CancellationToken cancellationToken)
+    {
+        var lexer = new Lexer(source, sourceFileName);
+        var tokens = lexer.Tokenize();
+        var parser = new MaldaLang.Parser.Parser(tokens, sourceFileName);
+        var statements = parser.Parse();
+        cancellationToken.ThrowIfCancellationRequested();
+
+        ExtractSymbols(statements, completions, line, column);
+        var imported = ModuleSymbolResolver.LoadImportedSymbols(statements, sourceFileName);
+        ExtractImportedSymbols(imported, completions);
+    }
+
+    /// <summary>
+    /// Completes an unfinished assignment/call on the cursor line so declared
+    /// schemas, prompts, and locals still appear in IntelliSense.
+    /// </summary>
+    private static string RecoverIncompleteSource(string source, int line)
+    {
+        var lines = source.Replace("\r\n", "\n").Split('\n');
+        if (line >= 0 && line < lines.Length)
+        {
+            var current = lines[line].TrimEnd();
+            if (current.EndsWith('=') || current.EndsWith('(') || current.EndsWith(','))
+            {
+                lines[line] = current + " null";
+                return string.Join('\n', lines);
+            }
+        }
+
+        return source + "\nnull";
+    }
+
     private void ExtractSymbols(List<MaldaLang.Parser.AST.Statements.Statement> statements, 
         List<CompletionItem> completions, int line, int column)
     {
@@ -1346,6 +1433,16 @@ public class LanguageService : ILanguageService
                     Kind = "function",
                     Detail = $"prompt {promptDecl.Name}({string.Join(", ", promptDecl.Parameters)})",
                     InsertText = promptDecl.Name + "()"
+                });
+            }
+            else if (stmt is SchemaDeclaration schemaDecl)
+            {
+                completions.Add(new CompletionItem
+                {
+                    Label = schemaDecl.Name,
+                    Kind = "class",
+                    Detail = "schema",
+                    InsertText = schemaDecl.Name
                 });
             }
             else if (stmt is WorkflowDeclaration workflowDecl)
@@ -1652,6 +1749,14 @@ public class LanguageService : ILanguageService
             "getParseErrors" => "function getParseErrors(sourceOrFilePath: string) -> object\nParses MALDA code and returns only parse errors (line, column, message). Accepts file path or source string. Use to validate syntax without running or compiling.",
             "createGetParseErrorsTool" => "function createGetParseErrorsTool(workingDirectory?: string) -> Tool\nCreates a tool that parses MALDA code and returns only parse errors (line, column, message).",
             "createSubmitPlanTool" => "function createSubmitPlanTool() -> Tool\nCreates a tool that agents can call to submit a structured plan (steps with id, description, optional dependsOn). Parameters: plan or steps, optional taskSummary. Returns { accepted, planId?, stepCount?, error? }.",
+            "think" => "function Agent.think(prompt) -> string\nRuns one agent turn. Argument is a string or PromptInstance.",
+            "addTool" => "function Agent.addTool(toolOrName) -> Agent\nRegisters a Tool instance or a built-in tool name.",
+            "addToolByName" => "function Agent.addToolByName(name) -> Agent\nRegisters a built-in tool by name.",
+            "addAllTools" => "function Agent.addAllTools() -> Agent\nRegisters every built-in tool on the agent.",
+            "getAvailableTools" => "function Agent.getAvailableTools() -> array\nReturns the names of tools currently registered on the agent.",
+            "addSubAgent" => "function Agent.addSubAgent(agent, toolDescription) -> Agent\nExposes another agent as a tool.",
+            "enableMemory" => "function Agent.enableMemory(dimensionOrPath?, precision?)\nAttaches GraphMemory (new store, or shared store at a path).",
+            "remember" => "function Agent.remember(fact, context?)\nWrites a fact into the agent's GraphMemory.",
             "executePlan" => "function executePlan(plan: object, agent: Agent) -> object\nValidates the plan, topo-sorts steps by dependsOn, then runs agent.think(step.description) for each step. Returns { planId, completed, failed, results }.",
             "runProgram" => "function runProgram(program: object) -> any\nRuns a validated program from await prompt(...) -> program(Api) (or equivalent JSON). Calls top-level functions named like api methods; no LLM.",
             "decomposeTask" => "function decomposeTask(instruction: string, client?: LLMClient) -> object\nUses an LLM to break a high-level task into a structured plan. Returns { steps, planId?, taskSummary? } or { error }.",
@@ -1688,7 +1793,9 @@ public class LanguageService : ILanguageService
             "onUpdate" => "function ui.onUpdate(componentId: string, sessionId?: string)\nRegisters a lifecycle hook fired when a component persists across renders.",
             "onUnmount" => "function ui.onUnmount(componentId: string, sessionId?: string)\nRegisters a lifecycle hook fired when a component is removed from the tree.",
             "onError" => "function ui.onError(componentId: string, sessionId?: string)\nRegisters a lifecycle hook fired when the UI runtime emits an error event for the component.",
-            _ => null
+            _ => AgentToolCompletionCatalog.IsCreateToolFactory(name)
+                ? $"function {name}(workingDirectory?: string) -> Tool\nCreates a Tool that can be passed to Agent.addTool."
+                : null
         };
     }
     

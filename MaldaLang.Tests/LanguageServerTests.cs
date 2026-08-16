@@ -186,6 +186,148 @@ public class LanguageServerTests
     }
 
     [Fact]
+    public async Task MaldaCompletionHandler_IoNamespaceMemberCompletion_IncludesPrintAndReadFile()
+    {
+        var store = new DocumentStore();
+        var uri = CreateUri("/io_completion.malda");
+        var source = "io.";
+        store.Set(uri, source);
+        var languageService = new LanguageService();
+        var handler = new MaldaCompletionHandler(store, languageService);
+        var result = await handler.Handle(new CompletionParams
+        {
+            TextDocument = new TextDocumentIdentifier(uri),
+            Position = new Position(0, 3)
+        }, CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.Contains(result.Items, item => item.Label == "print");
+        Assert.Contains(result.Items, item => item.Label == "readFile");
+        Assert.Contains(result.Items, item => item.Label == "writeFile");
+        Assert.DoesNotContain(result.Items, item => item.Label == "sqrt");
+        Assert.DoesNotContain(result.Items, item => item.Label == "if");
+    }
+
+    [Fact]
+    public async Task MaldaCompletionHandler_MathNamespaceMemberCompletion_IncludesSqrt()
+    {
+        var store = new DocumentStore();
+        var uri = CreateUri("/math_completion.malda");
+        store.Set(uri, "math.");
+        var handler = new MaldaCompletionHandler(store, new LanguageService());
+        var result = await handler.Handle(new CompletionParams
+        {
+            TextDocument = new TextDocumentIdentifier(uri),
+            Position = new Position(0, 5)
+        }, CancellationToken.None);
+
+        Assert.Contains(result.Items, item => item.Label == "sqrt");
+        Assert.DoesNotContain(result.Items, item => item.Label == "print");
+    }
+
+    [Fact]
+    public async Task MaldaCompletionHandler_TopLevel_IncludesStdLibModules()
+    {
+        var store = new DocumentStore();
+        var uri = CreateUri("/modules.malda");
+        store.Set(uri, "var x = ");
+        var handler = new MaldaCompletionHandler(store, new LanguageService());
+        var result = await handler.Handle(new CompletionParams
+        {
+            TextDocument = new TextDocumentIdentifier(uri),
+            Position = new Position(0, 8)
+        }, CancellationToken.None);
+
+        Assert.Contains(result.Items, item => item.Label == "io");
+        Assert.Contains(result.Items, item => item.Label == "math");
+        Assert.Contains(result.Items, item => item.Label == "str");
+    }
+
+    [Fact]
+    public async Task MaldaCompletionHandler_AgentMembers_IncludeThinkMemoryAndToolHelpers()
+    {
+        var store = new DocumentStore();
+        var uri = CreateUri("/agent_completion.malda");
+        var source = "var agent = new Agent(\"n\", \"r\", \"i\");\nagent.";
+        store.Set(uri, source);
+        var handler = new MaldaCompletionHandler(store, new LanguageService());
+        var result = await handler.Handle(new CompletionParams
+        {
+            TextDocument = new TextDocumentIdentifier(uri),
+            Position = new Position(1, 6)
+        }, CancellationToken.None);
+
+        Assert.Contains(result.Items, item => item.Label == "think");
+        Assert.Contains(result.Items, item => item.Label == "addAllTools");
+        Assert.Contains(result.Items, item => item.Label == "addToolByName");
+        Assert.Contains(result.Items, item => item.Label == "enableMemory");
+        Assert.Contains(result.Items, item => item.Label == "remember");
+        Assert.Contains(result.Items, item => item.Label == "addSubAgent");
+    }
+
+    [Fact]
+    public async Task MaldaCompletionHandler_CreateToolFactories_IncludeGitAndWebSearch()
+    {
+        var store = new DocumentStore();
+        var uri = CreateUri("/tools.malda");
+        store.Set(uri, "var t = ");
+        var handler = new MaldaCompletionHandler(store, new LanguageService());
+        var result = await handler.Handle(new CompletionParams
+        {
+            TextDocument = new TextDocumentIdentifier(uri),
+            Position = new Position(0, 8)
+        }, CancellationToken.None);
+
+        Assert.Contains(result.Items, item => item.Label == "createWebSearchTool");
+        Assert.Contains(result.Items, item => item.Label == "createGitStatusTool");
+        Assert.Contains(result.Items, item => item.Label == "createEditFileTool");
+        Assert.Contains(result.Items, item => item.Label == "createRunCommandTool");
+    }
+
+    [Fact]
+    public async Task MaldaCompletionHandler_PromptCall_OffersPromptInstanceMembers()
+    {
+        var store = new DocumentStore();
+        var uri = CreateUri("/prompt_members.malda");
+        var source = """
+            prompt greet(name) {
+                user: "Hello, {name}"
+            }
+            var p = greet("Ada");
+            p.
+            """;
+        store.Set(uri, source);
+        var handler = new MaldaCompletionHandler(store, new LanguageService());
+        var lines = source.Split('\n');
+        var memberLine = Array.FindIndex(lines, line => line.Trim() == "p.");
+        var result = await handler.Handle(new CompletionParams
+        {
+            TextDocument = new TextDocumentIdentifier(uri),
+            Position = new Position(memberLine, lines[memberLine].IndexOf('.') + 1)
+        }, CancellationToken.None);
+
+        Assert.Contains(result.Items, item => item.Label == "user");
+        Assert.Contains(result.Items, item => item.Label == "gather");
+        Assert.Contains(result.Items, item => item.Label == "tools");
+    }
+
+    [Fact]
+    public async Task MaldaCompletionHandler_SchemaDeclaration_AppearsInCompletions()
+    {
+        var store = new DocumentStore();
+        var uri = CreateUri("/schema_name.malda");
+        store.Set(uri, "schema Person {\n    name: string;\n}\nvar x = ");
+        var handler = new MaldaCompletionHandler(store, new LanguageService());
+        var result = await handler.Handle(new CompletionParams
+        {
+            TextDocument = new TextDocumentIdentifier(uri),
+            Position = new Position(3, 8)
+        }, CancellationToken.None);
+
+        Assert.Contains(result.Items, item => item.Label == "Person");
+    }
+
+    [Fact]
     public async Task MaldaCompletionHandler_ArrayVariableMemberCompletion_IncludesAggregationMethods()
     {
         var store = new DocumentStore();
