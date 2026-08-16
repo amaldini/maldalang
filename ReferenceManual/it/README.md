@@ -36,3 +36,21 @@ dotnet test MaldaLang.Tests --filter "FullyQualifiedName~ReferenceManual"
 
 Non tradurre `docs/llm/` (pack per gli agenti di coding: l’inglese è la lingua
 di lavoro dei modelli).
+
+## Edizione rilegata (libro)
+
+Il libro italiano **non** è un secondo corpus. È lo stesso script della
+copia inglese, puntato a questa cartella:
+
+```bash
+pwsh scripts/build-reference-manual-book.ps1 -Locale it
+```
+
+Output: `artifacts/reference-manual/malda-reference-manual-it.html`. Aprilo in
+Chrome o Edge, attendi il banner con il numero di pagine, poi Ctrl+P → Save as
+PDF (margini **None**, **Background graphics** on). Dettagli in
+[`../README-print.md`](../README-print.md).
+
+La copertina è `../assets/cover-it.svg`; copyright, indice e testatina sono
+chrome dello script. Per aggiornare il libro: aggiorna prima l’HTML in `it/`,
+poi rigenera. Non modificare a mano il file in `artifacts/`.

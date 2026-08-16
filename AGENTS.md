@@ -159,7 +159,7 @@ See [`ReferenceManual/README-print.md`](ReferenceManual/README-print.md). Short 
 
 - After adding a chapter, run `pwsh scripts/sync-reference-manual-assets.ps1` so it links the shared CSS/JS. `print.css` must load **after** `styles.css`.
 - Code highlighting is `ReferenceManual/malda-highlight.js` and `vscode-malda/syntaxes/malda.tmLanguage.json`; keyword lists mirror `MaldaLang/Lexer.cs`. Update them together.
-- Paper edition: `pwsh scripts/build-reference-manual-book.ps1` → `artifacts/reference-manual/`, then print to PDF from Chrome/Edge.
+- Paper edition: `pwsh scripts/build-reference-manual-book.ps1` (add `-Locale it` for the Italian HTML tree) → `artifacts/reference-manual/`, then print to PDF from Chrome/Edge.
 
 ## Useful links
 
