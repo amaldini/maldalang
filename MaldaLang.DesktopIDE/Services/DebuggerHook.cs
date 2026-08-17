@@ -51,25 +51,7 @@ public class DebuggerHook : IDebuggerHook, IHasDebugSession
     public bool HasBreakpoint(int line, string? file = null) => Session.HasBreakpoint(line, file);
 
     public bool CheckBreakpointCondition(int line, string? file, Func<bool> evaluator)
-    {
-        var breakpoint = _debuggerService.Breakpoints
-            .FirstOrDefault(b => b.Line == line && b.Enabled && FilesEqual(b.FilePath, file ?? "main.malda"));
-
-        if (breakpoint == null)
-            return true;
-
-        if (string.IsNullOrEmpty(breakpoint.Condition))
-            return true;
-
-        try
-        {
-            return evaluator();
-        }
-        catch
-        {
-            return true;
-        }
-    }
+        => Session.CheckBreakpointCondition(line, file, evaluator);
 
     public DebugMode GetDebugMode() => Session.GetDebugMode();
 
@@ -87,23 +69,24 @@ public class DebuggerHook : IDebuggerHook, IHasDebugSession
 
     public void UpdateDebugInfo(Interpreter.Interpreter interpreter)
     {
-        if (interpreter == null) return;
-
-        var callStack = interpreter.GetCallStack();
-        var variables = interpreter.GetVariables();
-
-        var frames = callStack.Select(f => new CallStackFrame
+        if (interpreter == null)
         {
-            FunctionName = f.FunctionName,
-            ClassName = f.ClassName,
-            Line = f.Line,
-            File = f.File
-        }).ToList();
+            return;
+        }
+
+        Session.Bind(interpreter);
+        var frames = Session.GetStackFrames()
+            .Select(frame => new CallStackFrame
+            {
+                FunctionName = frame.FunctionName,
+                ClassName = frame.ClassName,
+                Line = frame.Line,
+                File = frame.File
+            })
+            .ToList();
 
         _debuggerService.UpdateCallStack(frames);
-
-        var varDict = variables.ToDictionary(kvp => kvp.Key, kvp => (object)kvp.Value);
-        _debuggerService.UpdateVariables(varDict);
+        _debuggerService.UpdateVariables(new Dictionary<string, object>());
     }
 
     private void SyncBreakpoints()
@@ -114,10 +97,5 @@ public class DebuggerHook : IDebuggerHook, IHasDebugSession
             var file = string.IsNullOrEmpty(bp.FilePath) ? "main.malda" : bp.FilePath;
             Session.SetBreakpoint(file, bp.Line, bp.Condition);
         }
-    }
-
-    private static bool FilesEqual(string stored, string incoming)
-    {
-        return string.Equals(stored, incoming, StringComparison.OrdinalIgnoreCase);
     }
 }

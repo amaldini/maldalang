@@ -67,20 +67,6 @@ public partial class MainWindow : Window
         FullStack
     }
 
-    private sealed class OpenDocument
-    {
-        public string? FilePath { get; set; }
-        public string? PhysicalFilePath { get; set; }
-        public string? VirtualTabId { get; set; }
-        public string? VirtualDisplayName { get; set; }
-        public int VirtualOrder { get; set; }
-        public int VirtualStartLine { get; set; }
-        public int VirtualEndLine { get; set; }
-        public string Content { get; set; } = "";
-        public string LastSavedContent { get; set; } = "";
-        public bool IsDirty { get; set; }
-    }
-
     private sealed class SearchResultItem
     {
         public required string DocumentKey { get; init; }
@@ -122,6 +108,7 @@ public partial class MainWindow : Window
     private readonly FileService _fileService;
     private readonly Services.CompilerService _compilerService;
     private readonly VirtualDocumentSegmentationService _virtualDocumentSegmentationService;
+    private readonly EditorDiagnosticsService _editorDiagnosticsService = new();
     private readonly ToolCallLogService _toolCallLogService;
     private readonly ThemeService _themeService;
     private readonly TypeAnalysisSettingsService _typeAnalysisSettingsService;
@@ -132,8 +119,12 @@ public partial class MainWindow : Window
     private CurrentLineBackgroundRenderer? _currentLineRenderer;
     private SearchResultsBackgroundRenderer? _searchResultsRenderer;
     private SearchResultsBackgroundRenderer? _documentHighlightRenderer;
+    private DiagnosticSquiggleRenderer? _diagnosticRenderer;
     private DispatcherTimer? _documentHighlightTimer;
     private DebuggerHook? _debuggerHook;
+    private readonly List<string> _watchExpressions = new();
+    private int _selectedDebugFrameId = 1;
+    private bool _suppressCallStackSelection;
     private Task? _debugTask;
     private CancellationTokenSource? _debugCancellation;
     private Task? _runTask;
@@ -410,6 +401,11 @@ public partial class MainWindow : Window
         CommandBindings.Add(new CommandBinding(
             ApplicationCommands.Save,
             (s, e) => FileSave_Click(s, e)));
+        var saveAsCommand = new RoutedCommand("SaveAs", typeof(MainWindow));
+        CommandBindings.Add(new CommandBinding(
+            saveAsCommand,
+            (s, e) => FileSaveAs_Click(s, e)));
+        InputBindings.Add(new KeyBinding(saveAsCommand, Key.S, ModifierKeys.Control | ModifierKeys.Shift));
         
         // Edit menu shortcuts
         CommandBindings.Add(new CommandBinding(
@@ -442,6 +438,12 @@ public partial class MainWindow : Window
             findCommand,
             (s, e) => EditFind_Click(s, e)));
         InputBindings.Add(new KeyBinding(findCommand, Key.F, ModifierKeys.Control));
+
+        var replaceCommand = new RoutedCommand("Replace", typeof(MainWindow));
+        CommandBindings.Add(new CommandBinding(
+            replaceCommand,
+            (s, e) => EditReplace_Click(s, e)));
+        InputBindings.Add(new KeyBinding(replaceCommand, Key.H, ModifierKeys.Control));
 
         var findNextCommand = new RoutedCommand("FindNext", typeof(MainWindow));
         CommandBindings.Add(new CommandBinding(
@@ -485,18 +487,13 @@ public partial class MainWindow : Window
             (s, e) => NavigateRenameSymbol_Click(s, e)));
         InputBindings.Add(new KeyBinding(renameSymbolCommand, Key.R, ModifierKeys.Control | ModifierKeys.Alt));
         
-        // Run shortcuts
-        var runCommand = new RoutedCommand("Run", typeof(MainWindow));
+        // Run shortcuts: F5 starts debug / continues; Ctrl+F5 runs without debugging; F9 toggles breakpoints.
+        var runCommand = new RoutedCommand("RunWithoutDebugging", typeof(MainWindow));
         CommandBindings.Add(new CommandBinding(
             runCommand,
-            (s, e) => RunButton_Click(s, e)));
-        InputBindings.Add(new KeyBinding(runCommand, Key.F5, ModifierKeys.None));
-        
-        var debugCommand = new RoutedCommand("Debug", typeof(MainWindow));
-        CommandBindings.Add(new CommandBinding(
-            debugCommand,
-            (s, e) => DebugButton_Click(s, e)));
-        InputBindings.Add(new KeyBinding(debugCommand, Key.F9, ModifierKeys.None));
+            (s, e) => RunButton_Click(s, e),
+            (s, e) => e.CanExecute = DesktopEditorCommandPolicy.ResolveCtrlF5(GetEditorCommandContext()) != DesktopEditorCommand.None));
+        InputBindings.Add(new KeyBinding(runCommand, Key.F5, ModifierKeys.Control));
         
         var stopCommand = new RoutedCommand("Stop", typeof(MainWindow));
         CommandBindings.Add(new CommandBinding(
@@ -529,11 +526,12 @@ public partial class MainWindow : Window
         InputBindings.Add(new KeyBinding(toggleSyntaxPanelCommand, Key.L, ModifierKeys.Control | ModifierKeys.Shift));
         
         // Debug shortcuts
-        var continueCommand = new RoutedCommand("Continue", typeof(MainWindow));
+        var f5Command = new RoutedCommand("DebugOrContinue", typeof(MainWindow));
         CommandBindings.Add(new CommandBinding(
-            continueCommand,
-            (s, e) => ContinueButton_Click(s, e)));
-        InputBindings.Add(new KeyBinding(continueCommand, Key.F5, ModifierKeys.None));
+            f5Command,
+            (s, e) => ExecutePrimaryF5(),
+            (s, e) => e.CanExecute = DesktopEditorCommandPolicy.ResolveF5(GetEditorCommandContext()) != DesktopEditorCommand.None));
+        InputBindings.Add(new KeyBinding(f5Command, Key.F5, ModifierKeys.None));
         
         var stepOverCommand = new RoutedCommand("StepOver", typeof(MainWindow));
         CommandBindings.Add(new CommandBinding(
@@ -1830,7 +1828,7 @@ public partial class MainWindow : Window
             int startLine = line.LineNumber; // AvalonEdit is 1-based; DebuggerService stores 1-based
             if (IsVirtualDocument(activeDocument))
             {
-                startLine += activeDocument.VirtualStartLine;
+                startLine = VirtualDocumentCoordinateMapper.ToPhysicalLine(startLine, activeDocument.VirtualStartLine);
             }
             
             // Count lines in removed and inserted text by counting newlines
@@ -1895,6 +1893,8 @@ public partial class MainWindow : Window
         // Search results highlight
         _searchResultsRenderer = new SearchResultsBackgroundRenderer(CodeEditor);
         CodeEditor.TextArea.TextView.BackgroundRenderers.Add(_searchResultsRenderer);
+        _diagnosticRenderer = new DiagnosticSquiggleRenderer(CodeEditor);
+        CodeEditor.TextArea.TextView.BackgroundRenderers.Add(_diagnosticRenderer);
         _documentHighlightRenderer = new SearchResultsBackgroundRenderer(
             CodeEditor,
             Color.FromArgb(56, 120, 170, 230),
@@ -1947,8 +1947,11 @@ public partial class MainWindow : Window
         var breakpoints = _debuggerService.Breakpoints.Where(bp => bp.FilePath == fileName && bp.Enabled);
         var localBreakpoints = IsVirtualDocument(activeDocument)
             ? breakpoints
-                .Where(bp => bp.Line - 1 >= activeDocument.VirtualStartLine && bp.Line - 1 <= activeDocument.VirtualEndLine)
-                .Select(bp => bp.Line - activeDocument.VirtualStartLine)
+                .Where(bp => VirtualDocumentCoordinateMapper.ContainsPhysicalLine(
+                    bp.Line,
+                    activeDocument.VirtualStartLine,
+                    activeDocument.VirtualEndLine))
+                .Select(bp => VirtualDocumentCoordinateMapper.ToEditorLine(bp.Line, activeDocument.VirtualStartLine))
                 .ToList()
             : breakpoints.Select(bp => bp.Line).ToList();
         
@@ -2144,6 +2147,24 @@ public partial class MainWindow : Window
                 position.Value.Column - 1,
                 sourceFileName,
                 CancellationToken.None);
+
+            int? offset = null;
+            try
+            {
+                offset = CodeEditor.Document.GetOffset(position.Value.Line, position.Value.Column);
+            }
+            catch
+            {
+                // Caret can sit past the end of a short line.
+            }
+
+            var diagnosticHit = offset is int hitOffset ? _diagnosticRenderer?.HitTest(hitOffset) : null;
+            if (diagnosticHit != null)
+            {
+                hover = string.IsNullOrWhiteSpace(hover)
+                    ? diagnosticHit.Message
+                    : diagnosticHit.Message + System.Environment.NewLine + hover;
+            }
 
             if (string.IsNullOrWhiteSpace(hover))
             {
@@ -3449,7 +3470,29 @@ public partial class MainWindow : Window
             if (StepIntoButton != null) StepIntoButton.IsEnabled = canStep;
             if (StepOutButton != null) StepOutButton.IsEnabled = canStep;
             if (PauseButton != null) PauseButton.IsEnabled = canPause;
+            CommandManager.InvalidateRequerySuggested();
         });
+    }
+
+    private DesktopEditorCommandContext GetEditorCommandContext()
+    {
+        return new DesktopEditorCommandContext(
+            IsDebugRunning: _debuggerService.State.IsRunning,
+            IsPaused: _debuggerService.State.IsPaused,
+            IsRunRunning: _runTask != null && !_runTask.IsCompleted);
+    }
+
+    private void ExecutePrimaryF5()
+    {
+        switch (DesktopEditorCommandPolicy.ResolveF5(GetEditorCommandContext()))
+        {
+            case DesktopEditorCommand.Continue:
+                ContinueButton_Click(this, new RoutedEventArgs());
+                break;
+            case DesktopEditorCommand.StartDebugging:
+                DebugButton_Click(this, new RoutedEventArgs());
+                break;
+        }
     }
 
     private void SetupDiagnostics()
@@ -3472,22 +3515,30 @@ public partial class MainWindow : Window
             strictTypesOptions: _typeAnalysisSettingsService.ToOptions());
         if (IsVirtualDocument(activeDocument))
         {
-            diagnostics = diagnostics
-                .Where(diagnostic => diagnostic.Line >= activeDocument.VirtualStartLine && diagnostic.Line <= activeDocument.VirtualEndLine)
-                .Select(diagnostic => new Diagnostic
-                {
-                    Message = diagnostic.Message,
-                    Severity = diagnostic.Severity,
-                    Line = diagnostic.Line - activeDocument.VirtualStartLine,
-                    Column = diagnostic.Column,
-                    Length = diagnostic.Length,
-                    AutoFix = diagnostic.AutoFix
-                })
-                .ToList();
+            diagnostics = _editorDiagnosticsService.FilterForVirtualSection(
+                diagnostics,
+                activeDocument.VirtualStartLine,
+                activeDocument.VirtualEndLine);
         }
 
         UpdateErrorsPanel(diagnostics);
+        UpdateDiagnosticSquiggles(diagnostics);
         RefreshOutline();
+    }
+
+    private void UpdateDiagnosticSquiggles(List<Diagnostic> diagnostics)
+    {
+        if (_diagnosticRenderer == null)
+        {
+            return;
+        }
+
+        var spans = _editorDiagnosticsService.ToSpans(
+            diagnostics,
+            (int line, int column, out int offset) =>
+                TryGetOffsetFromLocation(CodeEditor.Document, line, column, out offset));
+        _diagnosticRenderer.SetDiagnostics(spans);
+        CodeEditor.TextArea.TextView.InvalidateLayer(KnownLayer.Selection);
     }
 
     private void UpdateErrorsPanel(List<Diagnostic> diagnostics)
@@ -3521,7 +3572,7 @@ public partial class MainWindow : Window
         var fileName = GetPhysicalPath(activeDocument) ?? "main.malda";
         if (IsVirtualDocument(activeDocument))
         {
-            lineNumber += activeDocument.VirtualStartLine;
+            lineNumber = VirtualDocumentCoordinateMapper.ToPhysicalLine(lineNumber, activeDocument.VirtualStartLine);
         }
 
         _debuggerService.ToggleBreakpoint(lineNumber, fileName);
@@ -3534,12 +3585,7 @@ public partial class MainWindow : Window
         BreakpointsListBox.Items.Clear();
         foreach (var bp in _debuggerService.Breakpoints)
         {
-            var text = $"Line {bp.Line}";
-            if (!string.IsNullOrEmpty(bp.Condition))
-            {
-                text += $" ({bp.Condition})";
-            }
-            BreakpointsListBox.Items.Add(text);
+            BreakpointsListBox.Items.Add(bp);
         }
     }
 
@@ -3551,7 +3597,7 @@ public partial class MainWindow : Window
         var fileName = GetPhysicalPath(activeDocument) ?? "main.malda";
         if (IsVirtualDocument(activeDocument))
         {
-            lineNumber += activeDocument.VirtualStartLine;
+            lineNumber = VirtualDocumentCoordinateMapper.ToPhysicalLine(lineNumber, activeDocument.VirtualStartLine);
         }
 
         _debuggerService.ToggleBreakpoint(lineNumber, fileName);
@@ -4343,6 +4389,10 @@ public partial class MainWindow : Window
         _debuggerService.Start();
         _debuggerHook = new DebuggerHook(_debuggerService);
         _debuggerHook.SetDebugMode(DebugMode.Continue);
+        _debuggerHook.Session.ConditionError += message =>
+        {
+            Dispatcher.Invoke(() => SetOutputText(_executionService.GetCurrentOutput() + "\n" + message, isError: true));
+        };
         _debuggerHook.OnPaused += (line, file) =>
         {
             Dispatcher.Invoke(() =>
@@ -4357,8 +4407,8 @@ public partial class MainWindow : Window
                     _debuggerHook.UpdateDebugInfo(interpreter);
                 }
                 UpdateDebugInfo();
-                HighlightCurrentLine(line);
-                SwitchToTab("output");
+                HighlightCurrentLine(line, file);
+                SwitchToTab("debug");
                 UpdateButtonStates();
             });
         };
@@ -5245,7 +5295,7 @@ public partial class MainWindow : Window
         
         if (_debuggerService.State.CurrentLine.HasValue)
         {
-            HighlightCurrentLine(_debuggerService.State.CurrentLine.Value);
+            HighlightCurrentLine(_debuggerService.State.CurrentLine.Value, _debuggerService.State.CurrentFile);
         }
         UpdateButtonStates();
     }
@@ -5261,7 +5311,7 @@ public partial class MainWindow : Window
         
         if (_debuggerService.State.CurrentLine.HasValue)
         {
-            HighlightCurrentLine(_debuggerService.State.CurrentLine.Value);
+            HighlightCurrentLine(_debuggerService.State.CurrentLine.Value, _debuggerService.State.CurrentFile);
         }
         UpdateButtonStates();
     }
@@ -5288,7 +5338,7 @@ public partial class MainWindow : Window
         
         if (_debuggerService.State.CurrentLine.HasValue)
         {
-            HighlightCurrentLine(_debuggerService.State.CurrentLine.Value);
+            HighlightCurrentLine(_debuggerService.State.CurrentLine.Value, _debuggerService.State.CurrentFile);
         }
         UpdateButtonStates();
     }
@@ -5304,21 +5354,296 @@ public partial class MainWindow : Window
         
         if (_debuggerService.State.CurrentLine.HasValue)
         {
-            HighlightCurrentLine(_debuggerService.State.CurrentLine.Value);
+            HighlightCurrentLine(_debuggerService.State.CurrentLine.Value, _debuggerService.State.CurrentFile);
         }
         UpdateButtonStates();
     }
 
-    private void HighlightCurrentLine(int line)
+    private void HighlightCurrentLine(int line, string? file = null)
     {
-        // Highlight the current line (line is already 1-based from the parser/lexer)
-        CodeEditor.TextArea.Caret.Line = line;
-        CodeEditor.ScrollToLine(line);
-        
+        if (!string.IsNullOrWhiteSpace(file))
+        {
+            ActivateDocumentForPhysicalLine(file, line);
+        }
+
+        var activeDocument = GetActiveDocument();
+        var editorLine = line;
+        if (IsVirtualDocument(activeDocument) &&
+            VirtualDocumentCoordinateMapper.ContainsPhysicalLine(
+                line,
+                activeDocument.VirtualStartLine,
+                activeDocument.VirtualEndLine))
+        {
+            editorLine = VirtualDocumentCoordinateMapper.ToEditorLine(line, activeDocument.VirtualStartLine);
+        }
+
+        if (editorLine < 1 || editorLine > CodeEditor.Document.LineCount)
+        {
+            return;
+        }
+
+        CodeEditor.TextArea.Caret.Line = editorLine;
+        CodeEditor.ScrollToLine(editorLine);
+
         if (_currentLineRenderer != null)
         {
-            _currentLineRenderer.CurrentLine = line;
+            _currentLineRenderer.CurrentLine = editorLine;
             CodeEditor.TextArea.TextView.InvalidateLayer(KnownLayer.Background);
+        }
+    }
+
+    private void ActivateDocumentForPhysicalLine(string file, int physicalOneBasedLine)
+    {
+        string fullPath;
+        try
+        {
+            fullPath = Path.GetFullPath(file);
+        }
+        catch
+        {
+            return;
+        }
+
+        var match = _documentOrder
+            .Select(key => (Key: key, Document: _openDocuments[key]))
+            .FirstOrDefault(item =>
+                IsVirtualDocument(item.Document) &&
+                string.Equals(GetPhysicalPath(item.Document), fullPath, StringComparison.OrdinalIgnoreCase) &&
+                VirtualDocumentCoordinateMapper.ContainsPhysicalLine(
+                    physicalOneBasedLine,
+                    item.Document.VirtualStartLine,
+                    item.Document.VirtualEndLine));
+        if (match.Key != null && match.Key != _activeDocumentKey)
+        {
+            ActivateDocument(match.Key);
+            return;
+        }
+
+        var physicalKey = _documentOrder.FirstOrDefault(key =>
+            _openDocuments.TryGetValue(key, out var document) &&
+            !IsVirtualDocument(document) &&
+            string.Equals(GetPhysicalPath(document), fullPath, StringComparison.OrdinalIgnoreCase));
+        if (physicalKey != null && physicalKey != _activeDocumentKey)
+        {
+            ActivateDocument(physicalKey);
+        }
+    }
+
+    private void UpdateDebugInfo()
+    {
+        var session = _debuggerHook?.Session;
+        if (session == null)
+        {
+            CallStackListBox.Items.Clear();
+            VariablesTreeView.Items.Clear();
+            WatchesListBox.Items.Clear();
+            UpdateBreakpointsPanel();
+            return;
+        }
+
+        _suppressCallStackSelection = true;
+        try
+        {
+            CallStackListBox.Items.Clear();
+            var frames = session.GetStackFrames();
+            for (var i = 0; i < frames.Count; i++)
+            {
+                var frameId = i + 1;
+                CallStackListBox.Items.Add(new ListBoxItem
+                {
+                    Content = DebugInspectSnapshotBuilder.FormatFrame(frames[i]),
+                    Tag = frameId
+                });
+            }
+
+            if (CallStackListBox.Items.Count > 0)
+            {
+                var selectedIndex = Math.Clamp(_selectedDebugFrameId - 1, 0, CallStackListBox.Items.Count - 1);
+                CallStackListBox.SelectedIndex = selectedIndex;
+                _selectedDebugFrameId = selectedIndex + 1;
+            }
+            else
+            {
+                _selectedDebugFrameId = 1;
+            }
+        }
+        finally
+        {
+            _suppressCallStackSelection = false;
+        }
+
+        RebuildVariablesTree(session);
+        _ = RefreshWatchesAsync(session);
+        UpdateBreakpointsPanel();
+    }
+
+    private void RebuildVariablesTree(MaldaLang.Interpreter.Debug.DebugSession session)
+    {
+        VariablesTreeView.Items.Clear();
+        foreach (var scope in DebugInspectSnapshotBuilder.BuildScopes(session, _selectedDebugFrameId))
+        {
+            VariablesTreeView.Items.Add(CreateInspectTreeItem(scope));
+        }
+    }
+
+    private TreeViewItem CreateInspectTreeItem(DebugInspectNode node)
+    {
+        var item = new TreeViewItem
+        {
+            Header = node.Display,
+            Tag = node
+        };
+        if (node.CanExpand)
+        {
+            item.Items.Add(new TreeViewItem { Header = "…" });
+        }
+
+        return item;
+    }
+
+    private void VariablesTreeView_Expanded(object sender, RoutedEventArgs e)
+    {
+        if (e.OriginalSource is not TreeViewItem item || item.Tag is not DebugInspectNode node)
+        {
+            return;
+        }
+
+        if (!node.CanExpand || _debuggerHook == null)
+        {
+            return;
+        }
+
+        if (item.Items.Count == 1 && item.Items[0] is TreeViewItem { Tag: null, Header: "…" })
+        {
+            item.Items.Clear();
+            foreach (var child in DebugInspectSnapshotBuilder.Expand(_debuggerHook.Session, node.VariablesReference, node.FrameId))
+            {
+                item.Items.Add(CreateInspectTreeItem(child));
+            }
+        }
+    }
+
+    private void CallStackListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressCallStackSelection || _debuggerHook == null)
+        {
+            return;
+        }
+
+        if (CallStackListBox.SelectedItem is ListBoxItem { Tag: int frameId })
+        {
+            _selectedDebugFrameId = frameId;
+            RebuildVariablesTree(_debuggerHook.Session);
+            _ = RefreshWatchesAsync(_debuggerHook.Session);
+        }
+    }
+
+    private async Task RefreshWatchesAsync(MaldaLang.Interpreter.Debug.DebugSession session)
+    {
+        var results = new List<string>();
+        foreach (var expression in _watchExpressions)
+        {
+            try
+            {
+                var value = await session.EvaluateWatchAsync(expression, _selectedDebugFrameId).ConfigureAwait(true);
+                results.Add($"{expression} = {value.Value}");
+            }
+            catch (Exception ex)
+            {
+                results.Add($"{expression} = <{ex.Message}>");
+            }
+        }
+
+        WatchesListBox.Items.Clear();
+        foreach (var result in results)
+        {
+            WatchesListBox.Items.Add(result);
+        }
+    }
+
+    private void AddWatchButton_Click(object sender, RoutedEventArgs e)
+    {
+        AddWatchFromTextBox();
+    }
+
+    private void WatchExpressionTextBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            e.Handled = true;
+            AddWatchFromTextBox();
+        }
+    }
+
+    private void AddWatchFromTextBox()
+    {
+        var expression = WatchExpressionTextBox.Text?.Trim();
+        if (string.IsNullOrWhiteSpace(expression))
+        {
+            return;
+        }
+
+        if (!_watchExpressions.Contains(expression, StringComparer.Ordinal))
+        {
+            _watchExpressions.Add(expression);
+        }
+
+        WatchExpressionTextBox.Clear();
+        if (_debuggerHook != null)
+        {
+            _ = RefreshWatchesAsync(_debuggerHook.Session);
+        }
+        else
+        {
+            WatchesListBox.Items.Add(expression);
+        }
+    }
+
+    private void WatchesListBox_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (WatchesListBox.SelectedIndex < 0 || WatchesListBox.SelectedIndex >= _watchExpressions.Count)
+        {
+            return;
+        }
+
+        _watchExpressions.RemoveAt(WatchesListBox.SelectedIndex);
+        if (_debuggerHook != null)
+        {
+            _ = RefreshWatchesAsync(_debuggerHook.Session);
+        }
+        else
+        {
+            WatchesListBox.Items.RemoveAt(WatchesListBox.SelectedIndex);
+        }
+    }
+
+    private void BreakpointsListBox_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (BreakpointsListBox.SelectedItem is not Breakpoint breakpoint)
+        {
+            return;
+        }
+
+        var dialog = new Window
+        {
+            Title = "Breakpoint condition",
+            Owner = this,
+            Width = 420,
+            SizeToContent = SizeToContent.Height,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner
+        };
+        var box = new TextBox { Text = breakpoint.Condition ?? "", Margin = new Thickness(12) };
+        var ok = new Button { Content = "OK", Width = 80, Margin = new Thickness(12, 0, 12, 12), IsDefault = true };
+        var panel = new StackPanel();
+        panel.Children.Add(new TextBlock { Text = "Break when expression is truthy:", Margin = new Thickness(12, 12, 12, 0) });
+        panel.Children.Add(box);
+        panel.Children.Add(ok);
+        dialog.Content = panel;
+        ok.Click += (_, _) => dialog.DialogResult = true;
+        if (dialog.ShowDialog() == true)
+        {
+            _debuggerService.SetBreakpointCondition(breakpoint.Line, breakpoint.FilePath, box.Text);
+            UpdateBreakpointsPanel();
         }
     }
 
@@ -5329,35 +5654,6 @@ public partial class MainWindow : Window
             _currentLineRenderer.CurrentLine = null;
             CodeEditor.TextArea.TextView.InvalidateLayer(KnownLayer.Background);
         }
-    }
-
-    private void UpdateDebugInfo()
-    {
-        var interpreter = _executionService.GetCurrentInterpreter();
-        if (interpreter != null)
-        {
-            var callStack = interpreter.GetCallStack();
-            var variables = interpreter.GetVariables();
-            
-            // Update call stack
-            CallStackListBox.Items.Clear();
-            foreach (var frame in callStack)
-            {
-                var text = string.IsNullOrEmpty(frame.ClassName) 
-                    ? $"{frame.FunctionName} ({frame.File}:{frame.Line})"
-                    : $"{frame.ClassName}.{frame.FunctionName} ({frame.File}:{frame.Line})";
-                CallStackListBox.Items.Add(text);
-            }
-            
-            // Update variables
-            VariablesListBox.Items.Clear();
-            foreach (var variable in variables)
-            {
-                VariablesListBox.Items.Add($"{variable.Key} = {variable.Value}");
-            }
-        }
-        
-        UpdateBreakpointsPanel();
     }
 
     private void BrowseExamplesButton_Click(object sender, RoutedEventArgs e)
@@ -6644,6 +6940,97 @@ public partial class MainWindow : Window
         SaveButton_Click(sender, e);
     }
 
+    private void FileSaveAs_Click(object sender, RoutedEventArgs e)
+    {
+        SaveActiveDocumentAs();
+    }
+
+    private void FileOpenFolder_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFolderDialog
+        {
+            Title = "Open Folder"
+        };
+        if (dialog.ShowDialog() != true || string.IsNullOrWhiteSpace(dialog.FolderName))
+        {
+            return;
+        }
+
+        try
+        {
+            _workspaceFiles.SetExplicitWorkspaceRoot(dialog.FolderName);
+            RefreshWorkspaceFilesTree();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Open Folder", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void RefreshWorkspaceFilesTree()
+    {
+        WorkspaceFilesTreeView.Items.Clear();
+        var root = _workspaceFiles.ExplicitWorkspaceRoot;
+        if (string.IsNullOrWhiteSpace(root))
+        {
+            WorkspaceFolderLabel.Text = "Open a folder to browse .malda files.";
+            return;
+        }
+
+        WorkspaceFolderLabel.Text = root;
+        var files = _workspaceFiles.GetExplicitWorkspaceMaldaFiles();
+        foreach (var path in files)
+        {
+            var relative = Path.GetRelativePath(root, path);
+            WorkspaceFilesTreeView.Items.Add(new TreeViewItem
+            {
+                Header = relative,
+                Tag = path
+            });
+        }
+    }
+
+    private void WorkspaceFilesTreeView_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (WorkspaceFilesTreeView.SelectedItem is TreeViewItem { Tag: string path } && File.Exists(path))
+        {
+            OpenFileAndIncludedDocuments(path);
+        }
+    }
+
+    private bool SaveActiveDocumentAs()
+    {
+        SaveEditorIntoActiveDocument();
+        var activeDocument = GetActiveDocument();
+        var dialog = new SaveFileDialog
+        {
+            Filter = "Simple Language Files (*.malda)|*.malda|All Files (*.*)|*.*",
+            DefaultExt = "malda",
+            FileName = string.IsNullOrWhiteSpace(activeDocument.FilePath)
+                ? "program.malda"
+                : Path.GetFileName(GetPhysicalPath(activeDocument) ?? "program.malda")
+        };
+
+        if (dialog.ShowDialog() != true)
+        {
+            return false;
+        }
+
+        var targetPath = dialog.FileName;
+        var content = IsVirtualDocument(activeDocument)
+            ? RecomposeVirtualFamily(activeDocument)
+            : activeDocument.Content;
+
+        File.WriteAllText(targetPath, content);
+        OpenFileAndIncludedDocuments(targetPath);
+        if (_workspaceFiles.ExplicitWorkspaceRoot != null)
+        {
+            RefreshWorkspaceFilesTree();
+        }
+
+        return true;
+    }
+
     private void FileCloseOthers_Click(object sender, RoutedEventArgs e)
     {
         CloseOtherDocuments();
@@ -6805,6 +7192,20 @@ public partial class MainWindow : Window
         RunSearch();
     }
 
+    private void EditReplace_Click(object sender, RoutedEventArgs e)
+    {
+        SwitchToTab("search");
+        var selectedText = CodeEditor.SelectedText;
+        if (!string.IsNullOrWhiteSpace(selectedText) && !selectedText.Contains('\n'))
+        {
+            SearchTextBox.Text = selectedText;
+        }
+
+        ReplaceTextBox.Focus();
+        ReplaceTextBox.SelectAll();
+        RunSearch();
+    }
+
     private void SearchFindAllButton_Click(object sender, RoutedEventArgs e)
     {
         RunSearch();
@@ -6818,6 +7219,111 @@ public partial class MainWindow : Window
     private void SearchNextButton_Click(object sender, RoutedEventArgs e)
     {
         NavigateSearchResults(1);
+    }
+
+    private void SearchReplaceButton_Click(object sender, RoutedEventArgs e)
+    {
+        ReplaceCurrentSearchMatch();
+    }
+
+    private void SearchReplaceAllButton_Click(object sender, RoutedEventArgs e)
+    {
+        ReplaceAllSearchMatches();
+    }
+
+    private void ReplaceTextBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            e.Handled = true;
+            ReplaceCurrentSearchMatch();
+        }
+    }
+
+    private void ReplaceCurrentSearchMatch()
+    {
+        SaveEditorIntoActiveDocument();
+        if (_searchResults.Count == 0)
+        {
+            RunSearch();
+        }
+
+        if (_searchResults.Count == 0)
+        {
+            return;
+        }
+
+        if (_currentSearchResultIndex < 0)
+        {
+            _currentSearchResultIndex = 0;
+        }
+
+        var match = _searchResults[_currentSearchResultIndex];
+        var replacement = ReplaceTextBox.Text ?? "";
+        ApplyReplacementToDocument(match.DocumentKey, match.Offset, match.Length, replacement);
+        RunSearch();
+    }
+
+    private void ReplaceAllSearchMatches()
+    {
+        SaveEditorIntoActiveDocument();
+        if (_searchResults.Count == 0)
+        {
+            RunSearch();
+        }
+
+        if (_searchResults.Count == 0)
+        {
+            return;
+        }
+
+        var replacement = ReplaceTextBox.Text ?? "";
+        foreach (var group in _searchResults.GroupBy(result => result.DocumentKey, StringComparer.OrdinalIgnoreCase))
+        {
+            if (!_openDocuments.TryGetValue(group.Key, out var document))
+            {
+                continue;
+            }
+
+            var matches = group
+                .Select(result => new SearchMatch(result.Offset, result.Length))
+                .ToList();
+            document.Content = SearchReplaceService.ReplaceAll(document.Content, matches, replacement);
+            document.IsDirty = !string.Equals(document.Content, document.LastSavedContent, StringComparison.Ordinal);
+            if (string.Equals(group.Key, _activeDocumentKey, StringComparison.OrdinalIgnoreCase))
+            {
+                CodeEditor.Text = document.Content;
+            }
+        }
+
+        UpdateDiagnostics();
+        RefreshDocumentTabs();
+        RunSearch();
+    }
+
+    private void ApplyReplacementToDocument(string documentKey, int offset, int length, string replacement)
+    {
+        if (!_openDocuments.TryGetValue(documentKey, out var document))
+        {
+            return;
+        }
+
+        document.Content = SearchReplaceService.ReplaceAt(document.Content, new SearchMatch(offset, length), replacement);
+        document.IsDirty = !string.Equals(document.Content, document.LastSavedContent, StringComparison.Ordinal);
+        if (string.Equals(documentKey, _activeDocumentKey, StringComparison.OrdinalIgnoreCase))
+        {
+            if (offset >= 0 && length >= 0 && offset + length <= CodeEditor.Document.TextLength)
+            {
+                CodeEditor.Document.Replace(offset, length, replacement);
+            }
+            else
+            {
+                CodeEditor.Text = document.Content;
+            }
+        }
+
+        UpdateDiagnostics();
+        RefreshDocumentTabs();
     }
 
     private void SearchTextBox_KeyDown(object sender, KeyEventArgs e)
@@ -7596,7 +8102,7 @@ public partial class MainWindow : Window
         var filePath = GetPhysicalPath(activeDocument) ?? "main.malda";
         if (IsVirtualDocument(activeDocument))
         {
-            line += activeDocument.VirtualStartLine;
+            line = VirtualDocumentCoordinateMapper.ToPhysicalLine(line, activeDocument.VirtualStartLine);
         }
         
         _debuggerService.ToggleBreakpoint(line, filePath);
@@ -7711,6 +8217,7 @@ public partial class MainWindow : Window
             "  Ctrl+N - New File\n" +
             "  Ctrl+O - Open File\n" +
             "  Ctrl+S - Save File\n" +
+            "  Ctrl+Shift+S - Save As\n" +
             "  Alt+F4 - Exit\n\n" +
             "Edit:\n" +
             "  Ctrl+Z - Undo\n" +
@@ -7719,16 +8226,17 @@ public partial class MainWindow : Window
             "  Ctrl+C - Copy\n" +
             "  Ctrl+V - Paste\n" +
             "  Ctrl+A - Select All\n" +
-            "  Ctrl+F - Find\n\n" +
+            "  Ctrl+F - Find\n" +
+            "  Ctrl+H - Replace\n\n" +
             "View:\n" +
             "  Ctrl+Shift+L - Toggle Syntax Panel\n\n" +
             "Run:\n" +
-            "  F5 - Run\n" +
-            "  F9 - Debug\n" +
+            "  Ctrl+F5 - Run without debugging\n" +
+            "  F5 - Start Debugging / Continue\n" +
             "  Shift+F5 - Stop\n" +
             "  Ctrl+Shift+B - Compile\n\n" +
             "Debug:\n" +
-            "  F5 - Continue\n" +
+            "  F5 - Continue when paused\n" +
             "  F10 - Step Over\n" +
             "  F11 - Step Into\n" +
             "  Shift+F11 - Step Out\n" +

@@ -50,6 +50,18 @@ public class DebuggerService
             AddBreakpoint(new Breakpoint { Line = line, FilePath = filePath });
         }
     }
+
+    public void SetBreakpointCondition(int line, string filePath, string? condition)
+    {
+        var existing = _breakpoints.FirstOrDefault(b => b.Line == line && b.FilePath == filePath);
+        if (existing == null)
+        {
+            return;
+        }
+
+        existing.Condition = string.IsNullOrWhiteSpace(condition) ? null : condition.Trim();
+        BreakpointsChanged?.Invoke();
+    }
     
     public bool IsBreakpoint(int line, string filePath)
     {

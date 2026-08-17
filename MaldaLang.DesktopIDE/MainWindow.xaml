@@ -466,11 +466,17 @@
                         <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconOpen}"/>
                     </MenuItem.Icon>
                 </MenuItem>
+                <MenuItem Header="Open Folde_r..." Click="FileOpenFolder_Click">
+                    <MenuItem.Icon>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconFolder}"/>
+                    </MenuItem.Icon>
+                </MenuItem>
                 <MenuItem Header="_Save" Click="FileSave_Click" InputGestureText="Ctrl+S">
                     <MenuItem.Icon>
                         <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconSave}"/>
                     </MenuItem.Icon>
                 </MenuItem>
+                <MenuItem Header="Save _As..." Click="FileSaveAs_Click" InputGestureText="Ctrl+Shift+S"/>
                 <Separator/>
                 <MenuItem Header="Close _Others" Click="FileCloseOthers_Click"/>
                 <MenuItem Header="Close _All" Click="FileCloseAll_Click"/>
@@ -520,6 +526,7 @@
                         <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconFind}"/>
                     </MenuItem.Icon>
                 </MenuItem>
+                <MenuItem Header="R_eplace..." Click="EditReplace_Click" InputGestureText="Ctrl+H"/>
                 <MenuItem Header="Format _Document" Click="EditFormatDocument_Click" InputGestureText="Ctrl+Alt+F">
                     <MenuItem.Icon>
                         <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconFormat}"/>
@@ -585,12 +592,12 @@
             </MenuItem>
 
             <MenuItem Header="_Run">
-                <MenuItem Header="_Run" Click="RunButton_Click" InputGestureText="F5">
+                <MenuItem Header="_Run" Click="RunButton_Click" InputGestureText="Ctrl+F5">
                     <MenuItem.Icon>
                         <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconPlay}"/>
                     </MenuItem.Icon>
                 </MenuItem>
-                <MenuItem Header="_Debug" Click="DebugButton_Click" InputGestureText="F9">
+                <MenuItem Header="_Debug" Click="DebugButton_Click" InputGestureText="F5">
                     <MenuItem.Icon>
                         <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconDebug}"/>
                     </MenuItem.Icon>
@@ -716,13 +723,13 @@
         <Border Grid.Row="1" Background="{DynamicResource ToolbarBackgroundBrush}" BorderBrush="{DynamicResource ToolbarBorderBrush}" BorderThickness="0,0,0,1" Padding="8,5">
             <DockPanel LastChildFill="False">
                 <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button x:Name="RunButton" Style="{StaticResource ToolbarPrimaryButton}" Click="RunButton_Click" ToolTip="Run (F5)">
+                    <Button x:Name="RunButton" Style="{StaticResource ToolbarPrimaryButton}" Click="RunButton_Click" ToolTip="Run without debugging (Ctrl+F5)">
                         <StackPanel Orientation="Horizontal">
                             <Path Style="{StaticResource IdeAccentIcon}" Data="{StaticResource IconPlay}" Fill="{DynamicResource PrimaryButtonForegroundBrush}" StrokeThickness="0"/>
                             <TextBlock Text="Run" Margin="6,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
-                    <Button x:Name="DebugButton" Style="{StaticResource ToolbarButton}" Click="DebugButton_Click" ToolTip="Debug (F9)">
+                    <Button x:Name="DebugButton" Style="{StaticResource ToolbarButton}" Click="DebugButton_Click" ToolTip="Start debugging (F5)">
                         <StackPanel Orientation="Horizontal">
                             <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconDebug}"/>
                             <TextBlock Text="Debug" Margin="6,0,0,0" VerticalAlignment="Center"/>
@@ -819,6 +826,23 @@
                 <TabControl Margin="8"
                             Background="{DynamicResource SidebarBackgroundBrush}"
                             BorderBrush="{DynamicResource BorderBrush}">
+                    <TabItem Header="Files">
+                        <Grid Margin="8">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock x:Name="WorkspaceFolderLabel"
+                                       Grid.Row="0"
+                                       Text="Open a folder to browse .malda files."
+                                       TextWrapping="Wrap"
+                                       Margin="0,0,0,6"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"/>
+                            <TreeView x:Name="WorkspaceFilesTreeView"
+                                      Grid.Row="1"
+                                      MouseDoubleClick="WorkspaceFilesTreeView_MouseDoubleClick"/>
+                        </Grid>
+                    </TabItem>
                     <TabItem Header="Syntax">
                         <Grid Margin="8">
                             <Grid.RowDefinitions>
@@ -1066,22 +1090,41 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="2*"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
-                        
+
                         <TextBlock Grid.Row="0" Text="Call Stack" FontWeight="Bold" Margin="8,8,8,4" Foreground="{DynamicResource DebugAccentBrush}" FontSize="11"/>
                         <ListBox x:Name="CallStackListBox" Grid.Row="1" Background="{DynamicResource ListBackgroundBrush}" BorderBrush="{DynamicResource ListBorderBrush}" Margin="8,0,8,8"
-                                 Foreground="{DynamicResource ListForegroundBrush}" FontFamily="Consolas" FontSize="11"/>
-                        
+                                 Foreground="{DynamicResource ListForegroundBrush}" FontFamily="Consolas" FontSize="11"
+                                 SelectionChanged="CallStackListBox_SelectionChanged"/>
+
                         <TextBlock Grid.Row="2" Text="Variables" FontWeight="Bold" Margin="8,8,8,4" Foreground="{DynamicResource DebugAccentBrush}" FontSize="11"/>
-                        <ListBox x:Name="VariablesListBox" Grid.Row="3" Background="{DynamicResource ListBackgroundBrush}" BorderBrush="{DynamicResource ListBorderBrush}" Margin="8,0,8,8"
-                                 Foreground="{DynamicResource ListForegroundBrush}" FontFamily="Consolas" FontSize="11"/>
-                        
-                        <TextBlock Grid.Row="4" Text="Breakpoints" FontWeight="Bold" Margin="8,8,8,4" Foreground="{DynamicResource DebugAccentBrush}" FontSize="11"/>
-                        <ListBox x:Name="BreakpointsListBox" Grid.Row="5" Background="{DynamicResource ListBackgroundBrush}" BorderBrush="{DynamicResource ListBorderBrush}" Margin="8,0,8,8"
-                                 Foreground="{DynamicResource ListForegroundBrush}" FontFamily="Consolas" FontSize="11"/>
+                        <TreeView x:Name="VariablesTreeView" Grid.Row="3" Background="{DynamicResource ListBackgroundBrush}" BorderBrush="{DynamicResource ListBorderBrush}" Margin="8,0,8,8"
+                                  Foreground="{DynamicResource ListForegroundBrush}" FontFamily="Consolas" FontSize="11"
+                                  TreeViewItem.Expanded="VariablesTreeView_Expanded"/>
+
+                        <TextBlock Grid.Row="4" Text="Watches" FontWeight="Bold" Margin="8,8,8,4" Foreground="{DynamicResource DebugAccentBrush}" FontSize="11"/>
+                        <Grid Grid.Row="5" Margin="8,0,8,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="WatchExpressionTextBox" Grid.Column="0" KeyDown="WatchExpressionTextBox_KeyDown"/>
+                            <Button Grid.Column="1" Content="Add" Margin="6,0,0,0" Padding="8,4" Click="AddWatchButton_Click"/>
+                        </Grid>
+                        <ListBox x:Name="WatchesListBox" Grid.Row="6" Background="{DynamicResource ListBackgroundBrush}" BorderBrush="{DynamicResource ListBorderBrush}" Margin="8,0,8,8"
+                                 Foreground="{DynamicResource ListForegroundBrush}" FontFamily="Consolas" FontSize="11"
+                                 MouseDoubleClick="WatchesListBox_MouseDoubleClick"/>
+
+                        <TextBlock Grid.Row="7" Text="Breakpoints" FontWeight="Bold" Margin="8,8,8,4" Foreground="{DynamicResource DebugAccentBrush}" FontSize="11"/>
+                        <ListBox x:Name="BreakpointsListBox" Grid.Row="8" Background="{DynamicResource ListBackgroundBrush}" BorderBrush="{DynamicResource ListBorderBrush}" Margin="8,0,8,8"
+                                 Foreground="{DynamicResource ListForegroundBrush}" FontFamily="Consolas" FontSize="11"
+                                 MouseDoubleClick="BreakpointsListBox_MouseDoubleClick"/>
                     </Grid>
                     
                     <!-- Tool Calls Panel -->
@@ -1191,6 +1234,7 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
 
@@ -1200,19 +1244,27 @@
                                  ToolTip="Enter text or regex pattern"
                                  KeyDown="SearchTextBox_KeyDown"/>
 
-                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,6">
+                        <TextBox x:Name="ReplaceTextBox"
+                                 Grid.Row="1"
+                                 Margin="0,0,0,6"
+                                 ToolTip="Replacement text"
+                                 KeyDown="ReplaceTextBox_KeyDown"/>
+
+                        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,6">
                             <CheckBox x:Name="SearchRegexCheckBox" Content="Regex" VerticalAlignment="Center" Foreground="{DynamicResource TextForegroundBrush}"/>
                             <CheckBox x:Name="SearchMatchCaseCheckBox" Content="Match case" VerticalAlignment="Center" Margin="8,0,0,0" Foreground="{DynamicResource TextForegroundBrush}"/>
                             <CheckBox x:Name="SearchCurrentDocumentOnlyCheckBox" Content="Current doc only" VerticalAlignment="Center" Margin="8,0,0,0" Foreground="{DynamicResource TextForegroundBrush}"/>
                             <Button x:Name="SearchFindAllButton" Content="Find All" Click="SearchFindAllButton_Click" Margin="8,0,0,0" Padding="10,4"/>
                             <Button x:Name="SearchPrevButton" Content="Previous" Click="SearchPrevButton_Click" Margin="8,0,0,0" Padding="10,4"/>
                             <Button x:Name="SearchNextButton" Content="Next" Click="SearchNextButton_Click" Margin="4,0,0,0" Padding="10,4"/>
+                            <Button x:Name="SearchReplaceButton" Content="Replace" Click="SearchReplaceButton_Click" Margin="8,0,0,0" Padding="10,4"/>
+                            <Button x:Name="SearchReplaceAllButton" Content="Replace All" Click="SearchReplaceAllButton_Click" Margin="4,0,0,0" Padding="10,4"/>
                         </StackPanel>
 
-                        <TextBlock x:Name="SearchSummaryTextBlock" Grid.Row="2" Margin="0,0,0,6" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                        <TextBlock x:Name="SearchSummaryTextBlock" Grid.Row="3" Margin="0,0,0,6" Foreground="{DynamicResource TextSecondaryBrush}"/>
 
                         <TreeView x:Name="SearchResultsTreeView"
-                                  Grid.Row="3"
+                                  Grid.Row="4"
                                   Background="{DynamicResource ListBackgroundBrush}"
                                   Foreground="{DynamicResource ListForegroundBrush}"
                                   BorderBrush="{DynamicResource ListBorderBrush}"

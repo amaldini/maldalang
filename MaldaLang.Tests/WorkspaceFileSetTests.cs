@@ -79,6 +79,26 @@ public class WorkspaceFileSetTests
         Assert.Single(documents);
         Assert.EndsWith("hello_world.malda", documents[0].SourceKey, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public void SetExplicitWorkspaceRoot_InsideEngineRepo_ScansThatFolderOnly()
+    {
+        using var workspace = new TemporaryMaldaLanguageEngineRepo(
+            ("Examples/Basics/hello_world.malda", "io.print(\"hi\");\n"),
+            ("Examples/Other/unrelated.malda", "function unused() {\n    return 1;\n}\n"));
+
+        var files = new WorkspaceFileSet();
+        var basics = Path.GetDirectoryName(workspace.GetPath("Examples/Basics/hello_world.malda"))!;
+        files.SetExplicitWorkspaceRoot(basics);
+
+        var listed = files.GetExplicitWorkspaceMaldaFiles();
+        Assert.Single(listed);
+        Assert.EndsWith("hello_world.malda", listed[0], StringComparison.OrdinalIgnoreCase);
+
+        var documents = files.GetDocuments();
+        Assert.Contains(documents, document => document.SourceKey.EndsWith("hello_world.malda", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(documents, document => document.SourceKey.EndsWith("unrelated.malda", StringComparison.OrdinalIgnoreCase));
+    }
 }
 
 public class MaldaIndentFormatterTests

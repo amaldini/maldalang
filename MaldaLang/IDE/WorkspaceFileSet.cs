@@ -38,6 +38,36 @@ public sealed class WorkspaceFileSet
     private readonly ConcurrentDictionary<string, CachedScan> _rootScans = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, bool> _workspaceRoots = new(StringComparer.OrdinalIgnoreCase);
 
+    public string? ExplicitWorkspaceRoot { get; private set; }
+
+    /// <summary>
+    /// Registers <paramref name="directory"/> as a scan root without walking up to
+    /// <c>.git</c> / <c>.sln</c>. Used by Desktop Open Folder so a folder inside the
+    /// language engine repo is still enumerable.
+    /// </summary>
+    public void SetExplicitWorkspaceRoot(string directory)
+    {
+        var normalized = TryNormalizePath(directory);
+        if (normalized == null || !Directory.Exists(normalized))
+        {
+            throw new DirectoryNotFoundException($"Workspace folder not found: {directory}");
+        }
+
+        ExplicitWorkspaceRoot = normalized;
+        _workspaceRoots[normalized] = true;
+        _rootScans.TryRemove(normalized, out _);
+    }
+
+    public IReadOnlyList<string> GetExplicitWorkspaceMaldaFiles(CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(ExplicitWorkspaceRoot))
+        {
+            return [];
+        }
+
+        return EnumerateWorkspaceFiles(ExplicitWorkspaceRoot, cancellationToken).ToList();
+    }
+
     public void SetOpenDocument(string path, string text)
     {
         var normalized = TryNormalizePath(path);
