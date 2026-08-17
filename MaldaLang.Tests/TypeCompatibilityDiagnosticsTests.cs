@@ -214,6 +214,97 @@ public class TypeCompatibilityDiagnosticsTests
     }
 
     [Fact]
+    public void GetDiagnostics_VariantConstructorArgMismatch_EmitsError()
+    {
+        var service = new LanguageService();
+        var source = """
+            type Result = Ok(n:int) | Err(message);
+            var r = Ok("ciao");
+            """;
+        var diagnostics = service.GetDiagnostics(source);
+        var mismatch = Assert.Single(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Severity == DiagnosticSeverity.Error &&
+            d.Message.Contains("argument 1 of 'Ok'", StringComparison.Ordinal) &&
+            d.Message.Contains("int", StringComparison.Ordinal) &&
+            d.Message.Contains("string", StringComparison.Ordinal));
+        Assert.Equal(1, mismatch.Line);
+    }
+
+    [Fact]
+    public void GetDiagnostics_VariantConstructorArgMatch_NoError()
+    {
+        var service = new LanguageService();
+        var source = """
+            type Result = Ok(n:int) | Err(message);
+            var r = Ok(1);
+            """;
+        var diagnostics = service.GetDiagnostics(source);
+        Assert.DoesNotContain(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Message.Contains("does not match value", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void GetDiagnostics_VariantConstructorUntypedPayload_NoError()
+    {
+        var service = new LanguageService();
+        var source = """
+            type Result = Ok(n:int) | Err(message);
+            var r = Err("ciao");
+            """;
+        var diagnostics = service.GetDiagnostics(source);
+        Assert.DoesNotContain(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Message.Contains("does not match value", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void GetDiagnostics_Lenient_VariantConstructorArgMismatch_EmitsWarning()
+    {
+        var service = new LanguageService();
+        var source = """
+            type Result = Ok(n:int) | Err(message);
+            var r = Ok("ciao");
+            """;
+        var diagnostics = service.GetDiagnostics(source, strictTypesOptions: StrictTypesOptions.Lenient);
+        Assert.Contains(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Severity == DiagnosticSeverity.Warning &&
+            d.Message.Contains("argument 1 of 'Ok'", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void GetDiagnostics_VariantConstructorAssignedToSumType_NoError()
+    {
+        var service = new LanguageService();
+        var source = """
+            type Result = Ok(n:int) | Err(message);
+            var r: Result = Ok(1);
+            """;
+        var diagnostics = service.GetDiagnostics(source);
+        Assert.DoesNotContain(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Message.Contains("does not match value", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void GetDiagnostics_VariantConstructorAssignedToWrongHint_EmitsError()
+    {
+        var service = new LanguageService();
+        var source = """
+            type Result = Ok(n:int) | Err(message);
+            var n: int = Ok(1);
+            """;
+        var diagnostics = service.GetDiagnostics(source);
+        Assert.Contains(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Severity == DiagnosticSeverity.Error &&
+            d.Message.Contains("variable 'n'", StringComparison.Ordinal) &&
+            d.Message.Contains("Result", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Analyze_StrictTypes_ElevatesLiteralMismatchToError()
     {
         var source = """

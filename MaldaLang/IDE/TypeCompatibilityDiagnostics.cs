@@ -14,7 +14,8 @@ using TokenType = MaldaLang.TokenType;
 /// <summary>
 /// Checks type hints vs known values (literals, identifiers with hints, operators,
 /// selected Tier-1 builtins, and typed call returns) on var/field initializers,
-/// assignments, call arguments, <c>new</c> constructor arguments, and returns.
+/// assignments, call arguments, <c>new</c> constructor arguments, sum-type
+/// constructor payloads, and returns.
 /// IDE/LSP default elevates mismatches to Error (<see cref="StrictTypesOptions.Default"/>);
 /// use <see cref="StrictTypesOptions.Lenient"/> for Warning. Does not enforce hints at runtime.
 /// </summary>
@@ -38,6 +39,9 @@ public static class TypeCompatibilityDiagnostics
         public TypeHintNameIndex Index => _index;
 
         public Dictionary<string, FunctionHints> Constructors { get; } =
+            new(StringComparer.Ordinal);
+
+        public Dictionary<string, FunctionHints> VariantConstructors { get; } =
             new(StringComparer.Ordinal);
 
         public void PushScope() =>
@@ -90,8 +94,8 @@ public static class TypeCompatibilityDiagnostics
         var index = TypeHintNameIndex.Build(list);
         var functions = new Dictionary<string, FunctionHints>(StringComparer.Ordinal);
         var env = new HintEnv(index);
-        CollectFunctions(list, functions, env.Constructors);
-        MergeImportedHints(list, sourceFileName, index, functions, env.Constructors);
+        CollectFunctions(list, functions, env.Constructors, env.VariantConstructors);
+        MergeImportedHints(list, sourceFileName, index, functions, env.Constructors, env.VariantConstructors);
 
         foreach (var stmt in list)
             VisitStatement(stmt, functions, env, currentReturn: null, diagnostics, options);
@@ -102,7 +106,8 @@ public static class TypeCompatibilityDiagnostics
         string? sourceFileName,
         TypeHintNameIndex index,
         Dictionary<string, FunctionHints> functions,
-        Dictionary<string, FunctionHints> constructors)
+        Dictionary<string, FunctionHints> constructors,
+        Dictionary<string, FunctionHints> variantConstructors)
     {
         if (string.IsNullOrWhiteSpace(sourceFileName))
             return;
@@ -135,6 +140,9 @@ public static class TypeCompatibilityDiagnostics
                     }
                 }
             }
+
+            foreach (var typeDecl in imported.Types)
+                RegisterVariantConstructors(typeDecl, variantConstructors, overwrite: false);
         }
         catch
         {
@@ -145,7 +153,8 @@ public static class TypeCompatibilityDiagnostics
     private static void CollectFunctions(
         IEnumerable<Statement> statements,
         Dictionary<string, FunctionHints> functions,
-        Dictionary<string, FunctionHints> constructors)
+        Dictionary<string, FunctionHints> constructors,
+        Dictionary<string, FunctionHints> variantConstructors)
     {
         foreach (var stmt in statements)
         {
@@ -162,10 +171,29 @@ public static class TypeCompatibilityDiagnostics
                 case ActorDeclaration actorDecl:
                     CollectTypeMembers(actorDecl.Name, actorDecl.Members, functions, constructors);
                     break;
+                case TypeDeclaration typeDecl:
+                    RegisterVariantConstructors(typeDecl, variantConstructors);
+                    break;
                 case BlockStatement block:
-                    CollectFunctions(block.Statements, functions, constructors);
+                    CollectFunctions(block.Statements, functions, constructors, variantConstructors);
                     break;
             }
+        }
+    }
+
+    private static void RegisterVariantConstructors(
+        TypeDeclaration typeDecl,
+        Dictionary<string, FunctionHints> variantConstructors,
+        bool overwrite = true)
+    {
+        foreach (var ctor in typeDecl.Constructors)
+        {
+            if (!overwrite && variantConstructors.ContainsKey(ctor.Name))
+                continue;
+
+            variantConstructors[ctor.Name] = new FunctionHints(
+                ctor.ParameterTypes,
+                typeDecl.TypeName);
         }
     }
 
@@ -211,14 +239,23 @@ public static class TypeCompatibilityDiagnostics
     private static bool TryGetCalleeHints(
         Expression callee,
         Dictionary<string, FunctionHints> functions,
+        HintEnv env,
         out string calleeName,
         out FunctionHints hints)
     {
-        if (callee is IdentifierExpression id &&
-            functions.TryGetValue(id.Name, out hints!))
+        if (callee is IdentifierExpression id)
         {
-            calleeName = id.Name;
-            return true;
+            if (functions.TryGetValue(id.Name, out hints!))
+            {
+                calleeName = id.Name;
+                return true;
+            }
+
+            if (env.VariantConstructors.TryGetValue(id.Name, out hints!))
+            {
+                calleeName = id.Name;
+                return true;
+            }
         }
 
         if (callee is MemberAccessExpression member &&
@@ -417,7 +454,7 @@ public static class TypeCompatibilityDiagnostics
         switch (expression)
         {
             case FunctionCallExpression call:
-                if (TryGetCalleeHints(call.Callee, functions, out var calleeName, out var hints))
+                if (TryGetCalleeHints(call.Callee, functions, env, out var calleeName, out var hints))
                 {
                     CheckCallArguments(
                         call.Arguments,
@@ -626,7 +663,7 @@ public static class TypeCompatibilityDiagnostics
 
         if (expression is FunctionCallExpression call)
         {
-            if (TryGetCalleeHints(call.Callee, functions, out _, out var calleeHints) &&
+            if (TryGetCalleeHints(call.Callee, functions, env, out _, out var calleeHints) &&
                 !string.IsNullOrWhiteSpace(calleeHints.ReturnType))
             {
                 return env.Index.NormalizeKnown(calleeHints.ReturnType);
