@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MALDA MCP Server - Expose MALDA functions as MCP tools and connect to external MCP servers">
     <title>19. MCP Server - MALDA Reference Manual</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="syntax.css">
@@ -17,45 +18,9 @@
     <main>
         <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>19. MCP Server</span></div>
         <h1>19. MCP Server</h1>
-        <p>The <code>MCPServer</code> class allows MALDA to function as an MCP (Model Context Protocol) tools server, enabling developers to write custom MCP tools in MALDA and expose them to MCP clients like Claude Desktop or ChatGPT.</p>
-        <h2>19.1 Overview</h2>
-        <p>MCP (Model Context Protocol) is a protocol for connecting AI applications with external data sources and tools. MALDA's MCP server implementation allows you to:</p>
-        <ul>
-            <li>Define custom tools using the <code>@MCPTool</code> decorator</li>
-            <li>Expose MALDA functions as MCP tools</li>
-            <li>Communicate via JSON-RPC 2.0 over STDIO transport</li>
-            <li>Automatically generate JSON Schema tool definitions</li>
-        </ul>
-        <h2>19.2 @MCPTool Decorator</h2>
-        <p>Functions decorated with <code>@MCPTool</code> are automatically discovered and registered as MCP tools when the server starts.</p>
-        <h3>Syntax</h3>
-        <pre><code>@MCPTool("tool_name", "Tool description")
-function myTool(param1, param2) {
-    return param1 + param2;
-}</code></pre>
-        <h3>With Custom Schema</h3>
-        <pre><code>@MCPTool("tool_name", "Tool description", "{\"type\":\"object\",\"properties\":{...}}")
-function myTool(param1) {
-    // ...
-}</code></pre>
-        <h2>19.3 MCPServer Class</h2>
-        <h3>Constructor</h3>
-        <pre><code>var server = new MCPServer();                    // STDIO transport (default)
-var server = new MCPServer("stdio");            // Explicit STDIO transport</code></pre>
-        <h3>Methods</h3>
-        <ul>
-            <li><code>start()</code>: Start the MCP server and discover tools</li>
-            <li><code>stop()</code>: Stop the MCP server</li>
-            <li><code>getTools()</code>: Return list of registered tools</li>
-        </ul>
-        <h2>19.4 Tool Schema Generation</h2>
-        <p>If no custom schema is provided, the tool schema is automatically generated from function parameters:</p>
-        <ul>
-            <li>All parameters default to type <code>"string"</code> in JSON Schema</li>
-            <li>All parameters are marked as required</li>
-            <li>Parameter names from the MALDA function are used as property names</li>
-        </ul>
-        <h2>19.5 Complete Example</h2>
+        <p>MCP (Model Context Protocol) lets an AI host — Claude Desktop, Cursor, ChatGPT, or a MALDA <code>MCPClient</code> — launch <strong>your process</strong> and talk JSON-RPC 2.0 over <strong>STDIO</strong> (stdin/stdout). Decorate ordinary functions with <code>@MCPTool</code>, call <code>new MCPServer().start()</code>, and the host can list and call them. Same file: <code>Examples/MCP/mcp_tools_server.malda</code>.</p>
+
+        <h2>19.1 A minimal server</h2>
         <pre><code>@MCPTool("add", "Adds two numbers together")
 function add(a, b) {
     return int(a) + int(b);
@@ -78,146 +43,91 @@ server.start();
 while (server.isRunning) {
     sleep(1000);
 }</code></pre>
-        <h2>19.6 MCP Protocol Support</h2>
-        <p>The MCP server implements the following JSON-RPC 2.0 methods:</p>
+        <p>Run it as a normal MALDA program. The host, not you, should start that process when it wants the tools:</p>
+        <pre><code>malda Examples/MCP/mcp_tools_server.malda</code></pre>
+        <p>An MCP host config (Claude Desktop <code>claude_desktop_config.json</code>, Cursor <code>mcp.json</code>) looks like this — point <code>command</code> at a <code>malda</code> executable on <code>PATH</code>, or a full path:</p>
+        <pre><code>{
+  "mcpServers": {
+    "malda-tools": {
+      "command": "malda",
+      "args": ["C:/path/to/Examples/MCP/mcp_tools_server.malda"]
+    }
+  }
+}</code></pre>
+        <div class="warning-box">
+            <strong>Do not</strong> print banners on stdout after <code>start()</code> if a host is connected: STDIO is the protocol. Log to stderr or a file. The example server in <code>Examples/MCP/</code> prints before the host handshake in a demo loop; a production server should stay quiet on stdout.
+        </div>
+
+        <h2>19.2 @MCPTool and schemas</h2>
+        <pre><code>@MCPTool("tool_name", "Tool description")
+function myTool(param1, param2) {
+    return param1 + param2;
+}</code></pre>
+        <p>If you omit a schema, MALDA builds JSON Schema from the parameter names: every property is type <code>"string"</code> and required. Pass a JSON schema string as the third argument when you need enums, numbers, or optional fields:</p>
+        <pre><code>@MCPTool("tool_name", "Tool description", "{\"type\":\"object\",\"properties\":{...}}")
+function myTool(param1) {
+    // ...
+}</code></pre>
+
+        <h2>19.3 MCPServer</h2>
+        <pre><code>var server = new MCPServer();                    // STDIO transport (default)
+var server = new MCPServer("stdio");            // Explicit STDIO transport</code></pre>
         <ul>
-            <li><code>initialize</code>: Capability negotiation and server initialization</li>
-            <li><code>tools/list</code>: Returns list of available tools with their schemas</li>
-            <li><code>tools/call</code>: Executes a tool with provided arguments</li>
-            <li><code>notifications/initialized</code>: Notification sent after initialization</li>
+            <li><code>start()</code>: discover <code>@MCPTool</code> functions and serve JSON-RPC</li>
+            <li><code>stop()</code>: stop the server</li>
+            <li><code>getTools()</code>: list registered tools</li>
+            <li><code>isRunning</code>: loop until the host disconnects</li>
         </ul>
-        <h2>19.7 MCP Client</h2>
-        <p>The <code>MCPClient</code> class allows MALDA scripts to dynamically connect to MCP servers and use their tools. This enables MALDA agents to connect to external MCP servers programmatically and create wrapper agents with MCP tools.</p>
-        <h3>Overview</h3>
-        <p>The <code>MCPClient</code> class provides:</p>
-        <ul>
-            <li>Dynamic connection to MCP servers via STDIO transport</li>
-            <li>Tool discovery from connected MCP servers</li>
-            <li>Direct tool calling without creating tool instances</li>
-            <li>Creation of wrapper agents with all MCP tools automatically added</li>
-        </ul>
-        <h3>Constructor</h3>
-        <pre><code>var client = new MCPClient(serverName);</code></pre>
-        <p><strong>Parameters:</strong></p>
-        <ul>
-            <li><code>serverName</code> (string): A unique identifier for the MCP server connection</li>
-        </ul>
-        <h3>Methods</h3>
-        <h4><code>connect(command, args?, env?)</code></h4>
-        <p>Connects to an MCP server by starting a process and establishing a JSON-RPC connection.</p>
-        <p><strong>Parameters:</strong></p>
-        <ul>
-            <li><code>command</code> (string, required): Executable command to start the MCP server</li>
-            <li><code>args</code> (array, optional): Command-line arguments as an array of strings</li>
-            <li><code>env</code> (object, optional): Environment variables as key-value pairs</li>
-        </ul>
-        <p><strong>Returns:</strong> <code>boolean</code> - <code>true</code> if connection succeeded</p>
+        <p>JSON-RPC methods implemented: <code>initialize</code>, <code>tools/list</code>, <code>tools/call</code>, <code>notifications/initialized</code>.</p>
+
+        <h2>19.4 MCPClient: call another server</h2>
+        <p><code>MCPClient</code> starts a child process and speaks the same STDIO protocol. Same file: <code>Examples/MCP/mcp_client_example.malda</code>. Run the client from the repo root so <code>malda</code> can find the server script.</p>
+        <pre><code>var client = new MCPClient("example-server");
+var connected = client.connect("malda", ["Examples/MCP/mcp_tools_server.malda"]);
+if (!connected) {
+    print("Failed to connect");
+    return;
+}
+
+var tools = client.getTools();
+print("Tool count: " + string(tools.length));
+
+var sum = client.callTool("add", {"a": 5, "b": 3});
+print(string(sum));
+
+client.disconnect();</code></pre>
+        <p><code>connect(command, args?, env?)</code> returns <code>true</code> on success. <code>callTool(name, arguments?)</code> converts the JSON result to MALDA values. Each tool from <code>getTools()</code> has <code>name</code>, <code>description</code>, and <code>schema</code>.</p>
         <pre><code>var client = new MCPClient("my-server");
 var connected = client.connect("python", ["-m", "mcp_server"], {"API_KEY": "secret"});</code></pre>
-        <h4><code>disconnect()</code></h4>
-        <p>Disconnects from the MCP server and stops the process.</p>
-        <h4><code>getTools()</code></h4>
-        <p>Returns an array of all available tools from the connected MCP server.</p>
-        <p><strong>Returns:</strong> <code>array</code> - Array of tool objects with <code>name</code>, <code>description</code>, and <code>schema</code> properties</p>
-        <h4><code>callTool(toolName, arguments?)</code></h4>
-        <p>Calls an MCP tool directly without creating a tool instance.</p>
-        <p><strong>Parameters:</strong></p>
         <ul>
-            <li><code>toolName</code> (string, required): Name of the tool to call</li>
-            <li><code>arguments</code> (object, optional): Tool arguments as an object</li>
+            <li><code>createTool(toolName, registeredName?, register?)</code> wraps one tool as an <code>MCPToolInstance</code> you can <code>agent.addTool(...)</code> (see <a href="17-agent-orchestration.html">17. Agent Orchestration</a>)</li>
+            <li><code>refreshTools()</code> rediscovers tools after the server has changed</li>
+            <li><code>serverName</code> / <code>isConnected</code> are properties</li>
         </ul>
-        <p><strong>Returns:</strong> Result from the tool call (converted from JSON to MALDA types)</p>
-        <h4><code>createTool(toolName, registeredName?, register?)</code></h4>
-        <p>Creates an <code>MCPToolInstance</code> wrapper for a specific tool.</p>
-        <p><strong>Parameters:</strong></p>
-        <ul>
-            <li><code>toolName</code> (string, required): Name of the tool from the MCP server</li>
-            <li><code>registeredName</code> (string, optional): Custom name for tool registration (default: <code>mcp:serverName:toolName</code>)</li>
-            <li><code>register</code> (boolean, optional): Whether to register the tool in <code>ToolRegistry</code> (default: <code>false</code>)</li>
-        </ul>
-        <p><strong>Returns:</strong> <code>MCPToolInstance</code> - A tool instance that can be added to agents</p>
-        <h4><code>refreshTools()</code></h4>
-        <p>Re-discovers tools from the MCP server. Useful if tools have changed after connection.</p>
-        <p><strong>Returns:</strong> <code>boolean</code> - <code>true</code> if refresh succeeded</p>
-        <h4><code>createWrapperAgent(name, role, instructions, llmClient?)</code></h4>
-        <p>Creates an <code>Agent</code> instance with all MCP tools automatically added. This is a convenience method that combines agent creation with tool discovery and registration.</p>
-        <p><strong>Parameters:</strong></p>
-        <ul>
-            <li><code>name</code> (string, required): Agent name</li>
-            <li><code>role</code> (string, required): Agent role description</li>
-            <li><code>instructions</code> (string, required): Agent instructions/system prompt</li>
-            <li><code>llmClient</code> (optional): LLMClient, LlamaCppClient, or LLMClientBridge instance. If omitted, defaults to a <strong>local LLM</strong> (Qwen/Qwen2.5-0.5B-Instruct, auto-downloaded as a GGUF build from Hugging Face on first use).</li>
-        </ul>
-        <p><strong>Returns:</strong> <code>Agent</code> - A fully configured agent with all MCP tools already added</p>
-        <pre><code>// Connect to MCP server
-var mcpClient = new MCPClient("data-analyst");
-mcpClient.connect("./data_analyst_server.exe", [], {});
 
-// Create wrapper agent with all MCP tools automatically added
+        <h2>19.5 Wrapper agent (optional)</h2>
+        <p><code>createWrapperAgent</code> builds an <code>Agent</code> with every tool from the connected server already attached. If you omit <code>llmClient</code>, MALDA uses a local GGUF model (downloaded on first use). Prefer the <code>callTool</code> example above until you need an LLM in the loop.</p>
+        <pre><code>var mcpClient = new MCPClient("example-server");
+mcpClient.connect("malda", ["Examples/MCP/mcp_tools_server.malda"]);
+
 var agent = mcpClient.createWrapperAgent(
-    "DataAnalyst",
-    "Data Analysis Specialist",
-    "You analyze data and provide insights using MCP tools."
+    "Helper",
+    "assistant",
+    "You use MCP tools to answer questions."
 );
 
-// Agent is ready to use - all tools are already added!
-var response = agent.think("Analyze sales data: Q1=$100k, Q2=$150k");
-print(response.content);</code></pre>
-        <h3>Properties</h3>
-        <ul>
-            <li><code>serverName</code> (string): The server name identifier</li>
-            <li><code>isConnected</code> (boolean): Whether the client is currently connected to an MCP server</li>
-        </ul>
-        <h3>Complete Example: Dynamic Agent Creation</h3>
-        <pre><code>// Step 1: Create and compile an MCP agent server (using SPLCodingAgent)
-var agentBuilder = new SPLCodingAgent(
-    "AgentBuilder",
-    "Agent Creation Specialist",
-    "You create, compile, and test MCP agent server scripts.",
-    client,
-    "./agents"
-);
+var response = agent.think("Add 5 and 3");
+print(response.content);
+mcpClient.disconnect();</code></pre>
+        <h2>19.6 Advanced: generate a script</h2>
+        <p><code>createMcpAgentScript(agentName, agentRole, agentInstructions, tools, outputPath, model?)</code> writes a <code>.malda</code> file that exposes an agent as MCP tools. That is a <strong>code generator</strong>, not a live STDIO session — prefer <code>callTool</code> or <code>createWrapperAgent</code> until you need to emit a file. Pair it with <code>SPLCodingAgent</code> in <a href="17-agent-orchestration.html">17. Agent Orchestration</a> and <code>compileMALDA</code> in <a href="12-built-in-functions.html">12. Built-in Functions</a> only when an agent should generate and compile MALDA.</p>
 
-// Step 2: Create an MCP server script
-var result = createMcpAgentScript(
-    "DataAnalyst",
-    "Data Analysis Specialist",
-    "You analyze data and provide insights.",
-    [
-        {"name": "analyze_data", "description": "Analyzes data"},
-        {"name": "generate_report", "description": "Generates reports"}
-    ],
-    "./agents/data_analyst_server.malda",
-    "openai/gpt-4"
-);
-
-// Step 3: Compile the script
-var compileResult = compileMALDA(result.outputPath, "./agents/data_analyst_server.exe");
-
-// Step 4: Connect to the MCP server
-var mcpClient = new MCPClient("data-analyst");
-var connected = mcpClient.connect("./agents/data_analyst_server.exe", [], {});
-
-if (connected) {
-    // Step 5: Create wrapper agent with all tools automatically added
-    var agent = mcpClient.createWrapperAgent(
-        "DataAnalyst",
-        "Data Analysis Specialist",
-        "You analyze data and generate reports."
-    );
-    
-    // Agent is ready to use!
-    var response = agent.think("Analyze this data: Q1=$100k, Q2=$150k, Q3=$180k");
-    print(response.content);
-    
-    // Cleanup
-    mcpClient.disconnect();
-}</code></pre>
         <div class="see-also">
             <h3>See Also</h3>
             <ul>
                 <li><a href="09-functions.html">9. Functions</a> - Function decorators</li>
-                <li><a href="14-vectordb.html">14. VectorDB</a> - Tool system and agent creation</li>
+                <li><a href="17-agent-orchestration.html">17. Agent Orchestration</a> - Agents, tools, and <code>agent.think</code></li>
+                <li><a href="20-acp.html">20. ACP (Agent Communication Protocol)</a> - Agent-to-agent, not tools</li>
             </ul>
         </div>
         <div class="nav-footer">

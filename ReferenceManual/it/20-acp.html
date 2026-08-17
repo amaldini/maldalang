@@ -49,7 +49,7 @@
         <ul>
             <li><code>discoverAgents()</code>: Restituisce un array degli agenti disponibili dal server ACP</li>
             <li><code>getAgentManifest(agentId)</code>: Ottiene il manifest (metadati) di un agente specifico</li>
-            <li><code>sendMessage(agentId, message, timeoutMs?)</code>: Invia un messaggio in modo sincrono e restituisce la risposta</li>
+            <li><code>sendMessage(agentId, message, timeoutMs?, sessionId?)</code>: Invia un messaggio in modo sincrono e restituisce la risposta. Il <code>sessionId</code> opzionale mantiene la history tra un run e l'altro (vedi 20.11)</li>
             <li><code>sendMessageAsync(agentId, message, timeoutMs?)</code>: Invia un messaggio in modo asincrono e restituisce il run ID</li>
             <li><code>sendMessageStream(agentId, message, timeoutMs?)</code>: Invia un messaggio con streaming e restituisce la risposta accumulata</li>
             <li><code>getRunStatus(agentId, runId)</code>: Ottiene lo stato di un'esecuzione agente in corso</li>
@@ -248,7 +248,7 @@ print("Streamed response: " + response);</code></pre>
 client.cancelRun("agent-id", runId);</code></pre>
         
         <h2>20.10 Await/Resume</h2>
-        <p>Gli agenti possono mettere in pausa l'esecuzione per attendere un input dell'utente:</p>
+        <p><code>__ACP_AWAIT__:…</code> è una <strong>convenzione dell'agente</strong>, non una keyword MALDA. Se la risposta dell'agente inizia con quel marker, il server ACP marca il run come <code>awaiting</code> e il client chiama <code>resumeRun</code> con l'input utente. Stessa idea: <code>Examples/ACP/await_resume.malda</code>. Questi campioni richiedono due processi (server e client); non sono <code>data-run</code>.</p>
         <pre><code>// Agent code (uses special marker or tool)
 // When agent needs input, it responds with: "__ACP_AWAIT__:Please provide your name"
 
@@ -292,6 +292,7 @@ print("Session history: " + length(session.history) + " runs");</code></pre>
                 <li><a href="17-agent-orchestration.html">17. Orchestrazione di agenti</a> - Creare e usare agenti MALDA</li>
                 <li><a href="19-mcp-server.html">19. Server MCP</a> - Protocollo MCP per tool e origini dati</li>
                 <li><a href="26-rest-api.html">26. Server REST API</a> - Creare REST API in MALDA</li>
+                <li>Schizzi eseguibili in <code>Examples/ACP/</code></li>
             </ul>
         </div>
 

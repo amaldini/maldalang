@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MALDA Classes &amp; Objects - constructors, methods, inheritance, static members, operator overloading, primary constructors">
     <title>10. Classes & Objects - MALDA Reference Manual</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="syntax.css">
@@ -17,85 +18,59 @@
     <main>
         <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>10. Classes & Objects</span></div>
         <h1>10. Classes & Objects</h1>
-        <h2>10.1 Class Declaration</h2>
-        <pre><code>class ClassName {
-    public var field1;
-    private var field2;
-    
-    function ClassName(param1, param2) {
-        this.field1 = param1;
-        this.field2 = param2;
+        <p>A class is a named type with fields (state) and methods (behavior). <code>new ClassName(...)</code> runs the constructor and returns an instance. Same file: <code>Examples/OOP/classes_objects.malda</code>.</p>
+
+        <h2>10.1 A working class</h2>
+        <p>The constructor has the same name as the class. Use <code>this.field</code> when a parameter shadows a field; elsewhere, member access can be implicit. Methods are functions declared inside the class.</p>
+        <pre><code data-run="true" data-expect="Hi, I'm Alice and I'm 30 years old.\nHi, I'm Bob and I'm 25 years old.\nAlice's age: 30\nAlice's new age: 31">class Person {
+    public var name;
+    public var age;
+
+    function Person(name, age) {
+        this.name = name;
+        this.age = age;
     }
-    
-    public function method1() {
-        field1 = "value";  // Implicit member access
+
+    public function introduce() {
+        print("Hi, I'm " + name + " and I'm " + string(age) + " years old.");
     }
-    
-    private function method2() {
-        // method body
+
+    public function getAge() {
+        return age;
     }
-}</code></pre>
-        <h2>10.2 Access Modifiers</h2>
+
+    public function setAge(newAge) {
+        age = newAge;
+    }
+}
+
+var person1 = new Person("Alice", 30);
+var person2 = new Person("Bob", 25);
+person1.introduce();
+person2.introduce();
+print("Alice's age: " + string(person1.getAge()));
+person1.setAge(31);
+print("Alice's new age: " + string(person1.getAge()));</code></pre>
+        <div class="warning-box">
+            <strong>Do not</strong> call <code>new Person(...)</code> unless <code>class Person</code> is declared in the same program (or imported). A snippet that only shows <code>new Person</code> is not a complete example.
+        </div>
+
+        <h2>10.2 Access modifiers</h2>
         <ul>
-            <li><strong>public</strong>: Accessible from anywhere (default for methods)</li>
-            <li><strong>private</strong>: Accessible only within the class</li>
+            <li><strong>public</strong>: accessible from anywhere (default for methods)</li>
+            <li><strong>private</strong>: accessible only within the class</li>
             <li>Fields default to private if no modifier is specified</li>
         </ul>
-        <h2>10.3 Constructors</h2>
-        <p>Constructors have the same name as the class and are called automatically when objects are created:</p>
-        <pre><code>class Point {
-    public var x;
-    public var y;
-    
-    function Point(x, y) {
-        this.x = x;
-        this.y = y;
-    }
-}</code></pre>
-        <h2>10.4 Methods</h2>
-        <p>Methods are functions defined within classes. They can access class fields using <code>this</code> or implicitly:</p>
-        <pre><code>class Calculator {
-    public var result;
-    
-    function Calculator() {
-        result = 0;  // Implicit member access
-    }
-    
-    public function add(value) {
-        result = result + value;
-        return result;
-    }
-}</code></pre>
-        <h2>10.5 Object Instantiation</h2>
-        <pre><code>var obj = new ClassName(arg1, arg2);
-var person = new Person("Alice", 25);</code></pre>
-        <h2>10.6 Member Access</h2>
-        <pre><code>var person = new Person("Bob", 30);
-person.name = "Charlie";
-var age = person.age;
-person.setAge(31);</code></pre>
-        <h2>10.7 The <code>this</code> Keyword</h2>
-        <p><code>this</code> refers to the current object instance. It's optional when accessing member variables (implicit member access is supported):</p>
-        <pre><code>class Counter {
-    private var count;
-    
-    function Counter() {
-        count = 0;  // Implicit member access
-    }
-    
-    public function setCount(count) {
-        this.count = count;  // 'this.' required due to name conflict
-    }
-}</code></pre>
-        <h2>10.8 Inheritance</h2>
-        <p>Classes can inherit from a parent class using <code>extends</code>:</p>
-        <pre><code>class Animal {
+
+        <h2>10.3 Inheritance</h2>
+        <p>A class can extend one parent with <code>extends</code>. Call <code>super(...)</code> from the child constructor, and <code>super.method()</code> to reuse a parent method. Same file: <code>Examples/OOP/inheritance.malda</code>.</p>
+        <pre><code data-run="true" data-expect="Rex says: Woof!\nFluffy says: Meow!">class Animal {
     public var name;
-    
+
     function Animal(name) {
         this.name = name;
     }
-    
+
     public function speak() {
         print(name + " makes a sound");
     }
@@ -103,19 +78,35 @@ person.setAge(31);</code></pre>
 
 class Dog extends Animal {
     function Dog(name) {
-        super(name);  // Call parent constructor
+        super(name);
     }
-    
+
     public function speak() {
-        super.speak();  // Call parent method
-        print($"{name} also barks");
+        print(name + " says: Woof!");
     }
-}</code></pre>
-        <h2>10.9 Static Members</h2>
+}
+
+class Cat extends Animal {
+    function Cat(name) {
+        super(name);
+    }
+
+    public function speak() {
+        print(name + " says: Meow!");
+    }
+}
+
+var dog = new Dog("Rex");
+var cat = new Cat("Fluffy");
+dog.speak();
+cat.speak();</code></pre>
+        <p>To run the parent implementation as well, call <code>super.speak()</code> inside the override before or after the child body.</p>
+
+        <h2>10.4 Static members</h2>
         <p>Static members belong to the class, not instances:</p>
         <pre><code>class MathUtils {
     static var PI = 3.14159;
-    
+
     static function add(a, b) {
         return a + b;
     }
@@ -123,7 +114,8 @@ class Dog extends Animal {
 
 var pi = MathUtils.PI;
 var sum = MathUtils.add(5, 3);</code></pre>
-        <h2>10.10 Operator Overloading</h2>
+
+        <h2>10.5 Operator overloading</h2>
         <p>Classes can overload selected operators by defining methods with reserved names. For binary operators, MALDA first tries the left operand overload (<code>__add__</code>, <code>__sub__</code>, etc.). If that overload is not found, MALDA then tries the right operand reversed overload (<code>__radd__</code>, <code>__rsub__</code>, etc.) with the left operand passed as argument. For unary operators, the single operand is the receiver.</p>
         <table>
             <thead>
@@ -174,20 +166,10 @@ print(a + b); // 5</code></pre>
 
 var rhs = new RightValue(7);
 print(5 + rhs); // 12</code></pre>
-        <h2>10.11 Primary constructors</h2>
+
+        <h2>10.6 Primary constructors</h2>
         <p>A parameter list after the class name is a <strong>primary constructor</strong>. Each parameter becomes a public field of the same name, and MALDA synthesizes a constructor that assigns those fields. The optional body is a normal class body (methods, extra fields, <code>static</code> members, operator overloads). There is no extra keyword: <code>class Name(</code> is distinct from <code>class Name {</code> and from <code>class Name extends</code>.</p>
-        <pre><code>class Point(x, y);
-
-class Point(x, y) {
-    function distance() {
-        return math.sqrt(this.x * this.x + this.y * this.y);
-    }
-}
-
-var p = new Point(3, 4);
-print(p.x);
-print(p.distance());</code></pre>
-        <p>The forms above desugar to a classic class: public fields, a constructor with the same name as the class that assigns <code>this.x = x</code> (and so on), then any members from the body. Optional type hints on parameters are stored on those fields: <code>class Point(x: float, y: float)</code>.</p>
+        <p>Those forms desugar to a classic class: public fields, a constructor with the same name as the class that assigns <code>this.x = x</code> (and so on), then any members from the body. Optional type hints on parameters are stored on those fields: <code>class Point(x: float, y: float)</code>.</p>
         <ul>
             <li>Data-only: <code>class Point(x, y);</code> or <code>class Point(x, y) { }</code>.</li>
             <li>Do not declare <code>function Point(...)</code> in the same class (duplicate constructor).</li>
@@ -209,6 +191,7 @@ print(new Point(3, 4).total());</code></pre>
             <ul>
                 <li><a href="04-data-types.html">4. Data Types</a> - Object types</li>
                 <li><a href="09-functions.html">9. Functions</a> - Methods vs functions</li>
+                <li><a href="32-examples.html">32. Examples</a> - The same Person and Dog programs as catalog samples</li>
             </ul>
         </div>
         <div class="nav-footer">

@@ -48,7 +48,7 @@
         <ul>
             <li><code>discoverAgents()</code>: Returns an array of available agents from the ACP server</li>
             <li><code>getAgentManifest(agentId)</code>: Gets the manifest (metadata) for a specific agent</li>
-            <li><code>sendMessage(agentId, message, timeoutMs?)</code>: Sends a message synchronously and returns the response</li>
+            <li><code>sendMessage(agentId, message, timeoutMs?, sessionId?)</code>: Sends a message synchronously and returns the response. Optional <code>sessionId</code> keeps history across runs (see 20.11)</li>
             <li><code>sendMessageAsync(agentId, message, timeoutMs?)</code>: Sends a message asynchronously and returns run ID</li>
             <li><code>sendMessageStream(agentId, message, timeoutMs?)</code>: Sends a message with streaming and returns accumulated response</li>
             <li><code>getRunStatus(agentId, runId)</code>: Gets the status of a running agent execution</li>
@@ -247,7 +247,7 @@ print("Streamed response: " + response);</code></pre>
 client.cancelRun("agent-id", runId);</code></pre>
         
         <h2>20.10 Await/Resume</h2>
-        <p>Agents can pause execution to await user input:</p>
+        <p><code>__ACP_AWAIT__:…</code> is an <strong>agent convention</strong>, not a MALDA keyword. If the agent’s reply starts with that marker, the ACP server marks the run as <code>awaiting</code> and the client calls <code>resumeRun</code> with user input. Same idea: <code>Examples/ACP/await_resume.malda</code>. These samples need two processes (server and client); they are not <code>data-run</code>.</p>
         <pre><code>// Agent code (uses special marker or tool)
 // When agent needs input, it responds with: "__ACP_AWAIT__:Please provide your name"
 
@@ -291,6 +291,7 @@ print("Session history: " + length(session.history) + " runs");</code></pre>
                 <li><a href="17-agent-orchestration.html">17. Agent Orchestration</a> - Creating and using MALDA agents</li>
                 <li><a href="19-mcp-server.html">19. MCP Server</a> - MCP protocol for tools and data sources</li>
                 <li><a href="26-rest-api.html">26. REST API Server</a> - Creating REST APIs in MALDA</li>
+                <li>Runnable sketches in <code>Examples/ACP/</code></li>
             </ul>
         </div>
 

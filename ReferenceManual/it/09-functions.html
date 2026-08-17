@@ -205,11 +205,13 @@ function handleToolArgs(raw) {
     print(normalizeName(check.data.name));
 }</code></pre>
         <h3>Decoratore @Tool</h3>
+        <p>Questo è il decoratore sulla funzione. Come gli agenti chiamano i tool è in <a href="17-agent-orchestration.html">17. Orchestrazione di agenti</a>.</p>
         <pre><code>@Tool("tool_name", "Tool description")
 function myTool(param1, param2) {
     return param1 + param2;
 }</code></pre>
         <h3>Decoratori REST API</h3>
+        <p>Routing, middleware e un server completo sono in <a href="26-rest-api.html">26. Server REST API</a>.</p>
         <pre><code>@GET("/api/users")
 function getUsers() {
     return [{"id": 1, "name": "Alice"}];
@@ -220,9 +222,53 @@ function createUser(body) {
     return {"id": 2, "name": body.name};
 }</code></pre>
         <h2>9.8 Blocchi prompt</h2>
-        <p>I blocchi prompt permettono di definire template di prompt riusabili come costrutti first-class del linguaggio. Compilano a valori runtime che si possono invocare con <code>agent.think(promptBlock(...))</code>, e danno struttura e supporto IDE ai prompt AI.</p>
+        <p>I blocchi prompt sono template di prompt riusabili. Parti da un template che non chiama un modello, poi <code>await</code> con uno <code>schema</code>, poi i tool. Stessi file: <code>Examples/Prompts/basic_prompt.malda</code>, <code>Examples/Prompts/schema_prompt_structured.malda</code>, <code>Examples/Prompts/prompt_tools_mode.malda</code>, <code>Examples/Prompts/prompt_tools_then_structured.malda</code>.</p>
+        <table>
+            <thead>
+                <tr><th>Passo</th><th>Cosa scrivi</th><th>Chiama un modello?</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>1. Template</td><td><code>prompt greet(name) { user: "Hello, {name}" }</code> poi <code>greet("Alice")</code></td><td>No. Ottieni un <code>PromptInstance</code> (stringhe interpolate).</td></tr>
+                <tr><td>2. <code>await</code> strutturato</td><td><code>schema</code> + <code>prompt ... -&gt; Schema</code> + <code>await extract(...)</code></td><td>Sì. Il JSON viene validato rispetto allo schema.</td></tr>
+                <tr><td>3. Tool</td><td>Mode B: <code>tools: [...]</code> in una chiamata. Mode C: <code>gather: [...]</code> poi un extract tipizzato</td><td>Sì. Non combinare <code>tools:</code> e <code>gather:</code>.</td></tr>
+            </tbody>
+        </table>
+        <h4>Passo 1 — template, senza API key</h4>
+        <pre><code data-run="true" data-expect="Hello, Alice! How are you today?">prompt greet(name) {
+    user: "Hello, {name}! How are you today?"
+}
+
+var greeting = greet("Alice");
+print(greeting.user);</code></pre>
+        <h4>Passo 2 — await più schema (serve un LLM)</h4>
+        <pre><code>schema ContactCard {
+    name: string;
+    email: string;
+}
+
+prompt extractContact(raw) -> ContactCard {
+    system: "Extract a contact. Reply with JSON only matching the schema.";
+    user: """
+    Text:
+    {raw}
+    """
+}
+
+var card = await extractContact("Ada Lovelace — ada@example.com");
+print("name=" + card.name);</code></pre>
+        <h4>Passo 3 — Mode B e Mode C</h4>
+        <table>
+            <thead>
+                <tr><th>Mode</th><th>Campo</th><th>Su <code>await</code></th></tr>
+            </thead>
+            <tbody>
+                <tr><td>B</td><td><code>tools: ["name"]</code></td><td>Un turno LLM con i tool. Lo schema <code>response_format</code> non viene inviato.</td></tr>
+                <tr><td>C</td><td><code>gather: ["name"]</code> e <code>-&gt; Type</code></td><td>Round di tool, poi un extract tipizzato fresco senza tool.</td></tr>
+            </tbody>
+        </table>
+        <p>Senza <code>await</code>, costruire il prompt non chiama comunque il modello. I dettagli di validazione, repair, pipe e <code>PromptInstance</code> seguono in questa sezione.</p>
         
-        <h3>9.9.1 Sintassi di dichiarazione dei prompt</h3>
+        <h3>9.8.1 Sintassi di dichiarazione dei prompt</h3>
         <p>I prompt supportano due sintassi del corpo:</p>
         
         <h4>Sintassi a object literal (compatibile con le versioni precedenti)</h4>
@@ -302,7 +348,7 @@ var merged = withExamples(classify("x"), dynamic, { merge: true });
 
 await (p |> runPrompt(client));</code></pre>
         
-        <h3>9.9.2 Esempi base di prompt</h3>
+        <h3>9.8.2 Esempi base di prompt</h3>
         <h4>Prompt semplice</h4>
         <pre><code>prompt simple(task) {
     user: "Task: {task}"
@@ -333,7 +379,7 @@ var plan = planTask("Add error handling", readFile("docs.md"));</code></pre>
 
 var greeting = greet("Alice", 25);</code></pre>
         
-        <h3>9.9.3 Usare i prompt con gli agenti</h3>
+        <h3>9.8.3 Usare i prompt con gli agenti</h3>
         <p>I blocchi prompt si possono passare direttamente a <code>agent.think()</code>:</p>
         <pre><code>var client = new OpenRouterClient("openai/gpt-4");
 var agent = new CodingAgent("Dev", "developer", "");
@@ -364,7 +410,7 @@ print(review.content);</code></pre>
             <li>I metadati opzionali (<code>model</code>, <code>temperature</code>, <code>tools</code>, <code>maxTokens</code>) possono essere applicati (evoluzione futura)</li>
         </ul>
         
-        <h3>9.9.3.1 Esecuzione diretta con await</h3>
+        <h3>9.8.3.1 Esecuzione diretta con await</h3>
         <p>I prompt si possono eseguire direttamente con <code>await</code>, che chiama l'LLM e restituisce la stringa di risposta:</p>
         <pre><code>// Optional: use OpenRouter; omit to use default local LLM
 var client = new OpenRouterClient();
@@ -393,7 +439,7 @@ print(summary);  // Prints the LLM response directly</code></pre>
             <li>È una sintassi più pulita di <code>agent.think(prompt(...)).content</code></li>
         </ul>
 
-        <h3>9.9.3.2 Dichiarazioni schema per l'output strutturato</h3>
+        <h3>9.8.3.2 Dichiarazioni schema per l'output strutturato</h3>
         <p>Dichiara schema JSON riusabili con la keyword <code>schema</code>. Gli schema sono usati da <code>parseJson()</code> e dai ritorni tipizzati dei prompt (<code>-&gt; Type</code>):</p>
         <pre><code>schema Answer {
     text: string;
@@ -414,7 +460,7 @@ var parsed = parseJson('{"text":"hi","sources":["a.md"]}', "Answer");</code></pr
         <p>Tipi di campo supportati: primitivi JSON (<code>string</code>, <code>int</code>, <code>float</code>, <code>bool</code>, <code>object</code>, <code>array</code>), forme array come <code>string[]</code> o <code>Address[]</code>, <strong>altri nomi di schema dichiarati</strong> (gli oggetti nested vengono espansi inline) e <strong>sum type dichiarati</strong> (<code>intent: Intent</code> / <code>Intent[]</code> — JSON tagged <code>oneOf</code>). Usa <code>?</code> dopo il tipo per i campi opzionali. I nomi di tipo di campo sconosciuti danno errore quando lo schema viene risolto; i riferimenti ciclici tra schema vengono rifiutati. Vedi <code>Examples/Basics/schema_nested_validate.malda</code> e <code>Examples/Basics/schema_sumtype_validate.malda</code>.</p>
         <p>Per pipeline RAG end-to-end che combinano schema, prompt, retriever e pipe, vedi <code>Examples/Prompts/rag_pipeline.malda</code> e <a href="12-built-in-functions.html">12. Funzioni built-in</a> (helper di pipeline AI).</p>
 
-        <h3>9.9.3.2.1 Sum type come tipi di ritorno dei prompt</h3>
+        <h3>9.8.3.2.1 Sum type come tipi di ritorno dei prompt</h3>
         <p>Quando il modello deve scegliere <strong>una di più forme</strong> (intent), dichiara un sum type e usalo come tipo di ritorno del prompt. In caso di successo, <code>await</code> restituisce un valore variante reale per <code>match</code>:</p>
         <pre><code>type Intent =
     Search(query: string)
@@ -434,7 +480,7 @@ match intent {
 }</code></pre>
         <p>Il JSON sul filo usa un campo <code>tag</code> uguale al nome del costruttore, più campi payload nominati come i parametri del costruttore — per esempio <code>{"tag":"Buy","sku":"SKU-9","qty":2}</code> o <code>{"tag":"Help"}</code>. I tipi opzionali del payload (<code>Buy(sku: string, qty: int)</code>) diventano tipi JSON Schema per <code>validate</code> e i prompt tipizzati; i parametri solo-nome restano permissivi. Lo stesso nome non può essere insieme uno <code>schema</code> e un <code>type</code> (sum type). <code>validate("Intent", dict)</code> accetta quella forma tagged e restituisce il dict originale; non produce una variante. Vedi <code>Examples/Prompts/sum_type_intent_prompt.malda</code>, <code>Examples/Basics/sumtype_typed_payloads.malda</code>, <code>Examples/Basics/schema_sumtype_validate.malda</code> e <a href="04-data-types.html">Tipi di dati</a> per i sum type.</p>
 
-        <h3>9.9.3.2.2 API chiuse e programmi deterministici</h3>
+        <h3>9.8.3.2.2 API chiuse e programmi deterministici</h3>
         <p>Dichiara un <code>api</code> chiuso di firme di metodo. Le implementazioni sono <code>function</code> top-level ordinarie con gli stessi nomi. Un prompt tipizzato può restituire <code>program(ApiName)</code>; in caso di successo ottieni un valore programma che <code>runProgram</code> esegue <strong>senza ulteriori chiamate LLM</strong> (a differenza dei loop agente <code>@Tool</code> o di <code>executePlan</code>):</p>
         <pre><code>api Calc {
     function add(a, b);
@@ -475,7 +521,7 @@ var result = runProgram(prog);
 print(result);</code></pre>
         <p>Vedi <code>Examples/Prompts/api_program_calc.malda</code>. Un nome non può essere insieme un <code>api</code> e uno <code>schema</code> / <code>type</code> sum.</p>
 
-        <h3>9.9.3.3 Pipeline a pipe riusabili</h3>
+        <h3>9.8.3.3 Pipeline a pipe riusabili</h3>
         <p>Nomina e riusa pipeline AI a più step con dichiarazioni <code>function</code> ordinarie e l'operatore pipe (<code>|&gt;</code>). Restituisci esplicitamente il risultato finale della pipe.</p>
         <pre><code>function ragContext(question, retriever) {
     return question |> retriever.get |> formatRetrievedDocs;
@@ -529,7 +575,7 @@ setDefaultAgent(agent);
 // Now await prompt() calls will use this agent
 var result = await myPrompt("input");</code></pre>
         
-        <h3>9.9.4 Proprietà di PromptInstance</h3>
+        <h3>9.8.4 Proprietà di PromptInstance</h3>
         <p>Quando un prompt viene invocato, restituisce un oggetto <code>PromptInstance</code> con le proprietà seguenti:</p>
         <pre><code>var p = myPrompt("arg1", "arg2");
 
@@ -548,7 +594,7 @@ var userStr = p.getUser();     // Returns user prompt string
 var systemStr = p.getSystem(); // Returns system prompt string or null
 var promptStr = p.toPromptString(); // Returns user prompt (for backward compatibility)</code></pre>
         
-        <h3>9.9.5 Funzionalità avanzate dei prompt</h3>
+        <h3>9.8.5 Funzionalità avanzate dei prompt</h3>
         <h4>Prompt con metadati (sintassi a object literal)</h4>
         <pre><code>prompt advanced(task) {
     system: "You are an expert.",
@@ -594,7 +640,7 @@ print(result.user);  // Output: First: A, Second: B</code></pre>
     """
 }</code></pre>
         
-        <h3>9.9.6 Blocchi prompt e concatenazione di stringhe</h3>
+        <h3>9.8.6 Blocchi prompt e concatenazione di stringhe</h3>
         <p><strong>Prima (concatenazione di stringhe):</strong></p>
         <pre><code>var prompt = "Task: " + task + "\n\n" +
              "Documentation:\n" + docs;
@@ -626,7 +672,7 @@ var response = agent.think(planTask(task, docs));</code></pre>
             <ul>
                 <li><a href="10-classes-objects.html">10. Classi e oggetti</a> - Metodi nelle classi</li>
                 <li><a href="17-agent-orchestration.html">17. Orchestrazione di agenti</a> - Usare gli agenti con i prompt</li>
-                <li><a href="15-database.html">15. Supporto database</a> - Decoratori REST</li>
+                <li><a href="26-rest-api.html">26. Server REST API</a> - Decoratori REST</li>
             </ul>
         </div>
         <div class="nav-footer">

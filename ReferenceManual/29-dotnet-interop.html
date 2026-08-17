@@ -18,8 +18,16 @@
         <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>29. .NET Interop</span></div>
         <h1>29. .NET Interop</h1>
         <p>MALDA provides native support for loading and using external .NET libraries, enabling access to the vast .NET ecosystem including NuGet packages, custom class libraries, and framework APIs. This capability allows MALDA programs to leverage existing .NET code without rewriting it.</p>
+
+        <h2>29.1 Types already in the runtime</h2>
+        <p>You do not need a custom DLL for core BCL types. Pass the fully qualified name to <code>dotnetNew</code> or <code>getDotNetType</code>. Generic types use backtick arity: <code>List`1</code> means <code>List&lt;T&gt;</code> with one type parameter.</p>
+        <pre><code>var sb = dotnetNew("System.Text.StringBuilder");
+sb.Append("hello");
+sb.Append(" ");
+sb.Append("MALDA");
+print(sb.ToString());</code></pre>
         
-        <h2>29.1 Loading .NET Assemblies</h2>
+        <h2>29.2 Loading .NET Assemblies</h2>
         
         <h3><code>loadAssembly(pathOrName)</code></h3>
         <p>Loads a .NET assembly from a file path or by assembly name.</p>
@@ -52,7 +60,7 @@ var customLib = loadAssembly("C:\\MyLibs\\MyLibrary.dll");
 // Load by assembly name (from GAC or already loaded)
 var systemData = loadAssembly("System.Data");</code></pre>
         
-        <h2>29.2 Getting .NET Types</h2>
+        <h2>29.3 Getting .NET Types</h2>
         
         <h3><code>getDotNetType(assembly, typeName)</code> or <code>getDotNetType(fullTypeName)</code></h3>
         <p>Retrieves a .NET type from an assembly or from all loaded assemblies.</p>
@@ -87,7 +95,7 @@ var listType = getDotNetType("System.Collections.Generic.List`1");</code></pre>
             <strong>Note:</strong> For generic types, use the backtick notation (e.g., <code>List`1</code> for <code>List&lt;T&gt;</code>). The number after the backtick indicates the number of type parameters.
         </div>
         
-        <h2>29.3 Creating .NET Objects</h2>
+        <h2>29.4 Creating .NET Objects</h2>
         
         <h3><code>dotnetNew(typeOrTypeName, ...ctorArgs)</code></h3>
         <p>Creates a new instance of a .NET type.</p>
@@ -95,7 +103,7 @@ var listType = getDotNetType("System.Collections.Generic.List`1");</code></pre>
         <h4>Syntax</h4>
         <pre><code>var obj = dotnetNew(typeHandle);
 var obj = dotnetNew(typeHandle, arg1, arg2);  // With constructor arguments
-var obj = dotnetNew("System.Collections.Generic.List");  // Direct from type name</code></pre>
+var obj = dotnetNew("System.Text.StringBuilder");  // Direct from type name</code></pre>
         
         <h4>Parameters</h4>
         <ul>
@@ -117,9 +125,9 @@ var instance = dotnetNew(type);
 var instance2 = dotnetNew(type, "arg1", 42);
 
 // Direct from type name
-var list = dotnetNew("System.Collections.Generic.List");</code></pre>
+var sb = dotnetNew("System.Text.StringBuilder");</code></pre>
         
-        <h2>29.4 Using .NET Objects</h2>
+        <h2>29.5 Using .NET Objects</h2>
         
         <p>Once a .NET object is created, you can:</p>
         <ul>
@@ -153,11 +161,11 @@ print("2 + 3 = " + string(sum));
 foo.Name = "from MALDA";
 print("Foo.Name = " + foo.Name);
 
-// Use with collections
-var list = dotnetNew("System.Collections.Generic.List");
-list.Add("item1");
-list.Add("item2");
-print("List count: " + string(list.Count));</code></pre>
+// Use a BCL type already loaded (no custom DLL)
+var sb = dotnetNew("System.Text.StringBuilder");
+sb.Append("item1");
+sb.Append("item2");
+print("Length: " + string(sb.Length));</code></pre>
         <h3>Native callbacks</h3>
         <p><code>createNativeCallback(fn)</code> wraps a MALDA function so it can be handed to .NET code that expects a delegate, for example an event handler or a callback parameter on an interop object. The argument must be a function value; anything else raises an error.</p>
         <pre><code>var callback = createNativeCallback((value) => {
@@ -166,7 +174,7 @@ print("List count: " + string(list.Count));</code></pre>
 
 nativeObject.onChanged(callback);</code></pre>
         
-        <h2>29.5 Using NuGet Packages</h2>
+        <h2>29.6 Using NuGet Packages</h2>
         
         <p>To use NuGet packages in MALDA:</p>
         <ol>
@@ -185,7 +193,7 @@ var processor = dotnetNew(jsonHelperType);
 // Use the library
 var result = processor.ProcessJson(jsonString);</code></pre>
         
-        <h2>29.6 Complete Example</h2>
+        <h2>29.7 Complete Example</h2>
         
         <pre><code>// Example: Using a custom .NET library
 var asmPath = "C:\\MyLibraries\\MathUtils.dll";
@@ -203,7 +211,7 @@ print("10 + 20 = " + string(result));
 calc.Precision = 5;
 print("Precision set to: " + string(calc.Precision));</code></pre>
         
-        <h2>29.7 Implementation Notes</h2>
+        <h2>29.8 Implementation Notes</h2>
         
         <ul>
             <li><strong>Assembly Loading</strong>: Uses <code>Assembly.LoadFrom()</code> for file paths and <code>Assembly.Load()</code> for assembly names</li>
@@ -213,7 +221,7 @@ print("Precision set to: " + string(calc.Precision));</code></pre>
             <li><strong>Type Safety</strong>: Runtime type checking ensures method calls and property access are valid</li>
         </ul>
         
-        <h2>29.8 Use Cases</h2>
+        <h2>29.9 Use Cases</h2>
         
         <ul>
             <li><strong>Leverage Existing .NET Libraries</strong>: Use well-established NuGet packages without rewriting code</li>

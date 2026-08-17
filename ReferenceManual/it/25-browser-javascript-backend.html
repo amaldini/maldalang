@@ -70,23 +70,34 @@ malda compile Examples/Web/js/hello_template.malda.html --mode js -o Examples/We
         <p><code>--target js</code> è un alias di <code>--mode js</code>. <code>--target pwa</code> è un alias di <code>--mode pwa</code> e produce una directory che contiene l'app shell, il runtime e il JavaScript transpile.</p>
 
         <h2>25.4 Ordine obbligatorio di caricamento degli script</h2>
-        <p>Le pagine nel browser devono caricare gli script di runtime richiesti prima del JavaScript MALDA generato.</p>
+        <p>La pagina host deve includere un contenitore come <code>#app</code>, poi caricare gli script in quest'ordine. Stesso file: <code>Examples/Web/js/host.html</code>.</p>
         <ol>
             <li>Qualsiasi dipendenza browser richiesta per il namespace scelto, per esempio <code>three.js</code> per <code>three.*</code></li>
             <li><code>malda-js-runtime.js</code></li>
             <li>Lo script MALDA compilato</li>
             <li>La chiamata di bootstrap, come <code>MaldaApp.main()</code></li>
         </ol>
-        <pre><code>&lt;script src="../wwwroot/malda-js-runtime.js"&gt;&lt;/script&gt;
-&lt;script src="./counter.js"&gt;&lt;/script&gt;
-&lt;script&gt;
-  if (window.MaldaApp &amp;&amp; typeof window.MaldaApp.main === "function") {
-    window.MaldaApp.main();
-  }
-&lt;/script&gt;</code></pre>
+        <pre><code>&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+  &lt;meta charset="UTF-8"&gt;
+  &lt;title&gt;MALDA JS host&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;div id="app"&gt;&lt;/div&gt;
+  &lt;script src="../wwwroot/malda-js-runtime.js"&gt;&lt;/script&gt;
+  &lt;script src="./counter.js"&gt;&lt;/script&gt;
+  &lt;script&gt;
+    if (window.MaldaApp &amp;&amp; typeof window.MaldaApp.main === "function") {
+      window.MaldaApp.main();
+    }
+  &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+        <p><code>println</code> è un helper di console del backend JavaScript. L'interprete non ha <code>println</code> (usa <code>io.print</code> / <code>print</code> — vedi <a href="11-input-output.html">11. Input/Output</a>).</p>
 
         <h2>25.5 Helper DOM in API mode</h2>
-        <p>Il runtime JavaScript espone helper browser sotto <code>dom</code> per la manipolazione diretta del DOM.</p>
+        <p>Il runtime JavaScript espone helper browser sotto <code>dom</code> per la manipolazione diretta del DOM. Stesso programma: <code>Examples/Web/js/counter.malda</code> (compila con il comando in 25.3, poi apri la pagina host di 25.4).</p>
         <ul>
             <li><code>dom.query(selector, root?)</code></li>
             <li><code>dom.create(tagName)</code></li>
@@ -97,16 +108,37 @@ malda compile Examples/Web/js/hello_template.malda.html --mode js -o Examples/We
             <li><code>dom.on(target, eventName, handler, options?)</code></li>
         </ul>
         <pre><code>var root = dom.query("#app");
-var heading = dom.create("h1");
-dom.setText(heading, "Hello from MALDA JS mode");
-dom.append(root, heading);
 
-var button = dom.create("button");
-dom.setText(button, "Increment");
-dom.on(button, "click", function() {
-    println("clicked");
-});
-dom.append(root, button);</code></pre>
+if (root == null) {
+    println("No #app container found.");
+} else {
+    dom.clear(root);
+
+    var count = 0;
+
+    var title = dom.create("h1");
+    dom.setText(title, "Counter example");
+    dom.append(root, title);
+
+    var valueLabel = dom.create("p");
+    dom.append(root, valueLabel);
+
+    function renderCount() {
+        dom.setText(valueLabel, "Count: " + string(count));
+    }
+
+    var button = dom.create("button");
+    dom.setText(button, "Increment");
+    dom.append(root, button);
+
+    function onIncrementClick() {
+        count = count + 1;
+        renderCount();
+    }
+
+    dom.on(button, "click", onIncrementClick);
+    renderCount();
+}</code></pre>
 
         <h2>25.6 Sum type e pattern matching in JS mode</h2>
         <p>Puoi usare lo stesso modello di sum type e pattern matching in JavaScript backend mode come in modalità interpretata.</p>
@@ -184,6 +216,7 @@ println(text);</code></pre>
         <div class="see-also">
             <h3>Vedi anche</h3>
             <ul>
+                <li><a href="22-web-ui-hub.html">22. Panoramica Web UI</a> - Quale modello UI scegliere</li>
                 <li><a href="23-web-ui.html">23. Componenti server Web UI</a> - UI renderizzata sul server con fragment, aggiornamenti live e <code>ui.*</code></li>
                 <li><a href="24-http-server-html-ui.html">HttpServer e generazione UI HTML</a> - Hosting delle route e generazione HTML AI</li>
                 <li><a href="28-full-stack-development.html">Sviluppo full-stack con MALDA</a> - Scegliere tra UI renderizzata sul server, API-first e UI ospitata nel browser</li>

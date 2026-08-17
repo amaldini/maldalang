@@ -17,206 +17,92 @@
     <main>
         <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>15. Database Support</span></div>
         <h1>15. Database Support</h1>
-        <p>MALDA includes native support for database operations with SQL Server, PostgreSQL, and SQLite. All database clients provide connection management, raw SQL queries with parameterization, query builder APIs, and transaction support.</p>
-        
-        <h2>15.1 SqlServerClient Class</h2>
-        <p>The <code>SqlServerClient</code> class provides a SQL Server database client with full CRUD operations support.</p>
-        
-        <h3>Constructor</h3>
-        <pre><code>var db = new SqlServerClient();
-// OR
-var db = new SqlServerClient(connectionString);  // Optional connection string</code></pre>
-        
-        <h3>Connection Management</h3>
+        <p>MALDA ships three clients with the same API: <code>SqliteClient</code>, <code>SqlServerClient</code>, and <code>PostgresClient</code>. Start with SQLite — it is a file on disk, no server. Connection, parameterized SQL, the query builder, inserts, and transactions are identical on the other two; only the connection string and placeholder syntax change.</p>
+
+        <h2>15.1 SQLite from zero</h2>
+        <p>Connect, create a table, insert, query, disconnect. Parameters use <code>@name</code> (never concatenate user input into SQL). This example writes a local file; it is not marked <code>data-run</code>.</p>
+        <pre><code>var db = new SqliteClient();
+db.connect("Data Source=app.db;");
+
+db.execute("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT, email TEXT, age INTEGER)");
+db.insert("users", {name: "Jane", email: "jane@example.com", age: 30});
+
+var users = db.query("SELECT name, email FROM users WHERE age > @age", {age: 25});
+for (var i = 0; i < users.length; i++) {
+    print(users[i].name + " - " + users[i].email);
+}
+
+var one = db.select("name", "email")
+            .from("users")
+            .where("age", ">", 25)
+            .query();
+
+db.disconnect();</code></pre>
+        <p>Constructor: <code>new SqliteClient()</code> or <code>new SqliteClient(connectionString)</code>. Connection string: <code>Data Source=path/to/db.sqlite;</code>.</p>
+
+        <h2>15.2 Shared client API</h2>
+        <p>All three classes expose:</p>
         <ul>
-            <li><code>connect(connectionString)</code>: Connect to SQL Server database</li>
-            <li><code>disconnect()</code>: Close the database connection</li>
-            <li><code>isConnected</code> (property): Check if currently connected</li>
+            <li><code>connect(connectionString)</code>, <code>disconnect()</code>, <code>isConnected</code></li>
+            <li><code>query(sql, params?)</code> → array of row objects; <code>queryOne(sql, params?)</code> → one row or null; <code>execute(sql, params?)</code> → rows affected</li>
+            <li>Query builder: <code>select(...columns).from(table).where(column, operator, value).query()</code> — <code>where(column, value)</code> means <code>=</code></li>
+            <li><code>insert(table, values)</code>; <code>update(table, values)</code> and <code>delete(table)</code> require a prior <code>where</code></li>
+            <li><code>beginTransaction()</code>, <code>commit()</code>, <code>rollback()</code></li>
         </ul>
-        
-        <h3>Raw SQL Queries</h3>
-        <ul>
-            <li><code>query(sql, params?)</code> → <code>array</code>: Execute SELECT query and return array of result objects</li>
-            <li><code>queryOne(sql, params?)</code> → <code>object</code>: Execute SELECT query and return single row (or null)</li>
-            <li><code>execute(sql, params?)</code> → <code>int</code>: Execute INSERT/UPDATE/DELETE and return rows affected</li>
-        </ul>
-        
-        <h3>Query Builder API</h3>
-        <p>The query builder provides a fluent interface for building SQL queries:</p>
-        <ul>
-            <li><code>select(...columns)</code>: Start a SELECT query (returns self for chaining)</li>
-            <li><code>from(table)</code>: Specify table name (returns self for chaining)</li>
-            <li><code>where(column, operator, value)</code>: Add WHERE condition (returns self for chaining)</li>
-            <li><code>where(column, value)</code>: Shorthand for <code>where(column, "=", value)</code></li>
-            <li><code>query()</code>: Execute the built query and return results</li>
-        </ul>
-        
-        <h3>CRUD Operations</h3>
-        <ul>
-            <li><code>insert(table, values)</code>: Insert a new row (values is an object with column names as keys)</li>
-            <li><code>update(table, values)</code>: Update rows (requires where() conditions)</li>
-            <li><code>delete(table)</code>: Delete rows (requires where() conditions)</li>
-        </ul>
-        
-        <h3>Transactions</h3>
-        <ul>
-            <li><code>beginTransaction()</code>: Start a transaction</li>
-            <li><code>commit()</code>: Commit the current transaction</li>
-            <li><code>rollback()</code>: Rollback the current transaction</li>
-        </ul>
-        
-        <h3>Parameterized Queries</h3>
-        <p>SQL Server uses <code>@paramName</code> syntax for parameters. Parameters are passed as an object to prevent SQL injection:</p>
-        <pre><code>var results = db.query("SELECT * FROM users WHERE age > @age", {age: 25});</code></pre>
-        
-        <h3>Example</h3>
-        <pre><code>var db = new SqlServerClient();
-db.connect("Server=localhost;Database=mydb;User Id=user;Password=pass;");
-
-// Raw SQL with parameters
-var users = db.query("SELECT * FROM users WHERE age > @age", {age: 25});
-
-// Query builder
-var results = db.select("name", "email")
-                .from("users")
-                .where("age", ">", 25)
-                .query();
-
-// Insert
-db.insert("users", {name: "John", email: "john@example.com", age: 30});
-
-// Update
-db.update("users", {email: "newemail@example.com"})
-  .where("id", "=", 1);
-
-// Delete
-db.delete("users")
-  .where("id", "=", 1);
-
-// Transactions
-db.beginTransaction();
+        <pre><code>db.beginTransaction();
 try {
     db.execute("INSERT INTO users (name) VALUES (@name)", {name: "Test"});
     db.commit();
 } catch (e) {
     db.rollback();
-}
-
-db.disconnect();</code></pre>
-        
-        <h2>15.2 PostgresClient Class</h2>
-        <p>The <code>PostgresClient</code> class provides a PostgreSQL database client with the same interface as <code>SqlServerClient</code>.</p>
-        
-        <h3>Constructor</h3>
-        <pre><code>var db = new PostgresClient();
-// OR
-var db = new PostgresClient(connectionString);  // Optional connection string</code></pre>
-        
-        <h3>Connection Management</h3>
-        <p>Same as <code>SqlServerClient</code>: <code>connect()</code>, <code>disconnect()</code>, <code>isConnected</code></p>
-        
-        <h3>Raw SQL Queries</h3>
-        <p>Same interface as <code>SqlServerClient</code>: <code>query()</code>, <code>queryOne()</code>, <code>execute()</code></p>
-        
-        <h3>Query Builder API</h3>
-        <p>Same interface as <code>SqlServerClient</code>: <code>select()</code>, <code>from()</code>, <code>where()</code>, <code>query()</code></p>
-        
-        <h3>CRUD Operations</h3>
-        <p>Same interface as <code>SqlServerClient</code>: <code>insert()</code>, <code>update()</code>, <code>delete()</code></p>
-        
-        <h3>Transactions</h3>
-        <p>Same interface as <code>SqlServerClient</code>: <code>beginTransaction()</code>, <code>commit()</code>, <code>rollback()</code></p>
-        
-        <h3>Parameterized Queries</h3>
-        <p>PostgreSQL uses <code>$1, $2, $3...</code> syntax for parameters. Parameters are passed as an object:</p>
-        <pre><code>var results = db.query("SELECT * FROM users WHERE age > $1", {$1: 25});</code></pre>
-        
-        <h3>Example</h3>
-        <pre><code>var db = new PostgresClient();
-db.connect("Host=localhost;Database=mydb;Username=user;Password=pass;");
-
-// Raw SQL with parameters
-var users = db.query("SELECT * FROM users WHERE age > $1", {$1: 25});
-
-// Query builder (parameters handled automatically)
-var results = db.select("name", "email")
-                .from("users")
-                .where("age", ">", 25)
-                .query();
-
-// Insert, Update, Delete work the same as SqlServerClient
-db.insert("users", {name: "Jane", email: "jane@example.com", age: 30});
-
-db.disconnect();</code></pre>
-        
-        <h2>15.3 SqliteClient Class</h2>
-        <p>The <code>SqliteClient</code> class provides a SQLite database client with the same interface as <code>SqlServerClient</code>.</p>
-        
-        <h3>Constructor</h3>
-        <pre><code>var db = new SqliteClient();
-// OR
-var db = new SqliteClient(connectionString);  // Optional connection string</code></pre>
-        
-        <h3>Connection Management</h3>
-        <p>Same as <code>SqlServerClient</code>: <code>connect()</code>, <code>disconnect()</code>, <code>isConnected</code></p>
-        
-        <h3>Raw SQL Queries</h3>
-        <p>Same interface as <code>SqlServerClient</code>: <code>query()</code>, <code>queryOne()</code>, <code>execute()</code></p>
-        
-        <h3>Query Builder API</h3>
-        <p>Same interface as <code>SqlServerClient</code>: <code>select()</code>, <code>from()</code>, <code>where()</code>, <code>query()</code></p>
-        
-        <h3>CRUD Operations</h3>
-        <p>Same interface as <code>SqlServerClient</code>: <code>insert()</code>, <code>update()</code>, <code>delete()</code></p>
-        
-        <h3>Transactions</h3>
-        <p>Same interface as <code>SqlServerClient</code>: <code>beginTransaction()</code>, <code>commit()</code>, <code>rollback()</code></p>
-        
-        <h3>Parameterized Queries</h3>
-        <p>SQLite uses <code>@paramName</code> syntax for parameters. Parameters are passed as an object:</p>
-        <pre><code>var results = db.query("SELECT * FROM users WHERE age > @age", {age: 25});</code></pre>
-        
-        <h3>Example</h3>
-        <pre><code>var db = new SqliteClient();
-db.connect("Data Source=app.db;");
-
-// Raw SQL with parameters
-var users = db.query("SELECT * FROM users WHERE age > @age", {age: 25});
-
-// Query builder
-var results = db.select("name", "email")
-                .from("users")
-                .where("age", ">", 25)
-                .query();
-
-db.disconnect();</code></pre>
-        
-        <h2>15.4 Key Differences</h2>
-        <ul>
-            <li><strong>Parameter Syntax</strong>: SQL Server and SQLite use <code>@paramName</code>; PostgreSQL uses <code>$1, $2, $3...</code></li>
-            <li><strong>Connection Strings</strong>: Different formats (SQL Server: <code>Server=...;Database=...</code>; PostgreSQL: <code>Host=...;Database=...</code>; SQLite: <code>Data Source=path/to/db.sqlite;</code>)</li>
-            <li><strong>Query Builder</strong>: Automatically handles parameter numbering for PostgreSQL</li>
-        </ul>
-        
-        <h2>15.5 Security</h2>
-        <p>All database clients use parameterized queries by default, preventing SQL injection attacks. Always use parameters instead of string concatenation when building queries.</p>
-        
-        <div class="warning-box">
-            <p><strong>⚠️ Important:</strong> Never concatenate user input directly into SQL queries. Always use parameterized queries to prevent SQL injection attacks.</p>
-        </div>
-        
-        <h2>15.6 Result Objects</h2>
-        <p>Query results are returned as arrays of objects, where each object represents a row with column names as properties:</p>
-        <pre><code>var users = db.query("SELECT name, email FROM users");
-// users is an array: [{name: "John", email: "john@example.com"}, ...]
-
-for (var i = 0; i < users.length; i++) {
-    print(users[i].name + " - " + users[i].email);
 }</code></pre>
+        <p>Query results are arrays of objects whose properties are column names:</p>
+        <pre><code>var users = db.query("SELECT name, email FROM users");
+print(users[0].name + " - " + users[0].email);</code></pre>
+
+        <h2>15.3 SQL Server and PostgreSQL</h2>
+        <p>Same methods, different connection strings and placeholders. The query builder numbers PostgreSQL parameters for you.</p>
+        <table>
+            <thead>
+                <tr><th></th><th>SQLite / SQL Server</th><th>PostgreSQL</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Class</td><td><code>SqliteClient</code> / <code>SqlServerClient</code></td><td><code>PostgresClient</code></td></tr>
+                <tr><td>Connection string</td><td>SQLite: <code>Data Source=app.db;</code><br>SQL Server: <code>Server=localhost;Database=mydb;User Id=user;Password=pass;</code></td><td><code>Host=localhost;Database=mydb;Username=user;Password=pass;</code></td></tr>
+                <tr><td>Raw SQL placeholders</td><td><code>@age</code> with <code>{age: 25}</code></td><td><code>$1</code> with <code>{$1: 25}</code></td></tr>
+            </tbody>
+        </table>
+        <pre><code>var sql = new SqlServerClient();
+sql.connect("Server=localhost;Database=mydb;User Id=user;Password=pass;");
+var rows = sql.query("SELECT * FROM users WHERE age > @age", {age: 25});
+sql.disconnect();
+
+var pg = new PostgresClient();
+pg.connect("Host=localhost;Database=mydb;Username=user;Password=pass;");
+var rows2 = pg.query("SELECT * FROM users WHERE age > $1", {$1: 25});
+pg.disconnect();</code></pre>
+
+        <h2>15.4 Security</h2>
+        <p>All clients use parameterized queries. Always pass parameters as an object instead of concatenating strings.</p>
+        <div class="warning-box">
+            <p><strong>Important:</strong> Never concatenate user input directly into SQL queries. Always use parameterized queries to prevent SQL injection attacks.</p>
+        </div>
+
+        <div class="see-also">
+            <h3>See Also</h3>
+            <ul>
+                <li><a href="32-examples.html">32. Examples</a> - Catalog samples</li>
+                <li><a href="11-input-output.html">11. Input/Output</a> - Files and paths</li>
+            </ul>
+        </div>
         <div class="nav-footer">
             <a href="14-vectordb.html">← Previous: 14. VectorDB</a>
             <a href="16-actors.html">Next: 16. Actors→</a>
         </div>
+
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, at your option.</p>
+        </footer>
     </main>
     <script src="malda-highlight.js"></script>
     <script src="navigation.js"></script>

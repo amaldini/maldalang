@@ -22,82 +22,96 @@
 
         <h1>33. Property testing</h1>
 
-        <p>MALDA supporta dichiarazioni <code>property</code> a livello di linguaggio per il testing generativo deterministico, basato su seed, tramite <code>malda test</code>.</p>
+        <p>Una <code>property</code> è un invariante: una funzione che deve restituire true per molti input generati a caso. MALDA pesca quegli input da un <strong>seed</strong>, così lo stesso seed ripete le stesse prove. Usala quando pochi casi scritti a mano perderebbero un bordo (interi intorno a zero, stringhe vuote, liste corte). I flag CLI di <code>malda test</code> sono riassunti in <a href="02-tools.html">2. Strumenti e toolchain</a>; questo capitolo spiega il costrutto del linguaggio.</p>
 
-        <h2>33.1 Dichiarare ed eseguire le property</h2>
-
+        <h2>33.1 Una property che passa</h2>
+        <p>Dichiara una property come una funzione. Il corpo deve restituire un boolean. Stesso file: <code>Examples/Testing/property_core_identity.malda</code>.</p>
         <pre><code>property intIdentity(x) {
     return (x + 0) == x;
+}
+
+property boolInvolution(isFlag) {
+    return (!(!isFlag)) == isFlag;
 }</code></pre>
-
-        <p>Esegui le property con metadati di replay deterministici:</p>
-        <pre><code>malda test --iterations 100 --seed 1337</code></pre>
-
-        <h2>33.2 Fallimento → controesempio ridotto (shrunk) → artefatto di regressione</h2>
-        <p>Usa seed deterministici per fallimenti riproducibili, poi abilita in opt-in la generazione degli artefatti per catturare il controesempio canonico (shrunk) come file di regressione autonomo.</p>
-        <pre><code># Run property tests with deterministic replay metadata
-malda test ./tests --iterations 100 --seed 1337
-
-# Generate regression artifacts for failing properties
-malda test ./tests --iterations 100 --seed 1337 --write-regression
-
-# Optional custom output directory
-malda test ./tests --write-regression --regression-dir ./artifacts/regressions
-
-# Emit CI JSON consumed by IDE/Desktop "Create Regression" action
-malda test ./tests --format ci --iterations 100 --seed 1337</code></pre>
-        <p>La posizione di default degli artefatti è <code>tests/regressions</code>. I file generati sono artefatti di riproduzione deterministici <code>.spec.malda</code> e MALDA stampa ogni path con <code>Generated regression: ...</code>.</p>
-        <p>L'azione IDE/Desktop <strong>Create Regression</strong> tratta i suggerimenti CI come non attendibili: i path raccomandati vengono sanitizzati e limitati al workspace attivo prima di scrivere i file.</p>
-        <p>Il JSON CI include campi di metadati delle property per le integrazioni di tooling, tra cui <code>shrunkCounterexample</code>, <code>canGenerateRegression</code> e <code>recommendedRegressionPath</code>.</p>
-
-        <h2>33.3 Eseguire una property dentro uno script</h2>
-        <p>Puoi eseguire una property dichiarata direttamente dentro uno script MALDA usando <code>runProperty(name, iterations?, seed?)</code>.</p>
-        <pre><code>property stableIdentity(x) {
+        <p>Eseguila con un seed fisso così un fallimento di domani è lo stesso di oggi:</p>
+        <pre><code>malda test Examples/Testing/property_core_identity.malda --iterations 80 --seed 1337</code></pre>
+        <p>Puoi anche invocare una property dichiarata da MALDA ordinario con <code>runProperty(name, iterations?, seed?)</code>:</p>
+        <pre><code data-run="true" data-expect="Passed: true">property stableIdentity(x) {
     return (x + 0) == x;
 }
 
 var result = runProperty("stableIdentity", 40, 1337);
-print("Passed: " + string(result.passed));
-</code></pre>
+print("Passed: " + string(result.passed));</code></pre>
+        <p><code>runProperty(...)</code> restituisce un oggetto con <code>propertyName</code>, <code>passed</code>, <code>iterations</code>, <code>seed</code> e, in caso di fallimento, <code>failedTrial</code>, <code>error</code>, <code>counterexample</code>, <code>shrunkCounterexample</code>.</p>
 
-        <p><code>runProperty(...)</code> restituisce un oggetto con questi campi:</p>
-        <ul>
-            <li><code>propertyName</code>, <code>passed</code>, <code>iterations</code>, <code>seed</code></li>
-            <li><code>failedTrial</code>, <code>error</code>, <code>counterexample</code>, <code>shrunkCounterexample</code></li>
-        </ul>
+        <h2>33.2 Come vengono generati gli argomenti</h2>
+        <p>MALDA non prende tipi di generatore espliciti. Sceglie il generatore dal <strong>nome del parametro</strong> (senza distinzione di maiuscole):</p>
+        <table>
+            <thead>
+                <tr><th>Nome del parametro</th><th>Valori generati</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>inizia con <code>is</code> / <code>has</code>, contiene <code>flag</code>, o finisce con <code>bool</code></td><td>boolean</td></tr>
+                <tr><td>contiene <code>name</code> o <code>text</code>, o finisce con <code>string</code></td><td>stringhe (fino a 16 caratteri)</td></tr>
+                <tr><td>finisce con <code>list</code>, <code>items</code> o <code>array</code>, oppure è esattamente <code>xs</code></td><td>array di interi</td></tr>
+                <tr><td>contiene <code>any</code></td><td>un misto di int, bool, string e array corti di int</td></tr>
+                <tr><td>qualsiasi altro nome (incluso <code>x</code>)</td><td>interi da -100 a 100</td></tr>
+            </tbody>
+        </table>
+        <p>Per questo <code>boolInvolution(isFlag)</code> riceve boolean e <code>intIdentity(x)</code> riceve interi. Rinomina il parametro se il generatore è sbagliato; non esiste la sintassi <code>property foo(x: string)</code>.</p>
+
+        <h2>33.3 Una property che fallisce, shrinking e regressioni</h2>
+        <p>Quando una prova restituisce false (o lancia), MALDA registra gli argomenti come <strong>controesempio</strong>, poi li riduce (<strong>shrinking</strong>): interi più vicini a zero, stringhe e liste più corte, finché il fallimento è il più piccolo che riesce a ottenere. Il payload ridotto è quello che vuoi nel file di regressione. Stesso file: <code>Examples/Testing/property_failure_to_regression.malda</code>.</p>
+        <pre><code data-run="true" data-expect="Passed: false">property alwaysFails(x) {
+    return x == (x + 1);
+}
+
+var result = runProperty("alwaysFails", 20, 1337);
+print("Passed: " + string(result.passed));</code></pre>
+        <pre><code># Observe the failure (same seed = same trials)
+malda test Examples/Testing/property_failure_to_regression.malda --iterations 40 --seed 1337
+
+# Write a deterministic .spec.malda repro from the shrunk counterexample
+malda test Examples/Testing/property_failure_to_regression.malda --iterations 40 --seed 1337 --write-regression
+
+# Optional output directory (default: tests/regressions)
+malda test ./tests --write-regression --regression-dir ./artifacts/regressions
+
+# CI JSON for the Desktop IDE "Create Regression" action
+malda test ./tests --format ci --iterations 100 --seed 1337</code></pre>
+        <p>MALDA stampa ogni path generato come <code>Generated regression: ...</code>. L'azione Desktop <strong>Create Regression</strong> tratta i path CI come non attendibili: vengono sanitizzati e limitati al workspace prima di scrivere file. Il JSON CI include <code>shrunkCounterexample</code>, <code>canGenerateRegression</code> e <code>recommendedRegressionPath</code>.</p>
+        <div class="warning-box">
+            <strong>Non</strong> “aggiustare” una property che fallisce cambiando il seed finché passa. Correggi il codice o l'invariante; tieni il seed così il vecchio controesempio si riproduce ancora.
+        </div>
 
         <h2>33.4 Modello di capability</h2>
-        <p>Le property possono dichiarare requisiti di capability e target di backend espliciti usando i decoratori:</p>
+        <p>Le property che servono una funzionalità di runtime (actor, I/O su file, workflow) la dichiarano. Un backend che non può fornire la capability è <strong>non applicabile</strong>, non un fallimento. Stessa idea: <code>Examples/Testing/property_js_capability_skip.malda</code>.</p>
         <pre><code>@requires("core", "actors")
 @targets("interpreter", "csharp", "js")
 property actorSafetyInvariant(x) {
     return x == x;
 }</code></pre>
-
         <ul>
-            <li><code>@requires(...)</code>: dichiara i tag di capability richiesti dalla property.</li>
-            <li><code>@targets(...)</code>: dichiara le modalità di backend in cui la property è attesa.</li>
+            <li><code>@requires(...)</code>: tag di capability di cui la property ha bisogno</li>
+            <li><code>@targets(...)</code>: backend in cui è attesa</li>
         </ul>
-
-        <p>I tag di modulo di capability supportati per <code>@requires(...)</code> sono:</p>
+        <p>Tag <code>@requires</code> supportati:</p>
         <ul>
             <li><strong>Interprete</strong>: <code>core</code>, <code>file-io</code>, <code>actors</code>, <code>workflows</code>, <code>dotnet-interop</code>, <code>host-interop</code></li>
             <li><strong>CSharp</strong>: <code>core</code>, <code>file-io</code>, <code>actors</code>, <code>workflows</code>, <code>dotnet-interop</code>, <code>host-interop</code></li>
             <li><strong>JS</strong>: <code>core</code>, <code>web-dom</code>, <code>game-canvas</code></li>
         </ul>
-        <p>Se una property richiede una capability non supportata da un backend, quel backend viene riportato come <strong>non applicabile</strong> (non come fallimento).</p>
-
         <p>La matrice di capability è la fonte di verità per l'idoneità dei backend tra <code>interpreter</code>, <code>csharp</code> e <code>js</code>.</p>
 
         <h2>33.5 Limitazioni JavaScript e semantica di skip</h2>
-        <p>La parità del backend JavaScript è condizionata dalle capability. Se una property richiede capability JS non supportate, MALDA riporta la modalità JS come <strong>non applicabile</strong> con un motivo. Questo non conta come fallimento di parità per i backend supportati.</p>
+        <p>La parità del backend JavaScript è condizionata dalle capability. Se una property richiede capability JS non supportate, MALDA riporta JS come <strong>non applicabile</strong> con un motivo. Questo non fa fallire la parità dei backend che hanno girato.</p>
         <p>Per le property idonee a JS in cui un harness JS delle property non è ancora abilitato, MALDA riporta JS come <strong>skipped</strong> con un motivo esplicito in stile TODO, invece di far fallire la parità.</p>
 
         <div class="see-also">
             <h3>Vedi anche</h3>
             <ul>
-                <li><a href="02-tools.html">2. Strumenti e toolchain</a> - Comandi CLI di test e contesto dei workflow</li>
-                <li><a href="32-examples.html">32. Esempi</a> - Campioni d'uso end-to-end</li>
+                <li><a href="02-tools.html">2. Strumenti e toolchain</a> - Comandi CLI di test</li>
+                <li><a href="32-examples.html">32. Esempi</a> - Campione breve del catalogo</li>
                 <li><a href="34-grammar.html">34. Grammatica</a> - Sintassi delle dichiarazioni property</li>
             </ul>
         </div>
