@@ -585,66 +585,66 @@ var agent = new DevAgent("Dev", "developer", "You are a developer.", null, ".");
 var result = executePlan(plan, agent);
 print(result.completed);
 print(result.results);</code></pre>
-        <h2>17.14 SPLCodingAgent</h2>
-        <p>The <code>SPLCodingAgent</code> class is a specialized agent for MALDA script development and toolchain operations that automatically includes all file operation tools and MALDA execution/compilation tools.</p>
+        <h2>17.14 MALDACodingAgent</h2>
+        <p>The <code>MALDACodingAgent</code> class is a specialized agent for MALDA script development and toolchain operations that automatically includes all file operation tools and MALDA execution/compilation tools.</p>
         <h3>Included Tools</h3>
-        <p>SPLCodingAgent automatically includes the following tools:</p>
+        <p>MALDACodingAgent automatically includes the following tools:</p>
         <ul>
             <li><strong>File tools:</strong> <code>read_file</code>, <code>write_file</code>, <code>replace_in_file</code>, <code>insert_at_line</code>, <code>edit_file</code>, <code>grep</code>, <code>list_directory</code></li>
-            <li><strong>MALDA tools:</strong> <code>run_spl</code>, <code>compile_spl</code></li>
+            <li><strong>MALDA tools:</strong> <code>run_malda</code>, <code>compile_malda</code></li>
         </ul>
         <h3>Constructor</h3>
         <pre><code>// Simplest form - uses default local LLM (auto-download from Hugging Face)
-var agent = new SPLCodingAgent(name, role, instructions);
+var agent = new MALDACodingAgent(name, role, instructions);
 
 // With custom working directory
-var agent = new SPLCodingAgent(name, role, instructions, workingDirectory);
+var agent = new MALDACodingAgent(name, role, instructions, workingDirectory);
 
 // With custom client
-var agent = new SPLCodingAgent(name, role, instructions, client);
+var agent = new MALDACodingAgent(name, role, instructions, client);
 
 // With custom client and working directory
-var agent = new SPLCodingAgent(name, role, instructions, client, workingDirectory);</code></pre>
+var agent = new MALDACodingAgent(name, role, instructions, client, workingDirectory);</code></pre>
         <h3>Example</h3>
-        <pre><code>// Simplest usage - SPLCodingAgent uses default local LLM
-var splAgent = new SPLCodingAgent(
-    "SPLDeveloper",
+        <pre><code>// Simplest usage - MALDACodingAgent uses default local LLM
+var maldaAgent = new MALDACodingAgent(
+    "MALDADeveloper",
     "MALDA script developer",
     "You write, test, and compile MALDA scripts. Always verify your changes work by running the code."
 );
 
 // Agent already has all MALDA development tools - ready to use!
 // Can handle MALDA workflow: edit, run, compile, test
-var response = splAgent.think("Read example.MALDA, add error handling, test it with run_spl, and compile it");
+var response = maldaAgent.think("Read example.malda, add error handling, test it with run_malda, and compile it");
 print(response.content);</code></pre>
         <h3>Example with Custom Client</h3>
         <pre><code>var client = new OpenRouterClient("openai/gpt-4");
 
-var splAgent = new SPLCodingAgent(
-    "SPLMaster",
-    "SPL expert",
+var maldaAgent = new MALDACodingAgent(
+    "MALDAMaster",
+    "MALDA expert",
     "You develop MALDA scripts with best practices and thorough testing.",
     client
 );
 
-// Agent can handle SPL development workflow
-var response = splAgent.think("Create a new MALDA script that calculates fibonacci numbers, test it, and compile it");</code></pre>
+// Agent can handle MALDA development workflow
+var response = maldaAgent.think("Create a new MALDA script that calculates fibonacci numbers, test it, and compile it");</code></pre>
         <h3>Example with Working Directory</h3>
         <pre><code>var client = new OpenRouterClient("openai/gpt-4");
 
-var splAgent = new SPLCodingAgent(
-    "SPLHelper",
-    "SPL assistant",
+var maldaAgent = new MALDACodingAgent(
+    "MALDAHelper",
+    "MALDA assistant",
     "You help develop and test MALDA scripts.",
     client,
-    "./spl-scripts"  // Restrict operations to ./spl-scripts directory
+    "./malda-scripts"  // Restrict operations to ./malda-scripts directory
 );
 
-// Agent can only access files within ./spl-scripts
-var response = splAgent.think("List all MALDA files and improve error handling in each one");</code></pre>
-        <h3>When to Use SPLCodingAgent vs DevAgent vs CodingAgent</h3>
+// Agent can only access files within ./malda-scripts
+var response = maldaAgent.think("List all MALDA files and improve error handling in each one");</code></pre>
+        <h3>When to Use MALDACodingAgent vs DevAgent vs CodingAgent</h3>
         <ul>
-            <li>Use <code>SPLCodingAgent</code> when you need MALDA-specific development: file operations + MALDA execution/compilation (focused on MALDA script development)</li>
+            <li>Use <code>MALDACodingAgent</code> when you need MALDA-specific development: file operations + MALDA execution/compilation (focused on MALDA script development)</li>
             <li>Use <code>DevAgent</code> when you need a complete development workflow: file operations, git operations, command execution, and user interaction</li>
             <li>Use <code>CodingAgent</code> when you only need file operations and command execution (lighter weight, fewer tools, for general coding tasks)</li>
             <li>Use <code>GitAgent</code> when you only need git operations</li>

@@ -3070,12 +3070,12 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("}");
         WriteIndent();
-        _output.AppendLine("else if (instance is MaldaLang.BuiltIns.MALDACodingAgentInstance splCodingAgent)");
+        _output.AppendLine("else if (instance is MaldaLang.BuiltIns.MALDACodingAgentInstance maldaCodingAgent)");
         WriteIndent();
         _output.AppendLine("{");
         _indentLevel++;
         WriteIndent();
-        _output.AppendLine("result = splCodingAgent.CallMethod(methodName, runtimeArgs);");
+        _output.AppendLine("result = maldaCodingAgent.CallMethod(methodName, runtimeArgs);");
         _indentLevel--;
         WriteIndent();
         _output.AppendLine("}");

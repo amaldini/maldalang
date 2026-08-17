@@ -11,7 +11,7 @@ if (apiKey == null) {
     var client = new OpenRouterClient("openai/gpt-4");
     
     // Create MALDACodingAgent - specialized agent for MALDA development and MCP agent creation
-    var splCodingAgent = new MALDACodingAgent(
+    var maldaCodingAgent = new MALDACodingAgent(
         "MALDACodingAgent",
         "MALDA Development Specialist",
         "You are a specialized agent for MALDA script development and MCP agent creation. " +
@@ -56,7 +56,7 @@ if (apiKey == null) {
     
     // Add MALDACodingAgent as a subagent to the Orchestrator
     orchestrator.addSubAgent(
-        splCodingAgent,
+        maldaCodingAgent,
         "Creates and manages MCP agents dynamically. " +
         "When you need to create an external MCP agent, use this tool. " +
         "Provide the agent name, role, instructions, and tools as a prompt. " +

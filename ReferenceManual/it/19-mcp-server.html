@@ -120,7 +120,7 @@ var response = agent.think("Add 5 and 3");
 print(response.content);
 mcpClient.disconnect();</code></pre>
         <h2>19.6 Avanzato: generare uno script</h2>
-        <p><code>createMcpAgentScript(agentName, agentRole, agentInstructions, tools, outputPath, model?)</code> scrive un file <code>.malda</code> che espone un agente come tool MCP. È un <strong>generatore di codice</strong>, non una sessione STDIO live: preferisci <code>callTool</code> o <code>createWrapperAgent</code> finché non ti serve emettere un file. Abbinalo a <code>SPLCodingAgent</code> in <a href="17-agent-orchestration.html">17. Orchestrazione di agenti</a> e a <code>compileMALDA</code> in <a href="12-built-in-functions.html">12. Funzioni built-in</a> solo quando un agente deve generare e compilare MALDA.</p>
+        <p><code>createMcpAgentScript(agentName, agentRole, agentInstructions, tools, outputPath, model?)</code> scrive un file <code>.malda</code> che espone un agente come tool MCP. È un <strong>generatore di codice</strong>, non una sessione STDIO live: preferisci <code>callTool</code> o <code>createWrapperAgent</code> finché non ti serve emettere un file. Abbinalo a <code>MALDACodingAgent</code> in <a href="17-agent-orchestration.html">17. Orchestrazione di agenti</a> e a <code>compileMALDA</code> in <a href="12-built-in-functions.html">12. Funzioni built-in</a> solo quando un agente deve generare e compilare MALDA.</p>
 
         <div class="see-also">
             <h3>Vedi anche</h3>

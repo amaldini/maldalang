@@ -29,15 +29,15 @@ print(readFile("calculator.malda"));
 print("\n");
 
 // Using MALDACodingAgent - automatically includes file tools and MALDA execution/compilation tools
-var splAgent = new MALDACodingAgent(
-    "SPLDeveloper",
+var maldaAgent = new MALDACodingAgent(
+    "MALDADeveloper",
     "MALDA script developer",
     "You write, test, and compile MALDA scripts. Always verify your changes work by running the code. Add proper error handling."
 );
 
 print("Agent improving calculator.malda...");
 // Agent will: read the file, add error handling, test it, and compile it
-var response = splAgent.think("Read calculator.malda, add error handling to the divide function to prevent division by zero, test it with run_malda, and compile it to calculator.exe");
+var response = maldaAgent.think("Read calculator.malda, add error handling to the divide function to prevent division by zero, test it with run_malda, and compile it to calculator.exe");
 print(response.content);
 print("\n");
 

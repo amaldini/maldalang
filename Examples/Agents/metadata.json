@@ -148,11 +148,11 @@
     {
       "name": "MALDACodingAgent - MALDA Development",
       "description": "MALDACodingAgent for MALDA script development with file tools, MALDA execution, and compilation",
-      "file": "agent_spl_development.malda",
+      "file": "agent_malda_development.malda",
       "track": "showcase",
       "difficulty": "advanced",
       "minutes": 25,
-      "concepts": ["CodingAgent", "compilation", "MALDA self-hosting", "developer workflow"],
+      "concepts": ["MALDACodingAgent", "compilation", "MALDA self-hosting", "developer workflow"],
       "prerequisites": ["Agents/multi_agent_file_workflow.malda"],
       "learningGoal": "Expose MALDA's premium developer-platform angle once the learner already understands basic agent concepts.",
       "expectedOutput": "Runs a MALDA-focused agent workflow with execution and compilation support.",

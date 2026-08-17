@@ -11,7 +11,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | File | EN SHA-256 |
 |------|------------|
 | index.html | f330a08959ded3e4db2cd05a51722224823c7bdb3b6a906946ff0d307a5cfd52 |
-| 01-introduction.html | 6dd88097649375f33d153bf27918923f0f6575298000d5146e84573db25e5199 |
+| 01-introduction.html | 4d1297fd723ad5e4dbd295dc695de661c4c944ae06ceeaccbf3914face17d73b |
 | 02-tools.html | fc97ec4ec67f3437b4d412077b855627b5f8476d605d76d3f50b7f0997a6f41e |
 | 03-lexical-structure.html | 099b6785db6349de145a6b2357eae96dd51c336da57627e30569cea7a86e9d8f |
 | 04-data-types.html | c50a4b490c61598be0cde29adde77de4117e797dd93fde5173fec684508b1f40 |
@@ -27,9 +27,9 @@ python3 scripts/sync-reference-manual-it-status.py
 | 14-vectordb.html | d7eb90d0fad5719b4e1b91190f85db2adddc23452cdae82f7450670ce7882d2b |
 | 15-database.html | aa67a66d4819356ddfcfc3d03537268368edcd6d929da7ce21fab75c54d42134 |
 | 16-actors.html | fb571cd7f38ae35c1f10f5d485f145324a7845ffd5861b26e1e360d69fa74155 |
-| 17-agent-orchestration.html | aba14e2ba4174f36bfd31e28638b4f5e619b0f97e2da0bea60dee0452e5930b3 |
+| 17-agent-orchestration.html | fcf4aa349d1b82605e971b461bc2affbf494fd9c5f4e5fdb45f25119f85ae2b3 |
 | 18-graph-memory.html | b3e44b42c6e1cb9642c41ac09c542d61380f26e32fd43ac757cfd0e26f8f7c0a |
-| 19-mcp-server.html | fe51c15f987d5ec44e5975858e5e2cf96e22d38d70bb5d50a1de60fb1ed55ddc |
+| 19-mcp-server.html | 8869d211f2336ead1269c54925e590239dd3d2097011b95f8d494ea24288212b |
 | 20-acp.html | 09988d7682eb3b1813a26ffdc285184c8e69e14a22879d9c08db8f3b95ee08ed |
 | 21-durable-workflows.html | 9239aadba9fb1302e199bc8301443d4036014581f2fc5de3c006e1a7f1bb7dd8 |
 | 22-web-ui-hub.html | c5250a7d2633bb7126a54a94d5d7ee41a38c763a13ddeabacf786c75bdc7d1be |

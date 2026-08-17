@@ -3851,15 +3851,15 @@ public partial class Interpreter
             if (member == "instructions")
                 return RuntimeValue.String(devAgent.Instructions);
         }
-        else if (instance is BuiltIns.MALDACodingAgentInstance splCodingAgent)
+        else if (instance is BuiltIns.MALDACodingAgentInstance maldaCodingAgent)
         {
             // MALDACodingAgentInstance inherits from AgentInstance, so it has the same properties
             if (member == "name")
-                return RuntimeValue.String(splCodingAgent.Name);
+                return RuntimeValue.String(maldaCodingAgent.Name);
             if (member == "role")
-                return RuntimeValue.String(splCodingAgent.Role);
+                return RuntimeValue.String(maldaCodingAgent.Role);
             if (member == "instructions")
-                return RuntimeValue.String(splCodingAgent.Instructions);
+                return RuntimeValue.String(maldaCodingAgent.Instructions);
         }
         else if (instance is BuiltIns.SqlServerClientInstance sqlServerClient)
         {
@@ -3947,10 +3947,10 @@ public partial class Interpreter
             // DevAgentInstance inherits from AgentInstance, so it can use the same CallMethod
             return devAgent.CallMethod(methodName, arguments);
         }
-        else if (instance is BuiltIns.MALDACodingAgentInstance splCodingAgent)
+        else if (instance is BuiltIns.MALDACodingAgentInstance maldaCodingAgent)
         {
             // MALDACodingAgentInstance inherits from AgentInstance, so it can use the same CallMethod
-            return splCodingAgent.CallMethod(methodName, arguments);
+            return maldaCodingAgent.CallMethod(methodName, arguments);
         }
         else if (instance is BuiltIns.MCPClientInstance mcpClient)
         {
@@ -4763,7 +4763,7 @@ public partial class Interpreter
                 else if (clientObj is BuiltIns.LlamaCppClientInstance llamaClientInstance)
                 {
                     // Create MALDACodingAgent with LlamaCppClient
-                    var llamaSplCodingAgent = new BuiltIns.MALDACodingAgentInstance(
+                    var llamaMaldaCodingAgent = new BuiltIns.MALDACodingAgentInstance(
                         name.AsString(),
                         role.AsString(),
                         instructions.AsString(),
@@ -4771,13 +4771,13 @@ public partial class Interpreter
                         workingDirectory,
                         _inputProvider
                     );
-                    llamaSplCodingAgent.SetInterpreter(this);
-                    return RuntimeValue.Object(llamaSplCodingAgent);
+                    llamaMaldaCodingAgent.SetInterpreter(this);
+                    return RuntimeValue.Object(llamaMaldaCodingAgent);
                 }
                 else if (clientObj is BuiltIns.LLMClientBridge.LLMClientBridgeInstance bridgeClient)
                 {
                     // Create MALDACodingAgent with LLMClientBridge
-                    var bridgeSplCodingAgent = new BuiltIns.MALDACodingAgentInstance(
+                    var bridgeMaldaCodingAgent = new BuiltIns.MALDACodingAgentInstance(
                         name.AsString(),
                         role.AsString(),
                         instructions.AsString(),
@@ -4787,8 +4787,8 @@ public partial class Interpreter
                         workingDirectory ?? ".",
                         _inputProvider
                     );
-                    bridgeSplCodingAgent.SetInterpreter(this);
-                    return RuntimeValue.Object(bridgeSplCodingAgent);
+                    bridgeMaldaCodingAgent.SetInterpreter(this);
+                    return RuntimeValue.Object(bridgeMaldaCodingAgent);
                 }
                 else
                 {
@@ -4810,7 +4810,7 @@ public partial class Interpreter
             }
         }
         
-        var splCodingAgent = new BuiltIns.MALDACodingAgentInstance(
+        var maldaCodingAgent = new BuiltIns.MALDACodingAgentInstance(
             name.AsString(), 
             role.AsString(), 
             instructions.AsString(), 
@@ -4818,9 +4818,9 @@ public partial class Interpreter
             workingDirectory, 
             _inputProvider
         );
-        splCodingAgent.SetInterpreter(this);
+        maldaCodingAgent.SetInterpreter(this);
         
-        return RuntimeValue.Object(splCodingAgent);
+        return RuntimeValue.Object(maldaCodingAgent);
     }
     
     private async Task<RuntimeValue> CreateRestServerAsync(List<Expression> args)
