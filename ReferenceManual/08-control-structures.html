@@ -222,6 +222,16 @@ match obj {
             <li>Missing properties cause the pattern to not match</li>
         </ul>
         
+        <h4>Guards</h4>
+        <p>An optional <code>if</code> condition after the pattern gates the case. The pattern is tried first; bindings from the pattern are in scope for the condition. If the condition is false, the next case is tried. This is the same <code>if</code> word as guarded <code>catch (e if …)</code>.</p>
+        <pre><code data-run="true" data-expect="small">var n = 3;
+var result = match n {
+    case x if x > 10: "big";
+    case x: "small";
+};
+print(result);</code></pre>
+        <p>Under <code>--strict-types</code>, a guarded arm does not count as covering a variant or as a catch-all: <code>case Ok(v) if v &gt; 0</code> does not exhaust <code>Ok</code>, and <code>case x if …</code> is not a default.</p>
+        
         <h3>Default Case</h3>
         <p>The <code>default</code> case is optional and matches when no other pattern matches:</p>
         <pre><code>match x {
@@ -255,8 +265,9 @@ match response {
         <div class="info-box">
             <strong>Pattern Matching Tips:</strong>
             <ul>
-                <li>Patterns are matched in order - the first matching pattern executes</li>
+                <li>Patterns are matched in order - the first matching pattern whose optional <code>if</code> guard succeeds executes</li>
                 <li>Identifier patterns always match, so put them after more specific patterns</li>
+                <li>A failed <code>if</code> guard tries the next case; an <code>if</code> inside the case body does not</li>
                 <li>Use wildcard patterns (<code>_</code>) when you don't need the value</li>
                 <li>Nested patterns allow deep matching of complex data structures</li>
                 <li>Variables bound in patterns are scoped to the case body</li>

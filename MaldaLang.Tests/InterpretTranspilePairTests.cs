@@ -70,4 +70,23 @@ public class InterpretTranspilePairTests
             """,
             "integer-sink-repeat");
     }
+
+    [Fact]
+    public void MatchGuard_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            var n = 3;
+            io.print(match n {
+                case x if x > 10: "big";
+                case x: "small";
+            });
+            var m = 20;
+            io.print(match m {
+                case x if x > 10: "big";
+                case x: "small";
+            });
+            """,
+            "match-guard");
+    }
 }

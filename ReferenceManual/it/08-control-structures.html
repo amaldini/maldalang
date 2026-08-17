@@ -223,6 +223,16 @@ match obj {
             <li>Le proprietà mancanti fanno sì che il pattern non corrisponda</li>
         </ul>
         
+        <h4>Guardie</h4>
+        <p>Una condizione <code>if</code> opzionale dopo il pattern filtra il case. Prima si prova il pattern; i binding del pattern sono visibili nella condizione. Se la condizione è falsa, si prova il case successivo. È la stessa parola <code>if</code> di <code>catch (e if …)</code>.</p>
+        <pre><code data-run="true" data-expect="small">var n = 3;
+var result = match n {
+    case x if x > 10: "big";
+    case x: "small";
+};
+print(result);</code></pre>
+        <p>Con <code>--strict-types</code>, un braccio con guardia non copre una variant e non vale come catch-all: <code>case Ok(v) if v &gt; 0</code> non esaurisce <code>Ok</code>, e <code>case x if …</code> non è un default.</p>
+        
         <h3>Case default</h3>
         <p>Il case <code>default</code> è opzionale e corrisponde quando nessun altro pattern corrisponde:</p>
         <pre><code>match x {
@@ -256,8 +266,9 @@ match response {
         <div class="info-box">
             <strong>Consigli sul pattern matching:</strong>
             <ul>
-                <li>I pattern vengono confrontati in ordine: viene eseguito il primo che corrisponde</li>
+                <li>I pattern vengono confrontati in ordine: viene eseguito il primo che corrisponde e la cui guardia <code>if</code> opzionale ha successo</li>
                 <li>I pattern identificatore corrispondono sempre, quindi mettili dopo i pattern più specifici</li>
+                <li>Una guardia <code>if</code> fallita prova il case successivo; un <code>if</code> dentro il corpo del case no</li>
                 <li>Usa i pattern wildcard (<code>_</code>) quando non ti serve il valore</li>
                 <li>I pattern nidificati permettono il matching in profondità di strutture dati complesse</li>
                 <li>Le variabili legate nei pattern hanno scope nel corpo del case</li>

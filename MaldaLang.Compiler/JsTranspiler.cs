@@ -774,7 +774,9 @@ public class JsTranspiler
                 ExpressionProducesPromise(ternary.ElseBranch),
             MatchExpression match =>
                 ExpressionProducesPromise(match.Value) ||
-                match.Cases.Any(c => StatementRequiresAsync(c.Body)) ||
+                match.Cases.Any(c =>
+                    (c.Guard != null && ExpressionProducesPromise(c.Guard)) ||
+                    StatementRequiresAsync(c.Body)) ||
                 (match.DefaultCase != null && StatementRequiresAsync(match.DefaultCase)),
             MemberAccessExpression member => ExpressionProducesPromise(member.Object),
             ArrayAccessExpression arrayAccess =>
@@ -890,7 +892,19 @@ public class JsTranspiler
                 builder.Append("\"]; ");
             }
 
-            builder.Append(TranspileMatchBody(matchCase.Body));
+            if (matchCase.Guard != null)
+            {
+                builder.Append("if (mlRuntime.isTruthy(");
+                builder.Append(TranspileExpression(matchCase.Guard));
+                builder.Append(")) { ");
+                builder.Append(TranspileMatchBody(matchCase.Body));
+                builder.Append(" }");
+            }
+            else
+            {
+                builder.Append(TranspileMatchBody(matchCase.Body));
+            }
+
             builder.Append(" } } ");
         }
 
@@ -1679,7 +1693,9 @@ public class JsTranspiler
                 ExpressionRequiresAsync(ternary.ElseBranch),
             MatchExpression match =>
                 ExpressionRequiresAsync(match.Value) ||
-                match.Cases.Any(c => StatementRequiresAsync(c.Body)) ||
+                match.Cases.Any(c =>
+                    (c.Guard != null && ExpressionRequiresAsync(c.Guard)) ||
+                    StatementRequiresAsync(c.Body)) ||
                 (match.DefaultCase != null && StatementRequiresAsync(match.DefaultCase)),
             FunctionCallExpression functionCall => FunctionCallProducesPromise(functionCall),
             MemberAccessExpression member => ExpressionRequiresAsync(member.Object),

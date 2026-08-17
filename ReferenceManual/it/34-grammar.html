@@ -148,7 +148,7 @@ DeferStmt   ::= "defer" Block
 UsingResourceStmt ::= "using" Identifier "=" Expression Block
 
 MatchStmt   ::= "match" Expression "{" MatchCase* DefaultCase? "}" (";")?
-MatchCase   ::= "case" Pattern ":" Statement (";")?
+MatchCase   ::= "case" Pattern ("if" Expression)? ":" Statement (";")?
 DefaultCase ::= "default" ":" Statement (";")?
 ExpressionStmt ::= Expression ";"
 

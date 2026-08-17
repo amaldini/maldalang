@@ -12231,28 +12231,39 @@ public class CSharpTranspiler
         for (int i = 0; i < match.Cases.Count; i++)
         {
             var matchCase = match.Cases[i];
-            if (i > 0) _output.Append(" else ");
-            TranspileMatchCase(valueVar, matchCase.Pattern, matchCase.Body);
+            TranspileMatchCase(valueVar, matchCase.Pattern, matchCase.Body, matchCase.Guard);
         }
         if (match.DefaultCase != null)
         {
-            _output.Append(" else { ");
+            _output.Append(" { ");
             TranspileMatchBody(match.DefaultCase);
             _output.Append("}");
         }
         else
         {
-            _output.Append(" else { throw new RuntimeException(\"Match expression had no matching case and no default case.\"); }");
+            _output.Append(" { throw new RuntimeException(\"Match expression had no matching case and no default case.\"); }");
         }
         _output.Append(" }))()");
     }
 
-    private void TranspileMatchCase(string valueVar, Pattern pattern, Statement body)
+    private void TranspileMatchCase(string valueVar, Pattern pattern, Statement body, Expression? guard)
     {
         _output.Append("if (");
         TranspileMatchCondition(valueVar, pattern);
         _output.Append(") { ");
-        TranspileMatchBindAndBody(valueVar, pattern, body);
+        EmitMatchPatternBindings(valueVar, pattern);
+        if (guard != null)
+        {
+            _output.Append("if (RuntimeHelpers.CoerceToBool(");
+            TranspileExpression(guard);
+            _output.Append(")) { ");
+            TranspileMatchBody(body);
+            _output.Append(" }");
+        }
+        else
+        {
+            TranspileMatchBody(body);
+        }
         _output.Append(" }");
     }
 
@@ -12395,12 +12406,6 @@ public class CSharpTranspiler
                 _output.Append(")");
             }
         }
-    }
-
-    private void TranspileMatchBindAndBody(string valueVar, Pattern pattern, Statement body)
-    {
-        EmitMatchPatternBindings(valueVar, pattern);
-        TranspileMatchBody(body);
     }
 
     private void EmitMatchPatternBindings(string valueVar, Pattern pattern)

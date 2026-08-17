@@ -9,7 +9,7 @@
 
 | Construct | Example case file | Spec § |
 |-----------|-------------------|--------|
-| `match` | `match-literal.malda`, `match-object-*.malda`, `match-array-rest.malda` | §9 |
+| `match` | `match-literal.malda`, `match-object-*.malda`, `match-array-rest.malda`, `match-guard.malda` | §9 |
 | Dictionary missing key → `null` | `dict-missing-null.malda` | §5.3 |
 | `typeOf` / `isTag` | `typeof-*.malda`, `is-tag-legacy.malda` | §4.3 |
 | Sum types + `match` | `sum-type-match.malda`, `sum-type-err-branch.malda` | §8–9 |
@@ -58,7 +58,7 @@ Eleven `[Theory]` facts delegate to file cases (spec §15 T0-01…T0-06 anchors)
 
 ## Remaining (post–Phase 5)
 
-- JavaScript Tier 0 gap closure (89/101 enabled — [phase-5-js-tier0-rollout.md](phase-5-js-tier0-rollout.md))
+- JavaScript Tier 0 gap closure (90/102 enabled — [phase-5-js-tier0-rollout.md](phase-5-js-tier0-rollout.md))
 - Optional: migrate remaining `PatternMatchingTests` edge cases if not covered by file suite
 
 ## Regenerate builtin inventory

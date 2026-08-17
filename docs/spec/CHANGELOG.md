@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — match case guards)
+
+- **`case Pattern if expr:`** optional guard on `match` arms, same `if` word as `catch (e if …)`. Pattern binds first; a falsy guard skips the arm and tries the next case. Interpreter, C# transpile, and JS agree on boolean predicates. Under `--strict-types`, a guarded arm does not cover a variant or count as a catch-all. Conformance: `match-guard.malda`. Grammar: [`34-grammar.html`](../../ReferenceManual/34-grammar.html); narrative: [`08-control-structures.html`](../../ReferenceManual/08-control-structures.html).
+
 #### Removed (MAJOR — function keyword aliases)
 
 - **`fn` / `def`:** no longer tokenize as `function`. The parser rejects them with *`fn`/`def` is not a function keyword. Use `function`.* Previously accepted programs that used the aliases are now syntax errors. IDE no longer offers `fn`/`def` completions. Spec §3 / grammar `FunctionDecl` / reserved-word lists updated.

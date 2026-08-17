@@ -126,7 +126,7 @@ SendOptions ::= "then" "(" Identifier ")" Block
               | "timeout" Expression ("catch" "(" Identifier ")" Block)?
 
 MatchStmt   ::= "match" Expression "{" MatchCase* DefaultCase? "}" (";")?
-MatchCase   ::= "case" Pattern ":" Statement (";")?
+MatchCase   ::= "case" Pattern ("if" Expression)? ":" Statement (";")?
 DefaultCase ::= "default" ":" Statement (";")?
 ExpressionStmt ::= Expression ";"
 

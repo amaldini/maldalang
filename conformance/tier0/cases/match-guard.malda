@@ -1,0 +1,6 @@
+var n = 3;
+var result = match n {
+    case x if x > 10: "big";
+    case x: "small";
+};
+print(result);

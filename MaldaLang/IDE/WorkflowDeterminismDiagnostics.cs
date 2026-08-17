@@ -319,7 +319,11 @@ public static class WorkflowDeterminismDiagnostics
                 case MatchExpression match:
                     VisitExpression(match.Value, checkCalls, depth);
                     foreach (var arm in match.Cases)
+                    {
+                        if (arm.Guard != null)
+                            VisitExpression(arm.Guard, checkCalls, depth);
                         VisitStatement(arm.Body, checkCalls, depth);
+                    }
                     if (match.DefaultCase != null)
                         VisitStatement(match.DefaultCase, checkCalls, depth);
                     break;

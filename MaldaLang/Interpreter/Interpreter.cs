@@ -5915,12 +5915,18 @@ public partial class Interpreter
                     {
                         caseEnv.Define(binding.Key, binding.Value);
                     }
-                    
-                    // Execute case body in the new environment
+
                     var previousEnv = _environment;
                     try
                     {
                         _environment = caseEnv;
+                        if (matchCase.Guard != null)
+                        {
+                            var guardValue = await EvaluateAsync(matchCase.Guard);
+                            if (!guardValue.IsTruthy())
+                                continue;
+                        }
+
                         return await EvaluateMatchBodyAsync(matchCase.Body);
                     }
                     finally

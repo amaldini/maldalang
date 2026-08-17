@@ -218,7 +218,7 @@ var result = match subject {
 
 - `match` is an **expression**; it produces a value.
 - It may also appear as a **statement**; optional trailing `;` is accepted after the closing `}`.
-- Cases are tried **in source order**; the first matching pattern wins.
+- Cases are tried **in source order**; the first matching pattern whose optional guard succeeds wins.
 
 ### 9.2 Patterns (Tier 0)
 
@@ -238,14 +238,31 @@ If no case matches and there is no `default`, evaluation throws: `Match expressi
 
 ### 9.3 Case body environment
 
-Bindings introduced by the pattern are visible only in that case’s body. The case body runs in a **child environment** chained to the environment active at the `match`; outer bindings remain visible unless shadowed.
+Bindings introduced by the pattern are visible in that case’s optional guard and body. The case body runs in a **child environment** chained to the environment active at the `match`; outer bindings remain visible unless shadowed.
 
 ### 9.4 Case body value
 
 - **Expression statement** body: value is the expression result.
 - **Block** body: **last expression wins** — if the last statement is an expression statement, its value is the result; otherwise the result is `null`.
 
-**Conformance:** `match-literal.malda`, `sum-type-match.malda`, `match-object-*.malda`, `match-block-expression.malda`.
+### 9.5 Guards
+
+An optional `if` expression after the pattern gates the arm:
+
+```malda
+match n {
+    case x if x > 10: "big";
+    case x: "small";
+}
+```
+
+- Syntax: `case Pattern if Expression : body` (the same `if` word as `catch (e if …)`).
+- The pattern is tried first. On a hit, bindings are in scope for the guard.
+- If the guard is missing or truthy (same truthiness as `if` on that backend), the arm runs.
+- If the guard is falsy, the arm is skipped and the next case is tried. That is not an error.
+- Under `--strict-types`, a guarded arm does **not** count toward exhaustiveness: `case Ok(v) if v > 0` does not cover `Ok`; `case x if …` / `case _ if …` is not a catch-all.
+
+**Conformance:** `match-literal.malda`, `sum-type-match.malda`, `match-object-*.malda`, `match-block-expression.malda`, `match-guard.malda`.
 
 ---
 
@@ -407,7 +424,7 @@ Design notes: [selective-imports.md](../selective-imports.md), [phase-3-modules-
 | T0-05 | `async-await.malda` | §11 |
 | T0-06 | `is-number.malda` | §10 |
 
-Manifest IDs `T0-001`…`T0-101` enumerate the full suite (101 cases). Multi-backend rules: [tier0-backend-matrix.md](tier0-backend-matrix.md).
+Manifest IDs `T0-001`…`T0-102` enumerate the full suite (102 cases). Multi-backend rules: [tier0-backend-matrix.md](tier0-backend-matrix.md).
 
 Run:
 

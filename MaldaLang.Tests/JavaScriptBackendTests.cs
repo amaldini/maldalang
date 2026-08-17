@@ -623,6 +623,23 @@ public class JavaScriptBackendTests : TestBase
     }
 
     [Fact]
+    public void JsTranspiler_TranspilesMatch_WithGuard()
+    {
+        var source = """
+            var result = match 3 {
+                case x if x > 10: "big";
+                case x: "small";
+            };
+            """;
+        var compiler = new Compiler.Compiler();
+
+        var js = compiler.TranspileToJavaScriptFromSource(source);
+
+        Assert.Contains("mlRuntime.isTruthy", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.matchPattern", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void JsTranspiler_TranspilesMatch_WithArrayRestAndObjectPatterns()
     {
         var source = """

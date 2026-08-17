@@ -183,7 +183,11 @@ public static class InterpolationDiagnostics
             case MatchExpression match:
                 VisitExpression(match.Value, diagnostics);
                 foreach (var arm in match.Cases)
+                {
+                    if (arm.Guard != null)
+                        VisitExpression(arm.Guard, diagnostics);
                     VisitStatement(arm.Body, diagnostics);
+                }
                 if (match.DefaultCase != null)
                     VisitStatement(match.DefaultCase, diagnostics);
                 break;

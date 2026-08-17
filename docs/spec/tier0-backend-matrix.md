@@ -15,7 +15,7 @@
 
 Push/PR CI (`ci.yml`) stays on a small smoke filter. Full Tier 0 interpret + C# runs on the **GitHub nightly** workflow [`.github/workflows/tier0-nightly.yml`](../../.github/workflows/tier0-nightly.yml) (`schedule` + `workflow_dispatch`).
 
-## JavaScript pilot (101 cases — full Tier 0)
+## JavaScript pilot (102 cases — full Tier 0)
 
 All Tier 0 cases run via `JsTranspiler` + Node.js + `Examples/Web/wwwroot/malda-js-runtime.js`. See [phase-5-js-tier0-pilot.md](../planning/phase-5-js-tier0-pilot.md) and [phase-5-js-tier0-rollout.md](../planning/phase-5-js-tier0-rollout.md).
 
@@ -28,7 +28,7 @@ All Tier 0 cases run via `JsTranspiler` + Node.js + `Examples/Web/wwwroot/malda-
 
 ## C# transpile skips (documented)
 
-**Current:** none — all **100** manifest cases have `"csharp": true` (burn-down completed 2026-06-05; Phase 7 cases added 2026-06-05).
+**Current:** none — all **102** manifest cases have `"csharp": true` (burn-down completed 2026-06-05; Phase 7 cases added 2026-06-05).
 
 To exclude a case from C# CI, add it to `$csharpSkip` in `scripts/sync-tier0-manifest.ps1` and re-sync the manifest.
 

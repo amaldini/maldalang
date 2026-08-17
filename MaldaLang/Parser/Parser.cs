@@ -2090,11 +2090,14 @@ public class Parser
             
             Consume(TokenType.Case, "Expect 'case' in match expression.");
             var pattern = ParsePattern();
+            Expression? guard = null;
+            if (Match(TokenType.If))
+                guard = Expression();
             Consume(TokenType.Colon, "Expect ':' after pattern.");
             var body = Statement();
             // Allow optional semicolon after body (e.g. case X: {};)
             if (Check(TokenType.Semicolon)) Advance();
-            cases.Add(new MatchCase(pattern, body, pattern.Line, pattern.Column));
+            cases.Add(new MatchCase(pattern, body, pattern.Line, pattern.Column, guard));
         }
         
         Consume(TokenType.RightBrace, "Expect '}' after match cases.");

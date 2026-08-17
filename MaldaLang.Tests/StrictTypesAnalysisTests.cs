@@ -97,6 +97,55 @@ public class StrictTypesAnalysisTests
     }
 
     [Fact]
+    public void StrictMode_GuardedVariant_DoesNotCoverConstructor()
+    {
+        var source = """
+            type Result = Ok(value) | Err(message);
+            var r = Ok(1);
+            var out = match r {
+                case Ok(v) if v > 0: v;
+                case Err(m): -1;
+            };
+            """;
+        var diagnostics = Analyze(source, StrictTypesOptions.Enabled);
+        Assert.Contains(diagnostics, d =>
+            d.Source == "malda-match" &&
+            d.Severity == DiagnosticSeverity.Error &&
+            d.Message.Contains("Ok", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void StrictMode_GuardedCatchAll_DoesNotSilenceExhaustiveness()
+    {
+        var source = """
+            type Result = Ok(value) | Err(message);
+            var r = Ok(1);
+            var out = match r {
+                case x if x != null: 1;
+            };
+            """;
+        var diagnostics = Analyze(source, StrictTypesOptions.Enabled);
+        Assert.Contains(diagnostics, d =>
+            d.Source == "malda-match" &&
+            d.Severity == DiagnosticSeverity.Error);
+    }
+
+    [Fact]
+    public void StrictMode_UnguardedWildcard_StillExhaustive()
+    {
+        var source = """
+            type Result = Ok(value) | Err(message);
+            var r = Ok(1);
+            var out = match r {
+                case Ok(v) if v > 0: v;
+                case _: -1;
+            };
+            """;
+        var diagnostics = Analyze(source, StrictTypesOptions.Enabled);
+        Assert.DoesNotContain(diagnostics, d => d.Source == "malda-match");
+    }
+
+    [Fact]
     public void Tier0ConformanceSnippets_PassStrictAnalysis()
     {
         var snippets = new[]

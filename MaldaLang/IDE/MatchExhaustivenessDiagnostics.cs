@@ -133,7 +133,11 @@ public static class MatchExhaustivenessDiagnostics
                 ValidateMatch(match, types, index, diagnostics);
                 VisitExpression(match.Value, types, index, diagnostics);
                 foreach (var arm in match.Cases)
+                {
+                    if (arm.Guard != null)
+                        VisitExpression(arm.Guard, types.Clone(), index, diagnostics);
                     VisitStatement(arm.Body, types.Clone(), index, diagnostics);
+                }
                 if (match.DefaultCase != null)
                     VisitStatement(match.DefaultCase, types.Clone(), index, diagnostics);
                 break;
@@ -224,6 +228,8 @@ public static class MatchExhaustivenessDiagnostics
         var covered = new HashSet<string>(StringComparer.Ordinal);
         foreach (var arm in match.Cases)
         {
+            if (arm.Guard != null)
+                continue;
             if (arm.Pattern is VariantPattern variant)
                 covered.Add(variant.Tag);
         }
@@ -249,6 +255,8 @@ public static class MatchExhaustivenessDiagnostics
     {
         foreach (var arm in match.Cases)
         {
+            if (arm.Guard != null)
+                continue;
             if (arm.Pattern is WildcardPattern or IdentifierPattern)
                 return true;
         }

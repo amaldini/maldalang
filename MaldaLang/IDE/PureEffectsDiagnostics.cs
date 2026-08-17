@@ -203,7 +203,11 @@ public static class PureEffectsDiagnostics
             case MatchExpression match:
                 VisitExpression(match.Value, purity, mode, allowedEffects, violations);
                 foreach (var arm in match.Cases)
+                {
+                    if (arm.Guard != null)
+                        VisitExpression(arm.Guard, purity, mode, allowedEffects, violations);
                     VisitStatement(arm.Body, purity, mode, allowedEffects, violations);
+                }
                 if (match.DefaultCase != null)
                     VisitStatement(match.DefaultCase, purity, mode, allowedEffects, violations);
                 break;

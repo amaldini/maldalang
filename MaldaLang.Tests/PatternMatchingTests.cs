@@ -484,4 +484,93 @@ public class PatternMatchingTests : TestBase
         var output = RunProgram(source);
         Assert.Equal("fallback\nother", output);
     }
+
+    [Fact]
+    public void TestMatchGuard_BindsThenFallsThrough()
+    {
+        var source = @"
+            var n = 3;
+            var result = match n {
+                case x if x > 10: ""big"";
+                case x: ""small"";
+            };
+            print(result);
+        ";
+        Assert.Equal("small", RunProgram(source));
+    }
+
+    [Fact]
+    public void TestMatchGuard_TakesArmWhenTrue()
+    {
+        var source = @"
+            var n = 20;
+            var result = match n {
+                case x if x > 10: ""big"";
+                case x: ""small"";
+            };
+            print(result);
+        ";
+        Assert.Equal("big", RunProgram(source));
+    }
+
+    [Fact]
+    public void TestMatchGuard_VariantPayload()
+    {
+        var source = @"
+            type Result = Ok(value) | Err(message);
+            var r = Ok(-1);
+            var result = match r {
+                case Ok(v) if v >= 0: ""ok"";
+                case Ok(v): ""negative"";
+                case Err(m): m;
+            };
+            print(result);
+        ";
+        Assert.Equal("negative", RunProgram(source));
+    }
+
+    [Fact]
+    public void TestMatchGuard_ObjectBinding()
+    {
+        var source = @"
+            var obj = { lo: 5, hi: 2 };
+            var result = match obj {
+                case { lo, hi } if lo <= hi: ""ordered"";
+                case { lo, hi }: ""swapped"";
+            };
+            print(result);
+        ";
+        Assert.Equal("swapped", RunProgram(source));
+    }
+
+    [Fact]
+    public void TestMatchGuard_ArrayBinding()
+    {
+        var source = @"
+            var arr = [1, 9];
+            var result = match arr {
+                case [a, b] if a > b: ""desc"";
+                case [a, b]: ""asc"";
+            };
+            print(result);
+        ";
+        Assert.Equal("asc", RunProgram(source));
+    }
+
+    [Fact]
+    public void TestMatchGuard_NoDefault_FailedGuardThrows()
+    {
+        var source = @"
+            var n = 3;
+            try {
+                var result = match n {
+                    case x if x > 10: ""big"";
+                };
+                print(""should not reach here"");
+            } catch (e) {
+                print(""error caught"");
+            }
+        ";
+        Assert.Equal("error caught", RunProgram(source));
+    }
 }
