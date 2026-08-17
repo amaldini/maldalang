@@ -14,11 +14,11 @@ python3 scripts/sync-reference-manual-it-status.py
 | 01-introduction.html | 4d1297fd723ad5e4dbd295dc695de661c4c944ae06ceeaccbf3914face17d73b |
 | 02-tools.html | fc97ec4ec67f3437b4d412077b855627b5f8476d605d76d3f50b7f0997a6f41e |
 | 03-lexical-structure.html | 099b6785db6349de145a6b2357eae96dd51c336da57627e30569cea7a86e9d8f |
-| 04-data-types.html | c50a4b490c61598be0cde29adde77de4117e797dd93fde5173fec684508b1f40 |
+| 04-data-types.html | 41b7390345a18a00d4ad054b9d31ebf7a512069a8cd2558dfb92905ea87988ab |
 | 05-variables.html | 6dc01fd3eff0787e3e1a7dee4b44ffef3c272eab62946e6ade85d34fa3dcb554 |
 | 06-arrays.html | 9d4242ccb5f2615799eb596abe07db02ebf0a16e43428e84cc1bebd7d6cc28d4 |
 | 07-expressions.html | f1a52dcd24e39e3ca4b12f2c1f320d01769bf717dcae671298b940c2947bdacf |
-| 08-control-structures.html | fb6acba271f395031c3421e7ebdc1c33835ae57c50c74131bf64cdda5ad6f4a3 |
+| 08-control-structures.html | 71284b2647d259a1d5b4ac71a963e85776ddae70d7d5d449148061370bd329db |
 | 09-functions.html | d09ab4372caa913d30f6c733f53c57fb853b67b87f48afde682a39c59cb7af2c |
 | 10-classes-objects.html | 2e9722ae31cb70e1496a9ef2a655000c66852fdb0d1ea2258c66ee44666c91ec |
 | 11-input-output.html | 955714cf54230a77076a2fe5790a85c11a5b1ca5fb27ebdc25e68da6590ae479 |
@@ -44,5 +44,5 @@ python3 scripts/sync-reference-manual-it-status.py
 | 31-personal-assistant.html | 730f342e4ed58f76c4967f7a03585ba45e42b68104833135a0812f59e1944894 |
 | 32-examples.html | 1b08b9579fb1cd40d898b1ae568553aea686eca167c2c0f25c54d5dcbe8ded66 |
 | 33-property-testing.html | 2ef58bbd3de016d7fa96022b742640491b3fed09b2317e34a61f473ec56712c6 |
-| 34-grammar.html | a7a04541fa7687fd4fdb805139ad403c555046ca15b9e6c1277c3045b5539fb5 |
+| 34-grammar.html | 90833d4fab4f7890aeb340553361d3a10141ecb6ac215b99b7df293ce71fd32d |
 | 35-appendix.html | b67efa8a7fd4a75536bfe5031f5b364326f2c1cda46a6f13fe5843f4681b7bbb |

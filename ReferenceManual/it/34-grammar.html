@@ -210,8 +210,8 @@ LiteralPattern ::= Integer | Float | StringLiteral | Boolean | "null"
 IdentifierPattern ::= Identifier
 WildcardPattern ::= "_"
 VariantPattern ::= Identifier "(" (Pattern ("," Pattern)*)? ")"
-                 /* Un Identifier nudo che nomina un costruttore dichiarato è
-                    anche un VariantPattern con payload '_' impliciti di quell'arietà. */
+                 /* Bare Identifier that names a declared constructor is also a
+                    VariantPattern with implicit '_' payloads of that arity. */
 ArrayPattern ::= "[" (Pattern ("," Pattern)*)? RestPattern? "]"
 RestPattern ::= "..." Identifier?
 ObjectPattern ::= "{" ObjectPatternEntry ("," ObjectPatternEntry)* "}"
