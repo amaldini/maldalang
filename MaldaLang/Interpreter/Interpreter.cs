@@ -5988,6 +5988,12 @@ public partial class Interpreter
                 return MatchLiteralPattern(literalPattern, value) ? bindings : null;
                 
             case IdentifierPattern identifierPattern:
+                if (TryGetVariantConstructor(identifierPattern.Name, out var ctorTag, out var ctorArity))
+                {
+                    var variantPattern = VariantPattern.WithImplicitWildcards(
+                        ctorTag, ctorArity, identifierPattern.Line, identifierPattern.Column);
+                    return MatchVariantPattern(variantPattern, value, bindings);
+                }
                 bindings[identifierPattern.Name] = value;
                 return bindings;
                 
@@ -6010,6 +6016,20 @@ public partial class Interpreter
             default:
                 throw new RuntimeException($"Unknown pattern type: {pattern.GetType()}");
         }
+    }
+
+    private bool TryGetVariantConstructor(string name, out string tag, out int arity)
+    {
+        tag = name;
+        arity = 0;
+        if (!_environment.TryGet(name, out var bound) || bound.Type != ValueType.Function)
+            return false;
+        var fn = bound.AsFunction();
+        if (fn.VariantConstructorTag == null)
+            return false;
+        tag = fn.VariantConstructorTag;
+        arity = fn.VariantConstructorArity;
+        return true;
     }
 
     private Dictionary<string, RuntimeValue>? MatchVariantPattern(VariantPattern pattern, RuntimeValue value, Dictionary<string, RuntimeValue> bindings)

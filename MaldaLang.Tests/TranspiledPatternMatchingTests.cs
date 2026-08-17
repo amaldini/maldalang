@@ -162,6 +162,23 @@ public class TranspiledPatternMatchingTests
     }
 
     [Fact]
+    public void Transpiled_SumType_BareConstructorPattern_DoesNotCatchOtherVariants()
+    {
+        var source = @"
+            type Result = Ok() | Err(message);
+            var r = Err(""ciao"");
+            var m3 = match r {
+                case Ok: ""ok: "";
+                case Err(msg): ""error: "" + msg;
+            };
+            io.print(m3);
+        ";
+        var result = TranspiledTestRunner.CompileAndRunFromSource(source);
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("error: ciao", result.StdOut);
+    }
+
+    [Fact]
     public void Transpiled_MatchExpression_BlockBody_LastExpressionWins()
     {
         var source = @"

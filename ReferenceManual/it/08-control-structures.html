@@ -144,13 +144,20 @@ print(result);  // result is null (block ends with statement, not expression)</c
         <h3>Tipi di pattern</h3>
 
         <h4>Pattern di variante</h4>
-        <p>Per i valori costruiti da <a href="04-data-types.html">sum type</a>, usa un pattern di variante: <code>ConstructorName(binding, ...)</code>. Il valore deve essere quella variante e avere lo stesso numero di slot di payload; i payload vengono legati ai nomi nel pattern.</p>
+        <p>Per i valori costruiti da <a href="04-data-types.html">sum type</a>, usa un pattern di variante: <code>ConstructorName(binding, ...)</code>. Il valore deve essere quella variante e avere lo stesso numero di slot di payload; i payload vengono legati ai nomi nel pattern. Un nome di costruttore nudo (<code>case Ok:</code> / <code>case None:</code>) è lo stesso match con <code>_</code> implicito per ogni payload — equivalente a <code>case Ok():</code> per una variante senza argomenti. <strong>Non</strong> lega una variabile catch-all con quel nome.</p>
         <pre><code>type Result = Ok(value) | Err(message);
 var r = divide(10, 0);
 match r {
     case Ok(v): print("value: " + v);
     case Err(msg): print("error: " + msg);
 }</code></pre>
+        <pre><code data-run="true" data-expect="error: ciao">type Result = Ok() | Err(message);
+var r = Err("ciao");
+var m3 = match r {
+    case Ok: "ok: ";
+    case Err(msg): "error: " + msg;
+};
+print(m3);</code></pre>
 
         <h4>Pattern letterali</h4>
         <p>Corrispondono a valori esatti (numeri, stringhe, booleani, null):</p>
@@ -162,7 +169,7 @@ match r {
 }</code></pre>
         
         <h4>Pattern identificatore</h4>
-        <p>Legano il valore corrispondente a un nome di variabile:</p>
+        <p>Legano il valore corrispondente a un nome di variabile. Se l'identificatore è un costruttore di variante dichiarato, è un pattern di variante (vedi sopra), non un catch-all:</p>
         <pre><code>match x {
     case y: y + 10;  // Binds x to y, then evaluates y + 10
 }</code></pre>
@@ -267,7 +274,7 @@ match response {
             <strong>Consigli sul pattern matching:</strong>
             <ul>
                 <li>I pattern vengono confrontati in ordine: viene eseguito il primo che corrisponde e la cui guardia <code>if</code> opzionale ha successo</li>
-                <li>I pattern identificatore corrispondono sempre, quindi mettili dopo i pattern più specifici</li>
+                <li>I pattern identificatore corrispondono sempre, a meno che il nome sia un costruttore di variante dichiarato (<code>case Ok:</code> corrisponde alla variante <code>Ok</code>, non a tutto)</li>
                 <li>Una guardia <code>if</code> fallita prova il case successivo; un <code>if</code> dentro il corpo del case no</li>
                 <li>Usa i pattern wildcard (<code>_</code>) quando non ti serve il valore</li>
                 <li>I pattern nidificati permettono il matching in profondità di strutture dati complesse</li>

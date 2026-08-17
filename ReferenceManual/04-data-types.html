@@ -192,7 +192,7 @@ var e = Err("failed");    // variant Err with payload "failed"
 var n = None();           // variant None with no payload</code></pre>
 
         <h3>Matching on Variants</h3>
-        <p>Use <code>match</code> with <strong>variant patterns</strong>: <code>ConstructorName(binding, ...)</code>. The pattern matches if the value is that variant and binds the payload to the given names:</p>
+        <p>Use <code>match</code> with <strong>variant patterns</strong>: <code>ConstructorName(binding, ...)</code>. The pattern matches if the value is that variant and binds the payload to the given names. A bare constructor name (<code>case None:</code>) matches that variant without binding payloads (implicit <code>_</code> per slot).</p>
         <pre><code data-run="true" data-expect="ok: 5">type Result = Ok(value) | Err(message);
 function divide(a, b) {
     if (b == 0) return Err("divide by zero");

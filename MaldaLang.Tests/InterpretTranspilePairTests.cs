@@ -89,4 +89,20 @@ public class InterpretTranspilePairTests
             """,
             "match-guard");
     }
+
+    [Fact]
+    public void BareUnitVariantPattern_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            type Result = Ok() | Err(message);
+            var r = Err("ciao");
+            var m3 = match r {
+                case Ok: "ok: ";
+                case Err(msg): "error: " + msg;
+            };
+            io.print(m3);
+            """,
+            "bare-unit-variant-match");
+    }
 }

@@ -227,9 +227,10 @@ Supported pattern forms include:
 | Pattern | Matches |
 |---------|---------|
 | Literal | Same literal value (`42`, `"x"`, `true`, `null`) |
-| Identifier `x` | Any value; binds `x` in case body |
+| Identifier `x` | Any value; binds `x` in case body. If `x` is a declared variant constructor, this is a variant pattern instead (see `Ctor` below), not a catch-all. |
 | `_` | Any value; no binding |
 | `Ctor(p1, p2)` | Variant with tag `Ctor`; binds parameters |
+| `Ctor` | Same tag and arity as the constructor; payloads are implicit `_` (`case None:` ≡ `case None():`) |
 | `[a, b]` | Array of length 2 (and similar fixed shapes) |
 | `[head, …rest]` | Array with rest binding |
 | `{ key: pat }` | Object/dict with field patterns |

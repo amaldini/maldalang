@@ -433,6 +433,54 @@ public class PatternMatchingTests : TestBase
     }
 
     [Fact]
+    public void TestSumType_BareConstructorPattern_DoesNotCatchOtherVariants()
+    {
+        var source = @"
+            type Result = Ok() | Err(message);
+            var r = Err(""ciao"");
+            var m3 = match r {
+                case Ok: ""ok: "";
+                case Err(msg): ""error: "" + msg;
+            };
+            io.print(m3);
+        ";
+        var output = RunProgram(source);
+        Assert.Equal("error: ciao", output);
+    }
+
+    [Fact]
+    public void TestSumType_BareUnitConstructor_Matches()
+    {
+        var source = @"
+            type Option = Some(x) | None();
+            var n = None();
+            var result = match n {
+                case Some(v): ""some "" + v;
+                case None: ""none"";
+            };
+            print(result);
+        ";
+        var output = RunProgram(source);
+        Assert.Equal("none", output);
+    }
+
+    [Fact]
+    public void TestSumType_BarePayloadConstructor_IgnoresPayload()
+    {
+        var source = @"
+            type Result = Ok(value) | Err(message);
+            var r = Ok(42);
+            var result = match r {
+                case Ok: ""ok"";
+                case Err: ""err"";
+            };
+            print(result);
+        ";
+        var output = RunProgram(source);
+        Assert.Equal("ok", output);
+    }
+
+    [Fact]
     public void TestMatchExpression_BlockBody_LastExpressionWins()
     {
         var source = @"

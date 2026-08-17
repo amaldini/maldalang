@@ -12246,8 +12246,34 @@ public class CSharpTranspiler
         _output.Append(" }))()");
     }
 
+    private bool TryGetVariantConstructorArity(string name, out int arity)
+    {
+        foreach (var typeDecl in _typeDeclarations)
+        {
+            foreach (var ctor in typeDecl.Constructors)
+            {
+                if (string.Equals(ctor.Name, name, StringComparison.Ordinal))
+                {
+                    arity = ctor.ParameterNames.Count;
+                    return true;
+                }
+            }
+        }
+
+        arity = 0;
+        return false;
+    }
+
+    private Pattern ResolveBareConstructorPattern(Pattern pattern)
+    {
+        if (pattern is IdentifierPattern id && TryGetVariantConstructorArity(id.Name, out var arity))
+            return VariantPattern.WithImplicitWildcards(id.Name, arity, id.Line, id.Column);
+        return pattern;
+    }
+
     private void TranspileMatchCase(string valueVar, Pattern pattern, Statement body, Expression? guard)
     {
+        pattern = ResolveBareConstructorPattern(pattern);
         _output.Append("if (");
         TranspileMatchCondition(valueVar, pattern);
         _output.Append(") { ");
@@ -12434,7 +12460,7 @@ public class CSharpTranspiler
                         _output.Append(i);
                         _output.Append("]; ");
                     }
-                    else
+                    else if (sub is not WildcardPattern)
                     {
                         _output.Append("var __sub");
                         _output.Append(i);

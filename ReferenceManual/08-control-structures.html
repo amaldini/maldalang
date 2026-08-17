@@ -143,13 +143,20 @@ print(result);  // result is null (block ends with statement, not expression)</c
         <h3>Pattern Types</h3>
 
         <h4>Variant Patterns</h4>
-        <p>For values built from <a href="04-data-types.html">sum types</a>, use a variant pattern: <code>ConstructorName(binding, ...)</code>. The value must be that variant and have the same number of payload slots; payloads are bound to the names in the pattern.</p>
+        <p>For values built from <a href="04-data-types.html">sum types</a>, use a variant pattern: <code>ConstructorName(binding, ...)</code>. The value must be that variant and have the same number of payload slots; payloads are bound to the names in the pattern. A bare constructor name (<code>case Ok:</code> / <code>case None:</code>) is the same match with implicit <code>_</code> for each payload — equivalent to <code>case Ok():</code> for a unit variant. It does <strong>not</strong> bind a catch-all variable of that name.</p>
         <pre><code>type Result = Ok(value) | Err(message);
 var r = divide(10, 0);
 match r {
     case Ok(v): print("value: " + v);
     case Err(msg): print("error: " + msg);
 }</code></pre>
+        <pre><code data-run="true" data-expect="error: ciao">type Result = Ok() | Err(message);
+var r = Err("ciao");
+var m3 = match r {
+    case Ok: "ok: ";
+    case Err(msg): "error: " + msg;
+};
+print(m3);</code></pre>
 
         <h4>Literal Patterns</h4>
         <p>Match exact values (numbers, strings, booleans, null):</p>
@@ -161,7 +168,7 @@ match r {
 }</code></pre>
         
         <h4>Identifier Patterns</h4>
-        <p>Bind the matched value to a variable name:</p>
+        <p>Bind the matched value to a variable name. If the identifier is a declared variant constructor, it is a variant pattern instead (see above), not a catch-all:</p>
         <pre><code>match x {
     case y: y + 10;  // Binds x to y, then evaluates y + 10
 }</code></pre>
@@ -266,7 +273,7 @@ match response {
             <strong>Pattern Matching Tips:</strong>
             <ul>
                 <li>Patterns are matched in order - the first matching pattern whose optional <code>if</code> guard succeeds executes</li>
-                <li>Identifier patterns always match, so put them after more specific patterns</li>
+                <li>Identifier patterns always match unless the name is a declared variant constructor (<code>case Ok:</code> matches the <code>Ok</code> variant, not everything)</li>
                 <li>A failed <code>if</code> guard tries the next case; an <code>if</code> inside the case body does not</li>
                 <li>Use wildcard patterns (<code>_</code>) when you don't need the value</li>
                 <li>Nested patterns allow deep matching of complex data structures</li>

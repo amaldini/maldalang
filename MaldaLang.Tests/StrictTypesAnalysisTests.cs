@@ -97,6 +97,38 @@ public class StrictTypesAnalysisTests
     }
 
     [Fact]
+    public void StrictMode_BareConstructorPattern_IsNotCatchAll()
+    {
+        var source = """
+            type Result = Ok() | Err(message);
+            var r = Err("ciao");
+            var out = match r {
+                case Ok: "ok";
+            };
+            """;
+        var diagnostics = Analyze(source, StrictTypesOptions.Enabled);
+        Assert.Contains(diagnostics, d =>
+            d.Source == "malda-match" &&
+            d.Severity == DiagnosticSeverity.Error &&
+            d.Message.Contains("Err", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void StrictMode_BareConstructorPatterns_AreExhaustive()
+    {
+        var source = """
+            type Result = Ok() | Err(message);
+            var r = Err("ciao");
+            var out = match r {
+                case Ok: "ok";
+                case Err: "err";
+            };
+            """;
+        var diagnostics = Analyze(source, StrictTypesOptions.Enabled);
+        Assert.DoesNotContain(diagnostics, d => d.Source == "malda-match");
+    }
+
+    [Fact]
     public void StrictMode_GuardedVariant_DoesNotCoverConstructor()
     {
         var source = """

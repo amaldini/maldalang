@@ -192,7 +192,7 @@ var e = Err("failed");    // variant Err with payload "failed"
 var n = None();           // variant None with no payload</code></pre>
 
         <h3>Match sulle varianti</h3>
-        <p>Usa <code>match</code> con <strong>pattern di variante</strong>: <code>ConstructorName(binding, ...)</code>. Il pattern corrisponde se il valore è quella variante e lega il payload ai nomi dati:</p>
+        <p>Usa <code>match</code> con <strong>pattern di variante</strong>: <code>ConstructorName(binding, ...)</code>. Il pattern corrisponde se il valore è quella variante e lega il payload ai nomi dati. Un nome di costruttore nudo (<code>case None:</code>) corrisponde a quella variante senza legare i payload (<code>_</code> implicito per ogni slot).</p>
         <pre><code data-run="true" data-expect="ok: 5">type Result = Ok(value) | Err(message);
 function divide(a, b) {
     if (b == 0) return Err("divide by zero");

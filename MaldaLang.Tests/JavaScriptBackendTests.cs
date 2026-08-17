@@ -623,6 +623,24 @@ public class JavaScriptBackendTests : TestBase
     }
 
     [Fact]
+    public void JsTranspiler_TranspilesMatch_BareConstructorPattern()
+    {
+        var source = """
+            type Result = Ok() | Err(message);
+            var result = match Err("ciao") {
+                case Ok: "ok: ";
+                case Err(msg): "error: " + msg;
+            };
+            """;
+        var compiler = new Compiler.Compiler();
+
+        var js = compiler.TranspileToJavaScriptFromSource(source);
+
+        Assert.Contains("mlRuntime.matchPattern({ type: \"Variant\", tag: \"Ok\", payloadPatterns: [] }", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.matchPattern({ type: \"Variant\", tag: \"Err\", payloadPatterns: [{ type: \"Identifier\", name: \"msg\" }] }", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void JsTranspiler_TranspilesMatch_WithGuard()
     {
         var source = """

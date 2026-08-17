@@ -215,7 +215,7 @@ public static class MatchExhaustivenessDiagnostics
         if (match.DefaultCase != null)
             return;
 
-        if (HasCatchAllPattern(match))
+        if (HasCatchAllPattern(match, index))
             return;
 
         if (!types.TryResolveSumType(match.Value, out var sumTypeName))
@@ -232,6 +232,9 @@ public static class MatchExhaustivenessDiagnostics
                 continue;
             if (arm.Pattern is VariantPattern variant)
                 covered.Add(variant.Tag);
+            else if (arm.Pattern is IdentifierPattern id &&
+                     index.TryGetSumTypeForConstructor(id.Name, out _))
+                covered.Add(id.Name);
         }
 
         var missing = required.Where(c => !covered.Contains(c)).ToList();
@@ -251,13 +254,16 @@ public static class MatchExhaustivenessDiagnostics
         });
     }
 
-    private static bool HasCatchAllPattern(MatchExpression match)
+    private static bool HasCatchAllPattern(MatchExpression match, SumTypeIndex index)
     {
         foreach (var arm in match.Cases)
         {
             if (arm.Guard != null)
                 continue;
-            if (arm.Pattern is WildcardPattern or IdentifierPattern)
+            if (arm.Pattern is WildcardPattern)
+                return true;
+            if (arm.Pattern is IdentifierPattern id &&
+                !index.TryGetSumTypeForConstructor(id.Name, out _))
                 return true;
         }
 

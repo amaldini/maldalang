@@ -33,6 +33,7 @@ public class JsTranspiler
     private readonly List<SourceMappingEntry> _mappings;
     private readonly Stack<Statement?> _desugaredForLoopIncrements = new();
     private readonly HashSet<string> _asyncFunctions = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, int> _variantConstructorArities = new(StringComparer.Ordinal);
     private int _generatedLine;
     private int? _currentSourceLine;
     private int? _currentSourceColumn;
@@ -47,6 +48,16 @@ public class JsTranspiler
         _generatedLine = 1;
         _currentSourceLine = null;
         _currentSourceColumn = null;
+    }
+
+    private void CopyTranspileStateFrom(JsTranspiler other)
+    {
+        _variantConstructorArities.Clear();
+        foreach (var kv in other._variantConstructorArities)
+            _variantConstructorArities[kv.Key] = kv.Value;
+        _asyncFunctions.Clear();
+        foreach (var name in other._asyncFunctions)
+            _asyncFunctions.Add(name);
     }
 
     public string Transpile(List<Statement> statements, bool isLibrary = false, string? sourceFilePath = null)
@@ -68,6 +79,7 @@ public class JsTranspiler
         _mappings.Clear();
         _desugaredForLoopIncrements.Clear();
         _asyncFunctions.Clear();
+        _variantConstructorArities.Clear();
         _generatedLine = 1;
         _currentSourceLine = null;
         _currentSourceColumn = null;
@@ -88,6 +100,8 @@ public class JsTranspiler
             else if (statement is TypeDeclaration typeDeclaration)
             {
                 typeDeclarations.Add(typeDeclaration);
+                foreach (var ctor in typeDeclaration.Constructors)
+                    _variantConstructorArities[ctor.Name] = ctor.ParameterNames.Count;
             }
             else if (statement is ActorDeclaration actorDeclaration)
             {
@@ -651,6 +665,7 @@ public class JsTranspiler
         builder.Append(parameters);
         builder.Append(") => {");
         var inlineTranspiler = new JsTranspiler();
+        inlineTranspiler.CopyTranspileStateFrom(this);
         foreach (var statement in lambda.BlockBody.Statements)
         {
             builder.Append(inlineTranspiler.TranspileStatementInline(statement));
@@ -870,18 +885,19 @@ public class JsTranspiler
         for (int i = 0; i < match.Cases.Count; i++)
         {
             var matchCase = match.Cases[i];
+            var pattern = ResolveBareConstructorPattern(matchCase.Pattern);
             var resultVar = $"__matchResult{_matchTempCounter}_{i}";
             builder.Append("{ const ");
             builder.Append(resultVar);
             builder.Append(" = mlRuntime.matchPattern(");
-            builder.Append(TranspilePatternDescriptor(matchCase.Pattern));
+            builder.Append(TranspilePatternDescriptor(pattern));
             builder.Append(", ");
             builder.Append(valueVar);
             builder.Append("); if (");
             builder.Append(resultVar);
             builder.Append(".matched) { ");
 
-            foreach (var binding in CollectPatternBindings(matchCase.Pattern))
+            foreach (var binding in CollectPatternBindings(pattern))
             {
                 builder.Append("const ");
                 builder.Append(EscapeIdentifier(binding));
@@ -964,6 +980,7 @@ public class JsTranspiler
     private string TranspileStatementInline(Statement statement)
     {
         var inlineTranspiler = new JsTranspiler();
+        inlineTranspiler.CopyTranspileStateFrom(this);
         inlineTranspiler._indentLevel = 0;
         inlineTranspiler._matchTempCounter = _matchTempCounter;
         inlineTranspiler.TranspileStatement(statement);
@@ -976,6 +993,17 @@ public class JsTranspiler
         return string.Join(" ", code
             .Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.RemoveEmptyEntries)
             .Select(line => line.Trim()));
+    }
+
+    private Pattern ResolveBareConstructorPattern(Pattern pattern)
+    {
+        if (pattern is IdentifierPattern id &&
+            _variantConstructorArities.TryGetValue(id.Name, out var arity))
+        {
+            return VariantPattern.WithImplicitWildcards(id.Name, arity, id.Line, id.Column);
+        }
+
+        return pattern;
     }
 
     private string TranspilePatternDescriptor(Pattern pattern)
