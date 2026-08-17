@@ -33,102 +33,75 @@ columns so it does not force horizontal scrolling), and bare urls link themselve
 verbatim.
 
 ```text
-Hi HN. MALDA is a programming language where the things I kept writing glue
-code for — LLM prompts, tools, agents, HTTP endpoints — are language
-constructs instead of library calls. prompt, schema, actor, spawn and
-send are keywords; tools, endpoints and pages are declarations the parser
-understands.
+Hi HN. MALDA is a programming language where LLM prompts, tools,
+agents, HTTP endpoints and durable workflows are syntax instead of
+library glue. prompt, schema, actor, spawn and send are keywords;
+tools, endpoints and pages are declarations the parser understands.
 
-A prompt is a declaration, not a string in a dictionary:
+A prompt is a declaration. Without await you get the rendered
+template (testable, no API key). With await you call the model;
+-> Review validates the JSON against the schema:
 
-  setDefaultAgent(new Agent("Reviewer", "helper",
-      "You review code.", new OpenRouterClient()));
+  schema Review {
+      summary: string;
+      issues: string[];
+  }
 
-  prompt codeReview(code, language) {
-      system: "You are an expert code reviewer of {language}.",
+  prompt codeReview(code, language) -> Review {
+      system: "You are an expert reviewer of {language}.",
       user: "Review this {language} code:\n\n{code}"
   }
 
-  var review = await codeReview(source, "python");
+  var rendered = codeReview(src, "python");
+  io.print(rendered.user);
 
-Without await you get the rendered prompt object back instead, which is
-what makes prompts testable. A tool is a decorated function: @Tool exposes
-it to an agent, @MCPTool exposes the same function over the Model Context
-Protocol, and new MCPServer().start() is the whole server.
+The same source runs three ways: interpreted, transpiled to C# and
+built into a .NET executable, or compiled to browser JavaScript.
+That last part is what macros over an existing language would not
+have given me. The JS path is a real subset — no agents, servers
+or workflows. Constructs compose: a @MCPTool function is the same
+function an agent calls as a tool and a @POST handler invokes.
 
-The part I did not expect is about who writes it. The two largest programs
-in the repo were written entirely by coding agents, in a language that
-appears nowhere in any model's training data. The bigger one is Second
-Brain (Examples/Agents/secondbrain_semantic.malda, ~6,500 lines with shared
-libs): CodingAgents distill a docs folder into a linked note tree, then
-serve an ASK web UI over it — auth, CLI modes, GraphMemory retrieval —
-and malda compile --embed-folder ships that brain inside a single .exe
-with no extract-to-disk. Examples/RalphWiggum/ is the other — a PRD-driven
-coding agent, 4,049 lines across eleven files — which reads a checklist,
-implements one item per iteration, validates its own output and can
-commit. That works because the repo ships a language pack for that reader
-(docs/llm/: idioms, a parser-aligned BNF, a minimal built-in list,
-few-shots, with a load order for a token budget). An agent reads a few
-thousand tokens and writes idiomatic MALDA; when it does not, the
-interpreter is the feedback loop. The same pack is what the Desktop and
-Web IDE Ask modes load now, embedded in the runtime rather than hardcoded.
-
-I think that changes the arithmetic on small languages. "New language" used
-to mean "no tooling, no docs your editor understands, and nobody who can
-write it." A compact, machine-readable language pack turns the last of
-those into an onboarding problem you can solve in an afternoon, for the
-collaborator most of us now work with. It does not conjure an ecosystem —
-an agent cannot import NumPy for you — but the learning curve is no longer
+The two largest programs in the repo were written entirely by
+coding agents, in a language that is in no model's training data.
+Second Brain (~7,600 lines with shared libs) distills a docs
+folder into a linked note tree and serves an ASK web UI; malda
+compile --embed-folder ships it as a single .exe.
+Examples/RalphWiggum/ is a PRD-driven coding agent (4,049 lines,
+eleven files). That works because docs/llm/ is a language pack —
+idioms, a parser-aligned BNF, a built-in list, few-shots. An
+agent reads a few thousand tokens and writes idiomatic MALDA;
+when it does not, the interpreter is the feedback loop. It does
+not conjure an ecosystem, but the learning curve is no longer
 the main cost of a small language.
 
-The same source runs three ways: interpreted, transpiled to C# and built
-into a .NET executable, or compiled to browser JavaScript. That last part
-is what macros over an existing language would not have given me. And the
-constructs compose: one program can be a REST service (@GET/@POST, plus an
-@AIPAGE decorator that has a model generate the page from a description), a
-multi-agent system, an MCP server exposing its own functions as tools, an
-MCP client consuming someone else's, and a host for durable workflows with
-step/retry/compensate/approval in the grammar — with no adapter between the
-roles, because a @MCPTool function is the same function an agent calls as a
-tool and a @POST handler invokes.
+My background is business software in C# and Java; this is the
+first compiler I have written. Grammar and semantics are mine to
+defend; much of the argument was shared with models. Geoff
+Huntley's Ralph Wiggum loop (https://ghuntley.com/cursed/)
+convinced me one person could attempt it. In place of asking for
+trust: guard tests if reserved words drift from the lexer or a
+built-in goes undocumented; every runnable snippet in the
+reference manual executed by the test suite; a ~100-case Tier 0
+matrix across backends; interpret/transpile pairs that must
+match stdout. C# on .NET 8, hand-written recursive-descent
+parser, ~350 built-ins, ~1,900 tests. Dual MIT OR Apache-2.0
+with a runtime exception. No CLA.
 
-How the language itself was built, since that is the fair question. My
-background is business software in C# and Java, and this is the first
-compiler or interpreter I have written. The grammar and semantics calls
-are mine to defend; the typing and much of the argument that produced them
-were shared with models — same arrangement as the showcases above. Geoff
-Huntley's "Ralph Wiggum" loop and the cursed language he got out of it
-(https://ghuntley.com/cursed/) convinced me one person could attempt it;
-the agent example above is named after it. In place of asking for trust:
-guard tests that fail the build if the manual's reserved words drift from
-the lexer or a built-in goes undocumented, every runnable snippet in the
-reference manual executed by the test suite, and a ~100-case Tier 0
-conformance matrix across backends. That catches drift, not bad taste.
-Implementation is C# on .NET 8 — hand-written lexer and recursive-descent
-parser, no ANTLR, a tree-walking interpreter, ~300 built-ins, ~1,600
-tests. Dual licensed MIT OR Apache-2.0 with a runtime exception, so
-compiled programs carry no attribution obligation. No CLA.
+Honest about where it is. Public core is 1.0.0 (Spec Final 1.0
+and the toolchain share that number). Publish is the type
+boundary; runtime is still dynamically typed. I run a Second
+Brain instance that others use. The large systems already in
+flight are not being rewritten for an experiment. Full IDE is
+WPF (Windows-only); CLI and browser playground run on Linux and
+macOS in CI. Durable workflows are local SQLite, not a cluster;
+determinism is a deny-list of built-in names.
 
-Honest about where it is: the public core is at 1.0.0 — Spec Final 1.0
-and the toolchain now share that number. Publish is the type boundary
-(strict transpile default). Type
-annotations parse and feed the language server; mismatches on literals,
-assignments, known identifiers, operators and selected builtins emit IDE
-Errors by default (opt-out; CLI --strict-types adds match/@pure/bounds),
-but there is no full static checker yet — it is dynamically typed at
-runtime. I run a Second Brain instance that others use. The large
-systems already in flight are not being rewritten for an experiment.
-The full IDE is WPF, so Windows-only; the CLI, compiler and browser playground
-build and run on Linux and macOS in CI (smoke, not the full suite). The
-JavaScript backend is a real subset — no agents or servers in the browser
-path. Durable workflows are the local end of durable execution:
-step-level memoization on one SQLite file, durable across a restart but
-not highly available, and the determinism check is a fixed deny-list of
-built-in names (not Temporal-style history detection). Micro-benchmark
-samples exist under docs/benchmarks.md — modest, not a leaderboard.
+Longer write-up, objections, comparison table:
+https://github.com/amaldini/maldalang/blob/main/docs/announcement.md
 
-Happy to answer the obvious questions ("why not a library?", "why not macros
-over an existing language?") and anything else.
+Happy to answer "why not a library?", "why not macros?", and
+anything else.
 ```
 
 ---
@@ -183,7 +156,7 @@ implements. Both it and the larger Second Brain showcase were written entirely b
 agents, in a language that appears nowhere in any model's training data — which turned out
 to be the most interesting result in the project, and is the part I would argue about first.
 More on that below. `Examples/Agents/secondbrain_semantic.malda` is the larger of the two by
-line count (~6,500 with shared libs): same agent-and-tools surface, aimed at knowledge
+line count (~7,600 with shared libs): same agent-and-tools surface, aimed at knowledge
 instead of a coding loop — explore docs, distill linked notes, serve an ASK web UI (auth,
 admin, tag filters, CLI modes), retrieve with GraphMemory, optionally embed the brain into a
 published binary.
@@ -197,30 +170,35 @@ exactly that; Second Brain is another, for documentation rather than a PRD check
 
 In place of asking for trust on the agent-written parts: guard tests that fail the build if
 the manual's reserved words drift from the lexer or a built-in is undocumented, every
-runnable snippet in the reference manual executed by the test suite, and a ~100-case
-Tier 0 conformance matrix run across backends. That catches drift, not bad taste. Judge the taste
+runnable snippet in the reference manual executed by the test suite, a ~100-case
+Tier 0 conformance matrix run across backends, and curated interpret/transpile pairs that
+must produce the same stdout. That catches drift, not bad taste. Judge the taste
 from the syntax below.
 
 #### What that actually means
 
 **A prompt is a declaration.** It has a name, parameters, and interpolation into role
-sections. The parser knows about it, which means the language server knows about it too:
+sections. The parser knows about it, which means the language server knows about it too.
+The smallest complete example is `Examples/Basics/first_look.malda` (offline, no API key):
 
 ```malda
-prompt codeReview(code, language) {
-    system: "You are an expert code reviewer specializing in {language}.",
-    user: """
-    Please review this {language} code:
-
-    {code}
-
-    Provide feedback on quality, potential bugs, and best practices.
-    """
+schema Review {
+    summary: string;
+    issues: string[];
 }
+
+prompt codeReview(code, language) -> Review {
+    system: "You are an expert reviewer of {language}.",
+    user: "Review this {language} code:\n\n{code}"
+}
+
+var rendered = codeReview("function add(a, b) { return a + b; }", "javascript");
+io.print(rendered.user);
 ```
 
 Calling it without `await` gives you the rendered prompt object, which is handy for tests
-and for inspection. Calling it with `await` sends it to the configured model. Prompt
+and for inspection. Calling it with `await` sends it to the configured model and, when the
+prompt is bound with `-> Review`, validates the JSON against the schema. Prompt
 parameters are deliberately name-only — no type annotations — because a prompt is a text
 template, and pretending otherwise added ceremony without buying safety. Metadata like
 `model`, `temperature`, `tools` and `maxTokens` belongs in the declaration:
@@ -253,7 +231,7 @@ Swap `@Tool` for `@MCPTool` and the same function is exposed over the Model Cont
 Protocol; `new MCPServer().start()` is the whole server.
 
 **Web endpoints and pages are decorators.** Here is a complete contact-form application,
-verbatim from `Examples/ui_contact_form.malda`:
+abridged from `Examples/ui_contact_form.malda`:
 
 ```malda
 var server = new HttpServer(8080);
@@ -389,7 +367,8 @@ include "ralph/07-notify.malda";
 ```
 
 The second-brain item is larger by source size: `Examples/Agents/secondbrain_semantic.malda`
-(~6,500 lines with `secondbrain_ask_ui_lib.malda` and `secondbrain_cli_lib.malda`) explores a
+(~7,600 lines with `secondbrain_ask_ui_lib.malda`, `secondbrain_cli_lib.malda`, and
+`secondbrain_cli_apply_lib.malda`) explores a
 documentation tree, proposes a theme taxonomy, distills hierarchical notes, indexes them in
 GraphMemory, then serves ASK over HTTP — cookie JWT auth, multi-user admin, tag filters,
 non-interactive `build` / `update` / `ask` CLI, English/Italian UI — with a lexical sibling at
@@ -476,9 +455,10 @@ Plain C# on .NET 8, with a recursive-descent parser rather than a generated one:
 Language intelligence lives in one shared service consumed by the WPF Desktop IDE, the
 Blazor browser playground and the LSP server, so the three do not drift.
 
-Current numbers, all checkable in the repo: ~300 built-in functions in the registry,
-~1,600 tests, a multi-chapter HTML reference manual whose runnable snippets are executed by
-the test suite, and a ~100-case conformance matrix for the Tier 0 kernel across backends.
+Current numbers, all checkable in the repo: ~350 built-in functions in the registry,
+~1,900 tests, a multi-chapter HTML reference manual whose runnable snippets are executed by
+the test suite, a ~100-case conformance matrix for the Tier 0 kernel across backends, and
+curated interpret/transpile pairs that must match stdout on the same file.
 Guard tests also fail the build if the manual's reserved-word list drifts from the lexer or
 if a built-in is added without being documented anywhere.
 
@@ -497,14 +477,16 @@ if a built-in is added without being documented anywhere.
   no full static type checker. If you want a checked language today, this is not one.
 - **Windows tilt.** The reference IDE is WPF, so Windows-only, and `MaldaLang.sln` cannot
   build on other platforms because of it. CI builds the CLI, compiler, language server and
-  browser playground on Linux and macOS and runs an example through the CLI there, but only
-  a small guard subset runs outside Windows — not the full suite.
+  browser playground on Linux and macOS and runs `Examples/Basics/first_look.malda` through
+  the CLI there, but only a small guard subset runs outside Windows — not the full suite.
 - **The JavaScript backend is a genuine subset.** Tier 0 language plus DOM, game and
-  three.js bindings. No agents, LLM clients, MCP or HTTP servers in the browser path.
+  three.js bindings. No agents, LLM clients, MCP, HTTP servers, or workflows in the
+  browser path.
 - **C# transpile covers the built-in registry** (including tool factories, git helpers,
   embeddings, and .NET interop entry points). Remaining gaps are deeper parity issues —
   for example static calls on a `DotNetTypeInstance` handle — not “built-in not emitted.”
-  The Ralph agent compiles to a working `.exe`.
+  Large showcases (Ralph, Second Brain) are too big for CI smoke (`n/a` in
+  `TranspileSmokeTests`); curated interpret/transpile pairs cover smaller examples.
 - **Durable workflows are the local end of durable execution.** Step-level memoized
   recovery, JSON-shaped step outputs, a fixed deny-list for the determinism check, and a
   single SQLite file with no failover (documented single-writer / read-only ops model). Good
@@ -540,9 +522,12 @@ in a private app, that is a bug in this repository and I would rather hear about
 ```bash
 git clone https://github.com/amaldini/maldalang.git
 cd maldalang
-dotnet build MaldaLang.sln
-dotnet run --project MaldaLang -- Examples/Basics/hello_world.malda
+dotnet build MaldaLang
+dotnet run --project MaldaLang -- Examples/Basics/first_look.malda
 ```
+
+`MaldaLang.sln` also builds the WPF Desktop IDE, so it is Windows-only; the CLI project
+above is the one that works on Linux and macOS.
 
 Then the contact form above, then `Examples/Prompts/` and `Examples/Workflows/`. The
 agent showcases are `Examples/RalphWiggum/` (PRD loop) and

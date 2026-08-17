@@ -59,7 +59,7 @@ malda Examples/Basics/first_look.malda
 
 The two largest showcases were written entirely by coding agents, even though MALDA is in no
 model's training data, because [`docs/llm/`](docs/llm/) ships a compact language pack for that
-reader: **`Examples/Agents/secondbrain_semantic.malda`** (~6,500 lines with shared libs) and
+reader: **`Examples/Agents/secondbrain_semantic.malda`** (~7,600 lines with shared libs) and
 **`Examples/RalphWiggum/`** (4,049 lines). Guard tests, the conformance matrix, and executed
 reference-manual snippets keep those claims checkable.
 
