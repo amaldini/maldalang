@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MALDA Cheat Sheet</title>
+  <title>MALDA Cheat Sheet — 1.0.0</title>
   <style>
     :root {
       --bg: #0b1020;
@@ -53,6 +53,14 @@
       margin-bottom: 20px;
     }
 
+    .version {
+      margin: 0 0 6px;
+      color: var(--accent);
+      font-size: 0.78rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
     h1 {
       margin: 0 0 8px;
       font-size: clamp(1.7rem, 2.4vw, 2.4rem);
@@ -63,6 +71,26 @@
       margin: 0;
       color: var(--muted);
       max-width: 78ch;
+    }
+
+    .hero-links {
+      margin: 12px 0 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+      font-size: 0.88rem;
+    }
+
+    .hero-links a {
+      color: var(--accent);
+    }
+
+    .hero-links a:focus-visible,
+    .toc a:focus-visible,
+    .mini-toc a:focus-visible,
+    .copy-btn:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
     }
 
     .chips {
@@ -80,6 +108,29 @@
       border-radius: 999px;
       font-size: 0.82rem;
       white-space: nowrap;
+    }
+
+    .gotchas {
+      margin-top: 14px;
+      border: 1px solid #6b3a4a;
+      background: #1a1224;
+      border-radius: 12px;
+      padding: 12px 14px;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    .gotchas strong {
+      color: #ffb4c4;
+    }
+
+    .gotchas ul {
+      margin: 6px 0 0;
+      padding-left: 18px;
+    }
+
+    .gotchas li {
+      margin: 4px 0;
     }
 
     .toc {
@@ -136,13 +187,34 @@
       font-size: 0.9rem;
     }
 
+    .code-wrap {
+      position: relative;
+    }
+
+    .copy-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      border: 1px solid var(--chip-line);
+      background: var(--chip);
+      color: #cfe0ff;
+      border-radius: 8px;
+      padding: 3px 8px;
+      font-size: 0.72rem;
+      cursor: pointer;
+    }
+
+    .copy-btn:hover {
+      background: #223a72;
+    }
+
     pre {
       margin: 0;
       border-top: 1px solid var(--line);
       background: #0a132b;
       color: var(--id);
       overflow-x: hidden;
-      padding: 12px 14px 14px;
+      padding: 12px 72px 14px 14px;
       font-family: Consolas, "Courier New", monospace;
       font-size: 0.86rem;
       line-height: 1.46;
@@ -231,6 +303,54 @@
     }
 
     @media print {
+      * {
+        box-shadow: none !important;
+        background-image: none !important;
+      }
+
+      body {
+        background: #fff;
+        color: #111;
+      }
+
+      .hero, .page-hero, section, .toc, .gotchas, .legend span, .chip {
+        background: #fff;
+        border-color: #ccc;
+        color: #111;
+      }
+
+      .subtitle, .hint, .page-subtitle, footer, .gotchas, .legend {
+        color: #333;
+      }
+
+      h1, h2, .page-title, .version {
+        color: #111;
+      }
+
+      .version { color: #064; }
+
+      a, .toc a, .mini-toc a, .hero-links a {
+        color: #000;
+      }
+
+      pre {
+        background: #f4f4f4;
+        color: #111;
+        border-color: #ccc;
+      }
+
+      .k { color: #024; }
+      .fn { color: #640; }
+      .type { color: #050; }
+      .num { color: #808; }
+      .str { color: #060; }
+      .com { color: #555; }
+      .dec { color: #404; }
+
+      .copy-btn, .hero-links {
+        display: none;
+      }
+
       .page-break {
         break-before: page;
         page-break-before: always;
@@ -256,12 +376,19 @@
 <body>
   <div class="container">
     <header class="hero">
+      <p class="version">Applies to MALDA 1.0.0</p>
       <h1>MALDA Cheat Sheet</h1>
       <p class="subtitle">
-        A practical one-page reference with core syntax and advanced capabilities:
-        language fundamentals, OOP, actors, prompts, AI agents, REST/web, databases,
-        MCP/ACP, graphs, vector search, and .NET interop.
+        Two-page daily reference: language fundamentals, modules, prompts, actors,
+        REST/web, databases, MCP/ACP, graphs, VectorDB, .NET interop, then
+        server-driven <code>ui.*</code> on page 2.
       </p>
+      <nav class="hero-links" aria-label="Deeper docs">
+        <a href="ReferenceManual/index.html">Reference Manual</a>
+        <a href="docs/llm/README.md">Language pack</a>
+        <a href="docs/llm/malda-gotchas.md">Gotchas</a>
+        <a href="docs/ui-framework.md">UI framework</a>
+      </nav>
       <div class="chips">
         <span class="chip">Dynamic + OOP</span>
         <span class="chip">AI-First</span>
@@ -270,11 +397,21 @@
         <span class="chip">Compiled or Interpreted</span>
       </div>
       <div class="legend">
-        <span><code>var</code> for variables</span>
+        <span><code>var</code> / <code>const</code></span>
+        <span><code>io.</code> <code>str.</code> <code>math.</code> for stdlib</span>
         <span><code>@DECORATOR</code> for routes/tools</span>
         <span><code>prompt name(args)</code> (no typed prompt parameters)</span>
-        <span><code>prompt ... -&gt; TypeHint</code> optional and informational</span>
+        <span><code>prompt ... -&gt; TypeHint</code> needs a declared schema or sum type</span>
       </div>
+      <aside class="gotchas">
+        <strong>Do not</strong>
+        <ul>
+          <li>Write <code>"n is {n}"</code> — that prints the braces. Use <code>$"n is {n}"</code>. Prompt bodies interpolate without <code>$</code>.</li>
+          <li>Start both <code>new RestServer(8080)</code> and <code>new HttpServer(8080)</code>. Use <code>new RestServer()</code> and <code>http.mount(api)</code>.</li>
+          <li>Call <code>ui.dispatchEvent</code> then <code>ui.render</code> without <code>ui.pullEvent</code> — the UI looks stuck.</li>
+          <li>Type prompt parameters (<code>prompt p(name: string)</code>). Name-only. <code>-&gt; Type</code> is not static typing.</li>
+        </ul>
+      </aside>
     </header>
 
     <nav class="toc">
@@ -282,19 +419,21 @@
       <a href="#control">Control Flow + Pattern Matching</a>
       <a href="#match-advanced">Advanced Match Patterns</a>
       <a href="#functions">Functions + Lambdas</a>
+      <a href="#modules">Modules</a>
       <a href="#oop">Classes + Objects</a>
       <a href="#collections">Arrays + Maps + JSON</a>
       <a href="#builtins">Built-ins + File/OS</a>
       <a href="#errors">Error Handling</a>
       <a href="#actors">Actors + Concurrency</a>
-      <a href="#prompts">Prompt Blocks</a>
+      <a href="#prompts">Prompt Blocks + Schema</a>
       <a href="#agents">LLMs, Tools, Agents</a>
       <a href="#webui">Web UI + HttpServer</a>
       <a href="#rest">REST API Server + Client</a>
       <a href="#db">Database Clients</a>
       <a href="#mcp">MCP Server + Client</a>
       <a href="#acp">ACP Agent Protocol</a>
-      <a href="#graph">Graphs + GraphMemory</a>
+      <a href="#graph">Graphs</a>
+      <a href="#graphmemory">GraphMemory</a>
       <a href="#vectordb">VectorDB</a>
       <a href="#interop">.NET Interop</a>
       <a href="#cli">CLI + Compile + Test</a>
@@ -305,49 +444,47 @@
       <section id="fundamentals">
         <div class="section-head">
           <h2>1) Fundamentals</h2>
-          <p class="hint">Variables, literals, interpolation, arithmetic, boolean logic.</p>
+          <p class="hint">Variables, interpolation, null-safe access. Prefer <code>io.print</code> outside actors.</p>
         </div>
-        <pre><code class="language-malda">// Variables and primitive values
-var name = "MALDA";
+        <pre><code class="language-malda">var name = "MALDA";
 var version = 1;
+const pi = 3.14159;
 var isAwesome = true;
-var pi = 3.14159;
 var nothing = null;
 
-// String interpolation + concatenation
-print($"Hello from {name} v{version}");
-print("2 + 2 = " + string(2 + 2));
+io.print($"Hello from {name} v{version}");
+io.print("2 + 2 = " + string(2 + 2));
 
-// Object/map style literals
 var user = {"id": 1, "name": "Ada", "active": true};
-print(user.name);</code></pre>
+io.print(user.name);
+io.print(user?.email ?? "no email");</code></pre>
       </section>
 
       <section id="control">
         <div class="section-head">
           <h2>2) Control Flow + Pattern Matching</h2>
-          <p class="hint">if/else, loops, range-like loops, match/case.</p>
+          <p class="hint">if/else, C-style for, <code>foreach</code>, match/case. <code>for (var x in arr)</code> is the same as foreach.</p>
         </div>
         <pre><code class="language-malda">var x = 7;
 if (x &gt; 10) {
-  print("big");
+  io.print("big");
 } else {
-  print("small");
+  io.print("small");
 }
 
 for (var i = 0; i &lt; 3; i = i + 1) {
-  print(i);
+  io.print(i);
 }
 
 var arr = [10, 20, 30];
-for (var item in arr) {
-  print(item);
+foreach (var item in arr) {
+  io.print(item);
 }
 
 match x {
-  case 0: print("zero");
-  case 7: print("seven");
-  default: print("other");
+  case 0: io.print("zero");
+  case 7: io.print("seven");
+  default: io.print("other");
 }</code></pre>
       </section>
 
@@ -356,37 +493,34 @@ match x {
           <h2>2b) Advanced Match Patterns</h2>
           <p class="hint">Wildcard, bindings, nested object/array patterns, and sum-type variants.</p>
         </div>
-        <pre><code class="language-malda">// array + nested object + rest
-var data = [{ type: "A", value: 1 }, { type: "B", value: 2 }];
+        <pre><code class="language-malda">var data = [{ type: "A", value: 1 }, { type: "B", value: 2 }];
 var m1 = match data {
   case [{ type: "A", value: v }, ...rest]: "first=" + v;
   default: "none";
 };
-print(m1);
+io.print(m1);
 
-// object shorthand + wildcard fallback
 var profile = { name: "Alice", age: 30, city: "Rome" };
 var m2 = match profile {
   case { name, age }: name + " is " + age;
   case { name }: name;
   case _: "unknown";
 };
-print(m2);
+io.print(m2);
 
-// sum-type / variant matching
 type Result = Ok(value) | Err(message);
 var r = Ok(42);
 var m3 = match r {
   case Ok(v): "ok: " + v;
   case Err(msg): "error: " + msg;
 };
-print(m3);</code></pre>
+io.print(m3);</code></pre>
       </section>
 
       <section id="functions">
         <div class="section-head">
           <h2>3) Functions + Lambdas</h2>
-          <p class="hint">Named functions, return values, lambda expressions.</p>
+          <p class="hint">Use <code>function</code> — <code>fn</code> and <code>def</code> are syntax errors. Typed params are optional on regular functions, never on prompts.</p>
         </div>
         <pre><code class="language-malda">function sum(a, b) {
   return a + b;
@@ -398,18 +532,33 @@ function applyTwice(value, fn) {
 
 var inc = (n) =&gt; n + 1;
 var result = applyTwice(3, inc);
-print(result); // 5
+io.print(result); // 5
 
-// Optional typed params can appear in regular functions
 function greet(name: string) {
-  print("Hello " + name);
+  io.print("Hello " + name);
 }</code></pre>
+      </section>
+
+      <section id="modules">
+        <div class="section-head">
+          <h2>3b) Modules</h2>
+          <p class="hint"><code>import</code> merges exports; selective import takes only named ones. <code>include</code> splices source into the host.</p>
+        </div>
+        <pre><code class="language-malda">import { add, VERSION } from "helpers/math_lib.malda";
+io.print(add(2, 3));
+
+// File module: isolated env; only export bindings merge.
+import "helpers/math_lib.malda";
+
+// include splices source (shared globals). Prefer import
+// when the library is self-contained.
+include "helpers/host_contract.malda";</code></pre>
       </section>
 
       <section id="oop">
         <div class="section-head">
           <h2>4) Classes + Objects</h2>
-          <p class="hint">Constructors, methods, inheritance, this/super.</p>
+          <p class="hint">Constructors, methods, inheritance, this/super. A parameter list after the class name is a primary constructor — do not mix with <code>extends</code>.</p>
         </div>
         <pre><code class="language-malda">class Animal {
   var name;
@@ -431,61 +580,64 @@ class Dog extends Animal {
 }
 
 var d = new Dog("Rex");
-print(d.speak());</code></pre>
+io.print(d.speak());
+
+class Point(x, y) {
+  function total() {
+    return this.x + this.y;
+  }
+}</code></pre>
       </section>
 
       <section id="collections">
         <div class="section-head">
           <h2>5) Arrays + Maps + JSON</h2>
-          <p class="hint">Core collection operations and JSON conversion helpers.</p>
+          <p class="hint"><code>.length</code> is a property, not a call. Arrays use member methods — there is no <code>arr</code> namespace.</p>
         </div>
         <pre><code class="language-malda">var nums = [1, 2, 3];
 nums.append(4);
-print(nums.length); // 4
+io.print(nums.length); // 4
 
 var profile = {"name": "Lina", "age": 28};
 profile.city = "Milan";
-print(profile.city);
+io.print(profile.city);
 
 var payload = parseJSON("{\"ok\": true, \"count\": 2}");
-print(payload.ok);
-print(toJSON(profile));
+io.print(payload.ok);
+io.print(toJSON(profile));
 
-// destructuring patterns
 var [a, b, ...rest] = nums;
-print(a + ", " + b);
+io.print(a + ", " + b);
 
-// object destructuring
 var {name: personName, city: personCity} = profile;
-print(personName + " from " + personCity);
+io.print(personName + " from " + personCity);
 
-// shorthand object destructuring (supported)
 var {name, city} = profile;
-print(name + " - " + city);</code></pre>
+io.print(name + " - " + city);</code></pre>
       </section>
 
       <section id="builtins">
         <div class="section-head">
-          <h2>6) Built-ins + File/OS + Utilities</h2>
-          <p class="hint">Common helpers: conversion, strings, paths, env, process, git.</p>
+          <h2>6) Built-ins + File/OS</h2>
+          <p class="hint">Prefer namespaced calls. Flat aliases still run but the language server warns. <code>io.getEnv</code> returns <code>null</code> when unset.</p>
         </div>
         <pre><code class="language-malda">var s = string(123);
 var n = int("42");
 var f = float("2.5");
 
-print(length("hello"));
-print(substring("abcdef", 1, 3)); // "bcd"
+io.print(str.length("hello"));
+io.print(str.substring("abcdef", 1, 3)); // "bcd"
 
-var key = getEnv("OPENAI_API_KEY");
-var cwd = getCurrentDirectory();
-print(cwd);
+var key = io.getEnvOr("OPENAI_API_KEY");
+var here = getProgramDirectory();
+io.print(here);
 
-writeFile("out.txt", "Hello");
-var txt = readFile("out.txt");
-print(txt);
+io.writeFile("out.txt", "Hello");
+var txt = io.readFile("out.txt");
+io.print(txt);
 
-var cmd = executeCommand("dotnet --version");
-print(cmd);</code></pre>
+var cmd = runCommand("dotnet --version");
+io.print(cmd);</code></pre>
       </section>
 
       <section id="errors">
@@ -502,18 +654,18 @@ print(cmd);</code></pre>
 
 try {
   var z = divide(10, 0);
-  print(z);
+  io.print(z);
 } catch (e) {
-  print("Error: " + string(e));
+  io.print("Error: " + string(e));
 } finally {
-  print("cleanup done");
+  io.print("cleanup done");
 }</code></pre>
       </section>
 
       <section id="actors">
         <div class="section-head">
           <h2>8) Actors + Concurrency</h2>
-          <p class="hint">Isolated state, message passing, non-blocking architecture.</p>
+          <p class="hint">Handlers do not see <code>io</code> / <code>math</code> / <code>str</code> — use flat <code>print</code> inside <code>on</code>. Outside the actor, prefer <code>io.print</code>.</p>
         </div>
         <pre><code class="language-malda">actor Counter {
   var count = 0;
@@ -529,7 +681,7 @@ try {
 }
 
 var c = spawn Counter();
-sleep(100); // ensure actor loop has started
+sleep(100);
 send c.increment();
 send c.increment();
 send c.get();
@@ -538,10 +690,14 @@ sleep(500);</code></pre>
 
       <section id="prompts">
         <div class="section-head">
-          <h2>9) Prompt Blocks</h2>
-          <p class="hint">Reusable prompt templates; typed await validates JSON output.</p>
+          <h2>9) Prompt Blocks + Schema</h2>
+          <p class="hint">Name-only prompt params. <code>-&gt; Type</code> on await validates JSON against a declared <code>schema</code> or sum type — it is not compile-time typing.</p>
         </div>
-        <pre><code class="language-malda">prompt greet(name) {
+        <pre><code class="language-malda">schema Plan {
+  steps: string[];
+}
+
+prompt greet(name) {
   user: "Hello {name}, how can I help?"
 }
 
@@ -551,18 +707,15 @@ prompt planTask(task, docs) -&gt; Plan {
   Task: {task}
   Docs:
   {docs}
-  Return a step-by-step plan.
+  Return JSON only.
   """
 }
 
 var p = planTask("Add auth", "README + API docs");
-print(p.user); // prompt(...) returns PromptInstance
+io.print(p.user); // prompt(...) returns PromptInstance
 
-// Typed await execution:
-// - with -> ReturnType, MALDA validates JSON output against that type
-// - without -> ReturnType, await returns string content
 var plan = await planTask("Add auth", "README + API docs");
-print(plan.steps[0].description);</code></pre>
+io.print(plan.steps[0]);</code></pre>
       </section>
 
       <section id="agents">
@@ -583,16 +736,15 @@ agent.addTool(createReadFileTool("."));
 agent.addTool(createReplaceInFileTool("."));
 
 var response = agent.think("Read app.malda and improve error handling.");
-print(response.content);
+io.print(response.content);
 
-// Specialized agent
 var coder = new CodingAgent("Coder", "senior dev", "Be precise.");</code></pre>
       </section>
 
       <section id="webui">
         <div class="section-head">
           <h2>11) Web UI + HttpServer</h2>
-          <p class="hint">Dynamic pages, path params, form handling, simple UI backends.</p>
+          <p class="hint"><code>@PAGE</code> returns HTML strings. Component trees use <code>ui.*</code> on page 2 — do not mix the two models on one surface.</p>
         </div>
         <pre><code class="language-malda">var server = new HttpServer(8080);
 
@@ -617,7 +769,7 @@ server.start();</code></pre>
       <section id="rest">
         <div class="section-head">
           <h2>12) REST API Server + HTTP Client</h2>
-          <p class="hint">Decorators for endpoints and `RestClient` for outbound calls.</p>
+          <p class="hint">API-only: <code>new RestServer(8080)</code>. Fullstack: port-less RestServer + <code>http.mount(api)</code> on the HttpServer that owns the port.</p>
         </div>
         <pre><code class="language-malda">@GET("/api/users/{id}")
 function getUserById(id) {
@@ -629,15 +781,15 @@ function createUser(body) {
   return {"status": 201, "data": body};
 }
 
-var api = new RestServer(8080);
-api.enableCORS(true);
-api.enableSwagger(true);
-api.start();
+var api = new RestServer();
+var http = new HttpServer(8080);
+http.mount(api);
+http.start();
 
 var client = new RestClient("https://api.example.com");
 client.setAuth("Bearer", "token");
 var r = client.get("/users", null, {"limit": "10"});
-if (r.ok) print(toJSON(r.body));</code></pre>
+if (r.ok) io.print(toJSON(r.body));</code></pre>
       </section>
 
       <section id="db">
@@ -645,8 +797,7 @@ if (r.ok) print(toJSON(r.body));</code></pre>
           <h2>13) Database Clients</h2>
           <p class="hint">SQL Server, PostgreSQL, SQLite with query + fluent CRUD support.</p>
         </div>
-        <pre><code class="language-malda">// SqlServerClient / PostgresClient / SqliteClient
-var db = new SqliteClient();
+        <pre><code class="language-malda">var db = new SqliteClient();
 db.connect("Data Source=app.db;");
 
 var rows = db.query(
@@ -666,22 +817,23 @@ db.disconnect();</code></pre>
       <section id="mcp">
         <div class="section-head">
           <h2>14) MCP Server + Client</h2>
-          <p class="hint">Expose MALDA functions as tools; call external MCP tools.</p>
+          <p class="hint">Expose MALDA functions as tools; call another server with <code>MCPClient</code>.</p>
         </div>
         <pre><code class="language-malda">@MCPTool("add", "Adds two numbers")
 function add(a, b) {
   return int(a) + int(b);
 }
 
-@MCPTool("count_words", "Counts words in text")
-function countWords(text) {
-  if (text == null || text == "") return 0;
-  // ... custom logic ...
-  return 3;
-}
-
 var mcpServer = new MCPServer();
-mcpServer.start();</code></pre>
+mcpServer.start();
+
+var mcp = new MCPClient("example-server");
+var ok = mcp.connect("malda", ["server.malda"]);
+if (ok) {
+  var sum = mcp.callTool("add", {"a": 5, "b": 3});
+  io.print(sum);
+  mcp.disconnect();
+}</code></pre>
       </section>
 
       <section id="acp">
@@ -692,7 +844,7 @@ mcpServer.start();</code></pre>
         <pre><code class="language-malda">var acp = new ACPClient("https://acp.example.com", "api-key");
 var agents = acp.discoverAgents();
 var reply = acp.sendMessage("translation-agent", "Translate hello to Spanish", 5000);
-print(reply);
+io.print(reply);
 
 var llm = new OpenRouterClient();
 var localAgent = new Agent("Helper", "assistant", "Be concise", llm);
@@ -707,44 +859,57 @@ server.start();</code></pre>
 
       <section id="graph">
         <div class="section-head">
-          <h2>16) Graphs + GraphMemory</h2>
-          <p class="hint">Relationship modeling, traversal, and knowledge structures.</p>
+          <h2>16) Graphs</h2>
+          <p class="hint">First-class <code>graph directed</code> / <code>graph undirected</code> literals — not a JSON object.</p>
         </div>
-        <pre><code class="language-malda">// Graph literals and operations
-var g = {
-  "nodes": ["A", "B", "C"],
-  "edges": [
-    {"from": "A", "to": "B", "weight": 3},
-    {"from": "B", "to": "C", "weight": 2}
+        <pre><code class="language-malda">var g = graph directed {
+  nodes: ["A", "B", "C"],
+  edges: [
+    { from: "A", to: "B", weight: 3 },
+    { from: "B", to: "C", weight: 2 }
   ]
 };
 
-// Typical helpers in graph chapters include:
-// shortest paths, traversal, serialization patterns, dependency modeling
+io.print(g.nodeCount());
+io.print(g.getNeighbors("A"));
+io.print(g.getWeight("A", "B"));
+g.addNode("D");
+g.addEdge("C", "D", 1);</code></pre>
+      </section>
 
-// GraphMemory feature area supports memory-oriented graph structures
-// for AI workflows (entities, links, context retrieval).</code></pre>
+      <section id="graphmemory">
+        <div class="section-head">
+          <h2>16b) GraphMemory</h2>
+          <p class="hint">Semantic memory for agents. Call <code>initialize()</code> before remember/query. Opt-in citations: <code>memory.ask</code> or <code>query(..., { grounded: true })</code>.</p>
+        </div>
+        <pre><code class="language-malda">var memory = new GraphMemory();
+memory.initialize();
+
+memory.remember("MALDA uses actors for concurrency");
+memory.remember("VectorDB stores embeddings");
+
+var hits = memory.query("How does concurrency work?", 3);
+io.print(hits[0]);</code></pre>
       </section>
 
       <section id="vectordb">
         <div class="section-head">
           <h2>17) VectorDB + Semantic Search</h2>
-          <p class="hint">Embed text, store vectors, run similarity queries.</p>
+          <p class="hint">Constructor needs dimension + precision. <code>init(fn)</code> then <code>add(data)</code> / <code>searchSimilar(data, topN)</code>. Hits expose <code>.data</code> and <code>.similarity</code>.</p>
         </div>
-        <pre><code class="language-malda">// Core VectorDB usage pattern
-var db = new VectorDB();
-
-// Add items (with automatic or explicit embeddings)
-db.add("doc-1", "MALDA is an AI-first language");
-db.add("doc-2", "Actors handle concurrency");
-
-// Similarity search
-var hits = db.search("How do actors work?", 3);
-for (var hit in hits) {
-  print(hit.id + " score=" + string(hit.score));
+        <pre><code class="language-malda">function embed(text) {
+  return [1.0, 0.0, 0.0];
 }
 
-// Serialize / load patterns are supported in manual examples.</code></pre>
+var db = new VectorDB(3, "double");
+db.init(embed);
+db.add("MALDA is an AI-first language");
+db.add("Actors handle concurrency");
+
+var hits = db.searchSimilar("How do actors work?", 3);
+foreach (var hit in hits) {
+  io.print(string(hit.data) + " sim=" + string(hit.similarity));
+}</code></pre>
       </section>
 
       <section id="interop">
@@ -757,37 +922,34 @@ var calcType = getDotNetType(asm, "MathUtils.Calculator");
 var calc = dotnetNew(calcType);
 
 var result = calc.Add(10, 20);
-print("Result: " + string(result));
+io.print("Result: " + string(result));
 
 calc.Precision = 5;
-print("Precision: " + string(calc.Precision));
+io.print("Precision: " + string(calc.Precision));
 
-// Also supports direct type-name creation:
-var list = dotnetNew("System.Collections.Generic.List");
-list.Add("item1");</code></pre>
+var sb = dotnetNew("System.Text.StringBuilder");
+sb.Append("item1");</code></pre>
       </section>
 
       <section id="cli">
         <div class="section-head">
           <h2>19) CLI Workflow</h2>
-          <p class="hint">Run scripts, compile executables, scaffold, and test.</p>
+          <p class="hint">Default <code>compile</code> is interpreter-packaged (expected). <code>--mode transpile</code> is typed C# publish. Debug adapter is not <code>malda-lsp</code>.</p>
         </div>
-        <pre><code class="language-malda">// Run
-malda program.malda
+        <pre><code class="language-shell">malda program.malda
 
-// Compile
 malda compile program.malda -o app.exe
+malda compile program.malda -o app.exe --mode transpile
+malda compile program.malda --mode js -o app.js
 
-// Test discovery + execution
 malda test
 malda test ./tests --filter auth --format human
 malda test ./tests --iterations 100 --seed 1337 --write-regression
-malda test ./tests --write-regression --regression-dir ./artifacts/regressions
-malda test ./tests --format ci --iterations 100 --seed 1337
 
-// Scaffold
 malda new webapi my-api
-malda new fullstack my-app</code></pre>
+malda new fullstack my-app
+
+malda debug-adapter</code></pre>
       </section>
     </div>
 
@@ -815,22 +977,19 @@ malda new fullstack my-app</code></pre>
           <h2>UI 1) Component Composition</h2>
           <p class="hint">Build a tree with layout/display/input controls using <code>ui.control(props, children?, key?)</code>.</p>
         </div>
-        <pre><code class="language-malda">// Step 1: create a reusable action row
-function itemActions() {
+        <pre><code class="language-malda">function itemActions() {
   return ui.row({"gap": 8}, [
     ui.button({"label": "Assign", "variant": "primary", "onClick": "assignItem"}),
     ui.button({"label": "Close", "variant": "danger", "onClick": "closeItem"})
   ]);
 }
 
-// Step 2: compose a card component
 var itemCard = ui.panel({"componentId": "ItemCard", "className": "card"}, [
   ui.heading({"level": 2, "value": "Item #123"}),
   ui.text({"value": "Login issue reported by user"}),
   itemActions()
 ]);
 
-// Step 3: compose page root
 var root = ui.column({"gap": 12}, [
   ui.heading({"level": 1, "value": "Items Dashboard"}),
   itemCard
@@ -844,24 +1003,19 @@ var root = ui.column({"gap": 12}, [
         </div>
         <pre><code class="language-malda">var sessionId = "app-ui";
 
-// 1) runtime guardrails
 ui.configure("maxPayloadBytes", 250000, sessionId);
 ui.configure("sessionTtlMs", 1800000, sessionId);
 
-// 2) mount + envelope response
 var envelope = ui.mountEnvelope(root, sessionId, {"includeSnapshot": true});
 
-// 3) server-side state
 var wasOpen = ui.state("ItemPanel", "open", false, "session");
 ui.setState("ItemPanel", "open", !wasOpen, "session");
 
-// 4) lifecycle hooks
 ui.onInit("ItemPanel", sessionId);
 ui.onPreRender("ItemPanel", sessionId);
 ui.onUpdate("ItemPanel", sessionId);
 ui.onError("ItemPanel", sessionId);
 
-// 5) refresh pipeline + inspect emitted event
 ui.invalidate("items", {"reason": "server-update"});
 var ev = ui.pullEvent(sessionId);</code></pre>
       </section>
@@ -869,10 +1023,9 @@ var ev = ui.pullEvent(sessionId);</code></pre>
       <section id="ui-events">
         <div class="section-head">
           <h2>UI 3) Events + Form Patterns</h2>
-          <p class="hint">Server-driven form handling with validation feedback rendering.</p>
+          <p class="hint">Drain with <code>ui.pullEvent</code> before rebuilding. Second arg of <code>dispatchEvent</code> is sessionId (string), not a sequence number.</p>
         </div>
-        <pre><code class="language-malda">// Form component
-var form = ui.form({"componentId": "CreateItemForm", "onSubmit": "submitItem"}, [
+        <pre><code class="language-malda">var form = ui.form({"componentId": "CreateItemForm", "onSubmit": "submitItem"}, [
   ui.field({}, [
     ui.text({"value": "Title"}),
     ui.textField({"name": "title", "required": true, "onChange": "validateTitle"})
@@ -887,23 +1040,20 @@ var form = ui.form({"componentId": "CreateItemForm", "onSubmit": "submitItem"}, 
   ui.button({"label": "Create", "variant": "primary", "onClick": "submit"})
 ]);
 
-// Called by onChange
 function validateTitle(event) {
-  if (event.value == null || length(event.value) < 3) {
+  if (event.value == null || str.length(event.value) &lt; 3) {
     ui.setState("CreateItemForm", "titleError", "Title must be at least 3 chars", "session");
   } else {
     ui.setState("CreateItemForm", "titleError", "", "session");
   }
 }
 
-// Called by onSubmit
 function submitItem(event) {
-  // event.values typically carries form values
   ui.setState("CreateItemForm", "saved", true, "session");
 }
 
-// In production, host/framework dispatches this automatically
-ui.dispatchEvent({"type": "submit", "componentId": "CreateItemForm", "values": {"title": "VPN issue"}}, "app-ui");</code></pre>
+ui.dispatchEvent({"type": "submit", "componentId": "CreateItemForm", "values": {"title": "VPN issue"}}, "app-ui");
+var pending = ui.pullEvent("app-ui");</code></pre>
       </section>
 
       <section id="ui-routing">
@@ -911,8 +1061,7 @@ ui.dispatchEvent({"type": "submit", "componentId": "CreateItemForm", "values": {
           <h2>UI 4) Routing + Session Helpers</h2>
           <p class="hint">Preserve user UI session across server routes and redirects.</p>
         </div>
-        <pre><code class="language-malda">// GET route: mount UI with stable session id
-@GET("/web/items")
+        <pre><code class="language-malda">@GET("/web/items")
 function itemsPage(req) {
   var sessionId = ui.sessionId(req, "items-ui");
   var app = ui.column({}, [
@@ -922,10 +1071,8 @@ function itemsPage(req) {
   return ui.mountEnvelope(app, sessionId, {"includeSnapshot": true});
 }
 
-// POST route: persist then redirect while preserving session
 @POST("/web/items/create")
 function createItem(body) {
-  // ... persist body.title/body.priority ...
   return ui.redirectWithSession("/web/items", body, "items-ui");
 }</code></pre>
       </section>
@@ -937,12 +1084,10 @@ function createItem(body) {
         </div>
         <pre><code class="language-malda">var base = "templates/";
 
-// Compose full page from templates
 var sidebar = ui.template(base + "sidebar.html", {"active": "items"}, {"cache": false});
 var body = ui.partial(base + "items_body.html", {"rowsHtml": rowsHtml});
 var page = ui.layout(base + "layout.html", {"sidebar": sidebar, "body": body}, {"title": "App"});
 
-// Normalize schema + defaults once
 var schema = ui.crudSchema({
   "entityName": "Item",
   "entitySingularLower": "item",
@@ -950,7 +1095,6 @@ var schema = ui.crudSchema({
   "filterDefs": [{"name": "priority", "type": "select"}]
 });
 
-// Generate CRUD controls html from schema + query + lookups
 var controlsHtml = ui.crudControls(
   schema,
   "app-session",
@@ -965,8 +1109,7 @@ var controlsHtml = ui.crudControls(
           <h2>UI 6) Advanced Data Controls</h2>
           <p class="hint">Large datasets and hierarchy UIs with <code>ui.dataGrid</code> and <code>ui.treeView</code>.</p>
         </div>
-        <pre><code class="language-malda">// Grid for tabular data
-var grid = ui.dataGrid({
+        <pre><code class="language-malda">var grid = ui.dataGrid({
   "componentId": "ItemsGrid",
   "rows": items,
   "columns": [
@@ -980,7 +1123,6 @@ var grid = ui.dataGrid({
   "onRowClick": "openItem"
 });
 
-// Tree for hierarchical data
 var tree = ui.treeView({
   "componentId": "KnowledgeTree",
   "nodes": kbNodes,
@@ -999,8 +1141,8 @@ function selectNode(event) {
     </div>
 
     <footer>
-      MALDA cheat sheet generated for quick daily reference.
-      Keep this file near your project root and extend snippets as your style evolves.
+      MALDA 1.0.0 cheat sheet. Agents should prefer <code>docs/llm/</code>.
+      Keep this file at the project root.
     </footer>
   </div>
 
@@ -1014,13 +1156,18 @@ function selectNode(event) {
       }
 
       const KEYWORDS = [
-        "actor", "on", "spawn", "send", "self", "sleep",
+        "actor", "on", "spawn", "send", "self",
         "class", "extends", "new", "this", "super",
-        "function", "return", "var", "if", "else", "for", "while",
+        "function", "return", "var", "const", "if", "else", "for", "foreach", "while",
         "match", "case", "default", "break", "continue",
         "try", "catch", "finally", "throw",
-        "include", "using", "true", "false", "null",
-        "and", "or", "not", "prompt"
+        "include", "using", "import", "export",
+        "true", "false", "null",
+        "and", "or", "not", "in",
+        "prompt", "type", "schema", "api",
+        "await", "async",
+        "graph", "directed", "undirected", "dict",
+        "component", "workflow", "step"
       ];
 
       const TYPES = [
@@ -1028,8 +1175,8 @@ function selectNode(event) {
         "LLMClient", "OpenRouterClient", "LlamaCppClient",
         "Agent", "CodingAgent", "MALDACodingAgent", "Conversation",
         "SqlServerClient", "PostgresClient", "SqliteClient",
-        "MCPServer", "ACPClient", "ACPServer",
-        "VectorDB"
+        "MCPServer", "MCPClient", "ACPClient", "ACPServer",
+        "VectorDB", "GraphMemory"
       ];
 
       const keywordRegex = new RegExp("\\b(" + KEYWORDS.join("|") + ")\\b", "g");
@@ -1042,7 +1189,6 @@ function selectNode(event) {
         let src = el.textContent || "";
         src = escapeHtml(src);
 
-        // Use placeholders for every token type so regex never runs on markup.
         const tokens = [];
         function put(html) {
           const key = "%%TOK" + tokens.length + "%%";
@@ -1059,20 +1205,16 @@ function selectNode(event) {
           });
         }
 
-        // Protect strings first, then comments.
-        // This avoids treating URL fragments like "https://..." as comments.
         stash(/"""[\s\S]*?"""/g, "str");
         stash(/"(?:\\.|[^"\\])*"/g, "str");
         stash(/\/\/[^\n]*/g, "com");
 
-        // Then syntax tokens (still as placeholders).
         stash(decRegex, "dec");
         stash(keywordRegex, "k");
         stash(typeRegex, "type");
         stash(fnRegex, "fn");
         stash(numRegex, "num");
 
-        // Restore placeholders recursively until stable.
         let prev;
         do {
           prev = src;
@@ -1082,6 +1224,28 @@ function selectNode(event) {
         } while (src !== prev && /%%TOK\d+%%/.test(src));
 
         el.innerHTML = src;
+      });
+
+      document.querySelectorAll("pre").forEach(function (pre) {
+        var wrap = document.createElement("div");
+        wrap.className = "code-wrap";
+        pre.parentNode.insertBefore(wrap, pre);
+        wrap.appendChild(pre);
+
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "copy-btn";
+        btn.textContent = "Copy";
+        btn.addEventListener("click", function () {
+          var text = pre.textContent || "";
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(function () {
+              btn.textContent = "Copied";
+              setTimeout(function () { btn.textContent = "Copy"; }, 1200);
+            });
+          }
+        });
+        wrap.appendChild(btn);
       });
     })();
   </script>
