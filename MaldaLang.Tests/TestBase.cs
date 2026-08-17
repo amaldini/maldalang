@@ -119,6 +119,12 @@ public abstract class TestBase : IDisposable
         try
         {
             BuiltInFunctions.ClearGetEnvCacheForTesting();
+            // Pair tests and runnable-manual snippets share these process-wide
+            // registries. Clear under the console gate so `api Calc` in
+            // 09-functions.html cannot collide with Examples/Prompts/api_program_calc.malda.
+            SchemaRegistry.ClearForTesting();
+            SumTypeRegistry.ClearForTesting();
+            ApiRegistry.ClearForTesting();
             var originalOut = Console.Out;
             var originalError = Console.Error;
             using var outputWriter = new StringWriter();
