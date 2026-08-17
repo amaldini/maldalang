@@ -857,6 +857,11 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("function answerInstructions(useTools)", source, StringComparison.Ordinal);
             Assert.Contains("newReaderAgent(", source, StringComparison.Ordinal);
             Assert.Contains("newPlainAgent(", source, StringComparison.Ordinal);
+            Assert.Contains("var distiller = newPlainAgent(", source, StringComparison.Ordinal);
+            Assert.Contains("var curator = newPlainAgent(", source, StringComparison.Ordinal);
+            Assert.DoesNotContain("newCodingAgent", source, StringComparison.Ordinal);
+            Assert.DoesNotContain("new CodingAgent", source, StringComparison.Ordinal);
+            Assert.Contains("sbJoinUnderRoot2(brainDir, \"notes\", current.slug + \".md\")", source, StringComparison.Ordinal);
             Assert.Contains("ASK tools: off", source, StringComparison.Ordinal);
             Assert.Contains("ASK tools: on", source, StringComparison.Ordinal);
         }

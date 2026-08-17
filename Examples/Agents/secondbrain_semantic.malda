@@ -269,15 +269,6 @@ function modelLabel() {
     return t("OpenRouter / client default model", "OpenRouter / modello di default del client");
 }
 
-// CodingAgent: full file tools, with working directory limited to the docs root.
-function newCodingAgent(name, role, instructions, workDir) {
-    var client = makeClient();
-    if (client == null) {
-        return new CodingAgent(name, role, instructions, workDir);
-    }
-    return new CodingAgent(name, role, instructions, client, workDir);
-}
-
 // GraphMemory neighbor lookup via new Tool(...) — example of a custom LLM tool
 // (handler receives the whole args object). Uses findRelated() on related_to edges.
 function findRelatedNotesToolHandler(args) {
@@ -1162,8 +1153,8 @@ function distillInstructions() {
         "per " + productName() + ". Rispetti sempre alla lettera il formato di risposta richiesto. " +
         "Scrivi la nota nella stessa lingua del documento di origine e mantieni invariati i " +
         "termini tecnici, i nomi di API e i frammenti di codice. Non inventi nulla: usi solo " +
-        "cio' che il documento contiene. Non usi gli strumenti sui file: il testo del " +
-        "documento ti viene fornito direttamente nel messaggio.";
+        "cio' che il documento contiene. Il testo del documento ti viene fornito " +
+        "direttamente nel messaggio.";
 }
 
 function distillQuestion(sourceRel, partLabel, text) {
@@ -1352,8 +1343,8 @@ function writeRelatedSections(brainDir, notes) {
         if (lines.length == 0) {
             lines.append("- nessuna nota affine rilevata");
         }
-        var notePath = io.pathJoin(brainDir, "notes", current.slug + ".md");
-        if (io.hasFile(notePath)) {
+        var notePath = sbJoinUnderRoot2(brainDir, "notes", current.slug + ".md");
+        if (notePath != null and io.hasFile(notePath)) {
             var updated = replaceRelatedBlock(io.readFile(notePath), str.join(lines, "\n"));
             io.writeFile(notePath, updated);
         }
@@ -1507,7 +1498,10 @@ function writeIndex(brainDir, docsRoot, notes, topics, skipped, truncated, taxon
     lines.append("- `" + CATALOG_NAME + "`: catalogo leggibile a macchina.");
     lines.append("- `" + MEMORY_BASE_NAME + ".*`: indici GraphMemory usati dal recupero ASK.");
     lines.append("");
-    io.writeFile(io.pathJoin(brainDir, "index.md"), str.join(lines, "\n"));
+    var indexPath = sbJoinUnderRoot(brainDir, "index.md");
+    if (indexPath != null) {
+        io.writeFile(indexPath, str.join(lines, "\n"));
+    }
 }
 
 function writeCatalog(brainDir, docsRoot, notes, topics, taxonomySource) {
@@ -1555,7 +1549,10 @@ function writeCatalog(brainDir, docsRoot, notes, topics, taxonomySource) {
         "notes": slimNotes,
         "topics": slimTopics
     };
-    io.writeFile(io.pathJoin(brainDir, CATALOG_NAME), toJSON(catalog));
+    var catalogPath = sbJoinUnderRoot(brainDir, CATALOG_NAME);
+    if (catalogPath != null) {
+        io.writeFile(catalogPath, toJSON(catalog));
+    }
 }
 
 // ---------------------------------------------------------------- mode 1
@@ -2258,13 +2255,11 @@ function finalizeBrain(brainDir, docsRoot, notes, skipped, truncated, taxonomySo
 
     io.print(t("Building topic hubs...", "Costruzione degli hub tematici..."));
     var topics = topicsOf(notes);
-    var curator = newCodingAgent(
+    var curator = newPlainAgent(
         "Curator",
         "curatore di knowledge base",
         "Scrivi introduzioni brevi e concrete per gli hub tematici di " + productName() + ". " +
-        "Non inventare contenuti: usa solo i titoli e i riassunti forniti. " +
-        "Non usare gli strumenti sui file.",
-        brainDir
+        "Non inventare contenuti: usa solo i titoli e i riassunti forniti."
     );
     foreach (var topic in topics) {
         var fromTaxonomy = descriptionOfTheme(taxonomy, topic.title);
@@ -2293,8 +2288,8 @@ function finalizeBrain(brainDir, docsRoot, notes, skipped, truncated, taxonomySo
                 }
             }
             if (not stillThere) {
-                var hubPath = io.pathJoin(brainDir, "topics", oldTopic.slug + ".md");
-                if (io.hasFile(hubPath)) {
+                var hubPath = sbJoinUnderRoot2(brainDir, "topics", oldTopic.slug + ".md");
+                if (hubPath != null and io.hasFile(hubPath)) {
                     io.deleteFile(hubPath);
                     AnsiConsole.markupLine("  [dim]" + t("removed hub", "hub rimosso") +
                         "[/] topics/" + oldTopic.slug + ".md");
@@ -2444,14 +2439,19 @@ function buildBrain(cli) {
     }
 
     io.ensureDir(brainDir);
-    io.ensureDir(io.pathJoin(brainDir, "notes"));
-    io.ensureDir(io.pathJoin(brainDir, "topics"));
+    var notesDir = sbJoinUnderRoot(brainDir, "notes");
+    if (notesDir != null) {
+        io.ensureDir(notesDir);
+    }
+    var topicsDir = sbJoinUnderRoot(brainDir, "topics");
+    if (topicsDir != null) {
+        io.ensureDir(topicsDir);
+    }
 
-    var distiller = newCodingAgent(
+    var distiller = newPlainAgent(
         "Distiller",
         "knowledge engineer",
-        distillInstructions(),
-        docsRoot
+        distillInstructions()
     );
 
     var notes = [];
@@ -2743,11 +2743,10 @@ function updateBrain(cli) {
         }
     }
 
-    var distiller = newCodingAgent(
+    var distiller = newPlainAgent(
         "Distiller",
         "knowledge engineer",
-        distillInstructions(),
-        docsRoot
+        distillInstructions()
     );
     var skipped = [];
     var truncated = [];
