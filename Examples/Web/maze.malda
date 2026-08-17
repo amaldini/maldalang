@@ -1,0 +1,414 @@
+// Maze Generator + graph BFS solver — served by HttpServer
+// MALDA program — run with: malda Examples/Web/maze.malda
+// Open: http://localhost:8092/
+//
+// Generation, graph build, g.bfs() solve, and SVG drawing are MALDA.
+// The page keeps a few lines of JS only to pick a start cell and toggle the
+// already-computed next-step map (not a second solver).
+// GET /new rebuilds the maze on the server (stored in pinned ui state so the
+// next request sees it — request interpreters clone globals).
+
+function makeFilledGrid(rows, cols, value) {
+    var grid = [];
+    for (var r = 0; r < rows; r = r + 1) {
+        var row = [];
+        for (var c = 0; c < cols; c = c + 1) {
+            row.append(value);
+        }
+        grid.append(row);
+    }
+    return grid;
+}
+
+// Cell is { t, r, b, l } — true means that wall is present.
+function generateMaze(rows, cols) {
+    var grid = [];
+    var visited = makeFilledGrid(rows, cols, false);
+    for (var r = 0; r < rows; r = r + 1) {
+        var row = [];
+        for (var c = 0; c < cols; c = c + 1) {
+            row.append({ "t": true, "r": true, "b": true, "l": true });
+        }
+        grid.append(row);
+    }
+
+    var stack = [];
+    visited[0][0] = true;
+    stack.append(0);
+    stack.append(0);
+
+    while (stack.length > 0) {
+        var cr = stack[stack.length - 2];
+        var cc = stack[stack.length - 1];
+
+        var nbrs = [];
+        if (cr > 0 && !visited[cr - 1][cc]) {
+            nbrs.append("u");
+        }
+        if (cc < cols - 1 && !visited[cr][cc + 1]) {
+            nbrs.append("r");
+        }
+        if (cr < rows - 1 && !visited[cr + 1][cc]) {
+            nbrs.append("d");
+        }
+        if (cc > 0 && !visited[cr][cc - 1]) {
+            nbrs.append("l");
+        }
+
+        if (nbrs.length > 0) {
+            var dir = nbrs[math.randomInt(0, nbrs.length - 1)];
+            var nr = cr;
+            var nc = cc;
+
+            if (dir == "u") {
+                nr = cr - 1;
+                grid[cr][cc].t = false;
+                grid[nr][nc].b = false;
+            }
+            if (dir == "r") {
+                nc = cc + 1;
+                grid[cr][cc].r = false;
+                grid[nr][nc].l = false;
+            }
+            if (dir == "d") {
+                nr = cr + 1;
+                grid[cr][cc].b = false;
+                grid[nr][nc].t = false;
+            }
+            if (dir == "l") {
+                nc = cc - 1;
+                grid[cr][cc].l = false;
+                grid[nr][nc].r = false;
+            }
+
+            visited[nr][nc] = true;
+            stack.append(nr);
+            stack.append(nc);
+        } else {
+            stack.pop();
+            stack.pop();
+        }
+    }
+
+    return grid;
+}
+
+function cellId(r, c) {
+    return string(r) + "," + string(c);
+}
+
+// Each cell is a node; each open passage is one undirected edge.
+function mazeToGraph(grid, rows, cols) {
+    var g = graph undirected {};
+    for (var r = 0; r < rows; r = r + 1) {
+        for (var c = 0; c < cols; c = c + 1) {
+            g.addNode(cellId(r, c), { "r": r, "c": c });
+        }
+    }
+
+    for (var gr = 0; gr < rows; gr = gr + 1) {
+        for (var gc = 0; gc < cols; gc = gc + 1) {
+            var cell = grid[gr][gc];
+            if (!cell.r && gc < cols - 1) {
+                g.addEdge(cellId(gr, gc), cellId(gr, gc + 1), 1);
+            }
+            if (!cell.b && gr < rows - 1) {
+                g.addEdge(cellId(gr, gc), cellId(gr + 1, gc), 1);
+            }
+        }
+    }
+
+    return g;
+}
+
+function pathFromGraph(g, ids) {
+    var path = [];
+    foreach (var id in ids) {
+        path.append(g.getNode(id));
+    }
+    return path;
+}
+
+// One BFS on the graph from the exit, so any start can walk toward it.
+function buildNextTowardEnd(g, rows, cols, endR, endC) {
+    var nextMap = makeFilledGrid(rows, cols, null);
+    var seen = makeFilledGrid(rows, cols, false);
+    var queue = [];
+    seen[endR][endC] = true;
+    queue.append(g.getNode(cellId(endR, endC)));
+
+    while (queue.length > 0) {
+        var cur = queue.shift();
+        var nbrs = g.getNeighbors(cellId(cur.r, cur.c));
+        foreach (var nid in nbrs) {
+            var n = g.getNode(nid);
+            if (!seen[n.r][n.c]) {
+                seen[n.r][n.c] = true;
+                nextMap[n.r][n.c] = { "r": cur.r, "c": cur.c };
+                queue.append(n);
+            }
+        }
+    }
+
+    return nextMap;
+}
+
+function solveMaze(grid, rows, cols, startR, startC, endR, endC) {
+    var g = mazeToGraph(grid, rows, cols);
+    var bfs = g.bfs(cellId(startR, startC), cellId(endR, endC));
+    var path = [];
+    if (bfs.found) {
+        path = pathFromGraph(g, bfs.path);
+    }
+    return {
+        "path": path,
+        "next": buildNextTowardEnd(g, rows, cols, endR, endC),
+        "graph": g
+    };
+}
+
+function svgLine(x1, y1, x2, y2) {
+    return $"<line x1=\"{x1}\" y1=\"{y1}\" x2=\"{x2}\" y2=\"{y2}\"/>";
+}
+
+function buildMazeSvg(maze, rows, cols, cellSize) {
+    var width = cols * cellSize + 2;
+    var height = rows * cellSize + 2;
+    var svg = $"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{width}\" height=\"{height}\" viewBox=\"0 0 {width} {height}\">";
+
+    svg = svg + $"<rect class=\"bg\" x=\"0\" y=\"0\" width=\"{width}\" height=\"{height}\"/>";
+
+    for (var r = 0; r < rows; r = r + 1) {
+        for (var c = 0; c < cols; c = c + 1) {
+            var x = c * cellSize + 1;
+            var y = r * cellSize + 1;
+            var inset = 4;
+            var size = cellSize - 8;
+            svg = svg + $"<rect class=\"path\" id=\"p-{r}-{c}\" x=\"{x + inset}\" y=\"{y + inset}\" width=\"{size}\" height=\"{size}\"/>";
+        }
+    }
+
+    var startPad = 3;
+    var startSize = cellSize - 6;
+    svg = svg + $"<rect class=\"start\" id=\"start\" x=\"{startPad + 1}\" y=\"{startPad + 1}\" width=\"{startSize}\" height=\"{startSize}\"/>";
+    var endX = (cols - 1) * cellSize + 1 + startPad;
+    var endY = (rows - 1) * cellSize + 1 + startPad;
+    svg = svg + $"<rect class=\"end\" id=\"end\" x=\"{endX}\" y=\"{endY}\" width=\"{startSize}\" height=\"{startSize}\"/>";
+
+    for (var wr = 0; wr < rows; wr = wr + 1) {
+        for (var wc = 0; wc < cols; wc = wc + 1) {
+            var cell = maze[wr][wc];
+            var x0 = wc * cellSize + 1;
+            var y0 = wr * cellSize + 1;
+            var x1 = x0 + cellSize;
+            var y1 = y0 + cellSize;
+            if (cell.t) {
+                svg = svg + svgLine(x0, y0, x1, y0);
+            }
+            if (cell.l) {
+                svg = svg + svgLine(x0, y0, x0, y1);
+            }
+            if (wr == rows - 1 && cell.b) {
+                svg = svg + svgLine(x0, y1, x1, y1);
+            }
+            if (wc == cols - 1 && cell.r) {
+                svg = svg + svgLine(x1, y0, x1, y1);
+            }
+        }
+    }
+
+    for (var hr = 0; hr < rows; hr = hr + 1) {
+        for (var hc = 0; hc < cols; hc = hc + 1) {
+            var hx = hc * cellSize + 1;
+            var hy = hr * cellSize + 1;
+            svg = svg + $"<rect class=\"hit\" x=\"{hx}\" y=\"{hy}\" width=\"{cellSize}\" height=\"{cellSize}\" onclick=\"pick({hr},{hc})\"/>";
+        }
+    }
+
+    svg = svg + "</svg>";
+    return svg;
+}
+
+function pageStyle() {
+    var css = "";
+    css = css + "*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}";
+    css = css + "body{min-height:100vh;display:flex;justify-content:center;align-items:center;padding:32px 16px;";
+    css = css + "font-family:'Segoe UI',system-ui,sans-serif;color:#e8e6f2;";
+    css = css + "background:#070711 radial-gradient(900px 480px at 50% -8%,rgba(233,69,96,.22),transparent 58%),";
+    css = css + "radial-gradient(640px 360px at 92% 108%,rgba(0,255,168,.08),transparent 52%),#070711;}";
+    css = css + ".c{text-align:center;max-width:720px;}";
+    css = css + ".eyebrow{color:#e94560;font-size:11px;letter-spacing:.34em;text-transform:uppercase;margin-bottom:8px;}";
+    css = css + "h1{font-weight:300;font-size:42px;letter-spacing:.18em;text-transform:uppercase;";
+    css = css + "background:linear-gradient(120deg,#fff4f6 10%,#e94560 48%,#ffdd44 100%);";
+    css = css + "-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:6px;}";
+    css = css + ".sub{color:#8b89a6;font-size:13px;letter-spacing:.08em;margin-bottom:18px;}";
+    css = css + ".frame{padding:10px;border-radius:18px;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));";
+    css = css + "border:1px solid rgba(233,69,96,.35);box-shadow:0 24px 60px rgba(0,0,0,.45),0 0 40px rgba(233,69,96,.12);}";
+    css = css + "svg{display:block;border-radius:10px;background:#12121f;}";
+    css = css + "svg .bg{fill:#12121f;}";
+    css = css + "svg line{stroke:#d7d5ff;stroke-width:1;pointer-events:none;opacity:.88;}";
+    css = css + "svg .path{fill:transparent;}";
+    css = css + "svg .path.on{fill:#ffdd44;filter:drop-shadow(0 0 3px rgba(255,221,68,.75));}";
+    css = css + "svg .start{fill:#00ff88;filter:drop-shadow(0 0 4px rgba(0,255,136,.7));pointer-events:none;}";
+    css = css + "svg .end{fill:#ff4466;filter:drop-shadow(0 0 4px rgba(255,68,102,.7));pointer-events:none;}";
+    css = css + "svg .hit{fill:transparent;cursor:crosshair;}";
+    css = css + "svg .hit:hover{fill:rgba(255,255,255,.08);}";
+    css = css + ".legend{display:flex;gap:16px;justify-content:center;margin:14px 0 4px;color:#a7a4c2;font-size:12px;}";
+    css = css + ".sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:middle;}";
+    css = css + ".sw.s{background:#00ff88;box-shadow:0 0 8px #00ff88;}";
+    css = css + ".sw.e{background:#ff4466;box-shadow:0 0 8px #ff4466;}";
+    css = css + ".sw.p{background:#ffdd44;box-shadow:0 0 8px #ffdd44;}";
+    css = css + ".b{margin-top:16px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}";
+    css = css + "button{background:rgba(22,33,62,.85);color:#eee;border:1px solid rgba(233,69,96,.55);";
+    css = css + "padding:9px 18px;border-radius:999px;cursor:pointer;font-size:13px;letter-spacing:.04em;}";
+    css = css + "button:hover{background:#e94560;color:#fff;border-color:#e94560;}";
+    css = css + "button.primary{background:#e94560;border-color:#e94560;color:#fff;}";
+    css = css + "button.primary:hover{background:#ff6b81;}";
+    css = css + ".i{color:#8b89a6;margin-top:14px;font-size:13px;line-height:1.45;}";
+    return css;
+}
+
+// Display glue only: walk the MALDA next-step map and toggle SVG classes.
+function pageScript(nextJson, rows, cols, cellSize) {
+    var nl = "\n";
+    var s = "";
+    s = s + "\"use strict\";" + nl;
+    s = s + "var N=" + nextJson + ";" + nl;
+    s = s + "var R=" + string(rows) + ",C=" + string(cols) + ",S=" + string(cellSize) + ";" + nl;
+    s = s + "var sr=0,sc=0,er=R-1,ec=C-1;" + nl;
+    s = s + "function clearPath(){" + nl;
+    s = s + "var els=document.querySelectorAll('.path.on');" + nl;
+    s = s + "for(var i=0;i<els.length;i++)els[i].classList.remove('on');" + nl;
+    s = s + "}" + nl;
+    s = s + "function moveStart(){" + nl;
+    s = s + "var el=document.getElementById('start');" + nl;
+    s = s + "el.setAttribute('x', sc*S+4);el.setAttribute('y', sr*S+4);" + nl;
+    s = s + "}" + nl;
+    s = s + "function pick(r,c){" + nl;
+    s = s + "sr=r;sc=c;clearPath();moveStart();" + nl;
+    s = s + "document.getElementById('inf').textContent='Start: ('+r+','+c+') -> click Solve';" + nl;
+    s = s + "}" + nl;
+    s = s + "function solveShown(){" + nl;
+    s = s + "clearPath();" + nl;
+    s = s + "var r=sr,c=sc,n=0;" + nl;
+    s = s + "while(true){" + nl;
+    s = s + "var el=document.getElementById('p-'+r+'-'+c);" + nl;
+    s = s + "if(el)el.classList.add('on');" + nl;
+    s = s + "n=n+1;" + nl;
+    s = s + "if(r===er&&c===ec)break;" + nl;
+    s = s + "var nxt=N[r][c];" + nl;
+    s = s + "if(!nxt){document.getElementById('inf').textContent='No path!';return;}" + nl;
+    s = s + "r=nxt.r;c=nxt.c;" + nl;
+    s = s + "}" + nl;
+    s = s + "document.getElementById('inf').textContent='Path: '+n+' steps';" + nl;
+    s = s + "}" + nl;
+    s = s + "function resetStart(){pick(0,0);}" + nl;
+    return s;
+}
+
+function buildMazePage(maze, nextMap, rows, cols, cellSize) {
+    var q = "\"";
+    var nl = "\n";
+    var h = "";
+    h = h + "<!DOCTYPE html>" + nl;
+    h = h + "<html lang=" + q + "en" + q + ">" + nl;
+    h = h + "<head>" + nl;
+    h = h + "<meta charset=" + q + "UTF-8" + q + ">" + nl;
+    h = h + "<meta name=" + q + "viewport" + q + " content=" + q + "width=device-width, initial-scale=1.0" + q + ">" + nl;
+    h = h + "<title>Graph Labyrinth</title>" + nl;
+    h = h + "<style>" + pageStyle() + "</style>" + nl;
+    h = h + "</head>" + nl;
+    h = h + "<body>" + nl;
+    h = h + "<div class=" + q + "c" + q + ">" + nl;
+    h = h + "<p class=" + q + "eyebrow" + q + ">MALDA GRAPH &middot; BFS</p>" + nl;
+    h = h + "<h1>Labyrinth</h1>" + nl;
+    h = h + "<p class=" + q + "sub" + q + ">" + string(rows) + " &times; " + string(cols) + " perfect maze</p>" + nl;
+    h = h + "<div class=" + q + "frame" + q + ">" + buildMazeSvg(maze, rows, cols, cellSize) + "</div>" + nl;
+    h = h + "<div class=" + q + "legend" + q + ">";
+    h = h + "<span><i class=" + q + "sw s" + q + "></i>Start</span>";
+    h = h + "<span><i class=" + q + "sw e" + q + "></i>Exit</span>";
+    h = h + "<span><i class=" + q + "sw p" + q + "></i>Path</span>";
+    h = h + "</div>" + nl;
+    h = h + "<div class=" + q + "b" + q + ">" + nl;
+    h = h + "<button class=" + q + "primary" + q + " onclick=" + q + "solveShown()" + q + ">Solve</button>" + nl;
+    h = h + "<button onclick=" + q + "location.href='/new'" + q + ">New maze</button>" + nl;
+    h = h + "<button onclick=" + q + "resetStart()" + q + ">Reset start</button>" + nl;
+    h = h + "<button onclick=" + q + "clearPath()" + q + ">Clear path</button>" + nl;
+    h = h + "</div>" + nl;
+    h = h + "<div class=" + q + "i" + q + " id=" + q + "inf" + q + ">Click a cell to choose a start, then Solve. New maze rebuilds the graph on the server.</div>" + nl;
+    h = h + "</div>" + nl;
+    h = h + "<script>" + nl;
+    h = h + pageScript(toJSON(nextMap), rows, cols, cellSize);
+    h = h + "</script>" + nl;
+    h = h + "</body>" + nl;
+    h = h + "</html>" + nl;
+    return h;
+}
+
+var rows = 50;
+var cols = 50;
+var cellSize = 12;
+var startR = 0;
+var startC = 0;
+var endR = rows - 1;
+var endC = cols - 1;
+var port = 8092;
+var mazeStore = "MazeStore";
+var mazeScope = "shared";
+
+function currentGrid() {
+    return ui.getState(mazeStore, "grid", null, mazeScope);
+}
+
+function currentNext() {
+    return ui.getState(mazeStore, "next", null, mazeScope);
+}
+
+function refreshMaze() {
+    io.print($"Generating {rows}x{cols} maze...");
+    var grid = generateMaze(rows, cols);
+    io.print("Building graph and solving with g.bfs()...");
+    var solved = solveMaze(grid, rows, cols, startR, startC, endR, endC);
+    ui.setState(mazeStore, "grid", grid, mazeScope);
+    ui.setState(mazeStore, "next", solved.next, mazeScope);
+    ui.setState(mazeStore, "pathLen", solved.path.length, mazeScope);
+    ui.pinState(mazeStore, mazeScope);
+    io.print("Graph: " + string(solved.graph.nodeCount()) + " nodes, " + string(solved.graph.edgeCount()) + " edges");
+    if (solved.path.length == 0) {
+        io.print("No path from start to end.");
+    } else {
+        io.print($"Default path: {solved.path.length} steps");
+    }
+}
+
+var server = new HttpServer(port);
+
+@PAGE("/")
+function handleHome() {
+    var grid = currentGrid();
+    if (grid == null) {
+        refreshMaze();
+        grid = currentGrid();
+    }
+    return buildMazePage(grid, currentNext(), rows, cols, cellSize);
+}
+
+@PAGE("/new")
+function handleNew() {
+    refreshMaze();
+    return RedirectTo("/");
+}
+
+refreshMaze();
+server.start();
+io.print($"Maze server at http://localhost:{port}/");
+io.print("  GET /     current maze");
+io.print("  GET /new  generate another maze");
+io.print("Press Ctrl+C to stop.");
+
+while (server.isRunning) {
+    sleep(1000);
+}
+
+server.stop();
+io.print("Server stopped.");

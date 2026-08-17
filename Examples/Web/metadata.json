@@ -264,6 +264,30 @@
                          "file":  "ui_text_adventure_fsm.malda"
                      },
                      {
+                         "name":  "Graph Labyrinth",
+                         "description":  "Generate a 50x50 maze, solve it with graph.bfs(), and serve the page from HttpServer",
+                         "file":  "maze.malda",
+                         "track":  "showcase",
+                         "difficulty":  "intermediate",
+                         "minutes":  18,
+                         "requires":  [
+                                          "network"
+                                      ],
+                         "concepts":  [
+                                          "HttpServer",
+                                          "@PAGE",
+                                          "graph",
+                                          "bfs",
+                                          "ui.pinState"
+                                      ],
+                         "prerequisites":  [
+                                               "Web/http_server_example.malda",
+                                               "Graphs/graph_pathfinding.malda"
+                                           ],
+                         "learningGoal":  "See maze generation and MALDA graph BFS together in a served interactive page.",
+                         "expectedOutput":  "Starts HttpServer on port 8092; open http://localhost:8092/ for the maze. New Maze regenerates on the server."
+                     },
+                     {
                          "name":  "JS Browser DOM Hello",
                          "description":  "Compile to JavaScript and update the browser DOM with MALDA dom.* helpers",
                          "file":  "js/hello_dom.malda",
