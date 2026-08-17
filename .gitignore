@@ -59,6 +59,18 @@ Thumbs.db
 Desktop.ini
 .DS_Store
 
+# Secrets / credentials (live keys, TLS private material, MCP host auth)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+credentials.json
+secrets.json
+.cursor/mcp.json
+
 # Per-machine editor config (maldaLanguageServer.path is an absolute local path)
 .vscode/settings.json
 
