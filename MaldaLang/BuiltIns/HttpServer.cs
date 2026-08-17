@@ -1490,7 +1490,7 @@ public partial class HttpServerInstance : ObjectInstance
             // Only check static files for GET requests
             if (method == "GET")
             {
-                if (TryServeStaticFile(path, response))
+                if (TryServeStaticFile(path, response, request))
                 {
                     return;
                 }
@@ -2232,7 +2232,7 @@ public partial class HttpServerInstance : ObjectInstance
         HttpListenerRequest request)
     {
         SessionRuntime.CommitSession(requestContext, responseContext, IsRequestSecure(request));
-        responseContext.ApplyTo(response, _pathBase);
+        responseContext.ApplyTo(response, _pathBase, request);
     }
 
     private bool ValidateRateLimit(
@@ -2326,8 +2326,7 @@ public partial class HttpServerInstance : ObjectInstance
         var body = RuntimeValueToJson(payload);
         var bytes = Encoding.UTF8.GetBytes(body);
         response.ContentType = "application/json; charset=utf-8";
-        response.ContentLength64 = bytes.Length;
-        WriteResponseBodyIfAllowed(response, bytes, request);
+        WebRuntimeHelpers.WriteHttpListenerBody(response, bytes, request);
     }
 
     private string ResolveRateLimitKey(RequestContextInstance requestContext)
@@ -2570,7 +2569,7 @@ public partial class HttpServerInstance : ObjectInstance
             {
                 SessionRuntime.CommitSession(requestContext, responseContext, IsRequestSecure(request));
             }
-            responseContext.ApplyTo(response, _pathBase);
+            responseContext.ApplyTo(response, _pathBase, request);
             return;
         }
 
@@ -2691,8 +2690,7 @@ public partial class HttpServerInstance : ObjectInstance
 
         var bytes = Encoding.UTF8.GetBytes(html);
         response.ContentType = "text/html; charset=utf-8";
-        response.ContentLength64 = bytes.Length;
-        WriteResponseBodyIfAllowed(response, bytes, request);
+        WebRuntimeHelpers.WriteHttpListenerBody(response, bytes, request);
     }
 
     private static bool LooksLikeFullHtmlDocument(string html)
@@ -2766,7 +2764,7 @@ public partial class HttpServerInstance : ObjectInstance
         return "[" + string.Join(",", items) + "]";
     }
     
-    private bool TryServeStaticFile(string path, HttpListenerResponse response)
+    private bool TryServeStaticFile(string path, HttpListenerResponse response, HttpListenerRequest? request = null)
     {
         // Normalize path
         if (path == "/")
@@ -2779,9 +2777,8 @@ public partial class HttpServerInstance : ObjectInstance
             if (_staticFileCache.TryGetValue(path, out var cachedFile))
             {
                 response.ContentType = cachedFile.ContentType;
-                response.ContentLength64 = cachedFile.Content.Length;
                 response.StatusCode = 200;
-                response.OutputStream.Write(cachedFile.Content, 0, cachedFile.Content.Length);
+                WebRuntimeHelpers.WriteHttpListenerBody(response, cachedFile.Content, request);
                 return true;
             }
         }
@@ -2794,10 +2791,9 @@ public partial class HttpServerInstance : ObjectInstance
         var escapedMessage = System.Net.WebUtility.HtmlEncode(message);
         var html = $"<html><head><title>{statusCode}</title></head><body><h1>{statusCode}</h1><p>{escapedMessage}</p></body></html>";
         var bytes = Encoding.UTF8.GetBytes(html);
-        response.ContentType = "text/html; charset=utf-8";
-        response.ContentLength64 = bytes.Length;
         response.StatusCode = statusCode;
-        WriteResponseBodyIfAllowed(response, bytes, request);
+        response.ContentType = "text/html; charset=utf-8";
+        WebRuntimeHelpers.WriteHttpListenerBody(response, bytes, request);
     }
 
     private void WriteErrorResult(
@@ -2823,16 +2819,6 @@ public partial class HttpServerInstance : ObjectInstance
         WriteErrorResponse(response, statusCode, message, request);
     }
 
-    private static void WriteResponseBodyIfAllowed(HttpListenerResponse response, byte[] bytes, HttpListenerRequest? request = null)
-    {
-        if (request != null && string.Equals(request.HttpMethod, "HEAD", StringComparison.OrdinalIgnoreCase))
-        {
-            return;
-        }
-
-        response.OutputStream.Write(bytes, 0, bytes.Length);
-    }
-    
     private void HandleError(HttpListenerResponse response, Exception ex, string correlationId, HttpListenerRequest request)
     {
         var normalized = RuntimeDiagnostics.PreserveContext(ex, _interpreter);

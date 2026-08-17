@@ -1042,7 +1042,7 @@ public class ResponseContextInstance : ObjectInstance
         }
     }
 
-    public void ApplyTo(HttpListenerResponse response, string? pathBase = null)
+    public void ApplyTo(HttpListenerResponse response, string? pathBase = null, HttpListenerRequest? request = null)
     {
         response.StatusCode = StatusCode;
         ApplyHeadersTo(response, pathBase);
@@ -1054,6 +1054,39 @@ public class ResponseContextInstance : ObjectInstance
             return;
         }
 
+        var bytes = EncodeBodyBytes();
+        response.ContentType = ContentType;
+        WebRuntimeHelpers.WriteHttpListenerBody(response, bytes, request);
+    }
+
+    public void ApplyHeadersTo(HttpListenerResponse response, string? pathBase = null)
+    {
+        foreach (var header in Headers)
+        {
+            if (header.Key.Equals("Location", StringComparison.OrdinalIgnoreCase))
+            {
+                WebRuntimeHelpers.ApplyRedirectLocation(response, header.Value, pathBase);
+            }
+            else if (header.Key.Equals("Content-Length", StringComparison.OrdinalIgnoreCase) ||
+                     header.Key.Equals("Transfer-Encoding", StringComparison.OrdinalIgnoreCase))
+            {
+                // Entity framing is derived from the encoded body (and HEAD / no-body statuses).
+                continue;
+            }
+            else
+            {
+                response.Headers[header.Key] = header.Value;
+            }
+        }
+
+        foreach (var cookieHeader in _setCookieHeaders)
+        {
+            response.Headers.Add("Set-Cookie", cookieHeader);
+        }
+    }
+
+    private byte[] EncodeBodyBytes()
+    {
         string bodyText;
         if (ContentType.Contains("application/json", StringComparison.OrdinalIgnoreCase))
         {
@@ -1068,30 +1101,7 @@ public class ResponseContextInstance : ObjectInstance
             bodyText = _body.ToString();
         }
 
-        var bytes = Encoding.UTF8.GetBytes(bodyText);
-        response.ContentType = ContentType;
-        response.ContentLength64 = bytes.Length;
-        response.OutputStream.Write(bytes, 0, bytes.Length);
-    }
-
-    public void ApplyHeadersTo(HttpListenerResponse response, string? pathBase = null)
-    {
-        foreach (var header in Headers)
-        {
-            if (header.Key.Equals("Location", StringComparison.OrdinalIgnoreCase))
-            {
-                WebRuntimeHelpers.ApplyRedirectLocation(response, header.Value, pathBase);
-            }
-            else
-            {
-                response.Headers[header.Key] = header.Value;
-            }
-        }
-
-        foreach (var cookieHeader in _setCookieHeaders)
-        {
-            response.Headers.Add("Set-Cookie", cookieHeader);
-        }
+        return Encoding.UTF8.GetBytes(bodyText);
     }
 
     private static JsonObject ToJsonObject(Dictionary<string, string> source)
@@ -1352,6 +1362,36 @@ public static class WebRuntimeHelpers
     public static void ApplyCorrelationId(HttpListenerResponse response, string correlationId)
     {
         response.Headers[CorrelationIdHeader] = correlationId;
+    }
+
+    /// <summary>
+    /// HTTP/1.1 forbids a message body for these statuses. HttpListener also forces
+    /// Content-Length to 0 for HEAD, so writing a body throws ProtocolViolationException.
+    /// </summary>
+    public static bool StatusForbidsHttpResponseBody(int statusCode) =>
+        statusCode is 100 or 101 or 204 or 205 or 304;
+
+    public static bool IsHeadRequest(HttpListenerRequest? request) =>
+        request != null && string.Equals(request.HttpMethod, "HEAD", StringComparison.OrdinalIgnoreCase);
+
+    public static bool ShouldOmitHttpResponseBody(HttpListenerRequest? request, int statusCode) =>
+        StatusForbidsHttpResponseBody(statusCode) || IsHeadRequest(request);
+
+    public static void WriteHttpListenerBody(HttpListenerResponse response, byte[] bytes, HttpListenerRequest? request)
+    {
+        if (StatusForbidsHttpResponseBody(response.StatusCode))
+        {
+            response.ContentLength64 = 0;
+            return;
+        }
+
+        response.ContentLength64 = bytes.Length;
+        if (IsHeadRequest(request) || bytes.Length == 0)
+        {
+            return;
+        }
+
+        response.OutputStream.Write(bytes, 0, bytes.Length);
     }
 
     public static string GenerateCsrfToken(string secret, int ttlSeconds = 7200)

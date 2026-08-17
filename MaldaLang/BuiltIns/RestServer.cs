@@ -1373,7 +1373,7 @@ public class RestServerInstance : ObjectInstance
         HttpListenerRequest request)
     {
         SessionRuntime.CommitSession(requestContext, responseContext, request.IsSecureConnection);
-        responseContext.ApplyTo(response);
+        responseContext.ApplyTo(response, request: request);
     }
 
     private bool ValidateRateLimit(
@@ -1895,7 +1895,7 @@ public class RestServerInstance : ObjectInstance
             {
                 SessionRuntime.CommitSession(requestContext, responseContext, request?.IsSecureConnection ?? false);
             }
-            responseContext.ApplyTo(response);
+            responseContext.ApplyTo(response, request: request);
             return;
         }
 

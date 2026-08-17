@@ -468,4 +468,20 @@ public class WebRuntimeFoundationTests
         Assert.True(response.HasHeaders);
         Assert.Contains(setCookieHeaders, value => value.Contains("session=", StringComparison.Ordinal) && value.Contains("Max-Age=0", StringComparison.Ordinal));
     }
+
+    [Fact]
+    public void WebRuntimeHelpers_StatusForbidsHttpResponseBody_MatchesHttpListenerRules()
+    {
+        Assert.True(WebRuntimeHelpers.StatusForbidsHttpResponseBody(100));
+        Assert.True(WebRuntimeHelpers.StatusForbidsHttpResponseBody(101));
+        Assert.True(WebRuntimeHelpers.StatusForbidsHttpResponseBody(204));
+        Assert.True(WebRuntimeHelpers.StatusForbidsHttpResponseBody(205));
+        Assert.True(WebRuntimeHelpers.StatusForbidsHttpResponseBody(304));
+        Assert.False(WebRuntimeHelpers.StatusForbidsHttpResponseBody(200));
+        Assert.False(WebRuntimeHelpers.StatusForbidsHttpResponseBody(303));
+        Assert.False(WebRuntimeHelpers.StatusForbidsHttpResponseBody(401));
+        Assert.True(WebRuntimeHelpers.ShouldOmitHttpResponseBody(null, 204));
+        Assert.False(WebRuntimeHelpers.ShouldOmitHttpResponseBody(null, 200));
+        Assert.False(WebRuntimeHelpers.IsHeadRequest(null));
+    }
 }

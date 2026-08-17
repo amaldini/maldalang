@@ -1372,6 +1372,97 @@ public class HttpServerTests
     }
 
     [Fact]
+    public async Task HttpServer_HeadRequest_CommittedJson_DoesNotWriteBody()
+    {
+        // HttpListener forces Content-Length to 0 for HEAD; writing the JSON body used to throw
+        // ProtocolViolationException from ResponseContextInstance.ApplyTo.
+        var port = GetAvailablePort();
+        var source = @"
+            @GET(""/ping"")
+            function ping(req, res) {
+                return res.json({ ""ok"": true, ""msg"": ""ciao"" });
+            }
+        ";
+
+        var interpreter = LoadInterpreterFromSource(source);
+        var server = new HttpServerInstance(port, null, interpreter);
+        server.CallMethod("start", new List<RuntimeValue>());
+
+        try
+        {
+            using var client = new HttpClient();
+            using var head = await client.SendAsync(new HttpRequestMessage(HttpMethod.Head, $"http://localhost:{port}/ping"));
+            var headBody = await head.Content.ReadAsStringAsync();
+
+            Assert.Equal(HttpStatusCode.OK, head.StatusCode);
+            Assert.Equal("", headBody);
+            Assert.True(head.Content.Headers.ContentLength > 0);
+
+            using var get = await client.GetAsync($"http://localhost:{port}/ping");
+            var getBody = await get.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(getBody);
+            Assert.Equal(HttpStatusCode.OK, get.StatusCode);
+            Assert.True(doc.RootElement.GetProperty("ok").GetBoolean());
+            Assert.Equal("ciao", doc.RootElement.GetProperty("msg").GetString());
+            Assert.Equal(get.Content.Headers.ContentLength, head.Content.Headers.ContentLength);
+        }
+        finally
+        {
+            server.CallMethod("stop", new List<RuntimeValue>());
+        }
+    }
+
+    [Fact]
+    public async Task HttpServer_HeadRequest_MiddlewareRedirect_DoesNotWriteBody()
+    {
+        var port = GetAvailablePort();
+        var source = @"
+            function requireAuth(req, res, next) {
+                return res.redirect(""/login"");
+            }
+
+            @GET(""/"")
+            function home(req, res) {
+                return res.html(""<html><body>home</body></html>"");
+            }
+
+            @GET(""/login"")
+            function login(req, res) {
+                return res.html(""<html><body>login</body></html>"");
+            }
+        ";
+
+        var interpreter = LoadInterpreterFromSource(source);
+        var server = new HttpServerInstance(port, null, interpreter);
+        var except = RuntimeValue.Array(new List<RuntimeValue> { RuntimeValue.String("/login") });
+        var options = new JsonObject();
+        options.Set("except", except);
+        server.CallMethod(
+            "use",
+            new List<RuntimeValue>
+            {
+                RuntimeValue.String("requireAuth"),
+                RuntimeValue.Object(options)
+            });
+        server.CallMethod("start", new List<RuntimeValue>());
+
+        try
+        {
+            using var client = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false });
+            using var head = await client.SendAsync(new HttpRequestMessage(HttpMethod.Head, $"http://localhost:{port}/"));
+            var headBody = await head.Content.ReadAsStringAsync();
+
+            Assert.Equal(HttpStatusCode.SeeOther, head.StatusCode);
+            Assert.Equal("/login", head.Headers.Location?.OriginalString);
+            Assert.Equal("", headBody);
+        }
+        finally
+        {
+            server.CallMethod("stop", new List<RuntimeValue>());
+        }
+    }
+
+    [Fact]
     public async Task HttpServer_FormUrlEncoded_DuplicateKeys_BecomeArray()
     {
         // Checkbox groups (name="tags") post tags=a&tags=b; last-wins used to drop all but one.
