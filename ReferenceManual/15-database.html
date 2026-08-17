@@ -20,7 +20,8 @@
         <p>MALDA ships three clients with the same API: <code>SqliteClient</code>, <code>SqlServerClient</code>, and <code>PostgresClient</code>. Start with SQLite — it is a file on disk, no server. Connection, parameterized SQL, the query builder, inserts, and transactions are identical on the other two; only the connection string and placeholder syntax change.</p>
 
         <h2>15.1 SQLite from zero</h2>
-        <p>Connect, create a table, insert, query, disconnect. Parameters use <code>@name</code> (never concatenate user input into SQL). This example writes a local file; it is not marked <code>data-run</code>.</p>
+        <p>Connect, create a table, insert, query, disconnect. Parameters use <code>@name</code> (never concatenate user input into SQL).</p>
+        <!-- Writes a local .db file; omit data-run so the snippet tests do not leave a file on disk. -->
         <pre><code>var db = new SqliteClient();
 db.connect("Data Source=app.db;");
 

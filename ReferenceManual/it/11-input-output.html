@@ -50,7 +50,8 @@ io.print($"Hello, {name}. Next year you will be {age + 1}.");</code></pre>
     io.print(raw);
 }</code></pre>
         </div>
-        <p>La chiamata è asincrona: l'esecuzione si ferma finché non arriva una riga, poi riprende sulla stessa istruzione. Funziona dentro cicli, funzioni e strutture di controllo annidate. Non marcare gli snippet interattivi con <code>data-run</code> — la suite non ha un umano alla tastiera.</p>
+        <p>La chiamata è asincrona: l'esecuzione si ferma finché non arriva una riga, poi riprende sulla stessa istruzione. Funziona dentro cicli, funzioni e strutture di controllo annidate.</p>
+        <!-- Gli snippet interattivi aspettano stdin; niente data-run — la suite non ha un umano alla tastiera. -->
         <p>Per numeri malformati preferisci <code>toIntOr(raw, fallback)</code> o <code>toIntOrNull(raw)</code> rispetto a un <code>int(...)</code> nudo, che lancia. Vedi <a href="12-built-in-functions.html">12.1 Conversioni di tipo</a>.</p>
 
         <h2>11.3 File</h2>

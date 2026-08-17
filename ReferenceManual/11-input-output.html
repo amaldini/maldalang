@@ -49,7 +49,8 @@ io.print($"Hello, {name}. Next year you will be {age + 1}.");</code></pre>
     io.print(raw);
 }</code></pre>
         </div>
-        <p>The call is asynchronous: execution pauses until a line arrives, then resumes at the same statement. It works inside loops, functions, and nested control structures. Do not mark interactive snippets <code>data-run</code> — the suite has no human at the keyboard.</p>
+        <p>The call is asynchronous: execution pauses until a line arrives, then resumes at the same statement. It works inside loops, functions, and nested control structures.</p>
+        <!-- Interactive snippets wait for stdin; omit data-run — the suite has no human at the keyboard. -->
         <p>For malformed numbers prefer <code>toIntOr(raw, fallback)</code> or <code>toIntOrNull(raw)</code> over bare <code>int(...)</code>, which throws. See <a href="12-built-in-functions.html">12.1 Type Conversion</a>.</p>
 
         <h2>11.3 Files</h2>

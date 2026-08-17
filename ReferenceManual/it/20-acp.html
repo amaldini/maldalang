@@ -248,7 +248,8 @@ print("Streamed response: " + response);</code></pre>
 client.cancelRun("agent-id", runId);</code></pre>
         
         <h2>20.10 Await/Resume</h2>
-        <p><code>__ACP_AWAIT__:…</code> è una <strong>convenzione dell'agente</strong>, non una keyword MALDA. Se la risposta dell'agente inizia con quel marker, il server ACP marca il run come <code>awaiting</code> e il client chiama <code>resumeRun</code> con l'input utente. Stessa idea: <code>Examples/ACP/await_resume.malda</code>. Questi campioni richiedono due processi (server e client); non sono <code>data-run</code>.</p>
+        <p><code>__ACP_AWAIT__:…</code> è una <strong>convenzione dell'agente</strong>, non una keyword MALDA. Se la risposta dell'agente inizia con quel marker, il server ACP marca il run come <code>awaiting</code> e il client chiama <code>resumeRun</code> con l'input utente. Stessa idea: <code>Examples/ACP/await_resume.malda</code>. Questi campioni richiedono due processi (server e client).</p>
+        <!-- Esempi a due processi; niente data-run. -->
         <pre><code>// Agent code (uses special marker or tool)
 // When agent needs input, it responds with: "__ACP_AWAIT__:Please provide your name"
 
