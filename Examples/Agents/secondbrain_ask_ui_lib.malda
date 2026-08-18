@@ -3300,6 +3300,7 @@ function askPageClientScript() {
         "body.textContent='Note preview failed.';" +
         "});" +
         "}" +
+        "function progressMessage(p){" +
         "if(!p){return '';}" +
         "if(p.phase==='tool_calls'&&p.tools&&p.tools.length){" +
         "try{return 'Tools: '+(Array.isArray(p.tools)?p.tools.join(', '):String(p.tools));}" +
@@ -3551,6 +3552,7 @@ function askPageClientScript() {
         "closeNoteDialog();" +
         "return;" +
         "}" +
+        "var lang=t.closest('a[data-ask-lang]');" +
         "if(lang){" +
         "e.preventDefault();" +
         "navigateLang(lang.getAttribute('href')||'');" +
