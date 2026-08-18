@@ -286,4 +286,50 @@ public class InterpretDebugSessionTests : TestBase
         session.Continue();
         await run.WaitAsync(TimeSpan.FromSeconds(10));
     }
+
+    [Fact]
+    public async Task Breakpoint_HitsLastExpressionStatement_InFunction()
+    {
+        const string source =
+            "function pippo(c:int) {\n" +
+            "    var i = 0;\n" +
+            "    while (true) {\n" +
+            "        if (++i > c) break;\n" +
+            "    }\n" +
+            "    io.print($\"Done! {i}\");\n" +
+            "}\n" +
+            "\n" +
+            "pippo(10);\n" +
+            "pippo(20);\n";
+        var statements = Parse(source, MainFile);
+        const int printLine = 6;
+        var session = new DebugSession();
+        session.SetBreakpoint(MainFile, printLine);
+        var interpreter = new Interpreter.Interpreter(session, MainFile);
+        var paused = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        session.Paused += (l, f) => paused.TrySetResult();
+
+        RedirectConsole();
+        try
+        {
+            var run = interpreter.InterpretAsync(statements);
+            await WaitPausedAsync(paused);
+            Assert.Equal(printLine, session.CurrentLine);
+
+            paused = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            session.Paused += (l, f) => paused.TrySetResult();
+            session.Continue();
+            await WaitPausedAsync(paused);
+            Assert.Equal(printLine, session.CurrentLine);
+            session.Continue();
+
+            await run.WaitAsync(TimeSpan.FromSeconds(10));
+            Assert.Contains("Done! 11", GetOutput());
+            Assert.Contains("Done! 21", GetOutput());
+        }
+        finally
+        {
+            RestoreConsole();
+        }
+    }
 }

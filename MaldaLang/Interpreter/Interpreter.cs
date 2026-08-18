@@ -1666,8 +1666,7 @@ public partial class Interpreter
     
     private async Task<RuntimeValue?> ExecuteExpressionAsync(ExpressionStatement stmt)
     {
-        await EvaluateAsync(stmt.Expression);
-        return null;
+        return await EvaluateAsync(stmt.Expression);
     }
     
     private async Task<RuntimeValue?> ExecuteVarDeclAsync(VarDeclStatement stmt)
@@ -3135,7 +3134,9 @@ public partial class Interpreter
                 environment.Define(function.Declaration.Parameters[i], arguments[i]);
             }
             
-            // Execute function body from saved statement index
+            // Execute function body from saved statement index.
+            // Last-expression-wins still uses ExecuteAsync so the debug pause
+            // gate (and profiler) run on the trailing expression statement.
             var body = function.Declaration.Body;
             RuntimeValue? lastExprValue = null;
             var applyLastExprWins = !function.IsConstructor;
@@ -3145,14 +3146,9 @@ public partial class Interpreter
                 functionFrame.StatementIndex = i;
                 var stmt = body.Statements[i];
                 var isLast = (i == body.Statements.Count - 1);
-                if (applyLastExprWins && isLast && stmt is ExpressionStatement exprStmt)
-                {
-                    lastExprValue = await EvaluateAsync(exprStmt.Expression);
-                }
-                else
-                {
-                    await ExecuteAsync(stmt);
-                }
+                var executed = await ExecuteAsync(stmt);
+                if (applyLastExprWins && isLast && stmt is ExpressionStatement)
+                    lastExprValue = executed;
             }
             
             // Function completed - pop frame
