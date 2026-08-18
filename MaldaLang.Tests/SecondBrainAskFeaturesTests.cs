@@ -484,6 +484,12 @@ public class SecondBrainAskFeaturesTests
         Assert.Contains("@POST(\"/register\")", libSource, StringComparison.Ordinal);
         Assert.Contains("@GET(\"/logout\")", libSource, StringComparison.Ordinal);
         Assert.Contains("@GET(\"/health\")", libSource, StringComparison.Ordinal);
+        Assert.Contains("@GET(\"/generate/download\")", libSource, StringComparison.Ordinal);
+        Assert.Contains("function askGetAskMode()", libSource, StringComparison.Ordinal);
+        Assert.Contains("function askBuildGeneratedDownload(", libSource, StringComparison.Ordinal);
+        Assert.Contains("function askMarkGeneratedTurn(", libSource, StringComparison.Ordinal);
+        Assert.Contains("name='askMode'", libSource, StringComparison.Ordinal);
+        Assert.Contains("/generate/download?", libSource, StringComparison.Ordinal);
         Assert.Contains("@PAGE(\"/admin/users\")", libSource, StringComparison.Ordinal);
         Assert.Contains("@PAGE(\"/admin/upload\")", libSource, StringComparison.Ordinal);
         Assert.Contains("@ACTION(\"/feedback\")", libSource, StringComparison.Ordinal);
@@ -606,9 +612,116 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("hello", html, StringComparison.Ordinal);
             Assert.Contains("name='useTools'", html, StringComparison.Ordinal);
             Assert.Contains("tool-toggle", html, StringComparison.Ordinal);
-            Assert.DoesNotContain(" checked", html, StringComparison.Ordinal);
+            Assert.Contains("name='askMode' value='ask' checked", html, StringComparison.Ordinal);
+            Assert.Contains("name='askMode' value='generate'", html, StringComparison.Ordinal);
+            Assert.DoesNotContain("name='useTools' value='1' checked", html, StringComparison.Ordinal);
+            Assert.DoesNotContain("name='forceAnswer' value='1' checked", html, StringComparison.Ordinal);
             Assert.DoesNotContain("<!DOCTYPE", html, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("<html", html, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            SafeDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public async Task AskUi_GenerateDocument_HelpersAndDownloadPayload()
+    {
+        Assert.True(File.Exists(AskUiLibPath), "missing ask UI lib: " + AskUiLibPath);
+
+        var tempDir = Path.Combine(Path.GetTempPath(), "malda_sb_ask_generate", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            File.Copy(AskUiLibPath, Path.Combine(tempDir, "secondbrain_ask_ui_lib.malda"));
+            var harnessPath = Path.Combine(tempDir, "harness.malda");
+            File.WriteAllText(harnessPath,
+                """
+                var ASK_HTTP_PORT = 39022;
+                var ASK_SESSION_ID = "secondbrain-ask-generate";
+                var ASK_STORE = "SecondBrainAskGenerate";
+                var PRODUCT_NAME = "Travel Brain";
+                var ASK_PAGE_TITLE = "Travel Brain";
+                var ASK_POWERED_BY = "";
+                var ASK_POWERED_BY_URL = "";
+                var ASK_LOGO = "";
+                var ASK_LOGO_RIGHT = "";
+                var UI_LANG = "en";
+                var askHttpServer = null;
+
+                function runAskTurn(question) {
+                    return { "question": question, "answer": "ok", "sources": [], "error": "" };
+                }
+
+                include "secondbrain_ask_ui_lib.malda";
+
+                print("SAN=" + askSanitizeDownloadFilename("Preventivo Sicilia 2026!.md"));
+                print("SUG=" + askSuggestDocumentFilename("quote please", "# Itinerario Roma\n\nDay 1"));
+                print("MODE0=" + askGetAskMode());
+                askApplyAskModeFromBody({ "askMode": "generate" });
+                print("MODE1=" + askGetAskMode());
+
+                var marked = askMarkGeneratedTurn({
+                    "question": "Preventivo 7 notti Sicilia",
+                    "answer": "# Preventivo Sicilia\n\n| Voce | Importo |\n| --- | --- |\n| Soggiorno | [TO CONFIRM: nightly rate] |\n",
+                    "sources": [],
+                    "error": ""
+                }, "Preventivo 7 notti Sicilia");
+                print("GEN=" + string(marked.generated) + "," + marked.filename);
+
+                var weak = askMarkGeneratedTurn({
+                    "question": "q",
+                    "answer": "not enough notes",
+                    "sources": [],
+                    "error": "",
+                    "weakRetrieval": true
+                }, "q");
+                print("WEAK=" + string(weak.generated));
+
+                var md = askBuildGeneratedDownload(marked, "md");
+                print("MD=" + string(md.ok) + "," + md.filename + "," + md.contentType);
+                var html = askBuildGeneratedDownload(marked, "html");
+                print("HTML=" + string(html.ok) + "," + html.filename);
+                if (str.indexOf(html.body, "<!DOCTYPE html>") >= 0) {
+                    print("WRAP=1");
+                }
+                var bad = askBuildGeneratedDownload(marked, "pdf");
+                print("BAD=" + string(bad.ok) + "," + bad.error);
+
+                askSetSession({
+                    "brainDir": "secondbrain",
+                    "chatOnly": false,
+                    "noteCount": 1,
+                    "topicCount": 1,
+                    "sourceFolder": "docs",
+                    "retrieval": "lexical",
+                    "llm": "test-model",
+                    "title": ASK_PAGE_TITLE,
+                    "subtitle": "generate"
+                });
+                askAppendTurn(marked);
+                print(askRenderPanelHtml());
+                """,
+                Encoding.UTF8);
+
+            var output = await InterpretAndCaptureAsync(harnessPath);
+            Assert.Contains("SAN=preventivo-sicilia-2026", output, StringComparison.Ordinal);
+            Assert.Contains("SUG=itinerario-roma", output, StringComparison.Ordinal);
+            Assert.Contains("MODE0=ask", output, StringComparison.Ordinal);
+            Assert.Contains("MODE1=generate", output, StringComparison.Ordinal);
+            Assert.Contains("GEN=true,preventivo-sicilia", output, StringComparison.Ordinal);
+            Assert.Contains("WEAK=", output, StringComparison.Ordinal);
+            Assert.DoesNotContain("WEAK=true", output, StringComparison.Ordinal);
+            Assert.Contains("MD=true,preventivo-sicilia.md,text/markdown; charset=utf-8", output, StringComparison.Ordinal);
+            Assert.Contains("HTML=true,preventivo-sicilia.html", output, StringComparison.Ordinal);
+            Assert.Contains("WRAP=1", output, StringComparison.Ordinal);
+            Assert.Contains("BAD=false,Invalid format.", output, StringComparison.Ordinal);
+            Assert.Contains("Download Markdown", output, StringComparison.Ordinal);
+            Assert.Contains("/generate/download?", output, StringComparison.Ordinal);
+            Assert.Contains("fmt=md", output, StringComparison.Ordinal);
+            Assert.Contains("name='askMode' value='generate' checked", output, StringComparison.Ordinal);
+            Assert.Contains("data-btn-generate", output, StringComparison.Ordinal);
         }
         finally
         {
@@ -855,6 +968,10 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("askGetToolsEnabled()", source, StringComparison.Ordinal);
             Assert.Contains("askSetToolsEnabled(false)", source, StringComparison.Ordinal);
             Assert.Contains("function answerInstructions(useTools)", source, StringComparison.Ordinal);
+            Assert.Contains("function documentInstructions(useTools)", source, StringComparison.Ordinal);
+            Assert.Contains("function generateDocumentCli(", source, StringComparison.Ordinal);
+            Assert.Contains("askGetAskMode()", source, StringComparison.Ordinal);
+            Assert.Contains("askMarkGeneratedTurn(", source, StringComparison.Ordinal);
             Assert.Contains("newReaderAgent(", source, StringComparison.Ordinal);
             Assert.Contains("newPlainAgent(", source, StringComparison.Ordinal);
             Assert.Contains("var distiller = newPlainAgent(", source, StringComparison.Ordinal);
@@ -944,6 +1061,12 @@ public class SecondBrainAskFeaturesTests
                 print("X=" + xPb.error);
                 var yPb = sbCliParseArgs(["ask", "--no-powered-by", "--powered-by", "Shown again"]);
                 print("Y=" + yPb.mode + "," + yPb.poweredBy + "," + yPb.poweredByUrl + "," + yPb.error);
+                var zGen = sbCliParseArgs(["generate", "--prompt", "Preventivo Sicilia", "--out", "quote.md", "--format", "html", "--force"]);
+                print("Z=" + zGen.mode + "," + zGen.prompt + "," + zGen.outPath + "," + zGen.format + "," + string(zGen.forceAnswer) + "," + zGen.error);
+                var zzGen = sbCliParseArgs(["generate", "--brain", "b1", "Nuovo", "itinerario", "Roma"]);
+                print("ZZ=" + zzGen.mode + "," + zzGen.prompt + "," + zzGen.brain + "," + zzGen.error);
+                var zf = sbCliParseArgs(["generate", "--format", "pdf"]);
+                print("ZF=" + zf.error);
                 """,
                 Encoding.UTF8);
 
@@ -973,6 +1096,9 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("W=ask,Internal KB,https://example.local,", output, StringComparison.Ordinal);
             Assert.Contains("X=Missing value for --powered-by.", output, StringComparison.Ordinal);
             Assert.Contains("Y=ask,Shown again,,", output, StringComparison.Ordinal);
+            Assert.Contains("Z=generate,Preventivo Sicilia,quote.md,html,true,", output, StringComparison.Ordinal);
+            Assert.Contains("ZZ=generate,Nuovo itinerario Roma,b1,", output, StringComparison.Ordinal);
+            Assert.Contains("ZF=Invalid --format (use md or html).", output, StringComparison.Ordinal);
         }
         finally
         {
