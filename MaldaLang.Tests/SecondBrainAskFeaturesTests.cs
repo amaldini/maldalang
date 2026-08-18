@@ -775,11 +775,9 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("PUBLIC_DEFAULT=true", output, StringComparison.Ordinal);
             Assert.Contains("PUBLIC_NOAUTH=false", output, StringComparison.Ordinal);
 
-            System.Environment.SetEnvironmentVariable("MALDA_ASK_PASSWORD", "not-the-default");
-            System.Environment.SetEnvironmentVariable("MALDA_JWT_SECRET", "jwt-secret-for-tests");
-            System.Environment.SetEnvironmentVariable("MALDA_COOKIE_SECRET", "cookie-secret-for-tests");
-            System.Environment.SetEnvironmentVariable("MALDA_SESSION_SECRET", "session-secret-for-tests");
-
+            // GetEnvCache is process-wide: env vars set after the first askLoadAuthCredentials
+            // would still look empty. Drive the allow-path through the same globals the
+            // loader would have filled.
             await File.WriteAllTextAsync(harnessPath,
                 """
                 var ASK_HTTP_PORT = 39018;
@@ -803,7 +801,10 @@ public class SecondBrainAskFeaturesTests
 
                 ASK_AUTH_ENABLED = true;
                 ASK_HTTP_HOST = "0.0.0.0";
-                askLoadAuthCredentials();
+                ASK_AUTH_USING_DEFAULT_PASSWORD = false;
+                askAuthJwtSecret = "jwt-secret-for-tests";
+                askAuthCookieSecret = "cookie-secret-for-tests";
+                askAuthSessionSecret = "session-secret-for-tests";
                 print("PUBLIC_SECURE=" + string(askRefuseInsecurePublicBind()));
                 """);
 
