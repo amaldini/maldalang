@@ -572,6 +572,8 @@ public class SecondBrainAskFeaturesTests
         Assert.Contains("function progressMessage(p){", libSource, StringComparison.Ordinal);
         Assert.Contains("var lang=t.closest('a[data-ask-lang]')", libSource, StringComparison.Ordinal);
         Assert.Contains("id='ask-live-draft'", libSource, StringComparison.Ordinal);
+        Assert.Contains("data.type==='connected'||data.type==='heartbeat'", libSource, StringComparison.Ordinal);
+        Assert.Contains("if(!payload.phase&&payload.round==null){return;}", libSource, StringComparison.Ordinal);
         Assert.Contains("payload.phase==='draft'", libSource, StringComparison.Ordinal);
         Assert.Contains("id='ask-live-status'", libSource, StringComparison.Ordinal);
         Assert.Contains("id='ask-live-home'", libSource, StringComparison.Ordinal);

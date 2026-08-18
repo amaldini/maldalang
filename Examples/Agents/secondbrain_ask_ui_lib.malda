@@ -3434,6 +3434,7 @@ function askPageClientScript() {
         "}" +
         "function onProgressPayload(payload){" +
         "if(!payload){return;}" +
+        "if(!payload.phase&&payload.round==null){return;}" +
         "var done=payload.phase==='done';" +
         "var roundChanged=false;" +
         "if(payload.phase==='round_start'||(payload.round!=null&&payload.round!==lastRound)){" +
@@ -3471,10 +3472,10 @@ function askPageClientScript() {
         "es.onmessage=function(evt){" +
         "try{" +
         "var data=JSON.parse(evt.data);" +
-        "var payload=data&&data.payload?data.payload:data;" +
-        "if(data&&data.event&&data.event!=='ask-progress'&&data.type==='componentLiveEvent'){" +
-        "/* keep going — payload still useful */" +
-        "}" +
+        "if(!data){return;}" +
+        "if(data.type==='connected'||data.type==='heartbeat'){return;}" +
+        "var payload=data.payload?data.payload:data;" +
+        "if(data.type==='componentLiveEvent'&&data.event&&data.event!=='ask-progress'){return;}" +
         "onProgressPayload(payload);" +
         "}catch(err){}" +
         "};" +
