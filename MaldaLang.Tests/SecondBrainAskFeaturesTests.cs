@@ -504,8 +504,8 @@ public class SecondBrainAskFeaturesTests
         Assert.Contains("@POST(\"/register\")", libSource, StringComparison.Ordinal);
         Assert.Contains("@GET(\"/logout\")", libSource, StringComparison.Ordinal);
         Assert.Contains("@GET(\"/health\")", libSource, StringComparison.Ordinal);
-        Assert.Contains("var ASK_SERVICE_VERSION = \"0.3.0\"", libSource, StringComparison.Ordinal);
-        Assert.DoesNotContain("var ASK_SERVICE_VERSION = \"0.2.0\"", libSource, StringComparison.Ordinal);
+        Assert.Contains("var ASK_SERVICE_VERSION = \"0.4.0\"", libSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("var ASK_SERVICE_VERSION = \"0.3.0\"", libSource, StringComparison.Ordinal);
         Assert.Contains("@GET(\"/note\")", libSource, StringComparison.Ordinal);
         Assert.Contains("function askExtractCitedSlugs(", libSource, StringComparison.Ordinal);
         Assert.Contains("function askRewriteNoteCitations(", libSource, StringComparison.Ordinal);
@@ -568,6 +568,8 @@ public class SecondBrainAskFeaturesTests
         Assert.Contains("RedirectTo(\"/?c=\"", libSource, StringComparison.Ordinal);
         Assert.Contains("onAgentProgress(liveChannel)", libSource, StringComparison.Ordinal);
         Assert.DoesNotContain("onAgentProgress(\"ask\")", libSource, StringComparison.Ordinal);
+        Assert.Contains("id='ask-live-draft'", libSource, StringComparison.Ordinal);
+        Assert.Contains("payload.phase==='draft'", libSource, StringComparison.Ordinal);
         Assert.Contains("id='ask-live-status'", libSource, StringComparison.Ordinal);
         Assert.Contains("id='ask-live-home'", libSource, StringComparison.Ordinal);
         Assert.Contains("placeLiveDock", libSource, StringComparison.Ordinal);
@@ -663,7 +665,7 @@ public class SecondBrainAskFeaturesTests
     {
         Assert.True(File.Exists(AskUiLibPath), "missing ask UI lib: " + AskUiLibPath);
         var libSource = await File.ReadAllTextAsync(AskUiLibPath);
-        Assert.Contains("var ASK_SERVICE_VERSION = \"0.3.0\"", libSource, StringComparison.Ordinal);
+        Assert.Contains("var ASK_SERVICE_VERSION = \"0.4.0\"", libSource, StringComparison.Ordinal);
 
         var lexical = Path.Combine(RepoRoot, "Examples", "Agents", "secondbrain.malda");
         var semantic = Path.Combine(RepoRoot, "Examples", "Agents", "secondbrain_semantic.malda");
@@ -705,7 +707,7 @@ public class SecondBrainAskFeaturesTests
                 print("VER=" + ASK_SERVICE_VERSION);
                 """);
             var output = await InterpretAndCaptureAsync(harnessPath);
-            Assert.Contains("VER=0.3.0", output, StringComparison.Ordinal);
+            Assert.Contains("VER=0.4.0", output, StringComparison.Ordinal);
         }
         finally
         {

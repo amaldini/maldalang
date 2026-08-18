@@ -63,6 +63,10 @@ public partial class ConversationInstance : ObjectInstance
     private static string? _agentProgressLiveChannel;
     /// <summary>Per-request/async flow channel so concurrent ASK sessions do not clash.</summary>
     private static readonly AsyncLocal<string?> AgentProgressLiveChannelLocal = new();
+    private static readonly AsyncLocal<LiveDraftState?> LiveDraftLocal = new();
+    internal const int DefaultLiveDraftMinIntervalMs = 80;
+    internal const int LiveDraftMaxChars = 12000;
+    internal static int LiveDraftMinIntervalMs = DefaultLiveDraftMinIntervalMs;
     private static bool _verboseLoggingResolved;
     private static bool _verboseLoggingEnabled;
     private static string? _verbosePhaseLabel;
@@ -530,16 +534,22 @@ public partial class ConversationInstance : ObjectInstance
     {
         var useStreamDisplay = ShouldStreamThinkingToConsole();
         var promptHandler = AiPipelineHelpers.PromptRunStreamHandler;
+        var liveDraft = !string.IsNullOrWhiteSpace(GetAgentProgressLiveChannel());
         _llmStreamHeaderPrinted = false;
         _llmStreamThinkingPrinted = false;
 
-        if (useStreamDisplay || promptHandler != null)
+        if (liveDraft)
+            ResetLiveDraft();
+
+        if (useStreamDisplay || promptHandler != null || liveDraft)
         {
             LLMClientInstance.StreamDeltaHandler = delta =>
             {
                 promptHandler?.Invoke(delta);
                 if (useStreamDisplay)
                     WriteLlmStreamDelta(delta);
+                if (liveDraft)
+                    HandleLiveDraftDelta(delta);
             };
         }
 
@@ -549,10 +559,86 @@ public partial class ConversationInstance : ObjectInstance
         }
         finally
         {
+            if (liveDraft)
+                FlushLiveDraft();
             LLMClientInstance.StreamDeltaHandler = null;
             if (useStreamDisplay)
                 FinishLlmStreamLine();
         }
+    }
+
+    private sealed class LiveDraftState
+    {
+        public readonly StringBuilder Text = new();
+        public long LastEmitTimestamp;
+        public bool Dirty;
+    }
+
+    internal static void ResetLiveDraft()
+    {
+        LiveDraftLocal.Value = new LiveDraftState();
+    }
+
+    internal void HandleLiveDraftDelta(LlmStreamDelta delta)
+    {
+        if (!string.Equals(delta.Kind, "content", StringComparison.OrdinalIgnoreCase))
+            return;
+        if (string.IsNullOrEmpty(delta.Text))
+            return;
+        if (string.IsNullOrWhiteSpace(GetAgentProgressLiveChannel()))
+            return;
+
+        var state = LiveDraftLocal.Value;
+        if (state == null)
+        {
+            state = new LiveDraftState();
+            LiveDraftLocal.Value = state;
+        }
+
+        if (state.Text.Length < LiveDraftMaxChars)
+        {
+            var remaining = LiveDraftMaxChars - state.Text.Length;
+            if (remaining > 0)
+            {
+                var piece = delta.Text.Length <= remaining
+                    ? delta.Text
+                    : delta.Text.Substring(0, remaining);
+                if (piece.Length > 0)
+                    state.Text.Append(piece);
+            }
+        }
+
+        state.Dirty = true;
+        var interval = LiveDraftMinIntervalMs;
+        var now = Environment.TickCount64;
+        if (interval > 0 && state.LastEmitTimestamp != 0 && (now - state.LastEmitTimestamp) < interval)
+            return;
+
+        EmitLiveDraft(state, now);
+    }
+
+    internal void FlushLiveDraft()
+    {
+        var state = LiveDraftLocal.Value;
+        if (state == null || !state.Dirty)
+            return;
+        EmitLiveDraft(state, Environment.TickCount64);
+    }
+
+    private void EmitLiveDraft(LiveDraftState state, long now)
+    {
+        if (state.Text.Length == 0)
+            return;
+
+        var payload = new JsonObject();
+        payload.Set("phase", RuntimeValue.String("draft"));
+        payload.Set("text", RuntimeValue.String(state.Text.ToString()));
+        payload.Set("round", RuntimeValue.Integer(_llmRound));
+        if (!string.IsNullOrEmpty(AgentName))
+            payload.Set("agent", RuntimeValue.String(AgentName));
+        DeliverAgentProgress(RuntimeValue.Object(payload));
+        state.LastEmitTimestamp = now;
+        state.Dirty = false;
     }
 
     private static int GetStatusBannerInterval()

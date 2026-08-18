@@ -37,6 +37,12 @@ GraphMemory ASK reranks hybrid hits with `rerankMode: cross` by default
 uses `onnx`. CLI: `--rerank off|cross|onnx` (env `MALDA_BRAIN_RERANK`).
 No-op on the lexical host. LLM rerank is not used.
 
+## ASK live draft (P1)
+
+When `onAgentProgress(liveChannel)` is set, `think()` streams answer tokens
+as `{ phase: "draft", text }` over the existing ASK SSE (content kind only,
+throttled). The UI `#ask-live-draft` pane already listens for this phase.
+
 ## GraphMemory UPDATE (semantic host)
 
 `indexBrainAfterFinalize` receives `{ mode, forceFull, catalog, removedNodeIds }`.
