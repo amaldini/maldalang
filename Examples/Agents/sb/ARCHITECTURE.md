@@ -17,3 +17,11 @@ Entry points: [`../secondbrain.malda`](../secondbrain.malda) (lexical ASK) and
 10. `include "secondbrain_ask_ui_lib.malda"` then host `askBrain` / PACK / menu
 
 Hosts keep config (`EMBED_ALIAS`, ports, pack `-o`) and ASK/PACK/menu dispatch.
+
+## GraphMemory UPDATE (semantic host)
+
+`indexBrainAfterFinalize` receives `{ mode, forceFull, catalog, removedNodeIds }`.
+Unchanged notes keep `memoryNodeId` and are skipped; new/changed notes are upserted;
+deleted notes are `forget`n. Full rebuild when `--reindex-memory`, artifacts are
+missing, the embed fingerprint (`embedMode` / `embedDim`) changed, or the catalog
+has no `memoryNodeId`s (upgrade from older brains).

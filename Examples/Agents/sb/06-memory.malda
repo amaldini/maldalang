@@ -1,4 +1,5 @@
 // sb/06-memory.malda — GraphMemory + embeddings (semantic host only)
+// UPDATE indexes incrementally via memoryNodeId; --reindex-memory forces a full rebuild.
 
 function findRelatedNotesToolHandler(args) {
     var slug = "";
@@ -44,6 +45,15 @@ function resolveMemoryNodeId(memory, catalog, slugOrPath) {
     }
 
     var wantSlug = slugFromNotePath(raw);
+    if (catalog != null) {
+        var bySlug = findCatalogNoteBySlug(catalog, wantSlug);
+        if (bySlug != null) {
+            var persisted = noteMemoryId(bySlug);
+            if (persisted != "" and memory.hasNode(persisted) == true) {
+                return persisted;
+            }
+        }
+    }
     var wantPath = normalizePath(raw);
     if (not str.endsWith(wantPath, ".md") and not str.startsWith(wantPath, "notes/")) {
         wantPath = normalizePath("notes/" + wantSlug + ".md");
@@ -382,7 +392,125 @@ function indexBrainMemoryProgressLine(indexed, total, startedAt) {
         "fine tra " + formatDurationMs(etaMs) + " (~" + finishAt + ")");
 }
 
-function indexBrainMemory(brainDir, notes) {
+function clearAskMemoryCache() {
+    askMemoryCache = null;
+    askMemoryCacheDir = "";
+}
+
+function catalogHasMemoryNodeIds(notes) {
+    if (notes == null) {
+        return false;
+    }
+    foreach (var note in notes) {
+        if (noteMemoryId(note) != "") {
+            return true;
+        }
+    }
+    return false;
+}
+
+function embedFingerprintMatches(catalog) {
+    if (catalog == null) {
+        return false;
+    }
+    var mode = "";
+    if (catalog.embedMode != null) {
+        mode = str.trim(string(catalog.embedMode));
+    }
+    if (mode == "") {
+        return false;
+    }
+    var dim = 0;
+    if (catalog.embedDim != null) {
+        try {
+            dim = int(catalog.embedDim);
+        } catch (e) {
+            dim = 0;
+        }
+    }
+    return mode == string(embedMode) and dim == EMBED_DIM;
+}
+
+function indexShouldUseFullRebuild(ctx, artifactsExist, fingerprintOk, catalogHasIds) {
+    if (ctx == null) {
+        return true;
+    }
+    if (ctx.forceFull == true) {
+        return true;
+    }
+    var mode = "";
+    if (ctx.mode != null) {
+        mode = str.trim(string(ctx.mode));
+    }
+    if (mode != "incremental") {
+        return true;
+    }
+    if (artifactsExist != true) {
+        return true;
+    }
+    if (fingerprintOk != true) {
+        return true;
+    }
+    if (catalogHasIds != true) {
+        return true;
+    }
+    return false;
+}
+
+function noteMemoryMeta(note) {
+    return {
+        "type": "semantic",
+        "source": "secondbrain",
+        "category": string(note.topic),
+        "tags": note.tags,
+        "filePath": "notes/" + note.slug + ".md"
+    };
+}
+
+function rememberNoteMemory(memory, note) {
+    var nodeId = string(memory.remember(
+        noteIndexText(note), string(note.topic), noteMemoryMeta(note)));
+    note.memoryNodeId = nodeId;
+    return nodeId;
+}
+
+function upsertNoteMemory(memory, note) {
+    var existing = noteMemoryId(note);
+    if (existing != "" and memory.hasNode(existing) == true) {
+        memory.update(existing, noteIndexText(note), string(note.topic), noteMemoryMeta(note));
+        return existing;
+    }
+    return rememberNoteMemory(memory, note);
+}
+
+function saveBrainMemoryArtifacts(memory, brainDir, indexed, startedAt) {
+    AnsiConsole.markupLine("[dim]" + t(
+        "Saving GraphMemory artifacts...",
+        "Salvataggio artefatti GraphMemory...") + "[/]");
+    var saveStarted = now();
+    memory.save(memoryBasePath(brainDir));
+    var elapsed = now() - startedAt;
+    AnsiConsole.markupLine("  [green]" + t("indexed", "indicizzate") + "[/] " +
+        string(indexed) + " " + t("notes ->", "note ->") + " " +
+        MEMORY_BASE_NAME + ".graph.json" +
+        "  [dim](" + formatDurationMs(elapsed) +
+        t("; save ", "; salvataggio ") + formatDurationMs(now() - saveStarted) +
+        ")[/]");
+    clearAskMemoryCache();
+    return memory;
+}
+
+function emitIndexProgress(indexed, total, startedAt, lastProgressAt) {
+    var due = (now() - lastProgressAt) >= 1500;
+    if (indexed == 1 or indexed == total or due) {
+        AnsiConsole.markupLine("  " +
+            indexBrainMemoryProgressLine(indexed, total, startedAt));
+        return now();
+    }
+    return lastProgressAt;
+}
+
+function indexBrainMemoryFull(brainDir, notes) {
     var memory = createBrainMemory();
     var total = 0;
     if (notes != null) {
@@ -397,37 +525,98 @@ function indexBrainMemory(brainDir, notes) {
     var startedAt = now();
     var lastProgressAt = 0;
     foreach (var note in notes) {
-        var fact = noteIndexText(note);
-        var path = "notes/" + note.slug + ".md";
-        memory.remember(fact, string(note.topic), {
-            "type": "semantic",
-            "source": "secondbrain",
-            "category": string(note.topic),
-            "tags": note.tags,
-            "filePath": path
-        });
+        rememberNoteMemory(memory, note);
         indexed = indexed + 1;
-        // Refresh at least every ~1.5s (hash can be fast); always show first + last.
-        var due = (now() - lastProgressAt) >= 1500;
-        if (indexed == 1 or indexed == total or due) {
-            AnsiConsole.markupLine("  " +
-                indexBrainMemoryProgressLine(indexed, total, startedAt));
-            lastProgressAt = now();
+        lastProgressAt = emitIndexProgress(indexed, total, startedAt, lastProgressAt);
+    }
+    return saveBrainMemoryArtifacts(memory, brainDir, indexed, startedAt);
+}
+
+function indexBrainMemoryIncremental(brainDir, notes, ctx) {
+    var memory = loadBrainMemory(brainDir);
+    if (memory == null) {
+        AnsiConsole.markupLine("[yellow]" + t(
+            "Incremental GraphMemory load failed; doing a full rebuild.",
+            "Caricamento GraphMemory incrementale fallito; ricostruisco tutto.") + "[/]");
+        return indexBrainMemoryFull(brainDir, notes);
+    }
+    var forgotten = 0;
+    if (ctx != null and ctx.removedNodeIds != null) {
+        foreach (var id in ctx.removedNodeIds) {
+            var nid = str.trim(string(id));
+            if (nid != "" and memory.hasNode(nid) == true) {
+                memory.forget(nid);
+                forgotten = forgotten + 1;
+            }
         }
     }
-    AnsiConsole.markupLine("[dim]" + t(
-        "Saving GraphMemory artifacts...",
-        "Salvataggio artefatti GraphMemory...") + "[/]");
-    var saveStarted = now();
-    memory.save(memoryBasePath(brainDir));
-    var elapsed = now() - startedAt;
-    AnsiConsole.markupLine("  [green]" + t("indexed", "indicizzate") + "[/] " +
-        string(indexed) + " " + t("notes ->", "note ->") + " " +
-        MEMORY_BASE_NAME + ".graph.json" +
-        "  [dim](" + formatDurationMs(elapsed) +
-        t("; save ", "; salvataggio ") + formatDurationMs(now() - saveStarted) +
-        ")[/]");
-    return memory;
+    var toUpsert = [];
+    var skipped = 0;
+    foreach (var note in notes) {
+        var existing = noteMemoryId(note);
+        if (existing != "" and memory.hasNode(existing) == true) {
+            skipped = skipped + 1;
+        } else {
+            toUpsert.append(note);
+        }
+    }
+    var total = toUpsert.length;
+    AnsiConsole.markupLine(t(
+        "Incremental GraphMemory (embed=" + embedLabel() + "): forget " +
+            string(forgotten) + ", skip " + string(skipped) + ", upsert " +
+            string(total) + ".",
+        "GraphMemory incrementale (embed=" + embedLabel() + "): forget " +
+            string(forgotten) + ", skip " + string(skipped) + ", upsert " +
+            string(total) + "."));
+    var indexed = 0;
+    var startedAt = now();
+    var lastProgressAt = 0;
+    foreach (var note in toUpsert) {
+        upsertNoteMemory(memory, note);
+        indexed = indexed + 1;
+        lastProgressAt = emitIndexProgress(indexed, total, startedAt, lastProgressAt);
+    }
+    return saveBrainMemoryArtifacts(memory, brainDir, indexed, startedAt);
+}
+
+function indexBrainMemory(brainDir, notes, ctx) {
+    clearAskMemoryCache();
+    if (ctx == null) {
+        ctx = { "mode": "full" };
+    }
+    embedMode = resolveEmbedMode();
+    var artifactsExist = memoryArtifactsExist(brainDir);
+    var fingerprintOk = embedFingerprintMatches(ctx.catalog);
+    var catalogHasIds = catalogHasMemoryNodeIds(notes);
+    var useFull = indexShouldUseFullRebuild(ctx, artifactsExist, fingerprintOk, catalogHasIds);
+    if (not useFull) {
+        try {
+            return indexBrainMemoryIncremental(brainDir, notes, ctx);
+        } catch (e) {
+            AnsiConsole.markupLine("[yellow]" + t(
+                "Incremental GraphMemory failed; falling back to a full rebuild:",
+                "GraphMemory incrementale fallito; ricostruisco tutto:") + "[/] " + string(e));
+        }
+    } else if (str.trim(string(ctx.mode)) == "incremental") {
+        if (ctx.forceFull == true) {
+            AnsiConsole.markupLine("[dim]" + t(
+                "Full GraphMemory rebuild (--reindex-memory).",
+                "Ricostruzione completa GraphMemory (--reindex-memory).") + "[/]");
+        } else if (artifactsExist != true) {
+            AnsiConsole.markupLine("[dim]" + t(
+                "Full GraphMemory rebuild (missing artifacts).",
+                "Ricostruzione completa GraphMemory (artefatti assenti).") + "[/]");
+        } else if (fingerprintOk != true) {
+            AnsiConsole.markupLine("[dim]" + t(
+                "Full GraphMemory rebuild (embedding fingerprint changed).",
+                "Ricostruzione completa GraphMemory (impronta embedding cambiata).") + "[/]");
+        } else if (catalogHasIds != true) {
+            AnsiConsole.markupLine("[dim]" + t(
+                "Full GraphMemory rebuild (catalog has no memoryNodeId; upgrade).",
+                "Ricostruzione completa GraphMemory (catalogo senza memoryNodeId; upgrade).") + "[/]");
+        }
+    }
+    return indexBrainMemoryFull(brainDir, notes);
 }
 
 function loadBrainMemory(brainDir) {

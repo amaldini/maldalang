@@ -1170,6 +1170,10 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("riepilogo, proposta, verbale, checklist, brief", source, StringComparison.Ordinal);
             Assert.DoesNotContain("preventivo, itinerario", source, StringComparison.Ordinal);
             Assert.Contains("function generateDocumentCli(", source, StringComparison.Ordinal);
+            Assert.Contains("function indexShouldUseFullRebuild(", source, StringComparison.Ordinal);
+            Assert.Contains("function upsertNoteMemory(", source, StringComparison.Ordinal);
+            Assert.Contains("\"memoryNodeId\": noteMemoryId(note)", source, StringComparison.Ordinal);
+            Assert.Contains("--reindex-memory", source, StringComparison.Ordinal);
             Assert.Contains("askGetAskMode()", source, StringComparison.Ordinal);
             Assert.Contains("askMarkGeneratedTurn(", source, StringComparison.Ordinal);
             Assert.Contains("newReaderAgent(", source, StringComparison.Ordinal);
@@ -1271,6 +1275,10 @@ public class SecondBrainAskFeaturesTests
                 print("ZZX=" + zzExtra.error);
                 var zf = sbCliParseArgs(["generate", "--format", "pdf"]);
                 print("ZF=" + zf.error);
+                var rm = sbCliParseArgs(["update", "--reindex-memory"]);
+                print("RM=" + rm.mode + "," + string(rm.reindexMemory) + "," + rm.error);
+                var rmOff = sbCliParseArgs(["update"]);
+                print("RMOFF=" + rmOff.mode + "," + string(rmOff.reindexMemory) + "," + rmOff.error);
                 """,
                 Encoding.UTF8);
 
@@ -1305,6 +1313,8 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("ZZL=Unexpected argument: Draft", output, StringComparison.Ordinal);
             Assert.Contains("ZZX=Unexpected argument: extra", output, StringComparison.Ordinal);
             Assert.Contains("ZF=Invalid --format (use md or html).", output, StringComparison.Ordinal);
+            Assert.Contains("RM=update,true,", output, StringComparison.Ordinal);
+            Assert.Contains("RMOFF=update,false,", output, StringComparison.Ordinal);
         }
         finally
         {

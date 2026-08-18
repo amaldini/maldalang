@@ -368,7 +368,8 @@ function writeCatalog(brainDir, docsRoot, notes, topics, taxonomySource) {
             "topic": note.topic,
             "tags": note.tags,
             "summary": note.summary,
-            "headings": note.headings
+            "headings": note.headings,
+            "memoryNodeId": noteMemoryId(note)
         });
     }
     var slimTopics = [];
@@ -949,7 +950,8 @@ function noteFromCatalogEntry(brainDir, entry) {
         "source": entry.source,
         "sourceKey": catalogEntrySourceKey(entry),
         "contentHash": hash,
-        "headings": headings
+        "headings": headings,
+        "memoryNodeId": noteMemoryId(entry)
     };
 }
 
@@ -1011,6 +1013,23 @@ function topicDescriptionFromCatalog(catalog, title) {
         }
     }
     return "";
+}
+
+function noteMemoryId(note) {
+    if (note == null or note.memoryNodeId == null) {
+        return "";
+    }
+    return str.trim(string(note.memoryNodeId));
+}
+
+function appendMemoryNodeId(ids, note) {
+    var id = noteMemoryId(note);
+    if (id == "") {
+        return;
+    }
+    if (not listContains(ids, id)) {
+        ids.append(id);
+    }
 }
 
 function listContains(items, value) {

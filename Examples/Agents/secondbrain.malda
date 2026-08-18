@@ -11,6 +11,7 @@
 //              hierarchical linked .md notes (index -> topic hubs -> notes).
 //   2) UPDATE  incremental refresh: re-distill only new/changed source files in an
 //              existing brain (content hashes in brain.json); optional orphan cleanup.
+//              --reindex-memory is accepted (no-op here; the semantic sibling uses it).
 //   3) ASK     local HttpServer web UI: catalog + token-overlap retrieval, LLM
 //              answers in Markdown (rendered with markdownToHtml), plus Generate
 //              document (download .md / .html from indexed examples).
@@ -23,7 +24,7 @@
 //   malda Examples/Agents/secondbrain.malda build --docs ./docs [--brain secondbrain]
 //       [--taxonomy llm|folders] [--lang en|it] [--product-name "Acme Brain"]
 //   malda Examples/Agents/secondbrain.malda update [--docs ./docs] [--brain secondbrain]
-//       [--remove-orphans] [--lang en|it] [--product-name "Acme Brain"]
+//       [--remove-orphans] [--reindex-memory] [--lang en|it] [--product-name "Acme Brain"]
 //   malda Examples/Agents/secondbrain.malda ask [--brain secondbrain] [--port 8080] [--host 0.0.0.0]
 //       [--https --cert ask.pfx [--cert-password secret]]
 //       [--lang en|it] [--product-name "Acme Brain"] [--auth|--no-auth] [--allow-register|--no-register]
@@ -130,7 +131,7 @@ function hostAskToolsOnLabel() {
         "Tool ASK: attivi (read_file / grep / list_directory)");
 }
 
-function indexBrainAfterFinalize(brainDir, notes) {
+function indexBrainAfterFinalize(brainDir, notes, ctx) {
     return;
 }
 

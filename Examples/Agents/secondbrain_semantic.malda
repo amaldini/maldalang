@@ -10,7 +10,8 @@
 //   1) BUILD   same distillation as the lexical sibling, then indexes each note
 //              into GraphMemory (saved beside the markdown tree).
 //   2) UPDATE  incremental refresh: re-distill only new/changed source files, then
-//              rebuild GraphMemory from the full note set (content hashes in brain.json).
+//              upsert GraphMemory nodes for those notes (memoryNodeId in brain.json).
+//              --reindex-memory forces a full GraphMemory rebuild (embed model change).
 //   3) ASK     local HttpServer web UI: GraphMemory.query (hybridLexical / BM25),
 //              falling back to the lexical catalog scorer if memory is missing.
 //              LLM answers in Markdown (rendered with markdownToHtml), plus Generate
@@ -25,7 +26,7 @@
 //   malda Examples/Agents/secondbrain_semantic.malda build --docs ./docs [--brain secondbrain_semantic]
 //       [--taxonomy llm|folders] [--lang en|it] [--product-name "Acme Brain"]
 //   malda Examples/Agents/secondbrain_semantic.malda update [--docs ./docs] [--brain secondbrain_semantic]
-//       [--remove-orphans] [--lang en|it] [--product-name "Acme Brain"]
+//       [--remove-orphans] [--reindex-memory] [--lang en|it] [--product-name "Acme Brain"]
 //   malda Examples/Agents/secondbrain_semantic.malda ask [--brain secondbrain_semantic] [--port 8080]
 //       [--host 0.0.0.0] [--https --cert ask.pfx [--cert-password secret]]
 //       [--lang en|it] [--product-name "Acme Brain"]
@@ -165,14 +166,17 @@ function hostAskToolsOnLabel() {
         "Tool ASK: attivi (read_file / grep / list_directory / find_related_notes)");
 }
 
-function indexBrainAfterFinalize(brainDir, notes) {
-    indexBrainMemory(brainDir, notes);
+function indexBrainAfterFinalize(brainDir, notes, ctx) {
+    indexBrainMemory(brainDir, notes, ctx);
 }
 
 function catalogExtraFields() {
     return {
         "retrieval": "graphmemory",
-        "embed": embedLabel()
+        "embed": embedLabel(),
+        "embedMode": embedMode,
+        "embedModel": resolveEmbedModelPath(),
+        "embedDim": EMBED_DIM
     };
 }
 

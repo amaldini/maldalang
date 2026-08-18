@@ -1,7 +1,8 @@
 // sb/04-build.malda — BUILD / UPDATE
-// Host must define indexBrainAfterFinalize, printEmbedStatus, appendRetrievalSummary, catalogExtraFields, brainIndexHowToLines.
+// Host must define indexBrainAfterFinalize(brainDir, notes, ctx), printEmbedStatus,
+// appendRetrievalSummary, catalogExtraFields, brainIndexHowToLines.
 
-function finalizeBrain(brainDir, docsRoot, notes, skipped, truncated, taxonomySource, taxonomy, catalog, touchedTopics) {
+function finalizeBrain(brainDir, docsRoot, notes, skipped, truncated, taxonomySource, taxonomy, catalog, touchedTopics, indexCtx) {
     io.print("");
     io.print(t("Linking notes...", "Collegamento delle note..."));
     writeRelatedSections(brainDir, notes);
@@ -51,7 +52,7 @@ function finalizeBrain(brainDir, docsRoot, notes, skipped, truncated, taxonomySo
         }
     }
 
-    indexBrainAfterFinalize(brainDir, notes);
+    indexBrainAfterFinalize(brainDir, notes, indexCtx);
     writeIndex(brainDir, docsRoot, notes, topics, skipped, truncated, taxonomySource);
     writeCatalog(brainDir, docsRoot, notes, topics, taxonomySource);
     return topics;
@@ -224,7 +225,9 @@ function buildBrain(cli) {
         return false;
     }
 
-    var topics = finalizeBrain(brainDir, docsRoot, notes, skipped, truncated, taxonomySource, taxonomy, null, null);
+    var topics = finalizeBrain(brainDir, docsRoot, notes, skipped, truncated, taxonomySource, taxonomy, null, null, {
+        "mode": "full"
+    });
 
     io.print("");
     var colKey = t("item", "voce");
@@ -410,77 +413,86 @@ function updateBrain(cli) {
     AnsiConsole.markupLine("LLM: [bold]" + modelLabel() + "[/]");
     printEmbedStatus();
 
-    if (changed.length == 0 and added.length == 0 and removed.length == 0) {
+    var reindexOnly = changed.length == 0 and added.length == 0 and removed.length == 0 and
+        cli.reindexMemory == true;
+    if (changed.length == 0 and added.length == 0 and removed.length == 0 and not reindexOnly) {
         AnsiConsole.markupLine("[green]" + t(
             "Already up to date — nothing to do.",
             "Gia' aggiornato — nulla da fare.") + "[/]");
         return true;
     }
 
-    var removeOrphans = false;
-    if (removed.length > 0) {
-        if (nonInteractive) {
-            removeOrphans = cli.removeOrphans == true;
-            AnsiConsole.markupLine("[dim]" + t(
-                "CLI: orphan cleanup = ",
-                "CLI: pulizia orfani = ") +
-                string(removeOrphans) +
-                t(" (--remove-orphans to enable).", " (usa --remove-orphans per abilitarla).") + "[/]");
-        } else {
-            var drop = str.trim(io.input(t(
-                "Remove notes for " + string(removed.length) + " source file(s) missing from the folder? " +
-                    ynHint() + ": ",
-                "Rimuovo le note di " + string(removed.length) + " file assenti dalla cartella? " +
-                    ynHint() + ": ")));
-            removeOrphans = isAffirmative(drop);
-        }
-    }
-
-    var toDistill = added.length + changed.length;
-    AnsiConsole.markupLine("[dim]" + t(
-        "LLM calls: about one per changed/new document (plus hub refresh for touched themes).",
-        "Chiamate LLM: circa una per documento nuovo/modificato (piu' refresh hub dei temi toccati).") + "[/]");
-    if (nonInteractive) {
-        AnsiConsole.markupLine("[dim]" + t(
-            "CLI non-interactive: applying update (" + string(toDistill) + " to distill).",
-            "CLI non interattivo: applico aggiornamento (" + string(toDistill) + " da distillare).") + "[/]");
-    } else {
-        var goUp = str.trim(io.input(t(
-            "Apply update (" + string(toDistill) + " to distill)? " + ynHint() + ": ",
-            "Applico l'aggiornamento (" + string(toDistill) + " da distillare)? " + ynHint() + ": ")));
-        if (not isAffirmative(goUp)) {
-            io.print(t("Cancelled.", "Annullato."));
-            return false;
-        }
-    }
-
     var notes = [];
     var touchedTopics = [];
-    foreach (var rel in unchanged) {
-        var group = findSourceGroup(groups, rel);
-        if (group != null) {
-            foreach (var note in group.notes) {
-                notes.append(note);
+    var skipped = [];
+    var truncated = [];
+    var work = [];
+    var removedNodeIds = [];
+    var removeOrphans = false;
+
+    if (reindexOnly) {
+        AnsiConsole.markupLine("[dim]" + t(
+            "--reindex-memory: rebuilding GraphMemory from existing notes (no source changes).",
+            "--reindex-memory: ricostruisco GraphMemory dalle note esistenti (nessuna modifica alle origini).") + "[/]");
+        if (nonInteractive) {
+            AnsiConsole.markupLine("[dim]" + t(
+                "CLI non-interactive: applying memory reindex.",
+                "CLI non interattivo: applico reindicizzazione memoria.") + "[/]");
+        } else {
+            var goRe = str.trim(io.input(t(
+                "Rebuild GraphMemory for all notes? " + ynHint() + ": ",
+                "Ricostruisco GraphMemory per tutte le note? " + ynHint() + ": ")));
+            if (not isAffirmative(goRe)) {
+                io.print(t("Cancelled.", "Annullato."));
+                return false;
             }
         }
-    }
-
-    if (removeOrphans) {
-        foreach (var rel in removed) {
-            var group = findSourceGroup(groups, rel);
-            if (group != null) {
-                foreach (var note in group.notes) {
-                    if (not listContains(touchedTopics, note.topic)) {
-                        touchedTopics.append(note.topic);
-                    }
-                    deleteNoteFile(brainDir, note.slug);
-                    AnsiConsole.markupLine("  [dim]" + t("removed note", "nota rimossa") +
-                        "[/] notes/" + note.slug + ".md");
-                }
-            }
+        foreach (var keep in existingNotes) {
+            notes.append(keep);
         }
     } else {
-        foreach (var rel in removed) {
+        if (removed.length > 0) {
+            if (nonInteractive) {
+                removeOrphans = cli.removeOrphans == true;
+                AnsiConsole.markupLine("[dim]" + t(
+                    "CLI: orphan cleanup = ",
+                    "CLI: pulizia orfani = ") +
+                    string(removeOrphans) +
+                    t(" (--remove-orphans to enable).", " (usa --remove-orphans per abilitarla).") + "[/]");
+            } else {
+                var drop = str.trim(io.input(t(
+                    "Remove notes for " + string(removed.length) + " source file(s) missing from the folder? " +
+                        ynHint() + ": ",
+                    "Rimuovo le note di " + string(removed.length) + " file assenti dalla cartella? " +
+                        ynHint() + ": ")));
+                removeOrphans = isAffirmative(drop);
+            }
+        }
+
+        var toDistill = added.length + changed.length;
+        AnsiConsole.markupLine("[dim]" + t(
+            "LLM calls: about one per changed/new document (plus hub refresh for touched themes).",
+            "Chiamate LLM: circa una per documento nuovo/modificato (piu' refresh hub dei temi toccati).") + "[/]");
+        if (cli.reindexMemory == true) {
+            AnsiConsole.markupLine("[dim]" + t(
+                "--reindex-memory: GraphMemory will be fully rebuilt after this update.",
+                "--reindex-memory: GraphMemory verra' ricostruito per intero dopo questo aggiornamento.") + "[/]");
+        }
+        if (nonInteractive) {
+            AnsiConsole.markupLine("[dim]" + t(
+                "CLI non-interactive: applying update (" + string(toDistill) + " to distill).",
+                "CLI non interattivo: applico aggiornamento (" + string(toDistill) + " da distillare).") + "[/]");
+        } else {
+            var goUp = str.trim(io.input(t(
+                "Apply update (" + string(toDistill) + " to distill)? " + ynHint() + ": ",
+                "Applico l'aggiornamento (" + string(toDistill) + " da distillare)? " + ynHint() + ": ")));
+            if (not isAffirmative(goUp)) {
+                io.print(t("Cancelled.", "Annullato."));
+                return false;
+            }
+        }
+
+        foreach (var rel in unchanged) {
             var group = findSourceGroup(groups, rel);
             if (group != null) {
                 foreach (var note in group.notes) {
@@ -488,62 +500,104 @@ function updateBrain(cli) {
                 }
             }
         }
-    }
 
-    var distiller = newPlainAgent(
-        "Distiller",
-        "knowledge engineer",
-        distillInstructions()
-    );
-    var skipped = [];
-    var truncated = [];
-    var work = [];
-    foreach (var rel in changed) {
-        work.append(rel);
-    }
-    foreach (var rel in added) {
-        work.append(rel);
-    }
-
-    var index = 0;
-    foreach (var rel in work) {
-        index = index + 1;
-        AnsiConsole.markupLine("[dim][[" + string(index) + "/" + string(work.length) + "]][/] " + rel);
-        var previous = [];
-        var group = findSourceGroup(groups, rel);
-        if (group != null) {
-            foreach (var oldNote in group.notes) {
-                previous.append(oldNote);
-                if (not listContains(touchedTopics, oldNote.topic)) {
-                    touchedTopics.append(oldNote.topic);
+        if (removeOrphans) {
+            foreach (var rel in removed) {
+                var group = findSourceGroup(groups, rel);
+                if (group != null) {
+                    foreach (var note in group.notes) {
+                        if (not listContains(touchedTopics, note.topic)) {
+                            touchedTopics.append(note.topic);
+                        }
+                        appendMemoryNodeId(removedNodeIds, note);
+                        deleteNoteFile(brainDir, note.slug);
+                        AnsiConsole.markupLine("  [dim]" + t("removed note", "nota rimossa") +
+                            "[/] notes/" + note.slug + ".md");
+                    }
                 }
-                deleteNoteFile(brainDir, oldNote.slug);
-            }
-        }
-        var absPath = sbAssertUnderRoot(docsRoot, io.pathJoin(docsRoot, rel));
-        var hash = "";
-        if (absPath != null) {
-            try {
-                hash = contentHashOf(extractText(absPath));
-            } catch (e) {
-                hash = "";
-            }
-        }
-        var outcome = distillSourceFile(distiller, docsRoot, brainDir, rel, null, notes, hash);
-        if (outcome.skipped) {
-            skipped.append(rel);
-            foreach (var oldNote in previous) {
-                notes.append(oldNote);
-                writeNoteFile(brainDir, oldNote);
             }
         } else {
-            if (outcome.truncated != null) {
-                truncated.append(outcome.truncated);
-            }
-            foreach (var note in notes) {
-                if (note.sourceKey == rel and not listContains(touchedTopics, note.topic)) {
-                    touchedTopics.append(note.topic);
+            foreach (var rel in removed) {
+                var group = findSourceGroup(groups, rel);
+                if (group != null) {
+                    foreach (var note in group.notes) {
+                        notes.append(note);
+                    }
                 }
+            }
+        }
+
+        var distiller = newPlainAgent(
+            "Distiller",
+            "knowledge engineer",
+            distillInstructions()
+        );
+        foreach (var rel in changed) {
+            work.append(rel);
+        }
+        foreach (var rel in added) {
+            work.append(rel);
+        }
+
+        var index = 0;
+        foreach (var rel in work) {
+            index = index + 1;
+            AnsiConsole.markupLine("[dim][[" + string(index) + "/" + string(work.length) + "]][/] " + rel);
+            var previous = [];
+            var group = findSourceGroup(groups, rel);
+            if (group != null) {
+                foreach (var oldNote in group.notes) {
+                    previous.append(oldNote);
+                    if (not listContains(touchedTopics, oldNote.topic)) {
+                        touchedTopics.append(oldNote.topic);
+                    }
+                    deleteNoteFile(brainDir, oldNote.slug);
+                }
+            }
+            var absPath = sbAssertUnderRoot(docsRoot, io.pathJoin(docsRoot, rel));
+            var hash = "";
+            if (absPath != null) {
+                try {
+                    hash = contentHashOf(extractText(absPath));
+                } catch (e) {
+                    hash = "";
+                }
+            }
+            var outcome = distillSourceFile(distiller, docsRoot, brainDir, rel, null, notes, hash);
+            if (outcome.skipped) {
+                skipped.append(rel);
+                foreach (var oldNote in previous) {
+                    notes.append(oldNote);
+                    writeNoteFile(brainDir, oldNote);
+                }
+            } else {
+                if (outcome.truncated != null) {
+                    truncated.append(outcome.truncated);
+                }
+                foreach (var oldNote in previous) {
+                    appendMemoryNodeId(removedNodeIds, oldNote);
+                }
+                foreach (var note in notes) {
+                    if (note.sourceKey == rel and not listContains(touchedTopics, note.topic)) {
+                        touchedTopics.append(note.topic);
+                    }
+                }
+            }
+        }
+
+        if (notes.length == 0) {
+            AnsiConsole.markupLine("[red]" + t("No notes left in the brain.", "Nessuna nota rimasta nel brain.") + "[/]");
+            return false;
+        }
+
+        // Rewrite kept note files so related markers are refreshable.
+        foreach (var note in notes) {
+            var isFresh = listContains(work, note.sourceKey);
+            if (not isFresh) {
+                if (note.body == null or str.trim(string(note.body)) == "") {
+                    note.body = loadNoteBody(brainDir, note);
+                }
+                writeNoteFile(brainDir, note);
             }
         }
     }
@@ -553,25 +607,23 @@ function updateBrain(cli) {
         return false;
     }
 
-    // Rewrite kept note files so related markers are refreshable.
-    foreach (var note in notes) {
-        var isFresh = listContains(work, note.sourceKey);
-        if (not isFresh) {
-            if (note.body == null or str.trim(string(note.body)) == "") {
-                note.body = loadNoteBody(brainDir, note);
-            }
-            writeNoteFile(brainDir, note);
-        }
-    }
-
     var taxonomySource = t("subfolders", "sottocartelle");
     if (catalog.taxonomy != null and str.trim(string(catalog.taxonomy)) != "") {
         taxonomySource = string(catalog.taxonomy);
     }
-    taxonomySource = taxonomySource + t(" + incremental update", " + aggiornamento incrementale");
+    if (reindexOnly) {
+        taxonomySource = taxonomySource + t(" + memory reindex", " + reindicizzazione memoria");
+    } else {
+        taxonomySource = taxonomySource + t(" + incremental update", " + aggiornamento incrementale");
+    }
 
     var topics = finalizeBrain(
-        brainDir, docsRoot, notes, skipped, truncated, taxonomySource, null, catalog, touchedTopics);
+        brainDir, docsRoot, notes, skipped, truncated, taxonomySource, null, catalog, touchedTopics, {
+            "mode": "incremental",
+            "forceFull": cli.reindexMemory == true,
+            "catalog": catalog,
+            "removedNodeIds": removedNodeIds
+        });
 
     io.print("");
     var colKey = t("item", "voce");

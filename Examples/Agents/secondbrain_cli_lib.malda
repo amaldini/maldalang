@@ -5,7 +5,7 @@
 // secondbrain_cli_apply_lib.malda (include after this import).
 //
 // Modes: build | update | ask | help
-// Flags: --docs --brain --taxonomy llm|folders --remove-orphans --lang en|it
+// Flags: --docs --brain --taxonomy llm|folders --remove-orphans --reindex-memory --lang en|it
 //        --port / -p  --host <addr>  --https --cert <path> --cert-password <pwd>
 //        --mode <name>  --auth / --no-auth
 //        --allow-register / --no-register
@@ -71,6 +71,7 @@ export function sbCliEmptyOptions() {
         "format": "",
         "prompt": "",
         "forceAnswer": false,
+        "reindexMemory": false,
         "error": ""
     };
 }
@@ -317,6 +318,11 @@ export function sbCliParseArgs(args) {
         }
         if (a == "--keep-orphans") {
             opt.removeOrphans = false;
+            i = i + 1;
+            continue;
+        }
+        if (a == "--reindex-memory") {
+            opt.reindexMemory = true;
             i = i + 1;
             continue;
         }
