@@ -1,0 +1,1116 @@
+// sb/03-distill.malda — taxonomy, distillation, note tree, catalog/index
+
+function distillInstructions() {
+    return "Sei un knowledge engineer. Distilli documentazione tecnica in note atomiche " +
+        "per " + productName() + ". Rispetti sempre alla lettera il formato di risposta richiesto. " +
+        "Scrivi la nota nella stessa lingua del documento di origine e mantieni invariati i " +
+        "termini tecnici, i nomi di API e i frammenti di codice. Non inventi nulla: usi solo " +
+        "cio' che il documento contiene. Il testo del documento ti viene fornito " +
+        "direttamente nel messaggio.";
+}
+
+function distillQuestion(sourceRel, partLabel, text) {
+    return "Documento: " + sourceRel + partLabel + "\n\n" +
+        "Distilla il documento seguente in una nota di " + productName() + ".\n\n" +
+        "Rispondi ESATTAMENTE in questo formato, senza altro testo prima o dopo:\n" +
+        "TITLE: <titolo breve e specifico>\n" +
+        "TAGS: <da 3 a 6 tag minuscoli separati da virgola>\n" +
+        "SUMMARY: <1-3 frasi che dicono cosa insegna il documento>\n" +
+        "BODY:\n" +
+        "## Concetti chiave\n" +
+        "- <fatto essenziale, uno per riga>\n" +
+        "## Dettagli\n" +
+        "<paragrafi o elenchi con le regole operative, la sintassi, i parametri>\n" +
+        "## Esempi\n" +
+        "<solo esempi presenti nel documento, in blocchi di codice; ometti la sezione se non ce ne sono>\n" +
+        "## Trappole\n" +
+        "<errori, limiti, avvertenze; ometti la sezione se il documento non ne parla>\n\n" +
+        "--- INIZIO DOCUMENTO ---\n" + text + "\n--- FINE DOCUMENTO ---";
+}
+
+function parseDistilled(response, fallbackTitle, fallbackText) {
+    var note = {
+        "title": "",
+        "tags": [],
+        "summary": "",
+        "body": ""
+    };
+    var bodyLines = [];
+    var inBody = false;
+    foreach (var rawLine in str.split(string(response), "\n")) {
+        var line = rawLine;
+        if (inBody) {
+            bodyLines.append(line);
+        } else if (str.startsWith(str.upper(str.trim(line)), "TITLE:")) {
+            note.title = str.trim(str.substring(str.trim(line), 6, str.length(str.trim(line))));
+        } else if (str.startsWith(str.upper(str.trim(line)), "TAGS:")) {
+            note.tags = tagsFromLine(str.substring(str.trim(line), 5, str.length(str.trim(line))));
+        } else if (str.startsWith(str.upper(str.trim(line)), "SUMMARY:")) {
+            note.summary = str.trim(str.substring(str.trim(line), 8, str.length(str.trim(line))));
+        } else if (str.startsWith(str.upper(str.trim(line)), "BODY:")) {
+            inBody = true;
+        }
+    }
+    note.body = str.trim(str.join(bodyLines, "\n"));
+
+    if (note.title == "") {
+        note.title = fallbackTitle;
+    }
+    if (note.body == "") {
+        // Format not followed: keep the raw reply, or an extract of the document.
+        var raw = str.trim(string(response));
+        if (raw == "") {
+            note.body = "## Estratto non distillato\n\nL'agente non ha prodotto una nota per questo documento.\n\n```\n" +
+                str.substring(fallbackText, 0, 1500) + "\n```";
+        } else {
+            note.body = raw;
+        }
+    }
+    if (note.summary == "") {
+        note.summary = firstLines(note.body, 2);
+        if (str.length(note.summary) > 300) {
+            note.summary = str.substring(note.summary, 0, 300) + "...";
+        }
+    }
+    if (note.tags.length == 0) {
+        note.tags = tagsFromLine(fallbackTitle);
+    }
+    return note;
+}
+
+function frontmatter(note) {
+    return "---\n" +
+        "title: " + note.title + "\n" +
+        "topic: " + note.topic + "\n" +
+        "source: " + note.source + "\n" +
+        "tags: [" + str.join(note.tags, ", ") + "]\n" +
+        "generated_by: " + SOURCE_SCRIPT_NAME + "\n" +
+        "---\n";
+}
+
+function writeNoteFile(brainDir, note) {
+    var text = frontmatter(note) +
+        "\n# " + note.title + "\n\n" +
+        "> " + note.summary + "\n\n" +
+        note.body + "\n\n" +
+        "## Note collegate\n\n" +
+        "<!--related-start-->\n" +
+        "<!--related-end-->\n\n" +
+        "---\n\n" +
+        "- Hub tematico: [" + note.topic + "](../topics/" + slugify(note.topic) + ".md)\n" +
+        "- Indice: [" + productName() + "](../index.md)\n" +
+        "- Documento di origine: `" + note.source + "`\n";
+    var notePath = sbJoinUnderRoot2(brainDir, "notes", note.slug + ".md");
+    if (notePath != null) {
+        io.writeFile(notePath, text);
+    }
+}
+
+function replaceRelatedBlock(fileText, linksText) {
+    var startMark = "<!--related-start-->";
+    var endMark = "<!--related-end-->";
+    var block = startMark + "\n" + linksText + "\n" + endMark;
+    var start = str.indexOf(fileText, startMark);
+    var end = str.indexOf(fileText, endMark);
+    if (start >= 0 and end > start) {
+        return str.substring(fileText, 0, start) + block +
+            str.substring(fileText, end + str.length(endMark), str.length(fileText));
+    }
+    var oldMark = "<!--related-->";
+    var oldIdx = str.indexOf(fileText, oldMark);
+    if (oldIdx >= 0) {
+        return str.substring(fileText, 0, oldIdx) + block +
+            str.substring(fileText, oldIdx + str.length(oldMark), str.length(fileText));
+    }
+    var section = "\n## Note collegate\n\n";
+    var sectionIdx = str.indexOf(fileText, section);
+    if (sectionIdx >= 0) {
+        var after = sectionIdx + str.length(section);
+        var rest = str.substring(fileText, after, str.length(fileText));
+        var sep = str.indexOf(rest, "\n---\n");
+        if (sep >= 0) {
+            return str.substring(fileText, 0, after) + block + "\n" +
+                str.substring(rest, sep, str.length(rest));
+        }
+    }
+    return fileText;
+}
+
+function relatednessScore(a, b) {
+    var score = 0.0;
+    foreach (var tag in a.tags) {
+        if (str.includes(b.tags, tag)) {
+            score = score + 2.0;
+        }
+    }
+    if (a.topic == b.topic) {
+        score = score + 1.0;
+    }
+    if (a.sourceKey == b.sourceKey) {
+        score = score + 4.0;
+    }
+    var overlap = str.tokenOverlap(a.title + " " + a.summary, b.title + " " + b.summary);
+    score = score + overlap.jaccard * 3.0;
+    return score;
+}
+
+function writeRelatedSections(brainDir, notes) {
+    var i = 0;
+    while (i < notes.length) {
+        var current = notes[i];
+        var picked = [];
+        var used = [];
+        var slot = 0;
+        while (slot < 4) {
+            var bestIndex = -1;
+            var bestScore = 0.5;
+            var j = 0;
+            while (j < notes.length) {
+                if (j != i and not str.includes(used, j)) {
+                    var score = relatednessScore(current, notes[j]);
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestIndex = j;
+                    }
+                }
+                j = j + 1;
+            }
+            if (bestIndex < 0) {
+                slot = 4;
+            } else {
+                used.append(bestIndex);
+                picked.append(notes[bestIndex]);
+                slot = slot + 1;
+            }
+        }
+        var lines = [];
+        foreach (var related in picked) {
+            lines.append("- [" + related.title + "](" + related.slug + ".md) - " + related.topic);
+        }
+        if (lines.length == 0) {
+            lines.append("- nessuna nota affine rilevata");
+        }
+        var notePath = sbJoinUnderRoot2(brainDir, "notes", current.slug + ".md");
+        if (notePath != null and io.hasFile(notePath)) {
+            var updated = replaceRelatedBlock(io.readFile(notePath), str.join(lines, "\n"));
+            io.writeFile(notePath, updated);
+        }
+        i = i + 1;
+    }
+}
+
+function topicsOf(notes) {
+    var topics = [];
+    foreach (var note in notes) {
+        var known = false;
+        foreach (var topic in topics) {
+            if (topic.title == note.topic) {
+                known = true;
+                topic.count = topic.count + 1;
+                topic.notes.append(note);
+            }
+        }
+        if (not known) {
+            topics.append({
+                "title": note.topic,
+                "slug": slugify(note.topic),
+                "description": "",
+                "count": 1,
+                "notes": [note]
+            });
+        }
+    }
+    return topics;
+}
+
+function writeTopicHub(brainDir, topic, agent) {
+    var listing = [];
+    foreach (var note in topic.notes) {
+        listing.append("- " + note.title + ": " + note.summary);
+    }
+    var overview = "";
+    var themeIntro = "";
+    if (topic.description != null and str.trim(string(topic.description)) != "") {
+        themeIntro = "Il tema e' stato definito cosi' in fase di esplorazione: " +
+            str.trim(string(topic.description)) + "\n\n";
+    }
+    var question = "Sei davanti a un gruppo di note di " + productName() + " sul tema \"" + topic.title + "\".\n\n" +
+        themeIntro +
+        str.join(listing, "\n") + "\n\n" +
+        "Scrivi in markdown, senza titolo di primo livello e senza inventare contenuti:\n" +
+        "1. due o tre frasi che spiegano di cosa si occupa questo tema;\n" +
+        "2. una sezione \"### Ordine di lettura consigliato\" con un elenco numerato dei titoli " +
+        "nell'ordine in cui conviene leggerli, ciascuno con mezza riga di motivazione.\n" +
+        "Usa la stessa lingua delle note.";
+    if (agent != null) {
+        overview = str.trim(tryThink(agent, question));
+    }
+    if (overview == "") {
+        overview = str.trim(string(topic.description));
+        if (overview == "") {
+            overview = "Raccolta di " + string(topic.count) +
+                " note distillate dai documenti di questo gruppo.";
+        }
+    }
+
+    var lines = [];
+    foreach (var note in topic.notes) {
+        lines.append("- [" + note.title + "](../notes/" + note.slug + ".md) - " + note.summary);
+    }
+    var text = "---\n" +
+        "title: " + topic.title + "\n" +
+        "kind: hub\n" +
+        "notes: " + string(topic.count) + "\n" +
+        "---\n\n" +
+        "# " + topic.title + "\n\n" +
+        overview + "\n\n" +
+        "## Note di questo tema\n\n" +
+        str.join(lines, "\n") + "\n\n" +
+        "---\n\n" +
+        "- Indice: [" + productName() + "](../index.md)\n";
+    var topicPath = sbJoinUnderRoot2(brainDir, "topics", topic.slug + ".md");
+    if (topicPath != null) {
+        io.writeFile(topicPath, text);
+    }
+}
+
+function writeIndex(brainDir, docsRoot, notes, topics, skipped, truncated, taxonomySource) {
+    var lines = [];
+    lines.append("---");
+    lines.append("title: " + productName());
+    lines.append("kind: index");
+    lines.append("source_folder: " + docsRoot);
+    lines.append("notes: " + string(notes.length));
+    lines.append("topics: " + string(topics.length));
+    lines.append("taxonomy: " + taxonomySource);
+    lines.append("model: " + modelLabel());
+    lines.append("---");
+    lines.append("");
+    lines.append("# " + productName());
+    lines.append("");
+    lines.append("Conoscenza distillata da `" + docsRoot + "` (" + string(notes.length) +
+        " note, " + string(topics.length) + " temi).");
+    lines.append("");
+    lines.append("Temi ricavati da: " + taxonomySource + ".");
+    lines.append("");
+    lines.append("## Temi");
+    lines.append("");
+    foreach (var topic in topics) {
+        var suffix = "";
+        if (str.trim(string(topic.description)) != "") {
+            suffix = " - " + str.trim(string(topic.description));
+        }
+        lines.append("- [" + topic.title + "](topics/" + topic.slug + ".md) - " +
+            string(topic.count) + " note" + suffix);
+    }
+    lines.append("");
+    lines.append("## Tutte le note");
+    lines.append("");
+    foreach (var topic in topics) {
+        lines.append("### " + topic.title);
+        lines.append("");
+        foreach (var note in topic.notes) {
+            lines.append("- [" + note.title + "](notes/" + note.slug + ".md) - " + note.summary);
+            lines.append("  - origine: `" + note.source + "`");
+        }
+        lines.append("");
+    }
+    if (skipped.length > 0) {
+        lines.append("## Documenti non distillati");
+        lines.append("");
+        foreach (var item in skipped) {
+            lines.append("- `" + item + "`");
+        }
+        lines.append("");
+    }
+    if (truncated.length > 0) {
+        lines.append("## Documenti distillati solo in parte");
+        lines.append("");
+        lines.append("Oltre " + string(MAX_CHUNKS) + " parti da " + string(MAX_DOC_CHARS) +
+            " caratteri la coda del documento non e' stata distillata (alza MAX_CHUNKS in `" + SOURCE_SCRIPT_NAME + "`):");
+        lines.append("");
+        foreach (var item in truncated) {
+            lines.append("- `" + item.source + "` - distillati " + string(item.used) +
+                " di " + string(item.total) + " caratteri");
+        }
+        lines.append("");
+    }
+    lines.append("## Come si usa");
+    lines.append("");
+    foreach (var how in brainIndexHowToLines()) {
+        lines.append(how);
+    }
+    lines.append("");
+    var indexPath = sbJoinUnderRoot(brainDir, "index.md");
+    if (indexPath != null) {
+        io.writeFile(indexPath, str.join(lines, "\n"));
+    }
+}
+
+function writeCatalog(brainDir, docsRoot, notes, topics, taxonomySource) {
+    var slimNotes = [];
+    foreach (var note in notes) {
+        var sourceKey = note.sourceKey;
+        if (sourceKey == null or str.trim(string(sourceKey)) == "") {
+            sourceKey = sourceKeyOf(note.source);
+        }
+        var contentHash = "";
+        if (note.contentHash != null) {
+            contentHash = string(note.contentHash);
+        }
+        slimNotes.append({
+            "slug": note.slug,
+            "title": note.title,
+            "path": "notes/" + note.slug + ".md",
+            "source": note.source,
+            "sourceKey": sourceKey,
+            "contentHash": contentHash,
+            "topic": note.topic,
+            "tags": note.tags,
+            "summary": note.summary,
+            "headings": note.headings,
+            "memoryNodeId": noteMemoryId(note)
+        });
+    }
+    var slimTopics = [];
+    foreach (var topic in topics) {
+        slimTopics.append({
+            "title": topic.title,
+            "slug": topic.slug,
+            "path": "topics/" + topic.slug + ".md",
+            "description": topic.description,
+            "count": topic.count
+        });
+    }
+    var catalog = {
+        "version": 2,
+        "generatedAt": now(),
+        "sourceFolder": docsRoot,
+        "taxonomy": taxonomySource,
+        "model": modelLabel(),
+        "notes": slimNotes,
+        "topics": slimTopics
+    };
+    var extra = catalogExtraFields();
+    if (extra != null) {
+        if (extra.retrieval != null) {
+            catalog.retrieval = extra.retrieval;
+        }
+        if (extra.embed != null) {
+            catalog.embed = extra.embed;
+        }
+        if (extra.embedMode != null) {
+            catalog.embedMode = extra.embedMode;
+        }
+        if (extra.embedModel != null) {
+            catalog.embedModel = extra.embedModel;
+        }
+        if (extra.embedDim != null) {
+            catalog.embedDim = extra.embedDim;
+        }
+    }
+    var catalogPath = sbJoinUnderRoot(brainDir, CATALOG_NAME);
+    if (catalogPath != null) {
+        io.writeFile(catalogPath, toJSON(catalog));
+    }
+}
+
+function collectDocs(root) {
+    var patterns = ["**/*.md", "**/*.markdown", "**/*.html", "**/*.htm", "**/*.pdf", "**/*.docx"];
+    var found = [];
+    var truncated = false;
+    foreach (var pattern in patterns) {
+        var result = io.glob(pattern, root);
+        if (result.truncated) {
+            truncated = true;
+        }
+        foreach (var item in result.items) {
+            if (item.type == "file") {
+                var rel = normalizePath(item.path);
+                if (not str.includes(found, rel)) {
+                    found.append(rel);
+                }
+            }
+        }
+    }
+    return { "files": sort(found), "truncated": truncated };
+}
+
+function topicOf(relPath) {
+    var parts = str.split(relPath, "/");
+    if (parts.length > 1) {
+        return parts[0];
+    }
+    return "documenti principali";
+}
+
+function sliceBalancedObject(text, startIndex) {
+    var s = string(text);
+    if (startIndex < 0 || startIndex >= str.length(s)) {
+        return null;
+    }
+    if (str.substring(s, startIndex, startIndex + 1) != "{") {
+        return null;
+    }
+    var depth = 0;
+    var inString = false;
+    var escape = false;
+    var i = startIndex;
+    while (i < str.length(s)) {
+        var c = str.substring(s, i, i + 1);
+        if (inString) {
+            if (escape) {
+                escape = false;
+            } else if (c == "\\") {
+                escape = true;
+            } else if (c == "\"") {
+                inString = false;
+            }
+        } else {
+            if (c == "\"") {
+                inString = true;
+            } else if (c == "{") {
+                depth = depth + 1;
+            } else if (c == "}") {
+                depth = depth - 1;
+                if (depth == 0) {
+                    return str.substring(s, startIndex, i + 1);
+                }
+            }
+        }
+        i = i + 1;
+    }
+    return null;
+}
+
+function extractJsonWithKey(text, key) {
+    var s = str.trim(string(text));
+    if (s == "") {
+        return null;
+    }
+    var needle = "\"" + key + "\"";
+    var pos = 0;
+    while (pos < str.length(s)) {
+        var rest = str.substring(s, pos, str.length(s));
+        var rel = str.indexOf(rest, needle);
+        if (rel < 0) {
+            return null;
+        }
+        var keyAt = pos + rel;
+        var start = keyAt;
+        while (start >= 0) {
+            if (str.substring(s, start, start + 1) == "{") {
+                break;
+            }
+            start = start - 1;
+        }
+        if (start >= 0) {
+            var slice = sliceBalancedObject(s, start);
+            if (slice != null) {
+                try {
+                    var parsed = parseJSON(slice);
+                    if (parsed != null) {
+                        return parsed;
+                    }
+                } catch (e) {
+                    // try an earlier '{' / later key occurrence
+                }
+            }
+        }
+        pos = keyAt + 1;
+    }
+    return null;
+}
+
+function extractJsonObject(response) {
+    var s = str.trim(string(response));
+    if (s == "") {
+        return null;
+    }
+    var fenced = str.regexFind(s, "(?s)^```(?:json)?\\s*(.*?)\\s*```$");
+    if (fenced.length > 0 && fenced[0].groups.length > 1) {
+        s = str.trim(fenced[0].groups[1]);
+    }
+    try {
+        return parseJSON(s);
+    } catch (e) {
+        // fall through
+    }
+    var withThemes = extractJsonWithKey(s, "themes");
+    if (withThemes != null) {
+        return withThemes;
+    }
+    var hits = str.regexFind(s, "(?s)\\{.*\\}");
+    if (hits.length == 0) {
+        return null;
+    }
+    try {
+        return parseJSON(hits[0].text);
+    } catch (e) {
+        return null;
+    }
+}
+
+function parseExplorerThemes(parts) {
+    var parsed = extractJsonObject(parts.content);
+    if (parsed != null && parsed.themes != null) {
+        return parsed;
+    }
+    parsed = extractJsonWithKey(parts.content, "themes");
+    if (parsed != null && parsed.themes != null) {
+        return parsed;
+    }
+    parsed = extractJsonWithKey(parts.reasoning, "themes");
+    if (parsed != null && parsed.themes != null) {
+        return parsed;
+    }
+    parsed = extractJsonObject(parts.reasoning);
+    if (parsed != null && parsed.themes != null) {
+        return parsed;
+    }
+    return null;
+}
+
+function previewText(text, maxChars) {
+    var s = str.trim(string(text));
+    if (s == "") {
+        return "";
+    }
+    if (str.length(s) <= maxChars) {
+        return s;
+    }
+    return str.substring(s, 0, maxChars) + "\n...[" + string(str.length(s) - maxChars) + " more chars]";
+}
+
+function printExplorerReply(parts, reason) {
+    AnsiConsole.markupLine("  [yellow]" + reason + "[/]");
+    var content = "";
+    var reasoning = "";
+    if (parts != null) {
+        if (parts.content != null) {
+            content = string(parts.content);
+        }
+        if (parts.reasoning != null) {
+            reasoning = string(parts.reasoning);
+        }
+    }
+    if (str.trim(content) == "" && str.trim(reasoning) == "") {
+        io.print(t(
+            "  (empty reply — check OpenRouter model, quota, or network)",
+            "  (risposta vuota — controlla modello OpenRouter, quota o rete)"));
+        return;
+    }
+    io.print(t("  --- explorer content ---", "  --- content esploratore ---"));
+    if (str.trim(content) == "") {
+        io.print(t("  (empty — model returned only reasoning/CoT)",
+            "  (vuoto — il modello ha restituito solo reasoning/CoT)"));
+    } else {
+        io.print(previewText(content, 2000));
+    }
+    if (str.trim(reasoning) != "") {
+        io.print(t("  --- explorer reasoning (preview) ---",
+            "  --- reasoning esploratore (anteprima) ---"));
+        io.print(previewText(reasoning, 800));
+    }
+    io.print(t("  --- end explorer reply ---", "  --- fine risposta esploratore ---"));
+}
+
+function findDoc(docs, candidate) {
+    var wanted = str.lower(normalizePath(str.trim(string(candidate))));
+    wanted = str.regexReplace(wanted, "^\\./", "");
+    foreach (var rel in docs) {
+        if (str.lower(rel) == wanted) {
+            return rel;
+        }
+    }
+    // The model sometimes cites only the file name: accept it when unambiguous.
+    var matches = [];
+    foreach (var rel in docs) {
+        if (str.lower(io.getFileName(rel)) == wanted) {
+            matches.append(rel);
+        }
+    }
+    if (matches.length == 1) {
+        return matches[0];
+    }
+    return null;
+}
+
+function exploreInstructions() {
+    return "Sei un architetto della documentazione. Proponi una tassonomia per temi. " +
+        "La lista documenti e' gia' nel messaggio utente: usala cosi' com'e', senza strumenti. " +
+        "Raggruppa per argomento reale (nomi/percorsi), non solo per cartelle. " +
+        "CRITICO per modelli thinking (DeepSeek): puoi ragionare nel canale reasoning, " +
+        "ma il canale content NON puo' essere vuoto — deve contenere SOLO l'oggetto JSON " +
+        "della tassonomia (niente markdown, niente prose). Se content e' vuoto il task fallisce.";
+}
+
+function exploreSchemaHint() {
+    return "{\"themes\": [{\"title\": \"nome del tema\", \"description\": " +
+        "\"una o due frasi su cosa copre\", \"documents\": [\"percorso1\", \"percorso2\"]}]}";
+}
+
+function exploreDocBlock(docsRoot, listed) {
+    return "Cartella della documentazione: " + docsRoot + "\n\n" +
+        "Documenti (percorsi relativi; usali ESATTAMENTE cosi'):\n" +
+        str.join(listed, "\n");
+}
+
+function coerceExplorerThemesJson(docsRoot, listed, draftReasoning) {
+    var schemaHint = exploreSchemaHint();
+    var coercer = newPlainAgent(
+        "ExplorerJson",
+        "emette JSON",
+        "Sei una macchina che emette solo JSON. " +
+        "Il content della risposta deve essere UN oggetto JSON valido e nient'altro. " +
+        "Niente markdown, niente spiegazioni, niente code fence. " +
+        "Inizia il content con { e termina con }."
+    );
+    var question = exploreDocBlock(docsRoot, listed) + "\n\n";
+    if (draftReasoning != null and str.trim(string(draftReasoning)) != "") {
+        question = question +
+            "Bozza di ragionamento (incompleta o senza JSON finale) — usala solo come indizio:\n" +
+            previewText(draftReasoning, 3500) + "\n\n";
+    }
+    question = question +
+        "Compito: da 2 a 12 temi che coprano TUTTI i documenti elencati. " +
+        "Ogni documento in esattamente un tema. Nomi tema nella lingua dei file. " +
+        "Coppia .html/.md con lo stesso stem possono stare nello stesso tema.\n\n" +
+        "OUTPUT OBBLIGATORIO nel content (copia lo schema e riempilo):\n" +
+        schemaHint;
+    return tryThinkParts(coercer, question);
+}
+
+function exploreTaxonomy(docsRoot, docs) {
+    var listed = docs;
+    var listTruncated = false;
+    if (docs.length > MAX_EXPLORE_DOCS) {
+        listed = [];
+        var i = 0;
+        while (i < MAX_EXPLORE_DOCS) {
+            listed.append(docs[i]);
+            i = i + 1;
+        }
+        listTruncated = true;
+        AnsiConsole.markupLine(t(
+            "[yellow]Explorer list limited to[/] " + string(MAX_EXPLORE_DOCS) +
+            " [yellow]of[/] " + string(docs.length) +
+            "[yellow] documents; the rest will use subfolders as theme.[/]",
+            "[yellow]Elenco per l'esploratore limitato a[/] " + string(MAX_EXPLORE_DOCS) +
+            " [yellow]documenti su[/] " + string(docs.length) +
+            "[yellow]; i restanti useranno le sottocartelle come tema.[/]"));
+    }
+
+    // Tool-less: document paths are already in the prompt. Avoids DeepSeek V4
+    // tool-loop failures (reasoning_content must be replayed after tool_calls).
+    var explorer = newPlainAgent("Explorer", "architetto della documentazione",
+        exploreInstructions());
+
+    var schemaHint = exploreSchemaHint();
+    var question = exploreDocBlock(docsRoot, listed) + "\n\n" +
+        "Proponi da 2 a 12 temi che coprano tutti i documenti elencati. Ogni documento " +
+        "va in esattamente un tema. Usa i percorsi esattamente come compaiono nell'elenco. " +
+        "Dai ai temi nomi nella lingua della documentazione.\n\n" +
+        "OBBLIGO: nel content (non solo nel reasoning) metti SOLO questo JSON, " +
+        "iniziando con {\"themes\":\n" +
+        schemaHint;
+
+    var parts = tryThinkParts(explorer, question);
+    var parsed = parseExplorerThemes(parts);
+    var lastReasoning = "";
+    if (parts != null and parts.reasoning != null) {
+        lastReasoning = string(parts.reasoning);
+    }
+
+    if (parsed == null) {
+        printExplorerReply(parts, t(
+            "explorer reply is not valid JSON — retrying same agent...",
+            "risposta esploratore non e' JSON valido — ritento sullo stesso agent..."));
+        parts = tryThinkParts(explorer,
+            "STOP. Il content era vuoto o senza JSON. " +
+            "Ignora ulteriore analisi lunga. Scrivi ORA nel content SOLO l'oggetto JSON " +
+            "(prima carattere { , ultima }). Niente markdown. Schema:\n" + schemaHint +
+            "\nDeve includere tutti i percorsi dell'elenco precedente.");
+        parsed = parseExplorerThemes(parts);
+        if (parts != null and parts.reasoning != null and str.trim(string(parts.reasoning)) != "") {
+            lastReasoning = string(parts.reasoning);
+        }
+    }
+
+    if (parsed == null) {
+        printExplorerReply(parts, t(
+            "explorer still CoT-only — coercing with a fresh JSON-only agent...",
+            "ancora solo CoT — costringo con un agent JSON-only nuovo..."));
+        parts = coerceExplorerThemesJson(docsRoot, listed, lastReasoning);
+        parsed = parseExplorerThemes(parts);
+    }
+
+    if (parsed == null) {
+        printExplorerReply(parts, t(
+            "explorer did not return valid JSON",
+            "l'esploratore non ha restituito JSON valido"));
+        return null;
+    }
+    if (parsed.themes == null) {
+        printExplorerReply(parts, t(
+            "explorer response missing 'themes' field",
+            "risposta dell'esploratore senza campo 'themes'"));
+        return null;
+    }
+
+    var themes = [];
+    var assigned = [];
+    var unknown = [];
+    foreach (var raw in parsed.themes) {
+        var title = "";
+        if (raw.title != null) {
+            title = str.trim(string(raw.title));
+        }
+        if (title == "") {
+            continue;
+        }
+        var description = "";
+        if (raw.description != null) {
+            description = str.trim(string(raw.description));
+        }
+        var members = [];
+        if (raw.documents != null) {
+            foreach (var candidate in raw.documents) {
+                var rel = findDoc(docs, candidate);
+                if (rel == null) {
+                    unknown.append(string(candidate));
+                } else if (not str.includes(assigned, rel)) {
+                    // First theme that claims a document wins: avoid double assignment.
+                    assigned.append(rel);
+                    members.append(rel);
+                }
+            }
+        }
+        if (members.length > 0) {
+            themes.append({
+                "title": title,
+                "slug": slugify(title),
+                "description": description,
+                "documents": members
+            });
+        }
+    }
+
+    if (themes.length == 0) {
+        printExplorerReply(parts, t(
+            "no usable themes in the explorer response",
+            "nessun tema utilizzabile nella risposta dell'esploratore"));
+        return null;
+    }
+    return {
+        "themes": themes,
+        "assignedCount": assigned.length,
+        "unknownCount": unknown.length,
+        "listTruncated": listTruncated
+    };
+}
+
+function themeTopicOf(rel, taxonomy) {
+    if (taxonomy != null) {
+        foreach (var theme in taxonomy.themes) {
+            if (str.includes(theme.documents, rel)) {
+                return theme.title;
+            }
+        }
+    }
+    return topicOf(rel);
+}
+
+function describeTaxonomy(taxonomy, docs) {
+    var colTheme = t("theme", "tema");
+    var colDocs = t("documents", "documenti");
+    var colDesc = t("description", "descrizione");
+    var rows = [];
+    foreach (var theme in taxonomy.themes) {
+        var row = {};
+        row[colTheme] = theme.title;
+        row[colDocs] = string(theme.documents.length);
+        row[colDesc] = theme.description;
+        rows.append(row);
+    }
+    AnsiConsole.table(rows, t("Taxonomy proposed by the explorer", "Tassonomia proposta dall'esploratore"),
+        [colTheme, colDocs, colDesc]);
+    var leftover = docs.length - taxonomy.assignedCount;
+    if (leftover > 0) {
+        AnsiConsole.markupLine("[yellow]" + string(leftover) + t(
+            " unassigned documents:[/] they will use the subfolder as theme.",
+            " documenti non assegnati:[/] useranno la sottocartella come tema."));
+    }
+    if (taxonomy.unknownCount > 0) {
+        AnsiConsole.markupLine("[yellow]" + string(taxonomy.unknownCount) + t(
+            " paths cited by the explorer do not exist:[/] ignored.",
+            " percorsi citati dall'esploratore non esistono:[/] ignorati."));
+    }
+}
+
+function descriptionOfTheme(taxonomy, title) {
+    if (taxonomy == null) {
+        return "";
+    }
+    foreach (var theme in taxonomy.themes) {
+        if (theme.title == title) {
+            return theme.description;
+        }
+    }
+    return "";
+}
+
+function uniqueSlug(base, notes) {
+    var candidate = base;
+    var suffix = 2;
+    var clash = true;
+    while (clash) {
+        clash = false;
+        foreach (var note in notes) {
+            if (note.slug == candidate) {
+                clash = true;
+            }
+        }
+        if (clash) {
+            candidate = base + "-" + string(suffix);
+            suffix = suffix + 1;
+        }
+    }
+    return candidate;
+}
+
+function sourceKeyOf(source) {
+    var s = string(source);
+    s = str.regexReplace(s, " \\(part \\d+ of \\d+\\)$", "");
+    s = str.regexReplace(s, " \\(parte \\d+ di \\d+\\)$", "");
+    return s;
+}
+
+function contentHashOf(text) {
+    return str.sha256(string(text));
+}
+
+function catalogEntrySourceKey(entry) {
+    if (entry.sourceKey != null and str.trim(string(entry.sourceKey)) != "") {
+        return string(entry.sourceKey);
+    }
+    return sourceKeyOf(entry.source);
+}
+
+function loadNoteBody(brainDir, entry) {
+    var path = sbJoinUnderRoot2(brainDir, "notes", entry.slug + ".md");
+    if (path == null or not io.hasFile(path)) {
+        return "";
+    }
+    var text = io.readFile(path);
+    var summary = "";
+    if (entry.summary != null) {
+        summary = string(entry.summary);
+    }
+    if (summary != "") {
+        var marker = "\n> " + summary + "\n\n";
+        var start = str.indexOf(text, marker);
+        if (start >= 0) {
+            start = start + str.length(marker);
+            var rest = str.substring(text, start, str.length(text));
+            var end = str.indexOf(rest, "\n## Note collegate");
+            if (end >= 0) {
+                return str.trim(str.substring(rest, 0, end));
+            }
+            return str.trim(rest);
+        }
+    }
+    var found = str.regexFind(text, "(?s)\\n> [^\\n]+\\n\\n([\\s\\S]*?)\\n## Note collegate");
+    if (found.length > 0) {
+        return str.trim(found[0].groups[1]);
+    }
+    return "";
+}
+
+function noteFromCatalogEntry(brainDir, entry) {
+    var tags = [];
+    if (entry.tags != null) {
+        tags = entry.tags;
+    }
+    var headings = [];
+    if (entry.headings != null) {
+        headings = entry.headings;
+    }
+    var hash = "";
+    if (entry.contentHash != null) {
+        hash = string(entry.contentHash);
+    }
+    return {
+        "slug": entry.slug,
+        "title": entry.title,
+        "summary": entry.summary,
+        "tags": tags,
+        "body": loadNoteBody(brainDir, entry),
+        "topic": entry.topic,
+        "source": entry.source,
+        "sourceKey": catalogEntrySourceKey(entry),
+        "contentHash": hash,
+        "headings": headings,
+        "memoryNodeId": noteMemoryId(entry)
+    };
+}
+
+function groupNotesBySource(notes) {
+    var groups = [];
+    foreach (var note in notes) {
+        var key = note.sourceKey;
+        if (key == null or str.trim(string(key)) == "") {
+            key = sourceKeyOf(note.source);
+        }
+        var found = null;
+        foreach (var g in groups) {
+            if (g.key == key) {
+                found = g;
+            }
+        }
+        if (found == null) {
+            found = {
+                "key": key,
+                "hash": "",
+                "notes": []
+            };
+            groups.append(found);
+        }
+        found.notes.append(note);
+        if (note.contentHash != null and str.trim(string(note.contentHash)) != "") {
+            found.hash = string(note.contentHash);
+        }
+    }
+    return groups;
+}
+
+function findSourceGroup(groups, key) {
+    foreach (var g in groups) {
+        if (g.key == key) {
+            return g;
+        }
+    }
+    return null;
+}
+
+function deleteNoteFile(brainDir, slug) {
+    var path = sbJoinUnderRoot2(brainDir, "notes", slug + ".md");
+    if (path != null and io.hasFile(path)) {
+        io.deleteFile(path);
+    }
+}
+
+function topicDescriptionFromCatalog(catalog, title) {
+    if (catalog == null or catalog.topics == null) {
+        return "";
+    }
+    foreach (var topic in catalog.topics) {
+        if (topic.title == title) {
+            if (topic.description != null) {
+                return string(topic.description);
+            }
+            return "";
+        }
+    }
+    return "";
+}
+
+function noteMemoryId(note) {
+    if (note == null or note.memoryNodeId == null) {
+        return "";
+    }
+    return str.trim(string(note.memoryNodeId));
+}
+
+function appendMemoryNodeId(ids, note) {
+    var id = noteMemoryId(note);
+    if (id == "") {
+        return;
+    }
+    if (not listContains(ids, id)) {
+        ids.append(id);
+    }
+}
+
+function listContains(items, value) {
+    foreach (var item in items) {
+        if (item == value) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function distillSourceFile(distiller, docsRoot, brainDir, rel, taxonomy, notes, contentHash) {
+    var absPath = sbAssertUnderRoot(docsRoot, io.pathJoin(docsRoot, rel));
+    if (absPath == null) {
+        AnsiConsole.markupLine("  [red]" + t("path outside docs folder:", "percorso fuori dalla cartella docs:") +
+            "[/] " + string(rel));
+        return { "skipped": true, "truncated": null };
+    }
+    var text = "";
+    try {
+        text = extractText(absPath);
+    } catch (e) {
+        AnsiConsole.markupLine("  [red]" + t("read failed:", "lettura fallita:") + "[/] " + string(e));
+        return { "skipped": true, "truncated": null };
+    }
+    if (str.trim(text) == "") {
+        AnsiConsole.markupLine("  [yellow]" + t(
+            "empty or non-text, skipped",
+            "vuoto o non testuale, ignorato") + "[/]");
+        return { "skipped": true, "truncated": null };
+    }
+    if (contentHash == null or str.trim(string(contentHash)) == "") {
+        contentHash = contentHashOf(text);
+    }
+
+    var chunks = chunkText(text, MAX_DOC_CHARS, MAX_CHUNKS);
+    var consumed = 0;
+    foreach (var piece in chunks) {
+        consumed = consumed + str.length(piece);
+    }
+    var truncated = null;
+    if (consumed < str.length(text)) {
+        truncated = {
+            "source": rel,
+            "used": consumed,
+            "total": str.length(text)
+        };
+        AnsiConsole.markupLine("  [yellow]" + t("document too long:", "documento troppo lungo:") +
+            "[/] " + t("distilled ", "distillati ") +
+            string(consumed) + t(" of ", " di ") + string(str.length(text)) +
+            t(" characters", " caratteri"));
+    }
+    var partIndex = 0;
+    foreach (var chunk in chunks) {
+        partIndex = partIndex + 1;
+        var partLabel = "";
+        if (chunks.length > 1) {
+            partLabel = t(
+                " (part " + string(partIndex) + " of " + string(chunks.length) + ")",
+                " (parte " + string(partIndex) + " di " + string(chunks.length) + ")");
+        }
+        distiller.reset();
+        var response = tryThink(distiller, distillQuestion(rel, partLabel, chunk));
+        var fallbackTitle = io.getFileName(rel) + partLabel;
+        var parsed = parseDistilled(response, fallbackTitle, chunk);
+
+        var note = {
+            "slug": uniqueSlug(slugify(parsed.title), notes),
+            "title": parsed.title,
+            "summary": parsed.summary,
+            "tags": parsed.tags,
+            "body": parsed.body,
+            "topic": themeTopicOf(rel, taxonomy),
+            "source": rel + partLabel,
+            "sourceKey": rel,
+            "contentHash": contentHash,
+            "headings": headingsOf(parsed.body)
+        };
+        notes.append(note);
+        writeNoteFile(brainDir, note);
+        AnsiConsole.markupLine("  [green]" + t("note", "nota") + "[/] notes/" + note.slug + ".md");
+    }
+    return { "skipped": false, "truncated": truncated };
+}

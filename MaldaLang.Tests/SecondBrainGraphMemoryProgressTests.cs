@@ -9,7 +9,7 @@ namespace MaldaLang.Tests;
 
 /// <summary>
 /// Mockup of the GraphMemory index progress / ETA helpers from
-/// <c>Examples/Agents/secondbrain_semantic.malda</c> — runs the same syntax under
+/// <c>Examples/Agents/sb/06-memory.malda</c> — runs the same syntax under
 /// interpreter and C# transpile without loading LlamaEmbedder or GraphMemory.
 /// </summary>
 [Collection("Sequential")]
@@ -145,11 +145,18 @@ public class SecondBrainGraphMemoryProgressTests : TestBase
     [Fact]
     public void SemanticHost_DefinesGraphMemoryProgressHelpers()
     {
-        var path = Path.Combine(RepoRoot, "Examples", "Agents", "secondbrain_semantic.malda");
+        var path = Path.Combine(RepoRoot, "Examples", "Agents", "sb", "06-memory.malda");
         Assert.True(File.Exists(path), "missing " + path);
         var source = File.ReadAllText(path);
         Assert.Contains("function formatDurationMs(ms)", source, StringComparison.Ordinal);
         Assert.Contains("function indexBrainMemoryProgressLine(", source, StringComparison.Ordinal);
+        Assert.Contains("function indexShouldUseFullRebuild(", source, StringComparison.Ordinal);
+        Assert.Contains("function upsertNoteMemory(", source, StringComparison.Ordinal);
+        Assert.Contains("function catalogHasMemoryNodeIds(", source, StringComparison.Ordinal);
+        Assert.Contains("function embedFingerprintMatches(", source, StringComparison.Ordinal);
+        Assert.Contains("function rememberNoteMemory(", source, StringComparison.Ordinal);
+        Assert.Contains("ctx.removedNodeIds", source, StringComparison.Ordinal);
+        Assert.Contains("note.memoryNodeId = nodeId", source, StringComparison.Ordinal);
         Assert.Contains("formatDate(now() + etaMs, \"HH:mm\")", source, StringComparison.Ordinal);
         Assert.Contains("(now() - lastProgressAt) >= 1500", source, StringComparison.Ordinal);
         Assert.Contains("indexed == 1 or indexed == total or due", source, StringComparison.Ordinal);
@@ -190,5 +197,204 @@ public class SecondBrainGraphMemoryProgressTests : TestBase
             Assert.Contains(marker, interpreted, StringComparison.Ordinal);
             Assert.Contains(marker, transpiled, StringComparison.Ordinal);
         }
+    }
+
+    /// <summary>
+    /// Mirrors incremental GraphMemory UPDATE decisions from
+    /// <c>Examples/Agents/sb/06-memory.malda</c> without LlamaEmbedder or GraphMemory.
+    /// </summary>
+    private const string IncrementalIndexMockupSource = """
+        var embedMode = "hash";
+        var EMBED_DIM = 1024;
+
+        function noteMemoryId(note) {
+            if (note == null or note.memoryNodeId == null) {
+                return "";
+            }
+            return str.trim(string(note.memoryNodeId));
+        }
+
+        function catalogHasMemoryNodeIds(notes) {
+            if (notes == null) {
+                return false;
+            }
+            foreach (var note in notes) {
+                if (noteMemoryId(note) != "") {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function embedFingerprintMatches(catalog) {
+            if (catalog == null) {
+                return false;
+            }
+            var mode = "";
+            if (catalog.embedMode != null) {
+                mode = str.trim(string(catalog.embedMode));
+            }
+            if (mode == "") {
+                return false;
+            }
+            var dim = 0;
+            if (catalog.embedDim != null) {
+                dim = int(catalog.embedDim);
+            }
+            return mode == string(embedMode) and dim == EMBED_DIM;
+        }
+
+        function indexShouldUseFullRebuild(ctx, artifactsExist, fingerprintOk, catalogHasIds) {
+            if (ctx == null) {
+                return true;
+            }
+            if (ctx.forceFull == true) {
+                return true;
+            }
+            var mode = "";
+            if (ctx.mode != null) {
+                mode = str.trim(string(ctx.mode));
+            }
+            if (mode != "incremental") {
+                return true;
+            }
+            if (artifactsExist != true) {
+                return true;
+            }
+            if (fingerprintOk != true) {
+                return true;
+            }
+            if (catalogHasIds != true) {
+                return true;
+            }
+            return false;
+        }
+
+        function listContains(items, value) {
+            foreach (var item in items) {
+                if (item == value) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function planIncremental(notes, removedNodeIds) {
+            var forget = [];
+            foreach (var id in removedNodeIds) {
+                var nid = str.trim(string(id));
+                if (nid != "" and not listContains(forget, nid)) {
+                    forget.append(nid);
+                }
+            }
+            var skip = [];
+            var upsert = [];
+            foreach (var note in notes) {
+                var existing = noteMemoryId(note);
+                if (existing != "") {
+                    skip.append(note.slug);
+                } else {
+                    upsert.append(note.slug);
+                }
+            }
+            print("FORGET=" + str.join(forget, ","));
+            print("SKIP=" + str.join(skip, ","));
+            print("UPSERT=" + str.join(upsert, ","));
+        }
+
+        print("ID_EMPTY=" + noteMemoryId(null));
+        print("ID_TRIM=" + noteMemoryId({ "memoryNodeId": " node_3 " }));
+        print("HAS_IDS=" + string(catalogHasMemoryNodeIds([
+            { "slug": "a" },
+            { "slug": "b", "memoryNodeId": "node_1" }
+        ])));
+        print("NO_IDS=" + string(catalogHasMemoryNodeIds([
+            { "slug": "a" },
+            { "slug": "b" }
+        ])));
+        print("FP_OK=" + string(embedFingerprintMatches({
+            "embedMode": "hash",
+            "embedDim": 1024
+        })));
+        print("FP_MODE=" + string(embedFingerprintMatches({
+            "embedMode": "llama",
+            "embedDim": 1024
+        })));
+        print("FP_DIM=" + string(embedFingerprintMatches({
+            "embedMode": "hash",
+            "embedDim": 384
+        })));
+        print("FP_LEGACY=" + string(embedFingerprintMatches({ "retrieval": "graphmemory" })));
+        print("FP_NULL=" + string(embedFingerprintMatches(null)));
+
+        print("FULL_NULL=" + string(indexShouldUseFullRebuild(null, true, true, true)));
+        print("FULL_FORCE=" + string(indexShouldUseFullRebuild({
+            "mode": "incremental",
+            "forceFull": true
+        }, true, true, true)));
+        print("FULL_MODE=" + string(indexShouldUseFullRebuild({
+            "mode": "full"
+        }, true, true, true)));
+        print("FULL_ART=" + string(indexShouldUseFullRebuild({
+            "mode": "incremental"
+        }, false, true, true)));
+        print("FULL_FP=" + string(indexShouldUseFullRebuild({
+            "mode": "incremental"
+        }, true, false, true)));
+        print("FULL_IDS=" + string(indexShouldUseFullRebuild({
+            "mode": "incremental"
+        }, true, true, false)));
+        print("INCR_OK=" + string(indexShouldUseFullRebuild({
+            "mode": "incremental",
+            "forceFull": false
+        }, true, true, true)));
+
+        planIncremental([
+            { "slug": "kept", "memoryNodeId": "node_0" },
+            { "slug": "fresh" },
+            { "slug": "changed" }
+        ], ["node_2", "node_9"]);
+        """;
+
+    private static void AssertIncrementalIndexMockupOutput(string output)
+    {
+        Assert.Contains("ID_EMPTY=", output, StringComparison.Ordinal);
+        Assert.Contains("ID_TRIM=node_3", output, StringComparison.Ordinal);
+        Assert.Contains("HAS_IDS=true", output, StringComparison.Ordinal);
+        Assert.Contains("NO_IDS=false", output, StringComparison.Ordinal);
+        Assert.Contains("FP_OK=true", output, StringComparison.Ordinal);
+        Assert.Contains("FP_MODE=false", output, StringComparison.Ordinal);
+        Assert.Contains("FP_DIM=false", output, StringComparison.Ordinal);
+        Assert.Contains("FP_LEGACY=false", output, StringComparison.Ordinal);
+        Assert.Contains("FP_NULL=false", output, StringComparison.Ordinal);
+        Assert.Contains("FULL_NULL=true", output, StringComparison.Ordinal);
+        Assert.Contains("FULL_FORCE=true", output, StringComparison.Ordinal);
+        Assert.Contains("FULL_MODE=true", output, StringComparison.Ordinal);
+        Assert.Contains("FULL_ART=true", output, StringComparison.Ordinal);
+        Assert.Contains("FULL_FP=true", output, StringComparison.Ordinal);
+        Assert.Contains("FULL_IDS=true", output, StringComparison.Ordinal);
+        Assert.Contains("INCR_OK=false", output, StringComparison.Ordinal);
+        Assert.Contains("FORGET=node_2,node_9", output, StringComparison.Ordinal);
+        Assert.Contains("SKIP=kept", output, StringComparison.Ordinal);
+        Assert.Contains("UPSERT=fresh,changed", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void IncrementalIndexMockup_RunsUnderInterpreter()
+    {
+        var output = RunProgram(IncrementalIndexMockupSource);
+        AssertIncrementalIndexMockupOutput(output);
+    }
+
+    [Fact]
+    public void IncrementalIndexMockup_RunsUnderTranspile()
+    {
+        var result = TranspiledTestRunner.CompileAndRunFromSource(IncrementalIndexMockupSource);
+        Assert.Equal(0, result.ExitCode);
+        Assert.True(
+            string.IsNullOrWhiteSpace(result.StdErr) ||
+            !result.StdErr.Contains("error", StringComparison.OrdinalIgnoreCase),
+            "unexpected stderr: " + result.StdErr);
+        AssertIncrementalIndexMockupOutput(result.StdOut);
     }
 }

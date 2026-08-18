@@ -27,6 +27,26 @@ public class SecondBrainAskFeaturesTests
     private static string AskUiLibPath =>
         Path.Combine(RepoRoot, "Examples", "Agents", "secondbrain_ask_ui_lib.malda");
 
+    private static string CombinedSecondBrainSource(string hostPath)
+    {
+        var parts = new List<string> { File.ReadAllText(hostPath) };
+        var sbDir = Path.Combine(RepoRoot, "Examples", "Agents", "sb");
+        if (Directory.Exists(sbDir))
+        {
+            var extras = Directory.GetFiles(sbDir, "*.malda");
+            Array.Sort(extras, StringComparer.Ordinal);
+            foreach (var extra in extras)
+            {
+                parts.Add(File.ReadAllText(extra));
+            }
+        }
+        foreach (var name in new[] { "secondbrain_cli_lib.malda", "secondbrain_cli_apply_lib.malda", "secondbrain_ask_ui_lib.malda" })
+        {
+            parts.Add(File.ReadAllText(Path.Combine(RepoRoot, "Examples", "Agents", name)));
+        }
+        return string.Join("\n", parts);
+    }
+
     private static void SafeDeleteDirectory(string path)
     {
         try
@@ -484,6 +504,8 @@ public class SecondBrainAskFeaturesTests
         Assert.Contains("@POST(\"/register\")", libSource, StringComparison.Ordinal);
         Assert.Contains("@GET(\"/logout\")", libSource, StringComparison.Ordinal);
         Assert.Contains("@GET(\"/health\")", libSource, StringComparison.Ordinal);
+        Assert.Contains("var ASK_SERVICE_VERSION = \"0.2.0\"", libSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("var ASK_SERVICE_VERSION = \"0.1.28\"", libSource, StringComparison.Ordinal);
         Assert.Contains("@GET(\"/generate/download\")", libSource, StringComparison.Ordinal);
         Assert.Contains("function askGetAskMode()", libSource, StringComparison.Ordinal);
         Assert.Contains("function askBuildGeneratedDownload(", libSource, StringComparison.Ordinal);
@@ -498,6 +520,9 @@ public class SecondBrainAskFeaturesTests
         Assert.Contains("@PAGE(\"/admin/upload\")", libSource, StringComparison.Ordinal);
         Assert.Contains("@ACTION(\"/feedback\")", libSource, StringComparison.Ordinal);
         Assert.Contains("function askConfigureHttpAuth(", libSource, StringComparison.Ordinal);
+        Assert.Contains("function askRefuseInsecurePublicBind(", libSource, StringComparison.Ordinal);
+        Assert.Contains("function askIsLoopbackHttpHost(", libSource, StringComparison.Ordinal);
+        Assert.Contains("function askHasDefaultDevSecrets(", libSource, StringComparison.Ordinal);
         Assert.Contains("function askRequireAuth(", libSource, StringComparison.Ordinal);
         Assert.Contains("res.redirect(\"/login\")", libSource, StringComparison.Ordinal);
         Assert.Contains("authenticateCookieJwt(ASK_AUTH_COOKIE", libSource, StringComparison.Ordinal);
@@ -625,6 +650,174 @@ public class SecondBrainAskFeaturesTests
         }
         finally
         {
+            SafeDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public async Task AskServiceVersion_Is_0_2_0_And_Hosts_Drop_0_1_0_Banner()
+    {
+        Assert.True(File.Exists(AskUiLibPath), "missing ask UI lib: " + AskUiLibPath);
+        var libSource = await File.ReadAllTextAsync(AskUiLibPath);
+        Assert.Contains("var ASK_SERVICE_VERSION = \"0.2.0\"", libSource, StringComparison.Ordinal);
+
+        var lexical = Path.Combine(RepoRoot, "Examples", "Agents", "secondbrain.malda");
+        var semantic = Path.Combine(RepoRoot, "Examples", "Agents", "secondbrain_semantic.malda");
+        foreach (var path in new[] { lexical, semantic })
+        {
+            Assert.True(File.Exists(path), "missing " + path);
+            var source = await File.ReadAllTextAsync(path);
+            Assert.DoesNotContain("MALDA 0.1.0", source, StringComparison.Ordinal);
+            Assert.Contains("GET /health", source, StringComparison.Ordinal);
+            Assert.Contains("ASK_SERVICE_VERSION", source, StringComparison.Ordinal);
+        }
+
+        var tempDir = Path.Combine(Path.GetTempPath(), "malda_sb_ask_version", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            File.Copy(AskUiLibPath, Path.Combine(tempDir, "secondbrain_ask_ui_lib.malda"));
+            var harnessPath = Path.Combine(tempDir, "harness.malda");
+            await File.WriteAllTextAsync(harnessPath,
+                """
+                var ASK_HTTP_PORT = 39018;
+                var ASK_SESSION_ID = "secondbrain-ask-version";
+                var ASK_STORE = "SecondBrainAskVersion";
+                var PRODUCT_NAME = "Version Brain";
+                var ASK_PAGE_TITLE = PRODUCT_NAME;
+                var ASK_POWERED_BY = "";
+                var ASK_POWERED_BY_URL = "";
+                var ASK_LOGO = "";
+                var ASK_LOGO_RIGHT = "";
+                var UI_LANG = "en";
+                var askHttpServer = null;
+
+                function runAskTurn(question) {
+                    return { "question": question, "answer": "ok", "sources": [], "error": "" };
+                }
+
+                include "secondbrain_ask_ui_lib.malda";
+
+                print("VER=" + ASK_SERVICE_VERSION);
+                """);
+            var output = await InterpretAndCaptureAsync(harnessPath);
+            Assert.Contains("VER=0.2.0", output, StringComparison.Ordinal);
+        }
+        finally
+        {
+            SafeDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public async Task AskRefuseInsecurePublicBind_Blocks_Default_Creds_On_All_Interfaces()
+    {
+        Assert.True(File.Exists(AskUiLibPath), "missing ask UI lib: " + AskUiLibPath);
+        var libSource = File.ReadAllText(AskUiLibPath);
+        Assert.Contains("function askRefuseInsecurePublicBind()", libSource, StringComparison.Ordinal);
+        Assert.Contains("Refusing to start ASK on a non-loopback host with default credentials.", libSource, StringComparison.Ordinal);
+        Assert.Contains("ASK is bound on a non-loopback host with auth off.", libSource, StringComparison.Ordinal);
+
+        var tempDir = Path.Combine(Path.GetTempPath(), "malda_sb_ask_bind_gate", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        var previous = new Dictionary<string, string?>
+        {
+            ["MALDA_ASK_PASSWORD"] = System.Environment.GetEnvironmentVariable("MALDA_ASK_PASSWORD"),
+            ["MALDA_ASK_PASSWORD_HASH"] = System.Environment.GetEnvironmentVariable("MALDA_ASK_PASSWORD_HASH"),
+            ["MALDA_JWT_SECRET"] = System.Environment.GetEnvironmentVariable("MALDA_JWT_SECRET"),
+            ["MALDA_COOKIE_SECRET"] = System.Environment.GetEnvironmentVariable("MALDA_COOKIE_SECRET"),
+            ["MALDA_SESSION_SECRET"] = System.Environment.GetEnvironmentVariable("MALDA_SESSION_SECRET")
+        };
+        try
+        {
+            foreach (var key in previous.Keys)
+            {
+                System.Environment.SetEnvironmentVariable(key, null);
+            }
+
+            File.Copy(AskUiLibPath, Path.Combine(tempDir, "secondbrain_ask_ui_lib.malda"));
+            var harnessPath = Path.Combine(tempDir, "harness.malda");
+            await File.WriteAllTextAsync(harnessPath,
+                """
+                var ASK_HTTP_PORT = 39018;
+                var ASK_HTTP_HOST = "localhost";
+                var ASK_SESSION_ID = "secondbrain-ask-bind-gate";
+                var ASK_STORE = "SecondBrainAskBindGate";
+                var PRODUCT_NAME = "Bind Gate";
+                var ASK_PAGE_TITLE = PRODUCT_NAME;
+                var ASK_POWERED_BY = "";
+                var ASK_POWERED_BY_URL = "";
+                var ASK_LOGO = "";
+                var ASK_LOGO_RIGHT = "";
+                var UI_LANG = "en";
+                var askHttpServer = null;
+
+                function runAskTurn(question) {
+                    return { "question": question, "answer": "ok", "sources": [], "error": "" };
+                }
+
+                include "secondbrain_ask_ui_lib.malda";
+
+                ASK_AUTH_ENABLED = true;
+                ASK_HTTP_HOST = "localhost";
+                askLoadAuthCredentials();
+                print("LOOP=" + string(askRefuseInsecurePublicBind()));
+
+                ASK_HTTP_HOST = "0.0.0.0";
+                print("PUBLIC_DEFAULT=" + string(askRefuseInsecurePublicBind()));
+
+                ASK_AUTH_ENABLED = false;
+                print("PUBLIC_NOAUTH=" + string(askRefuseInsecurePublicBind()));
+                """);
+
+            var output = await InterpretAndCaptureAsync(harnessPath);
+            Assert.Contains("LOOP=false", output, StringComparison.Ordinal);
+            Assert.Contains("PUBLIC_DEFAULT=true", output, StringComparison.Ordinal);
+            Assert.Contains("PUBLIC_NOAUTH=false", output, StringComparison.Ordinal);
+
+            // GetEnvCache is process-wide: env vars set after the first askLoadAuthCredentials
+            // would still look empty. Drive the allow-path through the same globals the
+            // loader would have filled.
+            await File.WriteAllTextAsync(harnessPath,
+                """
+                var ASK_HTTP_PORT = 39018;
+                var ASK_HTTP_HOST = "0.0.0.0";
+                var ASK_SESSION_ID = "secondbrain-ask-bind-ok";
+                var ASK_STORE = "SecondBrainAskBindOk";
+                var PRODUCT_NAME = "Bind Ok";
+                var ASK_PAGE_TITLE = PRODUCT_NAME;
+                var ASK_POWERED_BY = "";
+                var ASK_POWERED_BY_URL = "";
+                var ASK_LOGO = "";
+                var ASK_LOGO_RIGHT = "";
+                var UI_LANG = "en";
+                var askHttpServer = null;
+
+                function runAskTurn(question) {
+                    return { "question": question, "answer": "ok", "sources": [], "error": "" };
+                }
+
+                include "secondbrain_ask_ui_lib.malda";
+
+                ASK_AUTH_ENABLED = true;
+                ASK_HTTP_HOST = "0.0.0.0";
+                ASK_AUTH_USING_DEFAULT_PASSWORD = false;
+                askAuthJwtSecret = "jwt-secret-for-tests";
+                askAuthCookieSecret = "cookie-secret-for-tests";
+                askAuthSessionSecret = "session-secret-for-tests";
+                print("PUBLIC_SECURE=" + string(askRefuseInsecurePublicBind()));
+                """);
+
+            var secureOut = await InterpretAndCaptureAsync(harnessPath);
+            Assert.Contains("PUBLIC_SECURE=false", secureOut, StringComparison.Ordinal);
+            Assert.DoesNotContain("Refusing to start ASK", secureOut, StringComparison.Ordinal);
+        }
+        finally
+        {
+            foreach (var pair in previous)
+            {
+                System.Environment.SetEnvironmentVariable(pair.Key, pair.Value);
+            }
             SafeDeleteDirectory(tempDir);
         }
     }
@@ -927,7 +1120,10 @@ public class SecondBrainAskFeaturesTests
 
         foreach (var path in new[] { lexical, semantic })
         {
-            var source = File.ReadAllText(path);
+            var source = CombinedSecondBrainSource(path);
+            Assert.Contains("include \"sb/00-i18n.malda\"", source, StringComparison.Ordinal);
+            Assert.Contains("include \"sb/04-build.malda\"", source, StringComparison.Ordinal);
+            Assert.Contains("include \"sb/05-ask-common.malda\"", source, StringComparison.Ordinal);
             Assert.Contains("var PRODUCT_NAME = ", source, StringComparison.Ordinal);
             Assert.Contains("var ASK_TITLE_SUFFIX = ", source, StringComparison.Ordinal);
             Assert.Contains("function productName()", source, StringComparison.Ordinal);
@@ -945,6 +1141,7 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("askHttpServer.enableHttps(", source, StringComparison.Ordinal);
             Assert.Contains("--https", source, StringComparison.Ordinal);
             Assert.Contains("askApplyAuthFromCli(", source, StringComparison.Ordinal);
+            Assert.Contains("askRefuseInsecurePublicBind(", source, StringComparison.Ordinal);
             Assert.Contains("askSetAuthUsersRoot(", source, StringComparison.Ordinal);
             Assert.Contains("askConfigureHttpAuth(", source, StringComparison.Ordinal);
             Assert.Contains("runAskUpdateFromUpload(", source, StringComparison.Ordinal);
@@ -976,6 +1173,10 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("riepilogo, proposta, verbale, checklist, brief", source, StringComparison.Ordinal);
             Assert.DoesNotContain("preventivo, itinerario", source, StringComparison.Ordinal);
             Assert.Contains("function generateDocumentCli(", source, StringComparison.Ordinal);
+            Assert.Contains("function indexShouldUseFullRebuild(", source, StringComparison.Ordinal);
+            Assert.Contains("function upsertNoteMemory(", source, StringComparison.Ordinal);
+            Assert.Contains("\"memoryNodeId\": noteMemoryId(note)", source, StringComparison.Ordinal);
+            Assert.Contains("--reindex-memory", source, StringComparison.Ordinal);
             Assert.Contains("askGetAskMode()", source, StringComparison.Ordinal);
             Assert.Contains("askMarkGeneratedTurn(", source, StringComparison.Ordinal);
             Assert.Contains("newReaderAgent(", source, StringComparison.Ordinal);
@@ -1077,6 +1278,10 @@ public class SecondBrainAskFeaturesTests
                 print("ZZX=" + zzExtra.error);
                 var zf = sbCliParseArgs(["generate", "--format", "pdf"]);
                 print("ZF=" + zf.error);
+                var rm = sbCliParseArgs(["update", "--reindex-memory"]);
+                print("RM=" + rm.mode + "," + string(rm.reindexMemory) + "," + rm.error);
+                var rmOff = sbCliParseArgs(["update"]);
+                print("RMOFF=" + rmOff.mode + "," + string(rmOff.reindexMemory) + "," + rmOff.error);
                 """,
                 Encoding.UTF8);
 
@@ -1111,6 +1316,8 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("ZZL=Unexpected argument: Draft", output, StringComparison.Ordinal);
             Assert.Contains("ZZX=Unexpected argument: extra", output, StringComparison.Ordinal);
             Assert.Contains("ZF=Invalid --format (use md or html).", output, StringComparison.Ordinal);
+            Assert.Contains("RM=update,true,", output, StringComparison.Ordinal);
+            Assert.Contains("RMOFF=update,false,", output, StringComparison.Ordinal);
         }
         finally
         {

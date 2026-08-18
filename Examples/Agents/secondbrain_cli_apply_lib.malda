@@ -125,7 +125,7 @@ function sbCliPrintHelp(defaultBrain, defaultPort) {
         "Second Brain CLI\n\n" +
         "  build  --docs <folder> [--brain " + brain + "] [--taxonomy llm|folders] [--lang en|it]\n" +
         "         [--product-name <name>]\n" +
-        "  update [--docs <folder>] [--brain " + brain + "] [--remove-orphans] [--lang en|it]\n" +
+        "  update [--docs <folder>] [--brain " + brain + "] [--remove-orphans] [--reindex-memory] [--lang en|it]\n" +
         "         [--product-name <name>]\n" +
         "  ask    [--brain " + brain + "] [--port " + port + "] [--host localhost] [--lang en|it]\n" +
         "         [--https --cert <pfx|pem>] [--cert-password <pwd>]\n" +
@@ -145,18 +145,22 @@ function sbCliPrintHelp(defaultBrain, defaultPort) {
         "--product-name / --name overrides brain product_name.txt and the default title.\n" +
         "ASK auth is on by default (cookie JWT). Disable with --no-auth.\n" +
         "Bootstrap: MALDA_ASK_USER / MALDA_ASK_PASSWORD (or MALDA_ASK_PASSWORD_HASH).\n" +
+        "Non-loopback --host with auth on requires a non-default password and\n" +
+        "  MALDA_JWT_SECRET / MALDA_COOKIE_SECRET / MALDA_SESSION_SECRET.\n" +
         "Multi-user: users.json in the brain folder (or .malda/ask_users.json).\n" +
         "Open registration: --allow-register (or MALDA_ASK_ALLOW_REGISTER=1).\n" +
         "Sample questions on empty ASK UI: on by default; hide with --no-examples\n" +
         "  (or MALDA_ASK_EXAMPLES=0).\n" +
         "Header powered-by line: hide with --no-powered-by (or MALDA_ASK_POWERED_BY=0);\n" +
         "  override text/URL with --powered-by / --powered-by-url.\n" +
+        "--reindex-memory (update): rebuild GraphMemory for every note (semantic host;\n" +
+        "  no-op on lexical ASK). Use after changing the embedding model.\n" +
         "Pack remains interactive (menu option 5).";
     var it =
         "Second Brain CLI\n\n" +
         "  build  --docs <cartella> [--brain " + brain + "] [--taxonomy llm|folders] [--lang en|it]\n" +
         "         [--product-name <nome>]\n" +
-        "  update [--docs <cartella>] [--brain " + brain + "] [--remove-orphans] [--lang en|it]\n" +
+        "  update [--docs <cartella>] [--brain " + brain + "] [--remove-orphans] [--reindex-memory] [--lang en|it]\n" +
         "         [--product-name <nome>]\n" +
         "  ask    [--brain " + brain + "] [--port " + port + "] [--host localhost] [--lang en|it]\n" +
         "         [--https --cert <pfx|pem>] [--cert-password <pwd>]\n" +
@@ -176,12 +180,16 @@ function sbCliPrintHelp(defaultBrain, defaultPort) {
         "--product-name / --name ha priorita' su product_name.txt e sul titolo di default.\n" +
         "Auth ASK attiva di default (cookie JWT). Disattiva con --no-auth.\n" +
         "Bootstrap: MALDA_ASK_USER / MALDA_ASK_PASSWORD (o MALDA_ASK_PASSWORD_HASH).\n" +
+        "Host non-loopback con auth richiede password non di default e\n" +
+        "  MALDA_JWT_SECRET / MALDA_COOKIE_SECRET / MALDA_SESSION_SECRET.\n" +
         "Multi-utente: users.json nella cartella del brain (o .malda/ask_users.json).\n" +
         "Registrazione aperta: --allow-register (o MALDA_ASK_ALLOW_REGISTER=1).\n" +
         "Domande di esempio nella UI ASK vuota: on di default; nascondi con --no-examples\n" +
         "  (o MALDA_ASK_EXAMPLES=0).\n" +
         "Riga powered-by in header: nascondi con --no-powered-by (o MALDA_ASK_POWERED_BY=0);\n" +
         "  testo/URL con --powered-by / --powered-by-url.\n" +
+        "--reindex-memory (update): ricostruisce GraphMemory per tutte le note (host semantico;\n" +
+        "  no-op sull'ASK lessicale). Usalo dopo aver cambiato il modello di embedding.\n" +
         "PACK resta interattivo (voce di menu 5).";
     if (UI_LANG == "en") {
         io.print(en);

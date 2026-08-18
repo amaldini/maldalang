@@ -1,0 +1,677 @@
+// sb/04-build.malda — BUILD / UPDATE
+// Host must define indexBrainAfterFinalize(brainDir, notes, ctx), printEmbedStatus,
+// appendRetrievalSummary, catalogExtraFields, brainIndexHowToLines.
+
+function finalizeBrain(brainDir, docsRoot, notes, skipped, truncated, taxonomySource, taxonomy, catalog, touchedTopics, indexCtx) {
+    io.print("");
+    io.print(t("Linking notes...", "Collegamento delle note..."));
+    writeRelatedSections(brainDir, notes);
+
+    io.print(t("Building topic hubs...", "Costruzione degli hub tematici..."));
+    var topics = topicsOf(notes);
+    var curator = newPlainAgent(
+        "Curator",
+        "curatore di knowledge base",
+        "Scrivi introduzioni brevi e concrete per gli hub tematici di " + productName() + ". " +
+        "Non inventare contenuti: usa solo i titoli e i riassunti forniti."
+    );
+    foreach (var topic in topics) {
+        var fromTaxonomy = descriptionOfTheme(taxonomy, topic.title);
+        var fromCatalog = topicDescriptionFromCatalog(catalog, topic.title);
+        if (fromTaxonomy != "") {
+            topic.description = fromTaxonomy;
+        } else {
+            topic.description = fromCatalog;
+        }
+        var useLlm = touchedTopics == null or listContains(touchedTopics, topic.title);
+        if (useLlm) {
+            curator.reset();
+            writeTopicHub(brainDir, topic, curator);
+        } else {
+            writeTopicHub(brainDir, topic, null);
+        }
+        AnsiConsole.markupLine("  [green]hub[/] topics/" + topic.slug + ".md");
+    }
+
+    if (catalog != null and catalog.topics != null) {
+        foreach (var oldTopic in catalog.topics) {
+            var stillThere = false;
+            foreach (var topic in topics) {
+                if (topic.slug == oldTopic.slug) {
+                    stillThere = true;
+                }
+            }
+            if (not stillThere) {
+                var hubPath = sbJoinUnderRoot2(brainDir, "topics", oldTopic.slug + ".md");
+                if (hubPath != null and io.hasFile(hubPath)) {
+                    io.deleteFile(hubPath);
+                    AnsiConsole.markupLine("  [dim]" + t("removed hub", "hub rimosso") +
+                        "[/] topics/" + oldTopic.slug + ".md");
+                }
+            }
+        }
+    }
+
+    indexBrainAfterFinalize(brainDir, notes, indexCtx);
+    writeIndex(brainDir, docsRoot, notes, topics, skipped, truncated, taxonomySource);
+    writeCatalog(brainDir, docsRoot, notes, topics, taxonomySource);
+    return topics;
+}
+
+function buildBrain(cli) {
+    var nonInteractive = sbCliIsNonInteractive(cli) and cli.mode == "build";
+    AnsiConsole.markupLine("");
+    AnsiConsole.panel(
+        t("Reads .md, .html, .pdf and .docx and distills linked notes for " + productName() + ".",
+            "Legge .md, .html, .pdf e .docx e distilla note collegate per " + productName() + "."),
+        t("[bold]Mode 1 - BUILD[/]", "[bold]Modalita' 1 - COSTRUISCI[/]"), "rounded");
+
+    var docsRoot = "";
+    if (nonInteractive) {
+        docsRoot = str.trim(sbCliAsText(cli.docs));
+        if (docsRoot == "") {
+            AnsiConsole.markupLine("[red]" + t(
+                "CLI build requires --docs <folder>.",
+                "Il build da CLI richiede --docs <cartella>.") + "[/]");
+            return false;
+        }
+    } else {
+        docsRoot = str.trim(io.input(t("Documentation folder: ", "Cartella della documentazione: ")));
+        if (docsRoot == "") {
+            io.print(t("Cancelled.", "Annullato."));
+            return false;
+        }
+    }
+    if (not io.hasDirectory(docsRoot)) {
+        AnsiConsole.markupLine("[red]" + t("Folder not found:", "Cartella non trovata:") + "[/] " + docsRoot);
+        return false;
+    }
+
+    var brainDir = "";
+    if (nonInteractive) {
+        brainDir = str.trim(sbCliAsText(cli.brain));
+        if (brainDir == "") {
+            brainDir = DEFAULT_BRAIN_DIR;
+        }
+    } else {
+        brainDir = str.trim(io.input(t(
+            productName() + " folder [" + DEFAULT_BRAIN_DIR + "]: ",
+            "Cartella " + productName() + " [" + DEFAULT_BRAIN_DIR + "]: ")));
+        if (brainDir == "") {
+            brainDir = DEFAULT_BRAIN_DIR;
+        }
+    }
+    applyProductNameFromBrain(brainDir);
+    sbCliApplyProductName(cli);
+    if (io.hasFile(io.pathJoin(brainDir, CATALOG_NAME))) {
+        if (nonInteractive) {
+            AnsiConsole.markupLine("[dim]" + t(
+                "CLI non-interactive: existing brain files with the same names will be overwritten.",
+                "CLI non interattivo: i file omonimi del brain esistente verranno sovrascritti.") + "[/]");
+        } else {
+            var confirm = str.trim(io.input(t(
+                productName() + " already exists in this folder: matching files will be overwritten. Proceed? " + ynHint() + ": ",
+                productName() + " esiste gia' in questa cartella: i file omonimi verranno sovrascritti. Procedo? " + ynHint() + ": ")));
+            if (not isAffirmative(confirm)) {
+                io.print(t("Cancelled.", "Annullato."));
+                return false;
+            }
+        }
+    }
+
+    var scan = collectDocs(docsRoot);
+    var docs = scan.files;
+    if (docs.length == 0) {
+        AnsiConsole.markupLine("[yellow]" + t("No .md / .html / .pdf / .docx files found in", "Nessun file .md / .html / .pdf / .docx trovato in") +
+            "[/] " + docsRoot);
+        return false;
+    }
+    if (scan.truncated) {
+        AnsiConsole.markupLine("[yellow]" + t("Warning:", "Attenzione:") + "[/] " + t(
+            "file search was truncated by the runtime; some documents are missing from the list.",
+            "la ricerca dei file e' stata troncata dal runtime; alcuni documenti non sono nell'elenco."));
+    }
+
+    AnsiConsole.markupLine("");
+    AnsiConsole.markupLine(t("Documents found:", "Documenti trovati:") + " [bold]" + string(docs.length) + "[/]");
+    AnsiConsole.markupLine("LLM: [bold]" + modelLabel() + "[/]");
+    printEmbedStatus();
+    AnsiConsole.markupLine("[dim]" + t(
+        "One exploration call, one per document, one per theme: paid models incur a cost.",
+        "Una chiamata di esplorazione, una per documento, una per tema: con modelli a pagamento questo ha un costo.") + "[/]");
+    if (nonInteractive) {
+        AnsiConsole.markupLine("[dim]" + t(
+            "CLI non-interactive: starting distillation.",
+            "CLI non interattivo: avvio distillazione.") + "[/]");
+    } else {
+        var go = str.trim(io.input(t(
+            "Start distillation? " + ynHint() + ": ",
+            "Avvio la distillazione? " + ynHint() + ": ")));
+        if (not isAffirmative(go)) {
+            io.print(t("Cancelled.", "Annullato."));
+            return false;
+        }
+    }
+
+    io.print("");
+    io.print(t("Exploring documentation...", "Esplorazione della documentazione..."));
+    var taxonomy = exploreTaxonomy(docsRoot, docs);
+    var taxonomySource = t("subfolders", "sottocartelle");
+    if (taxonomy != null) {
+        io.print("");
+        describeTaxonomy(taxonomy, docs);
+        if (nonInteractive) {
+            if (cli.taxonomy == "folders") {
+                taxonomy = null;
+                AnsiConsole.markupLine("[dim]" + t(
+                    "CLI: --taxonomy folders (ignore LLM taxonomy).",
+                    "CLI: --taxonomy folders (ignora tassonomia LLM).") + "[/]");
+            } else {
+                taxonomySource = t("LLM exploration", "esplorazione LLM");
+                AnsiConsole.markupLine("[dim]" + t(
+                    "CLI: keeping LLM taxonomy.",
+                    "CLI: mantengo la tassonomia LLM.") + "[/]");
+            }
+        } else {
+            var keep = str.trim(io.input(t(
+                "Use this taxonomy? (y = yes, n = group by subfolder): ",
+                "Uso questa tassonomia? (s = si, n = raggruppa per sottocartella): ")));
+            if (isNegative(keep)) {
+                taxonomy = null;
+            } else {
+                taxonomySource = t("LLM exploration", "esplorazione LLM");
+            }
+        }
+    }
+    if (taxonomy == null) {
+        AnsiConsole.markupLine("[dim]" + t(
+            "Themes derived from folder structure.",
+            "Temi ricavati dalla struttura di cartelle.") + "[/]");
+    }
+
+    io.ensureDir(brainDir);
+    var notesDir = sbJoinUnderRoot(brainDir, "notes");
+    if (notesDir != null) {
+        io.ensureDir(notesDir);
+    }
+    var topicsDir = sbJoinUnderRoot(brainDir, "topics");
+    if (topicsDir != null) {
+        io.ensureDir(topicsDir);
+    }
+
+    var distiller = newPlainAgent(
+        "Distiller",
+        "knowledge engineer",
+        distillInstructions()
+    );
+
+    var notes = [];
+    var skipped = [];
+    var truncated = [];
+    var index = 0;
+    foreach (var rel in docs) {
+        index = index + 1;
+        AnsiConsole.markupLine("[dim][[" + string(index) + "/" + string(docs.length) + "]][/] " + rel);
+        var outcome = distillSourceFile(distiller, docsRoot, brainDir, rel, taxonomy, notes, "");
+        if (outcome.skipped) {
+            skipped.append(rel);
+        } else if (outcome.truncated != null) {
+            truncated.append(outcome.truncated);
+        }
+    }
+
+    if (notes.length == 0) {
+        AnsiConsole.markupLine("[red]" + t("No notes produced.", "Nessuna nota prodotta.") + "[/]");
+        return false;
+    }
+
+    var topics = finalizeBrain(brainDir, docsRoot, notes, skipped, truncated, taxonomySource, taxonomy, null, null, {
+        "mode": "full"
+    });
+
+    io.print("");
+    var colKey = t("item", "voce");
+    var colVal = t("value", "valore");
+    var summaryRows = [];
+    var r1 = {};
+    r1[colKey] = t("documents read", "documenti letti");
+    r1[colVal] = string(docs.length - skipped.length);
+    summaryRows.append(r1);
+    var r2 = {};
+    r2[colKey] = t("documents skipped", "documenti ignorati");
+    r2[colVal] = string(skipped.length);
+    summaryRows.append(r2);
+    var r3 = {};
+    r3[colKey] = t("documents truncated", "documenti troncati");
+    r3[colVal] = string(truncated.length);
+    summaryRows.append(r3);
+    var r4 = {};
+    r4[colKey] = t("notes produced", "note prodotte");
+    r4[colVal] = string(notes.length);
+    summaryRows.append(r4);
+    var r5 = {};
+    r5[colKey] = t("themes", "temi");
+    r5[colVal] = string(topics.length);
+    summaryRows.append(r5);
+    var r6 = {};
+    r6[colKey] = t("taxonomy", "tassonomia");
+    r6[colVal] = taxonomySource;
+    summaryRows.append(r6);
+    appendRetrievalSummary(summaryRows, colKey, colVal);
+    var r7 = {};
+    r7[colKey] = t("folder", "cartella");
+    r7[colVal] = brainDir;
+    summaryRows.append(r7);
+    AnsiConsole.table(summaryRows, t(productName() + " built", productName() + " costruito"), [colKey, colVal]);
+    AnsiConsole.markupLine(t("Index:", "Indice:") + " [bold]" + io.pathJoin(brainDir, "index.md") + "[/]");
+    return true;
+}
+
+function updateBrain(cli) {
+    var nonInteractive = sbCliIsNonInteractive(cli) and cli.mode == "update";
+    AnsiConsole.markupLine("");
+    AnsiConsole.panel(
+        t("Updates an existing " + productName() + ": only new or changed source files are re-distilled.",
+            "Aggiorna " + productName() + " esistente: ridistilla solo i file di origine nuovi o modificati."),
+        t("[bold]Mode 2 - UPDATE[/]", "[bold]Modalita' 2 - AGGIORNA[/]"), "rounded");
+
+    var brainDir = "";
+    if (nonInteractive) {
+        brainDir = str.trim(sbCliAsText(cli.brain));
+        if (brainDir == "") {
+            brainDir = DEFAULT_BRAIN_DIR;
+        }
+    } else {
+        brainDir = str.trim(io.input(t(
+            productName() + " folder [" + DEFAULT_BRAIN_DIR + "]: ",
+            "Cartella " + productName() + " [" + DEFAULT_BRAIN_DIR + "]: ")));
+        if (brainDir == "") {
+            brainDir = DEFAULT_BRAIN_DIR;
+        }
+    }
+    applyProductNameFromBrain(brainDir);
+    sbCliApplyProductName(cli);
+    var catalog = loadCatalog(brainDir);
+    if (catalog == null or catalog.notes == null) {
+        AnsiConsole.markupLine("[red]" + t(
+            "No usable catalog in ",
+            "Nessun catalogo utilizzabile in ") + brainDir +
+            t(". Run mode 1 (BUILD) first.", ". Esegui prima la modalita' 1 (COSTRUISCI).") + "[/]");
+        return false;
+    }
+
+    var defaultRoot = "";
+    if (catalog.sourceFolder != null) {
+        defaultRoot = str.trim(string(catalog.sourceFolder));
+    }
+    var docsRoot = "";
+    if (nonInteractive) {
+        docsRoot = str.trim(sbCliAsText(cli.docs));
+        if (docsRoot == "") {
+            docsRoot = defaultRoot;
+        }
+        if (docsRoot == "") {
+            AnsiConsole.markupLine("[red]" + t(
+                "CLI update requires --docs <folder> (or sourceFolder in brain.json).",
+                "L'update da CLI richiede --docs <cartella> (o sourceFolder in brain.json).") + "[/]");
+            return false;
+        }
+    } else {
+        var docsPrompt = t("Documentation folder", "Cartella della documentazione");
+        if (defaultRoot != "") {
+            docsPrompt = docsPrompt + " [" + defaultRoot + "]";
+        }
+        docsPrompt = docsPrompt + ": ";
+        docsRoot = str.trim(io.input(docsPrompt));
+        if (docsRoot == "") {
+            docsRoot = defaultRoot;
+        }
+        if (docsRoot == "") {
+            io.print(t("Cancelled.", "Annullato."));
+            return false;
+        }
+    }
+    if (not io.hasDirectory(docsRoot)) {
+        AnsiConsole.markupLine("[red]" + t("Folder not found:", "Cartella non trovata:") + "[/] " + docsRoot);
+        return false;
+    }
+
+    var scan = collectDocs(docsRoot);
+    var docs = scan.files;
+    if (docs.length == 0) {
+        AnsiConsole.markupLine("[yellow]" + t("No .md / .html / .pdf / .docx files found in", "Nessun file .md / .html / .pdf / .docx trovato in") +
+            "[/] " + docsRoot);
+        return false;
+    }
+    if (scan.truncated) {
+        AnsiConsole.markupLine("[yellow]" + t("Warning:", "Attenzione:") + "[/] " + t(
+            "file search was truncated by the runtime; some documents are missing from the list.",
+            "la ricerca dei file e' stata troncata dal runtime; alcuni documenti non sono nell'elenco."));
+    }
+
+    var existingNotes = [];
+    foreach (var entry in catalog.notes) {
+        existingNotes.append(noteFromCatalogEntry(brainDir, entry));
+    }
+    var groups = groupNotesBySource(existingNotes);
+
+    var unchanged = [];
+    var changed = [];
+    var added = [];
+    var missingHash = 0;
+    foreach (var rel in docs) {
+        var absPath = sbAssertUnderRoot(docsRoot, io.pathJoin(docsRoot, rel));
+        if (absPath == null) {
+            changed.append(rel);
+            continue;
+        }
+        var text = "";
+        try {
+            text = extractText(absPath);
+        } catch (e) {
+            changed.append(rel);
+            continue;
+        }
+        if (str.trim(text) == "") {
+            changed.append(rel);
+            continue;
+        }
+        var hash = contentHashOf(text);
+        var group = findSourceGroup(groups, rel);
+        if (group == null) {
+            added.append(rel);
+        } else if (group.hash == "" or group.hash == null) {
+            missingHash = missingHash + 1;
+            changed.append(rel);
+        } else if (group.hash != hash) {
+            changed.append(rel);
+        } else {
+            unchanged.append(rel);
+        }
+    }
+
+    var removed = [];
+    foreach (var g in groups) {
+        if (not listContains(docs, g.key)) {
+            removed.append(g.key);
+        }
+    }
+
+    AnsiConsole.markupLine("");
+    AnsiConsole.markupLine(t("Scan:", "Scansione:") + " [bold]" + string(docs.length) + "[/] " +
+        t("source files", "file di origine"));
+    AnsiConsole.markupLine("  [green]" + t("unchanged", "invariati") + "[/] " + string(unchanged.length));
+    AnsiConsole.markupLine("  [yellow]" + t("changed", "modificati") + "[/] " + string(changed.length));
+    AnsiConsole.markupLine("  [cyan]" + t("new", "nuovi") + "[/] " + string(added.length));
+    AnsiConsole.markupLine("  [dim]" + t("removed from source", "rimossi dall'origine") + "[/] " +
+        string(removed.length));
+    if (missingHash > 0) {
+        AnsiConsole.markupLine("[yellow]" + t(
+            "Legacy catalog without content hashes: those sources will be re-distilled once.",
+            "Catalogo legacy senza hash: quelle origini verranno ridistillate una volta.") + "[/]");
+    }
+    AnsiConsole.markupLine("LLM: [bold]" + modelLabel() + "[/]");
+    printEmbedStatus();
+
+    var reindexOnly = changed.length == 0 and added.length == 0 and removed.length == 0 and
+        cli.reindexMemory == true;
+    if (changed.length == 0 and added.length == 0 and removed.length == 0 and not reindexOnly) {
+        AnsiConsole.markupLine("[green]" + t(
+            "Already up to date — nothing to do.",
+            "Gia' aggiornato — nulla da fare.") + "[/]");
+        return true;
+    }
+
+    var notes = [];
+    var touchedTopics = [];
+    var skipped = [];
+    var truncated = [];
+    var work = [];
+    var removedNodeIds = [];
+    var removeOrphans = false;
+
+    if (reindexOnly) {
+        AnsiConsole.markupLine("[dim]" + t(
+            "--reindex-memory: rebuilding GraphMemory from existing notes (no source changes).",
+            "--reindex-memory: ricostruisco GraphMemory dalle note esistenti (nessuna modifica alle origini).") + "[/]");
+        if (nonInteractive) {
+            AnsiConsole.markupLine("[dim]" + t(
+                "CLI non-interactive: applying memory reindex.",
+                "CLI non interattivo: applico reindicizzazione memoria.") + "[/]");
+        } else {
+            var goRe = str.trim(io.input(t(
+                "Rebuild GraphMemory for all notes? " + ynHint() + ": ",
+                "Ricostruisco GraphMemory per tutte le note? " + ynHint() + ": ")));
+            if (not isAffirmative(goRe)) {
+                io.print(t("Cancelled.", "Annullato."));
+                return false;
+            }
+        }
+        foreach (var keep in existingNotes) {
+            notes.append(keep);
+        }
+    } else {
+        if (removed.length > 0) {
+            if (nonInteractive) {
+                removeOrphans = cli.removeOrphans == true;
+                AnsiConsole.markupLine("[dim]" + t(
+                    "CLI: orphan cleanup = ",
+                    "CLI: pulizia orfani = ") +
+                    string(removeOrphans) +
+                    t(" (--remove-orphans to enable).", " (usa --remove-orphans per abilitarla).") + "[/]");
+            } else {
+                var drop = str.trim(io.input(t(
+                    "Remove notes for " + string(removed.length) + " source file(s) missing from the folder? " +
+                        ynHint() + ": ",
+                    "Rimuovo le note di " + string(removed.length) + " file assenti dalla cartella? " +
+                        ynHint() + ": ")));
+                removeOrphans = isAffirmative(drop);
+            }
+        }
+
+        var toDistill = added.length + changed.length;
+        AnsiConsole.markupLine("[dim]" + t(
+            "LLM calls: about one per changed/new document (plus hub refresh for touched themes).",
+            "Chiamate LLM: circa una per documento nuovo/modificato (piu' refresh hub dei temi toccati).") + "[/]");
+        if (cli.reindexMemory == true) {
+            AnsiConsole.markupLine("[dim]" + t(
+                "--reindex-memory: GraphMemory will be fully rebuilt after this update.",
+                "--reindex-memory: GraphMemory verra' ricostruito per intero dopo questo aggiornamento.") + "[/]");
+        }
+        if (nonInteractive) {
+            AnsiConsole.markupLine("[dim]" + t(
+                "CLI non-interactive: applying update (" + string(toDistill) + " to distill).",
+                "CLI non interattivo: applico aggiornamento (" + string(toDistill) + " da distillare).") + "[/]");
+        } else {
+            var goUp = str.trim(io.input(t(
+                "Apply update (" + string(toDistill) + " to distill)? " + ynHint() + ": ",
+                "Applico l'aggiornamento (" + string(toDistill) + " da distillare)? " + ynHint() + ": ")));
+            if (not isAffirmative(goUp)) {
+                io.print(t("Cancelled.", "Annullato."));
+                return false;
+            }
+        }
+
+        foreach (var rel in unchanged) {
+            var group = findSourceGroup(groups, rel);
+            if (group != null) {
+                foreach (var note in group.notes) {
+                    notes.append(note);
+                }
+            }
+        }
+
+        if (removeOrphans) {
+            foreach (var rel in removed) {
+                var group = findSourceGroup(groups, rel);
+                if (group != null) {
+                    foreach (var note in group.notes) {
+                        if (not listContains(touchedTopics, note.topic)) {
+                            touchedTopics.append(note.topic);
+                        }
+                        appendMemoryNodeId(removedNodeIds, note);
+                        deleteNoteFile(brainDir, note.slug);
+                        AnsiConsole.markupLine("  [dim]" + t("removed note", "nota rimossa") +
+                            "[/] notes/" + note.slug + ".md");
+                    }
+                }
+            }
+        } else {
+            foreach (var rel in removed) {
+                var group = findSourceGroup(groups, rel);
+                if (group != null) {
+                    foreach (var note in group.notes) {
+                        notes.append(note);
+                    }
+                }
+            }
+        }
+
+        var distiller = newPlainAgent(
+            "Distiller",
+            "knowledge engineer",
+            distillInstructions()
+        );
+        foreach (var rel in changed) {
+            work.append(rel);
+        }
+        foreach (var rel in added) {
+            work.append(rel);
+        }
+
+        var index = 0;
+        foreach (var rel in work) {
+            index = index + 1;
+            AnsiConsole.markupLine("[dim][[" + string(index) + "/" + string(work.length) + "]][/] " + rel);
+            var previous = [];
+            var group = findSourceGroup(groups, rel);
+            if (group != null) {
+                foreach (var oldNote in group.notes) {
+                    previous.append(oldNote);
+                    if (not listContains(touchedTopics, oldNote.topic)) {
+                        touchedTopics.append(oldNote.topic);
+                    }
+                    deleteNoteFile(brainDir, oldNote.slug);
+                }
+            }
+            var absPath = sbAssertUnderRoot(docsRoot, io.pathJoin(docsRoot, rel));
+            var hash = "";
+            if (absPath != null) {
+                try {
+                    hash = contentHashOf(extractText(absPath));
+                } catch (e) {
+                    hash = "";
+                }
+            }
+            var outcome = distillSourceFile(distiller, docsRoot, brainDir, rel, null, notes, hash);
+            if (outcome.skipped) {
+                skipped.append(rel);
+                foreach (var oldNote in previous) {
+                    notes.append(oldNote);
+                    writeNoteFile(brainDir, oldNote);
+                }
+            } else {
+                if (outcome.truncated != null) {
+                    truncated.append(outcome.truncated);
+                }
+                foreach (var oldNote in previous) {
+                    appendMemoryNodeId(removedNodeIds, oldNote);
+                }
+                foreach (var note in notes) {
+                    if (note.sourceKey == rel and not listContains(touchedTopics, note.topic)) {
+                        touchedTopics.append(note.topic);
+                    }
+                }
+            }
+        }
+
+        if (notes.length == 0) {
+            AnsiConsole.markupLine("[red]" + t("No notes left in the brain.", "Nessuna nota rimasta nel brain.") + "[/]");
+            return false;
+        }
+
+        // Rewrite kept note files so related markers are refreshable.
+        foreach (var note in notes) {
+            var isFresh = listContains(work, note.sourceKey);
+            if (not isFresh) {
+                if (note.body == null or str.trim(string(note.body)) == "") {
+                    note.body = loadNoteBody(brainDir, note);
+                }
+                writeNoteFile(brainDir, note);
+            }
+        }
+    }
+
+    if (notes.length == 0) {
+        AnsiConsole.markupLine("[red]" + t("No notes left in the brain.", "Nessuna nota rimasta nel brain.") + "[/]");
+        return false;
+    }
+
+    var taxonomySource = t("subfolders", "sottocartelle");
+    if (catalog.taxonomy != null and str.trim(string(catalog.taxonomy)) != "") {
+        taxonomySource = string(catalog.taxonomy);
+    }
+    if (reindexOnly) {
+        taxonomySource = taxonomySource + t(" + memory reindex", " + reindicizzazione memoria");
+    } else {
+        taxonomySource = taxonomySource + t(" + incremental update", " + aggiornamento incrementale");
+    }
+
+    var topics = finalizeBrain(
+        brainDir, docsRoot, notes, skipped, truncated, taxonomySource, null, catalog, touchedTopics, {
+            "mode": "incremental",
+            "forceFull": cli.reindexMemory == true,
+            "catalog": catalog,
+            "removedNodeIds": removedNodeIds
+        });
+
+    io.print("");
+    var colKey = t("item", "voce");
+    var colVal = t("value", "valore");
+    var summaryRows = [];
+    var u1 = {};
+    u1[colKey] = t("unchanged sources", "origini invariate");
+    u1[colVal] = string(unchanged.length);
+    summaryRows.append(u1);
+    var u2 = {};
+    u2[colKey] = t("re-distilled", "ridistillati");
+    u2[colVal] = string(work.length - skipped.length);
+    summaryRows.append(u2);
+    var u3 = {};
+    u3[colKey] = t("removed sources", "origini rimosse");
+    if (removeOrphans) {
+        u3[colVal] = string(removed.length);
+    } else {
+        u3[colVal] = "0 (" + string(removed.length) + " " + t("kept", "mantenute") + ")";
+    }
+    summaryRows.append(u3);
+    var u4 = {};
+    u4[colKey] = t("notes total", "note totali");
+    u4[colVal] = string(notes.length);
+    summaryRows.append(u4);
+    var u5 = {};
+    u5[colKey] = t("themes", "temi");
+    u5[colVal] = string(topics.length);
+    summaryRows.append(u5);
+    appendRetrievalSummary(summaryRows, colKey, colVal);
+    var u6 = {};
+    u6[colKey] = t("folder", "cartella");
+    u6[colVal] = brainDir;
+    summaryRows.append(u6);
+    AnsiConsole.table(summaryRows, t(productName() + " updated", productName() + " aggiornato"), [colKey, colVal]);
+    AnsiConsole.markupLine(t("Index:", "Indice:") + " [bold]" + io.pathJoin(brainDir, "index.md") + "[/]");
+    return true;
+}
+
+function loadCatalog(brainDir) {
+    var catalogPath = io.pathJoin(brainDir, CATALOG_NAME);
+    if (not io.hasFile(catalogPath)) {
+        return null;
+    }
+    try {
+        return parseJSON(io.readFile(catalogPath));
+    } catch (e) {
+        AnsiConsole.markupLine("[red]" + t("Unreadable catalog:", "Catalogo illeggibile:") + "[/] " + string(e));
+        return null;
+    }
+}

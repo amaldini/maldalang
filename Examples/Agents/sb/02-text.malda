@@ -1,0 +1,125 @@
+// sb/02-text.malda — path, slug, and source-text helpers
+
+function normalizePath(p) {
+    return str.replace(string(p), "\\", "/");
+}
+
+function slugify(text) {
+    var s = str.lower(str.trim(string(text)));
+    s = str.regexReplace(s, "[^a-z0-9]+", "-");
+    s = str.regexReplace(s, "^-+", "");
+    s = str.regexReplace(s, "-+$", "");
+    if (s == "") {
+        s = "nota";
+    }
+    if (str.length(s) > 60) {
+        s = str.substring(s, 0, 60);
+        s = str.regexReplace(s, "-+$", "");
+    }
+    return s;
+}
+
+function htmlToText(raw) {
+    var t = str.regexReplace(raw, "(?is)<(script|style|noscript)[^>]*>.*?</\\1>", " ");
+    t = str.regexReplace(t, "(?is)<!--.*?-->", " ");
+    t = str.regexReplace(t, "(?i)<br[^>]*>", "\n");
+    t = str.regexReplace(t, "(?i)</(p|div|li|h1|h2|h3|h4|h5|h6|tr|section|article|pre|blockquote)>", "\n");
+    t = str.regexReplace(t, "<[^>]+>", " ");
+    t = str.replace(t, "&nbsp;", " ");
+    t = str.replace(t, "&amp;", "&");
+    t = str.replace(t, "&lt;", "<");
+    t = str.replace(t, "&gt;", ">");
+    t = str.replace(t, "&quot;", "\"");
+    t = str.replace(t, "&#39;", "'");
+    t = str.replace(t, "&rsquo;", "'");
+    t = str.replace(t, "&mdash;", "-");
+    t = str.regexReplace(t, "[ \\t]+", " ");
+    t = str.regexReplace(t, "\n{3,}", "\n\n");
+    return str.trim(t);
+}
+
+function extractText(absPath) {
+    var ext = str.lower(io.pathGetExtension(absPath));
+    if (ext == ".pdf") {
+        return pdf.extractText(absPath);
+    }
+    if (ext == ".docx") {
+        return doc.extractText(absPath);
+    }
+    var raw = io.readFile(absPath);
+    if (ext == ".html" or ext == ".htm") {
+        return htmlToText(raw);
+    }
+    return raw;
+}
+
+function chunkText(text, maxChars, maxChunks) {
+    var chunks = [];
+    var rest = text;
+    while (str.length(rest) > 0 and chunks.length < maxChunks) {
+        if (str.length(rest) <= maxChars) {
+            chunks.append(rest);
+            rest = "";
+        } else {
+            var head = str.substring(rest, 0, maxChars);
+            var cut = str.indexOf(head, "\n\n");
+            var lastBreak = -1;
+            var probe = cut;
+            while (probe >= 0) {
+                lastBreak = probe;
+                var tail = str.substring(head, probe + 2, str.length(head));
+                var next = str.indexOf(tail, "\n\n");
+                if (next < 0) {
+                    probe = -1;
+                } else {
+                    probe = probe + 2 + next;
+                }
+            }
+            if (lastBreak < int(maxChars / 2)) {
+                lastBreak = maxChars;
+            }
+            chunks.append(str.substring(rest, 0, lastBreak));
+            rest = str.substring(rest, lastBreak, str.length(rest));
+        }
+    }
+    return chunks;
+}
+
+function firstLines(text, count) {
+    var lines = str.split(text, "\n");
+    var taken = [];
+    var i = 0;
+    while (i < lines.length and taken.length < count) {
+        var line = str.trim(lines[i]);
+        if (line != "") {
+            taken.append(line);
+        }
+        i = i + 1;
+    }
+    return str.join(taken, " ");
+}
+
+function headingsOf(markdown) {
+    var found = str.regexFind(markdown, "(?m)^#{1,4} +(.+)$");
+    var titles = [];
+    foreach (var hit in found) {
+        var text = str.trim(hit.groups[1]);
+        if (text != "" and titles.length < 12) {
+            titles.append(text);
+        }
+    }
+    return titles;
+}
+
+function tagsFromLine(line) {
+    var tags = [];
+    foreach (var part in str.split(line, ",")) {
+        var tag = str.lower(str.trim(part));
+        tag = str.regexReplace(tag, "[^a-z0-9 \\-]+", "");
+        tag = str.trim(tag);
+        if (tag != "" and tags.length < 8 and not str.includes(tags, tag)) {
+            tags.append(tag);
+        }
+    }
+    return tags;
+}

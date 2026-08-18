@@ -1,0 +1,107 @@
+// sb/00-i18n.malda — UI language + product name helpers
+
+function t(en, it) {
+    if (UI_LANG == "en") {
+        return en;
+    }
+    return it;
+}
+
+function readProductNameFile(path) {
+    var p = str.trim(string(path));
+    if (p == "" or not io.hasFile(p)) {
+        return "";
+    }
+    var text = io.readFile(p);
+    if (text == null) {
+        return "";
+    }
+    var lines = str.split(string(text), "\n");
+    foreach (var line in lines) {
+        // trim() also strips trailing CR from CRLF files.
+        var n = str.trim(string(line));
+        if (n != "") {
+            return n;
+        }
+    }
+    return "";
+}
+
+function productNameLooksLikePath(value) {
+    var n = str.trim(string(value));
+    if (n == "") {
+        return false;
+    }
+    if (str.startsWith(n, "embed:")) {
+        return true;
+    }
+    if (str.endsWith(str.lower(n), ".txt")) {
+        return true;
+    }
+    if (str.indexOf(n, "/") >= 0 or str.indexOf(n, "\\") >= 0) {
+        return true;
+    }
+    return io.hasFile(n);
+}
+
+function productName() {
+    var n = str.trimText(PRODUCT_NAME);
+    if (n != "" and productNameLooksLikePath(n)) {
+        var fromFile = readProductNameFile(n);
+        if (fromFile != "") {
+            return fromFile;
+        }
+    }
+    if (n == "" or productNameLooksLikePath(n)) {
+        return "Second brain";
+    }
+    return n;
+}
+
+function applyProductNameFromBrain(brainDir) {
+    var root = str.trim(string(brainDir));
+    var loaded = "";
+    if (root != "") {
+        loaded = readProductNameFile(io.pathJoin(root, "product_name.txt"));
+    }
+    if (loaded == "") {
+        return productName();
+    }
+    // Brain file owns display name + default ASK title.
+    PRODUCT_NAME = loaded;
+    ASK_PAGE_TITLE = loaded + ASK_TITLE_SUFFIX;
+    return loaded;
+}
+
+function ynHint() {
+    return t("(y/n)", "(s/n)");
+}
+
+function isAffirmative(answer) {
+    var a = str.lower(str.trim(string(answer)));
+    return a == "y" or a == "yes" or a == "s" or a == "si";
+}
+
+function isNegative(answer) {
+    var a = str.lower(str.trim(string(answer)));
+    return a == "n" or a == "no";
+}
+
+function chooseLanguage() {
+    AnsiConsole.markupLine("");
+    AnsiConsole.panel(
+        "[bold]1[/]  English\n" +
+        "[bold]2[/]  Italiano\n\n" +
+        "[dim]Enter = Italiano[/]",
+        "[bold blue]Language / Lingua[/]", "rounded");
+    var choice = str.lower(str.trim(io.input("Language / Lingua (1/2) [2]: ")));
+    if (choice == "1" or choice == "en" or choice == "english" or choice == "e") {
+        UI_LANG = "en";
+    } else {
+        UI_LANG = "it";
+    }
+    ui.setState(ASK_STORE, "lang", UI_LANG, ASK_SESSION_ID);
+    AnsiConsole.markupLine(t(
+        "[dim]UI language: English[/]",
+        "[dim]Lingua interfaccia: Italiano[/]"));
+}
