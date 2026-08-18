@@ -9,7 +9,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>1.0.3</Version>
+    <Version>1.0.4</Version>
     <Copyright>© 2026 - Andrea Maldini</Copyright>
     <AssemblyName>malda</AssemblyName>
   </PropertyGroup>
