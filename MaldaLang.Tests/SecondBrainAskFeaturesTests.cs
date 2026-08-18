@@ -775,7 +775,7 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("N=2", output, StringComparison.Ordinal);
             Assert.Contains("S0=alpha-note", output, StringComparison.Ordinal);
             Assert.Contains("S1=beta-note", output, StringComparison.Ordinal);
-            Assert.Contains("MD=[Alpha](#src-alpha-note)", output, StringComparison.Ordinal);
+            Assert.Contains("MD=Based on [Alpha](#src-alpha-note).", output, StringComparison.Ordinal);
             Assert.Contains("class=\"note-cite\"", output, StringComparison.Ordinal);
             Assert.Contains("href=\"#src-alpha-note\"", output, StringComparison.Ordinal);
             Assert.Contains("data-ask-note=\"alpha-note\"", output, StringComparison.Ordinal);
