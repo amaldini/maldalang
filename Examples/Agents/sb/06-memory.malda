@@ -1,0 +1,695 @@
+// sb/06-memory.malda — GraphMemory + embeddings (semantic host only)
+
+function findRelatedNotesToolHandler(args) {
+    var slug = "";
+    var maxDistance = 2;
+    if (args != null) {
+        if (args.slug != null) {
+            slug = str.trim(string(args.slug));
+        }
+        if (args.maxDistance != null) {
+            var d = toIntOrNull(args.maxDistance);
+            if (d != null) {
+                maxDistance = d;
+            }
+        }
+    }
+    if (slug == "") {
+        return "Error: slug is required (use a note slug from the retrieved sources).";
+    }
+    if (maxDistance < 1) {
+        maxDistance = 1;
+    }
+    if (maxDistance > 4) {
+        maxDistance = 4;
+    }
+
+    var session = askGetSession();
+    var brainDir = askAsText(session.brainDir);
+    var catalog = askGetCatalog();
+    var memory = getAskMemory(brainDir);
+    if (memory == null) {
+        return "Error: GraphMemory is not available for this brain.";
+    }
+    return runFindRelatedNotes(memory, catalog, slug, maxDistance);
+}
+
+function resolveMemoryNodeId(memory, catalog, slugOrPath) {
+    var raw = str.trim(string(slugOrPath));
+    if (raw == "") {
+        return "";
+    }
+    if (memory.hasNode(raw) == true) {
+        return raw;
+    }
+
+    var wantSlug = slugFromNotePath(raw);
+    var wantPath = normalizePath(raw);
+    if (not str.endsWith(wantPath, ".md") and not str.startsWith(wantPath, "notes/")) {
+        wantPath = normalizePath("notes/" + wantSlug + ".md");
+    } else if (not str.startsWith(wantPath, "notes/") and str.endsWith(wantPath, ".md")) {
+        wantPath = normalizePath("notes/" + wantPath);
+    }
+
+    try {
+        var results = memory.query(wantSlug, 12, {
+            "hybridLexical": true,
+            "lexicalMode": "bm25",
+            "lexicalMinScore": 0.0,
+            "type": "semantic",
+            "minScore": 0.0
+        });
+        foreach (var r in results) {
+            var fp = "";
+            if (r.filePath != null) {
+                fp = normalizePath(string(r.filePath));
+            }
+            if (fp != "" and (fp == wantPath or slugFromNotePath(fp) == wantSlug)) {
+                if (r.nodeId != null and string(r.nodeId) != "") {
+                    return string(r.nodeId);
+                }
+            }
+        }
+        foreach (var r2 in results) {
+            if (r2.nodeId != null and string(r2.nodeId) != "") {
+                var note = resolveCatalogNote(catalog, r2);
+                if (note != null and note.slug == wantSlug) {
+                    return string(r2.nodeId);
+                }
+            }
+        }
+    } catch (e) {
+        return "";
+    }
+    return "";
+}
+
+function formatRelatedMemoryNode(catalog, node) {
+    var path = "";
+    if (node.filePath != null) {
+        path = string(node.filePath);
+    }
+    var note = null;
+    if (catalog != null and path != "") {
+        note = resolveCatalogNote(catalog, node);
+    }
+    var title = "";
+    var slug = "";
+    if (note != null) {
+        title = string(note.title);
+        slug = string(note.slug);
+    }
+    if (slug == "" and path != "") {
+        slug = slugFromNotePath(path);
+    }
+    if (title == "" and node.fact != null) {
+        title = str.trim(str.substring(string(node.fact), 0, 80));
+    }
+    var id = "";
+    if (node.nodeId != null) {
+        id = string(node.nodeId);
+    }
+    var line = "- ";
+    if (slug != "") {
+        line = line + slug;
+    } else {
+        line = line + id;
+    }
+    if (title != "") {
+        line = line + " — " + title;
+    }
+    if (path != "") {
+        line = line + " (" + path + ")";
+    }
+    return line;
+}
+
+function runFindRelatedNotes(memory, catalog, slug, maxDistance) {
+    var nodeId = resolveMemoryNodeId(memory, catalog, slug);
+    if (nodeId == "") {
+        return "No GraphMemory node found for slug/path: " + string(slug);
+    }
+    var related = [];
+    try {
+        related = memory.findRelated(nodeId, maxDistance);
+    } catch (e) {
+        return "findRelated failed: " + string(e);
+    }
+    if (related == null or related.length == 0) {
+        return "No related notes within distance " + string(maxDistance) +
+            " of " + string(slug) + " (" + nodeId + ").";
+    }
+    var lines = [];
+    lines.append("Related notes for " + string(slug) + " (" + nodeId +
+        ", maxDistance=" + string(maxDistance) + "):");
+    var n = 0;
+    foreach (var node in related) {
+        lines.append(formatRelatedMemoryNode(catalog, node));
+        n = n + 1;
+        if (n >= 12) {
+            break;
+        }
+    }
+    return str.join(lines, "\n");
+}
+
+function createFindRelatedNotesTool() {
+    var schema = {
+        "type": "object",
+        "properties": {
+            "slug": {
+                "type": "string",
+                "description": "Note slug from retrieved sources (e.g. my-topic-note), or notes/slug.md"
+            },
+            "maxDistance": {
+                "type": "integer",
+                "description": "Graph hop distance for findRelated (default 2, max 4)"
+            }
+        },
+        "required": ["slug"]
+    };
+    return new Tool(
+        "find_related_notes",
+        "Find notes linked in GraphMemory near a seed note (related_to neighbors via findRelated). Prefer a slug from the sources list.",
+        schema,
+        findRelatedNotesToolHandler
+    );
+}
+
+function localEmbedModelPath() {
+    return io.pathJoin(getProgramDirectory(), EMBED_FILE_NAME);
+}
+
+function resolveEmbedModelPath() {
+    if (io.hasEnv("MALDA_BRAIN_EMBED_MODEL")) {
+        var p = str.trim(io.getEnvOr("MALDA_BRAIN_EMBED_MODEL"));
+        if (p != "") {
+            return p;
+        }
+    }
+    if (io.hasEnv("MALDA_EMBED_MODEL_PATH")) {
+        var p2 = str.trim(io.getEnvOr("MALDA_EMBED_MODEL_PATH"));
+        if (p2 != "") {
+            return p2;
+        }
+    }
+    var localPath = localEmbedModelPath();
+    if (io.hasFile(localPath)) {
+        return localPath;
+    }
+    return "";
+}
+
+function showEmbedDownloadHint(reason) {
+    if (embedHintShown) {
+        return;
+    }
+    embedHintShown = true;
+    var target = localEmbedModelPath();
+    AnsiConsole.panel(
+        t("Multilingual neural embeddings need this GGUF next to the .malda / .exe:\n",
+            "Per gli embedding neurali multilingue serve questo GGUF accanto al .malda / .exe:\n") +
+        "[bold]" + EMBED_FILE_NAME + "[/]\n" +
+        t("BGE-M3 · ~438 MB · 1024-dim · 100+ languages (IT/EN and more)\n",
+            "BGE-M3 · ~438 MB · 1024-dim · 100+ lingue (IT/EN e altre)\n") +
+        t("Expected path: ", "Percorso atteso: ") + target + "\n\n" +
+        t("Download (direct file):\n", "Download (file diretto):\n") +
+        EMBED_DOWNLOAD_FILE + "\n\n" +
+        t("Model page:\n", "Pagina del modello:\n") +
+        EMBED_DOWNLOAD_PAGE + "\n\n" +
+        t("Until then, retrieval uses embedHash (weaker on synonyms / cross-language).",
+            "Finche' manca, il recupero usa embedHash (piu' debole su sinonimi / cross-lingua).") +
+        (reason != "" ? "\n[dim]" + reason + "[/]" : ""),
+        t("[bold yellow]Embedding model missing[/]", "[bold yellow]Modello embedding assente[/]"),
+        "rounded");
+}
+
+function resolveEmbedMode() {
+    if (io.hasEnv("MALDA_MEMORY_EMBED")) {
+        var mode = str.lower(str.trim(io.getEnvOr("MALDA_MEMORY_EMBED")));
+        if (mode == "hash" or mode == "bow" or mode == "llama") {
+            return mode;
+        }
+    }
+    // Auto: prefer local GGUF beside the program when present.
+    if (resolveEmbedModelPath() != "") {
+        return "llama";
+    }
+    return "hash";
+}
+
+function brainEmbed(text) {
+    if (embedMode == "bow") {
+        return embedBagOfWords(text, EMBED_DIM);
+    }
+    if (embedMode == "llama" and memoryEmbedder != null) {
+        return memoryEmbedder.getEmbeddings(text);
+    }
+    return embedHash(text, EMBED_DIM);
+}
+
+function embedLabel() {
+    if (embedMode == "llama" and memoryEmbedder != null) {
+        return "llama (" + resolveEmbedModelPath() + ")";
+    }
+    return embedMode;
+}
+
+function createBrainMemory() {
+    embedMode = resolveEmbedMode();
+    memoryEmbedder = null;
+    if (embedMode == "llama") {
+        var embedPath = resolveEmbedModelPath();
+        if (embedPath != "") {
+            AnsiConsole.markupLine("[dim]" + t(
+                "Loading LlamaEmbedder: ",
+                "Carico LlamaEmbedder: ") + embedPath + "[/]");
+            try {
+                memoryEmbedder = new LlamaEmbedder(embedPath);
+                // Force-load now so ASK startup fails loudly instead of on the first query.
+                memoryEmbedder.getEmbeddings("malda embed warmup");
+                AnsiConsole.markupLine("[green]" + t(
+                    "Neural embeddings ready (llama).",
+                    "Embedding neurali pronti (llama).") + "[/]");
+            } catch (e) {
+                AnsiConsole.markupLine("[yellow]" + t(
+                    "LlamaEmbedder failed; falling back to hash:",
+                    "LlamaEmbedder non disponibile; uso hash:") + "[/] " + string(e));
+                AnsiConsole.markupLine("[dim]" + t(
+                    "Portable ASK exes need LLamaSharp backends in the publish folder " +
+                    "(repack with a MALDA build that auto-detects LlamaEmbedder).",
+                    "Gli exe ASK portatili richiedono i backend LLamaSharp nella cartella publish " +
+                    "(ripacka con una build MALDA che rileva automaticamente LlamaEmbedder).") + "[/]");
+                showEmbedDownloadHint(string(e));
+                embedMode = "hash";
+                memoryEmbedder = null;
+            }
+        } else {
+            showEmbedDownloadHint(t(
+                "MALDA_MEMORY_EMBED=llama but no model file was found.",
+                "MALDA_MEMORY_EMBED=llama ma nessun file modello trovato."));
+            embedMode = "hash";
+        }
+    } else if (embedMode == "hash" and not io.hasEnv("MALDA_MEMORY_EMBED")) {
+        // Auto mode with missing GGUF: tell the user once how to enable neural search.
+        showEmbedDownloadHint("");
+    }
+    var memory = new GraphMemory();
+    memory.initialize(EMBED_DIM, "single", brainEmbed);
+    return memory;
+}
+
+function memoryBasePath(brainDir) {
+    return io.pathJoin(brainDir, MEMORY_BASE_NAME);
+}
+
+function memoryArtifactsExist(brainDir) {
+    var base = memoryBasePath(brainDir);
+    // graph alone is not enough: without metadata BM25/filePath mapping is empty.
+    return io.hasFile(base + ".graph.json") and io.hasFile(base + ".metadata.json");
+}
+
+function getAskMemory(brainDir) {
+    if (askMemoryCache != null and askMemoryCacheDir == brainDir) {
+        return askMemoryCache;
+    }
+    askMemoryCache = loadBrainMemory(brainDir);
+    askMemoryCacheDir = brainDir;
+    return askMemoryCache;
+}
+
+function noteIndexText(note) {
+    var parts = [
+        string(note.title),
+        string(note.summary),
+        str.join(note.tags, ", "),
+        str.join(note.headings, "\n")
+    ];
+    var body = str.trim(string(note.body));
+    if (body != "") {
+        if (str.length(body) > 1500) {
+            body = str.substring(body, 0, 1500);
+        }
+        parts.append(body);
+    }
+    return str.join(parts, "\n");
+}
+
+function formatDurationMs(ms) {
+    if (ms == null or ms < 0) {
+        ms = 0;
+    }
+    var totalSec = int(ms / 1000);
+    if (totalSec < 1) {
+        return string(int(ms)) + "ms";
+    }
+    if (totalSec < 60) {
+        return string(totalSec) + "s";
+    }
+    var hours = int(totalSec / 3600);
+    var mins = int((totalSec % 3600) / 60);
+    var secs = totalSec % 60;
+    if (hours > 0) {
+        return string(hours) + "h " + string(mins) + "m";
+    }
+    if (secs == 0) {
+        return string(mins) + "m";
+    }
+    return string(mins) + "m " + string(secs) + "s";
+}
+
+function indexBrainMemoryProgressLine(indexed, total, startedAt) {
+    var pct = 0;
+    if (total > 0) {
+        pct = int((indexed * 100) / total);
+    }
+    var line = "[dim][[" + string(indexed) + "/" + string(total) + "]][/] " +
+        string(pct) + "%";
+    if (indexed <= 0) {
+        return line;
+    }
+    var elapsed = now() - startedAt;
+    var avgMs = elapsed / indexed;
+    var remaining = total - indexed;
+    line = line + "  ~" + formatDurationMs(avgMs) + t("/note", "/nota");
+    if (remaining <= 0) {
+        return line + "  " + t("elapsed ", "trascorsi ") + formatDurationMs(elapsed);
+    }
+    var etaMs = avgMs * remaining;
+    var finishAt = formatDate(now() + etaMs, "HH:mm");
+    return line + "  " + t(
+        "ETA " + formatDurationMs(etaMs) + " left (~" + finishAt + ")",
+        "fine tra " + formatDurationMs(etaMs) + " (~" + finishAt + ")");
+}
+
+function indexBrainMemory(brainDir, notes) {
+    var memory = createBrainMemory();
+    var total = 0;
+    if (notes != null) {
+        total = notes.length;
+    }
+    AnsiConsole.markupLine(t(
+        "Indexing notes into GraphMemory (embed=" + embedLabel() + ", " +
+            string(total) + " notes)...",
+        "Indicizzazione note in GraphMemory (embed=" + embedLabel() + ", " +
+            string(total) + " note)..."));
+    var indexed = 0;
+    var startedAt = now();
+    var lastProgressAt = 0;
+    foreach (var note in notes) {
+        var fact = noteIndexText(note);
+        var path = "notes/" + note.slug + ".md";
+        memory.remember(fact, string(note.topic), {
+            "type": "semantic",
+            "source": "secondbrain",
+            "category": string(note.topic),
+            "tags": note.tags,
+            "filePath": path
+        });
+        indexed = indexed + 1;
+        // Refresh at least every ~1.5s (hash can be fast); always show first + last.
+        var due = (now() - lastProgressAt) >= 1500;
+        if (indexed == 1 or indexed == total or due) {
+            AnsiConsole.markupLine("  " +
+                indexBrainMemoryProgressLine(indexed, total, startedAt));
+            lastProgressAt = now();
+        }
+    }
+    AnsiConsole.markupLine("[dim]" + t(
+        "Saving GraphMemory artifacts...",
+        "Salvataggio artefatti GraphMemory...") + "[/]");
+    var saveStarted = now();
+    memory.save(memoryBasePath(brainDir));
+    var elapsed = now() - startedAt;
+    AnsiConsole.markupLine("  [green]" + t("indexed", "indicizzate") + "[/] " +
+        string(indexed) + " " + t("notes ->", "note ->") + " " +
+        MEMORY_BASE_NAME + ".graph.json" +
+        "  [dim](" + formatDurationMs(elapsed) +
+        t("; save ", "; salvataggio ") + formatDurationMs(now() - saveStarted) +
+        ")[/]");
+    return memory;
+}
+
+function loadBrainMemory(brainDir) {
+    if (not memoryArtifactsExist(brainDir)) {
+        return null;
+    }
+    try {
+        var memory = createBrainMemory();
+        memory.load(memoryBasePath(brainDir));
+        return memory;
+    } catch (e) {
+        AnsiConsole.markupLine("[yellow]" + t(
+            "GraphMemory load failed; lexical fallback:",
+            "Caricamento GraphMemory fallito; fallback lessicale:") + "[/] " + string(e));
+        return null;
+    }
+}
+
+function findCatalogNoteByPath(catalog, path) {
+    var normalized = normalizePath(path);
+    foreach (var note in catalog.notes) {
+        if (normalizePath(note.path) == normalized) {
+            return note;
+        }
+    }
+    return null;
+}
+
+function findCatalogNoteBySlug(catalog, slug) {
+    if (slug == null or string(slug) == "") {
+        return null;
+    }
+    foreach (var note in catalog.notes) {
+        if (note.slug == slug) {
+            return note;
+        }
+    }
+    return null;
+}
+
+function slugFromNotePath(path) {
+    var p = normalizePath(path);
+    if (str.endsWith(p, ".md")) {
+        p = str.substring(p, 0, str.length(p) - 3);
+    }
+    var parts = str.split(p, "/");
+    if (parts.length == 0) {
+        return p;
+    }
+    return string(parts[parts.length - 1]);
+}
+
+function resolveCatalogNote(catalog, result) {
+    var path = "";
+    if (result.filePath != null) {
+        path = string(result.filePath);
+    }
+    if (path != "") {
+        var byPath = findCatalogNoteByPath(catalog, path);
+        if (byPath != null) {
+            return byPath;
+        }
+        var bySlug = findCatalogNoteBySlug(catalog, slugFromNotePath(path));
+        if (bySlug != null) {
+            return bySlug;
+        }
+    }
+    return null;
+}
+
+function slugsOf(picked) {
+    var slugs = [];
+    foreach (var entry in picked) {
+        slugs.append(entry.note.slug);
+    }
+    return slugs;
+}
+
+function slugsOnlyIn(left, right) {
+    var only = [];
+    foreach (var slug in left) {
+        if (not str.includes(right, slug)) {
+            only.append(slug);
+        }
+    }
+    return only;
+}
+
+function compareRetrieval(semanticPicked, lexicalPicked) {
+    var sem = slugsOf(semanticPicked);
+    var lex = slugsOf(lexicalPicked);
+    var semanticOnly = slugsOnlyIn(sem, lex);
+    var lexicalOnly = slugsOnlyIn(lex, sem);
+    var overlap = sem.length - semanticOnly.length;
+    return {
+        "semanticOnly": semanticOnly,
+        "lexicalOnly": lexicalOnly,
+        "overlap": overlap
+    };
+}
+
+function selectNotesSemantic(brainDir, catalog, memory, question, tagFilter) {
+    var lexicalPicked = selectNotes(brainDir, catalog, question, tagFilter);
+    if (memory == null) {
+        return {
+            "picked": lexicalPicked,
+            "channel": "lexical-only",
+            "compare": null
+        };
+    }
+    var results = [];
+    try {
+        // lexicalMinScore 0: without the BGE-M3 GGUF, vector scores are weak and the
+        // default BM25 floor (0.15) often yields zero hybrid hits even when notes match.
+        var queryOpts = {
+            "hybridLexical": true,
+            "lexicalMode": "bm25",
+            "lexicalWeight": 0.3,
+            "lexicalMinScore": 0.0,
+            "type": "semantic",
+            "minScore": 0.0,
+            "explain": true
+        };
+        if (tagFilter != null and tagFilter.length > 0) {
+            queryOpts.tags = tagFilter;
+            queryOpts.tagsMode = "any";
+        }
+        results = memory.query(question, TOP_K, queryOpts);
+    } catch (e) {
+        AnsiConsole.markupLine("[yellow]" + t(
+            "GraphMemory query failed; lexical fallback:",
+            "Query GraphMemory fallita; fallback lessicale:") + "[/] " + string(e));
+        return {
+            "picked": lexicalPicked,
+            "channel": "lexical-fallback",
+            "compare": null
+        };
+    }
+
+    var picked = [];
+    var used = [];
+    var unmatched = 0;
+    foreach (var result in results) {
+        var note = resolveCatalogNote(catalog, result);
+        if (note == null) {
+            unmatched = unmatched + 1;
+            continue;
+        }
+        if (tagFilter != null and tagFilter.length > 0 and
+                not askNoteMatchesTagFilter(note, tagFilter)) {
+            continue;
+        }
+        var path = string(note.path);
+        if (path == "" or str.includes(used, path)) {
+            continue;
+        }
+        used.append(path);
+        var score = 0.0;
+        if (result.score != null) {
+            score = float(result.score);
+        }
+        var vectorScore = null;
+        var lexicalScore = null;
+        if (result.explain != null) {
+            if (result.explain.vectorScore != null) {
+                vectorScore = float(result.explain.vectorScore);
+            }
+            if (result.explain.lexicalScore != null) {
+                lexicalScore = float(result.explain.lexicalScore);
+            }
+        }
+        picked.append({
+            "note": note,
+            "score": score,
+            "vectorScore": vectorScore,
+            "lexicalScore": lexicalScore
+        });
+        if (picked.length >= TOP_K) {
+            break;
+        }
+    }
+    if (picked.length == 0) {
+        var nodeCount = "?";
+        try {
+            var st = memory.stats();
+            if (st != null and st.nodes != null) {
+                nodeCount = string(st.nodes);
+            }
+        } catch (statsErr) {
+            nodeCount = "?";
+        }
+        var diagHint = "";
+        try {
+            var diag = memory.getLastQueryDiagnostics();
+            if (diag != null) {
+                diagHint = ", hybrid=" + string(diag.hybridLexical) +
+                    ", lexMode=" + string(diag.lexicalMode) +
+                    ", vec=" + string(diag.vectorCandidates) +
+                    ", bm25=" + string(diag.bm25Candidates) +
+                    ", embedReady=" + string(diag.embedReady);
+            }
+        } catch (diagErr) {
+            diagHint = "";
+        }
+        AnsiConsole.markupLine("[dim]" + t(
+            "No GraphMemory hits; trying lexical retrieval.",
+            "Nessun hit GraphMemory; provo il recupero lessicale.") + "[/] " +
+            "[dim](query=" + string(results.length) +
+            ", unmatchedPaths=" + string(unmatched) +
+            ", nodes=" + nodeCount +
+            ", embed=" + embedLabel() + diagHint + ")[/]");
+        if (embedMode != "llama" or memoryEmbedder == null) {
+            AnsiConsole.markupLine("[yellow]" + t(
+                "Tip: place bge-m3-Q4_K_M.gguf next to the .exe (same model used at BUILD) for neural retrieval.",
+                "Suggerimento: metti bge-m3-Q4_K_M.gguf accanto all'.exe (stesso modello del BUILD) per il recupero neurale.") + "[/]");
+        }
+        return {
+            "picked": lexicalPicked,
+            "channel": "lexical-fallback",
+            "compare": null
+        };
+    }
+    return {
+        "picked": picked,
+        "channel": "graphmemory",
+        "compare": compareRetrieval(picked, lexicalPicked)
+    };
+}
+
+function showRetrievalHint(selection) {
+    if (selection.channel == "lexical-only") {
+        AnsiConsole.markupLine("[dim]" + t(
+            "retrieval: lexical only (no GraphMemory index)",
+            "recupero: solo lessicale (nessun indice GraphMemory)") + "[/]");
+        return;
+    }
+    if (selection.channel == "lexical-fallback") {
+        AnsiConsole.markupLine("[yellow]" + t(
+            "retrieval: lexical fallback (GraphMemory unused this turn)",
+            "recupero: fallback lessicale (GraphMemory non usata in questo turno)") + "[/]");
+        return;
+    }
+    var cmp = selection.compare;
+    if (cmp == null) {
+        AnsiConsole.markupLine("[dim]" + t(
+            "retrieval: GraphMemory",
+            "recupero: GraphMemory") + "[/]");
+        return;
+    }
+    if (cmp.semanticOnly.length > 0) {
+        AnsiConsole.markupLine("[bold cyan]" + t(
+            "GraphMemory helped:",
+            "GraphMemory ha aiutato:") + "[/] " +
+            string(cmp.semanticOnly.length) + t(
+            " note(s) outside lexical top-" + string(TOP_K) + ": ",
+            " nota/e fuori dal top-" + string(TOP_K) + " lessicale: ") +
+            str.join(cmp.semanticOnly, ", "));
+    } else {
+        AnsiConsole.markupLine("[dim]" + t(
+            "GraphMemory: same notes as lexical top-" + string(TOP_K) +
+            " (useful when synonyms diverge)",
+            "GraphMemory: stesse note del top-" + string(TOP_K) +
+            " lessicale (utile quando i sinonimi divergono)") + "[/]");
+    }
+}

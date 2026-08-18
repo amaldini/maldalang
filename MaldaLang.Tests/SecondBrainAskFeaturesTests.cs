@@ -27,6 +27,26 @@ public class SecondBrainAskFeaturesTests
     private static string AskUiLibPath =>
         Path.Combine(RepoRoot, "Examples", "Agents", "secondbrain_ask_ui_lib.malda");
 
+    private static string CombinedSecondBrainSource(string hostPath)
+    {
+        var parts = new List<string> { File.ReadAllText(hostPath) };
+        var sbDir = Path.Combine(RepoRoot, "Examples", "Agents", "sb");
+        if (Directory.Exists(sbDir))
+        {
+            var extras = Directory.GetFiles(sbDir, "*.malda");
+            Array.Sort(extras, StringComparer.Ordinal);
+            foreach (var extra in extras)
+            {
+                parts.Add(File.ReadAllText(extra));
+            }
+        }
+        foreach (var name in new[] { "secondbrain_cli_lib.malda", "secondbrain_cli_apply_lib.malda", "secondbrain_ask_ui_lib.malda" })
+        {
+            parts.Add(File.ReadAllText(Path.Combine(RepoRoot, "Examples", "Agents", name)));
+        }
+        return string.Join("\n", parts);
+    }
+
     private static void SafeDeleteDirectory(string path)
     {
         try
@@ -1097,7 +1117,10 @@ public class SecondBrainAskFeaturesTests
 
         foreach (var path in new[] { lexical, semantic })
         {
-            var source = File.ReadAllText(path);
+            var source = CombinedSecondBrainSource(path);
+            Assert.Contains("include \"sb/00-i18n.malda\"", source, StringComparison.Ordinal);
+            Assert.Contains("include \"sb/04-build.malda\"", source, StringComparison.Ordinal);
+            Assert.Contains("include \"sb/05-ask-common.malda\"", source, StringComparison.Ordinal);
             Assert.Contains("var PRODUCT_NAME = ", source, StringComparison.Ordinal);
             Assert.Contains("var ASK_TITLE_SUFFIX = ", source, StringComparison.Ordinal);
             Assert.Contains("function productName()", source, StringComparison.Ordinal);

@@ -71,7 +71,7 @@ public class NewToolHandlerTests
     {
         var path = Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory, "..", "..", "..", "..",
-            "Examples", "Agents", "secondbrain_semantic.malda"));
+            "Examples", "Agents", "sb", "06-memory.malda"));
         Assert.True(File.Exists(path), "missing " + path);
         var source = File.ReadAllText(path, Encoding.UTF8);
         Assert.Contains("new Tool(", source, StringComparison.Ordinal);

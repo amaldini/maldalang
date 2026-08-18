@@ -1,0 +1,68 @@
+// sb/01-llm.malda — LLM client and agents
+// Host must define addHostAskTools(agent, brainDir).
+
+function makeClient() {
+    if (not io.hasEnv("OPENROUTER_API_KEY")) {
+        return null;
+    }
+    if (io.hasEnv("MALDA_BRAIN_MODEL")) {
+        var m = str.trim(io.getEnvOr("MALDA_BRAIN_MODEL"));
+        if (m != "") {
+            return new OpenRouterClient(m);
+        }
+    }
+    return new OpenRouterClient();
+}
+
+function modelLabel() {
+    if (not io.hasEnv("OPENROUTER_API_KEY")) {
+        return t("default local model (MALDA)", "modello locale di default (MALDA)");
+    }
+    if (io.hasEnv("MALDA_BRAIN_MODEL")) {
+        var m = str.trim(io.getEnvOr("MALDA_BRAIN_MODEL"));
+        if (m != "") {
+            return "OpenRouter / " + m;
+        }
+    }
+    return t("OpenRouter / client default model", "OpenRouter / modello di default del client");
+}
+
+function newReaderAgent(name, role, instructions, brainDir) {
+    var client = makeClient();
+    var agent = null;
+    if (client == null) {
+        agent = new Agent(name, role, instructions);
+    } else {
+        agent = new Agent(name, role, instructions, client);
+    }
+    agent.addTool(createReadFileTool(brainDir));
+    agent.addTool(createGrepTool(brainDir));
+    agent.addTool(createListDirectoryTool(brainDir));
+    addHostAskTools(agent, brainDir);
+    return agent;
+}
+
+function newPlainAgent(name, role, instructions) {
+    var client = makeClient();
+    if (client == null) {
+        return new Agent(name, role, instructions);
+    }
+    return new Agent(name, role, instructions, client);
+}
+
+function tryThinkParts(agent, question) {
+    try {
+        var response = agent.think(question);
+        return {
+            "content": str.trimText(response?.content),
+            "reasoning": str.trimText(response?.reasoning)
+        };
+    } catch (e) {
+        AnsiConsole.markupLine("  [red]" + t("LLM error:", "errore LLM:") + "[/] " + string(e));
+        return { "content": "", "reasoning": "" };
+    }
+}
+
+function tryThink(agent, question) {
+    return tryThinkParts(agent, question).content;
+}

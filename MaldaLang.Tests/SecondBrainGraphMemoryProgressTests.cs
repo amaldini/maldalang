@@ -9,7 +9,7 @@ namespace MaldaLang.Tests;
 
 /// <summary>
 /// Mockup of the GraphMemory index progress / ETA helpers from
-/// <c>Examples/Agents/secondbrain_semantic.malda</c> — runs the same syntax under
+/// <c>Examples/Agents/sb/06-memory.malda</c> — runs the same syntax under
 /// interpreter and C# transpile without loading LlamaEmbedder or GraphMemory.
 /// </summary>
 [Collection("Sequential")]
@@ -145,7 +145,7 @@ public class SecondBrainGraphMemoryProgressTests : TestBase
     [Fact]
     public void SemanticHost_DefinesGraphMemoryProgressHelpers()
     {
-        var path = Path.Combine(RepoRoot, "Examples", "Agents", "secondbrain_semantic.malda");
+        var path = Path.Combine(RepoRoot, "Examples", "Agents", "sb", "06-memory.malda");
         Assert.True(File.Exists(path), "missing " + path);
         var source = File.ReadAllText(path);
         Assert.Contains("function formatDurationMs(ms)", source, StringComparison.Ordinal);
