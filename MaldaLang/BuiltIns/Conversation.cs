@@ -610,7 +610,7 @@ public partial class ConversationInstance : ObjectInstance
 
         state.Dirty = true;
         var interval = LiveDraftMinIntervalMs;
-        var now = Environment.TickCount64;
+        var now = System.Environment.TickCount64;
         if (interval > 0 && state.LastEmitTimestamp != 0 && (now - state.LastEmitTimestamp) < interval)
             return;
 
@@ -622,7 +622,7 @@ public partial class ConversationInstance : ObjectInstance
         var state = LiveDraftLocal.Value;
         if (state == null || !state.Dirty)
             return;
-        EmitLiveDraft(state, Environment.TickCount64);
+        EmitLiveDraft(state, System.Environment.TickCount64);
     }
 
     private void EmitLiveDraft(LiveDraftState state, long now)
