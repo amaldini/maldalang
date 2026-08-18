@@ -61,7 +61,7 @@ public class SecondBrainRetrievalEvalTests : TestBase
         var statements = parser.Parse();
         Assert.Empty(parser.Errors);
 
-        var interpreter = new Interpreter();
+        var interpreter = new Interpreter.Interpreter();
         var original = Console.Out;
         using var writer = new StringWriter();
         Console.SetOut(writer);
