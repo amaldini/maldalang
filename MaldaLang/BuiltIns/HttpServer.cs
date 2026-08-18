@@ -101,6 +101,7 @@ public partial class HttpServerInstance : ObjectInstance
     {
         private readonly object _writeLock = new();
         private readonly Action<byte[]> _write;
+        private readonly Action? _close;
 
         public HashSet<string> Channels { get; }
 
@@ -109,13 +110,25 @@ public partial class HttpServerInstance : ObjectInstance
                 {
                     response.OutputStream.Write(bytes, 0, bytes.Length);
                     response.OutputStream.Flush();
-                }, channels)
+                }, channels, () =>
+                {
+                    try
+                    {
+                        response.Abort();
+                    }
+                    catch
+                    {
+                        try { response.Close(); }
+                        catch { /* ignore */ }
+                    }
+                })
         {
         }
 
-        public SseConnection(Action<byte[]> write, HashSet<string> channels)
+        public SseConnection(Action<byte[]> write, HashSet<string> channels, Action? close = null)
         {
             _write = write ?? throw new ArgumentNullException(nameof(write));
+            _close = close;
             Channels = channels;
         }
 
@@ -134,6 +147,18 @@ public partial class HttpServerInstance : ObjectInstance
                 }
             }
         }
+
+        public void Close()
+        {
+            try
+            {
+                _close?.Invoke();
+            }
+            catch
+            {
+                // Best-effort: client may already have dropped.
+            }
+        }
     }
 
     /// <summary>
@@ -148,6 +173,8 @@ public partial class HttpServerInstance : ObjectInstance
     private static readonly Dictionary<string, SseConnection> _sseConnections = new();
     private static readonly object _sseConnectionsLock = new object();
     private static int _sseConnectionCounter = 0;
+    private static int _consoleCancelHooked;
+    private static readonly ConsoleCancelEventHandler ConsoleCancelHandler = OnConsoleCancel;
 
     private sealed class ComponentStateEntry
     {
@@ -724,8 +751,7 @@ public partial class HttpServerInstance : ObjectInstance
                 _listener = new HttpListener();
                 _listener.Prefixes.Add(BuildListenerPrefix(_host, _port));
                 _listener.Start();
-                _isRunning = true;
-                _mountedRest?.NotifyHostStarted();
+                MarkStarted();
                 _ = Task.Run(async () => await HandleRequestsAsync());
             }
         }
@@ -741,13 +767,97 @@ public partial class HttpServerInstance : ObjectInstance
     {
         if (!_isRunning)
             return;
-        
+
         _isRunning = false;
         _mountedRest?.NotifyHostStopped();
+        CloseAllSseConnections();
         StopHttpsFront();
-        _listener?.Stop();
-        _listener?.Close();
+        try
+        {
+            _listener?.Stop();
+            _listener?.Close();
+        }
+        catch
+        {
+            // Listener may already be closing from Ctrl+C / concurrent Stop().
+        }
         _listener = null;
+    }
+
+    private void MarkStarted()
+    {
+        _isRunning = true;
+        _mountedRest?.NotifyHostStarted();
+        EnsureConsoleCancelHooked();
+    }
+
+    /// <summary>
+    /// Ctrl+C must cancel the default process abort: with live SSE, native
+    /// <see cref="HttpListener"/> teardown often hangs so the console looks stuck.
+    /// Swallow the signal, stop listeners, and let hosts (e.g. Second Brain ASK)
+    /// observe <c>isRunning == false</c>.
+    /// </summary>
+    private static void EnsureConsoleCancelHooked()
+    {
+        if (Interlocked.CompareExchange(ref _consoleCancelHooked, 1, 0) != 0)
+            return;
+        Console.CancelKeyPress += ConsoleCancelHandler;
+    }
+
+    private static void OnConsoleCancel(object? sender, ConsoleCancelEventArgs e)
+    {
+        if (!AnyServerRunning())
+            return;
+        e.Cancel = true;
+        ThreadPool.QueueUserWorkItem(static _ => StopAllForConsoleCancel());
+    }
+
+    private static bool AnyServerRunning()
+    {
+        lock (_instancesLock)
+        {
+            foreach (var instance in _instances)
+            {
+                if (instance._isRunning)
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Stops every running HttpServer. Used by Ctrl+C and tests.
+    /// </summary>
+    internal static void StopAllForConsoleCancel()
+    {
+        List<HttpServerInstance> snapshot;
+        lock (_instancesLock)
+        {
+            snapshot = _instances.Where(s => s._isRunning).ToList();
+        }
+        foreach (var server in snapshot)
+        {
+            try
+            {
+                server.Stop();
+            }
+            catch
+            {
+                // Best-effort shutdown — never throw from a console-cancel path.
+            }
+        }
+    }
+
+    private static void CloseAllSseConnections()
+    {
+        List<SseConnection> connections;
+        lock (_sseConnectionsLock)
+        {
+            connections = _sseConnections.Values.ToList();
+            _sseConnections.Clear();
+        }
+        foreach (var connection in connections)
+            connection.Close();
     }
     
     public void ClearCache()

@@ -104,8 +104,7 @@ public partial class HttpServerInstance
 
         app.StartAsync().GetAwaiter().GetResult();
 
-        _isRunning = true;
-        _mountedRest?.NotifyHostStarted();
+        MarkStarted();
         _ = Task.Run(async () => await HandleRequestsAsync());
     }
 

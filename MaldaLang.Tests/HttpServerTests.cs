@@ -1712,3 +1712,25 @@ public class HttpServerTests
         }
     }
 }
+
+[Collection("Sequential")]
+public class HttpServerConsoleCancelTests
+{
+    [Fact]
+    public void HttpServer_ConsoleCancel_StopsRunningServer()
+    {
+        var interpreter = new Interpreter.Interpreter();
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        listener.Stop();
+
+        var server = new HttpServerInstance(port, null, interpreter);
+        server.CallMethod("start", new List<RuntimeValue>());
+        Assert.True(server.Get("isRunning", null).AsBoolean());
+
+        HttpServerInstance.StopAllForConsoleCancel();
+
+        Assert.False(server.Get("isRunning", null).AsBoolean());
+    }
+}
