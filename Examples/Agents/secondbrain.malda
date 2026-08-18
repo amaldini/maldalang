@@ -10,7 +10,8 @@
 //   2) UPDATE  incremental refresh: re-distill only new/changed source files in an
 //              existing brain (content hashes in brain.json); optional orphan cleanup.
 //   3) ASK     local HttpServer web UI: catalog + token-overlap retrieval, LLM
-//              answers in Markdown (rendered with markdownToHtml).
+//              answers in Markdown (rendered with markdownToHtml), plus Generate
+//              document (download .md / .html from indexed examples).
 //   4) language  switch console/UI language (English / Italian).
 //   5) PACK    compile a portable ASK-only .exe with the brain embedded.
 //
@@ -26,6 +27,8 @@
 //       [--lang en|it] [--product-name "Acme Brain"] [--auth|--no-auth] [--allow-register|--no-register]
 //       [--examples|--no-examples]
 //       [--no-powered-by | --powered-by "…"] [--powered-by-url URL]
+//   malda Examples/Agents/secondbrain.malda generate --prompt "…" [--brain secondbrain]
+//       [--out document.md] [--format md|html] [--force] [--lang en|it]
 //   malda Examples/Agents/secondbrain.malda help
 //   (--name is an alias for --product-name; overrides brain product_name.txt)
 //
@@ -2279,6 +2282,36 @@ function chatOnlyInstructions() {
         "non usare HTML grezzo.";
 }
 
+function documentInstructions(useTools) {
+    var text = "Genera un documento completo e autonomo (riepilogo, proposta, verbale, checklist, brief) " +
+        "che l'utente puo' scaricare. " +
+        "Usa gli estratti di " + productName() + " come ESEMPI di stile, struttura, sezioni, tabelle e clausole. " +
+        "Non copiare nomi, date o valori numerici degli esempi se l'utente non li ha chiesti. " +
+        "Usa i fatti indicati nella richiesta. " +
+        "Non inventare cifre, date o termini assenti dalla richiesta o dagli esempi: " +
+        "usa un placeholder chiaro [TO CONFIRM: ...]. " +
+        "Non rispondere come in una chat: niente preambolo, niente 'ecco il documento', " +
+        "niente citazioni [nota: slug] nel corpo. " +
+        "Output solo Markdown (titoli, elenchi, tabelle). Niente HTML grezzo. ";
+    if (useTools == true) {
+        text = text +
+            "Puoi usare gli strumenti read_file, grep e list_directory per aprire altri esempi " +
+            "di " + productName() + " se il contesto fornito non basta. ";
+    } else {
+        text = text +
+            "Non hai strumenti: usa solo gli estratti forniti nel prompt. ";
+    }
+    return text + "Scrivi nella lingua della richiesta. Inizia con un titolo #.";
+}
+
+function chatOnlyDocumentInstructions() {
+    return "Genera un documento completo e autonomo che l'utente puo' scaricare. " +
+        "Non c'e' " + productName() + " / knowledge base: usa solo la richiesta e conoscenze generali. " +
+        "Segna i fatti non confermati con [TO CONFIRM: ...]. " +
+        "Output solo Markdown, senza preambolo. Inizia con un titolo #. " +
+        "Scrivi nella lingua della richiesta.";
+}
+
 function catalogNoteCount(catalog) {
     if (catalog == null or catalog.notes == null) {
         return 0;
@@ -2287,14 +2320,19 @@ function catalogNoteCount(catalog) {
 }
 
 function runChatOnlyTurn(question) {
+    var generate = askGetAskMode() == "generate";
     AnsiConsole.markupLine("[dim]" + t(
         "direct chat (no " + productName() + " retrieval)",
         "chat diretta (nessun recupero da " + productName() + ")") + "[/]");
-    var responder = newPlainAgent(
-        "ChatAssistant",
-        "assistente in chat",
-        chatOnlyInstructions()
-    );
+    var instructions = chatOnlyInstructions();
+    var role = "assistente in chat";
+    var name = "ChatAssistant";
+    if (generate) {
+        instructions = chatOnlyDocumentInstructions();
+        role = "redattore di documenti";
+        name = "DocWriter";
+    }
+    var responder = newPlainAgent(name, role, instructions);
     var answer = str.trim(tryThink(responder, question));
     if (answer == "") {
         return {
@@ -2304,12 +2342,16 @@ function runChatOnlyTurn(question) {
             "error": t("No answer from the LLM.", "Nessuna risposta dall'LLM.")
         };
     }
-    return {
+    var turn = {
         "question": question,
         "answer": answer,
         "sources": [],
         "error": ""
     };
+    if (generate) {
+        return askMarkGeneratedTurn(turn, question);
+    }
+    return turn;
 }
 
 function resolveAskBrainRoot(cli) {
@@ -2349,6 +2391,7 @@ function askSourcesFromPicked(picked) {
 
 // Called from the shared ASK web UI on each @ACTION /ask.
 function runAskTurn(question) {
+    var generate = askGetAskMode() == "generate";
     var session = askGetSession();
     var brainDir = askAsText(session.brainDir);
     var catalog = askGetCatalog();
@@ -2390,30 +2433,31 @@ function runAskTurn(question) {
 
     var useTools = askGetToolsEnabled();
     var responder = null;
+    var agentName = "BrainReader";
+    var agentRole = "assistente di knowledge base";
+    var instructions = answerInstructions(useTools);
+    var promptLead = "SECOND BRAIN (estratti pertinenti):\n\n";
+    var promptAsk = "\n\n----\nDOMANDA: ";
+    if (generate) {
+        agentName = "DocWriter";
+        agentRole = "redattore di documenti";
+        instructions = documentInstructions(useTools);
+        promptLead = "SECOND BRAIN (esempi di stile e struttura):\n\n";
+        promptAsk = "\n\n----\nRICHIESTA DOCUMENTO: ";
+    }
     if (useTools) {
         AnsiConsole.markupLine("[dim]" + t(
             "ASK tools: on (read_file / grep / list_directory)",
             "Tool ASK: attivi (read_file / grep / list_directory)") + "[/]");
-        responder = newReaderAgent(
-            "BrainReader",
-            "assistente di knowledge base",
-            answerInstructions(true),
-            brainDir
-        );
+        responder = newReaderAgent(agentName, agentRole, instructions, brainDir);
     } else {
         AnsiConsole.markupLine("[dim]" + t(
             "ASK tools: off (retrieved excerpts only)",
             "Tool ASK: disattivi (solo estratti recuperati)") + "[/]");
-        responder = newPlainAgent(
-            "BrainReader",
-            "assistente di knowledge base",
-            answerInstructions(false)
-        );
+        responder = newPlainAgent(agentName, agentRole, instructions);
     }
     var context = buildContext(brainDir, picked);
-    var answer = str.trim(tryThink(responder,
-        "SECOND BRAIN (estratti pertinenti):\n\n" + context +
-        "\n\n----\nDOMANDA: " + question));
+    var answer = str.trim(tryThink(responder, promptLead + context + promptAsk + question));
     if (answer == "") {
         return {
             "question": question,
@@ -2422,12 +2466,16 @@ function runAskTurn(question) {
             "error": t("No answer from the LLM.", "Nessuna risposta dall'LLM.")
         };
     }
-    return {
+    var turn = {
         "question": question,
         "answer": answer,
         "sources": sources,
         "error": ""
     };
+    if (generate) {
+        return askMarkGeneratedTurn(turn, question);
+    }
+    return turn;
 }
 
 // Admin ASK upload → write into docs folder, then non-interactive UPDATE.
@@ -2522,8 +2570,8 @@ include "secondbrain_ask_ui_lib.malda";
 function askBrain(cli) {
     AnsiConsole.markupLine("");
     AnsiConsole.panel(
-        t("Opens a local web UI to ask questions against " + productName() + " from BUILD/UPDATE.",
-            "Apre una UI web locale per fare domande su " + productName() + " di COSTRUISCI/AGGIORNA."),
+        t("Opens a local web UI to ask questions or generate downloadable documents from " + productName() + ".",
+            "Apre una UI web locale per fare domande o generare documenti scaricabili da " + productName() + "."),
         t("[bold]Mode 3 - ASK (web)[/]", "[bold]Modalita' 3 - CHIEDI (web)[/]"), "rounded");
 
     var brainDir = resolveAskBrainRoot(cli);
@@ -2636,6 +2684,91 @@ function askBrain(cli) {
     return true;
 }
 
+function generateDocumentCli(cli) {
+    var prompt = str.trim(sbCliAsText(cli.prompt));
+    if (prompt == "") {
+        AnsiConsole.markupLine("[red]" + t(
+            "generate requires --prompt <text>.",
+            "generate richiede --prompt <testo>.") + "[/]");
+        return false;
+    }
+
+    var brainDir = resolveAskBrainRoot(cli);
+    askApplyProductNameFromBrain(brainDir);
+    sbCliApplyProductName(cli);
+    var catalog = loadCatalog(brainDir);
+    var noteCount = catalogNoteCount(catalog);
+    var topicCount = 0;
+    var sourceFolder = brainDir;
+    var chatOnly = noteCount == 0;
+    if (catalog != null) {
+        if (catalog.topics != null) {
+            topicCount = catalog.topics.length;
+        }
+        if (catalog.sourceFolder != null and askAsText(catalog.sourceFolder) != "") {
+            sourceFolder = catalog.sourceFolder;
+        }
+    }
+
+    ui.setState(ASK_STORE, "lang", UI_LANG, ASK_SESSION_ID);
+    askSetCatalog(catalog);
+    askSetToolsEnabled(false);
+    askSetAskMode("generate");
+    askSetForceAnswer(cli.forceAnswer == true);
+    askClearHistory();
+    askSetSession({
+        "brainDir": brainDir,
+        "chatOnly": chatOnly,
+        "noteCount": noteCount,
+        "topicCount": topicCount,
+        "sourceFolder": sourceFolder,
+        "retrieval": t("lexical token overlap", "sovrapposizione lessicale di token"),
+        "llm": modelLabel(),
+        "title": ASK_PAGE_TITLE,
+        "subtitle": t("CLI generate document", "CLI genera documento")
+    });
+
+    AnsiConsole.panel(
+        t("Writes a downloadable document from " + productName() + " examples.",
+            "Scrive un documento scaricabile dagli esempi di " + productName() + "."),
+        t("[bold]Mode - GENERATE[/]", "[bold]Modalita' - GENERA[/]"), "rounded");
+    AnsiConsole.markupLine("[dim]" + t("Request: ", "Richiesta: ") + prompt + "[/]");
+
+    var turn = runAskTurn(prompt);
+    if (turn == null or str.trim(askAsText(turn.error)) != "" or str.trim(askAsText(turn.answer)) == "") {
+        var err = "";
+        if (turn != null) {
+            err = str.trim(askAsText(turn.error));
+            if (err == "") {
+                err = str.trim(askAsText(turn.answer));
+            }
+        }
+        if (err == "") {
+            err = t("No document from the LLM.", "Nessun documento dall'LLM.");
+        }
+        AnsiConsole.markupLine("[red]" + str.replace(str.replace(err, "[", "[["), "]", "]]") + "[/]");
+        return false;
+    }
+
+    var fmt = sbCliNormalizeDocFormat(cli.format);
+    if (fmt == "") {
+        fmt = "md";
+    }
+    var baseName = askSuggestDocumentFilename(prompt, turn.answer);
+    var outPath = str.trim(sbCliAsText(cli.outPath));
+    if (outPath == "") {
+        outPath = baseName + "." + fmt;
+    }
+    var body = askAsText(turn.answer);
+    if (fmt == "html") {
+        body = askWrapGeneratedHtml(baseName, body);
+    }
+    io.writeFile(outPath, body);
+    AnsiConsole.markupLine("[green]" + t("Wrote:", "Scritto:") + "[/] [bold]" +
+        str.replace(str.replace(outPath, "[", "[["), "]", "]]") + "[/]");
+    return true;
+}
+
 // ---------------------------------------------------------------- pack portable ASK exe
 
 function packPortableAskExe() {
@@ -2735,13 +2868,13 @@ function showMenu() {
     AnsiConsole.panel(
         t("[bold]1[/]  BUILD   reads .md/.html/.pdf/.docx and distills " + productName() + "\n" +
             "[bold]2[/]  UPDATE  refresh brain from new/changed source files only\n" +
-            "[bold]3[/]  ASK     web UI — questions against " + productName() + "\n" +
+            "[bold]3[/]  ASK     web UI — questions and document generation against " + productName() + "\n" +
             "[bold]4[/]  language  switch UI language (English / Italian)\n" +
             "[bold]5[/]  PACK    portable ASK .exe with embedded " + productName() + "\n" +
             "[bold]0[/]  quit",
             "[bold]1[/]  COSTRUISCI  legge .md/.html/.pdf/.docx e distilla " + productName() + "\n" +
             "[bold]2[/]  AGGIORNA    aggiorna il brain solo con file nuovi/modificati\n" +
-            "[bold]3[/]  CHIEDI      UI web — domande su " + productName() + "\n" +
+            "[bold]3[/]  CHIEDI      UI web — domande e generazione documenti su " + productName() + "\n" +
             "[bold]4[/]  lingua      cambia lingua interfaccia (English / Italiano)\n" +
             "[bold]5[/]  PACCHETTO  .exe ASK portatile con " + productName() + " incorporato\n" +
             "[bold]0[/]  esci"),
@@ -2760,8 +2893,8 @@ if (io.hasEmbeddedFolder("secondbrain")) {
     // Portable ASK-only exe: skip console menu/language — ASK web UI has EN/IT.
     if (cliOpts.mode == "build" or cliOpts.mode == "update" or cliOpts.mode == "pack") {
         AnsiConsole.markupLine("[red]" + t(
-            "Packed ASK exe supports ask only (not build/update/pack).",
-            "L'exe ASK packato supporta solo ask (non build/update/pack).") + "[/]");
+            "Packed ASK exe supports ask and generate only (not build/update/pack).",
+            "L'exe ASK packato supporta solo ask e generate (non build/update/pack).") + "[/]");
         exit(1);
     }
     if (cliOpts.mode == "help") {
@@ -2770,6 +2903,12 @@ if (io.hasEmbeddedFolder("secondbrain")) {
     }
     sbCliApplyLang(cliOpts);
     sbCliApplyProductName(cliOpts);
+    if (cliOpts.mode == "generate") {
+        if (generateDocumentCli(cliOpts)) {
+            exit(0);
+        }
+        exit(1);
+    }
     if (cliOpts.port != null) {
         sbCliApplyPort(cliOpts);
     } else {
@@ -2798,7 +2937,8 @@ if (io.hasEmbeddedFolder("secondbrain")) {
         "PACK is interactive — use menu option 5.",
         "PACK e' interattivo — usa la voce di menu 5.") + "[/]");
     exit(1);
-} else if (cliOpts.mode == "build" or cliOpts.mode == "update" or cliOpts.mode == "ask") {
+} else if (cliOpts.mode == "build" or cliOpts.mode == "update" or cliOpts.mode == "ask" or
+        cliOpts.mode == "generate") {
     sbCliApplyLang(cliOpts);
     sbCliApplyProductName(cliOpts);
     if (cliOpts.lang == "") {
@@ -2825,6 +2965,12 @@ if (io.hasEmbeddedFolder("secondbrain")) {
         }
         askBrain(cliOpts);
         exit(0);
+    }
+    if (cliOpts.mode == "generate") {
+        if (generateDocumentCli(cliOpts)) {
+            exit(0);
+        }
+        exit(1);
     }
     var ok = false;
     if (cliOpts.mode == "build") {

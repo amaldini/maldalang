@@ -67,6 +67,10 @@ export function sbCliEmptyOptions() {
         "productName": "",
         "poweredBy": null,
         "poweredByUrl": null,
+        "outPath": "",
+        "format": "",
+        "prompt": "",
+        "forceAnswer": false,
         "error": ""
     };
 }
@@ -84,7 +88,8 @@ export function sbCliNormalizeHost(raw) {
 
 export function sbCliIsModeName(raw) {
     var a = str.lower(str.trim(sbCliAsText(raw)));
-    return a == "build" or a == "update" or a == "ask" or a == "help" or a == "pack";
+    return a == "build" or a == "update" or a == "ask" or a == "generate" or
+        a == "help" or a == "pack";
 }
 
 export function sbCliEndsWithMalda(raw) {
@@ -120,8 +125,20 @@ export function sbCliParsePortNumber(raw) {
 
 export function sbCliNormalizeMode(raw) {
     var a = str.lower(str.trim(sbCliAsText(raw)));
-    if (a == "build" or a == "update" or a == "ask" or a == "help" or a == "pack") {
+    if (a == "build" or a == "update" or a == "ask" or a == "generate" or
+            a == "help" or a == "pack") {
         return a;
+    }
+    return "";
+}
+
+export function sbCliNormalizeDocFormat(raw) {
+    var a = str.lower(str.trim(sbCliAsText(raw)));
+    if (a == "md" or a == "markdown" or a == ".md") {
+        return "md";
+    }
+    if (a == "html" or a == "htm" or a == ".html" or a == ".htm") {
+        return "html";
     }
     return "";
 }
@@ -218,7 +235,7 @@ export function sbCliParseArgs(args) {
         var taken = sbCliTakeFlagValue(args, i, "--mode");
         if (taken.ok == true or taken.missing == true) {
             if (taken.missing == true or sbCliNormalizeMode(taken.value) == "") {
-                opt.error = "Invalid --mode (use build, update, ask, or help).";
+                opt.error = "Invalid --mode (use build, update, ask, generate, or help).";
                 return opt;
             }
             opt.mode = sbCliNormalizeMode(taken.value);
@@ -421,6 +438,46 @@ export function sbCliParseArgs(args) {
             continue;
         }
 
+        taken = sbCliTakeFlagValue(args, i, "--out");
+        if (taken.ok == true or taken.missing == true) {
+            if (taken.missing == true or str.trim(taken.value) == "") {
+                opt.error = "Missing value for --out.";
+                return opt;
+            }
+            opt.outPath = str.trim(taken.value);
+            i = taken.nextIndex;
+            continue;
+        }
+
+        taken = sbCliTakeFlagValue(args, i, "--format");
+        if (taken.ok == true or taken.missing == true) {
+            var fmt = sbCliNormalizeDocFormat(taken.value);
+            if (taken.missing == true or fmt == "") {
+                opt.error = "Invalid --format (use md or html).";
+                return opt;
+            }
+            opt.format = fmt;
+            i = taken.nextIndex;
+            continue;
+        }
+
+        taken = sbCliTakeFlagValue(args, i, "--prompt");
+        if (taken.ok == true or taken.missing == true) {
+            if (taken.missing == true or str.trim(taken.value) == "") {
+                opt.error = "Missing value for --prompt.";
+                return opt;
+            }
+            opt.prompt = str.trim(taken.value);
+            i = taken.nextIndex;
+            continue;
+        }
+
+        if (a == "--force") {
+            opt.forceAnswer = true;
+            i = i + 1;
+            continue;
+        }
+
         if (a == "--https") {
             opt.https = true;
             i = i + 1;
@@ -468,6 +525,6 @@ export function sbCliIsNonInteractive(cli) {
         return false;
     }
     var m = str.trim(sbCliAsText(cli.mode));
-    return m == "build" or m == "update" or m == "ask";
+    return m == "build" or m == "update" or m == "ask" or m == "generate";
 }
 

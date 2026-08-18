@@ -12,6 +12,8 @@
 //                           OR path/embed: to a utf-8 text file like PRODUCT_NAME)
 //   askHttpServer                            (var, initially null)
 //   runAskTurn(question) -> { question, answer, sources, error }
+//              Hosts read askGetAskMode() ("ask"|"generate") and may set
+//              generated=true + filename on successful document turns.
 //   UI_LANG                                  (existing)
 //
 // Brain branding (disk or embed root), auto-loaded when hosts call askApply*FromBrain:
@@ -43,6 +45,8 @@
 // .malda/ask_users.json. Open registration: --allow-register.
 // Per-user history scope: u:{sub}:{convId}. Admin: /admin/users, /admin/upload.
 // Health: GET /health. Audit: ask_audit.jsonl. Feedback: /feedback + ask_feedback.jsonl.
+// Generate document: composer Ask/Generate toggle; download GET /generate/download
+//   ?c=&turn=&fmt=md|html (cookie JWT, same history scope).
 // Host must define runAskTurn(question) and runAskUpdateFromUpload(body).
 
 // HTTPS defaults (hosts may override after include, or via --https CLI apply).
@@ -69,7 +73,7 @@ var ASK_USERS_PATH = "";
 var ASK_USERS_FILE_NAME = "users.json";
 var ASK_AUDIT_PATH = "";
 var ASK_FEEDBACK_PATH = "";
-var ASK_SERVICE_VERSION = "0.1.27";
+var ASK_SERVICE_VERSION = "0.1.28";
 var ASK_MIN_RETRIEVAL_SCORE = 0.15;
 var ASK_MIN_LEXICAL_SCORE = 1.0;
 var askAuthJwtSecret = "";
@@ -1737,6 +1741,194 @@ function askApplyToolsFromBody(body) {
     askSetToolsEnabled(raw == "1" or raw == "on" or raw == "true" or raw == "yes");
 }
 
+function askNormalizeAskMode(raw) {
+    var s = str.lower(str.trim(askAsText(raw)));
+    if (s == "generate" or s == "document" or s == "doc") {
+        return "generate";
+    }
+    return "ask";
+}
+
+function askGetAskMode() {
+    return askNormalizeAskMode(ui.state(ASK_STORE, "askMode", "ask", askActiveHistoryScope()));
+}
+
+function askSetAskMode(mode) {
+    ui.setState(ASK_STORE, "askMode", askNormalizeAskMode(mode), askActiveHistoryScope());
+}
+
+function askApplyAskModeFromBody(body) {
+    var raw = "ask";
+    if (body != null and body.askMode != null) {
+        raw = askAsText(body.askMode);
+    }
+    askSetAskMode(raw);
+}
+
+function askFirstMarkdownHeading(markdown) {
+    var lines = str.split(askAsText(markdown), "\n");
+    foreach (var line in lines) {
+        var heading = str.trim(askAsText(line));
+        if (str.startsWith(heading, "# ")) {
+            return str.trim(str.substring(heading, 2, str.length(heading) - 2));
+        }
+    }
+    return "";
+}
+
+function askSanitizeDownloadFilename(raw) {
+    var s = str.lower(str.trim(askAsText(raw)));
+    if (s == "") {
+        return "document";
+    }
+    if (str.endsWith(s, ".html")) {
+        s = str.substring(s, 0, str.length(s) - 5);
+    } else if (str.endsWith(s, ".htm")) {
+        s = str.substring(s, 0, str.length(s) - 4);
+    } else if (str.endsWith(s, ".md")) {
+        s = str.substring(s, 0, str.length(s) - 3);
+    }
+    var allowed = "abcdefghijklmnopqrstuvwxyz0123456789";
+    var out = "";
+    var lastDash = false;
+    var i = 0;
+    while (i < str.length(s) and str.length(out) < 60) {
+        var ch = str.substring(s, i, 1);
+        if (str.indexOf(allowed, ch) >= 0) {
+            out = out + ch;
+            lastDash = false;
+        } else if (not lastDash) {
+            out = out + "-";
+            lastDash = true;
+        }
+        i = i + 1;
+    }
+    while (str.startsWith(out, "-")) {
+        out = str.substring(out, 1, str.length(out) - 1);
+    }
+    while (str.endsWith(out, "-")) {
+        out = str.substring(out, 0, str.length(out) - 1);
+    }
+    if (out == "") {
+        return "document";
+    }
+    return out;
+}
+
+function askSuggestDocumentFilename(question, answer) {
+    var heading = askFirstMarkdownHeading(answer);
+    var base = heading;
+    if (base == "") {
+        base = str.trim(askAsText(question));
+    }
+    return askSanitizeDownloadFilename(base);
+}
+
+function askMarkGeneratedTurn(turn, question) {
+    if (turn == null) {
+        return null;
+    }
+    if (str.trim(askAsText(turn.error)) != "") {
+        return turn;
+    }
+    if (str.trim(askAsText(turn.answer)) == "") {
+        return turn;
+    }
+    if (turn.weakRetrieval == true) {
+        return turn;
+    }
+    turn.generated = true;
+    if (str.trim(askAsText(turn.filename)) == "") {
+        turn.filename = askSuggestDocumentFilename(question, turn.answer);
+    } else {
+        turn.filename = askSanitizeDownloadFilename(turn.filename);
+    }
+    return turn;
+}
+
+function askNormalizeDownloadFormat(raw) {
+    var s = str.lower(str.trim(askAsText(raw)));
+    if (s == "md" or s == "markdown" or s == ".md") {
+        return "md";
+    }
+    if (s == "html" or s == "htm" or s == ".html" or s == ".htm") {
+        return "html";
+    }
+    return "";
+}
+
+function askWrapGeneratedHtml(title, markdown) {
+    var name = askEscapeHtml(askAsText(title));
+    if (name == "") {
+        name = "Document";
+    }
+    var lang = askGetLang();
+    if (lang != "en" and lang != "it") {
+        lang = "en";
+    }
+    var body = markdownToHtml(askAsText(markdown));
+    return "<!DOCTYPE html><html lang='" + lang + "'><head><meta charset='utf-8'>" +
+        "<meta name='viewport' content='width=device-width, initial-scale=1'>" +
+        "<title>" + name + "</title>" +
+        "<style>body{font-family:Georgia,'Times New Roman',serif;max-width:42rem;" +
+        "margin:2rem auto;padding:0 1rem;line-height:1.55;color:#1c2430}" +
+        "h1,h2,h3{font-family:system-ui,sans-serif}table{border-collapse:collapse;width:100%}" +
+        "th,td{border:1px solid #d5dde6;padding:6px 8px;text-align:left}" +
+        "@media print{body{margin:0}}</style></head><body>" + body + "</body></html>";
+}
+
+function askBuildGeneratedDownload(turn, fmt) {
+    var format = askNormalizeDownloadFormat(fmt);
+    if (format == "") {
+        return {
+            "ok": false,
+            "filename": "",
+            "contentType": "",
+            "body": "",
+            "error": "Invalid format."
+        };
+    }
+    if (turn == null or turn.generated != true) {
+        return {
+            "ok": false,
+            "filename": "",
+            "contentType": "",
+            "body": "",
+            "error": "No generated document."
+        };
+    }
+    var markdown = askAsText(turn.answer);
+    if (str.trim(markdown) == "" or str.trim(askAsText(turn.error)) != "") {
+        return {
+            "ok": false,
+            "filename": "",
+            "contentType": "",
+            "body": "",
+            "error": "Empty document."
+        };
+    }
+    var base = askSanitizeDownloadFilename(turn.filename);
+    if (base == "document") {
+        base = askSuggestDocumentFilename(turn.question, markdown);
+    }
+    if (format == "html") {
+        return {
+            "ok": true,
+            "filename": base + ".html",
+            "contentType": "text/html; charset=utf-8",
+            "body": askWrapGeneratedHtml(base, markdown),
+            "error": ""
+        };
+    }
+    return {
+        "ok": true,
+        "filename": base + ".md",
+        "contentType": "text/markdown; charset=utf-8",
+        "body": markdown,
+        "error": ""
+    };
+}
+
 function askAppendTurn(turn) {
     // Rebuild + setState (do not rely on in-place mutation of ui.state arrays).
     var history = askGetHistory();
@@ -1851,6 +2043,46 @@ function askRenderSourcesHtml(sources) {
     return html;
 }
 
+function askRenderDownloadBarHtml(turn, index) {
+    if (turn == null or turn.generated != true) {
+        return "";
+    }
+    if (str.trim(askAsText(turn.answer)) == "" or str.trim(askAsText(turn.error)) != "") {
+        return "";
+    }
+    var href = "/generate/download?" + askConvQuery("turn=" + string(index));
+    return "<div class='download-bar'>" +
+        "<a href='" + askEscapeHtml(href + "&fmt=md") + "' download>" +
+        askEscapeHtml(askT("Download Markdown", "Scarica Markdown")) + "</a>" +
+        "<a href='" + askEscapeHtml(href + "&fmt=html") + "' download>" +
+        askEscapeHtml(askT("Download HTML", "Scarica HTML")) + "</a>" +
+        "</div>" +
+        "<p class='download-hint'>" +
+        askEscapeHtml(askT(
+            "HTML opens in the browser — use Print to save a PDF.",
+            "L'HTML si apre nel browser: usa Stampa per salvare un PDF.")) +
+        "</p>";
+}
+
+function askRenderModePillsHtml() {
+    var mode = askGetAskMode();
+    var askChecked = "";
+    var genChecked = "";
+    if (mode == "generate") {
+        genChecked = " checked";
+    } else {
+        askChecked = " checked";
+    }
+    return "<div class='mode-pills' role='radiogroup' aria-label='" +
+        askEscapeHtml(askT("Mode", "Modalita'")) + "'>" +
+        "<label class='mode-pill'><input type='radio' name='askMode' value='ask'" +
+        askChecked + "><span>" + askEscapeHtml(askT("Ask", "Chiedi")) +
+        "</span></label>" +
+        "<label class='mode-pill'><input type='radio' name='askMode' value='generate'" +
+        genChecked + "><span>" + askEscapeHtml(askT("Generate document", "Genera documento")) +
+        "</span></label></div>";
+}
+
 function askRenderTurnHtml(turn, index) {
     var question = askAsText(turn.question);
     var answer = askAsText(turn.answer);
@@ -1861,17 +2093,29 @@ function askRenderTurnHtml(turn, index) {
         sources = [];
     }
 
+    var generated = turn.generated == true;
+    var qLabel = askT("Question", "Domanda");
+    var aLabel = askT("Answer", "Risposta");
+    var pendingMsg = askT(
+        "Generating answer… keep this tab open. Live tool/LLM rounds appear here and above the Ask box.",
+        "Sto generando la risposta… lascia aperta questa scheda. I round LLM/tool compaiono qui e sopra il box Chiedi.");
+    if (generated or (pending and askGetAskMode() == "generate")) {
+        qLabel = askT("Request", "Richiesta");
+        aLabel = askT("Document", "Documento");
+        pendingMsg = askT(
+            "Generating document… keep this tab open. Live tool/LLM rounds appear here and above the composer.",
+            "Sto generando il documento… lascia aperta questa scheda. I round LLM/tool compaiono qui e sopra il composer.");
+    }
+
     var html = "<article class='turn' id='turn-" + string(index) + "'>";
     html = html + "<div class='bubble q'><div class='bubble-label'>" +
-        askEscapeHtml(askT("Question", "Domanda")) + "</div>" +
+        askEscapeHtml(qLabel) + "</div>" +
         "<p class='question-text'>" + askEscapeHtml(question) + "</p></div>";
 
     if (pending) {
         html = html + "<div class='bubble a'><div class='bubble-label'>" +
-            askEscapeHtml(askT("Answer", "Risposta")) + "</div>" +
-            "<p class='pending'>" + askEscapeHtml(askT(
-                "Generating answer… keep this tab open. Live tool/LLM rounds appear here and above the Ask box.",
-                "Sto generando la risposta… lascia aperta questa scheda. I round LLM/tool compaiono qui e sopra il box Chiedi.")) +
+            askEscapeHtml(aLabel) + "</div>" +
+            "<p class='pending'>" + askEscapeHtml(pendingMsg) +
             "</p>" +
             "<p class='live-status' id='ask-live-status' aria-live='polite'>" +
             askEscapeHtml(askT("Waiting for the model…", "In attesa del modello…")) +
@@ -1881,8 +2125,9 @@ function askRenderTurnHtml(turn, index) {
             askEscapeHtml(error) + "</p></div>";
     } else {
         html = html + "<div class='bubble a'><div class='bubble-label'>" +
-            askEscapeHtml(askT("Answer", "Risposta")) + "</div>" +
+            askEscapeHtml(aLabel) + "</div>" +
             "<div class='answer md'>" + markdownToHtml(answer) + "</div>" +
+            askRenderDownloadBarHtml(turn, index) +
             "<div class='sources-block'>" +
             "<div class='sources-label'>" +
             askEscapeHtml(askT("Sources", "Fonti")) +
@@ -2202,6 +2447,19 @@ function askPageStyles() {
         "background:var(--surface);border:1px solid var(--accent-line);border-radius:999px;padding:8px 12px;cursor:pointer;" +
         "text-align:left;line-height:1.3;max-width:100%;overflow-wrap:anywhere}" +
         ".example:hover{background:var(--q-bg);border-color:var(--accent)}" +
+        ".mode-pills{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px}" +
+        ".mode-pill{display:inline-flex;align-items:center;cursor:pointer;margin:0}" +
+        ".mode-pill input{position:absolute;opacity:0;width:1px;height:1px;overflow:hidden}" +
+        ".mode-pill span{font-family:var(--ui);font-size:0.86rem;font-weight:600;color:var(--muted);" +
+        "background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px}" +
+        ".mode-pill input:checked+span{color:var(--accent-ink);background:var(--pill);border-color:var(--accent)}" +
+        ".mode-pill input:focus-visible+span{outline:2px solid var(--focus);outline-offset:2px}" +
+        ".download-bar{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 0}" +
+        ".download-bar a{font-family:var(--ui);font-size:0.84rem;font-weight:600;color:var(--accent-ink);" +
+        "background:var(--pill);border:1px solid var(--accent-line);border-radius:999px;" +
+        "padding:6px 12px;text-decoration:none}" +
+        ".download-bar a:hover{border-color:var(--accent)}" +
+        ".download-hint{margin:8px 0 0;font-size:0.8rem;color:var(--muted);line-height:1.4}" +
         ".composer{position:sticky;bottom:0;z-index:15;margin-top:20px;" +
         "background:var(--panel);border:1px solid var(--line);border-radius:12px;" +
         "padding:14px 16px;padding-bottom:max(14px,env(safe-area-inset-bottom));" +
@@ -2476,57 +2734,88 @@ function askResolveLogoRightSrc() {
     return src;
 }
 
+function askRenderExampleButtonsHtml(examples, cssClass, hidden) {
+    if (examples == null or examples.length == 0) {
+        return "";
+    }
+    var html = "<div class='examples " + cssClass + "'";
+    if (hidden) {
+        html = html + " hidden";
+    }
+    html = html + ">";
+    foreach (var example in examples) {
+        html = html + "<button type='button' class='example' data-ask-example='" +
+            askEscapeHtml(example) + "'>" + askEscapeHtml(example) + "</button>";
+    }
+    html = html + "</div>";
+    return html;
+}
+
 function askRenderEmptyStateHtml(session) {
+    var generate = askGetAskMode() == "generate";
     var lead = "";
     var hint = "";
-    var examples = [];
+    var askExamples = [];
+    var generateExamples = [];
     if (session != null and session.chatOnly == true) {
         lead = askT(
             "No " + askProductName() + " loaded.",
             askProductName() + " non caricato.");
         if (ASK_SHOW_EXAMPLES) {
             hint = askT(
-                "Chat directly with the model below — or try an example.",
-                "Chatta direttamente col modello qui sotto — oppure prova un esempio.");
-            examples = [
+                "Chat or generate a downloadable draft below — or try an example.",
+                "Chatta o genera una bozza scaricabile qui sotto — oppure prova un esempio.");
+            askExamples = [
                 askT("Summarize what you can help with.", "Riassumi in cosa puoi aiutarmi."),
                 askT("Explain a concept step by step.", "Spiega un concetto passo per passo."),
                 askT("Draft a short checklist for me.", "Prepara una breve checklist.")
             ];
+            generateExamples = [
+                askT("Draft a one-page project brief.",
+                    "Prepara un brief di progetto di una pagina."),
+                askT("Write a meeting agenda with timed slots.",
+                    "Scrivi un ordine del giorno con orari."),
+                askT("Generate a short weekly status report.",
+                    "Genera un breve report di stato settimanale.")
+            ];
         } else {
             hint = askT(
-                "Chat directly with the model below.",
-                "Chatta direttamente col modello qui sotto.");
+                "Chat or generate a downloadable draft below.",
+                "Chatta o genera una bozza scaricabile qui sotto.");
         }
     } else {
         lead = askT(
-            "Ask " + askProductName() + ".",
-            "Interroga " + askProductName() + ".");
+            "Ask " + askProductName() + " — or generate a document.",
+            "Interroga " + askProductName() + " — o genera un documento.");
         if (ASK_SHOW_EXAMPLES) {
             hint = askT(
-                "Answers use the distilled notes. Pick an example or type below.",
-                "Le risposte usano le note distillate. Scegli un esempio o scrivi qui sotto.");
-            examples = [
+                "Answers and generated documents use the distilled notes. Pick an example or type below.",
+                "Risposte e documenti generati usano le note distillate. Scegli un esempio o scrivi qui sotto.");
+            askExamples = [
                 askT("What are the main themes?", "Quali sono i temi principali?"),
                 askT("How does authentication work?", "Come funziona l'autenticazione?"),
                 askT("Where should I start reading?", "Da dove conviene iniziare a leggere?")
             ];
+            generateExamples = [
+                askT("Draft a project brief following the indexed examples.",
+                    "Prepara un brief di progetto seguendo gli esempi indicizzati."),
+                askT("Write a checklist using the same structure as the stored notes.",
+                    "Scrivi una checklist con la stessa struttura delle note in archivio."),
+                askT("Generate a one-page summary from the indexed templates.",
+                    "Genera un riepilogo di una pagina dai modelli indicizzati.")
+            ];
         } else {
             hint = askT(
-                "Answers use the distilled notes. Type a question below.",
-                "Le risposte usano le note distillate. Scrivi una domanda qui sotto.");
+                "Answers and generated documents use the distilled notes. Type a request below.",
+                "Risposte e documenti generati usano le note distillate. Scrivi una richiesta qui sotto.");
         }
     }
     var html = "<div class='empty-state'>" +
         "<p class='empty-lead'>" + askEscapeHtml(lead) + "</p>" +
         "<p class='empty-hint'>" + askEscapeHtml(hint) + "</p>";
-    if (ASK_SHOW_EXAMPLES and examples.length > 0) {
-        html = html + "<div class='examples'>";
-        foreach (var example in examples) {
-            html = html + "<button type='button' class='example' data-ask-example='" +
-                askEscapeHtml(example) + "'>" + askEscapeHtml(example) + "</button>";
-        }
-        html = html + "</div>";
+    if (ASK_SHOW_EXAMPLES) {
+        html = html + askRenderExampleButtonsHtml(askExamples, "examples-ask", generate);
+        html = html + askRenderExampleButtonsHtml(generateExamples, "examples-generate", not generate);
     }
     html = html + "</div>";
     return html;
@@ -2669,13 +2958,30 @@ function askRenderPanelHtml() {
     }
     html = html + "</section>";
 
-    var placeholder = askT(
+    var generate = askGetAskMode() == "generate";
+    var placeholderAsk = askT(
         "Ask about the distilled notes…",
         "Chiedi sulle note distillate…");
+    var placeholderGen = askT(
+        "Describe the document to generate (brief, summary, checklist)…",
+        "Descrivi il documento da generare (brief, riepilogo, checklist)…");
     if (session.chatOnly == true) {
-        placeholder = askT(
+        placeholderAsk = askT(
             "Ask the model anything…",
             "Chiedi qualsiasi cosa al modello…");
+        placeholderGen = askT(
+            "Describe the document to generate…",
+            "Descrivi il documento da generare…");
+    }
+    var placeholder = placeholderAsk;
+    if (generate) {
+        placeholder = placeholderGen;
+    }
+    var askBtn = askT("Ask", "Chiedi");
+    var genBtn = askT("Generate", "Genera");
+    var submitLabel = askBtn;
+    if (generate) {
+        submitLabel = genBtn;
     }
 
     var toolsEnabled = askGetToolsEnabled();
@@ -2694,12 +3000,20 @@ function askRenderPanelHtml() {
             "Ricerca note attiva — puo' richiedere piu' round LLM.");
     }
 
+    var requestLabel = askT("New question", "Nuova domanda");
+    if (generate) {
+        requestLabel = askT("New document request", "Nuova richiesta documento");
+    }
     html = html + "<section class='composer'>" +
-        "<form method='post' action='/ask' id='ask-form'>" +
+        "<form method='post' action='/ask' id='ask-form' data-btn-ask='" +
+        askEscapeHtml(askBtn) + "' data-btn-generate='" + askEscapeHtml(genBtn) + "'>" +
         askHiddenConvField() +
-        "<label for='question'>" + askEscapeHtml(askT("New question", "Nuova domanda")) + "</label>" +
+        askRenderModePillsHtml() +
+        "<label for='question'>" + askEscapeHtml(requestLabel) + "</label>" +
         "<textarea id='question' name='question' required autofocus placeholder='" +
         askEscapeHtml(placeholder) +
+        "' data-ph-ask='" + askEscapeHtml(placeholderAsk) +
+        "' data-ph-generate='" + askEscapeHtml(placeholderGen) +
         "'></textarea>";
 
     if (session.chatOnly != true) {
@@ -2735,7 +3049,7 @@ function askRenderPanelHtml() {
     // CSS order keeps Clear visually to the left. Clear uses form= (no nested forms).
     html = html + "<p class='" + busyClass + "'>" + askEscapeHtml(statusHint) + "</p>" +
         "<div class='actions'>" +
-        "<button type='submit'>" + askEscapeHtml(askT("Ask", "Chiedi")) + "</button>" +
+        "<button type='submit'>" + askEscapeHtml(submitLabel) + "</button>" +
         "<button type='submit' class='ghost' form='ask-clear-form'>" +
         askEscapeHtml(askT("Clear", "Cancella")) + "</button>" +
         "</div></div></form>" +
@@ -2980,6 +3294,26 @@ function askPageClientScript() {
         "if(extra){q+='&'+extra;}" +
         "return '/?'+q;" +
         "}" +
+        "function syncAskModeUi(){" +
+        "var form=document.getElementById('ask-form');" +
+        "if(!form){return;}" +
+        "var gen=form.querySelector('input[name=askMode][value=generate]');" +
+        "var isGen=!!(gen&&gen.checked);" +
+        "var ta=document.getElementById('question');" +
+        "if(ta){" +
+        "var ph=isGen?(ta.getAttribute('data-ph-generate')||''):(ta.getAttribute('data-ph-ask')||'');" +
+        "if(ph){ta.placeholder=ph;}" +
+        "}" +
+        "var btn=form.querySelector('.actions button[type=submit]');" +
+        "if(btn){" +
+        "var lab=isGen?(form.getAttribute('data-btn-generate')||''):(form.getAttribute('data-btn-ask')||'');" +
+        "if(lab){btn.textContent=lab;}" +
+        "}" +
+        "var askEx=document.querySelector('.examples-ask');" +
+        "var genEx=document.querySelector('.examples-generate');" +
+        "if(askEx){askEx.hidden=isGen;}" +
+        "if(genEx){genEx.hidden=!isGen;}" +
+        "}" +
         "function bind(){" +
         "var panel=document.getElementById('ask-panel');" +
         "if(panel&&panel.dataset.askScrollBound!=='1'){" +
@@ -3023,6 +3357,7 @@ function askPageClientScript() {
         "},true);" +
         "document.addEventListener('change',function(e){" +
         "var t=e.target;" +
+        "if(t&&t.name==='askMode'){syncAskModeUi();return;}" +
         "if(!t||t.name!=='tags'){return;}" +
         "var picker=t.closest('details.tag-picker');" +
         "if(!picker){return;}" +
@@ -3065,6 +3400,7 @@ function askPageClientScript() {
         "},true);" +
         "connectLive();" +
         "scrollLatest();" +
+        "syncAskModeUi();" +
         "}" +
         "if(document.readyState==='loading'){" +
         "document.addEventListener('DOMContentLoaded',bind);" +
@@ -3270,9 +3606,14 @@ function askUiSubmit(body, response, cookies, req) {
     askApplyToolsFromBody(body);
     askApplyTagFilterFromBody(body);
     askApplyForceAnswerFromBody(body);
+    askApplyAskModeFromBody(body);
 
     if (question == "") {
-        askSetFlashError(askT("Enter a question.", "Inserisci una domanda."));
+        if (askGetAskMode() == "generate") {
+            askSetFlashError(askT("Describe the document to generate.", "Descrivi il documento da generare."));
+        } else {
+            askSetFlashError(askT("Enter a question.", "Inserisci una domanda."));
+        }
         return askPanelFragment();
     }
 
@@ -3282,14 +3623,20 @@ function askUiSubmit(body, response, cookies, req) {
         "answer": "",
         "sources": [],
         "error": "",
-        "pending": true
+        "pending": true,
+        "generated": askGetAskMode() == "generate"
     });
 
     // Per-user+conversation channel (AsyncLocal) so concurrent asks stay isolated.
     onAgentProgress(liveChannel);
     try {
         var startMsg = askT("Starting ask…", "Avvio domanda…");
-        if (askGetToolsEnabled()) {
+        if (askGetAskMode() == "generate") {
+            startMsg = askT("Starting document…", "Avvio documento…");
+            if (askGetToolsEnabled()) {
+                startMsg = askT("Starting document (tools on)…", "Avvio documento (tool attivi)…");
+            }
+        } else if (askGetToolsEnabled()) {
             startMsg = askT("Starting ask (tools on)…", "Avvio domanda (tool attivi)…");
         }
         componentLiveEmit(liveChannel, {
@@ -3318,7 +3665,9 @@ function askUiSubmit(body, response, cookies, req) {
             "qLen": str.length(question),
             "sources": srcCount,
             "weak": turn.weakRetrieval == true,
-            "tags": askGetTagFilter()
+            "tags": askGetTagFilter(),
+            "mode": askGetAskMode(),
+            "generated": turn.generated == true
         });
     } catch (e) {
         askReplaceLastTurn({
@@ -3384,6 +3733,37 @@ function askUiFeedback(body, response, cookies, req) {
 @LIVE("/ask/live")
 function askUiLive() {
     return { "sse": true };
+}
+
+@GET("/generate/download")
+function askUiDownloadGenerated(req, res, queryParams, cookies) {
+    askBeginRequest(queryParams, null, cookies, res, req);
+    var fmt = "";
+    var turnIndex = -1;
+    if (queryParams != null) {
+        fmt = askAsText(queryParams["fmt"]);
+        turnIndex = toIntOrNull(askAsText(queryParams["turn"]));
+        if (turnIndex == null) {
+            turnIndex = -1;
+        }
+    }
+    var history = askGetHistory();
+    var turn = null;
+    if (turnIndex >= 0 and turnIndex < history.length) {
+        turn = history[turnIndex];
+    }
+    var built = askBuildGeneratedDownload(turn, fmt);
+    if (not built.ok) {
+        return res.status(404).text(askAsText(built.error));
+    }
+    res.header("Content-Disposition", "attachment; filename=\"" +
+        askAsText(built.filename) + "\"");
+    res.setContentType(askAsText(built.contentType));
+    askAudit("generate-download", req, {
+        "turn": turnIndex,
+        "fmt": askNormalizeDownloadFormat(fmt)
+    });
+    return res.send(built.body);
 }
 
 @GET("/health")

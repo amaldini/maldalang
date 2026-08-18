@@ -132,9 +132,11 @@ function sbCliPrintHelp(defaultBrain, defaultPort) {
         "         [--product-name <name>] [--auth|--no-auth] [--allow-register|--no-register]\n" +
         "         [--examples|--no-examples]\n" +
         "         [--no-powered-by | --powered-by <text>] [--powered-by-url <url>]\n" +
+        "  generate --prompt <text> [--brain " + brain + "] [--out file.md] [--format md|html]\n" +
+        "           [--force] [--lang en|it] [--product-name <name>]\n" +
         "  help\n\n" +
-        "Non-interactive: build/update/ask skip the menu and confirmations.\n" +
-        "Also: --mode build|update|ask   -p <port>   --port=<n>   --host=<addr>   --name <name>\n" +
+        "Non-interactive: build/update/ask/generate skip the menu and confirmations.\n" +
+        "Also: --mode build|update|ask|generate   -p <port>   --port=<n>   --host=<addr>   --name <name>\n" +
         "--host defaults to localhost; use 0.0.0.0 or * to listen on all interfaces.\n" +
         "--https requires --cert (.pfx/.p12 or .pem/.crt with sibling .key).\n" +
         "Optional: --cert-password or MALDA_HTTP_CERT_PASSWORD.\n" +
@@ -161,9 +163,11 @@ function sbCliPrintHelp(defaultBrain, defaultPort) {
         "         [--product-name <nome>] [--auth|--no-auth] [--allow-register|--no-register]\n" +
         "         [--examples|--no-examples]\n" +
         "         [--no-powered-by | --powered-by <testo>] [--powered-by-url <url>]\n" +
+        "  generate --prompt <testo> [--brain " + brain + "] [--out file.md] [--format md|html]\n" +
+        "           [--force] [--lang en|it] [--product-name <nome>]\n" +
         "  help\n\n" +
-        "Non interattivo: build/update/ask saltano menu e conferme.\n" +
-        "Anche: --mode build|update|ask   -p <porta>   --port=<n>   --host=<addr>   --name <nome>\n" +
+        "Non interattivo: build/update/ask/generate saltano menu e conferme.\n" +
+        "Anche: --mode build|update|ask|generate   -p <porta>   --port=<n>   --host=<addr>   --name <nome>\n" +
         "--host di default e' localhost; usa 0.0.0.0 o * per tutte le interfacce.\n" +
         "--https richiede --cert (.pfx/.p12 o .pem/.crt con .key accanto).\n" +
         "Opzionale: --cert-password o MALDA_HTTP_CERT_PASSWORD.\n" +

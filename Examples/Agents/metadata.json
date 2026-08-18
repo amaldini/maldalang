@@ -161,7 +161,7 @@
     },
     {
       "name": "Second Brain",
-      "description": "CodingAgent explores docs, distills a hierarchical second-brain note tree, then answers questions from it (OpenRouter or local LLM).",
+      "description": "CodingAgent explores docs, distills a hierarchical second-brain note tree, then answers questions or generates downloadable documents from it (OpenRouter or local LLM).",
       "file": "secondbrain.malda",
       "track": "showcase",
       "difficulty": "advanced",
@@ -169,12 +169,12 @@
       "concepts": ["CodingAgent", "tools", "documentation distillation", "embedded folder"],
       "prerequisites": ["Agents/agent_file_reading.malda"],
       "learningGoal": "Build a personal knowledge base from a docs folder and query it with an agent.",
-      "expectedOutput": "Interactive BUILD/ASK flows; optional compile with --embed-folder secondbrain.",
+      "expectedOutput": "Interactive BUILD/ASK flows with optional Generate document download; optional compile with --embed-folder secondbrain.",
       "featured": true
     },
     {
       "name": "Second Brain (semantic)",
-      "description": "Same BUILD as Second Brain, but ASK retrieves notes via GraphMemory (vector + BM25 hybrid). Compare with secondbrain.malda for synonym/paraphrase search.",
+      "description": "Same BUILD as Second Brain, but ASK retrieves notes via GraphMemory (vector + BM25 hybrid) and can generate downloadable documents. Compare with secondbrain.malda for synonym/paraphrase search.",
       "file": "secondbrain_semantic.malda",
       "track": "showcase",
       "difficulty": "advanced",
