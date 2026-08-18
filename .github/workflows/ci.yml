@@ -43,6 +43,11 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
       # MaldaLang.sln contains the WPF Desktop IDE (net8.0-windows), which cannot build
       # on Linux. Build the cross-platform projects explicitly instead of the solution.
       - name: Build cross-platform projects
@@ -76,6 +81,11 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
 
       # Same cross-platform set as Linux (no WPF Desktop IDE).
       - name: Build cross-platform projects

@@ -45,7 +45,7 @@ public class JsTranspiler
 
     private static readonly HashSet<string> AsyncBuiltInNames = new(StringComparer.Ordinal)
     {
-        "sleep", "runProperty",
+        "sleep", "runProperty", "receive",
         "httpGet", "httpPost", "httpPut", "httpDelete", "httpPatch"
     };
     private int _generatedLine;
@@ -541,7 +541,7 @@ public class JsTranspiler
             case SelfExpression:
                 return "mlRuntime.actors.getSelf()";
             case ReceiveExpression:
-                return "await mlRuntime.actors.receiveAsync()";
+                return "mlRuntime.actors.receiveAsync()";
             case AwaitExpression awaitExpression:
                 return $"(await {TranspileExpression(awaitExpression.Expression)})";
             case AsyncExpression asyncExpression:
@@ -1281,6 +1281,9 @@ public class JsTranspiler
                 return true;
             case "runProperty":
                 transpiled = $"mlRuntime.runProperty(__propertyRegistry, {JoinArguments(arguments)})";
+                return true;
+            case "receive":
+                transpiled = "mlRuntime.actors.receiveAsync()";
                 return true;
             case "int":
                 transpiled = arguments.Count == 0

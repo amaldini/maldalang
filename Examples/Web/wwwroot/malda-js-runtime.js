@@ -1328,22 +1328,33 @@
     return typeof value;
   }
 
-  function describeValue(value) {
-    const type = jsonTypeOf(value);
-    if (type === "variant") return "variant " + value.tag;
-    return type;
+  function maldaTypeName(value) {
+    if (value === null || value === undefined) return "Null";
+    if (typeof value === "boolean") return "Boolean";
+    if (typeof value === "number") return Number.isInteger(value) ? "Integer" : "Float";
+    if (typeof value === "string") return "String";
+    if (Array.isArray(value)) return "Array";
+    if (isVariant(value)) return "Variant";
+    if (typeof value === "function") return "Function";
+    if (typeof value === "object") return "Object";
+    return "String";
   }
 
-  function validateAgainstType(typeName, value) {
+  function typeMismatch(path, expected, value) {
+    return path + " must be " + expected + ", got " + maldaTypeName(value) + ".";
+  }
+
+  function validateAgainstType(typeName, value, path) {
+    path = path || "$";
     const trimmed = coerceToString(typeName).trim();
     if (trimmed.endsWith("[]")) {
       if (!Array.isArray(value)) {
-        return "expected array, got " + describeValue(value);
+        return typeMismatch(path, "array", value);
       }
       const elementType = trimmed.slice(0, -2).trim();
       for (let i = 0; i < value.length; i++) {
-        const inner = validateAgainstType(elementType, value[i]);
-        if (inner) return "items[" + i + "]: " + inner;
+        const inner = validateAgainstType(elementType, value[i], path + "[" + i + "]");
+        if (inner) return inner;
       }
       return "";
     }
@@ -1352,46 +1363,53 @@
     if (primitive) {
       const actual = jsonTypeOf(value);
       if (primitive === "number") {
-        return actual === "number" || actual === "integer" ? "" : "expected number, got " + describeValue(value);
+        return actual === "number" || actual === "integer" ? "" : typeMismatch(path, "number", value);
       }
       if (primitive === "integer") {
-        return actual === "integer" ? "" : "expected integer, got " + describeValue(value);
+        return actual === "integer" ? "" : typeMismatch(path, "integer", value);
       }
       if (primitive === actual) return "";
-      return "expected " + primitive + ", got " + describeValue(value);
+      return typeMismatch(path, primitive, value);
     }
 
     if (Object.prototype.hasOwnProperty.call(schemaRegistry, trimmed)) {
-      return validateObjectSchema(schemaRegistry[trimmed], value);
+      return validateObjectSchema(schemaRegistry[trimmed], value, path);
     }
 
     if (Object.prototype.hasOwnProperty.call(sumTypeRegistry, trimmed)) {
-      if (!isVariant(value)) {
-        return "expected variant of " + trimmed + ", got " + describeValue(value);
+      if (!isVariant(value) && !isObject(value)) {
+        return path + " must be a JSON object with a sum-type tag.";
       }
       const tags = sumTypeRegistry[trimmed];
-      if (tags.indexOf(value.tag) < 0) {
-        return "unknown variant tag '" + value.tag + "' for " + trimmed;
+      const tag = isVariant(value) ? value.tag : (value && value.tag);
+      if (typeof tag !== "string") {
+        return path + ".tag is required and must be a string constructor name.";
+      }
+      if (tags.indexOf(tag) < 0) {
+        return path + ".tag '" + tag + "' is not a known constructor. Expected one of: " + tags.join(", ") + ".";
       }
       return "";
     }
 
-    return "unknown schema field type '" + trimmed + "'";
+    return "Unknown schema field type '" + trimmed + "'. Use a Tier-0 JSON type (string, int, float, bool, array, object), a declared schema name, or a declared sum type.";
   }
 
-  function validateObjectSchema(fields, value) {
+  function validateObjectSchema(fields, value, path) {
+    path = path || "$";
     if (!isObject(value)) {
-      return "expected object, got " + describeValue(value);
+      return typeMismatch(path, "object", value);
     }
     for (let i = 0; i < fields.length; i++) {
       const field = fields[i];
+      const fieldPath = path + "." + field.name;
       const hasKey = objectHasKey(value, field.name);
-      if (!hasKey) {
-        if (field.required) return "missing required field '" + field.name + "'";
+      const fieldValue = hasKey ? value[field.name] : null;
+      if (fieldValue === null || fieldValue === undefined) {
+        if (field.required) return fieldPath + " is required.";
         continue;
       }
-      const inner = validateAgainstType(field.type, value[field.name]);
-      if (inner) return field.name + ": " + inner;
+      const inner = validateAgainstType(field.type, fieldValue, fieldPath);
+      if (inner) return inner;
     }
     return "";
   }

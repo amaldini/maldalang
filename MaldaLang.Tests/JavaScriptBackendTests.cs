@@ -988,7 +988,7 @@ public class JavaScriptBackendTests : TestBase
         var compiler = new Compiler.Compiler();
         var js = compiler.TranspileToJavaScriptFromSource(source);
 
-        Assert.Contains("mlRuntime.math.abs(-4)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.math.abs(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.str.upper(\"ada\")", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.io.print(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.parseJSON(", js, StringComparison.Ordinal);

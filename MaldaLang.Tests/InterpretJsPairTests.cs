@@ -8,7 +8,7 @@ namespace MaldaLang.Tests;
 
 /// <summary>
 /// Curated interpret vs JavaScript transpile pairs (same stdout).
-/// Skips when Node or <c>malda-js-runtime.js</c> is missing.
+/// Requires Node and <c>malda-js-runtime.js</c> (CI installs Node; local runs fail if missing).
 /// </summary>
 [Collection("Sequential")]
 public class InterpretJsPairTests
@@ -28,7 +28,7 @@ public class InterpretJsPairTests
     {
         InterpretJsPair.AssertSameFromSource(
             """
-            println("hello-js-pair");
+            io.print("hello-js-pair");
             """,
             "hello-js-pair");
     }
@@ -68,9 +68,9 @@ public class InterpretJsPairTests
             var d = dict { "k": 2 };
             io.print(d.k);
             var tag = match 2 {
-                1 => "one"
-                2 => "two"
-                _ => "other"
+                case 1: "one";
+                case 2: "two";
+                default: "other";
             };
             io.print(tag);
             """,
@@ -98,6 +98,7 @@ public class InterpretJsPairTests
         InterpretJsPair.AssertSameFromSource(
             """
             class Animal {
+                var name;
                 function Animal(name) {
                     this.name = name;
                 }
