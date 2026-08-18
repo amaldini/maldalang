@@ -2771,12 +2771,12 @@ function askRenderEmptyStateHtml(session) {
                 askT("Draft a short checklist for me.", "Prepara una breve checklist.")
             ];
             generateExamples = [
-                askT("Draft a one-page proposal for a new client.",
-                    "Prepara una proposta di una pagina per un nuovo cliente."),
-                askT("Write a 5-day itinerary for a family trip.",
-                    "Scrivi un itinerario di 5 giorni per una famiglia."),
-                askT("Generate a simple quote for two people.",
-                    "Genera un preventivo semplice per due persone.")
+                askT("Draft a one-page project brief.",
+                    "Prepara un brief di progetto di una pagina."),
+                askT("Write a meeting agenda with timed slots.",
+                    "Scrivi un ordine del giorno con orari."),
+                askT("Generate a short weekly status report.",
+                    "Genera un breve report di stato settimanale.")
             ];
         } else {
             hint = askT(
@@ -2797,12 +2797,12 @@ function askRenderEmptyStateHtml(session) {
                 askT("Where should I start reading?", "Da dove conviene iniziare a leggere?")
             ];
             generateExamples = [
-                askT("Draft a quote for 2 adults, 7 nights in June, following the indexed examples.",
-                    "Prepara un preventivo per 2 adulti, 7 notti a giugno, seguendo gli esempi indicizzati."),
-                askT("Write a 5-day itinerary using the same structure as the stored trips.",
-                    "Scrivi un itinerario di 5 giorni con la stessa struttura dei viaggi in archivio."),
-                askT("Generate a client proposal from the indexed templates.",
-                    "Genera una proposta cliente dai modelli indicizzati.")
+                askT("Draft a project brief following the indexed examples.",
+                    "Prepara un brief di progetto seguendo gli esempi indicizzati."),
+                askT("Write a checklist using the same structure as the stored notes.",
+                    "Scrivi una checklist con la stessa struttura delle note in archivio."),
+                askT("Generate a one-page summary from the indexed templates.",
+                    "Genera un riepilogo di una pagina dai modelli indicizzati.")
             ];
         } else {
             hint = askT(
@@ -2963,8 +2963,8 @@ function askRenderPanelHtml() {
         "Ask about the distilled notes…",
         "Chiedi sulle note distillate…");
     var placeholderGen = askT(
-        "Describe the document to generate (quote, itinerary, proposal)…",
-        "Descrivi il documento da generare (preventivo, itinerario, proposta)…");
+        "Describe the document to generate (brief, summary, checklist)…",
+        "Descrivi il documento da generare (brief, riepilogo, checklist)…");
     if (session.chatOnly == true) {
         placeholderAsk = askT(
             "Ask the model anything…",

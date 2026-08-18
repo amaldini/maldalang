@@ -490,6 +490,10 @@ public class SecondBrainAskFeaturesTests
         Assert.Contains("function askMarkGeneratedTurn(", libSource, StringComparison.Ordinal);
         Assert.Contains("name='askMode'", libSource, StringComparison.Ordinal);
         Assert.Contains("/generate/download?", libSource, StringComparison.Ordinal);
+        Assert.Contains("Draft a project brief following the indexed examples.", libSource, StringComparison.Ordinal);
+        Assert.Contains("brief, summary, checklist", libSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("itinerary", libSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("preventivo", libSource, StringComparison.Ordinal);
         Assert.Contains("@PAGE(\"/admin/users\")", libSource, StringComparison.Ordinal);
         Assert.Contains("@PAGE(\"/admin/upload\")", libSource, StringComparison.Ordinal);
         Assert.Contains("@ACTION(\"/feedback\")", libSource, StringComparison.Ordinal);
@@ -641,8 +645,8 @@ public class SecondBrainAskFeaturesTests
                 var ASK_HTTP_PORT = 39022;
                 var ASK_SESSION_ID = "secondbrain-ask-generate";
                 var ASK_STORE = "SecondBrainAskGenerate";
-                var PRODUCT_NAME = "Travel Brain";
-                var ASK_PAGE_TITLE = "Travel Brain";
+                var PRODUCT_NAME = "Demo Brain";
+                var ASK_PAGE_TITLE = "Demo Brain";
                 var ASK_POWERED_BY = "";
                 var ASK_POWERED_BY_URL = "";
                 var ASK_LOGO = "";
@@ -656,18 +660,18 @@ public class SecondBrainAskFeaturesTests
 
                 include "secondbrain_ask_ui_lib.malda";
 
-                print("SAN=" + askSanitizeDownloadFilename("Preventivo Sicilia 2026!.md"));
-                print("SUG=" + askSuggestDocumentFilename("quote please", "# Itinerario Roma\n\nDay 1"));
+                print("SAN=" + askSanitizeDownloadFilename("Q3 Summary 2026!.md"));
+                print("SUG=" + askSuggestDocumentFilename("draft please", "# Project Brief\n\nScope"));
                 print("MODE0=" + askGetAskMode());
                 askApplyAskModeFromBody({ "askMode": "generate" });
                 print("MODE1=" + askGetAskMode());
 
                 var marked = askMarkGeneratedTurn({
-                    "question": "Preventivo 7 notti Sicilia",
-                    "answer": "# Preventivo Sicilia\n\n| Voce | Importo |\n| --- | --- |\n| Soggiorno | [TO CONFIRM: nightly rate] |\n",
+                    "question": "Draft a Q3 summary",
+                    "answer": "# Q3 Summary\n\n| Item | Status |\n| --- | --- |\n| Launch | [TO CONFIRM: date] |\n",
                     "sources": [],
                     "error": ""
-                }, "Preventivo 7 notti Sicilia");
+                }, "Draft a Q3 summary");
                 print("GEN=" + string(marked.generated) + "," + marked.filename);
 
                 var weak = askMarkGeneratedTurn({
@@ -706,15 +710,15 @@ public class SecondBrainAskFeaturesTests
                 Encoding.UTF8);
 
             var output = await InterpretAndCaptureAsync(harnessPath);
-            Assert.Contains("SAN=preventivo-sicilia-2026", output, StringComparison.Ordinal);
-            Assert.Contains("SUG=itinerario-roma", output, StringComparison.Ordinal);
+            Assert.Contains("SAN=q3-summary-2026", output, StringComparison.Ordinal);
+            Assert.Contains("SUG=project-brief", output, StringComparison.Ordinal);
             Assert.Contains("MODE0=ask", output, StringComparison.Ordinal);
             Assert.Contains("MODE1=generate", output, StringComparison.Ordinal);
-            Assert.Contains("GEN=true,preventivo-sicilia", output, StringComparison.Ordinal);
+            Assert.Contains("GEN=true,q3-summary", output, StringComparison.Ordinal);
             Assert.Contains("WEAK=", output, StringComparison.Ordinal);
             Assert.DoesNotContain("WEAK=true", output, StringComparison.Ordinal);
-            Assert.Contains("MD=true,preventivo-sicilia.md,text/markdown; charset=utf-8", output, StringComparison.Ordinal);
-            Assert.Contains("HTML=true,preventivo-sicilia.html", output, StringComparison.Ordinal);
+            Assert.Contains("MD=true,q3-summary.md,text/markdown; charset=utf-8", output, StringComparison.Ordinal);
+            Assert.Contains("HTML=true,q3-summary.html", output, StringComparison.Ordinal);
             Assert.Contains("WRAP=1", output, StringComparison.Ordinal);
             Assert.Contains("BAD=false,Invalid format.", output, StringComparison.Ordinal);
             Assert.Contains("Download Markdown", output, StringComparison.Ordinal);
@@ -969,6 +973,8 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("askSetToolsEnabled(false)", source, StringComparison.Ordinal);
             Assert.Contains("function answerInstructions(useTools)", source, StringComparison.Ordinal);
             Assert.Contains("function documentInstructions(useTools)", source, StringComparison.Ordinal);
+            Assert.Contains("riepilogo, proposta, verbale, checklist, brief", source, StringComparison.Ordinal);
+            Assert.DoesNotContain("preventivo, itinerario", source, StringComparison.Ordinal);
             Assert.Contains("function generateDocumentCli(", source, StringComparison.Ordinal);
             Assert.Contains("askGetAskMode()", source, StringComparison.Ordinal);
             Assert.Contains("askMarkGeneratedTurn(", source, StringComparison.Ordinal);
@@ -1061,11 +1067,11 @@ public class SecondBrainAskFeaturesTests
                 print("X=" + xPb.error);
                 var yPb = sbCliParseArgs(["ask", "--no-powered-by", "--powered-by", "Shown again"]);
                 print("Y=" + yPb.mode + "," + yPb.poweredBy + "," + yPb.poweredByUrl + "," + yPb.error);
-                var zGen = sbCliParseArgs(["generate", "--prompt", "Preventivo Sicilia", "--out", "quote.md", "--format", "html", "--force"]);
+                var zGen = sbCliParseArgs(["generate", "--prompt", "Draft a project brief", "--out", "brief.md", "--format", "html", "--force"]);
                 print("Z=" + zGen.mode + "," + zGen.prompt + "," + zGen.outPath + "," + zGen.format + "," + string(zGen.forceAnswer) + "," + zGen.error);
-                var zzGen = sbCliParseArgs(["generate", "--brain", "b1", "--prompt", "Nuovo itinerario Roma"]);
+                var zzGen = sbCliParseArgs(["generate", "--brain", "b1", "--prompt", "New status report"]);
                 print("ZZ=" + zzGen.mode + "," + zzGen.prompt + "," + zzGen.brain + "," + zzGen.error);
-                var zzLeft = sbCliParseArgs(["generate", "Nuovo", "itinerario", "Roma"]);
+                var zzLeft = sbCliParseArgs(["generate", "Draft", "a", "brief"]);
                 print("ZZL=" + zzLeft.error);
                 var zzExtra = sbCliParseArgs(["generate", "--prompt", "ok", "extra"]);
                 print("ZZX=" + zzExtra.error);
@@ -1100,9 +1106,9 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("W=ask,Internal KB,https://example.local,", output, StringComparison.Ordinal);
             Assert.Contains("X=Missing value for --powered-by.", output, StringComparison.Ordinal);
             Assert.Contains("Y=ask,Shown again,,", output, StringComparison.Ordinal);
-            Assert.Contains("Z=generate,Preventivo Sicilia,quote.md,html,true,", output, StringComparison.Ordinal);
-            Assert.Contains("ZZ=generate,Nuovo itinerario Roma,b1,", output, StringComparison.Ordinal);
-            Assert.Contains("ZZL=Unexpected argument: Nuovo", output, StringComparison.Ordinal);
+            Assert.Contains("Z=generate,Draft a project brief,brief.md,html,true,", output, StringComparison.Ordinal);
+            Assert.Contains("ZZ=generate,New status report,b1,", output, StringComparison.Ordinal);
+            Assert.Contains("ZZL=Unexpected argument: Draft", output, StringComparison.Ordinal);
             Assert.Contains("ZZX=Unexpected argument: extra", output, StringComparison.Ordinal);
             Assert.Contains("ZF=Invalid --format (use md or html).", output, StringComparison.Ordinal);
         }

@@ -28,7 +28,7 @@
 //       [--examples|--no-examples]
 //       [--no-powered-by | --powered-by "…"] [--powered-by-url URL]
 //   malda Examples/Agents/secondbrain.malda generate --prompt "…" [--brain secondbrain]
-//       [--out quote.md] [--format md|html] [--force] [--lang en|it]
+//       [--out document.md] [--format md|html] [--force] [--lang en|it]
 //   malda Examples/Agents/secondbrain.malda help
 //   (--name is an alias for --product-name; overrides brain product_name.txt)
 //
@@ -2283,12 +2283,12 @@ function chatOnlyInstructions() {
 }
 
 function documentInstructions(useTools) {
-    var text = "Genera un documento completo e autonomo (preventivo, itinerario, proposta, verbale, checklist) " +
-        "che l'utente puo' scaricare e inviare a un cliente. " +
+    var text = "Genera un documento completo e autonomo (riepilogo, proposta, verbale, checklist, brief) " +
+        "che l'utente puo' scaricare. " +
         "Usa gli estratti di " + productName() + " come ESEMPI di stile, struttura, sezioni, tabelle e clausole. " +
-        "Non copiare nomi, date o importi degli esempi se l'utente non li ha chiesti. " +
+        "Non copiare nomi, date o valori numerici degli esempi se l'utente non li ha chiesti. " +
         "Usa i fatti indicati nella richiesta. " +
-        "Non inventare prezzi, date, disponibilita' o termini legali assenti dalla richiesta o dagli esempi: " +
+        "Non inventare cifre, date o termini assenti dalla richiesta o dagli esempi: " +
         "usa un placeholder chiaro [TO CONFIRM: ...]. " +
         "Non rispondere come in una chat: niente preambolo, niente 'ecco il documento', " +
         "niente citazioni [nota: slug] nel corpo. " +
