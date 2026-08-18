@@ -1,6 +1,6 @@
 # Few-shot snippets
 
-*Applies to: MALDA 1.0.0*
+*Applies to: MALDA 1.0.1*
 
 Tiny programs for LLM context. Larger curated samples live under `Examples/`.
 
