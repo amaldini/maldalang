@@ -500,6 +500,9 @@ public class SecondBrainAskFeaturesTests
         Assert.Contains("@PAGE(\"/admin/upload\")", libSource, StringComparison.Ordinal);
         Assert.Contains("@ACTION(\"/feedback\")", libSource, StringComparison.Ordinal);
         Assert.Contains("function askConfigureHttpAuth(", libSource, StringComparison.Ordinal);
+        Assert.Contains("function askRefuseInsecurePublicBind(", libSource, StringComparison.Ordinal);
+        Assert.Contains("function askIsLoopbackHttpHost(", libSource, StringComparison.Ordinal);
+        Assert.Contains("function askHasDefaultDevSecrets(", libSource, StringComparison.Ordinal);
         Assert.Contains("function askRequireAuth(", libSource, StringComparison.Ordinal);
         Assert.Contains("res.redirect(\"/login\")", libSource, StringComparison.Ordinal);
         Assert.Contains("authenticateCookieJwt(ASK_AUTH_COOKIE", libSource, StringComparison.Ordinal);
@@ -682,6 +685,116 @@ public class SecondBrainAskFeaturesTests
         }
         finally
         {
+            SafeDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public async Task AskRefuseInsecurePublicBind_Blocks_Default_Creds_On_All_Interfaces()
+    {
+        Assert.True(File.Exists(AskUiLibPath), "missing ask UI lib: " + AskUiLibPath);
+
+        var tempDir = Path.Combine(Path.GetTempPath(), "malda_sb_ask_bind_gate", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        var previous = new Dictionary<string, string?>
+        {
+            ["MALDA_ASK_PASSWORD"] = Environment.GetEnvironmentVariable("MALDA_ASK_PASSWORD"),
+            ["MALDA_ASK_PASSWORD_HASH"] = Environment.GetEnvironmentVariable("MALDA_ASK_PASSWORD_HASH"),
+            ["MALDA_JWT_SECRET"] = Environment.GetEnvironmentVariable("MALDA_JWT_SECRET"),
+            ["MALDA_COOKIE_SECRET"] = Environment.GetEnvironmentVariable("MALDA_COOKIE_SECRET"),
+            ["MALDA_SESSION_SECRET"] = Environment.GetEnvironmentVariable("MALDA_SESSION_SECRET")
+        };
+        try
+        {
+            foreach (var key in previous.Keys)
+            {
+                Environment.SetEnvironmentVariable(key, null);
+            }
+
+            File.Copy(AskUiLibPath, Path.Combine(tempDir, "secondbrain_ask_ui_lib.malda"));
+            var harnessPath = Path.Combine(tempDir, "harness.malda");
+            await File.WriteAllTextAsync(harnessPath,
+                """
+                var ASK_HTTP_PORT = 39018;
+                var ASK_HTTP_HOST = "localhost";
+                var ASK_SESSION_ID = "secondbrain-ask-bind-gate";
+                var ASK_STORE = "SecondBrainAskBindGate";
+                var PRODUCT_NAME = "Bind Gate";
+                var ASK_PAGE_TITLE = PRODUCT_NAME;
+                var ASK_POWERED_BY = "";
+                var ASK_POWERED_BY_URL = "";
+                var ASK_LOGO = "";
+                var ASK_LOGO_RIGHT = "";
+                var UI_LANG = "en";
+                var askHttpServer = null;
+
+                function runAskTurn(question) {
+                    return { "question": question, "answer": "ok", "sources": [], "error": "" };
+                }
+
+                include "secondbrain_ask_ui_lib.malda";
+
+                ASK_AUTH_ENABLED = true;
+                ASK_HTTP_HOST = "localhost";
+                askLoadAuthCredentials();
+                print("LOOP=" + string(askRefuseInsecurePublicBind()));
+
+                ASK_HTTP_HOST = "0.0.0.0";
+                print("PUBLIC_DEFAULT=" + string(askRefuseInsecurePublicBind()));
+
+                ASK_AUTH_ENABLED = false;
+                print("PUBLIC_NOAUTH=" + string(askRefuseInsecurePublicBind()));
+                """);
+
+            var output = await InterpretAndCaptureAsync(harnessPath);
+            Assert.Contains("LOOP=false", output, StringComparison.Ordinal);
+            Assert.Contains("PUBLIC_DEFAULT=true", output, StringComparison.Ordinal);
+            Assert.Contains("PUBLIC_NOAUTH=false", output, StringComparison.Ordinal);
+            Assert.Contains("Refusing to start ASK on a non-loopback host", output, StringComparison.Ordinal);
+            Assert.Contains("auth off", output, StringComparison.Ordinal);
+
+            Environment.SetEnvironmentVariable("MALDA_ASK_PASSWORD", "not-the-default");
+            Environment.SetEnvironmentVariable("MALDA_JWT_SECRET", "jwt-secret-for-tests");
+            Environment.SetEnvironmentVariable("MALDA_COOKIE_SECRET", "cookie-secret-for-tests");
+            Environment.SetEnvironmentVariable("MALDA_SESSION_SECRET", "session-secret-for-tests");
+
+            await File.WriteAllTextAsync(harnessPath,
+                """
+                var ASK_HTTP_PORT = 39018;
+                var ASK_HTTP_HOST = "0.0.0.0";
+                var ASK_SESSION_ID = "secondbrain-ask-bind-ok";
+                var ASK_STORE = "SecondBrainAskBindOk";
+                var PRODUCT_NAME = "Bind Ok";
+                var ASK_PAGE_TITLE = PRODUCT_NAME;
+                var ASK_POWERED_BY = "";
+                var ASK_POWERED_BY_URL = "";
+                var ASK_LOGO = "";
+                var ASK_LOGO_RIGHT = "";
+                var UI_LANG = "en";
+                var askHttpServer = null;
+
+                function runAskTurn(question) {
+                    return { "question": question, "answer": "ok", "sources": [], "error": "" };
+                }
+
+                include "secondbrain_ask_ui_lib.malda";
+
+                ASK_AUTH_ENABLED = true;
+                ASK_HTTP_HOST = "0.0.0.0";
+                askLoadAuthCredentials();
+                print("PUBLIC_SECURE=" + string(askRefuseInsecurePublicBind()));
+                """);
+
+            var secureOut = await InterpretAndCaptureAsync(harnessPath);
+            Assert.Contains("PUBLIC_SECURE=false", secureOut, StringComparison.Ordinal);
+            Assert.DoesNotContain("Refusing to start ASK", secureOut, StringComparison.Ordinal);
+        }
+        finally
+        {
+            foreach (var pair in previous)
+            {
+                Environment.SetEnvironmentVariable(pair.Key, pair.Value);
+            }
             SafeDeleteDirectory(tempDir);
         }
     }
@@ -1002,6 +1115,7 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("askHttpServer.enableHttps(", source, StringComparison.Ordinal);
             Assert.Contains("--https", source, StringComparison.Ordinal);
             Assert.Contains("askApplyAuthFromCli(", source, StringComparison.Ordinal);
+            Assert.Contains("askRefuseInsecurePublicBind(", source, StringComparison.Ordinal);
             Assert.Contains("askSetAuthUsersRoot(", source, StringComparison.Ordinal);
             Assert.Contains("askConfigureHttpAuth(", source, StringComparison.Ordinal);
             Assert.Contains("runAskUpdateFromUpload(", source, StringComparison.Ordinal);

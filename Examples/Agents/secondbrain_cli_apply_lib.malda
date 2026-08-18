@@ -145,6 +145,8 @@ function sbCliPrintHelp(defaultBrain, defaultPort) {
         "--product-name / --name overrides brain product_name.txt and the default title.\n" +
         "ASK auth is on by default (cookie JWT). Disable with --no-auth.\n" +
         "Bootstrap: MALDA_ASK_USER / MALDA_ASK_PASSWORD (or MALDA_ASK_PASSWORD_HASH).\n" +
+        "Non-loopback --host with auth on requires a non-default password and\n" +
+        "  MALDA_JWT_SECRET / MALDA_COOKIE_SECRET / MALDA_SESSION_SECRET.\n" +
         "Multi-user: users.json in the brain folder (or .malda/ask_users.json).\n" +
         "Open registration: --allow-register (or MALDA_ASK_ALLOW_REGISTER=1).\n" +
         "Sample questions on empty ASK UI: on by default; hide with --no-examples\n" +
@@ -176,6 +178,8 @@ function sbCliPrintHelp(defaultBrain, defaultPort) {
         "--product-name / --name ha priorita' su product_name.txt e sul titolo di default.\n" +
         "Auth ASK attiva di default (cookie JWT). Disattiva con --no-auth.\n" +
         "Bootstrap: MALDA_ASK_USER / MALDA_ASK_PASSWORD (o MALDA_ASK_PASSWORD_HASH).\n" +
+        "Host non-loopback con auth richiede password non di default e\n" +
+        "  MALDA_JWT_SECRET / MALDA_COOKIE_SECRET / MALDA_SESSION_SECRET.\n" +
         "Multi-utente: users.json nella cartella del brain (o .malda/ask_users.json).\n" +
         "Registrazione aperta: --allow-register (o MALDA_ASK_ALLOW_REGISTER=1).\n" +
         "Domande di esempio nella UI ASK vuota: on di default; nascondi con --no-examples\n" +

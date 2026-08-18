@@ -39,6 +39,7 @@
 //
 // ASK auth (cookie JWT) is on by default. Disable with --no-auth or MALDA_ASK_AUTH=0.
 // Bootstrap: MALDA_ASK_USER / MALDA_ASK_PASSWORD (or HASH); default admin / password.
+// Non-loopback --host refuses default password and default JWT/cookie/session secrets.
 // Multi-user: users.json in the brain folder (or .malda/ask_users.json for embed).
 // Open registration: --allow-register (or MALDA_ASK_ALLOW_REGISTER=1).
 // Sample questions on empty ASK UI: on by default; hide with --no-examples (or MALDA_ASK_EXAMPLES=0).
@@ -3451,6 +3452,12 @@ function askBrain(cli) {
 
     askApplyAuthFromCli(cli);
     askSetAuthUsersRoot(brainDir);
+    if (ASK_AUTH_ENABLED) {
+        askLoadAuthCredentials();
+    }
+    if (askRefuseInsecurePublicBind()) {
+        return false;
+    }
     askHttpServer = new HttpServer(ASK_HTTP_PORT);
     askHttpServer.setHost(ASK_HTTP_HOST);
     if (ASK_HTTPS) {

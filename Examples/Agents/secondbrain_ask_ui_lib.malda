@@ -959,6 +959,53 @@ function askPrintAuthStatus() {
     }
 }
 
+function askIsLoopbackHttpHost(raw) {
+    var host = str.lower(askNormalizeHttpHost(raw));
+    if (host == "") {
+        return true;
+    }
+    return host == "localhost" or host == "127.0.0.1" or host == "::1" or host == "[::1]";
+}
+
+function askHasDefaultDevSecrets() {
+    return askAuthJwtSecret == "dev-only-jwt-secret-change-me" or
+        askAuthCookieSecret == "dev-only-cookie-secret-change-me" or
+        askAuthSessionSecret == "dev-only-session-secret-change-me";
+}
+
+// True = caller must not listen. Public bind + default password or JWT secrets is refused.
+// --no-auth on a public host warns but still starts.
+function askRefuseInsecurePublicBind() {
+    if (askIsLoopbackHttpHost(ASK_HTTP_HOST)) {
+        return false;
+    }
+    if (not ASK_AUTH_ENABLED) {
+        AnsiConsole.markupLine("[yellow]" + askT(
+            "ASK is bound on a non-loopback host with auth off. Anyone who can reach this port can query the brain.",
+            "ASK e' in ascolto su un host non-loopback senza auth. Chi raggiunge la porta puo' interrogare il brain.") + "[/]");
+        return false;
+    }
+    var defaultPassword = ASK_AUTH_USING_DEFAULT_PASSWORD == true;
+    var defaultSecrets = askHasDefaultDevSecrets();
+    if (not defaultPassword and not defaultSecrets) {
+        return false;
+    }
+    AnsiConsole.markupLine("[red]" + askT(
+        "Refusing to start ASK on a non-loopback host with default credentials.",
+        "Rifiuto di avviare ASK su un host non-loopback con credenziali di default.") + "[/]");
+    if (defaultPassword) {
+        AnsiConsole.markupLine("[red]" + askT(
+            "Set MALDA_ASK_PASSWORD or MALDA_ASK_PASSWORD_HASH (bootstrap is still admin/password).",
+            "Imposta MALDA_ASK_PASSWORD o MALDA_ASK_PASSWORD_HASH (il bootstrap e' ancora admin/password).") + "[/]");
+    }
+    if (defaultSecrets) {
+        AnsiConsole.markupLine("[red]" + askT(
+            "Set MALDA_JWT_SECRET, MALDA_COOKIE_SECRET, and MALDA_SESSION_SECRET.",
+            "Imposta MALDA_JWT_SECRET, MALDA_COOKIE_SECRET e MALDA_SESSION_SECRET.") + "[/]");
+    }
+    return true;
+}
+
 function askRequireAuth(req, res, next) {
     // authenticateCookieJwt throws WebRuntimeException (401) when the session
     // cookie is missing/invalid — that must be catchable so we can redirect.
