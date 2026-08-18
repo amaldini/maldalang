@@ -580,6 +580,11 @@ public class SecondBrainAskFeaturesTests
         Assert.Contains("placeLiveDock", libSource, StringComparison.Ordinal);
         Assert.Contains("syncLiveDockPosition", libSource, StringComparison.Ordinal);
         Assert.Contains("is-floating", libSource, StringComparison.Ordinal);
+        Assert.Contains("data-ask-composer-fold", libSource, StringComparison.Ordinal);
+        Assert.Contains("composer.is-folded", libSource, StringComparison.Ordinal);
+        Assert.Contains("malda-ask-composer-folded", libSource, StringComparison.Ordinal);
+        Assert.Contains("function applyComposerFold(", libSource, StringComparison.Ordinal);
+        Assert.Contains("if(isNarrowComposer()){setComposerFolded(true,false);}", libSource, StringComparison.Ordinal);
         // Must not mount the dock inside the sticky composer (hidden on tall phone UIs).
         Assert.DoesNotContain("composer.insertBefore(dock", libSource, StringComparison.Ordinal);
         Assert.Contains("startLiveTimer", libSource, StringComparison.Ordinal);
