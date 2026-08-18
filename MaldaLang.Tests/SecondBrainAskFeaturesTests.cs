@@ -1063,8 +1063,12 @@ public class SecondBrainAskFeaturesTests
                 print("Y=" + yPb.mode + "," + yPb.poweredBy + "," + yPb.poweredByUrl + "," + yPb.error);
                 var zGen = sbCliParseArgs(["generate", "--prompt", "Preventivo Sicilia", "--out", "quote.md", "--format", "html", "--force"]);
                 print("Z=" + zGen.mode + "," + zGen.prompt + "," + zGen.outPath + "," + zGen.format + "," + string(zGen.forceAnswer) + "," + zGen.error);
-                var zzGen = sbCliParseArgs(["generate", "--brain", "b1", "Nuovo", "itinerario", "Roma"]);
+                var zzGen = sbCliParseArgs(["generate", "--brain", "b1", "--prompt", "Nuovo itinerario Roma"]);
                 print("ZZ=" + zzGen.mode + "," + zzGen.prompt + "," + zzGen.brain + "," + zzGen.error);
+                var zzLeft = sbCliParseArgs(["generate", "Nuovo", "itinerario", "Roma"]);
+                print("ZZL=" + zzLeft.error);
+                var zzExtra = sbCliParseArgs(["generate", "--prompt", "ok", "extra"]);
+                print("ZZX=" + zzExtra.error);
                 var zf = sbCliParseArgs(["generate", "--format", "pdf"]);
                 print("ZF=" + zf.error);
                 """,
@@ -1098,6 +1102,8 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("Y=ask,Shown again,,", output, StringComparison.Ordinal);
             Assert.Contains("Z=generate,Preventivo Sicilia,quote.md,html,true,", output, StringComparison.Ordinal);
             Assert.Contains("ZZ=generate,Nuovo itinerario Roma,b1,", output, StringComparison.Ordinal);
+            Assert.Contains("ZZL=Unexpected argument: Nuovo", output, StringComparison.Ordinal);
+            Assert.Contains("ZZX=Unexpected argument: extra", output, StringComparison.Ordinal);
             Assert.Contains("ZF=Invalid --format (use md or html).", output, StringComparison.Ordinal);
         }
         finally

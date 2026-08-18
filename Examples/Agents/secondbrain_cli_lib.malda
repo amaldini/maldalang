@@ -511,16 +511,6 @@ export function sbCliParseArgs(args) {
             return opt;
         }
 
-        if (opt.mode == "generate") {
-            if (str.trim(sbCliAsText(opt.prompt)) == "") {
-                opt.prompt = a;
-            } else {
-                opt.prompt = str.trim(sbCliAsText(opt.prompt)) + " " + a;
-            }
-            i = i + 1;
-            continue;
-        }
-
         opt.error = "Unexpected argument: " + a;
         return opt;
     }

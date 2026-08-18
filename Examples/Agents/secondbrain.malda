@@ -2688,8 +2688,8 @@ function generateDocumentCli(cli) {
     var prompt = str.trim(sbCliAsText(cli.prompt));
     if (prompt == "") {
         AnsiConsole.markupLine("[red]" + t(
-            "generate requires --prompt <text> (or a trailing request).",
-            "generate richiede --prompt <testo> (oppure la richiesta in coda).") + "[/]");
+            "generate requires --prompt <text>.",
+            "generate richiede --prompt <testo>.") + "[/]");
         return false;
     }
 
