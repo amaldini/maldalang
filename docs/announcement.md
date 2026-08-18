@@ -88,7 +88,7 @@ match stdout. C# on .NET 8, hand-written recursive-descent
 parser, ~350 built-ins, ~1,900 tests. Dual MIT OR Apache-2.0
 with a runtime exception. No CLA.
 
-Honest about where it is. Public core is 1.0.2 (Spec Final 1.0
+Honest about where it is. Public core is 1.0.3 (Spec Final 1.0
 and the toolchain share that number). Publish is the type
 boundary; runtime is still dynamically typed. I run a Second
 Brain instance that others use. The large systems already in
@@ -465,7 +465,7 @@ if a built-in is added without being documented anywhere.
 #### What is not good yet
 
 - **1.0 is not a checked language or a cluster.** Spec Final 1.0 and
-  the CLI/Desktop `<Version>` match ([`docs/releases/v1.0.2.md`](releases/v1.0.2.md)).
+  the CLI/Desktop `<Version>` match ([`docs/releases/v1.0.3.md`](releases/v1.0.3.md)).
   Publish (`compile --mode transpile` / `publish`) refuses emit on type-hint Errors;
   interpret stays dynamic. Tier 0 is the conformance gate; prompts, workflows and HTTP
   remain platform tiers with an honest backend capability matrix.
