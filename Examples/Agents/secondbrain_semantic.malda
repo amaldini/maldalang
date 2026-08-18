@@ -13,7 +13,9 @@
 //              upsert GraphMemory nodes for those notes (memoryNodeId in brain.json).
 //              --reindex-memory forces a full GraphMemory rebuild (embed model change).
 //   3) ASK     local HttpServer web UI: GraphMemory.query (hybridLexical / BM25),
-//              falling back to the lexical catalog scorer if memory is missing.
+//              then local cross rerank (onnx if a cross-encoder model is installed).
+//              --rerank off|cross|onnx (env MALDA_BRAIN_RERANK). Falls back to the
+//              lexical catalog scorer if memory is missing.
 //              LLM answers in Markdown (rendered with markdownToHtml), plus Generate
 //              document (download .md / .html from indexed examples).
 //              Optional ASK tools include find_related_notes (new Tool + GraphMemory.findRelated).
@@ -31,7 +33,7 @@
 //       [--host 0.0.0.0] [--https --cert ask.pfx [--cert-password secret]]
 //       [--lang en|it] [--product-name "Acme Brain"]
 //       [--auth|--no-auth] [--allow-register|--no-register]
-//       [--examples|--no-examples]
+//       [--examples|--no-examples] [--rerank off|cross|onnx]
 //       [--no-powered-by | --powered-by "…"] [--powered-by-url URL]
 //   malda Examples/Agents/secondbrain_semantic.malda generate --prompt "…" [--brain secondbrain_semantic]
 //       [--out document.md] [--format md|html] [--force] [--lang en|it]
@@ -63,6 +65,8 @@
 //   Overrides:
 //     MALDA_MEMORY_EMBED=hash|bow|llama
 //     MALDA_BRAIN_EMBED_MODEL=/path/to/embedding.gguf
+//     MALDA_BRAIN_RERANK=off|cross|onnx
+//     MALDA_MEMORY_RERANK_MODEL_PATH=/path/to/cross-encoder
 //
 // UI:    at startup (interactive), choose UI message language (English / Italian).
 //        Notes stay in the source document language; technical terms are unchanged.
@@ -88,6 +92,7 @@ var MAX_DOC_CHARS = 12000;      // document characters sent per LLM call
 var MAX_CHUNKS = 15;            // max parts for a very long document
 var MAX_NOTE_CHARS = 5000;      // characters per note in an answer context
 var TOP_K = 5;                  // notes retrieved per question
+var ASK_RERANK_MODE = "";       // off|cross|onnx; empty = auto (onnx if model present else cross)
 var MAX_EXPLORE_DOCS = 300;     // documents listed for the explorer agent
 var CATALOG_NAME = "brain.json";
 var DEFAULT_BRAIN_DIR = "secondbrain_semantic";
@@ -333,6 +338,9 @@ function askBrain(cli) {
     }
     AnsiConsole.markupLine("LLM: [bold]" + modelLabel() + "[/]");
     AnsiConsole.markupLine(t("Retrieval:", "Recupero:") + " [bold]" + retrievalLabel + "[/]");
+    if (not chatOnly) {
+        AnsiConsole.markupLine("[dim]rerank: " + resolveAskRerankMode() + "[/]");
+    }
 
     askApplyAuthFromCli(cli);
     askSetAuthUsersRoot(brainDir);
@@ -494,6 +502,7 @@ if (cliOpts.error != "") {
     sbCliPrintHelp(DEFAULT_BRAIN_DIR, ASK_HTTP_PORT);
     exit(1);
 }
+sbCliApplyRerank(cliOpts);
 
 if (io.hasEmbeddedFolder("secondbrain_semantic")) {
     // Portable ASK-only exe: skip console menu/language — ASK web UI has EN/IT.

@@ -1,0 +1,60 @@
+{
+  "version": 2,
+  "notes": [
+    {
+      "slug": "photovoltaic-inverters",
+      "title": "Photovoltaic inverters convert DC to AC",
+      "path": "notes/photovoltaic-inverters.md",
+      "source": "energy/inverters.md",
+      "sourceKey": "energy/inverters.md",
+      "topic": "Energy",
+      "tags": ["solar", "inverter", "photovoltaic"],
+      "summary": "A photovoltaic inverter converts direct current from solar panels into alternating current for the grid.",
+      "headings": ["DC to AC conversion", "MPPT"]
+    },
+    {
+      "slug": "pasta-tomato-sauce",
+      "title": "Spaghetti with tomato basil sauce",
+      "path": "notes/pasta-tomato-sauce.md",
+      "source": "kitchen/pasta.md",
+      "sourceKey": "kitchen/pasta.md",
+      "topic": "Cooking",
+      "tags": ["pasta", "tomato", "recipe"],
+      "summary": "Boil spaghetti and toss with a tomato basil sauce, olive oil, and garlic.",
+      "headings": ["Ingredients", "Method"]
+    },
+    {
+      "slug": "bgp-route-advertisement",
+      "title": "BGP route advertisement between peers",
+      "path": "notes/bgp-route-advertisement.md",
+      "source": "net/bgp.md",
+      "sourceKey": "net/bgp.md",
+      "topic": "Networking",
+      "tags": ["bgp", "routing", "peers"],
+      "summary": "BGP speakers advertise prefixes to peers with AS-path and next-hop attributes.",
+      "headings": ["UPDATE messages", "AS path"]
+    },
+    {
+      "slug": "indemnity-clause",
+      "title": "Indemnity clause in commercial contracts",
+      "path": "notes/indemnity-clause.md",
+      "source": "legal/clauses.md",
+      "sourceKey": "legal/clauses.md",
+      "topic": "Legal",
+      "tags": ["contract", "indemnity", "liability"],
+      "summary": "An indemnity clause allocates liability when a party is sued for third-party claims.",
+      "headings": ["Scope", "Caps"]
+    },
+    {
+      "slug": "garden-compost-ph",
+      "title": "Garden compost pH for vegetable beds",
+      "path": "notes/garden-compost-ph.md",
+      "source": "garden/soil.md",
+      "sourceKey": "garden/soil.md",
+      "topic": "Gardening",
+      "tags": ["compost", "soil", "ph"],
+      "summary": "Finished compost for vegetable beds is usually near-neutral pH; lime raises pH if it is too acidic.",
+      "headings": ["Target pH", "Lime"]
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+// Offline lexical retrieval eval (no LLM).
+// From repo root:
+//   malda Examples/Agents/sb/eval/run_retrieval_eval.malda
+// Prints HIT / MISS per question and HIT_AT_K / EVAL_PASS.
+
+var UI_LANG = "en";
+var TOP_K = 5;
+var MAX_NOTE_CHARS = 5000;
+var PRODUCT_NAME = "EvalBrain";
+
+function t(en, it) {
+    return en;
+}
+
+function productName() {
+    return PRODUCT_NAME;
+}
+
+function askNoteMatchesTagFilter(note, tags) {
+    return true;
+}
+
+function sbJoinUnderRoot(root, part) {
+    return io.pathJoin(root, part);
+}
+
+function evalDataDir() {
+    var args = getCommandLineArgs();
+    foreach (var a in args) {
+        var s = str.replace(string(a), "\\", "/");
+        if (str.endsWith(str.lower(s), "run_retrieval_eval.malda")) {
+            var dir = io.getDirectoryName(a);
+            if (dir != null and str.trim(string(dir)) != "") {
+                return dir;
+            }
+        }
+    }
+    if (io.hasFile("questions.json")) {
+        return ".";
+    }
+    if (io.hasFile("Examples/Agents/sb/eval/questions.json")) {
+        return "Examples/Agents/sb/eval";
+    }
+    return ".";
+}
+
+include "../05-ask-common.malda";
+
+var here = evalDataDir();
+var catalog = parseJSON(io.readFile(io.pathJoin(here, "catalog.json")));
+var questions = parseJSON(io.readFile(io.pathJoin(here, "questions.json")));
+var hits = 0;
+var total = questions.length;
+foreach (var item in questions) {
+    var picked = selectNotes(here, catalog, item.q, []);
+    var ok = retrievalHitAtK(picked, item.expectSlugs, TOP_K);
+    var top = "";
+    if (picked.length > 0) {
+        top = string(picked[0].note.slug);
+    }
+    if (ok) {
+        hits = hits + 1;
+        print("HIT " + item.id + " top=" + top);
+    } else {
+        print("MISS " + item.id + " top=" + top + " want=" + str.join(item.expectSlugs, ","));
+    }
+}
+print("HIT_AT_K=" + string(hits) + "/" + string(total));
+if (hits < total) {
+    print("EVAL_FAIL");
+} else {
+    print("EVAL_PASS");
+}

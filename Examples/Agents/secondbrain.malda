@@ -12,6 +12,7 @@
 //   2) UPDATE  incremental refresh: re-distill only new/changed source files in an
 //              existing brain (content hashes in brain.json); optional orphan cleanup.
 //              --reindex-memory is accepted (no-op here; the semantic sibling uses it).
+//              --rerank is accepted (no-op here; the semantic sibling uses it).
 //   3) ASK     local HttpServer web UI: catalog + token-overlap retrieval, LLM
 //              answers in Markdown (rendered with markdownToHtml), plus Generate
 //              document (download .md / .html from indexed examples).
@@ -28,7 +29,7 @@
 //   malda Examples/Agents/secondbrain.malda ask [--brain secondbrain] [--port 8080] [--host 0.0.0.0]
 //       [--https --cert ask.pfx [--cert-password secret]]
 //       [--lang en|it] [--product-name "Acme Brain"] [--auth|--no-auth] [--allow-register|--no-register]
-//       [--examples|--no-examples]
+//       [--examples|--no-examples] [--rerank off|cross|onnx]
 //       [--no-powered-by | --powered-by "…"] [--powered-by-url URL]
 //   malda Examples/Agents/secondbrain.malda generate --prompt "…" [--brain secondbrain]
 //       [--out document.md] [--format md|html] [--force] [--lang en|it]
@@ -70,6 +71,7 @@ var MAX_DOC_CHARS = 12000;      // document characters sent per LLM call
 var MAX_CHUNKS = 15;            // max parts for a very long document
 var MAX_NOTE_CHARS = 5000;      // characters per note in an answer context
 var TOP_K = 5;                  // notes retrieved per question
+var ASK_RERANK_MODE = "";       // parsed for CLI compatibility; unused (lexical host)
 var MAX_EXPLORE_DOCS = 300;     // documents listed for the explorer agent
 var CATALOG_NAME = "brain.json";
 var DEFAULT_BRAIN_DIR = "secondbrain";
@@ -419,6 +421,7 @@ if (cliOpts.error != "") {
     sbCliPrintHelp(DEFAULT_BRAIN_DIR, ASK_HTTP_PORT);
     exit(1);
 }
+sbCliApplyRerank(cliOpts);
 
 if (io.hasEmbeddedFolder("secondbrain")) {
     // Portable ASK-only exe: skip console menu/language — ASK web UI has EN/IT.

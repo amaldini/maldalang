@@ -504,8 +504,12 @@ public class SecondBrainAskFeaturesTests
         Assert.Contains("@POST(\"/register\")", libSource, StringComparison.Ordinal);
         Assert.Contains("@GET(\"/logout\")", libSource, StringComparison.Ordinal);
         Assert.Contains("@GET(\"/health\")", libSource, StringComparison.Ordinal);
-        Assert.Contains("var ASK_SERVICE_VERSION = \"0.2.0\"", libSource, StringComparison.Ordinal);
-        Assert.DoesNotContain("var ASK_SERVICE_VERSION = \"0.1.28\"", libSource, StringComparison.Ordinal);
+        Assert.Contains("var ASK_SERVICE_VERSION = \"0.4.0\"", libSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("var ASK_SERVICE_VERSION = \"0.3.0\"", libSource, StringComparison.Ordinal);
+        Assert.Contains("@GET(\"/note\")", libSource, StringComparison.Ordinal);
+        Assert.Contains("function askExtractCitedSlugs(", libSource, StringComparison.Ordinal);
+        Assert.Contains("function askRewriteNoteCitations(", libSource, StringComparison.Ordinal);
+        Assert.Contains("data-ask-note", libSource, StringComparison.Ordinal);
         Assert.Contains("@GET(\"/generate/download\")", libSource, StringComparison.Ordinal);
         Assert.Contains("function askGetAskMode()", libSource, StringComparison.Ordinal);
         Assert.Contains("function askBuildGeneratedDownload(", libSource, StringComparison.Ordinal);
@@ -564,6 +568,8 @@ public class SecondBrainAskFeaturesTests
         Assert.Contains("RedirectTo(\"/?c=\"", libSource, StringComparison.Ordinal);
         Assert.Contains("onAgentProgress(liveChannel)", libSource, StringComparison.Ordinal);
         Assert.DoesNotContain("onAgentProgress(\"ask\")", libSource, StringComparison.Ordinal);
+        Assert.Contains("id='ask-live-draft'", libSource, StringComparison.Ordinal);
+        Assert.Contains("payload.phase==='draft'", libSource, StringComparison.Ordinal);
         Assert.Contains("id='ask-live-status'", libSource, StringComparison.Ordinal);
         Assert.Contains("id='ask-live-home'", libSource, StringComparison.Ordinal);
         Assert.Contains("placeLiveDock", libSource, StringComparison.Ordinal);
@@ -655,11 +661,11 @@ public class SecondBrainAskFeaturesTests
     }
 
     [Fact]
-    public async Task AskServiceVersion_Is_0_2_0_And_Hosts_Drop_0_1_0_Banner()
+    public async Task AskServiceVersion_Is_0_3_0_And_Hosts_Drop_0_1_0_Banner()
     {
         Assert.True(File.Exists(AskUiLibPath), "missing ask UI lib: " + AskUiLibPath);
         var libSource = await File.ReadAllTextAsync(AskUiLibPath);
-        Assert.Contains("var ASK_SERVICE_VERSION = \"0.2.0\"", libSource, StringComparison.Ordinal);
+        Assert.Contains("var ASK_SERVICE_VERSION = \"0.4.0\"", libSource, StringComparison.Ordinal);
 
         var lexical = Path.Combine(RepoRoot, "Examples", "Agents", "secondbrain.malda");
         var semantic = Path.Combine(RepoRoot, "Examples", "Agents", "secondbrain_semantic.malda");
@@ -701,7 +707,81 @@ public class SecondBrainAskFeaturesTests
                 print("VER=" + ASK_SERVICE_VERSION);
                 """);
             var output = await InterpretAndCaptureAsync(harnessPath);
-            Assert.Contains("VER=0.2.0", output, StringComparison.Ordinal);
+            Assert.Contains("VER=0.4.0", output, StringComparison.Ordinal);
+        }
+        finally
+        {
+            SafeDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public async Task AskUi_NoteCitations_RewriteExtractAndPreviewLookup()
+    {
+        Assert.True(File.Exists(AskUiLibPath), "missing ask UI lib: " + AskUiLibPath);
+
+        var tempDir = Path.Combine(Path.GetTempPath(), "malda_sb_ask_cites", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            File.Copy(AskUiLibPath, Path.Combine(tempDir, "secondbrain_ask_ui_lib.malda"));
+            var harnessPath = Path.Combine(tempDir, "harness.malda");
+            await File.WriteAllTextAsync(harnessPath,
+                """
+                var ASK_HTTP_PORT = 39018;
+                var ASK_HTTP_HOST = "localhost";
+                var ASK_SESSION_ID = "secondbrain-ask-cites";
+                var ASK_STORE = "SecondBrainAskCites";
+                var PRODUCT_NAME = "Cite Brain";
+                var ASK_PAGE_TITLE = PRODUCT_NAME;
+                var ASK_POWERED_BY = "";
+                var ASK_POWERED_BY_URL = "";
+                var ASK_LOGO = "";
+                var ASK_LOGO_RIGHT = "";
+                var UI_LANG = "en";
+                var askHttpServer = null;
+
+                function runAskTurn(question) {
+                    return { "question": question, "answer": "ok", "sources": [], "error": "" };
+                }
+
+                include "secondbrain_ask_ui_lib.malda";
+
+                var slugs = askExtractCitedSlugs("See [nota: alpha-note] and [nota: Beta Note] plus [nota: alpha-note].");
+                print("N=" + string(slugs.length));
+                print("S0=" + slugs[0]);
+                print("S1=" + slugs[1]);
+                var sources = [
+                    { "slug": "alpha-note", "title": "Alpha", "path": "notes/alpha-note.md", "source": "a.md" }
+                ];
+                var md = askRewriteNoteCitations("Based on [nota: alpha-note].", sources);
+                print("MD=" + md);
+                var html = askAnswerHtmlWithCitations("Based on [nota: alpha-note].", sources);
+                print("HTML=" + html);
+                var chips = askRenderSourcesHtml(sources, ["alpha-note"]);
+                print("CHIP=" + chips);
+                askSetCatalog({
+                    "notes": [
+                        { "slug": "alpha-note", "title": "Alpha", "path": "notes/alpha-note.md", "source": "a.md", "summary": "Alpha summary" }
+                    ]
+                });
+                var preview = askReadNotePreview("alpha-note");
+                print("PREV=" + string(preview.ok) + "," + preview.title);
+                var missing = askReadNotePreview("../etc/passwd");
+                print("MISS=" + string(missing.ok));
+                """);
+
+            var output = await InterpretAndCaptureAsync(harnessPath);
+            Assert.Contains("N=2", output, StringComparison.Ordinal);
+            Assert.Contains("S0=alpha-note", output, StringComparison.Ordinal);
+            Assert.Contains("S1=beta-note", output, StringComparison.Ordinal);
+            Assert.Contains("MD=Based on [Alpha](#src-alpha-note).", output, StringComparison.Ordinal);
+            Assert.Contains("class=\"note-cite\"", output, StringComparison.Ordinal);
+            Assert.Contains("href=\"#src-alpha-note\"", output, StringComparison.Ordinal);
+            Assert.Contains("data-ask-note=\"alpha-note\"", output, StringComparison.Ordinal);
+            Assert.Contains("source-chip cited", output, StringComparison.Ordinal);
+            Assert.Contains("PREV=true,Alpha", output, StringComparison.Ordinal);
+            Assert.Contains("MISS=false", output, StringComparison.Ordinal);
         }
         finally
         {
@@ -1173,10 +1253,21 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("riepilogo, proposta, verbale, checklist, brief", source, StringComparison.Ordinal);
             Assert.DoesNotContain("preventivo, itinerario", source, StringComparison.Ordinal);
             Assert.Contains("function generateDocumentCli(", source, StringComparison.Ordinal);
+            Assert.Contains("function askExtractCitedSlugs(", source, StringComparison.Ordinal);
+            Assert.Contains("function askAnswerHtmlWithCitations(", source, StringComparison.Ordinal);
+            Assert.Contains("@GET(\"/note\")", source, StringComparison.Ordinal);
             Assert.Contains("function indexShouldUseFullRebuild(", source, StringComparison.Ordinal);
             Assert.Contains("function upsertNoteMemory(", source, StringComparison.Ordinal);
             Assert.Contains("\"memoryNodeId\": noteMemoryId(note)", source, StringComparison.Ordinal);
             Assert.Contains("--reindex-memory", source, StringComparison.Ordinal);
+            Assert.Contains("--rerank", source, StringComparison.Ordinal);
+            Assert.Contains("sbCliNormalizeRerank(", source, StringComparison.Ordinal);
+            Assert.Contains("sbCliApplyRerank(", source, StringComparison.Ordinal);
+            if (path.Contains("secondbrain_semantic", StringComparison.Ordinal))
+            {
+                Assert.Contains("function resolveAskRerankMode(", source, StringComparison.Ordinal);
+                Assert.Contains("queryOpts.rerankMode", source, StringComparison.Ordinal);
+            }
             Assert.Contains("askGetAskMode()", source, StringComparison.Ordinal);
             Assert.Contains("askMarkGeneratedTurn(", source, StringComparison.Ordinal);
             Assert.Contains("newReaderAgent(", source, StringComparison.Ordinal);
@@ -1282,6 +1373,16 @@ public class SecondBrainAskFeaturesTests
                 print("RM=" + rm.mode + "," + string(rm.reindexMemory) + "," + rm.error);
                 var rmOff = sbCliParseArgs(["update"]);
                 print("RMOFF=" + rmOff.mode + "," + string(rmOff.reindexMemory) + "," + rmOff.error);
+                var rk = sbCliParseArgs(["ask", "--rerank", "cross"]);
+                print("RK=" + rk.mode + "," + rk.rerank + "," + rk.error);
+                var rkOnnx = sbCliParseArgs(["ask", "--rerank=onnx"]);
+                print("RKONNX=" + rkOnnx.mode + "," + rkOnnx.rerank + "," + rkOnnx.error);
+                var rkOff = sbCliParseArgs(["ask", "--rerank", "off"]);
+                print("RKOFF=" + rkOff.mode + "," + rkOff.rerank + "," + rkOff.error);
+                var rkBad = sbCliParseArgs(["ask", "--rerank", "llm"]);
+                print("RKBAD=" + rkBad.error);
+                var rkMiss = sbCliParseArgs(["ask", "--rerank"]);
+                print("RKMISS=" + rkMiss.error);
                 """,
                 Encoding.UTF8);
 
@@ -1318,6 +1419,11 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("ZF=Invalid --format (use md or html).", output, StringComparison.Ordinal);
             Assert.Contains("RM=update,true,", output, StringComparison.Ordinal);
             Assert.Contains("RMOFF=update,false,", output, StringComparison.Ordinal);
+            Assert.Contains("RK=ask,cross,", output, StringComparison.Ordinal);
+            Assert.Contains("RKONNX=ask,onnx,", output, StringComparison.Ordinal);
+            Assert.Contains("RKOFF=ask,off,", output, StringComparison.Ordinal);
+            Assert.Contains("RKBAD=Invalid --rerank (use off, cross, or onnx).", output, StringComparison.Ordinal);
+            Assert.Contains("RKMISS=Missing value for --rerank.", output, StringComparison.Ordinal);
         }
         finally
         {

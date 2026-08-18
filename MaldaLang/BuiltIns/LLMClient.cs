@@ -6,6 +6,7 @@ namespace MaldaLang.BuiltIns;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using MaldaLang.Interpreter;
 using MaldaLang.Runtime;
 
@@ -17,11 +18,26 @@ public class LLMClientInstance : ObjectInstance
     public double Temperature { get; set; } = 0.7;
     public int MaxTokens { get; set; } = 2000;
 
+    private static readonly AsyncLocal<Action<LlmStreamDelta>?> StreamDeltaHandlerLocal = new();
+    private static Action<LlmStreamDelta>? _streamDeltaHandlerFallback;
+
     /// <summary>
     /// Optional handler invoked for each streamed content/reasoning delta during Chat().
-    /// Set by Conversation when live thinking output is enabled.
+    /// Per-async-flow via <see cref="AsyncLocal{T}"/> so concurrent ASK sessions do not clash.
     /// </summary>
-    internal static Action<LlmStreamDelta>? StreamDeltaHandler { get; set; }
+    internal static Action<LlmStreamDelta>? StreamDeltaHandler
+    {
+        get
+        {
+            var local = StreamDeltaHandlerLocal.Value;
+            return local ?? _streamDeltaHandlerFallback;
+        }
+        set
+        {
+            StreamDeltaHandlerLocal.Value = value;
+            _streamDeltaHandlerFallback = value;
+        }
+    }
     
     private static readonly HttpClient _httpClient = new HttpClient();
     private static bool? _llmStreamingEnabled;

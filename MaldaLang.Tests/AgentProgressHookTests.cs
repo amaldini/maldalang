@@ -11,6 +11,7 @@ using Xunit;
 
 namespace MaldaLang.Tests;
 
+[Collection("Sequential")]
 public class AgentProgressHookTests
 {
     [Fact]
@@ -124,6 +125,107 @@ public class AgentProgressHookTests
         }
         finally
         {
+            ConversationInstance.ClearAgentProgressHandler();
+        }
+    }
+
+    [Fact]
+    public void LiveDraft_ContentDeltas_EmitThrottledDraftPhase()
+    {
+        var received = new List<RuntimeValue>();
+        var previousInterval = ConversationInstance.LiveDraftMinIntervalMs;
+        ConversationInstance.LiveDraftMinIntervalMs = 60_000;
+        try
+        {
+            ConversationInstance.SetAgentProgressHandler(evt => received.Add(evt));
+            ConversationInstance.SetAgentProgressLiveChannel("ask-draft");
+            ConversationInstance.ResetLiveDraft();
+            var conv = new ConversationInstance();
+
+            conv.HandleLiveDraftDelta(new LlmStreamDelta("reasoning", "hidden"));
+            conv.HandleLiveDraftDelta(new LlmStreamDelta("tool_arguments", "{}"));
+            conv.HandleLiveDraftDelta(new LlmStreamDelta("content", "Hello"));
+            conv.HandleLiveDraftDelta(new LlmStreamDelta("content", " world"));
+
+            Assert.Single(received);
+            var first = received[0].AsObject();
+            Assert.Equal("draft", first.Get("phase", null)!.AsString());
+            Assert.Equal("Hello", first.Get("text", null)!.AsString());
+
+            conv.FlushLiveDraft();
+            Assert.Equal(2, received.Count);
+            Assert.Equal("Hello world", received[1].AsObject().Get("text", null)!.AsString());
+        }
+        finally
+        {
+            ConversationInstance.LiveDraftMinIntervalMs = previousInterval;
+            ConversationInstance.ClearAgentProgressHandler();
+        }
+    }
+
+    [Fact]
+    public void LiveDraft_WithoutLiveChannel_DoesNotEmit()
+    {
+        var received = new List<RuntimeValue>();
+        var previousInterval = ConversationInstance.LiveDraftMinIntervalMs;
+        ConversationInstance.LiveDraftMinIntervalMs = 0;
+        try
+        {
+            ConversationInstance.SetAgentProgressHandler(evt => received.Add(evt));
+            ConversationInstance.ResetLiveDraft();
+            var conv = new ConversationInstance();
+            conv.HandleLiveDraftDelta(new LlmStreamDelta("content", "nope"));
+            conv.FlushLiveDraft();
+            Assert.Empty(received);
+        }
+        finally
+        {
+            ConversationInstance.LiveDraftMinIntervalMs = previousInterval;
+            ConversationInstance.ClearAgentProgressHandler();
+        }
+    }
+
+    [Fact]
+    public async Task LiveDraft_IsIsolatedPerAsyncFlow()
+    {
+        var texts = new ConcurrentDictionary<string, string>();
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var previousInterval = ConversationInstance.LiveDraftMinIntervalMs;
+        ConversationInstance.LiveDraftMinIntervalMs = 0;
+        try
+        {
+            ConversationInstance.SetAgentProgressHandler(evt =>
+            {
+                var text = evt.AsObject().Get("text", null)?.AsString() ?? "";
+                if (text.Length > 0)
+                    texts[text] = text;
+            });
+
+            async Task RunFlow(string channel, string token)
+            {
+                ConversationInstance.SetAgentProgressLiveChannel(channel);
+                ConversationInstance.ResetLiveDraft();
+                var conv = new ConversationInstance();
+                conv.HandleLiveDraftDelta(new LlmStreamDelta("content", token));
+                await gate.Task.ConfigureAwait(false);
+                conv.HandleLiveDraftDelta(new LlmStreamDelta("content", token));
+                conv.FlushLiveDraft();
+                ConversationInstance.SetAgentProgressLiveChannel(null);
+            }
+
+            var a = Task.Run(() => RunFlow("ask-aaa", "AAA"));
+            var b = Task.Run(() => RunFlow("ask-bbb", "BBB"));
+            await Task.Delay(50);
+            gate.SetResult();
+            await Task.WhenAll(a, b);
+
+            Assert.Contains("AAAAAA", texts.Keys);
+            Assert.Contains("BBBBBB", texts.Keys);
+            Assert.DoesNotContain(texts.Keys, key => key.Contains("AAA", StringComparison.Ordinal) && key.Contains("BBB", StringComparison.Ordinal));
+        }
+        finally
+        {
+            ConversationInstance.LiveDraftMinIntervalMs = previousInterval;
             ConversationInstance.ClearAgentProgressHandler();
         }
     }
