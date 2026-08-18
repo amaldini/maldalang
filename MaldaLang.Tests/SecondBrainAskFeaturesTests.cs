@@ -713,6 +713,10 @@ public class SecondBrainAskFeaturesTests
     public async Task AskRefuseInsecurePublicBind_Blocks_Default_Creds_On_All_Interfaces()
     {
         Assert.True(File.Exists(AskUiLibPath), "missing ask UI lib: " + AskUiLibPath);
+        var libSource = File.ReadAllText(AskUiLibPath);
+        Assert.Contains("function askRefuseInsecurePublicBind()", libSource, StringComparison.Ordinal);
+        Assert.Contains("Refusing to start ASK on a non-loopback host with default credentials.", libSource, StringComparison.Ordinal);
+        Assert.Contains("ASK is bound on a non-loopback host with auth off.", libSource, StringComparison.Ordinal);
 
         var tempDir = Path.Combine(Path.GetTempPath(), "malda_sb_ask_bind_gate", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(tempDir);
@@ -770,8 +774,6 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("LOOP=false", output, StringComparison.Ordinal);
             Assert.Contains("PUBLIC_DEFAULT=true", output, StringComparison.Ordinal);
             Assert.Contains("PUBLIC_NOAUTH=false", output, StringComparison.Ordinal);
-            Assert.Contains("Refusing to start ASK on a non-loopback host", output, StringComparison.Ordinal);
-            Assert.Contains("auth off", output, StringComparison.Ordinal);
 
             System.Environment.SetEnvironmentVariable("MALDA_ASK_PASSWORD", "not-the-default");
             System.Environment.SetEnvironmentVariable("MALDA_JWT_SECRET", "jwt-secret-for-tests");
