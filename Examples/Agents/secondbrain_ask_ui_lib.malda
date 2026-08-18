@@ -73,7 +73,7 @@ var ASK_USERS_PATH = "";
 var ASK_USERS_FILE_NAME = "users.json";
 var ASK_AUDIT_PATH = "";
 var ASK_FEEDBACK_PATH = "";
-var ASK_SERVICE_VERSION = "0.2.0";
+var ASK_SERVICE_VERSION = "0.3.0";
 var ASK_MIN_RETRIEVAL_SCORE = 0.15;
 var ASK_MIN_LEXICAL_SCORE = 1.0;
 var askAuthJwtSecret = "";
@@ -2051,7 +2051,93 @@ function askSourceScoreLabel(note) {
     return "";
 }
 
-function askRenderSourcesHtml(sources) {
+function askListHas(items, value) {
+    if (items == null) {
+        return false;
+    }
+    foreach (var item in items) {
+        if (item == value) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function askNormalizeCiteSlug(raw) {
+    var s = str.trim(str.lower(askAsText(raw)));
+    s = str.regexReplace(s, "[^a-z0-9._-]+", "-");
+    s = str.regexReplace(s, "^-+", "");
+    s = str.regexReplace(s, "-+$", "");
+    if (str.length(s) > 128) {
+        s = str.substring(s, 0, 128);
+    }
+    return s;
+}
+
+function askExtractCitedSlugs(markdown) {
+    var slugs = [];
+    var found = str.regexFind(askAsText(markdown), "\\[nota:\\s*([^\\]]+)\\]");
+    foreach (var hit in found) {
+        var raw = "";
+        if (hit.groups != null and hit.groups.length > 1) {
+            raw = hit.groups[1];
+        }
+        var slug = askNormalizeCiteSlug(raw);
+        if (slug != "" and not askListHas(slugs, slug)) {
+            slugs.append(slug);
+        }
+    }
+    return slugs;
+}
+
+function askSourceTitleForSlug(sources, slug) {
+    if (sources == null) {
+        return slug;
+    }
+    foreach (var note in sources) {
+        if (askNormalizeCiteSlug(note.slug) == slug) {
+            var title = str.trim(askAsText(note.title));
+            if (title != "") {
+                return title;
+            }
+        }
+    }
+    return slug;
+}
+
+function askRewriteNoteCitations(markdown, sources) {
+    var text = askAsText(markdown);
+    var found = str.regexFind(text, "\\[nota:\\s*([^\\]]+)\\]");
+    foreach (var hit in found) {
+        var original = askAsText(hit.text);
+        if (original == "") {
+            continue;
+        }
+        var raw = "";
+        if (hit.groups != null and hit.groups.length > 1) {
+            raw = hit.groups[1];
+        }
+        var slug = askNormalizeCiteSlug(raw);
+        if (slug == "") {
+            continue;
+        }
+        var title = askSourceTitleForSlug(sources, slug);
+        var link = "[" + title + "](#src-" + slug + ")";
+        text = str.replace(text, original, link);
+    }
+    return text;
+}
+
+function askAnswerHtmlWithCitations(markdown, sources) {
+    var rewritten = askRewriteNoteCitations(markdown, sources);
+    var html = markdownToHtml(rewritten);
+    html = str.regexReplace(html,
+        "<a href=\"#src-([^\"]+)\">",
+        "<a class=\"note-cite\" href=\"#src-$1\" data-ask-note=\"$1\">");
+    return html;
+}
+
+function askRenderSourcesHtml(sources, citedSlugs) {
     if (sources == null or sources.length == 0) {
         if (askIsChatOnly()) {
             return "<p class='muted'>" + askEscapeHtml(askT(
@@ -2064,6 +2150,8 @@ function askRenderSourcesHtml(sources) {
     }
     var html = "<div class='sources-chips' role='list'>";
     foreach (var note in sources) {
+        var slug = askNormalizeCiteSlug(note.slug);
+        var cited = slug != "" and askListHas(citedSlugs, slug);
         var score = askSourceScoreLabel(note);
         var scoreHtml = "";
         if (score != "") {
@@ -2076,15 +2164,28 @@ function askRenderSourcesHtml(sources) {
             }
             tip = tip + askT("source:", "origine:") + " " + askAsText(note.source);
         }
+        if (cited) {
+            if (tip != "") {
+                tip = tip + " · ";
+            }
+            tip = tip + askT("cited in the answer", "citata nella risposta");
+        }
         var tipAttr = "";
         if (tip != "") {
             tipAttr = " title='" + askEscapeHtml(tip) + "'";
         }
-        html = html + "<div class='source-chip' role='listitem'" + tipAttr + ">" +
+        var chipClass = "source-chip";
+        if (cited) {
+            chipClass = chipClass + " cited";
+        }
+        var href = "#src-" + slug;
+        html = html + "<a class='" + chipClass + "' role='listitem' id='src-" +
+            askEscapeHtml(slug) + "' href='" + askEscapeHtml(href) +
+            "' data-ask-note='" + askEscapeHtml(slug) + "'" + tipAttr + ">" +
             "<div class='source-chip-body'>" +
             "<div class='source-chip-title'>" + askEscapeHtml(note.title) + "</div>" +
             "<div class='path'>" + askEscapeHtml(note.path) + "</div>" +
-            "</div>" + scoreHtml + "</div>";
+            "</div>" + scoreHtml + "</a>";
     }
     html = html + "</div>";
     return html;
@@ -2173,13 +2274,13 @@ function askRenderTurnHtml(turn, index) {
     } else {
         html = html + "<div class='bubble a'><div class='bubble-label'>" +
             askEscapeHtml(aLabel) + "</div>" +
-            "<div class='answer md'>" + markdownToHtml(answer) + "</div>" +
+            "<div class='answer md'>" + askAnswerHtmlWithCitations(answer, sources) + "</div>" +
             askRenderDownloadBarHtml(turn, index) +
             "<div class='sources-block'>" +
             "<div class='sources-label'>" +
             askEscapeHtml(askT("Sources", "Fonti")) +
             " <span class='meta'>(" + string(sources.length) + ")</span></div>" +
-            askRenderSourcesHtml(sources) + "</div>" +
+            askRenderSourcesHtml(sources, askExtractCitedSlugs(answer)) + "</div>" +
             "<div class='feedback-bar'>" +
             "<form method='post' action='/feedback' class='feedback-form'>" +
             askHiddenConvField() +
@@ -2429,7 +2530,25 @@ function askPageStyles() {
         ".sources-chips{display:flex;flex-wrap:wrap;gap:8px}" +
         ".source-chip{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;" +
         "flex:1 1 200px;min-width:min(100%,200px);max-width:100%;" +
-        "background:var(--chip);border:1px solid var(--line);border-radius:10px;padding:10px 12px}" +
+        "background:var(--chip);border:1px solid var(--line);border-radius:10px;padding:10px 12px;" +
+        "text-decoration:none;color:inherit;cursor:pointer}" +
+        ".source-chip:hover{border-color:var(--accent);background:var(--hover)}" +
+        ".source-chip.cited{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}" +
+        "a.note-cite{color:var(--accent-ink);font-weight:600;text-decoration:underline;" +
+        "text-underline-offset:2px;cursor:pointer}" +
+        "a.note-cite:hover{color:var(--accent)}" +
+        "#ask-note-dialog[hidden]{display:none!important}" +
+        "#ask-note-dialog{position:fixed;inset:0;z-index:80;display:flex;align-items:center;" +
+        "justify-content:center;padding:16px}" +
+        ".note-dialog-backdrop{position:absolute;inset:0;background:rgba(12,16,22,.45)}" +
+        ".note-dialog{position:relative;z-index:1;max-width:min(42rem,100%);max-height:min(80vh,40rem);" +
+        "overflow:auto;background:var(--panel);color:var(--ink);border:1px solid var(--line);" +
+        "border-radius:12px;padding:16px 18px;box-shadow:0 12px 40px var(--shadow-soft)}" +
+        ".note-dialog h2{margin:0 2.5rem 8px 0;font-size:1.05rem}" +
+        ".note-dialog .path{margin:0 0 12px}" +
+        ".note-dialog-body{white-space:pre-wrap;font-family:var(--serif);line-height:1.55;" +
+        "font-size:0.95rem;margin:0}" +
+        ".note-dialog-close{position:absolute;top:10px;right:10px}" +
         ".source-chip-body{min-width:0;flex:1}" +
         ".source-chip-title{font-size:0.88rem;font-weight:600;line-height:1.3;margin:0 0 4px;" +
         "color:var(--ink)}" +
@@ -2476,6 +2595,9 @@ function askPageStyles() {
            While live it is position:fixed above the sticky composer (see syncLiveDockPosition). */
         "#ask-live-home:empty{display:none}" +
         ".live-dock[hidden]{display:none!important}" +
+        ".live-dock-draft{margin:8px 0 0;max-height:12rem;overflow:auto;white-space:pre-wrap;" +
+        "font-family:var(--serif);font-size:0.88rem;line-height:1.45}" +
+        ".live-dock-draft[hidden]{display:none!important}" +
         ".live-dock.is-floating{position:fixed;left:max(12px,env(safe-area-inset-left));" +
         "right:max(12px,env(safe-area-inset-right));z-index:28;margin:0;" +
         "box-shadow:0 8px 24px var(--shadow);max-height:min(30vh,9rem);overflow:auto;" +
@@ -3148,7 +3270,36 @@ function askPageClientScript() {
         "if(last&&last.id){location.hash=last.id;}" +
         "last.scrollIntoView({block:'nearest',behavior:'smooth'});" +
         "}" +
-        "function progressMessage(p){" +
+        "function closeNoteDialog(){" +
+        "var dlg=document.getElementById('ask-note-dialog');" +
+        "if(dlg){dlg.hidden=true;}" +
+        "}" +
+        "function openNoteDialog(slug){" +
+        "if(!slug){return;}" +
+        "var dlg=document.getElementById('ask-note-dialog');" +
+        "var title=document.getElementById('ask-note-title');" +
+        "var path=document.getElementById('ask-note-path');" +
+        "var body=document.getElementById('ask-note-body');" +
+        "if(!dlg||!title||!body){return;}" +
+        "title.textContent=slug;" +
+        "if(path){path.textContent='notes/'+slug+'.md';}" +
+        "body.textContent='…';" +
+        "dlg.hidden=false;" +
+        "var url='/note?c='+encodeURIComponent(askConvId)+'&slug='+encodeURIComponent(slug);" +
+        "fetch(url,{credentials:'same-origin'}).then(function(res){" +
+        "return res.json();" +
+        "}).then(function(data){" +
+        "if(!data||data.ok===false){" +
+        "body.textContent=(data&&data.error)?data.error:'Note not found.';" +
+        "return;" +
+        "}" +
+        "title.textContent=data.title||slug;" +
+        "if(path){path.textContent=data.path||('');}" +
+        "body.textContent=data.body||'';" +
+        "}).catch(function(){" +
+        "body.textContent='Note preview failed.';" +
+        "});" +
+        "}" +
         "if(!p){return '';}" +
         "if(p.phase==='tool_calls'&&p.tools&&p.tools.length){" +
         "try{return 'Tools: '+(Array.isArray(p.tools)?p.tools.join(', '):String(p.tools));}" +
@@ -3204,7 +3355,7 @@ function askPageClientScript() {
         "dock.hidden=true;" +
         "dock.setAttribute('role','status');" +
         "dock.setAttribute('aria-live','polite');" +
-        "dock.innerHTML='<span class=\"live-round\"></span><span class=\"live-timer\">0:00</span><span class=\"live-dock-body\"></span>';" +
+        "dock.innerHTML='<span class=\"live-round\"></span><span class=\"live-timer\">0:00</span><span class=\"live-dock-body\"></span><pre id=\"ask-live-draft\" class=\"live-dock-draft\" hidden></pre>';" +
         "var label=dock.querySelector('.live-round');" +
         "if(label){label.textContent=liveLabel;}" +
         "home.appendChild(dock);" +
@@ -3293,7 +3444,16 @@ function askPageClientScript() {
         "}" +
         "var msg=progressMessage(payload);" +
         // Still refresh the dock on round-only events (empty message).
-        "if(!msg&&!done&&!roundChanged){return;}" +
+        "if(payload.phase==='draft'&&payload.text!=null){" +
+        "var draft=document.getElementById('ask-live-draft');" +
+        "if(draft){draft.hidden=false;draft.textContent=String(payload.text);}" +
+        "showLive(lastMsg||roundLabel()||'…',true);" +
+        "return;" +
+        "}" +
+        "if(done){" +
+        "var draftDone=document.getElementById('ask-live-draft');" +
+        "if(draftDone){draftDone.hidden=true;draftDone.textContent='';}" +
+        "}" +
         "if(msg){lastMsg=msg;}" +
         "showLive(lastMsg||roundLabel()||'…',!done);" +
         "if(done){setTimeout(function(){showLive('',false);},1200);}" +
@@ -3380,7 +3540,17 @@ function askPageClientScript() {
         "document.addEventListener('click',function(e){" +
         "var t=e.target;" +
         "if(!t||!t.closest){return;}" +
-        "var lang=t.closest('a[data-ask-lang]');" +
+        "var noteLink=t.closest('[data-ask-note]');" +
+        "if(noteLink){" +
+        "e.preventDefault();" +
+        "openNoteDialog(noteLink.getAttribute('data-ask-note')||'');" +
+        "return;" +
+        "}" +
+        "if(t.closest('[data-ask-note-close]')){" +
+        "e.preventDefault();" +
+        "closeNoteDialog();" +
+        "return;" +
+        "}" +
         "if(lang){" +
         "e.preventDefault();" +
         "navigateLang(lang.getAttribute('href')||'');" +
@@ -3432,6 +3602,9 @@ function askPageClientScript() {
         "});" +
         "window.addEventListener('pagehide',disconnectLive);" +
         "window.addEventListener('beforeunload',disconnectLive);" +
+        "document.addEventListener('keydown',function(e){" +
+        "if(e.key==='Escape'){closeNoteDialog();}" +
+        "});" +
         "}" +
         "document.addEventListener('submit',function(e){" +
         "var form=e.target;" +
@@ -3577,7 +3750,16 @@ function askRenderPage() {
         "<div id='ask-live-dock' class='live-dock' hidden role='status' aria-live='polite'>" +
         "<span class='live-round'>" + askEscapeHtml(askT("Live", "Live")) +
         "</span><span class='live-timer'>0:00</span>" +
-        "<span class='live-dock-body'></span></div></div>";
+        "<span class='live-dock-body'></span>" +
+        "<pre id='ask-live-draft' class='live-dock-draft' hidden></pre></div></div>";
+    html = html + "<div id='ask-note-dialog' hidden>" +
+        "<div class='note-dialog-backdrop' data-ask-note-close='1'></div>" +
+        "<div class='note-dialog' role='dialog' aria-modal='true' aria-labelledby='ask-note-title'>" +
+        "<button type='button' class='ghost note-dialog-close' data-ask-note-close='1'>" +
+        askEscapeHtml(askT("Close", "Chiudi")) + "</button>" +
+        "<h2 id='ask-note-title'></h2>" +
+        "<p class='path' id='ask-note-path'></p>" +
+        "<pre class='note-dialog-body' id='ask-note-body'></pre></div></div>";
 
     html = html + "<div id='ask-panel'>" + askRenderPanelHtml() + "</div>";
     html = html + askPageClientScript();
@@ -3830,6 +4012,64 @@ function askUiHealth(req, res, queryParams) {
         "product": askProductName(),
         "version": ASK_SERVICE_VERSION
     });
+}
+
+function askReadNotePreview(slug) {
+    var s = askNormalizeCiteSlug(slug);
+    if (s == "") {
+        return { "ok": false, "error": "Invalid slug." };
+    }
+    var catalog = askGetCatalog();
+    var note = null;
+    if (catalog != null and catalog.notes != null) {
+        foreach (var n in catalog.notes) {
+            if (askNormalizeCiteSlug(n.slug) == s) {
+                note = n;
+            }
+        }
+    }
+    if (note == null) {
+        return { "ok": false, "error": "Note not in catalog." };
+    }
+    var session = askGetSession();
+    var brainDir = "";
+    if (session != null) {
+        brainDir = askAsText(session.brainDir);
+    }
+    var path = askAsText(note.path);
+    if (path == "") {
+        path = "notes/" + s + ".md";
+    }
+    var body = askAsText(note.summary);
+    if (brainDir != "") {
+        var abs = io.pathJoin(brainDir, path);
+        if (io.isPathUnder(brainDir, abs) == true and io.hasFile(abs)) {
+            try {
+                body = io.readFile(abs);
+            } catch (e) {
+                body = askAsText(note.summary);
+            }
+        }
+    }
+    return {
+        "ok": true,
+        "slug": s,
+        "title": askAsText(note.title),
+        "path": path,
+        "source": askAsText(note.source),
+        "body": body
+    };
+}
+
+@GET("/note")
+function askUiNotePreview(req, res, queryParams, cookies) {
+    askBeginRequest(queryParams, null, cookies, res, req);
+    var slug = "";
+    if (queryParams != null) {
+        slug = askAsText(queryParams["slug"]);
+    }
+    var preview = askReadNotePreview(slug);
+    return res.json(preview);
 }
 
 function askRenderAdminUsersPage(flash) {
