@@ -72,9 +72,18 @@ require(runtimePath);
         if (parser.Errors.Count > 0)
             throw new InvalidOperationException(string.Join(Environment.NewLine, parser.Errors));
 
+        if (!string.IsNullOrWhiteSpace(sourceFilePath))
+        {
+            statements = MaldaLang.IDE.ModuleSymbolResolver.ExpandFileImportsForTranspile(statements, sourceFilePath);
+        }
+
         var transpiler = new JsTranspiler();
         var js = transpiler.Transpile(statements, isLibrary: false, sourceFilePath: sourceFilePath);
+        return await RunCompiledJavaScriptAsync(js);
+    }
 
+    public static async Task<string> RunCompiledJavaScriptAsync(string javaScript)
+    {
         var tempDir = Path.Combine(Path.GetTempPath(), "malda_tier0_js", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(tempDir);
 
@@ -82,7 +91,7 @@ require(runtimePath);
         {
             var programPath = Path.Combine(tempDir, "program.js");
             var wrapperPath = Path.Combine(tempDir, "tier0-run.js");
-            await File.WriteAllTextAsync(programPath, js);
+            await File.WriteAllTextAsync(programPath, javaScript);
             await File.WriteAllTextAsync(wrapperPath, WrapperScript);
 
             var runtimePath = ResolveJsRuntimePath();

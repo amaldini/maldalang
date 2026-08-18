@@ -34,6 +34,23 @@ This document captures the current JavaScript backend design in code and the nea
   - `print(...)` -> `mlRuntime.builtins.print(...)`
   - `println(...)` -> `mlRuntime.builtins.println(...)`
   - `sleep(...)` -> `mlRuntime.builtins.sleep(...)`
+  - `string(...)` / `int(...)` / `float(...)` -> `mlRuntime.coerceToString` / `coerceToInt` / `coerceToFloat`
+  - `parseJSON(...)` / `parseJson(...)` / `toJSON(...)` -> `mlRuntime.parseJSON` / `parseJson` / `toJSON`
+  - `validate(...)` -> `mlRuntime.schema.validate(...)`
+  - `now` / `formatDate` / `parseDate` / `addDays` / `addHours` -> `mlRuntime.*`
+  - `getEnv` / `getEnvOr` / `hasEnv` -> `mlRuntime.getEnv*`
+  - `httpGet` / `httpPost` / `httpPut` / `httpDelete` / `httpPatch` -> `mlRuntime.http.get|post|put|delete|patch` (`fetch`)
+- Stdlib namespaces:
+  - `math.*` -> `mlRuntime.math.*`
+  - `str.*` -> `mlRuntime.str.*`
+  - `io.print` / `io.input` -> `mlRuntime.io.*` (file I/O is not available)
+- Language mapping:
+  - `$"..."` interpolated strings -> concatenation with `mlRuntime.coerceToString(...)`
+  - array/object destructuring -> `mlRuntime.getArray` / `isObject` / `objectHasKey` (mismatch throws)
+  - `class Dog extends Animal` / `super(...)` -> JS `class … extends` / `super`
+  - `schema Name { … }` -> `mlRuntime.schema.register(...)`
+  - `@within(ms)` on functions -> `mlRuntime.within.run(ms, name, …)`
+  - file `import` / selective import are inlined before JS emit (`ModuleSymbolResolver.ExpandFileImportsForTranspile`)
 - Actor mapping (local JS runtime):
   - `spawn ActorName(...)` -> `mlRuntime.actors.spawn(new ActorName(...))`
   - `send target.handler(args...)` -> `mlRuntime.actors.send(...)`
@@ -73,8 +90,14 @@ Validation rules currently enforced:
 - Runtime file: `Examples/Web/wwwroot/malda-js-runtime.js`
 - Required global symbol: `globalThis.mlRuntime`
 - Current helper surface:
-  - Type helpers: `coerceToInt`, `coerceToString`, `isTruthy`, `equals`
+  - Type helpers: `coerceToInt`, `coerceToFloat`, `coerceToString`, `isTruthy`, `equals`, `isObject`, `objectHasKey`
   - Built-ins: `builtins.print`, `builtins.println`, `builtins.sleep`
+  - Stdlib: `math.*`, `str.*`, `io.print`, `io.input`
+  - JSON: `parseJSON`, `parseJson`, `toJSON`
+  - Schema: `schema.register`, `schema.registerSumType`, `schema.validate`
+  - Date/env: `now`, `formatDate`, `parseDate`, `addDays`, `addHours`, `getEnv`, `getEnvOr`, `hasEnv`
+  - HTTP client: `http.get|post|put|delete|patch` (`fetch`; not `HttpServer`)
+  - Bounds: `within.run` / `within.check`
   - Actor runtime:
     - `actors.spawn(actorInstanceOrFactory, ...args)`
     - `actors.send(targetRef, handlerNameOrNull, ...args)`
@@ -401,9 +424,11 @@ Audio Spec v1 adds a browser-hosted game audio API in JavaScript mode. The goal 
 ### Current automated coverage
 
 - Test file: `MaldaLang.Tests/JavaScriptBackendTests.cs`
+- Interpret/JS stdout pairs: `MaldaLang.Tests/InterpretJsPairTests.cs` (skip if Node or the runtime is missing)
 - Covered today:
   - Module shape and runtime dependency assumptions.
-  - Built-in function mappings (`print`, `println`, `sleep`).
+  - Built-in function mappings (`print`, `println`, `sleep`, `math.*`, `str.*`, JSON, dates, env, HTTP client).
+  - Interpolated strings, destructuring, `class extends` / `super`, `schema` / `validate()`, file `import`.
   - DOM and truthiness/equality helper mappings.
   - `game.*` namespace mapping to `mlRuntime.game.*` (member access + calls).
   - `three.*` namespace mapping to `mlRuntime.three.*` (member access + calls).
@@ -412,12 +437,10 @@ Audio Spec v1 adds a browser-hosted game audio API in JavaScript mode. The goal 
 
 ### Near-term expansion (planned)
 
-- Add Node.js behavioral tests that execute generated JavaScript.
 - Run DOM-centric cases under `jsdom` to validate runtime behavior (`dom.query`, event wiring, HTML/text updates).
 - Keep C# tests as codegen/contract checks, and add Node/jsdom tests for runtime semantics.
 
 ### Current limitations
 
-- No Node/jsdom behavioral execution harness yet in repository tests.
-- JS backend currently targets browser-oriented runtime semantics first; parity with all interpreter/C# runtime features is intentionally incremental.
-- Actor support in JS backend is **local runtime only** (browser or Node process-local actor refs). Seamless communication with server-side actors is not part of this phase.
+- Actor support in JS backend is **process-local only** (browser or Node actor refs). Seamless communication with server-side actors is not part of this phase.
+- File I/O, agents/prompts, durable workflows, `HttpServer` / UIHost, and .NET interop stay host-only.

@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Text.Json;
 using MaldaLang.Compiler;
+using MaldaLang.Tests.Planning;
 
 namespace MaldaLang.Tests;
 
@@ -912,5 +913,129 @@ public class JavaScriptBackendTests : TestBase
         {
             SafeDeleteDirectory(root);
         }
+    }
+
+    [Fact]
+    public void JsTranspiler_MapsInterpolatedStrings_ToCoercedConcatenation()
+    {
+        var source = """
+            var n = 3;
+            println($"n is {n}");
+            """;
+        var compiler = new Compiler.Compiler();
+        var js = compiler.TranspileToJavaScriptFromSource(source);
+
+        Assert.Contains("mlRuntime.coerceToString(n)", js, StringComparison.Ordinal);
+        Assert.Contains("\"n is \"", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("${n}", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void JsTranspiler_MapsDestructuring_ToRuntimeHelpers()
+    {
+        var source = """
+            var [a, b, ...rest] = [1, 2, 3, 4];
+            var { name: n } = dict { "name": "Ada" };
+            println(a);
+            println(n);
+            """;
+        var compiler = new Compiler.Compiler();
+        var js = compiler.TranspileToJavaScriptFromSource(source);
+
+        Assert.Contains("mlRuntime.getArray(", js, StringComparison.Ordinal);
+        Assert.Contains("Destructuring pattern did not match value.", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.objectHasKey(", js, StringComparison.Ordinal);
+        Assert.Contains("let a =", js, StringComparison.Ordinal);
+        Assert.Contains("let rest =", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void JsTranspiler_MapsClassExtendsAndSuper()
+    {
+        var source = """
+            class Animal {
+                function Animal(name) {
+                    this.name = name;
+                }
+            }
+            class Dog extends Animal {
+                function Dog(name) {
+                    super(name);
+                }
+                function speak() {
+                    return super.speak;
+                }
+            }
+            """;
+        var compiler = new Compiler.Compiler();
+        var js = compiler.TranspileToJavaScriptFromSource(source);
+
+        Assert.Contains("class Dog extends Animal {", js, StringComparison.Ordinal);
+        Assert.Contains("super(name)", js, StringComparison.Ordinal);
+        Assert.Contains("super.speak", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void JsTranspiler_MapsMathStrIoAndJsonBuiltins()
+    {
+        var source = """
+            println(math.abs(-4));
+            println(str.upper("ada"));
+            io.print(math.sqrt(9));
+            var parsed = parseJSON("{\"k\":1}");
+            println(toJSON(parsed));
+            """;
+        var compiler = new Compiler.Compiler();
+        var js = compiler.TranspileToJavaScriptFromSource(source);
+
+        Assert.Contains("mlRuntime.math.abs(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.str.upper(\"ada\")", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.io.print(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.parseJSON(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.toJSON(", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void JsTranspiler_MapsSchemaValidateAndDatesHttpEnvWithin()
+    {
+        var source = """
+            schema Person {
+                name: string;
+                age: int;
+            }
+            var check = validate("Person", dict { "name": "Ada", "age": 36 });
+            println(check.ok);
+            println(now());
+            println(hasEnv("PATH"));
+            var response = httpGet("https://example.invalid/");
+            @within(50)
+            function bounded() {
+                return 1;
+            }
+            bounded();
+            """;
+        var compiler = new Compiler.Compiler();
+        var js = compiler.TranspileToJavaScriptFromSource(source);
+
+        Assert.Contains("mlRuntime.schema.register(\"Person\"", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.schema.validate(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.now()", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.hasEnv(\"PATH\")", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.http.get(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.within.run(50, \"bounded\"", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TranspileToJavaScript_FromFile_InlinesSelectiveImport()
+    {
+        var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Modules", "selective_import.malda");
+        var compiler = new Compiler.Compiler();
+        var js = compiler.TranspileToJavaScript(sourcePath);
+
+        Assert.Contains("function add(", js, StringComparison.Ordinal);
+        Assert.Contains("let VERSION =", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("function unused(", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("function internalHelper(", js, StringComparison.Ordinal);
+        Assert.Contains("add(2, 3)", js, StringComparison.Ordinal);
     }
 }

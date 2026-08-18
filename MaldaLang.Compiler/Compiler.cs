@@ -10,6 +10,7 @@ using System.Text.RegularExpressions;
 using System.IO;
 using System.Linq;
 using MaldaLang;
+using MaldaLang.IDE;
 using MaldaLang.Parser;
 using MaldaLang.Parser.AST.Statements;
 using MaldaLang.Runtime.Profiling;
@@ -1816,6 +1817,8 @@ class Program
         {
             throw new Exception($"Parse errors: {string.Join(", ", parser.Errors.Select(e => e.Message))}");
         }
+
+        statements = ModuleSymbolResolver.ExpandFileImportsForTranspile(statements, sourceFilePath);
 
         var partitionResult = TargetPartitioner.Partition(statements);
         ThrowIfTargetPartitionDiagnostics(partitionResult.Diagnostics);

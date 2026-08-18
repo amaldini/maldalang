@@ -5,6 +5,8 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using MaldaLang;
+using MaldaLang.BuiltIns;
+using MaldaLang.Interpreter;
 using MaldaLang.Parser.AST;
 using MaldaLang.Parser.AST.Declarations;
 using MaldaLang.Parser.AST.Expressions;
@@ -34,6 +36,18 @@ public class JsTranspiler
     private readonly Stack<Statement?> _desugaredForLoopIncrements = new();
     private readonly HashSet<string> _asyncFunctions = new(StringComparer.Ordinal);
     private readonly Dictionary<string, int> _variantConstructorArities = new(StringComparer.Ordinal);
+
+    private static readonly HashSet<string> JsRuntimeModules = new(StringComparer.Ordinal)
+    {
+        "dom", "game", "three", "math", "Math", "str", "io",
+        "result", "option", "grounded", "cap", "schema"
+    };
+
+    private static readonly HashSet<string> AsyncBuiltInNames = new(StringComparer.Ordinal)
+    {
+        "sleep", "runProperty", "receive",
+        "httpGet", "httpPost", "httpPut", "httpDelete", "httpPatch"
+    };
     private int _generatedLine;
     private int? _currentSourceLine;
     private int? _currentSourceColumn;
@@ -86,6 +100,7 @@ public class JsTranspiler
 
         var functions = new List<FunctionDeclaration>();
         var typeDeclarations = new List<TypeDeclaration>();
+        var schemaDeclarations = new List<SchemaDeclaration>();
         var actorDeclarations = new List<ActorDeclaration>();
         var classDeclarations = new List<ClassDeclaration>();
         var propertyDeclarations = new List<PropertyDeclaration>();
@@ -103,6 +118,10 @@ public class JsTranspiler
                 foreach (var ctor in typeDeclaration.Constructors)
                     _variantConstructorArities[ctor.Name] = ctor.ParameterNames.Count;
             }
+            else if (statement is SchemaDeclaration schemaDeclaration)
+            {
+                schemaDeclarations.Add(schemaDeclaration);
+            }
             else if (statement is ActorDeclaration actorDeclaration)
             {
                 actorDeclarations.Add(actorDeclaration);
@@ -114,6 +133,10 @@ public class JsTranspiler
             else if (statement is PropertyDeclaration propertyDeclaration)
             {
                 propertyDeclarations.Add(propertyDeclaration);
+            }
+            else if (statement is ImportStatement or UsingStatement)
+            {
+                // File imports are inlined before transpile; leftover import/using are no-ops.
             }
             else
             {
@@ -138,6 +161,16 @@ public class JsTranspiler
         }
 
         if (typeDeclarations.Count > 0)
+        {
+            EmitLine(string.Empty);
+        }
+
+        foreach (var schemaDeclaration in schemaDeclarations)
+        {
+            EmitSchemaRegistration(schemaDeclaration);
+        }
+
+        if (schemaDeclarations.Count > 0)
         {
             EmitLine(string.Empty);
         }
@@ -267,7 +300,8 @@ public class JsTranspiler
     private void TranspileFunctionDeclaration(FunctionDeclaration declaration)
     {
         var parameters = string.Join(", ", declaration.Parameters.Select(EscapeIdentifier));
-        var needsAsync = StatementRequiresAsync(declaration.Body);
+        var withinMs = DeclarationBounds.TryGetWithinTimeoutMs(declaration);
+        var needsAsync = StatementRequiresAsync(declaration.Body) || withinMs is > 0;
         if (needsAsync)
         {
             _asyncFunctions.Add(declaration.Name);
@@ -276,7 +310,19 @@ public class JsTranspiler
         var asyncPrefix = needsAsync ? "async " : string.Empty;
         EmitLine($"{asyncPrefix}function {EscapeIdentifier(declaration.Name)}({parameters}) {{");
         _indentLevel++;
-        TranspileStatementsWithOptionalDeferFrame(declaration.Body.Statements);
+        if (withinMs is > 0)
+        {
+            var runner = needsAsync ? "async () =>" : "() =>";
+            EmitLine($"return mlRuntime.within.run({withinMs.Value}, {TranspileLiteral(declaration.Name)}, {runner} {{");
+            _indentLevel++;
+            TranspileStatementsWithOptionalDeferFrame(declaration.Body.Statements);
+            _indentLevel--;
+            EmitLine("});");
+        }
+        else
+        {
+            TranspileStatementsWithOptionalDeferFrame(declaration.Body.Statements);
+        }
         _indentLevel--;
         EmitLine("}");
     }
@@ -299,8 +345,14 @@ public class JsTranspiler
                 case VarDeclStatement varDecl:
                     EmitLineWithSource(varDecl.Initializer, $"let {EscapeIdentifier(varDecl.Name)} = {TranspileExpressionAwaited(varDecl.Initializer)};");
                     break;
+                case DestructuringVarDecl destVarDecl:
+                    TranspileDestructuringVarDecl(destVarDecl);
+                    break;
                 case AssignmentStatement assignment:
                     EmitLineWithSource(assignment.Value, $"{TranspileAssignmentTarget(assignment.Target)} {MapAssignmentOperator(assignment.Operator)} {TranspileExpression(assignment.Value)};");
+                    break;
+                case DestructuringAssignment destAssign:
+                    TranspileDestructuringAssignment(destAssign);
                     break;
                 case IfStatement ifStatement:
                     EmitLineWithSource(ifStatement.Condition, $"if ({TranspileCondition(ifStatement.Condition)})");
@@ -366,6 +418,18 @@ public class JsTranspiler
                 case TypeDeclaration:
                     // Type declarations are emitted as constructor helpers at module scope.
                     break;
+                case SchemaDeclaration:
+                    // Schema declarations are registered at module scope.
+                    break;
+                case ImportStatement:
+                case UsingStatement:
+                    break;
+                case PromptDeclaration:
+                    throw new NotSupportedException(
+                        "prompt declarations are host-only (interpreter and C# transpile). JavaScript does not support prompts.");
+                case WorkflowDeclaration:
+                    throw new NotSupportedException(
+                        "workflow declarations are host-only (interpreter and C# transpile). JavaScript does not support workflows.");
                 case ApiDeclaration:
                     throw new NotSupportedException(
                         "Closed api / program(Api) / runProgram is host-only (interpreter and C# transpile). JavaScript does not support api declarations.");
@@ -451,9 +515,9 @@ public class JsTranspiler
                 return TranspileFunctionCall(functionCall);
             case MemberAccessExpression memberAccess:
                 if (memberAccess.Object is IdentifierExpression objectIdentifier &&
-                    (objectIdentifier.Name == "dom" || objectIdentifier.Name == "game" || objectIdentifier.Name == "three"))
+                    JsRuntimeModules.Contains(objectIdentifier.Name))
                 {
-                    return $"mlRuntime.{objectIdentifier.Name}.{EscapeIdentifier(memberAccess.Member)}";
+                    return $"mlRuntime.{MapRuntimeModuleName(objectIdentifier.Name)}.{EscapeIdentifier(memberAccess.Member)}";
                 }
                 if (memberAccess.IsNullConditional)
                 {
@@ -477,13 +541,17 @@ public class JsTranspiler
             case SelfExpression:
                 return "mlRuntime.actors.getSelf()";
             case ReceiveExpression:
-                return "await mlRuntime.actors.receiveAsync()";
+                return "mlRuntime.actors.receiveAsync()";
             case AwaitExpression awaitExpression:
                 return $"(await {TranspileExpression(awaitExpression.Expression)})";
             case AsyncExpression asyncExpression:
                 return $"(async () => ({TranspileExpression(asyncExpression.Expression)}))()";
             case ThisExpression:
                 return "this";
+            case SuperExpression:
+                return "super";
+            case InterpolatedStringExpression interpolated:
+                return TranspileInterpolatedString(interpolated);
             case NewExpression newExpression:
                 return $"new {EscapeIdentifier(newExpression.ClassName)}({JoinArguments(newExpression.Arguments)})";
             case LambdaExpression lambda:
@@ -586,7 +654,10 @@ public class JsTranspiler
 
     private void TranspileClassDeclaration(ClassDeclaration classDeclaration)
     {
-        EmitLine($"class {EscapeIdentifier(classDeclaration.Name)} {{");
+        var extendsClause = string.IsNullOrEmpty(classDeclaration.Superclass)
+            ? string.Empty
+            : $" extends {EscapeIdentifier(classDeclaration.Superclass)}";
+        EmitLine($"class {EscapeIdentifier(classDeclaration.Name)}{extendsClause} {{");
         _indentLevel++;
         foreach (var member in classDeclaration.Members)
         {
@@ -805,6 +876,8 @@ public class JsTranspiler
             SpawnExpression spawn => spawn.Arguments.Any(ExpressionProducesPromise),
             NewExpression newExpression => newExpression.Arguments.Any(ExpressionProducesPromise),
             PipeExpression pipe => ExpressionProducesPromise(pipe.Left) || ExpressionProducesPromise(pipe.Right),
+            InterpolatedStringExpression interpolated => interpolated.Segments.Any(
+                segment => segment.IsExpression && segment.Expression != null && ExpressionProducesPromise(segment.Expression)),
             ListComprehensionExpression list =>
                 ExpressionProducesPromise(list.Element) ||
                 ExpressionProducesPromise(list.Iterable) ||
@@ -826,7 +899,7 @@ public class JsTranspiler
     {
         if (functionCall.Callee is IdentifierExpression identifier)
         {
-            if (identifier.Name is "sleep" or "runProperty")
+            if (AsyncBuiltInNames.Contains(identifier.Name))
             {
                 return true;
             }
@@ -860,6 +933,10 @@ public class JsTranspiler
             _indentLevel--;
             EmitLine("};");
         }
+
+        var constructorNames = declaration.Constructors.Select(c => c.Name).ToList();
+        var ctorJson = JsonSerializer.Serialize(constructorNames);
+        EmitLine($"mlRuntime.schema.registerSumType({TranspileLiteral(declaration.TypeName)}, {ctorJson});");
     }
 
     private string TranspileObjectLikeLiteral(List<(Expression Key, Expression Value)> entries)
@@ -1115,9 +1192,14 @@ public class JsTranspiler
 
             if (memberCall.Object is IdentifierExpression memberObjectIdentifier)
             {
-                if (memberObjectIdentifier.Name == "dom" || memberObjectIdentifier.Name == "game" || memberObjectIdentifier.Name == "three")
+                if (memberObjectIdentifier.Name == "dom" || memberObjectIdentifier.Name == "game" || memberObjectIdentifier.Name == "three" ||
+                    memberObjectIdentifier.Name == StdLibNamespaces.MathModule ||
+                    memberObjectIdentifier.Name == StdLibNamespaces.DeprecatedMathModuleAlias ||
+                    memberObjectIdentifier.Name == StdLibNamespaces.StrModule ||
+                    memberObjectIdentifier.Name == StdLibNamespaces.IoModule ||
+                    memberObjectIdentifier.Name == "schema")
                 {
-                    return $"mlRuntime.{memberObjectIdentifier.Name}.{EscapeIdentifier(memberCall.Member)}({JoinArguments(functionCall.Arguments)})";
+                    return $"mlRuntime.{MapRuntimeModuleName(memberObjectIdentifier.Name)}.{EscapeIdentifier(memberCall.Member)}({JoinArguments(functionCall.Arguments)})";
                 }
 
                 if (TryTranspileVariantStdLibCall(memberObjectIdentifier.Name, memberCall.Member, functionCall.Arguments, out var variantCall))
@@ -1200,7 +1282,75 @@ public class JsTranspiler
             case "runProperty":
                 transpiled = $"mlRuntime.runProperty(__propertyRegistry, {JoinArguments(arguments)})";
                 return true;
+            case "receive":
+                transpiled = "mlRuntime.actors.receiveAsync()";
+                return true;
+            case "int":
+                transpiled = arguments.Count == 0
+                    ? "mlRuntime.coerceToInt(0)"
+                    : $"mlRuntime.coerceToInt({TranspileExpression(arguments[0])})";
+                return true;
+            case "float":
+                transpiled = arguments.Count == 0
+                    ? "mlRuntime.coerceToFloat(0)"
+                    : $"mlRuntime.coerceToFloat({TranspileExpression(arguments[0])})";
+                return true;
+            case "parseJSON":
+                transpiled = $"mlRuntime.parseJSON({JoinArguments(arguments)})";
+                return true;
+            case "parseJson":
+                transpiled = $"mlRuntime.parseJson({JoinArguments(arguments)})";
+                return true;
+            case "toJSON":
+                transpiled = $"mlRuntime.toJSON({JoinArguments(arguments)})";
+                return true;
+            case "validate":
+                transpiled = $"mlRuntime.schema.validate({JoinArguments(arguments)})";
+                return true;
+            case "now":
+                transpiled = "mlRuntime.now()";
+                return true;
+            case "formatDate":
+                transpiled = $"mlRuntime.formatDate({JoinArguments(arguments)})";
+                return true;
+            case "parseDate":
+                transpiled = $"mlRuntime.parseDate({JoinArguments(arguments)})";
+                return true;
+            case "addDays":
+                transpiled = $"mlRuntime.addDays({JoinArguments(arguments)})";
+                return true;
+            case "addHours":
+                transpiled = $"mlRuntime.addHours({JoinArguments(arguments)})";
+                return true;
+            case "getEnv":
+                transpiled = $"mlRuntime.getEnv({JoinArguments(arguments)})";
+                return true;
+            case "getEnvOr":
+                transpiled = $"mlRuntime.getEnvOr({JoinArguments(arguments)})";
+                return true;
+            case "hasEnv":
+                transpiled = $"mlRuntime.hasEnv({JoinArguments(arguments)})";
+                return true;
+            case "httpGet":
+            case "httpPost":
+            case "httpPut":
+            case "httpDelete":
+            case "httpPatch":
+                transpiled = $"mlRuntime.http.{EscapeIdentifier(name[4..].ToLowerInvariant())}({JoinArguments(arguments)})";
+                return true;
             default:
+                if (StdLibNamespaces.MathMethodNames.Contains(name))
+                {
+                    transpiled = $"mlRuntime.math.{EscapeIdentifier(name)}({JoinArguments(arguments)})";
+                    return true;
+                }
+
+                if (StdLibNamespaces.StrMethodNames.Contains(name))
+                {
+                    transpiled = $"mlRuntime.str.{EscapeIdentifier(name)}({JoinArguments(arguments)})";
+                    return true;
+                }
+
                 return false;
         }
     }
@@ -1215,6 +1365,114 @@ public class JsTranspiler
 
         transpiled = $"mlRuntime.{moduleName}.{EscapeIdentifier(memberName)}({JoinArguments(arguments)})";
         return true;
+    }
+
+    private static string MapRuntimeModuleName(string name) =>
+        name == StdLibNamespaces.DeprecatedMathModuleAlias ? StdLibNamespaces.MathModule : name;
+
+    private void EmitSchemaRegistration(SchemaDeclaration schema)
+    {
+        var fields = schema.Fields.Select(field => new
+        {
+            name = field.Name,
+            type = field.TypeName,
+            required = field.Required
+        });
+        var json = JsonSerializer.Serialize(fields);
+        EmitLine($"mlRuntime.schema.register({TranspileLiteral(schema.Name)}, {json});");
+    }
+
+    private string TranspileInterpolatedString(InterpolatedStringExpression interpolated)
+    {
+        if (interpolated.Segments.Count == 0)
+        {
+            return "\"\"";
+        }
+
+        var parts = new List<string>(interpolated.Segments.Count);
+        foreach (var segment in interpolated.Segments)
+        {
+            if (segment.IsExpression && segment.Expression != null)
+            {
+                parts.Add($"mlRuntime.coerceToString({TranspileExpression(segment.Expression)})");
+            }
+            else
+            {
+                parts.Add(TranspileLiteral(segment.Text ?? string.Empty));
+            }
+        }
+
+        return parts.Count == 1 ? parts[0] : $"({string.Join(" + ", parts)})";
+    }
+
+    private void TranspileDestructuringVarDecl(DestructuringVarDecl stmt)
+    {
+        var temp = $"__destructureValue_{++_matchTempCounter}";
+        EmitLineWithSource(stmt.Initializer, $"const {temp} = {TranspileExpressionAwaited(stmt.Initializer)};");
+        TranspileDestructuringPattern(stmt.Pattern, temp, declare: true);
+    }
+
+    private void TranspileDestructuringAssignment(DestructuringAssignment stmt)
+    {
+        var temp = $"__destructureValue_{++_matchTempCounter}";
+        EmitLineWithSource(stmt.Value, $"const {temp} = {TranspileExpressionAwaited(stmt.Value)};");
+        TranspileDestructuringPattern(stmt.Pattern, temp, declare: false);
+    }
+
+    private void TranspileDestructuringPattern(DestructuringPattern pattern, string valueExpr, bool declare)
+    {
+        var prefix = declare ? "let " : string.Empty;
+        if (pattern is ArrayDestructuringPattern arrayPattern)
+        {
+            var arrTemp = $"__destructureArr_{_matchTempCounter}";
+            var required = arrayPattern.Elements.Count;
+            var comparison = arrayPattern.Rest != null ? "<" : "!==";
+            EmitLine($"const {arrTemp} = mlRuntime.getArray({valueExpr});");
+            EmitLine($"if ({arrTemp}.length {comparison} {required}) {{ mlRuntime.throwMalda(\"Destructuring pattern did not match value.\"); }}");
+            for (var i = 0; i < arrayPattern.Elements.Count; i++)
+            {
+                var element = arrayPattern.Elements[i];
+                if (element is IdentifierPattern idPattern)
+                {
+                    EmitLine($"{prefix}{EscapeIdentifier(idPattern.Name)} = {arrTemp}[{i}];");
+                }
+                else if (element is DestructuringPattern nestedPattern)
+                {
+                    var nestedTemp = $"__destructureNested_{++_matchTempCounter}";
+                    EmitLine($"const {nestedTemp} = {arrTemp}[{i}];");
+                    TranspileDestructuringPattern(nestedPattern, nestedTemp, declare);
+                }
+            }
+
+            if (arrayPattern.Rest?.Name != null)
+            {
+                EmitLine($"{prefix}{EscapeIdentifier(arrayPattern.Rest.Name)} = {arrTemp}.slice({required});");
+            }
+
+            return;
+        }
+
+        if (pattern is ObjectDestructuringPattern objectPattern)
+        {
+            EmitLine($"if (!mlRuntime.isObject({valueExpr})) {{ mlRuntime.throwMalda(\"Destructuring pattern did not match value.\"); }}");
+            foreach (var prop in objectPattern.Properties)
+            {
+                var keyLiteral = TranspileLiteral(prop.Key);
+                EmitLine($"if (!mlRuntime.objectHasKey({valueExpr}, {keyLiteral})) {{ mlRuntime.throwMalda(\"Destructuring pattern did not match value.\"); }}");
+                if (prop.Pattern is DestructuringPattern nestedPattern)
+                {
+                    var nestedTemp = $"__destructureNested_{++_matchTempCounter}";
+                    EmitLine($"const {nestedTemp} = {valueExpr}[{keyLiteral}];");
+                    TranspileDestructuringPattern(nestedPattern, nestedTemp, declare);
+                }
+                else
+                {
+                    var varName = prop.BindingName
+                        ?? (prop.Pattern is IdentifierPattern identifier ? identifier.Name : prop.Key);
+                    EmitLine($"{prefix}{EscapeIdentifier(varName)} = {valueExpr}[{keyLiteral}];");
+                }
+            }
+        }
     }
 
     private void TranspileTry(TryStatement tryStatement)
@@ -1680,6 +1938,8 @@ public class JsTranspiler
             ActorDeclaration actor => actor.Members.Any(ActorMemberRequiresAsync),
             DeferStatement => true,
             UsingResourceStatement => true,
+            DestructuringVarDecl destVar => ExpressionProducesPromise(destVar.Initializer),
+            DestructuringAssignment destAssign => ExpressionProducesPromise(destAssign.Value),
             ClassDeclaration classDecl => classDecl.Members.Any(ClassMemberRequiresAsync),
             _ => false
         };
@@ -1740,6 +2000,8 @@ public class JsTranspiler
                     ? ExpressionRequiresAsync(lambda.ExpressionBody)
                     : lambda.BlockBody?.Statements.Any(StatementRequiresAsync) ?? false,
             PipeExpression pipe => ExpressionRequiresAsync(pipe.Left) || ExpressionRequiresAsync(pipe.Right),
+            InterpolatedStringExpression interpolated => interpolated.Segments.Any(
+                segment => segment.IsExpression && segment.Expression != null && ExpressionRequiresAsync(segment.Expression)),
             ListComprehensionExpression list =>
                 ExpressionRequiresAsync(list.Element) ||
                 ExpressionRequiresAsync(list.Iterable) ||
