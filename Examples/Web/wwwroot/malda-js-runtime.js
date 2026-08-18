@@ -1094,6 +1094,593 @@
     };
   })();
 
+  function isObject(value) {
+    return value !== null && typeof value === "object" && !Array.isArray(value) && !isVariant(value);
+  }
+
+  function objectHasKey(object, key) {
+    return isObject(object) && Object.prototype.hasOwnProperty.call(object, coerceToString(key));
+  }
+
+  function seedBuiltin(value) {
+    const seed = coerceToInt(value);
+    randomState = (seed >>> 0) || 1;
+    return null;
+  }
+
+  function numericArray(name, value) {
+    return getArray(value).map((item) => coerceToFloat(item));
+  }
+
+  function mathAbs(value) {
+    if (typeof value === "number" && Number.isInteger(value)) {
+      return Math.abs(value);
+    }
+    return Math.abs(coerceToFloat(value));
+  }
+
+  function mathSum(value) {
+    return numericArray("sum", value).reduce((acc, item) => acc + item, 0);
+  }
+
+  function mathAverage(value) {
+    const numbers = numericArray("average", value);
+    if (numbers.length === 0) return 0;
+    return mathSum(numbers) / numbers.length;
+  }
+
+  function mathMax(value) {
+    const numbers = numericArray("max", value);
+    if (numbers.length === 0) throw new Error("max() expects a non-empty array");
+    return Math.max.apply(null, numbers);
+  }
+
+  function mathMin(value) {
+    const numbers = numericArray("min", value);
+    if (numbers.length === 0) throw new Error("min() expects a non-empty array");
+    return Math.min.apply(null, numbers);
+  }
+
+  function mathClamp(value, minValue, maxValue) {
+    const n = coerceToFloat(value);
+    const lo = coerceToFloat(minValue);
+    const hi = coerceToFloat(maxValue);
+    return Math.min(hi, Math.max(lo, n));
+  }
+
+  const mathStdLib = {
+    abs: mathAbs,
+    sum: mathSum,
+    average: mathAverage,
+    max: mathMax,
+    min: mathMin,
+    pow: (a, b) => Math.pow(coerceToFloat(a), coerceToFloat(b)),
+    sqrt: (value) => Math.sqrt(coerceToFloat(value)),
+    floor: (value) => Math.floor(coerceToFloat(value)),
+    ceil: (value) => Math.ceil(coerceToFloat(value)),
+    round: roundBuiltin,
+    trunc: (value) => Math.trunc(coerceToFloat(value)),
+    sign: (value) => Math.sign(coerceToFloat(value)),
+    exp: (value) => Math.exp(coerceToFloat(value)),
+    log: (value) => Math.log(coerceToFloat(value)),
+    log10: (value) => Math.log10(coerceToFloat(value)),
+    log2: (value) => Math.log2(coerceToFloat(value)),
+    sin: (value) => Math.sin(coerceToFloat(value)),
+    cos: (value) => Math.cos(coerceToFloat(value)),
+    tan: (value) => Math.tan(coerceToFloat(value)),
+    asin: (value) => Math.asin(coerceToFloat(value)),
+    acos: (value) => Math.acos(coerceToFloat(value)),
+    atan: (value) => Math.atan(coerceToFloat(value)),
+    atan2: (y, x) => Math.atan2(coerceToFloat(y), coerceToFloat(x)),
+    hypot: (a, b) => Math.hypot(coerceToFloat(a), coerceToFloat(b)),
+    clamp: mathClamp,
+    degToRad: (value) => coerceToFloat(value) * Math.PI / 180,
+    radToDeg: (value) => coerceToFloat(value) * 180 / Math.PI,
+    random: randomBuiltin,
+    randomInt: randomIntBuiltin,
+    randomFloat: randomFloatBuiltin,
+    seed: seedBuiltin
+  };
+
+  function strUpper(value) { return coerceToString(value).toUpperCase(); }
+  function strTrim(value) { return coerceToString(value).trim(); }
+  function strSplit(value, separator) {
+    const sep = separator === null || separator === undefined ? "" : coerceToString(separator);
+    return coerceToString(value).split(sep);
+  }
+  function strStartsWith(value, prefix) {
+    return coerceToString(value).startsWith(coerceToString(prefix));
+  }
+  function strEndsWith(value, suffix) {
+    return coerceToString(value).endsWith(coerceToString(suffix));
+  }
+  function strPadStart(value, length, pad) {
+    return coerceToString(value).padStart(Math.max(0, coerceToInt(length)), coerceToString(pad === undefined ? " " : pad));
+  }
+  function strPadEnd(value, length, pad) {
+    return coerceToString(value).padEnd(Math.max(0, coerceToInt(length)), coerceToString(pad === undefined ? " " : pad));
+  }
+  function strIncludes(value, search) {
+    return coerceToString(value).includes(coerceToString(search));
+  }
+  function strRepeat(value, count) {
+    return coerceToString(value).repeat(Math.max(0, coerceToInt(count)));
+  }
+  function compileRegex(pattern) {
+    try {
+      return new RegExp(coerceToString(pattern));
+    } catch (error) {
+      throw new Error("Invalid regex pattern: " + (error && error.message ? error.message : String(error)));
+    }
+  }
+  function strRegexMatch(value, pattern) {
+    return compileRegex(pattern).test(coerceToString(value));
+  }
+  function strRegexReplace(value, pattern, replacement) {
+    return coerceToString(value).replace(compileRegex(pattern), coerceToString(replacement));
+  }
+  function strRegexFind(value, pattern) {
+    const match = coerceToString(value).match(compileRegex(pattern));
+    return match ? match[0] : null;
+  }
+
+  const strStdLib = {
+    length: lengthBuiltin,
+    upper: strUpper,
+    lower: lowerBuiltin,
+    trim: strTrim,
+    substring: substringBuiltin,
+    indexOf: indexOfBuiltin,
+    replace: replaceBuiltin,
+    split: strSplit,
+    join: joinBuiltin,
+    startsWith: strStartsWith,
+    endsWith: strEndsWith,
+    padStart: strPadStart,
+    padEnd: strPadEnd,
+    includes: strIncludes,
+    repeat: strRepeat,
+    regexMatch: strRegexMatch,
+    regexReplace: strRegexReplace,
+    regexFind: strRegexFind
+  };
+
+  function ioPrint(value) {
+    if (typeof console !== "undefined") {
+      console.log(coerceToString(value));
+    }
+    return null;
+  }
+
+  function ioInput(promptText) {
+    if (typeof process !== "undefined" && process.env && typeof process.env.MALDA_INPUT === "string") {
+      return process.env.MALDA_INPUT;
+    }
+    if (typeof window !== "undefined" && typeof window.prompt === "function") {
+      const result = window.prompt(promptText === undefined || promptText === null ? "" : coerceToString(promptText));
+      return result === null ? "" : result;
+    }
+    return "";
+  }
+
+  const ioStdLib = {
+    print: ioPrint,
+    input: ioInput
+  };
+
+  function reviveJson(value) {
+    if (value === null) return null;
+    if (Array.isArray(value)) return value.map(reviveJson);
+    if (typeof value === "object") return markDict(value);
+    return value;
+  }
+
+  function parseJSON(text) {
+    if (typeof text !== "string") {
+      throw new Error("parseJSON() expects a string argument");
+    }
+    try {
+      return reviveJson(JSON.parse(text));
+    } catch (error) {
+      throw new Error("Invalid JSON string");
+    }
+  }
+
+  function toJSON(value) {
+    return JSON.stringify(value, function (_key, item) {
+      if (isVariant(item)) {
+        return { tag: item.tag, payload: item.payload };
+      }
+      if (item && typeof item === "object" && item.__maldaDict) {
+        const copy = {};
+        Object.keys(item).forEach((key) => {
+          if (key !== "__maldaDict") copy[key] = item[key];
+        });
+        return copy;
+      }
+      return item;
+    });
+  }
+
+  const schemaRegistry = Object.create(null);
+  const sumTypeRegistry = Object.create(null);
+
+  function normalizePrimitive(typeName) {
+    const trimmed = coerceToString(typeName).trim().toLowerCase();
+    if (trimmed === "string") return "string";
+    if (trimmed === "int" || trimmed === "integer") return "integer";
+    if (trimmed === "float" || trimmed === "double" || trimmed === "number") return "number";
+    if (trimmed === "bool" || trimmed === "boolean") return "boolean";
+    if (trimmed === "array" || trimmed === "list") return "array";
+    if (trimmed === "object" || trimmed === "json") return "object";
+    if (trimmed === "null") return "null";
+    return "";
+  }
+
+  function jsonTypeOf(value) {
+    if (value === null || value === undefined) return "null";
+    if (typeof value === "boolean") return "boolean";
+    if (typeof value === "number") return Number.isInteger(value) ? "integer" : "number";
+    if (typeof value === "string") return "string";
+    if (Array.isArray(value)) return "array";
+    if (isVariant(value)) return "variant";
+    if (typeof value === "object") return "object";
+    return typeof value;
+  }
+
+  function describeValue(value) {
+    const type = jsonTypeOf(value);
+    if (type === "variant") return "variant " + value.tag;
+    return type;
+  }
+
+  function validateAgainstType(typeName, value) {
+    const trimmed = coerceToString(typeName).trim();
+    if (trimmed.endsWith("[]")) {
+      if (!Array.isArray(value)) {
+        return "expected array, got " + describeValue(value);
+      }
+      const elementType = trimmed.slice(0, -2).trim();
+      for (let i = 0; i < value.length; i++) {
+        const inner = validateAgainstType(elementType, value[i]);
+        if (inner) return "items[" + i + "]: " + inner;
+      }
+      return "";
+    }
+
+    const primitive = normalizePrimitive(trimmed);
+    if (primitive) {
+      const actual = jsonTypeOf(value);
+      if (primitive === "number") {
+        return actual === "number" || actual === "integer" ? "" : "expected number, got " + describeValue(value);
+      }
+      if (primitive === "integer") {
+        return actual === "integer" ? "" : "expected integer, got " + describeValue(value);
+      }
+      if (primitive === actual) return "";
+      return "expected " + primitive + ", got " + describeValue(value);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(schemaRegistry, trimmed)) {
+      return validateObjectSchema(schemaRegistry[trimmed], value);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(sumTypeRegistry, trimmed)) {
+      if (!isVariant(value)) {
+        return "expected variant of " + trimmed + ", got " + describeValue(value);
+      }
+      const tags = sumTypeRegistry[trimmed];
+      if (tags.indexOf(value.tag) < 0) {
+        return "unknown variant tag '" + value.tag + "' for " + trimmed;
+      }
+      return "";
+    }
+
+    return "unknown schema field type '" + trimmed + "'";
+  }
+
+  function validateObjectSchema(fields, value) {
+    if (!isObject(value)) {
+      return "expected object, got " + describeValue(value);
+    }
+    for (let i = 0; i < fields.length; i++) {
+      const field = fields[i];
+      const hasKey = objectHasKey(value, field.name);
+      if (!hasKey) {
+        if (field.required) return "missing required field '" + field.name + "'";
+        continue;
+      }
+      const inner = validateAgainstType(field.type, value[field.name]);
+      if (inner) return field.name + ": " + inner;
+    }
+    return "";
+  }
+
+  function resolveSchemaArgument(schemaArg) {
+    if (typeof schemaArg === "string") {
+      if (Object.prototype.hasOwnProperty.call(schemaRegistry, schemaArg)) {
+        return { kind: "object", fields: schemaRegistry[schemaArg], name: schemaArg };
+      }
+      if (Object.prototype.hasOwnProperty.call(sumTypeRegistry, schemaArg)) {
+        return { kind: "sum", name: schemaArg };
+      }
+      throw new Error("Unknown schema '" + schemaArg + "'.");
+    }
+    throw new Error("validate() expects a schema object or a registered schema or sum-type name.");
+  }
+
+  const schemaStdLib = {
+    register(name, fields) {
+      schemaRegistry[coerceToString(name)] = Array.isArray(fields) ? fields.slice() : [];
+      return null;
+    },
+    registerSumType(name, tags) {
+      sumTypeRegistry[coerceToString(name)] = Array.isArray(tags) ? tags.slice() : [];
+      return null;
+    },
+    validate(schemaArg, value) {
+      const resolved = resolveSchemaArgument(schemaArg);
+      let error = "";
+      if (resolved.kind === "object") {
+        error = validateObjectSchema(resolved.fields, value);
+      } else {
+        error = validateAgainstType(resolved.name, value);
+      }
+      if (!error) {
+        return markDict({ ok: true, data: value, error: null });
+      }
+      return markDict({ ok: false, data: null, error: error });
+    }
+  };
+
+  function parseJson(value, schemaRef) {
+    if (arguments.length < 2) {
+      throw new Error("parseJson() expects 2 arguments (value, schemaRef) and optional options object. For a plain JSON reader use parseJSON(text).");
+    }
+    const parsed = parseJSON(coerceToString(value));
+    const result = schemaStdLib.validate(schemaRef, parsed);
+    if (isTruthy(result.ok)) {
+      return result.data;
+    }
+    throw new Error("parseJson() validation failed after 1 attempt(s) for schema '" + coerceToString(schemaRef) + "'. Last error: " + coerceToString(result.error));
+  }
+
+  function nowBuiltin() {
+    return Date.now();
+  }
+
+  function pad2(value) {
+    return String(value).padStart(2, "0");
+  }
+
+  function formatDateBuiltin(timestamp, format) {
+    const ms = coerceToFloat(timestamp);
+    const date = new Date(ms);
+    if (Number.isNaN(date.getTime())) {
+      throw new Error("formatDate() timestamp must be a number");
+    }
+    const pattern = format === null || format === undefined ? "yyyy-MM-dd HH:mm:ss" : coerceToString(format);
+    const utc = {
+      yyyy: String(date.getUTCFullYear()),
+      MM: pad2(date.getUTCMonth() + 1),
+      dd: pad2(date.getUTCDate()),
+      HH: pad2(date.getUTCHours()),
+      mm: pad2(date.getUTCMinutes()),
+      ss: pad2(date.getUTCSeconds())
+    };
+    return pattern
+      .replace(/yyyy/g, utc.yyyy)
+      .replace(/MM/g, utc.MM)
+      .replace(/dd/g, utc.dd)
+      .replace(/HH/g, utc.HH)
+      .replace(/mm/g, utc.mm)
+      .replace(/ss/g, utc.ss);
+  }
+
+  function parseDateBuiltin(text) {
+    if (typeof text !== "string") {
+      throw new Error("parseDate() expects a string argument");
+    }
+    const parsed = Date.parse(text);
+    if (Number.isNaN(parsed)) {
+      throw new Error("parseDate() could not parse date string: " + text);
+    }
+    return parsed;
+  }
+
+  function addDaysBuiltin(timestamp, days) {
+    return coerceToFloat(timestamp) + (coerceToFloat(days) * 86400000);
+  }
+
+  function addHoursBuiltin(timestamp, hours) {
+    return coerceToFloat(timestamp) + (coerceToFloat(hours) * 3600000);
+  }
+
+  function readEnv(name) {
+    if (typeof process === "undefined" || !process.env) {
+      return null;
+    }
+    const key = coerceToString(name);
+    if (!Object.prototype.hasOwnProperty.call(process.env, key)) {
+      return null;
+    }
+    const value = process.env[key];
+    return value === undefined ? null : String(value);
+  }
+
+  function getEnvBuiltin(name) {
+    return readEnv(name);
+  }
+
+  function getEnvOrBuiltin(name, fallback) {
+    const value = readEnv(name);
+    if (value === null) {
+      return fallback === undefined ? "" : fallback;
+    }
+    return value;
+  }
+
+  function hasEnvBuiltin(name) {
+    return readEnv(name) !== null;
+  }
+
+  const withinStack = [];
+
+  function withinEnter(ms, name) {
+    const deadline = Date.now() + Math.max(0, coerceToInt(ms));
+    withinStack.push({ deadline: deadline, name: coerceToString(name || "Function") });
+    return withinStack.length;
+  }
+
+  function withinLeave() {
+    if (withinStack.length > 0) withinStack.pop();
+    return null;
+  }
+
+  function withinCheck(name) {
+    if (withinStack.length === 0) return;
+    const top = withinStack[withinStack.length - 1];
+    if (Date.now() <= top.deadline) return;
+    const label = name ? "Function '" + name + "'" : (top.name ? "Function '" + top.name + "'" : "Function");
+    throw new Error(label + " exceeded @within bound.");
+  }
+
+  function withinRun(ms, name, fn) {
+    withinEnter(ms, name);
+    let finished = false;
+    try {
+      const result = fn();
+      if (result && typeof result.then === "function") {
+        const timeoutMs = Math.max(0, coerceToInt(ms));
+        const timeout = new Promise((_, reject) => {
+          setTimeout(() => {
+            try {
+              withinCheck(name);
+              reject(new Error("Function '" + coerceToString(name) + "' exceeded @within bound."));
+            } catch (error) {
+              reject(error);
+            }
+          }, timeoutMs);
+        });
+        return Promise.race([
+          Promise.resolve(result).then((value) => {
+            withinCheck(name);
+            return value;
+          }),
+          timeout
+        ]).finally(() => {
+          if (!finished) {
+            finished = true;
+            withinLeave();
+          }
+        });
+      }
+      withinCheck(name);
+      return result;
+    } finally {
+      if (!finished) {
+        finished = true;
+        withinLeave();
+      }
+    }
+  }
+
+  const withinStdLib = {
+    enter: withinEnter,
+    leave: withinLeave,
+    check: withinCheck,
+    run: withinRun
+  };
+
+  function headersToObject(headers) {
+    const result = {};
+    if (!headers || typeof headers.forEach !== "function") return markDict(result);
+    headers.forEach((value, key) => {
+      result[key] = value;
+    });
+    return markDict(result);
+  }
+
+  function appendQuery(url, queryParams) {
+    if (!isObject(queryParams)) return coerceToString(url);
+    const parts = [];
+    Object.keys(queryParams).forEach((key) => {
+      if (key === "__maldaDict") return;
+      parts.push(encodeURIComponent(key) + "=" + encodeURIComponent(coerceToString(queryParams[key])));
+    });
+    if (parts.length === 0) return coerceToString(url);
+    const base = coerceToString(url);
+    return base + (base.indexOf("?") >= 0 ? "&" : "?") + parts.join("&");
+  }
+
+  async function httpRequest(method, url, body, headers, queryParams) {
+    withinCheck();
+    if (typeof fetch !== "function") {
+      throw new Error(method + " requires fetch()");
+    }
+    const init = { method: method, headers: {} };
+    if (isObject(headers)) {
+      Object.keys(headers).forEach((key) => {
+        if (key === "__maldaDict") return;
+        init.headers[key] = coerceToString(headers[key]);
+      });
+    }
+    if (body !== undefined && body !== null && method !== "GET" && method !== "DELETE") {
+      if (typeof body === "string") {
+        init.body = body;
+      } else {
+        init.body = toJSON(body);
+        if (!init.headers["Content-Type"] && !init.headers["content-type"]) {
+          init.headers["Content-Type"] = "application/json";
+        }
+      }
+    }
+    try {
+      const response = await fetch(appendQuery(url, queryParams), init);
+      const text = await response.text();
+      let parsedBody = text;
+      const contentType = response.headers && response.headers.get ? (response.headers.get("content-type") || "") : "";
+      if (contentType.indexOf("json") >= 0 && text) {
+        try {
+          parsedBody = parseJSON(text);
+        } catch (_error) {
+          parsedBody = text;
+        }
+      }
+      return markDict({
+        status: response.status,
+        statusText: response.statusText || "",
+        ok: response.ok,
+        headers: headersToObject(response.headers),
+        body: parsedBody
+      });
+    } catch (error) {
+      return markDict({
+        error: error && error.message ? error.message : String(error),
+        ok: false,
+        status: 0
+      });
+    }
+  }
+
+  const httpStdLib = {
+    get(url, headers, queryParams) {
+      return httpRequest("GET", url, null, headers, queryParams);
+    },
+    post(url, body, headers, queryParams) {
+      return httpRequest("POST", url, body, headers, queryParams);
+    },
+    put(url, body, headers, queryParams) {
+      return httpRequest("PUT", url, body, headers, queryParams);
+    },
+    delete(url, headers, queryParams) {
+      return httpRequest("DELETE", url, null, headers, queryParams);
+    },
+    patch(url, body, headers, queryParams) {
+      return httpRequest("PATCH", url, body, headers, queryParams);
+    }
+  };
+
   const runtime = {
     coerceToInt,
     coerceToFloat,
@@ -1121,10 +1708,29 @@
     runAndPopDeferFrame,
     disposeResource,
     getArray,
+    isObject,
+    objectHasKey,
     rangeBuiltin,
     joinBuiltin,
     sortBuiltin,
     callArrayMethod,
+    parseJSON,
+    parseJson,
+    toJSON,
+    now: nowBuiltin,
+    formatDate: formatDateBuiltin,
+    parseDate: parseDateBuiltin,
+    addDays: addDaysBuiltin,
+    addHours: addHoursBuiltin,
+    getEnv: getEnvBuiltin,
+    getEnvOr: getEnvOrBuiltin,
+    hasEnv: hasEnvBuiltin,
+    math: mathStdLib,
+    str: strStdLib,
+    io: ioStdLib,
+    schema: schemaStdLib,
+    within: withinStdLib,
+    http: httpStdLib,
     result: resultStdLib,
     option: optionStdLib,
     grounded: groundedStdLib,
@@ -1146,7 +1752,17 @@
       },
       sleep(milliseconds) {
         const ms = Math.max(0, coerceToInt(milliseconds));
-        return new Promise((resolve) => setTimeout(resolve, ms));
+        withinCheck();
+        return new Promise((resolve, reject) => {
+          setTimeout(() => {
+            try {
+              withinCheck();
+              resolve(null);
+            } catch (error) {
+              reject(error);
+            }
+          }, ms);
+        });
       },
       random() {
         return randomBuiltin();

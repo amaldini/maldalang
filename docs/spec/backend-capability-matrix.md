@@ -36,13 +36,13 @@ These strings are what `@property` / `runProperty` use via `GetRequiredCapabilit
 | Feature | Interpreter | C# transpile | JavaScript |
 |---------|:-----------:|:------------:|:----------:|
 | Core language (vars, functions, classes, match, async/await) | yes | yes | yes (Tier 0 subset) |
-| Standard library (`math` / `str` / `io`, AnsiConsole) | yes | yes | partial (`io` / console subset) |
+| Standard library (`math` / `str` / `io`, AnsiConsole) | yes | yes | partial (`math` / `str` / `io.print` / `io.input` / JSON) |
 | File I/O | yes | yes | no |
-| Actors (`spawn` / `send` / `on`) | yes | yes | limited demos only |
+| Actors (`spawn` / `send` / `on`) | yes | yes | yes (process-local) |
 | Durable workflows (`workflow` / `step`) | yes | yes | no |
 | Workflow call-graph determinism (WF1001/WF1002 via in-file helpers) | yes | yes | n/a |
 | Agents / prompts / MCP / ACP | yes | yes | no |
-| `schema` / `validate()` | yes | yes | no |
+| `schema` / `validate()` | yes | yes | yes (validate only) |
 | Typed prompt `response_format` (schema → OpenAI structured output) | yes* | yes* | no |
 | Gather-then-extract prompts (`gather:` + `-> Type`) | yes | yes | n/a |
 | Closed `api` / `program(Api)` / `runProgram` | yes | yes | n/a |
