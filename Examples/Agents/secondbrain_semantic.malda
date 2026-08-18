@@ -1,4 +1,6 @@
-// secondbrain_semantic.malda - MALDA 0.1.0
+// secondbrain_semantic.malda — GraphMemory Second Brain host (MALDA 1.0)
+// ASK HTTP service version: ASK_SERVICE_VERSION in secondbrain_ask_ui_lib.malda
+// (GET /health). Shared BUILD/ASK helpers live in Examples/Agents/sb/.
 //
 // Sibling of Examples/Agents/secondbrain.malda for A/B comparison:
 //   - secondbrain.malda          ASK retrieves notes with lexical token overlap

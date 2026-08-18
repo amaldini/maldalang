@@ -1,4 +1,6 @@
-// secondbrain.malda - MALDA 0.1.0
+// secondbrain.malda — lexical Second Brain host (MALDA 1.0)
+// ASK HTTP service version: ASK_SERVICE_VERSION in secondbrain_ask_ui_lib.malda
+// (GET /health). Shared BUILD/ASK helpers live in Examples/Agents/sb/.
 //
 // Lexical-retrieval second brain. For GraphMemory + embedding ASK (synonyms /
 // paraphrases), see the sibling: Examples/Agents/secondbrain_semantic.malda

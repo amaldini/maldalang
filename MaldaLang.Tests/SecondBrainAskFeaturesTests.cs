@@ -484,6 +484,8 @@ public class SecondBrainAskFeaturesTests
         Assert.Contains("@POST(\"/register\")", libSource, StringComparison.Ordinal);
         Assert.Contains("@GET(\"/logout\")", libSource, StringComparison.Ordinal);
         Assert.Contains("@GET(\"/health\")", libSource, StringComparison.Ordinal);
+        Assert.Contains("var ASK_SERVICE_VERSION = \"0.2.0\"", libSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("var ASK_SERVICE_VERSION = \"0.1.28\"", libSource, StringComparison.Ordinal);
         Assert.Contains("@GET(\"/generate/download\")", libSource, StringComparison.Ordinal);
         Assert.Contains("function askGetAskMode()", libSource, StringComparison.Ordinal);
         Assert.Contains("function askBuildGeneratedDownload(", libSource, StringComparison.Ordinal);
@@ -622,6 +624,61 @@ public class SecondBrainAskFeaturesTests
             Assert.DoesNotContain("name='forceAnswer' value='1' checked", html, StringComparison.Ordinal);
             Assert.DoesNotContain("<!DOCTYPE", html, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("<html", html, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            SafeDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public async Task AskServiceVersion_Is_0_2_0_And_Hosts_Drop_0_1_0_Banner()
+    {
+        Assert.True(File.Exists(AskUiLibPath), "missing ask UI lib: " + AskUiLibPath);
+        var libSource = await File.ReadAllTextAsync(AskUiLibPath);
+        Assert.Contains("var ASK_SERVICE_VERSION = \"0.2.0\"", libSource, StringComparison.Ordinal);
+
+        var lexical = Path.Combine(RepoRoot, "Examples", "Agents", "secondbrain.malda");
+        var semantic = Path.Combine(RepoRoot, "Examples", "Agents", "secondbrain_semantic.malda");
+        foreach (var path in new[] { lexical, semantic })
+        {
+            Assert.True(File.Exists(path), "missing " + path);
+            var source = await File.ReadAllTextAsync(path);
+            Assert.DoesNotContain("MALDA 0.1.0", source, StringComparison.Ordinal);
+            Assert.Contains("GET /health", source, StringComparison.Ordinal);
+            Assert.Contains("ASK_SERVICE_VERSION", source, StringComparison.Ordinal);
+        }
+
+        var tempDir = Path.Combine(Path.GetTempPath(), "malda_sb_ask_version", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            File.Copy(AskUiLibPath, Path.Combine(tempDir, "secondbrain_ask_ui_lib.malda"));
+            var harnessPath = Path.Combine(tempDir, "harness.malda");
+            await File.WriteAllTextAsync(harnessPath,
+                """
+                var ASK_HTTP_PORT = 39018;
+                var ASK_SESSION_ID = "secondbrain-ask-version";
+                var ASK_STORE = "SecondBrainAskVersion";
+                var PRODUCT_NAME = "Version Brain";
+                var ASK_PAGE_TITLE = PRODUCT_NAME;
+                var ASK_POWERED_BY = "";
+                var ASK_POWERED_BY_URL = "";
+                var ASK_LOGO = "";
+                var ASK_LOGO_RIGHT = "";
+                var UI_LANG = "en";
+                var askHttpServer = null;
+
+                function runAskTurn(question) {
+                    return { "question": question, "answer": "ok", "sources": [], "error": "" };
+                }
+
+                include "secondbrain_ask_ui_lib.malda";
+
+                print("VER=" + ASK_SERVICE_VERSION);
+                """);
+            var output = await InterpretAndCaptureAsync(harnessPath);
+            Assert.Contains("VER=0.2.0", output, StringComparison.Ordinal);
         }
         finally
         {
