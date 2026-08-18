@@ -718,17 +718,17 @@ public class SecondBrainAskFeaturesTests
         Directory.CreateDirectory(tempDir);
         var previous = new Dictionary<string, string?>
         {
-            ["MALDA_ASK_PASSWORD"] = Environment.GetEnvironmentVariable("MALDA_ASK_PASSWORD"),
-            ["MALDA_ASK_PASSWORD_HASH"] = Environment.GetEnvironmentVariable("MALDA_ASK_PASSWORD_HASH"),
-            ["MALDA_JWT_SECRET"] = Environment.GetEnvironmentVariable("MALDA_JWT_SECRET"),
-            ["MALDA_COOKIE_SECRET"] = Environment.GetEnvironmentVariable("MALDA_COOKIE_SECRET"),
-            ["MALDA_SESSION_SECRET"] = Environment.GetEnvironmentVariable("MALDA_SESSION_SECRET")
+            ["MALDA_ASK_PASSWORD"] = System.Environment.GetEnvironmentVariable("MALDA_ASK_PASSWORD"),
+            ["MALDA_ASK_PASSWORD_HASH"] = System.Environment.GetEnvironmentVariable("MALDA_ASK_PASSWORD_HASH"),
+            ["MALDA_JWT_SECRET"] = System.Environment.GetEnvironmentVariable("MALDA_JWT_SECRET"),
+            ["MALDA_COOKIE_SECRET"] = System.Environment.GetEnvironmentVariable("MALDA_COOKIE_SECRET"),
+            ["MALDA_SESSION_SECRET"] = System.Environment.GetEnvironmentVariable("MALDA_SESSION_SECRET")
         };
         try
         {
             foreach (var key in previous.Keys)
             {
-                Environment.SetEnvironmentVariable(key, null);
+                System.Environment.SetEnvironmentVariable(key, null);
             }
 
             File.Copy(AskUiLibPath, Path.Combine(tempDir, "secondbrain_ask_ui_lib.malda"));
@@ -773,10 +773,10 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("Refusing to start ASK on a non-loopback host", output, StringComparison.Ordinal);
             Assert.Contains("auth off", output, StringComparison.Ordinal);
 
-            Environment.SetEnvironmentVariable("MALDA_ASK_PASSWORD", "not-the-default");
-            Environment.SetEnvironmentVariable("MALDA_JWT_SECRET", "jwt-secret-for-tests");
-            Environment.SetEnvironmentVariable("MALDA_COOKIE_SECRET", "cookie-secret-for-tests");
-            Environment.SetEnvironmentVariable("MALDA_SESSION_SECRET", "session-secret-for-tests");
+            System.Environment.SetEnvironmentVariable("MALDA_ASK_PASSWORD", "not-the-default");
+            System.Environment.SetEnvironmentVariable("MALDA_JWT_SECRET", "jwt-secret-for-tests");
+            System.Environment.SetEnvironmentVariable("MALDA_COOKIE_SECRET", "cookie-secret-for-tests");
+            System.Environment.SetEnvironmentVariable("MALDA_SESSION_SECRET", "session-secret-for-tests");
 
             await File.WriteAllTextAsync(harnessPath,
                 """
@@ -813,7 +813,7 @@ public class SecondBrainAskFeaturesTests
         {
             foreach (var pair in previous)
             {
-                Environment.SetEnvironmentVariable(pair.Key, pair.Value);
+                System.Environment.SetEnvironmentVariable(pair.Key, pair.Value);
             }
             SafeDeleteDirectory(tempDir);
         }
