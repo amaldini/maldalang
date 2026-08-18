@@ -1,0 +1,38 @@
+[
+  {
+    "id": "q-inverter-en",
+    "lang": "en",
+    "q": "How does a photovoltaic inverter convert DC to AC?",
+    "expectSlugs": ["photovoltaic-inverters"]
+  },
+  {
+    "id": "q-inverter-it",
+    "lang": "it",
+    "q": "Come un inverter fotovoltaico converte la corrente continua?",
+    "expectSlugs": ["photovoltaic-inverters"]
+  },
+  {
+    "id": "q-pasta",
+    "lang": "en",
+    "q": "Spaghetti recipe with tomato basil sauce",
+    "expectSlugs": ["pasta-tomato-sauce"]
+  },
+  {
+    "id": "q-bgp",
+    "lang": "en",
+    "q": "How do BGP peers advertise routes?",
+    "expectSlugs": ["bgp-route-advertisement"]
+  },
+  {
+    "id": "q-indemnity",
+    "lang": "en",
+    "q": "What does an indemnity clause cover in a contract?",
+    "expectSlugs": ["indemnity-clause"]
+  },
+  {
+    "id": "q-compost",
+    "lang": "en",
+    "q": "Garden compost pH for vegetable beds",
+    "expectSlugs": ["garden-compost-ph"]
+  }
+]

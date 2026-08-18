@@ -93,6 +93,31 @@ function selectNotes(brainDir, catalog, question, tagFilter) {
     return picked;
 }
 
+function retrievalHitAtK(picked, expectSlugs, k) {
+    if (expectSlugs == null or expectSlugs.length == 0) {
+        return false;
+    }
+    if (k == null or k < 1) {
+        k = TOP_K;
+    }
+    var i = 0;
+    while (i < picked.length and i < k) {
+        var slug = "";
+        if (picked[i].note != null and picked[i].note.slug != null) {
+            slug = string(picked[i].note.slug);
+        } else if (picked[i].slug != null) {
+            slug = string(picked[i].slug);
+        }
+        foreach (var want in expectSlugs) {
+            if (slug == string(want)) {
+                return true;
+            }
+        }
+        i = i + 1;
+    }
+    return false;
+}
+
 function buildContext(brainDir, picked) {
     var blocks = [];
     foreach (var entry in picked) {
