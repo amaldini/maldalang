@@ -718,16 +718,70 @@ function compareRetrieval(semanticPicked, lexicalPicked) {
     };
 }
 
+function onnxRerankModelAvailable() {
+    var dir = "";
+    if (io.hasEnv("MALDA_MEMORY_RERANK_MODEL_PATH")) {
+        dir = str.trim(io.getEnvOr("MALDA_MEMORY_RERANK_MODEL_PATH"));
+    }
+    if (dir == "") {
+        var home = str.trim(io.getEnvOr("USERPROFILE"));
+        if (home == "") {
+            home = str.trim(io.getEnvOr("HOME"));
+        }
+        if (home == "") {
+            return false;
+        }
+        dir = io.pathJoin(home, ".malda", "models", "cross-encoder");
+    }
+    return io.hasFile(io.pathJoin(dir, "model.onnx")) and io.hasFile(io.pathJoin(dir, "vocab.txt"));
+}
+
+function resolveAskRerankMode() {
+    var requested = str.lower(str.trim(string(ASK_RERANK_MODE)));
+    if (requested == "") {
+        requested = str.lower(str.trim(io.getEnvOr("MALDA_BRAIN_RERANK")));
+    }
+    if (requested == "off" or requested == "false" or requested == "0" or
+            requested == "no" or requested == "none") {
+        return "off";
+    }
+    if (requested == "llm") {
+        AnsiConsole.markupLine("[yellow]" + t(
+            "LLM rerank is not used; falling back to cross.",
+            "Rerank LLM non usato; fallback su cross.") + "[/]");
+        return "cross";
+    }
+    var hasOnnx = onnxRerankModelAvailable();
+    if (requested == "onnx") {
+        if (hasOnnx) {
+            return "onnx";
+        }
+        AnsiConsole.markupLine("[yellow]" + t(
+            "ONNX rerank model not found; using cross. Run: malda memory download-rerank",
+            "Modello ONNX rerank non trovato; uso cross. Esegui: malda memory download-rerank") + "[/]");
+        return "cross";
+    }
+    if (requested == "cross") {
+        return "cross";
+    }
+    if (hasOnnx) {
+        return "onnx";
+    }
+    return "cross";
+}
+
 function selectNotesSemantic(brainDir, catalog, memory, question, tagFilter) {
     var lexicalPicked = selectNotes(brainDir, catalog, question, tagFilter);
     if (memory == null) {
         return {
             "picked": lexicalPicked,
             "channel": "lexical-only",
-            "compare": null
+            "compare": null,
+            "rerankMode": "off"
         };
     }
     var results = [];
+    var rerankMode = "off";
     try {
         // lexicalMinScore 0: without the BGE-M3 GGUF, vector scores are weak and the
         // default BM25 floor (0.15) often yields zero hybrid hits even when notes match.
@@ -740,6 +794,16 @@ function selectNotesSemantic(brainDir, catalog, memory, question, tagFilter) {
             "minScore": 0.0,
             "explain": true
         };
+        rerankMode = resolveAskRerankMode();
+        var rerankTopK = 20;
+        if (rerankTopK < TOP_K) {
+            rerankTopK = TOP_K;
+        }
+        if (rerankMode != "off") {
+            queryOpts.rerank = true;
+            queryOpts.rerankMode = rerankMode;
+            queryOpts.rerankTopK = rerankTopK;
+        }
         if (tagFilter != null and tagFilter.length > 0) {
             queryOpts.tags = tagFilter;
             queryOpts.tagsMode = "any";
@@ -752,7 +816,8 @@ function selectNotesSemantic(brainDir, catalog, memory, question, tagFilter) {
         return {
             "picked": lexicalPicked,
             "channel": "lexical-fallback",
-            "compare": null
+            "compare": null,
+            "rerankMode": "off"
         };
     }
 
@@ -836,13 +901,15 @@ function selectNotesSemantic(brainDir, catalog, memory, question, tagFilter) {
         return {
             "picked": lexicalPicked,
             "channel": "lexical-fallback",
-            "compare": null
+            "compare": null,
+            "rerankMode": "off"
         };
     }
     return {
         "picked": picked,
         "channel": "graphmemory",
-        "compare": compareRetrieval(picked, lexicalPicked)
+        "compare": compareRetrieval(picked, lexicalPicked),
+        "rerankMode": rerankMode
     };
 }
 
@@ -866,6 +933,11 @@ function showRetrievalHint(selection) {
             "recupero: GraphMemory") + "[/]");
         return;
     }
+    var rerankHint = "";
+    if (selection.rerankMode != null and str.trim(string(selection.rerankMode)) != "" and
+            str.trim(string(selection.rerankMode)) != "off") {
+        rerankHint = " rerank=" + str.trim(string(selection.rerankMode));
+    }
     if (cmp.semanticOnly.length > 0) {
         AnsiConsole.markupLine("[bold cyan]" + t(
             "GraphMemory helped:",
@@ -873,12 +945,14 @@ function showRetrievalHint(selection) {
             string(cmp.semanticOnly.length) + t(
             " note(s) outside lexical top-" + string(TOP_K) + ": ",
             " nota/e fuori dal top-" + string(TOP_K) + " lessicale: ") +
-            str.join(cmp.semanticOnly, ", "));
+            str.join(cmp.semanticOnly, ", ") +
+            "[dim]" + rerankHint + "[/]");
     } else {
         AnsiConsole.markupLine("[dim]" + t(
             "GraphMemory: same notes as lexical top-" + string(TOP_K) +
             " (useful when synonyms diverge)",
             "GraphMemory: stesse note del top-" + string(TOP_K) +
-            " lessicale (utile quando i sinonimi divergono)") + "[/]");
+            " lessicale (utile quando i sinonimi divergono)") +
+            rerankHint + "[/]");
     }
 }

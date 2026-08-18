@@ -6,6 +6,7 @@
 //
 // Modes: build | update | ask | help
 // Flags: --docs --brain --taxonomy llm|folders --remove-orphans --reindex-memory --lang en|it
+//        --rerank off|cross|onnx  (semantic ASK; no-op on lexical host)
 //        --port / -p  --host <addr>  --https --cert <path> --cert-password <pwd>
 //        --mode <name>  --auth / --no-auth
 //        --allow-register / --no-register
@@ -72,6 +73,7 @@ export function sbCliEmptyOptions() {
         "prompt": "",
         "forceAnswer": false,
         "reindexMemory": false,
+        "rerank": "",
         "error": ""
     };
 }
@@ -151,6 +153,20 @@ export function sbCliNormalizeLang(raw) {
     }
     if (a == "it" or a == "italiano" or a == "italian" or a == "i" or a == "2") {
         return "it";
+    }
+    return "";
+}
+
+export function sbCliNormalizeRerank(raw) {
+    var a = str.lower(str.trim(sbCliAsText(raw)));
+    if (a == "off" or a == "false" or a == "0" or a == "no" or a == "none") {
+        return "off";
+    }
+    if (a == "cross") {
+        return "cross";
+    }
+    if (a == "onnx") {
+        return "onnx";
     }
     return "";
 }
@@ -324,6 +340,22 @@ export function sbCliParseArgs(args) {
         if (a == "--reindex-memory") {
             opt.reindexMemory = true;
             i = i + 1;
+            continue;
+        }
+
+        taken = sbCliTakeFlagValue(args, i, "--rerank");
+        if (taken.ok == true or taken.missing == true) {
+            if (taken.missing == true) {
+                opt.error = "Missing value for --rerank.";
+                return opt;
+            }
+            var rr = sbCliNormalizeRerank(taken.value);
+            if (rr == "") {
+                opt.error = "Invalid --rerank (use off, cross, or onnx).";
+                return opt;
+            }
+            opt.rerank = rr;
+            i = taken.nextIndex;
             continue;
         }
 

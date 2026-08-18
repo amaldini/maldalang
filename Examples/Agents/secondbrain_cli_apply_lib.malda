@@ -81,6 +81,19 @@ function sbCliApplyProductName(cli) {
     return n;
 }
 
+// Semantic ASK rerank: --rerank off|cross|onnx (empty = auto). No-op on lexical
+// unless the host declared ASK_RERANK_MODE (both hosts do).
+function sbCliApplyRerank(cli) {
+    if (cli == null) {
+        return;
+    }
+    var mode = str.trim(sbCliAsText(cli.rerank));
+    if (mode == "") {
+        return;
+    }
+    ASK_RERANK_MODE = mode;
+}
+
 // Override ASK_POWERED_BY / ASK_POWERED_BY_URL from env + CLI.
 // MALDA_ASK_POWERED_BY=0|false|off|no hides the line; CLI flags win over env.
 // Call from askBrain after branding defaults are loaded.
@@ -130,7 +143,7 @@ function sbCliPrintHelp(defaultBrain, defaultPort) {
         "  ask    [--brain " + brain + "] [--port " + port + "] [--host localhost] [--lang en|it]\n" +
         "         [--https --cert <pfx|pem>] [--cert-password <pwd>]\n" +
         "         [--product-name <name>] [--auth|--no-auth] [--allow-register|--no-register]\n" +
-        "         [--examples|--no-examples]\n" +
+        "         [--examples|--no-examples] [--rerank off|cross|onnx]\n" +
         "         [--no-powered-by | --powered-by <text>] [--powered-by-url <url>]\n" +
         "  generate --prompt <text> [--brain " + brain + "] [--out file.md] [--format md|html]\n" +
         "           [--force] [--lang en|it] [--product-name <name>]\n" +
@@ -155,6 +168,10 @@ function sbCliPrintHelp(defaultBrain, defaultPort) {
         "  override text/URL with --powered-by / --powered-by-url.\n" +
         "--reindex-memory (update): rebuild GraphMemory for every note (semantic host;\n" +
         "  no-op on lexical ASK). Use after changing the embedding model.\n" +
+        "--rerank off|cross|onnx (ask/generate, semantic host): rerank hybrid hits.\n" +
+        "  Default is cross (local); onnx when a cross-encoder model is installed\n" +
+        "  (malda memory download-rerank or MALDA_MEMORY_RERANK_MODEL_PATH).\n" +
+        "  Override with MALDA_BRAIN_RERANK. No-op on the lexical host.\n" +
         "Pack remains interactive (menu option 5).";
     var it =
         "Second Brain CLI\n\n" +
@@ -165,7 +182,7 @@ function sbCliPrintHelp(defaultBrain, defaultPort) {
         "  ask    [--brain " + brain + "] [--port " + port + "] [--host localhost] [--lang en|it]\n" +
         "         [--https --cert <pfx|pem>] [--cert-password <pwd>]\n" +
         "         [--product-name <nome>] [--auth|--no-auth] [--allow-register|--no-register]\n" +
-        "         [--examples|--no-examples]\n" +
+        "         [--examples|--no-examples] [--rerank off|cross|onnx]\n" +
         "         [--no-powered-by | --powered-by <testo>] [--powered-by-url <url>]\n" +
         "  generate --prompt <testo> [--brain " + brain + "] [--out file.md] [--format md|html]\n" +
         "           [--force] [--lang en|it] [--product-name <nome>]\n" +
@@ -190,6 +207,10 @@ function sbCliPrintHelp(defaultBrain, defaultPort) {
         "  testo/URL con --powered-by / --powered-by-url.\n" +
         "--reindex-memory (update): ricostruisce GraphMemory per tutte le note (host semantico;\n" +
         "  no-op sull'ASK lessicale). Usalo dopo aver cambiato il modello di embedding.\n" +
+        "--rerank off|cross|onnx (ask/generate, host semantico): rerank dopo l'ibrido.\n" +
+        "  Default cross (locale); onnx se e' installato un cross-encoder\n" +
+        "  (malda memory download-rerank o MALDA_MEMORY_RERANK_MODEL_PATH).\n" +
+        "  Override: MALDA_BRAIN_RERANK. No-op sull'host lessicale.\n" +
         "PACK resta interattivo (voce di menu 5).";
     if (UI_LANG == "en") {
         io.print(en);

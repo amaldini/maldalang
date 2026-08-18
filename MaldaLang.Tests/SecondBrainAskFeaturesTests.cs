@@ -1258,6 +1258,14 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("function upsertNoteMemory(", source, StringComparison.Ordinal);
             Assert.Contains("\"memoryNodeId\": noteMemoryId(note)", source, StringComparison.Ordinal);
             Assert.Contains("--reindex-memory", source, StringComparison.Ordinal);
+            Assert.Contains("--rerank", source, StringComparison.Ordinal);
+            Assert.Contains("sbCliNormalizeRerank(", source, StringComparison.Ordinal);
+            Assert.Contains("sbCliApplyRerank(", source, StringComparison.Ordinal);
+            if (path.Contains("secondbrain_semantic", StringComparison.Ordinal))
+            {
+                Assert.Contains("function resolveAskRerankMode(", source, StringComparison.Ordinal);
+                Assert.Contains("queryOpts.rerankMode", source, StringComparison.Ordinal);
+            }
             Assert.Contains("askGetAskMode()", source, StringComparison.Ordinal);
             Assert.Contains("askMarkGeneratedTurn(", source, StringComparison.Ordinal);
             Assert.Contains("newReaderAgent(", source, StringComparison.Ordinal);
@@ -1363,6 +1371,16 @@ public class SecondBrainAskFeaturesTests
                 print("RM=" + rm.mode + "," + string(rm.reindexMemory) + "," + rm.error);
                 var rmOff = sbCliParseArgs(["update"]);
                 print("RMOFF=" + rmOff.mode + "," + string(rmOff.reindexMemory) + "," + rmOff.error);
+                var rk = sbCliParseArgs(["ask", "--rerank", "cross"]);
+                print("RK=" + rk.mode + "," + rk.rerank + "," + rk.error);
+                var rkOnnx = sbCliParseArgs(["ask", "--rerank=onnx"]);
+                print("RKONNX=" + rkOnnx.mode + "," + rkOnnx.rerank + "," + rkOnnx.error);
+                var rkOff = sbCliParseArgs(["ask", "--rerank", "off"]);
+                print("RKOFF=" + rkOff.mode + "," + rkOff.rerank + "," + rkOff.error);
+                var rkBad = sbCliParseArgs(["ask", "--rerank", "llm"]);
+                print("RKBAD=" + rkBad.error);
+                var rkMiss = sbCliParseArgs(["ask", "--rerank"]);
+                print("RKMISS=" + rkMiss.error);
                 """,
                 Encoding.UTF8);
 
@@ -1399,6 +1417,11 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("ZF=Invalid --format (use md or html).", output, StringComparison.Ordinal);
             Assert.Contains("RM=update,true,", output, StringComparison.Ordinal);
             Assert.Contains("RMOFF=update,false,", output, StringComparison.Ordinal);
+            Assert.Contains("RK=ask,cross,", output, StringComparison.Ordinal);
+            Assert.Contains("RKONNX=ask,onnx,", output, StringComparison.Ordinal);
+            Assert.Contains("RKOFF=ask,off,", output, StringComparison.Ordinal);
+            Assert.Contains("RKBAD=Invalid --rerank (use off, cross, or onnx).", output, StringComparison.Ordinal);
+            Assert.Contains("RKMISS=Missing value for --rerank.", output, StringComparison.Ordinal);
         }
         finally
         {

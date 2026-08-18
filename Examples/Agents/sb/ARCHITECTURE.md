@@ -29,6 +29,14 @@ Offline lexical gold set: [`eval/questions.json`](eval/questions.json) +
 [`eval/catalog.json`](eval/catalog.json). Runner:
 `malda Examples/Agents/sb/eval/run_retrieval_eval.malda` (no LLM).
 
+## Semantic rerank (P1)
+
+GraphMemory ASK reranks hybrid hits with `rerankMode: cross` by default
+(local, no extra model). If `model.onnx` + `vocab.txt` are present
+(`malda memory download-rerank` or `MALDA_MEMORY_RERANK_MODEL_PATH`), ASK
+uses `onnx`. CLI: `--rerank off|cross|onnx` (env `MALDA_BRAIN_RERANK`).
+No-op on the lexical host. LLM rerank is not used.
+
 ## GraphMemory UPDATE (semantic host)
 
 `indexBrainAfterFinalize` receives `{ mode, forceFull, catalog, removedNodeIds }`.
