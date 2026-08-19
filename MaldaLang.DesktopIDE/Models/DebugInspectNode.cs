@@ -15,6 +15,8 @@ public sealed class DebugInspectNode
     public int VariablesReference { get; init; }
     public bool IsScope { get; init; }
     public int FrameId { get; init; }
+    /// <summary>Stable tree path used to restore expansion across pauses.</summary>
+    public string Path { get; set; } = "";
 
     public bool CanExpand => VariablesReference > 0;
 }

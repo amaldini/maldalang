@@ -1106,7 +1106,8 @@
                         <TextBlock Grid.Row="2" Text="Variables" FontWeight="Bold" Margin="8,8,8,4" Foreground="{DynamicResource DebugAccentBrush}" FontSize="11"/>
                         <TreeView x:Name="VariablesTreeView" Grid.Row="3" Background="{DynamicResource ListBackgroundBrush}" BorderBrush="{DynamicResource ListBorderBrush}" Margin="8,0,8,8"
                                   Foreground="{DynamicResource ListForegroundBrush}" FontFamily="Consolas" FontSize="11"
-                                  TreeViewItem.Expanded="VariablesTreeView_Expanded"/>
+                                  TreeViewItem.Expanded="DebugInspectTree_Expanded"
+                                  TreeViewItem.Collapsed="DebugInspectTree_Collapsed"/>
 
                         <TextBlock Grid.Row="4" Text="Watches" FontWeight="Bold" Margin="8,8,8,4" Foreground="{DynamicResource DebugAccentBrush}" FontSize="11"/>
                         <Grid Grid.Row="5" Margin="8,0,8,4">
@@ -1117,9 +1118,11 @@
                             <TextBox x:Name="WatchExpressionTextBox" Grid.Column="0" KeyDown="WatchExpressionTextBox_KeyDown"/>
                             <Button Grid.Column="1" Content="Add" Margin="6,0,0,0" Padding="8,4" Click="AddWatchButton_Click"/>
                         </Grid>
-                        <ListBox x:Name="WatchesListBox" Grid.Row="6" Background="{DynamicResource ListBackgroundBrush}" BorderBrush="{DynamicResource ListBorderBrush}" Margin="8,0,8,8"
-                                 Foreground="{DynamicResource ListForegroundBrush}" FontFamily="Consolas" FontSize="11"
-                                 MouseDoubleClick="WatchesListBox_MouseDoubleClick"/>
+                        <TreeView x:Name="WatchesTreeView" Grid.Row="6" Background="{DynamicResource ListBackgroundBrush}" BorderBrush="{DynamicResource ListBorderBrush}" Margin="8,0,8,8"
+                                  Foreground="{DynamicResource ListForegroundBrush}" FontFamily="Consolas" FontSize="11"
+                                  TreeViewItem.Expanded="DebugInspectTree_Expanded"
+                                  TreeViewItem.Collapsed="DebugInspectTree_Collapsed"
+                                  MouseDoubleClick="WatchesTreeView_MouseDoubleClick"/>
 
                         <TextBlock Grid.Row="7" Text="Breakpoints" FontWeight="Bold" Margin="8,8,8,4" Foreground="{DynamicResource DebugAccentBrush}" FontSize="11"/>
                         <ListBox x:Name="BreakpointsListBox" Grid.Row="8" Background="{DynamicResource ListBackgroundBrush}" BorderBrush="{DynamicResource ListBorderBrush}" Margin="8,0,8,8"

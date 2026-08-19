@@ -410,14 +410,16 @@ public partial class MainWindow
         }
     }
 
+    private const string VariablesInspectRoot = "var";
+    private const string WatchesInspectRoot = "watch";
+
     private void UpdateDebugInfo()
     {
         var session = _debuggerHook?.Session;
         if (session == null)
         {
+            ClearInspectTrees();
             CallStackListBox.Items.Clear();
-            VariablesTreeView.Items.Clear();
-            WatchesListBox.Items.Clear();
             UpdateBreakpointsPanel();
             return;
         }
@@ -458,17 +460,42 @@ public partial class MainWindow
         UpdateBreakpointsPanel();
     }
 
-    private void RebuildVariablesTree(MaldaLang.Interpreter.Debug.DebugSession session)
+    private void ClearInspectTrees()
     {
-        VariablesTreeView.Items.Clear();
-        foreach (var scope in DebugInspectSnapshotBuilder.BuildScopes(session, _selectedDebugFrameId))
+        _suppressInspectExpansionTracking = true;
+        try
         {
-            VariablesTreeView.Items.Add(CreateInspectTreeItem(scope));
+            VariablesTreeView.Items.Clear();
+            WatchesTreeView.Items.Clear();
+        }
+        finally
+        {
+            _suppressInspectExpansionTracking = false;
         }
     }
 
-    private TreeViewItem CreateInspectTreeItem(DebugInspectNode node)
+    private void RebuildVariablesTree(MaldaLang.Interpreter.Debug.DebugSession session)
     {
+        _suppressInspectExpansionTracking = true;
+        try
+        {
+            VariablesTreeView.Items.Clear();
+            foreach (var scope in DebugInspectSnapshotBuilder.BuildScopes(session, _selectedDebugFrameId))
+            {
+                VariablesTreeView.Items.Add(CreateInspectTreeItem(scope, VariablesInspectRoot));
+            }
+
+            RestoreInspectTree(VariablesTreeView.Items, VariablesInspectRoot);
+        }
+        finally
+        {
+            _suppressInspectExpansionTracking = false;
+        }
+    }
+
+    private TreeViewItem CreateInspectTreeItem(DebugInspectNode node, string parentPath)
+    {
+        node.Path = DebugInspectExpansionState.Join(parentPath, node.Name);
         var item = new TreeViewItem
         {
             Header = node.Display,
@@ -482,11 +509,27 @@ public partial class MainWindow
         return item;
     }
 
-    private void VariablesTreeView_Expanded(object sender, RoutedEventArgs e)
+    private void RestoreInspectTree(ItemCollection items, string parentPath)
+    {
+        _inspectExpansion.RestoreExpanded(
+            items.Cast<TreeViewItem>(),
+            parentPath,
+            item => item.Tag is DebugInspectNode node ? node.Name : "",
+            item => item.Tag is DebugInspectNode { CanExpand: true },
+            item => item.IsExpanded = true,
+            item => item.Items.Cast<TreeViewItem>());
+    }
+
+    private void DebugInspectTree_Expanded(object sender, RoutedEventArgs e)
     {
         if (e.OriginalSource is not TreeViewItem item || item.Tag is not DebugInspectNode node)
         {
             return;
+        }
+
+        if (!_suppressInspectExpansionTracking)
+        {
+            _inspectExpansion.SetExpanded(node.Path, true);
         }
 
         if (!node.CanExpand || _debuggerHook == null)
@@ -499,9 +542,26 @@ public partial class MainWindow
             item.Items.Clear();
             foreach (var child in DebugInspectSnapshotBuilder.Expand(_debuggerHook.Session, node.VariablesReference, node.FrameId))
             {
-                item.Items.Add(CreateInspectTreeItem(child));
+                item.Items.Add(CreateInspectTreeItem(child, node.Path));
             }
         }
+
+        RestoreInspectTree(item.Items, node.Path);
+    }
+
+    private void DebugInspectTree_Collapsed(object sender, RoutedEventArgs e)
+    {
+        if (_suppressInspectExpansionTracking)
+        {
+            return;
+        }
+
+        if (e.OriginalSource is not TreeViewItem item || item.Tag is not DebugInspectNode node)
+        {
+            return;
+        }
+
+        _inspectExpansion.SetExpanded(node.Path, false);
     }
 
     private void CallStackListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -521,24 +581,39 @@ public partial class MainWindow
 
     private async Task RefreshWatchesAsync(MaldaLang.Interpreter.Debug.DebugSession session)
     {
-        var results = new List<string>();
+        var nodes = new List<DebugInspectNode>();
         foreach (var expression in _watchExpressions)
         {
             try
             {
                 var value = await session.EvaluateWatchAsync(expression, _selectedDebugFrameId).ConfigureAwait(true);
-                results.Add($"{expression} = {value.Value}");
+                nodes.Add(DebugInspectSnapshotBuilder.FromVariable(value, _selectedDebugFrameId));
             }
             catch (Exception ex)
             {
-                results.Add($"{expression} = <{ex.Message}>");
+                nodes.Add(DebugInspectSnapshotBuilder.FromWatchError(expression, ex.Message, _selectedDebugFrameId));
             }
         }
 
-        WatchesListBox.Items.Clear();
-        foreach (var result in results)
+        RebuildWatchesTree(nodes);
+    }
+
+    private void RebuildWatchesTree(IReadOnlyList<DebugInspectNode> nodes)
+    {
+        _suppressInspectExpansionTracking = true;
+        try
         {
-            WatchesListBox.Items.Add(result);
+            WatchesTreeView.Items.Clear();
+            foreach (var node in nodes)
+            {
+                WatchesTreeView.Items.Add(CreateInspectTreeItem(node, WatchesInspectRoot));
+            }
+
+            RestoreInspectTree(WatchesTreeView.Items, WatchesInspectRoot);
+        }
+        finally
+        {
+            _suppressInspectExpansionTracking = false;
         }
     }
 
@@ -576,26 +651,64 @@ public partial class MainWindow
         }
         else
         {
-            WatchesListBox.Items.Add(expression);
+            RebuildWatchesTree(_watchExpressions
+                .Select(value => new DebugInspectNode { Display = value, Name = value })
+                .ToList());
         }
     }
 
-    private void WatchesListBox_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    private void WatchesTreeView_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
-        if (WatchesListBox.SelectedIndex < 0 || WatchesListBox.SelectedIndex >= _watchExpressions.Count)
+        if (FindWatchRootItem(e.OriginalSource as DependencyObject) is not TreeViewItem root ||
+            root.Tag is not DebugInspectNode node)
         {
             return;
         }
 
-        _watchExpressions.RemoveAt(WatchesListBox.SelectedIndex);
+        var index = _watchExpressions.FindIndex(expression => string.Equals(expression, node.Name, StringComparison.Ordinal));
+        if (index < 0)
+        {
+            return;
+        }
+
+        _watchExpressions.RemoveAt(index);
         if (_debuggerHook != null)
         {
             _ = RefreshWatchesAsync(_debuggerHook.Session);
         }
         else
         {
-            WatchesListBox.Items.RemoveAt(WatchesListBox.SelectedIndex);
+            WatchesTreeView.Items.Remove(root);
         }
+    }
+
+    private static TreeViewItem? FindWatchRootItem(DependencyObject? source)
+    {
+        DependencyObject? current = source;
+        TreeViewItem? item = null;
+        while (current != null)
+        {
+            if (current is TreeViewItem treeItem)
+            {
+                item = treeItem;
+            }
+
+            if (current is TreeView)
+            {
+                break;
+            }
+
+            current = current is TreeViewItem nested
+                ? ItemsControl.ItemsControlFromItemContainer(nested)
+                : VisualTreeHelper.GetParent(current);
+        }
+
+        while (item != null && ItemsControl.ItemsControlFromItemContainer(item) is TreeViewItem parent)
+        {
+            item = parent;
+        }
+
+        return item;
     }
 
     private void BreakpointsListBox_MouseDoubleClick(object sender, MouseButtonEventArgs e)
