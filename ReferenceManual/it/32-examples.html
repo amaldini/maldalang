@@ -287,6 +287,30 @@ game.createCanvas(640, 360, "#app");
 game.setBackground("#202830");
 game.start(update, null);</code></pre>
         <p>L'audio v1 usa le API <code>game.audio*</code> in modalità JavaScript. La superficie API è volutamente stabile per gli script di gioco MALDA esistenti.</p>
+        <h3>32.14.2 Blit del buffer pixel</h3>
+        <p>Scrivi un frame CPU con <code>game.setPixel</code>, poi caricalo in un solo <code>putImageData</code> tramite <code>game.blitPixels()</code>. Sono accettati anche array RGB/RGBA packed. Compila il sample ray tracer con:</p>
+        <pre><code>malda compile Examples/Web/js/ray_tracer.malda --mode js -o Examples/Web/js/ray_tracer.js</code></pre>
+        <pre><code>game.createCanvas(320, 180, "#app");
+game.createPixelBuffer();
+
+function renderScanline(y) {
+    var x = 0;
+    while (x &lt; 320) {
+        game.setPixel(x, y, x % 256, y % 256, 80);
+        x = x + 1;
+    }
+}
+
+function update(dtMs) {
+    renderScanline(0);
+}
+
+function render() {
+    game.blitPixels();
+}
+
+game.start(update, render);</code></pre>
+        <p>I colori sono 0–255. Le scritture <code>setPixel</code> fuori dai limiti vengono ignorate. Preferisci questo percorso a un <code>fillRect</code> per pixel. Vedi <code>Examples/Web/js/ray_tracer.malda</code>.</p>
         <h2>32.15 Backend JavaScript (API scena three.js)</h2>
         <p>Costruisci una prima scena 3D nel browser usando <code>three.*</code> in modalità JavaScript:</p>
         <pre><code>malda compile Examples/Web/js/three_cube.malda --mode js -o Examples/Web/js/three_cube.js</code></pre>

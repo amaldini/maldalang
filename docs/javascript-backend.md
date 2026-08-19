@@ -108,6 +108,7 @@ Validation rules currently enforced:
   - Game helpers:
     - Canvas/lifecycle: `game.createCanvas(width, height, mountSelector?)`, `game.setBackground(color)`, `game.start(updateFn, renderFn?)`, `game.stop()`
     - Drawing: `game.clear()`, `game.fillRect(x, y, width, height, color?)`, `game.fillCircle(x, y, radius, color?)`, `game.drawText(text, x, y, color?, font?)`
+    - Pixel buffer / blit: `game.createPixelBuffer(width?, height?)`, `game.setPixel(x, y, r, g, b, a?)`, `game.blitPixels(pixels?, destX?, destY?)`
     - Input: `game.isKeyDown(key)`, `game.getMouseX()`, `game.getMouseY()`, `game.isMouseDown(button?)`
   - Three helpers:
     - Renderer/lifecycle: `three.createRenderer(width, height, mountSelector?)`, `three.setClearColor(renderer, color)`, `three.setRendererSize(renderer, width, height)`, `three.start(updateFn, renderFn?)`, `three.stop()`
@@ -147,6 +148,11 @@ Use `game.*` when you want a browser-hosted interactive canvas loop in MALDA Jav
   - `game.fillRect(...)`
   - `game.fillCircle(...)`
   - `game.drawText(...)`
+- Pixel buffer / blit:
+  - `game.createPixelBuffer(width?, height?)` — allocate an `ImageData` (defaults to canvas size; filled opaque black)
+  - `game.setPixel(x, y, r, g, b, a?)` — write one RGBA pixel (0–255; alpha defaults to 255). Out-of-bounds writes are ignored. Auto-creates the buffer.
+  - `game.blitPixels()` — `putImageData` the buffer at `(0, 0)`
+  - `game.blitPixels(pixels, destX?, destY?)` — upload a packed RGB (`w*h*3`) or RGBA (`w*h*4`) array, then blit. Destination defaults to `(0, 0)`.
 - Input:
   - `game.isKeyDown("arrowleft")`, `game.isKeyDown("arrowright")`, etc.
   - `game.getMouseX()`, `game.getMouseY()`
@@ -213,12 +219,14 @@ function update(dtMs) {
 
 ### Guardrails and error conditions
 
-- Call `game.createCanvas(...)` before `game.clear(...)`, draw calls, or `game.start(...)`.
+- Call `game.createCanvas(...)` before `game.clear(...)`, draw calls, pixel-buffer calls, or `game.start(...)`.
+- Use `game.setPixel` + `game.blitPixels()` for full-frame CPU rendering. Do not call `game.fillRect` once per pixel.
+- `game.blitPixels(pixels)` requires `pixels.length` to be `bufferWidth * bufferHeight * 3` (RGB) or `* 4` (RGBA). The buffer matches the canvas unless `createPixelBuffer(width, height)` requested another size.
 - Do not call `game.createCanvas(...)` while the loop is running; call `game.stop()` first.
 - Do not call `game.start(...)` twice without stopping in between.
 - Call `game.stop()` only when a loop is active.
 
-See `Examples/Web/js/game_bounce.malda` and `Examples/Web/js/game_runtime_smoke_test.html` for a complete playable reference.
+See `Examples/Web/js/game_bounce.malda` and `Examples/Web/js/game_runtime_smoke_test.html` for a complete playable reference. See `Examples/Web/js/ray_tracer.malda` for a CPU ray tracer that fills the pixel buffer and blits it once per frame.
 
 ## three.js Quick Start (`three.*`)
 

@@ -1870,7 +1870,8 @@
         musicTrackReady: false,
         musicTrackPlaying: false,
         musicTrackVolume: 0.6,
-        musicTrackLoop: true
+        musicTrackLoop: true,
+        pixelBuffer: null
       };
 
       function normalizeKey(key) {
@@ -2155,6 +2156,7 @@
         mount.appendChild(canvas);
         state.canvas = canvas;
         state.context = context;
+        state.pixelBuffer = null;
         state.lastTimestamp = null;
         state.keysDown.clear();
         state.mouseButtonsDown.clear();
@@ -2214,6 +2216,134 @@
         context.fillStyle = coerceToString(color || "#ffffff");
         context.font = coerceToString(font || "16px sans-serif");
         context.fillText(coerceToString(text), toFiniteNumber(x, 0), toFiniteNumber(y, 0));
+        return null;
+      }
+
+      function clampByte(value) {
+        const numberValue = toFiniteNumber(value, 0);
+        if (numberValue <= 0) return 0;
+        if (numberValue >= 255) return 255;
+        return (numberValue + 0.5) | 0;
+      }
+
+      function packedPixelLength(pixels) {
+        if (pixels == null) return 0;
+        if (typeof pixels.length === "number") return pixels.length;
+        return 0;
+      }
+
+      function allocateImageData(width, height) {
+        const safeWidth = Math.max(1, coerceToInt(width));
+        const safeHeight = Math.max(1, coerceToInt(height));
+        if (typeof ImageData === "function") {
+          try {
+            return new ImageData(safeWidth, safeHeight);
+          } catch (_error) {
+            // Fall through to createImageData / plain buffer.
+          }
+        }
+        if (state.context && typeof state.context.createImageData === "function") {
+          return state.context.createImageData(safeWidth, safeHeight);
+        }
+        return {
+          width: safeWidth,
+          height: safeHeight,
+          data: new Uint8ClampedArray(safeWidth * safeHeight * 4)
+        };
+      }
+
+      function fillPixelBufferData(buffer, r, g, b, a) {
+        const data = buffer.data;
+        const red = clampByte(r);
+        const green = clampByte(g);
+        const blue = clampByte(b);
+        const alpha = clampByte(a);
+        for (let i = 0; i < data.length; i += 4) {
+          data[i] = red;
+          data[i + 1] = green;
+          data[i + 2] = blue;
+          data[i + 3] = alpha;
+        }
+      }
+
+      function ensurePixelBuffer(apiName) {
+        ensureCanvasContext(apiName);
+        if (!state.pixelBuffer) {
+          state.pixelBuffer = allocateImageData(state.canvas.width, state.canvas.height);
+          fillPixelBufferData(state.pixelBuffer, 0, 0, 0, 255);
+        }
+        return state.pixelBuffer;
+      }
+
+      function copyPackedPixels(buffer, pixels) {
+        const width = buffer.width;
+        const height = buffer.height;
+        const expectedRgb = width * height * 3;
+        const expectedRgba = width * height * 4;
+        const length = packedPixelLength(pixels);
+        if (length !== expectedRgb && length !== expectedRgba) {
+          throw new Error(
+            "mlRuntime.game.blitPixels expected a packed RGB array of length " +
+            expectedRgb + " or RGBA array of length " + expectedRgba +
+            " (canvas " + width + "x" + height + "), got length " + length + "."
+          );
+        }
+
+        const data = buffer.data;
+        if (length === expectedRgba) {
+          for (let i = 0; i < expectedRgba; i++) {
+            data[i] = clampByte(pixels[i]);
+          }
+          return;
+        }
+
+        let source = 0;
+        for (let i = 0; i < expectedRgba; i += 4) {
+          data[i] = clampByte(pixels[source]);
+          data[i + 1] = clampByte(pixels[source + 1]);
+          data[i + 2] = clampByte(pixels[source + 2]);
+          data[i + 3] = 255;
+          source += 3;
+        }
+      }
+
+      function createPixelBuffer(width, height) {
+        ensureCanvasContext("createPixelBuffer");
+        const bufferWidth = width === null || width === undefined
+          ? state.canvas.width
+          : Math.max(1, coerceToInt(width));
+        const bufferHeight = height === null || height === undefined
+          ? state.canvas.height
+          : Math.max(1, coerceToInt(height));
+        state.pixelBuffer = allocateImageData(bufferWidth, bufferHeight);
+        fillPixelBufferData(state.pixelBuffer, 0, 0, 0, 255);
+        return { width: bufferWidth, height: bufferHeight };
+      }
+
+      function setPixel(x, y, r, g, b, a) {
+        const buffer = ensurePixelBuffer("setPixel");
+        const px = coerceToInt(x);
+        const py = coerceToInt(y);
+        if (px < 0 || py < 0 || px >= buffer.width || py >= buffer.height) {
+          return null;
+        }
+        const offset = (py * buffer.width + px) * 4;
+        buffer.data[offset] = clampByte(r);
+        buffer.data[offset + 1] = clampByte(g);
+        buffer.data[offset + 2] = clampByte(b);
+        buffer.data[offset + 3] = a === null || a === undefined ? 255 : clampByte(a);
+        return null;
+      }
+
+      function blitPixels(pixels, destX, destY) {
+        const context = ensureCanvasContext("blitPixels");
+        const buffer = ensurePixelBuffer("blitPixels");
+        if (pixels !== null && pixels !== undefined) {
+          copyPackedPixels(buffer, pixels);
+        }
+        const x = destX === null || destX === undefined ? 0 : coerceToInt(destX);
+        const y = destY === null || destY === undefined ? 0 : coerceToInt(destY);
+        context.putImageData(buffer, x, y);
         return null;
       }
 
@@ -2619,6 +2749,9 @@
         fillRect,
         fillCircle,
         drawText,
+        createPixelBuffer,
+        setPixel,
+        blitPixels,
         isKeyDown,
         getMouseX,
         getMouseY,

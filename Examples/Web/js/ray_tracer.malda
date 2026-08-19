@@ -1,0 +1,322 @@
+var root = dom.query("#app");
+
+if (root == null) {
+    println("No #app container found.");
+} else {
+    dom.clear(root);
+
+    var heading = dom.create("h1");
+    dom.setText(heading, "MALDA Ray Tracer");
+    dom.append(root, heading);
+
+    var hint = dom.create("p");
+    dom.setText(hint, "CPU spheres + ground plane, blitted through game.setPixel / game.blitPixels. Left/Right change orbit speed. Move the mouse to slide the light.");
+    dom.append(root, hint);
+
+    var width = 320;
+    var height = 180;
+    var aspect = width / height;
+    var tanHalf = math.tan(math.degToRad(28));
+    var rowsPerFrame = 12;
+    var maxT = 1000000.0;
+    var epsilon = 0.0015;
+
+    var camRadius = 4.35;
+    var camAngle = 0.55;
+    var camSpeed = 0.35;
+    var camX = 0.0;
+    var camY = 1.65;
+    var camZ = 0.0;
+    var forwardX = 0.0;
+    var forwardY = 0.0;
+    var forwardZ = 1.0;
+    var rightX = 1.0;
+    var rightY = 0.0;
+    var rightZ = 0.0;
+    var upX = 0.0;
+    var upY = 1.0;
+    var upZ = 0.0;
+
+    var lightX = 5.0;
+    var lightY = 8.5;
+    var lightZ = 3.2;
+
+    var scanY = 0;
+    var frameCount = 0;
+    var lastMouseX = -1;
+    var lastMouseY = -1;
+
+    var spheres = [
+        [0.0, 1.0, 0.0, 1.0, 0.86, 0.22, 0.18],
+        [-1.85, 0.55, 0.35, 0.55, 0.18, 0.45, 0.90],
+        [1.55, 0.42, -0.28, 0.42, 0.95, 0.74, 0.22]
+    ];
+
+    function colorByte(channel) {
+        var gamma = math.sqrt(math.clamp(channel, 0, 1));
+        return int(math.clamp(gamma * 255, 0, 255));
+    }
+
+    function hitSphere(cx, cy, cz, radius, ox, oy, oz, dx, dy, dz) {
+        var ocx = ox - cx;
+        var ocy = oy - cy;
+        var ocz = oz - cz;
+        var a = dx * dx + dy * dy + dz * dz;
+        var b = ocx * dx + ocy * dy + ocz * dz;
+        var c = ocx * ocx + ocy * ocy + ocz * ocz - radius * radius;
+        var disc = b * b - a * c;
+        if (disc < 0) {
+            return -1;
+        }
+        var sqrtDisc = math.sqrt(disc);
+        var t = (0 - b - sqrtDisc) / a;
+        if (t > epsilon) {
+            return t;
+        }
+        t = (0 - b + sqrtDisc) / a;
+        if (t > epsilon) {
+            return t;
+        }
+        return -1;
+    }
+
+    function closestHit(ox, oy, oz, dx, dy, dz, tMax) {
+        var bestT = tMax;
+        var kind = 0;
+        var index = -1;
+        var i = 0;
+        while (i < spheres.length) {
+            var s = spheres[i];
+            var tSphere = hitSphere(s[0], s[1], s[2], s[3], ox, oy, oz, dx, dy, dz);
+            if (tSphere > 0 && tSphere < bestT) {
+                bestT = tSphere;
+                kind = 1;
+                index = i;
+            }
+            i = i + 1;
+        }
+
+        if (dy < 0 - epsilon || dy > epsilon) {
+            var tPlane = (0 - oy) / dy;
+            if (tPlane > epsilon && tPlane < bestT) {
+                bestT = tPlane;
+                kind = 2;
+                index = -1;
+            }
+        }
+
+        return [kind, bestT, index];
+    }
+
+    function inShadow(hx, hy, hz, nx, ny, nz) {
+        var ox = hx + nx * 0.02;
+        var oy = hy + ny * 0.02;
+        var oz = hz + nz * 0.02;
+        var lx = lightX - ox;
+        var ly = lightY - oy;
+        var lz = lightZ - oz;
+        var lightDist = math.sqrt(lx * lx + ly * ly + lz * lz);
+        if (lightDist <= epsilon) {
+            return false;
+        }
+        var inv = 1 / lightDist;
+        var hit = closestHit(ox, oy, oz, lx * inv, ly * inv, lz * inv, lightDist - 0.05);
+        return hit[0] != 0;
+    }
+
+    function shadeSky(dy) {
+        var t = math.clamp((dy + 1) * 0.5, 0, 1);
+        var r = 0.62 + (0.16 - 0.62) * t;
+        var g = 0.78 + (0.38 - 0.78) * t;
+        var b = 0.96 + (0.74 - 0.96) * t;
+        return [r, g, b];
+    }
+
+    function shadeHit(kind, t, index, ox, oy, oz, dx, dy, dz) {
+        var hx = ox + dx * t;
+        var hy = oy + dy * t;
+        var hz = oz + dz * t;
+        var nx = 0.0;
+        var ny = 1.0;
+        var nz = 0.0;
+        var cr = 0.72;
+        var cg = 0.72;
+        var cb = 0.72;
+
+        if (kind == 1) {
+            var s = spheres[index];
+            nx = (hx - s[0]) / s[3];
+            ny = (hy - s[1]) / s[3];
+            nz = (hz - s[2]) / s[3];
+            cr = s[4];
+            cg = s[5];
+            cb = s[6];
+        } else {
+            var check = (int(math.floor(hx)) + int(math.floor(hz))) % 2;
+            if (check < 0) {
+                check = 0 - check;
+            }
+            if (check == 0) {
+                cr = 0.78;
+                cg = 0.78;
+                cb = 0.74;
+            } else {
+                cr = 0.18;
+                cg = 0.22;
+                cb = 0.20;
+            }
+            if (ny * dy > 0) {
+                ny = 0 - ny;
+            }
+        }
+
+        var nlen = math.sqrt(nx * nx + ny * ny + nz * nz);
+        if (nlen > 0) {
+            nx = nx / nlen;
+            ny = ny / nlen;
+            nz = nz / nlen;
+        }
+
+        var lx = lightX - hx;
+        var ly = lightY - hy;
+        var lz = lightZ - hz;
+        var llen = math.sqrt(lx * lx + ly * ly + lz * lz);
+        var lnx = 0.0;
+        var lny = 1.0;
+        var lnz = 0.0;
+        if (llen > epsilon) {
+            lnx = lx / llen;
+            lny = ly / llen;
+            lnz = lz / llen;
+        }
+
+        var diff = nx * lnx + ny * lny + nz * lnz;
+        if (diff < 0) {
+            diff = 0;
+        }
+
+        var ambient = 0.12;
+        var light = ambient;
+        if (!inShadow(hx, hy, hz, nx, ny, nz)) {
+            light = ambient + diff * 0.88;
+        }
+
+        return [cr * light, cg * light, cb * light];
+    }
+
+    function tracePixel(px, py) {
+        var ndcX = ((px + 0.5) / width) * 2 - 1;
+        var ndcY = 1 - ((py + 0.5) / height) * 2;
+        var planeX = ndcX * aspect * tanHalf;
+        var planeY = ndcY * tanHalf;
+        var dx = forwardX + rightX * planeX + upX * planeY;
+        var dy = forwardY + rightY * planeY + upY * planeY;
+        var dz = forwardZ + rightZ * planeX + upZ * planeY;
+        var dlen = math.sqrt(dx * dx + dy * dy + dz * dz);
+        dx = dx / dlen;
+        dy = dy / dlen;
+        dz = dz / dlen;
+
+        var hit = closestHit(camX, camY, camZ, dx, dy, dz, maxT);
+        if (hit[0] == 0) {
+            return shadeSky(dy);
+        }
+        return shadeHit(hit[0], hit[1], hit[2], camX, camY, camZ, dx, dy, dz);
+    }
+
+    function updateCamera() {
+        camX = math.sin(camAngle) * camRadius;
+        camY = 1.65;
+        camZ = math.cos(camAngle) * camRadius;
+
+        var fx = 0.0 - camX;
+        var fy = 0.85 - camY;
+        var fz = 0.0 - camZ;
+        var fl = math.sqrt(fx * fx + fy * fy + fz * fz);
+        fx = fx / fl;
+        fy = fy / fl;
+        fz = fz / fl;
+
+        var rx = 0 - fz;
+        var ry = 0.0;
+        var rz = fx;
+        var rl = math.sqrt(rx * rx + ry * ry + rz * rz);
+        rx = rx / rl;
+        ry = ry / rl;
+        rz = rz / rl;
+
+        forwardX = fx;
+        forwardY = fy;
+        forwardZ = fz;
+        rightX = rx;
+        rightY = ry;
+        rightZ = rz;
+        upX = ry * fz - rz * fy;
+        upY = rz * fx - rx * fz;
+        upZ = rx * fy - ry * fx;
+    }
+
+    function update(dtMs) {
+        var dt = dtMs;
+        if (dt > 50) {
+            dt = 50;
+        }
+
+        if (game.isKeyDown("arrowleft")) {
+            camSpeed = camSpeed - ((1.2 * dt) / 1000);
+        }
+        if (game.isKeyDown("arrowright")) {
+            camSpeed = camSpeed + ((1.2 * dt) / 1000);
+        }
+        if (camSpeed < -1.6) {
+            camSpeed = -1.6;
+        }
+        if (camSpeed > 1.6) {
+            camSpeed = 1.6;
+        }
+
+        var mx = int(game.getMouseX());
+        var my = int(game.getMouseY());
+        if (lastMouseX < 0) {
+            lastMouseX = mx;
+            lastMouseY = my;
+        } else if (mx != lastMouseX || my != lastMouseY) {
+            lastMouseX = mx;
+            lastMouseY = my;
+            lightX = 4.2 + ((mx / width) - 0.5) * 12;
+            lightZ = 2.4 - ((my / height) - 0.5) * 8;
+            scanY = 0;
+        }
+
+        var rows = 0;
+        while (rows < rowsPerFrame && scanY < height) {
+            var x = 0;
+            while (x < width) {
+                var color = tracePixel(x, scanY);
+                game.setPixel(x, scanY, colorByte(color[0]), colorByte(color[1]), colorByte(color[2]));
+                x = x + 1;
+            }
+            scanY = scanY + 1;
+            rows = rows + 1;
+        }
+
+        if (scanY >= height) {
+            frameCount = frameCount + 1;
+            scanY = 0;
+            camAngle = camAngle + ((camSpeed * 120) / 1000);
+            updateCamera();
+        }
+    }
+
+    function render() {
+        game.blitPixels();
+        game.drawText("Orbit: " + string(camSpeed) + "  Frame: " + string(frameCount) + "  Scan: " + string(scanY) + "/" + string(height), 10, 22, "#e2e8f0", "14px monospace");
+        game.drawText("Left/Right = speed   Mouse = light", 10, 42, "#94a3b8", "13px monospace");
+    }
+
+    game.createCanvas(width, height, "#app");
+    game.setBackground("#020617");
+    game.createPixelBuffer();
+    updateCamera();
+    game.start(update, render);
+}
