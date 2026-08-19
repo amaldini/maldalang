@@ -10,8 +10,8 @@ using MaldaLang.DesktopIDE.Models;
 namespace MaldaLang.DesktopIDE.Services;
 
 /// <summary>
-/// Colors for editor popups (completion, signature help, hover) derived from an IDE theme.
-/// AvalonEdit's CompletionWindow is a separate Window, so it does not inherit MainWindow resources.
+/// Colors for editor popups (completion, signature help, hover, quick fix) derived from an IDE theme.
+/// AvalonEdit completion windows and WPF ContextMenus do not inherit MainWindow resources.
 /// </summary>
 public sealed class EditorPopupTheme
 {
@@ -122,6 +122,46 @@ public static class EditorPopupTheming
         toolTip.BorderThickness = new Thickness(1);
     }
 
+    public static void Apply(ContextMenu menu, Theme theme)
+    {
+        ArgumentNullException.ThrowIfNull(menu);
+        ArgumentNullException.ThrowIfNull(theme);
+
+        var spec = EditorPopupTheme.FromTheme(theme);
+        var background = Freeze(spec.Background);
+        var foreground = Freeze(spec.Foreground);
+        var border = Freeze(spec.Border);
+        var hover = Freeze(theme.ButtonHover);
+
+        menu.Background = background;
+        menu.Foreground = foreground;
+        menu.BorderBrush = border;
+        menu.BorderThickness = new Thickness(1);
+
+        var resources = menu.Resources;
+        resources[SystemColors.MenuBrushKey] = background;
+        resources[SystemColors.MenuTextBrushKey] = foreground;
+        resources[SystemColors.ControlBrushKey] = background;
+        resources[SystemColors.ControlTextBrushKey] = foreground;
+        resources[SystemColors.HighlightBrushKey] = Freeze(spec.SelectionBackground);
+        resources[SystemColors.HighlightTextBrushKey] = Freeze(spec.SelectionForeground);
+        resources["EditorBackgroundBrush"] = background;
+        resources["EditorForegroundBrush"] = foreground;
+        resources["InputBackgroundBrush"] = background;
+        resources["TextForegroundBrush"] = foreground;
+        resources["TextSecondaryBrush"] = Freeze(theme.TextSecondary);
+        resources["ButtonHoverBrush"] = hover;
+        resources["BorderBrush"] = border;
+
+        foreach (var item in menu.Items.OfType<MenuItem>())
+        {
+            item.Foreground = foreground;
+            item.Background = Brushes.Transparent;
+        }
+
+        menu.Opened += (_, _) => TintRootBorder(menu, background, border);
+    }
+
     public static void PublishApplicationResources(Theme theme)
     {
         ArgumentNullException.ThrowIfNull(theme);
@@ -142,7 +182,11 @@ public static class EditorPopupTheming
         app.Resources["EditorForegroundBrush"] = foreground;
         app.Resources["InputBackgroundBrush"] = Freeze(theme.InputBackground);
         app.Resources["TextForegroundBrush"] = Freeze(theme.TextForeground);
+        app.Resources["TextSecondaryBrush"] = Freeze(theme.TextSecondary);
+        app.Resources["ButtonHoverBrush"] = Freeze(theme.ButtonHover);
         app.Resources["BorderBrush"] = border;
+        app.Resources[SystemColors.MenuBrushKey] = background;
+        app.Resources[SystemColors.MenuTextBrushKey] = foreground;
         app.Resources[SystemColors.InfoBrushKey] = background;
         app.Resources[SystemColors.InfoTextBrushKey] = foreground;
         app.Resources[SystemColors.HighlightBrushKey] = selection;
@@ -164,17 +208,17 @@ public static class EditorPopupTheming
         listBox.BorderThickness = new Thickness(0);
     }
 
-    private static void TintRootBorder(Window window, SolidColorBrush background, SolidColorBrush border)
+    private static void TintRootBorder(DependencyObject root, SolidColorBrush background, SolidColorBrush border)
     {
-        if (VisualTreeHelper.GetChildrenCount(window) == 0)
+        if (VisualTreeHelper.GetChildrenCount(root) == 0)
         {
             return;
         }
 
-        if (VisualTreeHelper.GetChild(window, 0) is Border root)
+        if (VisualTreeHelper.GetChild(root, 0) is Border chrome)
         {
-            root.Background = background;
-            root.BorderBrush = border;
+            chrome.Background = background;
+            chrome.BorderBrush = border;
         }
     }
 

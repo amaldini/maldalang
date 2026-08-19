@@ -1849,6 +1849,7 @@ public partial class MainWindow
             }
         }
 
+        EditorPopupTheming.Apply(menu, _themeService.CurrentTheme);
         menu.IsOpen = true;
     }
 
