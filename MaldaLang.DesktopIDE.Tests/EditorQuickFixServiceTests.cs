@@ -196,6 +196,26 @@ public class EditorQuickFixServiceTests
         Assert.NotNull(Assert.Single(fixes).AutoFix);
     }
 
+    [Fact]
+    public void LineHasFix_MissingSemicolon_IsOnStatementLineNotFollowingComment()
+    {
+        const string source = "print(\"hi\")\n// comment\nvar x = 1;\n";
+        var language = new LanguageService();
+        var diagnostics = language.GetDiagnostics(source);
+        var withFix = diagnostics.Where(diagnostic => diagnostic.AutoFix != null).ToList();
+        var spans = _diagnostics.ToSpans(withFix, (int line, int column, out int offset) =>
+            TryGetOffset(source, line, column, out offset));
+
+        Assert.True(_quickFixes.LineHasFix(spans, 0));
+        Assert.False(_quickFixes.LineHasFix(spans, 1));
+        Assert.False(_quickFixes.LineHasFix(spans, 2));
+
+        var fix = Assert.Single(spans).AutoFix;
+        Assert.Equal(";", fix?.TextToInsert);
+        Assert.Equal(0, fix?.Line);
+        Assert.Equal(11, fix?.Column);
+    }
+
     private static EditorDiagnosticSpan CreateSpan(
         int offset,
         int length,

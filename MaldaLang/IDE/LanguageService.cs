@@ -335,6 +335,7 @@ public class LanguageService : ILanguageService
                 
                 // Try to get autofix suggestion (pass the ParseException for better detection)
                 diagnostic.AutoFix = GetAutoFix(source, diagnostic, error, cancellationToken);
+                SnapDiagnosticToSemicolonAutofix(diagnostic);
                 ApplyLearningSupport(diagnostic);
                 
                 diagnostics.Add(diagnostic);
@@ -365,6 +366,7 @@ public class LanguageService : ILanguageService
             
             // Try to get autofix suggestion (pass the ParseException for better detection)
             diagnostic.AutoFix = GetAutoFix(source, diagnostic, ex, cancellationToken);
+            SnapDiagnosticToSemicolonAutofix(diagnostic);
             ApplyLearningSupport(diagnostic);
             
             diagnostics.Add(diagnostic);
@@ -2290,22 +2292,32 @@ public class LanguageService : ILanguageService
             
             if (charToken != null && IsSimpleCharacterToken(charToken))
             {
-                // Determine insertion position
+                var insertLine = diagnostic.Line;
                 var insertColumn = diagnostic.Column + diagnostic.Length;
+                var lengthToReplace = 0;
                 
                 // If we're replacing (ActualType is different), replace at current position
                 if (parseException.ActualType.HasValue && parseException.ActualType.Value != expectedType)
                 {
                     insertColumn = diagnostic.Column;
+                    lengthToReplace = diagnostic.Length;
+                }
+
+                if (charToken == ";" &&
+                    TryGetInsertPositionAfterPrecedingToken(source, diagnostic.Line, diagnostic.Column, out var semiLine, out var semiColumn))
+                {
+                    insertLine = semiLine;
+                    insertColumn = semiColumn;
+                    lengthToReplace = 0;
                 }
                 
                 return new AutoFixInfo
                 {
                     Description = $"Insert missing '{charToken}'",
-                    Line = diagnostic.Line,
+                    Line = insertLine,
                     Column = insertColumn,
                     TextToInsert = charToken,
-                    LengthToReplace = parseException.ActualType.HasValue && parseException.ActualType.Value != expectedType ? diagnostic.Length : 0,
+                    LengthToReplace = lengthToReplace,
                     IsSimpleCharacterFix = true
                 };
             }
@@ -2334,10 +2346,18 @@ public class LanguageService : ILanguageService
                         // it encountered the error. For "after" messages, the parser has already advanced
                         // past where we should insert, so we need to insert at the previous position.
                         // For "before" messages, we insert at the current position.
+                        var insertLine = diagnostic.Line;
                         var insertColumn = diagnostic.Column;
-                        
-                        // Check if message contains " after " - if so, the parser is one position ahead
-                        if (message.Contains(" after ") || message.Contains("after "))
+
+                        if (charToken == ";" &&
+                            TryGetInsertPositionAfterPrecedingToken(source, diagnostic.Line, diagnostic.Column, out var semiLine, out var semiColumn))
+                        {
+                            // Missing ';' is inserted at the end of the preceding statement, even
+                            // when the parser reported the next token after comments or blank lines.
+                            insertLine = semiLine;
+                            insertColumn = semiColumn;
+                        }
+                        else if (message.Contains(" after ") || message.Contains("after "))
                         {
                             // Parser has advanced past where we should insert, so go back one position
                             insertColumn = Math.Max(0, diagnostic.Column - 1);
@@ -2346,7 +2366,7 @@ public class LanguageService : ILanguageService
                         return new AutoFixInfo
                         {
                             Description = $"Insert missing '{charToken}'",
-                            Line = diagnostic.Line,
+                            Line = insertLine,
                             Column = insertColumn,
                             TextToInsert = charToken,
                             LengthToReplace = 0,
@@ -2460,6 +2480,79 @@ public class LanguageService : ILanguageService
                token == "(" || token == ")" || 
                token == "[" || token == "]" ||
                token == "," || token == "." || token == ":";
+    }
+
+    private static void SnapDiagnosticToSemicolonAutofix(Diagnostic diagnostic)
+    {
+        var fix = diagnostic.AutoFix;
+        if (fix == null || fix.TextToInsert != ";")
+        {
+            return;
+        }
+
+        // Lightbulb / squiggle follow diagnostic.Line; keep them on the statement
+        // that is missing ';' instead of on the next token after comments.
+        diagnostic.Line = fix.Line;
+        diagnostic.Column = fix.Column;
+    }
+
+    /// <summary>
+    /// Insert missing ';' immediately after the last token that starts before
+    /// <paramref name="diagnosticLine"/>/<paramref name="diagnosticColumn"/>.
+    /// Comments are not tokens, so this skips blank lines and comments.
+    /// </summary>
+    private static bool TryGetInsertPositionAfterPrecedingToken(
+        string source,
+        int diagnosticLine,
+        int diagnosticColumn,
+        out int insertLine,
+        out int insertColumn)
+    {
+        insertLine = diagnosticLine;
+        insertColumn = diagnosticColumn;
+        if (string.IsNullOrEmpty(source))
+        {
+            return false;
+        }
+
+        List<Token> tokens;
+        try
+        {
+            tokens = new Lexer(source).Tokenize();
+        }
+        catch
+        {
+            return false;
+        }
+
+        Token? preceding = null;
+        foreach (var token in tokens)
+        {
+            if (token.Type == TokenType.EOF)
+            {
+                break;
+            }
+
+            var tokenLine = token.Line - 1;
+            var tokenColumn = Math.Max(0, token.Column - 1);
+            if (tokenLine > diagnosticLine ||
+                (tokenLine == diagnosticLine && tokenColumn >= diagnosticColumn))
+            {
+                break;
+            }
+
+            preceding = token;
+        }
+
+        if (preceding == null)
+        {
+            return false;
+        }
+
+        var (endLine, endColumn) = preceding.GetEndLocation();
+        insertLine = Math.Max(0, endLine - 1);
+        insertColumn = Math.Max(0, endColumn - 1);
+        return true;
     }
     
     private AutoFixInfo? DetectMissingClosingBrace(string source, Diagnostic diagnostic)
