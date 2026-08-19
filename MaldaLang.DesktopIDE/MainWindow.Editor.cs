@@ -1255,22 +1255,23 @@ public partial class MainWindow
             return;
         }
 
-        var orderedEdits = edits
-            .OrderByDescending(edit => edit.Span.Line)
-            .ThenByDescending(edit => edit.Span.Column)
-            .ToList();
+        EditorUndoableText.ApplyEdits(CodeEditor.Document, edits);
+    }
 
-        foreach (var edit in orderedEdits)
+    /// <summary>
+    /// Replaces the current editor buffer without clearing AvalonEdit's undo stack.
+    /// Assigning <c>TextEditor.Text</c> calls <c>UndoStack.ClearAll()</c> in AvalonEdit 6.3.
+    /// </summary>
+    private void SetEditorTextUndoable(string newText)
+    {
+        if (CodeEditor.Document == null)
         {
-            if (!TryGetOffsetFromLocation(CodeEditor.Document, edit.Span.Line, edit.Span.Column, out var startOffset))
-            {
-                continue;
-            }
-
-            var maxLength = Math.Max(0, CodeEditor.Document.TextLength - startOffset);
-            var replaceLength = Math.Min(edit.Span.Length, maxLength);
-            CodeEditor.Document.Replace(startOffset, replaceLength, edit.NewText);
+            return;
         }
+
+        var caret = CodeEditor.CaretOffset;
+        EditorUndoableText.ReplaceAll(CodeEditor.Document, newText);
+        CodeEditor.CaretOffset = Math.Min(Math.Max(0, caret), CodeEditor.Document.TextLength);
     }
 
     private List<WorkspaceDocumentInfo> CollectWorkspaceDocuments()
@@ -1467,7 +1468,7 @@ public partial class MainWindow
 
         if (_openDocuments.ContainsKey(_activeDocumentKey))
         {
-            SyncEditorFromActiveDocument();
+            SyncEditorFromActiveDocument(resetUndoStack: false);
         }
 
         RefreshDocumentTabs();
@@ -1518,7 +1519,7 @@ public partial class MainWindow
             _isSwitchingDocument = true;
             try
             {
-                CodeEditor.Text = updatedText;
+                SetEditorTextUndoable(updatedText);
             }
             finally
             {
@@ -1536,7 +1537,7 @@ public partial class MainWindow
             return;
         }
 
-        CodeEditor.Text = formatted;
+        SetEditorTextUndoable(formatted);
         SaveEditorIntoActiveDocument();
         UpdateDiagnostics();
         RefreshOutline();
@@ -1659,25 +1660,7 @@ public partial class MainWindow
     }
 
     private static bool TryGetOffsetFromLocation(TextDocument document, int zeroBasedLine, int zeroBasedColumn, out int offset)
-    {
-        offset = 0;
-        var lineNumber = zeroBasedLine + 1;
-        if (lineNumber <= 0 || lineNumber > document.LineCount)
-        {
-            return false;
-        }
-
-        try
-        {
-            var line = document.GetLineByNumber(lineNumber);
-            offset = Math.Min(line.Offset + Math.Max(0, zeroBasedColumn), line.EndOffset);
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
-    }
+        => EditorUndoableText.TryGetOffsetFromLocation(document, zeroBasedLine, zeroBasedColumn, out offset);
 
     private string? PromptForSymbolName(string currentName)
     {
