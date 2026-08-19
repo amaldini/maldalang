@@ -5,6 +5,7 @@ on:
     branches: [main, master]
     paths:
       - "ReferenceManual/**"
+      - "scripts/rewrite-reference-manual-pages-md-links.py"
       - ".github/workflows/deploy-reference-manual.yml"
   workflow_dispatch:
 
@@ -32,6 +33,9 @@ jobs:
         uses: actions/configure-pages@v5
 
       - name: Prepare site
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PAGES_REF: ${{ github.event.repository.default_branch }}
         run: |
           mkdir -p _site/it
           # Static HTML/CSS/JS/JSON only — skip authoring helpers.
@@ -41,6 +45,12 @@ jobs:
           find ReferenceManual/it -maxdepth 1 -type f \
             \( -name '*.html' -o -name '*.json' \) \
             -exec cp {} _site/it/ \;
+          # ../docs/*.md is outside the Pages project root and 404s; point at GitHub.
+          python3 scripts/rewrite-reference-manual-pages-md-links.py \
+            --site _site \
+            --source ReferenceManual \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref "${PAGES_REF:-main}"
           touch _site/.nojekyll
 
       - name: Upload artifact
