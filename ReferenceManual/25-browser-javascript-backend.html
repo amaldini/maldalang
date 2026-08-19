@@ -180,12 +180,13 @@ println(text);</code></pre>
         <ul>
             <li><strong>Canvas and lifecycle:</strong> <code>game.createCanvas</code>, <code>game.setBackground</code>, <code>game.start(updateFn, renderFn?)</code>, <code>game.stop()</code></li>
             <li><strong>Drawing:</strong> <code>game.clear()</code>, <code>game.fillRect(...)</code>, <code>game.fillCircle(...)</code>, <code>game.drawText(...)</code></li>
+            <li><strong>Pixel buffer / blit:</strong> <code>game.createPixelBuffer(width?, height?)</code>, <code>game.setPixel(x, y, r, g, b, a?)</code>, <code>game.blitPixels(pixels?, destX?, destY?)</code></li>
             <li><strong>Input:</strong> <code>game.isKeyDown(key)</code>, <code>game.getMouseX()</code>, <code>game.getMouseY()</code>, <code>game.isMouseDown(button?)</code></li>
             <li><strong>Audio:</strong> <code>game.audioInit()</code>, <code>game.audioIsReady()</code>, <code>game.audioSetMasterVolume(v)</code>, <code>game.audioPlayTone(...)</code>, <code>game.audioPlayNoise(...)</code>, <code>game.audioPlayPattern(pattern)</code>, <code>game.audioStopPattern()</code>, <code>game.audioStopAll()</code></li>
         </ul>
         <p><strong>Loop guidance:</strong> <code>updateFn</code> receives <code>dtMs</code>. Scale movement by <code>dtMs</code> so animation stays frame-rate independent.</p>
         <p><strong>Audio guidance:</strong> call <code>game.audioInit()</code> after a user gesture to satisfy browser autoplay policies.</p>
-        <p>For a full quick start and best practices, see <code>docs/javascript-backend.md</code>. For a complete sample, see <code>Examples/Web/js/game_bounce.malda</code>.</p>
+        <p>For a full quick start and best practices, see <code>docs/javascript-backend.md</code>. For a complete sample, see <code>Examples/Web/js/game_bounce.malda</code>. For a CPU ray tracer that writes pixels into an <code>ImageData</code> buffer and blits once per frame, see <code>Examples/Web/js/ray_tracer.malda</code>.</p>
 
         <h2>25.10 three.js Scene API</h2>
         <p>The JavaScript backend also includes a curated 3D scene API under <code>three.*</code>. This wraps a focused subset of <code>three.js</code> for JavaScript mode without exposing arbitrary raw browser interop in MALDA source.</p>

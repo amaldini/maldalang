@@ -181,12 +181,13 @@ println(text);</code></pre>
         <ul>
             <li><strong>Canvas e ciclo di vita:</strong> <code>game.createCanvas</code>, <code>game.setBackground</code>, <code>game.start(updateFn, renderFn?)</code>, <code>game.stop()</code></li>
             <li><strong>Disegno:</strong> <code>game.clear()</code>, <code>game.fillRect(...)</code>, <code>game.fillCircle(...)</code>, <code>game.drawText(...)</code></li>
+            <li><strong>Buffer pixel / blit:</strong> <code>game.createPixelBuffer(width?, height?)</code>, <code>game.setPixel(x, y, r, g, b, a?)</code>, <code>game.blitPixels(pixels?, destX?, destY?)</code></li>
             <li><strong>Input:</strong> <code>game.isKeyDown(key)</code>, <code>game.getMouseX()</code>, <code>game.getMouseY()</code>, <code>game.isMouseDown(button?)</code></li>
             <li><strong>Audio:</strong> <code>game.audioInit()</code>, <code>game.audioIsReady()</code>, <code>game.audioSetMasterVolume(v)</code>, <code>game.audioPlayTone(...)</code>, <code>game.audioPlayNoise(...)</code>, <code>game.audioPlayPattern(pattern)</code>, <code>game.audioStopPattern()</code>, <code>game.audioStopAll()</code></li>
         </ul>
         <p><strong>Indicazioni sul loop:</strong> <code>updateFn</code> riceve <code>dtMs</code>. Scala il movimento per <code>dtMs</code> così l'animazione resta indipendente dal frame-rate.</p>
         <p><strong>Indicazioni sull'audio:</strong> chiama <code>game.audioInit()</code> dopo un gesto dell'utente per soddisfare le policy di autoplay del browser.</p>
-        <p>Per un avvio rapido completo e le best practice, vedi <code>docs/javascript-backend.md</code>. Per un sample completo, vedi <code>Examples/Web/js/game_bounce.malda</code>.</p>
+        <p>Per un avvio rapido completo e le best practice, vedi <code>docs/javascript-backend.md</code>. Per un sample completo, vedi <code>Examples/Web/js/game_bounce.malda</code>. Per un ray tracer CPU che scrive i pixel in un buffer <code>ImageData</code> e fa blit una volta per frame, vedi <code>Examples/Web/js/ray_tracer.malda</code>.</p>
 
         <h2>25.10 API scene three.js</h2>
         <p>Il backend JavaScript include anche un'API scene 3D curata sotto <code>three.*</code>. Avvolge un sottoinsieme mirato di <code>three.js</code> per JavaScript mode senza esporre interop browser grezzo arbitrario nel sorgente MALDA.</p>

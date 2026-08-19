@@ -2,9 +2,11 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 using MaldaLang.Compiler;
+using MaldaLang.Tests.Conformance.Tier0;
 using MaldaLang.Tests.Planning;
 
 namespace MaldaLang.Tests;
@@ -416,6 +418,194 @@ public class JavaScriptBackendTests : TestBase
         Assert.Contains("mlRuntime.game.fillRect(10, 20, 30, 40, \"#33cc66\")", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.start(update, render)", js, StringComparison.Ordinal);
         Assert.Contains("let leftPressed = mlRuntime.game.isKeyDown(\"arrowleft\");", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void JsTranspiler_MapsGamePixelBufferApis_ToMlRuntimeGame()
+    {
+        var source = """
+            var blitFn = game.blitPixels;
+            game.createPixelBuffer();
+            game.createPixelBuffer(320, 180);
+            game.setPixel(2, 3, 10, 20, 30);
+            game.setPixel(2, 3, 10, 20, 30, 255);
+            game.blitPixels();
+            game.blitPixels(pixels);
+            game.blitPixels(pixels, 4, 5);
+            """;
+        var compiler = new Compiler.Compiler();
+
+        var js = compiler.TranspileToJavaScriptFromSource(source);
+
+        Assert.Contains("let blitFn = mlRuntime.game.blitPixels;", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.createPixelBuffer()", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.createPixelBuffer(320, 180)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.setPixel(2, 3, 10, 20, 30)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.setPixel(2, 3, 10, 20, 30, 255)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.blitPixels()", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.blitPixels(pixels)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.blitPixels(pixels, 4, 5)", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void JsTranspiler_RayTracerExample_EmitsPixelBlitCalls()
+    {
+        var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "js", "ray_tracer.malda");
+        var compiler = new Compiler.Compiler();
+        var js = compiler.TranspileToJavaScript(sourcePath);
+
+        Assert.Contains("mlRuntime.game.createPixelBuffer()", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.setPixel(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.blitPixels()", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("mlRuntime.three.", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GameRuntime_SetPixelAndBlitPixels_WritesImageData()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var runtimePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "wwwroot", "malda-js-runtime.js");
+        var root = CreateTempDirectory("malda_js_pixel_blit_");
+        try
+        {
+            var scriptPath = Path.Combine(root, "pixel-blit-test.js");
+            File.WriteAllText(scriptPath, """
+class ImageData {
+  constructor(width, height) {
+    this.width = width;
+    this.height = height;
+    this.data = new Uint8ClampedArray(width * height * 4);
+  }
+}
+globalThis.ImageData = ImageData;
+
+function makeCanvas() {
+  const ctx = {
+    lastPut: null,
+    fillStyle: "#000",
+    font: "",
+    fillRect() {},
+    clearRect() {},
+    beginPath() {},
+    arc() {},
+    fill() {},
+    fillText() {},
+    putImageData(image, x, y) {
+      this.lastPut = {
+        width: image.width,
+        height: image.height,
+        x,
+        y,
+        data: Uint8ClampedArray.from(image.data)
+      };
+    }
+  };
+  return {
+    width: 0,
+    height: 0,
+    style: {},
+    parentNode: null,
+    _ctx: ctx,
+    getContext() { return this._ctx; },
+    getBoundingClientRect() {
+      return { left: 0, top: 0, width: this.width, height: this.height };
+    }
+  };
+}
+
+const mount = {
+  children: [],
+  appendChild(el) {
+    this.children.push(el);
+    el.parentNode = this;
+    return el;
+  },
+  removeChild(el) {
+    this.children = this.children.filter((child) => child !== el);
+    el.parentNode = null;
+    return el;
+  }
+};
+
+globalThis.document = {
+  body: mount,
+  querySelector() { return mount; },
+  createElement(tag) {
+    if (tag === "canvas") return makeCanvas();
+    return { style: {} };
+  }
+};
+globalThis.window = {
+  addEventListener() {},
+  removeEventListener() {},
+  requestAnimationFrame() { return 1; },
+  cancelAnimationFrame() {}
+};
+
+require(process.argv[2]);
+const game = globalThis.mlRuntime.game;
+game.createCanvas(2, 1, "#app");
+game.createPixelBuffer();
+game.setPixel(0, 0, 255, 128, 0);
+game.setPixel(1, 0, 0, 64, 255, 200);
+game.setPixel(-3, 0, 9, 9, 9);
+game.blitPixels();
+const first = mount.children[0]._ctx.lastPut;
+if (!first || first.width !== 2 || first.height !== 1 || first.x !== 0 || first.y !== 0) {
+  throw new Error("unexpected blit destination");
+}
+if (first.data[0] !== 255 || first.data[1] !== 128 || first.data[2] !== 0 || first.data[3] !== 255) {
+  throw new Error("setPixel RGB failed: " + Array.from(first.data.slice(0, 4)).join(","));
+}
+if (first.data[4] !== 0 || first.data[5] !== 64 || first.data[6] !== 255 || first.data[7] !== 200) {
+  throw new Error("setPixel RGBA failed: " + Array.from(first.data.slice(4, 8)).join(","));
+}
+
+game.blitPixels([10, 20, 30, 40, 50, 60]);
+const rgb = mount.children[0]._ctx.lastPut;
+if (rgb.data[0] !== 10 || rgb.data[1] !== 20 || rgb.data[2] !== 30 || rgb.data[3] !== 255) {
+  throw new Error("packed RGB blit failed");
+}
+if (rgb.data[4] !== 40 || rgb.data[5] !== 50 || rgb.data[6] !== 60 || rgb.data[7] !== 255) {
+  throw new Error("packed RGB second pixel failed");
+}
+
+game.blitPixels([1, 2, 3, 4, 5, 6, 7, 8], 1, 2);
+const rgba = mount.children[0]._ctx.lastPut;
+if (rgba.x !== 1 || rgba.y !== 2 || rgba.data[7] !== 8) {
+  throw new Error("packed RGBA blit failed");
+}
+
+process.stdout.write("ok\n");
+""");
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = Environment.GetEnvironmentVariable("MALDA_NODE_PATH") is { Length: > 0 } nodePath
+                    ? nodePath
+                    : "node",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = root
+            };
+            startInfo.ArgumentList.Add(scriptPath);
+            startInfo.ArgumentList.Add(runtimePath);
+
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Failed to start Node.js for pixel blit runtime test.");
+            var stdout = process.StandardOutput.ReadToEnd();
+            var stderr = process.StandardError.ReadToEnd();
+            process.WaitForExit(15000);
+            Assert.True(process.ExitCode == 0, $"pixel blit runtime test failed ({process.ExitCode}). stderr: {stderr}");
+            Assert.Equal("ok", stdout.Trim());
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
+        }
     }
 
     [Fact]
