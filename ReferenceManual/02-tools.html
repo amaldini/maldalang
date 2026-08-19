@@ -117,7 +117,7 @@ malda -h</code></pre>
         <h3>Runtime modes at a glance</h3>
         <p>MALDA code can run in three common execution contexts. Use this table to choose the right path before you compile or deploy.</p>
         <table>
-            <tr><th>Capability</th><th>Interpreter<br><code>malda &lt;file.malda&gt;</code></th><th>Transpiled executable<br><code>malda compile --mode transpile</code></th><th>JavaScript backend<br>(see <a href="25-browser-javascript-backend.html">25. Browser JavaScript UI Backend</a>)</th></tr>
+            <tr><th>Capability</th><th>Interpreter<br><code>malda &lt;file.malda&gt;</code></th><th>Transpiled executable<br><code>malda compile --mode transpile</code></th><th>JavaScript backend<br>(see <a href="26-browser-javascript-backend.html">26. Browser JavaScript UI Backend</a>)</th></tr>
             <tr><td>Core language (variables, functions, classes, match, async)</td><td>Yes</td><td>Yes</td><td>Yes (documented subset)</td></tr>
             <tr><td>Prompts, agents, tool calling</td><td>Yes</td><td>Yes</td><td>Limited; server-side preferred</td></tr>
             <tr><td><code>HttpServer</code>, <code>RestServer</code>, <code>@PAGE</code></td><td>Yes</td><td>Yes</td><td>Server-side only; browser uses HTTP to MALDA API</td></tr>
@@ -205,7 +205,7 @@ malda compile &lt;file.malda&gt; --mode dll</code></pre>
         <pre><code>malda compile app.malda -o app.exe --mode transpile --embed-folder secondbrain
 malda compile app.malda -o app.exe --mode transpile --embed-folder ./data=assets</code></pre>
 
-        <p>Packs a directory into the published executable as assembly resources. At runtime, programs read those files with the virtual scheme <code>embed:&lt;alias&gt;/&lt;relative&gt;</code> (see <a href="12-built-in-functions.html">Built-in Functions</a> §12.8.0). The alias defaults to the folder name; use <code>path=alias</code> to rename. The flag is repeatable. Files are not extracted to disk.</p>
+        <p>Packs a directory into the published executable as assembly resources. At runtime, programs read those files with the virtual scheme <code>embed:&lt;alias&gt;/&lt;relative&gt;</code> (see <a href="13-built-in-functions.html">Built-in Functions</a> §13.8.0). The alias defaults to the folder name; use <code>path=alias</code> to rename. The flag is repeatable. Files are not extracted to disk.</p>
 
         <h4>Compile Code Directly</h4>
 
@@ -459,7 +459,7 @@ var result = helper();</code></pre>
         <pre><code>malda test --iterations 100 --seed 1337
 malda test --format ci --iterations 100 --seed 1337
 malda test --write-regression --regression-dir ./artifacts/regressions</code></pre>
-        <p>For language syntax, capability decorators, <code>runProperty(...)</code>, backend eligibility semantics, and full workflows, see <a href="33-property-testing.html">Property Testing</a>.</p>
+        <p>For language syntax, capability decorators, <code>runProperty(...)</code>, backend eligibility semantics, and full workflows, see <a href="34-property-testing.html">Property Testing</a>.</p>
 
         <h2>2.8 Writing MALDA with a Coding Agent</h2>
 
@@ -510,7 +510,7 @@ malda test --write-regression --regression-dir ./artifacts/regressions</code></p
         <ul>
             <li><strong>Borrowed keywords.</strong> <code>let</code> does not exist — variables are declared with <code>var</code>. <code>fn</code> and <code>def</code> are syntax errors; use <code>function</code>.</li>
             <li><strong>Typed prompt parameters.</strong> Prompt declarations take name-only parameters; <code>prompt p(name: string)</code> is not valid. A <code>-&gt; ReturnType</code> on a prompt is informational only.</li>
-            <li><strong>Invented built-ins.</strong> A plausible name from another language will not resolve. <code>println</code> is the usual casualty; the call is <code>print</code>. Grep <code>docs/llm/malda-builtins.tsv</code>, which is generated from the engine, or read <a href="12-built-in-functions.html">12. Built-in Functions</a>.</li>
+            <li><strong>Invented built-ins.</strong> A plausible name from another language will not resolve. <code>println</code> is the usual casualty; the call is <code>print</code>. Grep <code>docs/llm/malda-builtins.tsv</code>, which is generated from the engine, or read <a href="13-built-in-functions.html">13. Built-in Functions</a>.</li>
             <li><strong>String interpolation outside a prompt body.</strong> <code>"n is {n}"</code> prints literally; it does not raise. Concatenate with <code>+ string(n)</code>.</li>
             <li><strong>Interpreter-only built-ins in compiled targets.</strong> A program that runs interpreted may fail to transpile. Verify with <code>malda compile</code> before promising an executable.</li>
             <li><strong>Type annotations treated as enforcement.</strong> Annotations parse and feed the language server. Literal initializer mismatches produce a Warning in the IDE/LSP, but nothing checks hints at runtime, so an agent should not rely on them for validation.</li>

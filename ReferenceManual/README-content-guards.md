@@ -12,7 +12,7 @@ dotnet test MaldaLang.Tests --filter "FullyQualifiedName~ReferenceManual"
 | Test | Guarantee |
 |------|-----------|
 | `ReferenceManualChapterSyncTests` | Chapter titles, breadcrumbs, and `<h1>` match `chapters.json` order |
-| `ReferenceManualGrammarCoverageTests` | `34-grammar.html` names the parser constructs it must cover |
+| `ReferenceManualGrammarCoverageTests` | `35-grammar.html` names the parser constructs it must cover |
 | `ReferenceManualContentGuardTests.ReservedWordLists_CoverEveryLexerKeyword` | Reserved word lists in ch. 3 and the appendix equal `Lexer.Keywords` exactly |
 | `ReferenceManualContentGuardTests.EveryRegistryBuiltIn_IsMentionedSomewhereInTheManual` | Every `BuiltInRegistry` name appears somewhere in the manual |
 | `ReferenceManualContentGuardTests.InternalLinks_ResolveToExistingPages` | No `href` points at a missing chapter file |
@@ -20,7 +20,7 @@ dotnet test MaldaLang.Tests --filter "FullyQualifiedName~ReferenceManual"
 | `ReferenceManualContentGuardTests.NavigationJs_RewritesMarkdownLinksOnGitHubPages` | `navigation.js` rewrites those `.md` hrefs on `*.github.io` |
 | `ReferenceManualContentGuardTests.PagesDeploy_RewritesMarkdownLinksToGitHubBlob` | Pages deploy rewrites copied HTML to GitHub blob URLs |
 | `ReferenceManualContentGuardTests.SectionNumbers_AreUniqueWithinEachChapter` | No chapter reuses a section number such as two `35.5` headings |
-| `ReferenceManualContentGuardTests.WebUiChapter_NamesEveryRegisteredControlType` | Every `UiControlSpecRegistry` control type appears as `ui.<type>` in `23-web-ui.html` |
+| `ReferenceManualContentGuardTests.WebUiChapter_NamesEveryRegisteredControlType` | Every `UiControlSpecRegistry` control type appears as `ui.<type>` in `24-web-ui.html` |
 | `ReferenceManualContentGuardTests.NavigationFallback_MatchesChaptersJson` | `FALLBACK_NAV_ITEMS` in `navigation.js` matches `chapters.json` |
 | `ReferenceManualContentGuardTests.IndexTocFallback_MatchesChaptersJson` | `FALLBACK_TOC_CHAPTERS` in `index-toc.js` matches `chapters.json` |
 | `ReferenceManualContentGuardTests.ChapterCategories_AreContiguousInReadingOrder` | Each menu category is a contiguous number range in `chapters.json` |

@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MALDA Actor - Modello ad actor e message passing">
+    <title>17. Actor - Manuale di riferimento MALDA</title>
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../syntax.css">
+    <link rel="stylesheet" href="../print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>Manuale di riferimento MALDA&trade;</h1>
+        <p>Il linguaggio di programmazione AI-First - Versione 1.0.9</p>
+    </header>
+    <nav></nav>
+    <main>
+        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>17. Actor</span></div>
+        <h1>17. Actor</h1>
+        
+        <p>MALDA offre il supporto nativo al modello ad actor per la programmazione concorrente. Gli actor sono unità di computazione indipendenti e isolate che comunicano esclusivamente tramite message passing asincrono. Ogni actor ha il proprio stato isolato e processa i messaggi in sequenza, garantendo una programmazione concorrente thread-safe senza meccanismi di locking espliciti.</p>
+
+        <h2>17.1 Dichiarazione degli actor</h2>
+        <p>Gli actor si dichiarano con la keyword <code>actor</code>, in modo analogo alle dichiarazioni di classe:</p>
+        <pre><code>actor ActorName {
+    // Fields (state)
+    var field1 = initialValue;
+    var field2;
+    
+    // Constructor (optional)
+    function ActorName(param1, param2) {
+        field1 = param1;
+        field2 = param2;
+    }
+    
+    // Message handlers
+    on messageHandler1() {
+        // Handle message
+    }
+    
+    on messageHandler2(param) {
+        // Handle message with parameter
+    }
+    
+    // Default handler (optional)
+    on handle(msg) {
+        // Handles any message that doesn't match a specific handler
+    }
+}</code></pre>
+
+        <h3>Componenti di un actor</h3>
+        <ul>
+            <li><strong>Campi</strong>: Variabili di stato dell'actor (isolate per istanza)</li>
+            <li><strong>Costruttore</strong>: Funzione di inizializzazione opzionale (stesso nome dell'actor)</li>
+            <li><strong>Message handler</strong>: Funzioni dichiarate con la keyword <code>on</code> che processano i messaggi in arrivo</li>
+            <li><strong>Handler di default</strong>: Un handler di nome <code>handle</code> che riceve i messaggi quando nessun handler specifico corrisponde</li>
+        </ul>
+
+        <h2>17.2 Spawn degli actor</h2>
+        <p>Gli actor si istanziano con l'espressione <code>spawn</code>:</p>
+        <pre><code>var actorRef = spawn ActorName(arg1, arg2);</code></pre>
+
+        <p>L'espressione <code>spawn</code>:</p>
+        <ul>
+            <li>Crea una nuova istanza di actor con stato isolato</li>
+            <li>Avvia il loop di elaborazione dei messaggi dell'actor in un task separato</li>
+            <li>Restituisce un <code>ActorReference</code> che si può usare per inviare messaggi</li>
+            <li>Accetta opzionalmente gli argomenti del costruttore</li>
+        </ul>
+
+        <h3>Esempio</h3>
+        <pre><code>actor Counter {
+    var count = 0;
+    
+    on increment() {
+        count = count + 1;
+    }
+    
+    on get() {
+        print(count);
+    }
+}
+
+var counter = spawn Counter();</code></pre>
+
+        <h2>17.3 Invio dei messaggi</h2>
+        <p>I messaggi si inviano agli actor con l'istruzione <code>send</code> nella sintassi call-style:</p>
+        <pre><code>// Call-style syntax
+send actorRef.handlerName(arg1, arg2);
+
+// Call-style with callback
+send actorRef.handlerName(arg1) then (result) {
+    // Handle reply value
+};</code></pre>
+        
+        <h3>Sintassi di invio dei messaggi</h3>
+        <ul>
+            <li><code>send target.handlerName(arg1, arg2, ...);</code> - Invia un singolo messaggio all'handler indicato con argomenti posizionali</li>
+            <li><code>send target(arg1, arg2, ...);</code> - Invia un messaggio senza specificare il nome dell'handler. Il messaggio viene instradato all'handler <code>handle</code> (se definito), oppure usa le regole di risoluzione dell'handler in base al payload</li>
+            <li><code>send target.handlerName(args...) then (result) { ... };</code> - Invia un messaggio e registra un callback da eseguire quando arriva la reply</li>
+            <li><code>send target(args...) then (result) { ... };</code> - Invia un messaggio senza nome di handler e registra un callback</li>
+            <li><code>send target.handlerName(args...) then (result) { ... } timeout milliseconds;</code> - Invia un messaggio con callback e timeout (il timeout scatta se non arriva alcuna reply)</li>
+            <li><code>send target.handlerName(args...) then (result) { ... } timeout milliseconds catch (error) { ... };</code> - Invia un messaggio con callback, timeout e error handler per i casi di timeout</li>
+            <li>La sintassi call-style invia esattamente un messaggio che contiene sia il nome dell'handler (se specificato) sia tutti gli argomenti</li>
+        </ul>
+
+        <h3>Esempio</h3>
+        <pre><code>actor Greeter {
+    var name;
+    
+    function Greeter(actorName) {
+        name = actorName;
+    }
+    
+    on greet() {
+        print($"Hello from {name}!");
+    }
+    
+    on greetWith(message) {
+        print($"{name}: {message}");
+    }
+}
+
+var greeter = spawn Greeter("Alice");
+send greeter.greet();                       // Calls greet() handler
+send greeter.greetWith("Hello, World!");    // Calls greetWith() handler with message
+send greeter("Hello!");                    // Calls handle() handler (if defined)</code></pre>
+
+        <h3>Dettagli del message passing</h3>
+        <ul>
+            <li>I messaggi vengono inviati in modo asincrono (non bloccante)</li>
+            <li>I messaggi vengono accodati nella mailbox dell'actor</li>
+            <li>Gli actor processano i messaggi in sequenza (uno alla volta)</li>
+            <li>Più actor possono inviare messaggi allo stesso actor in concorrenza</li>
+        </ul>
+
+        <h3>Request/Response con callback</h3>
+        <p>Puoi inviare un messaggio e registrare un callback che verrà eseguito quando il destinatario risponde:</p>
+        <pre><code>actor Worker {
+    on compute(value) {
+        var result = value * 2;
+        reply(result);  // Sends a reply back to the sender
+    }
+}
+
+actor Coordinator {
+    on start() {
+        var worker = spawn Worker();
+
+        send worker.compute(21) then (result) {
+            print($"Coordinator: received result = {result}");
+        };
+    }
+}
+
+var coordinator = spawn Coordinator();
+
+// Small delay to ensure actor loop has started
+sleep(100);
+
+send coordinator.start();
+
+// Give actors time to process messages and callbacks
+sleep(500);</code></pre>
+        <ul>
+            <li><code>reply(value)</code> si può chiamare solo dentro un message handler di un actor e quando c'è un mittente a cui rispondere</li>
+            <li>Il runtime correla automaticamente la reply con la chiamata originale <code>send ... then (...) { ... }</code></li>
+            <li>Il callback gira nel contesto dell'actor mittente, con <code>self</code> che si riferisce al mittente</li>
+        </ul>
+
+        <h2>17.4 Message handler</h2>
+        <p>I message handler sono funzioni che processano i messaggi in arrivo. Si dichiarano con la keyword <code>on</code>:</p>
+        <pre><code>actor MyActor {
+    // Handler with no parameters
+    on handlerName() {
+        // Process message
+    }
+    
+    // Handler with parameters
+    on handlerWithParams(param1, param2) {
+        // Process message with parameters
+    }
+    
+    // Default handler (receives any unmatched message)
+    on handle(msg) {
+        // Process any message
+    }
+}</code></pre>
+
+        <h3>Risoluzione degli handler</h3>
+        <p>Quando viene inviato un messaggio, il runtime determina quale handler chiamare con le seguenti regole:</p>
+        <ol>
+            <li>Se viene fornito un nome di handler esplicito (tramite <code>send target.handlerName(...)</code>), viene usato quel nome di handler</li>
+            <li>Altrimenti, se il payload del messaggio è una stringa, viene usato come nome dell'handler</li>
+            <li>Altrimenti, viene usato l'handler <code>handle</code> come default</li>
+            <li>Il runtime cerca un handler con quel nome</li>
+            <li>Se non viene trovato un handler specifico, l'handler <code>handle</code> viene usato come fallback (se definito)</li>
+            <li>Se non viene trovato alcun handler, viene sollevato un errore di runtime</li>
+        </ol>
+        <p><strong>Esempi:</strong></p>
+        <pre><code>actor MyActor {
+    on handle(msg) {
+        print("Default handler: " + msg);
+    }
+    
+    on process(data) {
+        print("Process handler: " + data);
+    }
+}
+
+var actor = spawn MyActor();
+
+// Explicit handler name - calls process()
+send actor.process(123);
+
+// No handler name, non-string payload - calls handle()
+send actor(456);
+
+// No handler name, string payload - uses string as handler name, calls process()
+send actor("process");</code></pre>
+
+        <h3>Parametri degli handler</h3>
+        <ul>
+            <li>Il primo parametro riceve il payload del messaggio</li>
+            <li>Si possono inviare parametri aggiuntivi passando più valori in sequenza</li>
+            <li>Gli handler possono accedere ai campi dell'actor e chiamare altri handler</li>
+        </ul>
+
+        <h2 id="actor-state-isolation">17.5 Isolamento dello stato degli actor</h2>
+        <p>Ogni istanza di actor ha uno stato completamente isolato. I campi dichiarati in un actor sono privati di quella istanza:</p>
+        <pre><code>actor BankAccount {
+    var balance = 0;
+    var accountName;
+    
+    function BankAccount(name) {
+        accountName = name;
+    }
+    
+    on deposit(amount) {
+        balance = balance + amount;
+    }
+    
+    on withdraw(amount) {
+        if (balance >= amount) {
+            balance = balance - amount;
+        }
+    }
+}
+
+// Each instance has its own isolated state
+var account1 = spawn BankAccount("Alice");
+var account2 = spawn BankAccount("Bob");
+
+send account1.deposit(100);  // account1.balance = 100
+send account2.deposit(200);  // account2.balance = 200 (independent)</code></pre>
+
+        <h2>17.6 Riferimento self</h2>
+        <p>Dentro i message handler di un actor, la keyword <code>self</code> fornisce un riferimento all'istanza corrente dell'actor:</p>
+        <pre><code>actor PingPong {
+    var partner;
+    
+    on setPartner(other) {
+        partner = other;
+    }
+    
+    on ping() {
+        print("Received ping");
+        if (partner != null) {
+            send partner.pong(self);  // Send self reference
+        }
+    }
+    
+    on pong(sender) {
+        print("Received pong");
+        if (sender != null) {
+            send sender.ping();
+        }
+    }
+}
+
+var ping = spawn PingPong();
+var pong = spawn PingPong();
+
+send ping.setPartner(pong);
+send pong.setPartner(ping);</code></pre>
+
+        <h3>Uso del riferimento self</h3>
+        <ul>
+            <li><code>self</code> si può usare solo dentro i message handler di un actor</li>
+            <li><code>self</code> restituisce un <code>ActorReference</code> all'actor corrente</li>
+            <li>Utile perché un actor possa inviare messaggi a se stesso o passare il proprio riferimento ad altri actor</li>
+        </ul>
+
+        <h2>17.7 Ricezione dei messaggi</h2>
+        <p>Dentro un message handler di un actor, puoi usare la funzione <code>receive()</code> per attendere e recuperare il messaggio successivo dalla mailbox dell'actor. Per la maggior parte dei casi d'uso, però, è consigliato usare il messaging call-style con i callback:</p>
+        <pre><code>actor Echo {
+    on echo(msg) {
+        var received = receive();
+        print($"Echo received: {received}");
+    }
+}
+
+var echo = spawn Echo();
+send echo.echo("hello");  // Pass message as argument</code></pre>
+        
+        <h3>Dettagli della funzione receive</h3>
+        <ul>
+            <li><code>receive()</code> si può chiamare solo dentro un message handler di un actor</li>
+            <li><code>receive()</code> si blocca finché un messaggio non arriva nella mailbox dell'actor</li>
+            <li>Per la maggior parte dei casi d'uso, preferisci il messaging call-style con callback usando <code>send target.handler(args) then (result) { ... }</code> e <code>reply()</code></li>
+        </ul>
+
+        <h3>Dichiarazioni di messaggio degli actor (Actor Sugar)</h3>
+        <p>Per actor più strutturati, in stile protocollo, puoi dichiarare i messaggi in modo esplicito nel corpo dell'actor usando la keyword <code>message</code> e gestirli con un loop <code>receive()</code> + <code>match</code> dentro un handler:</p>
+        <pre><code>actor Counter {
+    message Inc(amount);
+    message Get() -> int;
+    var value = 0;
+
+    on start() {
+        var running = true;
+        while (running) {
+            var msg = receive();
+            match msg {
+                case Inc(n): value = value + n;
+                case Get(): reply(value);
+                case ""stop"": running = false;
+                default: {};
+            }
+        }
+    }
+}
+
+var c = spawn Counter();
+send c.start();
+send c.Inc(1);
+send c.Inc(2);
+send c.Get() then (result) {
+    print($"Result: {result}");  // Prints: Result: 3
+};
+send c("stop");</code></pre>
+        <ul>
+            <li><code>message Inc(amount);</code> e <code>message Get() -> int;</code> dichiarano le forme dei messaggi che l'actor si aspetta.</li>
+            <li>I messaggi si possono inviare sia con <code>send actor.MessageName(args...)</code> sia inviando un valore che codifica il messaggio (es. tramite un sum type) e facendo match su di esso dopo <code>receive()</code>.</li>
+            <li>Dentro il loop, <code>match</code> può usare pattern di variante (es. <code>case Inc(n):</code>) e pattern letterali (es. <code>case ""stop"":</code>).</li>
+            <li>Il built-in <code>reply(value)</code> funziona anche negli handler basati su <code>receive()</code>, così le dichiarazioni di messaggio con tipi di ritorno possono partecipare a protocolli request/response.</li>
+            <li>Le dichiarazioni di messaggio sono opzionali; documentano il protocollo dell'actor e si abbinano in modo naturale al pattern matching sui valori restituiti da <code>receive()</code>.</li>
+            <li><strong>Nessuno <code>sleep()</code> necessario nel loop:</strong> Poiché <code>receive()</code> si blocca finché non arriva un messaggio, il loop <code>while</code> attende automaticamente i messaggi senza consumare CPU. Il loop continua solo quando un messaggio viene ricevuto e processato.</li>
+        </ul>
+
+        <h2>17.8 Message passing tra actor</h2>
+        <p>Gli actor possono inviarsi messaggi a vicenda, abilitando pattern di comunicazione complessi:</p>
+        <pre><code>actor Sender {
+    on start(receiver) {
+        print("Sender: Starting...");
+        send receiver.hello();
+        send receiver.world();
+    }
+}
+
+actor Receiver {
+    var messageCount = 0;
+    
+    on hello() {
+        messageCount = messageCount + 1;
+        print($"Receiver: Received 'hello' (total: {messageCount})");
+    }
+    
+    on world() {
+        messageCount = messageCount + 1;
+        print($"Receiver: Received 'world' (total: {messageCount})");
+    }
+}
+
+var receiver = spawn Receiver();
+var sender = spawn Sender();
+
+send sender.start(receiver);  // Pass receiver reference</code></pre>
+
+        <h2>17.9 Elaborazione concorrente</h2>
+        <p>Gli actor processano i messaggi in concorrenza. Più actor possono girare contemporaneamente e ogni actor processa i propri messaggi in sequenza:</p>
+        <pre><code>actor Worker {
+    var workerId;
+    var taskCount = 0;
+    
+    function Worker(id) {
+        workerId = id;
+    }
+    
+    on processTask(task) {
+        taskCount = taskCount + 1;
+        print($"Worker {workerId}: Processed task {task} (total: {taskCount})");
+    }
+}
+
+// Create multiple workers
+var workers = [];
+for (var i = 0; i < 5; i = i + 1) {
+    workers.append(spawn Worker(i + 1));
+}
+
+// Small delay to ensure actor loops have started
+sleep(100);
+
+// Send tasks to all workers concurrently
+for (var i = 0; i < 10; i = i + 1) {
+    for (var j = 0; j < workers.length; j = j + 1) {
+        send workers[j].processTask(i);
+    }
+}
+
+// Give workers time to process all tasks
+sleep(500);</code></pre>
+
+        <h2>17.10 Ciclo di vita degli actor</h2>
+        <h3>Creazione di un actor</h3>
+        <ul>
+            <li>Gli actor si creano con <code>spawn ActorName(args)</code></li>
+            <li>Il costruttore viene chiamato durante l'inizializzazione</li>
+            <li>L'actor inizia a processare i messaggi immediatamente</li>
+        </ul>
+
+        <h3>Esecuzione di un actor</h3>
+        <ul>
+            <li>Ogni actor gira nel proprio task/thread</li>
+            <li>Gli actor processano i messaggi dalla propria mailbox in sequenza</li>
+            <li>I messaggi vengono accodati se l'actor è occupato a processarne uno</li>
+        </ul>
+
+        <h3>Terminazione di un actor</h3>
+        <ul>
+            <li>Gli actor continuano a girare fino alla terminazione del programma</li>
+            <li>Gli actor si possono fermare in modo programmatico con il metodo <code>stop()</code></li>
+            <li>Gli actor possono fermare se stessi chiamando <code>self.stop()</code> in un message handler</li>
+            <li>Quando vengono fermati, gli actor finiscono di processare il messaggio corrente e poi escono</li>
+        </ul>
+        
+        <h4>Fermare un actor dall'esterno</h4>
+        <p>Per fermare un actor dall'esterno, chiama il metodo <code>stop()</code> sul riferimento all'actor:</p>
+        <pre><code>var actor = spawn MyActor();
+// ... use the actor ...
+actor.stop();  // Stop the actor externally</code></pre>
+        
+        <h4>Fermare un actor tramite messaggio</h4>
+        <p>Gli actor possono anche fermare se stessi gestendo un messaggio di stop. È utile quando l'actor deve fare cleanup o prendere decisioni prima di fermarsi:</p>
+        <pre><code>actor Worker {
+    var isRunning = true;
+    var workCount = 0;
+    
+    on doWork() {
+        if (isRunning) {
+            workCount = workCount + 1;
+            print($"Worker: Completed work #{workCount}");
+        }
+    }
+    
+    on stop() {
+        print("Worker: Received stop message, shutting down...");
+        // Perform any cleanup here
+        isRunning = false;
+        self.stop();  // Actor stops itself
+    }
+}
+
+var worker = spawn Worker();
+send worker.doWork();
+send worker.stop();  // Send stop message</code></pre>
+        
+        <p><strong>Nota:</strong> Dopo aver chiamato <code>stop()</code> (dall'esterno o tramite <code>self.stop()</code>), l'actor finisce di processare il messaggio corrente (se ce n'è uno) e poi esce. Qualsiasi messaggio inviato all'actor dopo che è stato fermato andrà perso.</p>
+
+        <h2>17.11 Riepilogo delle funzionalità degli actor</h2>
+        <h3>Funzionalità principali</h3>
+        <ul>
+            <li>✅ <strong>Stato isolato</strong>: Ogni istanza di actor ha il proprio stato isolato</li>
+            <li>✅ <strong>Elaborazione sequenziale</strong>: I messaggi vengono processati uno alla volta per actor</li>
+            <li>✅ <strong>Messaging asincrono</strong>: Invio dei messaggi non bloccante</li>
+            <li>✅ <strong>Esecuzione concorrente</strong>: Più actor girano in concorrenza</li>
+            <li>✅ <strong>Riferimento self</strong>: Keyword <code>self</code> per l'auto-riferimento dell'actor</li>
+            <li>✅ <strong>Message handler</strong>: Keyword <code>on</code> per definire i message handler</li>
+            <li>✅ <strong>Handler di default</strong>: Handler <code>handle</code> per i messaggi senza corrispondenza</li>
+            <li>✅ <strong>Funzione receive</strong>: <code>receive()</code> per attendere i messaggi dentro gli handler</li>
+            <li>✅ <strong>Request/Response</strong>: <code>send ... then (result) { ... }</code> con <code>reply()</code> per i callback</li>
+            <li>✅ <strong>Gestione del ciclo di vita</strong>: <code>stop()</code> e <code>self.stop()</code> per la terminazione dell'actor</li>
+            <li>✅ <strong>Type safety</strong>: I riferimenti agli actor sono fortemente tipizzati</li>
+        </ul>
+        
+        <h3>Parità tra interprete e modalità transpile</h3>
+        <p>Le funzionalità degli actor sono supportate in <strong>modalità interprete</strong>, in <strong>modalità transpile C#</strong> e in <strong>modalità backend JavaScript</strong> (runtime locale):</p>
+        <ul>
+            <li>✅ Dichiarazione, spawn e invio dei messaggi degli actor</li>
+            <li>✅ Invio dei messaggi call-style <code>send target.handler(args)</code></li>
+            <li>✅ Send call-style con callback: <code>send target.handler(args) then (result) { ... }</code></li>
+            <li>✅ Timeout dei messaggi: <code>send ... then (...) { ... } timeout ms catch (error) { ... }</code></li>
+            <li>✅ Funzione <code>reply()</code> per rispondere ai callback</li>
+            <li>✅ Funzione <code>receive()</code> per attendere i messaggi</li>
+            <li>✅ Keyword <code>self</code> per l'auto-riferimento dell'actor</li>
+            <li>✅ <code>stop()</code> e <code>self.stop()</code> per la gestione del ciclo di vita dell'actor</li>
+            <li>✅ Gestione degli errori: Un uso non valido (es. usare <code>self</code> fuori dagli handler) solleva errori coerenti in entrambe le modalità</li>
+        </ul>
+        <p>Quando compili con <code>--mode transpile</code>, il codice degli actor viene transpile in C# e usa la stessa semantica di runtime dell'interprete. Quando compili con <code>--mode js</code>, il codice degli actor gira sul runtime actor JavaScript locale e preserva la stessa semantica di base per l'ordine della mailbox, i callback, i timeout, <code>receive()</code> e il comportamento di stop.</p>
+        <p><strong>Limite attuale:</strong> gli actor JavaScript sono locali al processo del runtime JavaScript; la comunicazione actor seamless dal browser al server non è abilitata di default in questa fase.</p>
+
+        <h3>Casi d'uso</h3>
+        <ul>
+            <li>Elaborazione concorrente senza locking esplicito</li>
+            <li>Servizi stateful con stato isolato</li>
+            <li>Architetture a message-passing</li>
+            <li>Pool di worker e distribuzione dei task</li>
+            <li>Sistemi event-driven</li>
+            <li>Simulazione di sistemi distribuiti</li>
+        </ul>
+
+        <h3>Esempio completo</h3>
+        <pre><code>actor Counter {
+    var count = 0;
+    
+    on increment() {
+        count = count + 1;
+        print($"Count: {count}");
+    }
+    
+    on decrement() {
+        count = count - 1;
+        print($"Count: {count}");
+    }
+    
+    on reset() {
+        count = 0;
+        print("Counter reset");
+    }
+    
+    on get() {
+        return count;
+    }
+}
+
+// Spawn and use
+var counter = spawn Counter();
+send counter.increment();
+send counter.increment();
+send counter.increment();
+send counter.decrement();
+send counter.reset();
+
+// Give actor time to process messages (important in transpiled mode)
+sleep(500);</code></pre>
+        
+        <p><strong>Nota:</strong> Quando usi gli actor in modalità transpile (eseguibili compilati), è consigliato aggiungere un piccolo delay dopo lo spawn degli actor e alla fine dei programmi, per assicurarti che i messaggi vengano processati prima che il programma termini. Usa <code>sleep(100)</code> dopo lo spawn degli actor e <code>sleep(500)</code> alla fine dei programmi che usano gli actor.</p>
+
+        <h2>17.12 Usare gli actor con gli agenti</h2>
+        <p>Actor e agenti funzionano bene insieme. Gli agenti sono classi pensate per interazioni AI sincrone; memorizzare gli agenti nello stato di un actor abilita l'elaborazione concorrente e sessioni di agente isolate. È particolarmente utile per:</p>
+        <ul>
+            <li><strong>Elaborazione concorrente di agenti:</strong> Fai spawn di più istanze di actor, ciascuna con il proprio agente, per processare i task in parallelo</li>
+            <li><strong>Isolamento dello stato:</strong> Ogni actor mantiene la propria istanza di agente e la propria cronologia di conversazione</li>
+            <li><strong>Sessioni di lunga durata:</strong> Gli actor possono mantenere lo stato dell'agente attraverso più interazioni a messaggi</li>
+            <li><strong>Coordinamento basato sui messaggi:</strong> Coordina più agenti tramite il message passing degli actor</li>
+        </ul>
+        <p><strong>Esempio:</strong></p>
+        <pre><code>actor AIAssistant {
+    var agent;
+    
+    function AIAssistant(client) {
+        agent = new Agent("Assistant", "helper", "You help users.", client);
+    }
+    
+    on ask(question) {
+        var response = agent.think(question);
+        print(response.content);
+    }
+}
+
+var client = new OpenRouterClient();
+var assistant = spawn AIAssistant(client);
+send assistant.ask("What is MALDA?");</code></pre>
+        <p>Per informazioni dettagliate su come combinare agenti e actor, inclusi i pattern per l'elaborazione concorrente di agenti e l'orchestrazione multi-agente, vedi <a href="18-agent-orchestration.html#using-agents-with-actors">Usare gli agenti con gli actor</a> nel capitolo Orchestrazione di agenti.</p>
+
+        <div class="nav-footer">
+            <a href="16-database.html">← Precedente: 16. Supporto database</a>
+            <a href="18-agent-orchestration.html">Successivo: 18. Orchestrazione di agenti→</a>
+        </div>
+
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, a tua scelta.</p>
+        </footer>
+    </main>
+
+    <script src="../malda-highlight.js"></script>
+
+    <script src="../navigation.js"></script>
+</body>
+</html>

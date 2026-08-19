@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>18. Agent Orchestration - MALDA Reference Manual</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="syntax.css">
+    <link rel="stylesheet" href="print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>MALDA&trade; Reference Manual</h1>
+        <p>The AI-First Programming Language - Version 1.0.9</p>
+    </header>
+    <nav></nav>
+    <main>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>18. Agent Orchestration</span></div>
+        <h1>18. Agent Orchestration</h1>
+        <p><strong>MALDA: The AI-First Programming Language</strong> includes native, first-class support for agent orchestration as a core language feature. These capabilities are built directly into the language, making MALDA the simplest way to build AI agents and automation workflows.</p>
+        
+        <div class="warning-box">
+            <h2>18.1 ⚠️ Critical Security and Risk Disclaimer</h2>
+            <p><strong>Autonomous agent systems with tool access pose significant security, safety, and operational risks.</strong> Before deploying agents with tools in production environments, you must understand and mitigate these risks.</p>
+            
+            <h3>Fundamental Risks</h3>
+            <ul>
+                <li><strong>Unintended Actions:</strong> Agents may execute tools in ways you did not anticipate, leading to data loss, system corruption, or security breaches.</li>
+                <li><strong>Tool Misuse:</strong> Agents can combine tools in unexpected ways, potentially bypassing intended safeguards or restrictions.</li>
+                <li><strong>LLM Hallucination:</strong> Language models may misinterpret instructions, generate incorrect tool parameters, or make decisions based on flawed reasoning.</li>
+                <li><strong>Autonomous Execution:</strong> Once started, agents may perform many actions without human oversight, amplifying the impact of any single error.</li>
+                <li><strong>Context Limitations:</strong> Agents operate with limited context and may not understand the full implications of their actions.</li>
+                <li><strong>Prompt Injection:</strong> Malicious or malformed input can cause agents to behave in unintended ways, potentially executing dangerous operations.</li>
+            </ul>
+            
+            <h3>Real-World Risk Scenarios</h3>
+            
+            <h4>1. Data Loss and File System Damage</h4>
+            <ul>
+                <li><strong>Scenario:</strong> An agent tasked with "cleaning up old files" misinterprets the scope and deletes critical system files, configuration files, or entire project directories.</li>
+                <li><strong>Example:</strong> Agent receives instruction to "remove temporary files" but deletes <code>node_modules</code>, <code>.git</code>, or source code files, causing irreversible data loss.</li>
+                <li><strong>Impact:</strong> Project corruption, loss of work, system instability, inability to recover without backups.</li>
+            </ul>
+            
+            <h4>2. Unauthorized Code Execution</h4>
+            <ul>
+                <li><strong>Scenario:</strong> An agent with <code>run_command</code> tool access executes malicious or destructive shell commands.</li>
+                <li><strong>Example:</strong> Agent interprets a user request to "optimize the system" and runs <code>rm -rf /</code> (or equivalent), <code>format C:</code>, or other destructive commands.</li>
+                <li><strong>Impact:</strong> Complete system destruction, data loss, security compromise, unauthorized access to other systems.</li>
+            </ul>
+            
+            <h4>3. Git Repository Corruption</h4>
+            <ul>
+                <li><strong>Scenario:</strong> A GitAgent with push permissions accidentally force-pushes to main/master, overwriting production code or deleting branches.</li>
+                <li><strong>Example:</strong> Agent attempts to "fix merge conflicts" by force-pushing, destroying commit history and causing team-wide disruption.</li>
+                <li><strong>Impact:</strong> Loss of version history, broken deployments, team productivity loss, potential data loss if backups are insufficient.</li>
+            </ul>
+            
+            <h4>4. Unauthorized Access and Information Disclosure</h4>
+            <ul>
+                <li><strong>Scenario:</strong> An agent with file read access reads sensitive files (API keys, passwords, personal data) and includes them in responses or logs.</li>
+                <li><strong>Example:</strong> Agent reads <code>.env</code> files, configuration files containing secrets, or private user data and exposes them in conversation history or error messages.</li>
+                <li><strong>Impact:</strong> Security breach, privacy violations, regulatory compliance issues, financial liability.</li>
+            </ul>
+            
+            <h4>5. Infinite Loops and Resource Exhaustion</h4>
+            <ul>
+                <li><strong>Scenario:</strong> An agent enters an infinite loop of tool calls, consuming system resources indefinitely.</li>
+                <li><strong>Example:</strong> Agent repeatedly reads and writes the same file, creates recursive directory structures, or makes endless API calls, exhausting CPU, memory, or API quotas.</li>
+                <li><strong>Impact:</strong> System crashes, service unavailability, unexpected costs (API usage), denial of service.</li>
+            </ul>
+            
+            <h4>6. Cascading Failures in Multi-Agent Systems</h4>
+            <ul>
+                <li><strong>Scenario:</strong> One agent's error triggers a chain reaction of failures across multiple agents in a hierarchical system.</li>
+                <li><strong>Example:</strong> An orchestrator agent delegates a task that causes a subagent to corrupt files, which then causes other agents to fail, leading to widespread system damage.</li>
+                <li><strong>Impact:</strong> Amplified damage, difficult-to-trace root causes, complex recovery scenarios.</li>
+            </ul>
+            
+            <h4>7. Production System Modification</h4>
+            <ul>
+                <li><strong>Scenario:</strong> An agent intended for development environments is accidentally run against production systems.</li>
+                <li><strong>Example:</strong> Agent modifies production database configurations, changes live API endpoints, or updates critical infrastructure code without proper testing.</li>
+                <li><strong>Impact:</strong> Service outages, data corruption, customer impact, financial losses, reputation damage.</li>
+            </ul>
+            
+            <h4>8. Malicious Code Injection</h4>
+            <ul>
+                <li><strong>Scenario:</strong> An agent writes code that includes malicious payloads, backdoors, or security vulnerabilities.</li>
+                <li><strong>Example:</strong> Agent generates code that includes hardcoded credentials, executes arbitrary commands from user input, or introduces SQL injection vulnerabilities.</li>
+                <li><strong>Impact:</strong> Security vulnerabilities, unauthorized access, data breaches, compliance violations.</li>
+            </ul>
+            
+            <h3>Mitigation Strategies</h3>
+            <ul>
+                <li><strong>Sandboxing:</strong> Always run agents in isolated environments with restricted file system access and network permissions.</li>
+                <li><strong>Working Directory Restrictions:</strong> Use working directory parameters to limit file operations to specific, non-critical directories.</li>
+                <li><strong>Human-in-the-Loop:</strong> Require explicit approval for destructive operations (deletes, git pushes, command execution).</li>
+                <li><strong>Tool Filtering:</strong> Only provide agents with the minimum set of tools necessary for their specific task.</li>
+                <li><strong>Input Validation:</strong> Validate and sanitize all user inputs before passing them to agents.</li>
+                <li><strong>Rate Limiting:</strong> Implement limits on tool call frequency and total operations per agent session.</li>
+                <li><strong>Monitoring and Logging:</strong> Log all tool calls and agent decisions for audit trails and debugging.</li>
+                <li><strong>Backup and Recovery:</strong> Maintain regular backups and test recovery procedures before deploying agents.</li>
+                <li><strong>Testing:</strong> Thoroughly test agents in safe, isolated environments before production use.</li>
+                <li><strong>Principle of Least Privilege:</strong> Grant agents only the minimum permissions required for their tasks.</li>
+                <li><strong>Timeouts:</strong> Set maximum execution times to prevent infinite loops and resource exhaustion.</li>
+                <li><strong>Code Review:</strong> Review all code generated by agents before deployment, especially for security-sensitive operations.</li>
+            </ul>
+            
+            <h3>Best Practices</h3>
+            <ul>
+                <li><strong>Start Small:</strong> Begin with read-only operations and gradually add write capabilities only after thorough testing.</li>
+                <li><strong>Use Specialized Agents:</strong> Prefer specialized agents (CodingAgent, GitAgent) with built-in safeguards over generic Agent classes with unrestricted tools.</li>
+                <li><strong>Explicit Instructions:</strong> Provide clear, specific instructions to agents and avoid ambiguous or overly broad directives.</li>
+                <li><strong>Version Control:</strong> Always use version control and never allow agents to force-push or modify protected branches without explicit approval.</li>
+                <li><strong>Environment Separation:</strong> Maintain strict separation between development, staging, and production environments.</li>
+                <li><strong>Regular Audits:</strong> Periodically review agent behavior, tool usage patterns, and system changes.</li>
+            </ul>
+            
+            <p><strong>By using MALDA's agent orchestration features, you acknowledge that you understand these risks and are solely responsible for the actions taken by agents you create and deploy.</strong> The developers of MALDA and this reference manual provide no warranties regarding the safety, security, or reliability of autonomous agent systems.</p>
+        </div>
+        
+        <h2>18.2 LLM Client</h2>
+        <p>The <code>LLMClient</code> class provides an interface to OpenAI-compatible LLM APIs (OpenAI, OpenRouter, LMStudio, OLLAMA, etc.).</p>
+        <h3>Constructor</h3>
+        <pre><code>var client = new LLMClient(apiUrl, apiKey, model);</code></pre>
+        <h3>Methods</h3>
+        <ul>
+            <li><code>chat(messages, tools)</code> → <code>object</code>: Send conversation to LLM with optional tool definitions</li>
+            <li><code>complete(prompt)</code> → <code>string</code>: Send single prompt and get completion</li>
+            <li><code>setTemperature(temp)</code>: Set temperature parameter (0.0 to 2.0)</li>
+            <li><code>setMaxTokens(tokens)</code>: Set maximum tokens in response</li>
+        </ul>
+        <h3>Example</h3>
+        <pre><code>var apiKey = getEnv("OPENAI_API_KEY");
+var client = new LLMClient(
+    "https://api.openai.com/v1/chat/completions",
+    apiKey,
+    "gpt-3.5-turbo"
+);
+
+var response = client.complete("Explain quantum computing in one sentence.");
+print(response);</code></pre>
+        <h2>18.3 OpenRouterClient</h2>
+        <p>For OpenRouter specifically, there's a specialized <code>OpenRouterClient</code> class that simplifies configuration.</p>
+        <h3>Constructor</h3>
+        <pre><code>// With default model (deepseek/deepseek-v4-flash)
+var client = new OpenRouterClient();
+
+// With custom model
+var client = new OpenRouterClient("openai/gpt-4");</code></pre>
+        <div class="info-box">
+            <strong>Automatic Configuration:</strong> OpenRouterClient automatically reads the API key from the <code>OPENROUTER_API_KEY</code> environment variable and uses the correct OpenRouter endpoint.
+        </div>
+        <h3>App attribution (OpenRouter analytics)</h3>
+        <p>Set these properties so OpenRouter can attribute token usage to each of your apps
+        (<a href="https://openrouter.ai/docs/app-attribution">App Attribution</a>). Use a distinct
+        <code>httpReferer</code> URL per application. Analytics appear at
+        <code>https://openrouter.ai/apps?url=&lt;your-url&gt;</code>.</p>
+        <pre><code>var client = new OpenRouterClient();
+client.httpReferer = "https://example.com/secondbrain";  // HTTP-Referer (required for attribution)
+client.appTitle = "Second Brain ASK";                     // X-OpenRouter-Title
+client.appCategories = "cli-agent";                       // optional X-OpenRouter-Categories</code></pre>
+        <h3>18.3.1 Default local LLM (when no client is provided)</h3>
+        <p>When you create an agent, prompt, or use built-ins like <code>decomposeTask</code> without passing an LLM client, MALDA uses a <strong>default local LLM</strong>: Qwen/Qwen2.5-0.5B-Instruct, downloaded as the GGUF build <code>qwen2.5-0.5b-instruct-q4_k_m.gguf</code> from Hugging Face on first use. The model is cached under your user profile (e.g. <code>%LOCALAPPDATA%\MaldaLang\Models\default</code> on Windows). No API key or network is required after the first download. To use a remote model instead, pass an <code>OpenRouterClient</code>, <code>LLMClient</code>, or <code>LlamaCppClient</code> explicitly.</p>
+        <p>You can override the default model with the environment variable <code>MALDA_DEFAULT_LOCAL_MODEL</code>. Set it to <code>modelId/fileName.gguf</code> (e.g. <code>org/repo/MyModel-Q4_K_M.gguf</code>) to use a different Hugging Face GGUF model; that model will be downloaded and cached in a subfolder named after the model ID. If unset, the built-in default Qwen/Qwen2.5-0.5B-Instruct GGUF build is used.</p>
+        <h2>18.4 LlamaCppClient</h2>
+        <p>The <code>LlamaCppClient</code> class enables local LLM inference using LLAMA.cpp with GGUF format models. No API keys or network connection required. If you omit <code>modelPath</code>, MALDA uses the default local Qwen/Qwen2.5-0.5B-Instruct GGUF model and auto-downloads it on first use.</p>
+        <h3>Constructor</h3>
+        <pre><code>var client = new LlamaCppClient(modelPath);   // Custom GGUF file
+var client = new LlamaCppClient();            // Default auto-downloaded local model</code></pre>
+        <h3>Example</h3>
+        <pre><code>var client = new LlamaCppClient();
+client.setTemperature(0.7);
+client.setMaxTokens(2000);
+client.setGpuLayerCount(35);  // Offload layers to GPU (optional)
+
+var conversation = new Conversation(client, "You are a helpful assistant.");
+conversation.addUserMessage("Explain quantum computing.");
+var response = conversation.send();
+print(response.content);</code></pre>
+        <h2>18.5 Conversation Management</h2>
+        <p>The <code>Conversation</code> class manages multi-turn conversations with LLMs, including automatic tool call handling.</p>
+        <h3>Constructor</h3>
+        <pre><code>var conversation = new Conversation(client, systemPrompt);</code></pre>
+        <h3>Methods</h3>
+        <ul>
+            <li><code>addUserMessage(content)</code>: Add a user message</li>
+            <li><code>addAssistantMessage(content)</code>: Add an assistant message</li>
+            <li><code>addTool(tool)</code>: Add a tool definition for function calling</li>
+            <li><code>send()</code> → <code>object</code>: Send conversation and get response (handles tool calls automatically)</li>
+            <li><code>getMessages()</code> → <code>array</code>: Get all messages</li>
+            <li><code>clear()</code>: Clear conversation history</li>
+        </ul>
+        <h3>Example</h3>
+        <pre><code>var conversation = new Conversation(client, "You are a helpful assistant.");
+conversation.addUserMessage("What is 2+2?");
+var response = conversation.send();
+print(response.content);</code></pre>
+        <h3>Parallel read-only tool calls</h3>
+        <p>When the LLM returns multiple read-only tool calls in a single response, <code>Conversation</code> executes them <strong>in parallel by default</strong>. This applies to all agents (<code>Agent</code>, <code>DevAgent</code>, Ralph Wiggum loops, IDE chat) because they share the same runtime.</p>
+        <p><strong>Parallel-safe built-in tools:</strong> <code>read_file</code>, <code>grep</code>, <code>list_directory</code>, <code>get_symbols</code>, <code>get_parse_errors</code>, <code>web_search</code>, <code>recall_progress</code>, and read-only git tools (<code>git_status</code>, <code>git_log</code>, <code>git_diff</code>, <code>git_branch</code>).</p>
+        <p><strong>Always sequential:</strong> file writes, git mutations, <code>run_command</code>, <code>ask_user</code>, <code>remember_progress</code>, MCP tools, agent-as-tool wrappers, and custom <code>@Tool</code> handlers. A mutating tool in the middle of a batch splits execution so ordering stays safe.</p>
+        <p>Tool result messages are appended in the same order as the original <code>tool_calls</code> array before the next LLM request.</p>
+        <p><strong>Configuration:</strong> parallel execution is on when <code>MALDA_PARALLEL_TOOL_CALLS</code> is unset. Set <code>MALDA_PARALLEL_TOOL_CALLS=false</code> (or <code>0</code>, <code>off</code>) to disable. With verbose logging (<code>MALDA_RALPH_VERBOSE</code> or <code>MALDA_AGENT_VERBOSE</code>), parallel batches are logged explicitly.</p>
+        <h3>Verbose logging, thinking feedback, and LLM streaming</h3>
+        <p id="conversation-verbose-streaming">During <code>agent.think()</code> (and any code path using <code>Conversation.send()</code>), the runtime can print live progress to the console:</p>
+        <ul>
+            <li><code>[llm] round N</code> — each LLM request/response round (tool-call summary or final response size)</li>
+            <li><code>[think]</code> — model-native reasoning or planning text before tool calls</li>
+            <li><code>[tool]</code> — tool executions (compact by default)</li>
+        </ul>
+        <p><strong>HTTP LLM clients</strong> (<code>LLMClient</code>, <code>OpenRouterClient</code>) use OpenAI-style SSE streaming (<code>stream: true</code>) by default. When verbose logging and thinking output are enabled, <code>[think]</code> text is written <strong>token-by-token</strong> as deltas arrive. Tool-call JSON is accumulated silently during the stream; tool names are logged after the stream completes.</p>
+        <p><strong>Not streamed today:</strong> <code>LlamaCppClient</code>, bridge backends, and requests with structured <code>response_format</code> (those fall back to a single blocking response).</p>
+        <table>
+            <thead><tr><th>Variable</th><th>Default</th><th>Purpose</th></tr></thead>
+            <tbody>
+                <tr><td><code>MALDA_AGENT_VERBOSE</code></td><td><code>false</code> (Ralph: <code>true</code>)</td><td>Enable <code>[llm]</code> / <code>[tool]</code> logging</td></tr>
+                <tr><td><code>MALDA_RALPH_VERBOSE</code></td><td>—</td><td>Alias for <code>MALDA_AGENT_VERBOSE</code></td></tr>
+                <tr><td><code>MALDA_AGENT_RICH</code></td><td><code>true</code></td><td>Colored Spectre.Console output (auto-off when redirected)</td></tr>
+                <tr><td><code>MALDA_AGENT_TOOL_DETAIL</code></td><td><code>compact</code></td><td><code>compact</code> or <code>full</code> tool logs</td></tr>
+                <tr><td><code>MALDA_AGENT_LLM_THINKING</code></td><td><code>compact</code></td><td><code>[think]</code> output: <code>off</code>, <code>compact</code>, or <code>full</code></td></tr>
+                <tr><td><code>MALDA_AGENT_LLM_STREAM</code></td><td><code>true</code></td><td>OpenAI SSE streaming for HTTP clients; live <code>[think]</code> when thinking is enabled</td></tr>
+                <tr><td><code>MALDA_AGENT_LLM_PREVIEW</code></td><td><code>compact</code></td><td>Final-response preview when streaming/thinking is off</td></tr>
+                <tr><td><code>MALDA_AGENT_STATUS_EVERY</code></td><td><code>4</code></td><td>Repeat status banner every N LLM rounds (Ralph)</td></tr>
+                <tr><td><code>MALDA_RALPH_*</code></td><td>—</td><td>Aliases for the agent settings above in Ralph runs</td></tr>
+            </tbody>
+        </table>
+        <p>The same diagnostics can be toggled from code. These helpers change presentation only and never change an agent's result:</p>
+        <ul>
+            <li><code>enableAgentVerboseLogging(enabled?)</code> — turns verbose conversation logging on or off. Called with no argument it enables logging and returns <code>true</code>.</li>
+            <li><code>setAgentVerbosePhase(phase)</code> — labels the phase shown alongside verbose output, for example <code>"planning"</code> or <code>"review"</code>.</li>
+            <li><code>setAgentStatusBanner(banner)</code> — sets the banner text displayed above agent progress output.</li>
+        </ul>
+        <pre><code>enableAgentVerboseLogging();
+setAgentStatusBanner("Nightly refactor run");
+setAgentVerbosePhase("planning");</code></pre>
+        <h2>18.6 Tool System</h2>
+        <p>Tools allow LLMs to call functions during conversations. Tools are defined using the <code>Tool</code> class and follow the OpenAI function calling format.</p>
+        <h3>Built-in Tool Creators</h3>
+        <ul>
+            <li><code>createReadFileTool(workingDirectory?)</code> → <code>Tool</code></li>
+            <li><code>createWriteFileTool(workingDirectory?)</code> → <code>Tool</code></li>
+            <li><code>createReplaceInFileTool(workingDirectory?)</code> → <code>Tool</code> - Single replacement</li>
+            <li><code>createEditFileTool(workingDirectory?)</code> → <code>Tool</code> - Multiple replacements</li>
+            <li><code>createInsertAtLineTool(workingDirectory?)</code> → <code>Tool</code></li>
+            <li><code>createGrepTool(workingDirectory?)</code> → <code>Tool</code></li>
+            <li><code>createListDirectoryTool(workingDirectory?)</code> → <code>Tool</code></li>
+            <li><code>createAskUserTool()</code> → <code>Tool</code></li>
+            <li><code>createGitStatusTool(workingDirectory?)</code> → <code>Tool</code></li>
+            <li><code>createGitAddTool(workingDirectory?)</code> → <code>Tool</code></li>
+            <li><code>createGitCommitTool(workingDirectory?)</code> → <code>Tool</code></li>
+            <li><code>createGitLogTool(workingDirectory?)</code> → <code>Tool</code></li>
+            <li><code>createGitDiffTool(workingDirectory?)</code> → <code>Tool</code></li>
+            <li><code>createGitBranchTool(workingDirectory?)</code> → <code>Tool</code></li>
+            <li><code>createGitCheckoutTool(workingDirectory?)</code> → <code>Tool</code></li>
+            <li><code>createGitPushTool(workingDirectory?)</code> → <code>Tool</code></li>
+            <li><code>createGitPullTool(workingDirectory?)</code> → <code>Tool</code></li>
+            <li><code>createRunCommandTool(workingDirectory?)</code> → <code>Tool</code> - Execute shell commands (e.g., <code>dotnet</code>, <code>npm</code>, <code>python</code>) with safety checks. Parameters: <code>command</code> (string), <code>args</code> (array of strings, optional), <code>workingDirectory</code> (optional), <code>timeoutMs</code> (optional). Returns object with <code>exitCode</code>, <code>stdout</code>, and <code>stderr</code>.</li>
+            <li><code>createRunMALDATool(workingDirectory?)</code> → <code>Tool</code> - Execute MALDA code from a file path or source string. Parameters: <code>sourceOrFilePath</code> (string), <code>input</code> (optional string for stdin). Returns object with <code>success</code> (boolean), <code>output</code> (string), <code>error</code> (string for parse errors), and optional <code>runtimeError</code> (string).</li>
+            <li><code>createCompileMALDATool(workingDirectory?)</code> → <code>Tool</code> - Compile MALDA source code to executable. Parameters: <code>sourcePath</code> (string), <code>outputPath</code> (optional string), <code>mode</code> (optional: <code>"interpreter"</code> | <code>"transpile"</code>). Returns object with <code>success</code> (boolean), <code>outputPath</code> (string or null), <code>error</code> (string), and <code>errors</code> (array of error objects).</li>
+            <li><code>createGetSymbolsTool(workingDirectory?)</code> → <code>Tool</code> - Extract classes, functions, actors, and prompts from a file</li>
+            <li><code>createGetParseErrorsTool(workingDirectory?)</code> → <code>Tool</code> - Validate syntax without running the file</li>
+            <li><code>createWebSearchTool()</code> → <code>Tool</code> - Brave Search API (no working directory)</li>
+            <li><code>createGlobTool(workingDirectory?)</code> → <code>Tool</code> - Pattern-based path search. Interpreter-only; not available in transpiled executables</li>
+            <li><code>createCreateMcpAgentScriptTool(workingDirectory?)</code> → <code>Tool</code> - Generates MCP agent scripts</li>
+            <li><code>createSubmitPlanTool()</code> → <code>Tool</code> - Submit a structured plan (steps with <code>id</code>, <code>description</code>, optional <code>dependsOn</code>). Parameters: <code>plan</code> (object with <code>steps</code>) or <code>steps</code> (array), optional <code>taskSummary</code>. Returns <code>{ accepted: true, planId, stepCount }</code> or <code>{ accepted: false, error }</code>. No working directory.</li>
+        </ul>
+        <p>All of these factories accept an optional <code>workingDirectory</code> except <code>createSubmitPlanTool</code>, <code>createAskUserTool</code>, and <code>createWebSearchTool</code>. When a directory is set, file and path operations stay inside it and its subdirectories.</p>
+        <h3>Example</h3>
+        <pre><code>var workingDir = ".";
+var readTool = createReadFileTool(workingDir);
+var writeTool = createWriteFileTool(workingDir);
+
+conversation.addTool(readTool);
+conversation.addTool(writeTool);
+
+conversation.addUserMessage("Read example.txt and summarize it.");
+var response = conversation.send();  // LLM will call read_file tool automatically</code></pre>
+        <h2>18.7 Agent Class</h2>
+        <p>The <code>Agent</code> class represents an autonomous agent with a specific role and instructions.</p>
+        <h3>Constructor</h3>
+        <pre><code>// With default local LLM (auto-download from Hugging Face)
+var agent = new Agent(name, role, instructions);
+
+// With a custom client
+var agent = new Agent(name, role, instructions, client);</code></pre>
+        <h3>Methods</h3>
+        <ul>
+            <li><code>think(prompt)</code> → <code>object</code>: Process a prompt and return response (handles tool calls automatically)</li>
+            <li><code>addTool(tool)</code> or <code>addTool(toolName)</code>: Add a tool the agent can use</li>
+            <li><code>addToolByName(toolName)</code>: Add a registered tool by name</li>
+            <li><code>addAllTools()</code>: Add all registered tools to the agent</li>
+            <li><code>addSubAgent(subAgent, toolDescription)</code>: Add another agent as a tool with a simplified description</li>
+            <li><code>getAvailableTools()</code> → <code>array</code>: Get list of available tool names</li>
+            <li><code>getConversation()</code> → <code>Conversation</code>: Get the agent's conversation object</li>
+            <li><code>reset()</code>: Reset agent's conversation history (tools are preserved)</li>
+            <li><code>enableMemory()</code>, <code>enableMemory(path)</code>, <code>useMemory(memory)</code>, <code>saveMemory(path?)</code>, <code>remember(fact, context?)</code>, <code>getMemory()</code>: GraphMemory integration (see <a href="19-graph-memory.html">19. GraphMemory</a>). <code>enableMemory(path)</code> shares one GraphMemory instance across agents using the same path.</li>
+            <li><code>setMemoryScope(scope)</code>, <code>setMemoryScopeParent(parentScope)</code>, <code>setMemoryScopeHierarchy(scopes)</code>: Control hierarchical memory visibility during <code>think()</code> (e.g. <code>chat:123</code> → <code>project:foo</code> → <code>org:acme</code> → <code>global</code>). Use <code>setMemoryScopeHierarchy</code> for multi-level config; otherwise parent scope falls back to <code>MALDA_MEMORY_SCOPE_PARENT</code>.</li>
+            <li><code>setMemoryRerank(enabled, mode?, modelPath?, topK?)</code>: Enable GraphMemory rerank during <code>think()</code> memory queries (<code>rerankMode</code>: <code>llm</code>, <code>cross</code>, or <code>onnx</code>). Env fallbacks: <code>MALDA_MEMORY_RERANK</code>, <code>MALDA_MEMORY_RERANK_MODE</code>, <code>MALDA_MEMORY_RERANK_MODEL_PATH</code>.</li>
+            <li><code>setAutoRememberOnThink(enabled)</code>: When <code>true</code>, each <code>think()</code> stores the full prompt and response in memory (default <code>true</code>)</li>
+            <li><code>addMemoryProgressTools()</code>: Adds <code>remember_progress</code> and <code>recall_progress</code> tools for explicit LLM-controlled notes</li>
+        </ul>
+        <h3>Example</h3>
+        <pre><code>var client = new OpenRouterClient();
+var agent = new Agent(
+    "CodeMaster",
+    "senior software engineer",
+    "You write clean, efficient code. Always include comments and error handling.",
+    client
+);
+
+agent.addTool(createReadFileTool("."));
+agent.addTool(createWriteFileTool("."));
+
+var response = agent.think("Read example.txt and add a comment to the add function.");
+print(response.content);</code></pre>
+        <h2>18.8 Custom Tools with @Tool Decorator</h2>
+        <div class="info-box">
+            <strong>Governance defaults:</strong> Validate tool / LLM-shaped payloads with a <code>schema</code> and <code>validate()</code> before side effects. Mark normalize/derive helpers <code>@pure()</code> and impure handlers <code>@effects(...)</code>. Offline golden: <code>Examples/Agents/agent_governance_golden.malda</code> (see also <a href="09-functions.html">9.7 Decorators</a>).
+        </div>
+        <p>MALDA supports defining custom tools for LLMs using the <code>@Tool</code> decorator on functions.</p>
+        <h3>Decorator Syntax</h3>
+        <pre><code>@Tool(name, description, schema?)</code></pre>
+        <h3>Example</h3>
+        <pre><code>@Tool("calculate_sum", "Adds two numbers together")
+function calculateSum(a, b) {
+    return int(a) + int(b);
+}
+
+var agent = new Agent("Assistant", "Helper", "You are helpful", client);
+agent.addTool("calculate_sum");
+
+var response = agent.think("What is 15 + 27?");
+print(response.content);</code></pre>
+        <h3>Constructing a tool with <code>new Tool</code></h3>
+        <p>You can also build a <code>Tool</code> instance at runtime and pass a handler function. The usual pattern is a single <code>args</code> parameter (the LLM argument object). Call <code>tool.execute(args)</code> to invoke the handler directly, or <code>agent.addTool(tool)</code> for agent loops.</p>
+        <pre><code>function echoHandler(args) {
+    return "got " + string(args.message);
+}
+
+var echoTool = new Tool(
+    "echo_message",
+    "Echoes a message back",
+    {
+        "type": "object",
+        "properties": {
+            "message": { "type": "string", "description": "Text to echo" }
+        },
+        "required": ["message"]
+    },
+    echoHandler
+);
+
+print(echoTool.execute({ "message": "hello" }));  // got hello
+agent.addTool(echoTool);</code></pre>
+        <p>See <code>Examples/Agents/secondbrain_semantic.malda</code> (<code>find_related_notes</code>) for a GraphMemory-backed example used in ASK when tools are enabled.</p>
+        <h2>18.9 CodingAgent</h2>
+        <p>The <code>CodingAgent</code> class is a specialized agent for coding tasks that automatically includes all file operation tools.</p>
+        <h3>Included Tools</h3>
+        <p>CodingAgent automatically includes the following file operation tools and command execution tool:</p>
+        <ul>
+            <li><code>read_file</code> - Read file contents</li>
+            <li><code>write_file</code> - Write content to files</li>
+            <li><code>replace_in_file</code> - Replace text in files (single replacement)</li>
+            <li><code>edit_file</code> - Apply multiple edits to a file (multiple replacements)</li>
+            <li><code>insert_at_line</code> - Insert content at specific line numbers</li>
+            <li><code>grep</code> - Search for patterns in files</li>
+            <li><code>list_directory</code> - List directory contents</li>
+            <li><code>run_command</code> - Execute shell commands (e.g., <code>dotnet</code>, <code>npm</code>, <code>python</code>) with safety checks to prevent dangerous commands</li>
+        </ul>
+        <h3>Constructor</h3>
+        <pre><code>// Simplest form - uses default local LLM (auto-download from Hugging Face)
+var agent = new CodingAgent(name, role, instructions);
+
+// With custom working directory
+var agent = new CodingAgent(name, role, instructions, workingDirectory);
+
+// With custom client
+var agent = new CodingAgent(name, role, instructions, client);
+
+// With custom client and working directory
+var agent = new CodingAgent(name, role, instructions, client, workingDirectory);</code></pre>
+        <h3>Example</h3>
+        <pre><code>var coderAgent = new CodingAgent(
+    "CodeMaster",
+    "senior software engineer",
+    "You write clean, efficient code."
+);
+
+// Agent already has all file tools - ready to use!
+var response = coderAgent.think("Read example.txt and add error handling.");
+print(response.content);</code></pre>
+        <h2>18.10 GitAgent</h2>
+        <p>The <code>GitAgent</code> class is a specialized agent for git operations that automatically includes all git tools.</p>
+        <h3>Included Tools</h3>
+        <p>GitAgent automatically includes the following git operation tools:</p>
+        <ul>
+            <li><code>git_status</code> - Check repository status</li>
+            <li><code>git_add</code> - Stage files</li>
+            <li><code>git_commit</code> - Create commits</li>
+            <li><code>git_log</code> - View commit history</li>
+            <li><code>git_diff</code> - View changes</li>
+            <li><code>git_branch</code> - Manage branches (list/create only - deletion disabled for safety)</li>
+            <li><code>git_checkout</code> - Switch branches</li>
+            <li><code>git_push</code> - Push to remote</li>
+            <li><code>git_pull</code> - Pull from remote</li>
+        </ul>
+        <h3>Constructor</h3>
+        <pre><code>// Simplest form - uses default local LLM (auto-download from Hugging Face)
+var agent = new GitAgent(name, role, instructions);
+
+// With custom working directory
+var agent = new GitAgent(name, role, instructions, workingDirectory);
+
+// With custom client
+var agent = new GitAgent(name, role, instructions, client);
+
+// With custom client and working directory
+var agent = new GitAgent(name, role, instructions, client, workingDirectory);</code></pre>
+        <h3>Example</h3>
+        <pre><code>var gitAgent = new GitAgent(
+    "GitHelper",
+    "git assistant",
+    "You help manage git repositories."
+);
+
+// Agent already has all git tools - ready to use!
+var response = gitAgent.think("Check git status, stage all changes, and commit with message 'Update code'");
+print(response.content);</code></pre>
+        <h2>18.11 HumanAgent</h2>
+        <p>The <code>HumanAgent</code> class is a specialized agent for human interaction that automatically includes the <code>ask_user</code> tool. This makes it easy to create agents that need to interact with humans for clarification, confirmation, or additional information.</p>
+        <h3>Included Tools</h3>
+        <p>HumanAgent automatically includes the following user interaction tool:</p>
+        <ul>
+            <li><code>ask_user</code> - Ask questions to the user for clarification, confirmation, or additional information</li>
+        </ul>
+        <h3>Constructor</h3>
+        <pre><code>// Simplest form - uses default local LLM (auto-download from Hugging Face)
+var agent = new HumanAgent(name, role, instructions);
+
+// With custom working directory
+var agent = new HumanAgent(name, role, instructions, workingDirectory);
+
+// With custom client
+var agent = new HumanAgent(name, role, instructions, client);
+
+// With custom client and working directory
+var agent = new HumanAgent(name, role, instructions, client, workingDirectory);</code></pre>
+        <h3>Example</h3>
+        <pre><code>// Simplest usage - HumanAgent uses default local LLM
+var humanAgent = new HumanAgent(
+    "Assistant",
+    "helpful assistant",
+    "You help users by asking clarifying questions when needed."
+);
+
+// Agent already has ask_user tool - ready to use!
+var response = humanAgent.think("Ask the user what their favorite programming language is, then provide a brief explanation of that language.");
+print(response.content);</code></pre>
+        <h3>Using HumanAgent as a Subagent (Human-in-the-Loop Pattern)</h3>
+        <p>One of the key use cases for <code>HumanAgent</code> is as a <strong>subagent</strong> in complex multi-agent workflows. This enables <strong>human-in-the-loop</strong> patterns where orchestrator agents can delegate human interaction tasks to a specialized HumanAgent.</p>
+        <pre><code>var client = new OpenRouterClient();
+
+// Create a HumanAgent for user interaction
+var humanAgent = new HumanAgent(
+    "HumanInterface",
+    "user interaction specialist",
+    "You handle all interactions with human users. " +
+    "Ask clear, concise questions when clarification is needed. " +
+    "Request approval before making destructive changes.",
+    client
+);
+
+// Create an orchestrator that can delegate to specialists
+var orchestrator = new CodingAgent(
+    "Orchestrator",
+    "project coordinator",
+    "You coordinate code changes. " +
+    "When you need user approval or clarification, use the HumanInterface tool. " +
+    "Always ask for confirmation before deleting files or making breaking changes.",
+    client
+);
+
+// Add HumanAgent as a subagent
+orchestrator.addSubAgent(
+    humanAgent,
+    "Handles user interaction, clarification requests, and approval confirmations. " +
+    "Use this when you need to ask the user a question or get their approval."
+);
+
+// Now orchestrator can automatically request human input when needed
+var response = orchestrator.think(
+    "Refactor the codebase to use dependency injection. " +
+    "Ask the user which design pattern they prefer before proceeding."
+);</code></pre>
+        <p><strong>Benefits of Human-in-the-Loop Pattern:</strong></p>
+        <ul>
+            <li><strong>Safety:</strong> Orchestrators can request approval before destructive operations</li>
+            <li><strong>Clarification:</strong> Agents can ask for missing information instead of guessing</li>
+            <li><strong>Flexibility:</strong> Complex workflows can pause for human decision-making</li>
+            <li><strong>Separation of Concerns:</strong> Human interaction logic is isolated in the HumanAgent</li>
+            <li><strong>Reusability:</strong> Same HumanAgent can be used by multiple orchestrators</li>
+        </ul>
+        <h2>18.12 DevAgent</h2>
+        <p>The <code>DevAgent</code> class is a specialized agent for full development workflows that automatically includes all file operation tools, git tools, command execution tools, and optional code analysis tools.</p>
+        <h3>Included Tools</h3>
+        <p>DevAgent automatically includes the following tools:</p>
+        <ul>
+            <li><strong>File tools:</strong> <code>read_file</code>, <code>write_file</code>, <code>replace_in_file</code>, <code>insert_at_line</code>, <code>edit_file</code>, <code>grep</code>, <code>list_directory</code></li>
+            <li><strong>Git tools:</strong> <code>git_status</code>, <code>git_add</code>, <code>git_commit</code>, <code>git_log</code>, <code>git_diff</code>, <code>git_branch</code>, <code>git_checkout</code>, <code>git_push</code>, <code>git_pull</code></li>
+            <li><strong>Execution tools:</strong> <code>run_command</code></li>
+            <li><strong>Interaction tools:</strong> <code>ask_user</code></li>
+            <li><strong>Structured task planning:</strong> <code>submit_plan</code> - Agents can submit a plan (steps with <code>id</code>, <code>description</code>, optional <code>dependsOn</code>) before or during execution.</li>
+            <li><strong>Optional analysis:</strong> <code>get_symbols</code> (when <code>includeSymbols</code> is true)</li>
+        </ul>
+        <h3>Constructor</h3>
+        <pre><code>// Simplest form - uses default local LLM (auto-download from Hugging Face)
+var agent = new DevAgent(name, role, instructions);
+
+// With custom working directory
+var agent = new DevAgent(name, role, instructions, workingDirectory);
+
+// With custom client
+var agent = new DevAgent(name, role, instructions, client);
+
+// With custom client and working directory
+var agent = new DevAgent(name, role, instructions, client, workingDirectory);
+
+// With includeSymbols enabled (for code analysis)
+var agent = new DevAgent(name, role, instructions, client, workingDirectory, true);</code></pre>
+        <h3>Example</h3>
+        <pre><code>// Simplest usage - DevAgent uses default local LLM
+var devAgent = new DevAgent(
+    "DevMaster",
+    "senior developer",
+    "You write, test, compile, and commit code."
+);
+
+// Agent already has all development tools - ready to use!
+// Can handle full workflow: edit, test, commit
+var response = devAgent.think("Read example.txt, add error handling, and commit the changes");
+print(response.content);</code></pre>
+        <h3>Example with Code Analysis</h3>
+        <pre><code>// DevAgent with getSymbols enabled for better code understanding
+var devAgent = new DevAgent(
+    "CodeAnalyzer",
+    "code refactoring expert",
+    "You analyze code structure and make targeted improvements.",
+    null,  // default client
+    ".",   // working directory
+    true   // includeSymbols - enables get_symbols tool
+);
+
+// Agent can now analyze code structure before making edits
+var response = devAgent.think("Analyze the codebase structure and refactor the main function");
+print(response.content);</code></pre>
+        <h3>Example with Custom Client</h3>
+        <pre><code>var client = new OpenRouterClient("openai/gpt-4");
+
+var devAgent = new DevAgent(
+    "FullStackDev",
+    "full-stack developer",
+    "You develop complete features: code, test, compile, and commit.",
+    client,
+    "./project",
+    false  // includeSymbols
+);
+
+// Agent can handle complete development workflow
+var response = devAgent.think("Implement a new feature: add a user authentication system");
+print(response.content);</code></pre>
+        <h2>18.13 Structured task planning</h2>
+        <p>MALDA supports breaking complex tasks into ordered steps and executing them via an agent. A <strong>plan</strong> is an object <code>{ steps: [{ id, description, dependsOn? }, ...], planId?, taskSummary? }</code>. Each step has a unique <code>id</code> (string), <code>description</code> (string), and optional <code>dependsOn</code> (array of step ids that must complete first).</p>
+        <ul>
+            <li><strong>decomposeTask(instruction, client?)</strong> – Uses an LLM to turn a high-level instruction into a plan. Optional second argument is an LLM client; if omitted, the default local LLM (Qwen/Qwen2.5-0.5B-Instruct, auto-downloaded as a GGUF build from Hugging Face) is used. Returns a plan object or <code>{ error }</code> on failure.</li>
+            <li><strong>executePlan(plan, agent)</strong> – Validates the plan, topo-sorts steps by <code>dependsOn</code>, then runs <code>agent.think(step.description)</code> for each step in order. Returns <code>{ planId, completed, failed, results }</code>.</li>
+            <li><strong>submit_plan</strong> tool – Agents can call this tool to submit a plan (e.g. after a first &quot;think&quot; that produces the plan). DevAgent includes this tool by default. Parameters: <code>plan</code> (object with <code>steps</code>) or <code>steps</code> (array), optional <code>taskSummary</code>. Returns <code>{ accepted: true, planId, stepCount }</code> or <code>{ accepted: false, error }</code>.</li>
+            <li><strong>PromptInstance metadata</strong> – When calling <code>agent.think(promptInstance)</code>, optional fields <code>model</code>, <code>temperature</code>, <code>maxTokens</code>, and <code>tools</code> (array of tool names) apply to that single LLM request.</li>
+            <li><strong>DevAgent code memory</strong> – <code>devAgent.enableCodeMemory(path?, scope?)</code> loads GraphMemory at <code>.dev-agent-memory</code> under the workdir (by default), sets scope <code>code:&lt;workdir-name&gt;</code>, and registers <code>index_code_file</code> / <code>find_code_relationships</code> tools. <code>devAgent.indexCodebase(extensions?)</code> bulk-indexes source files (default: <code>.cs,.malda,.js,.ts,.py,.html,.css,.json,.md</code>).</li>
+        </ul>
+        <pre><code>// Decompose then execute from script
+var plan = decomposeTask("Add unit tests for getSymbols and run the test suite");
+var agent = new DevAgent("Dev", "developer", "You are a developer.", null, ".");
+var result = executePlan(plan, agent);
+print(result.completed);
+print(result.results);</code></pre>
+        <h2>18.14 MALDACodingAgent</h2>
+        <p>The <code>MALDACodingAgent</code> class is a specialized agent for MALDA script development and toolchain operations that automatically includes all file operation tools and MALDA execution/compilation tools.</p>
+        <h3>Included Tools</h3>
+        <p>MALDACodingAgent automatically includes the following tools:</p>
+        <ul>
+            <li><strong>File tools:</strong> <code>read_file</code>, <code>write_file</code>, <code>replace_in_file</code>, <code>insert_at_line</code>, <code>edit_file</code>, <code>grep</code>, <code>list_directory</code></li>
+            <li><strong>MALDA tools:</strong> <code>run_malda</code>, <code>compile_malda</code></li>
+        </ul>
+        <h3>Constructor</h3>
+        <pre><code>// Simplest form - uses default local LLM (auto-download from Hugging Face)
+var agent = new MALDACodingAgent(name, role, instructions);
+
+// With custom working directory
+var agent = new MALDACodingAgent(name, role, instructions, workingDirectory);
+
+// With custom client
+var agent = new MALDACodingAgent(name, role, instructions, client);
+
+// With custom client and working directory
+var agent = new MALDACodingAgent(name, role, instructions, client, workingDirectory);</code></pre>
+        <h3>Example</h3>
+        <pre><code>// Simplest usage - MALDACodingAgent uses default local LLM
+var maldaAgent = new MALDACodingAgent(
+    "MALDADeveloper",
+    "MALDA script developer",
+    "You write, test, and compile MALDA scripts. Always verify your changes work by running the code."
+);
+
+// Agent already has all MALDA development tools - ready to use!
+// Can handle MALDA workflow: edit, run, compile, test
+var response = maldaAgent.think("Read example.malda, add error handling, test it with run_malda, and compile it");
+print(response.content);</code></pre>
+        <h3>Example with Custom Client</h3>
+        <pre><code>var client = new OpenRouterClient("openai/gpt-4");
+
+var maldaAgent = new MALDACodingAgent(
+    "MALDAMaster",
+    "MALDA expert",
+    "You develop MALDA scripts with best practices and thorough testing.",
+    client
+);
+
+// Agent can handle MALDA development workflow
+var response = maldaAgent.think("Create a new MALDA script that calculates fibonacci numbers, test it, and compile it");</code></pre>
+        <h3>Example with Working Directory</h3>
+        <pre><code>var client = new OpenRouterClient("openai/gpt-4");
+
+var maldaAgent = new MALDACodingAgent(
+    "MALDAHelper",
+    "MALDA assistant",
+    "You help develop and test MALDA scripts.",
+    client,
+    "./malda-scripts"  // Restrict operations to ./malda-scripts directory
+);
+
+// Agent can only access files within ./malda-scripts
+var response = maldaAgent.think("List all MALDA files and improve error handling in each one");</code></pre>
+        <h3>When to Use MALDACodingAgent vs DevAgent vs CodingAgent</h3>
+        <ul>
+            <li>Use <code>MALDACodingAgent</code> when you need MALDA-specific development: file operations + MALDA execution/compilation (focused on MALDA script development)</li>
+            <li>Use <code>DevAgent</code> when you need a complete development workflow: file operations, git operations, command execution, and user interaction</li>
+            <li>Use <code>CodingAgent</code> when you only need file operations and command execution (lighter weight, fewer tools, for general coding tasks)</li>
+            <li>Use <code>GitAgent</code> when you only need git operations</li>
+        </ul>
+        <h2>18.15 Agent Dashboard</h2>
+        <p>MALDA agents automatically report their activities to a central dashboard without requiring any modifications to MALDA scripts. This enables monitoring and observability across all agents, even when they run in different executables or processes.</p>
+        <h3>Overview</h3>
+        <p>The agent dashboard feature provides:</p>
+        <ul>
+            <li><strong>Automatic Reporting:</strong> All agents automatically report lifecycle events, think() calls, and tool executions</li>
+            <li><strong>Zero Configuration:</strong> Works out of the box with default localhost dashboard</li>
+            <li><strong>Cross-Process Support:</strong> Agents from different executables are distinguished by process ID</li>
+            <li><strong>Error Tolerant:</strong> Dashboard failures never affect agent execution</li>
+            <li><strong>Non-Blocking:</strong> All reporting is asynchronous and fire-and-forget</li>
+        </ul>
+        <h3>Configuration</h3>
+        <p>The dashboard URL is configured via the <code>SPL_AGENT_DASHBOARD_URL</code> environment variable:</p>
+        <pre><code># Set custom dashboard URL
+export SPL_AGENT_DASHBOARD_URL="http://my-dashboard.example.com/api/agent/status"
+
+# If not set, defaults to:
+# http://localhost:8080/api/agent/status</code></pre>
+        <p><strong>Note:</strong> If the environment variable is set but doesn't end with <code>/api/agent/status</code>, the endpoint path is automatically appended.</p>
+        <h3>Reported Events</h3>
+        <p>Agents automatically report the following events:</p>
+        <ol>
+            <li><strong>Agent Created</strong> (<code>agent_created</code>)
+                <ul>
+                    <li>Reported when an agent is initialized</li>
+                    <li>Includes: agent name, role, process ID, timestamp</li>
+                </ul>
+            </li>
+            <li><strong>Think Operation</strong> (<code>think</code>)
+                <ul>
+                    <li>Reported when <code>agent.think()</code> is called</li>
+                    <li>Includes: agent name, prompt (truncated to 500 chars), prompt length, process ID, timestamp</li>
+                </ul>
+            </li>
+            <li><strong>Tool Call</strong> (<code>tool_call</code>)
+                <ul>
+                    <li>Reported when tools are executed</li>
+                    <li>Includes: agent name, tool name, success status, error message (if failed), process ID, timestamp</li>
+                </ul>
+            </li>
+            <li><strong>Agent Reset</strong> (<code>agent_reset</code>)
+                <ul>
+                    <li>Reported when <code>agent.reset()</code> is called</li>
+                    <li>Includes: agent name, process ID, timestamp</li>
+                </ul>
+            </li>
+        </ol>
+        <h3>Dashboard Payload Format</h3>
+        <p>All events are sent as HTTP POST requests with JSON payloads:</p>
+        <pre><code>{
+  "agentId": "MyAgent",
+  "processId": 12345,
+  "eventType": "think",
+  "timestamp": "2026-01-15T10:30:00.123Z",
+  "data": {
+    "prompt": "Analyze this code...",
+    "promptLength": 20
+  }
+}</code></pre>
+        <p><strong>Payload Fields:</strong></p>
+        <ul>
+            <li><code>agentId</code> (string): The name of the agent</li>
+            <li><code>processId</code> (integer): Process ID to distinguish agents from different executables</li>
+            <li><code>eventType</code> (string): Type of event (<code>agent_created</code>, <code>think</code>, <code>tool_call</code>, <code>agent_reset</code>)</li>
+            <li><code>timestamp</code> (string): UTC timestamp in ISO 8601 format</li>
+            <li><code>data</code> (object): Event-specific data</li>
+        </ul>
+        <p><strong>Event-Specific Data:</strong></p>
+        <ul>
+            <li><strong>agent_created:</strong> <code>{ "role": "..." }</code></li>
+            <li><strong>think:</strong> <code>{ "prompt": "...", "promptLength": 123 }</code></li>
+            <li><strong>tool_call:</strong> <code>{ "toolName": "...", "success": true/false, "errorMessage": "..." }</code></li>
+            <li><strong>agent_reset:</strong> <code>{}</code></li>
+        </ul>
+        <h3>Dashboard Endpoint Requirements</h3>
+        <p>The dashboard server should implement a POST endpoint that accepts JSON payloads:</p>
+        <ul>
+            <li><strong>URL:</strong> Configured via <code>SPL_AGENT_DASHBOARD_URL</code> (default: <code>http://localhost:8080/api/agent/status</code>)</li>
+            <li><strong>Method:</strong> POST</li>
+            <li><strong>Content-Type:</strong> <code>application/json</code></li>
+            <li><strong>Body:</strong> JSON object with agent status information (see payload format above)</li>
+        </ul>
+        <h3>Example Dashboard Server (MALDA)</h3>
+        <pre><code>var server = new HttpServer(8080);
+var agentStatuses = {};
+
+@POST("/api/agent/status")
+function receiveAgentStatus(body) {
+    var agentId = body.agentId;
+    var processId = body.processId;
+    var eventType = body.eventType;
+    var timestamp = body.timestamp;
+    var data = body.data;
+    
+    // Store or process agent status
+    if (agentStatuses[agentId] == null) {
+        agentStatuses[agentId] = {};
+    }
+    agentStatuses[agentId][eventType] = {
+        "processId": processId,
+        "timestamp": timestamp,
+        "data": data
+    };
+    
+    return {"status": 200, "message": "Status received"};
+}
+
+@GET("/api/agents")
+function getAllAgents() {
+    return {"status": 200, "agents": agentStatuses};
+}
+
+@PAGE("/")
+function dashboardPage() {
+    // Generate HTML dashboard showing all agents
+    return generateDashboardHTML(agentStatuses);
+}
+
+server.start();
+print("Agent Dashboard running at http://localhost:8080");</code></pre>
+        <h3>Usage</h3>
+        <p><strong>No MALDA script Changes Required!</strong></p>
+        <p>Agents automatically report to the dashboard. Simply create agents as usual:</p>
+        <pre><code>var client = new OpenRouterClient();
+
+var agent = new Agent(
+    "MyAgent",
+    "coder",
+    "You write code.",
+    client
+);
+
+// Agent automatically reports:
+// 1. agent_created event when initialized
+// 2. think event when think() is called
+// 3. tool_call events when tools are executed
+// 4. agent_reset event when reset() is called
+
+var response = agent.think("Write a hello world function");
+// Dashboard receives think and tool_call events automatically</code></pre>
+        <h3>Error Handling</h3>
+        <p>The dashboard reporting system is designed to be completely non-intrusive:</p>
+        <ul>
+            <li><strong>Network Failures:</strong> If the dashboard is unreachable, agents continue working normally</li>
+            <li><strong>Timeout Protection:</strong> HTTP requests timeout after 2 seconds to prevent hanging</li>
+            <li><strong>Silent Failures:</strong> All dashboard errors are caught and ignored - they never affect agent execution</li>
+            <li><strong>Fire-and-Forget:</strong> All reporting is asynchronous and non-blocking</li>
+        </ul>
+        <h3>Benefits</h3>
+        <ul>
+            <li><strong>Observability:</strong> Monitor all agents across your system in real-time</li>
+            <li><strong>Debugging:</strong> Track agent activities and tool usage patterns</li>
+            <li><strong>Analytics:</strong> Collect metrics on agent performance and tool usage</li>
+            <li><strong>Multi-Process Support:</strong> Track agents running in different executables via process ID</li>
+            <li><strong>Zero Overhead:</strong> No performance impact on agent execution</li>
+        </ul>
+        <h2>18.16 Multi-Agent Orchestration</h2>
+        <p>Multiple agents can work together, each with specialized roles and tools.</p>
+        <h3>Parallel Agent Workflow</h3>
+        <p>Agents can work independently on different tasks:</p>
+        <pre><code>var readerAgent = new Agent("Reader", "file reader", "You read and analyze files.", client);
+readerAgent.addTool(createReadFileTool("."));
+
+var editorAgent = new Agent("Editor", "code editor", "You edit code files.", client);
+editorAgent.addTool(createReadFileTool("."));
+editorAgent.addTool(createReplaceInFileTool("."));
+
+var code = readerAgent.think("Read main.MALDA and summarize it.");
+var edited = editorAgent.think("Read main.MALDA and add error handling.");</code></pre>
+        <h3>Hierarchical Agent Systems with addSubAgent</h3>
+        <p>The <code>addSubAgent</code> method allows you to create hierarchical agent systems where an orchestrator agent can delegate tasks to specialized subagents. This is useful when you want to separate detailed internal instructions from the tool description shown to the orchestrator.</p>
+        <div class="info-box">
+            <strong>Key Benefit:</strong> <code>addSubAgent</code> uses a simplified, tool-focused description rather than the agent's full internal instructions, keeping the orchestrator's context clean and focused.
+        </div>
+        <h4>Syntax</h4>
+        <pre><code>orchestrator.addSubAgent(subAgent, toolDescription);</code></pre>
+        <ul>
+            <li><code>subAgent</code>: An <code>Agent</code> instance to be used as a tool</li>
+            <li><code>toolDescription</code>: A concise description of what the subagent does (shown to the orchestrator)</li>
+        </ul>
+        <h4>Example</h4>
+        <pre><code>var client = new OpenRouterClient();
+
+// Create specialized subagents with detailed internal instructions
+var codeReviewer = new Agent(
+    "CodeReviewer",
+    "code review specialist",
+    "You are an expert code reviewer. When reviewing code, you should:\n" +
+    "1. Check for bugs and logical errors\n" +
+    "2. Review code style and best practices\n" +
+    "3. Suggest improvements\n" +
+    "4. Consider performance implications\n" +
+    "5. Check for security vulnerabilities\n" +
+    "Provide detailed feedback with line numbers and specific suggestions.",
+    client
+);
+
+var tester = new Agent(
+    "Tester",
+    "testing specialist",
+    "You are an expert in software testing. When asked to write tests:\n" +
+    "1. Analyze the code to understand what needs to be tested\n" +
+    "2. Write comprehensive test cases covering edge cases\n" +
+    "3. Include both positive and negative test cases\n" +
+    "4. Ensure tests are clear and maintainable\n" +
+    "5. Consider boundary conditions and error handling",
+    client
+);
+
+// Create orchestrator agent
+var orchestrator = new Agent(
+    "Orchestrator",
+    "project coordinator",
+    "You coordinate tasks between specialized agents. " +
+    "When you need code reviewed, use the CodeReviewer tool. " +
+    "When you need tests written, use the Tester tool. " +
+    "Delegate work to the appropriate specialist agent.",
+    client
+);
+
+// Add subagents with simplified, tool-focused descriptions
+orchestrator.addSubAgent(
+    codeReviewer,
+    "Reviews code for bugs, style issues, and improvements. Provide the code to review as the prompt."
+);
+
+orchestrator.addSubAgent(
+    tester,
+    "Writes comprehensive test cases for code. Provide the code to test as the prompt."
+);
+
+// Orchestrator can now delegate to subagents
+var code = "function add(a, b) {\n    return a + b;\n}";
+var response = orchestrator.think(
+    "I have this code: " + code + "\n\n" +
+    "Please have it reviewed and then write tests for it."
+);
+print(response.content);</code></pre>
+        <p>When the orchestrator calls a subagent tool, it passes a <code>prompt</code> parameter, and the subagent's <code>think()</code> method is called automatically. The subagent's response is returned to the orchestrator.</p>
+        <div class="see-also">
+            <h3>See Also</h3>
+            <ul>
+                <li><a href="09-functions.html">9. Functions</a> - @Tool decorator syntax</li>
+                <li><a href="10-prompts.html">10. Prompts</a> - Prompt templates and <code>agent.think</code></li>
+                <li><a href="20-mcp-server.html">20. MCP Server</a> - Host-launched STDIO tools</li>
+                <li><a href="12-input-output.html">12. Input/Output</a> — file tools consume <code>io.*</code> and capability tokens</li>
+            </ul>
+        </div>
+        <h2 id="using-agents-with-actors">18.17 Using Agents with Actors</h2>
+        <p>Agents and actors are complementary features in MALDA. While agents are classes designed for synchronous AI interactions, actors provide concurrent, message-based processing. Combining them enables powerful patterns for distributed AI systems.</p>
+        
+        <div class="info-box">
+            <strong>Design Decision:</strong> Agents are implemented as classes rather than native actors because:
+            <ul>
+                <li>Most agent usage is synchronous and straightforward</li>
+                <li>Tool execution is naturally synchronous</li>
+                <li>Agents can be easily stored in actor state when concurrency is needed</li>
+                <li>This provides flexibility without forcing actor complexity for simple cases</li>
+            </ul>
+        </div>
+
+        <h3>Agent as Actor State</h3>
+        <p>The most common pattern is storing an agent instance as a field in an actor. This allows the actor to use AI capabilities while maintaining isolated state and concurrent processing:</p>
+        <pre><code>actor AIAssistant {
+    var agent;
+    var conversationHistory = [];
+    
+    function AIAssistant(client) {
+        // Create an agent and store it in actor state
+        agent = new Agent(
+            "Assistant",
+            "helpful assistant",
+            "You help users with their questions.",
+            client
+        );
+    }
+    
+    on ask(question) {
+        // Use the agent to process questions
+        var response = agent.think(question);
+        append(conversationHistory, question);
+        append(conversationHistory, response.content);
+        print(response.content);
+    }
+    
+    on getHistory() {
+        print(conversationHistory);
+    }
+}
+
+// Spawn multiple AI assistants with isolated state
+var client = new OpenRouterClient();
+var assistant1 = spawn AIAssistant(client);
+var assistant2 = spawn AIAssistant(client);
+
+send assistant1.ask("What is 2+2?");
+send assistant2.ask("What is the weather?");</code></pre>
+
+        <h3>Concurrent Agent Orchestration</h3>
+        <p>Actors enable true concurrent processing of multiple agents. While agents are synchronous, wrapping them in actors allows parallel execution:</p>
+        <pre><code>actor CodingAgentActor {
+    var agent;
+    var taskQueue = [];
+    
+    function CodingAgentActor(client, workingDir) {
+        agent = new CodingAgent(
+            "Coder",
+            "software engineer",
+            "You write clean, efficient code.",
+            client,
+            workingDir
+        );
+    }
+    
+    on processTask(task) {
+        var result = agent.think(task);
+        print($"Task completed: {result.content}");
+    }
+}
+
+// Spawn multiple coding agents for parallel processing
+var client = new OpenRouterClient();
+var agent1 = spawn CodingAgentActor(client, "./project1");
+var agent2 = spawn CodingAgentActor(client, "./project2");
+var agent3 = spawn CodingAgentActor(client, "./project3");
+
+// Send tasks concurrently - all process in parallel
+send agent1.processTask("Refactor the user authentication module");
+send agent2.processTask("Add error handling to the API");
+send agent3.processTask("Write unit tests for the database layer");</code></pre>
+
+        <h3>Multi-Agent Actor System</h3>
+        <p>You can orchestrate multiple specialized agents within a single actor to create complex workflows:</p>
+        <pre><code>actor AgentOrchestrator {
+    var coderAgent;
+    var reviewerAgent;
+    var testerAgent;
+    
+    function AgentOrchestrator(client) {
+        coderAgent = new CodingAgent("Coder", "developer", "Write clean code.", client);
+        reviewerAgent = new Agent("Reviewer", "code reviewer", "Review code for quality.", client);
+        testerAgent = new Agent("Tester", "QA engineer", "Write comprehensive tests.", client);
+    }
+    
+    on develop(feature) {
+        // Step 1: Code
+        var code = coderAgent.think($"Write code for: {feature}");
+        
+        // Step 2: Review
+        var review = reviewerAgent.think($"Review this code: {code.content}");
+        
+        // Step 3: Test
+        var tests = testerAgent.think($"Write tests for: {code.content}");
+        
+        return {
+            "code": code.content,
+            "review": review.content,
+            "tests": tests.content
+        };
+    }
+}
+
+var client = new OpenRouterClient();
+var orchestrator = spawn AgentOrchestrator(client);
+send orchestrator.develop("User authentication system");</code></pre>
+
+        <h3>Agent State Persistence via Actors</h3>
+        <p>Actors can manage and persist agent conversation state, enabling long-running agent sessions:</p>
+        <pre><code>actor AgentStateManager {
+    var agents = {};  // Dictionary of agent instances
+    var conversations = {};  // Conversation history per agent
+    
+    on createAgent(name, role, instructions, client) {
+        var agent = new Agent(name, role, instructions, client);
+        agents[name] = agent;
+        conversations[name] = [];
+    }
+    
+    on queryAgent(agentName, question) {
+        if (has(agents, agentName)) {
+            var agent = agents[agentName];
+            var response = agent.think(question);
+            append(conversations[agentName], {
+                "question": question,
+                "answer": response.content
+            });
+            return response.content;
+        }
+        return "Agent not found";
+    }
+    
+    on getHistory(agentName) {
+        return conversations[agentName];
+    }
+}
+
+var client = new OpenRouterClient();
+var stateManager = spawn AgentStateManager();
+send stateManager.createAgent("Helper", "assistant", "You help users", client);
+
+send stateManager.queryAgent("Helper", "What is MALDA?");</code></pre>
+
+        <h3>Benefits of Combining Agents and Actors</h3>
+        <ul>
+            <li><strong>Concurrency:</strong> Multiple agents can process tasks in parallel without blocking</li>
+            <li><strong>State Isolation:</strong> Each actor maintains its own agent instance and conversation history</li>
+            <li><strong>Scalability:</strong> Spawn many agent actors for distributed AI processing</li>
+            <li><strong>Fault Tolerance:</strong> If one agent actor fails, others continue independently</li>
+            <li><strong>Message-Based Coordination:</strong> Use actor messaging to coordinate agent workflows</li>
+            <li><strong>Long-Running Sessions:</strong> Actors can maintain agent state across multiple interactions</li>
+        </ul>
+
+        <div class="see-also">
+            <h3>See Also</h3>
+            <ul>
+                <li><a href="17-actors.html">17. Actors</a> - Actor model and message passing</li>
+                <li><a href="17-actors.html#actor-state-isolation">17.5 Actor State Isolation</a> - Understanding actor state</li>
+            </ul>
+        </div>
+
+        <h2 id="ralph-wiggum">18.18 Ralph Wiggum (PRD-driven autonomous loop)</h2>
+        <p>The repository includes <code>Examples/RalphWiggum/RalphWiggum.malda</code>, a production-ready autonomous loop for PRD-driven development. It uses <code>DevAgent</code>, a checklist PRD (<code>PRD.md</code>), post-iteration validation, resume state, and <strong>GraphMemory</strong> for continuity across iterations when conversation history is reset each round. See <code>Examples/RalphWiggum/README.md</code> for prerequisites and the Snake demo.</p>
+
+        <h3>Running</h3>
+        <pre><code>dotnet run --project MaldaLang -- Examples/RalphWiggum/RalphWiggum.malda
+# Or from a project directory with PRD.md:
+# set MALDA_RALPH_WORKDIR=Examples/RalphWiggum/snake-demo
+# Examples\RalphWiggum\snake-demo\run-ralph.bat</code></pre>
+
+        <h3>Persisted artifacts (in workdir)</h3>
+        <ul>
+            <li><code>.ralph-state.json</code> — iteration history, validation notes, resume checkpoint (<code>lastSuccessfulIteration</code>, <code>failedIterations</code>, token totals when available)</li>
+            <li><code>.ralph-memory.graph.json</code>, <code>.ralph-memory.metadata.json</code>, <code>.ralph-memory.vectordb.bin</code> — GraphMemory persistence</li>
+            <li><code>ralph-run-report.json</code> / <code>ralph-run-report.html</code> — run summary when <code>MALDA_RALPH_REPORT</code> is enabled</li>
+            <li><code>PRD.md</code> — feature checklist with <code>[ ]</code>, <code>[TODO]</code>, <code>[DONE]</code>, optional <code>[P0]</code> priority, <code>(depends: …)</code>, and <code>Acceptance:</code> lines</li>
+        </ul>
+
+        <h3>Memory model</h3>
+        <p>Ralph attaches shared <code>GraphMemory</code> to the agent via <code>setupRalphGraphMemory()</code> and:</p>
+        <ul>
+            <li>Initializes with <code>MALDA_MEMORY_EMBED</code> (<code>hash</code>, <code>bow</code>, or <code>llama</code>) and loads <code>.ralph-memory.*</code> from the workdir</li>
+            <li>Scopes memory with <code>agent.setMemoryScope("ralph:{project}")</code> (override via <code>MALDA_RALPH_MEMORY_SCOPE</code>)</li>
+            <li>Reindexes <code>PRD.md</code> at startup and seeds facts from <code>.ralph-interview-brief.json</code> when present</li>
+            <li>Runs <code>maintainRalphMemory()</code> after each iteration: <code>consolidate</code>/<code>reflect</code>, <code>prune</code>, <code>enforceLimits</code> (default on when <code>MAX_ITER &gt; 5</code>)</li>
+            <li>Disables auto-remember of the full prompt by default (<code>setAutoRememberOnThink(false)</code>); set <code>MALDA_RALPH_AUTO_REMEMBER=true</code> to restore legacy behavior</li>
+            <li>Registers <code>remember_progress</code> / <code>recall_progress</code> via <code>addMemoryProgressTools()</code></li>
+            <li>After each iteration, saves a <strong>structured summary</strong> (phase, validation, files, tool count) with metadata</li>
+            <li>Indexes modified files with <code>memory.analyzeFile()</code> where applicable</li>
+            <li><code>agent.think()</code> injects hybrid memory (vector + lexical + synapse + MMR). Optional phase-scoped block: <code>MALDA_RALPH_MEMORY_PHASE_QUERY=true</code></li>
+            <li>Includes <code>memory.stats()</code> in <code>ralph-run-report.json</code> when reporting is enabled</li>
+        </ul>
+        <p>Inspect Ralph memory from the workdir: <code>malda memory stats --path .ralph-memory</code>. See <code>Examples/RalphWiggum/README.md</code> for <code>MALDA_RALPH_MEMORY_*</code> variables.</p>
+
+        <h3>Key environment variables</h3>
+        <ul>
+            <li><code>MALDA_RALPH_WORKDIR</code>, <code>MALDA_RALPH_WORKTREE</code>, <code>MALDA_RALPH_PROJECT_REL</code>, <code>MALDA_RALPH_PRD</code>, <code>MALDA_RALPH_MAX_ITER</code>, <code>MALDA_RALPH_TASK</code></li>
+            <li><code>MALDA_RALPH_RESET_EACH</code> — <code>true</code>, <code>false</code>, or <code>phase</code> (reset conversation when PRD phase changes; default <code>true</code>)</li>
+            <li><code>MALDA_RALPH_RESUME</code>, <code>MALDA_RALPH_RESUME_POLICY</code> (<code>all</code> | <code>success-only</code>), <code>MALDA_RALPH_VALIDATE</code>, <code>MALDA_RALPH_VALIDATE_DEPTH</code>, <code>MALDA_RALPH_VALIDATE_CMD</code></li>
+            <li><code>MALDA_RALPH_PRD_STRICT</code>, <code>MALDA_RALPH_REQUIRE_SIGNAL</code>, <code>MALDA_RALPH_PLAN_ONLY</code>, <code>MALDA_RALPH_PREFLIGHT</code></li>
+            <li><code>MALDA_RALPH_REPORT</code>, <code>MALDA_RALPH_NOTIFY</code>, <code>MALDA_RALPH_MAX_PHASE_RETRIES</code>, <code>MALDA_RALPH_ABORT_ON_STALL</code></li>
+            <li><code>MALDA_RALPH_GIT_COMMIT</code>, <code>MALDA_RALPH_AUTO_REMEMBER</code> (default <code>false</code>)</li>
+            <li><code>MALDA_AGENT_THINK_TIMEOUT_MS</code> / <code>MALDA_RALPH_ITER_TIMEOUT_MS</code> — per-iteration think deadline</li>
+            <li>Verbose CLI: <code>MALDA_AGENT_VERBOSE</code> (default <code>true</code> in Ralph), <code>MALDA_AGENT_RICH</code>, <code>MALDA_AGENT_LLM_THINKING</code>, <code>MALDA_AGENT_LLM_STREAM</code> — see <a href="#conversation-verbose-streaming">18.5 verbose logging</a></li>
+            <li><code>OPENROUTER_API_KEY</code> or <code>providers.openrouter</code> in <code>~/.malda/config.json</code></li>
+        </ul>
+        <p>Implementation modules: <code>Examples/RalphWiggum/ralph/*.malda</code> (see <code>ralph/ARCHITECTURE.md</code>). Full env var list and git-worktree workflow: <code>Examples/RalphWiggum/README.md</code>.</p>
+        <h3>Completion signals</h3>
+        <p>Ralph accepts <code>TASK_COMPLETE</code> (case-insensitive), a dedicated <code>RALPH_DONE</code> line, JSON <code>{"ralph":"done"}</code>, or auto-complete when every PRD item is <code>[DONE]</code> and validation passes (unless <code>MALDA_RALPH_REQUIRE_SIGNAL=true</code>).</p>
+        <h3>Custom validation hooks</h3>
+        <p>After structural checks, Ralph may run <code>MALDA_RALPH_VALIDATE_CMD</code>, or a project-local <code>.ralph-validate.sh</code> / <code>.ralph-validate.bat</code> / (or <code>.ralph-validate.malda</code>) in the workdir.</p>
+        <h3>Execution strategy</h3>
+        <p>Ralph prompts the agent to complete <strong>one PRD checklist item per iteration</strong> in as few LLM rounds as possible: batch read-only exploration (<code>list_directory</code>, <code>grep</code>, <code>read_file</code>) in one response, then batch edits and verification. This pairs with parallel read-only tool execution (18.5) and streamed <code>[think]</code> feedback during verbose runs.</p>
+        <p>See also <a href="19-graph-memory.html">19. GraphMemory</a> for <code>remember</code> metadata, <code>getRecent</code>, and hybrid <code>query</code> options.</p>
+        <p><code>reportRalphStatus(agentName, phase, iteration, maxIter, prdPercent, validationOk?, elapsedMs?, promptTokens?, completionTokens?, costUsd?)</code> publishes one iteration of progress to the agent dashboard. The first five arguments are required; the rest default to <code>false</code>, <code>0</code>, <code>0</code>, <code>0</code>, and <code>0.0</code>.</p>
+        <pre><code>reportRalphStatus("Ralph", "implement", 3, 10, 45, true, 12000, 1800, 640, 0.02);</code></pre>
+
+        <div class="nav-footer">
+            <a href="17-actors.html">← Previous: 17. Actors</a>
+            <a href="19-graph-memory.html">Next: 19. GraphMemory→</a>
+        </div>
+
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, at your option.</p>
+        </footer>
+    </main>
+    <script src="malda-highlight.js"></script>
+    <script src="navigation.js"></script>
+</body>
+</html>

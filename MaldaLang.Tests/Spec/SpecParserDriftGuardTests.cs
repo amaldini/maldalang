@@ -20,7 +20,7 @@ public class SpecParserDriftGuardTests
     {
         Assert.True(File.Exists(PlanningPaths.ResolveRepoPath("docs", "spec", "malda-language-1.0.md")));
         Assert.True(File.Exists(PlanningPaths.ResolveRepoPath("docs", "spec", "CHANGELOG.md")));
-        Assert.True(File.Exists(PlanningPaths.ResolveRepoPath("ReferenceManual", "34-grammar.html")));
+        Assert.True(File.Exists(PlanningPaths.ResolveRepoPath("ReferenceManual", "35-grammar.html")));
         Assert.True(File.Exists(ScriptPath));
     }
 

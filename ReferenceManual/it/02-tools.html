@@ -117,7 +117,7 @@ malda -h</code></pre>
         <h3>Modalità di runtime in sintesi</h3>
         <p>Il codice MALDA può girare in tre contesti di esecuzione comuni. Usa questa tabella per scegliere il percorso giusto prima di compilare o distribuire.</p>
         <table>
-            <tr><th>Capacità</th><th>Interprete<br><code>malda &lt;file.malda&gt;</code></th><th>Eseguibile transpile<br><code>malda compile --mode transpile</code></th><th>Backend JavaScript<br>(vedi <a href="25-browser-javascript-backend.html">25. Backend UI JavaScript nel browser</a>)</th></tr>
+            <tr><th>Capacità</th><th>Interprete<br><code>malda &lt;file.malda&gt;</code></th><th>Eseguibile transpile<br><code>malda compile --mode transpile</code></th><th>Backend JavaScript<br>(vedi <a href="26-browser-javascript-backend.html">26. Backend UI JavaScript nel browser</a>)</th></tr>
             <tr><td>Linguaggio core (variabili, funzioni, classi, match, async)</td><td>Sì</td><td>Sì</td><td>Sì (sottoinsieme documentato)</td></tr>
             <tr><td>Prompt, agenti, tool calling</td><td>Sì</td><td>Sì</td><td>Limitato; preferibile sul server</td></tr>
             <tr><td><code>HttpServer</code>, <code>RestServer</code>, <code>@PAGE</code></td><td>Sì</td><td>Sì</td><td>Solo lato server; il browser usa HTTP verso l'API MALDA</td></tr>
@@ -205,7 +205,7 @@ malda compile &lt;file.malda&gt; --mode dll</code></pre>
         <pre><code>malda compile app.malda -o app.exe --mode transpile --embed-folder secondbrain
 malda compile app.malda -o app.exe --mode transpile --embed-folder ./data=assets</code></pre>
 
-        <p>Impacchetta una directory nell'eseguibile pubblicato come risorse dell'assembly. A runtime, i programmi leggono quei file con lo schema virtuale <code>embed:&lt;alias&gt;/&lt;relative&gt;</code> (vedi <a href="12-built-in-functions.html">Funzioni built-in</a> §12.8.0). L'alias di default è il nome della cartella; usa <code>path=alias</code> per rinominarlo. Il flag è ripetibile. I file non vengono estratti su disco.</p>
+        <p>Impacchetta una directory nell'eseguibile pubblicato come risorse dell'assembly. A runtime, i programmi leggono quei file con lo schema virtuale <code>embed:&lt;alias&gt;/&lt;relative&gt;</code> (vedi <a href="13-built-in-functions.html">Funzioni built-in</a> §13.8.0). L'alias di default è il nome della cartella; usa <code>path=alias</code> per rinominarlo. Il flag è ripetibile. I file non vengono estratti su disco.</p>
 
         <h4>Compilare codice direttamente</h4>
 
@@ -459,7 +459,7 @@ var result = helper();</code></pre>
         <pre><code>malda test --iterations 100 --seed 1337
 malda test --format ci --iterations 100 --seed 1337
 malda test --write-regression --regression-dir ./artifacts/regressions</code></pre>
-        <p>Per la sintassi del linguaggio, i decoratori di capability, <code>runProperty(...)</code>, la semantica di eleggibilità dei backend e i workflow completi, vedi <a href="33-property-testing.html">Property testing</a>.</p>
+        <p>Per la sintassi del linguaggio, i decoratori di capability, <code>runProperty(...)</code>, la semantica di eleggibilità dei backend e i workflow completi, vedi <a href="34-property-testing.html">Property testing</a>.</p>
 
         <h2>2.8 Scrivere MALDA con un agente di coding</h2>
 
@@ -510,7 +510,7 @@ malda test --write-regression --regression-dir ./artifacts/regressions</code></p
         <ul>
             <li><strong>Keyword prese in prestito.</strong> <code>let</code> non esiste — le variabili si dichiarano con <code>var</code>. <code>fn</code> e <code>def</code> sono errori di sintassi; usa <code>function</code>.</li>
             <li><strong>Parametri di prompt tipizzati.</strong> Le dichiarazioni di prompt accettano parametri solo per nome; <code>prompt p(name: string)</code> non è valido. Un <code>-&gt; ReturnType</code> su un prompt è solo informativo.</li>
-            <li><strong>Built-in inventati.</strong> Un nome plausibile di un altro linguaggio non si risolve. <code>println</code> è la vittima più frequente; la chiamata è <code>print</code>. Fai grep su <code>docs/llm/malda-builtins.tsv</code>, che è generato dal motore, oppure leggi <a href="12-built-in-functions.html">12. Funzioni built-in</a>.</li>
+            <li><strong>Built-in inventati.</strong> Un nome plausibile di un altro linguaggio non si risolve. <code>println</code> è la vittima più frequente; la chiamata è <code>print</code>. Fai grep su <code>docs/llm/malda-builtins.tsv</code>, che è generato dal motore, oppure leggi <a href="13-built-in-functions.html">13. Funzioni built-in</a>.</li>
             <li><strong>String interpolation fuori dal corpo di un prompt.</strong> <code>"n is {n}"</code> stampa letteralmente; non solleva un errore. Concatena con <code>+ string(n)</code>.</li>
             <li><strong>Built-in solo dell'interprete nei target compilati.</strong> Un programma che gira interpretato può fallire il transpile. Verifica con <code>malda compile</code> prima di promettere un eseguibile.</li>
             <li><strong>Annotazioni di tipo trattate come enforcement.</strong> Le annotazioni vengono parsate e alimentano il language server. I mismatch degli inizializzatori letterali producono un Warning in IDE/LSP, ma a runtime nessuno controlla i type hint, quindi un agente non deve basarsi su di essi per la validazione.</li>

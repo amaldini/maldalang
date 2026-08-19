@@ -8,12 +8,12 @@
 
 ## 1. Executive summary
 
-- **Overall severity: medium–high for documentation trust; low for runtime surprises on documented Tier 0 paths.** The lexer/parser implement a substantially larger Tier 0 surface than `34-grammar.html` describes; the manual’s narrative chapters (03, 07, 08, 09) are largely aligned with behavior where they exist, but **lexical/grammar chapters are stale**.
-- **Grammar (2026-06-04, Phase 2.2):** `ReferenceManual/34-grammar.html` now documents workflows, actors, sum types, `async`/`await`, `dict`/`graph`/object literals, exceptions, send/spawn/receive, variant patterns, and compound assignment. Residual drift: generated keyword list in CI (P1), nested `FunctionDecl` policy (P0 deferred).
-- **Top gap — keyword inventory split:** `03-lexical-structure.html` lists a **short** keyword set; `35-appendix.html` is closer to the lexer but still wrong (`reply` listed as reserved; **workflow** keywords missing). Parser/lexer keywords are the de facto source of truth.
+- **Overall severity: medium–high for documentation trust; low for runtime surprises on documented Tier 0 paths.** The lexer/parser implement a substantially larger Tier 0 surface than `35-grammar.html` describes; the manual’s narrative chapters (03, 07, 08, 09) are largely aligned with behavior where they exist, but **lexical/grammar chapters are stale**.
+- **Grammar (2026-06-04, Phase 2.2):** `ReferenceManual/35-grammar.html` now documents workflows, actors, sum types, `async`/`await`, `dict`/`graph`/object literals, exceptions, send/spawn/receive, variant patterns, and compound assignment. Residual drift: generated keyword list in CI (P1), nested `FunctionDecl` policy (P0 deferred).
+- **Top gap — keyword inventory split:** `03-lexical-structure.html` lists a **short** keyword set; `36-appendix.html` is closer to the lexer but still wrong (`reply` listed as reserved; **workflow** keywords missing). Parser/lexer keywords are the de facto source of truth.
 - **Top misleading doc — type checking:** `04-data-types.html` §4.6 recommends `x == int(x) or x == float(x)` instead of `typeOf()` / `isNumber()`; this is called out in the purity roadmap Phase 1.4.
 - **Runtime vs manual (aligned):** `typeOf(42)` → `"integer"` (manual built-ins + `Tier0ConformanceTests`); dict missing keys → `null` (manual §4.4 + interpreter + conformance test). **Future spec drift:** roadmap Phase 4.2 targets tag `"int"` and `"dict"`, not current behavior.
-- **`newpotentialfeatures.md`:** “Already implemented” list (match, destructuring, sum types, async/await, prompts) matches parser; actor message declarations are documented in `16-actors.html` and parsed — consistent.
+- **`newpotentialfeatures.md`:** “Already implemented” list (match, destructuring, sum types, async/await, prompts) matches parser; actor message declarations are documented in `17-actors.html` and parsed — consistent.
 
 ---
 
@@ -24,7 +24,7 @@
 | **Lexer** | `TokenType` enum + `Lexer.cs` `Keywords` map + punctuation handlers (`=>`/`->` both become `TokenType.Arrow` via `=`+`>` or `-`+`>`) |
 | **Parser** | `Parser.cs` — `Declaration()`, `Statement()`, `MatchExpression()`, `ParsePattern()`, `Primary()`, workflow/actor/prompt/type blocks |
 | **Interpreter semantics** | `Interpreter.cs` dictionary indexing; `BuiltInTypeOf` in `BuiltInFunctions.cs` |
-| **Reference Manual** | Read/grep: `03-lexical-structure.html`, `04-data-types.html`, `07-expressions.html`, `08-control-structures.html`, `09-functions.html`, `34-grammar.html`, `35-appendix.html`, cross-chapters (`01-introduction.html` include/using, `13-graphs.html`, `16-actors.html`, `21-durable-workflows.html`) |
+| **Reference Manual** | Read/grep: `03-lexical-structure.html`, `04-data-types.html`, `07-expressions.html`, `08-control-structures.html`, `09-functions.html`, `35-grammar.html`, `36-appendix.html`, cross-chapters (`01-introduction.html` include/using, `14-graphs.html`, `17-actors.html`, `22-durable-workflows.html`) |
 | **Secondary** | `SimpleProgrammingLanguage.md` §2.3 keywords; `docs/planning/newpotentialfeatures.md` |
 | **Tests** | `MaldaLang.Tests/Conformance/Tier0/Tier0ConformanceTests.cs` (documented runtime tags) |
 
@@ -45,7 +45,7 @@ Legend: **Y** = present/supported; **N** = not present; **Partial** = mentioned 
 | `match` / `case` / `default` | Y | Y (expr + stmt; stmt may omit trailing `;`) | Y (`08`, grammar stmt/expr) | Grammar `Pattern` lacks **variant** patterns; parser has `VariantPattern` |
 | `async` / `await` | Y | Y (unary in `Unary()`) | Y (`07` §async) | **Not** in grammar expressions; appendix precedence omits them |
 | `prompt` | Y | Y (`PromptDeclaration`; name-only params) | Y (`09` §prompts) | **Not** in `02` keywords; object-literal + statement bodies parsed |
-| `actor` | Y | Y | Y (`13-actors`) | File `16-actors.html` titled **ch. 15** (numbering drift) |
+| `actor` | Y | Y | Y (`13-actors`) | File `17-actors.html` titled **ch. 15** (numbering drift) |
 | `message` | Y | Y (in `ActorDeclaration`) | Y (`13` §message declarations) | **Not** in `02` keywords |
 | `spawn` | Y | Y (`SpawnExpression`) | Y (`13`) | Not in grammar `Primary` |
 | `send` | Y | Y (`SendStatement`; `then`/`timeout`/`catch`) | Y (`13`) | Not in grammar statements |
@@ -63,7 +63,7 @@ Legend: **Y** = present/supported; **N** = not present; **Partial** = mentioned 
 | `property` | Y | Y | Partial (`22`, appendix) | Web/backend feature |
 | Sum types `\|` | Y (`TokenType.Pipe`) | Y (`type Name = Ctor \| Ctor`) | Y (`03`) | Pipe used only in type decls, not manual §02 |
 | `foreach` | Y | Y | Y (`08`; appendix) | **Not** in `02` keyword list |
-| `try` / `catch` / `finally` / `throw` | Y | Y | Y (`08` exception section) | **Absent** from `34-grammar.html` statements |
+| `try` / `catch` / `finally` / `throw` | Y | Y | Y (`08` exception section) | **Absent** from `35-grammar.html` statements |
 | `var` + type hint `: Type` | Y (identifier after `:`) | Y | Partial (functions `09`; vars less prominent) | Grammar `VarDecl` includes optional `: Identifier` |
 | `=>` / `->` | Y (both → `Arrow`) | Y (lambda body; return types) | Y (`02` =>; `09` ->) | Lexer does not distinguish `=>` vs `->` token types |
 | `reply` | **N** (not keyword) | N (builtin call) | Partial (`13`, appendix **lists as reserved**) | **P0 doc error:** appendix claims reserved word |
@@ -77,7 +77,7 @@ Legend: **Y** = present/supported; **N** = not present; **Partial** = mentioned 
 
 ## 4. Grammar chapter gaps
 
-### 4.1 In parser — **not** in `34-grammar.html` (or only named, no production)
+### 4.1 In parser — **not** in `35-grammar.html` (or only named, no production)
 
 | Construct | Parser location | Grammar status |
 |-----------|-----------------|----------------|
@@ -116,7 +116,7 @@ Legend: **Y** = present/supported; **N** = not present; **Partial** = mentioned 
 
 ### 4.3 Manual claims grammar is authoritative
 
-- `21-durable-workflows.html` “See Also” → `34-grammar.html` for “workflow grammar reference” — **link target does not contain workflow productions**.
+- `22-durable-workflows.html` “See Also” → `35-grammar.html` for “workflow grammar reference” — **link target does not contain workflow productions**.
 
 ---
 
@@ -127,7 +127,7 @@ Legend: **Y** = present/supported; **N** = not present; **Partial** = mentioned 
 | Topic | Manual says | Code does | Severity |
 |-------|-------------|-------------|----------|
 | **Dict missing key** | `d["missing"] == null` (`03` §4.4) | `DictionaryInstance.TryGetEntry` → `RuntimeValue.Null()` | **Aligned** |
-| **`typeOf` integer** | Returns `"integer"` (`12-built-in-functions.html`) | `BuiltInTypeOf` → `"integer"` for `ValueType.Integer` | **Aligned** (roadmap future: `"int"`) |
+| **`typeOf` integer** | Returns `"integer"` (`13-built-in-functions.html`) | `BuiltInTypeOf` → `"integer"` for `ValueType.Integer` | **Aligned** (roadmap future: `"int"`) |
 | **`typeOf` dict** | Not specified as `"dict"` | Dict literals → object/dictionary instance → `"object"` | **Gap** vs future Tier 0 spec |
 | **Type checking idiom** | `if (x == int(x) or x == float(x))` (`03` §4.6) | Works via coercion but is awkward; `typeOf` / `isNumber` clearer | **P0 misleading** |
 | **`await` non-Task** | Runtime error (`07`) | Interpreter enforces Task type on await | **Aligned** |
@@ -145,7 +145,7 @@ Legend: **Y** = present/supported; **N** = not present; **Partial** = mentioned 
 
 ### 5.3 Chapter / breadcrumb numbering (HTML)
 
-Systematic **file slug vs displayed chapter number** mismatch (renumbering script / nav drift). Examples: `16-actors.html` titled ch. 15; `34-grammar.html` title 34 vs breadcrumb 33; `35-appendix.html` title 35 vs breadcrumb 34.
+Systematic **file slug vs displayed chapter number** mismatch (renumbering script / nav drift). Examples: `17-actors.html` titled ch. 15; `35-grammar.html` title 34 vs breadcrumb 33; `36-appendix.html` title 35 vs breadcrumb 34.
 
 **Broken link:** `03-lexical-structure.html` §3.5 links `08-functions.html#lambda` — file is **`09-functions.html`**.
 
@@ -160,8 +160,8 @@ Pattern matching, destructuring, sum types, async/await, prompts, actor message 
 ### P0 — wrong or misleading (fix before spec 1.0)
 
 1. ~~**`04-data-types.html` §4.6**~~ — **Fixed 2026-06-04:** `typeOf` / `isNumber`.
-2. ~~**`35-appendix.html` §35.1**~~ — **Fixed 2026-06-04:** removed `reply`; added workflow keywords; note on `reply` builtin.
-3. ~~**`34-grammar.html`**~~ — **Fixed 2026-06-04:** expanded productions (Phase 2.2); partial-grammar warning removed.
+2. ~~**`36-appendix.html` §35.1**~~ — **Fixed 2026-06-04:** removed `reply`; added workflow keywords; note on `reply` builtin.
+3. ~~**`35-grammar.html`**~~ — **Fixed 2026-06-04:** expanded productions (Phase 2.2); partial-grammar warning removed.
 4. ~~**`03-lexical-structure.html` §3.3**~~ — **Fixed 2026-06-04:** keyword list synced with lexer; lambda link → `09-functions.html`.
 5. **Grammar `FunctionDecl` as nested `Statement`** — Document top-level-only restriction or change parser (deferred to P1).
 
@@ -189,7 +189,7 @@ Pattern matching, destructuring, sum types, async/await, prompts, actor message 
 |------|--------|
 | `03-data-types` type-checking section | **Doc** |
 | `02` / `23` keywords, appendix `reply`, links, chapter numbers | **Doc** |
-| `34-grammar.html` expansion or partial banner | **Doc** (+ **Parser** review) |
+| `35-grammar.html` expansion or partial banner | **Doc** (+ **Parser** review) |
 | `typeOf` tag canonicalization | **Both** (spec + `BuiltInTypeOf` + tests) |
 | Generate keyword list from `Lexer.cs` in CI | **Both** |
 | `FunctionDecl` nesting policy | **Both** |

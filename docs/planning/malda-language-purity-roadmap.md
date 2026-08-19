@@ -128,12 +128,12 @@ Tier 2 — Platform packs (optional, separate versioning)
 ## Phase 2 — Formal specification 1.0 — **Complete** (2026-06-04)
 
 **Objective:** Versioned language contract.  
-**Spec:** [docs/spec/malda-language-1.0.md](../spec/malda-language-1.0.md) (Draft 1.0) · [CHANGELOG](../spec/CHANGELOG.md) · Grammar [34-grammar.html](../../ReferenceManual/34-grammar.html)
+**Spec:** [docs/spec/malda-language-1.0.md](../spec/malda-language-1.0.md) (Draft 1.0) · [CHANGELOG](../spec/CHANGELOG.md) · Grammar [35-grammar.html](../../ReferenceManual/35-grammar.html)
 
 | # | Task | Output |
 |---|------|--------|
 | 2.1 | Spec document | [x] [malda-language-1.0.md](../spec/malda-language-1.0.md) — types, coercion, `match`, async, actors, null |
-| 2.2 | Complete grammar | [x] Expanded `ReferenceManual/34-grammar.html` + `ReferenceManualGrammarCoverageTests` |
+| 2.2 | Complete grammar | [x] Expanded `ReferenceManual/35-grammar.html` + `ReferenceManualGrammarCoverageTests` |
 | 2.3 | Semver policy | [x] [CHANGELOG.md](../spec/CHANGELOG.md) — breaking vs additive; 1-release deprecation |
 | 2.4 | CI drift check | [x] `verify-spec-parser-drift.ps1`, `verify-spec-guards.ps1`, `SpecParserDriftGuardTests`, `bitbucket-pipelines.yml` |
 
@@ -332,7 +332,7 @@ gantt
 | 2026-06-04 | Parser/manual drift audit: parser-manual-drift-audit.md |
 | 2026-06-04 | Phase 1 complete: core example guards, `WrapCallAsTask`, example guard scripts |
 | 2026-06-04 | Phase 2.1: Draft spec `docs/spec/malda-language-1.0.md` (Tier 0) |
-| 2026-06-04 | Phase 2.2: Expanded `34-grammar.html`, grammar coverage tests |
+| 2026-06-04 | Phase 2.2: Expanded `35-grammar.html`, grammar coverage tests |
 | 2026-06-05 | Phase 6 complete: `@pure`/`@effects`, `schema`/`validate()`, `@within(ms)`; schema-to-LLM deferred |
 | 2026-06-05 | Schema-to-LLM complete: `response_format` passthrough + `schema` → typed prompt return types |
 | 2026-06-05 | Phase 7.1 complete: pipe `\|>` + list comprehensions (`phase-7-expressiveness.md`) |

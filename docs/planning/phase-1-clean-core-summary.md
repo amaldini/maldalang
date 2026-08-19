@@ -43,4 +43,4 @@ dotnet test MaldaLang.Tests --filter "FullyQualifiedName~CoreExamplesGuardTests|
 
 ## Handoff to Phase 2
 
-**Phase 2 complete:** Spec [1.0](../spec/malda-language-1.0.md), grammar [34-grammar.html](../../ReferenceManual/34-grammar.html), [CHANGELOG](../spec/CHANGELOG.md), CI `verify-spec-guards.ps1`. Next: Phase 3 (modules) or Phase 5 (conformance matrix).
+**Phase 2 complete:** Spec [1.0](../spec/malda-language-1.0.md), grammar [35-grammar.html](../../ReferenceManual/35-grammar.html), [CHANGELOG](../spec/CHANGELOG.md), CI `verify-spec-guards.ps1`. Next: Phase 3 (modules) or Phase 5 (conformance matrix).

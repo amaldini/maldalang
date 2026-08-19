@@ -55,7 +55,7 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 | Change type | Tier |
 |-------------|------|
-| [34-grammar.html](../../ReferenceManual/34-grammar.html) aligned with parser | **PATCH** (spec 1.0 unchanged) |
+| [35-grammar.html](../../ReferenceManual/35-grammar.html) aligned with parser | **PATCH** (spec 1.0 unchanged) |
 | Reference Manual narrative | Not spec versioned; track in manual changelog if needed |
 
 ---
@@ -96,7 +96,7 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 1. Update [malda-language-1.0.md](malda-language-1.0.md) (or fork `malda-language-1.1.md` for large drafts).  
 2. Add a **Conformance** row and test in `MaldaLang.Tests/Conformance/Tier0/` when behavior is normative.  
 3. Add an entry under `[Unreleased]` below with **MAJOR** / **MINOR** / **PATCH** label.  
-4. If syntax changes: update [34-grammar.html](../../ReferenceManual/34-grammar.html) and `ReferenceManualGrammarCoverageTests`.  
+4. If syntax changes: update [35-grammar.html](../../ReferenceManual/35-grammar.html) and `ReferenceManualGrammarCoverageTests`.  
 5. Phase 2.4: `scripts/verify-spec-parser-drift.ps1` and `bitbucket-pipelines.yml` fail PRs that touch `Parser.cs` or `Lexer.cs` without spec/grammar/CHANGELOG update.
 
 **Implementation precedence for Final 1.0:** interpreter + Tier 0 tests → spec prose → Reference Manual.
@@ -109,7 +109,7 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 #### Added (MINOR — match case guards)
 
-- **`case Pattern if expr:`** optional guard on `match` arms, same `if` word as `catch (e if …)`. Pattern binds first; a falsy guard skips the arm and tries the next case. Interpreter, C# transpile, and JS agree on boolean predicates. Under `--strict-types`, a guarded arm does not cover a variant or count as a catch-all. Conformance: `match-guard.malda`. Grammar: [`34-grammar.html`](../../ReferenceManual/34-grammar.html); narrative: [`08-control-structures.html`](../../ReferenceManual/08-control-structures.html).
+- **`case Pattern if expr:`** optional guard on `match` arms, same `if` word as `catch (e if …)`. Pattern binds first; a falsy guard skips the arm and tries the next case. Interpreter, C# transpile, and JS agree on boolean predicates. Under `--strict-types`, a guarded arm does not cover a variant or count as a catch-all. Conformance: `match-guard.malda`. Grammar: [`35-grammar.html`](../../ReferenceManual/35-grammar.html); narrative: [`08-control-structures.html`](../../ReferenceManual/08-control-structures.html).
 
 #### Removed (MAJOR — function keyword aliases)
 
@@ -137,7 +137,7 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 #### Added (MINOR — primary constructors)
 
-- **`class Name(params)`:** parameter list after the class name desugars to public fields plus a synthesized constructor. Body optional (`class Point(x, y);` or `{ methods }`). Cannot combine with `extends` or an explicit `function Name(...)`. Grammar: [`34-grammar.html`](../../ReferenceManual/34-grammar.html); narrative: [`10-classes-objects.html`](../../ReferenceManual/10-classes-objects.html) §10.11.
+- **`class Name(params)`:** parameter list after the class name desugars to public fields plus a synthesized constructor. Body optional (`class Point(x, y);` or `{ methods }`). Cannot combine with `extends` or an explicit `function Name(...)`. Grammar: [`35-grammar.html`](../../ReferenceManual/35-grammar.html); narrative: [`11-classes-objects.html`](../../ReferenceManual/11-classes-objects.html) §10.11.
 
 #### Added (MINOR — additive module syntax)
 
@@ -151,14 +151,14 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 #### Clarified (PATCH — docs / tracking only)
 
-- **Closed `api` / `program(Api)` / `runProgram`:** already shipped (v0.1.50). `api Name { function m(params); }` plus `prompt … -> program(Name)` validates TypeChat-style JSON (`@api`, `steps[{call,args,as}]`, `return`); `runProgram` executes those steps with no further LLM calls. Interpreter and C# transpile agree. JS: n/a (prompts are host-only; JS transpile rejects `api`). Example: `Examples/Prompts/api_program_calc.malda`. Narrative: [`ReferenceManual/09-functions.html`](../../ReferenceManual/09-functions.html) §9.9.3.2.2.
+- **Closed `api` / `program(Api)` / `runProgram`:** already shipped (v0.1.50). `api Name { function m(params); }` plus `prompt … -> program(Name)` validates TypeChat-style JSON (`@api`, `steps[{call,args,as}]`, `return`); `runProgram` executes those steps with no further LLM calls. Interpreter and C# transpile agree. JS: n/a (prompts are host-only; JS transpile rejects `api`). Example: `Examples/Prompts/api_program_calc.malda`. Narrative: [`ReferenceManual/10-prompts.html`](../../ReferenceManual/10-prompts.html) §10.8.
 - **`typeOf(variant)` / `typeOf(task)`:** already return `"variant"` / `"task"` (Tier 0 T0-096/T0-097); removed stale post-Final gap bullet. Concurrent `async` + `sleep` between `var` bindings remains doc-only (gotchas + RM §6.14).
 - **Post-Final language constructs plan:** ranked workstreams L1–L6 (schema/sum-type unification, gather-then-extract prompts, `@budget`, workflow call-graph determinism, grounded values, capability tokens). Tracking only — no Tier 0 semantic change. See [`docs/roadmap-language-constructs.md`](../roadmap-language-constructs.md).
 - **Trust plan:** ranked workstreams DT0–DT6 (strict compile as the ship boundary, transpile smoke, loud gotchas). DT6 landed: toolchain **1.0.0** ([`docs/releases/v1.0.0.md`](../releases/v1.0.0.md)). Tracking only — no Tier 0 semantic change. See [`docs/roadmap-trust.md`](../roadmap-trust.md).
 
 #### Clarified (PATCH — product / Tier-2 docs only; no Tier 0 semantic change)
 
-- **A1 tools vs `response_format`:** exclusivity = no OpenAI `response_format` and no `MALDA_OUTPUT_SCHEMA` appendix when the prompt lists `tools:` (Mode B); `await` + `-> Type` still validates/repairs. Mode C is `gather:` + `-> Type` (one declaration). Supported modes A/B/C documented in [`docs/llm/malda-gotchas.md`](../llm/malda-gotchas.md), [`ReferenceManual/09-functions.html`](../../ReferenceManual/09-functions.html) §9.9.3.1, and `Examples/Prompts/prompt_tools_*.malda`.
+- **A1 tools vs `response_format`:** exclusivity = no OpenAI `response_format` and no `MALDA_OUTPUT_SCHEMA` appendix when the prompt lists `tools:` (Mode B); `await` + `-> Type` still validates/repairs. Mode C is `gather:` + `-> Type` (one declaration). Supported modes A/B/C documented in [`docs/llm/malda-gotchas.md`](../llm/malda-gotchas.md), [`ReferenceManual/10-prompts.html`](../../ReferenceManual/10-prompts.html) §10.5, and `Examples/Prompts/prompt_tools_*.malda`.
 - **DT2 compile gate / DT4 loud gotchas:** `malda compile --mode transpile` and `publish` run `StrictTypesAnalysis` (`Enabled`) and refuse emit on Errors; `--lenient-types` skips. `malda run` stays opt-in `--strict-types`. IDE/LSP `malda-interp` warns on plain `{ident}` strings outside prompt bodies. `parseJson` / `parseJSON` arity errors name the other builtin. Plan: [`docs/roadmap-trust.md`](../roadmap-trust.md). No Tier 0 semantic change.
 
 ### [1.0.0] — 2026-08-12 (Final)
@@ -205,7 +205,7 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 
 - Keywords `import` and `export`; file and package import with isolated module environments.  
 - Spec §14 and [phase-3-modules-design.md](../planning/phase-3-modules-design.md).  
-- Grammar: `ImportStmt`, `ExportableDecl` in [34-grammar.html](../../ReferenceManual/34-grammar.html).
+- Grammar: `ImportStmt`, `ExportableDecl` in [35-grammar.html](../../ReferenceManual/35-grammar.html).
 
 #### Implementation (Phase 3.2)
 
@@ -218,7 +218,7 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 #### Added (normative documentation)
 
 - Initial [malda-language-1.0.md](malda-language-1.0.md): value model, null, truthiness, `match`, sum types, `async`/`await`/`all`, actors, `typeOf`/`isNumber`, dictionary missing-key → `null`.  
-- Expanded [34-grammar.html](../../ReferenceManual/34-grammar.html) (Phase 2.2).  
+- Expanded [35-grammar.html](../../ReferenceManual/35-grammar.html) (Phase 2.2).  
 - This CHANGELOG and semver policy (Phase 2.3).
 
 #### Implementation alignment (already shipped in toolchain)

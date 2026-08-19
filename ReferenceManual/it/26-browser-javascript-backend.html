@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Backend UI JavaScript nel browser MALDA - MALDA ospitato nel browser e compilato in JavaScript">
+    <title>26. Backend UI JavaScript nel browser - Manuale di riferimento MALDA</title>
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../syntax.css">
+    <link rel="stylesheet" href="../print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>Manuale di riferimento MALDA&trade;</h1>
+        <p>Il linguaggio di programmazione AI-First - Versione 1.0.9</p>
+    </header>
+    <nav></nav>
+    <main>
+        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>26. Backend UI JavaScript nel browser</span></div>
+        <h1>26. Backend UI JavaScript nel browser</h1>
+        <p>MALDA supporta anche un modello UI ospitato nel browser in cui il sorgente MALDA viene transpile in JavaScript e gira con il runtime JS di MALDA. È distinto dai flussi server-side <code>@PAGE</code>, <code>@AIPAGE</code> e dai componenti server.</p>
+        <div class="info-box">
+            <strong>Parti da qui:</strong> Leggi <a href="23-web-ui-hub.html">23. Panoramica Web UI</a> per confrontare i modelli UI. Questo capitolo copre l'esecuzione MALDA lato browser, gli helper DOM, il template mode e l'API canvas/game. Per la UI renderizzata sul server, vedi <a href="24-web-ui.html">Componenti server Web UI</a> o <a href="25-http-server-html-ui.html">HttpServer e generazione UI HTML</a>.
+        </div>
+
+        <h2>26.1 Mappa del capitolo</h2>
+        <ul>
+            <li><strong>26.2</strong> Cosa offre il backend JavaScript</li>
+            <li><strong>26.3</strong> Comandi di compile e modalità di output</li>
+            <li><strong>26.4</strong> Ordine obbligatorio di caricamento degli script</li>
+            <li><strong>26.5</strong> Helper DOM in API mode</li>
+            <li><strong>26.6</strong> Sum type e pattern matching in JS mode</li>
+            <li><strong>26.7</strong> Actor in JS mode</li>
+            <li><strong>26.8</strong> Sintassi del template mode</li>
+            <li><strong>26.9</strong> API canvas/game</li>
+            <li><strong>26.10</strong> API scene three.js</li>
+            <li><strong>26.11</strong> Errori comuni e indicazioni pratiche</li>
+        </ul>
+
+        <h2>26.2 Cosa offre questa modalità</h2>
+        <ul>
+            <li><strong>API mode</strong> (<code>.malda</code>): scrivi MALDA che manipola il DOM con gli helper <code>dom.*</code>.</li>
+            <li><strong>Template mode</strong> (<code>.malda.html</code>): scrivi template HTML-first con blocchi MALDA inline.</li>
+            <li><strong>Copertura del linguaggio</strong>: il backend JavaScript supporta i sum type e il pattern matching <code>match</code> completo.</li>
+            <li><strong>Supporto actor (locali)</strong>: JS mode supporta actor locali con semantica di mailbox compatibile con il comportamento actor MALDA.</li>
+            <li><strong>Supporto scene 3D</strong>: JavaScript mode include un wrapper curato <code>three.*</code> per scene 3D ospitate nel browser.</li>
+            <li><strong>Aspettativa di runtime</strong>: gli script generati richiedono <code>malda-js-runtime.js</code> prima che l'output MALDA venga eseguito.</li>
+        </ul>
+        <h3>26.2.1 Decoratori target nell'output JS</h3>
+        <p>Quando compili verso JavaScript, i decoratori target servono a tenere le preoccupazioni browser e server in un unico file sorgente:</p>
+        <ul>
+            <li>Le dichiarazioni <code>@client()</code> e <code>@javascript()</code> sono incluse nell'output JavaScript.</li>
+            <li>Le dichiarazioni <code>@server()</code> e <code>@csharp()</code> sono escluse dall'output JavaScript.</li>
+            <li>Le dichiarazioni <code>@shared()</code> sono incluse sia nell'output C# sia in quello JavaScript.</li>
+        </ul>
+        <p>I decoratori di route restano orientati al server. Una dichiarazione come <code>@GET(...)</code> è trattata come codice server e non viene emessa nell'output JavaScript.</p>
+
+        <h2>26.3 Comandi di compile</h2>
+        <pre><code># API mode (.malda source)
+malda compile Examples/Web/js/hello_dom.malda --mode js -o Examples/Web/js/hello_dom.js
+
+# Alias form (equivalent)
+malda compile Examples/Web/js/counter.malda --target js -o Examples/Web/js/counter.js
+
+# PWA output directory
+malda compile Examples/Web/js/hello_dom.malda --target pwa -o dist/hello-dom
+
+# Template mode (.malda.html source)
+malda compile Examples/Web/js/hello_template.malda.html --mode js -o Examples/Web/js/hello_template.generated.js</code></pre>
+        <p><code>--target js</code> è un alias di <code>--mode js</code>. <code>--target pwa</code> è un alias di <code>--mode pwa</code> e produce una directory che contiene l'app shell, il runtime e il JavaScript transpile.</p>
+
+        <h2>26.4 Ordine obbligatorio di caricamento degli script</h2>
+        <p>La pagina host deve includere un contenitore come <code>#app</code>, poi caricare gli script in quest'ordine. Stesso file: <code>Examples/Web/js/host.html</code>.</p>
+        <ol>
+            <li>Qualsiasi dipendenza browser richiesta per il namespace scelto, per esempio <code>three.js</code> per <code>three.*</code></li>
+            <li><code>malda-js-runtime.js</code></li>
+            <li>Lo script MALDA compilato</li>
+            <li>La chiamata di bootstrap, come <code>MaldaApp.main()</code></li>
+        </ol>
+        <pre><code>&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+  &lt;meta charset="UTF-8"&gt;
+  &lt;title&gt;MALDA JS host&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;div id="app"&gt;&lt;/div&gt;
+  &lt;script src="../wwwroot/malda-js-runtime.js"&gt;&lt;/script&gt;
+  &lt;script src="./counter.js"&gt;&lt;/script&gt;
+  &lt;script&gt;
+    if (window.MaldaApp &amp;&amp; typeof window.MaldaApp.main === "function") {
+      window.MaldaApp.main();
+    }
+  &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+        <p><code>println</code> è un helper di console del backend JavaScript. L'interprete non ha <code>println</code> (usa <code>io.print</code> / <code>print</code> — vedi <a href="12-input-output.html">12. Input/Output</a>).</p>
+
+        <h2>26.5 Helper DOM in API mode</h2>
+        <p>Il runtime JavaScript espone helper browser sotto <code>dom</code> per la manipolazione diretta del DOM. Stesso programma: <code>Examples/Web/js/counter.malda</code> (compila con il comando in 26.3, poi apri la pagina host di 26.4).</p>
+        <ul>
+            <li><code>dom.query(selector, root?)</code></li>
+            <li><code>dom.create(tagName)</code></li>
+            <li><code>dom.append(parent, child)</code></li>
+            <li><code>dom.clear(target)</code></li>
+            <li><code>dom.setText(target, text)</code></li>
+            <li><code>dom.html(target, markup)</code></li>
+            <li><code>dom.on(target, eventName, handler, options?)</code></li>
+        </ul>
+        <pre><code>var root = dom.query("#app");
+
+if (root == null) {
+    println("No #app container found.");
+} else {
+    dom.clear(root);
+
+    var count = 0;
+
+    var title = dom.create("h1");
+    dom.setText(title, "Counter example");
+    dom.append(root, title);
+
+    var valueLabel = dom.create("p");
+    dom.append(root, valueLabel);
+
+    function renderCount() {
+        dom.setText(valueLabel, "Count: " + string(count));
+    }
+
+    var button = dom.create("button");
+    dom.setText(button, "Increment");
+    dom.append(root, button);
+
+    function onIncrementClick() {
+        count = count + 1;
+        renderCount();
+    }
+
+    dom.on(button, "click", onIncrementClick);
+    renderCount();
+}</code></pre>
+
+        <h2>26.6 Sum type e pattern matching in JS mode</h2>
+        <p>Puoi usare lo stesso modello di sum type e pattern matching in JavaScript backend mode come in modalità interpretata.</p>
+        <pre><code>type Result = Ok(value) | Err(message);
+
+function divide(a, b) {
+    if (b == 0) return Err("divide by zero");
+    return Ok(a / b);
+}
+
+var outcome = divide(10, 2);
+var text = match outcome {
+    case Ok(v): "ok: " + v;
+    case Err(msg): "error: " + msg;
+};
+println(text);</code></pre>
+        <p>Tutte le famiglie di pattern sono supportate in JS mode: letterali, identificatori, wildcard, payload delle variant, pattern di array con <code>...rest</code> e pattern di oggetto nidificati.</p>
+
+        <h2>26.7 Actor in JS mode</h2>
+        <p>Il backend JavaScript include il supporto al runtime actor locale tramite <code>mlRuntime.actors</code>. Offre concorrenza actor lato browser o Node-local con semantica di mailbox allineata al comportamento actor MALDA.</p>
+        <ul>
+            <li>Funzionalità supportate: <code>actor</code>, <code>spawn</code>, <code>send</code> in stile call, send con callback e timeout, <code>reply()</code>, <code>receive()</code>, <code>self</code> e routing di stop.</li>
+            <li>Il processing FIFO della mailbox per actor è preservato.</li>
+            <li><code>send target.stop();</code> passa dal comportamento di stop consapevole degli actor.</li>
+        </ul>
+        <p><strong>Confine:</strong> è solo supporto al runtime actor locale. La comunicazione trasparente diretta tra actor JS nel browser e actor lato server non è abilitata di default.</p>
+
+        <h2>26.8 Sintassi del template mode</h2>
+        <p>Il template mode usa file <code>.malda.html</code>. Usa <code>{{ ... }}</code> per l'interpolazione e <code>{% ... %}</code> per le istruzioni.</p>
+        <pre><code>&lt;div class="hello-template"&gt;
+  &lt;h1&gt;Hello from template mode&lt;/h1&gt;
+  &lt;p&gt;User: {{ "Andrea" }}&lt;/p&gt;
+  {% var count = 2; %}
+  &lt;p&gt;Count value: {{ count }}&lt;/p&gt;
+&lt;/div&gt;</code></pre>
+        <p>Vedi <code>Examples/Web/js/host.html</code> per una pagina statica minima che mostra il caricamento del runtime e il bootstrap dello script compilato.</p>
+
+        <h2>26.9 API Game Canvas</h2>
+        <p>Il backend JavaScript include un'API canvas/game nel browser sotto <code>game.*</code> per loop interattivi 2D semplici.</p>
+        <ul>
+            <li><strong>Canvas e ciclo di vita:</strong> <code>game.createCanvas</code>, <code>game.setBackground</code>, <code>game.start(updateFn, renderFn?)</code>, <code>game.stop()</code></li>
+            <li><strong>Disegno:</strong> <code>game.clear()</code>, <code>game.fillRect(...)</code>, <code>game.fillCircle(...)</code>, <code>game.drawText(...)</code></li>
+            <li><strong>Buffer pixel / blit:</strong> <code>game.createPixelBuffer(width?, height?)</code>, <code>game.setPixel(x, y, r, g, b, a?)</code>, <code>game.blitPixels(pixels?, destX?, destY?)</code></li>
+            <li><strong>Input:</strong> <code>game.isKeyDown(key)</code>, <code>game.getMouseX()</code>, <code>game.getMouseY()</code>, <code>game.isMouseDown(button?)</code></li>
+            <li><strong>Audio:</strong> <code>game.audioInit()</code>, <code>game.audioIsReady()</code>, <code>game.audioSetMasterVolume(v)</code>, <code>game.audioPlayTone(...)</code>, <code>game.audioPlayNoise(...)</code>, <code>game.audioPlayPattern(pattern)</code>, <code>game.audioStopPattern()</code>, <code>game.audioStopAll()</code></li>
+        </ul>
+        <p><strong>Indicazioni sul loop:</strong> <code>updateFn</code> riceve <code>dtMs</code>. Scala il movimento per <code>dtMs</code> così l'animazione resta indipendente dal frame-rate.</p>
+        <p><strong>Indicazioni sull'audio:</strong> chiama <code>game.audioInit()</code> dopo un gesto dell'utente per soddisfare le policy di autoplay del browser.</p>
+        <p>Per un avvio rapido completo e le best practice, vedi <code>docs/javascript-backend.md</code>. Per un sample completo, vedi <code>Examples/Web/js/game_bounce.malda</code>. Per un ray tracer CPU che scrive i pixel in un buffer <code>ImageData</code> e fa blit una volta per frame, vedi <code>Examples/Web/js/ray_tracer.malda</code>.</p>
+
+        <h2>26.10 API scene three.js</h2>
+        <p>Il backend JavaScript include anche un'API scene 3D curata sotto <code>three.*</code>. Avvolge un sottoinsieme mirato di <code>three.js</code> per JavaScript mode senza esporre interop browser grezzo arbitrario nel sorgente MALDA.</p>
+        <ul>
+            <li><strong>Renderer e ciclo di vita:</strong> <code>three.createRenderer</code>, <code>three.setClearColor</code>, <code>three.setRendererSize</code>, <code>three.start(updateFn, renderFn?)</code>, <code>three.stop()</code></li>
+            <li><strong>Scene graph:</strong> <code>three.createScene()</code>, <code>three.createPerspectiveCamera(...)</code>, <code>three.createOrthographicCamera(...)</code>, <code>three.setCameraAspect(...)</code>, <code>three.createGroup()</code>, <code>three.createMesh(...)</code>, <code>three.add(parent, child)</code></li>
+            <li><strong>Primitive e lighting:</strong> <code>three.createBoxGeometry(...)</code>, <code>three.createPlaneGeometry(...)</code>, <code>three.createSphereGeometry(...)</code>, <code>three.createStandardMaterial(options)</code>, <code>three.createShaderMaterial(options)</code>, <code>three.setUniform(material, name, value)</code>, <code>three.createDirectionalLight(color, intensity)</code>, <code>three.createAmbientLight(color?, intensity?)</code></li>
+            <li><strong>Transform e input:</strong> <code>three.setPosition(...)</code>, <code>three.setRotation(...)</code>, <code>three.setScale(...)</code>, <code>three.render(renderer, scene, camera)</code>, <code>three.isKeyDown(key)</code>, <code>three.getMouseX()</code>, <code>three.getMouseY()</code>, <code>three.isMouseDown(button?)</code></li>
+        </ul>
+        <p><strong>Ordine di caricamento:</strong> le pagine host devono caricare un bundle browser compatibile che definisce <code>globalThis.THREE</code> prima di <code>malda-js-runtime.js</code> e prima dello script MALDA compilato. Il repository include <code>Examples/Web/wwwroot/vendor/three.min.js</code> a questo scopo.</p>
+        <p><strong>Indicazioni sul resize:</strong> se la pagina host cambia il viewport di render dopo il setup, aggiorna sia il renderer sia la camera chiamando <code>three.setRendererSize(renderer, width, height)</code> e <code>three.setCameraAspect(camera, width / height)</code>.</p>
+        <p><strong>Scope MVP:</strong> il primo taglio è volutamente stretto. Texture, caricamento modelli, orbit control e interop JS grezzo generico sono fuori da questa API. Il GLSL custom è disponibile tramite <code>three.createShaderMaterial</code> e <code>three.setUniform</code>.</p>
+        <p>Vedi <code>Examples/Web/js/three_cube.malda</code> e <code>Examples/Web/js/three_runtime_smoke_test.html</code> per il primo esempio end-to-end. Per un ray tracer GPU in tempo reale, vedi <code>Examples/Web/js/three_shader_raytracer.malda</code>.</p>
+
+        <h2>26.11 Errori comuni e indicazioni</h2>
+        <ul>
+            <li>Non modificare direttamente il JavaScript generato quando esiste un sorgente <code>.malda</code> corrispondente. Cambia il file MALDA e ricompila.</li>
+            <li>Carica <code>malda-js-runtime.js</code> prima dello script compilato, altrimenti l'app generata fallisce a runtime.</li>
+            <li>Carica <code>Examples/Web/wwwroot/vendor/three.min.js</code> prima di <code>malda-js-runtime.js</code> quando usi il namespace <code>three.*</code>.</li>
+            <li>Tieni le preoccupazioni solo-browser in JS mode e quelle solo-server in <code>@PAGE</code>/<code>@AIPAGE</code> o nei componenti server.</li>
+            <li>Non combinare <code>@client()</code> con decoratori di route come <code>@GET</code> o <code>@PAGE</code>; è una combinazione di target non valida.</li>
+            <li>Usa <code>@shared()</code> solo per logica sicura in entrambi i runtime; tieni filesystem/database/API server e API solo-browser fuori dalle dichiarazioni shared.</li>
+            <li>Crea il canvas prima di disegnare o di avviare un game loop.</li>
+            <li>Usa API mode quando vuoi il controllo DOM completo e template mode quando la pagina è soprattutto HTML con poca logica MALDA.</li>
+        </ul>
+
+        <div class="see-also">
+            <h3>Vedi anche</h3>
+            <ul>
+                <li><a href="23-web-ui-hub.html">23. Panoramica Web UI</a> - Quale modello UI scegliere</li>
+                <li><a href="24-web-ui.html">24. Componenti server Web UI</a> - UI renderizzata sul server con fragment, aggiornamenti live e <code>ui.*</code></li>
+                <li><a href="25-http-server-html-ui.html">HttpServer e generazione UI HTML</a> - Hosting delle route e generazione HTML AI</li>
+                <li><a href="29-full-stack-development.html">Sviluppo full-stack con MALDA</a> - Scegliere tra UI renderizzata sul server, API-first e UI ospitata nel browser</li>
+            </ul>
+        </div>
+
+        <div class="nav-footer">
+            <a href="25-http-server-html-ui.html">← Precedente: 25. HttpServer e generazione UI HTML</a>
+            <a href="27-rest-api.html">Successivo: 27. Server REST API→</a>
+        </div>
+
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, a tua scelta.</p>
+        </footer>
+    </main>
+    <script src="../malda-highlight.js"></script>
+    <script src="../navigation.js"></script>
+</body>
+</html>

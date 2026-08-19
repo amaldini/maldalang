@@ -275,7 +275,7 @@ print("|" + str.trimText(user?.name) + "|");</code></pre>
         <p>Precedence sits between logical OR and the ternary conditional; <code>??</code> is right-associative.</p>
 
         <h2>7.13 Operator Precedence</h2>
-        <p>Operators are evaluated in order of precedence. See <a href="35-appendix.html">Appendix B</a> for the complete precedence table, which mirrors the reference parser.</p>
+        <p>Operators are evaluated in order of precedence. See <a href="36-appendix.html">Appendix B</a> for the complete precedence table, which mirrors the reference parser.</p>
         
         <h2>7.14 Async and Await Expressions</h2>
         <p>MALDA supports first-class asynchronous operations through <code>async</code> and <code>await</code> expressions. These allow you to work with asynchronous operations without blocking execution.</p>
@@ -388,15 +388,15 @@ var p = question
             <li>Pass <code>{ onToken: (token) =&gt; ... }</code> to <code>runPrompt</code> for streamed content tokens; <code>{ onReasoning: (token) =&gt; ... }</code> for reasoning/thinking deltas</li>
             <li>Pipe has lower precedence than most operators; use parentheses when mixing with arithmetic or logical expressions</li>
         </ul>
-        <p>See <a href="12-built-in-functions.html">12. Built-in Functions</a> (AI pipeline helpers) and <a href="14-vectordb.html">14. VectorDB</a> (<code>asRetriever</code>) for RAG examples. Full walkthrough: <code>Examples/Prompts/rag_pipeline.malda</code>.</p>
+        <p>See <a href="13-built-in-functions.html">13. Built-in Functions</a> (AI pipeline helpers) and <a href="15-vectordb.html">15. VectorDB</a> (<code>asRetriever</code>) for RAG examples. Full walkthrough: <code>Examples/Prompts/rag_pipeline.malda</code>.</p>
         <p><strong>Advanced composition:</strong> use <code>composePipe(f, g, …)</code> to build a reusable sequence function; <code>parallelRun(input, { branch: fn, … })</code> for parallel fan-out; <code>mergeRetrievedDocs</code> to combine parallel retrieval hits before <code>formatRetrievedDocs</code>. Example: <code>Examples/Prompts/rag_compose_pipeline.malda</code>.</p>
-        <p>To name and reuse a pipeline, wrap the pipe expression in an ordinary <code>function</code> and <code>return</code> the result. See <code>Examples/Prompts/rag_function_pipeline.malda</code> and <a href="09-functions.html">9. Functions</a>.</p>
+        <p>To name and reuse a pipeline, wrap the pipe expression in an ordinary <code>function</code> and <code>return</code> the result. See <code>Examples/Prompts/rag_function_pipeline.malda</code> and <a href="10-prompts.html">10. Prompts</a>.</p>
 
         <div class="see-also">
             <h3>See Also</h3>
             <ul>
                 <li><a href="03-lexical-structure.html">3. Lexical Structure</a> - Operator reference</li>
-                <li><a href="35-appendix.html">35. Appendix</a> - Operator precedence table</li>
+                <li><a href="36-appendix.html">36. Appendix</a> - Operator precedence table</li>
                 <li><a href="06-arrays.html">6. Arrays</a> - Array values consumed by comprehensions</li>
             </ul>
         </div>

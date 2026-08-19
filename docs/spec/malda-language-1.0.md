@@ -24,7 +24,7 @@ This specification defines **Tier 0** semantics: the teachable kernel that runs 
 **Out of scope (documented elsewhere):**
 
 - Optional packs and platform Tier 2 surfaces (AI tools, workflows, HTTP servers, etc.) — not part of Tier 0
-- Full grammar productions — Phase 2.2 (`ReferenceManual/34-grammar.html` expansion)
+- Full grammar productions — Phase 2.2 (`ReferenceManual/35-grammar.html` expansion)
 - Workflows, prompts, components, HTTP server — platform Tier 2
 - Full `module { }` blocks — deferred past Final 1.0 (`export type` / `export schema` and selective `import { … } from` shipped; see §14)
 
@@ -510,7 +510,7 @@ Versioning and deprecation rules: [CHANGELOG.md](CHANGELOG.md).
 | ~~`typeOf` tags `"int"`, `"dict"`~~ | Phase 4.2 | **Done** — legacy literals via `isTag` until next MAJOR |
 | ~~`--strict-types`~~ | Phase 4.3 | **Done** — CLI flag; see [phase-4.3-strict-types.md](../planning/phase-4.3-strict-types.md) |
 | Multi-backend parity matrix | Phase 5 | C# transpile + JS |
-| Formal grammar sync | Phase 2.2 | Done — `34-grammar.html` |
+| Formal grammar sync | Phase 2.2 | Done — `35-grammar.html` |
 | Interpreter task isolation | Post–1.0 | Fix concurrent `async` + `sleep` binding race |
 
 ---

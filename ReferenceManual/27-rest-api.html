@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>27. REST API Server - MALDA Reference Manual</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="syntax.css">
+    <link rel="stylesheet" href="print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>MALDA&trade; Reference Manual</h1>
+        <p>The AI-First Programming Language - Version 1.0.9</p>
+    </header>
+    <nav></nav>
+    <main>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>27. REST API Server</span></div>
+        <h1>27. REST API Server</h1>
+        <p>MALDA includes native support for creating REST API servers using function decorators.</p>
+        <h2>27.1 Decorator Syntax</h2>
+        <p>Functions can be decorated with HTTP method decorators to create REST endpoints:</p>
+        <pre><code>@GET("/api/users")
+function getUsers() {
+    return parseJSON("[{\"id\": 1, \"name\": \"Alice\"}]");
+}
+
+@POST("/api/users")
+function createUser(body) {
+    var jsonStr = "{\"id\": 3, \"name\": \"" + body.name + "\"}";
+    return parseJSON(jsonStr);
+}</code></pre>
+        <h3>Supported HTTP Methods</h3>
+        <ul>
+            <li><code>@GET(path)</code> - Handle GET requests</li>
+            <li><code>@POST(path)</code> - Handle POST requests</li>
+            <li><code>@PUT(path)</code> - Handle PUT requests</li>
+            <li><code>@DELETE(path)</code> - Handle DELETE requests</li>
+            <li><code>@PATCH(path)</code> - Handle PATCH requests</li>
+            <li><code>@OPTIONS(path)</code> - Handle OPTIONS requests</li>
+        </ul>
+        <h3>Route Metadata Decorators</h3>
+        <p>Routes can include optional metadata decorators. These are applied before route registration:</p>
+        <ul>
+            <li><code>@RouteGroup(prefix)</code> / <code>@Group(prefix)</code> / <code>@Prefix(prefix)</code> - prepend a group prefix</li>
+            <li><code>@Version(version)</code> / <code>@ApiVersion(version)</code> - prepend a version segment</li>
+            <li><code>@Use("middlewareName")</code> / <code>@Middleware("middlewareName")</code> - route-level middleware by function name</li>
+            <li><code>@Validate(schema)</code> - request validation schema (JSON object or JSON string schema)</li>
+        </ul>
+        <pre><code>@RouteGroup("/api")
+@Version("v1")
+@Use("requireAuth")
+@GET("/users/{id}")
+function getUserById(id, req, res) {
+    return res.json(parseJSON("{\"id\":\"" + id + "\"}"));
+}</code></pre>
+        <h2>27.2 RestServer Class</h2>
+        <h3>Constructor</h3>
+        <pre><code>var server = new RestServer(port);
+// OR
+var server = new RestServer(port, host);  // host: "localhost" or "0.0.0.0"</code></pre>
+        <p><code>port</code> must be <code>0</code> (deferred/mounted) or an integer in <code>1-65535</code>. Privileged ports (<code>1-1023</code>) are allowed; binding may still require elevated permissions or OS URL reservations.</p>
+        <h3>Methods</h3>
+        <ul>
+            <li><code>start()</code>: Start the REST server and discover decorated functions</li>
+            <li><code>stop()</code>: Stop the server</li>
+            <li><code>getRoutes()</code>: Get array of registered routes</li>
+            <li><code>enableCORS(enabled)</code>: Enable/disable CORS support</li>
+            <li><code>enableSwagger(enabled)</code>: Enable/disable Swagger/OpenAPI documentation</li>
+            <li><code>use(middleware)</code>: Register global middleware (function or transpiled function-name string)</li>
+            <li><code>enableCsrf(secret, cookieName?, headerName?)</code>: Enable built-in CSRF protection middleware</li>
+            <li><code>disableCsrf()</code>: Disable CSRF protection</li>
+            <li><code>enableSession(secret, options?)</code> / <code>disableSession()</code>: Same session/flash surface as HttpServer (<code>req.session</code>)</li>
+            <li>Deferred host: <code>new RestServer()</code> (no port) for <code>HttpServer.mount(api)</code> single-port fullstack apps</li>
+            <li><code>setRateLimit(limit, windowSeconds, keyStrategy?)</code>: Enable endpoint rate limiting</li>
+            <li><code>setRateLimitHeaders(enabled, includeRemaining?)</code>: Enable/disable rate-limit response headers</li>
+            <li><code>configureTrustedProxy(enabled, headerName?, hopIndex?)</code>: Configure trusted proxy source IP behavior</li>
+            <li><code>disableRateLimit()</code>: Disable endpoint rate limiting</li>
+        </ul>
+        <h2>27.3 Path Parameters</h2>
+        <p>Path parameters are extracted from route patterns using <code>{param}</code> placeholders:</p>
+        <pre><code>@GET("/api/users/{id}")
+function getUserById(id) {
+    var jsonStr = "{\"id\": \"" + id + "\", \"name\": \"Alice\"}";
+    return parseJSON(jsonStr);
+}</code></pre>
+        <h2>27.4 Query Parameters</h2>
+        <p>Query parameters are automatically extracted from the query string:</p>
+        <pre><code>@GET("/api/users")
+function getUsers(limit, offset) {
+    // 'limit' and 'offset' extracted from ?limit=10&offset=0
+    var jsonStr = "{\"users\": [], \"limit\": " + limit + "}";
+    return parseJSON(jsonStr);
+}</code></pre>
+        <h2>27.5 Request Body</h2>
+        <p>The request body is automatically parsed as JSON and bound to a parameter named <code>body</code>:</p>
+        <pre><code>@POST("/api/users")
+function createUser(body) {
+    var name = body.name;
+    var jsonStr = "{\"id\": 1, \"name\": \"" + name + "\"}";
+    return parseJSON(jsonStr);
+}</code></pre>
+        <h2>27.6 Parameter Binding</h2>
+        <p>Optional decorator-based binding for renaming parameters:</p>
+        <pre><code>@PUT("/api/users/{id}/posts/{postId}")
+function updatePost(@PathParam("id") userId, @PathParam("postId") postId, 
+                    @QueryParam("limit") maxResults, @Body() updateData) {
+    // userId = path param {id}
+    // postId = path param {postId}
+    // maxResults = query param ?limit=10
+    // updateData = request body
+}</code></pre>
+        <h2>27.7 Response Handling</h2>
+        <p>Functions can return objects with <code>status</code> property to set HTTP status codes:</p>
+        <pre><code>@POST("/api/users")
+function createUser(body) {
+    var jsonStr = "{\"status\": 201, \"data\": {\"id\": 1, \"name\": \"" + body.name + "\"}}";
+    return parseJSON(jsonStr);  // Returns 201 Created
+}</code></pre>
+        <p>Handlers can also accept a request/response context pair:</p>
+        <pre><code>@GET("/api/users/{id}")
+function getUser(req, res) {
+    var id = req.params.id;
+    return res.status(200).json(parseJSON("{\"id\": \"" + id + "\"}"));
+}</code></pre>
+        <h2>27.8 Middleware and Request Context</h2>
+        <p>Use <code>server.use(...)</code> for global middleware. Middleware receives three arguments: <code>(req, res, next)</code>.</p>
+        <ul>
+            <li><code>req.method</code>, <code>req.path</code>, <code>req.query</code>, <code>req.params</code>, <code>req.headers</code>, <code>req.cookies</code>, <code>req.body</code>, <code>req.correlationId</code>, <code>req.ip</code> / <code>req.remoteIp</code></li>
+            <li><code>next()</code> continues the chain; omitting <code>next()</code> short-circuits the request</li>
+        </ul>
+        <p>Route-level middleware declared via <code>@Use(...)</code> / <code>@Middleware(...)</code> runs after global middleware and before parameter binding + handler invocation.</p>
+        <pre><code>function logRequest(req, res, next) {
+    print(req.method + " " + req.path);
+    next();
+}
+
+var server = new RestServer(8080);
+server.use(logRequest);
+server.start();</code></pre>
+        <p>Auth guards are composable middleware. Prefer <code>req.auth.authenticateBearerJwt(secret)</code> (or <code>authenticateCookieJwt</code> for browser sessions): it verifies the JWT, populates claims/roles/permissions, and throws standardized 401 errors on failure.</p>
+        <pre><code>function requireAuth(req, res, next) {
+    req.auth.authenticateBearerJwt("my-jwt-secret");
+    next();
+}
+
+var server = new RestServer(8080);
+server.use(requireAuth, {
+    "except": ["/api/health", "/api/readiness", "/metrics"]
+});
+server.start();</code></pre>
+        <p>Skip public paths with <code>use(middleware, { "except": [...] })</code>. Exact paths and trailing <code>*</code> prefixes are supported. For ingress/gateway trust boundaries you can still call <code>req.auth.setVerifiedSub(sub)</code> after an upstream check; prefer <code>authenticate*</code> inside application middleware so roles and claims are available.</p>
+        <h2>27.9 Response Helper API</h2>
+        <p>Response context helper methods:</p>
+        <ul>
+            <li><code>res.status(code)</code></li>
+            <li><code>res.json(value)</code></li>
+            <li><code>res.text(value)</code></li>
+            <li><code>res.html(value)</code></li>
+            <li><code>res.redirect(location, status?)</code></li>
+            <li><code>res.header(name, value)</code></li>
+            <li><code>res.cookie(name, value, options?)</code></li>
+            <li><code>res.send(value)</code></li>
+        </ul>
+        <p><code>res.cookie(...)</code> uses secure defaults: <code>HttpOnly=true</code>, <code>Secure=true</code>, <code>SameSite=Lax</code>, <code>Path=/</code>.</p>
+        <h2>27.10 CSRF and Rate Limiting</h2>
+        <p>Use built-in middleware-style server configuration for request protection without ad-hoc per-route logic:</p>
+        <pre><code>var server = new RestServer(8080);
+server.enableCsrf("my-csrf-secret");                 // cookie: csrf_token, header: X-CSRF-Token
+server.setRateLimit(120, 60, "verifiedSubOrIp");     // after auth middleware; prefer subject when verified
+server.setRateLimitHeaders(true, true);              // add X-RateLimit-* + Retry-After headers
+server.configureTrustedProxy(true, "X-Forwarded-For", 0); // trust first forwarded hop
+server.use(requireAuth, { "except": ["/api/health", "/metrics"] });
+server.start();</code></pre>
+        <p>Rate-limit key strategy supports <code>ip</code>, <code>token</code>, <code>user</code>, <code>sub</code>/<code>verifiedSub</code>/<code>verifiedSubOrIp</code>, and <code>ipOrToken</code> (default fallback).</p>
+        <p>Rate limiting runs <strong>after</strong> global and route middleware, so <code>verifiedSub*</code> strategies see subjects set by <code>req.auth.authenticateBearerJwt</code> / <code>authenticateCookieJwt</code>. When no verified subject is present, keying falls back to IP/token behavior.</p>
+        <p>Header aliases (<code>X-Malda-Auth-Verified</code>/<code>X-Malda-Auth-Sub</code> and legacy <code>X-Auth-*</code>) remain available for compatibility at ingress boundaries, but application middleware should use <code>req.auth</code>.</p>
+        <p>Trusted proxy defaults are secure: proxy headers are ignored unless explicitly enabled via <code>configureTrustedProxy(...)</code>.</p>
+        <p>When <code>setRateLimitHeaders(true)</code> is enabled, responses include <code>Retry-After</code> (on 429), <code>X-RateLimit-Limit</code>, and optionally <code>X-RateLimit-Remaining</code>.</p>
+        <p>CSRF behavior:</p>
+        <ul>
+            <li>Safe methods (GET/HEAD/OPTIONS) issue/refresh CSRF cookie when missing or invalid</li>
+            <li>State-changing methods (POST/PUT/PATCH/DELETE) require matching cookie + request token</li>
+            <li>Request token is read from <code>X-CSRF-Token</code>, <code>body.csrfToken</code>, or <code>body._csrf</code></li>
+        </ul>
+        <p>CSRF, auth, and rate-limit failures all use the same standardized error payload and include correlation ID headers/payload fields.</p>
+        <h2>27.11 Error Handling</h2>
+        <p>Functions can throw objects with <code>status</code> property to return custom HTTP status codes:</p>
+        <pre><code>@GET("/api/users/{id}")
+function getUserById(id) {
+    if (!userExists(id)) {
+        var error = parseJSON("{\"status\": 404, \"message\": \"User not found\"}");
+        throw error;
+    }
+    // ...
+}</code></pre>
+        <p>REST framework errors (handler failures, middleware/auth failures, and validation failures) use one JSON contract:</p>
+        <pre><code>{
+  "status": 401,
+  "error": "InvalidToken",
+  "message": "Invalid token signature.",
+  "correlationId": "...",
+  "details": [ ... ] // optional, present for validation errors
+}</code></pre>
+        <p>Correlation ID propagation is consistent across all framework-generated failures:</p>
+        <ul>
+            <li>Response header: <code>X-Correlation-ID</code></li>
+            <li>Payload field: <code>correlationId</code></li>
+        </ul>
+        <h2>27.12 Validation</h2>
+        <p>Use <code>@Validate(...)</code> to validate <code>path</code>, <code>query</code>, and <code>body</code> before your handler runs. Invalid requests return HTTP 400 with field-level details and do not execute handler logic.</p>
+        <pre><code>@GET("/search/{id}")
+@Validate("{\"path\":{\"id\":\"int|required|min=1\"},\"query\":{\"q\":\"string|required|minLength=2\"}}")
+function search(id, q) {
+    return parseJSON("{\"ok\": true}");
+}</code></pre>
+        <p>Schema values support string DSL rules such as <code>required</code>, <code>min=</code>, <code>max=</code>, <code>minLength=</code>, <code>maxLength=</code>, and <code>pattern=</code>.</p>
+        <p>When Swagger is enabled, validation metadata is reflected in OpenAPI parameter/request-body schemas (type, required, and common constraints).</p>
+        <h2>27.13 CORS Support</h2>
+        <pre><code>var server = new RestServer(8080);
+server.enableCORS(true);
+server.setCORSOrigin("*");
+server.start();</code></pre>
+        <h2>27.14 Swagger/OpenAPI Documentation</h2>
+        <pre><code>var server = new RestServer(8080);
+server.enableSwagger(true);
+server.start();
+
+// Access at: http://localhost:8080/swagger.json</code></pre>
+        <h2>27.15 Complete Example</h2>
+        <pre><code>function json(str) {
+    return parseJSON(str);
+}
+
+@GET("/api/health")
+function healthCheck() {
+    return json("{\"status\": \"healthy\"}");
+}
+
+@GET("/api/users/{id}")
+function getUserById(id) {
+    var jsonStr = "{\"id\": \"" + id + "\", \"name\": \"Alice\"}";
+    return json(jsonStr);
+}
+
+@POST("/api/users")
+function createUser(body) {
+    var jsonStr = "{\"status\": 201, \"data\": {\"id\": 3, \"name\": \"" + body.name + "\"}}";
+    return json(jsonStr);
+}
+
+var server = new RestServer(8080);
+server.start();
+
+while (server.isRunning) {
+    sleep(1000);
+}</code></pre>
+        <div class="see-also">
+            <h3>See Also</h3>
+            <ul>
+                <li><a href="09-functions.html">9. Functions</a> - Function decorators</li>
+                <li><a href="24-web-ui.html">24. Web UI Server Components</a> - @ACTION, fragments, and <code>ui.*</code> controls</li>
+                <li><a href="28-rest-web-client.html">28. REST Web Client</a> - Calling APIs from MALDA with RestClient</li>
+                <li><a href="29-full-stack-development.html">29. Full-Stack Development with MALDA</a> - End-to-end architecture and full-stack example</li>
+            </ul>
+        </div>
+        <div class="nav-footer">
+            <a href="26-browser-javascript-backend.html">← Previous: 26. Browser JavaScript UI Backend</a>
+            <a href="28-rest-web-client.html">Next: 28. REST Web Client→</a>
+        </div>
+
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, at your option.</p>
+        </footer>
+    </main>
+    <script src="malda-highlight.js"></script>
+    <script src="navigation.js"></script>
+</body>
+</html>

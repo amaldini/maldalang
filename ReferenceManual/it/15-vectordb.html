@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MALDA VectorDB - Database vettoriale per la similarity search">
+    <title>15. VectorDB - Manuale di riferimento MALDA</title>
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../syntax.css">
+    <link rel="stylesheet" href="../print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>Manuale di riferimento MALDA&trade;</h1>
+        <p>Il linguaggio di programmazione AI-First - Versione 1.0.9</p>
+    </header>
+    <nav></nav>
+    <main>
+        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>15. VectorDB</span></div>
+
+        <h1>15. VectorDB</h1>
+
+        <p>VectorDB è una classe built-in per memorizzare e cercare vettori ad alta dimensionalità usando la similarità del coseno. È pensata per la similarity search efficiente in applicazioni come la ricerca semantica, i sistemi di raccomandazione e gli embedding del machine learning.</p>
+
+        <h2>15.1 Creare un VectorDB</h2>
+        <p>Le istanze VectorDB si creano con il costruttore <code>new VectorDB(...)</code>:</p>
+        <pre><code>// Define a vector calculator function
+function calculateVector(data) {
+    // Your vector calculation logic here
+    // Must return an array of numbers matching the dimension
+    return [1.0, 2.0, 3.0, /* ... */];
+}
+
+// Create a VectorDB with dimension 127 and double precision
+var v = new VectorDB(127, "double");
+
+// Or with single precision (more memory efficient)
+var v2 = new VectorDB(256, "single");
+
+// Initialize with the calculator function
+v.init(calculateVector);
+v2.init(calculateVector);</code></pre>
+
+        <p><strong>Parametri del costruttore:</strong></p>
+        <ul>
+            <li><code>dimension</code> (integer): La dimensione di tutti i vettori (es. 127, 256, 768)</li>
+            <li><code>precision</code> (string): <code>"single"</code> (float, 4 byte per elemento) oppure <code>"double"</code> (double, 8 byte per elemento)</li>
+        </ul>
+
+        <p><strong>Inizializzare la funzione calculator:</strong></p>
+        <p>Dopo aver creato un VectorDB, devi chiamare <code>init(calculatorFunction)</code> per impostare la funzione calculator che calcolerà i vettori a partire dai dati:</p>
+        <pre><code>var db = new VectorDB(26, "double");
+db.init(calculateVector);  // Set the calculator function</code></pre>
+        <p>La funzione calculator viene usata da <code>add(data)</code> e <code>searchSimilar(data, topN)</code> per calcolare automaticamente i vettori a partire dai dati.</p>
+
+        <h2>15.2 Aggiungere vettori</h2>
+        <p>Il metodo <code>add()</code> supporta due modi per aggiungere vettori:</p>
+        
+        <h3>15.2.1 Aggiunta con calcolo automatico del vettore</h3>
+        <p>Se una funzione calculator è impostata tramite <code>init()</code>, puoi aggiungere i dati direttamente e il vettore verrà calcolato in automatico:</p>
+        <pre><code>var v = new VectorDB(26, "double");
+v.init(calculateVector);
+
+// Add data - vector is calculated automatically
+v.add("Hello");
+v.add("World");
+v.add(dict { "type": "string", "value": "Example" });</code></pre>
+
+        <h3>15.2.2 Aggiunta con vettore esplicito</h3>
+        <p>Puoi anche fornire il vettore in modo esplicito:</p>
+        <pre><code>var v = new VectorDB(3, "double");
+
+// Add a vector with associated data
+v.add([1.0, 2.0, 3.0], "document1");
+v.add([4.0, 5.0, 6.0], "document2");
+v.add([7.0, 8.0, 9.0], dict { "id": "doc3", "title": "Example" });</code></pre>
+
+        <p><strong>Parametri:</strong></p>
+        <ul>
+            <li><code>add(data)</code>: Un solo argomento - i dati da aggiungere. Richiede che la funzione calculator sia impostata tramite <code>init()</code></li>
+            <li><code>add(vector, data)</code>: Due argomenti - array del vettore esplicito e dati associati</li>
+            <li><code>vector</code> (array): Un array di numeri della stessa dimensione del VectorDB (obbligatorio nella forma a 2 argomenti)</li>
+            <li><code>data</code> (any): Qualsiasi valore MALDA da associare al vettore (string, object, number, ecc.)</li>
+        </ul>
+
+        <h2>15.3 Ricerca per similarità</h2>
+        <p>Usa <code>searchSimilar(data, topN)</code> per trovare i vettori più simili usando la similarità del coseno. La funzione calculator deve essere impostata tramite <code>init()</code>:</p>
+        <pre><code>var v = new VectorDB(128, "double");
+v.init(calculateVector);
+
+// Add some vectors
+v.add("document1");
+v.add("document2");
+v.add("document3");
+
+// Search for similar vectors
+var results = v.searchSimilar("query text", 5);
+
+// Results is an array of objects with:
+// - vector: The original vector array
+// - data: The associated data
+// - similarity: Cosine similarity score (0.0 to 1.0)
+foreach (var result in results) {
+    print("Data: " + result.data);
+    print("Similarity: " + result.similarity);
+}</code></pre>
+
+        <p><strong>Come funziona:</strong></p>
+        <ul>
+            <li>La funzione calculator viene chiamata con i dati della query per generare un vettore di query</li>
+            <li>La similarità del coseno viene calcolata tra il vettore di query e tutti i vettori memorizzati</li>
+            <li>I risultati vengono ordinati per similarità (decrescente) e vengono restituiti i primi N</li>
+            <li>I punteggi di similarità vanno da -1.0 a 1.0, con 1.0 per i vettori identici</li>
+        </ul>
+
+        <h2>15.4 Serializzazione binaria</h2>
+        <p>VectorDB supporta la serializzazione binaria efficiente per la persistenza e i dataset di grandi dimensioni:</p>
+        <pre><code>var v = new VectorDB(127, "double");
+v.init(calculateVector);
+
+// Add vectors...
+v.add("data1");
+v.add("data2");
+
+// Serialize to binary file
+v.serialize("vectordb.bin");
+
+// Later, deserialize (calculator function is NOT stored)
+var v2 = v.deserialize("vectordb.bin");
+
+// Re-initialize with the calculator function
+v2.init(calculateVector);</code></pre>
+
+        <p><strong>Note importanti:</strong></p>
+        <ul>
+            <li>Il formato binario è molto più efficiente del JSON per i database vettoriali di grandi dimensioni</li>
+            <li>La funzione calculator <strong>NON</strong> viene memorizzata nel file serializzato</li>
+            <li>Dopo la deserializzazione, devi chiamare <code>init(calculatorFunction)</code> per impostare la funzione calculator</li>
+            <li>Questo ti consente di usare funzioni calculator diverse con gli stessi dati serializzati, se serve</li>
+            <li>Il formato serializzato memorizza solo i vettori e i dati associati, non la funzione calculator</li>
+        </ul>
+
+        <h2>15.5 Esempio completo</h2>
+        <pre><code>// Define a simple vector calculator
+function simpleVectorCalc(text) {
+    // Simple example: create a vector from text length and first few characters
+    var vec = [];
+    var len = length(text);
+    for (var i = 0; i < 10; i = i + 1) {
+        if (i < len) {
+            var char = substring(text, i, 1);
+            vec.append(charCodeAt(char, 0) / 100.0);
+        } else {
+            vec.append(0.0);
+        }
+    }
+    return vec;
+}
+
+// Create VectorDB
+var db = new VectorDB(10, "double");
+
+// Initialize with calculator function
+db.init(simpleVectorCalc);
+
+// Add documents - vectors calculated automatically
+db.add("Hello world");
+db.add("Hello there");
+db.add("Goodbye world");
+
+// Search for similar documents
+var results = db.searchSimilar("Hello", 2);
+print("Top 2 similar documents:");
+for (var i = 0; i < results.length; i = i + 1) {
+    print("  " + (i + 1) + ". " + results[i].data + " (similarity: " + results[i].similarity + ")");
+}
+
+// Serialize for later use
+db.serialize("my_vectordb.bin");
+
+// Deserialize later
+var db2 = db.deserialize("my_vectordb.bin");
+
+// Re-initialize with calculator function
+db2.init(simpleVectorCalc);</code></pre>
+
+        <h2>15.6 Embedding di testo built-in</h2>
+        <p>MALDA fornisce funzioni built-in di text embedding che si possono usare come funzioni calculator di VectorDB. Queste funzioni calcolano gli embedding al volo da stringhe di testo o da file, senza richiedere reti neurali.</p>
+
+        <div class="note">
+            <p><strong>Importante: usare le funzioni di embedding con VectorDB</strong></p>
+            <p>Quando usi le funzioni built-in di embedding (come <code>embedBagOfWords</code>, <code>embedHash</code>, ecc.) con VectorDB, devi creare una funzione wrapper che fornisce i parametri richiesti (come la dimensione). Questo perché:</p>
+            <ul>
+                <li>La funzione calculator di VectorDB viene chiamata solo con i dati (il testo) come argomento</li>
+                <li>Le funzioni di embedding richiedono parametri aggiuntivi (dimension, vocabulary, ecc.)</li>
+                <li>La funzione wrapper "incorpora" questi parametri, creando una funzione che corrisponde alla firma attesa da VectorDB: <code>function(data) → array</code></li>
+            </ul>
+            <p><strong>Pattern di esempio:</strong></p>
+            <pre><code>// Create wrapper function with dimension
+function myEmbed(text) {
+    return embedBagOfWords(text, 100);  // dimension is "baked in"
+}
+
+// Use wrapper with VectorDB
+var db = new VectorDB(100, "double");
+db.init(myEmbed);
+db.add("Hello");  // myEmbed is called automatically
+var results = db.searchSimilar("world", 5);  // myEmbed is called automatically</code></pre>
+        </div>
+
+        <h3>Bag-of-Words Embedding</h3>
+        <p><code>embedBagOfWords(text, dimension?, vocabulary?)</code> crea vettori di frequenza delle parole:</p>
+        <pre><code>// Create a wrapper function that provides the dimension
+function bagOfWordsEmbed(text) {
+    return embedBagOfWords(text, 1000);
+}
+
+// Use the wrapper function with VectorDB
+var db = new VectorDB(1000, "double");
+db.init(bagOfWordsEmbed);
+db.add("Hello world");
+db.add("Hello there");
+var results = db.searchSimilar("world", 5);
+
+// With custom vocabulary
+var vocab = ["machine", "learning", "artificial", "intelligence"];
+function vocabEmbed(text) {
+    return embedBagOfWords(text, vocab.length, vocab);
+}
+var db2 = new VectorDB(vocab.length, "double");
+db2.init(vocabEmbed);</code></pre>
+        <p><strong>Parametri:</strong></p>
+        <ul>
+            <li><code>text</code> (string or array): Contenuto testuale oppure array di stringhe/path di file</li>
+            <li><code>dimension</code> (integer, optional): Dimensione del vettore (default: 1000)</li>
+            <li><code>vocabulary</code> (array, optional): Array di vocabolario personalizzato per il matching esatto</li>
+        </ul>
+
+        <h3>Character N-Grams Embedding</h3>
+        <p><code>embedCharacterNGrams(text, n?, dimension?)</code> crea vettori di frequenza degli n-grammi di caratteri:</p>
+        <pre><code>// Character trigrams (default n=3)
+function ngramEmbed(text) {
+    return embedCharacterNGrams(text, 3, 500);
+}
+var db = new VectorDB(500, "double");
+db.init(ngramEmbed);
+db.add("Hello");</code></pre>
+        <p><strong>Parametri:</strong></p>
+        <ul>
+            <li><code>text</code> (string or array): Contenuto testuale oppure array di stringhe/path di file</li>
+            <li><code>n</code> (integer, optional): Dimensione dell'n-gramma (default: 3 per i trigrammi)</li>
+            <li><code>dimension</code> (integer, optional): Dimensione del vettore (default: 1000)</li>
+        </ul>
+
+        <h3>Hash-based Embedding</h3>
+        <p><code>embedHash(text, dimension?)</code> crea vettori di feature basati su hash:</p>
+        <pre><code>// Hash-based embedding (compact, fixed dimension)
+// Create a wrapper function that provides the dimension
+function hashEmbed(text) {
+    return embedHash(text, 128);
+}
+
+var db = new VectorDB(128, "double");
+db.init(hashEmbed);
+db.add("Hello world");
+db.add("Hello there");</code></pre>
+        <p><strong>Parametri:</strong></p>
+        <ul>
+            <li><code>text</code> (string or array): Contenuto testuale oppure array di stringhe/path di file</li>
+            <li><code>dimension</code> (integer, optional): Dimensione del vettore (default: 128)</li>
+        </ul>
+
+        <h3>TF-IDF Embedding</h3>
+        <p><code>embedTFIDF(text, corpus?, dimension?)</code> crea vettori TF-IDF (Term Frequency-Inverse Document Frequency):</p>
+        <pre><code>// TF-IDF with corpus for IDF calculation
+var corpus = ["file1.txt", "file2.txt", "file3.txt"];
+function tfidfEmbed(text) {
+    return embedTFIDF(text, corpus, 1000);
+}
+var db = new VectorDB(1000, "double");
+db.init(tfidfEmbed);
+db.add("machine learning");
+
+// TF-IDF without corpus (uses only TF)
+function tfidfEmbedNoCorpus(text) {
+    return embedTFIDF(text, null, 1000);
+}
+var db2 = new VectorDB(1000, "double");
+db2.init(tfidfEmbedNoCorpus);</code></pre>
+        <p><strong>Parametri:</strong></p>
+        <ul>
+            <li><code>text</code> (string or array): Contenuto testuale oppure array di stringhe/path di file</li>
+            <li><code>corpus</code> (array, optional): Array di documenti per il calcolo dell'IDF</li>
+            <li><code>dimension</code> (integer, optional): Dimensione del vettore (default: 1000)</li>
+        </ul>
+
+        <h3>Embedding da file</h3>
+        <p><code>embedFromFile(filePath, method, ...)</code> legge un file e ne calcola l'embedding:</p>
+        <pre><code>// Embed from file using different methods
+var vec1 = embedFromFile("document.txt", "bagOfWords", 1000);
+var vec2 = embedFromFile("document.txt", "characterNGrams", 3, 500);
+var vec3 = embedFromFile("document.txt", "hash", 128);
+var vec4 = embedFromFile("document.txt", "tfidf", corpus, 1000);
+
+// Embed multiple files
+var filePaths = ["doc1.txt", "doc2.txt", "doc3.txt"];
+var embeddings = embedFromFiles(filePaths, "bagOfWords", 1000);
+// Returns array of vectors, one per file</code></pre>
+        <p><strong>Parametri:</strong></p>
+        <ul>
+            <li><code>filePath</code> (string): Path del file</li>
+            <li><code>method</code> (string): Metodo di embedding ("bagOfWords", "characterNGrams", "hash", "tfidf")</li>
+            <li>Argomenti aggiuntivi: Passati al metodo di embedding</li>
+        </ul>
+
+        <h3>Caratteristiche degli embedding</h3>
+        <ul>
+            <li><strong>Lettura automatica dei file:</strong> Le funzioni accettano stringhe o path di file - se una stringa sembra un path di file, viene letta automaticamente</li>
+            <li><strong>Normalizzazione L2:</strong> Tutti gli embedding sono normalizzati L2 per una similarità del coseno corretta</li>
+            <li><strong>Feature hashing:</strong> Gli embedding senza vocabolario usano funzioni hash deterministiche (FNV-1a)</li>
+            <li><strong>Tokenizzazione:</strong> Le parole vengono spezzate su spazi e punteggiatura e convertite in minuscolo</li>
+            <li><strong>Efficienza di memoria:</strong> I metodi basati su hash non richiedono di memorizzare un vocabolario</li>
+        </ul>
+
+        <h3>Esempio completo di embedding</h3>
+        <pre><code>// Example: Document search with TF-IDF
+var documents = [
+    "Machine learning is a subset of AI",
+    "Vector databases enable semantic search",
+    "Natural language processing uses neural networks"
+];
+
+// Create corpus for IDF calculation
+var corpus = documents;
+
+function tfidfEmbed(text) {
+    return embedTFIDF(text, corpus, 1000);
+}
+
+// Create VectorDB with TF-IDF embeddings
+var db = new VectorDB(1000, "double");
+db.init(tfidfEmbed);
+
+// Add documents - vectors calculated automatically
+for (var i = 0; i < documents.length; i = i + 1) {
+    db.add(documents[i]);
+}
+
+// Search for similar documents
+var results = db.searchSimilar("artificial intelligence", 3);
+for (var i = 0; i < results.length; i = i + 1) {
+    print((i + 1) + ". " + results[i].data + " (similarity: " + formatNumber(results[i].similarity, 4) + ")");
+}</code></pre>
+
+        <h3>15.6.1 Embedding di reti neurali con LLamaSharp</h3>
+        <p>Le funzioni built-in di embedding (bag-of-words, hash, TF-IDF) sono veloci e non richiedono dipendenze esterne, ma gli embedding di reti neurali dai modelli LLM offrono una comprensione semantica superiore. MALDA supporta gli embedding di reti neurali tramite la classe <code>LlamaEmbedder</code>, che usa LLamaSharp per generare embedding da modelli GGUF locali.</p>
+
+        <div class="note">
+            <p><strong>Perché usare gli embedding di reti neurali?</strong></p>
+            <p>Gli embedding di reti neurali offrono diversi vantaggi rispetto agli embedding testuali tradizionali:</p>
+            <ul>
+                <li><strong>Comprensione semantica:</strong> Le reti neurali capiscono contesto, sinonimi e relazioni semantiche. Ad esempio, "car" e "automobile" avranno embedding simili anche se non condividono caratteri, mentre "car" e "cat" saranno più distinti nonostante condividano lettere.</li>
+                <li><strong>Consapevolezza del contesto:</strong> La stessa parola in contesti diversi produce embedding diversi. "Bank" (istituto finanziario) e "bank" (sponda del fiume) vengono distinti correttamente.</li>
+                <li><strong>Supporto cross-linguale:</strong> Molti modelli di embedding supportano più lingue e possono trovare similarità semantica tra lingue diverse.</li>
+                <li><strong>Qualità di ricerca migliore:</strong> La ricerca semantica con embedding neurali trova contenuti concettualmente simili, non solo testualmente simili. Una query per "feline pets" troverà documenti sui "cats" anche se la parola "cat" non compare mai.</li>
+                <li><strong>Adattamento al dominio:</strong> I modelli pre-addestrati hanno imparato da enormi quantità di testo, catturando una comprensione generale del linguaggio che funziona in più domini.</li>
+            </ul>
+            <p><strong>Quando usare gli embedding neurali e quando quelli built-in:</strong></p>
+            <ul>
+                <li><strong>Usa gli embedding neurali per:</strong> Ricerca semantica, RAG (Retrieval-Augmented Generation), similarità tra documenti, sistemi di question-answering, sistemi di raccomandazione e qualsiasi applicazione in cui capire il significato conta più del matching esatto delle parole.</li>
+                <li><strong>Usa gli embedding built-in per:</strong> Prototipazione rapida, matching esatto di keyword, quando non hai modelli di embedding disponibili, ambienti con memoria limitata, o quando la velocità è più critica dell'accuratezza semantica.</li>
+            </ul>
+        </div>
+
+        <h4>Usare LlamaEmbedder con VectorDB</h4>
+        <pre><code>// Load an embedding model (e.g., nomic-embed-text-v1.5, bge-small, etc.)
+var embedder = new LlamaEmbedder("path/to/embedding-model.gguf");
+
+// Create a wrapper function for VectorDB
+function neuralEmbed(text) {
+    return embedder.getEmbeddings(text);
+}
+
+// Create VectorDB with dimension matching your model
+// Common dimensions: 384 (nomic-embed-text), 768 (bge-small), 1024, 4096
+var db = new VectorDB(384, "single");  // Match your model's output dimension
+db.init(neuralEmbed);
+
+// Add documents - embeddings calculated using neural network
+db.add("Machine learning is transforming industries");
+db.add("Artificial intelligence enables new capabilities");
+db.add("Neural networks learn from data");
+
+// Semantic search - finds conceptually similar content
+var results = db.searchSimilar("AI technology", 3);
+// Will find "Artificial intelligence enables new capabilities" even though
+// "AI" doesn't appear in the stored text</code></pre>
+
+        <h4>Usare LlamaEmbedder con GraphMemory</h4>
+        <pre><code>// Initialize embedder
+var embedder = new LlamaEmbedder("path/to/embedding-model.gguf");
+
+// Create embedding function
+function neuralEmbed(text) {
+    return embedder.getEmbeddings(text);
+}
+
+// Initialize GraphMemory with custom embedding function
+var memory = new GraphMemory();
+memory.initialize(384, "single", neuralEmbed);  // 3rd parameter: embedding function
+
+// Store facts - uses neural embeddings for better semantic understanding
+memory.remember("I work as a software engineer");
+memory.remember("I develop applications using Python");
+
+// Query with semantic understanding
+var results = memory.query("What is my profession?", 5);
+// Will find both facts because "software engineer" and "develop applications"
+// are semantically related to "profession"</code></pre>
+
+        <p><strong>Scelta del modello:</strong></p>
+        <ul>
+            <li><strong>Modelli piccoli (384-512 dim):</strong> Veloci, efficienti in memoria, adatti alla maggior parte dei casi d'uso (es. nomic-embed-text-v1.5, bge-small-en-v1.5)</li>
+            <li><strong>Modelli medi (768-1024 dim):</strong> Accuratezza migliore, più memoria (es. bge-base-en-v1.5, e5-base-v2)</li>
+            <li><strong>Modelli grandi (2048+ dim):</strong> Massima accuratezza, richiedono molta memoria (es. bge-large-en-v1.5)</li>
+        </ul>
+
+        <p><strong>Considerazioni sulle prestazioni:</strong></p>
+        <ul>
+            <li>Gli embedding neurali sono più lenti di quelli built-in (in genere 10-100ms per testo contro &lt;1ms)</li>
+            <li>I modelli richiedono memoria (in genere 100MB-2GB a seconda della dimensione)</li>
+            <li>La prima chiamata di embedding carica il modello (può richiedere diversi secondi)</li>
+            <li>Gli embedding successivi sono più veloci una volta che il modello è caricato</li>
+            <li>Usa l'accelerazione GPU (<code>setGpuLayerCount()</code>) per un'inferenza più rapida, se disponibile</li>
+        </ul>
+
+        <h2>15.7 Retriever (<code>asRetriever</code>)</h2>
+        <p>Le istanze VectorDB possono esporre un retriever per le pipeline RAG orientate ai documenti. Chiama <code>asRetriever(options?)</code> per ottenere un oggetto con i metodi <code>get</code> e <code>getFormatted</code>:</p>
+        <pre><code>function embedText(text) {
+    return embedBagOfWords(text, 16);
+}
+
+var vdb = new VectorDB(16, "single");
+vdb.init(embedText);
+
+indexInto(vdb, [
+    { content: "GraphMemory stores facts.", metadata: { source: "memory.md" } }
+]);
+
+var retriever = vdb.asRetriever({ topK: 3, minScore: 0.1 });
+
+// get(query) → array of { content, metadata } documents
+var docs = "GraphMemory" |> retriever.get;
+
+// getFormatted(query) → single string for prompt context
+var context = question |> retriever.getFormatted;</code></pre>
+        <p><strong>Opzioni:</strong></p>
+        <ul>
+            <li><code>topK</code> (integer): numero massimo di hit da restituire (default: 4)</li>
+            <li><code>minScore</code> (number): soglia minima di similarità del coseno (default: 0.0)</li>
+        </ul>
+        <p>Quando i documenti vengono indicizzati con <code>indexInto</code>, i metadata (incluso <code>source</code>) vengono preservati nei risultati di ricerca e inclusi da <code>formatRetrievedDocs</code>.</p>
+        <p>Combinalo con i prompt e le pipe — vedi <code>Examples/Prompts/rag_pipeline.malda</code> e <a href="07-expressions.html">7. Espressioni</a> (operatore pipe).</p>
+
+        <h2>15.8 Casi d'uso</h2>
+        <p>VectorDB è utile per:</p>
+        <ul>
+            <li><strong>Ricerca semantica:</strong> Trovare documenti simili a una query in base agli embedding</li>
+            <li><strong>Sistemi di raccomandazione:</strong> Trovare elementi simili in base a vettori di feature</li>
+            <li><strong>Machine learning:</strong> Memorizzare e cercare vettori di embedding da modelli ML</li>
+            <li><strong>Ricerca di immagini:</strong> Trovare immagini simili in base a vettori di feature visive</li>
+            <li><strong>Rilevamento di anomalie:</strong> Trovare vettori dissimili rispetto ai pattern normali</li>
+        </ul>
+
+        <h3>15.8.1 Applicazioni reali di VectorDB</h3>
+        <p>I database vettoriali stanno trasformando i settori in tutto il mondo. Ecco 10 applicazioni principali:</p>
+        <ol>
+            <li><strong>Motori di ricerca potenziati</strong>
+                <p>I database vettoriali abilitano la ricerca semantica, che capisce il vero significato delle query dell'utente, tenendo conto di sinonimi e contesto. Il risultato sono risultati di ricerca più pertinenti e personalizzati.</p>
+                <p><em>Esempio:</em> Spotify usa i database vettoriali per potenziare la funzione di ricerca analizzando le feature audio e le abitudini di ascolto come vettori, raccomandando musica allineata ai tuoi gusti anche quando cerchi con termini descrittivi.</p>
+            </li>
+            <li><strong>Rilevamento delle frodi</strong>
+                <p>Le istituzioni finanziarie usano i database vettoriali per analizzare i pattern delle transazioni in tempo reale. Rappresentando le transazioni come vettori con punti dati come importo, località e comportamento dell'utente, possono identificare anomalie e attività sospette.</p>
+                <p><em>Esempio:</em> PayPal usa questi database per prevenire le frodi identificando pattern insoliti che si discostano dal comportamento normale e segnalando azioni sospette dopo aver analizzato grandi volumi di informazioni transazionali legittime passate.</p>
+            </li>
+            <li><strong>Raccomandazioni di prodotti</strong>
+                <p>Le piattaforme di e-commerce crescono sulle raccomandazioni personalizzate. I database vettoriali analizzano la cronologia degli acquisti, gli attributi dei prodotti e le recensioni dei clienti come vettori per raccomandare prodotti con alta accuratezza.</p>
+                <p><em>Esempio:</em> Amazon analizza acquisti passati, comportamento di navigazione e recensioni dei prodotti come vettori per suggerire articoli che probabilmente interessano i clienti, mantenendoli coinvolti e aumentando le vendite.</p>
+            </li>
+            <li><strong>Sistemi di raccomandazione musicale</strong>
+                <p>L'industria musicale usa i database vettoriali per analizzare feature audio come ritmo, melodia e genere come vettori, consentendo ai servizi di streaming di raccomandare musica che si adatta perfettamente al gusto individuale.</p>
+                <p><em>Esempio:</em> Le funzionalità di music discovery di SoundCloud sono alimentate da database vettoriali, usando le feature audio dei brani che hai ascoltato e i vettori delle preferenze dell'utente per fornire raccomandazioni nella stessa palette sonora.</p>
+            </li>
+            <li><strong>Computer vision e riconoscimento delle immagini</strong>
+                <p>I database vettoriali sono la spina dorsale delle applicazioni che analizzano immagini e video. Memorizzando e cercando le feature delle immagini come vettori, abilitano task come il riconoscimento facciale, il rilevamento di oggetti e la moderazione dei contenuti.</p>
+                <p><em>Esempio:</em> Facebook usa i database vettoriali per la funzione di riconoscimento facciale, convertendo i tratti del viso in vettori e confrontandoli con un database di profili utente per suggerire automaticamente i tag delle foto.</p>
+            </li>
+            <li><strong>Drug discovery</strong>
+                <p>L'industria farmaceutica usa i database vettoriali per accelerare la drug discovery. Questi database memorizzano e analizzano le strutture molecolari come vettori ad alta dimensionalità, consentendo ai ricercatori di trovare rapidamente potenziali candidati farmacologici.</p>
+                <p><em>Esempio:</em> GlaxoSmithKline (GSK) sfrutta i database vettoriali nei propri sforzi di drug discovery, analizzando le proprietà dei farmaci esistenti e dei potenziali target come vettori per identificare molecole con gli effetti terapeutici desiderati.</p>
+            </li>
+            <li><strong>Piattaforme di apprendimento personalizzato</strong>
+                <p>Il settore dell'istruzione usa i database vettoriali per memorizzare i dati di performance degli studenti, gli stili di apprendimento e gli attributi dei contenuti come vettori, abilitando piattaforme di apprendimento personalizzato che raccomandano materiali e si adattano alle esigenze individuali.</p>
+                <p><em>Esempio:</em> Duolingo utilizza i database vettoriali per personalizzare le esperienze di apprendimento linguistico, analizzando i progressi sulle lezioni, i punti di forza e le debolezze come vettori per adattare i percorsi di apprendimento che massimizzano i progressi.</p>
+            </li>
+            <li><strong>Ricerca genomica</strong>
+                <p>La ricerca genomica genera dataset enormi. I database vettoriali li analizzano rappresentando i geni e le loro interazioni come vettori, consentendo ai ricercatori di identificare pattern e relazioni che potrebbero sbloccare nuove conoscenze mediche.</p>
+                <p><em>Esempio:</em> Broad Institute sfrutta i database vettoriali per analizzare i dati genetici nella ricerca sul cancro, rappresentando mutazioni geniche e profili dei pazienti come vettori per identificare pattern correlati a tipi specifici di cancro.</p>
+            </li>
+            <li><strong>Natural Language Processing (NLP)</strong>
+                <p>I database vettoriali memorizzano e recuperano word embedding, rappresentazioni numeriche che catturano il significato e le connessioni tra le parole, abilitando applicazioni NLP avanzate.</p>
+                <p><em>Esempio:</em> Netflix utilizza i database vettoriali per potenziare il sistema di raccomandazione di serie e film, analizzando descrizioni, informazioni sul cast e abitudini di visione come vettori per raccomandare contenuti allineati alle preferenze.</p>
+            </li>
+            <li><strong>Cybersecurity</strong>
+                <p>I database vettoriali sono strumenti cruciali nella lotta alle minacce informatiche. Memorizzando i dati del traffico di rete come vettori, possono analizzarli in tempo reale per rilevare anomalie o intrusioni che altrimenti passerebbero inosservate.</p>
+                <p><em>Esempio:</em> Cloudflare utilizza i database vettoriali per rilevare gli attacchi distributed denial-of-service (DDoS), analizzando i pattern del traffico di rete come vettori per identificare picchi insoliti di traffico che possono indicare un attacco.</p>
+            </li>
+        </ol>
+
+        <h2>15.9 Considerazioni sulle prestazioni</h2>
+        <ul>
+            <li><strong>Precisione:</strong> Usa <code>"single"</code> per l'efficienza di memoria, <code>"double"</code> per una precisione più alta</li>
+            <li><strong>Serializzazione binaria:</strong> Molto più veloce e compatta del JSON per i database di grandi dimensioni</li>
+            <li><strong>Similarità del coseno:</strong> Calcolata in modo efficiente usando array C# ottimizzati</li>
+            <li><strong>Prestazioni di ricerca:</strong> Ricerca lineare su tutti i vettori - valuta l'indicizzazione per i dataset molto grandi</li>
+        </ul>
+
+        <div class="see-also">
+            <h3>Vedi anche</h3>
+            <ul>
+                <li><a href="14-graphs.html">14. Grafi</a> - Strutture dati a grafo</li>
+                <li><a href="06-arrays.html">6. Array</a> - Strutture dati array</li>
+                <li><a href="33-examples.html">33. Esempi</a> - Esempi di codice completi</li>
+            </ul>
+        </div>
+
+        <div class="nav-footer">
+            <a href="14-graphs.html">← Precedente: 14. Grafi</a>
+            <a href="16-database.html">Successivo: 16. Supporto database→</a>
+        </div>
+
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, a tua scelta.</p>
+        </footer>
+    </main>
+    <script src="../malda-highlight.js"></script>
+    <script src="../navigation.js"></script>
+</body>
+</html>

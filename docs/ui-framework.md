@@ -2,8 +2,8 @@
 
 Engine and host notes for MALDA’s Blazor-like server-driven UI. For the language API
 (`ui.*`, components, controls, lifecycle), use
-[`ReferenceManual/23-web-ui.html`](../ReferenceManual/23-web-ui.html)
-(start from [`22-web-ui-hub.html`](../ReferenceManual/22-web-ui-hub.html)).
+[`ReferenceManual/24-web-ui.html`](../ReferenceManual/24-web-ui.html)
+(start from [`23-web-ui-hub.html`](../ReferenceManual/23-web-ui-hub.html)).
 
 ## Runtime model
 
@@ -47,7 +47,7 @@ Agent-facing gotcha: [`docs/llm/malda-gotchas.md`](llm/malda-gotchas.md)
 | `@PAGE` / `@AIPAGE` + HTML strings | Route-first pages (`pageLayout`, forms, redirects) |
 | `ui.*` trees + `ui.mount` / `ui.render` | Server-driven component patches / UIHost |
 
-Do not pass HTML strings into `ui.mount`/`ui.render`, or treat a `@PAGE` return value as a `UiNode` tree. Combining models in one product is fine when boundaries are explicit (e.g. marketing `@PAGE` + app shell `ui.*`). IDE reports **UI1002** (Info) when a file mixes `@PAGE`/`@AIPAGE` with `ui.mount`/`ui.render`. Chooser: [`ReferenceManual/22-web-ui-hub.html`](../ReferenceManual/22-web-ui-hub.html).
+Do not pass HTML strings into `ui.mount`/`ui.render`, or treat a `@PAGE` return value as a `UiNode` tree. Combining models in one product is fine when boundaries are explicit (e.g. marketing `@PAGE` + app shell `ui.*`). IDE reports **UI1002** (Info) when a file mixes `@PAGE`/`@AIPAGE` with `ui.mount`/`ui.render`. Chooser: [`ReferenceManual/23-web-ui-hub.html`](../ReferenceManual/23-web-ui-hub.html).
 
 ## Protocol shape
 
@@ -113,4 +113,4 @@ host wiring from `MaldaLang.Compiler`.
 | `ui.*` builtins | `MaldaLang/BuiltIns/BuiltInFunctions.cs` (UI section) |
 | Standalone / embedded host | `MaldaLang.UIHost/` |
 | Browser client | `MaldaLang.UIHost/wwwroot/malda-ui-client.js` |
-| Language API (user docs) | `ReferenceManual/23-web-ui.html` |
+| Language API (user docs) | `ReferenceManual/24-web-ui.html` |
