@@ -71,4 +71,66 @@ public class EditorUndoableTextTests
         document.UndoStack.Undo();
         Assert.Equal("let foo = 1", document.Text);
     }
+
+    [Fact]
+    public void ApplyEdits_InsertsAutofixAtEndOfLine()
+    {
+        var document = new TextDocument("print(\"hi\"");
+        var edit = EditorQuickFixService.ToEdit(new AutoFixInfo
+        {
+            Description = "Insert missing ')'",
+            Line = 0,
+            Column = 10,
+            TextToInsert = ")",
+            LengthToReplace = 0
+        });
+
+        var applied = EditorUndoableText.ApplyEdits(document, new[] { edit });
+
+        Assert.Equal(1, applied);
+        Assert.Equal("print(\"hi\")", document.Text);
+        document.UndoStack.Undo();
+        Assert.Equal("print(\"hi\"", document.Text);
+    }
+
+    [Fact]
+    public void ApplyEdits_AppliesNonSimpleAndSimpleFixesInOneUndo()
+    {
+        var document = new TextDocument("print(\"hi\"\nfoo");
+        var service = new EditorQuickFixService();
+        var edits = service.ToBatchEdits(new[]
+        {
+            new Diagnostic
+            {
+                AutoFix = new AutoFixInfo
+                {
+                    Description = "Insert missing ')'",
+                    Line = 0,
+                    Column = 10,
+                    TextToInsert = ")",
+                    LengthToReplace = 0,
+                    IsSimpleCharacterFix = true
+                }
+            },
+            new Diagnostic
+            {
+                AutoFix = new AutoFixInfo
+                {
+                    Description = "Insert missing ';'",
+                    Line = 1,
+                    Column = 3,
+                    TextToInsert = ";",
+                    LengthToReplace = 0,
+                    IsSimpleCharacterFix = false
+                }
+            }
+        });
+
+        var applied = EditorUndoableText.ApplyEdits(document, edits);
+
+        Assert.Equal(2, applied);
+        Assert.Equal("print(\"hi\")\nfoo;", document.Text);
+        document.UndoStack.Undo();
+        Assert.Equal("print(\"hi\"\nfoo", document.Text);
+    }
 }

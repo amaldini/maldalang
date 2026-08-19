@@ -256,8 +256,10 @@ public partial class MainWindow
             UpdateDocumentHighlights();
         };
         
-        // Enable glyph margin for breakpoint indicators
+        // Enable glyph margin for breakpoint indicators and quick-fix lightbulbs
         CodeEditor.TextArea.LeftMargins.Insert(0, new BreakpointMargin(CodeEditor.TextArea, this));
+        _quickFixMargin = new QuickFixMargin(CodeEditor.TextArea, this);
+        CodeEditor.TextArea.LeftMargins.Insert(1, _quickFixMargin);
         
         // Add autocomplete support
         CodeEditor.TextArea.TextEntered += TextArea_TextEntered;
@@ -492,6 +494,10 @@ public partial class MainWindow
                 hover = string.IsNullOrWhiteSpace(hover)
                     ? diagnosticHit.Message
                     : diagnosticHit.Message + System.Environment.NewLine + hover;
+                if (diagnosticHit.AutoFix != null)
+                {
+                    hover += System.Environment.NewLine + "Press Ctrl+. to apply: " + diagnosticHit.AutoFix.Description;
+                }
             }
 
             if (string.IsNullOrWhiteSpace(hover))
@@ -1086,6 +1092,7 @@ public partial class MainWindow
                 TryGetOffsetFromLocation(CodeEditor.Document, line, column, out offset));
         _diagnosticRenderer.SetDiagnostics(spans);
         CodeEditor.TextArea.TextView.InvalidateLayer(KnownLayer.Selection);
+        _quickFixMargin?.InvalidateVisual();
     }
 
     private void UpdateErrorsPanel(List<Diagnostic> diagnostics)
@@ -1751,135 +1758,172 @@ public partial class MainWindow
 
     private void ErrorFixButton_Click(object sender, RoutedEventArgs e)
     {
-        // Find the Diagnostic associated with this button
         if (sender is Button button && button.Tag is Diagnostic diagnostic)
         {
             ApplySingleAutofix(diagnostic);
         }
     }
 
+    private void EditQuickFix_Click(object sender, RoutedEventArgs e)
+    {
+        ShowQuickFixesAtCaret();
+    }
+
+    public bool LineHasQuickFix(int editorOneBasedLine)
+    {
+        var spans = _diagnosticRenderer?.Spans ?? Array.Empty<EditorDiagnosticSpan>();
+        return _editorQuickFixService.LineHasFix(spans, editorOneBasedLine - 1);
+    }
+
+    public void ShowQuickFixesForEditorLine(int editorOneBasedLine)
+    {
+        UpdateDiagnostics();
+        var spans = _diagnosticRenderer?.Spans ?? Array.Empty<EditorDiagnosticSpan>();
+        var fixes = _editorQuickFixService.GetFixesOnLine(spans, editorOneBasedLine - 1);
+        ShowQuickFixMenu(fixes);
+    }
+
+    private void ShowQuickFixesAtCaret()
+    {
+        UpdateDiagnostics();
+        var spans = _diagnosticRenderer?.Spans ?? Array.Empty<EditorDiagnosticSpan>();
+        var caretOffset = CodeEditor.CaretOffset;
+        var (line, _) = GetCursorPosition();
+        var fixes = _editorQuickFixService.GetFixesAtCaret(spans, caretOffset, line);
+        ShowQuickFixMenu(fixes);
+    }
+
+    private void ShowQuickFixMenu(IReadOnlyList<EditorDiagnosticSpan> fixes)
+    {
+        var menu = new ContextMenu
+        {
+            PlacementTarget = CodeEditor.TextArea,
+            Placement = PlacementMode.Relative
+        };
+
+        try
+        {
+            CodeEditor.TextArea.TextView.EnsureVisualLines();
+            var caretVisual = CodeEditor.TextArea.TextView.GetVisualPosition(
+                CodeEditor.TextArea.Caret.Position,
+                VisualYPosition.TextBottom);
+            menu.PlacementRectangle = new Rect(
+                caretVisual.X,
+                caretVisual.Y - CodeEditor.TextArea.TextView.VerticalOffset,
+                0,
+                0);
+        }
+        catch
+        {
+            menu.Placement = PlacementMode.MousePoint;
+        }
+
+        if (fixes.Count == 0)
+        {
+            menu.Items.Add(new MenuItem
+            {
+                Header = "No quick fixes available",
+                IsEnabled = false
+            });
+        }
+        else
+        {
+            foreach (var span in fixes)
+            {
+                var autofix = span.AutoFix;
+                if (autofix == null)
+                {
+                    continue;
+                }
+
+                var item = new MenuItem
+                {
+                    Header = autofix.Description,
+                    Tag = autofix
+                };
+                item.Click += (_, _) => ApplyAutofix(autofix);
+                menu.Items.Add(item);
+            }
+        }
+
+        menu.IsOpen = true;
+    }
+
     private void ApplyAllAutofixes()
     {
         try
         {
-            // Get all diagnostics with autofix suggestions
             var activeDocument = GetActiveDocument();
             var (source, sourceKey) = GetSourceForAnalysis(activeDocument);
             var diagnostics = _languageService.GetDiagnostics(
                 source,
                 sourceKey,
                 strictTypesOptions: _typeAnalysisSettingsService.ToOptions());
-            var autofixableDiagnostics = diagnostics
-                .Where(d => d.AutoFix != null && d.AutoFix.IsSimpleCharacterFix)
-                .ToList();
-
-            if (autofixableDiagnostics.Count == 0)
+            if (IsVirtualDocument(activeDocument))
             {
-                MessageBox.Show("No autofixable errors found.", "Autofix", MessageBoxButton.OK, MessageBoxImage.Information);
+                diagnostics = _editorDiagnosticsService.FilterForVirtualSection(
+                    diagnostics,
+                    activeDocument.VirtualStartLine,
+                    activeDocument.VirtualEndLine);
+            }
+
+            var edits = _editorQuickFixService.ToBatchEdits(diagnostics);
+            if (edits.Count == 0)
+            {
+                MessageBox.Show("No autofixable errors found.", "Quick Fix", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
-            // Sort by position (reverse order to avoid offset issues when inserting)
-            autofixableDiagnostics.Sort((a, b) =>
-            {
-                var lineCompare = b.Line.CompareTo(a.Line);
-                if (lineCompare != 0) return lineCompare;
-                return b.Column.CompareTo(a.Column);
-            });
-
-            // Apply all autofixes
-            var fixedCount = 0;
-            foreach (var diagnostic in autofixableDiagnostics)
-            {
-                var autofix = diagnostic.AutoFix;
-                if (autofix == null) continue;
-
-                try
-                {
-                    if (ApplyAutofixInternal(autofix))
-                    {
-                        fixedCount++;
-                    }
-                }
-                catch
-                {
-                    // Skip if autofix fails (invalid position, etc.)
-                    continue;
-                }
-            }
-
-            // Update diagnostics
+            var fixedCount = EditorUndoableText.ApplyEdits(CodeEditor.Document, edits);
             UpdateDiagnostics();
-
-            // Show results
             if (fixedCount > 0)
             {
-                MessageBox.Show($"Successfully fixed {fixedCount} error{(fixedCount > 1 ? "s" : string.Empty)}.",
-                    "Autofix Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(
+                    $"Successfully fixed {fixedCount} error{(fixedCount > 1 ? "s" : string.Empty)}.",
+                    "Quick Fix Complete",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
             }
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Error applying autofixes: {ex.Message}", "Autofix Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show($"Error applying autofixes: {ex.Message}", "Quick Fix Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
     private void ApplySingleAutofix(Diagnostic diagnostic)
     {
+        if (diagnostic.AutoFix == null)
+        {
+            return;
+        }
+
+        ApplyAutofix(diagnostic.AutoFix);
+    }
+
+    private void ApplyAutofix(AutoFixInfo autofix)
+    {
         try
         {
-            var autofix = diagnostic.AutoFix;
-            if (autofix == null) return;
-
             if (ApplyAutofixInternal(autofix))
             {
-                // Update diagnostics after successful fix
                 UpdateDiagnostics();
             }
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Error applying autofix: {ex.Message}", "Autofix Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show($"Error applying autofix: {ex.Message}", "Quick Fix Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
     private bool ApplyAutofixInternal(AutoFixInfo autofix)
     {
-        if (CodeEditor?.Document == null) return false;
-
-        try
-        {
-            // Convert 0-based line to 1-based (AvalonEdit uses 1-based)
-            var lineNumber = autofix.Line + 1;
-
-            // Get the document line
-            if (lineNumber <= 0 || lineNumber > CodeEditor.Document.LineCount)
-            {
-                return false;
-            }
-
-            var documentLine = CodeEditor.Document.GetLineByNumber(lineNumber);
-            if (documentLine == null) return false;
-
-            // Calculate start and end offsets
-            // Column is 0-based, add to line offset
-            var startOffset = documentLine.Offset + autofix.Column;
-            var endOffset = startOffset + autofix.LengthToReplace;
-
-            // Validate offsets
-            if (startOffset < documentLine.Offset || endOffset > documentLine.EndOffset)
-            {
-                return false;
-            }
-
-            // Apply the fix
-            CodeEditor.Document.Replace(startOffset, endOffset - startOffset, autofix.TextToInsert);
-            return true;
-        }
-        catch
+        if (CodeEditor?.Document == null)
         {
             return false;
         }
+
+        return EditorUndoableText.ApplyEdits(CodeEditor.Document, new[] { EditorQuickFixService.ToEdit(autofix) }) > 0;
     }
 
     

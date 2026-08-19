@@ -43,7 +43,7 @@ public sealed class EditorDiagnosticsService
                     virtualStartLineZeroBased),
                 Column = diagnostic.Column,
                 Length = diagnostic.Length,
-                AutoFix = diagnostic.AutoFix,
+                AutoFix = ToSectionLocalAutoFix(diagnostic.AutoFix, virtualStartLineZeroBased),
                 Source = diagnostic.Source,
                 LearningHint = diagnostic.LearningHint,
                 SuggestedFix = diagnostic.SuggestedFix,
@@ -81,5 +81,25 @@ public sealed class EditorDiagnosticsService
         }
 
         return spans;
+    }
+
+    private static AutoFixInfo? ToSectionLocalAutoFix(AutoFixInfo? autofix, int virtualStartLineZeroBased)
+    {
+        if (autofix == null)
+        {
+            return null;
+        }
+
+        return new AutoFixInfo
+        {
+            Description = autofix.Description,
+            Line = VirtualDocumentCoordinateMapper.ToSectionLocalDiagnosticLine(
+                autofix.Line,
+                virtualStartLineZeroBased),
+            Column = autofix.Column,
+            TextToInsert = autofix.TextToInsert,
+            LengthToReplace = autofix.LengthToReplace,
+            IsSimpleCharacterFix = autofix.IsSimpleCharacterFix
+        };
     }
 }

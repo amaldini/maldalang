@@ -34,6 +34,7 @@
     <Geometry x:Key="IconBook">M 3,2.5 H 8 V 13.5 H 3.8 C 3.2,13.5 3,13.2 3,12.6 Z M 13,2.5 H 8 V 13.5 H 12.2 C 12.8,13.5 13,13.2 13,12.6 Z</Geometry>
     <Geometry x:Key="IconPlug">M 5,2.5 V 5.5 H 4 V 10 C 4,12 5.6,13.5 8,13.5 C 10.4,13.5 12,12 12,10 V 5.5 H 11 V 2.5 M 6.2,5.5 V 9.2 M 9.8,5.5 V 9.2</Geometry>
     <Geometry x:Key="IconWrench">M 10.8,2.4 L 13.6,5.2 L 9.6,9.2 L 11.2,10.8 L 6.6,13.6 L 5.2,12.2 L 2.4,13.6 L 2.4,11.2 L 5.2,8.4 L 6.8,10 L 10.8,6 Z</Geometry>
+    <Geometry x:Key="IconLightbulb">M 8,2.4 C 5.7,2.4 4,4.2 4,6.3 C 4,8.1 5.2,9.4 6.3,10.5 V 12.2 H 9.7 V 10.5 C 10.8,9.4 12,8.1 12,6.3 C 12,4.2 10.3,2.4 8,2.4 Z M 6.3,13 H 9.7</Geometry>
     <Geometry x:Key="IconTrash">M 3.5,5 H 12.5 M 5,5 V 3.5 H 11 V 5 M 5.2,5 V 13 H 10.8 V 5 M 7,7 V 11 M 9,7 V 11</Geometry>
     <Geometry x:Key="IconTheme">M 8,2.5 A 5.5,5.5 0 1 0 8,13.5 A 5.5,5.5 0 0 1 8,2.5</Geometry>
     <Geometry x:Key="IconTrace">M 3,12.5 L 6.2,7.5 L 8.6,10.2 L 13,3.5</Geometry>

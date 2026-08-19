@@ -532,6 +532,11 @@
                         <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconFormat}"/>
                     </MenuItem.Icon>
                 </MenuItem>
+                <MenuItem Header="_Quick Fix..." Click="EditQuickFix_Click" InputGestureText="Ctrl+.">
+                    <MenuItem.Icon>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconLightbulb}"/>
+                    </MenuItem.Icon>
+                </MenuItem>
                 <MenuItem Header="_Rename Symbol..." Click="NavigateRenameSymbol_Click" InputGestureText="Ctrl+Alt+R">
                     <MenuItem.Icon>
                         <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconRename}"/>
@@ -792,7 +797,7 @@
                     <Button Style="{StaticResource ToolbarIconButton}" Click="ClearOutputButton_Click" ToolTip="Clear output">
                         <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconTrash}"/>
                     </Button>
-                    <Button x:Name="AutofixErrorsButton" Style="{StaticResource ToolbarButton}" Click="AutofixErrorsButton_Click" ToolTip="Auto-fix parser errors (missing characters)">
+                    <Button x:Name="AutofixErrorsButton" Style="{StaticResource ToolbarButton}" Click="AutofixErrorsButton_Click" ToolTip="Apply all quick fixes in the current file">
                         <StackPanel Orientation="Horizontal">
                             <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconWrench}"/>
                             <TextBlock Text="Autofix" Margin="6,0,0,0" VerticalAlignment="Center"/>

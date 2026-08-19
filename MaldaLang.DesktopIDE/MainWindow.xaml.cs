@@ -109,6 +109,7 @@ public partial class MainWindow : Window
     private readonly Services.CompilerService _compilerService;
     private readonly VirtualDocumentSegmentationService _virtualDocumentSegmentationService;
     private readonly EditorDiagnosticsService _editorDiagnosticsService = new();
+    private readonly EditorQuickFixService _editorQuickFixService = new();
     private readonly ToolCallLogService _toolCallLogService;
     private readonly ThemeService _themeService;
     private readonly TypeAnalysisSettingsService _typeAnalysisSettingsService;
@@ -120,6 +121,7 @@ public partial class MainWindow : Window
     private SearchResultsBackgroundRenderer? _searchResultsRenderer;
     private SearchResultsBackgroundRenderer? _documentHighlightRenderer;
     private DiagnosticSquiggleRenderer? _diagnosticRenderer;
+    private QuickFixMargin? _quickFixMargin;
     private DispatcherTimer? _documentHighlightTimer;
     private DebuggerHook? _debuggerHook;
     private readonly List<string> _watchExpressions = new();
@@ -488,6 +490,12 @@ public partial class MainWindow : Window
             renameSymbolCommand,
             (s, e) => NavigateRenameSymbol_Click(s, e)));
         InputBindings.Add(new KeyBinding(renameSymbolCommand, Key.R, ModifierKeys.Control | ModifierKeys.Alt));
+
+        var quickFixCommand = new RoutedCommand("QuickFix", typeof(MainWindow));
+        CommandBindings.Add(new CommandBinding(
+            quickFixCommand,
+            (s, e) => EditQuickFix_Click(s, e)));
+        InputBindings.Add(new KeyBinding(quickFixCommand, Key.OemPeriod, ModifierKeys.Control));
         
         // Run shortcuts: F5 starts debug / continues; Ctrl+F5 runs without debugging; F9 toggles breakpoints.
         var runCommand = new RoutedCommand("RunWithoutDebugging", typeof(MainWindow));
@@ -2574,7 +2582,9 @@ public partial class MainWindow : Window
             "  Ctrl+V - Paste\n" +
             "  Ctrl+A - Select All\n" +
             "  Ctrl+F - Find\n" +
-            "  Ctrl+H - Replace\n\n" +
+            "  Ctrl+H - Replace\n" +
+            "  Ctrl+Alt+F - Format Document\n" +
+            "  Ctrl+. - Quick Fix\n\n" +
             "View:\n" +
             "  Ctrl+Shift+L - Toggle Syntax Panel\n\n" +
             "Run:\n" +
