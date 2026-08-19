@@ -3067,6 +3067,110 @@
         return new THREE.MeshStandardMaterial(safeOptions);
       }
 
+      function wrapUniformValue(THREE, value) {
+        if (Array.isArray(value)) {
+          const x = toFiniteNumber(value[0], 0);
+          const y = toFiniteNumber(value[1], 0);
+          const z = toFiniteNumber(value[2], 0);
+          const w = toFiniteNumber(value[3], 0);
+          if (value.length <= 1) return x;
+          if (value.length === 2) return new THREE.Vector2(x, y);
+          if (value.length === 3) return new THREE.Vector3(x, y, z);
+          return new THREE.Vector4(x, y, z, w);
+        }
+        if (typeof value === "string") {
+          const text = coerceToString(value).trim();
+          if (text.charAt(0) === "#") {
+            return new THREE.Color(text);
+          }
+        }
+        return value;
+      }
+
+      function toShaderUniforms(THREE, uniforms) {
+        const result = {};
+        if (!uniforms || typeof uniforms !== "object" || Array.isArray(uniforms)) {
+          return result;
+        }
+        Object.keys(uniforms).forEach((key) => {
+          const raw = uniforms[key];
+          if (raw && typeof raw === "object" && !Array.isArray(raw) && Object.prototype.hasOwnProperty.call(raw, "value")) {
+            result[key] = { value: wrapUniformValue(THREE, raw.value) };
+          } else {
+            result[key] = { value: wrapUniformValue(THREE, raw) };
+          }
+        });
+        return result;
+      }
+
+      function createShaderMaterial(options) {
+        const THREE = ensureThree("createShaderMaterial");
+        const safeOptions = options && typeof options === "object" && !Array.isArray(options) ? options : {};
+        const vertexShader = coerceToString(safeOptions.vertexShader);
+        const fragmentShader = coerceToString(safeOptions.fragmentShader);
+        if (!vertexShader) {
+          throw new Error("mlRuntime.three.createShaderMaterial requires options.vertexShader (GLSL string).");
+        }
+        if (!fragmentShader) {
+          throw new Error("mlRuntime.three.createShaderMaterial requires options.fragmentShader (GLSL string).");
+        }
+        if (typeof THREE.ShaderMaterial !== "function") {
+          throw new Error("mlRuntime.three.createShaderMaterial requires THREE.ShaderMaterial on the loaded three.js bundle.");
+        }
+
+        const material = new THREE.ShaderMaterial({
+          vertexShader,
+          fragmentShader,
+          uniforms: toShaderUniforms(THREE, safeOptions.uniforms)
+        });
+        if (safeOptions.depthWrite === false) material.depthWrite = false;
+        if (safeOptions.depthTest === false) material.depthTest = false;
+        if (safeOptions.transparent === true) material.transparent = true;
+        return material;
+      }
+
+      function setUniform(material, name, value) {
+        const THREE = ensureThree("setUniform");
+        if (!material || typeof material !== "object" || !material.uniforms || typeof material.uniforms !== "object") {
+          throw new Error("mlRuntime.three.setUniform expects a shader material created by three.createShaderMaterial.");
+        }
+        const key = coerceToString(name);
+        if (!key) {
+          throw new Error("mlRuntime.three.setUniform requires a uniform name.");
+        }
+
+        const current = material.uniforms[key];
+        if (current && current.value && typeof current.value.set === "function" && Array.isArray(value)) {
+          const args = value.map((item) => toFiniteNumber(item, 0));
+          current.value.set.apply(current.value, args);
+          return null;
+        }
+        if (current && current.value && current.value.isColor && typeof value === "string") {
+          current.value.set(coerceToString(value));
+          return null;
+        }
+
+        const wrapped = wrapUniformValue(THREE, value);
+        if (current) {
+          current.value = wrapped;
+        } else {
+          material.uniforms[key] = { value: wrapped };
+        }
+        return null;
+      }
+
+      function createOrthographicCamera(left, right, top, bottom, near, far) {
+        const THREE = ensureThree("createOrthographicCamera");
+        return new THREE.OrthographicCamera(
+          toFiniteNumber(left, -1),
+          toFiniteNumber(right, 1),
+          toFiniteNumber(top, 1),
+          toFiniteNumber(bottom, -1),
+          toFiniteNumber(near, 0),
+          Math.max(0.0001, toFiniteNumber(far, 1))
+        );
+      }
+
       function createMesh(geometry, material) {
         const THREE = ensureThree("createMesh");
         return new THREE.Mesh(geometry, material);
@@ -3224,6 +3328,9 @@
         createPlaneGeometry,
         createSphereGeometry,
         createStandardMaterial,
+        createShaderMaterial,
+        setUniform,
+        createOrthographicCamera,
         createMesh,
         createGroup,
         createDirectionalLight,

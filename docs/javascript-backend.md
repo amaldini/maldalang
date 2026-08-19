@@ -112,8 +112,8 @@ Validation rules currently enforced:
     - Input: `game.isKeyDown(key)`, `game.getMouseX()`, `game.getMouseY()`, `game.isMouseDown(button?)`
   - Three helpers:
     - Renderer/lifecycle: `three.createRenderer(width, height, mountSelector?)`, `three.setClearColor(renderer, color)`, `three.setRendererSize(renderer, width, height)`, `three.start(updateFn, renderFn?)`, `three.stop()`
-    - Scene graph: `three.createScene()`, `three.createPerspectiveCamera(fovDeg, aspect, near, far)`, `three.setCameraAspect(camera, aspect)`, `three.createGroup()`, `three.createMesh(geometry, material)`, `three.add(parent, child)`
-    - Geometry/material/light: `three.createBoxGeometry(width, height, depth)`, `three.createPlaneGeometry(width, height)`, `three.createSphereGeometry(radius, widthSegments?, heightSegments?)`, `three.createStandardMaterial(options)`, `three.createDirectionalLight(color, intensity)`, `three.createAmbientLight(color?, intensity?)`
+    - Scene graph: `three.createScene()`, `three.createPerspectiveCamera(fovDeg, aspect, near, far)`, `three.createOrthographicCamera(left, right, top, bottom, near, far)`, `three.setCameraAspect(camera, aspect)`, `three.createGroup()`, `three.createMesh(geometry, material)`, `three.add(parent, child)`
+    - Geometry/material/light: `three.createBoxGeometry(width, height, depth)`, `three.createPlaneGeometry(width, height)`, `three.createSphereGeometry(radius, widthSegments?, heightSegments?)`, `three.createStandardMaterial(options)`, `three.createShaderMaterial(options)`, `three.setUniform(material, name, value)`, `three.createDirectionalLight(color, intensity)`, `three.createAmbientLight(color?, intensity?)`
     - Transforms/input: `three.setPosition(object, x, y, z)`, `three.setRotation(object, x, y, z)`, `three.setScale(object, x, y, z)`, `three.render(renderer, scene, camera)`, `three.isKeyDown(key)`, `three.getMouseX()`, `three.getMouseY()`, `three.isMouseDown(button?)`
 - Browser loading model:
   1. Load `malda-js-runtime.js`
@@ -243,6 +243,7 @@ Use `three.*` when you want a browser-hosted 3D scene in MALDA JavaScript mode w
 - Scene graph:
   - `three.createScene()`
   - `three.createPerspectiveCamera(fovDeg, aspect, near, far)`
+  - `three.createOrthographicCamera(left, right, top, bottom, near, far)`
   - `three.setCameraAspect(camera, aspect)`
   - `three.createGroup()`
   - `three.createMesh(geometry, material)`
@@ -252,6 +253,8 @@ Use `three.*` when you want a browser-hosted 3D scene in MALDA JavaScript mode w
   - `three.createPlaneGeometry(width, height)`
   - `three.createSphereGeometry(radius, widthSegments?, heightSegments?)`
   - `three.createStandardMaterial(options)`
+  - `three.createShaderMaterial(options)`
+  - `three.setUniform(material, name, value)`
   - `three.createDirectionalLight(color, intensity)`
   - `three.createAmbientLight(color?, intensity?)`
 - Transform/render/input:
@@ -344,7 +347,38 @@ See `Examples/Web/js/three_cube.malda` and `Examples/Web/js/three_runtime_smoke_
 - Call `three.createRenderer(...)` before `three.render(...)` or `three.start(...)`.
 - When you change viewport dimensions after setup, call both `three.setRendererSize(renderer, width, height)` and `three.setCameraAspect(camera, width / height)`.
 - Do not call `three.createRenderer(...)` while the loop is running; call `three.stop()` first.
-- The MVP is intentionally curated: no textures, model loading, orbit controls, or generic raw JS interop are included.
+- The MVP is intentionally curated: no textures, model loading, orbit controls, or generic raw JS interop are included. Custom GLSL is available only through `three.createShaderMaterial` / `three.setUniform`.
+
+### Shader materials (`three.createShaderMaterial`)
+
+Use a fullscreen quad plus GLSL when CPU `game.setPixel` is too slow. MALDA owns the loop and uniforms; the fragment shader owns the rays.
+
+- `three.createOrthographicCamera(left, right, top, bottom, near, far)` — typically `(-1, 1, 1, -1, 0, 1)` for an NDC fullscreen pass
+- `three.createShaderMaterial({ "vertexShader": vert, "fragmentShader": frag, "uniforms": { ... } })`
+  - `vertexShader` and `fragmentShader` are GLSL strings (use MALDA `"""` triple-quoted strings)
+  - Plain uniform values are wrapped as `{ value }`. Arrays of length 2/3/4 become `Vector2` / `Vector3` / `Vector4`. `#rrggbb` strings become `Color`.
+  - Optional flags: `"depthWrite": false`, `"depthTest": false`, `"transparent": true`
+- `three.setUniform(material, name, value)` — update a uniform after creation. Vector uniforms accept arrays.
+
+Fullscreen vertex shader (clip-space quad from `PlaneGeometry(2, 2)`):
+
+```malda
+var vert = """
+varying vec2 vUv;
+void main() {
+    vUv = uv;
+    gl_Position = vec4(position.xy, 0.0, 1.0);
+}
+""";
+```
+
+See `Examples/Web/js/three_shader_raytracer.malda` for a realtime GPU sphere tracer. Compile:
+
+```bash
+malda compile Examples/Web/js/three_shader_raytracer.malda --mode js -o Examples/Web/js/three_shader_raytracer.js
+```
+
+Host page loading order is the same as other `three.*` demos (`three.min.js` first).
 
 ## Audio Spec v1 (`game.audio*`)
 

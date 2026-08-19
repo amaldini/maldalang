@@ -335,6 +335,24 @@ function render() {
     three.render(renderer, scene, camera);
 }</code></pre>
         <p>Key points: load <code>Examples/Web/wwwroot/vendor/three.min.js</code> before <code>malda-js-runtime.js</code>, then the compiled MALDA script, then call <code>MaldaApp.main()</code>. See <code>Examples/Web/js/three_runtime_smoke_test.html</code> for a direct host page.</p>
+        <h3>32.15.1 Shader materials</h3>
+        <p>Move per-pixel work onto the GPU with <code>three.createShaderMaterial</code> and <code>three.setUniform</code>. Put GLSL in a MALDA triple-quoted string (<code>"""</code>, not <code>$"""</code>, so braces stay literal). Compile the realtime tracer with:</p>
+        <pre><code>malda compile Examples/Web/js/three_shader_raytracer.malda --mode js -o Examples/Web/js/three_shader_raytracer.js</code></pre>
+        <pre><code>var vert = """
+varying vec2 vUv;
+void main() {
+    vUv = uv;
+    gl_Position = vec4(position.xy, 0.0, 1.0);
+}
+""";
+
+var material = three.createShaderMaterial({
+    "vertexShader": vert,
+    "fragmentShader": frag,
+    "uniforms": { "uTime": 0 }
+});
+three.setUniform(material, "uTime", t);</code></pre>
+        <p>Use <code>three.createOrthographicCamera(-1, 1, 1, -1, 0, 1)</code> and <code>PlaneGeometry(2, 2)</code> for a fullscreen pass. See <code>Examples/Web/js/three_shader_raytracer.malda</code>.</p>
         <h2>32.16 Property Testing Quick Example</h2>
         <pre><code>property intIdentity(x) {
     return (x + 0) == x;

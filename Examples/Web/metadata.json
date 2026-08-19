@@ -395,6 +395,29 @@
                                            ],
                          "learningGoal":  "Show that MALDA JavaScript mode can write a full-frame pixel buffer and blit it in one ImageData upload.",
                          "expectedOutput":  "Renders a progressive CPU ray-traced scene in the browser.",
+                         "next":  "Web/js/three_shader_raytracer.malda",
+                         "documentationPath":  "/?lesson=browser-track#lesson-browser-track",
+                         "documentationTitle":  "Browser Track"
+                     },
+                     {
+                         "name":  "JS three.js GPU Ray Tracer",
+                         "description":  "Realtime GLSL sphere tracer using three.createShaderMaterial and three.setUniform",
+                         "file":  "js/three_shader_raytracer.malda",
+                         "track":  "showcase",
+                         "difficulty":  "advanced",
+                         "minutes":  18,
+                         "concepts":  [
+                                          "three.*",
+                                          "GLSL",
+                                          "shader material",
+                                          "ray tracing",
+                                          "JavaScript target"
+                                      ],
+                         "prerequisites":  [
+                                               "Web/js/ray_tracer.malda"
+                                           ],
+                         "learningGoal":  "Show how a CPU MALDA tracer becomes realtime by moving the rays into a curated three.js GLSL shader.",
+                         "expectedOutput":  "Renders a realtime GPU ray-traced scene in the browser.",
                          "next":  "Web/js/three_cube.malda",
                          "documentationPath":  "/?lesson=browser-track#lesson-browser-track",
                          "documentationTitle":  "Browser Track"

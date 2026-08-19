@@ -1,0 +1,319 @@
+var root = dom.query("#app");
+
+if (root == null) {
+    println("No #app container found.");
+} else {
+    dom.clear(root);
+
+    var heading = dom.create("h1");
+    dom.setText(heading, "MALDA GPU Ray Tracer");
+    dom.append(root, heading);
+
+    var hint = dom.create("p");
+    dom.setText(hint, "Realtime GLSL tracer via three.createShaderMaterial. Left/Right change orbit speed. Move the mouse to slide the light.");
+    dom.append(root, hint);
+
+    var width = 960;
+    var height = 540;
+    var aspect = width / height;
+    var tanHalf = math.tan(math.degToRad(28));
+
+    var camRadius = 4.35;
+    var camAngle = 0.55;
+    var camSpeed = 0.55;
+    var camX = 0.0;
+    var camY = 1.65;
+    var camZ = 0.0;
+    var forwardX = 0.0;
+    var forwardY = 0.0;
+    var forwardZ = 1.0;
+    var rightX = 1.0;
+    var rightY = 0.0;
+    var rightZ = 0.0;
+    var upX = 0.0;
+    var upY = 1.0;
+    var upZ = 0.0;
+
+    var lightX = 5.0;
+    var lightY = 8.5;
+    var lightZ = 3.2;
+    var lastMouseX = -1;
+    var lastMouseY = -1;
+
+    var vertexShader = """
+varying vec2 vUv;
+void main() {
+    vUv = uv;
+    gl_Position = vec4(position.xy, 0.0, 1.0);
+}
+""";
+
+    var fragmentShader = """
+varying vec2 vUv;
+uniform vec2 uResolution;
+uniform vec3 uCamPos;
+uniform vec3 uCamForward;
+uniform vec3 uCamRight;
+uniform vec3 uCamUp;
+uniform vec3 uLightPos;
+uniform float uTanHalf;
+uniform float uAspect;
+
+const float EPSILON = 0.0015;
+
+float hitSphere(vec3 center, float radius, vec3 origin, vec3 dir) {
+    vec3 oc = origin - center;
+    float a = dot(dir, dir);
+    float b = dot(oc, dir);
+    float c = dot(oc, oc) - radius * radius;
+    float disc = b * b - a * c;
+    if (disc < 0.0) {
+        return -1.0;
+    }
+    float root = sqrt(disc);
+    float t = (-b - root) / a;
+    if (t > EPSILON) {
+        return t;
+    }
+    t = (-b + root) / a;
+    if (t > EPSILON) {
+        return t;
+    }
+    return -1.0;
+}
+
+bool closestHit(vec3 origin, vec3 dir, float tMax, out float tHit, out int kind, out int index, out vec3 normal, out vec3 albedo) {
+    tHit = tMax;
+    kind = 0;
+    index = -1;
+    normal = vec3(0.0, 1.0, 0.0);
+    albedo = vec3(0.0);
+
+    vec3 c0 = vec3(0.0, 1.0, 0.0);
+    vec3 c1 = vec3(-1.85, 0.55, 0.35);
+    vec3 c2 = vec3(1.55, 0.42, -0.28);
+    float r0 = 1.0;
+    float r1 = 0.55;
+    float r2 = 0.42;
+
+    float t0 = hitSphere(c0, r0, origin, dir);
+    if (t0 > 0.0 && t0 < tHit) {
+        tHit = t0;
+        kind = 1;
+        index = 0;
+    }
+    float t1 = hitSphere(c1, r1, origin, dir);
+    if (t1 > 0.0 && t1 < tHit) {
+        tHit = t1;
+        kind = 1;
+        index = 1;
+    }
+    float t2 = hitSphere(c2, r2, origin, dir);
+    if (t2 > 0.0 && t2 < tHit) {
+        tHit = t2;
+        kind = 1;
+        index = 2;
+    }
+
+    if (abs(dir.y) > EPSILON) {
+        float tPlane = -origin.y / dir.y;
+        if (tPlane > EPSILON && tPlane < tHit) {
+            tHit = tPlane;
+            kind = 2;
+            index = -1;
+        }
+    }
+
+    if (kind == 0) {
+        return false;
+    }
+
+    vec3 hit = origin + dir * tHit;
+    if (kind == 1) {
+        if (index == 0) {
+            normal = (hit - c0) / r0;
+            albedo = vec3(0.86, 0.22, 0.18);
+        } else if (index == 1) {
+            normal = (hit - c1) / r1;
+            albedo = vec3(0.18, 0.45, 0.90);
+        } else {
+            normal = (hit - c2) / r2;
+            albedo = vec3(0.95, 0.74, 0.22);
+        }
+    } else {
+        normal = vec3(0.0, 1.0, 0.0);
+        if (dot(normal, dir) > 0.0) {
+            normal = -normal;
+        }
+        float check = mod(floor(hit.x) + floor(hit.z), 2.0);
+        if (check < 0.5) {
+            albedo = vec3(0.78, 0.78, 0.74);
+        } else {
+            albedo = vec3(0.18, 0.22, 0.20);
+        }
+    }
+    normal = normalize(normal);
+    return true;
+}
+
+bool inShadow(vec3 hit, vec3 normal) {
+    vec3 origin = hit + normal * 0.02;
+    vec3 toLight = uLightPos - origin;
+    float lightDist = length(toLight);
+    if (lightDist <= EPSILON) {
+        return false;
+    }
+    vec3 dir = toLight / lightDist;
+    float tHit;
+    int kind;
+    int index;
+    vec3 n;
+    vec3 albedo;
+    return closestHit(origin, dir, lightDist - 0.05, tHit, kind, index, n, albedo);
+}
+
+void main() {
+    vec2 ndc = vUv * 2.0 - 1.0;
+    vec3 dir = normalize(
+        uCamForward
+        + uCamRight * (ndc.x * uAspect * uTanHalf)
+        + uCamUp * (ndc.y * uTanHalf)
+    );
+
+    float tHit;
+    int kind;
+    int index;
+    vec3 normal;
+    vec3 albedo;
+    if (!closestHit(uCamPos, dir, 1000000.0, tHit, kind, index, normal, albedo)) {
+        float t = clamp((dir.y + 1.0) * 0.5, 0.0, 1.0);
+        vec3 sky = mix(vec3(0.62, 0.78, 0.96), vec3(0.16, 0.38, 0.74), t);
+        gl_FragColor = vec4(sqrt(sky), 1.0);
+        return;
+    }
+
+    vec3 hit = uCamPos + dir * tHit;
+    vec3 toLight = uLightPos - hit;
+    vec3 lightDir = normalize(toLight);
+    float diff = max(dot(normal, lightDir), 0.0);
+    float light = 0.12;
+    if (!inShadow(hit, normal)) {
+        light = 0.12 + diff * 0.88;
+    }
+    vec3 color = albedo * light;
+    gl_FragColor = vec4(sqrt(color), 1.0);
+}
+""";
+
+    function updateCamera() {
+        camX = math.sin(camAngle) * camRadius;
+        camY = 1.65;
+        camZ = math.cos(camAngle) * camRadius;
+
+        var fx = 0.0 - camX;
+        var fy = 0.85 - camY;
+        var fz = 0.0 - camZ;
+        var fl = math.sqrt(fx * fx + fy * fy + fz * fz);
+        fx = fx / fl;
+        fy = fy / fl;
+        fz = fz / fl;
+
+        var rx = 0 - fz;
+        var ry = 0.0;
+        var rz = fx;
+        var rl = math.sqrt(rx * rx + ry * ry + rz * rz);
+        rx = rx / rl;
+        ry = ry / rl;
+        rz = rz / rl;
+
+        forwardX = fx;
+        forwardY = fy;
+        forwardZ = fz;
+        rightX = rx;
+        rightY = ry;
+        rightZ = rz;
+        upX = ry * fz - rz * fy;
+        upY = rz * fx - rx * fz;
+        upZ = rx * fy - ry * fx;
+    }
+
+    var renderer = three.createRenderer(width, height, "#app");
+    three.setClearColor(renderer, "#020617");
+    three.setRendererSize(renderer, width, height);
+
+    var scene = three.createScene();
+    var camera = three.createOrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+    var material = three.createShaderMaterial({
+        "vertexShader": vertexShader,
+        "fragmentShader": fragmentShader,
+        "depthWrite": false,
+        "uniforms": {
+            "uResolution": [width, height],
+            "uCamPos": [0, 1.65, 4.35],
+            "uCamForward": [0, 0, -1],
+            "uCamRight": [1, 0, 0],
+            "uCamUp": [0, 1, 0],
+            "uLightPos": [lightX, lightY, lightZ],
+            "uTanHalf": tanHalf,
+            "uAspect": aspect
+        }
+    });
+
+    var quad = three.createMesh(three.createPlaneGeometry(2, 2), material);
+    three.add(scene, quad);
+
+    function pushCameraUniforms() {
+        three.setUniform(material, "uCamPos", [camX, camY, camZ]);
+        three.setUniform(material, "uCamForward", [forwardX, forwardY, forwardZ]);
+        three.setUniform(material, "uCamRight", [rightX, rightY, rightZ]);
+        three.setUniform(material, "uCamUp", [upX, upY, upZ]);
+        three.setUniform(material, "uLightPos", [lightX, lightY, lightZ]);
+    }
+
+    updateCamera();
+    pushCameraUniforms();
+
+    function update(dtMs) {
+        var dt = dtMs;
+        if (dt > 50) {
+            dt = 50;
+        }
+
+        if (three.isKeyDown("arrowleft")) {
+            camSpeed = camSpeed - ((1.2 * dt) / 1000);
+        }
+        if (three.isKeyDown("arrowright")) {
+            camSpeed = camSpeed + ((1.2 * dt) / 1000);
+        }
+        if (camSpeed < -2.4) {
+            camSpeed = -2.4;
+        }
+        if (camSpeed > 2.4) {
+            camSpeed = 2.4;
+        }
+
+        camAngle = camAngle + ((camSpeed * dt) / 1000);
+
+        var mx = int(three.getMouseX());
+        var my = int(three.getMouseY());
+        if (lastMouseX < 0) {
+            lastMouseX = mx;
+            lastMouseY = my;
+        } else if (mx != lastMouseX || my != lastMouseY) {
+            lastMouseX = mx;
+            lastMouseY = my;
+            lightX = 4.2 + ((mx / width) - 0.5) * 12;
+            lightZ = 2.4 - ((my / height) - 0.5) * 8;
+        }
+
+        updateCamera();
+        pushCameraUniforms();
+    }
+
+    function render() {
+        three.render(renderer, scene, camera);
+    }
+
+    three.start(update, render);
+}
