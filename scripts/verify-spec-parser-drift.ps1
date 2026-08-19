@@ -22,7 +22,7 @@ $parserTriggers = @(
 
 $documentationTriggers = @(
     "docs/spec/CHANGELOG.md",
-    "ReferenceManual/34-grammar.html",
+    "ReferenceManual/35-grammar.html",
     "docs/planning/parser-manual-drift-audit.md"
 )
 
@@ -114,7 +114,7 @@ Spec/parser drift: MaldaLang/Parser/Parser.cs or MaldaLang/Lexer.cs changed with
 Update at least one of:
   - docs/spec/malda-language-*.md (Tier 0 semantics)
   - docs/spec/CHANGELOG.md (version / deprecation note)
-  - ReferenceManual/34-grammar.html (syntax BNF)
+  - ReferenceManual/35-grammar.html (syntax BNF)
   - docs/planning/parser-manual-drift-audit.md (manual drift notes)
 
 Changed files in diff:

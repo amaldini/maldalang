@@ -88,7 +88,7 @@ var message = "Name: " + name + ", Age: " + age;
 // message = "Name: Alice, Age: 25"</code></pre>
 
         <h4>Conversione di tipo esplicita</h4>
-        <p>Usa le funzioni built-in per la conversione di tipo esplicita (vedi <a href="12-built-in-functions.html">Funzioni built-in</a>):</p>
+        <p>Usa le funzioni built-in per la conversione di tipo esplicita (vedi <a href="13-built-in-functions.html">Funzioni built-in</a>):</p>
         <pre><code>var num = int("123");      // Convert string to integer
 var floatVal = float("3.14");  // Convert string to float
 var str = string(42);     // Convert number to string</code></pre>
@@ -109,7 +109,7 @@ var str = string(42);     // Convert number to string</code></pre>
 
 var person = new Person("Alice", 25);  // person is an object</code></pre>
 
-        <p>Vedi <a href="10-classes-objects.html">Classi e oggetti</a> per maggiori informazioni.</p>
+        <p>Vedi <a href="11-classes-objects.html">Classi e oggetti</a> per maggiori informazioni.</p>
 
         <h3>Null</h3>
         <p><code>null</code> è un valore speciale che rappresenta l'assenza di un oggetto. Può essere assegnato a qualsiasi variabile oggetto:</p>
@@ -182,8 +182,8 @@ print(first[1]);          // value</code></pre>
         <p>Dichiara un tipo somma con <code>type</code>, un nome di tipo e uno o più costruttori separati da <code>|</code>. Ogni costruttore ha un nome e parametri opzionali. I parametri possono essere solo nome oppure portare un tipo di payload (la stessa forma <code>SchemaType</code> dei campi schema: primitivi, <code>[]</code>, <code>?</code>, nomi di schema o di tipo somma):</p>
         <pre><code>type Result = Ok(value) | Err(message);
 type Intent = Search(query: string) | Buy(sku: string, qty: int) | Help();</code></pre>
-        <p>I costruttori solo-nome restano validi (<code>Search(query)</code>) e restano non tipizzati nello JSON Schema generato. Mescolare bracci tipizzati e non tipizzati in un unico <code>type</code> è consentito. I tipi di payload <strong>non</strong> sono typing dei parametri di prompt — scrivi <code>prompt greet(name)</code>, mai <code>prompt greet(name: string)</code>.</p>
-        <p>I nomi dei costruttori (es. <code>Ok</code>, <code>Err</code>) diventano funzioni globali che costruiscono valori di quella variante. Lo stesso nome non può essere anche uno <code>schema</code>. <code>validate("Result", taggedDict)</code> controlla la forma JSON sul filo (<code>{"tag":"Ok","value":…}</code>) senza trasformare il dict in una variante — vedi <a href="12-built-in-functions.html#validate">validate()</a>. Quando un payload è tipizzato, <code>validate</code> e i prompt tipizzati rifiutano JSON che non corrisponde (per esempio <code>qty: "x"</code> contro <code>qty: int</code>).</p>
+        <p>I costruttori solo-nome restano validi (<code>Search(query)</code>) e restano non tipizzati nello JSON Schema generato. Mescolare bracci tipizzati e non tipizzati in un unico <code>type</code> è consentito. I tipi di payload <strong>non</strong> sono typing dei parametri di prompt — scrivi <code>prompt greet(name)</code>, mai <code>prompt greet(name: string)</code> — vedi <a href="10-prompts.html">10. Prompt</a>.</p>
+        <p>I nomi dei costruttori (es. <code>Ok</code>, <code>Err</code>) diventano funzioni globali che costruiscono valori di quella variante. Lo stesso nome non può essere anche uno <code>schema</code>. <code>validate("Result", taggedDict)</code> controlla la forma JSON sul filo (<code>{"tag":"Ok","value":…}</code>) senza trasformare il dict in una variante — vedi <a href="13-built-in-functions.html#validate">validate()</a>. Quando un payload è tipizzato, <code>validate</code> e i prompt tipizzati rifiutano JSON che non corrisponde (per esempio <code>qty: "x"</code> contro <code>qty: int</code>).</p>
 
         <h3>Costruire valori</h3>
         <p>Chiama un costruttore come una funzione. Restituisce un valore etichettato che porta gli argomenti come payload:</p>
@@ -204,11 +204,11 @@ var result = match r {
     case Err(msg): "error: " + msg;
 };
 print(result);   // "ok: 5"</code></pre>
-        <p>Vedi <a href="08-control-structures.html">8. Strutture di controllo</a> per la sintassi completa di <code>match</code>. I moduli della libreria standard <code>result</code> e <code>option</code> incapsulano gli stessi tag <code>Ok</code>/<code>Err</code> e <code>Some</code>/<code>None</code> senza una dichiarazione <code>type</code> — vedi <a href="12-built-in-functions.html#result-option">12.19.1</a>.</p>
+        <p>Vedi <a href="08-control-structures.html">8. Strutture di controllo</a> per la sintassi completa di <code>match</code>. I moduli della libreria standard <code>result</code> e <code>option</code> incapsulano gli stessi tag <code>Ok</code>/<code>Err</code> e <code>Some</code>/<code>None</code> senza una dichiarazione <code>type</code> — vedi <a href="13-built-in-functions.html#result-option">13.19.1</a>.</p>
 
         <h2>4.6 Controllo dei tipi</h2>
 
-        <p>Anche se MALDA è a typing dinamico, puoi ispezionare i tipi a runtime con gli helper built-in (vedi <a href="12-built-in-functions.html">Funzioni built-in</a>):</p>
+        <p>Anche se MALDA è a typing dinamico, puoi ispezionare i tipi a runtime con gli helper built-in (vedi <a href="13-built-in-functions.html">Funzioni built-in</a>):</p>
         <pre><code>var x = 10;
 
 // Preferred: type tag from typeOf()
@@ -232,9 +232,10 @@ if (x == null) {
             <ul>
                 <li><a href="05-variables.html">5. Variabili</a> - Come dichiarare e usare le variabili</li>
                 <li><a href="06-arrays.html">6. Array</a> - Strutture dati array</li>
-                <li><a href="13-graphs.html">13. Grafi</a> - Strutture dati a grafo</li>
-                <li><a href="10-classes-objects.html">10. Classi e oggetti</a> - Creare tipi oggetto personalizzati</li>
-                <li><a href="12-built-in-functions.html">12. Funzioni built-in</a> - Funzioni di conversione di tipo</li>
+                <li><a href="14-graphs.html">14. Grafi</a> - Strutture dati a grafo</li>
+                <li><a href="11-classes-objects.html">11. Classi e oggetti</a> - Creare tipi oggetto personalizzati</li>
+                <li><a href="13-built-in-functions.html">13. Funzioni built-in</a> - Funzioni di conversione di tipo</li>
+                <li><a href="10-prompts.html">10. Prompt</a> - Ritorni tipizzati dei prompt e schema</li>
             </ul>
         </div>
 

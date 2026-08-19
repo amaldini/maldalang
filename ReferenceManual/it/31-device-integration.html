@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Integrazione dispositivi MALDA - controllare hardware fisico (Arduino, ESP32, IoT) via seriale e HTTP/REST">
+    <title>31. Integrazione dispositivi - Manuale di riferimento MALDA</title>
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../syntax.css">
+    <link rel="stylesheet" href="../print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>Manuale di riferimento MALDA&trade;</h1>
+        <p>Il linguaggio di programmazione AI-First - Versione 1.0.9</p>
+    </header>
+    <nav></nav>
+    <main>
+        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>31. Integrazione dispositivi</span></div>
+        <h1>31. Integrazione dispositivi</h1>
+        
+        <div class="info-box">
+            <strong>Nota:</strong> L'integrazione dei dispositivi è una funzionalità opzionale. Il linguaggio core e le funzionalità AI funzionano indipendentemente dal supporto hardware.
+        </div>
+        
+        <p>MALDA supporta l'interazione con dispositivi fisici tramite comunicazione seriale (USB) e API HTTP/REST (WiFi). Questo consente di controllare Arduino, ESP32, Raspberry Pi, dispositivi per la smart home e altra attrezzatura IoT.</p>
+        
+        <h2>31.1 Panoramica</h2>
+        
+        <h3>Perché l'integrazione dei dispositivi?</h3>
+        <p>L'integrazione dei dispositivi consente ai programmi MALDA di:</p>
+        <ul>
+            <li>Controllare hardware fisico (robot, sensori, attuatori)</li>
+            <li>Costruire applicazioni IoT e automazione della smart home</li>
+            <li>Creare sistemi multi-dispositivo coordinati da actor</li>
+            <li>Combinare agenti AI con l'interazione nel mondo fisico</li>
+        </ul>
+        
+        <h3>Metodi di comunicazione</h3>
+        <p>MALDA supporta due metodi di comunicazione principali:</p>
+        <ul>
+            <li><strong>Comunicazione seriale</strong>: connessione USB diretta ai dispositivi (Arduino, microcontroller)</li>
+            <li><strong>HTTP/REST</strong>: comunicazione di rete per i dispositivi con WiFi (ESP32, Raspberry Pi, dispositivi per la smart home)</li>
+        </ul>
+        
+        <h3>Quando usare ciascun metodo</h3>
+        <table>
+            <tr>
+                <th>Metodo</th>
+                <th>Ideale per</th>
+                <th>Vantaggi</th>
+                <th>Limitazioni</th>
+            </tr>
+            <tr>
+                <td>Seriale</td>
+                <td>Dispositivi collegati via USB, progetti semplici</td>
+                <td>Bassa latenza, setup semplice, nessuna rete richiesta</td>
+                <td>Richiede connessione fisica, raggio limitato</td>
+            </tr>
+            <tr>
+                <td>HTTP/REST</td>
+                <td>Dispositivi WiFi, più dispositivi, controllo remoto</td>
+                <td>Wireless, scalabile, funziona su rete/internet</td>
+                <td>Richiede setup di rete, latenza leggermente più alta</td>
+            </tr>
+        </table>
+        
+        <h2>31.2 Comunicazione seriale</h2>
+        
+        <p>La classe <code>SerialConnection</code> offre comunicazione seriale a basso livello per i dispositivi collegati via USB.</p>
+        
+        <h3>Costruttore</h3>
+        <pre><code>var serial = new SerialConnection();</code></pre>
+        <p>Crea una nuova istanza di connessione seriale. La connessione si stabilisce con il metodo <code>connect()</code>.</p>
+        
+        <h3>Metodi</h3>
+        <ul>
+            <li><code>connect(portName, baudRate)</code> → <code>bool</code>: Apre la connessione seriale sulla porta specificata</li>
+            <li><code>disconnect()</code>: Chiude la connessione seriale</li>
+            <li><code>write(data)</code>: Invia una stringa di dati al dispositivo</li>
+            <li><code>read()</code> → <code>string</code>: Legge tutti i dati disponibili dal dispositivo</li>
+            <li><code>read(byteCount)</code> → <code>string</code>: Legge il numero specificato di byte</li>
+            <li><code>readLine()</code> → <code>string</code>: Legge una riga (fino al carattere di newline)</li>
+        </ul>
+        
+        <h3>Proprietà</h3>
+        <ul>
+            <li><code>isConnected</code> (bool): Verifica se la connessione è attiva</li>
+        </ul>
+        
+        <h3>Esempio</h3>
+        <pre><code>var serial = new SerialConnection();
+var connected = serial.connect("COM3", 9600);
+
+if (connected) {
+    serial.write("Hello Arduino\n");
+    var response = serial.readLine();
+    print("Response: " + response);
+    serial.disconnect();
+}</code></pre>
+        
+        <h3>Nomi delle porte</h3>
+        <p>I nomi delle porte variano a seconda del sistema operativo:</p>
+        <ul>
+            <li><strong>Windows</strong>: <code>"COM3"</code>, <code>"COM4"</code>, ecc.</li>
+            <li><strong>Linux</strong>: <code>"/dev/ttyUSB0"</code>, <code>"/dev/ttyACM0"</code>, ecc.</li>
+            <li><strong>macOS</strong>: <code>"/dev/cu.usbserial-*"</code>, <code>"/dev/cu.usbmodem*"</code>, ecc.</li>
+        </ul>
+        
+        <h2>31.3 Dispositivi HTTP/REST</h2>
+        
+        <p>Per i dispositivi con WiFi, usa la classe <code>RestClient</code> (vedi <a href="28-rest-web-client.html">28. Client REST Web</a> per la documentazione completa). Funziona con qualsiasi dispositivo che espone API HTTP/REST.</p>
+        
+        <h3>Esempio: dispositivo ESP32</h3>
+        <pre><code>var device = new RestClient("http://192.168.1.100");
+
+// Read sensor value
+var response = device.get("/sensor/temperature");
+if (response.ok) {
+    var data = parseJSON(response.body);
+    print("Temperature: " + data.value);
+}
+
+// Control actuator
+device.post("/relay/1", {"state": "on"});</code></pre>
+        
+        <h3>Autenticazione</h3>
+        <p>Molti dispositivi richiedono autenticazione:</p>
+        <pre><code>var device = new RestClient("http://192.168.1.100");
+device.setAuth("Bearer", "your-api-token");</code></pre>
+        
+        <h2>31.4 Integrazione Arduino</h2>
+        
+        <p>La classe <code>ArduinoConnection</code> offre un'interfaccia di alto livello per controllare dispositivi Arduino, con supporto sia alla modalità seriale sia a quella HTTP.</p>
+        
+        <h3>Costruttore</h3>
+        <p>ArduinoConnection supporta due modalità:</p>
+        <pre><code>// HTTP mode (WiFi-enabled devices like ESP32)
+var arduino = new ArduinoConnection("http://192.168.1.100");
+
+// Serial mode (USB connection)
+var arduino = new ArduinoConnection("COM3", 9600);</code></pre>
+        
+        <h3>Connessione</h3>
+        <ul>
+            <li><code>connect()</code> → <code>bool</code>: Stabilisce la connessione ad Arduino</li>
+            <li><code>disconnect()</code>: Chiude la connessione</li>
+            <li><code>isConnected</code> (bool): Verifica lo stato della connessione</li>
+        </ul>
+        
+        <h3>I/O digitale</h3>
+        <ul>
+            <li><code>digitalWrite(pin, value)</code>: Imposta il pin digitale HIGH (true) o LOW (false)</li>
+            <li><code>digitalRead(pin)</code> → <code>bool</code>: Legge il valore del pin digitale</li>
+        </ul>
+        
+        <h3>I/O analogico</h3>
+        <ul>
+            <li><code>analogRead(pin)</code> → <code>int</code>: Legge il pin analogico (0-1023)</li>
+            <li><code>analogWrite(pin, value)</code>: Scrive un valore PWM (0-255) sul pin</li>
+        </ul>
+        
+        <h3>Configurazione dei pin</h3>
+        <ul>
+            <li><code>pinMode(pin, mode)</code>: Configura la modalità del pin. <code>mode</code> deve essere:
+                <ul>
+                    <li><code>"INPUT"</code>: Input digitale</li>
+                    <li><code>"OUTPUT"</code>: Output digitale</li>
+                    <li><code>"INPUT_PULLUP"</code>: Input digitale con resistenza di pull-up interna</li>
+                </ul>
+            </li>
+        </ul>
+        
+        <h3>Esempio: controllo Arduino di base</h3>
+        <pre><code>// Connect via serial
+var arduino = new ArduinoConnection("COM3", 9600);
+arduino.connect();
+
+// Configure pin 13 as OUTPUT (LED)
+arduino.pinMode(13, "OUTPUT");
+
+// Blink LED
+for (var i = 0; i < 5; i = i + 1) {
+    arduino.digitalWrite(13, true);
+    sleep(500);
+    arduino.digitalWrite(13, false);
+    sleep(500);
+}
+
+// Read analog sensor
+var sensorValue = arduino.analogRead(0);
+print("Sensor value: " + sensorValue);
+
+arduino.disconnect();</code></pre>
+        
+        <h3>Setup dello sketch Arduino</h3>
+        <p>Per usare Arduino con MALDA, carica lo sketch bridge sulla scheda Arduino. Lo sketch ascolta i comandi e li esegue.</p>
+        <p>Vedi <code>Examples/Arduino/arduino_bridge.ino</code> per lo sketch completo.</p>
+        <p><strong>Protocollo:</strong></p>
+        <ul>
+            <li>Comandi: <code>DIGITAL_WRITE:pin:value\n</code></li>
+            <li>Risposte: <code>OK:value\n</code> o <code>ERROR:message\n</code></li>
+        </ul>
+        
+        <h2>31.5 ESP32/ESP8266</h2>
+        
+        <p>I dispositivi ESP32 e ESP8266 si possono controllare via HTTP/REST dopo aver caricato lo sketch bridge.</p>
+        
+        <h3>Setup WiFi</h3>
+        <p>Modifica lo sketch ESP32 per configurare le credenziali WiFi:</p>
+        <pre><code>const char* ssid = "YourWiFiSSID";
+const char* password = "YourWiFiPassword";</code></pre>
+        
+        <h3>Endpoint REST API</h3>
+        <p>Il bridge ESP32 espone i seguenti endpoint:</p>
+        <ul>
+            <li><code>GET /ping</code>: Health check</li>
+            <li><code>POST /digital/write</code>: <code>{"pin": 5, "value": 1}</code></li>
+            <li><code>GET /digital/read?pin=5</code>: Restituisce <code>{"value": 1}</code></li>
+            <li><code>GET /analog/read?pin=0</code>: Restituisce <code>{"value": 512}</code></li>
+            <li><code>POST /analog/write</code>: <code>{"pin": 3, "value": 128}</code></li>
+            <li><code>POST /pin/mode</code>: <code>{"pin": 5, "mode": "OUTPUT"}</code></li>
+        </ul>
+        
+        <h3>Esempio: controllo ESP32</h3>
+        <pre><code>// Connect to ESP32 via WiFi
+var esp32 = new ArduinoConnection("http://192.168.1.100");
+esp32.connect();
+
+// Control LED
+esp32.pinMode(2, "OUTPUT");
+esp32.digitalWrite(2, true);
+
+// Read sensor
+var distance = esp32.analogRead(0);
+print("Distance: " + distance);</code></pre>
+        
+        <h2>31.6 Raspberry Pi</h2>
+        
+        <p>Raspberry Pi si può controllare via API HTTP o connessione seriale.</p>
+        
+        <h3>Controllo via API HTTP</h3>
+        <p>Se Raspberry Pi esegue un web server che espone una REST API:</p>
+        <pre><code>var pi = new RestClient("http://raspberrypi.local:8080");
+var status = pi.get("/status");</code></pre>
+        
+        <h3>Comunicazione seriale</h3>
+        <p>Per la comunicazione seriale diretta:</p>
+        <pre><code>var pi = new SerialConnection();
+pi.connect("/dev/ttyUSB0", 115200);
+pi.write("command\n");
+var response = pi.readLine();</code></pre>
+        
+        <h2>31.7 Dispositivi per la smart home</h2>
+        
+        <p>Molti dispositivi per la smart home espongono REST API che si possono controllare con <code>RestClient</code>.</p>
+        
+        <h3>Esempio Philips Hue</h3>
+        <pre><code>var hue = new RestClient("http://192.168.1.50");
+hue.setAuth("Bearer", "your-api-key");
+
+// Turn on light
+hue.put("/api/username/lights/1/state", {
+    "on": true,
+    "bri": 254,
+    "hue": 10000
+});
+
+// Dim light
+hue.put("/api/username/lights/1/state", {
+    "bri": 128
+});
+
+// Turn off
+hue.put("/api/username/lights/1/state", {
+    "on": false
+});</code></pre>
+        
+        <h3>Esempio SmartThings</h3>
+        <pre><code>var smartThings = new RestClient("https://api.smartthings.com");
+smartThings.setAuth("Bearer", "your-token");
+
+// Get devices
+var devices = smartThings.get("/devices");
+
+// Control device
+smartThings.post("/devices/device-id/commands", {
+    "commands": [{
+        "component": "main",
+        "capability": "switch",
+        "command": "on"
+    }]
+});</code></pre>
+        
+        <h3>Esempio Home Assistant</h3>
+        <pre><code>var homeAssistant = new RestClient("http://homeassistant.local:8123");
+homeAssistant.setHeader("Authorization", "Bearer your-token");
+
+// Get states
+var states = homeAssistant.get("/api/states");
+
+// Control entity
+homeAssistant.post("/api/services/light/turn_on", {
+    "entity_id": "light.living_room"
+});</code></pre>
+        
+        <h2>31.8 Coordinamento multi-dispositivo</h2>
+        
+        <p>Il modello ad actor di MALDA è ideale per coordinare più dispositivi. Ogni dispositivo può essere controllato dal proprio actor, abilitando operazioni concorrenti e coordinate.</p>
+        
+        <h3>Usare gli actor per il controllo dei dispositivi</h3>
+        <pre><code>actor DeviceController {
+    var device;
+    var deviceId;
+    
+    function DeviceController(id, url) {
+        deviceId = id;
+        device = new ArduinoConnection(url);
+    }
+    
+    on connect() {
+        device.connect();
+        print("Device " + deviceId + " connected");
+    }
+    
+    on control(value) {
+        device.digitalWrite(5, value);
+    }
+}
+
+// Create multiple device controllers
+var devices = [];
+for (var i = 0; i < 5; i = i + 1) {
+    devices.append(spawn DeviceController(i, "http://192.168.1." + (100 + i)));
+}
+
+// Connect all devices concurrently
+for (var i = 0; i < devices.length; i = i + 1) {
+    send devices[i].connect();
+}</code></pre>
+        
+        <h3>Pattern di coordinamento</h3>
+        <p>Pattern comuni per i sistemi multi-dispositivo:</p>
+        <ul>
+            <li><strong>Actor coordinatore</strong>: actor centrale che coordina tutti i dispositivi</li>
+            <li><strong>Actor dispositivo</strong>: un actor per dispositivo per un controllo isolato</li>
+            <li><strong>Message passing</strong>: i dispositivi comunicano tramite messaggi degli actor</li>
+            <li><strong>Gestione dello stato</strong>: ogni actor dispositivo mantiene il proprio stato</li>
+        </ul>
+        
+        <h3>Esempio: sistema multi-robot</h3>
+        <pre><code>actor Robot {
+    var robotId;
+    var arduino;
+    var coordinator;
+    
+    function Robot(id, url, coord) {
+        robotId = id;
+        arduino = new ArduinoConnection(url);
+        coordinator = coord;
+    }
+    
+    on move(direction) {
+        if (direction == "forward") {
+            arduino.digitalWrite(5, true);
+            arduino.digitalWrite(6, true);
+        }
+        send coordinator.robotMoved(robotId, direction);
+    }
+}
+
+actor Coordinator {
+    var robots = [];
+    
+    on registerRobot(robot) {
+        robots.append(robot);
+    }
+    
+    on startAll() {
+        for (var i = 0; i < robots.length; i = i + 1) {
+            send robots[i].move("forward");
+        }
+    }
+}
+
+var coordinator = spawn Coordinator();
+var robot1 = spawn Robot(1, "http://192.168.1.100", coordinator);
+var robot2 = spawn Robot(2, "http://192.168.1.101", coordinator);
+
+send coordinator.registerRobot(robot1);
+send coordinator.registerRobot(robot2);
+send coordinator.startAll();</code></pre>
+        
+        <h2>31.9 Esempi</h2>
+        
+        <p>Esempi completi sono disponibili nella directory <code>Examples/Devices/</code>:</p>
+        <ul>
+            <li><strong>basic_arduino.malda</strong>: controllo Arduino semplice (blink del LED, lettura del sensore)</li>
+            <li><strong>multi_robot_soccer.malda</strong>: gioco di coordinamento multi-robot con gli actor</li>
+            <li><strong>smart_home.malda</strong>: esempi di controllo di dispositivi per la smart home</li>
+        </ul>
+        
+        <h3>Tutorial passo-passo: primo progetto Arduino</h3>
+        <ol>
+            <li><strong>Carica lo sketch bridge</strong>: carica <code>arduino_bridge.ino</code> sul tuo Arduino</li>
+            <li><strong>Trova il nome della porta</strong>: identifica la porta seriale del tuo Arduino (COM3, /dev/ttyUSB0, ecc.)</li>
+            <li><strong>Connetti in MALDA</strong>:
+                <pre><code>var arduino = new ArduinoConnection("COM3", 9600);
+arduino.connect();</code></pre>
+            </li>
+            <li><strong>Controlla l'hardware</strong>:
+                <pre><code>arduino.pinMode(13, "OUTPUT");
+arduino.digitalWrite(13, true);</code></pre>
+            </li>
+        </ol>
+        
+        <h2>31.10 Risoluzione dei problemi</h2>
+        
+        <h3>Problemi di connessione seriale</h3>
+        <ul>
+            <li><strong>Porta non trovata</strong>: verifica il nome della porta e che il dispositivo sia collegato</li>
+            <li><strong>Permission denied</strong> (Linux/macOS): aggiungi l'utente al gruppo dialout: <code>sudo usermod -a -G dialout $USER</code></li>
+            <li><strong>Timeout di connessione</strong>: controlla che il baud rate corrisponda alla configurazione del dispositivo</li>
+        </ul>
+        
+        <h3>Problemi di connessione HTTP</h3>
+        <ul>
+            <li><strong>Connection refused</strong>: verifica l'indirizzo IP del dispositivo e che sia sulla stessa rete</li>
+            <li><strong>Timeout</strong>: controlla che il dispositivo sia acceso e che il WiFi sia connesso</li>
+            <li><strong>Errori di autenticazione</strong>: verifica che API key e token siano corretti</li>
+        </ul>
+        
+        <h3>Errori comuni</h3>
+        <ul>
+            <li><code>"Arduino not connected"</code>: chiama <code>connect()</code> prima di usare il dispositivo</li>
+            <li><code>"Invalid pin"</code>: verifica che i numeri di pin siano validi per il tuo dispositivo</li>
+            <li><code>"Arduino error: ..."</code>: controlla che lo sketch del dispositivo sia caricato e in esecuzione</li>
+        </ul>
+        
+        <div class="nav-footer">
+            <a href="30-dotnet-interop.html">← Precedente: 30. Interop .NET</a>
+            <a href="32-personal-assistant.html">Successivo: 32. Assistente personale e CLI→</a>
+        </div>
+
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, a tua scelta.</p>
+        </footer>
+    </main>
+
+    <script src="../malda-highlight.js"></script>
+
+    <script src="../navigation.js"></script>
+</body>
+</html>

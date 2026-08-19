@@ -137,7 +137,7 @@ Rough sequencing. Items can overlap when owners differ; gates below are the acce
 | [`docs/planning/phase-3-modules-summary.md`](planning/phase-3-modules-summary.md) | Deferred module items |
 | [`docs/llm/malda-gotchas.md`](llm/malda-gotchas.md) | Silent failures to shrink |
 | [`docs/ui-framework.md`](ui-framework.md) | Server-driven UI host |
-| [`ReferenceManual/21-durable-workflows.html`](../ReferenceManual/21-durable-workflows.html) | Workflow user reference |
+| [`ReferenceManual/22-durable-workflows.html`](../ReferenceManual/22-durable-workflows.html) | Workflow user reference |
 | [`docs/workflows-ha.md`](workflows-ha.md) | W2 single-writer + read-only ops HA model |
 | [`docs/selective-imports.md`](selective-imports.md) | P1 `import { … } from` design + semantics |
 | [`docs/workspace-packages.md`](workspace-packages.md) | P2 workspace `packages/` + offline CLI |

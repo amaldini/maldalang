@@ -7,7 +7,7 @@ Formal, versioned contracts for the Malda language. Implementation precedence is
 | [malda-language-1.0.md](malda-language-1.0.md) | **Final 1.0** (2026-08-12) | Tier 0 core semantics |
 | [backend-capability-matrix.md](backend-capability-matrix.md) | **Active** | Interpreter / C# / JS product + property-test capabilities |
 | [tier0-backend-matrix.md](tier0-backend-matrix.md) | **Active** | Tier 0 conformance suite thresholds |
-| [ReferenceManual/34-grammar.html](../../ReferenceManual/34-grammar.html) | Phase 2.2 | BNF-style syntax (parser-aligned) |
+| [ReferenceManual/35-grammar.html](../../ReferenceManual/35-grammar.html) | Phase 2.2 | BNF-style syntax (parser-aligned) |
 | [CHANGELOG.md](CHANGELOG.md) | **Active** | Semver policy, deprecation, release notes |
 
 **Spec Final 1.0** declared 2026-08-12 (see [`CHANGELOG.md`](CHANGELOG.md) `[1.0.0]`). Toolchain **1.0.9**: [`docs/releases/v1.0.9.md`](../releases/v1.0.9.md). Types implementation: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.md). Broader maturity themes: [`docs/roadmap-p0-maturity.md`](../roadmap-p0-maturity.md). Next language constructs: [`docs/roadmap-language-constructs.md`](../roadmap-language-constructs.md).

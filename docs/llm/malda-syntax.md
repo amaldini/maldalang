@@ -210,7 +210,7 @@ Prefer a single listener for UI + API: construct `new RestServer()` (no port), t
 (`get` / `set` / `flash` / `getFlash`). For HTML forms use `csrfField`, `bindForm`,
 `formErrors`, and `pageLayout` (or `ui.layout` for richer pages). Server-driven component
 trees use `ui.*` with signature `ui.control(props, children?, key?)` — no JSX; see
-`few-shot/19_ui_tree.malda` and `ReferenceManual/23-web-ui.html`. Background work that is
+`few-shot/19_ui_tree.malda` and `ReferenceManual/24-web-ui.html`. Background work that is
 not a durable workflow uses `enqueueJob` / `claimJob` / `completeJob` / `failJob` against
 `./.malda/jobs.db`. Durable `workflow` bodies outside `step` refuse deny-listed built-ins
 (`now`, `sleep`, `writeFile`, …) as `WF1001`/`WF1002` **including through same-file helpers**;

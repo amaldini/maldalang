@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MALDA Grafi - Strutture dati a grafo e algoritmi">
+    <title>14. Grafi - Manuale di riferimento MALDA</title>
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../syntax.css">
+    <link rel="stylesheet" href="../print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>Manuale di riferimento MALDA&trade;</h1>
+        <p>Il linguaggio di programmazione AI-First - Versione 1.0.9</p>
+    </header>
+    <nav></nav>
+    <main>
+        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>14. Grafi</span></div>
+
+        <h1>14. Grafi</h1>
+
+        <p>I grafi sono strutture dati che rappresentano relazioni tra nodi (vertici) collegati da archi. MALDA supporta sia grafi diretti sia grafi non diretti, con archi pesati e proprietà opzionali sugli archi.</p>
+
+        <h2>14.1 Sintassi letterale Graph</h2>
+        <p>I grafi si creano con la sintassi letterale <code>graph directed { ... }</code> o <code>graph undirected { ... }</code>:</p>
+        <pre><code>// Create a directed graph
+var g = graph directed {
+  nodes: ["A", "B", "C", "D"],
+  edges: [
+    { from: "A", to: "B", weight: 4 },
+    { from: "A", to: "C", weight: 2 },
+    { from: "B", to: "D", weight: 5 },
+    { from: "C", to: "D", weight: 1 }
+  ]
+};
+
+// Create an undirected graph
+var g2 = graph undirected {
+  nodes: ["X", "Y", "Z"],
+  edges: [
+    { from: "X", to: "Y", weight: 10 },
+    { from: "Y", to: "Z", weight: 5 }
+  ]
+};
+
+// Empty graph
+var g3 = graph directed {};</code></pre>
+
+        <h2>14.2 Operazioni sui grafi</h2>
+        <p>I grafi offrono metodi per manipolare nodi e archi:</p>
+        <pre><code>var g = graph directed {};
+
+// Add nodes
+g.addNode("A");
+g.addNode("B", "data");  // Optional node data
+
+// Add edges
+g.addEdge("A", "B", 5);  // from, to, weight
+g.addEdge("A", "C", 3, dict { "label": "important" });  // with properties
+
+// Query graph
+print(g.hasNode("A"));        // true
+print(g.hasEdge("A", "B"));   // true
+print(g.getWeight("A", "B")); // 5
+print(g.nodeCount());         // 2
+print(g.edgeCount());         // 1
+print(g.isDirected());        // true
+
+// Get neighbors
+var neighbors = g.getNeighbors("A");  // ["B", "C"]
+
+// Get all nodes and edges
+var nodes = g.nodes();   // ["A", "B", "C"]
+var edges = g.edges();   // [[from, to, weight], ...]
+
+// Remove nodes and edges
+g.removeEdge("A", "B");
+g.removeNode("C");</code></pre>
+
+        <h2>14.3 Algoritmi sui grafi</h2>
+        <p>I grafi supportano gli algoritmi classici sui grafi:</p>
+        <pre><code>var g = graph directed {
+  nodes: ["A", "B", "C", "D"],
+  edges: [
+    { from: "A", to: "B", weight: 4 },
+    { from: "A", to: "C", weight: 2 },
+    { from: "B", to: "D", weight: 5 },
+    { from: "C", to: "D", weight: 1 }
+  ]
+};
+
+// Breadth-first search
+var visited = g.bfs("A");  // ["A", "B", "C", "D"]
+var pathResult = g.bfs("A", "D");  // { path: ["A", "B", "D"], found: true }
+
+// Depth-first search
+var dfsVisited = g.dfs("A");  // ["A", "B", "D", "C"]
+var dfsPath = g.dfs("A", "D");  // { path: ["A", "B", "D"], found: true }
+
+// Shortest path (Dijkstra's algorithm)
+var shortest = g.shortestPath("A", "D");
+print(shortest.path);     // ["A", "C", "D"]
+print(shortest.distance); // 3
+print(shortest.found);    // true
+
+// Topological sort (directed graphs only)
+var topo = g.topologicalSort();
+print(topo.order);  // ["A", "B", "C", "D"] or ["A", "C", "B", "D"]
+print(topo.valid);  // true
+
+// Connected components
+var components = g.connectedComponents();
+// Returns array of arrays, each containing node IDs in a component
+
+// Check for cycles
+print(g.isCyclic());  // false
+
+// Minimum spanning tree (undirected graphs only)
+var gUndirected = graph undirected {
+  nodes: ["A", "B", "C"],
+  edges: [
+    { from: "A", to: "B", weight: 1 },
+    { from: "B", to: "C", weight: 2 },
+    { from: "A", to: "C", weight: 4 }
+  ]
+};
+var mst = gUndirected.minimumSpanningTree();
+print(mst.edges);      // [[from, to, weight], ...]
+print(mst.totalWeight); // 3</code></pre>
+
+        <h2>14.4 Serializzazione dei grafi</h2>
+        <p>I grafi si possono serializzare in formato JSON per l'archiviazione o la trasmissione, e deserializzare per ricostruire il grafo. Il formato di serializzazione memorizza i nodi una sola volta e li referenzia per ID negli archi, evitando la duplicazione dei dati.</p>
+        <pre><code>var g = graph directed {
+  nodes: ["A", "B", "C"],
+  edges: [
+    { from: "A", to: "B", weight: 5 },
+    { from: "B", to: "C", weight: 3 }
+  ]
+};
+
+// Serialize to JSON string
+var json = g.serialize();
+print(json);
+
+// Serialize directly to file
+g.serialize("graph.json");
+
+// Deserialize from JSON string
+var g2 = g.deserialize(json);
+
+// Deserialize from file
+var g3 = g.deserialize("graph.json");
+
+// Verify the deserialized graph
+print(g2.nodeCount());  // 3
+print(g2.edgeCount());  // 2
+print(g2.hasEdge("A", "B"));  // true</code></pre>
+
+        <p><strong>Formato di serializzazione:</strong></p>
+        <p>Il formato JSON memorizza i grafi in modo efficiente:</p>
+        <ul>
+            <li><code>isDirected</code> - Booleano che indica se il grafo è diretto</li>
+            <li><code>nodes</code> - Array di oggetti nodo, ciascuno con <code>id</code> e <code>data</code> opzionale</li>
+            <li><code>edges</code> - Array di oggetti arco, ciascuno con <code>from</code>, <code>to</code>, <code>weight</code> e <code>properties</code> opzionali</li>
+        </ul>
+        <pre><code>{
+  "isDirected": true,
+  "nodes": [
+    { "id": "A", "data": null },
+    { "id": "B", "data": "node data" }
+  ],
+  "edges": [
+    { "from": "A", "to": "B", "weight": 5.0, "properties": null }
+  ]
+}</code></pre>
+
+        <p><strong>Dati dei nodi e proprietà degli archi:</strong></p>
+        <p>I dati dei nodi e le proprietà degli archi vengono preservati integralmente durante la serializzazione:</p>
+        <pre><code>var g = graph directed {};
+g.addNode("A", "important data");
+g.addNode("B", 42);
+g.addEdge("A", "B", 5, dict { "label": "primary", "type": "connection" });
+
+var json = g.serialize();
+var g2 = g.deserialize(json);
+
+print(g2.getNode("A"));  // "important data"
+print(g2.getNode("B"));  // 42
+// Edge properties are preserved internally</code></pre>
+
+        <p><strong>Grafi non diretti:</strong></p>
+        <p>Per i grafi non diretti, gli archi vengono memorizzati una sola volta nel formato serializzato e gli archi inversi vengono creati automaticamente durante la deserializzazione:</p>
+        <pre><code>var g1 = graph undirected {
+  nodes: ["X", "Y"],
+  edges: [
+    { from: "X", to: "Y", weight: 10 }
+  ]
+};
+
+var json = g1.serialize();
+var g2 = g1.deserialize(json);
+
+// Both directions work after deserialization
+print(g2.hasEdge("X", "Y"));  // true
+print(g2.hasEdge("Y", "X"));  // true</code></pre>
+
+        <h2>14.5 Riferimento dei metodi Graph</h2>
+        <ul>
+            <li><code>addNode(id, data?)</code> - Aggiunge un nodo con dati opzionali</li>
+            <li><code>addEdge(from, to, weight?, properties?)</code> - Aggiunge un arco con peso e proprietà opzionali</li>
+            <li><code>removeNode(id)</code> - Rimuove un nodo e tutti i suoi archi</li>
+            <li><code>removeEdge(from, to)</code> - Rimuove un arco</li>
+            <li><code>getNode(id)</code> - Restituisce i dati del nodo</li>
+            <li><code>getNeighbors(id)</code> - Restituisce l'array degli ID dei nodi vicini</li>
+            <li><code>getEdges(from?, to?)</code> - Restituisce gli archi (con filtro opzionale)</li>
+            <li><code>hasNode(id)</code> - Verifica se il nodo esiste</li>
+            <li><code>hasEdge(from, to)</code> - Verifica se l'arco esiste</li>
+            <li><code>getWeight(from, to)</code> - Restituisce il peso dell'arco</li>
+            <li><code>nodeCount()</code> - Restituisce il numero di nodi</li>
+            <li><code>edgeCount()</code> - Restituisce il numero di archi</li>
+            <li><code>isDirected()</code> - Verifica se il grafo è diretto</li>
+            <li><code>nodes()</code> - Restituisce l'array di tutti gli ID dei nodi</li>
+            <li><code>edges()</code> - Restituisce l'array di tutti gli archi come tuple [from, to, weight]</li>
+            <li><code>serialize(filePath?)</code> - Serializza il grafo in una stringa JSON o in un file</li>
+            <li><code>deserialize(jsonOrFilePath)</code> - Deserializza il grafo da una stringa JSON o da un file</li>
+            <li><code>bfs(start, target?)</code> - Breadth-first search</li>
+            <li><code>dfs(start, target?)</code> - Depth-first search</li>
+            <li><code>shortestPath(from, to)</code> - Cammino minimo con l'algoritmo di Dijkstra</li>
+            <li><code>topologicalSort()</code> - Ordinamento topologico (solo grafi diretti)</li>
+            <li><code>connectedComponents()</code> - Trova tutte le componenti connesse</li>
+            <li><code>isCyclic()</code> - Verifica se il grafo contiene cicli</li>
+            <li><code>minimumSpanningTree()</code> - MST con l'algoritmo di Kruskal (solo grafi non diretti)</li>
+        </ul>
+
+        <h2>14.6 Applicazioni dei grafi</h2>
+        <p>I grafi sono strutture dati versatili, con molte applicazioni pratiche. Ecco i casi d'uso più comuni, organizzati per categoria:</p>
+
+        <h3>Ricerca di percorsi e routing</h3>
+        
+        <p><strong>1. Pianificazione dei percorsi e navigazione</strong></p>
+        <p>Trova i percorsi ottimali tra le località usando gli algoritmi di cammino minimo. I pesi degli archi possono rappresentare distanza, tempo o costo.</p>
+        <pre><code>var roadNetwork = graph directed {
+  nodes: ["Home", "Work", "Store", "Park"],
+  edges: [
+    { from: "Home", to: "Work", weight: 15 },
+    { from: "Home", to: "Store", weight: 5 },
+    { from: "Store", to: "Work", weight: 12 }
+  ]
+};
+var route = roadNetwork.shortestPath("Home", "Work");
+print("Optimal route: " + route.path);
+print("Total distance: " + route.distance);</code></pre>
+
+        <p><strong>2. Ottimizzazione della supply chain e della logistica</strong></p>
+        <p>Ottimizza le rotte di spedizione e riduce i tempi di consegna o i costi di trasporto nelle reti della supply chain.</p>
+        <pre><code>var supplyChain = graph directed {
+  nodes: ["Factory", "Warehouse1", "Warehouse2", "Retailer"],
+  edges: [
+    { from: "Factory", to: "Warehouse1", weight: 50 },
+    { from: "Factory", to: "Warehouse2", weight: 60 },
+    { from: "Warehouse1", to: "Retailer", weight: 20 },
+    { from: "Warehouse2", to: "Retailer", weight: 15 }
+  ]
+};
+var optimalRoute = supplyChain.shortestPath("Factory", "Retailer");</code></pre>
+
+        <h3>Gestione delle dipendenze</h3>
+        
+        <p><strong>3. Gestione delle dipendenze tra task</strong></p>
+        <p>Determina l'ordine di esecuzione corretto per i task con dipendenze usando l'ordinamento topologico. Utile per i sistemi di build, i prerequisiti dei corsi e la pianificazione dei progetti.</p>
+        <pre><code>var buildGraph = graph directed {
+  nodes: ["compile", "test", "package", "deploy"],
+  edges: [
+    { from: "compile", to: "test", weight: 1 },
+    { from: "test", to: "package", weight: 1 },
+    { from: "package", to: "deploy", weight: 1 }
+  ]
+};
+var buildOrder = buildGraph.topologicalSort();
+if (buildOrder.valid) {
+  print("Build order: " + buildOrder.order);
+}</code></pre>
+
+        <p><strong>4. Risoluzione delle dipendenze del compilatore</strong></p>
+        <p>Determina l'ordine di compilazione dei moduli e rileva le dipendenze circolari che impedirebbero la compilazione.</p>
+        <pre><code>var moduleDeps = graph directed {
+  nodes: ["utils", "parser", "lexer", "compiler"],
+  edges: [
+    { from: "lexer", to: "parser", weight: 1 },
+    { from: "parser", to: "compiler", weight: 1 },
+    { from: "utils", to: "parser", weight: 1 }
+  ]
+};
+if (!moduleDeps.isCyclic()) {
+  var buildOrder = moduleDeps.topologicalSort();
+  print("Compilation order: " + buildOrder.order);
+} else {
+  print("Circular dependency detected!");
+}</code></pre>
+
+        <h3>Analisi di rete</h3>
+        
+        <p><strong>5. Analisi dei social network</strong></p>
+        <p>Identifica i gruppi di amici, analizza la diffusione dell'influenza e trova i cammini di connessione più brevi tra le persone.</p>
+        <pre><code>var socialNetwork = graph undirected {
+  nodes: ["Alice", "Bob", "Charlie", "Diana", "Eve"],
+  edges: [
+    { from: "Alice", to: "Bob", weight: 1 },
+    { from: "Bob", to: "Charlie", weight: 1 },
+    { from: "Diana", to: "Eve", weight: 1 }
+  ]
+};
+var groups = socialNetwork.connectedComponents();
+print("Friend groups: " + groups);
+var connectionPath = socialNetwork.bfs("Alice", "Charlie");</code></pre>
+
+        <p><strong>6. Pianificazione delle infrastrutture di rete</strong></p>
+        <p>Progetta reti convenienti (cavo, fibra, strade) che collegano tutti i nodi con il costo totale minimo, usando gli alberi di copertura minimi.</p>
+        <pre><code>var cityNetwork = graph undirected {
+  nodes: ["CityA", "CityB", "CityC", "CityD"],
+  edges: [
+    { from: "CityA", to: "CityB", weight: 100 },
+    { from: "CityB", to: "CityC", weight: 150 },
+    { from: "CityA", to: "CityC", weight: 200 },
+    { from: "CityC", to: "CityD", weight: 80 }
+  ]
+};
+var mst = cityNetwork.minimumSpanningTree();
+print("Optimal network edges: " + mst.edges);
+print("Total cost: " + mst.totalWeight);</code></pre>
+
+        <p><strong>7. Analisi della rete elettrica e della power grid</strong></p>
+        <p>Progetta reti di distribuzione dell'energia efficienti e identifica i componenti isolati della rete.</p>
+        <pre><code>var powerGrid = graph undirected {
+  nodes: ["PowerPlant", "Substation1", "Substation2", "CityA"],
+  edges: [
+    { from: "PowerPlant", to: "Substation1", weight: 100 },
+    { from: "Substation1", to: "CityA", weight: 50 },
+    { from: "Substation1", to: "Substation2", weight: 80 }
+  ]
+};
+var efficientGrid = powerGrid.minimumSpanningTree();
+var gridComponents = powerGrid.connectedComponents();</code></pre>
+
+        <h3>Modellazione delle relazioni</h3>
+        
+        <p><strong>8. Modellazione di workflow e processi</strong></p>
+        <p>Modella i workflow, rileva i potenziali deadlock e valida i flussi di processo controllando la presenza di cicli.</p>
+        <pre><code>var workflow = graph directed {
+  nodes: ["start", "process", "validate", "end"],
+  edges: [
+    { from: "start", to: "process", weight: 1 },
+    { from: "process", to: "validate", weight: 1 },
+    { from: "validate", to: "end", weight: 1 }
+  ]
+};
+if (workflow.isCyclic()) {
+  print("Workflow has cycles - potential deadlock!");
+} else {
+  print("Workflow is valid");
+}</code></pre>
+
+        <p><strong>9. Gerarchia organizzativa e struttura di reporting</strong></p>
+        <p>Modella la struttura aziendale, trova le catene di reporting e identifica i livelli di management usando la ricerca in ampiezza.</p>
+        <pre><code>var orgChart = graph directed {
+  nodes: ["CEO", "VP1", "VP2", "Manager1", "Employee1"],
+  edges: [
+    { from: "CEO", to: "VP1", weight: 1 },
+    { from: "CEO", to: "VP2", weight: 1 },
+    { from: "VP1", to: "Manager1", weight: 1 },
+    { from: "Manager1", to: "Employee1", weight: 1 }
+  ]
+};
+var reportingChain = orgChart.bfs("CEO", "Employee1");
+print("Reporting chain: " + reportingChain.path);</code></pre>
+
+        <p><strong>11. Sistemi di raccomandazione</strong></p>
+        <p>Trova elementi simili, prodotti correlati o raccomandazioni di contenuti esplorando le relazioni tra vicini.</p>
+        <pre><code>var productGraph = graph undirected {
+  nodes: ["ProductA", "ProductB", "ProductC", "ProductD"],
+  edges: [
+    { from: "ProductA", to: "ProductB", weight: 0.9 },
+    { from: "ProductB", to: "ProductC", weight: 0.7 },
+    { from: "ProductC", to: "ProductD", weight: 0.5 }
+  ]
+};
+var recommendations = productGraph.getNeighbors("ProductA");
+print("Recommended products: " + recommendations);
+var relatedCluster = productGraph.bfs("ProductA");</code></pre>
+
+        <div class="see-also">
+            <h3>Vedi anche</h3>
+            <ul>
+                <li><a href="04-data-types.html">4. Tipi di dati</a> - Altre strutture dati in MALDA</li>
+                <li><a href="06-arrays.html">6. Array</a> - Strutture dati array</li>
+                <li><a href="33-examples.html">33. Esempi</a> - Altri esempi completi</li>
+            </ul>
+        </div>
+
+        <div class="nav-footer">
+            <a href="13-built-in-functions.html">← Precedente: 13. Funzioni built-in</a>
+            <a href="15-vectordb.html">Successivo: 15. VectorDB→</a>
+        </div>
+
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, a tua scelta.</p>
+        </footer>
+    </main>
+    <script src="../malda-highlight.js"></script>
+    <script src="../navigation.js"></script>
+</body>
+</html>

@@ -159,6 +159,7 @@
             <li>Conditional branching (if/else)</li>
             <li>Loops (while, for)</li>
             <li>Functions/procedures</li>
+            <li>Named prompt templates (<code>prompt</code>)</li>
             <li>Input/output operations</li>
             <li>Recursion support</li>
             <li>Object-oriented programming (classes, objects, inheritance)</li>
@@ -185,6 +186,7 @@
             <li><strong>OpenRouter Client</strong>: <code>OpenRouterClient</code> class for remote models with automatic API key configuration</li>
             <li><strong>Conversation Management</strong>: <code>Conversation</code> class with automatic tool call handling and parallel read-only tool execution (default on)</li>
             <li><strong>Tool System</strong>: <code>Tool</code> class with OpenAI function calling format support</li>
+            <li><strong>Prompt templates</strong>: named <code>prompt</code> declarations with parameter interpolation, schema-validated <code>await</code>, and Mode B/C tools — see <a href="10-prompts.html">10. Prompts</a></li>
             <li><strong>Custom Tools</strong>: <code>@Tool</code> decorator for defining custom LLM tools from MALDA functions</li>
             <li><strong>Agent Class</strong>: <code>Agent</code> class for autonomous agents with roles and instructions</li>
             <li><strong>Specialized Agents</strong>: <code>CodingAgent</code>, <code>MALDACodingAgent</code>, <code>GitAgent</code>, and <code>DevAgent</code> with pre-configured tools</li>
@@ -193,7 +195,7 @@
             <li><strong>Working Directory Safety</strong>: Path validation for file operation tools</li>
         </ul>
         <div class="warning-box">
-            <p><strong>⚠️ Important:</strong> Autonomous agent systems with tool access pose significant security and operational risks. See <a href="17-agent-orchestration.html">17. Agent Orchestration</a> for a detailed disclaimer and risk mitigation strategies before deploying agents in production.</p>
+            <p><strong>⚠️ Important:</strong> Autonomous agent systems with tool access pose significant security and operational risks. See <a href="18-agent-orchestration.html">18. Agent Orchestration</a> for a detailed disclaimer and risk mitigation strategies before deploying agents in production.</p>
         </div>
 
         <h3>Web & API Features</h3>
@@ -300,7 +302,7 @@ print(mathUtils.VERSION);     // "1.0"</code></pre>
         <p>The same two forms apply to packages, with a dotted package name in place of the string path:</p>
         <pre><code>import App.Core;
 import UI = App.Web.Components;</code></pre>
-        <p>Package names beginning with <code>System</code>, <code>Microsoft</code>, or <code>Windows</code> are resolved as .NET namespaces through the interop layer rather than the package manager. See <a href="29-dotnet-interop.html">29. .NET Interop</a>.</p>
+        <p>Package names beginning with <code>System</code>, <code>Microsoft</code>, or <code>Windows</code> are resolved as .NET namespaces through the interop layer rather than the package manager. See <a href="30-dotnet-interop.html">30. .NET Interop</a>.</p>
         <p>Failing to resolve a target is a runtime error: <em>Package or module not found: Name</em> for packages, and the underlying file-not-found message for file imports.</p>
 
         <h3>Path and safety behavior for <code>include</code></h3>
@@ -347,7 +349,7 @@ if (checked.ok) {
     io.print("schema ok: " + checked.data.summary);
 }</code></pre>
 
-        <p>Core syntax uses the same statements. Prefer namespaced calls (<code>io.print</code>); flat <code>print</code> still runs. File, path, and environment I/O: <a href="11-input-output.html">11. Input/Output</a>.</p>
+        <p>Core syntax uses the same statements. Prefer namespaced calls (<code>io.print</code>); flat <code>print</code> still runs. File, path, and environment I/O: <a href="12-input-output.html">12. Input/Output</a>.</p>
 
         <pre><code>io.print("Hello, World!");
 
@@ -387,7 +389,7 @@ person.introduce();</code></pre>
             <ul>
                 <li><a href="03-lexical-structure.html">3. Lexical Structure</a> - Learn about syntax basics</li>
                 <li><a href="04-data-types.html">4. Data Types</a> - Understand MALDA's type system</li>
-                <li><a href="32-examples.html">32. Examples</a> - More complete examples</li>
+                <li><a href="33-examples.html">33. Examples</a> - More complete examples</li>
             </ul>
         </div>
 

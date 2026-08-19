@@ -276,7 +276,7 @@ print("|" + str.trimText(user?.name) + "|");</code></pre>
         <p>La precedenza sta tra l'OR logico e il condizionale ternario; <code>??</code> è associativo a destra.</p>
 
         <h2>7.13 Precedenza degli operatori</h2>
-        <p>Gli operatori vengono valutati in ordine di precedenza. Vedi l'<a href="35-appendix.html">Appendice B</a> per la tabella completa di precedenza, allineata al parser di riferimento.</p>
+        <p>Gli operatori vengono valutati in ordine di precedenza. Vedi l'<a href="36-appendix.html">Appendice B</a> per la tabella completa di precedenza, allineata al parser di riferimento.</p>
         
         <h2>7.14 Espressioni async e await</h2>
         <p>MALDA supporta operazioni asincrone first-class tramite le espressioni <code>async</code> e <code>await</code>. Permettono di lavorare con operazioni asincrone senza bloccare l'esecuzione.</p>
@@ -389,15 +389,15 @@ var p = question
             <li>Passa <code>{ onToken: (token) =&gt; ... }</code> a <code>runPrompt</code> per i token di contenuto in streaming; <code>{ onReasoning: (token) =&gt; ... }</code> per i delta di reasoning/thinking</li>
             <li>Il pipe ha precedenza inferiore alla maggior parte degli operatori; usa le parentesi quando lo mescoli con espressioni aritmetiche o logiche</li>
         </ul>
-        <p>Vedi <a href="12-built-in-functions.html">12. Funzioni built-in</a> (helper per pipeline AI) e <a href="14-vectordb.html">14. VectorDB</a> (<code>asRetriever</code>) per esempi RAG. Walkthrough completo: <code>Examples/Prompts/rag_pipeline.malda</code>.</p>
+        <p>Vedi <a href="13-built-in-functions.html">13. Funzioni built-in</a> (helper per pipeline AI) e <a href="15-vectordb.html">15. VectorDB</a> (<code>asRetriever</code>) per esempi RAG. Walkthrough completo: <code>Examples/Prompts/rag_pipeline.malda</code>.</p>
         <p><strong>Composizione avanzata:</strong> usa <code>composePipe(f, g, …)</code> per costruire una funzione sequenza riutilizzabile; <code>parallelRun(input, { branch: fn, … })</code> per il fan-out in parallelo; <code>mergeRetrievedDocs</code> per combinare i hit di retrieval paralleli prima di <code>formatRetrievedDocs</code>. Esempio: <code>Examples/Prompts/rag_compose_pipeline.malda</code>.</p>
-        <p>Per nominare e riutilizzare una pipeline, avvolgi l'espressione pipe in una <code>function</code> ordinaria e fai <code>return</code> del risultato. Vedi <code>Examples/Prompts/rag_function_pipeline.malda</code> e <a href="09-functions.html">9. Funzioni</a>.</p>
+        <p>Per nominare e riutilizzare una pipeline, avvolgi l'espressione pipe in una <code>function</code> ordinaria e fai <code>return</code> del risultato. Vedi <code>Examples/Prompts/rag_function_pipeline.malda</code> e <a href="10-prompts.html">10. Prompt</a>.</p>
 
         <div class="see-also">
             <h3>Vedi anche</h3>
             <ul>
                 <li><a href="03-lexical-structure.html">3. Struttura lessicale</a> - Riferimento degli operatori</li>
-                <li><a href="35-appendix.html">35. Appendice</a> - Tabella di precedenza degli operatori</li>
+                <li><a href="36-appendix.html">36. Appendice</a> - Tabella di precedenza degli operatori</li>
                 <li><a href="06-arrays.html">6. Array</a> - Valori array consumati dalle comprehension</li>
             </ul>
         </div>

@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MALDA Prompts - templates, await, schemas, tools, and PromptInstance">
+    <title>10. Prompts - MALDA Reference Manual</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="syntax.css">
+    <link rel="stylesheet" href="print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>MALDA&trade; Reference Manual</h1>
+        <p>The AI-First Programming Language - Version 1.0.9</p>
+    </header>
+    <nav></nav>
+    <main>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>10. Prompts</span></div>
+        <h1>10. Prompts</h1>
+        <p>A <code>prompt</code> is a named, parameterized template. Calling it interpolates parameters and returns a <code>PromptInstance</code>. <code>await</code> can call an LLM and validate JSON against a declared type. Decorators such as <code>@within</code> and <code>@budget</code> apply here as well as on functions — see <a href="09-functions.html">9.7 Decorators</a>.</p>
+
+        <h2>10.1 Overview</h2>
+        <p>Prompt blocks are reusable prompt templates. Start with a template that does not call a model, then <code>await</code> with a <code>schema</code>, then tools. Same files: <code>Examples/Prompts/basic_prompt.malda</code>, <code>Examples/Prompts/schema_prompt_structured.malda</code>, <code>Examples/Prompts/prompt_tools_mode.malda</code>, <code>Examples/Prompts/prompt_tools_then_structured.malda</code>.</p>
+        <table>
+            <thead>
+                <tr><th>Step</th><th>What you write</th><th>Calls a model?</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>1. Template</td><td><code>prompt greet(name) { user: "Hello, {name}" }</code> then <code>greet("Alice")</code></td><td>No. You get a <code>PromptInstance</code> (interpolated strings).</td></tr>
+                <tr><td>2. Structured <code>await</code></td><td><code>schema</code> + <code>prompt ... -&gt; Schema</code> + <code>await extract(...)</code></td><td>Yes. JSON is validated against the schema.</td></tr>
+                <tr><td>3. Tools</td><td>Mode B: <code>tools: [...]</code> on one call. Mode C: <code>gather: [...]</code> then a typed extract</td><td>Yes. Do not combine <code>tools:</code> and <code>gather:</code>.</td></tr>
+            </tbody>
+        </table>
+        <h4>Step 1 — template, no API key</h4>
+        <pre><code data-run="true" data-expect="Hello, Alice! How are you today?">prompt greet(name) {
+    user: "Hello, {name}! How are you today?"
+}
+
+var greeting = greet("Alice");
+print(greeting.user);</code></pre>
+        <h4>Step 2 — await plus schema (needs an LLM)</h4>
+        <pre><code>schema ContactCard {
+    name: string;
+    email: string;
+}
+
+prompt extractContact(raw) -> ContactCard {
+    system: "Extract a contact. Reply with JSON only matching the schema.";
+    user: """
+    Text:
+    {raw}
+    """
+}
+
+var card = await extractContact("Ada Lovelace — ada@example.com");
+print("name=" + card.name);</code></pre>
+        <h4>Step 3 — Mode B vs Mode C</h4>
+        <table>
+            <thead>
+                <tr><th>Mode</th><th>Field</th><th>On <code>await</code></th></tr>
+            </thead>
+            <tbody>
+                <tr><td>B</td><td><code>tools: ["name"]</code></td><td>One LLM turn with tools. Schema <code>response_format</code> is not sent.</td></tr>
+                <tr><td>C</td><td><code>gather: ["name"]</code> and <code>-&gt; Type</code></td><td>Tool round, then a fresh typed extract without tools.</td></tr>
+            </tbody>
+        </table>
+        <p>Without <code>await</code>, constructing the prompt still does not call the model. Details of validation, repair, pipes, and <code>PromptInstance</code> follow in this chapter.</p>
+        
+        <h2>10.2 Prompt Declaration Syntax</h2>
+        <p>Prompts support two body syntaxes:</p>
+        
+        <h4>Object Literal Syntax (Backward Compatible)</h4>
+        <pre><code>prompt name(params) -> ReturnType? {
+    system: "Optional system prompt"
+    user: "Required user prompt with {parameter} interpolation"
+    model: "Optional model name"
+    temperature: 0.7
+    tools: ["tool1", "tool2"]
+    gather: ["read_file", "grep"]
+    maxTokens: 2000
+}</code></pre>
+        
+        <h4>Statement-Based Syntax (New)</h4>
+        <pre><code>prompt name(params) -> ReturnType? {
+    system "Optional system prompt";
+    user expression;
+    model "Optional model name";
+    temperature 0.7;
+    tools ["tool1", "tool2"];
+    gather ["read_file", "grep"];
+    maxTokens 2000;
+}</code></pre>
+        
+        <p><strong>Key Features:</strong></p>
+        <ul>
+            <li><strong>Parameters:</strong> Like functions, prompts can take parameters that are interpolated into the prompt strings</li>
+            <li><strong>Return Type:</strong> Optional annotation (<code>-&gt; ReturnType</code>). For <code>prompt(...)</code> (without <code>await</code>) it only affects the type of the <code>PromptInstance</code>. When you use <code>await prompt(...)</code>, the return type is <strong>enforced</strong>: the LLM response is parsed as JSON, validated against the declared type (primitives, <code>Plan</code>, or custom class names), and on repeated validation failure a repair instruction is sent and the call is retried (bounded attempts); after exhaustion a runtime error is thrown. Custom class return types (e.g. <code>-&gt; MyClass</code>) are supported in both interpreted and transpiled runs.</li>
+            <li><strong>Body:</strong> Two syntaxes supported:
+                <ul>
+                    <li><strong>Object literal:</strong> Traditional syntax with <code>key: value</code> pairs</li>
+                    <li><strong>Statement-based:</strong> New syntax with <code>keyword expression;</code> statements. The <code>user</code> field can be any expression (converted to string), not just string literals.</li>
+                </ul>
+            </li>
+            <li><strong>Prompt Fields:</strong>
+                <ul>
+                    <li><code>system</code> / <code>system:</code> (optional string) - System prompt for the LLM</li>
+                    <li><code>user</code> / <code>user:</code> (required) - User prompt. In statement syntax, can be any expression (converted to string). Supports <code>{param}</code> interpolation and <code>$"..."</code> interpolated strings.</li>
+                    <li><code>model</code> / <code>model:</code> (optional string) - LLM model name</li>
+                    <li><code>temperature</code> / <code>temperature:</code> (optional number) - Temperature setting for the LLM</li>
+                    <li><code>tools</code> / <code>tools:</code> (optional array of strings) - List of tool names to make available (Mode B). Do not combine with <code>gather</code>.</li>
+                    <li><code>gather</code> / <code>gather:</code> (optional array of strings) - Mode C marker: on <code>await</code> with <code>-&gt; Type</code>, run a tool round, then a fresh typed extract without tools. Requires <code>-&gt; Type</code>. Constructing the <code>PromptInstance</code> without <code>await</code> does not call the model.</li>
+                    <li><code>maxTokens</code> / <code>maxTokens:</code> (optional integer) - Maximum tokens for the response</li>
+                    <li><code>examples</code> / <code>examples:</code> (optional array) - Few-shot example pairs injected as user/assistant messages before the final <code>user</code> prompt. Each entry is an object with <code>input</code> and <code>output</code> strings (aliases <code>user</code> / <code>assistant</code> are accepted).</li>
+                </ul>
+            </li>
+        </ul>
+
+        <h4>Few-Shot Examples</h4>
+        <pre><code>prompt classify(text) {
+    system: "Classify sentiment as positive or negative."
+    examples: [
+        { input: "I love it!", output: "positive" },
+        { input: "Terrible.", output: "negative" }
+    ]
+    user: "Classify: {text}"
+}
+
+var p = classify("Pretty good");
+print(length(p.examples));  // 2</code></pre>
+        <p>When the prompt is executed (via <code>agent.think</code>, <code>await prompt(...)</code>, or <code>runPrompt</code>), each example is sent as a user message followed by an assistant message, then the interpolated <code>user</code> field.</p>
+
+        <h4>Dynamic Few-Shot at Runtime</h4>
+        <p>Use <code>withExamples()</code> to attach or replace examples on a <code>PromptInstance</code> built at runtime. Works in pipe pipelines:</p>
+        <pre><code>prompt classify(text) {
+    user: "Classify: {text}"
+}
+
+var dynamic = [
+    { input: "Great!", output: "positive" },
+    { input: "Awful.", output: "negative" }
+];
+
+var p = classify("Pretty good") |> withExamples(dynamic);
+// merge static + runtime examples from the prompt declaration:
+var merged = withExamples(classify("x"), dynamic, { merge: true });
+
+await (p |> runPrompt(client));</code></pre>
+        
+        <h2>10.3 Basic Prompt Examples</h2>
+        <h4>Simple Prompt</h4>
+        <pre><code>prompt simple(task) {
+    user: "Task: {task}"
+}
+
+var p = simple("Add logging");
+print(p.user);  // Output: Task: Add logging</code></pre>
+        
+        <h4>Prompt with System Message</h4>
+        <pre><code>prompt planTask(task, docs) -> Plan {
+    system: "You are a senior MALDA engineer specializing in feature planning.",
+    user: """
+    Implement feature: {task}
+    
+    Relevant documentation:
+    {docs}
+    
+    Provide a detailed implementation plan.
+    """
+}
+
+var plan = planTask("Add error handling", readFile("docs.md"));</code></pre>
+        
+        <h4>Prompt with Interpolation</h4>
+        <pre><code>prompt greet(name, age) {
+    user: $"Hello {name}, you are {age} years old."
+}
+
+var greeting = greet("Alice", 25);</code></pre>
+        
+        <h2>10.4 Using Prompts with Agents</h2>
+        <p>Prompt blocks can be passed directly to <code>agent.think()</code>:</p>
+        <pre><code>var client = new OpenRouterClient("openai/gpt-4");
+var agent = new CodingAgent("Dev", "developer", "");
+
+prompt codeReview(code, language) {
+    system: "You are an expert code reviewer.",
+    user: """
+    Review this {language} code:
+    
+    ```{language}
+    {code}
+    ```
+    
+    Provide:
+    1. Bug findings
+    2. Performance issues
+    3. Style suggestions
+    """
+}
+
+var review = agent.think(codeReview(sourceCode, "malda"));
+print(review.content);</code></pre>
+        
+        <p>When a <code>PromptInstance</code> is passed to <code>agent.think()</code>:</p>
+        <ul>
+            <li>The <code>system</code> prompt (if provided) is set on the conversation</li>
+            <li>The <code>user</code> prompt is used as the message</li>
+            <li>Optional metadata (<code>model</code>, <code>temperature</code>, <code>tools</code>, <code>maxTokens</code>) can be applied (future enhancement)</li>
+        </ul>
+        
+        <h2>10.5 Direct Await Execution</h2>
+        <p>Prompts can be executed directly using <code>await</code>, which calls the LLM and returns the response string:</p>
+        <pre><code>// Optional: use OpenRouter; omit to use default local LLM
+var client = new OpenRouterClient();
+var agent = new Agent("Assistant", "helper", "You are helpful.", client);
+setDefaultAgent(agent);
+
+prompt summarize(text) {
+    system "You are a summarizer. Respond with only the summary.";
+    user "Summarize: " + text;
+}
+
+var summary = await summarize("Long document text here...");
+print(summary);  // Prints the LLM response directly</code></pre>
+        
+        <p><strong>How it works:</strong></p>
+        <ul>
+            <li>When you use <code>await prompt(...)</code>, the prompt is executed immediately</li>
+            <li>The system uses the default agent (set via <code>setDefaultAgent(agent)</code>) or creates a temporary agent with the <strong>default local LLM</strong> (Qwen/Qwen2.5-0.5B-Instruct, downloaded as a GGUF build from Hugging Face on first use) if none is set</li>
+            <li>If no return type is declared, the LLM response content is returned as a string</li>
+            <li>If a return type is declared (<code>prompt name(...) -&gt; Type</code>), the return value is <strong>enforced</strong>: MALDA extracts JSON from the response (including from markdown or code fences), validates it against the declared type schema, and returns the parsed value on success</li>
+            <li><strong>Mode A (structured):</strong> when <code>-&gt; Type</code> is present and the prompt body has <strong>no tools</strong> and <strong>no <code>gather:</code></strong>, the JSON schema is sent to the LLM backend (e.g. OpenAI <code>response_format</code>) so the model returns schema-conforming JSON on the first attempt. The same gate also appends a compact <strong>schema appendix</strong> to the system message (marker <code>MALDA_OUTPUT_SCHEMA</code>) so local backends that ignore <code>response_format</code> still see the expected shape. See <code>Examples/Prompts/schema_prompt_structured.malda</code>.</li>
+            <li><strong>Mode B (tools):</strong> for v1, <code>response_format</code> and <code>tools</code> are mutually exclusive — if the prompt lists <code>tools:</code>, the schema is not sent and the appendix is not added. On <code>await</code> with <code>-&gt; Type</code>, validation and repair still run (harder for local models without the appendix). See <code>Examples/Prompts/prompt_tools_mode.malda</code>. <code>tools:</code> is <strong>not</strong> reinterpreted as two LLM calls.</li>
+            <li><strong>Mode C (gather-then-extract):</strong> <code>gather: ["tool", …]</code> plus <code>-&gt; Type</code> on <strong>one</strong> prompt. On <code>await</code>, MALDA runs a tool round (no <code>response_format</code>), then a fresh typed prompt without tools (Mode A validate/repair). Gather output is not passed to <code>validate</code> until the extract step. Offline <code>prompt(...)</code> without <code>await</code> does not call the model. See <code>Examples/Prompts/prompt_tools_then_structured.malda</code>. The older two-prompt ritual still works; prefer <code>gather:</code>.</li>
+            <li>On validation failure, MALDA appends a repair instruction to the prompt and retries (up to a fixed maximum of attempts); after exhaustion, a runtime error is thrown</li>
+            <li>Supported return types include primitives (<code>string</code>, <code>int</code>, <code>number</code>, <code>bool</code>, <code>array</code>, <code>object</code>), the built-in <code>Plan</code> type, custom class names (e.g. <code>-&gt; MyClass</code>), <code>schema</code> names, <strong>sum types</strong> (e.g. <code>-&gt; Intent</code>), and <strong>programs</strong> (<code>-&gt; program(ApiName)</code>); these work in both interpreter and transpiled mode</li>
+            <li>This provides a cleaner syntax than <code>agent.think(prompt(...)).content</code></li>
+        </ul>
+
+        <h2>10.6 Schema Declarations for Structured Output</h2>
+        <p>Declare reusable JSON schemas with the <code>schema</code> keyword. Schemas are used by <code>parseJson()</code> and typed prompt returns (<code>-&gt; Type</code>):</p>
+        <pre><code>schema Answer {
+    text: string;
+    sources: string[];   // array types: elementType[]
+    score: float?;       // optional field
+}
+
+schema Address {
+    city: string;
+}
+
+schema Person {
+    name: string;
+    address: Address;    // nested schema (expanded for validate / typed prompts)
+}
+
+var parsed = parseJson('{"text":"hi","sources":["a.md"]}', "Answer");</code></pre>
+        <p>Supported field types: JSON primitives (<code>string</code>, <code>int</code>, <code>float</code>, <code>bool</code>, <code>object</code>, <code>array</code>), array forms such as <code>string[]</code> or <code>Address[]</code>, <strong>other declared schema names</strong> (nested objects are expanded inline), and <strong>declared sum types</strong> (<code>intent: Intent</code> / <code>Intent[]</code> — tagged JSON <code>oneOf</code>). Use <code>?</code> after the type for optional fields. Unknown field type names error when the schema is resolved; cyclic schema references are rejected. See <code>Examples/Basics/schema_nested_validate.malda</code> and <code>Examples/Basics/schema_sumtype_validate.malda</code>.</p>
+        <p>For end-to-end RAG pipelines combining schemas, prompts, retrievers, and pipes, see <code>Examples/Prompts/rag_pipeline.malda</code> and <a href="13-built-in-functions.html">13. Built-in Functions</a> (AI pipeline helpers).</p>
+
+        <h2>10.7 Sum Types as Prompt Return Types</h2>
+        <p>When the model must choose <strong>one of several shapes</strong> (intents), declare a sum type and use it as the prompt return type. On success, <code>await</code> returns a real variant value for <code>match</code>:</p>
+        <pre><code>type Intent =
+    Search(query: string)
+  | Buy(sku: string, qty: int)
+  | Help();
+
+prompt parseUtterance(text) -&gt; Intent {
+    system: "Map the user to exactly one Intent variant. JSON only.";
+    user: text;
+}
+
+var intent = await parseUtterance("buy 2 of SKU-9");
+match intent {
+    case Search(q): print("search: " + q);
+    case Buy(sku, qty): print("buy " + sku);
+    case Help(): print("help");
+}</code></pre>
+        <p>Wire JSON uses a <code>tag</code> field equal to the constructor name, plus payload fields named like the constructor parameters — for example <code>{"tag":"Buy","sku":"SKU-9","qty":2}</code> or <code>{"tag":"Help"}</code>. Optional payload types (<code>Buy(sku: string, qty: int)</code>) become JSON Schema types for <code>validate</code> and typed prompts; name-only parameters stay permissive. The same name cannot be both a <code>schema</code> and a <code>type</code> (sum type). <code>validate("Intent", dict)</code> accepts that tagged shape and returns the original dict; it does not produce a variant. See <code>Examples/Prompts/sum_type_intent_prompt.malda</code>, <code>Examples/Basics/sumtype_typed_payloads.malda</code>, <code>Examples/Basics/schema_sumtype_validate.malda</code>, and <a href="04-data-types.html">Data Types</a> for sum types.</p>
+
+        <h2>10.8 Closed APIs and Deterministic Programs</h2>
+        <p>Declare a closed <code>api</code> of method signatures. Implementations are ordinary top-level <code>function</code>s with the same names. A typed prompt may return <code>program(ApiName)</code>; on success you get a program value that <code>runProgram</code> executes with <strong>no further LLM calls</strong> (unlike <code>@Tool</code> agent loops or <code>executePlan</code>):</p>
+        <pre><code>api Calc {
+    function add(a, b);
+    function mul(a, b);
+}
+
+function add(a, b) { return a + b; }
+function mul(a, b) { return a * b; }
+
+prompt solve(expr) -&gt; program(Calc) {
+    system: "Translate into Calc steps. JSON only.";
+    user: expr;
+}
+
+var prog = await solve("(2 + 3) * 4");
+var result = runProgram(prog);</code></pre>
+        <p>Wire JSON shape. Offline (no LLM), pass the same object to <code>runProgram</code> directly — <code>args</code> are JSON literals or <code>"$alias"</code> references to a prior step's <code>as</code>:</p>
+        <pre><code data-run="true" data-expect="20">api Calc {
+    function add(a, b);
+    function mul(a, b);
+}
+
+function add(a, b) { return a + b; }
+function mul(a, b) { return a * b; }
+
+var prog = parseJSON("""
+{
+  "@api": "Calc",
+  "steps": [
+    { "call": "add", "args": [2, 3], "as": "t0" },
+    { "call": "mul", "args": ["$t0", 4], "as": "result" }
+  ],
+  "return": "$result"
+}
+""");
+
+var result = runProgram(prog);
+print(result);</code></pre>
+        <p>See <code>Examples/Prompts/api_program_calc.malda</code>. A name cannot be both an <code>api</code> and a <code>schema</code> / sum <code>type</code>.</p>
+
+        <h2>10.9 Reusable Pipe Pipelines</h2>
+        <p>Name and reuse multi-step AI pipelines with ordinary <code>function</code> declarations and the pipe operator (<code>|&gt;</code>). Return the final pipe result explicitly.</p>
+        <pre><code>function ragContext(question, retriever) {
+    return question |> retriever.get |> formatRetrievedDocs;
+}
+
+function ragPrompt(question, context) {
+    return context |> (ctx) => answerPrompt(question, ctx);
+}
+
+var context = ragContext("What is GraphMemory?", retriever);
+var prompt = ragPrompt("What is GraphMemory?", context);</code></pre>
+        <p>With an LLM client and typed output:</p>
+        <pre><code>function ragAnswer(question, client) -> Answer {
+    return question |> retriever.get |> formatRetrievedDocs
+        |> (ctx) => answerPrompt(question, ctx)
+        |> runPrompt(client)
+        |> parseJson("Answer");
+}
+
+var answer = await ragAnswer("How does retrieval work?", client);</code></pre>
+        <p>Local bindings for readable multi-stage bodies (retrieval, branching, reuse of intermediate values):</p>
+        <pre><code>function buildContext(question, retriever, fallback) {
+    var hits = question |> retriever.get;
+    if (length(hits) == 0) {
+        return fallback;
+    }
+    var text = formatRetrievedDocs(hits);
+    return text;
+}</code></pre>
+        <p>Stream tokens during <code>runPrompt</code> in interpreted and transpiled mode: pass <code>{ onToken: (token) =&gt; ... }</code> for content and <code>{ onReasoning: (token) =&gt; ... }</code> for reasoning deltas (see <a href="13-built-in-functions.html">13. Built-in Functions</a>).</p>
+        <p>See <a href="07-expressions.html">7. Expressions</a> (pipe operator) and <code>Examples/Prompts/rag_function_pipeline.malda</code>.</p>
+        <p><strong>Advanced composition:</strong> <code>composePipe</code>, <code>parallelRun</code>, and <code>mergeRetrievedDocs</code> compose with functions and pipes for parallel retrieval and reusable pipeline functions. See <code>Examples/Prompts/rag_compose_pipeline.malda</code> and <a href="13-built-in-functions.html">13. Built-in Functions</a>.</p>
+
+        <h4>Typed Await Example (Validated Output)</h4>
+        <pre><code>prompt planTask(task) -&gt; Plan {
+    system "You are a planner. Return only JSON.";
+    user "Task: " + task;
+}
+
+// With a return type, await validates the model output
+var plan = await planTask("Add parser tests");
+print(plan.steps[0].description);</code></pre>
+        
+        <p><strong>Setting a Default Agent:</strong></p>
+        <p>If you omit a client, the default is the local Qwen/Qwen2.5-0.5B-Instruct model (auto-downloaded as a GGUF build from Hugging Face). To use a remote model (e.g. OpenRouter), pass a client:</p>
+        <pre><code>// Optional: use OpenRouter for remote model
+var client = new OpenRouterClient();
+var agent = new Agent("MyAgent", "assistant", "You are helpful.", client);
+setDefaultAgent(agent);
+
+// Now await prompt() calls will use this agent
+var result = await myPrompt("input");</code></pre>
+        
+        <h2>10.10 PromptInstance Properties</h2>
+        <p>When a prompt is invoked, it returns a <code>PromptInstance</code> object with the following properties:</p>
+        <pre><code>var p = myPrompt("arg1", "arg2");
+
+// Access prompt fields
+var system = p.system;      // string? (null if not provided)
+var user = p.user;          // string (required)
+var examples = p.examples;  // array? of { input, output } few-shot pairs
+var model = p.model;        // string? (null if not provided)
+var temperature = p.temperature;  // number? (null if not provided)
+var tools = p.tools;        // array? (null if not provided; Mode B)
+var gather = p.gather;      // array? (null if not provided; Mode C tool list)
+var maxTokens = p.maxTokens; // number? (null if not provided)
+
+// Methods
+var userStr = p.getUser();     // Returns user prompt string
+var systemStr = p.getSystem(); // Returns system prompt string or null
+var promptStr = p.toPromptString(); // Returns user prompt (for backward compatibility)</code></pre>
+        
+        <h2>10.11 Advanced Prompt Features</h2>
+        <h4>Prompt with Metadata (Object Literal Syntax)</h4>
+        <pre><code>prompt advanced(task) {
+    system: "You are an expert.",
+    user: "Task: {task}",
+    model: "openai/gpt-4",
+    temperature: 0.7,
+    tools: ["read_file", "write_file", "grep"],
+    maxTokens: 2000
+}</code></pre>
+        
+        <h4>Prompt with Metadata (Statement-Based Syntax)</h4>
+        <pre><code>prompt advanced(task) {
+    system "You are an expert.";
+    user "Task: " + task;
+    model "openai/gpt-4";
+    temperature 0.7;
+    tools ["read_file", "write_file", "grep"];
+    maxTokens 2000;
+}</code></pre>
+        
+        <h4>Statement-Based Syntax with Expressions</h4>
+        <p>The statement-based syntax allows <code>user</code> to be any expression, not just a string literal:</p>
+        <pre><code>prompt combine(a, b) {
+    user "First: " + a + ", Second: " + b;
+}
+
+var result = combine("A", "B");
+print(result.user);  // Output: First: A, Second: B</code></pre>
+        
+        <h4>Multi-line Prompts</h4>
+        <pre><code>prompt detailedPlan(goal, context) {
+    system: "You are a strategic planner.",
+    user: """
+    Goal: {goal}
+    
+    Context:
+    {context}
+    
+    Please provide:
+    1. Step-by-step plan
+    2. Risk assessment
+    3. Timeline estimate
+    """
+}</code></pre>
+        
+        <h2>10.12 Prompt Blocks vs String Concatenation</h2>
+        <p><strong>Before (String Concatenation):</strong></p>
+        <pre><code>var prompt = "Task: " + task + "\n\n" +
+             "Documentation:\n" + docs;
+var response = agent.think(prompt);</code></pre>
+        
+        <p><strong>After (Prompt Blocks):</strong></p>
+        <pre><code>prompt planTask(task, docs) {
+    user: """
+    Task: {task}
+    
+    Documentation:
+    {docs}
+    """
+}
+
+var response = agent.think(planTask(task, docs));</code></pre>
+        
+        <p><strong>Benefits:</strong></p>
+        <ul>
+            <li><strong>Structure:</strong> Prompts are named, parameterized functions</li>
+            <li><strong>Reusability:</strong> Define once, use anywhere</li>
+            <li><strong>Parameter Validation:</strong> Runtime validates argument count matching</li>
+            <li><strong>IDE Support:</strong> Autocomplete, go-to-definition, refactoring</li>
+            <li><strong>Maintainability:</strong> Version prompts independently, test variations easily</li>
+        </ul>
+
+        <div class="see-also">
+            <h3>See Also</h3>
+            <ul>
+                <li><a href="09-functions.html">9. Functions</a> - Parameters, return, lambdas, and decorators</li>
+                <li><a href="04-data-types.html">4. Data Types</a> - Sum types used as prompt return types</li>
+                <li><a href="07-expressions.html">7. Expressions</a> - Pipe operator for prompt pipelines</li>
+                <li><a href="13-built-in-functions.html">13. Built-in Functions</a> - AI pipeline helpers</li>
+                <li><a href="18-agent-orchestration.html">18. Agent Orchestration</a> - Using agents with prompts</li>
+            </ul>
+        </div>
+        <div class="nav-footer">
+            <a href="09-functions.html">← Previous: 9. Functions</a>
+            <a href="11-classes-objects.html">Next: 11. Classes & Objects→</a>
+        </div>
+
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, at your option.</p>
+        </footer>
+    </main>
+    <script src="malda-highlight.js"></script>
+    <script src="navigation.js"></script>
+</body>
+</html>

@@ -357,7 +357,7 @@ print(read_allowed(notes));
 Follow [`docs/spec/CHANGELOG.md`](spec/CHANGELOG.md) “How to propose a spec change”:
 
 1. Spec prose + CHANGELOG **MINOR** (or PATCH if docs-only).
-2. If the parser moves: `ReferenceManual/34-grammar.html`, `docs/llm/malda-grammar.md`,
+2. If the parser moves: `ReferenceManual/35-grammar.html`, `docs/llm/malda-grammar.md`,
    `scripts/verify-spec-parser-drift.ps1`.
 3. Reference Manual chapter + `docs/llm/` gotchas/syntax; bump pack **Applies to** version
    only when cutting the release that ships the construct.
@@ -407,8 +407,9 @@ through helpers, and provenance is a value when we need it.
 | [`docs/spec/malda-language-1.0.md`](spec/malda-language-1.0.md) | Tier 0 kernel (L1/L2 are mostly Tier 2 prompt/schema) |
 | [`docs/llm/malda-gotchas.md`](llm/malda-gotchas.md) | Mode A/B/C, schema vs type names, WF deny-list |
 | [`docs/workflows-ha.md`](workflows-ha.md) | W2 ops model (unchanged by L4) |
-| [`ReferenceManual/09-functions.html`](../ReferenceManual/09-functions.html) | Prompts, `@pure`/`@effects`, `program(Api)` |
-| [`ReferenceManual/13-graphs.html`](../ReferenceManual/13-graphs.html) | Why not `Tree` |
+| [`ReferenceManual/09-functions.html`](../ReferenceManual/09-functions.html) | Functions, `@pure`/`@effects` |
+| [`ReferenceManual/10-prompts.html`](../ReferenceManual/10-prompts.html) | Prompts, `program(Api)` |
+| [`ReferenceManual/14-graphs.html`](../ReferenceManual/14-graphs.html) | Why not `Tree` |
 | [`docs/announcement.md`](announcement.md) | Why not macros |
 
 ---

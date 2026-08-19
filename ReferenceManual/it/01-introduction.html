@@ -159,6 +159,7 @@
             <li>Diramazione condizionale (if/else)</li>
             <li>Cicli (while, for)</li>
             <li>Funzioni/procedure</li>
+            <li>Template di prompt nominati (<code>prompt</code>)</li>
             <li>Operazioni di input/output</li>
             <li>Supporto alla ricorsione</li>
             <li>Programmazione orientata agli oggetti (classi, oggetti, ereditarietà)</li>
@@ -185,6 +186,7 @@
             <li><strong>Client OpenRouter</strong>: classe <code>OpenRouterClient</code> per modelli remoti con configurazione automatica della API key</li>
             <li><strong>Gestione delle conversazioni</strong>: classe <code>Conversation</code> con gestione automatica delle tool call ed esecuzione parallela dei tool in sola lettura (attiva di default)</li>
             <li><strong>Sistema di tool</strong>: classe <code>Tool</code> con supporto al formato function calling di OpenAI</li>
+            <li><strong>Template di prompt</strong>: dichiarazioni <code>prompt</code> nominate con interpolazione dei parametri, <code>await</code> validato sullo schema e tool Mode B/C — vedi <a href="10-prompts.html">10. Prompt</a></li>
             <li><strong>Tool personalizzati</strong>: decoratore <code>@Tool</code> per definire tool LLM personalizzati a partire da funzioni MALDA</li>
             <li><strong>Classe Agent</strong>: classe <code>Agent</code> per agenti autonomi con ruoli e istruzioni</li>
             <li><strong>Agenti specializzati</strong>: <code>CodingAgent</code>, <code>MALDACodingAgent</code>, <code>GitAgent</code> e <code>DevAgent</code> con tool preconfigurati</li>
@@ -193,7 +195,7 @@
             <li><strong>Sicurezza della working directory</strong>: validazione dei path per i tool di operazioni su file</li>
         </ul>
         <div class="warning-box">
-            <p><strong>⚠️ Importante:</strong> i sistemi di agenti autonomi con accesso ai tool comportano rischi significativi di sicurezza e operativi. Vedi <a href="17-agent-orchestration.html">17. Orchestrazione di agenti</a> per un disclaimer dettagliato e le strategie di mitigazione del rischio prima di distribuire agenti in produzione.</p>
+            <p><strong>⚠️ Importante:</strong> i sistemi di agenti autonomi con accesso ai tool comportano rischi significativi di sicurezza e operativi. Vedi <a href="18-agent-orchestration.html">18. Orchestrazione di agenti</a> per un disclaimer dettagliato e le strategie di mitigazione del rischio prima di distribuire agenti in produzione.</p>
         </div>
 
         <h3>Funzionalità Web e API</h3>
@@ -300,7 +302,7 @@ print(mathUtils.VERSION);     // "1.0"</code></pre>
         <p>Le stesse due forme valgono per i pacchetti, con un nome di pacchetto puntato al posto del path stringa:</p>
         <pre><code>import App.Core;
 import UI = App.Web.Components;</code></pre>
-        <p>I nomi di pacchetto che iniziano con <code>System</code>, <code>Microsoft</code> o <code>Windows</code> vengono risolti come namespace .NET attraverso il layer di interop, non dal gestore di pacchetti. Vedi <a href="29-dotnet-interop.html">29. Interop .NET</a>.</p>
+        <p>I nomi di pacchetto che iniziano con <code>System</code>, <code>Microsoft</code> o <code>Windows</code> vengono risolti come namespace .NET attraverso il layer di interop, non dal gestore di pacchetti. Vedi <a href="30-dotnet-interop.html">30. Interop .NET</a>.</p>
         <p>Se non si riesce a risolvere un target è un errore a runtime: <em>Package or module not found: Name</em> per i pacchetti, e il messaggio di file-not-found sottostante per gli import di file.</p>
 
         <h3>Path e comportamento di sicurezza per <code>include</code></h3>
@@ -347,7 +349,7 @@ if (checked.ok) {
     io.print("schema ok: " + checked.data.summary);
 }</code></pre>
 
-        <p>La sintassi core usa le stesse istruzioni. Preferisci le chiamate namespaced (<code>io.print</code>); il <code>print</code> piatto continua a funzionare. I/O di file, path e ambiente: <a href="11-input-output.html">11. Input/Output</a>.</p>
+        <p>La sintassi core usa le stesse istruzioni. Preferisci le chiamate namespaced (<code>io.print</code>); il <code>print</code> piatto continua a funzionare. I/O di file, path e ambiente: <a href="12-input-output.html">12. Input/Output</a>.</p>
 
         <pre><code>io.print("Hello, World!");
 
@@ -387,7 +389,7 @@ person.introduce();</code></pre>
             <ul>
                 <li><a href="03-lexical-structure.html">3. Struttura lessicale</a> - Le basi della sintassi</li>
                 <li><a href="04-data-types.html">4. Tipi di dati</a> - Il sistema di tipi di MALDA</li>
-                <li><a href="32-examples.html">32. Esempi</a> - Altri esempi completi</li>
+                <li><a href="33-examples.html">33. Esempi</a> - Altri esempi completi</li>
             </ul>
         </div>
 

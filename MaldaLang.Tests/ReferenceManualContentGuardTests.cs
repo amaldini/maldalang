@@ -44,7 +44,7 @@ public class ReferenceManualContentGuardTests
         var keywords = LexerKeywords();
         Assert.NotEmpty(keywords);
 
-        foreach (var page in new[] { "03-lexical-structure.html", "35-appendix.html" })
+        foreach (var page in new[] { "03-lexical-structure.html", "36-appendix.html" })
         {
             var listed = ReservedWordsListedIn(page);
             var missing = keywords.Except(listed, StringComparer.Ordinal).OrderBy(k => k, StringComparer.Ordinal).ToList();
@@ -202,11 +202,11 @@ public class ReferenceManualContentGuardTests
             .ToList();
         Assert.True(types.Count > 20, $"Expected a full control catalog, got {types.Count}.");
 
-        var chapter = File.ReadAllText(Path.Combine(ManualDir, "23-web-ui.html"));
+        var chapter = File.ReadAllText(Path.Combine(ManualDir, "24-web-ui.html"));
         var missing = types.Where(type => !chapter.Contains($"ui.{type}", StringComparison.Ordinal)).ToList();
         Assert.True(
             missing.Count == 0,
-            "23-web-ui.html must name every UiControlSpecRegistry type as ui.<type>: " +
+            "24-web-ui.html must name every UiControlSpecRegistry type as ui.<type>: " +
             string.Join(", ", missing));
     }
 
@@ -352,7 +352,7 @@ public class ReferenceManualContentGuardTests
     private static HashSet<string> ReservedWordsListedIn(string page)
     {
         var html = File.ReadAllText(Path.Combine(ManualDir, page));
-        var marker = page == "35-appendix.html" ? "Appendix A: Reserved Words" : "Complete Keyword List";
+        var marker = page == "36-appendix.html" ? "Appendix A: Reserved Words" : "Complete Keyword List";
         var markerIndex = html.IndexOf(marker, StringComparison.Ordinal);
         Assert.True(markerIndex >= 0, $"Could not find the reserved words section in {page}.");
 
