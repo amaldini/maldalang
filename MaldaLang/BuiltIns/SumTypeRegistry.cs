@@ -27,11 +27,17 @@ public static class SumTypeRegistry
     private static readonly Dictionary<string, SumTypeDefinition> Definitions = new(StringComparer.Ordinal);
     private static readonly Dictionary<string, RuntimeValue> Schemas = new(StringComparer.Ordinal);
 
-    public static void ClearForTesting()
+    /// <summary>
+    /// Drops all registered sum types. Top-level interpret runs this so a previous
+    /// program's names do not linger in the same process (Desktop/Web IDE).
+    /// </summary>
+    public static void Clear()
     {
         Definitions.Clear();
         Schemas.Clear();
     }
+
+    public static void ClearForTesting() => Clear();
 
     public static void Register(TypeDeclaration decl)
     {

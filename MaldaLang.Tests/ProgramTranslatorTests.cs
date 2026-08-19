@@ -5,11 +5,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using MaldaLang.BuiltIns;
 using MaldaLang.Compiler;
 using MaldaLang.Interpreter;
 using MaldaLang.Parser;
 using MaldaLang.Parser.AST.Declarations;
+using MaldaLang.Parser.AST.Statements;
 using Xunit;
 using ValueType = MaldaLang.Interpreter.ValueType;
 
@@ -138,6 +140,105 @@ public class ProgramTranslatorTests : TestBase
 
         var output = RunProgram(source).Trim();
         Assert.Equal("20", output);
+    }
+
+    [Fact]
+    public async Task InterpretAsync_RerunSameApiProgram_DoesNotThrowAlreadyRegistered()
+    {
+        var source = """
+            api Calc {
+                function add(a, b);
+            }
+
+            function add(a, b) { return a + b; }
+
+            var prog = parseJSON("{\"@api\":\"Calc\",\"steps\":[{\"call\":\"add\",\"args\":[1,2],\"as\":\"t0\"}],\"return\":\"$t0\"}");
+            io.print(runProgram(prog));
+            """;
+        var statements = ParseStatements(source);
+
+        RedirectConsole();
+        try
+        {
+            await new Interpreter.Interpreter().InterpretAsync(statements);
+            Assert.Equal("3", GetOutput());
+        }
+        finally
+        {
+            RestoreConsole();
+        }
+
+        // Second host run in the same process (Desktop/Web IDE) must not see the
+        // leftover api registration from the first Interpreter instance.
+        RedirectConsole();
+        try
+        {
+            await new Interpreter.Interpreter().InterpretAsync(statements);
+            Assert.Equal("3", GetOutput());
+        }
+        finally
+        {
+            RestoreConsole();
+        }
+    }
+
+    [Fact]
+    public void DuplicateApiInSameProgram_ThrowsAlreadyRegistered()
+    {
+        var source = """
+            api Calc { function add(a, b); }
+            api Calc { function add(a, b); }
+            """;
+        var ex = Assert.ThrowsAny<Exception>(() => RunProgram(source));
+        Assert.Contains("already registered", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task InterpretAsync_ImportDoesNotClearHostApi()
+    {
+        var tempDir = CreateTempDirectory("api_import_host_");
+        try
+        {
+            File.WriteAllText(Path.Combine(tempDir, "lib.malda"), "export var loaded = 1;\n");
+            var mainPath = Path.Combine(tempDir, "main.malda");
+            var source = """
+                api Calc { function add(a, b); }
+                function add(a, b) { return a + b; }
+                import "lib.malda";
+                var prog = parseJSON("{\"@api\":\"Calc\",\"steps\":[{\"call\":\"add\",\"args\":[1,2],\"as\":\"t0\"}],\"return\":\"$t0\"}");
+                io.print(runProgram(prog));
+                io.print(loaded);
+                """;
+            File.WriteAllText(mainPath, source);
+
+            var statements = ParseStatements(source, mainPath);
+            RedirectConsole();
+            try
+            {
+                await new Interpreter.Interpreter(currentFile: mainPath).InterpretAsync(statements);
+                var lines = GetOutput().Split('\n', StringSplitOptions.RemoveEmptyEntries);
+                Assert.Equal("3", lines[0]);
+                Assert.Equal("1", lines[1]);
+            }
+            finally
+            {
+                RestoreConsole();
+            }
+        }
+        finally
+        {
+            SafeDeleteDirectory(tempDir);
+        }
+    }
+
+    private static List<Statement> ParseStatements(string source, string? sourceFileName = null)
+    {
+        var lexer = new Lexer(source, sourceFileName);
+        var tokens = lexer.Tokenize();
+        var parser = new Parser.Parser(tokens, sourceFileName);
+        var statements = parser.Parse();
+        Assert.Empty(parser.Errors);
+        return statements;
     }
 
     [Fact]
