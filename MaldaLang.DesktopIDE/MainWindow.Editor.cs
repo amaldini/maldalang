@@ -388,6 +388,7 @@ public partial class MainWindow
         
         // Create completion window with the correct start offset
         _completionWindow = new CompletionWindow(textArea);
+        EditorPopupTheming.Apply(_completionWindow, _themeService.CurrentTheme);
         var data = _completionWindow.CompletionList.CompletionData;
         
         foreach (var item in filteredCompletions)
@@ -434,6 +435,7 @@ public partial class MainWindow
             {
                 Provider = _signatureHelpProvider
             };
+            EditorPopupTheming.Apply(_signatureHelpWindow, _themeService.CurrentTheme);
             _signatureHelpWindow.Closed += (s, e) =>
             {
                 _signatureHelpWindow = null;
@@ -520,6 +522,7 @@ public partial class MainWindow
                 StaysOpen = true,
                 IsOpen = true
             };
+            EditorPopupTheming.Apply(_hoverToolTip, _themeService.CurrentTheme);
         }
         catch
         {

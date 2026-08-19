@@ -551,6 +551,14 @@
         <Setter Property="VerticalAlignment" Value="Center"/>
     </Style>
 
+    <Style TargetType="ToolTip">
+        <Setter Property="Background" Value="{DynamicResource EditorBackgroundBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource EditorForegroundBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="8,6"/>
+    </Style>
+
     <Style TargetType="ListBox">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Foreground" Value="{DynamicResource ListForegroundBrush}"/>

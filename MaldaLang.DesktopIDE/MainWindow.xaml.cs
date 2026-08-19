@@ -657,6 +657,21 @@ public partial class MainWindow : Window
         Resources["ErrorBrush"] = new SolidColorBrush(theme.ErrorColor);
         Resources["WarningBrush"] = new SolidColorBrush(theme.WarningColor);
         Resources["InfoBrush"] = new SolidColorBrush(theme.InfoColor);
+        EditorPopupTheming.PublishApplicationResources(theme);
+        if (_completionWindow != null)
+        {
+            EditorPopupTheming.Apply(_completionWindow, theme);
+        }
+
+        if (_signatureHelpWindow != null)
+        {
+            EditorPopupTheming.Apply(_signatureHelpWindow, theme);
+        }
+
+        if (_hoverToolTip != null)
+        {
+            EditorPopupTheming.Apply(_hoverToolTip, theme);
+        }
         
         // Update system menu colors for submenu popups
         // This ensures submenu backgrounds use the correct theme color
