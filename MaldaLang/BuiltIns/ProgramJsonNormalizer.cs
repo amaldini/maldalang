@@ -77,6 +77,7 @@ public static class ProgramJsonNormalizer
                         rawArgs[a],
                         apiDef,
                         apiName,
+                        method.ParameterTypeAt(a),
                         originalAliases,
                         usedAliases,
                         emitted,
@@ -117,6 +118,7 @@ public static class ProgramJsonNormalizer
                      returnVal,
                      apiDef,
                      apiName,
+                     expectedType: null,
                      originalAliases,
                      usedAliases,
                      emitted,
@@ -291,6 +293,7 @@ public static class ProgramJsonNormalizer
         RuntimeValue arg,
         ApiRegistry.ApiDefinition apiDef,
         string apiName,
+        string? expectedType,
         List<string> originalAliases,
         HashSet<string> usedAliases,
         List<JsonObject> emitted,
@@ -301,7 +304,6 @@ public static class ProgramJsonNormalizer
     {
         error = "";
         arg = UnwrapTypeWrapper(arg);
-        arg = CoerceNumericString(arg);
 
         if (TryReadResultRef(arg, originalAliases, path, out normalized, out error))
             return string.IsNullOrEmpty(error);
@@ -326,6 +328,7 @@ public static class ProgramJsonNormalizer
                         rawArgs[a],
                         apiDef,
                         apiName,
+                        method.ParameterTypeAt(a),
                         originalAliases,
                         usedAliases,
                         emitted,
@@ -346,14 +349,122 @@ public static class ProgramJsonNormalizer
             return true;
         }
 
-        if (arg.Type == ValueType.Object)
+        return TryCoerceDeclaredType(arg, expectedType, path, out normalized, out error);
+    }
+
+    internal static bool TryCoerceDeclaredType(
+        RuntimeValue value,
+        string? typeName,
+        string path,
+        out RuntimeValue coerced,
+        out string error)
+    {
+        error = "";
+        coerced = value;
+
+        if (IsAliasRef(value, out _))
+            return true;
+
+        if (string.IsNullOrEmpty(typeName))
         {
-            error = $"{path} must be a JSON primitive, \"$alias\", or a nested {{call, args}} — not an object. Do not wrap values as {{type, value}}.";
-            return false;
+            coerced = CoerceNumericString(value);
+            if (coerced.Type == ValueType.Object)
+            {
+                error = $"{path} must be a JSON primitive, \"$alias\", or a nested {{call, args}} — not an object. Do not wrap values as {{type, value}}.";
+                return false;
+            }
+
+            return true;
         }
 
-        normalized = arg;
-        return true;
+        var trimmed = typeName.Trim();
+        var isArray = trimmed.EndsWith("[]", StringComparison.Ordinal);
+        var core = isArray ? trimmed[..^2].Trim() : trimmed;
+        SchemaRegistry.TryMapPrimitiveJsonType(core, out var jsonType);
+        if (isArray)
+            jsonType = "array";
+        if (string.IsNullOrEmpty(jsonType))
+            jsonType = "object";
+
+        switch (jsonType)
+        {
+            case "integer":
+                coerced = CoerceNumericString(value);
+                if (coerced.Type == ValueType.Float && coerced.AsFloat() == Math.Truncate(coerced.AsFloat())
+                    && coerced.AsFloat() >= int.MinValue && coerced.AsFloat() <= int.MaxValue)
+                    coerced = RuntimeValue.Integer((int)coerced.AsFloat());
+                if (coerced.Type != ValueType.Integer)
+                {
+                    error = $"{path} must be integer for type '{typeName}', got {value.Type}.";
+                    return false;
+                }
+
+                return true;
+            case "number":
+                coerced = CoerceNumericString(value);
+                if (coerced.Type != ValueType.Integer && coerced.Type != ValueType.Float)
+                {
+                    error = $"{path} must be number for type '{typeName}', got {value.Type}.";
+                    return false;
+                }
+
+                return true;
+            case "string":
+                if (value.Type == ValueType.String)
+                {
+                    coerced = value;
+                    return true;
+                }
+
+                error = $"{path} must be string for type '{typeName}', got {value.Type}.";
+                return false;
+            case "boolean":
+                if (value.Type == ValueType.Boolean)
+                {
+                    coerced = value;
+                    return true;
+                }
+
+                if (value.Type == ValueType.String)
+                {
+                    var s = value.AsString();
+                    if (bool.TryParse(s, out var b))
+                    {
+                        coerced = RuntimeValue.Boolean(b);
+                        return true;
+                    }
+                }
+
+                error = $"{path} must be boolean for type '{typeName}', got {value.Type}.";
+                return false;
+            case "array":
+                if (value.Type != ValueType.Array)
+                {
+                    error = $"{path} must be array for type '{typeName}', got {value.Type}.";
+                    return false;
+                }
+
+                coerced = value;
+                return true;
+            case "null":
+                if (value.Type != ValueType.Null)
+                {
+                    error = $"{path} must be null for type '{typeName}', got {value.Type}.";
+                    return false;
+                }
+
+                coerced = value;
+                return true;
+            default:
+                if (value.Type != ValueType.Object)
+                {
+                    error = $"{path} must be object for type '{typeName}', got {value.Type}.";
+                    return false;
+                }
+
+                coerced = value;
+                return true;
+        }
     }
 
     private static bool TryReadResultRef(

@@ -50,7 +50,7 @@ Compact rules for generating correct `.malda`. Prefer this over scraping HTML ma
   name-only (`Search(query)`) stays a permissive JSON field. Sum-type JSON wire shape:
   `{ "tag": "Buy", "sku": "...", "qty": 2 }` (tag = constructor name; payload fields
   use the constructor parameter names). For closed call plans use
-  `api Calc { function add(a, b); }` with `prompt p(...) -> program(Calc)` then
+  `api Calc { function add(a: number, b: number); }` with `prompt p(...) -> program(Calc)` then
   `runProgram(prog)` — deterministic, no tool loop (interpreter and C# transpile; not JS). Program JSON:
   `{ "@api":"Calc", "steps":[{"call":"add","args":[2,3],"as":"t0"}], "return":"$t0" }`.
   Args must be JSON numbers (not `"2"`) or `"$alias"`; nested `{call,args}`, TypeChat `@func`/`@ref`,
@@ -255,7 +255,7 @@ Prefer `str.trimText(response?.content)` over nested `if (response != null) { if
 |-----------------|--------|
 | `const x = 1` | `var x = 1` |
 | `let x = 1` | `var x = 1` |
-| `function f(x: number)` on prompts | `prompt f(x)` name-only. Constructor payloads may use `Buy(sku: string)` — that is not prompt typing. |
+| `function f(x: number)` on prompts | `prompt f(x)` name-only. Constructor payloads may use `Buy(sku: string)` and `api` methods may use `add(a: number)` — that is not prompt typing. |
 | `console.log(x)` | `io.print(x)` |
 | `println(x)` | `io.print(x)` — `println` does not exist |
 | `fn f() {}` or `def f() {}` | `function f() {}` — aliases are syntax errors |

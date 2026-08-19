@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — optional api parameter types)
+
+- **`api` method params:** optional `SchemaType` hints, same form as sum-type constructor payloads (`function add(a: number, b: number)`). Name-only remains valid and permissive. Declared types feed program JSON Schema (narrow the `args` union; always keep `string` for `"$alias"`) and coercion (`"2"` becomes a number only when the hint is `number`/`int`; a `string` hint keeps `"2"`). Prompt parameters stay name-only. Implementing `function` bodies stay untyped. Grammar: [`35-grammar.html`](../../ReferenceManual/35-grammar.html) `ApiMethodSig`; narrative: [`10-prompts.html`](../../ReferenceManual/10-prompts.html) §10.8. Example: `Examples/Prompts/api_program_calc.malda`.
+
 #### Fixed (PATCH — program JSON argument types)
 
 - **`program(Api)` / `runProgram`:** LLM program JSON no longer passes leftover objects or numeric strings through as api operands. The host flattens nested `{call,args}` (and TypeChat `@func`/`@args`/`@ref`/`@steps`), coerces `"2"` to a number, unwraps `{type,value}` wrappers, fills missing `@api` / `as` / `return`, then validates. Structured-output schema for `args` no longer includes `object` (that union made models emit wrappers). Leftover objects fail validation/repair instead of reaching `add`/`mul`. Example: `Examples/Prompts/api_program_calc.malda`. Narrative: [`ReferenceManual/10-prompts.html`](../../ReferenceManual/10-prompts.html) §10.8.

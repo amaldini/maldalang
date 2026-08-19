@@ -1614,7 +1614,7 @@ public class LanguageService : ILanguageService
             TokenType.OnReject => "**onReject** — Handler expression executed when approval decision is reject.",
             TokenType.Timeout => "**timeout** — Timeout limit in milliseconds for step/approval/signal waits.",
             TokenType.Schema => "**schema** — Declarative object shape for `validate` / structured I/O.\n\n`schema Person { name: string, age?: number }`",
-            TokenType.Api => "**api** — Closed callable surface for deterministic programs.\n\n`api Calc { function add(a, b); }`\n\nUse `prompt p(...) -> program(Calc)` then `runProgram(prog)`. Implementations are top-level `function`s of the same name.",
+            TokenType.Api => "**api** — Closed callable surface for deterministic programs.\n\n`api Calc { function add(a: number, b: number); }`\n\nOptional parameter types (same `SchemaType` form as schema fields / sum-type payloads) feed program JSON Schema. Name-only stays permissive. Use `prompt p(...) -> program(Calc)` then `runProgram(prog)`. Implementations are top-level `function`s of the same name.",
             _ => null
         };
     }
@@ -1739,7 +1739,7 @@ public class LanguageService : ILanguageService
             : string.Join("; ", api.Methods.Select(m =>
                 m.ParameterNames.Count == 0
                     ? $"function {m.Name}()"
-                    : $"function {m.Name}({string.Join(", ", m.ParameterNames)})"));
+                    : $"function {m.Name}({string.Join(", ", m.ParameterNames.Select((_, i) => m.FormatParameter(i)))})"));
         return $"api {api.Name} {{ {methods} }}";
     }
     

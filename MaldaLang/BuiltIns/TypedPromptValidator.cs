@@ -199,7 +199,7 @@ public static class TypedPromptValidator
                     sb.Append("- ");
                     sb.Append(method.Name);
                     sb.Append('(');
-                    sb.Append(string.Join(", ", method.ParameterNames));
+                    sb.Append(string.Join(", ", method.ParameterNames.Select((_, i) => method.FormatParameter(i))));
                     sb.AppendLine(")");
                 }
             }
@@ -463,7 +463,7 @@ public static class TypedPromptValidator
 
             for (int a = 0; a < args.Count; a++)
             {
-                if (args[a].Type == ValueType.Object)
+                if (args[a].Type == ValueType.Object && !IsDeclaredObjectParam(method.ParameterTypeAt(a)))
                 {
                     error = $"$.steps[{i}].args[{a}] must be a JSON primitive or \"$alias\", not an object.";
                     return false;
@@ -519,6 +519,18 @@ public static class TypedPromptValidator
             }
         }
 
+        return true;
+    }
+
+    private static bool IsDeclaredObjectParam(string? typeName)
+    {
+        if (string.IsNullOrEmpty(typeName))
+            return false;
+        var trimmed = typeName.Trim();
+        if (trimmed.EndsWith("[]", StringComparison.Ordinal))
+            return false;
+        if (SchemaRegistry.TryMapPrimitiveJsonType(trimmed, out var jsonType))
+            return jsonType == "object";
         return true;
     }
 

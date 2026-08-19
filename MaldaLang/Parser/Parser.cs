@@ -1146,23 +1146,38 @@ public class Parser
             var methodName = ConsumeIdentifierLike("Expect method name in api.");
             Consume(TokenType.LeftParen, "Expect '(' after api method name.");
             var paramNames = new List<string>();
+            var paramTypes = new List<string?>();
+            var paramRequired = new List<bool>();
             if (!Check(TokenType.RightParen))
             {
                 do
                 {
                     paramNames.Add(ConsumeIdentifierOrKeyword("Expect parameter name in api method."));
+                    if (Match(TokenType.Colon))
+                    {
+                        var payloadType = ParseSchemaType(
+                            "Expect api parameter type after ':'.",
+                            out var required);
+                        paramTypes.Add(payloadType);
+                        paramRequired.Add(required);
+                    }
+                    else
+                    {
+                        paramTypes.Add(null);
+                        paramRequired.Add(true);
+                    }
                 } while (Match(TokenType.Comma));
             }
             Consume(TokenType.RightParen, "Expect ')' after api method parameters.");
             Consume(TokenType.Semicolon, "Expect ';' after api method signature (bodies are separate top-level functions).");
-            methods.Add(new ApiMethodSignature(methodName, paramNames));
+            methods.Add(new ApiMethodSignature(methodName, paramNames, paramTypes, paramRequired));
         }
         Consume(TokenType.RightBrace, "Expect '}' after api methods.");
         return new ApiDeclaration(apiName, methods, apiToken.Line, apiToken.Column);
     }
 
     /// <summary>
-    /// Schema field / variant-constructor payload type: Identifier, optional <c>[]</c>, optional <c>?</c>.
+    /// Schema field / variant-constructor / api-method payload type: Identifier, optional <c>[]</c>, optional <c>?</c>.
     /// Prompt parameters stay name-only and must not call this.
     /// </summary>
     private string ParseSchemaType(string expectTypeMessage, out bool required)

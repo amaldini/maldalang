@@ -67,20 +67,11 @@ public static class ProgramRunner
 
     private static RuntimeValue ResolveArg(RuntimeValue arg, Dictionary<string, RuntimeValue> bindings)
     {
-        arg = ProgramJsonNormalizer.CoerceNumericString(arg);
-
         if (ProgramJsonNormalizer.IsAliasRef(arg, out var alias))
         {
             if (!bindings.TryGetValue(alias, out var bound))
                 throw new Exception($"runProgram: unknown step alias '${alias}'.");
             return bound;
-        }
-
-        if (arg.Type == ValueType.Object)
-        {
-            throw new Exception(
-                "runProgram: argument is an object; expected a JSON primitive or \"$alias\". " +
-                "Nested {call, args} and {type, value} wrappers are normalized before execution.");
         }
 
         return arg;
