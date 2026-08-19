@@ -733,6 +733,162 @@ process.stdout.write("ok\n");
     }
 
     [Fact]
+    public void JsTranspiler_MapsThreeShaderApis_ToMlRuntimeThree()
+    {
+        var source = """
+            var shaderFn = three.createShaderMaterial;
+            var camera = three.createOrthographicCamera(-1, 1, 1, -1, 0, 1);
+            var material = three.createShaderMaterial({
+                "vertexShader": vert,
+                "fragmentShader": frag,
+                "uniforms": { "uTime": 0 }
+            });
+            three.setUniform(material, "uTime", 1.5);
+            three.setUniform(material, "uResolution", [960, 540]);
+            """;
+        var compiler = new Compiler.Compiler();
+
+        var js = compiler.TranspileToJavaScriptFromSource(source);
+
+        Assert.Contains("let shaderFn = mlRuntime.three.createShaderMaterial;", js, StringComparison.Ordinal);
+        Assert.Contains(
+            "let camera = mlRuntime.three.createOrthographicCamera((-mlRuntime.coerceToFloat(1)), 1, 1, (-mlRuntime.coerceToFloat(1)), 0, 1);",
+            js,
+            StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.three.createShaderMaterial(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.three.setUniform(material, \"uTime\", 1.5)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.three.setUniform(material, \"uResolution\", [960, 540])", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void JsTranspiler_ShaderRayTracerExample_EmitsShaderCalls()
+    {
+        var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "js", "three_shader_raytracer.malda");
+        var compiler = new Compiler.Compiler();
+        var js = compiler.TranspileToJavaScript(sourcePath);
+
+        Assert.Contains("mlRuntime.three.createShaderMaterial(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.three.setUniform(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.three.createOrthographicCamera(", js, StringComparison.Ordinal);
+        Assert.Contains("varying vec2 vUv", js, StringComparison.Ordinal);
+        Assert.Contains("gl_FragColor", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("mlRuntime.game.setPixel", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ThreeRuntime_CreateShaderMaterialAndSetUniform_WrapsVectors()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var runtimePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "wwwroot", "malda-js-runtime.js");
+        var root = CreateTempDirectory("malda_js_shader_material_");
+        try
+        {
+            var scriptPath = Path.Combine(root, "shader-material-test.js");
+            File.WriteAllText(scriptPath, """
+globalThis.document = {
+  body: {},
+  querySelector() { return { appendChild() {}, removeChild() {} }; },
+  createElement() { return { style: {} }; }
+};
+globalThis.window = {
+  addEventListener() {},
+  removeEventListener() {},
+  requestAnimationFrame() { return 1; },
+  cancelAnimationFrame() {},
+  devicePixelRatio: 1
+};
+
+function Vector2(x, y) {
+  this.x = x; this.y = y;
+  this.set = function (a, b) { this.x = a; this.y = b; return this; };
+}
+function Vector3(x, y, z) {
+  this.x = x; this.y = y; this.z = z;
+  this.set = function (a, b, c) { this.x = a; this.y = b; this.z = c; return this; };
+}
+function ShaderMaterial(options) {
+  this.uniforms = options.uniforms;
+  this.vertexShader = options.vertexShader;
+  this.fragmentShader = options.fragmentShader;
+  this.depthWrite = true;
+}
+function OrthographicCamera(left, right, top, bottom, near, far) {
+  this.left = left; this.right = right; this.top = top; this.bottom = bottom;
+  this.near = near; this.far = far;
+  this.updateProjectionMatrix = function () {};
+}
+
+globalThis.THREE = {
+  Vector2,
+  Vector3,
+  Vector4: function () {},
+  Color: function () {},
+  ShaderMaterial,
+  OrthographicCamera
+};
+
+require(process.argv[2]);
+const three = globalThis.mlRuntime.three;
+const material = three.createShaderMaterial({
+  vertexShader: "void main() {}",
+  fragmentShader: "void main() {}",
+  uniforms: { uTime: 0, uResolution: [320, 180], uCamPos: [1, 2, 3] },
+  depthWrite: false
+});
+if (!material || material.depthWrite !== false) throw new Error("depthWrite flag not applied");
+if (material.uniforms.uTime.value !== 0) throw new Error("uTime wrap failed");
+if (material.uniforms.uResolution.value.x !== 320 || material.uniforms.uResolution.value.y !== 180) {
+  throw new Error("uResolution Vector2 wrap failed");
+}
+if (material.uniforms.uCamPos.value.z !== 3) throw new Error("uCamPos Vector3 wrap failed");
+
+three.setUniform(material, "uTime", 1.25);
+three.setUniform(material, "uResolution", [960, 540]);
+three.setUniform(material, "uCamPos", [4, 5, 6]);
+if (material.uniforms.uTime.value !== 1.25) throw new Error("setUniform scalar failed");
+if (material.uniforms.uResolution.value.x !== 960 || material.uniforms.uResolution.value.y !== 540) {
+  throw new Error("setUniform Vector2 failed");
+}
+if (material.uniforms.uCamPos.value.x !== 4 || material.uniforms.uCamPos.value.z !== 6) {
+  throw new Error("setUniform Vector3 failed");
+}
+
+const camera = three.createOrthographicCamera(-1, 1, 1, -1, 0, 1);
+if (camera.left !== -1 || camera.top !== 1 || camera.far !== 1) throw new Error("ortho camera failed");
+
+process.stdout.write("ok\n");
+""");
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = Environment.GetEnvironmentVariable("MALDA_NODE_PATH") is { Length: > 0 } nodePath
+                    ? nodePath
+                    : "node",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = root
+            };
+            startInfo.ArgumentList.Add(scriptPath);
+            startInfo.ArgumentList.Add(runtimePath);
+
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Failed to start Node.js for shader material runtime test.");
+            var stdout = process.StandardOutput.ReadToEnd();
+            var stderr = process.StandardError.ReadToEnd();
+            process.WaitForExit(15000);
+            Assert.True(process.ExitCode == 0, $"shader material runtime test failed ({process.ExitCode}). stderr: {stderr}");
+            Assert.Equal("ok", stdout.Trim());
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
+        }
+    }
+
+    [Fact]
     public void JsTranspiler_DoesNotRewriteNonThreeMemberCalls()
     {
         var source = """

@@ -89,6 +89,9 @@ For the 3D scene MVP (JavaScript backend only), route MALDA `three.*` exactly li
 
 - `three.createRenderer(...)` -> `mlRuntime.three.createRenderer(...)`
 - `three.createScene()` -> `mlRuntime.three.createScene()`
+- `three.createOrthographicCamera(...)` -> `mlRuntime.three.createOrthographicCamera(...)`
+- `three.createShaderMaterial(...)` -> `mlRuntime.three.createShaderMaterial(...)`
+- `three.setUniform(material, name, value)` -> `mlRuntime.three.setUniform(material, name, value)`
 - `three.render(renderer, scene, camera)` -> `mlRuntime.three.render(renderer, scene, camera)`
 - and similarly for the rest of the curated `three.*` surface.
 
