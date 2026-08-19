@@ -14,7 +14,8 @@ namespace MaldaLang.Tests;
 /// <summary>
 /// Guards the Italian Reference Manual tree in <c>ReferenceManual/it/</c>.
 /// English remains canonical; these tests keep the translation aligned on
-/// file set, code samples, asset paths, and recorded English snapshots.
+/// file set, code samples, asset paths, and recorded English snapshots
+/// (hashes are LF-normalized so Windows CRLF checkouts match).
 /// </summary>
 public class ReferenceManualItalianTests
 {
@@ -259,6 +260,26 @@ public class ReferenceManualItalianTests
             "scripts/sync-reference-manual-it-status.py. Drift: " + string.Join("; ", stale));
     }
 
+    [Fact]
+    public void ItalianStatusHash_IsIndependentOfCheckoutNewlines()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "malda-it-status-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            const string body = "<html lang=\"en\">\n<p>Version 1.0.7</p>\n";
+            var lfPath = Path.Combine(dir, "lf.html");
+            var crlfPath = Path.Combine(dir, "crlf.html");
+            File.WriteAllBytes(lfPath, Encoding.UTF8.GetBytes(body));
+            File.WriteAllBytes(crlfPath, Encoding.UTF8.GetBytes(body.Replace("\n", "\r\n", StringComparison.Ordinal)));
+            Assert.Equal(Sha256Hex(lfPath), Sha256Hex(crlfPath));
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
     private static List<(string Attrs, string Body)> CodeBlocks(string html)
     {
         return Regex.Matches(
@@ -330,11 +351,34 @@ public class ReferenceManualItalianTests
 
     private static string Sha256Hex(string path)
     {
-        using var stream = File.OpenRead(path);
-        var hash = SHA256.HashData(stream);
+        // STATUS.md records LF-normalized hashes so Windows CI (CRLF checkout)
+        // matches the Linux-generated table.
+        var hash = SHA256.HashData(NormalizeNewlines(File.ReadAllBytes(path)));
         var builder = new StringBuilder(hash.Length * 2);
         foreach (var b in hash)
             builder.Append(b.ToString("x2"));
         return builder.ToString();
+    }
+
+    private static byte[] NormalizeNewlines(byte[] bytes)
+    {
+        if (bytes.Length == 0)
+            return bytes;
+
+        using var output = new MemoryStream(bytes.Length);
+        for (var i = 0; i < bytes.Length; i++)
+        {
+            if (bytes[i] == (byte)'\r')
+            {
+                output.WriteByte((byte)'\n');
+                if (i + 1 < bytes.Length && bytes[i + 1] == (byte)'\n')
+                    i++;
+                continue;
+            }
+
+            output.WriteByte(bytes[i]);
+        }
+
+        return output.ToArray();
     }
 }

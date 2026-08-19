@@ -15,9 +15,9 @@ STATUS = IT_DIR / "STATUS.md"
 
 
 def sha256(path: pathlib.Path) -> str:
-    digest = hashlib.sha256()
-    digest.update(path.read_bytes())
-    return digest.hexdigest()
+    # LF-normalize so Windows CRLF checkouts match Unix-recorded STATUS hashes.
+    data = path.read_bytes().replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    return hashlib.sha256(data).hexdigest()
 
 
 def main() -> int:
@@ -40,8 +40,9 @@ def main() -> int:
         "# Italian translation status",
         "",
         "English in `ReferenceManual/` is canonical. Each row is the SHA-256 of",
-        "the English HTML this Italian page was translated from. After changing",
-        "an English chapter, update `it/{file}` and regenerate this table:",
+        "the LF-normalized English HTML this Italian page was translated from",
+        "(CRLF checkouts must hash the same). After changing an English chapter,",
+        "update `it/{file}` and regenerate this table:",
         "",
         "```bash",
         "python3 scripts/sync-reference-manual-it-status.py",
