@@ -44,12 +44,19 @@ public static class ApiRegistry
     private static readonly Dictionary<string, Func<List<RuntimeValue>, RuntimeValue>> BoundImplementations =
         new(StringComparer.Ordinal);
 
-    public static void ClearForTesting()
+    /// <summary>
+    /// Drops all registered apis. Top-level interpret runs this so re-running a
+    /// program in the same process (Desktop/Web IDE) does not throw "already registered".
+    /// Nested interpret (imports, runMALDA) must not call this.
+    /// </summary>
+    public static void Clear()
     {
         Definitions.Clear();
         Schemas.Clear();
         BoundImplementations.Clear();
     }
+
+    public static void ClearForTesting() => Clear();
 
     public static bool IsRegistered(string name) => Definitions.ContainsKey(name);
 

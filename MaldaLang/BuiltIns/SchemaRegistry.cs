@@ -17,11 +17,17 @@ public static class SchemaRegistry
     private static readonly Dictionary<string, RuntimeValue> Schemas = new(StringComparer.Ordinal);
     private static readonly Dictionary<string, SchemaDeclaration> Declarations = new(StringComparer.Ordinal);
 
-    public static void ClearForTesting()
+    /// <summary>
+    /// Drops all registered schemas. Top-level interpret runs this so a previous
+    /// program's names do not linger in the same process (Desktop/Web IDE).
+    /// </summary>
+    public static void Clear()
     {
         Schemas.Clear();
         Declarations.Clear();
     }
+
+    public static void ClearForTesting() => Clear();
 
     public static bool IsRegistered(string name) =>
         Declarations.ContainsKey(name) || Schemas.ContainsKey(name);

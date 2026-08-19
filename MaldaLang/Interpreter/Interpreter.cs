@@ -90,6 +90,7 @@ public partial class Interpreter
     private MaldaLang.PackageManager.ModuleLoader? _moduleLoader;
     private MaldaLang.PackageManager.DotNetPackageWrapper? _dotNetWrapper;
     private string? _sourceCode = null;
+    private static int _interpretNesting;
     
     public Interpreter(IDebuggerHook? debuggerHook = null, string? currentFile = null, IInputProvider? inputProvider = null)
     {
@@ -440,6 +441,33 @@ public partial class Interpreter
     }
     
     public async Task InterpretAsync(List<Statement> statements, CancellationToken cancellationToken = default)
+    {
+        // Process-wide api/schema/sum-type registries survive across Interpreter
+        // instances. Clear them only on the outermost interpret so Desktop/Web IDE
+        // can re-run the same example. Nested interpret (file imports, runMALDA,
+        // skill modules) must keep the host program's registrations.
+        var isTopLevel = Interlocked.Increment(ref _interpretNesting) == 1;
+        try
+        {
+            if (isTopLevel)
+                ResetProcessWideDeclarations();
+
+            await InterpretAsyncCore(statements, cancellationToken);
+        }
+        finally
+        {
+            Interlocked.Decrement(ref _interpretNesting);
+        }
+    }
+
+    private static void ResetProcessWideDeclarations()
+    {
+        SchemaRegistry.Clear();
+        SumTypeRegistry.Clear();
+        ApiRegistry.Clear();
+    }
+
+    private async Task InterpretAsyncCore(List<Statement> statements, CancellationToken cancellationToken)
     {
         _interpretCancellation = cancellationToken;
         var scriptFile = _currentFile ?? "main.malda";
