@@ -1,8 +1,9 @@
 # Italian translation status
 
 English in `ReferenceManual/` is canonical. Each row is the SHA-256 of
-the English HTML this Italian page was translated from. After changing
-an English chapter, update `it/{file}` and regenerate this table:
+the LF-normalized English HTML this Italian page was translated from
+(CRLF checkouts must hash the same). After changing an English chapter,
+update `it/{file}` and regenerate this table:
 
 ```bash
 python3 scripts/sync-reference-manual-it-status.py
