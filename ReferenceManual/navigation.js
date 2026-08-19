@@ -77,6 +77,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     injectHreflang();
+    rewriteMarkdownLinksForGitHubPages();
 
     injectNavbar().then(function() {
         initNavigation();
@@ -111,6 +112,66 @@ function injectHreflang() {
         link.hreflang = item.hreflang;
         link.href = item.href;
         document.head.appendChild(link);
+    });
+}
+
+// GitHub Pages publishes only ReferenceManual/*, so ../docs/*.md would 404 above
+// the project root. Keep relative hrefs in the HTML for clones; rewrite them
+// here when the chapter site is served from *.github.io.
+function githubPagesBlobBase() {
+    const host = location.hostname || '';
+    if (!host.endsWith('.github.io')) {
+        return null;
+    }
+
+    const user = host.slice(0, -'.github.io'.length);
+    if (!user) {
+        return null;
+    }
+
+    const segments = (location.pathname || '').split('/').filter(Boolean);
+    const repo = (segments.length > 0 && segments[0].indexOf('.') === -1)
+        ? segments[0]
+        : (user + '.github.io');
+    return 'https://github.com/' + user + '/' + repo + '/blob/main/';
+}
+
+function rewriteMarkdownLinksForGitHubPages() {
+    const blobBase = githubPagesBlobBase();
+    if (!blobBase) {
+        return;
+    }
+
+    const virtualPage = 'https://pages.invalid/ReferenceManual/'
+        + (isItalianManual() ? 'it/' : '')
+        + 'page.html';
+
+    document.querySelectorAll('a[href]').forEach(function(anchor) {
+        const href = anchor.getAttribute('href');
+        if (!href || /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(href)) {
+            return;
+        }
+
+        const hashIndex = href.indexOf('#');
+        const pathPart = hashIndex >= 0 ? href.slice(0, hashIndex) : href;
+        const hash = hashIndex >= 0 ? href.slice(hashIndex) : '';
+        if (!/\.md$/i.test(pathPart)) {
+            return;
+        }
+
+        let resolved;
+        try {
+            resolved = new URL(pathPart, virtualPage);
+        } catch (e) {
+            return;
+        }
+
+        const repoPath = resolved.pathname.replace(/^\/+/, '');
+        if (!repoPath) {
+            return;
+        }
+
+        anchor.setAttribute('href', blobBase + repoPath + hash);
     });
 }
 

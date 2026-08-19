@@ -112,6 +112,66 @@ public class ReferenceManualContentGuardTests
     }
 
     [Fact]
+    public void MarkdownLinks_ResolveToExistingRepoFiles()
+    {
+        var repoRoot = PlanningPaths.RepoRoot;
+        var broken = new List<string>();
+        var found = 0;
+        var pages = ManualPages.Concat(
+            Directory.EnumerateFiles(Path.Combine(ManualDir, "it"), "*.html", SearchOption.TopDirectoryOnly));
+
+        foreach (var path in pages)
+        {
+            var html = File.ReadAllText(path);
+            foreach (Match match in Regex.Matches(html, @"href=""(?<target>[^""#]+\.md)(#[^""]*)?"""))
+            {
+                found++;
+                var target = match.Groups["target"].Value;
+                if (target.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                var resolved = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(path)!, target));
+                var relativePage = Path.GetRelativePath(repoRoot, path).Replace('\\', '/');
+                if (!File.Exists(resolved))
+                {
+                    broken.Add($"{relativePage} -> {target}");
+                    continue;
+                }
+
+                var relativeTarget = Path.GetRelativePath(repoRoot, resolved);
+                if (relativeTarget.StartsWith("..", StringComparison.Ordinal))
+                    broken.Add($"{relativePage} -> {target} (outside the repository)");
+            }
+        }
+
+        Assert.True(found >= 10, $"Expected markdown hrefs in the manual, found {found}.");
+        Assert.True(broken.Count == 0, $"Broken markdown links: {string.Join("; ", broken)}");
+    }
+
+    [Fact]
+    public void NavigationJs_RewritesMarkdownLinksOnGitHubPages()
+    {
+        var source = File.ReadAllText(Path.Combine(ManualDir, "navigation.js"));
+        Assert.Contains("rewriteMarkdownLinksForGitHubPages", source, StringComparison.Ordinal);
+        Assert.Contains("githubPagesBlobBase", source, StringComparison.Ordinal);
+        Assert.Contains(".github.io", source, StringComparison.Ordinal);
+        Assert.Contains("/blob/", source, StringComparison.Ordinal);
+        Assert.Contains("rewriteMarkdownLinksForGitHubPages();", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void PagesDeploy_RewritesMarkdownLinksToGitHubBlob()
+    {
+        var workflow = File.ReadAllText(
+            PlanningPaths.ResolveRepoPath(".github", "workflows", "deploy-reference-manual.yml"));
+        var script = PlanningPaths.ResolveRepoPath("scripts", "rewrite-reference-manual-pages-md-links.py");
+
+        Assert.True(File.Exists(script), $"Missing {script}");
+        Assert.Contains("rewrite-reference-manual-pages-md-links.py", workflow, StringComparison.Ordinal);
+        Assert.Contains("github.com/{args.repo}/blob/", File.ReadAllText(script), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void SectionNumbers_AreUniqueWithinEachChapter()
     {
         var duplicates = new List<string>();

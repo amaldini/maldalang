@@ -16,6 +16,9 @@ dotnet test MaldaLang.Tests --filter "FullyQualifiedName~ReferenceManual"
 | `ReferenceManualContentGuardTests.ReservedWordLists_CoverEveryLexerKeyword` | Reserved word lists in ch. 3 and the appendix equal `Lexer.Keywords` exactly |
 | `ReferenceManualContentGuardTests.EveryRegistryBuiltIn_IsMentionedSomewhereInTheManual` | Every `BuiltInRegistry` name appears somewhere in the manual |
 | `ReferenceManualContentGuardTests.InternalLinks_ResolveToExistingPages` | No `href` points at a missing chapter file |
+| `ReferenceManualContentGuardTests.MarkdownLinks_ResolveToExistingRepoFiles` | Every `href` to a `.md` file resolves inside the repo |
+| `ReferenceManualContentGuardTests.NavigationJs_RewritesMarkdownLinksOnGitHubPages` | `navigation.js` rewrites those `.md` hrefs on `*.github.io` |
+| `ReferenceManualContentGuardTests.PagesDeploy_RewritesMarkdownLinksToGitHubBlob` | Pages deploy rewrites copied HTML to GitHub blob URLs |
 | `ReferenceManualContentGuardTests.SectionNumbers_AreUniqueWithinEachChapter` | No chapter reuses a section number such as two `35.5` headings |
 | `ReferenceManualContentGuardTests.WebUiChapter_NamesEveryRegisteredControlType` | Every `UiControlSpecRegistry` control type appears as `ui.<type>` in `23-web-ui.html` |
 | `ReferenceManualContentGuardTests.NavigationFallback_MatchesChaptersJson` | `FALLBACK_NAV_ITEMS` in `navigation.js` matches `chapters.json` |

@@ -78,6 +78,21 @@ locale chrome inside the script (plus `assets/cover-it.svg`); chapter prose
 comes from the HTML. GitHub Pages hosts the chapter site, not this 300-page
 file.
 
+## GitHub Pages
+
+The chapter site is only the HTML/CSS/JS/JSON under `ReferenceManual/` (see
+`.github/workflows/deploy-reference-manual.yml`). Authoring hrefs such as
+`../docs/start-here.md` work in a clone, but on Pages they resolve *above* the
+project root and 404.
+
+The deploy copies the chapters, then
+`scripts/rewrite-reference-manual-pages-md-links.py` rewrites those hrefs to
+GitHub blob URLs. `navigation.js` does the same rewrite in the browser if the
+site is served from `*.github.io` and the HTML still has the relative path
+(local `file://` and `localhost` are left alone). Do not put the docs tree on
+Pages just to make the relative hrefs work — that still leaves `../` pointing
+outside `/maldalang/`.
+
 Styling (`book.css`, `syntax.css`) and the highlighter are inlined into it, so
 the book can be mailed or archived on its own.
 
