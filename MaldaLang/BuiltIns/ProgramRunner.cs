@@ -45,14 +45,13 @@ public static class ProgramRunner
         if (programValue.Type == ValueType.Object && programValue.AsObject() is ProgramInstance program)
             return program;
 
-        if (programValue.Type == ValueType.Object && programValue.AsObject() is JsonObject json)
+        if (programValue.Type == ValueType.Object && programValue.AsObject() is JsonObject)
         {
-            var apiVal = json.Get("@api");
-            if (apiVal.Type != ValueType.String)
-                throw new Exception("runProgram() JSON program requires string @api.");
+            if (!ApiRegistry.TryResolveApiNameFromProgramJson(programValue, out var apiName))
+                throw new Exception("runProgram() JSON program requires string @api (or exactly one registered api).");
 
-            if (!ApiRegistry.TryResolveProgramSchema(apiVal.AsString(), out var schema))
-                throw new Exception($"runProgram() unknown api '{apiVal.AsString()}'.");
+            if (!ApiRegistry.TryResolveProgramSchema(apiName, out var schema))
+                throw new Exception($"runProgram() unknown api '{apiName}'.");
 
             if (!TypedPromptValidator.TryValidateReturnType(programValue, schema, out var validated, out var error))
                 throw new Exception("runProgram() could not coerce JSON to a program: " + error);
@@ -68,16 +67,20 @@ public static class ProgramRunner
 
     private static RuntimeValue ResolveArg(RuntimeValue arg, Dictionary<string, RuntimeValue> bindings)
     {
-        if (arg.Type == ValueType.String)
+        arg = ProgramJsonNormalizer.CoerceNumericString(arg);
+
+        if (ProgramJsonNormalizer.IsAliasRef(arg, out var alias))
         {
-            var s = arg.AsString();
-            if (s.StartsWith("$", StringComparison.Ordinal))
-            {
-                var alias = s.Substring(1);
-                if (!bindings.TryGetValue(alias, out var bound))
-                    throw new Exception($"runProgram: unknown step alias '{s}'.");
-                return bound;
-            }
+            if (!bindings.TryGetValue(alias, out var bound))
+                throw new Exception($"runProgram: unknown step alias '${alias}'.");
+            return bound;
+        }
+
+        if (arg.Type == ValueType.Object)
+        {
+            throw new Exception(
+                "runProgram: argument is an object; expected a JSON primitive or \"$alias\". " +
+                "Nested {call, args} and {type, value} wrappers are normalized before execution.");
         }
 
         return arg;

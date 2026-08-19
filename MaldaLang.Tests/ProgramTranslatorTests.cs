@@ -355,6 +355,260 @@ public class ProgramTranslatorTests : TestBase
     }
 
     [Fact]
+    public void ApiRegistry_ProgramArgSchema_DoesNotAllowBareObjects()
+    {
+        ApiRegistry.Register(new ApiDeclaration("Calc", new List<ApiMethodSignature>
+        {
+            new("add", new List<string> { "a", "b" })
+        }));
+
+        Assert.True(ApiRegistry.TryResolveProgramSchema("Calc", out var schema));
+        var root = Assert.IsType<JsonObject>(schema.AsObject());
+        var props = Assert.IsType<JsonObject>(root.Get("properties").AsObject());
+        var steps = Assert.IsType<JsonObject>(props.Get("steps").AsObject());
+        var stepItem = Assert.IsType<JsonObject>(steps.Get("items").AsObject());
+        var stepProps = Assert.IsType<JsonObject>(stepItem.Get("properties").AsObject());
+        var args = Assert.IsType<JsonObject>(stepProps.Get("args").AsObject());
+        var items = Assert.IsType<JsonObject>(args.Get("items").AsObject());
+        var types = items.Get("type").AsArray().Select(v => v.AsString()).ToList();
+        Assert.DoesNotContain("object", types);
+        Assert.Contains("number", types);
+        Assert.Contains("string", types);
+    }
+
+    [Fact]
+    public void FormatSchemaAppendix_Program_WarnsAgainstTypedWrappers()
+    {
+        ApiRegistry.Register(new ApiDeclaration("Calc", new List<ApiMethodSignature>
+        {
+            new("add", new List<string> { "a", "b" })
+        }));
+        Assert.True(TypedPromptSchemaResolver.TryResolve("program(Calc)", null, out var schema, out _));
+        var appendix = TypedPromptValidator.FormatSchemaAppendix("program(Calc)", schema);
+        Assert.Contains("JSON numbers", appendix);
+        Assert.Contains("never numeric strings", appendix);
+        Assert.Contains("\"$alias\"", appendix);
+        Assert.Contains("{\"type\":\"number\",\"value\":2}", appendix);
+    }
+
+    [Fact]
+    public void ValidateReturnType_Program_FlattensNestedCalls()
+    {
+        ApiRegistry.Register(new ApiDeclaration("Calc", new List<ApiMethodSignature>
+        {
+            new("add", new List<string> { "a", "b" }),
+            new("mul", new List<string> { "a", "b" })
+        }));
+        Assert.True(TypedPromptSchemaResolver.TryResolve("program(Calc)", null, out var schema, out _));
+
+        var nestedAdd = new JsonObject();
+        nestedAdd.Set("call", RuntimeValue.String("add"));
+        nestedAdd.Set("args", RuntimeValue.Array(new List<RuntimeValue>
+        {
+            RuntimeValue.Integer(2),
+            RuntimeValue.Integer(3)
+        }));
+
+        var mul = new JsonObject();
+        mul.Set("call", RuntimeValue.String("mul"));
+        mul.Set("args", RuntimeValue.Array(new List<RuntimeValue>
+        {
+            RuntimeValue.Object(nestedAdd),
+            RuntimeValue.Integer(4)
+        }));
+        mul.Set("as", RuntimeValue.String("result"));
+
+        var json = new JsonObject();
+        json.Set("steps", RuntimeValue.Array(new List<RuntimeValue> { RuntimeValue.Object(mul) }));
+        json.Set("return", RuntimeValue.String("$result"));
+
+        var ok = TypedPromptValidator.TryValidateReturnType(
+            RuntimeValue.Object(json),
+            schema,
+            out var validated,
+            out var error);
+
+        Assert.True(ok, error);
+        var prog = Assert.IsType<ProgramInstance>(validated.AsObject());
+        Assert.Equal(2, prog.Steps.Count);
+        Assert.Equal("add", prog.Steps[0].Call);
+        Assert.Equal("mul", prog.Steps[1].Call);
+        Assert.Equal("$n0", prog.Steps[1].Args[0].AsString());
+        Assert.Equal(4, prog.Steps[1].Args[1].AsInteger());
+    }
+
+    [Fact]
+    public void ValidateReturnType_Program_CoercesNumericStringsAndTypeWrappers()
+    {
+        ApiRegistry.Register(new ApiDeclaration("Calc", new List<ApiMethodSignature>
+        {
+            new("add", new List<string> { "a", "b" })
+        }));
+        Assert.True(TypedPromptSchemaResolver.TryResolve("program(Calc)", null, out var schema, out _));
+
+        var wrapper = new JsonObject();
+        wrapper.Set("type", RuntimeValue.String("number"));
+        wrapper.Set("value", RuntimeValue.String("3"));
+
+        var step = new JsonObject();
+        step.Set("call", RuntimeValue.String("add"));
+        step.Set("args", RuntimeValue.Array(new List<RuntimeValue>
+        {
+            RuntimeValue.String("2"),
+            RuntimeValue.Object(wrapper)
+        }));
+        step.Set("as", RuntimeValue.String("t0"));
+
+        var json = new JsonObject();
+        json.Set("@api", RuntimeValue.String("Calc"));
+        json.Set("steps", RuntimeValue.Array(new List<RuntimeValue> { RuntimeValue.Object(step) }));
+        json.Set("return", RuntimeValue.String("$t0"));
+
+        var ok = TypedPromptValidator.TryValidateReturnType(
+            RuntimeValue.Object(json),
+            schema,
+            out var validated,
+            out var error);
+
+        Assert.True(ok, error);
+        var prog = Assert.IsType<ProgramInstance>(validated.AsObject());
+        Assert.Equal(ValueType.Integer, prog.Steps[0].Args[0].Type);
+        Assert.Equal(2, prog.Steps[0].Args[0].AsInteger());
+        Assert.Equal(ValueType.Integer, prog.Steps[0].Args[1].Type);
+        Assert.Equal(3, prog.Steps[0].Args[1].AsInteger());
+    }
+
+    [Fact]
+    public void ValidateReturnType_Program_AcceptsTypeChatShape()
+    {
+        ApiRegistry.Register(new ApiDeclaration("Calc", new List<ApiMethodSignature>
+        {
+            new("add", new List<string> { "a", "b" }),
+            new("mul", new List<string> { "a", "b" })
+        }));
+        Assert.True(TypedPromptSchemaResolver.TryResolve("program(Calc)", null, out var schema, out _));
+
+        var add = new JsonObject();
+        add.Set("@func", RuntimeValue.String("add"));
+        add.Set("@args", RuntimeValue.Array(new List<RuntimeValue>
+        {
+            RuntimeValue.Integer(2),
+            RuntimeValue.Integer(3)
+        }));
+
+        var mul = new JsonObject();
+        mul.Set("@func", RuntimeValue.String("mul"));
+        var ref0 = new JsonObject();
+        ref0.Set("@ref", RuntimeValue.Integer(0));
+        mul.Set("@args", RuntimeValue.Array(new List<RuntimeValue>
+        {
+            RuntimeValue.Object(ref0),
+            RuntimeValue.Integer(4)
+        }));
+
+        var json = new JsonObject();
+        json.Set("@steps", RuntimeValue.Array(new List<RuntimeValue>
+        {
+            RuntimeValue.Object(add),
+            RuntimeValue.Object(mul)
+        }));
+
+        var ok = TypedPromptValidator.TryValidateReturnType(
+            RuntimeValue.Object(json),
+            schema,
+            out var validated,
+            out var error);
+
+        Assert.True(ok, error);
+        var prog = Assert.IsType<ProgramInstance>(validated.AsObject());
+        Assert.Equal("Calc", prog.ApiName);
+        Assert.Equal(2, prog.Steps.Count);
+        Assert.Equal("$t0", prog.Steps[1].Args[0].AsString());
+        Assert.Equal("$t1", prog.ReturnValue.AsString());
+    }
+
+    [Fact]
+    public void ValidateReturnType_Program_RejectsUnknownObjectArgs()
+    {
+        ApiRegistry.Register(new ApiDeclaration("Calc", new List<ApiMethodSignature>
+        {
+            new("add", new List<string> { "a", "b" })
+        }));
+        Assert.True(TypedPromptSchemaResolver.TryResolve("program(Calc)", null, out var schema, out _));
+
+        var junk = new JsonObject();
+        junk.Set("foo", RuntimeValue.Integer(1));
+
+        var step = new JsonObject();
+        step.Set("call", RuntimeValue.String("add"));
+        step.Set("args", RuntimeValue.Array(new List<RuntimeValue>
+        {
+            RuntimeValue.Object(junk),
+            RuntimeValue.Integer(3)
+        }));
+        step.Set("as", RuntimeValue.String("t0"));
+
+        var json = new JsonObject();
+        json.Set("@api", RuntimeValue.String("Calc"));
+        json.Set("steps", RuntimeValue.Array(new List<RuntimeValue> { RuntimeValue.Object(step) }));
+        json.Set("return", RuntimeValue.String("$t0"));
+
+        var ok = TypedPromptValidator.TryValidateReturnType(
+            RuntimeValue.Object(json),
+            schema,
+            out _,
+            out var error);
+
+        Assert.False(ok);
+        Assert.Contains("object", error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void RunProgram_Interpreter_NestedCallsAndNumericStrings()
+    {
+        var source = """
+            api Calc {
+                function add(a, b);
+                function mul(a, b);
+            }
+
+            function add(a, b) { return a + b; }
+            function mul(a, b) { return a * b; }
+
+            var nested = parseJSON("{\"@api\":\"Calc\",\"steps\":[{\"call\":\"mul\",\"args\":[{\"call\":\"add\",\"args\":[2,3]},4],\"as\":\"r\"}],\"return\":\"$r\"}");
+            io.print(runProgram(nested));
+
+            var strings = parseJSON("{\"@api\":\"Calc\",\"steps\":[{\"call\":\"add\",\"args\":[\"2\",\"3\"],\"as\":\"t0\"},{\"call\":\"mul\",\"args\":[\"$t0\",\"4\"],\"as\":\"r\"}],\"return\":\"$r\"}");
+            io.print(runProgram(strings));
+
+            var wrappers = parseJSON("{\"steps\":[{\"call\":\"add\",\"args\":[{\"type\":\"number\",\"value\":2},{\"type\":\"integer\",\"value\":\"3\"}],\"as\":\"t0\"},{\"call\":\"mul\",\"args\":[\"$t0\",4],\"as\":\"r\"}],\"return\":\"$r\"}");
+            io.print(runProgram(wrappers));
+            """;
+
+        var lines = RunProgram(source).Replace("\r\n", "\n").Trim().Split('\n');
+        Assert.Equal(new[] { "20", "20", "20" }, lines);
+    }
+
+    [Fact]
+    public void RunProgram_Interpreter_UnderscoreApiMethods()
+    {
+        var source = """
+            api Calc {
+                function _add(a, b);
+                function _mul(a, b);
+            }
+
+            function _add(a, b) { return a + b; }
+            function _mul(a, b) { return a * b; }
+
+            var prog = parseJSON("{\"@api\":\"Calc\",\"steps\":[{\"call\":\"_mul\",\"args\":[{\"call\":\"_add\",\"args\":[\"2\",\"3\"]},4],\"as\":\"r\"}],\"return\":\"$r\"}");
+            io.print(runProgram(prog));
+            """;
+
+        Assert.Equal("20", RunProgram(source).Trim());
+    }
+
+    [Fact]
     public void Parser_AcceptsProgramReturnType()
     {
         var source = """

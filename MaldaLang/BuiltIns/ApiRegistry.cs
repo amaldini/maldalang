@@ -109,6 +109,31 @@ public static class ApiRegistry
         return false;
     }
 
+    public static bool TryResolveApiNameFromProgramJson(RuntimeValue programValue, out string apiName)
+    {
+        apiName = "";
+        if (programValue.Type != ValueType.Object)
+            return false;
+
+        if (programValue.AsObject() is JsonObject json)
+        {
+            var tagged = json.Get("@api");
+            if (tagged.Type == ValueType.String && !string.IsNullOrWhiteSpace(tagged.AsString()))
+            {
+                apiName = tagged.AsString();
+                return true;
+            }
+        }
+
+        if (Definitions.Count == 1)
+        {
+            apiName = Definitions.Keys.First();
+            return true;
+        }
+
+        return false;
+    }
+
     public static bool TryParseProgramReturnType(string returnType, out string apiName)
     {
         apiName = "";
@@ -130,7 +155,7 @@ public static class ApiRegistry
         callEnum.Set("type", RuntimeValue.String("string"));
         callEnum.Set("enum", RuntimeValue.Array(methodNames));
 
-        var permissive = MakePermissiveValueSchema();
+        var permissive = MakeProgramValueSchema();
 
         var stepProps = new JsonObject();
         stepProps.Set("call", RuntimeValue.Object(callEnum));
@@ -199,8 +224,11 @@ public static class ApiRegistry
         }
     }
 
-    private static JsonObject MakePermissiveValueSchema()
+    private static JsonObject MakeProgramValueSchema()
     {
+        // No "object": structured-output models otherwise emit {type,value} wrappers
+        // or nested calls in args, which then get passed through as the wrong types.
+        // Nested calls / TypeChat shapes are flattened before this schema is applied.
         var schema = new JsonObject();
         schema.Set("type", RuntimeValue.Array(new List<RuntimeValue>
         {
@@ -208,7 +236,6 @@ public static class ApiRegistry
             RuntimeValue.String("number"),
             RuntimeValue.String("integer"),
             RuntimeValue.String("boolean"),
-            RuntimeValue.String("object"),
             RuntimeValue.String("array"),
             RuntimeValue.String("null")
         }));

@@ -53,6 +53,8 @@ Compact rules for generating correct `.malda`. Prefer this over scraping HTML ma
   `api Calc { function add(a, b); }` with `prompt p(...) -> program(Calc)` then
   `runProgram(prog)` — deterministic, no tool loop (interpreter and C# transpile; not JS). Program JSON:
   `{ "@api":"Calc", "steps":[{"call":"add","args":[2,3],"as":"t0"}], "return":"$t0" }`.
+  Args must be JSON numbers (not `"2"`) or `"$alias"`; nested `{call,args}`, TypeChat `@func`/`@ref`,
+  and `{type,value}` wrappers are flattened/coerced. Leftover objects in args are rejected.
 - Interpolate with a **`$`-prefixed** string: `$"total: {n}"`, `$"{a} of {b}"`. The braces
   take any expression (`{n * 2}`, `{math.sqrt(x)}`, `{items[0]}`), and `$` strings compose
   with `AnsiConsole` markup. A plain string does **not** interpolate — `"total: {n}"` prints
