@@ -80,3 +80,7 @@ Temporary/
 
 # Local few-line MALDA scratch (not the Examples catalog)
 scratch/
+
+# Python bytecode from repo scripts
+__pycache__/
+*.pyc

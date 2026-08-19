@@ -64,7 +64,8 @@ reader: **`Examples/Agents/secondbrain_semantic.malda`** (~7,600 lines with shar
 reference-manual snippets keep those claims checkable.
 
 Longer version, with objections and current weaknesses stated up front:
-[`docs/announcement.md`](docs/announcement.md).
+[`docs/announcement.md`](docs/announcement.md), also as a
+[Telegraph article](https://telegra.ph/MALDA-prompts-tools-and-agents-as-language-constructs-08-19).
 
 ## Requirements
 

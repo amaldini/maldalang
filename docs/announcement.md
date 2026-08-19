@@ -7,6 +7,10 @@ repository, and known weaknesses are stated up front.
 Launch-only notes (title A/B, HN formatting tips, prepared thread answers, checklist)
 are kept locally and are not part of this repository.
 
+The long-form blog post is published on Telegraph (not GitHub Pages):
+<https://telegra.ph/MALDA-prompts-tools-and-agents-as-language-constructs-08-19>.
+CI can update that page when this file changes; see [`docs/blog/README.md`](blog/README.md).
+
 Sections:
 
 1. [Short version — Show HN post](#1-short-version--show-hn-post)
@@ -98,7 +102,7 @@ macOS in CI. Durable workflows are local SQLite, not a cluster;
 determinism is a deny-list of built-in names.
 
 Longer write-up, objections, comparison table:
-https://github.com/amaldini/maldalang/blob/main/docs/announcement.md
+https://telegra.ph/MALDA-prompts-tools-and-agents-as-language-constructs-08-19
 
 Happy to answer "why not a library?", "why not macros?", and
 anything else.

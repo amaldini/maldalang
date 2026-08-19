@@ -1,0 +1,30 @@
+name: Publish announcement article
+
+# Posts the long-form MALDA announcement to Telegraph (not GitHub Pages).
+# Updates use repository secret TELEGRAPH_ACCESS_TOKEN.
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "docs/announcement.md"
+      - "docs/blog/published.json"
+      - "scripts/publish-malda-article.py"
+      - ".github/workflows/publish-article.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish to Telegraph
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Publish article
+        env:
+          TELEGRAPH_ACCESS_TOKEN: ${{ secrets.TELEGRAPH_ACCESS_TOKEN }}
+        run: python3 scripts/publish-malda-article.py
