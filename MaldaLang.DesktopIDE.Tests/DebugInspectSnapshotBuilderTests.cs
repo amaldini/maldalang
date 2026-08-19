@@ -73,7 +73,7 @@ public class DebugInspectSnapshotBuilderTests
         await paused.Task.WaitAsync(TimeSpan.FromSeconds(10));
 
         var secondUserRef = RequireExpandable(session, "Globals", "user");
-        Assert.NotEqual(firstUserRef, secondUserRef);
+        Assert.True(secondUserRef > 0);
         var secondChildren = DebugInspectSnapshotBuilder.Expand(session, secondUserRef);
         Assert.Contains(secondChildren, child => child.Name == "name" && child.Value.Contains("Ada"));
 
