@@ -1973,7 +1973,7 @@ public partial class MainWindow : Window
     
     private void ApplyAICodeChange(string newCode)
     {
-        CodeEditor.Text = newCode;
+        SetEditorTextUndoable(newCode);
         _fileService.SetContent(newCode);
         // Update diagnostics
         _diagnosticsTimer?.Stop();

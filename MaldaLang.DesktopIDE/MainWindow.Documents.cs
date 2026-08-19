@@ -151,7 +151,7 @@ public partial class MainWindow
         _fileService.SetContent(document.Content);
     }
 
-    private void SyncEditorFromActiveDocument()
+    private void SyncEditorFromActiveDocument(bool resetUndoStack = true)
     {
         var document = GetActiveDocument();
 
@@ -160,7 +160,15 @@ public partial class MainWindow
         {
             if (CodeEditor.Text != document.Content)
             {
-                CodeEditor.Text = document.Content;
+                if (resetUndoStack)
+                {
+                    // TextEditor.Text clears UndoStack — correct when loading a different buffer.
+                    CodeEditor.Text = document.Content;
+                }
+                else
+                {
+                    SetEditorTextUndoable(document.Content);
+                }
             }
         }
         finally

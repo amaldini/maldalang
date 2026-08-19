@@ -161,7 +161,7 @@ public partial class MainWindow
             document.IsDirty = !string.Equals(document.Content, document.LastSavedContent, StringComparison.Ordinal);
             if (string.Equals(group.Key, _activeDocumentKey, StringComparison.OrdinalIgnoreCase))
             {
-                CodeEditor.Text = document.Content;
+                SetEditorTextUndoable(document.Content);
             }
         }
 
@@ -187,7 +187,7 @@ public partial class MainWindow
             }
             else
             {
-                CodeEditor.Text = document.Content;
+                SetEditorTextUndoable(document.Content);
             }
         }
 
