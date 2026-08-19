@@ -145,6 +145,132 @@ var result = foo();
     }
 
     [Fact]
+    public void Rename_IncludesIdentifierInsideInterpolatedString()
+    {
+        const string source = """
+var name = "world";
+print($"hello {name}");
+""";
+
+        var edits = _service.Rename(source, 0, 4, "title", "test.malda");
+
+        Assert.NotNull(edits);
+        Assert.Equal(2, edits!.Count);
+        Assert.All(edits, edit => Assert.Equal("title", edit.NewText));
+        Assert.All(edits, edit => Assert.Equal("name", Slice(source, edit.Span)));
+        Assert.Contains(edits, edit => edit.Span.Line == 1);
+    }
+
+    [Fact]
+    public void Rename_FromInterpolatedStringUsage_RenamesDeclaration()
+    {
+        const string source = """
+var name = "world";
+print($"hello {name}");
+""";
+
+        var interpolationColumn = source.Replace("\r\n", "\n").Split('\n')[1].IndexOf("name", StringComparison.Ordinal);
+        var edits = _service.Rename(source, 1, interpolationColumn, "title", "test.malda");
+
+        Assert.NotNull(edits);
+        Assert.Equal(2, edits!.Count);
+        Assert.Contains(edits, edit => edit.Span.Line == 0 && Slice(source, edit.Span) == "name");
+        Assert.Contains(edits, edit => edit.Span.Line == 1 && Slice(source, edit.Span) == "name");
+    }
+
+    [Fact]
+    public void PrepareRename_IdentifierInsideInterpolatedString_ReturnsTarget()
+    {
+        const string source = """
+var name = "world";
+print($"hello { name }");
+""";
+
+        var interpolationColumn = source.Replace("\r\n", "\n").Split('\n')[1].IndexOf("name", StringComparison.Ordinal);
+        var target = _service.PrepareRename(source, 1, interpolationColumn, "test.malda");
+
+        Assert.NotNull(target);
+        Assert.Equal("name", target!.Name);
+        Assert.Equal(1, target.Span.Line);
+        Assert.Equal("name", Slice(source, target.Span));
+    }
+
+    [Fact]
+    public void GetReferences_IncludesInterpolatedStringAndExpressionUsages()
+    {
+        const string source = """
+var name = "world";
+print($"hello {name} and {name.ToUpper()}");
+print(name);
+""";
+
+        var references = _service.GetReferences(source, 0, 4, "test.malda");
+
+        Assert.Equal(4, references.Count);
+        Assert.All(references, reference => Assert.Equal("name", Slice(source, reference.Span)));
+        Assert.Equal(2, references.Count(reference => reference.Span.Line == 1));
+    }
+
+    [Fact]
+    public void Rename_DoesNotRewritePlainStringThatLooksLikeInterpolation()
+    {
+        const string source = """
+var name = "world";
+print("hello {name}");
+""";
+
+        var edits = _service.Rename(source, 0, 4, "title", "test.malda");
+
+        Assert.NotNull(edits);
+        Assert.Single(edits!);
+        Assert.Equal(0, edits[0].Span.Line);
+        Assert.Equal("name", Slice(source, edits[0].Span));
+    }
+
+    [Fact]
+    public void Rename_IncludesIdentifierInsideTripleQuotedInterpolatedString()
+    {
+        const string source = """"
+var name = "world";
+var greeting = $"""
+Hello {name}
+""";
+"""";
+
+        var edits = _service.Rename(source, 0, 4, "title", "test.malda");
+
+        Assert.NotNull(edits);
+        Assert.Equal(2, edits!.Count);
+        Assert.Contains(edits, edit => edit.Span.Line == 2 && Slice(source, edit.Span) == "name");
+    }
+
+    [Fact]
+    public void RenameWorkspaceSymbol_IncludesInterpolatedStringUsage()
+    {
+        const string librarySource = """
+function greet() {
+    return "hi";
+}
+""";
+        const string mainSource = """
+print($"msg {greet()}");
+""";
+
+        var documents = new[]
+        {
+            new WorkspaceDocumentInfo { SourceKey = "lib.malda", Text = librarySource },
+            new WorkspaceDocumentInfo { SourceKey = "main.malda", Text = mainSource }
+        };
+
+        var edits = _service.RenameWorkspaceSymbol(documents, librarySource, 0, 9, "welcome", "lib.malda");
+
+        Assert.NotNull(edits);
+        Assert.Equal(2, edits!.Count);
+        Assert.Contains(edits, edit => edit.SourceKey == "lib.malda" && Slice(librarySource, edit.Span) == "greet");
+        Assert.Contains(edits, edit => edit.SourceKey == "main.malda" && Slice(mainSource, edit.Span) == "greet");
+    }
+
+    [Fact]
     public void GetWorkspaceDefinition_CrossFileFunctionUsage_ReturnsExternalDeclaration()
     {
         const string librarySource = """
@@ -196,5 +322,11 @@ var second = sharedHelper();
         Assert.Contains(edits, edit => edit.SourceKey == "lib.malda");
         Assert.Equal(2, edits.Count(edit => edit.SourceKey == "main.malda"));
         Assert.All(edits, edit => Assert.Equal("renamedHelper", edit.NewText));
+    }
+
+    private static string Slice(string source, TextSpanInfo span)
+    {
+        var line = source.Replace("\r\n", "\n").Split('\n')[span.Line];
+        return line.Substring(span.Column, span.Length);
     }
 }

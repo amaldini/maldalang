@@ -174,10 +174,10 @@ public class SymbolNavigationService : ISymbolNavigationService
         }
 
         var locations = new List<SymbolLocation>();
-        foreach (var current in tokens)
+        foreach (var current in EnumerateIdentifierTokens(tokens))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (current.Type == TokenType.Identifier && current.Lexeme == token.Lexeme)
+            if (current.Lexeme == token.Lexeme)
             {
                 locations.Add(CreateLocation(sourceFileName, current.Lexeme, current.Line - 1, current.Column - 1, current.Lexeme.Length));
             }
@@ -244,10 +244,10 @@ public class SymbolNavigationService : ISymbolNavigationService
         }
 
         var edits = new List<TextEditInfo>();
-        foreach (var current in tokens)
+        foreach (var current in EnumerateIdentifierTokens(tokens))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (current.Type == TokenType.Identifier && current.Lexeme == token.Lexeme)
+            if (current.Lexeme == token.Lexeme)
             {
                 edits.Add(new TextEditInfo
                 {
@@ -578,10 +578,10 @@ public class SymbolNavigationService : ISymbolNavigationService
                 continue;
             }
 
-            foreach (var current in tokens)
+            foreach (var current in EnumerateIdentifierTokens(tokens))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (current.Type == TokenType.Identifier && current.Lexeme == name)
+                if (current.Lexeme == name)
                 {
                     locations.Add(CreateLocation(document.SourceKey, current.Lexeme, current.Line - 1, current.Column - 1, current.Lexeme.Length));
                 }
@@ -700,12 +700,63 @@ public class SymbolNavigationService : ISymbolNavigationService
     {
         var line1 = line + 1;
         var column1 = column + 1;
-        var token = tokens.FirstOrDefault(t =>
+        return EnumerateIdentifierTokens(tokens).FirstOrDefault(t =>
             t.Line == line1 &&
             t.Column <= column1 &&
             t.Column + t.Lexeme.Length >= column1);
+    }
 
-        return token != null && token.Type == TokenType.Identifier ? token : null;
+    private static IEnumerable<Token> EnumerateIdentifierTokens(IEnumerable<Token> tokens)
+    {
+        foreach (var token in tokens)
+        {
+            if (token.Type == TokenType.Identifier)
+            {
+                yield return token;
+            }
+            else if (token.Type == TokenType.InterpolatedString)
+            {
+                foreach (var nested in EnumerateInterpolatedStringIdentifiers(token))
+                {
+                    yield return nested;
+                }
+            }
+        }
+    }
+
+    private static IEnumerable<Token> EnumerateInterpolatedStringIdentifiers(Token interpolated)
+    {
+        if (interpolated.Literal is not List<LexerInterpolatedStringSegment> segments)
+        {
+            yield break;
+        }
+
+        foreach (var segment in segments)
+        {
+            if (!segment.IsExpression || string.IsNullOrWhiteSpace(segment.Content))
+            {
+                continue;
+            }
+
+            List<Token> nestedTokens;
+            try
+            {
+                nestedTokens = new Lexer(segment.Content).Tokenize();
+            }
+            catch
+            {
+                continue;
+            }
+
+            foreach (var ident in EnumerateIdentifierTokens(nestedTokens))
+            {
+                var line = segment.SourceLine + ident.Line - 1;
+                var column = ident.Line == 1
+                    ? segment.SourceColumn + ident.Column - 1
+                    : ident.Column;
+                yield return new Token(TokenType.Identifier, ident.Lexeme, ident.Literal, line, column);
+            }
+        }
     }
 
     private static bool IsValidIdentifier(string name)

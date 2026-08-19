@@ -7,11 +7,17 @@ public class LexerInterpolatedStringSegment
 {
     public bool IsExpression { get; }
     public string Content { get; }
+    /// <summary>1-based source line of <see cref="Content"/> (after leading trim for expressions).</summary>
+    public int SourceLine { get; }
+    /// <summary>1-based source column of <see cref="Content"/> (after leading trim for expressions).</summary>
+    public int SourceColumn { get; }
     
-    public LexerInterpolatedStringSegment(bool isExpression, string content)
+    public LexerInterpolatedStringSegment(bool isExpression, string content, int sourceLine = 0, int sourceColumn = 0)
     {
         IsExpression = isExpression;
         Content = content;
+        SourceLine = sourceLine;
+        SourceColumn = sourceColumn;
     }
 }
 
@@ -425,6 +431,8 @@ public class Lexer
                     Advance(); // consume '{'
                     braceDepth = 1;
                     expressionStart = _current;
+                    var expressionLine = _line;
+                    var expressionColumn = _column;
                     
                     // Find matching closing brace
                     while (braceDepth > 0 && !IsAtEnd())
@@ -460,16 +468,7 @@ public class Lexer
                     if (braceDepth > 0)
                         throw Error("Unterminated expression in interpolated string");
                     
-                    // Extract expression content (without the closing '}')
-                    // _current is pointing at the closing '}', so we extract from expressionStart to _current
-                    // Substring(startIndex, length) extracts 'length' characters starting from startIndex
-                    // So if expressionStart points to 'i' and _current points to '}', we extract 1 char = "i"
-                    string expressionContent = _source.Substring(expressionStart, _current - expressionStart);
-                    
-                    // Trim whitespace that might have been included
-                    expressionContent = expressionContent.Trim();
-                    
-                    segments.Add(new LexerInterpolatedStringSegment(true, expressionContent));
+                    segments.Add(CreateInterpolatedExpressionSegment(expressionStart, _current, expressionLine, expressionColumn));
                     
                     Advance(); // consume closing '}'
                 }
@@ -604,6 +603,8 @@ public class Lexer
                     Advance(); // consume '{'
                     braceDepth = 1;
                     expressionStart = _current;
+                    var expressionLine = _line;
+                    var expressionColumn = _column;
                     
                     // Find matching closing brace
                     while (braceDepth > 0 && !IsAtEnd())
@@ -639,11 +640,7 @@ public class Lexer
                     if (braceDepth > 0)
                         throw Error("Unterminated expression in interpolated triple-quoted string");
                     
-                    // Extract expression content
-                    string expressionContent = _source.Substring(expressionStart, _current - expressionStart);
-                    expressionContent = expressionContent.Trim();
-                    
-                    segments.Add(new LexerInterpolatedStringSegment(true, expressionContent));
+                    segments.Add(CreateInterpolatedExpressionSegment(expressionStart, _current, expressionLine, expressionColumn));
                     
                     Advance(); // consume closing '}'
                 }
@@ -778,6 +775,32 @@ public class Lexer
         return _current >= _source.Length;
     }
     
+    private LexerInterpolatedStringSegment CreateInterpolatedExpressionSegment(int startIndex, int endIndex, int startLine, int startColumn)
+    {
+        var raw = _source.Substring(startIndex, endIndex - startIndex);
+        var line = startLine;
+        var column = startColumn;
+        foreach (var ch in raw)
+        {
+            if (!char.IsWhiteSpace(ch))
+            {
+                break;
+            }
+
+            if (ch == '\n')
+            {
+                line++;
+                column = 1;
+            }
+            else
+            {
+                column++;
+            }
+        }
+
+        return new LexerInterpolatedStringSegment(true, raw.Trim(), line, column);
+    }
+
     private Token CreateToken(TokenType type)
     {
         return CreateToken(type, null);
