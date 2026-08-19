@@ -67,7 +67,7 @@ SchemaType    ::= Identifier "[]"? "?"?   /* e.g. string, int[], string? */
 
 ApiDecl       ::= "api" Identifier "{" ApiMethodSig* "}"
 ApiMethodSig  ::= "function" Identifier "(" CtorParamList? ")" ";"
-                  /* tipo SchemaType opzionale per parametro, come CtorParam; impl = function top-level con lo stesso nome */
+                  /* optional SchemaType per param, same as CtorParam; impl = top-level function of the same name */
 
 ActorDecl     ::= "actor" Identifier "{" ActorBodyItem* "}"
 ActorBodyItem ::= MessageDecl | ActorMember
