@@ -2886,8 +2886,7 @@ public class Parser
     private Token Consume(TokenType type, string message)
     {
         if (Check(type)) return Advance();
-        var error = Error(Peek(), message);
-        throw error;
+        throw ErrorAtExpectedToken(type, message);
     }
 
     /// <summary>
@@ -3303,6 +3302,22 @@ public class Parser
     private ParseException Error(Token token, string message, string? diagnosticCode = null)
     {
         return new ParseException(token.Line, token.Column, message, _sourceFileName, diagnosticCode);
+    }
+
+    /// <summary>
+    /// Missing statement terminators should be reported at the end of the
+    /// preceding token (after comments/newlines have already been skipped),
+    /// not on the next statement.
+    /// </summary>
+    private ParseException ErrorAtExpectedToken(TokenType expectedType, string message)
+    {
+        if (expectedType == TokenType.Semicolon && _current > 0)
+        {
+            var (line, column) = Previous().GetEndLocation();
+            return new ParseException(line, column, message, _sourceFileName);
+        }
+
+        return Error(Peek(), message);
     }
     
     private bool IsKeyword(TokenType type)

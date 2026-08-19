@@ -19,6 +19,35 @@ public class Token
         Line = line;
         Column = column;
     }
+
+    /// <summary>
+    /// 1-based location immediately after this token's lexeme.
+    /// </summary>
+    public (int Line, int Column) GetEndLocation()
+    {
+        var line = Line;
+        var column = Column;
+        var lexeme = Lexeme ?? string.Empty;
+        if (lexeme.IndexOf('\n') < 0)
+        {
+            return (line, column + lexeme.Length);
+        }
+
+        foreach (var ch in lexeme)
+        {
+            if (ch == '\n')
+            {
+                line++;
+                column = 1;
+            }
+            else
+            {
+                column++;
+            }
+        }
+
+        return (line, column);
+    }
     
     public override string ToString()
     {
