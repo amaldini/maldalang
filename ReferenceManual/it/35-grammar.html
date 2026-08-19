@@ -66,7 +66,8 @@ SchemaField   ::= Identifier ":" SchemaType ";"
 SchemaType    ::= Identifier "[]"? "?"?   /* e.g. string, int[], string? */
 
 ApiDecl       ::= "api" Identifier "{" ApiMethodSig* "}"
-ApiMethodSig  ::= "function" Identifier "(" ParamList? ")" ";"   /* impl = top-level function of same name */
+ApiMethodSig  ::= "function" Identifier "(" CtorParamList? ")" ";"
+                  /* optional SchemaType per param, same as CtorParam; impl = top-level function of the same name */
 
 ActorDecl     ::= "actor" Identifier "{" ActorBodyItem* "}"
 ActorBodyItem ::= MessageDecl | ActorMember

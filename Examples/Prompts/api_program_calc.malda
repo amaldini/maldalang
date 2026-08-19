@@ -4,8 +4,8 @@
 // Run: malda Examples/Prompts/api_program_calc.malda
 
 api Calc {
-    function add(a, b);
-    function mul(a, b);
+    function add(a: number, b: number);
+    function mul(a: number, b: number);
 }
 
 function add(a, b) {

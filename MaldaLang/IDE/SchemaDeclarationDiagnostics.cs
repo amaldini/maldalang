@@ -9,7 +9,8 @@ using MaldaLang.Parser.AST.Declarations;
 using MaldaLang.Parser.AST.Statements;
 
 /// <summary>
-/// IDE checks for <c>schema</c> field types and sum-type constructor payload types
+/// IDE checks for <c>schema</c> field types, sum-type constructor payload types,
+/// and optional <c>api</c> method parameter types
 /// (primitives, declared/imported schemas and sum types).
 /// Complements runtime <see cref="MaldaLang.BuiltIns.SchemaRegistry"/> resolve errors.
 /// </summary>
@@ -52,6 +53,28 @@ public static class SchemaDeclarationDiagnostics
                         index,
                         diagnostics,
                         options);
+                }
+            }
+            else if (stmt is ApiDeclaration apiDecl)
+            {
+                foreach (var method in apiDecl.Methods)
+                {
+                    for (var i = 0; i < method.ParameterNames.Count; i++)
+                    {
+                        var paramType = method.ParameterTypeAt(i);
+                        if (string.IsNullOrEmpty(paramType))
+                            continue;
+
+                        ValidateTypeName(
+                            paramType,
+                            $"'{apiDecl.Name}.{method.Name}({method.ParameterNames[i]})'",
+                            "api parameter type",
+                            apiDecl.Line,
+                            apiDecl.Column,
+                            index,
+                            diagnostics,
+                            options);
+                    }
                 }
             }
             else if (stmt is TypeDeclaration typeDecl)

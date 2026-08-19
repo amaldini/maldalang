@@ -109,6 +109,31 @@ public static class ApiRegistry
         return false;
     }
 
+    public static bool TryResolveApiNameFromProgramJson(RuntimeValue programValue, out string apiName)
+    {
+        apiName = "";
+        if (programValue.Type != ValueType.Object)
+            return false;
+
+        if (programValue.AsObject() is JsonObject json)
+        {
+            var tagged = json.Get("@api");
+            if (tagged.Type == ValueType.String && !string.IsNullOrWhiteSpace(tagged.AsString()))
+            {
+                apiName = tagged.AsString();
+                return true;
+            }
+        }
+
+        if (Definitions.Count == 1)
+        {
+            apiName = Definitions.Keys.First();
+            return true;
+        }
+
+        return false;
+    }
+
     public static bool TryParseProgramReturnType(string returnType, out string apiName)
     {
         apiName = "";
@@ -130,13 +155,13 @@ public static class ApiRegistry
         callEnum.Set("type", RuntimeValue.String("string"));
         callEnum.Set("enum", RuntimeValue.Array(methodNames));
 
-        var permissive = MakePermissiveValueSchema();
+        var valueSchema = MakeProgramValueSchema(def);
 
         var stepProps = new JsonObject();
         stepProps.Set("call", RuntimeValue.Object(callEnum));
         var argsSchema = new JsonObject();
         argsSchema.Set("type", RuntimeValue.String("array"));
-        argsSchema.Set("items", RuntimeValue.Object(permissive));
+        argsSchema.Set("items", RuntimeValue.Object(valueSchema));
         stepProps.Set("args", RuntimeValue.Object(argsSchema));
         stepProps.Set("as", RuntimeValue.Object(MakeTypeObject("string")));
 
@@ -162,7 +187,7 @@ public static class ApiRegistry
         var rootProps = new JsonObject();
         rootProps.Set("@api", RuntimeValue.Object(apiConst));
         rootProps.Set("steps", RuntimeValue.Object(stepsSchema));
-        rootProps.Set("return", RuntimeValue.Object(permissive));
+        rootProps.Set("return", RuntimeValue.Object(valueSchema));
 
         var root = new JsonObject();
         root.Set("type", RuntimeValue.String("object"));
@@ -199,7 +224,53 @@ public static class ApiRegistry
         }
     }
 
-    private static JsonObject MakePermissiveValueSchema()
+    private static JsonObject MakeProgramValueSchema(ApiDefinition def)
+    {
+        // No bare "object" unless a parameter is typed object/schema: structured-output
+        // models otherwise emit {type,value} wrappers in args.
+        var jsonTypes = new HashSet<string>(StringComparer.Ordinal);
+        var anyUntyped = false;
+        foreach (var method in def.Methods)
+        {
+            for (int i = 0; i < method.ParameterNames.Count; i++)
+            {
+                var typeName = method.ParameterTypeAt(i);
+                if (string.IsNullOrEmpty(typeName))
+                {
+                    anyUntyped = true;
+                    break;
+                }
+
+                jsonTypes.Add(JsonTypeForDeclaredParam(typeName));
+            }
+
+            if (anyUntyped)
+                break;
+        }
+
+        if (anyUntyped || jsonTypes.Count == 0)
+            return MakePermissiveProgramValueSchema();
+
+        jsonTypes.Add("string");
+        if (jsonTypes.Contains("number"))
+            jsonTypes.Add("integer");
+
+        var schema = new JsonObject();
+        schema.Set("type", RuntimeValue.Array(jsonTypes.Select(RuntimeValue.String).ToList()));
+        return schema;
+    }
+
+    private static string JsonTypeForDeclaredParam(string typeName)
+    {
+        var trimmed = typeName.Trim();
+        if (trimmed.EndsWith("[]", StringComparison.Ordinal))
+            return "array";
+        if (SchemaRegistry.TryMapPrimitiveJsonType(trimmed, out var jsonType))
+            return jsonType;
+        return "object";
+    }
+
+    private static JsonObject MakePermissiveProgramValueSchema()
     {
         var schema = new JsonObject();
         schema.Set("type", RuntimeValue.Array(new List<RuntimeValue>
@@ -208,7 +279,6 @@ public static class ApiRegistry
             RuntimeValue.String("number"),
             RuntimeValue.String("integer"),
             RuntimeValue.String("boolean"),
-            RuntimeValue.String("object"),
             RuntimeValue.String("array"),
             RuntimeValue.String("null")
         }));

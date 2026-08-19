@@ -280,10 +280,10 @@ match intent {
         <p>Wire JSON uses a <code>tag</code> field equal to the constructor name, plus payload fields named like the constructor parameters — for example <code>{"tag":"Buy","sku":"SKU-9","qty":2}</code> or <code>{"tag":"Help"}</code>. Optional payload types (<code>Buy(sku: string, qty: int)</code>) become JSON Schema types for <code>validate</code> and typed prompts; name-only parameters stay permissive. The same name cannot be both a <code>schema</code> and a <code>type</code> (sum type). <code>validate("Intent", dict)</code> accepts that tagged shape and returns the original dict; it does not produce a variant. See <code>Examples/Prompts/sum_type_intent_prompt.malda</code>, <code>Examples/Basics/sumtype_typed_payloads.malda</code>, <code>Examples/Basics/schema_sumtype_validate.malda</code>, and <a href="04-data-types.html">Data Types</a> for sum types.</p>
 
         <h2>10.8 Closed APIs and Deterministic Programs</h2>
-        <p>Declare a closed <code>api</code> of method signatures. Implementations are ordinary top-level <code>function</code>s with the same names. A typed prompt may return <code>program(ApiName)</code>; on success you get a program value that <code>runProgram</code> executes with <strong>no further LLM calls</strong> (unlike <code>@Tool</code> agent loops or <code>executePlan</code>):</p>
+        <p>Declare a closed <code>api</code> of method signatures. Implementations are ordinary top-level <code>function</code>s with the same names. Method parameters may optionally take a <code>SchemaType</code> (the same form as schema fields and sum-type payloads: <code>add(a: number, b: number)</code>); name-only stays permissive. Declared types feed the program JSON Schema and coerce LLM args (<code>"2"</code> becomes a number only when the hint is <code>number</code>/<code>int</code>). Prompt parameters stay name-only, and the implementing <code>function</code> body stays untyped. A typed prompt may return <code>program(ApiName)</code>; on success you get a program value that <code>runProgram</code> executes with <strong>no further LLM calls</strong> (unlike <code>@Tool</code> agent loops or <code>executePlan</code>):</p>
         <pre><code>api Calc {
-    function add(a, b);
-    function mul(a, b);
+    function add(a: number, b: number);
+    function mul(a: number, b: number);
 }
 
 function add(a, b) { return a + b; }
@@ -296,10 +296,10 @@ prompt solve(expr) -&gt; program(Calc) {
 
 var prog = await solve("(2 + 3) * 4");
 var result = runProgram(prog);</code></pre>
-        <p>Wire JSON shape. Offline (no LLM), pass the same object to <code>runProgram</code> directly — <code>args</code> are JSON literals or <code>"$alias"</code> references to a prior step's <code>as</code>:</p>
+        <p>Wire JSON shape. Offline (no LLM), pass the same object to <code>runProgram</code> directly — <code>args</code> are JSON literals or <code>"$alias"</code> references to a prior step's <code>as</code>. Models often emit nested <code>{"call","args"}</code>, TypeChat <code>@func</code>/<code>@ref</code>, numeric strings (<code>"2"</code>), or <code>{"type":"number","value":2}</code> wrappers; the host flattens and coerces those before calling the api methods. Leftover objects in <code>args</code> are rejected (they used to be passed through, so <code>add</code> received an object instead of a number). Prefer JSON numbers, not numeric strings:</p>
         <pre><code data-run="true" data-expect="20">api Calc {
-    function add(a, b);
-    function mul(a, b);
+    function add(a: number, b: number);
+    function mul(a: number, b: number);
 }
 
 function add(a, b) { return a + b; }

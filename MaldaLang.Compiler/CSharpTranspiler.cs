@@ -6506,6 +6506,26 @@ public class CSharpTranspiler
                     _output.Append(method.ParameterNames[p].Replace("\\", "\\\\").Replace("\"", "\\\""));
                     _output.Append("\"");
                 }
+                _output.Append(" }, new System.Collections.Generic.List<string?> { ");
+                for (int p = 0; p < method.ParameterNames.Count; p++)
+                {
+                    if (p > 0) _output.Append(", ");
+                    var typeName = method.ParameterTypeAt(p);
+                    if (string.IsNullOrEmpty(typeName))
+                        _output.Append("null");
+                    else
+                    {
+                        _output.Append("\"");
+                        _output.Append(typeName.Replace("\\", "\\\\").Replace("\"", "\\\""));
+                        _output.Append("\"");
+                    }
+                }
+                _output.Append(" }, new System.Collections.Generic.List<bool> { ");
+                for (int p = 0; p < method.ParameterNames.Count; p++)
+                {
+                    if (p > 0) _output.Append(", ");
+                    _output.Append(method.ParameterRequiredAt(p) ? "true" : "false");
+                }
                 _output.Append(" })");
             }
             _output.AppendLine(" });");

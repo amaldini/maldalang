@@ -184,8 +184,13 @@ public static class TypedPromptValidator
         {
             var apiName = progObj.Get("x-malda-api");
             var api = apiName.Type == ValueType.String ? apiName.AsString() : "?";
-            sb.AppendLine($"Program for api {api} — return JSON:");
+            sb.AppendLine($"Program for api {api} — return JSON only, this exact shape:");
             sb.AppendLine($"{{\"@api\":\"{api}\",\"steps\":[{{\"call\":\"<method>\",\"args\":[...],\"as\":\"t0\"}}],\"return\":\"$t0\"}}");
+            sb.AppendLine("Rules:");
+            sb.AppendLine("- args are JSON numbers/booleans/null, strings, or \"$alias\" referring to a prior step's \"as\".");
+            sb.AppendLine("- Use JSON numbers (2), never numeric strings (\"2\") and never {\"type\":\"number\",\"value\":2}.");
+            sb.AppendLine("- Do not pass objects as operands. Nested {\"call\":\"...\",\"args\":[...]} is flattened into prior steps.");
+            sb.AppendLine($"- Example: {{\"@api\":\"{api}\",\"steps\":[{{\"call\":\"<method>\",\"args\":[2,3],\"as\":\"t0\"}},{{\"call\":\"<method>\",\"args\":[\"$t0\",4],\"as\":\"result\"}}],\"return\":\"$result\"}}");
             sb.AppendLine("Allowed calls:");
             if (ApiRegistry.TryGet(api, out var def))
             {
@@ -194,7 +199,7 @@ public static class TypedPromptValidator
                     sb.Append("- ");
                     sb.Append(method.Name);
                     sb.Append('(');
-                    sb.Append(string.Join(", ", method.ParameterNames));
+                    sb.Append(string.Join(", ", method.ParameterNames.Select((_, i) => method.FormatParameter(i))));
                     sb.AppendLine(")");
                 }
             }
@@ -373,6 +378,19 @@ public static class TypedPromptValidator
             return false;
         }
 
+        var expectedApi = schemaObj.Get("x-malda-api");
+        var expectedApiName = expectedApi.Type == ValueType.String ? expectedApi.AsString() : "";
+        if (string.IsNullOrEmpty(expectedApiName) || !ApiRegistry.TryGet(expectedApiName, out var apiDef))
+        {
+            error = $"Unknown api '{expectedApiName}'.";
+            return false;
+        }
+
+        if (!ProgramJsonNormalizer.TryNormalize(value, expectedApiName, apiDef, out var normalizedJson, out error))
+            return false;
+
+        value = normalizedJson;
+
         if (!TryValidateAgainstSchema(value, schema, "$", out error))
             return false;
 
@@ -382,8 +400,6 @@ public static class TypedPromptValidator
             return false;
         }
 
-        var expectedApi = schemaObj.Get("x-malda-api");
-        var expectedApiName = expectedApi.Type == ValueType.String ? expectedApi.AsString() : "";
         var apiVal = jsonObj.Get("@api");
         if (apiVal.Type != ValueType.String)
         {
@@ -395,12 +411,6 @@ public static class TypedPromptValidator
         if (!string.Equals(apiName, expectedApiName, StringComparison.Ordinal))
         {
             error = $"$.@api must be '{expectedApiName}', got '{apiName}'.";
-            return false;
-        }
-
-        if (!ApiRegistry.TryGet(apiName, out var apiDef))
-        {
-            error = $"Unknown api '{apiName}'.";
             return false;
         }
 
@@ -453,6 +463,12 @@ public static class TypedPromptValidator
 
             for (int a = 0; a < args.Count; a++)
             {
+                if (args[a].Type == ValueType.Object && !IsDeclaredObjectParam(method.ParameterTypeAt(a)))
+                {
+                    error = $"$.steps[{i}].args[{a}] must be a JSON primitive or \"$alias\", not an object.";
+                    return false;
+                }
+
                 if (!TryValidateProgramArgRef(args[a], aliases, $"$.steps[{i}].args[{a}]", out error))
                     return false;
             }
@@ -503,6 +519,18 @@ public static class TypedPromptValidator
             }
         }
 
+        return true;
+    }
+
+    private static bool IsDeclaredObjectParam(string? typeName)
+    {
+        if (string.IsNullOrEmpty(typeName))
+            return false;
+        var trimmed = typeName.Trim();
+        if (trimmed.EndsWith("[]", StringComparison.Ordinal))
+            return false;
+        if (SchemaRegistry.TryMapPrimitiveJsonType(trimmed, out var jsonType))
+            return jsonType == "object";
         return true;
     }
 

@@ -283,6 +283,9 @@ public static class SchemaRegistry
         return copy;
     }
 
+    public static bool TryMapPrimitiveJsonType(string typeName, out string jsonType) =>
+        TryNormalizePrimitive(typeName, out jsonType);
+
     private static bool TryNormalizePrimitive(string typeName, out string jsonType)
     {
         jsonType = typeName.Trim().ToLowerInvariant() switch

@@ -72,6 +72,19 @@ public class AiPipelineIdeTests
     }
 
     [Fact]
+    public void GetHover_ApiName_ShowsOptionalParameterTypes()
+    {
+        var source = """
+            api Calc {
+                function add(a: number, b: number);
+            }
+            """;
+        var hover = _service.GetHoverInformation(source, 0, 5);
+        Assert.NotNull(hover);
+        Assert.Contains("function add(a: number, b: number)", hover);
+    }
+
+    [Fact]
     public void GetHover_RunPrompt_ShowsBuiltInHelp()
     {
         var source = "var x = runPrompt(p, client);";

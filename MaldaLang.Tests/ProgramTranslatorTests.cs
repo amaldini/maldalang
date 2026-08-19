@@ -355,6 +355,260 @@ public class ProgramTranslatorTests : TestBase
     }
 
     [Fact]
+    public void ApiRegistry_ProgramArgSchema_DoesNotAllowBareObjects()
+    {
+        ApiRegistry.Register(new ApiDeclaration("Calc", new List<ApiMethodSignature>
+        {
+            new("add", new List<string> { "a", "b" })
+        }));
+
+        Assert.True(ApiRegistry.TryResolveProgramSchema("Calc", out var schema));
+        var root = Assert.IsType<JsonObject>(schema.AsObject());
+        var props = Assert.IsType<JsonObject>(root.Get("properties").AsObject());
+        var steps = Assert.IsType<JsonObject>(props.Get("steps").AsObject());
+        var stepItem = Assert.IsType<JsonObject>(steps.Get("items").AsObject());
+        var stepProps = Assert.IsType<JsonObject>(stepItem.Get("properties").AsObject());
+        var args = Assert.IsType<JsonObject>(stepProps.Get("args").AsObject());
+        var items = Assert.IsType<JsonObject>(args.Get("items").AsObject());
+        var types = items.Get("type").AsArray().Select(v => v.AsString()).ToList();
+        Assert.DoesNotContain("object", types);
+        Assert.Contains("number", types);
+        Assert.Contains("string", types);
+    }
+
+    [Fact]
+    public void FormatSchemaAppendix_Program_WarnsAgainstTypedWrappers()
+    {
+        ApiRegistry.Register(new ApiDeclaration("Calc", new List<ApiMethodSignature>
+        {
+            new("add", new List<string> { "a", "b" })
+        }));
+        Assert.True(TypedPromptSchemaResolver.TryResolve("program(Calc)", null, out var schema, out _));
+        var appendix = TypedPromptValidator.FormatSchemaAppendix("program(Calc)", schema);
+        Assert.Contains("JSON numbers", appendix);
+        Assert.Contains("never numeric strings", appendix);
+        Assert.Contains("\"$alias\"", appendix);
+        Assert.Contains("{\"type\":\"number\",\"value\":2}", appendix);
+    }
+
+    [Fact]
+    public void ValidateReturnType_Program_FlattensNestedCalls()
+    {
+        ApiRegistry.Register(new ApiDeclaration("Calc", new List<ApiMethodSignature>
+        {
+            new("add", new List<string> { "a", "b" }),
+            new("mul", new List<string> { "a", "b" })
+        }));
+        Assert.True(TypedPromptSchemaResolver.TryResolve("program(Calc)", null, out var schema, out _));
+
+        var nestedAdd = new JsonObject();
+        nestedAdd.Set("call", RuntimeValue.String("add"));
+        nestedAdd.Set("args", RuntimeValue.Array(new List<RuntimeValue>
+        {
+            RuntimeValue.Integer(2),
+            RuntimeValue.Integer(3)
+        }));
+
+        var mul = new JsonObject();
+        mul.Set("call", RuntimeValue.String("mul"));
+        mul.Set("args", RuntimeValue.Array(new List<RuntimeValue>
+        {
+            RuntimeValue.Object(nestedAdd),
+            RuntimeValue.Integer(4)
+        }));
+        mul.Set("as", RuntimeValue.String("result"));
+
+        var json = new JsonObject();
+        json.Set("steps", RuntimeValue.Array(new List<RuntimeValue> { RuntimeValue.Object(mul) }));
+        json.Set("return", RuntimeValue.String("$result"));
+
+        var ok = TypedPromptValidator.TryValidateReturnType(
+            RuntimeValue.Object(json),
+            schema,
+            out var validated,
+            out var error);
+
+        Assert.True(ok, error);
+        var prog = Assert.IsType<ProgramInstance>(validated.AsObject());
+        Assert.Equal(2, prog.Steps.Count);
+        Assert.Equal("add", prog.Steps[0].Call);
+        Assert.Equal("mul", prog.Steps[1].Call);
+        Assert.Equal("$n0", prog.Steps[1].Args[0].AsString());
+        Assert.Equal(4, prog.Steps[1].Args[1].AsInteger());
+    }
+
+    [Fact]
+    public void ValidateReturnType_Program_CoercesNumericStringsAndTypeWrappers()
+    {
+        ApiRegistry.Register(new ApiDeclaration("Calc", new List<ApiMethodSignature>
+        {
+            new("add", new List<string> { "a", "b" })
+        }));
+        Assert.True(TypedPromptSchemaResolver.TryResolve("program(Calc)", null, out var schema, out _));
+
+        var wrapper = new JsonObject();
+        wrapper.Set("type", RuntimeValue.String("number"));
+        wrapper.Set("value", RuntimeValue.String("3"));
+
+        var step = new JsonObject();
+        step.Set("call", RuntimeValue.String("add"));
+        step.Set("args", RuntimeValue.Array(new List<RuntimeValue>
+        {
+            RuntimeValue.String("2"),
+            RuntimeValue.Object(wrapper)
+        }));
+        step.Set("as", RuntimeValue.String("t0"));
+
+        var json = new JsonObject();
+        json.Set("@api", RuntimeValue.String("Calc"));
+        json.Set("steps", RuntimeValue.Array(new List<RuntimeValue> { RuntimeValue.Object(step) }));
+        json.Set("return", RuntimeValue.String("$t0"));
+
+        var ok = TypedPromptValidator.TryValidateReturnType(
+            RuntimeValue.Object(json),
+            schema,
+            out var validated,
+            out var error);
+
+        Assert.True(ok, error);
+        var prog = Assert.IsType<ProgramInstance>(validated.AsObject());
+        Assert.Equal(ValueType.Integer, prog.Steps[0].Args[0].Type);
+        Assert.Equal(2, prog.Steps[0].Args[0].AsInteger());
+        Assert.Equal(ValueType.Integer, prog.Steps[0].Args[1].Type);
+        Assert.Equal(3, prog.Steps[0].Args[1].AsInteger());
+    }
+
+    [Fact]
+    public void ValidateReturnType_Program_AcceptsTypeChatShape()
+    {
+        ApiRegistry.Register(new ApiDeclaration("Calc", new List<ApiMethodSignature>
+        {
+            new("add", new List<string> { "a", "b" }),
+            new("mul", new List<string> { "a", "b" })
+        }));
+        Assert.True(TypedPromptSchemaResolver.TryResolve("program(Calc)", null, out var schema, out _));
+
+        var add = new JsonObject();
+        add.Set("@func", RuntimeValue.String("add"));
+        add.Set("@args", RuntimeValue.Array(new List<RuntimeValue>
+        {
+            RuntimeValue.Integer(2),
+            RuntimeValue.Integer(3)
+        }));
+
+        var mul = new JsonObject();
+        mul.Set("@func", RuntimeValue.String("mul"));
+        var ref0 = new JsonObject();
+        ref0.Set("@ref", RuntimeValue.Integer(0));
+        mul.Set("@args", RuntimeValue.Array(new List<RuntimeValue>
+        {
+            RuntimeValue.Object(ref0),
+            RuntimeValue.Integer(4)
+        }));
+
+        var json = new JsonObject();
+        json.Set("@steps", RuntimeValue.Array(new List<RuntimeValue>
+        {
+            RuntimeValue.Object(add),
+            RuntimeValue.Object(mul)
+        }));
+
+        var ok = TypedPromptValidator.TryValidateReturnType(
+            RuntimeValue.Object(json),
+            schema,
+            out var validated,
+            out var error);
+
+        Assert.True(ok, error);
+        var prog = Assert.IsType<ProgramInstance>(validated.AsObject());
+        Assert.Equal("Calc", prog.ApiName);
+        Assert.Equal(2, prog.Steps.Count);
+        Assert.Equal("$t0", prog.Steps[1].Args[0].AsString());
+        Assert.Equal("$t1", prog.ReturnValue.AsString());
+    }
+
+    [Fact]
+    public void ValidateReturnType_Program_RejectsUnknownObjectArgs()
+    {
+        ApiRegistry.Register(new ApiDeclaration("Calc", new List<ApiMethodSignature>
+        {
+            new("add", new List<string> { "a", "b" })
+        }));
+        Assert.True(TypedPromptSchemaResolver.TryResolve("program(Calc)", null, out var schema, out _));
+
+        var junk = new JsonObject();
+        junk.Set("foo", RuntimeValue.Integer(1));
+
+        var step = new JsonObject();
+        step.Set("call", RuntimeValue.String("add"));
+        step.Set("args", RuntimeValue.Array(new List<RuntimeValue>
+        {
+            RuntimeValue.Object(junk),
+            RuntimeValue.Integer(3)
+        }));
+        step.Set("as", RuntimeValue.String("t0"));
+
+        var json = new JsonObject();
+        json.Set("@api", RuntimeValue.String("Calc"));
+        json.Set("steps", RuntimeValue.Array(new List<RuntimeValue> { RuntimeValue.Object(step) }));
+        json.Set("return", RuntimeValue.String("$t0"));
+
+        var ok = TypedPromptValidator.TryValidateReturnType(
+            RuntimeValue.Object(json),
+            schema,
+            out _,
+            out var error);
+
+        Assert.False(ok);
+        Assert.Contains("object", error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void RunProgram_Interpreter_NestedCallsAndNumericStrings()
+    {
+        var source = """
+            api Calc {
+                function add(a, b);
+                function mul(a, b);
+            }
+
+            function add(a, b) { return a + b; }
+            function mul(a, b) { return a * b; }
+
+            var nested = parseJSON("{\"@api\":\"Calc\",\"steps\":[{\"call\":\"mul\",\"args\":[{\"call\":\"add\",\"args\":[2,3]},4],\"as\":\"r\"}],\"return\":\"$r\"}");
+            io.print(runProgram(nested));
+
+            var strings = parseJSON("{\"@api\":\"Calc\",\"steps\":[{\"call\":\"add\",\"args\":[\"2\",\"3\"],\"as\":\"t0\"},{\"call\":\"mul\",\"args\":[\"$t0\",\"4\"],\"as\":\"r\"}],\"return\":\"$r\"}");
+            io.print(runProgram(strings));
+
+            var wrappers = parseJSON("{\"steps\":[{\"call\":\"add\",\"args\":[{\"type\":\"number\",\"value\":2},{\"type\":\"integer\",\"value\":\"3\"}],\"as\":\"t0\"},{\"call\":\"mul\",\"args\":[\"$t0\",4],\"as\":\"r\"}],\"return\":\"$r\"}");
+            io.print(runProgram(wrappers));
+            """;
+
+        var lines = RunProgram(source).Replace("\r\n", "\n").Trim().Split('\n');
+        Assert.Equal(new[] { "20", "20", "20" }, lines);
+    }
+
+    [Fact]
+    public void RunProgram_Interpreter_UnderscoreApiMethods()
+    {
+        var source = """
+            api Calc {
+                function _add(a, b);
+                function _mul(a, b);
+            }
+
+            function _add(a, b) { return a + b; }
+            function _mul(a, b) { return a * b; }
+
+            var prog = parseJSON("{\"@api\":\"Calc\",\"steps\":[{\"call\":\"_mul\",\"args\":[{\"call\":\"_add\",\"args\":[\"2\",\"3\"]},4],\"as\":\"r\"}],\"return\":\"$r\"}");
+            io.print(runProgram(prog));
+            """;
+
+        Assert.Equal("20", RunProgram(source).Trim());
+    }
+
+    [Fact]
     public void Parser_AcceptsProgramReturnType()
     {
         var source = """
@@ -370,5 +624,176 @@ public class ProgramTranslatorTests : TestBase
         var prompt = Assert.IsType<PromptDeclaration>(
             Assert.Single(statements.OfType<PromptDeclaration>()));
         Assert.Equal("program(Calc)", prompt.ReturnType);
+    }
+
+    [Fact]
+    public void Parser_AcceptsOptionalApiParameterTypes()
+    {
+        var source = """
+            api Calc {
+                function add(a: number, b: number);
+                function label(s: string, n);
+            }
+            """;
+        var lexer = new Lexer(source);
+        var tokens = lexer.Tokenize();
+        var parser = new Parser.Parser(tokens);
+        var statements = parser.Parse();
+        Assert.Empty(parser.Errors);
+        var api = Assert.IsType<ApiDeclaration>(Assert.Single(statements.OfType<ApiDeclaration>()));
+        Assert.Equal("number", api.Methods[0].ParameterTypeAt(0));
+        Assert.Equal("number", api.Methods[0].ParameterTypeAt(1));
+        Assert.Equal("add(a: number, b: number)", $"{api.Methods[0].Name}({api.Methods[0].FormatParameter(0)}, {api.Methods[0].FormatParameter(1)})");
+        Assert.Equal("string", api.Methods[1].ParameterTypeAt(0));
+        Assert.Null(api.Methods[1].ParameterTypeAt(1));
+    }
+
+    [Fact]
+    public void FormatSchemaAppendix_Program_IncludesDeclaredParameterTypes()
+    {
+        ApiRegistry.Register(new ApiDeclaration("Calc", new List<ApiMethodSignature>
+        {
+            new("add", new List<string> { "a", "b" }, new List<string?> { "number", "number" }, null)
+        }));
+        Assert.True(TypedPromptSchemaResolver.TryResolve("program(Calc)", null, out var schema, out _));
+        var appendix = TypedPromptValidator.FormatSchemaAppendix("program(Calc)", schema);
+        Assert.Contains("add(a: number, b: number)", appendix);
+
+        Assert.True(ApiRegistry.TryResolveProgramSchema("Calc", out var stored));
+        var root = Assert.IsType<JsonObject>(stored.AsObject());
+        var props = Assert.IsType<JsonObject>(root.Get("properties").AsObject());
+        var steps = Assert.IsType<JsonObject>(props.Get("steps").AsObject());
+        var stepItem = Assert.IsType<JsonObject>(steps.Get("items").AsObject());
+        var stepProps = Assert.IsType<JsonObject>(stepItem.Get("properties").AsObject());
+        var args = Assert.IsType<JsonObject>(stepProps.Get("args").AsObject());
+        var items = Assert.IsType<JsonObject>(args.Get("items").AsObject());
+        var jsonTypes = items.Get("type").AsArray().Select(v => v.AsString()).ToList();
+        Assert.Contains("number", jsonTypes);
+        Assert.Contains("integer", jsonTypes);
+        Assert.Contains("string", jsonTypes);
+        Assert.DoesNotContain("boolean", jsonTypes);
+        Assert.DoesNotContain("object", jsonTypes);
+    }
+
+    [Fact]
+    public void ValidateReturnType_Program_NumberHintCoercesString_StringHintKeepsString()
+    {
+        ApiRegistry.Register(new ApiDeclaration("Mix", new List<ApiMethodSignature>
+        {
+            new("add", new List<string> { "a", "b" }, new List<string?> { "number", "number" }, null),
+            new("ident", new List<string> { "s" }, new List<string?> { "string" }, null)
+        }));
+        Assert.True(TypedPromptSchemaResolver.TryResolve("program(Mix)", null, out var schema, out _));
+
+        var add = new JsonObject();
+        add.Set("call", RuntimeValue.String("add"));
+        add.Set("args", RuntimeValue.Array(new List<RuntimeValue>
+        {
+            RuntimeValue.String("2"),
+            RuntimeValue.Integer(3)
+        }));
+        add.Set("as", RuntimeValue.String("t0"));
+
+        var ident = new JsonObject();
+        ident.Set("call", RuntimeValue.String("ident"));
+        ident.Set("args", RuntimeValue.Array(new List<RuntimeValue> { RuntimeValue.String("2") }));
+        ident.Set("as", RuntimeValue.String("t1"));
+
+        var json = new JsonObject();
+        json.Set("@api", RuntimeValue.String("Mix"));
+        json.Set("steps", RuntimeValue.Array(new List<RuntimeValue>
+        {
+            RuntimeValue.Object(add),
+            RuntimeValue.Object(ident)
+        }));
+        json.Set("return", RuntimeValue.String("$t1"));
+
+        var ok = TypedPromptValidator.TryValidateReturnType(
+            RuntimeValue.Object(json),
+            schema,
+            out var validated,
+            out var error);
+        Assert.True(ok, error);
+        var prog = Assert.IsType<ProgramInstance>(validated.AsObject());
+        Assert.Equal(ValueType.Integer, prog.Steps[0].Args[0].Type);
+        Assert.Equal(2, prog.Steps[0].Args[0].AsInteger());
+        Assert.Equal(ValueType.String, prog.Steps[1].Args[0].Type);
+        Assert.Equal("2", prog.Steps[1].Args[0].AsString());
+    }
+
+    [Fact]
+    public void RunProgram_Interpreter_TypedNumberParams()
+    {
+        var source = """
+            api Calc {
+                function add(a: number, b: number);
+                function mul(a: number, b: number);
+            }
+
+            function add(a, b) { return a + b; }
+            function mul(a, b) { return a * b; }
+
+            var prog = parseJSON("{\"@api\":\"Calc\",\"steps\":[{\"call\":\"add\",\"args\":[\"2\",\"3\"],\"as\":\"t0\"},{\"call\":\"mul\",\"args\":[\"$t0\",4],\"as\":\"r\"}],\"return\":\"$r\"}");
+            io.print(runProgram(prog));
+            """;
+
+        Assert.Equal("20", RunProgram(source).Trim());
+    }
+
+    [Fact]
+    public void RunProgram_Interpreter_TypedStringParamKeepsNumericString()
+    {
+        var source = """
+            api Echo {
+                function ident(s: string);
+            }
+
+            function ident(s) { return typeOf(s); }
+
+            var prog = parseJSON("{\"@api\":\"Echo\",\"steps\":[{\"call\":\"ident\",\"args\":[\"2\"],\"as\":\"t0\"}],\"return\":\"$t0\"}");
+            io.print(runProgram(prog));
+            """;
+
+        Assert.Equal("string", RunProgram(source).Trim());
+    }
+
+    [Fact]
+    public void Transpiler_EmitsApiParameterTypes()
+    {
+        var source = """
+            api Calc {
+                function add(a: number, b: number);
+            }
+
+            function add(a, b) { return a + b; }
+
+            prompt solve(expr) -> program(Calc) {
+                user expr;
+            }
+
+            var result = await solve("1+1");
+            print(result);
+            """;
+
+        var tempDir = Path.Combine(Path.GetTempPath(), "malda_program_translator_tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        var sourcePath = Path.Combine(tempDir, "api_typed.malda");
+        var generatedPath = Path.Combine(tempDir, "GeneratedProgram.cs");
+        File.WriteAllText(sourcePath, source);
+
+        try
+        {
+            var compiler = new Compiler.Compiler();
+            var csharpResult = compiler.CompileToCSharp(sourcePath, generatedPath);
+            Assert.True(csharpResult.Success, csharpResult.ErrorMessage ?? "Transpile failed.");
+            var generated = File.ReadAllText(generatedPath);
+            Assert.Contains("ApiMethodSignature(\"" + "add\"", generated);
+            Assert.Contains("\"number\"", generated);
+            Assert.Contains("List<string?>", generated);
+        }
+        finally
+        {
+            try { Directory.Delete(tempDir, true); } catch { }
+        }
     }
 }
