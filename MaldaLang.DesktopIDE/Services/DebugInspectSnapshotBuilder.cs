@@ -36,16 +36,7 @@ public static class DebugInspectSnapshotBuilder
         }
 
         return session.GetVariables(variablesReference)
-            .Select(variable => new DebugInspectNode
-            {
-                Display = FormatVariable(variable),
-                Name = variable.Name,
-                Value = variable.Value,
-                Type = variable.Type,
-                VariablesReference = variable.VariablesReference,
-                IsScope = false,
-                FrameId = frameId
-            })
+            .Select(variable => FromVariable(variable, frameId))
             .ToList();
     }
 
@@ -54,6 +45,33 @@ public static class DebugInspectSnapshotBuilder
         return string.IsNullOrEmpty(frame.ClassName)
             ? $"{frame.FunctionName} ({frame.File}:{frame.Line})"
             : $"{frame.ClassName}.{frame.FunctionName} ({frame.File}:{frame.Line})";
+    }
+
+    public static DebugInspectNode FromVariable(DebugVariable variable, int frameId)
+    {
+        ArgumentNullException.ThrowIfNull(variable);
+        return new DebugInspectNode
+        {
+            Display = FormatVariable(variable),
+            Name = variable.Name,
+            Value = variable.Value,
+            Type = variable.Type,
+            VariablesReference = variable.VariablesReference,
+            IsScope = false,
+            FrameId = frameId
+        };
+    }
+
+    public static DebugInspectNode FromWatchError(string expression, string message, int frameId)
+    {
+        var preview = $"<{message}>";
+        return new DebugInspectNode
+        {
+            Display = $"{expression} = {preview}",
+            Name = expression,
+            Value = preview,
+            FrameId = frameId
+        };
     }
 
     private static string FormatVariable(DebugVariable variable)

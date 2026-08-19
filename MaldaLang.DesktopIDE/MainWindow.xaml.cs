@@ -123,8 +123,10 @@ public partial class MainWindow : Window
     private DispatcherTimer? _documentHighlightTimer;
     private DebuggerHook? _debuggerHook;
     private readonly List<string> _watchExpressions = new();
+    private readonly DebugInspectExpansionState _inspectExpansion = new();
     private int _selectedDebugFrameId = 1;
     private bool _suppressCallStackSelection;
+    private bool _suppressInspectExpansionTracking;
     private Task? _debugTask;
     private CancellationTokenSource? _debugCancellation;
     private Task? _runTask;

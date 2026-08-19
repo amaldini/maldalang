@@ -144,6 +144,48 @@ public class InterpretDebugInspectTests : TestBase
     }
 
     [Fact]
+    public async Task GetFrameScopes_ResetsHandles_ChildrenStillFoundByName()
+    {
+        const string source = "var d = dict { \"a\": [1, 2] };\nprint(d);\nprint(d);\n";
+        var statements = Parse(source, MainFile);
+        var session = new DebugSession();
+        session.SetBreakpoint(MainFile, 2);
+        session.SetBreakpoint(MainFile, 3);
+        var interpreter = new Interpreter.Interpreter(session, MainFile);
+        var paused = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        session.Paused += (_, _) => paused.TrySetResult();
+
+        var run = interpreter.InterpretAsync(statements);
+        await WaitPausedAsync(paused);
+
+        var firstD = RequireNestedDict(session);
+        paused = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        session.Continue();
+        await WaitPausedAsync(paused);
+
+        var secondD = RequireNestedDict(session);
+        Assert.True(firstD > 0);
+        Assert.True(secondD > 0);
+
+        session.Continue();
+        await run.WaitAsync(TimeSpan.FromSeconds(10));
+    }
+
+    private static int RequireNestedDict(DebugSession session)
+    {
+        var scopes = session.GetFrameScopes(1);
+        var globals = RequireScope(scopes, "Globals");
+        var vars = session.GetVariables(globals.VariablesReference);
+        var d = RequireVariable(vars, "d");
+        Assert.True(d.VariablesReference > 0);
+        var dChildren = session.GetVariables(d.VariablesReference);
+        var a = RequireVariable(dChildren, "a");
+        var aChildren = session.GetVariables(a.VariablesReference);
+        Assert.Equal("1", RequireVariable(aChildren, "[0]").Value);
+        return d.VariablesReference;
+    }
+
+    [Fact]
     public async Task Watch_OnePlusTwo_PreviewIsThree()
     {
         const string source = "var user = 1;\nprint(user);\n";
