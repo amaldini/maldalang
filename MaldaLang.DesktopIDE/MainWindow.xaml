@@ -699,7 +699,7 @@
                     <Button x:Name="RunButton" Style="{StaticResource ToolbarPrimaryButton}" Click="RunButton_Click" ToolTip="Run without debugging (Ctrl+F5)">
                         <StackPanel Orientation="Horizontal">
                             <Path Style="{StaticResource IdeAccentIcon}" Data="{StaticResource IconPlay}" Fill="{DynamicResource PrimaryButtonForegroundBrush}" StrokeThickness="0"/>
-                            <TextBlock Text="Run" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Run" Margin="6,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource PrimaryButtonForegroundBrush}"/>
                         </StackPanel>
                     </Button>
                     <Button x:Name="DebugButton" Style="{StaticResource ToolbarButton}" Click="DebugButton_Click" ToolTip="Start debugging (F5)">

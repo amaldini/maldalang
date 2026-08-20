@@ -137,6 +137,13 @@
         <Setter Property="Background" Value="{DynamicResource PrimaryButtonBackgroundBrush}"/>
         <Setter Property="Foreground" Value="{DynamicResource PrimaryButtonForegroundBrush}"/>
         <Setter Property="Padding" Value="10,5"/>
+        <!-- Window-level implicit TextBlock styles override inherited Foreground; keep label
+             color on the primary fill so Light/Blue/High Contrast stay readable. -->
+        <Style.Resources>
+            <Style TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{DynamicResource PrimaryButtonForegroundBrush}"/>
+            </Style>
+        </Style.Resources>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
@@ -144,6 +151,11 @@
                             Background="{TemplateBinding Background}"
                             CornerRadius="6"
                             Padding="{TemplateBinding Padding}">
+                        <Border.Resources>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="{DynamicResource PrimaryButtonForegroundBrush}"/>
+                            </Style>
+                        </Border.Resources>
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                     <ControlTemplate.Triggers>
