@@ -6,6 +6,7 @@
         xmlns:avalon="http://icsharpcode.net/sharpdevelop/avalonedit"
         xmlns:local="clr-namespace:MaldaLang.DesktopIDE.UserControls"
         xmlns:converters="clr-namespace:MaldaLang.DesktopIDE.Converters"
+        xmlns:svc="clr-namespace:MaldaLang.DesktopIDE.Services"
         xmlns:ide="clr-namespace:MaldaLang.IDE.Models;assembly=malda"
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         mc:Ignorable="d"
@@ -995,7 +996,86 @@
                                        Background="{DynamicResource EditorBackgroundBrush}"
                                        Foreground="{DynamicResource EditorForegroundBrush}"
                                        LineNumbersForeground="{DynamicResource EditorLineNumbersBrush}"
-                                       MouseDoubleClick="CodeEditor_MouseDoubleClick"/>
+                                       MouseDoubleClick="CodeEditor_MouseDoubleClick">
+                        <avalon:TextEditor.ContextMenu>
+                            <ContextMenu x:Name="EditorContextMenu" Opened="EditorContextMenu_Opened">
+                                <MenuItem Header="Go to _Definition"
+                                          Click="NavigateGoToDefinition_Click"
+                                          InputGestureText="F12"
+                                          Tag="{x:Static svc:EditorContextMenuCommand.GoToDefinition}">
+                                    <MenuItem.Icon>
+                                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconGoTo}"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="Find _References"
+                                          Click="NavigateFindReferences_Click"
+                                          InputGestureText="Shift+F12"
+                                          Tag="{x:Static svc:EditorContextMenuCommand.FindReferences}">
+                                    <MenuItem.Icon>
+                                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconReferences}"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="_Rename Symbol..."
+                                          Click="NavigateRenameSymbol_Click"
+                                          InputGestureText="Ctrl+Alt+R"
+                                          Tag="{x:Static svc:EditorContextMenuCommand.RenameSymbol}">
+                                    <MenuItem.Icon>
+                                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconRename}"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator/>
+                                <MenuItem Header="_Quick Fix..."
+                                          Click="EditQuickFix_Click"
+                                          InputGestureText="Ctrl+."
+                                          Tag="{x:Static svc:EditorContextMenuCommand.QuickFix}">
+                                    <MenuItem.Icon>
+                                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconLightbulb}"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="Format _Document" Click="EditFormatDocument_Click" InputGestureText="Ctrl+Alt+F">
+                                    <MenuItem.Icon>
+                                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconFormat}"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator/>
+                                <MenuItem Header="Cu_t"
+                                          Click="EditCut_Click"
+                                          InputGestureText="Ctrl+X"
+                                          Tag="{x:Static svc:EditorContextMenuCommand.Cut}">
+                                    <MenuItem.Icon>
+                                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconCut}"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="_Copy"
+                                          Click="EditCopy_Click"
+                                          InputGestureText="Ctrl+C"
+                                          Tag="{x:Static svc:EditorContextMenuCommand.Copy}">
+                                    <MenuItem.Icon>
+                                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconCopy}"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="_Paste"
+                                          Click="EditPaste_Click"
+                                          InputGestureText="Ctrl+V"
+                                          Tag="{x:Static svc:EditorContextMenuCommand.Paste}">
+                                    <MenuItem.Icon>
+                                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconPaste}"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="Select _All" Click="EditSelectAll_Click" InputGestureText="Ctrl+A">
+                                    <MenuItem.Icon>
+                                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconSelectAll}"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator/>
+                                <MenuItem Header="Toggle _Breakpoint" Click="DebugToggleBreakpoint_Click" InputGestureText="F9">
+                                    <MenuItem.Icon>
+                                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconBreakpoint}"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                            </ContextMenu>
+                        </avalon:TextEditor.ContextMenu>
+                    </avalon:TextEditor>
                 </Grid>
             </Border>
             

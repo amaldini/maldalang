@@ -672,6 +672,11 @@ public partial class MainWindow : Window
         {
             EditorPopupTheming.Apply(_hoverToolTip, theme);
         }
+
+        if (CodeEditor != null)
+        {
+            ApplyEditorContextMenuTheme(theme);
+        }
         
         // Update system menu colors for submenu popups
         // This ensures submenu backgrounds use the correct theme color
