@@ -1573,6 +1573,7 @@ public partial class MainWindow
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             Owner = this
         };
+        DialogTheming.Apply(dialog, _themeService.CurrentTheme);
 
         var root = new DockPanel { Margin = new Thickness(12) };
         var filter = new TextBox { Margin = new Thickness(0, 0, 0, 8) };
@@ -1674,15 +1675,16 @@ public partial class MainWindow
 
     private string? PromptForSymbolName(string currentName)
     {
+        var theme = _themeService.CurrentTheme;
         var dialog = new Window
         {
             Title = "Rename Symbol",
             Owner = this,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             ResizeMode = ResizeMode.NoResize,
-            SizeToContent = SizeToContent.WidthAndHeight,
-            Background = Brushes.White
+            SizeToContent = SizeToContent.WidthAndHeight
         };
+        DialogTheming.Apply(dialog, theme);
 
         var root = new Grid
         {
@@ -1695,14 +1697,19 @@ public partial class MainWindow
         var label = new TextBlock
         {
             Text = $"Rename '{currentName}' to:",
-            Margin = new Thickness(0, 0, 0, 8)
+            Margin = new Thickness(0, 0, 0, 8),
+            Foreground = new SolidColorBrush(theme.TextForeground)
         };
 
         var input = new TextBox
         {
             MinWidth = 280,
             Text = currentName,
-            Margin = new Thickness(0, 0, 0, 12)
+            Margin = new Thickness(0, 0, 0, 12),
+            Background = new SolidColorBrush(theme.InputBackground),
+            Foreground = new SolidColorBrush(theme.InputForeground),
+            BorderBrush = new SolidColorBrush(theme.InputBorder),
+            CaretBrush = new SolidColorBrush(theme.InputForeground)
         };
 
         var buttons = new StackPanel
@@ -1715,14 +1722,22 @@ public partial class MainWindow
         {
             Content = "Rename",
             MinWidth = 80,
-            IsDefault = true
+            IsDefault = true,
+            Background = new SolidColorBrush(theme.PrimaryButtonBackground),
+            Foreground = new SolidColorBrush(theme.PrimaryButtonForeground),
+            BorderBrush = new SolidColorBrush(theme.PrimaryButtonBorder)
         };
         okButton.Click += (_, _) => dialog.DialogResult = true;
 
         var cancelButton = new Button
         {
             Content = "Cancel",
-            MinWidth = 80
+            MinWidth = 80,
+            IsCancel = true,
+            Margin = new Thickness(8, 0, 0, 0),
+            Background = new SolidColorBrush(theme.ButtonBackground),
+            Foreground = new SolidColorBrush(theme.ButtonForeground),
+            BorderBrush = new SolidColorBrush(theme.ButtonBorder)
         };
         cancelButton.Click += (_, _) => dialog.DialogResult = false;
 
