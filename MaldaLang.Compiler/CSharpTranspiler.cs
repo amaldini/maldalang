@@ -249,6 +249,9 @@ public class CSharpTranspiler
         // Collect function names first
         foreach (var funcDecl in functions)
         {
+            if (ShaderFunction.IsMarked(funcDecl))
+                continue;
+
             _functionNames.Add(funcDecl.Name);
             _functionReturnTypes[funcDecl.Name] = ResolveTranspiledTypeHint(funcDecl.ReturnType);
             var parameterTypes = new List<TranspiledClrType>(funcDecl.Parameters.Count);
@@ -277,6 +280,9 @@ public class CSharpTranspiler
         // Generate functions
         foreach (var funcDecl in functions)
         {
+            if (ShaderFunction.IsMarked(funcDecl))
+                continue;
+
             EmitLineDirective(funcDecl.Line, funcDecl.SourceFile ?? _sourceFilePath);
             TranspileFunction(funcDecl);
             _output.AppendLine();

@@ -16,7 +16,7 @@ Short map of how the open-source core fits together. For agent workflow rules, s
     ├──────────────────┬──────────────────────┐
     ▼                  ▼                      ▼
  Interpreter      C# transpiler           JS / PWA transpiler
- (run now)        (MaldaLang.Compiler)    (JsTranspiler)
+ (run now)        (MaldaLang.Compiler)    (JsTranspiler + GlslTranspiler)
     │                  │                      │
     ▼                  ▼                      ▼
  RuntimeValue     .exe / DLL + runtime    browser / PWA bundle
@@ -32,7 +32,7 @@ Interpret-mode debug core: [`MaldaLang/Interpreter/Debug/DebugSession.cs`](../Ma
 | Project | Responsibility |
 |---------|----------------|
 | `MaldaLang` | CLI (`malda`), lexer/parser/interpreter, builtins, shared `LanguageService`, `malda debug-adapter` (DAP stdio) |
-| `MaldaLang.Compiler` | C# / JS / PWA compile and publish orchestration |
+| `MaldaLang.Compiler` | C# / JS / PWA compile and publish orchestration; JS-mode `@shader()` → GLSL via `GlslTranspiler` |
 | `MaldaLang.UIHost` | Server-driven UI host support used by runtime / Desktop — see [`docs/ui-framework.md`](ui-framework.md) |
 | `MaldaLang.IDE` | Blazor **Web IDE** (playground) |
 | `MaldaLang.DesktopIDE` | WPF **Desktop IDE** (reference) |
@@ -47,7 +47,7 @@ Interpret-mode debug core: [`MaldaLang/Interpreter/Debug/DebugSession.cs`](../Ma
 
 - **Interpret:** `malda program.malda` — AST walked by `Interpreter`.
 - **Transpile to C#:** `malda compile … --mode transpile` — emits C# that calls into MALDA runtime helpers / builtins.
-- **JS / PWA:** `--mode js` / `--mode pwa` — subset of language + browser runtime (`mlRuntime`).
+- **JS / PWA:** `--mode js` / `--mode pwa` — subset of language + browser runtime (`mlRuntime`). `@shader()` functions compile to GLSL strings via `glsl.compile` (not a fourth backend).
 
 Optional vertical packs are **out of tree**. The compiler may still contain **string-only** emit hooks under `MaldaLang.Compiler/OptionalPack/` so external DLLs can plug in without being ProjectReferences of core.
 

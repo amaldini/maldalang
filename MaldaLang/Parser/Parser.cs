@@ -579,7 +579,7 @@ public class Parser
                 parameters.Add(ConsumeIdentifierOrInput("Expect parameter name."));
                 parameterDecorators.AddRange(paramDecorators);
                 if (Match(TokenType.Colon))
-                    parameterTypeHints.Add(Consume(TokenType.Identifier, "Expect type name after ':'.").Lexeme);
+                    parameterTypeHints.Add(ParseTypeHintName());
                 else
                     parameterTypeHints.Add(null);
             } while (Match(TokenType.Comma));
@@ -616,7 +616,7 @@ public class Parser
                 parameters.Add(ConsumeIdentifierLike("Expect parameter name."));
                 parameterDecorators.AddRange(paramDecorators);
                 if (Match(TokenType.Colon))
-                    parameterTypeHints.Add(Consume(TokenType.Identifier, "Expect type name after ':'.").Lexeme);
+                    parameterTypeHints.Add(ParseTypeHintName());
                 else
                     parameterTypeHints.Add(null);
             } while (Match(TokenType.Comma));
@@ -686,6 +686,18 @@ public class Parser
 
         return Expression();
     }
+
+    /// <summary>
+    /// Type hints are a single identifier (<c>int</c>, <c>vec3</c>). Shader parameters
+    /// may prefix GLSL <c>out</c>: <c>tHit: out float</c>.
+    /// </summary>
+    private string ParseTypeHintName()
+    {
+        var first = Consume(TokenType.Identifier, "Expect type name after ':'.").Lexeme;
+        if (string.Equals(first, "out", StringComparison.Ordinal) && Check(TokenType.Identifier))
+            return "out " + Advance().Lexeme;
+        return first;
+    }
     
     private Statement FunctionDeclaration(bool isExported = false)
     {
@@ -726,9 +738,9 @@ public class Parser
                 parameters.Add(paramName);
                 // Store decorators for this parameter (only the first one if multiple, or empty list)
                 parameterDecorators.AddRange(paramDecorators);
-                // Optional type hint: : Type
+                // Optional type hint: : Type  (shader params may use `out float`)
                 if (Match(TokenType.Colon))
-                    parameterTypeHints.Add(Consume(TokenType.Identifier, "Expect type name after ':'.").Lexeme);
+                    parameterTypeHints.Add(ParseTypeHintName());
                 else
                     parameterTypeHints.Add(null);
             } while (Match(TokenType.Comma));

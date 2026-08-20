@@ -49,6 +49,8 @@ public static class TypeHintDiagnostics
         switch (stmt)
         {
             case FunctionDeclaration funcDecl:
+                if (ShaderFunction.IsMarked(funcDecl))
+                    break;
                 if (funcDecl.ReturnType != null)
                     ValidateTypeName(funcDecl.ReturnType, funcDecl.Line, funcDecl.Column, "return type", diagnostics, options, index);
                 if (funcDecl.ParameterTypeHints != null)
