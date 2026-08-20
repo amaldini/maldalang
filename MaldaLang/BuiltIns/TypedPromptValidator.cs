@@ -307,7 +307,7 @@ public static class TypedPromptValidator
                 sb.AppendLine("- args are JSON numbers/booleans/null, strings, or \"$alias\" referring to a prior step's \"as\".");
                 sb.AppendLine("- Use JSON numbers (2), never numeric strings (\"2\") and never {\"type\":\"number\",\"value\":2}.");
                 sb.AppendLine("- Do not pass objects as operands. Nested {\"call\":\"...\",\"args\":[...]} is flattened into prior steps.");
-                sb.AppendLine("- Use the Allowed calls names exactly (including a leading underscore). The host also maps add→_add and +→add when unique.");
+                sb.AppendLine("- Use the Allowed call names exactly (including a leading underscore). The host also maps add→_add and +→add when unique.");
                 sb.AppendLine($"- Example: {example}");
                 sb.AppendLine("Allowed calls:");
                 foreach (var method in def.Methods)
