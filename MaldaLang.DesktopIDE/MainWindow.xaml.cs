@@ -163,6 +163,18 @@ public partial class MainWindow : Window
     private List<DocumentSymbolInfo> _outlineSymbols = new();
     private bool _isSyntaxPanelVisible = true;
     private GridLength _syntaxPanelPreviousWidth = new(280, GridUnitType.Pixel);
+    private bool _isWebUiMaximized;
+    private GridLength _editorColumnBeforeMaximize = new(1, GridUnitType.Star);
+    private GridLength _sidebarColumnBeforeMaximize = new(300);
+    private GridLength _leftSplitterColumnBeforeMaximize = new(5);
+    private GridLength _rightSplitterColumnBeforeMaximize = new(5);
+    private double _syntaxPanelColumnMinWidthBeforeMaximize = 220;
+    private double _sidebarColumnMinWidthBeforeMaximize = 250;
+    private Visibility _mainMenuVisibilityBeforeMaximize = Visibility.Visible;
+    private Visibility _mainToolbarVisibilityBeforeMaximize = Visibility.Visible;
+    private Visibility _editorPaneVisibilityBeforeMaximize = Visibility.Visible;
+    private Visibility _sidebarTabBarVisibilityBeforeMaximize = Visibility.Visible;
+    private Visibility _sidebarSplitterVisibilityBeforeMaximize = Visibility.Visible;
     private PropertyRegressionArtifactRequest? _pendingRegressionRequest;
     private ToolTip? _hoverToolTip;
     private const string SnippetCaretMarker = "__CARET__";
@@ -219,6 +231,7 @@ public partial class MainWindow : Window
         OutputWebBrowser.LoadCompleted += OutputWebBrowser_LoadCompleted;
 
         // Initialize modern embedded browser for Web UI panel.
+        WebUiWebView.PreviewKeyDown += WebUiWebView_PreviewKeyDown;
         _ = InitializeWebUiPreviewAsync();
         
         SetupSyntaxHighlighting();
@@ -528,6 +541,12 @@ public partial class MainWindow : Window
             previewWebCommand,
             (s, e) => PreviewWebButton_Click(s, e)));
         InputBindings.Add(new KeyBinding(previewWebCommand, Key.F6, ModifierKeys.None));
+
+        var toggleMaximizeWebPreviewCommand = new RoutedCommand("ToggleMaximizeWebPreview", typeof(MainWindow));
+        CommandBindings.Add(new CommandBinding(
+            toggleMaximizeWebPreviewCommand,
+            (s, e) => ToggleWebUiMaximized()));
+        InputBindings.Add(new KeyBinding(toggleMaximizeWebPreviewCommand, Key.F6, ModifierKeys.Shift));
 
         var toggleSyntaxPanelCommand = new RoutedCommand("ToggleSyntaxPanel", typeof(MainWindow));
         CommandBindings.Add(new CommandBinding(
@@ -1922,6 +1941,11 @@ public partial class MainWindow : Window
 
     private void SwitchToTab(string tab)
     {
+        if (_isWebUiMaximized && tab != "webui")
+        {
+            SetWebUiMaximized(false);
+        }
+
         _activeTab = tab;
         
         OutputPanel.Visibility = tab == "output" ? Visibility.Visible : Visibility.Collapsed;
@@ -1972,6 +1996,8 @@ public partial class MainWindow : Window
                         childMenuItem.IsChecked = _activeTab == "ai";
                     else if (itemHeader == "Show Web UI Panel")
                         childMenuItem.IsChecked = _activeTab == "webui";
+                    else if (itemHeader == "Maximize Web Preview")
+                        childMenuItem.IsChecked = _isWebUiMaximized;
                     else if (itemHeader == "Type Errors as Errors")
                         childMenuItem.IsChecked = _typeAnalysisSettingsService.TypeErrors;
                 }
@@ -2449,15 +2475,27 @@ public partial class MainWindow : Window
     {
         try
         {
-            await WebUiWebView.EnsureCoreWebView2Async();
-            WebUiWebView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = true;
-            WebUiWebView.CoreWebView2.Settings.IsStatusBarEnabled = false;
-            WebUiWebView.CoreWebView2.Settings.IsZoomControlEnabled = true;
+            await EnsureWebUiCoreAsync();
         }
         catch
         {
             // Keep IDE functional even if WebView2 runtime is unavailable.
         }
+    }
+
+    private async Task<CoreWebView2?> EnsureWebUiCoreAsync()
+    {
+        await WebUiWebView.EnsureCoreWebView2Async();
+        var core = WebUiWebView.CoreWebView2;
+        if (core == null)
+        {
+            return null;
+        }
+
+        core.Settings.AreDefaultContextMenusEnabled = true;
+        core.Settings.IsStatusBarEnabled = false;
+        core.Settings.IsZoomControlEnabled = true;
+        return core;
     }
 
     protected override void OnClosed(EventArgs e)
@@ -2625,11 +2663,14 @@ public partial class MainWindow : Window
             "  Ctrl+Alt+F - Format Document\n" +
             "  Ctrl+. - Quick Fix\n\n" +
             "View:\n" +
-            "  Ctrl+Shift+L - Toggle Syntax Panel\n\n" +
+            "  Ctrl+Shift+L - Toggle Syntax Panel\n" +
+            "  Shift+F6 - Maximize / restore Web Preview\n" +
+            "  Esc - Restore Web Preview when maximized\n\n" +
             "Run:\n" +
             "  Ctrl+F5 - Run without debugging\n" +
             "  F5 - Start Debugging / Continue\n" +
             "  Shift+F5 - Stop\n" +
+            "  F6 - Preview Web\n" +
             "  Ctrl+Shift+B - Compile\n\n" +
             "Debug:\n" +
             "  F5 - Continue when paused\n" +

@@ -1101,6 +1101,11 @@ public partial class MainWindow
 
     private void UpdateSyntaxPanelVisibility()
     {
+        if (_isWebUiMaximized)
+        {
+            return;
+        }
+
         if (_isSyntaxPanelVisible)
         {
             SyntaxPanel.Visibility = Visibility.Visible;

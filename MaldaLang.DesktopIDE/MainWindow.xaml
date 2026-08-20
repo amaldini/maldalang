@@ -12,7 +12,8 @@
         mc:Ignorable="d"
         Title="MALDA: The AI-First Programming Language - IDE" Height="800" Width="1200"
         FontFamily="Segoe UI, Segoe UI Variable, sans-serif"
-        Background="{DynamicResource WindowBackgroundBrush}">
+        Background="{DynamicResource WindowBackgroundBrush}"
+        PreviewKeyDown="MainWindow_PreviewKeyDown">
     <Window.Resources>
         <converters:AddOneConverter x:Key="AddOneConverter"/>
         <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
@@ -550,6 +551,8 @@
                 <MenuItem Header="Show _Search Panel" IsCheckable="True" Click="ViewToggleSearchPanel_Click"/>
                 <MenuItem Header="Show _AI Panel" IsCheckable="True" Click="ViewToggleAIPanel_Click"/>
                 <MenuItem Header="Show _Web UI Panel" IsCheckable="True" Click="ViewToggleWebUIPanel_Click"/>
+                <MenuItem Header="_Maximize Web Preview" IsCheckable="True" Click="ViewToggleMaximizeWebPreview_Click" InputGestureText="Shift+F6"/>
+                <MenuItem Header="_Reset Web Preview" Click="ViewResetWebPreview_Click"/>
                 <Separator/>
                 <MenuItem Header="_Type Errors as Errors" IsCheckable="True" IsChecked="True" Click="ViewToggleTypeErrors_Click"
                           ToolTip="When checked, type-hint mismatches are Errors. Uncheck for Warning/Info (lenient)."/>
@@ -690,7 +693,7 @@
         </Menu>
 
         <!-- Toolbar -->
-        <Border Grid.Row="1" Background="{DynamicResource ToolbarBackgroundBrush}" BorderBrush="{DynamicResource ToolbarBorderBrush}" BorderThickness="0,0,0,1" Padding="8,5">
+        <Border x:Name="MainToolbar" Grid.Row="1" Background="{DynamicResource ToolbarBackgroundBrush}" BorderBrush="{DynamicResource ToolbarBorderBrush}" BorderThickness="0,0,0,1" Padding="8,5">
             <DockPanel LastChildFill="False">
                 <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button x:Name="RunButton" Style="{StaticResource ToolbarPrimaryButton}" Click="RunButton_Click" ToolTip="Run without debugging (Ctrl+F5)">
@@ -778,13 +781,13 @@
         </Border>
         
         <!-- Main Content -->
-        <Grid Grid.Row="2">
+        <Grid x:Name="MainWorkspaceGrid" Grid.Row="2">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition x:Name="SyntaxPanelColumn" Width="280" MinWidth="220"/>
-                <ColumnDefinition Width="5"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="5"/>
-                <ColumnDefinition Width="300" MinWidth="250"/>
+                <ColumnDefinition x:Name="LeftSplitterColumn" Width="5"/>
+                <ColumnDefinition x:Name="EditorColumn" Width="*"/>
+                <ColumnDefinition x:Name="RightSplitterColumn" Width="5"/>
+                <ColumnDefinition x:Name="SidebarColumn" Width="300" MinWidth="250"/>
             </Grid.ColumnDefinitions>
             
             <!-- Left Syntax Panel -->
@@ -900,7 +903,7 @@
                          ShowsPreview="True"/>
 
             <!-- Editor Panel -->
-            <Border Grid.Column="2" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0">
+            <Border x:Name="EditorPane" Grid.Column="2" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -1044,7 +1047,8 @@
             </Border>
             
             <!-- GridSplitter for resizing right sidebar -->
-            <GridSplitter Grid.Column="3" 
+            <GridSplitter x:Name="SidebarSplitter"
+                         Grid.Column="3" 
                          HorizontalAlignment="Stretch" 
                          VerticalAlignment="Stretch"
                          Background="{DynamicResource GridSplitterBackgroundBrush}"
@@ -1053,14 +1057,14 @@
                          ShowsPreview="True"/>
             
             <!-- Sidebar -->
-            <Grid Grid.Column="4" Background="{DynamicResource SidebarBackgroundBrush}">
+            <Grid x:Name="SidebarGrid" Grid.Column="4" Background="{DynamicResource SidebarBackgroundBrush}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
                 
                 <!-- Tabs -->
-                <StackPanel Grid.Row="0" Orientation="Horizontal" Background="{DynamicResource TabBackgroundBrush}">
+                <StackPanel x:Name="SidebarTabBar" Grid.Row="0" Orientation="Horizontal" Background="{DynamicResource TabBackgroundBrush}">
                     <Button x:Name="OutputTabButton" Content="Output" Click="OutputTabButton_Click" 
                             Style="{StaticResource TabButtonStyle}"/>
                     <Button x:Name="DebugTabButton" Content="Debug" Click="DebugTabButton_Click"
@@ -1345,10 +1349,16 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBox x:Name="WebUiUrlTextBox" Grid.Column="0" Margin="0,0,8,0"/>
                                 <Button Grid.Column="1" Content="Go" Click="WebUiGoButton_Click" Padding="10,4"/>
-                                <Button Grid.Column="2" Content="Open External" Click="WebUiOpenExternalButton_Click" Padding="10,4"/>
+                                <Button Grid.Column="2" Content="Open External" Click="WebUiOpenExternalButton_Click" Padding="10,4" Margin="8,0,0,0"/>
+                                <Button x:Name="WebUiMaximizeButton" Grid.Column="3" Content="Maximize" Click="WebUiMaximizeButton_Click" Padding="10,4" Margin="8,0,0,0"
+                                        ToolTip="Show web preview across the entire IDE client area (Shift+F6)"/>
+                                <Button x:Name="WebUiResetButton" Grid.Column="4" Content="Reset" Click="WebUiResetButton_Click" Padding="10,4" Margin="8,0,0,0"
+                                        ToolTip="Clear the web preview to an empty page"/>
                             </Grid>
                         </Border>
 
