@@ -46,6 +46,7 @@
     <Geometry x:Key="IconClose">M 4,4 L 12,12 M 12,4 L 4,12</Geometry>
     <Geometry x:Key="IconChevron">M 5,3 L 11,8 L 5,13</Geometry>
     <Geometry x:Key="IconChevronLeft">M 11,3 L 5,8 L 11,13</Geometry>
+    <Geometry x:Key="IconComboChevron">M 2,3 L 10,3 L 6,8 Z</Geometry>
     <Geometry x:Key="IconSend">M 2.5,8 L 13.5,3 L 9.2,8 L 13.5,13 Z M 9.2,8 H 2.5</Geometry>
     <Geometry x:Key="IconDownload">M 8,2.5 V 10 M 5,7.2 L 8,10.2 L 11,7.2 M 3,13.5 H 13</Geometry>
     <Geometry x:Key="IconFolder">M 2,4.5 H 6.2 L 7.6,6.2 H 14 V 13 H 2 Z</Geometry>
@@ -168,13 +169,132 @@
         <Setter Property="SnapsToDevicePixels" Value="True"/>
     </Style>
 
-    <Style x:Key="ToolbarComboBox" TargetType="ComboBox">
+    <ControlTemplate x:Key="ComboBoxToggleButtonTemplate" TargetType="ToggleButton">
+        <Border x:Name="Bd"
+                Background="{DynamicResource InputBackgroundBrush}"
+                BorderBrush="{DynamicResource InputBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="6"
+                SnapsToDevicePixels="True">
+            <Path Width="10"
+                  Height="6"
+                  Margin="0,0,8,0"
+                  HorizontalAlignment="Right"
+                  VerticalAlignment="Center"
+                  Data="{StaticResource IconComboChevron}"
+                  Fill="{DynamicResource TextSecondaryBrush}"
+                  Stretch="Uniform"/>
+        </Border>
+        <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ButtonHoverBrush}"/>
+                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource ButtonHoverBorderBrush}"/>
+            </Trigger>
+            <Trigger Property="IsChecked" Value="True">
+                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource PrimaryButtonBorderBrush}"/>
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.45"/>
+            </Trigger>
+        </ControlTemplate.Triggers>
+    </ControlTemplate>
+
+    <Style TargetType="ComboBoxItem">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{DynamicResource InputForegroundBrush}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="6,4"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ComboBoxItem">
+                    <Border x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="5"
+                            Padding="{TemplateBinding Padding}"
+                            Margin="2,1"
+                            SnapsToDevicePixels="True">
+                        <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsHighlighted" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ButtonHoverBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource PrimaryButtonBackgroundBrush}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource PrimaryButtonForegroundBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.45"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="IdeComboBox" TargetType="ComboBox">
         <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}"/>
         <Setter Property="Foreground" Value="{DynamicResource InputForegroundBrush}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}"/>
-        <Setter Property="Padding" Value="6,3"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="8,3,26,3"/>
         <Setter Property="MinHeight" Value="28"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
+        <Setter Property="ScrollViewer.CanContentScroll" Value="True"/>
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ComboBox">
+                    <Grid SnapsToDevicePixels="True">
+                        <ToggleButton x:Name="ToggleButton"
+                                      Template="{StaticResource ComboBoxToggleButtonTemplate}"
+                                      Focusable="False"
+                                      ClickMode="Press"
+                                      IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"/>
+                        <ContentPresenter Margin="{TemplateBinding Padding}"
+                                          IsHitTestVisible="False"
+                                          Content="{TemplateBinding SelectionBoxItem}"
+                                          ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                          ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                          VerticalAlignment="Center"
+                                          HorizontalAlignment="Left"
+                                          TextElement.Foreground="{TemplateBinding Foreground}"/>
+                        <Popup Placement="Bottom"
+                               AllowsTransparency="True"
+                               Focusable="False"
+                               IsOpen="{TemplateBinding IsDropDownOpen}"
+                               PopupAnimation="Fade"
+                               VerticalOffset="4">
+                            <Border MinWidth="{TemplateBinding ActualWidth}"
+                                    MaxHeight="{TemplateBinding MaxDropDownHeight}"
+                                    Background="{DynamicResource InputBackgroundBrush}"
+                                    BorderBrush="{DynamicResource InputBorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="4"
+                                    SnapsToDevicePixels="True">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="18" Direction="270" Opacity="0.22" ShadowDepth="4" Color="#000000"/>
+                                </Border.Effect>
+                                <ScrollViewer Margin="0" SnapsToDevicePixels="True">
+                                    <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/>
+                                </ScrollViewer>
+                            </Border>
+                        </Popup>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="ComboBox" BasedOn="{StaticResource IdeComboBox}"/>
+
+    <Style x:Key="ToolbarComboBox" TargetType="ComboBox" BasedOn="{StaticResource IdeComboBox}">
+        <Setter Property="Width" Value="132"/>
+        <Setter Property="MinHeight" Value="28"/>
     </Style>
 
     <Style x:Key="DocumentTabButton" TargetType="Button">

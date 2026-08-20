@@ -186,6 +186,29 @@ public static class EditorPopupTheming
         app.Resources[SystemColors.InfoTextBrushKey] = foreground;
         app.Resources[SystemColors.HighlightBrushKey] = selection;
         app.Resources[SystemColors.HighlightTextBrushKey] = selectionText;
+        PublishSystemChrome(app.Resources, theme);
+    }
+
+    /// <summary>
+    /// System chrome used by ComboBox / menu popups that do not inherit
+    /// <c>MainWindow</c> resources. Input colors match the closed combo and dropdown.
+    /// </summary>
+    public static void PublishSystemChrome(ResourceDictionary resources, Theme theme)
+    {
+        ArgumentNullException.ThrowIfNull(resources);
+        ArgumentNullException.ThrowIfNull(theme);
+
+        var inputBackground = Freeze(theme.InputBackground);
+        var inputForeground = Freeze(theme.InputForeground);
+        var spec = EditorPopupTheme.FromTheme(theme);
+
+        resources[SystemColors.WindowBrushKey] = inputBackground;
+        resources[SystemColors.WindowTextBrushKey] = inputForeground;
+        resources[SystemColors.ControlBrushKey] = inputBackground;
+        resources[SystemColors.ControlTextBrushKey] = inputForeground;
+        resources[SystemColors.GrayTextBrushKey] = Freeze(theme.TextSecondary);
+        resources[SystemColors.HighlightBrushKey] = Freeze(spec.SelectionBackground);
+        resources[SystemColors.HighlightTextBrushKey] = Freeze(spec.SelectionForeground);
     }
 
     private static void ApplyCompletionList(CompletionWindow completion, SolidColorBrush background, SolidColorBrush foreground)
