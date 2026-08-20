@@ -68,4 +68,6 @@ Interpret-mode only. This extension is not Desktop IDE parity (no UIHost preview
 
 `dom.*` / `game.*` / `three.*` programs (for example `Examples/Web/js/maldanoid.malda`) throw in the interpreter. Desktop IDE **F5** detects those APIs, transpiles to JavaScript with a VLQ source map, loads the result in Web Preview, and uses WebView2's Chromium debugger so glyph breakpoints, continue, and step hit `.malda` lines.
 
-Ctrl+F5 on the same files opens Web Preview without attaching the debugger. Watch expressions and breakpoint conditions are JavaScript. VS Code F5 (`malda debug-adapter`) stays interpret-only. Compiled `.js` + `.map` still work in browser DevTools.
+Full-stack files (`@client()` / `@javascript()` plus `@server()` / `@csharp()` or a route decorator) start **both** sessions: the interpreter debugs the host partition (client-only functions are skipped) and Web Preview debugs the JavaScript partition. Continue / step follow whichever side last paused; Pause stops both. Output is labeled `[server]` and `[client]`. One current-line highlight and inspect panel is shown at a time. `@shared()` bodies can stop in either runtime.
+
+Ctrl+F5 on browser-only files opens Web Preview without attaching the debugger. Ctrl+F5 on full-stack files still offers the Server / Client preview / Full stack run dialog. Watch expressions and breakpoint conditions on the client are JavaScript. VS Code F5 (`malda debug-adapter`) stays interpret-only. Compiled `.js` + `.map` still work in browser DevTools.

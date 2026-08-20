@@ -67,6 +67,13 @@ public partial class MainWindow : Window
         FullStack
     }
 
+    private enum DebuggeeKind
+    {
+        None,
+        Interpret,
+        JavaScript
+    }
+
     private sealed class SearchResultItem
     {
         public required string DocumentKey { get; init; }
@@ -126,6 +133,12 @@ public partial class MainWindow : Window
     private DebuggerHook? _debuggerHook;
     private WebViewJsDebugger? _jsDebugger;
     private string _jsDebugOutput = "";
+    private DebuggeeKind _focusedDebuggee;
+    private bool _interpretPaused;
+    private bool _jsPaused;
+    private bool _jsStepInFlight;
+    private bool _interpretDebugSessionActive;
+    private bool _dualDebugSession;
     private readonly List<string> _watchExpressions = new();
     private readonly DebugInspectExpansionState _inspectExpansion = new();
     private int _selectedDebugFrameId = 1;
@@ -1819,6 +1832,7 @@ public partial class MainWindow : Window
             _debugTask = null;
             _debugCancellation?.Dispose();
             _debugCancellation = null;
+            ResetDualDebugState();
             _ = StopJsDebuggerAsync();
             ClearCurrentLineHighlight();
             UpdateButtonStates();
@@ -2681,7 +2695,8 @@ public partial class MainWindow : Window
             "  F11 - Step Into\n" +
             "  Shift+F11 - Step Out\n" +
             "  F9 - Toggle Breakpoint\n" +
-            "  F5 on dom.*/game.*/three.* files debugs in Web Preview";
+            "  F5 on dom.*/game.*/three.* files debugs in Web Preview\n" +
+            "  F5 on @client()+@server() files debugs host + Web Preview together";
         
         MessageBox.Show(shortcuts, "Keyboard Shortcuts", MessageBoxButton.OK, MessageBoxImage.Information);
     }
@@ -2691,6 +2706,8 @@ public partial class MainWindow : Window
         var debugger = _jsDebugger;
         _jsDebugger = null;
         _jsDebugOutput = "";
+        _jsPaused = false;
+        _jsStepInFlight = false;
         if (debugger == null)
         {
             return;

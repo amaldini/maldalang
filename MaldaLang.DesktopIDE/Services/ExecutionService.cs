@@ -8,6 +8,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using MaldaLang;
+using MaldaLang.Compiler;
 using MaldaLang.Interpreter;
 using MaldaLang.DesktopIDE.Models;
 using MaldaLang.BuiltIns;
@@ -676,7 +677,7 @@ public class ExecutionService
         // Done - no retry needed! Execution continues exactly where it left off with async/await
     }
     
-    public async Task<ExecutionResult> ExecuteWithDebuggerAsync(string source, IDebuggerHook debuggerHook, string? input = null, string? fileName = null)
+    public async Task<ExecutionResult> ExecuteWithDebuggerAsync(string source, IDebuggerHook debuggerHook, string? input = null, string? fileName = null, bool hostPartitionOnly = false)
     {
         // Cancel any pending output updates from previous execution
         lock (_outputUpdateLock)
@@ -785,6 +786,11 @@ public class ExecutionService
                     Output = _output.ToString(),
                     Error = $"Parse errors detected:\n{string.Join("\n", errorMessages)}\n\nPlease fix the syntax errors before running."
                 };
+            }
+
+            if (hostPartitionOnly)
+            {
+                statements = HostDebugPartition.KeepHostStatements(statements);
             }
             
             _currentDebuggerHook = debuggerHook;

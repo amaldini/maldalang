@@ -836,6 +836,7 @@ public partial class MainWindow
         _debugTask = null;
         _debugCancellation?.Dispose();
         _debugCancellation = null;
+        ResetDualDebugState();
         _ = StopJsDebuggerAsync();
         
         // Stop regular run execution if running

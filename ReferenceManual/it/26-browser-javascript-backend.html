@@ -46,7 +46,7 @@
             <li><strong>Supporto actor (locali)</strong>: JS mode supporta actor locali con semantica di mailbox compatibile con il comportamento actor MALDA.</li>
             <li><strong>Supporto scene 3D</strong>: JavaScript mode include un wrapper curato <code>three.*</code> per scene 3D ospitate nel browser, più kernel <code>@shader()</code> compilati in GLSL (vedi <a href="#three-scene-api">26.10</a>).</li>
             <li><strong>Aspettativa di runtime</strong>: gli script generati richiedono <code>malda-js-runtime.js</code> prima che l'output MALDA venga eseguito.</li>
-            <li><strong>Debug nell'IDE Desktop</strong>: F5 su programmi <code>dom.*</code> / <code>game.*</code> / <code>three.*</code> transpila in JavaScript, apre Web Preview e mappa i breakpoint dell'editor tramite source map (vedi <a href="02-tools.html#javascript-desktop-debug">2.6.6</a>).</li>
+            <li><strong>Debug nell'IDE Desktop</strong>: F5 su programmi <code>dom.*</code> / <code>game.*</code> / <code>three.*</code> transpila in JavaScript, apre Web Preview e mappa i breakpoint dell'editor tramite source map. I file full-stack (<code>@client()</code> più <code>@server()</code> o una route) eseguono il debug dell'interprete host e di Web Preview insieme (vedi <a href="02-tools.html#javascript-desktop-debug">2.6.6</a>).</li>
         </ul>
         <h3>26.2.1 Decoratori target nell'output JS</h3>
         <p>Quando compili verso JavaScript, i decoratori target servono a tenere le preoccupazioni browser e server in un unico file sorgente:</p>
