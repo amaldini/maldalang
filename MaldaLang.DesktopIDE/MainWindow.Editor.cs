@@ -19,6 +19,7 @@ using MaldaLang.IDE.Services;
 using MaldaLang.IDE.Models;
 using MaldaLang.Interpreter;
 using MaldaLang.Compiler;
+using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.Highlighting;
 using ICSharpCode.AvalonEdit.Highlighting.Xshd;
 using ICSharpCode.AvalonEdit.Document;
@@ -308,9 +309,18 @@ public partial class MainWindow
 
         var clickOffset = TryGetDocumentOffset(position.Value);
         var selection = CodeEditor.TextArea.Selection;
-        var hasSelection = selection != null && !selection.IsEmpty;
-        var selectionStart = hasSelection ? selection.SurroundingSegment.Offset : 0;
-        var selectionLength = hasSelection ? selection.SurroundingSegment.Length : 0;
+        var selectionStart = 0;
+        var selectionLength = 0;
+        if (selection != null && !selection.IsEmpty)
+        {
+            var segment = selection.SurroundingSegment;
+            if (segment != null)
+            {
+                selectionStart = segment.Offset;
+                selectionLength = segment.Length;
+            }
+        }
+
         if (clickOffset is int offset &&
             !EditorContextMenuPolicy.ShouldMoveCaretToClick(offset, selectionStart, selectionLength))
         {
