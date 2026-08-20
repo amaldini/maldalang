@@ -779,6 +779,26 @@ process.stdout.write("ok\n");
     }
 
     [Fact]
+    public void JsTranspiler_ShaderPathTunnelExample_EmitsShaderCalls()
+    {
+        var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "js", "three_shader_path_tunnel.malda");
+        var compiler = new Compiler.Compiler();
+        var js = compiler.TranspileToJavaScript(sourcePath);
+
+        Assert.Contains("mlRuntime.three.createShaderMaterial(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.three.setUniform(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.three.createOrthographicCamera(", js, StringComparison.Ordinal);
+        Assert.Contains("varying vec2 vUv", js, StringComparison.Ordinal);
+        Assert.Contains("gl_FragColor", js, StringComparison.Ordinal);
+        Assert.Contains("vec3 path(float z)", js, StringComparison.Ordinal);
+        Assert.Contains("float xorNoise(vec3 p)", js, StringComparison.Ordinal);
+        Assert.Contains("vec3 palette(float t)", js, StringComparison.Ordinal);
+        Assert.Contains("const mat3 G =", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("function fragmentMain", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("mlRuntime.game.setPixel", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ThreeRuntime_CreateShaderMaterialAndSetUniform_WrapsVectors()
     {
         Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);

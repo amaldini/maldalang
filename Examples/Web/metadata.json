@@ -418,6 +418,29 @@
                                            ],
                          "learningGoal":  "Show how a CPU MALDA tracer becomes realtime by moving the rays into a curated three.js GLSL shader.",
                          "expectedOutput":  "Renders a realtime GPU ray-traced scene in the browser.",
+                         "next":  "Web/js/three_shader_path_tunnel.malda",
+                         "documentationPath":  "/?lesson=browser-track#lesson-browser-track",
+                         "documentationTitle":  "Browser Track"
+                     },
+                     {
+                         "name":  "JS three.js Path Tunnel",
+                         "description":  "ShaderToy-style GPU path-marching tunnel converted to @shader() kernels (Frostbyte, CC-BY-NC-SA-4.0)",
+                         "file":  "js/three_shader_path_tunnel.malda",
+                         "track":  "showcase",
+                         "difficulty":  "advanced",
+                         "minutes":  16,
+                         "concepts":  [
+                                          "three.*",
+                                          "GLSL",
+                                          "shader material",
+                                          "ShaderToy",
+                                          "JavaScript target"
+                                      ],
+                         "prerequisites":  [
+                                               "Web/js/three_shader_raytracer.malda"
+                                           ],
+                         "learningGoal":  "Show a ShaderToy-style volumetric path march written as typed MALDA @shader() functions and compiled with glsl.compile.",
+                         "expectedOutput":  "Renders a realtime GPU tunnel that flies along a twisting path.",
                          "next":  "Web/js/three_cube.malda",
                          "documentationPath":  "/?lesson=browser-track#lesson-browser-track",
                          "documentationTitle":  "Browser Track"

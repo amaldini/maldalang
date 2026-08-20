@@ -388,6 +388,12 @@ See `Examples/Web/js/three_shader_raytracer.malda` for a realtime GPU sphere tra
 malda compile Examples/Web/js/three_shader_raytracer.malda --mode js -o Examples/Web/js/three_shader_raytracer.js
 ```
 
+`Examples/Web/js/three_shader_path_tunnel.malda` is a ShaderToy-style path-marching tunnel (Frostbyte, CC-BY-NC-SA-4.0 — that file is not under the repo dual licence). Compile:
+
+```bash
+malda compile Examples/Web/js/three_shader_path_tunnel.malda --mode js -o Examples/Web/js/three_shader_path_tunnel.js
+```
+
 Host page loading order is the same as other `three.*` demos (`three.min.js` first).
 
 ## Audio Spec v1 (`game.audio*`)
