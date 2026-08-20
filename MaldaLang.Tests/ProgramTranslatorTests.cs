@@ -389,6 +389,8 @@ public class ProgramTranslatorTests : TestBase
         Assert.Contains("never numeric strings", appendix);
         Assert.Contains("\"$alias\"", appendix);
         Assert.Contains("{\"type\":\"number\",\"value\":2}", appendix);
+        Assert.Contains("\"call\":\"add\"", appendix);
+        Assert.DoesNotContain("<method>", appendix);
     }
 
     [Fact]
@@ -795,5 +797,140 @@ public class ProgramTranslatorTests : TestBase
         {
             try { Directory.Delete(tempDir, true); } catch { }
         }
+    }
+
+    [Fact]
+    public void ValidateReturnType_Program_MapsAddAndOperatorsToUnderscoreMethods()
+    {
+        ApiRegistry.Register(new ApiDeclaration("Calc", new List<ApiMethodSignature>
+        {
+            new("_add", new List<string> { "a", "b" }, new List<string?> { "number", "number" }, null),
+            new("_mul", new List<string> { "a", "b" }, new List<string?> { "number", "number" }, null)
+        }));
+        Assert.True(TypedPromptSchemaResolver.TryResolve("program(Calc)", null, out var schema, out _));
+
+        var json = new JsonObject();
+        var add = new JsonObject();
+        add.Set("call", RuntimeValue.String("add"));
+        add.Set("args", RuntimeValue.Array(new List<RuntimeValue>
+        {
+            RuntimeValue.Integer(2),
+            RuntimeValue.Integer(3)
+        }));
+        add.Set("as", RuntimeValue.String("t0"));
+        var mul = new JsonObject();
+        mul.Set("op", RuntimeValue.String("*"));
+        mul.Set("args", RuntimeValue.Array(new List<RuntimeValue>
+        {
+            RuntimeValue.String("t0"),
+            RuntimeValue.Integer(4)
+        }));
+        mul.Set("as", RuntimeValue.String("r"));
+        json.Set("steps", RuntimeValue.Array(new List<RuntimeValue>
+        {
+            RuntimeValue.Object(add),
+            RuntimeValue.Object(mul)
+        }));
+        json.Set("result", RuntimeValue.String("r"));
+
+        var ok = TypedPromptValidator.TryValidateReturnType(
+            RuntimeValue.Object(json),
+            schema,
+            out var validated,
+            out var error);
+        Assert.True(ok, error);
+        var prog = Assert.IsType<ProgramInstance>(validated.AsObject());
+        Assert.Equal("_add", prog.Steps[0].Call);
+        Assert.Equal("_mul", prog.Steps[1].Call);
+        Assert.Equal("$t0", prog.Steps[1].Args[0].AsString());
+        Assert.Equal("$r", prog.ReturnValue.AsString());
+    }
+
+    [Fact]
+    public void FormatSchemaAppendix_Program_UsesDeclaredUnderscoreNamesInExample()
+    {
+        ApiRegistry.Register(new ApiDeclaration("Calc", new List<ApiMethodSignature>
+        {
+            new("_add", new List<string> { "a", "b" }, new List<string?> { "number", "number" }, null),
+            new("_mul", new List<string> { "a", "b" }, new List<string?> { "number", "number" }, null)
+        }));
+        Assert.True(TypedPromptSchemaResolver.TryResolve("program(Calc)", null, out var schema, out _));
+        var appendix = TypedPromptValidator.FormatSchemaAppendix("program(Calc)", schema);
+        Assert.Contains("\"call\":\"_add\"", appendix);
+        Assert.Contains("\"call\":\"_mul\"", appendix);
+        Assert.Contains("_add(a: number, b: number)", appendix);
+        Assert.DoesNotContain("<method>", appendix);
+    }
+
+    [Fact]
+    public void BuildResponseFormat_Program_RenamesAtApi_AndRewritesArgTypeUnion()
+    {
+        ApiRegistry.Register(new ApiDeclaration("Calc", new List<ApiMethodSignature>
+        {
+            new("_add", new List<string> { "a", "b" }, new List<string?> { "number", "number" }, null)
+        }));
+        Assert.True(TypedPromptSchemaResolver.TryResolve("program(Calc)", null, out var schema, out _));
+        Assert.Equal("program", Assert.IsType<JsonObject>(schema.AsObject()).Get("x-malda-kind").AsString());
+
+        var responseFormat = TypedPromptValidator.BuildResponseFormat(schema);
+        var wrapper = Assert.IsType<JsonObject>(responseFormat.AsObject());
+        var jsonSchema = Assert.IsType<JsonObject>(wrapper.Get("json_schema").AsObject());
+        var nested = Assert.IsType<JsonObject>(jsonSchema.Get("schema").AsObject());
+        Assert.Equal(ValueType.Null, nested.Get("x-malda-kind").Type);
+        Assert.Equal(ValueType.Null, nested.Get("@api").Type);
+
+        var props = Assert.IsType<JsonObject>(nested.Get("properties").AsObject());
+        Assert.Equal(ValueType.Object, props.Get("api").Type);
+        Assert.Equal(ValueType.Null, props.Get("@api").Type);
+
+        var required = nested.Get("required").AsArray().Select(v => v.AsString()).ToList();
+        Assert.Contains("api", required);
+        Assert.DoesNotContain("@api", required);
+
+        var steps = Assert.IsType<JsonObject>(props.Get("steps").AsObject());
+        var stepItem = Assert.IsType<JsonObject>(steps.Get("items").AsObject());
+        var stepProps = Assert.IsType<JsonObject>(stepItem.Get("properties").AsObject());
+        var args = Assert.IsType<JsonObject>(stepProps.Get("args").AsObject());
+        var items = Assert.IsType<JsonObject>(args.Get("items").AsObject());
+        Assert.Equal(ValueType.Array, items.Get("anyOf").Type);
+        Assert.Equal(ValueType.Null, items.Get("type").Type);
+    }
+
+    [Fact]
+    public void RunProgram_Interpreter_PlainAddMulAndBareAliasAgainstUnderscoreApi()
+    {
+        var source = """
+            api Calc {
+                function _add(a: number, b: number);
+                function _mul(a: number, b: number);
+            }
+
+            function _add(a, b) { return a + b; }
+            function _mul(a, b) { return a * b; }
+
+            var prog = parseJSON("{\"steps\":[{\"call\":\"add\",\"args\":[2,3],\"as\":\"t0\"},{\"call\":\"*\",\"args\":[\"t0\",4],\"as\":\"r\"}],\"result\":\"r\"}");
+            io.print(runProgram(prog));
+            """;
+
+        Assert.Equal("20", RunProgram(source).Trim());
+    }
+
+    [Fact]
+    public void RunProgram_Interpreter_NestedAddEnvelopeAgainstUnderscoreApi()
+    {
+        var source = """
+            api Calc {
+                function _add(a: number, b: number);
+                function _mul(a: number, b: number);
+            }
+
+            function _add(a, b) { return a + b; }
+            function _mul(a, b) { return a * b; }
+
+            var prog = parseJSON("{\"program\":{\"function\":\"mul\",\"arguments\":[{\"method\":\"add\",\"params\":[\"2\",\"3\"]},4]}}");
+            io.print(runProgram(prog));
+            """;
+
+        Assert.Equal("20", RunProgram(source).Trim());
     }
 }
