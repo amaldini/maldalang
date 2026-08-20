@@ -536,13 +536,10 @@
             </MenuItem>
 
             <MenuItem Header="_View">
-                <MenuItem Header="_Theme">
+                <MenuItem x:Name="ThemeMenu" Header="_Theme">
                     <MenuItem.Icon>
                         <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconTheme}"/>
                     </MenuItem.Icon>
-                    <MenuItem Header="Light" Click="ViewThemeLight_Click"/>
-                    <MenuItem Header="Dark" Click="ViewThemeDark_Click"/>
-                    <MenuItem Header="High Contrast" Click="ViewThemeHighContrast_Click"/>
                 </MenuItem>
                 <Separator/>
                 <MenuItem Header="Show S_yntax Panel" IsCheckable="True" IsChecked="True" Click="ViewToggleSyntaxPanel_Click"/>
@@ -775,7 +772,7 @@
 
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
                     <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconTheme}" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                    <ComboBox x:Name="ThemeComboBox" Style="{StaticResource ToolbarComboBox}" Width="132" SelectionChanged="ThemeComboBox_SelectionChanged"/>
+                    <ComboBox x:Name="ThemeComboBox" Style="{StaticResource ToolbarComboBox}" Width="160" SelectionChanged="ThemeComboBox_SelectionChanged"/>
                 </StackPanel>
             </DockPanel>
         </Border>

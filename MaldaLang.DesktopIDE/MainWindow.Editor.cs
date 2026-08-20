@@ -74,7 +74,7 @@ public partial class MainWindow
         if (highlightingDefinition == null) return;
         
         var theme = _themeService.CurrentTheme;
-        var isDarkTheme = theme.Name == "Dark" || theme.Name == "HighContrast";
+        var isDarkTheme = theme.IsDark;
         
         if (isDarkTheme)
         {
