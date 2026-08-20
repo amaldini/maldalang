@@ -174,17 +174,12 @@ public static class EditorPopupTheming
         var spec = EditorPopupTheme.FromTheme(theme);
         var background = Freeze(spec.Background);
         var foreground = Freeze(spec.Foreground);
-        var border = Freeze(spec.Border);
         var selection = Freeze(spec.SelectionBackground);
         var selectionText = Freeze(spec.SelectionForeground);
 
+        DialogTheming.Publish(app.Resources, theme);
         app.Resources["EditorBackgroundBrush"] = background;
         app.Resources["EditorForegroundBrush"] = foreground;
-        app.Resources["InputBackgroundBrush"] = Freeze(theme.InputBackground);
-        app.Resources["TextForegroundBrush"] = Freeze(theme.TextForeground);
-        app.Resources["TextSecondaryBrush"] = Freeze(theme.TextSecondary);
-        app.Resources["ButtonHoverBrush"] = Freeze(theme.ButtonHover);
-        app.Resources["BorderBrush"] = border;
         app.Resources[SystemColors.MenuBrushKey] = background;
         app.Resources[SystemColors.MenuTextBrushKey] = foreground;
         app.Resources[SystemColors.InfoBrushKey] = background;
