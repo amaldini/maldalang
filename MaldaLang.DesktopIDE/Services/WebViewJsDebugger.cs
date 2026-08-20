@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Andrea Maldini
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+using System.IO;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using MaldaLang.Compiler;
