@@ -137,7 +137,6 @@ public partial class MainWindow : Window
     private bool _interpretPaused;
     private bool _jsPaused;
     private bool _jsStepInFlight;
-    private bool _interpretStepInFlight;
     private bool _interpretDebugSessionActive;
     private bool _dualDebugSession;
     private readonly List<string> _watchExpressions = new();

@@ -243,7 +243,6 @@ public partial class MainWindow
             Dispatcher.Invoke(() =>
             {
                 _interpretPaused = true;
-                _interpretStepInFlight = false;
                 _focusedDebuggee = DebuggeeKind.Interpret;
                 RefreshDebugOutput();
                 
@@ -325,7 +324,6 @@ public partial class MainWindow
 
         if (_debuggerHook == null) return;
 
-        _interpretStepInFlight = false;
         _interpretPaused = false;
         RefreshDebugOutput();
         _debuggerHook.SetDebugMode(DebugMode.Continue);
@@ -351,7 +349,6 @@ public partial class MainWindow
 
         if (_debuggerHook == null) return;
 
-        _interpretStepInFlight = true;
         _interpretPaused = false;
         RefreshDebugOutput();
         UpdateDebugInfo();
@@ -379,7 +376,6 @@ public partial class MainWindow
 
         if (_debuggerHook == null) return;
 
-        _interpretStepInFlight = true;
         _interpretPaused = false;
         RefreshDebugOutput();
         UpdateDebugInfo();
@@ -407,7 +403,6 @@ public partial class MainWindow
 
         if (_debuggerHook == null) return;
 
-        _interpretStepInFlight = true;
         _interpretPaused = false;
         var interpreter = _executionService.GetCurrentInterpreter();
         if (interpreter != null)
@@ -948,7 +943,6 @@ public partial class MainWindow
         _interpretPaused = false;
         _jsPaused = false;
         _jsStepInFlight = false;
-        _interpretStepInFlight = false;
         _interpretDebugSessionActive = false;
         _dualDebugSession = false;
     }
@@ -1074,7 +1068,6 @@ public partial class MainWindow
     {
         _interpretDebugSessionActive = false;
         _interpretPaused = false;
-        _interpretStepInFlight = false;
         _debuggerHook?.Stop();
         _debuggerHook = null;
 
