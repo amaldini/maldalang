@@ -293,8 +293,9 @@ three.setUniform(material, "uTime", t);</code></pre>
         <h4>Raw GLSL</h4>
         <p>Triple-quoted GLSL strings still work when you need syntax the subset does not emit. Use <code>"""</code>, not <code>$"""</code>, so braces stay literal. Prefer <code>@shader()</code> when the kernel fits the subset so rename and outline can see it.</p>
         <p>Compile the realtime GPU sphere tracer with:</p>
-        <pre><code>malda compile Examples/Web/js/three_shader_raytracer.malda --mode js -o Examples/Web/js/three_shader_raytracer.js</code></pre>
-        <p>Load <code>three.min.js</code> first, same as other <code>three.*</code> demos. A short listing is in <a href="33-examples.html">33.15.1 Shader materials</a>. Working notes: <code>docs/javascript-backend.md</code>.</p>
+        <pre><code>malda compile Examples/Web/js/three_shader_raytracer.malda --mode js -o Examples/Web/js/three_shader_raytracer.js
+malda compile Examples/Web/js/three_shader_path_tunnel.malda --mode js -o Examples/Web/js/three_shader_path_tunnel.js</code></pre>
+        <p>Load <code>three.min.js</code> first, same as other <code>three.*</code> demos. A short listing is in <a href="33-examples.html">33.15.1 Shader materials</a>. Working notes: <code>docs/javascript-backend.md</code>. The path-tunnel sample is CC-BY-NC-SA-4.0 (Frostbyte).</p>
 
         <h2>26.11 Common Pitfalls and Guidance</h2>
         <ul>

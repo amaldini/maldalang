@@ -33,6 +33,12 @@ Longer showcase: `ui_counter_dashboard.malda`. Engine notes: [`docs/ui-framework
 
 JS / PWA samples under `js/` need `malda compile … --mode js` (or the Desktop/Web IDE browser path). See [`docs/spec/backend-capability-matrix.md`](../../docs/spec/backend-capability-matrix.md).
 
+```bash
+malda compile Examples/Web/js/three_shader_path_tunnel.malda --mode js -o Examples/Web/js/three_shader_path_tunnel.js
+```
+
+That tunnel demo is a CC-BY-NC-SA-4.0 conversion of [Frostbyte’s path march](https://fragcoord.xyz/s/tbe1g319); it is not under the repository MIT OR Apache-2.0 dual licence.
+
 ## Dependencies
 
 | Example | Port / notes |

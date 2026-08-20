@@ -1,0 +1,164 @@
+// SPDX-License-Identifier: CC-BY-NC-SA-4.0
+// Copyright (c) 2026 @Frostbyte
+// https://creativecommons.org/licenses/by-nc-sa/4.0/
+//
+// Credit: @Frostbyte (https://fragcoord.xyz/u/Frostbyte)
+// Original shader: https://fragcoord.xyz/s/tbe1g319
+// MALDA conversion of that ShaderToy / fragcoord path-marching tunnel.
+// This file is NOT covered by the repository MIT OR Apache-2.0 dual licence.
+//
+// Palette: Inigo Quilez (MIT) https://www.shadertoy.com/view/ll2GD3
+// Noise: Xor's Dot Noise, golfed by Fabrice https://fragcoord.xyz/s/pf29h2wz
+//
+// Compile (JavaScript mode only):
+//   malda compile Examples/Web/js/three_shader_path_tunnel.malda --mode js -o Examples/Web/js/three_shader_path_tunnel.js
+
+@shader()
+function vertexMain() {
+    vUv = uv;
+    gl_Position = vec4(position.xy, 0.0, 1.0);
+}
+
+@shader()
+function path(z: float) -> vec3 {
+    return vec3(cos(z * 0.02) * 20.0, cos(z * 0.05) * 3.0, z);
+}
+
+@shader()
+function rotate2(a: float) -> mat2 {
+    var c: float = cos(a);
+    var s: float = sin(a);
+    return mat2(c, -s, s, c);
+}
+
+@shader()
+function xorNoise(p: vec3) -> float {
+    return dot(cos(G * p), sin((p * 1.6) * G));
+}
+
+@shader()
+function palette(t: float) -> vec3 {
+    return clamp(
+        vec3(0.455, 0.322, 0.216)
+        + vec3(-0.073, 0.119, 0.150)
+        * cos(6.28318 * (vec3(20.0, 1.0, 1.0) * t + vec3(0.1, -0.256, -0.231))),
+        0.0,
+        1.0
+    );
+}
+
+@shader()
+function tanhVec3(x: vec3) -> vec3 {
+    var t: vec3 = clamp(x, -8.0, 8.0);
+    var e: vec3 = exp(t * 2.0);
+    return (e - 1.0) / (e + 1.0);
+}
+
+@shader()
+function fragmentMain() {
+    var t: float = uTime;
+    var cam: vec3 = path(t * 10.0);
+    var look: vec3 = normalize(path(t * 10.0 + 1.0) - cam);
+    var right: vec3 = normalize(vec3(look.z, 0.0, -look.x));
+    var up: vec3 = cross(right, look);
+    var fragCoord: vec2 = vUv * uResolution;
+    var uv: vec2 = (fragCoord - 0.5 * uResolution) / uResolution.y;
+    var rd: vec3 = vec3(uv, 2.0) * mat3(-right, up, look);
+
+    var o: vec4 = vec4(0.0);
+    var d: float = 0.0;
+    var s: float = 0.0;
+    var p: vec3 = cam;
+    var i: float = 0.0;
+    while (i < 150.0) {
+        i = i + 1.0;
+        s = 0.001 + abs(s) * 0.1;
+        d = d + s;
+        o.rgb += palette(p.z * 0.1 + i * 2.0) / s;
+        p = rd * d + path(t * 10.0);
+        var g: vec3 = p;
+        p.xy *= rotate2(length(path(t).xy) * 0.05);
+        s = (sin(p.z + p.y) * 0.1) - 0.2;
+        var y: float = abs(xorNoise(p) + xorNoise(p / 8.0) * 4.0);
+        s += y + y * 0.2;
+        s = max(1.5 + sin(p.z * 0.2 + p.y * 0.4) - length((g - path(p.z)).xy), s);
+    }
+
+    var color: vec3 = tanhVec3((o.rgb * o.rgb) / 200000000.0) * 1.5;
+    gl_FragColor = vec4(color, 1.0);
+}
+
+var vertexShader = glsl.compile({
+    varyings: ["vec2 vUv"],
+    functions: ["vertexMain"],
+    main: "vertexMain"
+});
+
+var fragmentShader = glsl.compile({
+    varyings: ["vec2 vUv"],
+    uniforms: [
+        "vec2 uResolution",
+        "float uTime"
+    ],
+    consts: [
+        "mat3 G = mat3(-0.57, 0.81, 0.1, -0.28, -0.3, 0.9, 0.77, 0.49, 0.4)"
+    ],
+    functions: ["path", "rotate2", "xorNoise", "palette", "tanhVec3", "fragmentMain"],
+    main: "fragmentMain"
+});
+
+var root = dom.query("#app");
+
+if (root == null) {
+    io.print("No #app container found.");
+} else {
+    dom.clear(root);
+
+    var heading = dom.create("h1");
+    dom.setText(heading, "MALDA Path Tunnel");
+    dom.append(root, heading);
+
+    var hint = dom.create("p");
+    dom.setText(hint, "ShaderToy-style GPU path march (Frostbyte). CC-BY-NC-SA-4.0. Fullscreen GLSL via three.createShaderMaterial.");
+    dom.append(root, hint);
+
+    var width = 960;
+    var height = 540;
+
+    var renderer = three.createRenderer(width, height, "#app");
+    three.setClearColor(renderer, "#020617");
+    three.setRendererSize(renderer, width, height);
+
+    var scene = three.createScene();
+    var camera = three.createOrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+    var material = three.createShaderMaterial({
+        "vertexShader": vertexShader,
+        "fragmentShader": fragmentShader,
+        "depthWrite": false,
+        "uniforms": {
+            "uResolution": [width, height],
+            "uTime": 0
+        }
+    });
+
+    var quad = three.createMesh(three.createPlaneGeometry(2, 2), material);
+    three.add(scene, quad);
+
+    var t = 0.0;
+
+    function update(dtMs) {
+        var dt = dtMs;
+        if (dt > 50) {
+            dt = 50;
+        }
+        t = t + (dt / 1000);
+        three.setUniform(material, "uTime", t);
+    }
+
+    function render() {
+        three.render(renderer, scene, camera);
+    }
+
+    three.start(update, render);
+}
