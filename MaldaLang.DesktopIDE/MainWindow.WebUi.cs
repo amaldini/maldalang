@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using Microsoft.Web.WebView2.Core;
 
 namespace MaldaLang.DesktopIDE;
 
@@ -194,23 +193,16 @@ public partial class MainWindow
             "</head><body></body></html>";
     }
 
-    private void WebUiCoreWebView_AcceleratorKeyPressed(object? sender, CoreWebView2AcceleratorKeyPressedEventArgs e)
+    private void WebUiWebView_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.KeyEventKind != CoreWebView2KeyEventKind.KeyDown &&
-            e.KeyEventKind != CoreWebView2KeyEventKind.SystemKeyDown)
-        {
-            return;
-        }
-
-        var key = KeyInterop.KeyFromVirtualKey((int)e.VirtualKey);
-        if (key == Key.Escape && _isWebUiMaximized)
+        if (e.Key == Key.Escape && _isWebUiMaximized)
         {
             SetWebUiMaximized(false);
             e.Handled = true;
             return;
         }
 
-        if (key == Key.F6 && Keyboard.Modifiers == ModifierKeys.Shift)
+        if (e.Key == Key.F6 && Keyboard.Modifiers == ModifierKeys.Shift)
         {
             ToggleWebUiMaximized();
             e.Handled = true;

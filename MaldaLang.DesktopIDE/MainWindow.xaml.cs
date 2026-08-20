@@ -231,6 +231,7 @@ public partial class MainWindow : Window
         OutputWebBrowser.LoadCompleted += OutputWebBrowser_LoadCompleted;
 
         // Initialize modern embedded browser for Web UI panel.
+        WebUiWebView.PreviewKeyDown += WebUiWebView_PreviewKeyDown;
         _ = InitializeWebUiPreviewAsync();
         
         SetupSyntaxHighlighting();
@@ -2494,8 +2495,6 @@ public partial class MainWindow : Window
         core.Settings.AreDefaultContextMenusEnabled = true;
         core.Settings.IsStatusBarEnabled = false;
         core.Settings.IsZoomControlEnabled = true;
-        core.AcceleratorKeyPressed -= WebUiCoreWebView_AcceleratorKeyPressed;
-        core.AcceleratorKeyPressed += WebUiCoreWebView_AcceleratorKeyPressed;
         return core;
     }
 
