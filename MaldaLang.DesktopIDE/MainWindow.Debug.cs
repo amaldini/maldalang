@@ -120,6 +120,10 @@ public partial class MainWindow
         {
             UpdateBreakpointsPanel();
             UpdateBreakpointVisuals();
+            if (_jsDebugger is { IsAttached: true })
+            {
+                _ = _jsDebugger.SyncBreakpointsAsync(_debuggerService.Breakpoints.ToList());
+            }
         });
     }
 
@@ -180,6 +184,22 @@ public partial class MainWindow
         var input = ProgramInputTextBox.Text;
         
         SetOutputText("");
+
+        if (JsBrowserApiDetector.UsesBrowserHost(source))
+        {
+            try
+            {
+                await StartJsWebViewDebuggingAsync(source, fileName);
+            }
+            catch (Exception ex)
+            {
+                _debuggerService.Stop();
+                await StopJsDebuggerAsync();
+                SetOutputText($"JavaScript debug failed: {ex.Message}", isError: true);
+                UpdateButtonStates();
+            }
+            return;
+        }
         
         // Do not clear tool calls log here so Edit mode tool calls persist when user then debugs
         UpdateToolCallsDisplay();
@@ -257,7 +277,17 @@ public partial class MainWindow
 
     private void ContinueButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_debuggerHook == null || !_debuggerService.State.IsPaused) return;
+        if (!_debuggerService.State.IsPaused) return;
+
+        if (_jsDebugger is { IsAttached: true })
+        {
+            _debuggerService.Resume();
+            UpdateButtonStates();
+            _ = _jsDebugger.ContinueAsync();
+            return;
+        }
+
+        if (_debuggerHook == null) return;
         
         SetOutputText(_executionService.GetCurrentOutput());
         _debuggerHook.SetDebugMode(DebugMode.Continue);
@@ -267,7 +297,17 @@ public partial class MainWindow
 
     private void StepOverButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_debuggerHook == null || !_debuggerService.State.IsPaused) return;
+        if (!_debuggerService.State.IsPaused) return;
+
+        if (_jsDebugger is { IsAttached: true })
+        {
+            _debuggerService.Resume();
+            UpdateButtonStates();
+            _ = _jsDebugger.StepOverAsync();
+            return;
+        }
+
+        if (_debuggerHook == null) return;
         
         SetOutputText(_executionService.GetCurrentOutput());
         UpdateDebugInfo();
@@ -283,7 +323,17 @@ public partial class MainWindow
 
     private void StepIntoButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_debuggerHook == null || !_debuggerService.State.IsPaused) return;
+        if (!_debuggerService.State.IsPaused) return;
+
+        if (_jsDebugger is { IsAttached: true })
+        {
+            _debuggerService.Resume();
+            UpdateButtonStates();
+            _ = _jsDebugger.StepIntoAsync();
+            return;
+        }
+
+        if (_debuggerHook == null) return;
         
         SetOutputText(_executionService.GetCurrentOutput());
         UpdateDebugInfo();
@@ -299,7 +349,17 @@ public partial class MainWindow
 
     private void StepOutButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_debuggerHook == null || !_debuggerService.State.IsPaused) return;
+        if (!_debuggerService.State.IsPaused) return;
+
+        if (_jsDebugger is { IsAttached: true })
+        {
+            _debuggerService.Resume();
+            UpdateButtonStates();
+            _ = _jsDebugger.StepOutAsync();
+            return;
+        }
+
+        if (_debuggerHook == null) return;
         
         var interpreter = _executionService.GetCurrentInterpreter();
         if (interpreter != null)
@@ -326,7 +386,17 @@ public partial class MainWindow
 
     private void PauseButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_debuggerHook == null || !_debuggerService.State.IsRunning || _debuggerService.State.IsPaused) return;
+        if (!_debuggerService.State.IsRunning || _debuggerService.State.IsPaused) return;
+
+        if (_jsDebugger is { IsAttached: true })
+        {
+            _debuggerService.Pause();
+            UpdateButtonStates();
+            _ = _jsDebugger.PauseAsync();
+            return;
+        }
+
+        if (_debuggerHook == null) return;
         
         _debuggerHook.SetDebugMode(DebugMode.Paused);
         _debuggerService.Pause();
@@ -415,6 +485,12 @@ public partial class MainWindow
 
     private void UpdateDebugInfo()
     {
+        if (_jsDebugger is { IsAttached: true })
+        {
+            UpdateJsDebugInfo();
+            return;
+        }
+
         var session = _debuggerHook?.Session;
         if (session == null)
         {
@@ -532,7 +608,7 @@ public partial class MainWindow
             _inspectExpansion.SetExpanded(node.Path, true);
         }
 
-        if (!node.CanExpand || _debuggerHook == null)
+        if (!node.CanExpand || (_debuggerHook == null && _jsDebugger == null))
         {
             return;
         }
@@ -540,9 +616,29 @@ public partial class MainWindow
         if (item.Items.Count == 1 && item.Items[0] is TreeViewItem { Tag: null, Header: "…" })
         {
             item.Items.Clear();
-            foreach (var child in DebugInspectSnapshotBuilder.Expand(_debuggerHook.Session, node.VariablesReference, node.FrameId))
+            if (_jsDebugger is { IsAttached: true })
             {
-                item.Items.Add(CreateInspectTreeItem(child, node.Path));
+                var cached = _jsDebugger.GetCachedChildren(node.VariablesReference);
+                if (cached.Count > 0)
+                {
+                    foreach (var child in cached)
+                    {
+                        item.Items.Add(CreateInspectTreeItem(child, node.Path));
+                    }
+                }
+                else
+                {
+                    item.Items.Add(new TreeViewItem { Header = "…" });
+                    _ = ExpandJsInspectNodeAsync(item, node);
+                    return;
+                }
+            }
+            else if (_debuggerHook != null)
+            {
+                foreach (var child in DebugInspectSnapshotBuilder.Expand(_debuggerHook.Session, node.VariablesReference, node.FrameId))
+                {
+                    item.Items.Add(CreateInspectTreeItem(child, node.Path));
+                }
             }
         }
 
@@ -566,7 +662,7 @@ public partial class MainWindow
 
     private void CallStackListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_suppressCallStackSelection || _debuggerHook == null)
+        if (_suppressCallStackSelection || (_debuggerHook == null && _jsDebugger == null))
         {
             return;
         }
@@ -574,8 +670,16 @@ public partial class MainWindow
         if (CallStackListBox.SelectedItem is ListBoxItem { Tag: int frameId })
         {
             _selectedDebugFrameId = frameId;
-            RebuildVariablesTree(_debuggerHook.Session);
-            _ = RefreshWatchesAsync(_debuggerHook.Session);
+            if (_jsDebugger is { IsAttached: true })
+            {
+                RebuildJsVariablesTree();
+                _ = RefreshJsWatchesAsync();
+            }
+            else if (_debuggerHook != null)
+            {
+                RebuildVariablesTree(_debuggerHook.Session);
+                _ = RefreshWatchesAsync(_debuggerHook.Session);
+            }
         }
     }
 
@@ -645,7 +749,11 @@ public partial class MainWindow
         }
 
         WatchExpressionTextBox.Clear();
-        if (_debuggerHook != null)
+        if (_jsDebugger is { IsAttached: true })
+        {
+            _ = RefreshJsWatchesAsync();
+        }
+        else if (_debuggerHook != null)
         {
             _ = RefreshWatchesAsync(_debuggerHook.Session);
         }
@@ -672,7 +780,11 @@ public partial class MainWindow
         }
 
         _watchExpressions.RemoveAt(index);
-        if (_debuggerHook != null)
+        if (_jsDebugger is { IsAttached: true })
+        {
+            _ = RefreshJsWatchesAsync();
+        }
+        else if (_debuggerHook != null)
         {
             _ = RefreshWatchesAsync(_debuggerHook.Session);
         }
@@ -748,6 +860,194 @@ public partial class MainWindow
             _currentLineRenderer.CurrentLine = null;
             CodeEditor.TextArea.TextView.InvalidateLayer(KnownLayer.Background);
         }
+    }
+
+    private async Task StartJsWebViewDebuggingAsync(string source, string fileName)
+    {
+        if (string.IsNullOrWhiteSpace(fileName) ||
+            string.Equals(fileName, "main.malda", StringComparison.Ordinal) ||
+            !File.Exists(fileName))
+        {
+            throw new InvalidOperationException("Save the current file first so JavaScript debug can keep relative includes and asset paths working.");
+        }
+
+        var repoRoot = FindRepoRoot();
+        if (string.IsNullOrWhiteSpace(repoRoot))
+        {
+            throw new InvalidOperationException("Could not locate the repository root needed for web preview assets.");
+        }
+
+        var artifact = WriteWebPreviewJavaScriptArtifact(repoRoot, source, fileName);
+        if (string.IsNullOrWhiteSpace(artifact.SourceMapJson))
+        {
+            throw new InvalidOperationException("The JavaScript transpiler did not emit a source map for this file.");
+        }
+
+        var sourceMap = JsSourceMap.Parse(artifact.SourceMapJson);
+        var hostPath = ResolveWebPreviewHostPath(repoRoot);
+        var previewUri = BuildWebPreviewHostUri(
+            hostPath,
+            repoRoot,
+            artifact.ScriptPath,
+            Path.GetFileNameWithoutExtension(fileName));
+
+        var core = await EnsureWebUiCoreAsync();
+        if (core == null)
+        {
+            throw new InvalidOperationException("WebView2 is not available. Install the WebView2 runtime to debug JavaScript programs in the Desktop IDE.");
+        }
+
+        await StopJsDebuggerAsync();
+        _jsDebugOutput = "Debugging JavaScript in Web Preview. Breakpoints map from this .malda file onto the generated script.\n";
+        _jsDebugger = new WebViewJsDebugger();
+        _jsDebugger.Paused += snapshot => Dispatcher.Invoke(() => OnJsDebuggerPaused(snapshot));
+        _jsDebugger.Resumed += () => Dispatcher.Invoke(OnJsDebuggerResumed);
+        _jsDebugger.Output += text => Dispatcher.Invoke(() => AppendJsDebugOutput(text));
+        _jsDebugger.Failed += message => Dispatcher.Invoke(() => AppendJsDebugOutput(message, isError: true));
+
+        _debuggerService.Start();
+        await _jsDebugger.AttachAsync(core, sourceMap, Path.GetFileName(artifact.ScriptPath), fileName);
+        await _jsDebugger.SyncBreakpointsAsync(_debuggerService.Breakpoints.ToList());
+        await OpenUriInWebUiPanelAsync(previewUri, previewUri.AbsoluteUri, switchToTab: true, ensureUiHost: false);
+        SetOutputText(_jsDebugOutput.TrimEnd());
+        UpdateButtonStates();
+    }
+
+    private void OnJsDebuggerPaused(JsDebugPauseSnapshot snapshot)
+    {
+        _debuggerService.SetCurrentLine(snapshot.Line, snapshot.File);
+        _debuggerService.Pause();
+        _debuggerService.UpdateCallStack(snapshot.Frames.ToList());
+        HighlightCurrentLine(snapshot.Line, snapshot.File);
+        SwitchToTab("debug");
+        UpdateDebugInfo();
+        UpdateButtonStates();
+    }
+
+    private void OnJsDebuggerResumed()
+    {
+        _debuggerService.Resume();
+        ClearCurrentLineHighlight();
+        UpdateButtonStates();
+    }
+
+    private void AppendJsDebugOutput(string text, bool isError = false)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return;
+        }
+
+        _jsDebugOutput = string.IsNullOrEmpty(_jsDebugOutput)
+            ? text + "\n"
+            : _jsDebugOutput + text + "\n";
+        SetOutputText(_jsDebugOutput.TrimEnd(), isError);
+    }
+
+    private void UpdateJsDebugInfo()
+    {
+        var snapshot = _jsDebugger?.LastPause;
+        if (snapshot == null)
+        {
+            ClearInspectTrees();
+            CallStackListBox.Items.Clear();
+            UpdateBreakpointsPanel();
+            return;
+        }
+
+        _suppressCallStackSelection = true;
+        try
+        {
+            CallStackListBox.Items.Clear();
+            for (var i = 0; i < snapshot.Frames.Count; i++)
+            {
+                var frameId = i + 1;
+                CallStackListBox.Items.Add(new ListBoxItem
+                {
+                    Content = DebugInspectSnapshotBuilder.FormatFrame(snapshot.Frames[i]),
+                    Tag = frameId
+                });
+            }
+
+            if (CallStackListBox.Items.Count > 0)
+            {
+                var selectedIndex = Math.Clamp(_selectedDebugFrameId - 1, 0, CallStackListBox.Items.Count - 1);
+                CallStackListBox.SelectedIndex = selectedIndex;
+                _selectedDebugFrameId = selectedIndex + 1;
+            }
+            else
+            {
+                _selectedDebugFrameId = 1;
+            }
+        }
+        finally
+        {
+            _suppressCallStackSelection = false;
+        }
+
+        RebuildJsVariablesTree();
+        _ = RefreshJsWatchesAsync();
+        UpdateBreakpointsPanel();
+    }
+
+    private void RebuildJsVariablesTree()
+    {
+        if (_jsDebugger == null)
+        {
+            return;
+        }
+
+        _suppressInspectExpansionTracking = true;
+        try
+        {
+            VariablesTreeView.Items.Clear();
+            foreach (var scope in _jsDebugger.GetCachedScopes(_selectedDebugFrameId))
+            {
+                VariablesTreeView.Items.Add(CreateInspectTreeItem(scope, VariablesInspectRoot));
+            }
+
+            RestoreInspectTree(VariablesTreeView.Items, VariablesInspectRoot);
+        }
+        finally
+        {
+            _suppressInspectExpansionTracking = false;
+        }
+    }
+
+    private async Task ExpandJsInspectNodeAsync(TreeViewItem item, DebugInspectNode node)
+    {
+        if (_jsDebugger == null)
+        {
+            return;
+        }
+
+        var children = await _jsDebugger.ExpandAsync(node.VariablesReference, node.FrameId);
+        item.Items.Clear();
+        foreach (var child in children)
+        {
+            item.Items.Add(CreateInspectTreeItem(child, node.Path));
+        }
+
+        RestoreInspectTree(item.Items, node.Path);
+    }
+
+    private async Task RefreshJsWatchesAsync()
+    {
+        if (_jsDebugger == null)
+        {
+            RebuildWatchesTree(_watchExpressions
+                .Select(value => new DebugInspectNode { Display = value, Name = value })
+                .ToList());
+            return;
+        }
+
+        var nodes = new List<DebugInspectNode>();
+        foreach (var expression in _watchExpressions)
+        {
+            nodes.Add(await _jsDebugger.EvaluateWatchAsync(expression, _selectedDebugFrameId));
+        }
+
+        RebuildWatchesTree(nodes);
     }
 
     

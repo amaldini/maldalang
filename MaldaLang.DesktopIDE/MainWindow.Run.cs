@@ -409,6 +409,14 @@ public partial class MainWindow
             StartFullStackRun(source, sourceForExecution.SourceFilePath, runChoice == FullStackRunChoice.FullStack);
             return;
         }
+
+        if (JsBrowserApiDetector.UsesBrowserHost(source))
+        {
+            SetOutputText("Opening the JavaScript program in the Web Preview panel...");
+            SwitchToTab("output");
+            await PreviewCurrentDocumentAsync();
+            return;
+        }
         
         // Clear any debugger line highlight for a normal run
         ClearCurrentLineHighlight();
@@ -828,6 +836,7 @@ public partial class MainWindow
         _debugTask = null;
         _debugCancellation?.Dispose();
         _debugCancellation = null;
+        _ = StopJsDebuggerAsync();
         
         // Stop regular run execution if running
         _runCancellation?.Cancel();
@@ -1297,7 +1306,7 @@ public partial class MainWindow
         }
         else if (IsMaldaPreviewDocument(activePath))
         {
-            scriptPath = WriteWebPreviewJavaScriptArtifact(repoRoot, sourceForExecution.Source, activePath);
+            scriptPath = WriteWebPreviewJavaScriptArtifact(repoRoot, sourceForExecution.Source, activePath).ScriptPath;
         }
         else
         {
@@ -1514,7 +1523,9 @@ public partial class MainWindow
         </html>
         """;
 
-    private static string WriteWebPreviewJavaScriptArtifact(string repoRoot, string source, string sourceFilePath)
+    private readonly record struct WebPreviewJavaScriptArtifact(string ScriptPath, string? SourceMapJson);
+
+    private static WebPreviewJavaScriptArtifact WriteWebPreviewJavaScriptArtifact(string repoRoot, string source, string sourceFilePath)
     {
         var previewDir = Path.Combine(repoRoot, PreviewArtifactsDirectoryName);
         Directory.CreateDirectory(previewDir);
@@ -1524,9 +1535,17 @@ public partial class MainWindow
         var outputPath = Path.Combine(previewDir, outputFileName);
 
         var compiler = new Compiler.Compiler();
-        var javaScript = compiler.TranspileToJavaScriptFromSource(source, sourceFilePath);
-        File.WriteAllText(outputPath, javaScript, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-        return outputPath;
+        var transpileResult = compiler.TranspileToJavaScriptWithSourceMapFromSource(source, sourceFilePath, outputFileName);
+        var mapFileName = outputFileName + ".map";
+        var javaScript = Compiler.Compiler.AppendJavaScriptSourceMapReference(transpileResult.JavaScript, mapFileName);
+        var encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+        File.WriteAllText(outputPath, javaScript, encoding);
+        if (!string.IsNullOrWhiteSpace(transpileResult.SourceMapJson))
+        {
+            File.WriteAllText(outputPath + ".map", transpileResult.SourceMapJson, encoding);
+        }
+
+        return new WebPreviewJavaScriptArtifact(outputPath, transpileResult.SourceMapJson);
     }
 
     private static string SanitizePreviewArtifactName(string relativePath)

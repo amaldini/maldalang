@@ -13,7 +13,7 @@ python3 scripts/sync-reference-manual-it-status.py
 |------|------------|
 | index.html | 851d8834160ece5b35fe7683b80702014b95c03162c2cb0e433a7d70e42ee2f2 |
 | 01-introduction.html | a77b84056c70494fcf030a725d6730468792d286f177a41dd4a47071c0669ae4 |
-| 02-tools.html | d4f6d25f145c85afa1ad18668a35337551d47dfbec0c617214bc3d44a0d50235 |
+| 02-tools.html | 18c4ce6ef58532cb92f5fa687c8448b165967c1d97a567629c6ad32dbd9cf965 |
 | 03-lexical-structure.html | 29659babddfbe27030d2e26af07680443081914bd48116f731f63ee8d58f48b4 |
 | 04-data-types.html | f7ad0ac24087b1b5170252ca28408796f81fbd1045505d4a566e1395b89c46fd |
 | 05-variables.html | a26949e70b649b7de91b4c877c92257d2257dd129fa5c632efe3c71c3510a17d |
@@ -37,7 +37,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 23-web-ui-hub.html | 922cf703f0ae17d88f3852ad2b0910354bfabb9cd099174a13a2ed41253a92c8 |
 | 24-web-ui.html | 7ab97a01bf67c9555eef4c99f99bdfc4f5b9b01ca96dd3e9aff03168b4ec407b |
 | 25-http-server-html-ui.html | e67384fd08ba4572665d683442bec3d0fa38461195b08f2278d67dcbc7238f68 |
-| 26-browser-javascript-backend.html | c029187743dafb3ddf84af3f93016a5b412accd5277212db08e168fa795d582b |
+| 26-browser-javascript-backend.html | a7a0aee4ab7b6e40a1cae3be8dc016aae6768f4a6acfb39107dec18c045df8bf |
 | 27-rest-api.html | 8f686063dc0fb17410dc863ed73b100a35fd323ad1026722059d39cf1155e1d0 |
 | 28-rest-web-client.html | b9e2babacf7400eb5a23dea8213de10e3ebb86b75789824c966dc75fa68e6d4c |
 | 29-full-stack-development.html | d47d8208c9dafcf4ee198e2b06ed6c592c96054771fa468294fb40d46ae51b98 |

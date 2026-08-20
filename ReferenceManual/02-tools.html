@@ -123,7 +123,7 @@ malda -h</code></pre>
             <tr><td><code>HttpServer</code>, <code>RestServer</code>, <code>@PAGE</code></td><td>Yes</td><td>Yes</td><td>Server-side only; browser uses HTTP to MALDA API</td></tr>
             <tr><td>Database clients (<code>SqliteClient</code>, etc.)</td><td>Yes</td><td>Yes</td><td>No (keep on server)</td></tr>
             <tr><td>Target decorators (<code>@server()</code>, <code>@client()</code>, <code>@shared()</code>)</td><td>N/A at runtime</td><td>C# target</td><td>JS + C# split at transpile time</td></tr>
-            <tr><td>Desktop IDE debugger</td><td>Full support (Desktop/Web IDE; VS Code/Cursor F5 via <code>malda debug-adapter</code>)</td><td>Transpiled runs supported via <code>#line</code> mapping — not DAP</td><td>N/A</td></tr>
+            <tr><td>Desktop IDE debugger</td><td>Full support (Desktop/Web IDE; VS Code/Cursor F5 via <code>malda debug-adapter</code>)</td><td>Transpiled runs supported via <code>#line</code> mapping — not DAP</td><td>Desktop IDE F5 (WebView2 + source map); browser DevTools on compiled <code>.js</code></td></tr>
             <tr><td>Typical performance</td><td>Fast iteration</td><td>Best for production .exe</td><td>Browser-dependent</td></tr>
         </table>
         <p><strong>Rule of thumb:</strong> develop and debug with the interpreter; ship performance-sensitive server apps with transpile mode; use the JavaScript backend when the UI must run in the browser and MALDA stays on the server or in a JS bundle.</p>
@@ -447,6 +447,11 @@ var result = helper();</code></pre>
         <p>The in-repo <code>vscode-malda</code> extension contributes debugger type <code>malda</code>. Press <strong>F5</strong> on a <code>.malda</code> file to launch the interpreter under the adapter (<code>malda.cli.path</code> points at a <code>malda</code> executable that understands <code>debug-adapter</code>). Language intelligence stays on <code>malda-lsp</code>.</p>
 
         <p>This path is <strong>interpret-only</strong>. There is no <code>debugger</code> keyword. Transpile failures and <code>#line</code> mapping stay in <a href="../docs/debugging-transpile.md"><code>docs/debugging-transpile.md</code></a>. Procedures, breakpoints, and what will not stop are in <a href="../docs/debugging-interpret.md"><code>docs/debugging-interpret.md</code></a>.</p>
+
+        <h3 id="javascript-desktop-debug">2.6.6 Desktop IDE JavaScript debug</h3>
+        <p>Programs that call browser APIs (<code>dom.*</code>, <code>game.*</code>, <code>three.*</code>) cannot pause in the interpreter. In the Desktop IDE, <strong>F5</strong> transpiles the open file to JavaScript, opens it in the Web Preview panel, and binds editor breakpoints to the generated script through the VLQ source map and WebView2's Chromium debugger.</p>
+        <p>Set a glyph breakpoint on a statement (for example a line in <code>Examples/Web/js/maldanoid.malda</code>), press F5, and play until that statement runs. Continue / step over / step into / step out / pause use the same Debug toolbar as interpret mode. Locals come from the JavaScript call frame; watch expressions and breakpoint conditions are JavaScript, not MALDA <code>and</code>/<code>or</code>.</p>
+        <p>Ctrl+F5 (Run) on the same programs opens Web Preview without the debugger. VS Code F5 remains interpret-only. Browser DevTools still work on compiled <code>.js</code> + <code>.map</code> files. See <a href="26-browser-javascript-backend.html">26. Browser JavaScript UI Backend</a>.</p>
 
         <h2>2.7 Property Testing (Overview)</h2>
 

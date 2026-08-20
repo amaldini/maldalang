@@ -46,6 +46,7 @@
             <li><strong>Supporto actor (locali)</strong>: JS mode supporta actor locali con semantica di mailbox compatibile con il comportamento actor MALDA.</li>
             <li><strong>Supporto scene 3D</strong>: JavaScript mode include un wrapper curato <code>three.*</code> per scene 3D ospitate nel browser, più kernel <code>@shader()</code> compilati in GLSL (vedi <a href="#three-scene-api">26.10</a>).</li>
             <li><strong>Aspettativa di runtime</strong>: gli script generati richiedono <code>malda-js-runtime.js</code> prima che l'output MALDA venga eseguito.</li>
+            <li><strong>Debug nell'IDE Desktop</strong>: F5 su programmi <code>dom.*</code> / <code>game.*</code> / <code>three.*</code> transpila in JavaScript, apre Web Preview e mappa i breakpoint dell'editor tramite source map (vedi <a href="02-tools.html#javascript-desktop-debug">2.6.6</a>).</li>
         </ul>
         <h3>26.2.1 Decoratori target nell'output JS</h3>
         <p>Quando compili verso JavaScript, i decoratori target servono a tenere le preoccupazioni browser e server in un unico file sorgente:</p>
@@ -309,6 +310,7 @@ malda compile Examples/Web/js/three_shader_path_tunnel.malda --mode js -o Exampl
             <li>Non combinare <code>@client()</code> con decoratori di route come <code>@GET</code> o <code>@PAGE</code>; è una combinazione di target non valida.</li>
             <li>Usa <code>@shared()</code> solo per logica sicura in entrambi i runtime; tieni filesystem/database/API server e API solo-browser fuori dalle dichiarazioni shared.</li>
             <li>Crea il canvas prima di disegnare o di avviare un game loop.</li>
+            <li>F5 dell'interprete non può fare debug di programmi <code>dom.*</code> / <code>game.*</code> / <code>three.*</code>. Usa F5 dell'IDE Desktop (Web Preview) oppure i DevTools del browser sul <code>.js</code> + <code>.map</code> compilato.</li>
             <li>Usa API mode quando vuoi il controllo DOM completo e template mode quando la pagina è soprattutto HTML con poca logica MALDA.</li>
             <li>Le funzioni <code>@shader()</code> sono kernel GLSL, non chiamabili dall'host. Compilale con <code>glsl.compile</code> e passa la stringa a <code>three.createShaderMaterial</code>.</li>
             <li>Rename Symbol aggiorna gli identificatori MALDA, non i nomi stringa dentro <code>glsl.compile({ ... })</code>. Tieni quelle liste allineate.</li>
