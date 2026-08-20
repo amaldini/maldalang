@@ -1,6 +1,6 @@
 # MALDA grammar (plain text)
 
-*Applies to: MALDA 1.0.9*
+*Applies to: MALDA 1.0.10*
 
 Extracted from `ReferenceManual/35-grammar.html` for LLM ingestion.
 If this file disagrees with the parser (`MaldaLang/Parser/Parser.cs`), the **parser wins**.
