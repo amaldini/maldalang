@@ -105,6 +105,22 @@ public class JsSourceMapTests : TestBase
         Assert.Contains("renderGame", jsLines[generated.Value - 1], StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Parse_MapsMaldadashRenderGame()
+    {
+        var path = PlanningPaths.ResolveRepoPath("Examples", "Web", "js", "maldadash.malda");
+        Assert.True(File.Exists(path), path);
+        var source = File.ReadAllText(path).Replace("\r\n", "\n");
+        var compiler = new Compiler.Compiler();
+        var result = compiler.TranspileToJavaScriptWithSourceMapFromSource(source, path, "maldadash.js");
+        var map = JsSourceMap.Parse(result.SourceMapJson!);
+        var renderLine = LineNumber(source, "function renderGame()");
+        var generated = map.ToGeneratedLineOrNext(renderLine);
+        Assert.True(generated.HasValue);
+        var jsLines = result.JavaScript.Replace("\r\n", "\n").Split('\n');
+        Assert.Contains("renderGame", jsLines[generated.Value - 1], StringComparison.Ordinal);
+    }
+
     private static int LineNumber(string source, string fragment)
     {
         var lines = source.Replace("\r\n", "\n").Split('\n');
@@ -144,6 +160,14 @@ public class JsBrowserApiDetectorTests
     public void UsesBrowserHost_DetectsMaldanoidExample()
     {
         var path = PlanningPaths.ResolveRepoPath("Examples", "Web", "js", "maldanoid.malda");
+        Assert.True(File.Exists(path), path);
+        Assert.True(JsBrowserApiDetector.UsesBrowserHost(File.ReadAllText(path)));
+    }
+
+    [Fact]
+    public void UsesBrowserHost_DetectsMaldadashExample()
+    {
+        var path = PlanningPaths.ResolveRepoPath("Examples", "Web", "js", "maldadash.malda");
         Assert.True(File.Exists(path), path);
         Assert.True(JsBrowserApiDetector.UsesBrowserHost(File.ReadAllText(path)));
     }

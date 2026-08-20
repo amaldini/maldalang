@@ -462,7 +462,30 @@
                                                "Web/js/game_bounce.malda"
                                            ],
                          "learningGoal":  "Show the commercial-quality ceiling of MALDA\u0027s browser game/runtime path.",
-                         "expectedOutput":  "Runs a richer breakout-style browser game."
+                         "expectedOutput":  "Runs a richer breakout-style browser game.",
+                         "next":  "Web/js/maldadash.malda"
+                     },
+                     {
+                         "name":  "JS Canvas Game Maldadash",
+                         "description":  "Boulder Dash-style cave: dig dirt, drop boulders, collect diamonds, and dodge fireflies using MALDA game.* API",
+                         "file":  "js/maldadash.malda",
+                         "track":  "showcase",
+                         "difficulty":  "advanced",
+                         "minutes":  22,
+                         "concepts":  [
+                                          "game.*",
+                                          "tile grid",
+                                          "gravity",
+                                          "keyboard input",
+                                          "JavaScript target"
+                                      ],
+                         "prerequisites":  [
+                                               "Web/js/game_bounce.malda"
+                                           ],
+                         "learningGoal":  "Show a grid-and-physics cave game on the same game.* canvas path as Bounce and Maldanoid.",
+                         "expectedOutput":  "Runs a playable Boulder Dash-style cave in the browser.",
+                         "documentationPath":  "/?lesson=browser-track#lesson-browser-track",
+                         "documentationTitle":  "Browser Track"
                      },
                      {
                          "name":  "JS three.js Rotating Cube",

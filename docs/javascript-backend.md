@@ -228,7 +228,7 @@ function update(dtMs) {
 - Do not call `game.start(...)` twice without stopping in between.
 - Call `game.stop()` only when a loop is active.
 
-See `Examples/Web/js/game_bounce.malda` and `Examples/Web/js/game_runtime_smoke_test.html` for a complete playable reference. See `Examples/Web/js/ray_tracer.malda` for a CPU ray tracer that fills the pixel buffer and blits it once per frame.
+See `Examples/Web/js/game_bounce.malda` and `Examples/Web/js/game_runtime_smoke_test.html` for a complete playable reference. See `Examples/Web/js/maldadash.malda` for a Boulder Dash-style tile cave (gravity rocks, diamonds, fireflies). See `Examples/Web/js/ray_tracer.malda` for a CPU ray tracer that fills the pixel buffer and blits it once per frame.
 
 ## three.js Quick Start (`three.*`)
 

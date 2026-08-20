@@ -35,7 +35,10 @@ JS / PWA samples under `js/` need `malda compile … --mode js` (or the Desktop/
 
 ```bash
 malda compile Examples/Web/js/three_shader_path_tunnel.malda --mode js -o Examples/Web/js/three_shader_path_tunnel.js
+malda compile Examples/Web/js/maldadash.malda --mode js -o Examples/Web/js/maldadash.js
 ```
+
+`maldadash.malda` is a Boulder Dash-style cave (dirt, gravity rocks, diamonds, fireflies) on `game.*`. Open it with `Examples/Web/js/maldadash_runtime_smoke_test.html` after compiling.
 
 That tunnel demo is a CC-BY-NC-SA-4.0 conversion of [Frostbyte’s path march](https://fragcoord.xyz/s/tbe1g319); it is not under the repository MIT OR Apache-2.0 dual licence.
 
