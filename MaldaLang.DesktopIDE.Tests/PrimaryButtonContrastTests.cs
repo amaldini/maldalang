@@ -42,13 +42,37 @@ public class PrimaryButtonContrastTests
 
         var styleStart = xaml.IndexOf("x:Key=\"ToolbarPrimaryButton\"", StringComparison.Ordinal);
         Assert.True(styleStart >= 0, "ToolbarPrimaryButton was not found in IdeChrome.xaml.");
-        var styleEnd = xaml.IndexOf("</Style>", styleStart, StringComparison.Ordinal);
-        Assert.True(styleEnd > styleStart, "ToolbarPrimaryButton style was not closed.");
-        var styleMarkup = xaml.Substring(styleStart, styleEnd - styleStart);
+        var styleMarkup = ExtractStyleMarkup(xaml, styleStart);
 
         Assert.Contains("DynamicResource PrimaryButtonBackgroundBrush", styleMarkup, StringComparison.Ordinal);
         Assert.Contains("DynamicResource PrimaryButtonForegroundBrush", styleMarkup, StringComparison.Ordinal);
         Assert.Contains("TargetType=\"TextBlock\"", styleMarkup, StringComparison.Ordinal);
+    }
+
+    private static string ExtractStyleMarkup(string xaml, int styleStart)
+    {
+        var depth = 1;
+        var index = xaml.IndexOf('>', styleStart);
+        Assert.True(index > styleStart, "ToolbarPrimaryButton opening tag was not closed.");
+        index++;
+        while (index < xaml.Length && depth > 0)
+        {
+            var nextOpen = xaml.IndexOf("<Style", index, StringComparison.Ordinal);
+            var nextClose = xaml.IndexOf("</Style>", index, StringComparison.Ordinal);
+            Assert.True(nextClose >= 0, "ToolbarPrimaryButton style was not closed.");
+            if (nextOpen >= 0 && nextOpen < nextClose)
+            {
+                depth++;
+                index = nextOpen + 6;
+            }
+            else
+            {
+                depth--;
+                index = nextClose + 8;
+            }
+        }
+
+        return xaml.Substring(styleStart, index - styleStart);
     }
 
     [Fact]
