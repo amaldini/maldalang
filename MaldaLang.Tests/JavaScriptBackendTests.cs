@@ -448,6 +448,21 @@ public class JavaScriptBackendTests : TestBase
     }
 
     [Fact]
+    public void JsTranspiler_MaldadashExample_EmitsGameLoopCalls()
+    {
+        var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "js", "maldadash.malda");
+        var compiler = new Compiler.Compiler();
+        var js = compiler.TranspileToJavaScript(sourcePath);
+
+        Assert.Contains("mlRuntime.game.createCanvas(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.start(updateGame, renderGame)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.isKeyDown(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.fillRect(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.str.substring(", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("mlRuntime.three.", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void JsTranspiler_RayTracerExample_EmitsPixelBlitCalls()
     {
         var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "js", "ray_tracer.malda");

@@ -188,7 +188,7 @@ println(text);</code></pre>
         </ul>
         <p><strong>Loop guidance:</strong> <code>updateFn</code> receives <code>dtMs</code>. Scale movement by <code>dtMs</code> so animation stays frame-rate independent.</p>
         <p><strong>Audio guidance:</strong> call <code>game.audioInit()</code> after a user gesture to satisfy browser autoplay policies.</p>
-        <p>For a full quick start and best practices, see <code>docs/javascript-backend.md</code>. For a complete sample, see <code>Examples/Web/js/game_bounce.malda</code>. For a CPU ray tracer that writes pixels into an <code>ImageData</code> buffer and blits once per frame, see <code>Examples/Web/js/ray_tracer.malda</code>.</p>
+        <p>For a full quick start and best practices, see <code>docs/javascript-backend.md</code>. For a complete sample, see <code>Examples/Web/js/game_bounce.malda</code>. For a Boulder Dash-style tile cave (dirt, gravity rocks, diamonds, fireflies), see <code>Examples/Web/js/maldadash.malda</code>. For a CPU ray tracer that writes pixels into an <code>ImageData</code> buffer and blits once per frame, see <code>Examples/Web/js/ray_tracer.malda</code>.</p>
 
         <h2 id="three-scene-api">26.10 three.js Scene API</h2>
         <p>The JavaScript backend includes a curated 3D scene API under <code>three.*</code>. Use it when you want a browser-hosted scene in MALDA without writing raw <code>THREE.*</code> calls. The namespace is JavaScript mode only; interpreter and C# transpile do not run these helpers. Calls map to <code>mlRuntime.three.*</code> in the generated script.</p>

@@ -1,0 +1,984 @@
+var root = dom.query("#app");
+
+if (root == null) {
+    println("No #app container found.");
+} else {
+    dom.clear(root);
+
+    var head = dom.query("head");
+    if (head != null) {
+        var styleNode = dom.create("style");
+        var styleText = "body { margin: 0; background: #0b0a08; color: #e7e5e4; }\n";
+        styleText = styleText + "#app canvas { width: 100%; max-width: 960px; height: auto; display: block; margin: 0 auto; image-rendering: pixelated; }\n";
+        dom.setText(styleNode, styleText);
+        dom.append(head, styleNode);
+    }
+
+    var EMPTY = 0;
+    var DIRT = 1;
+    var STEEL = 2;
+    var BRICK = 3;
+    var BOULDER = 4;
+    var DIAMOND = 5;
+    var PLAYER = 6;
+    var EXIT_CLOSED = 7;
+    var EXIT_OPEN = 8;
+    var FIREFLY = 9;
+    var BUTTERFLY = 10;
+
+    var tileSize = 24;
+    var cols = 40;
+    var rows = 22;
+    var hudH = 44;
+    var canvasWidth = cols * tileSize;
+    var canvasHeight = hudH + (rows * tileSize);
+
+    var cells = [];
+    var falling = [];
+    var facing = [];
+    var moved = [];
+
+    var playerX = 1;
+    var playerY = 1;
+    var playerAlive = true;
+
+    var level = 1;
+    var maxLevel = 3;
+    var diamondsGot = 0;
+    var diamondsNeed = 6;
+    var timeLeft = 150;
+    var timeAccMs = 0;
+    var lives = 3;
+    var score = 0;
+    var exitOpen = false;
+
+    var state = "splash";
+    var physicsAccMs = 0;
+    var physicsIntervalMs = 110;
+    var animMs = 0;
+    var deadTimerMs = 0;
+    var winTimerMs = 0;
+    var restartDebounceMs = 0;
+    var pauseDebounceMs = 0;
+    var startDebounceMs = 0;
+
+    var boomX = [];
+    var boomY = [];
+    var boomFill = [];
+
+    var audioBooted = false;
+    var patternStarted = false;
+    var fanfarePlayed = false;
+    var crushSfxPlayed = false;
+
+    function tileFromChar(ch) {
+        if (ch == "W") {
+            return STEEL;
+        }
+        if (ch == "#") {
+            return BRICK;
+        }
+        if (ch == ".") {
+            return DIRT;
+        }
+        if (ch == " ") {
+            return EMPTY;
+        }
+        if (ch == "O") {
+            return BOULDER;
+        }
+        if (ch == "*") {
+            return DIAMOND;
+        }
+        if (ch == "P") {
+            return PLAYER;
+        }
+        if (ch == "X") {
+            return EXIT_CLOSED;
+        }
+        if (ch == "F") {
+            return FIREFLY;
+        }
+        if (ch == "Y") {
+            return BUTTERFLY;
+        }
+        return DIRT;
+    }
+
+    function idx(x, y) {
+        return (y * cols) + x;
+    }
+
+    function inBounds(x, y) {
+        return x >= 0 && x < cols && y >= 0 && y < rows;
+    }
+
+    function getTile(x, y) {
+        if (!inBounds(x, y)) {
+            return STEEL;
+        }
+        return cells[idx(x, y)];
+    }
+
+    function setTile(x, y, tile) {
+        if (inBounds(x, y)) {
+            var cellIndex = idx(x, y);
+            cells[cellIndex] = tile;
+        }
+    }
+
+    function getFalling(x, y) {
+        if (!inBounds(x, y)) {
+            return 0;
+        }
+        return falling[idx(x, y)];
+    }
+
+    function setFalling(x, y, value) {
+        if (inBounds(x, y)) {
+            var fallIndex = idx(x, y);
+            falling[fallIndex] = value;
+        }
+    }
+
+    function isRound(tile) {
+        return tile == BOULDER || tile == DIAMOND;
+    }
+
+    function isEnemy(tile) {
+        return tile == FIREFLY || tile == BUTTERFLY;
+    }
+
+    function dirDx(d) {
+        if (d == 1) {
+            return 1;
+        }
+        if (d == 3) {
+            return -1;
+        }
+        return 0;
+    }
+
+    function dirDy(d) {
+        if (d == 2) {
+            return 1;
+        }
+        if (d == 0) {
+            return -1;
+        }
+        return 0;
+    }
+
+    function loadRows(mapRows, need, seconds) {
+        cells = [];
+        falling = [];
+        facing = [];
+        moved = [];
+        boomX = [];
+        boomY = [];
+        boomFill = [];
+        diamondsGot = 0;
+        diamondsNeed = need;
+        timeLeft = seconds;
+        timeAccMs = 0;
+        physicsAccMs = 0;
+        exitOpen = false;
+        fanfarePlayed = false;
+        crushSfxPlayed = false;
+        playerAlive = true;
+        deadTimerMs = 0;
+        winTimerMs = 0;
+        playerX = 1;
+        playerY = 1;
+
+        var y = 0;
+        while (y < rows) {
+            var line = mapRows[y];
+            var x = 0;
+            while (x < cols) {
+                var ch = str.substring(line, x, 1);
+                var tile = tileFromChar(ch);
+                cells.append(tile);
+                falling.append(0);
+                var dir = 1;
+                if (x > 20) {
+                    dir = 3;
+                }
+                facing.append(dir);
+                moved.append(0);
+                if (tile == PLAYER) {
+                    playerX = x;
+                    playerY = y;
+                }
+                x = x + 1;
+            }
+            y = y + 1;
+        }
+    }
+
+    function loadLevel(n) {
+        level = n;
+        if (n == 1) {
+            loadRows([
+                "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+                "W........P.............................W",
+                "W......................................W",
+                "W............OOOO......................W",
+                "W............O**O.........O............W",
+                "W............OOOO.........O............W",
+                "W.........................O....*.......W",
+                "W..........####.................*......W",
+                "W..........#  #.............####.......W",
+                "W..........#F.#.............#  #.......W",
+                "W..........####.............#.*#.......W",
+                "W...........................####.......W",
+                "W....O.................................W",
+                "W....O............***..................W",
+                "W......................................W",
+                "W################....##################W",
+                "W................    .................XW",
+                "W......................................W",
+                "W......O................O..............W",
+                "W......O........*.......O..............W",
+                "W......................................W",
+                "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW"
+            ], 6, 150);
+        } else if (n == 2) {
+            loadRows([
+                "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+                "W....P.................................W",
+                "W......................................W",
+                "W....OOOOO.............OOOOO...........W",
+                "W....O***O.............*   *...........W",
+                "W....OOOOO.............O   O...........W",
+                "W......................OOOOO...........W",
+                "W......................................W",
+                "W##########................############W",
+                "W         #................#           W",
+                "W    F   .#........O.......#.    Y     W",
+                "W         #................#           W",
+                "W##########........O.......############W",
+                "W..................O...................W",
+                "W.........***......O......***..........W",
+                "W......................................W",
+                "W....O.........................O.......W",
+                "W....O..........X..............O.......W",
+                "W....OOOOOOOOOOOOOOOOOOOOOOOOOOO.......W",
+                "W......................................W",
+                "W......................................W",
+                "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW"
+            ], 8, 140);
+        } else {
+            loadRows([
+                "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+                "WP.....................................W",
+                "W......................................W",
+                "W..############..........############..W",
+                "W..#F         #..........#         Y#..W",
+                "W..#          #..........#          #..W",
+                "W..#    **    #..........#    **    #..W",
+                "W..############..........############..W",
+                "W......................................W",
+                "W....O..O..O..O..........O..O..O..O....W",
+                "W....O**O**O**O..........O**O**O**O....W",
+                "W....OOOOOOOOOO..........OOOOOOOOOO....W",
+                "W......................................W",
+                "W##################  ##################W",
+                "W                  F                   W",
+                "W######################################W",
+                "W......................................W",
+                "W......*........X.........*............W",
+                "W......O..................O............W",
+                "W......O........Y.........O............W",
+                "W......................................W",
+                "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW"
+            ], 12, 160);
+        }
+        state = "playing";
+    }
+
+    function queueBoom(x, y, fillTile) {
+        boomX.append(x);
+        boomY.append(y);
+        boomFill.append(fillTile);
+    }
+
+    function collectDiamond() {
+        diamondsGot = diamondsGot + 1;
+        score = score + 10;
+        if (exitOpen) {
+            score = score + 10;
+        }
+        game.audioPlayTone(880 + (diamondsGot * 18), 70, "square", 0.12);
+        if (!exitOpen && diamondsGot >= diamondsNeed) {
+            openExit();
+        }
+    }
+
+    function openExit() {
+        exitOpen = true;
+        var y = 0;
+        while (y < rows) {
+            var x = 0;
+            while (x < cols) {
+                if (getTile(x, y) == EXIT_CLOSED) {
+                    setTile(x, y, EXIT_OPEN);
+                }
+                x = x + 1;
+            }
+            y = y + 1;
+        }
+        if (!fanfarePlayed) {
+            game.audioPlayTone(520, 90, "square", 0.12);
+            game.audioPlayTone(660, 110, "square", 0.12);
+            game.audioPlayTone(780, 140, "square", 0.12);
+            fanfarePlayed = true;
+        }
+    }
+
+    function killPlayer() {
+        if (!playerAlive) {
+            return;
+        }
+        playerAlive = false;
+        setTile(playerX, playerY, EMPTY);
+        crushSfxPlayed = true;
+        game.audioPlayNoise(160, 0.16);
+        game.audioPlayTone(180, 220, "sawtooth", 0.12);
+        deadTimerMs = 900;
+        state = "dead";
+    }
+
+    function applyExplosion(cx, cy, fillTile) {
+        var dy = -1;
+        while (dy <= 1) {
+            var dx = -1;
+            while (dx <= 1) {
+                var x = cx + dx;
+                var y = cy + dy;
+                var tile = getTile(x, y);
+                if (tile != STEEL) {
+                    if (tile == PLAYER) {
+                        killPlayer();
+                    }
+                    if (isEnemy(tile) && !(x == cx && y == cy)) {
+                        var nestedFill = EMPTY;
+                        if (tile == BUTTERFLY) {
+                            nestedFill = DIAMOND;
+                        }
+                        queueBoom(x, y, nestedFill);
+                    }
+                    setTile(x, y, fillTile);
+                    setFalling(x, y, 0);
+                }
+                dx = dx + 1;
+            }
+            dy = dy + 1;
+        }
+        game.audioPlayNoise(120, 0.14);
+        game.audioPlayTone(140, 80, "sawtooth", 0.10);
+    }
+
+    function flushBooms() {
+        var i = 0;
+        while (i < boomX.length && i < 64) {
+            applyExplosion(boomX[i], boomY[i], boomFill[i]);
+            i = i + 1;
+        }
+        boomX = [];
+        boomY = [];
+        boomFill = [];
+    }
+
+    function moveRock(x, y, nx, ny, tile) {
+        setTile(x, y, EMPTY);
+        setFalling(x, y, 0);
+        setTile(nx, ny, tile);
+        setFalling(nx, ny, 1);
+    }
+
+    function physicsRocks() {
+        var y = rows - 2;
+        while (y >= 0) {
+            var x = 0;
+            while (x < cols) {
+                var tile = getTile(x, y);
+                if (isRound(tile)) {
+                    var below = getTile(x, y + 1);
+                    if (below == EMPTY) {
+                        moveRock(x, y, x, y + 1, tile);
+                    } else {
+                        if (getFalling(x, y) == 1) {
+                            if (below == PLAYER) {
+                                killPlayer();
+                            } else if (isEnemy(below)) {
+                                var fill = EMPTY;
+                                if (below == BUTTERFLY) {
+                                    fill = DIAMOND;
+                                }
+                                queueBoom(x, y + 1, fill);
+                            } else {
+                                game.audioPlayTone(90, 40, "triangle", 0.08);
+                            }
+                            setFalling(x, y, 0);
+                        }
+                        if (isRound(below)) {
+                            if (getTile(x - 1, y) == EMPTY && getTile(x - 1, y + 1) == EMPTY) {
+                                moveRock(x, y, x - 1, y, tile);
+                            } else if (getTile(x + 1, y) == EMPTY && getTile(x + 1, y + 1) == EMPTY) {
+                                moveRock(x, y, x + 1, y, tile);
+                            }
+                        }
+                    }
+                }
+                x = x + 1;
+            }
+            y = y - 1;
+        }
+    }
+
+    function tryEnemyDir(x, y, d, tile) {
+        var nx = x + dirDx(d);
+        var ny = y + dirDy(d);
+        var dest = getTile(nx, ny);
+        if (dest == PLAYER) {
+            var fill = EMPTY;
+            if (tile == BUTTERFLY) {
+                fill = DIAMOND;
+            }
+            queueBoom(x, y, fill);
+            killPlayer();
+            return true;
+        }
+        if (dest == EMPTY) {
+            setTile(x, y, EMPTY);
+            setTile(nx, ny, tile);
+            var destIndex = idx(nx, ny);
+            facing[destIndex] = d;
+            moved[destIndex] = 1;
+            return true;
+        }
+        return false;
+    }
+
+    function physicsEnemies() {
+        var i = 0;
+        while (i < moved.length) {
+            moved[i] = 0;
+            i = i + 1;
+        }
+
+        var y = 0;
+        while (y < rows) {
+            var x = 0;
+            while (x < cols) {
+                var tile = getTile(x, y);
+                if (isEnemy(tile) && moved[idx(x, y)] == 0) {
+                    var d = facing[idx(x, y)];
+                    var prefer = (d + 3) % 4;
+                    if (tile == BUTTERFLY) {
+                        prefer = (d + 1) % 4;
+                    }
+                    var second = d;
+                    var third = (d + 1) % 4;
+                    if (tile == BUTTERFLY) {
+                        third = (d + 3) % 4;
+                    }
+                    var fourth = (d + 2) % 4;
+                    if (!tryEnemyDir(x, y, prefer, tile)) {
+                        if (!tryEnemyDir(x, y, second, tile)) {
+                            if (!tryEnemyDir(x, y, third, tile)) {
+                                tryEnemyDir(x, y, fourth, tile);
+                            }
+                        }
+                    }
+                }
+                x = x + 1;
+            }
+            y = y + 1;
+        }
+    }
+
+    function tryPlayerMove(dx, dy) {
+        if (!playerAlive) {
+            return;
+        }
+        var nx = playerX + dx;
+        var ny = playerY + dy;
+        var dest = getTile(nx, ny);
+
+        if (dest == STEEL || dest == BRICK || dest == EXIT_CLOSED) {
+            return;
+        }
+
+        if (dest == BOULDER) {
+            if (dy != 0) {
+                return;
+            }
+            var bx = nx + dx;
+            var by = ny;
+            if (getTile(bx, by) != EMPTY) {
+                return;
+            }
+            if (getFalling(nx, ny) == 1) {
+                return;
+            }
+            setTile(nx, ny, EMPTY);
+            setTile(bx, by, BOULDER);
+            setFalling(bx, by, 0);
+            dest = EMPTY;
+            game.audioPlayTone(160, 30, "triangle", 0.07);
+        }
+
+        if (isEnemy(dest)) {
+            var fill = EMPTY;
+            if (dest == BUTTERFLY) {
+                fill = DIAMOND;
+            }
+            queueBoom(nx, ny, fill);
+            killPlayer();
+            return;
+        }
+
+        if (dest == DIAMOND) {
+            collectDiamond();
+            dest = EMPTY;
+        } else if (dest == DIRT) {
+            game.audioPlayTone(210, 18, "triangle", 0.05);
+            dest = EMPTY;
+        } else if (dest == EXIT_OPEN) {
+            score = score + timeLeft;
+            game.audioPlayTone(620, 80, "square", 0.12);
+            game.audioPlayTone(780, 100, "square", 0.12);
+            game.audioPlayTone(940, 140, "square", 0.12);
+            winTimerMs = 700;
+            state = "cleared";
+        }
+
+        setTile(playerX, playerY, EMPTY);
+        playerX = nx;
+        playerY = ny;
+        setTile(playerX, playerY, PLAYER);
+    }
+
+    function readMoveDx() {
+        if (game.isKeyDown("arrowleft") || game.isKeyDown("a")) {
+            return -1;
+        }
+        if (game.isKeyDown("arrowright") || game.isKeyDown("d")) {
+            return 1;
+        }
+        return 0;
+    }
+
+    function readMoveDy() {
+        if (game.isKeyDown("arrowup") || game.isKeyDown("w")) {
+            return -1;
+        }
+        if (game.isKeyDown("arrowdown") || game.isKeyDown("s")) {
+            return 1;
+        }
+        return 0;
+    }
+
+    function pointerMove() {
+        if (!game.isMouseDown(0)) {
+            return;
+        }
+        var mx = int(game.getMouseX() / tileSize);
+        var my = int((game.getMouseY() - hudH) / tileSize);
+        var dx = mx - playerX;
+        var dy = my - playerY;
+        if (dx == 0 && dy == 0) {
+            return;
+        }
+        var adx = dx;
+        if (adx < 0) {
+            adx = 0 - adx;
+        }
+        var ady = dy;
+        if (ady < 0) {
+            ady = 0 - ady;
+        }
+        if (adx > ady) {
+            if (dx < 0) {
+                tryPlayerMove(-1, 0);
+            } else {
+                tryPlayerMove(1, 0);
+            }
+        } else {
+            if (dy < 0) {
+                tryPlayerMove(0, -1);
+            } else {
+                tryPlayerMove(0, 1);
+            }
+        }
+    }
+
+    function bootAudioIfNeeded() {
+        if (audioBooted) {
+            return;
+        }
+        var wants =
+            game.isKeyDown("arrowleft") ||
+            game.isKeyDown("arrowright") ||
+            game.isKeyDown("arrowup") ||
+            game.isKeyDown("arrowdown") ||
+            game.isKeyDown("a") ||
+            game.isKeyDown("d") ||
+            game.isKeyDown("w") ||
+            game.isKeyDown("s") ||
+            game.isKeyDown(" ") ||
+            game.isKeyDown("enter") ||
+            game.isKeyDown("r") ||
+            game.isMouseDown(0);
+        if (wants) {
+            game.audioInit();
+            audioBooted = true;
+            game.audioSetMasterVolume(0.38);
+        }
+    }
+
+    function maybeStartPattern() {
+        if (audioBooted && game.audioIsReady() && !patternStarted) {
+            game.audioPlayPattern({
+                "tempoBpm": 96,
+                "loop": true,
+                "tracks": [
+                    [
+                        { "atBeats": 0.0, "noteHz": 98, "durBeats": 0.4, "waveType": "triangle", "volume": 0.08 },
+                        { "atBeats": 0.5, "noteHz": 130, "durBeats": 0.4, "waveType": "triangle", "volume": 0.07 },
+                        { "atBeats": 1.0, "noteHz": 98, "durBeats": 0.4, "waveType": "triangle", "volume": 0.08 },
+                        { "atBeats": 1.5, "noteHz": 147, "durBeats": 0.4, "waveType": "triangle", "volume": 0.07 }
+                    ]
+                ]
+            });
+            patternStarted = true;
+        }
+    }
+
+    function restartRun() {
+        game.audioStopAll();
+        patternStarted = false;
+        score = 0;
+        lives = 3;
+        loadLevel(1);
+    }
+
+    function afterDeath() {
+        lives = lives - 1;
+        if (lives <= 0) {
+            state = "gameover";
+            game.audioStopPattern();
+            game.audioPlayTone(220, 160, "sawtooth", 0.12);
+            game.audioPlayTone(140, 220, "sawtooth", 0.12);
+        } else {
+            loadLevel(level);
+        }
+    }
+
+    function afterClear() {
+        if (level >= maxLevel) {
+            state = "win";
+            game.audioStopPattern();
+        } else {
+            loadLevel(level + 1);
+        }
+    }
+
+    function caveTick() {
+        if (state != "playing" || !playerAlive) {
+            return;
+        }
+
+        var dy = readMoveDy();
+        var dx = 0;
+        if (dy == 0) {
+            dx = readMoveDx();
+        }
+        if (dx != 0 || dy != 0) {
+            tryPlayerMove(dx, dy);
+        } else {
+            pointerMove();
+        }
+
+        physicsRocks();
+        physicsEnemies();
+        flushBooms();
+    }
+
+    function updateGame(dtMs) {
+        var dt = dtMs;
+        if (dt > 80) {
+            dt = 80;
+        }
+        if (dt < 0) {
+            dt = 0;
+        }
+
+        animMs = animMs + dt;
+        if (restartDebounceMs > 0) {
+            restartDebounceMs = restartDebounceMs - dt;
+        }
+        if (pauseDebounceMs > 0) {
+            pauseDebounceMs = pauseDebounceMs - dt;
+        }
+        if (startDebounceMs > 0) {
+            startDebounceMs = startDebounceMs - dt;
+        }
+
+        bootAudioIfNeeded();
+        maybeStartPattern();
+
+        if (state == "splash") {
+            if ((game.isKeyDown("enter") || game.isKeyDown(" ") || game.isMouseDown(0)) && startDebounceMs <= 0) {
+                loadLevel(1);
+                startDebounceMs = 240;
+                game.audioPlayTone(520, 70, "square", 0.12);
+                game.audioPlayTone(660, 80, "square", 0.10);
+            }
+            return;
+        }
+
+        if ((game.isKeyDown("p")) && pauseDebounceMs <= 0) {
+            if (state == "playing") {
+                state = "paused";
+                game.audioPlayTone(330, 40, "triangle", 0.09);
+            } else if (state == "paused") {
+                state = "playing";
+                game.audioPlayTone(520, 40, "triangle", 0.09);
+            }
+            pauseDebounceMs = 240;
+        }
+
+        if (state == "gameover" || state == "win") {
+            if ((game.isKeyDown("r") || game.isKeyDown("enter")) && restartDebounceMs <= 0) {
+                restartRun();
+                restartDebounceMs = 240;
+            }
+            return;
+        }
+
+        if (state == "dead") {
+            deadTimerMs = deadTimerMs - dt;
+            if (deadTimerMs <= 0) {
+                afterDeath();
+            }
+            return;
+        }
+
+        if (state == "cleared") {
+            winTimerMs = winTimerMs - dt;
+            if (winTimerMs <= 0) {
+                afterClear();
+            }
+            return;
+        }
+
+        if (state == "paused") {
+            return;
+        }
+
+        if (game.isKeyDown("r") && restartDebounceMs <= 0) {
+            loadLevel(level);
+            restartDebounceMs = 240;
+            return;
+        }
+
+        timeAccMs = timeAccMs + dt;
+        if (timeAccMs >= 1000) {
+            timeAccMs = timeAccMs - 1000;
+            timeLeft = timeLeft - 1;
+            if (timeLeft <= 0) {
+                timeLeft = 0;
+                killPlayer();
+                return;
+            }
+            if (timeLeft == 10) {
+                game.audioPlayTone(740, 80, "square", 0.12);
+            }
+        }
+
+        physicsAccMs = physicsAccMs + dt;
+        while (physicsAccMs >= physicsIntervalMs) {
+            physicsAccMs = physicsAccMs - physicsIntervalMs;
+            caveTick();
+            if (state != "playing") {
+                break;
+            }
+        }
+    }
+
+    function drawSteel(px, py) {
+        game.fillRect(px, py, tileSize, tileSize, "#4b5563");
+        game.fillRect(px, py, tileSize, 3, "#9ca3af");
+        game.fillRect(px, py + tileSize - 3, tileSize, 3, "#1f2937");
+    }
+
+    function drawBrick(px, py) {
+        game.fillRect(px, py, tileSize, tileSize, "#9a3412");
+        game.fillRect(px + 1, py + 1, tileSize - 2, 10, "#c2410c");
+        game.fillRect(px + 1, py + 13, tileSize - 2, 10, "#b45309");
+        game.fillRect(px, py + 11, tileSize, 2, "#431407");
+    }
+
+    function drawDirt(px, py, x, y) {
+        var color = "#6b3f1f";
+        if ((x + y) % 2 == 0) {
+            color = "#7c4a24";
+        }
+        game.fillRect(px, py, tileSize, tileSize, color);
+        game.fillRect(px + 4, py + 5, 3, 3, "#4a2c14");
+        game.fillRect(px + 14, py + 13, 3, 3, "#4a2c14");
+    }
+
+    function drawBoulder(px, py) {
+        game.fillRect(px, py, tileSize, tileSize, "#1c1917");
+        game.fillCircle(px + 12, py + 13, 9, "#57534e");
+        game.fillCircle(px + 10, py + 10, 4, "#a8a29e");
+    }
+
+    function drawDiamond(px, py) {
+        var pulse = 8;
+        if ((int(animMs / 180) % 2) == 1) {
+            pulse = 10;
+        }
+        game.fillRect(px, py, tileSize, tileSize, "#1c1917");
+        game.fillCircle(px + 12, py + 12, pulse, "#22d3ee");
+        game.fillCircle(px + 9, py + 9, 3, "#ecfeff");
+    }
+
+    function drawPlayer(px, py) {
+        game.fillRect(px, py, tileSize, tileSize, "#1c1917");
+        game.fillCircle(px + 12, py + 13, 9, "#f59e0b");
+        game.fillRect(px + 8, py + 10, 3, 3, "#1c1917");
+        game.fillRect(px + 14, py + 10, 3, 3, "#1c1917");
+        game.fillRect(px + 9, py + 17, 6, 2, "#92400e");
+    }
+
+    function drawEnemy(px, py, tile) {
+        game.fillRect(px, py, tileSize, tileSize, "#1c1917");
+        var frame = int(animMs / 120) % 2;
+        var color = "#4ade80";
+        if (tile == BUTTERFLY) {
+            color = "#e879f9";
+            if (frame == 1) {
+                color = "#a21caf";
+            }
+        } else if (frame == 1) {
+            color = "#f87171";
+        }
+        game.fillCircle(px + 12, py + 12, 8, color);
+        game.fillRect(px + 8, py + 9, 2, 2, "#0f172a");
+        game.fillRect(px + 14, py + 9, 2, 2, "#0f172a");
+    }
+
+    function drawExit(px, py, openDoor) {
+        game.fillRect(px, py, tileSize, tileSize, "#1c1917");
+        var door = "#334155";
+        if (openDoor) {
+            door = "#22c55e";
+            if ((int(animMs / 200) % 2) == 1) {
+                door = "#86efac";
+            }
+        }
+        game.fillRect(px + 4, py + 3, tileSize - 8, tileSize - 5, door);
+        game.fillRect(px + 10, py + 12, 3, 3, "#fef3c7");
+    }
+
+    function drawTile(x, y) {
+        var tile = getTile(x, y);
+        var px = x * tileSize;
+        var py = hudH + (y * tileSize);
+        if (tile == STEEL) {
+            drawSteel(px, py);
+        } else if (tile == BRICK) {
+            drawBrick(px, py);
+        } else if (tile == DIRT) {
+            drawDirt(px, py, x, y);
+        } else if (tile == BOULDER) {
+            drawBoulder(px, py);
+        } else if (tile == DIAMOND) {
+            drawDiamond(px, py);
+        } else if (tile == PLAYER) {
+            drawPlayer(px, py);
+        } else if (isEnemy(tile)) {
+            drawEnemy(px, py, tile);
+        } else if (tile == EXIT_CLOSED) {
+            drawExit(px, py, false);
+        } else if (tile == EXIT_OPEN) {
+            drawExit(px, py, true);
+        } else {
+            game.fillRect(px, py, tileSize, tileSize, "#1c1917");
+        }
+    }
+
+    function renderHud() {
+        game.fillRect(0, 0, canvasWidth, hudH, "#0c0a09");
+        game.drawText("Maldadash", 12, 28, "#fbbf24", "bold 22px sans-serif");
+        game.drawText("Lv " + string(level) + "/" + string(maxLevel), 160, 28, "#e7e5e4", "16px sans-serif");
+        var gemColor = "#67e8f9";
+        if (exitOpen) {
+            gemColor = "#86efac";
+        }
+        game.drawText("* " + string(diamondsGot) + "/" + string(diamondsNeed), 250, 28, gemColor, "16px monospace");
+        var timeColor = "#e7e5e4";
+        if (timeLeft <= 10) {
+            timeColor = "#f87171";
+        }
+        game.drawText("Time " + string(timeLeft), 370, 28, timeColor, "16px monospace");
+        game.drawText("Lives " + string(lives), 500, 28, "#e7e5e4", "16px sans-serif");
+        game.drawText("Score " + string(score), 620, 28, "#fde68a", "16px sans-serif");
+    }
+
+    function renderPanel(title, subtitle) {
+        var panelX = 220;
+        var panelY = 180;
+        var panelW = 520;
+        var panelH = 220;
+        game.fillRect(panelX, panelY, panelW, panelH, "#0c0a09ee");
+        game.fillRect(panelX, panelY, panelW, 4, "#fbbf24");
+        game.fillRect(panelX, panelY + panelH - 4, panelW, 4, "#fbbf24");
+        game.drawText(title, panelX + 40, panelY + 70, "#f8fafc", "bold 32px sans-serif");
+        game.drawText(subtitle, panelX + 40, panelY + 120, "#d6d3d1", "18px sans-serif");
+    }
+
+    function renderGame() {
+        game.clear();
+        renderHud();
+
+        if (state == "splash") {
+            game.fillRect(0, hudH, canvasWidth, canvasHeight - hudH, "#1c1917");
+            renderPanel("Maldadash", "Arrows / WASD to dig   SPACE / Click to start");
+            game.drawText("Collect diamonds, drop boulders, reach the exit.", 260, 340, "#a8a29e", "16px sans-serif");
+            game.drawText("Fireflies patrol clockwise. Butterflies explode into gems.", 248, 368, "#a8a29e", "16px sans-serif");
+            return;
+        }
+
+        var y = 0;
+        while (y < rows) {
+            var x = 0;
+            while (x < cols) {
+                drawTile(x, y);
+                x = x + 1;
+            }
+            y = y + 1;
+        }
+
+        if (state == "paused") {
+            renderPanel("Paused", "Press P to continue");
+        } else if (state == "dead") {
+            renderPanel("Crushed!", "Reloading cave...");
+        } else if (state == "cleared") {
+            renderPanel("Cave cleared!", "Next cave...");
+        } else if (state == "gameover") {
+            renderPanel("Game Over", "Press R or Enter to restart");
+        } else if (state == "win") {
+            renderPanel("You cleared Maldadash!", "Press R or Enter to play again");
+        }
+    }
+
+    game.createCanvas(canvasWidth, canvasHeight, "#app");
+    game.setBackground("#1c1917");
+    game.start(updateGame, renderGame);
+}
