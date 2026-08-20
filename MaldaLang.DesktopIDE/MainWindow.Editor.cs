@@ -19,6 +19,7 @@ using MaldaLang.IDE.Services;
 using MaldaLang.IDE.Models;
 using MaldaLang.Interpreter;
 using MaldaLang.Compiler;
+using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.Highlighting;
 using ICSharpCode.AvalonEdit.Highlighting.Xshd;
 using ICSharpCode.AvalonEdit.Document;
@@ -287,6 +288,111 @@ public partial class MainWindow
                 _aiChatPanel.SelectedCode = GetSelectedText();
             }
         };
+
+        // AvalonEdit's TextArea is the hit-test target, so the TextEditor ContextMenu
+        // only appears after it is assigned here.
+        if (CodeEditor.ContextMenu != null)
+        {
+            CodeEditor.TextArea.ContextMenu = CodeEditor.ContextMenu;
+            CodeEditor.TextArea.PreviewMouseRightButtonDown += TextArea_PreviewMouseRightButtonDown;
+            ApplyEditorContextMenuTheme(_themeService.CurrentTheme);
+        }
+    }
+
+    private void TextArea_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        var position = CodeEditor.GetPositionFromPoint(e.GetPosition(CodeEditor));
+        if (position == null)
+        {
+            return;
+        }
+
+        var clickOffset = TryGetDocumentOffset(position.Value);
+        var selection = CodeEditor.TextArea.Selection;
+        var selectionStart = 0;
+        var selectionLength = 0;
+        if (selection != null && !selection.IsEmpty)
+        {
+            var segment = selection.SurroundingSegment;
+            if (segment != null)
+            {
+                selectionStart = segment.Offset;
+                selectionLength = segment.Length;
+            }
+        }
+
+        if (clickOffset is int offset &&
+            !EditorContextMenuPolicy.ShouldMoveCaretToClick(offset, selectionStart, selectionLength))
+        {
+            return;
+        }
+
+        CodeEditor.TextArea.Caret.Position = position.Value;
+        CodeEditor.TextArea.ClearSelection();
+    }
+
+    private int? TryGetDocumentOffset(TextViewPosition position)
+    {
+        try
+        {
+            return CodeEditor.Document.GetOffset(position.Location);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private void EditorContextMenu_Opened(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ContextMenu menu)
+        {
+            return;
+        }
+
+        var hasSelection = !string.IsNullOrEmpty(CodeEditor.SelectedText);
+        var clipboardHasText = false;
+        try
+        {
+            clipboardHasText = Clipboard.ContainsText();
+        }
+        catch
+        {
+            // Another process can lock the clipboard on Windows.
+        }
+
+        var (line, column) = GetCursorPosition();
+        var sourceKey = GetCurrentSourceKey();
+        var source = CodeEditor.Text;
+        var hasRenameTarget = _symbolNavigationService.PrepareRename(source, line, column, sourceKey) != null;
+        var hasDefinition = _symbolNavigationService.GetDefinition(source, line, column, sourceKey) != null;
+        var spans = _diagnosticRenderer?.Spans ?? Array.Empty<EditorDiagnosticSpan>();
+        var hasQuickFix = _editorQuickFixService.GetFixesAtCaret(spans, CodeEditor.CaretOffset, line).Count > 0;
+        var state = EditorContextMenuPolicy.Resolve(new EditorContextMenuContext(
+            HasSelection: hasSelection,
+            ClipboardHasText: clipboardHasText,
+            HasDefinition: hasDefinition,
+            HasRenameTarget: hasRenameTarget,
+            HasQuickFix: hasQuickFix));
+
+        foreach (var item in menu.Items.OfType<MenuItem>())
+        {
+            if (item.Tag is EditorContextMenuCommand command)
+            {
+                item.IsEnabled = EditorContextMenuPolicy.IsCommandEnabled(command, state);
+            }
+        }
+    }
+
+    private void ApplyEditorContextMenuTheme(Theme theme)
+    {
+        var menu = CodeEditor.TextArea.ContextMenu ?? CodeEditor.ContextMenu;
+        if (menu == null)
+        {
+            return;
+        }
+
+        EditorPopupTheming.Apply(menu, theme);
     }
 
     
