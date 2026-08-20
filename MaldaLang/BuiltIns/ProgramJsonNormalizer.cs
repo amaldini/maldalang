@@ -31,6 +31,8 @@ public static class ProgramJsonNormalizer
             return false;
         }
 
+        root = UnwrapProgramEnvelope(root, apiDef);
+
         var apiName = ReadString(root, "@api", "api");
         if (string.IsNullOrEmpty(apiName))
             apiName = expectedApiName;
@@ -61,11 +63,13 @@ public static class ProgramJsonNormalizer
             if (!TryReadCallName(stepObj, $"$.steps[{i}]", out var call, out error))
                 return false;
 
-            if (!apiDef.TryGetMethod(call, out var method))
+            if (!apiDef.TryResolveMethod(call, out var method))
             {
                 error = $"$.steps[{i}].call '{call}' is not a method on api '{apiName}'.";
                 return false;
             }
+
+            call = method.Name;
 
             if (!TryReadArgs(stepObj, method, $"$.steps[{i}]", out var rawArgs, out error))
                 return false;
@@ -92,7 +96,7 @@ public static class ProgramJsonNormalizer
                 resolvedArgs.Add(arg);
             }
 
-            var alias = ReadString(stepObj, "as", "@as");
+            var alias = ReadString(stepObj, "as", "@as", "alias");
             if (string.IsNullOrWhiteSpace(alias))
                 alias = NextAlias("t", ref tSeq, usedAliases);
             else if (!usedAliases.Add(alias))
@@ -111,7 +115,7 @@ public static class ProgramJsonNormalizer
             return false;
         }
 
-        var returnVal = ReadFirst(root, "return", "@return");
+        var returnVal = ReadFirst(root, "return", "@return", "result", "output");
         if (returnVal.Type == ValueType.Null)
             returnVal = RuntimeValue.String("$" + originalAliases[originalAliases.Count - 1]);
         else if (!TryNormalizeArg(
@@ -181,17 +185,37 @@ public static class ProgramJsonNormalizer
     {
         rawSteps = new List<RuntimeValue>();
         error = "";
-        var stepsVal = ReadFirst(root, "steps", "@steps");
+        var stepsVal = ReadFirst(root, "steps", "@steps", "operations", "calls", "commands");
         if (stepsVal.Type == ValueType.Array)
         {
             rawSteps.AddRange(stepsVal.AsArray());
             return true;
         }
 
-        if (stepsVal.Type == ValueType.Object)
+        if (stepsVal.Type == ValueType.Object && TryAsJsonObject(stepsVal, out var stepsObj))
         {
-            rawSteps.Add(stepsVal);
-            return true;
+            if (LooksLikeCall(stepsObj, apiDef))
+            {
+                rawSteps.Add(stepsVal);
+                return true;
+            }
+
+            foreach (var key in stepsObj.GetAllKeys())
+            {
+                var stepVal = stepsObj.Get(key);
+                if (!TryAsJsonObject(stepVal, out var namedStep))
+                {
+                    error = $"$.steps.{key} must be an object.";
+                    return false;
+                }
+
+                if (string.IsNullOrWhiteSpace(ReadString(namedStep, "as", "@as", "alias")))
+                    namedStep.Set("as", RuntimeValue.String(key));
+                rawSteps.Add(RuntimeValue.Object(namedStep));
+            }
+
+            if (rawSteps.Count > 0)
+                return true;
         }
 
         if (LooksLikeCall(root, apiDef))
@@ -204,15 +228,43 @@ public static class ProgramJsonNormalizer
         return false;
     }
 
+    private static JsonObject UnwrapProgramEnvelope(JsonObject root, ApiRegistry.ApiDefinition apiDef)
+    {
+        for (var depth = 0; depth < 3; depth++)
+        {
+            var stepsVal = ReadFirst(root, "steps", "@steps", "operations", "calls", "commands");
+            if (stepsVal.Type == ValueType.Array || stepsVal.Type == ValueType.Object)
+                return root;
+            if (LooksLikeCall(root, apiDef))
+                return root;
+
+            JsonObject? next = null;
+            foreach (var key in new[] { "program", "data", "value", "output" })
+            {
+                if (TryAsJsonObject(ReadFirst(root, key), out var inner))
+                {
+                    next = inner;
+                    break;
+                }
+            }
+
+            if (next == null)
+                return root;
+            root = next;
+        }
+
+        return root;
+    }
+
     private static bool LooksLikeCall(JsonObject obj, ApiRegistry.ApiDefinition apiDef)
     {
-        var call = ReadString(obj, "call", "@func", "func");
-        return !string.IsNullOrEmpty(call) && apiDef.TryGetMethod(call, out _);
+        var call = ReadString(obj, "call", "@func", "func", "method", "op", "operator", "function", "fn", "name");
+        return !string.IsNullOrEmpty(call) && apiDef.TryResolveMethod(call, out _);
     }
 
     private static bool TryReadCallName(JsonObject stepObj, string path, out string call, out string error)
     {
-        call = ReadString(stepObj, "call", "@func", "func");
+        call = ReadString(stepObj, "call", "@func", "func", "method", "op", "operator", "function", "fn", "name");
         error = "";
         if (string.IsNullOrEmpty(call))
         {
@@ -232,7 +284,7 @@ public static class ProgramJsonNormalizer
     {
         args = new List<RuntimeValue>();
         error = "";
-        var argsVal = UnwrapTypeWrapper(ReadFirst(stepObj, "args", "@args"));
+        var argsVal = UnwrapTypeWrapper(ReadFirst(stepObj, "args", "@args", "arguments", "params", "parameters", "operands"));
 
         if (argsVal.Type == ValueType.Null)
         {
@@ -308,15 +360,29 @@ public static class ProgramJsonNormalizer
         if (TryReadResultRef(arg, originalAliases, path, out normalized, out error))
             return string.IsNullOrEmpty(error);
 
+        if (arg.Type == ValueType.String && ShouldTreatBareAlias(expectedType))
+        {
+            var s = arg.AsString();
+            if (!s.StartsWith("$", StringComparison.Ordinal)
+                && !string.IsNullOrEmpty(s)
+                && usedAliases.Contains(s))
+            {
+                normalized = RuntimeValue.String("$" + s);
+                return true;
+            }
+        }
+
         if (TryAsJsonObject(arg, out var obj) && LooksLikeCall(obj, apiDef))
         {
             if (!TryReadCallName(obj, path, out var call, out error))
                 return false;
-            if (!apiDef.TryGetMethod(call, out var method))
+            if (!apiDef.TryResolveMethod(call, out var method))
             {
                 error = $"{path} nested call '{call}' is not a method on api '{apiName}'.";
                 return false;
             }
+
+            call = method.Name;
 
             if (!TryReadArgs(obj, method, path, out var rawArgs, out error))
                 return false;
@@ -350,6 +416,23 @@ public static class ProgramJsonNormalizer
         }
 
         return TryCoerceDeclaredType(arg, expectedType, path, out normalized, out error);
+    }
+
+    private static bool ShouldTreatBareAlias(string? expectedType)
+    {
+        if (string.IsNullOrEmpty(expectedType))
+            return true;
+
+        var trimmed = expectedType.Trim();
+        var isArray = trimmed.EndsWith("[]", StringComparison.Ordinal);
+        var core = isArray ? trimmed[..^2].Trim() : trimmed;
+        SchemaRegistry.TryMapPrimitiveJsonType(core, out var jsonType);
+        if (isArray)
+            jsonType = "array";
+        if (string.IsNullOrEmpty(jsonType))
+            jsonType = "object";
+
+        return jsonType is "number" or "integer" or "null";
     }
 
     internal static bool TryCoerceDeclaredType(

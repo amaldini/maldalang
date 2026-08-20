@@ -37,6 +37,79 @@ public static class ApiRegistry
             method = null!;
             return false;
         }
+
+        /// <summary>
+        /// Resolves a model-emitted call name onto a declared method.
+        /// Exact match wins; otherwise a unique match after stripping underscores,
+        /// an <c>Api.</c> prefix, case, and operator synonyms (<c>+</c> → add, <c>*</c> → mul).
+        /// </summary>
+        public bool TryResolveMethod(string methodName, out ApiMethodSignature method)
+        {
+            if (TryGetMethod(methodName, out method))
+                return true;
+
+            var incoming = CanonicalMethodKey(methodName, Name);
+            if (string.IsNullOrEmpty(incoming))
+            {
+                method = null!;
+                return false;
+            }
+
+            ApiMethodSignature? found = null;
+            foreach (var m in Methods)
+            {
+                var declared = CanonicalMethodKey(m.Name, Name);
+                if (!string.Equals(declared, incoming, StringComparison.Ordinal))
+                    continue;
+
+                if (found != null && !string.Equals(found.Name, m.Name, StringComparison.Ordinal))
+                {
+                    method = null!;
+                    return false;
+                }
+
+                found = m;
+            }
+
+            if (found == null)
+            {
+                method = null!;
+                return false;
+            }
+
+            method = found;
+            return true;
+        }
+
+        internal static string CanonicalMethodKey(string methodName, string apiName)
+        {
+            var key = StripUnderscores(methodName.Trim().ToLowerInvariant());
+            if (string.IsNullOrEmpty(key))
+                return key;
+
+            var apiKey = StripUnderscores(apiName.Trim().ToLowerInvariant());
+            if (!string.IsNullOrEmpty(apiKey) && key.StartsWith(apiKey + ".", StringComparison.Ordinal))
+                key = key.Substring(apiKey.Length + 1);
+
+            return MapOperatorSynonym(key);
+        }
+
+        private static string StripUnderscores(string name)
+        {
+            if (name.IndexOf('_') < 0)
+                return name;
+            return name.Replace("_", "", StringComparison.Ordinal);
+        }
+
+        private static string MapOperatorSynonym(string key) => key switch
+        {
+            "+" or "plus" or "addition" or "sum" => "add",
+            "-" or "minus" or "subtract" or "subtraction" or "difference" => "sub",
+            "*" or "times" or "multiply" or "multiplication" or "product" => "mul",
+            "/" or "divide" or "division" or "quotient" => "div",
+            "%" or "mod" or "modulo" or "remainder" => "mod",
+            _ => key
+        };
     }
 
     private static readonly Dictionary<string, ApiDefinition> Definitions = new(StringComparer.Ordinal);

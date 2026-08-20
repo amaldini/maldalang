@@ -147,12 +147,91 @@ public static class TypedPromptValidator
         var jsonSchema = new JsonObject();
         jsonSchema.Set("name", RuntimeValue.String("typed_prompt_response"));
         jsonSchema.Set("strict", RuntimeValue.Boolean(true));
-        jsonSchema.Set("schema", resolvedSchema);
+        jsonSchema.Set("schema", SanitizeSchemaForStructuredOutput(resolvedSchema));
 
         var wrapper = new JsonObject();
         wrapper.Set("type", RuntimeValue.String("json_schema"));
         wrapper.Set("json_schema", RuntimeValue.Object(jsonSchema));
         return RuntimeValue.Object(wrapper);
+    }
+
+    /// <summary>
+    /// OpenAI structured outputs reject <c>@api</c> property names, vendor
+    /// <c>x-malda-*</c> keywords, and most <c>type: [A, B]</c> unions. Clone and
+    /// rewrite so providers keep <c>response_format</c> instead of falling back
+    /// to unconstrained JSON.
+    /// </summary>
+    internal static RuntimeValue SanitizeSchemaForStructuredOutput(RuntimeValue schema)
+    {
+        return CloneAndSanitizeSchema(schema);
+    }
+
+    private static RuntimeValue CloneAndSanitizeSchema(RuntimeValue value)
+    {
+        if (value.Type == ValueType.Array)
+        {
+            var items = new List<RuntimeValue>();
+            foreach (var item in value.AsArray())
+                items.Add(CloneAndSanitizeSchema(item));
+            return RuntimeValue.Array(items);
+        }
+
+        if (value.Type != ValueType.Object || value.AsObject() is not JsonObject obj)
+            return value;
+
+        var copy = new JsonObject();
+        var typeVal = obj.Get("type");
+        var rewriteTypeUnion = false;
+        if (typeVal.Type == ValueType.Array)
+        {
+            var types = typeVal.AsArray()
+                .Where(t => t.Type == ValueType.String)
+                .Select(t => t.AsString())
+                .ToList();
+            var nonNull = types.Count(t => !string.Equals(t, "null", StringComparison.Ordinal));
+            rewriteTypeUnion = nonNull > 1;
+            if (rewriteTypeUnion)
+            {
+                var arms = new List<RuntimeValue>();
+                foreach (var t in types)
+                {
+                    var arm = new JsonObject();
+                    arm.Set("type", RuntimeValue.String(t));
+                    arms.Add(RuntimeValue.Object(arm));
+                }
+
+                copy.Set("anyOf", RuntimeValue.Array(arms));
+            }
+        }
+
+        foreach (var key in obj.GetAllKeys())
+        {
+            if (key.StartsWith("x-malda-", StringComparison.Ordinal))
+                continue;
+            if (rewriteTypeUnion && key == "type")
+                continue;
+
+            var outKey = string.Equals(key, "@api", StringComparison.Ordinal) ? "api" : key;
+            var child = obj.Get(key);
+            if (key == "required" && child.Type == ValueType.Array)
+            {
+                var required = new List<RuntimeValue>();
+                foreach (var item in child.AsArray())
+                {
+                    if (item.Type == ValueType.String && item.AsString() == "@api")
+                        required.Add(RuntimeValue.String("api"));
+                    else
+                        required.Add(CloneAndSanitizeSchema(item));
+                }
+
+                copy.Set(outKey, RuntimeValue.Array(required));
+                continue;
+            }
+
+            copy.Set(outKey, CloneAndSanitizeSchema(child));
+        }
+
+        return RuntimeValue.Object(copy);
     }
 
     public static bool IsSumSchema(RuntimeValue schema)
@@ -173,6 +252,41 @@ public static class TypedPromptValidator
                string.Equals(kind.AsString(), "program", StringComparison.Ordinal);
     }
 
+    private static string BuildProgramWireExample(string apiName, ApiRegistry.ApiDefinition def)
+    {
+        MaldaLang.Parser.AST.Declarations.ApiMethodSignature? add = null;
+        MaldaLang.Parser.AST.Declarations.ApiMethodSignature? mul = null;
+        foreach (var method in def.Methods)
+        {
+            if (method.ParameterNames.Count != 2)
+                continue;
+            var key = ApiRegistry.ApiDefinition.CanonicalMethodKey(method.Name, def.Name);
+            if (key == "add")
+                add = method;
+            else if (key == "mul")
+                mul = method;
+        }
+
+        if (add != null && mul != null)
+        {
+            return
+                $"{{\"@api\":\"{apiName}\",\"steps\":[" +
+                $"{{\"call\":\"{add.Name}\",\"args\":[2,3],\"as\":\"t0\"}}," +
+                $"{{\"call\":\"{mul.Name}\",\"args\":[\"$t0\",4],\"as\":\"result\"}}" +
+                $"],\"return\":\"$result\"}}";
+        }
+
+        var first = def.Methods.FirstOrDefault(m => m.ParameterNames.Count >= 1) ?? def.Methods.FirstOrDefault();
+        if (first == null)
+            return $"{{\"@api\":\"{apiName}\",\"steps\":[{{\"call\":\"<method>\",\"args\":[...],\"as\":\"t0\"}}],\"return\":\"$t0\"}}";
+
+        var args = first.ParameterNames.Count == 0
+            ? ""
+            : string.Join(",", Enumerable.Range(2, first.ParameterNames.Count));
+        return
+            $"{{\"@api\":\"{apiName}\",\"steps\":[{{\"call\":\"{first.Name}\",\"args\":[{args}],\"as\":\"t0\"}}],\"return\":\"$t0\"}}";
+    }
+
     public static string FormatSchemaAppendix(string returnType, RuntimeValue schema)
     {
         var sb = new StringBuilder();
@@ -185,15 +299,17 @@ public static class TypedPromptValidator
             var apiName = progObj.Get("x-malda-api");
             var api = apiName.Type == ValueType.String ? apiName.AsString() : "?";
             sb.AppendLine($"Program for api {api} — return JSON only, this exact shape:");
-            sb.AppendLine($"{{\"@api\":\"{api}\",\"steps\":[{{\"call\":\"<method>\",\"args\":[...],\"as\":\"t0\"}}],\"return\":\"$t0\"}}");
-            sb.AppendLine("Rules:");
-            sb.AppendLine("- args are JSON numbers/booleans/null, strings, or \"$alias\" referring to a prior step's \"as\".");
-            sb.AppendLine("- Use JSON numbers (2), never numeric strings (\"2\") and never {\"type\":\"number\",\"value\":2}.");
-            sb.AppendLine("- Do not pass objects as operands. Nested {\"call\":\"...\",\"args\":[...]} is flattened into prior steps.");
-            sb.AppendLine($"- Example: {{\"@api\":\"{api}\",\"steps\":[{{\"call\":\"<method>\",\"args\":[2,3],\"as\":\"t0\"}},{{\"call\":\"<method>\",\"args\":[\"$t0\",4],\"as\":\"result\"}}],\"return\":\"$result\"}}");
-            sb.AppendLine("Allowed calls:");
             if (ApiRegistry.TryGet(api, out var def))
             {
+                var example = BuildProgramWireExample(api, def);
+                sb.AppendLine(example);
+                sb.AppendLine("Rules:");
+                sb.AppendLine("- args are JSON numbers/booleans/null, strings, or \"$alias\" referring to a prior step's \"as\".");
+                sb.AppendLine("- Use JSON numbers (2), never numeric strings (\"2\") and never {\"type\":\"number\",\"value\":2}.");
+                sb.AppendLine("- Do not pass objects as operands. Nested {\"call\":\"...\",\"args\":[...]} is flattened into prior steps.");
+                sb.AppendLine("- Use the Allowed calls names exactly (including a leading underscore). The host also maps add→_add and +→add when unique.");
+                sb.AppendLine($"- Example: {example}");
+                sb.AppendLine("Allowed calls:");
                 foreach (var method in def.Methods)
                 {
                     sb.Append("- ");
@@ -202,6 +318,14 @@ public static class TypedPromptValidator
                     sb.Append(string.Join(", ", method.ParameterNames.Select((_, i) => method.FormatParameter(i))));
                     sb.AppendLine(")");
                 }
+            }
+            else
+            {
+                sb.AppendLine($"{{\"@api\":\"{api}\",\"steps\":[{{\"call\":\"<method>\",\"args\":[...],\"as\":\"t0\"}}],\"return\":\"$t0\"}}");
+                sb.AppendLine("Rules:");
+                sb.AppendLine("- args are JSON numbers/booleans/null, strings, or \"$alias\" referring to a prior step's \"as\".");
+                sb.AppendLine("- Use JSON numbers (2), never numeric strings (\"2\") and never {\"type\":\"number\",\"value\":2}.");
+                sb.AppendLine("- Do not pass objects as operands. Nested {\"call\":\"...\",\"args\":[...]} is flattened into prior steps.");
             }
 
             return sb.ToString().TrimEnd();

@@ -67,7 +67,8 @@ public class SchemaToLlmTests
         Assert.NotNull(jsonSchema);
         var nested = jsonSchema!.Get("schema").AsObject() as JsonObject;
         Assert.NotNull(nested);
-        Assert.Equal("sum", nested!.Get("x-malda-kind").AsString());
+        Assert.Equal(ValueType.Null, nested!.Get("x-malda-kind").Type);
+        Assert.Equal(ValueType.Array, nested.Get("oneOf").Type);
     }
 
     [Fact]
