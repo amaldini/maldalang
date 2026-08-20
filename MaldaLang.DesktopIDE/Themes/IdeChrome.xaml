@@ -138,7 +138,7 @@
         <Setter Property="Foreground" Value="{DynamicResource PrimaryButtonForegroundBrush}"/>
         <Setter Property="Padding" Value="10,5"/>
         <!-- Window-level implicit TextBlock styles override inherited Foreground; keep label
-             color on the primary fill so Light/Blue/High Contrast stay readable. -->
+             color on the primary fill so every theme stays readable. -->
         <Style.Resources>
             <Style TargetType="TextBlock">
                 <Setter Property="Foreground" Value="{DynamicResource PrimaryButtonForegroundBrush}"/>
