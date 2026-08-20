@@ -26,6 +26,12 @@ jobs:
       - name: Build
         run: dotnet build MaldaLang.sln -c Release --verbosity minimal
 
+      - name: Desktop IDE theme catalog tests
+        run: >
+          dotnet test MaldaLang.DesktopIDE.Tests -c Release --no-build
+          --filter "FullyQualifiedName~ThemeCatalogTests|FullyQualifiedName~PrimaryButtonContrastTests"
+          --verbosity minimal
+
       - name: Smoke tests (filtered)
         run: >
           dotnet test MaldaLang.Tests -c Release --no-build
