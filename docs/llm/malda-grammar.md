@@ -85,7 +85,7 @@ WaitStmt      ::= "wait" Identifier "=" "awaitSignal"
                   "(" Expression ("," Expression)? ")" ("timeout" Integer)* ";"
 
 AccessModifier ::= ("public" | "private")? "static"?
-TypeHint      ::= ":" Identifier
+TypeHint      ::= ":" "out"? Identifier
 ParamList     ::= Param ("," Param)*
 Param         ::= Decorator* Identifier TypeHint?
 CallExpr      ::= Expression PostfixSuffix*   /* see Â§34.4 */

@@ -1,3 +1,188 @@
+@shader()
+function vertexMain() {
+    vUv = uv;
+    gl_Position = vec4(position.xy, 0.0, 1.0);
+}
+
+@shader()
+function hitSphere(center: vec3, radius: float, origin: vec3, dir: vec3) -> float {
+    var oc: vec3 = origin - center;
+    var a: float = dot(dir, dir);
+    var b: float = dot(oc, dir);
+    var c: float = dot(oc, oc) - radius * radius;
+    var disc: float = b * b - a * c;
+    if (disc < 0.0) {
+        return -1.0;
+    }
+    var root: float = sqrt(disc);
+    var t: float = (-b - root) / a;
+    if (t > EPSILON) {
+        return t;
+    }
+    t = (-b + root) / a;
+    if (t > EPSILON) {
+        return t;
+    }
+    return -1.0;
+}
+
+@shader()
+function closestHit(
+    origin: vec3,
+    dir: vec3,
+    tMax: float,
+    tHit: out float,
+    kind: out int,
+    index: out int,
+    normal: out vec3,
+    albedo: out vec3
+) -> bool {
+    tHit = tMax;
+    kind = 0;
+    index = -1;
+    normal = vec3(0.0, 1.0, 0.0);
+    albedo = vec3(0.0);
+
+    var c0: vec3 = vec3(0.0, 1.0, 0.0);
+    var c1: vec3 = vec3(-1.85, 0.55, 0.35);
+    var c2: vec3 = vec3(1.55, 0.42, -0.28);
+    var r0: float = 1.0;
+    var r1: float = 0.55;
+    var r2: float = 0.42;
+
+    var t0: float = hitSphere(c0, r0, origin, dir);
+    if (t0 > 0.0 && t0 < tHit) {
+        tHit = t0;
+        kind = 1;
+        index = 0;
+    }
+    var t1: float = hitSphere(c1, r1, origin, dir);
+    if (t1 > 0.0 && t1 < tHit) {
+        tHit = t1;
+        kind = 1;
+        index = 1;
+    }
+    var t2: float = hitSphere(c2, r2, origin, dir);
+    if (t2 > 0.0 && t2 < tHit) {
+        tHit = t2;
+        kind = 1;
+        index = 2;
+    }
+
+    if (abs(dir.y) > EPSILON) {
+        var tPlane: float = -origin.y / dir.y;
+        if (tPlane > EPSILON && tPlane < tHit) {
+            tHit = tPlane;
+            kind = 2;
+            index = -1;
+        }
+    }
+
+    if (kind == 0) {
+        return false;
+    }
+
+    var hit: vec3 = origin + dir * tHit;
+    if (kind == 1) {
+        if (index == 0) {
+            normal = (hit - c0) / r0;
+            albedo = vec3(0.86, 0.22, 0.18);
+        } else if (index == 1) {
+            normal = (hit - c1) / r1;
+            albedo = vec3(0.18, 0.45, 0.90);
+        } else {
+            normal = (hit - c2) / r2;
+            albedo = vec3(0.95, 0.74, 0.22);
+        }
+    } else {
+        normal = vec3(0.0, 1.0, 0.0);
+        if (dot(normal, dir) > 0.0) {
+            normal = -normal;
+        }
+        var check: float = mod(floor(hit.x) + floor(hit.z), 2.0);
+        if (check < 0.5) {
+            albedo = vec3(0.78, 0.78, 0.74);
+        } else {
+            albedo = vec3(0.18, 0.22, 0.20);
+        }
+    }
+    normal = normalize(normal);
+    return true;
+}
+
+@shader()
+function inShadow(hit: vec3, normal: vec3) -> bool {
+    var origin: vec3 = hit + normal * 0.02;
+    var toLight: vec3 = uLightPos - origin;
+    var lightDist: float = length(toLight);
+    if (lightDist <= EPSILON) {
+        return false;
+    }
+    var dir: vec3 = toLight / lightDist;
+    var tHit: float = 0.0;
+    var kind: int = 0;
+    var index: int = 0;
+    var n: vec3 = vec3(0.0);
+    var albedo: vec3 = vec3(0.0);
+    return closestHit(origin, dir, lightDist - 0.05, tHit, kind, index, n, albedo);
+}
+
+@shader()
+function fragmentMain() {
+    var ndc: vec2 = vUv * 2.0 - 1.0;
+    var dir: vec3 = normalize(
+        uCamForward
+        + uCamRight * (ndc.x * uAspect * uTanHalf)
+        + uCamUp * (ndc.y * uTanHalf)
+    );
+
+    var tHit: float = 0.0;
+    var kind: int = 0;
+    var index: int = 0;
+    var normal: vec3 = vec3(0.0);
+    var albedo: vec3 = vec3(0.0);
+    if (!closestHit(uCamPos, dir, 1000000.0, tHit, kind, index, normal, albedo)) {
+        var t: float = clamp((dir.y + 1.0) * 0.5, 0.0, 1.0);
+        var sky: vec3 = mix(vec3(0.62, 0.78, 0.96), vec3(0.16, 0.38, 0.74), t);
+        gl_FragColor = vec4(sqrt(sky), 1.0);
+        return;
+    }
+
+    var hit: vec3 = uCamPos + dir * tHit;
+    var toLight: vec3 = uLightPos - hit;
+    var lightDir: vec3 = normalize(toLight);
+    var diff: float = max(dot(normal, lightDir), 0.0);
+    var light: float = 0.12;
+    if (!inShadow(hit, normal)) {
+        light = 0.12 + diff * 0.88;
+    }
+    var color: vec3 = albedo * light;
+    gl_FragColor = vec4(sqrt(color), 1.0);
+}
+
+var vertexShader = glsl.compile({
+    varyings: ["vec2 vUv"],
+    functions: ["vertexMain"],
+    main: "vertexMain"
+});
+
+var fragmentShader = glsl.compile({
+    varyings: ["vec2 vUv"],
+    uniforms: [
+        "vec2 uResolution",
+        "vec3 uCamPos",
+        "vec3 uCamForward",
+        "vec3 uCamRight",
+        "vec3 uCamUp",
+        "vec3 uLightPos",
+        "float uTanHalf",
+        "float uAspect"
+    ],
+    consts: ["float EPSILON = 0.0015"],
+    functions: ["hitSphere", "closestHit", "inShadow", "fragmentMain"],
+    main: "fragmentMain"
+});
+
 var root = dom.query("#app");
 
 if (root == null) {
@@ -39,171 +224,6 @@ if (root == null) {
     var lightZ = 3.2;
     var lastMouseX = -1;
     var lastMouseY = -1;
-
-    var vertexShader = """
-varying vec2 vUv;
-void main() {
-    vUv = uv;
-    gl_Position = vec4(position.xy, 0.0, 1.0);
-}
-""";
-
-    var fragmentShader = """
-varying vec2 vUv;
-uniform vec2 uResolution;
-uniform vec3 uCamPos;
-uniform vec3 uCamForward;
-uniform vec3 uCamRight;
-uniform vec3 uCamUp;
-uniform vec3 uLightPos;
-uniform float uTanHalf;
-uniform float uAspect;
-
-const float EPSILON = 0.0015;
-
-float hitSphere(vec3 center, float radius, vec3 origin, vec3 dir) {
-    vec3 oc = origin - center;
-    float a = dot(dir, dir);
-    float b = dot(oc, dir);
-    float c = dot(oc, oc) - radius * radius;
-    float disc = b * b - a * c;
-    if (disc < 0.0) {
-        return -1.0;
-    }
-    float root = sqrt(disc);
-    float t = (-b - root) / a;
-    if (t > EPSILON) {
-        return t;
-    }
-    t = (-b + root) / a;
-    if (t > EPSILON) {
-        return t;
-    }
-    return -1.0;
-}
-
-bool closestHit(vec3 origin, vec3 dir, float tMax, out float tHit, out int kind, out int index, out vec3 normal, out vec3 albedo) {
-    tHit = tMax;
-    kind = 0;
-    index = -1;
-    normal = vec3(0.0, 1.0, 0.0);
-    albedo = vec3(0.0);
-
-    vec3 c0 = vec3(0.0, 1.0, 0.0);
-    vec3 c1 = vec3(-1.85, 0.55, 0.35);
-    vec3 c2 = vec3(1.55, 0.42, -0.28);
-    float r0 = 1.0;
-    float r1 = 0.55;
-    float r2 = 0.42;
-
-    float t0 = hitSphere(c0, r0, origin, dir);
-    if (t0 > 0.0 && t0 < tHit) {
-        tHit = t0;
-        kind = 1;
-        index = 0;
-    }
-    float t1 = hitSphere(c1, r1, origin, dir);
-    if (t1 > 0.0 && t1 < tHit) {
-        tHit = t1;
-        kind = 1;
-        index = 1;
-    }
-    float t2 = hitSphere(c2, r2, origin, dir);
-    if (t2 > 0.0 && t2 < tHit) {
-        tHit = t2;
-        kind = 1;
-        index = 2;
-    }
-
-    if (abs(dir.y) > EPSILON) {
-        float tPlane = -origin.y / dir.y;
-        if (tPlane > EPSILON && tPlane < tHit) {
-            tHit = tPlane;
-            kind = 2;
-            index = -1;
-        }
-    }
-
-    if (kind == 0) {
-        return false;
-    }
-
-    vec3 hit = origin + dir * tHit;
-    if (kind == 1) {
-        if (index == 0) {
-            normal = (hit - c0) / r0;
-            albedo = vec3(0.86, 0.22, 0.18);
-        } else if (index == 1) {
-            normal = (hit - c1) / r1;
-            albedo = vec3(0.18, 0.45, 0.90);
-        } else {
-            normal = (hit - c2) / r2;
-            albedo = vec3(0.95, 0.74, 0.22);
-        }
-    } else {
-        normal = vec3(0.0, 1.0, 0.0);
-        if (dot(normal, dir) > 0.0) {
-            normal = -normal;
-        }
-        float check = mod(floor(hit.x) + floor(hit.z), 2.0);
-        if (check < 0.5) {
-            albedo = vec3(0.78, 0.78, 0.74);
-        } else {
-            albedo = vec3(0.18, 0.22, 0.20);
-        }
-    }
-    normal = normalize(normal);
-    return true;
-}
-
-bool inShadow(vec3 hit, vec3 normal) {
-    vec3 origin = hit + normal * 0.02;
-    vec3 toLight = uLightPos - origin;
-    float lightDist = length(toLight);
-    if (lightDist <= EPSILON) {
-        return false;
-    }
-    vec3 dir = toLight / lightDist;
-    float tHit;
-    int kind;
-    int index;
-    vec3 n;
-    vec3 albedo;
-    return closestHit(origin, dir, lightDist - 0.05, tHit, kind, index, n, albedo);
-}
-
-void main() {
-    vec2 ndc = vUv * 2.0 - 1.0;
-    vec3 dir = normalize(
-        uCamForward
-        + uCamRight * (ndc.x * uAspect * uTanHalf)
-        + uCamUp * (ndc.y * uTanHalf)
-    );
-
-    float tHit;
-    int kind;
-    int index;
-    vec3 normal;
-    vec3 albedo;
-    if (!closestHit(uCamPos, dir, 1000000.0, tHit, kind, index, normal, albedo)) {
-        float t = clamp((dir.y + 1.0) * 0.5, 0.0, 1.0);
-        vec3 sky = mix(vec3(0.62, 0.78, 0.96), vec3(0.16, 0.38, 0.74), t);
-        gl_FragColor = vec4(sqrt(sky), 1.0);
-        return;
-    }
-
-    vec3 hit = uCamPos + dir * tHit;
-    vec3 toLight = uLightPos - hit;
-    vec3 lightDir = normalize(toLight);
-    float diff = max(dot(normal, lightDir), 0.0);
-    float light = 0.12;
-    if (!inShadow(hit, normal)) {
-        light = 0.12 + diff * 0.88;
-    }
-    vec3 color = albedo * light;
-    gl_FragColor = vec4(sqrt(color), 1.0);
-}
-""";
 
     function updateCamera() {
         camX = math.sin(camAngle) * camRadius;

@@ -252,6 +252,16 @@ public class LanguageService : ILanguageService
             MaxArgs = 0,
             ArgDescriptions = new List<string>()
         },
+        ["shader"] = new DecoratorInfo
+        {
+            Name = "shader",
+            Description = "GLSL shader kernel decorator (JavaScript backend)",
+            Format = "@shader()",
+            Documentation = "Marks a typed MALDA function as a GLSL kernel. JavaScript compile inlines it through glsl.compile({ ... }) and does not emit a JS function. Type hints use GLSL names (vec3, float, out float). Interpreter and C# backends skip these functions.",
+            MinArgs = 0,
+            MaxArgs = 0,
+            ArgDescriptions = new List<string>()
+        },
         ["within"] = new DecoratorInfo
         {
             Name = "within",

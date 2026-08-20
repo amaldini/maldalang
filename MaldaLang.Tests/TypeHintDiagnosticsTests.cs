@@ -72,4 +72,24 @@ public class TypeHintDiagnosticsTests
             d.Source == "malda-types" &&
             d.Message.Contains("Unknown type hint", StringComparison.Ordinal));
     }
+
+    [Fact]
+    public void GetDiagnostics_ShaderFunctionGlslTypes_NoUnknownTypeHint()
+    {
+        var service = new LanguageService();
+        var source = """
+            @shader()
+            function hitSphere(center: vec3, radius: float, tHit: out float) -> float {
+                var oc: vec3 = center;
+                return radius;
+            }
+            """;
+        var diagnostics = service.GetDiagnostics(source);
+        Assert.DoesNotContain(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Message.Contains("Unknown type hint", StringComparison.Ordinal));
+        Assert.DoesNotContain(diagnostics, d =>
+            d.Source == "decorator" &&
+            d.Message.Contains("Unknown decorator '@shader'", StringComparison.Ordinal));
+    }
 }

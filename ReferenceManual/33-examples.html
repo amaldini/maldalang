@@ -336,15 +336,19 @@ function render() {
 }</code></pre>
         <p>Key points: load <code>Examples/Web/wwwroot/vendor/three.min.js</code> before <code>malda-js-runtime.js</code>, then the compiled MALDA script, then call <code>MaldaApp.main()</code>. See <code>Examples/Web/js/three_runtime_smoke_test.html</code> for a direct host page.</p>
         <h3>33.15.1 Shader materials</h3>
-        <p>Move per-pixel work onto the GPU with <code>three.createShaderMaterial</code> and <code>three.setUniform</code>. Put GLSL in a MALDA triple-quoted string (<code>"""</code>, not <code>$"""</code>, so braces stay literal). Compile the realtime tracer with:</p>
+        <p>Move per-pixel work onto the GPU with <code>three.createShaderMaterial</code> and <code>three.setUniform</code>. Write the kernel as typed MALDA with <code>@shader()</code> and compile it to GLSL via <code>glsl.compile</code> (JavaScript mode only). Raw GLSL in a triple-quoted string (<code>"""</code>, not <code>$"""</code>) still works. Compile the realtime tracer with:</p>
         <pre><code>malda compile Examples/Web/js/three_shader_raytracer.malda --mode js -o Examples/Web/js/three_shader_raytracer.js</code></pre>
-        <pre><code>var vert = """
-varying vec2 vUv;
-void main() {
+        <pre><code>@shader()
+function vertexMain() {
     vUv = uv;
     gl_Position = vec4(position.xy, 0.0, 1.0);
 }
-""";
+
+var vert = glsl.compile({
+    varyings: ["vec2 vUv"],
+    functions: ["vertexMain"],
+    main: "vertexMain"
+});
 
 var material = three.createShaderMaterial({
     "vertexShader": vert,

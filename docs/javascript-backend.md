@@ -355,22 +355,29 @@ Use a fullscreen quad plus GLSL when CPU `game.setPixel` is too slow. MALDA owns
 
 - `three.createOrthographicCamera(left, right, top, bottom, near, far)` — typically `(-1, 1, 1, -1, 0, 1)` for an NDC fullscreen pass
 - `three.createShaderMaterial({ "vertexShader": vert, "fragmentShader": frag, "uniforms": { ... } })`
-  - `vertexShader` and `fragmentShader` are GLSL strings (use MALDA `"""` triple-quoted strings)
+  - `vertexShader` and `fragmentShader` are GLSL strings
+  - Prefer writing kernels as typed MALDA `@shader()` functions and compiling them with `glsl.compile({ ... })` (JavaScript mode only). Triple-quoted GLSL strings (`"""`, not `$"""`) still work when you need raw GLSL.
   - Plain uniform values are wrapped as `{ value }`. Arrays of length 2/3/4 become `Vector2` / `Vector3` / `Vector4`. `#rrggbb` strings become `Color`.
   - Optional flags: `"depthWrite": false`, `"depthTest": false`, `"transparent": true`
 - `three.setUniform(material, name, value)` — update a uniform after creation. Vector uniforms accept arrays.
 
-Fullscreen vertex shader (clip-space quad from `PlaneGeometry(2, 2)`):
+Fullscreen vertex shader (clip-space quad from `PlaneGeometry(2, 2)`), written in MALDA and compiled to GLSL:
 
 ```malda
-var vert = """
-varying vec2 vUv;
-void main() {
+@shader()
+function vertexMain() {
     vUv = uv;
     gl_Position = vec4(position.xy, 0.0, 1.0);
 }
-""";
+
+var vert = glsl.compile({
+    varyings: ["vec2 vUv"],
+    functions: ["vertexMain"],
+    main: "vertexMain"
+});
 ```
+
+`@shader()` functions are not emitted as JavaScript. They are a typed subset (C-like control flow, GLSL type hints such as `vec3` / `out float`, `math.sqrt` → `sqrt`). Host MALDA still owns the `three.*` loop and uniforms.
 
 See `Examples/Web/js/three_shader_raytracer.malda` for a realtime GPU sphere tracer. Compile:
 

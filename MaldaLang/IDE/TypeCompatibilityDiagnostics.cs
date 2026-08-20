@@ -294,6 +294,8 @@ public static class TypeCompatibilityDiagnostics
         switch (stmt)
         {
             case FunctionDeclaration funcDecl:
+                if (ShaderFunction.IsMarked(funcDecl))
+                    break;
                 env.PushScope();
                 BindFunctionParameters(funcDecl, env);
                 foreach (var inner in funcDecl.Body.Statements)
