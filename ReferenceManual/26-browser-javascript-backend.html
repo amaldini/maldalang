@@ -45,7 +45,7 @@
             <li><strong>Actor support (local)</strong>: JS mode supports local actors with mailbox semantics compatible with MALDA actor behavior.</li>
             <li><strong>3D scene support</strong>: JavaScript mode includes a curated <code>three.*</code> wrapper for browser-hosted 3D scenes, plus <code>@shader()</code> kernels compiled to GLSL (see <a href="#three-scene-api">26.10</a>).</li>
             <li><strong>Runtime expectation</strong>: generated scripts require <code>malda-js-runtime.js</code> before MALDA output runs.</li>
-            <li><strong>Desktop IDE debug</strong>: F5 on <code>dom.*</code> / <code>game.*</code> / <code>three.*</code> programs transpiles to JavaScript, opens Web Preview, and maps editor breakpoints through the source map (see <a href="02-tools.html#javascript-desktop-debug">2.6.6</a>).</li>
+            <li><strong>Desktop IDE debug</strong>: F5 on <code>dom.*</code> / <code>game.*</code> / <code>three.*</code> programs transpiles to JavaScript, opens Web Preview, and maps editor breakpoints through the source map. Full-stack files (<code>@client()</code> plus <code>@server()</code> or a route) debug the host interpreter and Web Preview together (see <a href="02-tools.html#javascript-desktop-debug">2.6.6</a>).</li>
         </ul>
         <h3>26.2.1 Target decorators in JS output</h3>
         <p>When compiling to JavaScript, target decorators can be used to keep browser and server concerns in one source file:</p>

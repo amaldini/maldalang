@@ -513,4 +513,6 @@ Programs that call `dom.*`, `game.*`, or `three.*` cannot pause in the interpret
 3. WebView2 Chromium debugger (`Debugger.setBreakpointByUrl`) stops on the generated line; the IDE maps back to the MALDA line for highlight, call stack, and locals.
 4. Ctrl+F5 / Run opens the same preview without attaching the debugger.
 
-Watch expressions and breakpoint conditions are JavaScript. VS Code F5 remains interpret-only (`malda debug-adapter`).
+Full-stack sources (`@client()` / `@javascript()` plus `@server()` / `@csharp()` or a route decorator) launch both debuggees: interpret on the host partition and this WebView2 session on the client. Continue / step follow the last pause; Pause stops both. Output uses `[server]` / `[client]` labels. One inspect panel is shown at a time. `@shared()` code can hit either runtime.
+
+Watch expressions and breakpoint conditions on the client are JavaScript. VS Code F5 remains interpret-only (`malda debug-adapter`).

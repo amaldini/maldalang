@@ -70,6 +70,11 @@ public class DebuggerService
     
     public void Start()
     {
+        if (_debugState.IsRunning)
+        {
+            return;
+        }
+
         _debugState.IsRunning = true;
         _debugState.IsPaused = false;
     }

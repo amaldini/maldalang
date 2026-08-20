@@ -184,8 +184,10 @@ public partial class MainWindow
         var input = ProgramInputTextBox.Text;
         
         SetOutputText("");
+        ResetDualDebugState();
 
-        if (JsBrowserApiDetector.UsesBrowserHost(source))
+        var launchKind = MaldaDebugLaunch.Classify(source);
+        if (launchKind == MaldaDebugLaunchKind.JavaScript)
         {
             try
             {
@@ -193,6 +195,7 @@ public partial class MainWindow
             }
             catch (Exception ex)
             {
+                ResetDualDebugState();
                 _debuggerService.Stop();
                 await StopJsDebuggerAsync();
                 SetOutputText($"JavaScript debug failed: {ex.Message}", isError: true);
@@ -200,25 +203,50 @@ public partial class MainWindow
             }
             return;
         }
+
+        if (launchKind == MaldaDebugLaunchKind.FullStack)
+        {
+            _dualDebugSession = true;
+            try
+            {
+                await StartJsWebViewDebuggingAsync(source, fileName, dualDebug: true);
+            }
+            catch (Exception ex)
+            {
+                ResetDualDebugState();
+                _debuggerService.Stop();
+                await StopJsDebuggerAsync();
+                SetOutputText($"Full-stack debug failed: {ex.Message}", isError: true);
+                UpdateButtonStates();
+                return;
+            }
+        }
         
         // Do not clear tool calls log here so Edit mode tool calls persist when user then debugs
         UpdateToolCallsDisplay();
         
         _debuggerService.Start();
+        _interpretDebugSessionActive = true;
+        if (!_dualDebugSession)
+        {
+            _focusedDebuggee = DebuggeeKind.Interpret;
+        }
+
         _debuggerHook = new DebuggerHook(_debuggerService);
         _debuggerHook.SetDebugMode(DebugMode.Continue);
         _debuggerHook.Session.ConditionError += message =>
         {
-            Dispatcher.Invoke(() => SetOutputText(_executionService.GetCurrentOutput() + "\n" + message, isError: true));
+            Dispatcher.Invoke(() => RefreshDebugOutput(message, isError: true));
         };
         _debuggerHook.OnPaused += (line, file) =>
         {
             Dispatcher.Invoke(() =>
             {
-                // Update output immediately when debugger pauses
-                SetOutputText(_executionService.GetCurrentOutput());
+                _interpretPaused = true;
+                _interpretStepInFlight = false;
+                _focusedDebuggee = DebuggeeKind.Interpret;
+                RefreshDebugOutput();
                 
-                // Update debug info from interpreter
                 var interpreter = _executionService.GetCurrentInterpreter();
                 if (interpreter != null && _debuggerHook != null)
                 {
@@ -227,26 +255,32 @@ public partial class MainWindow
                 UpdateDebugInfo();
                 HighlightCurrentLine(line, file);
                 SwitchToTab("debug");
-                UpdateButtonStates();
+                ApplyDualPauseState();
             });
         };
         
         _debugCancellation = new CancellationTokenSource();
+        var hostPartitionOnly = _dualDebugSession;
         _debugTask = Task.Run(async () =>
         {
             try
             {
-                var result = await _executionService.ExecuteWithDebuggerAsync(source, _debuggerHook, input, fileName);
+                var result = await _executionService.ExecuteWithDebuggerAsync(
+                    source,
+                    _debuggerHook,
+                    input,
+                    fileName,
+                    hostPartitionOnly);
                 
                 Dispatcher.Invoke(() =>
                 {
                     if (!string.IsNullOrEmpty(result.Error))
                     {
-                        SetOutputText($"{_executionService.GetCurrentOutput()}\n\nError: {result.Error}", isError: true);
+                        RefreshDebugOutput($"Error: {result.Error}", isError: true);
                     }
                     else
                     {
-                        SetOutputText(_executionService.GetCurrentOutput());
+                        RefreshDebugOutput();
                     }
                     UpdateDebugInfo();
                     UpdateButtonStates();
@@ -256,19 +290,16 @@ public partial class MainWindow
             {
                 Dispatcher.Invoke(() =>
                 {
-                    SetOutputText($"Error: {ex.Message}", isError: true);
-                    ClearCurrentLineHighlight();
+                    RefreshDebugOutput($"Error: {ex.Message}", isError: true);
+                    if (!_jsPaused)
+                    {
+                        ClearCurrentLineHighlight();
+                    }
                 });
             }
             finally
             {
-                Dispatcher.Invoke(() =>
-                {
-                    _debuggerService.Stop();
-                    ClearCurrentLineHighlight();
-                    UpdateDebugInfo();
-                    UpdateButtonStates();
-                });
+                Dispatcher.Invoke(() => FinishInterpretDebugSession());
             }
         }, _debugCancellation.Token);
         
@@ -279,88 +310,105 @@ public partial class MainWindow
     {
         if (!_debuggerService.State.IsPaused) return;
 
-        if (_jsDebugger is { IsAttached: true })
+        if (ShouldDriveJsDebugger())
         {
-            _debuggerService.Resume();
-            UpdateButtonStates();
-            _ = _jsDebugger.ContinueAsync();
+            _jsStepInFlight = false;
+            _jsPaused = false;
+            ApplyDualPauseState();
+            _ = _jsDebugger!.ContinueAsync();
+            if (_interpretPaused)
+            {
+                ShowInterpretPauseUi();
+            }
             return;
         }
 
         if (_debuggerHook == null) return;
-        
-        SetOutputText(_executionService.GetCurrentOutput());
+
+        _interpretStepInFlight = false;
+        _interpretPaused = false;
+        RefreshDebugOutput();
         _debuggerHook.SetDebugMode(DebugMode.Continue);
-        _debuggerService.Resume();
-        UpdateButtonStates();
+        ApplyDualPauseState();
+        if (_jsPaused)
+        {
+            ShowJsPauseUi();
+        }
     }
 
     private void StepOverButton_Click(object sender, RoutedEventArgs e)
     {
         if (!_debuggerService.State.IsPaused) return;
 
-        if (_jsDebugger is { IsAttached: true })
+        if (ShouldDriveJsDebugger())
         {
-            _debuggerService.Resume();
-            UpdateButtonStates();
-            _ = _jsDebugger.StepOverAsync();
+            _jsStepInFlight = true;
+            _jsPaused = false;
+            ApplyDualPauseState();
+            _ = _jsDebugger!.StepOverAsync();
             return;
         }
 
         if (_debuggerHook == null) return;
-        
-        SetOutputText(_executionService.GetCurrentOutput());
+
+        _interpretStepInFlight = true;
+        _interpretPaused = false;
+        RefreshDebugOutput();
         UpdateDebugInfo();
         _debuggerHook.SetDebugMode(DebugMode.StepOver);
-        _debuggerService.Resume();
+        ApplyDualPauseState();
         
         if (_debuggerService.State.CurrentLine.HasValue)
         {
             HighlightCurrentLine(_debuggerService.State.CurrentLine.Value, _debuggerService.State.CurrentFile);
         }
-        UpdateButtonStates();
     }
 
     private void StepIntoButton_Click(object sender, RoutedEventArgs e)
     {
         if (!_debuggerService.State.IsPaused) return;
 
-        if (_jsDebugger is { IsAttached: true })
+        if (ShouldDriveJsDebugger())
         {
-            _debuggerService.Resume();
-            UpdateButtonStates();
-            _ = _jsDebugger.StepIntoAsync();
+            _jsStepInFlight = true;
+            _jsPaused = false;
+            ApplyDualPauseState();
+            _ = _jsDebugger!.StepIntoAsync();
             return;
         }
 
         if (_debuggerHook == null) return;
-        
-        SetOutputText(_executionService.GetCurrentOutput());
+
+        _interpretStepInFlight = true;
+        _interpretPaused = false;
+        RefreshDebugOutput();
         UpdateDebugInfo();
         _debuggerHook.SetDebugMode(DebugMode.StepInto);
-        _debuggerService.Resume();
+        ApplyDualPauseState();
         
         if (_debuggerService.State.CurrentLine.HasValue)
         {
             HighlightCurrentLine(_debuggerService.State.CurrentLine.Value, _debuggerService.State.CurrentFile);
         }
-        UpdateButtonStates();
     }
 
     private void StepOutButton_Click(object sender, RoutedEventArgs e)
     {
         if (!_debuggerService.State.IsPaused) return;
 
-        if (_jsDebugger is { IsAttached: true })
+        if (ShouldDriveJsDebugger())
         {
-            _debuggerService.Resume();
-            UpdateButtonStates();
-            _ = _jsDebugger.StepOutAsync();
+            _jsStepInFlight = true;
+            _jsPaused = false;
+            ApplyDualPauseState();
+            _ = _jsDebugger!.StepOutAsync();
             return;
         }
 
         if (_debuggerHook == null) return;
-        
+
+        _interpretStepInFlight = true;
+        _interpretPaused = false;
         var interpreter = _executionService.GetCurrentInterpreter();
         if (interpreter != null)
         {
@@ -372,21 +420,30 @@ public partial class MainWindow
             }
         }
         
-        SetOutputText(_executionService.GetCurrentOutput());
+        RefreshDebugOutput();
         UpdateDebugInfo();
         _debuggerHook.SetDebugMode(DebugMode.StepOut);
-        _debuggerService.Resume();
+        ApplyDualPauseState();
         
         if (_debuggerService.State.CurrentLine.HasValue)
         {
             HighlightCurrentLine(_debuggerService.State.CurrentLine.Value, _debuggerService.State.CurrentFile);
         }
-        UpdateButtonStates();
     }
 
     private void PauseButton_Click(object sender, RoutedEventArgs e)
     {
         if (!_debuggerService.State.IsRunning || _debuggerService.State.IsPaused) return;
+
+        if (_dualDebugSession && _jsDebugger is { IsAttached: true } && _debuggerHook != null)
+        {
+            _debuggerHook.SetDebugMode(DebugMode.Paused);
+            _debuggerService.Pause();
+            RefreshDebugOutput();
+            _ = _jsDebugger.PauseAsync();
+            UpdateButtonStates();
+            return;
+        }
 
         if (_jsDebugger is { IsAttached: true })
         {
@@ -400,7 +457,7 @@ public partial class MainWindow
         
         _debuggerHook.SetDebugMode(DebugMode.Paused);
         _debuggerService.Pause();
-        SetOutputText(_executionService.GetCurrentOutput());
+        RefreshDebugOutput();
         UpdateDebugInfo();
         
         if (_debuggerService.State.CurrentLine.HasValue)
@@ -485,7 +542,7 @@ public partial class MainWindow
 
     private void UpdateDebugInfo()
     {
-        if (_jsDebugger is { IsAttached: true })
+        if (UseJsInspect)
         {
             UpdateJsDebugInfo();
             return;
@@ -616,7 +673,7 @@ public partial class MainWindow
         if (item.Items.Count == 1 && item.Items[0] is TreeViewItem { Tag: null, Header: "…" })
         {
             item.Items.Clear();
-            if (_jsDebugger is { IsAttached: true })
+            if (UseJsInspect)
             {
                 var cached = _jsDebugger.GetCachedChildren(node.VariablesReference);
                 if (cached.Count > 0)
@@ -670,7 +727,7 @@ public partial class MainWindow
         if (CallStackListBox.SelectedItem is ListBoxItem { Tag: int frameId })
         {
             _selectedDebugFrameId = frameId;
-            if (_jsDebugger is { IsAttached: true })
+            if (UseJsInspect)
             {
                 RebuildJsVariablesTree();
                 _ = RefreshJsWatchesAsync();
@@ -749,7 +806,7 @@ public partial class MainWindow
         }
 
         WatchExpressionTextBox.Clear();
-        if (_jsDebugger is { IsAttached: true })
+        if (UseJsInspect)
         {
             _ = RefreshJsWatchesAsync();
         }
@@ -780,7 +837,7 @@ public partial class MainWindow
         }
 
         _watchExpressions.RemoveAt(index);
-        if (_jsDebugger is { IsAttached: true })
+        if (UseJsInspect)
         {
             _ = RefreshJsWatchesAsync();
         }
@@ -862,7 +919,191 @@ public partial class MainWindow
         }
     }
 
-    private async Task StartJsWebViewDebuggingAsync(string source, string fileName)
+    private bool UseJsInspect =>
+        _focusedDebuggee == DebuggeeKind.JavaScript && _jsDebugger is { IsAttached: true };
+
+    private bool ShouldDriveJsDebugger()
+    {
+        if (_jsDebugger is not { IsAttached: true })
+        {
+            return false;
+        }
+
+        if (_focusedDebuggee == DebuggeeKind.Interpret && _debuggerHook != null)
+        {
+            return false;
+        }
+
+        if (_focusedDebuggee == DebuggeeKind.JavaScript)
+        {
+            return true;
+        }
+
+        return _debuggerHook == null;
+    }
+
+    private void ResetDualDebugState()
+    {
+        _focusedDebuggee = DebuggeeKind.None;
+        _interpretPaused = false;
+        _jsPaused = false;
+        _jsStepInFlight = false;
+        _interpretStepInFlight = false;
+        _interpretDebugSessionActive = false;
+        _dualDebugSession = false;
+    }
+
+    private void ApplyDualPauseState()
+    {
+        if (_interpretPaused || _jsPaused)
+        {
+            _debuggerService.Pause();
+        }
+        else
+        {
+            _debuggerService.Resume();
+        }
+
+        UpdateButtonStates();
+    }
+
+    private void RefreshDebugOutput(string? extraServerMessage = null, bool isError = false)
+    {
+        if (_dualDebugSession)
+        {
+            SetOutputText(FormatDualDebugOutput(extraServerMessage), isError);
+            return;
+        }
+
+        if (_jsDebugger is { IsAttached: true })
+        {
+            var client = _jsDebugOutput.TrimEnd();
+            if (!string.IsNullOrWhiteSpace(extraServerMessage))
+            {
+                client = string.IsNullOrEmpty(client)
+                    ? extraServerMessage
+                    : client + "\n" + extraServerMessage;
+            }
+
+            SetOutputText(client, isError);
+            return;
+        }
+
+        var server = _executionService.GetCurrentOutput();
+        if (!string.IsNullOrWhiteSpace(extraServerMessage))
+        {
+            server = string.IsNullOrEmpty(server)
+                ? extraServerMessage
+                : server.TrimEnd() + "\n" + extraServerMessage;
+        }
+
+        SetOutputText(server, isError);
+    }
+
+    private string FormatDualDebugOutput(string? extraServerMessage)
+    {
+        var builder = new StringBuilder();
+        var server = _executionService.GetCurrentOutput();
+        if (!string.IsNullOrWhiteSpace(extraServerMessage))
+        {
+            server = string.IsNullOrEmpty(server)
+                ? extraServerMessage
+                : server.TrimEnd() + "\n" + extraServerMessage;
+        }
+
+        if (!string.IsNullOrWhiteSpace(server))
+        {
+            builder.AppendLine("[server]");
+            builder.AppendLine(server.TrimEnd());
+        }
+
+        var client = _jsDebugOutput.TrimEnd();
+        if (!string.IsNullOrEmpty(client))
+        {
+            if (builder.Length > 0)
+            {
+                builder.AppendLine();
+            }
+
+            builder.AppendLine("[client]");
+            builder.AppendLine(client);
+        }
+
+        return builder.ToString().TrimEnd();
+    }
+
+    private void ShowInterpretPauseUi()
+    {
+        if (_debuggerHook == null)
+        {
+            return;
+        }
+
+        _focusedDebuggee = DebuggeeKind.Interpret;
+        var line = _debuggerHook.Session.CurrentLine;
+        var file = _debuggerHook.Session.CurrentFile;
+        _debuggerService.SetCurrentLine(line, file ?? "main.malda");
+        RefreshDebugOutput();
+        var interpreter = _executionService.GetCurrentInterpreter();
+        if (interpreter != null)
+        {
+            _debuggerHook.UpdateDebugInfo(interpreter);
+        }
+
+        UpdateDebugInfo();
+        HighlightCurrentLine(line, file);
+        SwitchToTab("debug");
+        ApplyDualPauseState();
+    }
+
+    private void ShowJsPauseUi()
+    {
+        var snapshot = _jsDebugger?.LastPause;
+        if (snapshot == null)
+        {
+            _focusedDebuggee = DebuggeeKind.JavaScript;
+            UpdateDebugInfo();
+            ApplyDualPauseState();
+            return;
+        }
+
+        OnJsDebuggerPaused(snapshot);
+    }
+
+    private void FinishInterpretDebugSession()
+    {
+        _interpretDebugSessionActive = false;
+        _interpretPaused = false;
+        _interpretStepInFlight = false;
+        _debuggerHook?.Stop();
+        _debuggerHook = null;
+
+        if (_dualDebugSession && _jsDebugger is { IsAttached: true })
+        {
+            ApplyDualPauseState();
+            if (_jsPaused)
+            {
+                ShowJsPauseUi();
+            }
+            else
+            {
+                ClearCurrentLineHighlight();
+            }
+
+            RefreshDebugOutput();
+            UpdateDebugInfo();
+            UpdateButtonStates();
+            return;
+        }
+
+        ResetDualDebugState();
+        _debuggerService.Stop();
+        ClearCurrentLineHighlight();
+        UpdateDebugInfo();
+        UpdateButtonStates();
+    }
+
+    private async Task StartJsWebViewDebuggingAsync(string source, string fileName, bool dualDebug = false)
     {
         if (string.IsNullOrWhiteSpace(fileName) ||
             string.Equals(fileName, "main.malda", StringComparison.Ordinal) ||
@@ -898,7 +1139,9 @@ public partial class MainWindow
         }
 
         await StopJsDebuggerAsync();
-        _jsDebugOutput = "Debugging JavaScript in Web Preview. Breakpoints map from this .malda file onto the generated script.\n";
+        _jsDebugOutput = dualDebug
+            ? "Debugging full-stack: host interpreter + JavaScript in Web Preview. Breakpoints map from this .malda file onto each runtime.\n"
+            : "Debugging JavaScript in Web Preview. Breakpoints map from this .malda file onto the generated script.\n";
         _jsDebugger = new WebViewJsDebugger();
         _jsDebugger.Paused += snapshot => Dispatcher.Invoke(() => OnJsDebuggerPaused(snapshot));
         _jsDebugger.Resumed += () => Dispatcher.Invoke(OnJsDebuggerResumed);
@@ -906,26 +1149,43 @@ public partial class MainWindow
         _jsDebugger.Failed += message => Dispatcher.Invoke(() => AppendJsDebugOutput(message, isError: true));
 
         _debuggerService.Start();
+        _focusedDebuggee = DebuggeeKind.JavaScript;
         await _jsDebugger.AttachAsync(core, sourceMap, Path.GetFileName(artifact.ScriptPath), fileName);
         await _jsDebugger.SyncBreakpointsAsync(_debuggerService.Breakpoints.ToList());
         await OpenUriInWebUiPanelAsync(previewUri, previewUri.AbsoluteUri, switchToTab: true, ensureUiHost: false);
-        SetOutputText(_jsDebugOutput.TrimEnd());
+        RefreshDebugOutput();
         UpdateButtonStates();
     }
 
     private void OnJsDebuggerPaused(JsDebugPauseSnapshot snapshot)
     {
+        _jsPaused = true;
+        _jsStepInFlight = false;
+        _focusedDebuggee = DebuggeeKind.JavaScript;
         _debuggerService.SetCurrentLine(snapshot.Line, snapshot.File);
         _debuggerService.Pause();
         _debuggerService.UpdateCallStack(snapshot.Frames.ToList());
         HighlightCurrentLine(snapshot.Line, snapshot.File);
         SwitchToTab("debug");
         UpdateDebugInfo();
-        UpdateButtonStates();
+        ApplyDualPauseState();
     }
 
     private void OnJsDebuggerResumed()
     {
+        _jsPaused = false;
+        if (_jsStepInFlight)
+        {
+            ApplyDualPauseState();
+            return;
+        }
+
+        if (_interpretPaused)
+        {
+            ShowInterpretPauseUi();
+            return;
+        }
+
         _debuggerService.Resume();
         ClearCurrentLineHighlight();
         UpdateButtonStates();
@@ -941,7 +1201,7 @@ public partial class MainWindow
         _jsDebugOutput = string.IsNullOrEmpty(_jsDebugOutput)
             ? text + "\n"
             : _jsDebugOutput + text + "\n";
-        SetOutputText(_jsDebugOutput.TrimEnd(), isError);
+        RefreshDebugOutput(isError: isError);
     }
 
     private void UpdateJsDebugInfo()
