@@ -9,6 +9,18 @@ public class Theme
 {
     public string Name { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// True when the editor chrome is dark enough that light syntax colors are required.
+    /// </summary>
+    public bool IsDark
+    {
+        get
+        {
+            var luminance = ((0.299 * EditorBackground.R) + (0.587 * EditorBackground.G) + (0.114 * EditorBackground.B)) / 255.0;
+            return luminance < 0.5;
+        }
+    }
     
     // Window and main backgrounds
     public Color WindowBackground { get; set; }

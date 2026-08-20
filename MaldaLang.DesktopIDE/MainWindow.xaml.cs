@@ -592,6 +592,7 @@ public partial class MainWindow : Window
     private void SetupThemes()
     {
         ThemeComboBox.Items.Clear();
+        ThemeMenu.Items.Clear();
         foreach (var theme in _themeService.AvailableThemes)
         {
             var item = new ComboBoxItem 
@@ -600,20 +601,51 @@ public partial class MainWindow : Window
                 Tag = theme
             };
             ThemeComboBox.Items.Add(item);
-            if (theme.Name == _themeService.CurrentTheme.Name)
+
+            var menuItem = new MenuItem
             {
-                ThemeComboBox.SelectedItem = item;
-            }
+                Header = theme.DisplayName,
+                Tag = theme.Name,
+                IsCheckable = true
+            };
+            menuItem.Click += ViewThemeMenuItem_Click;
+            ThemeMenu.Items.Add(menuItem);
         }
+
+        SyncThemeSelectors(_themeService.CurrentTheme);
         
         // Apply initial theme
         ApplyTheme(_themeService.CurrentTheme);
+    }
+
+    private void SyncThemeSelectors(Theme theme)
+    {
+        foreach (ComboBoxItem item in ThemeComboBox.Items)
+        {
+            if (item.Tag is Theme listed && listed.Name == theme.Name)
+            {
+                if (!Equals(ThemeComboBox.SelectedItem, item))
+                {
+                    ThemeComboBox.SelectedItem = item;
+                }
+                break;
+            }
+        }
+
+        foreach (var obj in ThemeMenu.Items)
+        {
+            if (obj is MenuItem menuItem)
+            {
+                menuItem.IsChecked = menuItem.Tag is string name && name == theme.Name;
+            }
+        }
     }
     
     private void OnThemeChanged(object? sender, Theme theme)
     {
         Dispatcher.Invoke(() =>
         {
+            SyncThemeSelectors(theme);
             ApplyTheme(theme);
         });
     }
@@ -2066,25 +2098,12 @@ public partial class MainWindow : Window
     }
     
     // View Menu
-    private void ViewThemeLight_Click(object sender, RoutedEventArgs e)
+    private void ViewThemeMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        _themeService.SetTheme("Light");
-        ThemeComboBox.SelectedItem = ThemeComboBox.Items.Cast<ComboBoxItem>()
-            .FirstOrDefault(item => item.Tag is Theme theme && theme.Name == "Light");
-    }
-    
-    private void ViewThemeDark_Click(object sender, RoutedEventArgs e)
-    {
-        _themeService.SetTheme("Dark");
-        ThemeComboBox.SelectedItem = ThemeComboBox.Items.Cast<ComboBoxItem>()
-            .FirstOrDefault(item => item.Tag is Theme theme && theme.Name == "Dark");
-    }
-    
-    private void ViewThemeHighContrast_Click(object sender, RoutedEventArgs e)
-    {
-        _themeService.SetTheme("HighContrast");
-        ThemeComboBox.SelectedItem = ThemeComboBox.Items.Cast<ComboBoxItem>()
-            .FirstOrDefault(item => item.Tag is Theme theme && theme.Name == "HighContrast");
+        if (sender is MenuItem { Tag: string name })
+        {
+            _themeService.SetTheme(name);
+        }
     }
     
     private void ViewToggleOutputPanel_Click(object sender, RoutedEventArgs e)
