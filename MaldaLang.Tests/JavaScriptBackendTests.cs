@@ -450,7 +450,7 @@ public class JavaScriptBackendTests : TestBase
     [Fact]
     public void JsTranspiler_MaldadashExample_EmitsGameLoopCalls()
     {
-        var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "js", "maldadash.malda");
+        var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Games", "maldadash.malda");
         var compiler = new Compiler.Compiler();
         var js = compiler.TranspileToJavaScript(sourcePath);
 
@@ -465,7 +465,7 @@ public class JavaScriptBackendTests : TestBase
     [Fact]
     public void JsTranspiler_RayTracerExample_EmitsPixelBlitCalls()
     {
-        var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "js", "ray_tracer.malda");
+        var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Games", "ray_tracer.malda");
         var compiler = new Compiler.Compiler();
         var js = compiler.TranspileToJavaScript(sourcePath);
 
@@ -778,7 +778,7 @@ process.stdout.write("ok\n");
     [Fact]
     public void JsTranspiler_ShaderRayTracerExample_EmitsShaderCalls()
     {
-        var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "js", "three_shader_raytracer.malda");
+        var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Games", "three_shader_raytracer.malda");
         var compiler = new Compiler.Compiler();
         var js = compiler.TranspileToJavaScript(sourcePath);
 
@@ -796,7 +796,7 @@ process.stdout.write("ok\n");
     [Fact]
     public void JsTranspiler_ShaderPathTunnelExample_EmitsShaderCalls()
     {
-        var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "js", "three_shader_path_tunnel.malda");
+        var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Games", "three_shader_path_tunnel.malda");
         var compiler = new Compiler.Compiler();
         var js = compiler.TranspileToJavaScript(sourcePath);
 

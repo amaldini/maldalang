@@ -66,7 +66,7 @@ Interpret-mode only. This extension is not Desktop IDE parity (no UIHost preview
 
 ## Desktop IDE JavaScript debug
 
-`dom.*` / `game.*` / `three.*` programs (for example `Examples/Web/js/maldanoid.malda`) throw in the interpreter. Desktop IDE **F5** detects those APIs, transpiles to JavaScript with a VLQ source map, loads the result in Web Preview, and uses WebView2's Chromium debugger so glyph breakpoints, continue, and step hit `.malda` lines.
+`dom.*` / `game.*` / `three.*` programs (for example `Examples/Games/maldanoid.malda`) throw in the interpreter. Desktop IDE **F5** detects those APIs, transpiles to JavaScript with a VLQ source map, loads the result in Web Preview, and uses WebView2's Chromium debugger so glyph breakpoints, continue, and step hit `.malda` lines.
 
 Full-stack files (`@client()` / `@javascript()` plus `@server()` / `@csharp()` or a route decorator) start **both** sessions: the interpreter debugs the host partition (client-only functions are skipped) and Web Preview debugs the JavaScript partition. Continue / step follow whichever side last paused; Pause stops both. Output is labeled `[server]` and `[client]`. One current-line highlight and inspect panel is shown at a time. `@shared()` bodies can stop in either runtime.
 

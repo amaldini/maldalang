@@ -271,6 +271,7 @@ Canonical reading order for tools and agents working from this unzipped folder
 - Examples/Basics/
 - Examples/Prompts/
 - Examples/Web/
+- Examples/Games/
 - Examples/Actors/
 - Templates/webapi/
 - Templates/fullstack/

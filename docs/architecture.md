@@ -64,7 +64,7 @@ Missing one registration site is a common bug (works interpreted XOR transpiled)
 
 ## Web stack (language feature, not Web IDE)
 
-MALDA programs can host HTTP/UI via builtins and decorators (`@GET`, `@PAGE`, …). Examples live under `Examples/Web/` and `Templates/`. This is separate from the **Web IDE** Blazor app in `MaldaLang.IDE`.
+MALDA programs can host HTTP/UI via builtins and decorators (`@GET`, `@PAGE`, …). Examples live under `Examples/Web/` and `Templates/`. Browser `game.*` / `three.*` samples are under `Examples/Games/`. This is separate from the **Web IDE** Blazor app in `MaldaLang.IDE`.
 
 Server-driven `ui.*` trees, patch protocol, and `MaldaLang.UIHost` wiring are documented in [`docs/ui-framework.md`](ui-framework.md). Language API for components and controls: [`ReferenceManual/24-web-ui.html`](../ReferenceManual/24-web-ui.html).
 

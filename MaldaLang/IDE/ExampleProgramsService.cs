@@ -216,12 +216,13 @@ public class ExampleProgramsService
         if (category.Equals("Tools", StringComparison.OrdinalIgnoreCase)) return 10;
         if (category.Equals("Databases", StringComparison.OrdinalIgnoreCase)) return 11;
         if (category.Equals("Web", StringComparison.OrdinalIgnoreCase)) return 12;
-        if (category.Equals("Graphs", StringComparison.OrdinalIgnoreCase)) return 13;
-        if (category.Equals("VectorDB", StringComparison.OrdinalIgnoreCase)) return 14;
-        if (category.Equals("SpectreConsole", StringComparison.OrdinalIgnoreCase)) return 15;
-        if (category.Equals("Testing", StringComparison.OrdinalIgnoreCase)) return 16;
-        if (category.Equals("LLM_Servers", StringComparison.OrdinalIgnoreCase)) return 17;
-        if (category.Equals("MCP", StringComparison.OrdinalIgnoreCase)) return 18;
+        if (category.Equals("Games", StringComparison.OrdinalIgnoreCase)) return 13;
+        if (category.Equals("Graphs", StringComparison.OrdinalIgnoreCase)) return 14;
+        if (category.Equals("VectorDB", StringComparison.OrdinalIgnoreCase)) return 15;
+        if (category.Equals("SpectreConsole", StringComparison.OrdinalIgnoreCase)) return 16;
+        if (category.Equals("Testing", StringComparison.OrdinalIgnoreCase)) return 17;
+        if (category.Equals("LLM_Servers", StringComparison.OrdinalIgnoreCase)) return 18;
+        if (category.Equals("MCP", StringComparison.OrdinalIgnoreCase)) return 19;
         
         // AI & Advanced Features
         if (category.Equals("Actors", StringComparison.OrdinalIgnoreCase)) return 20;

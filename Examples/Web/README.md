@@ -1,6 +1,6 @@
 # Web examples
 
-HttpServer / RestServer, server-driven UI, browser JS target, cookie and Bearer auth, and the lightweight job queue.
+HttpServer / RestServer, server-driven UI, browser JS target (DOM/templates), cookie and Bearer auth, and the lightweight job queue. Canvas games and three.js graphics live in [`Examples/Games/`](../Games/).
 
 ## Run
 
@@ -31,16 +31,7 @@ malda Examples/Web/ui_state_lifecycle.malda
 
 Longer showcase: `ui_counter_dashboard.malda`. Engine notes: [`docs/ui-framework.md`](../../docs/ui-framework.md).
 
-JS / PWA samples under `js/` need `malda compile … --mode js` (or the Desktop/Web IDE browser path). See [`docs/spec/backend-capability-matrix.md`](../../docs/spec/backend-capability-matrix.md).
-
-```bash
-malda compile Examples/Web/js/three_shader_path_tunnel.malda --mode js -o Examples/Web/js/three_shader_path_tunnel.js
-malda compile Examples/Web/js/maldadash.malda --mode js -o Examples/Web/js/maldadash.js
-```
-
-`maldadash.malda` is a Boulder Dash-style cave (dirt, gravity rocks, diamonds, fireflies) on `game.*`. Open it with `Examples/Web/js/maldadash_runtime_smoke_test.html` after compiling.
-
-That tunnel demo is a CC-BY-NC-SA-4.0 conversion of [Frostbyte’s path march](https://fragcoord.xyz/s/tbe1g319); it is not under the repository MIT OR Apache-2.0 dual licence.
+JS / PWA DOM samples under `js/` need `malda compile … --mode js` (or the Desktop/Web IDE browser path). See [`docs/spec/backend-capability-matrix.md`](../../docs/spec/backend-capability-matrix.md). Canvas games and `three.*` graphics: [`Examples/Games/`](../Games/).
 
 ## Dependencies
 

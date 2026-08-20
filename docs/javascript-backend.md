@@ -191,7 +191,7 @@ game.start(update, render);
 Compile:
 
 ```bash
-malda compile Examples/Web/js/my_game.malda --mode js -o Examples/Web/js/my_game.js
+malda compile Examples/Games/my_game.malda --mode js -o Examples/Games/my_game.js
 ```
 
 Host page loading order (required):
@@ -228,7 +228,7 @@ function update(dtMs) {
 - Do not call `game.start(...)` twice without stopping in between.
 - Call `game.stop()` only when a loop is active.
 
-See `Examples/Web/js/game_bounce.malda` and `Examples/Web/js/game_runtime_smoke_test.html` for a complete playable reference. See `Examples/Web/js/maldadash.malda` for a Boulder Dash-style tile cave (gravity rocks, diamonds, fireflies). See `Examples/Web/js/ray_tracer.malda` for a CPU ray tracer that fills the pixel buffer and blits it once per frame.
+See `Examples/Games/game_bounce.malda` and `Examples/Games/game_runtime_smoke_test.html` for a complete playable reference. See `Examples/Games/maldadash.malda` for a Boulder Dash-style tile cave (gravity rocks, diamonds, fireflies). See `Examples/Games/ray_tracer.malda` for a CPU ray tracer that fills the pixel buffer and blits it once per frame.
 
 ## three.js Quick Start (`three.*`)
 
@@ -330,7 +330,7 @@ three.start(update, render);
 Compile:
 
 ```bash
-malda compile Examples/Web/js/three_cube.malda --mode js -o Examples/Web/js/three_cube.js
+malda compile Examples/Games/three_cube.malda --mode js -o Examples/Games/three_cube.js
 ```
 
 Host page loading order (required):
@@ -340,7 +340,7 @@ Host page loading order (required):
 3. compiled MALDA script
 4. `MaldaApp.main()`
 
-See `Examples/Web/js/three_cube.malda` and `Examples/Web/js/three_runtime_smoke_test.html` for the MVP reference implementation.
+See `Examples/Games/three_cube.malda` and `Examples/Games/three_runtime_smoke_test.html` for the MVP reference implementation.
 
 ### Guardrails and error conditions
 
@@ -383,16 +383,16 @@ The user-facing contract (types, subset, `glsl.compile` keys, IDE rename) is in 
 
 `@shader()` functions are not emitted as JavaScript. They are a typed subset (C-like control flow, GLSL type hints such as `vec3` / `out float`, `math.sqrt` → `sqrt`). Host MALDA still owns the `three.*` loop and uniforms.
 
-See `Examples/Web/js/three_shader_raytracer.malda` for a realtime GPU sphere tracer. Compile:
+See `Examples/Games/three_shader_raytracer.malda` for a realtime GPU sphere tracer. Compile:
 
 ```bash
-malda compile Examples/Web/js/three_shader_raytracer.malda --mode js -o Examples/Web/js/three_shader_raytracer.js
+malda compile Examples/Games/three_shader_raytracer.malda --mode js -o Examples/Games/three_shader_raytracer.js
 ```
 
-`Examples/Web/js/three_shader_path_tunnel.malda` is a ShaderToy-style path-marching tunnel (Frostbyte, CC-BY-NC-SA-4.0 — that file is not under the repo dual licence). Compile:
+`Examples/Games/three_shader_path_tunnel.malda` is a ShaderToy-style path-marching tunnel (Frostbyte, CC-BY-NC-SA-4.0 — that file is not under the repo dual licence). Compile:
 
 ```bash
-malda compile Examples/Web/js/three_shader_path_tunnel.malda --mode js -o Examples/Web/js/three_shader_path_tunnel.js
+malda compile Examples/Games/three_shader_path_tunnel.malda --mode js -o Examples/Games/three_shader_path_tunnel.js
 ```
 
 Host page loading order is the same as other `three.*` demos (`three.min.js` first).

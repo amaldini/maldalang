@@ -188,7 +188,7 @@ println(text);</code></pre>
         </ul>
         <p><strong>Loop guidance:</strong> <code>updateFn</code> receives <code>dtMs</code>. Scale movement by <code>dtMs</code> so animation stays frame-rate independent.</p>
         <p><strong>Audio guidance:</strong> call <code>game.audioInit()</code> after a user gesture to satisfy browser autoplay policies.</p>
-        <p>For a full quick start and best practices, see <code>docs/javascript-backend.md</code>. For a complete sample, see <code>Examples/Web/js/game_bounce.malda</code>. For a Boulder Dash-style tile cave (dirt, gravity rocks, diamonds, fireflies), see <code>Examples/Web/js/maldadash.malda</code>. For a CPU ray tracer that writes pixels into an <code>ImageData</code> buffer and blits once per frame, see <code>Examples/Web/js/ray_tracer.malda</code>.</p>
+        <p>For a full quick start and best practices, see <code>docs/javascript-backend.md</code>. For a complete sample, see <code>Examples/Games/game_bounce.malda</code>. For a Boulder Dash-style tile cave (dirt, gravity rocks, diamonds, fireflies), see <code>Examples/Games/maldadash.malda</code>. For a CPU ray tracer that writes pixels into an <code>ImageData</code> buffer and blits once per frame, see <code>Examples/Games/ray_tracer.malda</code>.</p>
 
         <h2 id="three-scene-api">26.10 three.js Scene API</h2>
         <p>The JavaScript backend includes a curated 3D scene API under <code>three.*</code>. Use it when you want a browser-hosted scene in MALDA without writing raw <code>THREE.*</code> calls. The namespace is JavaScript mode only; interpreter and C# transpile do not run these helpers. Calls map to <code>mlRuntime.three.*</code> in the generated script.</p>
@@ -246,8 +246,8 @@ three.start(update, render);</code></pre>
         <p><strong>Resize guidance:</strong> if the host page changes the render viewport after setup, update both the renderer and the camera: <code>three.setRendererSize(renderer, width, height)</code> and <code>three.setCameraAspect(camera, width / height)</code>.</p>
         <p><strong>MVP scope:</strong> the first cut is intentionally narrow. Textures, model loading, orbit controls, and generic raw JS interop are outside this API. Lit meshes use <code>three.createStandardMaterial</code>. Custom GLSL uses <code>three.createShaderMaterial</code> and <code>three.setUniform</code> — see <a href="#shader-kernels">26.10.1</a>.</p>
         <p>Compile the cube demo with:</p>
-        <pre><code>malda compile Examples/Web/js/three_cube.malda --mode js -o Examples/Web/js/three_cube.js</code></pre>
-        <p>See <code>Examples/Web/js/three_cube.malda</code> and <code>Examples/Web/js/three_runtime_smoke_test.html</code> for the end-to-end host page. A shorter listing is in <a href="33-examples.html">33.15 JavaScript Backend (three.js scene API)</a>. Working notes: <code>docs/javascript-backend.md</code>.</p>
+        <pre><code>malda compile Examples/Games/three_cube.malda --mode js -o Examples/Games/three_cube.js</code></pre>
+        <p>See <code>Examples/Games/three_cube.malda</code> and <code>Examples/Games/three_runtime_smoke_test.html</code> for the end-to-end host page. A shorter listing is in <a href="33-examples.html">33.15 JavaScript Backend (three.js scene API)</a>. Working notes: <code>docs/javascript-backend.md</code>.</p>
 
         <h3 id="shader-kernels">26.10.1 Shader kernels (MALDA to GLSL)</h3>
         <p>When CPU <code>game.setPixel</code> is too slow, put per-pixel work on the GPU. This is a <strong>JavaScript compile-time subset</strong>, not a fourth execution backend. Host MALDA still owns the <code>three.*</code> loop and uniform updates. The kernel owns the rays.</p>
@@ -294,8 +294,8 @@ three.setUniform(material, "uTime", t);</code></pre>
         <h4>Raw GLSL</h4>
         <p>Triple-quoted GLSL strings still work when you need syntax the subset does not emit. Use <code>"""</code>, not <code>$"""</code>, so braces stay literal. Prefer <code>@shader()</code> when the kernel fits the subset so rename and outline can see it.</p>
         <p>Compile the realtime GPU sphere tracer with:</p>
-        <pre><code>malda compile Examples/Web/js/three_shader_raytracer.malda --mode js -o Examples/Web/js/three_shader_raytracer.js
-malda compile Examples/Web/js/three_shader_path_tunnel.malda --mode js -o Examples/Web/js/three_shader_path_tunnel.js</code></pre>
+        <pre><code>malda compile Examples/Games/three_shader_raytracer.malda --mode js -o Examples/Games/three_shader_raytracer.js
+malda compile Examples/Games/three_shader_path_tunnel.malda --mode js -o Examples/Games/three_shader_path_tunnel.js</code></pre>
         <p>Load <code>three.min.js</code> first, same as other <code>three.*</code> demos. A short listing is in <a href="33-examples.html">33.15.1 Shader materials</a>. Working notes: <code>docs/javascript-backend.md</code>. The path-tunnel sample is CC-BY-NC-SA-4.0 (Frostbyte).</p>
 
         <h2>26.11 Common Pitfalls and Guidance</h2>

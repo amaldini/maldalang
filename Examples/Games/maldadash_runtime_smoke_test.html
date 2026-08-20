@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>mlRuntime.game Pixel Blit Ray Tracer</title>
+  <title>Maldadash Smoke Test</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       margin: 16px;
-      background: #0f172a;
-      color: #e2e8f0;
+      background: #0b0a08;
+      color: #e7e5e4;
     }
 
     #app canvas {
@@ -17,24 +17,25 @@
       height: auto;
       image-rendering: pixelated;
       image-rendering: crisp-edges;
-      border: 1px solid #334155;
+      border: 1px solid #44403c;
       border-radius: 8px;
     }
 
     code {
-      background: #111827;
+      background: #1c1917;
       padding: 2px 4px;
     }
   </style>
 </head>
 <body>
-  <h1>mlRuntime.game Pixel Blit Smoke Test</h1>
-  <p>Loads the MALDA runtime and the compiled <code>ray_tracer.js</code> sample. Compile first:</p>
-  <p><code>malda compile Examples/Web/js/ray_tracer.malda --mode js -o Examples/Web/js/ray_tracer.js</code></p>
+  <h1>Maldadash</h1>
+  <p>Loads the MALDA runtime and the compiled <code>maldadash.js</code> sample. Compile first:</p>
+  <p><code>malda compile Examples/Games/maldadash.malda --mode js -o Examples/Games/maldadash.js</code></p>
+  <p>Arrows / WASD to move. Collect the quota of diamonds, then enter the exit. R restarts the cave. P pauses.</p>
   <div id="app"></div>
 
-  <script src="../wwwroot/malda-js-runtime.js"></script>
-  <script src="./ray_tracer.js"></script>
+  <script src="../Web/wwwroot/malda-js-runtime.js"></script>
+  <script src="./maldadash.js"></script>
   <script>
     if (window.MaldaApp && typeof window.MaldaApp.main === "function") {
       window.MaldaApp.main();
