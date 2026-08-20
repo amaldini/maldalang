@@ -20,7 +20,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 06-arrays.html | 61c7f94b244e43338f9a3c0b301b15aee716a5b957b2a7a402bdc1887ed9328b |
 | 07-expressions.html | 7e3ed8c2e29f563e9bae8effa17fc6911909d72f39b9b3bf71d8201d8e7bad8e |
 | 08-control-structures.html | b6d02467f6e95a6c5ad138fce304317fc63b3291e0da3fd5ff9773cb47ed6d36 |
-| 09-functions.html | 66798ddc99720cf83eea7bac66e56ea82fb3d782d610e2ee285f05f5208dea85 |
+| 09-functions.html | 0d8e1f43c3718761d6f3ddde1426206033f03871b6369fbb483fbd42cb6b4a43 |
 | 10-prompts.html | dd9da9797a4e71e01621c5e6cce49b11bdc2eac124625ec073ae1fadf158eb71 |
 | 11-classes-objects.html | aa71e4ecb1ea1cb8f1cdc84515df17782bed637dffd8706e759a2bee368870c6 |
 | 12-input-output.html | 6e1e8d960090be62cba6fb9e69ec12fde943399d209fda6f3f26a8544a6e7e8b |
@@ -37,14 +37,14 @@ python3 scripts/sync-reference-manual-it-status.py
 | 23-web-ui-hub.html | f3e2e706c1df0fa9c307d7f32d5d03727a8d23afd7ec68277aab034eef0e3b88 |
 | 24-web-ui.html | 39479582dea892dc58bf39704ba3f05bd03ccef3f2162a042db9250f96a4de78 |
 | 25-http-server-html-ui.html | a6c653653fd4721925301ae8a49b17d67cf2f416fd04ae9fdcaabeaa1ed6f6a6 |
-| 26-browser-javascript-backend.html | e1ef4a2666bf87c24defce3587464c02605bda97c6d03b73369cee23e9a7c6f7 |
+| 26-browser-javascript-backend.html | 951ee0bcb32e9ecded23f4b81fddbba60bd133eeed963e024a5388fe61344d6c |
 | 27-rest-api.html | fcbc6cb372e8573e921b88e503669c99a2732f3f106af21548c33c6dd6132b08 |
 | 28-rest-web-client.html | 514cc4f1fd45b33a6ce3137c0b185d2a9a4a2a6461dbcc5aff04d998ecc1d470 |
 | 29-full-stack-development.html | 18609171f2a981ce23124f60b244281d14b0dc57ea5e968dc26d7d42d18500c8 |
 | 30-dotnet-interop.html | 153336c25575742b48e44592600a10fe98f4065a2b6fc2396ba93b0965e8431d |
 | 31-device-integration.html | 716cd495577049793cfb4d9bd1852673184ef88634aca19be30a12ace75d67e7 |
 | 32-personal-assistant.html | 1e3e9ef1e7a8f358d2fe878aeb7e510ef7336e2d4ee2194c255d532ce5ee8cec |
-| 33-examples.html | f7f1336f50ebb34f7a417b124250f04bb8615732880c52bc50c557274db9e663 |
+| 33-examples.html | 22c97e09b31984268f2e5354d8f1d15290fd4949fa2391a7e521a515c5ac4b13 |
 | 34-property-testing.html | af0b6cfd71a2f3d7280547ab487425a8d2c0a4268a4d131be3a726fbec716b1e |
 | 35-grammar.html | 50f1c1d4f2ca0f6f539852ff7b12b17be435405ff95a5f338fa708f8770829a3 |
 | 36-appendix.html | 685c5bd7e60edc77b7f45b0d9e70494bdfd2e973ad860b5de52b10ece4392ac1 |

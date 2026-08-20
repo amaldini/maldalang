@@ -115,6 +115,7 @@ Validation rules currently enforced:
     - Scene graph: `three.createScene()`, `three.createPerspectiveCamera(fovDeg, aspect, near, far)`, `three.createOrthographicCamera(left, right, top, bottom, near, far)`, `three.setCameraAspect(camera, aspect)`, `three.createGroup()`, `three.createMesh(geometry, material)`, `three.add(parent, child)`
     - Geometry/material/light: `three.createBoxGeometry(width, height, depth)`, `three.createPlaneGeometry(width, height)`, `three.createSphereGeometry(radius, widthSegments?, heightSegments?)`, `three.createStandardMaterial(options)`, `three.createShaderMaterial(options)`, `three.setUniform(material, name, value)`, `three.createDirectionalLight(color, intensity)`, `three.createAmbientLight(color?, intensity?)`
     - Transforms/input: `three.setPosition(object, x, y, z)`, `three.setRotation(object, x, y, z)`, `three.setScale(object, x, y, z)`, `three.render(renderer, scene, camera)`, `three.isKeyDown(key)`, `three.getMouseX()`, `three.getMouseY()`, `three.isMouseDown(button?)`
+    - Shader kernels: `@shader()` plus `glsl.compile` (JS transpile only). User-facing contract — types, subset, `glsl.compile` keys, IDE rename vs string keys — is [Reference Manual 26.10.1](../ReferenceManual/26-browser-javascript-backend.html#shader-kernels). This is not a fourth execution backend.
 - Browser loading model:
   1. Load `malda-js-runtime.js`
   2. Load compiled MALDA script
@@ -376,6 +377,8 @@ var vert = glsl.compile({
     main: "vertexMain"
 });
 ```
+
+The user-facing contract (types, subset, `glsl.compile` keys, IDE rename) is in [Reference Manual 26.10.1](../ReferenceManual/26-browser-javascript-backend.html#shader-kernels). The three.js scene API itself is [26.10](../ReferenceManual/26-browser-javascript-backend.html).
 
 `@shader()` functions are not emitted as JavaScript. They are a typed subset (C-like control flow, GLSL type hints such as `vec3` / `out float`, `math.sqrt` → `sqrt`). Host MALDA still owns the `three.*` loop and uniforms.
 

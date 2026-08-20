@@ -311,7 +311,7 @@ function render() {
 game.start(update, render);</code></pre>
         <p>Colors are 0–255. Out-of-bounds <code>setPixel</code> writes are ignored. Prefer this path over per-pixel <code>fillRect</code>. See <code>Examples/Web/js/ray_tracer.malda</code>.</p>
         <h2>33.15 JavaScript Backend (three.js scene API)</h2>
-        <p>Build a first 3D browser scene using <code>three.*</code> in JavaScript mode:</p>
+        <p>Build a first 3D browser scene using <code>three.*</code> in JavaScript mode. The scene API, loop, loading order, and shader kernels are in <a href="26-browser-javascript-backend.html#three-scene-api">26.10 three.js Scene API</a>:</p>
         <pre><code>malda compile Examples/Web/js/three_cube.malda --mode js -o Examples/Web/js/three_cube.js</code></pre>
         <pre><code>var width = 800;
 var height = 500;
@@ -336,7 +336,7 @@ function render() {
 }</code></pre>
         <p>Key points: load <code>Examples/Web/wwwroot/vendor/three.min.js</code> before <code>malda-js-runtime.js</code>, then the compiled MALDA script, then call <code>MaldaApp.main()</code>. See <code>Examples/Web/js/three_runtime_smoke_test.html</code> for a direct host page.</p>
         <h3>33.15.1 Shader materials</h3>
-        <p>Move per-pixel work onto the GPU with <code>three.createShaderMaterial</code> and <code>three.setUniform</code>. Write the kernel as typed MALDA with <code>@shader()</code> and compile it to GLSL via <code>glsl.compile</code> (JavaScript mode only). Raw GLSL in a triple-quoted string (<code>"""</code>, not <code>$"""</code>) still works. Compile the realtime tracer with:</p>
+        <p>Move per-pixel work onto the GPU with <code>three.createShaderMaterial</code> and <code>three.setUniform</code>. The contract (types, subset, <code>glsl.compile</code> keys, IDE rename) is in <a href="26-browser-javascript-backend.html#shader-kernels">26.10.1 Shader kernels</a>. Compile the realtime tracer with:</p>
         <pre><code>malda compile Examples/Web/js/three_shader_raytracer.malda --mode js -o Examples/Web/js/three_shader_raytracer.js</code></pre>
         <pre><code>@shader()
 function vertexMain() {
