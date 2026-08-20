@@ -33,6 +33,7 @@
             <li><strong>26.8</strong> Template mode syntax</li>
             <li><strong>26.9</strong> Canvas/game API</li>
             <li><strong>26.10</strong> three.js scene API</li>
+            <li><strong>26.10.1</strong> Shader kernels (MALDA to GLSL)</li>
             <li><strong>26.11</strong> Common pitfalls and practical guidance</li>
         </ul>
 
@@ -42,7 +43,7 @@
             <li><strong>Template mode</strong> (<code>.malda.html</code>): write HTML-first templates with inline MALDA blocks.</li>
             <li><strong>Language coverage</strong>: JavaScript backend supports sum types and full <code>match</code> pattern matching.</li>
             <li><strong>Actor support (local)</strong>: JS mode supports local actors with mailbox semantics compatible with MALDA actor behavior.</li>
-            <li><strong>3D scene support</strong>: JavaScript mode includes a curated <code>three.*</code> wrapper for browser-hosted 3D scenes.</li>
+            <li><strong>3D scene support</strong>: JavaScript mode includes a curated <code>three.*</code> wrapper for browser-hosted 3D scenes, plus <code>@shader()</code> kernels compiled to GLSL (see <a href="#three-scene-api">26.10</a>).</li>
             <li><strong>Runtime expectation</strong>: generated scripts require <code>malda-js-runtime.js</code> before MALDA output runs.</li>
         </ul>
         <h3>26.2.1 Target decorators in JS output</h3>
@@ -188,29 +189,128 @@ println(text);</code></pre>
         <p><strong>Audio guidance:</strong> call <code>game.audioInit()</code> after a user gesture to satisfy browser autoplay policies.</p>
         <p>For a full quick start and best practices, see <code>docs/javascript-backend.md</code>. For a complete sample, see <code>Examples/Web/js/game_bounce.malda</code>. For a CPU ray tracer that writes pixels into an <code>ImageData</code> buffer and blits once per frame, see <code>Examples/Web/js/ray_tracer.malda</code>.</p>
 
-        <h2>26.10 three.js Scene API</h2>
-        <p>The JavaScript backend also includes a curated 3D scene API under <code>three.*</code>. This wraps a focused subset of <code>three.js</code> for JavaScript mode without exposing arbitrary raw browser interop in MALDA source.</p>
+        <h2 id="three-scene-api">26.10 three.js Scene API</h2>
+        <p>The JavaScript backend includes a curated 3D scene API under <code>three.*</code>. Use it when you want a browser-hosted scene in MALDA without writing raw <code>THREE.*</code> calls. The namespace is JavaScript mode only; interpreter and C# transpile do not run these helpers. Calls map to <code>mlRuntime.three.*</code> in the generated script.</p>
+        <p>Build a scene in this order: renderer, scene, camera, then meshes and lights, then <code>three.start</code>. <code>three.createRenderer(width, height, mountSelector?)</code> creates the WebGL canvas and appends it to the host element (default <code>"#app"</code>). Call it once, before <code>three.render</code> or <code>three.start</code>. If you need a new size or a second canvas, call <code>three.stop()</code> first — do not create another renderer while the loop is running.</p>
         <ul>
             <li><strong>Renderer and lifecycle:</strong> <code>three.createRenderer</code>, <code>three.setClearColor</code>, <code>three.setRendererSize</code>, <code>three.start(updateFn, renderFn?)</code>, <code>three.stop()</code></li>
-            <li><strong>Scene graph:</strong> <code>three.createScene()</code>, <code>three.createPerspectiveCamera(...)</code>, <code>three.createOrthographicCamera(...)</code>, <code>three.setCameraAspect(...)</code>, <code>three.createGroup()</code>, <code>three.createMesh(...)</code>, <code>three.add(parent, child)</code></li>
-            <li><strong>Primitives and lighting:</strong> <code>three.createBoxGeometry(...)</code>, <code>three.createPlaneGeometry(...)</code>, <code>three.createSphereGeometry(...)</code>, <code>three.createStandardMaterial(options)</code>, <code>three.createShaderMaterial(options)</code>, <code>three.setUniform(material, name, value)</code>, <code>three.createDirectionalLight(color, intensity)</code>, <code>three.createAmbientLight(color?, intensity?)</code></li>
-            <li><strong>Transforms and input:</strong> <code>three.setPosition(...)</code>, <code>three.setRotation(...)</code>, <code>three.setScale(...)</code>, <code>three.render(renderer, scene, camera)</code>, <code>three.isKeyDown(key)</code>, <code>three.getMouseX()</code>, <code>three.getMouseY()</code>, <code>three.isMouseDown(button?)</code></li>
+            <li><strong>Scene graph:</strong> <code>three.createScene()</code>, <code>three.createPerspectiveCamera(fovDeg, aspect, near, far)</code>, <code>three.createOrthographicCamera(left, right, top, bottom, near, far)</code>, <code>three.setCameraAspect(camera, aspect)</code>, <code>three.createGroup()</code>, <code>three.createMesh(geometry, material)</code>, <code>three.add(parent, child)</code></li>
+            <li><strong>Primitives and lighting:</strong> <code>three.createBoxGeometry(width, height, depth)</code>, <code>three.createPlaneGeometry(width, height)</code>, <code>three.createSphereGeometry(radius, widthSegments?, heightSegments?)</code>, <code>three.createStandardMaterial(options)</code>, <code>three.createShaderMaterial(options)</code>, <code>three.setUniform(material, name, value)</code>, <code>three.createDirectionalLight(color, intensity)</code>, <code>three.createAmbientLight(color?, intensity?)</code></li>
+            <li><strong>Transforms and input:</strong> <code>three.setPosition(object, x, y, z)</code>, <code>three.setRotation(object, x, y, z)</code>, <code>three.setScale(object, x, y, z)</code>, <code>three.render(renderer, scene, camera)</code>, <code>three.isKeyDown(key)</code>, <code>three.getMouseX()</code>, <code>three.getMouseY()</code>, <code>three.isMouseDown(button?)</code></li>
         </ul>
-        <p><strong>Loading order:</strong> host pages must load a compatible browser bundle that defines <code>globalThis.THREE</code> before <code>malda-js-runtime.js</code> and before the compiled MALDA script. The repository includes <code>Examples/Web/wwwroot/vendor/three.min.js</code> for this purpose.</p>
-        <p><strong>Resize guidance:</strong> if your host page changes the render viewport after setup, update both the renderer and camera by calling <code>three.setRendererSize(renderer, width, height)</code> and <code>three.setCameraAspect(camera, width / height)</code>.</p>
-        <p><strong>MVP scope:</strong> the first cut is intentionally narrow. Textures, model loading, orbit controls, and generic raw JS interop are outside this API. Custom GLSL is available through <code>three.createShaderMaterial</code> and <code>three.setUniform</code>. You can keep raw GLSL in a triple-quoted string (<code>"""</code>, not <code>$"""</code>), or write a typed MALDA kernel with <code>@shader()</code> and compile it with <code>glsl.compile({ ... })</code> in JavaScript mode. <code>@shader()</code> functions are not emitted as JavaScript; they only feed the GLSL string. See <a href="33-examples.html">33.15.1 Shader materials</a>.</p>
-        <p>See <code>Examples/Web/js/three_cube.malda</code> and <code>Examples/Web/js/three_runtime_smoke_test.html</code> for the first end-to-end example. For a realtime GPU ray tracer, see <code>Examples/Web/js/three_shader_raytracer.malda</code>.</p>
+        <p>Positions, scales, and camera <code>near</code>/<code>far</code> are world units. Rotations are radians (a floor lying in XZ is about <code>-1.5708</code> on X). Standard-material options that the wrapper understands include <code>"color"</code> (<code>#rrggbb</code>), <code>"roughness"</code>, and <code>"metalness"</code>. Groups parent meshes so you can move a cluster with one <code>setPosition</code> / <code>setRotation</code>. Input keys use the same names as the canvas API (<code>"arrowleft"</code>, <code>"arrowright"</code>, …).</p>
+        <p>A first scene with a spinning cube, one key light, and a <code>dtMs</code> loop:</p>
+        <pre><code>var width = 800;
+var height = 500;
+var aspect = width / height;
+
+var renderer = three.createRenderer(width, height, "#app");
+three.setClearColor(renderer, "#101722");
+three.setRendererSize(renderer, width, height);
+
+var scene = three.createScene();
+var camera = three.createPerspectiveCamera(70, aspect, 0.1, 100.0);
+three.setCameraAspect(camera, aspect);
+three.setPosition(camera, 0, 0, 5);
+
+var geometry = three.createBoxGeometry(1, 1, 1);
+var material = three.createStandardMaterial({ "color": "#44aaff" });
+var cube = three.createMesh(geometry, material);
+three.add(scene, cube);
+
+var light = three.createDirectionalLight("#ffffff", 1.1);
+three.setPosition(light, 2, 3, 4);
+three.add(scene, light);
+
+var angle = 0.0;
+
+function update(dtMs) {
+    angle = angle + ((dtMs * 1.2) / 1000);
+    three.setRotation(cube, angle, angle * 0.8, 0.0);
+}
+
+function render() {
+    three.render(renderer, scene, camera);
+}
+
+three.start(update, render);</code></pre>
+        <p><strong>Loop guidance:</strong> <code>updateFn</code> receives <code>dtMs</code>, same as <code>game.start</code>. Scale spin and motion by <code>dtMs / 1000</code> so animation stays frame-rate independent. Cap huge <code>dtMs</code> values after a tab was backgrounded if a single step would jump too far. Put drawing in <code>renderFn</code> (or omit it and render at the end of <code>update</code>).</p>
+        <p><strong>Loading order:</strong> the host page must load a compatible browser bundle that defines <code>globalThis.THREE</code> before <code>malda-js-runtime.js</code> and before the compiled MALDA script, then call <code>MaldaApp.main()</code>. The repository includes <code>Examples/Web/wwwroot/vendor/three.min.js</code> for this purpose.</p>
+        <ol>
+            <li><code>Examples/Web/wwwroot/vendor/three.min.js</code></li>
+            <li><code>malda-js-runtime.js</code></li>
+            <li>compiled MALDA script</li>
+            <li><code>MaldaApp.main()</code></li>
+        </ol>
+        <p><strong>Resize guidance:</strong> if the host page changes the render viewport after setup, update both the renderer and the camera: <code>three.setRendererSize(renderer, width, height)</code> and <code>three.setCameraAspect(camera, width / height)</code>.</p>
+        <p><strong>MVP scope:</strong> the first cut is intentionally narrow. Textures, model loading, orbit controls, and generic raw JS interop are outside this API. Lit meshes use <code>three.createStandardMaterial</code>. Custom GLSL uses <code>three.createShaderMaterial</code> and <code>three.setUniform</code> — see <a href="#shader-kernels">26.10.1</a>.</p>
+        <p>Compile the cube demo with:</p>
+        <pre><code>malda compile Examples/Web/js/three_cube.malda --mode js -o Examples/Web/js/three_cube.js</code></pre>
+        <p>See <code>Examples/Web/js/three_cube.malda</code> and <code>Examples/Web/js/three_runtime_smoke_test.html</code> for the end-to-end host page. A shorter listing is in <a href="33-examples.html">33.15 JavaScript Backend (three.js scene API)</a>. Working notes: <code>docs/javascript-backend.md</code>.</p>
+
+        <h3 id="shader-kernels">26.10.1 Shader kernels (MALDA to GLSL)</h3>
+        <p>When CPU <code>game.setPixel</code> is too slow, put per-pixel work on the GPU. This is a <strong>JavaScript compile-time subset</strong>, not a fourth execution backend. Host MALDA still owns the <code>three.*</code> loop and uniform updates. The kernel owns the rays.</p>
+        <p>Mark GPU functions with <code>@shader()</code> and gather them into a GLSL string with <code>glsl.compile({ ... })</code>. Those functions are <strong>not</strong> emitted as JavaScript or C#. Do not call them from host MALDA. Interpreter and C# transpile skip them.</p>
+        <pre><code>@shader()
+function vertexMain() {
+    vUv = uv;
+    gl_Position = vec4(position.xy, 0.0, 1.0);
+}
+
+var vert = glsl.compile({
+    varyings: ["vec2 vUv"],
+    functions: ["vertexMain"],
+    main: "vertexMain"
+});
+
+var material = three.createShaderMaterial({
+    "vertexShader": vert,
+    "fragmentShader": frag,
+    "uniforms": { "uTime": 0 }
+});
+three.setUniform(material, "uTime", t);</code></pre>
+        <p><code>glsl.compile</code> takes a single object literal. Keys:</p>
+        <ul>
+            <li><code>varyings</code> / <code>uniforms</code> / <code>consts</code> — arrays of GLSL declaration strings, for example <code>"vec3 uCamPos"</code> or <code>"float EPSILON = 0.0015"</code></li>
+            <li><code>functions</code> — names of <code>@shader()</code> functions in this file to emit, in order</li>
+            <li><code>main</code> — which of those functions becomes GLSL <code>void main()</code> (use this when the MALDA name is <code>vertexMain</code> / <code>fragmentMain</code>, because a file cannot declare two MALDA functions named <code>main</code>)</li>
+            <li><code>header</code> — optional raw GLSL prefix</li>
+        </ul>
+        <p>Pass the resulting strings to <code>three.createShaderMaterial</code> as <code>"vertexShader"</code> / <code>"fragmentShader"</code>. Uniform values from host MALDA are wrapped as <code>{ value }</code>. Arrays of length 2/3/4 become <code>Vector2</code> / <code>Vector3</code> / <code>Vector4</code>. <code>#rrggbb</code> strings become <code>Color</code>. Optional flags: <code>"depthWrite": false</code>, <code>"depthTest": false</code>, <code>"transparent": true</code>.</p>
+        <p>For a fullscreen pass, use <code>three.createOrthographicCamera(-1, 1, 1, -1, 0, 1)</code> and <code>three.createPlaneGeometry(2, 2)</code>.</p>
+
+        <h4>Types in kernels</h4>
+        <p><code>vec2</code>, <code>vec3</code>, <code>vec4</code>, and other GLSL vector/matrix names are <strong>not MALDA types</strong>. They are GLSL names stored as type hints and copied into the shader. Outside <code>@shader()</code>, <code>var p: vec3 = ...</code> is an unknown-hint Error. Names that already exist in both languages — <code>float</code>, <code>int</code>, <code>bool</code>, <code>void</code> — remain ordinary MALDA hints.</p>
+        <p>Shader parameters and locals need a GLSL type hint. Parameters that GLSL would write with <code>out</code> use a two-word hint: <code>tHit: out float</code>. Host uniforms stay MALDA arrays such as <code>[camX, camY, camZ]</code>, not <code>vec3</code> values.</p>
+
+        <h4>Language subset</h4>
+        <p>Allowed: <code>if</code> / <code>else</code>, <code>while</code>, <code>for</code>, <code>return</code>, arithmetic and comparisons, <code>and</code> / <code>or</code> / <code>not</code> (emitted as <code>&amp;&amp;</code> / <code>||</code> / <code>!</code>), member swizzles such as <code>position.xy</code>, GLSL constructors and builtins (<code>vec3</code>, <code>dot</code>, <code>normalize</code>, <code>mix</code>, <code>clamp</code>, …), and <code>math.sqrt</code> → GLSL <code>sqrt</code> (same for the other mapped <code>math.*</code> names).</p>
+        <p>Not allowed in kernels: actors, prompts, <code>match</code>, strings, <code>foreach</code>, <code>await</code>, classes, and MALDA I/O. A construct the GLSL emitter does not know fails JS compile with a <code>GLSL transpile</code> error at the MALDA line.</p>
+
+        <h4>IDE</h4>
+        <p>Because kernels are ordinary MALDA <code>function</code> declarations, Desktop IDE and LSP rename, find references, highlights, and outline apply to <strong>identifiers</strong> in the kernel — unlike raw GLSL inside a <code>"""</code> string, which is one token. Rename still matches the lexeme across the file (same as the rest of MALDA). It does <strong>not</strong> rewrite string entries in <code>glsl.compile</code> (<code>functions: ["hitSphere"]</code>, <code>uniforms: ["vec3 uCamPos"]</code>, <code>main: "fragmentMain"</code>). After renaming a kernel or uniform identifier, update those strings. GLSL builtins (<code>dot</code>, <code>gl_FragColor</code>, type name <code>vec3</code>) have no MALDA declaration, so go to definition has nowhere to go.</p>
+
+        <h4>Raw GLSL</h4>
+        <p>Triple-quoted GLSL strings still work when you need syntax the subset does not emit. Use <code>"""</code>, not <code>$"""</code>, so braces stay literal. Prefer <code>@shader()</code> when the kernel fits the subset so rename and outline can see it.</p>
+        <p>Compile the realtime GPU sphere tracer with:</p>
+        <pre><code>malda compile Examples/Web/js/three_shader_raytracer.malda --mode js -o Examples/Web/js/three_shader_raytracer.js</code></pre>
+        <p>Load <code>three.min.js</code> first, same as other <code>three.*</code> demos. A short listing is in <a href="33-examples.html">33.15.1 Shader materials</a>. Working notes: <code>docs/javascript-backend.md</code>.</p>
 
         <h2>26.11 Common Pitfalls and Guidance</h2>
         <ul>
             <li>Do not edit generated JavaScript directly when there is a matching <code>.malda</code> source. Change the MALDA file and recompile.</li>
             <li>Load <code>malda-js-runtime.js</code> before the compiled script or the generated app will fail at runtime.</li>
             <li>Load <code>Examples/Web/wwwroot/vendor/three.min.js</code> before <code>malda-js-runtime.js</code> when using the <code>three.*</code> namespace.</li>
+            <li><code>three.*</code> is JavaScript mode with a browser host. Call <code>three.createRenderer</code> before <code>three.start</code> or <code>three.render</code>. Do not create a second renderer while the loop is running; <code>three.stop()</code> first.</li>
+            <li>Rotations are radians. After a viewport change, call both <code>three.setRendererSize</code> and <code>three.setCameraAspect</code>.</li>
             <li>Keep browser-only concerns in JS mode and keep server-only concerns in <code>@PAGE</code>/<code>@AIPAGE</code> or server components.</li>
             <li>Do not combine <code>@client()</code> with route decorators such as <code>@GET</code> or <code>@PAGE</code>; this is an invalid target combination.</li>
             <li>Use <code>@shared()</code> only for logic that is safe in both runtimes; keep filesystem/database/server APIs and browser-only APIs out of shared declarations.</li>
             <li>Create the canvas before drawing or starting a game loop.</li>
             <li>Use API mode when you want full DOM control and template mode when the page is mostly HTML with light MALDA logic.</li>
+            <li><code>@shader()</code> functions are GLSL kernels, not host callables. Compile them with <code>glsl.compile</code> and pass the string to <code>three.createShaderMaterial</code>.</li>
+            <li>Rename Symbol updates MALDA identifiers, not the string names inside <code>glsl.compile({ ... })</code>. Keep those lists in sync.</li>
+            <li>Do not use <code>vec3</code> / <code>vec2</code> as MALDA types outside <code>@shader()</code>. Host uniforms are arrays such as <code>[x, y, z]</code>.</li>
         </ul>
 
         <div class="see-also">
@@ -219,6 +319,7 @@ println(text);</code></pre>
                 <li><a href="23-web-ui-hub.html">23. Web UI Overview</a> - Which UI model to pick</li>
                 <li><a href="24-web-ui.html">24. Web UI Server Components</a> - Server-rendered UI with fragments, live updates, and <code>ui.*</code></li>
                 <li><a href="25-http-server-html-ui.html">HttpServer &amp; HTML UI Generation</a> - Route hosting and AI HTML generation</li>
+                <li><a href="33-examples.html">33.15 JavaScript Backend (three.js)</a> - Cube listing and shader-material sketch</li>
                 <li><a href="29-full-stack-development.html">Full-Stack Development with MALDA</a> - Choosing between server-rendered, API-first, and browser-hosted UI</li>
             </ul>
         </div>

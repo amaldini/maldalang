@@ -173,7 +173,7 @@ print(addFive(10));  // Prints 15</code></pre>
             <strong>Note:</strong> Lambdas don't have their own <code>this</code> context. If you need <code>this</code> binding, use a regular function or method.
         </div>
         <h2>9.7 Decorators</h2>
-        <p>MALDA supports decorators for functions, enabling features like custom tools and REST API endpoints:</p>
+        <p>MALDA supports decorators for functions, enabling features like custom tools and REST API endpoints. JavaScript-mode GPU kernels use <code>@shader()</code> — see <a href="26-browser-javascript-backend.html#shader-kernels">26.10.1 Shader kernels</a>.</p>
         <h3>@within and @budget</h3>
         <p>Use <code>@within(ms)</code> for a wall-clock deadline on a function body or <code>await prompt(...)</code> / <code>agent.think()</code> turn. Use <code>@budget(tokens: N, tools: N, cost: N?)</code> for resource limits on the same declarations. Do not overload <code>@within</code>’s positional milliseconds argument — budget keys are named. Unknown <code>@budget</code> keys are errors under CLI <code>--strict-types</code> (<code>malda-bounds</code>), same strictness as <code>@within</code>.</p>
         <pre><code>@within(5000)
