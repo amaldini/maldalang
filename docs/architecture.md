@@ -25,7 +25,7 @@ Short map of how the open-source core fits together. For agent workflow rules, s
 
 Language intelligence (completions, diagnostics, hover) shares `MaldaLang/IDE/LanguageService.cs` across Desktop IDE, Web IDE, and the LSP project.
 
-Interpret-mode debug core: [`MaldaLang/Interpreter/Debug/DebugSession.cs`](../MaldaLang/Interpreter/Debug/DebugSession.cs) (breakpoints, step mode, pause gate, 1-based lines, DAP-shaped scopes / lazy children / watches / conditional breakpoints; include/import file BPs, workflow `step` frames, uncaught exception pause). Spawned actors do not share the hook. Desktop and Web wrap that session via `IHasDebugSession`. DAP stdio is `malda debug-adapter` ([`MaldaLang/DebugAdapter/`](../MaldaLang/DebugAdapter/)); LSP stays `malda-lsp`. User notes: [`docs/debugging-interpret.md`](debugging-interpret.md). Transpile failures stay on [`docs/debugging-transpile.md`](debugging-transpile.md).
+Interpret-mode debug core: [`MaldaLang/Interpreter/Debug/DebugSession.cs`](../MaldaLang/Interpreter/Debug/DebugSession.cs) (breakpoints, step mode, pause gate, 1-based lines, DAP-shaped scopes / lazy children / watches / conditional breakpoints; include/import file BPs, workflow `step` frames, uncaught exception pause). Spawned actors do not share the hook. Desktop and Web wrap that session via `IHasDebugSession`. DAP stdio is `malda debug-adapter` ([`MaldaLang/DebugAdapter/`](../MaldaLang/DebugAdapter/)); LSP stays `malda-lsp`. User notes: [`docs/debugging-interpret.md`](debugging-interpret.md). Transpile failures stay on [`docs/debugging-transpile.md`](debugging-transpile.md). Desktop IDE F5 on `dom.*` / `game.*` / `three.*` programs uses WebView2's Chromium debugger plus JS source maps instead of the interpreter hook.
 
 ## Projects
 

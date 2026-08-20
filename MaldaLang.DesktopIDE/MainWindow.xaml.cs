@@ -124,6 +124,8 @@ public partial class MainWindow : Window
     private QuickFixMargin? _quickFixMargin;
     private DispatcherTimer? _documentHighlightTimer;
     private DebuggerHook? _debuggerHook;
+    private WebViewJsDebugger? _jsDebugger;
+    private string _jsDebugOutput = "";
     private readonly List<string> _watchExpressions = new();
     private readonly DebugInspectExpansionState _inspectExpansion = new();
     private int _selectedDebugFrameId = 1;
@@ -1817,6 +1819,7 @@ public partial class MainWindow : Window
             _debugTask = null;
             _debugCancellation?.Dispose();
             _debugCancellation = null;
+            _ = StopJsDebuggerAsync();
             ClearCurrentLineHighlight();
             UpdateButtonStates();
         }
@@ -2677,8 +2680,31 @@ public partial class MainWindow : Window
             "  F10 - Step Over\n" +
             "  F11 - Step Into\n" +
             "  Shift+F11 - Step Out\n" +
-            "  F9 - Toggle Breakpoint";
+            "  F9 - Toggle Breakpoint\n" +
+            "  F5 on dom.*/game.*/three.* files debugs in Web Preview";
         
         MessageBox.Show(shortcuts, "Keyboard Shortcuts", MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
+    private async Task StopJsDebuggerAsync()
+    {
+        var debugger = _jsDebugger;
+        _jsDebugger = null;
+        _jsDebugOutput = "";
+        if (debugger == null)
+        {
+            return;
+        }
+
+        try
+        {
+            await debugger.DetachAsync();
+        }
+        catch
+        {
+            // Best effort: the WebView may already have been disposed.
+        }
+
+        debugger.Dispose();
     }
 }

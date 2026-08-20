@@ -278,7 +278,7 @@ Only after VS Code can debug `hello_world.malda`:
 | Item | Reason |
 |------|--------|
 | Debug transpiled `exe` | Use C# debugger + `#line`; see [`debugging-transpile.md`](debugging-transpile.md) |
-| JS / PWA DAP | Browser already has source maps |
+| JS / PWA DAP | Browser already has source maps. Desktop IDE F5 for `dom.*` / `game.*` / `three.*` uses WebView2 CDP in-process, not `malda debug-adapter`. |
 | Mix DAP into `malda-lsp` | Two protocols, one stdio |
 | Web IDE = Desktop debug UX | Playground; honest parity |
 | `debugger;` statement | Grammar + spec MINOR; a breakpoint is enough |

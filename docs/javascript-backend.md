@@ -11,6 +11,7 @@ This document captures the current JavaScript backend design in code and the nea
   - `CompileToPwa(sourcePath, outputDir)`
   - `TranspileToJavaScript(sourcePath)`
   - `TranspileToJavaScriptFromSource(source, sourceFilePath?)`
+  - `TranspileToJavaScriptWithSourceMapFromSource(source, sourceFilePath?, generatedFileName?)`
 - CLI integration: `MaldaLang/Program.cs`
   - `malda compile <input> --mode js`
   - `malda compile <input> --target js` (alias)
@@ -502,3 +503,14 @@ Audio Spec v1 adds a browser-hosted game audio API in JavaScript mode. The goal 
 
 - Actor support in JS backend is **process-local only** (browser or Node actor refs). Seamless communication with server-side actors is not part of this phase.
 - File I/O, agents/prompts, durable workflows, `HttpServer` / UIHost, and .NET interop stay host-only.
+
+## Desktop IDE debug
+
+Programs that call `dom.*`, `game.*`, or `three.*` cannot pause in the interpreter. The Desktop IDE treats them as JavaScript debug targets:
+
+1. Glyph breakpoints in the `.malda` editor (1-based lines, same as interpret mode).
+2. F5 transpiles with a VLQ source map, writes `.malda-preview/*.js` + `.map`, and loads Web Preview.
+3. WebView2 Chromium debugger (`Debugger.setBreakpointByUrl`) stops on the generated line; the IDE maps back to the MALDA line for highlight, call stack, and locals.
+4. Ctrl+F5 / Run opens the same preview without attaching the debugger.
+
+Watch expressions and breakpoint conditions are JavaScript. VS Code F5 remains interpret-only (`malda debug-adapter`).

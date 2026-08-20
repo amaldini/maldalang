@@ -1577,6 +1577,30 @@ class Program
         }
     }
 
+    public JsTranspileResult TranspileToJavaScriptWithSourceMapFromSource(
+        string source,
+        string? sourceFilePath,
+        string? generatedFileName = null)
+    {
+        try
+        {
+            return TranspileToJavaScriptArtifactsFromSource(source, sourceFilePath, generatedFileName);
+        }
+        catch (ParseException ex)
+        {
+            throw new Exception($"Syntax error: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"Transpilation error: {ex}");
+        }
+    }
+
+    public static string AppendJavaScriptSourceMapReference(string jsCode, string mapFileName)
+    {
+        return AppendSourceMapReference(jsCode, mapFileName);
+    }
+
     private static string PreprocessTemplateSourceIfNeeded(string source, string? sourceFilePath)
     {
         if (!TemplatePreprocessor.IsTemplatePath(sourceFilePath))

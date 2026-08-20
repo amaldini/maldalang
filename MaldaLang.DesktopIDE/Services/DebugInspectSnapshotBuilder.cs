@@ -47,6 +47,14 @@ public static class DebugInspectSnapshotBuilder
             : $"{frame.ClassName}.{frame.FunctionName} ({frame.File}:{frame.Line})";
     }
 
+    public static string FormatFrame(CallStackFrame frame)
+    {
+        ArgumentNullException.ThrowIfNull(frame);
+        return string.IsNullOrEmpty(frame.ClassName)
+            ? $"{frame.FunctionName} ({frame.File}:{frame.Line})"
+            : $"{frame.ClassName}.{frame.FunctionName} ({frame.File}:{frame.Line})";
+    }
+
     public static DebugInspectNode FromVariable(DebugVariable variable, int frameId)
     {
         ArgumentNullException.ThrowIfNull(variable);

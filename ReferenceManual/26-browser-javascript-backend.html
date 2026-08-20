@@ -45,6 +45,7 @@
             <li><strong>Actor support (local)</strong>: JS mode supports local actors with mailbox semantics compatible with MALDA actor behavior.</li>
             <li><strong>3D scene support</strong>: JavaScript mode includes a curated <code>three.*</code> wrapper for browser-hosted 3D scenes, plus <code>@shader()</code> kernels compiled to GLSL (see <a href="#three-scene-api">26.10</a>).</li>
             <li><strong>Runtime expectation</strong>: generated scripts require <code>malda-js-runtime.js</code> before MALDA output runs.</li>
+            <li><strong>Desktop IDE debug</strong>: F5 on <code>dom.*</code> / <code>game.*</code> / <code>three.*</code> programs transpiles to JavaScript, opens Web Preview, and maps editor breakpoints through the source map (see <a href="02-tools.html#javascript-desktop-debug">2.6.6</a>).</li>
         </ul>
         <h3>26.2.1 Target decorators in JS output</h3>
         <p>When compiling to JavaScript, target decorators can be used to keep browser and server concerns in one source file:</p>
@@ -308,6 +309,7 @@ malda compile Examples/Web/js/three_shader_path_tunnel.malda --mode js -o Exampl
             <li>Do not combine <code>@client()</code> with route decorators such as <code>@GET</code> or <code>@PAGE</code>; this is an invalid target combination.</li>
             <li>Use <code>@shared()</code> only for logic that is safe in both runtimes; keep filesystem/database/server APIs and browser-only APIs out of shared declarations.</li>
             <li>Create the canvas before drawing or starting a game loop.</li>
+            <li>Interpreter F5 cannot debug <code>dom.*</code> / <code>game.*</code> / <code>three.*</code> programs. Use Desktop IDE F5 (Web Preview) or browser DevTools on the compiled <code>.js</code> + <code>.map</code>.</li>
             <li>Use API mode when you want full DOM control and template mode when the page is mostly HTML with light MALDA logic.</li>
             <li><code>@shader()</code> functions are GLSL kernels, not host callables. Compile them with <code>glsl.compile</code> and pass the string to <code>three.createShaderMaterial</code>.</li>
             <li>Rename Symbol updates MALDA identifiers, not the string names inside <code>glsl.compile({ ... })</code>. Keep those lists in sync.</li>

@@ -892,6 +892,7 @@ public partial class MainWindow
                 _debugTask = null;
                 _debugCancellation?.Dispose();
                 _debugCancellation = null;
+                _ = StopJsDebuggerAsync();
                 ClearCurrentLineHighlight();
                 UpdateButtonStates();
             }
@@ -1017,6 +1018,7 @@ public partial class MainWindow
             _debugTask = null;
             _debugCancellation?.Dispose();
             _debugCancellation = null;
+            _ = StopJsDebuggerAsync();
             ClearCurrentLineHighlight();
             UpdateButtonStates();
         }
