@@ -122,7 +122,8 @@ if (root == null) {
 
     function setTile(x, y, tile) {
         if (inBounds(x, y)) {
-            cells[idx(x, y)] = tile;
+            var cellIndex = idx(x, y);
+            cells[cellIndex] = tile;
         }
     }
 
@@ -135,7 +136,8 @@ if (root == null) {
 
     function setFalling(x, y, value) {
         if (inBounds(x, y)) {
-            falling[idx(x, y)] = value;
+            var fallIndex = idx(x, y);
+            falling[fallIndex] = value;
         }
     }
 
@@ -451,8 +453,9 @@ if (root == null) {
         if (dest == EMPTY) {
             setTile(x, y, EMPTY);
             setTile(nx, ny, tile);
-            facing[idx(nx, ny)] = d;
-            moved[idx(nx, ny)] = 1;
+            var destIndex = idx(nx, ny);
+            facing[destIndex] = d;
+            moved[destIndex] = 1;
             return true;
         }
         return false;
