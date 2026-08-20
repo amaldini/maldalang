@@ -8,20 +8,19 @@ namespace MaldaLang.DesktopIDE.Tests;
 public class ComboBoxThemingGuardTests
 {
     private static string RepoRoot =>
-        Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".."));
+        System.IO.Path.GetFullPath(System.IO.Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".."));
 
     [Fact]
     public void MainWindow_DoesNotHardcodeLightComboBoxItemColors()
     {
-        var xaml = File.ReadAllText(Path.Combine(RepoRoot, "MaldaLang.DesktopIDE", "MainWindow.xaml"));
-        var itemStyleStart = xaml.IndexOf("TargetType=\"ComboBoxItem\"", StringComparison.Ordinal);
-        Assert.True(itemStyleStart < 0, "ComboBoxItem styles belong in IdeChrome so popup items inherit the active theme.");
+        var xaml = System.IO.File.ReadAllText(System.IO.Path.Combine(RepoRoot, "MaldaLang.DesktopIDE", "MainWindow.xaml"));
+        Assert.DoesNotContain("TargetType=\"ComboBoxItem\"", xaml, StringComparison.Ordinal);
     }
 
     [Fact]
     public void IdeChrome_ComboBoxTemplate_UsesThemeInputBrushes()
     {
-        var xaml = File.ReadAllText(Path.Combine(RepoRoot, "MaldaLang.DesktopIDE", "Themes", "IdeChrome.xaml"));
+        var xaml = System.IO.File.ReadAllText(System.IO.Path.Combine(RepoRoot, "MaldaLang.DesktopIDE", "Themes", "IdeChrome.xaml"));
 
         Assert.Contains("x:Key=\"IdeComboBox\"", xaml, StringComparison.Ordinal);
         Assert.Contains("TargetType=\"ComboBoxItem\"", xaml, StringComparison.Ordinal);
