@@ -21,7 +21,7 @@ public class MaldaDebugLaunchTests
     [Fact]
     public void Classify_MaldanoidExample_IsJavaScript()
     {
-        var path = PlanningPaths.ResolveRepoPath("Examples", "Web", "js", "maldanoid.malda");
+        var path = PlanningPaths.ResolveRepoPath("Examples", "Games", "maldanoid.malda");
         Assert.True(File.Exists(path), path);
         Assert.Equal(MaldaDebugLaunchKind.JavaScript, MaldaDebugLaunch.Classify(File.ReadAllText(path)));
     }

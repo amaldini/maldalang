@@ -1,0 +1,178 @@
+{
+  "examples": [
+    {
+      "name": "JS Canvas Game Bounce",
+      "description": "Playable 2D canvas bounce game using MALDA game.* API (arrow keys + animation loop)",
+      "file": "game_bounce.malda",
+      "track": "student",
+      "difficulty": "intermediate",
+      "minutes": 18,
+      "concepts": [
+        "game loop",
+        "input",
+        "canvas",
+        "animation"
+      ],
+      "prerequisites": [
+        "Web/js/counter.malda"
+      ],
+      "learningGoal": "Branch the browser track into playful interactive programming.",
+      "expectedOutput": "Runs a simple playable 2D bounce game in the browser.",
+      "next": "Games/ray_tracer.malda",
+      "documentationPath": "/?lesson=browser-track#lesson-browser-track",
+      "documentationTitle": "Browser Track",
+      "featured": true
+    },
+    {
+      "name": "JS Canvas Ray Tracer",
+      "description": "Simple CPU ray tracer (spheres, ground plane, shadows) using game.setPixel and game.blitPixels",
+      "file": "ray_tracer.malda",
+      "track": "showcase",
+      "difficulty": "advanced",
+      "minutes": 20,
+      "concepts": [
+        "game.*",
+        "pixel buffer",
+        "blit",
+        "ray tracing",
+        "JavaScript target"
+      ],
+      "prerequisites": [
+        "Games/game_bounce.malda"
+      ],
+      "learningGoal": "Show that MALDA JavaScript mode can write a full-frame pixel buffer and blit it in one ImageData upload.",
+      "expectedOutput": "Renders a progressive CPU ray-traced scene in the browser.",
+      "next": "Games/three_shader_raytracer.malda",
+      "documentationPath": "/?lesson=browser-track#lesson-browser-track",
+      "documentationTitle": "Browser Track"
+    },
+    {
+      "name": "JS three.js GPU Ray Tracer",
+      "description": "Realtime GLSL sphere tracer using three.createShaderMaterial and three.setUniform",
+      "file": "three_shader_raytracer.malda",
+      "track": "showcase",
+      "difficulty": "advanced",
+      "minutes": 18,
+      "concepts": [
+        "three.*",
+        "GLSL",
+        "shader material",
+        "ray tracing",
+        "JavaScript target"
+      ],
+      "prerequisites": [
+        "Games/ray_tracer.malda"
+      ],
+      "learningGoal": "Show how a CPU MALDA tracer becomes realtime by moving the rays into a curated three.js GLSL shader.",
+      "expectedOutput": "Renders a realtime GPU ray-traced scene in the browser.",
+      "next": "Games/three_shader_path_tunnel.malda",
+      "documentationPath": "/?lesson=browser-track#lesson-browser-track",
+      "documentationTitle": "Browser Track"
+    },
+    {
+      "name": "JS three.js Path Tunnel",
+      "description": "ShaderToy-style GPU path-marching tunnel converted to @shader() kernels (Frostbyte, CC-BY-NC-SA-4.0)",
+      "file": "three_shader_path_tunnel.malda",
+      "track": "showcase",
+      "difficulty": "advanced",
+      "minutes": 16,
+      "concepts": [
+        "three.*",
+        "GLSL",
+        "shader material",
+        "ShaderToy",
+        "JavaScript target"
+      ],
+      "prerequisites": [
+        "Games/three_shader_raytracer.malda"
+      ],
+      "learningGoal": "Show a ShaderToy-style volumetric path march written as typed MALDA @shader() functions and compiled with glsl.compile.",
+      "expectedOutput": "Renders a realtime GPU tunnel that flies along a twisting path.",
+      "next": "Games/three_cube.malda",
+      "documentationPath": "/?lesson=browser-track#lesson-browser-track",
+      "documentationTitle": "Browser Track"
+    },
+    {
+      "name": "JS Canvas Game Maldanoid",
+      "description": "Arkanoid-style breakout game with multiple levels, power-ups, score combo, and polished canvas effects using MALDA game.* API",
+      "file": "maldanoid.malda",
+      "track": "showcase",
+      "difficulty": "advanced",
+      "minutes": 25,
+      "concepts": [
+        "game systems",
+        "levels",
+        "effects",
+        "browser gameplay"
+      ],
+      "prerequisites": [
+        "Games/game_bounce.malda"
+      ],
+      "learningGoal": "Show the commercial-quality ceiling of MALDA's browser game/runtime path.",
+      "expectedOutput": "Runs a richer breakout-style browser game.",
+      "next": "Games/maldadash.malda"
+    },
+    {
+      "name": "JS Canvas Game Maldadash",
+      "description": "Boulder Dash-style cave: dig dirt, drop boulders, collect diamonds, and dodge fireflies using MALDA game.* API",
+      "file": "maldadash.malda",
+      "track": "showcase",
+      "difficulty": "advanced",
+      "minutes": 22,
+      "concepts": [
+        "game.*",
+        "tile grid",
+        "gravity",
+        "keyboard input",
+        "JavaScript target"
+      ],
+      "prerequisites": [
+        "Games/game_bounce.malda"
+      ],
+      "learningGoal": "Show a grid-and-physics cave game on the same game.* canvas path as Bounce and Maldanoid.",
+      "expectedOutput": "Runs a playable Boulder Dash-style cave in the browser.",
+      "documentationPath": "/?lesson=browser-track#lesson-browser-track",
+      "documentationTitle": "Browser Track"
+    },
+    {
+      "name": "JS three.js Rotating Cube",
+      "description": "Minimal 3D browser demo using MALDA three.* helpers with a lit cube and animation loop",
+      "file": "three_cube.malda",
+      "track": "showcase",
+      "difficulty": "intermediate",
+      "minutes": 14,
+      "concepts": [
+        "three.*",
+        "3D scene",
+        "render loop",
+        "browser graphics"
+      ],
+      "prerequisites": [
+        "Games/game_bounce.malda"
+      ],
+      "learningGoal": "Introduce MALDA's 3D browser path with a small but visually rich example.",
+      "expectedOutput": "Renders a rotating 3D cube in the browser.",
+      "next": "Games/maldanoid3d.malda",
+      "documentationPath": "/?lesson=browser-track#lesson-browser-track",
+      "documentationTitle": "Browser Track"
+    },
+    {
+      "name": "JS three.js Maldanoid 3D",
+      "description": "Playable breakout-style 3D demo using MALDA three.* helpers with a lit arena, animated bricks, and browser controls",
+      "file": "maldanoid3d.malda",
+      "track": "showcase",
+      "difficulty": "advanced",
+      "minutes": 25,
+      "concepts": [
+        "3D gameplay",
+        "three.*",
+        "advanced browser app"
+      ],
+      "prerequisites": [
+        "Games/three_cube.malda"
+      ],
+      "learningGoal": "Provide a high-ceiling browser/3D showcase after the learner has seen smaller JS-target examples.",
+      "expectedOutput": "Runs a playable 3D breakout-style browser demo."
+    }
+  ]
+}

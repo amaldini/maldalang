@@ -110,7 +110,7 @@ Most examples inherit the repository dual licence. This one does not:
 
 | File | Licence | Notes |
 |------|---------|-------|
-| `Examples/Web/js/three_shader_path_tunnel.malda` | CC-BY-NC-SA-4.0 | Conversion of [@Frostbyte's path-marching tunnel](https://fragcoord.xyz/s/tbe1g319). Palette from Inigo Quilez (MIT). Noise from Xor / Fabrice. Non-commercial ShareAlike — do not treat this file as MIT or Apache-2.0. |
+| `Examples/Games/three_shader_path_tunnel.malda` | CC-BY-NC-SA-4.0 | Conversion of [@Frostbyte's path-marching tunnel](https://fragcoord.xyz/s/tbe1g319). Palette from Inigo Quilez (MIT). Noise from Xor / Fabrice. Non-commercial ShareAlike — do not treat this file as MIT or Apache-2.0. |
 
 The host HTML smoke page next to it is original MALDA boilerplate and stays under the repository licences.
 

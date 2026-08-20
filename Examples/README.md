@@ -33,7 +33,8 @@ Each folder’s `metadata.json` may tag examples with `requires`:
 | [Prompts](Prompts/) | `prompt` declarations | api-key (most) | ai-builder |
 | [AI_LLM](AI_LLM/) | Clients and conversations | api-key | ai-builder, showcase |
 | [Agents](Agents/) | Agents and tools | api-key | ai-builder, showcase |
-| [Web](Web/) | HttpServer, REST, UI, JS target, auth, jobs | network (servers); offline (job queue demo) | student, ai-builder, showcase |
+| [Web](Web/) | HttpServer, REST, UI, JS DOM target, auth, jobs | network (servers); offline (job queue demo) | student, ai-builder, showcase |
+| [Games](Games/) | Canvas `game.*` and `three.*` graphics (JS target) | offline | student, showcase |
 | [Workflows](Workflows/) | Durable `workflow` / `step` | offline | ai-builder |
 | [Testing](Testing/) | `malda test` and property tests | offline | student, showcase |
 | [Actors](Actors/) | `spawn` / `send` / `on` | offline | — |

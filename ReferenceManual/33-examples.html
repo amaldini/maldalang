@@ -243,7 +243,7 @@ println(text);</code></pre>
         <p>Load <code>malda-js-runtime.js</code> before the compiled template script in your host page.</p>
         <h2>33.14 JavaScript Backend (game canvas API)</h2>
         <p>Build a first interactive browser game using <code>game.*</code> in JavaScript mode:</p>
-        <pre><code>malda compile Examples/Web/js/game_bounce.malda --mode js -o Examples/Web/js/game_bounce.js</code></pre>
+        <pre><code>malda compile Examples/Games/game_bounce.malda --mode js -o Examples/Games/game_bounce.js</code></pre>
         <pre><code>var x = 100;
 var speed = 220;
 
@@ -266,7 +266,7 @@ function render() {
 game.createCanvas(640, 360, "#app");
 game.setBackground("#202830");
 game.start(update, render);</code></pre>
-        <p>Key points: create the canvas before drawing/starting, scale movement by <code>dtMs</code>, and load <code>malda-js-runtime.js</code> before the compiled script. See <code>Examples/Web/js/game_runtime_smoke_test.html</code> for a direct browser smoke test host page. For a larger tile-cave sample (Boulder Dash-style gravity, diamonds, and fireflies), compile <code>Examples/Web/js/maldadash.malda</code>.</p>
+        <p>Key points: create the canvas before drawing/starting, scale movement by <code>dtMs</code>, and load <code>malda-js-runtime.js</code> before the compiled script. See <code>Examples/Games/game_runtime_smoke_test.html</code> for a direct browser smoke test host page. For a larger tile-cave sample (Boulder Dash-style gravity, diamonds, and fireflies), compile <code>Examples/Games/maldadash.malda</code>.</p>
         <h3>33.14.1 Game Audio (v1 quick sample)</h3>
         <pre><code>var startedAudio = false;
 
@@ -288,7 +288,7 @@ game.start(update, null);</code></pre>
         <p>Audio v1 uses <code>game.audio*</code> APIs in JavaScript mode. The API surface is intentionally stable for existing MALDA game scripts.</p>
         <h3>33.14.2 Pixel buffer blit</h3>
         <p>Write a CPU frame with <code>game.setPixel</code>, then upload it in one <code>putImageData</code> via <code>game.blitPixels()</code>. Packed RGB/RGBA arrays are also accepted. Compile the ray-tracer sample with:</p>
-        <pre><code>malda compile Examples/Web/js/ray_tracer.malda --mode js -o Examples/Web/js/ray_tracer.js</code></pre>
+        <pre><code>malda compile Examples/Games/ray_tracer.malda --mode js -o Examples/Games/ray_tracer.js</code></pre>
         <pre><code>game.createCanvas(320, 180, "#app");
 game.createPixelBuffer();
 
@@ -309,10 +309,10 @@ function render() {
 }
 
 game.start(update, render);</code></pre>
-        <p>Colors are 0–255. Out-of-bounds <code>setPixel</code> writes are ignored. Prefer this path over per-pixel <code>fillRect</code>. See <code>Examples/Web/js/ray_tracer.malda</code>.</p>
+        <p>Colors are 0–255. Out-of-bounds <code>setPixel</code> writes are ignored. Prefer this path over per-pixel <code>fillRect</code>. See <code>Examples/Games/ray_tracer.malda</code>.</p>
         <h2>33.15 JavaScript Backend (three.js scene API)</h2>
         <p>Build a first 3D browser scene using <code>three.*</code> in JavaScript mode. The scene API, loop, loading order, and shader kernels are in <a href="26-browser-javascript-backend.html#three-scene-api">26.10 three.js Scene API</a>:</p>
-        <pre><code>malda compile Examples/Web/js/three_cube.malda --mode js -o Examples/Web/js/three_cube.js</code></pre>
+        <pre><code>malda compile Examples/Games/three_cube.malda --mode js -o Examples/Games/three_cube.js</code></pre>
         <pre><code>var width = 800;
 var height = 500;
 var renderer = three.createRenderer(width, height, "#app");
@@ -334,11 +334,11 @@ three.add(scene, light);
 function render() {
     three.render(renderer, scene, camera);
 }</code></pre>
-        <p>Key points: load <code>Examples/Web/wwwroot/vendor/three.min.js</code> before <code>malda-js-runtime.js</code>, then the compiled MALDA script, then call <code>MaldaApp.main()</code>. See <code>Examples/Web/js/three_runtime_smoke_test.html</code> for a direct host page.</p>
+        <p>Key points: load <code>Examples/Web/wwwroot/vendor/three.min.js</code> before <code>malda-js-runtime.js</code>, then the compiled MALDA script, then call <code>MaldaApp.main()</code>. See <code>Examples/Games/three_runtime_smoke_test.html</code> for a direct host page.</p>
         <h3>33.15.1 Shader materials</h3>
         <p>Move per-pixel work onto the GPU with <code>three.createShaderMaterial</code> and <code>three.setUniform</code>. The contract (types, subset, <code>glsl.compile</code> keys, IDE rename) is in <a href="26-browser-javascript-backend.html#shader-kernels">26.10.1 Shader kernels</a>. Compile the realtime tracer with:</p>
-        <pre><code>malda compile Examples/Web/js/three_shader_raytracer.malda --mode js -o Examples/Web/js/three_shader_raytracer.js
-malda compile Examples/Web/js/three_shader_path_tunnel.malda --mode js -o Examples/Web/js/three_shader_path_tunnel.js</code></pre>
+        <pre><code>malda compile Examples/Games/three_shader_raytracer.malda --mode js -o Examples/Games/three_shader_raytracer.js
+malda compile Examples/Games/three_shader_path_tunnel.malda --mode js -o Examples/Games/three_shader_path_tunnel.js</code></pre>
         <pre><code>@shader()
 function vertexMain() {
     vUv = uv;
@@ -357,7 +357,7 @@ var material = three.createShaderMaterial({
     "uniforms": { "uTime": 0 }
 });
 three.setUniform(material, "uTime", t);</code></pre>
-        <p>Use <code>three.createOrthographicCamera(-1, 1, 1, -1, 0, 1)</code> and <code>PlaneGeometry(2, 2)</code> for a fullscreen pass. See <code>Examples/Web/js/three_shader_raytracer.malda</code>. A ShaderToy-style path-marching tunnel is <code>Examples/Web/js/three_shader_path_tunnel.malda</code> (Frostbyte, CC-BY-NC-SA-4.0).</p>
+        <p>Use <code>three.createOrthographicCamera(-1, 1, 1, -1, 0, 1)</code> and <code>PlaneGeometry(2, 2)</code> for a fullscreen pass. See <code>Examples/Games/three_shader_raytracer.malda</code>. A ShaderToy-style path-marching tunnel is <code>Examples/Games/three_shader_path_tunnel.malda</code> (Frostbyte, CC-BY-NC-SA-4.0).</p>
         <h2>33.16 Property Testing Quick Example</h2>
         <pre><code>property intIdentity(x) {
     return (x + 0) == x;

@@ -92,7 +92,7 @@ public class JsSourceMapTests : TestBase
     [Fact]
     public void Parse_MapsMaldanoidRenderGame()
     {
-        var path = PlanningPaths.ResolveRepoPath("Examples", "Web", "js", "maldanoid.malda");
+        var path = PlanningPaths.ResolveRepoPath("Examples", "Games", "maldanoid.malda");
         Assert.True(File.Exists(path), path);
         var source = File.ReadAllText(path).Replace("\r\n", "\n");
         var compiler = new Compiler.Compiler();
@@ -108,7 +108,7 @@ public class JsSourceMapTests : TestBase
     [Fact]
     public void Parse_MapsMaldadashRenderGame()
     {
-        var path = PlanningPaths.ResolveRepoPath("Examples", "Web", "js", "maldadash.malda");
+        var path = PlanningPaths.ResolveRepoPath("Examples", "Games", "maldadash.malda");
         Assert.True(File.Exists(path), path);
         var source = File.ReadAllText(path).Replace("\r\n", "\n");
         var compiler = new Compiler.Compiler();
@@ -159,7 +159,7 @@ public class JsBrowserApiDetectorTests
     [Fact]
     public void UsesBrowserHost_DetectsMaldanoidExample()
     {
-        var path = PlanningPaths.ResolveRepoPath("Examples", "Web", "js", "maldanoid.malda");
+        var path = PlanningPaths.ResolveRepoPath("Examples", "Games", "maldanoid.malda");
         Assert.True(File.Exists(path), path);
         Assert.True(JsBrowserApiDetector.UsesBrowserHost(File.ReadAllText(path)));
     }
@@ -167,7 +167,7 @@ public class JsBrowserApiDetectorTests
     [Fact]
     public void UsesBrowserHost_DetectsMaldadashExample()
     {
-        var path = PlanningPaths.ResolveRepoPath("Examples", "Web", "js", "maldadash.malda");
+        var path = PlanningPaths.ResolveRepoPath("Examples", "Games", "maldadash.malda");
         Assert.True(File.Exists(path), path);
         Assert.True(JsBrowserApiDetector.UsesBrowserHost(File.ReadAllText(path)));
     }

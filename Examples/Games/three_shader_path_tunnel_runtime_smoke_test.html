@@ -27,12 +27,12 @@
 <body>
   <h1>mlRuntime.three Path Tunnel</h1>
   <p>Loads the local <code>three.js</code> bundle, the MALDA runtime, and compiled <code>three_shader_path_tunnel.js</code>. Compile first:</p>
-  <p><code>malda compile Examples/Web/js/three_shader_path_tunnel.malda --mode js -o Examples/Web/js/three_shader_path_tunnel.js</code></p>
+  <p><code>malda compile Examples/Games/three_shader_path_tunnel.malda --mode js -o Examples/Games/three_shader_path_tunnel.js</code></p>
   <p>Shader credit: @Frostbyte, CC-BY-NC-SA-4.0. Original: <a href="https://fragcoord.xyz/s/tbe1g319">fragcoord.xyz/s/tbe1g319</a></p>
   <div id="app"></div>
 
-  <script src="../wwwroot/vendor/three.min.js"></script>
-  <script src="../wwwroot/malda-js-runtime.js"></script>
+  <script src="../Web/wwwroot/vendor/three.min.js"></script>
+  <script src="../Web/wwwroot/malda-js-runtime.js"></script>
   <script src="./three_shader_path_tunnel.js"></script>
   <script>
     if (window.MaldaApp && typeof window.MaldaApp.main === "function") {

@@ -244,7 +244,7 @@ println(text);</code></pre>
         <p>Carica <code>malda-js-runtime.js</code> prima dello script del template compilato nella pagina host.</p>
         <h2>33.14 Backend JavaScript (API canvas di gioco)</h2>
         <p>Costruisci un primo gioco interattivo nel browser usando <code>game.*</code> in modalità JavaScript:</p>
-        <pre><code>malda compile Examples/Web/js/game_bounce.malda --mode js -o Examples/Web/js/game_bounce.js</code></pre>
+        <pre><code>malda compile Examples/Games/game_bounce.malda --mode js -o Examples/Games/game_bounce.js</code></pre>
         <pre><code>var x = 100;
 var speed = 220;
 
@@ -267,7 +267,7 @@ function render() {
 game.createCanvas(640, 360, "#app");
 game.setBackground("#202830");
 game.start(update, render);</code></pre>
-        <p>Punti chiave: crea il canvas prima di disegnare/avviare, scala il movimento con <code>dtMs</code> e carica <code>malda-js-runtime.js</code> prima dello script compilato. Vedi <code>Examples/Web/js/game_runtime_smoke_test.html</code> per una pagina host di smoke test diretta nel browser. Per un sample cave a tile (stile Boulder Dash: gravità, diamanti e lucciole), compila <code>Examples/Web/js/maldadash.malda</code>.</p>
+        <p>Punti chiave: crea il canvas prima di disegnare/avviare, scala il movimento con <code>dtMs</code> e carica <code>malda-js-runtime.js</code> prima dello script compilato. Vedi <code>Examples/Games/game_runtime_smoke_test.html</code> per una pagina host di smoke test diretta nel browser. Per un sample cave a tile (stile Boulder Dash: gravità, diamanti e lucciole), compila <code>Examples/Games/maldadash.malda</code>.</p>
         <h3>33.14.1 Audio di gioco (campione rapido v1)</h3>
         <pre><code>var startedAudio = false;
 
@@ -289,7 +289,7 @@ game.start(update, null);</code></pre>
         <p>L'audio v1 usa le API <code>game.audio*</code> in modalità JavaScript. La superficie API è volutamente stabile per gli script di gioco MALDA esistenti.</p>
         <h3>33.14.2 Blit del buffer pixel</h3>
         <p>Scrivi un frame CPU con <code>game.setPixel</code>, poi caricalo in un solo <code>putImageData</code> tramite <code>game.blitPixels()</code>. Sono accettati anche array RGB/RGBA packed. Compila il sample ray tracer con:</p>
-        <pre><code>malda compile Examples/Web/js/ray_tracer.malda --mode js -o Examples/Web/js/ray_tracer.js</code></pre>
+        <pre><code>malda compile Examples/Games/ray_tracer.malda --mode js -o Examples/Games/ray_tracer.js</code></pre>
         <pre><code>game.createCanvas(320, 180, "#app");
 game.createPixelBuffer();
 
@@ -310,10 +310,10 @@ function render() {
 }
 
 game.start(update, render);</code></pre>
-        <p>I colori sono 0–255. Le scritture <code>setPixel</code> fuori dai limiti vengono ignorate. Preferisci questo percorso a un <code>fillRect</code> per pixel. Vedi <code>Examples/Web/js/ray_tracer.malda</code>.</p>
+        <p>I colori sono 0–255. Le scritture <code>setPixel</code> fuori dai limiti vengono ignorate. Preferisci questo percorso a un <code>fillRect</code> per pixel. Vedi <code>Examples/Games/ray_tracer.malda</code>.</p>
         <h2>33.15 Backend JavaScript (API scena three.js)</h2>
         <p>Costruisci una prima scena 3D nel browser usando <code>three.*</code> in modalità JavaScript. L'API scene, il loop, l'ordine di caricamento e i kernel shader sono in <a href="26-browser-javascript-backend.html#three-scene-api">26.10 API scene three.js</a>:</p>
-        <pre><code>malda compile Examples/Web/js/three_cube.malda --mode js -o Examples/Web/js/three_cube.js</code></pre>
+        <pre><code>malda compile Examples/Games/three_cube.malda --mode js -o Examples/Games/three_cube.js</code></pre>
         <pre><code>var width = 800;
 var height = 500;
 var renderer = three.createRenderer(width, height, "#app");
@@ -335,11 +335,11 @@ three.add(scene, light);
 function render() {
     three.render(renderer, scene, camera);
 }</code></pre>
-        <p>Punti chiave: carica <code>Examples/Web/wwwroot/vendor/three.min.js</code> prima di <code>malda-js-runtime.js</code>, poi lo script MALDA compilato, poi chiama <code>MaldaApp.main()</code>. Vedi <code>Examples/Web/js/three_runtime_smoke_test.html</code> per una pagina host diretta.</p>
+        <p>Punti chiave: carica <code>Examples/Web/wwwroot/vendor/three.min.js</code> prima di <code>malda-js-runtime.js</code>, poi lo script MALDA compilato, poi chiama <code>MaldaApp.main()</code>. Vedi <code>Examples/Games/three_runtime_smoke_test.html</code> per una pagina host diretta.</p>
         <h3>33.15.1 Materiali shader</h3>
         <p>Sposta il lavoro per-pixel sulla GPU con <code>three.createShaderMaterial</code> e <code>three.setUniform</code>. Il contratto (tipi, sottoinsieme, chiavi di <code>glsl.compile</code>, rename nell'IDE) è in <a href="26-browser-javascript-backend.html#shader-kernels">26.10.1 Kernel shader</a>. Compila il tracer in tempo reale con:</p>
-        <pre><code>malda compile Examples/Web/js/three_shader_raytracer.malda --mode js -o Examples/Web/js/three_shader_raytracer.js
-malda compile Examples/Web/js/three_shader_path_tunnel.malda --mode js -o Examples/Web/js/three_shader_path_tunnel.js</code></pre>
+        <pre><code>malda compile Examples/Games/three_shader_raytracer.malda --mode js -o Examples/Games/three_shader_raytracer.js
+malda compile Examples/Games/three_shader_path_tunnel.malda --mode js -o Examples/Games/three_shader_path_tunnel.js</code></pre>
         <pre><code>@shader()
 function vertexMain() {
     vUv = uv;
@@ -358,7 +358,7 @@ var material = three.createShaderMaterial({
     "uniforms": { "uTime": 0 }
 });
 three.setUniform(material, "uTime", t);</code></pre>
-        <p>Usa <code>three.createOrthographicCamera(-1, 1, 1, -1, 0, 1)</code> e <code>PlaneGeometry(2, 2)</code> per un pass a schermo intero. Vedi <code>Examples/Web/js/three_shader_raytracer.malda</code>. Un tunnel path-marching in stile ShaderToy è <code>Examples/Web/js/three_shader_path_tunnel.malda</code> (Frostbyte, CC-BY-NC-SA-4.0).</p>
+        <p>Usa <code>three.createOrthographicCamera(-1, 1, 1, -1, 0, 1)</code> e <code>PlaneGeometry(2, 2)</code> per un pass a schermo intero. Vedi <code>Examples/Games/three_shader_raytracer.malda</code>. Un tunnel path-marching in stile ShaderToy è <code>Examples/Games/three_shader_path_tunnel.malda</code> (Frostbyte, CC-BY-NC-SA-4.0).</p>
         <h2>33.16 Esempio rapido di property testing</h2>
         <pre><code>property intIdentity(x) {
     return (x + 0) == x;
