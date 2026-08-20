@@ -10,7 +10,7 @@ namespace MaldaLang.DesktopIDE.Tests;
 public class ThemeCatalogTests
 {
     private static string RepoRoot =>
-        Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".."));
+        System.IO.Path.GetFullPath(System.IO.Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".."));
 
     private const double MinimumContrast = 4.5;
 
@@ -97,7 +97,7 @@ public class ThemeCatalogTests
     [Fact]
     public void MainWindow_ThemeMenuIsPopulatedFromCatalog()
     {
-        var xaml = File.ReadAllText(Path.Combine(RepoRoot, "MaldaLang.DesktopIDE", "MainWindow.xaml"));
+        var xaml = System.IO.File.ReadAllText(System.IO.Path.Combine(RepoRoot, "MaldaLang.DesktopIDE", "MainWindow.xaml"));
         Assert.Contains("x:Name=\"ThemeMenu\"", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("ViewThemeLight_Click", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("Header=\"Light\" Click=", xaml, StringComparison.Ordinal);
