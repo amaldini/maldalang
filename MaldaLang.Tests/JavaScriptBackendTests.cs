@@ -1008,9 +1008,14 @@ globalThis.window = {
   },
   cancelAnimationFrame() {}
 };
-globalThis.navigator = {
-  getGamepads() { return pads; }
-};
+Object.defineProperty(globalThis, "navigator", {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  value: {
+    getGamepads() { return pads; }
+  }
+});
 
 function fire(type, event) {
   (listeners[type] || []).forEach((fn) => fn(event));
