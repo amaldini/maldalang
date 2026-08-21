@@ -1,0 +1,65 @@
+var root = dom.query("#app");
+
+if (root == null) {
+    println("No #app container found.");
+} else {
+    dom.clear(root);
+
+    var title = dom.create("h1");
+    dom.setText(title, "MALDA Game: Fixed timestep + save");
+    dom.append(root, title);
+
+    var hint = dom.create("p");
+    dom.setText(hint, "startFixed(update, render, 1000/60). Space adds score (saved high score). R resets score. D deletes the save. Reload the page: high score remains.");
+    dom.append(root, hint);
+
+    var x = 40.0;
+    var speed = 180;
+    var score = 0;
+    var high = 0;
+    var ticks = 0;
+    var frames = 0;
+    var lastDt = 0.0;
+
+    var loaded = game.load("fixed_smoke_high");
+    if (loaded != null) {
+        high = loaded;
+    }
+
+    function update(dtMs) {
+        ticks = ticks + 1;
+        lastDt = dtMs;
+        x = x + ((speed * dtMs) / 1000);
+        if (x > 560) {
+            x = 40;
+        }
+
+        if (game.wasKeyPressed(" ")) {
+            score = score + 1;
+            if (score > high) {
+                high = score;
+                game.save("fixed_smoke_high", high);
+            }
+        }
+        if (game.wasKeyPressed("r")) {
+            score = 0;
+        }
+        if (game.wasKeyPressed("d")) {
+            game.removeSave("fixed_smoke_high");
+            high = 0;
+        }
+    }
+
+    function render() {
+        frames = frames + 1;
+        game.clear();
+        game.fillRect(x, 150, 36, 36, "#33cc66");
+        game.drawText("score " + string(score) + "  high " + string(high), 12, 28, "#ffffff", "14px monospace");
+        game.drawText("ticks " + string(ticks) + "  frames " + string(frames) + "  dt " + string(lastDt), 12, 50, "#99ddee", "12px monospace");
+        game.drawText("update always gets tickMs (not wall dt). Saves use origin localStorage (malda.game.*).", 12, 72, "#8aa0b8", "12px monospace");
+    }
+
+    game.createCanvas(640, 360, "#app");
+    game.setBackground("#151b24");
+    game.startFixed(update, render, 1000 / 60);
+}

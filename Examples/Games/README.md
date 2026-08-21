@@ -13,6 +13,7 @@ malda compile Examples/Games/game_sprite_smoke.malda --mode js -o Examples/Games
 malda compile Examples/Games/game_input_smoke.malda --mode js -o Examples/Games/game_input_smoke.js
 malda compile Examples/Games/game_collision_smoke.malda --mode js -o Examples/Games/game_collision_smoke.js
 malda compile Examples/Games/game_audio_sample_smoke.malda --mode js -o Examples/Games/game_audio_sample_smoke.js
+malda compile Examples/Games/game_fixed_save_smoke.malda --mode js -o Examples/Games/game_fixed_save_smoke.js
 malda compile Examples/Games/maldadash.malda --mode js -o Examples/Games/maldadash.js
 malda compile Examples/Games/three_cube.malda --mode js -o Examples/Games/three_cube.js
 malda compile Examples/Games/three_shader_path_tunnel.malda --mode js -o Examples/Games/three_shader_path_tunnel.js
