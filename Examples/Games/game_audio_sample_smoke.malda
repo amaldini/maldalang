@@ -1,0 +1,119 @@
+var root = dom.query("#app");
+
+if (root == null) {
+    println("No #app container found.");
+} else {
+    dom.clear(root);
+
+    var title = dom.create("h1");
+    dom.setText(title, "MALDA Game: Sample SFX smoke");
+    dom.append(root, title);
+
+    var hint = dom.create("p");
+    dom.setText(hint, "Space or click to audioInit (starts a quiet looping pattern). Z = hi beep, X = lo beep (overlap them). S stops the hi sample only. A stops all samples; the pattern keeps playing.");
+    dom.append(root, hint);
+
+    var audioStarted = false;
+    var hiFlash = 0.0;
+    var loFlash = 0.0;
+    var lastAction = "press Space or click";
+
+    function tryStartAudio() {
+        game.audioInit();
+        if (!game.audioIsReady()) {
+            lastAction = "audioInit blocked — click/Space again";
+            return;
+        }
+        if (!audioStarted) {
+            game.audioSetMasterVolume(0.7);
+            game.audioPlayPattern({
+                "tempoBpm": 90,
+                "loop": true,
+                "tracks": [[
+                    { "atBeats": 0, "noteHz": 110, "durBeats": 0.4, "waveType": "sine", "volume": 0.06 }
+                ]]
+            });
+            audioStarted = true;
+            lastAction = "audio ready — pattern looping";
+        }
+    }
+
+    function update(dtMs) {
+        if (!audioStarted) {
+            if (game.wasKeyPressed(" ") || game.isMouseDown(0)) {
+                tryStartAudio();
+            }
+        }
+
+        if (game.wasKeyPressed("z")) {
+            tryStartAudio();
+            game.audioPlaySample("assets/beep_hi.wav", 0.85);
+            hiFlash = 240;
+            lastAction = "hi sample";
+        }
+        if (game.wasKeyPressed("x")) {
+            tryStartAudio();
+            game.audioPlaySample("assets/beep_lo.wav", 0.85);
+            loFlash = 240;
+            lastAction = "lo sample";
+        }
+        if (game.wasKeyPressed("s")) {
+            game.audioStopSample("assets/beep_hi.wav");
+            hiFlash = 0;
+            lastAction = "stop hi sample";
+        }
+        if (game.wasKeyPressed("a")) {
+            game.audioStopSample();
+            hiFlash = 0;
+            loFlash = 0;
+            lastAction = "stop all samples";
+        }
+
+        if (hiFlash > 0) {
+            hiFlash = hiFlash - dtMs;
+            if (hiFlash < 0) {
+                hiFlash = 0;
+            }
+        }
+        if (loFlash > 0) {
+            loFlash = loFlash - dtMs;
+            if (loFlash < 0) {
+                loFlash = 0;
+            }
+        }
+    }
+
+    function render() {
+        game.clear();
+
+        var hiColor = "#335577";
+        if (hiFlash > 0) {
+            hiColor = "#66ddff";
+        }
+        var loColor = "#553355";
+        if (loFlash > 0) {
+            loColor = "#ee88cc";
+        }
+        game.fillRect(80, 120, 200, 90, hiColor);
+        game.fillRect(360, 120, 200, 90, loColor);
+        game.drawText("Z hi", 150, 172, "#0b1220", "18px monospace");
+        game.drawText("X lo", 430, 172, "#0b1220", "18px monospace");
+
+        var readyText = "audio off";
+        if (game.audioIsReady()) {
+            readyText = "audio ready";
+        }
+        var overlapText = "one-shots idle";
+        if (hiFlash > 0 && loFlash > 0) {
+            overlapText = "overlapping samples";
+        }
+
+        game.drawText(readyText + "  " + overlapText, 12, 28, "#ffffff", "14px monospace");
+        game.drawText("last: " + lastAction, 12, 50, "#99ddee", "12px monospace");
+        game.drawText("audioStopSample does not stop the looping pattern or an audioPlayTrack.", 12, 72, "#8aa0b8", "12px monospace");
+    }
+
+    game.createCanvas(640, 360, "#app");
+    game.setBackground("#151b24");
+    game.start(update, render);
+}

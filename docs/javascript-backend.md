@@ -113,6 +113,7 @@ Validation rules currently enforced:
     - Pixel buffer / blit: `game.createPixelBuffer(width?, height?)`, `game.setPixel(x, y, r, g, b, a?)`, `game.blitPixels(pixels?, destX?, destY?)`
     - Collision: `game.overlapRect(x1, y1, w1, h1, x2, y2, w2, h2)`, `game.overlapCircle(x1, y1, r1, x2, y2, r2)`, `game.pointInRect(px, py, x, y, w, h)`, `game.pointInCircle(px, py, x, y, r)`
     - Input: `game.isKeyDown(key)`, `game.wasKeyPressed(key)`, `game.wasKeyReleased(key)`, `game.getMouseX()`, `game.getMouseY()`, `game.isMouseDown(button?)`, `game.getTouches()`, `game.isGamepadConnected(index?)`, `game.getGamepadAxis(index, axis)`, `game.isGamepadButtonDown(index, button)`, `game.wasGamepadButtonPressed(index, button)`
+    - Audio: `game.audioInit()`, `game.audioIsReady()`, `game.audioSetMasterVolume(v)`, `game.audioPlayTone(...)`, `game.audioPlayNoise(...)`, `game.audioPlayPattern(pattern)`, `game.audioStopPattern()`, `game.audioPlaySample(url, volume?, options?)`, `game.audioStopSample(url?)`, `game.audioLoadTrack(...)`, `game.audioPlayTrack()`, `game.audioStopTrack()`, `game.audioStopAll()`
   - Three helpers:
     - Renderer/lifecycle: `three.createRenderer(width, height, mountSelector?)`, `three.setClearColor(renderer, color)`, `three.setRendererSize(renderer, width, height)`, `three.start(updateFn, renderFn?)`, `three.stop()`
     - Scene graph: `three.createScene()`, `three.createPerspectiveCamera(fovDeg, aspect, near, far)`, `three.createOrthographicCamera(left, right, top, bottom, near, far)`, `three.setCameraAspect(camera, aspect)`, `three.createGroup()`, `three.createMesh(geometry, material)`, `three.add(parent, child)`
@@ -180,6 +181,11 @@ Use `game.*` when you want a browser-hosted interactive canvas loop in MALDA Jav
   - `game.isGamepadConnected(index?)` — default index `0`
   - `game.getGamepadAxis(index, axis)` — missing device → `0`; axes clamped `[-1, 1]`
   - `game.isGamepadButtonDown(index, button)`, `game.wasGamepadButtonPressed(index, button)` — edges use the same clock as keys
+- Audio:
+  - `game.audioInit()` — resume the shared `AudioContext` after a user gesture
+  - `game.audioPlaySample(url, volume?, options?)` — decode a WAV/OGG once per URL and play a one-shot (or `{ loop: true }`). `volume` default `1`, clamp `[0, 1]`. Returns `null`
+  - `game.audioStopSample(url?)` — omit URL to stop every sample. Does **not** stop the v1 track or pattern
+  - `game.audioPlayTone` / `game.audioPlayNoise` / `game.audioPlayPattern` / `game.audioLoadTrack` — Audio Spec v1 (unchanged signatures)
 
 ### Minimal starter template
 
@@ -242,7 +248,7 @@ function update(dtMs) {
 
 ### Guardrails and error conditions
 
-- Call `game.createCanvas(...)` before `game.clear(...)`, draw calls, pixel-buffer calls, camera/alpha calls, or `game.start(...)`. `game.loadImage` / `game.imageIsReady` and overlap helpers (`overlapRect`, `overlapCircle`, `pointInRect`, `pointInCircle`) may run without a canvas.
+- Call `game.createCanvas(...)` before `game.clear(...)`, draw calls, pixel-buffer calls, camera/alpha calls, or `game.start(...)`. `game.loadImage` / `game.imageIsReady`, overlap helpers (`overlapRect`, `overlapCircle`, `pointInRect`, `pointInCircle`), and `game.audio*` may run without a canvas.
 - Unready image handles (still decoding, missing URL, or decode failure) make `drawImage` / `drawImageRect` no-op. They do not throw.
 - `game.setCamera` offsets `fillRect`, `fillCircle`, `drawText`, `drawLine`, `strokeRect`, and image draws. It does **not** offset `setPixel` / `blitPixels`. Mouse helpers stay in canvas pixels.
 - Overlap helpers are inclusive AABB / circle tests in the numbers you pass. They do **not** subtract `setCamera`. Zero or negative width, height, or radius is `false`. Not swept collision or physics.
@@ -250,13 +256,15 @@ function update(dtMs) {
 - First active touch still aliases mouse button 0 so existing `isMouseDown` games keep working. `getTouches()` is canvas pixels.
 - Missing Gamepad API or a disconnected pad: `isGamepadConnected` is false and axes are `0`.
 - `game.stop()` clears keys and button edges (no leftover press on the next `start`).
+- `game.audioPlaySample` decodes once per URL and caches the buffer. Missing files / decode failures no-op (no throw). Overlapping plays of the same or different URLs are allowed. `game.audioStopSample` never stops `audioPlayTrack` / `audioPlayPattern` / tones. `game.stop()` still does **not** implicit-stop audio. Samples share the existing 32-node cap with tones.
+- Call `game.audioInit()` after a click or key before expecting audible output (browser autoplay).
 - Use `game.setPixel` + `game.blitPixels()` for full-frame CPU rendering. Do not call `game.fillRect` once per pixel.
 - `game.blitPixels(pixels)` requires `pixels.length` to be `bufferWidth * bufferHeight * 3` (RGB) or `* 4` (RGBA). The buffer matches the canvas unless `createPixelBuffer(width, height)` requested another size.
 - Do not call `game.createCanvas(...)` while the loop is running; call `game.stop()` first.
 - Do not call `game.start(...)` twice without stopping in between.
 - Call `game.stop()` only when a loop is active.
 
-See `Examples/Games/game_bounce.malda` and `Examples/Games/game_runtime_smoke_test.html` for a complete playable reference. See `Examples/Games/game_sprite_smoke.malda` for PNG atlas blit and a scrolling camera. See `Examples/Games/game_input_smoke.malda` for key edges, touches, and gamepad. See `Examples/Games/game_collision_smoke.malda` for AABB and circle overlap. See `Examples/Games/maldadash.malda` for a Boulder Dash-style tile cave (gravity rocks, diamonds, fireflies). See `Examples/Games/ray_tracer.malda` for a CPU ray tracer that fills the pixel buffer and blits it once per frame.
+See `Examples/Games/game_bounce.malda` and `Examples/Games/game_runtime_smoke_test.html` for a complete playable reference. See `Examples/Games/game_sprite_smoke.malda` for PNG atlas blit and a scrolling camera. See `Examples/Games/game_input_smoke.malda` for key edges, touches, and gamepad. See `Examples/Games/game_collision_smoke.malda` for AABB and circle overlap. See `Examples/Games/game_audio_sample_smoke.malda` for overlapping WAV one-shots next to a looping pattern. See `Examples/Games/maldadash.malda` for a Boulder Dash-style tile cave (gravity rocks, diamonds, fireflies). See `Examples/Games/ray_tracer.malda` for a CPU ray tracer that fills the pixel buffer and blits it once per frame.
 
 ## three.js Quick Start (`three.*`)
 
@@ -487,13 +495,24 @@ Audio Spec v1 adds a browser-hosted game audio API in JavaScript mode. The goal 
   - Returns `false` otherwise.
 - `game.audioGetTrackInfo()`
   - Returns `{ ready, source, playing, loop, volume, backendError }`.
+- `game.audioPlaySample(url, volume?, options?)` (additive sample SFX; v1 method signatures above are unchanged)
+  - Plays a decoded WAV/OGG (or other `decodeAudioData` format) through the shared Web Audio graph.
+  - `volume` default `1`, clamped to `[0.0, 1.0]`. If the second argument is an object, it is treated as `options`.
+  - Options: `{ loop?: bool, volume?: number }`. `loop` default `false`.
+  - Returns `null`. Decode once per URL and cache. Overlapping plays are allowed.
+  - Empty URL, failed fetch, or failed decode: no-op, no throw.
+  - Autoplay-blocked: no-op until `game.audioInit()` succeeds (same as v1).
+- `game.audioStopSample(url?)`
+  - Stops active sample voices. Omit URL (or pass `""`) to stop every sample.
+  - Does **not** stop the v1 HTML-audio track, pattern scheduler, or oscillator/noise tones.
+  - Returns `null`.
 
 ### Runtime guardrails
 
 - API methods avoid hard throws on normal gameplay misuse; invalid values are clamped or ignored when possible.
 - If browser autoplay policy blocks audio (missing user gesture), methods no-op gracefully until `game.audioInit()` succeeds.
 - `game.stop()` does not implicitly stop audio; audio lifecycle is explicit via audio API methods.
-- A shared node cap limits runaway resource growth during bursty SFX playback.
+- A shared node cap limits runaway resource growth during bursty SFX playback. Sample voices count toward the same cap as tones (`maxConcurrentAudioSources` = 32).
 
 ### Determinism and scheduling
 

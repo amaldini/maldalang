@@ -92,6 +92,28 @@
       "documentationTitle": "Browser Track"
     },
     {
+      "name": "JS Canvas Sample SFX Smoke",
+      "description": "Overlapping WAV one-shots with game.audioPlaySample that leave the Audio v1 pattern running",
+      "file": "game_audio_sample_smoke.malda",
+      "track": "student",
+      "difficulty": "intermediate",
+      "minutes": 8,
+      "concepts": [
+        "game.*",
+        "audio samples",
+        "Web Audio",
+        "JavaScript target"
+      ],
+      "prerequisites": [
+        "Games/game_bounce.malda"
+      ],
+      "learningGoal": "Show audioPlaySample / audioStopSample overlapping file hits without stopping the v1 pattern or track.",
+      "expectedOutput": "After Space/click to unlock audio, Z and X play two beeps that overlap; S stops the hi sample; A stops samples only.",
+      "next": "Games/maldadash.malda",
+      "documentationPath": "/?lesson=browser-track#lesson-browser-track",
+      "documentationTitle": "Browser Track"
+    },
+    {
       "name": "JS Canvas Ray Tracer",
       "description": "Simple CPU ray tracer (spheres, ground plane, shadows) using game.setPixel and game.blitPixels",
       "file": "ray_tracer.malda",

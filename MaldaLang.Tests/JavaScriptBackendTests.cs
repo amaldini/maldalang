@@ -592,6 +592,22 @@ public class JavaScriptBackendTests : TestBase
     }
 
     [Fact]
+    public void JsTranspiler_AudioSampleSmokeExample_EmitsSampleCalls()
+    {
+        var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Games", "game_audio_sample_smoke.malda");
+        var compiler = new Compiler.Compiler();
+        var js = compiler.TranspileToJavaScript(sourcePath);
+
+        Assert.Contains("mlRuntime.game.audioPlaySample(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.audioStopSample(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.audioPlayPattern(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.audioInit()", js, StringComparison.Ordinal);
+        Assert.Contains("assets/beep_hi.wav", js, StringComparison.Ordinal);
+        Assert.Contains("assets/beep_lo.wav", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("mlRuntime.three.", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void JsTranspiler_RayTracerExample_EmitsPixelBlitCalls()
     {
         var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Games", "ray_tracer.malda");
@@ -1278,6 +1294,309 @@ process.stdout.write("ok\n");
     }
 
     [Fact]
+    public void GameRuntime_AudioPlaySample_OverlapsWithoutStoppingTrack()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var runtimePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "wwwroot", "malda-js-runtime.js");
+        var root = CreateTempDirectory("malda_js_audio_sample_");
+        try
+        {
+            var scriptPath = Path.Combine(root, "audio-sample-test.js");
+            File.WriteAllText(scriptPath, """
+globalThis.document = {
+  body: {},
+  querySelector() { return { appendChild() {}, removeChild() {} }; },
+  createElement() { return { style: {} }; }
+};
+
+function FakeGain() {
+  this.gain = {
+    value: 1,
+    lastValue: 1,
+    setValueAtTime(v) { this.lastValue = v; this.value = v; },
+    cancelScheduledValues() {},
+    linearRampToValueAtTime() {}
+  };
+}
+FakeGain.prototype.connect = function () {};
+FakeGain.prototype.disconnect = function () {};
+
+function FakeSource(kind) {
+  this.kind = kind;
+  this.buffer = null;
+  this.loop = false;
+  this.type = "sine";
+  this.frequency = { setValueAtTime() {} };
+  this.started = false;
+  this.stopped = false;
+  this.onended = null;
+}
+FakeSource.prototype.connect = function () {};
+FakeSource.prototype.disconnect = function () {};
+FakeSource.prototype.start = function () { this.started = true; };
+FakeSource.prototype.stop = function (when) {
+  if (arguments.length > 0) {
+    this.scheduledStop = when;
+    return;
+  }
+  this.stopped = true;
+  if (typeof this.onended === "function") this.onended();
+};
+
+function FakeAudioContext() {
+  this.state = "running";
+  this.currentTime = 0;
+  this.destination = {};
+  this.bufferSources = [];
+  this.oscillators = [];
+  this.gains = [];
+  this.decodeCalls = 0;
+  FakeAudioContext.last = this;
+}
+FakeAudioContext.prototype.createGain = function () {
+  const gain = new FakeGain();
+  this.gains.push(gain);
+  return gain;
+};
+FakeAudioContext.prototype.createBufferSource = function () {
+  const source = new FakeSource("buffer");
+  this.bufferSources.push(source);
+  return source;
+};
+FakeAudioContext.prototype.createOscillator = function () {
+  const source = new FakeSource("osc");
+  this.oscillators.push(source);
+  return source;
+};
+FakeAudioContext.prototype.decodeAudioData = function (bytes) {
+  this.decodeCalls += 1;
+  if (String(this._decodeUrl || "").indexOf("bad") >= 0) {
+    return Promise.reject(new Error("decode failed"));
+  }
+  return Promise.resolve({ duration: 0.12, length: 8, sampleRate: 22050, numberOfChannels: 1 });
+};
+FakeAudioContext.prototype.resume = function () {
+  this.state = "running";
+  return Promise.resolve();
+};
+
+let lastTrack = null;
+function FakeHtmlAudio(src) {
+  this.src = src;
+  this.loop = false;
+  this.volume = 1;
+  this.paused = true;
+  this.currentTime = 0;
+  this.readyState = 4;
+  this.pauseCalls = 0;
+  lastTrack = this;
+}
+FakeHtmlAudio.prototype.addEventListener = function (type, fn) {
+  if (type === "canplay" && typeof fn === "function") fn();
+};
+FakeHtmlAudio.prototype.play = function () {
+  this.paused = false;
+  return Promise.resolve();
+};
+FakeHtmlAudio.prototype.pause = function () {
+  this.pauseCalls += 1;
+  this.paused = true;
+};
+FakeHtmlAudio.prototype.load = function () {};
+
+const fetchCounts = {};
+let resolveSlow = null;
+const slowFetch = new Promise((resolve) => { resolveSlow = resolve; });
+let resolveHeld = null;
+const heldFetch = new Promise((resolve) => { resolveHeld = resolve; });
+
+function okResponse() {
+  return { ok: true, arrayBuffer() { return Promise.resolve(new ArrayBuffer(8)); } };
+}
+
+globalThis.fetch = function (url) {
+  const key = String(url);
+  fetchCounts[key] = (fetchCounts[key] || 0) + 1;
+  if (FakeAudioContext.last) FakeAudioContext.last._decodeUrl = key;
+  if (key === "slow.wav") return slowFetch.then(() => okResponse());
+  if (key === "held.wav") return heldFetch.then(() => okResponse());
+  if (key.indexOf("missing") >= 0) {
+    return Promise.resolve({ ok: false, arrayBuffer() { return Promise.resolve(new ArrayBuffer(0)); } });
+  }
+  return Promise.resolve(okResponse());
+};
+
+globalThis.Audio = FakeHtmlAudio;
+globalThis.window = {
+  addEventListener() {},
+  removeEventListener() {},
+  requestAnimationFrame() { return 1; },
+  cancelAnimationFrame() {},
+  AudioContext: FakeAudioContext,
+  fetch: globalThis.fetch
+};
+
+require(process.argv[2]);
+const game = globalThis.mlRuntime.game;
+
+function flush(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms === undefined ? 0 : ms));
+}
+
+function live() {
+  return FakeAudioContext.last;
+}
+
+function startedBuffers() {
+  return live().bufferSources.filter((source) => source.started);
+}
+
+(async () => {
+  game.audioInit();
+  if (!game.audioIsReady() || !live()) throw new Error("audioInit should construct AudioContext");
+
+  game.audioLoadTrack("music.ogg", { "loop": true, "volume": 0.2 });
+  game.audioPlayTrack();
+  if (!lastTrack || lastTrack.pauseCalls !== 0) throw new Error("track should play without pausing");
+
+  game.audioPlayTone(440, 400, "sine", 0.1);
+  const tone = live().oscillators[0];
+  if (!tone || !tone.started) throw new Error("tone should start");
+
+  game.audioPlayPattern({
+    "tempoBpm": 240,
+    "loop": true,
+    "tracks": [[{ "atBeats": 0, "noteHz": 220, "durBeats": 0.25, "waveType": "sine", "volume": 0.05 }]]
+  });
+  await flush(30);
+  const oscAfterPattern = live().oscillators.length;
+  if (oscAfterPattern < 1) throw new Error("pattern should schedule at least one tone");
+
+  game.audioPlaySample("hi.wav", 0.4);
+  game.audioPlaySample("lo.wav", 0.4);
+  await flush(20);
+  if (startedBuffers().length !== 2) {
+    throw new Error("overlapping samples should both start: " + startedBuffers().length);
+  }
+  if (fetchCounts["hi.wav"] !== 1 || fetchCounts["lo.wav"] !== 1) {
+    throw new Error("each URL should fetch once on first play: " + JSON.stringify(fetchCounts));
+  }
+
+  game.audioPlaySample("hi.wav", 0.4);
+  await flush(20);
+  if (fetchCounts["hi.wav"] !== 1) throw new Error("decoded sample must be cached");
+  if (startedBuffers().length !== 3) throw new Error("cached URL should play a second overlapping voice");
+
+  game.audioStopSample("hi.wav");
+  const hiStopped = live().bufferSources.filter((source, index) => index !== 1).every((source) => source.stopped);
+  if (!hiStopped || live().bufferSources[1].stopped) {
+    throw new Error("audioStopSample(url) should stop only that URL");
+  }
+  if (tone.stopped) throw new Error("stopping a sample must not stop a tone");
+  if (lastTrack.pauseCalls !== 0) throw new Error("stopping a sample must not pause the track");
+
+  game.audioPlaySample("hi.wav", 2);
+  await flush(20);
+  const clampedGain = live().gains[live().gains.length - 1];
+  if (!clampedGain || clampedGain.gain.lastValue !== 1) {
+    throw new Error("sample volume should clamp to 1");
+  }
+
+  game.audioPlaySample("lo.wav", { "loop": true, "volume": 0.25 });
+  await flush(20);
+  const looped = live().bufferSources[live().bufferSources.length - 1];
+  if (!looped.loop || looped.stopped) throw new Error("options.loop should keep the buffer source looping");
+  const loopGain = live().gains[live().gains.length - 1];
+  if (loopGain.gain.lastValue !== 0.25) throw new Error("object second-arg options should set volume");
+
+  const startedBeforeStopAll = startedBuffers().filter((source) => !source.stopped).length;
+  if (startedBeforeStopAll < 2) throw new Error("expected live samples before stop-all");
+  game.audioStopSample();
+  if (startedBuffers().some((source) => !source.stopped)) {
+    throw new Error("omitted URL should stop every sample");
+  }
+  if (tone.stopped) throw new Error("audioStopSample() must not stop tones");
+  if (lastTrack.pauseCalls !== 0) throw new Error("audioStopSample() must not stop the track");
+
+  live().currentTime += 1;
+  await flush(40);
+  if (live().oscillators.length <= oscAfterPattern) {
+    throw new Error("audioStopSample must not stop the v1 pattern scheduler");
+  }
+
+  const fetchBeforeEmpty = Object.keys(fetchCounts).length;
+  game.audioPlaySample("");
+  game.audioPlaySample(null);
+  if (Object.keys(fetchCounts).length !== fetchBeforeEmpty) throw new Error("empty URL should no-op");
+
+  const startedBeforeMissing = startedBuffers().length;
+  game.audioPlaySample("missing.wav");
+  await flush(20);
+  if (startedBuffers().length !== startedBeforeMissing) throw new Error("failed fetch should not start a voice");
+
+  game.audioPlaySample("bad.wav");
+  await flush(20);
+  if (startedBuffers().length !== startedBeforeMissing) throw new Error("failed decode should not start a voice");
+
+  const startedBeforeSlow = startedBuffers().length;
+  game.audioPlaySample("slow.wav");
+  game.audioPlaySample("slow.wav");
+  await flush(10);
+  if (startedBuffers().length !== startedBeforeSlow) throw new Error("in-flight decode should queue, not start yet");
+  resolveSlow();
+  await flush(20);
+  if (startedBuffers().length !== startedBeforeSlow + 2) {
+    throw new Error("queued plays of the same URL should both start after decode");
+  }
+
+  const startedBeforeHeld = startedBuffers().length;
+  game.audioPlaySample("held.wav");
+  game.audioStopSample("held.wav");
+  resolveHeld();
+  await flush(20);
+  if (startedBuffers().length !== startedBeforeHeld) {
+    throw new Error("audioStopSample during load should drop pending plays");
+  }
+
+  game.audioStopAll();
+  process.stdout.write("ok\n");
+  process.exit(0);
+})().catch((error) => {
+  console.error(error && error.stack ? error.stack : error);
+  process.exit(1);
+});
+""");
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = Environment.GetEnvironmentVariable("MALDA_NODE_PATH") is { Length: > 0 } nodePath
+                    ? nodePath
+                    : "node",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = root
+            };
+            startInfo.ArgumentList.Add(scriptPath);
+            startInfo.ArgumentList.Add(runtimePath);
+
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Failed to start Node.js for sample-audio runtime test.");
+            var stdout = process.StandardOutput.ReadToEnd();
+            var stderr = process.StandardError.ReadToEnd();
+            process.WaitForExit(15000);
+            Assert.True(process.ExitCode == 0, $"sample-audio runtime test failed ({process.ExitCode}). stderr: {stderr}");
+            Assert.Equal("ok", stdout.Trim());
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
+        }
+    }
+
+    [Fact]
     public void JsTranspiler_MapsGameAudioApis_ToMlRuntimeGame()
     {
         var source = """
@@ -1330,6 +1649,27 @@ process.stdout.write("ok\n");
         Assert.Contains("mlRuntime.game.audioStopTrack()", js, StringComparison.Ordinal);
         Assert.Contains("let trackReady = mlRuntime.game.audioTrackIsReady();", js, StringComparison.Ordinal);
         Assert.Contains("let trackInfo = mlRuntime.game.audioGetTrackInfo();", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void JsTranspiler_MapsGameSampleAudioApis_ToMlRuntimeGame()
+    {
+        var source = """
+            game.audioPlaySample("assets/beep_hi.wav");
+            game.audioPlaySample("assets/beep_lo.wav", 0.5);
+            game.audioPlaySample("assets/beep_lo.wav", 0.5, { "loop": true });
+            game.audioStopSample("assets/beep_hi.wav");
+            game.audioStopSample();
+            """;
+        var compiler = new Compiler.Compiler();
+
+        var js = compiler.TranspileToJavaScriptFromSource(source);
+
+        Assert.Contains("mlRuntime.game.audioPlaySample(\"assets/beep_hi.wav\")", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.audioPlaySample(\"assets/beep_lo.wav\", 0.5)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.audioPlaySample(\"assets/beep_lo.wav\", 0.5,", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.audioStopSample(\"assets/beep_hi.wav\")", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.audioStopSample()", js, StringComparison.Ordinal);
     }
 
     [Fact]

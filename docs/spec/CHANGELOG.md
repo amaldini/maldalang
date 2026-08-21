@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — JS game sample SFX)
+
+- **G4 `game.audioPlaySample` / `game.audioStopSample` (JavaScript backend only):** overlapping WAV/OGG one-shots through the shared Web Audio graph. `audioPlaySample(url, volume?, options?)` decodes once per URL (`volume` default `1`, clamp `[0, 1]`; `{ loop: true }` repeats) and returns `null`. `audioStopSample(url?)` stops samples only — not the v1 HTML-audio track, pattern, or tones. Failed fetch/decode and empty URL no-op. Samples share the 32-node cap. Audio Spec v1 signatures unchanged. Example: `Examples/Games/game_audio_sample_smoke.malda`. Interpreter / C# transpile: n/a (`game-canvas`).
+
 #### Added (MINOR — JS game collision helpers)
 
 - **G3 `game.*` overlap queries (JavaScript backend only):** `game.overlapRect(x1, y1, w1, h1, x2, y2, w2, h2)` is inclusive AABB (touching edges count). `game.overlapCircle(x1, y1, r1, x2, y2, r2)`. `game.pointInRect` / `game.pointInCircle`. Width, height, or radius ≤ 0 → `false`. Pure functions: no canvas, no camera offset. Not swept AABB or physics. Example: `Examples/Games/game_collision_smoke.malda`. Interpreter / C# transpile: n/a (`game-canvas`).
@@ -297,3 +301,4 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-08-21 | MINOR: JS `game.loadImage` / camera / draw extras (G1) |
 | 2026-08-21 | MINOR: JS `game.wasKeyPressed` / touches / gamepad (G2) |
 | 2026-08-21 | MINOR: JS `game.overlapRect` / circle / point queries (G3) |
+| 2026-08-21 | MINOR: JS `game.audioPlaySample` / `audioStopSample` (G4) |
