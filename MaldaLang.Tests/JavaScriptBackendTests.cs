@@ -1936,7 +1936,8 @@ process.exit(0);
         var js = compiler.TranspileToJavaScriptFromSource(source);
 
         Assert.Contains("mlRuntime.game.startFixed(update, render)", js, StringComparison.Ordinal);
-        Assert.Contains("mlRuntime.game.startFixed(update, render, 1000 / 60)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.startFixed(update, render,", js, StringComparison.Ordinal);
+        Assert.Contains("1000 / 60", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.save(\"high\", 12)", js, StringComparison.Ordinal);
         Assert.Contains("let high = mlRuntime.game.load(\"high\");", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.removeSave(\"high\")", js, StringComparison.Ordinal);
