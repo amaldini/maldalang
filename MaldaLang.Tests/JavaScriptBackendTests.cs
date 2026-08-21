@@ -529,6 +529,28 @@ public class JavaScriptBackendTests : TestBase
     }
 
     [Fact]
+    public void JsTranspiler_PlatformExample_EmitsKitCalls()
+    {
+        var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Games", "malda_platform.malda");
+        var compiler = new Compiler.Compiler();
+        var js = compiler.TranspileToJavaScript(sourcePath);
+
+        Assert.Contains("mlRuntime.game.loadImage(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.drawImageRect(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.setCamera(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.wasKeyPressed(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.overlapRect(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.audioPlaySample(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.startFixed(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.save(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.load(", js, StringComparison.Ordinal);
+        Assert.Contains("platform_high", js, StringComparison.Ordinal);
+        Assert.Contains("assets/sprite_tiles.png", js, StringComparison.Ordinal);
+        Assert.Contains("assets/beep_hi.wav", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("mlRuntime.three.", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void JsTranspiler_MaldadashExample_EmitsGameLoopCalls()
     {
         var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Games", "maldadash.malda");

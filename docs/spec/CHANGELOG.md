@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — JS game kit showcase)
+
+- **G7 showcase `malda_platform`:** featured side-scroller that uses G1–G5 together (`loadImage` / `drawImageRect`, `setCamera`, `overlapRect`, `wasKeyPressed`, `audioPlaySample`, `startFixed`, `save`/`load`) and compiles `--mode js`. Bounce / Maldanoid / Maldadash stay. Example: `Examples/Games/malda_platform.malda`. Interpreter / C# transpile: n/a (`game-canvas`).
+
 #### Added (MINOR — `malda new game` / `malda play`)
 
 - **G6 CLI scaffolding + preview:** `malda new game [directory]` is a third template beside `webapi` / `fullstack`. It emits `app.malda`, `index.html` (runtime then compiled script), `README.md`, and optional `assets/`. Next step: `malda play app.malda`. No `config/environments` and `--local-first` is ignored. `malda play <file.malda>` compiles `--mode js` into a sibling `.malda-play/` folder, copies `malda-js-runtime.js` and `assets/` when present, serves a host page, and prints a local URL (`--open` may launch a browser; Ctrl+C stops). PWA packaging remains `malda compile --mode pwa`. Interpreter / C# transpile: n/a (`game-canvas`). Docs: [`docs/start-here.md`](../start-here.md) path “Build a Browser Game”.
@@ -312,3 +316,4 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-08-21 | MINOR: JS `game.audioPlaySample` / `audioStopSample` (G4) |
 | 2026-08-21 | MINOR: JS `game.startFixed` / `save` / `load` / `removeSave` (G5) |
 | 2026-08-21 | MINOR: `malda new game` / `malda play` JS preview (G6) |
+| 2026-08-21 | MINOR: JS game kit showcase `malda_platform` (G7) |
