@@ -448,6 +448,41 @@ public class JavaScriptBackendTests : TestBase
     }
 
     [Fact]
+    public void JsTranspiler_MapsGameSpriteAndCameraApis_ToMlRuntimeGame()
+    {
+        var source = """
+            var loadFn = game.loadImage;
+            var tiles = game.loadImage("assets/sprite_tiles.png");
+            var ready = game.imageIsReady(tiles);
+            game.drawImage(tiles, 8, 16);
+            game.drawImage(tiles, 8, 16, 32, 32);
+            game.drawImageRect(tiles, 0, 0, 16, 16, 40, 80, 64, 64);
+            game.drawLine(0, 0, 10, 10, "#ffffff", 2);
+            game.strokeRect(1, 2, 3, 4, "#88ffcc", 3);
+            game.setAlpha(0.5);
+            game.setCamera(12, 24);
+            var camX = game.getCameraX();
+            var camY = game.getCameraY();
+            """;
+        var compiler = new Compiler.Compiler();
+
+        var js = compiler.TranspileToJavaScriptFromSource(source);
+
+        Assert.Contains("let loadFn = mlRuntime.game.loadImage;", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.loadImage(\"assets/sprite_tiles.png\")", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.imageIsReady(tiles)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.drawImage(tiles, 8, 16)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.drawImage(tiles, 8, 16, 32, 32)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.drawImageRect(tiles, 0, 0, 16, 16, 40, 80, 64, 64)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.drawLine(0, 0, 10, 10, \"#ffffff\", 2)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.strokeRect(1, 2, 3, 4, \"#88ffcc\", 3)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.setAlpha(0.5)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.setCamera(12, 24)", js, StringComparison.Ordinal);
+        Assert.Contains("let camX = mlRuntime.game.getCameraX();", js, StringComparison.Ordinal);
+        Assert.Contains("let camY = mlRuntime.game.getCameraY();", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void JsTranspiler_MaldadashExample_EmitsGameLoopCalls()
     {
         var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Games", "maldadash.malda");
@@ -459,6 +494,24 @@ public class JavaScriptBackendTests : TestBase
         Assert.Contains("mlRuntime.game.isKeyDown(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.fillRect(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.str.substring(", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("mlRuntime.three.", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void JsTranspiler_SpriteSmokeExample_EmitsImageAndCameraCalls()
+    {
+        var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Games", "game_sprite_smoke.malda");
+        var compiler = new Compiler.Compiler();
+        var js = compiler.TranspileToJavaScript(sourcePath);
+
+        Assert.Contains("mlRuntime.game.loadImage(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.imageIsReady(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.drawImageRect(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.drawImage(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.setCamera(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.drawLine(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.strokeRect(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.setAlpha(", js, StringComparison.Ordinal);
         Assert.DoesNotContain("mlRuntime.three.", js, StringComparison.Ordinal);
     }
 
@@ -615,6 +668,213 @@ process.stdout.write("ok\n");
             var stderr = process.StandardError.ReadToEnd();
             process.WaitForExit(15000);
             Assert.True(process.ExitCode == 0, $"pixel blit runtime test failed ({process.ExitCode}). stderr: {stderr}");
+            Assert.Equal("ok", stdout.Trim());
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
+        }
+    }
+
+    [Fact]
+    public void GameRuntime_SpritesCameraAndDrawExtras_ApplyWorldOffset()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var runtimePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "wwwroot", "malda-js-runtime.js");
+        var root = CreateTempDirectory("malda_js_sprite_camera_");
+        try
+        {
+            var scriptPath = Path.Combine(root, "sprite-camera-test.js");
+            File.WriteAllText(scriptPath, """
+class ImageData {
+  constructor(width, height) {
+    this.width = width;
+    this.height = height;
+    this.data = new Uint8ClampedArray(width * height * 4);
+  }
+}
+globalThis.ImageData = ImageData;
+
+class FakeImage {
+  constructor() {
+    this.width = 0;
+    this.height = 0;
+    this.naturalWidth = 0;
+    this.naturalHeight = 0;
+    this.onload = null;
+    this.onerror = null;
+    this._src = "";
+  }
+  set src(value) {
+    this._src = String(value || "");
+    if (!this._src || this._src.indexOf("missing") >= 0) {
+      if (typeof this.onerror === "function") this.onerror();
+      return;
+    }
+    this.width = 16;
+    this.height = 16;
+    this.naturalWidth = 16;
+    this.naturalHeight = 16;
+    if (typeof this.onload === "function") this.onload();
+  }
+  get src() { return this._src; }
+}
+globalThis.Image = FakeImage;
+
+function makeCanvas() {
+  const ctx = {
+    lastPut: null,
+    fillRects: [],
+    strokeRects: [],
+    lines: [],
+    images: [],
+    fillStyle: "#000",
+    strokeStyle: "#000",
+    lineWidth: 1,
+    font: "",
+    globalAlpha: 1,
+    fillRect(x, y, w, h) { this.fillRects.push({ x, y, w, h, alpha: this.globalAlpha, fillStyle: this.fillStyle }); },
+    strokeRect(x, y, w, h) { this.strokeRects.push({ x, y, w, h, alpha: this.globalAlpha, strokeStyle: this.strokeStyle, lineWidth: this.lineWidth }); },
+    clearRect() {},
+    beginPath() { this._path = []; },
+    moveTo(x, y) { this._path = [{ op: "move", x, y }]; },
+    lineTo(x, y) { this._path.push({ op: "line", x, y }); },
+    stroke() { this.lines.push({ path: this._path.slice(), strokeStyle: this.strokeStyle, lineWidth: this.lineWidth, alpha: this.globalAlpha }); },
+    arc() {},
+    fill() {},
+    fillText() {},
+    drawImage() { this.images.push({ args: Array.from(arguments), x: arguments[1], y: arguments[2], alpha: this.globalAlpha }); },
+    putImageData(image, x, y) {
+      this.lastPut = { width: image.width, height: image.height, x, y };
+    }
+  };
+  return {
+    width: 0,
+    height: 0,
+    style: {},
+    parentNode: null,
+    _ctx: ctx,
+    getContext() { return this._ctx; },
+    getBoundingClientRect() {
+      return { left: 0, top: 0, width: this.width, height: this.height };
+    }
+  };
+}
+
+const mount = {
+  children: [],
+  appendChild(el) {
+    this.children.push(el);
+    el.parentNode = this;
+    return el;
+  },
+  removeChild(el) {
+    this.children = this.children.filter((child) => child !== el);
+    el.parentNode = null;
+    return el;
+  }
+};
+
+globalThis.document = {
+  body: mount,
+  querySelector() { return mount; },
+  createElement(tag) {
+    if (tag === "canvas") return makeCanvas();
+    return { style: {} };
+  }
+};
+globalThis.window = {
+  addEventListener() {},
+  removeEventListener() {},
+  requestAnimationFrame() { return 1; },
+  cancelAnimationFrame() {}
+};
+
+require(process.argv[2]);
+const game = globalThis.mlRuntime.game;
+game.createCanvas(64, 32, "#app");
+const ctx = mount.children[0]._ctx;
+
+const empty = game.loadImage("");
+if (game.imageIsReady(empty)) throw new Error("empty url should stay unready");
+game.drawImage(empty, 0, 0);
+if (ctx.images.length !== 0) throw new Error("unready drawImage should no-op");
+
+const missing = game.loadImage("missing.png");
+if (game.imageIsReady(missing)) throw new Error("missing url should stay unready");
+
+const tiles = game.loadImage("ok.png");
+if (!game.imageIsReady(tiles)) throw new Error("ok.png should be ready");
+const again = game.loadImage("ok.png");
+if (again !== tiles) throw new Error("same url should return cached handle");
+
+game.setCamera(10, 20);
+if (game.getCameraX() !== 10 || game.getCameraY() !== 20) throw new Error("camera getters");
+game.fillRect(5, 6, 8, 9, "#ff0000");
+const rect = ctx.fillRects[ctx.fillRects.length - 1];
+if (rect.x !== -5 || rect.y !== -14 || rect.w !== 8 || rect.h !== 9) {
+  throw new Error("camera did not offset fillRect: " + JSON.stringify(rect));
+}
+
+game.drawLine(0, 0, 4, 8, "#ffffff", 2);
+const line = ctx.lines[ctx.lines.length - 1];
+if (!line || line.path[0].x !== -10 || line.path[0].y !== -20 || line.path[1].x !== -6 || line.path[1].y !== -12) {
+  throw new Error("camera did not offset drawLine: " + JSON.stringify(line));
+}
+
+game.strokeRect(1, 2, 3, 4, "#88ffcc", 3);
+const stroke = ctx.strokeRects[ctx.strokeRects.length - 1];
+if (stroke.x !== -9 || stroke.y !== -18 || stroke.lineWidth !== 3) {
+  throw new Error("camera did not offset strokeRect: " + JSON.stringify(stroke));
+}
+
+game.setAlpha(0.4);
+game.drawImage(tiles, 8, 16, 32, 32);
+const img = ctx.images[ctx.images.length - 1];
+if (img.args.length !== 5 || img.args[1] !== -2 || img.args[2] !== -4 || img.args[3] !== 32 || img.args[4] !== 32 || img.alpha !== 0.4) {
+  throw new Error("drawImage camera/alpha failed: " + JSON.stringify(img));
+}
+
+game.drawImageRect(tiles, 0, 0, 16, 16, 40, 80);
+const atlas = ctx.images[ctx.images.length - 1];
+if (atlas.args.length !== 9 || atlas.args[1] !== 0 || atlas.args[5] !== 30 || atlas.args[6] !== 60 || atlas.args[7] !== 16 || atlas.args[8] !== 16) {
+  throw new Error("drawImageRect failed: " + JSON.stringify(atlas));
+}
+
+game.createPixelBuffer();
+game.setPixel(0, 0, 1, 2, 3);
+game.blitPixels();
+if (!ctx.lastPut || ctx.lastPut.x !== 0 || ctx.lastPut.y !== 0) {
+  throw new Error("camera must not offset blitPixels");
+}
+
+game.createCanvas(64, 32, "#app");
+if (game.getCameraX() !== 0 || game.getCameraY() !== 0) throw new Error("createCanvas should reset camera");
+
+process.stdout.write("ok\n");
+""");
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = Environment.GetEnvironmentVariable("MALDA_NODE_PATH") is { Length: > 0 } nodePath
+                    ? nodePath
+                    : "node",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = root
+            };
+            startInfo.ArgumentList.Add(scriptPath);
+            startInfo.ArgumentList.Add(runtimePath);
+
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Failed to start Node.js for sprite/camera runtime test.");
+            var stdout = process.StandardOutput.ReadToEnd();
+            var stderr = process.StandardError.ReadToEnd();
+            process.WaitForExit(15000);
+            Assert.True(process.ExitCode == 0, $"sprite/camera runtime test failed ({process.ExitCode}). stderr: {stderr}");
             Assert.Equal("ok", stdout.Trim());
         }
         finally

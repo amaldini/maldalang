@@ -24,6 +24,29 @@
       "featured": true
     },
     {
+      "name": "JS Canvas Sprite Smoke",
+      "description": "PNG atlas blit, scrolling camera, lines and alpha using MALDA game.* image APIs",
+      "file": "game_sprite_smoke.malda",
+      "track": "student",
+      "difficulty": "intermediate",
+      "minutes": 12,
+      "concepts": [
+        "game.*",
+        "sprites",
+        "camera",
+        "atlas",
+        "JavaScript target"
+      ],
+      "prerequisites": [
+        "Games/game_bounce.malda"
+      ],
+      "learningGoal": "Show image handles, atlas source rects, and a 2D camera on the canvas path.",
+      "expectedOutput": "Pans a PNG tileset with arrow keys and draws atlas frames plus a camera-relative marker.",
+      "next": "Games/maldadash.malda",
+      "documentationPath": "/?lesson=browser-track#lesson-browser-track",
+      "documentationTitle": "Browser Track"
+    },
+    {
       "name": "JS Canvas Ray Tracer",
       "description": "Simple CPU ray tracer (spheres, ground plane, shadows) using game.setPixel and game.blitPixels",
       "file": "ray_tracer.malda",

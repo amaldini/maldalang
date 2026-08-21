@@ -59,6 +59,8 @@ claim a program works.
 
 **`@shader()` is a JavaScript compile-time GLSL kernel, not a host function.** `malda compile --mode js` inlines those functions through `glsl.compile({ ... })` and does not emit JS. Calling `hitSphere(...)` from the MALDA host, or running the file in the interpreter / C# transpile, will not execute GPU code. Keep uniforms and the `three.*` loop in host MALDA; keep rays in `@shader()` functions. Raw triple-quoted GLSL strings still work.
 
+**`game.loadImage` is ready later, not now.** The call returns a handle immediately. `drawImage` / `drawImageRect` silently no-op until `imageIsReady` is true (missing files stay unready and do not throw). Start the loop anyway; check readiness in `render`. Camera (`setCamera`) offsets `fillRect` / images / text / lines, not `setPixel` / `blitPixels`. Mouse helpers stay in canvas pixels. Example: `Examples/Games/game_sprite_smoke.malda`.
+
 **The interpreter and `malda compile --mode transpile` are different backends.** A program that
 runs under the interpreter is not automatically a program that compiles. Prefer the
 interpret/transpile pair suite (`InterpretTranspilePairTests`) when you need a shippable

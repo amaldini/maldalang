@@ -1,0 +1,66 @@
+var root = dom.query("#app");
+
+if (root == null) {
+    println("No #app container found.");
+} else {
+    dom.clear(root);
+
+    var title = dom.create("h1");
+    dom.setText(title, "MALDA Game: Sprite smoke");
+    dom.append(root, title);
+
+    var hint = dom.create("p");
+    dom.setText(hint, "Arrows scroll the camera. Green and magenta tiles come from a PNG atlas.");
+    dom.append(root, hint);
+
+    var tiles = game.loadImage("assets/sprite_tiles.png");
+    var camX = 0.0;
+    var camY = 0.0;
+    var camSpeed = 140;
+
+    function update(dtMs) {
+        var step = (camSpeed * dtMs) / 1000;
+        if (game.isKeyDown("arrowleft")) {
+            camX = camX - step;
+        }
+        if (game.isKeyDown("arrowright")) {
+            camX = camX + step;
+        }
+        if (game.isKeyDown("arrowup")) {
+            camY = camY - step;
+        }
+        if (game.isKeyDown("arrowdown")) {
+            camY = camY + step;
+        }
+        game.setCamera(camX, camY);
+    }
+
+    function render() {
+        game.clear();
+
+        if (game.imageIsReady(tiles)) {
+            game.drawImageRect(tiles, 0, 0, 16, 16, 40, 80, 64, 64);
+            game.drawImageRect(tiles, 16, 0, 16, 16, 120, 80, 64, 64);
+            game.drawImage(tiles, 220, 96, 64, 32);
+        } else {
+            game.fillRect(40, 80, 64, 64, "#334455");
+        }
+
+        game.setAlpha(0.55);
+        game.strokeRect(32, 64, 260, 112, "#88ffcc", 3);
+        game.setAlpha(1);
+        game.drawLine(32, 200, 292, 200, "#ffcc66", 2);
+        game.fillCircle(camX + 320, camY + 180, 8, "#66ccff");
+
+        var status = "loading tiles";
+        if (game.imageIsReady(tiles)) {
+            status = "atlas ready";
+        }
+        game.drawText(status + "  cam " + string(int(camX)) + "," + string(int(camY)), 12, 24, "#ffffff", "14px monospace");
+        game.drawText("Arrows pan. Camera does not move pixel blits.", 12, 44, "#99ddee", "12px monospace");
+    }
+
+    game.createCanvas(640, 360, "#app");
+    game.setBackground("#151b24");
+    game.start(update, render);
+}

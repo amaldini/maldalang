@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — JS game sprites / camera)
+
+- **G1 `game.*` images and camera (JavaScript backend only):** `game.loadImage(url)` returns a handle immediately (async decode; missing files stay unready and do not throw). `game.imageIsReady`, `game.drawImage`, `game.drawImageRect` blit bitmaps / atlas frames. `game.drawLine` / `game.strokeRect` / `game.setAlpha`. `game.setCamera` offsets world draws (`fillRect`, images, text, lines) and does **not** move `setPixel` / `blitPixels`. Example: `Examples/Games/game_sprite_smoke.malda`. Interpreter / C# transpile: n/a (`game-canvas`).
+
 #### Added (MINOR — result/option bind)
 
 - **`result.andThen` / `option.andThen`:** sequencing helpers beside `map`. `result.andThen(r, fn)` calls `fn(payload)` when `r` is `Ok` and returns that Result unchanged; `Err` skips `fn`. `fn` must return `Ok`/`Err` (a bare payload is an error — use `result.map`). Same contract on `option` with `Some`/`None`. Pipe-friendly: `parse(raw) |> result.andThen(validate)`. Interpreter, C# transpile, and JS agree. Conformance: `result-andthen-chain.malda`. Narrative: [`13-built-in-functions.html`](../../ReferenceManual/13-built-in-functions.html) §13.19.1.
@@ -282,3 +286,4 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-08-14 | L1a: `validate` + nested schema fields resolve sum-type names (MINOR) |
 | 2026-08-14 | L1b: optional constructor payload types in JSON Schema emit (MINOR) |
 | 2026-08-21 | PATCH: overlapping `async` + `sleep` interpreter task isolation |
+| 2026-08-21 | MINOR: JS `game.loadImage` / camera / draw extras (G1) |

@@ -1905,7 +1905,11 @@
         musicTrackPlaying: false,
         musicTrackVolume: 0.6,
         musicTrackLoop: true,
-        pixelBuffer: null
+        pixelBuffer: null,
+        cameraX: 0,
+        cameraY: 0,
+        alpha: 1,
+        imageCache: new Map()
       };
 
       function normalizeKey(key) {
@@ -2042,6 +2046,25 @@
           throw new Error("mlRuntime.game." + apiName + " requires game.createCanvas(width, height, mountSelector?) to be called first.");
         }
         return state.context;
+      }
+
+      function worldX(x) {
+        return toFiniteNumber(x, 0) - state.cameraX;
+      }
+
+      function worldY(y) {
+        return toFiniteNumber(y, 0) - state.cameraY;
+      }
+
+      function applyDrawStyle(context) {
+        context.globalAlpha = state.alpha;
+      }
+
+      function resolveImageHandle(handle) {
+        if (!handle || handle.__maldaGameImage !== true) {
+          return null;
+        }
+        return handle;
       }
 
       function updateMousePosition(event) {
@@ -2196,6 +2219,10 @@
         state.mouseButtonsDown.clear();
         state.mouseX = 0;
         state.mouseY = 0;
+        state.cameraX = 0;
+        state.cameraY = 0;
+        state.alpha = 1;
+        context.globalAlpha = 1;
         attachInputListeners();
         return null;
       }
@@ -2209,21 +2236,25 @@
       function clear() {
         const context = ensureCanvasContext("clear");
         if (!state.canvas) return null;
+        const previousAlpha = context.globalAlpha;
+        context.globalAlpha = 1;
         if (state.backgroundColor === null || state.backgroundColor === undefined) {
           context.clearRect(0, 0, state.canvas.width, state.canvas.height);
         } else {
           context.fillStyle = coerceToString(state.backgroundColor);
           context.fillRect(0, 0, state.canvas.width, state.canvas.height);
         }
+        context.globalAlpha = previousAlpha;
         return null;
       }
 
       function fillRect(x, y, width, height, color) {
         const context = ensureCanvasContext("fillRect");
+        applyDrawStyle(context);
         context.fillStyle = coerceToString(color || "#ffffff");
         context.fillRect(
-          toFiniteNumber(x, 0),
-          toFiniteNumber(y, 0),
+          worldX(x),
+          worldY(y),
           Math.max(0, toFiniteNumber(width, 0)),
           Math.max(0, toFiniteNumber(height, 0))
         );
@@ -2232,11 +2263,12 @@
 
       function fillCircle(x, y, radius, color) {
         const context = ensureCanvasContext("fillCircle");
+        applyDrawStyle(context);
         context.fillStyle = coerceToString(color || "#ffffff");
         context.beginPath();
         context.arc(
-          toFiniteNumber(x, 0),
-          toFiniteNumber(y, 0),
+          worldX(x),
+          worldY(y),
           Math.max(0, toFiniteNumber(radius, 0)),
           0,
           Math.PI * 2
@@ -2247,9 +2279,188 @@
 
       function drawText(text, x, y, color, font) {
         const context = ensureCanvasContext("drawText");
+        applyDrawStyle(context);
         context.fillStyle = coerceToString(color || "#ffffff");
         context.font = coerceToString(font || "16px sans-serif");
-        context.fillText(coerceToString(text), toFiniteNumber(x, 0), toFiniteNumber(y, 0));
+        context.fillText(coerceToString(text), worldX(x), worldY(y));
+        return null;
+      }
+
+      function setCamera(x, y) {
+        ensureCanvasContext("setCamera");
+        state.cameraX = toFiniteNumber(x, 0);
+        state.cameraY = toFiniteNumber(y, 0);
+        return null;
+      }
+
+      function getCameraX() {
+        ensureCanvasContext("getCameraX");
+        return state.cameraX;
+      }
+
+      function getCameraY() {
+        ensureCanvasContext("getCameraY");
+        return state.cameraY;
+      }
+
+      function setAlpha(alpha) {
+        const context = ensureCanvasContext("setAlpha");
+        state.alpha = clampFiniteNumber(alpha, 0, 1, 1);
+        context.globalAlpha = state.alpha;
+        return null;
+      }
+
+      function drawLine(x1, y1, x2, y2, color, width) {
+        const context = ensureCanvasContext("drawLine");
+        applyDrawStyle(context);
+        context.strokeStyle = coerceToString(color || "#ffffff");
+        context.lineWidth = Math.max(0, toFiniteNumber(width, 1));
+        context.beginPath();
+        context.moveTo(worldX(x1), worldY(y1));
+        context.lineTo(worldX(x2), worldY(y2));
+        context.stroke();
+        return null;
+      }
+
+      function strokeRect(x, y, width, height, color, lineWidth) {
+        const context = ensureCanvasContext("strokeRect");
+        applyDrawStyle(context);
+        context.strokeStyle = coerceToString(color || "#ffffff");
+        context.lineWidth = Math.max(0, toFiniteNumber(lineWidth, 1));
+        context.strokeRect(
+          worldX(x),
+          worldY(y),
+          Math.max(0, toFiniteNumber(width, 0)),
+          Math.max(0, toFiniteNumber(height, 0))
+        );
+        return null;
+      }
+
+      function loadImage(url) {
+        requireBrowserApi("mlRuntime.game.loadImage");
+        const source = coerceToString(url);
+        if (source === "") {
+          return {
+            __maldaGameImage: true,
+            url: "",
+            ready: false,
+            image: null,
+            width: 0,
+            height: 0
+          };
+        }
+
+        const cached = state.imageCache.get(source);
+        if (cached) {
+          return cached;
+        }
+
+        const handle = {
+          __maldaGameImage: true,
+          url: source,
+          ready: false,
+          image: null,
+          width: 0,
+          height: 0
+        };
+        state.imageCache.set(source, handle);
+
+        const ImageCtor = typeof global.Image === "function" ? global.Image : null;
+        if (!ImageCtor) {
+          return handle;
+        }
+
+        try {
+          const img = new ImageCtor();
+          img.onload = function () {
+            handle.image = img;
+            handle.width = img.naturalWidth || img.width || 0;
+            handle.height = img.naturalHeight || img.height || 0;
+            handle.ready = handle.width > 0 && handle.height > 0;
+          };
+          img.onerror = function () {
+            handle.ready = false;
+            handle.image = null;
+          };
+          img.src = source;
+        } catch (_error) {
+          handle.ready = false;
+          handle.image = null;
+        }
+
+        return handle;
+      }
+
+      function imageIsReady(handle) {
+        const record = resolveImageHandle(handle);
+        return !!(record && record.ready && record.image);
+      }
+
+      function drawImage(handle, x, y, width, height) {
+        const context = ensureCanvasContext("drawImage");
+        const record = resolveImageHandle(handle);
+        if (!record || !record.ready || !record.image) {
+          return null;
+        }
+
+        const destWidth = width === undefined || width === null
+          ? record.width
+          : Math.max(0, toFiniteNumber(width, 0));
+        const destHeight = height === undefined || height === null
+          ? record.height
+          : Math.max(0, toFiniteNumber(height, 0));
+        if (destWidth <= 0 || destHeight <= 0) {
+          return null;
+        }
+
+        applyDrawStyle(context);
+        try {
+          context.drawImage(record.image, worldX(x), worldY(y), destWidth, destHeight);
+        } catch (_error) {
+          // Decode races and detached bitmaps are ignored on the hot path.
+        }
+        return null;
+      }
+
+      function drawImageRect(handle, sx, sy, sw, sh, dx, dy, dw, dh) {
+        const context = ensureCanvasContext("drawImageRect");
+        const record = resolveImageHandle(handle);
+        if (!record || !record.ready || !record.image) {
+          return null;
+        }
+
+        const sourceWidth = Math.max(0, toFiniteNumber(sw, 0));
+        const sourceHeight = Math.max(0, toFiniteNumber(sh, 0));
+        if (sourceWidth <= 0 || sourceHeight <= 0) {
+          return null;
+        }
+
+        const destWidth = dw === undefined || dw === null
+          ? sourceWidth
+          : Math.max(0, toFiniteNumber(dw, 0));
+        const destHeight = dh === undefined || dh === null
+          ? sourceHeight
+          : Math.max(0, toFiniteNumber(dh, 0));
+        if (destWidth <= 0 || destHeight <= 0) {
+          return null;
+        }
+
+        applyDrawStyle(context);
+        try {
+          context.drawImage(
+            record.image,
+            toFiniteNumber(sx, 0),
+            toFiniteNumber(sy, 0),
+            sourceWidth,
+            sourceHeight,
+            worldX(dx),
+            worldY(dy),
+            destWidth,
+            destHeight
+          );
+        } catch (_error) {
+          // Decode races and detached bitmaps are ignored on the hot path.
+        }
         return null;
       }
 
@@ -2783,6 +2994,16 @@
         fillRect,
         fillCircle,
         drawText,
+        drawLine,
+        strokeRect,
+        setAlpha,
+        setCamera,
+        getCameraX,
+        getCameraY,
+        loadImage,
+        imageIsReady,
+        drawImage,
+        drawImageRect,
         createPixelBuffer,
         setPixel,
         blitPixels,

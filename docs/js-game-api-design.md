@@ -44,7 +44,7 @@ In `Examples/Web/wwwroot/malda-js-runtime.js`, `mlRuntime` currently provides:
 - module-like groups:
   - `builtins`: `print`, `println`, `sleep`
   - `dom`: `query`, `create`, `append`, `clear`, `setText`, `html`, `on`
-  - `game`: 2D canvas/audio helpers, plus pixel-buffer blit (`setPixel` / `blitPixels`)
+  - `game`: 2D canvas/audio helpers, pixel-buffer blit (`setPixel` / `blitPixels`), images (`loadImage` / `drawImage` / `drawImageRect`), and a 2D camera (`setCamera`)
   - `three`: curated three.js scene helpers
 
 `mlRuntime` is merged via `Object.assign({}, global.mlRuntime || {}, runtime)`, so additional groups can be added without changing the outer loading contract.
