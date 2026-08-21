@@ -141,6 +141,10 @@ public class PlayCommandTests : TestBase
             var html = File.ReadAllText(prepared!.HostHtmlPath);
             Assert.Contains("malda-js-runtime.js", html);
             Assert.Contains("./app.js", html);
+            var js = File.ReadAllText(Path.Combine(preview, "app.js"));
+            var gameOverIdx = js.IndexOf("gameOver = false", StringComparison.Ordinal);
+            var updateIdx = js.IndexOf("function updateGame", StringComparison.Ordinal);
+            Assert.True(gameOverIdx >= 0 && updateIdx > gameOverIdx);
         }
         finally
         {
@@ -149,7 +153,7 @@ public class PlayCommandTests : TestBase
     }
 
     [Fact]
-    public async Task StartServer_ServesIndexHtml()
+    public async Task StartServer_ServesIndexHtmlAsync()
     {
         var root = CreateTempDirectory("malda_play_http_");
         try
@@ -184,7 +188,7 @@ public class PlayCommandTests : TestBase
             var body = await response.Content.ReadAsStringAsync();
             Assert.Contains("malda-js-runtime.js", body);
 
-            var runtime = await client.GetAsync(new Uri(server.Url, "malda-js-runtime.js"));
+            var runtime = await client.GetAsync(new Uri(new Uri(server.Url), "malda-js-runtime.js"));
             Assert.Equal(HttpStatusCode.OK, runtime.StatusCode);
         }
         finally

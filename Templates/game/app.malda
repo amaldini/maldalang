@@ -1,128 +1,134 @@
-var canvasWidth = 800;
-var canvasHeight = 450;
-var paddleWidth = 140;
-var paddleHeight = 16;
-var paddleY = canvasHeight - 30;
-var paddleX = (canvasWidth - paddleWidth) / 2;
-var paddleSpeed = 520;
+var root = dom.query("#app");
 
-var ballRadius = 10;
-var ballX = canvasWidth / 2;
-var ballY = canvasHeight / 2;
-var ballVx = 220;
-var ballVy = -180;
+if (root == null) {
+    println("No #app container found.");
+} else {
+    var canvasWidth = 800;
+    var canvasHeight = 450;
+    var paddleWidth = 140;
+    var paddleHeight = 16;
+    var paddleY = canvasHeight - 30;
+    var paddleX = (canvasWidth - paddleWidth) / 2;
+    var paddleSpeed = 520;
 
-var score = 0;
-var misses = 0;
-var maxMisses = 3;
-var gameOver = false;
+    var ballRadius = 10;
+    var ballX = canvasWidth / 2;
+    var ballY = canvasHeight / 2;
+    var ballVx = 220;
+    var ballVy = -180;
 
-function resetBall(direction) {
-    ballX = canvasWidth / 2;
-    ballY = canvasHeight / 2;
-    ballVx = 220 * direction;
-    ballVy = -180;
-}
+    var score = 0;
+    var misses = 0;
+    var maxMisses = 3;
+    var gameOver = false;
 
-function clampPaddle() {
-    if (paddleX < 0) {
-        paddleX = 0;
+    function resetBall(direction) {
+        ballX = canvasWidth / 2;
+        ballY = canvasHeight / 2;
+        ballVx = 220 * direction;
+        ballVy = -180;
     }
-    if (paddleX + paddleWidth > canvasWidth) {
-        paddleX = canvasWidth - paddleWidth;
-    }
-}
 
-function restart() {
-    score = 0;
-    misses = 0;
-    gameOver = false;
-    paddleX = (canvasWidth - paddleWidth) / 2;
-    resetBall(1);
-}
-
-function updateGame(dtMs) {
-    if (gameOver) {
-        if (game.wasKeyPressed("r")) {
-            restart();
+    function clampPaddle() {
+        if (paddleX < 0) {
+            paddleX = 0;
         }
-        return;
-    }
-
-    var paddleStep = (paddleSpeed * dtMs) / 1000;
-    if (game.isKeyDown("arrowleft")) {
-        paddleX = paddleX - paddleStep;
-    }
-    if (game.isKeyDown("arrowright")) {
-        paddleX = paddleX + paddleStep;
-    }
-    clampPaddle();
-
-    ballX = ballX + ((ballVx * dtMs) / 1000);
-    ballY = ballY + ((ballVy * dtMs) / 1000);
-
-    if (ballX - ballRadius < 0) {
-        ballX = ballRadius;
-        if (ballVx < 0) {
-            ballVx = 0 - ballVx;
-        }
-    }
-    if (ballX + ballRadius > canvasWidth) {
-        ballX = canvasWidth - ballRadius;
-        if (ballVx > 0) {
-            ballVx = 0 - ballVx;
-        }
-    }
-    if (ballY - ballRadius < 0) {
-        ballY = ballRadius;
-        if (ballVy < 0) {
-            ballVy = 0 - ballVy;
+        if (paddleX + paddleWidth > canvasWidth) {
+            paddleX = canvasWidth - paddleWidth;
         }
     }
 
-    var ballHitPaddle = game.overlapRect(
-        ballX - ballRadius,
-        ballY - ballRadius,
-        ballRadius * 2,
-        ballRadius * 2,
-        paddleX,
-        paddleY,
-        paddleWidth,
-        paddleHeight
-    );
-    if (ballVy > 0 && ballHitPaddle) {
-        ballY = paddleY - ballRadius;
-        ballVy = 0 - ballVy;
-        score = score + 1;
+    function restart() {
+        score = 0;
+        misses = 0;
+        gameOver = false;
+        paddleX = (canvasWidth - paddleWidth) / 2;
+        resetBall(1);
     }
 
-    if (ballY - ballRadius > canvasHeight) {
-        misses = misses + 1;
-        if (misses >= maxMisses) {
-            gameOver = true;
-        } else {
-            var nextDirection = 1;
-            if (misses % 2 == 1) {
-                nextDirection = -1;
+    function updateGame(dtMs) {
+        if (gameOver) {
+            if (game.wasKeyPressed("r")) {
+                restart();
             }
-            resetBall(nextDirection);
+            return;
+        }
+
+        var paddleStep = (paddleSpeed * dtMs) / 1000;
+        if (game.isKeyDown("arrowleft")) {
+            paddleX = paddleX - paddleStep;
+        }
+        if (game.isKeyDown("arrowright")) {
+            paddleX = paddleX + paddleStep;
+        }
+        clampPaddle();
+
+        ballX = ballX + ((ballVx * dtMs) / 1000);
+        ballY = ballY + ((ballVy * dtMs) / 1000);
+
+        if (ballX - ballRadius < 0) {
+            ballX = ballRadius;
+            if (ballVx < 0) {
+                ballVx = 0 - ballVx;
+            }
+        }
+        if (ballX + ballRadius > canvasWidth) {
+            ballX = canvasWidth - ballRadius;
+            if (ballVx > 0) {
+                ballVx = 0 - ballVx;
+            }
+        }
+        if (ballY - ballRadius < 0) {
+            ballY = ballRadius;
+            if (ballVy < 0) {
+                ballVy = 0 - ballVy;
+            }
+        }
+
+        var ballHitPaddle = game.overlapRect(
+            ballX - ballRadius,
+            ballY - ballRadius,
+            ballRadius * 2,
+            ballRadius * 2,
+            paddleX,
+            paddleY,
+            paddleWidth,
+            paddleHeight
+        );
+        if (ballVy > 0 && ballHitPaddle) {
+            ballY = paddleY - ballRadius;
+            ballVy = 0 - ballVy;
+            score = score + 1;
+        }
+
+        if (ballY - ballRadius > canvasHeight) {
+            misses = misses + 1;
+            if (misses >= maxMisses) {
+                gameOver = true;
+            } else {
+                var nextDirection = 1;
+                if (misses % 2 == 1) {
+                    nextDirection = -1;
+                }
+                resetBall(nextDirection);
+            }
         }
     }
-}
 
-function renderGame() {
-    game.clear();
-    game.fillRect(paddleX, paddleY, paddleWidth, paddleHeight, "#66ccff");
-    game.fillCircle(ballX, ballY, ballRadius, "#ffcc33");
-    game.drawText("Score: " + string(score) + "  Misses: " + string(misses) + "/" + string(maxMisses), 12, 24, "#ffffff", "16px monospace");
-    game.drawText("Left / Right arrows move. R restarts after game over.", 12, 46, "#99ddee", "14px monospace");
+    function renderGame() {
+        game.clear();
+        game.fillRect(paddleX, paddleY, paddleWidth, paddleHeight, "#66ccff");
+        game.fillCircle(ballX, ballY, ballRadius, "#ffcc33");
+        game.drawText("Score: " + string(score) + "  Misses: " + string(misses) + "/" + string(maxMisses), 12, 24, "#ffffff", "16px monospace");
+        game.drawText("Left / Right arrows move. R restarts after game over.", 12, 46, "#99ddee", "14px monospace");
 
-    if (gameOver) {
-        game.drawText("Game Over", 330, 210, "#ff8888", "28px sans-serif");
-        game.drawText("Press R to restart", 320, 245, "#ffffff", "18px sans-serif");
+        if (gameOver) {
+            game.drawText("Game Over", 330, 210, "#ff8888", "28px sans-serif");
+            game.drawText("Press R to restart", 320, 245, "#ffffff", "18px sans-serif");
+        }
     }
-}
 
-game.createCanvas(canvasWidth, canvasHeight, "#app");
-game.setBackground("#101722");
-game.start(updateGame, renderGame);
+    game.createCanvas(canvasWidth, canvasHeight, "#app");
+    game.setBackground("#101722");
+    game.start(updateGame, renderGame);
+}
