@@ -13,9 +13,9 @@ public partial class MainWindow
 {
     private void MainWindow_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Escape && _isWebUiMaximized)
+        if (e.Key == Key.Escape && _maximizedSidebarTab != null)
         {
-            SetWebUiMaximized(false);
+            SetSidebarPanelMaximized(_maximizedSidebarTab, false);
             e.Handled = true;
         }
     }
@@ -23,6 +23,11 @@ public partial class MainWindow
     private void WebUiMaximizeButton_Click(object sender, RoutedEventArgs e)
     {
         ToggleWebUiMaximized();
+    }
+
+    private void AiPanelMaximizeButton_Click(object sender, RoutedEventArgs e)
+    {
+        ToggleAiPanelMaximized();
     }
 
     private void WebUiResetButton_Click(object sender, RoutedEventArgs e)
@@ -40,6 +45,16 @@ public partial class MainWindow
         SetWebUiMaximized(menuItem.IsChecked);
     }
 
+    private void ViewToggleMaximizeAiPanel_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem menuItem)
+        {
+            return;
+        }
+
+        SetAiPanelMaximized(menuItem.IsChecked);
+    }
+
     private void ViewResetWebPreview_Click(object sender, RoutedEventArgs e)
     {
         SwitchToTab("webui");
@@ -48,35 +63,61 @@ public partial class MainWindow
 
     private void ToggleWebUiMaximized()
     {
-        SetWebUiMaximized(!_isWebUiMaximized);
+        SetWebUiMaximized(!IsWebUiMaximized);
+    }
+
+    private void ToggleAiPanelMaximized()
+    {
+        SetAiPanelMaximized(!IsAiPanelMaximized);
     }
 
     private void SetWebUiMaximized(bool maximized)
     {
-        if (_isWebUiMaximized == maximized)
+        SetSidebarPanelMaximized("webui", maximized);
+    }
+
+    private void SetAiPanelMaximized(bool maximized)
+    {
+        SetSidebarPanelMaximized("ai", maximized);
+    }
+
+    private void SetSidebarPanelMaximized(string tab, bool maximized)
+    {
+        var currentlyMaximized = _maximizedSidebarTab;
+        var thisIsMaximized = currentlyMaximized == tab;
+
+        if (thisIsMaximized == maximized)
         {
-            UpdateWebUiMaximizeChrome();
+            UpdateSidebarMaximizeChrome();
             return;
         }
 
         if (maximized)
         {
-            SwitchToTab("webui");
-            CaptureWebUiDefaultLayout();
-            ApplyWebUiMaximizedLayout();
-            _isWebUiMaximized = true;
+            var keepExistingLayout = currentlyMaximized != null;
+            _maximizedSidebarTab = tab;
+            SwitchToTab(tab);
+            if (tab == "ai")
+            {
+                UpdateAIChatPanelContext();
+            }
+            if (!keepExistingLayout)
+            {
+                CaptureSidebarDefaultLayout();
+                ApplySidebarMaximizedLayout();
+            }
         }
-        else
+        else if (currentlyMaximized == tab)
         {
-            _isWebUiMaximized = false;
-            RestoreWebUiDefaultLayout();
+            _maximizedSidebarTab = null;
+            RestoreSidebarDefaultLayout();
         }
 
-        UpdateWebUiMaximizeChrome();
+        UpdateSidebarMaximizeChrome();
         UpdateViewMenuStates();
     }
 
-    private void CaptureWebUiDefaultLayout()
+    private void CaptureSidebarDefaultLayout()
     {
         if (_isSyntaxPanelVisible && SyntaxPanelColumn.Width.Value > 0)
         {
@@ -96,7 +137,7 @@ public partial class MainWindow
         _sidebarSplitterVisibilityBeforeMaximize = SidebarSplitter.Visibility;
     }
 
-    private void ApplyWebUiMaximizedLayout()
+    private void ApplySidebarMaximizedLayout()
     {
         MainMenu.Visibility = Visibility.Collapsed;
         MainToolbar.Visibility = Visibility.Collapsed;
@@ -115,7 +156,7 @@ public partial class MainWindow
         SidebarColumn.Width = new GridLength(1, GridUnitType.Star);
     }
 
-    private void RestoreWebUiDefaultLayout()
+    private void RestoreSidebarDefaultLayout()
     {
         MainMenu.Visibility = _mainMenuVisibilityBeforeMaximize;
         MainToolbar.Visibility = _mainToolbarVisibilityBeforeMaximize;
@@ -133,22 +174,34 @@ public partial class MainWindow
         UpdateSyntaxPanelVisibility();
     }
 
-    private void UpdateWebUiMaximizeChrome()
+    private void UpdateSidebarMaximizeChrome()
     {
-        if (WebUiMaximizeButton == null)
+        if (WebUiMaximizeButton != null)
         {
-            return;
+            if (IsWebUiMaximized)
+            {
+                WebUiMaximizeButton.Content = "Restore";
+                WebUiMaximizeButton.ToolTip = "Return web preview to the side panel (Esc or Shift+F6)";
+            }
+            else
+            {
+                WebUiMaximizeButton.Content = "Maximize";
+                WebUiMaximizeButton.ToolTip = "Show web preview across the entire IDE client area (Shift+F6)";
+            }
         }
 
-        if (_isWebUiMaximized)
+        if (AiPanelMaximizeButton != null)
         {
-            WebUiMaximizeButton.Content = "Restore";
-            WebUiMaximizeButton.ToolTip = "Return web preview to the side panel (Esc or Shift+F6)";
-        }
-        else
-        {
-            WebUiMaximizeButton.Content = "Maximize";
-            WebUiMaximizeButton.ToolTip = "Show web preview across the entire IDE client area (Shift+F6)";
+            if (IsAiPanelMaximized)
+            {
+                AiPanelMaximizeButton.Content = "Restore";
+                AiPanelMaximizeButton.ToolTip = "Return AI panel to the side panel (Esc or Shift+F7)";
+            }
+            else
+            {
+                AiPanelMaximizeButton.Content = "Maximize";
+                AiPanelMaximizeButton.ToolTip = "Show AI panel across the entire IDE client area (Shift+F7)";
+            }
         }
     }
 
@@ -195,9 +248,9 @@ public partial class MainWindow
 
     private void WebUiWebView_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Escape && _isWebUiMaximized)
+        if (e.Key == Key.Escape && _maximizedSidebarTab != null)
         {
-            SetWebUiMaximized(false);
+            SetSidebarPanelMaximized(_maximizedSidebarTab, false);
             e.Handled = true;
             return;
         }
@@ -205,6 +258,13 @@ public partial class MainWindow
         if (e.Key == Key.F6 && Keyboard.Modifiers == ModifierKeys.Shift)
         {
             ToggleWebUiMaximized();
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.F7 && Keyboard.Modifiers == ModifierKeys.Shift)
+        {
+            ToggleAiPanelMaximized();
             e.Handled = true;
         }
     }

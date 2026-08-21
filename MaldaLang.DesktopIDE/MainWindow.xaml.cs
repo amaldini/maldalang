@@ -178,7 +178,10 @@ public partial class MainWindow : Window
     private List<DocumentSymbolInfo> _outlineSymbols = new();
     private bool _isSyntaxPanelVisible = true;
     private GridLength _syntaxPanelPreviousWidth = new(280, GridUnitType.Pixel);
-    private bool _isWebUiMaximized;
+    private string? _maximizedSidebarTab;
+    private bool IsSidebarMaximized => _maximizedSidebarTab != null;
+    private bool IsWebUiMaximized => _maximizedSidebarTab == "webui";
+    private bool IsAiPanelMaximized => _maximizedSidebarTab == "ai";
     private GridLength _editorColumnBeforeMaximize = new(1, GridUnitType.Star);
     private GridLength _sidebarColumnBeforeMaximize = new(300);
     private GridLength _leftSplitterColumnBeforeMaximize = new(5);
@@ -562,6 +565,12 @@ public partial class MainWindow : Window
             toggleMaximizeWebPreviewCommand,
             (s, e) => ToggleWebUiMaximized()));
         InputBindings.Add(new KeyBinding(toggleMaximizeWebPreviewCommand, Key.F6, ModifierKeys.Shift));
+
+        var toggleMaximizeAiPanelCommand = new RoutedCommand("ToggleMaximizeAiPanel", typeof(MainWindow));
+        CommandBindings.Add(new CommandBinding(
+            toggleMaximizeAiPanelCommand,
+            (s, e) => ToggleAiPanelMaximized()));
+        InputBindings.Add(new KeyBinding(toggleMaximizeAiPanelCommand, Key.F7, ModifierKeys.Shift));
 
         var toggleSyntaxPanelCommand = new RoutedCommand("ToggleSyntaxPanel", typeof(MainWindow));
         CommandBindings.Add(new CommandBinding(
@@ -1958,9 +1967,9 @@ public partial class MainWindow : Window
 
     private void SwitchToTab(string tab)
     {
-        if (_isWebUiMaximized && tab != "webui")
+        if (_maximizedSidebarTab != null && _maximizedSidebarTab != tab)
         {
-            SetWebUiMaximized(false);
+            SetSidebarPanelMaximized(_maximizedSidebarTab, false);
         }
 
         _activeTab = tab;
@@ -2013,8 +2022,10 @@ public partial class MainWindow : Window
                         childMenuItem.IsChecked = _activeTab == "ai";
                     else if (itemHeader == "Show Web UI Panel")
                         childMenuItem.IsChecked = _activeTab == "webui";
+                    else if (itemHeader == "Maximize AI Panel")
+                        childMenuItem.IsChecked = IsAiPanelMaximized;
                     else if (itemHeader == "Maximize Web Preview")
-                        childMenuItem.IsChecked = _isWebUiMaximized;
+                        childMenuItem.IsChecked = IsWebUiMaximized;
                     else if (itemHeader == "Type Errors as Errors")
                         childMenuItem.IsChecked = _typeAnalysisSettingsService.TypeErrors;
                 }
@@ -2681,8 +2692,9 @@ public partial class MainWindow : Window
             "  Ctrl+. - Quick Fix\n\n" +
             "View:\n" +
             "  Ctrl+Shift+L - Toggle Syntax Panel\n" +
+            "  Shift+F7 - Maximize / restore AI Panel\n" +
             "  Shift+F6 - Maximize / restore Web Preview\n" +
-            "  Esc - Restore Web Preview when maximized\n\n" +
+            "  Esc - Restore the maximized AI or Web Preview panel\n\n" +
             "Run:\n" +
             "  Ctrl+F5 - Run without debugging\n" +
             "  F5 - Start Debugging / Continue\n" +
