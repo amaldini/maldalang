@@ -13,6 +13,7 @@ public sealed class NewCommandOptions
     public bool Force { get; init; }
     public bool IncludeTests { get; init; } = true;
     public bool LocalFirst { get; init; }
+    public bool Fullstack { get; init; }
 }
 
 public static class NewCommandOptionsParser
@@ -40,6 +41,13 @@ public static class NewCommandOptionsParser
         bool force = false;
         bool includeTests = true;
         bool localFirst = false;
+        bool fullstack = false;
+        if (string.Equals(templateName, "game-fullstack", StringComparison.OrdinalIgnoreCase))
+        {
+            templateName = "game";
+            fullstack = true;
+        }
+
         string? projectName = null;
         string? directory = null;
         var seenFlags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -70,6 +78,12 @@ public static class NewCommandOptionsParser
                 if (string.Equals(token, "--local-first", StringComparison.OrdinalIgnoreCase))
                 {
                     localFirst = true;
+                    continue;
+                }
+
+                if (string.Equals(token, "--fullstack", StringComparison.OrdinalIgnoreCase))
+                {
+                    fullstack = true;
                     continue;
                 }
 
@@ -107,6 +121,13 @@ public static class NewCommandOptionsParser
             directory = token;
         }
 
+        if (fullstack && !string.Equals(templateName, "game", StringComparison.OrdinalIgnoreCase))
+        {
+            error.WriteLine("Option '--fullstack' is only valid with 'malda new game'.");
+            WriteUsage(error);
+            return false;
+        }
+
         var resolvedDirectory = directory;
         if (string.IsNullOrWhiteSpace(resolvedDirectory))
         {
@@ -121,7 +142,8 @@ public static class NewCommandOptionsParser
             ProjectName = projectName,
             Force = force,
             IncludeTests = includeTests,
-            LocalFirst = localFirst
+            LocalFirst = localFirst,
+            Fullstack = fullstack
         };
 
         return true;
@@ -134,12 +156,14 @@ public static class NewCommandOptionsParser
         output.WriteLine("    --name <project-name>  Override scaffolded project name");
         output.WriteLine("    --force                Overwrite template files in existing directories");
         output.WriteLine("    --local-first          Add SQLite/local-first starter files and migration bootstrap (webapi/fullstack)");
+        output.WriteLine("    --fullstack            Game template only: @client canvas plus @GET/@POST scores");
         output.WriteLine("    --no-tests             Skip generating test files/directories");
         output.WriteLine("  Examples:");
         output.WriteLine("    malda new webapi my-api");
         output.WriteLine("    malda new webapi my-api --local-first");
         output.WriteLine("    malda new fullstack --name SalesPortal");
         output.WriteLine("    malda new game my-game");
+        output.WriteLine("    malda new game my-scores --fullstack");
         output.WriteLine("    malda new webapi . --force --no-tests");
     }
 }

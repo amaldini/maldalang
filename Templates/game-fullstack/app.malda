@@ -1,0 +1,316 @@
+// __PROJECT_NAME__: canvas client + in-memory score API (malda new game --fullstack)
+// Dual `boot` declarations are intentional: one @server(), one @client(), then a shared `boot();` call.
+
+schema Score {
+    name: string;
+    points: int;
+}
+
+var scores = [];
+
+@server()
+function copyScores() {
+    var copy = [];
+    var i = 0;
+    while (i < scores.length) {
+        copy.append(scores[i]);
+        i = i + 1;
+    }
+    return copy;
+}
+
+@server()
+function rankScores() {
+    var ranked = copyScores();
+    var i = 0;
+    while (i < ranked.length) {
+        var j = i + 1;
+        while (j < ranked.length) {
+            if (ranked[j].points > ranked[i].points) {
+                var tmp = ranked[i];
+                ranked[i] = ranked[j];
+                ranked[j] = tmp;
+            }
+            j = j + 1;
+        }
+        i = i + 1;
+    }
+
+    if (ranked.length <= 10) {
+        return ranked;
+    }
+
+    var top = [];
+    i = 0;
+    while (i < 10) {
+        top.append(ranked[i]);
+        i = i + 1;
+    }
+    return top;
+}
+
+@GET("/api/health")
+function health() {
+    return {
+        "app": "__PROJECT_NAME__",
+        "status": "ok"
+    };
+}
+
+@GET("/api/scores")
+function listScores() {
+    return {
+        "ok": true,
+        "scores": rankScores()
+    };
+}
+
+@POST("/api/scores")
+function addScore(body) {
+    var checked = validate("Score", body);
+    if (not checked.ok) {
+        return {
+            "ok": false,
+            "error": checked.error
+        };
+    }
+
+    scores.append(checked.data);
+    return {
+        "ok": true,
+        "scores": rankScores()
+    };
+}
+
+@server()
+function startHost() {
+    var api = new RestServer();
+    var web = new HttpServer(8080);
+    web.mount(api);
+    web.start();
+    print("__PROJECT_NAME__ scores at http://localhost:8080/");
+    while (web.isRunning) {
+        sleep(1000);
+    }
+}
+
+@client()
+function startGame() {
+    var root = dom.query("#app");
+    if (root == null) {
+        println("No #app container found.");
+        return;
+    }
+
+    var canvasWidth = 800;
+    var canvasHeight = 450;
+    var paddleWidth = 140;
+    var paddleHeight = 16;
+    var paddleY = canvasHeight - 30;
+    var paddleX = (canvasWidth - paddleWidth) / 2;
+    var paddleSpeed = 520;
+
+    var ballRadius = 10;
+    var ballX = canvasWidth / 2;
+    var ballY = canvasHeight / 2;
+    var ballVx = 220;
+    var ballVy = -180;
+
+    var score = 0;
+    var misses = 0;
+    var maxMisses = 3;
+    var gameOver = false;
+    var submitted = false;
+    var board = [];
+    var high = 0;
+    var savedHigh = game.load("high");
+    if (savedHigh != null) {
+        high = int(savedHigh);
+    }
+
+    function resetBall(direction) {
+        ballX = canvasWidth / 2;
+        ballY = canvasHeight / 2;
+        ballVx = 220 * direction;
+        ballVy = -180;
+    }
+
+    function clampPaddle() {
+        if (paddleX < 0) {
+            paddleX = 0;
+        }
+        if (paddleX + paddleWidth > canvasWidth) {
+            paddleX = canvasWidth - paddleWidth;
+        }
+    }
+
+    function restart() {
+        score = 0;
+        misses = 0;
+        gameOver = false;
+        submitted = false;
+        paddleX = (canvasWidth - paddleWidth) / 2;
+        resetBall(1);
+    }
+
+    function refreshBoard(payload) {
+        if (payload == null) {
+            return;
+        }
+        if (payload.scores != null) {
+            board = payload.scores;
+        }
+    }
+
+    function submitScore() {
+        if (score > high) {
+            high = score;
+            game.save("high", high);
+        }
+
+        var payload = {
+            "name": "player",
+            "points": score
+        };
+        var checked = validate("Score", payload);
+        if (not checked.ok) {
+            return;
+        }
+
+        var posted = httpPost("/api/scores", checked.data, {
+            "Content-Type": "application/json"
+        });
+        if (posted.ok) {
+            refreshBoard(posted.body);
+        }
+    }
+
+    function updateGame(dtMs) {
+        if (gameOver) {
+            if (not submitted) {
+                submitted = true;
+                submitScore();
+            }
+            if (game.wasKeyPressed("r")) {
+                restart();
+            }
+            return;
+        }
+
+        var paddleStep = (paddleSpeed * dtMs) / 1000;
+        if (game.isKeyDown("arrowleft")) {
+            paddleX = paddleX - paddleStep;
+        }
+        if (game.isKeyDown("arrowright")) {
+            paddleX = paddleX + paddleStep;
+        }
+        clampPaddle();
+
+        ballX = ballX + ((ballVx * dtMs) / 1000);
+        ballY = ballY + ((ballVy * dtMs) / 1000);
+
+        if (ballX - ballRadius < 0) {
+            ballX = ballRadius;
+            if (ballVx < 0) {
+                ballVx = 0 - ballVx;
+            }
+        }
+        if (ballX + ballRadius > canvasWidth) {
+            ballX = canvasWidth - ballRadius;
+            if (ballVx > 0) {
+                ballVx = 0 - ballVx;
+            }
+        }
+        if (ballY - ballRadius < 0) {
+            ballY = ballRadius;
+            if (ballVy < 0) {
+                ballVy = 0 - ballVy;
+            }
+        }
+
+        var ballHitPaddle = game.overlapRect(
+            ballX - ballRadius,
+            ballY - ballRadius,
+            ballRadius * 2,
+            ballRadius * 2,
+            paddleX,
+            paddleY,
+            paddleWidth,
+            paddleHeight
+        );
+        if (ballVy > 0 && ballHitPaddle) {
+            ballY = paddleY - ballRadius;
+            ballVy = 0 - ballVy;
+            score = score + 1;
+        }
+
+        if (ballY - ballRadius > canvasHeight) {
+            misses = misses + 1;
+            if (misses >= maxMisses) {
+                gameOver = true;
+            } else {
+                var nextDirection = 1;
+                if (misses % 2 == 1) {
+                    nextDirection = -1;
+                }
+                resetBall(nextDirection);
+            }
+        }
+    }
+
+    function renderGame() {
+        game.clear();
+        game.drawLine(0, paddleY + paddleHeight + 6, canvasWidth, paddleY + paddleHeight + 6, "#334155", 2);
+        game.strokeRect(paddleX, paddleY, paddleWidth, paddleHeight, "#8ec5ff", 2);
+        game.fillRect(paddleX + 2, paddleY + 2, paddleWidth - 4, paddleHeight - 4, "#66ccff");
+        game.fillCircle(ballX, ballY, ballRadius, "#ffcc33");
+        game.drawText("Score: " + string(score) + "  High: " + string(high) + "  Misses: " + string(misses) + "/" + string(maxMisses), 12, 24, "#ffffff", "16px monospace");
+        game.drawText("Left / Right move. R restarts after game over. Scores POST to /api/scores.", 12, 46, "#99ddee", "14px monospace");
+
+        var boardLine = "Board: ";
+        if (board.length == 0) {
+            boardLine = boardLine + "(empty)";
+        } else {
+            var i = 0;
+            var shown = board.length;
+            if (shown > 3) {
+                shown = 3;
+            }
+            while (i < shown) {
+                var row = board[i];
+                if (i > 0) {
+                    boardLine = boardLine + "  |  ";
+                }
+                boardLine = boardLine + row.name + " " + string(row.points);
+                i = i + 1;
+            }
+        }
+        game.drawText(boardLine, 12, 68, "#c4b5fd", "14px monospace");
+
+        if (gameOver) {
+            game.drawText("Game Over", 330, 210, "#ff8888", "28px sans-serif");
+            game.drawText("Press R to restart", 320, 245, "#ffffff", "18px sans-serif");
+        }
+    }
+
+    var listed = httpGet("/api/scores");
+    if (listed.ok) {
+        refreshBoard(listed.body);
+    }
+
+    game.createCanvas(canvasWidth, canvasHeight, "#app");
+    game.setBackground("#101722");
+    game.startFixed(updateGame, renderGame);
+}
+
+@server()
+function boot() {
+    startHost();
+}
+
+@client()
+function boot() {
+    startGame();
+}
+
+boot();

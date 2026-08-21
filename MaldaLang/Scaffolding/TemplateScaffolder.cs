@@ -35,10 +35,13 @@ public sealed class TemplateScaffolder
             return 1;
         }
 
-        var sourceRoot = ResolveTemplateDirectory(normalizedTemplateName);
+        var sourceTemplateName = IsGameFullstack(normalizedTemplateName, options)
+            ? "game-fullstack"
+            : normalizedTemplateName;
+        var sourceRoot = ResolveTemplateDirectory(sourceTemplateName);
         if (string.IsNullOrWhiteSpace(sourceRoot) || !Directory.Exists(sourceRoot))
         {
-            error.WriteLine($"Template '{templateName}' not found in Templates/{normalizedTemplateName}.");
+            error.WriteLine($"Template '{templateName}' not found in Templates/{sourceTemplateName}.");
             return 1;
         }
 
@@ -56,6 +59,7 @@ public sealed class TemplateScaffolder
         var variables = BuildTemplateVariables(normalizedTemplateName, projectName, options);
         var stats = CopyTemplateTree(sourceRoot, fullDestination, variables, options);
         var isGame = IsGameTemplate(normalizedTemplateName);
+        var isGameFullstack = IsGameFullstack(normalizedTemplateName, options);
         if (!isGame)
         {
             var generatedProfiles = GenerateEnvironmentProfiles(fullDestination, variables);
@@ -65,7 +69,8 @@ public sealed class TemplateScaffolder
         }
         else
         {
-            output.WriteLine($"Created {normalizedTemplateName} project at {fullDestination}");
+            var createdLabel = isGameFullstack ? "game --fullstack" : normalizedTemplateName;
+            output.WriteLine($"Created {createdLabel} project at {fullDestination}");
             WriteScaffoldFileCount(output, stats, options.Force);
         }
 
@@ -77,7 +82,12 @@ public sealed class TemplateScaffolder
             output.WriteLine("  malda test --format human");
         }
 
-        if (isGame)
+        if (isGameFullstack)
+        {
+            output.WriteLine("  malda compile app.malda --mode fullstack -o dist");
+            output.WriteLine("  Review README.md to run dist/server with MALDA_WEB_DIRECTORY");
+        }
+        else if (isGame)
         {
             output.WriteLine("  malda play app.malda");
         }
@@ -110,6 +120,12 @@ public sealed class TemplateScaffolder
         if (!TemplateNames.Contains(templateName, StringComparer.OrdinalIgnoreCase))
         {
             error.WriteLine($"Unsupported template '{templateName}'. Supported templates: {string.Join(", ", TemplateNames)}.");
+            return false;
+        }
+
+        if (options.Fullstack && !IsGameTemplate(normalizedTemplateName))
+        {
+            error.WriteLine("Option '--fullstack' is only valid with 'malda new game'.");
             return false;
         }
 
@@ -281,6 +297,11 @@ public sealed class TemplateScaffolder
     private static bool IsGameTemplate(string templateName)
     {
         return string.Equals(templateName, "game", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsGameFullstack(string templateName, NewCommandOptions options)
+    {
+        return IsGameTemplate(templateName) && options.Fullstack;
     }
 
     private static void WriteScaffoldFileCount(TextWriter output, TemplateWriteStats stats, bool force)

@@ -1,0 +1,15 @@
+schema Score {
+    name: string;
+    points: int;
+}
+
+var good = validate("Score", dict { "name": "Ada", "points": 12 });
+assert(good.ok, "valid score should pass");
+assert(good.data.name == "Ada", "valid score keeps name");
+assert(good.data.points == 12, "valid score keeps points");
+
+var badPoints = validate("Score", dict { "name": "Ada", "points": "lots" });
+assert(not badPoints.ok, "non-int points should fail");
+
+var missingName = validate("Score", dict { "points": 3 });
+assert(not missingName.ok, "missing name should fail");

@@ -13,6 +13,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using MaldaLang.Cli;
+using MaldaLang.Compiler;
 
 public sealed class PlayCommandRunner
 {
@@ -74,6 +75,26 @@ public sealed class PlayCommandRunner
         if (!File.Exists(sourcePath))
         {
             error.WriteLine($"Error: Input file not found: {options.SourcePath}");
+            return null;
+        }
+
+        string sourceText;
+        try
+        {
+            sourceText = File.ReadAllText(sourcePath);
+        }
+        catch (Exception ex)
+        {
+            error.WriteLine($"Error: Could not read '{options.SourcePath}': {ex.Message}");
+            return null;
+        }
+
+        if (FullStackSourceInspector.IsFullStackSource(sourceText))
+        {
+            error.WriteLine("malda play is a JavaScript-only preview.");
+            error.WriteLine("This file is fullstack (@client plus @server or a route). Compile it instead:");
+            error.WriteLine($"  malda compile {options.SourcePath} --mode fullstack -o dist");
+            error.WriteLine("Then run the server with MALDA_WEB_DIRECTORY pointing at dist/web (see the generated README).");
             return null;
         }
 

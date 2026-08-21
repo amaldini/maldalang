@@ -80,5 +80,51 @@ public class NewCommandOptionsParserTests
         var text = output.ToString();
         Assert.Contains("webapi|fullstack|game", text);
         Assert.Contains("malda new game my-game", text);
+        Assert.Contains("malda new game my-scores --fullstack", text);
+        Assert.Contains("--fullstack", text);
+    }
+
+    [Fact]
+    public void TryParse_GameFullstackFlag_SetsFullstack()
+    {
+        var error = new StringWriter();
+        var args = new[] { "new", "game", "my-scores", "--fullstack" };
+
+        var ok = NewCommandOptionsParser.TryParse(args, error, out var options);
+
+        Assert.True(ok);
+        Assert.NotNull(options);
+        Assert.Equal("game", options!.TemplateName);
+        Assert.Equal("my-scores", options.DestinationPath);
+        Assert.True(options.Fullstack);
+        Assert.Equal(string.Empty, error.ToString());
+    }
+
+    [Fact]
+    public void TryParse_GameFullstackAlias_SetsGameTemplateAndFlag()
+    {
+        var error = new StringWriter();
+        var args = new[] { "new", "game-fullstack", "board" };
+
+        var ok = NewCommandOptionsParser.TryParse(args, error, out var options);
+
+        Assert.True(ok);
+        Assert.NotNull(options);
+        Assert.Equal("game", options!.TemplateName);
+        Assert.Equal("board", options.DestinationPath);
+        Assert.True(options.Fullstack);
+        Assert.Equal(string.Empty, error.ToString());
+    }
+
+    [Fact]
+    public void TryParse_FullstackFlagOnWebApi_ReturnsError()
+    {
+        var error = new StringWriter();
+        var args = new[] { "new", "webapi", "my-api", "--fullstack" };
+
+        var ok = NewCommandOptionsParser.TryParse(args, error, out _);
+
+        Assert.False(ok);
+        Assert.Contains("only valid with 'malda new game'", error.ToString());
     }
 }

@@ -196,4 +196,45 @@ public class PlayCommandTests : TestBase
             SafeDeleteDirectory(root);
         }
     }
+
+    [Fact]
+    public void Prepare_FullstackSource_ReturnsNullWithCompileHint()
+    {
+        var root = CreateTempDirectory("malda_play_fullstack_");
+        try
+        {
+            var sourcePath = Path.Combine(root, "app.malda");
+            File.WriteAllText(sourcePath, """
+                @GET("/api/scores")
+                function listScores() {
+                    return [];
+                }
+
+                @client()
+                function startGame() {
+                    game.createCanvas(64, 48, "#app");
+                }
+                """);
+
+            var runner = new PlayCommandRunner(CompileJs);
+            var error = new StringWriter();
+            var prepared = runner.Prepare(
+                new PlayCommandOptions
+                {
+                    SourcePath = sourcePath,
+                    PreviewDirectory = Path.Combine(root, "preview")
+                },
+                new StringWriter(),
+                error);
+
+            Assert.Null(prepared);
+            Assert.Contains("JavaScript-only preview", error.ToString());
+            Assert.Contains("--mode fullstack", error.ToString());
+            Assert.False(Directory.Exists(Path.Combine(root, "preview")));
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
+        }
+    }
 }
