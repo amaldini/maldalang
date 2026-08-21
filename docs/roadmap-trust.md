@@ -187,13 +187,19 @@ matrix). Workflow journals stay in
 
 **v1 corpus (offline, deterministic):**
 `first_look`, `schema_validate`, `schema_sumtype_validate`,
+`schema_nested_validate`, `sumtype_typed_payloads`,
 `phase6_pure_validate`, `api_program_calc`, `prompt_budget` (no `await`),
-`selective_import`, `export_type_schema`, plus inline interpolation,
-`validate` returns a dict, and `str.repeat` integer-sink fixtures.
+`selective_import`, `export_type_schema`, `async_all_example`,
+plus inline interpolation, `validate` returns a dict, `str.repeat` /
+`math.floor` integer-sink, match guards, `grounded.wrap` (no GraphMemory),
+`cap.*` mint/is/forge and abs-path read/write, `result`/`option`,
+primary constructors, tagged catch, `?.`, destructuring, `parseJSON` fields,
+and `io.getEnvOr` missing-env.
 
 **v1 `n/a` (compile-only smoke):** LLM-awaiting prompts,
 `agent_governance_golden`, workflow/job Examples, `grounded_ask`
-(GraphMemory score drift), `capability_tokens` (cwd file I/O).
+(GraphMemory score drift), `capability_tokens` Example (relative cwd file I/O;
+inline abs-path cap fixtures cover the contract).
 
 **Done when:** filtered tests
 (`FullyQualifiedName~InterpretTranspilePairTests`) are in the CI smoke
@@ -263,3 +269,4 @@ filter on Windows, Linux, and macOS; Unix runs the published apphost
 | 2026-08-15 | DT5 announcement: Second Brain instance that others use (no workplace detail) |
 | 2026-08-16 | DT6 landed: toolchain 1.0.0 (same `<Version>`, `docs/releases/v1.0.0.md`, tag `v1.0.0`) |
 | 2026-08-17 | DT7 landed: `InterpretTranspilePairTests` (curated Examples + gotcha fixtures; CI smoke filter) |
+| 2026-08-21 | DT7 corpus widened: existing nested-schema / typed-payload Examples + inline gotcha pairs (`grounded.wrap`, `cap.*`, `result`/`option`, primary constructors, tagged catch, `?.`, destructuring, `parseJSON` fields, `io.getEnvOr`). No new showcase Examples. |
