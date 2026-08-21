@@ -31,15 +31,18 @@ function closestHit(
     origin: vec3,
     dir: vec3,
     tMax: float,
+    includeGlass: bool,
     tHit: out float,
     kind: out int,
     index: out int,
+    material: out int,
     normal: out vec3,
     albedo: out vec3
 ) -> bool {
     tHit = tMax;
     kind = 0;
     index = -1;
+    material = 0;
     normal = vec3(0.0, 1.0, 0.0);
     albedo = vec3(0.0);
 
@@ -51,10 +54,12 @@ function closestHit(
     var r2: float = 0.42;
 
     var t0: float = hitSphere(c0, r0, origin, dir);
-    if (t0 > 0.0 && t0 < tHit) {
-        tHit = t0;
-        kind = 1;
-        index = 0;
+    if (includeGlass) {
+        if (t0 > 0.0 && t0 < tHit) {
+            tHit = t0;
+            kind = 1;
+            index = 0;
+        }
     }
     var t1: float = hitSphere(c1, r1, origin, dir);
     if (t1 > 0.0 && t1 < tHit) {
@@ -87,15 +92,19 @@ function closestHit(
         if (index == 0) {
             normal = (hit - c0) / r0;
             albedo = vec3(0.86, 0.22, 0.18);
+            material = 2;
         } else if (index == 1) {
             normal = (hit - c1) / r1;
-            albedo = vec3(0.18, 0.45, 0.90);
+            albedo = vec3(0.72, 0.84, 0.98);
+            material = 1;
         } else {
             normal = (hit - c2) / r2;
             albedo = vec3(0.95, 0.74, 0.22);
+            material = 0;
         }
     } else {
         normal = vec3(0.0, 1.0, 0.0);
+        material = 0;
         if (dot(normal, dir) > 0.0) {
             normal = -normal;
         }
@@ -122,9 +131,103 @@ function inShadow(hit: vec3, normal: vec3) -> bool {
     var tHit: float = 0.0;
     var kind: int = 0;
     var index: int = 0;
+    var material: int = 0;
     var n: vec3 = vec3(0.0);
     var albedo: vec3 = vec3(0.0);
-    return closestHit(origin, dir, lightDist - 0.05, tHit, kind, index, n, albedo);
+    return closestHit(origin, dir, lightDist - 0.05, false, tHit, kind, index, material, n, albedo);
+}
+
+@shader()
+function localShade(hit: vec3, normal: vec3, albedo: vec3) -> vec3 {
+    var toLight: vec3 = uLightPos - hit;
+    var lightDir: vec3 = normalize(toLight);
+    var diff: float = max(dot(normal, lightDir), 0.0);
+    var light: float = 0.12;
+    if (!inShadow(hit, normal)) {
+        light = 0.12 + diff * 0.88;
+    }
+    return albedo * light;
+}
+
+@shader()
+function shadeSky(dir: vec3) -> vec3 {
+    var t: float = clamp((dir.y + 1.0) * 0.5, 0.0, 1.0);
+    return mix(vec3(0.62, 0.78, 0.96), vec3(0.16, 0.38, 0.74), t);
+}
+
+@shader()
+function shadePrimary(origin: vec3, dir: vec3) -> vec3 {
+    var tHit: float = 0.0;
+    var kind: int = 0;
+    var index: int = 0;
+    var material: int = 0;
+    var normal: vec3 = vec3(0.0);
+    var albedo: vec3 = vec3(0.0);
+    if (!closestHit(origin, dir, 1000000.0, true, tHit, kind, index, material, normal, albedo)) {
+        return shadeSky(dir);
+    }
+    var hit: vec3 = origin + dir * tHit;
+    return localShade(hit, normal, albedo);
+}
+
+@shader()
+function traceScene(origin: vec3, dir: vec3) -> vec3 {
+    var ro: vec3 = origin;
+    var rd: vec3 = dir;
+    var throughput: vec3 = vec3(1.0);
+    var color: vec3 = vec3(0.0);
+    var bounce: int = 0;
+    while (bounce < 8) {
+        bounce = bounce + 1;
+        var tHit: float = 0.0;
+        var kind: int = 0;
+        var index: int = 0;
+        var material: int = 0;
+        var normal: vec3 = vec3(0.0);
+        var albedo: vec3 = vec3(0.0);
+        if (!closestHit(ro, rd, 1000000.0, true, tHit, kind, index, material, normal, albedo)) {
+            color = color + throughput * shadeSky(rd);
+            break;
+        }
+
+        var hit: vec3 = ro + rd * tHit;
+        if (material == 1) {
+            var mirrorLocal: vec3 = localShade(hit, normal, albedo * 0.06);
+            color = color + throughput * mirrorLocal;
+            var mirrorCos: float = max((-dot(rd, normal)), 0.0);
+            var mirrorF: float = 0.62 + 0.38 * pow(1.0 - mirrorCos, 5.0);
+            throughput = throughput * (mirrorF * albedo);
+            rd = reflect(rd, normal);
+            ro = hit + normal * 0.02;
+        } else if (material == 2) {
+            var n: vec3 = normal;
+            var eta: float = 1.0 / 1.45;
+            if (dot(rd, n) > 0.0) {
+                n = -n;
+                eta = 1.45;
+            }
+            var glassCos: float = max((-dot(rd, n)), 0.0);
+            var glassF: float = 0.04 + 0.96 * pow(1.0 - glassCos, 5.0);
+            var reflDir: vec3 = reflect(rd, n);
+            color = color + throughput * glassF * shadePrimary(hit + n * 0.02, reflDir);
+            var glassLocal: vec3 = localShade(hit, n, albedo);
+            color = color + throughput * ((1.0 - glassF) * glassLocal * 0.22);
+            var refrDir: vec3 = refract(rd, n, eta);
+            if (dot(refrDir, refrDir) < EPSILON) {
+                throughput = throughput * albedo;
+                rd = reflDir;
+                ro = hit + n * 0.02;
+            } else {
+                throughput = throughput * ((1.0 - glassF) * mix(vec3(1.0), albedo, 0.46));
+                rd = normalize(refrDir);
+                ro = hit + rd * 0.02;
+            }
+        } else {
+            color = color + throughput * localShade(hit, normal, albedo);
+            break;
+        }
+    }
+    return color;
 }
 
 @shader()
@@ -135,28 +238,7 @@ function fragmentMain() {
         + uCamRight * (ndc.x * uAspect * uTanHalf)
         + uCamUp * (ndc.y * uTanHalf)
     );
-
-    var tHit: float = 0.0;
-    var kind: int = 0;
-    var index: int = 0;
-    var normal: vec3 = vec3(0.0);
-    var albedo: vec3 = vec3(0.0);
-    if (!closestHit(uCamPos, dir, 1000000.0, tHit, kind, index, normal, albedo)) {
-        var t: float = clamp((dir.y + 1.0) * 0.5, 0.0, 1.0);
-        var sky: vec3 = mix(vec3(0.62, 0.78, 0.96), vec3(0.16, 0.38, 0.74), t);
-        gl_FragColor = vec4(sqrt(sky), 1.0);
-        return;
-    }
-
-    var hit: vec3 = uCamPos + dir * tHit;
-    var toLight: vec3 = uLightPos - hit;
-    var lightDir: vec3 = normalize(toLight);
-    var diff: float = max(dot(normal, lightDir), 0.0);
-    var light: float = 0.12;
-    if (!inShadow(hit, normal)) {
-        light = 0.12 + diff * 0.88;
-    }
-    var color: vec3 = albedo * light;
+    var color: vec3 = traceScene(uCamPos, dir);
     gl_FragColor = vec4(sqrt(color), 1.0);
 }
 
@@ -179,7 +261,7 @@ var fragmentShader = glsl.compile({
         "float uAspect"
     ],
     consts: ["float EPSILON = 0.0015"],
-    functions: ["hitSphere", "closestHit", "inShadow", "fragmentMain"],
+    functions: ["hitSphere", "closestHit", "inShadow", "localShade", "shadeSky", "shadePrimary", "traceScene", "fragmentMain"],
     main: "fragmentMain"
 });
 
@@ -195,7 +277,7 @@ if (root == null) {
     dom.append(root, heading);
 
     var hint = dom.create("p");
-    dom.setText(hint, "Realtime GLSL tracer via three.createShaderMaterial. Left/Right change orbit speed. Move the mouse to slide the light.");
+    dom.setText(hint, "Realtime GLSL tracer via three.createShaderMaterial. The large red sphere is tinted glass; the blue sphere is a mirror. Left/Right change orbit speed. Move the mouse to slide the light.");
     dom.append(root, hint);
 
     var width = 960;

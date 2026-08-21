@@ -789,6 +789,9 @@ process.stdout.write("ok\n");
         Assert.Contains("gl_FragColor", js, StringComparison.Ordinal);
         Assert.Contains("float hitSphere(vec3 center, float radius, vec3 origin, vec3 dir)", js, StringComparison.Ordinal);
         Assert.Contains("bool closestHit(", js, StringComparison.Ordinal);
+        Assert.Contains("vec3 traceScene(vec3 origin, vec3 dir)", js, StringComparison.Ordinal);
+        Assert.Contains("reflect(rd, normal)", js, StringComparison.Ordinal);
+        Assert.Contains("refract(rd, n, eta)", js, StringComparison.Ordinal);
         Assert.DoesNotContain("function hitSphere", js, StringComparison.Ordinal);
         Assert.DoesNotContain("mlRuntime.game.setPixel", js, StringComparison.Ordinal);
     }

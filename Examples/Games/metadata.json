@@ -48,7 +48,7 @@
     },
     {
       "name": "JS three.js GPU Ray Tracer",
-      "description": "Realtime GLSL sphere tracer using three.createShaderMaterial and three.setUniform",
+      "description": "Realtime GLSL sphere tracer with tinted glass and a mirror ball, using three.createShaderMaterial and three.setUniform",
       "file": "three_shader_raytracer.malda",
       "track": "showcase",
       "difficulty": "advanced",
