@@ -1909,6 +1909,7 @@
         audioPatternState: null,
         audioActiveSources: [],
         maxConcurrentAudioSources: 32,
+        audioSampleCache: new Map(),
         musicTrackAudio: null,
         musicTrackError: null,
         musicTrackSource: null,
@@ -1950,17 +1951,20 @@
           state.audioMasterGain.gain.value = 0.8;
           state.audioMasterGain.connect(state.audioContext.destination);
           state.audioNoiseBuffer = null;
+          state.audioSampleCache = new Map();
         }
 
         return state.audioContext;
       }
 
-      function registerAudioSource(sourceNode, cleanupNodeList) {
+      function registerAudioSource(sourceNode, cleanupNodeList, extra) {
         if (!sourceNode || typeof sourceNode.stop !== "function") return;
 
         const sourceRecord = {
           source: sourceNode,
-          cleanupNodeList: Array.isArray(cleanupNodeList) ? cleanupNodeList : []
+          cleanupNodeList: Array.isArray(cleanupNodeList) ? cleanupNodeList : [],
+          kind: extra && extra.kind ? extra.kind : "voice",
+          url: extra && extra.url ? extra.url : null
         };
         state.audioActiveSources.push(sourceRecord);
 
@@ -1994,6 +1998,128 @@
             }
           }
         }
+      }
+
+      function getFetchFn() {
+        if (typeof fetch === "function") return fetch;
+        if (typeof window !== "undefined" && typeof window.fetch === "function") {
+          return window.fetch.bind(window);
+        }
+        return null;
+      }
+
+      function decodeAudioBuffer(context, bytes) {
+        return new Promise((resolve, reject) => {
+          let settled = false;
+          const ok = (buffer) => {
+            if (settled) return;
+            settled = true;
+            resolve(buffer);
+          };
+          const fail = (error) => {
+            if (settled) return;
+            settled = true;
+            reject(error || new Error("decodeAudioData failed"));
+          };
+
+          try {
+            const result = context.decodeAudioData(bytes, ok, fail);
+            if (result && typeof result.then === "function") {
+              result.then(ok, fail);
+            }
+          } catch (error) {
+            fail(error);
+          }
+        });
+      }
+
+      function startSamplePlayback(context, buffer, url, volume, loop) {
+        if (!context || !state.audioMasterGain || !buffer) return;
+
+        const source = context.createBufferSource();
+        source.buffer = buffer;
+        source.loop = !!loop;
+        const gain = context.createGain();
+        if (gain.gain && typeof gain.gain.setValueAtTime === "function") {
+          gain.gain.setValueAtTime(volume, context.currentTime);
+        } else if (gain.gain) {
+          gain.gain.value = volume;
+        }
+        source.connect(gain);
+        gain.connect(state.audioMasterGain);
+        registerAudioSource(source, [gain, source], { kind: "sample", url });
+        source.start(context.currentTime);
+      }
+
+      function resolveSamplePlayArgs(volume, options) {
+        if (volume && typeof volume === "object" && (options === undefined || options === null)) {
+          const safeOptions = volume;
+          return {
+            volume: clampFiniteNumber(safeOptions.volume, 0, 1, 1),
+            loop: !!safeOptions.loop
+          };
+        }
+
+        const safeOptions = options && typeof options === "object" ? options : {};
+        return {
+          volume: clampFiniteNumber(volume, 0, 1, 1),
+          loop: !!safeOptions.loop
+        };
+      }
+
+      function enqueueSamplePlay(url, volume, loop) {
+        const entry = state.audioSampleCache.get(url);
+        if (!entry || !Array.isArray(entry.pending)) return;
+        if (entry.pending.length >= 8) return;
+        entry.pending.push({ volume, loop });
+      }
+
+      function flushPendingSamplePlays(context, url) {
+        const entry = state.audioSampleCache.get(url);
+        if (!entry || entry.status !== "ready" || !entry.buffer) return;
+        const pending = entry.pending.splice(0, entry.pending.length);
+        for (let i = 0; i < pending.length; i++) {
+          startSamplePlayback(context, entry.buffer, url, pending[i].volume, pending[i].loop);
+        }
+      }
+
+      function beginSampleDecode(context, url) {
+        const fetchFn = getFetchFn();
+        const entry = state.audioSampleCache.get(url);
+        if (!fetchFn || !entry) {
+          if (entry) {
+            entry.status = "error";
+            entry.pending.length = 0;
+          }
+          return;
+        }
+
+        Promise.resolve()
+          .then(() => fetchFn(url))
+          .then((response) => {
+            if (!response || response.ok === false) {
+              throw new Error("Sample fetch failed");
+            }
+            if (typeof response.arrayBuffer !== "function") {
+              throw new Error("Sample response is not binary");
+            }
+            return response.arrayBuffer();
+          })
+          .then((bytes) => decodeAudioBuffer(context, bytes))
+          .then((buffer) => {
+            const cached = state.audioSampleCache.get(url);
+            if (!cached) return;
+            cached.status = "ready";
+            cached.buffer = buffer;
+            flushPendingSamplePlays(context, url);
+          })
+          .catch(() => {
+            const cached = state.audioSampleCache.get(url);
+            if (!cached) return;
+            cached.status = "error";
+            cached.buffer = null;
+            cached.pending.length = 0;
+          });
       }
 
       function scheduleEnvelope(gainNode, startAt, durationSec, peakVolume) {
@@ -2921,6 +3047,76 @@
         return null;
       }
 
+      function audioPlaySample(url, volume, options) {
+        const safeUrl = coerceToString(url || "");
+        if (!safeUrl) return null;
+
+        const context = ensureAudioContext();
+        if (!context || !state.audioMasterGain) return null;
+        if (context.state === "suspended" && typeof context.resume === "function") {
+          context.resume().catch(() => null);
+        }
+
+        const playArgs = resolveSamplePlayArgs(volume, options);
+        let entry = state.audioSampleCache.get(safeUrl);
+        if (entry && entry.status === "error") {
+          state.audioSampleCache.delete(safeUrl);
+          entry = null;
+        }
+
+        if (entry && entry.status === "ready") {
+          startSamplePlayback(context, entry.buffer, safeUrl, playArgs.volume, playArgs.loop);
+          return null;
+        }
+
+        if (entry && entry.status === "loading") {
+          enqueueSamplePlay(safeUrl, playArgs.volume, playArgs.loop);
+          return null;
+        }
+
+        state.audioSampleCache.set(safeUrl, {
+          status: "loading",
+          buffer: null,
+          pending: [{ volume: playArgs.volume, loop: playArgs.loop }]
+        });
+        beginSampleDecode(context, safeUrl);
+        return null;
+      }
+
+      function audioStopSample(url) {
+        const hasUrl = !(url === undefined || url === null || coerceToString(url) === "");
+        const safeUrl = hasUrl ? coerceToString(url) : "";
+
+        if (!hasUrl) {
+          for (const entry of state.audioSampleCache.values()) {
+            if (entry && Array.isArray(entry.pending)) {
+              entry.pending.length = 0;
+            }
+          }
+        } else {
+          const entry = state.audioSampleCache.get(safeUrl);
+          if (entry && Array.isArray(entry.pending)) {
+            entry.pending.length = 0;
+          }
+        }
+
+        const currentSources = state.audioActiveSources.slice();
+        for (let i = 0; i < currentSources.length; i++) {
+          const record = currentSources[i];
+          if (!record || record.kind !== "sample") continue;
+          if (hasUrl && record.url !== safeUrl) continue;
+          if (record.source && typeof record.source.stop === "function") {
+            try {
+              record.source.stop();
+            } catch (error) {
+              // Ignore stop errors from already-finished nodes.
+            }
+          }
+        }
+
+        return null;
+      }
+
       function audioStopPattern() {
         if (state.audioPatternTimer !== null) {
           clearInterval(state.audioPatternTimer);
@@ -3287,6 +3483,8 @@
         audioSetMasterVolume,
         audioPlayTone,
         audioPlayNoise,
+        audioPlaySample,
+        audioStopSample,
         audioStopAll,
         audioLoadTrack,
         audioPlayTrack,

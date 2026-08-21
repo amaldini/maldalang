@@ -59,6 +59,8 @@ claim a program works.
 
 **`@shader()` is a JavaScript compile-time GLSL kernel, not a host function.** `malda compile --mode js` inlines those functions through `glsl.compile({ ... })` and does not emit JS. Calling `hitSphere(...)` from the MALDA host, or running the file in the interpreter / C# transpile, will not execute GPU code. Keep uniforms and the `three.*` loop in host MALDA; keep rays in `@shader()` functions. Raw triple-quoted GLSL strings still work.
 
+**`game.audioStopSample` does not stop the music track or pattern.** Sample one-shots share the Web Audio node cap with tones, but `audioStopSample(url?)` never calls `audioStopTrack` / `audioStopPattern`. Omit the URL to stop every sample. Decode is cached per URL; a missing file is a silent no-op. Call `audioInit` after a click or key or the browser will mute everything. Example: `Examples/Games/game_audio_sample_smoke.malda`.
+
 **`game.overlapRect` counts touching edges, not only interiors.** Inclusive AABB: a box at `x=0,w=10` overlaps one at `x=10`. Zero or negative width/height/radius is `false`. Helpers are pure (no canvas) and ignore `setCamera`. Not swept AABB or physics. Example: `Examples/Games/game_collision_smoke.malda`.
 
 **`game.wasKeyPressed` is true for one update, never in `render`.** Edges are snapshotted at the start of `update` and cleared before `render`. Holding a key does not retrigger. Same names as `isKeyDown`. `getTouches()` is canvas pixels; the first active touch still aliases mouse button 0. Missing pads return disconnected / axis `0`. Example: `Examples/Games/game_input_smoke.malda`.
