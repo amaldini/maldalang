@@ -1559,7 +1559,9 @@ function startedBuffers() {
     throw new Error("audioStopSample during load should drop pending plays");
   }
 
+  game.audioStopAll();
   process.stdout.write("ok\n");
+  process.exit(0);
 })().catch((error) => {
   console.error(error && error.stack ? error.stack : error);
   process.exit(1);
