@@ -52,12 +52,13 @@ if (root == null) {
         game.drawLine(32, 200, 292, 200, "#ffcc66", 2);
         game.fillCircle(camX + 320, camY + 180, 8, "#66ccff");
 
+        game.setCamera(0, 0);
         var status = "loading tiles";
         if (game.imageIsReady(tiles)) {
             status = "atlas ready";
         }
         game.drawText(status + "  cam " + string(int(camX)) + "," + string(int(camY)), 12, 24, "#ffffff", "14px monospace");
-        game.drawText("Arrows pan. Camera does not move pixel blits.", 12, 44, "#99ddee", "12px monospace");
+        game.drawText("Arrows pan world tiles. HUD stays on screen.", 12, 44, "#99ddee", "12px monospace");
     }
 
     game.createCanvas(640, 360, "#app");
