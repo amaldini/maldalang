@@ -200,25 +200,51 @@ function traceScene(origin: vec3, dir: vec3) -> vec3 {
             rd = reflect(rd, normal);
             ro = hit + normal * 0.02;
         } else if (material == 2) {
+            // Low IOR so the sphere stays see-through. n=1.45 is a ball lens:
+            // it inverts the floor into the top half and fills the bottom.
             var n: vec3 = normal;
-            var eta: float = 1.0 / 1.45;
-            if (dot(rd, n) > 0.0) {
+            var entering: bool = dot(rd, n) < 0.0;
+            if (!entering) {
                 n = -n;
-                eta = 1.45;
+            }
+            var eta: float = 1.0 / GLASS_IOR;
+            if (!entering) {
+                eta = GLASS_IOR;
             }
             var glassCos: float = max((-dot(rd, n)), 0.0);
-            var glassF: float = 0.04 + 0.96 * pow(1.0 - glassCos, 5.0);
+            var glassF: float = 0.05 + 0.40 * pow(1.0 - glassCos, 5.0);
             var reflDir: vec3 = reflect(rd, n);
             color = color + throughput * glassF * shadePrimary(hit + n * 0.02, reflDir);
-            var glassLocal: vec3 = localShade(hit, n, albedo);
-            color = color + throughput * ((1.0 - glassF) * glassLocal * 0.22);
             var refrDir: vec3 = refract(rd, n, eta);
             if (dot(refrDir, refrDir) < EPSILON) {
-                throughput = throughput * albedo;
                 rd = reflDir;
                 ro = hit + n * 0.02;
+            } else if (entering) {
+                var innerDir: vec3 = normalize(refrDir);
+                var innerOrig: vec3 = hit + innerDir * 0.02;
+                var glassC: vec3 = vec3(0.0, 1.0, 0.0);
+                var tExit: float = hitSphere(glassC, 1.0, innerOrig, innerDir);
+                if (tExit < EPSILON) {
+                    throughput = throughput * ((1.0 - glassF) * mix(vec3(1.0), albedo, 0.22));
+                    rd = innerDir;
+                    ro = innerOrig;
+                } else {
+                    var hitExit: vec3 = innerOrig + innerDir * tExit;
+                    var nExit: vec3 = -normalize(hitExit - glassC);
+                    var etaOut: float = GLASS_IOR;
+                    var outDir: vec3 = refract(innerDir, nExit, etaOut);
+                    var tintAmt: float = clamp(0.14 + tExit * 0.12, 0.14, 0.36);
+                    throughput = throughput * ((1.0 - glassF) * mix(vec3(1.0), albedo, tintAmt));
+                    if (dot(outDir, outDir) < EPSILON) {
+                        rd = reflect(innerDir, nExit);
+                        ro = hitExit + nExit * 0.02;
+                    } else {
+                        rd = normalize(outDir);
+                        ro = hitExit + rd * 0.02;
+                    }
+                }
             } else {
-                throughput = throughput * ((1.0 - glassF) * mix(vec3(1.0), albedo, 0.46));
+                throughput = throughput * ((1.0 - glassF) * mix(vec3(1.0), albedo, 0.18));
                 rd = normalize(refrDir);
                 ro = hit + rd * 0.02;
             }
@@ -260,7 +286,7 @@ var fragmentShader = glsl.compile({
         "float uTanHalf",
         "float uAspect"
     ],
-    consts: ["float EPSILON = 0.0015"],
+    consts: ["float EPSILON = 0.0015", "float GLASS_IOR = 1.1"],
     functions: ["hitSphere", "closestHit", "inShadow", "localShade", "shadeSky", "shadePrimary", "traceScene", "fragmentMain"],
     main: "fragmentMain"
 });
@@ -277,7 +303,7 @@ if (root == null) {
     dom.append(root, heading);
 
     var hint = dom.create("p");
-    dom.setText(hint, "Realtime GLSL tracer via three.createShaderMaterial. The large red sphere is tinted glass; the blue sphere is a mirror. Left/Right change orbit speed. Move the mouse to slide the light.");
+    dom.setText(hint, "Realtime GLSL tracer via three.createShaderMaterial. The large red sphere is lightly refractive tinted glass; the blue sphere is a mirror. Left/Right change orbit speed. Move the mouse to slide the light.");
     dom.append(root, hint);
 
     var width = 960;

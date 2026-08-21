@@ -792,6 +792,7 @@ process.stdout.write("ok\n");
         Assert.Contains("vec3 traceScene(vec3 origin, vec3 dir)", js, StringComparison.Ordinal);
         Assert.Contains("reflect(rd, normal)", js, StringComparison.Ordinal);
         Assert.Contains("refract(rd, n, eta)", js, StringComparison.Ordinal);
+        Assert.Contains("const float GLASS_IOR = 1.1", js, StringComparison.Ordinal);
         Assert.DoesNotContain("function hitSphere", js, StringComparison.Ordinal);
         Assert.DoesNotContain("mlRuntime.game.setPixel", js, StringComparison.Ordinal);
     }
