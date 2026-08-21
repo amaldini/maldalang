@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — JS three.* textures / glTF / look-at)
+
+- **G8 `three.createTexture` / `three.loadGLTF` / `three.lookAt` (JavaScript backend only):** `createTexture(url)` returns a handle immediately (async decode; missing files stay unready). `createStandardMaterial` accepts `"map"` (texture handle) and leaves the map unset until ready. `loadGLTF(url)` returns a group you can `add` immediately; children appear when `modelIsReady(handle)` is true (JSON `.gltf` or `.glb`; failures stay unready). The runtime owns the loader (no extra host `<script>`). `lookAt(object, x, y, z)` requires `lookAt` on the three.js object. Orbit controls stay out. Example: `Examples/Games/three_textured.malda`. Interpreter / C# transpile: n/a (`three.*`).
+
 #### Added (MINOR — JS game kit showcase)
 
 - **G7 showcase `malda_platform`:** featured side-scroller that uses G1–G5 together (`loadImage` / `drawImageRect`, `setCamera`, `overlapRect`, `wasKeyPressed`, `audioPlaySample`, `startFixed`, `save`/`load`) and compiles `--mode js`. Bounce / Maldanoid / Maldadash stay. Example: `Examples/Games/malda_platform.malda`. Interpreter / C# transpile: n/a (`game-canvas`).
@@ -319,3 +323,4 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-08-21 | MINOR: JS `game.startFixed` / `save` / `load` / `removeSave` (G5) |
 | 2026-08-21 | MINOR: `malda new game` / `malda play` JS preview (G6) |
 | 2026-08-21 | MINOR: JS game kit showcase `malda_platform` (G7) |
+| 2026-08-21 | MINOR: JS `three.createTexture` / `loadGLTF` / `lookAt` (G8) |

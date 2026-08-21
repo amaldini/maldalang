@@ -21,6 +21,7 @@ malda compile Examples/Games/game_fixed_save_smoke.malda --mode js -o Examples/G
 malda compile Examples/Games/malda_platform.malda --mode js -o Examples/Games/malda_platform.js
 malda compile Examples/Games/maldadash.malda --mode js -o Examples/Games/maldadash.js
 malda compile Examples/Games/three_cube.malda --mode js -o Examples/Games/three_cube.js
+malda compile Examples/Games/three_textured.malda --mode js -o Examples/Games/three_textured.js
 malda compile Examples/Games/three_shader_path_tunnel.malda --mode js -o Examples/Games/three_shader_path_tunnel.js
 ```
 

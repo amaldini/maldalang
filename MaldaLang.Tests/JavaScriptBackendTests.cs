@@ -2035,6 +2035,43 @@ process.exit(0);
     }
 
     [Fact]
+    public void JsTranspiler_MapsThreeAssetApis_ToMlRuntimeThree()
+    {
+        var source = """
+            var tex = three.createTexture("assets/check_tiles.png");
+            var material = three.createStandardMaterial({ "color": "#ffffff", "map": tex });
+            var model = three.loadGLTF("assets/textured_cube.gltf");
+            var ready = three.modelIsReady(model);
+            three.lookAt(camera, 0, 1, 0);
+            """;
+        var compiler = new Compiler.Compiler();
+
+        var js = compiler.TranspileToJavaScriptFromSource(source);
+
+        Assert.Contains("let tex = mlRuntime.three.createTexture(\"assets/check_tiles.png\");", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.three.createStandardMaterial(", js, StringComparison.Ordinal);
+        Assert.Contains("let model = mlRuntime.three.loadGLTF(\"assets/textured_cube.gltf\");", js, StringComparison.Ordinal);
+        Assert.Contains("let ready = mlRuntime.three.modelIsReady(model);", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.three.lookAt(camera, 0, 1, 0)", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void JsTranspiler_TexturedExample_EmitsAssetCalls()
+    {
+        var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Games", "three_textured.malda");
+        var compiler = new Compiler.Compiler();
+        var js = compiler.TranspileToJavaScript(sourcePath);
+
+        Assert.Contains("mlRuntime.three.createTexture(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.three.loadGLTF(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.three.modelIsReady(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.three.lookAt(", js, StringComparison.Ordinal);
+        Assert.Contains("assets/check_tiles.png", js, StringComparison.Ordinal);
+        Assert.Contains("assets/textured_cube.gltf", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("mlRuntime.game.", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void JsTranspiler_MapsThreeShaderApis_ToMlRuntimeThree()
     {
         var source = """
@@ -2209,6 +2246,207 @@ process.stdout.write("ok\n");
             var stderr = process.StandardError.ReadToEnd();
             process.WaitForExit(15000);
             Assert.True(process.ExitCode == 0, $"shader material runtime test failed ({process.ExitCode}). stderr: {stderr}");
+            Assert.Equal("ok", stdout.Trim());
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
+        }
+    }
+
+    [Fact]
+    public void ThreeRuntime_CreateTextureLoadGltfAndLookAt()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var runtimePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "wwwroot", "malda-js-runtime.js");
+        var root = CreateTempDirectory("malda_js_three_assets_");
+        try
+        {
+            var scriptPath = Path.Combine(root, "three-assets-test.js");
+            File.WriteAllText(scriptPath, """
+globalThis.document = {
+  body: {},
+  querySelector() { return { appendChild() {}, removeChild() {} }; },
+  createElement() { return { style: {} }; }
+};
+globalThis.window = {
+  addEventListener() {},
+  removeEventListener() {},
+  requestAnimationFrame() { return 1; },
+  cancelAnimationFrame() {},
+  devicePixelRatio: 1
+};
+
+class FakeImage {
+  constructor() { this.width = 0; this.height = 0; this.onload = null; this.onerror = null; this._src = ""; }
+  set src(value) {
+    this._src = value;
+    if (value === "ok.png") {
+      this.width = 8; this.height = 8;
+      if (this.onload) this.onload();
+    } else if (this.onerror) {
+      this.onerror();
+    }
+  }
+  get src() { return this._src; }
+}
+globalThis.Image = FakeImage;
+
+const TRIANGLE_GLTF = {
+  asset: { version: "2.0" },
+  scene: 0,
+  scenes: [{ nodes: [0] }],
+  nodes: [{ mesh: 0 }],
+  meshes: [{ primitives: [{ attributes: { POSITION: 0 } }] }],
+  accessors: [{ bufferView: 0, componentType: 5126, count: 3, type: "VEC3", min: [0, 0, 0], max: [1, 1, 0] }],
+  bufferViews: [{ buffer: 0, byteOffset: 0, byteLength: 36 }],
+  buffers: [{ byteLength: 36, uri: "data:application/octet-stream;base64,AAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAAAAAAAAgD8AAAAA" }]
+};
+
+globalThis.fetch = async function (url) {
+  if (url === "ok.gltf") {
+    return { ok: true, headers: { get() { return "model/gltf+json"; } }, json: async () => TRIANGLE_GLTF };
+  }
+  return { ok: false, headers: { get() { return ""; } } };
+};
+
+function Vec(x, y, z) {
+  this.x = x; this.y = y; this.z = z;
+  this.set = function (a, b, c) { this.x = a; this.y = b; this.z = c; return this; };
+}
+function Group() {
+  this.children = [];
+  this.position = new Vec(0, 0, 0);
+  this.scale = new Vec(1, 1, 1);
+  this.rotation = new Vec(0, 0, 0);
+  this.add = function (child) { this.children.push(child); return this; };
+  this.lookAt = function (x, y, z) { this.lookAtCalled = [x, y, z]; };
+}
+function BufferGeometry() {
+  this.attributes = {};
+  this.index = null;
+  this.setAttribute = function (name, attr) { this.attributes[name] = attr; };
+  this.setIndex = function (attr) { this.index = attr; };
+}
+function BufferAttribute(array, itemSize) {
+  this.array = array;
+  this.itemSize = itemSize;
+}
+function Mesh(geometry, material) {
+  this.geometry = geometry;
+  this.material = material;
+}
+function MeshStandardMaterial(options) {
+  Object.assign(this, options || {});
+  this.needsUpdate = false;
+}
+function Texture(image) {
+  this.image = image;
+  this.needsUpdate = false;
+  this.isTexture = true;
+}
+
+globalThis.THREE = {
+  Group,
+  BufferGeometry,
+  BufferAttribute,
+  Mesh,
+  MeshStandardMaterial,
+  Texture,
+  SRGBColorSpace: "srgb"
+};
+
+require(process.argv[2]);
+const three = globalThis.mlRuntime.three;
+
+const emptyTex = three.createTexture("");
+const matEmpty = three.createStandardMaterial({ color: "#44aaff", map: emptyTex });
+if (matEmpty.map) throw new Error("empty texture should not bind map");
+
+const missingTex = three.createTexture("missing.png");
+const matMissing = three.createStandardMaterial({ map: missingTex });
+if (matMissing.map) throw new Error("missing texture should not bind map");
+
+const okTex = three.createTexture("ok.png");
+const again = three.createTexture("ok.png");
+if (again !== okTex) throw new Error("createTexture should cache by url");
+const matOk = three.createStandardMaterial({ color: "#ffffff", map: okTex });
+if (!matOk.map || !matOk.map.isTexture) throw new Error("ready texture should bind map");
+if (matOk.color !== "#ffffff") throw new Error("color option should still apply");
+
+const cam = new Group();
+three.lookAt(cam, 1, 2, 3);
+if (!cam.lookAtCalled || cam.lookAtCalled[0] !== 1 || cam.lookAtCalled[2] !== 3) {
+  throw new Error("lookAt did not forward coordinates");
+}
+
+const emptyModel = three.loadGLTF("");
+if (three.modelIsReady(emptyModel)) throw new Error("empty gltf url should stay unready");
+
+const missingModel = three.loadGLTF("missing.gltf");
+
+(async () => {
+  const waitReady = async (handle, label) => {
+    for (let i = 0; i < 20; i++) {
+      if (three.modelIsReady(handle)) return;
+      await Promise.resolve();
+    }
+    throw new Error(label);
+  };
+  const waitUnready = async (handle, label) => {
+    for (let i = 0; i < 8; i++) await Promise.resolve();
+    if (three.modelIsReady(handle)) throw new Error(label);
+  };
+
+  await waitUnready(missingModel, "missing gltf should stay unready");
+
+  const model = three.loadGLTF("ok.gltf");
+  const cached = three.loadGLTF("ok.gltf");
+  if (cached !== model) throw new Error("loadGLTF should cache by url");
+  await waitReady(model, "ok.gltf should become ready");
+  if (!model.children.length) throw new Error("ready model should have children");
+  function findMesh(obj) {
+    if (obj && obj.geometry && obj.geometry.attributes) return obj;
+    const kids = (obj && obj.children) || [];
+    for (let i = 0; i < kids.length; i++) {
+      const found = findMesh(kids[i]);
+      if (found) return found;
+    }
+    return null;
+  }
+  const mesh = findMesh(model);
+  if (!mesh || !mesh.geometry || !mesh.geometry.attributes.position) {
+    throw new Error("gltf mesh missing position attribute");
+  }
+  if (mesh.geometry.attributes.position.itemSize !== 3) throw new Error("position itemSize");
+  process.stdout.write("ok\n");
+})().catch((error) => {
+  console.error(error && error.stack ? error.stack : error);
+  process.exit(1);
+});
+""");
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = Environment.GetEnvironmentVariable("MALDA_NODE_PATH") is { Length: > 0 } nodePath
+                    ? nodePath
+                    : "node",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = root
+            };
+            startInfo.ArgumentList.Add(scriptPath);
+            startInfo.ArgumentList.Add(runtimePath);
+
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Failed to start Node.js for three asset runtime test.");
+            var stdout = process.StandardOutput.ReadToEnd();
+            var stderr = process.StandardError.ReadToEnd();
+            process.WaitForExit(15000);
+            Assert.True(process.ExitCode == 0, $"three asset runtime test failed ({process.ExitCode}). stderr: {stderr}");
             Assert.Equal("ok", stdout.Trim());
         }
         finally

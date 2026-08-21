@@ -73,6 +73,8 @@ claim a program works.
 
 **`game.loadImage` is ready later, not now.** The call returns a handle immediately. `drawImage` / `drawImageRect` silently no-op until `imageIsReady` is true (missing files stay unready and do not throw). Start the loop anyway; check readiness in `render`. Camera (`setCamera`) offsets `fillRect` / images / text / lines, not `setPixel` / `blitPixels`. Mouse helpers stay in canvas pixels. Example: `Examples/Games/game_sprite_smoke.malda`.
 
+**`three.createTexture` / `three.loadGLTF` are ready later, not now.** The calls return a handle/group immediately. `createStandardMaterial({ "map": handle })` leaves `map` unset until the texture is ready (missing files stay unready and do not throw). `loadGLTF` is a group you can `add` right away; children appear when `modelIsReady` is true. Failures stay unready. Orbit controls are not in the wrapper. Example: `Examples/Games/three_textured.malda`.
+
 **The interpreter and `malda compile --mode transpile` are different backends.** A program that
 runs under the interpreter is not automatically a program that compiles. Prefer the
 interpret/transpile pair suite (`InterpretTranspilePairTests`) when you need a shippable
