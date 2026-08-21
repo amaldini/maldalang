@@ -115,6 +115,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 - **Overlapping `async` + `sleep`:** hot-started user functions no longer share the interpreter environment, `this`, or execution/call/defer stacks. `var tA = async computeA(); var tB = async computeB();` when both callees `sleep` binds on the caller and keeps callee locals. `WrapCallAsTask` now wraps user-function `async` (not only builtins). Spec §11.1; example `Examples/Basics/async_all_example.malda`; tests `AsyncTaskIsolationTests`.
 
+#### Fixed (PATCH — C# destructure temps)
+
+- **Two destructuring bindings in one C# method:** the C# transpiler now suffixes `__destructureValue` / `__destructureArr` (and rest temps) so `var [a, b] = …;` followed by `var { name } = …;` compiles. JS already uniquified. Pair: `InterpretTranspilePairTests.Destructuring_SameStdout`.
+
 #### Fixed (PATCH — program JSON argument types)
 
 - **`program(Api)` / `runProgram`:** LLM program JSON no longer passes leftover objects or numeric strings through as api operands. The host flattens nested `{call,args}` (and TypeChat `@func`/`@args`/`@ref`/`@steps`), coerces `"2"` to a number, unwraps `{type,value}` wrappers, fills missing `@api` / `as` / `return`, then validates. Structured-output schema for `args` no longer includes `object` (that union made models emit wrappers). Leftover objects fail validation/repair instead of reaching `add`/`mul`. Example: `Examples/Prompts/api_program_calc.malda`. Narrative: [`ReferenceManual/10-prompts.html`](../../ReferenceManual/10-prompts.html) §10.8.
