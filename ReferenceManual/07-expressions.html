@@ -356,7 +356,7 @@ var allTask = all(tA, tB);
 var results = await allTask;      // [1, 2]
 var sum = results[0] + results[1];
 print(sum);                       // 3</code></pre>
-        <p><strong>Known limitation:</strong> overlapping hot-started <em>user</em> functions that call <code>sleep</code> before the next <code>var</code> binding in the same block can race on the shared interpreter environment. Prefer immediate-return callees when starting several tasks in a row (see <code>Examples/Basics/async_all_example.malda</code>), bind tasks before overlapping sleeps, or <code>await</code> between bindings. Built-in <code>async sleep(...)</code> alone is fine.</p>
+        <p>Overlapping hot-started user functions that call <code>sleep</code> (or otherwise await) before the next <code>var</code> binding keep isolated locals, <code>this</code>, and defer stacks. The caller environment is restored after scheduling each task, so <code>var tA = async computeA(); var tB = async computeB();</code> binds on the caller. Built-in <code>async sleep(...)</code> is the same. See <code>Examples/Basics/async_all_example.malda</code>.</p>
         <p><strong>Note:</strong> <code>all()</code> is a compositional building block: it does not start tasks itself, it only combines tasks you create (for example with <code>async</code>).</p>
 
         <h2>7.15 Pipe Operator (<code>|&gt;</code>)</h2>

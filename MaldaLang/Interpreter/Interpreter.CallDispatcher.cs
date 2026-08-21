@@ -9,25 +9,22 @@ using MaldaLang.Parser.AST.Expressions;
 public partial class Interpreter
 {
     /// <summary>
-    /// Starts an async call for <c>async expr</c> without leaving the caller's environment on a child frame.
-    /// Hot-started tasks run until their first await on the current interpreter thread.
+    /// Starts an async call for <c>async expr</c> on a forked <see cref="InterpreterActivation"/>.
+    /// Hot-started tasks run until their first await on the current interpreter thread; the
+    /// incomplete <c>Task</c> keeps the callee activation via <c>AsyncLocal</c>, while this
+    /// thread restores the caller so the next <c>var</c> binding is not stored on the callee.
     /// </summary>
     private RuntimeValue WrapCallAsTask(Func<Task<RuntimeValue>> startCall)
     {
-        var previousEnv = _environment;
-        var previousObject = _currentObject;
-        var previousClass = _currentClass;
-        var previousActor = _currentActor;
+        var caller = GetActivation();
         try
         {
+            SetActivation(caller.ForkForTask());
             return RuntimeValue.Task(startCall());
         }
         finally
         {
-            _environment = previousEnv;
-            _currentObject = previousObject;
-            _currentClass = previousClass;
-            _currentActor = previousActor;
+            SetActivation(caller);
         }
     }
 
@@ -188,7 +185,7 @@ public partial class Interpreter
                     }
                 }
                 if (returnTask)
-                    return RuntimeValue.Task(CallFunctionAsync(func, arguments, instance));
+                    return WrapCallAsTask(() => CallFunctionAsync(func, arguments, instance));
                 return await CallFunctionAsync(func, arguments, instance);
             }
             catch (RuntimeException ex)
