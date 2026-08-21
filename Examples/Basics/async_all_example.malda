@@ -1,10 +1,12 @@
 // Example: Structured concurrency with all()
 
 function computeA() {
+    sleep(20);
     return 1;
 }
 
 function computeB() {
+    sleep(30);
     return 2;
 }
 

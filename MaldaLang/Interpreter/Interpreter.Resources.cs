@@ -9,8 +9,6 @@ using MaldaLang.Parser.AST.Statements;
 
 public partial class Interpreter
 {
-    private readonly Stack<List<Func<Task>>> _deferFrames = new();
-
     private void PushDeferFrame() => _deferFrames.Push([]);
 
     private async Task RunAndPopDeferFrameAsync()

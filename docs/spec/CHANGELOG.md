@@ -111,6 +111,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 - **`api` method params:** optional `SchemaType` hints, same form as sum-type constructor payloads (`function add(a: number, b: number)`). Name-only remains valid and permissive. Declared types feed program JSON Schema (narrow the `args` union; always keep `string` for `"$alias"`) and coercion (`"2"` becomes a number only when the hint is `number`/`int`; a `string` hint keeps `"2"`). Prompt parameters stay name-only. Implementing `function` bodies stay untyped. Grammar: [`35-grammar.html`](../../ReferenceManual/35-grammar.html) `ApiMethodSig`; narrative: [`10-prompts.html`](../../ReferenceManual/10-prompts.html) §10.8. Example: `Examples/Prompts/api_program_calc.malda`.
 
+#### Fixed (PATCH — interpreter task isolation)
+
+- **Overlapping `async` + `sleep`:** hot-started user functions no longer share the interpreter environment, `this`, or execution/call/defer stacks. `var tA = async computeA(); var tB = async computeB();` when both callees `sleep` binds on the caller and keeps callee locals. `WrapCallAsTask` now wraps user-function `async` (not only builtins). Spec §11.1; example `Examples/Basics/async_all_example.malda`; tests `AsyncTaskIsolationTests`.
+
 #### Fixed (PATCH — program JSON argument types)
 
 - **`program(Api)` / `runProgram`:** LLM program JSON no longer passes leftover objects or numeric strings through as api operands. The host flattens nested `{call,args}` (and TypeChat `@func`/`@args`/`@ref`/`@steps`), coerces `"2"` to a number, unwraps `{type,value}` wrappers, fills missing `@api` / `as` / `return`, then validates. Structured-output schema for `args` no longer includes `object` (that union made models emit wrappers). Leftover objects fail validation/repair instead of reaching `add`/`mul`. Example: `Examples/Prompts/api_program_calc.malda`. Narrative: [`ReferenceManual/10-prompts.html`](../../ReferenceManual/10-prompts.html) §10.8.
@@ -162,7 +166,7 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 #### Clarified (PATCH — docs / tracking only)
 
 - **Closed `api` / `program(Api)` / `runProgram`:** already shipped (v0.1.50). `api Name { function m(params); }` plus `prompt … -> program(Name)` validates TypeChat-style JSON (`@api`, `steps[{call,args,as}]`, `return`); `runProgram` executes those steps with no further LLM calls. Interpreter and C# transpile agree. JS: n/a (prompts are host-only; JS transpile rejects `api`). Example: `Examples/Prompts/api_program_calc.malda`. Narrative: [`ReferenceManual/10-prompts.html`](../../ReferenceManual/10-prompts.html) §10.8.
-- **`typeOf(variant)` / `typeOf(task)`:** already return `"variant"` / `"task"` (Tier 0 T0-096/T0-097); removed stale post-Final gap bullet. Concurrent `async` + `sleep` between `var` bindings remains doc-only (gotchas + RM §6.14).
+- **`typeOf(variant)` / `typeOf(task)`:** already return `"variant"` / `"task"` (Tier 0 T0-096/T0-097); removed stale post-Final gap bullet. Overlapping `async` + `sleep` between `var` bindings is isolated (see Unreleased PATCH — interpreter task isolation).
 - **Post-Final language constructs plan:** ranked workstreams L1–L6 (schema/sum-type unification, gather-then-extract prompts, `@budget`, workflow call-graph determinism, grounded values, capability tokens). Tracking only — no Tier 0 semantic change. See [`docs/roadmap-language-constructs.md`](../roadmap-language-constructs.md).
 - **Trust plan:** ranked workstreams DT0–DT6 (strict compile as the ship boundary, transpile smoke, loud gotchas). DT6 landed: toolchain **1.0.0** ([`docs/releases/v1.0.0.md`](../releases/v1.0.0.md)). Tracking only — no Tier 0 semantic change. See [`docs/roadmap-trust.md`](../roadmap-trust.md).
 
@@ -202,12 +206,12 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 
 #### Known gaps (defer post-Final — do not block Final 1.0)
 
-- Concurrent `async` user calls with `sleep` between consecutive `var` bindings (documented limitation) — **defer post-Final**; owner **maintainers**; target **post-1.0** (doc-only until a design exists). See gotchas + RM §6.14.
 - Multi-backend product parity (agents/HTTP/workflows on JS) — **not Final-gated**; owner **maintainers**; Tier 0 JS tracked separately via the backend matrix.
 
 #### Closed post-Final (already shipped at Final)
 
 - `typeOf(variant)` / `typeOf(task)` return canonical kind tags `"variant"` / `"task"` (not `"unknown"`); Tier 0 T0-096 / T0-097. Constructor tags stay in `match`, not `typeOf`.
+- Concurrent `async` + `sleep` between consecutive `var` bindings: interpreter per-task `InterpreterActivation` (Unreleased PATCH). See spec §11.1.
 
 ### [1.0.0-draft] — 2026-06-04 (Phase 3 modules)
 
@@ -269,3 +273,4 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-08-15 | MAJOR: `fn` / `def` removed; only `function` remains |
 | 2026-08-14 | L1a: `validate` + nested schema fields resolve sum-type names (MINOR) |
 | 2026-08-14 | L1b: optional constructor payload types in JSON Schema emit (MINOR) |
+| 2026-08-21 | PATCH: overlapping `async` + `sleep` interpreter task isolation |

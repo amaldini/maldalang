@@ -24,6 +24,7 @@ public class InterpretTranspilePairTests
     [InlineData("Examples/Prompts/prompt_budget.malda")]
     [InlineData("Examples/Modules/selective_import.malda")]
     [InlineData("Examples/Modules/export_type_schema.malda")]
+    [InlineData("Examples/Basics/async_all_example.malda")]
     public void Example_InterpretAndTranspile_SameStdout(string relativePath)
     {
         var parts = relativePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
@@ -104,5 +105,26 @@ public class InterpretTranspilePairTests
             io.print(m3);
             """,
             "bare-unit-variant-match");
+    }
+
+    [Fact]
+    public void AsyncUserSleepOverlap_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            function computeA() {
+                sleep(20);
+                return 1;
+            }
+            function computeB() {
+                sleep(30);
+                return 2;
+            }
+            var tA = async computeA();
+            var tB = async computeB();
+            var results = await all(tA, tB);
+            io.print(results[0] + results[1]);
+            """,
+            "async-user-sleep-overlap");
     }
 }

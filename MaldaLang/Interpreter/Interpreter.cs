@@ -65,39 +65,99 @@ internal sealed class CompensableStepRegistration
 public partial class Interpreter
 {
     internal Environment _globals;
-    internal Environment _environment;
+    private static readonly AsyncLocal<InterpreterActivation?> ActivationLocal = new();
+    private readonly InterpreterActivation _rootActivation;
     internal BuiltIns.AgentInstance? _defaultAgent = null;
     internal Dictionary<string, ClassDefinition> _classes = new();
     internal Dictionary<string, ActorDefinition> _actors = new();
     internal Dictionary<string, WorkflowDeclaration> _workflows = new();
     internal Dictionary<string, PropertyDeclaration> _properties = new();
-    private ObjectInstance? _currentObject = null;
-    private ClassDefinition? _currentClass = null;
-    private ActorInstance? _currentActor = null;
     private IDebuggerHook? _debuggerHook;
-    private List<InterpreterCallStackFrame> _callStack = new();
     private CancellationToken _interpretCancellation = CancellationToken.None;
-    private string? _currentFile = null;
     private IInputProvider? _inputProvider;
-    private Stack<ExecutionFrame> _executionStack = new();
     private Action? _outputUpdateCallback;
     private Action<string>? _outputCallback;
     private readonly Dictionary<Guid, CallbackInfo> _pendingCallbacks = new();
     private Message? _currentMessage;
     private readonly Dictionary<string, Environment> _importedModules = new();
-    private WorkflowExecutionContext? _workflowContext;
-    private bool _insideWorkflowStep;
     private MaldaLang.PackageManager.ModuleLoader? _moduleLoader;
     private MaldaLang.PackageManager.DotNetPackageWrapper? _dotNetWrapper;
     private string? _sourceCode = null;
     private static int _interpretNesting;
+
+    internal InterpreterActivation GetActivation()
+    {
+        var current = ActivationLocal.Value;
+        if (current != null && ReferenceEquals(current.Owner, this))
+            return current;
+        return _rootActivation;
+    }
+
+    private void SetActivation(InterpreterActivation activation)
+    {
+        ActivationLocal.Value = activation;
+    }
+
+    /// <summary>
+    /// Current task's environment. Backed by <see cref="InterpreterActivation"/> so
+    /// overlapping <c>async</c> calls do not share a frame.
+    /// </summary>
+    internal Environment _environment
+    {
+        get => GetActivation().Environment;
+        set => GetActivation().Environment = value;
+    }
+
+    private ObjectInstance? _currentObject
+    {
+        get => GetActivation().CurrentObject;
+        set => GetActivation().CurrentObject = value;
+    }
+
+    private ClassDefinition? _currentClass
+    {
+        get => GetActivation().CurrentClass;
+        set => GetActivation().CurrentClass = value;
+    }
+
+    private ActorInstance? _currentActor
+    {
+        get => GetActivation().CurrentActor;
+        set => GetActivation().CurrentActor = value;
+    }
+
+    private List<InterpreterCallStackFrame> _callStack => GetActivation().CallStack;
+
+    private string? _currentFile
+    {
+        get => GetActivation().CurrentFile;
+        set => GetActivation().CurrentFile = value;
+    }
+
+    private Stack<ExecutionFrame> _executionStack => GetActivation().ExecutionStack;
+
+    private WorkflowExecutionContext? _workflowContext
+    {
+        get => GetActivation().WorkflowContext;
+        set => GetActivation().WorkflowContext = value;
+    }
+
+    private bool _insideWorkflowStep
+    {
+        get => GetActivation().InsideWorkflowStep;
+        set => GetActivation().InsideWorkflowStep = value;
+    }
+
+    private Stack<List<Func<Task>>> _deferFrames => GetActivation().DeferFrames;
     
     public Interpreter(IDebuggerHook? debuggerHook = null, string? currentFile = null, IInputProvider? inputProvider = null)
     {
         _globals = new Environment();
-        _environment = _globals;
+        _rootActivation = new InterpreterActivation(this, _globals)
+        {
+            CurrentFile = currentFile
+        };
         _debuggerHook = debuggerHook;
-        _currentFile = currentFile;
         _inputProvider = inputProvider;
         BuiltInFunctions.RegisterBuiltIns(_globals);
         
@@ -469,6 +529,9 @@ public partial class Interpreter
 
     private async Task InterpretAsyncCore(List<Statement> statements, CancellationToken cancellationToken)
     {
+        // Pin this flow to the current (or root) activation so `async` forks restore correctly
+        // even when AsyncLocal was unset on this thread.
+        SetActivation(GetActivation());
         _interpretCancellation = cancellationToken;
         var scriptFile = _currentFile ?? "main.malda";
         var scriptLine = statements.Count > 0 && statements[0].Line > 0 ? statements[0].Line : 1;

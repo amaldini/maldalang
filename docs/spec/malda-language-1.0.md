@@ -295,7 +295,7 @@ var t2 = async 42;
 
 **Environment rule (1.0):** When `async` starts a user function call, the interpreter must restore the **caller’s environment** after scheduling the task so subsequent `var` bindings in the same scope are not stored on the callee’s activation record. Reference: `WrapCallAsTask` in `Interpreter.CallDispatcher.cs`.
 
-**Known limitation:** Overlapping hot-started user tasks that call `sleep` before the next `var` binding in the same block can race on the shared interpreter environment; bind tasks before starting overlapping sleeps, use immediate-return callees in examples, or `await` between bindings.
+**Task isolation:** Each hot-started task has its own activation (environment, `this`, execution/call/defer stacks, workflow flags). Overlapping user functions that `sleep` (or otherwise await) before the next `var` binding in the same block must not mis-bind caller locals or leak callee locals across tasks. Globals remain shared. Reference: `InterpreterActivation` in `MaldaLang/Interpreter/InterpreterActivation.cs`.
 
 ### 11.2 `await` expression
 
@@ -511,7 +511,7 @@ Versioning and deprecation rules: [CHANGELOG.md](CHANGELOG.md).
 | ~~`--strict-types`~~ | Phase 4.3 | **Done** — CLI flag; see [phase-4.3-strict-types.md](../planning/phase-4.3-strict-types.md) |
 | Multi-backend parity matrix | Phase 5 | C# transpile + JS |
 | Formal grammar sync | Phase 2.2 | Done — `35-grammar.html` |
-| Interpreter task isolation | Post–1.0 | Fix concurrent `async` + `sleep` binding race |
+| ~~Interpreter task isolation~~ | Post–1.0 | **Done** — per-task `InterpreterActivation` + `WrapCallAsTask` for user functions; overlapping `async` + `sleep` bindings isolated |
 
 ---
 
@@ -524,3 +524,4 @@ Versioning and deprecation rules: [CHANGELOG.md](CHANGELOG.md).
 | 2026-06-05 | Draft 1.0 | §18 expressiveness: pipe, comprehensions, `using`/`defer`, `const` (Phase 7) |
 | 2026-08-12 | Final 1.0 | Spec Final declared; Tier 0 interpreter + C# conformance green (`run-tier0-conformance.ps1`) |
 | 2026-08-14 | Final 1.0 | §8.1 optional constructor payload types (`Buy(sku: string, qty: int)`) — additive L1b |
+| 2026-08-21 | Final 1.0 | §11.1 overlapping `async` + `sleep` task isolation (interpreter activations) |

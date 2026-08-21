@@ -357,7 +357,7 @@ var allTask = all(tA, tB);
 var results = await allTask;      // [1, 2]
 var sum = results[0] + results[1];
 print(sum);                       // 3</code></pre>
-        <p><strong>Limitazione nota:</strong> funzioni <em>utente</em> avviate a caldo in sovrapposizione che chiamano <code>sleep</code> prima del successivo binding <code>var</code> nello stesso blocco possono andare in race sull'ambiente condiviso dell'interprete. Preferisci callee che ritornano subito quando avvii diversi task in sequenza (vedi <code>Examples/Basics/async_all_example.malda</code>), lega i task a variabili prima di sleep sovrapposti, oppure fai <code>await</code> tra un binding e l'altro. Il solo built-in <code>async sleep(...)</code> va bene.</p>
+        <p>Funzioni utente avviate a caldo in sovrapposizione che chiamano <code>sleep</code> (o in altro modo attendono) prima del successivo binding <code>var</code> tengono locali, <code>this</code> e stack <code>defer</code> isolati. L'ambiente del chiamante viene ripristinato dopo lo scheduling di ciascun task, quindi <code>var tA = async computeA(); var tB = async computeB();</code> fa il bind sul chiamante. Il built-in <code>async sleep(...)</code> si comporta allo stesso modo. Vedi <code>Examples/Basics/async_all_example.malda</code>.</p>
         <p><strong>Nota:</strong> <code>all()</code> è un blocco compositivo: non avvia i task da solo, combina solo i task che crei tu (per esempio con <code>async</code>).</p>
 
         <h2>7.15 Operatore pipe (<code>|&gt;</code>)</h2>

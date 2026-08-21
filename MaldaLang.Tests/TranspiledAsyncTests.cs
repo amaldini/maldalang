@@ -9,6 +9,49 @@ namespace MaldaLang.Tests;
 public class TranspiledAsyncTests
 {
     [Fact]
+    public void Transpiled_OverlappingUserSleep_BindsTasksOnCaller_AllSums()
+    {
+        var source = @"
+            function computeA() {
+                sleep(20);
+                return 1;
+            }
+            function computeB() {
+                sleep(30);
+                return 2;
+            }
+            var tA = async computeA();
+            var tB = async computeB();
+            var results = await all(tA, tB);
+            print(results[0] + results[1]);
+        ";
+
+        var result = TranspiledTestRunner.CompileAndRunFromSource(source);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("3", result.StdOut.Trim());
+    }
+
+    [Fact]
+    public void Transpiled_UserSleep_LocalSurvivesAcrossAwait()
+    {
+        var source = @"
+            function compute() {
+                var x = 41;
+                sleep(10);
+                return x + 1;
+            }
+            var t = async compute();
+            print(await t);
+        ";
+
+        var result = TranspiledTestRunner.CompileAndRunFromSource(source);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("42", result.StdOut.Trim());
+    }
+
+    [Fact]
     public void Transpiled_All_ComposesMultipleTasks_Variadic()
     {
         var source = @"
