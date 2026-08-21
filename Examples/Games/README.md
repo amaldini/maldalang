@@ -28,6 +28,6 @@ Then open the sibling host page (for example `Examples/Games/maldadash_runtime_s
 
 That tunnel demo is a CC-BY-NC-SA-4.0 conversion of [Frostbyte’s path march](https://fragcoord.xyz/s/tbe1g319); it is not under the repository MIT OR Apache-2.0 dual licence.
 
-JS / PWA samples need `malda compile … --mode js` (or the Desktop/Web IDE browser path). See [`docs/spec/backend-capability-matrix.md`](../../docs/spec/backend-capability-matrix.md) and [`docs/javascript-backend.md`](../../docs/javascript-backend.md).
+JS / PWA samples need `malda compile … --mode js` (or the Desktop/Web IDE browser path). A canvas client plus server scores is `malda new game --fullstack` (`Templates/game-fullstack/`). See [`docs/spec/backend-capability-matrix.md`](../../docs/spec/backend-capability-matrix.md) and [`docs/javascript-backend.md`](../../docs/javascript-backend.md).
 
 Catalog fields: [`metadata.json`](metadata.json).

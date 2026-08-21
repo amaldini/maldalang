@@ -484,4 +484,29 @@ public class WebRuntimeFoundationTests
         Assert.False(WebRuntimeHelpers.ShouldOmitHttpResponseBody(null, 200));
         Assert.False(WebRuntimeHelpers.IsHeadRequest(null));
     }
+
+    [Fact]
+    public void ConvertTranspiledResultToRuntimeValue_DictionaryLiteral_BecomesJsonObject()
+    {
+        var payload = new Dictionary<string, object?>
+        {
+            ["app"] = "tapscore",
+            ["status"] = "ok",
+            ["scores"] = new List<object>
+            {
+                new Dictionary<string, object?> { ["name"] = "Ada", ["points"] = 12 }
+            }
+        };
+
+        var value = WebRuntimeHelpers.ConvertTranspiledResultToRuntimeValue(payload);
+        Assert.Equal(ValueType.Object, value.Type);
+        var obj = Assert.IsType<JsonObject>(value.AsObject());
+        Assert.Equal("tapscore", obj.Get("app", null).AsString());
+        Assert.Equal("ok", obj.Get("status", null).AsString());
+        var scores = obj.Get("scores", null).AsArray();
+        Assert.Single(scores);
+        var row = Assert.IsType<JsonObject>(scores[0].AsObject());
+        Assert.Equal("Ada", row.Get("name", null).AsString());
+        Assert.Equal(12, row.Get("points", null).AsInteger());
+    }
 }

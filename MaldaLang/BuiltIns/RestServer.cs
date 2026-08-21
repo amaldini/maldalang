@@ -1840,18 +1840,7 @@ public class RestServerInstance : ObjectInstance
 
         var task = (Task<object>)method.Invoke(null, args)!;
         var result = await task;
-
-        return result switch
-        {
-            int i => RuntimeValue.Integer(i),
-            long l => RuntimeValue.Integer((int)l),
-            double d => RuntimeValue.Float(d),
-            float f => RuntimeValue.Float(f),
-            string s => RuntimeValue.String(s),
-            bool b => RuntimeValue.Boolean(b),
-            MaldaLang.Interpreter.ObjectInstance oi => RuntimeValue.Object(oi),
-            _ => RuntimeValue.Null()
-        };
+        return WebRuntimeHelpers.ConvertTranspiledResultToRuntimeValue(result);
     }
     
     private async Task<RuntimeValue> CallLLMServerEndpointAsync(Route route, List<RuntimeValue> functionArgs)

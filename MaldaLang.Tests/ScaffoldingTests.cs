@@ -356,4 +356,59 @@ public class ScaffoldingTests : TestBase
             SafeDeleteDirectory(root);
         }
     }
+
+    [Fact]
+    public void Scaffold_GameFullstackTemplate_CreatesScoresAppAndTests()
+    {
+        var root = CreateTempDirectory("malda_scaffold_game_fullstack_");
+        var destination = Path.Combine(root, "sample-scores");
+        try
+        {
+            var output = new StringWriter();
+            var error = new StringWriter();
+            var scaffolder = new TemplateScaffolder();
+            var options = new NewCommandOptions
+            {
+                TemplateName = "game",
+                DestinationPath = destination,
+                Fullstack = true
+            };
+
+            var code = scaffolder.Scaffold("game", destination, output, error, options);
+
+            var text = output.ToString();
+            Assert.Equal(0, code);
+            Assert.True(File.Exists(Path.Combine(destination, "app.malda")));
+            Assert.True(File.Exists(Path.Combine(destination, "README.md")));
+            Assert.True(File.Exists(Path.Combine(destination, "tests", "score.test.malda")));
+            Assert.True(File.Exists(Path.Combine(destination, "assets", ".gitkeep")));
+            Assert.False(File.Exists(Path.Combine(destination, "index.html")));
+            Assert.False(Directory.Exists(Path.Combine(destination, "config", "environments")));
+            Assert.Contains("Created game --fullstack project", text);
+            Assert.Contains("malda test --format human", text);
+            Assert.Contains("malda compile app.malda --mode fullstack -o dist", text);
+            Assert.DoesNotContain("malda play app.malda", text);
+            Assert.DoesNotContain("malda db", text);
+            Assert.DoesNotContain("Environment profiles generated", text);
+
+            var app = File.ReadAllText(Path.Combine(destination, "app.malda"));
+            Assert.Contains("schema Score", app);
+            Assert.Contains("validate(\"Score\"", app);
+            Assert.Contains("@GET(\"/api/scores\")", app);
+            Assert.Contains("@POST(\"/api/scores\")", app);
+            Assert.Contains("@client()", app);
+            Assert.Contains("@server()", app);
+            Assert.Contains("game.startFixed", app);
+            Assert.Contains("game.wasKeyPressed", app);
+            Assert.Contains("game.save", app);
+            Assert.Contains("httpPost", app);
+            Assert.Contains("httpGet", app);
+            Assert.Contains("sample-scores", File.ReadAllText(Path.Combine(destination, "README.md")));
+            Assert.Equal(string.Empty, error.ToString());
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
+        }
+    }
 }

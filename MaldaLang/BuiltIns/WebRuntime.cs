@@ -3,6 +3,7 @@
 
 namespace MaldaLang.BuiltIns;
 
+using System.Collections;
 using System.Net;
 using System.Reflection;
 using System.Security.Cryptography;
@@ -1652,6 +1653,93 @@ public static class WebRuntimeHelpers
         }
 
         return RuntimeValue.Object(payload);
+    }
+
+    /// <summary>
+    /// Converts a C# transpiler return value into a <see cref="RuntimeValue"/>.
+    /// Object literals emit as <c>Dictionary&lt;string, object?&gt;</c>; RestServer and
+    /// HttpServer both need that shape to serialize JSON object bodies.
+    /// </summary>
+    public static RuntimeValue ConvertTranspiledResultToRuntimeValue(object? value)
+    {
+        if (value == null)
+        {
+            return RuntimeValue.Null();
+        }
+
+        if (value is RuntimeValue runtimeValue)
+        {
+            return runtimeValue;
+        }
+
+        if (value is DBNull)
+        {
+            return RuntimeValue.Null();
+        }
+
+        if (value is int i) return RuntimeValue.Integer(i);
+        if (value is long l) return RuntimeValue.Integer((int)l);
+        if (value is short sh) return RuntimeValue.Integer(sh);
+        if (value is byte bt) return RuntimeValue.Integer(bt);
+        if (value is double d) return RuntimeValue.Float(d);
+        if (value is float f) return RuntimeValue.Float(f);
+        if (value is decimal dm) return RuntimeValue.Float((double)dm);
+        if (value is string s) return RuntimeValue.String(s);
+        if (value is bool b) return RuntimeValue.Boolean(b);
+        if (value is ObjectInstance oi) return RuntimeValue.Object(oi);
+
+        if (value is Dictionary<string, object?> nullableDict)
+        {
+            return RuntimeValue.Object(DictionaryToJsonObject(nullableDict));
+        }
+
+        if (value is Dictionary<string, object> dict)
+        {
+            var nullable = new Dictionary<string, object?>(dict.Count);
+            foreach (var kvp in dict)
+            {
+                nullable[kvp.Key] = kvp.Value;
+            }
+            return RuntimeValue.Object(DictionaryToJsonObject(nullable));
+        }
+
+        if (value is List<object> list)
+        {
+            return RuntimeValue.Array(list.Select(ConvertTranspiledResultToRuntimeValue).ToList());
+        }
+
+        if (value is IDictionary dictionary)
+        {
+            var jsonObj = new JsonObject();
+            foreach (DictionaryEntry entry in dictionary)
+            {
+                var key = entry.Key == null ? "" : entry.Key.ToString() ?? "";
+                jsonObj.Set(key, ConvertTranspiledResultToRuntimeValue(entry.Value));
+            }
+            return RuntimeValue.Object(jsonObj);
+        }
+
+        if (value is IEnumerable sequence && value is not string)
+        {
+            var items = new List<RuntimeValue>();
+            foreach (var item in sequence)
+            {
+                items.Add(ConvertTranspiledResultToRuntimeValue(item));
+            }
+            return RuntimeValue.Array(items);
+        }
+
+        return RuntimeValue.Null();
+    }
+
+    private static JsonObject DictionaryToJsonObject(Dictionary<string, object?> source)
+    {
+        var jsonObj = new JsonObject();
+        foreach (var kvp in source)
+        {
+            jsonObj.Set(kvp.Key, ConvertTranspiledResultToRuntimeValue(kvp.Value));
+        }
+        return jsonObj;
     }
 
     public static bool TryGetStandardErrorPayload(RuntimeValue value, out JsonObject? payload, out int statusCode)

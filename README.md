@@ -225,7 +225,7 @@ now it is where I experiment with what building on AI looks like.
 | [`Examples/Web`](Examples/Web) | REST, UI, auth, jobs |
 | [`Examples/Games`](Examples/Games) | Canvas games and three.js graphics |
 | [`docs/tutorials/fullstack-sessions-auth.md`](docs/tutorials/fullstack-sessions-auth.md) | Sessions / CSRF / jobs walkthrough |
-| [`Templates/`](Templates) | `malda new webapi` / `malda new fullstack` / `malda new game` |
+| [`Templates/`](Templates) | `malda new webapi` / `malda new fullstack` / `malda new game` / `malda new game --fullstack` |
 | [`ReferenceManual/`](ReferenceManual) | Language reference (HTML); [English](https://amaldini.github.io/maldalang/) · [Italiano](https://amaldini.github.io/maldalang/it/) |
 | [`vscode-malda/`](vscode-malda) | VS Code extension |
 

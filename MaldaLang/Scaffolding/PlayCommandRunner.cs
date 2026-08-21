@@ -10,6 +10,7 @@ using System.IO;
 using System.Net;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using MaldaLang.Cli;
@@ -74,6 +75,26 @@ public sealed class PlayCommandRunner
         if (!File.Exists(sourcePath))
         {
             error.WriteLine($"Error: Input file not found: {options.SourcePath}");
+            return null;
+        }
+
+        string sourceText;
+        try
+        {
+            sourceText = File.ReadAllText(sourcePath);
+        }
+        catch (Exception ex)
+        {
+            error.WriteLine($"Error: Could not read '{options.SourcePath}': {ex.Message}");
+            return null;
+        }
+
+        if (LooksLikeFullStackSource(sourceText))
+        {
+            error.WriteLine("malda play is a JavaScript-only preview.");
+            error.WriteLine("This file is fullstack (@client plus @server or a route). Compile it instead:");
+            error.WriteLine($"  malda compile {options.SourcePath} --mode fullstack -o dist");
+            error.WriteLine("Then run the server with MALDA_WEB_DIRECTORY pointing at dist/web (see the generated README).");
             return null;
         }
 
@@ -193,6 +214,20 @@ public sealed class PlayCommandRunner
         {
             output.WriteLine($"Could not open a browser ({ex.Message}). Open {url} manually.");
         }
+    }
+
+    private static bool LooksLikeFullStackSource(string source)
+    {
+        // Same contract as FullStackSourceInspector.IsFullStackSource (CLI cannot reference MaldaLang.Compiler).
+        var hasClient = Regex.IsMatch(source, @"^\s*@(?:client|javascript)\s*\(", RegexOptions.Multiline | RegexOptions.IgnoreCase);
+        if (!hasClient)
+        {
+            return false;
+        }
+
+        var hasServer = Regex.IsMatch(source, @"^\s*@(?:server|csharp)\s*\(", RegexOptions.Multiline | RegexOptions.IgnoreCase);
+        var hasRoute = Regex.IsMatch(source, @"^\s*@(GET|POST|PUT|PATCH|DELETE|OPTIONS|PAGE|AIPAGE|ACTION|COMPONENT|LIVE)\s*\(", RegexOptions.Multiline | RegexOptions.IgnoreCase);
+        return hasServer || hasRoute;
     }
 
     private static string NormalizeBindHost(string host)
