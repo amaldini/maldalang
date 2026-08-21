@@ -10,10 +10,10 @@ using System.IO;
 using System.Net;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using MaldaLang.Cli;
-using MaldaLang.Compiler;
 
 public sealed class PlayCommandRunner
 {
@@ -89,7 +89,7 @@ public sealed class PlayCommandRunner
             return null;
         }
 
-        if (FullStackSourceInspector.IsFullStackSource(sourceText))
+        if (LooksLikeFullStackSource(sourceText))
         {
             error.WriteLine("malda play is a JavaScript-only preview.");
             error.WriteLine("This file is fullstack (@client plus @server or a route). Compile it instead:");
@@ -214,6 +214,20 @@ public sealed class PlayCommandRunner
         {
             output.WriteLine($"Could not open a browser ({ex.Message}). Open {url} manually.");
         }
+    }
+
+    private static bool LooksLikeFullStackSource(string source)
+    {
+        // Same contract as FullStackSourceInspector.IsFullStackSource (CLI cannot reference MaldaLang.Compiler).
+        var hasClient = Regex.IsMatch(source, @"^\s*@(?:client|javascript)\s*\(", RegexOptions.Multiline | RegexOptions.IgnoreCase);
+        if (!hasClient)
+        {
+            return false;
+        }
+
+        var hasServer = Regex.IsMatch(source, @"^\s*@(?:server|csharp)\s*\(", RegexOptions.Multiline | RegexOptions.IgnoreCase);
+        var hasRoute = Regex.IsMatch(source, @"^\s*@(GET|POST|PUT|PATCH|DELETE|OPTIONS|PAGE|AIPAGE|ACTION|COMPONENT|LIVE)\s*\(", RegexOptions.Multiline | RegexOptions.IgnoreCase);
+        return hasServer || hasRoute;
     }
 
     private static string NormalizeBindHost(string host)
