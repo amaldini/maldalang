@@ -52,6 +52,117 @@ public class ResultOptionStdLibTests : TestBase
     }
 
     [Fact]
+    public void Result_AndThen_ChainsOk()
+    {
+        var source = """
+            var r = result.ok(10);
+            var doubled = result.andThen(r, (x) => result.ok(x * 2));
+            print(result.unwrapOr(doubled, 0));
+            print(result.isOk(doubled));
+            """;
+        var lines = RunProgram(source).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal("20", lines[0]);
+        Assert.Equal("true", lines[1]);
+    }
+
+    [Fact]
+    public void Result_AndThen_OkToErr()
+    {
+        var source = """
+            var r = result.ok(10);
+            var failed = result.andThen(r, (x) => result.err("no"));
+            print(result.isErr(failed));
+            print(result.unwrapOr(failed, 99));
+            """;
+        var lines = RunProgram(source).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal("true", lines[0]);
+        Assert.Equal("99", lines[1]);
+    }
+
+    [Fact]
+    public void Result_AndThen_ShortCircuitsErr()
+    {
+        var source = """
+            var called = false;
+            function mark(x) {
+                called = true;
+                return result.ok(x);
+            }
+            var mapped = result.andThen(result.err("bad"), mark);
+            print(result.isErr(mapped));
+            print(called);
+            """;
+        var lines = RunProgram(source).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal("true", lines[0]);
+        Assert.Equal("false", lines[1]);
+    }
+
+    [Fact]
+    public void Result_AndThen_PipeChains()
+    {
+        var source = """
+            var chained = result.ok(10)
+                |> result.andThen((x) => result.ok(x * 2))
+                |> result.andThen((x) => result.ok(x + 1));
+            print(result.unwrapOr(chained, 0));
+            """;
+        Assert.Equal("21", RunProgram(source).Trim());
+    }
+
+    [Fact]
+    public void Result_AndThen_RejectsBarePayload()
+    {
+        var source = """
+            result.andThen(result.ok(1), (x) => x + 1);
+            """;
+        var ex = Assert.ThrowsAny<Exception>(() => RunProgram(source));
+        Assert.Contains("andThen()", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("result.map", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Result_AndThen_RejectsOptionFamily()
+    {
+        var source = """
+            result.andThen(result.ok(1), (x) => option.some(x));
+            """;
+        var ex = Assert.ThrowsAny<Exception>(() => RunProgram(source));
+        Assert.Contains("andThen()", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("Some", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Option_AndThen_SomeToNone()
+    {
+        var source = """
+            var dropped = option.andThen(option.some(3), (n) => option.none());
+            print(option.isNone(dropped));
+            print(option.unwrapOr(dropped, 0));
+            """;
+        var lines = RunProgram(source).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal("true", lines[0]);
+        Assert.Equal("0", lines[1]);
+    }
+
+    [Fact]
+    public void Option_AndThen_ShortCircuitsNone()
+    {
+        var source = """
+            var called = false;
+            function mark(n) {
+                called = true;
+                return option.some(n);
+            }
+            var mapped = option.andThen(option.none(), mark);
+            print(option.isNone(mapped));
+            print(called);
+            """;
+        var lines = RunProgram(source).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal("true", lines[0]);
+        Assert.Equal("false", lines[1]);
+    }
+
+    [Fact]
     public void NullConditionalMember_ReturnsNullWithoutError()
     {
         var source = """

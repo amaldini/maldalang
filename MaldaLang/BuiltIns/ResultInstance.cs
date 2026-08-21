@@ -6,7 +6,7 @@ namespace MaldaLang.BuiltIns;
 using MaldaLang.Interpreter;
 
 /// <summary>
-/// Global <c>result</c> module: Ok/Err helpers, map, unwrapOr (Phase 4.4).
+/// Global <c>result</c> module: Ok/Err helpers, map, andThen, unwrapOr (Phase 4.4).
 /// </summary>
 public sealed class ResultInstance : StdLibModuleInstance
 {
@@ -18,6 +18,7 @@ public sealed class ResultInstance : StdLibModuleInstance
             "ok" => VariantStdLib.ResultOk(args),
             "err" => VariantStdLib.ResultErr(args),
             "map" => VariantStdLib.ResultMap(args, interpreter),
+            "andThen" => VariantStdLib.ResultAndThen(args, interpreter),
             "unwrapOr" => VariantStdLib.ResultUnwrapOr(args),
             "isOk" => VariantStdLib.ResultIsOk(args),
             "isErr" => VariantStdLib.ResultIsErr(args),

@@ -880,9 +880,22 @@ print(option.isNone(missing));</code></pre>
             <li><code>result.isOk(r)</code> / <code>result.isErr(r)</code> — test sul tag</li>
             <li><code>result.unwrapOr(r, fallback)</code> — payload di <code>Ok</code>, altrimenti <code>fallback</code></li>
             <li><code>result.map(r, fn)</code> — applica <code>fn</code> a un payload <code>Ok</code>; lascia <code>Err</code> invariato</li>
+            <li><code>result.andThen(r, fn)</code> — se <code>Ok</code>, chiama <code>fn(payload)</code> e restituisce quel Result; se <code>Err</code>, non chiama <code>fn</code>. <code>fn</code> deve restituire <code>Ok</code>/<code>Err</code> (usa <code>map</code> per trasformare un payload nudo)</li>
             <li><code>option.some(value)</code> / <code>option.none()</code> — costruisce un variant <code>Some</code> o <code>None</code></li>
-            <li><code>option.isSome(o)</code> / <code>option.isNone(o)</code> / <code>option.unwrapOr(o, fallback)</code> / <code>option.map(o, fn)</code> — lo stesso schema per i valori opzionali</li>
+            <li><code>option.isSome(o)</code> / <code>option.isNone(o)</code> / <code>option.unwrapOr(o, fallback)</code> / <code>option.map(o, fn)</code> / <code>option.andThen(o, fn)</code> — lo stesso schema per i valori opzionali</li>
         </ul>
+        <pre><code data-run="true" data-expect="24\ntrue">function parseAge(raw) {
+    var n = toIntOrNull(raw);
+    if (n == null) {
+        return result.err("not an int");
+    }
+    return result.ok(n);
+}
+function doubleAge(n) {
+    return result.ok(n * 2);
+}
+print(result.unwrapOr(parseAge("12") |> result.andThen(doubleAge), 0));
+print(result.isErr(parseAge("x") |> result.andThen(doubleAge)));</code></pre>
         <p>Non trattare i type hint (<code>var n: int = …</code>) come validazione a runtime. Per i payload a forma JSON usa <code>schema</code> e <a href="#validate"><code>validate()</code></a>. Tutorial: <a href="../../docs/tutorials/errors-and-validation.md">errori, Result/Option e validate dello schema</a>.</p>
         <h3 id="grounded-values">13.19.2 <code>grounded.wrap</code></h3>
         <p>Le citazioni di retrieval (GraphMemory, file, tool) non sono un kind di valore visibile a <code>match</code>. Avvolgi un payload così la provenienza è un dict che puoi leggere:</p>

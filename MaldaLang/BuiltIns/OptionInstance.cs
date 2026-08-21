@@ -6,7 +6,7 @@ namespace MaldaLang.BuiltIns;
 using MaldaLang.Interpreter;
 
 /// <summary>
-/// Global <c>option</c> module: Some/None helpers, map, unwrapOr (Phase 4.4).
+/// Global <c>option</c> module: Some/None helpers, map, andThen, unwrapOr (Phase 4.4).
 /// </summary>
 public sealed class OptionInstance : StdLibModuleInstance
 {
@@ -18,6 +18,7 @@ public sealed class OptionInstance : StdLibModuleInstance
             "some" => VariantStdLib.OptionSome(args),
             "none" => VariantStdLib.OptionNone(args),
             "map" => VariantStdLib.OptionMap(args, interpreter),
+            "andThen" => VariantStdLib.OptionAndThen(args, interpreter),
             "unwrapOr" => VariantStdLib.OptionUnwrapOr(args),
             "isSome" => VariantStdLib.OptionIsSome(args),
             "isNone" => VariantStdLib.OptionIsNone(args),

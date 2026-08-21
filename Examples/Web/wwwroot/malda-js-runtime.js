@@ -339,6 +339,34 @@
     return variant(successTag, [mapped]);
   }
 
+  function describeAndThenGot(value) {
+    if (isVariant(value)) {
+      return "'" + coerceToString(value.tag) + "'";
+    }
+    return typeOfBuiltin(value);
+  }
+
+  function andThenVariant(value, mapper, successTag, failureTag, moduleName) {
+    if (!isVariant(value)) {
+      throw new Error("Expected a variant value (Ok/Err/Some/None)");
+    }
+    if (value.tag === failureTag) {
+      return value;
+    }
+    if (value.tag !== successTag) {
+      throw new Error("andThen() expected variant tag '" + successTag + "' or '" + failureTag + "', got '" + value.tag + "'");
+    }
+    const payload = variantPayload(value);
+    const bound = mapper(payload.length > 0 ? payload[0] : null);
+    if (!isVariant(bound) || (bound.tag !== successTag && bound.tag !== failureTag)) {
+      throw new Error(
+        "andThen() expected fn to return " + successTag + "/" + failureTag +
+        "; got " + describeAndThenGot(bound) + ". Use " + moduleName + ".map to transform a payload."
+      );
+    }
+    return bound;
+  }
+
   function unwrapOrVariant(value, defaultValue, successTag) {
     if (!isVariant(value)) {
       throw new Error("Expected a variant value (Ok/Err/Some/None)");
@@ -364,6 +392,9 @@
     map(value, mapper) {
       return mapVariant(value, mapper, "Ok", "Err");
     },
+    andThen(value, mapper) {
+      return andThenVariant(value, mapper, "Ok", "Err", "result");
+    },
     unwrapOr(value, defaultValue) {
       return unwrapOrVariant(value, defaultValue, "Ok");
     },
@@ -384,6 +415,9 @@
     },
     map(value, mapper) {
       return mapVariant(value, mapper, "Some", "None");
+    },
+    andThen(value, mapper) {
+      return andThenVariant(value, mapper, "Some", "None", "option");
     },
     unwrapOr(value, defaultValue) {
       return unwrapOrVariant(value, defaultValue, "Some");

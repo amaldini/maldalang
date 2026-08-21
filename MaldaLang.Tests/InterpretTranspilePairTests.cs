@@ -210,9 +210,13 @@ public class InterpretTranspilePairTests
             var r = result.ok(10);
             io.print(result.unwrapOr(result.map(r, (x) => x * 2), 0));
             io.print(result.isErr(result.err("bad")));
+            io.print(result.unwrapOr(result.andThen(r, (x) => result.ok(x * 2)), 0));
+            io.print(result.isErr(result.andThen(result.err("bad"), (x) => result.ok(x))));
             var o = option.some(3);
             io.print(option.unwrapOr(option.map(o, (n) => n + 1), 0));
             io.print(option.isNone(option.none()));
+            io.print(option.unwrapOr(option.andThen(o, (n) => option.some(n + 1)), 0));
+            io.print(option.isNone(option.andThen(option.none(), (n) => option.some(n))));
             """,
             "result-option");
     }

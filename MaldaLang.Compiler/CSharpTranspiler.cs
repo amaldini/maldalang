@@ -4526,6 +4526,33 @@ public class CSharpTranspiler
         _output.AppendLine("}");
         _output.AppendLine();
         WriteIndent();
+        _output.AppendLine("public static MaldaLang.Interpreter.RuntimeValue AndThenVariantWithDelegate(MaldaLang.Interpreter.RuntimeValue input, System.Func<object, System.Threading.Tasks.Task<object>> binder, string successTag, string failureTag, string moduleName)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("if (input.Type != MaldaLang.Interpreter.ValueType.Variant)");
+        WriteIndent();
+        _output.AppendLine("    throw new System.Exception(\"Expected a variant value (Ok/Err/Some/None)\");");
+        WriteIndent();
+        _output.AppendLine("var variant = input.AsVariant();");
+        WriteIndent();
+        _output.AppendLine("if (variant.Tag == failureTag) return input;");
+        WriteIndent();
+        _output.AppendLine("if (variant.Tag != successTag)");
+        WriteIndent();
+        _output.AppendLine("    throw new System.Exception($\"andThen() expected variant tag '{successTag}' or '{failureTag}', got '{variant.Tag}'\");");
+        WriteIndent();
+        _output.AppendLine("var payload = variant.Payload.Count > 0 ? UnwrapRuntimeValue(variant.Payload[0]) : null;");
+        WriteIndent();
+        _output.AppendLine("var bound = binder(payload).GetAwaiter().GetResult();");
+        WriteIndent();
+        _output.AppendLine("return MaldaLang.BuiltIns.VariantStdLib.RequireSameFamilyResult(ToRuntimeValue(bound), successTag, failureTag, moduleName);");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        _output.AppendLine();
+        WriteIndent();
         _output.AppendLine("private static readonly System.Threading.AsyncLocal<System.Collections.Generic.Stack<System.Collections.Generic.List<System.Func<System.Threading.Tasks.Task>>>> __deferStacks = new System.Threading.AsyncLocal<System.Collections.Generic.Stack<System.Collections.Generic.List<System.Func<System.Threading.Tasks.Task>>>>();");
         WriteIndent();
         _output.AppendLine("public static void PushDeferFrame()");
@@ -13191,12 +13218,14 @@ public class CSharpTranspiler
             (StdLibNamespaces.ResultModule, "ok") => nameof(VariantStdLib.ResultOk),
             (StdLibNamespaces.ResultModule, "err") => nameof(VariantStdLib.ResultErr),
             (StdLibNamespaces.ResultModule, "map") => nameof(VariantStdLib.ResultMap),
+            (StdLibNamespaces.ResultModule, "andThen") => nameof(VariantStdLib.ResultAndThen),
             (StdLibNamespaces.ResultModule, "unwrapOr") => nameof(VariantStdLib.ResultUnwrapOr),
             (StdLibNamespaces.ResultModule, "isOk") => nameof(VariantStdLib.ResultIsOk),
             (StdLibNamespaces.ResultModule, "isErr") => nameof(VariantStdLib.ResultIsErr),
             (StdLibNamespaces.OptionModule, "some") => nameof(VariantStdLib.OptionSome),
             (StdLibNamespaces.OptionModule, "none") => nameof(VariantStdLib.OptionNone),
             (StdLibNamespaces.OptionModule, "map") => nameof(VariantStdLib.OptionMap),
+            (StdLibNamespaces.OptionModule, "andThen") => nameof(VariantStdLib.OptionAndThen),
             (StdLibNamespaces.OptionModule, "unwrapOr") => nameof(VariantStdLib.OptionUnwrapOr),
             (StdLibNamespaces.OptionModule, "isSome") => nameof(VariantStdLib.OptionIsSome),
             (StdLibNamespaces.OptionModule, "isNone") => nameof(VariantStdLib.OptionIsNone),
@@ -13206,11 +13235,27 @@ public class CSharpTranspiler
         if (staticMethod == null)
             return false;
 
-        if (memberAccess.Member == "map" && call.Arguments.Count == 2)
+        if (memberAccess.Member is "map" or "andThen" && call.Arguments.Count == 2)
         {
             var (successTag, failureTag) = moduleId.Name == StdLibNamespaces.ResultModule
                 ? ("Ok", "Err")
                 : ("Some", "None");
+            if (memberAccess.Member == "andThen")
+            {
+                _output.Append("RuntimeHelpers.AndThenVariantWithDelegate(RuntimeHelpers.ToRuntimeValue(");
+                TranspileExpression(call.Arguments[0]);
+                _output.Append("), ");
+                TranspileExpression(call.Arguments[1]);
+                _output.Append(", \"");
+                _output.Append(successTag);
+                _output.Append("\", \"");
+                _output.Append(failureTag);
+                _output.Append("\", \"");
+                _output.Append(moduleId.Name);
+                _output.Append("\")");
+                return true;
+            }
+
             _output.Append("RuntimeHelpers.MapVariantWithDelegate(RuntimeHelpers.ToRuntimeValue(");
             TranspileExpression(call.Arguments[0]);
             _output.Append("), ");

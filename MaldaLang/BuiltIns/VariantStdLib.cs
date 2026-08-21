@@ -50,6 +50,12 @@ public static class VariantStdLib
     public static RuntimeValue OptionMap(List<RuntimeValue> args, Interpreter interpreter) =>
         MapVariant(args, interpreter, SomeTag, NoneTag);
 
+    public static RuntimeValue ResultAndThen(List<RuntimeValue> args, Interpreter interpreter) =>
+        AndThenVariant(args, interpreter, OkTag, ErrTag, "result");
+
+    public static RuntimeValue OptionAndThen(List<RuntimeValue> args, Interpreter interpreter) =>
+        AndThenVariant(args, interpreter, SomeTag, NoneTag, "option");
+
     public static RuntimeValue ResultUnwrapOr(List<RuntimeValue> args) =>
         UnwrapOr(args, OkTag);
 
@@ -77,7 +83,7 @@ public static class VariantStdLib
         if (args.Count != 2)
             throw new Exception("map() expects 2 arguments: (value, function)");
         var value = RequireVariant(args[0]);
-        var mapper = RequireFunction(args[1]);
+        var mapper = RequireFunction(args[1], "map");
 
         if (value.Tag == failureTag)
             return args[0];
@@ -90,6 +96,27 @@ public static class VariantStdLib
             return mapped;
 
         return RuntimeValue.Variant(successTag, PayloadFromSingleOrList(mapped));
+    }
+
+    private static RuntimeValue AndThenVariant(
+        List<RuntimeValue> args,
+        Interpreter interpreter,
+        string successTag,
+        string failureTag,
+        string moduleName)
+    {
+        BuiltInArity.Require("andThen", args, 2, 2, "value, function");
+        var value = RequireVariant(args[0]);
+        var binder = RequireFunction(args[1], "andThen");
+
+        if (value.Tag == failureTag)
+            return args[0];
+
+        if (value.Tag != successTag)
+            throw new Exception($"andThen() expected variant tag '{successTag}' or '{failureTag}', got '{value.Tag}'");
+
+        var bound = interpreter.CallFunctionAsync(binder, value.Payload).GetAwaiter().GetResult();
+        return RequireSameFamilyResult(bound, successTag, failureTag, moduleName);
     }
 
     private static RuntimeValue UnwrapOr(List<RuntimeValue> args, string successTag)
@@ -116,11 +143,33 @@ public static class VariantStdLib
         return value.AsVariant();
     }
 
-    private static FunctionValue RequireFunction(RuntimeValue value)
+    private static FunctionValue RequireFunction(RuntimeValue value, string methodName)
     {
         if (value.Type != ValueType.Function)
-            throw new Exception("Expected a function as second argument to map()");
+            throw new Exception($"Expected a function as second argument to {methodName}()");
         return value.AsFunction();
+    }
+
+    public static RuntimeValue RequireSameFamilyResult(
+        RuntimeValue bound,
+        string successTag,
+        string failureTag,
+        string moduleName)
+    {
+        if (bound.Type != ValueType.Variant)
+        {
+            throw new Exception(
+                $"andThen() expected fn to return {successTag}/{failureTag}; got {bound.Type}. Use {moduleName}.map to transform a payload.");
+        }
+
+        var tag = bound.AsVariant().Tag;
+        if (tag != successTag && tag != failureTag)
+        {
+            throw new Exception(
+                $"andThen() expected fn to return {successTag}/{failureTag}; got '{tag}'. Use {moduleName}.map to transform a payload.");
+        }
+
+        return bound;
     }
 
     private static List<RuntimeValue> PayloadFromSingleOrList(RuntimeValue mapped)

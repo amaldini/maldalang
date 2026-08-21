@@ -41,12 +41,12 @@ public static class StdLibNamespaces
 
     public static readonly IReadOnlySet<string> ResultMethodNames = new HashSet<string>(StringComparer.Ordinal)
     {
-        "ok", "err", "map", "unwrapOr", "isOk", "isErr"
+        "ok", "err", "map", "andThen", "unwrapOr", "isOk", "isErr"
     };
 
     public static readonly IReadOnlySet<string> OptionMethodNames = new HashSet<string>(StringComparer.Ordinal)
     {
-        "some", "none", "map", "unwrapOr", "isSome", "isNone"
+        "some", "none", "map", "andThen", "unwrapOr", "isSome", "isNone"
     };
 
     public static readonly IReadOnlySet<string> GroundedMethodNames = new HashSet<string>(StringComparer.Ordinal)

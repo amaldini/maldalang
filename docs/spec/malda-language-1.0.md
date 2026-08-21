@@ -425,7 +425,7 @@ Design notes: [selective-imports.md](../selective-imports.md), [phase-3-modules-
 | T0-05 | `async-await.malda` | §11 |
 | T0-06 | `is-number.malda` | §10 |
 
-Manifest IDs `T0-001`…`T0-102` enumerate the full suite (102 cases). Multi-backend rules: [tier0-backend-matrix.md](tier0-backend-matrix.md).
+Manifest IDs `T0-001`…`T0-103` enumerate the full suite (103 cases). Multi-backend rules: [tier0-backend-matrix.md](tier0-backend-matrix.md).
 
 Run:
 
