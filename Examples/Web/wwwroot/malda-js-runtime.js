@@ -2821,7 +2821,9 @@
         mouseX: 0,
         mouseY: 0,
         listenersAttached: false,
-        listeners: null
+        listeners: null,
+        textureCache: new Map(),
+        modelCache: new Map()
       };
 
       function normalizeKey(key) {
@@ -3095,10 +3097,531 @@
         );
       }
 
+      function dirnameOfUrl(url) {
+        const text = coerceToString(url);
+        const cut = Math.max(text.lastIndexOf("/"), text.lastIndexOf("\\"));
+        if (cut < 0) {
+          return "";
+        }
+        return text.slice(0, cut + 1);
+      }
+
+      function joinUrl(base, relative) {
+        const rel = coerceToString(relative);
+        if (!rel) {
+          return coerceToString(base);
+        }
+        if (
+          rel.indexOf("data:") === 0 ||
+          rel.indexOf("blob:") === 0 ||
+          rel.indexOf("http://") === 0 ||
+          rel.indexOf("https://") === 0 ||
+          rel.indexOf("/") === 0
+        ) {
+          return rel;
+        }
+        return coerceToString(base) + rel;
+      }
+
+      function decodeDataUri(uri) {
+        const text = coerceToString(uri);
+        const comma = text.indexOf(",");
+        if (text.indexOf("data:") !== 0 || comma < 0) {
+          return null;
+        }
+        const meta = text.slice(0, comma);
+        const payload = text.slice(comma + 1);
+        try {
+          if (meta.indexOf(";base64") >= 0) {
+            const binary = global.atob(payload);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+              bytes[i] = binary.charCodeAt(i);
+            }
+            return bytes.buffer;
+          }
+          const decoded = decodeURIComponent(payload);
+          const bytes = new Uint8Array(decoded.length);
+          for (let i = 0; i < decoded.length; i++) {
+            bytes[i] = decoded.charCodeAt(i);
+          }
+          return bytes.buffer;
+        } catch (_error) {
+          return null;
+        }
+      }
+
+      function runtimeFetch(url) {
+        if (typeof global.fetch === "function") {
+          return global.fetch(url);
+        }
+        return Promise.reject(new Error("fetch unavailable"));
+      }
+
+      function applyTextureColorSpace(THREE, texture) {
+        if (texture && typeof THREE.SRGBColorSpace === "string") {
+          texture.colorSpace = THREE.SRGBColorSpace;
+        }
+      }
+
+      function applyTextureToMaterial(material, texture) {
+        if (!material || !texture) {
+          return;
+        }
+        material.map = texture;
+        material.needsUpdate = true;
+      }
+
+      function bindTextureMap(material, mapOption) {
+        const record = resolveTextureHandle(mapOption);
+        if (record) {
+          if (record.ready && record.texture) {
+            applyTextureToMaterial(material, record.texture);
+          } else {
+            record.pendingMaterials.push(material);
+          }
+          return;
+        }
+        if (mapOption && mapOption.isTexture) {
+          applyTextureToMaterial(material, mapOption);
+        }
+      }
+
+      function finishTexture(record, THREE, image) {
+        const TextureCtor = THREE.Texture;
+        if (typeof TextureCtor !== "function") {
+          record.ready = false;
+          return;
+        }
+        const texture = new TextureCtor(image);
+        texture.needsUpdate = true;
+        applyTextureColorSpace(THREE, texture);
+        record.texture = texture;
+        record.ready = true;
+        const pending = record.pendingMaterials.splice(0, record.pendingMaterials.length);
+        pending.forEach((material) => applyTextureToMaterial(material, texture));
+      }
+
+      function startHtmlImageLoad(url, onOk, onFail) {
+        const ImageCtor = typeof global.Image === "function" ? global.Image : null;
+        if (!ImageCtor) {
+          onFail();
+          return;
+        }
+        try {
+          const img = new ImageCtor();
+          img.onload = function () {
+            onOk(img);
+          };
+          img.onerror = function () {
+            onFail();
+          };
+          img.src = url;
+        } catch (_error) {
+          onFail();
+        }
+      }
+
+      function resolveTextureHandle(value) {
+        if (!value || typeof value !== "object") {
+          return null;
+        }
+        return value.__maldaThreeTexture ? value : null;
+      }
+
+      function createTexture(url) {
+        const THREE = ensureThree("createTexture");
+        const source = coerceToString(url);
+        if (source === "") {
+          return {
+            __maldaThreeTexture: true,
+            url: "",
+            ready: false,
+            texture: null,
+            pendingMaterials: []
+          };
+        }
+
+        const cached = state.textureCache.get(source);
+        if (cached) {
+          return cached;
+        }
+
+        const handle = {
+          __maldaThreeTexture: true,
+          url: source,
+          ready: false,
+          texture: null,
+          pendingMaterials: []
+        };
+        state.textureCache.set(source, handle);
+        startHtmlImageLoad(
+          source,
+          (image) => finishTexture(handle, THREE, image),
+          () => {
+            handle.ready = false;
+            handle.texture = null;
+          }
+        );
+        return handle;
+      }
+
       function createStandardMaterial(options) {
         const THREE = ensureThree("createStandardMaterial");
-        const safeOptions = options && typeof options === "object" ? options : {};
-        return new THREE.MeshStandardMaterial(safeOptions);
+        const safeOptions = options && typeof options === "object" && !Array.isArray(options)
+          ? options
+          : {};
+        const params = {};
+        Object.keys(safeOptions).forEach((key) => {
+          if (key !== "map") {
+            params[key] = safeOptions[key];
+          }
+        });
+        const material = new THREE.MeshStandardMaterial(params);
+        bindTextureMap(material, safeOptions.map);
+        return material;
+      }
+
+      function lookAt(object, x, y, z) {
+        ensureThree("lookAt");
+        if (!object || typeof object.lookAt !== "function") {
+          throw new Error("mlRuntime.three.lookAt expects an object with lookAt(x, y, z).");
+        }
+        object.lookAt(toFiniteNumber(x, 0), toFiniteNumber(y, 0), toFiniteNumber(z, 0));
+        return null;
+      }
+
+      function emptyModelGroup(THREE, url) {
+        const group = new THREE.Group();
+        group.__maldaThreeModel = true;
+        group.url = url;
+        group.ready = false;
+        return group;
+      }
+
+      function modelIsReady(handle) {
+        return !!(handle && handle.__maldaThreeModel && handle.ready);
+      }
+
+      const GLTF_COMPONENT_BYTES = { 5120: 1, 5121: 1, 5122: 2, 5123: 2, 5125: 4, 5126: 4 };
+      const GLTF_TYPE_COUNT = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4, MAT4: 16 };
+
+      function typedArrayForComponent(componentType, buffer, byteOffset, count) {
+        if (componentType === 5126) return new Float32Array(buffer, byteOffset, count);
+        if (componentType === 5123) return new Uint16Array(buffer, byteOffset, count);
+        if (componentType === 5125) return new Uint32Array(buffer, byteOffset, count);
+        if (componentType === 5121) return new Uint8Array(buffer, byteOffset, count);
+        if (componentType === 5122) return new Int16Array(buffer, byteOffset, count);
+        if (componentType === 5120) return new Int8Array(buffer, byteOffset, count);
+        return null;
+      }
+
+      function loadBufferResource(spec, baseUrl, binChunk) {
+        if (!spec) {
+          return Promise.resolve(null);
+        }
+        if (!spec.uri && binChunk) {
+          return Promise.resolve(binChunk);
+        }
+        const uri = coerceToString(spec.uri);
+        if (!uri) {
+          return Promise.resolve(binChunk || null);
+        }
+        const data = decodeDataUri(uri);
+        if (data) {
+          return Promise.resolve(data);
+        }
+        return runtimeFetch(joinUrl(baseUrl, uri))
+          .then((response) => {
+            if (!response || !response.ok) {
+              return null;
+            }
+            return response.arrayBuffer();
+          })
+          .catch(() => null);
+      }
+
+      function accessorArray(json, buffers, accessorIndex) {
+        const accessor = json.accessors && json.accessors[accessorIndex];
+        if (!accessor) {
+          return null;
+        }
+        const view = json.bufferViews && json.bufferViews[accessor.bufferView];
+        if (!view) {
+          return null;
+        }
+        const buffer = buffers[view.buffer];
+        if (!buffer) {
+          return null;
+        }
+        const componentBytes = GLTF_COMPONENT_BYTES[accessor.componentType];
+        const typeCount = GLTF_TYPE_COUNT[accessor.type] || 1;
+        if (!componentBytes) {
+          return null;
+        }
+        const count = accessor.count || 0;
+        const byteOffset = (view.byteOffset || 0) + (accessor.byteOffset || 0);
+        const stride = view.byteStride || 0;
+        const tightCount = count * typeCount;
+        try {
+          if (!stride || stride === componentBytes * typeCount) {
+            return typedArrayForComponent(accessor.componentType, buffer, byteOffset, tightCount);
+          }
+          const packed = typedArrayForComponent(accessor.componentType, new ArrayBuffer(tightCount * componentBytes), 0, tightCount);
+          if (!packed) {
+            return null;
+          }
+          const src = new DataView(buffer);
+          for (let i = 0; i < count; i++) {
+            const start = byteOffset + i * stride;
+            for (let c = 0; c < typeCount; c++) {
+              const offset = start + c * componentBytes;
+              let value = 0;
+              if (accessor.componentType === 5126) value = src.getFloat32(offset, true);
+              else if (accessor.componentType === 5123) value = src.getUint16(offset, true);
+              else if (accessor.componentType === 5125) value = src.getUint32(offset, true);
+              else if (accessor.componentType === 5121) value = src.getUint8(offset);
+              packed[i * typeCount + c] = value;
+            }
+          }
+          return packed;
+        } catch (_error) {
+          return null;
+        }
+      }
+
+      function loadGltfTextures(THREE, json, baseUrl) {
+        const images = Array.isArray(json.images) ? json.images : [];
+        return Promise.all(images.map((image) => {
+          const uri = image && image.uri ? coerceToString(image.uri) : "";
+          if (!uri) {
+            return Promise.resolve(null);
+          }
+          if (uri.indexOf("data:") === 0) {
+            return new Promise((resolve) => {
+              startHtmlImageLoad(uri, (img) => {
+                const texture = new THREE.Texture(img);
+                texture.needsUpdate = true;
+                applyTextureColorSpace(THREE, texture);
+                resolve(texture);
+              }, () => resolve(null));
+            });
+          }
+          return new Promise((resolve) => {
+            startHtmlImageLoad(joinUrl(baseUrl, uri), (img) => {
+              const texture = new THREE.Texture(img);
+              texture.needsUpdate = true;
+              applyTextureColorSpace(THREE, texture);
+              resolve(texture);
+            }, () => resolve(null));
+          });
+        })).then((loaded) => {
+          const textures = Array.isArray(json.textures) ? json.textures : [];
+          return textures.map((tex) => {
+            const source = tex && typeof tex.source === "number" ? tex.source : 0;
+            return loaded[source] || null;
+          });
+        });
+      }
+
+      function materialFromGltf(THREE, json, textures, materialIndex) {
+        const spec = json.materials && json.materials[materialIndex] ? json.materials[materialIndex] : {};
+        const pbr = spec.pbrMetallicRoughness && typeof spec.pbrMetallicRoughness === "object"
+          ? spec.pbrMetallicRoughness
+          : {};
+        const params = {};
+        if (Array.isArray(pbr.baseColorFactor) && pbr.baseColorFactor.length >= 3) {
+          params.color = pbr.baseColorFactor.slice(0, 3);
+        }
+        if (pbr.roughnessFactor !== undefined) {
+          params.roughness = pbr.roughnessFactor;
+        }
+        if (pbr.metallicFactor !== undefined) {
+          params.metalness = pbr.metallicFactor;
+        }
+        const material = new THREE.MeshStandardMaterial(params);
+        if (pbr.baseColorTexture && typeof pbr.baseColorTexture.index === "number") {
+          const texture = textures[pbr.baseColorTexture.index];
+          if (texture) {
+            applyTextureToMaterial(material, texture);
+          }
+        }
+        return material;
+      }
+
+      function buildGltfGroup(THREE, json, buffers, textures) {
+        const root = new THREE.Group();
+        const nodes = Array.isArray(json.nodes) ? json.nodes : [];
+        const meshes = Array.isArray(json.meshes) ? json.meshes : [];
+
+        function primitiveMesh(primitive) {
+          if (!primitive || !primitive.attributes || primitive.attributes.POSITION === undefined) {
+            return null;
+          }
+          const positions = accessorArray(json, buffers, primitive.attributes.POSITION);
+          if (!positions) {
+            return null;
+          }
+          const geometry = new THREE.BufferGeometry();
+          geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+          if (primitive.attributes.NORMAL !== undefined) {
+            const normals = accessorArray(json, buffers, primitive.attributes.NORMAL);
+            if (normals) {
+              geometry.setAttribute("normal", new THREE.BufferAttribute(normals, 3));
+            }
+          }
+          if (primitive.attributes.TEXCOORD_0 !== undefined) {
+            const uvs = accessorArray(json, buffers, primitive.attributes.TEXCOORD_0);
+            if (uvs) {
+              geometry.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
+            }
+          }
+          if (primitive.indices !== undefined && primitive.indices !== null) {
+            const indices = accessorArray(json, buffers, primitive.indices);
+            if (indices) {
+              geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+            }
+          }
+          const material = materialFromGltf(THREE, json, textures, primitive.material);
+          return new THREE.Mesh(geometry, material);
+        }
+
+        function nodeObject(node) {
+          const local = new THREE.Group();
+          if (node && Array.isArray(node.translation) && node.translation.length >= 3) {
+            local.position.set(
+              toFiniteNumber(node.translation[0], 0),
+              toFiniteNumber(node.translation[1], 0),
+              toFiniteNumber(node.translation[2], 0)
+            );
+          }
+          if (node && Array.isArray(node.scale) && node.scale.length >= 3) {
+            local.scale.set(
+              toFiniteNumber(node.scale[0], 1),
+              toFiniteNumber(node.scale[1], 1),
+              toFiniteNumber(node.scale[2], 1)
+            );
+          }
+          if (node && typeof node.mesh === "number" && meshes[node.mesh]) {
+            const primitives = meshes[node.mesh].primitives || [];
+            primitives.forEach((primitive) => {
+              const mesh = primitiveMesh(primitive);
+              if (mesh) {
+                local.add(mesh);
+              }
+            });
+          }
+          if (node && Array.isArray(node.children)) {
+            node.children.forEach((childIndex) => {
+              if (nodes[childIndex]) {
+                local.add(nodeObject(nodes[childIndex]));
+              }
+            });
+          }
+          return local;
+        }
+
+        const sceneIndex = typeof json.scene === "number" ? json.scene : 0;
+        const scene = json.scenes && json.scenes[sceneIndex] ? json.scenes[sceneIndex] : null;
+        const sceneNodes = scene && Array.isArray(scene.nodes) ? scene.nodes : nodes.map((_, i) => i);
+        sceneNodes.forEach((index) => {
+          if (nodes[index]) {
+            root.add(nodeObject(nodes[index]));
+          }
+        });
+        return root;
+      }
+
+      function parseGltfJson(THREE, json, baseUrl, binChunk) {
+        const bufferSpecs = Array.isArray(json.buffers) ? json.buffers : [{}];
+        return Promise.all(bufferSpecs.map((spec, index) => loadBufferResource(spec, baseUrl, index === 0 ? binChunk : null)))
+          .then((buffers) => {
+            if (buffers.some((item, index) => !item && bufferSpecs[index])) {
+              return null;
+            }
+            return loadGltfTextures(THREE, json, baseUrl).then((textures) => buildGltfGroup(THREE, json, buffers, textures));
+          });
+      }
+
+      function parseGlb(THREE, arrayBuffer, baseUrl) {
+        const view = new DataView(arrayBuffer);
+        if (view.byteLength < 12 || view.getUint32(0, true) !== 0x46546C67) {
+          return Promise.resolve(null);
+        }
+        let offset = 12;
+        let json = null;
+        let binChunk = null;
+        while (offset + 8 <= view.byteLength) {
+          const chunkLength = view.getUint32(offset, true);
+          const chunkType = view.getUint32(offset + 4, true);
+          const start = offset + 8;
+          const end = start + chunkLength;
+          if (end > view.byteLength) {
+            break;
+          }
+          if (chunkType === 0x4E4F534A) {
+            const bytes = new Uint8Array(arrayBuffer, start, chunkLength);
+            let text = "";
+            for (let i = 0; i < bytes.length; i++) {
+              text += String.fromCharCode(bytes[i]);
+            }
+            try {
+              json = JSON.parse(text);
+            } catch (_error) {
+              return Promise.resolve(null);
+            }
+          } else if (chunkType === 0x004E4942) {
+            binChunk = arrayBuffer.slice(start, end);
+          }
+          offset = end;
+        }
+        if (!json) {
+          return Promise.resolve(null);
+        }
+        return parseGltfJson(THREE, json, baseUrl, binChunk);
+      }
+
+      function loadGLTF(url) {
+        const THREE = ensureThree("loadGLTF");
+        const source = coerceToString(url);
+        if (source === "") {
+          return emptyModelGroup(THREE, "");
+        }
+        const cached = state.modelCache.get(source);
+        if (cached) {
+          return cached;
+        }
+
+        const group = emptyModelGroup(THREE, source);
+        state.modelCache.set(source, group);
+
+        const lower = source.toLowerCase();
+        runtimeFetch(source)
+          .then((response) => {
+            if (!response || !response.ok) {
+              return null;
+            }
+            const contentType = response.headers && typeof response.headers.get === "function"
+              ? coerceToString(response.headers.get("content-type"))
+              : "";
+            if (lower.endsWith(".glb") || contentType.indexOf("gltf-binary") >= 0) {
+              return response.arrayBuffer().then((buffer) => parseGlb(THREE, buffer, dirnameOfUrl(source)));
+            }
+            return response.json().then((json) => parseGltfJson(THREE, json, dirnameOfUrl(source), null));
+          })
+          .then((root) => {
+            if (!root) {
+              group.ready = false;
+              return;
+            }
+            group.add(root);
+            group.ready = true;
+          })
+          .catch(() => {
+            group.ready = false;
+          });
+
+        return group;
       }
 
       function wrapUniformValue(THREE, value) {
@@ -3361,7 +3884,11 @@
         createBoxGeometry,
         createPlaneGeometry,
         createSphereGeometry,
+        createTexture,
         createStandardMaterial,
+        loadGLTF,
+        modelIsReady,
+        lookAt,
         createShaderMaterial,
         setUniform,
         createOrthographicCamera,

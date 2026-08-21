@@ -335,7 +335,7 @@ three.add(scene, light);
 function render() {
     three.render(renderer, scene, camera);
 }</code></pre>
-        <p>Punti chiave: carica <code>Examples/Web/wwwroot/vendor/three.min.js</code> prima di <code>malda-js-runtime.js</code>, poi lo script MALDA compilato, poi chiama <code>MaldaApp.main()</code>. Vedi <code>Examples/Games/three_runtime_smoke_test.html</code> per una pagina host diretta.</p>
+        <p>Punti chiave: carica <code>Examples/Web/wwwroot/vendor/three.min.js</code> prima di <code>malda-js-runtime.js</code>, poi lo script MALDA compilato, poi chiama <code>MaldaApp.main()</code>. Vedi <code>Examples/Games/three_runtime_smoke_test.html</code> per una pagina host diretta. Per una <code>map</code> PNG, un cubo glTF e <code>lookAt</code>, compila <code>Examples/Games/three_textured.malda</code>.</p>
         <h3>33.15.1 Materiali shader</h3>
         <p>Sposta il lavoro per-pixel sulla GPU con <code>three.createShaderMaterial</code> e <code>three.setUniform</code>. Il contratto (tipi, sottoinsieme, chiavi di <code>glsl.compile</code>, rename nell'IDE) è in <a href="26-browser-javascript-backend.html#shader-kernels">26.10.1 Kernel shader</a>. Compila il tracer in tempo reale con:</p>
         <pre><code>malda compile Examples/Games/three_shader_raytracer.malda --mode js -o Examples/Games/three_shader_raytracer.js

@@ -152,6 +152,29 @@
       ],
       "learningGoal": "Introduce MALDA's 3D browser path with a small but visually rich example.",
       "expectedOutput": "Renders a rotating 3D cube in the browser.",
+      "next": "Games/three_textured.malda",
+      "documentationPath": "/?lesson=browser-track#lesson-browser-track",
+      "documentationTitle": "Browser Track"
+    },
+    {
+      "name": "JS three.js Textured Cube + glTF",
+      "description": "PNG material map, runtime-owned glTF load, and camera lookAt using MALDA three.* helpers",
+      "file": "three_textured.malda",
+      "track": "showcase",
+      "difficulty": "intermediate",
+      "minutes": 12,
+      "concepts": [
+        "three.*",
+        "textures",
+        "glTF",
+        "lookAt",
+        "JavaScript target"
+      ],
+      "prerequisites": [
+        "Games/three_cube.malda"
+      ],
+      "learningGoal": "Show createTexture map, loadGLTF, and lookAt on the curated three.* path without a fourth script tag.",
+      "expectedOutput": "Renders a spinning textured box beside a glTF cube; the camera looks at the pair.",
       "next": "Games/maldanoid3d.malda",
       "documentationPath": "/?lesson=browser-track#lesson-browser-track",
       "documentationTitle": "Browser Track"

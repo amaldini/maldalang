@@ -113,9 +113,9 @@ Validation rules currently enforced:
     - Input: `game.isKeyDown(key)`, `game.getMouseX()`, `game.getMouseY()`, `game.isMouseDown(button?)`
   - Three helpers:
     - Renderer/lifecycle: `three.createRenderer(width, height, mountSelector?)`, `three.setClearColor(renderer, color)`, `three.setRendererSize(renderer, width, height)`, `three.start(updateFn, renderFn?)`, `three.stop()`
-    - Scene graph: `three.createScene()`, `three.createPerspectiveCamera(fovDeg, aspect, near, far)`, `three.createOrthographicCamera(left, right, top, bottom, near, far)`, `three.setCameraAspect(camera, aspect)`, `three.createGroup()`, `three.createMesh(geometry, material)`, `three.add(parent, child)`
-    - Geometry/material/light: `three.createBoxGeometry(width, height, depth)`, `three.createPlaneGeometry(width, height)`, `three.createSphereGeometry(radius, widthSegments?, heightSegments?)`, `three.createStandardMaterial(options)`, `three.createShaderMaterial(options)`, `three.setUniform(material, name, value)`, `three.createDirectionalLight(color, intensity)`, `three.createAmbientLight(color?, intensity?)`
-    - Transforms/input: `three.setPosition(object, x, y, z)`, `three.setRotation(object, x, y, z)`, `three.setScale(object, x, y, z)`, `three.render(renderer, scene, camera)`, `three.isKeyDown(key)`, `three.getMouseX()`, `three.getMouseY()`, `three.isMouseDown(button?)`
+    - Scene graph: `three.createScene()`, `three.createPerspectiveCamera(fovDeg, aspect, near, far)`, `three.createOrthographicCamera(left, right, top, bottom, near, far)`, `three.setCameraAspect(camera, aspect)`, `three.createGroup()`, `three.createMesh(geometry, material)`, `three.add(parent, child)`, `three.loadGLTF(url)`, `three.modelIsReady(handle)`
+    - Geometry/material/light: `three.createBoxGeometry(width, height, depth)`, `three.createPlaneGeometry(width, height)`, `three.createSphereGeometry(radius, widthSegments?, heightSegments?)`, `three.createTexture(url)`, `three.createStandardMaterial(options)`, `three.createShaderMaterial(options)`, `three.setUniform(material, name, value)`, `three.createDirectionalLight(color, intensity)`, `three.createAmbientLight(color?, intensity?)`
+    - Transforms/input: `three.setPosition(object, x, y, z)`, `three.setRotation(object, x, y, z)`, `three.setScale(object, x, y, z)`, `three.lookAt(object, x, y, z)`, `three.render(renderer, scene, camera)`, `three.isKeyDown(key)`, `three.getMouseX()`, `three.getMouseY()`, `three.isMouseDown(button?)`
     - Shader kernels: `@shader()` plus `glsl.compile` (JS transpile only). User-facing contract — types, subset, `glsl.compile` keys, IDE rename vs string keys — is [Reference Manual 26.10.1](../ReferenceManual/26-browser-javascript-backend.html#shader-kernels). This is not a fourth execution backend.
 - Browser loading model:
   1. Load `malda-js-runtime.js`
@@ -250,10 +250,13 @@ Use `three.*` when you want a browser-hosted 3D scene in MALDA JavaScript mode w
   - `three.createGroup()`
   - `three.createMesh(geometry, material)`
   - `three.add(parent, child)`
+  - `three.loadGLTF(url)`
+  - `three.modelIsReady(handle)`
 - Geometry/material/light:
   - `three.createBoxGeometry(width, height, depth)`
   - `three.createPlaneGeometry(width, height)`
   - `three.createSphereGeometry(radius, widthSegments?, heightSegments?)`
+  - `three.createTexture(url)`
   - `three.createStandardMaterial(options)`
   - `three.createShaderMaterial(options)`
   - `three.setUniform(material, name, value)`
@@ -263,6 +266,7 @@ Use `three.*` when you want a browser-hosted 3D scene in MALDA JavaScript mode w
   - `three.setPosition(object, x, y, z)`
   - `three.setRotation(object, x, y, z)`
   - `three.setScale(object, x, y, z)`
+  - `three.lookAt(object, x, y, z)`
   - `three.render(renderer, scene, camera)`
   - `three.isKeyDown(key)`
   - `three.getMouseX()`, `three.getMouseY()`
@@ -331,6 +335,7 @@ Compile:
 
 ```bash
 malda compile Examples/Games/three_cube.malda --mode js -o Examples/Games/three_cube.js
+malda compile Examples/Games/three_textured.malda --mode js -o Examples/Games/three_textured.js
 ```
 
 Host page loading order (required):
@@ -340,7 +345,7 @@ Host page loading order (required):
 3. compiled MALDA script
 4. `MaldaApp.main()`
 
-See `Examples/Games/three_cube.malda` and `Examples/Games/three_runtime_smoke_test.html` for the MVP reference implementation.
+See `Examples/Games/three_cube.malda` and `Examples/Games/three_runtime_smoke_test.html` for the MVP reference implementation. See `Examples/Games/three_textured.malda` for a PNG `map` plus a glTF cube and `lookAt`.
 
 ### Guardrails and error conditions
 
@@ -349,7 +354,7 @@ See `Examples/Games/three_cube.malda` and `Examples/Games/three_runtime_smoke_te
 - Call `three.createRenderer(...)` before `three.render(...)` or `three.start(...)`.
 - When you change viewport dimensions after setup, call both `three.setRendererSize(renderer, width, height)` and `three.setCameraAspect(camera, width / height)`.
 - Do not call `three.createRenderer(...)` while the loop is running; call `three.stop()` first.
-- The MVP is intentionally curated: no textures, model loading, orbit controls, or generic raw JS interop are included. Custom GLSL is available only through `three.createShaderMaterial` / `three.setUniform`.
+- The curated wrapper still has no orbit controls and no raw `THREE.*` in MALDA source. `three.createTexture(url)` returns a handle immediately (async decode; missing files stay unready). `createStandardMaterial({ "map": handle })` leaves `map` unset until the handle is ready, then assigns it. `three.loadGLTF(url)` returns a group you can `add` immediately; children appear when `three.modelIsReady(handle)` is true (JSON `.gltf` or `.glb`; failures stay unready). `three.lookAt(object, x, y, z)` requires `lookAt` on the three.js object. Custom GLSL stays `three.createShaderMaterial` / `three.setUniform`. See `Examples/Games/three_textured.malda`.
 
 ### Shader materials (`three.createShaderMaterial`)
 

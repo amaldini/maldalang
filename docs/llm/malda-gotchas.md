@@ -59,6 +59,8 @@ claim a program works.
 
 **`@shader()` is a JavaScript compile-time GLSL kernel, not a host function.** `malda compile --mode js` inlines those functions through `glsl.compile({ ... })` and does not emit JS. Calling `hitSphere(...)` from the MALDA host, or running the file in the interpreter / C# transpile, will not execute GPU code. Keep uniforms and the `three.*` loop in host MALDA; keep rays in `@shader()` functions. Raw triple-quoted GLSL strings still work.
 
+**`three.createTexture` / `three.loadGLTF` are ready later, not now.** The calls return a handle/group immediately. `createStandardMaterial({ "map": handle })` leaves `map` unset until the texture is ready (missing files stay unready and do not throw). `loadGLTF` is a group you can `add` right away; children appear when `modelIsReady` is true. Failures stay unready. Orbit controls are not in the wrapper. Example: `Examples/Games/three_textured.malda`.
+
 **The interpreter and `malda compile --mode transpile` are different backends.** A program that
 runs under the interpreter is not automatically a program that compiles. Prefer the
 interpret/transpile pair suite (`InterpretTranspilePairTests`) when you need a shippable

@@ -11,6 +11,7 @@ These used to live under `Examples/Web/js/`. DOM/HTTP samples stay in [`Examples
 malda compile Examples/Games/game_bounce.malda --mode js -o Examples/Games/game_bounce.js
 malda compile Examples/Games/maldadash.malda --mode js -o Examples/Games/maldadash.js
 malda compile Examples/Games/three_cube.malda --mode js -o Examples/Games/three_cube.js
+malda compile Examples/Games/three_textured.malda --mode js -o Examples/Games/three_textured.js
 malda compile Examples/Games/three_shader_path_tunnel.malda --mode js -o Examples/Games/three_shader_path_tunnel.js
 ```
 

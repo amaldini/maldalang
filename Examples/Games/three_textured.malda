@@ -1,0 +1,112 @@
+var root = dom.query("#app");
+
+if (root == null) {
+    println("No #app container found.");
+} else {
+    dom.clear(root);
+
+    var heading = dom.create("h1");
+    dom.setText(heading, "MALDA three.js Textured cube");
+    dom.append(root, heading);
+
+    var hint = dom.create("p");
+    dom.setText(hint, "createTexture map on a box; loadGLTF adds a second textured cube. Camera lookAt the pair. Left/Right change spin.");
+    dom.append(root, hint);
+
+    var status = dom.create("p");
+    dom.setText(status, "Loading texture and glTF…");
+    dom.append(root, status);
+
+    var width = 860;
+    var height = 520;
+    var aspect = width / height;
+
+    var renderer = three.createRenderer(width, height, "#app");
+    three.setClearColor(renderer, "#101722");
+    three.setRendererSize(renderer, width, height);
+
+    var scene = three.createScene();
+    var camera = three.createPerspectiveCamera(70, aspect, 0.1, 100.0);
+    three.setCameraAspect(camera, aspect);
+    three.setPosition(camera, 2.4, 1.5, 4.6);
+    three.lookAt(camera, 0.7, 0.0, 0.0);
+
+    var world = three.createGroup();
+    three.add(scene, world);
+
+    var tiles = three.createTexture("assets/check_tiles.png");
+    var cubeMaterial = three.createStandardMaterial({
+        "color": "#ffffff",
+        "roughness": 0.45,
+        "metalness": 0.08,
+        "map": tiles
+    });
+    var cube = three.createMesh(three.createBoxGeometry(1.15, 1.15, 1.15), cubeMaterial);
+    three.setPosition(cube, -0.85, 0.0, 0.0);
+    three.add(world, cube);
+
+    var model = three.loadGLTF("assets/textured_cube.gltf");
+    three.setPosition(model, 1.55, 0.0, 0.0);
+    three.add(world, model);
+
+    var keyLight = three.createDirectionalLight("#ffffff", 1.2);
+    three.setPosition(keyLight, 2.8, 3.2, 4.0);
+    three.add(scene, keyLight);
+
+    var fillLight = three.createDirectionalLight("#8ec5ff", 0.55);
+    three.setPosition(fillLight, -3.0, 1.4, 2.2);
+    three.add(scene, fillLight);
+
+    var ambient = three.createAmbientLight("#9bbcff", 0.32);
+    three.add(scene, ambient);
+
+    var spin = 0.7;
+    var angle = 0.0;
+
+    function updateStatus() {
+        var texReady = cubeMaterial.map != null;
+        var modelReady = three.modelIsReady(model);
+        if (texReady && modelReady) {
+            dom.setText(status, "Texture map ready. glTF cube ready. lookAt aimed at the pair.");
+        } else {
+            if (texReady) {
+                dom.setText(status, "Texture map ready. Waiting for glTF…");
+            } else {
+                if (modelReady) {
+                    dom.setText(status, "glTF cube ready. Waiting for texture…");
+                } else {
+                    dom.setText(status, "Loading texture and glTF…");
+                }
+            }
+        }
+    }
+
+    function update(dtMs) {
+        var dt = dtMs;
+        if (dt > 40) {
+            dt = 40;
+        }
+        if (three.isKeyDown("arrowleft")) {
+            spin = spin - ((1.4 * dt) / 1000);
+        }
+        if (three.isKeyDown("arrowright")) {
+            spin = spin + ((1.4 * dt) / 1000);
+        }
+        if (spin < -2.4) {
+            spin = -2.4;
+        }
+        if (spin > 2.4) {
+            spin = 2.4;
+        }
+        angle = angle + ((spin * dt) / 1000);
+        three.setRotation(cube, angle * 0.35, angle, 0.0);
+        three.setRotation(model, 0.0, -angle * 0.85, 0.0);
+        updateStatus();
+    }
+
+    function render() {
+        three.render(renderer, scene, camera);
+    }
+
+    three.start(update, render);
+}

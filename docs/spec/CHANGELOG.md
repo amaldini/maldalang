@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — JS three.* textures / glTF / look-at)
+
+- **G8 `three.createTexture` / `three.loadGLTF` / `three.lookAt` (JavaScript backend only):** `createTexture(url)` returns a handle immediately (async decode; missing files stay unready). `createStandardMaterial` accepts `"map"` (texture handle) and leaves the map unset until ready. `loadGLTF(url)` returns a group you can `add` immediately; children appear when `modelIsReady(handle)` is true (JSON `.gltf` or `.glb`; failures stay unready). The runtime owns the loader (no extra host `<script>`). `lookAt(object, x, y, z)` requires `lookAt` on the three.js object. Orbit controls stay out. Example: `Examples/Games/three_textured.malda`. Interpreter / C# transpile: n/a (`three.*`).
+
 #### Added (MINOR — result/option bind)
 
 - **`result.andThen` / `option.andThen`:** sequencing helpers beside `map`. `result.andThen(r, fn)` calls `fn(payload)` when `r` is `Ok` and returns that Result unchanged; `Err` skips `fn`. `fn` must return `Ok`/`Err` (a bare payload is an error — use `result.map`). Same contract on `option` with `Some`/`None`. Pipe-friendly: `parse(raw) |> result.andThen(validate)`. Interpreter, C# transpile, and JS agree. Conformance: `result-andthen-chain.malda`. Narrative: [`13-built-in-functions.html`](../../ReferenceManual/13-built-in-functions.html) §13.19.1.
@@ -282,3 +286,4 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-08-14 | L1a: `validate` + nested schema fields resolve sum-type names (MINOR) |
 | 2026-08-14 | L1b: optional constructor payload types in JSON Schema emit (MINOR) |
 | 2026-08-21 | PATCH: overlapping `async` + `sleep` interpreter task isolation |
+| 2026-08-21 | MINOR: JS `three.createTexture` / `loadGLTF` / `lookAt` (G8) |
