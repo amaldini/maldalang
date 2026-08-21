@@ -28,6 +28,28 @@
     return String(value);
   }
 
+  function resolveAssetUrl(url) {
+    const source = coerceToString(url);
+    if (!source) {
+      return source;
+    }
+    if (
+      source.indexOf("data:") === 0 ||
+      source.indexOf("blob:") === 0 ||
+      source.indexOf("http://") === 0 ||
+      source.indexOf("https://") === 0 ||
+      source.indexOf("file:") === 0 ||
+      source.charAt(0) === "/"
+    ) {
+      return source;
+    }
+    const base = coerceToString(global.__maldaAssetBase);
+    if (!base) {
+      return source;
+    }
+    return base.charAt(base.length - 1) === "/" ? base + source : base + "/" + source;
+  }
+
   function isTruthy(value) {
     if (value === null || value === undefined) return false;
     if (typeof value === "boolean") return value;
@@ -2097,7 +2119,7 @@
         }
 
         Promise.resolve()
-          .then(() => fetchFn(url))
+          .then(() => fetchFn(resolveAssetUrl(url)))
           .then((response) => {
             if (!response || response.ok === false) {
               throw new Error("Sample fetch failed");
@@ -2667,7 +2689,7 @@
             handle.ready = false;
             handle.image = null;
           };
-          img.src = source;
+          img.src = resolveAssetUrl(source);
         } catch (_error) {
           handle.ready = false;
           handle.image = null;
@@ -4088,7 +4110,7 @@
         };
         state.textureCache.set(source, handle);
         startHtmlImageLoad(
-          source,
+          resolveAssetUrl(source),
           (image) => finishTexture(handle, THREE, image),
           () => {
             handle.ready = false;
@@ -4427,8 +4449,9 @@
         const group = emptyModelGroup(THREE, source);
         state.modelCache.set(source, group);
 
-        const lower = source.toLowerCase();
-        runtimeFetch(source)
+        const resolved = resolveAssetUrl(source);
+        const lower = resolved.toLowerCase();
+        runtimeFetch(resolved)
           .then((response) => {
             if (!response || !response.ok) {
               return null;
@@ -4437,9 +4460,9 @@
               ? coerceToString(response.headers.get("content-type"))
               : "";
             if (lower.endsWith(".glb") || contentType.indexOf("gltf-binary") >= 0) {
-              return response.arrayBuffer().then((buffer) => parseGlb(THREE, buffer, dirnameOfUrl(source)));
+              return response.arrayBuffer().then((buffer) => parseGlb(THREE, buffer, dirnameOfUrl(resolved)));
             }
-            return response.json().then((json) => parseGltfJson(THREE, json, dirnameOfUrl(source), null));
+            return response.json().then((json) => parseGltfJson(THREE, json, dirnameOfUrl(resolved), null));
           })
           .then((root) => {
             if (!root) {

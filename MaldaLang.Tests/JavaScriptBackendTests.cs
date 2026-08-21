@@ -2282,7 +2282,7 @@ class FakeImage {
   constructor() { this.width = 0; this.height = 0; this.onload = null; this.onerror = null; this._src = ""; }
   set src(value) {
     this._src = value;
-    if (value === "ok.png") {
+    if (value === "ok.png" || value === "Examples/Games/from-base.png") {
       this.width = 8; this.height = 8;
       if (this.onload) this.onload();
     } else if (this.onerror) {
@@ -2305,7 +2305,7 @@ const TRIANGLE_GLTF = {
 };
 
 globalThis.fetch = async function (url) {
-  if (url === "ok.gltf") {
+  if (url === "ok.gltf" || url === "Examples/Games/from-base.gltf") {
     return { ok: true, headers: { get() { return "model/gltf+json"; } }, json: async () => TRIANGLE_GLTF };
   }
   return { ok: false, headers: { get() { return ""; } } };
@@ -2420,6 +2420,14 @@ const missingModel = three.loadGLTF("missing.gltf");
     throw new Error("gltf mesh missing position attribute");
   }
   if (mesh.geometry.attributes.position.itemSize !== 3) throw new Error("position itemSize");
+
+  globalThis.__maldaAssetBase = "Examples/Games/";
+  const prefixedTex = three.createTexture("from-base.png");
+  const prefixedMat = three.createStandardMaterial({ map: prefixedTex });
+  if (!prefixedMat.map || !prefixedMat.map.isTexture) throw new Error("asset-base texture should bind map");
+  const prefixedModel = three.loadGLTF("from-base.gltf");
+  await waitReady(prefixedModel, "asset-base gltf should become ready");
+
   process.stdout.write("ok\n");
 })().catch((error) => {
   console.error(error && error.stack ? error.stack : error);

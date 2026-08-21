@@ -2523,7 +2523,22 @@ public partial class MainWindow : Window
         core.Settings.AreDefaultContextMenusEnabled = true;
         core.Settings.IsStatusBarEnabled = false;
         core.Settings.IsZoomControlEnabled = true;
+        EnsureWebPreviewVirtualHost(core);
         return core;
+    }
+
+    private void EnsureWebPreviewVirtualHost(CoreWebView2 core)
+    {
+        var repoRoot = FindRepoRoot();
+        if (string.IsNullOrWhiteSpace(repoRoot))
+        {
+            return;
+        }
+
+        core.SetVirtualHostNameToFolderMapping(
+            WebPreviewHostBuilder.VirtualHostName,
+            repoRoot,
+            CoreWebView2HostResourceAccessKind.Allow);
     }
 
     protected override void OnClosed(EventArgs e)

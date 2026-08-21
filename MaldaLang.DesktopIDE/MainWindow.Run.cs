@@ -1314,7 +1314,12 @@ public partial class MainWindow
             throw new InvalidOperationException("Web preview currently supports .malda, .malda.html, .js, and .html files.");
         }
 
-        var previewUri = BuildWebPreviewHostUri(hostPath, repoRoot, scriptPath, Path.GetFileNameWithoutExtension(activePath));
+        var previewUri = BuildWebPreviewHostUri(
+            hostPath,
+            repoRoot,
+            scriptPath,
+            Path.GetFileNameWithoutExtension(activePath),
+            activePath);
         await OpenUriInWebUiPanelAsync(previewUri, previewUri.AbsoluteUri, switchToTab: true, ensureUiHost: false);
     }
 
@@ -1371,23 +1376,14 @@ public partial class MainWindow
         return generatedHost;
     }
 
-    private static Uri BuildWebPreviewHostUri(string hostPath, string repoRoot, string scriptPath, string title)
+    private static Uri BuildWebPreviewHostUri(
+        string hostPath,
+        string repoRoot,
+        string scriptPath,
+        string title,
+        string? sourceFilePath)
     {
-        var hostDirectory = Path.GetDirectoryName(Path.GetFullPath(hostPath))
-            ?? throw new InvalidOperationException("Could not resolve the web preview host directory.");
-        var relativeScriptPath = Path.GetRelativePath(hostDirectory, scriptPath).Replace('\\', '/');
-        var baseUri = new Uri(Path.GetFullPath(hostPath));
-        var query = $"?script={Uri.EscapeDataString(relativeScriptPath)}&title={Uri.EscapeDataString(title)}";
-
-        // Generated host lives under .malda-preview/; runtime assets stay at repo root.
-        if (!string.Equals(Path.GetFullPath(hostDirectory), Path.GetFullPath(repoRoot), StringComparison.OrdinalIgnoreCase))
-        {
-            query +=
-                "&runtime=" + Uri.EscapeDataString("../Examples/Web/wwwroot/malda-js-runtime.js") +
-                "&three=" + Uri.EscapeDataString("../Examples/Web/wwwroot/vendor/three.min.js");
-        }
-
-        return new Uri(baseUri.AbsoluteUri + query);
+        return WebPreviewHostBuilder.BuildHostUri(hostPath, repoRoot, scriptPath, title, sourceFilePath);
     }
 
     private const string GeneratedWebPreviewHostHtml =
@@ -1441,11 +1437,17 @@ public partial class MainWindow
                 runtime: params.get("runtime") || "../Examples/Web/wwwroot/malda-js-runtime.js",
                 script: params.get("script") || "program.js",
                 rootSelector: params.get("root") || "#app",
-                entry: params.get("entry") || "auto"
+                entry: params.get("entry") || "auto",
+                assets: params.get("assets") || ""
               };
 
               var statusElement = document.getElementById("status");
               document.title = config.title;
+              var assetBase = config.assets;
+              if (assetBase && assetBase.charAt(assetBase.length - 1) !== "/") {
+                assetBase += "/";
+              }
+              window.__maldaAssetBase = assetBase;
 
               function setStatus(message, isError) {
                 statusElement.textContent = message;

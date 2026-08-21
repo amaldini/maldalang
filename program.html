@@ -47,11 +47,17 @@
         runtime: params.get("runtime") || "Examples/Web/wwwroot/malda-js-runtime.js",
         script: params.get("script") || "program.js",
         rootSelector: params.get("root") || "#app",
-        entry: params.get("entry") || "auto"
+        entry: params.get("entry") || "auto",
+        assets: params.get("assets") || ""
       };
 
       var statusElement = document.getElementById("status");
       document.title = config.title;
+      var assetBase = config.assets;
+      if (assetBase && assetBase.charAt(assetBase.length - 1) !== "/") {
+        assetBase += "/";
+      }
+      window.__maldaAssetBase = assetBase;
 
       function setStatus(message, isError) {
         statusElement.textContent = message;

@@ -1123,7 +1123,8 @@ public partial class MainWindow
             hostPath,
             repoRoot,
             artifact.ScriptPath,
-            Path.GetFileNameWithoutExtension(fileName));
+            Path.GetFileNameWithoutExtension(fileName),
+            fileName);
 
         var core = await EnsureWebUiCoreAsync();
         if (core == null)

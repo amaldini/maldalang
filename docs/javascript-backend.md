@@ -576,7 +576,7 @@ Audio Spec v1 adds a browser-hosted game audio API in JavaScript mode. The goal 
 Programs that call `dom.*`, `game.*`, or `three.*` cannot pause in the interpreter. The Desktop IDE treats them as JavaScript debug targets:
 
 1. Glyph breakpoints in the `.malda` editor (1-based lines, same as interpret mode).
-2. F5 transpiles with a VLQ source map, writes `.malda-preview/*.js` + `.map`, and loads Web Preview.
+2. F5 transpiles with a VLQ source map, writes `.malda-preview/*.js` + `.map`, and loads Web Preview. Relative `assets/...` URLs are resolved from the open `.malda` file (not the host page). Preview is served from `https://malda.preview/` so `fetch` (glTF) works.
 3. WebView2 Chromium debugger (`Debugger.setBreakpointByUrl`) stops on the generated line; the IDE maps back to the MALDA line for highlight, call stack, and locals.
 4. Ctrl+F5 / Run opens the same preview without attaching the debugger.
 
