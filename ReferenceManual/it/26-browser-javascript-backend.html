@@ -70,6 +70,10 @@ malda compile Examples/Web/js/hello_dom.malda --target pwa -o dist/hello-dom
 # Template mode (.malda.html source)
 malda compile Examples/Web/js/hello_template.malda.html --mode js -o Examples/Web/js/hello_template.generated.js</code></pre>
         <p><code>--target js</code> è un alias di <code>--mode js</code>. <code>--target pwa</code> è un alias di <code>--mode pwa</code> e produce una directory che contiene l'app shell, il runtime e il JavaScript transpile.</p>
+        <p>Il ciclo interno per i giochi canvas è <code>malda play</code>. Compila <code>--mode js</code>, scrive una pagina host e serve un URL locale così non devi scrivere HTML. Il packaging per itch.io resta <code>--mode pwa</code>.</p>
+        <pre><code>malda new game my-game
+cd my-game
+malda play app.malda</code></pre>
 
         <h2>26.4 Ordine obbligatorio di caricamento degli script</h2>
         <p>La pagina host deve includere un contenitore come <code>#app</code>, poi caricare gli script in quest'ordine. Stesso file: <code>Examples/Web/js/host.html</code>.</p>
@@ -316,6 +320,7 @@ malda compile Examples/Games/three_shader_path_tunnel.malda --mode js -o Example
             <li>Non combinare <code>@client()</code> con decoratori di route come <code>@GET</code> o <code>@PAGE</code>; è una combinazione di target non valida.</li>
             <li>Usa <code>@shared()</code> solo per logica sicura in entrambi i runtime; tieni filesystem/database/API server e API solo-browser fuori dalle dichiarazioni shared.</li>
             <li>Crea il canvas prima di disegnare o di avviare un game loop.</li>
+            <li>Usa <code>malda new game</code> e <code>malda play app.malda</code> invece di scrivere un file HTML host. <code>malda play</code> serve <code>.malda-play/</code>, non l'albero sorgente. Il packaging resta <code>--mode pwa</code>.</li>
             <li>F5 dell'interprete non può fare debug di programmi <code>dom.*</code> / <code>game.*</code> / <code>three.*</code>. Usa F5 dell'IDE Desktop (Web Preview) oppure i DevTools del browser sul <code>.js</code> + <code>.map</code> compilato.</li>
             <li>Usa API mode quando vuoi il controllo DOM completo e template mode quando la pagina è soprattutto HTML con poca logica MALDA.</li>
             <li>Le funzioni <code>@shader()</code> sono kernel GLSL, non chiamabili dall'host. Compilale con <code>glsl.compile</code> e passa la stringa a <code>three.createShaderMaterial</code>.</li>

@@ -91,7 +91,27 @@ walkthrough: [`docs/tutorials/fullstack-sessions-auth.md`](tutorials/fullstack-s
 For tagged `catch`, `result`/`option`, and `schema`/`validate`, see
 [`docs/tutorials/errors-and-validation.md`](tutorials/errors-and-validation.md).
 
-## 4. Build Workflows
+## 4. Build a Browser Game
+
+Choose this path if you want a canvas `game.*` loop in the browser (Love2D / Pico-8 / Phaser territory, not Unity).
+
+```bash
+malda new game my-game
+cd my-game
+malda play app.malda
+```
+
+`malda play` compiles `--mode js`, copies `malda-js-runtime.js`, writes a host page, and prints a local URL. Ctrl+C stops the server. Add `--open` to launch a browser when the OS allows it. Put images in `assets/` so relative `game.loadImage("assets/...")` works in the preview.
+
+What to expect today:
+
+- JavaScript backend only — do not run the starter with the interpreter
+- `malda play` is the inner loop; itch.io-style packaging is still `malda compile --mode pwa -o dist`
+- Samples and smoke hosts live under `Examples/Games/`
+
+This path emphasizes **MALDA Web** (browser JS) plus the canvas API in chapter 26 of the Reference Manual.
+
+## 5. Build Workflows
 
 Choose this path if your first use case is durable background processing, instance inspection, retries, and operational workflow tooling.
 
@@ -116,10 +136,11 @@ This path emphasizes **MALDA Workflow/Cloud**.
 - Choose `Learn Programming` if the syntax is new
 - Choose `Build An AI App` if prompts and agents are your first priority
 - Choose `Build An API Or Full-Stack App` if you want a scaffold you can extend immediately
+- Choose `Build a Browser Game` if you want a canvas `game.*` loop (`malda new game` / `malda play`)
 - Choose `Build Workflows` if durable operations are the main reason you are evaluating MALDA
 - Choose `Share Code With Workspace Packages` if you are splitting libs across `packages/` or file modules
 
-## 5. Share Code With Workspace Packages
+## 6. Share Code With Workspace Packages
 
 Choose this path if you want multi-file libraries without publishing to a registry.
 

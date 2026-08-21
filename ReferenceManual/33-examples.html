@@ -195,6 +195,9 @@ malda new webapi my-api
 # Scaffold a fullstack starter
 malda new fullstack my-app
 
+# Scaffold a browser canvas game
+malda new game my-game
+
 # Override generated project naming tokens
 malda new webapi my-api --name SalesPortal
 
@@ -203,7 +206,7 @@ malda new fullstack . --force
 
 # Skip tests scaffolding
 malda new webapi api-lite --no-tests</code></pre>
-        <p>Generated starters include default <code>malda test</code> conventions, reusable security helper patterns, baseline security/rate-limit config examples, environment profile files in <code>config/environments/</code>, and deploy/observability placeholder configs.</p>
+        <p>Generated starters include default <code>malda test</code> conventions, reusable security helper patterns, baseline security/rate-limit config examples, environment profile files in <code>config/environments/</code>, and deploy/observability placeholder configs. The <code>game</code> template skips those HTTP configs; next step is <code>malda play app.malda</code>.</p>
         <h2>33.12 JavaScript Backend (API mode)</h2>
         <p>Compile MALDA source to browser JavaScript and use the DOM helper API:</p>
         <pre><code>malda compile Examples/Web/js/hello_dom.malda --mode js -o Examples/Web/js/hello_dom.js

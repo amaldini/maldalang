@@ -34,6 +34,7 @@ publish-*.log
 Examples/runtimes/
 *.db
 .malda-preview/
+.malda-play/
 .malda/
 PWA_Output/
 

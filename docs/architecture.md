@@ -41,7 +41,7 @@ Interpret-mode debug core: [`MaldaLang/Interpreter/Debug/DebugSession.cs`](../Ma
 | `MaldaLang.LanguageServer` | LSP server process (`malda-lsp`; not DAP) |
 | `MaldaLang.TestLib` / `MaldaLang.Tests` | Shared test helpers and automated tests |
 | `vscode-malda` | VS Code / Cursor extension: LSP client + interpret-mode debugger type `malda` (`malda debug-adapter`) |
-| `Examples/`, `Templates/` | Samples and `malda new` scaffolds |
+| `Examples/`, `Templates/` | Samples and `malda new` scaffolds (`webapi`, `fullstack`, `game`) |
 | `ReferenceManual/` | HTML language reference (English canonical; Italian in `ReferenceManual/it/`) |
 | `conformance/` | Spec / tier0 conformance assets |
 
@@ -49,7 +49,7 @@ Interpret-mode debug core: [`MaldaLang/Interpreter/Debug/DebugSession.cs`](../Ma
 
 - **Interpret:** `malda program.malda` — AST walked by `Interpreter`.
 - **Transpile to C#:** `malda compile … --mode transpile` — emits C# that calls into MALDA runtime helpers / builtins.
-- **JS / PWA:** `--mode js` / `--mode pwa` — subset of language + browser runtime (`mlRuntime`). `@shader()` functions compile to GLSL strings via `glsl.compile` (not a fourth backend).
+- **JS / PWA:** `--mode js` / `--mode pwa` — subset of language + browser runtime (`mlRuntime`). `@shader()` functions compile to GLSL strings via `glsl.compile` (not a fourth backend). `malda play` is the JS preview inner loop (`malda new game`).
 
 Optional vertical packs are **out of tree**. The compiler may still contain **string-only** emit hooks under `MaldaLang.Compiler/OptionalPack/` so external DLLs can plug in without being ProjectReferences of core.
 

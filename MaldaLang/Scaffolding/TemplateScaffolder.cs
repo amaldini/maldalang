@@ -13,11 +13,13 @@ public sealed class TemplateScaffolder
     private static readonly Regex ConditionalSectionRegex = new(
         @"\{\{([#\^])([A-Z0-9_]+)\}\}(.*?)\{\{/([A-Z0-9_]+)\}\}",
         RegexOptions.Compiled | RegexOptions.Singleline);
-    public IReadOnlyList<string> SupportedTemplates => new[] { "webapi", "fullstack" };
+    private static readonly string[] TemplateNames = { "webapi", "fullstack", "game" };
+
+    public IReadOnlyList<string> SupportedTemplates => TemplateNames;
 
     public bool IsSupportedTemplate(string templateName)
     {
-        return SupportedTemplates.Contains(templateName, StringComparer.OrdinalIgnoreCase);
+        return TemplateNames.Contains(templateName, StringComparer.OrdinalIgnoreCase);
     }
 
     public int Scaffold(string templateName, string destinationPath, TextWriter output, TextWriter error, NewCommandOptions? options = null)
@@ -53,26 +55,38 @@ public sealed class TemplateScaffolder
 
         var variables = BuildTemplateVariables(normalizedTemplateName, projectName, options);
         var stats = CopyTemplateTree(sourceRoot, fullDestination, variables, options);
-        var generatedProfiles = GenerateEnvironmentProfiles(fullDestination, variables);
-
-        output.WriteLine($"Created {normalizedTemplateName} project at {fullDestination}");
-        if (options.Force)
+        var isGame = IsGameTemplate(normalizedTemplateName);
+        if (!isGame)
         {
-            output.WriteLine($"Scaffold files written: {stats.FilesWritten} (overwritten: {stats.FilesOverwritten})");
+            var generatedProfiles = GenerateEnvironmentProfiles(fullDestination, variables);
+            output.WriteLine($"Created {normalizedTemplateName} project at {fullDestination}");
+            WriteScaffoldFileCount(output, stats, options.Force);
+            output.WriteLine($"Environment profiles generated: {generatedProfiles}");
         }
         else
         {
-            output.WriteLine($"Scaffold files written: {stats.FilesWritten}");
+            output.WriteLine($"Created {normalizedTemplateName} project at {fullDestination}");
+            WriteScaffoldFileCount(output, stats, options.Force);
         }
-        output.WriteLine($"Environment profiles generated: {generatedProfiles}");
+
         output.WriteLine("Next steps:");
         output.WriteLine($"  cd \"{fullDestination}\"");
-        if (options.IncludeTests)
+        var hasTests = Directory.Exists(Path.Combine(fullDestination, "tests"));
+        if (options.IncludeTests && hasTests)
         {
             output.WriteLine("  malda test --format human");
         }
-        output.WriteLine(normalizedTemplateName == "fullstack" ? "  malda backend/app.malda" : "  malda app.malda");
-        if (options.LocalFirst)
+
+        if (isGame)
+        {
+            output.WriteLine("  malda play app.malda");
+        }
+        else
+        {
+            output.WriteLine(normalizedTemplateName == "fullstack" ? "  malda backend/app.malda" : "  malda app.malda");
+        }
+
+        if (options.LocalFirst && !isGame)
         {
             output.WriteLine("  malda db status");
             output.WriteLine("  malda db migrate");
@@ -93,9 +107,9 @@ public sealed class TemplateScaffolder
         normalizedTemplateName = templateName.ToLowerInvariant();
         projectName = string.Empty;
 
-        if (!(new[] { "webapi", "fullstack" }).Contains(templateName, StringComparer.OrdinalIgnoreCase))
+        if (!TemplateNames.Contains(templateName, StringComparer.OrdinalIgnoreCase))
         {
-            error.WriteLine($"Unsupported template '{templateName}'. Supported templates: webapi, fullstack.");
+            error.WriteLine($"Unsupported template '{templateName}'. Supported templates: {string.Join(", ", TemplateNames)}.");
             return false;
         }
 
@@ -259,9 +273,26 @@ public sealed class TemplateScaffolder
             ["PROJECT_LOWER"] = projectName.ToLowerInvariant(),
             ["TEMPLATE_NAME"] = templateName,
             ["HAS_FRONTEND"] = string.Equals(templateName, "fullstack", StringComparison.OrdinalIgnoreCase) ? "true" : "false",
-            ["HAS_BACKEND"] = "true",
-            ["LOCAL_FIRST"] = options.LocalFirst ? "true" : "false"
+            ["HAS_BACKEND"] = IsGameTemplate(templateName) ? "false" : "true",
+            ["LOCAL_FIRST"] = options.LocalFirst && !IsGameTemplate(templateName) ? "true" : "false"
         };
+    }
+
+    private static bool IsGameTemplate(string templateName)
+    {
+        return string.Equals(templateName, "game", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static void WriteScaffoldFileCount(TextWriter output, TemplateWriteStats stats, bool force)
+    {
+        if (force)
+        {
+            output.WriteLine($"Scaffold files written: {stats.FilesWritten} (overwritten: {stats.FilesOverwritten})");
+        }
+        else
+        {
+            output.WriteLine($"Scaffold files written: {stats.FilesWritten}");
+        }
     }
 
     private static bool ShouldSkipPath(string relativePath, NewCommandOptions options)

@@ -101,7 +101,7 @@ function Write-DistReadme {
         "program.html - Desktop IDE Preview web host page",
         "docs\llm\ - language pack for coding agents writing .malda",
         "docs\spec\ - language spec notes",
-        "Templates\ - scaffolds for malda new webapi|fullstack",
+        "Templates\ - scaffolds for malda new webapi|fullstack|game",
         "AGENTS.md / llms.txt - agent entrypoints",
         "Licence files (MIT OR Apache-2.0)"
     )
@@ -208,6 +208,8 @@ Scaffold a project (requires ``Templates/`` next to ``bin/``):
 ``````bash
 $launcher new webapi my-api
 $launcher new fullstack my-app
+$launcher new game my-game
+$launcher play my-game/app.malda
 ``````
 
 Programs that read input or use randomness are still testable. Seed with
@@ -275,6 +277,7 @@ Canonical reading order for tools and agents working from this unzipped folder
 - Examples/Actors/
 - Templates/webapi/
 - Templates/fullstack/
+- Templates/game/
 "@
     Set-Content -LiteralPath $Path -Value $text -Encoding UTF8
 }
@@ -445,12 +448,16 @@ foreach ($rid in $rids) {
 
     $syntaxPack = Join-Path $stage "docs\llm\malda-syntax.md"
     $webapiTemplate = Join-Path $stage "Templates\webapi"
+    $gameTemplate = Join-Path $stage "Templates\game"
     $stagedPreviewHost = Join-Path $stage "program.html"
     if (-not (Test-Path $syntaxPack)) {
         throw "Expected language pack missing: $syntaxPack"
     }
     if (-not (Test-Path $webapiTemplate)) {
         throw "Expected Templates/webapi missing: $webapiTemplate"
+    }
+    if (-not (Test-Path $gameTemplate)) {
+        throw "Expected Templates/game missing: $gameTemplate"
     }
     if (-not (Test-Path $stagedPreviewHost)) {
         throw "Expected web preview host missing from stage: $stagedPreviewHost"

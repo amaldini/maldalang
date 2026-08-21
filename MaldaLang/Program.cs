@@ -228,6 +228,13 @@ class Program
                 NewCommand(args);
                 return;
             }
+            else if (firstArg == "play")
+            {
+                var runner = new PlayCommandRunner();
+                var exitCode = runner.Run(args.Skip(1).ToArray(), Console.Out, Console.Error);
+                SystemEnvironment.Exit(exitCode);
+                return;
+            }
             else if (firstArg == "trace")
             {
                 // malda trace <subcommand> ...
@@ -3978,7 +3985,8 @@ class Program
         Console.WriteLine("  doctor      Fast diagnostics for runtime, config, providers, and project scaffold");
         Console.WriteLine("  onboard     Create ~/.malda, starter config, optional model downloads");
         Console.WriteLine("  status      Show MALDA home, config, provider, and cron status");
-        Console.WriteLine("  new         Scaffold a webapi or fullstack project");
+        Console.WriteLine("  new         Scaffold a webapi, fullstack, or game project");
+        Console.WriteLine("  play        Compile a .malda file to JavaScript and serve a local canvas/JS preview");
         Console.WriteLine();
         Console.WriteLine("Build, test, and ship:");
         Console.WriteLine("  compile     Compile a MALDA file to exe, dll, js, pwa, or fullstack output");
@@ -4008,6 +4016,8 @@ class Program
         Console.WriteLine("  malda doctor");
         Console.WriteLine("  malda new webapi my-api");
         Console.WriteLine("  malda new fullstack sales-portal --local-first");
+        Console.WriteLine("  malda new game my-game");
+        Console.WriteLine("  malda play app.malda");
         Console.WriteLine("  malda db status");
         Console.WriteLine("  malda compile app.malda -o app.exe");
         Console.WriteLine("  malda test tests --filter Smoke");
@@ -4041,6 +4051,9 @@ class Program
                 return true;
             case "new":
                 NewCommandOptionsParser.WriteUsage(Console.Out);
+                return true;
+            case "play":
+                PlayCommandOptionsParser.WriteUsage(Console.Out);
                 return true;
             case "deploy":
                 _ = new DeployCommandRunner().Run(new[] { "--help" }, Console.Out, Console.Error);

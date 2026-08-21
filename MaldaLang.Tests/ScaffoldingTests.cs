@@ -291,4 +291,69 @@ public class ScaffoldingTests : TestBase
             SafeDeleteDirectory(root);
         }
     }
+
+    [Fact]
+    public void Scaffold_GameTemplate_CreatesAppHtmlAndReadme()
+    {
+        var root = CreateTempDirectory("malda_scaffold_game_");
+        var destination = Path.Combine(root, "sample-game");
+        try
+        {
+            var output = new StringWriter();
+            var error = new StringWriter();
+            var scaffolder = new TemplateScaffolder();
+
+            var code = scaffolder.Scaffold("game", destination, output, error);
+
+            var text = output.ToString();
+            Assert.Equal(0, code);
+            Assert.True(File.Exists(Path.Combine(destination, "app.malda")));
+            Assert.True(File.Exists(Path.Combine(destination, "index.html")));
+            Assert.True(File.Exists(Path.Combine(destination, "README.md")));
+            Assert.True(File.Exists(Path.Combine(destination, "assets", ".gitkeep")));
+            Assert.False(Directory.Exists(Path.Combine(destination, "config", "environments")));
+            Assert.DoesNotContain("malda test --format human", text);
+            Assert.Contains("malda play app.malda", text);
+            Assert.DoesNotContain("malda db", text);
+            Assert.DoesNotContain("Environment profiles generated", text);
+
+            var app = File.ReadAllText(Path.Combine(destination, "app.malda"));
+            Assert.Contains("game.createCanvas", app);
+            Assert.Contains("game.start", app);
+            Assert.Contains("function updateGame", app);
+
+            var html = File.ReadAllText(Path.Combine(destination, "index.html"));
+            var runtimeIdx = html.IndexOf("malda-js-runtime.js", StringComparison.Ordinal);
+            var appIdx = html.IndexOf("./app.js", StringComparison.Ordinal);
+            Assert.True(runtimeIdx >= 0 && appIdx > runtimeIdx);
+            Assert.Contains("sample-game", html);
+            Assert.Equal(string.Empty, error.ToString());
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
+        }
+    }
+
+    [Fact]
+    public void Scaffold_UnsupportedTemplate_ListsGame()
+    {
+        var root = CreateTempDirectory("malda_scaffold_unsupported_");
+        var destination = Path.Combine(root, "nope");
+        try
+        {
+            var output = new StringWriter();
+            var error = new StringWriter();
+            var scaffolder = new TemplateScaffolder();
+
+            var code = scaffolder.Scaffold("desktop", destination, output, error);
+
+            Assert.Equal(1, code);
+            Assert.Contains("webapi, fullstack, game", error.ToString());
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
+        }
+    }
 }
