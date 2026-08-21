@@ -107,6 +107,14 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — fullstack game scores template)
+
+- **G9 `malda new game --fullstack`:** flag on the G6 `game` template (alias `malda new game-fullstack`) emits one `.malda` with `@client()` canvas (`startFixed`, key edges, AABB, `game.save`/`load`) plus `@GET` / `@POST` `/api/scores` and `schema Score` / `validate("Score", …)`. Server list is in-memory (top 10). Next step is `malda compile app.malda --mode fullstack -o dist` then run the server with `MALDA_WEB_DIRECTORY` pointing at `dist/web`. `malda play` refuses fullstack sources. Host prompts / LLM NPCs stay README commentary. Docs: [`docs/start-here.md`](../start-here.md) path “Build a Browser Game”. Template: `Templates/game-fullstack/`.
+
+#### Fixed (PATCH — RestServer JSON object returns)
+
+- **Transpiled RestServer handlers** that return MALDA object literals now serialize as JSON objects. C# emit uses `Dictionary<string, object?>`; RestServer previously dropped that to HTTP `null`. HttpServer already converted dictionaries; both now share `WebRuntimeHelpers.ConvertTranspiledResultToRuntimeValue`. Needed for G9 `/api/health` and `/api/scores`.
+
 #### Added (MINOR — JS three.* textures / glTF / look-at)
 
 - **G8 `three.createTexture` / `three.loadGLTF` / `three.lookAt` (JavaScript backend only):** `createTexture(url)` returns a handle immediately (async decode; missing files stay unready). `createStandardMaterial` accepts `"map"` (texture handle) and leaves the map unset until ready. `loadGLTF(url)` returns a group you can `add` immediately; children appear when `modelIsReady(handle)` is true (JSON `.gltf` or `.glb`; failures stay unready). The runtime owns the loader (no extra host `<script>`). `lookAt(object, x, y, z)` requires `lookAt` on the three.js object. Orbit controls stay out. Example: `Examples/Games/three_textured.malda`. Interpreter / C# transpile: n/a (`three.*`).
@@ -324,3 +332,5 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-08-21 | MINOR: `malda new game` / `malda play` JS preview (G6) |
 | 2026-08-21 | MINOR: JS game kit showcase `malda_platform` (G7) |
 | 2026-08-21 | MINOR: JS `three.createTexture` / `loadGLTF` / `lookAt` (G8) |
+| 2026-08-21 | MINOR: `malda new game --fullstack` scores template (G9) |
+| 2026-08-21 | PATCH: RestServer serializes transpiled object-literal JSON bodies |

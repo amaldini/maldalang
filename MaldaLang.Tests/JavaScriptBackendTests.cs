@@ -2829,6 +2829,39 @@ const missingModel = three.loadGLTF("missing.gltf");
     }
 
     [Fact]
+    public void GameFullstackTemplate_TranspilesClientAndServerPartitions()
+    {
+        var sourcePath = PlanningPaths.ResolveRepoFile("Templates", "game-fullstack", "app.malda");
+        Assert.True(File.Exists(sourcePath), sourcePath);
+        var source = File.ReadAllText(sourcePath).Replace("__PROJECT_NAME__", "ScoreGame", StringComparison.Ordinal);
+        var compiler = new Compiler.Compiler();
+
+        var js = compiler.TranspileToJavaScriptFromSource(source);
+        Assert.Contains("mlRuntime.game.startFixed", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.wasKeyPressed", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.save", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.load", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.http.post", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.http.get", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.schema.register(\"Score\"", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.schema.validate(", js, StringComparison.Ordinal);
+        Assert.Contains("function startGame()", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("function startHost()", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("function listScores()", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("new HttpServer", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("new RestServer", js, StringComparison.Ordinal);
+
+        var csharp = compiler.TranspileToCSharpFromSource(source);
+        Assert.Contains("HttpServer", csharp, StringComparison.Ordinal);
+        Assert.Contains("RestServer", csharp, StringComparison.Ordinal);
+        Assert.Contains("Score", csharp, StringComparison.Ordinal);
+        Assert.Contains("startHost", csharp, StringComparison.Ordinal);
+        Assert.DoesNotContain("startFixed", csharp, StringComparison.Ordinal);
+        Assert.DoesNotContain("createCanvas", csharp, StringComparison.Ordinal);
+        Assert.DoesNotContain("wasKeyPressed", csharp, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void JsTranspiler_MapsInterpolatedStrings_ToCoercedConcatenation()
     {
         var source = """

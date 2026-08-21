@@ -30,3 +30,5 @@ malda compile app.malda --mode pwa -o dist
 - `assets/`: optional media folder (empty until you add files)
 
 `--local-first` does not apply to this template (no SQLite / `malda db` files).
+
+For a canvas client plus `@GET` / `@POST` scores in the same file, use `malda new game my-scores --fullstack` instead.

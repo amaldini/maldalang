@@ -18,7 +18,8 @@ This document captures the current JavaScript backend design in code and the nea
   - `malda compile <input> --mode pwa`
   - `malda compile <input> --target pwa` (alias)
   - `malda new game [directory]`
-  - `malda play <file.malda>` (JS preview server; not a second packaging format)
+  - `malda new game [directory] --fullstack` (canvas client + `@GET` / `@POST` scores; compile `--mode fullstack`)
+  - `malda play <file.malda>` (JS preview server; not a second packaging format; refuses fullstack sources)
 - Template preprocessing: `MaldaLang.Compiler/TemplatePreprocessor.cs`
   - Triggered when input path ends with `.malda.html`
   - Supports `{{ expression }}` and `{% statements %}`
@@ -229,7 +230,7 @@ malda play Examples/Games/game_bounce.malda
 malda compile Examples/Games/game_bounce.malda --mode js -o Examples/Games/game_bounce.js
 ```
 
-`malda play` is the inner loop: it compiles `--mode js` into `.malda-play/` next to the source, copies `malda-js-runtime.js` and `assets/` if present, writes a host page, and prints a local URL. Ctrl+C stops the server. `--open` may launch a browser. PWA packaging is still `malda compile --mode pwa`. `malda play` serves the preview folder, not the source tree.
+`malda play` is the inner loop: it compiles `--mode js` into `.malda-play/` next to the source, copies `malda-js-runtime.js` and `assets/` if present, writes a host page, and prints a local URL. Ctrl+C stops the server. `--open` may launch a browser. PWA packaging is still `malda compile --mode pwa`. `malda play` serves the preview folder, not the source tree. Fullstack score apps (`malda new game --fullstack`) are not a `play` preview — compile `--mode fullstack` and run the server with `MALDA_WEB_DIRECTORY` (see `Templates/game-fullstack/README.md`).
 
 Host page loading order (required):
 
@@ -275,8 +276,9 @@ function update(dtMs) {
 - `game.startFixed` always passes `tickMs` into `update` (not the wall-clock frame delta). After a long pause it runs at most 5 catch-up updates and drops the rest.
 - `game.save` / `game.load` are origin-scoped browser `localStorage` (`malda.game.` prefix), not files. Quota / missing storage / corrupt JSON: save no-ops, load returns `null`.
 - Call `game.stop()` only when a loop is active.
+- `malda play` refuses fullstack sources (`@client` plus `@server` or a route). Use `malda new game --fullstack` then `malda compile --mode fullstack`.
 
-See `Examples/Games/game_bounce.malda` and `Examples/Games/game_runtime_smoke_test.html` for a complete playable reference. See `Examples/Games/game_sprite_smoke.malda` for PNG atlas blit and a scrolling camera. See `Examples/Games/game_input_smoke.malda` for key edges, touches, and gamepad. See `Examples/Games/game_collision_smoke.malda` for AABB and circle overlap. See `Examples/Games/game_audio_sample_smoke.malda` for overlapping WAV one-shots next to a looping pattern. See `Examples/Games/game_fixed_save_smoke.malda` for `startFixed` plus a high score that survives reload. See `Examples/Games/malda_platform.malda` for a short side-scroller that uses the G1–G5 kit together (atlas tiles, camera, AABB, key edges, sample SFX, `startFixed`). See `Examples/Games/maldadash.malda` for a Boulder Dash-style tile cave (gravity rocks, diamonds, fireflies). See `Examples/Games/ray_tracer.malda` for a CPU ray tracer that fills the pixel buffer and blits it once per frame.
+See `Examples/Games/game_bounce.malda` and `Examples/Games/game_runtime_smoke_test.html` for a complete playable reference. See `Examples/Games/game_sprite_smoke.malda` for PNG atlas blit and a scrolling camera. See `Examples/Games/game_input_smoke.malda` for key edges, touches, and gamepad. See `Examples/Games/game_collision_smoke.malda` for AABB and circle overlap. See `Examples/Games/game_audio_sample_smoke.malda` for overlapping WAV one-shots next to a looping pattern. See `Examples/Games/game_fixed_save_smoke.malda` for `startFixed` plus a high score that survives reload. See `Examples/Games/malda_platform.malda` for a short side-scroller that uses the G1–G5 kit together (atlas tiles, camera, AABB, key edges, sample SFX, `startFixed`). See `malda new game --fullstack` (`Templates/game-fullstack/`) for a canvas client plus `schema Score` / `validate` / `httpPost` scores. See `Examples/Games/maldadash.malda` for a Boulder Dash-style tile cave (gravity rocks, diamonds, fireflies). See `Examples/Games/ray_tracer.malda` for a CPU ray tracer that fills the pixel buffer and blits it once per frame.
 
 ## three.js Quick Start (`three.*`)
 

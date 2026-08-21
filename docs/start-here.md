@@ -101,7 +101,15 @@ cd my-game
 malda play app.malda
 ```
 
-`malda play` compiles `--mode js`, copies `malda-js-runtime.js`, writes a host page, and prints a local URL. Ctrl+C stops the server. Add `--open` to launch a browser when the OS allows it. Put images in `assets/` so relative `game.loadImage("assets/...")` works in the preview.
+Canvas plus a server-authoritative scoreboard (same file, `@client` loop + `@GET` / `@POST` + `schema Score`):
+
+```bash
+malda new game my-scores --fullstack
+cd my-scores
+malda compile app.malda --mode fullstack -o dist
+```
+
+`malda play` compiles `--mode js`, copies `malda-js-runtime.js`, writes a host page, and prints a local URL. Ctrl+C stops the server. Add `--open` to launch a browser when the OS allows it. Put images in `assets/` so relative `game.loadImage("assets/...")` works in the preview. `malda play` refuses fullstack score apps — those use `--mode fullstack` and `MALDA_WEB_DIRECTORY` (see the generated README).
 
 What to expect today:
 
@@ -137,7 +145,7 @@ This path emphasizes **MALDA Workflow/Cloud**.
 - Choose `Learn Programming` if the syntax is new
 - Choose `Build An AI App` if prompts and agents are your first priority
 - Choose `Build An API Or Full-Stack App` if you want a scaffold you can extend immediately
-- Choose `Build a Browser Game` if you want a canvas `game.*` loop (`malda new game` / `malda play`)
+- Choose `Build a Browser Game` if you want a canvas `game.*` loop (`malda new game` / `malda play`, or `malda new game --fullstack` for scores)
 - Choose `Build Workflows` if durable operations are the main reason you are evaluating MALDA
 - Choose `Share Code With Workspace Packages` if you are splitting libs across `packages/` or file modules
 

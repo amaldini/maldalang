@@ -370,6 +370,65 @@ public class RestServerTests
             server.CallMethod("stop", new List<RuntimeValue>());
         }
     }
+
+    [Fact]
+    public async Task RestServer_TranspiledDictionaryLiteral_SerializesJsonObject()
+    {
+        var port = GetAvailablePort();
+        var path = $"/api/health/{Guid.NewGuid():N}";
+        var server = new RestServerInstance(port, "localhost", null);
+
+        RestServerInstance.RegisterTranspiledRoute("GET", path, "ReturnDictionaryHealthPayload", new List<string>(), null);
+        server.CallMethod("start", new List<RuntimeValue>());
+
+        try
+        {
+            using var client = new HttpClient();
+            using var response = await client.GetAsync($"http://localhost:{port}{path}");
+            var body = await response.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal("tapscore", root.GetProperty("app").GetString());
+            Assert.Equal("ok", root.GetProperty("status").GetString());
+        }
+        finally
+        {
+            server.CallMethod("stop", new List<RuntimeValue>());
+        }
+    }
+
+    [Fact]
+    public async Task RestServer_TranspiledNestedDictionaryList_SerializesJsonArray()
+    {
+        var port = GetAvailablePort();
+        var path = $"/api/scores/{Guid.NewGuid():N}";
+        var server = new RestServerInstance(port, "localhost", null);
+
+        RestServerInstance.RegisterTranspiledRoute("GET", path, "ReturnDictionaryScoresPayload", new List<string>(), null);
+        server.CallMethod("start", new List<RuntimeValue>());
+
+        try
+        {
+            using var client = new HttpClient();
+            using var response = await client.GetAsync($"http://localhost:{port}{path}");
+            var body = await response.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.True(root.GetProperty("ok").GetBoolean());
+            var scores = root.GetProperty("scores");
+            Assert.Equal(1, scores.GetArrayLength());
+            Assert.Equal("Ada", scores[0].GetProperty("name").GetString());
+            Assert.Equal(12, scores[0].GetProperty("points").GetInt32());
+        }
+        finally
+        {
+            server.CallMethod("stop", new List<RuntimeValue>());
+        }
+    }
 }
 
 public class RouteRegistryTests
