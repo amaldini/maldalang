@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — JS game input edges)
+
+- **G2 `game.*` key edges, touches, and gamepad (JavaScript backend only):** `game.wasKeyPressed(key)` / `game.wasKeyReleased(key)` are true on the first `update` after key-down / key-up (same names as `isKeyDown`). `game.getTouches()` returns `[{ id, x, y }]` in canvas pixels. `game.isGamepadConnected(index?)`, `game.getGamepadAxis(index, axis)`, `game.isGamepadButtonDown(index, button)`, `game.wasGamepadButtonPressed(index, button)`. Edges are snapshotted at the start of `update` and are **false in `render`**. First touch still aliases mouse button 0. Missing Gamepad API → disconnected / axis `0`. `game.stop()` clears keys and button edges. Example: `Examples/Games/game_input_smoke.malda`. Interpreter / C# transpile: n/a (`game-canvas`). `three.*` input is unchanged.
+
 #### Added (MINOR — JS game sprites / camera)
 
 - **G1 `game.*` images and camera (JavaScript backend only):** `game.loadImage(url)` returns a handle immediately (async decode; missing files stay unready and do not throw). `game.imageIsReady`, `game.drawImage`, `game.drawImageRect` blit bitmaps / atlas frames. `game.drawLine` / `game.strokeRect` / `game.setAlpha`. `game.setCamera` offsets world draws (`fillRect`, images, text, lines) and does **not** move `setPixel` / `blitPixels`. Example: `Examples/Games/game_sprite_smoke.malda`. Interpreter / C# transpile: n/a (`game-canvas`).
@@ -287,3 +291,4 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-08-14 | L1b: optional constructor payload types in JSON Schema emit (MINOR) |
 | 2026-08-21 | PATCH: overlapping `async` + `sleep` interpreter task isolation |
 | 2026-08-21 | MINOR: JS `game.loadImage` / camera / draw extras (G1) |
+| 2026-08-21 | MINOR: JS `game.wasKeyPressed` / touches / gamepad (G2) |

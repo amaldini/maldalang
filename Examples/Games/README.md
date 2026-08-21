@@ -10,6 +10,7 @@ These used to live under `Examples/Web/js/`. DOM/HTTP samples stay in [`Examples
 # From repo root
 malda compile Examples/Games/game_bounce.malda --mode js -o Examples/Games/game_bounce.js
 malda compile Examples/Games/game_sprite_smoke.malda --mode js -o Examples/Games/game_sprite_smoke.js
+malda compile Examples/Games/game_input_smoke.malda --mode js -o Examples/Games/game_input_smoke.js
 malda compile Examples/Games/maldadash.malda --mode js -o Examples/Games/maldadash.js
 malda compile Examples/Games/three_cube.malda --mode js -o Examples/Games/three_cube.js
 malda compile Examples/Games/three_shader_path_tunnel.malda --mode js -o Examples/Games/three_shader_path_tunnel.js

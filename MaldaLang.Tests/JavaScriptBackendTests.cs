@@ -421,6 +421,33 @@ public class JavaScriptBackendTests : TestBase
     }
 
     [Fact]
+    public void JsTranspiler_MapsGameInputEdgeAndGamepadApis_ToMlRuntimeGame()
+    {
+        var source = """
+            var pressed = game.wasKeyPressed(" ");
+            var released = game.wasKeyReleased("arrowup");
+            var touches = game.getTouches();
+            var padOn = game.isGamepadConnected();
+            var padOn1 = game.isGamepadConnected(1);
+            var axis = game.getGamepadAxis(0, 0);
+            var btn = game.isGamepadButtonDown(0, 0);
+            var btnPress = game.wasGamepadButtonPressed(0, 1);
+            """;
+        var compiler = new Compiler.Compiler();
+
+        var js = compiler.TranspileToJavaScriptFromSource(source);
+
+        Assert.Contains("mlRuntime.game.wasKeyPressed(\" \")", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.wasKeyReleased(\"arrowup\")", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.getTouches()", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.isGamepadConnected()", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.isGamepadConnected(1)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.getGamepadAxis(0, 0)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.isGamepadButtonDown(0, 0)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.wasGamepadButtonPressed(0, 1)", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void JsTranspiler_MapsGamePixelBufferApis_ToMlRuntimeGame()
     {
         var source = """
@@ -512,6 +539,22 @@ public class JavaScriptBackendTests : TestBase
         Assert.Contains("mlRuntime.game.drawLine(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.strokeRect(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.setAlpha(", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("mlRuntime.three.", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void JsTranspiler_InputSmokeExample_EmitsGameInputCalls()
+    {
+        var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Games", "game_input_smoke.malda");
+        var compiler = new Compiler.Compiler();
+        var js = compiler.TranspileToJavaScript(sourcePath);
+
+        Assert.Contains("mlRuntime.game.wasKeyPressed(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.wasKeyReleased(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.getTouches()", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.isGamepadConnected(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.getGamepadAxis(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.wasGamepadButtonPressed(", js, StringComparison.Ordinal);
         Assert.DoesNotContain("mlRuntime.three.", js, StringComparison.Ordinal);
     }
 
@@ -875,6 +918,241 @@ process.stdout.write("ok\n");
             var stderr = process.StandardError.ReadToEnd();
             process.WaitForExit(15000);
             Assert.True(process.ExitCode == 0, $"sprite/camera runtime test failed ({process.ExitCode}). stderr: {stderr}");
+            Assert.Equal("ok", stdout.Trim());
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
+        }
+    }
+
+    [Fact]
+    public void GameRuntime_KeyEdgesTouchesAndGamepad_SnapshotOnUpdate()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var runtimePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "wwwroot", "malda-js-runtime.js");
+        var root = CreateTempDirectory("malda_js_input_edges_");
+        try
+        {
+            var scriptPath = Path.Combine(root, "input-edges-test.js");
+            File.WriteAllText(scriptPath, """
+function makeCanvas() {
+  const ctx = {
+    fillStyle: "#000",
+    strokeStyle: "#000",
+    lineWidth: 1,
+    font: "",
+    globalAlpha: 1,
+    fillRect() {},
+    strokeRect() {},
+    clearRect() {},
+    beginPath() {},
+    moveTo() {},
+    lineTo() {},
+    stroke() {},
+    arc() {},
+    fill() {},
+    fillText() {},
+    drawImage() {},
+    putImageData() {}
+  };
+  return {
+    width: 0,
+    height: 0,
+    style: {},
+    parentNode: null,
+    _ctx: ctx,
+    getContext() { return this._ctx; },
+    getBoundingClientRect() {
+      return { left: 0, top: 0, width: this.width, height: this.height };
+    }
+  };
+}
+
+const mount = {
+  children: [],
+  appendChild(el) {
+    this.children.push(el);
+    el.parentNode = this;
+    return el;
+  },
+  removeChild(el) {
+    this.children = this.children.filter((child) => child !== el);
+    el.parentNode = null;
+    return el;
+  }
+};
+
+const listeners = {};
+let rafQueue = [];
+let pads = [];
+
+globalThis.document = {
+  body: mount,
+  querySelector() { return mount; },
+  createElement(tag) {
+    if (tag === "canvas") return makeCanvas();
+    return { style: {} };
+  }
+};
+globalThis.window = {
+  addEventListener(type, fn) {
+    listeners[type] = listeners[type] || [];
+    listeners[type].push(fn);
+  },
+  removeEventListener() {},
+  requestAnimationFrame(cb) {
+    rafQueue.push(cb);
+    return rafQueue.length;
+  },
+  cancelAnimationFrame() {}
+};
+globalThis.navigator = {
+  getGamepads() { return pads; }
+};
+
+function fire(type, event) {
+  (listeners[type] || []).forEach((fn) => fn(event));
+}
+function runFrame(ts) {
+  const cb = rafQueue.shift();
+  if (!cb) throw new Error("no rAF callback");
+  cb(ts);
+}
+
+require(process.argv[2]);
+const game = globalThis.mlRuntime.game;
+game.createCanvas(64, 32, "#app");
+
+const log = [];
+game.start(function update() {
+  log.push({
+    phase: "update",
+    spacePressed: game.wasKeyPressed(" "),
+    spaceReleased: game.wasKeyReleased(" "),
+    spaceDown: game.isKeyDown(" "),
+    aPressed: game.wasKeyPressed("a"),
+    aReleased: game.wasKeyReleased("a"),
+    padOn: game.isGamepadConnected(),
+    axis: game.getGamepadAxis(0, 0),
+    btnDown: game.isGamepadButtonDown(0, 0),
+    btnPressed: game.wasGamepadButtonPressed(0, 0),
+    touches: game.getTouches()
+  });
+}, function render() {
+  log.push({
+    phase: "render",
+    spacePressed: game.wasKeyPressed(" "),
+    spaceReleased: game.wasKeyReleased(" "),
+    aPressed: game.wasKeyPressed("a"),
+    aReleased: game.wasKeyReleased("a"),
+    btnPressed: game.wasGamepadButtonPressed(0, 0)
+  });
+});
+
+fire("keydown", { key: " " });
+runFrame(16);
+if (!log[0] || log[0].phase !== "update" || log[0].spacePressed !== true || log[0].spaceDown !== true) {
+  throw new Error("first update should see wasKeyPressed: " + JSON.stringify(log[0]));
+}
+if (!log[1] || log[1].phase !== "render" || log[1].spacePressed !== false || log[1].spaceReleased !== false) {
+  throw new Error("render should not see key edges: " + JSON.stringify(log[1]));
+}
+
+runFrame(32);
+if (!log[2] || log[2].spacePressed !== false || log[2].spaceDown !== true) {
+  throw new Error("held key must not retrigger press: " + JSON.stringify(log[2]));
+}
+
+fire("keyup", { key: " " });
+runFrame(48);
+if (!log[4] || log[4].spaceReleased !== true || log[4].spaceDown !== false) {
+  throw new Error("keyup should edge on next update: " + JSON.stringify(log[4]));
+}
+if (!log[5] || log[5].phase !== "render" || log[5].spaceReleased !== false) {
+  throw new Error("render should not see key release: " + JSON.stringify(log[5]));
+}
+
+fire("keydown", { key: "a" });
+fire("keyup", { key: "a" });
+runFrame(56);
+const tap = log[log.length - 2];
+const tapRender = log[log.length - 1];
+if (!tap || tap.aPressed !== true || tap.aReleased !== true) {
+  throw new Error("same-frame tap should press and release: " + JSON.stringify(tap));
+}
+if (!tapRender || tapRender.aPressed !== false || tapRender.aReleased !== false) {
+  throw new Error("render should not see same-frame tap edges: " + JSON.stringify(tapRender));
+}
+
+fire("touchstart", {
+  cancelable: true,
+  preventDefault() {},
+  touches: [{ identifier: 7, clientX: 12, clientY: 24 }],
+  changedTouches: [{ identifier: 7, clientX: 12, clientY: 24 }]
+});
+if (game.getTouches().length !== 1 || game.getTouches()[0].id !== 7 || game.getTouches()[0].x !== 12 || game.isMouseDown(0) !== true) {
+  throw new Error("touchstart should track canvas points and alias mouse: " + JSON.stringify(game.getTouches()));
+}
+
+fire("touchend", {
+  touches: [],
+  changedTouches: [{ identifier: 7, clientX: 12, clientY: 24 }]
+});
+if (game.getTouches().length !== 0 || game.isMouseDown(0) !== false) {
+  throw new Error("touchend should clear touches and mouse alias");
+}
+
+if (game.isGamepadConnected() !== false || game.getGamepadAxis(0, 0) !== 0) {
+  throw new Error("missing gamepad should be disconnected with zero axes");
+}
+
+pads = [{
+  axes: [0.5, -0.25],
+  buttons: [{ pressed: true }, { pressed: false }]
+}];
+runFrame(64);
+const padFrame = log[log.length - 2];
+if (!padFrame || padFrame.padOn !== true || padFrame.axis !== 0.5 || padFrame.btnDown !== true || padFrame.btnPressed !== true) {
+  throw new Error("gamepad connect/press failed: " + JSON.stringify(padFrame));
+}
+
+runFrame(80);
+const padHeld = log[log.length - 2];
+if (!padHeld || padHeld.btnPressed !== false || padHeld.btnDown !== true) {
+  throw new Error("held gamepad button must not retrigger: " + JSON.stringify(padHeld));
+}
+
+fire("keydown", { key: "z" });
+game.stop();
+if (game.isKeyDown("z") !== false || game.wasKeyPressed("z") !== false || game.wasGamepadButtonPressed(0, 0) !== false) {
+  throw new Error("game.stop should clear keys and button edges");
+}
+
+process.stdout.write("ok\n");
+""");
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = Environment.GetEnvironmentVariable("MALDA_NODE_PATH") is { Length: > 0 } nodePath
+                    ? nodePath
+                    : "node",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = root
+            };
+            startInfo.ArgumentList.Add(scriptPath);
+            startInfo.ArgumentList.Add(runtimePath);
+
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Failed to start Node.js for input-edges runtime test.");
+            var stdout = process.StandardOutput.ReadToEnd();
+            var stderr = process.StandardError.ReadToEnd();
+            process.WaitForExit(15000);
+            Assert.True(process.ExitCode == 0, $"input-edges runtime test failed ({process.ExitCode}). stderr: {stderr}");
             Assert.Equal("ok", stdout.Trim());
         }
         finally
