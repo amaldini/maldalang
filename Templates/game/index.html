@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>__PROJECT_NAME__</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: #020617;
+            color: #e2e8f0;
+        }
+
+        #status {
+            padding: 10px 14px;
+            border-bottom: 1px solid #1e293b;
+            background: #0f172a;
+            color: #94a3b8;
+            font-size: 14px;
+        }
+
+        #status.error {
+            color: #fecaca;
+            background: #450a0a;
+            border-bottom-color: #7f1d1d;
+        }
+
+        #app {
+            min-height: calc(100vh - 45px);
+        }
+    </style>
+</head>
+<body>
+    <div id="status">Loading __PROJECT_NAME__...</div>
+    <div id="app"></div>
+    <script src="./malda-js-runtime.js"></script>
+    <script src="./app.js"></script>
+    <script>
+        (function () {
+            var statusElement = document.getElementById("status");
+
+            function setStatus(message, isError) {
+                if (!statusElement) {
+                    return;
+                }
+
+                statusElement.textContent = message;
+                statusElement.className = isError ? "error" : "";
+            }
+
+            async function runEntryPoint() {
+                if (!window.MaldaApp) {
+                    throw new Error("MaldaApp was not registered by app.js.");
+                }
+
+                if (typeof window.MaldaApp.main === "function") {
+                    await window.MaldaApp.main();
+                }
+
+                setStatus("__PROJECT_NAME__ is running. Left / Right arrows move the paddle.");
+            }
+
+            runEntryPoint().catch(function (error) {
+                console.error(error);
+                setStatus(error && error.message ? error.message : String(error), true);
+            });
+        })();
+    </script>
+</body>
+</html>

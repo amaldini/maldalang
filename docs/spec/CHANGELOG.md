@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — `malda new game` / `malda play`)
+
+- **G6 CLI scaffolding + preview:** `malda new game [directory]` is a third template beside `webapi` / `fullstack`. It emits `app.malda`, `index.html` (runtime then compiled script), `README.md`, and optional `assets/`. Next step: `malda play app.malda`. No `config/environments` and `--local-first` is ignored. `malda play <file.malda>` compiles `--mode js` into a sibling `.malda-play/` folder, copies `malda-js-runtime.js` and `assets/` when present, serves a host page, and prints a local URL (`--open` may launch a browser; Ctrl+C stops). PWA packaging remains `malda compile --mode pwa`. Interpreter / C# transpile: n/a (`game-canvas`). Docs: [`docs/start-here.md`](../start-here.md) path “Build a Browser Game”.
+
 #### Added (MINOR — JS game fixed timestep + save)
 
 - **G5 `game.startFixed` / `game.save` / `game.load` / `game.removeSave` (JavaScript backend only):** `startFixed(updateFn, renderFn?, tickMs?)` defaults `tickMs` to `1000 / 60`, accrues wall time, calls `update(tickMs)` zero or more times per rAF (max 5 catch-up, then drop remainder), then `render` once. Mutually exclusive with `game.start`. `save`/`load`/`removeSave` store JSON in origin-scoped `localStorage` under `malda.game.` (not files). Quota / missing storage / corrupt JSON: save no-ops, load returns `null`. Example: `Examples/Games/game_fixed_save_smoke.malda`. Interpreter / C# transpile: n/a (`game-canvas`).
@@ -307,3 +311,4 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-08-21 | MINOR: JS `game.overlapRect` / circle / point queries (G3) |
 | 2026-08-21 | MINOR: JS `game.audioPlaySample` / `audioStopSample` (G4) |
 | 2026-08-21 | MINOR: JS `game.startFixed` / `save` / `load` / `removeSave` (G5) |
+| 2026-08-21 | MINOR: `malda new game` / `malda play` JS preview (G6) |

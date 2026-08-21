@@ -17,6 +17,8 @@ This document captures the current JavaScript backend design in code and the nea
   - `malda compile <input> --target js` (alias)
   - `malda compile <input> --mode pwa`
   - `malda compile <input> --target pwa` (alias)
+  - `malda new game [directory]`
+  - `malda play <file.malda>` (JS preview server; not a second packaging format)
 - Template preprocessing: `MaldaLang.Compiler/TemplatePreprocessor.cs`
   - Triggered when input path ends with `.malda.html`
   - Supports `{{ expression }}` and `{% statements %}`
@@ -222,8 +224,12 @@ game.start(update, render);
 Compile:
 
 ```bash
-malda compile Examples/Games/my_game.malda --mode js -o Examples/Games/my_game.js
+malda play Examples/Games/game_bounce.malda
+# or the explicit compile (play wraps this and serves a host page):
+malda compile Examples/Games/game_bounce.malda --mode js -o Examples/Games/game_bounce.js
 ```
+
+`malda play` is the inner loop: it compiles `--mode js` into `.malda-play/` next to the source, copies `malda-js-runtime.js` and `assets/` if present, writes a host page, and prints a local URL. Ctrl+C stops the server. `--open` may launch a browser. PWA packaging is still `malda compile --mode pwa`. `malda play` serves the preview folder, not the source tree.
 
 Host page loading order (required):
 

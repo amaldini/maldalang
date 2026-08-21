@@ -129,16 +129,17 @@ public static class NewCommandOptionsParser
 
     public static void WriteUsage(TextWriter output)
     {
-        output.WriteLine("Usage: malda new <webapi|fullstack> [directory] [options]");
+        output.WriteLine("Usage: malda new <webapi|fullstack|game> [directory] [options]");
         output.WriteLine("  Options:");
         output.WriteLine("    --name <project-name>  Override scaffolded project name");
         output.WriteLine("    --force                Overwrite template files in existing directories");
-        output.WriteLine("    --local-first          Add SQLite/local-first starter files and migration bootstrap");
+        output.WriteLine("    --local-first          Add SQLite/local-first starter files and migration bootstrap (webapi/fullstack)");
         output.WriteLine("    --no-tests             Skip generating test files/directories");
         output.WriteLine("  Examples:");
         output.WriteLine("    malda new webapi my-api");
         output.WriteLine("    malda new webapi my-api --local-first");
         output.WriteLine("    malda new fullstack --name SalesPortal");
+        output.WriteLine("    malda new game my-game");
         output.WriteLine("    malda new webapi . --force --no-tests");
     }
 }

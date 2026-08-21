@@ -71,4 +71,14 @@ public class NewCommandOptionsParserTests
         Assert.False(ok);
         Assert.Contains("Unexpected extra argument", error.ToString());
     }
+
+    [Fact]
+    public void WriteUsage_IncludesGameTemplate()
+    {
+        var output = new StringWriter();
+        NewCommandOptionsParser.WriteUsage(output);
+        var text = output.ToString();
+        Assert.Contains("webapi|fullstack|game", text);
+        Assert.Contains("malda new game my-game", text);
+    }
 }

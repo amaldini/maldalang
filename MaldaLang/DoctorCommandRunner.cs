@@ -371,7 +371,18 @@ internal sealed class DoctorCommandRunner
             return DoctorCheck.Info(
                 "Project scaffold",
                 "current directory does not look like a scaffolded MALDA app; skipped deploy/profile checks.",
-                "Run 'malda new webapi <dir>' or 'malda new fullstack <dir>' to create a scaffolded project.");
+                "Run 'malda new webapi <dir>', 'malda new fullstack <dir>', or 'malda new game <dir>' to create a scaffolded project.");
+        }
+
+        var isCanvasGame = File.Exists(rootApp)
+            && File.Exists(Path.Combine(workingDirectory, "index.html"))
+            && !File.Exists(backendApp)
+            && !Directory.Exists(Path.Combine(workingDirectory, "config", "environments"));
+        if (isCanvasGame)
+        {
+            return DoctorCheck.Ok(
+                "Project scaffold",
+                "found a canvas game scaffold (app.malda + index.html). Run 'malda play app.malda'.");
         }
 
         var missing = new List<string>();

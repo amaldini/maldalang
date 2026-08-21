@@ -69,6 +69,10 @@ malda compile Examples/Web/js/hello_dom.malda --target pwa -o dist/hello-dom
 # Template mode (.malda.html source)
 malda compile Examples/Web/js/hello_template.malda.html --mode js -o Examples/Web/js/hello_template.generated.js</code></pre>
         <p><code>--target js</code> is an alias for <code>--mode js</code>. <code>--target pwa</code> is an alias for <code>--mode pwa</code> and produces a directory containing the app shell, runtime, and transpiled JavaScript.</p>
+        <p>The inner loop for canvas games is <code>malda play</code>. It compiles <code>--mode js</code>, writes a host page, and serves a local URL so you do not have to author HTML. Packaging for itch.io stays <code>--mode pwa</code>.</p>
+        <pre><code>malda new game my-game
+cd my-game
+malda play app.malda</code></pre>
 
         <h2>26.4 Required Script Loading Order</h2>
         <p>The host page must include a container such as <code>#app</code>, then load scripts in this order. Same file: <code>Examples/Web/js/host.html</code>.</p>
@@ -315,6 +319,7 @@ malda compile Examples/Games/three_shader_path_tunnel.malda --mode js -o Example
             <li>Do not combine <code>@client()</code> with route decorators such as <code>@GET</code> or <code>@PAGE</code>; this is an invalid target combination.</li>
             <li>Use <code>@shared()</code> only for logic that is safe in both runtimes; keep filesystem/database/server APIs and browser-only APIs out of shared declarations.</li>
             <li>Create the canvas before drawing or starting a game loop.</li>
+            <li>Use <code>malda new game</code> and <code>malda play app.malda</code> instead of writing a host HTML file. <code>malda play</code> serves <code>.malda-play/</code>, not the source tree. Packaging is still <code>--mode pwa</code>.</li>
             <li>Interpreter F5 cannot debug <code>dom.*</code> / <code>game.*</code> / <code>three.*</code> programs. Use Desktop IDE F5 (Web Preview) or browser DevTools on the compiled <code>.js</code> + <code>.map</code>.</li>
             <li>Use API mode when you want full DOM control and template mode when the page is mostly HTML with light MALDA logic.</li>
             <li><code>@shader()</code> functions are GLSL kernels, not host callables. Compile them with <code>glsl.compile</code> and pass the string to <code>three.createShaderMaterial</code>.</li>

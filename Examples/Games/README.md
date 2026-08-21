@@ -7,7 +7,10 @@ These used to live under `Examples/Web/js/`. DOM/HTTP samples stay in [`Examples
 ## Run
 
 ```bash
-# From repo root
+# Inner loop (compile JS, write a host page, serve a local URL)
+malda play Examples/Games/game_bounce.malda
+
+# From repo root (explicit compile; then open the sibling host page)
 malda compile Examples/Games/game_bounce.malda --mode js -o Examples/Games/game_bounce.js
 malda compile Examples/Games/game_sprite_smoke.malda --mode js -o Examples/Games/game_sprite_smoke.js
 malda compile Examples/Games/game_input_smoke.malda --mode js -o Examples/Games/game_input_smoke.js
