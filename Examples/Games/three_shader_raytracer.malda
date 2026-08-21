@@ -286,7 +286,7 @@ var fragmentShader = glsl.compile({
         "float uTanHalf",
         "float uAspect"
     ],
-    consts: ["float EPSILON = 0.0015", "float GLASS_IOR = 0.1"],
+    consts: ["float EPSILON = 0.0015", "float GLASS_IOR = 0.9"],
     functions: ["hitSphere", "closestHit", "inShadow", "localShade", "shadeSky", "shadePrimary", "traceScene", "fragmentMain"],
     main: "fragmentMain"
 });
