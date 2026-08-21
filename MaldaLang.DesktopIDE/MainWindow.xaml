@@ -551,6 +551,7 @@
                 <MenuItem Header="Show _Search Panel" IsCheckable="True" Click="ViewToggleSearchPanel_Click"/>
                 <MenuItem Header="Show _AI Panel" IsCheckable="True" Click="ViewToggleAIPanel_Click"/>
                 <MenuItem Header="Show _Web UI Panel" IsCheckable="True" Click="ViewToggleWebUIPanel_Click"/>
+                <MenuItem Header="_Maximize AI Panel" IsCheckable="True" Click="ViewToggleMaximizeAiPanel_Click" InputGestureText="Shift+F7"/>
                 <MenuItem Header="_Maximize Web Preview" IsCheckable="True" Click="ViewToggleMaximizeWebPreview_Click" InputGestureText="Shift+F6"/>
                 <MenuItem Header="_Reset Web Preview" Click="ViewResetWebPreview_Click"/>
                 <Separator/>
@@ -1281,7 +1282,24 @@
                     
                     <!-- AI Chat Panel -->
                     <Grid x:Name="AIChatPanel" Visibility="Collapsed">
-                        <local:AIChatPanel x:Name="AIChatPanelControl"/>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <Border Grid.Row="0" Background="{DynamicResource InputBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="8">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="AI Assistant" VerticalAlignment="Center" Foreground="{DynamicResource TextForegroundBrush}"/>
+                                <Button x:Name="AiPanelMaximizeButton" Grid.Column="1" Content="Maximize" Click="AiPanelMaximizeButton_Click" Padding="10,4"
+                                        ToolTip="Show AI panel across the entire IDE client area (Shift+F7)"/>
+                            </Grid>
+                        </Border>
+
+                        <local:AIChatPanel x:Name="AIChatPanelControl" Grid.Row="1"/>
                     </Grid>
 
                     <!-- Search Panel -->

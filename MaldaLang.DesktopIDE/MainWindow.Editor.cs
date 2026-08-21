@@ -1101,7 +1101,7 @@ public partial class MainWindow
 
     private void UpdateSyntaxPanelVisibility()
     {
-        if (_isWebUiMaximized)
+        if (IsSidebarMaximized)
         {
             return;
         }
