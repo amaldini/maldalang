@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — JS game collision helpers)
+
+- **G3 `game.*` overlap queries (JavaScript backend only):** `game.overlapRect(x1, y1, w1, h1, x2, y2, w2, h2)` is inclusive AABB (touching edges count). `game.overlapCircle(x1, y1, r1, x2, y2, r2)`. `game.pointInRect` / `game.pointInCircle`. Width, height, or radius ≤ 0 → `false`. Pure functions: no canvas, no camera offset. Not swept AABB or physics. Example: `Examples/Games/game_collision_smoke.malda`. Interpreter / C# transpile: n/a (`game-canvas`).
+
 #### Added (MINOR — JS game input edges)
 
 - **G2 `game.*` key edges, touches, and gamepad (JavaScript backend only):** `game.wasKeyPressed(key)` / `game.wasKeyReleased(key)` are true on the first `update` after key-down / key-up (same names as `isKeyDown`). `game.getTouches()` returns `[{ id, x, y }]` in canvas pixels. `game.isGamepadConnected(index?)`, `game.getGamepadAxis(index, axis)`, `game.isGamepadButtonDown(index, button)`, `game.wasGamepadButtonPressed(index, button)`. Edges are snapshotted at the start of `update` and are **false in `render`**. First touch still aliases mouse button 0. Missing Gamepad API → disconnected / axis `0`. `game.stop()` clears keys and button edges. Example: `Examples/Games/game_input_smoke.malda`. Interpreter / C# transpile: n/a (`game-canvas`). `three.*` input is unchanged.
@@ -292,3 +296,4 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-08-21 | PATCH: overlapping `async` + `sleep` interpreter task isolation |
 | 2026-08-21 | MINOR: JS `game.loadImage` / camera / draw extras (G1) |
 | 2026-08-21 | MINOR: JS `game.wasKeyPressed` / touches / gamepad (G2) |
+| 2026-08-21 | MINOR: JS `game.overlapRect` / circle / point queries (G3) |

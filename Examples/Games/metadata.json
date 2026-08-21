@@ -70,6 +70,28 @@
       "documentationTitle": "Browser Track"
     },
     {
+      "name": "JS Canvas Collision Smoke",
+      "description": "Inclusive AABB and circle overlap helpers using MALDA game.* collision APIs",
+      "file": "game_collision_smoke.malda",
+      "track": "student",
+      "difficulty": "intermediate",
+      "minutes": 8,
+      "concepts": [
+        "game.*",
+        "AABB",
+        "collision",
+        "JavaScript target"
+      ],
+      "prerequisites": [
+        "Games/game_bounce.malda"
+      ],
+      "learningGoal": "Show overlapRect, overlapCircle, pointInRect, and pointInCircle on the canvas path.",
+      "expectedOutput": "Moves a box into a wall and a circle; the box turns pink on overlap. Mouse hits highlight point queries.",
+      "next": "Games/maldadash.malda",
+      "documentationPath": "/?lesson=browser-track#lesson-browser-track",
+      "documentationTitle": "Browser Track"
+    },
+    {
       "name": "JS Canvas Ray Tracer",
       "description": "Simple CPU ray tracer (spheres, ground plane, shadows) using game.setPixel and game.blitPixels",
       "file": "ray_tracer.malda",

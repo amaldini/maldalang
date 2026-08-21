@@ -2749,6 +2749,64 @@
         return null;
       }
 
+      function overlapRect(x1, y1, w1, h1, x2, y2, w2, h2) {
+        const ax = toFiniteNumber(x1, 0);
+        const ay = toFiniteNumber(y1, 0);
+        const aw = toFiniteNumber(w1, 0);
+        const ah = toFiniteNumber(h1, 0);
+        const bx = toFiniteNumber(x2, 0);
+        const by = toFiniteNumber(y2, 0);
+        const bw = toFiniteNumber(w2, 0);
+        const bh = toFiniteNumber(h2, 0);
+        if (aw <= 0 || ah <= 0 || bw <= 0 || bh <= 0) {
+          return false;
+        }
+        return ax <= bx + bw && bx <= ax + aw && ay <= by + bh && by <= ay + ah;
+      }
+
+      function overlapCircle(x1, y1, r1, x2, y2, r2) {
+        const ax = toFiniteNumber(x1, 0);
+        const ay = toFiniteNumber(y1, 0);
+        const ar = toFiniteNumber(r1, 0);
+        const bx = toFiniteNumber(x2, 0);
+        const by = toFiniteNumber(y2, 0);
+        const br = toFiniteNumber(r2, 0);
+        if (ar <= 0 || br <= 0) {
+          return false;
+        }
+        const dx = bx - ax;
+        const dy = by - ay;
+        const limit = ar + br;
+        return (dx * dx + dy * dy) <= (limit * limit);
+      }
+
+      function pointInRect(px, py, x, y, w, h) {
+        const pointX = toFiniteNumber(px, 0);
+        const pointY = toFiniteNumber(py, 0);
+        const rectX = toFiniteNumber(x, 0);
+        const rectY = toFiniteNumber(y, 0);
+        const rectW = toFiniteNumber(w, 0);
+        const rectH = toFiniteNumber(h, 0);
+        if (rectW <= 0 || rectH <= 0) {
+          return false;
+        }
+        return pointX >= rectX && pointX <= rectX + rectW && pointY >= rectY && pointY <= rectY + rectH;
+      }
+
+      function pointInCircle(px, py, x, y, r) {
+        const pointX = toFiniteNumber(px, 0);
+        const pointY = toFiniteNumber(py, 0);
+        const centerX = toFiniteNumber(x, 0);
+        const centerY = toFiniteNumber(y, 0);
+        const radius = toFiniteNumber(r, 0);
+        if (radius <= 0) {
+          return false;
+        }
+        const dx = pointX - centerX;
+        const dy = pointY - centerY;
+        return (dx * dx + dy * dy) <= (radius * radius);
+      }
+
       function isKeyDown(key) {
         return state.keysDown.has(normalizeKey(key));
       }
@@ -3209,6 +3267,10 @@
         createPixelBuffer,
         setPixel,
         blitPixels,
+        overlapRect,
+        overlapCircle,
+        pointInRect,
+        pointInCircle,
         isKeyDown,
         wasKeyPressed,
         wasKeyReleased,

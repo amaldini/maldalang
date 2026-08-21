@@ -448,6 +448,25 @@ public class JavaScriptBackendTests : TestBase
     }
 
     [Fact]
+    public void JsTranspiler_MapsGameCollisionApis_ToMlRuntimeGame()
+    {
+        var source = """
+            var hit = game.overlapRect(0, 0, 10, 10, 5, 5, 10, 10);
+            var circles = game.overlapCircle(0, 0, 5, 8, 0, 5);
+            var inBox = game.pointInRect(2, 3, 0, 0, 10, 10);
+            var inDisk = game.pointInCircle(1, 1, 0, 0, 5);
+            """;
+        var compiler = new Compiler.Compiler();
+
+        var js = compiler.TranspileToJavaScriptFromSource(source);
+
+        Assert.Contains("mlRuntime.game.overlapRect(0, 0, 10, 10, 5, 5, 10, 10)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.overlapCircle(0, 0, 5, 8, 0, 5)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.pointInRect(2, 3, 0, 0, 10, 10)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.pointInCircle(1, 1, 0, 0, 5)", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void JsTranspiler_MapsGamePixelBufferApis_ToMlRuntimeGame()
     {
         var source = """
@@ -555,6 +574,20 @@ public class JavaScriptBackendTests : TestBase
         Assert.Contains("mlRuntime.game.isGamepadConnected(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.getGamepadAxis(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.wasGamepadButtonPressed(", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("mlRuntime.three.", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void JsTranspiler_CollisionSmokeExample_EmitsOverlapCalls()
+    {
+        var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Games", "game_collision_smoke.malda");
+        var compiler = new Compiler.Compiler();
+        var js = compiler.TranspileToJavaScript(sourcePath);
+
+        Assert.Contains("mlRuntime.game.overlapRect(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.overlapCircle(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.pointInRect(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.pointInCircle(", js, StringComparison.Ordinal);
         Assert.DoesNotContain("mlRuntime.three.", js, StringComparison.Ordinal);
     }
 
@@ -1158,6 +1191,84 @@ process.stdout.write("ok\n");
             var stderr = process.StandardError.ReadToEnd();
             process.WaitForExit(15000);
             Assert.True(process.ExitCode == 0, $"input-edges runtime test failed ({process.ExitCode}). stderr: {stderr}");
+            Assert.Equal("ok", stdout.Trim());
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
+        }
+    }
+
+    [Fact]
+    public void GameRuntime_OverlapHelpers_InclusiveEdgesAndZeroSize()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var runtimePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "wwwroot", "malda-js-runtime.js");
+        var root = CreateTempDirectory("malda_js_collision_");
+        try
+        {
+            var scriptPath = Path.Combine(root, "collision-test.js");
+            File.WriteAllText(scriptPath, """
+require(process.argv[2]);
+const game = globalThis.mlRuntime.game;
+
+function assertEq(actual, expected, label) {
+  if (actual !== expected) {
+    throw new Error(label + ": expected " + expected + ", got " + actual);
+  }
+}
+
+assertEq(game.overlapRect(0, 0, 10, 10, 0, 0, 10, 10), true, "identical rects");
+assertEq(game.overlapRect(0, 0, 10, 10, 5, 5, 10, 10), true, "interior overlap");
+assertEq(game.overlapRect(0, 0, 10, 10, 10, 0, 10, 10), true, "touching vertical edge");
+assertEq(game.overlapRect(0, 0, 10, 10, 0, 10, 10, 10), true, "touching horizontal edge");
+assertEq(game.overlapRect(0, 0, 10, 10, 11, 0, 10, 10), false, "separated rects");
+assertEq(game.overlapRect(0, 0, 0, 10, 0, 0, 10, 10), false, "zero width");
+assertEq(game.overlapRect(0, 0, 10, 0, 0, 0, 10, 10), false, "zero height");
+assertEq(game.overlapRect(0, 0, -4, 10, 0, 0, 10, 10), false, "negative width");
+assertEq(game.overlapRect(0, 0, 10, 10, 0, 0, 10, -1), false, "negative other height");
+
+assertEq(game.overlapCircle(0, 0, 5, 10, 0, 5), true, "circles touching");
+assertEq(game.overlapCircle(0, 0, 5, 0, 0, 5), true, "concentric circles");
+assertEq(game.overlapCircle(0, 0, 5, 11, 0, 5), false, "circles separated");
+assertEq(game.overlapCircle(0, 0, 0, 0, 0, 5), false, "zero radius");
+assertEq(game.overlapCircle(0, 0, -2, 0, 0, 5), false, "negative radius");
+
+assertEq(game.pointInRect(0, 0, 0, 0, 10, 10), true, "rect origin corner");
+assertEq(game.pointInRect(10, 10, 0, 0, 10, 10), true, "rect far corner");
+assertEq(game.pointInRect(10.1, 5, 0, 0, 10, 10), false, "outside rect");
+assertEq(game.pointInRect(0, 0, 0, 0, 0, 10), false, "point in zero-width rect");
+assertEq(game.pointInRect(5, 5, 0, 0, 10, -3), false, "point in negative-height rect");
+
+assertEq(game.pointInCircle(5, 0, 0, 0, 5), true, "point on circumference");
+assertEq(game.pointInCircle(0, 0, 0, 0, 5), true, "circle center");
+assertEq(game.pointInCircle(5.1, 0, 0, 0, 5), false, "outside circle");
+assertEq(game.pointInCircle(0, 0, 0, 0, 0), false, "zero-radius circle");
+
+process.stdout.write("ok\n");
+""");
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = Environment.GetEnvironmentVariable("MALDA_NODE_PATH") is { Length: > 0 } nodePath
+                    ? nodePath
+                    : "node",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = root
+            };
+            startInfo.ArgumentList.Add(scriptPath);
+            startInfo.ArgumentList.Add(runtimePath);
+
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Failed to start Node.js for collision runtime test.");
+            var stdout = process.StandardOutput.ReadToEnd();
+            var stderr = process.StandardError.ReadToEnd();
+            process.WaitForExit(15000);
+            Assert.True(process.ExitCode == 0, $"collision runtime test failed ({process.ExitCode}). stderr: {stderr}");
             Assert.Equal("ok", stdout.Trim());
         }
         finally

@@ -1,0 +1,102 @@
+var root = dom.query("#app");
+
+if (root == null) {
+    println("No #app container found.");
+} else {
+    dom.clear(root);
+
+    var title = dom.create("h1");
+    dom.setText(title, "MALDA Game: Collision smoke");
+    dom.append(root, title);
+
+    var hint = dom.create("p");
+    dom.setText(hint, "Arrows move the green box. It turns pink on overlapRect / overlapCircle. Yellow dot is the mouse (pointInRect / pointInCircle).");
+    dom.append(root, hint);
+
+    var px = 72.0;
+    var py = 150.0;
+    var pw = 32.0;
+    var ph = 32.0;
+    var speed = 220;
+
+    var wallX = 260.0;
+    var wallY = 110.0;
+    var wallW = 90.0;
+    var wallH = 90.0;
+
+    var cx = 480.0;
+    var cy = 180.0;
+    var cr = 42.0;
+
+    var hitWall = false;
+    var hitCircle = false;
+    var mouseInWall = false;
+    var mouseInCircle = false;
+
+    function update(dtMs) {
+        var step = (speed * dtMs) / 1000;
+        if (game.isKeyDown("arrowleft")) {
+            px = px - step;
+        }
+        if (game.isKeyDown("arrowright")) {
+            px = px + step;
+        }
+        if (game.isKeyDown("arrowup")) {
+            py = py - step;
+        }
+        if (game.isKeyDown("arrowdown")) {
+            py = py + step;
+        }
+
+        hitWall = game.overlapRect(px, py, pw, ph, wallX, wallY, wallW, wallH);
+        hitCircle = game.overlapCircle(px + (pw / 2), py + (ph / 2), pw / 2, cx, cy, cr);
+        mouseInWall = game.pointInRect(game.getMouseX(), game.getMouseY(), wallX, wallY, wallW, wallH);
+        mouseInCircle = game.pointInCircle(game.getMouseX(), game.getMouseY(), cx, cy, cr);
+    }
+
+    function render() {
+        game.clear();
+        game.fillRect(wallX, wallY, wallW, wallH, "#445566");
+        game.strokeRect(wallX, wallY, wallW, wallH, "#88aacc", 2);
+        game.fillCircle(cx, cy, cr, "#334466");
+
+        var color = "#33cc66";
+        if (hitWall || hitCircle) {
+            color = "#ee6688";
+        }
+        game.fillRect(px, py, pw, ph, color);
+
+        game.fillCircle(game.getMouseX(), game.getMouseY(), 4, "#ffee88");
+
+        var overlapText = "free";
+        if (hitWall && hitCircle) {
+            overlapText = "rect+circle";
+        } else {
+            if (hitWall) {
+                overlapText = "rect";
+            }
+            if (hitCircle) {
+                overlapText = "circle";
+            }
+        }
+
+        var mouseText = "mouse out";
+        if (mouseInWall && mouseInCircle) {
+            mouseText = "mouse in both";
+        } else {
+            if (mouseInWall) {
+                mouseText = "mouse in rect";
+            }
+            if (mouseInCircle) {
+                mouseText = "mouse in circle";
+            }
+        }
+
+        game.drawText("overlap " + overlapText + "  " + mouseText, 12, 24, "#ffffff", "14px monospace");
+        game.drawText("Inclusive AABB: touching edges count. Zero-size rects are false.", 12, 44, "#99ddee", "12px monospace");
+    }
+
+    game.createCanvas(640, 360, "#app");
+    game.setBackground("#151b24");
+    game.start(update, render);
+}
