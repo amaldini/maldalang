@@ -1119,7 +1119,16 @@ const missingModel = three.loadGLTF("missing.gltf");
   if (cached !== model) throw new Error("loadGLTF should cache by url");
   await waitReady(model, "ok.gltf should become ready");
   if (!model.children.length) throw new Error("ready model should have children");
-  const mesh = model.children[0] && model.children[0].children[0];
+  function findMesh(obj) {
+    if (obj && obj.geometry && obj.geometry.attributes) return obj;
+    const kids = (obj && obj.children) || [];
+    for (let i = 0; i < kids.length; i++) {
+      const found = findMesh(kids[i]);
+      if (found) return found;
+    }
+    return null;
+  }
+  const mesh = findMesh(model);
   if (!mesh || !mesh.geometry || !mesh.geometry.attributes.position) {
     throw new Error("gltf mesh missing position attribute");
   }
