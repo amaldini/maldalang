@@ -22,4 +22,6 @@ That tunnel demo is a CC-BY-NC-SA-4.0 conversion of [Frostbyte’s path march](h
 
 JS / PWA samples need `malda compile … --mode js` (or the Desktop/Web IDE browser path). See [`docs/spec/backend-capability-matrix.md`](../../docs/spec/backend-capability-matrix.md) and [`docs/javascript-backend.md`](../../docs/javascript-backend.md).
 
+Forward plan for the games kit (sprites, input, `malda play`, 3D assets): [`docs/roadmap-games.md`](../../docs/roadmap-games.md).
+
 Catalog fields: [`metadata.json`](metadata.json).
