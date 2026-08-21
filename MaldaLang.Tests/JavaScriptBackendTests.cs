@@ -1335,7 +1335,11 @@ function FakeSource(kind) {
 FakeSource.prototype.connect = function () {};
 FakeSource.prototype.disconnect = function () {};
 FakeSource.prototype.start = function () { this.started = true; };
-FakeSource.prototype.stop = function () {
+FakeSource.prototype.stop = function (when) {
+  if (arguments.length > 0) {
+    this.scheduledStop = when;
+    return;
+  }
   this.stopped = true;
   if (typeof this.onended === "function") this.onended();
 };
