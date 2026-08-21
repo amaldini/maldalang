@@ -108,6 +108,7 @@ What to expect today:
 - JavaScript backend only — do not run the starter with the interpreter
 - `malda play` is the inner loop; itch.io-style packaging is still `malda compile --mode pwa -o dist`
 - Samples and smoke hosts live under `Examples/Games/`
+- Featured kit showcase: `malda play Examples/Games/malda_platform.malda` (atlas tiles, camera, AABB, key edges, sample SFX, `startFixed`)
 
 This path emphasizes **MALDA Web** (browser JS) plus the canvas API in chapter 26 of the Reference Manual.
 
