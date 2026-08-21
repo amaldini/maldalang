@@ -1884,6 +1884,8 @@
         running: false,
         rafId: null,
         lastTimestamp: null,
+        fixedAccumulator: 0,
+        fixedTickMs: 1000 / 60,
         backgroundColor: "#000000",
         keysDown: new Set(),
         pendingKeyPressed: new Set(),
@@ -3377,24 +3379,36 @@
         return null;
       }
 
-      function start(updateFn, renderFn) {
-        ensureCanvasContext("start");
-        requireBrowserApi("mlRuntime.game.start");
+      function beginLoop(apiName, updateFn, renderFn) {
+        ensureCanvasContext(apiName);
+        requireBrowserApi("mlRuntime.game." + apiName);
         if (typeof window.requestAnimationFrame !== "function") {
-          throw new Error("mlRuntime.game.start requires window.requestAnimationFrame.");
+          throw new Error("mlRuntime.game." + apiName + " requires window.requestAnimationFrame.");
         }
         if (state.running) {
-          throw new Error("mlRuntime.game.start cannot be called while a game loop is already running.");
+          throw new Error("mlRuntime.game." + apiName + " cannot be called while a game loop is already running.");
         }
         if (typeof updateFn !== "function") {
-          throw new Error("mlRuntime.game.start requires updateFn(dtMs) to be a function.");
+          throw new Error("mlRuntime.game." + apiName + " requires updateFn(dtMs) to be a function.");
         }
         if (renderFn !== null && renderFn !== undefined && typeof renderFn !== "function") {
-          throw new Error("mlRuntime.game.start expected renderFn to be a function when provided.");
+          throw new Error("mlRuntime.game." + apiName + " expected renderFn to be a function when provided.");
         }
+      }
+
+      function haltLoop() {
+        state.running = false;
+        state.rafId = null;
+        state.lastTimestamp = null;
+        state.fixedAccumulator = 0;
+      }
+
+      function start(updateFn, renderFn) {
+        beginLoop("start", updateFn, renderFn);
 
         state.running = true;
         state.lastTimestamp = null;
+        state.fixedAccumulator = 0;
 
         const frame = (timestamp) => {
           if (!state.running) return;
@@ -3412,9 +3426,67 @@
             }
           } catch (error) {
             endInputFrame();
-            state.running = false;
-            state.rafId = null;
-            state.lastTimestamp = null;
+            haltLoop();
+            throw error;
+          }
+
+          if (state.running) {
+            state.rafId = window.requestAnimationFrame(frame);
+          }
+        };
+
+        state.rafId = window.requestAnimationFrame(frame);
+        return null;
+      }
+
+      function startFixed(updateFn, renderFn, tickMs) {
+        if (typeof renderFn === "number" && (tickMs === undefined || tickMs === null)) {
+          tickMs = renderFn;
+          renderFn = undefined;
+        }
+
+        beginLoop("startFixed", updateFn, renderFn);
+
+        const resolvedTick = tickMs === undefined || tickMs === null
+          ? 1000 / 60
+          : clampFiniteNumber(tickMs, 1, 1000, 1000 / 60);
+
+        state.running = true;
+        state.lastTimestamp = null;
+        state.fixedAccumulator = 0;
+        state.fixedTickMs = resolvedTick;
+
+        const maxUpdates = 5;
+        const frame = (timestamp) => {
+          if (!state.running) return;
+
+          try {
+            const currentTimestamp = toFiniteNumber(timestamp, 0);
+            const dtMs = state.lastTimestamp === null ? 0 : Math.max(0, currentTimestamp - state.lastTimestamp);
+            state.lastTimestamp = currentTimestamp;
+            state.fixedAccumulator += dtMs;
+
+            let steps = 0;
+            while (state.fixedAccumulator >= state.fixedTickMs && steps < maxUpdates) {
+              state.fixedAccumulator -= state.fixedTickMs;
+              steps += 1;
+              beginInputFrame();
+              try {
+                updateFn(state.fixedTickMs);
+              } finally {
+                endInputFrame();
+              }
+            }
+            if (steps >= maxUpdates) {
+              state.fixedAccumulator = 0;
+            }
+
+            if (typeof renderFn === "function") {
+              renderFn();
+            }
+          } catch (error) {
+            endInputFrame();
+            haltLoop();
             throw error;
           }
 
@@ -3437,9 +3509,75 @@
         if (state.rafId !== null && typeof window.cancelAnimationFrame === "function") {
           window.cancelAnimationFrame(state.rafId);
         }
-        state.rafId = null;
-        state.lastTimestamp = null;
+        haltLoop();
         resetKeyboardAndPointerState();
+        return null;
+      }
+
+      const GAME_SAVE_PREFIX = "malda.game.";
+
+      function getLocalStorage() {
+        try {
+          if (typeof window === "undefined" || !window.localStorage) return null;
+          return window.localStorage;
+        } catch (error) {
+          return null;
+        }
+      }
+
+      function serializeSaveValue(value) {
+        try {
+          const json = toJSON(value);
+          if (typeof json === "string") return json;
+        } catch (error) {
+          // Fall through to string coercion.
+        }
+        try {
+          return JSON.stringify(coerceToString(value));
+        } catch (error) {
+          return null;
+        }
+      }
+
+      function save(key, value) {
+        const name = coerceToString(key || "");
+        if (!name) return null;
+        const storage = getLocalStorage();
+        if (!storage || typeof storage.setItem !== "function") return null;
+        const json = serializeSaveValue(value);
+        if (typeof json !== "string") return null;
+        try {
+          storage.setItem(GAME_SAVE_PREFIX + name, json);
+        } catch (error) {
+          // QuotaExceeded or private-mode: no-op.
+        }
+        return null;
+      }
+
+      function load(key) {
+        const name = coerceToString(key || "");
+        if (!name) return null;
+        const storage = getLocalStorage();
+        if (!storage || typeof storage.getItem !== "function") return null;
+        try {
+          const raw = storage.getItem(GAME_SAVE_PREFIX + name);
+          if (raw === null || raw === undefined) return null;
+          return parseJSON(raw);
+        } catch (error) {
+          return null;
+        }
+      }
+
+      function removeSave(key) {
+        const name = coerceToString(key || "");
+        if (!name) return null;
+        const storage = getLocalStorage();
+        if (!storage || typeof storage.removeItem !== "function") return null;
+        try {
+          storage.removeItem(GAME_SAVE_PREFIX + name);
+        } catch (error) {
+          // Missing storage: no-op.
+        }
         return null;
       }
 
@@ -3495,7 +3633,11 @@
         audioPlayPattern,
         audioStopPattern,
         start,
-        stop
+        startFixed,
+        stop,
+        save,
+        load,
+        removeSave
       };
     })(),
     three: (() => {

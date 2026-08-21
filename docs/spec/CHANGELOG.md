@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — JS game fixed timestep + save)
+
+- **G5 `game.startFixed` / `game.save` / `game.load` / `game.removeSave` (JavaScript backend only):** `startFixed(updateFn, renderFn?, tickMs?)` defaults `tickMs` to `1000 / 60`, accrues wall time, calls `update(tickMs)` zero or more times per rAF (max 5 catch-up, then drop remainder), then `render` once. Mutually exclusive with `game.start`. `save`/`load`/`removeSave` store JSON in origin-scoped `localStorage` under `malda.game.` (not files). Quota / missing storage / corrupt JSON: save no-ops, load returns `null`. Example: `Examples/Games/game_fixed_save_smoke.malda`. Interpreter / C# transpile: n/a (`game-canvas`).
+
 #### Added (MINOR — JS game sample SFX)
 
 - **G4 `game.audioPlaySample` / `game.audioStopSample` (JavaScript backend only):** overlapping WAV/OGG one-shots through the shared Web Audio graph. `audioPlaySample(url, volume?, options?)` decodes once per URL (`volume` default `1`, clamp `[0, 1]`; `{ loop: true }` repeats) and returns `null`. `audioStopSample(url?)` stops samples only — not the v1 HTML-audio track, pattern, or tones. Failed fetch/decode and empty URL no-op. Samples share the 32-node cap. Audio Spec v1 signatures unchanged. Example: `Examples/Games/game_audio_sample_smoke.malda`. Interpreter / C# transpile: n/a (`game-canvas`).
@@ -302,3 +306,4 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-08-21 | MINOR: JS `game.wasKeyPressed` / touches / gamepad (G2) |
 | 2026-08-21 | MINOR: JS `game.overlapRect` / circle / point queries (G3) |
 | 2026-08-21 | MINOR: JS `game.audioPlaySample` / `audioStopSample` (G4) |
+| 2026-08-21 | MINOR: JS `game.startFixed` / `save` / `load` / `removeSave` (G5) |

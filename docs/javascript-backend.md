@@ -107,7 +107,7 @@ Validation rules currently enforced:
     - `actors.stop(actorRef)`, `actors.shutdownAsync()`, `actors.callActorOrVoidStop(target)`
   - DOM helpers: `dom.query`, `dom.create`, `dom.append`, `dom.clear`, `dom.setText`, `dom.html`, `dom.on`
   - Game helpers:
-    - Canvas/lifecycle: `game.createCanvas(width, height, mountSelector?)`, `game.setBackground(color)`, `game.start(updateFn, renderFn?)`, `game.stop()`
+    - Canvas/lifecycle: `game.createCanvas(width, height, mountSelector?)`, `game.setBackground(color)`, `game.start(updateFn, renderFn?)`, `game.startFixed(updateFn, renderFn?, tickMs?)`, `game.stop()`, `game.save(key, value)`, `game.load(key)`, `game.removeSave(key)`
     - Drawing: `game.clear()`, `game.fillRect(x, y, width, height, color?)`, `game.fillCircle(x, y, radius, color?)`, `game.drawText(text, x, y, color?, font?)`, `game.drawLine(x1, y1, x2, y2, color?, width?)`, `game.strokeRect(x, y, w, h, color?, width?)`, `game.setAlpha(a)`
     - Images / camera: `game.loadImage(url)`, `game.imageIsReady(handle)`, `game.drawImage(handle, x, y, w?, h?)`, `game.drawImageRect(handle, sx, sy, sw, sh, dx, dy, dw?, dh?)`, `game.setCamera(x, y)`, `game.getCameraX()`, `game.getCameraY()`
     - Pixel buffer / blit: `game.createPixelBuffer(width?, height?)`, `game.setPixel(x, y, r, g, b, a?)`, `game.blitPixels(pixels?, destX?, destY?)`
@@ -147,7 +147,11 @@ Use `game.*` when you want a browser-hosted interactive canvas loop in MALDA Jav
   - `game.createCanvas(width, height, mountSelector?)`
   - `game.setBackground(color)`
   - `game.start(updateFn, renderFn?)`
+  - `game.startFixed(updateFn, renderFn?, tickMs?)` — default `tickMs` = `1000 / 60`; accrue wall `dtMs`, call `update(tickMs)` zero or more times (max 5), then `render` once. Mutually exclusive with `game.start`
   - `game.stop()`
+  - `game.save(key, value)` — JSON in origin `localStorage` under `malda.game.`
+  - `game.load(key)` — parsed JSON, or `null` if missing/corrupt
+  - `game.removeSave(key)`
 - Drawing:
   - `game.clear()`
   - `game.fillRect(...)`
@@ -248,7 +252,7 @@ function update(dtMs) {
 
 ### Guardrails and error conditions
 
-- Call `game.createCanvas(...)` before `game.clear(...)`, draw calls, pixel-buffer calls, camera/alpha calls, or `game.start(...)`. `game.loadImage` / `game.imageIsReady`, overlap helpers (`overlapRect`, `overlapCircle`, `pointInRect`, `pointInCircle`), and `game.audio*` may run without a canvas.
+- Call `game.createCanvas(...)` before `game.clear(...)`, draw calls, pixel-buffer calls, camera/alpha calls, or `game.start(...)` / `game.startFixed(...)`. `game.loadImage` / `game.imageIsReady`, overlap helpers (`overlapRect`, `overlapCircle`, `pointInRect`, `pointInCircle`), `game.audio*`, and `game.save` / `game.load` / `game.removeSave` may run without a canvas.
 - Unready image handles (still decoding, missing URL, or decode failure) make `drawImage` / `drawImageRect` no-op. They do not throw.
 - `game.setCamera` offsets `fillRect`, `fillCircle`, `drawText`, `drawLine`, `strokeRect`, and image draws. It does **not** offset `setPixel` / `blitPixels`. Mouse helpers stay in canvas pixels.
 - Overlap helpers are inclusive AABB / circle tests in the numbers you pass. They do **not** subtract `setCamera`. Zero or negative width, height, or radius is `false`. Not swept collision or physics.
@@ -261,10 +265,12 @@ function update(dtMs) {
 - Use `game.setPixel` + `game.blitPixels()` for full-frame CPU rendering. Do not call `game.fillRect` once per pixel.
 - `game.blitPixels(pixels)` requires `pixels.length` to be `bufferWidth * bufferHeight * 3` (RGB) or `* 4` (RGBA). The buffer matches the canvas unless `createPixelBuffer(width, height)` requested another size.
 - Do not call `game.createCanvas(...)` while the loop is running; call `game.stop()` first.
-- Do not call `game.start(...)` twice without stopping in between.
+- Do not call `game.start(...)` or `game.startFixed(...)` twice without stopping in between. They share one running flag.
+- `game.startFixed` always passes `tickMs` into `update` (not the wall-clock frame delta). After a long pause it runs at most 5 catch-up updates and drops the rest.
+- `game.save` / `game.load` are origin-scoped browser `localStorage` (`malda.game.` prefix), not files. Quota / missing storage / corrupt JSON: save no-ops, load returns `null`.
 - Call `game.stop()` only when a loop is active.
 
-See `Examples/Games/game_bounce.malda` and `Examples/Games/game_runtime_smoke_test.html` for a complete playable reference. See `Examples/Games/game_sprite_smoke.malda` for PNG atlas blit and a scrolling camera. See `Examples/Games/game_input_smoke.malda` for key edges, touches, and gamepad. See `Examples/Games/game_collision_smoke.malda` for AABB and circle overlap. See `Examples/Games/game_audio_sample_smoke.malda` for overlapping WAV one-shots next to a looping pattern. See `Examples/Games/maldadash.malda` for a Boulder Dash-style tile cave (gravity rocks, diamonds, fireflies). See `Examples/Games/ray_tracer.malda` for a CPU ray tracer that fills the pixel buffer and blits it once per frame.
+See `Examples/Games/game_bounce.malda` and `Examples/Games/game_runtime_smoke_test.html` for a complete playable reference. See `Examples/Games/game_sprite_smoke.malda` for PNG atlas blit and a scrolling camera. See `Examples/Games/game_input_smoke.malda` for key edges, touches, and gamepad. See `Examples/Games/game_collision_smoke.malda` for AABB and circle overlap. See `Examples/Games/game_audio_sample_smoke.malda` for overlapping WAV one-shots next to a looping pattern. See `Examples/Games/game_fixed_save_smoke.malda` for `startFixed` plus a high score that survives reload. See `Examples/Games/maldadash.malda` for a Boulder Dash-style tile cave (gravity rocks, diamonds, fireflies). See `Examples/Games/ray_tracer.malda` for a CPU ray tracer that fills the pixel buffer and blits it once per frame.
 
 ## three.js Quick Start (`three.*`)
 

@@ -114,6 +114,28 @@
       "documentationTitle": "Browser Track"
     },
     {
+      "name": "JS Canvas Fixed Timestep + Save Smoke",
+      "description": "game.startFixed catch-up ticks plus a high score that survives reload via game.save/load",
+      "file": "game_fixed_save_smoke.malda",
+      "track": "student",
+      "difficulty": "intermediate",
+      "minutes": 8,
+      "concepts": [
+        "game.*",
+        "fixed timestep",
+        "localStorage",
+        "JavaScript target"
+      ],
+      "prerequisites": [
+        "Games/game_bounce.malda"
+      ],
+      "learningGoal": "Show startFixed(update, render, tickMs) and origin-scoped save/load without copying a dt clamp.",
+      "expectedOutput": "A box moves at a fixed tick. Space raises score and high score; reload keeps the high score. R resets score; D deletes the save.",
+      "next": "Games/maldadash.malda",
+      "documentationPath": "/?lesson=browser-track#lesson-browser-track",
+      "documentationTitle": "Browser Track"
+    },
+    {
       "name": "JS Canvas Ray Tracer",
       "description": "Simple CPU ray tracer (spheres, ground plane, shadows) using game.setPixel and game.blitPixels",
       "file": "ray_tracer.malda",

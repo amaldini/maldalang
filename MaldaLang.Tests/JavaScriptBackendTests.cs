@@ -608,6 +608,21 @@ public class JavaScriptBackendTests : TestBase
     }
 
     [Fact]
+    public void JsTranspiler_FixedSaveSmokeExample_EmitsStartFixedAndSave()
+    {
+        var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Games", "game_fixed_save_smoke.malda");
+        var compiler = new Compiler.Compiler();
+        var js = compiler.TranspileToJavaScript(sourcePath);
+
+        Assert.Contains("mlRuntime.game.startFixed(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.save(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.load(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.removeSave(", js, StringComparison.Ordinal);
+        Assert.Contains("fixed_smoke_high", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("mlRuntime.three.", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void JsTranspiler_RayTracerExample_EmitsPixelBlitCalls()
     {
         var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Games", "ray_tracer.malda");
@@ -1597,6 +1612,240 @@ function startedBuffers() {
     }
 
     [Fact]
+    public void GameRuntime_StartFixedAndSaveLoad_CapsCatchUpAndPrefixesKeys()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var runtimePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "wwwroot", "malda-js-runtime.js");
+        var root = CreateTempDirectory("malda_js_fixed_save_");
+        try
+        {
+            var scriptPath = Path.Combine(root, "fixed-save-test.js");
+            File.WriteAllText(scriptPath, """
+function makeCanvas() {
+  return {
+    width: 0,
+    height: 0,
+    style: {},
+    parentNode: null,
+    getContext() {
+      return {
+        fillStyle: "#000",
+        font: "",
+        globalAlpha: 1,
+        fillRect() {},
+        clearRect() {},
+        beginPath() {},
+        arc() {},
+        fill() {},
+        fillText() {}
+      };
+    },
+    getBoundingClientRect() {
+      return { left: 0, top: 0, width: this.width, height: this.height };
+    }
+  };
+}
+
+const mount = {
+  children: [],
+  appendChild(el) {
+    this.children.push(el);
+    el.parentNode = this;
+    return el;
+  },
+  removeChild(el) {
+    this.children = this.children.filter((child) => child !== el);
+    el.parentNode = null;
+    return el;
+  }
+};
+
+const listeners = {};
+let rafQueue = [];
+const memory = {};
+const storage = {
+  getItem(key) {
+    return Object.prototype.hasOwnProperty.call(memory, key) ? memory[key] : null;
+  },
+  setItem(key, value) {
+    if (storage._throwOnSet) throw new Error("quota");
+    memory[key] = String(value);
+  },
+  removeItem(key) { delete memory[key]; }
+};
+
+globalThis.document = {
+  body: mount,
+  querySelector() { return mount; },
+  createElement(tag) {
+    if (tag === "canvas") return makeCanvas();
+    return { style: {} };
+  }
+};
+globalThis.window = {
+  addEventListener(type, fn) {
+    listeners[type] = listeners[type] || [];
+    listeners[type].push(fn);
+  },
+  removeEventListener() {},
+  requestAnimationFrame(cb) {
+    rafQueue.push(cb);
+    return rafQueue.length;
+  },
+  cancelAnimationFrame() {},
+  localStorage: storage
+};
+
+require(process.argv[2]);
+const game = globalThis.mlRuntime.game;
+
+function fire(type, event) {
+  const list = listeners[type] || [];
+  for (let i = 0; i < list.length; i++) list[i](event);
+}
+
+function runFrame(ts) {
+  const cb = rafQueue.shift();
+  if (!cb) throw new Error("no rAF callback at " + ts);
+  cb(ts);
+}
+
+game.createCanvas(64, 32, "#app");
+
+if (game.load("missing") !== null) throw new Error("missing key should be null");
+if (game.save("", 1) !== null) throw new Error("empty key save should no-op");
+if (game.load("") !== null) throw new Error("empty key load should be null");
+
+game.save("high", 12);
+if (game.load("high") !== 12) throw new Error("load number failed: " + game.load("high"));
+if (memory["malda.game.high"] !== "12") throw new Error("save prefix missing: " + JSON.stringify(memory));
+
+game.save("blob", { "name": "p1", "n": 3 });
+const blob = game.load("blob");
+if (!blob || blob.name !== "p1" || blob.n !== 3) throw new Error("load object failed");
+
+memory["malda.game.broken"] = "{";
+if (game.load("broken") !== null) throw new Error("corrupt JSON should be null");
+
+game.removeSave("high");
+if (game.load("high") !== null) throw new Error("removeSave should delete");
+if (Object.prototype.hasOwnProperty.call(memory, "malda.game.high")) throw new Error("removeSave left prefix key");
+
+storage._throwOnSet = true;
+game.save("quota", 1);
+storage._throwOnSet = false;
+if (game.load("quota") !== null) throw new Error("quota failure should no-op");
+
+const previousStorage = window.localStorage;
+delete window.localStorage;
+game.save("gone", 1);
+if (game.load("gone") !== null) throw new Error("missing localStorage load should be null");
+window.localStorage = previousStorage;
+
+const log = [];
+game.startFixed(function update(dt) {
+  log.push({ phase: "update", dt: dt, space: game.wasKeyPressed(" ") });
+}, function render() {
+  log.push({ phase: "render", space: game.wasKeyPressed(" ") });
+}, 16);
+
+runFrame(0);
+if (log.length !== 1 || log[0].phase !== "render") {
+  throw new Error("first fixed frame is dt=0 so only render: " + JSON.stringify(log));
+}
+
+runFrame(16);
+if (log.length !== 3 || log[1].phase !== "update" || log[1].dt !== 16 || log[2].phase !== "render") {
+  throw new Error("16ms should step once: " + JSON.stringify(log.slice(1)));
+}
+
+fire("keydown", { key: " " });
+runFrame(64);
+const burst = log.slice(3);
+if (burst.length !== 4) throw new Error("48ms should be 3 updates + render: " + JSON.stringify(burst));
+if (burst[0].phase !== "update" || burst[0].dt !== 16 || burst[0].space !== true) {
+  throw new Error("first catch-up tick should see the press: " + JSON.stringify(burst[0]));
+}
+if (burst[1].space !== false || burst[2].space !== false) {
+  throw new Error("later catch-up ticks must not retrigger press");
+}
+if (burst[3].phase !== "render" || burst[3].space !== false) {
+  throw new Error("render should not see edges");
+}
+
+const beforeCap = log.length;
+runFrame(1064);
+const cap = log.slice(beforeCap);
+const capUpdates = cap.filter((row) => row.phase === "update");
+if (capUpdates.length !== 5 || cap[cap.length - 1].phase !== "render") {
+  throw new Error("spiral cap should be 5 updates + render: " + JSON.stringify(cap));
+}
+
+let startWhileFixed = false;
+try {
+  game.start(function () {}, function () {});
+} catch (error) {
+  startWhileFixed = String(error.message).indexOf("already running") >= 0;
+}
+if (!startWhileFixed) throw new Error("start during startFixed should throw already running");
+
+game.stop();
+rafQueue.length = 0;
+
+game.start(function () {}, function () {});
+let fixedWhileStart = false;
+try {
+  game.startFixed(function () {}, function () {}, 16);
+} catch (error) {
+  fixedWhileStart = String(error.message).indexOf("already running") >= 0;
+}
+if (!fixedWhileStart) throw new Error("startFixed during start should throw already running");
+game.stop();
+rafQueue.length = 0;
+
+const defaultLog = [];
+game.startFixed(function update(dt) { defaultLog.push(dt); }, function () {});
+runFrame(0);
+runFrame(1000 / 60);
+if (defaultLog.length !== 1 || Math.abs(defaultLog[0] - 1000 / 60) > 0.0001) {
+  throw new Error("default tickMs should be 1000/60: " + JSON.stringify(defaultLog));
+}
+game.stop();
+
+process.stdout.write("ok\n");
+process.exit(0);
+""");
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = Environment.GetEnvironmentVariable("MALDA_NODE_PATH") is { Length: > 0 } nodePath
+                    ? nodePath
+                    : "node",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = root
+            };
+            startInfo.ArgumentList.Add(scriptPath);
+            startInfo.ArgumentList.Add(runtimePath);
+
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Failed to start Node.js for fixed-timestep runtime test.");
+            var stdout = process.StandardOutput.ReadToEnd();
+            var stderr = process.StandardError.ReadToEnd();
+            process.WaitForExit(15000);
+            Assert.True(process.ExitCode == 0, $"fixed-timestep runtime test failed ({process.ExitCode}). stderr: {stderr}");
+            Assert.Equal("ok", stdout.Trim());
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
+        }
+    }
+
+    [Fact]
     public void JsTranspiler_MapsGameAudioApis_ToMlRuntimeGame()
     {
         var source = """
@@ -1670,6 +1919,27 @@ function startedBuffers() {
         Assert.Contains("mlRuntime.game.audioPlaySample(\"assets/beep_lo.wav\", 0.5,", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.audioStopSample(\"assets/beep_hi.wav\")", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.audioStopSample()", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void JsTranspiler_MapsGameFixedTimestepAndSaveApis_ToMlRuntimeGame()
+    {
+        var source = """
+            game.startFixed(update, render);
+            game.startFixed(update, render, 1000 / 60);
+            game.save("high", 12);
+            var high = game.load("high");
+            game.removeSave("high");
+            """;
+        var compiler = new Compiler.Compiler();
+
+        var js = compiler.TranspileToJavaScriptFromSource(source);
+
+        Assert.Contains("mlRuntime.game.startFixed(update, render)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.startFixed(update, render, 1000 / 60)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.save(\"high\", 12)", js, StringComparison.Ordinal);
+        Assert.Contains("let high = mlRuntime.game.load(\"high\");", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.removeSave(\"high\")", js, StringComparison.Ordinal);
     }
 
     [Fact]
