@@ -1,0 +1,208 @@
+var root = dom.query("#app");
+
+if (root == null) {
+    println("No #app container found.");
+} else {
+    dom.clear(root);
+
+    var title = dom.create("h1");
+    dom.setText(title, "MALDA Game: Platform");
+    dom.append(root, title);
+
+    var hint = dom.create("p");
+    dom.setText(hint, "Arrows run. Space or Up jumps. Camera follows. Green tiles are ground; magenta tiles are coins. R restarts. Click or a key unlocks jump/coin SFX.");
+    dom.append(root, hint);
+
+    var canvasW = 640;
+    var canvasH = 360;
+    var worldW = 1600;
+
+    var tiles = game.loadImage("assets/sprite_tiles.png");
+    var tileSize = 32;
+
+    var playerW = 18.0;
+    var playerH = 26.0;
+    var runSpeed = 210;
+    var jumpSpeed = -430;
+    var gravity = 1150;
+    var maxFall = 540;
+
+    var playerX = 48.0;
+    var playerY = 286.0;
+    var vy = 0.0;
+    var onGround = false;
+
+    var platX = [0, 200, 430, 700, 980, 1280];
+    var platY = [312, 240, 186, 228, 164, 248];
+    var platW = [1600, 140, 150, 170, 140, 180];
+    var platH = [48, 24, 24, 24, 24, 24];
+
+    var coinX = [248, 486, 760, 1028, 1348];
+    var coinY = [216, 162, 204, 140, 224];
+    var coinGot = [false, false, false, false, false];
+    var coinSize = 16.0;
+
+    var coins = 0;
+    var high = 0;
+    var audioBooted = false;
+
+    var loaded = game.load("platform_high");
+    if (loaded != null) {
+        high = loaded;
+    }
+
+    function resetRun() {
+        playerX = 48.0;
+        playerY = 286.0;
+        vy = 0.0;
+        onGround = false;
+        coins = 0;
+        var i = 0;
+        while (i < coinGot.length) {
+            coinGot[i] = false;
+            i = i + 1;
+        }
+    }
+
+    function tryStartAudio() {
+        if (!audioBooted) {
+            game.audioInit();
+            audioBooted = true;
+            game.audioSetMasterVolume(0.65);
+        }
+    }
+
+    function updateGame(dtMs) {
+        if (game.wasKeyPressed("r")) {
+            resetRun();
+        }
+
+        if (game.isKeyDown("arrowleft") ||
+            game.isKeyDown("arrowright") ||
+            game.wasKeyPressed(" ") ||
+            game.wasKeyPressed("arrowup") ||
+            game.isMouseDown(0)) {
+            tryStartAudio();
+        }
+
+        var step = (runSpeed * dtMs) / 1000;
+        if (game.isKeyDown("arrowleft")) {
+            playerX = playerX - step;
+        }
+        if (game.isKeyDown("arrowright")) {
+            playerX = playerX + step;
+        }
+        if (playerX < 0) {
+            playerX = 0;
+        }
+        if (playerX + playerW > worldW) {
+            playerX = worldW - playerW;
+        }
+
+        if (onGround && (game.wasKeyPressed(" ") || game.wasKeyPressed("arrowup"))) {
+            vy = jumpSpeed;
+            onGround = false;
+            game.audioPlaySample("assets/beep_hi.wav", 0.8);
+        }
+
+        vy = vy + ((gravity * dtMs) / 1000);
+        if (vy > maxFall) {
+            vy = maxFall;
+        }
+        playerY = playerY + ((vy * dtMs) / 1000);
+
+        onGround = false;
+        var p = 0;
+        while (p < platX.length) {
+            if (game.overlapRect(playerX, playerY, playerW, playerH, platX[p], platY[p], platW[p], platH[p])) {
+                if (vy >= 0) {
+                    var feet = playerY + playerH;
+                    if (feet <= platY[p] + 18) {
+                        playerY = platY[p] - playerH;
+                        vy = 0;
+                        onGround = true;
+                    }
+                }
+            }
+            p = p + 1;
+        }
+
+        var c = 0;
+        while (c < coinX.length) {
+            if (!coinGot[c]) {
+                if (game.overlapRect(playerX, playerY, playerW, playerH, coinX[c], coinY[c], coinSize, coinSize)) {
+                    coinGot[c] = true;
+                    coins = coins + 1;
+                    game.audioPlaySample("assets/beep_lo.wav", 0.85);
+                    if (coins > high) {
+                        high = coins;
+                        game.save("platform_high", high);
+                    }
+                }
+            }
+            c = c + 1;
+        }
+    }
+
+    function drawPlatform(x, y, w, h) {
+        if (game.imageIsReady(tiles)) {
+            var t = 0;
+            while (t < w) {
+                var tw = tileSize;
+                if (t + tw > w) {
+                    tw = w - t;
+                }
+                game.drawImageRect(tiles, 0, 0, 16, 16, x + t, y, tw, h);
+                t = t + tileSize;
+            }
+        } else {
+            game.fillRect(x, y, w, h, "#33aa55");
+        }
+    }
+
+    function renderGame() {
+        game.clear();
+
+        var camX = playerX - 280;
+        if (camX < 0) {
+            camX = 0;
+        }
+        var maxCam = worldW - canvasW;
+        if (camX > maxCam) {
+            camX = maxCam;
+        }
+        game.setCamera(camX, 0);
+
+        var p = 0;
+        while (p < platX.length) {
+            drawPlatform(platX[p], platY[p], platW[p], platH[p]);
+            p = p + 1;
+        }
+
+        var c = 0;
+        while (c < coinX.length) {
+            if (!coinGot[c]) {
+                if (game.imageIsReady(tiles)) {
+                    game.drawImageRect(tiles, 16, 0, 16, 16, coinX[c], coinY[c], coinSize, coinSize);
+                } else {
+                    game.fillRect(coinX[c], coinY[c], coinSize, coinSize, "#ee66cc");
+                }
+            }
+            c = c + 1;
+        }
+
+        game.fillRect(playerX, playerY, playerW, playerH, "#66ccff");
+
+        game.setCamera(0, 0);
+        game.drawText("Coins: " + string(coins) + "/" + string(coinX.length) + "  High: " + string(high), 12, 24, "#ffffff", "14px monospace");
+        if (coins >= coinX.length) {
+            game.drawText("All coins! Press R to restart.", 12, 46, "#ffee88", "14px monospace");
+        } else {
+            game.drawText("Arrows run  Space/Up jump  R restart", 12, 46, "#99ddee", "12px monospace");
+        }
+    }
+
+    game.createCanvas(canvasW, canvasH, "#app");
+    game.setBackground("#151b24");
+    game.startFixed(updateGame, renderGame);
+}
