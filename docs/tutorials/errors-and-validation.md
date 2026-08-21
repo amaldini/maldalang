@@ -38,9 +38,14 @@ if (result.isOk(r)) {
 } else {
     io.print("failed");
 }
+
+function doubleAge(n) {
+    return result.ok(n * 2);
+}
+io.print(result.unwrapOr(parseAge("12") |> result.andThen(doubleAge), 0));
 ```
 
-Helpers live on the `result` / `option` modules (`result.ok`, `result.err`, `result.isOk`, `result.unwrapOr`, …).
+Helpers live on the `result` / `option` modules (`result.ok`, `result.err`, `result.isOk`, `result.unwrapOr`, `result.andThen`, …). Use `map` to transform an `Ok`/`Some` payload; use `andThen` when the next step itself returns a Result or Option.
 
 ## `schema` + `validate`
 

@@ -97,6 +97,14 @@ print(result.isOk(r));
 print(result.isErr(r));
 '@ "20`ntrue`nfalse"
 
+Write-Case "result-andthen-chain" @'
+var chained = result.ok(10)
+    |> result.andThen((x) => result.ok(x * 2))
+    |> result.andThen((x) => result.ok(x + 1));
+print(result.unwrapOr(chained, 0));
+print(result.isErr(result.andThen(result.err("bad"), (x) => result.ok(x))));
+'@ "21`ntrue"
+
 Write-Case "result-err-unwrapor" @'
 var r = result.err("bad");
 var mapped = result.map(r, (x) => x);

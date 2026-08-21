@@ -1,6 +1,6 @@
 {
     "version":  1,
-    "caseCount":  102,
+    "caseCount":  103,
     "cases":  [
                   {
                       "id":  "T0-001",
@@ -829,6 +829,17 @@
                   },
                   {
                       "id":  "T0-076",
+                      "file":  "result-andthen-chain.malda",
+                      "title":  "result andthen chain",
+                      "spec":  "4.4",
+                      "backends":  {
+                                       "interpreter":  true,
+                                       "csharp":  true,
+                                       "javascript":  true
+                                   }
+                  },
+                  {
+                      "id":  "T0-077",
                       "file":  "result-err-unwrapor.malda",
                       "title":  "result err unwrapor",
                       "spec":  "4.4",
@@ -839,7 +850,7 @@
                                    }
                   },
                   {
-                      "id":  "T0-077",
+                      "id":  "T0-078",
                       "file":  "result-is-err-true.malda",
                       "title":  "result is err true",
                       "spec":  "4.4",
@@ -850,7 +861,7 @@
                                    }
                   },
                   {
-                      "id":  "T0-078",
+                      "id":  "T0-079",
                       "file":  "result-map-unwrap.malda",
                       "title":  "result map unwrap",
                       "spec":  "4.4",
@@ -861,7 +872,7 @@
                                    }
                   },
                   {
-                      "id":  "T0-079",
+                      "id":  "T0-080",
                       "file":  "run-property-stable.malda",
                       "title":  "run property stable",
                       "spec":  "15",
@@ -872,7 +883,7 @@
                                    }
                   },
                   {
-                      "id":  "T0-080",
+                      "id":  "T0-081",
                       "file":  "string-concat.malda",
                       "title":  "string concat",
                       "spec":  "7",
@@ -883,7 +894,7 @@
                                    }
                   },
                   {
-                      "id":  "T0-081",
+                      "id":  "T0-082",
                       "file":  "string-length-builtin.malda",
                       "title":  "string length builtin",
                       "spec":  "7",
@@ -894,7 +905,7 @@
                                    }
                   },
                   {
-                      "id":  "T0-082",
+                      "id":  "T0-083",
                       "file":  "string-not-equal.malda",
                       "title":  "string not equal",
                       "spec":  "7",
@@ -905,7 +916,7 @@
                                    }
                   },
                   {
-                      "id":  "T0-083",
+                      "id":  "T0-084",
                       "file":  "sum-ok-payload-field.malda",
                       "title":  "sum ok payload field",
                       "spec":  "8-9",
@@ -916,7 +927,7 @@
                                    }
                   },
                   {
-                      "id":  "T0-084",
+                      "id":  "T0-085",
                       "file":  "sum-type-divide-ok.malda",
                       "title":  "sum type divide ok",
                       "spec":  "8-9",
@@ -927,7 +938,7 @@
                                    }
                   },
                   {
-                      "id":  "T0-085",
+                      "id":  "T0-086",
                       "file":  "sum-type-err-branch.malda",
                       "title":  "sum type err branch",
                       "spec":  "7",
@@ -938,7 +949,7 @@
                                    }
                   },
                   {
-                      "id":  "T0-086",
+                      "id":  "T0-087",
                       "file":  "sum-type-match.malda",
                       "title":  "sum type match",
                       "spec":  "8-9",
@@ -949,7 +960,7 @@
                                    }
                   },
                   {
-                      "id":  "T0-087",
+                      "id":  "T0-088",
                       "file":  "sum-type-none-constructor.malda",
                       "title":  "sum type none constructor",
                       "spec":  "8",
@@ -960,7 +971,7 @@
                                    }
                   },
                   {
-                      "id":  "T0-088",
+                      "id":  "T0-089",
                       "file":  "ternary-true-branch.malda",
                       "title":  "ternary true branch",
                       "spec":  "7",
@@ -971,7 +982,7 @@
                                    }
                   },
                   {
-                      "id":  "T0-089",
+                      "id":  "T0-090",
                       "file":  "try-catch-string.malda",
                       "title":  "try catch string",
                       "spec":  "12",
@@ -982,7 +993,7 @@
                                    }
                   },
                   {
-                      "id":  "T0-090",
+                      "id":  "T0-091",
                       "file":  "typeof-array.malda",
                       "title":  "typeof array",
                       "spec":  "4.3",
@@ -993,7 +1004,7 @@
                                    }
                   },
                   {
-                      "id":  "T0-091",
+                      "id":  "T0-092",
                       "file":  "typeof-bool.malda",
                       "title":  "typeof bool",
                       "spec":  "4.3",
@@ -1004,7 +1015,7 @@
                                    }
                   },
                   {
-                      "id":  "T0-092",
+                      "id":  "T0-093",
                       "file":  "typeof-dict.malda",
                       "title":  "typeof dict",
                       "spec":  "4.3",
@@ -1015,7 +1026,7 @@
                                    }
                   },
                   {
-                      "id":  "T0-093",
+                      "id":  "T0-094",
                       "file":  "typeof-float.malda",
                       "title":  "typeof float",
                       "spec":  "4.3",
@@ -1026,7 +1037,7 @@
                                    }
                   },
                   {
-                      "id":  "T0-094",
+                      "id":  "T0-095",
                       "file":  "typeof-int.malda",
                       "title":  "typeof int",
                       "spec":  "4.3",
@@ -1037,7 +1048,7 @@
                                    }
                   },
                   {
-                      "id":  "T0-095",
+                      "id":  "T0-096",
                       "file":  "typeof-null.malda",
                       "title":  "typeof null",
                       "spec":  "4.3",
@@ -1048,7 +1059,7 @@
                                    }
                   },
                   {
-                      "id":  "T0-096",
+                      "id":  "T0-097",
                       "file":  "typeof-string.malda",
                       "title":  "typeof string",
                       "spec":  "4.3",
@@ -1059,7 +1070,7 @@
                                    }
                   },
                   {
-                      "id":  "T0-097",
+                      "id":  "T0-098",
                       "file":  "typeof-task.malda",
                       "title":  "typeof task",
                       "spec":  "11",
@@ -1070,7 +1081,7 @@
                                    }
                   },
                   {
-                      "id":  "T0-098",
+                      "id":  "T0-099",
                       "file":  "typeof-variant.malda",
                       "title":  "typeof variant",
                       "spec":  "8",
@@ -1081,7 +1092,7 @@
                                    }
                   },
                   {
-                      "id":  "T0-099",
+                      "id":  "T0-100",
                       "file":  "unary-minus.malda",
                       "title":  "unary minus",
                       "spec":  "7",
@@ -1092,7 +1103,7 @@
                                    }
                   },
                   {
-                      "id":  "T0-100",
+                      "id":  "T0-101",
                       "file":  "using-dispose.malda",
                       "title":  "using dispose",
                       "spec":  "18",
@@ -1103,7 +1114,7 @@
                                    }
                   },
                   {
-                      "id":  "T0-101",
+                      "id":  "T0-102",
                       "file":  "variant-err-message.malda",
                       "title":  "variant err message",
                       "spec":  "8-9",
@@ -1114,7 +1125,7 @@
                                    }
                   },
                   {
-                      "id":  "T0-102",
+                      "id":  "T0-103",
                       "file":  "while-loop-count.malda",
                       "title":  "while loop count",
                       "spec":  "7",

@@ -65,6 +65,7 @@ $specByFile = @{
     "result-err-unwrapor.malda" = "4.4"
     "result-is-err-true.malda" = "4.4"
     "result-map-unwrap.malda" = "4.4"
+    "result-andthen-chain.malda" = "4.4"
 }
 
 $jsReason = "JavaScript Tier 0 backend is not part of CI; see docs/spec/tier0-backend-matrix.md"
@@ -171,6 +172,7 @@ $jsPilot = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::O
     "result-err-unwrapor.malda"
     "result-is-err-true.malda"
     "result-map-unwrap.malda"
+    "result-andthen-chain.malda"
     "run-property-stable.malda"
     "using-dispose.malda"
 ) | ForEach-Object { [void]$jsPilot.Add($_) }

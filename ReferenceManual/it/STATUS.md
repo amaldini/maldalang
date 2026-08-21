@@ -24,7 +24,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 10-prompts.html | 6cda4dc7b6a02e4409f1bcf7d1621a6dde5eef22ea45113d23edc5497d4874a6 |
 | 11-classes-objects.html | 0702178b625a5b46cf42cc3d82eb54ae79d75cdea8084cf3217866cf265ed9e3 |
 | 12-input-output.html | f987187b3b7f5bcde4726b2e185d0c27944b43a71e3a193f6a1c520cb578fd25 |
-| 13-built-in-functions.html | 6505b26c6fa607e16190625cc4e34fe01b9e2b0bf0f3fb18d8cd8136d1cb4086 |
+| 13-built-in-functions.html | 479ad1387e531fe4f84567e530df84336ed430ed32cd7d5ceb89721510fa4f88 |
 | 14-graphs.html | 58afbfc7e886bd1844c42a4afa250013289d040abb90c8d5813e85bfa6750773 |
 | 15-vectordb.html | 05a6a95520be77e820f9b95523e0d8cad81141d36942081807d43434a7826ec0 |
 | 16-database.html | 1c8702ed18890bf5bedd56dd559f3f7ddb37f6427afb60200b41951dbf31d832 |

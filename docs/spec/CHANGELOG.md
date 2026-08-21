@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — result/option bind)
+
+- **`result.andThen` / `option.andThen`:** sequencing helpers beside `map`. `result.andThen(r, fn)` calls `fn(payload)` when `r` is `Ok` and returns that Result unchanged; `Err` skips `fn`. `fn` must return `Ok`/`Err` (a bare payload is an error — use `result.map`). Same contract on `option` with `Some`/`None`. Pipe-friendly: `parse(raw) |> result.andThen(validate)`. Interpreter, C# transpile, and JS agree. Conformance: `result-andthen-chain.malda`. Narrative: [`13-built-in-functions.html`](../../ReferenceManual/13-built-in-functions.html) §13.19.1.
+
 #### Added (MINOR — optional api parameter types)
 
 - **`api` method params:** optional `SchemaType` hints, same form as sum-type constructor payloads (`function add(a: number, b: number)`). Name-only remains valid and permissive. Declared types feed program JSON Schema (narrow the `args` union; always keep `string` for `"$alias"`) and coercion (`"2"` becomes a number only when the hint is `number`/`int`; a `string` hint keeps `"2"`). Prompt parameters stay name-only. Implementing `function` bodies stay untyped. Grammar: [`35-grammar.html`](../../ReferenceManual/35-grammar.html) `ApiMethodSig`; narrative: [`10-prompts.html`](../../ReferenceManual/10-prompts.html) §10.8. Example: `Examples/Prompts/api_program_calc.malda`.

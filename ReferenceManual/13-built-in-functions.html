@@ -879,9 +879,22 @@ print(option.isNone(missing));</code></pre>
             <li><code>result.isOk(r)</code> / <code>result.isErr(r)</code> — tag tests</li>
             <li><code>result.unwrapOr(r, fallback)</code> — payload of <code>Ok</code>, otherwise <code>fallback</code></li>
             <li><code>result.map(r, fn)</code> — apply <code>fn</code> to an <code>Ok</code> payload; leave <code>Err</code> unchanged</li>
+            <li><code>result.andThen(r, fn)</code> — if <code>Ok</code>, call <code>fn(payload)</code> and return that Result; if <code>Err</code>, skip <code>fn</code>. <code>fn</code> must return <code>Ok</code>/<code>Err</code> (use <code>map</code> to transform a bare payload)</li>
             <li><code>option.some(value)</code> / <code>option.none()</code> — construct a <code>Some</code> or <code>None</code> variant</li>
-            <li><code>option.isSome(o)</code> / <code>option.isNone(o)</code> / <code>option.unwrapOr(o, fallback)</code> / <code>option.map(o, fn)</code> — the same pattern for optional values</li>
+            <li><code>option.isSome(o)</code> / <code>option.isNone(o)</code> / <code>option.unwrapOr(o, fallback)</code> / <code>option.map(o, fn)</code> / <code>option.andThen(o, fn)</code> — the same pattern for optional values</li>
         </ul>
+        <pre><code data-run="true" data-expect="24\ntrue">function parseAge(raw) {
+    var n = toIntOrNull(raw);
+    if (n == null) {
+        return result.err("not an int");
+    }
+    return result.ok(n);
+}
+function doubleAge(n) {
+    return result.ok(n * 2);
+}
+print(result.unwrapOr(parseAge("12") |> result.andThen(doubleAge), 0));
+print(result.isErr(parseAge("x") |> result.andThen(doubleAge)));</code></pre>
         <p>Do not treat type hints (<code>var n: int = …</code>) as runtime validation. For JSON-shaped payloads use <code>schema</code> and <a href="#validate"><code>validate()</code></a>. Tutorial: <a href="../docs/tutorials/errors-and-validation.md">errors, Result/Option, and schema validate</a>.</p>
         <h3 id="grounded-values">13.19.2 <code>grounded.wrap</code></h3>
         <p>Retrieval citations (GraphMemory, files, tools) are not a <code>match</code>-visible value kind. Wrap a payload so provenance is a dict you can read:</p>

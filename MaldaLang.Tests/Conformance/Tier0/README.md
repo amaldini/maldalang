@@ -13,11 +13,11 @@ See [phase-5-conformance.md](../../../docs/planning/phase-5-conformance.md) and 
 | `typeOf` / `isTag` | `typeof-*.malda`, `is-tag-legacy.malda` |
 | Sum types + `match` | `sum-type-match.malda`, `sum-type-divide-ok.malda` |
 | `async` / `await` / `all` | `async-await.malda`, `all-variadic.malda` |
-| `result` / `option` | `result-map-unwrap.malda`, `option-some-map.malda` |
+| `result` / `option` | `result-map-unwrap.malda`, `result-andthen-chain.malda`, `option-some-map.malda` |
 
 | Pipe / comprehension / resources / `const` | `pipe-sort.malda`, `list-comprehension-filter.malda`, `defer-lifo.malda`, `using-dispose.malda`, `const-read.malda` |
 
-**102** cases — run via `Tier0MaldaConformanceTests` and `Tier0BackendMatrixTests`. JavaScript pilot: **90** cases when Node + `malda-js-runtime.js` are available ([phase-5-js-tier0-rollout.md](../../../docs/planning/phase-5-js-tier0-rollout.md)).
+**103** cases — run via `Tier0MaldaConformanceTests` and `Tier0BackendMatrixTests`. JavaScript pilot: **90** cases when Node + `malda-js-runtime.js` are available ([phase-5-js-tier0-rollout.md](../../../docs/planning/phase-5-js-tier0-rollout.md)).
 
 ## Spec anchors (`Tier0ConformanceTests`)
 

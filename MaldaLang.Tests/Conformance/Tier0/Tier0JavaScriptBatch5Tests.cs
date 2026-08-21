@@ -20,6 +20,7 @@ public class Tier0JavaScriptBatch5Tests
         ["result-err-unwrapor.malda"],
         ["result-is-err-true.malda"],
         ["result-map-unwrap.malda"],
+        ["result-andthen-chain.malda"],
         ["run-property-stable.malda"],
         ["using-dispose.malda"]
     ];
