@@ -111,6 +111,7 @@ Validation rules currently enforced:
     - Drawing: `game.clear()`, `game.fillRect(x, y, width, height, color?)`, `game.fillCircle(x, y, radius, color?)`, `game.drawText(text, x, y, color?, font?)`, `game.drawLine(x1, y1, x2, y2, color?, width?)`, `game.strokeRect(x, y, w, h, color?, width?)`, `game.setAlpha(a)`
     - Images / camera: `game.loadImage(url)`, `game.imageIsReady(handle)`, `game.drawImage(handle, x, y, w?, h?)`, `game.drawImageRect(handle, sx, sy, sw, sh, dx, dy, dw?, dh?)`, `game.setCamera(x, y)`, `game.getCameraX()`, `game.getCameraY()`
     - Pixel buffer / blit: `game.createPixelBuffer(width?, height?)`, `game.setPixel(x, y, r, g, b, a?)`, `game.blitPixels(pixels?, destX?, destY?)`
+    - Collision: `game.overlapRect(x1, y1, w1, h1, x2, y2, w2, h2)`, `game.overlapCircle(x1, y1, r1, x2, y2, r2)`, `game.pointInRect(px, py, x, y, w, h)`, `game.pointInCircle(px, py, x, y, r)`
     - Input: `game.isKeyDown(key)`, `game.wasKeyPressed(key)`, `game.wasKeyReleased(key)`, `game.getMouseX()`, `game.getMouseY()`, `game.isMouseDown(button?)`, `game.getTouches()`, `game.isGamepadConnected(index?)`, `game.getGamepadAxis(index, axis)`, `game.isGamepadButtonDown(index, button)`, `game.wasGamepadButtonPressed(index, button)`
   - Three helpers:
     - Renderer/lifecycle: `three.createRenderer(width, height, mountSelector?)`, `three.setClearColor(renderer, color)`, `three.setRendererSize(renderer, width, height)`, `three.start(updateFn, renderFn?)`, `three.stop()`
@@ -166,6 +167,10 @@ Use `game.*` when you want a browser-hosted interactive canvas loop in MALDA Jav
   - `game.setPixel(x, y, r, g, b, a?)` — write one RGBA pixel (0–255; alpha defaults to 255). Out-of-bounds writes are ignored. Auto-creates the buffer.
   - `game.blitPixels()` — `putImageData` the buffer at `(0, 0)`
   - `game.blitPixels(pixels, destX?, destY?)` — upload a packed RGB (`w*h*3`) or RGBA (`w*h*4`) array, then blit. Destination defaults to `(0, 0)`.
+- Collision:
+  - `game.overlapRect(x1, y1, w1, h1, x2, y2, w2, h2)` — inclusive AABB; touching edges count. `w`/`h` ≤ 0 → `false`
+  - `game.overlapCircle(x1, y1, r1, x2, y2, r2)` — inclusive (distance ≤ r1+r2). `r` ≤ 0 → `false`
+  - `game.pointInRect(px, py, x, y, w, h)`, `game.pointInCircle(px, py, x, y, r)`
 - Input:
   - `game.isKeyDown("arrowleft")`, `game.isKeyDown("arrowright")`, etc.
   - `game.wasKeyPressed(key)`, `game.wasKeyReleased(key)` — true on the first **update** after key-down / key-up; same names as `isKeyDown`
@@ -237,9 +242,10 @@ function update(dtMs) {
 
 ### Guardrails and error conditions
 
-- Call `game.createCanvas(...)` before `game.clear(...)`, draw calls, pixel-buffer calls, camera/alpha calls, or `game.start(...)`. `game.loadImage` / `game.imageIsReady` may run without a canvas.
+- Call `game.createCanvas(...)` before `game.clear(...)`, draw calls, pixel-buffer calls, camera/alpha calls, or `game.start(...)`. `game.loadImage` / `game.imageIsReady` and overlap helpers (`overlapRect`, `overlapCircle`, `pointInRect`, `pointInCircle`) may run without a canvas.
 - Unready image handles (still decoding, missing URL, or decode failure) make `drawImage` / `drawImageRect` no-op. They do not throw.
 - `game.setCamera` offsets `fillRect`, `fillCircle`, `drawText`, `drawLine`, `strokeRect`, and image draws. It does **not** offset `setPixel` / `blitPixels`. Mouse helpers stay in canvas pixels.
+- Overlap helpers are inclusive AABB / circle tests in the numbers you pass. They do **not** subtract `setCamera`. Zero or negative width, height, or radius is `false`. Not swept collision or physics.
 - Read `wasKeyPressed` / `wasKeyReleased` / `wasGamepadButtonPressed` in `update` only. Edges are snapshotted at the start of `update` and are **false in `render`**. Holding a key or button does not retrigger.
 - First active touch still aliases mouse button 0 so existing `isMouseDown` games keep working. `getTouches()` is canvas pixels.
 - Missing Gamepad API or a disconnected pad: `isGamepadConnected` is false and axes are `0`.
@@ -250,7 +256,7 @@ function update(dtMs) {
 - Do not call `game.start(...)` twice without stopping in between.
 - Call `game.stop()` only when a loop is active.
 
-See `Examples/Games/game_bounce.malda` and `Examples/Games/game_runtime_smoke_test.html` for a complete playable reference. See `Examples/Games/game_sprite_smoke.malda` for PNG atlas blit and a scrolling camera. See `Examples/Games/game_input_smoke.malda` for key edges, touches, and gamepad. See `Examples/Games/maldadash.malda` for a Boulder Dash-style tile cave (gravity rocks, diamonds, fireflies). See `Examples/Games/ray_tracer.malda` for a CPU ray tracer that fills the pixel buffer and blits it once per frame.
+See `Examples/Games/game_bounce.malda` and `Examples/Games/game_runtime_smoke_test.html` for a complete playable reference. See `Examples/Games/game_sprite_smoke.malda` for PNG atlas blit and a scrolling camera. See `Examples/Games/game_input_smoke.malda` for key edges, touches, and gamepad. See `Examples/Games/game_collision_smoke.malda` for AABB and circle overlap. See `Examples/Games/maldadash.malda` for a Boulder Dash-style tile cave (gravity rocks, diamonds, fireflies). See `Examples/Games/ray_tracer.malda` for a CPU ray tracer that fills the pixel buffer and blits it once per frame.
 
 ## three.js Quick Start (`three.*`)
 
