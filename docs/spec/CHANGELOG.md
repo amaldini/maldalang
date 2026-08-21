@@ -111,6 +111,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 - **G9 `malda new game --fullstack`:** flag on the G6 `game` template (alias `malda new game-fullstack`) emits one `.malda` with `@client()` canvas (`startFixed`, key edges, AABB, `game.save`/`load`) plus `@GET` / `@POST` `/api/scores` and `schema Score` / `validate("Score", …)`. Server list is in-memory (top 10). Next step is `malda compile app.malda --mode fullstack -o dist` then run the server with `MALDA_WEB_DIRECTORY` pointing at `dist/web`. `malda play` refuses fullstack sources. Host prompts / LLM NPCs stay README commentary. Docs: [`docs/start-here.md`](../start-here.md) path “Build a Browser Game”. Template: `Templates/game-fullstack/`.
 
+#### Fixed (PATCH — RestServer JSON object returns)
+
+- **Transpiled RestServer handlers** that return MALDA object literals now serialize as JSON objects. C# emit uses `Dictionary<string, object?>`; RestServer previously dropped that to HTTP `null`. HttpServer already converted dictionaries; both now share `WebRuntimeHelpers.ConvertTranspiledResultToRuntimeValue`. Needed for G9 `/api/health` and `/api/scores`.
+
 #### Added (MINOR — `malda new game` / `malda play`)
 
 - **G6 CLI scaffolding + preview:** `malda new game [directory]` is a third template beside `webapi` / `fullstack`. It emits `app.malda`, `index.html` (runtime then compiled script), `README.md`, and optional `assets/`. Next step: `malda play app.malda`. No `config/environments` and `--local-first` is ignored. `malda play <file.malda>` compiles `--mode js` into a sibling `.malda-play/` folder, copies `malda-js-runtime.js` and `assets/` when present, serves a host page, and prints a local URL (`--open` may launch a browser; Ctrl+C stops). PWA packaging remains `malda compile --mode pwa`. Interpreter / C# transpile: n/a (`game-canvas`). Docs: [`docs/start-here.md`](../start-here.md) path “Build a Browser Game”.
@@ -317,3 +321,4 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-08-21 | MINOR: JS `game.startFixed` / `save` / `load` / `removeSave` (G5) |
 | 2026-08-21 | MINOR: `malda new game` / `malda play` JS preview (G6) |
 | 2026-08-21 | MINOR: `malda new game --fullstack` scores template (G9) |
+| 2026-08-21 | PATCH: RestServer serializes transpiled object-literal JSON bodies | |

@@ -70,4 +70,35 @@ public static class Program
         payload.Set("status", RuntimeValue.String("ok"));
         return Task.FromResult<object>(payload);
     }
+
+    /// <summary>
+    /// Mirrors C# transpile of a MALDA object literal (G9 <c>/api/health</c>).
+    /// </summary>
+    public static Task<object> ReturnDictionaryHealthPayload()
+    {
+        return Task.FromResult<object>(new Dictionary<string, object?>
+        {
+            ["app"] = "tapscore",
+            ["status"] = "ok"
+        });
+    }
+
+    /// <summary>
+    /// Mirrors C# transpile of G9 <c>/api/scores</c> (object + nested list of objects).
+    /// </summary>
+    public static Task<object> ReturnDictionaryScoresPayload()
+    {
+        return Task.FromResult<object>(new Dictionary<string, object?>
+        {
+            ["ok"] = true,
+            ["scores"] = new List<object>
+            {
+                new Dictionary<string, object?>
+                {
+                    ["name"] = "Ada",
+                    ["points"] = 12
+                }
+            }
+        });
+    }
 }
