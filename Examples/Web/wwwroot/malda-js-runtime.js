@@ -1886,9 +1886,20 @@
         lastTimestamp: null,
         backgroundColor: "#000000",
         keysDown: new Set(),
+        pendingKeyPressed: new Set(),
+        pendingKeyReleased: new Set(),
+        keysPressed: new Set(),
+        keysReleased: new Set(),
         mouseButtonsDown: new Set(),
         mouseX: 0,
         mouseY: 0,
+        touches: new Map(),
+        gamepadConnected: new Set(),
+        gamepadButtonsDown: new Set(),
+        gamepadButtonsPrev: new Set(),
+        gamepadButtonsPressed: new Set(),
+        gamepadAxes: {},
+        inputFrameActive: false,
         listenersAttached: false,
         listeners: null,
         audioContext: null,
@@ -2067,40 +2078,166 @@
         return handle;
       }
 
-      function updateMousePosition(event) {
-        if (!state.canvas) return;
+      function canvasPointFromClient(clientX, clientY) {
+        if (!state.canvas) {
+          return { x: 0, y: 0 };
+        }
         const rect = state.canvas.getBoundingClientRect();
-        const displayX = toFiniteNumber(event.clientX, 0) - rect.left;
-        const displayY = toFiniteNumber(event.clientY, 0) - rect.top;
+        const displayX = toFiniteNumber(clientX, 0) - rect.left;
+        const displayY = toFiniteNumber(clientY, 0) - rect.top;
         const scaleX = rect.width > 0 ? state.canvas.width / rect.width : 1;
         const scaleY = rect.height > 0 ? state.canvas.height / rect.height : 1;
-        state.mouseX = displayX * scaleX;
-        state.mouseY = displayY * scaleY;
+        return {
+          x: displayX * scaleX,
+          y: displayY * scaleY
+        };
+      }
+
+      function updateMousePosition(event) {
+        if (!state.canvas || !event) return;
+        const point = canvasPointFromClient(event.clientX, event.clientY);
+        state.mouseX = point.x;
+        state.mouseY = point.y;
       }
 
       function updateMouseFromTouch(touch) {
         if (!state.canvas || !touch) return;
-        const rect = state.canvas.getBoundingClientRect();
-        const displayX = toFiniteNumber(touch.clientX, 0) - rect.left;
-        const displayY = toFiniteNumber(touch.clientY, 0) - rect.top;
-        const scaleX = rect.width > 0 ? state.canvas.width / rect.width : 1;
-        const scaleY = rect.height > 0 ? state.canvas.height / rect.height : 1;
-        state.mouseX = displayX * scaleX;
-        state.mouseY = displayY * scaleY;
+        const point = canvasPointFromClient(touch.clientX, touch.clientY);
+        state.mouseX = point.x;
+        state.mouseY = point.y;
+      }
+
+      function upsertTouch(touch) {
+        if (!touch) return;
+        const id = coerceToInt(touch.identifier);
+        const point = canvasPointFromClient(touch.clientX, touch.clientY);
+        state.touches.set(id, { id: id, x: point.x, y: point.y });
+      }
+
+      function syncPrimaryTouchMouse(touchList) {
+        const primary = touchList && touchList.length > 0 ? touchList[0] : null;
+        if (primary) {
+          updateMouseFromTouch(primary);
+          state.mouseButtonsDown.add(0);
+        } else {
+          state.mouseButtonsDown.delete(0);
+        }
+      }
+
+      function resetKeyboardAndPointerState() {
+        state.keysDown.clear();
+        state.pendingKeyPressed.clear();
+        state.pendingKeyReleased.clear();
+        state.keysPressed.clear();
+        state.keysReleased.clear();
+        state.mouseButtonsDown.clear();
+        state.mouseX = 0;
+        state.mouseY = 0;
+        state.touches.clear();
+        state.gamepadButtonsDown.clear();
+        state.gamepadButtonsPrev.clear();
+        state.gamepadButtonsPressed.clear();
+        state.gamepadConnected.clear();
+        state.gamepadAxes = {};
+        state.inputFrameActive = false;
+      }
+
+      function gamepadButtonKey(padIndex, buttonIndex) {
+        return String(padIndex) + ":" + String(buttonIndex);
+      }
+
+      function gamepadAxisKey(padIndex, axisIndex) {
+        return String(padIndex) + ":" + String(axisIndex);
+      }
+
+      function pollGamepads() {
+        state.gamepadConnected.clear();
+        state.gamepadButtonsDown.clear();
+        state.gamepadAxes = {};
+        let pads = null;
+        try {
+          if (typeof navigator !== "undefined" && typeof navigator.getGamepads === "function") {
+            pads = navigator.getGamepads();
+          }
+        } catch (_error) {
+          pads = null;
+        }
+        if (!pads) {
+          return;
+        }
+
+        const count = typeof pads.length === "number" ? pads.length : 0;
+        for (let i = 0; i < count; i++) {
+          const pad = pads[i];
+          if (!pad) {
+            continue;
+          }
+          state.gamepadConnected.add(i);
+          const axes = pad.axes || [];
+          for (let a = 0; a < axes.length; a++) {
+            state.gamepadAxes[gamepadAxisKey(i, a)] = clampFiniteNumber(axes[a], -1, 1, 0);
+          }
+          const buttons = pad.buttons || [];
+          for (let b = 0; b < buttons.length; b++) {
+            const button = buttons[b];
+            const pressed = button && typeof button === "object" ? !!button.pressed : !!button;
+            if (pressed) {
+              state.gamepadButtonsDown.add(gamepadButtonKey(i, b));
+            }
+          }
+        }
+      }
+
+      function ensureGamepadSnapshot() {
+        if (!state.inputFrameActive) {
+          pollGamepads();
+        }
+      }
+
+      function beginInputFrame() {
+        state.keysPressed = state.pendingKeyPressed;
+        state.keysReleased = state.pendingKeyReleased;
+        state.pendingKeyPressed = new Set();
+        state.pendingKeyReleased = new Set();
+
+        pollGamepads();
+        state.gamepadButtonsPressed.clear();
+        for (const key of state.gamepadButtonsDown) {
+          if (!state.gamepadButtonsPrev.has(key)) {
+            state.gamepadButtonsPressed.add(key);
+          }
+        }
+        state.gamepadButtonsPrev = new Set(state.gamepadButtonsDown);
+        state.inputFrameActive = true;
+      }
+
+      function endInputFrame() {
+        state.keysPressed = new Set();
+        state.keysReleased = new Set();
+        state.gamepadButtonsPressed.clear();
+        state.inputFrameActive = false;
       }
 
       function attachInputListeners() {
         if (state.listenersAttached || !state.canvas) return;
 
         const onKeyDown = (event) => {
-          state.keysDown.add(normalizeKey(event.key));
+          const key = normalizeKey(event && event.key);
+          if (!state.keysDown.has(key)) {
+            state.pendingKeyPressed.add(key);
+            state.pendingKeyReleased.delete(key);
+          }
+          state.keysDown.add(key);
         };
         const onKeyUp = (event) => {
-          state.keysDown.delete(normalizeKey(event.key));
+          const key = normalizeKey(event && event.key);
+          if (state.keysDown.has(key)) {
+            state.pendingKeyReleased.add(key);
+          }
+          state.keysDown.delete(key);
         };
         const onWindowBlur = () => {
-          state.keysDown.clear();
-          state.mouseButtonsDown.clear();
+          resetKeyboardAndPointerState();
         };
         const onMouseMove = (event) => {
           updateMousePosition(event);
@@ -2114,23 +2251,46 @@
         };
 
         const onTouchStart = (event) => {
-          if (event.cancelable) event.preventDefault();
-          const t = event.touches[0] || event.changedTouches[0];
-          if (t) {
-            updateMouseFromTouch(t);
-            state.mouseButtonsDown.add(0);
+          if (event && event.cancelable) event.preventDefault();
+          const changed = (event && event.changedTouches) || [];
+          for (let i = 0; i < changed.length; i++) {
+            upsertTouch(changed[i]);
           }
+          const active = (event && event.touches) || changed;
+          for (let i = 0; i < active.length; i++) {
+            upsertTouch(active[i]);
+          }
+          syncPrimaryTouchMouse(active);
         };
         const onTouchMove = (event) => {
-          if (event.cancelable) event.preventDefault();
-          const t = event.touches[0];
-          if (t) updateMouseFromTouch(t);
+          if (event && event.cancelable) event.preventDefault();
+          const active = (event && event.touches) || [];
+          for (let i = 0; i < active.length; i++) {
+            upsertTouch(active[i]);
+          }
+          syncPrimaryTouchMouse(active);
         };
         const onTouchEnd = (event) => {
-          state.mouseButtonsDown.delete(0);
+          const changed = (event && event.changedTouches) || [];
+          for (let i = 0; i < changed.length; i++) {
+            state.touches.delete(coerceToInt(changed[i] && changed[i].identifier));
+          }
+          const active = (event && event.touches) || [];
+          if (active.length === 0) {
+            state.touches.clear();
+          }
+          syncPrimaryTouchMouse(active);
         };
-        const onTouchCancel = () => {
-          state.mouseButtonsDown.delete(0);
+        const onTouchCancel = (event) => {
+          const changed = (event && event.changedTouches) || [];
+          for (let i = 0; i < changed.length; i++) {
+            state.touches.delete(coerceToInt(changed[i] && changed[i].identifier));
+          }
+          const active = (event && event.touches) || [];
+          if (active.length === 0) {
+            state.touches.clear();
+          }
+          syncPrimaryTouchMouse(active);
         };
 
         window.addEventListener("keydown", onKeyDown);
@@ -2215,10 +2375,7 @@
         state.context = context;
         state.pixelBuffer = null;
         state.lastTimestamp = null;
-        state.keysDown.clear();
-        state.mouseButtonsDown.clear();
-        state.mouseX = 0;
-        state.mouseY = 0;
+        resetKeyboardAndPointerState();
         state.cameraX = 0;
         state.cameraY = 0;
         state.alpha = 1;
@@ -2596,6 +2753,14 @@
         return state.keysDown.has(normalizeKey(key));
       }
 
+      function wasKeyPressed(key) {
+        return state.keysPressed.has(normalizeKey(key));
+      }
+
+      function wasKeyReleased(key) {
+        return state.keysReleased.has(normalizeKey(key));
+      }
+
       function getMouseX() {
         return state.mouseX;
       }
@@ -2607,6 +2772,41 @@
       function isMouseDown(button) {
         const mouseButton = button === null || button === undefined ? 0 : coerceToInt(button);
         return state.mouseButtonsDown.has(mouseButton);
+      }
+
+      function getTouches() {
+        const result = [];
+        state.touches.forEach(function (touch) {
+          result.push({ id: touch.id, x: touch.x, y: touch.y });
+        });
+        return result;
+      }
+
+      function isGamepadConnected(index) {
+        ensureGamepadSnapshot();
+        const padIndex = index === null || index === undefined ? 0 : coerceToInt(index);
+        return state.gamepadConnected.has(padIndex);
+      }
+
+      function getGamepadAxis(index, axis) {
+        ensureGamepadSnapshot();
+        const padIndex = index === null || index === undefined ? 0 : coerceToInt(index);
+        const axisIndex = coerceToInt(axis);
+        const value = state.gamepadAxes[gamepadAxisKey(padIndex, axisIndex)];
+        return typeof value === "number" ? value : 0;
+      }
+
+      function isGamepadButtonDown(index, button) {
+        ensureGamepadSnapshot();
+        const padIndex = index === null || index === undefined ? 0 : coerceToInt(index);
+        const buttonIndex = coerceToInt(button);
+        return state.gamepadButtonsDown.has(gamepadButtonKey(padIndex, buttonIndex));
+      }
+
+      function wasGamepadButtonPressed(index, button) {
+        const padIndex = index === null || index === undefined ? 0 : coerceToInt(index);
+        const buttonIndex = coerceToInt(button);
+        return state.gamepadButtonsPressed.has(gamepadButtonKey(padIndex, buttonIndex));
       }
 
       function audioInit() {
@@ -2950,11 +3150,14 @@
             const dtMs = state.lastTimestamp === null ? 0 : Math.max(0, currentTimestamp - state.lastTimestamp);
             state.lastTimestamp = currentTimestamp;
 
+            beginInputFrame();
             updateFn(dtMs);
+            endInputFrame();
             if (typeof renderFn === "function") {
               renderFn();
             }
           } catch (error) {
+            endInputFrame();
             state.running = false;
             state.rafId = null;
             state.lastTimestamp = null;
@@ -2982,8 +3185,7 @@
         }
         state.rafId = null;
         state.lastTimestamp = null;
-        state.keysDown.clear();
-        state.mouseButtonsDown.clear();
+        resetKeyboardAndPointerState();
         return null;
       }
 
@@ -3008,9 +3210,16 @@
         setPixel,
         blitPixels,
         isKeyDown,
+        wasKeyPressed,
+        wasKeyReleased,
         getMouseX,
         getMouseY,
         isMouseDown,
+        getTouches,
+        isGamepadConnected,
+        getGamepadAxis,
+        isGamepadButtonDown,
+        wasGamepadButtonPressed,
         audioInit,
         audioIsReady,
         audioSetMasterVolume,

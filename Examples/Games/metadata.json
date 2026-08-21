@@ -47,6 +47,29 @@
       "documentationTitle": "Browser Track"
     },
     {
+      "name": "JS Canvas Input Smoke",
+      "description": "Key press/release edges, multi-touch, and gamepad axes using MALDA game.* input APIs",
+      "file": "game_input_smoke.malda",
+      "track": "student",
+      "difficulty": "intermediate",
+      "minutes": 10,
+      "concepts": [
+        "game.*",
+        "input edges",
+        "touch",
+        "gamepad",
+        "JavaScript target"
+      ],
+      "prerequisites": [
+        "Games/game_bounce.malda"
+      ],
+      "learningGoal": "Show wasKeyPressed/wasKeyReleased, getTouches, and gamepad helpers on the canvas path.",
+      "expectedOutput": "Moves with arrows or the left stick, jumps once per Space tap, and follows the first touch.",
+      "next": "Games/maldadash.malda",
+      "documentationPath": "/?lesson=browser-track#lesson-browser-track",
+      "documentationTitle": "Browser Track"
+    },
+    {
       "name": "JS Canvas Ray Tracer",
       "description": "Simple CPU ray tracer (spheres, ground plane, shadows) using game.setPixel and game.blitPixels",
       "file": "ray_tracer.malda",

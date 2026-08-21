@@ -1,0 +1,91 @@
+var root = dom.query("#app");
+
+if (root == null) {
+    println("No #app container found.");
+} else {
+    dom.clear(root);
+
+    var title = dom.create("h1");
+    dom.setText(title, "MALDA Game: Input smoke");
+    dom.append(root, title);
+
+    var hint = dom.create("p");
+    dom.setText(hint, "Arrows hold-move. Space is wasKeyPressed (one jump per tap). Touches and gamepad axis 0 also move.");
+    dom.append(root, hint);
+
+    var x = 280.0;
+    var y = 160.0;
+    var jumps = 0;
+    var flashMs = 0.0;
+    var speed = 220;
+
+    function update(dtMs) {
+        var step = (speed * dtMs) / 1000;
+        if (game.isKeyDown("arrowleft")) {
+            x = x - step;
+        }
+        if (game.isKeyDown("arrowright")) {
+            x = x + step;
+        }
+        if (game.isKeyDown("arrowup")) {
+            y = y - step;
+        }
+        if (game.isKeyDown("arrowdown")) {
+            y = y + step;
+        }
+
+        if (game.wasKeyPressed(" ")) {
+            jumps = jumps + 1;
+            flashMs = 180;
+        }
+        if (game.wasKeyReleased(" ")) {
+            flashMs = 60;
+        }
+
+        if (game.isGamepadConnected(0)) {
+            x = x + (game.getGamepadAxis(0, 0) * step);
+            y = y + (game.getGamepadAxis(0, 1) * step);
+            if (game.wasGamepadButtonPressed(0, 0)) {
+                jumps = jumps + 1;
+                flashMs = 180;
+            }
+        }
+
+        var touches = game.getTouches();
+        if (length(touches) > 0) {
+            x = touches[0].x;
+            y = touches[0].y;
+        }
+
+        if (flashMs > 0) {
+            flashMs = flashMs - dtMs;
+        }
+    }
+
+    function render() {
+        game.clear();
+        var color = "#33cc66";
+        if (flashMs > 0) {
+            color = "#ffee88";
+        }
+        game.fillRect(x - 16, y - 16, 32, 32, color);
+
+        var touches = game.getTouches();
+        var i = 0;
+        while (i < length(touches)) {
+            game.fillCircle(touches[i].x, touches[i].y, 10, "#66ccff");
+            i = i + 1;
+        }
+
+        var padText = "pad off";
+        if (game.isGamepadConnected(0)) {
+            padText = "pad ax0=" + string(game.getGamepadAxis(0, 0));
+        }
+        game.drawText("jumps " + string(jumps) + "  touches " + string(length(touches)) + "  " + padText, 12, 24, "#ffffff", "14px monospace");
+        game.drawText("Read wasKeyPressed in update, not render.", 12, 44, "#99ddee", "12px monospace");
+    }
+
+    game.createCanvas(640, 360, "#app");
+    game.setBackground("#151b24");
+    game.start(update, render);
+}
