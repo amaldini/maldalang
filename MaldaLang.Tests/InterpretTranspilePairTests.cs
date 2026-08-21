@@ -9,9 +9,10 @@ namespace MaldaLang.Tests;
 /// <summary>
 /// DT7 curated interpret vs C# transpile pairs (same stdout, exit 0).
 /// Compile-only smoke stays in <see cref="TranspileSmokeTests"/>.
-/// v1 n/a (smoke only): LLM-awaiting prompts, agent_governance_golden,
+/// Still n/a (smoke only): LLM-awaiting prompts, agent_governance_golden,
 /// workflow/job Examples (see WorkflowTranspilerParityTests), grounded_ask
-/// (GraphMemory score drift), capability_tokens (cwd file I/O).
+/// (GraphMemory score drift), capability_tokens Example (relative cwd file I/O;
+/// abs-path cap fixtures are inline below).
 /// </summary>
 public class InterpretTranspilePairTests
 {
@@ -25,6 +26,8 @@ public class InterpretTranspilePairTests
     [InlineData("Examples/Modules/selective_import.malda")]
     [InlineData("Examples/Modules/export_type_schema.malda")]
     [InlineData("Examples/Basics/async_all_example.malda")]
+    [InlineData("Examples/Basics/schema_nested_validate.malda")]
+    [InlineData("Examples/Basics/sumtype_typed_payloads.malda")]
     public void Example_InterpretAndTranspile_SameStdout(string relativePath)
     {
         var parts = relativePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
@@ -126,5 +129,180 @@ public class InterpretTranspilePairTests
             io.print(results[0] + results[1]);
             """,
             "async-user-sleep-overlap");
+    }
+
+    [Fact]
+    public void GroundedWrap_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            var g = grounded.wrap("the sky is blue", [
+                { "source": "wiki", "id": "p1", "span": "12-40" }
+            ]);
+            io.print(g.value);
+            io.print(g.sourced);
+            io.print(g.citations.length);
+            io.print(g.citations[0].source);
+            """,
+            "grounded-wrap");
+    }
+
+    [Fact]
+    public void CapMintIsRejectsForge_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            var notes = cap.fileRead("notes.md");
+            io.print(notes.kind);
+            io.print(cap.is(notes, "fileRead"));
+            io.print(cap.is(notes, "fileWrite"));
+            io.print(cap.is({ "kind": "fileRead", "path": "notes.md" }));
+            var forged = false;
+            try {
+                cap.read({ "kind": "fileRead", "path": "notes.md" });
+            } catch (e) {
+                forged = true;
+            }
+            io.print(forged);
+            """,
+            "cap-mint-is-forge");
+    }
+
+    [Fact]
+    public void CapReadWriteAbsolutePath_SameStdout()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "malda_pair_cap_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        var path = Path.Combine(dir, "notes.md").Replace("\\", "/");
+        try
+        {
+            InterpretTranspilePair.AssertSameFromSource(
+                $$"""
+                cap.write(cap.fileWrite("{{path}}"), "hello-cap");
+                io.print(cap.read(cap.fileRead("{{path}}")));
+                io.deleteFile("{{path}}");
+                """,
+                "cap-read-write-abs");
+        }
+        finally
+        {
+            try { Directory.Delete(dir, recursive: true); } catch { /* ignore */ }
+        }
+    }
+
+    [Fact]
+    public void MathFloorIntegerSink_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            var n = 5;
+            io.print(str.repeat("-", math.floor(n / 2)));
+            io.print(str.repeat("x", math.round(2.4)));
+            """,
+            "math-floor-integer-sink");
+    }
+
+    [Fact]
+    public void ResultOption_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            var r = result.ok(10);
+            io.print(result.unwrapOr(result.map(r, (x) => x * 2), 0));
+            io.print(result.isErr(result.err("bad")));
+            var o = option.some(3);
+            io.print(option.unwrapOr(option.map(o, (n) => n + 1), 0));
+            io.print(option.isNone(option.none()));
+            """,
+            "result-option");
+    }
+
+    [Fact]
+    public void PrimaryConstructor_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            class Point(x, y) {
+                function total() {
+                    return this.x + this.y;
+                }
+            }
+            var p = new Point(3, 4);
+            io.print(p.x);
+            io.print(p.total());
+            """,
+            "primary-constructor");
+    }
+
+    [Fact]
+    public void TaggedCatch_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            try {
+                throw dict { "kind": "IO", "message": "disk full" };
+            } catch (e if e.kind == "IO") {
+                io.print("io:" + e.message);
+            } catch (e) {
+                io.print("other");
+            }
+            try {
+                throw dict { "kind": "Parse", "message": "bad token" };
+            } catch (e if e.kind == "IO") {
+                io.print("io");
+            } catch (e) {
+                io.print("generic:" + e.message);
+            }
+            """,
+            "tagged-catch");
+    }
+
+    [Fact]
+    public void NullConditional_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            var missing = null;
+            io.print(missing?.name == null);
+            io.print(missing?["key"] == null);
+            var d = dict { "a": 7 };
+            io.print(d?.a);
+            """,
+            "null-conditional");
+    }
+
+    [Fact]
+    public void Destructuring_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            var [a, b] = [1, 2];
+            io.print(a + b);
+            var { name } = dict { "name": "Ada" };
+            io.print(name);
+            """,
+            "destructuring");
+    }
+
+    [Fact]
+    public void ParseJSONField_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            var o = parseJSON("{\"n\": 3, \"ok\": true}");
+            io.print(o.n);
+            io.print(o.ok);
+            """,
+            "parse-json-field");
+    }
+
+    [Fact]
+    public void GetEnvOrMissing_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            io.print(io.getEnvOr("MALDA_PAIR_MISSING_ENV_XYZ", "absent"));
+            """,
+            "getenvor-missing");
     }
 }

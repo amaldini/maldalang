@@ -47,6 +47,7 @@ public class CSharpTranspiler
     private readonly ProfilingOptions? _profilingOptions;
     private int _profileTempCounter;
     private int _matchBindCounter;
+    private int _destructureTempCounter;
     private readonly Stack<string> _desugaredForContinueLabels = new();
     private readonly Stack<Dictionary<string, TranspiledClrType>> _typedScopeStack;
     private readonly Stack<HashSet<string>> _constScopeStack;
@@ -12769,21 +12770,26 @@ public class CSharpTranspiler
         TranspilePatternForMatch(pattern);
     }
     
+    private string NextDestructureTemp(string prefix) => $"{prefix}_{++_destructureTempCounter}";
+
     private void TranspileDestructuringVarDecl(DestructuringVarDecl stmt)
     {
+        var valueTemp = NextDestructureTemp("__destructureValue");
         WriteIndent();
-        _output.Append("var __destructureValue = ");
+        _output.Append("var ");
+        _output.Append(valueTemp);
+        _output.Append(" = ");
         TranspileExpression(stmt.Initializer);
         _output.Append(";");
         _output.AppendLine();
         
         if (stmt.Pattern is ArrayDestructuringPattern arrayPattern)
         {
-            TranspileInlineArrayDestructuring(arrayPattern);
+            TranspileInlineArrayDestructuring(arrayPattern, valueTemp);
         }
         else if (stmt.Pattern is ObjectDestructuringPattern objectPattern)
         {
-            TranspileInlineObjectDestructuring(objectPattern);
+            TranspileInlineObjectDestructuring(objectPattern, valueTemp);
         }
         else
         {
@@ -12793,14 +12799,21 @@ public class CSharpTranspiler
         }
     }
     
-    private void TranspileInlineArrayDestructuring(ArrayDestructuringPattern arrayPattern)
+    private void TranspileInlineArrayDestructuring(ArrayDestructuringPattern arrayPattern, string valueTemp)
     {
+        var arrTemp = NextDestructureTemp("__destructureArr");
         var requiredCount = arrayPattern.Rest != null ? arrayPattern.Elements.Count : arrayPattern.Elements.Count;
         WriteIndent();
-        _output.Append("var __destructureArr = RuntimeHelpers.GetArray(__destructureValue);");
+        _output.Append("var ");
+        _output.Append(arrTemp);
+        _output.Append(" = RuntimeHelpers.GetArray(");
+        _output.Append(valueTemp);
+        _output.Append(");");
         _output.AppendLine();
         WriteIndent();
-        _output.Append("if (__destructureArr.Count ");
+        _output.Append("if (");
+        _output.Append(arrTemp);
+        _output.Append(".Count ");
         _output.Append(arrayPattern.Rest != null ? "< " : "!= ");
         _output.Append(requiredCount);
         _output.Append(") throw new System.Exception(\"Destructuring pattern did not match value.\");");
@@ -12812,7 +12825,9 @@ public class CSharpTranspiler
                 WriteIndent();
                 _output.Append("object ");
                 _output.Append(EscapeIdentifier(idPattern.Name));
-                _output.Append(" = __destructureArr[");
+                _output.Append(" = ");
+                _output.Append(arrTemp);
+                _output.Append("[");
                 _output.Append(i);
                 _output.Append("];");
                 _output.AppendLine();
@@ -12820,38 +12835,67 @@ public class CSharpTranspiler
         }
         if (arrayPattern.Rest != null && arrayPattern.Rest.Name != null)
         {
+            var restTemp = NextDestructureTemp("__restList");
+            var indexTemp = NextDestructureTemp("__ri");
             WriteIndent();
-            _output.Append("var __restList = new List<object>();");
+            _output.Append("var ");
+            _output.Append(restTemp);
+            _output.Append(" = new List<object>();");
             _output.AppendLine();
             WriteIndent();
-            _output.Append("for (int __ri = ");
+            _output.Append("for (int ");
+            _output.Append(indexTemp);
+            _output.Append(" = ");
             _output.Append(arrayPattern.Elements.Count);
-            _output.Append("; __ri < __destructureArr.Count; __ri++) __restList.Add(__destructureArr[__ri]);");
+            _output.Append("; ");
+            _output.Append(indexTemp);
+            _output.Append(" < ");
+            _output.Append(arrTemp);
+            _output.Append(".Count; ");
+            _output.Append(indexTemp);
+            _output.Append("++) ");
+            _output.Append(restTemp);
+            _output.Append(".Add(");
+            _output.Append(arrTemp);
+            _output.Append("[");
+            _output.Append(indexTemp);
+            _output.Append("]);");
             _output.AppendLine();
             WriteIndent();
             _output.Append("object ");
             _output.Append(EscapeIdentifier(arrayPattern.Rest.Name));
-            _output.Append(" = __restList;");
+            _output.Append(" = ");
+            _output.Append(restTemp);
+            _output.Append(";");
             _output.AppendLine();
         }
     }
     
-    private void TranspileInlineObjectDestructuring(ObjectDestructuringPattern objectPattern)
+    private void TranspileInlineObjectDestructuring(ObjectDestructuringPattern objectPattern, string valueTemp)
     {
         WriteIndent();
-        _output.AppendLine("if (__destructureValue == null || !RuntimeHelpers.IsObject(__destructureValue)) throw new System.Exception(\"Destructuring pattern did not match value.\");");
+        _output.Append("if (");
+        _output.Append(valueTemp);
+        _output.Append(" == null || !RuntimeHelpers.IsObject(");
+        _output.Append(valueTemp);
+        _output.Append(")) throw new System.Exception(\"Destructuring pattern did not match value.\");");
+        _output.AppendLine();
         foreach (var prop in objectPattern.Properties)
         {
             var varName = prop.BindingName ?? prop.Key;
             WriteIndent();
-            _output.Append("if (!RuntimeHelpers.ObjectHasKey(__destructureValue, \"");
+            _output.Append("if (!RuntimeHelpers.ObjectHasKey(");
+            _output.Append(valueTemp);
+            _output.Append(", \"");
             _output.Append(EscapeIdentifier(prop.Key));
             _output.Append("\")) throw new System.Exception(\"Destructuring pattern did not match value.\");");
             _output.AppendLine();
             WriteIndent();
             _output.Append("object ");
             _output.Append(EscapeIdentifier(varName));
-            _output.Append(" = RuntimeHelpers.GetObjectMember(__destructureValue, \"");
+            _output.Append(" = RuntimeHelpers.GetObjectMember(");
+            _output.Append(valueTemp);
+            _output.Append(", \"");
             _output.Append(EscapeIdentifier(prop.Key));
             _output.Append("\");");
             _output.AppendLine();
@@ -12860,30 +12904,40 @@ public class CSharpTranspiler
     
     private void TranspileDestructuringAssignment(DestructuringAssignment stmt)
     {
+        var valueTemp = NextDestructureTemp("__destructureValue");
         WriteIndent();
-        _output.Append("var __destructureValue = ");
+        _output.Append("var ");
+        _output.Append(valueTemp);
+        _output.Append(" = ");
         TranspileExpression(stmt.Value);
         _output.Append(";");
         _output.AppendLine();
         
         if (stmt.Pattern is ArrayDestructuringPattern arrayPattern)
         {
-            TranspileInlineArrayDestructuringAssignment(arrayPattern);
+            TranspileInlineArrayDestructuringAssignment(arrayPattern, valueTemp);
         }
         else if (stmt.Pattern is ObjectDestructuringPattern objectPattern)
         {
-            TranspileInlineObjectDestructuringAssignment(objectPattern);
+            TranspileInlineObjectDestructuringAssignment(objectPattern, valueTemp);
         }
     }
     
-    private void TranspileInlineArrayDestructuringAssignment(ArrayDestructuringPattern arrayPattern)
+    private void TranspileInlineArrayDestructuringAssignment(ArrayDestructuringPattern arrayPattern, string valueTemp)
     {
+        var arrTemp = NextDestructureTemp("__destructureArr");
         var requiredCount = arrayPattern.Rest != null ? arrayPattern.Elements.Count : arrayPattern.Elements.Count;
         WriteIndent();
-        _output.Append("var __destructureArr = RuntimeHelpers.GetArray(__destructureValue);");
+        _output.Append("var ");
+        _output.Append(arrTemp);
+        _output.Append(" = RuntimeHelpers.GetArray(");
+        _output.Append(valueTemp);
+        _output.Append(");");
         _output.AppendLine();
         WriteIndent();
-        _output.Append("if (__destructureArr.Count ");
+        _output.Append("if (");
+        _output.Append(arrTemp);
+        _output.Append(".Count ");
         _output.Append(arrayPattern.Rest != null ? "< " : "!= ");
         _output.Append(requiredCount);
         _output.Append(") throw new System.Exception(\"Destructuring pattern did not match value.\");");
@@ -12894,7 +12948,9 @@ public class CSharpTranspiler
             {
                 WriteIndent();
                 _output.Append(EscapeIdentifier(idPattern.Name));
-                _output.Append(" = __destructureArr[");
+                _output.Append(" = ");
+                _output.Append(arrTemp);
+                _output.Append("[");
                 _output.Append(i);
                 _output.Append("];");
                 _output.AppendLine();
@@ -12902,36 +12958,65 @@ public class CSharpTranspiler
         }
         if (arrayPattern.Rest != null && arrayPattern.Rest.Name != null)
         {
+            var restTemp = NextDestructureTemp("__restList");
+            var indexTemp = NextDestructureTemp("__ri");
             WriteIndent();
-            _output.Append("var __restList = new List<object>();");
+            _output.Append("var ");
+            _output.Append(restTemp);
+            _output.Append(" = new List<object>();");
             _output.AppendLine();
             WriteIndent();
-            _output.Append("for (int __ri = ");
+            _output.Append("for (int ");
+            _output.Append(indexTemp);
+            _output.Append(" = ");
             _output.Append(arrayPattern.Elements.Count);
-            _output.Append("; __ri < __destructureArr.Count; __ri++) __restList.Add(__destructureArr[__ri]);");
+            _output.Append("; ");
+            _output.Append(indexTemp);
+            _output.Append(" < ");
+            _output.Append(arrTemp);
+            _output.Append(".Count; ");
+            _output.Append(indexTemp);
+            _output.Append("++) ");
+            _output.Append(restTemp);
+            _output.Append(".Add(");
+            _output.Append(arrTemp);
+            _output.Append("[");
+            _output.Append(indexTemp);
+            _output.Append("]);");
             _output.AppendLine();
             WriteIndent();
             _output.Append(EscapeIdentifier(arrayPattern.Rest.Name));
-            _output.Append(" = __restList;");
+            _output.Append(" = ");
+            _output.Append(restTemp);
+            _output.Append(";");
             _output.AppendLine();
         }
     }
     
-    private void TranspileInlineObjectDestructuringAssignment(ObjectDestructuringPattern objectPattern)
+    private void TranspileInlineObjectDestructuringAssignment(ObjectDestructuringPattern objectPattern, string valueTemp)
     {
         WriteIndent();
-        _output.AppendLine("if (__destructureValue == null || !RuntimeHelpers.IsObject(__destructureValue)) throw new System.Exception(\"Destructuring pattern did not match value.\");");
+        _output.Append("if (");
+        _output.Append(valueTemp);
+        _output.Append(" == null || !RuntimeHelpers.IsObject(");
+        _output.Append(valueTemp);
+        _output.Append(")) throw new System.Exception(\"Destructuring pattern did not match value.\");");
+        _output.AppendLine();
         foreach (var prop in objectPattern.Properties)
         {
             var varName = prop.BindingName ?? prop.Key;
             WriteIndent();
-            _output.Append("if (!RuntimeHelpers.ObjectHasKey(__destructureValue, \"");
+            _output.Append("if (!RuntimeHelpers.ObjectHasKey(");
+            _output.Append(valueTemp);
+            _output.Append(", \"");
             _output.Append(EscapeIdentifier(prop.Key));
             _output.Append("\")) throw new System.Exception(\"Destructuring pattern did not match value.\");");
             _output.AppendLine();
             WriteIndent();
             _output.Append(EscapeIdentifier(varName));
-            _output.Append(" = RuntimeHelpers.GetObjectMember(__destructureValue, \"");
+            _output.Append(" = RuntimeHelpers.GetObjectMember(");
+            _output.Append(valueTemp);
+            _output.Append(", \"");
             _output.Append(EscapeIdentifier(prop.Key));
             _output.Append("\");");
             _output.AppendLine();
