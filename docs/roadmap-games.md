@@ -1,26 +1,28 @@
 # MALDA games platform plan
 
-**Status:** G0 landed (this file); G1–G9 not started  
+**Status:** G0–G9 landed (2026-08-21); next = post-kit / deferred  
 **Created:** 2026-08-21  
 **Audience:** maintainers extending the JS `game.*` / `three.*` surface after Final 1.0
 
-This is the forward plan for making MALDA a **good platform for games people
-finish** — Love2D / Pico-8 / Phaser, not Unity. It is not a wishlist and not
-a substitute for [`docs/javascript-backend.md`](javascript-backend.md) or
-[Reference Manual 26](../ReferenceManual/26-browser-javascript-backend.html).
+This is the plan that made MALDA a **good platform for games people finish** —
+Love2D / Pico-8 / Phaser, not Unity. All ranked workstreams below are landed;
+prefer [`docs/javascript-backend.md`](javascript-backend.md),
+[Reference Manual 26](../ReferenceManual/26-browser-javascript-backend.html),
+and the deferred list at the end for *what next*.
 
-**Bar today:** JS-only canvas loop (`fillRect` / `fillCircle` / `drawText` /
-pixel blit), keyboard+mouse (touch aliased to the left button), Audio Spec v1
-(synth + one music track), curated `three.*` primitives + `@shader()`.
-Examples (`game_bounce`, `maldanoid`, `maldadash`, `three_cube`) already hit
-that ceiling: `maldadash` paints every tile with `fillRect`; `three.*` docs
-state there are no textures, models, or orbit controls.
+**Bar today:** JS-only canvas kit — images / atlas blit / camera / draw extras,
+key edges + gamepad + real touches, AABB / circle helpers, Audio Spec v1 plus
+overlapping file samples, `startFixed` + origin `localStorage` save, `malda new
+game` / `malda play`, curated `three.*` primitives + textures / glTF / `lookAt`
++ `@shader()`. Featured 2D showcase: `malda_platform`. Canvas + score API:
+`malda new game --fullstack`. Primitive-draw track (`game_bounce`, `maldanoid`)
+stays.
 
 **Not in scope:** new syntax / keywords / `on update`, interpreter or C# game
 loops, a Box2D-class physics engine in core, a second 2D renderer (Pixi /
-WebGL batcher) before Canvas2D images work, native SDL/Raylib (optional pack
-**out of tree**), new top-level globals, Web IDE Desktop parity, product apps
-or vertical packs (`AGENTS.md`).
+WebGL batcher), native SDL/Raylib (optional pack **out of tree**), new
+top-level globals, Web IDE Desktop parity, product apps or vertical packs
+(`AGENTS.md`).
 
 ---
 
@@ -34,52 +36,52 @@ or vertical packs (`AGENTS.md`).
    namespaces; do not add `sprite.*` or flat `drawImage()`.
 3. **Functions beat keywords.** If it can be a runtime helper, it does not
    enter the parser ([`docs/roadmap-language-constructs.md`](roadmap-language-constructs.md)).
-4. **One focused PR per workstream.** Land G1 before rewriting `maldadash` to
-   use sprites (that is G7).
+4. **One focused PR per workstream.** G1–G9 shipped that way; keep future
+   slices the same size.
 5. **JS-only registration, not the host builtin checklist.** `game.*` is not
    in `BuiltInRegistry`. New names land in `malda-js-runtime.js` + chapter 26 +
    `JavaScriptBackendTests`. `JsTranspiler` already routes every `game.*` /
    `three.*` member; do not special-case each new call.
 6. **Lean on MALDA where engines are weak.** `@client` / `@server`, `schema`
-   / `validate()`, host prompts, and PWA are the differentiator — after the 2D
-   kit exists.
+   / `validate()`, host prompts, and PWA are the differentiator — G9 is the
+   first scores template; prompts / LLM NPCs stay optional.
 
 ---
 
 ## Themes and priority
 
-| Rank | Workstream | Why | Syntax? |
-|------|------------|-----|---------|
-| 0 | **G0** Roadmap file | One place to track this work (this document) | No |
-| 1 | **G1** Sprites, camera, draw extras | `fillRect` is the 2D ceiling; platformers need images + a camera | No |
-| 2 | **G2** Input edges, gamepad, touch | `isKeyDown` cannot express “just jumped”; touch is a mouse lie | No |
-| 3 | **G3** Collision helpers | AABB / circle queries cut most of `maldanoid` boilerplate | No |
-| 4 | **G4** Sample SFX | Audio v1 is tones + one track; games need overlapping file hits | No |
-| 5 | **G5** Fixed timestep + save/load | Every example reclamps `dtMs`; high scores have no API | No |
-| 6 | **G6** `malda new game` + `malda play` | No game scaffold; compile+host HTML is a three-file ritual | No |
-| 7 | **G7** Showcase that uses G1–G5 | Prove the kit with one game that is not all `fillRect` | No |
-| 8 | **G8** `three.*` textures, glTF, look-at | 3D games stay colored boxes without assets | No |
-| 9 | **G9** Full-stack scores template | MALDA-specific: client loop + server authority + schema | No |
+| Rank | Workstream | Status | Why |
+|------|------------|--------|-----|
+| 0 | **G0** Roadmap file | Landed | One place to track this work (this document) |
+| 1 | **G1** Sprites, camera, draw extras | Landed | `fillRect` was the 2D ceiling; platformers need images + a camera |
+| 2 | **G2** Input edges, gamepad, touch | Landed | `isKeyDown` cannot express “just jumped”; touch was a mouse lie |
+| 3 | **G3** Collision helpers | Landed | AABB / circle queries cut most of `maldanoid` boilerplate |
+| 4 | **G4** Sample SFX | Landed | Audio v1 is tones + one track; games need overlapping file hits |
+| 5 | **G5** Fixed timestep + save/load | Landed | Every example reclamped `dtMs`; high scores had no API |
+| 6 | **G6** `malda new game` + `malda play` | Landed | No game scaffold; compile+host HTML was a three-file ritual |
+| 7 | **G7** Showcase that uses G1–G5 | Landed | Prove the kit with one game that is not all `fillRect` |
+| 8 | **G8** `three.*` textures, glTF, look-at | Landed | 3D games stayed colored boxes without assets |
+| 9 | **G9** Full-stack scores template | Landed | MALDA-specific: client loop + server authority + schema |
 
 ```text
-G0  roadmap file
-  └─ G1  sprites / camera / draw extras
-       ├─ G2  input edges / gamepad / touch     (after or parallel with G1)
-       ├─ G3  overlap helpers                   (parallel)
-       ├─ G4  audioPlaySample                   (parallel; keep Audio v1)
-       └─ G5  startFixed + save/load            (parallel)
-            └─ G6  malda new game + malda play  (template may start on G1)
-                 └─ G7  showcase example
-G8  three.* assets                              (independent of G1–G7)
-G9  fullstack scores                            (after G6; uses @client/@server)
+G0  roadmap file                          (landed)
+  └─ G1  sprites / camera / draw extras   (landed)
+       ├─ G2  input edges / gamepad / touch
+       ├─ G3  overlap helpers
+       ├─ G4  audioPlaySample
+       └─ G5  startFixed + save/load
+            └─ G6  malda new game + malda play
+                 └─ G7  showcase example  (malda_platform)
+G8  three.* assets                        (landed; independent of G1–G7)
+G9  fullstack scores                      (landed; after G6)
 ```
 
-G2–G5 must not block each other. G7 must not start until G1 + G3 are in.
-G6 may ship a bounce-style template on G1 alone, then pick up G2–G5.
+No ranked G10+. Remaining ideas sit in **After G9 (deferred)** and **Explicit
+non-goals** — revisit only with a new roadmap.
 
 ---
 
-## JS-only landing checklist (every G1–G5 / G8 API PR)
+## JS-only landing checklist (every future `game.*` / `three.*` API PR)
 
 Host builtin steps 1–5 (`BuiltInFunctions` / `CallBuiltIn` / `IsBuiltIn` /
 C# transpiler) **do not apply**. Do this instead:
@@ -105,16 +107,17 @@ the canvas stay tagged `game-canvas`.
 
 ## G0 — Roadmap file
 
-**Done when:** this file exists; [`docs/architecture.md`](architecture.md)
-Docs layout links here; [`docs/spec/CHANGELOG.md`](spec/CHANGELOG.md) has a
-PATCH tracking-only row.
+**Landed:** this file; [`docs/architecture.md`](architecture.md) Docs layout
+links here; [`docs/spec/CHANGELOG.md`](spec/CHANGELOG.md) has the tracking
+rows.
 
 ---
 
 ## G1 — Sprites, camera, draw extras
 
-**Done when:** a MALDA program can load a PNG, blit atlas frames, scroll a
-camera, and draw a line, without per-tile `fillRect`.
+**Landed:** `Examples/Games/game_sprite_smoke.malda`. A MALDA program can load
+a PNG, blit atlas frames, scroll a camera, and draw a line, without per-tile
+`fillRect`.
 
 | Call | Contract |
 |------|----------|
@@ -135,16 +138,16 @@ camera, and draw a line, without per-tile `fillRect`.
 - Camera does **not** affect `setPixel` / `blitPixels` (those stay buffer-local).
 - No sprite *objects* in the runtime — handles + draw calls only.
 
-**Files:** runtime, chapter 26.9, `docs/javascript-backend.md`, a tiny
-`Examples/Games/game_sprite_smoke.malda` + host HTML (checker PNG or
-existing example asset). Optional: reuse in `maldadash` is **G7**, not this PR.
+**Files:** runtime, chapter 26.9, `docs/javascript-backend.md`. Showcase reuse
+is **G7** (`malda_platform`), not a `maldadash` rewrite.
 
 ---
 
 ## G2 — Input edges, gamepad, touch
 
-**Done when:** jump/menu code can use “pressed this tick”, a gamepad moves a
-paddle, and a touch is not only `isMouseDown(0)`.
+**Landed:** `Examples/Games/game_input_smoke.malda`. Jump/menu code can use
+“pressed this tick”, a gamepad moves a paddle, and a touch is not only
+`isMouseDown(0)`.
 
 | Call | Contract |
 |------|----------|
@@ -166,16 +169,16 @@ paddle, and a touch is not only `isMouseDown(0)`.
 - No-op / zeros when the Gamepad API is missing (Node harness).
 - `game.stop()` still clears key and button sets (today’s behavior).
 
-**Files:** runtime input listeners (keys already on `window`; add
-`gamepadconnected` + per-frame `navigator.getGamepads()` poll), chapter 26.9,
-tests that fake `keydown`/`keyup` around one `update` tick.
+**Files:** runtime input listeners (keys on `window`; `gamepadconnected` +
+per-frame `navigator.getGamepads()` poll), chapter 26.9, tests that fake
+`keydown`/`keyup` around one `update` tick.
 
 ---
 
 ## G3 — Collision helpers
 
-**Done when:** overlap tests are one call, with tests for touching edges and
-zero-size rects.
+**Landed:** `Examples/Games/game_collision_smoke.malda`. Overlap tests are one
+call, with tests for touching edges and zero-size rects.
 
 | Call | Contract |
 |------|----------|
@@ -188,14 +191,15 @@ These are pure functions (no canvas required) so the Node harness does not
 need a fake 2D context. Keep them on `game.*` for discoverability, not
 `math.*`.
 
-**Out of scope here:** swept AABB, tileset collision, rigid-body physics.
+**Out of scope here:** swept AABB, tileset collision, rigid-body physics
+(see After G9).
 
 ---
 
 ## G4 — Sample SFX
 
-**Done when:** two overlapping WAV/OGG one-shots can play without stopping
-the Audio v1 track or pattern.
+**Landed:** `Examples/Games/game_audio_sample_smoke.malda`. Two overlapping
+WAV/OGG one-shots can play without stopping the Audio v1 track or pattern.
 
 | Call | Contract |
 |------|----------|
@@ -209,17 +213,16 @@ the Audio v1 track or pattern.
 - Shared node cap still applies (today’s runaway-SFX limit).
 - `game.stop()` still does **not** implicit-stop audio.
 
-**Files:** runtime audio graph, chapter 26.9 (English lists play/stop all;
-add sample + the v1 track methods that the English list still omits), a
-short beep asset under `Examples/Games/` or reuse
-`Examples/Web/wwwroot/audio/`.
+**Files:** runtime audio graph, chapter 26.9, beep asset under
+`Examples/Games/` or `Examples/Web/wwwroot/audio/`.
 
 ---
 
 ## G5 — Fixed timestep + save/load
 
-**Done when:** a game can step at a fixed tick without copying the `dt > 50`
-clamp, and a high score survives reload.
+**Landed:** `Examples/Games/game_fixed_save_smoke.malda`. A game can step at a
+fixed tick without copying the `dt > 50` clamp, and a high score survives
+reload.
 
 | Call | Contract |
 |------|----------|
@@ -241,49 +244,45 @@ resurrecting those identifiers.
 
 ## G6 — `malda new game` + `malda play`
 
-**Done when:** a newcomer can scaffold and play a canvas game without writing
-a host HTML file.
+**Landed:** `Templates/game/`. A newcomer can scaffold and play a canvas game
+without writing a host HTML file.
 
 | Piece | Contract |
 |-------|----------|
 | `malda new game [directory]` | Third template beside `webapi` / `fullstack`. Emits `app.malda`, `index.html` (runtime + compiled script load order), `README.md`, optional `assets/`. Next-step text: `malda play app.malda`. |
-| `malda play <file.malda>` | `compile --mode js` into a temp or sibling preview dir, copy `malda-js-runtime.js`, write/serve a host page, print a local URL. `--open` may launch the default browser when the OS allows. Ctrl+C stops the server. |
+| `malda play <file.malda>` | `compile --mode js` into a sibling `.malda-play/` dir, copy `malda-js-runtime.js` and `assets/` when present, write/serve a host page, print a local URL. `--open` may launch the default browser when the OS allows. Ctrl+C stops the server. Refuses fullstack sources. |
 
 **Files:** [`MaldaLang/Scaffolding/TemplateScaffolder.cs`](../MaldaLang/Scaffolding/TemplateScaffolder.cs)
 (`SupportedTemplates`), [`NewCommandOptions.cs`](../MaldaLang/Scaffolding/NewCommandOptions.cs)
-help text, [`MaldaLang/Program.cs`](../MaldaLang/Program.cs) `new` / new
-`play` command, `Templates/game/`, filtered scaffolder tests, `docs/start-here.md`
-path “Build a browser game”.
+help text, [`MaldaLang/Program.cs`](../MaldaLang/Program.cs) `new` / `play`
+command, `Templates/game/`, filtered scaffolder tests, `docs/start-here.md`
+path “Build a Browser Game”.
 
 PWA remains `malda compile --mode pwa` for itch.io-style folders; `play` is
 the inner loop, not a second packaging format.
 
-**Out of scope:** Web IDE playground parity with Desktop F5 (separate; do not
-block G6).
+**Out of scope:** Web IDE playground parity with Desktop F5 (separate; still
+deferred).
 
 ---
 
 ## G7 — Showcase that uses the kit
 
-**Done when:** one featured example uses images, camera, AABB, key edges,
-and a sample SFX — and still compiles with `--mode js`.
+**Landed:** `Examples/Games/malda_platform.malda` — short side-scroller that
+uses images, camera, AABB, key edges, sample SFX, and `startFixed`, and still
+compiles with `--mode js`.
 
-- New file, e.g. `Examples/Games/malda_platform.malda` (short side-scroller
-  or top-down), **or** a measured `maldadash` increment that draws a tileset
-  via `drawImageRect` instead of per-cell `fillRect`.
 - Host HTML + `metadata.json` catalog entry.
-- Do not delete Bounce / Maldanoid; they remain the primitive-draw track.
-- Transpile smoke: extend `JsTranspiler_*Example_Emits…` like `maldadash`.
-
-Pick the smaller of (a) tileset `maldadash` and (b) a new 150–250 line
-platformer. Prefer (a) if G1 atlases make the existing cave cheaper.
+- Bounce / Maldanoid remain the primitive-draw track. `maldadash` stays a
+  tile cave on `fillRect` (the cheaper G1-atlas rewrite was not taken).
+- Transpile smoke: `JsTranspiler_*Example_Emits…` like `maldadash`.
 
 ---
 
 ## G8 — `three.*` textures, glTF, look-at
 
-**Done when:** a textured mesh loads from a URL and a camera can `lookAt` a
-point. Independent of G1–G7.
+**Landed:** `Examples/Games/three_textured.malda`. A textured mesh loads from
+a URL and a camera can `lookAt` a point. Independent of G1–G7.
 
 | Call | Contract |
 |------|----------|
@@ -291,32 +290,47 @@ point. Independent of G1–G7.
 | `three.createStandardMaterial` | Accept `"map"` (texture handle) beside `"color"` / `"roughness"` / `"metalness"`. |
 | `three.loadGLTF(url)` | Returns a group handle immediately; `three.modelIsReady(handle)` when the scene can be `add`ed. Failures stay unready. |
 | `three.lookAt(object, x, y, z)` | Requires `lookAt` on the three.js object. |
-| `three.setTexture` / orbit controls | **Not this workstream.** Orbit stays out until look-at + one example prove the gap. |
+| `three.setTexture` / orbit controls | **Not this workstream.** Still deferred until look-at + the textured example prove the gap. |
 
 Keep the curated wrapper (no raw `THREE.*` in MALDA source). Host pages still
-load `three.min.js` first; GLTF needs a documented extra vendor script
-(`GLTFLoader`) or a bundled helper on `mlRuntime.three` — prefer **one**
-runtime-owned loader so examples do not grow a fourth `<script>`.
+load `three.min.js` first; GLTF uses a runtime-owned loader so examples do
+not grow a fourth `<script>`.
 
-**Files:** runtime `three` IIFE, chapter 26.10 (replace the “no textures,
-model loading, orbit controls” sentence), `Examples/Games/three_textured.malda`
-or extend `three_cube`.
+**Files:** runtime `three` IIFE, chapter 26.10.
 
 ---
 
 ## G9 — Full-stack scores template
 
-**Done when:** `malda new game --fullstack` (or `malda new game-fullstack`)
+**Landed:** `malda new game --fullstack` (alias `malda new game-fullstack`)
 emits `@client()` canvas + `@GET` / `@POST` scores + a `schema` for the save
-blob, and `docs/start-here.md` links it.
+blob. `docs/start-here.md` links it. Template: `Templates/game-fullstack/`.
 
 - Client: G1/G2/G5 loop, `http.post` for scores.
-- Server: in-memory or SQLite list, `validate("Score", …)`.
+- Server: in-memory list (top 10), `validate("Score", …)`.
 - Host prompts / LLM NPCs stay **optional commentary** in the README, not
   required to run (games must work offline).
+- Compile `--mode fullstack`; `malda play` refuses those sources.
 
-Depends on G6 scaffolding patterns. Do not invent a fourth `malda new`
-family if a flag on `game` is enough.
+---
+
+## After G9 (deferred)
+
+Revisit only with a new ranked roadmap. These were called out while shipping
+G1–G9 and are **not** implied next work:
+
+| Idea | Why it waited |
+|------|----------------|
+| `three.setTexture` / orbit controls | G8 left them out until look-at + `three_textured` prove the gap |
+| Swept AABB / tileset collision / particles / scene graph | Helpers first (G3); engines later as a pack |
+| Box2D-class physics in core | Same — optional pack, not stdlib growth |
+| WebGL 2D sprite batcher | Canvas2D images (G1) first |
+| Native desktop window (SDL, Raylib, Silk.NET) | Optional pack **out of this repo** |
+| Interpreter / C# `game.start` | AST walk will not hit 60 Hz; matrix already says n/a |
+| Web IDE playground parity with Desktop F5 | Separate from G6; do not block play/scaffold |
+| Host prompts / LLM NPCs in the scores template | README commentary only; games must run offline |
+| JS ↔ host actor bridging for multiplayer | JS actors are process-local; G9 uses HTTP |
+| Rewriting Desktop IDE into a game editor | Out of scope |
 
 ---
 
@@ -335,20 +349,20 @@ family if a flag on `game` is enough.
 
 ---
 
-## Suggested PR slices
+## How G0–G9 shipped
 
-Ship in this order unless a slice is blocked:
+Historical PR order (already landed):
 
 1. **G0** — this document (docs only)
 2. **G1** — runtime + smoke example
-3. **G3** — small pure-function PR (can land beside G1)
-4. **G2 + G4 + G5** — three small PRs, any order
+3. **G3** — small pure-function PR (beside G1)
+4. **G2 + G4 + G5** — three small PRs
 5. **G6** — CLI + `Templates/game`
-6. **G7** — showcase
-7. **G8** — 3D assets (any time after G0)
+6. **G7** — `malda_platform` showcase
+7. **G8** — 3D assets
 8. **G9** — fullstack template
 
-Each MINOR runtime slice updates chapter 26 and `docs/javascript-backend.md`
+Each MINOR runtime slice updated chapter 26 and `docs/javascript-backend.md`
 in the same PR. Spec bump: JS `game.*` is product/Tier-2-ish relative to
 Tier 0; treat new names as **MINOR** additive on the JS backend and add a
 CHANGELOG Unreleased row (product / docs), not a Tier 0 conformance case.

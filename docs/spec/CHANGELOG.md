@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Clarified (PATCH — docs / tracking only)
+
+- **Games kit G0–G9 landed:** [`docs/roadmap-games.md`](../roadmap-games.md) is no longer a forward plan. Status, architecture docs layout, `llms.txt`, and the games examples README now say G0–G9 shipped (2026-08-21). Remaining ideas sit in After G9 / non-goals. No Tier 0 semantic change.
+
 #### Added (MINOR — fullstack game scores template)
 
 - **G9 `malda new game --fullstack`:** flag on the G6 `game` template (alias `malda new game-fullstack`) emits one `.malda` with `@client()` canvas (`startFixed`, key edges, AABB, `game.save`/`load`) plus `@GET` / `@POST` `/api/scores` and `schema Score` / `validate("Score", …)`. Server list is in-memory (top 10). Next step is `malda compile app.malda --mode fullstack -o dist` then run the server with `MALDA_WEB_DIRECTORY` pointing at `dist/web`. `malda play` refuses fullstack sources. Host prompts / LLM NPCs stay README commentary. Docs: [`docs/start-here.md`](../start-here.md) path “Build a Browser Game”. Template: `Templates/game-fullstack/`.
@@ -217,7 +221,7 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 - **`typeOf(variant)` / `typeOf(task)`:** already return `"variant"` / `"task"` (Tier 0 T0-096/T0-097); removed stale post-Final gap bullet. Overlapping `async` + `sleep` between `var` bindings is isolated (see Unreleased PATCH — interpreter task isolation).
 - **Post-Final language constructs plan:** ranked workstreams L1–L6 (schema/sum-type unification, gather-then-extract prompts, `@budget`, workflow call-graph determinism, grounded values, capability tokens). Tracking only — no Tier 0 semantic change. See [`docs/roadmap-language-constructs.md`](../roadmap-language-constructs.md).
 - **Trust plan:** ranked workstreams DT0–DT6 (strict compile as the ship boundary, transpile smoke, loud gotchas). DT6 landed: toolchain **1.0.0** ([`docs/releases/v1.0.0.md`](../releases/v1.0.0.md)). Tracking only — no Tier 0 semantic change. See [`docs/roadmap-trust.md`](../roadmap-trust.md).
-- **Games platform plan:** ranked workstreams G0–G9 (JS-only `game.*` / `three.*` kit: sprites, input edges, overlap helpers, sample SFX, `malda play`, 3D assets, fullstack scores). Tracking only — no Tier 0 semantic change. See [`docs/roadmap-games.md`](../roadmap-games.md).
+- **Games platform plan:** ranked workstreams G0–G9 (JS-only `game.*` / `three.*` kit: sprites, input edges, overlap helpers, sample SFX, `malda play`, 3D assets, fullstack scores). **G0–G9 landed** (2026-08-21). Tracking only — no Tier 0 semantic change. See [`docs/roadmap-games.md`](../roadmap-games.md).
 
 #### Clarified (PATCH — product / Tier-2 docs only; no Tier 0 semantic change)
 
@@ -324,6 +328,7 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-08-14 | L1b: optional constructor payload types in JSON Schema emit (MINOR) |
 | 2026-08-21 | PATCH: overlapping `async` + `sleep` interpreter task isolation |
 | 2026-08-21 | Games platform plan (`docs/roadmap-games.md`; PATCH docs). G0 only. |
+| 2026-08-22 | Games kit G0–G9 marked landed (`docs/roadmap-games.md`; PATCH docs). |
 | 2026-08-21 | MINOR: JS `game.loadImage` / camera / draw extras (G1) |
 | 2026-08-21 | MINOR: JS `game.wasKeyPressed` / touches / gamepad (G2) |
 | 2026-08-21 | MINOR: JS `game.overlapRect` / circle / point queries (G3) |

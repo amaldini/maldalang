@@ -564,7 +564,7 @@ Audio Spec v1 adds a browser-hosted game audio API in JavaScript mode. The goal 
 
 - Run DOM-centric cases under `jsdom` to validate runtime behavior (`dom.query`, event wiring, HTML/text updates).
 - Keep C# tests as codegen/contract checks, and add Node/jsdom tests for runtime semantics.
-- Games kit (sprites, input edges, overlap, sample SFX, `malda play`, 3D assets): [`docs/roadmap-games.md`](roadmap-games.md).
+- Games kit G0–G9 landed (sprites, input edges, overlap, sample SFX, `malda play`, 3D assets, fullstack scores). Post-kit ideas: [`docs/roadmap-games.md`](roadmap-games.md) After G9.
 
 ### Current limitations
 

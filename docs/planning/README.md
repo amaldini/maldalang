@@ -5,7 +5,8 @@ Next work: post-Final gaps in [`docs/spec/CHANGELOG.md`](../spec/CHANGELOG.md), 
 list in that roadmap, the language-construct plan
 [`docs/roadmap-language-constructs.md`](../roadmap-language-constructs.md), the trust plan
 [`docs/roadmap-trust.md`](../roadmap-trust.md), and the games kit plan
-[`docs/roadmap-games.md`](../roadmap-games.md). Prefer those over
+[`docs/roadmap-games.md`](../roadmap-games.md) (G0–G9 landed; next =
+post-kit / deferred). Prefer those over
 status lines below.
 
 **These files are roadmap and sprint notes, not the source of truth for current behavior.**
