@@ -48,6 +48,7 @@ if (root == null) {
     var level = 1;
     var maxLevel = 3;
     var state = "serve"; // serve, playing, paused, gameover, win
+    var splashDismissed = false;
     var stateTextTimerMs = 0;
     var bricksLeft = 0;
     var levelClearTimerMs = 0;
@@ -960,6 +961,7 @@ if (root == null) {
                 lives = 3;
                 gameOverSfxPlayed = false;
                 winSfxPlayed = false;
+                splashDismissed = false;
                 beginLevel(1);
                 game.audioPlayTone(560, 65, "square", 0.12);
                 game.audioPlayTone(760, 72, "square", 0.10);
@@ -984,6 +986,7 @@ if (root == null) {
                 game.wasGamepadButtonPressed(0, 0);
             if (launchPressed) {
                 state = "playing";
+                splashDismissed = true;
                 game.audioPlayTone(700, 44, "square", 0.12);
             }
             return;
@@ -1240,7 +1243,7 @@ if (root == null) {
             game.drawText(bgmErrText, 18, canvasHeight - 34, "#f87171", "12px monospace");
         }
 
-        if (state == "serve") {
+        if (state == "serve" && !splashDismissed) {
             // In-canvas splash overlay with logo + controls, hidden once the ball is launched.
             var panelW = 620;
             var panelH = 260;
@@ -1256,6 +1259,8 @@ if (root == null) {
             game.drawText("Pause with P or Start", panelX + 60, panelY + 166, "#cbd5e1", "18px sans-serif");
             game.drawText("Catch power-ups for upgrades", panelX + 60, panelY + 194, "#facc15", "18px sans-serif");
             game.drawText("Press SPACE, click, or A to launch", panelX + 60, panelY + 228, "#e2e8f0", "20px sans-serif");
+        } else if (state == "serve") {
+            game.drawText("SPACE / click / A to launch", 318, 312, "#e2e8f0", "20px sans-serif");
         } else if (state == "paused") {
             game.drawText("Paused", 430, 312, "#f8fafc", "bold 34px sans-serif");
             game.drawText("Press P to continue", 384, 342, "#cbd5e1", "20px sans-serif");
