@@ -233,7 +233,7 @@
     },
     {
       "name": "JS Canvas Game Maldanoid",
-      "description": "Arkanoid-style breakout on the primitive-draw track: startFixed, overlap depenetration, aimed serves, touch-follow paddle, hit sparks, and a saved high score",
+      "description": "Arkanoid-style breakout on the primitive-draw track: calmer aimed serves, velocity-axis brick bounces, combo bar, shaped power-ups, and a saved high/combo blob",
       "file": "maldanoid.malda",
       "track": "showcase",
       "difficulty": "advanced",
@@ -254,7 +254,7 @@
         "Games/game_bounce.malda"
       ],
       "learningGoal": "Show a full breakout on fillRect/fillCircle that still uses the post-kit game.* loop, overlap helpers, and save/load.",
-      "expectedOutput": "Runs a richer breakout-style browser game: aimed serve, sparks on brick hits, result panels, and a high score that survives reload.",
+      "expectedOutput": "Runs a richer breakout-style browser game: near-vertical serve, HP bars on bricks, combo meter, and a high score plus best combo that survive reload.",
       "next": "Games/maldadash.malda"
     },
     {
