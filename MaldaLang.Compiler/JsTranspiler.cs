@@ -37,6 +37,7 @@ public class JsTranspiler
     private readonly HashSet<string> _asyncFunctions = new(StringComparer.Ordinal);
     private readonly Dictionary<string, int> _variantConstructorArities = new(StringComparer.Ordinal);
     private readonly Dictionary<string, FunctionDeclaration> _shaderFunctions = new(StringComparer.Ordinal);
+    private readonly Stack<HashSet<string>> _localScopes = new();
 
     private static readonly HashSet<string> JsRuntimeModules = new(StringComparer.Ordinal)
     {
@@ -76,6 +77,7 @@ public class JsTranspiler
         _shaderFunctions.Clear();
         foreach (var kv in other._shaderFunctions)
             _shaderFunctions[kv.Key] = kv.Value;
+        CopyLocalScopesFrom(other);
     }
 
     public string Transpile(List<Statement> statements, bool isLibrary = false, string? sourceFilePath = null)
@@ -99,6 +101,7 @@ public class JsTranspiler
         _asyncFunctions.Clear();
         _variantConstructorArities.Clear();
         _shaderFunctions.Clear();
+        ResetLocalScopes();
         _generatedLine = 1;
         _currentSourceLine = null;
         _currentSourceColumn = null;
@@ -239,10 +242,13 @@ public class JsTranspiler
         var mainNeedsAsync = topLevelStatements.Any(StatementRequiresAsync);
         EmitLine(mainNeedsAsync ? "async function main() {" : "function main() {");
         _indentLevel++;
-        foreach (var statement in topLevelStatements)
+        InLocalScope(Array.Empty<string>(), () =>
         {
-            TranspileStatement(statement);
-        }
+            foreach (var statement in topLevelStatements)
+            {
+                TranspileStatement(statement);
+            }
+        });
         _indentLevel--;
         EmitLine("}");
         EmitLine(string.Empty);
@@ -323,19 +329,22 @@ public class JsTranspiler
         var asyncPrefix = needsAsync ? "async " : string.Empty;
         EmitLine($"{asyncPrefix}function {EscapeIdentifier(declaration.Name)}({parameters}) {{");
         _indentLevel++;
-        if (withinMs is > 0)
+        InLocalScope(declaration.Parameters, () =>
         {
-            var runner = needsAsync ? "async () =>" : "() =>";
-            EmitLine($"return mlRuntime.within.run({withinMs.Value}, {TranspileLiteral(declaration.Name)}, {runner} {{");
-            _indentLevel++;
-            TranspileStatementsWithOptionalDeferFrame(declaration.Body.Statements);
-            _indentLevel--;
-            EmitLine("});");
-        }
-        else
-        {
-            TranspileStatementsWithOptionalDeferFrame(declaration.Body.Statements);
-        }
+            if (withinMs is > 0)
+            {
+                var runner = needsAsync ? "async () =>" : "() =>";
+                EmitLine($"return mlRuntime.within.run({withinMs.Value}, {TranspileLiteral(declaration.Name)}, {runner} {{");
+                _indentLevel++;
+                TranspileStatementsWithOptionalDeferFrame(declaration.Body.Statements);
+                _indentLevel--;
+                EmitLine("});");
+            }
+            else
+            {
+                TranspileStatementsWithOptionalDeferFrame(declaration.Body.Statements);
+            }
+        });
         _indentLevel--;
         EmitLine("}");
     }
@@ -357,6 +366,7 @@ public class JsTranspiler
                     break;
                 case VarDeclStatement varDecl:
                     EmitLineWithSource(varDecl.Initializer, $"let {EscapeIdentifier(varDecl.Name)} = {TranspileExpressionAwaited(varDecl.Initializer)};");
+                    DeclareLocal(varDecl.Name);
                     break;
                 case DestructuringVarDecl destVarDecl:
                     TranspileDestructuringVarDecl(destVarDecl);
@@ -384,7 +394,10 @@ public class JsTranspiler
                     break;
                 case ForStatement forStatement:
                     EmitLineWithSource(forStatement.Condition ?? (Node?)forStatement.Increment ?? forStatement.Initializer, $"for ({TranspileForInitializer(forStatement.Initializer)}; {TranspileForCondition(forStatement.Condition)}; {TranspileForIncrement(forStatement.Increment)})");
-                    TranspileEmbeddedStatement(forStatement.Body);
+                    var forLocals = forStatement.Initializer is VarDeclStatement forVar
+                        ? new[] { forVar.Name }
+                        : Array.Empty<string>();
+                    InLocalScope(forLocals, () => TranspileEmbeddedStatement(forStatement.Body));
                     break;
                 case FunctionDeclaration declaration:
                     if (!ShaderFunction.IsMarked(declaration))
@@ -418,7 +431,7 @@ public class JsTranspiler
                     break;
                 case ForInStatement forInStatement:
                     EmitLineWithSource(forInStatement.Collection, $"for (const {EscapeIdentifier(forInStatement.VariableName)} of {TranspileExpression(forInStatement.Collection)})");
-                    TranspileEmbeddedStatement(forInStatement.Body);
+                    InLocalScope([forInStatement.VariableName], () => TranspileEmbeddedStatement(forInStatement.Body));
                     break;
                 case TryStatement tryStatement:
                     TranspileTry(tryStatement);
@@ -469,7 +482,10 @@ public class JsTranspiler
                     EmitLineWithSource(usingResource.Initializer, $"const {EscapeIdentifier(usingResource.VariableName)} = {TranspileExpressionAwaited(usingResource.Initializer)};");
                     EmitLine("{");
                     _indentLevel++;
-                    TranspileStatementsWithOptionalDeferFrame(usingResource.Body.Statements);
+                    InLocalScope([usingResource.VariableName], () =>
+                    {
+                        TranspileStatementsWithOptionalDeferFrame(usingResource.Body.Statements);
+                    });
                     _indentLevel--;
                     EmitLine("}");
                     EmitLine($"await mlRuntime.disposeResource({EscapeIdentifier(usingResource.VariableName)});");
@@ -529,7 +545,7 @@ public class JsTranspiler
                 return TranspileFunctionCall(functionCall);
             case MemberAccessExpression memberAccess:
                 if (memberAccess.Object is IdentifierExpression objectIdentifier &&
-                    JsRuntimeModules.Contains(objectIdentifier.Name))
+                    IsUnshadowedRuntimeModule(objectIdentifier.Name))
                 {
                     return $"mlRuntime.{MapRuntimeModuleName(objectIdentifier.Name)}.{EscapeIdentifier(memberAccess.Member)}";
                 }
@@ -661,7 +677,10 @@ public class JsTranspiler
         var asyncPrefix = needsAsync ? "async " : string.Empty;
         EmitLine($"{asyncPrefix}function {runnerName}({parameters}) {{");
         _indentLevel++;
-        TranspileStatementsWithOptionalDeferFrame(propertyDeclaration.Body.Statements);
+        InLocalScope(propertyDeclaration.Parameters, () =>
+        {
+            TranspileStatementsWithOptionalDeferFrame(propertyDeclaration.Body.Statements);
+        });
         _indentLevel--;
         EmitLine("}");
     }
@@ -706,7 +725,10 @@ public class JsTranspiler
                 var asyncPrefix = StatementRequiresAsync(method.Body) ? "async " : string.Empty;
                 EmitLine($"{staticPrefix}{asyncPrefix}{EscapeIdentifier(member.Name)}({parameters}) {{");
                 _indentLevel++;
-                TranspileStatementsWithOptionalDeferFrame(method.Body.Statements);
+                InLocalScope(method.Parameters, () =>
+                {
+                    TranspileStatementsWithOptionalDeferFrame(method.Body.Statements);
+                });
                 _indentLevel--;
                 EmitLine("}");
                 break;
@@ -721,10 +743,13 @@ public class JsTranspiler
                 var parameters = string.Join(", ", constructor.Parameters.Select(EscapeIdentifier));
                 EmitLine($"constructor({parameters}) {{");
                 _indentLevel++;
-                foreach (var statement in constructor.Body.Statements)
+                InLocalScope(constructor.Parameters, () =>
                 {
-                    TranspileStatement(statement);
-                }
+                    foreach (var statement in constructor.Body.Statements)
+                    {
+                        TranspileStatement(statement);
+                    }
+                });
                 _indentLevel--;
                 EmitLine("}");
                 break;
@@ -735,28 +760,31 @@ public class JsTranspiler
     private string TranspileLambdaExpression(LambdaExpression lambda)
     {
         var parameters = string.Join(", ", lambda.Parameters.Select(EscapeIdentifier));
-        if (lambda.ExpressionBody != null)
+        return InLocalScope(lambda.Parameters, () =>
         {
-            return $"(({parameters}) => ({TranspileExpression(lambda.ExpressionBody)}))";
-        }
+            if (lambda.ExpressionBody != null)
+            {
+                return $"(({parameters}) => ({TranspileExpression(lambda.ExpressionBody)}))";
+            }
 
-        if (lambda.BlockBody == null)
-        {
-            throw new NotSupportedException("Lambda expression requires a body.");
-        }
+            if (lambda.BlockBody == null)
+            {
+                throw new NotSupportedException("Lambda expression requires a body.");
+            }
 
-        var builder = new StringBuilder();
-        builder.Append("((");
-        builder.Append(parameters);
-        builder.Append(") => {");
-        var inlineTranspiler = new JsTranspiler();
-        inlineTranspiler.CopyTranspileStateFrom(this);
-        foreach (var statement in lambda.BlockBody.Statements)
-        {
-            builder.Append(inlineTranspiler.TranspileStatementInline(statement));
-        }
-        builder.Append(" return null; })");
-        return builder.ToString();
+            var builder = new StringBuilder();
+            builder.Append("((");
+            builder.Append(parameters);
+            builder.Append(") => {");
+            var inlineTranspiler = new JsTranspiler();
+            inlineTranspiler.CopyTranspileStateFrom(this);
+            foreach (var statement in lambda.BlockBody.Statements)
+            {
+                builder.Append(inlineTranspiler.TranspileStatementInline(statement));
+            }
+            builder.Append(" return null; })");
+            return builder.ToString();
+        });
     }
 
     private static readonly HashSet<string> ArrayPipelineMethods = new(StringComparer.Ordinal)
@@ -1366,7 +1394,8 @@ public class JsTranspiler
                 return $"mlRuntime.arrayAppend({TranspileExpression(memberCall.Object)}, {TranspileExpression(functionCall.Arguments[0])})";
             }
 
-            if (memberCall.Object is IdentifierExpression memberObjectIdentifier)
+            if (memberCall.Object is IdentifierExpression memberObjectIdentifier &&
+                IsUnshadowedRuntimeModule(memberObjectIdentifier.Name))
             {
                 if (memberObjectIdentifier.Name == "dom" || memberObjectIdentifier.Name == "game" || memberObjectIdentifier.Name == "three" ||
                     memberObjectIdentifier.Name == StdLibNamespaces.MathModule ||
@@ -1546,6 +1575,96 @@ public class JsTranspiler
     private static string MapRuntimeModuleName(string name) =>
         name == StdLibNamespaces.DeprecatedMathModuleAlias ? StdLibNamespaces.MathModule : name;
 
+    private void ResetLocalScopes()
+    {
+        _localScopes.Clear();
+        _localScopes.Push(new HashSet<string>(StringComparer.Ordinal));
+    }
+
+    private void CopyLocalScopesFrom(JsTranspiler other)
+    {
+        _localScopes.Clear();
+        foreach (var scope in other._localScopes.Reverse())
+        {
+            _localScopes.Push(new HashSet<string>(scope, StringComparer.Ordinal));
+        }
+    }
+
+    private void PushLocalScope()
+    {
+        _localScopes.Push(new HashSet<string>(StringComparer.Ordinal));
+    }
+
+    private void PopLocalScope()
+    {
+        if (_localScopes.Count > 1)
+        {
+            _localScopes.Pop();
+        }
+    }
+
+    private void DeclareLocal(string name)
+    {
+        if (string.IsNullOrEmpty(name) || _localScopes.Count == 0)
+        {
+            return;
+        }
+
+        _localScopes.Peek().Add(name);
+    }
+
+    private bool IsLocalName(string name)
+    {
+        foreach (var scope in _localScopes)
+        {
+            if (scope.Contains(name))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool IsUnshadowedRuntimeModule(string name) =>
+        JsRuntimeModules.Contains(name) && !IsLocalName(name);
+
+    private void InLocalScope(IEnumerable<string> names, Action action)
+    {
+        PushLocalScope();
+        foreach (var name in names)
+        {
+            DeclareLocal(name);
+        }
+
+        try
+        {
+            action();
+        }
+        finally
+        {
+            PopLocalScope();
+        }
+    }
+
+    private T InLocalScope<T>(IEnumerable<string> names, Func<T> action)
+    {
+        PushLocalScope();
+        foreach (var name in names)
+        {
+            DeclareLocal(name);
+        }
+
+        try
+        {
+            return action();
+        }
+        finally
+        {
+            PopLocalScope();
+        }
+    }
+
     private void EmitSchemaRegistration(SchemaDeclaration schema)
     {
         var fields = schema.Fields.Select(field => new
@@ -1611,6 +1730,10 @@ public class JsTranspiler
                 if (element is IdentifierPattern idPattern)
                 {
                     EmitLine($"{prefix}{EscapeIdentifier(idPattern.Name)} = {arrTemp}[{i}];");
+                    if (declare)
+                    {
+                        DeclareLocal(idPattern.Name);
+                    }
                 }
                 else if (element is DestructuringPattern nestedPattern)
                 {
@@ -1623,6 +1746,10 @@ public class JsTranspiler
             if (arrayPattern.Rest?.Name != null)
             {
                 EmitLine($"{prefix}{EscapeIdentifier(arrayPattern.Rest.Name)} = {arrTemp}.slice({required});");
+                if (declare)
+                {
+                    DeclareLocal(arrayPattern.Rest.Name);
+                }
             }
 
             return;
@@ -1646,6 +1773,10 @@ public class JsTranspiler
                     var varName = prop.BindingName
                         ?? (prop.Pattern is IdentifierPattern identifier ? identifier.Name : prop.Key);
                     EmitLine($"{prefix}{EscapeIdentifier(varName)} = {valueExpr}[{keyLiteral}];");
+                    if (declare)
+                    {
+                        DeclareLocal(varName);
+                    }
                 }
             }
         }
@@ -1677,6 +1808,7 @@ public class JsTranspiler
                 .FirstOrDefault(v => !string.IsNullOrWhiteSpace(v)) ?? "__maldaCatchValue";
             var catchVariableEscaped = EscapeIdentifier(catchVariable);
             EmitLine($"const {catchVariableEscaped} = mlRuntime.unwrapMaldaException(__maldaException);");
+            DeclareLocal(catchVariable);
 
             for (var i = 0; i < tryStatement.CatchClauses.Count; i++)
             {
@@ -1959,10 +2091,13 @@ public class JsTranspiler
                 _indentLevel++;
                 var previousInActorHandler = _isInActorHandler;
                 _isInActorHandler = true;
-                foreach (var statement in method.Body.Statements)
+                InLocalScope(method.Parameters, () =>
                 {
-                    TranspileStatement(statement);
-                }
+                    foreach (var statement in method.Body.Statements)
+                    {
+                        TranspileStatement(statement);
+                    }
+                });
                 _isInActorHandler = previousInActorHandler;
                 _indentLevel--;
                 EmitLine("}");
@@ -1979,10 +2114,13 @@ public class JsTranspiler
                 // JavaScript constructors cannot be async.
                 EmitLine($"constructor({parameters}) {{");
                 _indentLevel++;
-                foreach (var statement in constructor.Body.Statements)
+                InLocalScope(constructor.Parameters, () =>
                 {
-                    TranspileStatement(statement);
-                }
+                    foreach (var statement in constructor.Body.Statements)
+                    {
+                        TranspileStatement(statement);
+                    }
+                });
                 _indentLevel--;
                 EmitLine("}");
                 break;
@@ -2009,10 +2147,13 @@ public class JsTranspiler
             EmitLine($"const __callback = async ({EscapeIdentifier(callback.ParameterName)}Arg) => {{");
             _indentLevel++;
             EmitLine($"let {EscapeIdentifier(callback.ParameterName)} = {EscapeIdentifier(callback.ParameterName)}Arg;");
-            foreach (var statement in callback.Body.Statements)
+            InLocalScope([callback.ParameterName], () =>
             {
-                TranspileStatement(statement);
-            }
+                foreach (var statement in callback.Body.Statements)
+                {
+                    TranspileStatement(statement);
+                }
+            });
             _indentLevel--;
             EmitLine("};");
 
@@ -2022,10 +2163,13 @@ public class JsTranspiler
                 EmitLine($"const __timeoutErrorHandler = async ({EscapeIdentifier(errorHandler.ParameterName)}Arg) => {{");
                 _indentLevel++;
                 EmitLine($"let {EscapeIdentifier(errorHandler.ParameterName)} = {EscapeIdentifier(errorHandler.ParameterName)}Arg;");
-                foreach (var statement in errorHandler.Body.Statements)
+                InLocalScope([errorHandler.ParameterName], () =>
                 {
-                    TranspileStatement(statement);
-                }
+                    foreach (var statement in errorHandler.Body.Statements)
+                    {
+                        TranspileStatement(statement);
+                    }
+                });
                 _indentLevel--;
                 EmitLine("};");
             }

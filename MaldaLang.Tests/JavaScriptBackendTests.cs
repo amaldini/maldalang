@@ -2479,6 +2479,42 @@ const missingModel = three.loadGLTF("missing.gltf");
     }
 
     [Fact]
+    public void JsTranspiler_DoesNotRewriteLocalResultMemberAccess()
+    {
+        var source = """
+            var result = dict { "seed": 99, "iterations": 10, "passed": true };
+            print(string(result.seed));
+            print(string(result.iterations));
+            print(string(result.passed));
+            """;
+        var compiler = new Compiler.Compiler();
+
+        var js = compiler.TranspileToJavaScriptFromSource(source);
+
+        Assert.Contains("result.seed", js, StringComparison.Ordinal);
+        Assert.Contains("result.iterations", js, StringComparison.Ordinal);
+        Assert.Contains("result.passed", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("mlRuntime.result.seed", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("mlRuntime.result.iterations", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("mlRuntime.result.passed", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void JsTranspiler_MapsResultStdLibCalls_WhenResultIsNotALocal()
+    {
+        var source = """
+            var r = result.ok(10);
+            print(result.unwrapOr(r, 0));
+            """;
+        var compiler = new Compiler.Compiler();
+
+        var js = compiler.TranspileToJavaScriptFromSource(source);
+
+        Assert.Contains("mlRuntime.result.ok(10)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.result.unwrapOr(r, 0)", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void JsTranspiler_MapsTernaryExpression_WithMaldaTruthiness()
     {
         var source = """
