@@ -29,7 +29,7 @@ malda compile Examples/Games/three_shader_path_tunnel.malda --mode js -o Example
 
 Then open the sibling host page (for example `Examples/Games/maldadash_runtime_smoke_test.html`).
 
-`malda_platform.malda` is the G1–G5 kit showcase (atlas tiles, camera, AABB, key edges, sample SFX, `startFixed`). Bounce stays a minimal `game.start` primitive-draw loop. `maldanoid.malda` stays primitive-draw (`fillRect` / `fillCircle`, no sprites) but uses G2/G3/G5: `startFixed`, `overlapRect` / `overlapCircle`, `wasKeyPressed`, touches/gamepad, and `game.save` / `load` for the high score. `maldadash.malda` is a Boulder Dash-style cave (dirt, gravity rocks, diamonds, fireflies) on `game.*`.
+`malda_platform.malda` is the G1–G5 kit showcase (atlas tiles, camera, AABB, key edges, sample SFX, `startFixed`). Bounce stays a minimal `game.start` primitive-draw loop. `maldanoid.malda` stays primitive-draw (`fillRect` / `fillCircle`, no sprites) but uses G2/G3/G5: `startFixed`, `overlapRect` / `overlapCircle` with depenetration, aimed serves, touch-follow paddle, hit sparks + `setCamera` punch, result panels, and `game.save` / `load` for the high score. `maldadash.malda` is a Boulder Dash-style cave (dirt, gravity rocks, diamonds, fireflies) on `game.*`.
 
 That tunnel demo is a CC-BY-NC-SA-4.0 conversion of [Frostbyte’s path march](https://fragcoord.xyz/s/tbe1g319); it is not under the repository MIT OR Apache-2.0 dual licence.
 
