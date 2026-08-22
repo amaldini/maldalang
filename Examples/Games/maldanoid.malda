@@ -1310,12 +1310,16 @@ if (root == null) {
         }
 
         if (ballsY.length <= 0) {
+            persistStats();
+            if (combo > 1) {
+                comboFlashMs = 160;
+            }
+            combo = 0;
             lives = lives - 1;
             game.audioPlayNoise(90, 0.12);
             game.audioPlayTone(190, 95, "sawtooth", 0.10);
             if (lives <= 0) {
                 state = "gameover";
-                persistStats();
                 if (!gameOverSfxPlayed) {
                     game.audioStopPattern();
                     game.audioPlayTone(220, 130, "sawtooth", 0.12);
