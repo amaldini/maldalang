@@ -233,13 +233,19 @@
     },
     {
       "name": "JS Canvas Game Maldanoid",
-      "description": "Arkanoid-style breakout game with multiple levels, power-ups, score combo, and polished canvas effects using MALDA game.* API",
+      "description": "Arkanoid-style breakout on the primitive-draw track using G2/G3/G5 helpers: startFixed, overlap queries, key/gamepad/touch edges, and a saved high score",
       "file": "maldanoid.malda",
       "track": "showcase",
       "difficulty": "advanced",
       "minutes": 25,
       "concepts": [
-        "game systems",
+        "game.*",
+        "AABB",
+        "key edges",
+        "gamepad",
+        "touch",
+        "fixed timestep",
+        "localStorage",
         "levels",
         "effects",
         "browser gameplay"
@@ -247,8 +253,8 @@
       "prerequisites": [
         "Games/game_bounce.malda"
       ],
-      "learningGoal": "Show the commercial-quality ceiling of MALDA's browser game/runtime path.",
-      "expectedOutput": "Runs a richer breakout-style browser game.",
+      "learningGoal": "Show a full breakout on fillRect/fillCircle that still uses the post-kit game.* loop, overlap helpers, and save/load.",
+      "expectedOutput": "Runs a richer breakout-style browser game with a high score that survives reload.",
       "next": "Games/maldadash.malda"
     },
     {
