@@ -1508,7 +1508,7 @@ if (root == null) {
             if (comboBar > 160) {
                 comboBar = 160;
             }
-            game.fillRect(18, 92, comboBar, 6, "#facc15");
+            game.fillRect(18, 90, comboBar, 6, "#facc15");
         }
 
         if (expandTimerMs > 0) {
