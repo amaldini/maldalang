@@ -568,6 +568,7 @@ public class JavaScriptBackendTests : TestBase
         Assert.Contains("mlRuntime.game.drawLine(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.strokeRect(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.setAlpha(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.setCamera(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.save(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.load(", js, StringComparison.Ordinal);
         Assert.Contains("maldanoid_high", js, StringComparison.Ordinal);

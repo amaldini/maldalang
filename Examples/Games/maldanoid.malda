@@ -35,6 +35,17 @@ if (root == null) {
     var ballTrailX = [];
     var ballTrailY = [];
     var ballTrailLife = [];
+    var ballTrailMax = 22;
+    var sparkX = [];
+    var sparkY = [];
+    var sparkVx = [];
+    var sparkVy = [];
+    var sparkLife = [];
+    var sparkColor = [];
+    var sparkMax = 48;
+    var shakeMs = 0;
+    var shakeMag = 0;
+    var serveAim = 0.35;
     var brickAnimClockMs = 0;
 
     var score = 0;
@@ -98,9 +109,6 @@ if (root == null) {
     var bgmTrackPrimaryUrl = "Examples/Web/wwwroot/audio/maldanoid.mp3";
     var bgmBootstrapState = "idle"; // idle, requested, failed
 
-    var touchLeft = false;
-    var touchRight = false;
-    var touchLaunch = false;
     var lastMouseX = 0;
     var mouseAttached = true;
     var prevMouseDown = false;
@@ -146,6 +154,63 @@ if (root == null) {
         if (score > highScore) {
             highScore = score;
             game.save("maldanoid_high", highScore);
+        }
+    }
+
+    function punchCamera(ms, mag) {
+        if (ms >= shakeMs) {
+            shakeMs = ms;
+            shakeMag = mag;
+        }
+    }
+
+    function spawnSparks(cx, cy, color, count) {
+        var n = 0;
+        while (n < count) {
+            var slot = -1;
+            var s = 0;
+            while (s < sparkLife.length) {
+                if (sparkLife[s] <= 0) {
+                    slot = s;
+                    break;
+                }
+                s = s + 1;
+            }
+            var ang = (n * 0.85) + ((cx + cy + brickAnimClockMs) * 0.01);
+            var sp = 90 + ((n * 41) % 150);
+            var vx = math.cos(ang) * sp;
+            var vy = (math.sin(ang) * sp) - 40;
+            if (slot >= 0) {
+                sparkX[slot] = cx;
+                sparkY[slot] = cy;
+                sparkVx[slot] = vx;
+                sparkVy[slot] = vy;
+                sparkLife[slot] = 280;
+                sparkColor[slot] = color;
+            } else {
+                if (sparkX.length < sparkMax) {
+                    sparkX[sparkX.length] = cx;
+                    sparkY[sparkY.length] = cy;
+                    sparkVx[sparkVx.length] = vx;
+                    sparkVy[sparkVy.length] = vy;
+                    sparkLife[sparkLife.length] = 280;
+                    sparkColor[sparkColor.length] = color;
+                }
+            }
+            n = n + 1;
+        }
+    }
+
+    function updateSparks(dt) {
+        var i = 0;
+        while (i < sparkLife.length) {
+            if (sparkLife[i] > 0) {
+                sparkLife[i] = sparkLife[i] - dt;
+                sparkX[i] = sparkX[i] + ((sparkVx[i] * dt) / 1000);
+                sparkY[i] = sparkY[i] + ((sparkVy[i] * dt) / 1000);
+                sparkVy[i] = sparkVy[i] + ((420 * dt) / 1000);
+            }
+            i = i + 1;
         }
     }
 
@@ -707,6 +772,13 @@ if (root == null) {
                 combo = combo + 1;
             }
             persistHighScore();
+            spawnSparks(
+                bricksX[index] + (bricksW[index] / 2),
+                bricksY[index] + (bricksH[index] / 2),
+                animatedBrickColor(index),
+                8
+            );
+            punchCamera(140, 4);
 
             var spawnSeed = (index * 17) + score + level;
             if ((spawnSeed % 5) == 0) {
@@ -721,6 +793,13 @@ if (root == null) {
             bricksColor[index] = brickColorByHp(hp, bricksMaxHp[index], bricksRow[index]);
             score = score + 30;
             persistHighScore();
+            spawnSparks(
+                bricksX[index] + (bricksW[index] / 2),
+                bricksY[index] + (bricksH[index] / 2),
+                bricksColor[index],
+                4
+            );
+            punchCamera(70, 2);
             game.audioPlayTone(240 + (bricksRow[index] * 12), 24, "triangle", 0.08);
         }
     }
@@ -773,15 +852,34 @@ if (root == null) {
                         bh
                     );
 
+                    var bounceY = false;
+                    var bounceX = false;
                     if (!prevOverlapY) {
-                        ballVy = 0 - ballVy;
+                        bounceY = true;
                     } else if (!prevOverlapX) {
-                        ballVx = 0 - ballVx;
+                        bounceX = true;
                     } else {
                         if (abs(ballVx) > abs(ballVy)) {
-                            ballVx = 0 - ballVx;
+                            bounceX = true;
                         } else {
-                            ballVy = 0 - ballVy;
+                            bounceY = true;
+                        }
+                    }
+
+                    if (bounceY) {
+                        ballVy = 0 - ballVy;
+                        if (ballVy > 0) {
+                            ballY = by + bh + ballRadius + 1;
+                        } else {
+                            ballY = by - ballRadius - 1;
+                        }
+                    }
+                    if (bounceX) {
+                        ballVx = 0 - ballVx;
+                        if (ballVx > 0) {
+                            ballX = bx + bw + ballRadius + 1;
+                        } else {
+                            ballX = bx - ballRadius - 1;
                         }
                     }
 
@@ -792,6 +890,8 @@ if (root == null) {
             i = i + 1;
         }
 
+        ballsX[ballIndex] = ballX;
+        ballsY[ballIndex] = ballY;
         ballsVx[ballIndex] = ballVx;
         ballsVy[ballIndex] = ballVy;
     }
@@ -809,18 +909,47 @@ if (root == null) {
     }
 
     function updateBallTrail(dt) {
+        var keptX = [];
+        var keptY = [];
+        var keptLife = [];
         var i = 0;
         while (i < ballTrailLife.length) {
-            ballTrailLife[i] = ballTrailLife[i] - dt;
+            var life = ballTrailLife[i] - dt;
+            if (life > 0) {
+                keptX[keptX.length] = ballTrailX[i];
+                keptY[keptY.length] = ballTrailY[i];
+                keptLife[keptLife.length] = life;
+            }
             i = i + 1;
         }
 
         i = 0;
         while (i < ballsX.length) {
-            ballTrailX[ballTrailX.length] = ballsX[i];
-            ballTrailY[ballTrailY.length] = ballsY[i];
-            ballTrailLife[ballTrailLife.length] = 280;
+            keptX[keptX.length] = ballsX[i];
+            keptY[keptY.length] = ballsY[i];
+            keptLife[keptLife.length] = 220;
             i = i + 1;
+        }
+
+        if (keptX.length > ballTrailMax) {
+            var skip = keptX.length - ballTrailMax;
+            var slimX = [];
+            var slimY = [];
+            var slimLife = [];
+            i = skip;
+            while (i < keptX.length) {
+                slimX[slimX.length] = keptX[i];
+                slimY[slimY.length] = keptY[i];
+                slimLife[slimLife.length] = keptLife[i];
+                i = i + 1;
+            }
+            ballTrailX = slimX;
+            ballTrailY = slimY;
+            ballTrailLife = slimLife;
+        } else {
+            ballTrailX = keptX;
+            ballTrailY = keptY;
+            ballTrailLife = keptLife;
         }
     }
 
@@ -856,6 +985,13 @@ if (root == null) {
         brickAnimClockMs = brickAnimClockMs + dt;
 
         if (stateTextTimerMs > 0) stateTextTimerMs = stateTextTimerMs - dt;
+        if (shakeMs > 0) {
+            shakeMs = shakeMs - dt;
+            if (shakeMs < 0) {
+                shakeMs = 0;
+            }
+        }
+        updateSparks(dt);
 
         if (game.wasKeyPressed("p") || game.wasGamepadButtonPressed(0, 9)) {
             if (state == "playing") {
@@ -872,26 +1008,11 @@ if (root == null) {
         mouseDown = game.isMouseDown(0);
         var mouseClick = mouseDown && !prevMouseDown;
 
-        // Real touches (G2) plus mouse-hold on a half of the canvas.
-        touchLeft = false;
-        touchRight = false;
         var touches = game.getTouches();
-        if (length(touches) > 0) {
-            if (touches[0].x < canvasWidth / 2) {
-                touchLeft = true;
-            } else {
-                touchRight = true;
-            }
-        } else if (mouseDown && mouseX > 0) {
-            if (mouseX < canvasWidth / 2) {
-                touchLeft = true;
-            } else {
-                touchRight = true;
-            }
-        }
+        var usingTouch = length(touches) > 0;
 
-        var moveLeft = game.isKeyDown("arrowleft") || game.isKeyDown("a") || touchLeft;
-        var moveRight = game.isKeyDown("arrowright") || game.isKeyDown("d") || touchRight;
+        var moveLeft = game.isKeyDown("arrowleft") || game.isKeyDown("a");
+        var moveRight = game.isKeyDown("arrowright") || game.isKeyDown("d");
         if (game.isGamepadConnected(0)) {
             if (game.isGamepadButtonDown(0, 14)) {
                 moveLeft = true;
@@ -903,13 +1024,6 @@ if (root == null) {
         var paddleStep = (paddleSpeed * dt) / 1000;
         var prevPaddleX = paddleX;
 
-        if (moveLeft) {
-            paddleX = paddleX - paddleStep;
-        }
-        if (moveRight) {
-            paddleX = paddleX + paddleStep;
-        }
-
         var padAxis = 0;
         if (game.isGamepadConnected(0)) {
             padAxis = game.getGamepadAxis(0, 0);
@@ -917,27 +1031,39 @@ if (root == null) {
                 padAxis = 0;
             }
         }
-        if (padAxis != 0) {
-            paddleX = paddleX + (padAxis * paddleStep);
+
+        if (usingTouch) {
+            var touchTarget = touches[0].x - (paddleWidth / 2);
+            paddleX = paddleX + ((touchTarget - paddleX) * 0.28);
             mouseAttached = false;
+        } else {
+            if (moveLeft) {
+                paddleX = paddleX - paddleStep;
+            }
+            if (moveRight) {
+                paddleX = paddleX + paddleStep;
+            }
+            if (padAxis != 0) {
+                paddleX = paddleX + (padAxis * paddleStep);
+                mouseAttached = false;
+            }
+
+            var mouseMoved = (mouseX > 0 && mouseX != lastMouseX);
+            lastMouseX = mouseX;
+
+            if (moveLeft || moveRight) {
+                mouseAttached = false;
+            } else if (mouseMoved) {
+                mouseAttached = true;
+            }
+
+            if (mouseAttached && !moveLeft && !moveRight && mouseX > 0) {
+                var targetX = mouseX - (paddleWidth / 2);
+                paddleX = paddleX + ((targetX - paddleX) * 0.16);
+            }
         }
 
-        var mouseMoved = (mouseX > 0 && mouseX != lastMouseX);
         lastMouseX = mouseX;
-
-        // Detach paddle from mouse while using keyboard/touch; reattach only when mouse moves.
-        if (moveLeft || moveRight) {
-            mouseAttached = false;
-        } else if (mouseMoved) {
-            mouseAttached = true;
-        }
-
-        // Let keyboard/touch movement take priority; only use mouse aiming when attached and not pressing move keys.
-        if (mouseAttached && !moveLeft && !moveRight && mouseX > 0) {
-            var targetX = mouseX - (paddleWidth / 2);
-            paddleX = paddleX + ((targetX - paddleX) * 0.16);
-        }
-
         paddleX = clamp(paddleX, 0, canvasWidth - paddleWidth);
         if (dt > 0) {
             paddleVx = ((paddleX - prevPaddleX) * 1000) / dt;
@@ -977,13 +1103,44 @@ if (root == null) {
             if (ballsX.length <= 0) {
                 resetBallOnPaddle(1);
             }
-            ballsX[0] = paddleX + (paddleWidth / 2);
-            ballsY[0] = paddleY - ballRadius - 2;
 
+            serveAim = clamp(paddleVx / paddleSpeed, -1, 1);
+            if (usingTouch) {
+                var touchAim = ((touches[0].x - (paddleX + (paddleWidth / 2))) / 120);
+                serveAim = clamp(touchAim, -1, 1);
+            } else if (moveLeft && !moveRight) {
+                serveAim = -0.8;
+            } else if (moveRight && !moveLeft) {
+                serveAim = 0.8;
+            } else if (padAxis != 0) {
+                serveAim = padAxis;
+            }
+            if (abs(serveAim) < 0.08) {
+                serveAim = 0.35;
+            }
+
+            var aimVx = 200 + (abs(serveAim) * 180);
+            if (serveAim < 0) {
+                aimVx = 0 - aimVx;
+            }
+            ballsX[0] = paddleX + (paddleWidth / 2) + (serveAim * 22);
+            ballsY[0] = paddleY - ballRadius - 2;
+            ballsVx[0] = aimVx;
+            ballsVy[0] = -330;
+
+            var tapLaunch = false;
+            if (usingTouch && mouseClick) {
+                if (touches[0].y < paddleY - 60) {
+                    tapLaunch = true;
+                }
+            }
             var launchPressed =
                 game.wasKeyPressed(" ") ||
-                mouseClick ||
-                game.wasGamepadButtonPressed(0, 0);
+                game.wasGamepadButtonPressed(0, 0) ||
+                tapLaunch;
+            if (mouseClick && !usingTouch) {
+                launchPressed = true;
+            }
             if (launchPressed) {
                 state = "playing";
                 splashDismissed = true;
@@ -1061,6 +1218,7 @@ if (root == null) {
                 ballsY[i] = paddleY - ballRadius;
                 bounceOffPaddle(i, paddleVx);
                 combo = 0;
+                punchCamera(50, 2);
                 game.audioPlayTone(940, 30, "square", 0.12);
             }
 
@@ -1173,9 +1331,9 @@ if (root == null) {
         var i = 0;
         while (i < ballTrailX.length) {
             if (ballTrailLife[i] > 0) {
-                var r = (ballRadius * ballTrailLife[i]) / 280;
+                var r = (ballRadius * ballTrailLife[i]) / 220;
                 if (r < 2) r = 2;
-                game.setAlpha(ballTrailLife[i] / 280);
+                game.setAlpha(ballTrailLife[i] / 220);
                 game.fillCircle(ballTrailX[i], ballTrailY[i], r, "#f8fafc");
             }
             i = i + 1;
@@ -1183,16 +1341,84 @@ if (root == null) {
         game.setAlpha(1);
     }
 
+    function drawSparks() {
+        var i = 0;
+        while (i < sparkLife.length) {
+            if (sparkLife[i] > 0) {
+                game.setAlpha(sparkLife[i] / 280);
+                game.fillCircle(sparkX[i], sparkY[i], 3, sparkColor[i]);
+            }
+            i = i + 1;
+        }
+        game.setAlpha(1);
+    }
+
+    function drawOverlayPanel(title, titleColor, line1, line2, line3) {
+        game.setAlpha(0.55);
+        game.fillRect(0, 0, canvasWidth, canvasHeight, "#020617");
+        game.setAlpha(1);
+
+        var panelW = 620;
+        var panelH = 240;
+        var panelX = (canvasWidth - panelW) / 2;
+        var panelY = 168;
+        game.fillRect(panelX, panelY, panelW, panelH, "#020617ee");
+        game.strokeRect(panelX, panelY, panelW, panelH, "#38bdf8", 3);
+        game.drawText(title, panelX + 48, panelY + 58, titleColor, "bold 36px sans-serif");
+        game.drawText(line1, panelX + 48, panelY + 110, "#e2e8f0", "20px sans-serif");
+        game.drawText(line2, panelX + 48, panelY + 146, "#cbd5e1", "18px sans-serif");
+        game.drawText(line3, panelX + 48, panelY + 190, "#94a3b8", "18px sans-serif");
+    }
+
     function renderGame() {
         game.clear();
+
+        var camX = 0;
+        var camY = 0;
+        if (shakeMs > 0 && shakeMag > 0) {
+            var fade = shakeMs / 140;
+            if (fade > 1) {
+                fade = 1;
+            }
+            camX = ((((brickAnimClockMs * 13) % 7) - 3) * shakeMag * fade) / 3;
+            camY = ((((brickAnimClockMs * 17) % 5) - 2) * shakeMag * fade) / 2;
+        }
+        game.setCamera(camX, camY);
+
         drawBackground();
 
-        // Visible playfield walls so the bounce area is obvious (no floor).
         var wallColor = "#38bdf8";
         var wallThickness = 4;
         game.drawLine(0, wallThickness / 2, canvasWidth, wallThickness / 2, wallColor, wallThickness);
         game.drawLine(wallThickness / 2, 0, wallThickness / 2, canvasHeight, wallColor, wallThickness);
         game.drawLine(canvasWidth - (wallThickness / 2), 0, canvasWidth - (wallThickness / 2), canvasHeight, wallColor, wallThickness);
+
+        drawBricks();
+        drawPowerUps();
+        drawSparks();
+        drawBallTrail();
+
+        game.fillRect(paddleX, paddleY, paddleWidth, paddleHeight, "#22d3ee");
+        game.fillRect(paddleX + 4, paddleY + 4, paddleWidth - 8, 5, "#a5f3fc");
+        var i = 0;
+        while (i < ballsX.length) {
+            game.fillCircle(ballsX[i], ballsY[i], ballRadius, "#f8fafc");
+            game.fillCircle(ballsX[i] - 3, ballsY[i] - 3, 3, "#ffffff");
+            i = i + 1;
+        }
+
+        if (state == "serve" && ballsX.length > 0) {
+            game.drawLine(
+                ballsX[0],
+                ballsY[0],
+                ballsX[0] + (ballsVx[0] * 0.14),
+                ballsY[0] + (ballsVy[0] * 0.14),
+                "#e2e8f0",
+                2
+            );
+        }
+
+        game.setCamera(0, 0);
 
         game.fillRect(0, 0, canvasWidth, 60, "#0b1320");
         game.drawText("Maldanoid", 18, 36, "#f8fafc", "bold 26px sans-serif");
@@ -1206,19 +1432,6 @@ if (root == null) {
             game.drawText("Combo x" + string(combo), 18, 84, "#facc15", "bold 18px sans-serif");
         }
 
-        drawBricks();
-        drawPowerUps();
-        drawBallTrail();
-
-        game.fillRect(paddleX, paddleY, paddleWidth, paddleHeight, "#22d3ee");
-        game.fillRect(paddleX + 4, paddleY + 4, paddleWidth - 8, 5, "#a5f3fc");
-        var i = 0;
-        while (i < ballsX.length) {
-            game.fillCircle(ballsX[i], ballsY[i], ballRadius, "#f8fafc");
-            game.fillCircle(ballsX[i] - 3, ballsY[i] - 3, 3, "#ffffff");
-            i = i + 1;
-        }
-
         if (expandTimerMs > 0) {
             game.drawText("EXPAND " + formatMsWithTenths(expandTimerMs) + "s", 18, canvasHeight - 14, "#fbbf24", "15px monospace");
         }
@@ -1226,25 +1439,7 @@ if (root == null) {
             game.drawText("SLOW " + formatMsWithTenths(slowTimerMs) + "s", 190, canvasHeight - 14, "#38bdf8", "15px monospace");
         }
 
-        var bgmInfo = game.audioGetTrackInfo();
-        var bgmMsg = "BGM: init";
-        var bgmColor = "#64748b";
-        if (bgmInfo.ready) {
-            bgmMsg = "BGM: ready";
-            bgmColor = "#22c55e";
-        }
-        if (bgmInfo.backendError != null && bgmInfo.backendError != "") {
-            bgmMsg = "BGM ERR";
-            bgmColor = "#ef4444";
-        }
-        game.drawText(bgmMsg, canvasWidth - 110, canvasHeight - 14, bgmColor, "13px monospace");
-        if (bgmInfo.backendError != null && bgmInfo.backendError != "") {
-            var bgmErrText = "BGM: " + bgmInfo.backendError;
-            game.drawText(bgmErrText, 18, canvasHeight - 34, "#f87171", "12px monospace");
-        }
-
         if (state == "serve" && !splashDismissed) {
-            // In-canvas splash overlay with logo + controls, hidden once the ball is launched.
             var panelW = 620;
             var panelH = 260;
             var panelX = (canvasWidth - panelW) / 2;
@@ -1254,22 +1449,37 @@ if (root == null) {
             game.strokeRect(panelX, panelY, panelW, panelH, wallColor, 3);
 
             game.drawText("Maldanoid", panelX + 180, panelY + 54, "#e5e7eb", "bold 32px sans-serif");
-            game.drawText("Move with Left/Right, A/D, stick, or touch", panelX + 60, panelY + 110, "#cbd5e1", "18px sans-serif");
-            game.drawText("Launch with SPACE, click, or gamepad A", panelX + 60, panelY + 138, "#cbd5e1", "18px sans-serif");
+            game.drawText("Move or drag to aim the serve", panelX + 60, panelY + 110, "#cbd5e1", "18px sans-serif");
+            game.drawText("Touch follows the paddle. Tap above it to launch", panelX + 60, panelY + 138, "#cbd5e1", "18px sans-serif");
             game.drawText("Pause with P or Start", panelX + 60, panelY + 166, "#cbd5e1", "18px sans-serif");
             game.drawText("Catch power-ups for upgrades", panelX + 60, panelY + 194, "#facc15", "18px sans-serif");
             game.drawText("Press SPACE, click, or A to launch", panelX + 60, panelY + 228, "#e2e8f0", "20px sans-serif");
         } else if (state == "serve") {
-            game.drawText("SPACE / click / A to launch", 318, 312, "#e2e8f0", "20px sans-serif");
+            game.drawText("Move to aim  ·  SPACE / click / A to launch", 248, 312, "#e2e8f0", "20px sans-serif");
         } else if (state == "paused") {
-            game.drawText("Paused", 430, 312, "#f8fafc", "bold 34px sans-serif");
-            game.drawText("Press P to continue", 384, 342, "#cbd5e1", "20px sans-serif");
+            drawOverlayPanel(
+                "Paused",
+                "#f8fafc",
+                "Score " + string(score) + "   High " + string(highScore),
+                "Level " + string(level) + "/" + string(maxLevel) + "   Lives " + string(lives),
+                "Press P or Start to continue"
+            );
         } else if (state == "gameover") {
-            game.drawText("Game Over", 388, 296, "#fb7185", "bold 42px sans-serif");
-            game.drawText("Press R or Enter to restart", 340, 336, "#f8fafc", "20px sans-serif");
+            drawOverlayPanel(
+                "Game Over",
+                "#fb7185",
+                "Score " + string(score) + "   High " + string(highScore),
+                "Reached level " + string(level) + "/" + string(maxLevel),
+                "Press R, Enter, or A to restart"
+            );
         } else if (state == "win") {
-            game.drawText("You Cleared Maldanoid!", 308, 292, "#4ade80", "bold 40px sans-serif");
-            game.drawText("Press R or Enter to play again", 332, 332, "#f8fafc", "20px sans-serif");
+            drawOverlayPanel(
+                "You cleared Maldanoid!",
+                "#4ade80",
+                "Score " + string(score) + "   High " + string(highScore),
+                "All " + string(maxLevel) + " levels complete",
+                "Press R, Enter, or A to play again"
+            );
         }
     }
 
