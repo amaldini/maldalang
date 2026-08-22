@@ -273,7 +273,8 @@ uses images, camera, AABB, key edges, sample SFX, and `startFixed`, and still
 compiles with `--mode js`.
 
 - Host HTML + `metadata.json` catalog entry.
-- Bounce / Maldanoid remain the primitive-draw track. `maldadash` stays a
+- Bounce remains the primitive-draw `game.start` loop. Maldanoid stays
+  primitive-draw (no sprites) but now uses G2/G3/G5 helpers. `maldadash` stays a
   tile cave on `fillRect` (the cheaper G1-atlas rewrite was not taken).
 - Transpile smoke: `JsTranspiler_*Example_Emits…` like `maldadash`.
 

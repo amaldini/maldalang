@@ -109,6 +109,8 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 #### Clarified (PATCH — docs / tracking only)
 
+- **Maldanoid uses the post-kit 2D loop:** `Examples/Games/maldanoid.malda` stays on the primitive-draw track (no sprites) but now calls `game.startFixed`, `overlapRect` / `overlapCircle`, `wasKeyPressed`, `getTouches` / gamepad helpers, G1 `drawLine` / `strokeRect` / `setAlpha`, and `game.save` / `load` for the high score. Bounce remains the minimal `game.start` loop. No Tier 0 semantic change.
+
 - **Games kit G0–G9 landed:** [`docs/roadmap-games.md`](../roadmap-games.md) is no longer a forward plan. Status, architecture docs layout, `llms.txt`, and the games examples README now say G0–G9 shipped (2026-08-21). Remaining ideas sit in After G9 / non-goals. No Tier 0 semantic change.
 
 #### Added (MINOR — fullstack game scores template)
@@ -329,6 +331,7 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-08-21 | PATCH: overlapping `async` + `sleep` interpreter task isolation |
 | 2026-08-21 | Games platform plan (`docs/roadmap-games.md`; PATCH docs). G0 only. |
 | 2026-08-22 | Games kit G0–G9 marked landed (`docs/roadmap-games.md`; PATCH docs). |
+| 2026-08-22 | PATCH: Maldanoid example adopts G1/G2/G3/G5 helpers (`startFixed`, overlap, input edges, save/load) |
 | 2026-08-21 | MINOR: JS `game.loadImage` / camera / draw extras (G1) |
 | 2026-08-21 | MINOR: JS `game.wasKeyPressed` / touches / gamepad (G2) |
 | 2026-08-21 | MINOR: JS `game.overlapRect` / circle / point queries (G3) |

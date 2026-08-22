@@ -551,6 +551,32 @@ public class JavaScriptBackendTests : TestBase
     }
 
     [Fact]
+    public void JsTranspiler_MaldanoidExample_EmitsKitCalls()
+    {
+        var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Games", "maldanoid.malda");
+        var compiler = new Compiler.Compiler();
+        var js = compiler.TranspileToJavaScript(sourcePath);
+
+        Assert.Contains("mlRuntime.game.startFixed(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.wasKeyPressed(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.getTouches()", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.isGamepadConnected(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.getGamepadAxis(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.wasGamepadButtonPressed(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.overlapRect(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.overlapCircle(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.drawLine(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.strokeRect(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.setAlpha(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.save(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.load(", js, StringComparison.Ordinal);
+        Assert.Contains("maldanoid_high", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("mlRuntime.game.start(updateGame, renderGame)", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("mlRuntime.game.loadImage(", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("mlRuntime.three.", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void JsTranspiler_MaldadashExample_EmitsGameLoopCalls()
     {
         var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Games", "maldadash.malda");

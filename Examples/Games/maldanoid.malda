@@ -39,6 +39,10 @@ if (root == null) {
 
     var score = 0;
     var highScore = 0;
+    var savedHigh = game.load("maldanoid_high");
+    if (savedHigh != null) {
+        highScore = savedHigh;
+    }
     var combo = 0;
     var lives = 3;
     var level = 1;
@@ -87,9 +91,6 @@ if (root == null) {
 
     var expandTimerMs = 0;
     var slowTimerMs = 0;
-    var launchDebounceMs = 0;
-    var restartDebounceMs = 0;
-    var pauseDebounceMs = 0;
     var audioBooted = false;
     var gameOverSfxPlayed = false;
     var winSfxPlayed = false;
@@ -140,6 +141,13 @@ if (root == null) {
         return whole + "." + frac;
     }
 
+    function persistHighScore() {
+        if (score > highScore) {
+            highScore = score;
+            game.save("maldanoid_high", highScore);
+        }
+    }
+
     function tryStartMusicTrack() {
         if (!audioBooted) {
             return;
@@ -165,7 +173,10 @@ if (root == null) {
             game.isKeyDown("a") ||
             game.isKeyDown("d") ||
             game.isKeyDown("r") ||
-            game.isKeyDown("enter");
+            game.isKeyDown("enter") ||
+            game.wasGamepadButtonPressed(0, 0) ||
+            game.isGamepadButtonDown(0, 14) ||
+            game.isGamepadButtonDown(0, 15);
 
         if (!wantsAudio) {
             return;
@@ -611,16 +622,22 @@ if (root == null) {
                 if (puY[i] > canvasHeight + 30) {
                     puActive[i] = false;
                 } else {
-                    var hitPaddle =
-                        puY[i] >= paddleY - 10 &&
-                        puY[i] <= paddleY + paddleHeight + 8 &&
-                        puX[i] >= paddleX - 12 &&
-                        puX[i] <= paddleX + paddleWidth + 12;
+                    var paddleCx = paddleX + (paddleWidth / 2);
+                    var paddleCy = paddleY + (paddleHeight / 2);
+                    var hitPaddle = game.overlapCircle(
+                        puX[i],
+                        puY[i],
+                        11,
+                        paddleCx,
+                        paddleCy,
+                        (paddleWidth / 2) + 8
+                    );
 
                     if (hitPaddle) {
                         applyPowerUp(puType[i]);
                         puActive[i] = false;
                         score = score + 35;
+                        persistHighScore();
                     }
                 }
             }
@@ -688,6 +705,7 @@ if (root == null) {
             if (combo < 12) {
                 combo = combo + 1;
             }
+            persistHighScore();
 
             var spawnSeed = (index * 17) + score + level;
             if ((spawnSeed % 5) == 0) {
@@ -701,6 +719,7 @@ if (root == null) {
         } else {
             bricksColor[index] = brickColorByHp(hp, bricksMaxHp[index], bricksRow[index]);
             score = score + 30;
+            persistHighScore();
             game.audioPlayTone(240 + (bricksRow[index] * 12), 24, "triangle", 0.08);
         }
     }
@@ -720,19 +739,38 @@ if (root == null) {
                 var bw = bricksW[i];
                 var bh = bricksH[i];
 
-                var overlaps =
-                    ballX + ballRadius >= bx &&
-                    ballX - ballRadius <= bx + bw &&
-                    ballY + ballRadius >= by &&
-                    ballY - ballRadius <= by + bh;
+                var overlaps = game.overlapRect(
+                    ballX - ballRadius,
+                    ballY - ballRadius,
+                    ballRadius * 2,
+                    ballRadius * 2,
+                    bx,
+                    by,
+                    bw,
+                    bh
+                );
 
                 if (overlaps && !collided) {
-                    var prevOverlapX =
-                        prevX + ballRadius >= bx &&
-                        prevX - ballRadius <= bx + bw;
-                    var prevOverlapY =
-                        prevY + ballRadius >= by &&
-                        prevY - ballRadius <= by + bh;
+                    var prevOverlapX = game.overlapRect(
+                        prevX - ballRadius,
+                        by,
+                        ballRadius * 2,
+                        bh,
+                        bx,
+                        by,
+                        bw,
+                        bh
+                    );
+                    var prevOverlapY = game.overlapRect(
+                        bx,
+                        prevY - ballRadius,
+                        bw,
+                        ballRadius * 2,
+                        bx,
+                        by,
+                        bw,
+                        bh
+                    );
 
                     if (!prevOverlapY) {
                         ballVy = 0 - ballVy;
@@ -814,20 +852,11 @@ if (root == null) {
         tryBootAudio();
 
         var dt = dtMs;
-        if (dt > 40) {
-            dt = 40;
-        }
-        if (dt < 0) {
-            dt = 0;
-        }
         brickAnimClockMs = brickAnimClockMs + dt;
 
-        if (launchDebounceMs > 0) launchDebounceMs = launchDebounceMs - dt;
-        if (restartDebounceMs > 0) restartDebounceMs = restartDebounceMs - dt;
-        if (pauseDebounceMs > 0) pauseDebounceMs = pauseDebounceMs - dt;
         if (stateTextTimerMs > 0) stateTextTimerMs = stateTextTimerMs - dt;
 
-        if ((game.isKeyDown("p")) && pauseDebounceMs <= 0) {
+        if (game.wasKeyPressed("p") || game.wasGamepadButtonPressed(0, 9)) {
             if (state == "playing") {
                 state = "paused";
                 game.audioPlayTone(330, 40, "triangle", 0.09);
@@ -835,18 +864,24 @@ if (root == null) {
                 state = "playing";
                 game.audioPlayTone(520, 40, "triangle", 0.09);
             }
-            pauseDebounceMs = 240;
         }
 
         var mouseX = game.getMouseX();
         prevMouseDown = mouseDown;
         mouseDown = game.isMouseDown(0);
-        var mouseClick = (!mouseDown && prevMouseDown);
+        var mouseClick = mouseDown && !prevMouseDown;
 
-        // Map continuous touch/mouse press on canvas to virtual left/right controls.
+        // Real touches (G2) plus mouse-hold on a half of the canvas.
         touchLeft = false;
         touchRight = false;
-        if (mouseDown && mouseX > 0) {
+        var touches = game.getTouches();
+        if (length(touches) > 0) {
+            if (touches[0].x < canvasWidth / 2) {
+                touchLeft = true;
+            } else {
+                touchRight = true;
+            }
+        } else if (mouseDown && mouseX > 0) {
             if (mouseX < canvasWidth / 2) {
                 touchLeft = true;
             } else {
@@ -856,6 +891,14 @@ if (root == null) {
 
         var moveLeft = game.isKeyDown("arrowleft") || game.isKeyDown("a") || touchLeft;
         var moveRight = game.isKeyDown("arrowright") || game.isKeyDown("d") || touchRight;
+        if (game.isGamepadConnected(0)) {
+            if (game.isGamepadButtonDown(0, 14)) {
+                moveLeft = true;
+            }
+            if (game.isGamepadButtonDown(0, 15)) {
+                moveRight = true;
+            }
+        }
         var paddleStep = (paddleSpeed * dt) / 1000;
         var prevPaddleX = paddleX;
 
@@ -864,6 +907,18 @@ if (root == null) {
         }
         if (moveRight) {
             paddleX = paddleX + paddleStep;
+        }
+
+        var padAxis = 0;
+        if (game.isGamepadConnected(0)) {
+            padAxis = game.getGamepadAxis(0, 0);
+            if (abs(padAxis) < 0.2) {
+                padAxis = 0;
+            }
+        }
+        if (padAxis != 0) {
+            paddleX = paddleX + (padAxis * paddleStep);
+            mouseAttached = false;
         }
 
         var mouseMoved = (mouseX > 0 && mouseX != lastMouseX);
@@ -893,7 +948,12 @@ if (root == null) {
         updateMovingBricks(dt);
 
         if (state == "gameover" || state == "win") {
-            if ((game.isKeyDown("r") || game.isKeyDown("enter") || mouseClick) && restartDebounceMs <= 0) {
+            var restartPressed =
+                game.wasKeyPressed("r") ||
+                game.wasKeyPressed("enter") ||
+                mouseClick ||
+                game.wasGamepadButtonPressed(0, 0);
+            if (restartPressed) {
                 game.audioStopAll();
                 bgmBootstrapState = "idle";
                 score = 0;
@@ -901,7 +961,6 @@ if (root == null) {
                 gameOverSfxPlayed = false;
                 winSfxPlayed = false;
                 beginLevel(1);
-                restartDebounceMs = 240;
                 game.audioPlayTone(560, 65, "square", 0.12);
                 game.audioPlayTone(760, 72, "square", 0.10);
             }
@@ -919,9 +978,12 @@ if (root == null) {
             ballsX[0] = paddleX + (paddleWidth / 2);
             ballsY[0] = paddleY - ballRadius - 2;
 
-            if ((game.isKeyDown(" ") || mouseClick) && launchDebounceMs <= 0) {
+            var launchPressed =
+                game.wasKeyPressed(" ") ||
+                mouseClick ||
+                game.wasGamepadButtonPressed(0, 0);
+            if (launchPressed) {
                 state = "playing";
-                launchDebounceMs = 220;
                 game.audioPlayTone(700, 44, "square", 0.12);
             }
             return;
@@ -974,21 +1036,18 @@ if (root == null) {
                 }
             }
 
-            var prevBottom = prevY + ballRadius;
-            var currBottom = ballY + ballRadius;
-            var crossedPaddleTop =
-                prevBottom <= paddleY &&
-                currBottom >= paddleY;
-            var inPaddleX =
-                ballX >= paddleX - ballRadius &&
-                ballX <= paddleX + paddleWidth + ballRadius;
-            var inPaddleBand =
-                ballY >= paddleY - ballRadius &&
-                ballY <= paddleY + paddleHeight + ballRadius;
             var hitsPaddle =
                 ballVy > 0 &&
-                inPaddleX &&
-                (crossedPaddleTop || inPaddleBand);
+                game.overlapRect(
+                    ballX - ballRadius,
+                    ballY - ballRadius,
+                    ballRadius * 2,
+                    ballRadius * 2,
+                    paddleX,
+                    paddleY,
+                    paddleWidth,
+                    paddleHeight
+                );
 
             ballsX[i] = ballX;
             ballsY[i] = ballY;
@@ -1014,7 +1073,7 @@ if (root == null) {
                 levelClearTimerMs = 0;
                 if (level >= maxLevel) {
                     state = "win";
-                    if (score > highScore) highScore = score;
+                    persistHighScore();
                     if (!winSfxPlayed) {
                         game.audioStopPattern();
                         game.audioPlayTone(620, 90, "square", 0.13);
@@ -1045,7 +1104,7 @@ if (root == null) {
             game.audioPlayTone(190, 95, "sawtooth", 0.10);
             if (lives <= 0) {
                 state = "gameover";
-                if (score > highScore) highScore = score;
+                persistHighScore();
                 if (!gameOverSfxPlayed) {
                     game.audioStopPattern();
                     game.audioPlayTone(220, 130, "sawtooth", 0.12);
@@ -1113,24 +1172,24 @@ if (root == null) {
             if (ballTrailLife[i] > 0) {
                 var r = (ballRadius * ballTrailLife[i]) / 280;
                 if (r < 2) r = 2;
-                game.fillCircle(ballTrailX[i], ballTrailY[i], r, "#f8fafc22");
+                game.setAlpha(ballTrailLife[i] / 280);
+                game.fillCircle(ballTrailX[i], ballTrailY[i], r, "#f8fafc");
             }
             i = i + 1;
         }
+        game.setAlpha(1);
     }
 
     function renderGame() {
         game.clear();
         drawBackground();
 
-        // Visible playfield walls so the bounce area is obvious.
+        // Visible playfield walls so the bounce area is obvious (no floor).
         var wallColor = "#38bdf8";
         var wallThickness = 4;
-        // Top wall (matches the physics top edge at y = 0)
-        game.fillRect(0, 0, canvasWidth, wallThickness, wallColor);
-        // Left and right walls
-        game.fillRect(0, 0, wallThickness, canvasHeight, wallColor);
-        game.fillRect(canvasWidth - wallThickness, 0, wallThickness, canvasHeight, wallColor);
+        game.drawLine(0, wallThickness / 2, canvasWidth, wallThickness / 2, wallColor, wallThickness);
+        game.drawLine(wallThickness / 2, 0, wallThickness / 2, canvasHeight, wallColor, wallThickness);
+        game.drawLine(canvasWidth - (wallThickness / 2), 0, canvasWidth - (wallThickness / 2), canvasHeight, wallColor, wallThickness);
 
         game.fillRect(0, 0, canvasWidth, 60, "#0b1320");
         game.drawText("Maldanoid", 18, 36, "#f8fafc", "bold 26px sans-serif");
@@ -1189,18 +1248,14 @@ if (root == null) {
             var panelY = 170;
 
             game.fillRect(panelX, panelY, panelW, panelH, "#020617ee");
-            var splashBorder = 3;
-            game.fillRect(panelX, panelY, panelW, splashBorder, wallColor);
-            game.fillRect(panelX, panelY + panelH - splashBorder, panelW, splashBorder, wallColor);
-            game.fillRect(panelX, panelY, splashBorder, panelH, wallColor);
-            game.fillRect(panelX + panelW - splashBorder, panelY, splashBorder, panelH, wallColor);
+            game.strokeRect(panelX, panelY, panelW, panelH, wallColor, 3);
 
             game.drawText("Maldanoid", panelX + 180, panelY + 54, "#e5e7eb", "bold 32px sans-serif");
-            game.drawText("Move with Left/Right or A/D", panelX + 60, panelY + 110, "#cbd5e1", "18px sans-serif");
-            game.drawText("Launch with SPACE or Left Click", panelX + 60, panelY + 138, "#cbd5e1", "18px sans-serif");
-            game.drawText("Pause with P", panelX + 60, panelY + 166, "#cbd5e1", "18px sans-serif");
+            game.drawText("Move with Left/Right, A/D, stick, or touch", panelX + 60, panelY + 110, "#cbd5e1", "18px sans-serif");
+            game.drawText("Launch with SPACE, click, or gamepad A", panelX + 60, panelY + 138, "#cbd5e1", "18px sans-serif");
+            game.drawText("Pause with P or Start", panelX + 60, panelY + 166, "#cbd5e1", "18px sans-serif");
             game.drawText("Catch power-ups for upgrades", panelX + 60, panelY + 194, "#facc15", "18px sans-serif");
-            game.drawText("Press SPACE or Left Click to launch", panelX + 60, panelY + 228, "#e2e8f0", "20px sans-serif");
+            game.drawText("Press SPACE, click, or A to launch", panelX + 60, panelY + 228, "#e2e8f0", "20px sans-serif");
         } else if (state == "paused") {
             game.drawText("Paused", 430, 312, "#f8fafc", "bold 34px sans-serif");
             game.drawText("Press P to continue", 384, 342, "#cbd5e1", "20px sans-serif");
@@ -1216,5 +1271,5 @@ if (root == null) {
     beginLevel(1);
     game.createCanvas(canvasWidth, canvasHeight, "#app");
     game.setBackground("#020617");
-    game.start(updateGame, renderGame);
+    game.startFixed(updateGame, renderGame);
 }
