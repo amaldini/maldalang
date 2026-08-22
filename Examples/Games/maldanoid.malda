@@ -50,11 +50,26 @@ if (root == null) {
 
     var score = 0;
     var highScore = 0;
-    var savedHigh = game.load("maldanoid_high");
-    if (savedHigh != null) {
-        highScore = savedHigh;
+    var bestCombo = 0;
+    var savedStats = game.load("maldanoid_save");
+    if (savedStats != null) {
+        if (savedStats.high != null) {
+            highScore = savedStats.high;
+        }
+        if (savedStats.bestCombo != null) {
+            bestCombo = savedStats.bestCombo;
+        }
+    } else {
+        var savedHigh = game.load("maldanoid_high");
+        if (savedHigh != null) {
+            highScore = savedHigh;
+        }
     }
     var combo = 0;
+    var comboFlashMs = 0;
+    var lastBrickHit = -1;
+    var lastBrickCoolMs = 0;
+    var pauseResumeState = "serve";
     var lives = 3;
     var level = 1;
     var maxLevel = 3;
@@ -150,10 +165,18 @@ if (root == null) {
         return whole + "." + frac;
     }
 
-    function persistHighScore() {
+    function persistStats() {
+        var changed = false;
         if (score > highScore) {
             highScore = score;
-            game.save("maldanoid_high", highScore);
+            changed = true;
+        }
+        if (combo > bestCombo) {
+            bestCombo = combo;
+            changed = true;
+        }
+        if (changed) {
+            game.save("maldanoid_save", { "high": highScore, "bestCombo": bestCombo });
         }
     }
 
@@ -284,12 +307,14 @@ if (root == null) {
         addBall(
             paddleX + (paddleWidth / 2),
             paddleY - ballRadius - 2,
-            260 * direction,
-            -320
+            40 * direction,
+            -250
         );
         ballTrailX = [];
         ballTrailY = [];
         ballTrailLife = [];
+        lastBrickHit = -1;
+        lastBrickCoolMs = 0;
     }
 
     function rebuildStars() {
@@ -703,7 +728,7 @@ if (root == null) {
                         applyPowerUp(puType[i]);
                         puActive[i] = false;
                         score = score + 35;
-                        persistHighScore();
+                        persistStats();
                     }
                 }
             }
@@ -721,9 +746,9 @@ if (root == null) {
         if (halfWidth < 1) {
             halfWidth = 1;
         }
-        var speed = abs(ballVx) + abs(ballVy);
-        if (speed < 420) {
-            speed = 420;
+        var speed = abs(ballVx) + abs(ballVy) + 26;
+        if (speed < 360) {
+            speed = 360;
         }
         if (speed > ballSpeedCap) {
             speed = ballSpeedCap;
@@ -731,7 +756,7 @@ if (root == null) {
 
         // Use integer-safe math so transpiled JS keeps left/right sign.
         ballVx = ((speed * deltaFromCenter) / halfWidth) + ((paddleMotionX * 24) / 100);
-        var maxHorizontal = (speed * 86) / 100;
+        var maxHorizontal = (speed * 80) / 100;
         if (abs(ballVx) > maxHorizontal) {
             if (ballVx < 0) {
                 ballVx = 0 - maxHorizontal;
@@ -739,22 +764,22 @@ if (root == null) {
                 ballVx = maxHorizontal;
             }
         }
-        if (abs(ballVx) < 120) {
+        if (abs(ballVx) < 70) {
             if (deltaFromCenter < 0) {
-                ballVx = -120;
+                ballVx = -70;
             } else if (deltaFromCenter > 0) {
-                ballVx = 120;
+                ballVx = 70;
             } else {
                 if (ballVx < 0) {
-                    ballVx = -120;
+                    ballVx = -70;
                 } else {
-                    ballVx = 120;
+                    ballVx = 70;
                 }
             }
         }
         ballVy = 0 - (speed - abs(ballVx));
-        if (ballVy > -180) {
-            ballVy = -180;
+        if (ballVy > -160) {
+            ballVy = -160;
         }
         ballsVx[ballIndex] = ballVx;
         ballsVy[ballIndex] = ballVy;
@@ -771,7 +796,7 @@ if (root == null) {
             if (combo < 12) {
                 combo = combo + 1;
             }
-            persistHighScore();
+            persistStats();
             spawnSparks(
                 bricksX[index] + (bricksW[index] / 2),
                 bricksY[index] + (bricksH[index] / 2),
@@ -787,12 +812,12 @@ if (root == null) {
                 var typeSeed = (index * 31) + (score * 7) + (level * 13) + (combo * 19);
                 spawnPowerUp(bricksX[index] + (bricksW[index] / 2), bricksY[index] + (bricksH[index] / 2), typeSeed);
             }
-            var destroyPitch = 350 + (bricksRow[index] * 22);
+            var destroyPitch = 350 + (bricksRow[index] * 22) + (combo * 16);
             game.audioPlayTone(destroyPitch, 36, "square", 0.12);
         } else {
             bricksColor[index] = brickColorByHp(hp, bricksMaxHp[index], bricksRow[index]);
             score = score + 30;
-            persistHighScore();
+            persistStats();
             spawnSparks(
                 bricksX[index] + (bricksW[index] / 2),
                 bricksY[index] + (bricksH[index] / 2),
@@ -830,6 +855,10 @@ if (root == null) {
                     bh
                 );
 
+                if (i == lastBrickHit && lastBrickCoolMs > 0) {
+                    overlaps = false;
+                }
+
                 if (overlaps && !collided) {
                     var prevOverlapX = game.overlapRect(
                         prevX - ballRadius,
@@ -854,15 +883,15 @@ if (root == null) {
 
                     var bounceY = false;
                     var bounceX = false;
-                    if (!prevOverlapY) {
+                    if (!prevOverlapY && prevOverlapX) {
                         bounceY = true;
-                    } else if (!prevOverlapX) {
+                    } else if (!prevOverlapX && prevOverlapY) {
                         bounceX = true;
                     } else {
-                        if (abs(ballVx) > abs(ballVy)) {
-                            bounceX = true;
-                        } else {
+                        if ((abs(ballVy) * 12) >= (abs(ballVx) * 10)) {
                             bounceY = true;
+                        } else {
+                            bounceX = true;
                         }
                     }
 
@@ -883,6 +912,8 @@ if (root == null) {
                         }
                     }
 
+                    lastBrickHit = i;
+                    lastBrickCoolMs = 50;
                     hitBrick(i);
                     collided = true;
                 }
@@ -991,14 +1022,27 @@ if (root == null) {
                 shakeMs = 0;
             }
         }
+        if (comboFlashMs > 0) {
+            comboFlashMs = comboFlashMs - dt;
+            if (comboFlashMs < 0) {
+                comboFlashMs = 0;
+            }
+        }
+        if (lastBrickCoolMs > 0) {
+            lastBrickCoolMs = lastBrickCoolMs - dt;
+            if (lastBrickCoolMs <= 0) {
+                lastBrickHit = -1;
+            }
+        }
         updateSparks(dt);
 
         if (game.wasKeyPressed("p") || game.wasGamepadButtonPressed(0, 9)) {
-            if (state == "playing") {
+            if (state == "playing" || state == "serve") {
+                pauseResumeState = state;
                 state = "paused";
                 game.audioPlayTone(330, 40, "triangle", 0.09);
             } else if (state == "paused") {
-                state = "playing";
+                state = pauseResumeState;
                 game.audioPlayTone(520, 40, "triangle", 0.09);
             }
         }
@@ -1115,18 +1159,21 @@ if (root == null) {
             } else if (padAxis != 0) {
                 serveAim = padAxis;
             }
-            if (abs(serveAim) < 0.08) {
-                serveAim = 0.35;
+            if (abs(serveAim) < 0.12) {
+                serveAim = 0;
             }
 
-            var aimVx = 200 + (abs(serveAim) * 180);
-            if (serveAim < 0) {
-                aimVx = 0 - aimVx;
+            var aimVx = serveAim * 240;
+            if (abs(aimVx) < 28) {
+                aimVx = 28;
+                if (paddleVx < 0) {
+                    aimVx = -28;
+                }
             }
-            ballsX[0] = paddleX + (paddleWidth / 2) + (serveAim * 22);
+            ballsX[0] = paddleX + (paddleWidth / 2) + (serveAim * 18);
             ballsY[0] = paddleY - ballRadius - 2;
             ballsVx[0] = aimVx;
-            ballsVy[0] = -330;
+            ballsVy[0] = -250;
 
             var tapLaunch = false;
             if (usingTouch && mouseClick) {
@@ -1217,6 +1264,9 @@ if (root == null) {
             if (hitsPaddle) {
                 ballsY[i] = paddleY - ballRadius;
                 bounceOffPaddle(i, paddleVx);
+                if (combo > 1) {
+                    comboFlashMs = 160;
+                }
                 combo = 0;
                 punchCamera(50, 2);
                 game.audioPlayTone(940, 30, "square", 0.12);
@@ -1234,7 +1284,7 @@ if (root == null) {
                 levelClearTimerMs = 0;
                 if (level >= maxLevel) {
                     state = "win";
-                    persistHighScore();
+                    persistStats();
                     if (!winSfxPlayed) {
                         game.audioStopPattern();
                         game.audioPlayTone(620, 90, "square", 0.13);
@@ -1260,12 +1310,16 @@ if (root == null) {
         }
 
         if (ballsY.length <= 0) {
+            persistStats();
+            if (combo > 1) {
+                comboFlashMs = 160;
+            }
+            combo = 0;
             lives = lives - 1;
             game.audioPlayNoise(90, 0.12);
             game.audioPlayTone(190, 95, "sawtooth", 0.10);
             if (lives <= 0) {
                 state = "gameover";
-                persistHighScore();
                 if (!gameOverSfxPlayed) {
                     game.audioStopPattern();
                     game.audioPlayTone(220, 130, "sawtooth", 0.12);
@@ -1295,8 +1349,21 @@ if (root == null) {
         var i = 0;
         while (i < bricksX.length) {
             if (bricksAlive[i]) {
-                game.fillRect(bricksX[i], bricksY[i], bricksW[i], bricksH[i], animatedBrickColor(i));
-                game.fillRect(bricksX[i] + 2, bricksY[i] + 2, bricksW[i] - 4, 4, "#ffffff22");
+                var bx = bricksX[i];
+                var by = bricksY[i];
+                var bw = bricksW[i];
+                var bh = bricksH[i];
+                game.fillRect(bx, by, bw, bh, animatedBrickColor(i));
+                game.fillRect(bx + 2, by + 2, bw - 4, 4, "#ffffff22");
+                if (bricksMaxHp[i] >= 2) {
+                    game.strokeRect(bx + 1, by + 1, bw - 2, bh - 2, "#0f172a88", 2);
+                }
+                if (bricksHp[i] >= 2) {
+                    game.fillRect(bx + 5, by + bh - 7, bw - 10, 3, "#0f172acc");
+                }
+                if (bricksHp[i] >= 3) {
+                    game.fillRect(bx + 5, by + bh - 12, bw - 10, 3, "#0f172acc");
+                }
             }
             i = i + 1;
         }
@@ -1306,22 +1373,26 @@ if (root == null) {
         var i = 0;
         while (i < puX.length) {
             if (puActive[i]) {
-                var label = "E";
-                var color = "#facc15";
-                if (puType[i] == "slow") {
-                    label = "S";
-                    color = "#38bdf8";
+                var px = puX[i];
+                var py = puY[i];
+                if (puType[i] == "expand") {
+                    game.fillRect(px - 16, py - 5, 32, 10, "#facc15");
+                    game.fillRect(px - 12, py - 2, 24, 4, "#0f172a");
+                } else if (puType[i] == "slow") {
+                    game.fillCircle(px, py, 11, "#38bdf8");
+                    game.drawLine(px - 6, py - 5, px, py + 6, "#0f172a", 3);
+                    game.drawLine(px + 6, py - 5, px, py + 6, "#0f172a", 3);
+                } else if (puType[i] == "life") {
+                    game.fillCircle(px, py, 11, "#4ade80");
+                    game.fillRect(px - 2, py - 7, 4, 14, "#0f172a");
+                    game.fillRect(px - 7, py - 2, 14, 4, "#0f172a");
+                } else if (puType[i] == "multiball") {
+                    game.fillCircle(px - 6, py + 3, 5, "#a78bfa");
+                    game.fillCircle(px + 6, py + 3, 5, "#a78bfa");
+                    game.fillCircle(px, py - 5, 5, "#a78bfa");
+                } else {
+                    game.fillCircle(px, py, 11, "#facc15");
                 }
-                if (puType[i] == "life") {
-                    label = "+";
-                    color = "#4ade80";
-                }
-                if (puType[i] == "multiball") {
-                    label = "M";
-                    color = "#a78bfa";
-                }
-                game.fillCircle(puX[i], puY[i], 11, color);
-                game.drawText(label, puX[i] - 4, puY[i] + 4, "#0f172a", "bold 14px sans-serif");
             }
             i = i + 1;
         }
@@ -1420,6 +1491,12 @@ if (root == null) {
 
         game.setCamera(0, 0);
 
+        if (comboFlashMs > 0) {
+            game.setAlpha(comboFlashMs / 280);
+            game.fillRect(0, 0, canvasWidth, canvasHeight, "#fb7185");
+            game.setAlpha(1);
+        }
+
         game.fillRect(0, 0, canvasWidth, 60, "#0b1320");
         game.drawText("Maldanoid", 18, 36, "#f8fafc", "bold 26px sans-serif");
         game.drawText("Score " + string(score), 230, 34, "#cbd5e1", "18px sans-serif");
@@ -1428,8 +1505,14 @@ if (root == null) {
         game.drawText("Level " + string(level) + "/" + string(maxLevel), 660, 34, "#cbd5e1", "18px sans-serif");
         game.drawText("Bricks " + string(bricksLeft), 810, 34, "#cbd5e1", "18px sans-serif");
 
-        if (combo > 1) {
-            game.drawText("Combo x" + string(combo), 18, 84, "#facc15", "bold 18px sans-serif");
+        if (combo > 0) {
+            game.drawText("Combo x" + string(combo), 18, 80, "#facc15", "bold 18px sans-serif");
+            game.fillRect(18, 90, 160, 6, "#1e293b");
+            var comboBar = (combo * 160) / 12;
+            if (comboBar > 160) {
+                comboBar = 160;
+            }
+            game.fillRect(18, 90, comboBar, 6, "#facc15");
         }
 
         if (expandTimerMs > 0) {
@@ -1451,7 +1534,7 @@ if (root == null) {
             game.drawText("Maldanoid", panelX + 180, panelY + 54, "#e5e7eb", "bold 32px sans-serif");
             game.drawText("Move or drag to aim the serve", panelX + 60, panelY + 110, "#cbd5e1", "18px sans-serif");
             game.drawText("Touch follows the paddle. Tap above it to launch", panelX + 60, panelY + 138, "#cbd5e1", "18px sans-serif");
-            game.drawText("Pause with P or Start", panelX + 60, panelY + 166, "#cbd5e1", "18px sans-serif");
+            game.drawText("Pause with P or Start (works on the serve too)", panelX + 60, panelY + 166, "#cbd5e1", "18px sans-serif");
             game.drawText("Catch power-ups for upgrades", panelX + 60, panelY + 194, "#facc15", "18px sans-serif");
             game.drawText("Press SPACE, click, or A to launch", panelX + 60, panelY + 228, "#e2e8f0", "20px sans-serif");
         } else if (state == "serve") {
@@ -1461,7 +1544,7 @@ if (root == null) {
                 "Paused",
                 "#f8fafc",
                 "Score " + string(score) + "   High " + string(highScore),
-                "Level " + string(level) + "/" + string(maxLevel) + "   Lives " + string(lives),
+                "Best combo x" + string(bestCombo) + "   Lives " + string(lives),
                 "Press P or Start to continue"
             );
         } else if (state == "gameover") {
@@ -1469,7 +1552,7 @@ if (root == null) {
                 "Game Over",
                 "#fb7185",
                 "Score " + string(score) + "   High " + string(highScore),
-                "Reached level " + string(level) + "/" + string(maxLevel),
+                "Level " + string(level) + "/" + string(maxLevel) + "   Best combo x" + string(bestCombo),
                 "Press R, Enter, or A to restart"
             );
         } else if (state == "win") {
@@ -1477,7 +1560,7 @@ if (root == null) {
                 "You cleared Maldanoid!",
                 "#4ade80",
                 "Score " + string(score) + "   High " + string(highScore),
-                "All " + string(maxLevel) + " levels complete",
+                "Best combo x" + string(bestCombo) + "   All " + string(maxLevel) + " levels",
                 "Press R, Enter, or A to play again"
             );
         }
