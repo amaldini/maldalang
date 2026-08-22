@@ -571,6 +571,8 @@ public class JavaScriptBackendTests : TestBase
         Assert.Contains("mlRuntime.game.setCamera(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.save(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.load(", js, StringComparison.Ordinal);
+        Assert.Contains("maldanoid_save", js, StringComparison.Ordinal);
+        Assert.Contains("bestCombo", js, StringComparison.Ordinal);
         Assert.Contains("maldanoid_high", js, StringComparison.Ordinal);
         Assert.DoesNotContain("mlRuntime.game.start(updateGame, renderGame)", js, StringComparison.Ordinal);
         Assert.DoesNotContain("mlRuntime.game.loadImage(", js, StringComparison.Ordinal);

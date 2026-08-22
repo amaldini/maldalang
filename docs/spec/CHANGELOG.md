@@ -109,6 +109,8 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 #### Clarified (PATCH — docs / tracking only)
 
+- **Maldanoid rally polish:** `Examples/Games/maldanoid.malda` prefers the incoming velocity axis and ignores the last brick for a few ticks, serves near-vertical and builds speed on the paddle, pauses from serve, draws HP bars and shaped power-ups, and saves `{ high, bestCombo }`. No Tier 0 semantic change.
+
 - **Maldanoid feel pass:** `Examples/Games/maldanoid.malda` now depenetrates after brick hits, caps the ball trail, punches `setCamera` with sparks, aims the serve from paddle/touch, follows the first touch, and draws pause/result panels. BGM decode errors stay off the playfield. Still primitive-draw. No Tier 0 semantic change.
 
 - **Maldanoid uses the post-kit 2D loop:** `Examples/Games/maldanoid.malda` stays on the primitive-draw track (no sprites) but now calls `game.startFixed`, `overlapRect` / `overlapCircle`, `wasKeyPressed`, `getTouches` / gamepad helpers, G1 `drawLine` / `strokeRect` / `setAlpha`, and `game.save` / `load` for the high score. Bounce remains the minimal `game.start` loop. No Tier 0 semantic change.
@@ -335,6 +337,7 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-08-22 | Games kit G0–G9 marked landed (`docs/roadmap-games.md`; PATCH docs). |
 | 2026-08-22 | PATCH: Maldanoid example adopts G1/G2/G3/G5 helpers (`startFixed`, overlap, input edges, save/load) |
 | 2026-08-22 | PATCH: Maldanoid feel pass (depenetration, sparks, serve aim, result panels) |
+| 2026-08-22 | PATCH: Maldanoid rally polish (velocity-axis bounce, combo save, pause from serve) |
 | 2026-08-21 | MINOR: JS `game.loadImage` / camera / draw extras (G1) |
 | 2026-08-21 | MINOR: JS `game.wasKeyPressed` / touches / gamepad (G2) |
 | 2026-08-21 | MINOR: JS `game.overlapRect` / circle / point queries (G3) |
