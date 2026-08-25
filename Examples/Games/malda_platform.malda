@@ -33,10 +33,14 @@ if (root == null) {
     var onGround = false;
     var facingLeft = false;
 
-    var platX = [0, 200, 430, 700, 980, 1280];
-    var platY = [312, 240, 186, 228, 164, 248];
-    var platW = [1600, 140, 150, 170, 140, 180];
-    var platH = [48, 24, 24, 24, 24, 24];
+    var plats = [
+        { "x": 0, "y": 312, "w": 1600, "h": 48 },
+        { "x": 200, "y": 240, "w": 140, "h": 24 },
+        { "x": 430, "y": 186, "w": 150, "h": 24 },
+        { "x": 700, "y": 228, "w": 170, "h": 24 },
+        { "x": 980, "y": 164, "w": 140, "h": 24 },
+        { "x": 1280, "y": 248, "w": 180, "h": 24 }
+    ];
 
     var coinX = [248, 486, 760, 1028, 1348];
     var coinY = [216, 162, 204, 140, 224];
@@ -51,19 +55,6 @@ if (root == null) {
     var loaded = game.load("platform_high");
     if (loaded != null) {
         high = loaded;
-    }
-
-    function sweepPlatforms(x, y, dx, dy) {
-        var best = game.sweepRect(x, y, playerW, playerH, dx, dy, platX[0], platY[0], platW[0], platH[0]);
-        var i = 1;
-        while (i < platX.length) {
-            var next = game.sweepRect(x, y, playerW, playerH, dx, dy, platX[i], platY[i], platW[i], platH[i]);
-            if (next.hit && (!best.hit || next.t < best.t)) {
-                best = next;
-            }
-            i = i + 1;
-        }
-        return best;
     }
 
     function resetRun() {
@@ -125,7 +116,7 @@ if (root == null) {
         }
         var dy = (vy * dtMs) / 1000;
 
-        var movedX = sweepPlatforms(playerX, playerY, dx, 0);
+        var movedX = game.sweepRects(playerX, playerY, playerW, playerH, dx, 0, plats);
         playerX = movedX.x;
         if (playerX < 0) {
             playerX = 0;
@@ -134,7 +125,7 @@ if (root == null) {
             playerX = worldW - playerW;
         }
 
-        var movedY = sweepPlatforms(playerX, playerY, 0, dy);
+        var movedY = game.sweepRects(playerX, playerY, playerW, playerH, 0, dy, plats);
         playerY = movedY.y;
         onGround = false;
         if (movedY.hit) {
@@ -183,19 +174,14 @@ if (root == null) {
     function renderGame() {
         game.clear();
 
-        var camX = playerX - 280;
-        if (camX < 0) {
-            camX = 0;
-        }
-        var maxCam = worldW - canvasW;
-        if (camX > maxCam) {
-            camX = maxCam;
-        }
-        game.setCamera(camX, 0);
+        game.followCamera(playerX, playerY, canvasW, canvasH, worldW, canvasH, {
+            "screenX": 280,
+            "snap": true
+        });
 
         var p = 0;
-        while (p < platX.length) {
-            drawPlatform(platX[p], platY[p], platW[p], platH[p]);
+        while (p < plats.length) {
+            drawPlatform(plats[p].x, plats[p].y, plats[p].w, plats[p].h);
             p = p + 1;
         }
 

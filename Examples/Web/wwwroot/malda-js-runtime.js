@@ -1926,6 +1926,7 @@
         gamepadButtonsDown: new Set(),
         gamepadButtonsPrev: new Set(),
         gamepadButtonsPressed: new Set(),
+        gamepadButtonsReleased: new Set(),
         gamepadAxes: {},
         inputFrameActive: false,
         listenersAttached: false,
@@ -2064,12 +2065,26 @@
         });
       }
 
-      function startSamplePlayback(context, buffer, url, volume, loop) {
+      function resolvePlaybackRate(value) {
+        const numeric = toFiniteNumber(value, 1);
+        if (!(numeric > 0)) {
+          return 1;
+        }
+        return Math.min(4, Math.max(0.25, numeric));
+      }
+
+      function startSamplePlayback(context, buffer, url, volume, loop, pan, playbackRate) {
         if (!context || !state.audioMasterGain || !buffer) return;
 
         const source = context.createBufferSource();
         source.buffer = buffer;
         source.loop = !!loop;
+        const rate = resolvePlaybackRate(playbackRate);
+        if (source.playbackRate && typeof source.playbackRate.setValueAtTime === "function") {
+          source.playbackRate.setValueAtTime(rate, context.currentTime);
+        } else if (source.playbackRate) {
+          source.playbackRate.value = rate;
+        }
         const gain = context.createGain();
         if (gain.gain && typeof gain.gain.setValueAtTime === "function") {
           gain.gain.setValueAtTime(volume, context.currentTime);
@@ -2077,8 +2092,22 @@
           gain.gain.value = volume;
         }
         source.connect(gain);
-        gain.connect(state.audioMasterGain);
-        registerAudioSource(source, [gain, source], { kind: "sample", url });
+        const cleanupNodes = [gain, source];
+        if (typeof context.createStereoPanner === "function") {
+          const panner = context.createStereoPanner();
+          const panValue = clampFiniteNumber(pan, -1, 1, 0);
+          if (panner.pan && typeof panner.pan.setValueAtTime === "function") {
+            panner.pan.setValueAtTime(panValue, context.currentTime);
+          } else if (panner.pan) {
+            panner.pan.value = panValue;
+          }
+          gain.connect(panner);
+          panner.connect(state.audioMasterGain);
+          cleanupNodes.push(panner);
+        } else {
+          gain.connect(state.audioMasterGain);
+        }
+        registerAudioSource(source, cleanupNodes, { kind: "sample", url });
         source.start(context.currentTime);
       }
 
@@ -2087,22 +2116,26 @@
           const safeOptions = volume;
           return {
             volume: clampFiniteNumber(safeOptions.volume, 0, 1, 1),
-            loop: !!safeOptions.loop
+            loop: !!safeOptions.loop,
+            pan: clampFiniteNumber(safeOptions.pan, -1, 1, 0),
+            playbackRate: resolvePlaybackRate(safeOptions.playbackRate)
           };
         }
 
         const safeOptions = options && typeof options === "object" ? options : {};
         return {
           volume: clampFiniteNumber(volume, 0, 1, 1),
-          loop: !!safeOptions.loop
+          loop: !!safeOptions.loop,
+          pan: clampFiniteNumber(safeOptions.pan, -1, 1, 0),
+          playbackRate: resolvePlaybackRate(safeOptions.playbackRate)
         };
       }
 
-      function enqueueSamplePlay(url, volume, loop) {
+      function enqueueSamplePlay(url, volume, loop, pan, playbackRate) {
         const entry = state.audioSampleCache.get(url);
         if (!entry || !Array.isArray(entry.pending)) return;
         if (entry.pending.length >= 8) return;
-        entry.pending.push({ volume, loop });
+        entry.pending.push({ volume, loop, pan, playbackRate });
       }
 
       function flushPendingSamplePlays(context, url) {
@@ -2110,7 +2143,15 @@
         if (!entry || entry.status !== "ready" || !entry.buffer) return;
         const pending = entry.pending.splice(0, entry.pending.length);
         for (let i = 0; i < pending.length; i++) {
-          startSamplePlayback(context, entry.buffer, url, pending[i].volume, pending[i].loop);
+          startSamplePlayback(
+            context,
+            entry.buffer,
+            url,
+            pending[i].volume,
+            pending[i].loop,
+            pending[i].pan,
+            pending[i].playbackRate
+          );
         }
       }
 
@@ -2336,6 +2377,7 @@
         state.gamepadButtonsDown.clear();
         state.gamepadButtonsPrev.clear();
         state.gamepadButtonsPressed.clear();
+        state.gamepadButtonsReleased.clear();
         state.gamepadConnected.clear();
         state.gamepadAxes = {};
         state.inputFrameActive = false;
@@ -2406,9 +2448,15 @@
 
         pollGamepads();
         state.gamepadButtonsPressed.clear();
+        state.gamepadButtonsReleased.clear();
         for (const key of state.gamepadButtonsDown) {
           if (!state.gamepadButtonsPrev.has(key)) {
             state.gamepadButtonsPressed.add(key);
+          }
+        }
+        for (const key of state.gamepadButtonsPrev) {
+          if (!state.gamepadButtonsDown.has(key)) {
+            state.gamepadButtonsReleased.add(key);
           }
         }
         state.gamepadButtonsPrev = new Set(state.gamepadButtonsDown);
@@ -2421,6 +2469,7 @@
         state.mouseButtonsPressed.clear();
         state.mouseButtonsReleased.clear();
         state.gamepadButtonsPressed.clear();
+        state.gamepadButtonsReleased.clear();
         state.inputFrameActive = false;
       }
 
@@ -2733,6 +2782,43 @@
         state.cameraX = toFiniteNumber(x, 0);
         state.cameraY = toFiniteNumber(y, 0);
         return null;
+      }
+
+      function followAxis(target, screen, view, world) {
+        if (!(world > view)) {
+          return 0;
+        }
+        let cam = target - screen;
+        const maxCam = world - view;
+        if (cam < 0) {
+          cam = 0;
+        }
+        if (cam > maxCam) {
+          cam = maxCam;
+        }
+        return cam;
+      }
+
+      function followCamera(targetX, targetY, viewW, viewH, worldW, worldH, options) {
+        ensureCanvasContext("followCamera");
+        const viewWidth = toFiniteNumber(viewW, 0);
+        const viewHeight = toFiniteNumber(viewH, 0);
+        const worldWidth = toFiniteNumber(worldW, 0);
+        const worldHeight = toFiniteNumber(worldH, 0);
+        const opts = options && typeof options === "object" ? options : {};
+        const screenX = optionHas(opts, "screenX")
+          ? toFiniteNumber(opts.screenX, viewWidth / 2)
+          : viewWidth / 2;
+        const screenY = optionHas(opts, "screenY")
+          ? toFiniteNumber(opts.screenY, viewHeight / 2)
+          : viewHeight / 2;
+        let camX = followAxis(toFiniteNumber(targetX, 0), screenX, viewWidth, worldWidth);
+        let camY = followAxis(toFiniteNumber(targetY, 0), screenY, viewHeight, worldHeight);
+        if (opts.snap) {
+          camX = Math.floor(camX);
+          camY = Math.floor(camY);
+        }
+        return setCamera(camX, camY);
       }
 
       function getCameraX() {
@@ -3342,6 +3428,42 @@
         return sweepHit(true, tEnter, nx, ny, ax + adx * tEnter, ay + ady * tEnter);
       }
 
+      function sweepRects(x, y, w, h, dx, dy, obstacles) {
+        const ax = toFiniteNumber(x, 0);
+        const ay = toFiniteNumber(y, 0);
+        const aw = toFiniteNumber(w, 0);
+        const ah = toFiniteNumber(h, 0);
+        const adx = toFiniteNumber(dx, 0);
+        const ady = toFiniteNumber(dy, 0);
+        const endX = ax + adx;
+        const endY = ay + ady;
+        if (!Array.isArray(obstacles)) {
+          return sweepHit(false, 1, 0, 0, endX, endY);
+        }
+
+        let best = null;
+        for (let i = 0; i < obstacles.length; i++) {
+          const obstacle = obstacles[i];
+          if (!obstacle || typeof obstacle !== "object" || Array.isArray(obstacle)) {
+            continue;
+          }
+          const ow = toFiniteNumber(obstacle.w, 0);
+          const oh = toFiniteNumber(obstacle.h, 0);
+          if (ow <= 0 || oh <= 0) {
+            continue;
+          }
+          const next = sweepRect(ax, ay, aw, ah, adx, ady, obstacle.x, obstacle.y, ow, oh);
+          if (!next.hit) {
+            continue;
+          }
+          if (!best || next.t < best.t) {
+            best = next;
+          }
+        }
+
+        return best || sweepHit(false, 1, 0, 0, endX, endY);
+      }
+
       function isKeyDown(key) {
         return state.keysDown.has(normalizeKey(key));
       }
@@ -3399,12 +3521,17 @@
         return state.gamepadConnected.has(padIndex);
       }
 
-      function getGamepadAxis(index, axis) {
+      function getGamepadAxis(index, axis, deadzone) {
         ensureGamepadSnapshot();
         const padIndex = index === null || index === undefined ? 0 : coerceToInt(index);
         const axisIndex = coerceToInt(axis);
         const value = state.gamepadAxes[gamepadAxisKey(padIndex, axisIndex)];
-        return typeof value === "number" ? value : 0;
+        const raw = typeof value === "number" ? value : 0;
+        if (deadzone === undefined || deadzone === null) {
+          return raw;
+        }
+        const zone = clampFiniteNumber(deadzone, 0, 1, 0);
+        return Math.abs(raw) <= zone ? 0 : raw;
       }
 
       function isGamepadButtonDown(index, button) {
@@ -3418,6 +3545,12 @@
         const padIndex = index === null || index === undefined ? 0 : coerceToInt(index);
         const buttonIndex = coerceToInt(button);
         return state.gamepadButtonsPressed.has(gamepadButtonKey(padIndex, buttonIndex));
+      }
+
+      function wasGamepadButtonReleased(index, button) {
+        const padIndex = index === null || index === undefined ? 0 : coerceToInt(index);
+        const buttonIndex = coerceToInt(button);
+        return state.gamepadButtonsReleased.has(gamepadButtonKey(padIndex, buttonIndex));
       }
 
       function audioInit() {
@@ -3492,19 +3625,32 @@
         }
 
         if (entry && entry.status === "ready") {
-          startSamplePlayback(context, entry.buffer, safeUrl, playArgs.volume, playArgs.loop);
+          startSamplePlayback(
+            context,
+            entry.buffer,
+            safeUrl,
+            playArgs.volume,
+            playArgs.loop,
+            playArgs.pan,
+            playArgs.playbackRate
+          );
           return null;
         }
 
         if (entry && entry.status === "loading") {
-          enqueueSamplePlay(safeUrl, playArgs.volume, playArgs.loop);
+          enqueueSamplePlay(safeUrl, playArgs.volume, playArgs.loop, playArgs.pan, playArgs.playbackRate);
           return null;
         }
 
         state.audioSampleCache.set(safeUrl, {
           status: "loading",
           buffer: null,
-          pending: [{ volume: playArgs.volume, loop: playArgs.loop }]
+          pending: [{
+            volume: playArgs.volume,
+            loop: playArgs.loop,
+            pan: playArgs.pan,
+            playbackRate: playArgs.playbackRate
+          }]
         });
         beginSampleDecode(context, safeUrl);
         return null;
@@ -4022,6 +4168,7 @@
         getCanvasWidth,
         getCanvasHeight,
         setCamera,
+        followCamera,
         getCameraX,
         getCameraY,
         setCameraZoom,
@@ -4045,6 +4192,7 @@
         pointInRect,
         pointInCircle,
         sweepRect,
+        sweepRects,
         isKeyDown,
         wasKeyPressed,
         wasKeyReleased,
@@ -4060,6 +4208,7 @@
         getGamepadAxis,
         isGamepadButtonDown,
         wasGamepadButtonPressed,
+        wasGamepadButtonReleased,
         audioInit,
         audioIsReady,
         audioSetMasterVolume,

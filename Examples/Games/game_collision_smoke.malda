@@ -10,7 +10,7 @@ if (root == null) {
     dom.append(root, title);
 
     var hint = dom.create("p");
-    dom.setText(hint, "Arrows move the green box (overlapRect / overlapCircle). Yellow dot is the mouse. Space fires a fast dart: the ghost is the discrete end pose (tunnels); the orange dart stops on sweepRect.");
+    dom.setText(hint, "Arrows move the green box (overlapRect / overlapCircle). Yellow dot is the mouse. Space fires a fast dart: the ghost is the discrete end pose (tunnels); the orange dart stops on sweepRects against the wall and the thin gate.");
     dom.append(root, hint);
 
     var px = 72.0;
@@ -56,13 +56,6 @@ if (root == null) {
         ghostOn = false;
     }
 
-    function earliestHit(first, second) {
-        if (second.hit && (!first.hit || second.t < first.t)) {
-            return second;
-        }
-        return first;
-    }
-
     function update(dtMs) {
         var step = (speed * dtMs) / 1000;
         if (game.isKeyDown("arrowleft")) {
@@ -98,9 +91,11 @@ if (root == null) {
             var ddx = (9000 * dtMs) / 1000;
             ghostX = dartX + ddx;
             ghostOn = true;
-            var againstWall = game.sweepRect(dartX, dartY, dartW, dartH, ddx, 0, wallX, wallY, wallW, wallH);
-            var againstGate = game.sweepRect(dartX, dartY, dartW, dartH, ddx, 0, gateX, gateY, gateW, gateH);
-            var contact = earliestHit(againstWall, againstGate);
+            var obstacles = [
+                { "x": wallX, "y": wallY, "w": wallW, "h": wallH },
+                { "x": gateX, "y": gateY, "w": gateW, "h": gateH }
+            ];
+            var contact = game.sweepRects(dartX, dartY, dartW, dartH, ddx, 0, obstacles);
             if (contact.hit) {
                 dartX = contact.x;
                 dartLive = false;
@@ -176,7 +171,7 @@ if (root == null) {
         }
 
         game.drawText("overlap " + overlapText + "  " + mouseText + "  " + dartText, 12, 24, "#ffffff", "14px monospace");
-        game.drawText("Inclusive AABB for overlap. sweepRect stops the fast dart on the thin gate.", 12, 44, "#99ddee", "12px monospace");
+        game.drawText("Inclusive AABB for overlap. sweepRects stops the fast dart on the nearest wall or gate.", 12, 44, "#99ddee", "12px monospace");
     }
 
     game.createCanvas(640, 360, "#app");

@@ -25,7 +25,7 @@ malda compile app.malda --mode pwa -o dist
 
 ## What this starter includes
 
-- `app.malda`: canvas, `game.start`, arrow-key paddle, `game.overlapRect` bounce, `wasKeyPressed("r")` restart. Locals and helper `function`s stay in the same `#app` block so JavaScript emit can close over them (same pattern as `Examples/Games/game_bounce.malda`).
+- `app.malda`: canvas, `game.startFixed` (default 60 Hz tick, max 5 catch-up updates per frame), arrow-key paddle, `game.overlapRect` bounce, `wasKeyPressed("r")` restart. `updateGame` always receives `tickMs`, not the wall-clock frame delta — do not clamp `dt > 50`. Locals and helper `function`s stay in the same `#app` block so JavaScript emit can close over them (same pattern as `Examples/Games/game_bounce.malda`).
 - `index.html`: load `malda-js-runtime.js`, then `app.js`, then `MaldaApp.main()`
 - `assets/`: optional media folder (empty until you add files)
 

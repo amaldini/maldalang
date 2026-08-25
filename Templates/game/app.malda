@@ -130,5 +130,5 @@ if (root == null) {
 
     game.createCanvas(canvasWidth, canvasHeight, "#app");
     game.setBackground("#101722");
-    game.start(updateGame, renderGame);
+    game.startFixed(updateGame, renderGame);
 }

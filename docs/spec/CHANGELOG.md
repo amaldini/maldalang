@@ -107,6 +107,26 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — JS game.sweepRects)
+
+- **G11 `game.sweepRects` (JavaScript backend only):** `game.sweepRects(x, y, w, h, dx, dy, obstacles)` returns the same `{ hit, t, nx, ny, x, y }` as `sweepRect` against the earliest hit in an array of `{ x, y, w, h }` (ties keep the first in array order). Empty / missing / non-array: miss (`t` 1, end pose). Skip non-objects and `w`/`h` ≤ 0. Pure function: no canvas, no camera. Smoke: `Examples/Games/game_collision_smoke.malda`. Showcase `malda_platform` uses one `plats` array. Interpreter / C# transpile: n/a (`game-canvas`).
+
+#### Added (MINOR — JS game.followCamera)
+
+- **G12 `game.followCamera` (JavaScript backend only):** `game.followCamera(targetX, targetY, viewW, viewH, worldW, worldH, options?)` pans so the target sits at `(screenX, screenY)` then clamps the view inside `(0, 0)–(worldW, worldH)`. Options `{ screenX?, screenY?, snap? }`; default screen is view center; `snap: true` floors pan after clamp; `worldW ≤ viewW` → `camX = 0` (same for Y). Does not change zoom. Requires canvas. Showcase `malda_platform`. Interpreter / C# transpile: n/a (`game-canvas`).
+
+#### Added (MINOR — JS audioPlaySample pan / playbackRate)
+
+- **G13 sample pan / playbackRate (JavaScript backend only):** `game.audioPlaySample(url, volume?, options?)` options are additive `{ loop?, pan?, playbackRate? }`. `pan` clamp `[-1, 1]` (default `0`; ignored if `createStereoPanner` is missing). `playbackRate` default `1`; non-positive / non-finite → `1`; clamp `[0.25, 4]`. Pending plays store pan and rate. Smoke: `Examples/Games/game_audio_sample_smoke.malda`. Interpreter / C# transpile: n/a (`game-canvas`).
+
+#### Added (MINOR — JS gamepad release / deadzone)
+
+- **G14 gamepad completeness (JavaScript backend only):** `game.wasGamepadButtonReleased(index, button)` is the release twin of `wasGamepadButtonPressed` (same update-only clock; false in `render`). `game.getGamepadAxis(index, axis, deadzone?)` keeps the two-arg form raw; optional `deadzone` clamp `[0, 1]` returns `0` when `|v| ≤ deadzone` with no radial rescale. Smoke: `Examples/Games/game_input_smoke.malda`. Interpreter / C# transpile: n/a (`game-canvas`).
+
+#### Changed (MINOR — JS game starter loop)
+
+- **G15 `malda new game` uses `startFixed`:** `Templates/game/app.malda` calls `game.startFixed(updateGame, renderGame)` (default 60 Hz, max 5 catch-up). Bounce stays on `game.start`. Interpreter / C# transpile: n/a (`game-canvas`).
+
 #### Added (MINOR — JS game query / pixel / strokeCircle)
 
 - **G10 2D query helpers (JavaScript backend only):** `game.imageWidth(handle)` / `game.imageHeight(handle)` return the bitmap size, or `0` until ready (no canvas required). `game.getCanvasWidth()` / `game.getCanvasHeight()` are backing-store pixels. `game.measureText(text, font?)` returns `{ width, height }` in unscaled font pixels (ignores camera pan/zoom; height uses canvas bounding boxes when present, else the `px` size in `font`). `game.setPixelated(enabled)` disables smoothing and sets CSS `image-rendering: pixelated` (`createCanvas` resets to browser smoothing). `game.strokeCircle(x, y, radius, color?, width?)` strokes a circle; camera pan and zoom apply (default color `#ffffff`, width `1`). Smoke: `Examples/Games/game_sprite_smoke.malda`. Interpreter / C# transpile: n/a (`game-canvas`).
@@ -128,6 +148,8 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 - **`game.sweepRect` (JavaScript backend only):** `game.sweepRect(x, y, w, h, dx, dy, ox, oy, ow, oh)` returns `{ hit, t, nx, ny, x, y }` at the first contact along the motion delta. Miss: `hit` false, `t` 1, `x`/`y` at the end pose. Hit: `t` in `[0, 1]`, position at impact, `nx`/`ny` pointing out of the obstacle (canvas Y+ down: floor `ny = -1`). Zero/negative sizes miss. Positive-area overlap at the start is `t` 0 plus a minimum-translation normal. Surface contact with parallel motion is not a hit (axis-separated platformer walks work). Pure function: no canvas, no camera. Not a physics engine / tileset / swept circle. Smoke: `Examples/Games/game_collision_smoke.malda`. Showcase `malda_platform` uses axis-separated sweep instead of the 18px landing slop. Interpreter / C# transpile: n/a (`game-canvas`).
 
 #### Clarified (PATCH — docs / tracking only)
+
+- **G11–G15 2D plan specified:** [`docs/roadmap-games.md`](../roadmap-games.md) expands the ranked post-G10 slices from draft one-liners to full workstream contracts (calls, guardrails, smoke, files, ship order). G11–G15 later landed (see Unreleased MINOR rows). No Tier 0 semantic change.
 
 - **Maldanoid rally polish:** `Examples/Games/maldanoid.malda` prefers the incoming velocity axis and ignores the last brick for a few ticks, serves near-vertical and builds speed on the paddle, pauses from serve, draws HP bars and shaped power-ups, and saves `{ high, bestCombo }`. No Tier 0 semantic change.
 
@@ -370,3 +392,8 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-08-25 | MINOR: JS `game.drawImageEx` flip / rotate / origin blit |
 | 2026-08-25 | MINOR: JS camera space / `wasMousePressed` / `pushCamera` |
 | 2026-08-25 | MINOR: JS `game.setCameraZoom` world-draw scale |
+| 2026-08-25 | MINOR: JS `game.sweepRects` multi-obstacle sweep (G11) |
+| 2026-08-25 | MINOR: JS `game.followCamera` follow clamp (G12) |
+| 2026-08-25 | MINOR: JS `audioPlaySample` pan / playbackRate (G13) |
+| 2026-08-25 | MINOR: JS `wasGamepadButtonReleased` / axis deadzone (G14) |
+| 2026-08-25 | MINOR: `malda new game` uses `startFixed` (G15) |

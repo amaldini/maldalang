@@ -10,7 +10,7 @@ if (root == null) {
     dom.append(root, title);
 
     var hint = dom.create("p");
-    dom.setText(hint, "Arrows hold-move. Space or click is wasKeyPressed / wasMousePressed (one jump per tap). Touches and gamepad axis 0 also move.");
+    dom.setText(hint, "Arrows hold-move. Space or click is wasKeyPressed / wasMousePressed (one jump per tap). Touches and gamepad axis 0 (deadzone 0.2) also move. Pad button 0 press jumps; release flashes.");
     dom.append(root, hint);
 
     var x = 280.0;
@@ -43,11 +43,14 @@ if (root == null) {
         }
 
         if (game.isGamepadConnected(0)) {
-            x = x + (game.getGamepadAxis(0, 0) * step);
-            y = y + (game.getGamepadAxis(0, 1) * step);
+            x = x + (game.getGamepadAxis(0, 0, 0.2) * step);
+            y = y + (game.getGamepadAxis(0, 1, 0.2) * step);
             if (game.wasGamepadButtonPressed(0, 0)) {
                 jumps = jumps + 1;
                 flashMs = 180;
+            }
+            if (game.wasGamepadButtonReleased(0, 0)) {
+                flashMs = 60;
             }
         }
 
@@ -79,7 +82,7 @@ if (root == null) {
 
         var padText = "pad off";
         if (game.isGamepadConnected(0)) {
-            padText = "pad ax0=" + string(game.getGamepadAxis(0, 0));
+            padText = "pad ax0=" + string(game.getGamepadAxis(0, 0, 0.2));
         }
         game.drawText("jumps " + string(jumps) + "  touches " + string(length(touches)) + "  " + padText, 12, 24, "#ffffff", "14px monospace");
         game.drawText("Read wasKeyPressed / wasMousePressed in update, not render.", 12, 44, "#99ddee", "12px monospace");
