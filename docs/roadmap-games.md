@@ -1,14 +1,14 @@
 # MALDA games platform plan
 
-**Status:** G0–G9 landed (2026-08-21); next = post-kit / deferred  
+**Status:** G0–G9 landed (2026-08-21); post-kit helpers through G10 (query / pixel / `strokeCircle`); next = ranked G11–G15  
 **Created:** 2026-08-21  
 **Audience:** maintainers extending the JS `game.*` / `three.*` surface after Final 1.0
 
 This is the plan that made MALDA a **good platform for games people finish** —
-Love2D / Pico-8 / Phaser, not Unity. All ranked workstreams below are landed;
-prefer [`docs/javascript-backend.md`](javascript-backend.md),
+Love2D / Pico-8 / Phaser, not Unity. G0–G10 are landed; G11–G15 are the next
+ranked 2D slices. Prefer [`docs/javascript-backend.md`](javascript-backend.md),
 [Reference Manual 26](../ReferenceManual/26-browser-javascript-backend.html),
-and the deferred list at the end for *what next*.
+and the deferred list at the end for engines that stay out of core.
 
 **Bar today:** JS-only canvas kit — images / atlas blit / camera / draw extras,
 key edges + gamepad + real touches, AABB / circle helpers, Audio Spec v1 plus
@@ -16,7 +16,9 @@ overlapping file samples, `startFixed` + origin `localStorage` save, `malda new
 game` / `malda play`, curated `three.*` primitives + textures / glTF / `lookAt`
 + `@shader()`. Featured 2D showcase: `malda_platform`. Canvas + score API:
 `malda new game --fullstack`. Primitive-draw track (`game_bounce`, `maldanoid`)
-stays.
+stays. Post-kit 2D: `sweepRect`, `drawImageEx`, camera stack / zoom, plus G10
+size queries (`imageWidth`, `getCanvasWidth`, `measureText`), `setPixelated`,
+and `strokeCircle`.
 
 **Not in scope:** new syntax / keywords / `on update`, interpreter or C# game
 loops, a Box2D-class physics engine in core, a second 2D renderer (Pixi /
@@ -62,6 +64,12 @@ top-level globals, Web IDE Desktop parity, product apps or vertical packs
 | 7 | **G7** Showcase that uses G1–G5 | Landed | Prove the kit with one game that is not all `fillRect` |
 | 8 | **G8** `three.*` textures, glTF, look-at | Landed | 3D games stayed colored boxes without assets |
 | 9 | **G9** Full-stack scores template | Landed | MALDA-specific: client loop + server authority + schema |
+| 10 | **G10** Size queries, pixelated, `strokeCircle` | Landed | Atlas games hardcoded 16×16; pixel art needed host CSS; no stroke twin of `fillCircle` |
+| 11 | **G11** Multi-obstacle sweep | Proposed | `malda_platform` copies a loop over `sweepRect`; still a helper, not physics |
+| 12 | **G12** Camera follow clamp | Proposed | Every camera game copies 8 lines of min/max; not a camera object |
+| 13 | **G13** Sample pan / playbackRate | Proposed | SFX are volume-only; spatial hits and chip-tune pitch need options |
+| 14 | **G14** Gamepad completeness | Proposed | `wasGamepadButtonReleased` missing; analog sticks have no deadzone |
+| 15 | **G15** Starter uses `startFixed` | Proposed | `malda new game` still emits `game.start`; the kit loop is `startFixed` |
 
 ```text
 G0  roadmap file                          (landed)
@@ -74,10 +82,16 @@ G0  roadmap file                          (landed)
                  └─ G7  showcase example  (malda_platform)
 G8  three.* assets                        (landed; independent of G1–G7)
 G9  fullstack scores                      (landed; after G6)
+G10 query / pixel / strokeCircle          (landed; post-kit 2D)
+  └─ G11 sweepRects
+       ├─ G12 camera follow clamp
+       ├─ G13 sample pan / rate
+       ├─ G14 gamepad released + deadzone
+       └─ G15 malda new game uses startFixed
 ```
 
-No ranked G10+. Remaining ideas sit in **After G9 (deferred)** and **Explicit
-non-goals** — revisit only with a new roadmap.
+G11–G15 are the next ranked 2D slices — not tilesets, particles, or a physics
+engine (those stay in **After G9 (deferred)** and **Explicit non-goals**).
 
 ---
 
@@ -405,10 +419,96 @@ could not magnify a scene; every draw size stayed 1:1 with canvas pixels.
 
 ---
 
+## G10 — Size queries, pixelated draws, `strokeCircle`
+
+**Landed:** `Examples/Games/game_sprite_smoke.malda` (HUD box via `measureText`,
+atlas size via `imageWidth`, marker ring via `strokeCircle`, `setPixelated`).
+Games hardcoded bitmap and canvas sizes, injected CSS for crisp pixels, and
+had `fillCircle` without a stroke twin.
+
+| Call | Contract |
+|------|----------|
+| `game.imageWidth(handle)` / `game.imageHeight(handle)` | Bitmap size, or `0` until ready / on a missing or invalid handle. No canvas required. |
+| `game.getCanvasWidth()` / `game.getCanvasHeight()` | Backing-store pixels. Requires `createCanvas`. |
+| `game.measureText(text, font?)` | `{ width, height }` in **unscaled** font pixels. Ignores camera pan/zoom. Height uses canvas bounding boxes when present, else the `px` size in `font` (default `"16px sans-serif"`). Requires canvas. |
+| `game.setPixelated(enabled)` | `true`: `imageSmoothingEnabled = false` and CSS `image-rendering: pixelated`. `false` / `createCanvas`: browser smoothing. |
+| `game.strokeCircle(x, y, radius, color?, width?)` | Stroke; default color `#ffffff`, width `1`. Camera pan and zoom apply. |
+
+**Guardrails**
+
+- Call `createCanvas` before canvas-size / measure / pixelated / `strokeCircle`.
+- `imageWidth` / `imageHeight` may run without a canvas (same as `imageIsReady`).
+- `measureText` is HUD metrics, not a world-space size — measure after `pushCamera` + zoom 1.
+- Not HiDPI backing-store scale, letterboxing, or a second renderer.
+
+**Files:** runtime, chapter 26.9, `docs/javascript-backend.md`.
+
+---
+
+## G11 — Multi-obstacle sweep (proposed)
+
+**Why:** `malda_platform` still loops `sweepRect` over every platform and keeps
+the earliest `t`. That loop is the landing boilerplate G3 left behind.
+
+| Call | Contract (draft) |
+|------|------------------|
+| `game.sweepRects(x, y, w, h, dx, dy, obstacles)` | `obstacles` is an array of `{ x, y, w, h }` (or parallel arrays). Returns the same `{ hit, t, nx, ny, x, y }` as `sweepRect` against the earliest hit. Empty / invalid obstacles: miss. |
+
+Still a pure function. Not tileset collision, swept circles, or a physics world.
+
+---
+
+## G12 — Camera follow clamp (proposed)
+
+**Why:** `malda_platform` render copies min/max so the camera stays inside the
+world. Pixel-art games also want integer pan to avoid subpixel shimmer.
+
+| Call | Contract (draft) |
+|------|------------------|
+| `game.followCamera(targetX, targetY, viewW, viewH, worldW, worldH, snap?)` | Sets pan so `target` sits near view center, clamped to the world AABB (`math.clamp` already exists — do not add `game.clamp`). Optional integer snap. Not a camera object. |
+
+Prefer a tiny `setCamera` helper over a follow *component*.
+
+---
+
+## G13 — Sample pan / playbackRate (proposed)
+
+**Why:** `audioPlaySample` options are `{ loop }` only. Side-of-screen coins and
+pitched jumps need `pan` / `playbackRate` without a second audio graph.
+
+Extend `{ loop?, pan?, playbackRate? }` on `audioPlaySample`. Keep v1 tone /
+pattern signatures unchanged. Node cap still applies.
+
+---
+
+## G14 — Gamepad completeness (proposed)
+
+**Why:** Keys have press and release edges; pads only have `wasGamepadButtonPressed`.
+Analog sticks chatter around 0 without a deadzone.
+
+| Call | Contract (draft) |
+|------|------------------|
+| `game.wasGamepadButtonReleased(index, button)` | Same clock as keys (false in `render`). |
+| `game.getGamepadAxis(index, axis, deadzone?)` | Additive optional deadzone; omitting it keeps today's raw `[-1, 1]`. |
+
+Do not invent a new pad mapping table.
+
+---
+
+## G15 — Starter uses `startFixed` (proposed)
+
+**Why:** `Templates/game/app.malda` still calls `game.start`. Newcomers copy a
+variable-dt paddle loop instead of the kit's fixed tick. Bounce can stay the
+minimal `game.start` sample.
+
+Switch the template (and its README) to `startFixed`. No new runtime names.
+
+---
+
 ## After G9 (deferred)
 
-Revisit only with a new ranked roadmap. These were called out while shipping
-G1–G9 and are **not** implied next work:
+Engine-scale ideas from G1–G9. **G11–G15 above are the ranked next 2D slices.**
+These rows stay out of core until a later roadmap:
 
 | Idea | Why it waited |
 |------|----------------|
@@ -423,13 +523,10 @@ G1–G9 and are **not** implied next work:
 | JS ↔ host actor bridging for multiplayer | JS actors are process-local; G9 uses HTTP |
 | Rewriting Desktop IDE into a game editor | Out of scope |
 
-Post-kit helper that did land: **`game.sweepRect`** — first-contact AABB along a
-delta (`{ hit, t, nx, ny, x, y }`). Still not tilesets, particles, or a physics
-engine. **`game.drawImageEx`** — atlas blit with origin, rotation, and flip.
-Still not a sprite object or a scene graph. **Camera space** — `pushCamera` /
-`popCamera`, `screenToWorld` / `worldToScreen`, `getMouseWorldX` / `Y`, and
-`wasMousePressed` / `Released`. **`game.setCameraZoom`** — scale world draws
-after pan; HUD resets zoom to 1 on the camera stack. Still not a scene graph.
+Post-kit helpers that did land: **`game.sweepRect`**, **`game.drawImageEx`**,
+camera space (`pushCamera` / world mouse / mouse edges), **`game.setCameraZoom`**,
+and **G10** (`imageWidth` / `getCanvasWidth` / `measureText` / `setPixelated` /
+`strokeCircle`). Still not tilesets, particles, a scene graph, or a physics engine.
 
 ---
 

@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — JS game query / pixel / strokeCircle)
+
+- **G10 2D query helpers (JavaScript backend only):** `game.imageWidth(handle)` / `game.imageHeight(handle)` return the bitmap size, or `0` until ready (no canvas required). `game.getCanvasWidth()` / `game.getCanvasHeight()` are backing-store pixels. `game.measureText(text, font?)` returns `{ width, height }` in unscaled font pixels (ignores camera pan/zoom; height uses canvas bounding boxes when present, else the `px` size in `font`). `game.setPixelated(enabled)` disables smoothing and sets CSS `image-rendering: pixelated` (`createCanvas` resets to browser smoothing). `game.strokeCircle(x, y, radius, color?, width?)` strokes a circle; camera pan and zoom apply (default color `#ffffff`, width `1`). Smoke: `Examples/Games/game_sprite_smoke.malda`. Interpreter / C# transpile: n/a (`game-canvas`).
+
 #### Added (MINOR — JS game.setCameraZoom)
 
 - **`game.setCameraZoom` (JavaScript backend only):** `game.setCameraZoom(z)` / `game.getCameraZoom()` scale world draws after the camera pan (default `1`; non-positive / non-finite → `1`; clamp `[0.05, 100]`). Sizes, radii, and stroke widths scale. `pushCamera` / `popCamera` stack pan and zoom. `screenToWorld` / `worldToScreen` / `getMouseWorldX` honor zoom (`getMouseX` stays canvas pixels). HUD: push, `setCamera(0, 0)`, `setCameraZoom(1)`, draw, pop. `createCanvas` resets zoom to `1`. Smoke: `Examples/Games/game_sprite_smoke.malda`. Interpreter / C# transpile: n/a (`game-canvas`).

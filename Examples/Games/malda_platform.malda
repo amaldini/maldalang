@@ -239,6 +239,7 @@ if (root == null) {
 
         game.pushCamera();
         game.setCamera(0, 0);
+        game.setCameraZoom(1);
         game.drawText("Coins: " + string(coins) + "/" + string(coinX.length) + "  High: " + string(high), 12, 24, "#ffffff", "14px monospace");
         if (coins >= coinX.length) {
             game.drawText("All coins! Press R to restart.", 12, 46, "#ffee88", "14px monospace");

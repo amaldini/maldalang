@@ -1951,6 +1951,7 @@
         cameraZoom: 1,
         cameraStack: [],
         alpha: 1,
+        pixelated: false,
         imageCache: new Map()
       };
 
@@ -2237,6 +2238,16 @@
 
       function applyDrawStyle(context) {
         context.globalAlpha = state.alpha;
+        context.imageSmoothingEnabled = !state.pixelated;
+      }
+
+      function applyPixelFilter(context, canvas) {
+        if (context) {
+          context.imageSmoothingEnabled = !state.pixelated;
+        }
+        if (canvas && canvas.style) {
+          canvas.style.imageRendering = state.pixelated ? "pixelated" : "auto";
+        }
       }
 
       function resolveImageHandle(handle) {
@@ -2577,7 +2588,9 @@
         state.cameraZoom = 1;
         state.cameraStack = [];
         state.alpha = 1;
+        state.pixelated = false;
         context.globalAlpha = 1;
+        applyPixelFilter(context, canvas);
         attachInputListeners();
         return null;
       }
@@ -2630,6 +2643,70 @@
         );
         context.fill();
         return null;
+      }
+
+      function strokeCircle(x, y, radius, color, lineWidth) {
+        const context = ensureCanvasContext("strokeCircle");
+        applyDrawStyle(context);
+        context.strokeStyle = coerceToString(color || "#ffffff");
+        context.lineWidth = Math.max(0, worldSize(lineWidth, 1));
+        context.beginPath();
+        context.arc(
+          worldX(x),
+          worldY(y),
+          Math.max(0, worldSize(radius, 0)),
+          0,
+          Math.PI * 2
+        );
+        context.stroke();
+        return null;
+      }
+
+      function getCanvasWidth() {
+        ensureCanvasContext("getCanvasWidth");
+        return state.canvas.width;
+      }
+
+      function getCanvasHeight() {
+        ensureCanvasContext("getCanvasHeight");
+        return state.canvas.height;
+      }
+
+      function setPixelated(enabled) {
+        const context = ensureCanvasContext("setPixelated");
+        state.pixelated = !!enabled;
+        applyPixelFilter(context, state.canvas);
+        return null;
+      }
+
+      function measureText(text, font) {
+        const context = ensureCanvasContext("measureText");
+        const previousFont = context.font;
+        const resolvedFont = coerceToString(font || "16px sans-serif");
+        context.font = resolvedFont;
+        const label = coerceToString(text);
+        let width = 0;
+        let height = 0;
+        try {
+          if (typeof context.measureText === "function") {
+            const metrics = context.measureText(label);
+            width = toFiniteNumber(metrics && metrics.width, 0);
+            const ascent = metrics ? toFiniteNumber(metrics.actualBoundingBoxAscent, NaN) : NaN;
+            const descent = metrics ? toFiniteNumber(metrics.actualBoundingBoxDescent, NaN) : NaN;
+            if (Number.isFinite(ascent) && Number.isFinite(descent)) {
+              height = Math.max(0, ascent + descent);
+            }
+          }
+        } catch (_error) {
+          width = 0;
+          height = 0;
+        }
+        if (!(height > 0)) {
+          const match = resolvedFont.match(/(\d+(?:\.\d+)?)\s*px/i);
+          height = match ? Math.max(0, toFiniteNumber(match[1], 16)) : 16;
+        }
+        context.font = previousFont;
+        return { width: width, height: height };
       }
 
       function drawText(text, x, y, color, font) {
@@ -2815,6 +2892,22 @@
       function imageIsReady(handle) {
         const record = resolveImageHandle(handle);
         return !!(record && record.ready && record.image);
+      }
+
+      function imageWidth(handle) {
+        const record = resolveImageHandle(handle);
+        if (!record || !record.ready || !record.image) {
+          return 0;
+        }
+        return record.width;
+      }
+
+      function imageHeight(handle) {
+        const record = resolveImageHandle(handle);
+        if (!record || !record.ready || !record.image) {
+          return 0;
+        }
+        return record.height;
       }
 
       function drawImage(handle, x, y, width, height) {
@@ -3919,10 +4012,15 @@
         clear,
         fillRect,
         fillCircle,
+        strokeCircle,
         drawText,
+        measureText,
         drawLine,
         strokeRect,
         setAlpha,
+        setPixelated,
+        getCanvasWidth,
+        getCanvasHeight,
         setCamera,
         getCameraX,
         getCameraY,
@@ -3934,6 +4032,8 @@
         worldToScreen,
         loadImage,
         imageIsReady,
+        imageWidth,
+        imageHeight,
         drawImage,
         drawImageRect,
         drawImageEx,

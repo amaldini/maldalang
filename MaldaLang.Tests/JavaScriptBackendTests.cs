@@ -515,6 +515,13 @@ public class JavaScriptBackendTests : TestBase
             var camX = game.getCameraX();
             var camY = game.getCameraY();
             var camZ = game.getCameraZoom();
+            var canvasW = game.getCanvasWidth();
+            var canvasH = game.getCanvasHeight();
+            var atlasW = game.imageWidth(tiles);
+            var atlasH = game.imageHeight(tiles);
+            var metrics = game.measureText("HUD", "14px monospace");
+            game.setPixelated(true);
+            game.strokeCircle(8, 16, 6, "#ff88aa", 2);
             """;
         var compiler = new Compiler.Compiler();
 
@@ -536,6 +543,13 @@ public class JavaScriptBackendTests : TestBase
         Assert.Contains("let camX = mlRuntime.game.getCameraX();", js, StringComparison.Ordinal);
         Assert.Contains("let camY = mlRuntime.game.getCameraY();", js, StringComparison.Ordinal);
         Assert.Contains("let camZ = mlRuntime.game.getCameraZoom();", js, StringComparison.Ordinal);
+        Assert.Contains("let canvasW = mlRuntime.game.getCanvasWidth();", js, StringComparison.Ordinal);
+        Assert.Contains("let canvasH = mlRuntime.game.getCanvasHeight();", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.imageWidth(tiles)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.imageHeight(tiles)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.measureText(\"HUD\", \"14px monospace\")", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.setPixelated(true)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.strokeCircle(8, 16, 6, \"#ff88aa\", 2)", js, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -582,6 +596,7 @@ public class JavaScriptBackendTests : TestBase
         Assert.Contains("mlRuntime.game.drawImageRect(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.drawImageEx(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.setCamera(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.setCameraZoom(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.pushCamera()", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.popCamera()", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.wasKeyPressed(", js, StringComparison.Ordinal);
@@ -665,6 +680,11 @@ public class JavaScriptBackendTests : TestBase
         Assert.Contains("mlRuntime.game.getMouseWorldX()", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.setCameraZoom(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.screenToWorld(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.imageWidth(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.measureText(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.setPixelated(true)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.strokeCircle(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.getCanvasWidth()", js, StringComparison.Ordinal);
         Assert.DoesNotContain("mlRuntime.three.", js, StringComparison.Ordinal);
     }
 
@@ -1091,6 +1111,226 @@ process.stdout.write("ok\n");
             var stderr = process.StandardError.ReadToEnd();
             process.WaitForExit(15000);
             Assert.True(process.ExitCode == 0, $"sprite/camera runtime test failed ({process.ExitCode}). stderr: {stderr}");
+            Assert.Equal("ok", stdout.Trim());
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
+        }
+    }
+
+    [Fact]
+    public void GameRuntime_QueryPixelAndStrokeCircle_Helpers()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var runtimePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "wwwroot", "malda-js-runtime.js");
+        var root = CreateTempDirectory("malda_js_query_pixel_");
+        try
+        {
+            var scriptPath = Path.Combine(root, "query-pixel-test.js");
+            File.WriteAllText(scriptPath, """
+class FakeImage {
+  constructor() {
+    this.width = 0;
+    this.height = 0;
+    this.naturalWidth = 0;
+    this.naturalHeight = 0;
+    this.onload = null;
+    this.onerror = null;
+    this._src = "";
+  }
+  set src(value) {
+    this._src = String(value || "");
+    if (!this._src || this._src.indexOf("missing") >= 0) {
+      if (typeof this.onerror === "function") this.onerror();
+      return;
+    }
+    this.width = 16;
+    this.height = 16;
+    this.naturalWidth = 16;
+    this.naturalHeight = 16;
+    if (typeof this.onload === "function") this.onload();
+  }
+  get src() { return this._src; }
+}
+globalThis.Image = FakeImage;
+
+function makeCanvas() {
+  const ctx = {
+    fillRects: [],
+    arcs: [],
+    fillStyle: "#000",
+    strokeStyle: "#000",
+    lineWidth: 1,
+    font: "16px sans-serif",
+    globalAlpha: 1,
+    imageSmoothingEnabled: true,
+    fillRect() {},
+    clearRect() {},
+    beginPath() { this._arc = null; },
+    moveTo() {},
+    lineTo() {},
+    arc(x, y, r) { this._arc = { x, y, r }; },
+    fill() {},
+    stroke() {
+      if (this._arc) {
+        this.arcs.push({
+          x: this._arc.x,
+          y: this._arc.y,
+          r: this._arc.r,
+          strokeStyle: this.strokeStyle,
+          lineWidth: this.lineWidth,
+          alpha: this.globalAlpha
+        });
+      }
+    },
+    fillText() {},
+    measureText(text) {
+      const label = String(text || "");
+      return { width: label.length * 8, actualBoundingBoxAscent: 10, actualBoundingBoxDescent: 2 };
+    },
+    save() {},
+    restore() {},
+    drawImage() {}
+  };
+  return {
+    width: 0,
+    height: 0,
+    style: {},
+    parentNode: null,
+    _ctx: ctx,
+    getContext() { return this._ctx; },
+    getBoundingClientRect() {
+      return { left: 0, top: 0, width: this.width, height: this.height };
+    }
+  };
+}
+
+const mount = {
+  children: [],
+  appendChild(el) {
+    this.children.push(el);
+    el.parentNode = this;
+    return el;
+  },
+  removeChild(el) {
+    this.children = this.children.filter((child) => child !== el);
+    el.parentNode = null;
+    return el;
+  }
+};
+
+globalThis.document = {
+  body: mount,
+  querySelector() { return mount; },
+  createElement(tag) {
+    if (tag === "canvas") return makeCanvas();
+    return { style: {} };
+  }
+};
+globalThis.window = {
+  addEventListener() {},
+  removeEventListener() {},
+  requestAnimationFrame() { return 1; },
+  cancelAnimationFrame() {}
+};
+
+require(process.argv[2]);
+const game = globalThis.mlRuntime.game;
+
+game.createCanvas(64, 32, "#app");
+const canvas = mount.children[0];
+const ctx = canvas._ctx;
+if (game.getCanvasWidth() !== 64 || game.getCanvasHeight() !== 32) {
+  throw new Error("canvas size getters");
+}
+if (ctx.imageSmoothingEnabled !== true || canvas.style.imageRendering !== "auto") {
+  throw new Error("createCanvas should leave smoothing on");
+}
+
+const empty = game.loadImage("");
+if (game.imageWidth(empty) !== 0 || game.imageHeight(empty) !== 0) {
+  throw new Error("empty url size should be 0");
+}
+const missing = game.loadImage("missing.png");
+if (game.imageWidth(missing) !== 0 || game.imageHeight(missing) !== 0) {
+  throw new Error("missing url size should be 0");
+}
+if (game.imageWidth(null) !== 0 || game.imageHeight({}) !== 0) {
+  throw new Error("invalid handle size should be 0");
+}
+const tiles = game.loadImage("ok.png");
+if (game.imageWidth(tiles) !== 16 || game.imageHeight(tiles) !== 16) {
+  throw new Error("ready image size should match bitmap");
+}
+
+game.setCamera(10, 20);
+game.strokeCircle(5, 6, 8, "#ff88aa", 3);
+const ring = ctx.arcs[ctx.arcs.length - 1];
+if (!ring || ring.x !== -5 || ring.y !== -14 || ring.r !== 8 || ring.lineWidth !== 3 || ring.strokeStyle !== "#ff88aa") {
+  throw new Error("strokeCircle camera offset failed: " + JSON.stringify(ring));
+}
+
+game.setCameraZoom(2);
+game.strokeCircle(5, 6, 8, "#ffcc66", 3);
+const zoomed = ctx.arcs[ctx.arcs.length - 1];
+if (!zoomed || zoomed.x !== -10 || zoomed.y !== -28 || zoomed.r !== 16 || zoomed.lineWidth !== 6) {
+  throw new Error("strokeCircle zoom failed: " + JSON.stringify(zoomed));
+}
+
+const metrics = game.measureText("HUD", "14px monospace");
+if (metrics.width !== 24 || metrics.height !== 12) {
+  throw new Error("measureText should ignore camera and use font metrics: " + JSON.stringify(metrics));
+}
+ctx.font = "changed";
+const again = game.measureText("ab", "20px sans-serif");
+if (again.width !== 16 || again.height !== 12 || ctx.font !== "changed") {
+  throw new Error("measureText should restore font: " + JSON.stringify({ again, font: ctx.font }));
+}
+
+game.setPixelated(true);
+if (ctx.imageSmoothingEnabled !== false || canvas.style.imageRendering !== "pixelated") {
+  throw new Error("setPixelated(true) should disable smoothing");
+}
+game.setPixelated(false);
+if (ctx.imageSmoothingEnabled !== true || canvas.style.imageRendering !== "auto") {
+  throw new Error("setPixelated(false) should restore smoothing");
+}
+
+game.setPixelated(true);
+game.createCanvas(80, 40, "#app");
+const next = mount.children[0];
+if (game.getCanvasWidth() !== 80 || game.getCanvasHeight() !== 40) {
+  throw new Error("createCanvas size after recreate");
+}
+if (next._ctx.imageSmoothingEnabled !== true || next.style.imageRendering !== "auto") {
+  throw new Error("createCanvas should reset pixelated");
+}
+
+process.stdout.write("ok\n");
+""");
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = Environment.GetEnvironmentVariable("MALDA_NODE_PATH") is { Length: > 0 } nodePath
+                    ? nodePath
+                    : "node",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = root
+            };
+            startInfo.ArgumentList.Add(scriptPath);
+            startInfo.ArgumentList.Add(runtimePath);
+
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Failed to start Node.js for query/pixel runtime test.");
+            var stdout = process.StandardOutput.ReadToEnd();
+            var stderr = process.StandardError.ReadToEnd();
+            process.WaitForExit(15000);
+            Assert.True(process.ExitCode == 0, $"query/pixel runtime test failed ({process.ExitCode}). stderr: {stderr}");
             Assert.Equal("ok", stdout.Trim());
         }
         finally
