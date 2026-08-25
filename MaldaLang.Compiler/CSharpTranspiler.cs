@@ -12685,6 +12685,11 @@ public class CSharpTranspiler
 
     private static bool IsStatementOnlyMatchExpression(Expression expression)
     {
+        // print / io.print emit void Console.WriteLine; wrapping them in
+        // ToRuntimeValue() is CS1503. Same last-expression-wins rule as functions.
+        if (ExpressionTranspilesToVoid(expression))
+            return true;
+
         if (expression is FunctionCallExpression call &&
             call.Callee is IdentifierExpression identifier)
         {
