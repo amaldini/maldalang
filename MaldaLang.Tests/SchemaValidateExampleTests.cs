@@ -6,6 +6,7 @@ using Xunit;
 
 namespace MaldaLang.Tests;
 
+[Collection("Sequential")]
 public class SchemaValidateExampleTests : TestBase
 {
     [Fact]
