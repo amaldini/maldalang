@@ -25,7 +25,7 @@
     },
     {
       "name": "JS Canvas Sprite Smoke",
-      "description": "PNG atlas blit, scrolling camera, lines and alpha using MALDA game.* image APIs",
+      "description": "PNG atlas blit, scrolling camera, drawImageEx flip/rotate, lines and alpha using MALDA game.* image APIs",
       "file": "game_sprite_smoke.malda",
       "track": "student",
       "difficulty": "intermediate",
@@ -35,13 +35,14 @@
         "sprites",
         "camera",
         "atlas",
+        "drawImageEx",
         "JavaScript target"
       ],
       "prerequisites": [
         "Games/game_bounce.malda"
       ],
-      "learningGoal": "Show image handles, atlas source rects, and a 2D camera on the canvas path.",
-      "expectedOutput": "Pans a PNG tileset with arrow keys and draws atlas frames plus a camera-relative marker.",
+      "learningGoal": "Show image handles, atlas source rects, a 2D camera, and drawImageEx flip/rotate on the canvas path.",
+      "expectedOutput": "Pans a PNG tileset with arrow keys and draws atlas frames plus a spinning and a flipped tile.",
       "next": "Games/malda_platform.malda",
       "documentationPath": "/?lesson=browser-track#lesson-browser-track",
       "documentationTitle": "Browser Track"
@@ -138,7 +139,7 @@
     },
     {
       "name": "JS Canvas Platform Showcase",
-      "description": "Short side-scroller that uses images, camera, swept AABB, key edges, sample SFX, and startFixed together",
+      "description": "Short side-scroller that uses images, camera, swept AABB, key edges, sample SFX, startFixed, and drawImageEx spinning coins together",
       "file": "malda_platform.malda",
       "track": "showcase",
       "difficulty": "intermediate",
@@ -152,13 +153,14 @@
         "key edges",
         "audio samples",
         "fixed timestep",
+        "drawImageEx",
         "JavaScript target"
       ],
       "prerequisites": [
         "Games/game_bounce.malda"
       ],
       "learningGoal": "Show G1–G5 game.* helpers in one playable side-scroller that still compiles with --mode js.",
-      "expectedOutput": "Runs a short platformer: atlas tiles, camera follow, sweepRect landings, jump/coin SFX, and a high score that survives reload.",
+      "expectedOutput": "Runs a short platformer: atlas tiles, camera follow, sweepRect landings, spinning coins, jump/coin SFX, and a high score that survives reload.",
       "next": "Games/maldadash.malda",
       "documentationPath": "/?lesson=browser-track#lesson-browser-track",
       "documentationTitle": "Browser Track",

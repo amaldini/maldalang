@@ -505,6 +505,8 @@ public class JavaScriptBackendTests : TestBase
             game.drawImage(tiles, 8, 16);
             game.drawImage(tiles, 8, 16, 32, 32);
             game.drawImageRect(tiles, 0, 0, 16, 16, 40, 80, 64, 64);
+            game.drawImageEx(tiles, 8, 16);
+            game.drawImageEx(tiles, 40, 80, { "sx": 0, "sy": 0, "sw": 16, "sh": 16, "w": 64, "h": 64, "ox": 32, "oy": 32, "angle": 0.5, "flipX": true });
             game.drawLine(0, 0, 10, 10, "#ffffff", 2);
             game.strokeRect(1, 2, 3, 4, "#88ffcc", 3);
             game.setAlpha(0.5);
@@ -522,6 +524,8 @@ public class JavaScriptBackendTests : TestBase
         Assert.Contains("mlRuntime.game.drawImage(tiles, 8, 16)", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.drawImage(tiles, 8, 16, 32, 32)", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.drawImageRect(tiles, 0, 0, 16, 16, 40, 80, 64, 64)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.drawImageEx(tiles, 8, 16)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.drawImageEx(tiles, 40, 80,", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.drawLine(0, 0, 10, 10, \"#ffffff\", 2)", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.strokeRect(1, 2, 3, 4, \"#88ffcc\", 3)", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.setAlpha(0.5)", js, StringComparison.Ordinal);
@@ -539,6 +543,7 @@ public class JavaScriptBackendTests : TestBase
 
         Assert.Contains("mlRuntime.game.loadImage(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.drawImageRect(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.drawImageEx(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.setCamera(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.wasKeyPressed(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.overlapRect(", js, StringComparison.Ordinal);
@@ -608,6 +613,7 @@ public class JavaScriptBackendTests : TestBase
         Assert.Contains("mlRuntime.game.imageIsReady(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.drawImageRect(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.drawImage(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.drawImageEx(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.setCamera(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.drawLine(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.strokeRect(", js, StringComparison.Ordinal);
@@ -1037,6 +1043,191 @@ process.stdout.write("ok\n");
             var stderr = process.StandardError.ReadToEnd();
             process.WaitForExit(15000);
             Assert.True(process.ExitCode == 0, $"sprite/camera runtime test failed ({process.ExitCode}). stderr: {stderr}");
+            Assert.Equal("ok", stdout.Trim());
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
+        }
+    }
+
+    [Fact]
+    public void GameRuntime_DrawImageEx_FlipsRotatesAroundOriginAndKeepsCamera()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var runtimePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "wwwroot", "malda-js-runtime.js");
+        var root = CreateTempDirectory("malda_js_draw_image_ex_");
+        try
+        {
+            var scriptPath = Path.Combine(root, "draw-image-ex-test.js");
+            File.WriteAllText(scriptPath, """
+class FakeImage {
+  constructor() {
+    this.width = 0;
+    this.height = 0;
+    this.naturalWidth = 0;
+    this.naturalHeight = 0;
+    this.onload = null;
+    this.onerror = null;
+    this._src = "";
+  }
+  set src(value) {
+    this._src = String(value || "");
+    if (!this._src || this._src.indexOf("missing") >= 0) {
+      if (typeof this.onerror === "function") this.onerror();
+      return;
+    }
+    this.width = 16;
+    this.height = 16;
+    this.naturalWidth = 16;
+    this.naturalHeight = 16;
+    if (typeof this.onload === "function") this.onload();
+  }
+  get src() { return this._src; }
+}
+globalThis.Image = FakeImage;
+
+function makeCanvas() {
+  const ctx = {
+    ops: [],
+    images: [],
+    globalAlpha: 1,
+    save() { this.ops.push({ op: "save" }); },
+    restore() { this.ops.push({ op: "restore" }); },
+    translate(x, y) { this.ops.push({ op: "translate", x, y }); },
+    rotate(a) { this.ops.push({ op: "rotate", a }); },
+    scale(x, y) { this.ops.push({ op: "scale", x, y }); },
+    fillRect() {},
+    clearRect() {},
+    fillText() {},
+    drawImage() {
+      this.images.push({ args: Array.from(arguments), alpha: this.globalAlpha, ops: this.ops.slice() });
+    }
+  };
+  return {
+    width: 0,
+    height: 0,
+    style: {},
+    parentNode: null,
+    _ctx: ctx,
+    getContext() { return this._ctx; },
+    getBoundingClientRect() {
+      return { left: 0, top: 0, width: this.width, height: this.height };
+    }
+  };
+}
+
+const mount = {
+  children: [],
+  appendChild(el) {
+    this.children.push(el);
+    el.parentNode = this;
+    return el;
+  },
+  removeChild(el) {
+    this.children = this.children.filter((child) => child !== el);
+    el.parentNode = null;
+    return el;
+  }
+};
+
+globalThis.document = {
+  body: mount,
+  querySelector() { return mount; },
+  createElement(tag) {
+    if (tag === "canvas") return makeCanvas();
+    return { style: {} };
+  }
+};
+globalThis.window = {
+  addEventListener() {},
+  removeEventListener() {},
+  requestAnimationFrame() { return 1; },
+  cancelAnimationFrame() {}
+};
+
+require(process.argv[2]);
+const game = globalThis.mlRuntime.game;
+game.createCanvas(64, 32, "#app");
+const ctx = mount.children[0]._ctx;
+
+const empty = game.loadImage("");
+game.drawImageEx(empty, 0, 0);
+if (ctx.images.length !== 0) throw new Error("unready drawImageEx should no-op");
+
+const tiles = game.loadImage("ok.png");
+game.setCamera(10, 20);
+game.setAlpha(0.4);
+game.drawImageEx(tiles, 8, 16);
+const identity = ctx.images[ctx.images.length - 1];
+if (!identity || identity.args.length !== 9) throw new Error("identity should use source+dest drawImage: " + JSON.stringify(identity));
+if (identity.args[1] !== 0 || identity.args[2] !== 0 || identity.args[3] !== 16 || identity.args[4] !== 16) {
+  throw new Error("identity source rect: " + JSON.stringify(identity.args));
+}
+if (identity.args[5] !== 0 || identity.args[6] !== 0 || identity.args[7] !== 16 || identity.args[8] !== 16) {
+  throw new Error("identity dest rect at origin: " + JSON.stringify(identity.args));
+}
+if (identity.alpha !== 0.4) throw new Error("drawImageEx should keep setAlpha");
+const idTranslate = identity.ops.find((op) => op.op === "translate");
+if (!idTranslate || idTranslate.x !== -2 || idTranslate.y !== -4) {
+  throw new Error("camera should offset drawImageEx translate: " + JSON.stringify(identity.ops));
+}
+if (identity.ops.some((op) => op.op === "rotate" || op.op === "scale")) {
+  throw new Error("identity should skip rotate/scale: " + JSON.stringify(identity.ops));
+}
+if (identity.ops.filter((op) => op.op === "save").length !== 1) {
+  throw new Error("identity should save before draw: " + JSON.stringify(identity.ops));
+}
+if (ctx.ops.filter((op) => op.op === "restore").length !== 1) {
+  throw new Error("identity should restore after draw: " + JSON.stringify(ctx.ops));
+}
+
+ctx.ops.length = 0;
+game.drawImageEx(tiles, 40, 80, { sx: 2, sy: 4, sw: 8, sh: 8, w: 32, h: 24, ox: 16, oy: 12, angle: 0.5, flipX: true });
+const transformed = ctx.images[ctx.images.length - 1];
+if (transformed.args[1] !== 2 || transformed.args[2] !== 4 || transformed.args[3] !== 8 || transformed.args[4] !== 8) {
+  throw new Error("atlas source: " + JSON.stringify(transformed.args));
+}
+if (transformed.args[5] !== -16 || transformed.args[6] !== -12 || transformed.args[7] !== 32 || transformed.args[8] !== 24) {
+  throw new Error("dest around origin: " + JSON.stringify(transformed.args));
+}
+const tr = transformed.ops.find((op) => op.op === "translate");
+if (!tr || tr.x !== 30 || tr.y !== 60) {
+  throw new Error("camera+xy translate: " + JSON.stringify(transformed.ops));
+}
+const rot = transformed.ops.find((op) => op.op === "rotate");
+if (!rot || rot.a !== 0.5) throw new Error("rotate: " + JSON.stringify(transformed.ops));
+const sc = transformed.ops.find((op) => op.op === "scale");
+if (!sc || sc.x !== -1 || sc.y !== 1) throw new Error("flipX scale: " + JSON.stringify(transformed.ops));
+
+ctx.ops.length = 0;
+game.drawImageEx(tiles, 0, 0, { w: 0, h: 16 });
+if (ctx.images.length !== 2) throw new Error("zero dest size should no-op");
+
+process.stdout.write("ok\n");
+""");
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = Environment.GetEnvironmentVariable("MALDA_NODE_PATH") is { Length: > 0 } nodePath
+                    ? nodePath
+                    : "node",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = root
+            };
+            startInfo.ArgumentList.Add(scriptPath);
+            startInfo.ArgumentList.Add(runtimePath);
+
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Failed to start Node.js for drawImageEx runtime test.");
+            var stdout = process.StandardOutput.ReadToEnd();
+            var stderr = process.StandardError.ReadToEnd();
+            process.WaitForExit(15000);
+            Assert.True(process.ExitCode == 0, $"drawImageEx runtime test failed ({process.ExitCode}). stderr: {stderr}");
             Assert.Equal("ok", stdout.Trim());
         }
         finally

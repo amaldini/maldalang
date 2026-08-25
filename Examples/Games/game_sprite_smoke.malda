@@ -10,13 +10,14 @@ if (root == null) {
     dom.append(root, title);
 
     var hint = dom.create("p");
-    dom.setText(hint, "Arrows scroll the camera. Green and magenta tiles come from a PNG atlas.");
+    dom.setText(hint, "Arrows scroll the camera. Green and magenta tiles come from a PNG atlas. The extra pair is drawImageEx: spin + flipX around the dest center.");
     dom.append(root, hint);
 
     var tiles = game.loadImage("assets/sprite_tiles.png");
     var camX = 0.0;
     var camY = 0.0;
     var camSpeed = 140;
+    var spin = 0.0;
 
     function update(dtMs) {
         var step = (camSpeed * dtMs) / 1000;
@@ -32,6 +33,7 @@ if (root == null) {
         if (game.isKeyDown("arrowdown")) {
             camY = camY + step;
         }
+        spin = spin + ((dtMs / 1000) * 1.4);
         game.setCamera(camX, camY);
     }
 
@@ -42,6 +44,28 @@ if (root == null) {
             game.drawImageRect(tiles, 0, 0, 16, 16, 40, 80, 64, 64);
             game.drawImageRect(tiles, 16, 0, 16, 16, 120, 80, 64, 64);
             game.drawImage(tiles, 220, 96, 64, 32);
+            game.drawImageEx(tiles, 400, 112, {
+                "sx": 0,
+                "sy": 0,
+                "sw": 16,
+                "sh": 16,
+                "w": 64,
+                "h": 64,
+                "ox": 32,
+                "oy": 32,
+                "angle": spin
+            });
+            game.drawImageEx(tiles, 500, 112, {
+                "sx": 16,
+                "sy": 0,
+                "sw": 16,
+                "sh": 16,
+                "w": 64,
+                "h": 64,
+                "ox": 32,
+                "oy": 32,
+                "flipX": true
+            });
         } else {
             game.fillRect(40, 80, 64, 64, "#334455");
         }
@@ -58,7 +82,7 @@ if (root == null) {
             status = "atlas ready";
         }
         game.drawText(status + "  cam " + string(int(camX)) + "," + string(int(camY)), 12, 24, "#ffffff", "14px monospace");
-        game.drawText("Arrows pan world tiles. HUD stays on screen.", 12, 44, "#99ddee", "12px monospace");
+        game.drawText("Arrows pan. Rotating green + flipped magenta use drawImageEx.", 12, 44, "#99ddee", "12px monospace");
     }
 
     game.createCanvas(640, 360, "#app");

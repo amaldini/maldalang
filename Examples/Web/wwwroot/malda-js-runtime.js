@@ -2771,6 +2771,102 @@
         return null;
       }
 
+      function optionHas(options, key) {
+        if (!options || typeof options !== "object") {
+          return false;
+        }
+        if (!Object.prototype.hasOwnProperty.call(options, key)) {
+          return false;
+        }
+        const value = options[key];
+        return !(value === undefined || value === null);
+      }
+
+      function optionNumber(options, key, fallback) {
+        if (!optionHas(options, key)) {
+          return fallback;
+        }
+        return toFiniteNumber(options[key], fallback);
+      }
+
+      function drawImageEx(handle, x, y, options) {
+        const context = ensureCanvasContext("drawImageEx");
+        const record = resolveImageHandle(handle);
+        if (!record || !record.ready || !record.image) {
+          return null;
+        }
+
+        const opts = options && typeof options === "object" ? options : {};
+        const hasSource =
+          optionHas(opts, "sx") ||
+          optionHas(opts, "sy") ||
+          optionHas(opts, "sw") ||
+          optionHas(opts, "sh");
+
+        const sourceX = hasSource ? optionNumber(opts, "sx", 0) : 0;
+        const sourceY = hasSource ? optionNumber(opts, "sy", 0) : 0;
+        const sourceWidth = hasSource
+          ? Math.max(0, optionNumber(opts, "sw", record.width))
+          : record.width;
+        const sourceHeight = hasSource
+          ? Math.max(0, optionNumber(opts, "sh", record.height))
+          : record.height;
+        if (sourceWidth <= 0 || sourceHeight <= 0) {
+          return null;
+        }
+
+        const destWidth = optionHas(opts, "w")
+          ? Math.max(0, optionNumber(opts, "w", 0))
+          : sourceWidth;
+        const destHeight = optionHas(opts, "h")
+          ? Math.max(0, optionNumber(opts, "h", 0))
+          : sourceHeight;
+        if (destWidth <= 0 || destHeight <= 0) {
+          return null;
+        }
+
+        const originX = optionNumber(opts, "ox", 0);
+        const originY = optionNumber(opts, "oy", 0);
+        const angle = optionNumber(opts, "angle", 0);
+        const flipX = !!opts.flipX;
+        const flipY = !!opts.flipY;
+        const scaleX = flipX ? -1 : 1;
+        const scaleY = flipY ? -1 : 1;
+        const needsRotate = angle !== 0;
+        const needsScale = scaleX !== 1 || scaleY !== 1;
+
+        applyDrawStyle(context);
+        try {
+          context.save();
+          context.translate(worldX(x), worldY(y));
+          if (needsRotate) {
+            context.rotate(angle);
+          }
+          if (needsScale) {
+            context.scale(scaleX, scaleY);
+          }
+          context.drawImage(
+            record.image,
+            sourceX,
+            sourceY,
+            sourceWidth,
+            sourceHeight,
+            -originX,
+            -originY,
+            destWidth,
+            destHeight
+          );
+          context.restore();
+        } catch (_error) {
+          try {
+            context.restore();
+          } catch (_restoreError) {
+            // Decode races and detached bitmaps are ignored on the hot path.
+          }
+        }
+        return null;
+      }
+
       function clampByte(value) {
         const numberValue = toFiniteNumber(value, 0);
         if (numberValue <= 0) return 0;
@@ -3702,6 +3798,7 @@
         imageIsReady,
         drawImage,
         drawImageRect,
+        drawImageEx,
         createPixelBuffer,
         setPixel,
         blitPixels,

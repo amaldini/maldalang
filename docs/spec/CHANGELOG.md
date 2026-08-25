@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — JS game.drawImageEx)
+
+- **`game.drawImageEx` (JavaScript backend only):** `game.drawImageEx(handle, x, y, options?)` draws an image (optional atlas `sx`/`sy`/`sw`/`sh`, dest `w`/`h`) with origin `ox`/`oy`, rotation `angle` (radians; canvas Y+ down so positive is clockwise), and `flipX`/`flipY` around that origin. Default origin is dest top-left, so `flipX` without `ox` draws to the left of `x`; in-place facing uses `ox = w / 2`. Unready handles no-op. Camera and `setAlpha` apply. `drawImage` / `drawImageRect` signatures unchanged. Not a sprite object. Smoke: `Examples/Games/game_sprite_smoke.malda`. Showcase `malda_platform` spins coins with it. Interpreter / C# transpile: n/a (`game-canvas`).
+
 #### Added (MINOR — JS game.sweepRect)
 
 - **`game.sweepRect` (JavaScript backend only):** `game.sweepRect(x, y, w, h, dx, dy, ox, oy, ow, oh)` returns `{ hit, t, nx, ny, x, y }` at the first contact along the motion delta. Miss: `hit` false, `t` 1, `x`/`y` at the end pose. Hit: `t` in `[0, 1]`, position at impact, `nx`/`ny` pointing out of the obstacle (canvas Y+ down: floor `ny = -1`). Zero/negative sizes miss. Positive-area overlap at the start is `t` 0 plus a minimum-translation normal. Surface contact with parallel motion is not a hit (axis-separated platformer walks work). Pure function: no canvas, no camera. Not a physics engine / tileset / swept circle. Smoke: `Examples/Games/game_collision_smoke.malda`. Showcase `malda_platform` uses axis-separated sweep instead of the 18px landing slop. Interpreter / C# transpile: n/a (`game-canvas`).
@@ -351,3 +355,4 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-08-21 | MINOR: JS game kit showcase `malda_platform` (G7) |
 | 2026-08-21 | MINOR: JS `three.createTexture` / `loadGLTF` / `lookAt` (G8) |
 | 2026-08-25 | MINOR: JS `game.sweepRect` swept AABB helper |
+| 2026-08-25 | MINOR: JS `game.drawImageEx` flip / rotate / origin blit |

@@ -45,6 +45,7 @@ if (root == null) {
     var coins = 0;
     var high = 0;
     var audioBooted = false;
+    var coinSpin = 0.0;
 
     var loaded = game.load("platform_high");
     if (loaded != null) {
@@ -106,6 +107,7 @@ if (root == null) {
         if (game.isKeyDown("arrowright")) {
             dx = dx + step;
         }
+        coinSpin = coinSpin + ((dtMs / 1000) * 2.4);
 
         if (onGround && (game.wasKeyPressed(" ") || game.wasKeyPressed("arrowup"))) {
             vy = jumpSpeed;
@@ -197,7 +199,17 @@ if (root == null) {
         while (c < coinX.length) {
             if (!coinGot[c]) {
                 if (game.imageIsReady(tiles)) {
-                    game.drawImageRect(tiles, 16, 0, 16, 16, coinX[c], coinY[c], coinSize, coinSize);
+                    game.drawImageEx(tiles, coinX[c] + (coinSize / 2), coinY[c] + (coinSize / 2), {
+                        "sx": 16,
+                        "sy": 0,
+                        "sw": 16,
+                        "sh": 16,
+                        "w": coinSize,
+                        "h": coinSize,
+                        "ox": coinSize / 2,
+                        "oy": coinSize / 2,
+                        "angle": coinSpin
+                    });
                 } else {
                     game.fillRect(coinX[c], coinY[c], coinSize, coinSize, "#ee66cc");
                 }
