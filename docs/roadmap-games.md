@@ -335,6 +335,27 @@ through a wall thinner than this tick's delta.
 
 ---
 
+## Post-kit — `game.drawImageEx`
+
+**Landed:** `Examples/Games/game_sprite_smoke.malda` (spinning green tile +
+flipped magenta tile) and spinning coins in `malda_platform`. Axis-aligned
+`drawImage` / `drawImageRect` cannot face left or rotate around a pivot.
+
+| Call | Contract |
+|------|----------|
+| `game.drawImageEx(handle, x, y, options?)` | Draw with optional atlas source, dest size, origin, rotation, and flip. `x`/`y` are the origin in world space. Options: `{ sx?, sy?, sw?, sh?, w?, h?, ox?, oy?, angle?, flipX?, flipY? }`. Omit options (or dest size): full image, dest size = source size, origin `(0, 0)`. `angle` radians; canvas Y+ down so positive is clockwise. `flipX`/`flipY` scale around `(ox, oy)`. Default origin is dest top-left, so `flipX` without `ox` draws to the left of `x`. For in-place facing set `ox` to `w / 2`. Unready handles no-op. Camera and `setAlpha` apply. |
+
+**Guardrails**
+
+- Call `createCanvas` first (same as `drawImage`).
+- Not a sprite object, scene graph, or tint/blend mode.
+- `save`/`restore` so later `fillRect` / HUD draws are not left rotated.
+- `drawImage` / `drawImageRect` signatures stay unchanged.
+
+**Files:** runtime, chapter 26.9, `docs/javascript-backend.md`.
+
+---
+
 ## After G9 (deferred)
 
 Revisit only with a new ranked roadmap. These were called out while shipping
@@ -355,7 +376,8 @@ G1–G9 and are **not** implied next work:
 
 Post-kit helper that did land: **`game.sweepRect`** — first-contact AABB along a
 delta (`{ hit, t, nx, ny, x, y }`). Still not tilesets, particles, or a physics
-engine.
+engine. **`game.drawImageEx`** — atlas blit with origin, rotation, and flip.
+Still not a sprite object or a scene graph.
 
 ---
 
