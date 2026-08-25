@@ -10,12 +10,13 @@ if (root == null) {
     dom.append(root, title);
 
     var hint = dom.create("p");
-    dom.setText(hint, "Arrows scroll the camera. Green and magenta tiles come from a PNG atlas. The extra pair is drawImageEx: spin + flipX around the dest center. Click places a marker in world space.");
+    dom.setText(hint, "Arrows pan. [ / - zoom out, ] / = zoom in, 0 resets zoom. Green and magenta tiles come from a PNG atlas. The extra pair is drawImageEx: spin + flipX around the dest center. Click places a marker in world space.");
     dom.append(root, hint);
 
     var tiles = game.loadImage("assets/sprite_tiles.png");
     var camX = 0.0;
     var camY = 0.0;
+    var camZoom = 1.0;
     var camSpeed = 140;
     var spin = 0.0;
     var markX = 320.0;
@@ -35,8 +36,19 @@ if (root == null) {
         if (game.isKeyDown("arrowdown")) {
             camY = camY + step;
         }
+        if (game.wasKeyPressed("]") || game.wasKeyPressed("=")) {
+            camZoom = camZoom * 1.15;
+        }
+        if (game.wasKeyPressed("[") || game.wasKeyPressed("-")) {
+            camZoom = camZoom / 1.15;
+        }
+        if (game.wasKeyPressed("0")) {
+            camZoom = 1.0;
+        }
         spin = spin + ((dtMs / 1000) * 1.4);
         game.setCamera(camX, camY);
+        game.setCameraZoom(camZoom);
+        camZoom = game.getCameraZoom();
         if (game.wasMousePressed(0)) {
             markX = game.getMouseWorldX();
             markY = game.getMouseWorldY();
@@ -81,16 +93,18 @@ if (root == null) {
         game.setAlpha(1);
         game.drawLine(32, 200, 292, 200, "#ffcc66", 2);
         game.fillCircle(markX, markY, 6, "#ff88aa");
-        game.fillCircle(camX + 320, camY + 180, 8, "#66ccff");
+        var center = game.screenToWorld(320, 180);
+        game.fillCircle(center.x, center.y, 8, "#66ccff");
 
         game.pushCamera();
         game.setCamera(0, 0);
+        game.setCameraZoom(1);
         var status = "loading tiles";
         if (game.imageIsReady(tiles)) {
             status = "atlas ready";
         }
-        game.drawText(status + "  cam " + string(int(camX)) + "," + string(int(camY)), 12, 24, "#ffffff", "14px monospace");
-        game.drawText("Arrows pan. Click world marker. Rotating green + flipped magenta use drawImageEx.", 12, 44, "#99ddee", "12px monospace");
+        game.drawText(status + "  cam " + string(int(camX)) + "," + string(int(camY)) + "  z " + string(camZoom), 12, 24, "#ffffff", "14px monospace");
+        game.drawText("Arrows pan. [ ] zoom. Click world marker. Rotating green + flipped magenta use drawImageEx.", 12, 44, "#99ddee", "12px monospace");
         game.popCamera();
     }
 

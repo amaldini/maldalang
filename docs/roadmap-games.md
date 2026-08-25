@@ -366,9 +366,9 @@ was `getMouseX() + getCameraX()`.
 
 | Call | Contract |
 |------|----------|
-| `game.pushCamera()` / `game.popCamera()` | Stack the current camera. HUD: push, `setCamera(0, 0)`, draw, pop. Empty pop is a no-op. `createCanvas` clears the stack. |
-| `game.screenToWorld(x, y)` / `game.worldToScreen(x, y)` | `{ x, y }`. Screen is canvas pixels. |
-| `game.getMouseWorldX()` / `game.getMouseWorldY()` | Canvas mouse plus the current camera. |
+| `game.pushCamera()` / `game.popCamera()` | Stack the current camera pan and zoom. HUD: push, `setCamera(0, 0)`, `setCameraZoom(1)`, draw, pop. Empty pop is a no-op. `createCanvas` clears the stack. |
+| `game.screenToWorld(x, y)` / `game.worldToScreen(x, y)` | `{ x, y }`. Screen is canvas pixels. Honor pan and zoom. |
+| `game.getMouseWorldX()` / `game.getMouseWorldY()` | Canvas mouse converted through the current camera pan and zoom. |
 | `game.wasMousePressed(button?)` / `game.wasMouseReleased(button?)` | Same clock as `wasKeyPressed`; default button `0`. First touch still aliases button 0. |
 
 **Guardrails**
@@ -377,6 +377,29 @@ was `getMouseX() + getCameraX()`.
 - `getMouseX` / `getTouches` stay canvas pixels.
 - Read mouse edges in `update` only (false in `render`).
 - `drawImage` / `drawImageRect` signatures stay unchanged.
+
+**Files:** runtime, chapter 26.9, `docs/javascript-backend.md`.
+
+---
+
+## Post-kit — `game.setCameraZoom`
+
+**Landed:** `Examples/Games/game_sprite_smoke.malda` (`[` / `]` zoom, HUD resets
+zoom to 1, click marker via `getMouseWorldX`). Pan + screen/world conversion
+could not magnify a scene; every draw size stayed 1:1 with canvas pixels.
+
+| Call | Contract |
+|------|----------|
+| `game.setCameraZoom(z)` | Default `1`. Non-positive / non-finite → `1`. Clamp `[0.05, 100]`. Subsequent world draws scale sizes, radii, and stroke widths after the pan offset. |
+| `game.getCameraZoom()` | |
+
+**Guardrails**
+
+- `pushCamera` / `popCamera` stack pan **and** zoom. HUD: push, `setCamera(0, 0)`, `setCameraZoom(1)`, draw, pop.
+- `screenToWorld` / `worldToScreen` / `getMouseWorldX` honor zoom. `getMouseX` stays canvas pixels.
+- Overlap / `sweepRect` stay pure numbers (no camera).
+- `createCanvas` resets zoom to `1` and clears the stack.
+- Not a camera object, letterboxing, or a second renderer.
 
 **Files:** runtime, chapter 26.9, `docs/javascript-backend.md`.
 
@@ -403,9 +426,10 @@ G1–G9 and are **not** implied next work:
 Post-kit helper that did land: **`game.sweepRect`** — first-contact AABB along a
 delta (`{ hit, t, nx, ny, x, y }`). Still not tilesets, particles, or a physics
 engine. **`game.drawImageEx`** — atlas blit with origin, rotation, and flip.
-Still not a sprite object or a scene graph. **Camera space / mouse edges** —
-`pushCamera` / `popCamera`, `screenToWorld` / `worldToScreen`, `getMouseWorldX` /
-`Y`, `wasMousePressed` / `wasMouseReleased`. Still not a scene graph.
+Still not a sprite object or a scene graph. **Camera space** — `pushCamera` /
+`popCamera`, `screenToWorld` / `worldToScreen`, `getMouseWorldX` / `Y`, and
+`wasMousePressed` / `Released`. **`game.setCameraZoom`** — scale world draws
+after pan; HUD resets zoom to 1 on the camera stack. Still not a scene graph.
 
 ---
 

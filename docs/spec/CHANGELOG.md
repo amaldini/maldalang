@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — JS game.setCameraZoom)
+
+- **`game.setCameraZoom` (JavaScript backend only):** `game.setCameraZoom(z)` / `game.getCameraZoom()` scale world draws after the camera pan (default `1`; non-positive / non-finite → `1`; clamp `[0.05, 100]`). Sizes, radii, and stroke widths scale. `pushCamera` / `popCamera` stack pan and zoom. `screenToWorld` / `worldToScreen` / `getMouseWorldX` honor zoom (`getMouseX` stays canvas pixels). HUD: push, `setCamera(0, 0)`, `setCameraZoom(1)`, draw, pop. `createCanvas` resets zoom to `1`. Smoke: `Examples/Games/game_sprite_smoke.malda`. Interpreter / C# transpile: n/a (`game-canvas`).
+
 #### Added (MINOR — JS game camera space / mouse edges)
 
 - **Camera space and mouse edges (JavaScript backend only):** `game.pushCamera()` / `game.popCamera()` stack the current camera (HUD: push, `setCamera(0, 0)`, draw, pop; empty pop is a no-op; `createCanvas` clears the stack). `game.screenToWorld(x, y)` / `game.worldToScreen(x, y)` return `{ x, y }` in canvas pixels vs world. `game.getMouseWorldX()` / `game.getMouseWorldY()` are canvas mouse plus the current camera (`getMouseX` / `getTouches` stay canvas pixels). `game.wasMousePressed(button?)` / `game.wasMouseReleased(button?)` use the same update-only clock as `wasKeyPressed` (default button `0`; first touch still aliases button 0). Overlap / `sweepRect` stay pure numbers. Smoke: `Examples/Games/game_sprite_smoke.malda`, `Examples/Games/game_input_smoke.malda`. Showcase `malda_platform` HUD uses the camera stack; the player faces with `drawImageEx` `flipX`. Interpreter / C# transpile: n/a (`game-canvas`).
@@ -361,3 +365,4 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-08-25 | MINOR: JS `game.sweepRect` swept AABB helper |
 | 2026-08-25 | MINOR: JS `game.drawImageEx` flip / rotate / origin blit |
 | 2026-08-25 | MINOR: JS camera space / `wasMousePressed` / `pushCamera` |
+| 2026-08-25 | MINOR: JS `game.setCameraZoom` world-draw scale |

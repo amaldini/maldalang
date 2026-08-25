@@ -511,8 +511,10 @@ public class JavaScriptBackendTests : TestBase
             game.strokeRect(1, 2, 3, 4, "#88ffcc", 3);
             game.setAlpha(0.5);
             game.setCamera(12, 24);
+            game.setCameraZoom(2);
             var camX = game.getCameraX();
             var camY = game.getCameraY();
+            var camZ = game.getCameraZoom();
             """;
         var compiler = new Compiler.Compiler();
 
@@ -530,14 +532,18 @@ public class JavaScriptBackendTests : TestBase
         Assert.Contains("mlRuntime.game.strokeRect(1, 2, 3, 4, \"#88ffcc\", 3)", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.setAlpha(0.5)", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.setCamera(12, 24)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.setCameraZoom(2)", js, StringComparison.Ordinal);
         Assert.Contains("let camX = mlRuntime.game.getCameraX();", js, StringComparison.Ordinal);
         Assert.Contains("let camY = mlRuntime.game.getCameraY();", js, StringComparison.Ordinal);
+        Assert.Contains("let camZ = mlRuntime.game.getCameraZoom();", js, StringComparison.Ordinal);
     }
 
     [Fact]
     public void JsTranspiler_MapsGameCameraSpaceAndMouseEdgeApis_ToMlRuntimeGame()
     {
         var source = """
+            game.setCameraZoom(1.5);
+            var zoom = game.getCameraZoom();
             game.pushCamera();
             game.popCamera();
             var world = game.screenToWorld(4, 5);
@@ -552,6 +558,8 @@ public class JavaScriptBackendTests : TestBase
 
         var js = compiler.TranspileToJavaScriptFromSource(source);
 
+        Assert.Contains("mlRuntime.game.setCameraZoom(1.5)", js, StringComparison.Ordinal);
+        Assert.Contains("let zoom = mlRuntime.game.getCameraZoom();", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.pushCamera()", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.popCamera()", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.screenToWorld(4, 5)", js, StringComparison.Ordinal);
@@ -655,6 +663,8 @@ public class JavaScriptBackendTests : TestBase
         Assert.Contains("mlRuntime.game.pushCamera()", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.popCamera()", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.getMouseWorldX()", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.setCameraZoom(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.screenToWorld(", js, StringComparison.Ordinal);
         Assert.DoesNotContain("mlRuntime.three.", js, StringComparison.Ordinal);
     }
 
@@ -1505,6 +1515,216 @@ process.stdout.write("ok\n");
             var stderr = process.StandardError.ReadToEnd();
             process.WaitForExit(15000);
             Assert.True(process.ExitCode == 0, $"camera-space runtime test failed ({process.ExitCode}). stderr: {stderr}");
+            Assert.Equal("ok", stdout.Trim());
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
+        }
+    }
+
+    [Fact]
+    public void GameRuntime_CameraZoom_ScalesDrawsAndConvertsScreenWorld()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var runtimePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "wwwroot", "malda-js-runtime.js");
+        var root = CreateTempDirectory("malda_js_camera_zoom_");
+        try
+        {
+            var scriptPath = Path.Combine(root, "camera-zoom-test.js");
+            File.WriteAllText(scriptPath, """
+class FakeImage {
+  constructor() {
+    this.width = 0;
+    this.height = 0;
+    this.naturalWidth = 0;
+    this.naturalHeight = 0;
+    this.onload = null;
+    this.onerror = null;
+    this._src = "";
+  }
+  set src(value) {
+    this._src = String(value || "");
+    this.width = 16;
+    this.height = 16;
+    this.naturalWidth = 16;
+    this.naturalHeight = 16;
+    if (typeof this.onload === "function") this.onload();
+  }
+  get src() { return this._src; }
+}
+globalThis.Image = FakeImage;
+
+function makeCanvas() {
+  const ctx = {
+    fillRects: [],
+    strokeRects: [],
+    arcs: [],
+    images: [],
+    ops: [],
+    fillStyle: "#000",
+    strokeStyle: "#000",
+    lineWidth: 1,
+    font: "",
+    globalAlpha: 1,
+    fillRect(x, y, w, h) { this.fillRects.push({ x, y, w, h }); },
+    strokeRect(x, y, w, h) { this.strokeRects.push({ x, y, w, h, lineWidth: this.lineWidth }); },
+    clearRect() {},
+    beginPath() {},
+    moveTo() {},
+    lineTo() {},
+    stroke() {},
+    arc(x, y, r) { this.arcs.push({ x, y, r }); },
+    fill() {},
+    fillText() {},
+    save() { this.ops.push({ op: "save" }); },
+    restore() { this.ops.push({ op: "restore" }); },
+    translate(x, y) { this.ops.push({ op: "translate", x, y }); },
+    rotate(a) { this.ops.push({ op: "rotate", a }); },
+    scale(x, y) { this.ops.push({ op: "scale", x, y }); },
+    drawImage() { this.images.push({ args: Array.from(arguments), ops: this.ops.slice() }); },
+    putImageData() {}
+  };
+  return {
+    width: 0,
+    height: 0,
+    style: {},
+    parentNode: null,
+    _ctx: ctx,
+    getContext() { return this._ctx; },
+    getBoundingClientRect() {
+      return { left: 0, top: 0, width: this.width, height: this.height };
+    }
+  };
+}
+
+const mount = {
+  children: [],
+  appendChild(el) {
+    this.children.push(el);
+    el.parentNode = this;
+    return el;
+  },
+  removeChild(el) {
+    this.children = this.children.filter((child) => child !== el);
+    el.parentNode = null;
+    return el;
+  }
+};
+
+globalThis.document = {
+  body: mount,
+  querySelector() { return mount; },
+  createElement(tag) {
+    if (tag === "canvas") return makeCanvas();
+    return { style: {} };
+  }
+};
+globalThis.window = {
+  addEventListener() {},
+  removeEventListener() {},
+  requestAnimationFrame() { return 1; },
+  cancelAnimationFrame() {}
+};
+
+require(process.argv[2]);
+const game = globalThis.mlRuntime.game;
+game.createCanvas(64, 32, "#app");
+const ctx = mount.children[0]._ctx;
+if (game.getCameraZoom() !== 1) throw new Error("default zoom should be 1");
+
+game.setCamera(10, 20);
+game.setCameraZoom(2);
+if (game.getCameraZoom() !== 2) throw new Error("zoom getter");
+
+const world = game.screenToWorld(8, 12);
+if (world.x !== 14 || world.y !== 26) throw new Error("screenToWorld zoom: " + JSON.stringify(world));
+const screen = game.worldToScreen(14, 26);
+if (screen.x !== 8 || screen.y !== 12) throw new Error("worldToScreen zoom: " + JSON.stringify(screen));
+
+game.fillRect(5, 6, 8, 9, "#ff0000");
+const rect = ctx.fillRects[ctx.fillRects.length - 1];
+if (rect.x !== -10 || rect.y !== -28 || rect.w !== 16 || rect.h !== 18) {
+  throw new Error("zoom fillRect: " + JSON.stringify(rect));
+}
+
+game.fillCircle(5, 6, 4, "#00ff00");
+const circle = ctx.arcs[ctx.arcs.length - 1];
+if (circle.x !== -10 || circle.y !== -28 || circle.r !== 8) {
+  throw new Error("zoom fillCircle: " + JSON.stringify(circle));
+}
+
+game.strokeRect(1, 2, 3, 4, "#88ffcc", 3);
+const stroke = ctx.strokeRects[ctx.strokeRects.length - 1];
+if (stroke.x !== -18 || stroke.y !== -36 || stroke.w !== 6 || stroke.h !== 8 || stroke.lineWidth !== 6) {
+  throw new Error("zoom strokeRect: " + JSON.stringify(stroke));
+}
+
+const tiles = game.loadImage("ok.png");
+game.drawImage(tiles, 8, 16, 32, 32);
+const img = ctx.images[ctx.images.length - 1];
+if (img.args[1] !== -4 || img.args[2] !== -8 || img.args[3] !== 64 || img.args[4] !== 64) {
+  throw new Error("zoom drawImage: " + JSON.stringify(img.args));
+}
+
+ctx.ops.length = 0;
+game.drawImageEx(tiles, 40, 80, { sx: 2, sy: 4, sw: 8, sh: 8, w: 32, h: 24, ox: 16, oy: 12 });
+const ex = ctx.images[ctx.images.length - 1];
+if (ex.args[5] !== -32 || ex.args[6] !== -24 || ex.args[7] !== 64 || ex.args[8] !== 48) {
+  throw new Error("zoom drawImageEx dest: " + JSON.stringify(ex.args));
+}
+const tr = ex.ops.find((op) => op.op === "translate");
+if (!tr || tr.x !== 60 || tr.y !== 120) {
+  throw new Error("zoom drawImageEx translate: " + JSON.stringify(ex.ops));
+}
+
+game.pushCamera();
+game.setCamera(0, 0);
+game.setCameraZoom(1);
+game.fillRect(8, 9, 4, 4, "#00ff00");
+const hud = ctx.fillRects[ctx.fillRects.length - 1];
+if (hud.x !== 8 || hud.y !== 9 || hud.w !== 4 || hud.h !== 4) {
+  throw new Error("HUD should ignore stacked zoom: " + JSON.stringify(hud));
+}
+game.popCamera();
+if (game.getCameraX() !== 10 || game.getCameraY() !== 20 || game.getCameraZoom() !== 2) {
+  throw new Error("popCamera should restore pan and zoom");
+}
+
+game.setCameraZoom(0);
+if (game.getCameraZoom() !== 1) throw new Error("non-positive zoom should reset to 1");
+game.setCameraZoom(1000);
+if (game.getCameraZoom() !== 100) throw new Error("zoom should clamp to 100, got " + game.getCameraZoom());
+game.setCameraZoom(0.01);
+if (game.getCameraZoom() !== 0.05) throw new Error("zoom should clamp to 0.05, got " + game.getCameraZoom());
+
+game.createCanvas(64, 32, "#app");
+if (game.getCameraZoom() !== 1) throw new Error("createCanvas should reset zoom");
+
+process.stdout.write("ok\n");
+""");
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = Environment.GetEnvironmentVariable("MALDA_NODE_PATH") is { Length: > 0 } nodePath
+                    ? nodePath
+                    : "node",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = root
+            };
+            startInfo.ArgumentList.Add(scriptPath);
+            startInfo.ArgumentList.Add(runtimePath);
+
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Failed to start Node.js for camera-zoom runtime test.");
+            var stdout = process.StandardOutput.ReadToEnd();
+            var stderr = process.StandardError.ReadToEnd();
+            process.WaitForExit(15000);
+            Assert.True(process.ExitCode == 0, $"camera-zoom runtime test failed ({process.ExitCode}). stderr: {stderr}");
             Assert.Equal("ok", stdout.Trim());
         }
         finally
