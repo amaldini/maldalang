@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — JS game.sweepRect)
+
+- **`game.sweepRect` (JavaScript backend only):** `game.sweepRect(x, y, w, h, dx, dy, ox, oy, ow, oh)` returns `{ hit, t, nx, ny, x, y }` at the first contact along the motion delta. Miss: `hit` false, `t` 1, `x`/`y` at the end pose. Hit: `t` in `[0, 1]`, position at impact, `nx`/`ny` pointing out of the obstacle (canvas Y+ down: floor `ny = -1`). Zero/negative sizes miss. Positive-area overlap at the start is `t` 0 plus a minimum-translation normal. Surface contact with parallel motion is not a hit (axis-separated platformer walks work). Pure function: no canvas, no camera. Not a physics engine / tileset / swept circle. Smoke: `Examples/Games/game_collision_smoke.malda`. Showcase `malda_platform` uses axis-separated sweep instead of the 18px landing slop. Interpreter / C# transpile: n/a (`game-canvas`).
+
 #### Clarified (PATCH — docs / tracking only)
 
 - **Maldanoid rally polish:** `Examples/Games/maldanoid.malda` prefers the incoming velocity axis and ignores the last brick for a few ticks, serves near-vertical and builds speed on the paddle, pauses from serve, draws HP bars and shaped power-ups, and saves `{ high, bestCombo }`. No Tier 0 semantic change.
@@ -346,5 +350,4 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-08-21 | MINOR: `malda new game` / `malda play` JS preview (G6) |
 | 2026-08-21 | MINOR: JS game kit showcase `malda_platform` (G7) |
 | 2026-08-21 | MINOR: JS `three.createTexture` / `loadGLTF` / `lookAt` (G8) |
-| 2026-08-21 | MINOR: `malda new game --fullstack` scores template (G9) |
-| 2026-08-21 | PATCH: RestServer serializes transpiled object-literal JSON bodies |
+| 2026-08-25 | MINOR: JS `game.sweepRect` swept AABB helper |

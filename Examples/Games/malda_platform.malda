@@ -51,6 +51,19 @@ if (root == null) {
         high = loaded;
     }
 
+    function sweepPlatforms(x, y, dx, dy) {
+        var best = game.sweepRect(x, y, playerW, playerH, dx, dy, platX[0], platY[0], platW[0], platH[0]);
+        var i = 1;
+        while (i < platX.length) {
+            var next = game.sweepRect(x, y, playerW, playerH, dx, dy, platX[i], platY[i], platW[i], platH[i]);
+            if (next.hit && (!best.hit || next.t < best.t)) {
+                best = next;
+            }
+            i = i + 1;
+        }
+        return best;
+    }
+
     function resetRun() {
         playerX = 48.0;
         playerY = 286.0;
@@ -85,18 +98,13 @@ if (root == null) {
             tryStartAudio();
         }
 
+        var dx = 0.0;
         var step = (runSpeed * dtMs) / 1000;
         if (game.isKeyDown("arrowleft")) {
-            playerX = playerX - step;
+            dx = dx - step;
         }
         if (game.isKeyDown("arrowright")) {
-            playerX = playerX + step;
-        }
-        if (playerX < 0) {
-            playerX = 0;
-        }
-        if (playerX + playerW > worldW) {
-            playerX = worldW - playerW;
+            dx = dx + step;
         }
 
         if (onGround && (game.wasKeyPressed(" ") || game.wasKeyPressed("arrowup"))) {
@@ -109,22 +117,28 @@ if (root == null) {
         if (vy > maxFall) {
             vy = maxFall;
         }
-        playerY = playerY + ((vy * dtMs) / 1000);
+        var dy = (vy * dtMs) / 1000;
 
+        var movedX = sweepPlatforms(playerX, playerY, dx, 0);
+        playerX = movedX.x;
+        if (playerX < 0) {
+            playerX = 0;
+        }
+        if (playerX + playerW > worldW) {
+            playerX = worldW - playerW;
+        }
+
+        var movedY = sweepPlatforms(playerX, playerY, 0, dy);
+        playerY = movedY.y;
         onGround = false;
-        var p = 0;
-        while (p < platX.length) {
-            if (game.overlapRect(playerX, playerY, playerW, playerH, platX[p], platY[p], platW[p], platH[p])) {
-                if (vy >= 0) {
-                    var feet = playerY + playerH;
-                    if (feet <= platY[p] + 18) {
-                        playerY = platY[p] - playerH;
-                        vy = 0;
-                        onGround = true;
-                    }
-                }
+        if (movedY.hit) {
+            if (movedY.ny < 0) {
+                onGround = true;
+                vy = 0;
             }
-            p = p + 1;
+            if (movedY.ny > 0) {
+                vy = 0;
+            }
         }
 
         var c = 0;
