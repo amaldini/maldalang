@@ -6,6 +6,7 @@ using Xunit;
 
 namespace MaldaLang.Tests;
 
+[Collection("Sequential")]
 public class SchemaValidateExampleTests : TestBase
 {
     [Fact]
@@ -38,6 +39,26 @@ public class SchemaValidateExampleTests : TestBase
         Assert.Contains("intent: Buy", output, StringComparison.Ordinal);
         Assert.Contains("order: shoes", output, StringComparison.Ordinal);
         Assert.Contains("expected failure", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Basics_AsVariant_RunsUnderInterpreter()
+    {
+        var path = PlanningPaths.ResolveRepoFile("Examples", "Basics", "as_variant.malda");
+        var source = File.ReadAllText(path);
+        var output = RunProgram(source);
+        Assert.Contains("buy SKU-9 x 2", output, StringComparison.Ordinal);
+        Assert.Contains("again SKU-1 x 1", output, StringComparison.Ordinal);
+        Assert.Contains("help", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void FewShot_AsVariant_RunsUnderInterpreter()
+    {
+        var path = PlanningPaths.ResolveRepoFile("docs", "llm", "few-shot", "25_as_variant.malda");
+        var source = File.ReadAllText(path);
+        var output = RunProgram(source);
+        Assert.Contains("buy SKU-9 x 2", output, StringComparison.Ordinal);
     }
 
     [Fact]

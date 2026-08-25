@@ -9,6 +9,7 @@ using Xunit;
 
 namespace MaldaLang.Tests;
 
+[Collection("Sequential")]
 public class TypedPromptValidatorTests
 {
     [Fact]
@@ -288,6 +289,67 @@ public class TypedPromptValidatorTests
         Assert.Contains("Search(query)", text);
         Assert.Contains("Help()", text);
         Assert.Contains("tag", text);
+    }
+
+    [Fact]
+    public void AsVariant_CoercesTaggedDictToVariant()
+    {
+        SchemaRegistry.ClearForTesting();
+        SumTypeRegistry.ClearForTesting();
+        SumTypeRegistry.Register(new MaldaLang.Parser.AST.Declarations.TypeDeclaration(
+            "Intent",
+            new List<MaldaLang.Parser.AST.Declarations.VariantConstructor>
+            {
+                new("Buy", new List<string> { "sku", "qty" }),
+                new("Help", new List<string>())
+            }));
+
+        var buy = new JsonObject();
+        buy.Set("tag", RuntimeValue.String("Buy"));
+        buy.Set("sku", RuntimeValue.String("SKU-9"));
+        buy.Set("qty", RuntimeValue.Integer(2));
+
+        var variant = TypedPromptValidator.AsVariant(RuntimeValue.String("Intent"), RuntimeValue.Object(buy));
+        Assert.Equal(ValueType.Variant, variant.Type);
+        Assert.Equal("Buy", variant.AsVariant().Tag);
+        Assert.Equal("SKU-9", variant.AsVariant().Payload[0].AsString());
+        Assert.Equal(2, variant.AsVariant().Payload[1].AsInteger());
+    }
+
+    [Fact]
+    public void AsVariant_ExistingVariant_IsIdempotent()
+    {
+        SchemaRegistry.ClearForTesting();
+        SumTypeRegistry.ClearForTesting();
+        SumTypeRegistry.Register(new MaldaLang.Parser.AST.Declarations.TypeDeclaration(
+            "Intent",
+            new List<MaldaLang.Parser.AST.Declarations.VariantConstructor>
+            {
+                new("Help", new List<string>())
+            }));
+
+        var already = RuntimeValue.Variant("Help", new List<RuntimeValue>());
+        var again = TypedPromptValidator.AsVariant(RuntimeValue.String("Intent"), already);
+        Assert.Same(already.AsVariant(), again.AsVariant());
+    }
+
+    [Fact]
+    public void AsVariant_ObjectSchema_Throws()
+    {
+        SchemaRegistry.ClearForTesting();
+        SumTypeRegistry.ClearForTesting();
+        SchemaRegistry.Register(new MaldaLang.Parser.AST.Declarations.SchemaDeclaration(
+            "Person",
+            new List<MaldaLang.Parser.AST.Declarations.SchemaField>
+            {
+                new("name", "string", required: true)
+            }));
+
+        var person = new JsonObject();
+        person.Set("name", RuntimeValue.String("Ada"));
+        var ex = Assert.Throws<Exception>(() =>
+            TypedPromptValidator.AsVariant(RuntimeValue.String("Person"), RuntimeValue.Object(person)));
+        Assert.Contains("not a sum type", ex.Message, StringComparison.Ordinal);
     }
 
     private static JsonObject MakeTypeObj(string typeName)

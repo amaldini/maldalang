@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — asVariant)
+
+- **`asVariant(typeName, value)`:** coerce a tagged dict (JSON wire `{ "tag": "Buy", … }`) into a sum-type variant for `match`. `validate("Intent", dict)` still returns the original dict. An already-built variant is returned as-is when its tag belongs to the type. Throws on a non-sum schema, unknown tag, or payload that fails the sum-type JSON Schema (same rules as typed-prompt coerce). Interpreter and C# transpile agree. JavaScript: `mlRuntime.schema.asVariant` (tag + constructor param order; payload-type checks stay as weak as JS `validate`). Example: `Examples/Basics/as_variant.malda`. Few-shot: `docs/llm/few-shot/25_as_variant.malda`.
+
 #### Added (MINOR — JS game.sweepRects)
 
 - **G11 `game.sweepRects` (JavaScript backend only):** `game.sweepRects(x, y, w, h, dx, dy, obstacles)` returns the same `{ hit, t, nx, ny, x, y }` as `sweepRect` against the earliest hit in an array of `{ x, y, w, h }` (ties keep the first in array order). Empty / missing / non-array: miss (`t` 1, end pose). Skip non-objects and `w`/`h` ≤ 0. Pure function: no canvas, no camera. Smoke: `Examples/Games/game_collision_smoke.malda`. Showcase `malda_platform` uses one `plats` array. Interpreter / C# transpile: n/a (`game-canvas`).
@@ -379,7 +383,7 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-08-22 | Games kit G0–G9 marked landed (`docs/roadmap-games.md`; PATCH docs). |
 | 2026-08-22 | PATCH: Maldanoid example adopts G1/G2/G3/G5 helpers (`startFixed`, overlap, input edges, save/load) |
 | 2026-08-22 | PATCH: Maldanoid feel pass (depenetration, sparks, serve aim, result panels) |
-| 2026-08-22 | PATCH: Maldanoid rally polish (velocity-axis bounce, combo save, pause from serve) |
+| 2026-08-25 | MINOR: `asVariant(typeName, value)` coerces tagged dicts to sum-type variants |
 | 2026-08-21 | MINOR: JS `game.loadImage` / camera / draw extras (G1) |
 | 2026-08-21 | MINOR: JS `game.wasKeyPressed` / touches / gamepad (G2) |
 | 2026-08-21 | MINOR: JS `game.overlapRect` / circle / point queries (G3) |

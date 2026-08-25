@@ -18,8 +18,8 @@ Compact rules for generating correct `.malda`. Prefer this over scraping HTML ma
   when the callee declares `-> T`. Schema fields may nest other schema names (`address: Address`
   / `Tag[]`) or a declared **sum type** (`intent: Intent`); unknown field types error on
   resolve (they are not silently `string`). `validate("Intent", dict)` checks the tagged
-  JSON shape and returns the original dict — it does not coerce to a variant (`await prompt
-  … -> Intent` still does).
+  JSON shape and returns the original dict — it does not coerce to a variant. Use
+  `asVariant("Intent", dict)` when you need `match` without `await prompt … -> Intent`.
 - **Prompt parameters are name-only** — write `prompt greet(name) { ... }`, never `prompt greet(name: string)`.
 - Prompt `-> ReturnType` is **not** static typing. Three supported modes:
   - **A Structured** — `await` + `-> Type` + **no tools** and **no `gather:`**: resolve JSON Schema, append

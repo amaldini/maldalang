@@ -265,6 +265,44 @@ public class SchemaNestedTests : TestBase
     }
 
     [Fact]
+    public void AsVariant_SumTypeName_CoercesTaggedDictForMatch()
+    {
+        var source = """
+            type Intent = Search(query) | Buy(sku, qty) | Help();
+            var good = dict { "tag": "Buy", "sku": "SKU-9", "qty": 2 };
+            match asVariant("Intent", good) {
+                case Buy(sku, qty): print("buy " + sku + " x " + qty);
+                default: print("unexpected");
+            }
+            """;
+        var result = RunProgram(source);
+        Assert.Contains("buy SKU-9 x 2", result, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AsVariant_UnknownTag_Throws()
+    {
+        var source = """
+            type Intent = Search(query) | Buy(sku, qty);
+            asVariant("Intent", dict { "tag": "Nope" });
+            """;
+        var ex = Assert.ThrowsAny<Exception>(() => RunProgram(source));
+        Assert.Contains("asVariant() failed", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("Nope", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AsVariant_ObjectSchema_Throws()
+    {
+        var source = """
+            schema Person { name: string; }
+            asVariant("Person", dict { "name": "Ada" });
+            """;
+        var ex = Assert.ThrowsAny<Exception>(() => RunProgram(source));
+        Assert.Contains("not a sum type", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void NestedSchema_SumTypeField_ValidatesTagShape()
     {
         var source = """
@@ -346,5 +384,21 @@ public class SchemaNestedTests : TestBase
         var lines = result.StdOut.Trim().Replace("\r", "").Split('\n');
         Assert.Equal("true", lines[0].Trim());
         Assert.Equal("true", lines[1].Trim());
+    }
+
+    [Fact]
+    public void Transpiled_AsVariant_MatchWorks()
+    {
+        var source = """
+            type Intent = Search(query) | Buy(sku, qty);
+            var tagged = dict { "tag": "Buy", "sku": "SKU-9", "qty": 2 };
+            match asVariant("Intent", tagged) {
+                case Buy(sku, qty): print("buy " + sku + " x " + qty);
+                default: print("unexpected");
+            }
+            """;
+        var result = TranspiledTestRunner.CompileAndRunFromSource(source);
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("buy SKU-9 x 2", result.StdOut, StringComparison.Ordinal);
     }
 }

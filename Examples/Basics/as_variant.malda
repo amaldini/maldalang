@@ -1,0 +1,34 @@
+// as_variant.malda — coerce a tagged dict into a variant for match
+//
+// Run: malda Examples/Basics/as_variant.malda
+// validate("Intent", dict) returns the original dict. asVariant("Intent", dict)
+// is the explicit convert step used after a successful validate (or on raw tagged
+// JSON). Await prompt … -> Intent still yields a variant directly.
+
+type Intent = Search(query: string) | Buy(sku: string, qty: int) | Help();
+
+var tagged = dict { "tag": "Buy", "sku": "SKU-9", "qty": 2 };
+var checked = validate("Intent", tagged);
+if (checked.ok) {
+    match asVariant("Intent", checked.data) {
+        case Search(q): io.print($"search {q}");
+        case Buy(sku, qty): io.print($"buy {sku} x {qty}");
+        case Help(): io.print("help");
+    }
+} else {
+    io.print("unexpected: " + checked.error);
+}
+
+var already = Buy("SKU-1", 1);
+match asVariant("Intent", already) {
+    case Buy(sku, qty): io.print($"again {sku} x {qty}");
+    default: io.print("unexpected variant");
+}
+
+var helpCheck = validate("Intent", dict { "tag": "Help" });
+if (helpCheck.ok) {
+    match asVariant("Intent", helpCheck.data) {
+        case Help(): io.print("help");
+        default: io.print("unexpected help");
+    }
+}

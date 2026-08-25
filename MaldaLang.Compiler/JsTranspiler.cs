@@ -976,8 +976,14 @@ public class JsTranspiler
             EmitLine("};");
         }
 
-        var constructorNames = declaration.Constructors.Select(c => c.Name).ToList();
-        var ctorJson = JsonSerializer.Serialize(constructorNames);
+        var constructorSpecs = declaration.Constructors
+            .Select(c => new Dictionary<string, object?>
+            {
+                ["tag"] = c.Name,
+                ["params"] = c.ParameterNames.ToArray()
+            })
+            .ToList();
+        var ctorJson = JsonSerializer.Serialize(constructorSpecs);
         EmitLine($"mlRuntime.schema.registerSumType({TranspileLiteral(declaration.TypeName)}, {ctorJson});");
     }
 
@@ -1511,6 +1517,9 @@ public class JsTranspiler
                 return true;
             case "validate":
                 transpiled = $"mlRuntime.schema.validate({JoinArguments(arguments)})";
+                return true;
+            case "asVariant":
+                transpiled = $"mlRuntime.schema.asVariant({JoinArguments(arguments)})";
                 return true;
             case "now":
                 transpiled = "mlRuntime.now()";

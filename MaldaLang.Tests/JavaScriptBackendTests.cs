@@ -4396,6 +4396,11 @@ const missingModel = three.loadGLTF("missing.gltf");
             }
             var check = validate("Person", dict { "name": "Ada", "age": 36 });
             println(check.ok);
+            type Intent = Search(query) | Buy(sku, qty);
+            match asVariant("Intent", dict { "tag": "Buy", "sku": "SKU-9", "qty": 2 }) {
+                case Buy(sku, qty): println(sku);
+                default: println("no");
+            }
             println(now());
             println(hasEnv("PATH"));
             var response = httpGet("https://example.invalid/");
@@ -4410,6 +4415,8 @@ const missingModel = three.loadGLTF("missing.gltf");
 
         Assert.Contains("mlRuntime.schema.register(\"Person\"", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.schema.validate(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.schema.asVariant(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.schema.registerSumType(\"Intent\"", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.now()", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.hasEnv(\"PATH\")", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.http.get(", js, StringComparison.Ordinal);

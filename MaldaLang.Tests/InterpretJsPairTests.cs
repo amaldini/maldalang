@@ -15,6 +15,7 @@ public class InterpretJsPairTests
 {
     [Theory]
     [InlineData("Examples/Basics/schema_validate.malda")]
+    [InlineData("Examples/Basics/as_variant.malda")]
     [InlineData("Examples/Modules/selective_import.malda")]
     public void Example_InterpretAndJavaScript_SameStdout(string relativePath)
     {

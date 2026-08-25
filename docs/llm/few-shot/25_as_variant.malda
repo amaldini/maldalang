@@ -1,0 +1,17 @@
+// asVariant — coerce a tagged dict into a variant for match.
+// validate() checks the JSON shape and leaves data as a dict.
+// asVariant("Intent", dict) throws on mismatch; already-a-variant is idempotent.
+
+type Intent = Search(query: string) | Buy(sku: string, qty: int) | Help();
+
+var tagged = dict { "tag": "Buy", "sku": "SKU-9", "qty": 2 };
+var checked = validate("Intent", tagged);
+if (checked.ok) {
+    match asVariant("Intent", checked.data) {
+        case Search(q): io.print($"search {q}");
+        case Buy(sku, qty): io.print($"buy {sku} x {qty}");
+        case Help(): io.print("help");
+    }
+} else {
+    io.print("invalid: " + checked.error);
+}
