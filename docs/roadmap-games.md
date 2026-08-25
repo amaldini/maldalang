@@ -663,3 +663,4 @@ CHANGELOG Unreleased row (product / docs), not a Tier 0 conformance case.
 - Capability matrix: [`docs/spec/backend-capability-matrix.md`](spec/backend-capability-matrix.md)
 - Examples: [`Examples/Games/README.md`](../Examples/Games/README.md)
 - Language constructs (do not add game syntax there): [`docs/roadmap-language-constructs.md`](roadmap-language-constructs.md)
+- Post-G15 peer comparison (not a workstream plan): [`docs/games-2d-gap-analysis.md`](games-2d-gap-analysis.md)

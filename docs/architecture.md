@@ -83,6 +83,7 @@ Server-driven `ui.*` trees, patch protocol, and `MaldaLang.UIHost` wiring are do
 | [`docs/roadmap-trust.md`](roadmap-trust.md) | Post-Final trust plan (strict compile, transpile smoke, interpret/transpile pairs, loud gotchas; toolchain 1.0.0 landed) |
 | [`docs/roadmap-interpret-debug.md`](roadmap-interpret-debug.md) | Interpret-mode source-level debug — D0–D3 and D5 landed (`malda debug-adapter`, VS Code type `malda`, MALDA-specific stops) |
 | [`docs/roadmap-games.md`](roadmap-games.md) | Browser games kit (`game.*` / `three.*` JS-only; G0–G15 landed) |
+| [`docs/games-2d-gap-analysis.md`](games-2d-gap-analysis.md) | 2D kit vs Love2D / Pico-8 / Phaser / Godot (evaluation, not a roadmap) |
 | [`docs/workflows-ha.md`](workflows-ha.md) | Durable workflows: single-writer + read-only ops model (W2) |
 | `docs/javascript-backend.md`, `docs/ui-framework.md`, `docs/profiling.md`, `docs/benchmarks.md`, … | Topic guides |
 | `docs/planning/` | Historical roadmap — verify against code / ReferenceManual / AGENTS.md ([README](planning/README.md)) |

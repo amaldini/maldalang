@@ -579,7 +579,7 @@ Audio Spec v1 adds a browser-hosted game audio API in JavaScript mode. The goal 
 
 - Run DOM-centric cases under `jsdom` to validate runtime behavior (`dom.query`, event wiring, HTML/text updates).
 - Keep C# tests as codegen/contract checks, and add Node/jsdom tests for runtime semantics.
-- Games kit G0–G15 landed (sprites, input edges, overlap, sample SFX, `malda play`, 3D assets, fullstack scores, size queries / pixelated / `strokeCircle`, `sweepRects`, `followCamera`, sample pan/rate, gamepad release + deadzone, `malda new game` on `startFixed`). See [`docs/roadmap-games.md`](roadmap-games.md).
+- Games kit G0–G15 landed (sprites, input edges, overlap, sample SFX, `malda play`, 3D assets, fullstack scores, size queries / pixelated / `strokeCircle`, `sweepRects`, `followCamera`, sample pan/rate, gamepad release + deadzone, `malda new game` on `startFixed`). See [`docs/roadmap-games.md`](roadmap-games.md). Post-kit 2D gaps vs Love2D / Pico-8 / Phaser: [`docs/games-2d-gap-analysis.md`](games-2d-gap-analysis.md).
 
 ### Current limitations
 
