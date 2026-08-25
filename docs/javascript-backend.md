@@ -114,7 +114,7 @@ Validation rules currently enforced:
     - Drawing: `game.clear()`, `game.fillRect(x, y, width, height, color?)`, `game.fillCircle(x, y, radius, color?)`, `game.drawText(text, x, y, color?, font?)`, `game.drawLine(x1, y1, x2, y2, color?, width?)`, `game.strokeRect(x, y, w, h, color?, width?)`, `game.setAlpha(a)`
     - Images / camera: `game.loadImage(url)`, `game.imageIsReady(handle)`, `game.drawImage(handle, x, y, w?, h?)`, `game.drawImageRect(handle, sx, sy, sw, sh, dx, dy, dw?, dh?)`, `game.setCamera(x, y)`, `game.getCameraX()`, `game.getCameraY()`
     - Pixel buffer / blit: `game.createPixelBuffer(width?, height?)`, `game.setPixel(x, y, r, g, b, a?)`, `game.blitPixels(pixels?, destX?, destY?)`
-    - Collision: `game.overlapRect(x1, y1, w1, h1, x2, y2, w2, h2)`, `game.overlapCircle(x1, y1, r1, x2, y2, r2)`, `game.pointInRect(px, py, x, y, w, h)`, `game.pointInCircle(px, py, x, y, r)`
+    - Collision: `game.overlapRect(x1, y1, w1, h1, x2, y2, w2, h2)`, `game.overlapCircle(x1, y1, r1, x2, y2, r2)`, `game.pointInRect(px, py, x, y, w, h)`, `game.pointInCircle(px, py, x, y, r)`, `game.sweepRect(x, y, w, h, dx, dy, ox, oy, ow, oh)`
     - Input: `game.isKeyDown(key)`, `game.wasKeyPressed(key)`, `game.wasKeyReleased(key)`, `game.getMouseX()`, `game.getMouseY()`, `game.isMouseDown(button?)`, `game.getTouches()`, `game.isGamepadConnected(index?)`, `game.getGamepadAxis(index, axis)`, `game.isGamepadButtonDown(index, button)`, `game.wasGamepadButtonPressed(index, button)`
     - Audio: `game.audioInit()`, `game.audioIsReady()`, `game.audioSetMasterVolume(v)`, `game.audioPlayTone(...)`, `game.audioPlayNoise(...)`, `game.audioPlayPattern(pattern)`, `game.audioStopPattern()`, `game.audioPlaySample(url, volume?, options?)`, `game.audioStopSample(url?)`, `game.audioLoadTrack(...)`, `game.audioPlayTrack()`, `game.audioStopTrack()`, `game.audioStopAll()`
   - Three helpers:
@@ -179,6 +179,7 @@ Use `game.*` when you want a browser-hosted interactive canvas loop in MALDA Jav
   - `game.overlapRect(x1, y1, w1, h1, x2, y2, w2, h2)` — inclusive AABB; touching edges count. `w`/`h` ≤ 0 → `false`
   - `game.overlapCircle(x1, y1, r1, x2, y2, r2)` — inclusive (distance ≤ r1+r2). `r` ≤ 0 → `false`
   - `game.pointInRect(px, py, x, y, w, h)`, `game.pointInCircle(px, py, x, y, r)`
+  - `game.sweepRect(x, y, w, h, dx, dy, ox, oy, ow, oh)` — first contact along the delta. Returns `{ hit, t, nx, ny, x, y }`. Miss: `hit` false, `t` 1, `x`/`y` at the end pose. Hit: `t` in `[0, 1]`, `x`/`y` at impact, `nx`/`ny` the outward normal (canvas Y+ down: floor is `ny = -1`). Zero/negative sizes miss. Already penetrating (positive-area overlap): `t` 0 and a minimum-translation normal. Not a physics engine.
 - Input:
   - `game.isKeyDown("arrowleft")`, `game.isKeyDown("arrowright")`, etc.
   - `game.wasKeyPressed(key)`, `game.wasKeyReleased(key)` — true on the first **update** after key-down / key-up; same names as `isKeyDown`
@@ -259,10 +260,10 @@ function update(dtMs) {
 
 ### Guardrails and error conditions
 
-- Call `game.createCanvas(...)` before `game.clear(...)`, draw calls, pixel-buffer calls, camera/alpha calls, or `game.start(...)` / `game.startFixed(...)`. `game.loadImage` / `game.imageIsReady`, overlap helpers (`overlapRect`, `overlapCircle`, `pointInRect`, `pointInCircle`), `game.audio*`, and `game.save` / `game.load` / `game.removeSave` may run without a canvas.
+- Call `game.createCanvas(...)` before `game.clear(...)`, draw calls, pixel-buffer calls, camera/alpha calls, or `game.start(...)` / `game.startFixed(...)`. `game.loadImage` / `game.imageIsReady`, overlap helpers (`overlapRect`, `overlapCircle`, `pointInRect`, `pointInCircle`), `game.sweepRect`, `game.audio*`, and `game.save` / `game.load` / `game.removeSave` may run without a canvas.
 - Unready image handles (still decoding, missing URL, or decode failure) make `drawImage` / `drawImageRect` no-op. They do not throw.
 - `game.setCamera` offsets `fillRect`, `fillCircle`, `drawText`, `drawLine`, `strokeRect`, and image draws. It does **not** offset `setPixel` / `blitPixels`. Mouse helpers stay in canvas pixels.
-- Overlap helpers are inclusive AABB / circle tests in the numbers you pass. They do **not** subtract `setCamera`. Zero or negative width, height, or radius is `false`. Not swept collision or physics.
+- Overlap helpers are inclusive AABB / circle tests in the numbers you pass. They do **not** subtract `setCamera`. Zero or negative width, height, or radius is `false`. They do not stop a fast mover that ends the tick past a thin wall — use `game.sweepRect` for motion. `sweepRect` is also a pure function (no canvas, no camera). Surface contact with parallel motion is not a hit, so walking on a floor while sweeping X works. Not a physics engine.
 - Read `wasKeyPressed` / `wasKeyReleased` / `wasGamepadButtonPressed` in `update` only. Edges are snapshotted at the start of `update` and are **false in `render`**. Holding a key or button does not retrigger.
 - First active touch still aliases mouse button 0 so existing `isMouseDown` games keep working. `getTouches()` is canvas pixels.
 - Missing Gamepad API or a disconnected pad: `isGamepadConnected` is false and axes are `0`.

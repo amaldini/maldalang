@@ -69,7 +69,9 @@ claim a program works.
 
 **`game.audioStopSample` does not stop the music track or pattern.** Sample one-shots share the Web Audio node cap with tones, but `audioStopSample(url?)` never calls `audioStopTrack` / `audioStopPattern`. Omit the URL to stop every sample. Decode is cached per URL; a missing file is a silent no-op. Call `audioInit` after a click or key or the browser will mute everything. Example: `Examples/Games/game_audio_sample_smoke.malda`.
 
-**`game.overlapRect` counts touching edges, not only interiors.** Inclusive AABB: a box at `x=0,w=10` overlaps one at `x=10`. Zero or negative width/height/radius is `false`. Helpers are pure (no canvas) and ignore `setCamera`. Not swept AABB or physics. Example: `Examples/Games/game_collision_smoke.malda`.
+**`game.overlapRect` counts touching edges, not only interiors.** Inclusive AABB: a box at `x=0,w=10` overlaps one at `x=10`. Zero or negative width/height/radius is `false`. Helpers are pure (no canvas) and ignore `setCamera`. Example: `Examples/Games/game_collision_smoke.malda`.
+
+**`game.overlapRect` does not stop a fast mover.** A box that ends the tick past a thin wall reports no overlap — it tunneled. `game.sweepRect(x, y, w, h, dx, dy, ox, oy, ow, oh)` returns `{ hit, t, nx, ny, x, y }` at first contact (`t` is 1 and `x`/`y` are the end pose on a miss). Canvas Y+ is down, so a floor is `ny = -1`. Walking along a touching floor while sweeping X is not a hit. Positive-area overlap at the start is `t` 0 plus an MTV normal — not a physics engine. Example: `Examples/Games/game_collision_smoke.malda`.
 
 **`game.wasKeyPressed` is true for one update, never in `render`.** Edges are snapshotted at the start of `update` and cleared before `render`. Holding a key does not retrigger. Same names as `isKeyDown`. `getTouches()` is canvas pixels; the first active touch still aliases mouse button 0. Missing pads return disconnected / axis `0`. Example: `Examples/Games/game_input_smoke.malda`.
 

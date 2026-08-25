@@ -191,8 +191,8 @@ These are pure functions (no canvas required) so the Node harness does not
 need a fake 2D context. Keep them on `game.*` for discoverability, not
 `math.*`.
 
-**Out of scope here:** swept AABB, tileset collision, rigid-body physics
-(see After G9).
+**Out of scope here:** tileset collision, rigid-body physics
+(see After G9). Swept AABB landed later as `game.sweepRect` (post-kit helper).
 
 ---
 
@@ -315,6 +315,26 @@ blob. `docs/start-here.md` links it. Template: `Templates/game-fullstack/`.
 
 ---
 
+## Post-kit — `game.sweepRect`
+
+**Landed:** `Examples/Games/game_collision_smoke.malda` (fast dart vs thin gate) and
+`malda_platform` axis-separated landings. Discrete `overlapRect` still tunnels
+through a wall thinner than this tick's delta.
+
+| Call | Contract |
+|------|----------|
+| `game.sweepRect(x, y, w, h, dx, dy, ox, oy, ow, oh)` | First contact along the delta. Returns `{ hit, t, nx, ny, x, y }`. Miss: `hit` false, `t` 1, `x`/`y` at the end pose. Hit: `t` in `[0, 1]`, position at impact, `nx`/`ny` pointing out of the obstacle (canvas Y+ down: floor is `ny = -1`). Zero/negative sizes miss. Positive-area overlap at the start: `t` 0 plus a minimum-translation normal. Touching a floor and sweeping X is not a hit. |
+
+**Guardrails**
+
+- Pure function (no canvas, no camera) like G3.
+- Not tileset collision, swept circles, or a physics engine.
+- Resolve X then Y against each obstacle and keep the earliest `t`.
+
+**Files:** runtime, chapter 26.9, `docs/javascript-backend.md`.
+
+---
+
 ## After G9 (deferred)
 
 Revisit only with a new ranked roadmap. These were called out while shipping
@@ -323,7 +343,7 @@ G1–G9 and are **not** implied next work:
 | Idea | Why it waited |
 |------|----------------|
 | `three.setTexture` / orbit controls | G8 left them out until look-at + `three_textured` prove the gap |
-| Swept AABB / tileset collision / particles / scene graph | Helpers first (G3); engines later as a pack |
+| Tileset collision / particles / scene graph | Helpers first (G3 + `sweepRect`); engines later as a pack |
 | Box2D-class physics in core | Same — optional pack, not stdlib growth |
 | WebGL 2D sprite batcher | Canvas2D images (G1) first |
 | Native desktop window (SDL, Raylib, Silk.NET) | Optional pack **out of this repo** |
@@ -333,6 +353,10 @@ G1–G9 and are **not** implied next work:
 | JS ↔ host actor bridging for multiplayer | JS actors are process-local; G9 uses HTTP |
 | Rewriting Desktop IDE into a game editor | Out of scope |
 
+Post-kit helper that did land: **`game.sweepRect`** — first-contact AABB along a
+delta (`{ hit, t, nx, ny, x, y }`). Still not tilesets, particles, or a physics
+engine.
+
 ---
 
 ## Explicit non-goals (revisit only with a new roadmap)
@@ -341,7 +365,7 @@ G1–G9 and are **not** implied next work:
 |------|-------------|
 | Interpreter / C# `game.start` | AST walk will not hit 60 Hz; matrix already says n/a |
 | Native desktop window (SDL, Raylib, Silk.NET) | Optional pack **out of this repo** |
-| Box2D / tile collision / particles / scene graph in core | Helpers first (G3); engines later as a pack |
+| Box2D / tile collision / particles / scene graph in core | Helpers first (G3 + `sweepRect`); engines later as a pack |
 | WebGL 2D sprite batcher | Canvas2D images (G1) first |
 | New keywords (`on update`, `entity`) | Violates construct-plan principle 5 |
 | Flat aliases (`drawImage()`) | Deprecated; coverage/style guards |

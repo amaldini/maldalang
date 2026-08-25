@@ -71,7 +71,7 @@
     },
     {
       "name": "JS Canvas Collision Smoke",
-      "description": "Inclusive AABB and circle overlap helpers using MALDA game.* collision APIs",
+      "description": "Inclusive AABB/circle overlap plus sweepRect CCD against a thin gate using MALDA game.* collision APIs",
       "file": "game_collision_smoke.malda",
       "track": "student",
       "difficulty": "intermediate",
@@ -79,14 +79,15 @@
       "concepts": [
         "game.*",
         "AABB",
+        "sweepRect",
         "collision",
         "JavaScript target"
       ],
       "prerequisites": [
         "Games/game_bounce.malda"
       ],
-      "learningGoal": "Show overlapRect, overlapCircle, pointInRect, and pointInCircle on the canvas path.",
-      "expectedOutput": "Moves a box into a wall and a circle; the box turns pink on overlap. Mouse hits highlight point queries.",
+      "learningGoal": "Show overlapRect, overlapCircle, pointInRect, pointInCircle, and sweepRect on the canvas path.",
+      "expectedOutput": "Moves a box into a wall and a circle; the box turns pink on overlap. A fast dart stops on the thin gate; the ghost shows the tunneled end pose.",
       "next": "Games/malda_platform.malda",
       "documentationPath": "/?lesson=browser-track#lesson-browser-track",
       "documentationTitle": "Browser Track"
@@ -137,7 +138,7 @@
     },
     {
       "name": "JS Canvas Platform Showcase",
-      "description": "Short side-scroller that uses images, camera, AABB, key edges, sample SFX, and startFixed together",
+      "description": "Short side-scroller that uses images, camera, swept AABB, key edges, sample SFX, and startFixed together",
       "file": "malda_platform.malda",
       "track": "showcase",
       "difficulty": "intermediate",
@@ -147,6 +148,7 @@
         "sprites",
         "camera",
         "AABB",
+        "sweepRect",
         "key edges",
         "audio samples",
         "fixed timestep",
@@ -156,7 +158,7 @@
         "Games/game_bounce.malda"
       ],
       "learningGoal": "Show G1–G5 game.* helpers in one playable side-scroller that still compiles with --mode js.",
-      "expectedOutput": "Runs a short platformer: atlas tiles, camera follow, coin AABB, jump/coin SFX, and a high score that survives reload.",
+      "expectedOutput": "Runs a short platformer: atlas tiles, camera follow, sweepRect landings, jump/coin SFX, and a high score that survives reload.",
       "next": "Games/maldadash.malda",
       "documentationPath": "/?lesson=browser-track#lesson-browser-track",
       "documentationTitle": "Browser Track",

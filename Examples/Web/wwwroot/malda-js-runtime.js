@@ -2957,6 +2957,88 @@
         return (dx * dx + dy * dy) <= (radius * radius);
       }
 
+      function sweepHit(hit, t, nx, ny, x, y) {
+        return { hit: hit, t: t, nx: nx, ny: ny, x: x, y: y };
+      }
+
+      function sweepAxisTimes(pos, size, vel, otherPos, otherSize) {
+        if (vel === 0) {
+          const overlapping = pos < otherPos + otherSize && otherPos < pos + size;
+          if (!overlapping) {
+            return { enter: Number.POSITIVE_INFINITY, exit: Number.NEGATIVE_INFINITY };
+          }
+          return { enter: Number.NEGATIVE_INFINITY, exit: Number.POSITIVE_INFINITY };
+        }
+        let enterDist;
+        let exitDist;
+        if (vel > 0) {
+          enterDist = otherPos - (pos + size);
+          exitDist = (otherPos + otherSize) - pos;
+        } else {
+          enterDist = (otherPos + otherSize) - pos;
+          exitDist = otherPos - (pos + size);
+        }
+        return { enter: enterDist / vel, exit: exitDist / vel };
+      }
+
+      function sweepRect(x, y, w, h, dx, dy, ox, oy, ow, oh) {
+        const ax = toFiniteNumber(x, 0);
+        const ay = toFiniteNumber(y, 0);
+        const aw = toFiniteNumber(w, 0);
+        const ah = toFiniteNumber(h, 0);
+        const adx = toFiniteNumber(dx, 0);
+        const ady = toFiniteNumber(dy, 0);
+        const bx = toFiniteNumber(ox, 0);
+        const by = toFiniteNumber(oy, 0);
+        const bw = toFiniteNumber(ow, 0);
+        const bh = toFiniteNumber(oh, 0);
+        const endX = ax + adx;
+        const endY = ay + ady;
+
+        if (aw <= 0 || ah <= 0 || bw <= 0 || bh <= 0) {
+          return sweepHit(false, 1, 0, 0, endX, endY);
+        }
+
+        const overlapX = Math.min(ax + aw, bx + bw) - Math.max(ax, bx);
+        const overlapY = Math.min(ay + ah, by + bh) - Math.max(ay, by);
+        if (overlapX > 0 && overlapY > 0) {
+          let nx = 0;
+          let ny = 0;
+          if (overlapX < overlapY) {
+            nx = (ax + aw / 2) < (bx + bw / 2) ? -1 : 1;
+          } else {
+            ny = (ay + ah / 2) < (by + bh / 2) ? -1 : 1;
+          }
+          return sweepHit(true, 0, nx, ny, ax, ay);
+        }
+
+        if (adx === 0 && ady === 0) {
+          return sweepHit(false, 1, 0, 0, ax, ay);
+        }
+
+        const xTimes = sweepAxisTimes(ax, aw, adx, bx, bw);
+        const yTimes = sweepAxisTimes(ay, ah, ady, by, bh);
+        const tEnter = Math.max(xTimes.enter, yTimes.enter);
+        const tExit = Math.min(xTimes.exit, yTimes.exit);
+        if (!(tEnter < tExit) || tEnter > 1 || tEnter < 0) {
+          return sweepHit(false, 1, 0, 0, endX, endY);
+        }
+
+        let nx = 0;
+        let ny = 0;
+        if (yTimes.enter > xTimes.enter) {
+          ny = ady > 0 ? -1 : 1;
+        } else if (xTimes.enter > yTimes.enter) {
+          nx = adx > 0 ? -1 : 1;
+        } else if (ady !== 0) {
+          ny = ady > 0 ? -1 : 1;
+        } else {
+          nx = adx > 0 ? -1 : 1;
+        }
+
+        return sweepHit(true, tEnter, nx, ny, ax + adx * tEnter, ay + ady * tEnter);
+      }
+
       function isKeyDown(key) {
         return state.keysDown.has(normalizeKey(key));
       }
@@ -3627,6 +3709,7 @@
         overlapCircle,
         pointInRect,
         pointInCircle,
+        sweepRect,
         isKeyDown,
         wasKeyPressed,
         wasKeyReleased,

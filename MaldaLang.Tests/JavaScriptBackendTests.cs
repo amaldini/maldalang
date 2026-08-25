@@ -455,6 +455,7 @@ public class JavaScriptBackendTests : TestBase
             var circles = game.overlapCircle(0, 0, 5, 8, 0, 5);
             var inBox = game.pointInRect(2, 3, 0, 0, 10, 10);
             var inDisk = game.pointInCircle(1, 1, 0, 0, 5);
+            var contact = game.sweepRect(0, 0, 10, 10, 40, 0, 25, 0, 10, 10);
             """;
         var compiler = new Compiler.Compiler();
 
@@ -464,6 +465,7 @@ public class JavaScriptBackendTests : TestBase
         Assert.Contains("mlRuntime.game.overlapCircle(0, 0, 5, 8, 0, 5)", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.pointInRect(2, 3, 0, 0, 10, 10)", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.pointInCircle(1, 1, 0, 0, 5)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.sweepRect(0, 0, 10, 10, 40, 0, 25, 0, 10, 10)", js, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -540,6 +542,7 @@ public class JavaScriptBackendTests : TestBase
         Assert.Contains("mlRuntime.game.setCamera(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.wasKeyPressed(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.overlapRect(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.sweepRect(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.audioPlaySample(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.startFixed(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.save(", js, StringComparison.Ordinal);
@@ -639,6 +642,7 @@ public class JavaScriptBackendTests : TestBase
         Assert.Contains("mlRuntime.game.overlapCircle(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.pointInRect(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.pointInCircle(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.sweepRect(", js, StringComparison.Ordinal);
         Assert.DoesNotContain("mlRuntime.three.", js, StringComparison.Ordinal);
     }
 
@@ -1351,6 +1355,122 @@ process.stdout.write("ok\n");
             var stderr = process.StandardError.ReadToEnd();
             process.WaitForExit(15000);
             Assert.True(process.ExitCode == 0, $"collision runtime test failed ({process.ExitCode}). stderr: {stderr}");
+            Assert.Equal("ok", stdout.Trim());
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
+        }
+    }
+
+    [Fact]
+    public void GameRuntime_SweepRect_StopsAtFirstContactAndIgnoresSurfaceSlide()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var runtimePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "wwwroot", "malda-js-runtime.js");
+        var root = CreateTempDirectory("malda_js_sweep_");
+        try
+        {
+            var scriptPath = Path.Combine(root, "sweep-test.js");
+            File.WriteAllText(scriptPath, """
+require(process.argv[2]);
+const game = globalThis.mlRuntime.game;
+
+function assertEq(actual, expected, label) {
+  if (actual !== expected) {
+    throw new Error(label + ": expected " + expected + ", got " + actual);
+  }
+}
+
+function assertClose(actual, expected, label) {
+  if (Math.abs(actual - expected) > 1e-9) {
+    throw new Error(label + ": expected " + expected + ", got " + actual);
+  }
+}
+
+const tunnel = game.sweepRect(0, 0, 10, 10, 100, 0, 50, 0, 8, 10);
+assertEq(tunnel.hit, true, "thin wall hit");
+assertClose(tunnel.t, 0.4, "thin wall t");
+assertClose(tunnel.x, 40, "thin wall x");
+assertClose(tunnel.y, 0, "thin wall y");
+assertEq(tunnel.nx, -1, "thin wall nx");
+assertEq(tunnel.ny, 0, "thin wall ny");
+assertEq(game.overlapRect(100, 0, 10, 10, 50, 0, 8, 10), false, "discrete end pose misses the thin wall");
+
+const miss = game.sweepRect(0, 0, 10, 10, 20, 0, 80, 0, 10, 10);
+assertEq(miss.hit, false, "far wall miss");
+assertEq(miss.t, 1, "far wall t");
+assertClose(miss.x, 20, "far wall x");
+assertEq(miss.nx, 0, "far wall nx");
+
+const touchIn = game.sweepRect(0, 0, 10, 10, 5, 0, 10, 0, 10, 10);
+assertEq(touchIn.hit, true, "touching approach");
+assertEq(touchIn.t, 0, "touching approach t");
+assertClose(touchIn.x, 0, "touching approach x");
+assertEq(touchIn.nx, -1, "touching approach nx");
+
+const touchOut = game.sweepRect(0, 0, 10, 10, -5, 0, 10, 0, 10, 10);
+assertEq(touchOut.hit, false, "touching separate");
+assertClose(touchOut.x, -5, "touching separate x");
+
+const slide = game.sweepRect(4, 0, 10, 10, 20, 0, 0, 10, 80, 10);
+assertEq(slide.hit, false, "walk along a touching floor");
+assertClose(slide.x, 24, "walk along floor x");
+
+const land = game.sweepRect(5, 0, 10, 10, 0, 20, 0, 20, 80, 10);
+assertEq(land.hit, true, "fall onto floor");
+assertClose(land.t, 0.5, "fall t");
+assertClose(land.y, 10, "fall y");
+assertEq(land.nx, 0, "fall nx");
+assertEq(land.ny, -1, "fall ny");
+
+const ceiling = game.sweepRect(5, 20, 10, 10, 0, -20, 0, 0, 80, 10);
+assertEq(ceiling.hit, true, "jump into ceiling");
+assertClose(ceiling.t, 0.5, "ceiling t");
+assertClose(ceiling.y, 10, "ceiling y");
+assertEq(ceiling.ny, 1, "ceiling ny");
+
+const stuck = game.sweepRect(5, 1, 8, 6, 8, 0, 0, 0, 20, 20);
+assertEq(stuck.hit, true, "already penetrating");
+assertEq(stuck.t, 0, "penetrating t");
+assertClose(stuck.x, 5, "penetrating stays put");
+assertEq(stuck.nx, 0, "penetrating prefers the shallower Y axis");
+assertEq(stuck.ny, -1, "penetrating ny");
+
+const zero = game.sweepRect(0, 0, 0, 10, 40, 0, 10, 0, 10, 10);
+assertEq(zero.hit, false, "zero width");
+assertClose(zero.x, 40, "zero width still applies delta");
+
+const corner = game.sweepRect(0, 0, 10, 10, 20, 20, 10, 10, 10, 10);
+assertEq(corner.hit, true, "exact corner");
+assertEq(corner.t, 0, "exact corner t");
+assertEq(corner.nx, 0, "corner prefers Y");
+assertEq(corner.ny, -1, "corner ny");
+
+process.stdout.write("ok\n");
+""");
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = Environment.GetEnvironmentVariable("MALDA_NODE_PATH") is { Length: > 0 } nodePath
+                    ? nodePath
+                    : "node",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = root
+            };
+            startInfo.ArgumentList.Add(scriptPath);
+            startInfo.ArgumentList.Add(runtimePath);
+
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Failed to start Node.js for sweepRect runtime test.");
+            var stdout = process.StandardOutput.ReadToEnd();
+            var stderr = process.StandardError.ReadToEnd();
+            process.WaitForExit(15000);
+            Assert.True(process.ExitCode == 0, $"sweepRect runtime test failed ({process.ExitCode}). stderr: {stderr}");
             Assert.Equal("ok", stdout.Trim());
         }
         finally

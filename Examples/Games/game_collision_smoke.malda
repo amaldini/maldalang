@@ -10,7 +10,7 @@ if (root == null) {
     dom.append(root, title);
 
     var hint = dom.create("p");
-    dom.setText(hint, "Arrows move the green box. It turns pink on overlapRect / overlapCircle. Yellow dot is the mouse (pointInRect / pointInCircle).");
+    dom.setText(hint, "Arrows move the green box (overlapRect / overlapCircle). Yellow dot is the mouse. Space fires a fast dart: the ghost is the discrete end pose (tunnels); the orange dart stops on sweepRect.");
     dom.append(root, hint);
 
     var px = 72.0;
@@ -24,14 +24,44 @@ if (root == null) {
     var wallW = 90.0;
     var wallH = 90.0;
 
-    var cx = 480.0;
+    var gateX = 430.0;
+    var gateY = 40.0;
+    var gateW = 8.0;
+    var gateH = 280.0;
+
+    var cx = 540.0;
     var cy = 180.0;
-    var cr = 42.0;
+    var cr = 36.0;
+
+    var dartX = 40.0;
+    var dartY = 148.0;
+    var dartW = 14.0;
+    var dartH = 10.0;
+    var dartLive = false;
+    var dartWait = 0.0;
+    var dartHit = false;
+    var ghostX = 40.0;
+    var ghostOn = false;
 
     var hitWall = false;
     var hitCircle = false;
     var mouseInWall = false;
     var mouseInCircle = false;
+
+    function fireDart() {
+        dartX = 40.0;
+        dartY = 148.0;
+        dartLive = true;
+        dartHit = false;
+        ghostOn = false;
+    }
+
+    function earliestHit(first, second) {
+        if (second.hit && (!first.hit || second.t < first.t)) {
+            return second;
+        }
+        return first;
+    }
 
     function update(dtMs) {
         var step = (speed * dtMs) / 1000;
@@ -52,12 +82,47 @@ if (root == null) {
         hitCircle = game.overlapCircle(px + (pw / 2), py + (ph / 2), pw / 2, cx, cy, cr);
         mouseInWall = game.pointInRect(game.getMouseX(), game.getMouseY(), wallX, wallY, wallW, wallH);
         mouseInCircle = game.pointInCircle(game.getMouseX(), game.getMouseY(), cx, cy, cr);
+
+        if (game.wasKeyPressed(" ")) {
+            fireDart();
+            dartWait = 1800;
+        }
+
+        dartWait = dartWait - dtMs;
+        if (!dartLive && dartWait <= 0) {
+            fireDart();
+            dartWait = 1800;
+        }
+
+        if (dartLive) {
+            var ddx = (9000 * dtMs) / 1000;
+            if (ddx < 120) {
+                ddx = 120;
+            }
+            ghostX = dartX + ddx;
+            ghostOn = true;
+            var againstWall = game.sweepRect(dartX, dartY, dartW, dartH, ddx, 0, wallX, wallY, wallW, wallH);
+            var againstGate = game.sweepRect(dartX, dartY, dartW, dartH, ddx, 0, gateX, gateY, gateW, gateH);
+            var contact = earliestHit(againstWall, againstGate);
+            if (contact.hit) {
+                dartX = contact.x;
+                dartLive = false;
+                dartHit = true;
+            } else {
+                dartX = contact.x;
+                if (dartX > 640) {
+                    dartLive = false;
+                    ghostOn = false;
+                }
+            }
+        }
     }
 
     function render() {
         game.clear();
         game.fillRect(wallX, wallY, wallW, wallH, "#445566");
         game.strokeRect(wallX, wallY, wallW, wallH, "#88aacc", 2);
+        game.fillRect(gateX, gateY, gateW, gateH, "#cc8844");
         game.fillCircle(cx, cy, cr, "#334466");
 
         var color = "#33cc66";
@@ -67,6 +132,19 @@ if (root == null) {
         game.fillRect(px, py, pw, ph, color);
 
         game.fillCircle(game.getMouseX(), game.getMouseY(), 4, "#ffee88");
+
+        if (ghostOn) {
+            game.setAlpha(0.35);
+            game.fillRect(ghostX, dartY, dartW, dartH, "#ffffff");
+            game.setAlpha(1);
+        }
+        if (dartLive || dartHit) {
+            var dartColor = "#ffaa33";
+            if (dartHit) {
+                dartColor = "#ffee88";
+            }
+            game.fillRect(dartX, dartY, dartW, dartH, dartColor);
+        }
 
         var overlapText = "free";
         if (hitWall && hitCircle) {
@@ -92,8 +170,16 @@ if (root == null) {
             }
         }
 
-        game.drawText("overlap " + overlapText + "  " + mouseText, 12, 24, "#ffffff", "14px monospace");
-        game.drawText("Inclusive AABB: touching edges count. Zero-size rects are false.", 12, 44, "#99ddee", "12px monospace");
+        var dartText = "dart idle";
+        if (dartLive) {
+            dartText = "dart flying";
+        }
+        if (dartHit) {
+            dartText = "dart swept";
+        }
+
+        game.drawText("overlap " + overlapText + "  " + mouseText + "  " + dartText, 12, 24, "#ffffff", "14px monospace");
+        game.drawText("Inclusive AABB for overlap. sweepRect stops the fast dart on the thin gate.", 12, 44, "#99ddee", "12px monospace");
     }
 
     game.createCanvas(640, 360, "#app");
