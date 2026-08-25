@@ -35,6 +35,6 @@ That tunnel demo is a CC-BY-NC-SA-4.0 conversion of [Frostbyte’s path march](h
 
 JS / PWA samples need `malda compile … --mode js` (or the Desktop/Web IDE browser path). A canvas client plus server scores is `malda new game --fullstack` (`Templates/game-fullstack/`). See [`docs/spec/backend-capability-matrix.md`](../../docs/spec/backend-capability-matrix.md) and [`docs/javascript-backend.md`](../../docs/javascript-backend.md).
 
-Games kit G0–G10 is landed. Ranked next 2D (G11–G15) and deferred engines: [`docs/roadmap-games.md`](../../docs/roadmap-games.md).
+Games kit G0–G10 is landed. Ranked next 2D (G11–G15, specified contracts): [`docs/roadmap-games.md`](../../docs/roadmap-games.md).
 
 Catalog fields: [`metadata.json`](metadata.json).

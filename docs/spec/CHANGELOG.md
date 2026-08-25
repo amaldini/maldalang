@@ -129,6 +129,8 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 #### Clarified (PATCH — docs / tracking only)
 
+- **G11–G15 2D plan specified:** [`docs/roadmap-games.md`](../roadmap-games.md) expands the ranked post-G10 slices from draft one-liners to full workstream contracts (calls, guardrails, smoke, files, ship order). No runtime change. No Tier 0 semantic change.
+
 - **Maldanoid rally polish:** `Examples/Games/maldanoid.malda` prefers the incoming velocity axis and ignores the last brick for a few ticks, serves near-vertical and builds speed on the paddle, pauses from serve, draws HP bars and shaped power-ups, and saves `{ high, bestCombo }`. No Tier 0 semantic change.
 
 - **Maldanoid feel pass:** `Examples/Games/maldanoid.malda` now depenetrates after brick hits, caps the ball trail, punches `setCamera` with sparks, aims the serve from paddle/touch, follows the first touch, and draws pause/result panels. BGM decode errors stay off the playfield. Still primitive-draw. No Tier 0 semantic change.
