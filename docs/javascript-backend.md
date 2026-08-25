@@ -112,10 +112,10 @@ Validation rules currently enforced:
   - Game helpers:
     - Canvas/lifecycle: `game.createCanvas(width, height, mountSelector?)`, `game.setBackground(color)`, `game.start(updateFn, renderFn?)`, `game.startFixed(updateFn, renderFn?, tickMs?)`, `game.stop()`, `game.save(key, value)`, `game.load(key)`, `game.removeSave(key)`
     - Drawing: `game.clear()`, `game.fillRect(x, y, width, height, color?)`, `game.fillCircle(x, y, radius, color?)`, `game.drawText(text, x, y, color?, font?)`, `game.drawLine(x1, y1, x2, y2, color?, width?)`, `game.strokeRect(x, y, w, h, color?, width?)`, `game.setAlpha(a)`
-    - Images / camera: `game.loadImage(url)`, `game.imageIsReady(handle)`, `game.drawImage(handle, x, y, w?, h?)`, `game.drawImageRect(handle, sx, sy, sw, sh, dx, dy, dw?, dh?)`, `game.drawImageEx(handle, x, y, options?)`, `game.setCamera(x, y)`, `game.getCameraX()`, `game.getCameraY()`
+    - Images / camera: `game.loadImage(url)`, `game.imageIsReady(handle)`, `game.drawImage(handle, x, y, w?, h?)`, `game.drawImageRect(handle, sx, sy, sw, sh, dx, dy, dw?, dh?)`, `game.drawImageEx(handle, x, y, options?)`, `game.setCamera(x, y)`, `game.getCameraX()`, `game.getCameraY()`, `game.pushCamera()`, `game.popCamera()`, `game.screenToWorld(x, y)`, `game.worldToScreen(x, y)`
     - Pixel buffer / blit: `game.createPixelBuffer(width?, height?)`, `game.setPixel(x, y, r, g, b, a?)`, `game.blitPixels(pixels?, destX?, destY?)`
     - Collision: `game.overlapRect(x1, y1, w1, h1, x2, y2, w2, h2)`, `game.overlapCircle(x1, y1, r1, x2, y2, r2)`, `game.pointInRect(px, py, x, y, w, h)`, `game.pointInCircle(px, py, x, y, r)`, `game.sweepRect(x, y, w, h, dx, dy, ox, oy, ow, oh)`
-    - Input: `game.isKeyDown(key)`, `game.wasKeyPressed(key)`, `game.wasKeyReleased(key)`, `game.getMouseX()`, `game.getMouseY()`, `game.isMouseDown(button?)`, `game.getTouches()`, `game.isGamepadConnected(index?)`, `game.getGamepadAxis(index, axis)`, `game.isGamepadButtonDown(index, button)`, `game.wasGamepadButtonPressed(index, button)`
+    - Input: `game.isKeyDown(key)`, `game.wasKeyPressed(key)`, `game.wasKeyReleased(key)`, `game.getMouseX()`, `game.getMouseY()`, `game.getMouseWorldX()`, `game.getMouseWorldY()`, `game.isMouseDown(button?)`, `game.wasMousePressed(button?)`, `game.wasMouseReleased(button?)`, `game.getTouches()`, `game.isGamepadConnected(index?)`, `game.getGamepadAxis(index, axis)`, `game.isGamepadButtonDown(index, button)`, `game.wasGamepadButtonPressed(index, button)`
     - Audio: `game.audioInit()`, `game.audioIsReady()`, `game.audioSetMasterVolume(v)`, `game.audioPlayTone(...)`, `game.audioPlayNoise(...)`, `game.audioPlayPattern(pattern)`, `game.audioStopPattern()`, `game.audioPlaySample(url, volume?, options?)`, `game.audioStopSample(url?)`, `game.audioLoadTrack(...)`, `game.audioPlayTrack()`, `game.audioStopTrack()`, `game.audioStopAll()`
   - Three helpers:
     - Renderer/lifecycle: `three.createRenderer(width, height, mountSelector?)`, `three.setClearColor(renderer, color)`, `three.setRendererSize(renderer, width, height)`, `three.start(updateFn, renderFn?)`, `three.stop()`
@@ -171,6 +171,8 @@ Use `game.*` when you want a browser-hosted interactive canvas loop in MALDA Jav
   - `game.drawImageEx(handle, x, y, options?)` — draw with optional atlas rect, dest size, origin, rotation, and flip. `x`/`y` are the origin in world space (default origin is dest top-left). Options: `{ sx?, sy?, sw?, sh?, w?, h?, ox?, oy?, angle?, flipX?, flipY? }`. `angle` is radians; canvas Y+ down so positive is clockwise. `flipX`/`flipY` scale around `(ox, oy)` (default `0, 0` — flipX draws to the left of `x`). For in-place facing, set `ox` to `w / 2`.
   - `game.setCamera(x, y)` — world origin in screen space; subsequent world draws subtract the camera. Default `(0, 0)`.
   - `game.getCameraX()`, `game.getCameraY()`
+  - `game.pushCamera()` / `game.popCamera()` — stack the current camera. HUD: `pushCamera`, `setCamera(0, 0)`, draw, `popCamera`. Empty `popCamera` is a no-op (camera stays). `createCanvas` clears the stack.
+  - `game.screenToWorld(x, y)` / `game.worldToScreen(x, y)` — `{ x, y }`. Screen is canvas pixels; world adds/subtracts the current camera. Overlap helpers still take the numbers you pass (they do not subtract camera).
 - Pixel buffer / blit:
   - `game.createPixelBuffer(width?, height?)` — allocate an `ImageData` (defaults to canvas size; filled opaque black)
   - `game.setPixel(x, y, r, g, b, a?)` — write one RGBA pixel (0–255; alpha defaults to 255). Out-of-bounds writes are ignored. Auto-creates the buffer.
@@ -184,9 +186,11 @@ Use `game.*` when you want a browser-hosted interactive canvas loop in MALDA Jav
 - Input:
   - `game.isKeyDown("arrowleft")`, `game.isKeyDown("arrowright")`, etc.
   - `game.wasKeyPressed(key)`, `game.wasKeyReleased(key)` — true on the first **update** after key-down / key-up; same names as `isKeyDown`
-  - `game.getMouseX()`, `game.getMouseY()`
+  - `game.getMouseX()`, `game.getMouseY()` — canvas pixels (not camera-offset)
+  - `game.getMouseWorldX()`, `game.getMouseWorldY()` — canvas mouse plus the current camera
   - `game.isMouseDown(button?)` (defaults to left button when omitted)
-  - `game.getTouches()` — `[{ id, x, y }]` in canvas pixels; empty if none. First active touch still aliases mouse button 0
+  - `game.wasMousePressed(button?)`, `game.wasMouseReleased(button?)` — true on the first **update** after mouse-down / mouse-up; default button `0`. Same clock as `wasKeyPressed`. First touch still aliases button 0, so a new touch also edges `wasMousePressed(0)`.
+  - `game.getTouches()` — `[{ id, x, y }]` in canvas pixels; empty if none. First active touch still aliases mouse button 0. Convert with `screenToWorld` when you need world points.
   - `game.isGamepadConnected(index?)` — default index `0`
   - `game.getGamepadAxis(index, axis)` — missing device → `0`; axes clamped `[-1, 1]`
   - `game.isGamepadButtonDown(index, button)`, `game.wasGamepadButtonPressed(index, button)` — edges use the same clock as keys
@@ -263,12 +267,12 @@ function update(dtMs) {
 
 - Call `game.createCanvas(...)` before `game.clear(...)`, draw calls, pixel-buffer calls, camera/alpha calls, or `game.start(...)` / `game.startFixed(...)`. `game.loadImage` / `game.imageIsReady`, overlap helpers (`overlapRect`, `overlapCircle`, `pointInRect`, `pointInCircle`), `game.sweepRect`, `game.audio*`, and `game.save` / `game.load` / `game.removeSave` may run without a canvas.
 - Unready image handles (still decoding, missing URL, or decode failure) make `drawImage` / `drawImageRect` / `drawImageEx` no-op. They do not throw.
-- `game.setCamera` offsets `fillRect`, `fillCircle`, `drawText`, `drawLine`, `strokeRect`, and image draws (`drawImage`, `drawImageRect`, `drawImageEx`). It does **not** offset `setPixel` / `blitPixels`. Mouse helpers stay in canvas pixels.
+- `game.setCamera` offsets `fillRect`, `fillCircle`, `drawText`, `drawLine`, `strokeRect`, and image draws (`drawImage`, `drawImageRect`, `drawImageEx`). It does **not** offset `setPixel` / `blitPixels`. `getMouseX` / `getMouseY` / `getTouches` stay in canvas pixels; use `getMouseWorldX` / `getMouseWorldY` or `screenToWorld` for world points. HUD: `pushCamera` + `setCamera(0, 0)` + draw + `popCamera` (do not leave the camera at origin).
 - Overlap helpers are inclusive AABB / circle tests in the numbers you pass. They do **not** subtract `setCamera`. Zero or negative width, height, or radius is `false`. They do not stop a fast mover that ends the tick past a thin wall — use `game.sweepRect` for motion. `sweepRect` is also a pure function (no canvas, no camera). Surface contact with parallel motion is not a hit, so walking on a floor while sweeping X works. Not a physics engine.
-- Read `wasKeyPressed` / `wasKeyReleased` / `wasGamepadButtonPressed` in `update` only. Edges are snapshotted at the start of `update` and are **false in `render`**. Holding a key or button does not retrigger.
+- Read `wasKeyPressed` / `wasKeyReleased` / `wasGamepadButtonPressed` / `wasMousePressed` / `wasMouseReleased` in `update` only. Edges are snapshotted at the start of `update` and are **false in `render`**. Holding a key, button, or mouse button does not retrigger.
 - First active touch still aliases mouse button 0 so existing `isMouseDown` games keep working. `getTouches()` is canvas pixels.
 - Missing Gamepad API or a disconnected pad: `isGamepadConnected` is false and axes are `0`.
-- `game.stop()` clears keys and button edges (no leftover press on the next `start`).
+- `game.stop()` clears keys, mouse edges, and button edges (no leftover press on the next `start`).
 - `game.audioPlaySample` decodes once per URL and caches the buffer. Missing files / decode failures no-op (no throw). Overlapping plays of the same or different URLs are allowed. `game.audioStopSample` never stops `audioPlayTrack` / `audioPlayPattern` / tones. `game.stop()` still does **not** implicit-stop audio. Samples share the existing 32-node cap with tones.
 - Call `game.audioInit()` after a click or key before expecting audible output (browser autoplay).
 - Use `game.setPixel` + `game.blitPixels()` for full-frame CPU rendering. Do not call `game.fillRect` once per pixel.
@@ -280,7 +284,7 @@ function update(dtMs) {
 - Call `game.stop()` only when a loop is active.
 - `malda play` refuses fullstack sources (`@client` plus `@server` or a route). Use `malda new game --fullstack` then `malda compile --mode fullstack`.
 
-See `Examples/Games/game_bounce.malda` and `Examples/Games/game_runtime_smoke_test.html` for a complete playable reference. See `Examples/Games/game_sprite_smoke.malda` for PNG atlas blit, a scrolling camera, and `drawImageEx` flip/rotate. See `Examples/Games/game_input_smoke.malda` for key edges, touches, and gamepad. See `Examples/Games/game_collision_smoke.malda` for AABB and circle overlap. See `Examples/Games/game_audio_sample_smoke.malda` for overlapping WAV one-shots next to a looping pattern. See `Examples/Games/game_fixed_save_smoke.malda` for `startFixed` plus a high score that survives reload. See `Examples/Games/malda_platform.malda` for a short side-scroller that uses the G1–G5 kit together (atlas tiles, camera, AABB, key edges, sample SFX, `startFixed`) plus spinning coins via `drawImageEx`. See `malda new game --fullstack` (`Templates/game-fullstack/`) for a canvas client plus `schema Score` / `validate` / `httpPost` scores. See `Examples/Games/maldadash.malda` for a Boulder Dash-style tile cave (gravity rocks, diamonds, fireflies). See `Examples/Games/ray_tracer.malda` for a CPU ray tracer that fills the pixel buffer and blits it once per frame.
+See `Examples/Games/game_bounce.malda` and `Examples/Games/game_runtime_smoke_test.html` for a complete playable reference. See `Examples/Games/game_sprite_smoke.malda` for PNG atlas blit, a scrolling camera, `drawImageEx` flip/rotate, `pushCamera` HUD, and a click marker via `getMouseWorldX`. See `Examples/Games/game_input_smoke.malda` for key edges, `wasMousePressed`, touches, and gamepad. See `Examples/Games/game_collision_smoke.malda` for AABB and circle overlap. See `Examples/Games/game_audio_sample_smoke.malda` for overlapping WAV one-shots next to a looping pattern. See `Examples/Games/game_fixed_save_smoke.malda` for `startFixed` plus a high score that survives reload. See `Examples/Games/malda_platform.malda` for a short side-scroller that uses the G1–G5 kit together (atlas tiles, camera, AABB, key edges, sample SFX, `startFixed`) plus spinning coins and a facing player via `drawImageEx`. See `malda new game --fullstack` (`Templates/game-fullstack/`) for a canvas client plus `schema Score` / `validate` / `httpPost` scores. See `Examples/Games/maldadash.malda` for a Boulder Dash-style tile cave (gravity rocks, diamonds, fireflies). See `Examples/Games/ray_tracer.malda` for a CPU ray tracer that fills the pixel buffer and blits it once per frame.
 
 ## three.js Quick Start (`three.*`)
 

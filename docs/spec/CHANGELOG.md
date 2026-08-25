@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — JS game camera space / mouse edges)
+
+- **Camera space and mouse edges (JavaScript backend only):** `game.pushCamera()` / `game.popCamera()` stack the current camera (HUD: push, `setCamera(0, 0)`, draw, pop; empty pop is a no-op; `createCanvas` clears the stack). `game.screenToWorld(x, y)` / `game.worldToScreen(x, y)` return `{ x, y }` in canvas pixels vs world. `game.getMouseWorldX()` / `game.getMouseWorldY()` are canvas mouse plus the current camera (`getMouseX` / `getTouches` stay canvas pixels). `game.wasMousePressed(button?)` / `game.wasMouseReleased(button?)` use the same update-only clock as `wasKeyPressed` (default button `0`; first touch still aliases button 0). Overlap / `sweepRect` stay pure numbers. Smoke: `Examples/Games/game_sprite_smoke.malda`, `Examples/Games/game_input_smoke.malda`. Showcase `malda_platform` HUD uses the camera stack; the player faces with `drawImageEx` `flipX`. Interpreter / C# transpile: n/a (`game-canvas`).
+
 #### Added (MINOR — JS game.drawImageEx)
 
 - **`game.drawImageEx` (JavaScript backend only):** `game.drawImageEx(handle, x, y, options?)` draws an image (optional atlas `sx`/`sy`/`sw`/`sh`, dest `w`/`h`) with origin `ox`/`oy`, rotation `angle` (radians; canvas Y+ down so positive is clockwise), and `flipX`/`flipY` around that origin. Default origin is dest top-left, so `flipX` without `ox` draws to the left of `x`; in-place facing uses `ox = w / 2`. Unready handles no-op. Camera and `setAlpha` apply. `drawImage` / `drawImageRect` signatures unchanged. Not a sprite object. Smoke: `Examples/Games/game_sprite_smoke.malda`. Showcase `malda_platform` spins coins with it. Interpreter / C# transpile: n/a (`game-canvas`).
@@ -356,3 +360,4 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-08-21 | MINOR: JS `three.createTexture` / `loadGLTF` / `lookAt` (G8) |
 | 2026-08-25 | MINOR: JS `game.sweepRect` swept AABB helper |
 | 2026-08-25 | MINOR: JS `game.drawImageEx` flip / rotate / origin blit |
+| 2026-08-25 | MINOR: JS camera space / `wasMousePressed` / `pushCamera` |

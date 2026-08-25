@@ -1915,6 +1915,10 @@
         keysPressed: new Set(),
         keysReleased: new Set(),
         mouseButtonsDown: new Set(),
+        pendingMousePressed: new Set(),
+        pendingMouseReleased: new Set(),
+        mouseButtonsPressed: new Set(),
+        mouseButtonsReleased: new Set(),
         mouseX: 0,
         mouseY: 0,
         touches: new Map(),
@@ -1944,6 +1948,7 @@
         pixelBuffer: null,
         cameraX: 0,
         cameraY: 0,
+        cameraStack: [],
         alpha: 1,
         imageCache: new Map()
       };
@@ -2264,13 +2269,29 @@
         state.touches.set(id, { id: id, x: point.x, y: point.y });
       }
 
+      function setMouseButtonDown(button, isDown) {
+        const mouseButton = coerceToInt(button);
+        if (isDown) {
+          if (!state.mouseButtonsDown.has(mouseButton)) {
+            state.pendingMousePressed.add(mouseButton);
+            state.pendingMouseReleased.delete(mouseButton);
+          }
+          state.mouseButtonsDown.add(mouseButton);
+        } else {
+          if (state.mouseButtonsDown.has(mouseButton)) {
+            state.pendingMouseReleased.add(mouseButton);
+          }
+          state.mouseButtonsDown.delete(mouseButton);
+        }
+      }
+
       function syncPrimaryTouchMouse(touchList) {
         const primary = touchList && touchList.length > 0 ? touchList[0] : null;
         if (primary) {
           updateMouseFromTouch(primary);
-          state.mouseButtonsDown.add(0);
+          setMouseButtonDown(0, true);
         } else {
-          state.mouseButtonsDown.delete(0);
+          setMouseButtonDown(0, false);
         }
       }
 
@@ -2281,6 +2302,10 @@
         state.keysPressed.clear();
         state.keysReleased.clear();
         state.mouseButtonsDown.clear();
+        state.pendingMousePressed.clear();
+        state.pendingMouseReleased.clear();
+        state.mouseButtonsPressed.clear();
+        state.mouseButtonsReleased.clear();
         state.mouseX = 0;
         state.mouseY = 0;
         state.touches.clear();
@@ -2350,6 +2375,11 @@
         state.pendingKeyPressed = new Set();
         state.pendingKeyReleased = new Set();
 
+        state.mouseButtonsPressed = state.pendingMousePressed;
+        state.mouseButtonsReleased = state.pendingMouseReleased;
+        state.pendingMousePressed = new Set();
+        state.pendingMouseReleased = new Set();
+
         pollGamepads();
         state.gamepadButtonsPressed.clear();
         for (const key of state.gamepadButtonsDown) {
@@ -2364,6 +2394,8 @@
       function endInputFrame() {
         state.keysPressed = new Set();
         state.keysReleased = new Set();
+        state.mouseButtonsPressed.clear();
+        state.mouseButtonsReleased.clear();
         state.gamepadButtonsPressed.clear();
         state.inputFrameActive = false;
       }
@@ -2394,10 +2426,11 @@
         };
         const onMouseDown = (event) => {
           updateMousePosition(event);
-          state.mouseButtonsDown.add(coerceToInt(event.button));
+          setMouseButtonDown(event.button, true);
         };
         const onMouseUp = (event) => {
-          state.mouseButtonsDown.delete(coerceToInt(event.button));
+          updateMousePosition(event);
+          setMouseButtonDown(event.button, false);
         };
 
         const onTouchStart = (event) => {
@@ -2528,6 +2561,7 @@
         resetKeyboardAndPointerState();
         state.cameraX = 0;
         state.cameraY = 0;
+        state.cameraStack = [];
         state.alpha = 1;
         context.globalAlpha = 1;
         attachInputListeners();
@@ -2608,6 +2642,39 @@
       function getCameraY() {
         ensureCanvasContext("getCameraY");
         return state.cameraY;
+      }
+
+      function pushCamera() {
+        ensureCanvasContext("pushCamera");
+        state.cameraStack.push({ x: state.cameraX, y: state.cameraY });
+        return null;
+      }
+
+      function popCamera() {
+        ensureCanvasContext("popCamera");
+        if (state.cameraStack.length === 0) {
+          return null;
+        }
+        const previous = state.cameraStack.pop();
+        state.cameraX = previous.x;
+        state.cameraY = previous.y;
+        return null;
+      }
+
+      function screenToWorld(x, y) {
+        ensureCanvasContext("screenToWorld");
+        return {
+          x: toFiniteNumber(x, 0) + state.cameraX,
+          y: toFiniteNumber(y, 0) + state.cameraY
+        };
+      }
+
+      function worldToScreen(x, y) {
+        ensureCanvasContext("worldToScreen");
+        return {
+          x: toFiniteNumber(x, 0) - state.cameraX,
+          y: toFiniteNumber(y, 0) - state.cameraY
+        };
       }
 
       function setAlpha(alpha) {
@@ -3158,6 +3225,24 @@
       function isMouseDown(button) {
         const mouseButton = button === null || button === undefined ? 0 : coerceToInt(button);
         return state.mouseButtonsDown.has(mouseButton);
+      }
+
+      function wasMousePressed(button) {
+        const mouseButton = button === null || button === undefined ? 0 : coerceToInt(button);
+        return state.mouseButtonsPressed.has(mouseButton);
+      }
+
+      function wasMouseReleased(button) {
+        const mouseButton = button === null || button === undefined ? 0 : coerceToInt(button);
+        return state.mouseButtonsReleased.has(mouseButton);
+      }
+
+      function getMouseWorldX() {
+        return state.mouseX + state.cameraX;
+      }
+
+      function getMouseWorldY() {
+        return state.mouseY + state.cameraY;
       }
 
       function getTouches() {
@@ -3794,6 +3879,10 @@
         setCamera,
         getCameraX,
         getCameraY,
+        pushCamera,
+        popCamera,
+        screenToWorld,
+        worldToScreen,
         loadImage,
         imageIsReady,
         drawImage,
@@ -3812,7 +3901,11 @@
         wasKeyReleased,
         getMouseX,
         getMouseY,
+        getMouseWorldX,
+        getMouseWorldY,
         isMouseDown,
+        wasMousePressed,
+        wasMouseReleased,
         getTouches,
         isGamepadConnected,
         getGamepadAxis,

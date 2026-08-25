@@ -356,6 +356,32 @@ flipped magenta tile) and spinning coins in `malda_platform`. Axis-aligned
 
 ---
 
+## Post-kit — camera space and mouse edges
+
+**Landed:** `Examples/Games/game_sprite_smoke.malda` (HUD via `pushCamera`, click
+marker via `getMouseWorldX`) and `Examples/Games/game_input_smoke.malda`
+(`wasMousePressed` jump). `setCamera` offset draws but left mouse and HUD in
+canvas pixels, so every camera game reset the camera by hand and click-to-world
+was `getMouseX() + getCameraX()`.
+
+| Call | Contract |
+|------|----------|
+| `game.pushCamera()` / `game.popCamera()` | Stack the current camera. HUD: push, `setCamera(0, 0)`, draw, pop. Empty pop is a no-op. `createCanvas` clears the stack. |
+| `game.screenToWorld(x, y)` / `game.worldToScreen(x, y)` | `{ x, y }`. Screen is canvas pixels. |
+| `game.getMouseWorldX()` / `game.getMouseWorldY()` | Canvas mouse plus the current camera. |
+| `game.wasMousePressed(button?)` / `game.wasMouseReleased(button?)` | Same clock as `wasKeyPressed`; default button `0`. First touch still aliases button 0. |
+
+**Guardrails**
+
+- Overlap / `sweepRect` stay pure numbers (no camera).
+- `getMouseX` / `getTouches` stay canvas pixels.
+- Read mouse edges in `update` only (false in `render`).
+- `drawImage` / `drawImageRect` signatures stay unchanged.
+
+**Files:** runtime, chapter 26.9, `docs/javascript-backend.md`.
+
+---
+
 ## After G9 (deferred)
 
 Revisit only with a new ranked roadmap. These were called out while shipping
@@ -377,7 +403,9 @@ G1–G9 and are **not** implied next work:
 Post-kit helper that did land: **`game.sweepRect`** — first-contact AABB along a
 delta (`{ hit, t, nx, ny, x, y }`). Still not tilesets, particles, or a physics
 engine. **`game.drawImageEx`** — atlas blit with origin, rotation, and flip.
-Still not a sprite object or a scene graph.
+Still not a sprite object or a scene graph. **Camera space / mouse edges** —
+`pushCamera` / `popCamera`, `screenToWorld` / `worldToScreen`, `getMouseWorldX` /
+`Y`, `wasMousePressed` / `wasMouseReleased`. Still not a scene graph.
 
 ---
 

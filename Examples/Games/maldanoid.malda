@@ -1489,6 +1489,7 @@ if (root == null) {
             );
         }
 
+        game.pushCamera();
         game.setCamera(0, 0);
 
         if (comboFlashMs > 0) {
@@ -1564,6 +1565,7 @@ if (root == null) {
                 "Press R, Enter, or A to play again"
             );
         }
+        game.popCamera();
     }
 
     beginLevel(1);
