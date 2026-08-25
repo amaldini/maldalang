@@ -376,7 +376,7 @@ print(parsed.sources[0]);       // a.md</code></pre>
             <li>In caso di successo: <code>{ ok: true, data: value }</code></li>
             <li>In caso di fallimento: <code>{ ok: false, error: "message" }</code></li>
         </ul>
-        <p>Il primo argomento è il <strong>nome</strong> di uno <code>schema</code> o <strong>sum type</strong> registrato, oppure un oggetto schema in linea. Un nome sconosciuto solleva <em>Unknown schema 'Name'</em>. In caso di successo, <code>data</code> è il valore originale — un dict con tag resta un dict (non viene coercizzato a variant). Usa <code>await prompt … -&gt; Intent</code> quando ti serve un variant per <code>match</code>.</p>
+        <p>Il primo argomento è il <strong>nome</strong> di uno <code>schema</code> o <strong>sum type</strong> registrato, oppure un oggetto schema in linea. Un nome sconosciuto solleva <em>Unknown schema 'Name'</em>. In caso di successo, <code>data</code> è il valore originale — un dict con tag resta un dict (non viene coercizzato a variant). Usa <code>asVariant("Intent", dict)</code> o <code>await prompt … -&gt; Intent</code> quando ti serve un variant per <code>match</code>.</p>
         <pre><code data-run="true" data-expect="ok">schema Answer {
     text: string;
     sources: string[];
@@ -403,6 +403,19 @@ print(checkedTyped.ok);</code></pre>
         <div class="info-box">
             <strong>Da non confondere con:</strong> <code>memory.validate()</code> su un'istanza <a href="19-graph-memory.html">GraphMemory</a>, che controlla l'integrità del grafo piuttosto che uno schema. Condividono il nome ma non sono correlati.
         </div>
+
+        <h3 id="asVariant">13.7.1.1 asVariant(typeName, value)</h3>
+        <p>Trasforma un dict tagged in una <strong>variante</strong> di sum type così <code>match</code> può associare i costruttori. <code>validate("Intent", dict)</code> non lo fa mai. Una variante già costruita viene restituita così com'è se il tag appartiene al tipo. Un mismatch (nome sconosciuto, schema oggetto, tag errato, payload tipizzato che fallisce lo JSON Schema) <strong>solleva un'eccezione</strong> — a differenza di <code>validate</code>.</p>
+        <pre><code data-run="true" data-expect="buy SKU-9 x 2">type Intent = Search(query: string) | Buy(sku: string, qty: int) | Help();
+var tagged = dict { "tag": "Buy", "sku": "SKU-9", "qty": 2 };
+var checked = validate("Intent", tagged);
+var label = match asVariant("Intent", checked.data) {
+    case Search(q): "search " + q;
+    case Buy(sku, qty): "buy " + sku + " x " + qty;
+    case Help(): "help";
+};
+print(label);</code></pre>
+        <p>Vedi <code>Examples/Basics/as_variant.malda</code> e <code>docs/llm/few-shot/25_as_variant.malda</code>.</p>
 
         <h2>13.7.2 Funzioni per pipeline AI</h2>
         <p>Questi built-in si compongono con l'operatore pipe (<code>|&gt;</code>) per la retrieval-augmented generation (RAG) e l'output LLM strutturato. Vedi anche <a href="15-vectordb.html">15. VectorDB</a> (<code>asRetriever</code>) e <code>Examples/Prompts/rag_pipeline.malda</code>.</p>

@@ -30,10 +30,11 @@ Tiny programs for LLM context. Larger curated samples live under `Examples/`.
 | `22_gather_extract_prompt.malda` | `gather:` + `-> Type` Mode C (offline PromptInstance) |
 | `23_grounded_wrap.malda` | `grounded.wrap` citations wrapper (GraphMemory `ask` is the ASK path) |
 | `24_capability_tokens.malda` | `cap.fileRead` unforgeable token (`cap.read` rejects forged dicts) |
+| `25_as_variant.malda` | `asVariant("Intent", dict)` after `validate` → variant + `match` |
 
 Also useful from the main tree:
 
-- `Examples/Basics/errors_and_match.malda`, `Examples/Basics/schema_validate.malda`, `Examples/Basics/modules_include.malda`, `Examples/Basics/modules_import.malda`
+- `Examples/Basics/errors_and_match.malda`, `Examples/Basics/schema_validate.malda`, `Examples/Basics/as_variant.malda`, `Examples/Basics/modules_include.malda`, `Examples/Basics/modules_import.malda`
 - Recipe: [`docs/tutorials/errors-and-validation.md`](../tutorials/errors-and-validation.md)
 - `Examples/Testing/unit_test_basics.test.malda`
 - `Examples/Web/http_client_json.malda`, `Examples/Web/rest_bearer_jwt.malda`, `Examples/Web/auth_cookie_login.malda`

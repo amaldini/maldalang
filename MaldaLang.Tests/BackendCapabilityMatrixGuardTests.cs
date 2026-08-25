@@ -51,6 +51,7 @@ public class BackendCapabilityMatrixGuardTests
         // Stable markers for B1 product-feature rows (not property-test tags).
         AssertContains(markdown, "`schema`", "schema/validate row");
         AssertContains(markdown, "`validate()`", "schema/validate row");
+        AssertContains(markdown, "`asVariant()`", "schema/validate/asVariant row");
         AssertContains(markdown, "Typed prompt", "typed prompts row");
         AssertContains(markdown, "Gather-then-extract", "gather-then-extract prompts row");
         AssertContains(markdown, "`runProgram`", "closed api / program(Api) / runProgram row");

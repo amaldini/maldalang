@@ -18,6 +18,7 @@ public class TranspileSmokeTests
     [InlineData("Examples/Basics/first_look.malda")]
     [InlineData("Examples/Basics/schema_validate.malda")]
     [InlineData("Examples/Basics/schema_sumtype_validate.malda")]
+    [InlineData("Examples/Basics/as_variant.malda")]
     [InlineData("Examples/Agents/phase6_pure_validate.malda")]
     [InlineData("Examples/Agents/agent_governance_golden.malda")]
     [InlineData("Examples/Workflows/simple_step.malda")]

@@ -13,6 +13,7 @@ append	<array>.append	1 argument: (item)	method on the array: items.append(item)
 approveWorkflowStep	approveWorkflowStep	at least 2 arguments: (instanceId, stepId, decision?, payload?)		
 argmax	math.argmax	1 argument: (array)		
 argmin	math.argmin	1 argument: (array)		
+asVariant	asVariant	2 arguments: (typeName, value)	throws if typeName is not a sum type or the tagged JSON is invalid; already-a-variant is idempotent; validate() does not coerce	variant
 asin	math.asin	1 argument		
 assert	assert	1-2 arguments: (condition, message?)	raises on a false condition; useful as an inline smoke check	
 atan	math.atan	1 argument		

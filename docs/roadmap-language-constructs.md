@@ -80,6 +80,7 @@ change as L1a.
   (`Buy(sku: string, qty: int)`) (**L1b**).
 - The same name cannot be both (`SchemaRegistry` / `SumTypeRegistry` throw).
 - `validate("Intent", v)` resolves the sum-type `oneOf` schema (**L1a**). Success returns the original dict, not a variant.
+- `asVariant("Intent", v)` coerces that tagged dict (or an existing variant) into a variant for `match`. Same payload-type rules as typed prompts. Throws on mismatch.
 - Nested schema fields may name a sum type (`intent: Intent` / `Intent[]`) (**L1a**).
 - Typed prompts already accept either a schema name or a sum-type name as `-> Type`
   (`TypedPromptSchemaResolver`).
@@ -112,8 +113,10 @@ chapters, `docs/llm/malda-gotchas.md` / `malda-syntax.md`.
 - JS: `n/a` (`schema` / `validate()` is host-only on the product matrix).
 
 **Risk:** `validate` success still returns a **dict**, not a variant. Coercion to
-`Search(q)` / `Buy(sku, qty)` stays on `await prompt … -> Intent`. Document that; do not
-change `validate` to always box variants in L1a (would surprise object-schema callers).
+`Search(q)` / `Buy(sku, qty)` is `asVariant("Intent", dict)` or
+`await prompt … -> Intent`. Do not change `validate` to always box variants
+(would surprise object-schema callers). L1c stays gated: `asVariant` is the
+library step that closed the match hole without a third declaration form.
 
 ### L1b — Typed variant payloads
 
@@ -150,7 +153,8 @@ Desugars to a sum type **and** a JSON schema. `await prompt p() -> Intent` yield
 `validate("Intent", …)` uses the same schema.
 
 **Gate:** ship L1c only if authors still have to declare both a `schema` and a `type` for
-one LLM contract after L1a/L1b. Prefer extending `type` over a third keyword (`data`).
+one LLM contract after L1a/L1b **and** `asVariant`. Prefer extending `type` over a third
+keyword (`data`).
 
 ---
 
@@ -424,3 +428,4 @@ through helpers, and provenance is a value when we need it.
 | 2026-08-14 | L3 landed: `@budget(tokens, tools, cost?)` beside `@within` |
 | 2026-08-14 | L5 landed: `grounded.wrap` plus opt-in GraphMemory `ask` / `query(..., { grounded: true })` |
 | 2026-08-14 | L6 landed: unforgeable `cap.fileRead` / `cap.read` tokens (string `@effects` allow-list unchanged) |
+| 2026-08-25 | `asVariant(typeName, value)` library step: tagged dict → variant for `match` without L1c |

@@ -41,6 +41,7 @@ This document captures the current JavaScript backend design in code and the nea
   - `string(...)` / `int(...)` / `float(...)` -> `mlRuntime.coerceToString` / `coerceToInt` / `coerceToFloat`
   - `parseJSON(...)` / `parseJson(...)` / `toJSON(...)` -> `mlRuntime.parseJSON` / `parseJson` / `toJSON`
   - `validate(...)` -> `mlRuntime.schema.validate(...)`
+  - `asVariant(...)` -> `mlRuntime.schema.asVariant(...)`
   - `now` / `formatDate` / `parseDate` / `addDays` / `addHours` -> `mlRuntime.*`
   - `getEnv` / `getEnvOr` / `hasEnv` -> `mlRuntime.getEnv*`
   - `httpGet` / `httpPost` / `httpPut` / `httpDelete` / `httpPatch` -> `mlRuntime.http.get|post|put|delete|patch` (`fetch`)
@@ -98,7 +99,7 @@ Validation rules currently enforced:
   - Built-ins: `builtins.print`, `builtins.println`, `builtins.sleep`
   - Stdlib: `math.*`, `str.*`, `io.print`, `io.input`
   - JSON: `parseJSON`, `parseJson`, `toJSON`
-  - Schema: `schema.register`, `schema.registerSumType`, `schema.validate`
+  - Schema: `schema.register`, `schema.registerSumType`, `schema.validate`, `schema.asVariant`
   - Date/env: `now`, `formatDate`, `parseDate`, `addDays`, `addHours`, `getEnv`, `getEnvOr`, `hasEnv`
   - HTTP client: `http.get|post|put|delete|patch` (`fetch`; not `HttpServer`)
   - Bounds: `within.run` / `within.check`

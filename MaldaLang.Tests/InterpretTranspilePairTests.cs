@@ -20,6 +20,7 @@ public class InterpretTranspilePairTests
     [InlineData("Examples/Basics/first_look.malda")]
     [InlineData("Examples/Basics/schema_validate.malda")]
     [InlineData("Examples/Basics/schema_sumtype_validate.malda")]
+    [InlineData("Examples/Basics/as_variant.malda")]
     [InlineData("Examples/Agents/phase6_pure_validate.malda")]
     [InlineData("Examples/Prompts/api_program_calc.malda")]
     [InlineData("Examples/Prompts/prompt_budget.malda")]
@@ -62,6 +63,21 @@ public class InterpretTranspilePairTests
             }
             """,
             "validate-sum-type-dict");
+    }
+
+    [Fact]
+    public void AsVariant_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            type Intent = Search(query) | Buy(sku, qty);
+            var tagged = dict { "tag": "Buy", "sku": "SKU-9", "qty": 2 };
+            match asVariant("Intent", tagged) {
+                case Buy(sku, qty): io.print($"buy {sku} x {qty}");
+                default: io.print("fail");
+            }
+            """,
+            "as-variant");
     }
 
     [Fact]

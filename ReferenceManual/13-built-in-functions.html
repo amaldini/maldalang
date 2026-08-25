@@ -375,7 +375,7 @@ print(parsed.sources[0]);       // a.md</code></pre>
             <li>On success: <code>{ ok: true, data: value }</code></li>
             <li>On failure: <code>{ ok: false, error: "message" }</code></li>
         </ul>
-        <p>The first argument is either the <strong>name</strong> of a registered <code>schema</code> or <strong>sum type</strong>, or an inline schema object. An unknown name raises <em>Unknown schema 'Name'</em>. On success, <code>data</code> is the original value — a tagged dict stays a dict (it is not coerced to a variant). Use <code>await prompt … -&gt; Intent</code> when you need a variant for <code>match</code>.</p>
+        <p>The first argument is either the <strong>name</strong> of a registered <code>schema</code> or <strong>sum type</strong>, or an inline schema object. An unknown name raises <em>Unknown schema 'Name'</em>. On success, <code>data</code> is the original value — a tagged dict stays a dict (it is not coerced to a variant). Use <code>asVariant("Intent", dict)</code> or <code>await prompt … -&gt; Intent</code> when you need a variant for <code>match</code>.</p>
         <pre><code data-run="true" data-expect="ok">schema Answer {
     text: string;
     sources: string[];
@@ -402,6 +402,19 @@ print(checkedTyped.ok);</code></pre>
         <div class="info-box">
             <strong>Not to be confused with:</strong> <code>memory.validate()</code> on a <a href="19-graph-memory.html">GraphMemory</a> instance, which checks graph integrity rather than a schema. The two share a name but are unrelated.
         </div>
+
+        <h3 id="asVariant">13.7.1.1 asVariant(typeName, value)</h3>
+        <p>Turns a tagged dict into a sum-type <strong>variant</strong> so <code>match</code> can bind constructors. <code>validate("Intent", dict)</code> never does this. An already-built variant is returned as-is when its tag belongs to the type. Mismatch (unknown type name, object schema, bad tag, typed payload that fails JSON Schema) <strong>throws</strong> — unlike <code>validate</code>.</p>
+        <pre><code data-run="true" data-expect="buy SKU-9 x 2">type Intent = Search(query: string) | Buy(sku: string, qty: int) | Help();
+var tagged = dict { "tag": "Buy", "sku": "SKU-9", "qty": 2 };
+var checked = validate("Intent", tagged);
+var label = match asVariant("Intent", checked.data) {
+    case Search(q): "search " + q;
+    case Buy(sku, qty): "buy " + sku + " x " + qty;
+    case Help(): "help";
+};
+print(label);</code></pre>
+        <p>See <code>Examples/Basics/as_variant.malda</code> and <code>docs/llm/few-shot/25_as_variant.malda</code>.</p>
 
         <h2>13.7.2 AI Pipeline Functions</h2>
         <p>These built-ins compose with the pipe operator (<code>|&gt;</code>) for retrieval-augmented generation (RAG) and structured LLM output. See also <a href="15-vectordb.html">15. VectorDB</a> (<code>asRetriever</code>) and <code>Examples/Prompts/rag_pipeline.malda</code>.</p>

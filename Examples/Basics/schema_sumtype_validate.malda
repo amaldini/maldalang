@@ -2,8 +2,9 @@
 //
 // Run: malda Examples/Basics/schema_sumtype_validate.malda
 // `validate("Intent", dict)` checks the tagged JSON shape and returns the original
-// dict (it does not coerce to a variant). `await prompt … -> Intent` still yields
-// a variant for `match`. A name cannot be both a schema and a sum type.
+// dict (it does not coerce to a variant). Use `asVariant("Intent", dict)` when you
+// need a variant for `match`. `await prompt … -> Intent` still yields a variant.
+// A name cannot be both a schema and a sum type.
 
 type Intent = Search(query) | Buy(sku, qty) | Help();
 

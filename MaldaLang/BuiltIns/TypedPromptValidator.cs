@@ -234,6 +234,39 @@ public static class TypedPromptValidator
         return RuntimeValue.Object(copy);
     }
 
+    /// <summary>
+    /// Coerce a tagged dict (or an already-built variant) into a sum-type variant for
+    /// <c>match</c>. <c>validate("Intent", dict)</c> leaves <c>data</c> as a dict;
+    /// this is the explicit convert step. Throws on a non-sum schema, unknown tag,
+    /// or payload that fails the sum-type JSON Schema.
+    /// </summary>
+    public static RuntimeValue AsVariant(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("asVariant", args, 2, 2, "typeName, value");
+        return AsVariant(args[0], args[1]);
+    }
+
+    public static RuntimeValue AsVariant(RuntimeValue typeArg, RuntimeValue value)
+    {
+        var schema = SchemaRegistry.ResolveSchemaArgument(typeArg);
+        if (!IsSumSchema(schema))
+        {
+            var label = typeArg.Type == ValueType.String ? typeArg.AsString() : "schema object";
+            throw new Exception($"asVariant() expects a sum type; '{label}' is not a sum type.");
+        }
+
+        if (value.Type == ValueType.Variant)
+        {
+            if (!TryMatchSumTag(value.AsVariant().Tag, schema, "$", out var tagError))
+                throw new Exception($"asVariant() failed: {tagError}");
+            return value;
+        }
+
+        if (!TryValidateAndCoerceSum(value, schema, "$", out var variant, out var error))
+            throw new Exception($"asVariant() failed: {error}");
+        return variant;
+    }
+
     public static bool IsSumSchema(RuntimeValue schema)
     {
         if (schema.Type != ValueType.Object || schema.AsObject() is not JsonObject obj)
@@ -756,6 +789,32 @@ public static class TypedPromptValidator
         }
 
         tag = tagVal.AsString();
+        if (!TryMatchSumTag(tag, schema, path, out var matched, out error))
+            return false;
+
+        matchedArm = matched;
+        return true;
+    }
+
+    private static bool TryMatchSumTag(string tag, RuntimeValue schema, string path, out string error) =>
+        TryMatchSumTag(tag, schema, path, out _, out error);
+
+    private static bool TryMatchSumTag(
+        string tag,
+        RuntimeValue schema,
+        string path,
+        out JsonObject matchedArm,
+        out string error)
+    {
+        matchedArm = null!;
+        error = "";
+
+        if (schema.Type != ValueType.Object || schema.AsObject() is not JsonObject schemaObj)
+        {
+            error = "Invalid sum-type schema object.";
+            return false;
+        }
+
         var oneOf = schemaObj.Get("oneOf");
         if (oneOf.Type != ValueType.Array || oneOf.AsArray().Count == 0)
         {

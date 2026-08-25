@@ -1436,13 +1436,13 @@
       if (!isVariant(value) && !isObject(value)) {
         return path + " must be a JSON object with a sum-type tag.";
       }
-      const tags = sumTypeRegistry[trimmed];
+      const ctors = sumTypeRegistry[trimmed];
       const tag = isVariant(value) ? value.tag : (value && value.tag);
       if (typeof tag !== "string") {
         return path + ".tag is required and must be a string constructor name.";
       }
-      if (tags.indexOf(tag) < 0) {
-        return path + ".tag '" + tag + "' is not a known constructor. Expected one of: " + tags.join(", ") + ".";
+      if (!findSumConstructor(ctors, tag)) {
+        return path + ".tag '" + tag + "' is not a known constructor. Expected one of: " + sumConstructorTags(ctors).join(", ") + ".";
       }
       return "";
     }
@@ -1483,13 +1483,49 @@
     throw new Error("validate() expects a schema object or a registered schema or sum-type name.");
   }
 
+  function normalizeSumConstructors(raw) {
+    if (!Array.isArray(raw)) return [];
+    return raw.map(function (item) {
+      if (typeof item === "string") return { tag: item, params: [] };
+      const tag = coerceToString(item && item.tag);
+      const params = Array.isArray(item && item.params)
+        ? item.params.map(function (name) { return coerceToString(name); })
+        : [];
+      return { tag: tag, params: params };
+    });
+  }
+
+  function findSumConstructor(ctors, tag) {
+    for (let i = 0; i < ctors.length; i++) {
+      if (ctors[i].tag === tag) return ctors[i];
+    }
+    return null;
+  }
+
+  function sumConstructorTags(ctors) {
+    return ctors.map(function (ctor) { return ctor.tag; });
+  }
+
+  function objectPayloadForConstructor(value, ctor) {
+    if (ctor.params.length > 0) {
+      return ctor.params.map(function (name) {
+        return objectHasKey(value, name) ? value[name] : null;
+      });
+    }
+    return Object.keys(value).filter(function (key) {
+      return key !== "tag";
+    }).map(function (key) {
+      return value[key];
+    });
+  }
+
   const schemaStdLib = {
     register(name, fields) {
       schemaRegistry[coerceToString(name)] = Array.isArray(fields) ? fields.slice() : [];
       return null;
     },
-    registerSumType(name, tags) {
-      sumTypeRegistry[coerceToString(name)] = Array.isArray(tags) ? tags.slice() : [];
+    registerSumType(name, constructors) {
+      sumTypeRegistry[coerceToString(name)] = normalizeSumConstructors(constructors);
       return null;
     },
     validate(schemaArg, value) {
@@ -1504,6 +1540,38 @@
         return markDict({ ok: true, data: value, error: null });
       }
       return markDict({ ok: false, data: null, error: error });
+    },
+    asVariant(typeName, value) {
+      if (arguments.length !== 2) {
+        throw new Error("asVariant() expects 2 arguments: (typeName, value)");
+      }
+      const name = coerceToString(typeName);
+      if (Object.prototype.hasOwnProperty.call(schemaRegistry, name) &&
+          !Object.prototype.hasOwnProperty.call(sumTypeRegistry, name)) {
+        throw new Error("asVariant() expects a sum type; '" + name + "' is not a sum type.");
+      }
+      if (!Object.prototype.hasOwnProperty.call(sumTypeRegistry, name)) {
+        throw new Error("Unknown schema '" + name + "'.");
+      }
+      const ctors = sumTypeRegistry[name];
+      if (isVariant(value)) {
+        if (!findSumConstructor(ctors, value.tag)) {
+          throw new Error("asVariant() failed: $.tag '" + value.tag + "' is not a known constructor. Expected one of: " + sumConstructorTags(ctors).join(", ") + ".");
+        }
+        return value;
+      }
+      if (!isObject(value)) {
+        throw new Error("asVariant() failed: $ must be a JSON object with a sum-type tag.");
+      }
+      const tag = value.tag;
+      if (typeof tag !== "string") {
+        throw new Error("asVariant() failed: $.tag is required and must be a string constructor name.");
+      }
+      const ctor = findSumConstructor(ctors, tag);
+      if (!ctor) {
+        throw new Error("asVariant() failed: $.tag '" + tag + "' is not a known constructor. Expected one of: " + sumConstructorTags(ctors).join(", ") + ".");
+      }
+      return variant(tag, objectPayloadForConstructor(value, ctor));
     }
   };
 

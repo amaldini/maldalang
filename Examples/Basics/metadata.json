@@ -152,9 +152,25 @@
       "prerequisites": ["Basics/errors_and_match.malda"],
       "learningGoal": "Validate structured values without relying on type hints or thrown parseJson errors.",
       "expectedOutput": "Prints an ok Person line and an expected age-type failure.",
-      "next": "Basics/modules_include.malda",
+      "next": "Basics/as_variant.malda",
       "documentationPath": "/docs/tutorials/errors-and-validation.md",
       "documentationTitle": "Errors and validation"
+    },
+    {
+      "name": "asVariant",
+      "description": "Coerce a tagged dict into a sum-type variant for match after validate()",
+      "file": "as_variant.malda",
+      "track": "student",
+      "difficulty": "beginner",
+      "minutes": 8,
+      "requires": ["offline"],
+      "concepts": ["asVariant", "validate", "type", "match"],
+      "prerequisites": ["Basics/schema_validate.malda"],
+      "learningGoal": "Turn tagged JSON from validate() into a variant that match can bind.",
+      "expectedOutput": "Prints buy SKU-9 x 2, an idempotent Buy, and Help.",
+      "next": "Basics/modules_include.malda",
+      "documentationPath": "ReferenceManual/13-built-in-functions.html#asVariant",
+      "documentationTitle": "asVariant"
     },
     {
       "name": "Modules with Include",

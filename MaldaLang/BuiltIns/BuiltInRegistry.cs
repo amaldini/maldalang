@@ -131,6 +131,7 @@ public static class BuiltInRegistry
             "indexInto" or
             "toJSON" or
             "validate" or
+            "asVariant" or
             "readFile" or
             "readTextFileLines" or
             "loadNativeModule" or

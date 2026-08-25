@@ -69,7 +69,28 @@ if (checked.ok) {
   [`Examples/Web/form_validate_flash.malda`](../../Examples/Web/form_validate_flash.malda).
 - Offline schema-only sample: [`Examples/Basics/schema_validate.malda`](../../Examples/Basics/schema_validate.malda).
 - Bound to a prompt: `prompt codeReview(...) -> Review` names the schema `await` will validate. Offline stand-in: [`Examples/Basics/first_look.malda`](../../Examples/Basics/first_look.malda).
-- Manual: Reference Manual §12.7.1 (`validate`) and schema section in Functions.
+- Manual: Reference Manual §13.7.1 (`validate`) / §13.7.1.1 (`asVariant`) and schema section in Functions.
+
+## Sum types: `validate` then `asVariant`
+
+`validate("Intent", dict)` checks the tagged JSON `{ "tag": "Buy", … }` and leaves
+`data` as a dict. `asVariant("Intent", dict)` throws on mismatch and returns a
+variant for `match`. `await prompt … -> Intent` still yields a variant directly.
+
+```malda
+type Intent = Search(query: string) | Buy(sku: string, qty: int);
+
+var checked = validate("Intent", tagged);
+if (checked.ok) {
+    match asVariant("Intent", checked.data) {
+        case Buy(sku, qty): io.print($"buy {sku} x {qty}");
+        case Search(q): io.print($"search {q}");
+    }
+}
+```
+
+Runnable sample: [`Examples/Basics/as_variant.malda`](../../Examples/Basics/as_variant.malda),
+[`docs/llm/few-shot/25_as_variant.malda`](../llm/few-shot/25_as_variant.malda).
 
 ## What not to do
 
