@@ -10,7 +10,7 @@ if (root == null) {
     dom.append(root, title);
 
     var hint = dom.create("p");
-    dom.setText(hint, "Arrows pan. [ / - zoom out, ] / = zoom in, 0 resets zoom. Green and magenta tiles come from a PNG atlas. The extra pair is drawImageEx: spin + flipX around the dest center. Click places a marker in world space.");
+    dom.setText(hint, "Arrows pan. [ / - zoom out, ] / = zoom in, 0 resets zoom. Green and magenta tiles come from a PNG atlas. The extra pair is drawImageEx: spin + flipX around the dest center. Click places a marker in world space. HUD uses measureText; the marker ring is strokeCircle.");
     dom.append(root, hint);
 
     var tiles = game.loadImage("assets/sprite_tiles.png");
@@ -93,6 +93,7 @@ if (root == null) {
         game.setAlpha(1);
         game.drawLine(32, 200, 292, 200, "#ffcc66", 2);
         game.fillCircle(markX, markY, 6, "#ff88aa");
+        game.strokeCircle(markX, markY, 10, "#ff88aa", 2);
         var center = game.screenToWorld(320, 180);
         game.fillCircle(center.x, center.y, 8, "#66ccff");
 
@@ -101,14 +102,18 @@ if (root == null) {
         game.setCameraZoom(1);
         var status = "loading tiles";
         if (game.imageIsReady(tiles)) {
-            status = "atlas ready";
+            status = "atlas " + string(game.imageWidth(tiles)) + "x" + string(game.imageHeight(tiles));
         }
-        game.drawText(status + "  cam " + string(int(camX)) + "," + string(int(camY)) + "  z " + string(camZoom), 12, 24, "#ffffff", "14px monospace");
+        var hud = status + "  cam " + string(int(camX)) + "," + string(int(camY)) + "  z " + string(camZoom) + "  " + string(game.getCanvasWidth()) + "x" + string(game.getCanvasHeight());
+        var metrics = game.measureText(hud, "14px monospace");
+        game.strokeRect(8, 8, metrics.width + 8, 22, "#334155", 1);
+        game.drawText(hud, 12, 24, "#ffffff", "14px monospace");
         game.drawText("Arrows pan. [ ] zoom. Click world marker. Rotating green + flipped magenta use drawImageEx.", 12, 44, "#99ddee", "12px monospace");
         game.popCamera();
     }
 
     game.createCanvas(640, 360, "#app");
+    game.setPixelated(true);
     game.setBackground("#151b24");
     game.start(update, render);
 }
