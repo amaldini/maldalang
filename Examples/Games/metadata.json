@@ -25,7 +25,7 @@
     },
     {
       "name": "JS Canvas Sprite Smoke",
-      "description": "PNG atlas blit, scrolling camera, drawImageEx flip/rotate, pushCamera HUD, and a click-to-world marker",
+      "description": "PNG atlas blit, scrolling camera, setCameraZoom, drawImageEx flip/rotate, pushCamera HUD, and a click-to-world marker",
       "file": "game_sprite_smoke.malda",
       "track": "student",
       "difficulty": "intermediate",
@@ -34,6 +34,7 @@
         "game.*",
         "sprites",
         "camera",
+        "setCameraZoom",
         "atlas",
         "drawImageEx",
         "JavaScript target"
@@ -41,8 +42,8 @@
       "prerequisites": [
         "Games/game_bounce.malda"
       ],
-      "learningGoal": "Show image handles, atlas source rects, a 2D camera, drawImageEx flip/rotate, and world-space mouse on the canvas path.",
-      "expectedOutput": "Pans a PNG tileset with arrow keys, draws atlas frames plus a spinning and a flipped tile, and places a world marker on click.",
+      "learningGoal": "Show image handles, atlas source rects, a 2D camera with zoom, drawImageEx flip/rotate, and world-space mouse on the canvas path.",
+      "expectedOutput": "Pans and zooms a PNG tileset with arrow keys, draws atlas frames plus a spinning and a flipped tile, and places a world marker on click.",
       "next": "Games/malda_platform.malda",
       "documentationPath": "/?lesson=browser-track#lesson-browser-track",
       "documentationTitle": "Browser Track"

@@ -44,7 +44,7 @@ In `Examples/Web/wwwroot/malda-js-runtime.js`, `mlRuntime` currently provides:
 - module-like groups:
   - `builtins`: `print`, `println`, `sleep`
   - `dom`: `query`, `create`, `append`, `clear`, `setText`, `html`, `on`
-  - `game`: 2D canvas/audio helpers, pixel-buffer blit (`setPixel` / `blitPixels`), images (`loadImage` / `drawImage` / `drawImageRect` / `drawImageEx`), a 2D camera (`setCamera`, `pushCamera` / `popCamera`, `screenToWorld` / `worldToScreen`), key edges (`wasKeyPressed` / `wasKeyReleased`), mouse world coords and edges (`getMouseWorldX`, `wasMousePressed`), touches (`getTouches`), gamepad helpers, overlap queries (`overlapRect` / `overlapCircle`), and swept AABB (`sweepRect`)
+  - `game`: 2D canvas/audio helpers, pixel-buffer blit (`setPixel` / `blitPixels`), images (`loadImage` / `drawImage` / `drawImageRect` / `drawImageEx`), a 2D camera (`setCamera`, `setCameraZoom`, `pushCamera` / `popCamera`, `screenToWorld` / `worldToScreen`), key edges (`wasKeyPressed` / `wasKeyReleased`), mouse world coords and edges (`getMouseWorldX`, `wasMousePressed`), touches (`getTouches`), gamepad helpers, overlap queries (`overlapRect` / `overlapCircle`), and swept AABB (`sweepRect`)
   - `three`: curated three.js scene helpers
 
 `mlRuntime` is merged via `Object.assign({}, global.mlRuntime || {}, runtime)`, so additional groups can be added without changing the outer loading contract.

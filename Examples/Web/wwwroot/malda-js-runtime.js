@@ -1948,6 +1948,7 @@
         pixelBuffer: null,
         cameraX: 0,
         cameraY: 0,
+        cameraZoom: 1,
         cameraStack: [],
         alpha: 1,
         imageCache: new Map()
@@ -2214,12 +2215,24 @@
         return state.context;
       }
 
+      function currentZoom() {
+        const zoom = state.cameraZoom;
+        if (!(zoom > 0) || !Number.isFinite(zoom)) {
+          return 1;
+        }
+        return zoom;
+      }
+
       function worldX(x) {
-        return toFiniteNumber(x, 0) - state.cameraX;
+        return (toFiniteNumber(x, 0) - state.cameraX) * currentZoom();
       }
 
       function worldY(y) {
-        return toFiniteNumber(y, 0) - state.cameraY;
+        return (toFiniteNumber(y, 0) - state.cameraY) * currentZoom();
+      }
+
+      function worldSize(value, fallback) {
+        return toFiniteNumber(value, fallback) * currentZoom();
       }
 
       function applyDrawStyle(context) {
@@ -2561,6 +2574,7 @@
         resetKeyboardAndPointerState();
         state.cameraX = 0;
         state.cameraY = 0;
+        state.cameraZoom = 1;
         state.cameraStack = [];
         state.alpha = 1;
         context.globalAlpha = 1;
@@ -2596,8 +2610,8 @@
         context.fillRect(
           worldX(x),
           worldY(y),
-          Math.max(0, toFiniteNumber(width, 0)),
-          Math.max(0, toFiniteNumber(height, 0))
+          Math.max(0, worldSize(width, 0)),
+          Math.max(0, worldSize(height, 0))
         );
         return null;
       }
@@ -2610,7 +2624,7 @@
         context.arc(
           worldX(x),
           worldY(y),
-          Math.max(0, toFiniteNumber(radius, 0)),
+          Math.max(0, worldSize(radius, 0)),
           0,
           Math.PI * 2
         );
@@ -2623,7 +2637,17 @@
         applyDrawStyle(context);
         context.fillStyle = coerceToString(color || "#ffffff");
         context.font = coerceToString(font || "16px sans-serif");
-        context.fillText(coerceToString(text), worldX(x), worldY(y));
+        const label = coerceToString(text);
+        const zoom = currentZoom();
+        if (zoom === 1) {
+          context.fillText(label, worldX(x), worldY(y));
+          return null;
+        }
+        context.save();
+        context.translate(worldX(x), worldY(y));
+        context.scale(zoom, zoom);
+        context.fillText(label, 0, 0);
+        context.restore();
         return null;
       }
 
@@ -2644,9 +2668,29 @@
         return state.cameraY;
       }
 
+      function setCameraZoom(zoom) {
+        ensureCanvasContext("setCameraZoom");
+        const numeric = toFiniteNumber(zoom, 1);
+        if (!(numeric > 0)) {
+          state.cameraZoom = 1;
+        } else {
+          state.cameraZoom = Math.min(100, Math.max(0.05, numeric));
+        }
+        return null;
+      }
+
+      function getCameraZoom() {
+        ensureCanvasContext("getCameraZoom");
+        return currentZoom();
+      }
+
       function pushCamera() {
         ensureCanvasContext("pushCamera");
-        state.cameraStack.push({ x: state.cameraX, y: state.cameraY });
+        state.cameraStack.push({
+          x: state.cameraX,
+          y: state.cameraY,
+          zoom: currentZoom()
+        });
         return null;
       }
 
@@ -2658,22 +2702,25 @@
         const previous = state.cameraStack.pop();
         state.cameraX = previous.x;
         state.cameraY = previous.y;
+        state.cameraZoom = previous.zoom > 0 ? previous.zoom : 1;
         return null;
       }
 
       function screenToWorld(x, y) {
         ensureCanvasContext("screenToWorld");
+        const zoom = currentZoom();
         return {
-          x: toFiniteNumber(x, 0) + state.cameraX,
-          y: toFiniteNumber(y, 0) + state.cameraY
+          x: toFiniteNumber(x, 0) / zoom + state.cameraX,
+          y: toFiniteNumber(y, 0) / zoom + state.cameraY
         };
       }
 
       function worldToScreen(x, y) {
         ensureCanvasContext("worldToScreen");
+        const zoom = currentZoom();
         return {
-          x: toFiniteNumber(x, 0) - state.cameraX,
-          y: toFiniteNumber(y, 0) - state.cameraY
+          x: (toFiniteNumber(x, 0) - state.cameraX) * zoom,
+          y: (toFiniteNumber(y, 0) - state.cameraY) * zoom
         };
       }
 
@@ -2688,7 +2735,7 @@
         const context = ensureCanvasContext("drawLine");
         applyDrawStyle(context);
         context.strokeStyle = coerceToString(color || "#ffffff");
-        context.lineWidth = Math.max(0, toFiniteNumber(width, 1));
+        context.lineWidth = Math.max(0, worldSize(width, 1));
         context.beginPath();
         context.moveTo(worldX(x1), worldY(y1));
         context.lineTo(worldX(x2), worldY(y2));
@@ -2700,12 +2747,12 @@
         const context = ensureCanvasContext("strokeRect");
         applyDrawStyle(context);
         context.strokeStyle = coerceToString(color || "#ffffff");
-        context.lineWidth = Math.max(0, toFiniteNumber(lineWidth, 1));
+        context.lineWidth = Math.max(0, worldSize(lineWidth, 1));
         context.strokeRect(
           worldX(x),
           worldY(y),
-          Math.max(0, toFiniteNumber(width, 0)),
-          Math.max(0, toFiniteNumber(height, 0))
+          Math.max(0, worldSize(width, 0)),
+          Math.max(0, worldSize(height, 0))
         );
         return null;
       }
@@ -2789,7 +2836,7 @@
 
         applyDrawStyle(context);
         try {
-          context.drawImage(record.image, worldX(x), worldY(y), destWidth, destHeight);
+          context.drawImage(record.image, worldX(x), worldY(y), worldSize(destWidth, 0), worldSize(destHeight, 0));
         } catch (_error) {
           // Decode races and detached bitmaps are ignored on the hot path.
         }
@@ -2829,8 +2876,8 @@
             sourceHeight,
             worldX(dx),
             worldY(dy),
-            destWidth,
-            destHeight
+            worldSize(destWidth, 0),
+            worldSize(destHeight, 0)
           );
         } catch (_error) {
           // Decode races and detached bitmaps are ignored on the hot path.
@@ -2918,10 +2965,10 @@
             sourceY,
             sourceWidth,
             sourceHeight,
-            -originX,
-            -originY,
-            destWidth,
-            destHeight
+            -worldSize(originX, 0),
+            -worldSize(originY, 0),
+            worldSize(destWidth, 0),
+            worldSize(destHeight, 0)
           );
           context.restore();
         } catch (_error) {
@@ -3238,11 +3285,11 @@
       }
 
       function getMouseWorldX() {
-        return state.mouseX + state.cameraX;
+        return state.mouseX / currentZoom() + state.cameraX;
       }
 
       function getMouseWorldY() {
-        return state.mouseY + state.cameraY;
+        return state.mouseY / currentZoom() + state.cameraY;
       }
 
       function getTouches() {
@@ -3879,6 +3926,8 @@
         setCamera,
         getCameraX,
         getCameraY,
+        setCameraZoom,
+        getCameraZoom,
         pushCamera,
         popCamera,
         screenToWorld,
