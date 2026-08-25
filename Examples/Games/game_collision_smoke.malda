@@ -34,7 +34,7 @@ if (root == null) {
     var cr = 36.0;
 
     var dartX = 40.0;
-    var dartY = 148.0;
+    var dartY = 56.0;
     var dartW = 14.0;
     var dartH = 10.0;
     var dartLive = false;
@@ -50,7 +50,7 @@ if (root == null) {
 
     function fireDart() {
         dartX = 40.0;
-        dartY = 148.0;
+        dartY = 56.0;
         dartLive = true;
         dartHit = false;
         ghostOn = false;
@@ -96,9 +96,6 @@ if (root == null) {
 
         if (dartLive) {
             var ddx = (9000 * dtMs) / 1000;
-            if (ddx < 120) {
-                ddx = 120;
-            }
             ghostX = dartX + ddx;
             ghostOn = true;
             var againstWall = game.sweepRect(dartX, dartY, dartW, dartH, ddx, 0, wallX, wallY, wallW, wallH);
