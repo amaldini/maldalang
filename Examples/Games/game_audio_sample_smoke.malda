@@ -10,12 +10,13 @@ if (root == null) {
     dom.append(root, title);
 
     var hint = dom.create("p");
-    dom.setText(hint, "Space or click to audioInit (starts a quiet looping pattern). Z = hi beep, X = lo beep (overlap them). S stops the hi sample only. A stops all samples; the pattern keeps playing.");
+    dom.setText(hint, "Space or click to audioInit (starts a quiet looping pattern). Z = hi beep left, X = lo beep right (overlap them). C = faster hi beep. S stops the hi sample only. A stops all samples; the pattern keeps playing.");
     dom.append(root, hint);
 
     var audioStarted = false;
     var hiFlash = 0.0;
     var loFlash = 0.0;
+    var fastFlash = 0.0;
     var lastAction = "press Space or click";
 
     function tryStartAudio() {
@@ -47,25 +48,33 @@ if (root == null) {
 
         if (game.wasKeyPressed("z")) {
             tryStartAudio();
-            game.audioPlaySample("assets/beep_hi.wav", 0.85);
+            game.audioPlaySample("assets/beep_hi.wav", 0.85, { "pan": -1 });
             hiFlash = 240;
-            lastAction = "hi sample";
+            lastAction = "hi sample left";
         }
         if (game.wasKeyPressed("x")) {
             tryStartAudio();
-            game.audioPlaySample("assets/beep_lo.wav", 0.85);
+            game.audioPlaySample("assets/beep_lo.wav", 0.85, { "pan": 1 });
             loFlash = 240;
-            lastAction = "lo sample";
+            lastAction = "lo sample right";
+        }
+        if (game.wasKeyPressed("c")) {
+            tryStartAudio();
+            game.audioPlaySample("assets/beep_hi.wav", 0.85, { "playbackRate": 1.5 });
+            fastFlash = 240;
+            lastAction = "hi sample faster";
         }
         if (game.wasKeyPressed("s")) {
             game.audioStopSample("assets/beep_hi.wav");
             hiFlash = 0;
+            fastFlash = 0;
             lastAction = "stop hi sample";
         }
         if (game.wasKeyPressed("a")) {
             game.audioStopSample();
             hiFlash = 0;
             loFlash = 0;
+            fastFlash = 0;
             lastAction = "stop all samples";
         }
 
@@ -81,6 +90,12 @@ if (root == null) {
                 loFlash = 0;
             }
         }
+        if (fastFlash > 0) {
+            fastFlash = fastFlash - dtMs;
+            if (fastFlash < 0) {
+                fastFlash = 0;
+            }
+        }
     }
 
     function render() {
@@ -94,10 +109,16 @@ if (root == null) {
         if (loFlash > 0) {
             loColor = "#ee88cc";
         }
+        var fastColor = "#335544";
+        if (fastFlash > 0) {
+            fastColor = "#88eeaa";
+        }
         game.fillRect(80, 120, 200, 90, hiColor);
         game.fillRect(360, 120, 200, 90, loColor);
-        game.drawText("Z hi", 150, 172, "#0b1220", "18px monospace");
-        game.drawText("X lo", 430, 172, "#0b1220", "18px monospace");
+        game.fillRect(220, 230, 200, 70, fastColor);
+        game.drawText("Z hi L", 140, 172, "#0b1220", "18px monospace");
+        game.drawText("X lo R", 420, 172, "#0b1220", "18px monospace");
+        game.drawText("C faster", 268, 270, "#0b1220", "18px monospace");
 
         var readyText = "audio off";
         if (game.audioIsReady()) {

@@ -319,7 +319,8 @@ public class ScaffoldingTests : TestBase
 
             var app = File.ReadAllText(Path.Combine(destination, "app.malda"));
             Assert.Contains("game.createCanvas", app);
-            Assert.Contains("game.start", app);
+            Assert.Contains("game.startFixed", app);
+            Assert.DoesNotContain("game.start(", app);
             Assert.Contains("function updateGame", app);
 
             var html = File.ReadAllText(Path.Combine(destination, "index.html"));

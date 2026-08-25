@@ -1,12 +1,12 @@
 # MALDA games platform plan
 
-**Status:** G0–G10 landed; G11–G15 specified (next ranked 2D slices)  
+**Status:** G0–G15 landed  
 **Created:** 2026-08-21  
 **Audience:** maintainers extending the JS `game.*` / `three.*` surface after Final 1.0
 
 This is the plan that made MALDA a **good platform for games people finish** —
-Love2D / Pico-8 / Phaser, not Unity. G0–G10 are landed; G11–G15 are the next
-ranked 2D slices. Prefer [`docs/javascript-backend.md`](javascript-backend.md),
+Love2D / Pico-8 / Phaser, not Unity. G0–G15 are landed. Prefer
+[`docs/javascript-backend.md`](javascript-backend.md),
 [Reference Manual 26](../ReferenceManual/26-browser-javascript-backend.html),
 and the deferred list at the end for engines that stay out of core.
 
@@ -16,9 +16,10 @@ overlapping file samples, `startFixed` + origin `localStorage` save, `malda new
 game` / `malda play`, curated `three.*` primitives + textures / glTF / `lookAt`
 + `@shader()`. Featured 2D showcase: `malda_platform`. Canvas + score API:
 `malda new game --fullstack`. Primitive-draw track (`game_bounce`, `maldanoid`)
-stays. Post-kit 2D: `sweepRect`, `drawImageEx`, camera stack / zoom, plus G10
-size queries (`imageWidth`, `getCanvasWidth`, `measureText`), `setPixelated`,
-and `strokeCircle`.
+stays. Post-kit 2D: `sweepRect` / `sweepRects`, `drawImageEx`, camera stack /
+zoom / `followCamera`, G10 size queries (`imageWidth`, `getCanvasWidth`,
+`measureText`), `setPixelated`, `strokeCircle`, sample pan / `playbackRate`,
+gamepad release + analog deadzone, and `malda new game` on `startFixed`.
 
 **Not in scope:** new syntax / keywords / `on update`, interpreter or C# game
 loops, a Box2D-class physics engine in core, a second 2D renderer (Pixi /
@@ -65,11 +66,11 @@ top-level globals, Web IDE Desktop parity, product apps or vertical packs
 | 8 | **G8** `three.*` textures, glTF, look-at | Landed | 3D games stayed colored boxes without assets |
 | 9 | **G9** Full-stack scores template | Landed | MALDA-specific: client loop + server authority + schema |
 | 10 | **G10** Size queries, pixelated, `strokeCircle` | Landed | Atlas games hardcoded 16×16; pixel art needed host CSS; no stroke twin of `fillCircle` |
-| 11 | **G11** Multi-obstacle sweep | Proposed | `malda_platform` copies a loop over `sweepRect`; still a helper, not physics |
-| 12 | **G12** Camera follow clamp | Proposed | Every camera game copies 8 lines of min/max; not a camera object |
-| 13 | **G13** Sample pan / playbackRate | Proposed | SFX are volume-only; spatial hits and chip-tune pitch need options |
-| 14 | **G14** Gamepad completeness | Proposed | `wasGamepadButtonReleased` missing; analog sticks have no deadzone |
-| 15 | **G15** Starter uses `startFixed` | Proposed | `malda new game` still emits `game.start`; the kit loop is `startFixed` |
+| 11 | **G11** Multi-obstacle sweep | Landed | `malda_platform` copies a loop over `sweepRect`; still a helper, not physics |
+| 12 | **G12** Camera follow clamp | Landed | Every camera game copies 8 lines of min/max; not a camera object |
+| 13 | **G13** Sample pan / playbackRate | Landed | SFX are volume-only; spatial hits and chip-tune pitch need options |
+| 14 | **G14** Gamepad completeness | Landed | `wasGamepadButtonReleased` missing; analog sticks have no deadzone |
+| 15 | **G15** Starter uses `startFixed` | Landed | `malda new game` still emits `game.start`; the kit loop is `startFixed` |
 
 ```text
 G0  roadmap file                          (landed)
@@ -90,8 +91,8 @@ G10 query / pixel / strokeCircle          (landed; post-kit 2D)
        └─ G15 malda new game uses startFixed
 ```
 
-G11–G15 are the next ranked 2D slices — not tilesets, particles, or a physics
-engine (those stay in **After G9 (deferred)** and **Explicit non-goals**).
+G11–G15 landed as the ranked 2D slices after G10 — not tilesets, particles, or a
+physics engine (those stay in **After G9 (deferred)** and **Explicit non-goals**).
 
 ---
 
@@ -445,7 +446,7 @@ had `fillCircle` without a stroke twin.
 
 ---
 
-## G11 — Multi-obstacle sweep (proposed)
+## G11 — Multi-obstacle sweep (landed)
 
 **Why:** `malda_platform` still loops `sweepRect` over every platform and keeps
 the earliest `t`. That loop is the landing boilerplate G3 / `sweepRect` left
@@ -471,7 +472,7 @@ behind. A fast dart vs two thin gates should not copy `earliestHit` either
 
 ---
 
-## G12 — Camera follow clamp (proposed)
+## G12 — Camera follow clamp (landed)
 
 **Why:** `malda_platform` render copies min/max so the camera stays inside the
 world (`playerX - 280`, then clamp). Pixel-art games also want integer pan to
@@ -498,7 +499,7 @@ Today's platform lead (`camX = playerX - 280`) is `followCamera(playerX, playerY
 
 ---
 
-## G13 — Sample pan / playbackRate (proposed)
+## G13 — Sample pan / playbackRate (landed)
 
 **Why:** `audioPlaySample` options are `{ loop }` only (`resolveSamplePlayArgs` /
 `startSamplePlayback` in `malda-js-runtime.js`). Side-of-screen coins and pitched
@@ -529,7 +530,7 @@ jumps need stereo pan and playback rate without a second audio graph.
 
 ---
 
-## G14 — Gamepad completeness (proposed)
+## G14 — Gamepad completeness (landed)
 
 **Why:** Keys have press **and** release edges; pads only have
 `wasGamepadButtonPressed`. Analog sticks chatter around 0 with no deadzone.
@@ -556,7 +557,7 @@ presses and then overwrites `prev` — releases are the other half of that diff.
 
 ---
 
-## G15 — Starter uses `startFixed` (proposed)
+## G15 — Starter uses `startFixed` (landed)
 
 **Why:** `Templates/game/app.malda` still calls `game.start`. Newcomers copy a
 variable-dt paddle loop instead of the kit's fixed tick. `malda new game
@@ -581,29 +582,18 @@ sample.
 
 ---
 
-## How G11–G15 should ship
+## How G11–G15 shipped
 
-One focused PR per workstream (principle 4). Suggested order:
-
-1. **G11** — pure function; unblocks the platformer loop
-2. **G14** — input-only; no example collisions with G11
-3. **G13** — audio options; no example collisions with G11
-4. **G12** — after G11 if both touch `malda_platform`
-5. **G15** — template only; ship anytime (even first)
-
-G13 / G14 / G15 may run in parallel with G11. Do not batch them into one PR.
-
-Each MINOR runtime slice updates chapter 26 (EN + IT) and
-`docs/javascript-backend.md` in the same PR, plus `scripts/sync-reference-manual-it-status.py`
-when the English chapter hash changes. Spec: **MINOR** additive on the JS
-backend, CHANGELOG Unreleased row, not a Tier 0 case.
+Landed together after the contracts above were specified. Suggested order if
+splitting a similar batch later: G11 first, then G14/G13, G12 after G11 when
+both touch `malda_platform`, G15 anytime.
 
 ---
 
 ## After G9 (deferred)
 
-Engine-scale ideas from G1–G9. **G11–G15 above are the ranked next 2D slices.**
-These rows stay out of core until a later roadmap:
+Engine-scale ideas from G1–G9. **G11–G15 above landed.** These rows stay out of
+core until a later roadmap:
 
 | Idea | Why it waited |
 |------|----------------|
@@ -618,10 +608,13 @@ These rows stay out of core until a later roadmap:
 | JS ↔ host actor bridging for multiplayer | JS actors are process-local; G9 uses HTTP |
 | Rewriting Desktop IDE into a game editor | Out of scope |
 
-Post-kit helpers that did land: **`game.sweepRect`**, **`game.drawImageEx`**,
-camera space (`pushCamera` / world mouse / mouse edges), **`game.setCameraZoom`**,
-and **G10** (`imageWidth` / `getCanvasWidth` / `measureText` / `setPixelated` /
-`strokeCircle`). Still not tilesets, particles, a scene graph, or a physics engine.
+Post-kit helpers that did land: **`game.sweepRect`**, **`game.sweepRects`**,
+**`game.drawImageEx`**, camera space (`pushCamera` / world mouse / mouse edges),
+**`game.setCameraZoom`**, **`game.followCamera`**, **G10** (`imageWidth` /
+`getCanvasWidth` / `measureText` / `setPixelated` / `strokeCircle`), sample
+`pan` / `playbackRate`, **`wasGamepadButtonReleased`** plus analog deadzone, and
+**G15** (`malda new game` uses `startFixed`). Still not tilesets, particles, a
+scene graph, or a physics engine.
 
 ---
 
@@ -653,8 +646,8 @@ Historical PR order (already landed):
 7. **G8** — 3D assets
 8. **G9** — fullstack template
 9. **G10** — size queries / pixelated / `strokeCircle`
-
-**G11–G15** are specified above; ship as five PRs (see How G11–G15 should ship).
+10. **G11–G15** — `sweepRects`, `followCamera`, sample pan/rate, gamepad
+    release + deadzone, `malda new game` on `startFixed`
 
 Each MINOR runtime slice updated chapter 26 and `docs/javascript-backend.md`
 in the same PR. Spec bump: JS `game.*` is product/Tier-2-ish relative to

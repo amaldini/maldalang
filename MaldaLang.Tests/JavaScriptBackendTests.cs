@@ -430,8 +430,10 @@ public class JavaScriptBackendTests : TestBase
             var padOn = game.isGamepadConnected();
             var padOn1 = game.isGamepadConnected(1);
             var axis = game.getGamepadAxis(0, 0);
+            var axisDead = game.getGamepadAxis(0, 0, 0.2);
             var btn = game.isGamepadButtonDown(0, 0);
             var btnPress = game.wasGamepadButtonPressed(0, 1);
+            var btnRelease = game.wasGamepadButtonReleased(0, 1);
             """;
         var compiler = new Compiler.Compiler();
 
@@ -443,8 +445,10 @@ public class JavaScriptBackendTests : TestBase
         Assert.Contains("mlRuntime.game.isGamepadConnected()", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.isGamepadConnected(1)", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.getGamepadAxis(0, 0)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.getGamepadAxis(0, 0, 0.2)", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.isGamepadButtonDown(0, 0)", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.wasGamepadButtonPressed(0, 1)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.wasGamepadButtonReleased(0, 1)", js, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -456,6 +460,7 @@ public class JavaScriptBackendTests : TestBase
             var inBox = game.pointInRect(2, 3, 0, 0, 10, 10);
             var inDisk = game.pointInCircle(1, 1, 0, 0, 5);
             var contact = game.sweepRect(0, 0, 10, 10, 40, 0, 25, 0, 10, 10);
+            var earliest = game.sweepRects(0, 0, 10, 10, 40, 0, walls);
             """;
         var compiler = new Compiler.Compiler();
 
@@ -466,6 +471,7 @@ public class JavaScriptBackendTests : TestBase
         Assert.Contains("mlRuntime.game.pointInRect(2, 3, 0, 0, 10, 10)", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.pointInCircle(1, 1, 0, 0, 5)", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.sweepRect(0, 0, 10, 10, 40, 0, 25, 0, 10, 10)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.sweepRects(0, 0, 10, 10, 40, 0, walls)", js, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -522,6 +528,7 @@ public class JavaScriptBackendTests : TestBase
             var metrics = game.measureText("HUD", "14px monospace");
             game.setPixelated(true);
             game.strokeCircle(8, 16, 6, "#ff88aa", 2);
+            game.followCamera(40, 80, 640, 360, 1600, 360, { "screenX": 280, "snap": true });
             """;
         var compiler = new Compiler.Compiler();
 
@@ -550,6 +557,7 @@ public class JavaScriptBackendTests : TestBase
         Assert.Contains("mlRuntime.game.measureText(\"HUD\", \"14px monospace\")", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.setPixelated(true)", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.strokeCircle(8, 16, 6, \"#ff88aa\", 2)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.followCamera(40, 80, 640, 360, 1600, 360,", js, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -596,13 +604,14 @@ public class JavaScriptBackendTests : TestBase
         Assert.Contains("mlRuntime.game.drawImageRect(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.drawImageEx(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.setCamera(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.followCamera(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.setCameraZoom(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.pushCamera()", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.popCamera()", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.wasKeyPressed(", js, StringComparison.Ordinal);
         Assert.Contains("flipX", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.overlapRect(", js, StringComparison.Ordinal);
-        Assert.Contains("mlRuntime.game.sweepRect(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.sweepRects(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.audioPlaySample(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.startFixed(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.save(", js, StringComparison.Ordinal);
@@ -701,6 +710,7 @@ public class JavaScriptBackendTests : TestBase
         Assert.Contains("mlRuntime.game.isGamepadConnected(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.getGamepadAxis(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.wasGamepadButtonPressed(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.wasGamepadButtonReleased(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.wasMousePressed(", js, StringComparison.Ordinal);
         Assert.DoesNotContain("mlRuntime.three.", js, StringComparison.Ordinal);
     }
@@ -716,7 +726,7 @@ public class JavaScriptBackendTests : TestBase
         Assert.Contains("mlRuntime.game.overlapCircle(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.pointInRect(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.pointInCircle(", js, StringComparison.Ordinal);
-        Assert.Contains("mlRuntime.game.sweepRect(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.sweepRects(", js, StringComparison.Ordinal);
         Assert.DoesNotContain("mlRuntime.three.", js, StringComparison.Ordinal);
     }
 
@@ -733,6 +743,8 @@ public class JavaScriptBackendTests : TestBase
         Assert.Contains("mlRuntime.game.audioInit()", js, StringComparison.Ordinal);
         Assert.Contains("assets/beep_hi.wav", js, StringComparison.Ordinal);
         Assert.Contains("assets/beep_lo.wav", js, StringComparison.Ordinal);
+        Assert.Contains("playbackRate", js, StringComparison.Ordinal);
+        Assert.Contains("pan", js, StringComparison.Ordinal);
         Assert.DoesNotContain("mlRuntime.three.", js, StringComparison.Ordinal);
     }
 
@@ -2088,8 +2100,10 @@ game.start(function update() {
     aReleased: game.wasKeyReleased("a"),
     padOn: game.isGamepadConnected(),
     axis: game.getGamepadAxis(0, 0),
+    axisDead: game.getGamepadAxis(0, 0, 0.2),
     btnDown: game.isGamepadButtonDown(0, 0),
     btnPressed: game.wasGamepadButtonPressed(0, 0),
+    btnReleased: game.wasGamepadButtonReleased(0, 0),
     touches: game.getTouches()
   });
 }, function render() {
@@ -2099,7 +2113,8 @@ game.start(function update() {
     spaceReleased: game.wasKeyReleased(" "),
     aPressed: game.wasKeyPressed("a"),
     aReleased: game.wasKeyReleased("a"),
-    btnPressed: game.wasGamepadButtonPressed(0, 0)
+    btnPressed: game.wasGamepadButtonPressed(0, 0),
+    btnReleased: game.wasGamepadButtonReleased(0, 0)
   });
 });
 
@@ -2166,19 +2181,39 @@ pads = [{
 }];
 runFrame(64);
 const padFrame = log[log.length - 2];
-if (!padFrame || padFrame.padOn !== true || padFrame.axis !== 0.5 || padFrame.btnDown !== true || padFrame.btnPressed !== true) {
+if (!padFrame || padFrame.padOn !== true || padFrame.axis !== 0.5 || padFrame.axisDead !== 0.5 || padFrame.btnDown !== true || padFrame.btnPressed !== true) {
   throw new Error("gamepad connect/press failed: " + JSON.stringify(padFrame));
 }
 
 runFrame(80);
 const padHeld = log[log.length - 2];
-if (!padHeld || padHeld.btnPressed !== false || padHeld.btnDown !== true) {
+if (!padHeld || padHeld.btnPressed !== false || padHeld.btnDown !== true || padHeld.btnReleased !== false) {
   throw new Error("held gamepad button must not retrigger: " + JSON.stringify(padHeld));
+}
+
+pads = [{
+  axes: [0.1, -0.25],
+  buttons: [{ pressed: false }, { pressed: false }]
+}];
+runFrame(96);
+const padUp = log[log.length - 2];
+const padUpRender = log[log.length - 1];
+if (!padUp || padUp.btnReleased !== true || padUp.btnDown !== false || padUp.btnPressed !== false) {
+  throw new Error("gamepad release should edge on next update: " + JSON.stringify(padUp));
+}
+if (!padUpRender || padUpRender.phase !== "render" || padUpRender.btnReleased !== false) {
+  throw new Error("render should not see gamepad release: " + JSON.stringify(padUpRender));
+}
+if (game.getGamepadAxis(0, 0) !== 0.1) {
+  throw new Error("two-arg axis should stay raw: " + game.getGamepadAxis(0, 0));
+}
+if (game.getGamepadAxis(0, 0, 0.2) !== 0) {
+  throw new Error("deadzone should zero chatter: " + game.getGamepadAxis(0, 0, 0.2));
 }
 
 fire("keydown", { key: "z" });
 game.stop();
-if (game.isKeyDown("z") !== false || game.wasKeyPressed("z") !== false || game.wasGamepadButtonPressed(0, 0) !== false) {
+if (game.isKeyDown("z") !== false || game.wasKeyPressed("z") !== false || game.wasGamepadButtonPressed(0, 0) !== false || game.wasGamepadButtonReleased(0, 0) !== false) {
   throw new Error("game.stop should clear keys and button edges");
 }
 
@@ -2408,6 +2443,245 @@ process.stdout.write("ok\n");
     }
 
     [Fact]
+    public void GameRuntime_SweepRects_PicksEarliestHit()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var runtimePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "wwwroot", "malda-js-runtime.js");
+        var root = CreateTempDirectory("malda_js_sweep_rects_");
+        try
+        {
+            var scriptPath = Path.Combine(root, "sweep-rects-test.js");
+            File.WriteAllText(scriptPath, """
+require(process.argv[2]);
+const game = globalThis.mlRuntime.game;
+
+function assertEq(actual, expected, label) {
+  if (actual !== expected) {
+    throw new Error(label + ": expected " + expected + ", got " + actual);
+  }
+}
+
+function assertClose(actual, expected, label) {
+  if (Math.abs(actual - expected) > 1e-9) {
+    throw new Error(label + ": expected " + expected + ", got " + actual);
+  }
+}
+
+const walls = [
+  { x: 80, y: 0, w: 8, h: 10 },
+  { x: 50, y: 0, w: 8, h: 10 }
+];
+const earliest = game.sweepRects(0, 0, 10, 10, 100, 0, walls);
+assertEq(earliest.hit, true, "earliest hit");
+assertClose(earliest.t, 0.4, "earliest t");
+assertClose(earliest.x, 40, "earliest x");
+assertEq(earliest.nx, -1, "earliest nx");
+
+const tied = [
+  { x: 50, y: 0, w: 8, h: 10 },
+  { x: 50, y: 0, w: 8, h: 20 }
+];
+const firstTie = game.sweepRects(0, 0, 10, 10, 100, 0, tied);
+assertEq(firstTie.hit, true, "tie hit");
+assertClose(firstTie.t, 0.4, "tie t");
+assertEq(firstTie.ny, 0, "tie keeps first obstacle normal");
+
+const miss = game.sweepRects(0, 0, 10, 10, 20, 0, []);
+assertEq(miss.hit, false, "empty array miss");
+assertEq(miss.t, 1, "empty array t");
+assertClose(miss.x, 20, "empty array end pose");
+
+const notArray = game.sweepRects(0, 0, 10, 10, 20, 0, null);
+assertEq(notArray.hit, false, "non-array miss");
+assertClose(notArray.x, 20, "non-array end pose");
+
+const mixed = [
+  1,
+  null,
+  { x: 10, y: 0, w: 0, h: 10 },
+  { x: 10, y: 0, w: 8, h: -2 },
+  { x: 50, y: 0, w: 8, h: 10 }
+];
+const skipped = game.sweepRects(0, 0, 10, 10, 100, 0, mixed);
+assertEq(skipped.hit, true, "skip invalid then hit");
+assertClose(skipped.x, 40, "skip invalid x");
+
+process.stdout.write("ok\n");
+""");
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = Environment.GetEnvironmentVariable("MALDA_NODE_PATH") is { Length: > 0 } nodePath
+                    ? nodePath
+                    : "node",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = root
+            };
+            startInfo.ArgumentList.Add(scriptPath);
+            startInfo.ArgumentList.Add(runtimePath);
+
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Failed to start Node.js for sweepRects runtime test.");
+            var stdout = process.StandardOutput.ReadToEnd();
+            var stderr = process.StandardError.ReadToEnd();
+            process.WaitForExit(15000);
+            Assert.True(process.ExitCode == 0, $"sweepRects runtime test failed ({process.ExitCode}). stderr: {stderr}");
+            Assert.Equal("ok", stdout.Trim());
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
+        }
+    }
+
+    [Fact]
+    public void GameRuntime_FollowCamera_CentersClampsAndSnaps()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var runtimePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "wwwroot", "malda-js-runtime.js");
+        var root = CreateTempDirectory("malda_js_follow_camera_");
+        try
+        {
+            var scriptPath = Path.Combine(root, "follow-camera-test.js");
+            File.WriteAllText(scriptPath, """
+function makeCanvas() {
+  const ctx = {
+    fillStyle: "#000",
+    strokeStyle: "#000",
+    lineWidth: 1,
+    font: "",
+    globalAlpha: 1,
+    imageSmoothingEnabled: true,
+    fillRect() {},
+    clearRect() {},
+    beginPath() {},
+    moveTo() {},
+    lineTo() {},
+    stroke() {},
+    arc() {},
+    fill() {},
+    fillText() {},
+    drawImage() {}
+  };
+  return {
+    width: 0,
+    height: 0,
+    style: {},
+    parentNode: null,
+    _ctx: ctx,
+    getContext() { return this._ctx; },
+    getBoundingClientRect() {
+      return { left: 0, top: 0, width: this.width, height: this.height };
+    }
+  };
+}
+
+const mount = {
+  children: [],
+  appendChild(el) {
+    this.children.push(el);
+    el.parentNode = this;
+    return el;
+  },
+  removeChild(el) {
+    this.children = this.children.filter((child) => child !== el);
+    el.parentNode = null;
+    return el;
+  }
+};
+
+globalThis.document = {
+  body: mount,
+  querySelector() { return mount; },
+  createElement(tag) {
+    if (tag === "canvas") return makeCanvas();
+    return { style: {} };
+  }
+};
+globalThis.window = {
+  addEventListener() {},
+  removeEventListener() {},
+  requestAnimationFrame() { return 1; },
+  cancelAnimationFrame() {}
+};
+
+require(process.argv[2]);
+const game = globalThis.mlRuntime.game;
+game.createCanvas(64, 32, "#app");
+
+function assertEq(actual, expected, label) {
+  if (actual !== expected) {
+    throw new Error(label + ": expected " + expected + ", got " + actual);
+  }
+}
+
+game.followCamera(32, 16, 64, 32, 200, 100);
+assertEq(game.getCameraX(), 0, "center follow x");
+assertEq(game.getCameraY(), 0, "center follow y");
+
+game.followCamera(100, 50, 64, 32, 200, 100);
+assertEq(game.getCameraX(), 68, "uncamped follow x");
+assertEq(game.getCameraY(), 34, "uncamped follow y");
+
+game.followCamera(5, 5, 64, 32, 200, 100);
+assertEq(game.getCameraX(), 0, "min clamp x");
+assertEq(game.getCameraY(), 0, "min clamp y");
+
+game.followCamera(190, 90, 64, 32, 200, 100);
+assertEq(game.getCameraX(), 136, "max clamp x");
+assertEq(game.getCameraY(), 68, "max clamp y");
+
+game.followCamera(100, 50, 64, 32, 50, 20);
+assertEq(game.getCameraX(), 0, "world smaller than view x");
+assertEq(game.getCameraY(), 0, "world smaller than view y");
+
+game.followCamera(100.7, 50.9, 64, 32, 200, 100, { snap: true });
+assertEq(game.getCameraX(), 68, "snap floors x");
+assertEq(game.getCameraY(), 34, "snap floors y");
+
+game.setCameraZoom(2);
+game.followCamera(100, 50, 64, 32, 200, 100, { screenX: 10, screenY: 8 });
+assertEq(game.getCameraX(), 90, "custom screenX");
+assertEq(game.getCameraY(), 42, "custom screenY");
+assertEq(game.getCameraZoom(), 2, "follow must not change zoom");
+
+process.stdout.write("ok\n");
+""");
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = Environment.GetEnvironmentVariable("MALDA_NODE_PATH") is { Length: > 0 } nodePath
+                    ? nodePath
+                    : "node",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = root
+            };
+            startInfo.ArgumentList.Add(scriptPath);
+            startInfo.ArgumentList.Add(runtimePath);
+
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Failed to start Node.js for followCamera runtime test.");
+            var stdout = process.StandardOutput.ReadToEnd();
+            var stderr = process.StandardError.ReadToEnd();
+            process.WaitForExit(15000);
+            Assert.True(process.ExitCode == 0, $"followCamera runtime test failed ({process.ExitCode}). stderr: {stderr}");
+            Assert.Equal("ok", stdout.Trim());
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
+        }
+    }
+
+    [Fact]
     public void GameRuntime_AudioPlaySample_OverlapsWithoutStoppingTrack()
     {
         Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
@@ -2442,6 +2716,11 @@ function FakeSource(kind) {
   this.loop = false;
   this.type = "sine";
   this.frequency = { setValueAtTime() {} };
+  this.playbackRate = {
+    value: 1,
+    lastValue: 1,
+    setValueAtTime(v) { this.lastValue = v; this.value = v; }
+  };
   this.started = false;
   this.stopped = false;
   this.onended = null;
@@ -2458,6 +2737,16 @@ FakeSource.prototype.stop = function (when) {
   if (typeof this.onended === "function") this.onended();
 };
 
+function FakePanner() {
+  this.pan = {
+    value: 0,
+    lastValue: 0,
+    setValueAtTime(v) { this.lastValue = v; this.value = v; }
+  };
+}
+FakePanner.prototype.connect = function () {};
+FakePanner.prototype.disconnect = function () {};
+
 function FakeAudioContext() {
   this.state = "running";
   this.currentTime = 0;
@@ -2465,6 +2754,7 @@ function FakeAudioContext() {
   this.bufferSources = [];
   this.oscillators = [];
   this.gains = [];
+  this.panners = [];
   this.decodeCalls = 0;
   FakeAudioContext.last = this;
 }
@@ -2477,6 +2767,11 @@ FakeAudioContext.prototype.createBufferSource = function () {
   const source = new FakeSource("buffer");
   this.bufferSources.push(source);
   return source;
+};
+FakeAudioContext.prototype.createStereoPanner = function () {
+  const panner = new FakePanner();
+  this.panners.push(panner);
+  return panner;
 };
 FakeAudioContext.prototype.createOscillator = function () {
   const source = new FakeSource("osc");
@@ -2623,6 +2918,35 @@ function startedBuffers() {
   if (!looped.loop || looped.stopped) throw new Error("options.loop should keep the buffer source looping");
   const loopGain = live().gains[live().gains.length - 1];
   if (loopGain.gain.lastValue !== 0.25) throw new Error("object second-arg options should set volume");
+
+  game.audioPlaySample("hi.wav", 0.5, { "pan": -1, "playbackRate": 2 });
+  await flush(20);
+  const panned = live().bufferSources[live().bufferSources.length - 1];
+  if (!panned || panned.playbackRate.value !== 2) {
+    throw new Error("playbackRate should be 2, got " + (panned && panned.playbackRate && panned.playbackRate.value));
+  }
+  const panner = live().panners[live().panners.length - 1];
+  if (!panner || panner.pan.lastValue !== -1) {
+    throw new Error("pan should be -1, got " + (panner && panner.pan && panner.pan.lastValue));
+  }
+
+  game.audioPlaySample("hi.wav", 0.5, { "pan": 3, "playbackRate": 0 });
+  await flush(20);
+  const clampedPan = live().panners[live().panners.length - 1];
+  const clampedRate = live().bufferSources[live().bufferSources.length - 1];
+  if (!clampedPan || clampedPan.pan.lastValue !== 1) throw new Error("pan should clamp to 1");
+  if (!clampedRate || clampedRate.playbackRate.value !== 1) throw new Error("non-positive rate should become 1");
+
+  game.audioPlaySample("hi.wav", 0.5, { "playbackRate": 0.1 });
+  await flush(20);
+  if (live().bufferSources[live().bufferSources.length - 1].playbackRate.value !== 0.25) {
+    throw new Error("rate below 0.25 should clamp to 0.25");
+  }
+  game.audioPlaySample("hi.wav", 0.5, { "playbackRate": 10 });
+  await flush(20);
+  if (live().bufferSources[live().bufferSources.length - 1].playbackRate.value !== 4) {
+    throw new Error("rate above 4 should clamp to 4");
+  }
 
   const startedBeforeStopAll = startedBuffers().filter((source) => !source.stopped).length;
   if (startedBeforeStopAll < 2) throw new Error("expected live samples before stop-all");
