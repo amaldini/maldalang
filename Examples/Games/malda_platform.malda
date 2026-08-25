@@ -31,6 +31,7 @@ if (root == null) {
     var playerY = 286.0;
     var vy = 0.0;
     var onGround = false;
+    var facingLeft = false;
 
     var platX = [0, 200, 430, 700, 980, 1280];
     var platY = [312, 240, 186, 228, 164, 248];
@@ -70,6 +71,7 @@ if (root == null) {
         playerY = 286.0;
         vy = 0.0;
         onGround = false;
+        facingLeft = false;
         coins = 0;
         var i = 0;
         while (i < coinGot.length) {
@@ -103,9 +105,11 @@ if (root == null) {
         var step = (runSpeed * dtMs) / 1000;
         if (game.isKeyDown("arrowleft")) {
             dx = dx - step;
+            facingLeft = true;
         }
         if (game.isKeyDown("arrowright")) {
             dx = dx + step;
+            facingLeft = false;
         }
         coinSpin = coinSpin + ((dtMs / 1000) * 2.4);
 
@@ -217,8 +221,23 @@ if (root == null) {
             c = c + 1;
         }
 
-        game.fillRect(playerX, playerY, playerW, playerH, "#66ccff");
+        if (game.imageIsReady(tiles)) {
+            game.drawImageEx(tiles, playerX + (playerW / 2), playerY + (playerH / 2), {
+                "sx": 0,
+                "sy": 0,
+                "sw": 16,
+                "sh": 16,
+                "w": playerW,
+                "h": playerH,
+                "ox": playerW / 2,
+                "oy": playerH / 2,
+                "flipX": facingLeft
+            });
+        } else {
+            game.fillRect(playerX, playerY, playerW, playerH, "#66ccff");
+        }
 
+        game.pushCamera();
         game.setCamera(0, 0);
         game.drawText("Coins: " + string(coins) + "/" + string(coinX.length) + "  High: " + string(high), 12, 24, "#ffffff", "14px monospace");
         if (coins >= coinX.length) {
@@ -226,6 +245,7 @@ if (root == null) {
         } else {
             game.drawText("Arrows run  Space/Up jump  R restart", 12, 46, "#99ddee", "12px monospace");
         }
+        game.popCamera();
     }
 
     game.createCanvas(canvasW, canvasH, "#app");

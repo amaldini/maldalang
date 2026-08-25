@@ -10,7 +10,7 @@ if (root == null) {
     dom.append(root, title);
 
     var hint = dom.create("p");
-    dom.setText(hint, "Arrows scroll the camera. Green and magenta tiles come from a PNG atlas. The extra pair is drawImageEx: spin + flipX around the dest center.");
+    dom.setText(hint, "Arrows scroll the camera. Green and magenta tiles come from a PNG atlas. The extra pair is drawImageEx: spin + flipX around the dest center. Click places a marker in world space.");
     dom.append(root, hint);
 
     var tiles = game.loadImage("assets/sprite_tiles.png");
@@ -18,6 +18,8 @@ if (root == null) {
     var camY = 0.0;
     var camSpeed = 140;
     var spin = 0.0;
+    var markX = 320.0;
+    var markY = 180.0;
 
     function update(dtMs) {
         var step = (camSpeed * dtMs) / 1000;
@@ -35,6 +37,10 @@ if (root == null) {
         }
         spin = spin + ((dtMs / 1000) * 1.4);
         game.setCamera(camX, camY);
+        if (game.wasMousePressed(0)) {
+            markX = game.getMouseWorldX();
+            markY = game.getMouseWorldY();
+        }
     }
 
     function render() {
@@ -74,15 +80,18 @@ if (root == null) {
         game.strokeRect(32, 64, 260, 112, "#88ffcc", 3);
         game.setAlpha(1);
         game.drawLine(32, 200, 292, 200, "#ffcc66", 2);
+        game.fillCircle(markX, markY, 6, "#ff88aa");
         game.fillCircle(camX + 320, camY + 180, 8, "#66ccff");
 
+        game.pushCamera();
         game.setCamera(0, 0);
         var status = "loading tiles";
         if (game.imageIsReady(tiles)) {
             status = "atlas ready";
         }
         game.drawText(status + "  cam " + string(int(camX)) + "," + string(int(camY)), 12, 24, "#ffffff", "14px monospace");
-        game.drawText("Arrows pan. Rotating green + flipped magenta use drawImageEx.", 12, 44, "#99ddee", "12px monospace");
+        game.drawText("Arrows pan. Click world marker. Rotating green + flipped magenta use drawImageEx.", 12, 44, "#99ddee", "12px monospace");
+        game.popCamera();
     }
 
     game.createCanvas(640, 360, "#app");

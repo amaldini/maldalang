@@ -25,7 +25,7 @@
     },
     {
       "name": "JS Canvas Sprite Smoke",
-      "description": "PNG atlas blit, scrolling camera, drawImageEx flip/rotate, lines and alpha using MALDA game.* image APIs",
+      "description": "PNG atlas blit, scrolling camera, drawImageEx flip/rotate, pushCamera HUD, and a click-to-world marker",
       "file": "game_sprite_smoke.malda",
       "track": "student",
       "difficulty": "intermediate",
@@ -41,15 +41,15 @@
       "prerequisites": [
         "Games/game_bounce.malda"
       ],
-      "learningGoal": "Show image handles, atlas source rects, a 2D camera, and drawImageEx flip/rotate on the canvas path.",
-      "expectedOutput": "Pans a PNG tileset with arrow keys and draws atlas frames plus a spinning and a flipped tile.",
+      "learningGoal": "Show image handles, atlas source rects, a 2D camera, drawImageEx flip/rotate, and world-space mouse on the canvas path.",
+      "expectedOutput": "Pans a PNG tileset with arrow keys, draws atlas frames plus a spinning and a flipped tile, and places a world marker on click.",
       "next": "Games/malda_platform.malda",
       "documentationPath": "/?lesson=browser-track#lesson-browser-track",
       "documentationTitle": "Browser Track"
     },
     {
       "name": "JS Canvas Input Smoke",
-      "description": "Key press/release edges, multi-touch, and gamepad axes using MALDA game.* input APIs",
+      "description": "Key press/release edges, mouse click edges, multi-touch, and gamepad axes using MALDA game.* input APIs",
       "file": "game_input_smoke.malda",
       "track": "student",
       "difficulty": "intermediate",
@@ -64,8 +64,8 @@
       "prerequisites": [
         "Games/game_bounce.malda"
       ],
-      "learningGoal": "Show wasKeyPressed/wasKeyReleased, getTouches, and gamepad helpers on the canvas path.",
-      "expectedOutput": "Moves with arrows or the left stick, jumps once per Space tap, and follows the first touch.",
+      "learningGoal": "Show wasKeyPressed/wasKeyReleased, wasMousePressed, getTouches, and gamepad helpers on the canvas path.",
+      "expectedOutput": "Moves with arrows or the left stick, jumps once per Space tap or click, and follows the first touch.",
       "next": "Games/malda_platform.malda",
       "documentationPath": "/?lesson=browser-track#lesson-browser-track",
       "documentationTitle": "Browser Track"
@@ -139,7 +139,7 @@
     },
     {
       "name": "JS Canvas Platform Showcase",
-      "description": "Short side-scroller that uses images, camera, swept AABB, key edges, sample SFX, startFixed, and drawImageEx spinning coins together",
+      "description": "Short side-scroller that uses images, camera, swept AABB, key edges, sample SFX, startFixed, spinning coins, and a facing player",
       "file": "malda_platform.malda",
       "track": "showcase",
       "difficulty": "intermediate",
@@ -160,7 +160,7 @@
         "Games/game_bounce.malda"
       ],
       "learningGoal": "Show G1–G5 game.* helpers in one playable side-scroller that still compiles with --mode js.",
-      "expectedOutput": "Runs a short platformer: atlas tiles, camera follow, sweepRect landings, spinning coins, jump/coin SFX, and a high score that survives reload.",
+      "expectedOutput": "Runs a short platformer: atlas tiles, camera follow, sweepRect landings, spinning coins, a player that faces left/right, jump/coin SFX, and a high score that survives reload.",
       "next": "Games/maldadash.malda",
       "documentationPath": "/?lesson=browser-track#lesson-browser-track",
       "documentationTitle": "Browser Track",

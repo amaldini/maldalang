@@ -10,7 +10,7 @@ if (root == null) {
     dom.append(root, title);
 
     var hint = dom.create("p");
-    dom.setText(hint, "Arrows hold-move. Space is wasKeyPressed (one jump per tap). Touches and gamepad axis 0 also move.");
+    dom.setText(hint, "Arrows hold-move. Space or click is wasKeyPressed / wasMousePressed (one jump per tap). Touches and gamepad axis 0 also move.");
     dom.append(root, hint);
 
     var x = 280.0;
@@ -34,7 +34,7 @@ if (root == null) {
             y = y + step;
         }
 
-        if (game.wasKeyPressed(" ")) {
+        if (game.wasKeyPressed(" ") || game.wasMousePressed(0)) {
             jumps = jumps + 1;
             flashMs = 180;
         }
@@ -82,7 +82,7 @@ if (root == null) {
             padText = "pad ax0=" + string(game.getGamepadAxis(0, 0));
         }
         game.drawText("jumps " + string(jumps) + "  touches " + string(length(touches)) + "  " + padText, 12, 24, "#ffffff", "14px monospace");
-        game.drawText("Read wasKeyPressed in update, not render.", 12, 44, "#99ddee", "12px monospace");
+        game.drawText("Read wasKeyPressed / wasMousePressed in update, not render.", 12, 44, "#99ddee", "12px monospace");
     }
 
     game.createCanvas(640, 360, "#app");

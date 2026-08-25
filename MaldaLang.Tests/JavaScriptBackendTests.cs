@@ -535,6 +535,35 @@ public class JavaScriptBackendTests : TestBase
     }
 
     [Fact]
+    public void JsTranspiler_MapsGameCameraSpaceAndMouseEdgeApis_ToMlRuntimeGame()
+    {
+        var source = """
+            game.pushCamera();
+            game.popCamera();
+            var world = game.screenToWorld(4, 5);
+            var screen = game.worldToScreen(14, 25);
+            var mx = game.getMouseWorldX();
+            var my = game.getMouseWorldY();
+            var pressed = game.wasMousePressed();
+            var pressed1 = game.wasMousePressed(1);
+            var released = game.wasMouseReleased(0);
+            """;
+        var compiler = new Compiler.Compiler();
+
+        var js = compiler.TranspileToJavaScriptFromSource(source);
+
+        Assert.Contains("mlRuntime.game.pushCamera()", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.popCamera()", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.screenToWorld(4, 5)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.worldToScreen(14, 25)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.getMouseWorldX()", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.getMouseWorldY()", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.wasMousePressed()", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.wasMousePressed(1)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.wasMouseReleased(0)", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void JsTranspiler_PlatformExample_EmitsKitCalls()
     {
         var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Games", "malda_platform.malda");
@@ -545,7 +574,10 @@ public class JavaScriptBackendTests : TestBase
         Assert.Contains("mlRuntime.game.drawImageRect(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.drawImageEx(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.setCamera(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.pushCamera()", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.popCamera()", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.wasKeyPressed(", js, StringComparison.Ordinal);
+        Assert.Contains("flipX", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.overlapRect(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.sweepRect(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.audioPlaySample(", js, StringComparison.Ordinal);
@@ -577,6 +609,8 @@ public class JavaScriptBackendTests : TestBase
         Assert.Contains("mlRuntime.game.strokeRect(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.setAlpha(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.setCamera(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.pushCamera()", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.popCamera()", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.save(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.load(", js, StringComparison.Ordinal);
         Assert.Contains("maldanoid_save", js, StringComparison.Ordinal);
@@ -618,6 +652,9 @@ public class JavaScriptBackendTests : TestBase
         Assert.Contains("mlRuntime.game.drawLine(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.strokeRect(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.setAlpha(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.pushCamera()", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.popCamera()", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.getMouseWorldX()", js, StringComparison.Ordinal);
         Assert.DoesNotContain("mlRuntime.three.", js, StringComparison.Ordinal);
     }
 
@@ -634,6 +671,7 @@ public class JavaScriptBackendTests : TestBase
         Assert.Contains("mlRuntime.game.isGamepadConnected(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.getGamepadAxis(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.wasGamepadButtonPressed(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.wasMousePressed(", js, StringComparison.Ordinal);
         Assert.DoesNotContain("mlRuntime.three.", js, StringComparison.Ordinal);
     }
 
@@ -1228,6 +1266,245 @@ process.stdout.write("ok\n");
             var stderr = process.StandardError.ReadToEnd();
             process.WaitForExit(15000);
             Assert.True(process.ExitCode == 0, $"drawImageEx runtime test failed ({process.ExitCode}). stderr: {stderr}");
+            Assert.Equal("ok", stdout.Trim());
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
+        }
+    }
+
+    [Fact]
+    public void GameRuntime_CameraSpaceWorldMouseAndMouseEdges_SnapshotOnUpdate()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var runtimePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "wwwroot", "malda-js-runtime.js");
+        var root = CreateTempDirectory("malda_js_camera_space_");
+        try
+        {
+            var scriptPath = Path.Combine(root, "camera-space-test.js");
+            File.WriteAllText(scriptPath, """
+function makeCanvas() {
+  const ctx = {
+    fillRects: [],
+    fillStyle: "#000",
+    strokeStyle: "#000",
+    lineWidth: 1,
+    font: "",
+    globalAlpha: 1,
+    fillRect(x, y, w, h) { this.fillRects.push({ x, y, w, h }); },
+    strokeRect() {},
+    clearRect() {},
+    beginPath() {},
+    moveTo() {},
+    lineTo() {},
+    stroke() {},
+    arc() {},
+    fill() {},
+    fillText() {},
+    drawImage() {},
+    putImageData() {}
+  };
+  return {
+    width: 0,
+    height: 0,
+    style: {},
+    parentNode: null,
+    _ctx: ctx,
+    getContext() { return this._ctx; },
+    getBoundingClientRect() {
+      return { left: 0, top: 0, width: this.width, height: this.height };
+    }
+  };
+}
+
+const mount = {
+  children: [],
+  appendChild(el) {
+    this.children.push(el);
+    el.parentNode = this;
+    return el;
+  },
+  removeChild(el) {
+    this.children = this.children.filter((child) => child !== el);
+    el.parentNode = null;
+    return el;
+  }
+};
+
+const listeners = {};
+let rafQueue = [];
+
+globalThis.document = {
+  body: mount,
+  querySelector() { return mount; },
+  createElement(tag) {
+    if (tag === "canvas") return makeCanvas();
+    return { style: {} };
+  }
+};
+globalThis.window = {
+  addEventListener(type, fn) {
+    listeners[type] = listeners[type] || [];
+    listeners[type].push(fn);
+  },
+  removeEventListener() {},
+  requestAnimationFrame(cb) {
+    rafQueue.push(cb);
+    return rafQueue.length;
+  },
+  cancelAnimationFrame() {}
+};
+
+function fire(type, event) {
+  (listeners[type] || []).forEach((fn) => fn(event));
+}
+function runFrame(ts) {
+  const cb = rafQueue.shift();
+  if (!cb) throw new Error("no rAF callback");
+  cb(ts);
+}
+
+require(process.argv[2]);
+const game = globalThis.mlRuntime.game;
+game.createCanvas(64, 32, "#app");
+const ctx = mount.children[0]._ctx;
+
+game.setCamera(10, 20);
+const world = game.screenToWorld(5, 6);
+if (world.x !== 15 || world.y !== 26) throw new Error("screenToWorld: " + JSON.stringify(world));
+const screen = game.worldToScreen(15, 26);
+if (screen.x !== 5 || screen.y !== 6) throw new Error("worldToScreen: " + JSON.stringify(screen));
+
+fire("mousemove", { clientX: 5, clientY: 6 });
+if (game.getMouseX() !== 5 || game.getMouseY() !== 6) throw new Error("canvas mouse: " + game.getMouseX() + "," + game.getMouseY());
+if (game.getMouseWorldX() !== 15 || game.getMouseWorldY() !== 26) {
+  throw new Error("world mouse: " + game.getMouseWorldX() + "," + game.getMouseWorldY());
+}
+
+game.fillRect(8, 9, 4, 4, "#ff0000");
+const worldRect = ctx.fillRects[ctx.fillRects.length - 1];
+if (worldRect.x !== -2 || worldRect.y !== -11) throw new Error("world fillRect: " + JSON.stringify(worldRect));
+
+game.pushCamera();
+game.setCamera(0, 0);
+if (game.getCameraX() !== 0 || game.getCameraY() !== 0) throw new Error("HUD camera should be origin");
+game.fillRect(8, 9, 4, 4, "#00ff00");
+const hudRect = ctx.fillRects[ctx.fillRects.length - 1];
+if (hudRect.x !== 8 || hudRect.y !== 9) throw new Error("HUD fillRect: " + JSON.stringify(hudRect));
+game.popCamera();
+if (game.getCameraX() !== 10 || game.getCameraY() !== 20) throw new Error("popCamera should restore");
+game.fillRect(8, 9, 4, 4, "#0000ff");
+const restored = ctx.fillRects[ctx.fillRects.length - 1];
+if (restored.x !== -2 || restored.y !== -11) throw new Error("restored fillRect: " + JSON.stringify(restored));
+
+game.popCamera();
+if (game.getCameraX() !== 10 || game.getCameraY() !== 20) throw new Error("empty popCamera should no-op");
+
+game.pushCamera();
+game.setCamera(99, 88);
+game.createCanvas(64, 32, "#app");
+if (game.getCameraX() !== 0 || game.getCameraY() !== 0) throw new Error("createCanvas should reset camera");
+game.popCamera();
+if (game.getCameraX() !== 0 || game.getCameraY() !== 0) throw new Error("createCanvas should clear camera stack");
+
+const log = [];
+game.start(function update() {
+  log.push({
+    phase: "update",
+    pressed: game.wasMousePressed(),
+    released: game.wasMouseReleased(),
+    down: game.isMouseDown(0),
+    pressed1: game.wasMousePressed(1),
+    released1: game.wasMouseReleased(1)
+  });
+}, function render() {
+  log.push({
+    phase: "render",
+    pressed: game.wasMousePressed(),
+    released: game.wasMouseReleased(),
+    pressed1: game.wasMousePressed(1),
+    released1: game.wasMouseReleased(1)
+  });
+});
+
+fire("mousedown", { button: 0, clientX: 3, clientY: 4 });
+runFrame(16);
+if (!log[0] || log[0].phase !== "update" || log[0].pressed !== true || log[0].down !== true) {
+  throw new Error("first update should see wasMousePressed: " + JSON.stringify(log[0]));
+}
+if (!log[1] || log[1].phase !== "render" || log[1].pressed !== false || log[1].released !== false) {
+  throw new Error("render should not see mouse edges: " + JSON.stringify(log[1]));
+}
+
+runFrame(32);
+if (!log[2] || log[2].pressed !== false || log[2].down !== true) {
+  throw new Error("held mouse must not retrigger press: " + JSON.stringify(log[2]));
+}
+
+fire("mouseup", { button: 0, clientX: 3, clientY: 4 });
+runFrame(48);
+if (!log[4] || log[4].released !== true || log[4].down !== false) {
+  throw new Error("mouseup should edge on next update: " + JSON.stringify(log[4]));
+}
+if (!log[5] || log[5].phase !== "render" || log[5].released !== false) {
+  throw new Error("render should not see mouse release: " + JSON.stringify(log[5]));
+}
+
+fire("mousedown", { button: 1, clientX: 1, clientY: 1 });
+fire("mouseup", { button: 1, clientX: 1, clientY: 1 });
+runFrame(56);
+const tap = log[log.length - 2];
+const tapRender = log[log.length - 1];
+if (!tap || tap.pressed1 !== true || tap.released1 !== true) {
+  throw new Error("same-frame click should press and release: " + JSON.stringify(tap));
+}
+if (!tapRender || tapRender.pressed1 !== false || tapRender.released1 !== false) {
+  throw new Error("render should not see same-frame click edges: " + JSON.stringify(tapRender));
+}
+
+fire("touchstart", {
+  cancelable: true,
+  preventDefault() {},
+  touches: [{ identifier: 7, clientX: 12, clientY: 24 }],
+  changedTouches: [{ identifier: 7, clientX: 12, clientY: 24 }]
+});
+runFrame(64);
+const touchPress = log[log.length - 2];
+if (!touchPress || touchPress.pressed !== true || touchPress.down !== true) {
+  throw new Error("touchstart should edge mouse 0: " + JSON.stringify(touchPress));
+}
+
+fire("mousedown", { button: 0, clientX: 2, clientY: 2 });
+game.stop();
+if (game.isMouseDown(0) !== false || game.wasMousePressed() !== false || game.wasMouseReleased() !== false) {
+  throw new Error("game.stop should clear mouse edges");
+}
+
+process.stdout.write("ok\n");
+""");
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = Environment.GetEnvironmentVariable("MALDA_NODE_PATH") is { Length: > 0 } nodePath
+                    ? nodePath
+                    : "node",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = root
+            };
+            startInfo.ArgumentList.Add(scriptPath);
+            startInfo.ArgumentList.Add(runtimePath);
+
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Failed to start Node.js for camera-space runtime test.");
+            var stdout = process.StandardOutput.ReadToEnd();
+            var stderr = process.StandardError.ReadToEnd();
+            process.WaitForExit(15000);
+            Assert.True(process.ExitCode == 0, $"camera-space runtime test failed ({process.ExitCode}). stderr: {stderr}");
             Assert.Equal("ok", stdout.Trim());
         }
         finally
@@ -2456,7 +2733,7 @@ process.exit(0);
         Assert.Contains("vec3 traceScene(vec3 origin, vec3 dir)", js, StringComparison.Ordinal);
         Assert.Contains("reflect(rd, normal)", js, StringComparison.Ordinal);
         Assert.Contains("refract(rd, n, eta)", js, StringComparison.Ordinal);
-        Assert.Contains("const float GLASS_IOR = 1.1", js, StringComparison.Ordinal);
+        Assert.Contains("const float GLASS_IOR = 0.9", js, StringComparison.Ordinal);
         Assert.DoesNotContain("function hitSphere", js, StringComparison.Ordinal);
         Assert.DoesNotContain("mlRuntime.game.setPixel", js, StringComparison.Ordinal);
     }
