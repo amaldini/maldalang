@@ -130,8 +130,8 @@ public static class SchemaDeclarationDiagnostics
             Message = elevate
                 ? $"Unknown {kind} '{typeName}' on {site}."
                 : $"Unknown {kind} '{typeName}' on {site}. Use a JSON primitive, a declared schema name, or a declared sum type.",
-            Line = line,
-            Column = column,
+            Line = Math.Max(0, line - 1),
+            Column = Math.Max(0, column - 1),
             Length = Math.Max(1, typeName.Length),
             Source = "malda-schema"
         });

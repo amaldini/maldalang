@@ -123,8 +123,8 @@ public static class InterpolationDiagnostics
                     Message =
                         "malda-interp: a plain string does not interpolate {name}. " +
                         "Use $\"n is {n}\" or string concatenation. Prompt bodies still use {name} templates.",
-                    Line = literal.Line,
-                    Column = literal.Column,
+                    Line = Math.Max(0, literal.Line - 1),
+                    Column = Math.Max(0, literal.Column - 1),
                     Length = Math.Max(1, text.Length),
                     Source = "malda-interp"
                 });

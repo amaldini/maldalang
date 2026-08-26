@@ -29,7 +29,7 @@ public class CheckCommandRunnerTests : TestBase
         var runner = new CheckCommandRunner();
         var output = new StringWriter();
         var error = new StringWriter();
-        var code = runner.Run(new[] { "-e", "print(\"ran\");", "--json" }, output, error);
+        var code = runner.Run(new[] { "-e", "io.print(\"ran\");", "--json" }, output, error);
         Assert.Equal(CheckCommandRunner.ExitOk, code);
         Assert.Equal("", error.ToString());
         using var doc = JsonDocument.Parse(output.ToString());
@@ -40,6 +40,22 @@ public class CheckCommandRunnerTests : TestBase
         Assert.Equal("<eval>", root.GetProperty("file").GetString());
         Assert.Equal(0, root.GetProperty("diagnostics").GetArrayLength());
         Assert.DoesNotContain("ran", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Eval_FlatPrintAlias_IsWarningStillOk()
+    {
+        var runner = new CheckCommandRunner();
+        var output = new StringWriter();
+        var error = new StringWriter();
+        var code = runner.Run(new[] { "-e", "print(1);", "--json" }, output, error);
+        Assert.Equal(CheckCommandRunner.ExitOk, code);
+        using var doc = JsonDocument.Parse(output.ToString());
+        Assert.True(doc.RootElement.GetProperty("ok").GetBoolean());
+        Assert.Contains(
+            doc.RootElement.GetProperty("diagnostics").EnumerateArray(),
+            d => d.GetProperty("code").GetString() == "malda-style" &&
+                 d.GetProperty("severity").GetString() == "warning");
     }
 
     [Fact]
@@ -59,6 +75,22 @@ public class CheckCommandRunnerTests : TestBase
         Assert.Equal("error", first.GetProperty("severity").GetString());
         Assert.True(first.GetProperty("line").GetInt32() >= 1);
         Assert.True(first.GetProperty("column").GetInt32() >= 1);
+    }
+
+    [Fact]
+    public void Eval_UnknownSchemaType_ReportsLineOne()
+    {
+        var runner = new CheckCommandRunner();
+        var output = new StringWriter();
+        var error = new StringWriter();
+        var code = runner.Run(new[] { "--json", "-e", "schema P { n: NotAType; }" }, output, error);
+        Assert.Equal(CheckCommandRunner.ExitHasErrors, code);
+        using var doc = JsonDocument.Parse(output.ToString());
+        var schema = Assert.Single(
+            doc.RootElement.GetProperty("diagnostics").EnumerateArray(),
+            d => d.GetProperty("code").GetString() == "malda-schema");
+        Assert.Equal(1, schema.GetProperty("line").GetInt32());
+        Assert.True(schema.GetProperty("column").GetInt32() >= 1);
     }
 
     [Fact]
@@ -122,7 +154,8 @@ public class CheckCommandRunnerTests : TestBase
             Assert.Contains(
                 root.GetProperty("diagnostics").EnumerateArray(),
                 d => d.GetProperty("code").GetString() == "malda-interp" &&
-                     d.GetProperty("severity").GetString() == "warning");
+                     d.GetProperty("severity").GetString() == "warning" &&
+                     d.GetProperty("line").GetInt32() == 2);
         }
         finally
         {
@@ -137,7 +170,7 @@ public class CheckCommandRunnerTests : TestBase
         try
         {
             var path = Path.Combine(dir, "ok.malda");
-            File.WriteAllText(path, "print(1);\n");
+            File.WriteAllText(path, "io.print(1);\n");
             var runner = new CheckCommandRunner();
             var output = new StringWriter();
             var error = new StringWriter();
