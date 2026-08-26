@@ -249,6 +249,52 @@ public class CheckCommandRunnerTests : TestBase
     }
 
     [Fact]
+    public void Eval_GatherWithoutReturnType_ReportsLineTwo()
+    {
+        var runner = new CheckCommandRunner();
+        var output = new StringWriter();
+        var error = new StringWriter();
+        var source = """
+            prompt research(q) {
+                gather: ["read_file"];
+                user: q
+            }
+            """;
+        var code = runner.Run(new[] { "--json", "-e", source }, output, error);
+        Assert.Equal(CheckCommandRunner.ExitHasErrors, code);
+        using var doc = JsonDocument.Parse(output.ToString());
+        var prompt = Assert.Single(
+            doc.RootElement.GetProperty("diagnostics").EnumerateArray(),
+            d => d.GetProperty("code").GetString() == "malda-prompt");
+        Assert.Equal(2, prompt.GetProperty("line").GetInt32());
+        Assert.True(prompt.GetProperty("column").GetInt32() >= 1);
+    }
+
+    [Fact]
+    public void Eval_StrictTypesNonExhaustiveMatch_ReportsMatchLine()
+    {
+        var runner = new CheckCommandRunner();
+        var output = new StringWriter();
+        var error = new StringWriter();
+        var source = """
+            type Result = Ok(value) | Err(message);
+            var r = Ok(1);
+            var out = match r {
+                case Ok(v): v;
+            };
+            """;
+        var code = runner.Run(new[] { "--json", "--strict-types", "-e", source }, output, error);
+        Assert.Equal(CheckCommandRunner.ExitHasErrors, code);
+        using var doc = JsonDocument.Parse(output.ToString());
+        var match = Assert.Single(
+            doc.RootElement.GetProperty("diagnostics").EnumerateArray(),
+            d => d.GetProperty("code").GetString() == "malda-match");
+        Assert.Equal(3, match.GetProperty("line").GetInt32());
+        Assert.True(match.GetProperty("column").GetInt32() >= 1);
+        Assert.False(doc.RootElement.GetProperty("executed").GetBoolean());
+    }
+
+    [Fact]
     public void Analyze_DoesNotRunWriteFile()
     {
         var dir = CreateTempDirectory("malda_check_side_");

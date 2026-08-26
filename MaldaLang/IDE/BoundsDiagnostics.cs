@@ -54,8 +54,9 @@ public static class BoundsDiagnostics
 
         diagnostics.Add(new Diagnostic
         {
-            Line = decorator.Line,
-            Column = decorator.Column,
+            // LanguageService / LSP / Desktop IDE all use 0-based coordinates.
+            Line = Math.Max(0, decorator.Line - 1),
+            Column = Math.Max(0, decorator.Column - 1),
             Severity = DiagnosticSeverity.Error,
             Source = "malda-bounds",
             Message = $"@within on '{name}' expects a single positive integer literal (milliseconds)."
@@ -130,8 +131,9 @@ public static class BoundsDiagnostics
     private static Diagnostic BoundsError(Decorator decorator, string message) =>
         new()
         {
-            Line = decorator.Line,
-            Column = decorator.Column,
+            // LanguageService / LSP / Desktop IDE all use 0-based coordinates.
+            Line = Math.Max(0, decorator.Line - 1),
+            Column = Math.Max(0, decorator.Column - 1),
             Severity = DiagnosticSeverity.Error,
             Source = "malda-bounds",
             Message = message

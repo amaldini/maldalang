@@ -73,8 +73,9 @@ public static class PromptGatherDiagnostics
         {
             diagnostics.Add(new Diagnostic
             {
-                Line = gatherLine,
-                Column = gatherColumn,
+                // LanguageService / LSP / Desktop IDE all use 0-based coordinates.
+                Line = Math.Max(0, gatherLine - 1),
+                Column = Math.Max(0, gatherColumn - 1),
                 Severity = DiagnosticSeverity.Error,
                 Source = "malda-prompt",
                 Message = $"Prompt '{prompt.Name}' uses gather: which requires a -> Type extract target (schema, sum type, or program(Api)).",
@@ -87,8 +88,8 @@ public static class PromptGatherDiagnostics
         {
             diagnostics.Add(new Diagnostic
             {
-                Line = gatherLine,
-                Column = gatherColumn,
+                Line = Math.Max(0, gatherLine - 1),
+                Column = Math.Max(0, gatherColumn - 1),
                 Severity = DiagnosticSeverity.Error,
                 Source = "malda-prompt",
                 Message = $"Prompt '{prompt.Name}' cannot list both gather: and tools:. Use gather: with -> Type for two-phase extract, or tools: for Mode B.",

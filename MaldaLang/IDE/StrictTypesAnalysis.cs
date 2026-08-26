@@ -62,7 +62,8 @@ public static class StrictTypesAnalysis
                 continue;
 
             var source = string.IsNullOrEmpty(diagnostic.Source) ? "strict-types" : diagnostic.Source;
-            lines.Add($"{source}: line {diagnostic.Line}, column {diagnostic.Column}: {diagnostic.Message}");
+            // Diagnostic.Line/Column are 0-based (LanguageService / LSP); console output is 1-based.
+            lines.Add($"{source}: line {diagnostic.Line + 1}, column {diagnostic.Column + 1}: {diagnostic.Message}");
         }
 
         return string.Join(Environment.NewLine, lines);
