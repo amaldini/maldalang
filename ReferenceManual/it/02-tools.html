@@ -84,11 +84,16 @@ malda --eval "&lt;code&gt;"</code></pre>
 
         <p>Legge ed esegue il codice dallo standard input.</p>
 
-        <h4>Validare solo la sintassi</h4>
+        <h4>Diagnosticare senza eseguire</h4>
 
+        <pre><code>malda check app.malda
+malda check app.malda --json
+malda check -e "&lt;code&gt;" --json</code></pre>
+
+        <p><code>malda check</code> usa le stesse diagnostiche <code>LanguageService</code> di IDE e LSP (parser, type hint, nomi schema / sum type, interpolazione, loop UI, determinismo dei workflow) e <strong>non esegue</strong> il programma. La gravità predefinita dei type mismatch è quella dell'IDE (Error). <code>--strict-types</code> aggiunge match / <code>@pure</code> / bounds / const; <code>--lenient-types</code> trasforma i type mismatch in warning. Exit <code>0</code> se non ci sono errori (i warning sono ammessi), <code>1</code> se qualche diagnostica è un error, <code>2</code> per usage o file mancanti.</p>
+        <p><code>--json</code> stampa un oggetto stabile per i loop generate → diagnose → patch: <code>ok</code>, <code>executed</code> (sempre <code>false</code>), <code>file</code>, <code>errorCount</code> / <code>warningCount</code> / <code>infoCount</code> e <code>diagnostics[]</code> con <code>line</code> / <code>column</code> 1-based, <code>code</code> (per esempio <code>parser</code>, <code>malda-schema</code>, <code>malda-interp</code>), <code>message</code>, opzionali <code>hint</code> / <code>suggestedFix</code> / <code>fix</code>.</p>
         <pre><code>malda --check "&lt;code&gt;"</code></pre>
-
-        <p>Valida la sintassi del codice fornito senza eseguirlo. Utile per il controllo della sintassi nelle pipeline CI/CD.</p>
+        <p><code>malda --check "&lt;code&gt;"</code> resta una validate del solo compiler (errori di parse, niente diagnostiche IDE). Per i loop degli agenti preferisci <code>malda check --json</code>.</p>
 
         <h3>2.1.3 Ottenere aiuto</h3>
 

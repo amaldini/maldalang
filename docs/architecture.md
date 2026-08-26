@@ -33,7 +33,7 @@ Interpret-mode debug core: [`MaldaLang/Interpreter/Debug/DebugSession.cs`](../Ma
 
 | Project | Responsibility |
 |---------|----------------|
-| `MaldaLang` | CLI (`malda`), lexer/parser/interpreter, builtins, shared `LanguageService`, `malda debug-adapter` (DAP stdio) |
+| `MaldaLang` | CLI (`malda`), lexer/parser/interpreter, builtins, shared `LanguageService`, `malda check` (diagnose without execute; `--json` for agents), `malda debug-adapter` (DAP stdio) |
 | `MaldaLang.Compiler` | C# / JS / PWA compile and publish orchestration; JS-mode `@shader()` → GLSL via `GlslTranspiler` |
 | `MaldaLang.UIHost` | Server-driven UI host support used by runtime / Desktop — see [`docs/ui-framework.md`](ui-framework.md) |
 | `MaldaLang.IDE` | Blazor **Web IDE** (playground) |

@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (PATCH — malda check --json)
+
+- **`malda check`:** parse + IDE/`LanguageService` diagnostics without executing (parser, type hints, schema/sum-type names, interpolation, UI loop, workflow determinism). `--json` emits `{ ok, executed: false, file, errorCount, warningCount, infoCount, diagnostics[] }` with 1-based `line`/`column`. Default type-mismatch severity matches the IDE (Errors); `--strict-types` is the full CLI suite; `--lenient-types` keeps mismatches as warnings. Exit 0 with warnings-only, 1 if any error, 2 on usage/I/O. `malda --check "<code>"` remains syntax-only compiler Validate.
+
 #### Added (MINOR — asVariant)
 
 - **`asVariant(typeName, value)`:** coerce a tagged dict (JSON wire `{ "tag": "Buy", … }`) into a sum-type variant for `match`. `validate("Intent", dict)` still returns the original dict. An already-built variant is returned as-is when its tag belongs to the type. Throws on a non-sum schema, unknown tag, or payload that fails the sum-type JSON Schema (same rules as typed-prompt coerce). Interpreter and C# transpile agree. JavaScript: `mlRuntime.schema.asVariant` (tag + constructor param order; payload-type checks stay as weak as JS `validate`). Example: `Examples/Basics/as_variant.malda`. Few-shot: `docs/llm/few-shot/25_as_variant.malda`.
@@ -384,6 +388,7 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-08-22 | PATCH: Maldanoid example adopts G1/G2/G3/G5 helpers (`startFixed`, overlap, input edges, save/load) |
 | 2026-08-22 | PATCH: Maldanoid feel pass (depenetration, sparks, serve aim, result panels) |
 | 2026-08-25 | MINOR: `asVariant(typeName, value)` coerces tagged dicts to sum-type variants |
+| 2026-08-26 | PATCH: `malda check --json` diagnose-without-execute for agent loops |
 | 2026-08-21 | MINOR: JS `game.loadImage` / camera / draw extras (G1) |
 | 2026-08-21 | MINOR: JS `game.wasKeyPressed` / touches / gamepad (G2) |
 | 2026-08-21 | MINOR: JS `game.overlapRect` / circle / point queries (G3) |

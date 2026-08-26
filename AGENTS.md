@@ -23,6 +23,7 @@ Do not mix them: repo rules are not a substitute for the language pack.
 
 ```bash
 dotnet build MaldaLang.sln
+dotnet run --project MaldaLang -- check Examples/Basics/hello_world.malda --json
 dotnet run --project MaldaLang -- Examples/Basics/hello_world.malda
 ```
 
