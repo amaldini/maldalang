@@ -40,7 +40,7 @@ claim a program works.
 | `memory.query(...)` hits used as if `match` / `validate` could see citations | Query returns an **array of nodes**. Provenance stays on the side until you wrap it. | `grounded.wrap(answer, citations)` or opt-in `memory.ask(...)` / `query(..., { grounded: true })` — `{ value, citations, sourced }`. Not a `Grounded` keyword. Example: `Examples/Memory/grounded_ask.malda` |
 | `@effects("io")` on a tool that takes a path string | The decorator is a **name allow-list**. The model can still pass `"/etc/passwd"`. | Mint `cap.fileRead("notes.md")` and pass the token; `cap.read` rejects strings and forged `{ kind, path }` dicts. Example: `Examples/Tools/capability_tokens.malda` |
 | `MALDA_AGENT_CONTEXT_BUDGET_TOKENS=4000` expecting a hard abort | Env var only **trims** agent context for undeclared agents. It does not throw. | `@budget(tokens: 4000, tools: 8)` on the prompt or function — abort with a dedicated message when the bound trips |
-| `prompt p() -> MySchema { tools: [...]; … }` expecting structured `response_format` | For v1, **tools and `response_format` are mutually exclusive**. With `tools:`, MALDA omits OpenAI `response_format` **and** the `MALDA_OUTPUT_SCHEMA` appendix. On **`await`**, validate + repair still run if `-> Type` is set (harder for local models without the appendix). `tools:` is **not** two LLM calls. | Mode A: omit tools for typed structured output (`Examples/Prompts/schema_prompt_structured.malda`). Mode C: one prompt with `gather: [...]` and `-> Type` (`Examples/Prompts/prompt_tools_then_structured.malda`) |
+| `prompt p() -> MySchema { tools: [...]; … }` expecting structured `response_format` | For v1 this used to omit format and appendix. Now MALDA **sends both with tools**. Some backends reject `tools` + `json_schema`; the host retries once without format (keeps tools) and remembers that backend. `tools:` is **not** two LLM calls. | Mode A: omit tools (`Examples/Prompts/schema_prompt_structured.malda`). Mode B: one call, structured-if-supported (`Examples/Prompts/prompt_tools_mode.malda`). Mode C: `gather:` + `-> Type` (`Examples/Prompts/prompt_tools_then_structured.malda`) |
 | Treating `-> Type` as compile-time typing | Hints are not static types. On **`await`**, the runtime validates JSON against the resolved schema (and may send OpenAI `response_format`). Without `await`, you only build a `PromptInstance`. | Prefer `schema Name { … }` + `await prompt(...) -> Name`; see `Examples/Prompts/schema_prompt_structured.malda` |
 | Sum-type prompt returning a plain object | `prompt p() -> Intent` with `type Intent = …` coerces JSON into a **variant**. Object field access like `intent.tag` is wrong. | Use `match intent { case Buy(sku, qty): … }`. Wire JSON must be `{ "tag": "Buy", …payload }` |
 | Same name for `schema Foo` and `type Foo` | Registration throws — a name cannot be both. | Pick one spelling / rename one of them |
@@ -119,15 +119,15 @@ you want an integer value, not only an integer-accepting call.
 the language server reports both as deprecated. Prefer `math.sqrt(16)`. See the namespace
 rule in [`malda-syntax.md`](malda-syntax.md).
 
-**Typed prompts send `response_format` only to OpenAI-compatible chat APIs.** Llama.cpp
-clients accept the parameter and ignore it. For every typed prompt with **no tools**, MALDA
-also appends a compact **schema appendix** to the system message so local models still
-see the expected shape. Validation + repair retries still run after the reply (even when
-tools are listed — only format/appendix are gated). If a backend rejects `response_format`,
-the host retries once without it. Supported modes: **A** typed structured (no tools);
-**B** tools listed (no format/appendix); **C** sequence — tools prompt then typed prompt
-without tools — see `Examples/Prompts/prompt_tools_mode.malda` and
-`prompt_tools_then_structured.malda`.
+**Typed prompts send `response_format` to OpenAI-compatible chat APIs** when `-> Type` is set
+and the body is not a Mode C `gather:` instance. Llama.cpp clients accept the parameter and
+ignore it. MALDA also appends a compact **schema appendix** to the system message so local
+models still see the expected shape. Validation + repair retries still run after the reply.
+If a backend rejects `response_format` (including tools + `json_schema`), the host retries
+once without it (keeps tools) and remembers that backend. Supported modes: **A** typed
+structured (no tools); **B** tools listed, structured-if-supported (one call);
+**C** `gather:` then a typed extract without tools — see
+`Examples/Prompts/prompt_tools_mode.malda` and `prompt_tools_then_structured.malda`.
 
 ## Before you say it works
 

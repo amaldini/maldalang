@@ -226,10 +226,12 @@ public partial class PromptValue
                     arguments);
             }
 
-            var hasTools = tools != null && tools.Count > 0;
             var hasGather = gather != null && gather.Count > 0;
             RuntimeValue? responseFormatSchema = null;
-            if (!string.IsNullOrWhiteSpace(Declaration.ReturnType) && !hasTools && !hasGather)
+            // Mode A and Mode B: attach response_format + appendix when -> Type is set.
+            // Mode C gather stays unconstrained (extract step attaches schema after tools).
+            // If a backend rejects tools+json_schema, LLMClient retries once without format.
+            if (!string.IsNullOrWhiteSpace(Declaration.ReturnType) && !hasGather)
             {
                 if (TypedPromptSchemaResolver.TryResolve(Declaration.ReturnType!, interpreter, out var schema, out _))
                 {

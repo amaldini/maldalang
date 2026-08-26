@@ -30,6 +30,8 @@ public class LocalServerAdapter : IBackendAdapter
     
     public RuntimeValue Chat(RuntimeValue messages, RuntimeValue? tools, RuntimeValue? responseFormat = null, LlmRequestOverrides? overrides = null)
     {
+        var model = overrides?.Model;
+        var formatToSend = LLMClientInstance.EffectiveResponseFormat(_serverUrl, model, responseFormat);
         try
         {
             if (messages.Type != ValueType.Array)
@@ -165,10 +167,10 @@ public class LocalServerAdapter : IBackendAdapter
                     requestBody["tools"] = toolsList;
             }
 
-            // Add response_format when provided (e.g. for typed prompts)
-            if (responseFormat != null && responseFormat.Type == ValueType.Object)
+            // Add response_format when provided (e.g. for typed prompts / Mode B if supported)
+            if (formatToSend != null && formatToSend.Type == ValueType.Object)
             {
-                var formatObj = JsonToObject(responseFormat);
+                var formatObj = JsonToObject(formatToSend);
                 if (formatObj != null)
                     requestBody["response_format"] = formatObj;
             }
@@ -193,9 +195,10 @@ public class LocalServerAdapter : IBackendAdapter
                 var errorObj = new JsonObject();
                 errorObj.Set("content", RuntimeValue.String($"Error: Server request failed with status {response.StatusCode}. Response: {responseContent}"));
                 var err = RuntimeValue.Object(errorObj);
-                if (LLMClientInstance.ShouldRetryWithoutResponseFormat(responseFormat, err, exceptionMessage: null))
+                if (LLMClientInstance.ShouldRetryWithoutResponseFormat(formatToSend, err, exceptionMessage: null))
                 {
                     LLMClientInstance.WarnResponseFormatRejectedOnce();
+                    LLMClientInstance.RememberResponseFormatRejected(_serverUrl, model);
                     return Chat(messages, tools, responseFormat: null, overrides);
                 }
                 return err;
@@ -263,11 +266,12 @@ public class LocalServerAdapter : IBackendAdapter
         }
         catch (Exception ex)
         {
-            if (LLMClientInstance.ShouldRetryWithoutResponseFormat(responseFormat, result: null, exceptionMessage: ex.Message))
+            if (LLMClientInstance.ShouldRetryWithoutResponseFormat(formatToSend, result: null, exceptionMessage: ex.Message))
             {
                 try
                 {
                     LLMClientInstance.WarnResponseFormatRejectedOnce();
+                    LLMClientInstance.RememberResponseFormatRejected(_serverUrl, model);
                     return Chat(messages, tools, responseFormat: null, overrides);
                 }
                 catch (Exception retryEx)

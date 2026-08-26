@@ -1614,7 +1614,7 @@ public class LanguageService : ILanguageService
             TokenType.While => "**while** — Loop while condition is true.\n\n`while (condition) { ... }`",
             TokenType.If => "**if** — Conditional execution.\n\n`if (condition) { ... } else { ... }`",
             TokenType.Workflow => "**workflow** — Durable workflow declaration.\n\n`workflow Name(input) { ... }`",
-            TokenType.Prompt => "**prompt** — Reusable LLM prompt template.\n\n`prompt Name(params) -> Type? { gather: [\"read_file\"]; system: \"...\"; user: \"...\" }`\n\n`gather:` + `-> Type` is Mode C (tool round, then typed extract). Plain `tools:` stays Mode B.",
+            TokenType.Prompt => "**prompt** — Reusable LLM prompt template.\n\n`prompt Name(params) -> Type? { gather: [\"read_file\"]; system: \"...\"; user: \"...\" }`\n\n`gather:` + `-> Type` is Mode C (tool round, then typed extract). Plain `tools:` stays Mode B (structured-if-supported: format + appendix with tools; retry without format if the backend rejects it).",
             TokenType.Step => "**step** — Durable step boundary with journaling and replay semantics.\n\n`step stepName = call() retry 2 timeout 1000;`",
             TokenType.Approval => "**approval** — Pause workflow until externally approved/rejected.\n\n`approval gate = approval(\"manager\", payload) timeout 60000;`",
             TokenType.Wait => "**wait/awaitSignal** — Pause workflow until a named signal arrives.\n\n`wait docs = awaitSignal(\"docs_uploaded\", payload) timeout 60000;`",

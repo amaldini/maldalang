@@ -80,6 +80,7 @@ public class PromptGatherTests : TestBase
             print("gather=" + toJSON(inst.gather));
             print("tools=" + toJSON(inst.tools));
             print("user=" + inst.user);
+            print("system=" + inst.system);
             """);
 
         Assert.Contains("gather=", output);
@@ -87,6 +88,7 @@ public class PromptGatherTests : TestBase
         Assert.Contains("grep", output);
         Assert.Contains("tools=null", output);
         Assert.Contains("Question: What is Mode C?", output);
+        Assert.DoesNotContain("MALDA_OUTPUT_SCHEMA", output);
         Assert.DoesNotContain("after 3 attempts", output);
     }
 
@@ -94,7 +96,8 @@ public class PromptGatherTests : TestBase
     public void InvokePrompt_ModeB_ToolsUnchanged_GatherIsNull()
     {
         var output = RunProgram("""
-            prompt researchWithTools(topic) -> Plan {
+            schema Note { text: string; }
+            prompt researchWithTools(topic) -> Note {
                 system: "Research assistant.",
                 user: "Investigate: {topic}",
                 tools: ["read_file", "grep"]
@@ -103,10 +106,12 @@ public class PromptGatherTests : TestBase
             var inst = researchWithTools("binding");
             print("tools=" + toJSON(inst.tools));
             print("gather=" + toJSON(inst.gather));
+            print("system=" + inst.system);
             """);
 
         Assert.Contains("read_file", output);
         Assert.Contains("gather=null", output);
+        Assert.Contains("MALDA_OUTPUT_SCHEMA", output);
     }
 
     [Fact]
@@ -276,6 +281,41 @@ public class PromptGatherTests : TestBase
     }
 
     [Fact]
+    public void Transpiler_ModeBTools_EmitsResponseFormatAndAppendix()
+    {
+        var source = """
+            schema Note { text: string; }
+            prompt research(q) -> Note {
+                tools: ["read_file"];
+                user: q;
+            }
+            var inst = research("x");
+            print(inst.user);
+            """;
+
+        var tempDir = Path.Combine(Path.GetTempPath(), "malda_mode_b_prompt_tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        var sourcePath = Path.Combine(tempDir, "mode_b.malda");
+        var generatedPath = Path.Combine(tempDir, "GeneratedProgram.cs");
+        File.WriteAllText(sourcePath, source);
+
+        try
+        {
+            var compiler = new Compiler.Compiler();
+            var csharpResult = compiler.CompileToCSharp(sourcePath, generatedPath);
+            Assert.True(csharpResult.Success, csharpResult.ErrorMessage ?? "Transpile to C# failed.");
+            var generated = File.ReadAllText(generatedPath);
+            Assert.Contains("__responseFormatSchema", generated);
+            Assert.Contains("ApplySchemaAppendix", generated);
+            Assert.DoesNotContain("(tools == null || tools.Count == 0) && (gather == null || gather.Count == 0)", generated);
+        }
+        finally
+        {
+            try { Directory.Delete(tempDir, true); } catch { }
+        }
+    }
+
+    [Fact]
     public void OfflineExample_RunsWithoutLlm()
     {
         var examplePath = PlanningPaths.ResolveRepoFile("Examples", "Prompts", "prompt_tools_then_structured.malda");
@@ -284,6 +324,17 @@ public class PromptGatherTests : TestBase
         Assert.Contains("gather=", output);
         Assert.Contains("read_file", output);
         Assert.Contains("tools=null", output);
+    }
+
+    [Fact]
+    public void OfflineExample_ModeB_AttachesSchemaAppendix()
+    {
+        var examplePath = PlanningPaths.ResolveRepoFile("Examples", "Prompts", "prompt_tools_mode.malda");
+        var source = File.ReadAllText(examplePath);
+        var output = RunProgram(source);
+        Assert.Contains("tools=", output);
+        Assert.Contains("read_file", output);
+        Assert.Contains("hasSchemaAppendix=yes", output);
     }
 
     private static System.Collections.Generic.List<Diagnostic> Analyze(string source)
