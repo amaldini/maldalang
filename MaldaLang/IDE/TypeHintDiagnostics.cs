@@ -126,8 +126,8 @@ public static class TypeHintDiagnostics
             Message = elevate
                 ? $"Unknown type hint '{typeName}' on {context}."
                 : $"Unknown type hint '{typeName}' on {context}. Hints are informational until type errors are enabled.",
-            Line = line,
-            Column = column,
+            Line = Math.Max(0, line - 1),
+            Column = Math.Max(0, column - 1),
             Length = typeName.Length,
             Source = "malda-types"
         });

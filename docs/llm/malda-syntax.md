@@ -56,6 +56,9 @@ Compact rules for generating correct `.malda`. Prefer this over scraping HTML ma
   Args must be JSON numbers (not `"2"`) or `"$alias"`; nested `{call,args}`, TypeChat `@func`/`@ref`,
   and `{type,value}` wrappers are flattened/coerced. Unique call aliases (`add` → `_add`, `+` → add)
   and bare `t0` (without `$`) are resolved. Leftover objects in args are rejected.
+- After generating a file, run **`malda check path.malda --json`** before `malda path.malda`.
+  It does not execute: parse + IDE diagnostics (parser, types, schema names, interpolation).
+  `ok: false` means fix `diagnostics[]` (1-based `line`/`column`) and check again.
 - Interpolate with a **`$`-prefixed** string: `$"total: {n}"`, `$"{a} of {b}"`. The braces
   take any expression (`{n * 2}`, `{math.sqrt(x)}`, `{items[0]}`), and `$` strings compose
   with `AnsiConsole` markup. A plain string does **not** interpolate — `"total: {n}"` prints

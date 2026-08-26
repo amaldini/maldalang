@@ -118,8 +118,9 @@ public static class ConstImmutabilityDiagnostics
             case IdentifierExpression id when scope.Contains(id.Name):
                 diagnostics.Add(new Diagnostic
                 {
-                    Line = line,
-                    Column = column,
+                    // LanguageService / LSP / Desktop IDE all use 0-based coordinates.
+                    Line = Math.Max(0, line - 1),
+                    Column = Math.Max(0, column - 1),
                     Severity = DiagnosticSeverity.Error,
                     Source = "malda-const",
                     Message = $"Cannot assign to const '{id.Name}'."

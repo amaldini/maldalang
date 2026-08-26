@@ -223,6 +223,13 @@ class Program
                 SystemEnvironment.Exit(exitCode);
                 return;
             }
+            else if (firstArg == "check")
+            {
+                var runner = new CheckCommandRunner();
+                var exitCode = runner.Run(args.Skip(1).ToArray(), Console.Out, Console.Error);
+                SystemEnvironment.Exit(exitCode);
+                return;
+            }
             else if (firstArg == "new")
             {
                 NewCommand(args);
@@ -3989,6 +3996,7 @@ class Program
         Console.WriteLine("  play        Compile a .malda file to JavaScript and serve a local canvas/JS preview");
         Console.WriteLine();
         Console.WriteLine("Build, test, and ship:");
+        Console.WriteLine("  check       Diagnose a .malda file without executing (add --json for agents)");
         Console.WriteLine("  compile     Compile a MALDA file to exe, dll, js, pwa, or fullstack output");
         Console.WriteLine("  test        Discover and run MALDA tests");
         Console.WriteLine("  db          Inspect, migrate, seed, and roll back scaffolded local-first SQLite state");
@@ -4013,6 +4021,7 @@ class Program
         Console.WriteLine("  help        Show top-level help or help for a specific command");
         Console.WriteLine();
         Console.WriteLine("Examples:");
+        Console.WriteLine("  malda check app.malda --json");
         Console.WriteLine("  malda doctor");
         Console.WriteLine("  malda new webapi my-api");
         Console.WriteLine("  malda new fullstack sales-portal --local-first");
@@ -4038,6 +4047,9 @@ class Program
         var normalized = command.Trim().ToLowerInvariant();
         switch (normalized)
         {
+            case "check":
+                CheckCommandRunner.PrintUsage(Console.Out);
+                return true;
             case "doctor":
                 DoctorCommandRunner.PrintUsage(Console.Out);
                 return true;

@@ -42,6 +42,7 @@ dotnet build MaldaLang.Tests/MaldaLangTests.csproj
 4. Run a smoke example:
 
 ```bash
+dotnet run --project MaldaLang -- check Examples/Basics/hello_world.malda --json
 dotnet run --project MaldaLang -- Examples/Basics/hello_world.malda
 ```
 
@@ -51,6 +52,7 @@ Stable CLI output (any OS):
 dotnet build MaldaLang -o artifacts/malda-cli
 # Windows: artifacts/malda-cli/malda.exe
 # Linux/macOS: artifacts/malda-cli/malda
+artifacts/malda-cli/malda check Examples/Basics/hello_world.malda --json
 artifacts/malda-cli/malda Examples/Basics/hello_world.malda
 ```
 

@@ -30,7 +30,15 @@ Use this folder when an LLM should **author or review `.malda` source**, not whe
 
 ## Smoke-check generated code
 
-From a distribution unzip (or with `malda` / `malda.bat` on your `PATH`):
+Diagnose **without executing** first (parse + IDE diagnostics, including schema names
+and interpolation warnings). `--json` is the generate → diagnose → patch loop:
+
+```bash
+malda check path/to/program.malda --json
+# Windows zip root: .\malda.bat check path\to\program.malda --json
+```
+
+From a distribution unzip (or with `malda` / `malda.bat` on your `PATH`), then run:
 
 ```bash
 malda path/to/program.malda
@@ -40,6 +48,7 @@ malda path/to/program.malda
 From a full source checkout:
 
 ```bash
+dotnet run --project MaldaLang -- check path/to/program.malda --json
 dotnet run --project MaldaLang -- path/to/program.malda
 ```
 

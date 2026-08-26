@@ -247,8 +247,9 @@ public static class MatchExhaustivenessDiagnostics
             Message =
                 $"Non-exhaustive match on sum type '{sumTypeName}': missing case(s) {string.Join(", ", missing)}. " +
                 "Add variant cases or a default branch.",
-            Line = match.Line,
-            Column = match.Column,
+            // LanguageService / LSP / Desktop IDE all use 0-based coordinates.
+            Line = Math.Max(0, match.Line - 1),
+            Column = Math.Max(0, match.Column - 1),
             Length = "match".Length,
             Source = "malda-match"
         });

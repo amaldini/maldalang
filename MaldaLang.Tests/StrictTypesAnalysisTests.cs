@@ -61,10 +61,13 @@ public class StrictTypesAnalysisTests
             };
             """;
         var diagnostics = Analyze(source, StrictTypesOptions.Enabled);
-        Assert.Contains(diagnostics, d =>
+        var match = Assert.Single(diagnostics, d =>
             d.Source == "malda-match" &&
             d.Severity == DiagnosticSeverity.Error &&
             d.Message.Contains("Err", StringComparison.Ordinal));
+        Assert.Equal(2, match.Line);
+        var formatted = StrictTypesAnalysis.FormatErrorsForConsole(diagnostics);
+        Assert.Contains("malda-match: line 3,", formatted, StringComparison.Ordinal);
     }
 
     [Fact]
