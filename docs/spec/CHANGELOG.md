@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — `malda new agent`)
+
+- **`malda new agent [directory]`:** fourth template beside `webapi` / `fullstack` / `game`. Emits `tools.malda` (`schema NoteArgs` + `validate` + `cap.confine` / `cap.read`), `app.malda` (host-mints `notes/` with `getProgramDirectory()`, `@Tool("read_note")`, offline demo), `notes/welcome.txt`, optional `tests/cap_tools.test.malda`, and `README.md`. Next step: `malda app.malda` (and `malda test`). No `config/environments`; `--local-first` is ignored. Tokens stay on the host — tool args are a relative path only. Few-shot: [`docs/llm/few-shot/26_tool_cap_read.malda`](../llm/few-shot/26_tool_cap_read.malda). Docs: [`docs/start-here.md`](../start-here.md) path “Build An AI App”. Template: `Templates/agent/`. Interpreter / C# transpile: n/a (host-only scaffold).
+
 #### Changed (MINOR — Mode B structured-if-supported)
 
 - **Mode B (`tools:` + `-> Type`):** send OpenAI `response_format` and the `MALDA_OUTPUT_SCHEMA` appendix together with tools (one LLM call, not a silent Mode C rewrite). If the backend rejects tools+`json_schema`, the host retries once without format (keeps tools) and remembers that backend so later rounds skip the failed request. Mode C `gather:` is unchanged (tool round unconstrained, then a typed extract). Example: `Examples/Prompts/prompt_tools_mode.malda`.
@@ -393,6 +397,7 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-08-22 | PATCH: Maldanoid feel pass (depenetration, sparks, serve aim, result panels) |
 | 2026-08-25 | MINOR: `asVariant(typeName, value)` coerces tagged dicts to sum-type variants |
 | 2026-08-26 | MINOR: Mode B sends `response_format` with tools (retry/remember if rejected) |
+| 2026-08-27 | MINOR: `malda new agent` cap-confined tool scaffold |
 | 2026-08-21 | MINOR: JS `game.loadImage` / camera / draw extras (G1) |
 | 2026-08-21 | MINOR: JS `game.wasKeyPressed` / touches / gamepad (G2) |
 | 2026-08-21 | MINOR: JS `game.overlapRect` / circle / point queries (G3) |

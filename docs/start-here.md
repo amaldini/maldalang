@@ -52,7 +52,8 @@ Start with:
 
 1. `Examples/Prompts/basic_prompt.malda`
 2. `Examples/Prompts/prompt_with_agent.malda`
-3. `README.md` section `Creating Your First AI Agent`
+3. `malda new agent my-agent` then `malda app.malda` / `malda test` (offline `cap.*` file tool; no API key)
+4. `README.md` section `Creating Your First AI Agent`
 
 This path emphasizes **MALDA AI** on top of MALDA Core.
 
@@ -143,7 +144,7 @@ This path emphasizes **MALDA Workflow/Cloud**.
 
 - Run `Examples/Basics/first_look.malda` first if you want the characteristic constructs before a tutorial
 - Choose `Learn Programming` if the syntax is new
-- Choose `Build An AI App` if prompts and agents are your first priority
+- Choose `Build An AI App` if prompts and agents are your first priority (`malda new agent` for a cap-confined file tool)
 - Choose `Build An API Or Full-Stack App` if you want a scaffold you can extend immediately
 - Choose `Build a Browser Game` if you want a canvas `game.*` loop (`malda new game` / `malda play`, or `malda new game --fullstack` for scores)
 - Choose `Build Workflows` if durable operations are the main reason you are evaluating MALDA

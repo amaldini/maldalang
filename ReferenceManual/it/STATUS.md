@@ -20,11 +20,11 @@ python3 scripts/sync-reference-manual-it-status.py
 | 06-arrays.html | b598119e28050f87bbaac1fc4bcf0395ee0c0cbedc75cd672e332e0749b46891 |
 | 07-expressions.html | a02b92b83536b84867824f2b2685474eb37da44fc8c3554dd1b8049c19d51cf9 |
 | 08-control-structures.html | 7425713c057e77c207f1afa43f0bdf9c7674862de4bd015c8c5fcbc9200400bb |
-| 09-functions.html | d4f68a232e7abb6acc408d55b3f14f672a18fddc9c748936052dfbcadb18a50a |
+| 09-functions.html | be68f1e96804f0583f79f5693ab7ff6368821704293bc2a58a554a8bdb11e9ad |
 | 10-prompts.html | 965f3c90d327a8ccea9120617eb8b4aa4aa6599f9b7564c58e713786f2b720ab |
 | 11-classes-objects.html | 0702178b625a5b46cf42cc3d82eb54ae79d75cdea8084cf3217866cf265ed9e3 |
-| 12-input-output.html | f987187b3b7f5bcde4726b2e185d0c27944b43a71e3a193f6a1c520cb578fd25 |
-| 13-built-in-functions.html | cd7564363f81380165030579df2f03ea3504d19c99db4f9b7606a6d43dd4abd4 |
+| 12-input-output.html | 7cd6902d33bc08bc67e6cd078dc212d5d8bafffadd7be58db3591bd75456e60e |
+| 13-built-in-functions.html | 4010276a8d5f65a7cefd7b38494eb907199b8591fa80f27a802effabe0f148f6 |
 | 14-graphs.html | 58afbfc7e886bd1844c42a4afa250013289d040abb90c8d5813e85bfa6750773 |
 | 15-vectordb.html | 05a6a95520be77e820f9b95523e0d8cad81141d36942081807d43434a7826ec0 |
 | 16-database.html | 1c8702ed18890bf5bedd56dd559f3f7ddb37f6427afb60200b41951dbf31d832 |
@@ -44,7 +44,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 30-dotnet-interop.html | 9159160ba312c3f84561ef935c53c48e0ba9d0dbb917c7f0bb5c44b80a875adb |
 | 31-device-integration.html | 78f61ea699786d382e78e0fb3ed2730a2a817feb46910dc1adf775c5222b30b3 |
 | 32-personal-assistant.html | 9dd79858bd6d38d26033fd35f3a60ce37fcb1354c3e3398d14764e0f4054cf2c |
-| 33-examples.html | ee489b6b13baafc1a64a7a27d02227df5da0fb62c7ad4a537895d144b916d183 |
+| 33-examples.html | 778b7293c843d96b0e0dfcee1f6711c8cdcb3830c6c4c2f7818505005d422bca |
 | 34-property-testing.html | 08624f2e0d04526c837e1a123311e13a3ad687089b9bbc7ace3fe3eb24a1f1fe |
 | 35-grammar.html | d6e37109a0562a12de6652a7edcf93230f00b565d7b75ee7027b3678a7261288 |
 | 36-appendix.html | f53114822f6378e939ca5618b94808305ee8df8a23792f5d6a29b30f4936aec7 |

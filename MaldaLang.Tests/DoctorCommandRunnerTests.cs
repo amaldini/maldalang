@@ -201,4 +201,31 @@ public class DoctorCommandRunnerTests : TestBase
             SafeDeleteDirectory(root);
         }
     }
+
+    [Fact]
+    public void Run_AgentScaffold_DoesNotWarnAboutMissingDeployConfig()
+    {
+        var root = CreateTempDirectory("malda_doctor_agent_");
+        var project = Path.Combine(root, "sample-agent");
+        var home = Path.Combine(root, ".malda-home");
+        try
+        {
+            var scaffolder = new TemplateScaffolder();
+            Assert.Equal(0, scaffolder.Scaffold("agent", project, new StringWriter(), new StringWriter()));
+            Directory.CreateDirectory(home);
+
+            var output = new StringWriter();
+            var runner = new DoctorCommandRunner(home);
+            var code = runner.Run(System.Array.Empty<string>(), output, new StringWriter(), project);
+
+            Assert.Equal(0, code);
+            Assert.Contains("[ok] Project scaffold", output.ToString());
+            Assert.Contains("malda app.malda", output.ToString());
+            Assert.DoesNotContain("config/deploy.example.json", output.ToString());
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
+        }
+    }
 }

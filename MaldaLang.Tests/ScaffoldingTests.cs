@@ -337,6 +337,60 @@ public class ScaffoldingTests : TestBase
     }
 
     [Fact]
+    public void Scaffold_AgentTemplate_CreatesCapToolsAndNoEnvProfiles()
+    {
+        var root = CreateTempDirectory("malda_scaffold_agent_");
+        var destination = Path.Combine(root, "sample-agent");
+        try
+        {
+            var output = new StringWriter();
+            var error = new StringWriter();
+            var scaffolder = new TemplateScaffolder();
+
+            var code = scaffolder.Scaffold("agent", destination, output, error);
+
+            var text = output.ToString();
+            Assert.Equal(0, code);
+            Assert.True(File.Exists(Path.Combine(destination, "app.malda")));
+            Assert.True(File.Exists(Path.Combine(destination, "tools.malda")));
+            Assert.True(File.Exists(Path.Combine(destination, "notes", "welcome.txt")));
+            Assert.True(File.Exists(Path.Combine(destination, "README.md")));
+            Assert.True(File.Exists(Path.Combine(destination, "tests", "cap_tools.test.malda")));
+            Assert.False(Directory.Exists(Path.Combine(destination, "config", "environments")));
+            Assert.Contains("Created agent project", text);
+            Assert.Contains("malda test --format human", text);
+            Assert.Contains("malda app.malda", text);
+            Assert.DoesNotContain("malda play app.malda", text);
+            Assert.DoesNotContain("malda db", text);
+            Assert.DoesNotContain("Environment profiles generated", text);
+
+            var tools = File.ReadAllText(Path.Combine(destination, "tools.malda"));
+            Assert.Contains("schema NoteArgs", tools);
+            Assert.Contains("validate(\"NoteArgs\"", tools);
+            Assert.Contains("cap.confine", tools);
+            Assert.Contains("cap.read", tools);
+            Assert.DoesNotContain("io.readFile(args.path)", tools);
+            Assert.DoesNotContain("io.readFile(relativePath)", tools);
+
+            var app = File.ReadAllText(Path.Combine(destination, "app.malda"));
+            Assert.Contains("include \"tools.malda\"", app);
+            Assert.Contains("cap.fileRead", app);
+            Assert.Contains("@Tool(\"read_note\"", app);
+            Assert.Contains("getProgramDirectory()", app);
+            Assert.DoesNotContain("io.readFile(args.path)", app);
+
+            var welcome = File.ReadAllText(Path.Combine(destination, "notes", "welcome.txt"));
+            Assert.Contains("Welcome to your MALDA agent workspace.", welcome);
+            Assert.Contains("sample-agent", File.ReadAllText(Path.Combine(destination, "README.md")));
+            Assert.Equal(string.Empty, error.ToString());
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
+        }
+    }
+
+    [Fact]
     public void Scaffold_UnsupportedTemplate_ListsGame()
     {
         var root = CreateTempDirectory("malda_scaffold_unsupported_");
@@ -350,7 +404,7 @@ public class ScaffoldingTests : TestBase
             var code = scaffolder.Scaffold("desktop", destination, output, error);
 
             Assert.Equal(1, code);
-            Assert.Contains("webapi, fullstack, game", error.ToString());
+            Assert.Contains("webapi, fullstack, game, agent", error.ToString());
         }
         finally
         {

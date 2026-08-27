@@ -147,7 +147,7 @@ io.print(cap.is(notes, "fileRead"));</code></pre>
             <li>Consuma: <code>cap.read</code> / <code>cap.write</code> / <code>cap.list</code>, oppure passa il token a <code>io.readFile</code> / <code>io.writeFile</code> / <code>io.listDirectory</code>. I path stringa ordinari continuano a funzionare per il codice che non è un tool.</li>
             <li><code>cap.confine(token, relativePath)</code> restringe un token; i path fuori dal padre lanciano.</li>
         </ul>
-        <p>Contratto completo e un test con dict contraffatto: <a href="13-built-in-functions.html#capability-tokens">13.19.3</a> e <code>Examples/Tools/capability_tokens.malda</code>.</p>
+        <p>Contratto completo e un test con dict contraffatto: <a href="13-built-in-functions.html#capability-tokens">13.19.3</a> e <code>Examples/Tools/capability_tokens.malda</code>. Scaffold di primo contatto: <code>malda new agent</code>.</p>
 
         <h2>12.7 Ricerca nei file</h2>
         <p><code>io.glob(pattern, dirPath?)</code> trova i path. <code>io.grep(pattern, filePath)</code> cerca nei contenuti. Entrambi prendono un primo argomento obbligatorio e poi argomenti posizionali opzionali. Su un path mancante o una regex non valida restituiscono una <em>stringa di errore</em>, non una collezione — proteggi con <code>typeOf(result) == "string"</code>.</p>

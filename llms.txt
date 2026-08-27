@@ -52,6 +52,8 @@ Canonical reading order for tools and agents working on this repository.
 - Examples/Actors/
 - Templates/webapi/
 - Templates/fullstack/
+- Templates/game/
+- Templates/agent/
 
 ## Note
 

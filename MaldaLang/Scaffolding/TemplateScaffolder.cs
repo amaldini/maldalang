@@ -13,7 +13,7 @@ public sealed class TemplateScaffolder
     private static readonly Regex ConditionalSectionRegex = new(
         @"\{\{([#\^])([A-Z0-9_]+)\}\}(.*?)\{\{/([A-Z0-9_]+)\}\}",
         RegexOptions.Compiled | RegexOptions.Singleline);
-    private static readonly string[] TemplateNames = { "webapi", "fullstack", "game" };
+    private static readonly string[] TemplateNames = { "webapi", "fullstack", "game", "agent" };
 
     public IReadOnlyList<string> SupportedTemplates => TemplateNames;
 
@@ -60,7 +60,8 @@ public sealed class TemplateScaffolder
         var stats = CopyTemplateTree(sourceRoot, fullDestination, variables, options);
         var isGame = IsGameTemplate(normalizedTemplateName);
         var isGameFullstack = IsGameFullstack(normalizedTemplateName, options);
-        if (!isGame)
+        var skipEnv = SkipsEnvironmentProfiles(normalizedTemplateName);
+        if (!skipEnv)
         {
             var generatedProfiles = GenerateEnvironmentProfiles(fullDestination, variables);
             output.WriteLine($"Created {normalizedTemplateName} project at {fullDestination}");
@@ -96,7 +97,7 @@ public sealed class TemplateScaffolder
             output.WriteLine(normalizedTemplateName == "fullstack" ? "  malda backend/app.malda" : "  malda app.malda");
         }
 
-        if (options.LocalFirst && !isGame)
+        if (options.LocalFirst && !skipEnv)
         {
             output.WriteLine("  malda db status");
             output.WriteLine("  malda db migrate");
@@ -289,14 +290,24 @@ public sealed class TemplateScaffolder
             ["PROJECT_LOWER"] = projectName.ToLowerInvariant(),
             ["TEMPLATE_NAME"] = templateName,
             ["HAS_FRONTEND"] = string.Equals(templateName, "fullstack", StringComparison.OrdinalIgnoreCase) ? "true" : "false",
-            ["HAS_BACKEND"] = IsGameTemplate(templateName) ? "false" : "true",
-            ["LOCAL_FIRST"] = options.LocalFirst && !IsGameTemplate(templateName) ? "true" : "false"
+            ["HAS_BACKEND"] = SkipsEnvironmentProfiles(templateName) ? "false" : "true",
+            ["LOCAL_FIRST"] = options.LocalFirst && !SkipsEnvironmentProfiles(templateName) ? "true" : "false"
         };
     }
 
     private static bool IsGameTemplate(string templateName)
     {
         return string.Equals(templateName, "game", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsAgentTemplate(string templateName)
+    {
+        return string.Equals(templateName, "agent", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool SkipsEnvironmentProfiles(string templateName)
+    {
+        return IsGameTemplate(templateName) || IsAgentTemplate(templateName);
     }
 
     private static bool IsGameFullstack(string templateName, NewCommandOptions options)

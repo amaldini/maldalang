@@ -202,6 +202,9 @@ malda new game my-game
 # Scaffold a canvas game plus @GET/@POST scores
 malda new game my-scores --fullstack
 
+# Scaffold an offline cap-confined file-tool agent (no API key)
+malda new agent my-agent
+
 # Override generated project naming tokens
 malda new webapi my-api --name SalesPortal
 
@@ -210,7 +213,7 @@ malda new fullstack . --force
 
 # Skip tests scaffolding
 malda new webapi api-lite --no-tests</code></pre>
-        <p>Gli starter generati includono le convenzioni di default di <code>malda test</code>, pattern riutilizzabili di helper per la sicurezza, esempi di configurazione di baseline per sicurezza/rate-limit, file di profilo ambiente in <code>config/environments/</code> e config placeholder per deploy e osservabilità. Il template <code>game</code> salta quelle config HTTP; il passo successivo è <code>malda play app.malda</code>. <code>malda new game --fullstack</code> salta anch'esso le config HTTP e si compila con <code>--mode fullstack</code> invece di <code>malda play</code>.</p>
+        <p>Gli starter generati includono le convenzioni di default di <code>malda test</code>, pattern riutilizzabili di helper per la sicurezza, esempi di configurazione di baseline per sicurezza/rate-limit, file di profilo ambiente in <code>config/environments/</code> e config placeholder per deploy e osservabilità. Il template <code>game</code> salta quelle config HTTP; il passo successivo è <code>malda play app.malda</code>. <code>malda new game --fullstack</code> salta anch'esso le config HTTP e si compila con <code>--mode fullstack</code> invece di <code>malda play</code>. Il template <code>agent</code> salta anch'esso le config HTTP; il passo successivo è <code>malda app.malda</code> (<code>cap.fileRead</code> emesso sull'host per <code>notes/</code>, argomenti tool relativi, <code>cap.confine</code>).</p>
         <h2>33.12 Backend JavaScript (modalità API)</h2>
         <p>Compila il sorgente MALDA in JavaScript per il browser e usa l'API helper del DOM:</p>
         <pre><code>malda compile Examples/Web/js/hello_dom.malda --mode js -o Examples/Web/js/hello_dom.js

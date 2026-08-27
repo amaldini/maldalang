@@ -73,14 +73,15 @@ public class NewCommandOptionsParserTests
     }
 
     [Fact]
-    public void WriteUsage_IncludesGameTemplate()
+    public void WriteUsage_IncludesGameAndAgentTemplates()
     {
         var output = new StringWriter();
         NewCommandOptionsParser.WriteUsage(output);
         var text = output.ToString();
-        Assert.Contains("webapi|fullstack|game", text);
+        Assert.Contains("webapi|fullstack|game|agent", text);
         Assert.Contains("malda new game my-game", text);
         Assert.Contains("malda new game my-scores --fullstack", text);
+        Assert.Contains("malda new agent my-agent", text);
         Assert.Contains("--fullstack", text);
     }
 

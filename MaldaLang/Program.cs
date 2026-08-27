@@ -4027,6 +4027,7 @@ class Program
         Console.WriteLine("  malda new fullstack sales-portal --local-first");
         Console.WriteLine("  malda new game my-game");
         Console.WriteLine("  malda new game my-scores --fullstack");
+        Console.WriteLine("  malda new agent my-agent");
         Console.WriteLine("  malda play app.malda");
         Console.WriteLine("  malda db status");
         Console.WriteLine("  malda compile app.malda -o app.exe");

@@ -41,7 +41,7 @@ Interpret-mode debug core: [`MaldaLang/Interpreter/Debug/DebugSession.cs`](../Ma
 | `MaldaLang.LanguageServer` | LSP server process (`malda-lsp`; not DAP) |
 | `MaldaLang.TestLib` / `MaldaLang.Tests` | Shared test helpers and automated tests |
 | `vscode-malda` | VS Code / Cursor extension: LSP client + interpret-mode debugger type `malda` (`malda debug-adapter`) |
-| `Examples/`, `Templates/` | Samples and `malda new` scaffolds (`webapi`, `fullstack`, `game`) |
+| `Examples/`, `Templates/` | Samples and `malda new` scaffolds (`webapi`, `fullstack`, `game`, `agent`) |
 | `ReferenceManual/` | HTML language reference (English canonical; Italian in `ReferenceManual/it/`) |
 | `conformance/` | Spec / tier0 conformance assets |
 
@@ -103,4 +103,4 @@ Server-driven `ui.*` trees, patch protocol, and `MaldaLang.UIHost` wiring are do
 - Workflow determinism: fixed WF1001/WF1002 deny-list in [`BuiltInRegistry.GetWorkflowBehavior`](../MaldaLang/BuiltIns/BuiltInRegistry.cs); IDE same-file call-graph in [`WorkflowDeterminismDiagnostics`](../MaldaLang/IDE/WorkflowDeterminismDiagnostics.cs) (imported/unknown callees are WF1005 Info; not Temporal-style history detection).
 - Resource bounds: [`@within(ms)`](../MaldaLang/Interpreter/WithinBoundsContext.cs) for wall-clock; [`@budget(tokens, tools, cost?)`](../MaldaLang/Interpreter/ResourceBoundsContext.cs) for prompt/agent-turn abort (env `MALDA_AGENT_CONTEXT_BUDGET_TOKENS` remains context-trim only).
 - Grounded values: [`grounded.wrap`](../MaldaLang/BuiltIns/GroundedStdLib.cs) wraps a payload with `{ source, id?, span? }` citations; GraphMemory [`ask`](../MaldaLang/BuiltIns/GraphMemory.cs) / `query(..., { grounded: true })` is the opt-in ASK path. Not a `match`-visible kind.
-- Capability tokens: [`cap.fileRead`](../MaldaLang/BuiltIns/CapStdLib.cs) mints an unforgeable FileRead handle; `cap.read` / `io.readFile` consume it. Object literals cannot forge a token. `@effects("io")` stays a name allow-list.
+- Capability tokens: [`cap.fileRead`](../MaldaLang/BuiltIns/CapStdLib.cs) mints an unforgeable FileRead handle; `cap.read` / `io.readFile` consume it. Object literals cannot forge a token. `@effects("io")` stays a name allow-list. First-contact scaffold: `malda new agent` (`Templates/agent/`).

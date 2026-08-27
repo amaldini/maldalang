@@ -941,6 +941,7 @@ print(forged);</code></pre>
             <li><code>cap.is(value, kind?)</code> — true solo per un token reale. <code>cap.confine(token, relativePath)</code> restituisce un token più stretto dello stesso kind; i path fuori dal padre sollevano un'eccezione.</li>
             <li><code>io.readFile</code> / <code>io.writeFile</code> / <code>io.listDirectory</code> accettano anche un token corrispondente. I path stringa ordinari continuano a funzionare.</li>
             <li>Marca gli handler che emettono o consumano token con <code>@effects("cap")</code> (o elenca sia <code>"io"</code> sia <code>"cap"</code>). JavaScript può emettere / <code>is</code> / <code>confine</code>; il consumo dei file è solo host.</li>
+            <li>Non passare un token attraverso JSON LLM. Emetti la root del workspace sull'host e usa <code>cap.confine</code> su un path relativo dagli argomenti del tool. Scaffold: <code>malda new agent</code>.</li>
             <li>Esempio: <code>Examples/Tools/capability_tokens.malda</code>.</li>
         </ul>
         <h2>13.20 Pianificazione strutturata dei task</h2>
