@@ -3669,6 +3669,253 @@
         return best || sweepHit(false, 1, 0, 0, endX, endY);
       }
 
+      function resolveTileGrid(cells, options) {
+        const empty = optionHas(options, "empty") ? toFiniteNumber(options.empty, 0) : 0;
+        const out = optionHas(options, "out") ? toFiniteNumber(options.out, empty) : empty;
+        if (!Array.isArray(cells)) {
+          return { nested: false, cells: [], columns: 0, rows: 0, empty: empty, out: out };
+        }
+
+        const nested = cells.length > 0 && Array.isArray(cells[0]);
+        if (nested) {
+          let rows = optionHas(options, "rows")
+            ? Math.max(0, Math.floor(toFiniteNumber(options.rows, cells.length)))
+            : cells.length;
+          if (rows > cells.length) {
+            rows = cells.length;
+          }
+          let columns = optionHas(options, "columns")
+            ? Math.max(0, Math.floor(toFiniteNumber(options.columns, 0)))
+            : 0;
+          if (columns <= 0) {
+            let widest = 0;
+            for (let i = 0; i < rows; i++) {
+              const line = cells[i];
+              if (Array.isArray(line) && line.length > widest) {
+                widest = line.length;
+              }
+            }
+            columns = widest;
+          }
+          return { nested: true, cells: cells, columns: columns, rows: rows, empty: empty, out: out };
+        }
+
+        const columns = optionHas(options, "columns")
+          ? Math.max(0, Math.floor(toFiniteNumber(options.columns, 0)))
+          : 0;
+        if (columns <= 0) {
+          return { nested: false, cells: cells, columns: 0, rows: 0, empty: empty, out: out };
+        }
+        const rows = optionHas(options, "rows")
+          ? Math.max(0, Math.floor(toFiniteNumber(options.rows, 0)))
+          : Math.floor(cells.length / columns);
+        return { nested: false, cells: cells, columns: columns, rows: rows, empty: empty, out: out };
+      }
+
+      function tileGridId(grid, col, row) {
+        if (col < 0 || row < 0 || col >= grid.columns || row >= grid.rows) {
+          return grid.out;
+        }
+        if (grid.nested) {
+          const line = grid.cells[row];
+          if (!Array.isArray(line) || col >= line.length) {
+            return grid.out;
+          }
+          return toFiniteNumber(line[col], grid.out);
+        }
+        const index = (row * grid.columns) + col;
+        if (index < 0 || index >= grid.cells.length) {
+          return grid.out;
+        }
+        return toFiniteNumber(grid.cells[index], grid.out);
+      }
+
+      function resolveSolidSet(options) {
+        if (!optionHas(options, "solids") || !Array.isArray(options.solids)) {
+          return null;
+        }
+        const solidSet = new Set();
+        for (let i = 0; i < options.solids.length; i++) {
+          solidSet.add(toFiniteNumber(options.solids[i], 0));
+        }
+        return solidSet;
+      }
+
+      function tileIdIsSolid(id, grid, solidSet) {
+        if (solidSet) {
+          return solidSet.has(id);
+        }
+        return id !== grid.empty;
+      }
+
+      function tileAt(cells, col, row, options) {
+        const opts = options && typeof options === "object" ? options : {};
+        const grid = resolveTileGrid(cells, opts);
+        const cellX = Math.floor(toFiniteNumber(col, 0));
+        const cellY = Math.floor(toFiniteNumber(row, 0));
+        return tileGridId(grid, cellX, cellY);
+      }
+
+      function drawTiles(handle, cells, tileW, tileH, options) {
+        const context = ensureCanvasContext("drawTiles");
+        const record = resolveImageHandle(handle);
+        if (!record || !record.ready || !record.image) {
+          return null;
+        }
+
+        const cellW = toFiniteNumber(tileW, 0);
+        const cellH = toFiniteNumber(tileH, 0);
+        if (cellW <= 0 || cellH <= 0) {
+          return null;
+        }
+
+        const opts = options && typeof options === "object" ? options : {};
+        const grid = resolveTileGrid(cells, opts);
+        if (grid.columns <= 0 || grid.rows <= 0) {
+          return null;
+        }
+
+        const originX = optionNumber(opts, "x", 0);
+        const originY = optionNumber(opts, "y", 0);
+        const sourceWidth = Math.max(0, optionNumber(opts, "srcW", cellW));
+        const sourceHeight = Math.max(0, optionNumber(opts, "srcH", cellH));
+        if (sourceWidth <= 0 || sourceHeight <= 0) {
+          return null;
+        }
+
+        const firstId = optionHas(opts, "firstId") ? toFiniteNumber(opts.firstId, 1) : 1;
+        const atlasColumns = optionHas(opts, "atlasColumns")
+          ? Math.max(1, Math.floor(toFiniteNumber(opts.atlasColumns, 1)))
+          : Math.max(1, Math.floor(record.width / sourceWidth));
+
+        let colStart = 0;
+        let colEnd = grid.columns - 1;
+        let rowStart = 0;
+        let rowEnd = grid.rows - 1;
+        const canvasW = state.canvas ? state.canvas.width : 0;
+        const canvasH = state.canvas ? state.canvas.height : 0;
+        if (canvasW > 0 && canvasH > 0) {
+          const zoom = currentZoom();
+          const viewLeft = state.cameraX;
+          const viewTop = state.cameraY;
+          const viewRight = viewLeft + (canvasW / zoom);
+          const viewBottom = viewTop + (canvasH / zoom);
+          colStart = Math.floor((viewLeft - originX) / cellW) - 1;
+          colEnd = Math.floor((viewRight - originX) / cellW) + 1;
+          rowStart = Math.floor((viewTop - originY) / cellH) - 1;
+          rowEnd = Math.floor((viewBottom - originY) / cellH) + 1;
+          if (colStart < 0) colStart = 0;
+          if (rowStart < 0) rowStart = 0;
+          if (colEnd >= grid.columns) colEnd = grid.columns - 1;
+          if (rowEnd >= grid.rows) rowEnd = grid.rows - 1;
+        }
+        if (colStart > colEnd || rowStart > rowEnd) {
+          return null;
+        }
+
+        applyDrawStyle(context);
+        for (let row = rowStart; row <= rowEnd; row++) {
+          for (let col = colStart; col <= colEnd; col++) {
+            const id = tileGridId(grid, col, row);
+            if (id === grid.empty) {
+              continue;
+            }
+            const atlasIndex = id - firstId;
+            if (!(atlasIndex >= 0) || !Number.isFinite(atlasIndex)) {
+              continue;
+            }
+            const index = Math.floor(atlasIndex);
+            const sx = (index % atlasColumns) * sourceWidth;
+            const sy = Math.floor(index / atlasColumns) * sourceHeight;
+            try {
+              context.drawImage(
+                record.image,
+                sx,
+                sy,
+                sourceWidth,
+                sourceHeight,
+                worldX(originX + (col * cellW)),
+                worldY(originY + (row * cellH)),
+                worldSize(cellW, 0),
+                worldSize(cellH, 0)
+              );
+            } catch (_error) {
+              // Decode races and detached bitmaps are ignored on the hot path.
+            }
+          }
+        }
+        return null;
+      }
+
+      function sweepTiles(x, y, w, h, dx, dy, cells, tileW, tileH, options) {
+        const ax = toFiniteNumber(x, 0);
+        const ay = toFiniteNumber(y, 0);
+        const aw = toFiniteNumber(w, 0);
+        const ah = toFiniteNumber(h, 0);
+        const adx = toFiniteNumber(dx, 0);
+        const ady = toFiniteNumber(dy, 0);
+        const cellW = toFiniteNumber(tileW, 0);
+        const cellH = toFiniteNumber(tileH, 0);
+        const endX = ax + adx;
+        const endY = ay + ady;
+        if (aw <= 0 || ah <= 0 || cellW <= 0 || cellH <= 0) {
+          return sweepHit(false, 1, 0, 0, endX, endY);
+        }
+
+        const opts = options && typeof options === "object" ? options : {};
+        const grid = resolveTileGrid(cells, opts);
+        const originX = optionNumber(opts, "x", 0);
+        const originY = optionNumber(opts, "y", 0);
+        const solidSet = resolveSolidSet(opts);
+
+        const minX = Math.min(ax, endX);
+        const minY = Math.min(ay, endY);
+        const maxX = Math.max(ax + aw, endX + aw);
+        const maxY = Math.max(ay + ah, endY + ah);
+        let col0 = Math.floor((minX - originX) / cellW) - 1;
+        let col1 = Math.floor((maxX - originX) / cellW) + 1;
+        let row0 = Math.floor((minY - originY) / cellH) - 1;
+        let row1 = Math.floor((maxY - originY) / cellH) + 1;
+
+        const maxSpan = 1024;
+        if (col1 - col0 > maxSpan) {
+          col1 = col0 + maxSpan;
+        }
+        if (row1 - row0 > maxSpan) {
+          row1 = row0 + maxSpan;
+        }
+
+        let best = null;
+        for (let row = row0; row <= row1; row++) {
+          for (let col = col0; col <= col1; col++) {
+            const id = tileGridId(grid, col, row);
+            if (!tileIdIsSolid(id, grid, solidSet)) {
+              continue;
+            }
+            const next = sweepRect(
+              ax,
+              ay,
+              aw,
+              ah,
+              adx,
+              ady,
+              originX + (col * cellW),
+              originY + (row * cellH),
+              cellW,
+              cellH
+            );
+            if (!next.hit) {
+              continue;
+            }
+            if (!best || next.t < best.t) {
+              best = next;
+            }
+          }
+        }
+
+        return best || sweepHit(false, 1, 0, 0, endX, endY);
+      }
+
       function isKeyDown(key) {
         return state.keysDown.has(normalizeKey(key));
       }
@@ -4391,6 +4638,7 @@
         drawImage,
         drawImageRect,
         drawImageEx,
+        drawTiles,
         createPixelBuffer,
         setPixel,
         blitPixels,
@@ -4400,6 +4648,8 @@
         pointInCircle,
         sweepRect,
         sweepRects,
+        tileAt,
+        sweepTiles,
         isKeyDown,
         wasKeyPressed,
         wasKeyReleased,

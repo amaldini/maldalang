@@ -475,6 +475,29 @@ public class JavaScriptBackendTests : TestBase
     }
 
     [Fact]
+    public void JsTranspiler_MapsGameTileApis_ToMlRuntimeGame()
+    {
+        var source = """
+            var id = game.tileAt(cells, 2, 1);
+            var idOut = game.tileAt(cells, 2, 1, { "columns": 8, "out": 9 });
+            game.drawTiles(atlas, cells, 16, 16);
+            game.drawTiles(atlas, cells, 32, 24, { "x": 8, "y": 40, "srcW": 16, "srcH": 16, "firstId": 1 });
+            var contact = game.sweepTiles(0, 0, 10, 10, 40, 0, cells, 16, 16);
+            var solidHit = game.sweepTiles(0, 0, 10, 10, 40, 0, cells, 16, 16, { "solids": [1], "x": 0, "y": 0 });
+            """;
+        var compiler = new Compiler.Compiler();
+
+        var js = compiler.TranspileToJavaScriptFromSource(source);
+
+        Assert.Contains("mlRuntime.game.tileAt(cells, 2, 1)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.tileAt(cells, 2, 1,", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.drawTiles(atlas, cells, 16, 16)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.drawTiles(atlas, cells, 32, 24,", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.sweepTiles(0, 0, 10, 10, 40, 0, cells, 16, 16)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.sweepTiles(0, 0, 10, 10, 40, 0, cells, 16, 16,", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void JsTranspiler_MapsGamePixelBufferApis_ToMlRuntimeGame()
     {
         var source = """
@@ -670,6 +693,7 @@ public class JavaScriptBackendTests : TestBase
         Assert.Contains("mlRuntime.game.start(updateGame, renderGame)", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.isKeyDown(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.fillRect(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.tileAt(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.str.substring(", js, StringComparison.Ordinal);
         Assert.DoesNotContain("mlRuntime.three.", js, StringComparison.Ordinal);
     }
@@ -735,6 +759,21 @@ public class JavaScriptBackendTests : TestBase
         Assert.Contains("mlRuntime.game.pointInRect(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.pointInCircle(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.sweepRects(", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("mlRuntime.three.", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void JsTranspiler_TilesSmokeExample_EmitsTileCalls()
+    {
+        var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Games", "game_tiles_smoke.malda");
+        var compiler = new Compiler.Compiler();
+        var js = compiler.TranspileToJavaScript(sourcePath);
+
+        Assert.Contains("mlRuntime.game.drawTiles(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.tileAt(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.sweepTiles(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.startFixed(", js, StringComparison.Ordinal);
+        Assert.Contains("assets/sprite_tiles.png", js, StringComparison.Ordinal);
         Assert.DoesNotContain("mlRuntime.three.", js, StringComparison.Ordinal);
     }
 
@@ -2860,6 +2899,345 @@ process.stdout.write("ok\n");
             var stderr = process.StandardError.ReadToEnd();
             process.WaitForExit(15000);
             Assert.True(process.ExitCode == 0, $"sweepRects runtime test failed ({process.ExitCode}). stderr: {stderr}");
+            Assert.Equal("ok", stdout.Trim());
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
+        }
+    }
+
+    [Fact]
+    public void GameRuntime_TileAt_ReadsNestedAndFlatGrids()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var runtimePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "wwwroot", "malda-js-runtime.js");
+        var root = CreateTempDirectory("malda_js_tile_at_");
+        try
+        {
+            var scriptPath = Path.Combine(root, "tile-at-test.js");
+            File.WriteAllText(scriptPath, """
+require(process.argv[2]);
+const game = globalThis.mlRuntime.game;
+
+function assertEq(actual, expected, label) {
+  if (actual !== expected) {
+    throw new Error(label + ": expected " + expected + ", got " + actual);
+  }
+}
+
+const nested = [
+  [1, 0, 2],
+  [1, 1, 1]
+];
+assertEq(game.tileAt(nested, 2, 0), 2, "nested col 2");
+assertEq(game.tileAt(nested, 0, 1), 1, "nested row 1");
+assertEq(game.tileAt(nested, 1, 0), 0, "nested empty");
+assertEq(game.tileAt(nested, -1, 0), 0, "nested oob default empty");
+assertEq(game.tileAt(nested, 9, 0, { out: 9 }), 9, "nested oob out");
+assertEq(game.tileAt(nested, 1.9, 0), 0, "nested floor col");
+assertEq(game.tileAt(nested, 2, 0.9), 2, "nested floor row");
+assertEq(game.tileAt(nested, 1, 1, { rows: 1, out: 7 }), 7, "rows cap");
+
+const ragged = [[1, 2], [3]];
+assertEq(game.tileAt(ragged, 1, 1, { out: 8 }), 8, "ragged missing cell");
+
+const flat = [1, 0, 2, 1, 1, 1];
+assertEq(game.tileAt(flat, 2, 0, { columns: 3 }), 2, "flat col 2");
+assertEq(game.tileAt(flat, 0, 1, { columns: 3 }), 1, "flat row 1");
+assertEq(game.tileAt(flat, 2, 0), 0, "flat without columns is out");
+assertEq(game.tileAt(null, 0, 0, { out: 4 }), 4, "non-array");
+
+process.stdout.write("ok\n");
+""");
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = Environment.GetEnvironmentVariable("MALDA_NODE_PATH") is { Length: > 0 } nodePath
+                    ? nodePath
+                    : "node",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = root
+            };
+            startInfo.ArgumentList.Add(scriptPath);
+            startInfo.ArgumentList.Add(runtimePath);
+
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Failed to start Node.js for tileAt runtime test.");
+            var stdout = process.StandardOutput.ReadToEnd();
+            var stderr = process.StandardError.ReadToEnd();
+            process.WaitForExit(15000);
+            Assert.True(process.ExitCode == 0, $"tileAt runtime test failed ({process.ExitCode}). stderr: {stderr}");
+            Assert.Equal("ok", stdout.Trim());
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
+        }
+    }
+
+    [Fact]
+    public void GameRuntime_SweepTiles_PicksEarliestSolid()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var runtimePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "wwwroot", "malda-js-runtime.js");
+        var root = CreateTempDirectory("malda_js_sweep_tiles_");
+        try
+        {
+            var scriptPath = Path.Combine(root, "sweep-tiles-test.js");
+            File.WriteAllText(scriptPath, """
+require(process.argv[2]);
+const game = globalThis.mlRuntime.game;
+
+function assertEq(actual, expected, label) {
+  if (actual !== expected) {
+    throw new Error(label + ": expected " + expected + ", got " + actual);
+  }
+}
+
+function assertClose(actual, expected, label) {
+  if (Math.abs(actual - expected) > 1e-9) {
+    throw new Error(label + ": expected " + expected + ", got " + actual);
+  }
+}
+
+const cave = [
+  [0, 0, 1],
+  [0, 0, 1],
+  [1, 1, 1]
+];
+const hit = game.sweepTiles(0, 0, 10, 10, 40, 0, cave, 16, 16);
+assertEq(hit.hit, true, "wall hit");
+assertClose(hit.t, 0.55, "wall t");
+assertClose(hit.x, 22, "wall x");
+assertEq(hit.nx, -1, "wall nx");
+
+const gemsOnly = game.sweepTiles(0, 0, 10, 10, 40, 0, cave, 16, 16, { solids: [2] });
+assertEq(gemsOnly.hit, false, "solids filter miss");
+assertClose(gemsOnly.x, 40, "solids filter end");
+
+const floor = [
+  [0, 0, 0, 0],
+  [0, 0, 0, 0],
+  [1, 1, 1, 1]
+];
+const slide = game.sweepTiles(4, 10, 10, 10, 20, 0, floor, 10, 10);
+assertEq(slide.hit, false, "walk along floor");
+assertClose(slide.x, 24, "walk along floor x");
+
+const land = game.sweepTiles(5, 0, 10, 10, 0, 20, floor, 10, 10);
+assertEq(land.hit, true, "fall onto tiles");
+assertClose(land.t, 0.5, "fall t");
+assertClose(land.y, 10, "fall y");
+assertEq(land.ny, -1, "fall ny");
+
+const flat = [0, 0, 1, 0, 0, 1, 1, 1, 1];
+const flatHit = game.sweepTiles(0, 0, 10, 10, 40, 0, flat, 16, 16, { columns: 3 });
+assertEq(flatHit.hit, true, "flat wall hit");
+assertClose(flatHit.x, 22, "flat wall x");
+
+const oob = game.sweepTiles(0, 0, 10, 10, -20, 0, [[0, 0], [0, 0]], 16, 16, { out: 1 });
+assertEq(oob.hit, true, "out-of-bounds solid");
+assertEq(oob.nx, 1, "oob nx from the left");
+
+const empty = game.sweepTiles(0, 0, 10, 10, 20, 0, [], 16, 16);
+assertEq(empty.hit, false, "empty grid miss");
+
+const origin = game.sweepTiles(8, 40, 10, 10, 40, 0, cave, 16, 16, { x: 8, y: 40 });
+assertEq(origin.hit, true, "origin wall hit");
+assertClose(origin.x, 30, "origin wall x");
+
+process.stdout.write("ok\n");
+""");
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = Environment.GetEnvironmentVariable("MALDA_NODE_PATH") is { Length: > 0 } nodePath
+                    ? nodePath
+                    : "node",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = root
+            };
+            startInfo.ArgumentList.Add(scriptPath);
+            startInfo.ArgumentList.Add(runtimePath);
+
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Failed to start Node.js for sweepTiles runtime test.");
+            var stdout = process.StandardOutput.ReadToEnd();
+            var stderr = process.StandardError.ReadToEnd();
+            process.WaitForExit(15000);
+            Assert.True(process.ExitCode == 0, $"sweepTiles runtime test failed ({process.ExitCode}). stderr: {stderr}");
+            Assert.Equal("ok", stdout.Trim());
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
+        }
+    }
+
+    [Fact]
+    public void GameRuntime_DrawTiles_BlitsAtlasAndSkipsEmpty()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var runtimePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "wwwroot", "malda-js-runtime.js");
+        var root = CreateTempDirectory("malda_js_draw_tiles_");
+        try
+        {
+            var scriptPath = Path.Combine(root, "draw-tiles-test.js");
+            File.WriteAllText(scriptPath, """
+class FakeImage {
+  constructor() {
+    this.width = 0;
+    this.height = 0;
+    this.naturalWidth = 0;
+    this.naturalHeight = 0;
+    this.onload = null;
+    this.onerror = null;
+    this._src = "";
+  }
+  set src(value) {
+    this._src = String(value || "");
+    if (!this._src || this._src.indexOf("missing") >= 0) {
+      if (typeof this.onerror === "function") this.onerror();
+      return;
+    }
+    this.width = 32;
+    this.height = 16;
+    this.naturalWidth = 32;
+    this.naturalHeight = 16;
+    if (typeof this.onload === "function") this.onload();
+  }
+  get src() { return this._src; }
+}
+globalThis.Image = FakeImage;
+
+function makeCanvas() {
+  const ctx = {
+    images: [],
+    globalAlpha: 1,
+    globalCompositeOperation: "source-over",
+    imageSmoothingEnabled: true,
+    fillRect() {},
+    clearRect() {},
+    drawImage() {
+      this.images.push(Array.from(arguments));
+    }
+  };
+  return {
+    width: 0,
+    height: 0,
+    style: {},
+    parentNode: null,
+    _ctx: ctx,
+    getContext() { return this._ctx; },
+    getBoundingClientRect() {
+      return { left: 0, top: 0, width: this.width, height: this.height };
+    }
+  };
+}
+
+const mount = {
+  children: [],
+  appendChild(el) {
+    this.children.push(el);
+    el.parentNode = this;
+    return el;
+  },
+  removeChild(el) {
+    this.children = this.children.filter((child) => child !== el);
+    el.parentNode = null;
+    return el;
+  }
+};
+
+globalThis.document = {
+  body: mount,
+  querySelector() { return mount; },
+  createElement(tag) {
+    if (tag === "canvas") return makeCanvas();
+    return { style: {} };
+  }
+};
+globalThis.window = {
+  addEventListener() {},
+  removeEventListener() {},
+  requestAnimationFrame() { return 1; },
+  cancelAnimationFrame() {}
+};
+
+require(process.argv[2]);
+const game = globalThis.mlRuntime.game;
+game.createCanvas(64, 32, "#app");
+const ctx = mount.children[0]._ctx;
+
+const missing = game.loadImage("missing.png");
+game.drawTiles(missing, [[1, 2]], 16, 16);
+if (ctx.images.length !== 0) throw new Error("unready drawTiles should no-op");
+
+const atlas = game.loadImage("ok.png");
+game.setCamera(10, 20);
+game.drawTiles(atlas, [[1, 0, 2]], 16, 16);
+if (ctx.images.length !== 2) throw new Error("empty id should skip: " + ctx.images.length);
+
+const first = ctx.images[0];
+if (first[1] !== 0 || first[2] !== 0 || first[3] !== 16 || first[4] !== 16) {
+  throw new Error("id 1 source: " + JSON.stringify(first));
+}
+if (first[5] !== -10 || first[6] !== -20 || first[7] !== 16 || first[8] !== 16) {
+  throw new Error("id 1 dest with camera: " + JSON.stringify(first));
+}
+
+const second = ctx.images[1];
+if (second[1] !== 16 || second[2] !== 0) {
+  throw new Error("id 2 atlas column: " + JSON.stringify(second));
+}
+if (second[5] !== 22 || second[6] !== -20) {
+  throw new Error("id 2 dest x: " + JSON.stringify(second));
+}
+
+ctx.images.length = 0;
+game.setCamera(0, 0);
+game.drawTiles(atlas, [[1]], 32, 24, { x: 8, y: 40, srcW: 16, srcH: 16 });
+const scaled = ctx.images[0];
+if (!scaled || scaled[3] !== 16 || scaled[4] !== 16) {
+  throw new Error("src size: " + JSON.stringify(scaled));
+}
+if (scaled[5] !== 8 || scaled[6] !== 40 || scaled[7] !== 32 || scaled[8] !== 24) {
+  throw new Error("dest size/origin: " + JSON.stringify(scaled));
+}
+
+process.stdout.write("ok\n");
+""");
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = Environment.GetEnvironmentVariable("MALDA_NODE_PATH") is { Length: > 0 } nodePath
+                    ? nodePath
+                    : "node",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = root
+            };
+            startInfo.ArgumentList.Add(scriptPath);
+            startInfo.ArgumentList.Add(runtimePath);
+
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Failed to start Node.js for drawTiles runtime test.");
+            var stdout = process.StandardOutput.ReadToEnd();
+            var stderr = process.StandardError.ReadToEnd();
+            process.WaitForExit(15000);
+            Assert.True(process.ExitCode == 0, $"drawTiles runtime test failed ({process.ExitCode}). stderr: {stderr}");
             Assert.Equal("ok", stdout.Trim());
         }
         finally

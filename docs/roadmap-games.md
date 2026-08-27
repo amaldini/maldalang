@@ -1,11 +1,11 @@
 # MALDA games platform plan
 
-**Status:** G0–G16 landed  
+**Status:** G0–G17 landed  
 **Created:** 2026-08-21  
 **Audience:** maintainers extending the JS `game.*` / `three.*` surface after Final 1.0
 
 This is the plan that made MALDA a **good platform for games people finish** —
-Love2D / Pico-8 / Phaser, not Unity. G0–G16 are landed. Prefer
+Love2D / Pico-8 / Phaser, not Unity. G0–G17 are landed. Prefer
 [`docs/javascript-backend.md`](javascript-backend.md),
 [Reference Manual 26](../ReferenceManual/26-browser-javascript-backend.html),
 and the deferred list at the end for engines that stay out of core.
@@ -19,9 +19,9 @@ game` / `malda play`, curated `three.*` primitives + textures / glTF / `lookAt`
 stays. Post-kit 2D: `sweepRect` / `sweepRects`, `drawImageEx`, camera stack /
 zoom / `followCamera`, G10 size queries (`imageWidth`, `getCanvasWidth`,
 `measureText`), `setPixelated`, `strokeCircle`, sample pan / `playbackRate`,
-gamepad release + analog deadzone, `malda new game` on `startFixed`, and G16
+gamepad release + analog deadzone, `malda new game` on `startFixed`, G16
 image `tint` / `tintFill` plus `setBlend` (`alpha` / `add` / `multiply` /
-`screen`).
+`screen`), and G17 tile helpers (`drawTiles` / `tileAt` / `sweepTiles`).
 
 **Not in scope:** new syntax / keywords / `on update`, interpreter or C# game
 loops, a Box2D-class physics engine in core, a second 2D renderer (Pixi /
@@ -74,6 +74,7 @@ top-level globals, Web IDE Desktop parity, product apps or vertical packs
 | 14 | **G14** Gamepad completeness | Landed | `wasGamepadButtonReleased` missing; analog sticks have no deadzone |
 | 15 | **G15** Starter uses `startFixed` | Landed | `malda new game` still emits `game.start`; the kit loop is `startFixed` |
 | 16 | **G16** Tint + blend | Landed | Highest remaining kit gap after G15: hit-flash, additive sparks, night multiply |
+| 17 | **G17** Tile helpers | Landed | Pico-8 `map`/`mget` hole; `maldadash` was `fillRect` cells with no `drawTiles` / `sweepTiles` |
 
 ```text
 G0  roadmap file                          (landed)
@@ -93,9 +94,10 @@ G10 query / pixel / strokeCircle          (landed; post-kit 2D)
        ├─ G14 gamepad released + deadzone
        └─ G15 malda new game uses startFixed
 G16 tint + setBlend                    (landed; post-kit 2D juice)
+G17 tile helpers                       (landed; Pico-8 map/mget)
 ```
 
-G11–G16 landed as the ranked 2D slices after G10 — not tilesets, particles, or a
+G11–G17 landed as the ranked 2D slices after G10 — not Tiled/LDtk, particles, or a
 physics engine (those stay in **After G9 (deferred)** and **Explicit non-goals**).
 
 ---
@@ -612,23 +614,51 @@ scope.
 
 ---
 
-## How G11–G16 shipped
+## G17 — Tile helpers (landed)
+
+**Why:** After G16 the highest remaining kit gap in
+[`docs/games-2d-gap-analysis.md`](games-2d-gap-analysis.md) was a Pico-8-style
+`map` / `mget` hole. `maldadash` stayed on `fillRect` cells; grid games had no
+draw/query/sweep against a 2D id array. This is still functions on `game.*`,
+not Tiled/LDtk or a tile *engine*.
+
+| Call | Contract |
+|------|----------|
+| `game.tileAt(cells, col, row, options?)` | Id at cell coordinates (`col` = X, `row` = Y, row 0 at the top). Floors `col`/`row`. Out of range: `out` (default `empty`, default `0`). Nested rows (`cells[row][col]`) or a flat array with `columns`. Options: `{ columns?, rows?, empty?, out? }`. Pure function. |
+| `game.drawTiles(handle, cells, tileW, tileH, options?)` | Blit non-empty ids from an atlas. Unready handles no-op. Atlas index is `id - firstId` (default `firstId` 1 so id `0` is empty). Options: `{ x?, y?, columns?, rows?, empty?, srcW?, srcH?, atlasColumns?, firstId? }`. `x`/`y` are the world origin of cell `(0, 0)`. `srcW`/`srcH` default to `tileW`/`tileH`. `atlasColumns` defaults to `floor(imageWidth / srcW)`. Camera, `setAlpha`, and `setBlend` apply. Culls to the current view. Requires canvas. |
+| `game.sweepTiles(x, y, w, h, dx, dy, cells, tileW, tileH, options?)` | Same `{ hit, t, nx, ny, x, y }` as `sweepRect` against solid cells. Default: any id other than `empty` is solid. Optional `solids` is an array of ids. Options also take `x`/`y` origin plus the `tileAt` grid fields (`columns` / `rows` / `empty` / `out`). Out-of-bounds cells use `out`; if that id is solid, the map has a solid border. Pure function. |
+
+**Guardrails**
+
+- Not Tiled/LDtk, autotile, animated tiles, or a spatial index. Mutate the array the user owns (`cells[row][col] = id`); there is no `mset`.
+- A flat array without `columns` is an empty map (`tileAt` returns `out`, `drawTiles` / `sweepTiles` no-op/miss).
+- Axis-separated use stays the caller's job, same as `sweepRects`.
+- `drawTiles` dest size is `tileW` × `tileH`; atlas frame size is `srcW`/`srcH` when those differ.
+
+**Smoke:** `Examples/Games/game_tiles_smoke.malda` (atlas cave, gem pickups via `tileAt`, landings via `sweepTiles`). Showcase: `maldadash` `getTile` calls `tileAt` (flat grid + `out: STEEL`).
+
+**Files:** runtime, chapter 26.9, `docs/javascript-backend.md`, `docs/llm/malda-gotchas.md`. Tests: `JsTranspiler_MapsGameTileApis…` + `GameRuntime_TileAt_…` + `GameRuntime_SweepTiles_…` + `GameRuntime_DrawTiles_…` + `JsTranspiler_TilesSmokeExample_…`. Filtered: `JavaScriptBackendTests`.
+
+---
+
+## How G11–G17 shipped
 
 G11–G15 landed together after those contracts were specified. **G16** (tint +
 `setBlend`) followed as the next ranked kit gap from
-[`docs/games-2d-gap-analysis.md`](games-2d-gap-analysis.md).
+[`docs/games-2d-gap-analysis.md`](games-2d-gap-analysis.md). **G17** (tile
+helpers) is the Pico-8 `map`/`mget` slice from the same file.
 
 ---
 
 ## After G9 (deferred)
 
-Engine-scale ideas from G1–G9. **G11–G16 above landed.** These rows stay out of
+Engine-scale ideas from G1–G9. **G11–G17 above landed.** These rows stay out of
 core until a later roadmap:
 
 | Idea | Why it waited |
 |------|----------------|
 | `three.setTexture` / orbit controls | G8 left them out until look-at + `three_textured` prove the gap |
-| Tileset collision / particles / scene graph | Helpers first (G3 + `sweepRect`); engines later as a pack |
+| Tileset collision / particles / scene graph | Helpers first (G3 + `sweepRect` + G17 `sweepTiles`); Tiled/LDtk and engines later as a pack |
 | Box2D-class physics in core | Same — optional pack, not stdlib growth |
 | WebGL 2D sprite batcher | Canvas2D images (G1) first |
 | Native desktop window (SDL, Raylib, Silk.NET) | Optional pack **out of this repo** |
@@ -643,9 +673,9 @@ Post-kit helpers that did land: **`game.sweepRect`**, **`game.sweepRects`**,
 **`game.setCameraZoom`**, **`game.followCamera`**, **G10** (`imageWidth` /
 `getCanvasWidth` / `measureText` / `setPixelated` / `strokeCircle`), sample
 `pan` / `playbackRate`, **`wasGamepadButtonReleased`** plus analog deadzone,
-**G15** (`malda new game` uses `startFixed`), and **G16** (`drawImageEx` `tint` /
-`tintFill` plus `setBlend`). Still not tilesets, particles, a scene graph, or a
-physics engine.
+**G15** (`malda new game` uses `startFixed`), **G16** (`drawImageEx` `tint` /
+`tintFill` plus `setBlend`), and **G17** (`drawTiles` / `tileAt` / `sweepTiles`).
+Still not Tiled/LDtk, particles, a scene graph, or a physics engine.
 
 ---
 
@@ -655,7 +685,7 @@ physics engine.
 |------|-------------|
 | Interpreter / C# `game.start` | AST walk will not hit 60 Hz; matrix already says n/a |
 | Native desktop window (SDL, Raylib, Silk.NET) | Optional pack **out of this repo** |
-| Box2D / tile collision / particles / scene graph in core | Helpers first (G3 + `sweepRect`); engines later as a pack |
+| Box2D / tile collision / particles / scene graph in core | Helpers first (G3 + `sweepRect` + G17); Tiled/LDtk later as a pack |
 | WebGL 2D sprite batcher | Canvas2D images (G1) first |
 | New keywords (`on update`, `entity`) | Violates construct-plan principle 5 |
 | Flat aliases (`drawImage()`) | Deprecated; coverage/style guards |
@@ -680,6 +710,7 @@ Historical PR order (already landed):
 10. **G11–G15** — `sweepRects`, `followCamera`, sample pan/rate, gamepad
     release + deadzone, `malda new game` on `startFixed`
 11. **G16** — `drawImageEx` tint / `tintFill` + `setBlend`
+12. **G17** — `drawTiles` / `tileAt` / `sweepTiles`
 
 Each MINOR runtime slice updated chapter 26 and `docs/javascript-backend.md`
 in the same PR. Spec bump: JS `game.*` is product/Tier-2-ish relative to
@@ -695,4 +726,4 @@ CHANGELOG Unreleased row (product / docs), not a Tier 0 conformance case.
 - Capability matrix: [`docs/spec/backend-capability-matrix.md`](spec/backend-capability-matrix.md)
 - Examples: [`Examples/Games/README.md`](../Examples/Games/README.md)
 - Language constructs (do not add game syntax there): [`docs/roadmap-language-constructs.md`](roadmap-language-constructs.md)
-- Post-G16 peer comparison (not a workstream plan): [`docs/games-2d-gap-analysis.md`](games-2d-gap-analysis.md)
+- Post-G17 peer comparison (not a workstream plan): [`docs/games-2d-gap-analysis.md`](games-2d-gap-analysis.md)

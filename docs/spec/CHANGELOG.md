@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — JS game tile helpers)
+
+- **G17 `game.drawTiles` / `game.tileAt` / `game.sweepTiles` (JavaScript backend only):** `game.tileAt(cells, col, row, options?)` returns the id at cell coordinates (nested rows or a flat array plus `columns`; floors `col`/`row`; out of range is `out`, default `empty`/`0`). `game.drawTiles(handle, cells, tileW, tileH, options?)` blits non-empty ids from an atlas (`id - firstId`, default `firstId` 1; unready no-op; camera/alpha/blend apply; culls to the view). Options `{ x?, y?, columns?, rows?, empty?, srcW?, srcH?, atlasColumns?, firstId? }`. `game.sweepTiles(x, y, w, h, dx, dy, cells, tileW, tileH, options?)` returns the same `{ hit, t, nx, ny, x, y }` as `sweepRect` against solid cells (default: any id other than `empty`; optional `solids` array; `out` cells can be a solid border). Pure query/sweep (no canvas). Not Tiled/LDtk. Smoke: `Examples/Games/game_tiles_smoke.malda`. Showcase `maldadash` `getTile` uses `tileAt`. Interpreter / C# transpile: n/a (`game-canvas`).
+
 #### Added (MINOR — JS game tint / setBlend)
 
 - **G16 `game.setBlend` / `drawImageEx` tint (JavaScript backend only):** `game.setBlend(mode)` / `game.getBlend()` set the canvas composite for subsequent world draws. Names: `"alpha"` (default, `source-over`), `"add"` (`lighter`), `"multiply"`, `"screen"`; aliases `"source-over"` / `"lighter"` map to `"alpha"` / `"add"`; unknown / empty → `"alpha"`. `createCanvas` resets to `"alpha"`. `clear()` always composites as `"alpha"` and does not change the current mode. Blend does not affect `setPixel` / `blitPixels`. `game.drawImageEx` options add `{ tint?, tintFill? }`: `tint` is a CSS color on an offscreen copy (omit / empty → no tint); default is multiply (white is identity); `tintFill: true` replaces RGB and keeps alpha (white fill is a hit-flash). Smoke: `Examples/Games/game_sprite_smoke.malda`. Showcase `malda_platform` flashes the player on coin collect and draws an additive spark. Interpreter / C# transpile: n/a (`game-canvas`).
@@ -425,3 +429,4 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-08-25 | MINOR: JS `wasGamepadButtonReleased` / axis deadzone (G14) |
 | 2026-08-25 | MINOR: `malda new game` uses `startFixed` (G15) |
 | 2026-08-27 | MINOR: JS `game.setBlend` / `drawImageEx` tint / `tintFill` (G16) |
+| 2026-08-27 | MINOR: JS `game.drawTiles` / `tileAt` / `sweepTiles` (G17) |

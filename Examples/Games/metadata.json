@@ -95,6 +95,30 @@
       "documentationTitle": "Browser Track"
     },
     {
+      "name": "JS Canvas Tile Helpers Smoke",
+      "description": "drawTiles atlas blit, tileAt cell query, and sweepTiles landings on a 2D id grid using MALDA game.* APIs",
+      "file": "game_tiles_smoke.malda",
+      "track": "student",
+      "difficulty": "intermediate",
+      "minutes": 10,
+      "concepts": [
+        "game.*",
+        "tile grid",
+        "drawTiles",
+        "tileAt",
+        "sweepTiles",
+        "JavaScript target"
+      ],
+      "prerequisites": [
+        "Games/game_collision_smoke.malda"
+      ],
+      "learningGoal": "Show Pico-8-style map draw/query plus swept tile collision without a Tiled importer.",
+      "expectedOutput": "Runs a tiny tile cave: green cells are solid, magenta gems collect via tileAt, and the player lands with sweepTiles.",
+      "next": "Games/maldadash.malda",
+      "documentationPath": "/?lesson=browser-track#lesson-browser-track",
+      "documentationTitle": "Browser Track"
+    },
+    {
       "name": "JS Canvas Sample SFX Smoke",
       "description": "Overlapping WAV one-shots with game.audioPlaySample that leave the Audio v1 pattern running",
       "file": "game_audio_sample_smoke.malda",
