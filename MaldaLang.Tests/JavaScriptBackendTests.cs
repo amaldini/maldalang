@@ -3023,9 +3023,10 @@ assertClose(gemsOnly.x, 40, "solids filter end");
 
 const floor = [
   [0, 0, 0, 0],
+  [0, 0, 0, 0],
   [1, 1, 1, 1]
 ];
-const slide = game.sweepTiles(4, 0, 10, 10, 20, 0, floor, 10, 10);
+const slide = game.sweepTiles(4, 10, 10, 10, 20, 0, floor, 10, 10);
 assertEq(slide.hit, false, "walk along floor");
 assertClose(slide.x, 24, "walk along floor x");
 
