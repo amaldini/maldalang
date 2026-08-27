@@ -115,6 +115,39 @@ public class SchemaToLlmTests
     }
 
     [Fact]
+    public void LLMClient_BuildRequestBody_IncludesToolsAndResponseFormatTogether()
+    {
+        var innerSchema = new JsonObject();
+        innerSchema.Set("type", RuntimeValue.String("object"));
+        var responseFormat = TypedPromptValidator.BuildResponseFormat(RuntimeValue.Object(innerSchema));
+        var client = new LLMClientInstance
+        {
+            Model = "gpt-4o-mini",
+            ApiUrl = "https://example.test/v1/chat/completions"
+        };
+
+        var msg = new JsonObject();
+        msg.Set("role", RuntimeValue.String("user"));
+        msg.Set("content", RuntimeValue.String("hi"));
+        var messages = RuntimeValue.Array(new List<RuntimeValue> { RuntimeValue.Object(msg) });
+
+        var fn = new JsonObject();
+        fn.Set("name", RuntimeValue.String("read_file"));
+        fn.Set("description", RuntimeValue.String("Read a file"));
+        var paramsObj = new JsonObject();
+        paramsObj.Set("type", RuntimeValue.String("object"));
+        fn.Set("parameters", RuntimeValue.Object(paramsObj));
+        var tool = new JsonObject();
+        tool.Set("type", RuntimeValue.String("function"));
+        tool.Set("function", RuntimeValue.Object(fn));
+        var tools = RuntimeValue.Array(new List<RuntimeValue> { RuntimeValue.Object(tool) });
+
+        var body = client.BuildRequestBody(messages, tools, responseFormat);
+        Assert.True(body.ContainsKey("tools"));
+        Assert.True(body.ContainsKey("response_format"));
+    }
+
+    [Fact]
     public void Transpiler_EmitsSchemaRegistration_AndResponseFormat_ForSchemaReturnType()
     {
         var source = """
@@ -200,8 +233,10 @@ public class SchemaToLlmTests
             "Error: API request failed with status BadRequest. Response: response_format not supported"));
         Assert.True(LLMClientInstance.LooksLikeResponseFormatRejectionText(
             "unsupported structured outputs for this model"));
-        Assert.False(LLMClientInstance.LooksLikeResponseFormatRejectionText(
+            Assert.False(LLMClientInstance.LooksLikeResponseFormatRejectionText(
             "Error: API request failed with status 500. Response: internal error"));
+        Assert.True(LLMClientInstance.LooksLikeResponseFormatRejectionText(
+            "json_schema is not supported with tools"));
     }
 
     [Fact]
@@ -242,11 +277,77 @@ public class SchemaToLlmTests
             Assert.Equal(2, requestBodies.Count);
             Assert.Contains("response_format", requestBodies[0], StringComparison.Ordinal);
             Assert.DoesNotContain("response_format", requestBodies[1], StringComparison.Ordinal);
+
+            var second = client.Chat(messages, tools: null, responseFormat);
+            Assert.Equal("ok-without-format", second.AsObject().Get("content").AsString());
+            Assert.Equal(3, requestBodies.Count);
+            Assert.DoesNotContain("response_format", requestBodies[2], StringComparison.Ordinal);
         }
         finally
         {
             listener.Stop();
             listener.Close();
+            LLMClientInstance.ClearResponseFormatCapabilityCacheForTesting();
+            System.Environment.SetEnvironmentVariable("MALDA_AGENT_LLM_STREAM", previousStream);
+            flag?.SetValue(null, null);
+        }
+    }
+
+    [Fact]
+    public void Chat_WithTools_RetriesWithoutFormat_KeepsTools()
+    {
+        var previousStream = System.Environment.GetEnvironmentVariable("MALDA_AGENT_LLM_STREAM");
+        System.Environment.SetEnvironmentVariable("MALDA_AGENT_LLM_STREAM", "0");
+        var flag = typeof(LLMClientInstance).GetField(
+            "_llmStreamingEnabled",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        flag?.SetValue(null, null);
+        LLMClientInstance.ClearResponseFormatCapabilityCacheForTesting();
+
+        var requestBodies = new List<string>();
+        var (listener, apiUrl) = StartResponseFormatFallbackServer(requestBodies);
+        try
+        {
+            var innerSchema = new JsonObject();
+            innerSchema.Set("type", RuntimeValue.String("object"));
+            var responseFormat = TypedPromptValidator.BuildResponseFormat(RuntimeValue.Object(innerSchema));
+
+            var fn = new JsonObject();
+            fn.Set("name", RuntimeValue.String("read_file"));
+            fn.Set("description", RuntimeValue.String("Read a file"));
+            var paramsObj = new JsonObject();
+            paramsObj.Set("type", RuntimeValue.String("object"));
+            fn.Set("parameters", RuntimeValue.Object(paramsObj));
+            var tool = new JsonObject();
+            tool.Set("type", RuntimeValue.String("function"));
+            tool.Set("function", RuntimeValue.Object(fn));
+            var tools = RuntimeValue.Array(new List<RuntimeValue> { RuntimeValue.Object(tool) });
+
+            var client = new LLMClientInstance
+            {
+                ApiUrl = apiUrl,
+                ApiKey = "test",
+                Model = "test-model"
+            };
+
+            var msg = new JsonObject();
+            msg.Set("role", RuntimeValue.String("user"));
+            msg.Set("content", RuntimeValue.String("hi"));
+            var messages = RuntimeValue.Array(new List<RuntimeValue> { RuntimeValue.Object(msg) });
+
+            var result = client.Chat(messages, tools, responseFormat);
+            Assert.Equal("ok-without-format", result.AsObject().Get("content").AsString());
+            Assert.Equal(2, requestBodies.Count);
+            Assert.Contains("response_format", requestBodies[0], StringComparison.Ordinal);
+            Assert.Contains("read_file", requestBodies[0], StringComparison.Ordinal);
+            Assert.DoesNotContain("response_format", requestBodies[1], StringComparison.Ordinal);
+            Assert.Contains("read_file", requestBodies[1], StringComparison.Ordinal);
+        }
+        finally
+        {
+            listener.Stop();
+            listener.Close();
+            LLMClientInstance.ClearResponseFormatCapabilityCacheForTesting();
             System.Environment.SetEnvironmentVariable("MALDA_AGENT_LLM_STREAM", previousStream);
             flag?.SetValue(null, null);
         }

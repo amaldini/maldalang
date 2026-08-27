@@ -56,7 +56,7 @@ These strings are what `@property` / `runProperty` use via `GetRequiredCapabilit
 | `@shader()` / `glsl.compile` → GLSL (JS compile-time) | n/a | n/a | yes |
 | .NET interop | yes | yes | no |
 
-\* OpenAI-compatible chat APIs receive `response_format` (and the host appends a `MALDA_OUTPUT_SCHEMA` appendix) when `await prompt(…) -> Type` has **no tools** and **no `gather:`** (Mode A). With `tools:` listed (Mode B), format and appendix are omitted; on `await` with `-> Type`, validation/repair still runs. Mode C: `gather:` + `-> Type` runs a tool round, then a fresh typed prompt without tools. Llama.cpp ignores `response_format`; if a backend rejects it, the host retries once without it. Closed `api` / `program(Api)` / `runProgram` is the same host surface (interpreter + C#); JS transpile rejects `api` declarations.
+\* OpenAI-compatible chat APIs receive `response_format` (and the host appends a `MALDA_OUTPUT_SCHEMA` appendix) when `await prompt(…) -> Type` has **no `gather:`**. Mode B (`tools:` listed) sends format + appendix with tools; if the backend rejects tools+`json_schema`, the host retries once without format (keeps tools) and remembers that backend. Mode C: `gather:` + `-> Type` runs a tool round, then a fresh typed prompt without tools. Llama.cpp ignores `response_format`. Closed `api` / `program(Api)` / `runProgram` is the same host surface (interpreter + C#); JS transpile rejects `api` declarations.
 
 † Host embed on interpret/transpile via `MaldaLang.UIHost` when the program uses `ui.mount` / related APIs — see [`docs/ui-framework.md`](../ui-framework.md). Not available on the JS backend.
 

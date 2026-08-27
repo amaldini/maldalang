@@ -7105,14 +7105,14 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("}");
 
-        // Build response_format schema when ReturnType is present and tools/gather are empty (§4.10 / L2).
-        // Also inject a compact schema appendix into system (schema-in-prompt for local models).
+        // Build response_format + appendix when ReturnType is set and this is not the Mode C
+        // gather instance (tools are allowed — Mode B structured-if-supported).
         WriteIndent();
         _output.AppendLine("MaldaLang.Interpreter.RuntimeValue? __responseFormatSchema = null;");
         WriteIndent();
         _output.Append("if (!string.IsNullOrWhiteSpace(\"");
         _output.Append((promptDecl.ReturnType ?? "").Replace("\\", "\\\\").Replace("\"", "\\\""));
-        _output.Append("\") && (tools == null || tools.Count == 0) && (gather == null || gather.Count == 0))");
+        _output.Append("\") && (gather == null || gather.Count == 0))");
         _output.AppendLine();
         WriteIndent();
         _output.AppendLine("{");

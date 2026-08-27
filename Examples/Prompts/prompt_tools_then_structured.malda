@@ -5,7 +5,8 @@
 // extract without tools (Mode A response_format + validate/repair).
 // Run: malda Examples/Prompts/prompt_tools_then_structured.malda
 //
-// `gather:` + `-> Type` is Mode C. Plain `tools:` stays Mode B (one call, no format).
+// `gather:` + `-> Type` is Mode C. Plain `tools:` stays Mode B (one call,
+// structured-if-supported — see prompt_tools_mode.malda).
 
 schema ResearchAnswer {
     summary: string;

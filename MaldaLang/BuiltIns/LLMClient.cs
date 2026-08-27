@@ -3,6 +3,7 @@
 
 namespace MaldaLang.BuiltIns;
 
+using System.Collections.Concurrent;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -108,14 +109,16 @@ public class LLMClientInstance : ObjectInstance
     
     public RuntimeValue Chat(RuntimeValue messages, RuntimeValue? tools, RuntimeValue? responseFormat = null, LlmRequestOverrides? overrides = null)
     {
+        var model = overrides?.Model ?? Model;
+        var formatToSend = EffectiveResponseFormat(ApiUrl, model, responseFormat);
         try
         {
             if (messages.Type != ValueType.Array)
                 return RuntimeValue.Null();
 
-            var requestBody = BuildRequestBody(messages, tools, responseFormat, overrides);
+            var requestBody = BuildRequestBody(messages, tools, formatToSend, overrides);
             RuntimeValue result;
-            if (ShouldUseStreaming(responseFormat))
+            if (ShouldUseStreaming(formatToSend))
             {
                 requestBody["stream"] = true;
                 result = ChatStreaming(requestBody);
@@ -125,10 +128,12 @@ public class LLMClientInstance : ObjectInstance
                 result = ChatNonStreaming(requestBody);
             }
 
-            if (ShouldRetryWithoutResponseFormat(responseFormat, result, exceptionMessage: null))
+            if (ShouldRetryWithoutResponseFormat(formatToSend, result, exceptionMessage: null))
             {
                 WarnResponseFormatRejectedOnce();
+                RememberResponseFormatRejected(ApiUrl, model);
                 // Force non-streaming recovery so callers get a normal completion payload.
+                // Keep tools — Mode B is still one call, not a gather/extract rewrite.
                 var fallbackBody = BuildRequestBody(messages, tools, responseFormat: null, overrides);
                 return ChatNonStreaming(fallbackBody);
             }
@@ -137,11 +142,12 @@ public class LLMClientInstance : ObjectInstance
         }
         catch (Exception ex)
         {
-            if (ShouldRetryWithoutResponseFormat(responseFormat, result: null, exceptionMessage: ex.Message))
+            if (ShouldRetryWithoutResponseFormat(formatToSend, result: null, exceptionMessage: ex.Message))
             {
                 try
                 {
                     WarnResponseFormatRejectedOnce();
+                    RememberResponseFormatRejected(ApiUrl, model);
                     var fallbackBody = BuildRequestBody(messages, tools, responseFormat: null, overrides);
                     return ChatNonStreaming(fallbackBody);
                 }
@@ -160,6 +166,8 @@ public class LLMClientInstance : ObjectInstance
     }
 
     private static bool _warnedResponseFormatRejected;
+    private static readonly ConcurrentDictionary<string, byte> ResponseFormatUnsupported =
+        new(StringComparer.Ordinal);
 
     internal static void WarnResponseFormatRejectedOnce()
     {
@@ -170,9 +178,40 @@ public class LLMClientInstance : ObjectInstance
             "MALDA: LLM rejected response_format / structured output; retrying once without it.");
     }
 
+    internal static string ResponseFormatCapabilityKey(string? apiUrl, string? model) =>
+        $"{apiUrl ?? ""}\n{model ?? ""}";
+
+    /// <summary>
+    /// Drop <c>response_format</c> after this backend rejected it, so Mode B tool
+    /// loops do not pay a failed request on every round.
+    /// </summary>
+    internal static RuntimeValue? EffectiveResponseFormat(
+        string? apiUrl,
+        string? model,
+        RuntimeValue? responseFormat)
+    {
+        if (responseFormat == null || responseFormat.Type != ValueType.Object)
+            return responseFormat;
+        if (ResponseFormatUnsupported.ContainsKey(ResponseFormatCapabilityKey(apiUrl, model)))
+            return null;
+        return responseFormat;
+    }
+
+    internal static void RememberResponseFormatRejected(string? apiUrl, string? model)
+    {
+        ResponseFormatUnsupported.TryAdd(ResponseFormatCapabilityKey(apiUrl, model), 0);
+    }
+
+    internal static void ClearResponseFormatCapabilityCacheForTesting()
+    {
+        ResponseFormatUnsupported.Clear();
+        _warnedResponseFormatRejected = false;
+    }
+
     /// <summary>
     /// True when a chat that included <c>response_format</c> failed in a way that
-    /// suggests the backend does not support structured outputs.
+    /// suggests the backend does not support structured outputs (including
+    /// tools + json_schema together).
     /// </summary>
     internal static bool ShouldRetryWithoutResponseFormat(
         RuntimeValue? responseFormat,

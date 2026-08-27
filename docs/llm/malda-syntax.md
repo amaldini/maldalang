@@ -22,12 +22,12 @@ Compact rules for generating correct `.malda`. Prefer this over scraping HTML ma
   `asVariant("Intent", dict)` when you need `match` without `await prompt … -> Intent`.
 - **Prompt parameters are name-only** — write `prompt greet(name) { ... }`, never `prompt greet(name: string)`.
 - Prompt `-> ReturnType` is **not** static typing. Three supported modes:
-  - **A Structured** — `await` + `-> Type` + **no tools** and **no `gather:`**: resolve JSON Schema, append
+  - **A Structured** — `await` + `-> Type` + **no `gather:`**: resolve JSON Schema, append
     `MALDA_OUTPUT_SCHEMA` appendix, send OpenAI-compatible `response_format`, then
     validate/repair (≤3). Example: `Examples/Prompts/schema_prompt_structured.malda`.
-  - **B Tools** — prompt body lists `tools: [...]`: no `response_format` and no appendix.
-    On `await` with `-> Type`, validate/repair still runs (fragile for local models).
-    Example: `Examples/Prompts/prompt_tools_mode.malda`. Not two LLM calls.
+  - **B Tools** — prompt body lists `tools: [...]` (one call, not two). Same appendix +
+    `response_format` as Mode A. If the backend rejects tools+`json_schema`, retry once
+    without format (keep tools). Example: `Examples/Prompts/prompt_tools_mode.malda`.
   - **C Gather-then-extract** — `gather: ["read_file", …]` + `-> Type` on one prompt:
     tool round, then a fresh typed prompt without tools (Mode A). Offline without
     `await` does not call the model. Example: `Examples/Prompts/prompt_tools_then_structured.malda`.

@@ -1,15 +1,21 @@
-// prompt_tools_mode.malda — Mode B: tools listed → no response_format / no schema appendix
+// prompt_tools_mode.malda — Mode B: tools listed, structured-if-supported
 //
 // Offline: builds PromptInstance only (no await / no LLM).
 // Run: malda Examples/Prompts/prompt_tools_mode.malda
 //
-// Policy: when the prompt body lists tools, MALDA does not send OpenAI
-// response_format and does not append MALDA_OUTPUT_SCHEMA. On await with
-// -> Type, validate + repair still run (fragile for local models).
-// Prefer Mode A (schema_prompt_structured.malda) or Mode C
-// (prompt_tools_then_structured.malda — gather: + -> Type) for reliable structured JSON.
+// Policy: tools: + -> Type stays one LLM call (not Mode C). MALDA attaches
+// OpenAI response_format and the MALDA_OUTPUT_SCHEMA appendix. If the backend
+// rejects tools+json_schema, the host retries once without format (keeps tools)
+// and remembers that backend for later rounds. await still validates/repairs.
+// Prefer Mode C (prompt_tools_then_structured.malda) when you need a tool
+// round then a fresh typed extract.
 
-prompt researchWithTools(topic) {
+schema ResearchNote {
+    topic: string;
+    summary: string;
+}
+
+prompt researchWithTools(topic) -> ResearchNote {
     system: "You are a research assistant with file tools.",
     user: "Investigate: {topic}",
     tools: ["read_file", "grep", "list_dir"],
@@ -21,4 +27,4 @@ var inst = researchWithTools("how prompts bind tools");
 print("Mode B tools prompt (offline PromptInstance):");
 print("user=" + inst.user);
 print("tools=" + toJSON(inst.tools));
-print("Note: no response_format / no schema appendix while tools are set.");
+print("hasSchemaAppendix=" + (str.indexOf(inst.system, "MALDA_OUTPUT_SCHEMA") >= 0 ? "yes" : "no"));

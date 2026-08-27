@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Changed (MINOR — Mode B structured-if-supported)
+
+- **Mode B (`tools:` + `-> Type`):** send OpenAI `response_format` and the `MALDA_OUTPUT_SCHEMA` appendix together with tools (one LLM call, not a silent Mode C rewrite). If the backend rejects tools+`json_schema`, the host retries once without format (keeps tools) and remembers that backend so later rounds skip the failed request. Mode C `gather:` is unchanged (tool round unconstrained, then a typed extract). Example: `Examples/Prompts/prompt_tools_mode.malda`.
+
 #### Added (PATCH — malda check --json)
 
 - **`malda check`:** parse + IDE/`LanguageService` diagnostics without executing (parser, type hints, schema/sum-type names, interpolation, UI loop, workflow determinism). `--json` emits `{ ok, executed: false, file, errorCount, warningCount, infoCount, diagnostics[] }` with 1-based `line`/`column`. Default type-mismatch severity matches the IDE (Errors); `--strict-types` is the full CLI suite; `--lenient-types` keeps mismatches as warnings. Exit 0 with warnings-only, 1 if any error, 2 on usage/I/O. `malda --check "<code>"` remains syntax-only compiler Validate.
@@ -388,7 +392,7 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-08-22 | PATCH: Maldanoid example adopts G1/G2/G3/G5 helpers (`startFixed`, overlap, input edges, save/load) |
 | 2026-08-22 | PATCH: Maldanoid feel pass (depenetration, sparks, serve aim, result panels) |
 | 2026-08-25 | MINOR: `asVariant(typeName, value)` coerces tagged dicts to sum-type variants |
-| 2026-08-26 | PATCH: `malda check --json` diagnose-without-execute for agent loops |
+| 2026-08-26 | MINOR: Mode B sends `response_format` with tools (retry/remember if rejected) |
 | 2026-08-21 | MINOR: JS `game.loadImage` / camera / draw extras (G1) |
 | 2026-08-21 | MINOR: JS `game.wasKeyPressed` / touches / gamepad (G2) |
 | 2026-08-21 | MINOR: JS `game.overlapRect` / circle / point queries (G3) |
