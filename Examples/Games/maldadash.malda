@@ -114,10 +114,7 @@ if (root == null) {
     }
 
     function getTile(x, y) {
-        if (!inBounds(x, y)) {
-            return STEEL;
-        }
-        return cells[idx(x, y)];
+        return game.tileAt(cells, x, y, { "columns": cols, "rows": rows, "out": STEEL });
     }
 
     function setTile(x, y, tile) {

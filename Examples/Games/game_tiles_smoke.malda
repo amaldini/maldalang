@@ -1,0 +1,174 @@
+var root = dom.query("#app");
+
+if (root == null) {
+    println("No #app container found.");
+} else {
+    dom.clear(root);
+
+    var title = dom.create("h1");
+    dom.setText(title, "MALDA Game: Tile helpers smoke");
+    dom.append(root, title);
+
+    var hint = dom.create("p");
+    dom.setText(hint, "Arrows run. Space or Up jumps. Green cells are solid (sweepTiles). Magenta gems are tileAt pickups. HUD shows the cell under the player.");
+    dom.append(root, hint);
+
+    var atlas = game.loadImage("assets/sprite_tiles.png");
+    var cols = 20;
+    var rows = 10;
+    var tileSize = 32;
+    var originX = 0.0;
+    var originY = 40.0;
+    var canvasW = 640;
+    var canvasH = 360;
+
+    var cells = [];
+    var r = 0;
+    while (r < rows) {
+        var row = [];
+        var c = 0;
+        while (c < cols) {
+            var id = 0;
+            if (r == rows - 1) {
+                id = 1;
+            }
+            if (r == 6 && c >= 4 && c <= 7) {
+                id = 1;
+            }
+            if (r == 4 && c >= 11 && c <= 14) {
+                id = 1;
+            }
+            if (r == 5 && c == 6) {
+                id = 2;
+            }
+            if (r == 3 && c == 13) {
+                id = 2;
+            }
+            row.append(id);
+            c = c + 1;
+        }
+        cells.append(row);
+        r = r + 1;
+    }
+
+    var playerW = 18.0;
+    var playerH = 24.0;
+    var playerX = 48.0;
+    var playerY = originY + 200.0;
+    var vy = 0.0;
+    var onGround = false;
+    var gems = 0;
+    var runSpeed = 210;
+    var jumpSpeed = -430;
+    var gravity = 1150;
+    var maxFall = 540;
+    var solids = [1];
+
+    function worldCol(x) {
+        return int((x - originX) / tileSize);
+    }
+
+    function worldRow(y) {
+        return int((y - originY) / tileSize);
+    }
+
+    function setCell(col, row, id) {
+        if (row >= 0 && row < cells.length) {
+            var line = cells[row];
+            if (col >= 0 && col < line.length) {
+                line[col] = id;
+            }
+        }
+    }
+
+    function updateGame(dtMs) {
+        var dx = 0.0;
+        var step = (runSpeed * dtMs) / 1000;
+        if (game.isKeyDown("arrowleft")) {
+            dx = dx - step;
+        }
+        if (game.isKeyDown("arrowright")) {
+            dx = dx + step;
+        }
+
+        if (onGround && (game.wasKeyPressed(" ") || game.wasKeyPressed("arrowup"))) {
+            vy = jumpSpeed;
+            onGround = false;
+        }
+
+        vy = vy + ((gravity * dtMs) / 1000);
+        if (vy > maxFall) {
+            vy = maxFall;
+        }
+        var dy = (vy * dtMs) / 1000;
+
+        var movedX = game.sweepTiles(playerX, playerY, playerW, playerH, dx, 0, cells, tileSize, tileSize, {
+            "x": originX,
+            "y": originY,
+            "solids": solids
+        });
+        playerX = movedX.x;
+        if (playerX < originX) {
+            playerX = originX;
+        }
+        if (playerX + playerW > originX + (cols * tileSize)) {
+            playerX = originX + (cols * tileSize) - playerW;
+        }
+
+        var movedY = game.sweepTiles(playerX, playerY, playerW, playerH, 0, dy, cells, tileSize, tileSize, {
+            "x": originX,
+            "y": originY,
+            "solids": solids
+        });
+        playerY = movedY.y;
+        onGround = false;
+        if (movedY.hit) {
+            if (movedY.ny < 0) {
+                onGround = true;
+                vy = 0;
+            }
+            if (movedY.ny > 0) {
+                vy = 0;
+            }
+        }
+
+        var gx = worldCol(playerX + (playerW / 2));
+        var gy = worldRow(playerY + (playerH / 2));
+        if (game.tileAt(cells, gx, gy) == 2) {
+            setCell(gx, gy, 0);
+            gems = gems + 1;
+        }
+    }
+
+    function renderGame() {
+        game.clear();
+
+        if (game.imageIsReady(atlas)) {
+            game.drawTiles(atlas, cells, tileSize, tileSize, {
+                "x": originX,
+                "y": originY,
+                "srcW": 16,
+                "srcH": 16
+            });
+        }
+
+        game.fillRect(playerX, playerY, playerW, playerH, "#66ccff");
+
+        var under = game.tileAt(cells, worldCol(playerX + (playerW / 2)), worldRow(playerY + playerH - 1));
+        var mouseCol = worldCol(game.getMouseWorldX());
+        var mouseRow = worldRow(game.getMouseWorldY());
+        var mouseId = game.tileAt(cells, mouseCol, mouseRow);
+
+        game.pushCamera();
+        game.setCamera(0, 0);
+        game.setCameraZoom(1);
+        game.fillRect(0, 0, canvasW, 40, "#0c0a09");
+        game.drawText("cell " + string(under) + "  mouse " + string(mouseCol) + "," + string(mouseRow) + "=" + string(mouseId) + "  gems " + string(gems), 12, 26, "#ffffff", "14px monospace");
+        game.popCamera();
+    }
+
+    game.createCanvas(canvasW, canvasH, "#app");
+    game.setPixelated(true);
+    game.setBackground("#151b24");
+    game.startFixed(updateGame, renderGame);
+}

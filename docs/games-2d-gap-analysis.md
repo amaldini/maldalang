@@ -1,7 +1,7 @@
 # MALDA 2D games kit vs 2D peers — gap analysis
 
-**Status:** Evaluation of the landed JS `game.*` kit (G0–G16)  
-**Audience:** maintainers deciding whether to reopen a post-G15 2D roadmap  
+**Status:** Evaluation of the landed JS `game.*` kit (G0–G17)  
+**Audience:** maintainers deciding whether to reopen a post-G17 2D roadmap  
 **Not a roadmap.** Deferred engine-scale items stay in [`docs/roadmap-games.md`](roadmap-games.md). This file compares the **current** immediate-mode canvas kit with libraries people actually finish 2D games in.
 
 **Bar MALDA set for itself:** Love2D / Pico-8 / Phaser, not Unity. JS-only Canvas2D. Functions, not sprite objects or parser keywords.
@@ -16,10 +16,10 @@
 |-------|----------------|
 | Loop | `createCanvas`, `start` / `startFixed` (60 Hz accrue, max 5 catch-up), `stop` |
 | Draw | Rect/circle fill + stroke, line, text, alpha, **blend** (`alpha` / `add` / `multiply` / `screen`), pixelated blit, CPU `setPixel` / `blitPixels` |
-| Images | Async `loadImage` handle, atlas `drawImageRect`, `drawImageEx` (origin / rotate / flip / tint / `tintFill`) |
+| Images | Async `loadImage` handle, atlas `drawImageRect`, `drawImageEx` (origin / rotate / flip / tint / `tintFill`), **`drawTiles`** |
 | Camera | Pan, zoom, push/pop stack, screen↔world, `followCamera` clamp + optional integer snap |
 | Input | Key/mouse edges, touches, Standard Gamepad (press/release, analog + per-axis deadzone) |
-| Collision | Inclusive AABB/circle overlap, point tests, `sweepRect` / `sweepRects` |
+| Collision | Inclusive AABB/circle overlap, point tests, `sweepRect` / `sweepRects`, **`tileAt` / `sweepTiles`** |
 | Audio | Chip-tune Spec v1 (tones, noise, pattern, one music track) + overlapping file samples (`loop` / `pan` / `playbackRate`) |
 | Persist | Origin `localStorage` via `save` / `load` / `removeSave` |
 | Tooling | `malda new game` (fixed-tick paddle), `malda play`, PWA compile, `malda new game --fullstack` scores |
@@ -28,7 +28,8 @@
 
 - Primitive-draw: `game_bounce`, `maldanoid` (fixed tick, overlap bounces, save)
 - Kit 2D: `malda_platform` (atlas, `followCamera`, axis-separated `sweepRects`, SFX, HUD stack)
-- Grid cave without a tile API: `maldadash` (`fillRect` cells + user pause/state machine)
+- Tile grid: `game_tiles_smoke` (`drawTiles` / `tileAt` / `sweepTiles`); `maldadash` queries via `tileAt`
+- Grid cave without a full atlas: `maldadash` (`fillRect` cells + user pause/state machine; cell reads use `tileAt`)
 
 **Explicit non-goals (still correct):** Box2D in core, Pixi/WebGL 2D batcher, native SDL/Raylib, interpreter `game.start`, sprite objects, new keywords (`on update`, `entity`).
 
@@ -52,13 +53,13 @@ Unity 2D is listed only as “not the bar.” Comparing feature-for-feature with
 
 ## 3. Genre feasibility (can you finish it?)
 
-| Genre | Verdict with G0–G16 | What is missing in practice |
+| Genre | Verdict with G0–G17 | What is missing in practice |
 |-------|---------------------|-----------------------------|
 | Pong / breakout / shmup-lite | **Finishable** | Template + `maldanoid` already do this |
 | Short side-scroller | **Finishable** | `malda_platform`; animation, slopes, one-way platforms, and enemies are user code |
-| Grid / cave / Sokoban / Boulder Dash | **Finishable, painful** | `maldadash` is ~900 lines of `fillRect` cells; no `map`/`mget` |
+| Grid / cave / Sokoban / Boulder Dash | **Finishable** | `drawTiles` / `tileAt` / `sweepTiles`; `maldadash` still custom-draws actors |
 | Twin-stick / top-down action | **Possible** | Input yes; no spatial index, particles, or Y-sort |
-| Metroidvania / Zelda-like | **Struggle** | Tilemap draw + solid query, rooms/scenes, NPC/dialog text wrap |
+| Metroidvania / Zelda-like | **Possible** | Tile draw + solid query landed; rooms/scenes, NPC/dialog text wrap still user code |
 | JRPG | **Struggle** | Same + menu UI, bitmap fonts, nine-slice |
 | Physics puzzler (Angry Birds-class) | **No (in core)** | Rigid bodies, joints, sleeping, debug draw |
 | Fighting game | **No** | Frame data, hitboxes as data, skeletal/cel animation |
@@ -93,17 +94,17 @@ Legend: **kit** = still fits “functions on `game.*`”; **engine** = object/wo
 
 **Friction evidence:** `malda_platform` still loops `drawImageRect` per 32px of platform. Hundreds of tiles per frame (a 40×22 cave) will hitch on Canvas2D; `maldadash` avoids images and uses `fillRect`.
 
-### 4.2 Tilemaps (largest content gap)
+### 4.2 Tilemaps
 
 | Capability | Pico-8 | Phaser | Godot | MALDA |
 |------------|--------|--------|-------|-------|
-| Draw a 2D cell array | `map` | Tilemap | TileMapLayer | user `while` + `fillRect` / `drawImageRect` |
-| Query solid / tile id | `mget` / flags | `getTileAt` | `get_cell_atlas_coords` | user arrays |
-| Tiled / LDtk import | tools | first-class | importer | **no** |
+| Draw a 2D cell array | `map` | Tilemap | TileMapLayer | `drawTiles` |
+| Query solid / tile id | `mget` / flags | `getTileAt` | `get_cell_atlas_coords` | `tileAt` |
+| Tiled / LDtk import | tools | first-class | importer | **no** (pack) |
 | Autotile / animated tiles | limited | yes | yes | **no** |
-| Tile **collision** vs actor | map flags + user | Arcade + tile | physics layers | `sweepRects` on a **hand-built AABB list**, not cells |
+| Tile **collision** vs actor | map flags + user | Arcade + tile | physics layers | `sweepTiles` (optional `solids`); still not autotile flags |
 
-A `game.drawTiles(image, cells, tileW, tileH, …)` plus `game.tileAt` / `game.sweepTiles` would unlock grid games without becoming Tiled. Full TMX/LDtk parsers belong in a pack.
+A `game.drawTiles` + `tileAt` / `sweepTiles` kit landed in **G17**. Full TMX/LDtk parsers belong in a pack.
 
 ### 4.3 Camera and loop
 
@@ -224,17 +225,16 @@ Do **not** treat “no Box2D / no scene graph / no Pixi” as unfinished work. T
 
 Ranked for **finishable games**, still inside “functions beat objects” and “deepen `game.*`”:
 
-1. **Tile helpers** — `drawTiles` + cell query + `sweepTiles` against a 2D id grid. This is the Pico-8 `map`/`mget` hole; it is why `maldadash` never used G1 images.
-2. **`moveAndSlide` / one-call axis resolve** — wrap the X-then-Y `sweepRects` pattern `malda_platform` still copies.
-3. **Atlas animation helper** — `drawAnim(handle, x, y, { frames, fps, t })` (pure draw, no sprite object).
-4. **Camera juice** — `followCamera` options: `lerp`, `shake`, maybe look-ahead. Dead-zone is optional.
-5. **Integer scale / letterbox** — one helper so pixel art is not host-CSS (G10 leftover).
-6. **Sample voice handle** — return an id from `audioPlaySample` so overlapping clips of the same URL can be stopped independently.
-7. **Text wrap + align** (and optionally a baked bitmap font blit).
-8. **Mouse wheel, rumble, `getGamepadStick`** — leftover input completeness from G14.
-9. **Pause / timeScale** and/or `startFixed` interpolation leftover for high-refresh displays.
+1. **`moveAndSlide` / one-call axis resolve** — wrap the X-then-Y `sweepRects` / `sweepTiles` pattern `malda_platform` still copies.
+2. **Atlas animation helper** — `drawAnim(handle, x, y, { frames, fps, t })` (pure draw, no sprite object).
+3. **Camera juice** — `followCamera` options: `lerp`, `shake`, maybe look-ahead. Dead-zone is optional.
+4. **Integer scale / letterbox** — one helper so pixel art is not host-CSS (G10 leftover).
+5. **Sample voice handle** — return an id from `audioPlaySample` so overlapping clips of the same URL can be stopped independently.
+6. **Text wrap + align** (and optionally a baked bitmap font blit).
+7. **Mouse wheel, rumble, `getGamepadStick`** — leftover input completeness from G14.
+8. **Pause / timeScale** and/or `startFixed` interpolation leftover for high-refresh displays.
 
-**Landed since this file was first written:** tint + `setBlend` (G16).
+**Landed since this file was first written:** tint + `setBlend` (G16); tile helpers `drawTiles` / `tileAt` / `sweepTiles` (G17).
 
 **Stay out of core** (unchanged from the games roadmap): Box2D-class physics, Tiled/LDtk as a required format, particle *engine*, scene graph, WebGL 2D batcher, native SDL, Desktop-as-game-editor.
 
@@ -247,12 +247,12 @@ A **tiny** particle helper (`game.burst(x, y, { n, life, color })` as immediate 
 | If the next game you want in `Examples/Games` is… | Then |
 |---------------------------------------------------|------|
 | Another primitive-draw arcade | **Do nothing** — kit is sufficient |
-| A tiled cave / RPG overworld / Metroidvania slice | Add **tile helpers** (item 2) before anything else |
-| A juicier platformer (flash, shake, dust) | Tint/blend **landed** (G16); next is **camera shake** (item 4) and/or a tiny burst helper |
+| A tiled cave / RPG overworld / Metroidvania slice | Tile helpers **landed** (G17); next is **rooms/scenes** or **`moveAndSlide`** |
+| A juicier platformer (flash, shake, dust) | Tint/blend **landed** (G16); next is **camera shake** and/or a tiny burst helper |
 | A physics toy | **Do not** grow `game.*` — optional pack |
 | A Steam desktop action game | Out of tree (native pack), not this repo |
 
-Revisit this file when a new 2D workstream is actually scheduled. Until then, [`docs/roadmap-games.md`](roadmap-games.md) remains the status of G0–G16 and the non-goals list.
+Revisit this file when a new 2D workstream is actually scheduled. Until then, [`docs/roadmap-games.md`](roadmap-games.md) remains the status of G0–G17 and the non-goals list.
 
 ---
 
