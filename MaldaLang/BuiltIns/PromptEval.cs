@@ -30,11 +30,11 @@ public static class PromptEval
         Interpreter? interpreter)
     {
         var typeName = instance.ReturnType;
-        if (typeNameOverride != null && typeNameOverride.Value.Type != ValueType.Null)
+        if (typeNameOverride != null && typeNameOverride.Type != ValueType.Null)
         {
-            if (typeNameOverride.Value.Type != ValueType.String)
+            if (typeNameOverride.Type != ValueType.String)
                 throw new Exception("evalPrompt() typeName must be a string.");
-            var overrideName = typeNameOverride.Value.AsString().Trim();
+            var overrideName = typeNameOverride.AsString().Trim();
             if (overrideName.Length > 0)
                 typeName = overrideName;
         }
