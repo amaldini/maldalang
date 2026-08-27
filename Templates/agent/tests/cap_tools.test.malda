@@ -1,0 +1,24 @@
+// Run from the project root: malda test
+// Discovery finds tests/*.test.malda. Include the shared helper; mint notes/ beside app.malda.
+include "../tools.malda";
+
+var notesRoot = cap.fileRead(io.pathJoin(getProgramDirectory(), "..", "notes"));
+
+var welcome = str.trim(readNoteWith(notesRoot, "welcome.txt"));
+assert(welcome == "Welcome to your MALDA agent workspace.", "welcome note should be readable under notes/");
+
+var escaped = false;
+try {
+    readNoteWith(notesRoot, "../secret.txt");
+} catch (e) {
+    escaped = true;
+}
+assert(escaped, "cap.confine should reject a path that escapes notes/");
+
+var forged = false;
+try {
+    cap.read({ "kind": "fileRead", "path": io.pathJoin(getProgramDirectory(), "..", "notes", "welcome.txt") });
+} catch (e) {
+    forged = true;
+}
+assert(forged, "cap.read should reject a forged { kind, path } dict");

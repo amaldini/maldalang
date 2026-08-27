@@ -1,0 +1,17 @@
+// Safe note reader: the host mints a FileRead token for notes/.
+// Tool args are a relative path only — never a cap token (JSON cannot round-trip one).
+// cap.confine rejects ".." and absolute paths. Forged { kind, path } dicts fail cap.read.
+
+schema NoteArgs {
+    relativePath: string;
+}
+
+@effects("cap")
+function readNoteWith(rootCap, relativePath) {
+    var check = validate("NoteArgs", dict { "relativePath": relativePath });
+    if (!check.ok) {
+        return "invalid: " + check.error;
+    }
+    var child = cap.confine(rootCap, check.data.relativePath);
+    return cap.read(child);
+}

@@ -1,0 +1,29 @@
+// Offline demo of a cap-confined tool. No API key.
+// The host mints notesRoot. The model (if you add an agent) only passes relativePath.
+include "tools.malda";
+
+var notesRoot = cap.fileRead(io.pathJoin(getProgramDirectory(), "notes"));
+
+@Tool("read_note", "Read a note under the workspace notes/ folder. Pass a relative path only; the host confines it.", "{\"type\":\"object\",\"properties\":{\"relativePath\":{\"type\":\"string\",\"description\":\"Path relative to notes/. No .. or absolute paths.\"}},\"required\":[\"relativePath\"]}")
+@effects("cap")
+function readNote(relativePath) {
+    return readNoteWith(notesRoot, relativePath);
+}
+
+io.print(str.trim(readNote("welcome.txt")));
+
+var escaped = false;
+try {
+    readNote("../secret.txt");
+} catch (e) {
+    escaped = true;
+}
+io.print(escaped);
+
+var forged = false;
+try {
+    cap.read({ "kind": "fileRead", "path": io.pathJoin(getProgramDirectory(), "notes", "welcome.txt") });
+} catch (e) {
+    forged = true;
+}
+io.print(forged);

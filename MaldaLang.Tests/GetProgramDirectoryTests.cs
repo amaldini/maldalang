@@ -51,6 +51,31 @@ public class GetProgramDirectoryTests : TestBase
     }
 
     [Fact]
+    public void MaldaTest_PassesCurrentFile_SoGetProgramDirectoryIsTheTestFolder()
+    {
+        var tempDir = CreateTempDirectory("gpd_test_");
+        try
+        {
+            var testPath = Path.Combine(tempDir, "probe.test.malda");
+            File.WriteAllText(Path.Combine(tempDir, "marker.txt"), "ok");
+            File.WriteAllText(
+                testPath,
+                "var marker = io.pathJoin(getProgramDirectory(), \"marker.txt\");\nassert(io.pathExists(marker), \"getProgramDirectory should be the test file folder\");\n");
+
+            var output = new StringWriter();
+            var error = new StringWriter();
+            var code = new MaldaLang.Testing.TestCommandRunner().Run(new[] { testPath }, output, error);
+
+            Assert.Equal(0, code);
+            Assert.Equal(string.Empty, error.ToString());
+        }
+        finally
+        {
+            SafeDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
     public void SourceRequiresLLamaSharp_DetectsLlamaEmbedder()
     {
         Assert.True(MaldaCompiler.SourceRequiresLLamaSharp("var e = new LlamaEmbedder(\"m.gguf\");"));

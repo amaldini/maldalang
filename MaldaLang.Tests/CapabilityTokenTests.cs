@@ -5,6 +5,8 @@ using MaldaLang;
 using MaldaLang.IDE;
 using MaldaLang.IDE.Models;
 using MaldaLang.Interpreter;
+using MaldaLang.Scaffolding;
+using MaldaLang.Tests.Planning;
 using Xunit;
 
 namespace MaldaLang.Tests;
@@ -310,6 +312,46 @@ public class CapabilityTokenTests : TestBase
         finally
         {
             SafeDeleteDirectory(dir);
+        }
+    }
+
+    [Fact]
+    public void FewShot_ToolCapRead_ConfineAndEscape()
+    {
+        var path = PlanningPaths.ResolveRepoFile("docs", "llm", "few-shot", "26_tool_cap_read.malda");
+        var lines = RunProgram(File.ReadAllText(path)).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal("true", lines[0]);
+        Assert.Equal("true", lines[1]);
+    }
+
+    [Fact]
+    public void Scaffold_AgentTemplate_RunsAppAndMaldaTest()
+    {
+        var root = CreateTempDirectory("malda_scaffold_agent_run_");
+        var destination = Path.Combine(root, "run-agent");
+        try
+        {
+            var scaffolder = new TemplateScaffolder();
+            Assert.Equal(0, scaffolder.Scaffold("agent", destination, new StringWriter(), new StringWriter()));
+
+            var appPath = Path.Combine(destination, "app.malda");
+            var stdout = CaptureInterpretAsync(File.ReadAllText(appPath), appPath).GetAwaiter().GetResult();
+            var lines = stdout.Replace("\r\n", "\n").Trim().Split('\n');
+            Assert.Equal("Welcome to your MALDA agent workspace.", lines[0]);
+            Assert.Equal("true", lines[1]);
+            Assert.Equal("true", lines[2]);
+
+            var testOutput = new StringWriter();
+            var testError = new StringWriter();
+            var testPath = Path.Combine(destination, "tests", "cap_tools.test.malda");
+            var testCode = new MaldaLang.Testing.TestCommandRunner().Run(new[] { testPath }, testOutput, testError);
+            Assert.Equal(0, testCode);
+            Assert.Equal(string.Empty, testError.ToString());
+            Assert.Contains("passed", testOutput.ToString(), StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
         }
     }
 }

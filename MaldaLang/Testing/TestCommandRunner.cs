@@ -89,7 +89,7 @@ public sealed class TestCommandRunner
         var properties = statements.OfType<PropertyDeclaration>().ToList();
         if (properties.Count == 0)
         {
-            var interpreter = new Interpreter();
+            var interpreter = new Interpreter(currentFile: path);
             interpreter.InterpretAsync(statements).GetAwaiter().GetResult();
             return new List<TestExecutionResult> { new(path, passed: true) };
         }

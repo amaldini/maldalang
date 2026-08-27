@@ -32,6 +32,7 @@ After generating a snippet, diagnose with `malda check path.malda --json` before
 | `23_grounded_wrap.malda` | `grounded.wrap` citations wrapper (GraphMemory `ask` is the ASK path) |
 | `24_capability_tokens.malda` | `cap.fileRead` unforgeable token (`cap.read` rejects forged dicts) |
 | `25_as_variant.malda` | `asVariant("Intent", dict)` after `validate` → variant + `match` |
+| `26_tool_cap_read.malda` | `validate` tool args → `cap.confine` (host-minted root; relative path only) |
 
 Also useful from the main tree:
 

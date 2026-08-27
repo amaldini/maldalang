@@ -338,6 +338,7 @@ print(read_allowed(notes));
 
 - Forged dicts and path strings fail `cap.read`; a helper that takes a token cannot invent a path.
 - Interpreter and C# transpile agree. JS: mint / `is` / `confine` only (file consume is host-only).
+- First-contact scaffold: `malda new agent` (host-mints `notes/`; tool args are a relative path).
 
 ---
 

@@ -101,7 +101,7 @@ function Write-DistReadme {
         "program.html - Desktop IDE Preview web host page",
         "docs\llm\ - language pack for coding agents writing .malda",
         "docs\spec\ - language spec notes",
-        "Templates\ - scaffolds for malda new webapi|fullstack|game",
+        "Templates\ - scaffolds for malda new webapi|fullstack|game|agent",
         "AGENTS.md / llms.txt - agent entrypoints",
         "Licence files (MIT OR Apache-2.0)"
     )
@@ -144,7 +144,7 @@ For coding agents
 -----------------
 Point any agentic LLM at this folder. Start with AGENTS.md, then load
 docs\llm\ (see docs\llm\README.md). Smoke-run generated programs with
-$launcherHint path\to\program.malda. Use malda new webapi|fullstack for
+$launcherHint path\to\program.malda. Use malda new webapi|fullstack|game|agent for
 scaffolds (Templates\ must stay next to bin\).
 
 Requirements
@@ -209,6 +209,7 @@ Scaffold a project (requires ``Templates/`` next to ``bin/``):
 $launcher new webapi my-api
 $launcher new fullstack my-app
 $launcher new game my-game
+$launcher new agent my-agent
 $launcher play my-game/app.malda
 ``````
 

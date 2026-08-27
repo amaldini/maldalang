@@ -151,7 +151,7 @@ public static class NewCommandOptionsParser
 
     public static void WriteUsage(TextWriter output)
     {
-        output.WriteLine("Usage: malda new <webapi|fullstack|game> [directory] [options]");
+        output.WriteLine("Usage: malda new <webapi|fullstack|game|agent> [directory] [options]");
         output.WriteLine("  Options:");
         output.WriteLine("    --name <project-name>  Override scaffolded project name");
         output.WriteLine("    --force                Overwrite template files in existing directories");
@@ -164,6 +164,7 @@ public static class NewCommandOptionsParser
         output.WriteLine("    malda new fullstack --name SalesPortal");
         output.WriteLine("    malda new game my-game");
         output.WriteLine("    malda new game my-scores --fullstack");
+        output.WriteLine("    malda new agent my-agent");
         output.WriteLine("    malda new webapi . --force --no-tests");
     }
 }

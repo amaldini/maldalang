@@ -1,0 +1,17 @@
+// Host mints a workspace root. Tool args are a relative path only.
+// cap.confine rejects escape. Complements 24_capability_tokens.malda (forged dicts).
+schema NoteArgs {
+    relativePath: string;
+}
+
+var notesRoot = cap.fileRead("notes");
+var check = validate("NoteArgs", dict { "relativePath": "welcome.txt" });
+var child = cap.confine(notesRoot, check.data.relativePath);
+io.print(cap.is(child, "fileRead"));
+var escaped = false;
+try {
+    cap.confine(notesRoot, "../secret.txt");
+} catch (e) {
+    escaped = true;
+}
+io.print(escaped);

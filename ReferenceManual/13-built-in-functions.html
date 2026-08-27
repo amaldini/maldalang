@@ -940,6 +940,7 @@ print(forged);</code></pre>
             <li><code>cap.is(value, kind?)</code> — true only for a real token. <code>cap.confine(token, relativePath)</code> returns a narrower token of the same kind; paths outside the parent throw.</li>
             <li><code>io.readFile</code> / <code>io.writeFile</code> / <code>io.listDirectory</code> also accept a matching token. Ordinary string paths still work.</li>
             <li>Mark handlers that mint or consume tokens <code>@effects("cap")</code> (or list both <code>"io"</code> and <code>"cap"</code>). JavaScript can mint / <code>is</code> / <code>confine</code>; file consume is host-only.</li>
+            <li>Do not pass a token through LLM JSON. Host-mint a workspace root and <code>cap.confine</code> a relative path from tool args. Scaffold: <code>malda new agent</code>.</li>
             <li>Example: <code>Examples/Tools/capability_tokens.malda</code>.</li>
         </ul>
         <h2>13.20 Structured Task Planning</h2>
