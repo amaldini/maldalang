@@ -288,7 +288,7 @@
     },
     {
       "name": "JS Canvas Game Maldadash",
-      "description": "Boulder Dash-style cave: dig dirt, drop boulders, collect diamonds, and dodge fireflies using MALDA game.* API",
+      "description": "Boulder Dash-style cave showcase: drawTiles atlas, followCamera, drawImageEx actors, sweepTiles sparks, sample SFX, startFixed, and a saved high score",
       "file": "maldadash.malda",
       "track": "showcase",
       "difficulty": "advanced",
@@ -296,17 +296,23 @@
       "concepts": [
         "game.*",
         "tile grid",
-        "gravity",
-        "keyboard input",
+        "drawTiles",
+        "followCamera",
+        "drawImageEx",
+        "sweepTiles",
+        "gamepad",
+        "audio samples",
+        "fixed timestep",
         "JavaScript target"
       ],
       "prerequisites": [
-        "Games/game_bounce.malda"
+        "Games/game_tiles_smoke.malda"
       ],
-      "learningGoal": "Show a grid-and-physics cave game on the same game.* canvas path as Bounce and Maldanoid.",
-      "expectedOutput": "Runs a playable Boulder Dash-style cave in the browser.",
+      "learningGoal": "Show G1–G17 game.* helpers in one playable tile cave that still compiles with --mode js.",
+      "expectedOutput": "Runs a playable Boulder Dash-style cave: atlas tiles, camera follow, spinning gems, torch lighting, additive sparks, jump-in SFX, and a high score that survives reload.",
       "documentationPath": "/?lesson=browser-track#lesson-browser-track",
-      "documentationTitle": "Browser Track"
+      "documentationTitle": "Browser Track",
+      "featured": true
     },
     {
       "name": "JS three.js Rotating Cube",

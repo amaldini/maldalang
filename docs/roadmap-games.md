@@ -74,7 +74,7 @@ top-level globals, Web IDE Desktop parity, product apps or vertical packs
 | 14 | **G14** Gamepad completeness | Landed | `wasGamepadButtonReleased` missing; analog sticks have no deadzone |
 | 15 | **G15** Starter uses `startFixed` | Landed | `malda new game` still emits `game.start`; the kit loop is `startFixed` |
 | 16 | **G16** Tint + blend | Landed | Highest remaining kit gap after G15: hit-flash, additive sparks, night multiply |
-| 17 | **G17** Tile helpers | Landed | Pico-8 `map`/`mget` hole; `maldadash` was `fillRect` cells with no `drawTiles` / `sweepTiles` |
+| 17 | **G17** Tile helpers | Landed | Pico-8 `map`/`mget` hole; `maldadash` now uses `drawTiles` / `tileAt` / `sweepTiles` |
 
 ```text
 G0  roadmap file                          (landed)
@@ -295,8 +295,8 @@ compiles with `--mode js`.
 
 - Host HTML + `metadata.json` catalog entry.
 - Bounce remains the primitive-draw `game.start` loop. Maldanoid stays
-  primitive-draw (no sprites) but now uses G2/G3/G5 helpers. `maldadash` stays a
-  tile cave on `fillRect` (the cheaper G1-atlas rewrite was not taken).
+  primitive-draw (no sprites) but now uses G2/G3/G5 helpers. `maldadash` is the
+  tile-cave showcase (`drawTiles` / `followCamera` / juice).
 - Transpile smoke: `JsTranspiler_*Example_Emits…` like `maldadash`.
 
 ---
@@ -618,7 +618,7 @@ scope.
 
 **Why:** After G16 the highest remaining kit gap in
 [`docs/games-2d-gap-analysis.md`](games-2d-gap-analysis.md) was a Pico-8-style
-`map` / `mget` hole. `maldadash` stayed on `fillRect` cells; grid games had no
+`map` / `mget` hole. `maldadash` used to stay on `fillRect` cells; grid games had no
 draw/query/sweep against a 2D id array. This is still functions on `game.*`,
 not Tiled/LDtk or a tile *engine*.
 
@@ -635,7 +635,7 @@ not Tiled/LDtk or a tile *engine*.
 - Axis-separated use stays the caller's job, same as `sweepRects`.
 - `drawTiles` dest size is `tileW` × `tileH`; atlas frame size is `srcW`/`srcH` when those differ.
 
-**Smoke:** `Examples/Games/game_tiles_smoke.malda` (atlas cave, gem pickups via `tileAt`, landings via `sweepTiles`). Showcase: `maldadash` `getTile` calls `tileAt` (flat grid + `out: STEEL`).
+**Smoke:** `Examples/Games/game_tiles_smoke.malda` (atlas cave, gem pickups via `tileAt`, landings via `sweepTiles`). Showcase: `maldadash` draws the cave with `drawTiles`, queries with `tileAt`, and uses `sweepTiles` for explosion-spark bounces.
 
 **Files:** runtime, chapter 26.9, `docs/javascript-backend.md`, `docs/llm/malda-gotchas.md`. Tests: `JsTranspiler_MapsGameTileApis…` + `GameRuntime_TileAt_…` + `GameRuntime_SweepTiles_…` + `GameRuntime_DrawTiles_…` + `JsTranspiler_TilesSmokeExample_…`. Filtered: `JavaScriptBackendTests`.
 
