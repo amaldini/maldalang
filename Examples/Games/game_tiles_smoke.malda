@@ -10,7 +10,7 @@ if (root == null) {
     dom.append(root, title);
 
     var hint = dom.create("p");
-    dom.setText(hint, "Arrows run. Space or Up jumps. Green cells are solid (sweepTiles). Magenta gems are tileAt pickups. HUD shows the cell under the player.");
+    dom.setText(hint, "Arrows run. Space or Up jumps. Green cells are solid (sweepTiles). Magenta gems are tileAt pickups (one sits at floor height). HUD shows the cell under the player.");
     dom.append(root, hint);
 
     var atlas = game.loadImage("assets/sprite_tiles.png");
@@ -44,6 +44,9 @@ if (root == null) {
             if (r == 3 && c == 13) {
                 id = 2;
             }
+            if (r == rows - 2 && c == 5) {
+                id = 2;
+            }
             row.append(id);
             c = c + 1;
         }
@@ -54,7 +57,7 @@ if (root == null) {
     var playerW = 18.0;
     var playerH = 24.0;
     var playerX = 48.0;
-    var playerY = originY + 200.0;
+    var playerY = originY + ((rows - 1) * tileSize) - playerH - 2.0;
     var vy = 0.0;
     var onGround = false;
     var gems = 0;
@@ -154,7 +157,7 @@ if (root == null) {
 
         game.fillRect(playerX, playerY, playerW, playerH, "#66ccff");
 
-        var under = game.tileAt(cells, worldCol(playerX + (playerW / 2)), worldRow(playerY + playerH - 1));
+        var under = game.tileAt(cells, worldCol(playerX + (playerW / 2)), worldRow(playerY + playerH));
         var mouseCol = worldCol(game.getMouseWorldX());
         var mouseRow = worldRow(game.getMouseWorldY());
         var mouseId = game.tileAt(cells, mouseCol, mouseRow);
