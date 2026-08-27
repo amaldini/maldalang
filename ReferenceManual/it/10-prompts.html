@@ -387,13 +387,13 @@ var temperature = p.temperature;  // number? (null if not provided)
 var tools = p.tools;        // array? (null if not provided; Mode B)
 var gather = p.gather;      // array? (null if not provided; Mode C tool list)
 var maxTokens = p.maxTokens; // number? (null if not provided)
-var returnType = p.returnType; // string? tipo -&gt; dichiarato (null se non tipizzato)
+var returnType = p.returnType; // string? declared -&gt; Type (null if untyped)
 
 // Methods
 var userStr = p.getUser();     // Returns user prompt string
 var systemStr = p.getSystem(); // Returns system prompt string or null
 var promptStr = p.toPromptString(); // Returns user prompt (for backward compatibility)
-var checked = p.eval(dict { "name": "Ada" }); // Fixture offline; uguale a evalPrompt(p, fixture)</code></pre>
+var checked = p.eval(dict { "name": "Ada" }); // Offline fixture in/out; same as evalPrompt(p, fixture)</code></pre>
         <p><code>evalPrompt(instance, fixture, typeName?)</code> (e <code>instance.eval</code>) passa JSON simulato dallo stesso percorso extract / validate / coerce di <code>await</code>, senza LLM e senza repair. In caso di successo, <code>data</code> per un sum type è un variant per <code>match</code>. Vedi <a href="13-built-in-functions.html#evalPrompt">13.7.1.2 evalPrompt</a> e <code>Examples/Prompts/eval_prompt.malda</code>.</p>
         
         <h2>10.11 Funzionalità avanzate dei prompt</h2>
