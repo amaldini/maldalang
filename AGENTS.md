@@ -170,5 +170,5 @@ See [`ReferenceManual/README-print.md`](ReferenceManual/README-print.md). Short 
 - [`docs/roadmap-p0-maturity.md`](docs/roadmap-p0-maturity.md) — P0 maturity roadmap (complete; next = post-Final / deferred)
 - [`docs/roadmap-language-constructs.md`](docs/roadmap-language-constructs.md) — next language constructs (schema/sum types, Mode C, budget, WF determinism)
 - [`docs/roadmap-trust.md`](docs/roadmap-trust.md) — trust plan (strict compile, smoke, gotchas; toolchain 1.0.0 landed)
-- [`docs/roadmap-games.md`](docs/roadmap-games.md) — browser games kit (`game.*` / `three.*`, JS-only; G0–G9 landed)
+- [`docs/roadmap-games.md`](docs/roadmap-games.md) — browser games kit (`game.*` / `three.*`, JS-only; G0–G16 landed)
 - [`llms.txt`](llms.txt) — compact doc index for LLM tools

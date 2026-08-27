@@ -10,7 +10,7 @@ if (root == null) {
     dom.append(root, title);
 
     var hint = dom.create("p");
-    dom.setText(hint, "Arrows pan. [ / - zoom out, ] / = zoom in, 0 resets zoom. Green and magenta tiles come from a PNG atlas. The extra pair is drawImageEx: spin + flipX around the dest center. Click places a marker in world space. HUD uses measureText; the marker ring is strokeCircle.");
+    dom.setText(hint, "Arrows pan. [ / - zoom out, ] / = zoom in, 0 resets zoom. Green and magenta tiles come from a PNG atlas. The extra pair is drawImageEx: spin + flipX around the dest center, with multiply tint and tintFill flash. Click places a marker; the marker glow uses setBlend add. HUD uses measureText; the marker ring is strokeCircle.");
     dom.append(root, hint);
 
     var tiles = game.loadImage("assets/sprite_tiles.png");
@@ -71,7 +71,8 @@ if (root == null) {
                 "h": 64,
                 "ox": 32,
                 "oy": 32,
-                "angle": spin
+                "angle": spin,
+                "tint": "#ff6644"
             });
             game.drawImageEx(tiles, 500, 112, {
                 "sx": 16,
@@ -82,7 +83,9 @@ if (root == null) {
                 "h": 64,
                 "ox": 32,
                 "oy": 32,
-                "flipX": true
+                "flipX": true,
+                "tint": "#ffffff",
+                "tintFill": true
             });
         } else {
             game.fillRect(40, 80, 64, 64, "#334455");
@@ -92,8 +95,14 @@ if (root == null) {
         game.strokeRect(32, 64, 260, 112, "#88ffcc", 3);
         game.setAlpha(1);
         game.drawLine(32, 200, 292, 200, "#ffcc66", 2);
+        game.setBlend("add");
+        game.fillCircle(markX, markY, 16, "#ffee88");
+        game.setBlend("alpha");
         game.fillCircle(markX, markY, 6, "#ff88aa");
         game.strokeCircle(markX, markY, 10, "#ff88aa", 2);
+        game.setBlend("multiply");
+        game.fillRect(32, 220, 88, 36, "#4466aa");
+        game.setBlend("alpha");
         var center = game.screenToWorld(320, 180);
         game.fillCircle(center.x, center.y, 8, "#66ccff");
 
@@ -108,7 +117,7 @@ if (root == null) {
         var metrics = game.measureText(hud, "14px monospace");
         game.strokeRect(8, 8, metrics.width + 8, 22, "#334155", 1);
         game.drawText(hud, 12, 24, "#ffffff", "14px monospace");
-        game.drawText("Arrows pan. [ ] zoom. Click world marker. Rotating green + flipped magenta use drawImageEx.", 12, 44, "#99ddee", "12px monospace");
+        game.drawText("Arrows pan. [ ] zoom. Click world marker. Spin tint, flip tintFill, add glow, multiply strip.", 12, 44, "#99ddee", "12px monospace");
         game.popCamera();
     }
 

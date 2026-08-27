@@ -516,6 +516,8 @@ public class JavaScriptBackendTests : TestBase
             game.drawLine(0, 0, 10, 10, "#ffffff", 2);
             game.strokeRect(1, 2, 3, 4, "#88ffcc", 3);
             game.setAlpha(0.5);
+            game.setBlend("add");
+            var blend = game.getBlend();
             game.setCamera(12, 24);
             game.setCameraZoom(2);
             var camX = game.getCameraX();
@@ -545,6 +547,8 @@ public class JavaScriptBackendTests : TestBase
         Assert.Contains("mlRuntime.game.drawLine(0, 0, 10, 10, \"#ffffff\", 2)", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.strokeRect(1, 2, 3, 4, \"#88ffcc\", 3)", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.setAlpha(0.5)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.setBlend(\"add\")", js, StringComparison.Ordinal);
+        Assert.Contains("let blend = mlRuntime.game.getBlend();", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.setCamera(12, 24)", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.setCameraZoom(2)", js, StringComparison.Ordinal);
         Assert.Contains("let camX = mlRuntime.game.getCameraX();", js, StringComparison.Ordinal);
@@ -603,6 +607,8 @@ public class JavaScriptBackendTests : TestBase
         Assert.Contains("mlRuntime.game.loadImage(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.drawImageRect(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.drawImageEx(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.setBlend(", js, StringComparison.Ordinal);
+        Assert.Contains("tintFill", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.setCamera(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.followCamera(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.setCameraZoom(", js, StringComparison.Ordinal);
@@ -694,6 +700,8 @@ public class JavaScriptBackendTests : TestBase
         Assert.Contains("mlRuntime.game.setPixelated(true)", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.strokeCircle(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.getCanvasWidth()", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.setBlend(", js, StringComparison.Ordinal);
+        Assert.Contains("tintFill", js, StringComparison.Ordinal);
         Assert.DoesNotContain("mlRuntime.three.", js, StringComparison.Ordinal);
     }
 
@@ -1528,6 +1536,328 @@ process.stdout.write("ok\n");
             var stderr = process.StandardError.ReadToEnd();
             process.WaitForExit(15000);
             Assert.True(process.ExitCode == 0, $"drawImageEx runtime test failed ({process.ExitCode}). stderr: {stderr}");
+            Assert.Equal("ok", stdout.Trim());
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
+        }
+    }
+
+    [Fact]
+    public void GameRuntime_SetBlend_AppliesToFillsAndResetsOnCreateCanvas()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var runtimePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "wwwroot", "malda-js-runtime.js");
+        var root = CreateTempDirectory("malda_js_set_blend_");
+        try
+        {
+            var scriptPath = Path.Combine(root, "set-blend-test.js");
+            File.WriteAllText(scriptPath, """
+function makeCanvas() {
+  const ctx = {
+    fills: [],
+    fillStyle: "#000",
+    globalAlpha: 1,
+    globalCompositeOperation: "source-over",
+    imageSmoothingEnabled: true,
+    fillRect(x, y, w, h) {
+      this.fills.push({
+        x, y, w, h,
+        composite: this.globalCompositeOperation,
+        fillStyle: this.fillStyle,
+        alpha: this.globalAlpha
+      });
+    },
+    clearRect() {},
+    fillText() {},
+    drawImage() {},
+    beginPath() {},
+    arc() {},
+    fill() {},
+    save() {},
+    restore() {}
+  };
+  return {
+    width: 0,
+    height: 0,
+    style: {},
+    parentNode: null,
+    _ctx: ctx,
+    getContext() { return this._ctx; },
+    getBoundingClientRect() {
+      return { left: 0, top: 0, width: this.width, height: this.height };
+    }
+  };
+}
+
+const mount = {
+  children: [],
+  appendChild(el) {
+    this.children.push(el);
+    el.parentNode = this;
+    return el;
+  },
+  removeChild(el) {
+    this.children = this.children.filter((child) => child !== el);
+    el.parentNode = null;
+    return el;
+  }
+};
+
+globalThis.document = {
+  body: mount,
+  querySelector() { return mount; },
+  createElement(tag) {
+    if (tag === "canvas") return makeCanvas();
+    return { style: {} };
+  }
+};
+globalThis.window = {
+  addEventListener() {},
+  removeEventListener() {},
+  requestAnimationFrame() { return 1; },
+  cancelAnimationFrame() {}
+};
+
+require(process.argv[2]);
+const game = globalThis.mlRuntime.game;
+game.createCanvas(64, 32, "#app");
+const ctx = mount.children[0]._ctx;
+if (game.getBlend() !== "alpha") throw new Error("default blend: " + game.getBlend());
+
+game.setBlend("add");
+if (game.getBlend() !== "add") throw new Error("setBlend add: " + game.getBlend());
+if (ctx.globalCompositeOperation !== "lighter") throw new Error("add should map to lighter");
+game.fillRect(1, 2, 3, 4, "#ffffff");
+const addFill = ctx.fills[ctx.fills.length - 1];
+if (!addFill || addFill.composite !== "lighter") throw new Error("add fill: " + JSON.stringify(addFill));
+
+game.setBlend("multiply");
+game.fillRect(0, 0, 8, 8, "#224466");
+const mulFill = ctx.fills[ctx.fills.length - 1];
+if (!mulFill || mulFill.composite !== "multiply") throw new Error("multiply fill: " + JSON.stringify(mulFill));
+
+game.setBlend("screen");
+if (game.getBlend() !== "screen") throw new Error("screen: " + game.getBlend());
+game.setBlend("lighter");
+if (game.getBlend() !== "add") throw new Error("lighter alias should stay add: " + game.getBlend());
+game.setBlend("nope");
+if (game.getBlend() !== "alpha") throw new Error("unknown blend should reset to alpha: " + game.getBlend());
+
+game.setBlend("add");
+const beforeClear = ctx.fills.length;
+game.clear();
+const clearFill = ctx.fills[beforeClear];
+if (!clearFill || clearFill.composite !== "source-over") throw new Error("clear should ignore blend: " + JSON.stringify(clearFill));
+game.fillRect(0, 0, 2, 2, "#ffffff");
+const afterClear = ctx.fills[ctx.fills.length - 1];
+if (!afterClear || afterClear.composite !== "lighter") throw new Error("blend should survive clear: " + JSON.stringify(afterClear));
+
+game.createCanvas(32, 16, "#app");
+if (game.getBlend() !== "alpha") throw new Error("createCanvas should reset blend: " + game.getBlend());
+const ctx2 = mount.children[0]._ctx;
+game.fillRect(0, 0, 1, 1, "#ffffff");
+const resetFill = ctx2.fills[ctx2.fills.length - 1];
+if (!resetFill || resetFill.composite !== "source-over") throw new Error("reset fill: " + JSON.stringify(resetFill));
+
+process.stdout.write("ok\n");
+""");
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = Environment.GetEnvironmentVariable("MALDA_NODE_PATH") is { Length: > 0 } nodePath
+                    ? nodePath
+                    : "node",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = root
+            };
+            startInfo.ArgumentList.Add(scriptPath);
+            startInfo.ArgumentList.Add(runtimePath);
+
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Failed to start Node.js for setBlend runtime test.");
+            var stdout = process.StandardOutput.ReadToEnd();
+            var stderr = process.StandardError.ReadToEnd();
+            process.WaitForExit(15000);
+            Assert.True(process.ExitCode == 0, $"setBlend runtime test failed ({process.ExitCode}). stderr: {stderr}");
+            Assert.Equal("ok", stdout.Trim());
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
+        }
+    }
+
+    [Fact]
+    public void GameRuntime_DrawImageEx_TintAndTintFill_UsesOffscreenComposite()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var runtimePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "wwwroot", "malda-js-runtime.js");
+        var root = CreateTempDirectory("malda_js_draw_image_ex_tint_");
+        try
+        {
+            var scriptPath = Path.Combine(root, "draw-image-ex-tint-test.js");
+            File.WriteAllText(scriptPath, """
+class FakeImage {
+  constructor() {
+    this.width = 0;
+    this.height = 0;
+    this.naturalWidth = 0;
+    this.naturalHeight = 0;
+    this.onload = null;
+    this.onerror = null;
+    this._src = "";
+  }
+  set src(value) {
+    this._src = String(value || "");
+    this.width = 16;
+    this.height = 16;
+    this.naturalWidth = 16;
+    this.naturalHeight = 16;
+    if (typeof this.onload === "function") this.onload();
+  }
+  get src() { return this._src; }
+}
+globalThis.Image = FakeImage;
+
+function makeCanvas() {
+  const ctx = {
+    ops: [],
+    images: [],
+    fills: [],
+    globalAlpha: 1,
+    globalCompositeOperation: "source-over",
+    fillStyle: "#000",
+    imageSmoothingEnabled: true,
+    save() { this.ops.push({ op: "save" }); },
+    restore() { this.ops.push({ op: "restore" }); },
+    translate() {},
+    rotate() {},
+    scale() {},
+    clearRect() { this.ops.push({ op: "clear" }); },
+    fillRect() {
+      this.fills.push({ composite: this.globalCompositeOperation, fillStyle: this.fillStyle });
+    },
+    fillText() {},
+    drawImage() {
+      this.images.push({
+        args: Array.from(arguments),
+        composite: this.globalCompositeOperation,
+        alpha: this.globalAlpha
+      });
+    }
+  };
+  return {
+    width: 0,
+    height: 0,
+    style: {},
+    parentNode: null,
+    _ctx: ctx,
+    getContext() { return this._ctx; },
+    getBoundingClientRect() {
+      return { left: 0, top: 0, width: this.width, height: this.height };
+    }
+  };
+}
+
+const canvases = [];
+const mount = {
+  children: [],
+  appendChild(el) {
+    this.children.push(el);
+    el.parentNode = this;
+    return el;
+  },
+  removeChild(el) {
+    this.children = this.children.filter((child) => child !== el);
+    el.parentNode = null;
+    return el;
+  }
+};
+
+globalThis.document = {
+  body: mount,
+  querySelector() { return mount; },
+  createElement(tag) {
+    if (tag === "canvas") {
+      const canvas = makeCanvas();
+      canvases.push(canvas);
+      return canvas;
+    }
+    return { style: {} };
+  }
+};
+globalThis.window = {
+  addEventListener() {},
+  removeEventListener() {},
+  requestAnimationFrame() { return 1; },
+  cancelAnimationFrame() {}
+};
+
+require(process.argv[2]);
+const game = globalThis.mlRuntime.game;
+game.createCanvas(64, 32, "#app");
+const main = canvases[0]._ctx;
+const tiles = game.loadImage("ok.png");
+
+game.drawImageEx(tiles, 8, 16, { w: 16, h: 16, tint: "#ff0000" });
+if (canvases.length < 2) throw new Error("tint should allocate an offscreen canvas");
+const tintCtx = canvases[1]._ctx;
+if (tintCtx.fills.length === 0 || tintCtx.fills[0].composite !== "multiply") {
+  throw new Error("multiply tint fill: " + JSON.stringify(tintCtx.fills));
+}
+if (tintCtx.fills[0].fillStyle !== "#ff0000") throw new Error("tint color: " + tintCtx.fills[0].fillStyle);
+const destIn = tintCtx.images.filter((img) => img.composite === "destination-in");
+if (destIn.length !== 1) throw new Error("multiply should restore alpha with destination-in: " + JSON.stringify(tintCtx.images));
+const blit = main.images[main.images.length - 1];
+if (!blit || blit.args[0] !== canvases[1]) throw new Error("main blit should use the tint canvas");
+if (blit.composite !== "source-over") throw new Error("main blit composite: " + blit.composite);
+
+tintCtx.images.length = 0;
+tintCtx.fills.length = 0;
+game.setBlend("add");
+game.drawImageEx(tiles, 0, 0, { w: 16, h: 16, tint: "#ffffff", tintFill: true });
+if (tintCtx.fills.length === 0 || tintCtx.fills[0].composite !== "source-in") {
+  throw new Error("tintFill should use source-in: " + JSON.stringify(tintCtx.fills));
+}
+const extraDestIn = tintCtx.images.filter((img) => img.composite === "destination-in");
+if (extraDestIn.length !== 0) throw new Error("tintFill should skip destination-in");
+const flashBlit = main.images[main.images.length - 1];
+if (!flashBlit || flashBlit.composite !== "lighter") throw new Error("current blend should apply to tint blit: " + flashBlit.composite);
+
+game.drawImageEx(tiles, 0, 0, { w: 16, h: 16, tintFill: true });
+const lastBlit = main.images[main.images.length - 1];
+if (!lastBlit || lastBlit.args[0] === canvases[1]) throw new Error("tintFill without tint should draw the source image");
+
+process.stdout.write("ok\n");
+""");
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = Environment.GetEnvironmentVariable("MALDA_NODE_PATH") is { Length: > 0 } nodePath
+                    ? nodePath
+                    : "node",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = root
+            };
+            startInfo.ArgumentList.Add(scriptPath);
+            startInfo.ArgumentList.Add(runtimePath);
+
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Failed to start Node.js for drawImageEx tint runtime test.");
+            var stdout = process.StandardOutput.ReadToEnd();
+            var stderr = process.StandardError.ReadToEnd();
+            process.WaitForExit(15000);
+            Assert.True(process.ExitCode == 0, $"drawImageEx tint runtime test failed ({process.ExitCode}). stderr: {stderr}");
             Assert.Equal("ok", stdout.Trim());
         }
         finally

@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — JS game tint / setBlend)
+
+- **G16 `game.setBlend` / `drawImageEx` tint (JavaScript backend only):** `game.setBlend(mode)` / `game.getBlend()` set the canvas composite for subsequent world draws. Names: `"alpha"` (default, `source-over`), `"add"` (`lighter`), `"multiply"`, `"screen"`; aliases `"source-over"` / `"lighter"` map to `"alpha"` / `"add"`; unknown / empty → `"alpha"`. `createCanvas` resets to `"alpha"`. `clear()` always composites as `"alpha"` and does not change the current mode. Blend does not affect `setPixel` / `blitPixels`. `game.drawImageEx` options add `{ tint?, tintFill? }`: `tint` is a CSS color on an offscreen copy (omit / empty → no tint); default is multiply (white is identity); `tintFill: true` replaces RGB and keeps alpha (white fill is a hit-flash). Smoke: `Examples/Games/game_sprite_smoke.malda`. Showcase `malda_platform` flashes the player on coin collect and draws an additive spark. Interpreter / C# transpile: n/a (`game-canvas`).
+
 #### Added (MINOR — evalPrompt)
 
 - **`evalPrompt(prompt, fixture, typeName?)`:** offline fixture in/out on a `PromptInstance`. Same JSON extract / `TryValidateReturnType` coerce path as `await prompt … -> Type`, with no LLM, no repair loop, and no gather tool round. Returns `{ ok, data }` or `{ ok: false, error }` (`validate` shape). Success `data` is a **variant** for sum types (unlike `validate`, which leaves a dict). Fixture is a dict/object or an LLM-shaped JSON string (markdown fences allowed). Optional `typeName` overrides `instance.returnType`. `instance.eval(fixture)` is the same helper. Mode C `gather:` instances still carry `returnType` so extract contracts can be fixture-tested. Interpreter and C# transpile agree. JavaScript: n/a (prompts are host-only). Example: `Examples/Prompts/eval_prompt.malda`. Few-shot: `docs/llm/few-shot/27_eval_prompt.malda`.
@@ -420,3 +424,4 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-08-25 | MINOR: JS `audioPlaySample` pan / playbackRate (G13) |
 | 2026-08-25 | MINOR: JS `wasGamepadButtonReleased` / axis deadzone (G14) |
 | 2026-08-25 | MINOR: `malda new game` uses `startFixed` (G15) |
+| 2026-08-27 | MINOR: JS `game.setBlend` / `drawImageEx` tint / `tintFill` (G16) |

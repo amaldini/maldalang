@@ -51,6 +51,10 @@ if (root == null) {
     var high = 0;
     var audioBooted = false;
     var coinSpin = 0.0;
+    var flashMs = 0.0;
+    var sparkMs = 0.0;
+    var sparkX = 0.0;
+    var sparkY = 0.0;
 
     var loaded = game.load("platform_high");
     if (loaded != null) {
@@ -64,6 +68,8 @@ if (root == null) {
         onGround = false;
         facingLeft = false;
         coins = 0;
+        flashMs = 0.0;
+        sparkMs = 0.0;
         var i = 0;
         while (i < coinGot.length) {
             coinGot[i] = false;
@@ -103,6 +109,12 @@ if (root == null) {
             facingLeft = false;
         }
         coinSpin = coinSpin + ((dtMs / 1000) * 2.4);
+        if (flashMs > 0) {
+            flashMs = flashMs - dtMs;
+        }
+        if (sparkMs > 0) {
+            sparkMs = sparkMs - dtMs;
+        }
 
         if (onGround && (game.wasKeyPressed(" ") || game.wasKeyPressed("arrowup"))) {
             vy = jumpSpeed;
@@ -144,6 +156,10 @@ if (root == null) {
                 if (game.overlapRect(playerX, playerY, playerW, playerH, coinX[c], coinY[c], coinSize, coinSize)) {
                     coinGot[c] = true;
                     coins = coins + 1;
+                    flashMs = 140;
+                    sparkMs = 220;
+                    sparkX = coinX[c] + (coinSize / 2);
+                    sparkY = coinY[c] + (coinSize / 2);
                     game.audioPlaySample("assets/beep_lo.wav", 0.85);
                     if (coins > high) {
                         high = coins;
@@ -208,7 +224,7 @@ if (root == null) {
         }
 
         if (game.imageIsReady(tiles)) {
-            game.drawImageEx(tiles, playerX + (playerW / 2), playerY + (playerH / 2), {
+            var playerDraw = {
                 "sx": 0,
                 "sy": 0,
                 "sw": 16,
@@ -218,9 +234,20 @@ if (root == null) {
                 "ox": playerW / 2,
                 "oy": playerH / 2,
                 "flipX": facingLeft
-            });
+            };
+            if (flashMs > 0) {
+                playerDraw["tint"] = "#ffffff";
+                playerDraw["tintFill"] = true;
+            }
+            game.drawImageEx(tiles, playerX + (playerW / 2), playerY + (playerH / 2), playerDraw);
         } else {
             game.fillRect(playerX, playerY, playerW, playerH, "#66ccff");
+        }
+
+        if (sparkMs > 0) {
+            game.setBlend("add");
+            game.fillCircle(sparkX, sparkY, 10 + ((220 - sparkMs) / 18), "#ffee88");
+            game.setBlend("alpha");
         }
 
         game.pushCamera();
