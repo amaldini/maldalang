@@ -26,13 +26,17 @@ if (root == null) {
     var FIREFLY = 9;
     var BUTTERFLY = 10;
 
-    var tileSize = 24;
+    var tileSize = 32;
+    var srcSize = 16;
+    var atlasCols = 8;
     var cols = 40;
     var rows = 22;
-    var hudH = 44;
-    var canvasWidth = cols * tileSize;
-    var canvasHeight = hudH + (rows * tileSize);
+    var canvasW = 640;
+    var canvasH = 360;
+    var worldW = cols * tileSize;
+    var worldH = rows * tileSize;
 
+    var atlas = game.loadImage("assets/cave_tiles.png");
     var cells = [];
     var falling = [];
     var facing = [];
@@ -41,6 +45,7 @@ if (root == null) {
     var playerX = 1;
     var playerY = 1;
     var playerAlive = true;
+    var facingLeft = false;
 
     var level = 1;
     var maxLevel = 3;
@@ -50,7 +55,10 @@ if (root == null) {
     var timeAccMs = 0;
     var lives = 3;
     var score = 0;
+    var high = 0;
     var exitOpen = false;
+    var exitX = 1;
+    var exitY = 1;
 
     var state = "splash";
     var physicsAccMs = 0;
@@ -58,18 +66,29 @@ if (root == null) {
     var animMs = 0;
     var deadTimerMs = 0;
     var winTimerMs = 0;
-    var restartDebounceMs = 0;
-    var pauseDebounceMs = 0;
-    var startDebounceMs = 0;
+    var camZoom = 1.0;
+    var shakeMs = 0.0;
+    var flashMs = 0.0;
+    var lookZoom = false;
 
     var boomX = [];
     var boomY = [];
     var boomFill = [];
+    var sparkX = [];
+    var sparkY = [];
+    var sparkDx = [];
+    var sparkDy = [];
+    var sparkLife = [];
 
     var audioBooted = false;
     var patternStarted = false;
     var fanfarePlayed = false;
     var crushSfxPlayed = false;
+
+    var loadedHigh = game.load("maldadash_high");
+    if (loadedHigh != null) {
+        high = loadedHigh;
+    }
 
     function tileFromChar(ch) {
         if (ch == "W") {
@@ -166,6 +185,80 @@ if (root == null) {
         return 0;
     }
 
+    function playerWorldX() {
+        return (playerX + 0.5) * tileSize;
+    }
+
+    function playerWorldY() {
+        return (playerY + 0.5) * tileSize;
+    }
+
+    function samplePan() {
+        var z = game.getCameraZoom();
+        if (z <= 0) {
+            z = 1;
+        }
+        var viewW = canvasW / z;
+        var mid = game.getCameraX() + (viewW / 2);
+        var pan = (playerWorldX() - mid) / (viewW / 2);
+        if (pan < -1) {
+            pan = -1;
+        }
+        if (pan > 1) {
+            pan = 1;
+        }
+        return pan;
+    }
+
+    function bumpShake(ms) {
+        shakeMs = ms;
+        flashMs = 90;
+    }
+
+    function rememberHigh() {
+        if (score > high) {
+            high = score;
+            game.save("maldadash_high", high);
+        }
+    }
+
+    function spawnSparks(cx, cy, n) {
+        var i = 0;
+        while (i < n) {
+            var ang = (i / n) * 6.2832;
+            var px = (cx + 0.5) * tileSize;
+            var py = (cy + 0.5) * tileSize;
+            var dx = math.cos(ang) * 1.6;
+            var dy = math.sin(ang) * 1.6;
+            var slot = -1;
+            var s = 0;
+            while (s < sparkLife.length) {
+                if (sparkLife[s] <= 0) {
+                    slot = s;
+                    break;
+                }
+                s = s + 1;
+            }
+            if (slot >= 0) {
+                sparkX[slot] = px;
+                sparkY[slot] = py;
+                sparkDx[slot] = dx;
+                sparkDy[slot] = dy;
+                sparkLife[slot] = 260;
+            } else {
+                if (sparkX.length >= 32) {
+                    return;
+                }
+                sparkX.append(px);
+                sparkY.append(py);
+                sparkDx.append(dx);
+                sparkDy.append(dy);
+                sparkLife.append(260);
+            }
+            i = i + 1;
+        }
+    }
+
     function loadRows(mapRows, need, seconds) {
         cells = [];
         falling = [];
@@ -174,6 +267,11 @@ if (root == null) {
         boomX = [];
         boomY = [];
         boomFill = [];
+        sparkX = [];
+        sparkY = [];
+        sparkDx = [];
+        sparkDy = [];
+        sparkLife = [];
         diamondsGot = 0;
         diamondsNeed = need;
         timeLeft = seconds;
@@ -185,8 +283,13 @@ if (root == null) {
         playerAlive = true;
         deadTimerMs = 0;
         winTimerMs = 0;
+        shakeMs = 0;
+        flashMs = 0;
         playerX = 1;
         playerY = 1;
+        facingLeft = false;
+        exitX = 1;
+        exitY = 1;
 
         var y = 0;
         while (y < rows) {
@@ -206,6 +309,10 @@ if (root == null) {
                 if (tile == PLAYER) {
                     playerX = x;
                     playerY = y;
+                }
+                if (tile == EXIT_CLOSED || tile == EXIT_OPEN) {
+                    exitX = x;
+                    exitY = y;
                 }
                 x = x + 1;
             }
@@ -306,7 +413,9 @@ if (root == null) {
         if (exitOpen) {
             score = score + 10;
         }
+        spawnSparks(playerX, playerY, 6);
         game.audioPlayTone(880 + (diamondsGot * 18), 70, "square", 0.12);
+        game.audioPlaySample("assets/beep_hi.wav", 0.8, { "pan": samplePan(), "playbackRate": 1.05 + (diamondsGot * 0.03) });
         if (!exitOpen && diamondsGot >= diamondsNeed) {
             openExit();
         }
@@ -320,6 +429,8 @@ if (root == null) {
             while (x < cols) {
                 if (getTile(x, y) == EXIT_CLOSED) {
                     setTile(x, y, EXIT_OPEN);
+                    exitX = x;
+                    exitY = y;
                 }
                 x = x + 1;
             }
@@ -329,7 +440,9 @@ if (root == null) {
             game.audioPlayTone(520, 90, "square", 0.12);
             game.audioPlayTone(660, 110, "square", 0.12);
             game.audioPlayTone(780, 140, "square", 0.12);
+            game.audioPlaySample("assets/beep_hi.wav", 0.9, { "playbackRate": 1.4 });
             fanfarePlayed = true;
+            bumpShake(140);
         }
     }
 
@@ -340,8 +453,11 @@ if (root == null) {
         playerAlive = false;
         setTile(playerX, playerY, EMPTY);
         crushSfxPlayed = true;
+        spawnSparks(playerX, playerY, 10);
+        bumpShake(220);
         game.audioPlayNoise(160, 0.16);
         game.audioPlayTone(180, 220, "sawtooth", 0.12);
+        game.audioPlaySample("assets/beep_lo.wav", 0.9, { "pan": samplePan(), "playbackRate": 0.55 });
         deadTimerMs = 900;
         state = "dead";
     }
@@ -372,8 +488,11 @@ if (root == null) {
             }
             dy = dy + 1;
         }
+        spawnSparks(cx, cy, 8);
+        bumpShake(160);
         game.audioPlayNoise(120, 0.14);
         game.audioPlayTone(140, 80, "sawtooth", 0.10);
+        game.audioPlaySample("assets/beep_lo.wav", 0.75, { "pan": samplePan(), "playbackRate": 0.7 });
     }
 
     function flushBooms() {
@@ -504,6 +623,13 @@ if (root == null) {
         var ny = playerY + dy;
         var dest = getTile(nx, ny);
 
+        if (dx < 0) {
+            facingLeft = true;
+        }
+        if (dx > 0) {
+            facingLeft = false;
+        }
+
         if (dest == STEEL || dest == BRICK || dest == EXIT_CLOSED) {
             return;
         }
@@ -525,6 +651,7 @@ if (root == null) {
             setFalling(bx, by, 0);
             dest = EMPTY;
             game.audioPlayTone(160, 30, "triangle", 0.07);
+            game.audioPlaySample("assets/beep_lo.wav", 0.45, { "pan": samplePan(), "playbackRate": 0.85 });
         }
 
         if (isEnemy(dest)) {
@@ -545,9 +672,11 @@ if (root == null) {
             dest = EMPTY;
         } else if (dest == EXIT_OPEN) {
             score = score + timeLeft;
+            rememberHigh();
             game.audioPlayTone(620, 80, "square", 0.12);
             game.audioPlayTone(780, 100, "square", 0.12);
             game.audioPlayTone(940, 140, "square", 0.12);
+            game.audioPlaySample("assets/beep_hi.wav", 0.9, { "playbackRate": 1.6 });
             winTimerMs = 700;
             state = "cleared";
         }
@@ -565,6 +694,21 @@ if (root == null) {
         if (game.isKeyDown("arrowright") || game.isKeyDown("d")) {
             return 1;
         }
+        if (game.isGamepadConnected(0)) {
+            if (game.isGamepadButtonDown(0, 14)) {
+                return -1;
+            }
+            if (game.isGamepadButtonDown(0, 15)) {
+                return 1;
+            }
+            var ax = game.getGamepadAxis(0, 0, 0.35);
+            if (ax < -0.45) {
+                return -1;
+            }
+            if (ax > 0.45) {
+                return 1;
+            }
+        }
         return 0;
     }
 
@@ -575,15 +719,44 @@ if (root == null) {
         if (game.isKeyDown("arrowdown") || game.isKeyDown("s")) {
             return 1;
         }
+        if (game.isGamepadConnected(0)) {
+            if (game.isGamepadButtonDown(0, 12)) {
+                return -1;
+            }
+            if (game.isGamepadButtonDown(0, 13)) {
+                return 1;
+            }
+            var ay = game.getGamepadAxis(0, 1, 0.35);
+            if (ay < -0.45) {
+                return -1;
+            }
+            if (ay > 0.45) {
+                return 1;
+            }
+        }
         return 0;
     }
 
     function pointerMove() {
-        if (!game.isMouseDown(0)) {
+        var wx = 0.0;
+        var wy = 0.0;
+        var hasAim = false;
+        var touches = game.getTouches();
+        if (touches.length > 0) {
+            var world = game.screenToWorld(touches[0].x, touches[0].y);
+            wx = world.x;
+            wy = world.y;
+            hasAim = true;
+        } else if (game.isMouseDown(0)) {
+            wx = game.getMouseWorldX();
+            wy = game.getMouseWorldY();
+            hasAim = true;
+        }
+        if (!hasAim) {
             return;
         }
-        var mx = int(game.getMouseX() / tileSize);
-        var my = int((game.getMouseY() - hudH) / tileSize);
+        var mx = int(wx / tileSize);
+        var my = int(wy / tileSize);
         var dx = mx - playerX;
         var dy = my - playerY;
         if (dx == 0 && dy == 0) {
@@ -617,6 +790,10 @@ if (root == null) {
             return;
         }
         var wants =
+            game.wasKeyPressed("enter") ||
+            game.wasKeyPressed(" ") ||
+            game.wasMousePressed(0) ||
+            game.wasGamepadButtonPressed(0, 0) ||
             game.isKeyDown("arrowleft") ||
             game.isKeyDown("arrowright") ||
             game.isKeyDown("arrowup") ||
@@ -625,14 +802,11 @@ if (root == null) {
             game.isKeyDown("d") ||
             game.isKeyDown("w") ||
             game.isKeyDown("s") ||
-            game.isKeyDown(" ") ||
-            game.isKeyDown("enter") ||
-            game.isKeyDown("r") ||
             game.isMouseDown(0);
         if (wants) {
             game.audioInit();
             audioBooted = true;
-            game.audioSetMasterVolume(0.38);
+            game.audioSetMasterVolume(0.42);
         }
     }
 
@@ -665,6 +839,7 @@ if (root == null) {
     function afterDeath() {
         lives = lives - 1;
         if (lives <= 0) {
+            rememberHigh();
             state = "gameover";
             game.audioStopPattern();
             game.audioPlayTone(220, 160, "sawtooth", 0.12);
@@ -676,6 +851,7 @@ if (root == null) {
 
     function afterClear() {
         if (level >= maxLevel) {
+            rememberHigh();
             state = "win";
             game.audioStopPattern();
         } else {
@@ -704,40 +880,102 @@ if (root == null) {
         flushBooms();
     }
 
-    function updateGame(dtMs) {
-        var dt = dtMs;
-        if (dt > 80) {
-            dt = 80;
+    function updateSparks() {
+        var i = 0;
+        while (i < sparkX.length) {
+            if (sparkLife[i] > 0) {
+                sparkLife[i] = sparkLife[i] - 16;
+                if (sparkLife[i] > 0) {
+                    var hit = game.sweepTiles(
+                        sparkX[i] - 2,
+                        sparkY[i] - 2,
+                        4,
+                        4,
+                        sparkDx[i],
+                        sparkDy[i],
+                        cells,
+                        tileSize,
+                        tileSize,
+                        { "columns": cols, "rows": rows, "solids": [STEEL, BRICK], "out": STEEL }
+                    );
+                    sparkX[i] = hit.x + 2;
+                    sparkY[i] = hit.y + 2;
+                    if (hit.hit) {
+                        if (hit.nx != 0) {
+                            sparkDx[i] = 0 - sparkDx[i];
+                        }
+                        if (hit.ny != 0) {
+                            sparkDy[i] = 0 - sparkDy[i];
+                        }
+                    }
+                }
+            }
+            i = i + 1;
         }
-        if (dt < 0) {
-            dt = 0;
-        }
+    }
 
-        animMs = animMs + dt;
-        if (restartDebounceMs > 0) {
-            restartDebounceMs = restartDebounceMs - dt;
+    function wantsStart() {
+        return game.wasKeyPressed("enter") ||
+            game.wasKeyPressed(" ") ||
+            game.wasMousePressed(0) ||
+            game.wasGamepadButtonPressed(0, 0);
+    }
+
+    function wantsPause() {
+        return game.wasKeyPressed("p") || game.wasGamepadButtonPressed(0, 9);
+    }
+
+    function wantsRestart() {
+        return game.wasKeyPressed("r") || game.wasKeyPressed("enter") || game.wasGamepadButtonPressed(0, 0);
+    }
+
+    function updateZoom() {
+        if (game.wasKeyPressed("]") || game.wasKeyPressed("=")) {
+            camZoom = camZoom * 1.12;
         }
-        if (pauseDebounceMs > 0) {
-            pauseDebounceMs = pauseDebounceMs - dt;
+        if (game.wasKeyPressed("[") || game.wasKeyPressed("-")) {
+            camZoom = camZoom / 1.12;
         }
-        if (startDebounceMs > 0) {
-            startDebounceMs = startDebounceMs - dt;
+        if (game.wasKeyPressed("0")) {
+            camZoom = 1.0;
+        }
+        if (game.isGamepadButtonDown(0, 1)) {
+            lookZoom = true;
+        }
+        if (game.wasGamepadButtonReleased(0, 1)) {
+            lookZoom = false;
+        }
+        game.setCameraZoom(camZoom);
+        camZoom = game.getCameraZoom();
+        if (lookZoom) {
+            game.setCameraZoom(camZoom * 0.72);
+        }
+    }
+
+    function updateGame(dtMs) {
+        animMs = animMs + dtMs;
+        if (shakeMs > 0) {
+            shakeMs = shakeMs - dtMs;
+        }
+        if (flashMs > 0) {
+            flashMs = flashMs - dtMs;
         }
 
         bootAudioIfNeeded();
         maybeStartPattern();
+        updateZoom();
+        updateSparks();
 
         if (state == "splash") {
-            if ((game.isKeyDown("enter") || game.isKeyDown(" ") || game.isMouseDown(0)) && startDebounceMs <= 0) {
+            if (wantsStart()) {
                 loadLevel(1);
-                startDebounceMs = 240;
                 game.audioPlayTone(520, 70, "square", 0.12);
                 game.audioPlayTone(660, 80, "square", 0.10);
             }
             return;
         }
 
-        if ((game.isKeyDown("p")) && pauseDebounceMs <= 0) {
+        if (wantsPause()) {
             if (state == "playing") {
                 state = "paused";
                 game.audioPlayTone(330, 40, "triangle", 0.09);
@@ -745,19 +983,17 @@ if (root == null) {
                 state = "playing";
                 game.audioPlayTone(520, 40, "triangle", 0.09);
             }
-            pauseDebounceMs = 240;
         }
 
         if (state == "gameover" || state == "win") {
-            if ((game.isKeyDown("r") || game.isKeyDown("enter")) && restartDebounceMs <= 0) {
+            if (wantsRestart()) {
                 restartRun();
-                restartDebounceMs = 240;
             }
             return;
         }
 
         if (state == "dead") {
-            deadTimerMs = deadTimerMs - dt;
+            deadTimerMs = deadTimerMs - dtMs;
             if (deadTimerMs <= 0) {
                 afterDeath();
             }
@@ -765,7 +1001,7 @@ if (root == null) {
         }
 
         if (state == "cleared") {
-            winTimerMs = winTimerMs - dt;
+            winTimerMs = winTimerMs - dtMs;
             if (winTimerMs <= 0) {
                 afterClear();
             }
@@ -776,13 +1012,12 @@ if (root == null) {
             return;
         }
 
-        if (game.isKeyDown("r") && restartDebounceMs <= 0) {
+        if (game.wasKeyPressed("r")) {
             loadLevel(level);
-            restartDebounceMs = 240;
             return;
         }
 
-        timeAccMs = timeAccMs + dt;
+        timeAccMs = timeAccMs + dtMs;
         if (timeAccMs >= 1000) {
             timeAccMs = timeAccMs - 1000;
             timeLeft = timeLeft - 1;
@@ -796,7 +1031,7 @@ if (root == null) {
             }
         }
 
-        physicsAccMs = physicsAccMs + dt;
+        physicsAccMs = physicsAccMs + dtMs;
         while (physicsAccMs >= physicsIntervalMs) {
             physicsAccMs = physicsAccMs - physicsIntervalMs;
             caveTick();
@@ -806,176 +1041,342 @@ if (root == null) {
         }
     }
 
-    function drawSteel(px, py) {
-        game.fillRect(px, py, tileSize, tileSize, "#4b5563");
-        game.fillRect(px, py, tileSize, 3, "#9ca3af");
-        game.fillRect(px, py + tileSize - 3, tileSize, 3, "#1f2937");
+    function atlasReady() {
+        return game.imageIsReady(atlas);
     }
 
-    function drawBrick(px, py) {
-        game.fillRect(px, py, tileSize, tileSize, "#9a3412");
-        game.fillRect(px + 1, py + 1, tileSize - 2, 10, "#c2410c");
-        game.fillRect(px + 1, py + 13, tileSize - 2, 10, "#b45309");
-        game.fillRect(px, py + 11, tileSize, 2, "#431407");
-    }
-
-    function drawDirt(px, py, x, y) {
-        var color = "#6b3f1f";
-        if ((x + y) % 2 == 0) {
-            color = "#7c4a24";
+    function blitId(id, px, py, extra) {
+        var index = id - 1;
+        var sx = (index % atlasCols) * srcSize;
+        var sy = int(index / atlasCols) * srcSize;
+        var opts = extra;
+        if (opts == null) {
+            opts = {};
         }
-        game.fillRect(px, py, tileSize, tileSize, color);
-        game.fillRect(px + 4, py + 5, 3, 3, "#4a2c14");
-        game.fillRect(px + 14, py + 13, 3, 3, "#4a2c14");
-    }
-
-    function drawBoulder(px, py) {
-        game.fillRect(px, py, tileSize, tileSize, "#1c1917");
-        game.fillCircle(px + 12, py + 13, 9, "#57534e");
-        game.fillCircle(px + 10, py + 10, 4, "#a8a29e");
-    }
-
-    function drawDiamond(px, py) {
-        var pulse = 8;
-        if ((int(animMs / 180) % 2) == 1) {
-            pulse = 10;
+        opts["sx"] = sx;
+        opts["sy"] = sy;
+        opts["sw"] = srcSize;
+        opts["sh"] = srcSize;
+        if (opts["w"] == null) {
+            opts["w"] = tileSize;
         }
-        game.fillRect(px, py, tileSize, tileSize, "#1c1917");
-        game.fillCircle(px + 12, py + 12, pulse, "#22d3ee");
-        game.fillCircle(px + 9, py + 9, 3, "#ecfeff");
-    }
-
-    function drawPlayer(px, py) {
-        game.fillRect(px, py, tileSize, tileSize, "#1c1917");
-        game.fillCircle(px + 12, py + 13, 9, "#f59e0b");
-        game.fillRect(px + 8, py + 10, 3, 3, "#1c1917");
-        game.fillRect(px + 14, py + 10, 3, 3, "#1c1917");
-        game.fillRect(px + 9, py + 17, 6, 2, "#92400e");
-    }
-
-    function drawEnemy(px, py, tile) {
-        game.fillRect(px, py, tileSize, tileSize, "#1c1917");
-        var frame = int(animMs / 120) % 2;
-        var color = "#4ade80";
-        if (tile == BUTTERFLY) {
-            color = "#e879f9";
-            if (frame == 1) {
-                color = "#a21caf";
-            }
-        } else if (frame == 1) {
-            color = "#f87171";
+        if (opts["h"] == null) {
+            opts["h"] = tileSize;
         }
-        game.fillCircle(px + 12, py + 12, 8, color);
-        game.fillRect(px + 8, py + 9, 2, 2, "#0f172a");
-        game.fillRect(px + 14, py + 9, 2, 2, "#0f172a");
+        game.drawImageEx(atlas, px, py, opts);
     }
 
-    function drawExit(px, py, openDoor) {
-        game.fillRect(px, py, tileSize, tileSize, "#1c1917");
-        var door = "#334155";
-        if (openDoor) {
-            door = "#22c55e";
-            if ((int(animMs / 200) % 2) == 1) {
-                door = "#86efac";
-            }
-        }
-        game.fillRect(px + 4, py + 3, tileSize - 8, tileSize - 5, door);
-        game.fillRect(px + 10, py + 12, 3, 3, "#fef3c7");
-    }
-
-    function drawTile(x, y) {
+    function drawFallbackTile(x, y) {
         var tile = getTile(x, y);
         var px = x * tileSize;
-        var py = hudH + (y * tileSize);
+        var py = y * tileSize;
         if (tile == STEEL) {
-            drawSteel(px, py);
+            game.fillRect(px, py, tileSize, tileSize, "#4b5563");
         } else if (tile == BRICK) {
-            drawBrick(px, py);
+            game.fillRect(px, py, tileSize, tileSize, "#9a3412");
         } else if (tile == DIRT) {
-            drawDirt(px, py, x, y);
+            game.fillRect(px, py, tileSize, tileSize, "#6b3f1f");
         } else if (tile == BOULDER) {
-            drawBoulder(px, py);
-        } else if (tile == DIAMOND) {
-            drawDiamond(px, py);
-        } else if (tile == PLAYER) {
-            drawPlayer(px, py);
-        } else if (isEnemy(tile)) {
-            drawEnemy(px, py, tile);
-        } else if (tile == EXIT_CLOSED) {
-            drawExit(px, py, false);
-        } else if (tile == EXIT_OPEN) {
-            drawExit(px, py, true);
-        } else {
             game.fillRect(px, py, tileSize, tileSize, "#1c1917");
+            game.fillCircle(px + 16, py + 17, 12, "#57534e");
+        } else if (tile == DIAMOND) {
+            game.fillRect(px, py, tileSize, tileSize, "#1c1917");
+            game.fillCircle(px + 16, py + 16, 10, "#22d3ee");
+        } else if (tile == PLAYER) {
+            game.fillRect(px, py, tileSize, tileSize, "#1c1917");
+            game.fillCircle(px + 16, py + 17, 12, "#f59e0b");
+        } else if (tile == FIREFLY) {
+            game.fillRect(px, py, tileSize, tileSize, "#1c1917");
+            game.fillCircle(px + 16, py + 16, 10, "#4ade80");
+        } else if (tile == BUTTERFLY) {
+            game.fillRect(px, py, tileSize, tileSize, "#1c1917");
+            game.fillCircle(px + 16, py + 16, 10, "#e879f9");
+        } else if (tile == EXIT_CLOSED) {
+            game.fillRect(px + 6, py + 4, tileSize - 12, tileSize - 6, "#334155");
+        } else if (tile == EXIT_OPEN) {
+            game.fillRect(px + 6, py + 4, tileSize - 12, tileSize - 6, "#22c55e");
         }
     }
 
-    function renderHud() {
-        game.fillRect(0, 0, canvasWidth, hudH, "#0c0a09");
-        game.drawText("Maldadash", 12, 28, "#fbbf24", "bold 22px sans-serif");
-        game.drawText("Lv " + string(level) + "/" + string(maxLevel), 160, 28, "#e7e5e4", "16px sans-serif");
-        var gemColor = "#67e8f9";
-        if (exitOpen) {
-            gemColor = "#86efac";
-        }
-        game.drawText("* " + string(diamondsGot) + "/" + string(diamondsNeed), 250, 28, gemColor, "16px monospace");
-        var timeColor = "#e7e5e4";
-        if (timeLeft <= 10) {
-            timeColor = "#f87171";
-        }
-        game.drawText("Time " + string(timeLeft), 370, 28, timeColor, "16px monospace");
-        game.drawText("Lives " + string(lives), 500, 28, "#e7e5e4", "16px sans-serif");
-        game.drawText("Score " + string(score), 620, 28, "#fde68a", "16px sans-serif");
-    }
-
-    function renderPanel(title, subtitle) {
-        var panelX = 220;
-        var panelY = 180;
-        var panelW = 520;
-        var panelH = 220;
-        game.fillRect(panelX, panelY, panelW, panelH, "#0c0a09ee");
-        game.fillRect(panelX, panelY, panelW, 4, "#fbbf24");
-        game.fillRect(panelX, panelY + panelH - 4, panelW, 4, "#fbbf24");
-        game.drawText(title, panelX + 40, panelY + 70, "#f8fafc", "bold 32px sans-serif");
-        game.drawText(subtitle, panelX + 40, panelY + 120, "#d6d3d1", "18px sans-serif");
-    }
-
-    function renderGame() {
-        game.clear();
-        renderHud();
-
-        if (state == "splash") {
-            game.fillRect(0, hudH, canvasWidth, canvasHeight - hudH, "#1c1917");
-            renderPanel("Maldadash", "Arrows / WASD to dig   SPACE / Click to start");
-            game.drawText("Collect diamonds, drop boulders, reach the exit.", 260, 340, "#a8a29e", "16px sans-serif");
-            game.drawText("Fireflies patrol clockwise. Butterflies explode into gems.", 248, 368, "#a8a29e", "16px sans-serif");
-            return;
-        }
-
+    function drawActors() {
         var y = 0;
         while (y < rows) {
             var x = 0;
             while (x < cols) {
-                drawTile(x, y);
+                var tile = getTile(x, y);
+                var px = x * tileSize;
+                var py = y * tileSize;
+                var cx = px + (tileSize / 2);
+                var cy = py + (tileSize / 2);
+                if (tile == DIAMOND) {
+                    var gemId = DIAMOND;
+                    if ((int(animMs / 180) % 2) == 1) {
+                        gemId = 12;
+                    }
+                    blitId(gemId, cx, cy, {
+                        "ox": tileSize / 2,
+                        "oy": tileSize / 2,
+                        "angle": animMs / 420
+                    });
+                    if (game.overlapCircle(playerWorldX(), playerWorldY(), 28, cx, cy, 12)) {
+                        game.setBlend("add");
+                        game.strokeCircle(cx, cy, 14 + ((int(animMs / 80) % 3)), "#67e8f9", 2);
+                        game.setBlend("alpha");
+                    }
+                } else if (tile == PLAYER) {
+                    var pId = PLAYER;
+                    if ((int(animMs / 140) % 2) == 1) {
+                        pId = 13;
+                    }
+                    var popts = {
+                        "ox": tileSize / 2,
+                        "oy": tileSize / 2,
+                        "flipX": facingLeft
+                    };
+                    if (flashMs > 0 || !playerAlive) {
+                        popts["tint"] = "#ffffff";
+                        popts["tintFill"] = true;
+                    }
+                    blitId(pId, cx, cy, popts);
+                } else if (tile == FIREFLY) {
+                    var fId = FIREFLY;
+                    if ((int(animMs / 120) % 2) == 1) {
+                        fId = 15;
+                    }
+                    blitId(fId, cx, cy, { "ox": tileSize / 2, "oy": tileSize / 2 });
+                } else if (tile == BUTTERFLY) {
+                    blitId(BUTTERFLY, cx, cy, {
+                        "ox": tileSize / 2,
+                        "oy": tileSize / 2,
+                        "angle": math.sin(animMs / 90) * 0.25
+                    });
+                }
                 x = x + 1;
             }
             y = y + 1;
         }
+    }
 
-        if (state == "paused") {
-            renderPanel("Paused", "Press P to continue");
+    function drawSparks() {
+        if (sparkX.length == 0) {
+            return;
+        }
+        game.setBlend("add");
+        var i = 0;
+        while (i < sparkX.length) {
+            if (sparkLife[i] > 0) {
+                if (atlasReady()) {
+                    blitId(14, sparkX[i], sparkY[i], {
+                        "w": 12,
+                        "h": 12,
+                        "ox": 6,
+                        "oy": 6,
+                        "angle": animMs / 80
+                    });
+                } else {
+                    game.fillCircle(sparkX[i], sparkY[i], 3, "#fde68a");
+                }
+            }
+            i = i + 1;
+        }
+        game.setBlend("alpha");
+    }
+
+    function applyCamera() {
+        var z = game.getCameraZoom();
+        if (z <= 0) {
+            z = 1;
+        }
+        var cw = game.getCanvasWidth();
+        var ch = game.getCanvasHeight();
+        if (cw <= 0) {
+            cw = canvasW;
+        }
+        if (ch <= 0) {
+            ch = canvasH;
+        }
+        var viewW = cw / z;
+        var viewH = ch / z;
+        var targetX = playerWorldX();
+        var targetY = playerWorldY();
+        if (state == "splash") {
+            targetX = worldW / 2;
+            targetY = worldH / 2;
+        }
+        game.followCamera(targetX, targetY, viewW, viewH, worldW, worldH, {
+            "snap": true
+        });
+        if (shakeMs > 0) {
+            var mag = shakeMs / 28;
+            game.setCamera(
+                game.getCameraX() + (math.sin(animMs / 16) * mag),
+                game.getCameraY() + (math.cos(animMs / 13) * mag)
+            );
+        }
+    }
+
+    function drawCaveLighting() {
+        var z = game.getCameraZoom();
+        if (z <= 0) {
+            z = 1;
+        }
+        var viewW = canvasW / z;
+        var viewH = canvasH / z;
+        game.setBlend("multiply");
+        game.fillRect(game.getCameraX(), game.getCameraY(), viewW, viewH, "#8b9aab");
+        game.setBlend("add");
+        game.fillCircle(playerWorldX(), playerWorldY(), 92, "#2a2214");
+        if (exitOpen) {
+            game.strokeCircle((exitX + 0.5) * tileSize, (exitY + 0.5) * tileSize, 18 + ((int(animMs / 160) % 4)), "#86efac", 2);
+        }
+        game.setBlend("alpha");
+    }
+
+    function beginHud() {
+        game.pushCamera();
+        game.setCamera(0, 0);
+        game.setCameraZoom(1);
+    }
+
+    function endHud() {
+        game.popCamera();
+    }
+
+    function renderHud() {
+        beginHud();
+        game.setAlpha(0.82);
+        game.fillRect(0, 0, canvasW, 36, "#0c0a09");
+        game.setAlpha(1);
+        game.drawLine(0, 36, canvasW, 36, "#fbbf24", 2);
+
+        var gemColor = "#67e8f9";
+        if (exitOpen) {
+            gemColor = "#86efac";
+        }
+        var timeColor = "#e7e5e4";
+        if (timeLeft <= 10) {
+            timeColor = "#f87171";
+        }
+        var hud = "Maldadash  Lv " + string(level) + "/" + string(maxLevel);
+        hud = hud + "   * " + string(diamondsGot) + "/" + string(diamondsNeed);
+        hud = hud + "   Time " + string(timeLeft);
+        hud = hud + "   Lives " + string(lives);
+        hud = hud + "   Score " + string(score);
+        hud = hud + "   High " + string(high);
+        var font = "bold 14px monospace";
+        var measured = game.measureText(hud, font);
+        if (measured.width > canvasW - 24) {
+            font = "12px monospace";
+        }
+        game.drawText(hud, 12, 24, "#f8fafc", font);
+        var barW = 160;
+        var filled = 0;
+        if (diamondsNeed > 0) {
+            filled = int((diamondsGot / diamondsNeed) * barW);
+            if (filled > barW) {
+                filled = barW;
+            }
+        }
+        game.fillRect(canvasW - barW - 12, 8, barW, 6, "#292524");
+        game.fillRect(canvasW - barW - 12, 8, filled, 6, gemColor);
+        game.strokeRect(canvasW - barW - 12, 8, barW, 6, timeColor, 1);
+
+        if (flashMs > 0) {
+            var a = flashMs / 220;
+            if (a > 0.45) {
+                a = 0.45;
+            }
+            game.setAlpha(a);
+            game.fillRect(0, 0, canvasW, canvasH, "#fff7ed");
+            game.setAlpha(1);
+        }
+        endHud();
+    }
+
+    function renderPanel(title, subtitle) {
+        beginHud();
+        var panelW = 520;
+        var panelH = 200;
+        var panelX = (canvasW - panelW) / 2;
+        var panelY = 88;
+        game.setAlpha(0.92);
+        game.fillRect(panelX, panelY, panelW, panelH, "#0c0a09");
+        game.setAlpha(1);
+        game.strokeRect(panelX, panelY, panelW, panelH, "#fbbf24", 3);
+        game.drawText(title, panelX + 28, panelY + 70, "#f8fafc", "bold 28px sans-serif");
+        game.drawText(subtitle, panelX + 28, panelY + 118, "#d6d3d1", "16px sans-serif");
+        endHud();
+    }
+
+    function renderGame() {
+        game.clear();
+        applyCamera();
+
+        if (atlasReady()) {
+            var iw = game.imageWidth(atlas);
+            if (iw >= srcSize) {
+                atlasCols = int(iw / srcSize);
+            }
+            game.drawTiles(atlas, cells, tileSize, tileSize, {
+                "columns": cols,
+                "rows": rows,
+                "srcW": srcSize,
+                "srcH": srcSize,
+                "atlasColumns": atlasCols,
+                "firstId": 1,
+                "empty": 0
+            });
+            drawActors();
+        } else {
+            var y = 0;
+            while (y < rows) {
+                var x = 0;
+                while (x < cols) {
+                    drawFallbackTile(x, y);
+                    x = x + 1;
+                }
+                y = y + 1;
+            }
+        }
+
+        drawSparks();
+        if (state != "splash") {
+            drawCaveLighting();
+            renderHud();
+        }
+
+        if (state == "splash") {
+            beginHud();
+            if (atlasReady()) {
+                blitId(5, canvasW / 2, 58, {
+                    "w": 48,
+                    "h": 48,
+                    "ox": 24,
+                    "oy": 24,
+                    "angle": animMs / 280
+                });
+            }
+            endHud();
+            renderPanel("Maldadash", "Arrows / WASD / pad / click to dig. SPACE starts. P pauses.");
+            beginHud();
+            game.drawText("Collect diamonds, shove boulders, reach the glowing exit.", 80, 300, "#a8a29e", "14px sans-serif");
+            game.drawText("[ ] zoom   0 reset   B look   High " + string(high), 80, 322, "#a8a29e", "14px sans-serif");
+            endHud();
+        } else if (state == "paused") {
+            renderPanel("Paused", "Press P or Start to continue");
         } else if (state == "dead") {
             renderPanel("Crushed!", "Reloading cave...");
         } else if (state == "cleared") {
             renderPanel("Cave cleared!", "Next cave...");
         } else if (state == "gameover") {
-            renderPanel("Game Over", "Press R or Enter to restart");
+            renderPanel("Game Over", "Press R or Enter  —  High " + string(high));
         } else if (state == "win") {
-            renderPanel("You cleared Maldadash!", "Press R or Enter to play again");
+            renderPanel("You cleared Maldadash!", "Press R or Enter to play again  —  High " + string(high));
         }
     }
 
-    game.createCanvas(canvasWidth, canvasHeight, "#app");
+    game.createCanvas(canvasW, canvasH, "#app");
     game.setBackground("#1c1917");
-    game.start(updateGame, renderGame);
+    game.setPixelated(true);
+    game.startFixed(updateGame, renderGame);
 }

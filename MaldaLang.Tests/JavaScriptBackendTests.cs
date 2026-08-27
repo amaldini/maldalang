@@ -690,11 +690,21 @@ public class JavaScriptBackendTests : TestBase
         var js = compiler.TranspileToJavaScript(sourcePath);
 
         Assert.Contains("mlRuntime.game.createCanvas(", js, StringComparison.Ordinal);
-        Assert.Contains("mlRuntime.game.start(updateGame, renderGame)", js, StringComparison.Ordinal);
-        Assert.Contains("mlRuntime.game.isKeyDown(", js, StringComparison.Ordinal);
-        Assert.Contains("mlRuntime.game.fillRect(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.startFixed(updateGame, renderGame)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.drawTiles(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.tileAt(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.sweepTiles(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.followCamera(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.drawImageEx(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.setBlend(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.wasKeyPressed(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.wasGamepadButtonReleased(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.audioPlaySample(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.save(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.setPixelated(true)", js, StringComparison.Ordinal);
+        Assert.Contains("assets/cave_tiles.png", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.str.substring(", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("mlRuntime.game.start(updateGame, renderGame)", js, StringComparison.Ordinal);
         Assert.DoesNotContain("mlRuntime.three.", js, StringComparison.Ordinal);
     }
 

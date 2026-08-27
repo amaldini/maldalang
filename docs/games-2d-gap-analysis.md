@@ -28,8 +28,8 @@
 
 - Primitive-draw: `game_bounce`, `maldanoid` (fixed tick, overlap bounces, save)
 - Kit 2D: `malda_platform` (atlas, `followCamera`, axis-separated `sweepRects`, SFX, HUD stack)
-- Tile grid: `game_tiles_smoke` (`drawTiles` / `tileAt` / `sweepTiles`); `maldadash` queries via `tileAt`
-- Grid cave without a full atlas: `maldadash` (`fillRect` cells + user pause/state machine; cell reads use `tileAt`)
+- Tile grid: `game_tiles_smoke` (`drawTiles` / `tileAt` / `sweepTiles`)
+- Tile cave showcase: `maldadash` (`drawTiles` atlas, `followCamera`, actor `drawImageEx`, `sweepTiles` sparks, sample SFX, `startFixed` + save)
 
 **Explicit non-goals (still correct):** Box2D in core, Pixi/WebGL 2D batcher, native SDL/Raylib, interpreter `game.start`, sprite objects, new keywords (`on update`, `entity`).
 
@@ -57,7 +57,7 @@ Unity 2D is listed only as “not the bar.” Comparing feature-for-feature with
 |-------|---------------------|-----------------------------|
 | Pong / breakout / shmup-lite | **Finishable** | Template + `maldanoid` already do this |
 | Short side-scroller | **Finishable** | `malda_platform`; animation, slopes, one-way platforms, and enemies are user code |
-| Grid / cave / Sokoban / Boulder Dash | **Finishable** | `drawTiles` / `tileAt` / `sweepTiles`; `maldadash` still custom-draws actors |
+| Grid / cave / Sokoban / Boulder Dash | **Finishable** | `drawTiles` / `tileAt` / `sweepTiles`; `maldadash` is the cave showcase |
 | Twin-stick / top-down action | **Possible** | Input yes; no spatial index, particles, or Y-sort |
 | Metroidvania / Zelda-like | **Possible** | Tile draw + solid query landed; rooms/scenes, NPC/dialog text wrap still user code |
 | JRPG | **Struggle** | Same + menu UI, bitmap fonts, nine-slice |
@@ -92,7 +92,7 @@ Legend: **kit** = still fits “functions on `game.*`”; **engine** = object/wo
 | Layers / Y-sort helper | user | z-index / ysort | draw-call order | **kit** |
 | WebGL sprite batcher | SpriteBatch | default | Canvas2D `drawImage` per call | engine (deferred) |
 
-**Friction evidence:** `malda_platform` still loops `drawImageRect` per 32px of platform. Hundreds of tiles per frame (a 40×22 cave) will hitch on Canvas2D; `maldadash` avoids images and uses `fillRect`.
+**Friction evidence:** `malda_platform` still loops `drawImageRect` per 32px of platform. A 40×22 cave should use `drawTiles` (view-culled) rather than a per-cell `fillRect` / `drawImageRect` loop — `maldadash` does.
 
 ### 4.2 Tilemaps
 
