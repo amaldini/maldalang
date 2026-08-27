@@ -132,6 +132,7 @@ public static class BuiltInRegistry
             "toJSON" or
             "validate" or
             "asVariant" or
+            "evalPrompt" or
             "readFile" or
             "readTextFileLines" or
             "loadNativeModule" or

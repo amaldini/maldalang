@@ -582,7 +582,8 @@ public static class AiPipelineHelpers
             examples,
             prompt.WithinTimeoutMs,
             prompt.Gather,
-            prompt.Budget);
+            prompt.Budget,
+            prompt.ReturnType);
     }
 
     private static bool ResolveWithExamplesMerge(List<RuntimeValue> args)

@@ -23,6 +23,14 @@ public class TypedPromptValidatorTests
 
         Assert.NotNull(pi.ResponseFormatSchema);
         Assert.Equal(ValueType.Object, pi.ResponseFormatSchema!.Type);
+        Assert.Null(pi.ReturnType);
+    }
+
+    [Fact]
+    public void PromptInstance_WhenConstructedWithReturnType_HasPropertySet()
+    {
+        var pi = new PromptInstance("sys", "user", returnType: "Card");
+        Assert.Equal("Card", pi.ReturnType);
     }
     [Fact]
     public void ValidateReturnType_Plan_SucceedsForValidStructure()

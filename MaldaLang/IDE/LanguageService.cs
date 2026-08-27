@@ -590,7 +590,7 @@ public class LanguageService : ILanguageService
             "normalizeText", "tokenize", "tokenOverlap", "similarity", "extractNumbers",
             "startsWith", "endsWith", "padStart", "padEnd", "repeat",
             "append", "pop", "shift",
-            "input", "getEnv", "getCommandLineArgs", "hasEnv", "parseJSON", "toJSON", "parseJson", "validate", "asVariant",
+            "input", "getEnv", "getCommandLineArgs", "hasEnv", "parseJSON", "toJSON", "parseJson", "validate", "asVariant", "evalPrompt",
             "readFile", "writeFile", "hasFile", "hasDirectory", "listDirectory",
             "replaceInFile", "editFile", "grep", "insertAtLine",
             "getSymbols", "getParseErrors",
@@ -871,6 +871,7 @@ public class LanguageService : ILanguageService
             "extractNumbers" => new List<string> { "text" },
             "sleep" => new List<string> { "milliseconds" },
             "runPrompt" => new List<string> { "prompt", "client?", "options?" },
+            "evalPrompt" => new List<string> { "prompt", "fixture", "typeName?" },
             "withExamples" => new List<string> { "prompt", "examples", "options?" },
             "parseJson" => new List<string> { "value", "schemaRef", "options?" },
             "validate" => new List<string> { "schema", "value" },
@@ -1017,6 +1018,11 @@ public class LanguageService : ILanguageService
             members.Add(new CompletionItem { Label = "gather", Kind = "property", Detail = "array of tool names (Mode C)", InsertText = "gather" });
             members.Add(new CompletionItem { Label = "maxTokens", Kind = "property", Detail = "int?", InsertText = "maxTokens" });
             members.Add(new CompletionItem { Label = "examples", Kind = "property", Detail = "array?", InsertText = "examples" });
+            members.Add(new CompletionItem { Label = "returnType", Kind = "property", Detail = "string? (declared -> Type)", InsertText = "returnType" });
+            members.Add(new CompletionItem { Label = "eval", Kind = "method", Detail = "eval(fixture, typeName?) — offline fixture in/out", InsertText = "eval()" });
+            members.Add(new CompletionItem { Label = "toPromptString", Kind = "method", Detail = "toPromptString() — user prompt string", InsertText = "toPromptString()" });
+            members.Add(new CompletionItem { Label = "getUser", Kind = "method", Detail = "getUser()", InsertText = "getUser()" });
+            members.Add(new CompletionItem { Label = "getSystem", Kind = "method", Detail = "getSystem()", InsertText = "getSystem()" });
         }
         else if (typeToCheck == "Conversation")
         {
@@ -1776,6 +1782,7 @@ public class LanguageService : ILanguageService
             "runProgram" => "function runProgram(program: object) -> any\nRuns a validated program from await prompt(...) -> program(Api) (or equivalent JSON). Calls top-level functions named like api methods; no LLM.",
             "decomposeTask" => "function decomposeTask(instruction: string, client?: LLMClient) -> object\nUses an LLM to break a high-level task into a structured plan. Returns { steps, planId?, taskSummary? } or { error }.",
             "runPrompt" => "function runPrompt(prompt, client?, options?) -> string\nRuns a PromptInstance through an LLM. Options: `{ onToken: fn, onReasoning: fn }` for streaming callbacks.",
+            "evalPrompt" => "function evalPrompt(prompt, fixture, typeName?) -> object\nOffline fixture in/out on a PromptInstance. No LLM. Returns { ok, data } or { ok: false, error }. data matches await (variant for sum types). Fixture is a dict or LLM-shaped JSON string. Optional typeName overrides instance.returnType.",
             "withExamples" => "function withExamples(prompt, examples, options?) -> PromptInstance\nReturns a copy of a prompt with runtime few-shot examples. Use `{ merge: true }` to append after static prompt examples.",
             "parseJson" => "function parseJson(value, schemaRef, options?) -> object\nParses and validates JSON against a schema declaration.",
             "validate" => "function validate(schema, value) -> object\nChecks a value against a schema or sum-type name. Returns { ok, data } or { ok: false, error }. Success leaves tagged dicts as dicts.",

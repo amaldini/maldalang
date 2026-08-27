@@ -85,6 +85,19 @@
       "file": "api_program_calc.malda"
     },
     {
+      "name": "Eval prompt fixtures",
+      "description": "evalPrompt / instance.eval: offline fixture in/out (no LLM)",
+      "file": "eval_prompt.malda",
+      "track": "ai-builder",
+      "difficulty": "intermediate",
+      "minutes": 8,
+      "concepts": ["prompt", "schema", "sum type", "evalPrompt"],
+      "prerequisites": ["Prompts/prompt_return_type.malda", "Basics/as_variant.malda"],
+      "learningGoal": "Fixture-test a typed PromptInstance without calling a model.",
+      "expectedOutput": "Prints card/intent success and expected validation failures.",
+      "next": "Prompts/schema_prompt_structured.malda"
+    },
+    {
       "name": "Prompt Reusability",
       "description": "How prompt blocks enable code reuse and maintainability",
       "file": "prompt_reusability.malda"

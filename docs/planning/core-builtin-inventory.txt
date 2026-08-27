@@ -4,7 +4,7 @@
 # Format: symbol -> tier | note
 # Optional-pack / vertical symbols must NOT appear here (enforced by OptionalPackRegistryGuardTests)
 
-# count: 348
+# count: 350
 
 abs -> tier1-core | BuiltInRegistry
 acos -> stdlib-general | BuiltInRegistry
@@ -15,6 +15,7 @@ append -> stdlib-general | BuiltInRegistry
 approveWorkflowStep -> platform-workflow | BuiltInRegistry
 argmax -> stdlib-general | BuiltInRegistry
 argmin -> stdlib-general | BuiltInRegistry
+asVariant -> stdlib-general | BuiltInRegistry
 asin -> stdlib-general | BuiltInRegistry
 assert -> stdlib-general | BuiltInRegistry
 atan -> stdlib-general | BuiltInRegistry
@@ -90,6 +91,7 @@ endsWith -> stdlib-general | BuiltInRegistry
 enqueueJob -> stdlib-general | BuiltInRegistry
 ensureDir -> stdlib-general | BuiltInRegistry
 error -> stdlib-general | BuiltInRegistry
+evalPrompt -> stdlib-general | BuiltInRegistry
 executePlan -> platform-ai | BuiltInRegistry
 exit -> stdlib-general | BuiltInRegistry
 exp -> stdlib-general | BuiltInRegistry

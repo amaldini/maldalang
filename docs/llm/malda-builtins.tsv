@@ -89,6 +89,7 @@ endsWith	str.endsWith	2 arguments: (str, suffix)
 enqueueJob	enqueueJob	2-3 arguments: (queue, payload, options?)		
 ensureDir	io.ensureDir	1 argument		
 error	error	1 argument: (message)		
+evalPrompt	evalPrompt	2-3 arguments: (prompt, fixture, typeName?)	no LLM; same extract/validate/coerce path as await; {ok,data} or {ok:false,error}; data is a variant for sum types; instance.eval(fixture) is the same helper	{ ok, data } | { ok: false, error }
 executePlan	executePlan	at least 2 arguments: (plan, agent)		
 exit	exit	0-1 arguments: (code?)	terminates the process immediately; the code must be an integer	
 exp	math.exp	1 argument		

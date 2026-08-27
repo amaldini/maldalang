@@ -51,4 +51,15 @@ public class TranspilerRuntimeHardeningTests
         Assert.Contains("else if (instance is MaldaLang.BuiltIns.LlamaCppClientInstance llamaCppClient)", generatedSource);
         Assert.Contains("else if (instance is MaldaLang.BuiltIns.LLMClientBridge.LLMClientBridgeInstance llmBridge)", generatedSource);
     }
+
+    [Fact]
+    public void TranspiledRuntimeHelpers_CallObjectMethod_UnwrapsRuntimeValueReceivers()
+    {
+        var generatedSource = LoadTranspilerSource();
+
+        Assert.Contains("public static async System.Threading.Tasks.Task<object> CallObjectMethod(object? obj, string methodName, List<object> args)", generatedSource);
+        Assert.Contains("if (obj is MaldaLang.Interpreter.RuntimeValue __rvCall)", generatedSource);
+        Assert.Contains("if (__unwrappedCall is MaldaLang.Interpreter.ObjectInstance)", generatedSource);
+        Assert.Contains("else if (instance is MaldaLang.BuiltIns.PromptInstance promptInstance)", generatedSource);
+    }
 }

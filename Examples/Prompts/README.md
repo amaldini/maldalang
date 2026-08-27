@@ -12,6 +12,7 @@ malda Examples/Prompts/prompt_tools_mode.malda
 malda Examples/Prompts/prompt_tools_then_structured.malda
 malda Examples/Prompts/prompt_budget.malda
 malda Examples/Prompts/api_program_calc.malda
+malda Examples/Prompts/eval_prompt.malda
 
 # Needs a configured LLM (default local client or API key)
 malda Examples/Prompts/schema_prompt_structured.malda
@@ -29,6 +30,7 @@ malda Examples/Prompts/prompt_with_agent.malda
 | `prompt_tools_then_structured.malda` | **C Gather-then-extract** | Offline: one prompt with `gather:` + `-> Type` |
 | `prompt_budget.malda` | — | Offline: `@budget` + `@within` on a typed prompt |
 | `api_program_calc.malda` | — | Offline: closed `api` + program JSON + `runProgram` |
+| `eval_prompt.malda` | — | Offline: `evalPrompt` / `instance.eval` fixture in/out (schema + sum type) |
 | RAG / agent demos | — | Need LLM provider |
 
 See [`docs/spec/backend-capability-matrix.md`](../../docs/spec/backend-capability-matrix.md)

@@ -46,7 +46,11 @@ Compact rules for generating correct `.malda`. Prefer this over scraping HTML ma
   root and `cap.confine` a relative path from tool args. Scaffold: `malda new agent`.
   Example: `Examples/Tools/capability_tokens.malda`. Few-shot: `docs/llm/few-shot/26_tool_cap_read.malda`.
   Without `await`, you get a `PromptInstance` (schema attached when resolvable and no
-  tools). Prefer a `schema Name { … }` for structured objects, or a **sum type**
+  `gather:`). `evalPrompt(instance, fixture)` (or `instance.eval(fixture)`) runs the same
+  extract / validate / coerce path as `await` on a dict or LLM-shaped JSON string — no
+  model, no repair loop. Success `data` for a sum type is a variant. Example:
+  `Examples/Prompts/eval_prompt.malda`. Few-shot: `docs/llm/few-shot/27_eval_prompt.malda`.
+  Prefer a `schema Name { … }` for structured objects, or a **sum type**
   (`type Intent = Search(query: string) | Buy(sku: string, qty: int)`) when the model must pick one of several
   shapes — success yields a real variant for `match`. Constructor payload types are optional;
   name-only (`Search(query)`) stays a permissive JSON field. Sum-type JSON wire shape:

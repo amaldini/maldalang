@@ -21,6 +21,7 @@ public class InterpretTranspilePairTests
     [InlineData("Examples/Basics/schema_validate.malda")]
     [InlineData("Examples/Basics/schema_sumtype_validate.malda")]
     [InlineData("Examples/Basics/as_variant.malda")]
+    [InlineData("Examples/Prompts/eval_prompt.malda")]
     [InlineData("Examples/Agents/phase6_pure_validate.malda")]
     [InlineData("Examples/Prompts/api_program_calc.malda")]
     [InlineData("Examples/Prompts/prompt_budget.malda")]
@@ -78,6 +79,33 @@ public class InterpretTranspilePairTests
             }
             """,
             "as-variant");
+    }
+
+    [Fact]
+    public void EvalPrompt_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            schema Card {
+                name: string;
+            }
+            type Intent = Search(query) | Buy(sku, qty);
+            prompt extract(raw) -> Card {
+                user: raw;
+            }
+            prompt parseUtterance(text) -> Intent {
+                user: text;
+            }
+            var card = evalPrompt(extract("x"), dict { "name": "Ada" });
+            io.print(card.data.name);
+            var fromFence = extract("x").eval("{ \"name\": \"Ada\" }");
+            io.print(fromFence.data.name);
+            match evalPrompt(parseUtterance("x"), dict { "tag": "Buy", "sku": "SKU-9", "qty": 2 }).data {
+                case Buy(sku, qty): io.print($"buy {sku} x {qty}");
+                default: io.print("fail");
+            }
+            """,
+            "eval-prompt");
     }
 
     [Fact]

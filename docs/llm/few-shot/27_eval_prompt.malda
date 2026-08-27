@@ -1,0 +1,34 @@
+// evalPrompt — offline fixture in/out on a PromptInstance (no LLM).
+// Same extract / validate / coerce path as `await prompt … -> Type`.
+// Success data for a sum type is a variant (match works). validate() would leave a dict.
+
+schema Card {
+    name: string;
+}
+
+type Intent = Search(query: string) | Buy(sku: string, qty: int) | Help();
+
+prompt extract(raw) -> Card {
+    user: raw;
+}
+
+prompt parseUtterance(text) -> Intent {
+    user: text;
+}
+
+var card = evalPrompt(extract("Ada"), dict { "name": "Ada" });
+if (card.ok) {
+    io.print(card.data.name);
+}
+
+var fenced = "```json\n{ \"name\": \"Ada\" }\n```";
+io.print(string(extract("x").eval(fenced).ok));
+
+var intent = evalPrompt(parseUtterance("buy"), dict { "tag": "Buy", "sku": "SKU-9", "qty": 2 });
+if (intent.ok) {
+    match intent.data {
+        case Search(q): io.print($"search {q}");
+        case Buy(sku, qty): io.print($"buy {sku} x {qty}");
+        case Help(): io.print("help");
+    }
+}

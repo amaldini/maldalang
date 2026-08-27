@@ -1,0 +1,59 @@
+// eval_prompt.malda — offline fixture in/out on PromptInstance (no LLM)
+//
+// evalPrompt(instance, fixture) runs the same extract / validate / asVariant
+// coerce path as `await prompt … -> Type`, without calling a model.
+// Fixture: dict/object or an LLM-shaped JSON string (fences allowed).
+//
+// Run: malda Examples/Prompts/eval_prompt.malda
+
+schema Card {
+    name: string;
+    email: string;
+}
+
+type Intent = Search(query: string) | Buy(sku: string, qty: int) | Help();
+
+prompt extractCard(raw) -> Card {
+    system: "Extract a contact. JSON only.";
+    user: raw;
+}
+
+prompt parseUtterance(text) -> Intent {
+    system: "Map the utterance to one Intent. JSON only.";
+    user: text;
+}
+
+var cardPrompt = extractCard("Ada Lovelace — ada@example.com");
+var cardOk = evalPrompt(cardPrompt, dict { "name": "Ada", "email": "ada@example.com" });
+if (cardOk.ok) {
+    io.print("card: " + cardOk.data.name);
+} else {
+    io.print("card fail");
+}
+
+var cardBad = evalPrompt(cardPrompt, dict { "email": "nope" });
+if (!cardBad.ok) {
+    io.print("card expected failure");
+}
+
+var fenced = "Here:\n```json\n{ \"name\": \"Ada\", \"email\": \"ada@example.com\" }\n```";
+var fromFence = cardPrompt.eval(fenced);
+if (fromFence.ok) {
+    io.print("fence: " + fromFence.data.email);
+}
+
+var intentOk = evalPrompt(parseUtterance("buy 2 of SKU-9"), dict { "tag": "Buy", "sku": "SKU-9", "qty": 2 });
+if (intentOk.ok) {
+    match intentOk.data {
+        case Search(q): io.print("search " + q);
+        case Buy(sku, qty): io.print($"buy {sku} x {qty}");
+        case Help(): io.print("help");
+    }
+} else {
+    io.print("intent fail");
+}
+
+var intentBad = evalPrompt(parseUtterance("???"), dict { "tag": "Nope" });
+if (!intentBad.ok) {
+    io.print("intent expected failure");
+}
