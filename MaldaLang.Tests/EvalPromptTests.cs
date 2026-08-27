@@ -237,4 +237,29 @@ public class EvalPromptTests : TestBase
         Assert.Equal("Ada", lines[1].Trim());
         Assert.Contains("buy SKU-9 x 2", result.StdOut, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Transpiled_InstanceEval_FencedJson()
+    {
+        var source = """
+            schema Card {
+                name: string;
+                email: string;
+            }
+            prompt extract(raw) -> Card {
+                user: raw;
+            }
+            var p = extract("Ada");
+            var fromFence = p.eval("Here:\n```json\n{ \"name\": \"Ada\", \"email\": \"ada@example.com\" }\n```");
+            print(fromFence.ok);
+            print(fromFence.data.email);
+            print(p.getUser());
+            """;
+        var result = TranspiledTestRunner.CompileAndRunFromSource(source);
+        Assert.Equal(0, result.ExitCode);
+        var lines = result.StdOut.Trim().Replace("\r", "").Split('\n');
+        Assert.Equal("true", lines[0].Trim());
+        Assert.Equal("ada@example.com", lines[1].Trim());
+        Assert.Equal("Ada", lines[2].Trim());
+    }
 }

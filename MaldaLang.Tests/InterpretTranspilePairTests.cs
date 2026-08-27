@@ -98,6 +98,8 @@ public class InterpretTranspilePairTests
             }
             var card = evalPrompt(extract("x"), dict { "name": "Ada" });
             io.print(card.data.name);
+            var fromFence = extract("x").eval("{ \"name\": \"Ada\" }");
+            io.print(fromFence.data.name);
             match evalPrompt(parseUtterance("x"), dict { "tag": "Buy", "sku": "SKU-9", "qty": 2 }).data {
                 case Buy(sku, qty): io.print($"buy {sku} x {qty}");
                 default: io.print("fail");
