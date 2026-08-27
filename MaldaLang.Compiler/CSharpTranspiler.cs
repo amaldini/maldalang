@@ -2428,6 +2428,8 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("MaldaLang.Interpreter.ValueType.Object => rv.AsObject(),");
         WriteIndent();
+        _output.AppendLine("MaldaLang.Interpreter.ValueType.Variant => rv,");
+        WriteIndent();
         _output.AppendLine("_ => null");
         _indentLevel--;
         WriteIndent();
@@ -3380,6 +3382,8 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("MaldaLang.Interpreter.ValueType.Object => resultValue.AsObject(),");
         WriteIndent();
+        _output.AppendLine("MaldaLang.Interpreter.ValueType.Variant => resultValue,");
+        WriteIndent();
         _output.AppendLine("_ => null");
         _indentLevel--;
         WriteIndent();
@@ -4013,6 +4017,8 @@ public class CSharpTranspiler
         _output.AppendLine("MaldaLang.Interpreter.ValueType.Object => value.AsObject(),");
         WriteIndent();
         _output.AppendLine("MaldaLang.Interpreter.ValueType.Function => value.AsFunction(),");
+        WriteIndent();
+        _output.AppendLine("MaldaLang.Interpreter.ValueType.Variant => value,");
         WriteIndent();
         _output.AppendLine("_ => null");
         _indentLevel--;
