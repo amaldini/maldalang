@@ -1,6 +1,6 @@
 # MALDA 2D games kit vs 2D peers — gap analysis
 
-**Status:** Evaluation of the landed JS `game.*` kit (G0–G15)  
+**Status:** Evaluation of the landed JS `game.*` kit (G0–G16)  
 **Audience:** maintainers deciding whether to reopen a post-G15 2D roadmap  
 **Not a roadmap.** Deferred engine-scale items stay in [`docs/roadmap-games.md`](roadmap-games.md). This file compares the **current** immediate-mode canvas kit with libraries people actually finish 2D games in.
 
@@ -15,8 +15,8 @@
 | Layer | Landed surface |
 |-------|----------------|
 | Loop | `createCanvas`, `start` / `startFixed` (60 Hz accrue, max 5 catch-up), `stop` |
-| Draw | Rect/circle fill + stroke, line, text, alpha, pixelated blit, CPU `setPixel` / `blitPixels` |
-| Images | Async `loadImage` handle, atlas `drawImageRect`, `drawImageEx` (origin / rotate / flip) |
+| Draw | Rect/circle fill + stroke, line, text, alpha, **blend** (`alpha` / `add` / `multiply` / `screen`), pixelated blit, CPU `setPixel` / `blitPixels` |
+| Images | Async `loadImage` handle, atlas `drawImageRect`, `drawImageEx` (origin / rotate / flip / tint / `tintFill`) |
 | Camera | Pan, zoom, push/pop stack, screen↔world, `followCamera` clamp + optional integer snap |
 | Input | Key/mouse edges, touches, Standard Gamepad (press/release, analog + per-axis deadzone) |
 | Collision | Inclusive AABB/circle overlap, point tests, `sweepRect` / `sweepRects` |
@@ -52,7 +52,7 @@ Unity 2D is listed only as “not the bar.” Comparing feature-for-feature with
 
 ## 3. Genre feasibility (can you finish it?)
 
-| Genre | Verdict with G0–G15 | What is missing in practice |
+| Genre | Verdict with G0–G16 | What is missing in practice |
 |-------|---------------------|-----------------------------|
 | Pong / breakout / shmup-lite | **Finishable** | Template + `maldanoid` already do this |
 | Short side-scroller | **Finishable** | `malda_platform`; animation, slopes, one-way platforms, and enemies are user code |
@@ -62,7 +62,7 @@ Unity 2D is listed only as “not the bar.” Comparing feature-for-feature with
 | JRPG | **Struggle** | Same + menu UI, bitmap fonts, nine-slice |
 | Physics puzzler (Angry Birds-class) | **No (in core)** | Rigid bodies, joints, sleeping, debug draw |
 | Fighting game | **No** | Frame data, hitboxes as data, skeletal/cel animation |
-| Particle-heavy juice ( juiciness ) | **No without rolling your own** | No emitter; additive blend + tint also missing |
+| Particle-heavy juice ( juiciness ) | **Partial** | Tint + add/multiply blend landed; no emitter |
 | Mobile hypercasual | **Partial** | Touches exist; no virtual stick, safe-area, letterbox, pause-on-blur helper |
 | Realtime multiplayer action | **No** | G9 is HTTP scores; JS actors are process-local |
 
@@ -80,8 +80,8 @@ Legend: **kit** = still fits “functions on `game.*`”; **engine** = object/wo
 |------------|-----------------|----------------|-------------|-------|
 | Image blit + atlas rect | yes | yes | `drawImage` / `drawImageRect` | landed |
 | Rotate / flip / origin | `draw` / `DrawTexturePro` | sprite transform | `drawImageEx` | landed |
-| Color **tint** on images | `setColor` tints draws | sprite.tint | **no** (`setAlpha` only; `drawImageEx` explicitly not tint) | **kit** |
-| Blend modes (add / multiply) | `setBlendMode` | blendMode | **no** | **kit** |
+| Color **tint** on images | `setColor` tints draws | sprite.tint | `drawImageEx` `tint` (multiply) + `tintFill` | landed |
+| Blend modes (add / multiply) | `setBlendMode` | blendMode | `setBlend` / `getBlend` (`alpha` / `add` / `multiply` / `screen`) | landed |
 | Offscreen render target | Canvas / render texture | RenderTexture | pixel buffer only (CPU); cannot composite a layer then blit with blend | **kit** (light) / engine (full) |
 | Sprite **objects** / scene graph | no (Love2D) | yes | no by design | engine |
 | Frame animation from atlas | libs (`anim8`) | AnimationPlayer / `anims` | manual `sx` + `dt` | **kit** |
@@ -175,8 +175,8 @@ Pixel-art games that want a consistent HUD currently mix CSS fonts with `setPixe
 |------------|----------------|--------|-------|-------|
 | Tweens (ease to a value) | first-class | libs (`flux`) | **no** | **kit** |
 | Particle emitter | yes | ParticleSystem | **no** (deferred) | **kit** (tiny) / engine (full) |
-| Sprite flash on hit | tint | setColor | **no tint** | depends on tint |
-| After-image / trail | yes | user | user | kit if blend exists |
+| Sprite flash on hit | tint | setColor | `tintFill` + white (or `setBlend("add")`) | landed |
+| After-image / trail | yes | user | user (`setBlend("add")`) | kit |
 
 ### 4.9 Assets, scenes, save, ship
 
@@ -224,20 +224,21 @@ Do **not** treat “no Box2D / no scene graph / no Pixi” as unfinished work. T
 
 Ranked for **finishable games**, still inside “functions beat objects” and “deepen `game.*`”:
 
-1. **Tint + canvas composite mode** on `drawImageEx` / a `setBlend` — unlocks hit-flash, additive sparks, night multiply. Small API; `drawImageEx` already reserved this as out of scope.
-2. **Tile helpers** — `drawTiles` + cell query + `sweepTiles` against a 2D id grid. This is the Pico-8 `map`/`mget` hole; it is why `maldadash` never used G1 images.
-3. **`moveAndSlide` / one-call axis resolve** — wrap the X-then-Y `sweepRects` pattern `malda_platform` still copies.
-4. **Atlas animation helper** — `drawAnim(handle, x, y, { frames, fps, t })` (pure draw, no sprite object).
-5. **Camera juice** — `followCamera` options: `lerp`, `shake`, maybe look-ahead. Dead-zone is optional.
-6. **Integer scale / letterbox** — one helper so pixel art is not host-CSS (G10 leftover).
-7. **Sample voice handle** — return an id from `audioPlaySample` so overlapping clips of the same URL can be stopped independently.
-8. **Text wrap + align** (and optionally a baked bitmap font blit).
-9. **Mouse wheel, rumble, `getGamepadStick`** — leftover input completeness from G14.
-10. **Pause / timeScale** and/or `startFixed` interpolation leftover for high-refresh displays.
+1. **Tile helpers** — `drawTiles` + cell query + `sweepTiles` against a 2D id grid. This is the Pico-8 `map`/`mget` hole; it is why `maldadash` never used G1 images.
+2. **`moveAndSlide` / one-call axis resolve** — wrap the X-then-Y `sweepRects` pattern `malda_platform` still copies.
+3. **Atlas animation helper** — `drawAnim(handle, x, y, { frames, fps, t })` (pure draw, no sprite object).
+4. **Camera juice** — `followCamera` options: `lerp`, `shake`, maybe look-ahead. Dead-zone is optional.
+5. **Integer scale / letterbox** — one helper so pixel art is not host-CSS (G10 leftover).
+6. **Sample voice handle** — return an id from `audioPlaySample` so overlapping clips of the same URL can be stopped independently.
+7. **Text wrap + align** (and optionally a baked bitmap font blit).
+8. **Mouse wheel, rumble, `getGamepadStick`** — leftover input completeness from G14.
+9. **Pause / timeScale** and/or `startFixed` interpolation leftover for high-refresh displays.
+
+**Landed since this file was first written:** tint + `setBlend` (G16).
 
 **Stay out of core** (unchanged from the games roadmap): Box2D-class physics, Tiled/LDtk as a required format, particle *engine*, scene graph, WebGL 2D batcher, native SDL, Desktop-as-game-editor.
 
-A **tiny** particle helper (`game.burst(x, y, { n, life, color })` as immediate draw) is the one deferred row that could still be kit-sized; a full ParticleSystem is a pack.
+A **tiny** particle helper (`game.burst(x, y, { n, life, color })` as immediate draw) is the one deferred row that could still be kit-sized now that blend exists; a full ParticleSystem is a pack.
 
 ---
 
@@ -247,11 +248,11 @@ A **tiny** particle helper (`game.burst(x, y, { n, life, color })` as immediate 
 |---------------------------------------------------|------|
 | Another primitive-draw arcade | **Do nothing** — kit is sufficient |
 | A tiled cave / RPG overworld / Metroidvania slice | Add **tile helpers** (item 2) before anything else |
-| A juicier platformer (flash, shake, dust) | Add **tint/blend + camera shake** (items 1 and 5) |
+| A juicier platformer (flash, shake, dust) | Tint/blend **landed** (G16); next is **camera shake** (item 4) and/or a tiny burst helper |
 | A physics toy | **Do not** grow `game.*` — optional pack |
 | A Steam desktop action game | Out of tree (native pack), not this repo |
 
-Revisit this file when a new 2D workstream is actually scheduled. Until then, [`docs/roadmap-games.md`](roadmap-games.md) remains the status of G0–G15 and the non-goals list.
+Revisit this file when a new 2D workstream is actually scheduled. Until then, [`docs/roadmap-games.md`](roadmap-games.md) remains the status of G0–G16 and the non-goals list.
 
 ---
 

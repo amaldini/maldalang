@@ -1952,8 +1952,21 @@
         cameraZoom: 1,
         cameraStack: [],
         alpha: 1,
+        blend: "alpha",
+        blendOp: "source-over",
         pixelated: false,
-        imageCache: new Map()
+        imageCache: new Map(),
+        tintCanvas: null,
+        tintContext: null
+      };
+
+      const BLEND_MODES = {
+        alpha: { name: "alpha", op: "source-over" },
+        "source-over": { name: "alpha", op: "source-over" },
+        add: { name: "add", op: "lighter" },
+        lighter: { name: "add", op: "lighter" },
+        multiply: { name: "multiply", op: "multiply" },
+        screen: { name: "screen", op: "screen" }
       };
 
       function normalizeKey(key) {
@@ -2279,7 +2292,25 @@
 
       function applyDrawStyle(context) {
         context.globalAlpha = state.alpha;
+        context.globalCompositeOperation = state.blendOp || "source-over";
         context.imageSmoothingEnabled = !state.pixelated;
+      }
+
+      function resolveBlendMode(mode) {
+        const key = coerceToString(mode).toLowerCase();
+        const resolved = BLEND_MODES[key];
+        if (!resolved) {
+          return BLEND_MODES.alpha;
+        }
+        return resolved;
+      }
+
+      function resetBlend(context) {
+        state.blend = "alpha";
+        state.blendOp = "source-over";
+        if (context) {
+          context.globalCompositeOperation = "source-over";
+        }
       }
 
       function applyPixelFilter(context, canvas) {
@@ -2639,6 +2670,7 @@
         state.alpha = 1;
         state.pixelated = false;
         context.globalAlpha = 1;
+        resetBlend(context);
         applyPixelFilter(context, canvas);
         attachInputListeners();
         return null;
@@ -2654,7 +2686,9 @@
         const context = ensureCanvasContext("clear");
         if (!state.canvas) return null;
         const previousAlpha = context.globalAlpha;
+        const previousComposite = context.globalCompositeOperation;
         context.globalAlpha = 1;
+        context.globalCompositeOperation = "source-over";
         if (state.backgroundColor === null || state.backgroundColor === undefined) {
           context.clearRect(0, 0, state.canvas.width, state.canvas.height);
         } else {
@@ -2662,6 +2696,7 @@
           context.fillRect(0, 0, state.canvas.width, state.canvas.height);
         }
         context.globalAlpha = previousAlpha;
+        context.globalCompositeOperation = previousComposite;
         return null;
       }
 
@@ -2894,6 +2929,20 @@
         return null;
       }
 
+      function setBlend(mode) {
+        const context = ensureCanvasContext("setBlend");
+        const resolved = resolveBlendMode(mode);
+        state.blend = resolved.name;
+        state.blendOp = resolved.op;
+        context.globalCompositeOperation = resolved.op;
+        return null;
+      }
+
+      function getBlend() {
+        ensureCanvasContext("getBlend");
+        return state.blend || "alpha";
+      }
+
       function drawLine(x1, y1, x2, y2, color, width) {
         const context = ensureCanvasContext("drawLine");
         applyDrawStyle(context);
@@ -3082,6 +3131,65 @@
         return toFiniteNumber(options[key], fallback);
       }
 
+      function optionTint(options) {
+        if (!optionHas(options, "tint")) {
+          return null;
+        }
+        const color = coerceToString(options.tint);
+        return color === "" ? null : color;
+      }
+
+      function ensureTintContext() {
+        if (state.tintContext) {
+          return state.tintContext;
+        }
+        if (typeof document === "undefined" || typeof document.createElement !== "function") {
+          return null;
+        }
+        const canvas = document.createElement("canvas");
+        if (!canvas || typeof canvas.getContext !== "function") {
+          return null;
+        }
+        const context = canvas.getContext("2d");
+        if (!context) {
+          return null;
+        }
+        state.tintCanvas = canvas;
+        state.tintContext = context;
+        return context;
+      }
+
+      function prepareTintedImage(record, sourceX, sourceY, sourceWidth, sourceHeight, destWidth, destHeight, tint, tintFill) {
+        const tintContext = ensureTintContext();
+        if (!tintContext || !state.tintCanvas || !record || !record.image) {
+          return null;
+        }
+
+        const pixelW = Math.max(1, Math.ceil(Math.abs(destWidth)));
+        const pixelH = Math.max(1, Math.ceil(Math.abs(destHeight)));
+        if (state.tintCanvas.width !== pixelW) {
+          state.tintCanvas.width = pixelW;
+        }
+        if (state.tintCanvas.height !== pixelH) {
+          state.tintCanvas.height = pixelH;
+        }
+
+        tintContext.globalAlpha = 1;
+        tintContext.globalCompositeOperation = "source-over";
+        tintContext.imageSmoothingEnabled = !state.pixelated;
+        tintContext.clearRect(0, 0, pixelW, pixelH);
+        tintContext.drawImage(record.image, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, pixelW, pixelH);
+        tintContext.globalCompositeOperation = tintFill ? "source-in" : "multiply";
+        tintContext.fillStyle = tint;
+        tintContext.fillRect(0, 0, pixelW, pixelH);
+        if (!tintFill) {
+          tintContext.globalCompositeOperation = "destination-in";
+          tintContext.drawImage(record.image, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, pixelW, pixelH);
+        }
+        tintContext.globalCompositeOperation = "source-over";
+        return state.tintCanvas;
+      }
+
       function drawImageEx(handle, x, y, options) {
         const context = ensureCanvasContext("drawImageEx");
         const record = resolveImageHandle(handle);
@@ -3127,6 +3235,35 @@
         const scaleY = flipY ? -1 : 1;
         const needsRotate = angle !== 0;
         const needsScale = scaleX !== 1 || scaleY !== 1;
+        const screenW = worldSize(destWidth, 0);
+        const screenH = worldSize(destHeight, 0);
+        const tint = optionTint(opts);
+        const tintFill = !!opts.tintFill;
+        let blitImage = record.image;
+        let blitSx = sourceX;
+        let blitSy = sourceY;
+        let blitSw = sourceWidth;
+        let blitSh = sourceHeight;
+        if (tint) {
+          const tinted = prepareTintedImage(
+            record,
+            sourceX,
+            sourceY,
+            sourceWidth,
+            sourceHeight,
+            screenW,
+            screenH,
+            tint,
+            tintFill
+          );
+          if (tinted) {
+            blitImage = tinted;
+            blitSx = 0;
+            blitSy = 0;
+            blitSw = tinted.width;
+            blitSh = tinted.height;
+          }
+        }
 
         applyDrawStyle(context);
         try {
@@ -3139,15 +3276,15 @@
             context.scale(scaleX, scaleY);
           }
           context.drawImage(
-            record.image,
-            sourceX,
-            sourceY,
-            sourceWidth,
-            sourceHeight,
+            blitImage,
+            blitSx,
+            blitSy,
+            blitSw,
+            blitSh,
             -worldSize(originX, 0),
             -worldSize(originY, 0),
-            worldSize(destWidth, 0),
-            worldSize(destHeight, 0)
+            screenW,
+            screenH
           );
           context.restore();
         } catch (_error) {
@@ -4164,6 +4301,8 @@
         drawLine,
         strokeRect,
         setAlpha,
+        setBlend,
+        getBlend,
         setPixelated,
         getCanvasWidth,
         getCanvasHeight,

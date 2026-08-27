@@ -1,11 +1,11 @@
 # MALDA games platform plan
 
-**Status:** G0–G15 landed  
+**Status:** G0–G16 landed  
 **Created:** 2026-08-21  
 **Audience:** maintainers extending the JS `game.*` / `three.*` surface after Final 1.0
 
 This is the plan that made MALDA a **good platform for games people finish** —
-Love2D / Pico-8 / Phaser, not Unity. G0–G15 are landed. Prefer
+Love2D / Pico-8 / Phaser, not Unity. G0–G16 are landed. Prefer
 [`docs/javascript-backend.md`](javascript-backend.md),
 [Reference Manual 26](../ReferenceManual/26-browser-javascript-backend.html),
 and the deferred list at the end for engines that stay out of core.
@@ -19,7 +19,9 @@ game` / `malda play`, curated `three.*` primitives + textures / glTF / `lookAt`
 stays. Post-kit 2D: `sweepRect` / `sweepRects`, `drawImageEx`, camera stack /
 zoom / `followCamera`, G10 size queries (`imageWidth`, `getCanvasWidth`,
 `measureText`), `setPixelated`, `strokeCircle`, sample pan / `playbackRate`,
-gamepad release + analog deadzone, and `malda new game` on `startFixed`.
+gamepad release + analog deadzone, `malda new game` on `startFixed`, and G16
+image `tint` / `tintFill` plus `setBlend` (`alpha` / `add` / `multiply` /
+`screen`).
 
 **Not in scope:** new syntax / keywords / `on update`, interpreter or C# game
 loops, a Box2D-class physics engine in core, a second 2D renderer (Pixi /
@@ -71,6 +73,7 @@ top-level globals, Web IDE Desktop parity, product apps or vertical packs
 | 13 | **G13** Sample pan / playbackRate | Landed | SFX are volume-only; spatial hits and chip-tune pitch need options |
 | 14 | **G14** Gamepad completeness | Landed | `wasGamepadButtonReleased` missing; analog sticks have no deadzone |
 | 15 | **G15** Starter uses `startFixed` | Landed | `malda new game` still emits `game.start`; the kit loop is `startFixed` |
+| 16 | **G16** Tint + blend | Landed | Highest remaining kit gap after G15: hit-flash, additive sparks, night multiply |
 
 ```text
 G0  roadmap file                          (landed)
@@ -89,9 +92,10 @@ G10 query / pixel / strokeCircle          (landed; post-kit 2D)
        ├─ G13 sample pan / rate
        ├─ G14 gamepad released + deadzone
        └─ G15 malda new game uses startFixed
+G16 tint + setBlend                    (landed; post-kit 2D juice)
 ```
 
-G11–G15 landed as the ranked 2D slices after G10 — not tilesets, particles, or a
+G11–G16 landed as the ranked 2D slices after G10 — not tilesets, particles, or a
 physics engine (those stay in **After G9 (deferred)** and **Explicit non-goals**).
 
 ---
@@ -358,12 +362,12 @@ flipped magenta tile) and spinning coins in `malda_platform`. Axis-aligned
 
 | Call | Contract |
 |------|----------|
-| `game.drawImageEx(handle, x, y, options?)` | Draw with optional atlas source, dest size, origin, rotation, and flip. `x`/`y` are the origin in world space. Options: `{ sx?, sy?, sw?, sh?, w?, h?, ox?, oy?, angle?, flipX?, flipY? }`. Omit options (or dest size): full image, dest size = source size, origin `(0, 0)`. `angle` radians; canvas Y+ down so positive is clockwise. `flipX`/`flipY` scale around `(ox, oy)`. Default origin is dest top-left, so `flipX` without `ox` draws to the left of `x`. For in-place facing set `ox` to `w / 2`. Unready handles no-op. Camera and `setAlpha` apply. |
+| `game.drawImageEx(handle, x, y, options?)` | Draw with optional atlas source, dest size, origin, rotation, flip, and tint. `x`/`y` are the origin in world space. Options: `{ sx?, sy?, sw?, sh?, w?, h?, ox?, oy?, angle?, flipX?, flipY?, tint?, tintFill? }`. Omit options (or dest size): full image, dest size = source size, origin `(0, 0)`. `angle` radians; canvas Y+ down so positive is clockwise. `flipX`/`flipY` scale around `(ox, oy)`. Default origin is dest top-left, so `flipX` without `ox` draws to the left of `x`. For in-place facing set `ox` to `w / 2`. `tint` / `tintFill` landed in **G16**. Unready handles no-op. Camera and `setAlpha` apply. |
 
 **Guardrails**
 
 - Call `createCanvas` first (same as `drawImage`).
-- Not a sprite object, scene graph, or tint/blend mode.
+- Not a sprite object or scene graph. Tint / blend modes are **G16**.
 - `save`/`restore` so later `fillRect` / HUD draws are not left rotated.
 - `drawImage` / `drawImageRect` signatures stay unchanged.
 
@@ -582,17 +586,43 @@ sample.
 
 ---
 
-## How G11–G15 shipped
+## G16 — Tint + blend (landed)
 
-Landed together after the contracts above were specified. Suggested order if
-splitting a similar batch later: G11 first, then G14/G13, G12 after G11 when
-both touch `malda_platform`, G15 anytime.
+**Why:** After G15 the highest remaining kit gap in
+[`docs/games-2d-gap-analysis.md`](games-2d-gap-analysis.md) was color tint on
+images plus a canvas composite mode. `setAlpha` cannot do hit-flash, additive
+sparks, or a night multiply overlay. `drawImageEx` had reserved tint as out of
+scope.
+
+| Call | Contract |
+|------|----------|
+| `game.setBlend(mode)` / `game.getBlend()` | Subsequent world draws use a canvas composite. Names: `"alpha"` (default, `source-over`), `"add"` (`lighter`), `"multiply"`, `"screen"`. Aliases `"source-over"` / `"lighter"` map to `"alpha"` / `"add"`. Unknown / empty → `"alpha"` (no throw). Requires canvas. `createCanvas` resets to `"alpha"`. `clear()` always composites as `"alpha"` and does **not** change the current mode. Does not affect `setPixel` / `blitPixels`. |
+| `game.drawImageEx(..., { tint?, tintFill? })` | Additive options. `tint` is a CSS color on an offscreen copy (omit / empty → no tint). Default is **multiply** (Love2D `setColor`; white is identity). `tintFill: true` replaces RGB and keeps alpha (`source-in`) — white fill is a hit-flash. `tintFill` without `tint` is ignored. Camera, `setAlpha`, and the current `setBlend` apply to the blit. |
+
+**Guardrails**
+
+- Blend sticks like `setAlpha`: `setBlend("add")`, draw, `setBlend("alpha")`.
+- Not a sprite object, scene graph, extra blend names (`overlay`, `subtract`), or a second renderer.
+- `drawImage` / `drawImageRect` signatures stay unchanged (tint is `drawImageEx` only).
+- Offscreen tint buffer is reused; unready handles still no-op.
+
+**Smoke:** `Examples/Games/game_sprite_smoke.malda` — spinning tile multiply-tints, flipped tile `tintFill` flash, marker glow via `setBlend("add")`, multiply strip. Showcase: `malda_platform` white `tintFill` on coin collect plus an additive spark.
+
+**Files:** runtime, chapter 26.9, `docs/javascript-backend.md`, `docs/llm/malda-gotchas.md`. Tests: `JsTranspiler_Maps…` + `GameRuntime_SetBlend_…` + `GameRuntime_DrawImageEx_TintAndTintFill_…`. Filtered: `JavaScriptBackendTests`.
+
+---
+
+## How G11–G16 shipped
+
+G11–G15 landed together after those contracts were specified. **G16** (tint +
+`setBlend`) followed as the next ranked kit gap from
+[`docs/games-2d-gap-analysis.md`](games-2d-gap-analysis.md).
 
 ---
 
 ## After G9 (deferred)
 
-Engine-scale ideas from G1–G9. **G11–G15 above landed.** These rows stay out of
+Engine-scale ideas from G1–G9. **G11–G16 above landed.** These rows stay out of
 core until a later roadmap:
 
 | Idea | Why it waited |
@@ -612,9 +642,10 @@ Post-kit helpers that did land: **`game.sweepRect`**, **`game.sweepRects`**,
 **`game.drawImageEx`**, camera space (`pushCamera` / world mouse / mouse edges),
 **`game.setCameraZoom`**, **`game.followCamera`**, **G10** (`imageWidth` /
 `getCanvasWidth` / `measureText` / `setPixelated` / `strokeCircle`), sample
-`pan` / `playbackRate`, **`wasGamepadButtonReleased`** plus analog deadzone, and
-**G15** (`malda new game` uses `startFixed`). Still not tilesets, particles, a
-scene graph, or a physics engine.
+`pan` / `playbackRate`, **`wasGamepadButtonReleased`** plus analog deadzone,
+**G15** (`malda new game` uses `startFixed`), and **G16** (`drawImageEx` `tint` /
+`tintFill` plus `setBlend`). Still not tilesets, particles, a scene graph, or a
+physics engine.
 
 ---
 
@@ -648,6 +679,7 @@ Historical PR order (already landed):
 9. **G10** — size queries / pixelated / `strokeCircle`
 10. **G11–G15** — `sweepRects`, `followCamera`, sample pan/rate, gamepad
     release + deadzone, `malda new game` on `startFixed`
+11. **G16** — `drawImageEx` tint / `tintFill` + `setBlend`
 
 Each MINOR runtime slice updated chapter 26 and `docs/javascript-backend.md`
 in the same PR. Spec bump: JS `game.*` is product/Tier-2-ish relative to
@@ -663,4 +695,4 @@ CHANGELOG Unreleased row (product / docs), not a Tier 0 conformance case.
 - Capability matrix: [`docs/spec/backend-capability-matrix.md`](spec/backend-capability-matrix.md)
 - Examples: [`Examples/Games/README.md`](../Examples/Games/README.md)
 - Language constructs (do not add game syntax there): [`docs/roadmap-language-constructs.md`](roadmap-language-constructs.md)
-- Post-G15 peer comparison (not a workstream plan): [`docs/games-2d-gap-analysis.md`](games-2d-gap-analysis.md)
+- Post-G16 peer comparison (not a workstream plan): [`docs/games-2d-gap-analysis.md`](games-2d-gap-analysis.md)
