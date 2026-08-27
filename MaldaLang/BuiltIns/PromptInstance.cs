@@ -20,6 +20,12 @@ public class PromptInstance : ObjectInstance
     public IReadOnlyList<PromptExample>? Examples { get; }
     public int? WithinTimeoutMs { get; }
     public ResourceBudget? Budget { get; }
+    /// <summary>
+    /// Declared <c>-&gt; Type</c> name, when the instance was built from a typed prompt.
+    /// Used by <c>evalPrompt</c> / <c>eval</c> so gather instances (no
+    /// <see cref="ResponseFormatSchema"/> until extract) still coerce fixtures.
+    /// </summary>
+    public string? ReturnType { get; }
     public bool HasGather => Gather != null && Gather.Count > 0;
     public bool HasTools => Tools != null && Tools.Count > 0;
 
@@ -34,7 +40,8 @@ public class PromptInstance : ObjectInstance
         IReadOnlyList<PromptExample>? examples = null,
         int? withinTimeoutMs = null,
         List<string>? gather = null,
-        ResourceBudget? budget = null)
+        ResourceBudget? budget = null,
+        string? returnType = null)
         : base(null)
     {
         System = system;
@@ -48,6 +55,7 @@ public class PromptInstance : ObjectInstance
         Examples = examples;
         WithinTimeoutMs = withinTimeoutMs;
         Budget = budget;
+        ReturnType = string.IsNullOrWhiteSpace(returnType) ? null : returnType.Trim();
     }
     
     public override RuntimeValue Get(string name, ClassDefinition? accessingClass = null)
@@ -70,11 +78,18 @@ public class PromptInstance : ObjectInstance
                 return MaxTokens.HasValue ? RuntimeValue.Integer(MaxTokens.Value) : RuntimeValue.Null();
             case "examples":
                 return PromptExampleHelpers.ToRuntimeArray(Examples);
+            case "returnType":
+                return ReturnType != null ? RuntimeValue.String(ReturnType) : RuntimeValue.Null();
             case "toPromptString":
                 // Return a FunctionValue for method call
                 var wrapper = new FunctionValue(null, null, false, null);
                 wrapper.BuiltInInstance = this;
                 wrapper.BuiltInMethod = "toPromptString";
+                return RuntimeValue.Function(wrapper);
+            case "eval":
+                wrapper = new FunctionValue(null, null, false, null);
+                wrapper.BuiltInInstance = this;
+                wrapper.BuiltInMethod = "eval";
                 return RuntimeValue.Function(wrapper);
             case "getSystem":
                 wrapper = new FunctionValue(null, null, false, null);
@@ -111,6 +126,11 @@ public class PromptInstance : ObjectInstance
                 return System != null ? RuntimeValue.String(System) : RuntimeValue.Null();
             case "getUser":
                 return RuntimeValue.String(User);
+            case "eval":
+                if (args.Count < 1 || args.Count > 2)
+                    throw new Exception("eval() expects 1-2 arguments: (fixture, typeName?)");
+                RuntimeValue? typeOverride = args.Count >= 2 ? args[1] : null;
+                return PromptEval.Eval(this, args[0], typeOverride, interpreter);
             default:
                 throw new Exception($"Unknown method: {methodName}");
         }

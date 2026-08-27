@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — evalPrompt)
+
+- **`evalPrompt(prompt, fixture, typeName?)`:** offline fixture in/out on a `PromptInstance`. Same JSON extract / `TryValidateReturnType` coerce path as `await prompt … -> Type`, with no LLM, no repair loop, and no gather tool round. Returns `{ ok, data }` or `{ ok: false, error }` (`validate` shape). Success `data` is a **variant** for sum types (unlike `validate`, which leaves a dict). Fixture is a dict/object or an LLM-shaped JSON string (markdown fences allowed). Optional `typeName` overrides `instance.returnType`. `instance.eval(fixture)` is the same helper. Mode C `gather:` instances still carry `returnType` so extract contracts can be fixture-tested. Interpreter and C# transpile agree. JavaScript: n/a (prompts are host-only). Example: `Examples/Prompts/eval_prompt.malda`. Few-shot: `docs/llm/few-shot/27_eval_prompt.malda`.
+
 #### Added (MINOR — `malda new agent`)
 
 - **`malda new agent [directory]`:** fourth template beside `webapi` / `fullstack` / `game`. Emits `tools.malda` (`schema NoteArgs` + `validate` + `cap.confine` / `cap.read`), `app.malda` (host-mints `notes/` with `getProgramDirectory()`, `@Tool("read_note")`, offline demo), `notes/welcome.txt`, optional `tests/cap_tools.test.malda`, and `README.md`. Next step: `malda app.malda` (and `malda test`). No `config/environments`; `--local-first` is ignored. Tokens stay on the host — tool args are a relative path only. Few-shot: [`docs/llm/few-shot/26_tool_cap_read.malda`](../llm/few-shot/26_tool_cap_read.malda). Docs: [`docs/start-here.md`](../start-here.md) path “Build An AI App”. Template: `Templates/agent/`. Interpreter / C# transpile: n/a (host-only scaffold).
@@ -398,6 +402,7 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-08-25 | MINOR: `asVariant(typeName, value)` coerces tagged dicts to sum-type variants |
 | 2026-08-26 | MINOR: Mode B sends `response_format` with tools (retry/remember if rejected) |
 | 2026-08-27 | MINOR: `malda new agent` cap-confined tool scaffold |
+| 2026-08-27 | MINOR: `evalPrompt(prompt, fixture)` offline PromptInstance harness |
 | 2026-08-21 | MINOR: JS `game.loadImage` / camera / draw extras (G1) |
 | 2026-08-21 | MINOR: JS `game.wasKeyPressed` / touches / gamepad (G2) |
 | 2026-08-21 | MINOR: JS `game.overlapRect` / circle / point queries (G3) |

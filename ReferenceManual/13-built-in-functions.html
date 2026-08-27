@@ -416,6 +416,39 @@ var label = match asVariant("Intent", checked.data) {
 print(label);</code></pre>
         <p>See <code>Examples/Basics/as_variant.malda</code> and <code>docs/llm/few-shot/25_as_variant.malda</code>.</p>
 
+        <h3 id="evalPrompt">13.7.1.2 evalPrompt(prompt, fixture, typeName?)</h3>
+        <p>Offline fixture in/out on a <code>PromptInstance</code>. Does <strong>not</strong> call an LLM, consume <code>@budget</code>, or run a gather tool round. The fixture is a dict/object or an LLM-shaped JSON string (markdown fences and a surrounding <code>{ … }</code> extract the same way <code>await</code> does). The result shape matches <code>validate</code>:</p>
+        <ul>
+            <li>On success: <code>{ ok: true, data }</code> — <code>data</code> is what <code>await prompt … -&gt; Type</code> would have returned (object for a schema, <strong>variant</strong> for a sum type, program value for <code>program(Api)</code>).</li>
+            <li>On extract / parse / schema failure: <code>{ ok: false, error }</code>. There is no repair loop.</li>
+        </ul>
+        <p>The type comes from the instance’s declared <code>-&gt; Type</code> (<code>instance.returnType</code>), including Mode C <code>gather:</code> instances that have not attached <code>response_format</code> yet. Pass optional <code>typeName</code> to override. <code>instance.eval(fixture, typeName?)</code> is the same helper. Pipe-friendly: <code>p |&gt; evalPrompt(fixture)</code>.</p>
+        <pre><code data-run="true" data-expect="Ada">schema Card {
+    name: string;
+}
+
+prompt extract(raw) -> Card {
+    user: raw;
+}
+
+var p = extract("Ada Lovelace");
+var checked = evalPrompt(p, dict { "name": "Ada" });
+if (checked.ok) {
+    print(checked.data.name);
+}</code></pre>
+        <pre><code data-run="true" data-expect="buy SKU-9 x 2">type Intent = Search(query: string) | Buy(sku: string, qty: int) | Help();
+prompt parseUtterance(text) -> Intent {
+    user: text;
+}
+var checked = evalPrompt(parseUtterance("buy"), dict { "tag": "Buy", "sku": "SKU-9", "qty": 2 });
+var label = match checked.data {
+    case Search(q): "search " + q;
+    case Buy(sku, qty): "buy " + sku + " x " + qty;
+    case Help(): "help";
+};
+print(label);</code></pre>
+        <p>See <code>Examples/Prompts/eval_prompt.malda</code> and <code>docs/llm/few-shot/27_eval_prompt.malda</code>.</p>
+
         <h2>13.7.2 AI Pipeline Functions</h2>
         <p>These built-ins compose with the pipe operator (<code>|&gt;</code>) for retrieval-augmented generation (RAG) and structured LLM output. See also <a href="15-vectordb.html">15. VectorDB</a> (<code>asRetriever</code>) and <code>Examples/Prompts/rag_pipeline.malda</code>.</p>
         <pre><code>// Load text files matching a glob pattern (default directory: current)
@@ -471,6 +504,7 @@ var merged = mergeRetrievedDocs(branches.context, branches.tags);</code></pre>
                 <tr><td><code>parallelRun(input, branches)</code></td><td>RunnableParallel: feeds the same <code>input</code> to each named branch concurrently; returns an object/map of results. Use <code>await</code> when branches include async steps.</td></tr>
                 <tr><td><code>mergeRetrievedDocs(docArrays…)</code></td><td>Flattens multiple <code>Document[]</code> arrays (e.g. from <code>parallelRun</code>) into one array; dedupes by <code>source+chunk</code> metadata or content</td></tr>
                 <tr><td><code>withExamples(prompt, examples, options?)</code></td><td>Returns a copy of a <code>PromptInstance</code> with runtime few-shot examples. Pass <code>{ merge: true }</code> to append after any static <code>examples</code> from the prompt declaration. Pipe-friendly.</td></tr>
+                <tr><td><code>evalPrompt(prompt, fixture, typeName?)</code></td><td>Offline fixture in/out on a <code>PromptInstance</code> (no LLM). Returns <code>{ ok, data }</code> or <code>{ ok: false, error }</code>. <code>data</code> matches <code>await</code> (variant for sum types). Fixture: dict or LLM-shaped JSON string. <code>instance.eval(fixture)</code> is the same helper. See <a href="#evalPrompt">13.7.1.2</a>.</td></tr>
                 <tr><td><code>runPrompt(prompt, client?, options?)</code></td><td>Async: runs a <code>PromptInstance</code> through an LLM; returns response text. Optional <code>options</code>: <code>{ onToken: (token) =&gt; ... }</code> for streamed content tokens; <code>{ onReasoning: (token) =&gt; ... }</code> for streamed reasoning/thinking tokens. Both work in interpreted and transpiled mode with <code>await</code> and pipe steps.</td></tr>
                 <tr><td><code>parseJson(json, schemaName)</code></td><td>Parses and validates JSON against a <code>schema</code> declaration; returns a typed object</td></tr>
             </tbody>

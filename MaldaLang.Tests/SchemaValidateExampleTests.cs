@@ -62,6 +62,30 @@ public class SchemaValidateExampleTests : TestBase
     }
 
     [Fact]
+    public void Prompts_EvalPrompt_RunsUnderInterpreter()
+    {
+        var path = PlanningPaths.ResolveRepoFile("Examples", "Prompts", "eval_prompt.malda");
+        var source = File.ReadAllText(path);
+        var output = RunProgram(source);
+        Assert.Contains("card: Ada", output, StringComparison.Ordinal);
+        Assert.Contains("card expected failure", output, StringComparison.Ordinal);
+        Assert.Contains("fence: ada@example.com", output, StringComparison.Ordinal);
+        Assert.Contains("buy SKU-9 x 2", output, StringComparison.Ordinal);
+        Assert.Contains("intent expected failure", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void FewShot_EvalPrompt_RunsUnderInterpreter()
+    {
+        var path = PlanningPaths.ResolveRepoFile("docs", "llm", "few-shot", "27_eval_prompt.malda");
+        var source = File.ReadAllText(path);
+        var output = RunProgram(source);
+        Assert.Contains("Ada", output, StringComparison.Ordinal);
+        Assert.Contains("true", output, StringComparison.Ordinal);
+        Assert.Contains("buy SKU-9 x 2", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Basics_SumTypeTypedPayloads_RunsUnderInterpreter()
     {
         var path = PlanningPaths.ResolveRepoFile("Examples", "Basics", "sumtype_typed_payloads.malda");

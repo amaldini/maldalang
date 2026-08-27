@@ -40,6 +40,7 @@ public class AiPipelineIdeTests
     {
         var completions = _service.GetCompletions("var x = ", 0, 8);
         Assert.Contains(completions, c => c.Label == "runPrompt");
+        Assert.Contains(completions, c => c.Label == "evalPrompt");
         Assert.Contains(completions, c => c.Label == "withExamples");
         Assert.Contains(completions, c => c.Label == "runProgram");
     }
@@ -91,6 +92,27 @@ public class AiPipelineIdeTests
         var hover = _service.GetHoverInformation(source, 0, 10);
         Assert.NotNull(hover);
         Assert.Contains("onToken", hover);
+    }
+
+    [Fact]
+    public void GetHover_EvalPrompt_ShowsBuiltInHelp()
+    {
+        var source = "var x = evalPrompt(p, fixture);";
+        var hover = _service.GetHoverInformation(source, 0, 10);
+        Assert.NotNull(hover);
+        Assert.Contains("fixture", hover);
+        Assert.Contains("No LLM", hover);
+    }
+
+    [Fact]
+    public void GetSignatureHelp_EvalPrompt_ShowsParameters()
+    {
+        var source = "var x = evalPrompt(";
+        var help = _service.GetSignatureHelp(source, 0, source.Length);
+        Assert.NotNull(help);
+        Assert.Contains("prompt", help.Parameters);
+        Assert.Contains("fixture", help.Parameters);
+        Assert.Contains("typeName?", help.Parameters);
     }
 
     [Fact]

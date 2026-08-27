@@ -253,7 +253,8 @@ public partial class PromptValue
                 examples,
                 withinTimeoutMs,
                 gather,
-                budget);
+                budget,
+                Declaration.ReturnType);
             return RuntimeValue.Object(promptInstance);
         }
         finally
@@ -335,7 +336,8 @@ public partial class PromptValue
                         promptInstance.Examples,
                         promptInstance.WithinTimeoutMs,
                         promptInstance.Gather,
-                        promptInstance.Budget);
+                        promptInstance.Budget,
+                        promptInstance.ReturnType);
                     promptInstanceValue = RuntimeValue.Object(promptInstance);
                 }
 
@@ -399,7 +401,8 @@ public partial class PromptValue
                 promptInstance.Examples,
                 promptInstance.WithinTimeoutMs,
                 promptInstance.Gather,
-                promptInstance.Budget);
+                promptInstance.Budget,
+                promptInstance.ReturnType);
             var gatherResponse = agent.Think(RuntimeValue.Object(gatherInstance));
             var content = TryExtractResponseContent(gatherResponse);
             if (string.IsNullOrWhiteSpace(content))
@@ -441,7 +444,8 @@ public partial class PromptValue
             promptInstance.Examples,
             promptInstance.WithinTimeoutMs,
             gather: null,
-            promptInstance.Budget);
+            promptInstance.Budget,
+            promptInstance.ReturnType);
     }
 
     internal static void ValidateGatherContract(

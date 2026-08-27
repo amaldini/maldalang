@@ -92,6 +92,24 @@ if (checked.ok) {
 Runnable sample: [`Examples/Basics/as_variant.malda`](../../Examples/Basics/as_variant.malda),
 [`docs/llm/few-shot/25_as_variant.malda`](../llm/few-shot/25_as_variant.malda).
 
+## Typed prompts without an LLM: `evalPrompt`
+
+`evalPrompt(instance, fixture)` (or `instance.eval(fixture)`) feeds a dict or
+LLM-shaped JSON string through the same extract / validate / coerce path as
+`await prompt … -> Type`. No model, no repair loop. Success `data` for a sum type
+is a variant. Failure is `{ ok: false, error }`.
+
+```malda
+var checked = evalPrompt(extract("Ada"), dict { "name": "Ada" });
+if (checked.ok) {
+    io.print(checked.data.name);
+}
+```
+
+Runnable sample: [`Examples/Prompts/eval_prompt.malda`](../../Examples/Prompts/eval_prompt.malda),
+[`docs/llm/few-shot/27_eval_prompt.malda`](../llm/few-shot/27_eval_prompt.malda).
+Manual: Reference Manual §13.7.1.2.
+
 ## What not to do
 
 - Do not treat type hints (`var n: int = …`) as runtime validation — use `validate` or `toIntOrNull`.

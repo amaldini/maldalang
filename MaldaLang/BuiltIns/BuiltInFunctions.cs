@@ -1230,6 +1230,7 @@ public static class BuiltInFunctions
             "isTag" => BuiltInIsTag(args),
             "validate" => BuiltInValidate(args),
             "asVariant" => TypedPromptValidator.AsVariant(args),
+            "evalPrompt" => PromptEval.EvalPrompt(args, interpreter),
             // Array utilities
             "join" => BuiltInJoin(args),
             "toCsv" => BuiltInToCsv(args),
@@ -1614,6 +1615,7 @@ public static class BuiltInFunctions
             "isTag" => BuiltInIsTag(args),
             "validate" => BuiltInValidate(args),
             "asVariant" => TypedPromptValidator.AsVariant(args),
+            "evalPrompt" => PromptEval.EvalPrompt(args, interpreter),
             // Array utilities
             "join" => BuiltInJoin(args),
             "toCsv" => BuiltInToCsv(args),

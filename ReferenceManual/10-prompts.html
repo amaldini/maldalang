@@ -277,7 +277,7 @@ match intent {
     case Buy(sku, qty): print("buy " + sku);
     case Help(): print("help");
 }</code></pre>
-        <p>Wire JSON uses a <code>tag</code> field equal to the constructor name, plus payload fields named like the constructor parameters — for example <code>{"tag":"Buy","sku":"SKU-9","qty":2}</code> or <code>{"tag":"Help"}</code>. Optional payload types (<code>Buy(sku: string, qty: int)</code>) become JSON Schema types for <code>validate</code>, <code>asVariant</code>, and typed prompts; name-only parameters stay permissive. The same name cannot be both a <code>schema</code> and a <code>type</code> (sum type). <code>validate("Intent", dict)</code> accepts that tagged shape and returns the original dict; it does not produce a variant. Use <code>asVariant("Intent", dict)</code> for <code>match</code> without <code>await</code>. See <code>Examples/Prompts/sum_type_intent_prompt.malda</code>, <code>Examples/Basics/as_variant.malda</code>, <code>Examples/Basics/sumtype_typed_payloads.malda</code>, <code>Examples/Basics/schema_sumtype_validate.malda</code>, and <a href="04-data-types.html">Data Types</a> for sum types.</p>
+        <p>Wire JSON uses a <code>tag</code> field equal to the constructor name, plus payload fields named like the constructor parameters — for example <code>{"tag":"Buy","sku":"SKU-9","qty":2}</code> or <code>{"tag":"Help"}</code>. Optional payload types (<code>Buy(sku: string, qty: int)</code>) become JSON Schema types for <code>validate</code>, <code>asVariant</code>, typed prompts, and <code>evalPrompt</code>; name-only parameters stay permissive. The same name cannot be both a <code>schema</code> and a <code>type</code> (sum type). <code>validate("Intent", dict)</code> accepts that tagged shape and returns the original dict; it does not produce a variant. Use <code>asVariant("Intent", dict)</code> for <code>match</code> without <code>await</code>, or <code>evalPrompt(instance, fixture)</code> to fixture-test the same coerce path as <code>await</code> with no LLM. See <code>Examples/Prompts/sum_type_intent_prompt.malda</code>, <code>Examples/Prompts/eval_prompt.malda</code>, <code>Examples/Basics/as_variant.malda</code>, <code>Examples/Basics/sumtype_typed_payloads.malda</code>, <code>Examples/Basics/schema_sumtype_validate.malda</code>, and <a href="04-data-types.html">Data Types</a> for sum types.</p>
 
         <h2>10.8 Closed APIs and Deterministic Programs</h2>
         <p>Declare a closed <code>api</code> of method signatures. Implementations are ordinary top-level <code>function</code>s with the same names. Method parameters may optionally take a <code>SchemaType</code> (the same form as schema fields and sum-type payloads: <code>add(a: number, b: number)</code>); name-only stays permissive. Declared types feed the program JSON Schema and coerce LLM args (<code>"2"</code> becomes a number only when the hint is <code>number</code>/<code>int</code>). Prompt parameters stay name-only, and the implementing <code>function</code> body stays untyped. A typed prompt may return <code>program(ApiName)</code>; on success you get a program value that <code>runProgram</code> executes with <strong>no further LLM calls</strong> (unlike <code>@Tool</code> agent loops or <code>executePlan</code>):</p>
@@ -387,11 +387,14 @@ var temperature = p.temperature;  // number? (null if not provided)
 var tools = p.tools;        // array? (null if not provided; Mode B)
 var gather = p.gather;      // array? (null if not provided; Mode C tool list)
 var maxTokens = p.maxTokens; // number? (null if not provided)
+var returnType = p.returnType; // string? declared -&gt; Type (null if untyped)
 
 // Methods
 var userStr = p.getUser();     // Returns user prompt string
 var systemStr = p.getSystem(); // Returns system prompt string or null
-var promptStr = p.toPromptString(); // Returns user prompt (for backward compatibility)</code></pre>
+var promptStr = p.toPromptString(); // Returns user prompt (for backward compatibility)
+var checked = p.eval(dict { "name": "Ada" }); // Offline fixture in/out; same as evalPrompt(p, fixture)</code></pre>
+        <p><code>evalPrompt(instance, fixture, typeName?)</code> (and <code>instance.eval</code>) feed simulated model JSON through the same extract / validate / coerce path as <code>await</code>, with no LLM and no repair loop. Success <code>data</code> for a sum type is a variant for <code>match</code>. See <a href="13-built-in-functions.html#evalPrompt">13.7.1.2 evalPrompt</a> and <code>Examples/Prompts/eval_prompt.malda</code>.</p>
         
         <h2>10.11 Advanced Prompt Features</h2>
         <h4>Prompt with Metadata (Object Literal Syntax)</h4>
