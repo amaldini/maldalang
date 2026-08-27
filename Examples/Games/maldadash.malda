@@ -225,15 +225,36 @@ if (root == null) {
     function spawnSparks(cx, cy, n) {
         var i = 0;
         while (i < n) {
-            if (sparkX.length >= 32) {
-                return;
-            }
             var ang = (i / n) * 6.2832;
-            sparkX.append((cx + 0.5) * tileSize);
-            sparkY.append((cy + 0.5) * tileSize);
-            sparkDx.append(math.cos(ang) * 1.6);
-            sparkDy.append(math.sin(ang) * 1.6);
-            sparkLife.append(260);
+            var px = (cx + 0.5) * tileSize;
+            var py = (cy + 0.5) * tileSize;
+            var dx = math.cos(ang) * 1.6;
+            var dy = math.sin(ang) * 1.6;
+            var slot = -1;
+            var s = 0;
+            while (s < sparkLife.length) {
+                if (sparkLife[s] <= 0) {
+                    slot = s;
+                    break;
+                }
+                s = s + 1;
+            }
+            if (slot >= 0) {
+                sparkX[slot] = px;
+                sparkY[slot] = py;
+                sparkDx[slot] = dx;
+                sparkDy[slot] = dy;
+                sparkLife[slot] = 260;
+            } else {
+                if (sparkX.length >= 32) {
+                    return;
+                }
+                sparkX.append(px);
+                sparkY.append(py);
+                sparkDx.append(dx);
+                sparkDy.append(dy);
+                sparkLife.append(260);
+            }
             i = i + 1;
         }
     }
@@ -862,43 +883,34 @@ if (root == null) {
     function updateSparks() {
         var i = 0;
         while (i < sparkX.length) {
-            sparkLife[i] = sparkLife[i] - 16;
-            if (sparkLife[i] <= 0) {
-                sparkX[i] = sparkX[sparkX.length - 1];
-                sparkY[i] = sparkY[sparkY.length - 1];
-                sparkDx[i] = sparkDx[sparkDx.length - 1];
-                sparkDy[i] = sparkDy[sparkDy.length - 1];
-                sparkLife[i] = sparkLife[sparkLife.length - 1];
-                sparkX.pop();
-                sparkY.pop();
-                sparkDx.pop();
-                sparkDy.pop();
-                sparkLife.pop();
-            } else {
-                var hit = game.sweepTiles(
-                    sparkX[i] - 2,
-                    sparkY[i] - 2,
-                    4,
-                    4,
-                    sparkDx[i],
-                    sparkDy[i],
-                    cells,
-                    tileSize,
-                    tileSize,
-                    { "columns": cols, "rows": rows, "solids": [STEEL, BRICK], "out": STEEL }
-                );
-                sparkX[i] = hit.x + 2;
-                sparkY[i] = hit.y + 2;
-                if (hit.hit) {
-                    if (hit.nx != 0) {
-                        sparkDx[i] = 0 - sparkDx[i];
-                    }
-                    if (hit.ny != 0) {
-                        sparkDy[i] = 0 - sparkDy[i];
+            if (sparkLife[i] > 0) {
+                sparkLife[i] = sparkLife[i] - 16;
+                if (sparkLife[i] > 0) {
+                    var hit = game.sweepTiles(
+                        sparkX[i] - 2,
+                        sparkY[i] - 2,
+                        4,
+                        4,
+                        sparkDx[i],
+                        sparkDy[i],
+                        cells,
+                        tileSize,
+                        tileSize,
+                        { "columns": cols, "rows": rows, "solids": [STEEL, BRICK], "out": STEEL }
+                    );
+                    sparkX[i] = hit.x + 2;
+                    sparkY[i] = hit.y + 2;
+                    if (hit.hit) {
+                        if (hit.nx != 0) {
+                            sparkDx[i] = 0 - sparkDx[i];
+                        }
+                        if (hit.ny != 0) {
+                            sparkDy[i] = 0 - sparkDy[i];
+                        }
                     }
                 }
-                i = i + 1;
             }
+            i = i + 1;
         }
     }
 
@@ -1152,16 +1164,18 @@ if (root == null) {
         game.setBlend("add");
         var i = 0;
         while (i < sparkX.length) {
-            if (atlasReady()) {
-                blitId(14, sparkX[i], sparkY[i], {
-                    "w": 12,
-                    "h": 12,
-                    "ox": 6,
-                    "oy": 6,
-                    "angle": animMs / 80
-                });
-            } else {
-                game.fillCircle(sparkX[i], sparkY[i], 3, "#fde68a");
+            if (sparkLife[i] > 0) {
+                if (atlasReady()) {
+                    blitId(14, sparkX[i], sparkY[i], {
+                        "w": 12,
+                        "h": 12,
+                        "ox": 6,
+                        "oy": 6,
+                        "angle": animMs / 80
+                    });
+                } else {
+                    game.fillCircle(sparkX[i], sparkY[i], 3, "#fde68a");
+                }
             }
             i = i + 1;
         }
