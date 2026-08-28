@@ -1,0 +1,23 @@
+// Durable step runs a closed program. Pass the plan JSON as workflow input —
+// do not await a prompt in the workflow body (replay would re-call the model).
+// step RHS is a CallExpr: step name = runProgram(prog);
+
+api Calc {
+    function add(a: number, b: number);
+    function mul(a: number, b: number);
+}
+
+function add(a, b) { return a + b; }
+function mul(a, b) { return a * b; }
+
+workflow ApplyCalc(prog) {
+    step result = runProgram(prog);
+    io.print(result);
+    return result;
+}
+
+var prog = parseJSON("""
+{"@api":"Calc","steps":[{"call":"add","args":[2,3],"as":"t0"},{"call":"mul","args":["$t0",4],"as":"r"}],"return":"$r"}
+""");
+var id = startWorkflow("ApplyCalc", prog);
+io.print(getWorkflowStatus(id));

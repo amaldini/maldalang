@@ -21,7 +21,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 07-expressions.html | a02b92b83536b84867824f2b2685474eb37da44fc8c3554dd1b8049c19d51cf9 |
 | 08-control-structures.html | 7425713c057e77c207f1afa43f0bdf9c7674862de4bd015c8c5fcbc9200400bb |
 | 09-functions.html | be68f1e96804f0583f79f5693ab7ff6368821704293bc2a58a554a8bdb11e9ad |
-| 10-prompts.html | 493142388de13fb167ba3190ebce1b4200099ed95443c33ab45f20a0919fdd48 |
+| 10-prompts.html | 36285eba6fd00a3e637e161e8bdfa114bea4734cb3931027895fb38c9966c88c |
 | 11-classes-objects.html | 0702178b625a5b46cf42cc3d82eb54ae79d75cdea8084cf3217866cf265ed9e3 |
 | 12-input-output.html | 7cd6902d33bc08bc67e6cd078dc212d5d8bafffadd7be58db3591bd75456e60e |
 | 13-built-in-functions.html | 1dd6d292681cb449bc8cd4569a197f77f60c9afd25b0c062241803b5dada5a83 |
@@ -33,7 +33,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 19-graph-memory.html | ade193431c82119345522057f280d8439ad964bd299f53aba9ac78f541aaa4dd |
 | 20-mcp-server.html | 8895ef0618ca8e8b0c3f35da1a464cecfaf672d5fd19dfeecd89e0653736a890 |
 | 21-acp.html | 89ff4d1018d1278de247cdadca4612c422c7a944ac0ed027ddfd790ed1e64272 |
-| 22-durable-workflows.html | f64b9bab1068ee5a4453067fa0ae7df0eee48495ed946be555182f958fd5c368 |
+| 22-durable-workflows.html | 730431249165606903a0771e8f85e4e63318702030fff69df7a2ce2cbaefaac9 |
 | 23-web-ui-hub.html | 922cf703f0ae17d88f3852ad2b0910354bfabb9cd099174a13a2ed41253a92c8 |
 | 24-web-ui.html | 7ab97a01bf67c9555eef4c99f99bdfc4f5b9b01ca96dd3e9aff03168b4ec407b |
 | 25-http-server-html-ui.html | e67384fd08ba4572665d683442bec3d0fa38461195b08f2278d67dcbc7238f68 |

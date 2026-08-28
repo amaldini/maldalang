@@ -319,6 +319,8 @@ var prog = parseJSON("""
 var result = runProgram(prog);
 print(result);</code></pre>
         <p>Vedi <code>Examples/Prompts/api_program_calc.malda</code>. Un nome non può essere insieme un <code>api</code> e uno <code>schema</code> / <code>type</code> sum.</p>
+        <p>Testa lo stesso percorso di coercizione con <code>evalPrompt(solve(expr), fixture)</code> (senza LLM). Su <code>await</code>, Mode A invia <code>response_format</code> e il GGUF in-process applica una grammatica GBNF da quello schema. Few-shot: <code>docs/llm/few-shot/28_api_program_prompt.malda</code>.</p>
+        <p>Per un agente durevole, produci il JSON del programma <strong>prima</strong> di <code>startWorkflow</code>, poi eseguilo in uno step memoizzato. Il lato destro di <code>step</code> è una singola chiamata, quindi la forma è <code>step result = runProgram(prog);</code>. Non fare <code>await</code> di un prompt nel corpo del workflow: il replay richiamerebbe il modello, e quello non è WF1001/WF1002. Vedi <code>Examples/Workflows/runprogram_in_step.malda</code> e il few-shot <code>docs/llm/few-shot/29_runprogram_in_step.malda</code>.</p>
 
         <h2>10.9 Pipeline a pipe riusabili</h2>
         <p>Nomina e riusa pipeline AI a più step con dichiarazioni <code>function</code> ordinarie e l'operatore pipe (<code>|&gt;</code>). Restituisci esplicitamente il risultato finale della pipe.</p>

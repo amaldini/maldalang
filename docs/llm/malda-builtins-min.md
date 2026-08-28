@@ -179,6 +179,9 @@ Structured await example: `Examples/Prompts/schema_prompt_structured.malda`
 (and few-shot `docs/llm/few-shot/18_schema_prompt.malda`). Sum-type intents:
 `Examples/Prompts/sum_type_intent_prompt.malda` (few-shot `20_sum_type_prompt.malda`).
 Closed APIs: `Examples/Prompts/api_program_calc.malda` (`runProgram`; few-shot `21_api_program.malda`).
+Typed `prompt … -> program(Api)` + `evalPrompt` fixture: `docs/llm/few-shot/28_api_program_prompt.malda`.
+Durable: `step result = runProgram(prog)` — `docs/llm/few-shot/29_runprogram_in_step.malda`,
+`Examples/Workflows/runprogram_in_step.malda`.
 `validate("Intent", dict)` leaves a tagged dict; `asVariant("Intent", dict)` yields a variant for `match` (few-shot `25_as_variant.malda`).
 `evalPrompt(instance, fixture)` fixture-tests a typed `PromptInstance` without an LLM (few-shot `27_eval_prompt.malda`).
 

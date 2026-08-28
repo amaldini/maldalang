@@ -99,6 +99,10 @@
             <strong>Il controllo è una lista fissa di nomi, seguita attraverso gli helper nello stesso file.</strong> Qualsiasi cosa fuori da quei diciannove built-in è assunta replay-safe, quindi una chiamata al modello, una scrittura al database tramite un'altra libreria, o un helper importato che l'analizzatore non vede non sarà un errore hard (<code>WF1005</code> Info). Il runtime rifiuta comunque la deny-list se gira davvero. Metti qualsiasi cosa con un effetto o un valore fresco dentro uno <code>step</code>.
         </div>
 
+        <div class="info-box">
+            <strong>Piani <code>api</code> chiusi:</strong> produci il JSON del programma con <code>await prompt … -&gt; program(Api)</code> (o <code>evalPrompt</code> offline) <em>prima</em> di <code>startWorkflow</code>. Esegui con <code>step result = runProgram(prog);</code> così il replay memoizza il risultato e non riprompta. Le chiamate al modello nel corpo del workflow non sono WF1001. Esempio: <code>Examples/Workflows/runprogram_in_step.malda</code>.
+        </div>
+
         <h2>22.3 Ciclo di vita e stati</h2>
         <p>Gli stati comuni del workflow includono:</p>
         <pre><code>PENDING, RUNNING, WAITING_APPROVAL, WAITING_SIGNAL, COMPENSATING,

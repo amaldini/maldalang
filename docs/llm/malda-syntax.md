@@ -63,6 +63,13 @@ Compact rules for generating correct `.malda`. Prefer this over scraping HTML ma
   Args must be JSON numbers (not `"2"`) or `"$alias"`; nested `{call,args}`, TypeChat `@func`/`@ref`,
   and `{type,value}` wrappers are flattened/coerced. Unique call aliases (`add` → `_add`, `+` → add)
   and bare `t0` (without `$`) are resolved. Leftover objects in args are rejected.
+  `await` sends `response_format` (and GBNF on in-process GGUF); fixture-test with
+  `evalPrompt(solve(expr), fixture)` then `runProgram(checked.data)`. Few-shot:
+  `docs/llm/few-shot/28_api_program_prompt.malda`. For a durable agent, produce the plan
+  **before** `startWorkflow` and execute with `step result = runProgram(prog);` (a `step`
+  RHS is a single call). Do not `await` in the workflow body — replay would re-prompt.
+  Few-shot: `docs/llm/few-shot/29_runprogram_in_step.malda`. Example:
+  `Examples/Workflows/runprogram_in_step.malda`.
 - After generating a file, run **`malda check path.malda --json`** before `malda path.malda`.
   It does not execute: parse + IDE diagnostics (parser, types, schema names, interpolation).
   `ok: false` means fix `diagnostics[]` (1-based `line`/`column`) and check again.

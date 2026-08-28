@@ -86,6 +86,15 @@ public class SchemaValidateExampleTests : TestBase
     }
 
     [Fact]
+    public void FewShot_ApiProgramPrompt_EvalAndRun()
+    {
+        var path = PlanningPaths.ResolveRepoFile("docs", "llm", "few-shot", "28_api_program_prompt.malda");
+        var source = File.ReadAllText(path);
+        var output = RunProgram(source).Trim();
+        Assert.Equal("20", output);
+    }
+
+    [Fact]
     public void Basics_SumTypeTypedPayloads_RunsUnderInterpreter()
     {
         var path = PlanningPaths.ResolveRepoFile("Examples", "Basics", "sumtype_typed_payloads.malda");

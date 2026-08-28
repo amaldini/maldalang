@@ -10,7 +10,8 @@ namespace MaldaLang.Tests;
 /// DT7 curated interpret vs C# transpile pairs (same stdout, exit 0).
 /// Compile-only smoke stays in <see cref="TranspileSmokeTests"/>.
 /// Still n/a (smoke only): LLM-awaiting prompts, agent_governance_golden,
-/// workflow/job Examples (see WorkflowTranspilerParityTests), grounded_ask
+/// workflow/job Examples (see WorkflowTranspilerParityTests; runprogram_in_step
+/// is smoke + interpreter), grounded_ask
 /// (GraphMemory score drift), capability_tokens Example (relative cwd file I/O;
 /// abs-path cap fixtures are inline below).
 /// </summary>
@@ -22,6 +23,7 @@ public class InterpretTranspilePairTests
     [InlineData("Examples/Basics/schema_sumtype_validate.malda")]
     [InlineData("Examples/Basics/as_variant.malda")]
     [InlineData("Examples/Prompts/eval_prompt.malda")]
+    [InlineData("docs/llm/few-shot/28_api_program_prompt.malda")]
     [InlineData("Examples/Agents/phase6_pure_validate.malda")]
     [InlineData("Examples/Prompts/api_program_calc.malda")]
     [InlineData("Examples/Prompts/prompt_budget.malda")]

@@ -1,0 +1,51 @@
+// runprogram_in_step.malda — closed api plan, then runProgram inside a durable step
+//
+// Pattern: produce the program JSON with await prompt … -> program(Api) (or
+// evalPrompt offline). Pass that JSON to startWorkflow. The step only calls
+// runProgram — replay memoizes the result and never re-prompts.
+//
+// Run: malda Examples/Workflows/runprogram_in_step.malda
+
+api Calc {
+    function add(a: number, b: number);
+    function mul(a: number, b: number);
+}
+
+function add(a, b) {
+    return a + b;
+}
+
+function mul(a, b) {
+    return a * b;
+}
+
+prompt solve(expr) -> program(Calc) {
+    system: "Translate into Calc steps. JSON only.";
+    user: expr;
+}
+
+workflow ApplyCalc(prog) {
+    step result = runProgram(prog);
+    return result;
+}
+
+var fixture = parseJSON("""
+{
+  "@api": "Calc",
+  "steps": [
+    { "call": "add", "args": [2, 3], "as": "t0" },
+    { "call": "mul", "args": ["$t0", 4], "as": "result" }
+  ],
+  "return": "$result"
+}
+""");
+
+var checked = evalPrompt(solve("(2 + 3) * 4"), fixture);
+if (!checked.ok) {
+    error(checked.error);
+}
+
+var id = startWorkflow("ApplyCalc", fixture);
+io.print(getWorkflowStatus(id));
+var steps = getWorkflowSteps(id);
+io.print(steps[0].output_json);
