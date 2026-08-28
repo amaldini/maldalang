@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — GGUF GBNF constrained decode)
+
+- **In-process llama.cpp / LLamaSharp typed prompts:** Mode A and Mode C extract compile the resolved `-> Type` JSON Schema (schema, sum type, or `program(Api)`) to a GBNF grammar and set `DefaultSamplingPipeline.Grammar`. Local GGUF sampling cannot emit tokens outside that contract. Mode B tool rounds stay unconstrained so the model can emit tool calls. OpenAI-compatible HTTP backends still use `response_format`; the schema appendix and validate/repair loop are unchanged. JavaScript: n/a (prompts are host-only). Converter: `MaldaLang/BuiltIns/JsonSchemaGbnf.cs`.
+
 #### Added (MINOR — JS game tile helpers)
 
 - **G17 `game.drawTiles` / `game.tileAt` / `game.sweepTiles` (JavaScript backend only):** `game.tileAt(cells, col, row, options?)` returns the id at cell coordinates (nested rows or a flat array plus `columns`; floors `col`/`row`; out of range is `out`, default `empty`/`0`). `game.drawTiles(handle, cells, tileW, tileH, options?)` blits non-empty ids from an atlas (`id - firstId`, default `firstId` 1; unready no-op; camera/alpha/blend apply; culls to the view). Options `{ x?, y?, columns?, rows?, empty?, srcW?, srcH?, atlasColumns?, firstId? }`. `game.sweepTiles(x, y, w, h, dx, dy, cells, tileW, tileH, options?)` returns the same `{ hit, t, nx, ny, x, y }` as `sweepRect` against solid cells (default: any id other than `empty`; optional `solids` array; `out` cells can be a solid border). Pure query/sweep (no canvas). Not Tiled/LDtk. Smoke: `Examples/Games/game_tiles_smoke.malda`. Showcase `maldadash` draws with `drawTiles`, queries with `tileAt`, and uses `sweepTiles` for spark bounces. Interpreter / C# transpile: n/a (`game-canvas`).
@@ -411,6 +415,7 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-08-26 | MINOR: Mode B sends `response_format` with tools (retry/remember if rejected) |
 | 2026-08-27 | MINOR: `malda new agent` cap-confined tool scaffold |
 | 2026-08-27 | MINOR: `evalPrompt(prompt, fixture)` offline PromptInstance harness |
+| 2026-08-28 | MINOR: in-process GGUF GBNF constrained decode for typed prompts |
 | 2026-08-21 | MINOR: JS `game.loadImage` / camera / draw extras (G1) |
 | 2026-08-21 | MINOR: JS `game.wasKeyPressed` / touches / gamepad (G2) |
 | 2026-08-21 | MINOR: JS `game.overlapRect` / circle / point queries (G3) |

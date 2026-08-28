@@ -231,6 +231,8 @@ public partial class PromptValue
             // Mode A and Mode B: attach response_format + appendix when -> Type is set.
             // Mode C gather stays unconstrained (extract step attaches schema after tools).
             // If a backend rejects tools+json_schema, LLMClient retries once without format.
+            // In-process GGUF (LlamaCppClient) compiles the same schema to GBNF for Mode A /
+            // extract; Mode B tool rounds skip the grammar so the model can emit tool calls.
             if (!string.IsNullOrWhiteSpace(Declaration.ReturnType) && !hasGather)
             {
                 if (TypedPromptSchemaResolver.TryResolve(Declaration.ReturnType!, interpreter, out var schema, out _))

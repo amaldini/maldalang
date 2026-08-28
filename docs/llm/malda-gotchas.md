@@ -125,13 +125,14 @@ the language server reports both as deprecated. Prefer `math.sqrt(16)`. See the 
 rule in [`malda-syntax.md`](malda-syntax.md).
 
 **Typed prompts send `response_format` to OpenAI-compatible chat APIs** when `-> Type` is set
-and the body is not a Mode C `gather:` instance. Llama.cpp clients accept the parameter and
-ignore it. MALDA also appends a compact **schema appendix** to the system message so local
-models still see the expected shape. Validation + repair retries still run after the reply.
-If a backend rejects `response_format` (including tools + `json_schema`), the host retries
-once without it (keeps tools) and remembers that backend. Supported modes: **A** typed
-structured (no tools); **B** tools listed, structured-if-supported (one call);
-**C** `gather:` then a typed extract without tools — see
+and the body is not a Mode C `gather:` instance. In-process GGUF (LLamaSharp) converts the
+same schema to a **GBNF grammar** and constrains sampling (Mode A / Mode C extract). Tool
+rounds (Mode B) stay unconstrained so the model can emit tool calls. MALDA also appends a
+compact **schema appendix** to the system message. Validation + repair retries still run
+after the reply. If an OpenAI-compatible backend rejects `response_format` (including tools
++ `json_schema`), the host retries once without it (keeps tools) and remembers that backend.
+Supported modes: **A** typed structured (no tools); **B** tools listed, structured-if-supported
+(one call); **C** `gather:` then a typed extract without tools — see
 `Examples/Prompts/prompt_tools_mode.malda` and `prompt_tools_then_structured.malda`.
 
 ## Before you say it works

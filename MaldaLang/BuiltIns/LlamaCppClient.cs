@@ -818,8 +818,26 @@ public class LlamaCppClientInstance : ObjectInstance, IDisposable
                 throw new Exception($"Unknown method: {methodName}");
         }
     }
+
+    /// <summary>
+    /// Builds a LLamaSharp GBNF grammar from typed-prompt <c>response_format</c>
+    /// when this completion is not a tool round.
+    /// </summary>
+    internal static bool TryGetConstrainedGrammar(
+        RuntimeValue? responseFormat,
+        RuntimeValue? tools,
+        out Grammar? grammar)
+    {
+        grammar = null;
+        if (!JsonSchemaGbnf.ShouldConstrain(tools))
+            return false;
+        if (!JsonSchemaGbnf.TryFromResponseFormat(responseFormat, out var gbnf, out _))
+            return false;
+        grammar = new Grammar(gbnf, JsonSchemaGbnf.RootRule);
+        return true;
+    }
     
-    /// <param name="responseFormat">OpenAI response_format for structured output. Ignored by llama.cpp/LLamaSharp (not supported); no error.</param>
+    /// <param name="responseFormat">OpenAI response_format. Converted to GBNF for Mode A / extract (no tools); ignored when tools are listed.</param>
     public RuntimeValue Chat(RuntimeValue messages, RuntimeValue? tools, RuntimeValue? responseFormat = null, LlmRequestOverrides? overrides = null)
     {
         try
@@ -847,18 +865,22 @@ public class LlamaCppClientInstance : ObjectInstance, IDisposable
             
             var maxTokens = overrides?.MaxTokens ?? MaxTokens;
             var temperature = overrides?.Temperature ?? Temperature;
+            TryGetConstrainedGrammar(responseFormat, tools, out var grammar);
+
+            var sampling = new DefaultSamplingPipeline
+            {
+                Temperature = (float)temperature,
+                TopK = 40,
+                TopP = 0.95f,
+                Grammar = grammar
+            };
 
             // Create inference parameters
             var inferenceParams = new InferenceParams
             {
                 MaxTokens = maxTokens,
                 AntiPrompts = new List<string> { "User:", "\nUser:", "Q:", "\n\n" },
-                SamplingPipeline = new DefaultSamplingPipeline
-                {
-                    Temperature = (float)temperature,
-                    TopK = 40,
-                    TopP = 0.95f
-                }
+                SamplingPipeline = sampling
             };
             
             // Generate response
