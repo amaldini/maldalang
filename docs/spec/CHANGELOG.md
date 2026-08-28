@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (PATCH — program(Api) few-shots / runProgram in step)
+
+- **Closed `api` / `program(Api)` few-shots:** `docs/llm/few-shot/28_api_program_prompt.malda` is `prompt … -> program(Api)` plus `evalPrompt` fixture plus `runProgram` (offline stand-in for Mode A `response_format` / GBNF). `docs/llm/few-shot/29_runprogram_in_step.malda` is `step result = runProgram(prog)` with the plan JSON as workflow input. Example: `Examples/Workflows/runprogram_in_step.malda`. Produce the plan before `startWorkflow`; do not `await` in the workflow body (replay would re-prompt; not WF1001). JavaScript: n/a (prompts / `api` are host-only).
+
 #### Added (MINOR — GGUF GBNF constrained decode)
 
 - **In-process llama.cpp / LLamaSharp typed prompts:** Mode A and Mode C extract compile the resolved `-> Type` JSON Schema (schema, sum type, or `program(Api)`) to a GBNF grammar and set `DefaultSamplingPipeline.Grammar`. Local GGUF sampling cannot emit tokens outside that contract. Mode B tool rounds stay unconstrained so the model can emit tool calls. OpenAI-compatible HTTP backends still use `response_format`; the schema appendix and validate/repair loop are unchanged. JavaScript: n/a (prompts are host-only). Converter: `MaldaLang/BuiltIns/JsonSchemaGbnf.cs`.
@@ -416,6 +420,7 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-08-27 | MINOR: `malda new agent` cap-confined tool scaffold |
 | 2026-08-27 | MINOR: `evalPrompt(prompt, fixture)` offline PromptInstance harness |
 | 2026-08-28 | MINOR: in-process GGUF GBNF constrained decode for typed prompts |
+| 2026-08-28 | PATCH: `program(Api)` few-shots + `runProgram` in a durable `step` |
 | 2026-08-21 | MINOR: JS `game.loadImage` / camera / draw extras (G1) |
 | 2026-08-21 | MINOR: JS `game.wasKeyPressed` / touches / gamepad (G2) |
 | 2026-08-21 | MINOR: JS `game.overlapRect` / circle / point queries (G3) |

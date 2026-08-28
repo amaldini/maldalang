@@ -47,6 +47,21 @@
       "featured": true
     },
     {
+      "name": "runProgram in a step",
+      "description": "Closed api plan via evalPrompt, then step result = runProgram (durable, no re-prompt on replay)",
+      "file": "runprogram_in_step.malda",
+      "track": "ai-builder",
+      "difficulty": "intermediate",
+      "minutes": 10,
+      "concepts": ["api", "program(Api)", "evalPrompt", "runProgram", "workflow", "step"],
+      "prerequisites": ["Prompts/api_program_calc.malda", "Workflows/simple_step.malda"],
+      "learningGoal": "See that a closed LLM plan is executed inside a memoized step, not by awaiting a prompt in the workflow body.",
+      "expectedOutput": "Prints COMPLETED and the step output 20.",
+      "next": "Workflows/retry_and_inspect.malda",
+      "documentationPath": "/?lesson=build-ai-apps#lesson-build-ai-apps",
+      "documentationTitle": "Durable Workflows"
+    },
+    {
       "name": "Ops Report",
       "description": "Seed a FAILED instance for malda workflow report (timeline + steps + DLQ)",
       "file": "ops_report.malda",

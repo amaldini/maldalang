@@ -23,6 +23,7 @@ public class TranspileSmokeTests
     [InlineData("Examples/Agents/agent_governance_golden.malda")]
     [InlineData("Examples/Workflows/simple_step.malda")]
     [InlineData("Examples/Workflows/determinism_helpers.malda")]
+    [InlineData("Examples/Workflows/runprogram_in_step.malda")]
     [InlineData("Examples/Web/job_queue_basic.malda")]
     [InlineData("Examples/Prompts/prompt_tools_then_structured.malda")]
     [InlineData("Examples/Prompts/api_program_calc.malda")]

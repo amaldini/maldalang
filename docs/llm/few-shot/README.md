@@ -34,6 +34,8 @@ After generating a snippet, diagnose with `malda check path.malda --json` before
 | `25_as_variant.malda` | `asVariant("Intent", dict)` after `validate` → variant + `match` |
 | `26_tool_cap_read.malda` | `validate` tool args → `cap.confine` (host-minted root; relative path only) |
 | `27_eval_prompt.malda` | `evalPrompt` / `instance.eval` offline fixture in/out (no LLM) |
+| `28_api_program_prompt.malda` | `prompt … -> program(Api)` + `evalPrompt` fixture + `runProgram` |
+| `29_runprogram_in_step.malda` | `step result = runProgram(prog)` (durable; plan JSON is input) |
 
 Also useful from the main tree:
 
@@ -45,4 +47,5 @@ Also useful from the main tree:
 - Language API: `ReferenceManual/24-web-ui.html` (hub: `23-web-ui-hub.html`)
 - `Examples/Workflows/retry_and_inspect.malda`
 - `Examples/Prompts/basic_prompt.malda`, `Examples/Prompts/schema_prompt_structured.malda`, `Examples/Prompts/sum_type_intent_prompt.malda`, `Examples/Prompts/api_program_calc.malda`, `Examples/Prompts/prompt_tools_then_structured.malda`, `Examples/Prompts/eval_prompt.malda`
+- `Examples/Workflows/runprogram_in_step.malda` (`evalPrompt` then `step result = runProgram`)
 - `Examples/Actors/basic_counter.malda`

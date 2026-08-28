@@ -98,6 +98,10 @@
             <strong>The check is a fixed list of names, followed through in-file helpers.</strong> Anything outside those nineteen built-ins is assumed replay-safe, so a model call, a database write through another library, or an imported helper the analyzer cannot see will not be a hard error (<code>WF1005</code> Info). Runtime still refuses the deny-list if it actually runs. Put anything with an effect or a fresh value inside a <code>step</code>.
         </div>
 
+        <div class="info-box">
+            <strong>Closed <code>api</code> plans:</strong> produce the program JSON with <code>await prompt … -&gt; program(Api)</code> (or <code>evalPrompt</code> offline) <em>before</em> <code>startWorkflow</code>. Execute with <code>step result = runProgram(prog);</code> so replay memoizes the result and never re-prompts. Model calls in the workflow body are not WF1001. Example: <code>Examples/Workflows/runprogram_in_step.malda</code>.
+        </div>
+
         <h2>22.3 Lifecycle and States</h2>
         <p>Common workflow states include:</p>
         <pre><code>PENDING, RUNNING, WAITING_APPROVAL, WAITING_SIGNAL, COMPENSATING,

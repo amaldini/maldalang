@@ -1,0 +1,25 @@
+// prompt -> program(Api): await sends response_format (+ GBNF on in-process GGUF).
+// Offline stand-in: evalPrompt with a fixture (same coerce path, no LLM).
+
+api Calc {
+    function add(a: number, b: number);
+    function mul(a: number, b: number);
+}
+
+function add(a, b) { return a + b; }
+function mul(a, b) { return a * b; }
+
+prompt solve(expr) -> program(Calc) {
+    system: "Translate into Calc steps. JSON only.";
+    user: expr;
+}
+
+var fixture = parseJSON("""
+{"@api":"Calc","steps":[{"call":"add","args":[2,3],"as":"t0"},{"call":"mul","args":["$t0",4],"as":"r"}],"return":"$r"}
+""");
+var checked = evalPrompt(solve("(2 + 3) * 4"), fixture);
+if (checked.ok) {
+    io.print(runProgram(checked.data));
+} else {
+    io.print(checked.error);
+}

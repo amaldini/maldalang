@@ -33,5 +33,7 @@ malda Examples/Prompts/prompt_with_agent.malda
 | `eval_prompt.malda` | — | Offline: `evalPrompt` / `instance.eval` fixture in/out (schema + sum type) |
 | RAG / agent demos | — | Need LLM provider |
 
+Durable `runProgram` in a `step`: [`Examples/Workflows/runprogram_in_step.malda`](../Workflows/runprogram_in_step.malda).
+
 See [`docs/spec/backend-capability-matrix.md`](../../docs/spec/backend-capability-matrix.md)
 and gotchas on tools vs `response_format` in [`docs/llm/malda-gotchas.md`](../../docs/llm/malda-gotchas.md).

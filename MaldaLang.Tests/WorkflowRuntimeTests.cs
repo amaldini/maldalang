@@ -3,12 +3,15 @@
 
 using Xunit;
 using MaldaLang;
+using MaldaLang.BuiltIns;
+using MaldaLang.Interpreter;
 using MaldaLang.Parser;
 using MaldaLang.Parser.AST.Declarations;
-using MaldaLang.Interpreter;
 using MaldaLang.Runtime.Workflows;
+using MaldaLang.Tests.Planning;
 using System.IO;
 using System.Linq;
+using System.Text;
 
 namespace MaldaLang.Tests;
 
@@ -1014,6 +1017,46 @@ startWorkflow(""RuntimeCap"", null);
         var runtimeInterp = new Interpreter.Interpreter();
         var runtimeEx = Assert.ThrowsAny<Exception>(() => runtimeInterp.InterpretAsync(runtimeStatements).GetAwaiter().GetResult());
         Assert.Contains("max runtime", runtimeEx.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void FewShot_RunProgramInStep_CompletesWith20()
+    {
+        ApiRegistry.ClearForTesting();
+        SchemaRegistry.ClearForTesting();
+        SumTypeRegistry.ClearForTesting();
+        WorkflowEngine.ResetForTesting("Data Source=" + GetTestDbPath());
+        var path = PlanningPaths.ResolveRepoFile("docs", "llm", "few-shot", "29_runprogram_in_step.malda");
+        var output = InterpretFile(path);
+        Assert.Contains("20", output, StringComparison.Ordinal);
+        Assert.Contains("COMPLETED", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Example_RunProgramInStep_CompletesWith20()
+    {
+        ApiRegistry.ClearForTesting();
+        SchemaRegistry.ClearForTesting();
+        SumTypeRegistry.ClearForTesting();
+        WorkflowEngine.ResetForTesting("Data Source=" + GetTestDbPath());
+        var path = PlanningPaths.ResolveRepoFile("Examples", "Workflows", "runprogram_in_step.malda");
+        var output = InterpretFile(path);
+        Assert.Contains("COMPLETED", output, StringComparison.Ordinal);
+        Assert.Contains("20", output, StringComparison.Ordinal);
+    }
+
+    private static string InterpretFile(string path)
+    {
+        var source = File.ReadAllText(path);
+        var lexer = new Lexer(source);
+        var tokens = lexer.Tokenize();
+        var parser = new Parser.Parser(tokens);
+        var statements = parser.Parse();
+        var interp = new Interpreter.Interpreter();
+        var output = new StringBuilder();
+        interp.SetOutputCallback(s => output.Append(s).Append('\n'));
+        interp.InterpretAsync(statements).GetAwaiter().GetResult();
+        return output.ToString();
     }
 
 }
