@@ -78,6 +78,22 @@ public class JsonSchemaGbnfTests
     }
 
     [Fact]
+    public void OptionalProperties_AreSuffixOptional()
+    {
+        SchemaRegistry.Register(new SchemaDeclaration("Card", new List<SchemaField>
+        {
+            new("name", "string", required: true),
+            new("nick", "string", required: false)
+        }));
+
+        Assert.True(TypedPromptSchemaResolver.TryResolve("Card", null, out var schema, out var resolveError), resolveError);
+        Assert.True(JsonSchemaGbnf.TryFromSchema(schema, out var gbnf, out var error), error);
+        Assert.Contains("\\\"name\\\"", gbnf, StringComparison.Ordinal);
+        Assert.Contains("\\\"nick\\\"", gbnf, StringComparison.Ordinal);
+        Assert.Contains(")?", gbnf, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ToolsListed_DoesNotConstrain()
     {
         Assert.False(JsonSchemaGbnf.ShouldConstrain(RuntimeValue.Array(new List<RuntimeValue>
