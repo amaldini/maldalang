@@ -24,7 +24,8 @@ Compact rules for generating correct `.malda`. Prefer this over scraping HTML ma
 - Prompt `-> ReturnType` is **not** static typing. Three supported modes:
   - **A Structured** — `await` + `-> Type` + **no `gather:`**: resolve JSON Schema, append
     `MALDA_OUTPUT_SCHEMA` appendix, send OpenAI-compatible `response_format`, then
-    validate/repair (≤3). Example: `Examples/Prompts/schema_prompt_structured.malda`.
+    validate/repair (≤3). In-process GGUF (LLamaSharp) also applies a GBNF grammar from
+    the same schema so local sampling cannot leave the contract. Example: `Examples/Prompts/schema_prompt_structured.malda`.
   - **B Tools** — prompt body lists `tools: [...]` (one call, not two). Same appendix +
     `response_format` as Mode A. If the backend rejects tools+`json_schema`, retry once
     without format (keep tools). Example: `Examples/Prompts/prompt_tools_mode.malda`.

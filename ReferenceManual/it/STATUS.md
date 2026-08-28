@@ -21,7 +21,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 07-expressions.html | a02b92b83536b84867824f2b2685474eb37da44fc8c3554dd1b8049c19d51cf9 |
 | 08-control-structures.html | 7425713c057e77c207f1afa43f0bdf9c7674862de4bd015c8c5fcbc9200400bb |
 | 09-functions.html | be68f1e96804f0583f79f5693ab7ff6368821704293bc2a58a554a8bdb11e9ad |
-| 10-prompts.html | de15ecf91f00bbab736e8e4fba96f27ae99938895b6736a4f2fcafc5639cfd4e |
+| 10-prompts.html | 493142388de13fb167ba3190ebce1b4200099ed95443c33ab45f20a0919fdd48 |
 | 11-classes-objects.html | 0702178b625a5b46cf42cc3d82eb54ae79d75cdea8084cf3217866cf265ed9e3 |
 | 12-input-output.html | 7cd6902d33bc08bc67e6cd078dc212d5d8bafffadd7be58db3591bd75456e60e |
 | 13-built-in-functions.html | 1dd6d292681cb449bc8cd4569a197f77f60c9afd25b0c062241803b5dada5a83 |
