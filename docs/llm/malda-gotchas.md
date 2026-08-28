@@ -1,6 +1,6 @@
 # MALDA gotchas: the mistakes the interpreter will not catch
 
-*Applies to: MALDA 1.0.11*
+*Applies to: MALDA 1.0.12*
 
 `malda-syntax.md` lists the JS-isms an agent might guess — `const`, `console.log`, `def`.
 Those are cheap: the parser rejects them immediately and you fix them on the next run.
