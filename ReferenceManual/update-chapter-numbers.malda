@@ -14,8 +14,8 @@ var renumberH2 = true;  // Set to true to renumber h2 headings
 var renumberH3 = false;  // Set to true to renumber h3 headings
 
 // Language rename options (set to null to disable)
-var oldLanguageName = null;  // Set to old language name (e.g., "MALDA") to rename
-var newLanguageName = null;  // Set to new language name (e.g., "SimpleLang") to rename to
+var oldLanguageName = null;  // Set to old language name to rename from
+var newLanguageName = null;  // Set to new language name (e.g., "MALDA") to rename to
 var maxLoopIterations = 100000;
 
 // Verbose debug logging for chapter/heading replacement internals

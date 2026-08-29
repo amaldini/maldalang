@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Changed (PATCH — drop former informal overview from precedence)
+
+- **Normative precedence** in [`malda-language-1.0.md`](malda-language-1.0.md) no longer names the retired informal overview. Final 1.0 order is unchanged: interpreter + Tier 0 tests → spec prose → Reference Manual. `README.md` is explicitly non-normative.
+
 #### Added (PATCH — program(Api) few-shots / runProgram in step)
 
 - **Closed `api` / `program(Api)` few-shots:** `docs/llm/few-shot/28_api_program_prompt.malda` is `prompt … -> program(Api)` plus `evalPrompt` fixture plus `runProgram` (offline stand-in for Mode A `response_format` / GBNF). `docs/llm/few-shot/29_runprogram_in_step.malda` is `step result = runProgram(prog)` with the plan JSON as workflow input. Example: `Examples/Workflows/runprogram_in_step.malda`. Produce the plan before `startWorkflow`; do not `await` in the workflow body (replay would re-prompt; not WF1001). JavaScript: n/a (prompts / `api` are host-only).

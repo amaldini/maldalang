@@ -16,7 +16,7 @@ public class DotNetInteropTests : TestBase
 
     private static string GetFooAssemblyPath()
     {
-        // Use the location of the Foo type to get the compiled DLL path for SimpleLanguage.TestLib
+        // Use the location of the Foo type to get the compiled DLL path for MaldaLang.TestLib
         var asm = typeof(Foo).Assembly;
         return asm.Location;
     }
@@ -34,13 +34,13 @@ var foo = dotnetNew(t);
 var sum = foo.Add(2, 3);
 print(sum);
 
-foo.Name = ""from SPL"";
+foo.Name = ""from MALDA"";
 print(foo.Name);
 ";
         var output = await RunProgramAsync(source);
 
         var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         Assert.Contains("5", lines[0]);
-        Assert.Contains("from SPL", lines[1]);
+        Assert.Contains("from MALDA", lines[1]);
     }
 }

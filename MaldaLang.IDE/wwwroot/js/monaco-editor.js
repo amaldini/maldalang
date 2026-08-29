@@ -1,4 +1,4 @@
-// Monaco Editor integration for SPL
+// Monaco Editor integration for MALDA
 window.monacoEditors = window.monacoEditors || {};
 
 window.initMonacoEditor = function (elementId, dotNetHelper) {
@@ -29,12 +29,12 @@ function initializeEditor(elementId, dotNetHelper, resolve) {
         return;
     }
     
-    // Register SPL language
-    if (!monaco.languages.getLanguages().some(l => l.id === 'spl')) {
-        monaco.languages.register({ id: 'spl' });
+    // Register MALDA language
+    if (!monaco.languages.getLanguages().some(l => l.id === 'malda')) {
+        monaco.languages.register({ id: 'malda' });
         
         // Define tokens for syntax highlighting
-        monaco.languages.setMonarchTokensProvider('spl', {
+        monaco.languages.setMonarchTokensProvider('malda', {
             tokenizer: {
                 root: [
                     [/\/\/.*$/, 'comment'],
@@ -64,7 +64,7 @@ function initializeEditor(elementId, dotNetHelper, resolve) {
     // Create editor
     const editor = monaco.editor.create(element, {
         value: '',
-        language: 'spl',
+        language: 'malda',
         theme: 'vs-dark',
         automaticLayout: true,
         minimap: { enabled: true },
@@ -85,7 +85,7 @@ function initializeEditor(elementId, dotNetHelper, resolve) {
     window.monacoEditors[elementId] = editor;
     
     // Register completion provider
-    monaco.languages.registerCompletionItemProvider('spl', {
+    monaco.languages.registerCompletionItemProvider('malda', {
         triggerCharacters: ['@'],
         provideCompletionItems: function(model, position, context) {
             return new Promise((resolve) => {
@@ -245,7 +245,7 @@ function initializeEditor(elementId, dotNetHelper, resolve) {
     }
     
     // Register hover provider
-    monaco.languages.registerHoverProvider('spl', {
+    monaco.languages.registerHoverProvider('malda', {
         provideHover: function(model, position) {
             return new Promise((resolve) => {
                 const text = model.getValue();
@@ -359,12 +359,12 @@ function initializePreviewEditor(elementId, resolve) {
         element.style.display = '';
     }
     
-    // Register SPL language if not already registered
-    if (!monaco.languages.getLanguages().some(l => l.id === 'spl')) {
-        monaco.languages.register({ id: 'spl' });
+    // Register MALDA language if not already registered
+    if (!monaco.languages.getLanguages().some(l => l.id === 'malda')) {
+        monaco.languages.register({ id: 'malda' });
         
         // Define tokens for syntax highlighting
-        monaco.languages.setMonarchTokensProvider('spl', {
+        monaco.languages.setMonarchTokensProvider('malda', {
             tokenizer: {
                 root: [
                     [/\/\/.*$/, 'comment'],
@@ -394,7 +394,7 @@ function initializePreviewEditor(elementId, resolve) {
     // Create read-only editor for preview
     const editor = monaco.editor.create(element, {
         value: '',
-        language: 'spl',
+        language: 'malda',
         theme: 'vs-dark',
         automaticLayout: true,
         minimap: { enabled: false },
@@ -464,7 +464,7 @@ window.setMonacoDiagnostics = function (elementId, diagnostics) {
                       d.severity === 'Warning' ? monaco.MarkerSeverity.Warning :
                       monaco.MarkerSeverity.Info
         }));
-        monaco.editor.setModelMarkers(editor.getModel(), 'spl', markers);
+        monaco.editor.setModelMarkers(editor.getModel(), 'malda', markers);
     }
 };
 

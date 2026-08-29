@@ -1,4 +1,4 @@
-// Example demonstrating dynamic .NET interop from SPL
+// Example demonstrating dynamic .NET interop from MALDA
 // Note: You must build a small .NET class library and reference its DLL path below.
 // Example C# library (namespace TestLib):
 //   public class Foo {
@@ -17,6 +17,6 @@ let sum = foo.Add(2, 3);
 print("2 + 3 = " + string(sum));
 
 // Use property getter / setter
-foo.Name = "from SPL";
+foo.Name = "from MALDA";
 print("Foo.Name = " + foo.Name);
 

@@ -32,5 +32,5 @@ malda update-chapter-numbers.malda
 ## Deferred
 
 - Full `35-grammar.html` expansion (P1 in drift audit)
-- `SimpleProgrammingLanguage.md` keyword refresh
+- Former informal overview keyword refresh — superseded by `docs/spec/malda-language-1.0.md`
 - `ReferenceManualPDF.html` monolith regen (separate publish step)

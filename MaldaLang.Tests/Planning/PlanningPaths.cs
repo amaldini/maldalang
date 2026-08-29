@@ -29,7 +29,7 @@ internal static class PlanningPaths
             if (File.Exists(candidate))
                 return candidate;
 
-            var nested = Path.Combine(dir.FullName, "SimpleLanguage", relative);
+            var nested = Path.Combine(dir.FullName, "MaldaLang", relative);
             if (File.Exists(nested))
                 return nested;
 
