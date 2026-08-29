@@ -14,7 +14,7 @@
 
 1. `MaldaLang/Parser/Parser.cs`, `MaldaLang/Interpreter/Interpreter.cs`, `MaldaLang.Compiler/CSharpTranspiler.cs`
 2. `ReferenceManual/*.html`
-3. `SimpleProgrammingLanguage.md`, `README.md`
+3. `docs/spec/malda-language-1.0.md`, `README.md`
 4. `Examples/*`
 
 ---

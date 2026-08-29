@@ -410,7 +410,7 @@ public partial class MainWindow
         {
             var dialog = new SaveFileDialog
             {
-                Filter = "Simple Language Files (*.malda)|*.malda|All Files (*.*)|*.*",
+                Filter = "MALDA Files (*.malda)|*.malda|All Files (*.*)|*.*",
                 DefaultExt = "malda",
                 FileName = "program.malda"
             };
@@ -876,7 +876,7 @@ public partial class MainWindow
     {
         var dialog = new OpenFileDialog
         {
-            Filter = "Simple Language Files (*.malda)|*.malda|All Files (*.*)|*.*",
+            Filter = "MALDA Files (*.malda)|*.malda|All Files (*.*)|*.*",
             DefaultExt = "malda"
         };
         
@@ -1130,7 +1130,7 @@ public partial class MainWindow
         var activeDocument = GetActiveDocument();
         var dialog = new SaveFileDialog
         {
-            Filter = "Simple Language Files (*.malda)|*.malda|All Files (*.*)|*.*",
+            Filter = "MALDA Files (*.malda)|*.malda|All Files (*.*)|*.*",
             DefaultExt = "malda",
             FileName = string.IsNullOrWhiteSpace(activeDocument.FilePath)
                 ? "program.malda"

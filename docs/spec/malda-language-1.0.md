@@ -32,14 +32,15 @@ This specification defines **Tier 0** semantics: the teachable kernel that runs 
 
 ## 2. Normative precedence
 
-When this document, the Reference Manual, and `SimpleProgrammingLanguage.md` disagree on Tier 0 behavior:
+When this document and the Reference Manual disagree on Tier 0 behavior:
 
-1. **This specification** (once marked *Final*)
-2. **Parser and interpreter** (current reference implementation)
+1. **Parser and interpreter** plus Tier 0 conformance tests (reference implementation)
+2. **This specification**
 3. **Reference Manual** narrative chapters
-4. **SimpleProgrammingLanguage.md** (legacy overview)
 
-Until spec 1.0 is marked *Final*, the interpreter plus Tier 0 tests are the practical source of truth; this draft records that behavior and flags intentional future changes.
+`README.md` is a product overview only and is not normative.
+
+This specification is **Final 1.0**. The interpreter plus Tier 0 tests remain the practical source of truth when implementation and prose disagree; this document records that behavior and flags intentional future changes.
 
 ---
 

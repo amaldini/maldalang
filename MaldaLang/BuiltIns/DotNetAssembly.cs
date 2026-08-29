@@ -7,7 +7,7 @@ using System.Reflection;
 using MaldaLang.Interpreter;
 
 /// <summary>
-/// Wrapper around a loaded .NET Assembly so it can be passed around in SPL as an object.
+/// Wrapper around a loaded .NET Assembly so it can be passed around in MALDA as an object.
 /// </summary>
 public class DotNetAssemblyInstance : ObjectInstance
 {

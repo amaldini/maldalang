@@ -120,7 +120,7 @@ function ralphGitRules() {
     return "Git rules (CRITICAL — Ralph worktree):\n" +
         "- File and git tools share the same workdir — paths like PRD.md and snake.html only.\n" +
         "- Do NOT pass repoPath on git_status, git_add, git_commit, or git_diff; defaults are correct.\n" +
-        "- Never point git at the main repo or process launch directory (SimpleLanguage root).\n" +
+        "- Never point git at the main repo or process launch directory (MALDA repo root).\n" +
         "- After write_file creates a new file, use git_status (untracked). git_diff ignores untracked files.\n" +
         "- Stage with git_add (files='.' or basename), then git_commit.";
 }

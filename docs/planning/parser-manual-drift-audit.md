@@ -1,7 +1,7 @@
 # Parser / Reference Manual Drift Audit (Phase 0)
 
 **Date:** 2026-06-04  
-**Scope:** Tier 0 surface — lexer, parser, interpreter builtins vs. Reference Manual chapters 02, 03, 07, 08, 09, 22, 23, `newpotentialfeatures.md`, and `SimpleProgrammingLanguage.md` (secondary)  
+**Scope:** Tier 0 surface — lexer, parser, interpreter builtins vs. Reference Manual chapters 02, 03, 07, 08, 09, 22, 23, `newpotentialfeatures.md`, and `docs/spec/malda-language-1.0.md` (secondary)  
 **Implementation sources:** `MaldaLang/Lexer.cs`, `MaldaLang/Parser/Parser.cs`, `MaldaLang/Interpreter/Interpreter.cs`, `MaldaLang/BuiltIns/BuiltInFunctions.cs`
 
 ---
@@ -25,10 +25,10 @@
 | **Parser** | `Parser.cs` — `Declaration()`, `Statement()`, `MatchExpression()`, `ParsePattern()`, `Primary()`, workflow/actor/prompt/type blocks |
 | **Interpreter semantics** | `Interpreter.cs` dictionary indexing; `BuiltInTypeOf` in `BuiltInFunctions.cs` |
 | **Reference Manual** | Read/grep: `03-lexical-structure.html`, `04-data-types.html`, `07-expressions.html`, `08-control-structures.html`, `09-functions.html`, `35-grammar.html`, `36-appendix.html`, cross-chapters (`01-introduction.html` include/using, `14-graphs.html`, `17-actors.html`, `22-durable-workflows.html`) |
-| **Secondary** | `SimpleProgrammingLanguage.md` §2.3 keywords; `docs/planning/newpotentialfeatures.md` |
+| **Secondary** | `docs/spec/malda-language-1.0.md`; `docs/planning/newpotentialfeatures.md` |
 | **Tests** | `MaldaLang.Tests/Conformance/Tier0/Tier0ConformanceTests.cs` (documented runtime tags) |
 
-Precedence per roadmap: **parser/interpreter > Reference Manual > SimpleProgrammingLanguage.md**.
+Precedence per roadmap: **parser/interpreter > Reference Manual > `docs/spec/malda-language-1.0.md`**. Current Final 1.0 order: interpreter + Tier 0 tests → spec prose → Reference Manual.
 
 ---
 
@@ -70,7 +70,7 @@ Legend: **Y** = present/supported; **N** = not present; **Partial** = mentioned 
 | `&&` / `\|\|` | Y | Y | Y (`02` operators) | Grammar documents both |
 | `++` / `--` / `+=` … | Y | Y | Y (`07`) | Not in grammar |
 | `$"..."` / `$"""..."""` | Y | Y | Y (`02`, `07`) | Not in grammar `String` production |
-| `{ }` object literal | Y | Y (`ObjectLiteralExpression`) | **Conflict** | `SimpleProgrammingLanguage.md` says no raw `{ foo: 1 }` JSON-style literals; parser **allows** `{ key: value }` expressions |
+| `{ }` object literal | Y | Y (`ObjectLiteralExpression`) | **Conflict** | Former informal overview said no raw `{ foo: 1 }` JSON-style literals; parser **allows** `{ key: value }` expressions |
 | `dict` vs `typeOf` tag | N/A | N/A | Partial | `typeOf` returns `"object"` for dict instances (`ValueType.Object`); no `"dict"` tag (roadmap proposes one) |
 
 ---
@@ -134,13 +134,13 @@ Legend: **Y** = present/supported; **N** = not present; **Partial** = mentioned 
 | **Prompt params** | Name-only in examples (`09`) | Parser: name-only — **no** `param: type` in prompts | **Aligned** |
 | **`newpotentialfeatures`** | Sum types, async, match implemented | Parser + tests confirm | **Aligned** |
 
-### 5.2 `SimpleProgrammingLanguage.md` (secondary)
+### 5.2 Former informal overview (now `docs/spec/malda-language-1.0.md`)
 
 | Topic | Drift |
 |-------|-------|
-| §2.3 keywords | **Severely stale** — no `match`, `async`, `dict`, `actor`, `prompt`, `try`, etc. |
-| §3.1 `int` type name | Uses `int`; runtime `typeOf` uses `"integer"` |
-| JSON/object literals | States MALDA doesn’t support `{ foo: 1 }` top-level; parser supports **`{ key: value }` object literals** in expressions |
+| Keywords | Former informal overview was **severely stale** — no `match`, `async`, `dict`, `actor`, `prompt`, `try`, etc. |
+| `int` type name | Used `int`; runtime `typeOf` uses `"integer"` |
+| JSON/object literals | Former informal overview stated MALDA doesn’t support `{ foo: 1 }` top-level; parser supports **`{ key: value }` object literals** in expressions |
 | Exception catch | Notes all `catch` clauses match any type — aligned with `08-control-structures.html` |
 
 ### 5.3 Chapter / breadcrumb numbering (HTML)
@@ -173,7 +173,7 @@ Pattern matching, destructuring, sum types, async/await, prompts, actor message 
 4. Document `{ key: value }` vs `dict { }`.
 5. Single reserved-word list generated from `Lexer.cs`.
 6. Fix `02` → `09-functions.html` lambda link.
-7. Update or deprecate `SimpleProgrammingLanguage.md` §2.3 keywords.
+7. ~~Update or deprecate former informal overview keywords~~ — superseded by `docs/spec/malda-language-1.0.md`.
 
 ### P2 — cosmetic / navigation
 
