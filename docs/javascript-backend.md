@@ -460,7 +460,7 @@ The user-facing contract (types, subset, `glsl.compile` keys, IDE rename) is in 
 
 `@shader()` functions are not emitted as JavaScript. They are a typed subset (C-like control flow, GLSL type hints such as `vec3` / `out float`, `math.sqrt` → `sqrt`). Host MALDA still owns the `three.*` loop and uniforms.
 
-See `Examples/Games/three_shader_raytracer.malda` for a realtime GPU sphere tracer. Compile:
+See `Examples/Games/three_shader_raytracer.malda` for a realtime GPU ray tracer (spheres, cube, prism, cylinder, cone). Compile:
 
 ```bash
 malda compile Examples/Games/three_shader_raytracer.malda --mode js -o Examples/Games/three_shader_raytracer.js

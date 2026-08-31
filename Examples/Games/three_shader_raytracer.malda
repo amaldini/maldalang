@@ -27,6 +27,260 @@ function hitSphere(center: vec3, radius: float, origin: vec3, dir: vec3) -> floa
 }
 
 @shader()
+function hitBox(bmin: vec3, bmax: vec3, origin: vec3, dir: vec3) -> float {
+    var inv: vec3 = vec3(1.0, 1.0, 1.0) / dir;
+    var t0: vec3 = (bmin - origin) * inv;
+    var t1: vec3 = (bmax - origin) * inv;
+    var tmin: vec3 = min(t0, t1);
+    var tmax: vec3 = max(t0, t1);
+    var tEnter: float = max(max(tmin.x, tmin.y), tmin.z);
+    var tExit: float = min(min(tmax.x, tmax.y), tmax.z);
+    if (tExit < tEnter) {
+        return -1.0;
+    }
+    if (tEnter > EPSILON) {
+        return tEnter;
+    }
+    if (tExit > EPSILON) {
+        return tExit;
+    }
+    return -1.0;
+}
+
+@shader()
+function boxNormal(bmin: vec3, bmax: vec3, p: vec3) -> vec3 {
+    var c: vec3 = (bmin + bmax) * 0.5;
+    var d: vec3 = (p - c) / max(bmax - bmin, vec3(EPSILON, EPSILON, EPSILON));
+    var ad: vec3 = abs(d);
+    if (ad.x > ad.y && ad.x > ad.z) {
+        return vec3(sign(d.x), 0.0, 0.0);
+    }
+    if (ad.y > ad.z) {
+        return vec3(0.0, sign(d.y), 0.0);
+    }
+    return vec3(0.0, 0.0, sign(d.z));
+}
+
+@shader()
+function hitBoxRotated(center: vec3, halfSize: vec3, angle: float, origin: vec3, dir: vec3) -> float {
+    var ca: float = cos(angle);
+    var sa: float = sin(angle);
+    var o: vec3 = origin - center;
+    var oLocal: vec3 = vec3(ca * o.x - sa * o.z, o.y, sa * o.x + ca * o.z);
+    var dLocal: vec3 = vec3(ca * dir.x - sa * dir.z, dir.y, sa * dir.x + ca * dir.z);
+    return hitBox(-halfSize, halfSize, oLocal, dLocal);
+}
+
+@shader()
+function boxNormalRotated(center: vec3, halfSize: vec3, angle: float, p: vec3) -> vec3 {
+    var ca: float = cos(angle);
+    var sa: float = sin(angle);
+    var o: vec3 = p - center;
+    var pLocal: vec3 = vec3(ca * o.x - sa * o.z, o.y, sa * o.x + ca * o.z);
+    var nLocal: vec3 = boxNormal(-halfSize, halfSize, pLocal);
+    return vec3(ca * nLocal.x + sa * nLocal.z, nLocal.y, -sa * nLocal.x + ca * nLocal.z);
+}
+
+@shader()
+function clipPlane(origin: vec3, dir: vec3, n: vec3, planeD: float, tEnter: float, tExit: float) -> vec2 {
+    var enter: float = tEnter;
+    var exitT: float = tExit;
+    var denom: float = dot(n, dir);
+    var dist: float = planeD - dot(n, origin);
+    if (abs(denom) <= EPSILON) {
+        if (dist < 0.0) {
+            return vec2(1.0, -1.0);
+        }
+        return vec2(enter, exitT);
+    }
+    var t: float = dist / denom;
+    if (denom < 0.0) {
+        enter = max(enter, t);
+    } else {
+        exitT = min(exitT, t);
+    }
+    return vec2(enter, exitT);
+}
+
+@shader()
+function sideNormal(a: vec3, b: vec3, interior: vec3, axis: vec3) -> vec3 {
+    var n: vec3 = cross(b - a, axis);
+    var len: float = length(n);
+    if (len <= EPSILON) {
+        return vec3(1.0, 0.0, 0.0);
+    }
+    n = n / len;
+    if (dot(n, interior - a) > 0.0) {
+        n = -n;
+    }
+    return n;
+}
+
+@shader()
+function hitPrism(a: vec3, b: vec3, c: vec3, z0: float, z1: float, origin: vec3, dir: vec3) -> float {
+    var axis: vec3 = vec3(0.0, 0.0, 1.0);
+    var nAB: vec3 = sideNormal(a, b, c, axis);
+    var nBC: vec3 = sideNormal(b, c, a, axis);
+    var nCA: vec3 = sideNormal(c, a, b, axis);
+    var range: vec2 = clipPlane(origin, dir, vec3(0.0, 0.0, -1.0), -z0, -1000000.0, 1000000.0);
+    range = clipPlane(origin, dir, vec3(0.0, 0.0, 1.0), z1, range.x, range.y);
+    range = clipPlane(origin, dir, nAB, dot(nAB, a), range.x, range.y);
+    range = clipPlane(origin, dir, nBC, dot(nBC, b), range.x, range.y);
+    range = clipPlane(origin, dir, nCA, dot(nCA, c), range.x, range.y);
+    if (range.y < range.x) {
+        return -1.0;
+    }
+    if (range.x > EPSILON) {
+        return range.x;
+    }
+    if (range.y > EPSILON) {
+        return range.y;
+    }
+    return -1.0;
+}
+
+@shader()
+function prismNormal(a: vec3, b: vec3, c: vec3, z0: float, z1: float, p: vec3) -> vec3 {
+    var axis: vec3 = vec3(0.0, 0.0, 1.0);
+    var nAB: vec3 = sideNormal(a, b, c, axis);
+    var nBC: vec3 = sideNormal(b, c, a, axis);
+    var nCA: vec3 = sideNormal(c, a, b, axis);
+    var n0: vec3 = vec3(0.0, 0.0, -1.0);
+    var n1: vec3 = vec3(0.0, 0.0, 1.0);
+    var d0: float = abs(dot(n0, p) + z0);
+    var d1: float = abs(dot(n1, p) - z1);
+    var dAB: float = abs(dot(nAB, p) - dot(nAB, a));
+    var dBC: float = abs(dot(nBC, p) - dot(nBC, b));
+    var dCA: float = abs(dot(nCA, p) - dot(nCA, c));
+    var best: vec3 = n0;
+    var bestD: float = d0;
+    if (d1 < bestD) {
+        best = n1;
+        bestD = d1;
+    }
+    if (dAB < bestD) {
+        best = nAB;
+        bestD = dAB;
+    }
+    if (dBC < bestD) {
+        best = nBC;
+        bestD = dBC;
+    }
+    if (dCA < bestD) {
+        best = nCA;
+    }
+    return best;
+}
+
+@shader()
+function hitCylinder(center: vec3, radius: float, y0: float, y1: float, origin: vec3, dir: vec3) -> float {
+    var ocx: float = origin.x - center.x;
+    var ocz: float = origin.z - center.z;
+    var a: float = dir.x * dir.x + dir.z * dir.z;
+    var tBest: float = -1.0;
+    if (a > EPSILON) {
+        var b: float = ocx * dir.x + ocz * dir.z;
+        var c: float = ocx * ocx + ocz * ocz - radius * radius;
+        var disc: float = b * b - a * c;
+        if (disc >= 0.0) {
+            var root: float = sqrt(disc);
+            var t: float = (-b - root) / a;
+            var y: float = origin.y + dir.y * t;
+            if (t > EPSILON && y >= y0 && y <= y1) {
+                tBest = t;
+            }
+            t = (-b + root) / a;
+            y = origin.y + dir.y * t;
+            if (t > EPSILON && y >= y0 && y <= y1 && (tBest < 0.0 || t < tBest)) {
+                tBest = t;
+            }
+        }
+    }
+    if (abs(dir.y) > EPSILON) {
+        var tCap: float = (y0 - origin.y) / dir.y;
+        var qx: float = origin.x + dir.x * tCap - center.x;
+        var qz: float = origin.z + dir.z * tCap - center.z;
+        if (tCap > EPSILON && qx * qx + qz * qz <= radius * radius && (tBest < 0.0 || tCap < tBest)) {
+            tBest = tCap;
+        }
+        tCap = (y1 - origin.y) / dir.y;
+        qx = origin.x + dir.x * tCap - center.x;
+        qz = origin.z + dir.z * tCap - center.z;
+        if (tCap > EPSILON && qx * qx + qz * qz <= radius * radius && (tBest < 0.0 || tCap < tBest)) {
+            tBest = tCap;
+        }
+    }
+    return tBest;
+}
+
+@shader()
+function cylinderNormal(center: vec3, radius: float, y0: float, y1: float, p: vec3) -> vec3 {
+    var radial: vec3 = vec3(p.x - center.x, 0.0, p.z - center.z);
+    var dr: float = abs(length(radial) - radius);
+    var dy0: float = abs(p.y - y0);
+    var dy1: float = abs(p.y - y1);
+    if (dy0 < dr && dy0 <= dy1) {
+        return vec3(0.0, -1.0, 0.0);
+    }
+    if (dy1 < dr) {
+        return vec3(0.0, 1.0, 0.0);
+    }
+    return normalize(radial);
+}
+
+@shader()
+function hitCone(apex: vec3, radius: float, height: float, origin: vec3, dir: vec3) -> float {
+    var k: float = radius / height;
+    var k2: float = k * k;
+    var oc: vec3 = origin - apex;
+    var a: float = dir.x * dir.x + dir.z * dir.z - k2 * dir.y * dir.y;
+    var b: float = oc.x * dir.x + oc.z * dir.z - k2 * oc.y * dir.y;
+    var c: float = oc.x * oc.x + oc.z * oc.z - k2 * oc.y * oc.y;
+    var yBase: float = apex.y - height;
+    var tBest: float = -1.0;
+    if (abs(a) > EPSILON) {
+        var disc: float = b * b - a * c;
+        if (disc >= 0.0) {
+            var root: float = sqrt(disc);
+            var t: float = (-b - root) / a;
+            var y: float = origin.y + dir.y * t;
+            if (t > EPSILON && y <= apex.y && y >= yBase) {
+                tBest = t;
+            }
+            t = (-b + root) / a;
+            y = origin.y + dir.y * t;
+            if (t > EPSILON && y <= apex.y && y >= yBase && (tBest < 0.0 || t < tBest)) {
+                tBest = t;
+            }
+        }
+    }
+    if (abs(dir.y) > EPSILON) {
+        var tCap: float = (yBase - origin.y) / dir.y;
+        var q: vec3 = origin + dir * tCap;
+        var dx: float = q.x - apex.x;
+        var dz: float = q.z - apex.z;
+        if (tCap > EPSILON && dx * dx + dz * dz <= radius * radius && (tBest < 0.0 || tCap < tBest)) {
+            tBest = tCap;
+        }
+    }
+    return tBest;
+}
+
+@shader()
+function coneNormal(apex: vec3, radius: float, height: float, p: vec3) -> vec3 {
+    var yBase: float = apex.y - height;
+    var radial: vec3 = vec3(p.x - apex.x, 0.0, p.z - apex.z);
+    var k: float = radius / height;
+    var k2: float = k * k;
+    var dr: float = abs(length(radial) - k * (apex.y - p.y));
+    var dy: float = abs(p.y - yBase);
+    if (dy < dr) {
+        return vec3(0.0, -1.0, 0.0);
+    }
+    return normalize(vec3(p.x - apex.x, k2 * (apex.y - p.y), p.z - apex.z));
+}
+
+@shader()
 function closestHit(
     origin: vec3,
     dir: vec3,
@@ -52,6 +306,21 @@ function closestHit(
     var r0: float = 1.0;
     var r1: float = 0.55;
     var r2: float = 0.42;
+    var boxCenter: vec3 = vec3(2.18, 0.38, 1.48);
+    var boxHalf: vec3 = vec3(0.38, 0.38, 0.38);
+    var boxAngle: float = 0.42;
+    var prismA: vec3 = vec3(-2.95, 0.0, 1.55);
+    var prismB: vec3 = vec3(-1.55, 0.0, 1.55);
+    var prismC: vec3 = vec3(-2.25, 1.22, 1.55);
+    var prismZ0: float = 1.35;
+    var prismZ1: float = 2.25;
+    var cylCenter: vec3 = vec3(-0.15, 0.0, -2.18);
+    var cylRadius: float = 0.40;
+    var cylY0: float = 0.0;
+    var cylY1: float = 1.28;
+    var coneApex: vec3 = vec3(2.05, 1.35, -1.85);
+    var coneRadius: float = 0.52;
+    var coneHeight: float = 1.35;
 
     var t0: float = hitSphere(c0, r0, origin, dir);
     if (includeGlass) {
@@ -72,6 +341,31 @@ function closestHit(
         tHit = t2;
         kind = 1;
         index = 2;
+    }
+
+    var tBox: float = hitBoxRotated(boxCenter, boxHalf, boxAngle, origin, dir);
+    if (tBox > 0.0 && tBox < tHit) {
+        tHit = tBox;
+        kind = 3;
+        index = 0;
+    }
+    var tPrism: float = hitPrism(prismA, prismB, prismC, prismZ0, prismZ1, origin, dir);
+    if (tPrism > 0.0 && tPrism < tHit) {
+        tHit = tPrism;
+        kind = 4;
+        index = 0;
+    }
+    var tCyl: float = hitCylinder(cylCenter, cylRadius, cylY0, cylY1, origin, dir);
+    if (tCyl > 0.0 && tCyl < tHit) {
+        tHit = tCyl;
+        kind = 5;
+        index = 0;
+    }
+    var tCone: float = hitCone(coneApex, coneRadius, coneHeight, origin, dir);
+    if (tCone > 0.0 && tCone < tHit) {
+        tHit = tCone;
+        kind = 6;
+        index = 0;
     }
 
     if (abs(dir.y) > EPSILON) {
@@ -102,6 +396,22 @@ function closestHit(
             albedo = vec3(0.95, 0.74, 0.22);
             material = 0;
         }
+    } else if (kind == 3) {
+        normal = boxNormalRotated(boxCenter, boxHalf, boxAngle, hit);
+        albedo = vec3(0.16, 0.72, 0.48);
+        material = 0;
+    } else if (kind == 4) {
+        normal = prismNormal(prismA, prismB, prismC, prismZ0, prismZ1, hit);
+        albedo = vec3(0.66, 0.28, 0.86);
+        material = 0;
+    } else if (kind == 5) {
+        normal = cylinderNormal(cylCenter, cylRadius, cylY0, cylY1, hit);
+        albedo = vec3(0.82, 0.42, 0.18);
+        material = 0;
+    } else if (kind == 6) {
+        normal = coneNormal(coneApex, coneRadius, coneHeight, hit);
+        albedo = vec3(0.94, 0.36, 0.32);
+        material = 0;
     } else {
         normal = vec3(0.0, 1.0, 0.0);
         material = 0;
@@ -287,7 +597,28 @@ var fragmentShader = glsl.compile({
         "float uAspect"
     ],
     consts: ["float EPSILON = 0.0015", "float GLASS_IOR = 0.9"],
-    functions: ["hitSphere", "closestHit", "inShadow", "localShade", "shadeSky", "shadePrimary", "traceScene", "fragmentMain"],
+    functions: [
+        "hitSphere",
+        "hitBox",
+        "boxNormal",
+        "hitBoxRotated",
+        "boxNormalRotated",
+        "clipPlane",
+        "sideNormal",
+        "hitPrism",
+        "prismNormal",
+        "hitCylinder",
+        "cylinderNormal",
+        "hitCone",
+        "coneNormal",
+        "closestHit",
+        "inShadow",
+        "localShade",
+        "shadeSky",
+        "shadePrimary",
+        "traceScene",
+        "fragmentMain"
+    ],
     main: "fragmentMain"
 });
 
@@ -303,19 +634,19 @@ if (root == null) {
     dom.append(root, heading);
 
     var hint = dom.create("p");
-    dom.setText(hint, "Realtime GLSL tracer via three.createShaderMaterial. The large red sphere is lightly refractive tinted glass; the blue sphere is a mirror. Left/Right change orbit speed. Move the mouse to slide the light.");
+    dom.setText(hint, "Realtime GLSL tracer via three.createShaderMaterial. Glass and gold spheres, a blue mirror ball, an emerald cube, a magenta prism, a copper cylinder, and a coral cone. Left/Right change orbit speed. Move the mouse to slide the light.");
     dom.append(root, hint);
 
     var width = 960;
     var height = 540;
     var aspect = width / height;
-    var tanHalf = math.tan(math.degToRad(28));
+    var tanHalf = math.tan(math.degToRad(32));
 
-    var camRadius = 4.35;
+    var camRadius = 5.25;
     var camAngle = 0.55;
     var camSpeed = 0.55;
     var camX = 0.0;
-    var camY = 1.65;
+    var camY = 1.85;
     var camZ = 0.0;
     var forwardX = 0.0;
     var forwardY = 0.0;
@@ -335,11 +666,11 @@ if (root == null) {
 
     function updateCamera() {
         camX = math.sin(camAngle) * camRadius;
-        camY = 1.65;
+        camY = 1.85;
         camZ = math.cos(camAngle) * camRadius;
 
         var fx = 0.0 - camX;
-        var fy = 0.85 - camY;
+        var fy = 0.70 - camY;
         var fz = 0.0 - camZ;
         var fl = math.sqrt(fx * fx + fy * fy + fz * fz);
         fx = fx / fl;
@@ -378,7 +709,7 @@ if (root == null) {
         "depthWrite": false,
         "uniforms": {
             "uResolution": [width, height],
-            "uCamPos": [0, 1.65, 4.35],
+            "uCamPos": [0, 1.85, 5.25],
             "uCamForward": [0, 0, -1],
             "uCamRight": [1, 0, 0],
             "uCamUp": [0, 1, 0],
