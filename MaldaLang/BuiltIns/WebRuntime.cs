@@ -867,6 +867,7 @@ public class RequestAuthContextInstance : ObjectInstance
 public class ResponseContextInstance : ObjectInstance
 {
     private RuntimeValue _body = RuntimeValue.Null();
+    private bool _bodyIsBase64;
     private readonly List<string> _setCookieHeaders = new();
 
     public int StatusCode { get; private set; } = 200;
@@ -899,7 +900,7 @@ public class ResponseContextInstance : ObjectInstance
         if (name is "committed" or "isCommitted" or "sent")
             return RuntimeValue.Boolean(IsCommitted);
 
-        if (name is "status" or "json" or "text" or "html" or "redirect" or "header" or "cookie" or "clearCookie" or "send" or "setContentType")
+        if (name is "status" or "json" or "text" or "html" or "redirect" or "header" or "cookie" or "clearCookie" or "send" or "sendBase64" or "setContentType")
         {
             var wrapper = new FunctionValue(null, null, false, null)
             {
@@ -928,6 +929,7 @@ public class ResponseContextInstance : ObjectInstance
                     throw new Exception("json() expects 1 argument");
                 ContentType = "application/json; charset=utf-8";
                 _body = args[0];
+                _bodyIsBase64 = false;
                 IsCommitted = true;
                 return RuntimeValue.Object(this);
 
@@ -936,6 +938,7 @@ public class ResponseContextInstance : ObjectInstance
                     throw new Exception("text() expects 1 argument");
                 ContentType = "text/plain; charset=utf-8";
                 _body = args[0].Type == ValueType.String ? args[0] : RuntimeValue.String(args[0].ToString());
+                _bodyIsBase64 = false;
                 IsCommitted = true;
                 return RuntimeValue.Object(this);
 
@@ -944,6 +947,7 @@ public class ResponseContextInstance : ObjectInstance
                     throw new Exception("html() expects 1 argument");
                 ContentType = "text/html; charset=utf-8";
                 _body = args[0].Type == ValueType.String ? args[0] : RuntimeValue.String(args[0].ToString());
+                _bodyIsBase64 = false;
                 IsCommitted = true;
                 return RuntimeValue.Object(this);
 
@@ -958,6 +962,7 @@ public class ResponseContextInstance : ObjectInstance
                 Headers["Location"] = args[0].AsString();
                 ContentType = "text/html; charset=utf-8";
                 _body = RuntimeValue.String(WebRuntimeHelpers.BuildRedirectHtml(args[0].AsString()));
+                _bodyIsBase64 = false;
                 IsCommitted = true;
                 return RuntimeValue.Object(this);
 
@@ -1027,6 +1032,23 @@ public class ResponseContextInstance : ObjectInstance
                 if (args.Count != 1)
                     throw new Exception("send() expects 1 argument");
                 _body = args[0];
+                _bodyIsBase64 = false;
+                IsCommitted = true;
+                return RuntimeValue.Object(this);
+
+            case "sendBase64":
+                if (args.Count != 1 || args[0].Type != ValueType.String)
+                    throw new Exception("sendBase64() expects 1 string argument");
+                try
+                {
+                    Convert.FromBase64String(args[0].AsString());
+                }
+                catch (FormatException)
+                {
+                    throw new Exception("sendBase64() expects a base64 string");
+                }
+                _body = args[0];
+                _bodyIsBase64 = true;
                 IsCommitted = true;
                 return RuntimeValue.Object(this);
 
@@ -1088,6 +1110,20 @@ public class ResponseContextInstance : ObjectInstance
 
     private byte[] EncodeBodyBytes()
     {
+        if (_bodyIsBase64)
+        {
+            if (_body.Type != ValueType.String)
+                throw new Exception("sendBase64() expects a base64 string");
+            try
+            {
+                return Convert.FromBase64String(_body.AsString());
+            }
+            catch (FormatException)
+            {
+                throw new Exception("sendBase64() expects a base64 string");
+            }
+        }
+
         string bodyText;
         if (ContentType.Contains("application/json", StringComparison.OrdinalIgnoreCase))
         {

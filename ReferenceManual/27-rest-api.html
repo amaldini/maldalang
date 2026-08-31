@@ -161,7 +161,9 @@ server.start();</code></pre>
             <li><code>res.header(name, value)</code></li>
             <li><code>res.cookie(name, value, options?)</code></li>
             <li><code>res.send(value)</code></li>
+            <li><code>res.sendBase64(b64)</code></li>
         </ul>
+        <p><code>res.send(value)</code> UTF-8-encodes a string body. Use <code>res.sendBase64(b64)</code> for binary payloads (PDF, DOCX, and similar): it decodes the base64 string and writes those bytes. Invalid base64 throws.</p>
         <p><code>res.cookie(...)</code> uses secure defaults: <code>HttpOnly=true</code>, <code>Secure=true</code>, <code>SameSite=Lax</code>, <code>Path=/</code>.</p>
         <h2>27.10 CSRF and Rate Limiting</h2>
         <p>Use built-in middleware-style server configuration for request protection without ad-hoc per-route logic:</p>

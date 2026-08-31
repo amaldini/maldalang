@@ -45,6 +45,9 @@ types as BUILD). If neither live docs nor a snapshot exist, upload creates
 
 Answers may contain `[nota: slug]`. The ASK UI rewrites those to in-page links
 (`#src-{slug}`), marks cited source chips, and opens a note preview (`GET /note`).
+When the original file exists, an **Original** link opens `GET /source?slug=`
+in a new tab: `brain/sources/` snapshot first, then the live `sourceFolder` if
+that folder is not the brain dir. Packed ASK (`embed:`) has no originals.
 
 ## Retrieval eval (P1)
 

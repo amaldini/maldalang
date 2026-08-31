@@ -2179,13 +2179,21 @@ function askRenderSourcesHtml(sources, citedSlugs) {
             chipClass = chipClass + " cited";
         }
         var href = "#src-" + slug;
-        html = html + "<a class='" + chipClass + "' role='listitem' id='src-" +
+        var origHref = askOriginalSourceHref(slug);
+        html = html + "<span class='source-chip-wrap' role='listitem'>";
+        html = html + "<a class='" + chipClass + "' id='src-" +
             askEscapeHtml(slug) + "' href='" + askEscapeHtml(href) +
             "' data-ask-note='" + askEscapeHtml(slug) + "'" + tipAttr + ">" +
             "<div class='source-chip-body'>" +
             "<div class='source-chip-title'>" + askEscapeHtml(note.title) + "</div>" +
             "<div class='path'>" + askEscapeHtml(note.path) + "</div>" +
             "</div>" + scoreHtml + "</a>";
+        if (origHref != "") {
+            html = html + "<a class='source-orig' href='" + askEscapeHtml(origHref) +
+                "' target='_blank' rel='noopener' data-ask-source='1'>" +
+                askEscapeHtml(askT("Original", "Originale")) + "</a>";
+        }
+        html = html + "</span>";
     }
     html = html + "</div>";
     return html;
@@ -2527,13 +2535,13 @@ function askPageStyles() {
         ".sources-block{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}" +
         ".sources-label{font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;" +
         "color:var(--muted);font-weight:600;margin:0 0 10px}" +
-        ".sources-chips{display:flex;flex-wrap:wrap;gap:8px}" +
+        ".sources-chips{display:flex;flex-wrap:wrap;gap:8px}.source-chip-wrap{display:flex;flex-direction:column;gap:4px;flex:1 1 200px;min-width:min(100%,200px);max-width:100%}" +
         ".source-chip{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;" +
-        "flex:1 1 200px;min-width:min(100%,200px);max-width:100%;" +
+        "flex:1 1 auto;min-width:0;max-width:100%;" +
         "background:var(--chip);border:1px solid var(--line);border-radius:10px;padding:10px 12px;" +
         "text-decoration:none;color:inherit;cursor:pointer}" +
         ".source-chip:hover{border-color:var(--accent);background:var(--hover)}" +
-        ".source-chip.cited{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}" +
+        ".source-chip.cited{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}.source-orig{font-size:0.75rem;color:var(--accent-ink);text-decoration:underline;text-underline-offset:2px;padding:0 4px}.source-orig:hover{color:var(--accent)}" +
         "a.note-cite{color:var(--accent-ink);font-weight:600;text-decoration:underline;" +
         "text-underline-offset:2px;cursor:pointer}" +
         "a.note-cite:hover{color:var(--accent)}" +
@@ -2545,7 +2553,7 @@ function askPageStyles() {
         "overflow:auto;background:var(--panel);color:var(--ink);border:1px solid var(--line);" +
         "border-radius:12px;padding:16px 18px;box-shadow:0 12px 40px var(--shadow-soft)}" +
         ".note-dialog h2{margin:0 2.5rem 8px 0;font-size:1.05rem}" +
-        ".note-dialog .path{margin:0 0 12px}" +
+        ".note-dialog .path{margin:0 0 8px}.note-dialog .note-orig{margin:0 0 12px}" +
         ".note-dialog-body{white-space:pre-wrap;font-family:var(--serif);line-height:1.55;" +
         "font-size:0.95rem;margin:0}" +
         ".note-dialog-close{position:absolute;top:10px;right:10px}" +
@@ -3256,7 +3264,7 @@ function askPanelFragment() {
 // #ask-live-dock stays in #ask-live-home (outside #ask-panel) so panel fragment
 // replace cannot destroy it. While visible it is position:fixed just above the
 // sticky composer — mounting inside the composer hid rounds on tall phone layouts.
-function askPageClientScript() {
+function askPageClientScriptHead() {
     return "<script>(function(){" +
         "var es=null;" +
         "var liveClosing=false;" +
@@ -3483,8 +3491,11 @@ function askPageClientScript() {
         "liveClosing=true;" +
         "if(es){try{es.close();}catch(e){} es=null;}" +
         "stopLiveTimer();" +
-        "}" +
-        "function connectLive(){" +
+        "}";
+}
+
+function askPageClientScriptTail() {
+    return "function connectLive(){" +
         "liveClosing=false;" +
         "if(es){try{es.close();}catch(e){}}" +
         "es=new EventSource('/ask/live?channel='+encodeURIComponent(askLiveChannel));" +
@@ -3699,7 +3710,14 @@ function askPageClientScript() {
         "if(document.readyState==='loading'){" +
         "document.addEventListener('DOMContentLoaded',bind);" +
         "}else{bind();}" +
+        "document.addEventListener('click',function(e){var t=e.target;if(t){if(t.closest){if(t.closest('[data-ask-source]')){e.stopImmediatePropagation();}}}},true);" +
+        "var _od=document.getElementById('ask-note-dialog');var _oo=document.getElementById('ask-note-orig');var _ol=document.getElementById('ask-note-orig-link');if(_od){new MutationObserver(function(){if(_oo){if(_od.hidden===false){_oo.hidden=true;}}}).observe(_od,{attributes:true,attributeFilter:['hidden']});}" +
+        "var _f=window.fetch;window.fetch=function(url,opts){var p=_f.apply(this,arguments);if(String(url).indexOf('/note?')<0){return p;}return p.then(function(res){res.clone().json().then(function(data){if(_oo){if(_ol){if(data){if(data.originalHref){_ol.href=data.originalHref;_oo.hidden=false;}else{_oo.hidden=true;}}}}}).catch(function(){});return res;});};" +
         "})();</script>";
+}
+
+function askPageClientScript() {
+    return askPageClientScriptHead() + askPageClientScriptTail();
 }
 
 function askRenderPage() {
@@ -3831,9 +3849,8 @@ function askRenderPage() {
         "<div class='note-dialog' role='dialog' aria-modal='true' aria-labelledby='ask-note-title'>" +
         "<button type='button' class='ghost note-dialog-close' data-ask-note-close='1'>" +
         askEscapeHtml(askT("Close", "Chiudi")) + "</button>" +
-        "<h2 id='ask-note-title'></h2>" +
-        "<p class='path' id='ask-note-path'></p>" +
-        "<pre class='note-dialog-body' id='ask-note-body'></pre></div></div>";
+        "<h2 id='ask-note-title'></h2><p class='path' id='ask-note-path'></p><p class='note-orig' id='ask-note-orig' hidden><a id='ask-note-orig-link' target='_blank' rel='noopener' data-ask-source='1'>" +
+        askEscapeHtml(askT("Original", "Originale")) + "</a></p><pre class='note-dialog-body' id='ask-note-body'></pre></div></div>";
 
     html = html + "<div id='ask-panel'>" + askRenderPanelHtml() + "</div>";
     html = html + askPageClientScript();
@@ -4089,20 +4106,160 @@ function askUiHealth(req, res, queryParams) {
     });
 }
 
+function askFindCatalogNote(slug) {
+    var s = askNormalizeCiteSlug(slug);
+    if (s == "") {
+        return null;
+    }
+    var catalog = askGetCatalog();
+    if (catalog == null or catalog.notes == null) {
+        return null;
+    }
+    var note = null;
+    foreach (var n in catalog.notes) {
+        if (askNormalizeCiteSlug(n.slug) == s) {
+            note = n;
+        }
+    }
+    return note;
+}
+
+function askCatalogSourceKey(note) {
+    if (note == null) {
+        return "";
+    }
+    var key = str.trim(askAsText(note.sourceKey));
+    if (key != "") {
+        return key;
+    }
+    var source = askAsText(note.source);
+    source = str.regexReplace(source, " \\(part \\d+ of \\d+\\)$", "");
+    source = str.regexReplace(source, " \\(parte \\d+ di \\d+\\)$", "");
+    return str.trim(source);
+}
+
+function askResolveOriginalSourcePath(sourceKey) {
+    var key = str.trim(askAsText(sourceKey));
+    if (key == "" or str.indexOf(key, "..") >= 0) {
+        return "";
+    }
+    var session = askGetSession();
+    var brainDir = str.trim(askAsText(session.brainDir));
+    if (brainDir == "" or str.startsWith(brainDir, "embed:")) {
+        return "";
+    }
+    var snap = io.pathJoin(brainDir, "sources");
+    var snapPath = io.pathJoin(snap, key);
+    if (io.isPathUnder(snap, snapPath) == true and io.hasFile(snapPath)) {
+        return snapPath;
+    }
+    var live = str.trim(askAsText(session.sourceFolder));
+    if (live != "" and io.hasDirectory(live)) {
+        var sameAsBrain = false;
+        try {
+            sameAsBrain = io.pathNormalize(live) == io.pathNormalize(brainDir);
+        } catch (normErr) {
+            sameAsBrain = false;
+        }
+        if (not sameAsBrain) {
+            var livePath = io.pathJoin(live, key);
+            if (io.isPathUnder(live, livePath) == true and io.hasFile(livePath)) {
+                return livePath;
+            }
+        }
+    }
+    return "";
+}
+
+function askOriginalSourceHref(slug) {
+    var s = askNormalizeCiteSlug(slug);
+    if (s == "") {
+        return "";
+    }
+    var note = askFindCatalogNote(s);
+    if (note == null) {
+        return "";
+    }
+    var path = askResolveOriginalSourcePath(askCatalogSourceKey(note));
+    if (path == "") {
+        return "";
+    }
+    return "/source?" + askConvQuery("slug=" + s);
+}
+
+function askSanitizeOriginalFilename(name) {
+    var filename = str.trim(askAsText(name));
+    filename = str.regexReplace(filename, "\\r", "");
+    filename = str.regexReplace(filename, "\\n", "");
+    filename = str.regexReplace(filename, "\"", "");
+    if (filename == "") {
+        return "source";
+    }
+    return filename;
+}
+
+function askReadOriginalSource(slug) {
+    var s = askNormalizeCiteSlug(slug);
+    if (s == "") {
+        return { "ok": false, "error": "Invalid slug." };
+    }
+    var note = askFindCatalogNote(s);
+    if (note == null) {
+        return { "ok": false, "error": "Note not in catalog." };
+    }
+    var path = askResolveOriginalSourcePath(askCatalogSourceKey(note));
+    if (path == "") {
+        return { "ok": false, "error": "Original file not found." };
+    }
+    var ext = str.lower(io.pathGetExtension(path));
+    var contentType = "application/octet-stream";
+    var disposition = "attachment";
+    var binary = false;
+    if (ext == ".pdf") {
+        contentType = "application/pdf";
+        disposition = "inline";
+        binary = true;
+    } else if (ext == ".html" or ext == ".htm") {
+        contentType = "text/html; charset=utf-8";
+        disposition = "inline";
+    } else if (ext == ".md") {
+        contentType = "text/markdown; charset=utf-8";
+        disposition = "inline";
+    } else if (ext == ".docx") {
+        contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        disposition = "attachment";
+        binary = true;
+    } else {
+        return { "ok": false, "error": "Unsupported original type." };
+    }
+    var body = "";
+    try {
+        if (binary) {
+            body = io.readFileBase64(path);
+        } else {
+            body = io.readFile(path);
+        }
+    } catch (readErr) {
+        return { "ok": false, "error": "Original file not found." };
+    }
+    return {
+        "ok": true,
+        "slug": s,
+        "path": path,
+        "filename": askSanitizeOriginalFilename(io.getFileName(path)),
+        "contentType": contentType,
+        "disposition": disposition,
+        "binary": binary,
+        "body": body
+    };
+}
+
 function askReadNotePreview(slug) {
     var s = askNormalizeCiteSlug(slug);
     if (s == "") {
         return { "ok": false, "error": "Invalid slug." };
     }
-    var catalog = askGetCatalog();
-    var note = null;
-    if (catalog != null and catalog.notes != null) {
-        foreach (var n in catalog.notes) {
-            if (askNormalizeCiteSlug(n.slug) == s) {
-                note = n;
-            }
-        }
-    }
+    var note = askFindCatalogNote(s);
     if (note == null) {
         return { "ok": false, "error": "Note not in catalog." };
     }
@@ -4132,6 +4289,7 @@ function askReadNotePreview(slug) {
         "title": askAsText(note.title),
         "path": path,
         "source": askAsText(note.source),
+        "originalHref": askOriginalSourceHref(s),
         "body": body
     };
 }
@@ -4145,6 +4303,31 @@ function askUiNotePreview(req, res, queryParams, cookies) {
     }
     var preview = askReadNotePreview(slug);
     return res.json(preview);
+}
+
+@GET("/source")
+function askUiOriginalSource(req, res, queryParams, cookies) {
+    askBeginRequest(queryParams, null, cookies, res, req);
+    var slug = "";
+    if (queryParams != null) {
+        slug = askAsText(queryParams["slug"]);
+    }
+    var original = askReadOriginalSource(slug);
+    if (not original.ok) {
+        askAudit("source", req, { "slug": slug, "ok": false });
+        return res.status(404).json({
+            "ok": false,
+            "error": askAsText(original.error)
+        });
+    }
+    res.header("Content-Disposition", askAsText(original.disposition) +
+        "; filename=\"" + askAsText(original.filename) + "\"");
+    res.setContentType(askAsText(original.contentType));
+    askAudit("source", req, { "slug": slug, "ok": true });
+    if (original.binary == true) {
+        return res.sendBase64(original.body);
+    }
+    return res.send(original.body);
 }
 
 function askRenderAdminUsersPage(flash) {

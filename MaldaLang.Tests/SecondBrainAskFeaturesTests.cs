@@ -509,6 +509,9 @@ public class SecondBrainAskFeaturesTests
         Assert.Contains("var ASK_SERVICE_VERSION = \"0.4.0\"", libSource, StringComparison.Ordinal);
         Assert.DoesNotContain("var ASK_SERVICE_VERSION = \"0.3.0\"", libSource, StringComparison.Ordinal);
         Assert.Contains("@GET(\"/note\")", libSource, StringComparison.Ordinal);
+        Assert.Contains("@GET(\"/source\")", libSource, StringComparison.Ordinal);
+        Assert.Contains("askResolveOriginalSourcePath(", libSource, StringComparison.Ordinal);
+        Assert.Contains("res.sendBase64(", libSource, StringComparison.Ordinal);
         Assert.Contains("function askExtractCitedSlugs(", libSource, StringComparison.Ordinal);
         Assert.Contains("function askRewriteNoteCitations(", libSource, StringComparison.Ordinal);
         Assert.Contains("data-ask-note", libSource, StringComparison.Ordinal);
@@ -796,6 +799,76 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("source-chip cited", output, StringComparison.Ordinal);
             Assert.Contains("PREV=true,Alpha", output, StringComparison.Ordinal);
             Assert.Contains("MISS=false", output, StringComparison.Ordinal);
+        }
+        finally
+        {
+            SafeDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public async Task AskUi_ResolveOriginalSourcePath_SnapshotThenRejectsEmbedAndDotDot()
+    {
+        Assert.True(File.Exists(AskUiLibPath), "missing ask UI lib: " + AskUiLibPath);
+
+        var tempDir = Path.Combine(Path.GetTempPath(), "malda_sb_ask_orig", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            var brainDir = Path.Combine(tempDir, "brain");
+            var sourcesDir = Path.Combine(brainDir, "sources");
+            Directory.CreateDirectory(sourcesDir);
+            File.WriteAllText(Path.Combine(sourcesDir, "a.md"), "# original\n");
+            File.Copy(AskUiLibPath, Path.Combine(tempDir, "secondbrain_ask_ui_lib.malda"));
+
+            var brainLiteral = brainDir.Replace("\\", "/");
+            var harnessPath = Path.Combine(tempDir, "harness.malda");
+            await File.WriteAllTextAsync(harnessPath,
+                $$"""
+                var ASK_HTTP_PORT = 39018;
+                var ASK_HTTP_HOST = "localhost";
+                var ASK_SESSION_ID = "secondbrain-ask-orig";
+                var ASK_STORE = "SecondBrainAskOrig";
+                var PRODUCT_NAME = "Orig Brain";
+                var ASK_PAGE_TITLE = PRODUCT_NAME;
+                var ASK_POWERED_BY = "";
+                var ASK_POWERED_BY_URL = "";
+                var ASK_LOGO = "";
+                var ASK_LOGO_RIGHT = "";
+                var UI_LANG = "en";
+                var askHttpServer = null;
+
+                function runAskTurn(question) {
+                    return { "question": question, "answer": "ok", "sources": [], "error": "" };
+                }
+
+                include "secondbrain_ask_ui_lib.malda";
+
+                askSetSession({ "brainDir": "{{brainLiteral}}", "sourceFolder": "{{brainLiteral}}" });
+                askSetCatalog({
+                    "notes": [
+                        { "slug": "alpha-note", "title": "Alpha", "path": "notes/alpha-note.md", "source": "a.md", "sourceKey": "a.md", "summary": "Alpha summary" }
+                    ]
+                });
+                print("SNAP=" + askResolveOriginalSourcePath("a.md"));
+                print("DOT=[" + askResolveOriginalSourcePath("../secret.md") + "]");
+                print("HREF=" + askOriginalSourceHref("alpha-note"));
+                var preview = askReadNotePreview("alpha-note");
+                print("PREVHREF=" + askAsText(preview.originalHref));
+                askSetSession({ "brainDir": "embed:packed", "sourceFolder": "" });
+                print("EMB=[" + askResolveOriginalSourcePath("a.md") + "]");
+                print("EMBHREF=[" + askOriginalSourceHref("alpha-note") + "]");
+                """);
+
+            var output = await InterpretAndCaptureAsync(harnessPath);
+            Assert.Contains("SNAP=", output, StringComparison.Ordinal);
+            Assert.Contains("a.md", output, StringComparison.Ordinal);
+            Assert.Contains("sources", output, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("DOT=[]", output, StringComparison.Ordinal);
+            Assert.Contains("HREF=/source?", output, StringComparison.Ordinal);
+            Assert.Contains("PREVHREF=/source?", output, StringComparison.Ordinal);
+            Assert.Contains("EMB=[]", output, StringComparison.Ordinal);
+            Assert.Contains("EMBHREF=[]", output, StringComparison.Ordinal);
         }
         finally
         {

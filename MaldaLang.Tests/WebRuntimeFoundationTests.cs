@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Andrea Maldini
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+using System;
 using MaldaLang.BuiltIns;
 using MaldaLang.Interpreter;
 using ValueType = MaldaLang.Interpreter.ValueType;
@@ -450,6 +451,32 @@ public class WebRuntimeFoundationTests
         Assert.Contains("HttpOnly", cookieHeader);
         Assert.Contains("Secure", cookieHeader);
         Assert.Contains("SameSite=Lax", cookieHeader);
+    }
+
+    [Fact]
+    public void ResponseContext_SendBase64_RoundTripsBinaryBytes()
+    {
+        var bytes = new byte[] { 0x00, 0xFF, 0x10, 0x80, 0x7F };
+        var response = new ResponseContextInstance();
+        response.CallMethod("setContentType", new List<RuntimeValue> { RuntimeValue.String("application/pdf") });
+        response.CallMethod("sendBase64", new List<RuntimeValue> { RuntimeValue.String(Convert.ToBase64String(bytes)) });
+
+        Assert.True(response.IsCommitted);
+        var encode = typeof(ResponseContextInstance).GetMethod(
+            "EncodeBodyBytes",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        Assert.NotNull(encode);
+        var got = Assert.IsType<byte[]>(encode!.Invoke(response, null));
+        Assert.Equal(bytes, got);
+    }
+
+    [Fact]
+    public void ResponseContext_SendBase64_RejectsInvalidBase64()
+    {
+        var response = new ResponseContextInstance();
+        var ex = Assert.Throws<Exception>(() =>
+            response.CallMethod("sendBase64", new List<RuntimeValue> { RuntimeValue.String("not-valid!!!") }));
+        Assert.Contains("base64", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
