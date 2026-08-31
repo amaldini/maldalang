@@ -525,6 +525,7 @@ public class SecondBrainAskFeaturesTests
         Assert.Contains("@PAGE(\"/admin/users\")", libSource, StringComparison.Ordinal);
         Assert.Contains("@PAGE(\"/admin/upload\")", libSource, StringComparison.Ordinal);
         Assert.Contains("or brain sources/ if docs are missing", libSource, StringComparison.Ordinal);
+        Assert.Contains("accept='.md,.html,.htm,.pdf,.docx'", libSource, StringComparison.Ordinal);
         Assert.Contains("@ACTION(\"/feedback\")", libSource, StringComparison.Ordinal);
         Assert.Contains("function askConfigureHttpAuth(", libSource, StringComparison.Ordinal);
         Assert.Contains("function askRefuseInsecurePublicBind(", libSource, StringComparison.Ordinal);
@@ -1238,6 +1239,9 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("askSetAuthUsersRoot(", source, StringComparison.Ordinal);
             Assert.Contains("askConfigureHttpAuth(", source, StringComparison.Ordinal);
             Assert.Contains("runAskUpdateFromUpload(", source, StringComparison.Ordinal);
+            Assert.Contains("io.writeFileBase64(", source, StringComparison.Ordinal);
+            Assert.Contains("str.endsWith(lower, \".pdf\")", source, StringComparison.Ordinal);
+            Assert.Contains("str.endsWith(lower, \".docx\")", source, StringComparison.Ordinal);
             Assert.Contains("--port", source, StringComparison.Ordinal);
             Assert.Contains("--host", source, StringComparison.Ordinal);
             Assert.Contains("--no-auth", source, StringComparison.Ordinal);

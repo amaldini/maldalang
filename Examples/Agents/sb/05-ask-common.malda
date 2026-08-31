@@ -545,27 +545,45 @@ function runAskUpdateFromUpload(body) {
     }
     var filesWritten = 0;
     if (body != null and body.docs != null) {
-        var fileObj = body.docs;
-        var fileName = "";
-        var content = "";
-        if (fileObj.fileName != null) {
-            fileName = io.getFileName(askAsText(fileObj.fileName));
-            content = askAsText(fileObj.content);
+        var docsVal = body.docs;
+        var fileList = [];
+        if (typeOf(docsVal) == "array") {
+            fileList = docsVal;
+        } else {
+            fileList.append(docsVal);
         }
-        var lower = str.lower(fileName);
-        if (fileName != "" and (str.endsWith(lower, ".md") or str.endsWith(lower, ".html") or
-                str.endsWith(lower, ".htm"))) {
-            var dest = sbAssertUnderRoot(docsRoot, io.pathJoin(docsRoot, fileName));
-            if (dest != null) {
-                io.writeFile(dest, content);
-                filesWritten = 1;
+        foreach (var fileObj in fileList) {
+            if (fileObj == null or fileObj.fileName == null) {
+                continue;
             }
+            var fileName = io.getFileName(askAsText(fileObj.fileName));
+            var lower = str.lower(fileName);
+            if (fileName == "" or not (str.endsWith(lower, ".md") or str.endsWith(lower, ".html") or
+                    str.endsWith(lower, ".htm") or str.endsWith(lower, ".pdf") or
+                    str.endsWith(lower, ".docx"))) {
+                continue;
+            }
+            var dest = sbAssertUnderRoot(docsRoot, io.pathJoin(docsRoot, fileName));
+            if (dest == null) {
+                continue;
+            }
+            var b64 = "";
+            if (fileObj.contentBase64 != null) {
+                b64 = str.trim(askAsText(fileObj.contentBase64));
+            }
+            if (b64 != "") {
+                io.writeFileBase64(dest, b64);
+            } else {
+                io.writeFile(dest, askAsText(fileObj.content));
+            }
+            filesWritten = filesWritten + 1;
         }
     }
     if (filesWritten == 0) {
         return {
             "ok": false,
-            "error": t("No .md/.html file uploaded.", "Nessun file .md/.html caricato."),
+            "error": t("No .md/.html/.pdf/.docx file uploaded.",
+                "Nessun file .md/.html/.pdf/.docx caricato."),
             "added": 0,
             "changed": 0,
             "files": 0

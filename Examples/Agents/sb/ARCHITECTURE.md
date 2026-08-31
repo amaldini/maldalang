@@ -37,8 +37,9 @@ UPDATE and `/admin/upload` resolve the docs root in this order:
 4. else fail (hint: run BUILD/UPDATE once with `--docs` to populate the snapshot)
 
 Copying a disk brain to another PC therefore still allows UPDATE/upload against
-the snapshot. Upload still writes only `.md` / `.html` / `.htm`. If neither live
-docs nor a snapshot exist, upload creates `sources/` so the first file can land.
+the snapshot. Upload accepts `.md` / `.html` / `.htm` / `.pdf` / `.docx` (same
+types as BUILD). If neither live docs nor a snapshot exist, upload creates
+`sources/` so the first file can land. Packed ASK (`embed:`) stays read-only.
 
 ## ASK citations (P1)
 

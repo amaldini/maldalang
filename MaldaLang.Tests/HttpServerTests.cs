@@ -20,6 +20,7 @@ using System.Linq;
 
 namespace MaldaLang.Tests;
 
+[Collection("Sequential")]
 public class HttpServerTests
 {
     private static Interpreter.Interpreter LoadInterpreterFromSource(string source)
@@ -685,8 +686,15 @@ public class HttpServerTests
         // Register duplicate routes
         HttpServerInstance.RegisterTranspiledRoute("GET", "/duplicate", "func1", new List<string>(), null);
         HttpServerInstance.RegisterTranspiledRoute("GET", "/duplicate", "func2", new List<string>(), null);
-        
-        Assert.Throws<Exception>(() => server.CallMethod("start", new List<RuntimeValue>()));
+
+        try
+        {
+            Assert.Throws<Exception>(() => server.CallMethod("start", new List<RuntimeValue>()));
+        }
+        finally
+        {
+            HttpServerInstance.ClearPendingRoutesForTesting();
+        }
     }
     
     [Fact]
@@ -1041,6 +1049,51 @@ public class HttpServerTests
             Assert.Contains("phase-b-ticket", html);
             // Fragment bodies must not receive the full-page AJAX helper payload.
             Assert.DoesNotContain("spl-ajax-helper", html);
+        }
+        finally
+        {
+            server.CallMethod("stop", new List<RuntimeValue>());
+        }
+    }
+
+    [Fact]
+    public async Task HttpServer_MultipartFilePart_ExposesContentBase64()
+    {
+        var port = GetAvailablePort();
+        var source = @"
+            @POST(""/upload"")
+            function handle(body, res) {
+                var docs = body.docs;
+                if (docs == null) {
+                    return res.json({ ""missing"": true });
+                }
+                return res.json({
+                    ""fileName"": docs.fileName,
+                    ""b64"": docs.contentBase64,
+                    ""contentType"": docs.contentType
+                });
+            }
+        ";
+        var interpreter = LoadInterpreterFromSource(source);
+        var server = new HttpServerInstance(port, null, interpreter);
+        server.CallMethod("start", new List<RuntimeValue>());
+
+        try
+        {
+            var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46, 0x2D, 0x00, 0xFF };
+            using var client = new HttpClient();
+            using var content = new MultipartFormDataContent();
+            using var fileContent = new ByteArrayContent(pdfBytes);
+            fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pdf");
+            content.Add(fileContent, "docs", "stub.pdf");
+            using var response = await client.PostAsync($"http://localhost:{port}/upload", content);
+            var json = await response.Content.ReadAsStringAsync();
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            using var doc = JsonDocument.Parse(json);
+            Assert.Equal("stub.pdf", doc.RootElement.GetProperty("fileName").GetString());
+            Assert.Equal(Convert.ToBase64String(pdfBytes), doc.RootElement.GetProperty("b64").GetString());
+            Assert.Contains("pdf", doc.RootElement.GetProperty("contentType").GetString() ?? "", StringComparison.OrdinalIgnoreCase);
         }
         finally
         {

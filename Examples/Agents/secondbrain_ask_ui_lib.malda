@@ -4350,9 +4350,9 @@ function askRenderAdminUploadPage(flash, okMsg) {
     } else {
         body = "<form method='post' action='/admin/upload' enctype='multipart/form-data'>" +
             "<label for='docs'>" + askEscapeHtml(askT(
-                "Upload .md / .html into the docs folder (or brain sources/ if docs are missing), then run UPDATE",
-                "Carica .md / .html nella cartella docs (o brain/sources/ se i docs mancano), poi esegui UPDATE")) + "</label>" +
-            "<input id='docs' name='docs' type='file' multiple accept='.md,.html,.htm' required>" +
+                "Upload .md / .html / .pdf / .docx into the docs folder (or brain sources/ if docs are missing), then run UPDATE",
+                "Carica .md / .html / .pdf / .docx nella cartella docs (o brain/sources/ se i docs mancano), poi esegui UPDATE")) + "</label>" +
+            "<input id='docs' name='docs' type='file' multiple accept='.md,.html,.htm,.pdf,.docx' required>" +
             "<p><button type='submit'>" + askEscapeHtml(askT(
                 "Upload and update", "Carica e aggiorna")) + "</button></p></form>";
     }

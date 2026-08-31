@@ -173,9 +173,10 @@ function handleSubmit(body) {
     };
 }</code></pre>
         <ul>
-            <li>The request body is parsed automatically as JSON or form-urlencoded data.</li>
+            <li>The request body is parsed automatically as JSON, form-urlencoded, or <code>multipart/form-data</code>.</li>
             <li>The parsed payload is available through a <code>body</code> parameter.</li>
             <li>POST handlers work well for form submissions from <code>@PAGE</code> or <code>@AIPAGE</code> pages.</li>
+            <li>A multipart file field is an object with <code>fileName</code>, <code>content</code> (UTF-8 text), and <code>contentBase64</code> (raw bytes). Repeated file names become an array. Use <code>io.writeFileBase64</code> for PDF/DOCX.</li>
         </ul>
 
         <h2>25.7 Redirects with RedirectTo</h2>

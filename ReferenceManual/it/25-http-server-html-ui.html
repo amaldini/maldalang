@@ -174,9 +174,10 @@ function handleSubmit(body) {
     };
 }</code></pre>
         <ul>
-            <li>Il body della richiesta viene parsato automaticamente come JSON o dati form-urlencoded.</li>
+            <li>Il body della richiesta viene parsato automaticamente come JSON, form-urlencoded o <code>multipart/form-data</code>.</li>
             <li>Il payload parsato è disponibile tramite un parametro <code>body</code>.</li>
             <li>Gli handler POST funzionano bene per gli invii di form da pagine <code>@PAGE</code> o <code>@AIPAGE</code>.</li>
+            <li>Un campo file multipart è un oggetto con <code>fileName</code>, <code>content</code> (testo UTF-8) e <code>contentBase64</code> (byte grezzi). Nomi file ripetuti diventano un array. Usa <code>io.writeFileBase64</code> per PDF/DOCX.</li>
         </ul>
 
         <h2>25.7 Redirect con RedirectTo</h2>
