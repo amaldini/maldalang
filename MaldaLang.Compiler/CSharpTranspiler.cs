@@ -362,6 +362,9 @@ public class CSharpTranspiler
             _output.AppendLine();
             _indentLevel++;
 
+            GenerateSchemaRegistration(schemas);
+            GenerateSumTypeRegistration(schemas);
+            GenerateApiRegistration();
             if (HasDecorators(statements))
             {
                 WriteIndent();
@@ -372,9 +375,6 @@ public class CSharpTranspiler
                 WriteIndent();
                 _output.AppendLine("RegisterTranspiledWorkflows();");
             }
-            GenerateSchemaRegistration(schemas);
-            GenerateSumTypeRegistration(schemas);
-            GenerateApiRegistration();
 
             // Transpile top-level statements (assignments, function calls, etc.)
             var previousCanAwaitInInitialize = _canAwait;
@@ -460,6 +460,9 @@ public class CSharpTranspiler
             _output.AppendLine("{");
             _indentLevel++;
 
+            GenerateSchemaRegistration(schemas);
+            GenerateSumTypeRegistration(schemas);
+            GenerateApiRegistration();
             if (HasDecorators(statements))
             {
                 WriteIndent();
@@ -470,9 +473,6 @@ public class CSharpTranspiler
                 WriteIndent();
                 _output.AppendLine("RegisterTranspiledWorkflows();");
             }
-            GenerateSchemaRegistration(schemas);
-            GenerateSumTypeRegistration(schemas);
-            GenerateApiRegistration();
 
             EmitProfilingSessionStart();
 
@@ -5025,13 +5025,25 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("var toolDescription = args[1]?.ToString() ?? \"\";");
         WriteIndent();
-        _output.AppendLine("// Optional third argument: schema (ignored for transpiled tools, auto-generated)");
+        _output.AppendLine("MaldaLang.Interpreter.RuntimeValue? providedSchema = null;");
+        WriteIndent();
+        _output.AppendLine("if (args.Length >= 3 && args[2] != null)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("providedSchema = MaldaLang.BuiltIns.ToolSchemaResolver.Resolve(");
+        WriteIndent();
+        _output.AppendLine("    MaldaLang.Interpreter.RuntimeValue.String(args[2].ToString() ?? \"\"));");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
         WriteIndent();
         _output.AppendLine("// Register tool");
         WriteIndent();
         _output.AppendLine("MaldaLang.Interpreter.ToolSchemaGenerator.RegisterTranspiledTool(");
         WriteIndent();
-        _output.AppendLine("    toolName, toolDescription, method, null);");
+        _output.AppendLine("    toolName, toolDescription, method, providedSchema);");
         _indentLevel--;
         WriteIndent();
         _output.AppendLine("}");
@@ -5057,13 +5069,25 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("var toolDescription = args[1]?.ToString() ?? \"\";");
         WriteIndent();
-        _output.AppendLine("// Optional third argument: schema (ignored for transpiled tools, auto-generated)");
+        _output.AppendLine("MaldaLang.Interpreter.RuntimeValue? providedSchema = null;");
+        WriteIndent();
+        _output.AppendLine("if (args.Length >= 3 && args[2] != null)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("providedSchema = MaldaLang.BuiltIns.ToolSchemaResolver.Resolve(");
+        WriteIndent();
+        _output.AppendLine("    MaldaLang.Interpreter.RuntimeValue.String(args[2].ToString() ?? \"\"));");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
         WriteIndent();
         _output.AppendLine("// Register tool (MCPTool is registered the same way as Tool)");
         WriteIndent();
         _output.AppendLine("MaldaLang.Interpreter.ToolSchemaGenerator.RegisterTranspiledTool(");
         WriteIndent();
-        _output.AppendLine("    toolName, toolDescription, method, null);");
+        _output.AppendLine("    toolName, toolDescription, method, providedSchema);");
         _indentLevel--;
         WriteIndent();
         _output.AppendLine("}");
@@ -8386,10 +8410,20 @@ public class CSharpTranspiler
             for (int i = 0; i < decorator.Arguments.Count; i++)
             {
                 if (i > 0) _output.Append(", ");
-                if (decorator.Arguments[i] is NamedArgumentExpression named)
-                    TranspileExpression(named.Value);
+                var arg = decorator.Arguments[i] is NamedArgumentExpression named
+                    ? named.Value
+                    : decorator.Arguments[i];
+                // Bare schema/sum-type names on @Tool / @MCPTool are not C# identifiers.
+                if (i == 2 &&
+                    arg is IdentifierExpression schemaName &&
+                    (decorator.Name == "Tool" || decorator.Name == "MCPTool"))
+                {
+                    _output.Append(ToQuotedString(schemaName.Name));
+                }
                 else
-                    TranspileExpression(decorator.Arguments[i]);
+                {
+                    TranspileExpression(arg);
+                }
             }
             _output.Append(")");
         }

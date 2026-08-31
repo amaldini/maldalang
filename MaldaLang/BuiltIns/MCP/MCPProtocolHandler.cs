@@ -25,6 +25,16 @@ public class MCPProtocolHandler
         _tools[tool.Name] = tool;
     }
 
+    /// <summary>
+    /// Discovers <c>@MCPTool</c> functions and returns their definitions (interpret or transpile).
+    /// Safe to call without an MCP initialize handshake.
+    /// </summary>
+    public IReadOnlyList<MCPToolDefinition> ListDiscoveredTools()
+    {
+        DiscoverTools();
+        return new List<MCPToolDefinition>(_tools.Values);
+    }
+
     public JsonRpcResponse HandleRequest(JsonRpcRequest request)
     {
         try
@@ -610,6 +620,11 @@ public class MCPProtocolHandler
                     
                     if (isMCPTool)
                     {
+                        JsonElement? customSchema = null;
+                        var parameters = tool.GetParametersSchema();
+                        if (parameters.Type == ValueType.Object)
+                            customSchema = ToolSchemaResolver.ToJsonElement(parameters);
+
                         // Create MCPToolDefinition for transpiled tool
                         var toolDef = new MCPToolDefinition
                         {
@@ -618,7 +633,7 @@ public class MCPProtocolHandler
                             Function = null!, // No FunctionValue for transpiled tools
                             FunctionName = transpiledMethod.Name,
                             TranspiledMethod = transpiledMethod,
-                            CustomSchema = null
+                            CustomSchema = customSchema
                         };
                         RegisterTool(toolDef);
                     }

@@ -46,23 +46,14 @@ public static class ToolSchemaGenerator
             return null;
         var description = descriptionValue.AsString();
 
-        // Extract optional custom schema (third argument)
+        // Extract optional custom schema (third argument): schema/sum-type name, JSON string, or object.
         JsonElement? customSchema = null;
         if (decorator.Arguments.Count >= 3)
         {
             var schemaValue = EvaluateDecoratorArgument(decorator.Arguments[2], interpreter);
-            if (schemaValue.Type == ValueType.String)
-            {
-                try
-                {
-                    var schemaJson = schemaValue.AsString();
-                    customSchema = JsonDocument.Parse(schemaJson).RootElement;
-                }
-                catch
-                {
-                    // Invalid JSON schema, ignore
-                }
-            }
+            var resolved = ToolSchemaResolver.Resolve(schemaValue);
+            if (resolved != null)
+                customSchema = ToolSchemaResolver.ToJsonElement(resolved);
         }
 
         return new MCPToolDefinition
@@ -142,15 +133,6 @@ public static class ToolSchemaGenerator
 
     private static RuntimeValue EvaluateDecoratorArgument(Expression expr, Interpreter interpreter)
     {
-        // For now, we'll evaluate simple literals
-        // Similar to RestServer's EvaluateDecoratorArgument
-        if (expr is LiteralExpression literal)
-        {
-            return interpreter.RuntimeValueFromLiteral(literal);
-        }
-
-        // For more complex expressions, we'd need to evaluate them
-        // For now, throw an error for non-literal decorator arguments
-        throw new Exception("Decorator arguments must be literals");
+        return ToolSchemaResolver.EvaluateNameOrLiteral(expr, interpreter);
     }
 }

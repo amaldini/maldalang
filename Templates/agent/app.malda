@@ -4,7 +4,7 @@ include "tools.malda";
 
 var notesRoot = cap.fileRead(io.pathJoin(getProgramDirectory(), "notes"));
 
-@Tool("read_note", "Read a note under the workspace notes/ folder. Pass a relative path only; the host confines it.", "{\"type\":\"object\",\"properties\":{\"relativePath\":{\"type\":\"string\",\"description\":\"Path relative to notes/. No .. or absolute paths.\"}},\"required\":[\"relativePath\"]}")
+@Tool("read_note", "Read a note under the workspace notes/ folder. Pass a relative path only; the host confines it.", "NoteArgs")
 @effects("cap")
 function readNote(relativePath) {
     return readNoteWith(notesRoot, relativePath);

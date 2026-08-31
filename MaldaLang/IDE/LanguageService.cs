@@ -197,14 +197,14 @@ public class LanguageService : ILanguageService
             Name = "Tool",
             Description = "LLM tool decorator",
             Format = "@Tool(\"name\", \"description\", schema?)",
-            Documentation = "Registers a function as an LLM tool. Requires at least 2 arguments: tool name and description. Optional third argument is a JSON schema string or object.",
+            Documentation = "Registers a function as an LLM tool. Requires at least 2 arguments: tool name and description. Optional third argument is a MALDA schema/sum-type name (\"NoteArgs\" or NoteArgs), a JSON schema object string, or omitted (auto-generated string properties).",
             MinArgs = 2,
             MaxArgs = 3,
             ArgDescriptions = new List<string>
             {
                 "name (string): Tool identifier",
                 "description (string): Human-readable description",
-                "schema (string/object, optional): JSON schema for parameters. If omitted, auto-generated from function parameters."
+                "schema (string/name, optional): Registered schema or sum-type name, or a JSON schema object string. If omitted, auto-generated from function parameters as strings."
             }
         },
         ["MCPTool"] = new DecoratorInfo
@@ -212,14 +212,14 @@ public class LanguageService : ILanguageService
             Name = "MCPTool",
             Description = "MCP tool decorator",
             Format = "@MCPTool(\"name\", \"description\", schema?)",
-            Documentation = "Registers a function as an MCP (Model Context Protocol) tool. Requires at least 2 arguments: tool name and description. Optional third argument is a JSON schema string or object.",
+            Documentation = "Registers a function as an MCP (Model Context Protocol) tool. Requires at least 2 arguments: tool name and description. Optional third argument is a MALDA schema/sum-type name (\"WeatherArgs\" or WeatherArgs), a JSON schema object string, or omitted (auto-generated string properties).",
             MinArgs = 2,
             MaxArgs = 3,
             ArgDescriptions = new List<string>
             {
                 "name (string): Tool identifier",
                 "description (string): Human-readable description",
-                "schema (string/object, optional): JSON schema for parameters. If omitted, auto-generated from function parameters."
+                "schema (string/name, optional): Registered schema or sum-type name, or a JSON schema object string. If omitted, auto-generated from function parameters as strings."
             }
         },
         ["PathParam"] = new DecoratorInfo

@@ -1,0 +1,43 @@
+// @MCPTool third argument is a MALDA schema name (or a bare identifier).
+// server.getTools() lists inputSchema without starting STDIO.
+
+schema AddArgs {
+    a: int;
+    b: int;
+}
+
+schema WeatherArgs {
+    location: string;
+    unit: string?;
+}
+
+@MCPTool("add", "Adds two numbers together", "AddArgs")
+function add(a, b) {
+    return int(a) + int(b);
+}
+
+@MCPTool("get_weather", "Gets weather for a location", WeatherArgs)
+function getWeather(location, unit) {
+    var checked = validate("WeatherArgs", dict { "location": location, "unit": unit });
+    if (!checked.ok) {
+        return checked.error;
+    }
+    return "Weather in " + checked.data.location;
+}
+
+var server = new MCPServer();
+var tools = server.getTools();
+io.print(tools.length);
+var i = 0;
+while (i < tools.length) {
+    var t = tools[i];
+    if (t.name == "add") {
+        io.print(t.inputSchema.properties.a.type);
+        io.print(t.inputSchema.required.length);
+    }
+    if (t.name == "get_weather") {
+        io.print(t.inputSchema.properties.location.type);
+        io.print(t.inputSchema.required.length);
+    }
+    i = i + 1;
+}

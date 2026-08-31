@@ -2,8 +2,13 @@
 // Demonstrates how to create custom MCP tools in MALDA
 // These tools can be used with Claude Desktop, ChatGPT, and other MCP clients
 
-// Simple tool: Add two numbers
-@MCPTool("add", "Adds two numbers together")
+schema AddArgs {
+    a: int;
+    b: int;
+}
+
+// Simple tool: Add two numbers (schema name, not a JSON string)
+@MCPTool("add", "Adds two numbers together", "AddArgs")
 function add(a, b) {
     return int(a) + int(b);
 }

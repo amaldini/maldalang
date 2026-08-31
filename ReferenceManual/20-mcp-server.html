@@ -59,15 +59,25 @@ while (server.isRunning) {
         </div>
 
         <h2>20.2 @MCPTool and schemas</h2>
-        <pre><code>@MCPTool("tool_name", "Tool description")
-function myTool(param1, param2) {
-    return param1 + param2;
+        <pre><code>schema AddArgs {
+    a: int;
+    b: int;
+}
+
+@MCPTool("add", "Adds two numbers together", "AddArgs")
+function add(a, b) {
+    return int(a) + int(b);
 }</code></pre>
-        <p>If you omit a schema, MALDA builds JSON Schema from the parameter names: every property is type <code>"string"</code> and required. Pass a JSON schema string as the third argument when you need enums, numbers, or optional fields:</p>
-        <pre><code>@MCPTool("tool_name", "Tool description", "{\"type\":\"object\",\"properties\":{...}}")
-function myTool(param1) {
+        <p>If you omit a schema, MALDA builds JSON Schema from the parameter names: every property is type <code>"string"</code> and required. The optional third argument may be:</p>
+        <ul>
+            <li>A registered <code>schema</code> or sum-type name — a string <code>"AddArgs"</code> or a bare identifier <code>AddArgs</code>. That name is resolved the same way as <code>validate("AddArgs", …)</code>.</li>
+            <li>A JSON schema object string, when you need enums, defaults, or other JSON Schema keywords the MALDA <code>schema</code> syntax does not express.</li>
+        </ul>
+        <pre><code>@MCPTool("get_weather", "Gets weather for a location", "{\"type\":\"object\",\"properties\":{\"location\":{\"type\":\"string\"},\"unit\":{\"type\":\"string\",\"enum\":[\"celsius\",\"fahrenheit\"]}},\"required\":[\"location\"]}")
+function getWeather(location, unit) {
     // ...
 }</code></pre>
+        <p><code>server.getTools()</code> returns <code>{ name, description, inputSchema }</code> for each <code>@MCPTool</code> without starting STDIO — useful to inspect the resolved schema. Same file: <code>Examples/MCP/mcp_schema_tool.malda</code>. <code>@Tool</code> accepts the same third argument (see the <code>malda new agent</code> scaffold).</p>
 
         <h2>20.3 MCPServer</h2>
         <pre><code>var server = new MCPServer();                    // STDIO transport (default)
@@ -75,7 +85,7 @@ var server = new MCPServer("stdio");            // Explicit STDIO transport</cod
         <ul>
             <li><code>start()</code>: discover <code>@MCPTool</code> functions and serve JSON-RPC</li>
             <li><code>stop()</code>: stop the server</li>
-            <li><code>getTools()</code>: list registered tools</li>
+            <li><code>getTools()</code>: list <code>{ name, description, inputSchema }</code> (works before <code>start()</code>)</li>
             <li><code>isRunning</code>: loop until the host disconnects</li>
         </ul>
         <p>JSON-RPC methods implemented: <code>initialize</code>, <code>tools/list</code>, <code>tools/call</code>, <code>notifications/initialized</code>.</p>

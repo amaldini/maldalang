@@ -376,6 +376,7 @@ public class ScaffoldingTests : TestBase
             Assert.Contains("include \"tools.malda\"", app);
             Assert.Contains("cap.fileRead", app);
             Assert.Contains("@Tool(\"read_note\"", app);
+            Assert.Contains("\"NoteArgs\"", app);
             Assert.Contains("getProgramDirectory()", app);
             Assert.DoesNotContain("io.readFile(args.path)", app);
 

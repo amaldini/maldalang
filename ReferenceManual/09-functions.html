@@ -204,10 +204,15 @@ function handleToolArgs(raw) {
     print(normalizeName(check.data.name));
 }</code></pre>
         <h3>@Tool Decorator</h3>
-        <p>This is the function decorator. How agents call tools is in <a href="18-agent-orchestration.html">18. Agent Orchestration</a>.</p>
-        <pre><code>@Tool("tool_name", "Tool description")
-function myTool(param1, param2) {
-    return param1 + param2;
+        <p>This is the function decorator. How agents call tools is in <a href="18-agent-orchestration.html">18. Agent Orchestration</a>. The optional third argument is a MALDA schema or sum-type name, or a JSON schema object string (same rules as <a href="20-mcp-server.html">@MCPTool</a>).</p>
+        <pre><code>schema SumArgs {
+    a: int;
+    b: int;
+}
+
+@Tool("add", "Adds two numbers", "SumArgs")
+function add(a, b) {
+    return int(a) + int(b);
 }</code></pre>
         <h3>REST API Decorators</h3>
         <p>Routing, middleware, and a complete server are in <a href="27-rest-api.html">27. REST API Server</a>.</p>
