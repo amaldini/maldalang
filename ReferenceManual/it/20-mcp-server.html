@@ -59,15 +59,25 @@ while (server.isRunning) {
         </div>
 
         <h2>20.2 @MCPTool e schema</h2>
-        <pre><code>@MCPTool("tool_name", "Tool description")
-function myTool(param1, param2) {
-    return param1 + param2;
+        <pre><code>schema AddArgs {
+    a: int;
+    b: int;
+}
+
+@MCPTool("add", "Adds two numbers together", "AddArgs")
+function add(a, b) {
+    return int(a) + int(b);
 }</code></pre>
-        <p>Se ometti uno schema, MALDA costruisce il JSON Schema dai nomi dei parametri: ogni property ha tipo <code>"string"</code> ed è required. Passa una stringa JSON Schema come terzo argomento quando ti servono enum, numeri o campi opzionali:</p>
-        <pre><code>@MCPTool("tool_name", "Tool description", "{\"type\":\"object\",\"properties\":{...}}")
-function myTool(param1) {
+        <p>Se ometti uno schema, MALDA costruisce il JSON Schema dai nomi dei parametri: ogni property ha tipo <code>"string"</code> ed è required. Il terzo argomento opzionale può essere:</p>
+        <ul>
+            <li>Il nome di uno <code>schema</code> o di un tipo somma registrato — stringa <code>"AddArgs"</code> o identificatore <code>AddArgs</code>. Lo stesso percorso di <code>validate("AddArgs", …)</code>.</li>
+            <li>Una stringa JSON Schema, quando servono enum, default o altre keyword che la sintassi <code>schema</code> di MALDA non esprime.</li>
+        </ul>
+        <pre><code>@MCPTool("get_weather", "Gets weather for a location", "{\"type\":\"object\",\"properties\":{\"location\":{\"type\":\"string\"},\"unit\":{\"type\":\"string\",\"enum\":[\"celsius\",\"fahrenheit\"]}},\"required\":[\"location\"]}")
+function getWeather(location, unit) {
     // ...
 }</code></pre>
+        <p><code>server.getTools()</code> restituisce <code>{ name, description, inputSchema }</code> per ogni <code>@MCPTool</code> senza avviare STDIO. Stesso file: <code>Examples/MCP/mcp_schema_tool.malda</code>. <code>@Tool</code> accetta lo stesso terzo argomento.</p>
 
         <h2>20.3 MCPServer</h2>
         <pre><code>var server = new MCPServer();                    // STDIO transport (default)
@@ -75,7 +85,7 @@ var server = new MCPServer("stdio");            // Explicit STDIO transport</cod
         <ul>
             <li><code>start()</code>: scopre le funzioni <code>@MCPTool</code> e serve JSON-RPC</li>
             <li><code>stop()</code>: arresta il server</li>
-            <li><code>getTools()</code>: elenca i tool registrati</li>
+            <li><code>getTools()</code>: elenca <code>{ name, description, inputSchema }</code> (anche prima di <code>start()</code>)</li>
             <li><code>isRunning</code>: resta in loop finché l'host non si disconnette</li>
         </ul>
         <p>Metodi JSON-RPC implementati: <code>initialize</code>, <code>tools/list</code>, <code>tools/call</code>, <code>notifications/initialized</code>.</p>

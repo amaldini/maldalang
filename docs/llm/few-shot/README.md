@@ -36,7 +36,7 @@ After generating a snippet, diagnose with `malda check path.malda --json` before
 | `27_eval_prompt.malda` | `evalPrompt` / `instance.eval` offline fixture in/out (no LLM) |
 | `28_api_program_prompt.malda` | `prompt … -> program(Api)` + `evalPrompt` fixture + `runProgram` |
 | `29_runprogram_in_step.malda` | `step result = runProgram(prog)` (durable; plan JSON is input) |
-| `30_prompt_attachments.malda` | `attachments:` image path/url on a PromptInstance (offline) |
+| `31_mcptool_schema.malda` | `@MCPTool` third arg is a schema name; `getTools()` prints `inputSchema` |
 
 Also useful from the main tree:
 

@@ -1,0 +1,16 @@
+// @MCPTool / @Tool third arg: schema name (string or identifier).
+schema AddArgs {
+    a: int;
+    b: int;
+}
+
+@MCPTool("add", "Adds two numbers", "AddArgs")
+function add(a, b) {
+    return int(a) + int(b);
+}
+
+var server = new MCPServer();
+var tools = server.getTools();
+io.print(tools[0].name);
+io.print(tools[0].inputSchema.properties.a.type);
+io.print(tools[0].inputSchema.required.length);

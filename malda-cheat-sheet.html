@@ -818,13 +818,19 @@ db.disconnect();</code></pre>
           <h2>14) MCP Server + Client</h2>
           <p class="hint">Expose MALDA functions as tools; call another server with <code>MCPClient</code>.</p>
         </div>
-        <pre><code class="language-malda">@MCPTool("add", "Adds two numbers")
+        <pre><code class="language-malda">schema AddArgs {
+  a: int;
+  b: int;
+}
+
+@MCPTool("add", "Adds two numbers", "AddArgs")
 function add(a, b) {
   return int(a) + int(b);
 }
 
 var mcpServer = new MCPServer();
-mcpServer.start();
+var listed = mcpServer.getTools();
+io.print(listed[0].inputSchema.properties.a.type);
 
 var mcp = new MCPClient("example-server");
 var ok = mcp.connect("malda", ["server.malda"]);

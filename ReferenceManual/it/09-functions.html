@@ -205,10 +205,15 @@ function handleToolArgs(raw) {
     print(normalizeName(check.data.name));
 }</code></pre>
         <h3>Decoratore @Tool</h3>
-        <p>Questo è il decoratore sulla funzione. Come gli agenti chiamano i tool è in <a href="18-agent-orchestration.html">18. Orchestrazione di agenti</a>.</p>
-        <pre><code>@Tool("tool_name", "Tool description")
-function myTool(param1, param2) {
-    return param1 + param2;
+        <p>Questo è il decoratore sulla funzione. Come gli agenti chiamano i tool è in <a href="18-agent-orchestration.html">18. Orchestrazione di agenti</a>. Il terzo argomento opzionale è il nome di uno schema o tipo somma MALDA, oppure una stringa JSON Schema (stesse regole di <a href="20-mcp-server.html">@MCPTool</a>).</p>
+        <pre><code>schema SumArgs {
+    a: int;
+    b: int;
+}
+
+@Tool("add", "Adds two numbers", "SumArgs")
+function add(a, b) {
+    return int(a) + int(b);
 }</code></pre>
         <h3>Decoratori REST API</h3>
         <p>Routing, middleware e un server completo sono in <a href="27-rest-api.html">27. Server REST API</a>.</p>

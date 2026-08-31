@@ -46,6 +46,11 @@ Compact rules for generating correct `.malda`. Prefer this over scraping HTML ma
   The model must not pass a token (JSON cannot round-trip one). Host-mint a workspace
   root and `cap.confine` a relative path from tool args. Scaffold: `malda new agent`.
   Example: `Examples/Tools/capability_tokens.malda`. Few-shot: `docs/llm/few-shot/26_tool_cap_read.malda`.
+  `@MCPTool("name", "desc", schema?)` / `@Tool(...)` optional third argument is a
+  registered schema or sum-type name (`"AddArgs"` or `AddArgs`), a JSON schema object
+  string, or omitted (all parameters advertised as strings). `new MCPServer().getTools()`
+  returns `{ name, description, inputSchema }` without starting STDIO.
+  Example: `Examples/MCP/mcp_schema_tool.malda`. Few-shot: `docs/llm/few-shot/31_mcptool_schema.malda`.
   Without `await`, you get a `PromptInstance` (schema attached when resolvable and no
   `gather:`). `evalPrompt(instance, fixture)` (or `instance.eval(fixture)`) runs the same
   extract / validate / coerce path as `await` on a dict or LLM-shaped JSON string — no

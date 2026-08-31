@@ -75,6 +75,9 @@ public class ToolInstance : ObjectInstance
         return _interpreter;
     }
     
+    /// <summary>JSON Schema object stored as the tool's parameters (input schema).</summary>
+    public RuntimeValue GetParametersSchema() => _parameters;
+
     public System.Reflection.MethodInfo? GetTranspiledMethod()
     {
         return _transpiledMethod;

@@ -1576,37 +1576,12 @@ public partial class Interpreter
             }
             var toolDescription = descValue.AsString();
             
-            // Evaluate optional schema (third argument, if present)
+            // Evaluate optional schema (third argument): schema/sum-type name, JSON string, or object.
             RuntimeValue? schema = null;
             if (decorator.Arguments.Count >= 3)
             {
-                try
-                {
-                    schema = EvaluateDecoratorArgumentSync(decorator.Arguments[2]);
-                    // If it's a string, try to parse it as JSON
-                    if (schema.Type == ValueType.String)
-                    {
-                        var jsonStr = schema.AsString();
-                        try
-                        {
-                            using var doc = System.Text.Json.JsonDocument.Parse(jsonStr);
-                            schema = JsonToRuntimeValue(doc.RootElement);
-                        }
-                        catch
-                        {
-                            throw new RuntimeException("@Tool decorator third argument (schema) must be a valid JSON object string or will be auto-generated");
-                        }
-                    }
-                    else if (schema.Type != ValueType.Object)
-                    {
-                        throw new RuntimeException("@Tool decorator third argument (schema) must be an object or JSON string");
-                    }
-                }
-                catch (RuntimeException)
-                {
-                    // If evaluation fails, schema will be auto-generated
-                    schema = null;
-                }
+                schema = ToolSchemaResolver.Resolve(
+                    EvaluateDecoratorArgumentSync(decorator.Arguments[2]));
             }
             
             // Generate schema if not provided
@@ -1670,17 +1645,15 @@ public partial class Interpreter
     
     private RuntimeValue EvaluateDecoratorArgumentSync(Expression expr)
     {
-        // Handle literal expressions
-        if (expr is LiteralExpression literal)
+        try
         {
-            return RuntimeValueFromLiteral(literal);
+            return ToolSchemaResolver.EvaluateNameOrLiteral(expr, this);
         }
-        
-        // For object literals, we'd need to parse them, but MALDA doesn't have object literal syntax
-        // Instead, schema should be provided as a JSON string that can be parsed, or we auto-generate
-        // For now, we only support string literals for name/description
-        // Schema will be auto-generated if not provided as a simple object
-        throw new RuntimeException($"Decorator argument must be a literal (string, number, boolean, null). For schema, use auto-generation or provide via other means.");
+        catch (Exception ex)
+        {
+            throw new RuntimeException(
+                $"Decorator argument must be a literal (string, number, boolean, null) or a schema/sum-type name. {ex.Message}");
+        }
     }
     
     internal async Task<RuntimeValue?> ExecuteAsync(Statement stmt)

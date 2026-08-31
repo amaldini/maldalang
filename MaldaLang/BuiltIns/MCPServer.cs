@@ -125,19 +125,18 @@ public class MCPServerInstance : ObjectInstance
 
     private RuntimeValue GetTools()
     {
-        if (_protocolHandler == null)
+        var handler = _protocolHandler ?? new MCPProtocolHandler(_interpreter);
+        var tools = new List<RuntimeValue>();
+        foreach (var tool in handler.ListDiscoveredTools())
         {
-            // If not started, create a temporary handler to discover tools
-            var tempHandler = new MCPProtocolHandler(_interpreter);
-            // Tools are discovered in initialize, but we can manually trigger discovery
-            // For now, return empty array if not started
-            return RuntimeValue.Array(new List<RuntimeValue>());
+            var row = new JsonObject();
+            row.Set("name", RuntimeValue.String(tool.Name));
+            row.Set("description", RuntimeValue.String(tool.Description));
+            var inputSchema = MCP.ToolSchemaGenerator.GenerateToolSchema(tool);
+            row.Set("inputSchema", ToolSchemaResolver.FromJsonElement(inputSchema));
+            tools.Add(RuntimeValue.Object(row));
         }
 
-        // Return list of tool names from the handler
-        var tools = new List<RuntimeValue>();
-        // We need to access the tools from the handler
-        // For now, return a simple list - this could be enhanced
         return RuntimeValue.Array(tools);
     }
 

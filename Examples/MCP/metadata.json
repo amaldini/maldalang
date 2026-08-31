@@ -1,9 +1,9 @@
 {
   "examples": [
     {
-      "name": "MCP Tools Server",
-      "description": "Create custom MCP tools using @MCPTool decorator for Claude Desktop and ChatGPT",
-      "file": "mcp_tools_server.malda"
+      "name": "MCP Schema Tool",
+      "description": "Expose @MCPTool inputSchema from a MALDA schema name (no STDIO loop)",
+      "file": "mcp_schema_tool.malda"
     },
     {
       "name": "MCP Client",

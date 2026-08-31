@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — @MCPTool / @Tool schema names)
+
+- **`@MCPTool` / `@Tool` third argument:** a registered `schema` or sum-type name (`"AddArgs"` or the identifier `AddArgs`) is resolved to JSON Schema the same way as `validate("AddArgs", …)`. A JSON schema object string still works (enums, defaults). Omitted still auto-generates all-string properties. Unknown names error (they used to be ignored when the string was not valid JSON). `MCPServer.getTools()` returns `{ name, description, inputSchema }` without starting STDIO. Interpreter and C# transpile agree. JavaScript: n/a (MCP is host-only). Example: `Examples/MCP/mcp_schema_tool.malda`. Few-shot: `docs/llm/few-shot/31_mcptool_schema.malda`.
+
 #### Added (MINOR — prompt attachments)
 
 - **Prompt `attachments:` (image/pdf):** additive prompt-body field. `user` / `system` stay strings. Each item is `{ kind: "image"|"pdf", path }` or `{ kind: "image", url }` (`http`/`https` pass-through, no in-process fetch). Kind may be inferred from `.png`/`.jpg`/`.jpeg`/`.webp`/`.gif`/`.pdf`. `path` may be a string or `cap.fileRead` token. Building a `PromptInstance` stores metadata only; `await` / `runPrompt` / `agent.think` encode OpenAI `image_url` / `file` content parts on HTTP clients. In-process GGUF throws (text-only). Max 8 items, 10 MB each. JavaScript: n/a (prompts are host-only). Example: `Examples/Prompts/multimodal_attachments.malda`.
@@ -427,7 +431,7 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-08-26 | MINOR: Mode B sends `response_format` with tools (retry/remember if rejected) |
 | 2026-08-27 | MINOR: `malda new agent` cap-confined tool scaffold |
 | 2026-08-27 | MINOR: `evalPrompt(prompt, fixture)` offline PromptInstance harness |
-| 2026-08-28 | MINOR: in-process GGUF GBNF constrained decode for typed prompts |
+| 2026-08-31 | MINOR: `@MCPTool` / `@Tool` third argument accepts a MALDA schema name |
 | 2026-08-28 | PATCH: `program(Api)` few-shots + `runProgram` in a durable `step` |
 | 2026-08-21 | MINOR: JS `game.loadImage` / camera / draw extras (G1) |
 | 2026-08-21 | MINOR: JS `game.wasKeyPressed` / touches / gamepad (G2) |

@@ -89,6 +89,12 @@ public sealed class TypeHintNameIndex
     public bool IsDeclared(string name) =>
         !string.IsNullOrWhiteSpace(name) && _declared.Contains(name);
 
+    /// <summary>True when <paramref name="name"/> is a declared or imported <c>schema</c> or <c>type</c>.</summary>
+    public bool IsDeclaredSchemaOrSumType(string name) =>
+        !string.IsNullOrWhiteSpace(name) &&
+        _declaredKind.TryGetValue(name, out var kind) &&
+        (kind == "schema" || kind == "type");
+
     /// <summary>
     /// True when the name is a Tier 0 hint, a declared class/schema, or a host class.
     /// Tier 0 matching remains case-insensitive; declared/host names use ordinal match.
