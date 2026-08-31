@@ -1263,6 +1263,8 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("riepilogo, proposta, verbale, checklist, brief", source, StringComparison.Ordinal);
             Assert.DoesNotContain("preventivo, itinerario", source, StringComparison.Ordinal);
             Assert.Contains("function generateDocumentCli(", source, StringComparison.Ordinal);
+            Assert.Contains("function expandAskRetrievalQuery(", source, StringComparison.Ordinal);
+            Assert.Contains("function askCompletedHistoryTurns(", source, StringComparison.Ordinal);
             Assert.Contains("function askExtractCitedSlugs(", source, StringComparison.Ordinal);
             Assert.Contains("function askAnswerHtmlWithCitations(", source, StringComparison.Ordinal);
             Assert.Contains("@GET(\"/note\")", source, StringComparison.Ordinal);

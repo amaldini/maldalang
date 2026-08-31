@@ -2,6 +2,8 @@
 // From repo root:
 //   malda Examples/Agents/sb/eval/run_retrieval_eval.malda
 // Prints HIT / MISS per question and HIT_AT_K / EVAL_PASS.
+// Items with priorId test conversation-aware expansion (follow-up miss on
+// the raw question; topic-switch expectRawHit keeps the first-pass hit).
 
 var UI_LANG = "en";
 var TOP_K = 5;
@@ -44,6 +46,46 @@ function evalDataDir() {
     return ".";
 }
 
+function evalFindQuestion(questions, id) {
+    foreach (var item in questions) {
+        if (item.id == id) {
+            return item;
+        }
+    }
+    return null;
+}
+
+function evalCatalogTitle(catalog, slug) {
+    foreach (var note in catalog.notes) {
+        if (note.slug == slug) {
+            return string(note.title);
+        }
+    }
+    return string(slug);
+}
+
+function evalHistoryFromPrior(questions, catalog, priorId) {
+    var prior = evalFindQuestion(questions, priorId);
+    if (prior == null) {
+        return [];
+    }
+    var sources = [];
+    if (prior.expectSlugs != null) {
+        foreach (var slug in prior.expectSlugs) {
+            sources.append({
+                "slug": slug,
+                "title": evalCatalogTitle(catalog, slug)
+            });
+        }
+    }
+    return [{
+        "question": prior.q,
+        "answer": "prior",
+        "sources": sources,
+        "pending": false
+    }];
+}
+
 include "../05-ask-common.malda";
 
 var here = evalDataDir();
@@ -52,11 +94,44 @@ var questions = parseJSON(io.readFile(io.pathJoin(here, "questions.json")));
 var hits = 0;
 var total = questions.length;
 foreach (var item in questions) {
-    var picked = selectNotes(here, catalog, item.q, []);
-    var ok = retrievalHitAtK(picked, item.expectSlugs, TOP_K);
     var top = "";
-    if (picked.length > 0) {
-        top = string(picked[0].note.slug);
+    var ok = false;
+    var priorId = "";
+    if (item.priorId != null) {
+        priorId = str.trim(string(item.priorId));
+    }
+    if (priorId == "") {
+        var picked = selectNotes(here, catalog, item.q, []);
+        ok = retrievalHitAtK(picked, item.expectSlugs, TOP_K);
+        if (picked.length > 0) {
+            top = string(picked[0].note.slug);
+        }
+    } else {
+        var history = evalHistoryFromPrior(questions, catalog, priorId);
+        if (history.length == 0) {
+            print("MISS " + item.id + " missing priorId=" + priorId);
+            continue;
+        }
+        var rawPicked = selectNotes(here, catalog, item.q, []);
+        var rawHit = retrievalHitAtK(rawPicked, item.expectSlugs, TOP_K);
+        var expectRaw = item.expectRawHit == true;
+        if (expectRaw) {
+            ok = rawHit;
+            if (rawPicked.length > 0) {
+                top = string(rawPicked[0].note.slug);
+            }
+        } else {
+            if (rawHit) {
+                print("MISS " + item.id + " raw unexpectedly hit");
+                continue;
+            }
+            var expanded = expandAskRetrievalQuery(item.q, history);
+            var picked2 = selectNotes(here, catalog, expanded, []);
+            ok = retrievalHitAtK(picked2, item.expectSlugs, TOP_K);
+            if (picked2.length > 0) {
+                top = string(picked2[0].note.slug);
+            }
+        }
     }
     if (ok) {
         hits = hits + 1;

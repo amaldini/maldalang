@@ -34,5 +34,21 @@
     "lang": "en",
     "q": "Garden compost pH for vegetable beds",
     "expectSlugs": ["garden-compost-ph"]
+  },
+  {
+    "id": "q-inverter-followup-night",
+    "lang": "en",
+    "q": "Does it work at night?",
+    "priorId": "q-inverter-en",
+    "expectRawHit": false,
+    "expectSlugs": ["photovoltaic-inverters"]
+  },
+  {
+    "id": "q-topic-switch-indemnity",
+    "lang": "en",
+    "q": "What does an indemnity clause cover in a contract?",
+    "priorId": "q-inverter-en",
+    "expectRawHit": true,
+    "expectSlugs": ["indemnity-clause"]
   }
 ]

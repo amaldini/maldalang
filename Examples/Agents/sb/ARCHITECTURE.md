@@ -29,6 +29,15 @@ Offline lexical gold set: [`eval/questions.json`](eval/questions.json) +
 [`eval/catalog.json`](eval/catalog.json). Runner:
 `malda Examples/Agents/sb/eval/run_retrieval_eval.malda` (no LLM).
 
+## Conversation-aware retrieval (P1)
+
+ASK retrieves with the raw question first. If that is weak/empty and the
+conversation already has completed turns, `runAskTurn` retries once with
+`expandAskRetrievalQuery` (current question + last 1–2 questions + last
+source titles, capped). The LLM still sees the raw question. Pending ASK
+placeholders are skipped. A strong first hit (topic switch) is not expanded.
+Audit field: `expanded`.
+
 ## Semantic rerank (P1)
 
 GraphMemory ASK reranks hybrid hits with `rerankMode: cross` by default

@@ -3968,6 +3968,7 @@ function askUiSubmit(body, response, cookies, req) {
             "qLen": str.length(question),
             "sources": srcCount,
             "weak": turn.weakRetrieval == true,
+            "expanded": turn.retrievalExpanded == true,
             "tags": askGetTagFilter(),
             "mode": askGetAskMode(),
             "generated": turn.generated == true

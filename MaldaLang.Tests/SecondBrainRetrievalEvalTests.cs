@@ -28,9 +28,16 @@ public class SecondBrainRetrievalEvalTests : TestBase
         var common = File.ReadAllText(Path.Combine(RepoRoot, "Examples", "Agents", "sb", "05-ask-common.malda"));
         Assert.Contains("function retrievalHitAtK(", common, StringComparison.Ordinal);
         Assert.Contains("function selectNotes(", common, StringComparison.Ordinal);
+        Assert.Contains("function expandAskRetrievalQuery(", common, StringComparison.Ordinal);
+        Assert.Contains("function askCompletedHistoryTurns(", common, StringComparison.Ordinal);
         var questions = File.ReadAllText(Path.Combine(EvalDir, "questions.json"));
         Assert.Contains("expectSlugs", questions, StringComparison.Ordinal);
         Assert.Contains("photovoltaic-inverters", questions, StringComparison.Ordinal);
+        Assert.Contains("priorId", questions, StringComparison.Ordinal);
+        Assert.Contains("q-inverter-followup-night", questions, StringComparison.Ordinal);
+        Assert.Contains("q-topic-switch-indemnity", questions, StringComparison.Ordinal);
+        var runner = File.ReadAllText(Path.Combine(EvalDir, "run_retrieval_eval.malda"));
+        Assert.Contains("expandAskRetrievalQuery(", runner, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -42,7 +49,7 @@ public class SecondBrainRetrievalEvalTests : TestBase
             Directory.SetCurrentDirectory(RepoRoot);
             var output = await InterpretEvalAsync();
             Assert.Contains("EVAL_PASS", output, StringComparison.Ordinal);
-            Assert.Contains("HIT_AT_K=6/6", output, StringComparison.Ordinal);
+            Assert.Contains("HIT_AT_K=8/8", output, StringComparison.Ordinal);
             Assert.DoesNotContain("EVAL_FAIL", output, StringComparison.Ordinal);
             Assert.DoesNotContain("MISS ", output, StringComparison.Ordinal);
         }

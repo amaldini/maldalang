@@ -288,6 +288,101 @@ function askSourcesFromPicked(picked) {
     return sources;
 }
 
+function askCompletedHistoryTurns(history, currentQuestion) {
+    var completed = [];
+    if (history == null) {
+        return completed;
+    }
+    var current = str.trim(string(currentQuestion));
+    foreach (var turn in history) {
+        if (turn == null or turn.pending == true) {
+            continue;
+        }
+        var q = "";
+        if (turn.question != null) {
+            q = str.trim(string(turn.question));
+        }
+        if (q == "") {
+            continue;
+        }
+        if (current != "" and q == current) {
+            continue;
+        }
+        completed.append(turn);
+    }
+    return completed;
+}
+
+function expandAskRetrievalQuery(question, history) {
+    var q = str.trim(string(question));
+    var prior = askCompletedHistoryTurns(history, q);
+    if (prior.length == 0) {
+        return q;
+    }
+    var parts = [];
+    parts.append(q);
+    var start = prior.length - 2;
+    if (start < 0) {
+        start = 0;
+    }
+    var i = start;
+    while (i < prior.length) {
+        var pq = "";
+        if (prior[i].question != null) {
+            pq = str.trim(string(prior[i].question));
+        }
+        if (pq != "" and pq != q) {
+            parts.append(pq);
+        }
+        i = i + 1;
+    }
+    var last = prior[prior.length - 1];
+    if (last.sources != null and typeOf(last.sources) == "array") {
+        foreach (var src in last.sources) {
+            var label = "";
+            if (src != null and src.title != null) {
+                label = str.trim(string(src.title));
+            }
+            if (label == "" and src != null and src.slug != null) {
+                label = str.trim(string(src.slug));
+            }
+            if (label != "") {
+                parts.append(label);
+            }
+        }
+    }
+    var expanded = str.trim(str.join(parts, " "));
+    if (expanded == "") {
+        return q;
+    }
+    if (str.length(expanded) > 400) {
+        expanded = str.substring(expanded, 0, 400);
+    }
+    return expanded;
+}
+
+function retrievalTopScore(selection) {
+    if (selection == null or selection.picked == null or selection.picked.length == 0) {
+        return 0.0;
+    }
+    if (selection.picked[0].score == null) {
+        return 0.0;
+    }
+    return float(selection.picked[0].score);
+}
+
+function retrievalIsWeak(selection) {
+    var n = 0;
+    if (selection != null and selection.picked != null) {
+        n = selection.picked.length;
+    }
+    var minScore = ASK_MIN_LEXICAL_SCORE;
+    if (selection != null and selection.channel == "graphmemory") {
+        minScore = ASK_MIN_RETRIEVAL_SCORE;
+    }
+    return n == 0 or retrievalTopScore(selection) < minScore;
+}
+
 function runAskTurn(question) {
     var generate = askGetAskMode() == "generate";
     var session = askGetSession();
@@ -300,31 +395,49 @@ function runAskTurn(question) {
 
     var tagFilter = askGetTagFilter();
     var selection = selectNotesForAsk(brainDir, catalog, question, tagFilter);
+    var retrievalExpanded = false;
+    if (retrievalIsWeak(selection)) {
+        var history = askGetHistory();
+        var prior = askCompletedHistoryTurns(history, question);
+        if (prior.length > 0) {
+            var expanded = expandAskRetrievalQuery(question, history);
+            if (expanded != str.trim(string(question))) {
+                var retry = selectNotesForAsk(brainDir, catalog, expanded, tagFilter);
+                retry.expanded = true;
+                retry.retrievalQuery = expanded;
+                if (not retrievalIsWeak(retry) or
+                        retrievalTopScore(retry) > retrievalTopScore(selection)) {
+                    AnsiConsole.markupLine("[dim]" + t(
+                        "retrieval: expanded from conversation",
+                        "recupero: espanso dalla conversazione") + "[/]");
+                    selection = retry;
+                    retrievalExpanded = true;
+                }
+            }
+        }
+    }
     var picked = selection.picked;
-    var topScore = 0.0;
-    if (picked.length > 0) {
-        topScore = float(picked[0].score);
-    }
-    var minScore = ASK_MIN_LEXICAL_SCORE;
-    if (selection.channel == "graphmemory") {
-        minScore = ASK_MIN_RETRIEVAL_SCORE;
-    }
-    if (picked.length == 0 or
-            (topScore < minScore and not askGetForceAnswer())) {
+    var topScore = retrievalTopScore(selection);
+    if (retrievalIsWeak(selection) and not askGetForceAnswer()) {
         AnsiConsole.markupLine("[yellow]" + t(
             "Weak / empty retrieval (score=",
             "Recupero debole / vuoto (score=") + string(topScore) +
             ", channel=" + askAsText(selection.channel) + ").[/]");
-        if (askGetForceAnswer()) {
-            return runChatOnlyTurn(question);
-        }
         return {
             "question": question,
             "answer": askWeakRetrievalMessage(),
             "sources": askSourcesFromPicked(picked),
             "error": "",
-            "weakRetrieval": true
+            "weakRetrieval": true,
+            "retrievalExpanded": retrievalExpanded
         };
+    }
+    if (retrievalIsWeak(selection) and askGetForceAnswer()) {
+        AnsiConsole.markupLine("[yellow]" + t(
+            "Weak / empty retrieval (score=",
+            "Recupero debole / vuoto (score=") + string(topScore) +
+            ", channel=" + askAsText(selection.channel) + ").[/]");
+        return runChatOnlyTurn(question);
     }
 
     var sources = askSourcesFromPicked(picked);
@@ -372,7 +485,8 @@ function runAskTurn(question) {
             "question": question,
             "answer": "",
             "sources": sources,
-            "error": t("No answer from the LLM.", "Nessuna risposta dall'LLM.")
+            "error": t("No answer from the LLM.", "Nessuna risposta dall'LLM."),
+            "retrievalExpanded": retrievalExpanded
         };
     }
     AnsiConsole.markupLine("[dim]" + t("Answer ready.", "Risposta pronta.") + "[/]");
@@ -380,7 +494,8 @@ function runAskTurn(question) {
         "question": question,
         "answer": answer,
         "sources": sources,
-        "error": ""
+        "error": "",
+        "retrievalExpanded": retrievalExpanded
     };
     if (generate) {
         return askMarkGeneratedTurn(turn, question);
