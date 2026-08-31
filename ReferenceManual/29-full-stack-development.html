@@ -101,7 +101,7 @@ function getItems(status) {
 @POST("/api/items")
 function createItem(body) {
     var now = dateNow();
-    var insert = dbExecute(
+    dbExecute(
         "INSERT INTO Items (ownerName, email, title, description, status, priority, createdAt) VALUES (@ownerName, @email, @title, @description, 'open', 'normal', @createdAt)",
         {
             "ownerName": body.ownerName,
@@ -111,7 +111,8 @@ function createItem(body) {
             "createdAt": now
         }
     );
-    return {"status": 201, "data": {"id": insert.lastInsertId, "createdAt": now}};
+    var row = dbQuery("SELECT last_insert_rowid() AS id")[0];
+    return {"status": 201, "data": {"id": row.id, "createdAt": now}};
 }
 
 @PATCH("/api/items/{id}/status")
@@ -217,8 +218,9 @@ function addItem(req, body, res) {
     if (errors.length &gt; 0) {
         return {"status": 400, "body": "&lt;ul class='error-list'&gt;&lt;li&gt;" + errors[0] + "&lt;/li&gt;&lt;/ul&gt;"};
     }
-    var id = dbExecute("INSERT INTO items (...) VALUES (...)", body).lastInsertId;
-    return RedirectTo("/web/items?added=" + id);
+    dbExecute("INSERT INTO items (...) VALUES (...)", body);
+    var row = dbQuery("SELECT last_insert_rowid() AS id")[0];
+    return RedirectTo("/web/items?added=" + row.id);
 }</code></pre>
         <p>For full schema structure and template paths, see <a href="24-web-ui.html">24. Web UI Server Components</a> (24.3.1.3 CRUD schema reference).</p>
 
@@ -229,7 +231,7 @@ function addItem(req, body, res) {
             <li>Parameterized SQL for all input values</li>
             <li>Simple mapping functions from row objects to domain objects</li>
         </ul>
-        <p>For provider setup and connection details, see <a href="16-database.html">16. Database Support</a>.</p>
+        <p><code>execute</code> / <code>insert</code> return the rows-affected count, not a new key. After an SQLite insert, read the id with <code>SELECT last_insert_rowid() AS id</code> on the same connection (SQL Server: <code>SCOPE_IDENTITY()</code>; PostgreSQL: <code>INSERT … RETURNING id</code>). There is no <code>lastInsertId</code> field. See <a href="16-database.html">16. Database Support</a> §16.6.</p>
 
         <h2>29.7 AI triage workflow (optional but powerful)</h2>
         <p>Use an agent to classify incoming item urgency and propose next action:</p>

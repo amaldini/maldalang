@@ -40,7 +40,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 26-browser-javascript-backend.html | 2f01f4d28dbebd665dc66a4f12b16d4067678633331e5993ab4736c105943b6e |
 | 27-rest-api.html | 874dec7a40433db346216040cca5491666e4e1ee4eb7a9f859eeb859814158b8 |
 | 28-rest-web-client.html | cb6c87e916e91f2a846291ee89bd92b63da193a4ffaaff073edfa831eeb1849a |
-| 29-full-stack-development.html | 405ad3a37a1b41fb0304461e01e0eab4486143a8c6c0a361532faec969e8fd3d |
+| 29-full-stack-development.html | cb17c68bc125ae4e24107aa0688a43d3a1924d8d9893ede165e27d429a2b8b54 |
 | 30-dotnet-interop.html | 05851658a24a5443788fdb120089895233c7b4f942b4063567bb8e976561a50a |
 | 31-device-integration.html | 4ab6b3a98173ff68c21be153e70f659e3812f8ae837a15294df9b803ee94f3e7 |
 | 32-personal-assistant.html | 162ecfe8e778bbbae129ac78cc6660d6140b78812c6dce8fe92f32f7574185d8 |

@@ -102,7 +102,7 @@ function getItems(status) {
 @POST("/api/items")
 function createItem(body) {
     var now = dateNow();
-    var insert = dbExecute(
+    dbExecute(
         "INSERT INTO Items (ownerName, email, title, description, status, priority, createdAt) VALUES (@ownerName, @email, @title, @description, 'open', 'normal', @createdAt)",
         {
             "ownerName": body.ownerName,
@@ -112,7 +112,8 @@ function createItem(body) {
             "createdAt": now
         }
     );
-    return {"status": 201, "data": {"id": insert.lastInsertId, "createdAt": now}};
+    var row = dbQuery("SELECT last_insert_rowid() AS id")[0];
+    return {"status": 201, "data": {"id": row.id, "createdAt": now}};
 }
 
 @PATCH("/api/items/{id}/status")
@@ -218,8 +219,9 @@ function addItem(req, body, res) {
     if (errors.length &gt; 0) {
         return {"status": 400, "body": "&lt;ul class='error-list'&gt;&lt;li&gt;" + errors[0] + "&lt;/li&gt;&lt;/ul&gt;"};
     }
-    var id = dbExecute("INSERT INTO items (...) VALUES (...)", body).lastInsertId;
-    return RedirectTo("/web/items?added=" + id);
+    dbExecute("INSERT INTO items (...) VALUES (...)", body);
+    var row = dbQuery("SELECT last_insert_rowid() AS id")[0];
+    return RedirectTo("/web/items?added=" + row.id);
 }</code></pre>
         <p>Per la struttura completa dello schema e i path dei template, vedi <a href="24-web-ui.html">24. Componenti server Web UI</a> (24.3.1.3 riferimento allo schema CRUD).</p>
 
@@ -230,7 +232,7 @@ function addItem(req, body, res) {
             <li>SQL parametrizzato per tutti i valori in input</li>
             <li>Semplici funzioni di mapping dagli oggetti riga agli oggetti di dominio</li>
         </ul>
-        <p>Per setup del provider e dettagli di connessione, vedi <a href="16-database.html">16. Supporto database</a>.</p>
+        <p><code>execute</code> / <code>insert</code> restituiscono il conteggio delle righe interessate, non una nuova chiave. Dopo un insert SQLite, leggi l'id con <code>SELECT last_insert_rowid() AS id</code> sulla stessa connessione (SQL Server: <code>SCOPE_IDENTITY()</code>; PostgreSQL: <code>INSERT … RETURNING id</code>). Non esiste un campo <code>lastInsertId</code>. Vedi <a href="16-database.html">16. Supporto database</a> §16.6.</p>
 
         <h2>29.7 Workflow di triage AI (opzionale ma potente)</h2>
         <p>Usa un agente per classificare l'urgenza degli item in arrivo e proporre l'azione successiva:</p>
