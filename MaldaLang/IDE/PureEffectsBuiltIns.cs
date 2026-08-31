@@ -13,7 +13,7 @@ public static class PureEffectsBuiltIns
     private static readonly FrozenSet<string> IoNames = new HashSet<string>(StringComparer.Ordinal)
     {
         "print", "input", "sleep", "reply",
-        "readFile", "readTextFileLines", "readFileBase64", "writeFile", "writeFileBase64",
+        "readFile", "readTextFileLines", "readFileBase64", "writeFile", "copyFile", "writeFileBase64",
         "deleteFile", "hasFile", "hasDirectory", "ensureDir", "listDirectory",
         "glob", "grep", "replaceInFile", "editFile", "runCommand",
         "httpGet", "httpPost", "httpPut", "httpDelete", "httpPatch",

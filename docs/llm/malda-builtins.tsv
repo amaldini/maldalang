@@ -13,9 +13,9 @@ append	<array>.append	1 argument: (item)	method on the array: items.append(item)
 approveWorkflowStep	approveWorkflowStep	at least 2 arguments: (instanceId, stepId, decision?, payload?)		
 argmax	math.argmax	1 argument: (array)		
 argmin	math.argmin	1 argument: (array)		
-asVariant	asVariant	2 arguments: (typeName, value)	throws if typeName is not a sum type or the tagged JSON is invalid; already-a-variant is idempotent; validate() does not coerce	variant
 asin	math.asin	1 argument		
 assert	assert	1-2 arguments: (condition, message?)	raises on a false condition; useful as an inline smoke check	
+asVariant	asVariant	2 arguments: (typeName, value)	throws if typeName is not a sum type or the tagged JSON is invalid; already-a-variant is idempotent; validate() does not coerce	variant
 atan	math.atan	1 argument		
 atan2	math.atan2	2 arguments		
 average	math.average	1 argument: (array)		
@@ -39,6 +39,7 @@ componentStatePin	componentStatePin	componentId and optional scope
 componentStateSet	componentStateSet	componentId, key, value, optional scope		
 componentStateUnpin	componentStateUnpin	componentId and optional scope		
 composePipe	composePipe	at least 2 callable steps		
+copyFile	io.copyFile	2 arguments: (src, dest)	binary-safe overwrite; returns false on I/O failure; rejects embed: src and dest; does not create parent directories	boolean
 cos	math.cos	1 argument		
 createAskUserTool	createAskUserTool	0 arguments		
 createCompileMALDATool	createCompileMALDATool	0-1 arguments: (workingDir?)		
@@ -195,8 +196,8 @@ pageLayout	pageLayout	title, bodyHtml, and optional options object
 panel	AnsiConsole.panel	at least 1 string argument: (content, title?, borderStyle?)	borderStyle: rounded|double|heavy (anything else -> square, no error); body AND title parse markup; unparseable markup renders literally; piped/non-TTY output collapses Unicode borders to square	
 parallelRun	parallelRun	(input, branches)		
 parseDate	parseDate	1 argument: (dateString)		
-parseJson	parseJson	2 arguments (value, schemaRef) and optional options object	schema-validating parser for LLM output, NOT a plain JSON reader	
-parseJSON	parseJSON	1 argument	plain JSON text to a value; note that parseJson with a lowercase s is a different built-in	
+parseJson	parseJson	2 arguments (value, schemaRef) and optional options object. For a plain JSON reader use parseJSON(text)	schema-validating parser for LLM output, NOT a plain JSON reader	
+parseJSON	parseJSON	1 argument (the JSON string). For schema-validated LLM JSON use parseJson(value, schemaRef)	plain JSON text to a value; note that parseJson with a lowercase s is a different built-in	
 pathExists	io.pathExists	1 argument		
 pathGetExtension	io.pathGetExtension	1 argument		
 pathJoin	io.pathJoin	at least 1 argument		

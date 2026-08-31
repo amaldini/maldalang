@@ -80,6 +80,7 @@ internal static class TargetPartitioner
     {
         "readFile",
         "writeFile",
+        "copyFile",
         "appendFile",
         "deleteFile",
         "fileExists",

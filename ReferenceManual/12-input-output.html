@@ -92,6 +92,7 @@ io.deleteFile("_rm_io_lines.txt");</code></pre>
                 <tr><td><code>io.ensureDir(path)</code></td><td>Creates the directory and missing parents; no-op if it already exists. Throws on failure. Rejects <code>embed:</code></td></tr>
                 <tr><td><code>io.listDirectory(path)</code></td><td>Array of <code>{ name, type, path }</code>. <code>type</code> is <code>"file"</code> or <code>"directory"</code>. Missing directories yield <code>[]</code>. Empty <code>path</code> means <code>"."</code></td></tr>
                 <tr><td><code>io.deleteFile(path)</code></td><td><code>true</code> if the file was deleted <em>or was already absent</em>; <code>false</code> on an empty path or I/O failure</td></tr>
+                <tr><td><code>io.copyFile(src, dest)</code></td><td>Binary-safe copy (overwrites <code>dest</code>). Returns <code>true</code> on success, <code>false</code> on I/O failure (missing source, missing parent directory). Rejects <code>embed:</code> source and dest. Does not create parent directories</td></tr>
                 <tr><td><code>io.readFileBase64(path)</code> / <code>io.writeFileBase64(path, b64)</code></td><td>Raw bytes as base64. Read returns <code>null</code> when missing; write returns <code>false</code> on invalid base64</td></tr>
             </tbody>
         </table>

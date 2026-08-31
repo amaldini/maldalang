@@ -18,6 +18,28 @@ Entry points: [`../secondbrain.malda`](../secondbrain.malda) (lexical ASK) and
 
 Hosts keep config (`EMBED_ALIAS`, ports, pack `-o`) and ASK/PACK/menu dispatch.
 
+Packed ASK (`embed:`) is read-only: no UPDATE, no `/admin/upload`, and sources
+are not packed into the exe.
+
+## Source snapshot (disk brains)
+
+On a successful BUILD or UPDATE from a **live** docs folder, each scanned file
+is copied into `brain/sources/` (`io.copyFile`, binary-safe for PDF/DOCX).
+`brain.json` keeps `sourceFolder` as the live path and records
+`sourceSnapshot: "sources"`. Snapshot files whose relative path is no longer
+in the scan are deleted (always; `--remove-orphans` still only drops notes).
+
+UPDATE and `/admin/upload` resolve the docs root in this order:
+
+1. `--docs` if set and the directory exists (if `--docs` is set but missing, fail — do not fall through)
+2. `catalog.sourceFolder` if that directory still exists
+3. `brain/sources/` if that directory exists
+4. else fail (hint: run BUILD/UPDATE once with `--docs` to populate the snapshot)
+
+Copying a disk brain to another PC therefore still allows UPDATE/upload against
+the snapshot. Upload still writes only `.md` / `.html` / `.htm`. If neither live
+docs nor a snapshot exist, upload creates `sources/` so the first file can land.
+
 ## ASK citations (P1)
 
 Answers may contain `[nota: slug]`. The ASK UI rewrites those to in-page links

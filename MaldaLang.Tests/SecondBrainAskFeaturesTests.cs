@@ -65,6 +65,7 @@ public class SecondBrainAskFeaturesTests
         var original = Console.Out;
         using var writer = new StringWriter();
         Console.SetOut(writer);
+        BuiltInFunctions.RebindSpectreConsoleForTesting(writer);
         try
         {
             action();
@@ -73,6 +74,7 @@ public class SecondBrainAskFeaturesTests
         finally
         {
             Console.SetOut(original);
+            BuiltInFunctions.RebindSpectreConsoleForTesting(original);
         }
     }
 
@@ -522,6 +524,7 @@ public class SecondBrainAskFeaturesTests
         Assert.DoesNotContain("preventivo", libSource, StringComparison.Ordinal);
         Assert.Contains("@PAGE(\"/admin/users\")", libSource, StringComparison.Ordinal);
         Assert.Contains("@PAGE(\"/admin/upload\")", libSource, StringComparison.Ordinal);
+        Assert.Contains("or brain sources/ if docs are missing", libSource, StringComparison.Ordinal);
         Assert.Contains("@ACTION(\"/feedback\")", libSource, StringComparison.Ordinal);
         Assert.Contains("function askConfigureHttpAuth(", libSource, StringComparison.Ordinal);
         Assert.Contains("function askRefuseInsecurePublicBind(", libSource, StringComparison.Ordinal);
@@ -1265,6 +1268,10 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("function generateDocumentCli(", source, StringComparison.Ordinal);
             Assert.Contains("function expandAskRetrievalQuery(", source, StringComparison.Ordinal);
             Assert.Contains("function askCompletedHistoryTurns(", source, StringComparison.Ordinal);
+            Assert.Contains("function syncBrainSourceSnapshot(", source, StringComparison.Ordinal);
+            Assert.Contains("function resolveUpdateDocsRoot(", source, StringComparison.Ordinal);
+            Assert.Contains("io.copyFile(", source, StringComparison.Ordinal);
+            Assert.Contains("\"sourceSnapshot\": \"sources\"", source, StringComparison.Ordinal);
             Assert.Contains("function askExtractCitedSlugs(", source, StringComparison.Ordinal);
             Assert.Contains("function askAnswerHtmlWithCitations(", source, StringComparison.Ordinal);
             Assert.Contains("@GET(\"/note\")", source, StringComparison.Ordinal);
@@ -1291,6 +1298,59 @@ public class SecondBrainAskFeaturesTests
             Assert.Contains("sbJoinUnderRoot2(brainDir, \"notes\", current.slug + \".md\")", source, StringComparison.Ordinal);
             Assert.Contains("ASK tools: off", source, StringComparison.Ordinal);
             Assert.Contains("ASK tools: on", source, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public async Task ResolveUpdateDocsRoot_UsesSourceSnapshotWhenLiveFolderMissing()
+    {
+        var cliLibPath = Path.Combine(RepoRoot, "Examples", "Agents", "secondbrain_cli_lib.malda");
+        var buildLibPath = Path.Combine(RepoRoot, "Examples", "Agents", "sb", "04-build.malda");
+        Assert.True(File.Exists(cliLibPath), "missing cli lib: " + cliLibPath);
+        Assert.True(File.Exists(buildLibPath), "missing 04-build: " + buildLibPath);
+
+        var tempDir = Path.Combine(Path.GetTempPath(), "malda_sb_src_snap", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            File.Copy(cliLibPath, Path.Combine(tempDir, "secondbrain_cli_lib.malda"));
+            File.Copy(buildLibPath, Path.Combine(tempDir, "04-build.malda"));
+            var brainDir = Path.Combine(tempDir, "brain");
+            var snapDir = Path.Combine(brainDir, "sources");
+            Directory.CreateDirectory(snapDir);
+            File.WriteAllText(Path.Combine(snapDir, "note.md"), "snapshot");
+
+            var brainLiteral = brainDir.Replace("\\", "\\\\");
+            var missingLiteral = Path.Combine(tempDir, "missing-docs").Replace("\\", "\\\\");
+            var outPath = Path.Combine(tempDir, "resolved.txt");
+            var outLiteral = outPath.Replace("\\", "\\\\");
+            var harnessPath = Path.Combine(tempDir, "harness.malda");
+            File.WriteAllText(harnessPath,
+                "include \"secondbrain_cli_lib.malda\";\n" +
+                "function t(en, it) { return en; }\n" +
+                "include \"04-build.malda\";\n" +
+                "var brain = \"" + brainLiteral + "\";\n" +
+                "var cli = { \"docs\": \"\" };\n" +
+                "var catalog = { \"sourceFolder\": \"" + missingLiteral + "\" };\n" +
+                "io.writeFile(\"" + outLiteral + "\", resolveUpdateDocsRoot(cli, catalog, brain));\n",
+                Encoding.UTF8);
+
+            var source = await File.ReadAllTextAsync(harnessPath);
+            var lexer = new Lexer(source, harnessPath);
+            var parser = new Parser.Parser(lexer.Tokenize(), harnessPath);
+            var statements = parser.Parse();
+            Assert.Empty(parser.Errors);
+            var interpreter = new Interpreter.Interpreter();
+            await interpreter.InterpretAsync(statements);
+
+            Assert.True(File.Exists(outPath), "harness did not write resolved.txt");
+            var expected = Path.GetFullPath(snapDir);
+            var got = Path.GetFullPath(File.ReadAllText(outPath).Trim());
+            Assert.Equal(expected, got);
+        }
+        finally
+        {
+            SafeDeleteDirectory(tempDir);
         }
     }
 
@@ -2048,6 +2108,7 @@ public class SecondBrainAskFeaturesTests
         var csproj = @"C:\Users\amaldini.ENGINEERING\AppData\Local\Temp\spl_transpile_x\MaldaLang.Executable.csproj";
         var line = "[red]Pack failed:[/] Compilation error: missing [" + csproj + "]";
 
+        BuiltInFunctions.RebindSpectreConsoleForTesting(Console.Out);
         var ex = Record.Exception(() =>
             BuiltInFunctions.WriteSpectreMarkup(line, appendNewLine: true));
         Assert.Null(ex);

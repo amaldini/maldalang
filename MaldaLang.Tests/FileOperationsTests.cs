@@ -272,4 +272,69 @@ public class FileOperationsTests : TestBase
             null);
         Assert.False(viaBuiltin.AsBoolean());
     }
+
+    [Fact]
+    public void CopyFile_OverwritesDestination()
+    {
+        var src = WriteTestFile("copy-src.bin", "hello-bytes");
+        var dest = Path.Combine(_testDirectory, "copy-dest.bin");
+        File.WriteAllText(dest, "old");
+
+        var ok = BuiltInFunctions.CallBuiltIn(
+            "copyFile",
+            new List<RuntimeValue>
+            {
+                RuntimeValue.String(src),
+                RuntimeValue.String(dest)
+            },
+            null);
+        Assert.True(ok.AsBoolean());
+        Assert.Equal("hello-bytes", File.ReadAllText(dest));
+    }
+
+    [Fact]
+    public void CopyFile_MissingSource_ReturnsFalse()
+    {
+        var dest = Path.Combine(_testDirectory, "copy-missing-dest.bin");
+        var ok = BuiltInFunctions.CallBuiltIn(
+            "copyFile",
+            new List<RuntimeValue>
+            {
+                RuntimeValue.String(Path.Combine(_testDirectory, "no-such-src.bin")),
+                RuntimeValue.String(dest)
+            },
+            null);
+        Assert.False(ok.AsBoolean());
+        Assert.False(File.Exists(dest));
+    }
+
+    [Fact]
+    public void CopyFile_RejectsEmbedDestination()
+    {
+        var src = WriteTestFile("copy-embed-src.txt", "x");
+        var ex = Assert.Throws<Exception>(() => BuiltInFunctions.CallBuiltIn(
+            "copyFile",
+            new List<RuntimeValue>
+            {
+                RuntimeValue.String(src),
+                RuntimeValue.String("embed:fixture/hello.txt")
+            },
+            null));
+        Assert.Contains("cannot write", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void CopyFile_RejectsEmbedSource()
+    {
+        var dest = Path.Combine(_testDirectory, "from-embed.txt");
+        var ex = Assert.Throws<Exception>(() => BuiltInFunctions.CallBuiltIn(
+            "copyFile",
+            new List<RuntimeValue>
+            {
+                RuntimeValue.String("embed:fixture/hello.txt"),
+                RuntimeValue.String(dest)
+            },
+            null));
+        Assert.Contains("cannot read from embedded", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
 }

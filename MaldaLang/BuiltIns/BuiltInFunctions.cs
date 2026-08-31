@@ -1041,6 +1041,7 @@ public static class BuiltInFunctions
             "readFile" => BuiltInReadFile(args),
             "readTextFileLines" => BuiltInReadTextFileLines(args),
             "writeFile" => BuiltInWriteFile(args),
+            "copyFile" => BuiltInCopyFile(args),
             "writeFileBase64" => BuiltInWriteFileBase64(args),
             "readFileBase64" => BuiltInReadFileBase64(args),
             "hasFile" => BuiltInHasFile(args),
@@ -1425,6 +1426,7 @@ public static class BuiltInFunctions
             "readFile" => BuiltInReadFile(args),
             "readTextFileLines" => BuiltInReadTextFileLines(args),
             "writeFile" => BuiltInWriteFile(args),
+            "copyFile" => BuiltInCopyFile(args),
             "writeFileBase64" => BuiltInWriteFileBase64(args),
             "readFileBase64" => BuiltInReadFileBase64(args),
             "hasFile" => BuiltInHasFile(args),
@@ -5592,6 +5594,31 @@ public static class BuiltInFunctions
                 // Tracing must never interfere with normal execution
             }
             
+            return RuntimeValue.Boolean(true);
+        }
+        catch
+        {
+            return RuntimeValue.Boolean(false);
+        }
+    }
+
+    private static RuntimeValue BuiltInCopyFile(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("copyFile", args, 2, 2, "src, dest");
+        if (args[0].Type != ValueType.String || args[1].Type != ValueType.String)
+            throw new Exception("copyFile() expects (string, string)");
+
+        var src = args[0].AsString();
+        var dest = args[1].AsString();
+        if (EmbeddedFolderStore.IsEmbedPath(src))
+            throw new Exception($"copyFile() cannot read from embedded path '{src}'");
+        RejectEmbedWrite(dest, "copyFile");
+
+        try
+        {
+            if (string.IsNullOrEmpty(src) || string.IsNullOrEmpty(dest))
+                return RuntimeValue.Boolean(false);
+            File.Copy(src, dest, overwrite: true);
             return RuntimeValue.Boolean(true);
         }
         catch
@@ -11245,6 +11272,18 @@ public static class BuiltInFunctions
             AnsiConsole.WriteLine(text);
         else
             AnsiConsole.Write(text);
+    }
+
+    /// <summary>
+    /// Spectre caches the console writer. Tests that redirect <see cref="Console.Out"/>
+    /// must rebind after restore or later markup calls hit a disposed StringWriter.
+    /// </summary>
+    public static void RebindSpectreConsoleForTesting(TextWriter? writer = null)
+    {
+        AnsiConsole.Console = AnsiConsole.Create(new AnsiConsoleSettings
+        {
+            Out = new AnsiConsoleOutput(writer ?? Console.Out)
+        });
     }
     
     public static RuntimeValue BuiltInSpectreConsoleTable(List<RuntimeValue> args)

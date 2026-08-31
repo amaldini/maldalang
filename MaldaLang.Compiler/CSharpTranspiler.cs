@@ -10974,6 +10974,7 @@ public class CSharpTranspiler
             case "readFile":
             case "readTextFileLines":
             case "writeFile":
+            case "copyFile":
             case "writeFileBase64":
             case "readFileBase64":
             case "hasFile":

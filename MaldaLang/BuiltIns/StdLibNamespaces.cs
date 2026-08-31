@@ -64,7 +64,7 @@ public static class StdLibNamespaces
     public static readonly IReadOnlySet<string> IoMethodNames = new HashSet<string>(StringComparer.Ordinal)
     {
         "print", "input",
-        "readFile", "writeFile", "readFileBase64", "writeFileBase64", "readTextFileLines",
+        "readFile", "writeFile", "copyFile", "readFileBase64", "writeFileBase64", "readTextFileLines",
         "deleteFile", "hasFile", "hasDirectory", "ensureDir", "listDirectory",
         "glob", "grep", "replaceInFile",
         "pathExists", "pathJoin", "pathNormalize", "pathGetExtension", "isPathUnder",

@@ -23,8 +23,8 @@ python3 scripts/sync-reference-manual-it-status.py
 | 09-functions.html | b266edbe141b3406f9096f66795c2c1fd935c1a3b8f17bfbe37e274c5311870f |
 | 10-prompts.html | e2fd6219860312df115dcdd66b11eb78b74df86c38c3ac5340906a5f4c261481 |
 | 11-classes-objects.html | 1d123c7618cdf7089dfd6963331e209afe8480996cc50c3e62588baeda38aa39 |
-| 12-input-output.html | ef45c441d2a76858ef996caf83a668d8804bb3406819db58bc1b6d75bf54245f |
-| 13-built-in-functions.html | c52b6bf9a6a3973ee5ee9e439bc13af4991bf3f9e66aa93260824c87e27ef6bb |
+| 12-input-output.html | 5eb6ada0b2b3839f44efab3d7a2f050b05cadf8ffae58731154a234355a2eedc |
+| 13-built-in-functions.html | 78c78dc92f13d1941b4295048961dc30ab348023eaa4d1cd18e8ef8e31a5d6df |
 | 14-graphs.html | f9f31adcf1653c0e04e1782125f2da1c226a1427751ec75b039f788a79cb4136 |
 | 15-vectordb.html | 322f221dbf8cd1613e75bc44452aab76f2c05b007abb884b65b6b30f75500fc5 |
 | 16-database.html | 67cc5a45c751b99bd2724bd9a6c4b9c044ca304dd11cc881e755f6a8e478e2a4 |
@@ -33,7 +33,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 19-graph-memory.html | d7551edbe3d4a86b6bcc32dbd65e6073e5d213ee6d4e6b477bedf3c4a164c2e3 |
 | 20-mcp-server.html | a266326c0a2bcb8f248627d3155a824e5603d6df07e43772c523af6b41e6ae94 |
 | 21-acp.html | af2c8a1c74bd1eb424409b4eab66b842635b0b3cba214c6d99974bba1f6477b5 |
-| 22-durable-workflows.html | 3150ab5a59e94d4ba11ebd9c252f27f1a29ff55d989d2d24ed50b14f44051ced |
+| 22-durable-workflows.html | ad2fd53435155a5daabec1d983612eac9467c7556c2d13304e14a75af5cda4b7 |
 | 23-web-ui-hub.html | ae4afc35822c36febb9bc72f85f3c6286c64ad8156499f9a12fe594e7e23ab86 |
 | 24-web-ui.html | cf5e52cf10792b4dae1a2d9edd98589f24e9787356be9bbf741802179b61b457 |
 | 25-http-server-html-ui.html | 97ee81ade74f7f86bb8563a36fe197a1f07578089b55e3bc58631902e3e972ca |

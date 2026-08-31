@@ -138,6 +138,7 @@ public static class BuiltInRegistry
             "loadNativeModule" or
             "createNativeCallback" or
             "writeFile" or
+            "copyFile" or
             "writeFileBase64" or
             "readFileBase64" or
             "hasFile" or
@@ -426,6 +427,7 @@ public static class BuiltInRegistry
     [
         "runCommand",
         "writeFile",
+        "copyFile",
         "replaceInFile",
         "editFile",
         "deleteFile",

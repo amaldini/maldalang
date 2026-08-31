@@ -75,6 +75,7 @@ public abstract class TestBase : IDisposable
             _outputWriter = null;
             _errorWriter = null;
         }
+        BuiltInFunctions.RebindSpectreConsoleForTesting(Console.Out);
     }
 
     /// <summary>
@@ -131,6 +132,7 @@ public abstract class TestBase : IDisposable
             using var errorWriter = new StringWriter();
             Console.SetOut(outputWriter);
             Console.SetError(errorWriter);
+            BuiltInFunctions.RebindSpectreConsoleForTesting(outputWriter);
             try
             {
                 var lexer = new Lexer(source, sourceFileName);
@@ -154,6 +156,7 @@ public abstract class TestBase : IDisposable
             {
                 Console.SetOut(originalOut);
                 Console.SetError(originalError);
+                BuiltInFunctions.RebindSpectreConsoleForTesting(originalOut);
             }
         }
         finally

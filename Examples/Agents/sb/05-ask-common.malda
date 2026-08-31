@@ -526,15 +526,18 @@ function runAskUpdateFromUpload(body) {
             "files": 0
         };
     }
-    var docsRoot = "";
-    if (catalog.sourceFolder != null) {
-        docsRoot = str.trim(askAsText(catalog.sourceFolder));
+    var docsRoot = resolveUpdateDocsRoot({ "docs": "" }, catalog, brainDir);
+    if (docsRoot == "" or not io.hasDirectory(docsRoot)) {
+        docsRoot = brainSourcesRoot(brainDir);
+        if (docsRoot != null) {
+            io.ensureDir(docsRoot);
+        }
     }
     if (docsRoot == "" or not io.hasDirectory(docsRoot)) {
         return {
             "ok": false,
-            "error": t("Documentation folder not found (sourceFolder in brain.json).",
-                "Cartella documentazione non trovata (sourceFolder in brain.json)."),
+            "error": t("Documentation folder not found (sourceFolder in brain.json). Run BUILD/UPDATE once with --docs to populate brain/sources.",
+                "Cartella documentazione non trovata (sourceFolder in brain.json). Esegui BUILD/UPDATE una volta con --docs per popolare brain/sources."),
             "added": 0,
             "changed": 0,
             "files": 0

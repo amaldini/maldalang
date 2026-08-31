@@ -122,7 +122,7 @@ borders to square — see [`malda-gotchas.md`](malda-gotchas.md).
 
 ## Files / OS (when needed)
 
-`io.readFile`, `io.writeFile`, `io.pathExists`, `io.pathJoin`, `io.isPathUnder`, `io.listDirectory`, `io.glob`,
+`io.readFile`, `io.writeFile`, `io.copyFile`, `io.pathExists`, `io.pathJoin`, `io.isPathUnder`, `io.listDirectory`, `io.glob`,
 `io.grep`, `io.getEnv`, and the `io.git*` family. PDF text (digital layer, no OCR):
 `pdf.extractText(path, password?)` (CallBuiltIn name `extractPdfText`) and
 `doc.extractText(path)` for `.docx` (CallBuiltIn name `extractDocxText`). Grep the TSV for

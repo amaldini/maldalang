@@ -2,6 +2,90 @@
 // Host must define indexBrainAfterFinalize(brainDir, notes, ctx), printEmbedStatus,
 // appendRetrievalSummary, catalogExtraFields, brainIndexHowToLines.
 
+var SOURCE_SNAPSHOT_NAME = "sources";
+
+function brainSourcesRoot(brainDir) {
+    return sbJoinUnderRoot(brainDir, SOURCE_SNAPSHOT_NAME);
+}
+
+function snapshotDestPath(brainDir, rel) {
+    var snap = brainSourcesRoot(brainDir);
+    if (snap == null or rel == null) {
+        return null;
+    }
+    var joined = io.pathJoin(snap, string(rel));
+    return sbAssertUnderRoot(snap, joined);
+}
+
+function docsRootIsSourceSnapshot(brainDir, docsRoot) {
+    var snap = brainSourcesRoot(brainDir);
+    if (snap == null or docsRoot == null) {
+        return false;
+    }
+    var a = str.trim(string(docsRoot));
+    if (a == "") {
+        return false;
+    }
+    return io.pathNormalize(snap) == io.pathNormalize(a);
+}
+
+function resolveUpdateDocsRoot(cli, catalog, brainDir) {
+    if (cli != null) {
+        var fromCli = str.trim(sbCliAsText(cli.docs));
+        if (fromCli != "") {
+            if (io.hasDirectory(fromCli)) {
+                return fromCli;
+            }
+            return "";
+        }
+    }
+    if (catalog != null and catalog.sourceFolder != null) {
+        var live = str.trim(string(catalog.sourceFolder));
+        if (live != "" and io.hasDirectory(live)) {
+            return live;
+        }
+    }
+    var snap = brainSourcesRoot(brainDir);
+    if (snap != null and io.hasDirectory(snap)) {
+        return snap;
+    }
+    return "";
+}
+
+function syncBrainSourceSnapshot(docsRoot, brainDir, rels) {
+    if (docsRootIsSourceSnapshot(brainDir, docsRoot)) {
+        return;
+    }
+    var snap = brainSourcesRoot(brainDir);
+    if (snap == null) {
+        return;
+    }
+    io.ensureDir(snap);
+    if (rels != null) {
+        foreach (var rel in rels) {
+            var src = sbAssertUnderRoot(docsRoot, io.pathJoin(docsRoot, rel));
+            var dest = snapshotDestPath(brainDir, rel);
+            if (src == null or dest == null or not io.hasFile(src)) {
+                continue;
+            }
+            var parent = io.getDirectoryName(dest);
+            if (parent != null and str.trim(string(parent)) != "") {
+                io.ensureDir(parent);
+            }
+            io.copyFile(src, dest);
+        }
+    }
+    var scan = collectDocs(snap);
+    foreach (var existing in scan.files) {
+        if (rels == null or not listContains(rels, existing)) {
+            var stale = snapshotDestPath(brainDir, existing);
+            if (stale != null and io.hasFile(stale)) {
+                io.deleteFile(stale);
+            }
+        }
+    }
+}
+
 function finalizeBrain(brainDir, docsRoot, notes, skipped, truncated, taxonomySource, taxonomy, catalog, touchedTopics, indexCtx) {
     io.print("");
     io.print(t("Linking notes...", "Collegamento delle note..."));
@@ -54,7 +138,7 @@ function finalizeBrain(brainDir, docsRoot, notes, skipped, truncated, taxonomySo
 
     indexBrainAfterFinalize(brainDir, notes, indexCtx);
     writeIndex(brainDir, docsRoot, notes, topics, skipped, truncated, taxonomySource);
-    writeCatalog(brainDir, docsRoot, notes, topics, taxonomySource);
+    writeCatalog(brainDir, docsRoot, notes, topics, taxonomySource, catalog);
     return topics;
 }
 
@@ -228,6 +312,7 @@ function buildBrain(cli) {
     var topics = finalizeBrain(brainDir, docsRoot, notes, skipped, truncated, taxonomySource, taxonomy, null, null, {
         "mode": "full"
     });
+    syncBrainSourceSnapshot(docsRoot, brainDir, docs);
 
     io.print("");
     var colKey = t("item", "voce");
@@ -304,35 +389,30 @@ function updateBrain(cli) {
     if (catalog.sourceFolder != null) {
         defaultRoot = str.trim(string(catalog.sourceFolder));
     }
-    var docsRoot = "";
-    if (nonInteractive) {
-        docsRoot = str.trim(sbCliAsText(cli.docs));
-        if (docsRoot == "") {
-            docsRoot = defaultRoot;
-        }
-        if (docsRoot == "") {
-            AnsiConsole.markupLine("[red]" + t(
-                "CLI update requires --docs <folder> (or sourceFolder in brain.json).",
-                "L'update da CLI richiede --docs <cartella> (o sourceFolder in brain.json).") + "[/]");
-            return false;
-        }
-    } else {
+    if (not nonInteractive) {
         var docsPrompt = t("Documentation folder", "Cartella della documentazione");
         if (defaultRoot != "") {
             docsPrompt = docsPrompt + " [" + defaultRoot + "]";
         }
         docsPrompt = docsPrompt + ": ";
-        docsRoot = str.trim(io.input(docsPrompt));
-        if (docsRoot == "") {
-            docsRoot = defaultRoot;
-        }
-        if (docsRoot == "") {
-            io.print(t("Cancelled.", "Annullato."));
-            return false;
+        var typed = str.trim(io.input(docsPrompt));
+        if (typed != "") {
+            cli.docs = typed;
         }
     }
-    if (not io.hasDirectory(docsRoot)) {
-        AnsiConsole.markupLine("[red]" + t("Folder not found:", "Cartella non trovata:") + "[/] " + docsRoot);
+    var docsRoot = resolveUpdateDocsRoot(cli, catalog, brainDir);
+    if (docsRoot == "") {
+        var typedDocs = "";
+        if (cli != null) {
+            typedDocs = str.trim(sbCliAsText(cli.docs));
+        }
+        if (typedDocs != "") {
+            AnsiConsole.markupLine("[red]" + t("Folder not found:", "Cartella non trovata:") + "[/] " + typedDocs);
+        } else {
+            AnsiConsole.markupLine("[red]" + t(
+                "No documentation folder. Pass --docs, or run BUILD/UPDATE once with live docs to populate brain/sources.",
+                "Nessuna cartella documentazione. Passa --docs, oppure esegui BUILD/UPDATE una volta con i docs per popolare brain/sources.") + "[/]");
+        }
         return false;
     }
 
@@ -660,6 +740,7 @@ function updateBrain(cli) {
     summaryRows.append(u6);
     AnsiConsole.table(summaryRows, t(productName() + " updated", productName() + " aggiornato"), [colKey, colVal]);
     AnsiConsole.markupLine(t("Index:", "Indice:") + " [bold]" + io.pathJoin(brainDir, "index.md") + "[/]");
+    syncBrainSourceSnapshot(docsRoot, brainDir, docs);
     return true;
 }
 

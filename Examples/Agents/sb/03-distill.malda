@@ -347,7 +347,7 @@ function writeIndex(brainDir, docsRoot, notes, topics, skipped, truncated, taxon
     }
 }
 
-function writeCatalog(brainDir, docsRoot, notes, topics, taxonomySource) {
+function writeCatalog(brainDir, docsRoot, notes, topics, taxonomySource, previousCatalog) {
     var slimNotes = [];
     foreach (var note in notes) {
         var sourceKey = note.sourceKey;
@@ -382,10 +382,21 @@ function writeCatalog(brainDir, docsRoot, notes, topics, taxonomySource) {
             "count": topic.count
         });
     }
+    var sourceFolder = docsRoot;
+    var snap = sbJoinUnderRoot(brainDir, "sources");
+    if (snap != null and docsRoot != null and
+            io.pathNormalize(snap) == io.pathNormalize(docsRoot) and
+            previousCatalog != null and previousCatalog.sourceFolder != null) {
+        var kept = str.trim(string(previousCatalog.sourceFolder));
+        if (kept != "") {
+            sourceFolder = kept;
+        }
+    }
     var catalog = {
         "version": 2,
         "generatedAt": now(),
-        "sourceFolder": docsRoot,
+        "sourceFolder": sourceFolder,
+        "sourceSnapshot": "sources",
         "taxonomy": taxonomySource,
         "model": modelLabel(),
         "notes": slimNotes,
