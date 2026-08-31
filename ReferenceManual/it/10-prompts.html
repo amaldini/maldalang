@@ -132,7 +132,7 @@ print(length(p.examples));  // 2</code></pre>
         <p>Quando il prompt viene eseguito (via <code>agent.think</code>, <code>await prompt(...)</code> o <code>runPrompt</code>), ogni esempio viene inviato come messaggio user seguito da un messaggio assistant, poi il campo <code>user</code> interpolato.</p>
 
         <h4>Allegati multimodali</h4>
-        <pre><code>prompt look(name) {
+        <pre><code data-run="true" data-expect="image">prompt look(name) {
     user: "Describe {name}"
     attachments: [
         { path: "shots/{name}.png" }
@@ -141,7 +141,7 @@ print(length(p.examples));  // 2</code></pre>
 
 var p = look("cat");
 print(p.attachments[0].kind);</code></pre>
-        <p>L'instance memorizza solo i metadati. Su <code>await</code> i client HTTP inviano content parts OpenAI; il GGUF in-process lancia un errore. Stesso file: <code>Examples/Prompts/multimodal_attachments.malda</code>.</p>
+        <p>Il <code>PromptInstance</code> memorizza solo i metadati. Su <code>await</code> i client HTTP inviano content parts OpenAI; il GGUF in-process lancia un errore. Stesso file: <code>Examples/Prompts/multimodal_attachments.malda</code>.</p>
 
         <h4>Few-shot dinamici a runtime</h4>
         <p>Usa <code>withExamples()</code> per attaccare o sostituire gli esempi su un <code>PromptInstance</code> costruito a runtime. Funziona nelle pipeline a pipe:</p>

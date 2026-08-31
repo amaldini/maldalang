@@ -21,7 +21,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 07-expressions.html | a7a130eb8b1b59af546dea9550f94419c435eb5f321a21de42dc807d6dcf4ad1 |
 | 08-control-structures.html | 6e0c3b5e62beeea132729a970f7c451909b976368aed981435b637a89fe769ee |
 | 09-functions.html | b266edbe141b3406f9096f66795c2c1fd935c1a3b8f17bfbe37e274c5311870f |
-| 10-prompts.html | e2fd6219860312df115dcdd66b11eb78b74df86c38c3ac5340906a5f4c261481 |
+| 10-prompts.html | 426899528b71a72d2adfd31433526652a0ddb5686793ba6c5ca82088fa4713dc |
 | 11-classes-objects.html | 1d123c7618cdf7089dfd6963331e209afe8480996cc50c3e62588baeda38aa39 |
 | 12-input-output.html | 5eb6ada0b2b3839f44efab3d7a2f050b05cadf8ffae58731154a234355a2eedc |
 | 13-built-in-functions.html | 754c44111c9e0cdb4a0fdcf7e8eea5323955e4ece3d19122519eefb174917fbf |
@@ -46,5 +46,5 @@ python3 scripts/sync-reference-manual-it-status.py
 | 32-personal-assistant.html | 162ecfe8e778bbbae129ac78cc6660d6140b78812c6dce8fe92f32f7574185d8 |
 | 33-examples.html | e8eac5394e93801aa7574e4f57970acc049d5bb13729c01a0f414a452e7eda4d |
 | 34-property-testing.html | a3290236d61f398cd2becb4bb305d9a5e2233e02599dbd560aa5fa971a36957c |
-| 35-grammar.html | 4fc2136782cdf149908b123e4f2632cca9263119779c02fa54d814baf42e47fc |
+| 35-grammar.html | b2c6b64700495258b56d6550461c50da742d3df44dcb79338d827d09c736050c |
 | 36-appendix.html | cc17a4d9acbf91d28b5ba8defff893f8c0fa9c946998c91aeaa67ea7259c6150 |
