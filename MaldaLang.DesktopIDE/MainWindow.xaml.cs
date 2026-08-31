@@ -84,16 +84,6 @@ public partial class MainWindow : Window
         public required string Preview { get; init; }
     }
 
-    private sealed class SyntaxSnippet
-    {
-        public required string Id { get; init; }
-        public required string Category { get; init; }
-        public required string Label { get; init; }
-        public required string Description { get; init; }
-        public required string TemplateText { get; init; }
-        public required string Preview { get; init; }
-    }
-
     private sealed class OutlineNodeItem
     {
         public required string DisplayText { get; init; }
@@ -195,7 +185,7 @@ public partial class MainWindow : Window
     private Visibility _sidebarSplitterVisibilityBeforeMaximize = Visibility.Visible;
     private PropertyRegressionArtifactRequest? _pendingRegressionRequest;
     private ToolTip? _hoverToolTip;
-    private const string SnippetCaretMarker = "__CARET__";
+    private const string SnippetCaretMarker = SyntaxSnippetCatalog.CaretMarker;
     private bool _starterLauncherShown;
     private ExampleProgram? _currentExample;
     private bool _learningBranchBannerDismissed;
