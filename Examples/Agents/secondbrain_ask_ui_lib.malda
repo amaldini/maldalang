@@ -27,9 +27,10 @@
 // Per-browser conversations use scope askConvScope() from query/body/cookie
 // `c` (malda_ask_c). Ask / Clear use @ACTION +
 // componentFragment("ask-panel", ...) so the HttpServer AJAX helper patches
-// only #ask-panel. Live progress uses @LIVE + per-conversation SSE channel
-// ask-{c} because the POST /ask connection stays blocked until the answer
-// is ready.
+// only #ask-panel. POST /ask flushes that pending fragment immediately
+// (`res.fragment`) so the browser is not blocked on the LLM; the finished
+// panel is pushed on SSE event `ask-panel`. Live progress uses @LIVE +
+// per-conversation channel ask-{c}.
 //
 // Shared reads use ui.getState (peek). Do not ui.state(..., {}) / null on
 // session/catalog — that get-or-create path poisons the store after a miss.
@@ -3495,7 +3496,18 @@ function askPageClientScriptHead() {
 }
 
 function askPageClientScriptTail() {
-    return "function connectLive(){" +
+    return "function applyAskPanel(payload){" +
+        "var html=payload&&payload.html!=null?String(payload.html):'';" +
+        "var panel=document.getElementById('ask-panel');" +
+        "if(!panel||!html){return;}" +
+        "window.__askLivePanel=true;" +
+        "panel.innerHTML=html;" +
+        "showLive('',false);" +
+        "syncAskModeUi();" +
+        "applyComposerFold(false);" +
+        "scrollLatest();" +
+        "}" +
+        "function connectLive(){" +
         "liveClosing=false;" +
         "if(es){try{es.close();}catch(e){}}" +
         "es=new EventSource('/ask/live?channel='+encodeURIComponent(askLiveChannel));" +
@@ -3505,6 +3517,7 @@ function askPageClientScriptTail() {
         "if(!data){return;}" +
         "if(data.type==='connected'||data.type==='heartbeat'){return;}" +
         "var payload=data.payload?data.payload:data;" +
+        "if(data.type==='componentLiveEvent'&&data.event==='ask-panel'){applyAskPanel(payload);return;}" +
         "if(data.type==='componentLiveEvent'&&data.event&&data.event!=='ask-progress'){return;}" +
         "onProgressPayload(payload);" +
         "}catch(err){}" +
@@ -3697,6 +3710,7 @@ function askPageClientScriptTail() {
         "var openPicker=document.querySelector('#ask-panel details.tag-picker[open]');" +
         "if(openPicker){openPicker.open=false;}" +
         "if(isNarrowComposer()){setComposerFolded(true,false);}" +
+        "window.__askLivePanel=false;" +
         "lastRound=null;" +
         "roundStartedAt=null;" +
         "askStartedAt=null;" +
@@ -3712,7 +3726,7 @@ function askPageClientScriptTail() {
         "}else{bind();}" +
         "document.addEventListener('click',function(e){var t=e.target;if(t){if(t.closest){if(t.closest('[data-ask-source]')){e.stopImmediatePropagation();}}}},true);" +
         "var _od=document.getElementById('ask-note-dialog');var _oo=document.getElementById('ask-note-orig');var _ol=document.getElementById('ask-note-orig-link');if(_od){new MutationObserver(function(){if(_oo){if(_od.hidden===false){_oo.hidden=true;}}}).observe(_od,{attributes:true,attributeFilter:['hidden']});}" +
-        "var _f=window.fetch;window.fetch=function(url,opts){var p=_f.apply(this,arguments);if(String(url).indexOf('/note?')<0){return p;}return p.then(function(res){res.clone().json().then(function(data){if(_oo){if(_ol){if(data){if(data.originalHref){_ol.href=data.originalHref;_oo.hidden=false;}else{_oo.hidden=true;}}}}}).catch(function(){});return res;});};" +
+        "var _f=window.fetch;window.fetch=function(url,opts){var p=_f.apply(this,arguments);var u=String(url);if(u.indexOf('/note?')>=0){return p.then(function(res){res.clone().json().then(function(data){if(_oo){if(_ol){if(data){if(data.originalHref){_ol.href=data.originalHref;_oo.hidden=false;}else{_oo.hidden=true;}}}}}).catch(function(){});return res;});}if(u.indexOf('/ask')>=0&&u.indexOf('/ask/live')<0){return p.then(function(res){if(!window.__askLivePanel){return res;}var panel=document.getElementById('ask-panel');var html=panel?panel.innerHTML:'';return new Response(html,{status:200,headers:{'X-Malda-Fragment':'true','X-Malda-Fragment-Target':'ask-panel'}});});}return p;};" +
         "})();</script>";
 }
 
@@ -3946,6 +3960,8 @@ function askUiSubmit(body, response, cookies, req) {
         "pending": true,
         "generated": askGetAskMode() == "generate"
     });
+    // Return the pending panel now; the LLM continues after the HTTP response.
+    response.fragment("ask-panel", askRenderPanelHtml());
 
     // Per-user+conversation channel (AsyncLocal) so concurrent asks stay isolated.
     onAgentProgress(liveChannel);
@@ -3973,7 +3989,7 @@ function askUiSubmit(body, response, cookies, req) {
                 "error": askT("Ask failed.", "Domanda fallita."),
                 "pending": false
             });
-            return askPanelFragment();
+            return;
         }
         turn.pending = false;
         askReplaceLastTurn(turn);
@@ -4000,8 +4016,11 @@ function askUiSubmit(body, response, cookies, req) {
         });
     } finally {
         clearAgentProgress();
+        componentLiveEmit(liveChannel, {
+            "phase": "replace",
+            "html": askRenderPanelHtml()
+        }, "ask-panel");
     }
-    return askPanelFragment();
 }
 
 @ACTION("/clear")

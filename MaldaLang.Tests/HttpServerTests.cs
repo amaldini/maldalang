@@ -15,6 +15,7 @@ using System.Text.Json;
 using System.Text;
 using System.Threading.Tasks;
 using System.Threading;
+using System.Diagnostics;
 using System;
 using System.Linq;
 
@@ -1094,6 +1095,82 @@ public class HttpServerTests
             Assert.Equal("stub.pdf", doc.RootElement.GetProperty("fileName").GetString());
             Assert.Equal(Convert.ToBase64String(pdfBytes), doc.RootElement.GetProperty("b64").GetString());
             Assert.Contains("pdf", doc.RootElement.GetProperty("contentType").GetString() ?? "", StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            server.CallMethod("stop", new List<RuntimeValue>());
+        }
+    }
+
+    [Fact]
+    public async Task HttpServer_JsonCommit_FlushesBeforeHandlerReturns()
+    {
+        var port = GetAvailablePort();
+        var source = @"
+            @POST(""/job"")
+            function handle(body, res) {
+                res.status(202).json({ ""accepted"": true });
+                sleep(700);
+            }
+        ";
+        var interpreter = LoadInterpreterFromSource(source);
+        var server = new HttpServerInstance(port, null, interpreter);
+        server.CallMethod("start", new List<RuntimeValue>());
+
+        try
+        {
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+            var sw = Stopwatch.StartNew();
+            using var response = await client.PostAsync(
+                $"http://localhost:{port}/job",
+                new StringContent("{}", Encoding.UTF8, "application/json"));
+            sw.Stop();
+            var json = await response.Content.ReadAsStringAsync();
+
+            Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+            Assert.Contains("accepted", json, StringComparison.Ordinal);
+            Assert.True(
+                sw.ElapsedMilliseconds < 450,
+                $"POST waited {sw.ElapsedMilliseconds}ms for a handler that sleeps 700ms after json()");
+        }
+        finally
+        {
+            server.CallMethod("stop", new List<RuntimeValue>());
+        }
+    }
+
+    [Fact]
+    public async Task HttpServer_Fragment_FlushesPendingHtmlBeforeHandlerReturns()
+    {
+        var port = GetAvailablePort();
+        var source = @"
+            @ACTION(""/slow"")
+            function handle(body, res) {
+                res.fragment(""box"", ""<p>pending</p>"");
+                sleep(700);
+            }
+        ";
+        var interpreter = LoadInterpreterFromSource(source);
+        var server = new HttpServerInstance(port, null, interpreter);
+        server.CallMethod("start", new List<RuntimeValue>());
+
+        try
+        {
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+            var sw = Stopwatch.StartNew();
+            using var content = new MultipartFormDataContent();
+            content.Add(new StringContent("x", Encoding.UTF8), "q");
+            using var response = await client.PostAsync($"http://localhost:{port}/slow", content);
+            sw.Stop();
+            var html = await response.Content.ReadAsStringAsync();
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal("true", response.Headers.GetValues("X-Malda-Fragment").FirstOrDefault());
+            Assert.Equal("box", response.Headers.GetValues("X-Malda-Fragment-Target").FirstOrDefault());
+            Assert.Contains("pending", html, StringComparison.Ordinal);
+            Assert.True(
+                sw.ElapsedMilliseconds < 450,
+                $"POST waited {sw.ElapsedMilliseconds}ms for a handler that sleeps 700ms after fragment()");
         }
         finally
         {

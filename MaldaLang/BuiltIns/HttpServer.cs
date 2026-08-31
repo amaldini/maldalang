@@ -1515,6 +1515,7 @@ public partial class HttpServerInstance : ObjectInstance
         // Check for Server-Sent Events (SSE) request (declare outside try for finally block access)
         var acceptHeader = request.Headers["Accept"] ?? "";
         var isSSERequest = acceptHeader.Contains("text/event-stream");
+        ResponseContextInstance? responseContext = null;
         
         try
         {
@@ -1566,7 +1567,8 @@ public partial class HttpServerInstance : ObjectInstance
             }
 
             var requestContext = CreateRequestContext(request, path, new Dictionary<string, string>(), queryParams, requestBody, correlationId);
-            var responseContext = new ResponseContextInstance();
+            responseContext = new ResponseContextInstance();
+            responseContext.BindListener(response, request, requestContext, _pathBase, IsRequestSecure(request));
 
             if (!ValidateCsrf(requestContext, responseContext, requestBody, request, response, correlationId))
             {
@@ -1576,7 +1578,7 @@ public partial class HttpServerInstance : ObjectInstance
             var continuePipeline = await ExecuteMiddlewareChainAsync(requestContext, responseContext);
             if (!continuePipeline)
             {
-                if (responseContext.IsCommitted || responseContext.HasStatusOverride)
+                if (!responseContext.IsFlushed && (responseContext.IsCommitted || responseContext.HasStatusOverride))
                 {
                     CommitAndApplyResponse(requestContext, responseContext, response, request);
                 }
@@ -1624,7 +1626,15 @@ public partial class HttpServerInstance : ObjectInstance
         }
         catch (Exception ex)
         {
-            HandleError(response, ex, correlationId, request);
+            if (responseContext?.IsFlushed == true)
+            {
+                Console.Error.WriteLine("HttpServer request error after response was sent");
+                Console.Error.WriteLine(RuntimeDiagnostics.FormatExceptionForConsole(ex, _interpreter));
+            }
+            else
+            {
+                HandleError(response, ex, correlationId, request);
+            }
         }
         finally
         {
@@ -1632,7 +1642,7 @@ public partial class HttpServerInstance : ObjectInstance
             // SSE connections will be closed when client disconnects or explicitly closed
             if (!isSSERequest)
             {
-                response.Close();
+                WebRuntimeHelpers.TryCloseHttpListenerResponse(response);
             }
         }
     }
@@ -1751,6 +1761,11 @@ public partial class HttpServerInstance : ObjectInstance
                         }
                     }
                 }
+            }
+
+            if (responseContext.IsFlushed)
+            {
+                return;
             }
 
             if (responseContext.IsCommitted || responseContext.HasStatusOverride)
@@ -1885,14 +1900,22 @@ public partial class HttpServerInstance : ObjectInstance
         }
         catch (Exception ex)
         {
-            HandleError(response, ex, correlationId, request);
+            if (responseContext.IsFlushed)
+            {
+                Console.Error.WriteLine("HttpServer handler error after response was sent");
+                Console.Error.WriteLine(RuntimeDiagnostics.FormatExceptionForConsole(ex, _interpreter));
+            }
+            else
+            {
+                HandleError(response, ex, correlationId, request);
+            }
         }
         finally
         {
             // Only close if not SSE
             if (!isSSERequest)
             {
-                response.Close();
+                WebRuntimeHelpers.TryCloseHttpListenerResponse(response);
             }
         }
     }
@@ -2264,6 +2287,9 @@ public partial class HttpServerInstance : ObjectInstance
         HttpListenerResponse response,
         HttpListenerRequest request)
     {
+        if (responseContext.IsFlushed)
+            return;
+
         SessionRuntime.CommitSession(requestContext, responseContext, IsRequestSecure(request));
         responseContext.ApplyTo(response, _pathBase, request);
     }

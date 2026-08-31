@@ -49,6 +49,10 @@ When the original file exists, an **Original** link opens `GET /source?slug=`
 in a new tab: `brain/sources/` snapshot first, then the live `sourceFolder` if
 that folder is not the brain dir. Packed ASK (`embed:`) has no originals.
 
+`POST /ask` flushes the pending panel fragment immediately (`res.fragment`) so
+the browser is not blocked on the LLM. The finished panel is pushed on SSE
+event `ask-panel`. Live progress still uses `@LIVE("/ask/live")`.
+
 ## Retrieval eval (P1)
 
 Offline lexical gold set: [`eval/questions.json`](eval/questions.json) +

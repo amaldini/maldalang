@@ -99,6 +99,7 @@ es.onmessage = (evt) =&gt; console.log("live update", evt.data);
             <li>Body containing the fragment HTML</li>
         </ul>
         <p>The built-in AJAX helper checks these headers and updates only the target element. If headers are missing, it falls back to full-page replacement.</p>
+        <p>To return that fragment <em>before</em> slow work finishes, call <code>res.fragment(targetId, html)</code> on the action's <code>res</code> parameter, then keep running. Push the finished HTML with <code>componentLiveEmit(channel, { html: ... }, eventType)</code> (ASK uses event <code>ask-panel</code>).</p>
         <h3>24.2.4 LIVE channel subscription</h3>
         <p>Use query parameter <code>?channel=...</code> on LIVE endpoints to scope events:</p>
         <pre><code>// Client subscribes only to item events

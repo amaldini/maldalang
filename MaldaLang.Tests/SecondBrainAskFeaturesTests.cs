@@ -551,6 +551,9 @@ public class SecondBrainAskFeaturesTests
         Assert.Contains("--no-examples", libSource, StringComparison.Ordinal);
         Assert.Contains("ASK_SHOW_EXAMPLES", libSource, StringComparison.Ordinal);
         Assert.Contains("malda_ask_session", libSource, StringComparison.Ordinal);
+        Assert.Contains("response.fragment(\"ask-panel\"", libSource, StringComparison.Ordinal);
+        Assert.Contains("function applyAskPanel(", libSource, StringComparison.Ordinal);
+        Assert.Contains(", \"ask-panel\");", libSource, StringComparison.Ordinal);
         Assert.Contains("componentFragment(\"ask-panel\"", libSource, StringComparison.Ordinal);
         Assert.Contains("malda_ask_c", libSource, StringComparison.Ordinal);
         Assert.Contains("function askLiveChannel()", libSource, StringComparison.Ordinal);

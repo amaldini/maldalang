@@ -35,10 +35,10 @@ python3 scripts/sync-reference-manual-it-status.py
 | 21-acp.html | af2c8a1c74bd1eb424409b4eab66b842635b0b3cba214c6d99974bba1f6477b5 |
 | 22-durable-workflows.html | ad2fd53435155a5daabec1d983612eac9467c7556c2d13304e14a75af5cda4b7 |
 | 23-web-ui-hub.html | ae4afc35822c36febb9bc72f85f3c6286c64ad8156499f9a12fe594e7e23ab86 |
-| 24-web-ui.html | cf5e52cf10792b4dae1a2d9edd98589f24e9787356be9bbf741802179b61b457 |
+| 24-web-ui.html | 960ccd3e47a025d67c845978d6a4bca62c012fa8089571053638a6ff752aa55c |
 | 25-http-server-html-ui.html | 01beaf30813a9b31cff36ba276f67d1e2b78e2c6d0bcff772d32b97acebb06ee |
 | 26-browser-javascript-backend.html | 7b320a6876cc26caf293d905f369eed765c036521102a2038a9bd16fdbb85e94 |
-| 27-rest-api.html | c031cd874daa3ffa6db36f2e587466dcd52a488a6ad36772b8dbbfbde3da1e5f |
+| 27-rest-api.html | 874dec7a40433db346216040cca5491666e4e1ee4eb7a9f859eeb859814158b8 |
 | 28-rest-web-client.html | cb6c87e916e91f2a846291ee89bd92b63da193a4ffaaff073edfa831eeb1849a |
 | 29-full-stack-development.html | 405ad3a37a1b41fb0304461e01e0eab4486143a8c6c0a361532faec969e8fd3d |
 | 30-dotnet-interop.html | 05851658a24a5443788fdb120089895233c7b4f942b4063567bb8e976561a50a |

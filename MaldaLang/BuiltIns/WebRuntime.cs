@@ -869,11 +869,13 @@ public class ResponseContextInstance : ObjectInstance
     private RuntimeValue _body = RuntimeValue.Null();
     private bool _bodyIsBase64;
     private readonly List<string> _setCookieHeaders = new();
+    private Action? _httpFlush;
 
     public int StatusCode { get; private set; } = 200;
     public string ContentType { get; private set; } = "application/json; charset=utf-8";
     public Dictionary<string, string> Headers { get; } = new(StringComparer.OrdinalIgnoreCase);
     public bool IsCommitted { get; private set; }
+    public bool IsFlushed { get; private set; }
     public RuntimeValue Body => _body;
     public bool HasBody => _body.Type != ValueType.Null;
     public bool HasStatusOverride { get; private set; }
@@ -900,7 +902,10 @@ public class ResponseContextInstance : ObjectInstance
         if (name is "committed" or "isCommitted" or "sent")
             return RuntimeValue.Boolean(IsCommitted);
 
-        if (name is "status" or "json" or "text" or "html" or "redirect" or "header" or "cookie" or "clearCookie" or "send" or "sendBase64" or "setContentType")
+        if (name is "flushed" or "isFlushed")
+            return RuntimeValue.Boolean(IsFlushed);
+
+        if (name is "status" or "json" or "text" or "html" or "redirect" or "header" or "cookie" or "clearCookie" or "send" or "sendBase64" or "setContentType" or "fragment" or "flush")
         {
             var wrapper = new FunctionValue(null, null, false, null)
             {
@@ -920,6 +925,7 @@ public class ResponseContextInstance : ObjectInstance
             case "status":
                 if (args.Count != 1 || args[0].Type != ValueType.Integer)
                     throw new Exception("status() expects 1 integer argument");
+                EnsureNotFlushed();
                 StatusCode = args[0].AsInteger();
                 HasStatusOverride = true;
                 return RuntimeValue.Object(this);
@@ -927,28 +933,31 @@ public class ResponseContextInstance : ObjectInstance
             case "json":
                 if (args.Count != 1)
                     throw new Exception("json() expects 1 argument");
+                EnsureNotFlushed();
                 ContentType = "application/json; charset=utf-8";
                 _body = args[0];
                 _bodyIsBase64 = false;
-                IsCommitted = true;
+                CommitAndFlush();
                 return RuntimeValue.Object(this);
 
             case "text":
                 if (args.Count != 1)
                     throw new Exception("text() expects 1 argument");
+                EnsureNotFlushed();
                 ContentType = "text/plain; charset=utf-8";
                 _body = args[0].Type == ValueType.String ? args[0] : RuntimeValue.String(args[0].ToString());
                 _bodyIsBase64 = false;
-                IsCommitted = true;
+                CommitAndFlush();
                 return RuntimeValue.Object(this);
 
             case "html":
                 if (args.Count != 1)
                     throw new Exception("html() expects 1 argument");
+                EnsureNotFlushed();
                 ContentType = "text/html; charset=utf-8";
                 _body = args[0].Type == ValueType.String ? args[0] : RuntimeValue.String(args[0].ToString());
                 _bodyIsBase64 = false;
-                IsCommitted = true;
+                CommitAndFlush();
                 return RuntimeValue.Object(this);
 
             case "redirect":
@@ -957,18 +966,20 @@ public class ResponseContextInstance : ObjectInstance
                 var redirectStatus = args.Count == 2 && args[1].Type == ValueType.Integer
                     ? args[1].AsInteger()
                     : (int?)null;
+                EnsureNotFlushed();
                 StatusCode = WebRuntimeHelpers.NormalizeRedirectStatusCode(redirectStatus, "res.redirect()");
                 HasStatusOverride = true;
                 Headers["Location"] = args[0].AsString();
                 ContentType = "text/html; charset=utf-8";
                 _body = RuntimeValue.String(WebRuntimeHelpers.BuildRedirectHtml(args[0].AsString()));
                 _bodyIsBase64 = false;
-                IsCommitted = true;
+                CommitAndFlush();
                 return RuntimeValue.Object(this);
 
             case "header":
                 if (args.Count != 2 || args[0].Type != ValueType.String || args[1].Type != ValueType.String)
                     throw new Exception("header() expects 2 string arguments");
+                EnsureNotFlushed();
                 var headerName = args[0].AsString();
                 var headerValue = args[1].AsString();
                 if (headerName.Equals("Set-Cookie", StringComparison.OrdinalIgnoreCase))
@@ -984,6 +995,7 @@ public class ResponseContextInstance : ObjectInstance
             case "cookie":
                 if (args.Count < 2 || args.Count > 3 || args[0].Type != ValueType.String || args[1].Type != ValueType.String)
                     throw new Exception("cookie() expects name, value, and optional options object");
+                EnsureNotFlushed();
 
                 RuntimeValue cookieOptions = RuntimeValue.Null();
                 if (args.Count == 3)
@@ -1004,6 +1016,7 @@ public class ResponseContextInstance : ObjectInstance
             case "clearCookie":
                 if (args.Count < 1 || args.Count > 2 || args[0].Type != ValueType.String)
                     throw new Exception("clearCookie() expects name and optional options object");
+                EnsureNotFlushed();
 
                 RuntimeValue clearCookieOptions = RuntimeValue.Object(new JsonObject());
                 if (args.Count == 2)
@@ -1025,20 +1038,23 @@ public class ResponseContextInstance : ObjectInstance
             case "setContentType":
                 if (args.Count != 1 || args[0].Type != ValueType.String)
                     throw new Exception("setContentType() expects 1 string argument");
+                EnsureNotFlushed();
                 ContentType = args[0].AsString();
                 return RuntimeValue.Object(this);
 
             case "send":
                 if (args.Count != 1)
                     throw new Exception("send() expects 1 argument");
+                EnsureNotFlushed();
                 _body = args[0];
                 _bodyIsBase64 = false;
-                IsCommitted = true;
+                CommitAndFlush();
                 return RuntimeValue.Object(this);
 
             case "sendBase64":
                 if (args.Count != 1 || args[0].Type != ValueType.String)
                     throw new Exception("sendBase64() expects 1 string argument");
+                EnsureNotFlushed();
                 try
                 {
                     Convert.FromBase64String(args[0].AsString());
@@ -1049,12 +1065,78 @@ public class ResponseContextInstance : ObjectInstance
                 }
                 _body = args[0];
                 _bodyIsBase64 = true;
-                IsCommitted = true;
+                CommitAndFlush();
+                return RuntimeValue.Object(this);
+
+            case "fragment":
+                if (args.Count != 2 || args[0].Type != ValueType.String || args[1].Type != ValueType.String)
+                    throw new Exception("fragment() expects targetId and html string");
+                EnsureNotFlushed();
+                Headers["X-Malda-Fragment"] = "true";
+                Headers["X-Malda-Fragment-Target"] = args[0].AsString();
+                ContentType = "text/html; charset=utf-8";
+                _body = args[1];
+                _bodyIsBase64 = false;
+                CommitAndFlush();
+                return RuntimeValue.Object(this);
+
+            case "flush":
+                if (args.Count != 0)
+                    throw new Exception("flush() expects 0 arguments");
+                if (IsFlushed)
+                    return RuntimeValue.Object(this);
+                CommitAndFlush();
                 return RuntimeValue.Object(this);
 
             default:
                 throw new Exception($"Unknown method: {methodName}");
         }
+    }
+
+    /// <summary>
+    /// When bound, <c>res.json</c>/<c>send</c>/<c>html</c>/<c>fragment</c> write and close
+    /// the HTTP response immediately so the handler can keep running.
+    /// </summary>
+    public void BindListener(
+        HttpListenerResponse listener,
+        HttpListenerRequest request,
+        RequestContextInstance requestContext,
+        string? pathBase,
+        bool isSecure)
+    {
+        _httpFlush = () =>
+        {
+            if (IsFlushed)
+                return;
+
+            SessionRuntime.CommitSession(requestContext, this, isSecure);
+            ApplyTo(listener, pathBase, request);
+            try
+            {
+                listener.OutputStream.Flush();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+            catch (HttpListenerException)
+            {
+            }
+
+            WebRuntimeHelpers.TryCloseHttpListenerResponse(listener);
+            IsFlushed = true;
+        };
+    }
+
+    private void EnsureNotFlushed()
+    {
+        if (IsFlushed)
+            throw new Exception("response already sent");
+    }
+
+    private void CommitAndFlush()
+    {
+        IsCommitted = true;
+        _httpFlush?.Invoke();
     }
 
     public void AddSetCookieHeader(string cookieHeader)
@@ -1429,6 +1511,23 @@ public static class WebRuntimeHelpers
         }
 
         response.OutputStream.Write(bytes, 0, bytes.Length);
+    }
+
+    public static void TryCloseHttpListenerResponse(HttpListenerResponse response)
+    {
+        try
+        {
+            response.Close();
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+        catch (HttpListenerException)
+        {
+        }
+        catch (InvalidOperationException)
+        {
+        }
     }
 
     public static string GenerateCsrfToken(string secret, int ttlSeconds = 7200)

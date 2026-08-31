@@ -480,6 +480,39 @@ public class WebRuntimeFoundationTests
     }
 
     [Fact]
+    public void ResponseContext_Fragment_SetsHeadersAndCommits()
+    {
+        var response = new ResponseContextInstance();
+        response.CallMethod("fragment", new List<RuntimeValue>
+        {
+            RuntimeValue.String("ask-panel"),
+            RuntimeValue.String("<p>pending</p>")
+        });
+
+        Assert.True(response.IsCommitted);
+        Assert.False(response.IsFlushed);
+        Assert.Equal("true", response.Headers["X-Malda-Fragment"]);
+        Assert.Equal("ask-panel", response.Headers["X-Malda-Fragment-Target"]);
+        Assert.Contains("text/html", response.ContentType, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("<p>pending</p>", response.Body.AsString());
+    }
+
+    [Fact]
+    public void ResponseContext_JsonWithoutListener_AllowsLaterHeaders()
+    {
+        var response = new ResponseContextInstance();
+        response.CallMethod("json", new List<RuntimeValue> { RuntimeValue.String("ok") });
+        Assert.True(response.IsCommitted);
+        Assert.False(response.IsFlushed);
+        response.CallMethod("header", new List<RuntimeValue>
+        {
+            RuntimeValue.String("X-Foo"),
+            RuntimeValue.String("1")
+        });
+        Assert.Equal("1", response.Headers["X-Foo"]);
+    }
+
+    [Fact]
     public void ResponseContext_ContentTypeAndClearCookieHelpers_Work()
     {
         var response = new ResponseContextInstance();

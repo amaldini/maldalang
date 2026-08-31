@@ -100,6 +100,7 @@ es.onmessage = (evt) =&gt; console.log("live update", evt.data);
             <li>Body che contiene l'HTML del fragment</li>
         </ul>
         <p>L'helper AJAX built-in controlla questi header e aggiorna solo l'elemento target. Se gli header mancano, ricade sulla sostituzione dell'intera pagina.</p>
+        <p>Per restituire quel fragment <em>prima</em> che il lavoro lento finisca, chiama <code>res.fragment(targetId, html)</code> sul parametro <code>res</code> dell'action, poi continua. Spingi l'HTML finale con <code>componentLiveEmit(channel, { html: ... }, eventType)</code> (ASK usa l'evento <code>ask-panel</code>).</p>
         <h3>24.2.4 Sottoscrizione canale LIVE</h3>
         <p>Usa il query parameter <code>?channel=...</code> sugli endpoint LIVE per limitare gli eventi:</p>
         <pre><code>// Client subscribes only to item events

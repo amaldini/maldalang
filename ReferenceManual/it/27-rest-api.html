@@ -163,8 +163,12 @@ server.start();</code></pre>
             <li><code>res.cookie(name, value, options?)</code></li>
             <li><code>res.send(value)</code></li>
             <li><code>res.sendBase64(b64)</code></li>
+            <li><code>res.fragment(targetId, html)</code></li>
+            <li><code>res.flush()</code></li>
         </ul>
         <p><code>res.send(value)</code> codifica il body come stringa UTF-8. Usa <code>res.sendBase64(b64)</code> per payload binari (PDF, DOCX e simili): decodifica la stringa base64 e scrive quei byte. Base64 non valido genera un errore.</p>
+        <p><code>res.json</code>, <code>res.text</code>, <code>res.html</code>, <code>res.redirect</code>, <code>res.send</code>, <code>res.sendBase64</code> e <code>res.fragment</code> <strong>inviano e chiudono</strong> la response HTTP subito. L'handler può continuare dopo (lavoro in background, aggiornamenti SSE). Header e cookie impostati dopo l'invio vengono ignorati e generano <code>response already sent</code>. <code>res.flush()</code> invia ciò che è già stato committed (anche una response con solo status).</p>
+        <p><code>res.fragment(targetId, html)</code> è la forma early-send di <code>componentFragment(targetId, html)</code>: stessi header <code>X-Malda-Fragment</code>, ma il client riceve il fragment prima che l'handler ritorni.</p>
         <p><code>res.cookie(...)</code> usa default sicuri: <code>HttpOnly=true</code>, <code>Secure=true</code>, <code>SameSite=Lax</code>, <code>Path=/</code>.</p>
         <h2>27.10 CSRF e rate limiting</h2>
         <p>Usa la configurazione built-in del server in stile middleware per proteggere le richieste senza logica ad-hoc per route:</p>

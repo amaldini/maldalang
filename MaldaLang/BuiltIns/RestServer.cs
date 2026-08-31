@@ -216,6 +216,7 @@ public class RestServerInstance : ObjectInstance
 
         var requestContext = CreateRequestContext(request, pathParams, queryParams, requestBody, correlationId, pathOverride: path);
         var responseContext = new ResponseContextInstance();
+        responseContext.BindListener(response, request, requestContext, pathBase: null, isSecure: request.IsSecureConnection);
 
         if (!ValidateCsrf(requestContext, responseContext, requestBody, request, response, correlationId))
         {
@@ -275,6 +276,11 @@ public class RestServerInstance : ObjectInstance
             }
 
             result = await CallRouteFunctionAsync(requestFunction, functionArgs, requestInterpreter);
+        }
+
+        if (responseContext.IsFlushed)
+        {
+            return true;
         }
 
         if (responseContext.IsCommitted || responseContext.HasStatusOverride)
@@ -1015,6 +1021,7 @@ public class RestServerInstance : ObjectInstance
 
             var requestContext = CreateRequestContext(request, pathParams, queryParams, requestBody, correlationId);
             var responseContext = new ResponseContextInstance();
+            responseContext.BindListener(response, request, requestContext, pathBase: null, isSecure: request.IsSecureConnection);
 
             if (!ValidateCsrf(requestContext, responseContext, requestBody, request, response, correlationId))
             {
@@ -1089,6 +1096,11 @@ public class RestServerInstance : ObjectInstance
             }
             
             // Response helpers can pre-commit output regardless of return value.
+            if (responseContext.IsFlushed)
+            {
+                return;
+            }
+
             if (responseContext.IsCommitted || responseContext.HasStatusOverride)
             {
                 CommitAndApplyResponse(requestContext, responseContext, response, request);
@@ -1100,11 +1112,23 @@ public class RestServerInstance : ObjectInstance
         }
         catch (Exception ex)
         {
-            HandleError(response, ex, correlationId);
+            try
+            {
+                HandleError(response, ex, correlationId);
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+            catch (HttpListenerException)
+            {
+            }
+            catch (InvalidOperationException)
+            {
+            }
         }
         finally
         {
-            response.Close();
+            WebRuntimeHelpers.TryCloseHttpListenerResponse(response);
         }
     }
     
@@ -1372,6 +1396,9 @@ public class RestServerInstance : ObjectInstance
         HttpListenerResponse response,
         HttpListenerRequest request)
     {
+        if (responseContext.IsFlushed)
+            return;
+
         SessionRuntime.CommitSession(requestContext, responseContext, request.IsSecureConnection);
         responseContext.ApplyTo(response, request: request);
     }
