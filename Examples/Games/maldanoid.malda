@@ -16,6 +16,8 @@ if (root == null) {
 
     var canvasWidth = 960;
     var canvasHeight = 600;
+    var hudHeight = 72;
+    var playfieldTop = hudHeight;
 
     var paddleBaseWidth = 130;
     var paddleHeight = 18;
@@ -452,7 +454,7 @@ if (root == null) {
         var cols = 12;
         var gap = 8;
         var marginX = 70;
-        var topY = 80;
+        var topY = playfieldTop + 18;
         var brickWVal = (canvasWidth - (marginX * 2) - (gap * (cols - 1))) / cols;
         var brickHVal = 24;
         brickGridRows = rows;
@@ -704,28 +706,72 @@ if (root == null) {
         }
     }
 
+    function circleHitsRect(cx, cy, r, rx, ry, rw, rh) {
+        var closestX = clamp(cx, rx, rx + rw);
+        var closestY = clamp(cy, ry, ry + rh);
+        var dx = cx - closestX;
+        var dy = cy - closestY;
+        return ((dx * dx) + (dy * dy)) <= (r * r);
+    }
+
+    function powerUpEnvelope(kind) {
+        if (kind == "expand") {
+            return { "w": 32, "h": 10 };
+        }
+        if (kind == "multiball") {
+            return { "w": 22, "h": 18 };
+        }
+        return { "w": 22, "h": 22 };
+    }
+
+    function powerUpHitsPaddleAt(px, py, kind) {
+        if (kind == "expand") {
+            return game.overlapRect(px - 16, py - 5, 32, 10, paddleX, paddleY, paddleWidth, paddleHeight);
+        }
+        if (kind == "multiball") {
+            return circleHitsRect(px - 6, py + 3, 5, paddleX, paddleY, paddleWidth, paddleHeight) ||
+                circleHitsRect(px + 6, py + 3, 5, paddleX, paddleY, paddleWidth, paddleHeight) ||
+                circleHitsRect(px, py - 5, 5, paddleX, paddleY, paddleWidth, paddleHeight);
+        }
+        return circleHitsRect(px, py, 11, paddleX, paddleY, paddleWidth, paddleHeight);
+    }
+
     function updatePowerUps(dt) {
         var i = 0;
         while (i < puX.length) {
             if (puActive[i]) {
-                puY[i] = puY[i] + ((puVy[i] * dt) / 1000);
+                var prevY = puY[i];
+                var fall = (puVy[i] * dt) / 1000;
+                puY[i] = prevY + fall;
 
                 if (puY[i] > canvasHeight + 30) {
                     puActive[i] = false;
                 } else {
-                    var paddleCx = paddleX + (paddleWidth / 2);
-                    var paddleCy = paddleY + (paddleHeight / 2);
-                    var hitPaddle = game.overlapCircle(
-                        puX[i],
-                        puY[i],
-                        11,
-                        paddleCx,
-                        paddleCy,
-                        (paddleWidth / 2) + 8
-                    );
+                    var kind = puType[i];
+                    var hitPaddle = powerUpHitsPaddleAt(puX[i], puY[i], kind);
+                    if (!hitPaddle && fall != 0) {
+                        var env = powerUpEnvelope(kind);
+                        var halfW = env.w / 2;
+                        var halfH = env.h / 2;
+                        var swept = game.sweepRect(
+                            puX[i] - halfW,
+                            prevY - halfH,
+                            env.w,
+                            env.h,
+                            0,
+                            fall,
+                            paddleX,
+                            paddleY,
+                            paddleWidth,
+                            paddleHeight
+                        );
+                        if (swept.hit) {
+                            hitPaddle = powerUpHitsPaddleAt(puX[i], swept.y + halfH, kind);
+                        }
+                    }
 
                     if (hitPaddle) {
-                        applyPowerUp(puType[i]);
+                        applyPowerUp(kind);
                         puActive[i] = false;
                         score = score + 35;
                         persistStats();
@@ -834,91 +880,57 @@ if (root == null) {
         var ballY = ballsY[ballIndex];
         var ballVx = ballsVx[ballIndex];
         var ballVy = ballsVy[ballIndex];
+        var dx = ballX - prevX;
+        var dy = ballY - prevY;
+        var box = ballRadius * 2;
+        var bestT = 2;
+        var hitIndex = -1;
+        var hitNx = 0;
+        var hitNy = 0;
+        var hitX = ballX;
+        var hitY = ballY;
         var i = 0;
-        var collided = false;
 
         while (i < bricksX.length) {
-            if (bricksAlive[i]) {
-                var bx = bricksX[i];
-                var by = bricksY[i];
-                var bw = bricksW[i];
-                var bh = bricksH[i];
-
-                var overlaps = game.overlapRect(
-                    ballX - ballRadius,
-                    ballY - ballRadius,
-                    ballRadius * 2,
-                    ballRadius * 2,
-                    bx,
-                    by,
-                    bw,
-                    bh
+            if (bricksAlive[i] && !(i == lastBrickHit && lastBrickCoolMs > 0)) {
+                var contact = game.sweepRect(
+                    prevX - ballRadius,
+                    prevY - ballRadius,
+                    box,
+                    box,
+                    dx,
+                    dy,
+                    bricksX[i],
+                    bricksY[i],
+                    bricksW[i],
+                    bricksH[i]
                 );
 
-                if (i == lastBrickHit && lastBrickCoolMs > 0) {
-                    overlaps = false;
-                }
-
-                if (overlaps && !collided) {
-                    var prevOverlapX = game.overlapRect(
-                        prevX - ballRadius,
-                        by,
-                        ballRadius * 2,
-                        bh,
-                        bx,
-                        by,
-                        bw,
-                        bh
-                    );
-                    var prevOverlapY = game.overlapRect(
-                        bx,
-                        prevY - ballRadius,
-                        bw,
-                        ballRadius * 2,
-                        bx,
-                        by,
-                        bw,
-                        bh
-                    );
-
-                    var bounceY = false;
-                    var bounceX = false;
-                    if (!prevOverlapY && prevOverlapX) {
-                        bounceY = true;
-                    } else if (!prevOverlapX && prevOverlapY) {
-                        bounceX = true;
-                    } else {
-                        if ((abs(ballVy) * 12) >= (abs(ballVx) * 10)) {
-                            bounceY = true;
-                        } else {
-                            bounceX = true;
-                        }
-                    }
-
-                    if (bounceY) {
-                        ballVy = 0 - ballVy;
-                        if (ballVy > 0) {
-                            ballY = by + bh + ballRadius + 1;
-                        } else {
-                            ballY = by - ballRadius - 1;
-                        }
-                    }
-                    if (bounceX) {
-                        ballVx = 0 - ballVx;
-                        if (ballVx > 0) {
-                            ballX = bx + bw + ballRadius + 1;
-                        } else {
-                            ballX = bx - ballRadius - 1;
-                        }
-                    }
-
-                    lastBrickHit = i;
-                    lastBrickCoolMs = 50;
-                    hitBrick(i);
-                    collided = true;
+                if (contact.hit && contact.t < bestT) {
+                    bestT = contact.t;
+                    hitIndex = i;
+                    hitNx = contact.nx;
+                    hitNy = contact.ny;
+                    hitX = contact.x + ballRadius;
+                    hitY = contact.y + ballRadius;
                 }
             }
             i = i + 1;
+        }
+
+        if (hitIndex >= 0) {
+            ballX = hitX + hitNx;
+            ballY = hitY + hitNy;
+            if (hitNx != 0) {
+                ballVx = 0 - ballVx;
+            }
+            if (hitNy != 0) {
+                ballVy = 0 - ballVy;
+            }
+
+            lastBrickHit = hitIndex;
+            lastBrickCoolMs = 50;
+            hitBrick(hitIndex);
         }
 
         ballsX[ballIndex] = ballX;
@@ -1235,8 +1247,8 @@ if (root == null) {
                     game.audioPlayTone(300, 20, "triangle", 0.06);
                 }
             }
-            if (ballY - ballRadius <= 0) {
-                ballY = ballRadius;
+            if (ballY - ballRadius <= playfieldTop) {
+                ballY = playfieldTop + ballRadius;
                 if (ballVy < 0) {
                     ballVy = 0 - ballVy;
                     game.audioPlayTone(250, 18, "triangle", 0.05);
@@ -1460,9 +1472,9 @@ if (root == null) {
 
         var wallColor = "#38bdf8";
         var wallThickness = 4;
-        game.drawLine(0, wallThickness / 2, canvasWidth, wallThickness / 2, wallColor, wallThickness);
-        game.drawLine(wallThickness / 2, 0, wallThickness / 2, canvasHeight, wallColor, wallThickness);
-        game.drawLine(canvasWidth - (wallThickness / 2), 0, canvasWidth - (wallThickness / 2), canvasHeight, wallColor, wallThickness);
+        game.drawLine(0, playfieldTop + (wallThickness / 2), canvasWidth, playfieldTop + (wallThickness / 2), wallColor, wallThickness);
+        game.drawLine(wallThickness / 2, playfieldTop, wallThickness / 2, canvasHeight, wallColor, wallThickness);
+        game.drawLine(canvasWidth - (wallThickness / 2), playfieldTop, canvasWidth - (wallThickness / 2), canvasHeight, wallColor, wallThickness);
 
         drawBricks();
         drawPowerUps();
@@ -1498,22 +1510,23 @@ if (root == null) {
             game.setAlpha(1);
         }
 
-        game.fillRect(0, 0, canvasWidth, 60, "#0b1320");
-        game.drawText("Maldanoid", 18, 36, "#f8fafc", "bold 26px sans-serif");
-        game.drawText("Score " + string(score), 230, 34, "#cbd5e1", "18px sans-serif");
-        game.drawText("High " + string(highScore), 380, 34, "#94a3b8", "17px sans-serif");
-        game.drawText("Lives " + string(lives), 530, 34, "#cbd5e1", "18px sans-serif");
-        game.drawText("Level " + string(level) + "/" + string(maxLevel), 660, 34, "#cbd5e1", "18px sans-serif");
-        game.drawText("Bricks " + string(bricksLeft), 810, 34, "#cbd5e1", "18px sans-serif");
+        game.fillRect(0, 0, canvasWidth, hudHeight, "#0b1320");
+        game.drawLine(0, hudHeight - 1, canvasWidth, hudHeight - 1, "#1e293b", 2);
+        game.drawText("Maldanoid", 18, 28, "#f8fafc", "bold 26px sans-serif");
+        game.drawText("Score " + string(score), 230, 26, "#cbd5e1", "18px sans-serif");
+        game.drawText("High " + string(highScore), 380, 26, "#94a3b8", "17px sans-serif");
+        game.drawText("Lives " + string(lives), 530, 26, "#cbd5e1", "18px sans-serif");
+        game.drawText("Level " + string(level) + "/" + string(maxLevel), 660, 26, "#cbd5e1", "18px sans-serif");
+        game.drawText("Bricks " + string(bricksLeft), 810, 26, "#cbd5e1", "18px sans-serif");
 
         if (combo > 0) {
-            game.drawText("Combo x" + string(combo), 18, 80, "#facc15", "bold 18px sans-serif");
-            game.fillRect(18, 90, 160, 6, "#1e293b");
+            game.drawText("Combo x" + string(combo), 18, 54, "#facc15", "bold 16px sans-serif");
+            game.fillRect(18, 60, 160, 6, "#1e293b");
             var comboBar = (combo * 160) / 12;
             if (comboBar > 160) {
                 comboBar = 160;
             }
-            game.fillRect(18, 90, comboBar, 6, "#facc15");
+            game.fillRect(18, 60, comboBar, 6, "#facc15");
         }
 
         if (expandTimerMs > 0) {

@@ -665,7 +665,7 @@ public class JavaScriptBackendTests : TestBase
         Assert.Contains("mlRuntime.game.getGamepadAxis(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.wasGamepadButtonPressed(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.overlapRect(", js, StringComparison.Ordinal);
-        Assert.Contains("mlRuntime.game.overlapCircle(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.sweepRect(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.drawLine(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.strokeRect(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.setAlpha(", js, StringComparison.Ordinal);
