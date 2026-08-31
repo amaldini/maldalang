@@ -119,7 +119,9 @@ public class SqlServerClientInstance : ObjectInstance, IDisposable
                 return RuntimeValue.Null();
             
             case "query":
-                if (args.Count < 1 || args[0].Type != ValueType.String)
+                if (args.Count == 0)
+                    return Query();
+                if (args[0].Type != ValueType.String)
                     throw new Exception("query() expects at least 1 string argument (sql)");
                 var sql = args[0].AsString();
                 var queryParams = args.Count > 1 ? args[1] : null;

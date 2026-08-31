@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Supporto database MALDA - SQLite, SQL Server e PostgreSQL con la stessa API">
+    <meta name="description" content="Supporto database MALDA - SQLite, SQL Server e PostgreSQL con la stessa API, query builder, transazioni e malda db">
     <title>16. Supporto database - Manuale di riferimento MALDA</title>
     <link rel="stylesheet" href="../styles.css">
     <link rel="stylesheet" href="../syntax.css">
@@ -18,59 +18,122 @@
     <main>
         <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>16. Supporto database</span></div>
         <h1>16. Supporto database</h1>
-        <p>MALDA distribuisce tre client con la stessa API: <code>SqliteClient</code>, <code>SqlServerClient</code> e <code>PostgresClient</code>. Parti da SQLite: è un file su disco, senza server. Connessione, SQL parametrizzato, query builder, insert e transazioni sono identici sugli altri due; cambiano solo connection string e sintassi dei placeholder.</p>
+        <p>MALDA distribuisce tre client con la stessa API: <code>SqliteClient</code>, <code>SqlServerClient</code> e <code>PostgresClient</code>. Parti da SQLite: è un file su disco (o un database in memoria), senza server. Connessione, SQL parametrizzato, query builder, insert e transazioni sono identici sugli altri due; cambiano solo connection string e sintassi dei placeholder.</p>
+        <p>I client funzionano con l'interprete e il transpile C#. <strong>Non</strong> sono disponibili sul backend JavaScript — tieni il SQL sul server e chiamalo via HTTP dal codice nel browser. Vedi <a href="02-tools.html">2. Strumenti e toolchain</a> (modi di runtime) e la <a href="../../docs/spec/backend-capability-matrix.md">matrice delle capacità dei backend</a>.</p>
+        <p>Questo capitolo è l'API dei client SQL. Lo storage dei workflow durevoli è un file SQLite separato sotto <code>.malda/</code> — vedi <a href="22-durable-workflows.html">22. Workflow durevoli</a>. La similarity search è <a href="15-vectordb.html">15. VectorDB</a>, non questi client.</p>
 
         <h2>16.1 SQLite da zero</h2>
-        <p>Connetti, crea una tabella, inserisci, interroghi, disconnetti. I parametri usano <code>@name</code> (non concatenare mai input utente nel SQL).</p>
-        <!-- Scrive un file .db locale; niente data-run così i test degli snippet non lasciano un file su disco. -->
-        <pre><code>var db = new SqliteClient();
-db.connect("Data Source=app.db;");
+        <p>Connetti, crea una tabella, inserisci, interroghi, disconnetti. I parametri usano <code>@name</code> (non concatenare mai input utente nel SQL). <code>Data Source=:memory:;</code> è un database in memoria che scompare alla disconnessione — usalo nei test e negli snippet così non resta nulla su disco.</p>
+        <pre><code data-run="true" data-expect="true\nAlice\n30\n1\nfalse">var db = new SqliteClient();
+db.connect("Data Source=:memory:;");
+print(db.isConnected);
 
-db.execute("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT, email TEXT, age INTEGER)");
+db.execute("CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, age INTEGER)");
+db.insert("users", {name: "Alice", age: 30});
+
+var one = db.queryOne("SELECT name, age FROM users WHERE name = @name", {name: "Alice"});
+print(one.name);
+print(one.age);
+
+var allRows = db.query("SELECT name FROM users");
+print(allRows.length);
+
+db.disconnect();
+print(db.isConnected);</code></pre>
+        <p>Costruttore: <code>new SqliteClient()</code> oppure <code>new SqliteClient(connectionString)</code>. Passare la stringa al costruttore <strong>non</strong> apre la connessione — devi comunque chiamare <code>connect(connectionString)</code>. I database su file usano <code>Data Source=path/to/db.sqlite;</code> (i path relativi si risolvono dalla working directory del processo).</p>
+        <p>Stesso file nel catalogo: <code>Examples/Databases/sqlite_basic.malda</code> (stampa l'API senza connettersi). Uno starter reale su file è <code>malda new webapi --local-first</code> / <code>malda new fullstack --local-first</code>.</p>
+
+        <h2>16.2 API condivisa dei client</h2>
+        <p>Tutte e tre le classi espongono gli stessi metodi. Chiama <code>connect</code> prima di qualsiasi altra cosa; il SQL prima del connect lancia <code>Not connected to database. Call connect() first.</code></p>
+        <table>
+            <thead>
+                <tr><th>Membro</th><th>Restituisce</th><th>Note</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>connect(connectionString)</code></td><td>—</td><td>Apre (o riapre) la connessione</td></tr>
+                <tr><td><code>disconnect()</code></td><td>—</td><td>Chiude la connessione; fa rollback di una transazione aperta</td></tr>
+                <tr><td><code>isConnected</code></td><td>bool</td><td>Property, non un metodo</td></tr>
+                <tr><td><code>query(sql, params?)</code></td><td>array di oggetti riga</td><td>Zero righe → <code>[]</code></td></tr>
+                <tr><td><code>queryOne(sql, params?)</code></td><td>una riga o <code>null</code></td><td>Solo la prima riga che corrisponde</td></tr>
+                <tr><td><code>execute(sql, params?)</code></td><td>int (righe interessate)</td><td>DDL, INSERT/UPDATE/DELETE, PRAGMA</td></tr>
+                <tr><td><code>select(...columns)</code></td><td>il client (catena)</td><td>Avvia il query builder; vedi 16.3</td></tr>
+                <tr><td><code>insert(table, values)</code></td><td>int (righe interessate)</td><td><code>values</code> è un oggetto non vuoto</td></tr>
+                <tr><td><code>beginTransaction()</code> / <code>commit()</code> / <code>rollback()</code></td><td>—</td><td>Vedi 16.4</td></tr>
+            </tbody>
+        </table>
+        <p>I risultati delle query sono array di oggetti le cui property sono i <strong>nomi delle colonne restituiti dal driver</strong> (alias compresi). Il <code>NULL</code> SQL diventa <code>null</code> MALDA. Interi e float restano numerici; i valori SQLite <code>DATETIME</code> tornano come stringhe <code>yyyy-MM-dd HH:mm:ss</code>.</p>
+        <pre><code>var users = db.query("SELECT name, email FROM users WHERE age > @age", {age: 25});
+print(users[0].name + " - " + users[0].email);
+
+var missing = db.queryOne("SELECT name FROM users WHERE id = @id", {id: -1});
+print(missing == null);</code></pre>
+        <p>Gli oggetti parametro accettano chiavi con o senza <code>@</code>: <code>{age: 25}</code> e <code>{"@age": 25}</code> legano entrambi <code>@age</code> su SQLite e SQL Server. PostgreSQL usa <code>$1</code>, <code>$2</code>, … — vedi 16.5. Non esiste una property <code>lastInsertId</code> sul client; <code>insert</code> / <code>execute</code> restituiscono il conteggio delle righe interessate. Leggi la nuova chiave con SQL (16.6).</p>
+
+        <h2>16.3 Query builder</h2>
+        <p>Il builder è un piccolo helper sullo stesso client, non un dialetto SQL separato. Copre <code>SELECT</code> più <code>INSERT</code> / <code>UPDATE</code> / <code>DELETE</code> con valori parametrizzati. Non ci sono <code>orderBy</code>, <code>limit</code>, <code>join</code> né <code>OR</code> — per quelli usa SQL grezzo.</p>
+        <h3>16.3.1 Select</h3>
+        <p><code>select(...columns).from(table).where(...).query()</code> esegue il <code>SELECT</code> costruito. <code>query()</code> senza argomenti chiude il builder; <code>query(sql, params?)</code> resta SQL grezzo. <code>where(column, value)</code> significa <code>=</code>; <code>where(column, operator, value)</code> passa l'operatore così com'è (<code>&gt;</code>, <code>&lt;</code>, <code>!=</code>, <code>LIKE</code>, …). Le chiamate <code>where</code> successive si combinano con <code>AND</code>.</p>
+        <pre><code data-run="true" data-expect="1\nJane">var db = new SqliteClient();
+db.connect("Data Source=:memory:;");
+db.execute("CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT, age INTEGER)");
 db.insert("users", {name: "Jane", email: "jane@example.com", age: 30});
+db.insert("users", {name: "Bob", email: "bob@example.com", age: 20});
 
-var users = db.query("SELECT name, email FROM users WHERE age > @age", {age: 25});
-for (var i = 0; i < users.length; i++) {
-    print(users[i].name + " - " + users[i].email);
-}
-
-var one = db.select("name", "email")
+var adults = db.select("name", "email")
             .from("users")
             .where("age", ">", 25)
             .query();
-
+print(adults.length);
+print(adults[0].name);
 db.disconnect();</code></pre>
-        <p>Costruttore: <code>new SqliteClient()</code> oppure <code>new SqliteClient(connectionString)</code>. Connection string: <code>Data Source=path/to/db.sqlite;</code>.</p>
+        <p>Ogni colonna in <code>where</code> dovrebbe essere unica: i nomi dei parametri derivano dalla colonna, quindi due condizioni sulla stessa colonna si sovrascrivono. Il builder concatena <strong>nomi di tabella e colonna</strong> nel SQL; solo i valori sono parametrizzati. Non mettere input utente in quei nomi.</p>
+        <h3>16.3.2 Insert, update, delete</h3>
+        <p><code>insert(table, values)</code> è una chiamata unica — non usa un <code>where</code> precedente.</p>
+        <p><code>update(table, values)</code> e <code>delete(table)</code> <strong>richiedono prima</strong> una catena <code>select</code> / <code>from</code> / <code>where</code> che abbia popolato il builder. Chiama <code>where</code> prima, poi <code>update</code> o <code>delete</code>. Concatenare <code>.update(...)</code> dopo <code>.where(...)</code> è la stessa cosa, perché quei metodi restituiscono il client. Chiamare <code>update</code> / <code>delete</code> senza un <code>where</code> lancia un errore. Non esiste la forma «update e poi where».</p>
+        <pre><code data-run="true" data-expect="21\n1">var db = new SqliteClient();
+db.connect("Data Source=:memory:;");
+db.execute("CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, age INTEGER)");
+db.insert("users", {name: "Jane", age: 30});
+db.insert("users", {name: "Bob", age: 20});
 
-        <h2>16.2 API condivisa dei client</h2>
-        <p>Tutte e tre le classi espongono:</p>
-        <ul>
-            <li><code>connect(connectionString)</code>, <code>disconnect()</code>, <code>isConnected</code></li>
-            <li><code>query(sql, params?)</code> → array di oggetti riga; <code>queryOne(sql, params?)</code> → una riga o null; <code>execute(sql, params?)</code> → righe interessate</li>
-            <li>Query builder: <code>select(...columns).from(table).where(column, operator, value).query()</code> — <code>where(column, value)</code> significa <code>=</code></li>
-            <li><code>insert(table, values)</code>; <code>update(table, values)</code> e <code>delete(table)</code> richiedono un <code>where</code> precedente</li>
-            <li><code>beginTransaction()</code>, <code>commit()</code>, <code>rollback()</code></li>
-        </ul>
-        <pre><code>db.beginTransaction();
+db.select("name").from("users").where("name", "Bob").update("users", {age: 21});
+var bob = db.queryOne("SELECT age FROM users WHERE name = @name", {name: "Bob"});
+print(bob.age);
+
+db.select("name").from("users").where("name", "Bob").delete("users");
+print(db.query("SELECT name FROM users").length);
+db.disconnect();</code></pre>
+
+        <h2>16.4 Transazioni</h2>
+        <p>Una transazione alla volta per client. Un secondo <code>beginTransaction()</code> lancia <code>Transaction already in progress</code>. <code>commit()</code> / <code>rollback()</code> senza una transazione aperta lanciano <code>No transaction in progress</code>. <code>disconnect()</code> fa rollback se una transazione è ancora aperta.</p>
+        <pre><code data-run="true" data-expect="0\n1">var db = new SqliteClient();
+db.connect("Data Source=:memory:;");
+db.execute("CREATE TABLE t (name TEXT)");
+
+db.beginTransaction();
+db.execute("INSERT INTO t (name) VALUES (@name)", {name: "Temp"});
+db.rollback();
+print(db.query("SELECT name FROM t").length);
+
+db.beginTransaction();
 try {
-    db.execute("INSERT INTO users (name) VALUES (@name)", {name: "Test"});
+    db.execute("INSERT INTO t (name) VALUES (@name)", {name: "Keep"});
     db.commit();
 } catch (e) {
     db.rollback();
-}</code></pre>
-        <p>I risultati delle query sono array di oggetti le cui property sono i nomi delle colonne:</p>
-        <pre><code>var users = db.query("SELECT name, email FROM users");
-print(users[0].name + " - " + users[0].email);</code></pre>
+}
+print(db.query("SELECT name FROM t").length);
+db.disconnect();</code></pre>
 
-        <h2>16.3 SQL Server e PostgreSQL</h2>
-        <p>Stessi metodi, connection string e placeholder diversi. Il query builder numera da solo i parametri PostgreSQL.</p>
+        <h2>16.5 SQL Server e PostgreSQL</h2>
+        <p>Stessi metodi, connection string e placeholder diversi. Il query builder numera da solo i parametri PostgreSQL, quindi <code>select</code> / <code>from</code> / <code>where</code> / <code>insert</code> hanno lo stesso aspetto di SQLite; solo il SQL <strong>grezzo</strong> usa <code>$1</code>.</p>
         <table>
             <thead>
                 <tr><th></th><th>SQLite / SQL Server</th><th>PostgreSQL</th></tr>
             </thead>
             <tbody>
                 <tr><td>Classe</td><td><code>SqliteClient</code> / <code>SqlServerClient</code></td><td><code>PostgresClient</code></td></tr>
-                <tr><td>Connection string</td><td>SQLite: <code>Data Source=app.db;</code><br>SQL Server: <code>Server=localhost;Database=mydb;User Id=user;Password=pass;</code></td><td><code>Host=localhost;Database=mydb;Username=user;Password=pass;</code></td></tr>
+                <tr><td>Connection string</td><td>SQLite: <code>Data Source=app.db;</code> oppure <code>Data Source=:memory:;</code><br>SQL Server: <code>Server=localhost;Database=mydb;User Id=user;Password=pass;</code><br>Auth Windows: <code>Server=localhost;Database=mydb;Integrated Security=true;</code></td><td><code>Host=localhost;Database=mydb;Username=user;Password=pass;</code><br>Con porta: aggiungi <code>Port=5432;</code></td></tr>
                 <tr><td>Placeholder nel SQL grezzo</td><td><code>@age</code> con <code>{age: 25}</code></td><td><code>$1</code> con <code>{$1: 25}</code></td></tr>
             </tbody>
         </table>
@@ -83,18 +146,70 @@ var pg = new PostgresClient();
 pg.connect("Host=localhost;Database=mydb;Username=user;Password=pass;");
 var rows2 = pg.query("SELECT * FROM users WHERE age > $1", {$1: 25});
 pg.disconnect();</code></pre>
+        <p>Campioni del catalogo (stampano l'API, non si connettono): <code>Examples/Databases/sql_server_basic.malda</code>, <code>Examples/Databases/postgres_basic.malda</code>.</p>
 
-        <h2>16.4 Sicurezza</h2>
-        <p>Tutti i client usano query parametrizzate. Passa sempre i parametri come oggetto invece di concatenare stringhe.</p>
+        <h2>16.6 Id delle righe inserite e colonne JSON</h2>
+        <p>Dopo un insert, chiedi al database la nuova chiave. SQLite:</p>
+        <pre><code data-run="true" data-expect="1">var db = new SqliteClient();
+db.connect("Data Source=:memory:;");
+db.execute("CREATE TABLE t (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)");
+db.execute("INSERT INTO t (name) VALUES (@name)", {name: "A"});
+var row = db.queryOne("SELECT last_insert_rowid() AS id");
+print(row.id);
+db.disconnect();</code></pre>
+        <p>SQL Server usa in genere <code>SELECT SCOPE_IDENTITY() AS id</code> nella stessa sessione (dentro una transazione se ci sono altri writer). PostgreSQL può fare <code>INSERT … RETURNING id</code> e <code>queryOne</code> su quell'istruzione. Nessuno di questi è un campo del risultato MALDA di insert.</p>
+        <p>Il JSON in una colonna <code>TEXT</code> è una stringa ordinaria: scrivi con <code>toJSON</code>, leggi con <code>parseJSON</code>. Gli alias nella lista <code>SELECT</code> diventano i nomi delle property MALDA.</p>
+        <pre><code data-run="true" data-expect="ACME\ntrue">var db = new SqliteClient();
+db.connect("Data Source=:memory:;");
+db.execute("CREATE TABLE settings (key TEXT PRIMARY KEY, value_json TEXT NOT NULL)");
+var payload = toJSON({title: "ACME", ok: true});
+db.execute("INSERT INTO settings (key, value_json) VALUES (@key, @value)", {key: "brand", value: payload});
+var row = db.queryOne("SELECT value_json AS valueJson FROM settings WHERE key = @key", {key: "brand"});
+var parsed = parseJSON(row.valueJson);
+print(parsed.title);
+print(parsed.ok);
+db.disconnect();</code></pre>
+        <p>I pragma SQLite passano da <code>execute</code> come qualsiasi altro SQL. Gli scaffold local-first attivano WAL e foreign key:</p>
+        <pre><code>db.execute("PRAGMA journal_mode = WAL");
+db.execute("PRAGMA foreign_keys = ON");</code></pre>
+
+        <h2>16.7 Runtime, errori e backend</h2>
+        <ul>
+            <li>Un SQL fallito è un errore di runtime il cui messaggio inizia con <code>SQL query error:</code> oppure <code>SQL execute error:</code> più il testo del driver.</li>
+            <li>Richiama <code>connect</code> chiude la connessione precedente e apre la nuova stringa.</li>
+            <li>Il transpile JavaScript non emette questi client. La UI nel browser deve chiamare un backend MALDA REST o <code>@PAGE</code> che possiede il database — vedi <a href="26-browser-javascript-backend.html">26. Backend UI JavaScript nel browser</a> e <a href="27-rest-api.html">27. Server REST API</a>.</li>
+            <li>I workflow, la coda dei job e GraphMemory persistono su file propri; non puntare <code>SqliteClient</code> a <code>.malda/workflows.db</code> a meno che tu non lo stia ispezionando come DBA.</li>
+        </ul>
+
+        <h2>16.8 Sicurezza</h2>
+        <p>Tutti e tre i client inviano i valori come parametri. Passa sempre un oggetto invece di concatenare stringhe nel SQL.</p>
         <div class="warning-box">
-            <p><strong>Importante:</strong> Non concatenare mai input utente direttamente nelle query SQL. Usa sempre query parametrizzate per prevenire attacchi di SQL injection.</p>
+            <p><strong>Importante:</strong> Non concatenare mai input utente direttamente nelle query SQL. Usa sempre query parametrizzate per prevenire attacchi di SQL injection. Il query builder parametrizza solo i <em>valori</em> — nomi di tabella, nomi di colonna e operatori sono copiati nell'istruzione così come scritti.</p>
         </div>
+
+        <h2>16.9 <code>malda db</code> (scaffold local-first)</h2>
+        <p><code>malda db</code> è una CLI per <strong>progetti SQLite local-first generati dallo scaffold</strong> (<code>malda new webapi --local-first</code> oppure <code>malda new fullstack --local-first</code>). Non è uno strumento di migration generico per programmi <code>SqliteClient</code> arbitrari. Di default legge <code>config/data.example.json</code> per <code>databaseFile</code> e <code>migrationModule</code>.</p>
+        <pre><code>malda db status
+malda db migrate
+malda db seed
+malda db rollback
+malda db --help</code></pre>
+        <ul>
+            <li><code>status</code> — ispeziona il file SQLite e il registro delle migration senza scrivere (id applicato più recente, supporto seed/rollback, drift sorgente-vs-database). <code>--format json</code> / <code>--json</code> per le macchine.</li>
+            <li><code>migrate</code> — applica le voci in sospeso da <code>localMigrationRegistry</code> tramite <code>initLocalDataPlatform()</code> / <code>runLocalMigration&lt;ID&gt;()</code>.</li>
+            <li><code>seed</code> — migra, poi inserisce righe starter idempotenti da <code>seedLocalDataPlatform()</code>.</li>
+            <li><code>rollback</code> — revert <strong>solo dell'ultima</strong> voce del registro applicata che esiste ancora nel sorgente, tramite <code>openLocalDataPlatform()</code> e <code>rollbackLocalMigration&lt;ID&gt;()</code>.</li>
+        </ul>
+        <p>Flag opzionali: <code>--project</code> / <code>-p</code> (root del progetto), <code>--module</code> / <code>-m</code> (path del <code>.malda</code> di migration), <code>--database</code> / <code>-d</code> (file SQLite). Preferisci cambiamenti di schema additivi e idempotenti con gli helper generati (<code>ensureColumn</code>, <code>ensureIndex</code>, <code>ensureLifecycleColumns</code>) invece di SQL di avvio ad hoc. Seed e rollback seguono quelle convenzioni dello scaffold; non scoprono layout arbitrari.</p>
 
         <div class="see-also">
             <h3>Vedi anche</h3>
             <ul>
-                <li><a href="33-examples.html">33. Esempi</a> - Campioni del catalogo</li>
+                <li><a href="33-examples.html">33. Esempi</a> - Campioni del catalogo in <code>Examples/Databases/</code></li>
                 <li><a href="12-input-output.html">12. Input/Output</a> - File e path</li>
+                <li><a href="02-tools.html">2. Strumenti e toolchain</a> - Interprete vs transpile vs JavaScript</li>
+                <li><a href="29-full-stack-development.html">29. Sviluppo full-stack con MALDA</a> - API + UI + dati insieme</li>
+                <li><a href="22-durable-workflows.html">22. Workflow durevoli</a> - SQLite del motore, non questi client</li>
             </ul>
         </div>
         <div class="nav-footer">

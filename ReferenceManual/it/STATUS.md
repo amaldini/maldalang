@@ -27,7 +27,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 13-built-in-functions.html | 754c44111c9e0cdb4a0fdcf7e8eea5323955e4ece3d19122519eefb174917fbf |
 | 14-graphs.html | f9f31adcf1653c0e04e1782125f2da1c226a1427751ec75b039f788a79cb4136 |
 | 15-vectordb.html | 322f221dbf8cd1613e75bc44452aab76f2c05b007abb884b65b6b30f75500fc5 |
-| 16-database.html | 67cc5a45c751b99bd2724bd9a6c4b9c044ca304dd11cc881e755f6a8e478e2a4 |
+| 16-database.html | 8d79c98cdb26c93a25f662b9c00b274f6b5af789c0e4504113268b2a4b837b61 |
 | 17-actors.html | 2cf24512b4f3a3181686fd0f2af6a775b647b2f12701efbc12e529ad482e886c |
 | 18-agent-orchestration.html | 7449434b55812d1a563cf6d932ccdbeb5fb77d55434c5357338ccee847168c3d |
 | 19-graph-memory.html | d7551edbe3d4a86b6bcc32dbd65e6073e5d213ee6d4e6b477bedf3c4a164c2e3 |
@@ -37,7 +37,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 23-web-ui-hub.html | ae4afc35822c36febb9bc72f85f3c6286c64ad8156499f9a12fe594e7e23ab86 |
 | 24-web-ui.html | 7f635c72199b930e858c1de74cfa840e1024f5559ade4a78e4ba13eb0cd2953d |
 | 25-http-server-html-ui.html | 01beaf30813a9b31cff36ba276f67d1e2b78e2c6d0bcff772d32b97acebb06ee |
-| 26-browser-javascript-backend.html | 7b320a6876cc26caf293d905f369eed765c036521102a2038a9bd16fdbb85e94 |
+| 26-browser-javascript-backend.html | 2f01f4d28dbebd665dc66a4f12b16d4067678633331e5993ab4736c105943b6e |
 | 27-rest-api.html | 874dec7a40433db346216040cca5491666e4e1ee4eb7a9f859eeb859814158b8 |
 | 28-rest-web-client.html | cb6c87e916e91f2a846291ee89bd92b63da193a4ffaaff073edfa831eeb1849a |
 | 29-full-stack-development.html | 405ad3a37a1b41fb0304461e01e0eab4486143a8c6c0a361532faec969e8fd3d |

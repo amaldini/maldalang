@@ -35,13 +35,13 @@ print("                    .query();\n");
 print("5. Insert with Query Builder:");
 print("   var result = db.insert(\"users\", {name: \"Jane\", email: \"jane@example.com\", age: 30});\n");
 
-print("6. Update with Query Builder:");
-print("   var result = db.update(\"users\", {email: \"newemail@example.com\"})");
-print("                    .where(\"id\", \"=\", 1);\n");
+print("6. Update with Query Builder (where first, then update):");
+print("   db.select(\"id\").from(\"users\").where(\"id\", \"=\", 1)");
+print("     .update(\"users\", {email: \"newemail@example.com\"});\n");
 
-print("7. Delete with Query Builder:");
-print("   var result = db.delete(\"users\")");
-print("                    .where(\"id\", \"=\", 1);\n");
+print("7. Delete with Query Builder (where first, then delete):");
+print("   db.select(\"id\").from(\"users\").where(\"id\", \"=\", 1)");
+print("     .delete(\"users\");\n");
 
 print("8. Transactions:");
 print("   db.beginTransaction();");

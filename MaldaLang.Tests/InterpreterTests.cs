@@ -62,6 +62,37 @@ public class InterpreterTests : TestBase
     }
 
     [Fact]
+    public void TestSqliteClient_QueryBuilder_SelectUpdateDelete()
+    {
+        var source = @"
+            var db = new SqliteClient();
+            db.connect(""Data Source=:memory:"");
+            db.execute(""CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT, age INTEGER)"");
+            db.insert(""users"", {name: ""Jane"", email: ""jane@example.com"", age: 30});
+            db.insert(""users"", {name: ""Bob"", email: ""bob@example.com"", age: 20});
+
+            var adults = db.select(""name"", ""age"").from(""users"").where(""age"", "">"", 25).query();
+            print(adults.length);
+            print(adults[0].name);
+
+            db.select(""name"").from(""users"").where(""name"", ""Bob"").update(""users"", {age: 21});
+            var bob = db.queryOne(""SELECT age FROM users WHERE name = @name"", {name: ""Bob""});
+            print(bob.age);
+
+            db.select(""name"").from(""users"").where(""name"", ""Bob"").delete(""users"");
+            print(db.query(""SELECT name FROM users"").length);
+            db.disconnect();
+        ";
+
+        var output = RunProgram(source);
+        var lines = output.Split('\n');
+        Assert.Equal("1", lines[0]);
+        Assert.Equal("Jane", lines[1]);
+        Assert.Equal("21", lines[2]);
+        Assert.Equal("1", lines[3]);
+    }
+
+    [Fact]
     public void TestComponentKeyword_DesugarsToComponentDecorator()
     {
         var source = @"

@@ -16,7 +16,7 @@
     { "file": "13-built-in-functions.html", "title": "Funzioni built-in", "category": "Standard Library", "description": "Conversioni di tipo, math, stringhe, operazioni su file" },
     { "file": "14-graphs.html", "title": "Grafi", "category": "Standard Library", "description": "Strutture dati a grafo e algoritmi" },
     { "file": "15-vectordb.html", "title": "VectorDB", "category": "Standard Library", "description": "Database vettoriale per la similarity search" },
-    { "file": "16-database.html", "title": "Supporto database", "category": "Standard Library", "description": "Client SQL Server e PostgreSQL" },
+    { "file": "16-database.html", "title": "Supporto database", "category": "Standard Library", "description": "Client SQLite, SQL Server e PostgreSQL" },
     { "file": "17-actors.html", "title": "Actor", "category": "AI & Agents", "description": "Modello ad actor e message passing" },
     { "file": "18-agent-orchestration.html", "title": "Orchestrazione di agenti", "category": "AI & Agents", "description": "Client LLM, agenti, tool" },
     { "file": "19-graph-memory.html", "title": "GraphMemory", "category": "AI & Agents", "description": "Memoria semantica per agenti AI" },
