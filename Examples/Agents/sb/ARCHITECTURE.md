@@ -51,7 +51,10 @@ that folder is not the brain dir. Packed ASK (`embed:`) has no originals.
 
 `POST /ask` flushes the pending panel fragment immediately (`res.fragment`) so
 the browser is not blocked on the LLM. The finished panel is pushed on SSE
-event `ask-panel`. Live progress still uses `@LIVE("/ask/live")`.
+event `ask-panel`. Live progress still uses `@LIVE("/ask/live")`. The live
+dock **Stop** button POSTs `/ask/stop` for this conversation (cookie JWT) and
+calls `cancelThink` so GGUF/HTTP generation aborts. It does not stop the ASK
+server (`pendingStop` remains console-only).
 
 ## Retrieval eval (P1)
 

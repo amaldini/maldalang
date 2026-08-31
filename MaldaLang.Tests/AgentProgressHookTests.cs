@@ -90,6 +90,28 @@ public class AgentProgressHookTests
     }
 
     [Fact]
+    public void CancelThink_CancelsTokenForLiveChannel()
+    {
+        try
+        {
+            ConversationInstance.SetAgentProgressLiveChannel("ask-stop-test");
+            Assert.False(ConversationInstance.GetThinkCancellationToken().IsCancellationRequested);
+
+            var result = BuiltInFunctions.CallBuiltIn(
+                "cancelThink",
+                new List<RuntimeValue> { RuntimeValue.String("ask-stop-test") },
+                null);
+            Assert.Equal(ValueType.Null, result.Type);
+            Assert.True(ConversationInstance.IsThinkCancelRequested());
+            Assert.True(ConversationInstance.GetThinkCancellationToken().IsCancellationRequested);
+        }
+        finally
+        {
+            ConversationInstance.SetAgentProgressLiveChannel(null);
+        }
+    }
+
+    [Fact]
     public async Task OnAgentProgress_LiveChannel_IsIsolatedPerAsyncFlow()
     {
         var seen = new ConcurrentDictionary<string, string>();

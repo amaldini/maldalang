@@ -140,6 +140,10 @@ public class LLMClientInstance : ObjectInstance
 
             return result;
         }
+        catch (OperationCanceledException)
+        {
+            throw new InvalidOperationException("Agent think() cancelled");
+        }
         catch (Exception ex)
         {
             if (ShouldRetryWithoutResponseFormat(formatToSend, result: null, exceptionMessage: ex.Message))
@@ -438,8 +442,9 @@ public class LLMClientInstance : ObjectInstance
 
         ApplyRequestHeaders(request);
 
-        var response = _httpClient.Send(request);
-        var responseContent = response.Content.ReadAsStringAsync().Result;
+        var cancel = ConversationInstance.GetThinkCancellationToken();
+        var response = _httpClient.Send(request, cancel);
+        var responseContent = response.Content.ReadAsStringAsync(cancel).GetAwaiter().GetResult();
 
         if (responseContent.Length > 10000)
         {
@@ -470,7 +475,8 @@ public class LLMClientInstance : ObjectInstance
 
         ApplyRequestHeaders(request);
 
-        using var response = _httpClient.Send(request, HttpCompletionOption.ResponseHeadersRead);
+        var cancel = ConversationInstance.GetThinkCancellationToken();
+        using var response = _httpClient.Send(request, HttpCompletionOption.ResponseHeadersRead, cancel);
         if (!response.IsSuccessStatusCode)
         {
             var responseContent = response.Content.ReadAsStringAsync().Result;

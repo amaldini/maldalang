@@ -1116,6 +1116,7 @@ public static class BuiltInFunctions
             "componentStateUnpin" => BuiltInComponentStateUnpin(args),
             "onAgentProgress" => BuiltInOnAgentProgress(args, interpreter),
             "clearAgentProgress" => BuiltInClearAgentProgress(args),
+            "cancelThink" => BuiltInCancelThink(args),
             "uiRow" => BuiltInUiRow(args),
             "uiColumn" => BuiltInUiColumn(args),
             "uiStack" => BuiltInUiStack(args),
@@ -1501,6 +1502,7 @@ public static class BuiltInFunctions
             "componentStateUnpin" => BuiltInComponentStateUnpin(args),
             "onAgentProgress" => BuiltInOnAgentProgress(args, interpreter),
             "clearAgentProgress" => BuiltInClearAgentProgress(args),
+            "cancelThink" => BuiltInCancelThink(args),
             "uiRow" => BuiltInUiRow(args),
             "uiColumn" => BuiltInUiColumn(args),
             "uiStack" => BuiltInUiStack(args),
@@ -9370,6 +9372,15 @@ public static class BuiltInFunctions
     {
         BuiltInArity.Require("clearAgentProgress", args, 0, 0);
         ConversationInstance.ClearAgentProgressHandler();
+        return RuntimeValue.Null();
+    }
+
+    private static RuntimeValue BuiltInCancelThink(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("cancelThink", args, 1, 1, "channel");
+        if (args[0].Type != ValueType.String)
+            throw new Exception("cancelThink() expects a live channel string");
+        ConversationInstance.RequestThinkCancel(args[0].AsString());
         return RuntimeValue.Null();
     }
 

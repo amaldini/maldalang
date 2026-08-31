@@ -245,6 +245,7 @@ public static class BuiltInRegistry
             "componentStateUnpin" or
             "onAgentProgress" or
             "clearAgentProgress" or
+            "cancelThink" or
             "uiRow" or
             "uiColumn" or
             "uiStack" or

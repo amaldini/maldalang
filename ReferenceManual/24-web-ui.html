@@ -47,6 +47,7 @@
             <li><code>componentLiveEmit(channel, payload, eventType?)</code> - broadcasts live events to connected SSE clients</li>
             <li><code>onAgentProgress(handlerOrChannel)</code> - subscribe to agent-loop events (<code>round_start</code>, <code>tool_calls</code>, <code>tool_done</code>, <code>continue</code>, <code>done</code>). Pass a function <code>handler(event)</code> (interpreter) or a live channel string so progress is published with <code>componentLiveEmit</code> (transpile-friendly)</li>
             <li><code>clearAgentProgress()</code> - remove the current agent-progress handler or live channel</li>
+            <li><code>cancelThink(channel)</code> - abort in-flight <code>think()</code> for that live channel (another request can call this; local GGUF and HTTP LLM calls honor it)</li>
         </ul>
         <h3>24.2.1 Minimal server-side example</h3>
         <pre><code>component ItemBoard() {

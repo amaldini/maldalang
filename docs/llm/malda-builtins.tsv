@@ -22,6 +22,7 @@ average	math.average	1 argument: (array)
 base64Decode	str.base64Decode	1 argument		
 base64Encode	str.base64Encode	1 argument		
 bindForm	bindForm	body and fields array		
+cancelThink	cancelThink	1 argument: (channel)		
 cancelWorkflow	cancelWorkflow	at least 1 argument: (instanceId, reason?)		
 ceil	math.ceil	1 argument	returns a float even when whole-valued; integer sinks coerce whole floats; wrap with int() if you need an Integer-tagged value	
 claimJob	claimJob	1-2 arguments: (queue, workerId?)		

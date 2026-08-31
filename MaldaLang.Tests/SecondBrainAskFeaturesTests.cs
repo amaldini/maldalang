@@ -577,6 +577,9 @@ public class SecondBrainAskFeaturesTests
             StringComparison.Ordinal);
         Assert.Contains("RedirectTo(\"/?c=\"", libSource, StringComparison.Ordinal);
         Assert.Contains("onAgentProgress(liveChannel)", libSource, StringComparison.Ordinal);
+        Assert.Contains("@POST(\"/ask/stop\")", libSource, StringComparison.Ordinal);
+        Assert.Contains("cancelThink(askLiveChannel())", libSource, StringComparison.Ordinal);
+        Assert.Contains("data-ask-stop", libSource, StringComparison.Ordinal);
         Assert.DoesNotContain("onAgentProgress(\"ask\")", libSource, StringComparison.Ordinal);
         // Regression: citation preview must not drop the live-round JS helpers.
         Assert.Contains("function progressMessage(p){", libSource, StringComparison.Ordinal);

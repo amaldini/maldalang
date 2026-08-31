@@ -4,6 +4,7 @@
 namespace MaldaLang.BuiltIns;
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -45,6 +46,8 @@ public partial class ConversationInstance : ObjectInstance
 
     internal static void EnsureWithinThinkDeadline()
     {
+        if (IsThinkCancelRequested())
+            throw new InvalidOperationException("Agent think() cancelled");
         if (ThinkDeadlineUtc.HasValue && DateTime.UtcNow > ThinkDeadlineUtc.Value)
             throw new InvalidOperationException("Agent think() timed out");
     }
@@ -63,6 +66,8 @@ public partial class ConversationInstance : ObjectInstance
     private static string? _agentProgressLiveChannel;
     /// <summary>Per-request/async flow channel so concurrent ASK sessions do not clash.</summary>
     private static readonly AsyncLocal<string?> AgentProgressLiveChannelLocal = new();
+    private static readonly ConcurrentDictionary<string, CancellationTokenSource> ThinkCancelByChannel =
+        new(StringComparer.Ordinal);
     private static readonly AsyncLocal<LiveDraftState?> LiveDraftLocal = new();
     internal const int DefaultLiveDraftMinIntervalMs = 80;
     internal const int LiveDraftMaxChars = 12000;
@@ -189,6 +194,72 @@ public partial class ConversationInstance : ObjectInstance
             // Keep static fallback for hosts that are not concurrent / unit tests.
             _agentProgressLiveChannel = normalized;
         }
+
+        if (normalized != null)
+            BeginThinkCancelScope(normalized);
+    }
+
+    /// <summary>
+    /// Cancel in-flight <c>think()</c> for a live channel (another HTTP request can call this).
+    /// </summary>
+    public static void RequestThinkCancel(string channel)
+    {
+        var normalized = string.IsNullOrWhiteSpace(channel) ? null : channel.Trim();
+        if (normalized == null)
+            return;
+
+        var cts = ThinkCancelByChannel.GetOrAdd(normalized, static _ => new CancellationTokenSource());
+        try
+        {
+            cts.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+    }
+
+    public static bool IsThinkCancelRequested()
+    {
+        var channel = GetAgentProgressLiveChannel();
+        if (string.IsNullOrEmpty(channel))
+            return false;
+        return ThinkCancelByChannel.TryGetValue(channel, out var cts) && cts.IsCancellationRequested;
+    }
+
+    public static CancellationToken GetThinkCancellationToken()
+    {
+        var channel = GetAgentProgressLiveChannel();
+        if (string.IsNullOrEmpty(channel))
+            return CancellationToken.None;
+        var cts = ThinkCancelByChannel.GetOrAdd(channel, static _ => new CancellationTokenSource());
+        return cts.Token;
+    }
+
+    private static void BeginThinkCancelScope(string channel)
+    {
+        ThinkCancelByChannel.AddOrUpdate(
+            channel,
+            static _ => new CancellationTokenSource(),
+            static (_, old) =>
+            {
+                try
+                {
+                    old.Cancel();
+                }
+                catch (ObjectDisposedException)
+                {
+                }
+
+                try
+                {
+                    old.Dispose();
+                }
+                catch
+                {
+                }
+
+                return new CancellationTokenSource();
+            });
     }
 
     public static void ClearAgentProgressHandler()

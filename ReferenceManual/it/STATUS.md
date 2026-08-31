@@ -24,7 +24,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 10-prompts.html | e2fd6219860312df115dcdd66b11eb78b74df86c38c3ac5340906a5f4c261481 |
 | 11-classes-objects.html | 1d123c7618cdf7089dfd6963331e209afe8480996cc50c3e62588baeda38aa39 |
 | 12-input-output.html | 5eb6ada0b2b3839f44efab3d7a2f050b05cadf8ffae58731154a234355a2eedc |
-| 13-built-in-functions.html | 78c78dc92f13d1941b4295048961dc30ab348023eaa4d1cd18e8ef8e31a5d6df |
+| 13-built-in-functions.html | 754c44111c9e0cdb4a0fdcf7e8eea5323955e4ece3d19122519eefb174917fbf |
 | 14-graphs.html | f9f31adcf1653c0e04e1782125f2da1c226a1427751ec75b039f788a79cb4136 |
 | 15-vectordb.html | 322f221dbf8cd1613e75bc44452aab76f2c05b007abb884b65b6b30f75500fc5 |
 | 16-database.html | 67cc5a45c751b99bd2724bd9a6c4b9c044ca304dd11cc881e755f6a8e478e2a4 |
@@ -35,7 +35,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 21-acp.html | af2c8a1c74bd1eb424409b4eab66b842635b0b3cba214c6d99974bba1f6477b5 |
 | 22-durable-workflows.html | ad2fd53435155a5daabec1d983612eac9467c7556c2d13304e14a75af5cda4b7 |
 | 23-web-ui-hub.html | ae4afc35822c36febb9bc72f85f3c6286c64ad8156499f9a12fe594e7e23ab86 |
-| 24-web-ui.html | 960ccd3e47a025d67c845978d6a4bca62c012fa8089571053638a6ff752aa55c |
+| 24-web-ui.html | 7f635c72199b930e858c1de74cfa840e1024f5559ade4a78e4ba13eb0cd2953d |
 | 25-http-server-html-ui.html | 01beaf30813a9b31cff36ba276f67d1e2b78e2c6d0bcff772d32b97acebb06ee |
 | 26-browser-javascript-backend.html | 7b320a6876cc26caf293d905f369eed765c036521102a2038a9bd16fdbb85e94 |
 | 27-rest-api.html | 874dec7a40433db346216040cca5491666e4e1ee4eb7a9f859eeb859814158b8 |

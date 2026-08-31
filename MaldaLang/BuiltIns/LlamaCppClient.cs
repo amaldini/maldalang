@@ -885,7 +885,10 @@ public class LlamaCppClientInstance : ObjectInstance, IDisposable
             
             // Generate response
             var responseBuilder = new StringBuilder();
-            var responseEnumerable = _executor!.InferAsync(prompt, inferenceParams, System.Threading.CancellationToken.None);
+            var responseEnumerable = _executor!.InferAsync(
+                prompt,
+                inferenceParams,
+                ConversationInstance.GetThinkCancellationToken());
             
             // Use synchronous enumeration (blocking) since Chat method is synchronous
             var enumerator = responseEnumerable.GetAsyncEnumerator();
@@ -919,10 +922,13 @@ public class LlamaCppClientInstance : ObjectInstance, IDisposable
             
             return RuntimeValue.Object(resultObj);
         }
+        catch (OperationCanceledException)
+        {
+            throw new InvalidOperationException("Agent think() cancelled");
+        }
         catch (Exception ex)
         {
             // Re-throw exception so AIChatService can catch it and return a user-friendly error message
-            // AIChatService has proper error handling with IsError = true and ErrorMessage
             throw;
         }
     }

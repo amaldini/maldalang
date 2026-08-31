@@ -10790,6 +10790,7 @@ public class CSharpTranspiler
             case "componentStateUnpin":
             case "onAgentProgress":
             case "clearAgentProgress":
+            case "cancelThink":
             case "uiRow":
             case "uiColumn":
             case "uiStack":

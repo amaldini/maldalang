@@ -30,7 +30,9 @@
 // only #ask-panel. POST /ask flushes that pending fragment immediately
 // (`res.fragment`) so the browser is not blocked on the LLM; the finished
 // panel is pushed on SSE event `ask-panel`. Live progress uses @LIVE +
-// per-conversation channel ask-{c}.
+// per-conversation channel ask-{c}. Stop on the live dock POSTs `/ask/stop`
+// (same conversation + cookie JWT) which calls `cancelThink` so the LLM
+// aborts; that is not the console `pendingStop` server shutdown.
 //
 // Shared reads use ui.getState (peek). Do not ui.state(..., {}) / null on
 // session/catalog — that get-or-create path poisons the store after a miss.
@@ -2599,7 +2601,7 @@ function askPageStyles() {
         ".pending{color:var(--warn);margin:0;font-style:italic;font-family:var(--ui)}" +
         ".live-status,.live-dock{font-size:0.88rem;margin:8px 0 0;" +
         "color:var(--accent-ink);background:var(--live-bg);border:1px solid var(--accent-line);border-radius:8px;" +
-        "padding:8px 12px;overflow-wrap:anywhere}" +
+        "padding:8px 12px;overflow-wrap:anywhere;display:flex;flex-wrap:wrap;align-items:center;gap:6px}" +
         /* Home holds the dock outside #ask-panel so fragment replace cannot destroy it.
            While live it is position:fixed above the sticky composer (see syncLiveDockPosition). */
         "#ask-live-home:empty{display:none}" +
@@ -2614,7 +2616,12 @@ function askPageStyles() {
         ".live-dock .live-round{font-weight:600;margin-right:6px;white-space:nowrap}" +
         ".live-dock .live-timer,.live-status .live-timer{font-variant-numeric:tabular-nums;" +
         "font-weight:600;color:var(--muted);margin-right:6px;white-space:nowrap}" +
-        ".live-dock .live-dock-body{font-variant-numeric:tabular-nums}" +
+        ".live-dock .live-dock-body{font-variant-numeric:tabular-nums;flex:1;min-width:0}" +
+        ".live-dock-stop{margin-left:auto;flex:0 0 auto;font-size:0.8rem;font-weight:600;" +
+        "color:var(--danger);background:transparent;border:1px solid var(--error-border);" +
+        "border-radius:8px;padding:4px 10px;cursor:pointer}" +
+        ".live-dock-stop:hover{background:var(--error-bg)}" +
+        ".live-dock-stop:disabled{opacity:0.6;cursor:default}" +
         ".live-status{display:block}" +
         ".empty-state{background:var(--panel);border:1px solid var(--line);border-radius:12px;" +
         "padding:22px 20px;margin:0}" +
@@ -3272,6 +3279,8 @@ function askPageClientScriptHead() {
         "var askConvId='" + askEscapeHtml(askConvScope()) + "';" +
         "var askLiveChannel='" + askEscapeHtml(askLiveChannel()) + "';" +
         "var liveLabel='" + askEscapeHtml(askT("Live", "Live")) + "';" +
+        "var stopLabel='" + askEscapeHtml(askT("Stop", "Ferma")) + "';" +
+        "var stoppingLabel='" + askEscapeHtml(askT("Stopping…", "Interruzione…")) + "';" +
         "var askStartedAt=null;" +
         "var roundStartedAt=null;" +
         "var lastRound=null;" +
@@ -3384,9 +3393,11 @@ function askPageClientScriptHead() {
         "dock.hidden=true;" +
         "dock.setAttribute('role','status');" +
         "dock.setAttribute('aria-live','polite');" +
-        "dock.innerHTML='<span class=\"live-round\"></span><span class=\"live-timer\">0:00</span><span class=\"live-dock-body\"></span><pre id=\"ask-live-draft\" class=\"live-dock-draft\" hidden></pre>';" +
+        "dock.innerHTML='<span class=\"live-round\"></span><span class=\"live-timer\">0:00</span><span class=\"live-dock-body\"></span><button type=\"button\" class=\"live-dock-stop\" data-ask-stop=\"1\"></button><pre id=\"ask-live-draft\" class=\"live-dock-draft\" hidden></pre>';" +
         "var label=dock.querySelector('.live-round');" +
         "if(label){label.textContent=liveLabel;}" +
+        "var stopBtn=dock.querySelector('[data-ask-stop]');" +
+        "if(stopBtn){stopBtn.textContent=stopLabel;}" +
         "home.appendChild(dock);" +
         "return dock;" +
         "}" +
@@ -3631,6 +3642,18 @@ function askPageClientScriptTail() {
         "closeNoteDialog();" +
         "return;" +
         "}" +
+        "var stop=t.closest('[data-ask-stop]');" +
+        "if(stop){" +
+        "e.preventDefault();" +
+        "if(stop.disabled){return;}" +
+        "stop.disabled=true;" +
+        "lastMsg=stoppingLabel||'Stopping…';" +
+        "paintTimers();" +
+        "fetch('/ask/stop',{method:'POST',credentials:'same-origin'," +
+        "headers:{'Content-Type':'application/x-www-form-urlencoded'}," +
+        "body:'c='+encodeURIComponent(askConvId||'')}).catch(function(){stop.disabled=false;});" +
+        "return;" +
+        "}" +
         "var fold=t.closest('[data-ask-composer-fold]');" +
         "if(fold){" +
         "e.preventDefault();" +
@@ -3711,6 +3734,8 @@ function askPageClientScriptTail() {
         "if(openPicker){openPicker.open=false;}" +
         "if(isNarrowComposer()){setComposerFolded(true,false);}" +
         "window.__askLivePanel=false;" +
+        "var stopBtn=document.querySelector('[data-ask-stop]');" +
+        "if(stopBtn){stopBtn.disabled=false;}" +
         "lastRound=null;" +
         "roundStartedAt=null;" +
         "askStartedAt=null;" +
@@ -3857,6 +3882,8 @@ function askRenderPage() {
         "<span class='live-round'>" + askEscapeHtml(askT("Live", "Live")) +
         "</span><span class='live-timer'>0:00</span>" +
         "<span class='live-dock-body'></span>" +
+        "<button type='button' class='live-dock-stop' data-ask-stop='1'>" +
+        askEscapeHtml(askT("Stop", "Ferma")) + "</button>" +
         "<pre id='ask-live-draft' class='live-dock-draft' hidden></pre></div></div>";
     html = html + "<div id='ask-note-dialog' hidden>" +
         "<div class='note-dialog-backdrop' data-ask-note-close='1'></div>" +
@@ -3902,9 +3929,34 @@ function askUiHome(queryParams, response, cookies, req) {
     return askRenderPage();
 }
 
+function askStoppedTurn(question) {
+    return {
+        "question": question,
+        "answer": "",
+        "sources": [],
+        "error": askT("Stopped.", "Interrotto."),
+        "pending": false,
+        "stopped": true,
+        "generated": askGetAskMode() == "generate"
+    };
+}
+
+function askIsTurnCancelRequested() {
+    return ui.state(ASK_STORE, "turnCancel", false, askActiveHistoryScope()) == true;
+}
+
+function askClearTurnCancel() {
+    ui.setState(ASK_STORE, "turnCancel", false, askActiveHistoryScope());
+}
+
+function askRequestTurnStop() {
+    ui.setState(ASK_STORE, "turnCancel", true, askActiveHistoryScope());
+    cancelThink(askLiveChannel());
+}
+
 function askConsumePendingStop() {
-    // Web UI does not expose stop (multi-user safe). Hosts may still poll this
-    // for a future console/admin signal; nothing in ASK sets pendingStop today.
+    // Console hosts poll this to stop the HTTP server (Ctrl+C still works).
+    // The ASK web Stop button cancels the in-flight turn via /ask/stop, not this.
     var pending = ui.state(ASK_STORE, "pendingStop", false, ASK_SESSION_ID);
     if (pending == true) {
         ui.setState(ASK_STORE, "pendingStop", false, ASK_SESSION_ID);
@@ -3964,6 +4016,7 @@ function askUiSubmit(body, response, cookies, req) {
     response.fragment("ask-panel", askRenderPanelHtml());
 
     // Per-user+conversation channel (AsyncLocal) so concurrent asks stay isolated.
+    askClearTurnCancel();
     onAgentProgress(liveChannel);
     try {
         var startMsg = askT("Starting ask…", "Avvio domanda…");
@@ -3981,6 +4034,12 @@ function askUiSubmit(body, response, cookies, req) {
             "message": startMsg
         }, "ask-progress");
         var turn = runAskTurn(question);
+        if (askIsTurnCancelRequested()) {
+            askClearTurnCancel();
+            if (turn == null or str.trim(askAsText(turn.answer)) == "") {
+                turn = askStoppedTurn(question);
+            }
+        }
         if (turn == null) {
             askReplaceLastTurn({
                 "question": question,
@@ -4004,16 +4063,22 @@ function askUiSubmit(body, response, cookies, req) {
             "expanded": turn.retrievalExpanded == true,
             "tags": askGetTagFilter(),
             "mode": askGetAskMode(),
-            "generated": turn.generated == true
+            "generated": turn.generated == true,
+            "stopped": turn.stopped == true
         });
     } catch (e) {
-        askReplaceLastTurn({
-            "question": question,
-            "answer": "",
-            "sources": [],
-            "error": askT("Ask failed: ", "Domanda fallita: ") + askAsText(e),
-            "pending": false
-        });
+        if (askIsTurnCancelRequested() or str.indexOf(str.lower(askAsText(e)), "cancelled") >= 0) {
+            askClearTurnCancel();
+            askReplaceLastTurn(askStoppedTurn(question));
+        } else {
+            askReplaceLastTurn({
+                "question": question,
+                "answer": "",
+                "sources": [],
+                "error": askT("Ask failed: ", "Domanda fallita: ") + askAsText(e),
+                "pending": false
+            });
+        }
     } finally {
         clearAgentProgress();
         componentLiveEmit(liveChannel, {
@@ -4021,6 +4086,14 @@ function askUiSubmit(body, response, cookies, req) {
             "html": askRenderPanelHtml()
         }, "ask-panel");
     }
+}
+
+@POST("/ask/stop")
+function askUiStop(body, res, cookies, req) {
+    askBeginRequest(null, body, cookies, res, req);
+    askRequestTurnStop();
+    askAudit("stop", req, {});
+    return res.json({ "ok": true });
 }
 
 @ACTION("/clear")
