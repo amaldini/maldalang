@@ -301,7 +301,10 @@ public class LLMClientInstance : ObjectInstance
 
             var msgObj = msg.AsObject();
             var role = GetStringProperty(msgObj, "role") ?? "user";
-            var content = GetStringProperty(msgObj, "content");
+            var contentValue = GetProperty(msgObj, "content");
+            var content = contentValue != null && contentValue.Type == ValueType.String
+                ? contentValue.AsString()
+                : null;
 
             if (role == "tool")
             {
@@ -324,8 +327,16 @@ public class LLMClientInstance : ObjectInstance
 
             var msgDict = new Dictionary<string, object?> { ["role"] = role };
 
-            if (content != null)
+            if (contentValue != null && contentValue.Type == ValueType.Array)
+            {
+                var wire = PromptAttachmentCodec.ToWireContent(contentValue);
+                if (wire != null)
+                    msgDict["content"] = wire;
+            }
+            else if (content != null)
+            {
                 msgDict["content"] = content;
+            }
 
             // Replay thinking-model CoT when present. DeepSeek V4 requires this as
             // reasoning_content on assistant turns that included tool_calls.

@@ -112,6 +112,7 @@ print("name=" + card.name);</code></pre>
                     <li><code>gather</code> / <code>gather:</code> (optional array of strings) - Mode C marker: on <code>await</code> with <code>-&gt; Type</code>, run a tool round, then a fresh typed extract without tools. Requires <code>-&gt; Type</code>. Constructing the <code>PromptInstance</code> without <code>await</code> does not call the model.</li>
                     <li><code>maxTokens</code> / <code>maxTokens:</code> (optional integer) - Maximum tokens for the response</li>
                     <li><code>examples</code> / <code>examples:</code> (optional array) - Few-shot example pairs injected as user/assistant messages before the final <code>user</code> prompt. Each entry is an object with <code>input</code> and <code>output</code> strings (aliases <code>user</code> / <code>assistant</code> are accepted).</li>
+                    <li><code>attachments</code> / <code>attachments:</code> (optional array) - Image and PDF parts sent with the user message on <code>await</code> / <code>runPrompt</code> / <code>agent.think</code>. <code>user</code> and <code>system</code> stay strings. Each item is <code>{ kind: "image" \| "pdf", path }</code> or <code>{ kind: "image", url }</code> (<code>http</code>/<code>https</code>, passed through — the host does not fetch). Omit <code>kind</code> to infer from <code>.png</code> / <code>.jpg</code> / <code>.jpeg</code> / <code>.webp</code> / <code>.gif</code> / <code>.pdf</code>. <code>path</code> may be a string or a <code>cap.fileRead</code> token. Constructing the <code>PromptInstance</code> stores metadata only; bytes are read at execution. HTTP clients send OpenAI <code>image_url</code> / <code>file</code> content parts. In-process GGUF throws. Max 8 items, 10 MB each. See <code>Examples/Prompts/multimodal_attachments.malda</code>.</li>
                 </ul>
             </li>
         </ul>
@@ -129,6 +130,18 @@ print("name=" + card.name);</code></pre>
 var p = classify("Pretty good");
 print(length(p.examples));  // 2</code></pre>
         <p>When the prompt is executed (via <code>agent.think</code>, <code>await prompt(...)</code>, or <code>runPrompt</code>), each example is sent as a user message followed by an assistant message, then the interpolated <code>user</code> field.</p>
+
+        <h4>Multimodal attachments</h4>
+        <pre><code data-run="true" data-expect="image">prompt look(name) {
+    user: "Describe {name}"
+    attachments: [
+        { path: "shots/{name}.png" }
+    ]
+}
+
+var p = look("cat");
+print(p.attachments[0].kind);</code></pre>
+        <p>The instance stores metadata only. On <code>await</code>, HTTP clients send OpenAI content parts; in-process GGUF throws. Same file: <code>Examples/Prompts/multimodal_attachments.malda</code>.</p>
 
         <h4>Dynamic Few-Shot at Runtime</h4>
         <p>Use <code>withExamples()</code> to attach or replace examples on a <code>PromptInstance</code> built at runtime. Works in pipe pipelines:</p>

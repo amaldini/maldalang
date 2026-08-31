@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — prompt attachments)
+
+- **Prompt `attachments:` (image/pdf):** additive prompt-body field. `user` / `system` stay strings. Each item is `{ kind: "image"|"pdf", path }` or `{ kind: "image", url }` (`http`/`https` pass-through, no in-process fetch). Kind may be inferred from `.png`/`.jpg`/`.jpeg`/`.webp`/`.gif`/`.pdf`. `path` may be a string or `cap.fileRead` token. Building a `PromptInstance` stores metadata only; `await` / `runPrompt` / `agent.think` encode OpenAI `image_url` / `file` content parts on HTTP clients. In-process GGUF throws (text-only). Max 8 items, 10 MB each. JavaScript: n/a (prompts are host-only). Example: `Examples/Prompts/multimodal_attachments.malda`.
+
 #### Changed (PATCH — drop former informal overview from precedence)
 
 - **Normative precedence** in [`malda-language-1.0.md`](malda-language-1.0.md) no longer names the retired informal overview. Final 1.0 order is unchanged: interpreter + Tier 0 tests → spec prose → Reference Manual. `README.md` is explicitly non-normative.

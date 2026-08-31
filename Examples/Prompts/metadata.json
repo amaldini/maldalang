@@ -98,6 +98,11 @@
       "next": "Prompts/schema_prompt_structured.malda"
     },
     {
+      "name": "Multimodal prompt attachments",
+      "description": "attachments: image/pdf on a PromptInstance (offline, no LLM)",
+      "file": "multimodal_attachments.malda"
+    },
+    {
       "name": "Prompt Reusability",
       "description": "How prompt blocks enable code reuse and maintainability",
       "file": "prompt_reusability.malda"

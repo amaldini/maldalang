@@ -10,13 +10,13 @@ public static class PromptBodyFields
 {
     public static readonly string[] Names =
     {
-        "system", "user", "model", "temperature", "tools", "gather", "maxTokens", "examples"
+        "system", "user", "model", "temperature", "tools", "gather", "maxTokens", "examples", "attachments"
     };
 
     public static bool IsName(string name) =>
         name is "system" or "user" or "model" or "temperature"
-            or "tools" or "gather" or "maxTokens" or "examples";
+            or "tools" or "gather" or "maxTokens" or "examples" or "attachments";
 
     public static string DisplayList =>
-        "system, user, model, temperature, tools, gather, maxTokens, or examples";
+        "system, user, model, temperature, tools, gather, maxTokens, examples, or attachments";
 }

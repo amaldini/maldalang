@@ -51,6 +51,13 @@ Compact rules for generating correct `.malda`. Prefer this over scraping HTML ma
   extract / validate / coerce path as `await` on a dict or LLM-shaped JSON string — no
   model, no repair loop. Success `data` for a sum type is a variant. Example:
   `Examples/Prompts/eval_prompt.malda`. Few-shot: `docs/llm/few-shot/27_eval_prompt.malda`.
+  Optional `attachments:` on the prompt body is additive (`user`/`system` stay strings).
+  Each item is `{ kind: "image"|"pdf", path }` or `{ kind: "image", url }` (http/https,
+  no host fetch). Kind may be omitted when the extension is `.png`/`.jpg`/`.jpeg`/`.webp`/`.gif`/`.pdf`.
+  Path may be a string or `cap.fileRead` token. Constructing the instance does not read bytes;
+  `await` / `runPrompt` / `think` encode OpenAI content parts on HTTP clients. In-process GGUF
+  throws. Max 8 items, 10 MB each. Example: `Examples/Prompts/multimodal_attachments.malda`.
+  Few-shot: `docs/llm/few-shot/30_prompt_attachments.malda`.
   Prefer a `schema Name { … }` for structured objects, or a **sum type**
   (`type Intent = Search(query: string) | Buy(sku: string, qty: int)`) when the model must pick one of several
   shapes — success yields a real variant for `match`. Constructor payload types are optional;

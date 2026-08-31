@@ -40,6 +40,7 @@ public partial class PromptValue
             List<string>? gather = null;
             int? maxTokens = null;
             List<PromptExample>? examples = null;
+            List<PromptAttachment>? attachments = null;
 
             if (Declaration.BodyType == PromptBodyType.ObjectLiteral)
             {
@@ -64,6 +65,7 @@ public partial class PromptValue
                 var gatherValue = jsonObj.Get("gather");
                 var maxTokensValue = jsonObj.Get("maxTokens");
                 var examplesValue = jsonObj.Get("examples");
+                var attachmentsValue = jsonObj.Get("attachments");
 
                 if (userValue.Type == ValueType.Null || userValue.Type != ValueType.String)
                 {
@@ -110,6 +112,7 @@ public partial class PromptValue
                 }
 
                 examples = PromptExampleHelpers.ParseExamplesOrNull(examplesValue)?.ToList();
+                attachments = PromptAttachment.ParseListOrNull(attachmentsValue)?.ToList();
             }
             else
             {
@@ -188,6 +191,9 @@ public partial class PromptValue
                             case "examples":
                                 examples = PromptExampleHelpers.ParseExamplesOrNull(value)?.ToList();
                                 break;
+                            case "attachments":
+                                attachments = PromptAttachment.ParseListOrNull(value)?.ToList();
+                                break;
                         }
                     }
                 }
@@ -226,6 +232,14 @@ public partial class PromptValue
                     arguments);
             }
 
+            if (attachments != null && attachments.Count > 0)
+            {
+                PromptAttachment.ApplyParameterInterpolation(
+                    attachments,
+                    Declaration.Parameters,
+                    arguments);
+            }
+
             var hasGather = gather != null && gather.Count > 0;
             RuntimeValue? responseFormatSchema = null;
             // Mode A and Mode B: attach response_format + appendix when -> Type is set.
@@ -256,7 +270,8 @@ public partial class PromptValue
                 withinTimeoutMs,
                 gather,
                 budget,
-                Declaration.ReturnType);
+                Declaration.ReturnType,
+                attachments);
             return RuntimeValue.Object(promptInstance);
         }
         finally
@@ -339,7 +354,8 @@ public partial class PromptValue
                         promptInstance.WithinTimeoutMs,
                         promptInstance.Gather,
                         promptInstance.Budget,
-                        promptInstance.ReturnType);
+                        promptInstance.ReturnType,
+                        promptInstance.Attachments);
                     promptInstanceValue = RuntimeValue.Object(promptInstance);
                 }
 
@@ -404,7 +420,8 @@ public partial class PromptValue
                 promptInstance.WithinTimeoutMs,
                 promptInstance.Gather,
                 promptInstance.Budget,
-                promptInstance.ReturnType);
+                promptInstance.ReturnType,
+                promptInstance.Attachments);
             var gatherResponse = agent.Think(RuntimeValue.Object(gatherInstance));
             var content = TryExtractResponseContent(gatherResponse);
             if (string.IsNullOrWhiteSpace(content))
@@ -447,7 +464,8 @@ public partial class PromptValue
             promptInstance.WithinTimeoutMs,
             gather: null,
             promptInstance.Budget,
-            promptInstance.ReturnType);
+            promptInstance.ReturnType,
+            promptInstance.Attachments);
     }
 
     internal static void ValidateGatherContract(

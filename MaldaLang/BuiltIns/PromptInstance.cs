@@ -26,8 +26,10 @@ public class PromptInstance : ObjectInstance
     /// <see cref="ResponseFormatSchema"/> until extract) still coerce fixtures.
     /// </summary>
     public string? ReturnType { get; }
+    public IReadOnlyList<PromptAttachment>? Attachments { get; }
     public bool HasGather => Gather != null && Gather.Count > 0;
     public bool HasTools => Tools != null && Tools.Count > 0;
+    public bool HasAttachments => Attachments != null && Attachments.Count > 0;
 
     public PromptInstance(
         string? system,
@@ -41,7 +43,8 @@ public class PromptInstance : ObjectInstance
         int? withinTimeoutMs = null,
         List<string>? gather = null,
         ResourceBudget? budget = null,
-        string? returnType = null)
+        string? returnType = null,
+        IReadOnlyList<PromptAttachment>? attachments = null)
         : base(null)
     {
         System = system;
@@ -56,6 +59,7 @@ public class PromptInstance : ObjectInstance
         WithinTimeoutMs = withinTimeoutMs;
         Budget = budget;
         ReturnType = string.IsNullOrWhiteSpace(returnType) ? null : returnType.Trim();
+        Attachments = attachments != null && attachments.Count > 0 ? attachments : null;
     }
     
     public override RuntimeValue Get(string name, ClassDefinition? accessingClass = null)
@@ -78,6 +82,8 @@ public class PromptInstance : ObjectInstance
                 return MaxTokens.HasValue ? RuntimeValue.Integer(MaxTokens.Value) : RuntimeValue.Null();
             case "examples":
                 return PromptExampleHelpers.ToRuntimeArray(Examples);
+            case "attachments":
+                return PromptAttachment.ToRuntimeArray(Attachments);
             case "returnType":
                 return ReturnType != null ? RuntimeValue.String(ReturnType) : RuntimeValue.Null();
             case "toPromptString":

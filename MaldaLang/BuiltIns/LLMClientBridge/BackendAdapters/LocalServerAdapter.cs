@@ -51,7 +51,10 @@ public class LocalServerAdapter : IBackendAdapter
                 
                 var msgObj = msg.AsObject();
                 var role = GetStringProperty(msgObj, "role") ?? "user";
-                var content = GetStringProperty(msgObj, "content");
+                var contentValue = GetProperty(msgObj, "content");
+                var content = contentValue != null && contentValue.Type == ValueType.String
+                    ? contentValue.AsString()
+                    : null;
                 
                 // Handle tool result messages
                 if (role == "tool")
@@ -78,8 +81,16 @@ public class LocalServerAdapter : IBackendAdapter
                     ["role"] = role
                 };
                 
-                if (content != null)
+                if (contentValue != null && contentValue.Type == ValueType.Array)
+                {
+                    var wire = PromptAttachmentCodec.ToWireContent(contentValue);
+                    if (wire != null)
+                        msgDict["content"] = wire;
+                }
+                else if (content != null)
+                {
                     msgDict["content"] = content;
+                }
                 
                 // Handle tool calls
                 var toolCalls = GetProperty(msgObj, "tool_calls");

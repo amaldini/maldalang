@@ -842,6 +842,16 @@ public class LlamaCppClientInstance : ObjectInstance, IDisposable
     {
         try
         {
+            if (messages.Type != ValueType.Array)
+            {
+                var errorObj = new JsonObject();
+                errorObj.Set("content", RuntimeValue.String("Error: messages must be an array"));
+                return RuntimeValue.Object(errorObj);
+            }
+
+            var messagesList = messages.AsArray();
+            PromptAttachmentCodec.EnsureLocalBackendAllows(messagesList);
+
             try
             {
                 EnsureModelLoaded();
@@ -850,16 +860,7 @@ public class LlamaCppClientInstance : ObjectInstance, IDisposable
             {
                 throw; // Re-throw to be caught by outer catch
             }
-            
-            if (messages.Type != ValueType.Array)
-            {
-                var errorObj = new JsonObject();
-                errorObj.Set("content", RuntimeValue.String("Error: messages must be an array"));
-                return RuntimeValue.Object(errorObj);
-            }
-            
-            var messagesList = messages.AsArray();
-            
+
             // Convert messages to a prompt format
             var prompt = BuildPromptFromMessages(messagesList);
             

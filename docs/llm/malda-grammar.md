@@ -60,8 +60,9 @@ ActorMember   ::= AccessModifier? ( FieldDecl | "on" Identifier "(" ParamList? "
 
 PromptDecl    ::= "prompt" Identifier "(" ParamList? ")" ReturnType? PromptBody
 PromptBody    ::= Block | ObjectLiteral   /* statement body or object-literal config; object fields may end with optional ';' */
-PromptBodyField ::= "system" | "user" | "model" | "temperature" | "tools" | "gather" | "maxTokens" | "examples"
-                  /* gather + -> Type = Mode C (tool round, then typed extract). tools: stays Mode B. */
+PromptBodyField ::= "system" | "user" | "model" | "temperature" | "tools" | "gather" | "maxTokens" | "examples" | "attachments"
+                  /* gather + -> Type = Mode C (tool round, then typed extract). tools: stays Mode B.
+                     attachments: image/pdf parts on await; user/system stay strings. */
 
 ComponentDecl ::= "component" Identifier ComponentParams? Block
 ComponentParams ::= "(" ParamList? ")"

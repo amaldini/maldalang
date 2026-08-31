@@ -36,6 +36,7 @@ After generating a snippet, diagnose with `malda check path.malda --json` before
 | `27_eval_prompt.malda` | `evalPrompt` / `instance.eval` offline fixture in/out (no LLM) |
 | `28_api_program_prompt.malda` | `prompt … -> program(Api)` + `evalPrompt` fixture + `runProgram` |
 | `29_runprogram_in_step.malda` | `step result = runProgram(prog)` (durable; plan JSON is input) |
+| `30_prompt_attachments.malda` | `attachments:` image path/url on a PromptInstance (offline) |
 
 Also useful from the main tree:
 
@@ -46,6 +47,6 @@ Also useful from the main tree:
 - `Examples/Web/rest_api_server.malda`, `Examples/Web/ui_form_workflow.malda`, `Examples/Web/ui_counter_dashboard.malda`
 - Language API: `ReferenceManual/24-web-ui.html` (hub: `23-web-ui-hub.html`)
 - `Examples/Workflows/retry_and_inspect.malda`
-- `Examples/Prompts/basic_prompt.malda`, `Examples/Prompts/schema_prompt_structured.malda`, `Examples/Prompts/sum_type_intent_prompt.malda`, `Examples/Prompts/api_program_calc.malda`, `Examples/Prompts/prompt_tools_then_structured.malda`, `Examples/Prompts/eval_prompt.malda`
+- `Examples/Prompts/basic_prompt.malda`, `Examples/Prompts/schema_prompt_structured.malda`, `Examples/Prompts/sum_type_intent_prompt.malda`, `Examples/Prompts/api_program_calc.malda`, `Examples/Prompts/prompt_tools_then_structured.malda`, `Examples/Prompts/eval_prompt.malda`, `Examples/Prompts/multimodal_attachments.malda`
 - `Examples/Workflows/runprogram_in_step.malda` (`evalPrompt` then `step result = runProgram`)
 - `Examples/Actors/basic_counter.malda`

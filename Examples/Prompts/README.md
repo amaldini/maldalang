@@ -13,6 +13,7 @@ malda Examples/Prompts/prompt_tools_then_structured.malda
 malda Examples/Prompts/prompt_budget.malda
 malda Examples/Prompts/api_program_calc.malda
 malda Examples/Prompts/eval_prompt.malda
+malda Examples/Prompts/multimodal_attachments.malda
 
 # Needs a configured LLM (default local client or API key)
 malda Examples/Prompts/schema_prompt_structured.malda
@@ -31,6 +32,7 @@ malda Examples/Prompts/prompt_with_agent.malda
 | `prompt_budget.malda` | — | Offline: `@budget` + `@within` on a typed prompt |
 | `api_program_calc.malda` | — | Offline: closed `api` + program JSON + `runProgram` |
 | `eval_prompt.malda` | — | Offline: `evalPrompt` / `instance.eval` fixture in/out (schema + sum type) |
+| `multimodal_attachments.malda` | — | Offline: `attachments:` image/pdf metadata (`user` stays a string) |
 | RAG / agent demos | — | Need LLM provider |
 
 Durable `runProgram` in a `step`: [`Examples/Workflows/runprogram_in_step.malda`](../Workflows/runprogram_in_step.malda).

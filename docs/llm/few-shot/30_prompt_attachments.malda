@@ -1,0 +1,16 @@
+// attachments: on a prompt — metadata only (no LLM, no file read).
+// user/system stay strings. Kind is inferred from .png when omitted.
+
+prompt look(name) {
+    user: "Describe {name}";
+    attachments: [
+        { path: "shots/{name}.png" },
+        { kind: "image", url: "https://example.com/ref.png" }
+    ];
+}
+
+var p = look("cat");
+io.print(p.user);
+io.print(p.attachments[0].kind);
+io.print(p.attachments[0].path);
+io.print(p.attachments[1].url);

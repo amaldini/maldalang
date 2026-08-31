@@ -1,0 +1,34 @@
+// multimodal_attachments.malda — prompt attachments metadata (offline, no LLM)
+//
+// attachments: is additive. user/system stay strings. Constructing the
+// PromptInstance does not read files or call a model.
+//
+// Run: malda Examples/Prompts/multimodal_attachments.malda
+
+prompt describeInvoice(photo, invoice) {
+    system: "Extract fields. Reply JSON only.";
+    user: "What is the total on these documents?";
+    attachments: [
+        { kind: "image", path: photo },
+        { kind: "pdf", path: invoice },
+        { kind: "image", url: "https://example.com/stamp.png" }
+    ];
+}
+
+prompt describeShot(name) {
+    user: "Describe {name}";
+    attachments: [
+        { path: "shots/{name}.png" }
+    ];
+}
+
+var invoice = describeInvoice("receipts/photo.png", "invoices/a.pdf");
+io.print(invoice.attachments[0].kind);
+io.print(invoice.attachments[0].path);
+io.print(invoice.attachments[1].kind);
+io.print(invoice.attachments[1].fileName);
+io.print(invoice.attachments[2].url);
+
+var shot = describeShot("cat");
+io.print(shot.attachments[0].kind);
+io.print(shot.attachments[0].path);

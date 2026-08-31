@@ -6781,6 +6781,10 @@ public class CSharpTranspiler
         _output.AppendLine("var examplesValue = RuntimeHelpers.GetPromptObjectField(bodyValue, \"examples\");");
         WriteIndent();
         _output.AppendLine("var examples = MaldaLang.BuiltIns.PromptExampleHelpers.ParseExamplesOrNull(examplesValue);");
+        WriteIndent();
+        _output.AppendLine("var attachmentsValue = RuntimeHelpers.GetPromptObjectField(bodyValue, \"attachments\");");
+        WriteIndent();
+        _output.AppendLine("var attachments = MaldaLang.BuiltIns.PromptAttachment.ParseListOrNull(attachmentsValue);");
         
         // Validate user is required
         WriteIndent();
@@ -6968,6 +6972,8 @@ public class CSharpTranspiler
             _output.AppendLine("int? maxTokens = null;");
             WriteIndent();
             _output.AppendLine("System.Collections.Generic.List<MaldaLang.BuiltIns.PromptExample>? examples = null;");
+            WriteIndent();
+            _output.AppendLine("System.Collections.Generic.List<MaldaLang.BuiltIns.PromptAttachment>? attachments = null;");
             _output.AppendLine();
             
             if (promptDecl.StatementBody != null)
@@ -7059,6 +7065,9 @@ public class CSharpTranspiler
                             case "examples":
                                 _output.AppendLine("examples = MaldaLang.BuiltIns.PromptExampleHelpers.ParseExamplesOrNull(" + keyword + "Value)?.ToList();");
                                 break;
+                            case "attachments":
+                                _output.AppendLine("attachments = MaldaLang.BuiltIns.PromptAttachment.ParseListOrNull(" + keyword + "Value);");
+                                break;
                         }
                         
                         _indentLevel--;
@@ -7123,6 +7132,33 @@ public class CSharpTranspiler
         _indentLevel++;
         WriteIndent();
         _output.Append("MaldaLang.BuiltIns.PromptExampleHelpers.ApplyParameterInterpolation(examples, new System.Collections.Generic.List<string> { ");
+        for (int i = 0; i < promptDecl.Parameters.Count; i++)
+        {
+            if (i > 0) _output.Append(", ");
+            _output.Append("\"");
+            _output.Append(promptDecl.Parameters[i].Replace("\\", "\\\\").Replace("\"", "\\\""));
+            _output.Append("\"");
+        }
+        _output.Append(" }, new System.Collections.Generic.List<MaldaLang.Interpreter.RuntimeValue> { ");
+        for (int i = 0; i < promptDecl.Parameters.Count; i++)
+        {
+            if (i > 0) _output.Append(", ");
+            _output.Append("RuntimeHelpers.ToRuntimeValue(");
+            _output.Append(EscapeIdentifier(promptDecl.Parameters[i]));
+            _output.Append(")");
+        }
+        _output.AppendLine(" });");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+
+        WriteIndent();
+        _output.AppendLine("if (attachments != null && attachments.Count > 0)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.Append("MaldaLang.BuiltIns.PromptAttachment.ApplyParameterInterpolation(attachments, new System.Collections.Generic.List<string> { ");
         for (int i = 0; i < promptDecl.Parameters.Count; i++)
         {
             if (i > 0) _output.Append(", ");
@@ -7295,7 +7331,7 @@ public class CSharpTranspiler
         WriteIndent();
         _output.Append("return RuntimeHelpers.ToRuntimeValue(new MaldaLang.BuiltIns.PromptInstance(system, user, model, temperature, tools, maxTokens, __responseFormatSchema, examples, __withinTimeoutMs, gather, __resourceBudget, ");
         EmitPromptReturnTypeLiteral(promptDecl.ReturnType);
-        _output.Append("));");
+        _output.Append(", attachments));");
         _output.AppendLine();
         
         _indentLevel--;
@@ -7449,7 +7485,7 @@ public class CSharpTranspiler
         _output.AppendLine("{");
         _indentLevel++;
         WriteIndent();
-            _output.AppendLine("var __gatherInstance = new MaldaLang.BuiltIns.PromptInstance(__promptInstance.System, __promptInstance.User, __promptInstance.Model, __promptInstance.Temperature, __promptInstance.Gather, __promptInstance.MaxTokens, null, __promptInstance.Examples, __promptInstance.WithinTimeoutMs, __promptInstance.Gather, __promptInstance.Budget, __promptInstance.ReturnType);");
+            _output.AppendLine("var __gatherInstance = new MaldaLang.BuiltIns.PromptInstance(__promptInstance.System, __promptInstance.User, __promptInstance.Model, __promptInstance.Temperature, __promptInstance.Gather, __promptInstance.MaxTokens, null, __promptInstance.Examples, __promptInstance.WithinTimeoutMs, __promptInstance.Gather, __promptInstance.Budget, __promptInstance.ReturnType, __promptInstance.Attachments);");
         WriteIndent();
         _output.AppendLine("MaldaLang.Interpreter.RuntimeValue __gatherResponse;");
         WriteIndent();
@@ -7531,7 +7567,7 @@ public class CSharpTranspiler
         _output.Append(MaldaLang.Interpreter.PromptValue.GatherNotesMarker.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\n", "\\n"));
         _output.AppendLine("\" + __gatherNotes;");
         WriteIndent();
-            _output.AppendLine("__promptInstance = new MaldaLang.BuiltIns.PromptInstance(__extractSystem, __extractUser, __promptInstance.Model, __promptInstance.Temperature, null, __promptInstance.MaxTokens, __extractFormat, __promptInstance.Examples, __promptInstance.WithinTimeoutMs, null, __promptInstance.Budget, __promptInstance.ReturnType);");
+            _output.AppendLine("__promptInstance = new MaldaLang.BuiltIns.PromptInstance(__extractSystem, __extractUser, __promptInstance.Model, __promptInstance.Temperature, null, __promptInstance.MaxTokens, __extractFormat, __promptInstance.Examples, __promptInstance.WithinTimeoutMs, null, __promptInstance.Budget, __promptInstance.ReturnType, __promptInstance.Attachments);");
         WriteIndent();
         _output.AppendLine("__baseUser = __promptInstance.User;");
         _indentLevel--;
@@ -7553,7 +7589,7 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("var __repair = MaldaLang.BuiltIns.TypedPromptValidator.BuildRepairInstruction(__typedReturnType!, __lastError);");
         WriteIndent();
-            _output.AppendLine("__promptInstance = new MaldaLang.BuiltIns.PromptInstance(__promptInstance.System, __baseUser + \"\\n\\n\" + __repair, __promptInstance.Model, __promptInstance.Temperature, __promptInstance.Tools, __promptInstance.MaxTokens, __promptInstance.ResponseFormatSchema, __promptInstance.Examples, __promptInstance.WithinTimeoutMs, __promptInstance.Gather, __promptInstance.Budget, __promptInstance.ReturnType);");
+            _output.AppendLine("__promptInstance = new MaldaLang.BuiltIns.PromptInstance(__promptInstance.System, __baseUser + \"\\n\\n\" + __repair, __promptInstance.Model, __promptInstance.Temperature, __promptInstance.Tools, __promptInstance.MaxTokens, __promptInstance.ResponseFormatSchema, __promptInstance.Examples, __promptInstance.WithinTimeoutMs, __promptInstance.Gather, __promptInstance.Budget, __promptInstance.ReturnType, __promptInstance.Attachments);");
         _indentLevel--;
         WriteIndent();
         _output.AppendLine("}");

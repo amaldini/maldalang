@@ -55,6 +55,7 @@ public class BackendCapabilityMatrixGuardTests
         AssertContains(markdown, "`evalPrompt()`", "schema/validate/asVariant/evalPrompt row");
         AssertContains(markdown, "Typed prompt", "typed prompts row");
         AssertContains(markdown, "Gather-then-extract", "gather-then-extract prompts row");
+        AssertContains(markdown, "`attachments:`", "prompt attachments row");
         AssertContains(markdown, "`runProgram`", "closed api / program(Api) / runProgram row");
         AssertContains(markdown, "`program(Api)`", "closed api / program(Api) / runProgram row");
         AssertContains(markdown, "`@budget`", "@budget resource bounds row");

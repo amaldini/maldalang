@@ -4,6 +4,7 @@
 namespace MaldaLang.BuiltIns;
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using MaldaLang.Interpreter;
@@ -188,6 +189,7 @@ public class AgentInstance : ObjectInstance
         
         string prompt;
         string? systemPrompt = null;
+        IReadOnlyList<PromptAttachment>? attachments = null;
         
         // Check if it's a PromptInstance
         RuntimeValue? responseFormat = null;
@@ -198,6 +200,7 @@ public class AgentInstance : ObjectInstance
             systemPrompt = promptInst.System;
             responseFormat = promptInst.ResponseFormatSchema;
             requestOverrides = BuildLlmRequestOverrides(promptInst);
+            attachments = promptInst.Attachments;
 
             // Set system prompt if provided
             if (systemPrompt != null)
@@ -319,7 +322,7 @@ public class AgentInstance : ObjectInstance
             }
         }
         
-        _conversation.AddUserMessage(prompt);
+        _conversation.AddUserMessage(prompt, attachments);
         var timeoutMs = promptOrInstance.Type == ValueType.Object &&
                         promptOrInstance.AsObject() is PromptInstance boundedPrompt &&
                         boundedPrompt.WithinTimeoutMs is > 0

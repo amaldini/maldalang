@@ -344,4 +344,157 @@ prompt planTask(task) -> Plan {
         Assert.Contains("after 3 attempts", ex.Message);
         Assert.Contains("Return type: Plan", ex.Message);
     }
+
+    [Fact]
+    public void InvokePrompt_Attachments_ObjectLiteral_InterpolatesPath()
+    {
+        var source = @"
+prompt look(name) {
+    user: ""Describe {name}""
+    attachments: [
+        { kind: ""image"", path: ""shots/{name}.png"" }
+    ]
+}
+
+var p = look(""cat"");
+print(p.user);
+print(p.attachments[0].kind);
+print(p.attachments[0].path);
+";
+        var output = RunProgram(source);
+        Assert.Contains("Describe cat", output);
+        Assert.Contains("image", output);
+        Assert.Contains("shots/cat.png", output);
+    }
+
+    [Fact]
+    public void InvokePrompt_Attachments_InfersPdfKind()
+    {
+        var source = @"
+prompt readDoc(path) {
+    user: ""Extract the total""
+    attachments: [
+        { path: path }
+    ]
+}
+
+var p = readDoc(""invoices/a.pdf"");
+print(p.attachments[0].kind);
+print(p.attachments[0].fileName);
+";
+        var output = RunProgram(source);
+        Assert.Contains("pdf", output);
+        Assert.Contains("a.pdf", output);
+    }
+
+    [Fact]
+    public void InvokePrompt_Attachments_StatementBody_RemoteImageUrl()
+    {
+        var source = @"
+prompt look(photo) {
+    user ""What is this?"";
+    attachments [{ kind: ""image"", url: photo }];
+}
+
+var p = look(""https://example.com/x.png"");
+print(p.attachments[0].url);
+";
+        var output = RunProgram(source);
+        Assert.Contains("https://example.com/x.png", output);
+    }
+
+    [Fact]
+    public void InvokePrompt_Attachments_EmptyArray_IsOmitted()
+    {
+        var source = @"
+prompt look() {
+    user: ""hi""
+    attachments: []
+}
+
+var p = look();
+if (p.attachments == null) {
+    print(""omitted"");
+}
+";
+        var output = RunProgram(source);
+        Assert.Contains("omitted", output);
+    }
+
+    [Fact]
+    public async Task InvokePrompt_Attachments_PathAndUrl_Throws()
+    {
+        var source = @"
+prompt look() {
+    user: ""hi""
+    attachments: [{ kind: ""image"", path: ""a.png"", url: ""https://example.com/a.png"" }]
+}
+
+var p = look();
+";
+        RedirectConsole();
+        try
+        {
+            var lexer = new Lexer(source);
+            var tokens = lexer.Tokenize();
+            var parser = new Parser.Parser(tokens);
+            var statements = parser.Parse();
+            Assert.Empty(parser.Errors);
+            var interpreter = new Interpreter.Interpreter();
+            var ex = await Assert.ThrowsAsync<RuntimeException>(async () => await interpreter.InterpretAsync(statements));
+            Assert.Contains("path", ex.Message);
+            Assert.Contains("url", ex.Message);
+        }
+        finally
+        {
+            RestoreConsole();
+        }
+    }
+
+    [Fact]
+    public void InvokePrompt_Attachments_AcceptsFileReadCapability()
+    {
+        var source = @"
+var tok = cap.fileRead(""notes.png"");
+prompt look(fileCap) {
+    user: ""see""
+    attachments: [{ kind: ""image"", path: fileCap }]
+}
+
+var p = look(tok);
+print(p.attachments[0].path);
+";
+        var output = RunProgram(source);
+        Assert.Contains("notes.png", output);
+    }
+
+    [Fact]
+    public async Task InvokePrompt_Attachments_UnknownKind_Throws()
+    {
+        var source = @"
+prompt look() {
+    user: ""hi""
+    attachments: [{ kind: ""audio"", path: ""a.wav"" }]
+}
+
+var p = look();
+";
+        RedirectConsole();
+        try
+        {
+            var lexer = new Lexer(source);
+            var tokens = lexer.Tokenize();
+            var parser = new Parser.Parser(tokens);
+            var statements = parser.Parse();
+            Assert.Empty(parser.Errors);
+            var interpreter = new Interpreter.Interpreter();
+            var ex = await Assert.ThrowsAsync<RuntimeException>(async () => await interpreter.InterpretAsync(statements));
+            Assert.Contains("image", ex.Message);
+            Assert.Contains("pdf", ex.Message);
+        }
+        finally
+        {
+            RestoreConsole();
+        }
+    }
 }

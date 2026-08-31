@@ -1295,26 +1295,38 @@ public partial class ConversationInstance : ObjectInstance
         _systemPrompt = string.IsNullOrEmpty(_systemPrompt) ? text : _systemPrompt + text;
     }
 
-    public RuntimeValue AddUserMessage(string content)
+    public RuntimeValue AddUserMessage(string content, IReadOnlyList<PromptAttachment>? attachments = null)
     {
         _llmRound = 0;
         ResetTurnUsage();
         _turnFailedWriteTools.Clear();
         var msg = new JsonObject();
         msg.Set("role", RuntimeValue.String("user"));
-        msg.Set("content", RuntimeValue.String(content));
+        if (attachments != null && attachments.Count > 0)
+            msg.Set("content", PromptAttachmentCodec.BuildContentParts(content, attachments));
+        else
+            msg.Set("content", RuntimeValue.String(content));
         _messages.Add(RuntimeValue.Object(msg));
         
-        // Record agent message in trace (if enabled)
+        // Record agent message in trace (if enabled). Never log data URLs / bytes.
         TraceManager.Record(
             TraceEventType.AgentMessage,
-            new
-            {
-                role = "user",
-                content,
-                toolName = (string?)null,
-                toolCallId = (string?)null
-            },
+            attachments != null && attachments.Count > 0
+                ? (object)new
+                {
+                    role = "user",
+                    content,
+                    attachments = PromptAttachmentCodec.TraceSummary(attachments),
+                    toolName = (string?)null,
+                    toolCallId = (string?)null
+                }
+                : new
+                {
+                    role = "user",
+                    content,
+                    toolName = (string?)null,
+                    toolCallId = (string?)null
+                },
             AgentName,
             SessionId);
         
