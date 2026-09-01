@@ -37,6 +37,7 @@ After generating a snippet, diagnose with `malda check path.malda --json` before
 | `28_api_program_prompt.malda` | `prompt … -> program(Api)` + `evalPrompt` fixture + `runProgram` |
 | `29_runprogram_in_step.malda` | `step result = runProgram(prog)` (durable; plan JSON is input) |
 | `31_mcptool_schema.malda` | `@MCPTool` third arg is a schema name; `getTools()` prints `inputSchema` |
+| `32_mcptool_validate.malda` | `MCPServer.callTool` host-validates args against the attached schema |
 
 Also useful from the main tree:
 

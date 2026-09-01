@@ -1590,6 +1590,8 @@ public partial class Interpreter
             // Create ToolInstance
             var tool = new ToolInstance();
             tool.Initialize(toolName, toolDescription, finalSchema, null, "");
+            if (schema != null && schema.Type == ValueType.Object)
+                tool.MarkAttachedSchema();
             tool.SetFunctionHandler(function, this);
             
             // Register in ToolRegistry

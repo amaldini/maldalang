@@ -17,6 +17,7 @@ public class MCPToolDefinition
     public FunctionValue? Function { get; set; } // Null for transpiled tools
     public string FunctionName { get; set; } = "";
     public JsonElement? CustomSchema { get; set; }
+    public bool HasAttachedSchema { get; set; }
     public MethodInfo? TranspiledMethod { get; set; } // For transpiled tools
 }
 
@@ -62,7 +63,8 @@ public static class ToolSchemaGenerator
             Description = description,
             Function = function,
             FunctionName = functionName,
-            CustomSchema = customSchema
+            CustomSchema = customSchema,
+            HasAttachedSchema = customSchema.HasValue
         };
     }
 

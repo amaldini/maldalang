@@ -29,6 +29,7 @@ public class InterpretTranspilePairTests
     [InlineData("Examples/Prompts/prompt_budget.malda")]
     [InlineData("Examples/Prompts/multimodal_attachments.malda")]
     [InlineData("docs/llm/few-shot/31_mcptool_schema.malda")]
+    [InlineData("docs/llm/few-shot/32_mcptool_validate.malda")]
     [InlineData("Examples/MCP/mcp_schema_tool.malda")]
     [InlineData("Examples/Modules/selective_import.malda")]
     [InlineData("Examples/Modules/export_type_schema.malda")]

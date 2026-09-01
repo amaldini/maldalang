@@ -20,7 +20,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 06-arrays.html | 1b30367bd5c526f2c5192c6432cd31d195ecdfb2dfdf7e6835d5805bb658b5f9 |
 | 07-expressions.html | a7a130eb8b1b59af546dea9550f94419c435eb5f321a21de42dc807d6dcf4ad1 |
 | 08-control-structures.html | 6e0c3b5e62beeea132729a970f7c451909b976368aed981435b637a89fe769ee |
-| 09-functions.html | 80aea1cad87f6e0f0a07dd3299a099ade402da433a6e9dc82eee6ce1512e05a7 |
+| 09-functions.html | 720f384021553e48759ad772aa38e7f5afd2039d02ba08cbf56c2d932afb53e5 |
 | 10-prompts.html | 426899528b71a72d2adfd31433526652a0ddb5686793ba6c5ca82088fa4713dc |
 | 11-classes-objects.html | 1d123c7618cdf7089dfd6963331e209afe8480996cc50c3e62588baeda38aa39 |
 | 12-input-output.html | 5eb6ada0b2b3839f44efab3d7a2f050b05cadf8ffae58731154a234355a2eedc |
@@ -31,7 +31,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 17-actors.html | 2cf24512b4f3a3181686fd0f2af6a775b647b2f12701efbc12e529ad482e886c |
 | 18-agent-orchestration.html | 7449434b55812d1a563cf6d932ccdbeb5fb77d55434c5357338ccee847168c3d |
 | 19-graph-memory.html | d7551edbe3d4a86b6bcc32dbd65e6073e5d213ee6d4e6b477bedf3c4a164c2e3 |
-| 20-mcp-server.html | cc7e86966258d38a76a71d73d31c12f29fd2ab330de9b32274036e8f98bd80a3 |
+| 20-mcp-server.html | 19a72f06b13c3c79a857e03379599b7287be2c847a7553044f5bf7d57c3aa2b5 |
 | 21-acp.html | af2c8a1c74bd1eb424409b4eab66b842635b0b3cba214c6d99974bba1f6477b5 |
 | 22-durable-workflows.html | ad2fd53435155a5daabec1d983612eac9467c7556c2d13304e14a75af5cda4b7 |
 | 23-web-ui-hub.html | ae4afc35822c36febb9bc72f85f3c6286c64ad8156499f9a12fe594e7e23ab86 |

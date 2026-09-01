@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — @MCPTool / @Tool host-validate args)
+
+- **Host-validate `@MCPTool` / `@Tool` arguments:** when the third argument attaches a schema (name or JSON object string), incoming MCP `tools/call`, `MCPServer.callTool(name, args)`, agent `@Tool` invoke, and `tool.execute(args)` run the same `validate()` check **before** the function body. Failure does not call the body: `callTool` returns `{ ok: false, error }`; MCP `tools/call` returns `isError: true`; agents / `execute` return `Error: tool arguments failed schema: …`. Omitted third argument stays advertise-only (auto-generated all-string properties, no host check). Direct `add(1, 2)` calls are unchanged. Interpreter and C# transpile agree. JavaScript: n/a (MCP is host-only). Example: `Examples/MCP/mcp_schema_tool.malda`. Few-shot: `docs/llm/few-shot/32_mcptool_validate.malda`.
+
 #### Added (MINOR — @MCPTool / @Tool schema names)
 
 - **`@MCPTool` / `@Tool` third argument:** a registered `schema` or sum-type name (`"AddArgs"` or the identifier `AddArgs`) is resolved to JSON Schema the same way as `validate("AddArgs", …)`. A JSON schema object string still works (enums, defaults). Omitted still auto-generates all-string properties. Unknown names error (they used to be ignored when the string was not valid JSON). `MCPServer.getTools()` returns `{ name, description, inputSchema }` without starting STDIO. Interpreter and C# transpile agree. JavaScript: n/a (MCP is host-only). Example: `Examples/MCP/mcp_schema_tool.malda`. Few-shot: `docs/llm/few-shot/31_mcptool_schema.malda`.
@@ -431,6 +435,7 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-08-26 | MINOR: Mode B sends `response_format` with tools (retry/remember if rejected) |
 | 2026-08-27 | MINOR: `malda new agent` cap-confined tool scaffold |
 | 2026-08-27 | MINOR: `evalPrompt(prompt, fixture)` offline PromptInstance harness |
+| 2026-09-01 | MINOR: `@MCPTool` / `@Tool` host-validates attached-schema args; `MCPServer.callTool` |
 | 2026-08-31 | MINOR: `@MCPTool` / `@Tool` third argument accepts a MALDA schema name |
 | 2026-08-28 | PATCH: `program(Api)` few-shots + `runProgram` in a durable `step` |
 | 2026-08-21 | MINOR: JS `game.loadImage` / camera / draw extras (G1) |

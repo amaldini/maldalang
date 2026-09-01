@@ -2,7 +2,7 @@
   "examples": [
     {
       "name": "MCP Schema Tool",
-      "description": "Expose @MCPTool inputSchema from a MALDA schema name (no STDIO loop)",
+      "description": "Expose @MCPTool inputSchema from a MALDA schema name and host-validate callTool args (no STDIO loop)",
       "file": "mcp_schema_tool.malda"
     },
     {

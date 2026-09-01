@@ -148,4 +148,141 @@ public class McpToolSchemaTests : TestBase
         StrictTypesAnalysis.Analyze(statements, StrictTypesOptions.Default, diagnostics);
         Assert.DoesNotContain(diagnostics, d => d.Source == "malda-schema");
     }
+
+    [Fact]
+    public void CallTool_ValidArgs_ReturnsData()
+    {
+        var output = RunProgram("""
+            schema AddArgs {
+                a: int;
+                b: int;
+            }
+            @MCPTool("add", "Adds", "AddArgs")
+            function add(a, b) {
+                return int(a) + int(b);
+            }
+            var r = new MCPServer().callTool("add", dict { "a": 4, "b": 5 });
+            io.print(r.ok);
+            io.print(r.data);
+            """);
+        Assert.Contains("true", output, StringComparison.Ordinal);
+        Assert.Contains("9", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CallTool_WrongType_ReturnsErrorWithoutCallingBody()
+    {
+        var output = RunProgram("""
+            schema AddArgs {
+                a: int;
+                b: int;
+            }
+            @MCPTool("add", "Adds", "AddArgs")
+            function add(a, b) {
+                io.print("body-ran");
+                return int(a) + int(b);
+            }
+            var r = new MCPServer().callTool("add", dict { "a": "x", "b": 2 });
+            io.print(r.ok);
+            io.print(r.error);
+            """);
+        Assert.DoesNotContain("body-ran", output, StringComparison.Ordinal);
+        Assert.Contains("false", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CallTool_MissingRequired_ReturnsError()
+    {
+        var output = RunProgram("""
+            schema WeatherArgs {
+                location: string;
+                unit: string?;
+            }
+            @MCPTool("get_weather", "Weather", "WeatherArgs")
+            function getWeather(location, unit) {
+                return location;
+            }
+            var r = new MCPServer().callTool("get_weather", dict { "unit": "celsius" });
+            io.print(r.ok);
+            """);
+        Assert.Contains("false", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CallTool_OmittedSchema_DoesNotValidateTypes()
+    {
+        var output = RunProgram("""
+            @MCPTool("add", "Adds")
+            function add(a, b) {
+                return string(a) + string(b);
+            }
+            var r = new MCPServer().callTool("add", dict { "a": 1, "b": 2 });
+            io.print(r.ok);
+            io.print(r.data);
+            """);
+        Assert.Contains("true", output, StringComparison.Ordinal);
+        Assert.Contains("12", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ToolExecute_AttachedSchema_RejectsBadArgs()
+    {
+        RunProgram("""
+            schema NoteArgs {
+                relativePath: string;
+            }
+            @Tool("read_note", "Read a note", "NoteArgs")
+            function readNote(relativePath) {
+                return relativePath;
+            }
+            """);
+        var tool = ToolRegistry.Instance.GetTool("read_note");
+        Assert.NotNull(tool);
+        Assert.True(tool!.HasAttachedSchema);
+        var args = new JsonObject();
+        args.Set("relativePath", RuntimeValue.Integer(1));
+        var result = tool.Execute(RuntimeValue.Object(args));
+        Assert.Equal(ValueType.String, result.Type);
+        Assert.Contains("failed schema", result.AsString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ToolExecute_AttachedSchema_AcceptsGoodArgs()
+    {
+        RunProgram("""
+            schema NoteArgs {
+                relativePath: string;
+            }
+            @Tool("read_note", "Read a note", "NoteArgs")
+            function readNote(relativePath) {
+                return "ok:" + relativePath;
+            }
+            """);
+        var tool = ToolRegistry.Instance.GetTool("read_note");
+        Assert.NotNull(tool);
+        var args = new JsonObject();
+        args.Set("relativePath", RuntimeValue.String("welcome.txt"));
+        var result = tool.Execute(RuntimeValue.Object(args));
+        Assert.Equal("ok:welcome.txt", result.AsString());
+    }
+
+    [Fact]
+    public void Example_McpSchemaTool_HostValidatesCallTool()
+    {
+        var path = PlanningPaths.ResolveRepoFile("Examples", "MCP", "mcp_schema_tool.malda");
+        var output = RunProgram(File.ReadAllText(path));
+        Assert.Contains("true", output, StringComparison.Ordinal);
+        Assert.Contains("3", output, StringComparison.Ordinal);
+        Assert.Contains("false", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void FewShot_McpToolValidate_RunsUnderInterpreter()
+    {
+        var path = PlanningPaths.ResolveRepoFile("docs", "llm", "few-shot", "32_mcptool_validate.malda");
+        var output = RunProgram(File.ReadAllText(path));
+        Assert.Contains("true", output, StringComparison.Ordinal);
+        Assert.Contains("3", output, StringComparison.Ordinal);
+        Assert.Contains("false", output, StringComparison.Ordinal);
+    }
 }

@@ -204,7 +204,7 @@ function handleToolArgs(raw) {
     print(normalizeName(check.data.name));
 }</code></pre>
         <h3>@Tool Decorator</h3>
-        <p>This is the function decorator. How agents call tools is in <a href="18-agent-orchestration.html">18. Agent Orchestration</a>. The optional third argument is a MALDA schema or sum-type name, or a JSON schema object string (same rules as <a href="20-mcp-server.html">@MCPTool</a>).</p>
+        <p>This is the function decorator. How agents call tools is in <a href="18-agent-orchestration.html">18. Agent Orchestration</a>. The optional third argument is a MALDA schema or sum-type name, or a JSON schema object string (same rules as <a href="20-mcp-server.html">@MCPTool</a>). When present, the host validates incoming arguments before the body on agent invoke and <code>tool.execute</code>.</p>
         <pre><code>schema SumArgs {
     a: int;
     b: int;
