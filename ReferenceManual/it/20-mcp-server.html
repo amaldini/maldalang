@@ -77,7 +77,8 @@ function add(a, b) {
 function getWeather(location, unit) {
     // ...
 }</code></pre>
-        <p><code>server.getTools()</code> restituisce <code>{ name, description, inputSchema }</code> per ogni <code>@MCPTool</code> senza avviare STDIO. Stesso file: <code>Examples/MCP/mcp_schema_tool.malda</code>. <code>@Tool</code> accetta lo stesso terzo argomento.</p>
+        <p>Se il terzo argomento è presente, l'host valida gli argomenti in ingresso rispetto allo schema <strong>prima</strong> del corpo (stesse regole di <code>validate()</code>). <code>server.callTool("add", { a: 1, b: 2 })</code> restituisce <code>{ ok, data }</code> oppure <code>{ ok: false, error }</code> senza avviare STDIO. MCP <code>tools/call</code> restituisce <code>isError: true</code> in caso di fallimento. Omettere lo schema continua ad annunciare property tutte string e non controlla gli args. Le chiamate dirette come <code>add(1, 2)</code> restano invariate.</p>
+        <p><code>server.getTools()</code> restituisce <code>{ name, description, inputSchema }</code> per ogni <code>@MCPTool</code> senza avviare STDIO. Stesso file: <code>Examples/MCP/mcp_schema_tool.malda</code>. <code>@Tool</code> accetta lo stesso terzo argomento e valida in host <code>tool.execute</code> / invoke dell'agente.</p>
 
         <h2>20.3 MCPServer</h2>
         <pre><code>var server = new MCPServer();                    // STDIO transport (default)
@@ -86,6 +87,7 @@ var server = new MCPServer("stdio");            // Explicit STDIO transport</cod
             <li><code>start()</code>: scopre le funzioni <code>@MCPTool</code> e serve JSON-RPC</li>
             <li><code>stop()</code>: arresta il server</li>
             <li><code>getTools()</code>: elenca <code>{ name, description, inputSchema }</code> (anche prima di <code>start()</code>)</li>
+            <li><code>callTool(name, args?)</code>: invoca un tool in-process; <code>{ ok, data }</code> oppure <code>{ ok: false, error }</code></li>
             <li><code>isRunning</code>: resta in loop finché l'host non si disconnette</li>
         </ul>
         <p>Metodi JSON-RPC implementati: <code>initialize</code>, <code>tools/list</code>, <code>tools/call</code>, <code>notifications/initialized</code>.</p>

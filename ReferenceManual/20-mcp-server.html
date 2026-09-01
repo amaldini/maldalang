@@ -77,7 +77,8 @@ function add(a, b) {
 function getWeather(location, unit) {
     // ...
 }</code></pre>
-        <p><code>server.getTools()</code> returns <code>{ name, description, inputSchema }</code> for each <code>@MCPTool</code> without starting STDIO — useful to inspect the resolved schema. Same file: <code>Examples/MCP/mcp_schema_tool.malda</code>. <code>@Tool</code> accepts the same third argument (see the <code>malda new agent</code> scaffold).</p>
+        <p>When that third argument is present, the host validates incoming arguments against the schema <strong>before</strong> the function body (same rules as <code>validate()</code>). <code>server.callTool("add", { a: 1, b: 2 })</code> returns <code>{ ok, data }</code> or <code>{ ok: false, error }</code> without starting STDIO. MCP <code>tools/call</code> returns <code>isError: true</code> on failure. Omitting the schema still advertises all-string properties and does not check args. Direct calls such as <code>add(1, 2)</code> are unchanged.</p>
+        <p><code>server.getTools()</code> returns <code>{ name, description, inputSchema }</code> for each <code>@MCPTool</code> without starting STDIO — useful to inspect the resolved schema. Same file: <code>Examples/MCP/mcp_schema_tool.malda</code>. <code>@Tool</code> accepts the same third argument and host-validates <code>tool.execute</code> / agent invoke (see the <code>malda new agent</code> scaffold).</p>
 
         <h2>20.3 MCPServer</h2>
         <pre><code>var server = new MCPServer();                    // STDIO transport (default)
@@ -86,6 +87,7 @@ var server = new MCPServer("stdio");            // Explicit STDIO transport</cod
             <li><code>start()</code>: discover <code>@MCPTool</code> functions and serve JSON-RPC</li>
             <li><code>stop()</code>: stop the server</li>
             <li><code>getTools()</code>: list <code>{ name, description, inputSchema }</code> (works before <code>start()</code>)</li>
+            <li><code>callTool(name, args?)</code>: invoke one tool in-process; <code>{ ok, data }</code> or <code>{ ok: false, error }</code></li>
             <li><code>isRunning</code>: loop until the host disconnects</li>
         </ul>
         <p>JSON-RPC methods implemented: <code>initialize</code>, <code>tools/list</code>, <code>tools/call</code>, <code>notifications/initialized</code>.</p>

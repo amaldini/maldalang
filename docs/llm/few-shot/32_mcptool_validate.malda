@@ -1,0 +1,17 @@
+// Host-validates @MCPTool args against the attached schema (no STDIO).
+schema AddArgs {
+    a: int;
+    b: int;
+}
+
+@MCPTool("add", "Adds two numbers", "AddArgs")
+function add(a, b) {
+    return int(a) + int(b);
+}
+
+var server = new MCPServer();
+var ok = server.callTool("add", dict { "a": 1, "b": 2 });
+io.print(ok.ok);
+io.print(ok.data);
+var bad = server.callTool("add", dict { "a": "x", "b": 2 });
+io.print(bad.ok);

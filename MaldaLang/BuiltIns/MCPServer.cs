@@ -33,7 +33,7 @@ public class MCPServerInstance : ObjectInstance
             return RuntimeValue.String(_transportType);
 
         // Handle method access
-        if (name == "start" || name == "stop" || name == "getTools")
+        if (name == "start" || name == "stop" || name == "getTools" || name == "callTool")
         {
             var wrapper = new FunctionValue(null, null, false, null);
             wrapper.BuiltInInstance = this;
@@ -64,6 +64,15 @@ public class MCPServerInstance : ObjectInstance
                 if (args.Count != 0)
                     throw new Exception("getTools() expects 0 arguments");
                 return GetTools();
+
+            case "callTool":
+                if (args.Count < 1 || args.Count > 2)
+                    throw new Exception("callTool() expects 1 or 2 arguments: (name, arguments?)");
+                if (args[0].Type != ValueType.String)
+                    throw new Exception("callTool() name must be a string");
+                return CallTool(
+                    args[0].AsString(),
+                    args.Count == 2 ? args[1] : ToolSchemaResolver.EmptyArgsObject());
 
             default:
                 throw new Exception($"Unknown method: {methodName}");
@@ -138,6 +147,12 @@ public class MCPServerInstance : ObjectInstance
         }
 
         return RuntimeValue.Array(tools);
+    }
+
+    private RuntimeValue CallTool(string name, RuntimeValue arguments)
+    {
+        var handler = _protocolHandler ?? new MCPProtocolHandler(_interpreter);
+        return handler.CallToolByName(name, arguments);
     }
 
     private void OnMessageReceived(object? sender, string jsonMessage)

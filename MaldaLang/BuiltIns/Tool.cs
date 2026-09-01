@@ -13,6 +13,11 @@ public class ToolInstance : ObjectInstance
     public string Name { get; set; } = "";
     public string Description { get; set; } = "";
     public string WorkingDirectory { get; set; } = "";
+    /// <summary>
+    /// True when <c>@Tool</c> / <c>@MCPTool</c> supplied a third-argument schema
+    /// (name or JSON). Auto-generated all-string schemas stay advertise-only.
+    /// </summary>
+    public bool HasAttachedSchema { get; private set; }
     private RuntimeValue _parameters;
     private RuntimeValue? _handler;
     private FunctionValue? _functionHandler;
@@ -63,6 +68,20 @@ public class ToolInstance : ObjectInstance
     public void SetTranspiledMethod(System.Reflection.MethodInfo method)
     {
         _transpiledMethod = method;
+    }
+
+    public void MarkAttachedSchema()
+    {
+        HasAttachedSchema = true;
+    }
+
+    public RuntimeValue? RejectIfAttachedSchemaFails(RuntimeValue arguments)
+    {
+        if (!HasAttachedSchema)
+            return null;
+        if (!ToolSchemaResolver.TryValidateArgs(_parameters, arguments, out var error))
+            return RuntimeValue.String(ToolSchemaResolver.AgentError(error));
+        return null;
     }
     
     public FunctionValue? GetFunctionHandler()
@@ -356,6 +375,10 @@ public class ToolInstance : ObjectInstance
                     return RuntimeValue.String($"Error: Path '{pathToCheck}' is outside the allowed working directory '{WorkingDirectory}'");
                 }
             }
+
+            var rejected = RejectIfAttachedSchemaFails(arguments);
+            if (rejected != null)
+                return rejected;
 
             var functionHandler = _functionHandler;
             var interp = _interpreter ?? interpreter;

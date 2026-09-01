@@ -2352,6 +2352,10 @@ public partial class ConversationInstance : ObjectInstance
             {
                 return codeMemoryTool.ExecuteCodeMemoryTool(arguments);
             }
+
+            var rejected = tool.RejectIfAttachedSchemaFails(arguments);
+            if (rejected != null)
+                return rejected;
             
             // Check if tool has a transpiled method handler
             var transpiledMethod = tool.GetTranspiledMethod();

@@ -831,6 +831,8 @@ function add(a, b) {
 var mcpServer = new MCPServer();
 var listed = mcpServer.getTools();
 io.print(listed[0].inputSchema.properties.a.type);
+var local = mcpServer.callTool("add", {"a": 5, "b": 3});
+io.print(local.data);
 
 var mcp = new MCPClient("example-server");
 var ok = mcp.connect("malda", ["server.malda"]);

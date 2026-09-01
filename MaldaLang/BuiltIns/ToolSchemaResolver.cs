@@ -84,6 +84,42 @@ public static class ToolSchemaResolver
         return JsonDocument.Parse(JsonSerializer.Serialize(clr)).RootElement.Clone();
     }
 
+    /// <summary>
+    /// Validates LLM/MCP tool arguments against an attached JSON Schema.
+    /// Returns <c>true</c> when <paramref name="schema"/> is missing so omitted
+    /// third arguments stay advertise-only (auto-generated string properties).
+    /// </summary>
+    public static bool TryValidateArgs(RuntimeValue? schema, RuntimeValue arguments, out string error)
+    {
+        error = "";
+        if (schema == null || schema.Type != ValueType.Object)
+            return true;
+
+        if (arguments.Type != ValueType.Object)
+        {
+            error = "Tool arguments must be an object.";
+            return false;
+        }
+
+        return TypedPromptValidator.TryValidateReturnType(arguments, schema, out error);
+    }
+
+    public static RuntimeValue EmptyArgsObject() => RuntimeValue.Object(new JsonObject());
+
+    public static RuntimeValue CallResult(bool ok, RuntimeValue? data, string? error)
+    {
+        var result = new JsonObject();
+        result.Set("ok", RuntimeValue.Boolean(ok));
+        if (ok)
+            result.Set("data", data ?? RuntimeValue.Null());
+        else
+            result.Set("error", RuntimeValue.String(error ?? "Tool arguments failed schema."));
+        return RuntimeValue.Object(result);
+    }
+
+    public static string AgentError(string error) =>
+        $"Error: tool arguments failed schema: {error}";
+
     public static RuntimeValue FromJsonElement(JsonElement element)
     {
         switch (element.ValueKind)

@@ -202,6 +202,13 @@ public class MCPProtocolHandler
 
         try
         {
+            var argsValue = ArgumentsToRuntimeValue(arguments);
+            if (tool.HasAttachedSchema &&
+                !ToolSchemaResolver.TryValidateArgs(AttachedSchema(tool), argsValue, out var schemaError))
+            {
+                return CreateToolErrorResult(request.Id, schemaError);
+            }
+
             RuntimeValue result;
             
             // Check if this is a transpiled tool
@@ -633,13 +640,148 @@ public class MCPProtocolHandler
                             Function = null!, // No FunctionValue for transpiled tools
                             FunctionName = transpiledMethod.Name,
                             TranspiledMethod = transpiledMethod,
-                            CustomSchema = customSchema
+                            CustomSchema = customSchema,
+                            HasAttachedSchema = tool.HasAttachedSchema
                         };
                         RegisterTool(toolDef);
                     }
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// In-process invoke used by <c>MCPServer.callTool</c> (no STDIO).
+    /// Returns <c>{ ok, data }</c> or <c>{ ok: false, error }</c>.
+    /// </summary>
+    public RuntimeValue CallToolByName(string toolName, RuntimeValue arguments)
+    {
+        DiscoverTools();
+        if (!_tools.TryGetValue(toolName, out var tool))
+            return ToolSchemaResolver.CallResult(false, null, $"Tool '{toolName}' not found.");
+
+        var argsValue = arguments.Type == ValueType.Null
+            ? ToolSchemaResolver.EmptyArgsObject()
+            : arguments;
+
+        if (argsValue.Type != ValueType.Object)
+            return ToolSchemaResolver.CallResult(false, null, "Tool arguments must be an object.");
+
+        if (tool.HasAttachedSchema &&
+            !ToolSchemaResolver.TryValidateArgs(AttachedSchema(tool), argsValue, out var schemaError))
+        {
+            return ToolSchemaResolver.CallResult(false, null, schemaError);
+        }
+
+        try
+        {
+            RuntimeValue result;
+            if (tool.TranspiledMethod != null)
+            {
+                result = ExecuteTranspiledToolAsync(tool, ToolSchemaResolver.ToJsonElement(argsValue))
+                    .GetAwaiter().GetResult();
+            }
+            else if (_interpreter != null)
+            {
+                var invoked = InvokeInterpretedTool(tool, argsValue);
+                if (invoked.Error != null)
+                    return ToolSchemaResolver.CallResult(false, null, invoked.Error);
+                result = invoked.Value;
+            }
+            else
+            {
+                return ToolSchemaResolver.CallResult(
+                    false, null, "Tool execution requires either interpreter or transpiled method");
+            }
+
+            return ToolSchemaResolver.CallResult(true, result, null);
+        }
+        catch (Exception ex)
+        {
+            return ToolSchemaResolver.CallResult(false, null, ex.Message);
+        }
+    }
+
+    private static RuntimeValue? AttachedSchema(MCPToolDefinition tool)
+    {
+        if (!tool.HasAttachedSchema || !tool.CustomSchema.HasValue)
+            return null;
+        return ToolSchemaResolver.FromJsonElement(tool.CustomSchema.Value);
+    }
+
+    private static RuntimeValue ArgumentsToRuntimeValue(JsonElement? arguments)
+    {
+        if (!arguments.HasValue || arguments.Value.ValueKind != JsonValueKind.Object)
+            return ToolSchemaResolver.EmptyArgsObject();
+        return ToolSchemaResolver.FromJsonElement(arguments.Value);
+    }
+
+    private (RuntimeValue Value, string? Error) InvokeInterpretedTool(MCPToolDefinition tool, RuntimeValue argsValue)
+    {
+        if (_interpreter == null)
+            return (RuntimeValue.Null(), "Tool execution requires either interpreter or transpiled method");
+
+        var requestInterpreter = _interpreter.CreateExecutionInterpreter();
+        FunctionValue? requestFunction = null;
+        if (tool.FunctionName.Contains("."))
+        {
+            var parts = tool.FunctionName.Split('.', 2);
+            var className = parts[0];
+            var methodName = parts[1];
+
+            if (requestInterpreter._classes.TryGetValue(className, out var klass))
+            {
+                if (klass.Methods.TryGetValue(methodName, out var method))
+                    requestFunction = method;
+                else if (klass.StaticMethods.TryGetValue(methodName, out var staticMethod))
+                    requestFunction = staticMethod;
+            }
+        }
+        else
+        {
+            try
+            {
+                var funcValue = requestInterpreter._globals.Get(tool.FunctionName);
+                if (funcValue.Type == ValueType.Function)
+                    requestFunction = funcValue.AsFunction();
+            }
+            catch
+            {
+                // Function not found in new interpreter
+            }
+        }
+
+        if (requestFunction == null)
+            return (RuntimeValue.Null(), $"Function '{tool.FunctionName}' not found in interpreter");
+
+        var jsonArgs = ToolSchemaResolver.ToJsonElement(argsValue);
+        var splArgs = ConvertJsonToSplArgs(jsonArgs, tool);
+        var result = requestInterpreter.CallFunctionAsync(requestFunction, splArgs, null)
+            .GetAwaiter().GetResult();
+        return (result, null);
+    }
+
+    private JsonRpcResponse CreateToolErrorResult(object? id, string message)
+    {
+        var mcpResult = new Dictionary<string, object>
+        {
+            ["content"] = new List<object>
+            {
+                new Dictionary<string, object>
+                {
+                    ["type"] = "text",
+                    ["text"] = message
+                }
+            },
+            ["isError"] = true
+        };
+
+        return new JsonRpcResponse
+        {
+            JsonRpc = "2.0",
+            Id = id,
+            Result = JsonDocument.Parse(JsonSerializer.Serialize(mcpResult)).RootElement
+        };
     }
 
     private JsonRpcResponse CreateErrorResponse(object? id, int code, string message)

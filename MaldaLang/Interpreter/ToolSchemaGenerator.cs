@@ -110,11 +110,14 @@ public static class ToolSchemaGenerator
     public static void RegisterTranspiledTool(string toolName, string toolDescription, MethodInfo method, RuntimeValue? providedSchema = null)
     {
         // Generate schema
+        var attached = providedSchema != null && providedSchema.Type == ValueType.Object;
         var finalSchema = GenerateSchemaFromMethod(method, providedSchema);
         
         // Create ToolInstance
         var tool = new ToolInstance();
         tool.Initialize(toolName, toolDescription, finalSchema, null, "");
+        if (attached)
+            tool.MarkAttachedSchema();
         tool.SetTranspiledMethod(method);
         
         // Register in ToolRegistry

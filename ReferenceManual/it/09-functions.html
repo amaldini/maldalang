@@ -205,7 +205,7 @@ function handleToolArgs(raw) {
     print(normalizeName(check.data.name));
 }</code></pre>
         <h3>Decoratore @Tool</h3>
-        <p>Questo è il decoratore sulla funzione. Come gli agenti chiamano i tool è in <a href="18-agent-orchestration.html">18. Orchestrazione di agenti</a>. Il terzo argomento opzionale è il nome di uno schema o tipo somma MALDA, oppure una stringa JSON Schema (stesse regole di <a href="20-mcp-server.html">@MCPTool</a>).</p>
+        <p>Questo è il decoratore sulla funzione. Come gli agenti chiamano i tool è in <a href="18-agent-orchestration.html">18. Orchestrazione di agenti</a>. Il terzo argomento opzionale è il nome di uno schema o tipo somma MALDA, oppure una stringa JSON Schema (stesse regole di <a href="20-mcp-server.html">@MCPTool</a>). Se presente, l'host valida gli argomenti in ingresso prima del corpo su invoke dell'agente e <code>tool.execute</code>.</p>
         <pre><code>schema SumArgs {
     a: int;
     b: int;
