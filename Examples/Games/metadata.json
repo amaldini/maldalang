@@ -239,7 +239,7 @@
     },
     {
       "name": "JS three.js GPU Billiards",
-      "description": "Realtime GLSL billiard table: felt, cushions, pockets, and a 16-ball rack, using three.createShaderMaterial and three.setUniform",
+      "description": "Realtime GLSL billiard table: felt, cushions, pockets, and a numbered 16-ball rack, using three.createShaderMaterial and three.setUniform",
       "file": "three_shader_billiards.malda",
       "track": "showcase",
       "difficulty": "advanced",
@@ -255,7 +255,7 @@
         "Games/three_shader_raytracer.malda"
       ],
       "learningGoal": "Show a classic sphere-and-plane ray-traced scene — a pool table — as a GPU @shader() showcase. Rest poses stay in the kernel; this is not pool physics.",
-      "expectedOutput": "Renders a realtime GPU ray-traced billiard table in the browser.",
+      "expectedOutput": "Renders a realtime GPU ray-traced billiard table in the browser, with procedural numbers on the balls.",
       "next": "Games/three_shader_path_tunnel.malda",
       "documentationPath": "/?lesson=browser-track#lesson-browser-track",
       "documentationTitle": "Browser Track"

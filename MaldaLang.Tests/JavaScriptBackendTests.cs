@@ -4260,6 +4260,8 @@ process.exit(0);
         Assert.Contains("float hitBox(vec3 bmin, vec3 bmax, vec3 origin, vec3 dir)", js, StringComparison.Ordinal);
         Assert.Contains("float hitCylinder(vec3 center, float radius, float y0, float y1, vec3 origin, vec3 dir)", js, StringComparison.Ordinal);
         Assert.Contains("vec3 ballCenter(int index)", js, StringComparison.Ordinal);
+        Assert.Contains("float digitSdf(vec2 p, int d)", js, StringComparison.Ordinal);
+        Assert.Contains("vec3 applyBallNumber(vec3 base, int index, vec3 normal)", js, StringComparison.Ordinal);
         Assert.Contains("bool inPocketXZ(vec3 p)", js, StringComparison.Ordinal);
         Assert.Contains("bool closestHit(", js, StringComparison.Ordinal);
         Assert.Contains("vec3 traceScene(vec3 origin, vec3 dir)", js, StringComparison.Ordinal);

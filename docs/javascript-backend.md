@@ -466,7 +466,7 @@ See `Examples/Games/three_shader_raytracer.malda` for a realtime GPU ray tracer 
 malda compile Examples/Games/three_shader_raytracer.malda --mode js -o Examples/Games/three_shader_raytracer.js
 ```
 
-`Examples/Games/three_shader_billiards.malda` is a pool-table showcase on the same path (felt, cushions, pockets, 16-ball rack). Rest poses live in the kernel — it is not pool physics. Compile:
+`Examples/Games/three_shader_billiards.malda` is a pool-table showcase on the same path (felt, cushions, pockets, numbered 16-ball rack). Rest poses and digit decals live in the kernel — it is not pool physics. Compile:
 
 ```bash
 malda compile Examples/Games/three_shader_billiards.malda --mode js -o Examples/Games/three_shader_billiards.js
