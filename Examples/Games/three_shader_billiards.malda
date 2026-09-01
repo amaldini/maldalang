@@ -217,13 +217,13 @@ function sdBox2(p: vec2, halfSize: vec2) -> float {
 
 @shader()
 function digitSdf(p: vec2, d: int) -> float {
-    var a: float = sdBox2(p - vec2(0.0, 1.12), vec2(0.34, 0.085));
-    var b: float = sdBox2(p - vec2(0.40, 0.56), vec2(0.085, 0.36));
-    var c: float = sdBox2(p - vec2(0.40, -0.56), vec2(0.085, 0.36));
-    var e: float = sdBox2(p - vec2(-0.40, -0.56), vec2(0.085, 0.36));
-    var f: float = sdBox2(p - vec2(-0.40, 0.56), vec2(0.085, 0.36));
-    var g: float = sdBox2(p - vec2(0.0, 0.0), vec2(0.34, 0.085));
-    var bottom: float = sdBox2(p - vec2(0.0, -1.12), vec2(0.34, 0.085));
+    var a: float = sdBox2(p - vec2(0.0, 1.12), vec2(0.36, 0.11));
+    var b: float = sdBox2(p - vec2(0.40, 0.56), vec2(0.11, 0.38));
+    var c: float = sdBox2(p - vec2(0.40, -0.56), vec2(0.11, 0.38));
+    var e: float = sdBox2(p - vec2(-0.40, -0.56), vec2(0.11, 0.38));
+    var f: float = sdBox2(p - vec2(-0.40, 0.56), vec2(0.11, 0.38));
+    var g: float = sdBox2(p - vec2(0.0, 0.0), vec2(0.36, 0.11));
+    var bottom: float = sdBox2(p - vec2(0.0, -1.12), vec2(0.36, 0.11));
     var dist: float = 100.0;
     if (d == 0 || d == 2 || d == 3 || d == 5 || d == 6 || d == 7 || d == 8 || d == 9) {
         dist = min(dist, a);
@@ -252,11 +252,11 @@ function digitSdf(p: vec2, d: int) -> float {
 @shader()
 function numberSdf(p: vec2, value: int) -> float {
     if (value < 10) {
-        return digitSdf(p * vec2(5.4, 4.5), value);
+        return digitSdf(p * vec2(2.35, 1.95), value);
     }
     var ones: int = value - 10;
-    var left: float = digitSdf((p - vec2(-0.055, 0.0)) * vec2(7.6, 5.8), 1);
-    var right: float = digitSdf((p - vec2(0.058, 0.0)) * vec2(7.6, 5.8), ones);
+    var left: float = digitSdf((p - vec2(-0.14, 0.0)) * vec2(3.4, 2.6), 1);
+    var right: float = digitSdf((p - vec2(0.15, 0.0)) * vec2(3.4, 2.6), ones);
     return min(left, right);
 }
 
@@ -264,7 +264,7 @@ function numberSdf(p: vec2, value: int) -> float {
 function stampUv(normal: vec3, stampDir: vec3) -> vec2 {
     var n: vec3 = normalize(stampDir);
     var d: float = dot(normal, n);
-    if (d < 0.70) {
+    if (d < 0.40) {
         return vec2(100.0, 100.0);
     }
     var up: vec3 = vec3(0.0, 1.0, 0.0);
@@ -282,28 +282,25 @@ function applyBallNumber(base: vec3, index: int, normal: vec3) -> vec3 {
     if (index <= 0) {
         return base;
     }
-    var uv: vec2 = stampUv(normal, vec3(0.50, 0.74, 0.45));
-    var uv2: vec2 = stampUv(normal, vec3(-0.50, 0.74, -0.45));
-    if (length(uv2) < length(uv)) {
-        uv = uv2;
-    }
+    var toCam: vec3 = normalize(uCamPos - ballCenter(index));
+    var uv: vec2 = stampUv(normal, toCam);
     var r: float = length(uv);
-    if (r > 0.26) {
+    if (r > 0.58) {
         return base;
     }
-    var patch: vec3 = vec3(0.95, 0.95, 0.92);
-    var ink: vec3 = vec3(0.04, 0.04, 0.05);
-    if (r > 0.225) {
-        return mix(patch, base, clamp((r - 0.225) / 0.035, 0.0, 1.0));
+    var badge: vec3 = vec3(0.96, 0.96, 0.94);
+    var ink: vec3 = vec3(0.02, 0.02, 0.03);
+    if (r > 0.50) {
+        return mix(badge, base, clamp((r - 0.50) / 0.08, 0.0, 1.0));
     }
     var dgt: float = numberSdf(uv, index);
     if (dgt < 0.0) {
         return ink;
     }
     if (dgt < 0.012) {
-        return mix(ink, patch, dgt / 0.012);
+        return mix(ink, badge, dgt / 0.012);
     }
-    return patch;
+    return badge;
 }
 
 @shader()
