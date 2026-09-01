@@ -553,6 +553,7 @@ public class SecondBrainAskFeaturesTests
         Assert.Contains("malda_ask_session", libSource, StringComparison.Ordinal);
         Assert.Contains("response.fragment(\"ask-panel\"", libSource, StringComparison.Ordinal);
         Assert.Contains("function applyAskPanel(", libSource, StringComparison.Ordinal);
+        Assert.Contains("window.__maldaInitAjaxHelper", libSource, StringComparison.Ordinal);
         Assert.Contains(", \"ask-panel\");", libSource, StringComparison.Ordinal);
         Assert.Contains("componentFragment(\"ask-panel\"", libSource, StringComparison.Ordinal);
         Assert.Contains("malda_ask_c", libSource, StringComparison.Ordinal);

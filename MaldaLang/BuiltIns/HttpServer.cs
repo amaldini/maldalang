@@ -3339,104 +3339,107 @@ public partial class HttpServerInstance : ObjectInstance
         if (html.Contains("id=\"spl-ajax-helper\""))
             return html;
         
-        // AJAX helper script
+        // AJAX helper script. Submit is delegated on document so fragment / SSE
+        // innerHTML replacements (new <form> nodes) stay intercepted. Per-form
+        // listeners die with the node; a native POST then navigates to the
+        // fragment body (unstyled page, no SSE).
         var ajaxScript = @"
 <script id=""spl-ajax-helper"">
 (function() {
     'use strict';
     // MALDA AJAX Helper - automatically intercepts form submissions
+    function initAjaxHelper() {
+        if (document.documentElement.dataset.splAjaxBound === '1') {
+            return;
+        }
+        document.documentElement.dataset.splAjaxBound = '1';
+        document.addEventListener('submit', function(e) {
+            var form = e.target;
+            if (!form || form.tagName !== 'FORM') {
+                return;
+            }
+            e.preventDefault();
+
+            // Include the clicked submit control (e.g. name=vote value=up/down).
+            // FormData(form) alone omits submitter buttons.
+            var submitter = e.submitter || null;
+            var formData = submitter ? new FormData(form, submitter) : new FormData(form);
+            if (submitter && submitter.name) {
+                var hasSubmitter = false;
+                formData.forEach(function(_v, k) {
+                    if (k === submitter.name) { hasSubmitter = true; }
+                });
+                if (!hasSubmitter) {
+                    formData.append(submitter.name, submitter.value || '');
+                }
+            }
+
+            var action = form.action || '/submit';
+            var submitButton = submitter || form.querySelector('button[type=""submit""], input[type=""submit""]');
+            var originalText = submitButton ? submitButton.textContent || submitButton.value : '';
+            
+            if (submitButton) {
+                submitButton.disabled = true;
+                if (submitButton.tagName === 'BUTTON') {
+                    submitButton.textContent = 'Submitting...';
+                } else {
+                    submitButton.value = 'Submitting...';
+                }
+            }
+            
+            fetch(action, {
+                method: 'POST',
+                body: formData
+            })
+            .then(function(response) {
+                // Check for redirect (3xx status codes)
+                if (response.status >= 300 && response.status < 400) {
+                    var location = response.headers.get('Location') || response.url;
+                    if (location) {
+                        window.location.href = location;
+                        return;
+                    }
+                }
+                return response.text().then(function(html) {
+                    return {
+                        html: html,
+                        isFragment: (response.headers.get('X-Malda-Fragment') || '').toLowerCase() === 'true',
+                        targetId: response.headers.get('X-Malda-Fragment-Target') || ''
+                    };
+                });
+            })
+            .then(function(result) {
+                if (result === undefined) return; // Redirect already handled
+                if (result.isFragment && result.targetId) {
+                    var target = document.getElementById(result.targetId);
+                    if (target) {
+                        target.innerHTML = result.html;
+                        return;
+                    }
+                }
+                // Fallback to full-page replacement.
+                document.body.innerHTML = result.html;
+            })
+            .catch(function(error) {
+                alert('Error submitting form: ' + error.message);
+            })
+            .finally(function() {
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    if (submitButton.tagName === 'BUTTON') {
+                        submitButton.textContent = originalText;
+                    } else {
+                        submitButton.value = originalText;
+                    }
+                }
+            });
+        });
+    }
+    window.__maldaInitAjaxHelper = initAjaxHelper;
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initAjaxHelper);
     } else {
         initAjaxHelper();
-    }
-    
-    function initAjaxHelper() {
-        document.querySelectorAll('form').forEach(function(form) {
-            if (form.dataset.splAjaxBound === '1') {
-                return;
-            }
-            form.dataset.splAjaxBound = '1';
-            form.addEventListener('submit', function(e) {
-                e.preventDefault();
-
-                // Include the clicked submit control (e.g. name=vote value=up/down).
-                // FormData(form) alone omits submitter buttons.
-                var submitter = e.submitter || null;
-                var formData = submitter ? new FormData(form, submitter) : new FormData(form);
-                if (submitter && submitter.name) {
-                    var hasSubmitter = false;
-                    formData.forEach(function(_v, k) {
-                        if (k === submitter.name) { hasSubmitter = true; }
-                    });
-                    if (!hasSubmitter) {
-                        formData.append(submitter.name, submitter.value || '');
-                    }
-                }
-
-                var action = form.action || '/submit';
-                var submitButton = submitter || form.querySelector('button[type=""submit""], input[type=""submit""]');
-                var originalText = submitButton ? submitButton.textContent || submitButton.value : '';
-                
-                if (submitButton) {
-                    submitButton.disabled = true;
-                    if (submitButton.tagName === 'BUTTON') {
-                        submitButton.textContent = 'Submitting...';
-                    } else {
-                        submitButton.value = 'Submitting...';
-                    }
-                }
-                
-                fetch(action, {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(function(response) {
-                    // Check for redirect (3xx status codes)
-                    if (response.status >= 300 && response.status < 400) {
-                        var location = response.headers.get('Location') || response.url;
-                        if (location) {
-                            window.location.href = location;
-                            return;
-                        }
-                    }
-                    return response.text().then(function(html) {
-                        return {
-                            html: html,
-                            isFragment: (response.headers.get('X-Malda-Fragment') || '').toLowerCase() === 'true',
-                            targetId: response.headers.get('X-Malda-Fragment-Target') || ''
-                        };
-                    });
-                })
-                .then(function(result) {
-                    if (result === undefined) return; // Redirect already handled
-                    if (result.isFragment && result.targetId) {
-                        var target = document.getElementById(result.targetId);
-                        if (target) {
-                            target.innerHTML = result.html;
-                            initAjaxHelper();
-                            return;
-                        }
-                    }
-                    // Fallback to full-page replacement.
-                    document.body.innerHTML = result.html;
-                    initAjaxHelper();
-                })
-                .catch(function(error) {
-                    alert('Error submitting form: ' + error.message);
-                })
-                .finally(function() {
-                    if (submitButton) {
-                        submitButton.disabled = false;
-                        if (submitButton.tagName === 'BUTTON') {
-                            submitButton.textContent = originalText;
-                        } else {
-                            submitButton.value = originalText;
-                        }
-                    }
-                });
-            });
-        });
     }
 })();
 </script>";

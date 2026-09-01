@@ -1209,6 +1209,10 @@ public class HttpServerTests
             // Submit buttons with name/value (e.g. vote=up) must be posted via AJAX.
             Assert.Contains("e.submitter", html, StringComparison.Ordinal);
             Assert.Contains("new FormData(form, submitter)", html, StringComparison.Ordinal);
+            // Document delegation: SSE/fragment innerHTML must not drop intercept.
+            Assert.Contains("document.addEventListener('submit'", html, StringComparison.Ordinal);
+            Assert.Contains("window.__maldaInitAjaxHelper", html, StringComparison.Ordinal);
+            Assert.DoesNotContain("querySelectorAll('form')", html, StringComparison.Ordinal);
         }
         finally
         {

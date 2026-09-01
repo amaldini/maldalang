@@ -3507,12 +3507,16 @@ function askPageClientScriptHead() {
 }
 
 function askPageClientScriptTail() {
+    // SSE ask-panel replaces #ask-panel (new <form> nodes). Native POST /ask
+    // would navigate to the fragment body: unstyled page, no second answer.
+    // HttpServer binds submit on document; still poke __maldaInitAjaxHelper.
     return "function applyAskPanel(payload){" +
         "var html=payload&&payload.html!=null?String(payload.html):'';" +
         "var panel=document.getElementById('ask-panel');" +
         "if(!panel||!html){return;}" +
         "window.__askLivePanel=true;" +
         "panel.innerHTML=html;" +
+        "if(window.__maldaInitAjaxHelper){try{window.__maldaInitAjaxHelper();}catch(ajaxErr){}}" +
         "showLive('',false);" +
         "syncAskModeUi();" +
         "applyComposerFold(false);" +
