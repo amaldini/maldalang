@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>mlRuntime.three Shader Billiards</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 16px;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+
+    #app canvas {
+      max-width: 100%;
+      border: 1px solid #334155;
+      border-radius: 8px;
+    }
+
+    code {
+      background: #111827;
+      padding: 2px 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>mlRuntime.three Shader Billiards</h1>
+  <p>Loads the local <code>three.js</code> bundle, the MALDA runtime, and compiled <code>three_shader_billiards.js</code>. Compile first:</p>
+  <p><code>malda compile Examples/Games/three_shader_billiards.malda --mode js -o Examples/Games/three_shader_billiards.js</code></p>
+  <div id="app"></div>
+
+  <script src="../Web/wwwroot/vendor/three.min.js"></script>
+  <script src="../Web/wwwroot/malda-js-runtime.js"></script>
+  <script src="./three_shader_billiards.js"></script>
+  <script>
+    if (window.MaldaApp && typeof window.MaldaApp.main === "function") {
+      window.MaldaApp.main();
+    }
+  </script>
+</body>
+</html>

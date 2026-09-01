@@ -347,6 +347,7 @@ function render() {
         <h3>33.15.1 Shader materials</h3>
         <p>Move per-pixel work onto the GPU with <code>three.createShaderMaterial</code> and <code>three.setUniform</code>. The contract (types, subset, <code>glsl.compile</code> keys, IDE rename) is in <a href="26-browser-javascript-backend.html#shader-kernels">26.10.1 Shader kernels</a>. Compile the realtime tracer with:</p>
         <pre><code>malda compile Examples/Games/three_shader_raytracer.malda --mode js -o Examples/Games/three_shader_raytracer.js
+malda compile Examples/Games/three_shader_billiards.malda --mode js -o Examples/Games/three_shader_billiards.js
 malda compile Examples/Games/three_shader_path_tunnel.malda --mode js -o Examples/Games/three_shader_path_tunnel.js</code></pre>
         <pre><code>@shader()
 function vertexMain() {
@@ -366,7 +367,7 @@ var material = three.createShaderMaterial({
     "uniforms": { "uTime": 0 }
 });
 three.setUniform(material, "uTime", t);</code></pre>
-        <p>Use <code>three.createOrthographicCamera(-1, 1, 1, -1, 0, 1)</code> and <code>PlaneGeometry(2, 2)</code> for a fullscreen pass. See <code>Examples/Games/three_shader_raytracer.malda</code>. A ShaderToy-style path-marching tunnel is <code>Examples/Games/three_shader_path_tunnel.malda</code> (Frostbyte, CC-BY-NC-SA-4.0).</p>
+        <p>Use <code>three.createOrthographicCamera(-1, 1, 1, -1, 0, 1)</code> and <code>PlaneGeometry(2, 2)</code> for a fullscreen pass. See <code>Examples/Games/three_shader_raytracer.malda</code>. A playable felt-and-spheres pool table on the same path is <code>Examples/Games/three_shader_billiards.malda</code> (host physics, GPU trace). A ShaderToy-style path-marching tunnel is <code>Examples/Games/three_shader_path_tunnel.malda</code> (Frostbyte, CC-BY-NC-SA-4.0).</p>
         <h2>33.16 Property Testing Quick Example</h2>
         <pre><code>property intIdentity(x) {
     return (x + 0) == x;
