@@ -941,7 +941,7 @@ if (root == null) {
                             ballX[j] = ballX[j] + (nx * overlap * 0.5);
                             ballZ[j] = ballZ[j] + (nz * overlap * 0.5);
                             var rel = ((ballVx[i] - ballVx[j]) * nx) + ((ballVz[i] - ballVz[j]) * nz);
-                            if (rel < 0) {
+                            if (rel > 0) {
                                 var impulse = -(1.0 + 0.92) * rel * 0.5;
                                 ballVx[i] = ballVx[i] + (nx * impulse);
                                 ballVz[i] = ballVz[i] + (nz * impulse);
@@ -963,8 +963,12 @@ if (root == null) {
             if (ballLive[i] == 1) {
                 ballX[i] = ballX[i] + (ballVx[i] * dt);
                 ballZ[i] = ballZ[i] + (ballVz[i] * dt);
-                ballVx[i] = ballVx[i] * math.max(0.0, 1.0 - (1.65 * dt));
-                ballVz[i] = ballVz[i] * math.max(0.0, 1.0 - (1.65 * dt));
+                var damp = 1.0 - (1.65 * dt);
+                if (damp < 0) {
+                    damp = 0;
+                }
+                ballVx[i] = ballVx[i] * damp;
+                ballVz[i] = ballVz[i] * damp;
                 var speed = math.sqrt((ballVx[i] * ballVx[i]) + (ballVz[i] * ballVz[i]));
                 if (speed < 0.035) {
                     ballVx[i] = 0.0;
@@ -999,19 +1003,27 @@ if (root == null) {
                     var limitZ = tableHZ - ballR;
                     if (ballX[i] > limitX) {
                         ballX[i] = limitX;
-                        ballVx[i] = 0 - math.abs(ballVx[i]) * 0.68;
+                        if (ballVx[i] > 0) {
+                            ballVx[i] = 0 - ballVx[i] * 0.68;
+                        }
                     }
                     if (ballX[i] < (0 - limitX)) {
                         ballX[i] = 0 - limitX;
-                        ballVx[i] = math.abs(ballVx[i]) * 0.68;
+                        if (ballVx[i] < 0) {
+                            ballVx[i] = 0 - ballVx[i] * 0.68;
+                        }
                     }
                     if (ballZ[i] > limitZ) {
                         ballZ[i] = limitZ;
-                        ballVz[i] = 0 - math.abs(ballVz[i]) * 0.68;
+                        if (ballVz[i] > 0) {
+                            ballVz[i] = 0 - ballVz[i] * 0.68;
+                        }
                     }
                     if (ballZ[i] < (0 - limitZ)) {
                         ballZ[i] = 0 - limitZ;
-                        ballVz[i] = math.abs(ballVz[i]) * 0.68;
+                        if (ballVz[i] < 0) {
+                            ballVz[i] = 0 - ballVz[i] * 0.68;
+                        }
                     }
                 }
             }
@@ -1189,7 +1201,14 @@ if (root == null) {
         var still = ballsAreStill();
         if (still) {
             aimAngle = ((mx / width) - 0.5) * 6.2831853;
-            shotPower = 0.12 + ((1.0 - math.clamp(my / height, 0, 1)) * 0.88);
+            var ny = my / height;
+            if (ny < 0) {
+                ny = 0;
+            }
+            if (ny > 1) {
+                ny = 1;
+            }
+            shotPower = 0.12 + ((1.0 - ny) * 0.88);
             if (three.isKeyDown("a")) {
                 aimAngle = aimAngle - (1.6 * dtSec);
             }
@@ -1197,10 +1216,16 @@ if (root == null) {
                 aimAngle = aimAngle + (1.6 * dtSec);
             }
             if (three.isKeyDown("w")) {
-                shotPower = math.min(1.0, shotPower + (0.8 * dtSec));
+                shotPower = shotPower + (0.8 * dtSec);
+                if (shotPower > 1.0) {
+                    shotPower = 1.0;
+                }
             }
             if (three.isKeyDown("s")) {
-                shotPower = math.max(0.12, shotPower - (0.8 * dtSec));
+                shotPower = shotPower - (0.8 * dtSec);
+                if (shotPower < 0.12) {
+                    shotPower = 0.12;
+                }
             }
         } else if (mx != lastMouseX || my != lastMouseY) {
             lightX = ((mx / width) - 0.5) * 4.2;
