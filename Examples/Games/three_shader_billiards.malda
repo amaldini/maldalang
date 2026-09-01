@@ -48,6 +48,26 @@ function hitBox(bmin: vec3, bmax: vec3, origin: vec3, dir: vec3) -> float {
 }
 
 @shader()
+function hitBoxRotated(center: vec3, halfSize: vec3, angle: float, origin: vec3, dir: vec3) -> float {
+    var ca: float = cos(angle);
+    var sa: float = sin(angle);
+    var o: vec3 = origin - center;
+    var oLocal: vec3 = vec3(ca * o.x - sa * o.z, o.y, sa * o.x + ca * o.z);
+    var dLocal: vec3 = vec3(ca * dir.x - sa * dir.z, dir.y, sa * dir.x + ca * dir.z);
+    return hitBox(-halfSize, halfSize, oLocal, dLocal);
+}
+
+@shader()
+function boxNormalRotated(center: vec3, halfSize: vec3, angle: float, p: vec3) -> vec3 {
+    var ca: float = cos(angle);
+    var sa: float = sin(angle);
+    var o: vec3 = p - center;
+    var pLocal: vec3 = vec3(ca * o.x - sa * o.z, o.y, sa * o.x + ca * o.z);
+    var nLocal: vec3 = boxNormal(-halfSize, halfSize, pLocal);
+    return vec3(ca * nLocal.x + sa * nLocal.z, nLocal.y, -sa * nLocal.x + ca * nLocal.z);
+}
+
+@shader()
 function boxNormal(bmin: vec3, bmax: vec3, p: vec3) -> vec3 {
     var c: vec3 = (bmin + bmax) * 0.5;
     var d: vec3 = (p - c) / max(bmax - bmin, vec3(EPSILON, EPSILON, EPSILON));
@@ -154,26 +174,52 @@ function inPocketXZ(p: vec3) -> bool {
 
 @shader()
 function ballCenter(index: int) -> vec3 {
-    var y: float = BALL_R;
     if (index == 0) {
-        return vec3(-1.08, y, 0.0);
+        return uBall0;
     }
-    var n: int = index - 1;
-    var row: int = 0;
-    var start: int = 0;
-    var count: int = 1;
-    while (row < 5) {
-        if (n < start + count) {
-            var col: int = n - start;
-            var x: float = 0.58 + float(row) * BALL_R * 1.7320508;
-            var z: float = (float(col) - float(row) * 0.5) * (BALL_R * 2.02);
-            return vec3(x, y, z);
-        }
-        start = start + count;
-        count = count + 1;
-        row = row + 1;
+    if (index == 1) {
+        return uBall1;
     }
-    return vec3(0.0, y, 0.0);
+    if (index == 2) {
+        return uBall2;
+    }
+    if (index == 3) {
+        return uBall3;
+    }
+    if (index == 4) {
+        return uBall4;
+    }
+    if (index == 5) {
+        return uBall5;
+    }
+    if (index == 6) {
+        return uBall6;
+    }
+    if (index == 7) {
+        return uBall7;
+    }
+    if (index == 8) {
+        return uBall8;
+    }
+    if (index == 9) {
+        return uBall9;
+    }
+    if (index == 10) {
+        return uBall10;
+    }
+    if (index == 11) {
+        return uBall11;
+    }
+    if (index == 12) {
+        return uBall12;
+    }
+    if (index == 13) {
+        return uBall13;
+    }
+    if (index == 14) {
+        return uBall14;
+    }
+    return uBall15;
 }
 
 @shader()
@@ -339,13 +385,24 @@ function closestHit(
 
     var i: int = 0;
     while (i < 16) {
-        var tBall: float = hitSphere(ballCenter(i), BALL_R, origin, dir);
-        if (considerHit(tBall, tHit)) {
-            tHit = tBall;
-            kind = 1;
-            index = i;
+        var center: vec3 = ballCenter(i);
+        if (center.y > 0.0) {
+            var tBall: float = hitSphere(center, BALL_R, origin, dir);
+            if (considerHit(tBall, tHit)) {
+                tHit = tBall;
+                kind = 1;
+                index = i;
+            }
         }
         i = i + 1;
+    }
+    if (uCueOn > 0.5) {
+        var tCue: float = hitBoxRotated(uCueCenter, uCueHalf, uCueAngle, origin, dir);
+        if (considerHit(tCue, tHit)) {
+            tHit = tCue;
+            kind = 7;
+            index = 0;
+        }
     }
 
     var p: int = 0;
@@ -440,6 +497,10 @@ function closestHit(
         normal = (hit - center) / BALL_R;
         albedo = ballAlbedo(index, normal);
         material = 1;
+    } else if (kind == 7) {
+        normal = boxNormalRotated(uCueCenter, uCueHalf, uCueAngle, hit);
+        albedo = vec3(0.78, 0.52, 0.24);
+        material = 0;
     } else if (kind == 3) {
         if (index == 0) {
             normal = boxNormal(vec3(-TABLE_HX + gap, railY0, TABLE_HZ), vec3(-gap, railY1, TABLE_HZ + RAIL_T), hit);
@@ -610,7 +671,27 @@ var fragmentShader = glsl.compile({
         "vec3 uCamUp",
         "vec3 uLightPos",
         "float uTanHalf",
-        "float uAspect"
+        "float uAspect",
+        "vec3 uBall0",
+        "vec3 uBall1",
+        "vec3 uBall2",
+        "vec3 uBall3",
+        "vec3 uBall4",
+        "vec3 uBall5",
+        "vec3 uBall6",
+        "vec3 uBall7",
+        "vec3 uBall8",
+        "vec3 uBall9",
+        "vec3 uBall10",
+        "vec3 uBall11",
+        "vec3 uBall12",
+        "vec3 uBall13",
+        "vec3 uBall14",
+        "vec3 uBall15",
+        "vec3 uCueCenter",
+        "vec3 uCueHalf",
+        "float uCueAngle",
+        "float uCueOn"
     ],
     consts: [
         "float EPSILON = 0.0015",
@@ -624,6 +705,8 @@ var fragmentShader = glsl.compile({
         "hitSphere",
         "hitBox",
         "boxNormal",
+        "hitBoxRotated",
+        "boxNormalRotated",
         "hitCylinder",
         "cylinderNormal",
         "pocketCenter",
@@ -660,8 +743,12 @@ if (root == null) {
     dom.append(root, heading);
 
     var hint = dom.create("p");
-    dom.setText(hint, "Realtime GLSL tracer: felt, cushions, pockets, and a numbered 16-ball rack. Digits are procedural decals in the kernel. Rest poses live there too — this is a render showcase, not pool physics. Left/Right change orbit speed. Move the mouse to slide the lamp.");
+    dom.setText(hint, "Playable GPU tracer: mouse aims and sets power, Space or click shoots, R reracks, arrows orbit. Host MALDA steps 2D circle physics (cushions, pockets, friction); the kernel only traces the uniforms.");
     dom.append(root, hint);
+
+    var status = dom.create("p");
+    dom.setText(status, "Aim the cue, then shoot.");
+    dom.append(root, status);
 
     var width = 960;
     var height = 540;
@@ -689,6 +776,263 @@ if (root == null) {
     var lightZ = 0.55;
     var lastMouseX = -1;
     var lastMouseY = -1;
+    var tableHX = 1.85;
+    var tableHZ = 0.925;
+    var ballR = 0.075;
+    var pocketR = 0.12;
+    var ballX = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    var ballZ = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    var ballVx = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    var ballVz = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    var ballLive = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
+    var aimAngle = 0.0;
+    var shotPower = 0.55;
+    var spaceWasDown = false;
+    var clickWasDown = false;
+    var rWasDown = false;
+    var pottedCount = 0;
+
+    function rackX(index) {
+        if (index == 0) {
+            return -1.08;
+        }
+        var n = index - 1;
+        var row = 0;
+        var start = 0;
+        var count = 1;
+        while (row < 5) {
+            if (n < start + count) {
+                return 0.58 + (row * ballR * 1.7320508);
+            }
+            start = start + count;
+            count = count + 1;
+            row = row + 1;
+        }
+        return 0.58;
+    }
+
+    function rackZ(index) {
+        if (index == 0) {
+            return 0.0;
+        }
+        var n = index - 1;
+        var row = 0;
+        var start = 0;
+        var count = 1;
+        while (row < 5) {
+            if (n < start + count) {
+                var col = n - start;
+                return (col - (row * 0.5)) * (ballR * 2.02);
+            }
+            start = start + count;
+            count = count + 1;
+            row = row + 1;
+        }
+        return 0.0;
+    }
+
+    function resetRack() {
+        var i = 0;
+        while (i < 16) {
+            ballX[i] = rackX(i);
+            ballZ[i] = rackZ(i);
+            ballVx[i] = 0.0;
+            ballVz[i] = 0.0;
+            ballLive[i] = 1;
+            i = i + 1;
+        }
+        aimAngle = 0.0;
+        shotPower = 0.55;
+        pottedCount = 0;
+    }
+
+    function pocketHit(x, z) {
+        var spots = [
+            [-tableHX, -tableHZ],
+            [-tableHX, tableHZ],
+            [tableHX, -tableHZ],
+            [tableHX, tableHZ],
+            [0.0, -tableHZ],
+            [0.0, tableHZ]
+        ];
+        var p = 0;
+        while (p < 6) {
+            var dx = x - spots[p][0];
+            var dz = z - spots[p][1];
+            if ((dx * dx) + (dz * dz) < (pocketR + 0.02) * (pocketR + 0.02)) {
+                return true;
+            }
+            p = p + 1;
+        }
+        return false;
+    }
+
+    function ballsAreStill() {
+        var i = 0;
+        while (i < 16) {
+            if (ballLive[i] == 1) {
+                var speed = math.sqrt((ballVx[i] * ballVx[i]) + (ballVz[i] * ballVz[i]));
+                if (speed > 0.04) {
+                    return false;
+                }
+            }
+            i = i + 1;
+        }
+        return true;
+    }
+
+    function potBall(i) {
+        if (ballLive[i] == 0) {
+            return;
+        }
+        ballLive[i] = 0;
+        ballVx[i] = 0.0;
+        ballVz[i] = 0.0;
+        if (i > 0) {
+            pottedCount = pottedCount + 1;
+        }
+    }
+
+    function respawnCueIfNeeded() {
+        if (ballLive[0] == 1) {
+            return;
+        }
+        var cx = -1.08;
+        var cz = 0.0;
+        var blocked = false;
+        var i = 1;
+        while (i < 16) {
+            if (ballLive[i] == 1) {
+                var dx = ballX[i] - cx;
+                var dz = ballZ[i] - cz;
+                if ((dx * dx) + (dz * dz) < (ballR * 2.2) * (ballR * 2.2)) {
+                    blocked = true;
+                }
+            }
+            i = i + 1;
+        }
+        if (blocked) {
+            cx = -0.70;
+        }
+        ballX[0] = cx;
+        ballZ[0] = cz;
+        ballVx[0] = 0.0;
+        ballVz[0] = 0.0;
+        ballLive[0] = 1;
+    }
+
+    function collideBalls() {
+        var i = 0;
+        while (i < 16) {
+            if (ballLive[i] == 1) {
+                var j = i + 1;
+                while (j < 16) {
+                    if (ballLive[j] == 1) {
+                        var dx = ballX[j] - ballX[i];
+                        var dz = ballZ[j] - ballZ[i];
+                        var dist = math.sqrt((dx * dx) + (dz * dz));
+                        var minDist = ballR * 2.0;
+                        if (dist < minDist && dist > 0.0001) {
+                            var nx = dx / dist;
+                            var nz = dz / dist;
+                            var overlap = minDist - dist;
+                            ballX[i] = ballX[i] - (nx * overlap * 0.5);
+                            ballZ[i] = ballZ[i] - (nz * overlap * 0.5);
+                            ballX[j] = ballX[j] + (nx * overlap * 0.5);
+                            ballZ[j] = ballZ[j] + (nz * overlap * 0.5);
+                            var rel = ((ballVx[i] - ballVx[j]) * nx) + ((ballVz[i] - ballVz[j]) * nz);
+                            if (rel < 0) {
+                                var impulse = -(1.0 + 0.92) * rel * 0.5;
+                                ballVx[i] = ballVx[i] + (nx * impulse);
+                                ballVz[i] = ballVz[i] + (nz * impulse);
+                                ballVx[j] = ballVx[j] - (nx * impulse);
+                                ballVz[j] = ballVz[j] - (nz * impulse);
+                            }
+                        }
+                    }
+                    j = j + 1;
+                }
+            }
+            i = i + 1;
+        }
+    }
+
+    function physicsStep(dt) {
+        var i = 0;
+        while (i < 16) {
+            if (ballLive[i] == 1) {
+                ballX[i] = ballX[i] + (ballVx[i] * dt);
+                ballZ[i] = ballZ[i] + (ballVz[i] * dt);
+                ballVx[i] = ballVx[i] * math.max(0.0, 1.0 - (1.65 * dt));
+                ballVz[i] = ballVz[i] * math.max(0.0, 1.0 - (1.65 * dt));
+                var speed = math.sqrt((ballVx[i] * ballVx[i]) + (ballVz[i] * ballVz[i]));
+                if (speed < 0.035) {
+                    ballVx[i] = 0.0;
+                    ballVz[i] = 0.0;
+                }
+                if (speed > 5.4) {
+                    ballVx[i] = ballVx[i] * (5.4 / speed);
+                    ballVz[i] = ballVz[i] * (5.4 / speed);
+                }
+                if (pocketHit(ballX[i], ballZ[i])) {
+                    var spots = [
+                        [-tableHX, -tableHZ],
+                        [-tableHX, tableHZ],
+                        [tableHX, -tableHZ],
+                        [tableHX, tableHZ],
+                        [0.0, -tableHZ],
+                        [0.0, tableHZ]
+                    ];
+                    var p = 0;
+                    while (p < 6) {
+                        var pdx = ballX[i] - spots[p][0];
+                        var pdz = ballZ[i] - spots[p][1];
+                        if ((pdx * pdx) + (pdz * pdz) < (pocketR - 0.01) * (pocketR - 0.01)) {
+                            potBall(i);
+                            p = 6;
+                        }
+                        p = p + 1;
+                    }
+                }
+                if (ballLive[i] == 1 && !pocketHit(ballX[i], ballZ[i])) {
+                    var limitX = tableHX - ballR;
+                    var limitZ = tableHZ - ballR;
+                    if (ballX[i] > limitX) {
+                        ballX[i] = limitX;
+                        ballVx[i] = 0 - math.abs(ballVx[i]) * 0.68;
+                    }
+                    if (ballX[i] < (0 - limitX)) {
+                        ballX[i] = 0 - limitX;
+                        ballVx[i] = math.abs(ballVx[i]) * 0.68;
+                    }
+                    if (ballZ[i] > limitZ) {
+                        ballZ[i] = limitZ;
+                        ballVz[i] = 0 - math.abs(ballVz[i]) * 0.68;
+                    }
+                    if (ballZ[i] < (0 - limitZ)) {
+                        ballZ[i] = 0 - limitZ;
+                        ballVz[i] = math.abs(ballVz[i]) * 0.68;
+                    }
+                }
+            }
+            i = i + 1;
+        }
+        collideBalls();
+    }
+
+    function shootCue() {
+        if (!ballsAreStill()) {
+            return;
+        }
+        if (ballLive[0] == 0) {
+            respawnCueIfNeeded();
+        }
+        var speed = 0.9 + (shotPower * 4.4);
+        ballVx[0] = math.cos(aimAngle) * speed;
+        ballVz[0] = math.sin(aimAngle) * speed;
+    }
+
+    resetRack();
 
     function updateCamera() {
         camX = math.sin(camAngle) * camRadius;
@@ -741,35 +1085,91 @@ if (root == null) {
             "uCamUp": [0, 1, 0],
             "uLightPos": [lightX, lightY, lightZ],
             "uTanHalf": tanHalf,
-            "uAspect": aspect
+            "uAspect": aspect,
+            "uBall0": [-1.08, 0.075, 0],
+            "uBall1": [0.58, 0.075, 0],
+            "uBall2": [0.58, 0.075, 0],
+            "uBall3": [0.58, 0.075, 0],
+            "uBall4": [0.58, 0.075, 0],
+            "uBall5": [0.58, 0.075, 0],
+            "uBall6": [0.58, 0.075, 0],
+            "uBall7": [0.58, 0.075, 0],
+            "uBall8": [0.58, 0.075, 0],
+            "uBall9": [0.58, 0.075, 0],
+            "uBall10": [0.58, 0.075, 0],
+            "uBall11": [0.58, 0.075, 0],
+            "uBall12": [0.58, 0.075, 0],
+            "uBall13": [0.58, 0.075, 0],
+            "uBall14": [0.58, 0.075, 0],
+            "uBall15": [0.58, 0.075, 0],
+            "uCueCenter": [-1.7, 0.075, 0],
+            "uCueHalf": [0.55, 0.012, 0.012],
+            "uCueAngle": 0,
+            "uCueOn": 1
         }
     });
 
     var quad = three.createMesh(three.createPlaneGeometry(2, 2), material);
     three.add(scene, quad);
 
-    function pushCameraUniforms() {
+    function ballUniform(i) {
+        if (ballLive[i] == 1) {
+            return [ballX[i], ballR, ballZ[i]];
+        }
+        return [8.0, -2.0, 8.0];
+    }
+
+    function pushPlayUniforms() {
         three.setUniform(material, "uCamPos", [camX, camY, camZ]);
         three.setUniform(material, "uCamForward", [forwardX, forwardY, forwardZ]);
         three.setUniform(material, "uCamRight", [rightX, rightY, rightZ]);
         three.setUniform(material, "uCamUp", [upX, upY, upZ]);
         three.setUniform(material, "uLightPos", [lightX, lightY, lightZ]);
+        three.setUniform(material, "uBall0", ballUniform(0));
+        three.setUniform(material, "uBall1", ballUniform(1));
+        three.setUniform(material, "uBall2", ballUniform(2));
+        three.setUniform(material, "uBall3", ballUniform(3));
+        three.setUniform(material, "uBall4", ballUniform(4));
+        three.setUniform(material, "uBall5", ballUniform(5));
+        three.setUniform(material, "uBall6", ballUniform(6));
+        three.setUniform(material, "uBall7", ballUniform(7));
+        three.setUniform(material, "uBall8", ballUniform(8));
+        three.setUniform(material, "uBall9", ballUniform(9));
+        three.setUniform(material, "uBall10", ballUniform(10));
+        three.setUniform(material, "uBall11", ballUniform(11));
+        three.setUniform(material, "uBall12", ballUniform(12));
+        three.setUniform(material, "uBall13", ballUniform(13));
+        three.setUniform(material, "uBall14", ballUniform(14));
+        three.setUniform(material, "uBall15", ballUniform(15));
+        var still = ballsAreStill();
+        if (still && ballLive[0] == 1) {
+            var back = 0.62 + (shotPower * 0.28);
+            var cx = ballX[0] - (math.cos(aimAngle) * back);
+            var cz = ballZ[0] - (math.sin(aimAngle) * back);
+            three.setUniform(material, "uCueCenter", [cx, 0.075, cz]);
+            three.setUniform(material, "uCueHalf", [0.55, 0.012, 0.012]);
+            three.setUniform(material, "uCueAngle", aimAngle);
+            three.setUniform(material, "uCueOn", 1);
+        } else {
+            three.setUniform(material, "uCueOn", 0);
+        }
     }
 
     updateCamera();
-    pushCameraUniforms();
+    pushPlayUniforms();
 
     function update(dtMs) {
         var dt = dtMs;
         if (dt > 50) {
             dt = 50;
         }
+        var dtSec = dt / 1000;
 
         if (three.isKeyDown("arrowleft")) {
-            camSpeed = camSpeed - ((1.2 * dt) / 1000);
+            camSpeed = camSpeed - (1.2 * dtSec);
         }
         if (three.isKeyDown("arrowright")) {
-            camSpeed = camSpeed + ((1.2 * dt) / 1000);
+            camSpeed = camSpeed + (1.2 * dtSec);
         }
         if (camSpeed < -2.4) {
             camSpeed = -2.4;
@@ -777,23 +1177,72 @@ if (root == null) {
         if (camSpeed > 2.4) {
             camSpeed = 2.4;
         }
-
-        camAngle = camAngle + ((camSpeed * dt) / 1000);
+        camAngle = camAngle + (camSpeed * dtSec);
 
         var mx = int(three.getMouseX());
         var my = int(three.getMouseY());
         if (lastMouseX < 0) {
             lastMouseX = mx;
             lastMouseY = my;
+        }
+
+        var still = ballsAreStill();
+        if (still) {
+            aimAngle = ((mx / width) - 0.5) * 6.2831853;
+            shotPower = 0.12 + ((1.0 - math.clamp(my / height, 0, 1)) * 0.88);
+            if (three.isKeyDown("a")) {
+                aimAngle = aimAngle - (1.6 * dtSec);
+            }
+            if (three.isKeyDown("d")) {
+                aimAngle = aimAngle + (1.6 * dtSec);
+            }
+            if (three.isKeyDown("w")) {
+                shotPower = math.min(1.0, shotPower + (0.8 * dtSec));
+            }
+            if (three.isKeyDown("s")) {
+                shotPower = math.max(0.12, shotPower - (0.8 * dtSec));
+            }
         } else if (mx != lastMouseX || my != lastMouseY) {
-            lastMouseX = mx;
-            lastMouseY = my;
             lightX = ((mx / width) - 0.5) * 4.2;
             lightZ = 0.4 - ((my / height) - 0.5) * 3.2;
         }
+        lastMouseX = mx;
+        lastMouseY = my;
+
+        var spaceDown = three.isKeyDown(" ");
+        var clickDown = three.isMouseDown(0);
+        if ((spaceDown && !spaceWasDown) || (clickDown && !clickWasDown)) {
+            shootCue();
+        }
+        spaceWasDown = spaceDown;
+        clickWasDown = clickDown;
+
+        var rDown = three.isKeyDown("r");
+        if (rDown && !rWasDown) {
+            resetRack();
+        }
+        rWasDown = rDown;
+
+        var step = 0;
+        while (step < 3) {
+            physicsStep(dtSec / 3.0);
+            step = step + 1;
+        }
+        if (ballsAreStill()) {
+            respawnCueIfNeeded();
+        }
+
+        still = ballsAreStill();
+        if (still) {
+            var deg = int((aimAngle * 180) / 3.14159265);
+            var pct = int(shotPower * 100);
+            dom.setText(status, "Aim " + string(deg) + " deg   Power " + string(pct) + "%   Potted " + string(pottedCount) + "   Space/click shoot   R reset");
+        } else {
+            dom.setText(status, "Balls in motion…   Potted " + string(pottedCount) + "   R reset");
+        }
 
         updateCamera();
-        pushCameraUniforms();
+        pushPlayUniforms();
     }
 
     function render() {

@@ -367,7 +367,7 @@ var material = three.createShaderMaterial({
     "uniforms": { "uTime": 0 }
 });
 three.setUniform(material, "uTime", t);</code></pre>
-        <p>Use <code>three.createOrthographicCamera(-1, 1, 1, -1, 0, 1)</code> and <code>PlaneGeometry(2, 2)</code> for a fullscreen pass. See <code>Examples/Games/three_shader_raytracer.malda</code>. A felt-and-spheres pool table on the same path is <code>Examples/Games/three_shader_billiards.malda</code> (render showcase, not pool physics). A ShaderToy-style path-marching tunnel is <code>Examples/Games/three_shader_path_tunnel.malda</code> (Frostbyte, CC-BY-NC-SA-4.0).</p>
+        <p>Use <code>three.createOrthographicCamera(-1, 1, 1, -1, 0, 1)</code> and <code>PlaneGeometry(2, 2)</code> for a fullscreen pass. See <code>Examples/Games/three_shader_raytracer.malda</code>. A playable felt-and-spheres pool table on the same path is <code>Examples/Games/three_shader_billiards.malda</code> (host physics, GPU trace). A ShaderToy-style path-marching tunnel is <code>Examples/Games/three_shader_path_tunnel.malda</code> (Frostbyte, CC-BY-NC-SA-4.0).</p>
         <h2>33.16 Property Testing Quick Example</h2>
         <pre><code>property intIdentity(x) {
     return (x + 0) == x;

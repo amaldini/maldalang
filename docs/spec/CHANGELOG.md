@@ -109,7 +109,7 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 #### Added (PATCH — GPU billiards example)
 
-- **`Examples/Games/three_shader_billiards.malda`:** realtime GLSL pool table (felt, cushions, pockets, numbered 16-ball rack) on the existing `three.createShaderMaterial` / `@shader()` path. Rest poses and 7-segment digit decals live in the kernel — render showcase, not pool physics. Host page: `three_shader_billiards_runtime_smoke_test.html`. No new `game.*` / `three.*` names. JavaScript backend only.
+- **`Examples/Games/three_shader_billiards.malda`:** playable GLSL pool table on the existing `three.createShaderMaterial` / `@shader()` path. Host MALDA aims the cue and steps 2D circle physics (elastic ball–ball, cushion restitution, pockets, friction); the kernel traces `uBall0`–`uBall15`, a cue stick, and 7-segment decals. Mouse aims/power; Space or click shoots; R reracks. Host page: `three_shader_billiards_runtime_smoke_test.html`. No new `game.*` / `three.*` names. JavaScript backend only.
 
 #### Added (MINOR — @MCPTool / @Tool host-validate args)
 
