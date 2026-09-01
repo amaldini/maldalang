@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (PATCH — GPU billiards example)
+
+- **`Examples/Games/three_shader_billiards.malda`:** realtime GLSL pool table (felt, cushions, pockets, 16-ball rack) on the existing `three.createShaderMaterial` / `@shader()` path. Rest poses live in the kernel — render showcase, not pool physics. Host page: `three_shader_billiards_runtime_smoke_test.html`. No new `game.*` / `three.*` names. JavaScript backend only.
+
 #### Added (MINOR — @MCPTool / @Tool host-validate args)
 
 - **Host-validate `@MCPTool` / `@Tool` arguments:** when the third argument attaches a schema (name or JSON object string), incoming MCP `tools/call`, `MCPServer.callTool(name, args)`, agent `@Tool` invoke, and `tool.execute(args)` run the same `validate()` check **before** the function body. Failure does not call the body: `callTool` returns `{ ok: false, error }`; MCP `tools/call` returns `isError: true`; agents / `execute` return `Error: tool arguments failed schema: …`. Omitted third argument stays advertise-only (auto-generated all-string properties, no host check). Direct `add(1, 2)` calls are unchanged. Interpreter and C# transpile agree. JavaScript: n/a (MCP is host-only). Example: `Examples/MCP/mcp_schema_tool.malda`. Few-shot: `docs/llm/few-shot/32_mcptool_validate.malda`.

@@ -1,0 +1,707 @@
+@shader()
+function vertexMain() {
+    vUv = uv;
+    gl_Position = vec4(position.xy, 0.0, 1.0);
+}
+
+@shader()
+function hitSphere(center: vec3, radius: float, origin: vec3, dir: vec3) -> float {
+    var oc: vec3 = origin - center;
+    var a: float = dot(dir, dir);
+    var b: float = dot(oc, dir);
+    var c: float = dot(oc, oc) - radius * radius;
+    var disc: float = b * b - a * c;
+    if (disc < 0.0) {
+        return -1.0;
+    }
+    var root: float = sqrt(disc);
+    var t: float = (-b - root) / a;
+    if (t > EPSILON) {
+        return t;
+    }
+    t = (-b + root) / a;
+    if (t > EPSILON) {
+        return t;
+    }
+    return -1.0;
+}
+
+@shader()
+function hitBox(bmin: vec3, bmax: vec3, origin: vec3, dir: vec3) -> float {
+    var inv: vec3 = vec3(1.0, 1.0, 1.0) / dir;
+    var t0: vec3 = (bmin - origin) * inv;
+    var t1: vec3 = (bmax - origin) * inv;
+    var tmin: vec3 = min(t0, t1);
+    var tmax: vec3 = max(t0, t1);
+    var tEnter: float = max(max(tmin.x, tmin.y), tmin.z);
+    var tExit: float = min(min(tmax.x, tmax.y), tmax.z);
+    if (tExit < tEnter) {
+        return -1.0;
+    }
+    if (tEnter > EPSILON) {
+        return tEnter;
+    }
+    if (tExit > EPSILON) {
+        return tExit;
+    }
+    return -1.0;
+}
+
+@shader()
+function boxNormal(bmin: vec3, bmax: vec3, p: vec3) -> vec3 {
+    var c: vec3 = (bmin + bmax) * 0.5;
+    var d: vec3 = (p - c) / max(bmax - bmin, vec3(EPSILON, EPSILON, EPSILON));
+    var ad: vec3 = abs(d);
+    if (ad.x > ad.y && ad.x > ad.z) {
+        return vec3(sign(d.x), 0.0, 0.0);
+    }
+    if (ad.y > ad.z) {
+        return vec3(0.0, sign(d.y), 0.0);
+    }
+    return vec3(0.0, 0.0, sign(d.z));
+}
+
+@shader()
+function hitCylinder(center: vec3, radius: float, y0: float, y1: float, origin: vec3, dir: vec3) -> float {
+    var ocx: float = origin.x - center.x;
+    var ocz: float = origin.z - center.z;
+    var a: float = dir.x * dir.x + dir.z * dir.z;
+    var b: float = ocx * dir.x + ocz * dir.z;
+    var c: float = ocx * ocx + ocz * ocz - radius * radius;
+    var tBest: float = -1.0;
+    if (abs(a) > EPSILON) {
+        var disc: float = b * b - a * c;
+        if (disc >= 0.0) {
+            var root: float = sqrt(disc);
+            var t: float = (-b - root) / a;
+            var y: float = origin.y + dir.y * t;
+            if (t > EPSILON && y >= y0 && y <= y1) {
+                tBest = t;
+            }
+            t = (-b + root) / a;
+            y = origin.y + dir.y * t;
+            if (t > EPSILON && y >= y0 && y <= y1 && (tBest < 0.0 || t < tBest)) {
+                tBest = t;
+            }
+        }
+    }
+    if (abs(dir.y) > EPSILON) {
+        var tCap: float = (y0 - origin.y) / dir.y;
+        var qx: float = origin.x + dir.x * tCap - center.x;
+        var qz: float = origin.z + dir.z * tCap - center.z;
+        if (tCap > EPSILON && qx * qx + qz * qz <= radius * radius && (tBest < 0.0 || tCap < tBest)) {
+            tBest = tCap;
+        }
+        tCap = (y1 - origin.y) / dir.y;
+        qx = origin.x + dir.x * tCap - center.x;
+        qz = origin.z + dir.z * tCap - center.z;
+        if (tCap > EPSILON && qx * qx + qz * qz <= radius * radius && (tBest < 0.0 || tCap < tBest)) {
+            tBest = tCap;
+        }
+    }
+    return tBest;
+}
+
+@shader()
+function cylinderNormal(center: vec3, radius: float, y0: float, y1: float, p: vec3) -> vec3 {
+    var radial: vec3 = vec3(p.x - center.x, 0.0, p.z - center.z);
+    var dr: float = abs(length(radial) - radius);
+    var dy0: float = abs(p.y - y0);
+    var dy1: float = abs(p.y - y1);
+    if (dy0 < dr && dy0 <= dy1) {
+        return vec3(0.0, -1.0, 0.0);
+    }
+    if (dy1 < dr) {
+        return vec3(0.0, 1.0, 0.0);
+    }
+    return normalize(radial);
+}
+
+@shader()
+function pocketCenter(index: int) -> vec3 {
+    if (index == 0) {
+        return vec3(-TABLE_HX, 0.0, -TABLE_HZ);
+    }
+    if (index == 1) {
+        return vec3(-TABLE_HX, 0.0, TABLE_HZ);
+    }
+    if (index == 2) {
+        return vec3(TABLE_HX, 0.0, -TABLE_HZ);
+    }
+    if (index == 3) {
+        return vec3(TABLE_HX, 0.0, TABLE_HZ);
+    }
+    if (index == 4) {
+        return vec3(0.0, 0.0, -TABLE_HZ);
+    }
+    return vec3(0.0, 0.0, TABLE_HZ);
+}
+
+@shader()
+function inPocketXZ(p: vec3) -> bool {
+    var i: int = 0;
+    while (i < 6) {
+        var c: vec3 = pocketCenter(i);
+        var dx: float = p.x - c.x;
+        var dz: float = p.z - c.z;
+        if (dx * dx + dz * dz <= POCKET_R * POCKET_R) {
+            return true;
+        }
+        i = i + 1;
+    }
+    return false;
+}
+
+@shader()
+function ballCenter(index: int) -> vec3 {
+    var y: float = BALL_R;
+    if (index == 0) {
+        return vec3(-1.08, y, 0.0);
+    }
+    var n: int = index - 1;
+    var row: int = 0;
+    var start: int = 0;
+    var count: int = 1;
+    while (row < 5) {
+        if (n < start + count) {
+            var col: int = n - start;
+            var x: float = 0.58 + float(row) * BALL_R * 1.7320508;
+            var z: float = (float(col) - float(row) * 0.5) * (BALL_R * 2.02);
+            return vec3(x, y, z);
+        }
+        start = start + count;
+        count = count + 1;
+        row = row + 1;
+    }
+    return vec3(0.0, y, 0.0);
+}
+
+@shader()
+function ballSolidColor(index: int) -> vec3 {
+    if (index == 0) {
+        return vec3(0.93, 0.93, 0.90);
+    }
+    var hue: int = index;
+    if (index >= 9) {
+        hue = index - 8;
+    }
+    if (hue == 8) {
+        return vec3(0.05, 0.05, 0.06);
+    }
+    if (hue == 1) {
+        return vec3(0.95, 0.78, 0.12);
+    }
+    if (hue == 2) {
+        return vec3(0.12, 0.28, 0.82);
+    }
+    if (hue == 3) {
+        return vec3(0.84, 0.10, 0.12);
+    }
+    if (hue == 4) {
+        return vec3(0.42, 0.16, 0.62);
+    }
+    if (hue == 5) {
+        return vec3(0.92, 0.42, 0.08);
+    }
+    if (hue == 6) {
+        return vec3(0.08, 0.48, 0.18);
+    }
+    return vec3(0.52, 0.08, 0.16);
+}
+
+@shader()
+function ballAlbedo(index: int, normal: vec3) -> vec3 {
+    var solid: vec3 = ballSolidColor(index);
+    if (index == 0 || index == 8 || index < 9) {
+        return solid;
+    }
+    if (abs(normal.y) > 0.42) {
+        return vec3(0.93, 0.93, 0.90);
+    }
+    return solid;
+}
+
+@shader()
+function considerHit(t: float, tHit: float) -> bool {
+    return t > 0.0 && t < tHit;
+}
+
+@shader()
+function closestHit(
+    origin: vec3,
+    dir: vec3,
+    tMax: float,
+    tHit: out float,
+    kind: out int,
+    index: out int,
+    material: out int,
+    normal: out vec3,
+    albedo: out vec3
+) -> bool {
+    tHit = tMax;
+    kind = 0;
+    index = -1;
+    material = 0;
+    normal = vec3(0.0, 1.0, 0.0);
+    albedo = vec3(0.0);
+
+    var i: int = 0;
+    while (i < 16) {
+        var tBall: float = hitSphere(ballCenter(i), BALL_R, origin, dir);
+        if (considerHit(tBall, tHit)) {
+            tHit = tBall;
+            kind = 1;
+            index = i;
+        }
+        i = i + 1;
+    }
+
+    var p: int = 0;
+    while (p < 6) {
+        var pocket: vec3 = pocketCenter(p);
+        var tPocket: float = hitCylinder(pocket, POCKET_R, -0.22, 0.01, origin, dir);
+        if (considerHit(tPocket, tHit)) {
+            tHit = tPocket;
+            kind = 4;
+            index = p;
+        }
+        p = p + 1;
+    }
+
+    var railY0: float = 0.0;
+    var railY1: float = 0.11;
+    var gap: float = 0.16;
+    var tRail: float = hitBox(vec3(-TABLE_HX + gap, railY0, TABLE_HZ), vec3(-gap, railY1, TABLE_HZ + RAIL_T), origin, dir);
+    if (considerHit(tRail, tHit)) {
+        tHit = tRail;
+        kind = 3;
+        index = 0;
+    }
+    tRail = hitBox(vec3(gap, railY0, TABLE_HZ), vec3(TABLE_HX - gap, railY1, TABLE_HZ + RAIL_T), origin, dir);
+    if (considerHit(tRail, tHit)) {
+        tHit = tRail;
+        kind = 3;
+        index = 1;
+    }
+    tRail = hitBox(vec3(-TABLE_HX + gap, railY0, -TABLE_HZ - RAIL_T), vec3(-gap, railY1, -TABLE_HZ), origin, dir);
+    if (considerHit(tRail, tHit)) {
+        tHit = tRail;
+        kind = 3;
+        index = 2;
+    }
+    tRail = hitBox(vec3(gap, railY0, -TABLE_HZ - RAIL_T), vec3(TABLE_HX - gap, railY1, -TABLE_HZ), origin, dir);
+    if (considerHit(tRail, tHit)) {
+        tHit = tRail;
+        kind = 3;
+        index = 3;
+    }
+    tRail = hitBox(vec3(TABLE_HX, railY0, -TABLE_HZ + gap), vec3(TABLE_HX + RAIL_T, railY1, TABLE_HZ - gap), origin, dir);
+    if (considerHit(tRail, tHit)) {
+        tHit = tRail;
+        kind = 3;
+        index = 4;
+    }
+    tRail = hitBox(vec3(-TABLE_HX - RAIL_T, railY0, -TABLE_HZ + gap), vec3(-TABLE_HX, railY1, TABLE_HZ - gap), origin, dir);
+    if (considerHit(tRail, tHit)) {
+        tHit = tRail;
+        kind = 3;
+        index = 5;
+    }
+
+    var bodyMin: vec3 = vec3(-TABLE_HX - RAIL_T, -0.42, -TABLE_HZ - RAIL_T);
+    var bodyMax: vec3 = vec3(TABLE_HX + RAIL_T, -0.002, TABLE_HZ + RAIL_T);
+    var tBody: float = hitBox(bodyMin, bodyMax, origin, dir);
+    if (considerHit(tBody, tHit)) {
+        var bodyHit: vec3 = origin + dir * tBody;
+        if (!inPocketXZ(bodyHit)) {
+            tHit = tBody;
+            kind = 5;
+            index = 0;
+        }
+    }
+
+    if (abs(dir.y) > EPSILON) {
+        var tFelt: float = (0.0 - origin.y) / dir.y;
+        if (tFelt > EPSILON && tFelt < tHit) {
+            var feltHit: vec3 = origin + dir * tFelt;
+            if (abs(feltHit.x) <= TABLE_HX && abs(feltHit.z) <= TABLE_HZ && !inPocketXZ(feltHit)) {
+                tHit = tFelt;
+                kind = 2;
+                index = -1;
+            }
+        }
+        var tFloor: float = (-0.72 - origin.y) / dir.y;
+        if (tFloor > EPSILON && tFloor < tHit) {
+            tHit = tFloor;
+            kind = 6;
+            index = -1;
+        }
+    }
+
+    if (kind == 0) {
+        return false;
+    }
+
+    var hit: vec3 = origin + dir * tHit;
+    if (kind == 1) {
+        var center: vec3 = ballCenter(index);
+        normal = (hit - center) / BALL_R;
+        albedo = ballAlbedo(index, normal);
+        material = 1;
+    } else if (kind == 3) {
+        if (index == 0) {
+            normal = boxNormal(vec3(-TABLE_HX + gap, railY0, TABLE_HZ), vec3(-gap, railY1, TABLE_HZ + RAIL_T), hit);
+        } else if (index == 1) {
+            normal = boxNormal(vec3(gap, railY0, TABLE_HZ), vec3(TABLE_HX - gap, railY1, TABLE_HZ + RAIL_T), hit);
+        } else if (index == 2) {
+            normal = boxNormal(vec3(-TABLE_HX + gap, railY0, -TABLE_HZ - RAIL_T), vec3(-gap, railY1, -TABLE_HZ), hit);
+        } else if (index == 3) {
+            normal = boxNormal(vec3(gap, railY0, -TABLE_HZ - RAIL_T), vec3(TABLE_HX - gap, railY1, -TABLE_HZ), hit);
+        } else if (index == 4) {
+            normal = boxNormal(vec3(TABLE_HX, railY0, -TABLE_HZ + gap), vec3(TABLE_HX + RAIL_T, railY1, TABLE_HZ - gap), hit);
+        } else {
+            normal = boxNormal(vec3(-TABLE_HX - RAIL_T, railY0, -TABLE_HZ + gap), vec3(-TABLE_HX, railY1, TABLE_HZ - gap), hit);
+        }
+        albedo = vec3(0.38, 0.18, 0.08);
+        material = 0;
+    } else if (kind == 4) {
+        normal = cylinderNormal(pocketCenter(index), POCKET_R, -0.22, 0.01, hit);
+        albedo = vec3(0.03, 0.03, 0.035);
+        material = 0;
+    } else if (kind == 5) {
+        normal = boxNormal(bodyMin, bodyMax, hit);
+        albedo = vec3(0.28, 0.13, 0.06);
+        material = 0;
+    } else if (kind == 6) {
+        normal = vec3(0.0, 1.0, 0.0);
+        if (dot(normal, dir) > 0.0) {
+            normal = -normal;
+        }
+        var check: float = mod(floor(hit.x * 1.4) + floor(hit.z * 1.4), 2.0);
+        if (check < 0.5) {
+            albedo = vec3(0.10, 0.09, 0.08);
+        } else {
+            albedo = vec3(0.06, 0.055, 0.05);
+        }
+        material = 0;
+    } else {
+        normal = vec3(0.0, 1.0, 0.0);
+        if (dot(normal, dir) > 0.0) {
+            normal = -normal;
+        }
+        albedo = vec3(0.07, 0.36, 0.16);
+        var hx: float = abs(hit.x);
+        var hz: float = abs(hit.z);
+        if (mod(floor((hit.x + TABLE_HX) * 2.0) + floor((hit.z + TABLE_HZ) * 2.0), 14.0) < 0.5) {
+            albedo = albedo * 0.82;
+        }
+        if (abs(hit.x + 0.62) < 0.008 && hz < TABLE_HZ - 0.08) {
+            albedo = vec3(0.78, 0.78, 0.62);
+        }
+        if (length(vec2(hit.x, hit.z)) < 0.035) {
+            albedo = vec3(0.78, 0.78, 0.62);
+        }
+        if (hx > TABLE_HX - 0.03 || hz > TABLE_HZ - 0.03) {
+            albedo = albedo * 0.55;
+        }
+        material = 0;
+    }
+    normal = normalize(normal);
+    return true;
+}
+
+@shader()
+function inShadow(hit: vec3, normal: vec3) -> bool {
+    var origin: vec3 = hit + normal * 0.02;
+    var toLight: vec3 = uLightPos - origin;
+    var lightDist: float = length(toLight);
+    if (lightDist <= EPSILON) {
+        return false;
+    }
+    var dir: vec3 = toLight / lightDist;
+    var tHit: float = 0.0;
+    var kind: int = 0;
+    var index: int = 0;
+    var material: int = 0;
+    var n: vec3 = vec3(0.0);
+    var albedo: vec3 = vec3(0.0);
+    return closestHit(origin, dir, lightDist - 0.05, tHit, kind, index, material, n, albedo);
+}
+
+@shader()
+function localShade(hit: vec3, normal: vec3, albedo: vec3, viewDir: vec3, glossy: bool) -> vec3 {
+    var toLight: vec3 = uLightPos - hit;
+    var lightDir: vec3 = normalize(toLight);
+    var diff: float = max(dot(normal, lightDir), 0.0);
+    var light: float = 0.16;
+    if (!inShadow(hit, normal)) {
+        light = 0.16 + diff * 0.84;
+        if (glossy) {
+            var halfV: vec3 = normalize(lightDir + viewDir);
+            var spec: float = pow(max(dot(normal, halfV), 0.0), 72.0);
+            return albedo * light + vec3(spec, spec, spec) * 0.55;
+        }
+    }
+    return albedo * light;
+}
+
+@shader()
+function shadeSky(dir: vec3) -> vec3 {
+    var t: float = clamp((dir.y + 1.0) * 0.5, 0.0, 1.0);
+    return mix(vec3(0.16, 0.12, 0.10), vec3(0.05, 0.06, 0.08), t);
+}
+
+@shader()
+function shadePrimary(origin: vec3, dir: vec3) -> vec3 {
+    var tHit: float = 0.0;
+    var kind: int = 0;
+    var index: int = 0;
+    var material: int = 0;
+    var normal: vec3 = vec3(0.0);
+    var albedo: vec3 = vec3(0.0);
+    if (!closestHit(origin, dir, 1000000.0, tHit, kind, index, material, normal, albedo)) {
+        return shadeSky(dir);
+    }
+    var hit: vec3 = origin + dir * tHit;
+    var viewDir: vec3 = normalize(uCamPos - hit);
+    return localShade(hit, normal, albedo, viewDir, material == 1);
+}
+
+@shader()
+function traceScene(origin: vec3, dir: vec3) -> vec3 {
+    var tHit: float = 0.0;
+    var kind: int = 0;
+    var index: int = 0;
+    var material: int = 0;
+    var normal: vec3 = vec3(0.0);
+    var albedo: vec3 = vec3(0.0);
+    if (!closestHit(origin, dir, 1000000.0, tHit, kind, index, material, normal, albedo)) {
+        return shadeSky(dir);
+    }
+    var hit: vec3 = origin + dir * tHit;
+    var viewDir: vec3 = normalize(origin - hit);
+    var local: vec3 = localShade(hit, normal, albedo, viewDir, material == 1);
+    if (material != 1) {
+        return local;
+    }
+    var fresnel: float = 0.08 + 0.62 * pow(1.0 - max((-dot(dir, normal)), 0.0), 5.0);
+    var reflDir: vec3 = reflect(dir, normal);
+    var bounce: vec3 = shadePrimary(hit + normal * 0.02, reflDir);
+    return mix(local, bounce, fresnel);
+}
+
+@shader()
+function fragmentMain() {
+    var ndc: vec2 = vUv * 2.0 - 1.0;
+    var dir: vec3 = normalize(
+        uCamForward
+        + uCamRight * (ndc.x * uAspect * uTanHalf)
+        + uCamUp * (ndc.y * uTanHalf)
+    );
+    var color: vec3 = traceScene(uCamPos, dir);
+    gl_FragColor = vec4(sqrt(color), 1.0);
+}
+
+var vertexShader = glsl.compile({
+    varyings: ["vec2 vUv"],
+    functions: ["vertexMain"],
+    main: "vertexMain"
+});
+
+var fragmentShader = glsl.compile({
+    varyings: ["vec2 vUv"],
+    uniforms: [
+        "vec2 uResolution",
+        "vec3 uCamPos",
+        "vec3 uCamForward",
+        "vec3 uCamRight",
+        "vec3 uCamUp",
+        "vec3 uLightPos",
+        "float uTanHalf",
+        "float uAspect"
+    ],
+    consts: [
+        "float EPSILON = 0.0015",
+        "float BALL_R = 0.075",
+        "float TABLE_HX = 1.85",
+        "float TABLE_HZ = 0.925",
+        "float RAIL_T = 0.13",
+        "float POCKET_R = 0.12"
+    ],
+    functions: [
+        "hitSphere",
+        "hitBox",
+        "boxNormal",
+        "hitCylinder",
+        "cylinderNormal",
+        "pocketCenter",
+        "inPocketXZ",
+        "ballCenter",
+        "ballSolidColor",
+        "ballAlbedo",
+        "considerHit",
+        "closestHit",
+        "inShadow",
+        "localShade",
+        "shadeSky",
+        "shadePrimary",
+        "traceScene",
+        "fragmentMain"
+    ],
+    main: "fragmentMain"
+});
+
+var root = dom.query("#app");
+
+if (root == null) {
+    println("No #app container found.");
+} else {
+    dom.clear(root);
+
+    var heading = dom.create("h1");
+    dom.setText(heading, "MALDA GPU Billiards");
+    dom.append(root, heading);
+
+    var hint = dom.create("p");
+    dom.setText(hint, "Realtime GLSL tracer: felt, cushions, pockets, and a 16-ball rack. Rest poses live in the kernel — this is a render showcase, not pool physics. Left/Right change orbit speed. Move the mouse to slide the lamp.");
+    dom.append(root, hint);
+
+    var width = 960;
+    var height = 540;
+    var aspect = width / height;
+    var tanHalf = math.tan(math.degToRad(26));
+
+    var camRadius = 4.85;
+    var camAngle = 0.72;
+    var camSpeed = 0.18;
+    var camX = 0.0;
+    var camY = 3.05;
+    var camZ = 0.0;
+    var forwardX = 0.0;
+    var forwardY = 0.0;
+    var forwardZ = 1.0;
+    var rightX = 1.0;
+    var rightY = 0.0;
+    var rightZ = 0.0;
+    var upX = 0.0;
+    var upY = 1.0;
+    var upZ = 0.0;
+
+    var lightX = 0.35;
+    var lightY = 3.8;
+    var lightZ = 0.55;
+    var lastMouseX = -1;
+    var lastMouseY = -1;
+
+    function updateCamera() {
+        camX = math.sin(camAngle) * camRadius;
+        camY = 3.05;
+        camZ = math.cos(camAngle) * camRadius;
+
+        var fx = 0.0 - camX;
+        var fy = 0.12 - camY;
+        var fz = 0.0 - camZ;
+        var fl = math.sqrt(fx * fx + fy * fy + fz * fz);
+        fx = fx / fl;
+        fy = fy / fl;
+        fz = fz / fl;
+
+        var rx = 0 - fz;
+        var ry = 0.0;
+        var rz = fx;
+        var rl = math.sqrt(rx * rx + ry * ry + rz * rz);
+        rx = rx / rl;
+        ry = ry / rl;
+        rz = rz / rl;
+
+        forwardX = fx;
+        forwardY = fy;
+        forwardZ = fz;
+        rightX = rx;
+        rightY = ry;
+        rightZ = rz;
+        upX = ry * fz - rz * fy;
+        upY = rz * fx - rx * fz;
+        upZ = rx * fy - ry * fx;
+    }
+
+    var renderer = three.createRenderer(width, height, "#app");
+    three.setClearColor(renderer, "#0b0a09");
+    three.setRendererSize(renderer, width, height);
+
+    var scene = three.createScene();
+    var camera = three.createOrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+    var material = three.createShaderMaterial({
+        "vertexShader": vertexShader,
+        "fragmentShader": fragmentShader,
+        "depthWrite": false,
+        "uniforms": {
+            "uResolution": [width, height],
+            "uCamPos": [0, 3.05, 4.85],
+            "uCamForward": [0, 0, -1],
+            "uCamRight": [1, 0, 0],
+            "uCamUp": [0, 1, 0],
+            "uLightPos": [lightX, lightY, lightZ],
+            "uTanHalf": tanHalf,
+            "uAspect": aspect
+        }
+    });
+
+    var quad = three.createMesh(three.createPlaneGeometry(2, 2), material);
+    three.add(scene, quad);
+
+    function pushCameraUniforms() {
+        three.setUniform(material, "uCamPos", [camX, camY, camZ]);
+        three.setUniform(material, "uCamForward", [forwardX, forwardY, forwardZ]);
+        three.setUniform(material, "uCamRight", [rightX, rightY, rightZ]);
+        three.setUniform(material, "uCamUp", [upX, upY, upZ]);
+        three.setUniform(material, "uLightPos", [lightX, lightY, lightZ]);
+    }
+
+    updateCamera();
+    pushCameraUniforms();
+
+    function update(dtMs) {
+        var dt = dtMs;
+        if (dt > 50) {
+            dt = 50;
+        }
+
+        if (three.isKeyDown("arrowleft")) {
+            camSpeed = camSpeed - ((1.2 * dt) / 1000);
+        }
+        if (three.isKeyDown("arrowright")) {
+            camSpeed = camSpeed + ((1.2 * dt) / 1000);
+        }
+        if (camSpeed < -2.4) {
+            camSpeed = -2.4;
+        }
+        if (camSpeed > 2.4) {
+            camSpeed = 2.4;
+        }
+
+        camAngle = camAngle + ((camSpeed * dt) / 1000);
+
+        var mx = int(three.getMouseX());
+        var my = int(three.getMouseY());
+        if (lastMouseX < 0) {
+            lastMouseX = mx;
+            lastMouseY = my;
+        } else if (mx != lastMouseX || my != lastMouseY) {
+            lastMouseX = mx;
+            lastMouseY = my;
+            lightX = ((mx / width) - 0.5) * 4.2;
+            lightZ = 0.4 - ((my / height) - 0.5) * 3.2;
+        }
+
+        updateCamera();
+        pushCameraUniforms();
+    }
+
+    function render() {
+        three.render(renderer, scene, camera);
+    }
+
+    three.start(update, render);
+}

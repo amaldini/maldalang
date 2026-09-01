@@ -310,8 +310,9 @@ three.setUniform(material, "uTime", t);</code></pre>
         <p>Le stringhe GLSL tra triple quotes restano valide quando ti serve sintassi che il sottoinsieme non emette. Usa <code>"""</code>, non <code>$"""</code>, così le graffe restano letterali. Preferisci <code>@shader()</code> quando il kernel sta nel sottoinsieme, così rename e outline possono vederlo.</p>
         <p>Compila il tracer GPU in tempo reale con:</p>
         <pre><code>malda compile Examples/Games/three_shader_raytracer.malda --mode js -o Examples/Games/three_shader_raytracer.js
+malda compile Examples/Games/three_shader_billiards.malda --mode js -o Examples/Games/three_shader_billiards.js
 malda compile Examples/Games/three_shader_path_tunnel.malda --mode js -o Examples/Games/three_shader_path_tunnel.js</code></pre>
-        <p>Carica <code>three.min.js</code> per primo, come negli altri demo <code>three.*</code>. Un listing breve è in <a href="33-examples.html">33.15.1 Materiali shader</a>. Note operative: <code>docs/javascript-backend.md</code>. Il sample path-tunnel è CC-BY-NC-SA-4.0 (Frostbyte).</p>
+        <p>Carica <code>three.min.js</code> per primo, come negli altri demo <code>three.*</code>. Un listing breve è in <a href="33-examples.html">33.15.1 Materiali shader</a>. Note operative: <code>docs/javascript-backend.md</code>. Il sample biliardo è uno showcase feltro-e-sfere (non fisica del pool). Il sample path-tunnel è CC-BY-NC-SA-4.0 (Frostbyte).</p>
 
         <h2>26.11 Errori comuni e indicazioni</h2>
         <ul>

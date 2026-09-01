@@ -466,6 +466,12 @@ See `Examples/Games/three_shader_raytracer.malda` for a realtime GPU ray tracer 
 malda compile Examples/Games/three_shader_raytracer.malda --mode js -o Examples/Games/three_shader_raytracer.js
 ```
 
+`Examples/Games/three_shader_billiards.malda` is a pool-table showcase on the same path (felt, cushions, pockets, 16-ball rack). Rest poses live in the kernel — it is not pool physics. Compile:
+
+```bash
+malda compile Examples/Games/three_shader_billiards.malda --mode js -o Examples/Games/three_shader_billiards.js
+```
+
 `Examples/Games/three_shader_path_tunnel.malda` is a ShaderToy-style path-marching tunnel (Frostbyte, CC-BY-NC-SA-4.0 — that file is not under the repo dual licence). Compile:
 
 ```bash

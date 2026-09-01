@@ -4245,6 +4245,33 @@ process.exit(0);
     }
 
     [Fact]
+    public void JsTranspiler_ShaderBilliardsExample_EmitsShaderCalls()
+    {
+        var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Games", "three_shader_billiards.malda");
+        var compiler = new Compiler.Compiler();
+        var js = compiler.TranspileToJavaScript(sourcePath);
+
+        Assert.Contains("mlRuntime.three.createShaderMaterial(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.three.setUniform(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.three.createOrthographicCamera(", js, StringComparison.Ordinal);
+        Assert.Contains("varying vec2 vUv", js, StringComparison.Ordinal);
+        Assert.Contains("gl_FragColor", js, StringComparison.Ordinal);
+        Assert.Contains("float hitSphere(vec3 center, float radius, vec3 origin, vec3 dir)", js, StringComparison.Ordinal);
+        Assert.Contains("float hitBox(vec3 bmin, vec3 bmax, vec3 origin, vec3 dir)", js, StringComparison.Ordinal);
+        Assert.Contains("float hitCylinder(vec3 center, float radius, float y0, float y1, vec3 origin, vec3 dir)", js, StringComparison.Ordinal);
+        Assert.Contains("vec3 ballCenter(int index)", js, StringComparison.Ordinal);
+        Assert.Contains("bool inPocketXZ(vec3 p)", js, StringComparison.Ordinal);
+        Assert.Contains("bool closestHit(", js, StringComparison.Ordinal);
+        Assert.Contains("vec3 traceScene(vec3 origin, vec3 dir)", js, StringComparison.Ordinal);
+        Assert.Contains("const float BALL_R = 0.075", js, StringComparison.Ordinal);
+        Assert.Contains("const float TABLE_HX = 1.85", js, StringComparison.Ordinal);
+        Assert.Contains("reflect(dir, normal)", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("function hitSphere", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("mlRuntime.game.setPixel", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("function fragmentMain", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void JsTranspiler_ShaderPathTunnelExample_EmitsShaderCalls()
     {
         var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Games", "three_shader_path_tunnel.malda");
