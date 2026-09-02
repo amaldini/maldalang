@@ -52,8 +52,8 @@ function hitBoxRotated(center: vec3, halfSize: vec3, angle: float, origin: vec3,
     var ca: float = cos(angle);
     var sa: float = sin(angle);
     var o: vec3 = origin - center;
-    var oLocal: vec3 = vec3(ca * o.x - sa * o.z, o.y, sa * o.x + ca * o.z);
-    var dLocal: vec3 = vec3(ca * dir.x - sa * dir.z, dir.y, sa * dir.x + ca * dir.z);
+    var oLocal: vec3 = vec3(ca * o.x + sa * o.z, o.y, -sa * o.x + ca * o.z);
+    var dLocal: vec3 = vec3(ca * dir.x + sa * dir.z, dir.y, -sa * dir.x + ca * dir.z);
     return hitBox(-halfSize, halfSize, oLocal, dLocal);
 }
 
@@ -62,9 +62,9 @@ function boxNormalRotated(center: vec3, halfSize: vec3, angle: float, p: vec3) -
     var ca: float = cos(angle);
     var sa: float = sin(angle);
     var o: vec3 = p - center;
-    var pLocal: vec3 = vec3(ca * o.x - sa * o.z, o.y, sa * o.x + ca * o.z);
+    var pLocal: vec3 = vec3(ca * o.x + sa * o.z, o.y, -sa * o.x + ca * o.z);
     var nLocal: vec3 = boxNormal(-halfSize, halfSize, pLocal);
-    return vec3(ca * nLocal.x + sa * nLocal.z, nLocal.y, -sa * nLocal.x + ca * nLocal.z);
+    return vec3(ca * nLocal.x - sa * nLocal.z, nLocal.y, sa * nLocal.x + ca * nLocal.z);
 }
 
 @shader()
