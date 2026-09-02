@@ -4262,6 +4262,7 @@ process.exit(0);
         Assert.Contains("vec3 ballCenter(int index)", js, StringComparison.Ordinal);
         Assert.Contains("return uBall0;", js, StringComparison.Ordinal);
         Assert.Contains("uCueOn", js, StringComparison.Ordinal);
+        Assert.Contains("uAimOn", js, StringComparison.Ordinal);
         Assert.Contains("float hitBoxRotated(", js, StringComparison.Ordinal);
         Assert.Contains("float digitSdf(vec2 p, int d)", js, StringComparison.Ordinal);
         Assert.Contains("vec3 applyBallNumber(vec3 base, int index, vec3 normal)", js, StringComparison.Ordinal);

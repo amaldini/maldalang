@@ -557,6 +557,18 @@ function closestHit(
         if (hx > TABLE_HX - 0.03 || hz > TABLE_HZ - 0.03) {
             albedo = albedo * 0.55;
         }
+        if (uAimOn > 0.5) {
+            var toP: vec2 = vec2(hit.x - uBall0.x, hit.z - uBall0.z);
+            var along: float = toP.x * uAimDir.x + toP.y * uAimDir.z;
+            var perp: float = abs(toP.x * uAimDir.z - toP.y * uAimDir.x);
+            if (along > BALL_R + 0.01 && along < 2.35 && perp < 0.011) {
+                albedo = mix(albedo, vec3(0.94, 0.86, 0.28), 0.62);
+            }
+            var markR: float = length(vec2(hit.x - uAimMark.x, hit.z - uAimMark.z));
+            if (markR < 0.05 && markR > 0.028) {
+                albedo = mix(albedo, vec3(0.95, 0.90, 0.40), 0.75);
+            }
+        }
         material = 0;
     }
     normal = normalize(normal);
@@ -691,7 +703,10 @@ var fragmentShader = glsl.compile({
         "vec3 uCueCenter",
         "vec3 uCueHalf",
         "float uCueAngle",
-        "float uCueOn"
+        "float uCueOn",
+        "vec3 uAimDir",
+        "vec3 uAimMark",
+        "float uAimOn"
     ],
     consts: [
         "float EPSILON = 0.0015",
@@ -743,12 +758,16 @@ if (root == null) {
     dom.append(root, heading);
 
     var hint = dom.create("p");
-    dom.setText(hint, "Playable GPU tracer: mouse aims and sets power, Space or click shoots, R reracks, arrows orbit. Host MALDA steps 2D circle physics (cushions, pockets, friction); the kernel only traces the uniforms.");
+    dom.setText(hint, "The cue stays locked on the white ball. Move the mouse around the cue ball to aim (A/D for fine aim). Hold click or Space to charge power, release to shoot. R reracks, arrows orbit. Host MALDA steps 2D circle physics; the kernel only traces the uniforms.");
     dom.append(root, hint);
 
     var status = dom.create("p");
-    dom.setText(status, "Aim the cue, then shoot.");
+    dom.setText(status, "Move the mouse around the white ball, then hold click/Space to charge.");
     dom.append(root, status);
+
+    var powerLine = dom.create("p");
+    dom.setText(powerLine, "Power  [------------]   0%");
+    dom.append(root, powerLine);
 
     var width = 960;
     var height = 540;
@@ -786,9 +805,11 @@ if (root == null) {
     var ballVz = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
     var ballLive = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
     var aimAngle = 0.0;
-    var shotPower = 0.55;
-    var spaceWasDown = false;
-    var clickWasDown = false;
+    var shotPower = 0.12;
+    var charging = false;
+    var aimMarkX = -1.7;
+    var aimMarkZ = 0.0;
+    var aimMarkValid = false;
     var rWasDown = false;
     var pottedCount = 0;
 
@@ -842,7 +863,9 @@ if (root == null) {
             i = i + 1;
         }
         aimAngle = 0.0;
-        shotPower = 0.55;
+        shotPower = 0.12;
+        charging = false;
+        aimMarkValid = false;
         pottedCount = 0;
     }
 
@@ -1042,6 +1065,68 @@ if (root == null) {
         var speed = 0.9 + (shotPower * 4.4);
         ballVx[0] = math.cos(aimAngle) * speed;
         ballVz[0] = math.sin(aimAngle) * speed;
+        charging = false;
+        shotPower = 0.12;
+    }
+
+    function powerBarText() {
+        var filled = int(shotPower * 16.0);
+        if (filled < 0) {
+            filled = 0;
+        }
+        if (filled > 16) {
+            filled = 16;
+        }
+        var bar = "";
+        var i = 0;
+        while (i < 16) {
+            if (i < filled) {
+                bar = bar + "#";
+            } else {
+                bar = bar + "-";
+            }
+            i = i + 1;
+        }
+        return "[" + bar + "]   " + string(int(shotPower * 100)) + "%";
+    }
+
+    function aimFromMouse() {
+        var mx = three.getMouseX();
+        var my = three.getMouseY();
+        var ndcX = ((mx / width) * 2.0) - 1.0;
+        var ndcY = 1.0 - ((my / height) * 2.0);
+        var hx = ndcX * aspect * tanHalf;
+        var hy = ndcY * tanHalf;
+        var dx = forwardX + (rightX * hx) + (upX * hy);
+        var dy = forwardY + (rightY * hx) + (upY * hy);
+        var dz = forwardZ + (rightZ * hx) + (upZ * hy);
+        var dl = math.sqrt((dx * dx) + (dy * dy) + (dz * dz));
+        if (dl < 0.0001) {
+            return false;
+        }
+        dx = dx / dl;
+        dy = dy / dl;
+        dz = dz / dl;
+        if (math.abs(dy) < 0.0008) {
+            return false;
+        }
+        var tHit = (0.0 - camY) / dy;
+        if (tHit < 0.15) {
+            return false;
+        }
+        var hitX = camX + (dx * tHit);
+        var hitZ = camZ + (dz * tHit);
+        var ax = ballX[0] - hitX;
+        var az = ballZ[0] - hitZ;
+        var al = math.sqrt((ax * ax) + (az * az));
+        if (al < 0.05) {
+            return false;
+        }
+        aimAngle = math.atan2(az, ax);
+        aimMarkX = hitX;
+        aimMarkZ = hitZ;
+        aimMarkValid = true;
+        return true;
     }
 
     resetRack();
@@ -1117,7 +1202,10 @@ if (root == null) {
             "uCueCenter": [-1.7, 0.075, 0],
             "uCueHalf": [0.55, 0.012, 0.012],
             "uCueAngle": 0,
-            "uCueOn": 1
+            "uCueOn": 1,
+            "uAimDir": [1, 0, 0],
+            "uAimMark": [-1.7, 0, 0],
+            "uAimOn": 1
         }
     });
 
@@ -1155,15 +1243,27 @@ if (root == null) {
         three.setUniform(material, "uBall15", ballUniform(15));
         var still = ballsAreStill();
         if (still && ballLive[0] == 1) {
-            var back = 0.62 + (shotPower * 0.28);
+            var tipGap = 0.08;
+            if (charging) {
+                tipGap = 0.08 + (shotPower * 0.50);
+            }
+            var back = 0.55 + tipGap;
             var cx = ballX[0] - (math.cos(aimAngle) * back);
             var cz = ballZ[0] - (math.sin(aimAngle) * back);
             three.setUniform(material, "uCueCenter", [cx, 0.075, cz]);
             three.setUniform(material, "uCueHalf", [0.55, 0.012, 0.012]);
             three.setUniform(material, "uCueAngle", aimAngle);
             three.setUniform(material, "uCueOn", 1);
+            three.setUniform(material, "uAimDir", [math.cos(aimAngle), 0, math.sin(aimAngle)]);
+            if (aimMarkValid) {
+                three.setUniform(material, "uAimMark", [aimMarkX, 0, aimMarkZ]);
+            } else {
+                three.setUniform(material, "uAimMark", [8.0, 0, 8.0]);
+            }
+            three.setUniform(material, "uAimOn", 1);
         } else {
             three.setUniform(material, "uCueOn", 0);
+            three.setUniform(material, "uAimOn", 0);
         }
     }
 
@@ -1199,48 +1299,40 @@ if (root == null) {
         }
 
         var still = ballsAreStill();
-        if (still) {
-            aimAngle = ((mx / width) - 0.5) * 6.2831853;
-            var ny = my / height;
-            if (ny < 0) {
-                ny = 0;
+        var mouseMoved = mx != lastMouseX || my != lastMouseY;
+        if (still && ballLive[0] == 1) {
+            if (mouseMoved) {
+                aimFromMouse();
             }
-            if (ny > 1) {
-                ny = 1;
-            }
-            shotPower = 0.12 + ((1.0 - ny) * 0.88);
             if (three.isKeyDown("a")) {
                 aimAngle = aimAngle - (1.6 * dtSec);
             }
             if (three.isKeyDown("d")) {
                 aimAngle = aimAngle + (1.6 * dtSec);
             }
-            if (three.isKeyDown("w")) {
-                shotPower = shotPower + (0.8 * dtSec);
-                if (shotPower > 1.0) {
-                    shotPower = 1.0;
-                }
-            }
-            if (three.isKeyDown("s")) {
-                shotPower = shotPower - (0.8 * dtSec);
-                if (shotPower < 0.12) {
+            var holdShot = three.isKeyDown(" ") || three.isMouseDown(0);
+            if (holdShot) {
+                if (!charging) {
+                    charging = true;
                     shotPower = 0.12;
+                } else {
+                    shotPower = shotPower + (0.85 * dtSec);
+                    if (shotPower > 1.0) {
+                        shotPower = 1.0;
+                    }
                 }
+            } else if (charging) {
+                shootCue();
             }
-        } else if (mx != lastMouseX || my != lastMouseY) {
-            lightX = ((mx / width) - 0.5) * 4.2;
-            lightZ = 0.4 - ((my / height) - 0.5) * 3.2;
+        } else {
+            charging = false;
+            if (mouseMoved) {
+                lightX = ((mx / width) - 0.5) * 4.2;
+                lightZ = 0.4 - ((my / height) - 0.5) * 3.2;
+            }
         }
         lastMouseX = mx;
         lastMouseY = my;
-
-        var spaceDown = three.isKeyDown(" ");
-        var clickDown = three.isMouseDown(0);
-        if ((spaceDown && !spaceWasDown) || (clickDown && !clickWasDown)) {
-            shootCue();
-        }
-        spaceWasDown = spaceDown;
-        clickWasDown = clickDown;
 
         var rDown = three.isKeyDown("r");
         if (rDown && !rWasDown) {
@@ -1260,10 +1352,19 @@ if (root == null) {
         still = ballsAreStill();
         if (still) {
             var deg = int((aimAngle * 180) / 3.14159265);
-            var pct = int(shotPower * 100);
-            dom.setText(status, "Aim " + string(deg) + " deg   Power " + string(pct) + "%   Potted " + string(pottedCount) + "   Space/click shoot   R reset");
+            if (charging) {
+                dom.setText(status, "Charging… release to shoot   Aim " + string(deg) + " deg   Potted " + string(pottedCount) + "   R reset");
+            } else {
+                dom.setText(status, "Aim " + string(deg) + " deg   Hold click/Space to charge   A/D fine aim   Potted " + string(pottedCount) + "   R reset");
+            }
+            if (charging) {
+                dom.setText(powerLine, "Power  " + powerBarText());
+            } else {
+                dom.setText(powerLine, "Power  [----------------]   hold to charge");
+            }
         } else {
             dom.setText(status, "Balls in motion…   Potted " + string(pottedCount) + "   R reset");
+            dom.setText(powerLine, "Power  [----------------]");
         }
 
         updateCamera();

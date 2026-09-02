@@ -239,7 +239,7 @@
     },
     {
       "name": "JS three.js GPU Billiards",
-      "description": "Playable GPU billiards: cue aim/power, 2D circle physics, and a numbered rack traced through three.createShaderMaterial uniforms",
+      "description": "Playable GPU billiards: cue locked to the white ball, mouse-on-table aim, hold-to-charge power, 2D circle physics, and a numbered rack traced through three.createShaderMaterial uniforms",
       "file": "three_shader_billiards.malda",
       "track": "showcase",
       "difficulty": "advanced",
