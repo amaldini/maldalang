@@ -29,7 +29,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 15-vectordb.html | 7df987ff72b0caa753597d6c2b1cc0ca76929007718c89215c55692b3c8a27cd |
 | 16-database.html | 60e60546da41f9d78a69f913c5ca7ce3b3635fbc6f95689efc2da348d0fb2753 |
 | 17-actors.html | d1d2fb0ab2fe25f04e556b4c35a79db1bc5762e2cf1e56e39753a168275a9648 |
-| 18-agent-orchestration.html | fdec2b03a23f0d02f5ddddaa391cbdca4df28f75aba626cf771c9b49322f4a77 |
+| 18-agent-orchestration.html | b45d77ac66eb19ae04f2e721f91f33d17528fec15942b46fcd4eff6076af3fb5 |
 | 19-graph-memory.html | 46f0abc6f8b940915b6b4b71c51d36b78cebe0e06f38c9202c669c339cca4ae0 |
 | 20-mcp-server.html | cd41b08e9e87d17f2563e9fa3fe98f1088be224d699948c67726fc6cae3b97c6 |
 | 21-acp.html | 3378bf6b47353be6c447f7414ac738cc98624d047459895b999976a8b55c7e19 |

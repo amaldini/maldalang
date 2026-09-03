@@ -421,4 +421,38 @@ while (i < length(items)) {{
             try { Directory.Delete(tempDir, recursive: true); } catch { /* ignore */ }
         }
     }
+
+    [Fact]
+    public void CreateFileTools_Execute_SameStdout()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), "malda_pair_tools_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        File.WriteAllText(Path.Combine(tempDir, "note.txt"), "hello world");
+        var workDir = tempDir.Replace("\\", "/");
+
+        try
+        {
+            InterpretTranspilePair.AssertSameFromSource(
+                $@"
+var workDir = ""{workDir}"";
+var readTool = createReadFileTool(workDir);
+var grepTool = createGrepTool(workDir);
+var listTool = createListDirectoryTool(workDir);
+io.print(readTool.execute({{ ""filePath"": ""note.txt"" }}));
+var hits = grepTool.execute({{ ""pattern"": ""hello"", ""filePath"": ""note.txt"" }});
+io.print(length(hits));
+var listed = listTool.execute({{ ""dirPath"": ""."" }});
+io.print(length(listed) > 0);
+var planTool = createSubmitPlanTool();
+var plan = planTool.execute({{ ""steps"": [{{ ""id"": ""s1"", ""description"": ""one"" }}] }});
+io.print(plan.accepted);
+io.print(plan.stepCount);
+",
+                "createFileTools-execute");
+        }
+        finally
+        {
+            try { Directory.Delete(tempDir, recursive: true); } catch { /* ignore */ }
+        }
+    }
 }

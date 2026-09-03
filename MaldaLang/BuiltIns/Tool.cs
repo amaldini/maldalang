@@ -388,8 +388,8 @@ public class ToolInstance : ObjectInstance
             if (_handler != null && _handler.Type == ValueType.Function && interpreter != null)
                 return InvokeMaldaToolFunction(_handler.AsFunction(), interpreter, arguments);
 
-            if (string.Equals(Name, "glob", StringComparison.Ordinal))
-                return BuiltInTools.ExecuteGlob(this, arguments);
+            if (ConversationInstance.IsNamedBuiltInTool(Name))
+                return ConversationInstance.ExecuteNamedBuiltIn(this, arguments);
             
             return RuntimeValue.String("Tool execution validated");
         }

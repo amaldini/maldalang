@@ -132,7 +132,60 @@ public partial class ConversationInstance : ObjectInstance
         ["run_terminal_cmd"] = "run_command",
         ["runCommand"] = "run_command",
         ["execute_command"] = "run_command",
+        ["insert_at_line"] = "insertAtLine",
     };
+
+    /// <summary>
+    /// Factory-created tools that Conversation / <c>tool.execute</c> dispatch by name
+    /// (interpret and C# transpile share this list).
+    /// </summary>
+    private static readonly HashSet<string> NamedBuiltInToolNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "read_file",
+        "write_file",
+        "replace_in_file",
+        "edit_file",
+        "list_directory",
+        "insertAtLine",
+        "insert_at_line",
+        "ask_user",
+        "glob",
+        "grep",
+        "git_status",
+        "git_add",
+        "git_commit",
+        "git_log",
+        "git_diff",
+        "git_branch",
+        "git_checkout",
+        "git_push",
+        "git_pull",
+        "web_search",
+        "run_command",
+        "run_malda",
+        "compile_malda",
+        "get_symbols",
+        "get_parse_errors",
+        "submit_plan",
+        "create_mcp_agent_script",
+    };
+
+    internal static bool IsNamedBuiltInTool(string name) =>
+        NamedBuiltInToolNames.Contains(name);
+
+    /// <summary>
+    /// Runs a factory-created built-in tool with the same dispatch as <c>think()</c>.
+    /// Used by <c>tool.execute</c> so interpret and C# transpile share one implementation.
+    /// </summary>
+    internal static RuntimeValue ExecuteNamedBuiltIn(
+        ToolInstance tool,
+        RuntimeValue arguments,
+        IInputProvider? inputProvider = null)
+    {
+        var conv = new ConversationInstance();
+        conv._inputProvider = inputProvider;
+        return conv.ExecuteToolOperation(tool, arguments);
+    }
 
     private static readonly HashSet<string> ShellWrapperToolNames = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -2726,6 +2779,7 @@ public partial class ConversationInstance : ObjectInstance
                         return RuntimeValue.String("Error: dirPath parameter required");
                     return BuiltInFunctions.CallBuiltIn("listDirectory", new List<RuntimeValue> { RuntimeValue.String(resolvedDirPath) }, null);
                 
+                case "insert_at_line":
                 case "insertAtLine":
                     try
                     {
@@ -3538,6 +3592,59 @@ public partial class ConversationInstance : ObjectInstance
                         return RuntimeValue.String($"Error executing get_parse_errors tool: {ex.Message}");
                     }
                 
+                case "create_mcp_agent_script":
+                    try
+                    {
+                        var agentNameVal = argsObj.Get("agentName", null);
+                        var agentRoleVal = argsObj.Get("agentRole", null);
+                        var agentInstructionsVal = argsObj.Get("agentInstructions", null);
+                        var toolsVal = argsObj.Get("tools", null);
+                        var outputPathVal = argsObj.Get("outputPath", null);
+                        if (agentNameVal == null || agentNameVal.Type != ValueType.String)
+                            return RuntimeValue.String("Error: agentName parameter required");
+                        if (agentRoleVal == null || agentRoleVal.Type != ValueType.String)
+                            return RuntimeValue.String("Error: agentRole parameter required");
+                        if (agentInstructionsVal == null || agentInstructionsVal.Type != ValueType.String)
+                            return RuntimeValue.String("Error: agentInstructions parameter required");
+                        if (toolsVal == null || toolsVal.Type != ValueType.Array)
+                            return RuntimeValue.String("Error: tools parameter required");
+                        if (outputPathVal == null || outputPathVal.Type != ValueType.String)
+                            return RuntimeValue.String("Error: outputPath parameter required");
+
+                        var outputPath = outputPathVal.AsString();
+                        if (!string.IsNullOrEmpty(tool.WorkingDirectory))
+                        {
+                            var normalizedOut = tool.NormalizePathForWorkingDirectory(outputPath);
+                            if (normalizedOut == null)
+                            {
+                                return RuntimeValue.String($"Error: Path '{outputPath}' is outside the allowed working directory '{tool.WorkingDirectory}'. Use a relative path.");
+                            }
+                            outputPath = tool.ResolvePathAgainstWorkingDirectory(normalizedOut) ?? normalizedOut;
+                        }
+
+                        var mcpArgs = new List<RuntimeValue>
+                        {
+                            agentNameVal,
+                            agentRoleVal,
+                            agentInstructionsVal,
+                            toolsVal,
+                            RuntimeValue.String(outputPath)
+                        };
+                        try
+                        {
+                            var modelVal = argsObj.Get("model", null);
+                            if (modelVal != null && modelVal.Type == ValueType.String)
+                                mcpArgs.Add(modelVal);
+                        }
+                        catch { }
+
+                        return BuiltInFunctions.CallBuiltIn("createMcpAgentScript", mcpArgs, null);
+                    }
+                    catch (Exception ex)
+                    {
+                        return RuntimeValue.String($"Error executing create_mcp_agent_script tool: {ex.Message}");
+                    }
+
                 case "submit_plan":
                     try
                     {

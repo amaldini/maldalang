@@ -67,6 +67,38 @@ public class NewToolHandlerTests
     }
 
     [Fact]
+    public async Task NewTool_Execute_WithoutHandler_ReturnsValidatedStub()
+    {
+        var source = """
+            var tool = new Tool(
+                "echo_message",
+                "Echoes a message",
+                {
+                    "type": "object",
+                    "properties": {
+                        "message": { "type": "string" }
+                    },
+                    "required": ["message"]
+                }
+            );
+            print(tool.execute({ "message": "hi" }));
+            """;
+
+        var lexer = new Lexer(source);
+        var parser = new Parser.Parser(lexer.Tokenize());
+        var statements = parser.Parse();
+        Assert.Empty(parser.Errors);
+
+        var interpreter = new Interpreter.Interpreter();
+        var output = CaptureStdout(() =>
+        {
+            interpreter.InterpretAsync(statements).GetAwaiter().GetResult();
+        });
+
+        Assert.Contains("Tool execution validated", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void SecondBrainSemantic_DefinesFindRelatedNotesTool()
     {
         var path = Path.GetFullPath(Path.Combine(
