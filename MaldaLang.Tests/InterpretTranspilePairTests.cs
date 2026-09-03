@@ -15,7 +15,10 @@ namespace MaldaLang.Tests;
 /// is smoke + interpreter), grounded_ask
 /// (GraphMemory score drift), capability_tokens Example (relative cwd file I/O;
 /// abs-path cap fixtures are inline below).
+/// Sequential: pair capture and in-process <c>runMALDA</c> both redirect
+/// <see cref="Console.Out"/>.
 /// </summary>
+[Collection("Sequential")]
 public class InterpretTranspilePairTests
 {
     [Theory]
