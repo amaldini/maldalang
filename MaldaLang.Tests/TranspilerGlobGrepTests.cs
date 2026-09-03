@@ -115,6 +115,77 @@ print(paths[0]);
         }
     }
 
+    [Fact]
+    public void TranspiledIoGlob_FindsMatchingFiles()
+    {
+        var tempDir = CreateTempDirectory("malda_tio_glob_");
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(tempDir, "src"));
+            File.WriteAllText(Path.Combine(tempDir, "a.txt"), "alpha");
+            File.WriteAllText(Path.Combine(tempDir, "src", "b.txt"), "beta");
+            File.WriteAllText(Path.Combine(tempDir, "skip.cs"), "// cs");
+
+            var workDir = tempDir.Replace("\\", "/");
+            var source = $@"
+var workDir = ""{workDir}"";
+var result = io.glob(""**/*.txt"", workDir, 50);
+print(string(result.count));
+var items = result.items;
+var i = 0;
+while (i < length(items)) {{
+    print(items[i].path);
+    i = i + 1;
+}}
+";
+            var output = TranspiledTestRunner.CompileAndRunFromSource(source).StdOut;
+            Assert.Contains("2", output);
+            Assert.Contains("a.txt", output);
+            Assert.Contains("src/b.txt", output.Replace('\\', '/'));
+        }
+        finally
+        {
+            SafeDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public void TranspiledCreateGlobTool_Execute_FindsMatchingFiles()
+    {
+        var tempDir = CreateTempDirectory("malda_tglob_tool_");
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(tempDir, "src"));
+            File.WriteAllText(Path.Combine(tempDir, "a.txt"), "alpha");
+            File.WriteAllText(Path.Combine(tempDir, "src", "b.txt"), "beta");
+            File.WriteAllText(Path.Combine(tempDir, "skip.cs"), "// cs");
+
+            var workDir = tempDir.Replace("\\", "/");
+            var source = $@"
+var tool = createGlobTool(""{workDir}"");
+var result = tool.execute({{ ""pattern"": ""**/*.txt"" }});
+print(string(result.count));
+print(string(result.truncated));
+var items = result.items;
+var i = 0;
+while (i < length(items)) {{
+    print(items[i].path);
+    i = i + 1;
+}}
+";
+            var output = TranspiledTestRunner.CompileAndRunFromSource(source).StdOut;
+            Assert.Contains("2", output);
+            Assert.Contains("false", output);
+            Assert.Contains("a.txt", output);
+            Assert.Contains("src/b.txt", output.Replace('\\', '/'));
+            Assert.DoesNotContain("Tool execution validated", output);
+        }
+        finally
+        {
+            SafeDeleteDirectory(tempDir);
+        }
+    }
+
     private static string CreateTempDirectory(string prefix)
     {
         var path = Path.Combine(Path.GetTempPath(), prefix + Guid.NewGuid().ToString("N"));

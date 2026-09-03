@@ -357,6 +357,87 @@ public static class BuiltInTools
 
         return RuntimeValue.Object(tool);
     }
+
+    /// <summary>
+    /// Runs the built-in <c>glob</c> tool (same contract as Conversation / <c>tool.execute</c>).
+    /// </summary>
+    public static RuntimeValue ExecuteGlob(ToolInstance tool, RuntimeValue arguments)
+    {
+        try
+        {
+            if (arguments.Type != MaldaLang.Interpreter.ValueType.Object)
+                return RuntimeValue.String("Error: Tool arguments must be an object");
+
+            var argsObj = arguments.AsObject();
+            var globPatternVal = argsObj.Get("pattern", null);
+            if (globPatternVal == null || globPatternVal.Type != MaldaLang.Interpreter.ValueType.String)
+                return RuntimeValue.String("Error: pattern parameter required");
+
+            var globPattern = globPatternVal.AsString();
+            var globDirPath = ".";
+
+            var globDirPathVal = argsObj.Get("dirPath", null);
+            if (globDirPathVal != null && globDirPathVal.Type == MaldaLang.Interpreter.ValueType.String)
+                globDirPath = globDirPathVal.AsString();
+
+            if (!string.IsNullOrEmpty(tool.WorkingDirectory))
+            {
+                var normalizedGlobDir = tool.NormalizePathForWorkingDirectory(globDirPath);
+                if (normalizedGlobDir == null)
+                {
+                    return RuntimeValue.String($"Error: Path '{globDirPath}' is outside the allowed working directory '{tool.WorkingDirectory}'. Use a relative path (e.g. \".\", \"src\").");
+                }
+                globDirPath = normalizedGlobDir;
+            }
+            else if (!tool.IsPathAllowed(globDirPath))
+            {
+                return RuntimeValue.String($"Error: Path '{globDirPath}' is outside the allowed working directory '{tool.WorkingDirectory}'");
+            }
+
+            var globMaxResults = GlobHelper.DefaultMaxResults;
+            try
+            {
+                var maxResultsVal = argsObj.Get("maxResults", null);
+                if (maxResultsVal != null && maxResultsVal.Type == MaldaLang.Interpreter.ValueType.Integer)
+                    globMaxResults = maxResultsVal.AsInteger();
+            }
+            catch { }
+
+            var globIncludeDirectories = false;
+            try
+            {
+                var includeDirsVal = argsObj.Get("includeDirectories", null);
+                if (includeDirsVal != null && includeDirsVal.Type == MaldaLang.Interpreter.ValueType.Boolean)
+                    globIncludeDirectories = includeDirsVal.AsBoolean();
+            }
+            catch { }
+
+            var globExcludeDirs = "";
+            try
+            {
+                var excludeDirsVal = argsObj.Get("excludeDirs", null);
+                if (excludeDirsVal != null && excludeDirsVal.Type == MaldaLang.Interpreter.ValueType.String)
+                    globExcludeDirs = excludeDirsVal.AsString();
+            }
+            catch { }
+
+            var globArgs = new List<RuntimeValue>
+            {
+                RuntimeValue.String(globPattern),
+                RuntimeValue.String(globDirPath),
+                RuntimeValue.Integer(globMaxResults),
+                RuntimeValue.Boolean(globIncludeDirectories),
+                RuntimeValue.String(globExcludeDirs),
+                RuntimeValue.String(tool.WorkingDirectory ?? "")
+            };
+
+            return BuiltInFunctions.CallBuiltIn("glob", globArgs, null);
+        }
+        catch (Exception ex)
+        {
+            return RuntimeValue.String($"Error executing glob tool: {ex.Message}");
+        }
+    }
     
     public static RuntimeValue CreateInsertAtLineTool(string workingDirectory = "")
     {

@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Andrea Maldini
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+using System.IO;
 using MaldaLang.Tests.Planning;
 using Xunit;
 
@@ -385,5 +386,39 @@ public class InterpretTranspilePairTests
             io.print(docs[0].content);
             """,
             "vectordb");
+    }
+
+    [Fact]
+    public void CreateGlobTool_Execute_SameStdout()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), "malda_pair_glob_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        Directory.CreateDirectory(Path.Combine(tempDir, "src"));
+        File.WriteAllText(Path.Combine(tempDir, "a.txt"), "alpha");
+        File.WriteAllText(Path.Combine(tempDir, "src", "b.txt"), "beta");
+        File.WriteAllText(Path.Combine(tempDir, "skip.cs"), "// cs");
+        var workDir = tempDir.Replace("\\", "/");
+
+        try
+        {
+            InterpretTranspilePair.AssertSameFromSource(
+                $@"
+var tool = createGlobTool(""{workDir}"");
+var result = tool.execute({{ ""pattern"": ""**/*.txt"" }});
+io.print(result.count);
+io.print(result.truncated);
+var items = result.items;
+var i = 0;
+while (i < length(items)) {{
+    io.print(items[i].path);
+    i = i + 1;
+}}
+",
+                "createGlobTool-execute");
+        }
+        finally
+        {
+            try { Directory.Delete(tempDir, recursive: true); } catch { /* ignore */ }
+        }
     }
 }
