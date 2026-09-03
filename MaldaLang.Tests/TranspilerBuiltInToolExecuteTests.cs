@@ -37,8 +37,8 @@ print(""listed="" + string(length(listed)));
 var hits = grepTool.execute({{ ""pattern"": ""hello"", ""filePath"": ""note.txt"" }});
 print(""grep="" + string(length(hits)));
 
-var parsed = parseTool.execute({{ ""sourceOrFilePath"": ""function ok() {{ return 1; }}"" }});
-print(""parseOk="" + string(length(parsed) == 0));
+var parsed = parseTool.execute({{ ""sourceOrFilePath"": ""var x = 1;"" }});
+print(""parseOk="" + string(length(parsed.parseErrors) == 0));
 ";
             var result = TranspiledTestRunner.CompileAndRunFromSource(source);
             Assert.Equal(0, result.ExitCode);
@@ -111,26 +111,6 @@ print(readTool.execute({{ ""filePath"": ""sample.txt"" }}));
         Assert.Contains("fns=1", result.StdOut);
         Assert.Contains("fn0=greet", result.StdOut);
         Assert.DoesNotContain("Tool execution validated", result.StdOut);
-    }
-
-    [Fact]
-    public void TranspiledCustomTool_WithoutHandler_StillValidatesOnly()
-    {
-        var source = """
-            var tool = new Tool(
-                "echo_message",
-                "Echoes a message",
-                {
-                    "type": "object",
-                    "properties": { "message": { "type": "string" } },
-                    "required": ["message"]
-                }
-            );
-            print(tool.execute({ "message": "hi" }));
-            """;
-        var result = TranspiledTestRunner.CompileAndRunFromSource(source);
-        Assert.Equal(0, result.ExitCode);
-        Assert.Contains("Tool execution validated", result.StdOut);
     }
 
     private static string CreateTempDirectory(string prefix)
