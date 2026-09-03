@@ -60,6 +60,23 @@
       "expectedOutput": "Runs an advanced MALDA implementation of a GPT-style training and inference loop.",
       "documentationPath": "/?lesson=fullstack-demo#lesson-fullstack-demo",
       "documentationTitle": "Advanced AI Showcase"
+    },
+    {
+      "name": "XOR Neural Net",
+      "description": "Train a 2-4-1 multilayer perceptron on XOR with backpropagation, from scratch",
+      "file": "xor_neural_net.malda",
+      "track": "student",
+      "difficulty": "intermediate",
+      "minutes": 12,
+      "requires": ["offline"],
+      "concepts": ["neural network", "backpropagation", "XOR", "training loop"],
+      "prerequisites": ["Basics/functions.malda"],
+      "learningGoal": "See a complete forward/backward pass in plain MALDA before the GPT-sized microgpt showcase.",
+      "expectedOutput": "Prints training loss and classifies all four XOR inputs correctly.",
+      "next": "AI_LLM/microgpt.malda",
+      "documentationPath": "/docs/start-here.md",
+      "documentationTitle": "Start Here",
+      "featured": true
     }
   ]
 }

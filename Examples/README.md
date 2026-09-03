@@ -31,7 +31,7 @@ Each folder’s `metadata.json` may tag examples with `requires`:
 | [Basics](Basics/) | Syntax, control flow, functions | offline | student |
 | [OOP](OOP/) | Classes and inheritance | offline | student |
 | [Prompts](Prompts/) | `prompt` declarations | api-key (most) | ai-builder |
-| [AI_LLM](AI_LLM/) | Clients and conversations | api-key | ai-builder, showcase |
+| [AI_LLM](AI_LLM/) | Clients, conversations, and a from-scratch XOR net | offline / api-key | ai-builder, student, showcase |
 | [Agents](Agents/) | Agents and tools | api-key | ai-builder, showcase |
 | [Web](Web/) | HttpServer, REST, UI, JS DOM target, auth, jobs | network (servers); offline (job queue demo) | student, ai-builder, showcase |
 | [Games](Games/) | Canvas `game.*` and `three.*` graphics (JS target) | offline | student, showcase |

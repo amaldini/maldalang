@@ -1,0 +1,153 @@
+// XOR multilayer perceptron (2 -> 4 -> 1) trained with backpropagation.
+//
+// XOR is not linearly separable: a single neuron cannot map
+//   (0,0)->0, (0,1)->1, (1,0)->1, (1,1)->0
+// A hidden layer gives the net two "regions" it can combine.
+// Offline and seeded — no API key. See microgpt.malda for a tiny GPT.
+//
+// Weight shapes (row = from, column = to):
+//   w1 [2 x 4]  input  -> hidden    b1 [4]  hidden bias
+//   w2 [4 x 1]  hidden -> output    b2 [1]  output bias
+
+// Squash any real number into (0, 1). Clamps avoid math.exp overflow.
+function sigmoid(x: float) -> float {
+    if (x < -20.0) {
+        return 0.0;
+    }
+    if (x > 20.0) {
+        return 1.0;
+    }
+    return 1.0 / (1.0 + math.exp(-x));
+}
+
+// d(sigmoid)/dz = y * (1 - y) when y is already sigmoid(z).
+function sigmoidDerivFromOutput(y: float) -> float {
+    return y * (1.0 - y);
+}
+
+function randomMatrix(rows: int, cols: int, scale: float) -> array {
+    var matrix = [];
+    for (var i = 0; i < rows; i = i + 1) {
+        var row = [];
+        for (var j = 0; j < cols; j = j + 1) {
+            row.append(math.randomFloat(-scale, scale));
+        }
+        matrix.append(row);
+    }
+    return matrix;
+}
+
+function randomVector(n: int, scale: float) -> array {
+    var values = [];
+    for (var i = 0; i < n; i = i + 1) {
+        values.append(math.randomFloat(-scale, scale));
+    }
+    return values;
+}
+
+// One forward pass. Returns hidden activations (needed for backprop) and y.
+function forward(x: array, w1: array, b1: array, w2: array, b2: array) -> object {
+    var hidden = [];
+    for (var j = 0; j < b1.length; j = j + 1) {
+        var z = b1[j];
+        for (var i = 0; i < x.length; i = i + 1) {
+            z = z + x[i] * w1[i][j];
+        }
+        hidden.append(sigmoid(z));
+    }
+
+    var zOut = b2[0];
+    for (var h = 0; h < hidden.length; h = h + 1) {
+        zOut = zOut + hidden[h] * w2[h][0];
+    }
+    return { "hidden": hidden, "output": sigmoid(zOut) };
+}
+
+function fmt(x: float) -> string {
+    return string(math.round(x * 1000.0) / 1000.0);
+}
+
+// Pin the shared RNG so this file prints the same loss every run.
+math.seed(42);
+
+var hiddenSize: int = 4;
+var learningRate: float = 0.8;
+var epochs: int = 2500;
+
+var w1 = randomMatrix(2, hiddenSize, 1.0);
+var b1 = randomVector(hiddenSize, 0.5);
+var w2 = randomMatrix(hiddenSize, 1, 1.0);
+var b2 = randomVector(1, 0.5);
+
+var inputs = [[0.0, 0.0], [0.0, 1.0], [1.0, 0.0], [1.0, 1.0]];
+var targets = [0.0, 1.0, 1.0, 0.0];
+
+io.print("XOR multilayer perceptron (2 -> 4 -> 1)");
+io.print("Seeded training, mean squared error, sigmoid activations.");
+io.print("");
+
+for (var epoch = 1; epoch <= epochs; epoch = epoch + 1) {
+    var epochLoss = 0.0;
+
+    // Online SGD: one XOR pair at a time, then update weights.
+    for (var s = 0; s < inputs.length; s = s + 1) {
+        var x = inputs[s];
+        var target = targets[s];
+        var step = forward(x, w1, b1, w2, b2);
+        var hidden = step.hidden;
+        var y = step.output;
+
+        // Loss = 1/2 (y - target)^2 so dL/dy = (y - target).
+        var error = y - target;
+        epochLoss = epochLoss + 0.5 * error * error;
+
+        // Chain rule back to the output pre-activation, then each hidden unit.
+        var dZOut = error * sigmoidDerivFromOutput(y);
+        var dHidden = [];
+        for (var j = 0; j < hiddenSize; j = j + 1) {
+            dHidden.append(dZOut * w2[j][0] * sigmoidDerivFromOutput(hidden[j]));
+        }
+
+        // Gradient descent: parameter -= learningRate * dL/d(parameter).
+        for (var j = 0; j < hiddenSize; j = j + 1) {
+            w2[j][0] = w2[j][0] - learningRate * dZOut * hidden[j];
+            b1[j] = b1[j] - learningRate * dHidden[j];
+            for (var i = 0; i < 2; i = i + 1) {
+                w1[i][j] = w1[i][j] - learningRate * dHidden[j] * x[i];
+            }
+        }
+        b2[0] = b2[0] - learningRate * dZOut;
+    }
+
+    if (epoch == 1 || epoch % 500 == 0 || epoch == epochs) {
+        var meanLoss = epochLoss / inputs.length;
+        io.print($"epoch {epoch}: loss={fmt(meanLoss)}");
+    }
+}
+
+io.print("");
+io.print("Predictions after training:");
+io.print("  x1  x2   target   pred   class");
+
+var correct = 0;
+for (var s = 0; s < inputs.length; s = s + 1) {
+    var x = inputs[s];
+    var target = targets[s];
+    var y = forward(x, w1, b1, w2, b2).output;
+    var predicted = 0;
+    if (y >= 0.5) {
+        predicted = 1;
+    }
+    if (predicted == int(target)) {
+        correct = correct + 1;
+    }
+    io.print($"  {int(x[0])}   {int(x[1])}      {int(target)}     {fmt(y)}     {predicted}");
+}
+
+io.print("");
+io.print($"Accuracy: {correct}/{inputs.length}");
+if (correct == inputs.length) {
+    io.print("XOR learned.");
+} else {
+    io.print("XOR not fully learned — try more epochs or another seed.");
+}
