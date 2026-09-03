@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Playable compiled GPU billiards appendix">
+    <title>37. Appendix: GPU Billiards - MALDA Reference Manual</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="syntax.css">
+    <link rel="stylesheet" href="print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>MALDA&trade; Reference Manual</h1>
+        <p>The AI-First Programming Language - Version 1.0.13</p>
+    </header>
+    <nav></nav>
+    <main>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>37. Appendix: GPU Billiards</span></div>
+        <h1>37. Appendix: GPU Billiards</h1>
+        <p>This appendix hosts the compiled JavaScript for <code>Examples/Games/three_shader_billiards.malda</code> so the table is playable from the manual. The kernel is still <code>@shader()</code> GLSL; host MALDA steps 2D physics and pushes ball and cue uniforms. See <a href="26-browser-javascript-backend.html#shader-kernels">26.10.1 Shader kernels</a> and <a href="33-examples.html">33.15.1 Shader materials</a>.</p>
+        <h2>37.1 Playable table</h2>
+        <p>Needs WebGL. Click inside the frame so mouse and keyboard reach the demo. Hold click or Space to charge, then release to shoot. The demo UI stays in English.</p>
+        <iframe class="billiards-play-frame" src="billiards-play.html" title="Playable MALDA GPU billiards" allow="fullscreen"></iframe>
+        <p class="print-only-note">The interactive table is omitted from print. Open this chapter in a browser, or compile the source below.</p>
+        <h2>37.2 Controls</h2>
+        <ul>
+            <li>Mouse on the table aims the cue; A/D fine-tunes.</li>
+            <li>Hold click or Space to charge; release to shoot.</li>
+            <li>R reracks. Arrow keys orbit. C or Stop camera zeros orbit speed.</li>
+            <li><code>[</code> <code>]</code> or <code>+</code> <code>−</code> zoom. Sliders set cushion e, ball e, and felt friction.</li>
+        </ul>
+        <h2>37.3 Rebuild the committed script</h2>
+        <p>Do not hand-edit <code>ReferenceManual/three_shader_billiards.js</code>. Change the <code>.malda</code> source and compile into a throwaway folder — <code>malda compile --mode js -o</code> also writes <code>index.html</code> beside the script, so do not target <code>ReferenceManual/</code> directly:</p>
+        <pre><code>malda compile Examples/Games/three_shader_billiards.malda --mode js -o artifacts/billiards-appendix/three_shader_billiards.js
+cp artifacts/billiards-appendix/three_shader_billiards.js ReferenceManual/three_shader_billiards.js</code></pre>
+        <p>A content guard fails if that file drifts from a fresh transpile (the source-map comment the CLI appends is ignored). Local browsing from the repo root loads <code>three.min.js</code> and <code>malda-js-runtime.js</code> from <code>Examples/Web/wwwroot/</code>. GitHub Pages copies those two files next to this chapter.</p>
+        <div class="nav-footer">
+            <a href="36-appendix.html">← Previous: 36. Appendix</a>
+            <span></span>
+        </div>
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, at your option.</p>
+        </footer>
+    </main>
+    <script src="malda-highlight.js"></script>
+    <script src="navigation.js"></script>
+</body>
+</html>

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MALDA GPU Billiards</title>
+    <style>
+        body {
+            margin: 12px;
+            font-family: Arial, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+        }
+
+        #app canvas {
+            max-width: 100%;
+            border: 1px solid #334155;
+            border-radius: 8px;
+        }
+
+        #app h1 {
+            font-size: 1.2rem;
+            margin: 0 0 0.4rem;
+        }
+
+        #app p {
+            margin: 0.35rem 0;
+        }
+
+        #billiards-load-error {
+            color: #fca5a5;
+        }
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+    <p id="billiards-load-error" hidden></p>
+    <script>
+        (function () {
+            function loadScript(src) {
+                return new Promise(function (resolve, reject) {
+                    var script = document.createElement("script");
+                    script.src = src;
+                    script.onload = function () { resolve(src); };
+                    script.onerror = function () { reject(new Error(src)); };
+                    document.head.appendChild(script);
+                });
+            }
+
+            function firstScript(urls) {
+                return urls.reduce(function (pending, url) {
+                    return pending.catch(function () { return loadScript(url); });
+                }, Promise.reject());
+            }
+
+            function fail(err) {
+                var node = document.getElementById("billiards-load-error");
+                if (node) {
+                    node.hidden = false;
+                    node.textContent = "Could not load the playable demo (" + err.message + "). Serve the Reference Manual over HTTP and keep three_shader_billiards.js next to this page.";
+                }
+            }
+
+            firstScript([
+                "../Examples/Web/wwwroot/vendor/three.min.js",
+                "three.min.js"
+            ]).then(function () {
+                return firstScript([
+                    "../Examples/Web/wwwroot/malda-js-runtime.js",
+                    "malda-js-runtime.js"
+                ]);
+            }).then(function () {
+                return loadScript("three_shader_billiards.js");
+            }).then(function () {
+                if (window.MaldaApp && typeof window.MaldaApp.main === "function") {
+                    window.MaldaApp.main();
+                } else {
+                    fail(new Error("MaldaApp.main missing"));
+                }
+            }).catch(fail);
+        })();
+    </script>
+</body>
+</html>

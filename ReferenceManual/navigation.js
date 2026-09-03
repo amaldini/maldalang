@@ -259,6 +259,7 @@ const FALLBACK_NAV_ITEMS = [
         { href: "34-property-testing.html", text: "34. Property Testing", category: "Reference" },
         { href: "35-grammar.html", text: "35. Grammar", category: "Reference" },
         { href: "36-appendix.html", text: "36. Appendix", category: "Reference" },
+        { href: "37-appendix-gpu-billiards.html", text: "37. Appendix: GPU Billiards", category: "Reference" },
 ];
 
 const FALLBACK_NAV_ITEMS_IT = [
@@ -299,6 +300,7 @@ const FALLBACK_NAV_ITEMS_IT = [
         { href: "34-property-testing.html", text: "34. Property testing", category: "Reference" },
         { href: "35-grammar.html", text: "35. Grammatica", category: "Reference" },
         { href: "36-appendix.html", text: "36. Appendice", category: "Reference" },
+        { href: "37-appendix-gpu-billiards.html", text: "37. Appendice: biliardo GPU", category: "Reference" },
 ];
 
 function renderCollapsibleNav(nav, items) {

@@ -36,6 +36,7 @@
     { "file": "33-examples.html", "title": "Esempi", "category": "Reference", "description": "Esempi di codice completi" },
     { "file": "34-property-testing.html", "title": "Property testing", "category": "Reference", "description": "Property test deterministici, shrinking e workflow di regressione" },
     { "file": "35-grammar.html", "title": "Grammatica", "category": "Reference", "description": "Specifica della grammatica in stile BNF" },
-    { "file": "36-appendix.html", "title": "Appendice", "category": "Reference", "description": "Parole riservate, precedenza degli operatori" }
+    { "file": "36-appendix.html", "title": "Appendice", "category": "Reference", "description": "Parole riservate, precedenza degli operatori" },
+    { "file": "37-appendix-gpu-billiards.html", "title": "Appendice: biliardo GPU", "category": "Reference", "description": "Showcase biliardo GPU compilato e giocabile" }
   ]
 }

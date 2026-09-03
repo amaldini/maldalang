@@ -45,6 +45,9 @@ jobs:
           find ReferenceManual/it -maxdepth 1 -type f \
             \( -name '*.html' -o -name '*.json' \) \
             -exec cp {} _site/it/ \;
+          # Playable GPU billiards appendix (sibling fallbacks in billiards-play.html).
+          cp Examples/Web/wwwroot/vendor/three.min.js _site/three.min.js
+          cp Examples/Web/wwwroot/malda-js-runtime.js _site/malda-js-runtime.js
           # ../docs/*.md is outside the Pages project root and 404s; point at GitHub.
           python3 scripts/rewrite-reference-manual-pages-md-links.py \
             --site _site \

@@ -4282,6 +4282,24 @@ process.exit(0);
     }
 
     [Fact]
+    public void JsTranspiler_ShaderBilliardsExample_ManualPlayCopyMatchesFreshTranspile()
+    {
+        var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Games", "three_shader_billiards.malda");
+        var committedPath = PlanningPaths.ResolveRepoFile("ReferenceManual", "three_shader_billiards.js");
+        Assert.True(File.Exists(committedPath), "Missing ReferenceManual/three_shader_billiards.js. Compile Examples/Games/three_shader_billiards.malda --mode js -o ReferenceManual/three_shader_billiards.js");
+
+        var compiler = new Compiler.Compiler();
+        var fresh = StripJsSourceMapComment(compiler.TranspileToJavaScript(sourcePath));
+        var committed = StripJsSourceMapComment(File.ReadAllText(committedPath));
+        if (committed.EndsWith("\n", StringComparison.Ordinal) && !fresh.EndsWith("\n", StringComparison.Ordinal))
+        {
+            fresh += "\n";
+        }
+
+        Assert.Equal(fresh, committed);
+    }
+
+    [Fact]
     public void JsTranspiler_ShaderPathTunnelExample_EmitsShaderCalls()
     {
         var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Games", "three_shader_path_tunnel.malda");
@@ -5194,5 +5212,23 @@ const missingModel = three.loadGLTF("missing.gltf");
         Assert.DoesNotContain("function unused(", js, StringComparison.Ordinal);
         Assert.DoesNotContain("function internalHelper(", js, StringComparison.Ordinal);
         Assert.Contains("add(2, 3)", js, StringComparison.Ordinal);
+    }
+
+    private static string StripJsSourceMapComment(string js)
+    {
+        var normalized = js.Replace("\r\n", "\n").TrimStart('\uFEFF');
+        var lines = normalized.Split('\n');
+        var kept = new System.Collections.Generic.List<string>(lines.Length);
+        foreach (var line in lines)
+        {
+            if (line.StartsWith("//# sourceMappingURL=", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            kept.Add(line);
+        }
+
+        return string.Join("\n", kept);
     }
 }

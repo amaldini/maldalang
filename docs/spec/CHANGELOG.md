@@ -111,6 +111,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 - **`Examples/Games/three_shader_billiards.malda`:** playable GLSL pool table on the existing `three.createShaderMaterial` / `@shader()` path. Host MALDA aims the cue and steps 2D circle physics (elastic ball–ball, cushion restitution, pockets, friction); the kernel traces `uBall0`–`uBall15`, a cue stick, an aim line, and 7-segment decals. The cue stays locked on the white ball; mouse-on-table aims (A/D fine-tunes). Hold click or Space to charge power, release to shoot; R reracks; `[` `]` / `+` `−` zoom; `C` or **Stop camera** zeros orbit speed. Sliders set cushion e, ball e, and felt friction. Host page: `three_shader_billiards_runtime_smoke_test.html`. No new `game.*` / `three.*` names. JavaScript backend only.
 
+#### Added (PATCH — billiards appendix in the Reference Manual)
+
+- **`ReferenceManual/37-appendix-gpu-billiards.html`:** playable compiled GPU billiards as a manual appendix (`billiards-play.html` + committed `three_shader_billiards.js`). Change the `.malda` source and recompile; a guard fails if the committed JS drifts. GitHub Pages copies `three.min.js` and `malda-js-runtime.js` beside the chapter.
+
 #### Added (MINOR — @MCPTool / @Tool host-validate args)
 
 - **Host-validate `@MCPTool` / `@Tool` arguments:** when the third argument attaches a schema (name or JSON object string), incoming MCP `tools/call`, `MCPServer.callTool(name, args)`, agent `@Tool` invoke, and `tool.execute(args)` run the same `validate()` check **before** the function body. Failure does not call the body: `callTool` returns `{ ok: false, error }`; MCP `tools/call` returns `isError: true`; agents / `execute` return `Error: tool arguments failed schema: …`. Omitted third argument stays advertise-only (auto-generated all-string properties, no host check). Direct `add(1, 2)` calls are unchanged. Interpreter and C# transpile agree. JavaScript: n/a (MCP is host-only). Example: `Examples/MCP/mcp_schema_tool.malda`. Few-shot: `docs/llm/few-shot/32_mcptool_validate.malda`.

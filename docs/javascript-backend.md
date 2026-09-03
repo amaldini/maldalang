@@ -466,7 +466,7 @@ See `Examples/Games/three_shader_raytracer.malda` for a realtime GPU ray tracer 
 malda compile Examples/Games/three_shader_raytracer.malda --mode js -o Examples/Games/three_shader_raytracer.js
 ```
 
-`Examples/Games/three_shader_billiards.malda` is a playable pool-table showcase on the same path. Host MALDA steps 2D circle physics and pushes `uBall0`–`uBall15` plus cue uniforms; the kernel traces felt, cushions, pockets, numbered balls, and the stick. `[` `]` zoom the orbit camera, `C` (or Stop camera) zeros auto-orbit, and sliders set cushion/ball restitution and felt friction. Compile:
+`Examples/Games/three_shader_billiards.malda` is a playable pool-table showcase on the same path. Host MALDA steps 2D circle physics and pushes `uBall0`–`uBall15` plus cue uniforms; the kernel traces felt, cushions, pockets, numbered balls, and the stick. `[` `]` zoom the orbit camera, `C` (or Stop camera) zeros auto-orbit, and sliders set cushion/ball restitution and felt friction. The compiled program is playable from [Reference Manual 37](../ReferenceManual/37-appendix-gpu-billiards.html). Compile:
 
 ```bash
 malda compile Examples/Games/three_shader_billiards.malda --mode js -o Examples/Games/three_shader_billiards.js

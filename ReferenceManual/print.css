@@ -49,8 +49,13 @@ nav,
 .manual-actions,
 .breadcrumbs,
 .nav-footer,
-pre::before {
+pre::before,
+.billiards-play-frame {
     display: none !important;
+}
+
+.print-only-note {
+    display: block !important;
 }
 
 /* ------------------------------------------------------------- Masthead */
