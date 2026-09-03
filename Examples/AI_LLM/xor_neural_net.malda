@@ -3,7 +3,8 @@
 // XOR is not linearly separable: a single neuron cannot map
 //   (0,0)->0, (0,1)->1, (1,0)->1, (1,1)->0
 // A hidden layer gives the net two "regions" it can combine.
-// Offline and seeded — no API key. See microgpt.malda for a tiny GPT.
+// Offline and seeded — no API key. See svm_linear.malda for a max-margin
+// linear separator, and microgpt.malda for a tiny GPT.
 //
 // Weight shapes (row = from, column = to):
 //   w1 [2 x 4]  input  -> hidden    b1 [4]  hidden bias

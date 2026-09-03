@@ -1,0 +1,174 @@
+// Linear soft-margin SVM trained with hinge-loss SGD.
+//
+// An SVM looks for the widest street between two classes:
+//   score(x) = w·x + b
+//   predict  = sign(score)
+// Labels are +1 / -1 (not 0 / 1). The hinge loss is zero only when
+//   y * score(x) >= 1
+// so points must sit on the correct side of the margin, not just the line.
+// L2 on w shrinks the weights and therefore widens that street.
+//
+// This linear model fits two blobs that are linearly separable.
+// XOR is not — the last section shows the linear SVM failing there.
+// For a non-linear separator see xor_neural_net.malda (hidden layer)
+// or a kernel SVM (not in this file). Offline, no API key.
+
+function dot(a: array, b: array) -> float {
+    var sum = 0.0;
+    for (var i = 0; i < a.length; i = i + 1) {
+        sum = sum + a[i] * b[i];
+    }
+    return sum;
+}
+
+function scoreOf(w: array, b: float, x: array) -> float {
+    return dot(w, x) + b;
+}
+
+// max(0, 1 - y * score). Zero means the point is outside the margin.
+function hinge(y: float, score: float) -> float {
+    var gap = 1.0 - y * score;
+    if (gap < 0.0) {
+        return 0.0;
+    }
+    return gap;
+}
+
+function predict(w: array, b: float, x: array) -> int {
+    if (scoreOf(w, b, x) >= 0.0) {
+        return 1;
+    }
+    return -1;
+}
+
+function fmt(x: float) -> string {
+    return string(math.round(x * 1000.0) / 1000.0);
+}
+
+function zeros(n: int) -> array {
+    var values = [];
+    for (var i = 0; i < n; i = i + 1) {
+        values.append(0.0);
+    }
+    return values;
+}
+
+// Two clusters in the plane. +1 around (2, 2), -1 around (-2, -2).
+// The closer pair near the origin should sit on the margin (support vectors).
+var xs = [
+    [2.0, 2.0], [2.4, 1.6], [1.6, 2.3], [2.8, 2.1], [0.7, 0.6],
+    [-2.0, -2.0], [-2.3, -1.7], [-1.5, -2.4], [-2.7, -2.2], [-0.7, -0.6]
+];
+var ys = [1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0];
+
+var w = zeros(2);
+var b: float = 0.0;
+var learningRate: float = 0.05;
+var lambda: float = 0.01;
+var epochs: int = 400;
+
+io.print("Linear soft-margin SVM (hinge loss + L2, 2D)");
+io.print("Seeded only for a stable story — weights start at zero.");
+io.print("");
+
+for (var epoch = 1; epoch <= epochs; epoch = epoch + 1) {
+    var epochLoss = 0.0;
+    var weightNormSq = 0.0;
+    for (var d = 0; d < w.length; d = d + 1) {
+        weightNormSq = weightNormSq + w[d] * w[d];
+    }
+
+    for (var s = 0; s < xs.length; s = s + 1) {
+        var x = xs[s];
+        var y = ys[s];
+        var score = scoreOf(w, b, x);
+        epochLoss = epochLoss + hinge(y, score);
+
+        // Always decay w (the regularizer). Do not regularize b.
+        for (var d = 0; d < w.length; d = d + 1) {
+            w[d] = w[d] * (1.0 - learningRate * lambda);
+        }
+
+        // Margin violation: step toward y * x so y * score increases.
+        if (y * score < 1.0) {
+            for (var d = 0; d < w.length; d = d + 1) {
+                w[d] = w[d] + learningRate * y * x[d];
+            }
+            b = b + learningRate * y;
+        }
+    }
+
+    if (epoch == 1 || epoch % 100 == 0 || epoch == epochs) {
+        var meanHinge = epochLoss / xs.length;
+        var objective = 0.5 * lambda * weightNormSq + meanHinge;
+        io.print($"epoch {epoch}: hinge={fmt(meanHinge)}  objective={fmt(objective)}");
+    }
+}
+
+var finalNorm = math.sqrt(w[0] * w[0] + w[1] * w[1]);
+io.print("");
+io.print($"Decision: sign({fmt(w[0])}*x1 + {fmt(w[1])}*x2 + {fmt(b)})");
+io.print($"||w||={fmt(finalNorm)}   geometric margin ≈ {fmt(1.0 / finalNorm)}");
+io.print("Support vectors: y*score is about 1 (SGD lands near, not exactly on, the margin).");
+io.print("  x1     x2    y   score  y*score  pred  SV");
+
+var correct = 0;
+var supportCount = 0;
+for (var s = 0; s < xs.length; s = s + 1) {
+    var x = xs[s];
+    var y = ys[s];
+    var score = scoreOf(w, b, x);
+    var funcMargin = y * score;
+    var pred = predict(w, b, x);
+    var isSV = "no";
+    if (funcMargin <= 1.05) {
+        isSV = "yes";
+        supportCount = supportCount + 1;
+    }
+    if (pred == int(y)) {
+        correct = correct + 1;
+    }
+    io.print($"  {fmt(x[0])}  {fmt(x[1])}  {int(y)}   {fmt(score)}   {fmt(funcMargin)}     {pred}   {isSV}");
+}
+
+io.print("");
+io.print($"Accuracy: {correct}/{xs.length}   support vectors: {supportCount}");
+
+var probePlus = [2.2, 3.0];
+var probeMinus = [-2.2, -3.0];
+io.print($"Held-out (2.2, 3.0) -> {predict(w, b, probePlus)}");
+io.print($"Held-out (-2.2, -3.0) -> {predict(w, b, probeMinus)}");
+
+// Same linear model cannot solve XOR (needs a kernel or a hidden layer).
+io.print("");
+io.print("Linear SVM on XOR (expected to fail):");
+var xorX = [[0.0, 0.0], [0.0, 1.0], [1.0, 0.0], [1.0, 1.0]];
+var xorY = [-1.0, 1.0, 1.0, -1.0];
+var xorW = zeros(2);
+var xorB: float = 0.0;
+for (var epoch = 1; epoch <= epochs; epoch = epoch + 1) {
+    for (var s = 0; s < xorX.length; s = s + 1) {
+        var x = xorX[s];
+        var y = xorY[s];
+        var score = scoreOf(xorW, xorB, x);
+        for (var d = 0; d < xorW.length; d = d + 1) {
+            xorW[d] = xorW[d] * (1.0 - learningRate * lambda);
+        }
+        if (y * score < 1.0) {
+            for (var d = 0; d < xorW.length; d = d + 1) {
+                xorW[d] = xorW[d] + learningRate * y * x[d];
+            }
+            xorB = xorB + learningRate * y;
+        }
+    }
+}
+
+var xorCorrect = 0;
+for (var s = 0; s < xorX.length; s = s + 1) {
+    var pred = predict(xorW, xorB, xorX[s]);
+    if (pred == int(xorY[s])) {
+        xorCorrect = xorCorrect + 1;
+    }
+    io.print($"  {int(xorX[s][0])} {int(xorX[s][1])}  target={int(xorY[s])}  pred={pred}");
+}
+io.print($"XOR accuracy: {xorCorrect}/{xorX.length} — use xor_neural_net.malda for a non-linear model.");

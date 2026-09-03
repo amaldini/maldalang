@@ -58,7 +58,7 @@ Start with:
 
 This path emphasizes **MALDA AI** on top of MALDA Core.
 
-**From-scratch neural net (offline):** `Examples/AI_LLM/xor_neural_net.malda` trains a 2-4-1 MLP on XOR with backprop — no API key. `Examples/AI_LLM/microgpt.malda` is the larger GPT-style follow-on.
+**From-scratch neural net / SVM (offline):** `Examples/AI_LLM/xor_neural_net.malda` trains a 2-4-1 MLP on XOR with backprop. `Examples/AI_LLM/svm_linear.malda` trains a soft-margin linear SVM (and shows why that model cannot solve XOR). No API key. `Examples/AI_LLM/microgpt.malda` is the larger GPT-style follow-on.
 
 **Autonomous PRD loop (advanced):** `Examples/RalphWiggum/` ships the Ralph Wiggum reference loop and a Snake demo. Requires an OpenRouter API key (or configured provider). Read `Examples/RalphWiggum/README.md` or run `Examples/RalphWiggum/snake-demo/run-ralph.bat` from the repo root on Windows.
 
