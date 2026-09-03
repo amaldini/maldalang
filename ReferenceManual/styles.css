@@ -681,6 +681,20 @@ tbody tr:hover {
     border-left-color: var(--primary-color);
 }
 
+.billiards-play-frame {
+    display: block;
+    width: 100%;
+    height: 56rem;
+    margin: 1.25rem 0;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    background: #0f172a;
+}
+
+.print-only-note {
+    display: none;
+}
+
 .warning-box {
     background-color: #fdf7ec;
     border-color: #f0e0c2;

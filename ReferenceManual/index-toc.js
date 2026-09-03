@@ -67,6 +67,7 @@ const FALLBACK_TOC_CHAPTERS = [
     { file: "34-property-testing.html", title: "Property Testing", num: "34", category: "Reference", description: "Deterministic property tests, shrinking, and regression workflows" },
     { file: "35-grammar.html", title: "Grammar", num: "35", category: "Reference", description: "BNF-like grammar specification" },
     { file: "36-appendix.html", title: "Appendix", num: "36", category: "Reference", description: "Reserved words, operator precedence" },
+    { file: "37-appendix-gpu-billiards.html", title: "Appendix: GPU Billiards", num: "37", category: "Reference", description: "Playable compiled GPU billiards showcase" },
 ];
 
 const FALLBACK_TOC_CHAPTERS_IT = [
@@ -106,6 +107,7 @@ const FALLBACK_TOC_CHAPTERS_IT = [
     { file: "34-property-testing.html", title: "Property testing", num: "34", category: "Reference", description: "Property test deterministici, shrinking e workflow di regressione" },
     { file: "35-grammar.html", title: "Grammatica", num: "35", category: "Reference", description: "Specifica della grammatica in stile BNF" },
     { file: "36-appendix.html", title: "Appendice", num: "36", category: "Reference", description: "Parole riservate, precedenza degli operatori" },
+    { file: "37-appendix-gpu-billiards.html", title: "Appendice: biliardo GPU", num: "37", category: "Reference", description: "Showcase biliardo GPU compilato e giocabile" },
 ];
 
 function chaptersToTocItems(chapters) {

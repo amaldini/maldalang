@@ -38,7 +38,7 @@ public class ReferenceManualChapterSyncTests
             Assert.Contains("<h1>MALDA&trade; Reference Manual</h1>", html);
         }
 
-        Assert.Equal(36, num);
+        Assert.Equal(37, num);
     }
 
     [Fact]
@@ -68,6 +68,6 @@ public class ReferenceManualChapterSyncTests
             Assert.Contains("<h1>Manuale di riferimento MALDA&trade;</h1>", html);
         }
 
-        Assert.Equal(36, num);
+        Assert.Equal(37, num);
     }
 }
