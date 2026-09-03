@@ -170,8 +170,22 @@ public partial class ConversationInstance : ObjectInstance
         "create_mcp_agent_script",
     };
 
-    internal static bool IsNamedBuiltInTool(string name) =>
-        NamedBuiltInToolNames.Contains(name);
+    internal static bool IsNamedBuiltInTool(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return false;
+        if (NamedBuiltInToolNames.Contains(name))
+            return true;
+        return ToolNameAliases.TryGetValue(name, out var aliased)
+            && NamedBuiltInToolNames.Contains(aliased);
+    }
+
+    internal static string CanonicalToolName(string name)
+    {
+        if (ToolNameAliases.TryGetValue(name, out var aliased))
+            return aliased;
+        return name;
+    }
 
     /// <summary>
     /// Runs a factory-created built-in tool with the same dispatch as <c>think()</c>.
@@ -2494,7 +2508,7 @@ public partial class ConversationInstance : ObjectInstance
             }
             
             // Execute the appropriate built-in function based on tool name
-            switch (tool.Name)
+            switch (CanonicalToolName(tool.Name))
             {
                 case "read_file":
                     if (resolvedFilePath == null)

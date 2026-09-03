@@ -447,6 +447,17 @@ var planTool = createSubmitPlanTool();
 var plan = planTool.execute({{ ""steps"": [{{ ""id"": ""s1"", ""description"": ""one"" }}] }});
 io.print(plan.accepted);
 io.print(plan.stepCount);
+var editTool = createEditFileTool(workDir);
+var edited = editTool.execute({{
+    ""filePath"": ""note.txt"",
+    ""edits"": [{{ ""oldText"": ""hello world"", ""newText"": ""hello malda"" }}]
+}});
+io.print(edited.success);
+io.print(edited.applied);
+var runTool = createRunMALDATool();
+var ran = runTool.execute({{ ""sourceOrFilePath"": ""print(1 + 1);"" }});
+io.print(ran.success);
+io.print(ran.output);
 ",
                 "createFileTools-execute");
         }

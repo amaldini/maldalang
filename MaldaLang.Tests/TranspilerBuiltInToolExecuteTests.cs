@@ -1,6 +1,8 @@
 // Copyright (c) 2026 Andrea Maldini
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+using MaldaLang.BuiltIns;
+using MaldaLang.Interpreter;
 using Xunit;
 
 namespace MaldaLang.Tests;
@@ -111,6 +113,136 @@ print(readTool.execute({{ ""filePath"": ""sample.txt"" }}));
         Assert.Contains("fns=1", result.StdOut);
         Assert.Contains("fn0=greet", result.StdOut);
         Assert.DoesNotContain("Tool execution validated", result.StdOut);
+    }
+
+    [Fact]
+    public void FactoryTools_Execute_DoesNotReturnStub()
+    {
+        var empty = RuntimeValue.Object(new JsonObject());
+        RuntimeValue[] tools =
+        [
+            BuiltInTools.CreateReadFileTool(),
+            BuiltInTools.CreateWriteFileTool(),
+            BuiltInTools.CreateReplaceInFileTool(),
+            BuiltInTools.CreateListDirectoryTool(),
+            BuiltInTools.CreateAskUserTool(),
+            BuiltInTools.CreateWebSearchTool(),
+            BuiltInTools.CreateGrepTool(),
+            BuiltInTools.CreateGlobTool(),
+            BuiltInTools.CreateInsertAtLineTool(),
+            BuiltInTools.CreateEditFileTool(),
+            BuiltInTools.CreateGitStatusTool(),
+            BuiltInTools.CreateGitAddTool(),
+            BuiltInTools.CreateGitCommitTool(),
+            BuiltInTools.CreateGitLogTool(),
+            BuiltInTools.CreateGitDiffTool(),
+            BuiltInTools.CreateGitBranchTool(),
+            BuiltInTools.CreateGitCheckoutTool(),
+            BuiltInTools.CreateGitPushTool(),
+            BuiltInTools.CreateGitPullTool(),
+            BuiltInTools.CreateRunCommandTool(),
+            BuiltInTools.CreateRunMALDATool(),
+            BuiltInTools.CreateCompileMALDATool(),
+            BuiltInTools.CreateGetSymbolsTool(),
+            BuiltInTools.CreateGetParseErrorsTool(),
+            BuiltInTools.CreateSubmitPlanTool(),
+            BuiltInTools.CreateCreateMcpAgentScriptTool(),
+        ];
+
+        foreach (var toolVal in tools)
+        {
+            var tool = Assert.IsType<ToolInstance>(toolVal.AsObject());
+            var result = tool.Execute(empty);
+            Assert.NotEqual("Tool execution validated", result.ToString());
+            Assert.DoesNotContain("Tool execution validated", result.ToString(), StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public void TranspiledEditFileRunMaldaGitAndMcp_Execute()
+    {
+        var tempDir = CreateTempDirectory("malda_trest_");
+        try
+        {
+            File.WriteAllText(Path.Combine(tempDir, "sample.txt"), "alpha beta");
+            var workDir = tempDir.Replace("\\", "/");
+            var scriptPath = Path.Combine(tempDir, "reviewer.malda").Replace("\\", "/");
+            InitGitRepo(tempDir);
+
+            var source = $@"
+var workDir = ""{workDir}"";
+var editTool = createEditFileTool(workDir);
+var edited = editTool.execute({{
+    ""filePath"": ""sample.txt"",
+    ""edits"": [{{ ""oldText"": ""beta"", ""newText"": ""gamma"" }}]
+}});
+print(""editOk="" + string(edited.success));
+print(""editN="" + string(edited.applied));
+
+var runTool = createRunMALDATool();
+var ran = runTool.execute({{ ""sourceOrFilePath"": ""print(1 + 1);"" }});
+print(""runOk="" + string(ran.success));
+print(""runOut="" + string(ran.output));
+
+var gitTool = createGitStatusTool(workDir);
+var status = gitTool.execute({{ ""repoPath"": workDir }});
+print(""untracked="" + string(length(status.untracked) > 0));
+
+var mcpTool = createCreateMcpAgentScriptTool(workDir);
+var mcp = mcpTool.execute({{
+    ""agentName"": ""Reviewer"",
+    ""agentRole"": ""Code reviewer"",
+    ""agentInstructions"": ""Review diffs."",
+    ""tools"": [{{ ""name"": ""summarize"", ""description"": ""Summarize a file"" }}],
+    ""outputPath"": ""reviewer.malda""
+}});
+print(""mcpOk="" + string(mcp.success));
+";
+            var result = TranspiledTestRunner.CompileAndRunFromSource(source);
+            Assert.Equal(0, result.ExitCode);
+            Assert.Contains("editOk=true", result.StdOut);
+            Assert.Contains("editN=1", result.StdOut);
+            Assert.Contains("runOk=true", result.StdOut);
+            Assert.Contains("runOut=2", result.StdOut);
+            Assert.Contains("untracked=true", result.StdOut);
+            Assert.Contains("mcpOk=true", result.StdOut);
+            Assert.DoesNotContain("Tool execution validated", result.StdOut);
+            Assert.Contains("gamma", File.ReadAllText(Path.Combine(tempDir, "sample.txt")));
+            Assert.True(File.Exists(scriptPath));
+            Assert.Contains("@MCPTool", File.ReadAllText(scriptPath));
+        }
+        finally
+        {
+            SafeDeleteDirectory(tempDir);
+        }
+    }
+
+    private static void InitGitRepo(string directory)
+    {
+        RunGit(directory, "init");
+        RunGit(directory, "config", "user.email", "test@example.com");
+        RunGit(directory, "config", "user.name", "Test");
+    }
+
+    private static void RunGit(string workingDirectory, params string[] args)
+    {
+        var startInfo = new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = "git",
+            WorkingDirectory = workingDirectory,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        foreach (var arg in args)
+            startInfo.ArgumentList.Add(arg);
+
+        using var process = System.Diagnostics.Process.Start(startInfo)
+            ?? throw new InvalidOperationException("Failed to start git");
+        process.WaitForExit();
+        if (process.ExitCode != 0)
+            throw new InvalidOperationException(process.StandardError.ReadToEnd());
     }
 
     private static string CreateTempDirectory(string prefix)
