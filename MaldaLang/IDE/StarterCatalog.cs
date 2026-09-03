@@ -40,7 +40,7 @@ public static class StarterCatalog
             RelativeExamplePath = @"Basics\hello_world.malda",
             LearningGoal = "Learn the smallest runnable MALDA program.",
             EstimatedTime = "5 min",
-            Highlights = ["print()", "Run button", "first success"]
+            Highlights = ["io.print", "Run button", "first success"]
         },
         new StarterOption
         {
@@ -51,7 +51,7 @@ public static class StarterCatalog
             RelativeExamplePath = @"Basics\variables_arithmetic.malda",
             LearningGoal = "Understand variables, expressions, and output.",
             EstimatedTime = "10 min",
-            Highlights = ["var", "math", "state"]
+            Highlights = ["var", "+", "*"]
         },
         new StarterOption
         {
@@ -67,8 +67,8 @@ public static class StarterCatalog
         new StarterOption
         {
             Id = "loops",
-            Title = "4. Loops",
-            Description = "Repeat work with a loop and watch one variable drive the whole program forward.",
+            Title = "4. While Loop",
+            Description = "Repeat work with a while loop and watch one variable drive the whole program forward.",
             Track = "student",
             RelativeExamplePath = @"Basics\while_loop.malda",
             LearningGoal = "Learn how MALDA repeats actions until a condition changes.",
@@ -77,8 +77,19 @@ public static class StarterCatalog
         },
         new StarterOption
         {
+            Id = "for-loop",
+            Title = "5. For Loop",
+            Description = "Repeat work with a counted for loop before using for-in over arrays.",
+            Track = "student",
+            RelativeExamplePath = @"Basics\for_loop.malda",
+            LearningGoal = "Use MALDA's for loop with a clear loop variable.",
+            EstimatedTime = "10 min",
+            Highlights = ["for", "counter", "loop variable"]
+        },
+        new StarterOption
+        {
             Id = "functions",
-            Title = "5. First Function",
+            Title = "6. First Function",
             Description = "Group reusable logic into a named function and call it with arguments.",
             Track = "student",
             RelativeExamplePath = @"Basics\functions.malda",
@@ -89,7 +100,7 @@ public static class StarterCatalog
         new StarterOption
         {
             Id = "complete-starter",
-            Title = "6. Complete Starter Program",
+            Title = "7. Complete Starter Program",
             Description = "Put the basics together in one linear example with variables, arrays, a loop, a function, and an if statement.",
             Track = "student",
             RelativeExamplePath = @"Basics\complete_starter_program.malda",
@@ -100,13 +111,13 @@ public static class StarterCatalog
         new StarterOption
         {
             Id = "input-output",
-            Title = "7. Input and Output",
+            Title = "8. Input and Output",
             Description = "Read from the user, convert values, and print meaningful feedback once the earlier syntax feels familiar.",
             Track = "student",
             RelativeExamplePath = @"Basics\input_example.malda",
             LearningGoal = "Connect program input to visible output.",
             EstimatedTime = "10 min",
-            Highlights = ["input()", "int()", "user interaction"]
+            Highlights = ["io.input", "int()", "user interaction"]
         },
         new StarterOption
         {
@@ -220,6 +231,66 @@ public static class StarterCatalog
 
         var starter = Starters.FirstOrDefault(item => item.Id.Equals(id, StringComparison.OrdinalIgnoreCase));
         return starter == null ? null : Clone(starter);
+    }
+
+    public static string NormalizeExamplePath(string? path)
+    {
+        return (path ?? string.Empty).Replace('\\', '/').Trim();
+    }
+
+    public static StarterOption? GetByRelativeExamplePath(string? relativeExamplePath)
+    {
+        var normalized = NormalizeExamplePath(relativeExamplePath);
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return null;
+        }
+
+        var starter = Starters.FirstOrDefault(item =>
+            NormalizeExamplePath(item.RelativeExamplePath)
+                .Equals(normalized, StringComparison.OrdinalIgnoreCase));
+        return starter == null ? null : Clone(starter);
+    }
+
+    public static StarterOption? GetNextStudentStarter(string? relativeExamplePath)
+    {
+        var current = GetByRelativeExamplePath(relativeExamplePath);
+        if (current == null || !IsStudentTrack(current.Track))
+        {
+            return null;
+        }
+
+        var student = StudentStarters();
+        var index = student.FindIndex(item => item.Id.Equals(current.Id, StringComparison.OrdinalIgnoreCase));
+        if (index < 0 || index >= student.Count - 1)
+        {
+            return null;
+        }
+
+        return Clone(student[index + 1]);
+    }
+
+    public static bool IsLastStudentStarter(string? relativeExamplePath)
+    {
+        var current = GetByRelativeExamplePath(relativeExamplePath);
+        if (current == null || !IsStudentTrack(current.Track))
+        {
+            return false;
+        }
+
+        var student = StudentStarters();
+        return student.Count > 0 &&
+               student[^1].Id.Equals(current.Id, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsStudentTrack(string track)
+    {
+        return track.Equals("student", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static List<StarterOption> StudentStarters()
+    {
+        return Starters.Where(item => IsStudentTrack(item.Track)).ToList();
     }
 
     public static List<LearningBranch> GetBranches()

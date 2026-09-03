@@ -2,15 +2,8 @@ function add(a, b) {
     return a + b;
 }
 
-function factorial(n) {
-    if (n <= 1) {
-        return 1;
-    }
-    return n * factorial(n - 1);
-}
-
 var result1 = add(5, 3);
 io.print($"5 + 3 = {result1}");
 
-var result2 = factorial(5);
-io.print($"5! = {result2}");
+var result2 = add(10, 2);
+io.print($"10 + 2 = {result2}");

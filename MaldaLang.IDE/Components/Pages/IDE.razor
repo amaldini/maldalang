@@ -264,6 +264,8 @@
                     }
                 </div>
 
+                @if (selectedStarterTrack != "student")
+                {
                 <div class="specialization-section">
                     <div class="specialization-header">
                         <h3>Specialization tracks</h3>
@@ -290,6 +292,7 @@
                         }
                     </div>
                 </div>
+                }
             </div>
         </div>
     }
@@ -346,7 +349,7 @@
         StarterCatalog.GetBranchesForTrack(selectedStarterTrack);
 
     private List<LearningBranch> SuggestedBranches =>
-        currentExample != null && IsCoreLearningExample(currentExample)
+        currentExample != null && StarterCatalog.IsLastStudentStarter(currentExample.FilePath)
             ? StarterCatalog.GetBranches()
             : [];
 
@@ -1276,13 +1279,6 @@
     private ExampleProgram? GetNextExample()
     {
         return ExampleProgramsService.GetExampleByRelativePath(currentExample?.Next);
-    }
-
-    private static bool IsCoreLearningExample(ExampleProgram example)
-    {
-        return example.Track.Equals("student", StringComparison.OrdinalIgnoreCase) &&
-               (example.Category.Equals("Basics", StringComparison.OrdinalIgnoreCase) ||
-                example.Category.Equals("OOP", StringComparison.OrdinalIgnoreCase));
     }
 
     private static string NormalizeStarterTrack(string? track)

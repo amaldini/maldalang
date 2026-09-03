@@ -131,6 +131,7 @@ public partial class StarterLauncherWindow : Window
             GoalTextBlock.Text = string.Empty;
             TimeTextBlock.Text = string.Empty;
             HighlightsItemsControl.ItemsSource = null;
+            UpdateBranchesVisibility();
             return;
         }
 
@@ -140,6 +141,20 @@ public partial class StarterLauncherWindow : Window
         GoalTextBlock.Text = $"Goal: {SelectedStarter.LearningGoal}";
         TimeTextBlock.Text = $"Estimated time: {SelectedStarter.EstimatedTime}";
         HighlightsItemsControl.ItemsSource = SelectedStarter.Highlights;
+        UpdateBranchesVisibility();
+    }
+
+    private void UpdateBranchesVisibility()
+    {
+        if (BranchesPanel == null)
+        {
+            return;
+        }
+
+        var showBranches = SelectedStarter != null &&
+            (!string.Equals(SelectedStarter.Track, "student", StringComparison.OrdinalIgnoreCase) ||
+             StarterCatalog.IsLastStudentStarter(SelectedStarter.RelativeExamplePath));
+        BranchesPanel.Visibility = showBranches ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void StudentTrackButton_Click(object sender, RoutedEventArgs e) => LoadTrack("student");

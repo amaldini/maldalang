@@ -1883,6 +1883,11 @@ public partial class MainWindow : Window
         return true;
     }
 
+    private void StartWithMalda_Click(object sender, RoutedEventArgs e)
+    {
+        ShowStarterLauncher(initialTrack: "student", fallbackToBlank: false);
+    }
+
     private void ShowStarterLauncher(string initialTrack, bool fallbackToBlank)
     {
         var starterWindow = new Windows.StarterLauncherWindow(_themeService, initialTrack);
@@ -2108,7 +2113,33 @@ public partial class MainWindow : Window
 
         LearningBranchButtonsPanel.Children.Clear();
 
-        if (_learningBranchBannerDismissed || _currentExample == null || !IsCoreLearningExample(_currentExample))
+        if (_learningBranchBannerDismissed || _currentExample == null)
+        {
+            LearningBranchBanner.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var examplePath = _currentExample.FilePath;
+        var nextStarter = StarterCatalog.GetNextStudentStarter(examplePath);
+        if (nextStarter != null)
+        {
+            LearningBranchTitleTextBlock.Text = $"Next lesson after {_currentExample.Name}";
+            LearningBranchDescriptionTextBlock.Text = nextStarter.LearningGoal;
+            var nextButton = new Button
+            {
+                Content = $"Next: {nextStarter.Title}",
+                Tag = nextStarter.RelativeExamplePath,
+                ToolTip = nextStarter.Description,
+                Margin = new Thickness(4),
+                Padding = new Thickness(10, 6, 10, 6)
+            };
+            nextButton.Click += LearningNextButton_Click;
+            LearningBranchButtonsPanel.Children.Add(nextButton);
+            LearningBranchBanner.Visibility = Visibility.Visible;
+            return;
+        }
+
+        if (!StarterCatalog.IsLastStudentStarter(examplePath))
         {
             LearningBranchBanner.Visibility = Visibility.Collapsed;
             return;
@@ -2132,13 +2163,6 @@ public partial class MainWindow : Window
         }
 
         LearningBranchBanner.Visibility = Visibility.Visible;
-    }
-
-    private static bool IsCoreLearningExample(ExampleProgram example)
-    {
-        return example.Track.Equals("student", StringComparison.OrdinalIgnoreCase) &&
-               (example.Category.Equals("Basics", StringComparison.OrdinalIgnoreCase) ||
-                example.Category.Equals("OOP", StringComparison.OrdinalIgnoreCase));
     }
     
     // View Menu

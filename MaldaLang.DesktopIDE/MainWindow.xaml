@@ -654,6 +654,11 @@
                     </MenuItem.Icon>
                 </MenuItem>
                 <Separator/>
+                <MenuItem Header="Start With _MALDA..." Click="StartWithMalda_Click">
+                    <MenuItem.Icon>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconLearn}"/>
+                    </MenuItem.Icon>
+                </MenuItem>
                 <MenuItem Header="_Load Example..." Click="ToolsLoadExample_Click">
                     <MenuItem.Icon>
                         <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconOpen}"/>
@@ -670,6 +675,11 @@
             </MenuItem>
 
             <MenuItem Header="_Help">
+                <MenuItem Header="Start With _MALDA..." Click="StartWithMalda_Click">
+                    <MenuItem.Icon>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconLearn}"/>
+                    </MenuItem.Icon>
+                </MenuItem>
                 <MenuItem Header="_About..." Click="HelpAbout_Click">
                     <MenuItem.Icon>
                         <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconAbout}"/>
@@ -751,6 +761,12 @@
 
                     <Border Style="{StaticResource ToolbarDivider}"/>
 
+                    <Button Style="{StaticResource ToolbarButton}" Click="StartWithMalda_Click" ToolTip="Open the Start With MALDA lesson path">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconLearn}"/>
+                            <TextBlock Text="Start" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
                     <Button Style="{StaticResource ToolbarButton}" Click="BrowseExamplesButton_Click" ToolTip="Browse examples">
                         <StackPanel Orientation="Horizontal">
                             <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconBook}"/>

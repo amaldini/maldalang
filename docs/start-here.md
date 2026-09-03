@@ -27,17 +27,18 @@ Use the route below that matches your immediate goal.
 
 Choose this path if you are new to programming, new to MALDA syntax, or want to teach the basics first.
 
-Start with:
+Start with the Desktop **Start With MALDA** student path (same order in the Web IDE starters):
 
-1. `Examples/Basics/first_look.malda` (characteristic constructs; skip if you just want syntax)
-2. `Examples/Basics/hello_world.malda`
-3. `Examples/Basics/variables_arithmetic.malda`
-4. `Examples/Basics/input_example.malda`
-5. `Examples/Basics/conditionals.malda`
-6. `Examples/Basics/while_loop.malda`
-7. `Examples/Basics/for_loop.malda`
-8. `Examples/Basics/functions.malda`
-9. `Examples/Basics/lambda.malda`
+1. `Examples/Basics/hello_world.malda`
+2. `Examples/Basics/variables_arithmetic.malda`
+3. `Examples/Basics/conditionals.malda`
+4. `Examples/Basics/while_loop.malda`
+5. `Examples/Basics/for_loop.malda`
+6. `Examples/Basics/functions.malda`
+7. `Examples/Basics/complete_starter_program.malda`
+8. `Examples/Basics/input_example.malda`
+
+`Examples/Basics/first_look.malda` is optional if you already program (prompt + schema + `validate`, no API key). After the core path, `Examples/Basics/lambda.malda` is a useful extra before prompts.
 
 Why this path:
 
@@ -142,8 +143,8 @@ This path emphasizes **MALDA Workflow/Cloud**.
 
 ## Which Path Should I Pick?
 
-- Run `Examples/Basics/first_look.malda` first if you want the characteristic constructs before a tutorial
-- Choose `Learn Programming` if the syntax is new
+- Choose `Learn Programming` if the syntax is new (Desktop **Start With MALDA** is the same list)
+- Run `Examples/Basics/first_look.malda` if you already program and want the characteristic constructs first
 - Choose `Build An AI App` if prompts and agents are your first priority (`malda new agent` for a cap-confined file tool)
 - Choose `Build An API Or Full-Stack App` if you want a scaffold you can extend immediately
 - Choose `Build a Browser Game` if you want a canvas `game.*` loop (`malda new game` / `malda play`, or `malda new game --fullstack` for scores)

@@ -1060,6 +1060,18 @@ public partial class MainWindow
         OpenExampleByRelativePath(relativeExamplePath, "Loaded specialization");
     }
 
+    private void LearningNextButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button button ||
+            button.Tag is not string relativeExamplePath ||
+            string.IsNullOrWhiteSpace(relativeExamplePath))
+        {
+            return;
+        }
+
+        OpenExampleByRelativePath(relativeExamplePath, "Loaded next lesson");
+    }
+
     
     private void FileSave_Click(object sender, RoutedEventArgs e)
     {
