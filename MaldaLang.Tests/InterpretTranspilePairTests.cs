@@ -435,29 +435,28 @@ while (i < length(items)) {{
             InterpretTranspilePair.AssertSameFromSource(
                 $@"
 var workDir = ""{workDir}"";
+writeFile(workDir + ""/note.txt"", ""hello world"");
+writeFile(workDir + ""/edit.txt"", ""alpha beta"");
 var readTool = createReadFileTool(workDir);
 var grepTool = createGrepTool(workDir);
 var listTool = createListDirectoryTool(workDir);
-io.print(readTool.execute({{ ""filePath"": ""note.txt"" }}));
+print(""read="" + string(readTool.execute({{ ""filePath"": ""note.txt"" }})));
 var hits = grepTool.execute({{ ""pattern"": ""hello"", ""filePath"": ""note.txt"" }});
-io.print(length(hits));
+print(""grep="" + string(length(hits)));
 var listed = listTool.execute({{ ""dirPath"": ""."" }});
-io.print(length(listed) > 0);
+print(""listed="" + string(length(listed) > 0));
 var planTool = createSubmitPlanTool();
 var plan = planTool.execute({{ ""steps"": [{{ ""id"": ""s1"", ""description"": ""one"" }}] }});
-io.print(plan.accepted);
-io.print(plan.stepCount);
+print(""plan="" + string(plan.accepted) + "","" + string(plan.stepCount));
 var editTool = createEditFileTool(workDir);
 var edited = editTool.execute({{
-    ""filePath"": ""note.txt"",
-    ""edits"": [{{ ""oldText"": ""hello world"", ""newText"": ""hello malda"" }}]
+    ""filePath"": ""edit.txt"",
+    ""edits"": [{{ ""oldText"": ""beta"", ""newText"": ""gamma"" }}]
 }});
-io.print(edited.success);
-io.print(edited.applied);
+print(""edit="" + string(edited.success) + "","" + string(edited.applied));
 var runTool = createRunMALDATool();
 var ran = runTool.execute({{ ""sourceOrFilePath"": ""print(1 + 1);"" }});
-io.print(ran.success);
-io.print(ran.output);
+print(""run="" + string(ran.success) + "","" + string(ran.output));
 ",
                 "createFileTools-execute");
         }
