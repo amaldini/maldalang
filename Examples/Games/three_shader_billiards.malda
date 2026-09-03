@@ -758,7 +758,7 @@ if (root == null) {
     dom.append(root, heading);
 
     var hint = dom.create("p");
-    dom.setText(hint, "The cue stays locked on the white ball. Move the mouse around the cue ball to aim (A/D for fine aim). Hold click or Space to charge power, release to shoot. R reracks, arrows orbit. Host MALDA steps 2D circle physics; the kernel only traces the uniforms.");
+    dom.setText(hint, "The cue stays locked on the white ball. Move the mouse around the cue ball to aim (A/D for fine aim). Hold click or Space on the table to charge, release to shoot. R reracks. Arrows orbit, C or Stop camera zeros orbit speed, [ ] or +/− zoom. Sliders set cushion e, ball e, and felt friction. Host MALDA steps 2D circle physics; the kernel only traces the uniforms.");
     dom.append(root, hint);
 
     var status = dom.create("p");
@@ -768,6 +768,20 @@ if (root == null) {
     var powerLine = dom.create("p");
     dom.setText(powerLine, "Power  [------------]   0%");
     dom.append(root, powerLine);
+
+    var controls = dom.create("div");
+    dom.html(controls, "<p><button type='button' id='stopOrbitBtn'>Stop camera</button> Zoom <input id='zoomRange' type='range' min='24' max='80' step='1' value='48'> Cushion e <input id='railRange' type='range' min='5' max='100' step='1' value='68'> Ball e <input id='ballRange' type='range' min='5' max='100' step='1' value='92'> Felt friction <input id='frictionRange' type='range' min='5' max='400' step='5' value='165'></p>");
+    dom.append(root, controls);
+
+    var physLine = dom.create("p");
+    dom.setText(physLine, "Zoom 4.8   Cushion e 0.68   Ball e 0.92   Friction 1.65   Orbit 0.18");
+    dom.append(root, physLine);
+
+    var stopOrbitBtn = dom.query("#stopOrbitBtn");
+    var zoomRange = dom.query("#zoomRange");
+    var railRange = dom.query("#railRange");
+    var ballRange = dom.query("#ballRange");
+    var frictionRange = dom.query("#frictionRange");
 
     var width = 960;
     var height = 540;
@@ -811,7 +825,75 @@ if (root == null) {
     var aimMarkZ = 0.0;
     var aimMarkValid = false;
     var rWasDown = false;
+    var cWasDown = false;
     var pottedCount = 0;
+    var railRest = 0.68;
+    var ballRest = 0.92;
+    var feltFriction = 1.65;
+    var zoomAcc = 0.0;
+
+    function rangeInt(el, fallback) {
+        if (el == null) {
+            return fallback;
+        }
+        return int(el.value);
+    }
+
+    function setRangeInt(el, n, lo, hi) {
+        if (el == null) {
+            return;
+        }
+        if (n < lo) {
+            n = lo;
+        }
+        if (n > hi) {
+            n = hi;
+        }
+        el.value = string(int(n));
+    }
+
+    function nudgeRange(el, delta, lo, hi) {
+        setRangeInt(el, rangeInt(el, lo) + delta, lo, hi);
+    }
+
+    function syncPlaySettings() {
+        camRadius = rangeInt(zoomRange, 48) / 10.0;
+        if (camRadius < 2.4) {
+            camRadius = 2.4;
+        }
+        if (camRadius > 8.0) {
+            camRadius = 8.0;
+        }
+        railRest = rangeInt(railRange, 68) / 100.0;
+        ballRest = rangeInt(ballRange, 92) / 100.0;
+        feltFriction = rangeInt(frictionRange, 165) / 100.0;
+        if (railRest < 0.05) {
+            railRest = 0.05;
+        }
+        if (railRest > 1.0) {
+            railRest = 1.0;
+        }
+        if (ballRest < 0.05) {
+            ballRest = 0.05;
+        }
+        if (ballRest > 1.0) {
+            ballRest = 1.0;
+        }
+        if (feltFriction < 0.05) {
+            feltFriction = 0.05;
+        }
+        if (feltFriction > 4.0) {
+            feltFriction = 4.0;
+        }
+    }
+
+    function onStopOrbit() {
+        camSpeed = 0.0;
+    }
+
+    if (stopOrbitBtn != null) {
+        dom.on(stopOrbitBtn, "click", onStopOrbit);
+    }
 
     function rackX(index) {
         if (index == 0) {
@@ -965,7 +1047,7 @@ if (root == null) {
                             ballZ[j] = ballZ[j] + (nz * overlap * 0.5);
                             var rel = ((ballVx[i] - ballVx[j]) * nx) + ((ballVz[i] - ballVz[j]) * nz);
                             if (rel > 0) {
-                                var impulse = -(1.0 + 0.92) * rel * 0.5;
+                                var impulse = -(1.0 + ballRest) * rel * 0.5;
                                 ballVx[i] = ballVx[i] + (nx * impulse);
                                 ballVz[i] = ballVz[i] + (nz * impulse);
                                 ballVx[j] = ballVx[j] - (nx * impulse);
@@ -986,7 +1068,7 @@ if (root == null) {
             if (ballLive[i] == 1) {
                 ballX[i] = ballX[i] + (ballVx[i] * dt);
                 ballZ[i] = ballZ[i] + (ballVz[i] * dt);
-                var damp = 1.0 - (1.65 * dt);
+                var damp = 1.0 - (feltFriction * dt);
                 if (damp < 0) {
                     damp = 0;
                 }
@@ -1027,25 +1109,25 @@ if (root == null) {
                     if (ballX[i] > limitX) {
                         ballX[i] = limitX;
                         if (ballVx[i] > 0) {
-                            ballVx[i] = 0 - ballVx[i] * 0.68;
+                            ballVx[i] = 0 - ballVx[i] * railRest;
                         }
                     }
                     if (ballX[i] < (0 - limitX)) {
                         ballX[i] = 0 - limitX;
                         if (ballVx[i] < 0) {
-                            ballVx[i] = 0 - ballVx[i] * 0.68;
+                            ballVx[i] = 0 - ballVx[i] * railRest;
                         }
                     }
                     if (ballZ[i] > limitZ) {
                         ballZ[i] = limitZ;
                         if (ballVz[i] > 0) {
-                            ballVz[i] = 0 - ballVz[i] * 0.68;
+                            ballVz[i] = 0 - ballVz[i] * railRest;
                         }
                     }
                     if (ballZ[i] < (0 - limitZ)) {
                         ballZ[i] = 0 - limitZ;
                         if (ballVz[i] < 0) {
-                            ballVz[i] = 0 - ballVz[i] * 0.68;
+                            ballVz[i] = 0 - ballVz[i] * railRest;
                         }
                     }
                 }
@@ -1133,7 +1215,7 @@ if (root == null) {
 
     function updateCamera() {
         camX = math.sin(camAngle) * camRadius;
-        camY = 3.05;
+        camY = camRadius * 0.629;
         camZ = math.cos(camAngle) * camRadius;
 
         var fx = 0.0 - camX;
@@ -1289,7 +1371,25 @@ if (root == null) {
         if (camSpeed > 2.4) {
             camSpeed = 2.4;
         }
+        var cDown = three.isKeyDown("c");
+        if (cDown && !cWasDown) {
+            camSpeed = 0.0;
+        }
+        cWasDown = cDown;
         camAngle = camAngle + (camSpeed * dtSec);
+
+        if (three.isKeyDown("]") || three.isKeyDown("=") || three.isKeyDown("+")) {
+            zoomAcc = zoomAcc - (18.0 * dtSec);
+        }
+        if (three.isKeyDown("[") || three.isKeyDown("-")) {
+            zoomAcc = zoomAcc + (18.0 * dtSec);
+        }
+        if (zoomAcc <= -1.0 || zoomAcc >= 1.0) {
+            var zoomStep = int(zoomAcc);
+            nudgeRange(zoomRange, zoomStep, 24, 80);
+            zoomAcc = zoomAcc - zoomStep;
+        }
+        syncPlaySettings();
 
         var mx = int(three.getMouseX());
         var my = int(three.getMouseY());
@@ -1300,8 +1400,9 @@ if (root == null) {
 
         var still = ballsAreStill();
         var mouseMoved = mx != lastMouseX || my != lastMouseY;
+        var mouseOnTable = mx >= 0 && mx < width && my >= 0 && my < height;
         if (still && ballLive[0] == 1) {
-            if (mouseMoved) {
+            if (mouseMoved && mouseOnTable) {
                 aimFromMouse();
             }
             if (three.isKeyDown("a")) {
@@ -1310,7 +1411,7 @@ if (root == null) {
             if (three.isKeyDown("d")) {
                 aimAngle = aimAngle + (1.6 * dtSec);
             }
-            var holdShot = three.isKeyDown(" ") || three.isMouseDown(0);
+            var holdShot = three.isKeyDown(" ") || (three.isMouseDown(0) && mouseOnTable);
             if (holdShot) {
                 if (!charging) {
                     charging = true;
@@ -1350,12 +1451,18 @@ if (root == null) {
         }
 
         still = ballsAreStill();
+        var orbitTxt = string(int(camSpeed * 100) / 100.0);
+        var zoomTxt = string(int(camRadius * 10) / 10.0);
+        var railTxt = string(int(railRest * 100) / 100.0);
+        var ballTxt = string(int(ballRest * 100) / 100.0);
+        var fricTxt = string(int(feltFriction * 100) / 100.0);
+        dom.setText(physLine, "Zoom " + zoomTxt + "   Cushion e " + railTxt + "   Ball e " + ballTxt + "   Friction " + fricTxt + "   Orbit " + orbitTxt);
         if (still) {
             var deg = int((aimAngle * 180) / 3.14159265);
             if (charging) {
-                dom.setText(status, "Charging… release to shoot   Aim " + string(deg) + " deg   Potted " + string(pottedCount) + "   R reset");
+                dom.setText(status, "Charging… release to shoot   Aim " + string(deg) + " deg   Potted " + string(pottedCount) + "   C stop orbit   R reset");
             } else {
-                dom.setText(status, "Aim " + string(deg) + " deg   Hold click/Space to charge   A/D fine aim   Potted " + string(pottedCount) + "   R reset");
+                dom.setText(status, "Aim " + string(deg) + " deg   Hold click/Space to charge   [ ] zoom   C stop orbit   Potted " + string(pottedCount) + "   R reset");
             }
             if (charging) {
                 dom.setText(powerLine, "Power  " + powerBarText());
@@ -1363,7 +1470,7 @@ if (root == null) {
                 dom.setText(powerLine, "Power  [----------------]   hold to charge");
             }
         } else {
-            dom.setText(status, "Balls in motion…   Potted " + string(pottedCount) + "   R reset");
+            dom.setText(status, "Balls in motion…   Potted " + string(pottedCount) + "   C stop orbit   R reset");
             dom.setText(powerLine, "Power  [----------------]");
         }
 

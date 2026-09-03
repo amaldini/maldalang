@@ -239,7 +239,7 @@
     },
     {
       "name": "JS three.js GPU Billiards",
-      "description": "Playable GPU billiards: cue locked to the white ball, mouse-on-table aim, hold-to-charge power, 2D circle physics, and a numbered rack traced through three.createShaderMaterial uniforms",
+      "description": "Playable GPU billiards: cue locked to the white ball, mouse-on-table aim, hold-to-charge power, zoom/orbit stop, configurable cushion/ball restitution and felt friction, and a numbered rack traced through three.createShaderMaterial uniforms",
       "file": "three_shader_billiards.malda",
       "track": "showcase",
       "difficulty": "advanced",
@@ -255,7 +255,7 @@
         "Games/three_shader_raytracer.malda"
       ],
       "learningGoal": "Show a classic sphere-and-plane ray-traced scene as a playable GPU @shader() showcase: host MALDA steps 2D physics and pushes ball/cue uniforms.",
-      "expectedOutput": "Renders a playable GPU ray-traced billiard table: aim with the mouse, Space/click to shoot, R to rerack.",
+      "expectedOutput": "Renders a playable GPU ray-traced billiard table: aim with the mouse, hold click/Space to charge, sliders for restitution and friction, C to stop orbit, R to rerack.",
       "next": "Games/three_shader_path_tunnel.malda",
       "documentationPath": "/?lesson=browser-track#lesson-browser-track",
       "documentationTitle": "Browser Track"
