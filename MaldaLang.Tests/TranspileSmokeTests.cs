@@ -32,6 +32,7 @@ public class TranspileSmokeTests
     [InlineData("Examples/Tools/capability_tokens.malda")]
     [InlineData("Examples/Modules/selective_import.malda")]
     [InlineData("Examples/Modules/export_type_schema.malda")]
+    [InlineData("Examples/VectorDB/basic_vectordb.malda")]
     public void Example_TranspileToCSharp_Succeeds(string relativePath)
     {
         var parts = relativePath.Split('/', StringSplitOptions.RemoveEmptyEntries);

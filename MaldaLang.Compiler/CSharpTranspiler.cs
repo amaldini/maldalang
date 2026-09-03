@@ -3033,6 +3033,26 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("}");
         WriteIndent();
+        _output.AppendLine("else if (instance is MaldaLang.Interpreter.VectorDBInstance vectorDb)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("result = vectorDb.CallMethod(methodName, runtimeArgs, MaldaLang.Runtime.TranspiledBuiltinRuntime.GetOrCreateInterpreter());");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        WriteIndent();
+        _output.AppendLine("else if (instance is MaldaLang.BuiltIns.RetrieverInstance retriever)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("result = retriever.CallMethod(methodName, runtimeArgs, MaldaLang.Runtime.TranspiledBuiltinRuntime.GetOrCreateInterpreter());");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        WriteIndent();
         _output.AppendLine("else if (instance is MaldaLang.BuiltIns.GroundedInstance grounded)");
         WriteIndent();
         _output.AppendLine("{");
@@ -11425,6 +11445,20 @@ public class CSharpTranspiler
             return;
         }
 
+        // VectorDB(dimension, precision) — coerce because top-level vars are object-typed.
+        if (className == "VectorDB")
+        {
+            if (newExpr.Arguments.Count != 2)
+                throw new NotSupportedException("VectorDB() expects 2 arguments: VectorDB(dimension, precision).");
+
+            _output.Append("new MaldaLang.Interpreter.VectorDBInstance((int)RuntimeHelpers.CoerceToInt(");
+            TranspileExpression(newExpr.Arguments[0]);
+            _output.Append("), RuntimeHelpers.CoerceToString(");
+            TranspileExpression(newExpr.Arguments[1]);
+            _output.Append("))");
+            return;
+        }
+
         // HttpServer(port, webDirectory?, pathBase?, host?) needs explicit coercion because top-level vars are object-typed.
         if (className == "HttpServer" && newExpr.Arguments.Count >= 1)
         {
@@ -11564,6 +11598,7 @@ public class CSharpTranspiler
             "GitAgent" => "MaldaLang.BuiltIns.GitAgentInstance",
             "DevAgent" => "MaldaLang.BuiltIns.DevAgentInstance",
             "GraphMemory" => "MaldaLang.BuiltIns.GraphMemoryInstance",
+            "VectorDB" => "MaldaLang.Interpreter.VectorDBInstance",
             "MALDACodingAgent" => "MaldaLang.BuiltIns.MALDACodingAgentInstance",
             "RestServer" => "MaldaLang.BuiltIns.RestServerInstance",
             "RestClient" => "MaldaLang.BuiltIns.RestClientInstance",

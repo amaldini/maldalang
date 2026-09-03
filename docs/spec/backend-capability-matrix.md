@@ -49,6 +49,7 @@ These strings are what `@property` / `runProperty` use via `GetRequiredCapabilit
 | Closed `api` / `program(Api)` / `runProgram` | yes | yes | n/a |
 | `@budget` resource bounds (tokens / tools / cost) | yes | yes | n/a |
 | Grounded values (`grounded.wrap` / GraphMemory `ask`) | yes | yes | wrap only (GraphMemory n/a) |
+| VectorDB (`new VectorDB` / `add` / `searchSimilar` / `asRetriever`) | yes | yes | no |
 | Capability tokens (`cap.fileRead` / `cap.read`) | yes | yes | mint / `is` / `confine` (file consume n/a) |
 | HttpServer / RestServer / sessions | yes | yes | no |
 | UIHost / `ui.*` server-driven UI | yes† | yes† | no |

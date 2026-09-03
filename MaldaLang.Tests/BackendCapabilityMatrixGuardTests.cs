@@ -60,6 +60,7 @@ public class BackendCapabilityMatrixGuardTests
         AssertContains(markdown, "`program(Api)`", "closed api / program(Api) / runProgram row");
         AssertContains(markdown, "`@budget`", "@budget resource bounds row");
         AssertContains(markdown, "`grounded.wrap`", "grounded values row");
+        AssertContains(markdown, "`new VectorDB`", "VectorDB row");
         AssertContains(markdown, "`cap.fileRead`", "capability tokens row");
         AssertContains(markdown, "call-graph determinism", "workflow call-graph determinism row");
         AssertContains(markdown, "HttpServer", "HttpServer row");

@@ -359,4 +359,31 @@ public class InterpretTranspilePairTests
             """,
             "getenvor-missing");
     }
+
+    [Fact]
+    public void VectorDB_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            function embed(text) {
+                return embedBagOfWords(text, 8);
+            }
+
+            var dim = 8;
+            var db = new VectorDB(dim, "single");
+            db.init(embed);
+            db.add("hello world");
+            db.add("goodbye moon");
+
+            var hits = db.searchSimilar("hello", 1);
+            io.print(hits.length);
+            io.print(hits[0].data);
+
+            var retriever = db.asRetriever({ topK: 1 });
+            var docs = retriever.get("hello");
+            io.print(docs.length);
+            io.print(docs[0].content);
+            """,
+            "vectordb");
+    }
 }
