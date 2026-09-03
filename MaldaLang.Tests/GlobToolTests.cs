@@ -4,6 +4,7 @@
 using MaldaLang.BuiltIns;
 using MaldaLang.Interpreter;
 using Xunit;
+using ValueType = MaldaLang.Interpreter.ValueType;
 
 namespace MaldaLang.Tests;
 
@@ -141,6 +142,57 @@ public class GlobToolTests
             Assert.Single(paths);
             Assert.Equal("app.txt", paths[0]);
             Assert.DoesNotContain(":", paths[0]);
+        }
+        finally
+        {
+            TryDeleteDirectory(tempRoot);
+        }
+    }
+
+    [Fact]
+    public void CreateGlobTool_Execute_FindsMatchingFiles()
+    {
+        var tempRoot = Path.Combine(Path.GetTempPath(), "malda-glob-tool-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+        var sub = Path.Combine(tempRoot, "src");
+        Directory.CreateDirectory(sub);
+        File.WriteAllText(Path.Combine(tempRoot, "a.txt"), "a");
+        File.WriteAllText(Path.Combine(sub, "b.txt"), "b");
+        File.WriteAllText(Path.Combine(tempRoot, "skip.cs"), "// cs");
+
+        try
+        {
+            var tool = (ToolInstance)BuiltInTools.CreateGlobTool(tempRoot).AsObject();
+            var args = new JsonObject();
+            args.Set("pattern", RuntimeValue.String("**/*.txt"));
+            var (paths, count, truncated) = ParseGlobResult(tool.Execute(RuntimeValue.Object(args)));
+            Assert.False(truncated);
+            Assert.Equal(2, count);
+            Assert.Contains("a.txt", paths);
+            Assert.Contains("src/b.txt", paths);
+            Assert.DoesNotContain("skip.cs", paths);
+        }
+        finally
+        {
+            TryDeleteDirectory(tempRoot);
+        }
+    }
+
+    [Fact]
+    public void CreateGlobTool_Execute_RejectsPathOutsideWorkingDirectory()
+    {
+        var tempRoot = Path.Combine(Path.GetTempPath(), "malda-glob-jail-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+
+        try
+        {
+            var tool = (ToolInstance)BuiltInTools.CreateGlobTool(tempRoot).AsObject();
+            var args = new JsonObject();
+            args.Set("pattern", RuntimeValue.String("**/*"));
+            args.Set("dirPath", RuntimeValue.String(".."));
+            var result = tool.Execute(RuntimeValue.Object(args));
+            Assert.Equal(ValueType.String, result.Type);
+            Assert.Contains("outside the allowed working directory", result.AsString(), StringComparison.Ordinal);
         }
         finally
         {

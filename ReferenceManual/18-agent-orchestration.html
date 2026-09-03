@@ -262,18 +262,24 @@ setAgentVerbosePhase("planning");</code></pre>
             <li><code>createGetSymbolsTool(workingDirectory?)</code> → <code>Tool</code> - Extract classes, functions, actors, and prompts from a file</li>
             <li><code>createGetParseErrorsTool(workingDirectory?)</code> → <code>Tool</code> - Validate syntax without running the file</li>
             <li><code>createWebSearchTool()</code> → <code>Tool</code> - Brave Search API (no working directory)</li>
-            <li><code>createGlobTool(workingDirectory?)</code> → <code>Tool</code> - Pattern-based path search. Interpreter-only; not available in transpiled executables</li>
+            <li><code>createGlobTool(workingDirectory?)</code> → <code>Tool</code> - Pattern-based path search. Supported by the interpreter and C# transpile (not the JavaScript backend). Returns the same <code>{ items, count, truncated }</code> shape as <code>io.glob</code>.</li>
             <li><code>createCreateMcpAgentScriptTool(workingDirectory?)</code> → <code>Tool</code> - Generates MCP agent scripts</li>
             <li><code>createSubmitPlanTool()</code> → <code>Tool</code> - Submit a structured plan (steps with <code>id</code>, <code>description</code>, optional <code>dependsOn</code>). Parameters: <code>plan</code> (object with <code>steps</code>) or <code>steps</code> (array), optional <code>taskSummary</code>. Returns <code>{ accepted: true, planId, stepCount }</code> or <code>{ accepted: false, error }</code>. No working directory.</li>
         </ul>
         <p>All of these factories accept an optional <code>workingDirectory</code> except <code>createSubmitPlanTool</code>, <code>createAskUserTool</code>, and <code>createWebSearchTool</code>. When a directory is set, file and path operations stay inside it and its subdirectories.</p>
+        <p>You can also call a built-in tool directly. <code>createGlobTool</code> is the agent wrapper around <code>io.glob</code>:</p>
+        <pre><code>var globTool = createGlobTool(".");
+var found = globTool.execute({ "pattern": "**/*.malda", "dirPath": "." });
+print(found.count);</code></pre>
         <h3>Example</h3>
         <pre><code>var workingDir = ".";
 var readTool = createReadFileTool(workingDir);
 var writeTool = createWriteFileTool(workingDir);
+var globTool = createGlobTool(workingDir);
 
 conversation.addTool(readTool);
 conversation.addTool(writeTool);
+conversation.addTool(globTool);
 
 conversation.addUserMessage("Read example.txt and summarize it.");
 var response = conversation.send();  // LLM will call read_file tool automatically</code></pre>
