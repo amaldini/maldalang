@@ -152,6 +152,12 @@ internal static class ToolReplayHelper
             case "submit_plan":
                 toolValue = BuiltInTools.CreateSubmitPlanTool();
                 break;
+            case "update_plan":
+                toolValue = BuiltInTools.CreateUpdatePlanTool();
+                break;
+            case "mark_step":
+                toolValue = BuiltInTools.CreateMarkStepTool();
+                break;
             case "web_search":
                 toolValue = BuiltInTools.CreateWebSearchTool();
                 break;

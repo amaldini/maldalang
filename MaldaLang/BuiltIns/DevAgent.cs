@@ -286,6 +286,8 @@ public class DevAgentInstance : AgentInstance
             
             // 5. Structured task planning
             Register((ToolInstance)BuiltInTools.CreateSubmitPlanTool().AsObject());
+            Register((ToolInstance)BuiltInTools.CreateUpdatePlanTool().AsObject());
+            Register((ToolInstance)BuiltInTools.CreateMarkStepTool().AsObject());
         }
         
         // 6. Code analysis (read-only). check_malda is always registered for the diagnose loop.

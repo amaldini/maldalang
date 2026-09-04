@@ -187,6 +187,8 @@ public abstract class TestBase : IDisposable
         // ToolRegistry is cleared by Interpreter constructor, but we can also clear it explicitly
         // Note: We don't clear persistent tools as they might be from IDE services
         ToolRegistry.Instance.ClearUserDefinedTools();
+
+        AgentPlanStore.Clear();
     }
 
     /// <summary>

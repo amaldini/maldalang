@@ -151,6 +151,8 @@ print(readTool.execute({{ ""filePath"": ""sample.txt"" }}));
             BuiltInTools.CreateGetParseErrorsTool(),
             BuiltInTools.CreateCheckMaldaTool(),
             BuiltInTools.CreateSubmitPlanTool(),
+            BuiltInTools.CreateUpdatePlanTool(),
+            BuiltInTools.CreateMarkStepTool(),
             BuiltInTools.CreateCreateMcpAgentScriptTool(),
         ];
 

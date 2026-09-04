@@ -4,7 +4,7 @@
 # Format: symbol -> tier | note
 # Optional-pack / vertical symbols must NOT appear here (enforced by OptionalPackRegistryGuardTests)
 
-# count: 357
+# count: 359
 
 abs -> tier1-core | BuiltInRegistry
 acos -> stdlib-general | BuiltInRegistry
@@ -69,6 +69,7 @@ createGrepTool -> platform-ai | BuiltInRegistry
 createInsertAtLineTool -> platform-ai | BuiltInRegistry
 createJwt -> stdlib-general | BuiltInRegistry
 createListDirectoryTool -> platform-ai | BuiltInRegistry
+createMarkStepTool -> platform-ai | BuiltInRegistry
 createMcpAgentScript -> platform-ai | BuiltInRegistry
 createNativeCallback -> core-interop | BuiltInRegistry
 createReadFileTool -> platform-ai | BuiltInRegistry
@@ -77,6 +78,7 @@ createRunCommandTool -> platform-ai | BuiltInRegistry
 createRunMALDATool -> platform-ai | BuiltInRegistry
 createSecureCookie -> stdlib-general | BuiltInRegistry
 createSubmitPlanTool -> platform-ai | BuiltInRegistry
+createUpdatePlanTool -> platform-ai | BuiltInRegistry
 createWebFetchTool -> platform-ai | BuiltInRegistry
 createWebSearchTool -> platform-ai | BuiltInRegistry
 createWriteFileTool -> platform-ai | BuiltInRegistry

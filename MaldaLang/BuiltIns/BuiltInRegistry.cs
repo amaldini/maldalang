@@ -236,6 +236,8 @@ public static class BuiltInRegistry
             "createMcpAgentScript" or
             "createCreateMcpAgentScriptTool" or
             "createSubmitPlanTool" or
+            "createUpdatePlanTool" or
+            "createMarkStepTool" or
             "executePlan" or
             "runProgram" or
             "decomposeTask" or

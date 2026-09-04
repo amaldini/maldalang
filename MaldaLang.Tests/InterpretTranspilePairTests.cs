@@ -472,6 +472,35 @@ print(""ok="" + string(result.ok));
     }
 
     [Fact]
+    public void SubmitMarkUpdatePlan_Execute_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            var submit = createSubmitPlanTool();
+            var mark = createMarkStepTool();
+            var update = createUpdatePlanTool();
+            var plan = submit.execute({
+                "steps": [
+                    { "id": "s1", "description": "one" },
+                    { "id": "s2", "description": "two" }
+                ]
+            });
+            print("submit=" + string(plan.accepted));
+            var marked = mark.execute({ "planId": plan.planId, "id": "s1", "status": "done" });
+            print("mark=" + string(marked.accepted));
+            var updated = update.execute({
+                "planId": plan.planId,
+                "steps": [
+                    { "id": "s1", "description": "one updated" },
+                    { "id": "s3", "description": "three" }
+                ]
+            });
+            print("update=" + string(updated.accepted));
+            """,
+            "submit-mark-update-plan");
+    }
+
+    [Fact]
     public void CreateFileTools_Execute_SameStdout()
     {
         var tempDir = Path.Combine(Path.GetTempPath(), "malda_pair_tools_" + Guid.NewGuid().ToString("N"));

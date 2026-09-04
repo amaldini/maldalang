@@ -1104,6 +1104,8 @@ public static class BuiltInFunctions
             "createMcpAgentScript" => BuiltInCreateMcpAgentScript(args),
             "createCreateMcpAgentScriptTool" => BuiltInCreateCreateMcpAgentScriptTool(args),
             "createSubmitPlanTool" => BuiltInCreateSubmitPlanTool(args),
+            "createUpdatePlanTool" => BuiltInCreateUpdatePlanTool(args),
+            "createMarkStepTool" => BuiltInCreateMarkStepTool(args),
             "executePlan" => BuiltInExecutePlan(args),
             "runProgram" => BuiltInRunProgram(args, interpreter),
             "decomposeTask" => BuiltInDecomposeTask(args),
@@ -1497,6 +1499,8 @@ public static class BuiltInFunctions
             "createMcpAgentScript" => BuiltInCreateMcpAgentScript(args),
             "createCreateMcpAgentScriptTool" => BuiltInCreateCreateMcpAgentScriptTool(args),
             "createSubmitPlanTool" => BuiltInCreateSubmitPlanTool(args),
+            "createUpdatePlanTool" => BuiltInCreateUpdatePlanTool(args),
+            "createMarkStepTool" => BuiltInCreateMarkStepTool(args),
             "executePlan" => BuiltInExecutePlan(args),
             "runProgram" => BuiltInRunProgram(args, interpreter),
             "decomposeTask" => BuiltInDecomposeTask(args),
@@ -9281,6 +9285,18 @@ public static class BuiltInFunctions
     {
         BuiltInArity.Require("createSubmitPlanTool", args, 0, 0);
         return BuiltInTools.CreateSubmitPlanTool();
+    }
+
+    private static RuntimeValue BuiltInCreateUpdatePlanTool(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("createUpdatePlanTool", args, 0, 0);
+        return BuiltInTools.CreateUpdatePlanTool();
+    }
+
+    private static RuntimeValue BuiltInCreateMarkStepTool(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("createMarkStepTool", args, 0, 0);
+        return BuiltInTools.CreateMarkStepTool();
     }
     
     private static RuntimeValue BuiltInRunProgram(List<RuntimeValue> args, Interpreter? interpreter)

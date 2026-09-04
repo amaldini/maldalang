@@ -67,6 +67,7 @@ createGrepTool	createGrepTool	0-1 arguments: (workingDir?)
 createInsertAtLineTool	createInsertAtLineTool	0-1 arguments: (workingDir?)		
 createJwt	createJwt	2 or 3 arguments: (payload, secret, expiresInSeconds? | options?)		
 createListDirectoryTool	createListDirectoryTool	0-1 arguments: (workingDir?)		
+createMarkStepTool	createMarkStepTool	0 arguments		
 createMcpAgentScript	createMcpAgentScript	at least 5 arguments: (agentName, agentRole, agentInstructions, tools, outputPath, model?)		
 createNativeCallback	createNativeCallback	exactly 1 function argument		
 createReadFileTool	createReadFileTool	0-1 arguments: (workingDir?)		
@@ -75,6 +76,7 @@ createRunCommandTool	createRunCommandTool	0-1 arguments: (workingDir?)
 createRunMALDATool	createRunMALDATool	0-1 arguments: (workingDir?)		
 createSecureCookie	createSecureCookie	(string, string, string, object?)		
 createSubmitPlanTool	createSubmitPlanTool	0 arguments		
+createUpdatePlanTool	createUpdatePlanTool	0 arguments		
 createWebFetchTool	createWebFetchTool	0 arguments		
 createWebSearchTool	createWebSearchTool	0 arguments		
 createWriteFileTool	createWriteFileTool	0-1 arguments: (workingDir?)		

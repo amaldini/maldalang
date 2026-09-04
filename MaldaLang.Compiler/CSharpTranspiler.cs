@@ -10868,6 +10868,8 @@ public class CSharpTranspiler
             case "createMcpAgentScript":
             case "createCreateMcpAgentScriptTool":
             case "createSubmitPlanTool":
+            case "createUpdatePlanTool":
+            case "createMarkStepTool":
             case "executePlan":
             case "runProgram":
             case "decomposeTask":

@@ -60,7 +60,8 @@ internal static class AgentToolCompletionCatalog
         "createGitDiffTool", "createGitBranchTool", "createGitCheckoutTool",
         "createGitPushTool", "createGitPullTool",
         "createRunCommandTool", "createRunMALDATool", "createCompileMALDATool",
-        "createCreateMcpAgentScriptTool", "createSubmitPlanTool"
+        "createCreateMcpAgentScriptTool", "createSubmitPlanTool",
+        "createUpdatePlanTool", "createMarkStepTool"
     };
 
     public static bool IsCreateToolFactory(string name) =>
