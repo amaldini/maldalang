@@ -4,7 +4,7 @@
 # Format: symbol -> tier | note
 # Optional-pack / vertical symbols must NOT appear here (enforced by OptionalPackRegistryGuardTests)
 
-# count: 350
+# count: 357
 
 abs -> tier1-core | BuiltInRegistry
 acos -> stdlib-general | BuiltInRegistry
@@ -24,8 +24,10 @@ average -> tier1-core | BuiltInRegistry
 base64Decode -> stdlib-general | BuiltInRegistry
 base64Encode -> stdlib-general | BuiltInRegistry
 bindForm -> stdlib-general | BuiltInRegistry
+cancelThink -> stdlib-general | BuiltInRegistry
 cancelWorkflow -> platform-workflow | BuiltInRegistry
 ceil -> tier1-core | BuiltInRegistry
+checkMalda -> platform-ai | BuiltInRegistry
 claimJob -> stdlib-general | BuiltInRegistry
 clamp -> tier1-core | BuiltInRegistry
 clearAgentProgress -> stdlib-general | BuiltInRegistry
@@ -41,8 +43,10 @@ componentStatePin -> platform-ui | BuiltInRegistry
 componentStateSet -> platform-ui | BuiltInRegistry
 componentStateUnpin -> platform-ui | BuiltInRegistry
 composePipe -> stdlib-general | BuiltInRegistry
+copyFile -> stdlib-io | BuiltInRegistry
 cos -> tier1-core | BuiltInRegistry
 createAskUserTool -> platform-ai | BuiltInRegistry
+createCheckMaldaTool -> platform-ai | BuiltInRegistry
 createCompileMALDATool -> platform-ai | BuiltInRegistry
 createCopyFileTool -> platform-ai | BuiltInRegistry
 createCreateMcpAgentScriptTool -> platform-ai | BuiltInRegistry

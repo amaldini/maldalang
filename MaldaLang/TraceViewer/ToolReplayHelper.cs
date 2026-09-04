@@ -143,6 +143,9 @@ internal static class ToolReplayHelper
             case "get_parse_errors":
                 toolValue = BuiltInTools.CreateGetParseErrorsTool(workingDirectory);
                 break;
+            case "check_malda":
+                toolValue = BuiltInTools.CreateCheckMaldaTool(workingDirectory);
+                break;
             case "create_mcp_agent_script":
                 toolValue = BuiltInTools.CreateCreateMcpAgentScriptTool(workingDirectory);
                 break;

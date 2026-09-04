@@ -29,7 +29,7 @@ public class BuiltInRegistryInventoryTests
     public void CoreBuiltinInventory_HasExpectedScale()
     {
         var inventory = BuiltInRegistryInventoryLoader.LoadSymbolsFromCoreInventory();
-        Assert.InRange(inventory.Count, 280, 350);
+        Assert.InRange(inventory.Count, 280, 380);
     }
 
     [Fact]

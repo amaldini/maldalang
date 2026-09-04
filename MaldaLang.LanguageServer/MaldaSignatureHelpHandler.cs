@@ -204,6 +204,8 @@ public class MaldaSignatureHelpHandler : ISignatureHelpHandler
             "getSymbols" => new List<string> { "sourceOrFilePath" },
             "getParseErrors" => new List<string> { "sourceOrFilePath" },
             "createGetParseErrorsTool" => new List<string> { "workingDirectory?" },
+            "checkMalda" => new List<string> { "sourceOrFilePath", "typeMode?", "workingDir?" },
+            "createCheckMaldaTool" => new List<string> { "workingDirectory?" },
             "createDeleteFileTool" => new List<string> { "workingDirectory?" },
             "createCopyFileTool" => new List<string> { "workingDirectory?" },
             "createEnsureDirTool" => new List<string> { "workingDirectory?" },

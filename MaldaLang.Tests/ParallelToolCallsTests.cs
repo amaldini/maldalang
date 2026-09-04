@@ -17,6 +17,7 @@ public class ParallelToolCallsTests
     [InlineData("list_directory", true)]
     [InlineData("get_symbols", true)]
     [InlineData("get_parse_errors", true)]
+    [InlineData("check_malda", true)]
     [InlineData("web_search", true)]
     [InlineData("git_status", true)]
     [InlineData("write_file", false)]

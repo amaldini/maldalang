@@ -181,6 +181,7 @@ public static class BuiltInRegistry
             "createDeleteFileTool" or
             "createCopyFileTool" or
             "createEnsureDirTool" or
+            "createCheckMaldaTool" or
             "createAskUserTool" or
             "createGrepTool" or
             "createGlobTool" or
@@ -229,6 +230,7 @@ public static class BuiltInRegistry
             "createGetSymbolsTool" or
             "getParseErrors" or
             "createGetParseErrorsTool" or
+            "checkMalda" or
             "createMcpAgentScript" or
             "createCreateMcpAgentScriptTool" or
             "createSubmitPlanTool" or

@@ -1073,6 +1073,8 @@ public static class BuiltInFunctions
             "createGetSymbolsTool" => BuiltInCreateGetSymbolsTool(args),
             "getParseErrors" => BuiltInGetParseErrors(args),
             "createGetParseErrorsTool" => BuiltInCreateGetParseErrorsTool(args),
+            "checkMalda" => BuiltInCheckMalda(args),
+            "createCheckMaldaTool" => BuiltInCreateCheckMaldaTool(args),
             "gitStatus" => BuiltInGitStatus(args),
             "gitAdd" => BuiltInGitAdd(args),
             "gitCommit" => BuiltInGitCommit(args),
@@ -1462,6 +1464,8 @@ public static class BuiltInFunctions
             "createGetSymbolsTool" => BuiltInCreateGetSymbolsTool(args),
             "getParseErrors" => BuiltInGetParseErrors(args),
             "createGetParseErrorsTool" => BuiltInCreateGetParseErrorsTool(args),
+            "checkMalda" => BuiltInCheckMalda(args),
+            "createCheckMaldaTool" => BuiltInCreateCheckMaldaTool(args),
             "gitStatus" => BuiltInGitStatus(args),
             "gitAdd" => BuiltInGitAdd(args),
             "gitCommit" => BuiltInGitCommit(args),
@@ -8651,6 +8655,171 @@ public static class BuiltInFunctions
             ? args[0].AsString() 
             : "";
         return BuiltInTools.CreateGetParseErrorsTool(workingDir);
+    }
+
+    /// <summary>
+    /// Diagnose MALDA source or a file with the same LanguageService path as
+    /// <c>malda check --json</c>. Used by the <c>checkMalda</c> built-in and the
+    /// <c>check_malda</c> agent tool.
+    /// </summary>
+    public static RuntimeValue CheckMaldaSource(string sourceOrFilePath, string? typeMode = null, string? workingDirectory = null)
+    {
+        if (string.IsNullOrWhiteSpace(sourceOrFilePath))
+            return CheckMaldaUsageError("sourceOrFilePath cannot be empty");
+
+        if (!TryParseCheckMaldaTypeMode(typeMode, out var typeOptions, out var typeModeError))
+            return CheckMaldaUsageError(typeModeError!);
+
+        string source = sourceOrFilePath;
+        string? fileLabel = "<eval>";
+
+        if (LooksLikeCheckMaldaFilePath(sourceOrFilePath))
+        {
+            if (sourceOrFilePath.Contains("..", StringComparison.Ordinal) ||
+                sourceOrFilePath.Contains('~'))
+            {
+                return CheckMaldaUsageError("Error: Path contains suspicious characters (path traversal attempt)");
+            }
+
+            string resolvedPath;
+            try
+            {
+                if (!string.IsNullOrEmpty(workingDirectory))
+                {
+                    var probe = new ToolInstance { WorkingDirectory = workingDirectory };
+                    var normalized = probe.NormalizePathForWorkingDirectory(sourceOrFilePath);
+                    if (normalized == null)
+                    {
+                        return CheckMaldaUsageError(
+                            $"Error: Path '{sourceOrFilePath}' is outside the allowed working directory '{workingDirectory}'");
+                    }
+
+                    resolvedPath = probe.ResolvePathAgainstWorkingDirectory(normalized) ?? normalized;
+                }
+                else
+                {
+                    resolvedPath = Path.IsPathRooted(sourceOrFilePath)
+                        ? Path.GetFullPath(sourceOrFilePath)
+                        : Path.GetFullPath(Path.Combine(System.Environment.CurrentDirectory, sourceOrFilePath));
+                }
+            }
+            catch (Exception ex)
+            {
+                return CheckMaldaUsageError($"Error resolving path: {ex.Message}");
+            }
+
+            try
+            {
+                if (!File.Exists(resolvedPath))
+                    return CheckMaldaUsageError($"File not found: {resolvedPath}");
+
+                source = File.ReadAllText(resolvedPath);
+                fileLabel = resolvedPath;
+            }
+            catch (Exception ex) when (ex is not FileNotFoundException)
+            {
+                return CheckMaldaUsageError($"Error reading file: {ex.Message}");
+            }
+        }
+
+        var runner = new CheckCommandRunner();
+        var report = runner.Analyze(source, fileLabel, typeOptions);
+        return CheckReportToRuntimeValue(report);
+    }
+
+    private static RuntimeValue BuiltInCheckMalda(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("checkMalda", args, 1, 3, "sourceOrFilePath, typeMode?, workingDir?");
+        if (args[0].Type != ValueType.String)
+            throw new Exception("checkMalda() sourceOrFilePath must be a string");
+
+        var sourceOrFilePath = args[0].AsString();
+        var typeMode = args.Count > 1 && args[1].Type == ValueType.String ? args[1].AsString() : null;
+        var workingDir = args.Count > 2 && args[2].Type == ValueType.String ? args[2].AsString() : null;
+        return CheckMaldaSource(sourceOrFilePath, typeMode, workingDir);
+    }
+
+    private static RuntimeValue BuiltInCreateCheckMaldaTool(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("createCheckMaldaTool", args, 0, 1, "workingDir?");
+        var workingDir = args.Count > 0 && args[0].Type == MaldaLang.Interpreter.ValueType.String
+            ? args[0].AsString()
+            : "";
+        return BuiltInTools.CreateCheckMaldaTool(workingDir);
+    }
+
+    private static bool LooksLikeCheckMaldaFilePath(string sourceOrFilePath)
+    {
+        return sourceOrFilePath.Contains(Path.DirectorySeparatorChar) ||
+               sourceOrFilePath.Contains(Path.AltDirectorySeparatorChar) ||
+               sourceOrFilePath.EndsWith(".malda", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool TryParseCheckMaldaTypeMode(string? typeMode, out StrictTypesOptions typeOptions, out string? error)
+    {
+        error = null;
+        var mode = string.IsNullOrWhiteSpace(typeMode) ? "default" : typeMode.Trim();
+        if (mode.Equals("default", StringComparison.OrdinalIgnoreCase))
+        {
+            typeOptions = StrictTypesOptions.Default;
+            return true;
+        }
+
+        if (mode.Equals("strict", StringComparison.OrdinalIgnoreCase))
+        {
+            typeOptions = StrictTypesOptions.Enabled;
+            return true;
+        }
+
+        if (mode.Equals("lenient", StringComparison.OrdinalIgnoreCase))
+        {
+            typeOptions = StrictTypesOptions.Lenient;
+            return true;
+        }
+
+        typeOptions = StrictTypesOptions.Default;
+        error = "typeMode must be 'default', 'strict', or 'lenient'";
+        return false;
+    }
+
+    private static RuntimeValue CheckMaldaUsageError(string message)
+    {
+        return CheckReportToRuntimeValue(CheckCommandReport.Usage(message));
+    }
+
+    private static RuntimeValue CheckReportToRuntimeValue(CheckCommandReport report)
+    {
+        var obj = new JsonObject();
+        obj.Set("ok", RuntimeValue.Boolean(report.Ok));
+        obj.Set("executed", RuntimeValue.Boolean(false));
+        obj.Set("file", report.File != null ? RuntimeValue.String(report.File) : RuntimeValue.Null());
+        obj.Set("errorCount", RuntimeValue.Integer(report.ErrorCount));
+        obj.Set("warningCount", RuntimeValue.Integer(report.WarningCount));
+        obj.Set("infoCount", RuntimeValue.Integer(report.InfoCount));
+        if (!string.IsNullOrEmpty(report.Error))
+            obj.Set("error", RuntimeValue.String(report.Error));
+
+        var diagnostics = new List<RuntimeValue>(report.Diagnostics.Count);
+        foreach (var diagnostic in report.Diagnostics)
+        {
+            var item = new JsonObject();
+            item.Set("severity", RuntimeValue.String(diagnostic.Severity));
+            item.Set("code", RuntimeValue.String(diagnostic.Code));
+            item.Set("message", RuntimeValue.String(diagnostic.Message));
+            if (diagnostic.File != null)
+                item.Set("file", RuntimeValue.String(diagnostic.File));
+            item.Set("line", RuntimeValue.Integer(diagnostic.Line));
+            item.Set("column", RuntimeValue.Integer(diagnostic.Column));
+            item.Set("length", RuntimeValue.Integer(diagnostic.Length));
+            if (!string.IsNullOrEmpty(diagnostic.Hint))
+                item.Set("hint", RuntimeValue.String(diagnostic.Hint));
+            if (!string.IsNullOrEmpty(diagnostic.SuggestedFix))
+                item.Set("suggestedFix", RuntimeValue.String(diagnostic.SuggestedFix));
+            diagnostics.Add(RuntimeValue.Object(item));
+        }
+
+        obj.Set("diagnostics", RuntimeValue.Array(diagnostics));
+        return RuntimeValue.Object(obj);
     }
     
     private static RuntimeValue BuiltInCreateMcpAgentScript(List<RuntimeValue> args)

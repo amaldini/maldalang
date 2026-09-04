@@ -460,6 +460,18 @@ print(""gone="" + string(!hasFile(workDir + ""/src.txt"")));
     }
 
     [Fact]
+    public void CreateCheckMaldaTool_Execute_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            @"
+var tool = createCheckMaldaTool();
+var result = tool.execute({ ""sourceOrFilePath"": ""var x = 1;"" });
+print(""ok="" + string(result.ok));
+",
+            "createCheckMaldaTool-execute");
+    }
+
+    [Fact]
     public void CreateFileTools_Execute_SameStdout()
     {
         var tempDir = Path.Combine(Path.GetTempPath(), "malda_pair_tools_" + Guid.NewGuid().ToString("N"));

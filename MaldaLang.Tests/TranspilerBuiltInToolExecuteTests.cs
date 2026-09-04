@@ -148,6 +148,7 @@ print(readTool.execute({{ ""filePath"": ""sample.txt"" }}));
             BuiltInTools.CreateCompileMALDATool(),
             BuiltInTools.CreateGetSymbolsTool(),
             BuiltInTools.CreateGetParseErrorsTool(),
+            BuiltInTools.CreateCheckMaldaTool(),
             BuiltInTools.CreateSubmitPlanTool(),
             BuiltInTools.CreateCreateMcpAgentScriptTool(),
         ];

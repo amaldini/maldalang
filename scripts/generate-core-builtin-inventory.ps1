@@ -16,7 +16,7 @@ function Get-Tier([string]$name) {
     if ($name -match '^embed') { return 'platform-embed' }
     if ($name -match 'Workflow|workflow') { return 'platform-workflow' }
     if ($name -match '^(http|webSearch|redirect|RedirectTo)') { return 'platform-web' }
-    if ($name -match '^(getSkill|loadSkill|setDefaultAgent|enableAgent|setAgent|reportRalph|create.*Tool|executePlan|decomposeTask|runMALDA|compileMALDA|getSymbols|getParseErrors|createMcp)') { return 'platform-ai' }
+    if ($name -match '^(getSkill|loadSkill|setDefaultAgent|enableAgent|setAgent|reportRalph|create.*Tool|executePlan|decomposeTask|runMALDA|compileMALDA|getSymbols|getParseErrors|checkMalda|createMcp)') { return 'platform-ai' }
     if ($name -match '^(loadNativeModule|createNativeCallback|loadAssembly|getDotNetType|dotnetNew)') { return 'core-interop' }
     if ($name -match '^(readFile|writeFile|hasFile|deleteFile|listDirectory|glob|grep|git|getEnv|path)') { return 'stdlib-io' }
     if ($name -match '^(int|float|string|abs|sum|average|max|min|pow|sqrt|sin|cos|tan|floor|ceil|round|clamp|random|typeOf|isNumber|parseJSON)') { return 'tier1-core' }

@@ -92,6 +92,7 @@ public partial class ConversationInstance : ObjectInstance
         "list_directory",
         "get_symbols",
         "get_parse_errors",
+        "check_malda",
         "web_search",
         "git_status",
         "git_log",
@@ -108,6 +109,7 @@ public partial class ConversationInstance : ObjectInstance
         "list_directory",
         "get_symbols",
         "get_parse_errors",
+        "check_malda",
         "web_search",
         "git_status",
         "git_log",
@@ -172,6 +174,7 @@ public partial class ConversationInstance : ObjectInstance
         "compile_malda",
         "get_symbols",
         "get_parse_errors",
+        "check_malda",
         "submit_plan",
         "create_mcp_agent_script",
     };
@@ -3724,6 +3727,29 @@ public partial class ConversationInstance : ObjectInstance
                     catch (Exception ex)
                     {
                         return RuntimeValue.String($"Error executing get_parse_errors tool: {ex.Message}");
+                    }
+
+                case "check_malda":
+                    try
+                    {
+                        var checkSourceVal = argsObj.Get("sourceOrFilePath", null);
+                        if (checkSourceVal == null || checkSourceVal.Type != ValueType.String)
+                            return RuntimeValue.String("Error: sourceOrFilePath parameter required");
+
+                        var checkSource = checkSourceVal.AsString();
+                        if (string.IsNullOrWhiteSpace(checkSource))
+                            return RuntimeValue.String("Error: sourceOrFilePath cannot be empty");
+
+                        string? typeMode = null;
+                        var typeModeVal = argsObj.Get("typeMode", null);
+                        if (typeModeVal != null && typeModeVal.Type == ValueType.String)
+                            typeMode = typeModeVal.AsString();
+
+                        return BuiltInFunctions.CheckMaldaSource(checkSource, typeMode, tool.WorkingDirectory);
+                    }
+                    catch (Exception ex)
+                    {
+                        return RuntimeValue.String($"Error executing check_malda tool: {ex.Message}");
                     }
                 
                 case "create_mcp_agent_script":

@@ -1158,6 +1158,44 @@ public static class BuiltInTools
         
         return RuntimeValue.Object(tool);
     }
+
+    public static RuntimeValue CreateCheckMaldaTool(string workingDirectory = "")
+    {
+        var tool = new ToolInstance();
+        var parameters = new JsonObject();
+
+        var properties = new JsonObject();
+
+        var sourceOrFilePathProp = new JsonObject();
+        sourceOrFilePathProp.Set("type", RuntimeValue.String("string"));
+        sourceOrFilePathProp.Set("description", RuntimeValue.String("Path to a .malda file (relative to the working directory) or MALDA source code. If the string contains path separators or ends with .malda, the file is read and diagnosed. Otherwise it is treated as inline source (file label \"<eval>\")."));
+        properties.Set("sourceOrFilePath", RuntimeValue.Object(sourceOrFilePathProp));
+
+        var typeModeProp = new JsonObject();
+        typeModeProp.Set("type", RuntimeValue.String("string"));
+        typeModeProp.Set("description", RuntimeValue.String("Optional type-checking mode. 'default' matches the IDE (type mismatches are errors). 'strict' enables the full CLI suite. 'lenient' reports type mismatches as warnings."));
+        typeModeProp.Set("enum", RuntimeValue.Array(new List<RuntimeValue>
+        {
+            RuntimeValue.String("default"),
+            RuntimeValue.String("strict"),
+            RuntimeValue.String("lenient")
+        }));
+        properties.Set("typeMode", RuntimeValue.Object(typeModeProp));
+
+        parameters.Set("type", RuntimeValue.String("object"));
+        parameters.Set("properties", RuntimeValue.Object(properties));
+        parameters.Set("required", RuntimeValue.Array(new List<RuntimeValue> { RuntimeValue.String("sourceOrFilePath") }));
+
+        tool.Initialize(
+            "check_malda",
+            "Diagnose MALDA code with the same LanguageService diagnostics as 'malda check --json' (parse, types, schema, interpolation). Accepts a file path or inline source. Does not execute the program. Returns { ok, executed, file, errorCount, warningCount, infoCount, error?, diagnostics }.",
+            RuntimeValue.Object(parameters),
+            null,
+            workingDirectory
+        );
+
+        return RuntimeValue.Object(tool);
+    }
     
     public static RuntimeValue CreateSubmitPlanTool()
     {
