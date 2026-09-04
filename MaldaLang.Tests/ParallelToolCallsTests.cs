@@ -18,6 +18,8 @@ public class ParallelToolCallsTests
     [InlineData("get_symbols", true)]
     [InlineData("get_parse_errors", true)]
     [InlineData("check_malda", true)]
+    [InlineData("validate_json", true)]
+    [InlineData("test_malda", false)]
     [InlineData("web_search", true)]
     [InlineData("web_fetch", true)]
     [InlineData("git_status", true)]

@@ -146,6 +146,12 @@ internal static class ToolReplayHelper
             case "check_malda":
                 toolValue = BuiltInTools.CreateCheckMaldaTool(workingDirectory);
                 break;
+            case "validate_json":
+                toolValue = BuiltInTools.CreateValidateJsonTool();
+                break;
+            case "test_malda":
+                toolValue = BuiltInTools.CreateTestMaldaTool(workingDirectory);
+                break;
             case "create_mcp_agent_script":
                 toolValue = BuiltInTools.CreateCreateMcpAgentScriptTool(workingDirectory);
                 break;

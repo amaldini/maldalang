@@ -239,6 +239,7 @@ public class DevAgentInstance : AgentInstance
             Register((ToolInstance)BuiltInTools.CreateListDirectoryTool(workingDirectory).AsObject());
             Register((ToolInstance)BuiltInTools.CreateAskUserTool().AsObject());
             Register((ToolInstance)BuiltInTools.CreateCheckMaldaTool(workingDirectory).AsObject());
+            Register((ToolInstance)BuiltInTools.CreateValidateJsonTool().AsObject());
             if (includeSymbols)
             {
                 Register((ToolInstance)BuiltInTools.CreateGetSymbolsTool(workingDirectory).AsObject());
@@ -290,8 +291,11 @@ public class DevAgentInstance : AgentInstance
             Register((ToolInstance)BuiltInTools.CreateMarkStepTool().AsObject());
         }
         
-        // 6. Code analysis (read-only). check_malda is always registered for the diagnose loop.
+        // 6. Code analysis (read-only). check_malda and validate_json are always registered.
         Register((ToolInstance)BuiltInTools.CreateCheckMaldaTool(workingDirectory).AsObject());
+        Register((ToolInstance)BuiltInTools.CreateValidateJsonTool().AsObject());
+        if (!readOnly)
+            Register((ToolInstance)BuiltInTools.CreateTestMaldaTool(workingDirectory).AsObject());
         if (includeSymbols)
         {
             Register((ToolInstance)BuiltInTools.CreateGetSymbolsTool(workingDirectory).AsObject());

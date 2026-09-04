@@ -76,7 +76,9 @@ createRunCommandTool	createRunCommandTool	0-1 arguments: (workingDir?)
 createRunMALDATool	createRunMALDATool	0-1 arguments: (workingDir?)		
 createSecureCookie	createSecureCookie	(string, string, string, object?)		
 createSubmitPlanTool	createSubmitPlanTool	0 arguments		
+createTestMaldaTool	createTestMaldaTool	0-1 arguments: (workingDir?)		
 createUpdatePlanTool	createUpdatePlanTool	0 arguments		
+createValidateJsonTool	createValidateJsonTool	0 arguments		
 createWebFetchTool	createWebFetchTool	0 arguments		
 createWebSearchTool	createWebSearchTool	0 arguments		
 createWriteFileTool	createWriteFileTool	0-1 arguments: (workingDir?)		

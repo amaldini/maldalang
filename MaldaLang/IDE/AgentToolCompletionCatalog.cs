@@ -56,6 +56,7 @@ internal static class AgentToolCompletionCatalog
         "createEnsureDirTool", "createAskUserTool", "createWebSearchTool", "createWebFetchTool",
         "createGrepTool", "createGlobTool", "createInsertAtLineTool", "createEditFileTool",
         "createGetSymbolsTool", "createGetParseErrorsTool", "createCheckMaldaTool",
+        "createValidateJsonTool", "createTestMaldaTool",
         "createGitStatusTool", "createGitAddTool", "createGitCommitTool", "createGitLogTool",
         "createGitDiffTool", "createGitBranchTool", "createGitCheckoutTool",
         "createGitPushTool", "createGitPullTool",

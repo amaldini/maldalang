@@ -10865,6 +10865,8 @@ public class CSharpTranspiler
             case "createGetParseErrorsTool":
             case "checkMalda":
             case "createCheckMaldaTool":
+            case "createValidateJsonTool":
+            case "createTestMaldaTool":
             case "createMcpAgentScript":
             case "createCreateMcpAgentScriptTool":
             case "createSubmitPlanTool":

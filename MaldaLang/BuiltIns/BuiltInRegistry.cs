@@ -182,6 +182,7 @@ public static class BuiltInRegistry
             "createCopyFileTool" or
             "createEnsureDirTool" or
             "createCheckMaldaTool" or
+            "createValidateJsonTool" or
             "createAskUserTool" or
             "createGrepTool" or
             "createGlobTool" or
@@ -226,6 +227,7 @@ public static class BuiltInRegistry
             "generateUI" or
             "runMALDA" or
             "createRunMALDATool" or
+            "createTestMaldaTool" or
             "compileMALDA" or
             "createCompileMALDATool" or
             "getSymbols" or

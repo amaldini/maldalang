@@ -93,6 +93,7 @@ public partial class ConversationInstance : ObjectInstance
         "get_symbols",
         "get_parse_errors",
         "check_malda",
+        "validate_json",
         "web_search",
         "web_fetch",
         "git_status",
@@ -111,6 +112,7 @@ public partial class ConversationInstance : ObjectInstance
         "get_symbols",
         "get_parse_errors",
         "check_malda",
+        "validate_json",
         "web_search",
         "web_fetch",
         "git_status",
@@ -132,6 +134,7 @@ public partial class ConversationInstance : ObjectInstance
         "ensure_dir",
         "update_plan",
         "mark_step",
+        "test_malda",
     };
 
     private static readonly Dictionary<string, string> ToolNameAliases = new(StringComparer.OrdinalIgnoreCase)
@@ -180,6 +183,8 @@ public partial class ConversationInstance : ObjectInstance
         "get_symbols",
         "get_parse_errors",
         "check_malda",
+        "validate_json",
+        "test_malda",
         "submit_plan",
         "update_plan",
         "mark_step",
@@ -3767,6 +3772,101 @@ public partial class ConversationInstance : ObjectInstance
                     catch (Exception ex)
                     {
                         return RuntimeValue.String($"Error executing check_malda tool: {ex.Message}");
+                    }
+
+                case "validate_json":
+                    try
+                    {
+                        var hasSchema = false;
+                        var hasValue = false;
+                        RuntimeValue? schemaVal = null;
+                        RuntimeValue? valueVal = null;
+                        if (argsObj is JsonObject jsonArgs)
+                        {
+                            var props = jsonArgs.GetProperties();
+                            hasSchema = props.ContainsKey("schema");
+                            hasValue = props.ContainsKey("value");
+                            if (hasSchema)
+                                schemaVal = jsonArgs.Get("schema", null);
+                            if (hasValue)
+                                valueVal = jsonArgs.Get("value", null);
+                        }
+                        else
+                        {
+                            schemaVal = argsObj.Get("schema", null);
+                            valueVal = argsObj.Get("value", null);
+                            hasSchema = schemaVal != null && schemaVal.Type != ValueType.Null;
+                            hasValue = valueVal != null;
+                        }
+
+                        if (!hasSchema || schemaVal == null || schemaVal.Type == ValueType.Null)
+                        {
+                            var missingSchema = new JsonObject();
+                            missingSchema.Set("ok", RuntimeValue.Boolean(false));
+                            missingSchema.Set("error", RuntimeValue.String("schema parameter required"));
+                            return RuntimeValue.Object(missingSchema);
+                        }
+
+                        if (!hasValue || valueVal == null)
+                        {
+                            var missingValue = new JsonObject();
+                            missingValue.Set("ok", RuntimeValue.Boolean(false));
+                            missingValue.Set("error", RuntimeValue.String("value parameter required"));
+                            return RuntimeValue.Object(missingValue);
+                        }
+
+                        return BuiltInFunctions.CallBuiltIn(
+                            "validate",
+                            new List<RuntimeValue> { schemaVal, valueVal },
+                            null);
+                    }
+                    catch (Exception ex)
+                    {
+                        var validateErr = new JsonObject();
+                        validateErr.Set("ok", RuntimeValue.Boolean(false));
+                        validateErr.Set("error", RuntimeValue.String(ex.Message));
+                        return RuntimeValue.Object(validateErr);
+                    }
+
+                case "test_malda":
+                    try
+                    {
+                        var testPathVal = argsObj.Get("path", null);
+                        var testPath = testPathVal != null && testPathVal.Type == ValueType.String
+                            && !string.IsNullOrWhiteSpace(testPathVal.AsString())
+                            ? testPathVal.AsString()
+                            : ".";
+
+                        if (!string.IsNullOrEmpty(tool.WorkingDirectory))
+                        {
+                            var normalizedTestPath = tool.NormalizePathForWorkingDirectory(testPath);
+                            if (normalizedTestPath == null)
+                            {
+                                return RuntimeValue.String($"Error: Path '{testPath}' is outside the allowed working directory '{tool.WorkingDirectory}'. Use a relative path.");
+                            }
+
+                            testPath = tool.ResolvePathAgainstWorkingDirectory(normalizedTestPath) ?? normalizedTestPath;
+                        }
+                        else if (!tool.IsPathAllowed(testPath))
+                        {
+                            return RuntimeValue.String($"Error: Path '{testPath}' is outside the allowed working directory '{tool.WorkingDirectory}'");
+                        }
+
+                        string? testFilter = null;
+                        var testFilterVal = argsObj.Get("filter", null);
+                        if (testFilterVal != null && testFilterVal.Type == ValueType.String)
+                            testFilter = testFilterVal.AsString();
+
+                        var listOnly = false;
+                        var listOnlyVal = argsObj.Get("listOnly", null);
+                        if (listOnlyVal != null && listOnlyVal.Type == ValueType.Boolean)
+                            listOnly = listOnlyVal.AsBoolean();
+
+                        return BuiltInFunctions.RunTestMalda(testPath, testFilter, listOnly);
+                    }
+                    catch (Exception ex)
+                    {
+                        return RuntimeValue.String($"Error executing test_malda tool: {ex.Message}");
                     }
                 
                 case "create_mcp_agent_script":

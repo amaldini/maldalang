@@ -150,6 +150,8 @@ print(readTool.execute({{ ""filePath"": ""sample.txt"" }}));
             BuiltInTools.CreateGetSymbolsTool(),
             BuiltInTools.CreateGetParseErrorsTool(),
             BuiltInTools.CreateCheckMaldaTool(),
+            BuiltInTools.CreateValidateJsonTool(),
+            BuiltInTools.CreateTestMaldaTool(),
             BuiltInTools.CreateSubmitPlanTool(),
             BuiltInTools.CreateUpdatePlanTool(),
             BuiltInTools.CreateMarkStepTool(),

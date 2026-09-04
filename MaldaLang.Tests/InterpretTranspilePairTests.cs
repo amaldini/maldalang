@@ -472,6 +472,19 @@ print(""ok="" + string(result.ok));
     }
 
     [Fact]
+    public void CreateValidateJsonTool_Execute_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            @"
+schema User { name: string; }
+var tool = createValidateJsonTool();
+var result = tool.execute({ ""schema"": ""User"", ""value"": dict { ""name"": ""Ada"" } });
+print(""ok="" + string(result.ok));
+",
+            "createValidateJsonTool-execute");
+    }
+
+    [Fact]
     public void SubmitMarkUpdatePlan_Execute_SameStdout()
     {
         InterpretTranspilePair.AssertSameFromSource(

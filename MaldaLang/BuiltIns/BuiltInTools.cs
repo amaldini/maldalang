@@ -1242,6 +1242,75 @@ public static class BuiltInTools
 
         return RuntimeValue.Object(tool);
     }
+
+    public static RuntimeValue CreateValidateJsonTool()
+    {
+        var tool = new ToolInstance();
+        var parameters = new JsonObject();
+        var properties = new JsonObject();
+
+        var schemaProp = new JsonObject();
+        schemaProp.Set("description", RuntimeValue.String("Registered schema or sum-type name (string), or an inline schema object. Same as validate(schema, value)."));
+        properties.Set("schema", RuntimeValue.Object(schemaProp));
+
+        var valueProp = new JsonObject();
+        valueProp.Set("description", RuntimeValue.String("Value to check against the schema. Any JSON-shaped value is accepted."));
+        properties.Set("value", RuntimeValue.Object(valueProp));
+
+        parameters.Set("type", RuntimeValue.String("object"));
+        parameters.Set("properties", RuntimeValue.Object(properties));
+        parameters.Set("required", RuntimeValue.Array(new List<RuntimeValue>
+        {
+            RuntimeValue.String("schema"),
+            RuntimeValue.String("value")
+        }));
+
+        tool.Initialize(
+            "validate_json",
+            "Validate a value against a registered schema or sum-type name, or an inline schema object. Same result as validate(schema, value): { ok, data } or { ok: false, error }. Parallel-safe; does not write files.",
+            RuntimeValue.Object(parameters),
+            null,
+            ""
+        );
+
+        return RuntimeValue.Object(tool);
+    }
+
+    public static RuntimeValue CreateTestMaldaTool(string workingDirectory = "")
+    {
+        var tool = new ToolInstance();
+        var parameters = new JsonObject();
+        var properties = new JsonObject();
+
+        var pathProp = new JsonObject();
+        pathProp.Set("type", RuntimeValue.String("string"));
+        pathProp.Set("description", RuntimeValue.String("File or directory to run (*.test.malda / *.spec.malda). Defaults to '.' relative to the working directory. Must stay inside the working directory."));
+        properties.Set("path", RuntimeValue.Object(pathProp));
+
+        var filterProp = new JsonObject();
+        filterProp.Set("type", RuntimeValue.String("string"));
+        filterProp.Set("description", RuntimeValue.String("Optional substring filter passed as --filter to malda test."));
+        properties.Set("filter", RuntimeValue.Object(filterProp));
+
+        var listOnlyProp = new JsonObject();
+        listOnlyProp.Set("type", RuntimeValue.String("boolean"));
+        listOnlyProp.Set("description", RuntimeValue.String("If true, list discovered tests without running them (--list)."));
+        properties.Set("listOnly", RuntimeValue.Object(listOnlyProp));
+
+        parameters.Set("type", RuntimeValue.String("object"));
+        parameters.Set("properties", RuntimeValue.Object(properties));
+        parameters.Set("required", RuntimeValue.Array(new List<RuntimeValue>()));
+
+        tool.Initialize(
+            "test_malda",
+            "Run MALDA tests via the same host path as 'malda test' (TestCommandRunner). Parameters: path? (file or directory, default '.'), filter?, listOnly?. Returns { success, exitCode, output, report? }. Not parallel-safe.",
+            RuntimeValue.Object(parameters),
+            null,
+            workingDirectory
+        );
+
+        return RuntimeValue.Object(tool);
+    }
     
     public static RuntimeValue CreateSubmitPlanTool()
     {

@@ -18,6 +18,7 @@ public class TranspilerRemainingBuiltInTests
         "createReadFileTool", "createWriteFileTool", "createReplaceInFileTool",
         "createListDirectoryTool", "createDeleteFileTool", "createCopyFileTool", "createEnsureDirTool",
         "createCheckMaldaTool",
+        "createValidateJsonTool", "createTestMaldaTool",
         "createUpdatePlanTool", "createMarkStepTool",
         "createWebFetchTool",
         "createAskUserTool", "createGrepTool", "createGlobTool",
@@ -32,7 +33,7 @@ public class TranspilerRemainingBuiltInTests
     [Fact]
     public void FormerInterpreterOnlyBuiltIns_AreAllTranspilerSupported()
     {
-        Assert.Equal(41, FormerInterpreterOnly.Length);
+        Assert.Equal(43, FormerInterpreterOnly.Length);
         foreach (var name in FormerInterpreterOnly)
         {
             var descriptor = Assert.IsType<BuiltInDescriptor>(BuiltInRegistry.GetDescriptor(name));

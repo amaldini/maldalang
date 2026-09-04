@@ -206,6 +206,8 @@ public class MaldaSignatureHelpHandler : ISignatureHelpHandler
             "createGetParseErrorsTool" => new List<string> { "workingDirectory?" },
             "checkMalda" => new List<string> { "sourceOrFilePath", "typeMode?", "workingDir?" },
             "createCheckMaldaTool" => new List<string> { "workingDirectory?" },
+            "createValidateJsonTool" => new List<string>(),
+            "createTestMaldaTool" => new List<string> { "workingDirectory?" },
             "createWebFetchTool" => new List<string>(),
             "webFetch" => new List<string> { "url", "maxBytes?", "timeoutMs?" },
             "createDeleteFileTool" => new List<string> { "workingDirectory?" },

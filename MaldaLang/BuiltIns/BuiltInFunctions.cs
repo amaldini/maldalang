@@ -27,6 +27,7 @@ using MaldaLang.Runtime.Tracing;
 using MaldaLang.Runtime.Jobs;
 using MaldaLang.Runtime.Workflows;
 using MaldaLang.IDE;
+using MaldaLang.Testing;
 using ValueType = MaldaLang.Interpreter.ValueType;
 using Spectre.Console;
 using Spectre.Console.Rendering;
@@ -1077,6 +1078,8 @@ public static class BuiltInFunctions
             "createGetParseErrorsTool" => BuiltInCreateGetParseErrorsTool(args),
             "checkMalda" => BuiltInCheckMalda(args),
             "createCheckMaldaTool" => BuiltInCreateCheckMaldaTool(args),
+            "createValidateJsonTool" => BuiltInCreateValidateJsonTool(args),
+            "createTestMaldaTool" => BuiltInCreateTestMaldaTool(args),
             "gitStatus" => BuiltInGitStatus(args),
             "gitAdd" => BuiltInGitAdd(args),
             "gitCommit" => BuiltInGitCommit(args),
@@ -1472,6 +1475,8 @@ public static class BuiltInFunctions
             "createGetParseErrorsTool" => BuiltInCreateGetParseErrorsTool(args),
             "checkMalda" => BuiltInCheckMalda(args),
             "createCheckMaldaTool" => BuiltInCreateCheckMaldaTool(args),
+            "createValidateJsonTool" => BuiltInCreateValidateJsonTool(args),
+            "createTestMaldaTool" => BuiltInCreateTestMaldaTool(args),
             "gitStatus" => BuiltInGitStatus(args),
             "gitAdd" => BuiltInGitAdd(args),
             "gitCommit" => BuiltInGitCommit(args),
@@ -8945,6 +8950,60 @@ public static class BuiltInFunctions
             ? args[0].AsString()
             : "";
         return BuiltInTools.CreateCheckMaldaTool(workingDir);
+    }
+
+    private static RuntimeValue BuiltInCreateValidateJsonTool(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("createValidateJsonTool", args, 0, 0);
+        return BuiltInTools.CreateValidateJsonTool();
+    }
+
+    private static RuntimeValue BuiltInCreateTestMaldaTool(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("createTestMaldaTool", args, 0, 1, "workingDir?");
+        var workingDir = args.Count > 0 && args[0].Type == MaldaLang.Interpreter.ValueType.String
+            ? args[0].AsString()
+            : "";
+        return BuiltInTools.CreateTestMaldaTool(workingDir);
+    }
+
+    /// <summary>
+    /// Run <c>malda test</c> via <see cref="TestCommandRunner"/> and return
+    /// <c>{ success, exitCode, output, report? }</c>. Used by the <c>test_malda</c> agent tool.
+    /// </summary>
+    public static RuntimeValue RunTestMalda(string rootPath, string? filter = null, bool listOnly = false)
+    {
+        var runnerArgs = new List<string> { rootPath, "--format", "ci" };
+        if (!string.IsNullOrEmpty(filter))
+        {
+            runnerArgs.Add("--filter");
+            runnerArgs.Add(filter);
+        }
+
+        if (listOnly)
+            runnerArgs.Add("--list");
+
+        var captured = new StringWriter();
+        var runner = new TestCommandRunner();
+        var exitCode = runner.Run(runnerArgs.ToArray(), captured, captured);
+        var output = captured.ToString();
+
+        var result = new JsonObject();
+        result.Set("success", RuntimeValue.Boolean(exitCode == 0));
+        result.Set("exitCode", RuntimeValue.Integer(exitCode));
+        result.Set("output", RuntimeValue.String(output));
+
+        try
+        {
+            using var doc = JsonDocument.Parse(output);
+            result.Set("report", ToolSchemaResolver.FromJsonElement(doc.RootElement));
+        }
+        catch (JsonException)
+        {
+            // CI JSON is optional; always return success/exitCode/output.
+        }
+
+        return RuntimeValue.Object(result);
     }
 
     private static bool LooksLikeCheckMaldaFilePath(string sourceOrFilePath)
