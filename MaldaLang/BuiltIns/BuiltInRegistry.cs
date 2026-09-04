@@ -178,6 +178,11 @@ public static class BuiltInRegistry
             "createWriteFileTool" or
             "createReplaceInFileTool" or
             "createListDirectoryTool" or
+            "createDeleteFileTool" or
+            "createCopyFileTool" or
+            "createEnsureDirTool" or
+            "createCheckMaldaTool" or
+            "createValidateJsonTool" or
             "createAskUserTool" or
             "createGrepTool" or
             "createGlobTool" or
@@ -216,19 +221,25 @@ public static class BuiltInRegistry
             "runCommand" or
             "createRunCommandTool" or
             "createWebSearchTool" or
+            "createWebFetchTool" or
+            "webFetch" or
             "setDefaultAgent" or
             "generateUI" or
             "runMALDA" or
             "createRunMALDATool" or
+            "createTestMaldaTool" or
             "compileMALDA" or
             "createCompileMALDATool" or
             "getSymbols" or
             "createGetSymbolsTool" or
             "getParseErrors" or
             "createGetParseErrorsTool" or
+            "checkMalda" or
             "createMcpAgentScript" or
             "createCreateMcpAgentScriptTool" or
             "createSubmitPlanTool" or
+            "createUpdatePlanTool" or
+            "createMarkStepTool" or
             "executePlan" or
             "runProgram" or
             "decomposeTask" or

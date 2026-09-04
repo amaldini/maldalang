@@ -80,6 +80,15 @@ internal static class ToolReplayHelper
             case "list_directory":
                 toolValue = BuiltInTools.CreateListDirectoryTool(workingDirectory);
                 break;
+            case "delete_file":
+                toolValue = BuiltInTools.CreateDeleteFileTool(workingDirectory);
+                break;
+            case "copy_file":
+                toolValue = BuiltInTools.CreateCopyFileTool(workingDirectory);
+                break;
+            case "ensure_dir":
+                toolValue = BuiltInTools.CreateEnsureDirTool(workingDirectory);
+                break;
             case "grep":
                 toolValue = BuiltInTools.CreateGrepTool(workingDirectory);
                 break;
@@ -134,14 +143,32 @@ internal static class ToolReplayHelper
             case "get_parse_errors":
                 toolValue = BuiltInTools.CreateGetParseErrorsTool(workingDirectory);
                 break;
+            case "check_malda":
+                toolValue = BuiltInTools.CreateCheckMaldaTool(workingDirectory);
+                break;
+            case "validate_json":
+                toolValue = BuiltInTools.CreateValidateJsonTool();
+                break;
+            case "test_malda":
+                toolValue = BuiltInTools.CreateTestMaldaTool(workingDirectory);
+                break;
             case "create_mcp_agent_script":
                 toolValue = BuiltInTools.CreateCreateMcpAgentScriptTool(workingDirectory);
                 break;
             case "submit_plan":
                 toolValue = BuiltInTools.CreateSubmitPlanTool();
                 break;
+            case "update_plan":
+                toolValue = BuiltInTools.CreateUpdatePlanTool();
+                break;
+            case "mark_step":
+                toolValue = BuiltInTools.CreateMarkStepTool();
+                break;
             case "web_search":
                 toolValue = BuiltInTools.CreateWebSearchTool();
+                break;
+            case "web_fetch":
+                toolValue = BuiltInTools.CreateWebFetchTool();
                 break;
 
             // User interaction and others that are not safely restorable from trace

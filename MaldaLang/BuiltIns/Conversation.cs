@@ -92,7 +92,10 @@ public partial class ConversationInstance : ObjectInstance
         "list_directory",
         "get_symbols",
         "get_parse_errors",
+        "check_malda",
+        "validate_json",
         "web_search",
+        "web_fetch",
         "git_status",
         "git_log",
         "git_diff",
@@ -108,7 +111,10 @@ public partial class ConversationInstance : ObjectInstance
         "list_directory",
         "get_symbols",
         "get_parse_errors",
+        "check_malda",
+        "validate_json",
         "web_search",
+        "web_fetch",
         "git_status",
         "git_log",
         "git_diff",
@@ -123,6 +129,12 @@ public partial class ConversationInstance : ObjectInstance
         "edit_file",
         "insertAtLine",
         "insert_at_line",
+        "delete_file",
+        "copy_file",
+        "ensure_dir",
+        "update_plan",
+        "mark_step",
+        "test_malda",
     };
 
     private static readonly Dictionary<string, string> ToolNameAliases = new(StringComparer.OrdinalIgnoreCase)
@@ -146,6 +158,9 @@ public partial class ConversationInstance : ObjectInstance
         "replace_in_file",
         "edit_file",
         "list_directory",
+        "delete_file",
+        "copy_file",
+        "ensure_dir",
         "insertAtLine",
         "insert_at_line",
         "ask_user",
@@ -161,12 +176,18 @@ public partial class ConversationInstance : ObjectInstance
         "git_push",
         "git_pull",
         "web_search",
+        "web_fetch",
         "run_command",
         "run_malda",
         "compile_malda",
         "get_symbols",
         "get_parse_errors",
+        "check_malda",
+        "validate_json",
+        "test_malda",
         "submit_plan",
+        "update_plan",
+        "mark_step",
         "create_mcp_agent_script",
     };
 
@@ -2792,6 +2813,120 @@ public partial class ConversationInstance : ObjectInstance
                     if (resolvedDirPath == null)
                         return RuntimeValue.String("Error: dirPath parameter required");
                     return BuiltInFunctions.CallBuiltIn("listDirectory", new List<RuntimeValue> { RuntimeValue.String(resolvedDirPath) }, null);
+
+                case "delete_file":
+                    if (resolvedFilePath == null)
+                        return RuntimeValue.String("Error: filePath parameter required");
+                    try
+                    {
+                        var deleteResult = BuiltInFunctions.CallBuiltIn(
+                            "deleteFile",
+                            new List<RuntimeValue> { RuntimeValue.String(resolvedFilePath) },
+                            null);
+                        var deleteOk = deleteResult.Type == ValueType.Boolean && deleteResult.AsBoolean();
+                        var deleteObj = new JsonObject();
+                        deleteObj.Set("success", RuntimeValue.Boolean(deleteOk));
+                        if (!deleteOk)
+                            deleteObj.Set("error", RuntimeValue.String("deleteFile failed"));
+                        return RuntimeValue.Object(deleteObj);
+                    }
+                    catch (Exception ex)
+                    {
+                        var deleteErr = new JsonObject();
+                        deleteErr.Set("success", RuntimeValue.Boolean(false));
+                        deleteErr.Set("error", RuntimeValue.String(ex.Message));
+                        return RuntimeValue.Object(deleteErr);
+                    }
+
+                case "copy_file":
+                    try
+                    {
+                        var srcPathVal = argsObj.Get("srcPath", null);
+                        var destPathVal = argsObj.Get("destPath", null);
+                        if (srcPathVal == null || srcPathVal.Type != ValueType.String)
+                            return RuntimeValue.String("Error: srcPath parameter required");
+                        if (destPathVal == null || destPathVal.Type != ValueType.String)
+                            return RuntimeValue.String("Error: destPath parameter required");
+
+                        var srcPath = srcPathVal.AsString();
+                        var destPath = destPathVal.AsString();
+
+                        if (!string.IsNullOrEmpty(tool.WorkingDirectory))
+                        {
+                            var normalizedSrc = tool.NormalizePathForWorkingDirectory(srcPath);
+                            if (normalizedSrc == null)
+                            {
+                                return RuntimeValue.String($"Error: Path '{srcPath}' is outside the allowed working directory '{tool.WorkingDirectory}'. Use a relative path (e.g. \"PRD.md\", \"snake.html\").");
+                            }
+                            srcPath = normalizedSrc;
+
+                            var normalizedDest = tool.NormalizePathForWorkingDirectory(destPath);
+                            if (normalizedDest == null)
+                            {
+                                return RuntimeValue.String($"Error: Path '{destPath}' is outside the allowed working directory '{tool.WorkingDirectory}'. Use a relative path (e.g. \"PRD.md\", \"snake.html\").");
+                            }
+                            destPath = normalizedDest;
+                        }
+                        else if (!tool.IsPathAllowed(srcPath))
+                        {
+                            return RuntimeValue.String($"Error: Path '{srcPath}' is outside the allowed working directory '{tool.WorkingDirectory}'");
+                        }
+                        else if (!tool.IsPathAllowed(destPath))
+                        {
+                            return RuntimeValue.String($"Error: Path '{destPath}' is outside the allowed working directory '{tool.WorkingDirectory}'");
+                        }
+
+                        var resolvedSrcPath = !string.IsNullOrEmpty(tool.WorkingDirectory)
+                            ? tool.ResolvePathAgainstWorkingDirectory(srcPath) ?? srcPath
+                            : srcPath;
+                        var resolvedDestPath = !string.IsNullOrEmpty(tool.WorkingDirectory)
+                            ? tool.ResolvePathAgainstWorkingDirectory(destPath) ?? destPath
+                            : destPath;
+
+                        var copyResult = BuiltInFunctions.CallBuiltIn(
+                            "copyFile",
+                            new List<RuntimeValue>
+                            {
+                                RuntimeValue.String(resolvedSrcPath),
+                                RuntimeValue.String(resolvedDestPath)
+                            },
+                            null);
+                        var copyOk = copyResult.Type == ValueType.Boolean && copyResult.AsBoolean();
+                        var copyObj = new JsonObject();
+                        copyObj.Set("success", RuntimeValue.Boolean(copyOk));
+                        if (!copyOk)
+                            copyObj.Set("error", RuntimeValue.String("copyFile failed"));
+                        return RuntimeValue.Object(copyObj);
+                    }
+                    catch (Exception ex)
+                    {
+                        var copyErr = new JsonObject();
+                        copyErr.Set("success", RuntimeValue.Boolean(false));
+                        copyErr.Set("error", RuntimeValue.String(ex.Message));
+                        return RuntimeValue.Object(copyErr);
+                    }
+
+                case "ensure_dir":
+                    if (resolvedDirPath == null)
+                        return RuntimeValue.String("Error: dirPath parameter required");
+                    try
+                    {
+                        BuiltInFunctions.CallBuiltIn(
+                            "ensureDir",
+                            new List<RuntimeValue> { RuntimeValue.String(resolvedDirPath) },
+                            null);
+                        var ensureObj = new JsonObject();
+                        ensureObj.Set("success", RuntimeValue.Boolean(true));
+                        ensureObj.Set("path", RuntimeValue.String(resolvedDirPath));
+                        return RuntimeValue.Object(ensureObj);
+                    }
+                    catch (Exception ex)
+                    {
+                        var ensureErr = new JsonObject();
+                        ensureErr.Set("success", RuntimeValue.Boolean(false));
+                        ensureErr.Set("error", RuntimeValue.String(ex.Message));
+                        return RuntimeValue.Object(ensureErr);
+                    }
                 
                 case "insert_at_line":
                 case "insertAtLine":
@@ -3301,6 +3436,16 @@ public partial class ConversationInstance : ObjectInstance
                     {
                         return RuntimeValue.String($"Error executing web_search tool: {ex.Message}");
                     }
+
+                case "web_fetch":
+                    try
+                    {
+                        return BuiltInTools.ExecuteWebFetch(arguments);
+                    }
+                    catch (Exception ex)
+                    {
+                        return RuntimeValue.String($"Error executing web_fetch tool: {ex.Message}");
+                    }
                 
                 case "run_command":
                     try
@@ -3605,6 +3750,124 @@ public partial class ConversationInstance : ObjectInstance
                     {
                         return RuntimeValue.String($"Error executing get_parse_errors tool: {ex.Message}");
                     }
+
+                case "check_malda":
+                    try
+                    {
+                        var checkSourceVal = argsObj.Get("sourceOrFilePath", null);
+                        if (checkSourceVal == null || checkSourceVal.Type != ValueType.String)
+                            return RuntimeValue.String("Error: sourceOrFilePath parameter required");
+
+                        var checkSource = checkSourceVal.AsString();
+                        if (string.IsNullOrWhiteSpace(checkSource))
+                            return RuntimeValue.String("Error: sourceOrFilePath cannot be empty");
+
+                        string? typeMode = null;
+                        var typeModeVal = argsObj.Get("typeMode", null);
+                        if (typeModeVal != null && typeModeVal.Type == ValueType.String)
+                            typeMode = typeModeVal.AsString();
+
+                        return BuiltInFunctions.CheckMaldaSource(checkSource, typeMode, tool.WorkingDirectory);
+                    }
+                    catch (Exception ex)
+                    {
+                        return RuntimeValue.String($"Error executing check_malda tool: {ex.Message}");
+                    }
+
+                case "validate_json":
+                    try
+                    {
+                        var hasSchema = false;
+                        var hasValue = false;
+                        RuntimeValue? schemaVal = null;
+                        RuntimeValue? valueVal = null;
+                        if (argsObj is JsonObject jsonArgs)
+                        {
+                            var props = jsonArgs.GetProperties();
+                            hasSchema = props.ContainsKey("schema");
+                            hasValue = props.ContainsKey("value");
+                            if (hasSchema)
+                                schemaVal = jsonArgs.Get("schema", null);
+                            if (hasValue)
+                                valueVal = jsonArgs.Get("value", null);
+                        }
+                        else
+                        {
+                            schemaVal = argsObj.Get("schema", null);
+                            valueVal = argsObj.Get("value", null);
+                            hasSchema = schemaVal != null && schemaVal.Type != ValueType.Null;
+                            hasValue = valueVal != null;
+                        }
+
+                        if (!hasSchema || schemaVal == null || schemaVal.Type == ValueType.Null)
+                        {
+                            var missingSchema = new JsonObject();
+                            missingSchema.Set("ok", RuntimeValue.Boolean(false));
+                            missingSchema.Set("error", RuntimeValue.String("schema parameter required"));
+                            return RuntimeValue.Object(missingSchema);
+                        }
+
+                        if (!hasValue || valueVal == null)
+                        {
+                            var missingValue = new JsonObject();
+                            missingValue.Set("ok", RuntimeValue.Boolean(false));
+                            missingValue.Set("error", RuntimeValue.String("value parameter required"));
+                            return RuntimeValue.Object(missingValue);
+                        }
+
+                        return BuiltInFunctions.CallBuiltIn(
+                            "validate",
+                            new List<RuntimeValue> { schemaVal, valueVal },
+                            null);
+                    }
+                    catch (Exception ex)
+                    {
+                        var validateErr = new JsonObject();
+                        validateErr.Set("ok", RuntimeValue.Boolean(false));
+                        validateErr.Set("error", RuntimeValue.String(ex.Message));
+                        return RuntimeValue.Object(validateErr);
+                    }
+
+                case "test_malda":
+                    try
+                    {
+                        var testPathVal = argsObj.Get("path", null);
+                        var testPath = testPathVal != null && testPathVal.Type == ValueType.String
+                            && !string.IsNullOrWhiteSpace(testPathVal.AsString())
+                            ? testPathVal.AsString()
+                            : ".";
+
+                        if (!string.IsNullOrEmpty(tool.WorkingDirectory))
+                        {
+                            var normalizedTestPath = tool.NormalizePathForWorkingDirectory(testPath);
+                            if (normalizedTestPath == null)
+                            {
+                                return RuntimeValue.String($"Error: Path '{testPath}' is outside the allowed working directory '{tool.WorkingDirectory}'. Use a relative path.");
+                            }
+
+                            testPath = tool.ResolvePathAgainstWorkingDirectory(normalizedTestPath) ?? normalizedTestPath;
+                        }
+                        else if (!tool.IsPathAllowed(testPath))
+                        {
+                            return RuntimeValue.String($"Error: Path '{testPath}' is outside the allowed working directory '{tool.WorkingDirectory}'");
+                        }
+
+                        string? testFilter = null;
+                        var testFilterVal = argsObj.Get("filter", null);
+                        if (testFilterVal != null && testFilterVal.Type == ValueType.String)
+                            testFilter = testFilterVal.AsString();
+
+                        var listOnly = false;
+                        var listOnlyVal = argsObj.Get("listOnly", null);
+                        if (listOnlyVal != null && listOnlyVal.Type == ValueType.Boolean)
+                            listOnly = listOnlyVal.AsBoolean();
+
+                        return BuiltInFunctions.RunTestMalda(testPath, testFilter, listOnly);
+                    }
+                    catch (Exception ex)
+                    {
+                        return RuntimeValue.String($"Error executing test_malda tool: {ex.Message}");
+                    }
                 
                 case "create_mcp_agent_script":
                     try
@@ -3696,11 +3959,54 @@ public partial class ConversationInstance : ObjectInstance
                         var planIdVal = vObj.Get("planId", null);
                         var stepsArr = vObj.Get("steps", null);
                         int stepCount = stepsArr != null && stepsArr.Type == ValueType.Array ? stepsArr.AsArray().Count : 0;
+                        var planId = planIdVal != null && planIdVal.Type == ValueType.String
+                            ? planIdVal.AsString()
+                            : "";
+                        if (!string.IsNullOrEmpty(planId) && stepsArr != null && stepsArr.Type == ValueType.Array)
+                        {
+                            string? taskSummary = null;
+                            var summaryVal = vObj.Get("taskSummary", null);
+                            if (summaryVal != null && summaryVal.Type == ValueType.String)
+                                taskSummary = summaryVal.AsString();
+                            else
+                            {
+                                var argSummary = argsObj.Get("taskSummary", null);
+                                if (argSummary != null && argSummary.Type == ValueType.String)
+                                    taskSummary = argSummary.AsString();
+                            }
+                            AgentPlanStore.StoreValidated(planId, taskSummary, stepsArr.AsArray());
+                        }
                         var outOk = new JsonObject();
                         outOk.Set("accepted", RuntimeValue.Boolean(true));
                         outOk.Set("planId", planIdVal ?? RuntimeValue.String(""));
                         outOk.Set("stepCount", RuntimeValue.Integer(stepCount));
                         return RuntimeValue.Object(outOk);
+                    }
+                    catch (Exception ex)
+                    {
+                        var outErr = new JsonObject();
+                        outErr.Set("accepted", RuntimeValue.Boolean(false));
+                        outErr.Set("error", RuntimeValue.String(ex.Message));
+                        return RuntimeValue.Object(outErr);
+                    }
+
+                case "update_plan":
+                    try
+                    {
+                        return ExecuteUpdatePlan(argsObj);
+                    }
+                    catch (Exception ex)
+                    {
+                        var outErr = new JsonObject();
+                        outErr.Set("accepted", RuntimeValue.Boolean(false));
+                        outErr.Set("error", RuntimeValue.String(ex.Message));
+                        return RuntimeValue.Object(outErr);
+                    }
+
+                case "mark_step":
+                    try
+                    {
+                        return ExecuteMarkStep(argsObj);
                     }
                     catch (Exception ex)
                     {
@@ -3738,6 +4044,98 @@ public partial class ConversationInstance : ObjectInstance
         if (ToolNameAliases.TryGetValue(toolName, out var alias) && _tools.ContainsKey(alias))
             return alias;
         return toolName;
+    }
+
+    private static RuntimeValue PlanToolError(string message)
+    {
+        var outErr = new JsonObject();
+        outErr.Set("accepted", RuntimeValue.Boolean(false));
+        outErr.Set("error", RuntimeValue.String(message));
+        return RuntimeValue.Object(outErr);
+    }
+
+    private static string? ReadStringArg(ObjectInstance argsObj, string name)
+    {
+        var val = argsObj.Get(name, null);
+        if (val != null && val.Type == ValueType.String)
+        {
+            var s = val.AsString();
+            return string.IsNullOrWhiteSpace(s) ? null : s;
+        }
+        return null;
+    }
+
+    private static RuntimeValue ExecuteUpdatePlan(ObjectInstance argsObj)
+    {
+        var planId = ReadStringArg(argsObj, "planId");
+        if (planId == null)
+            return PlanToolError("update_plan requires 'planId'");
+        if (!AgentPlanStore.TryGet(planId, out var stored) || stored == null)
+            return PlanToolError($"Unknown planId '{planId}'");
+
+        var stepsVal = argsObj.Get("steps", null);
+        if (stepsVal != null && stepsVal.Type == ValueType.Array)
+        {
+            var validation = BuiltInFunctions.ValidateAndNormalizePlan(stepsVal);
+            if (validation.Type != ValueType.Object)
+                return PlanToolError("Invalid steps");
+            var vObj = validation.AsObject();
+            var errVal = vObj.Get("error", null);
+            if (errVal != null && errVal.Type == ValueType.String)
+            {
+                var outErr = new JsonObject();
+                outErr.Set("accepted", RuntimeValue.Boolean(false));
+                outErr.Set("error", errVal);
+                return RuntimeValue.Object(outErr);
+            }
+            var normalized = vObj.Get("steps", null);
+            if (normalized == null || normalized.Type != ValueType.Array)
+                return PlanToolError("Invalid steps");
+            var previousById = stored.Steps.ToDictionary(s => s.Id, StringComparer.Ordinal);
+            stored.Steps = AgentPlanStore.StepsFromRuntime(normalized.AsArray(), previousById);
+        }
+
+        var summaryVal = argsObj.Get("taskSummary", null);
+        if (summaryVal != null && summaryVal.Type == ValueType.String)
+            stored.TaskSummary = summaryVal.AsString();
+
+        AgentPlanStore.Put(stored);
+        var outOk = new JsonObject();
+        outOk.Set("accepted", RuntimeValue.Boolean(true));
+        outOk.Set("planId", RuntimeValue.String(stored.PlanId));
+        outOk.Set("stepCount", RuntimeValue.Integer(stored.Steps.Count));
+        outOk.Set("steps", AgentPlanStore.StepsToRuntime(stored.Steps));
+        return RuntimeValue.Object(outOk);
+    }
+
+    private static RuntimeValue ExecuteMarkStep(ObjectInstance argsObj)
+    {
+        var planId = ReadStringArg(argsObj, "planId");
+        var stepId = ReadStringArg(argsObj, "id");
+        var status = ReadStringArg(argsObj, "status");
+        if (planId == null || stepId == null || status == null)
+            return PlanToolError("mark_step requires 'planId', 'id', and 'status'");
+        if (!AgentPlanStore.IsValidStatus(status))
+            return PlanToolError("status must be pending, in_progress, done, or blocked");
+        if (!AgentPlanStore.TryGet(planId, out var stored) || stored == null)
+            return PlanToolError($"Unknown planId '{planId}'");
+
+        var step = stored.Steps.FirstOrDefault(s => string.Equals(s.Id, stepId, StringComparison.Ordinal));
+        if (step == null)
+            return PlanToolError($"Unknown step id '{stepId}'");
+
+        step.Status = status;
+        var noteVal = argsObj.Get("note", null);
+        if (noteVal != null && noteVal.Type == ValueType.String)
+            step.Note = noteVal.AsString();
+
+        AgentPlanStore.Put(stored);
+        var outOk = new JsonObject();
+        outOk.Set("accepted", RuntimeValue.Boolean(true));
+        outOk.Set("planId", RuntimeValue.String(stored.PlanId));
+        outOk.Set("id", RuntimeValue.String(step.Id));
+        outOk.Set("status", RuntimeValue.String(step.Status));
+        return RuntimeValue.Object(outOk);
     }
 
     private string BuildToolNotFoundMessage(string? toolName)
@@ -4284,7 +4682,8 @@ public partial class ConversationInstance : ObjectInstance
         if (toolName.Contains("mcp", StringComparison.OrdinalIgnoreCase))
             return "mcp";
 
-        if (toolName.Equals("web_search", StringComparison.OrdinalIgnoreCase))
+        if (toolName.Equals("web_search", StringComparison.OrdinalIgnoreCase) ||
+            toolName.Equals("web_fetch", StringComparison.OrdinalIgnoreCase))
             return "web";
 
         return "other";

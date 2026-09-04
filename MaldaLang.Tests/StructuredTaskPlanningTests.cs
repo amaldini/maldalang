@@ -297,7 +297,7 @@ public class StructuredTaskPlanningTests : TestBase
     [Fact]
     public void DecomposeTask_NoArguments_Throws()
     {
-        var ex = Assert.Throws<Exception>(() =>
+        var ex = Assert.ThrowsAny<Exception>(() =>
             BuiltInFunctions.CallBuiltIn("decomposeTask", new List<RuntimeValue>(), null));
         Assert.Contains("decomposeTask", ex.Message);
         Assert.Contains("instruction", ex.Message);

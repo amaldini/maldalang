@@ -10831,10 +10831,15 @@ public class CSharpTranspiler
             case "loadNativeModule":
             case "createRunCommandTool":
             case "createWebSearchTool":
+            case "createWebFetchTool":
+            case "webFetch":
             case "createReadFileTool":
             case "createWriteFileTool":
             case "createReplaceInFileTool":
             case "createListDirectoryTool":
+            case "createDeleteFileTool":
+            case "createCopyFileTool":
+            case "createEnsureDirTool":
             case "createAskUserTool":
             case "createGrepTool":
             case "createGlobTool":
@@ -10858,9 +10863,15 @@ public class CSharpTranspiler
             case "createGetSymbolsTool":
             case "getParseErrors":
             case "createGetParseErrorsTool":
+            case "checkMalda":
+            case "createCheckMaldaTool":
+            case "createValidateJsonTool":
+            case "createTestMaldaTool":
             case "createMcpAgentScript":
             case "createCreateMcpAgentScriptTool":
             case "createSubmitPlanTool":
+            case "createUpdatePlanTool":
+            case "createMarkStepTool":
             case "executePlan":
             case "runProgram":
             case "decomposeTask":

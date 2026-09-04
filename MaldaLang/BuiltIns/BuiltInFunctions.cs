@@ -27,6 +27,7 @@ using MaldaLang.Runtime.Tracing;
 using MaldaLang.Runtime.Jobs;
 using MaldaLang.Runtime.Workflows;
 using MaldaLang.IDE;
+using MaldaLang.Testing;
 using ValueType = MaldaLang.Interpreter.ValueType;
 using Spectre.Console;
 using Spectre.Console.Rendering;
@@ -1057,8 +1058,13 @@ public static class BuiltInFunctions
             "createWriteFileTool" => BuiltInCreateWriteFileTool(args),
             "createReplaceInFileTool" => BuiltInCreateReplaceInFileTool(args),
             "createListDirectoryTool" => BuiltInCreateListDirectoryTool(args),
+            "createDeleteFileTool" => BuiltInCreateDeleteFileTool(args),
+            "createCopyFileTool" => BuiltInCreateCopyFileTool(args),
+            "createEnsureDirTool" => BuiltInCreateEnsureDirTool(args),
             "createAskUserTool" => BuiltInCreateAskUserTool(args),
             "createWebSearchTool" => BuiltInCreateWebSearchTool(args),
+            "createWebFetchTool" => BuiltInCreateWebFetchTool(args),
+            "webFetch" => BuiltInWebFetch(args),
             "createGrepTool" => BuiltInCreateGrepTool(args),
             "grep" => BuiltInGrep(args),
             "createGlobTool" => BuiltInCreateGlobTool(args),
@@ -1070,6 +1076,10 @@ public static class BuiltInFunctions
             "createGetSymbolsTool" => BuiltInCreateGetSymbolsTool(args),
             "getParseErrors" => BuiltInGetParseErrors(args),
             "createGetParseErrorsTool" => BuiltInCreateGetParseErrorsTool(args),
+            "checkMalda" => BuiltInCheckMalda(args),
+            "createCheckMaldaTool" => BuiltInCreateCheckMaldaTool(args),
+            "createValidateJsonTool" => BuiltInCreateValidateJsonTool(args),
+            "createTestMaldaTool" => BuiltInCreateTestMaldaTool(args),
             "gitStatus" => BuiltInGitStatus(args),
             "gitAdd" => BuiltInGitAdd(args),
             "gitCommit" => BuiltInGitCommit(args),
@@ -1097,6 +1107,8 @@ public static class BuiltInFunctions
             "createMcpAgentScript" => BuiltInCreateMcpAgentScript(args),
             "createCreateMcpAgentScriptTool" => BuiltInCreateCreateMcpAgentScriptTool(args),
             "createSubmitPlanTool" => BuiltInCreateSubmitPlanTool(args),
+            "createUpdatePlanTool" => BuiltInCreateUpdatePlanTool(args),
+            "createMarkStepTool" => BuiltInCreateMarkStepTool(args),
             "executePlan" => BuiltInExecutePlan(args),
             "runProgram" => BuiltInRunProgram(args, interpreter),
             "decomposeTask" => BuiltInDecomposeTask(args),
@@ -1443,8 +1455,13 @@ public static class BuiltInFunctions
             "createWriteFileTool" => BuiltInCreateWriteFileTool(args),
             "createReplaceInFileTool" => BuiltInCreateReplaceInFileTool(args),
             "createListDirectoryTool" => BuiltInCreateListDirectoryTool(args),
+            "createDeleteFileTool" => BuiltInCreateDeleteFileTool(args),
+            "createCopyFileTool" => BuiltInCreateCopyFileTool(args),
+            "createEnsureDirTool" => BuiltInCreateEnsureDirTool(args),
             "createAskUserTool" => BuiltInCreateAskUserTool(args),
             "createWebSearchTool" => BuiltInCreateWebSearchTool(args),
+            "createWebFetchTool" => BuiltInCreateWebFetchTool(args),
+            "webFetch" => BuiltInWebFetch(args),
             "createGrepTool" => BuiltInCreateGrepTool(args),
             "grep" => BuiltInGrep(args),
             "createGlobTool" => BuiltInCreateGlobTool(args),
@@ -1456,6 +1473,10 @@ public static class BuiltInFunctions
             "createGetSymbolsTool" => BuiltInCreateGetSymbolsTool(args),
             "getParseErrors" => BuiltInGetParseErrors(args),
             "createGetParseErrorsTool" => BuiltInCreateGetParseErrorsTool(args),
+            "checkMalda" => BuiltInCheckMalda(args),
+            "createCheckMaldaTool" => BuiltInCreateCheckMaldaTool(args),
+            "createValidateJsonTool" => BuiltInCreateValidateJsonTool(args),
+            "createTestMaldaTool" => BuiltInCreateTestMaldaTool(args),
             "gitStatus" => BuiltInGitStatus(args),
             "gitAdd" => BuiltInGitAdd(args),
             "gitCommit" => BuiltInGitCommit(args),
@@ -1483,6 +1504,8 @@ public static class BuiltInFunctions
             "createMcpAgentScript" => BuiltInCreateMcpAgentScript(args),
             "createCreateMcpAgentScriptTool" => BuiltInCreateCreateMcpAgentScriptTool(args),
             "createSubmitPlanTool" => BuiltInCreateSubmitPlanTool(args),
+            "createUpdatePlanTool" => BuiltInCreateUpdatePlanTool(args),
+            "createMarkStepTool" => BuiltInCreateMarkStepTool(args),
             "executePlan" => BuiltInExecutePlan(args),
             "runProgram" => BuiltInRunProgram(args, interpreter),
             "decomposeTask" => BuiltInDecomposeTask(args),
@@ -6064,6 +6087,33 @@ public static class BuiltInFunctions
             : "";
         return BuiltInTools.CreateListDirectoryTool(workingDir);
     }
+
+    private static RuntimeValue BuiltInCreateDeleteFileTool(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("createDeleteFileTool", args, 0, 1, "workingDir?");
+        var workingDir = args.Count > 0 && args[0].Type == MaldaLang.Interpreter.ValueType.String
+            ? args[0].AsString()
+            : "";
+        return BuiltInTools.CreateDeleteFileTool(workingDir);
+    }
+
+    private static RuntimeValue BuiltInCreateCopyFileTool(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("createCopyFileTool", args, 0, 1, "workingDir?");
+        var workingDir = args.Count > 0 && args[0].Type == MaldaLang.Interpreter.ValueType.String
+            ? args[0].AsString()
+            : "";
+        return BuiltInTools.CreateCopyFileTool(workingDir);
+    }
+
+    private static RuntimeValue BuiltInCreateEnsureDirTool(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("createEnsureDirTool", args, 0, 1, "workingDir?");
+        var workingDir = args.Count > 0 && args[0].Type == MaldaLang.Interpreter.ValueType.String
+            ? args[0].AsString()
+            : "";
+        return BuiltInTools.CreateEnsureDirTool(workingDir);
+    }
     
     private static RuntimeValue BuiltInCreateAskUserTool(List<RuntimeValue> args)
     {
@@ -6076,6 +6126,197 @@ public static class BuiltInFunctions
     {
         BuiltInArity.Require("createWebSearchTool", args, 0, 0);
         return BuiltInTools.CreateWebSearchTool();
+    }
+
+    private static RuntimeValue BuiltInCreateWebFetchTool(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("createWebFetchTool", args, 0, 0);
+        return BuiltInTools.CreateWebFetchTool();
+    }
+
+    private static RuntimeValue BuiltInWebFetch(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("webFetch", args, 1, 3, "url, maxBytes?, timeoutMs?");
+        if (args[0].Type != ValueType.String)
+            throw new Exception("webFetch() url must be a string");
+
+        var obj = new JsonObject();
+        obj.Set("url", args[0]);
+        if (args.Count > 1)
+            obj.Set("maxBytes", args[1]);
+        if (args.Count > 2)
+            obj.Set("timeoutMs", args[2]);
+        return ExecuteWebFetch(RuntimeValue.Object(obj));
+    }
+
+    public const int WebFetchDefaultMaxBytes = 100_000;
+    public const int WebFetchHardCapMaxBytes = 500_000;
+    public const int WebFetchDefaultTimeoutMs = 15_000;
+    public const int WebFetchHardCapTimeoutMs = 60_000;
+
+    /// <summary>
+    /// Fetch an HTTP(S) URL via <see cref="RestClientInstance"/> (same path as <c>httpGet</c>)
+    /// and reshape the result for the <c>web_fetch</c> agent tool.
+    /// </summary>
+    public static RuntimeValue ExecuteWebFetch(RuntimeValue arguments)
+    {
+        string requestedUrl = "";
+        try
+        {
+            if (arguments.Type != ValueType.Object)
+                return WebFetchResult(false, 0, "", "", false, "url parameter required");
+
+            var argsObj = arguments.AsObject();
+            var urlVal = argsObj.Get("url", null);
+            if (urlVal == null || urlVal.Type != ValueType.String)
+                return WebFetchResult(false, 0, "", "", false, "url parameter required");
+
+            requestedUrl = urlVal.AsString() ?? "";
+            if (string.IsNullOrWhiteSpace(requestedUrl))
+                return WebFetchResult(false, 0, requestedUrl, "", false, "url cannot be empty");
+
+            if (!TryValidateWebFetchUrl(requestedUrl, out var urlError))
+                return WebFetchResult(false, 0, requestedUrl, "", false, urlError);
+
+            var maxBytes = ClampWebFetchInt(
+                TryGetOptionalInt(argsObj, "maxBytes"),
+                WebFetchDefaultMaxBytes,
+                1,
+                WebFetchHardCapMaxBytes);
+            var timeoutMs = ClampWebFetchInt(
+                TryGetOptionalInt(argsObj, "timeoutMs"),
+                WebFetchDefaultTimeoutMs,
+                1,
+                WebFetchHardCapTimeoutMs);
+
+            var client = new RestClientInstance();
+            client.CallMethod("setTimeout", new List<RuntimeValue> { RuntimeValue.Integer(timeoutMs) });
+            var httpResult = client.CallMethod("get", new List<RuntimeValue> { RuntimeValue.String(requestedUrl) });
+
+            return ReshapeHttpGetToWebFetch(httpResult, requestedUrl, maxBytes);
+        }
+        catch (Exception ex)
+        {
+            return WebFetchResult(false, 0, requestedUrl, "", false, ex.Message);
+        }
+    }
+
+    private static RuntimeValue ReshapeHttpGetToWebFetch(RuntimeValue httpResult, string requestedUrl, int maxBytes)
+    {
+        if (httpResult.Type != ValueType.Object)
+        {
+            var fallback = httpResult.Type == ValueType.String ? httpResult.AsString() : httpResult.ToString();
+            return WebFetchResult(false, 0, requestedUrl, "", false, fallback);
+        }
+
+        var httpObj = httpResult.AsObject();
+        var okVal = httpObj.Get("ok", null);
+        var ok = okVal != null && okVal.Type == ValueType.Boolean && okVal.AsBoolean();
+
+        var statusVal = httpObj.Get("status", null);
+        var status = statusVal != null && statusVal.Type == ValueType.Integer
+            ? statusVal.AsInteger()
+            : 0;
+
+        var bodyVal = httpObj.Get("body", null);
+        var content = BodyToWebFetchContent(bodyVal);
+
+        var truncated = content.Length > maxBytes;
+        if (truncated)
+            content = content.Substring(0, maxBytes);
+
+        string? error = null;
+        var errorVal = httpObj.Get("error", null);
+        if (errorVal != null && errorVal.Type == ValueType.String)
+        {
+            var errText = errorVal.AsString();
+            if (!string.IsNullOrEmpty(errText))
+                error = errText;
+        }
+
+        return WebFetchResult(ok, status, requestedUrl, content, truncated, error);
+    }
+
+    private static string BodyToWebFetchContent(RuntimeValue? bodyVal)
+    {
+        if (bodyVal == null || bodyVal.Type == ValueType.Null)
+            return "";
+        if (bodyVal.Type == ValueType.String)
+            return bodyVal.AsString() ?? "";
+        if (bodyVal.Type == ValueType.Object || bodyVal.Type == ValueType.Array)
+            return SerializeToJson(bodyVal);
+        return SerializeToJson(bodyVal);
+    }
+
+    private static bool TryValidateWebFetchUrl(string url, out string error)
+    {
+        error = "";
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+        {
+            error = "url must be an absolute http:// or https:// URL";
+            return false;
+        }
+
+        if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+        {
+            error = $"url scheme '{uri.Scheme}' is not allowed; use http:// or https://";
+            return false;
+        }
+
+        if (string.IsNullOrEmpty(uri.Host))
+        {
+            error = "url is missing a host";
+            return false;
+        }
+
+        return true;
+    }
+
+    private static int? TryGetOptionalInt(ObjectInstance obj, string name)
+    {
+        try
+        {
+            var val = obj.Get(name, null);
+            if (val == null || val.Type == ValueType.Null)
+                return null;
+            if (val.Type == ValueType.Integer)
+                return val.AsInteger();
+            if (val.Type == ValueType.Float)
+                return (int)val.AsFloat();
+        }
+        catch
+        {
+            // missing or non-numeric optional
+        }
+
+        return null;
+    }
+
+    private static int ClampWebFetchInt(int? value, int defaultValue, int min, int max)
+    {
+        var n = value ?? defaultValue;
+        if (n < min)
+            return defaultValue;
+        return n > max ? max : n;
+    }
+
+    private static RuntimeValue WebFetchResult(
+        bool ok,
+        int status,
+        string url,
+        string content,
+        bool truncated,
+        string? error)
+    {
+        var obj = new JsonObject();
+        obj.Set("ok", RuntimeValue.Boolean(ok));
+        obj.Set("status", RuntimeValue.Integer(status));
+        obj.Set("url", RuntimeValue.String(url ?? ""));
+        obj.Set("content", RuntimeValue.String(content ?? ""));
+        obj.Set("truncated", RuntimeValue.Boolean(truncated));
+        if (!string.IsNullOrEmpty(error))
+            obj.Set("error", RuntimeValue.String(error));
+        return RuntimeValue.Object(obj);
     }
     
     private static RuntimeValue BuiltInCreateGrepTool(List<RuntimeValue> args)
@@ -8619,6 +8860,225 @@ public static class BuiltInFunctions
             : "";
         return BuiltInTools.CreateGetParseErrorsTool(workingDir);
     }
+
+    /// <summary>
+    /// Diagnose MALDA source or a file with the same LanguageService path as
+    /// <c>malda check --json</c>. Used by the <c>checkMalda</c> built-in and the
+    /// <c>check_malda</c> agent tool.
+    /// </summary>
+    public static RuntimeValue CheckMaldaSource(string sourceOrFilePath, string? typeMode = null, string? workingDirectory = null)
+    {
+        if (string.IsNullOrWhiteSpace(sourceOrFilePath))
+            return CheckMaldaUsageError("sourceOrFilePath cannot be empty");
+
+        if (!TryParseCheckMaldaTypeMode(typeMode, out var typeOptions, out var typeModeError))
+            return CheckMaldaUsageError(typeModeError!);
+
+        string source = sourceOrFilePath;
+        string? fileLabel = "<eval>";
+
+        if (LooksLikeCheckMaldaFilePath(sourceOrFilePath))
+        {
+            if (sourceOrFilePath.Contains("..", StringComparison.Ordinal) ||
+                sourceOrFilePath.Contains('~'))
+            {
+                return CheckMaldaUsageError("Error: Path contains suspicious characters (path traversal attempt)");
+            }
+
+            string resolvedPath;
+            try
+            {
+                if (!string.IsNullOrEmpty(workingDirectory))
+                {
+                    var probe = new ToolInstance { WorkingDirectory = workingDirectory };
+                    var normalized = probe.NormalizePathForWorkingDirectory(sourceOrFilePath);
+                    if (normalized == null)
+                    {
+                        return CheckMaldaUsageError(
+                            $"Error: Path '{sourceOrFilePath}' is outside the allowed working directory '{workingDirectory}'");
+                    }
+
+                    resolvedPath = probe.ResolvePathAgainstWorkingDirectory(normalized) ?? normalized;
+                }
+                else
+                {
+                    resolvedPath = Path.IsPathRooted(sourceOrFilePath)
+                        ? Path.GetFullPath(sourceOrFilePath)
+                        : Path.GetFullPath(Path.Combine(System.Environment.CurrentDirectory, sourceOrFilePath));
+                }
+            }
+            catch (Exception ex)
+            {
+                return CheckMaldaUsageError($"Error resolving path: {ex.Message}");
+            }
+
+            try
+            {
+                if (!File.Exists(resolvedPath))
+                    return CheckMaldaUsageError($"File not found: {resolvedPath}");
+
+                source = File.ReadAllText(resolvedPath);
+                fileLabel = resolvedPath;
+            }
+            catch (Exception ex) when (ex is not FileNotFoundException)
+            {
+                return CheckMaldaUsageError($"Error reading file: {ex.Message}");
+            }
+        }
+
+        var runner = new CheckCommandRunner();
+        var report = runner.Analyze(source, fileLabel, typeOptions);
+        return CheckReportToRuntimeValue(report);
+    }
+
+    private static RuntimeValue BuiltInCheckMalda(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("checkMalda", args, 1, 3, "sourceOrFilePath, typeMode?, workingDir?");
+        if (args[0].Type != ValueType.String)
+            throw new Exception("checkMalda() sourceOrFilePath must be a string");
+
+        var sourceOrFilePath = args[0].AsString();
+        var typeMode = args.Count > 1 && args[1].Type == ValueType.String ? args[1].AsString() : null;
+        var workingDir = args.Count > 2 && args[2].Type == ValueType.String ? args[2].AsString() : null;
+        return CheckMaldaSource(sourceOrFilePath, typeMode, workingDir);
+    }
+
+    private static RuntimeValue BuiltInCreateCheckMaldaTool(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("createCheckMaldaTool", args, 0, 1, "workingDir?");
+        var workingDir = args.Count > 0 && args[0].Type == MaldaLang.Interpreter.ValueType.String
+            ? args[0].AsString()
+            : "";
+        return BuiltInTools.CreateCheckMaldaTool(workingDir);
+    }
+
+    private static RuntimeValue BuiltInCreateValidateJsonTool(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("createValidateJsonTool", args, 0, 0);
+        return BuiltInTools.CreateValidateJsonTool();
+    }
+
+    private static RuntimeValue BuiltInCreateTestMaldaTool(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("createTestMaldaTool", args, 0, 1, "workingDir?");
+        var workingDir = args.Count > 0 && args[0].Type == MaldaLang.Interpreter.ValueType.String
+            ? args[0].AsString()
+            : "";
+        return BuiltInTools.CreateTestMaldaTool(workingDir);
+    }
+
+    /// <summary>
+    /// Run <c>malda test</c> via <see cref="TestCommandRunner"/> and return
+    /// <c>{ success, exitCode, output, report? }</c>. Used by the <c>test_malda</c> agent tool.
+    /// </summary>
+    public static RuntimeValue RunTestMalda(string rootPath, string? filter = null, bool listOnly = false)
+    {
+        var runnerArgs = new List<string> { rootPath, "--format", "ci" };
+        if (!string.IsNullOrEmpty(filter))
+        {
+            runnerArgs.Add("--filter");
+            runnerArgs.Add(filter);
+        }
+
+        if (listOnly)
+            runnerArgs.Add("--list");
+
+        var captured = new StringWriter();
+        var runner = new TestCommandRunner();
+        var exitCode = runner.Run(runnerArgs.ToArray(), captured, captured);
+        var output = captured.ToString();
+
+        var result = new JsonObject();
+        result.Set("success", RuntimeValue.Boolean(exitCode == 0));
+        result.Set("exitCode", RuntimeValue.Integer(exitCode));
+        result.Set("output", RuntimeValue.String(output));
+
+        try
+        {
+            using var doc = JsonDocument.Parse(output);
+            result.Set("report", ToolSchemaResolver.FromJsonElement(doc.RootElement));
+        }
+        catch (JsonException)
+        {
+            // CI JSON is optional; always return success/exitCode/output.
+        }
+
+        return RuntimeValue.Object(result);
+    }
+
+    private static bool LooksLikeCheckMaldaFilePath(string sourceOrFilePath)
+    {
+        return sourceOrFilePath.Contains(Path.DirectorySeparatorChar) ||
+               sourceOrFilePath.Contains(Path.AltDirectorySeparatorChar) ||
+               sourceOrFilePath.EndsWith(".malda", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool TryParseCheckMaldaTypeMode(string? typeMode, out StrictTypesOptions typeOptions, out string? error)
+    {
+        error = null;
+        var mode = string.IsNullOrWhiteSpace(typeMode) ? "default" : typeMode.Trim();
+        if (mode.Equals("default", StringComparison.OrdinalIgnoreCase))
+        {
+            typeOptions = StrictTypesOptions.Default;
+            return true;
+        }
+
+        if (mode.Equals("strict", StringComparison.OrdinalIgnoreCase))
+        {
+            typeOptions = StrictTypesOptions.Enabled;
+            return true;
+        }
+
+        if (mode.Equals("lenient", StringComparison.OrdinalIgnoreCase))
+        {
+            typeOptions = StrictTypesOptions.Lenient;
+            return true;
+        }
+
+        typeOptions = StrictTypesOptions.Default;
+        error = "typeMode must be 'default', 'strict', or 'lenient'";
+        return false;
+    }
+
+    private static RuntimeValue CheckMaldaUsageError(string message)
+    {
+        return CheckReportToRuntimeValue(CheckCommandReport.Usage(message));
+    }
+
+    private static RuntimeValue CheckReportToRuntimeValue(CheckCommandReport report)
+    {
+        var obj = new JsonObject();
+        obj.Set("ok", RuntimeValue.Boolean(report.Ok));
+        obj.Set("executed", RuntimeValue.Boolean(false));
+        obj.Set("file", report.File != null ? RuntimeValue.String(report.File) : RuntimeValue.Null());
+        obj.Set("errorCount", RuntimeValue.Integer(report.ErrorCount));
+        obj.Set("warningCount", RuntimeValue.Integer(report.WarningCount));
+        obj.Set("infoCount", RuntimeValue.Integer(report.InfoCount));
+        if (!string.IsNullOrEmpty(report.Error))
+            obj.Set("error", RuntimeValue.String(report.Error));
+
+        var diagnostics = new List<RuntimeValue>(report.Diagnostics.Count);
+        foreach (var diagnostic in report.Diagnostics)
+        {
+            var item = new JsonObject();
+            item.Set("severity", RuntimeValue.String(diagnostic.Severity));
+            item.Set("code", RuntimeValue.String(diagnostic.Code));
+            item.Set("message", RuntimeValue.String(diagnostic.Message));
+            if (diagnostic.File != null)
+                item.Set("file", RuntimeValue.String(diagnostic.File));
+            item.Set("line", RuntimeValue.Integer(diagnostic.Line));
+            item.Set("column", RuntimeValue.Integer(diagnostic.Column));
+            item.Set("length", RuntimeValue.Integer(diagnostic.Length));
+            if (!string.IsNullOrEmpty(diagnostic.Hint))
+                item.Set("hint", RuntimeValue.String(diagnostic.Hint));
+            if (!string.IsNullOrEmpty(diagnostic.SuggestedFix))
+                item.Set("suggestedFix", RuntimeValue.String(diagnostic.SuggestedFix));
+            diagnostics.Add(RuntimeValue.Object(item));
+        }
+
+        obj.Set("diagnostics", RuntimeValue.Array(diagnostics));
+        return RuntimeValue.Object(obj);
+    }
     
     private static RuntimeValue BuiltInCreateMcpAgentScript(List<RuntimeValue> args)
     {
@@ -8884,6 +9344,18 @@ public static class BuiltInFunctions
     {
         BuiltInArity.Require("createSubmitPlanTool", args, 0, 0);
         return BuiltInTools.CreateSubmitPlanTool();
+    }
+
+    private static RuntimeValue BuiltInCreateUpdatePlanTool(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("createUpdatePlanTool", args, 0, 0);
+        return BuiltInTools.CreateUpdatePlanTool();
+    }
+
+    private static RuntimeValue BuiltInCreateMarkStepTool(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("createMarkStepTool", args, 0, 0);
+        return BuiltInTools.CreateMarkStepTool();
     }
     
     private static RuntimeValue BuiltInRunProgram(List<RuntimeValue> args, Interpreter? interpreter)

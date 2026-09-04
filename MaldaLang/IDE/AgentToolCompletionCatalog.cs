@@ -52,14 +52,17 @@ internal static class AgentToolCompletionCatalog
     public static readonly string[] CreateToolFactories =
     {
         "createReadFileTool", "createWriteFileTool", "createReplaceInFileTool",
-        "createListDirectoryTool", "createAskUserTool", "createWebSearchTool",
+        "createListDirectoryTool", "createDeleteFileTool", "createCopyFileTool",
+        "createEnsureDirTool", "createAskUserTool", "createWebSearchTool", "createWebFetchTool",
         "createGrepTool", "createGlobTool", "createInsertAtLineTool", "createEditFileTool",
-        "createGetSymbolsTool", "createGetParseErrorsTool",
+        "createGetSymbolsTool", "createGetParseErrorsTool", "createCheckMaldaTool",
+        "createValidateJsonTool", "createTestMaldaTool",
         "createGitStatusTool", "createGitAddTool", "createGitCommitTool", "createGitLogTool",
         "createGitDiffTool", "createGitBranchTool", "createGitCheckoutTool",
         "createGitPushTool", "createGitPullTool",
         "createRunCommandTool", "createRunMALDATool", "createCompileMALDATool",
-        "createCreateMcpAgentScriptTool", "createSubmitPlanTool"
+        "createCreateMcpAgentScriptTool", "createSubmitPlanTool",
+        "createUpdatePlanTool", "createMarkStepTool"
     };
 
     public static bool IsCreateToolFactory(string name) =>

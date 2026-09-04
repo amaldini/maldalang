@@ -299,6 +299,18 @@ Prefer `str.trimText(response?.content)` over nested `if (response != null) { if
 Those are the errors the parser catches for you. The ones it does not catch are in
 [`malda-gotchas.md`](malda-gotchas.md); read that before declaring a program correct.
 
+## Agent host tools (prefer factories, not the shell)
+
+When a program registers host-wrapped agent tools, call the factory — do not shell out:
+
+- Diagnose with `check_malda` / `createCheckMaldaTool` (same LanguageService report as
+  `malda check --json`). Do not use `run_command` + `malda check`. `get_parse_errors` is
+  syntax-only and does not replace `check_malda`. Few-shot: `docs/llm/few-shot/33_check_malda.malda`.
+- File lifecycle: `delete_file` / `createDeleteFileTool`, `copy_file` / `createCopyFileTool`,
+  `ensure_dir` / `createEnsureDirTool` — not `run_command` with `rm` / `cp` / `mkdir`.
+- After `web_search`, fetch the URL with `web_fetch` / `createWebFetchTool` (not a second
+  search, and not `run_command` + curl).
+
 ## Operators
 
 - Logic: `and` / `or` / `not` (also `&&` `||` `!`)

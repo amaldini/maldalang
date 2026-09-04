@@ -238,6 +238,8 @@ public class DevAgentInstance : AgentInstance
             Register((ToolInstance)BuiltInTools.CreateGlobTool(workingDirectory).AsObject());
             Register((ToolInstance)BuiltInTools.CreateListDirectoryTool(workingDirectory).AsObject());
             Register((ToolInstance)BuiltInTools.CreateAskUserTool().AsObject());
+            Register((ToolInstance)BuiltInTools.CreateCheckMaldaTool(workingDirectory).AsObject());
+            Register((ToolInstance)BuiltInTools.CreateValidateJsonTool().AsObject());
             if (includeSymbols)
             {
                 Register((ToolInstance)BuiltInTools.CreateGetSymbolsTool(workingDirectory).AsObject());
@@ -254,11 +256,15 @@ public class DevAgentInstance : AgentInstance
             Register((ToolInstance)BuiltInTools.CreateReplaceInFileTool(workingDirectory).AsObject());
             Register((ToolInstance)BuiltInTools.CreateInsertAtLineTool(workingDirectory).AsObject());
             Register((ToolInstance)BuiltInTools.CreateEditFileTool(workingDirectory).AsObject());
+            Register((ToolInstance)BuiltInTools.CreateDeleteFileTool(workingDirectory).AsObject());
+            Register((ToolInstance)BuiltInTools.CreateCopyFileTool(workingDirectory).AsObject());
+            Register((ToolInstance)BuiltInTools.CreateEnsureDirTool(workingDirectory).AsObject());
         }
         Register((ToolInstance)BuiltInTools.CreateGrepTool(workingDirectory).AsObject());
         Register((ToolInstance)BuiltInTools.CreateGlobTool(workingDirectory).AsObject());
         Register((ToolInstance)BuiltInTools.CreateListDirectoryTool(workingDirectory).AsObject());
         Register((ToolInstance)BuiltInTools.CreateWebSearchTool().AsObject());
+        Register((ToolInstance)BuiltInTools.CreateWebFetchTool().AsObject());
         
         if (!readOnly)
         {
@@ -281,9 +287,15 @@ public class DevAgentInstance : AgentInstance
             
             // 5. Structured task planning
             Register((ToolInstance)BuiltInTools.CreateSubmitPlanTool().AsObject());
+            Register((ToolInstance)BuiltInTools.CreateUpdatePlanTool().AsObject());
+            Register((ToolInstance)BuiltInTools.CreateMarkStepTool().AsObject());
         }
         
-        // 6. Optional code analysis (read-only)
+        // 6. Code analysis (read-only). check_malda and validate_json are always registered.
+        Register((ToolInstance)BuiltInTools.CreateCheckMaldaTool(workingDirectory).AsObject());
+        Register((ToolInstance)BuiltInTools.CreateValidateJsonTool().AsObject());
+        if (!readOnly)
+            Register((ToolInstance)BuiltInTools.CreateTestMaldaTool(workingDirectory).AsObject());
         if (includeSymbols)
         {
             Register((ToolInstance)BuiltInTools.CreateGetSymbolsTool(workingDirectory).AsObject());
@@ -313,7 +325,9 @@ public class DevAgentInstance : AgentInstance
             return;
         }
         sb.AppendLine("For running programs, call run_command with command + args (e.g. dotnet build). Shell wrappers require user confirmation when a UI is available.");
+        sb.AppendLine("Diagnose MALDA with check_malda (same report as malda check --json) before run_malda / run_command. get_parse_errors is syntax-only.");
         sb.AppendLine("For reading/writing files, use read_file, edit_file, replace_in_file, write_file, list_directory.");
+        sb.AppendLine("For delete / copy / mkdir, use delete_file, copy_file, ensure_dir — do not use run_command with rm, cp, or mkdir.");
         sb.AppendLine("Batch multiple read_file, glob, grep, and list_directory calls in one response when exploring — read-only tools run in parallel.");
         sb.AppendLine("Use glob for file discovery by pattern (e.g. **/*.cs); use grep for content search.");
         sb.AppendLine("For git, use git_status, git_add (files='.' or basename paths), git_commit — never run_command with cmd/powershell/git.");

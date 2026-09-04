@@ -25,6 +25,7 @@ bindForm	bindForm	body and fields array
 cancelThink	cancelThink	1 argument: (channel)		
 cancelWorkflow	cancelWorkflow	at least 1 argument: (instanceId, reason?)		
 ceil	math.ceil	1 argument	returns a float even when whole-valued; integer sinks coerce whole floats; wrap with int() if you need an Integer-tagged value	
+checkMalda	checkMalda	1-3 arguments: (sourceOrFilePath, typeMode?, workingDir?)		
 claimJob	claimJob	1-2 arguments: (queue, workerId?)		
 clamp	math.clamp	3 arguments		
 clearAgentProgress	clearAgentProgress	0 arguments		
@@ -43,9 +44,13 @@ composePipe	composePipe	at least 2 callable steps
 copyFile	io.copyFile	2 arguments: (src, dest)	binary-safe overwrite; returns false on I/O failure; rejects embed: src and dest; does not create parent directories	boolean
 cos	math.cos	1 argument		
 createAskUserTool	createAskUserTool	0 arguments		
+createCheckMaldaTool	createCheckMaldaTool	0-1 arguments: (workingDir?)		
 createCompileMALDATool	createCompileMALDATool	0-1 arguments: (workingDir?)		
+createCopyFileTool	createCopyFileTool	0-1 arguments: (workingDir?)		
 createCreateMcpAgentScriptTool	createCreateMcpAgentScriptTool	0-1 arguments: (workingDir?)		
+createDeleteFileTool	createDeleteFileTool	0-1 arguments: (workingDir?)		
 createEditFileTool	createEditFileTool	0-1 arguments: (workingDir?)		
+createEnsureDirTool	createEnsureDirTool	0-1 arguments: (workingDir?)		
 createGetParseErrorsTool	createGetParseErrorsTool	0-1 arguments: (workingDir?)		
 createGetSymbolsTool	createGetSymbolsTool	0-1 arguments: (workingDir?)		
 createGitAddTool	createGitAddTool	0-1 arguments: (workingDir?)		
@@ -62,6 +67,7 @@ createGrepTool	createGrepTool	0-1 arguments: (workingDir?)
 createInsertAtLineTool	createInsertAtLineTool	0-1 arguments: (workingDir?)		
 createJwt	createJwt	2 or 3 arguments: (payload, secret, expiresInSeconds? | options?)		
 createListDirectoryTool	createListDirectoryTool	0-1 arguments: (workingDir?)		
+createMarkStepTool	createMarkStepTool	0 arguments		
 createMcpAgentScript	createMcpAgentScript	at least 5 arguments: (agentName, agentRole, agentInstructions, tools, outputPath, model?)		
 createNativeCallback	createNativeCallback	exactly 1 function argument		
 createReadFileTool	createReadFileTool	0-1 arguments: (workingDir?)		
@@ -70,6 +76,10 @@ createRunCommandTool	createRunCommandTool	0-1 arguments: (workingDir?)
 createRunMALDATool	createRunMALDATool	0-1 arguments: (workingDir?)		
 createSecureCookie	createSecureCookie	(string, string, string, object?)		
 createSubmitPlanTool	createSubmitPlanTool	0 arguments		
+createTestMaldaTool	createTestMaldaTool	0-1 arguments: (workingDir?)		
+createUpdatePlanTool	createUpdatePlanTool	0 arguments		
+createValidateJsonTool	createValidateJsonTool	0 arguments		
+createWebFetchTool	createWebFetchTool	0 arguments		
 createWebSearchTool	createWebSearchTool	0 arguments		
 createWriteFileTool	createWriteFileTool	0-1 arguments: (workingDir?)		
 crossEntropyFromLogits	math.crossEntropyFromLogits	2 arguments: (logits, targetIndex)		
@@ -360,6 +370,7 @@ validate	validate	2 arguments: (schema, value)
 verifyCsrfToken	verifyCsrfToken	(string, string)		
 verifyJwt	verifyJwt	2 or 3 arguments: (token, secret, options?)		
 verifyPassword	verifyPassword	2 arguments: (password, passwordHash)		
+webFetch	webFetch	1-3 arguments: (url, maxBytes?, timeoutMs?)		
 webSearch	webSearch	at least 1 string argument: (query, apiKey?)		
 withExamples	withExamples	(prompt, examples, options?)		
 writeFile	io.writeFile	2 arguments		

@@ -167,6 +167,94 @@ public static class BuiltInTools
         
         return RuntimeValue.Object(tool);
     }
+
+    public static RuntimeValue CreateDeleteFileTool(string workingDirectory = "")
+    {
+        var tool = new ToolInstance();
+        var parameters = new JsonObject();
+
+        var properties = new JsonObject();
+        var filePathProp = new JsonObject();
+        filePathProp.Set("type", RuntimeValue.String("string"));
+        filePathProp.Set("description", RuntimeValue.String("Path to the file to delete. Use a relative path when the tool has a working directory."));
+        properties.Set("filePath", RuntimeValue.Object(filePathProp));
+
+        parameters.Set("type", RuntimeValue.String("object"));
+        parameters.Set("properties", RuntimeValue.Object(properties));
+        parameters.Set("required", RuntimeValue.Array(new List<RuntimeValue> { RuntimeValue.String("filePath") }));
+
+        tool.Initialize(
+            "delete_file",
+            "Deletes a file. Paths stay inside the working directory. Returns { success: boolean, error?: string }. Succeeds when the file is already missing.",
+            RuntimeValue.Object(parameters),
+            null,
+            workingDirectory
+        );
+
+        return RuntimeValue.Object(tool);
+    }
+
+    public static RuntimeValue CreateCopyFileTool(string workingDirectory = "")
+    {
+        var tool = new ToolInstance();
+        var parameters = new JsonObject();
+
+        var properties = new JsonObject();
+
+        var srcPathProp = new JsonObject();
+        srcPathProp.Set("type", RuntimeValue.String("string"));
+        srcPathProp.Set("description", RuntimeValue.String("Path of the file to copy. Use a relative path when the tool has a working directory."));
+        properties.Set("srcPath", RuntimeValue.Object(srcPathProp));
+
+        var destPathProp = new JsonObject();
+        destPathProp.Set("type", RuntimeValue.String("string"));
+        destPathProp.Set("description", RuntimeValue.String("Destination path. Use a relative path when the tool has a working directory. Both srcPath and destPath must stay inside the working directory."));
+        properties.Set("destPath", RuntimeValue.Object(destPathProp));
+
+        parameters.Set("type", RuntimeValue.String("object"));
+        parameters.Set("properties", RuntimeValue.Object(properties));
+        parameters.Set("required", RuntimeValue.Array(new List<RuntimeValue>
+        {
+            RuntimeValue.String("srcPath"),
+            RuntimeValue.String("destPath")
+        }));
+
+        tool.Initialize(
+            "copy_file",
+            "Copies a file. Both srcPath and destPath must stay inside the working directory. Returns { success: boolean, error?: string }.",
+            RuntimeValue.Object(parameters),
+            null,
+            workingDirectory
+        );
+
+        return RuntimeValue.Object(tool);
+    }
+
+    public static RuntimeValue CreateEnsureDirTool(string workingDirectory = "")
+    {
+        var tool = new ToolInstance();
+        var parameters = new JsonObject();
+
+        var properties = new JsonObject();
+        var dirPathProp = new JsonObject();
+        dirPathProp.Set("type", RuntimeValue.String("string"));
+        dirPathProp.Set("description", RuntimeValue.String("Directory to create (parents are created as needed). Use a relative path when the tool has a working directory."));
+        properties.Set("dirPath", RuntimeValue.Object(dirPathProp));
+
+        parameters.Set("type", RuntimeValue.String("object"));
+        parameters.Set("properties", RuntimeValue.Object(properties));
+        parameters.Set("required", RuntimeValue.Array(new List<RuntimeValue> { RuntimeValue.String("dirPath") }));
+
+        tool.Initialize(
+            "ensure_dir",
+            "Creates a directory and any missing parents. Paths stay inside the working directory. Returns { success: boolean, path?: string, error?: string }.",
+            RuntimeValue.Object(parameters),
+            null,
+            workingDirectory
+        );
+
+        return RuntimeValue.Object(tool);
+    }
     
     public static RuntimeValue CreateAskUserTool()
     {
@@ -228,6 +316,52 @@ public static class BuiltInTools
         
         return RuntimeValue.Object(tool);
     }
+
+    public static RuntimeValue CreateWebFetchTool()
+    {
+        var tool = new ToolInstance();
+        var parameters = new JsonObject();
+
+        var properties = new JsonObject();
+
+        var urlProp = new JsonObject();
+        urlProp.Set("type", RuntimeValue.String("string"));
+        urlProp.Set("description", RuntimeValue.String("HTTP or HTTPS URL to fetch. Other schemes (file://, ftp://, …) are rejected."));
+        properties.Set("url", RuntimeValue.Object(urlProp));
+
+        var maxBytesProp = new JsonObject();
+        maxBytesProp.Set("type", RuntimeValue.String("integer"));
+        maxBytesProp.Set("description", RuntimeValue.String("Maximum content length in characters (default 100000, hard cap 500000). Longer bodies are truncated and truncated is set true."));
+        maxBytesProp.Set("default", RuntimeValue.Integer(100000));
+        properties.Set("maxBytes", RuntimeValue.Object(maxBytesProp));
+
+        var timeoutMsProp = new JsonObject();
+        timeoutMsProp.Set("type", RuntimeValue.String("integer"));
+        timeoutMsProp.Set("description", RuntimeValue.String("Request timeout in milliseconds (default 15000, hard cap 60000)."));
+        timeoutMsProp.Set("default", RuntimeValue.Integer(15000));
+        properties.Set("timeoutMs", RuntimeValue.Object(timeoutMsProp));
+
+        parameters.Set("type", RuntimeValue.String("object"));
+        parameters.Set("properties", RuntimeValue.Object(properties));
+        parameters.Set("required", RuntimeValue.Array(new List<RuntimeValue> { RuntimeValue.String("url") }));
+
+        tool.Initialize(
+            "web_fetch",
+            "Fetches an HTTP or HTTPS URL and returns the response body as text. Use for reading documentation or pages (not search). Parameters: url (required), maxBytes? (default 100000, cap 500000), timeoutMs? (default 15000, cap 60000). Returns { ok, status, url, content, truncated, error? }. JSON bodies are returned as a JSON string. Parallel-safe.",
+            RuntimeValue.Object(parameters),
+            null,
+            ""
+        );
+
+        return RuntimeValue.Object(tool);
+    }
+
+    /// <summary>
+    /// Shared host implementation for <c>web_fetch</c> / <c>webFetch</c>.
+    /// Conversation and <c>tool.execute</c> both call this.
+    /// </summary>
+    public static RuntimeValue ExecuteWebFetch(RuntimeValue arguments)
+        => BuiltInFunctions.ExecuteWebFetch(arguments);
     
     public static RuntimeValue CreateGrepTool(string workingDirectory = "")
     {
@@ -1070,6 +1204,113 @@ public static class BuiltInTools
         
         return RuntimeValue.Object(tool);
     }
+
+    public static RuntimeValue CreateCheckMaldaTool(string workingDirectory = "")
+    {
+        var tool = new ToolInstance();
+        var parameters = new JsonObject();
+
+        var properties = new JsonObject();
+
+        var sourceOrFilePathProp = new JsonObject();
+        sourceOrFilePathProp.Set("type", RuntimeValue.String("string"));
+        sourceOrFilePathProp.Set("description", RuntimeValue.String("Path to a .malda file (relative to the working directory) or MALDA source code. If the string contains path separators or ends with .malda, the file is read and diagnosed. Otherwise it is treated as inline source (file label \"<eval>\")."));
+        properties.Set("sourceOrFilePath", RuntimeValue.Object(sourceOrFilePathProp));
+
+        var typeModeProp = new JsonObject();
+        typeModeProp.Set("type", RuntimeValue.String("string"));
+        typeModeProp.Set("description", RuntimeValue.String("Optional type-checking mode. 'default' matches the IDE (type mismatches are errors). 'strict' enables the full CLI suite. 'lenient' reports type mismatches as warnings."));
+        typeModeProp.Set("enum", RuntimeValue.Array(new List<RuntimeValue>
+        {
+            RuntimeValue.String("default"),
+            RuntimeValue.String("strict"),
+            RuntimeValue.String("lenient")
+        }));
+        properties.Set("typeMode", RuntimeValue.Object(typeModeProp));
+
+        parameters.Set("type", RuntimeValue.String("object"));
+        parameters.Set("properties", RuntimeValue.Object(properties));
+        parameters.Set("required", RuntimeValue.Array(new List<RuntimeValue> { RuntimeValue.String("sourceOrFilePath") }));
+
+        tool.Initialize(
+            "check_malda",
+            "Diagnose MALDA code with the same LanguageService diagnostics as 'malda check --json' (parse, types, schema, interpolation). Accepts a file path or inline source. Does not execute the program. Returns { ok, executed, file, errorCount, warningCount, infoCount, error?, diagnostics }.",
+            RuntimeValue.Object(parameters),
+            null,
+            workingDirectory
+        );
+
+        return RuntimeValue.Object(tool);
+    }
+
+    public static RuntimeValue CreateValidateJsonTool()
+    {
+        var tool = new ToolInstance();
+        var parameters = new JsonObject();
+        var properties = new JsonObject();
+
+        var schemaProp = new JsonObject();
+        schemaProp.Set("description", RuntimeValue.String("Registered schema or sum-type name (string), or an inline schema object. Same as validate(schema, value)."));
+        properties.Set("schema", RuntimeValue.Object(schemaProp));
+
+        var valueProp = new JsonObject();
+        valueProp.Set("description", RuntimeValue.String("Value to check against the schema. Any JSON-shaped value is accepted."));
+        properties.Set("value", RuntimeValue.Object(valueProp));
+
+        parameters.Set("type", RuntimeValue.String("object"));
+        parameters.Set("properties", RuntimeValue.Object(properties));
+        parameters.Set("required", RuntimeValue.Array(new List<RuntimeValue>
+        {
+            RuntimeValue.String("schema"),
+            RuntimeValue.String("value")
+        }));
+
+        tool.Initialize(
+            "validate_json",
+            "Validate a value against a registered schema or sum-type name, or an inline schema object. Same result as validate(schema, value): { ok, data } or { ok: false, error }. Parallel-safe; does not write files.",
+            RuntimeValue.Object(parameters),
+            null,
+            ""
+        );
+
+        return RuntimeValue.Object(tool);
+    }
+
+    public static RuntimeValue CreateTestMaldaTool(string workingDirectory = "")
+    {
+        var tool = new ToolInstance();
+        var parameters = new JsonObject();
+        var properties = new JsonObject();
+
+        var pathProp = new JsonObject();
+        pathProp.Set("type", RuntimeValue.String("string"));
+        pathProp.Set("description", RuntimeValue.String("File or directory to run (*.test.malda / *.spec.malda). Defaults to '.' relative to the working directory. Must stay inside the working directory."));
+        properties.Set("path", RuntimeValue.Object(pathProp));
+
+        var filterProp = new JsonObject();
+        filterProp.Set("type", RuntimeValue.String("string"));
+        filterProp.Set("description", RuntimeValue.String("Optional substring filter passed as --filter to malda test."));
+        properties.Set("filter", RuntimeValue.Object(filterProp));
+
+        var listOnlyProp = new JsonObject();
+        listOnlyProp.Set("type", RuntimeValue.String("boolean"));
+        listOnlyProp.Set("description", RuntimeValue.String("If true, list discovered tests without running them (--list)."));
+        properties.Set("listOnly", RuntimeValue.Object(listOnlyProp));
+
+        parameters.Set("type", RuntimeValue.String("object"));
+        parameters.Set("properties", RuntimeValue.Object(properties));
+        parameters.Set("required", RuntimeValue.Array(new List<RuntimeValue>()));
+
+        tool.Initialize(
+            "test_malda",
+            "Run MALDA tests via the same host path as 'malda test' (TestCommandRunner). Parameters: path? (file or directory, default '.'), filter?, listOnly?. Returns { success, exitCode, output, report? }. Not parallel-safe.",
+            RuntimeValue.Object(parameters),
+            null,
+            workingDirectory
+        );
+
+        return RuntimeValue.Object(tool);
+    }
     
     public static RuntimeValue CreateSubmitPlanTool()
     {
@@ -1094,6 +1335,82 @@ public static class BuiltInTools
         tool.Initialize(
             "submit_plan",
             "Submit a structured plan before or during execution. Use when you have broken down the task into steps. Pass either a 'plan' object with 'steps' (and optional 'taskSummary') or a 'steps' array. Each step must have 'id' (string) and 'description' (string); optional 'dependsOn' (array of step ids). Returns { accepted: true, planId, stepCount } or { accepted: false, error }.",
+            RuntimeValue.Object(parameters),
+            null,
+            ""
+        );
+        return RuntimeValue.Object(tool);
+    }
+
+    public static RuntimeValue CreateUpdatePlanTool()
+    {
+        var tool = new ToolInstance();
+        var parameters = new JsonObject();
+        var properties = new JsonObject();
+        var planIdProp = new JsonObject();
+        planIdProp.Set("type", RuntimeValue.String("string"));
+        planIdProp.Set("description", RuntimeValue.String("Id of the stored plan to update (from submit_plan)."));
+        properties.Set("planId", RuntimeValue.Object(planIdProp));
+        var stepsProp = new JsonObject();
+        stepsProp.Set("type", RuntimeValue.String("array"));
+        stepsProp.Set("description", RuntimeValue.String("Optional replacement steps [{ id, description, dependsOn? }, ...]. Re-validated; surviving ids keep their status; new ids start pending; omitted ids are dropped."));
+        properties.Set("steps", RuntimeValue.Object(stepsProp));
+        var taskSummaryProp = new JsonObject();
+        taskSummaryProp.Set("type", RuntimeValue.String("string"));
+        taskSummaryProp.Set("description", RuntimeValue.String("Optional: replace the stored task summary."));
+        properties.Set("taskSummary", RuntimeValue.Object(taskSummaryProp));
+        parameters.Set("type", RuntimeValue.String("object"));
+        parameters.Set("properties", RuntimeValue.Object(properties));
+        parameters.Set("required", RuntimeValue.Array(new List<RuntimeValue> { RuntimeValue.String("planId") }));
+        tool.Initialize(
+            "update_plan",
+            "Update a stored structured plan. Requires planId. Optional steps are re-validated (surviving step ids keep their status; new ids are pending). Optional taskSummary replaces the stored summary. Returns { accepted: true, planId, stepCount, steps } or { accepted: false, error }. Not parallel-safe.",
+            RuntimeValue.Object(parameters),
+            null,
+            ""
+        );
+        return RuntimeValue.Object(tool);
+    }
+
+    public static RuntimeValue CreateMarkStepTool()
+    {
+        var tool = new ToolInstance();
+        var parameters = new JsonObject();
+        var properties = new JsonObject();
+        var planIdProp = new JsonObject();
+        planIdProp.Set("type", RuntimeValue.String("string"));
+        planIdProp.Set("description", RuntimeValue.String("Id of the stored plan (from submit_plan)."));
+        properties.Set("planId", RuntimeValue.Object(planIdProp));
+        var idProp = new JsonObject();
+        idProp.Set("type", RuntimeValue.String("string"));
+        idProp.Set("description", RuntimeValue.String("Step id to update."));
+        properties.Set("id", RuntimeValue.Object(idProp));
+        var statusProp = new JsonObject();
+        statusProp.Set("type", RuntimeValue.String("string"));
+        statusProp.Set("description", RuntimeValue.String("New step status: pending, in_progress, done, or blocked."));
+        statusProp.Set("enum", RuntimeValue.Array(new List<RuntimeValue>
+        {
+            RuntimeValue.String("pending"),
+            RuntimeValue.String("in_progress"),
+            RuntimeValue.String("done"),
+            RuntimeValue.String("blocked")
+        }));
+        properties.Set("status", RuntimeValue.Object(statusProp));
+        var noteProp = new JsonObject();
+        noteProp.Set("type", RuntimeValue.String("string"));
+        noteProp.Set("description", RuntimeValue.String("Optional note stored on the step."));
+        properties.Set("note", RuntimeValue.Object(noteProp));
+        parameters.Set("type", RuntimeValue.String("object"));
+        parameters.Set("properties", RuntimeValue.Object(properties));
+        parameters.Set("required", RuntimeValue.Array(new List<RuntimeValue>
+        {
+            RuntimeValue.String("planId"),
+            RuntimeValue.String("id"),
+            RuntimeValue.String("status")
+        }));
+        tool.Initialize(
+            "mark_step",
+            "Set the status of a stored plan step. Requires planId, id, and status (pending | in_progress | done | blocked). Optional note is stored on the step. Returns { accepted: true, planId, id, status } or { accepted: false, error }. Not parallel-safe.",
             RuntimeValue.Object(parameters),
             null,
             ""

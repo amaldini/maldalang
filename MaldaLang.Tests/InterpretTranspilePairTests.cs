@@ -426,6 +426,94 @@ while (i < length(items)) {{
     }
 
     [Fact]
+    public void CreateFileLifecycleTools_Execute_SameStdout()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), "malda_pair_lifecycle_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        var workDir = tempDir.Replace("\\", "/");
+
+        try
+        {
+            InterpretTranspilePair.AssertSameFromSource(
+                $@"
+var workDir = ""{workDir}"";
+writeFile(workDir + ""/src.txt"", ""payload"");
+var deleteTool = createDeleteFileTool(workDir);
+var copyTool = createCopyFileTool(workDir);
+var ensureTool = createEnsureDirTool(workDir);
+var copied = copyTool.execute({{ ""srcPath"": ""src.txt"", ""destPath"": ""copied.txt"" }});
+print(""copy="" + string(copied.success));
+print(""content="" + readFile(workDir + ""/copied.txt""));
+var ensured = ensureTool.execute({{ ""dirPath"": ""nested/dir"" }});
+print(""ensure="" + string(ensured.success));
+print(""hasDir="" + string(hasDirectory(workDir + ""/nested/dir"")));
+var deleted = deleteTool.execute({{ ""filePath"": ""src.txt"" }});
+print(""delete="" + string(deleted.success));
+print(""gone="" + string(!hasFile(workDir + ""/src.txt"")));
+",
+                "createFileLifecycleTools-execute");
+        }
+        finally
+        {
+            try { Directory.Delete(tempDir, recursive: true); } catch { /* ignore */ }
+        }
+    }
+
+    [Fact]
+    public void CreateCheckMaldaTool_Execute_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            @"
+var tool = createCheckMaldaTool();
+var result = tool.execute({ ""sourceOrFilePath"": ""var x = 1;"" });
+print(""ok="" + string(result.ok));
+",
+            "createCheckMaldaTool-execute");
+    }
+
+    [Fact]
+    public void CreateValidateJsonTool_Execute_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            @"
+schema User { name: string; }
+var tool = createValidateJsonTool();
+var result = tool.execute({ ""schema"": ""User"", ""value"": dict { ""name"": ""Ada"" } });
+print(""ok="" + string(result.ok));
+",
+            "createValidateJsonTool-execute");
+    }
+
+    [Fact]
+    public void SubmitMarkUpdatePlan_Execute_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            var submit = createSubmitPlanTool();
+            var mark = createMarkStepTool();
+            var update = createUpdatePlanTool();
+            var plan = submit.execute({
+                "steps": [
+                    { "id": "s1", "description": "one" },
+                    { "id": "s2", "description": "two" }
+                ]
+            });
+            print("submit=" + string(plan.accepted));
+            var marked = mark.execute({ "planId": plan.planId, "id": "s1", "status": "done" });
+            print("mark=" + string(marked.accepted));
+            var updated = update.execute({
+                "planId": plan.planId,
+                "steps": [
+                    { "id": "s1", "description": "one updated" },
+                    { "id": "s3", "description": "three" }
+                ]
+            });
+            print("update=" + string(updated.accepted));
+            """,
+            "submit-mark-update-plan");
+    }
+
+    [Fact]
     public void CreateFileTools_Execute_SameStdout()
     {
         var tempDir = Path.Combine(Path.GetTempPath(), "malda_pair_tools_" + Guid.NewGuid().ToString("N"));
