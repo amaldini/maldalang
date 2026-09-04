@@ -478,7 +478,7 @@ malda compile Examples/Games/three_shader_billiards.malda --mode js -o Examples/
 malda compile Examples/Games/three_shader_path_tunnel.malda --mode js -o Examples/Games/three_shader_path_tunnel.js
 ```
 
-`Examples/Games/three_shader_mandelbrot.malda` is an infinite Mandelbrot zoom: `@shader()` kernels iterate with float-float arithmetic, the host advances an exponential scale into Seahorse Valley, and the dive wraps after eleven decades. Hold Space to pause; `[` `]` change speed. Compile:
+`Examples/Games/three_shader_mandelbrot.malda` is an infinite Mandelbrot zoom: `@shader()` kernels iterate with float-float arithmetic, the host advances an exponential scale into Seahorse Valley, and the dive wraps after six decades. Hold Space to pause; `[` `]` change speed. Compile:
 
 ```bash
 malda compile Examples/Games/three_shader_mandelbrot.malda --mode js -o Examples/Games/three_shader_mandelbrot.js

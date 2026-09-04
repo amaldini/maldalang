@@ -1,6 +1,6 @@
 // Infinite Mandelbrot zoom compiled through @shader() → GLSL (JavaScript mode).
-// Float-float (hi/lo) arithmetic keeps the seahorse-valley center sharp for
-// about eleven decades, then the exponential scale wraps so the dive loops.
+// Float-float (hi/lo) arithmetic keeps a Seahorse Valley filament center sharp
+// for about six decades, then the exponential scale wraps so the dive loops.
 //
 // Compile:
 //   malda compile Examples/Games/three_shader_mandelbrot.malda --mode js -o Examples/Games/three_shader_mandelbrot.js
@@ -72,9 +72,9 @@ function fragmentMain() {
     var mag: float = 0.0;
     var escaped: float = 0.0;
     var smoothIter: float = 0.0;
-    var maxIter: float = 80.0 + decades * 12.0;
+    var maxIter: float = 140.0 + decades * 28.0;
 
-    while (i < 200.0) {
+    while (i < 380.0) {
         i = i + 1.0;
         if (escaped < 0.5 && i <= maxIter) {
             var x2: vec2 = dsMul(zx, zx);
@@ -112,9 +112,9 @@ var fragmentShader = glsl.compile({
     ],
     consts: [
         "vec2 CX = vec2(-0.7436438798904419, -7.146709002370244e-9)",
-        "vec2 CY = vec2(0.13182590901851654, -4.813186738061859e-9)",
+        "vec2 CY = vec2(0.1318289041519165, 5.3413495848531056e-11)",
         "float START_SCALE = 2.55",
-        "float WRAP_DECADES = 11.0"
+        "float WRAP_DECADES = 6.0"
     ],
     functions: ["dsRenorm", "dsAdd", "dsNeg", "dsScale", "dsMul", "palette", "fragmentMain"],
     main: "fragmentMain"
@@ -164,7 +164,7 @@ if (root == null) {
 
     var decades = 0.0;
     var speedMul = 1.0;
-    var wrapDecades = 11.0;
+    var wrapDecades = 6.0;
     var zoomPerSecond = 0.38;
 
     function update(dtMs) {

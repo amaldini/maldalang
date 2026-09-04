@@ -301,7 +301,7 @@
         "Games/three_shader_raytracer.malda"
       ],
       "learningGoal": "Show an infinite fractal zoom written as typed MALDA @shader() functions, compiled with glsl.compile, using float-float uniforms-free center math.",
-      "expectedOutput": "Renders a realtime GPU Mandelbrot that zooms into Seahorse Valley for eleven decades, then wraps and dives again. Space pauses; [ ] change speed.",
+      "expectedOutput": "Renders a realtime GPU Mandelbrot that zooms into Seahorse Valley for six decades, then wraps and dives again. Space pauses; [ ] change speed.",
       "next": "Games/three_cube.malda",
       "documentationPath": "/?lesson=browser-track#lesson-browser-track",
       "documentationTitle": "Browser Track"

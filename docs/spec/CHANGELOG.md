@@ -109,7 +109,7 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 #### Added (PATCH — infinite Mandelbrot zoom example)
 
-- **`Examples/Games/three_shader_mandelbrot.malda`:** GPU Mandelbrot infinite zoom on the existing `three.createShaderMaterial` / `@shader()` path. The kernel uses float-float (hi/lo) complex arithmetic around Seahorse Valley; host MALDA advances an exponential scale that wraps after eleven decades so the dive loops. Hold Space to pause; `[` `]` change speed. Host page: `three_shader_mandelbrot_runtime_smoke_test.html`. No new `game.*` / `three.*` names. JavaScript backend only.
+- **`Examples/Games/three_shader_mandelbrot.malda`:** GPU Mandelbrot infinite zoom on the existing `three.createShaderMaterial` / `@shader()` path. The kernel uses float-float (hi/lo) complex arithmetic around Seahorse Valley; host MALDA advances an exponential scale that wraps after six decades so the dive loops. Hold Space to pause; `[` `]` change speed. Host page: `three_shader_mandelbrot_runtime_smoke_test.html`. No new `game.*` / `three.*` names. JavaScript backend only.
 
 #### Added (PATCH — GPU billiards example)
 
