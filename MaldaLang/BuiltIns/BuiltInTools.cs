@@ -167,6 +167,94 @@ public static class BuiltInTools
         
         return RuntimeValue.Object(tool);
     }
+
+    public static RuntimeValue CreateDeleteFileTool(string workingDirectory = "")
+    {
+        var tool = new ToolInstance();
+        var parameters = new JsonObject();
+
+        var properties = new JsonObject();
+        var filePathProp = new JsonObject();
+        filePathProp.Set("type", RuntimeValue.String("string"));
+        filePathProp.Set("description", RuntimeValue.String("Path to the file to delete. Use a relative path when the tool has a working directory."));
+        properties.Set("filePath", RuntimeValue.Object(filePathProp));
+
+        parameters.Set("type", RuntimeValue.String("object"));
+        parameters.Set("properties", RuntimeValue.Object(properties));
+        parameters.Set("required", RuntimeValue.Array(new List<RuntimeValue> { RuntimeValue.String("filePath") }));
+
+        tool.Initialize(
+            "delete_file",
+            "Deletes a file. Paths stay inside the working directory. Returns { success: boolean, error?: string }. Succeeds when the file is already missing.",
+            RuntimeValue.Object(parameters),
+            null,
+            workingDirectory
+        );
+
+        return RuntimeValue.Object(tool);
+    }
+
+    public static RuntimeValue CreateCopyFileTool(string workingDirectory = "")
+    {
+        var tool = new ToolInstance();
+        var parameters = new JsonObject();
+
+        var properties = new JsonObject();
+
+        var srcPathProp = new JsonObject();
+        srcPathProp.Set("type", RuntimeValue.String("string"));
+        srcPathProp.Set("description", RuntimeValue.String("Path of the file to copy. Use a relative path when the tool has a working directory."));
+        properties.Set("srcPath", RuntimeValue.Object(srcPathProp));
+
+        var destPathProp = new JsonObject();
+        destPathProp.Set("type", RuntimeValue.String("string"));
+        destPathProp.Set("description", RuntimeValue.String("Destination path. Use a relative path when the tool has a working directory. Both srcPath and destPath must stay inside the working directory."));
+        properties.Set("destPath", RuntimeValue.Object(destPathProp));
+
+        parameters.Set("type", RuntimeValue.String("object"));
+        parameters.Set("properties", RuntimeValue.Object(properties));
+        parameters.Set("required", RuntimeValue.Array(new List<RuntimeValue>
+        {
+            RuntimeValue.String("srcPath"),
+            RuntimeValue.String("destPath")
+        }));
+
+        tool.Initialize(
+            "copy_file",
+            "Copies a file. Both srcPath and destPath must stay inside the working directory. Returns { success: boolean, error?: string }.",
+            RuntimeValue.Object(parameters),
+            null,
+            workingDirectory
+        );
+
+        return RuntimeValue.Object(tool);
+    }
+
+    public static RuntimeValue CreateEnsureDirTool(string workingDirectory = "")
+    {
+        var tool = new ToolInstance();
+        var parameters = new JsonObject();
+
+        var properties = new JsonObject();
+        var dirPathProp = new JsonObject();
+        dirPathProp.Set("type", RuntimeValue.String("string"));
+        dirPathProp.Set("description", RuntimeValue.String("Directory to create (parents are created as needed). Use a relative path when the tool has a working directory."));
+        properties.Set("dirPath", RuntimeValue.Object(dirPathProp));
+
+        parameters.Set("type", RuntimeValue.String("object"));
+        parameters.Set("properties", RuntimeValue.Object(properties));
+        parameters.Set("required", RuntimeValue.Array(new List<RuntimeValue> { RuntimeValue.String("dirPath") }));
+
+        tool.Initialize(
+            "ensure_dir",
+            "Creates a directory and any missing parents. Paths stay inside the working directory. Returns { success: boolean, path?: string, error?: string }.",
+            RuntimeValue.Object(parameters),
+            null,
+            workingDirectory
+        );
+
+        return RuntimeValue.Object(tool);
+    }
     
     public static RuntimeValue CreateAskUserTool()
     {

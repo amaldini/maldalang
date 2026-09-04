@@ -1057,6 +1057,9 @@ public static class BuiltInFunctions
             "createWriteFileTool" => BuiltInCreateWriteFileTool(args),
             "createReplaceInFileTool" => BuiltInCreateReplaceInFileTool(args),
             "createListDirectoryTool" => BuiltInCreateListDirectoryTool(args),
+            "createDeleteFileTool" => BuiltInCreateDeleteFileTool(args),
+            "createCopyFileTool" => BuiltInCreateCopyFileTool(args),
+            "createEnsureDirTool" => BuiltInCreateEnsureDirTool(args),
             "createAskUserTool" => BuiltInCreateAskUserTool(args),
             "createWebSearchTool" => BuiltInCreateWebSearchTool(args),
             "createGrepTool" => BuiltInCreateGrepTool(args),
@@ -1443,6 +1446,9 @@ public static class BuiltInFunctions
             "createWriteFileTool" => BuiltInCreateWriteFileTool(args),
             "createReplaceInFileTool" => BuiltInCreateReplaceInFileTool(args),
             "createListDirectoryTool" => BuiltInCreateListDirectoryTool(args),
+            "createDeleteFileTool" => BuiltInCreateDeleteFileTool(args),
+            "createCopyFileTool" => BuiltInCreateCopyFileTool(args),
+            "createEnsureDirTool" => BuiltInCreateEnsureDirTool(args),
             "createAskUserTool" => BuiltInCreateAskUserTool(args),
             "createWebSearchTool" => BuiltInCreateWebSearchTool(args),
             "createGrepTool" => BuiltInCreateGrepTool(args),
@@ -6063,6 +6069,33 @@ public static class BuiltInFunctions
             ? args[0].AsString() 
             : "";
         return BuiltInTools.CreateListDirectoryTool(workingDir);
+    }
+
+    private static RuntimeValue BuiltInCreateDeleteFileTool(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("createDeleteFileTool", args, 0, 1, "workingDir?");
+        var workingDir = args.Count > 0 && args[0].Type == MaldaLang.Interpreter.ValueType.String
+            ? args[0].AsString()
+            : "";
+        return BuiltInTools.CreateDeleteFileTool(workingDir);
+    }
+
+    private static RuntimeValue BuiltInCreateCopyFileTool(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("createCopyFileTool", args, 0, 1, "workingDir?");
+        var workingDir = args.Count > 0 && args[0].Type == MaldaLang.Interpreter.ValueType.String
+            ? args[0].AsString()
+            : "";
+        return BuiltInTools.CreateCopyFileTool(workingDir);
+    }
+
+    private static RuntimeValue BuiltInCreateEnsureDirTool(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("createEnsureDirTool", args, 0, 1, "workingDir?");
+        var workingDir = args.Count > 0 && args[0].Type == MaldaLang.Interpreter.ValueType.String
+            ? args[0].AsString()
+            : "";
+        return BuiltInTools.CreateEnsureDirTool(workingDir);
     }
     
     private static RuntimeValue BuiltInCreateAskUserTool(List<RuntimeValue> args)

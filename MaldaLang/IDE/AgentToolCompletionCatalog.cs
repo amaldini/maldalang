@@ -52,7 +52,8 @@ internal static class AgentToolCompletionCatalog
     public static readonly string[] CreateToolFactories =
     {
         "createReadFileTool", "createWriteFileTool", "createReplaceInFileTool",
-        "createListDirectoryTool", "createAskUserTool", "createWebSearchTool",
+        "createListDirectoryTool", "createDeleteFileTool", "createCopyFileTool",
+        "createEnsureDirTool", "createAskUserTool", "createWebSearchTool",
         "createGrepTool", "createGlobTool", "createInsertAtLineTool", "createEditFileTool",
         "createGetSymbolsTool", "createGetParseErrorsTool",
         "createGitStatusTool", "createGitAddTool", "createGitCommitTool", "createGitLogTool",

@@ -44,8 +44,11 @@ composePipe -> stdlib-general | BuiltInRegistry
 cos -> tier1-core | BuiltInRegistry
 createAskUserTool -> platform-ai | BuiltInRegistry
 createCompileMALDATool -> platform-ai | BuiltInRegistry
+createCopyFileTool -> platform-ai | BuiltInRegistry
 createCreateMcpAgentScriptTool -> platform-ai | BuiltInRegistry
+createDeleteFileTool -> platform-ai | BuiltInRegistry
 createEditFileTool -> platform-ai | BuiltInRegistry
+createEnsureDirTool -> platform-ai | BuiltInRegistry
 createGetParseErrorsTool -> platform-ai | BuiltInRegistry
 createGetSymbolsTool -> platform-ai | BuiltInRegistry
 createGitAddTool -> platform-ai | BuiltInRegistry

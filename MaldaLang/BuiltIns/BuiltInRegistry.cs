@@ -178,6 +178,9 @@ public static class BuiltInRegistry
             "createWriteFileTool" or
             "createReplaceInFileTool" or
             "createListDirectoryTool" or
+            "createDeleteFileTool" or
+            "createCopyFileTool" or
+            "createEnsureDirTool" or
             "createAskUserTool" or
             "createGrepTool" or
             "createGlobTool" or

@@ -16,7 +16,8 @@ public class TranspilerRemainingBuiltInTests
         "editFile", "insertAtLine",
         "gitLog", "gitBranch", "gitCheckout", "gitPush", "gitPull",
         "createReadFileTool", "createWriteFileTool", "createReplaceInFileTool",
-        "createListDirectoryTool", "createAskUserTool", "createGrepTool", "createGlobTool",
+        "createListDirectoryTool", "createDeleteFileTool", "createCopyFileTool", "createEnsureDirTool",
+        "createAskUserTool", "createGrepTool", "createGlobTool",
         "createInsertAtLineTool", "createEditFileTool",
         "createGitStatusTool", "createGitAddTool", "createGitCommitTool",
         "createGitLogTool", "createGitDiffTool", "createGitBranchTool",
@@ -28,7 +29,7 @@ public class TranspilerRemainingBuiltInTests
     [Fact]
     public void FormerInterpreterOnlyBuiltIns_AreAllTranspilerSupported()
     {
-        Assert.Equal(34, FormerInterpreterOnly.Length);
+        Assert.Equal(37, FormerInterpreterOnly.Length);
         foreach (var name in FormerInterpreterOnly)
         {
             var descriptor = Assert.IsType<BuiltInDescriptor>(BuiltInRegistry.GetDescriptor(name));

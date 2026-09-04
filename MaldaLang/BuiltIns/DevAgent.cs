@@ -254,6 +254,9 @@ public class DevAgentInstance : AgentInstance
             Register((ToolInstance)BuiltInTools.CreateReplaceInFileTool(workingDirectory).AsObject());
             Register((ToolInstance)BuiltInTools.CreateInsertAtLineTool(workingDirectory).AsObject());
             Register((ToolInstance)BuiltInTools.CreateEditFileTool(workingDirectory).AsObject());
+            Register((ToolInstance)BuiltInTools.CreateDeleteFileTool(workingDirectory).AsObject());
+            Register((ToolInstance)BuiltInTools.CreateCopyFileTool(workingDirectory).AsObject());
+            Register((ToolInstance)BuiltInTools.CreateEnsureDirTool(workingDirectory).AsObject());
         }
         Register((ToolInstance)BuiltInTools.CreateGrepTool(workingDirectory).AsObject());
         Register((ToolInstance)BuiltInTools.CreateGlobTool(workingDirectory).AsObject());

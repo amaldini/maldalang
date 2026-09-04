@@ -426,6 +426,40 @@ while (i < length(items)) {{
     }
 
     [Fact]
+    public void CreateFileLifecycleTools_Execute_SameStdout()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), "malda_pair_lifecycle_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        var workDir = tempDir.Replace("\\", "/");
+
+        try
+        {
+            InterpretTranspilePair.AssertSameFromSource(
+                $@"
+var workDir = ""{workDir}"";
+writeFile(workDir + ""/src.txt"", ""payload"");
+var deleteTool = createDeleteFileTool(workDir);
+var copyTool = createCopyFileTool(workDir);
+var ensureTool = createEnsureDirTool(workDir);
+var copied = copyTool.execute({{ ""srcPath"": ""src.txt"", ""destPath"": ""copied.txt"" }});
+print(""copy="" + string(copied.success));
+print(""content="" + readFile(workDir + ""/copied.txt""));
+var ensured = ensureTool.execute({{ ""dirPath"": ""nested/dir"" }});
+print(""ensure="" + string(ensured.success));
+print(""hasDir="" + string(hasDirectory(workDir + ""/nested/dir"")));
+var deleted = deleteTool.execute({{ ""filePath"": ""src.txt"" }});
+print(""delete="" + string(deleted.success));
+print(""gone="" + string(!hasFile(workDir + ""/src.txt"")));
+",
+                "createFileLifecycleTools-execute");
+        }
+        finally
+        {
+            try { Directory.Delete(tempDir, recursive: true); } catch { /* ignore */ }
+        }
+    }
+
+    [Fact]
     public void CreateFileTools_Execute_SameStdout()
     {
         var tempDir = Path.Combine(Path.GetTempPath(), "malda_pair_tools_" + Guid.NewGuid().ToString("N"));

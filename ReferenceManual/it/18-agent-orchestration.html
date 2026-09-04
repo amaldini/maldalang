@@ -247,6 +247,9 @@ setAgentVerbosePhase("planning");</code></pre>
             <li><code>createInsertAtLineTool(workingDirectory?)</code> → <code>Tool</code></li>
             <li><code>createGrepTool(workingDirectory?)</code> → <code>Tool</code></li>
             <li><code>createListDirectoryTool(workingDirectory?)</code> → <code>Tool</code></li>
+            <li><code>createDeleteFileTool(workingDirectory?)</code> → <code>Tool</code> - Elimina un file. Parametri: <code>filePath</code>. Restituisce <code>{ success, error? }</code>.</li>
+            <li><code>createCopyFileTool(workingDirectory?)</code> → <code>Tool</code> - Copia un file. Parametri: <code>srcPath</code>, <code>destPath</code>. Entrambi i percorsi devono restare nella working directory. Restituisce <code>{ success, error? }</code>.</li>
+            <li><code>createEnsureDirTool(workingDirectory?)</code> → <code>Tool</code> - Crea una directory e i genitori. Parametri: <code>dirPath</code>. Restituisce <code>{ success, path?, error? }</code>.</li>
             <li><code>createAskUserTool()</code> → <code>Tool</code></li>
             <li><code>createGitStatusTool(workingDirectory?)</code> → <code>Tool</code></li>
             <li><code>createGitAddTool(workingDirectory?)</code> → <code>Tool</code></li>

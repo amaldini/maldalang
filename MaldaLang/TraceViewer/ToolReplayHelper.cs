@@ -80,6 +80,15 @@ internal static class ToolReplayHelper
             case "list_directory":
                 toolValue = BuiltInTools.CreateListDirectoryTool(workingDirectory);
                 break;
+            case "delete_file":
+                toolValue = BuiltInTools.CreateDeleteFileTool(workingDirectory);
+                break;
+            case "copy_file":
+                toolValue = BuiltInTools.CreateCopyFileTool(workingDirectory);
+                break;
+            case "ensure_dir":
+                toolValue = BuiltInTools.CreateEnsureDirTool(workingDirectory);
+                break;
             case "grep":
                 toolValue = BuiltInTools.CreateGrepTool(workingDirectory);
                 break;

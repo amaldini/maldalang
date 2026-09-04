@@ -44,8 +44,11 @@ copyFile	io.copyFile	2 arguments: (src, dest)	binary-safe overwrite; returns fal
 cos	math.cos	1 argument		
 createAskUserTool	createAskUserTool	0 arguments		
 createCompileMALDATool	createCompileMALDATool	0-1 arguments: (workingDir?)		
+createCopyFileTool	createCopyFileTool	0-1 arguments: (workingDir?)		
 createCreateMcpAgentScriptTool	createCreateMcpAgentScriptTool	0-1 arguments: (workingDir?)		
+createDeleteFileTool	createDeleteFileTool	0-1 arguments: (workingDir?)		
 createEditFileTool	createEditFileTool	0-1 arguments: (workingDir?)		
+createEnsureDirTool	createEnsureDirTool	0-1 arguments: (workingDir?)		
 createGetParseErrorsTool	createGetParseErrorsTool	0-1 arguments: (workingDir?)		
 createGetSymbolsTool	createGetSymbolsTool	0-1 arguments: (workingDir?)		
 createGitAddTool	createGitAddTool	0-1 arguments: (workingDir?)		

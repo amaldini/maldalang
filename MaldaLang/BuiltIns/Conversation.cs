@@ -123,6 +123,9 @@ public partial class ConversationInstance : ObjectInstance
         "edit_file",
         "insertAtLine",
         "insert_at_line",
+        "delete_file",
+        "copy_file",
+        "ensure_dir",
     };
 
     private static readonly Dictionary<string, string> ToolNameAliases = new(StringComparer.OrdinalIgnoreCase)
@@ -146,6 +149,9 @@ public partial class ConversationInstance : ObjectInstance
         "replace_in_file",
         "edit_file",
         "list_directory",
+        "delete_file",
+        "copy_file",
+        "ensure_dir",
         "insertAtLine",
         "insert_at_line",
         "ask_user",
@@ -2792,6 +2798,120 @@ public partial class ConversationInstance : ObjectInstance
                     if (resolvedDirPath == null)
                         return RuntimeValue.String("Error: dirPath parameter required");
                     return BuiltInFunctions.CallBuiltIn("listDirectory", new List<RuntimeValue> { RuntimeValue.String(resolvedDirPath) }, null);
+
+                case "delete_file":
+                    if (resolvedFilePath == null)
+                        return RuntimeValue.String("Error: filePath parameter required");
+                    try
+                    {
+                        var deleteResult = BuiltInFunctions.CallBuiltIn(
+                            "deleteFile",
+                            new List<RuntimeValue> { RuntimeValue.String(resolvedFilePath) },
+                            null);
+                        var deleteOk = deleteResult.Type == ValueType.Boolean && deleteResult.AsBoolean();
+                        var deleteObj = new JsonObject();
+                        deleteObj.Set("success", RuntimeValue.Boolean(deleteOk));
+                        if (!deleteOk)
+                            deleteObj.Set("error", RuntimeValue.String("deleteFile failed"));
+                        return RuntimeValue.Object(deleteObj);
+                    }
+                    catch (Exception ex)
+                    {
+                        var deleteErr = new JsonObject();
+                        deleteErr.Set("success", RuntimeValue.Boolean(false));
+                        deleteErr.Set("error", RuntimeValue.String(ex.Message));
+                        return RuntimeValue.Object(deleteErr);
+                    }
+
+                case "copy_file":
+                    try
+                    {
+                        var srcPathVal = argsObj.Get("srcPath", null);
+                        var destPathVal = argsObj.Get("destPath", null);
+                        if (srcPathVal == null || srcPathVal.Type != ValueType.String)
+                            return RuntimeValue.String("Error: srcPath parameter required");
+                        if (destPathVal == null || destPathVal.Type != ValueType.String)
+                            return RuntimeValue.String("Error: destPath parameter required");
+
+                        var srcPath = srcPathVal.AsString();
+                        var destPath = destPathVal.AsString();
+
+                        if (!string.IsNullOrEmpty(tool.WorkingDirectory))
+                        {
+                            var normalizedSrc = tool.NormalizePathForWorkingDirectory(srcPath);
+                            if (normalizedSrc == null)
+                            {
+                                return RuntimeValue.String($"Error: Path '{srcPath}' is outside the allowed working directory '{tool.WorkingDirectory}'. Use a relative path (e.g. \"PRD.md\", \"snake.html\").");
+                            }
+                            srcPath = normalizedSrc;
+
+                            var normalizedDest = tool.NormalizePathForWorkingDirectory(destPath);
+                            if (normalizedDest == null)
+                            {
+                                return RuntimeValue.String($"Error: Path '{destPath}' is outside the allowed working directory '{tool.WorkingDirectory}'. Use a relative path (e.g. \"PRD.md\", \"snake.html\").");
+                            }
+                            destPath = normalizedDest;
+                        }
+                        else if (!tool.IsPathAllowed(srcPath))
+                        {
+                            return RuntimeValue.String($"Error: Path '{srcPath}' is outside the allowed working directory '{tool.WorkingDirectory}'");
+                        }
+                        else if (!tool.IsPathAllowed(destPath))
+                        {
+                            return RuntimeValue.String($"Error: Path '{destPath}' is outside the allowed working directory '{tool.WorkingDirectory}'");
+                        }
+
+                        var resolvedSrcPath = !string.IsNullOrEmpty(tool.WorkingDirectory)
+                            ? tool.ResolvePathAgainstWorkingDirectory(srcPath) ?? srcPath
+                            : srcPath;
+                        var resolvedDestPath = !string.IsNullOrEmpty(tool.WorkingDirectory)
+                            ? tool.ResolvePathAgainstWorkingDirectory(destPath) ?? destPath
+                            : destPath;
+
+                        var copyResult = BuiltInFunctions.CallBuiltIn(
+                            "copyFile",
+                            new List<RuntimeValue>
+                            {
+                                RuntimeValue.String(resolvedSrcPath),
+                                RuntimeValue.String(resolvedDestPath)
+                            },
+                            null);
+                        var copyOk = copyResult.Type == ValueType.Boolean && copyResult.AsBoolean();
+                        var copyObj = new JsonObject();
+                        copyObj.Set("success", RuntimeValue.Boolean(copyOk));
+                        if (!copyOk)
+                            copyObj.Set("error", RuntimeValue.String("copyFile failed"));
+                        return RuntimeValue.Object(copyObj);
+                    }
+                    catch (Exception ex)
+                    {
+                        var copyErr = new JsonObject();
+                        copyErr.Set("success", RuntimeValue.Boolean(false));
+                        copyErr.Set("error", RuntimeValue.String(ex.Message));
+                        return RuntimeValue.Object(copyErr);
+                    }
+
+                case "ensure_dir":
+                    if (resolvedDirPath == null)
+                        return RuntimeValue.String("Error: dirPath parameter required");
+                    try
+                    {
+                        BuiltInFunctions.CallBuiltIn(
+                            "ensureDir",
+                            new List<RuntimeValue> { RuntimeValue.String(resolvedDirPath) },
+                            null);
+                        var ensureObj = new JsonObject();
+                        ensureObj.Set("success", RuntimeValue.Boolean(true));
+                        ensureObj.Set("path", RuntimeValue.String(resolvedDirPath));
+                        return RuntimeValue.Object(ensureObj);
+                    }
+                    catch (Exception ex)
+                    {
+                        var ensureErr = new JsonObject();
+                        ensureErr.Set("success", RuntimeValue.Boolean(false));
+                        ensureErr.Set("error", RuntimeValue.String(ex.Message));
+                        return RuntimeValue.Object(ensureErr);
+                    }
                 
                 case "insert_at_line":
                 case "insertAtLine":

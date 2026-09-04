@@ -10835,6 +10835,9 @@ public class CSharpTranspiler
             case "createWriteFileTool":
             case "createReplaceInFileTool":
             case "createListDirectoryTool":
+            case "createDeleteFileTool":
+            case "createCopyFileTool":
+            case "createEnsureDirTool":
             case "createAskUserTool":
             case "createGrepTool":
             case "createGlobTool":
