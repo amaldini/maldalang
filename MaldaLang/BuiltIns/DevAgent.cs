@@ -263,6 +263,7 @@ public class DevAgentInstance : AgentInstance
         Register((ToolInstance)BuiltInTools.CreateGlobTool(workingDirectory).AsObject());
         Register((ToolInstance)BuiltInTools.CreateListDirectoryTool(workingDirectory).AsObject());
         Register((ToolInstance)BuiltInTools.CreateWebSearchTool().AsObject());
+        Register((ToolInstance)BuiltInTools.CreateWebFetchTool().AsObject());
         
         if (!readOnly)
         {

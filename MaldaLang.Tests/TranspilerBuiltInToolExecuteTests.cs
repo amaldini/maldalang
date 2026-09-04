@@ -130,6 +130,7 @@ print(readTool.execute({{ ""filePath"": ""sample.txt"" }}));
             BuiltInTools.CreateEnsureDirTool(),
             BuiltInTools.CreateAskUserTool(),
             BuiltInTools.CreateWebSearchTool(),
+            BuiltInTools.CreateWebFetchTool(),
             BuiltInTools.CreateGrepTool(),
             BuiltInTools.CreateGlobTool(),
             BuiltInTools.CreateInsertAtLineTool(),

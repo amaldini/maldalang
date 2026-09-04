@@ -53,7 +53,7 @@ internal static class AgentToolCompletionCatalog
     {
         "createReadFileTool", "createWriteFileTool", "createReplaceInFileTool",
         "createListDirectoryTool", "createDeleteFileTool", "createCopyFileTool",
-        "createEnsureDirTool", "createAskUserTool", "createWebSearchTool",
+        "createEnsureDirTool", "createAskUserTool", "createWebSearchTool", "createWebFetchTool",
         "createGrepTool", "createGlobTool", "createInsertAtLineTool", "createEditFileTool",
         "createGetSymbolsTool", "createGetParseErrorsTool", "createCheckMaldaTool",
         "createGitStatusTool", "createGitAddTool", "createGitCommitTool", "createGitLogTool",

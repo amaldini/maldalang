@@ -94,6 +94,7 @@ public partial class ConversationInstance : ObjectInstance
         "get_parse_errors",
         "check_malda",
         "web_search",
+        "web_fetch",
         "git_status",
         "git_log",
         "git_diff",
@@ -111,6 +112,7 @@ public partial class ConversationInstance : ObjectInstance
         "get_parse_errors",
         "check_malda",
         "web_search",
+        "web_fetch",
         "git_status",
         "git_log",
         "git_diff",
@@ -169,6 +171,7 @@ public partial class ConversationInstance : ObjectInstance
         "git_push",
         "git_pull",
         "web_search",
+        "web_fetch",
         "run_command",
         "run_malda",
         "compile_malda",
@@ -3424,6 +3427,16 @@ public partial class ConversationInstance : ObjectInstance
                     {
                         return RuntimeValue.String($"Error executing web_search tool: {ex.Message}");
                     }
+
+                case "web_fetch":
+                    try
+                    {
+                        return BuiltInTools.ExecuteWebFetch(arguments);
+                    }
+                    catch (Exception ex)
+                    {
+                        return RuntimeValue.String($"Error executing web_fetch tool: {ex.Message}");
+                    }
                 
                 case "run_command":
                     try
@@ -4430,7 +4443,8 @@ public partial class ConversationInstance : ObjectInstance
         if (toolName.Contains("mcp", StringComparison.OrdinalIgnoreCase))
             return "mcp";
 
-        if (toolName.Equals("web_search", StringComparison.OrdinalIgnoreCase))
+        if (toolName.Equals("web_search", StringComparison.OrdinalIgnoreCase) ||
+            toolName.Equals("web_fetch", StringComparison.OrdinalIgnoreCase))
             return "web";
 
         return "other";

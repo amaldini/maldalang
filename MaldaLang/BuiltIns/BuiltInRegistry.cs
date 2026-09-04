@@ -220,6 +220,8 @@ public static class BuiltInRegistry
             "runCommand" or
             "createRunCommandTool" or
             "createWebSearchTool" or
+            "createWebFetchTool" or
+            "webFetch" or
             "setDefaultAgent" or
             "generateUI" or
             "runMALDA" or

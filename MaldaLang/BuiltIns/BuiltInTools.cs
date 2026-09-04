@@ -316,6 +316,52 @@ public static class BuiltInTools
         
         return RuntimeValue.Object(tool);
     }
+
+    public static RuntimeValue CreateWebFetchTool()
+    {
+        var tool = new ToolInstance();
+        var parameters = new JsonObject();
+
+        var properties = new JsonObject();
+
+        var urlProp = new JsonObject();
+        urlProp.Set("type", RuntimeValue.String("string"));
+        urlProp.Set("description", RuntimeValue.String("HTTP or HTTPS URL to fetch. Other schemes (file://, ftp://, …) are rejected."));
+        properties.Set("url", RuntimeValue.Object(urlProp));
+
+        var maxBytesProp = new JsonObject();
+        maxBytesProp.Set("type", RuntimeValue.String("integer"));
+        maxBytesProp.Set("description", RuntimeValue.String("Maximum content length in characters (default 100000, hard cap 500000). Longer bodies are truncated and truncated is set true."));
+        maxBytesProp.Set("default", RuntimeValue.Integer(100000));
+        properties.Set("maxBytes", RuntimeValue.Object(maxBytesProp));
+
+        var timeoutMsProp = new JsonObject();
+        timeoutMsProp.Set("type", RuntimeValue.String("integer"));
+        timeoutMsProp.Set("description", RuntimeValue.String("Request timeout in milliseconds (default 15000, hard cap 60000)."));
+        timeoutMsProp.Set("default", RuntimeValue.Integer(15000));
+        properties.Set("timeoutMs", RuntimeValue.Object(timeoutMsProp));
+
+        parameters.Set("type", RuntimeValue.String("object"));
+        parameters.Set("properties", RuntimeValue.Object(properties));
+        parameters.Set("required", RuntimeValue.Array(new List<RuntimeValue> { RuntimeValue.String("url") }));
+
+        tool.Initialize(
+            "web_fetch",
+            "Fetches an HTTP or HTTPS URL and returns the response body as text. Use for reading documentation or pages (not search). Parameters: url (required), maxBytes? (default 100000, cap 500000), timeoutMs? (default 15000, cap 60000). Returns { ok, status, url, content, truncated, error? }. JSON bodies are returned as a JSON string. Parallel-safe.",
+            RuntimeValue.Object(parameters),
+            null,
+            ""
+        );
+
+        return RuntimeValue.Object(tool);
+    }
+
+    /// <summary>
+    /// Shared host implementation for <c>web_fetch</c> / <c>webFetch</c>.
+    /// Conversation and <c>tool.execute</c> both call this.
+    /// </summary>
+    public static RuntimeValue ExecuteWebFetch(RuntimeValue arguments)
+        => BuiltInFunctions.ExecuteWebFetch(arguments);
     
     public static RuntimeValue CreateGrepTool(string workingDirectory = "")
     {

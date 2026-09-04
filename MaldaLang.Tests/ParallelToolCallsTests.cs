@@ -19,6 +19,7 @@ public class ParallelToolCallsTests
     [InlineData("get_parse_errors", true)]
     [InlineData("check_malda", true)]
     [InlineData("web_search", true)]
+    [InlineData("web_fetch", true)]
     [InlineData("git_status", true)]
     [InlineData("write_file", false)]
     [InlineData("replace_in_file", false)]

@@ -155,6 +155,9 @@ internal static class ToolReplayHelper
             case "web_search":
                 toolValue = BuiltInTools.CreateWebSearchTool();
                 break;
+            case "web_fetch":
+                toolValue = BuiltInTools.CreateWebFetchTool();
+                break;
 
             // User interaction and others that are not safely restorable from trace
             // (ask_user, MCP tools, etc.) are intentionally not reconstructed here.

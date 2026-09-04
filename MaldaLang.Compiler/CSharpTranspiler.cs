@@ -10831,6 +10831,8 @@ public class CSharpTranspiler
             case "loadNativeModule":
             case "createRunCommandTool":
             case "createWebSearchTool":
+            case "createWebFetchTool":
+            case "webFetch":
             case "createReadFileTool":
             case "createWriteFileTool":
             case "createReplaceInFileTool":
