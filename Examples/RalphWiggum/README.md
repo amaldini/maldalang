@@ -42,7 +42,7 @@ Flow: **Step 1** terminal questions (profile, vision, structured features, brown
 
 Artifacts in the workdir: `.ralph-interview-brief.json` (Step 1 draft), `ralph-interview-summary.md` (post-success summary). Templates: `Examples/RalphWiggum/templates/PRD.template.md`.
 
-Interview uses a **PRD-only DevAgent** (`prdAuthorOnly`): `read_file`, `write_file`, `grep`, `glob`, `list_directory`, `ask_user` — no git, shell, or web search.
+Interview uses a **PRD-only DevAgent** (`prdAuthorOnly`): `read_file`, `write_file`, `grep`, `glob`, `list_directory`, `ask_user` — no git, shell, web search, `check_malda`, or `validate_json` (the PRD is markdown). The autonomous loop DevAgent does register those diagnose/test/file-lifecycle tools; Ralph’s prompts tell the model to use `check_malda` / `test_malda` / `delete_file` / `copy_file` / `ensure_dir` and **not** `submit_plan` / `update_plan` / `mark_step` (planning stays on the PRD checklist). Post-iteration `.malda` validation uses `checkMalda` (same report as `malda check --json`), not syntax-only `getParseErrors`.
 
 `glob()` and `grep()` are transpiler-supported in `ralph.exe` / `ralph-interview.exe` (usable from MALDA helpers like `ralphGlobPaths(workDir, pattern, maxResults)` in `ralph/02-prd.malda`). `glob` excludes `.git`, `node_modules`, `bin`, `obj` by default and caps results (default 200, hard max 500).
 
