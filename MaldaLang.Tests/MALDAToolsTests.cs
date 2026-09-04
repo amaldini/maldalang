@@ -8,7 +8,6 @@ using ValueType = MaldaLang.Interpreter.ValueType;
 using System.IO;
 using System.Text;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace MaldaLang.Tests;
 
@@ -44,72 +43,7 @@ public class MALDAToolsTests : TestBase
     
     private RuntimeValue ExecuteTool(ToolInstance tool, RuntimeValue arguments)
     {
-        // Use Conversation's ExecuteToolOperation method to execute the tool
-        // Since ExecuteToolOperation is private, we use reflection to access it
-        var conversation = new ConversationInstance();
-        var method = typeof(ConversationInstance).GetMethod("ExecuteToolOperation", 
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        
-        if (method != null)
-        {
-            return (RuntimeValue)method.Invoke(conversation, new object[] { tool, arguments })!;
-        }
-        
-        // Fallback: call built-in functions directly
-        return CallBuiltInDirectly(tool.Name, arguments);
-    }
-    
-    private RuntimeValue CallBuiltInDirectly(string toolName, RuntimeValue arguments)
-    {
-        if (arguments.Type != ValueType.Object)
-            return RuntimeValue.String("Error: Tool arguments must be an object");
-        
-        var argsObj = arguments.AsObject();
-        var argsList = new List<RuntimeValue>();
-        
-        switch (toolName)
-        {
-            case "run_malda":
-                var sourceOrFilePath = argsObj.Get("sourceOrFilePath", null);
-                if (sourceOrFilePath == null || sourceOrFilePath.Type != ValueType.String)
-                    return RuntimeValue.String("Error: sourceOrFilePath parameter required");
-                
-                argsList.Add(sourceOrFilePath);
-                
-                var input = argsObj.Get("input", null);
-                if (input != null && input.Type == ValueType.String)
-                {
-                    argsList.Add(input);
-                }
-                
-#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
-                return BuiltInFunctions.CallBuiltIn("runMALDA", argsList, null);
-#pragma warning restore CS8625
-                
-            case "compile_malda":
-                var sourcePath = argsObj.Get("sourcePath", null);
-                if (sourcePath == null || sourcePath.Type != ValueType.String)
-                    return RuntimeValue.String("Error: sourcePath parameter required");
-                
-                argsList.Add(sourcePath);
-                
-                var outputPath = argsObj.Get("outputPath", null);
-                if (outputPath != null && outputPath.Type == ValueType.String)
-                {
-                    argsList.Add(outputPath);
-                }
-                
-                var mode = argsObj.Get("mode", null);
-                if (mode != null && mode.Type == ValueType.String)
-                {
-                    argsList.Add(mode);
-                }
-                
-                return BuiltInFunctions.CallBuiltIn("compileMALDA", argsList, null);
-                
-            default:
-                return RuntimeValue.String($"Error: Unknown tool '{toolName}'");
-        }
+        return tool.Execute(arguments);
     }
     
     [Fact]

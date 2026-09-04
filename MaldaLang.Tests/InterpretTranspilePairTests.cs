@@ -15,7 +15,10 @@ namespace MaldaLang.Tests;
 /// is smoke + interpreter), grounded_ask
 /// (GraphMemory score drift), capability_tokens Example (relative cwd file I/O;
 /// abs-path cap fixtures are inline below).
+/// Sequential: pair capture and in-process <c>runMALDA</c> both redirect
+/// <see cref="Console.Out"/>.
 /// </summary>
+[Collection("Sequential")]
 public class InterpretTranspilePairTests
 {
     [Theory]
@@ -415,6 +418,50 @@ while (i < length(items)) {{
 }}
 ",
                 "createGlobTool-execute");
+        }
+        finally
+        {
+            try { Directory.Delete(tempDir, recursive: true); } catch { /* ignore */ }
+        }
+    }
+
+    [Fact]
+    public void CreateFileTools_Execute_SameStdout()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), "malda_pair_tools_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        File.WriteAllText(Path.Combine(tempDir, "note.txt"), "hello world");
+        var workDir = tempDir.Replace("\\", "/");
+
+        try
+        {
+            InterpretTranspilePair.AssertSameFromSource(
+                $@"
+var workDir = ""{workDir}"";
+writeFile(workDir + ""/note.txt"", ""hello world"");
+writeFile(workDir + ""/edit.txt"", ""alpha beta"");
+var readTool = createReadFileTool(workDir);
+var grepTool = createGrepTool(workDir);
+var listTool = createListDirectoryTool(workDir);
+print(""read="" + string(readTool.execute({{ ""filePath"": ""note.txt"" }})));
+var hits = grepTool.execute({{ ""pattern"": ""hello"", ""filePath"": ""note.txt"" }});
+print(""grep="" + string(length(hits)));
+var listed = listTool.execute({{ ""dirPath"": ""."" }});
+print(""listed="" + string(length(listed) > 0));
+var planTool = createSubmitPlanTool();
+var plan = planTool.execute({{ ""steps"": [{{ ""id"": ""s1"", ""description"": ""one"" }}] }});
+print(""plan="" + string(plan.accepted) + "","" + string(plan.stepCount));
+var editTool = createEditFileTool(workDir);
+var edited = editTool.execute({{
+    ""filePath"": ""edit.txt"",
+    ""edits"": [{{ ""oldText"": ""beta"", ""newText"": ""gamma"" }}]
+}});
+print(""edit="" + string(edited.success) + "","" + string(edited.applied));
+var runTool = createRunMALDATool();
+var ran = runTool.execute({{ ""sourceOrFilePath"": ""print(1 + 1);"" }});
+print(""run="" + string(ran.success) + "","" + string(ran.output));
+",
+                "createFileTools-execute");
         }
         finally
         {

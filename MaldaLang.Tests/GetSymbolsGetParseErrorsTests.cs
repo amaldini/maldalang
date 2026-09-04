@@ -189,9 +189,11 @@ public class GetSymbolsGetParseErrorsTests : TestBase
         Assert.Equal("get_parse_errors", tool.Name);
         var args = new JsonObject();
         args.Set("sourceOrFilePath", RuntimeValue.String("var x = 1;"));
-        var result = BuiltInFunctions.CallBuiltIn("getParseErrors", new List<RuntimeValue> { RuntimeValue.String("var x = 1;") }, null);
+        var result = tool.Execute(RuntimeValue.Object(args));
         Assert.Equal(ValueType.Object, result.Type);
-        Assert.NotNull(result.AsObject().Get("parseErrors", null));
+        var parseErrors = result.AsObject().Get("parseErrors", null);
+        Assert.NotNull(parseErrors);
+        Assert.Empty(parseErrors.AsArray());
     }
 
     [Fact]

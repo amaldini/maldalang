@@ -267,10 +267,13 @@ setAgentVerbosePhase("planning");</code></pre>
             <li><code>createSubmitPlanTool()</code> → <code>Tool</code> - Submit a structured plan (steps with <code>id</code>, <code>description</code>, optional <code>dependsOn</code>). Parameters: <code>plan</code> (object with <code>steps</code>) or <code>steps</code> (array), optional <code>taskSummary</code>. Returns <code>{ accepted: true, planId, stepCount }</code> or <code>{ accepted: false, error }</code>. No working directory.</li>
         </ul>
         <p>All of these factories accept an optional <code>workingDirectory</code> except <code>createSubmitPlanTool</code>, <code>createAskUserTool</code>, and <code>createWebSearchTool</code>. When a directory is set, file and path operations stay inside it and its subdirectories.</p>
-        <p>You can also call a built-in tool directly. <code>createGlobTool</code> is the agent wrapper around <code>io.glob</code>:</p>
+        <p>Every factory in this list is supported by the interpreter and C# transpile (not the JavaScript backend). <code>tool.execute(args)</code> runs the same host implementation as an agent <code>think()</code> call — including <code>createGlobTool</code>, <code>createGrepTool</code>, <code>createReadFileTool</code>, and the other file / git / MALDA factories. Custom <code>new Tool(...)</code> handlers are unchanged.</p>
         <pre><code>var globTool = createGlobTool(".");
 var found = globTool.execute({ "pattern": "**/*.malda", "dirPath": "." });
-print(found.count);</code></pre>
+print(found.count);
+
+var grepTool = createGrepTool(".");
+var hits = grepTool.execute({ "pattern": "function ", "filePath": "Examples" });</code></pre>
         <h3>Example</h3>
         <pre><code>var workingDir = ".";
 var readTool = createReadFileTool(workingDir);
