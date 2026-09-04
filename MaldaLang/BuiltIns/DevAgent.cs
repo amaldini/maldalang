@@ -30,7 +30,7 @@ public class DevAgentInstance : AgentInstance
     /// <param name="includeSymbols">Optional flag to include getSymbols tool for code analysis (defaults to false)</param>
     /// <param name="inputProvider">Optional input provider for user interaction</param>
     /// <param name="readOnly">If true, only register read-only tools (read_file, grep, glob, list_directory, getSymbols, getParseErrors); no file writes, git, or run_command</param>
-    /// <param name="prdAuthorOnly">If true, register PRD-interview tools only (read/write/explore + ask_user; no git, run_command, or web_search)</param>
+    /// <param name="prdAuthorOnly">If true, register PRD-interview tools only (read/write/explore + ask_user; no git, run_command, web_search, check_malda, or validate_json)</param>
     public DevAgentInstance(string name, string role, string instructions, LLMClientInstance? client = null, string? workingDirectory = null, bool includeSymbols = false, IInputProvider? inputProvider = null, bool readOnly = false, bool prdAuthorOnly = false)
     {
         // Use default local LLM (auto-download from Hugging Face) if client is not provided
@@ -59,7 +59,7 @@ public class DevAgentInstance : AgentInstance
     /// <param name="includeSymbols">Optional flag to include getSymbols tool for code analysis (defaults to false)</param>
     /// <param name="inputProvider">Optional input provider for user interaction</param>
     /// <param name="readOnly">If true, only register read-only tools (read_file, grep, glob, list_directory, getSymbols, getParseErrors); no file writes, git, or run_command</param>
-    /// <param name="prdAuthorOnly">If true, register PRD-interview tools only (read/write/explore + ask_user; no git, run_command, or web_search)</param>
+    /// <param name="prdAuthorOnly">If true, register PRD-interview tools only (read/write/explore + ask_user; no git, run_command, web_search, check_malda, or validate_json)</param>
     public DevAgentInstance(string name, string role, string instructions, LlamaCppClientInstance? llamaClient, string? workingDirectory, bool includeSymbols = false, IInputProvider? inputProvider = null, bool readOnly = false, bool prdAuthorOnly = false)
     {
         // Initialize the base agent with LlamaCppClient
@@ -87,7 +87,7 @@ public class DevAgentInstance : AgentInstance
     /// <param name="includeSymbols">Optional flag to include getSymbols tool for code analysis (defaults to false)</param>
     /// <param name="inputProvider">Optional input provider for user interaction</param>
     /// <param name="readOnly">If true, only register read-only tools (read_file, grep, glob, list_directory, getSymbols, getParseErrors); no file writes, git, or run_command</param>
-    /// <param name="prdAuthorOnly">If true, register PRD-interview tools only (read/write/explore + ask_user; no git, run_command, or web_search)</param>
+    /// <param name="prdAuthorOnly">If true, register PRD-interview tools only (read/write/explore + ask_user; no git, run_command, web_search, check_malda, or validate_json)</param>
     public DevAgentInstance(string name, string role, string instructions, LLMClientInstance? llmClient, LlamaCppClientInstance? llamaClient, LLMClientBridge.LLMClientBridgeInstance? bridgeClient, string? workingDirectory, bool includeSymbols = false, IInputProvider? inputProvider = null, bool readOnly = false, bool prdAuthorOnly = false)
     {
         // Initialize the base agent
@@ -238,8 +238,6 @@ public class DevAgentInstance : AgentInstance
             Register((ToolInstance)BuiltInTools.CreateGlobTool(workingDirectory).AsObject());
             Register((ToolInstance)BuiltInTools.CreateListDirectoryTool(workingDirectory).AsObject());
             Register((ToolInstance)BuiltInTools.CreateAskUserTool().AsObject());
-            Register((ToolInstance)BuiltInTools.CreateCheckMaldaTool(workingDirectory).AsObject());
-            Register((ToolInstance)BuiltInTools.CreateValidateJsonTool().AsObject());
             if (includeSymbols)
             {
                 Register((ToolInstance)BuiltInTools.CreateGetSymbolsTool(workingDirectory).AsObject());

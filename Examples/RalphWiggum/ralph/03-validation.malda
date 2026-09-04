@@ -389,19 +389,45 @@ function validateHtmlFile(content, filePath, workDir) {
 
 function validateMaldaFile(filePath) {
     var errors = [];
-    var result = getParseErrors(filePath);
-    if (result == null || result.parseErrors == null) {
+    var result = checkMalda(filePath);
+    if (result == null) {
         return errors;
     }
-    var pe = result.parseErrors;
+    if (result.error != null && string(result.error) != "") {
+        addValidationError(errors, filePath + ": " + string(result.error));
+        return errors;
+    }
+    var diags = result.diagnostics;
+    if (diags == null) {
+        return errors;
+    }
     var i = 0;
-    while (i < length(pe)) {
-        var entry = pe[i];
-        var msg = entry.message;
-        if (msg == null) {
-            msg = "parse error";
+    while (i < length(diags)) {
+        var entry = diags[i];
+        var severity = "";
+        if (entry.severity != null) {
+            severity = lower(string(entry.severity));
         }
-        addValidationError(errors, filePath + ": " + msg);
+        if (severity != "error") {
+            i = i + 1;
+            continue;
+        }
+        var msg = entry.message;
+        if (msg == null || string(msg) == "") {
+            msg = "check error";
+        }
+        var loc = "";
+        if (entry.line != null) {
+            loc = ":" + string(entry.line);
+            if (entry.column != null) {
+                loc = loc + ":" + string(entry.column);
+            }
+        }
+        var code = "";
+        if (entry.code != null && string(entry.code) != "") {
+            code = "[" + string(entry.code) + "] ";
+        }
+        addValidationError(errors, filePath + loc + ": " + code + msg);
         i = i + 1;
     }
     return errors;

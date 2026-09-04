@@ -7,7 +7,7 @@ Entry point: [`../RalphWiggum.malda`](../RalphWiggum.malda)
 1. `00-env.malda` — environment helpers, `createAgentClient`, path resolution
 2. `01-cli.malda` — Spectre.Console UI, logging, turn summaries
 3. `02-prd.malda` — PRD parsing, phases, completion signals
-4. `03-validation.malda` — structural validation, scoped file sets, custom hooks (`RALPH_*` env for subprocesses)
+4. `03-validation.malda` — structural validation, scoped file sets, custom hooks (`RALPH_*` env for subprocesses). `.malda` files go through `checkMalda` (same diagnostics as `malda check --json`); warnings/info do not fail the iteration.
 5. `04-state-memory.malda` — `.ralph-state.json`, GraphMemory setup/maintenance (`setupRalphGraphMemory`, `maintainRalphMemory`, PRD reindex, interview seed), git helpers
 6. `05-loop.malda` — prompts, preflight, `autonomousAgentLoop`, plan-only
 7. `06-report.malda` — `ralph-run-report.json` / `.html`

@@ -1,7 +1,10 @@
 // Copyright (c) 2026 Andrea Maldini
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
+using MaldaLang.BuiltIns;
 using Xunit;
 
 namespace MaldaLang.Tests;
@@ -117,6 +120,49 @@ print(string(responseHasPrdReady(""still working"")));
             var output = RunProgram(source);
             Assert.Contains("true", output);
             Assert.Contains("false", output);
+        }
+        finally
+        {
+            SafeDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public void PrdAuthorOnly_DoesNotRegisterDiagnoseOrPlanTools()
+    {
+        var tempDir = CreateTempDirectory("ralph_prd_tools_");
+        try
+        {
+            var client = new LLMClientInstance
+            {
+                ApiUrl = "https://example.com",
+                ApiKey = "test",
+                Model = "test"
+            };
+            var agent = new DevAgentInstance(
+                "Prd",
+                "author",
+                "Write PRDs",
+                client,
+                tempDir,
+                includeSymbols: false,
+                readOnly: false,
+                prdAuthorOnly: true);
+            var convVal = agent.GetConversation();
+            var conv = Assert.IsType<ConversationInstance>(convVal.AsObject());
+            var toolsField = typeof(ConversationInstance).GetField("_tools", BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.NotNull(toolsField);
+            var tools = Assert.IsType<Dictionary<string, ToolInstance>>(toolsField!.GetValue(conv));
+            Assert.Contains("write_file", tools.Keys);
+            Assert.Contains("ask_user", tools.Keys);
+            Assert.Contains("glob", tools.Keys);
+            Assert.DoesNotContain("check_malda", tools.Keys);
+            Assert.DoesNotContain("validate_json", tools.Keys);
+            Assert.DoesNotContain("web_search", tools.Keys);
+            Assert.DoesNotContain("web_fetch", tools.Keys);
+            Assert.DoesNotContain("test_malda", tools.Keys);
+            Assert.DoesNotContain("update_plan", tools.Keys);
+            Assert.DoesNotContain("git_commit", tools.Keys);
         }
         finally
         {

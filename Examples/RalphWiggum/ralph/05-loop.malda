@@ -104,6 +104,7 @@ function fileEditingRules() {
         "- If the file ALREADY EXISTS: read_file first, then edit_file or replace_in_file with small unique snippets (each oldText/newText under ~1500 chars).\n" +
         "- NEVER rewrite an entire existing large file with write_file — model output truncates and the write is rejected.\n" +
         "- If write_file fails with truncation/JSON error: do NOT retry the full file; use edit_file with several small edits instead.\n" +
+        "- delete_file / copy_file / ensure_dir for rm / cp / mkdir — do not use run_command for those.\n" +
         "- Syntax/indentation fixes: use the line numbers and >> context from validation errors; read_file that exact range; copy oldText verbatim from read_file (spaces/tabs must match); replace a whole statement or block — never oldText that is only whitespace.";
 }
 
@@ -135,8 +136,10 @@ function ralphEfficiencyRules() {
         "- Do NOT read one file per round. Do NOT re-read a file unless you edited it or need a line you did not capture.\n" +
         "- Do NOT manually count or verify brace balance — Ralph runs structural validation (including node --check for JS) after each iteration.\n" +
         "- After exploration, batch all edits for this item in the next response(s). Do not stop after a single edit if more changes remain.\n" +
-        "- Combine verification reads and run_command (build/test) in the same round when possible.\n" +
-        "- Do not use submit_plan, ask_user, or mid-task summaries — keep executing until the item is done or you are blocked.\n" +
+        "- After editing .malda files, call check_malda on those paths (same report as malda check --json). Do not use run_command + malda check. get_parse_errors is syntax-only.\n" +
+        "- For MALDA tests use test_malda, not run_command with malda test.\n" +
+        "- Combine verification reads with check_malda / test_malda (and run_command for dotnet/npm/node/python only) in the same round when possible.\n" +
+        "- Do not use submit_plan, update_plan, mark_step, ask_user, or mid-task summaries — Ralph plans via the PRD checklist. Keep executing until the item is done or you are blocked.\n" +
         "- Do not ask for confirmation. Do not narrate what you will do next — just call the tools.\n" +
         "- End with PRD checklist updated, criteria verified, and a brief summary of what changed.";
 }
@@ -367,12 +370,13 @@ function autonomousAgentLoop(initialTask, maxIter, workDir, projectRel, prdRelat
         "Plan each PRD step fully before calling tools, then batch tool calls aggressively. " +
         "Always read files before editing. Use glob, list_directory, grep, and read_file together in one response when exploring — never run_command with powershell/cmd/findstr. " +
         "run_command is only for whitelisted programs (dotnet, npm, node, python). " +
+        "After editing .malda files, call check_malda before finishing the turn. Use test_malda for MALDA tests. Use delete_file / copy_file / ensure_dir instead of shell rm/cp/mkdir. " +
         "Update the PRD checklist as you complete features. After edits, ensure files are structurally valid. " +
         "Before marking [DONE], re-read changed files and verify the PRD criteria. " +
-        "Do NOT manually count braces — Ralph validates with node --check and structural checks after each iteration. " +
+        "Do NOT manually count braces — Ralph validates .malda with checkMalda (malda check --json) and JS with node --check after each iteration. " +
         "When the PRD is complete, reply TASK_COMPLETE immediately — do not re-verify syntax with extra read_file rounds. " +
         "For existing files over ~200 lines use edit_file/replace_in_file only — never rewrite the whole file with write_file. " +
-        "Do not use submit_plan or ask_user — execute directly. Commit progress with git when possible. Do not pass repoPath on git tools.",
+        "Do not use submit_plan, update_plan, mark_step, or ask_user — execute directly against the PRD. Commit progress with git when possible. Do not pass repoPath on git tools.",
         client,
         workDir,
         includeSymbols

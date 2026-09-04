@@ -135,6 +135,83 @@ if (!r.ok && length(r.errors) > 0) {
     }
 
     [Fact]
+    public void ValidateWorkdir_AcceptsValidMalda()
+    {
+        var tempDir = CreateTempDirectory("ralph_val_");
+        try
+        {
+            var source = ValidationModules(tempDir) + @"
+writeFile(pathJoin(workDir, ""ok.malda""), ""var n = 1;\nprint(n);\n"");
+var r = validateWorkdirFile(workDir, pathJoin(workDir, ""ok.malda""));
+print(string(r.ok));
+";
+            var output = RunProgram(source);
+            Assert.Contains("true", output);
+        }
+        finally
+        {
+            SafeDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public void ValidateWorkdir_RejectsMaldaTypeError()
+    {
+        var tempDir = CreateTempDirectory("ralph_val_");
+        try
+        {
+            var source = ValidationModules(tempDir) + @"
+writeFile(pathJoin(workDir, ""bad.malda""), ""var n: int = \""abc\"";\n"");
+var r = validateWorkdirFile(workDir, pathJoin(workDir, ""bad.malda""));
+print(string(r.ok));
+if (!r.ok && length(r.errors) > 0) {
+    print(r.errors[0]);
+}
+";
+            var output = RunProgram(source);
+            Assert.Contains("false", output);
+            Assert.Contains("bad.malda", output);
+        }
+        finally
+        {
+            SafeDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public void ValidateWorkdir_RejectsMaldaParseError()
+    {
+        var tempDir = CreateTempDirectory("ralph_val_");
+        try
+        {
+            var source = ValidationModules(tempDir) + @"
+writeFile(pathJoin(workDir, ""broke.malda""), ""function (\n"");
+var r = validateWorkdirFile(workDir, pathJoin(workDir, ""broke.malda""));
+print(string(r.ok));
+";
+            var output = RunProgram(source);
+            Assert.Contains("false", output);
+        }
+        finally
+        {
+            SafeDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public void LoopPrompts_PreferCheckMaldaAndBanPlanTools()
+    {
+        var loop = File.ReadAllText(Path.Combine(RepoRoot(), "Examples", "RalphWiggum", "ralph", "05-loop.malda"));
+        Assert.Contains("check_malda", loop, StringComparison.Ordinal);
+        Assert.Contains("test_malda", loop, StringComparison.Ordinal);
+        Assert.Contains("delete_file", loop, StringComparison.Ordinal);
+        Assert.Contains("update_plan", loop, StringComparison.Ordinal);
+        Assert.Contains("mark_step", loop, StringComparison.Ordinal);
+        Assert.Contains("Do not use submit_plan, update_plan, mark_step", loop, StringComparison.Ordinal);
+        Assert.DoesNotContain("getParseErrors(filePath)", loop, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ValidateOnlyMode_InterpreterSmoke()
     {
         var tempDir = CreateTempDirectory("ralph_val_");
