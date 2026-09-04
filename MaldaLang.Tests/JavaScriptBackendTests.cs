@@ -4320,6 +4320,29 @@ process.exit(0);
     }
 
     [Fact]
+    public void JsTranspiler_ShaderMandelbrotExample_EmitsShaderCalls()
+    {
+        var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Games", "three_shader_mandelbrot.malda");
+        var compiler = new Compiler.Compiler();
+        var js = compiler.TranspileToJavaScript(sourcePath);
+
+        Assert.Contains("mlRuntime.three.createShaderMaterial(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.three.setUniform(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.three.createOrthographicCamera(", js, StringComparison.Ordinal);
+        Assert.Contains("varying vec2 vUv", js, StringComparison.Ordinal);
+        Assert.Contains("gl_FragColor", js, StringComparison.Ordinal);
+        Assert.Contains("vec2 dsAdd(vec2 a, vec2 b)", js, StringComparison.Ordinal);
+        Assert.Contains("vec2 dsMul(vec2 a, vec2 b)", js, StringComparison.Ordinal);
+        Assert.Contains("vec3 palette(float t)", js, StringComparison.Ordinal);
+        Assert.Contains("const vec2 CX =", js, StringComparison.Ordinal);
+        Assert.Contains("WRAP_DECADES", js, StringComparison.Ordinal);
+        Assert.Contains("Seahorse Valley", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("function fragmentMain", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("function dsMul", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("mlRuntime.game.setPixel", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ThreeRuntime_CreateShaderMaterialAndSetUniform_WrapsVectors()
     {
         Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);

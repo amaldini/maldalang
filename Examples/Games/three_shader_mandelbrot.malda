@@ -1,0 +1,206 @@
+// Infinite Mandelbrot zoom compiled through @shader() → GLSL (JavaScript mode).
+// Float-float (hi/lo) arithmetic keeps the seahorse-valley center sharp for
+// about eleven decades, then the exponential scale wraps so the dive loops.
+//
+// Compile:
+//   malda compile Examples/Games/three_shader_mandelbrot.malda --mode js -o Examples/Games/three_shader_mandelbrot.js
+
+@shader()
+function vertexMain() {
+    vUv = uv;
+    gl_Position = vec4(position.xy, 0.0, 1.0);
+}
+
+@shader()
+function dsRenorm(hi: float, lo: float) -> vec2 {
+    var s: float = hi + lo;
+    return vec2(s, lo - (s - hi));
+}
+
+@shader()
+function dsAdd(a: vec2, b: vec2) -> vec2 {
+    var s: float = a.x + b.x;
+    var e: float = s - a.x;
+    var t: float = ((b.x - e) + (a.x - (s - e))) + a.y + b.y;
+    return dsRenorm(s, t);
+}
+
+@shader()
+function dsNeg(a: vec2) -> vec2 {
+    return vec2(-a.x, -a.y);
+}
+
+@shader()
+function dsScale(a: vec2, s: float) -> vec2 {
+    return dsRenorm(a.x * s, a.y * s);
+}
+
+@shader()
+function dsMul(a: vec2, b: vec2) -> vec2 {
+    var split: float = 4097.0;
+    var cona: float = a.x * split;
+    var conb: float = b.x * split;
+    var a1: float = cona - (cona - a.x);
+    var b1: float = conb - (conb - b.x);
+    var a2: float = a.x - a1;
+    var b2: float = b.x - b1;
+    var p: float = a.x * b.x;
+    var err: float = (((a1 * b1 - p) + a1 * b2) + a2 * b1) + a2 * b2;
+    err = err + (a.x * b.y + a.y * b.x);
+    return dsRenorm(p, err);
+}
+
+@shader()
+function palette(t: float) -> vec3 {
+    return vec3(0.52, 0.42, 0.38)
+        + vec3(0.48, 0.50, 0.55)
+        * cos(vec3(0.15, 0.85, 1.35) + vec3(0.95, 1.20, 1.55) * t);
+}
+
+@shader()
+function fragmentMain() {
+    var fragCoord: vec2 = vUv * uResolution;
+    var uv: vec2 = (fragCoord - 0.5 * uResolution) / uResolution.y;
+    var decades: float = mod(uTime, WRAP_DECADES);
+    var scale: float = START_SCALE * pow(10.0, -decades);
+    var cx: vec2 = dsAdd(CX, dsRenorm(uv.x * scale, 0.0));
+    var cy: vec2 = dsAdd(CY, dsRenorm(uv.y * scale, 0.0));
+
+    var zx: vec2 = vec2(0.0, 0.0);
+    var zy: vec2 = vec2(0.0, 0.0);
+    var i: float = 0.0;
+    var mag: float = 0.0;
+    var escaped: float = 0.0;
+    var smoothIter: float = 0.0;
+    var maxIter: float = 80.0 + decades * 12.0;
+
+    while (i < 200.0) {
+        i = i + 1.0;
+        if (escaped < 0.5 && i <= maxIter) {
+            var x2: vec2 = dsMul(zx, zx);
+            var y2: vec2 = dsMul(zy, zy);
+            mag = x2.x + y2.x;
+            if (mag > 16.0) {
+                escaped = 1.0;
+                smoothIter = i - log(log(mag)) / log(2.0);
+            } else {
+                var xy: vec2 = dsScale(dsMul(zx, zy), 2.0);
+                zx = dsAdd(dsAdd(x2, dsNeg(y2)), cx);
+                zy = dsAdd(xy, cy);
+            }
+        }
+    }
+
+    var color: vec3 = vec3(0.015, 0.01, 0.04);
+    if (escaped > 0.5) {
+        color = palette(smoothIter * 0.085) * (0.55 + 0.45 * fract(smoothIter * 0.08));
+    }
+    gl_FragColor = vec4(color, 1.0);
+}
+
+var vertexShader = glsl.compile({
+    varyings: ["vec2 vUv"],
+    functions: ["vertexMain"],
+    main: "vertexMain"
+});
+
+var fragmentShader = glsl.compile({
+    varyings: ["vec2 vUv"],
+    uniforms: [
+        "vec2 uResolution",
+        "float uTime"
+    ],
+    consts: [
+        "vec2 CX = vec2(-0.7436438798904419, -7.146709002370244e-9)",
+        "vec2 CY = vec2(0.13182590901851654, -4.813186738061859e-9)",
+        "float START_SCALE = 2.55",
+        "float WRAP_DECADES = 11.0"
+    ],
+    functions: ["dsRenorm", "dsAdd", "dsNeg", "dsScale", "dsMul", "palette", "fragmentMain"],
+    main: "fragmentMain"
+});
+
+var root = dom.query("#app");
+
+if (root == null) {
+    io.print("No #app container found.");
+} else {
+    dom.clear(root);
+
+    var heading = dom.create("h1");
+    dom.setText(heading, "MALDA Infinite Mandelbrot Zoom");
+    dom.append(root, heading);
+
+    var hint = dom.create("p");
+    dom.setText(hint, "GPU Mandelbrot via @shader() → glsl.compile. Float-float center, exponential zoom into Seahorse Valley, then wrap. Hold Space to pause. [ ] change speed.");
+    dom.append(root, hint);
+
+    var zoomLabel = dom.create("p");
+    dom.setText(zoomLabel, "depth 0 decades");
+    dom.append(root, zoomLabel);
+
+    var width = 960;
+    var height = 540;
+
+    var renderer = three.createRenderer(width, height, "#app");
+    three.setClearColor(renderer, "#020617");
+    three.setRendererSize(renderer, width, height);
+
+    var scene = three.createScene();
+    var camera = three.createOrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+    var material = three.createShaderMaterial({
+        "vertexShader": vertexShader,
+        "fragmentShader": fragmentShader,
+        "depthWrite": false,
+        "uniforms": {
+            "uResolution": [width, height],
+            "uTime": 0
+        }
+    });
+
+    var quad = three.createMesh(three.createPlaneGeometry(2, 2), material);
+    three.add(scene, quad);
+
+    var decades = 0.0;
+    var speedMul = 1.0;
+    var wrapDecades = 11.0;
+    var zoomPerSecond = 0.38;
+
+    function update(dtMs) {
+        var dt = dtMs;
+        if (dt > 50) {
+            dt = 50;
+        }
+        var step = dt / 1000;
+
+        if (three.isKeyDown("]")) {
+            speedMul = speedMul + (0.7 * step);
+        }
+        if (three.isKeyDown("[")) {
+            speedMul = speedMul - (0.7 * step);
+        }
+        if (speedMul < 0.2) {
+            speedMul = 0.2;
+        }
+        if (speedMul > 3.0) {
+            speedMul = 3.0;
+        }
+
+        if (!three.isKeyDown(" ")) {
+            decades = decades + (step * speedMul * zoomPerSecond);
+        }
+
+        var wrapped = decades - math.floor(decades / wrapDecades) * wrapDecades;
+        three.setUniform(material, "uTime", decades);
+
+        var shown = int(wrapped * 10.0) / 10.0;
+        dom.setText(zoomLabel, "depth 10^-" + string(shown) + "  speed x" + string(int(speedMul * 10.0) / 10.0));
+    }
+
+    function render() {
+        three.render(renderer, scene, camera);
+    }
+
+    three.start(update, render);
+}

@@ -28,6 +28,7 @@ malda compile Examples/Games/three_cube.malda --mode js -o Examples/Games/three_
 malda compile Examples/Games/three_textured.malda --mode js -o Examples/Games/three_textured.js
 malda compile Examples/Games/three_shader_billiards.malda --mode js -o Examples/Games/three_shader_billiards.js
 malda compile Examples/Games/three_shader_path_tunnel.malda --mode js -o Examples/Games/three_shader_path_tunnel.js
+malda compile Examples/Games/three_shader_mandelbrot.malda --mode js -o Examples/Games/three_shader_mandelbrot.js
 ```
 
 Then open the sibling host page (for example `Examples/Games/maldadash_runtime_smoke_test.html`).
@@ -35,6 +36,8 @@ Then open the sibling host page (for example `Examples/Games/maldadash_runtime_s
 `malda_platform.malda` is the kit showcase (atlas tiles, `followCamera`, `sweepRects` landings, key edges, sample SFX, `startFixed`) with spinning coins plus a facing player via `game.drawImageEx`, coin-hit `tintFill` flash, an additive spark, and HUD via `pushCamera`. Bounce stays a minimal `game.start` primitive-draw loop. `game_sprite_smoke.malda` also zooms with `setCameraZoom`, tints / `tintFill`s `drawImageEx`, calls `setBlend` (`add` glow + multiply strip), queries atlas/canvas size, measures HUD text, strokes a circle around the click marker, and calls `setPixelated`. `game_tiles_smoke.malda` is the G17 tile grid: `drawTiles` from the atlas, `tileAt` gem pickups, and `sweepTiles` landings. `maldanoid.malda` stays primitive-draw (`fillRect` / `fillCircle`, no sprites) but uses G2/G3/G5: `startFixed`, velocity-axis `overlapRect` bounces, aimed near-vertical serves, touch-follow paddle, hit sparks + `setCamera` punch, combo bar, result panels, and `game.save` / `load` for high score plus best combo. `maldadash.malda` is the Boulder Dash-style cave showcase: `drawTiles` atlas, `followCamera` + zoom, actor `drawImageEx` (flip / spin / tintFill), `sweepTiles` boulder pushes and spark bounces, `setBlend` torch + additive sparks, key/gamepad/touch, sample SFX, `startFixed`, and a saved high score.
 
 `three_shader_billiards.malda` is a playable GPU ray-traced pool table on the same `three.createShaderMaterial` path as `three_shader_raytracer.malda`. Host MALDA aims the cue and steps 2D circle physics (cushions, pockets, friction); the kernel traces `uBall0`–`uBall15` plus the cue stick. Digit decals stay procedural. The cue stays locked on the white ball; mouse on the table aims (A/D fine-tunes). Hold click or Space to charge power, release to shoot; R reracks; arrows orbit; `[` `]` zoom; `C` or Stop camera zeros orbit speed. Sliders set cushion e, ball e, and felt friction. The compiled table is playable from [Reference Manual 37](../../ReferenceManual/37-appendix-gpu-billiards.html).
+
+`three_shader_mandelbrot.malda` is an infinite Seahorse Valley zoom on the same `three.createShaderMaterial` / `@shader()` path. The kernel uses float-float (hi/lo) complex arithmetic so the center stays sharp for about eleven decades, then the exponential scale wraps and the dive loops. Hold Space to pause; `[` `]` change speed.
 
 That tunnel demo is a CC-BY-NC-SA-4.0 conversion of [Frostbyte’s path march](https://fragcoord.xyz/s/tbe1g319); it is not under the repository MIT OR Apache-2.0 dual licence.
 

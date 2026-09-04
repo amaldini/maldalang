@@ -310,8 +310,9 @@ three.setUniform(material, "uTime", t);</code></pre>
         <p>Compile the realtime GPU ray tracer with:</p>
         <pre><code>malda compile Examples/Games/three_shader_raytracer.malda --mode js -o Examples/Games/three_shader_raytracer.js
 malda compile Examples/Games/three_shader_billiards.malda --mode js -o Examples/Games/three_shader_billiards.js
-malda compile Examples/Games/three_shader_path_tunnel.malda --mode js -o Examples/Games/three_shader_path_tunnel.js</code></pre>
-        <p>Load <code>three.min.js</code> first, same as other <code>three.*</code> demos. A short listing is in <a href="33-examples.html">33.15.1 Shader materials</a>. Working notes: <code>docs/javascript-backend.md</code>. The billiards sample is playable: host MALDA steps 2D physics (zoom, orbit stop, and sliders for cushion/ball restitution and felt friction) and the kernel traces ball/cue uniforms. The compiled table is an appendix: <a href="37-appendix-gpu-billiards.html">37. Appendix: GPU Billiards</a>. The path-tunnel sample is CC-BY-NC-SA-4.0 (Frostbyte).</p>
+malda compile Examples/Games/three_shader_path_tunnel.malda --mode js -o Examples/Games/three_shader_path_tunnel.js
+malda compile Examples/Games/three_shader_mandelbrot.malda --mode js -o Examples/Games/three_shader_mandelbrot.js</code></pre>
+        <p>Load <code>three.min.js</code> first, same as other <code>three.*</code> demos. A short listing is in <a href="33-examples.html">33.15.1 Shader materials</a>. Working notes: <code>docs/javascript-backend.md</code>. The billiards sample is playable: host MALDA steps 2D physics (zoom, orbit stop, and sliders for cushion/ball restitution and felt friction) and the kernel traces ball/cue uniforms. The compiled table is an appendix: <a href="37-appendix-gpu-billiards.html">37. Appendix: GPU Billiards</a>. The path-tunnel sample is CC-BY-NC-SA-4.0 (Frostbyte). The Mandelbrot sample is an infinite Seahorse Valley zoom with float-float arithmetic in the kernel.</p>
 
         <h2>26.11 Common Pitfalls and Guidance</h2>
         <ul>

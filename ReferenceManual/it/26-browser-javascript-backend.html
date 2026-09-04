@@ -311,8 +311,9 @@ three.setUniform(material, "uTime", t);</code></pre>
         <p>Compila il tracer GPU in tempo reale con:</p>
         <pre><code>malda compile Examples/Games/three_shader_raytracer.malda --mode js -o Examples/Games/three_shader_raytracer.js
 malda compile Examples/Games/three_shader_billiards.malda --mode js -o Examples/Games/three_shader_billiards.js
-malda compile Examples/Games/three_shader_path_tunnel.malda --mode js -o Examples/Games/three_shader_path_tunnel.js</code></pre>
-        <p>Carica <code>three.min.js</code> per primo, come negli altri demo <code>three.*</code>. Un listing breve è in <a href="33-examples.html">33.15.1 Materiali shader</a>. Note operative: <code>docs/javascript-backend.md</code>. Il sample biliardo è giocabile: il MALDA host fa la fisica 2D (zoom, stop orbita e slider di restituzione sponde/palle e attrito feltro) e il kernel traccia le uniform di palle e stecca. Il tavolo compilato è in appendice: <a href="37-appendix-gpu-billiards.html">37. Appendice: biliardo GPU</a>. Il sample path-tunnel è CC-BY-NC-SA-4.0 (Frostbyte).</p>
+malda compile Examples/Games/three_shader_path_tunnel.malda --mode js -o Examples/Games/three_shader_path_tunnel.js
+malda compile Examples/Games/three_shader_mandelbrot.malda --mode js -o Examples/Games/three_shader_mandelbrot.js</code></pre>
+        <p>Carica <code>three.min.js</code> per primo, come negli altri demo <code>three.*</code>. Un listing breve è in <a href="33-examples.html">33.15.1 Materiali shader</a>. Note operative: <code>docs/javascript-backend.md</code>. Il sample biliardo è giocabile: il MALDA host fa la fisica 2D (zoom, stop orbita e slider di restituzione sponde/palle e attrito feltro) e il kernel traccia le uniform di palle e stecca. Il tavolo compilato è in appendice: <a href="37-appendix-gpu-billiards.html">37. Appendice: biliardo GPU</a>. Il sample path-tunnel è CC-BY-NC-SA-4.0 (Frostbyte). Il sample Mandelbrot è uno zoom infinito nella Seahorse Valley con aritmetica float-float nel kernel.</p>
 
         <h2>26.11 Errori comuni e indicazioni</h2>
         <ul>
