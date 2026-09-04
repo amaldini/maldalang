@@ -1,0 +1,119 @@
+<Window x:Class="MaldaLang.DesktopIDE.Windows.InstallationUpdateWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Update Installation"
+        Height="340"
+        Width="520"
+        MinHeight="300"
+        MinWidth="440"
+        FontFamily="Segoe UI, Segoe UI Variable, sans-serif"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="{DynamicResource WindowBackgroundBrush}">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
+            <Path Style="{StaticResource IdeIcon}" Data="{StaticResource IconDownload}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+            <StackPanel>
+                <TextBlock Text="Update from GitHub Releases"
+                           FontSize="16"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextForegroundBrush}"/>
+                <TextBlock Text="Downloads the latest malda-*-win-x64.zip and replaces this install."
+                           FontSize="11"
+                           Margin="0,2,0,0"
+                           TextWrapping="Wrap"
+                           Foreground="{DynamicResource TextSecondaryBrush}"/>
+            </StackPanel>
+        </StackPanel>
+
+        <Border Grid.Row="1"
+                Background="{DynamicResource ListBackgroundBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="1"
+                Padding="12"
+                Margin="0,0,0,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Installed"
+                           Margin="0,0,16,6"
+                           Foreground="{DynamicResource TextSecondaryBrush}"/>
+                <TextBlock x:Name="InstalledValueText"
+                           Grid.Row="0" Grid.Column="1"
+                           Text="—"
+                           Margin="0,0,0,6"
+                           Foreground="{DynamicResource TextForegroundBrush}"/>
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Latest"
+                           Margin="0,0,16,6"
+                           Foreground="{DynamicResource TextSecondaryBrush}"/>
+                <TextBlock x:Name="LatestValueText"
+                           Grid.Row="1" Grid.Column="1"
+                           Text="Checking…"
+                           Margin="0,0,0,6"
+                           Foreground="{DynamicResource TextForegroundBrush}"/>
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Install folder"
+                           Margin="0,0,16,0"
+                           Foreground="{DynamicResource TextSecondaryBrush}"/>
+                <TextBlock x:Name="InstallFolderText"
+                           Grid.Row="2" Grid.Column="1"
+                           Text="—"
+                           TextWrapping="Wrap"
+                           Foreground="{DynamicResource TextForegroundBrush}"/>
+            </Grid>
+        </Border>
+
+        <TextBlock x:Name="StatusText"
+                   Grid.Row="2"
+                   TextWrapping="Wrap"
+                   VerticalAlignment="Top"
+                   Foreground="{DynamicResource TextForegroundBrush}"/>
+
+        <ProgressBar x:Name="DownloadProgress"
+                     Grid.Row="3"
+                     Height="16"
+                     Minimum="0"
+                     Maximum="100"
+                     Margin="0,12,0,0"
+                     Visibility="Collapsed"/>
+
+        <DockPanel Grid.Row="4" Margin="0,16,0,0" LastChildFill="False">
+            <Button x:Name="CloseButton"
+                    DockPanel.Dock="Right"
+                    Content="Close"
+                    MinWidth="88"
+                    Margin="8,0,0,0"
+                    Click="CloseButton_Click"/>
+            <Button x:Name="OpenReleasesButton"
+                    DockPanel.Dock="Right"
+                    Content="Open Releases"
+                    MinWidth="120"
+                    Margin="8,0,0,0"
+                    Click="OpenReleasesButton_Click"/>
+            <Button x:Name="UpdateButton"
+                    DockPanel.Dock="Right"
+                    Content="Download and Install"
+                    MinWidth="160"
+                    IsEnabled="False"
+                    Style="{StaticResource PrimaryButton}"
+                    Click="UpdateButton_Click"/>
+        </DockPanel>
+    </Grid>
+</Window>

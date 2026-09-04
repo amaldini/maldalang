@@ -700,6 +700,12 @@
                         <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconKeyboard}"/>
                     </MenuItem.Icon>
                 </MenuItem>
+                <Separator/>
+                <MenuItem Header="_Update Installation..." Click="HelpUpdateInstallation_Click">
+                    <MenuItem.Icon>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconDownload}"/>
+                    </MenuItem.Icon>
+                </MenuItem>
             </MenuItem>
         </Menu>
 

@@ -2610,6 +2610,22 @@ public partial class MainWindow : Window
     }
     
     // Help Menu
+    private void HelpUpdateInstallation_Click(object sender, RoutedEventArgs e)
+    {
+        var unsaved = _openDocuments.Values
+            .Where(document => document.IsDirty)
+            .Select(GetDocumentDisplayName)
+            .ToList();
+        var window = new Windows.InstallationUpdateWindow(_themeService, unsaved)
+        {
+            Owner = this
+        };
+        if (window.ShowDialog() == true && window.RestartRequired)
+        {
+            Application.Current.Shutdown();
+        }
+    }
+
     private void HelpAbout_Click(object sender, RoutedEventArgs e)
     {
         MessageBox.Show(
