@@ -659,7 +659,7 @@ var ok = getParseErrors("var x = 1;");   // Valid: parseErrors is []</code></pre
         <pre><code>var report = checkMalda("var x = 1;");
 print(report.ok);          // true
 var typed = checkMalda("var n: int = \"abc\";", "lenient");
-print(typed.ok);           // true (il mismatch è un warning)</code></pre>
+print(typed.ok);           // true (mismatch is a warning)</code></pre>
         <h3>13.10.4 webFetch(url, maxBytes?, timeoutMs?)</h3>
         <p>Recupera un URL <code>http://</code> o <code>https://</code> usando lo stesso percorso host di <code>httpGet</code>. Altri schemi (incluso <code>file://</code>), URL vuoti e URL senza host vengono rifiutati. <code>maxBytes</code> opzionale: default 100000 (limite 500000); i body più lunghi vengono troncati e <code>truncated</code> è impostato. <code>timeoutMs</code> opzionale: default 15000 (limite 60000). Restituisce <code>{ ok, status, url, content, truncated, error? }</code>. <code>content</code> è sempre una stringa: un body di testo viene usato così com'è; un body JSON oggetto o array viene serializzato. La factory per agenti è <code>createWebFetchTool</code> (nessuna directory di lavoro; sicuro in parallelo).</p>
         <pre><code>var page = webFetch("https://example.com/");

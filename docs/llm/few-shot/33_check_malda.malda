@@ -1,0 +1,11 @@
+// Diagnose a snippet with createCheckMaldaTool (same report as malda check --json).
+// Offline: no LLM, no shell, no network.
+
+function diagnose(source) {
+    var tool = createCheckMaldaTool();
+    return tool.execute({ "sourceOrFilePath": source });
+}
+
+var report = diagnose("var x = 1;");
+io.print(report.ok);
+io.print(report.errorCount);
