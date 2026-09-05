@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Changed (PATCH — Mandelbrot iterate and decade sliders)
+
+- **`Examples/Games/three_shader_mandelbrot.malda`:** the host page exposes range sliders for iterate budget (64–2048) and wrap decades (2–32). The BigInt orbit is precomputed at the 2048 runtime max; the shader loop cap matches. Defaults stay 1024 iterates / 8 decades. Hold Space to pause; `[` `]` change speed.
+
 #### Added (MINOR — three data textures + Mandelbrot perturbation)
 
 - **`three.createDataTexture` / `three.updateDataTexture` / `three.mandelbrotOrbit` (JavaScript backend only):** `createDataTexture(width, height, pixels, options?)` builds an RGBA `DataTexture` (default float32; `"type": "byte"` for 8-bit), nearest-filtered, no mipmaps, ready immediately. `updateDataTexture(handle, pixels)` rewrites the buffer. `mandelbrotOrbit(real, imag, maxIter)` parses **decimal strings** for C (MALDA IEEE doubles cannot hold a deep center), walks `Z_{n+1} = Z_n² + C` in BigInt fixed-point (256 fraction bits), and packs `(re, im, alive, 1)` into a 1-row float texture. `createShaderMaterial` / `setUniform` unwrap those handles for `sampler2D`. Interpreter / C# transpile: n/a (`three.*`).

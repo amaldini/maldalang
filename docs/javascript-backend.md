@@ -481,7 +481,7 @@ malda compile Examples/Games/three_shader_billiards.malda --mode js -o Examples/
 malda compile Examples/Games/three_shader_path_tunnel.malda --mode js -o Examples/Games/three_shader_path_tunnel.js
 ```
 
-`Examples/Games/three_shader_mandelbrot.malda` is an infinite Mandelbrot zoom: the host builds a BigInt reference orbit with `three.mandelbrotOrbit` (decimal strings for C), and the `@shader()` kernel applies scaled perturbation (`w_{n+1} = 2 Z_n w_n + s w_n² + p`) so the GPU never adds the pixel offset to the high-precision center. The dive wraps after 8 decades so coloring stays inside a 1024-iterate budget (float32 ulp used to fail around 6). Hold Space to pause; `[` `]` change speed. Compile:
+`Examples/Games/three_shader_mandelbrot.malda` is an infinite Mandelbrot zoom: the host builds a BigInt reference orbit with `three.mandelbrotOrbit` (decimal strings for C), and the `@shader()` kernel applies scaled perturbation (`w_{n+1} = 2 Z_n w_n + s w_n² + p`) so the GPU never adds the pixel offset to the high-precision center. Page sliders set iterate budget (64–2048) and wrap decades (2–32); defaults are 1024 / 8. Hold Space to pause; `[` `]` change speed. Compile:
 
 ```bash
 malda compile Examples/Games/three_shader_mandelbrot.malda --mode js -o Examples/Games/three_shader_mandelbrot.js
