@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — review / reject hops)
+
+- **`team.review(from, to, payload, think?)` / `team.reject(...)`:** typed hops. The edge must have `rel: review` or `rel: reject` (a `handoff` edge is not enough). Same contract + optional `think` rules as `team.handoff`. Review returns `{ ok, approved, data }` (`approved` defaults `true`; `{ approved: false }` stays offline). Reject returns `{ ok, rejected, data }` (`rejected` defaults `true`). `team.handoff` now requires `rel: handoff`. `executePlan` records the incoming hop `rel` on each role-change step result. Interpreter and C# transpile agree. JavaScript: n/a. Example: `Examples/Agents/agent_team_review.malda`. Few-shot: `docs/llm/few-shot/38_agents_review_reject.malda`.
+
 #### Added (MINOR — operational handoff and prior-step prompts)
 
 - **`team.handoff(from, to, payload, think?)`:** fourth argument `true` or `{ think: true }` / `{ run: true }` calls `to.think(payload)` after the allow-list + contract check. Object payloads are `toJSON`'d for `think()`. Default remains validate-only so offline goldens make no LLM call. Returns `{ ok, data }` or `{ ok, data, response }` or `{ ok: false, error }`.

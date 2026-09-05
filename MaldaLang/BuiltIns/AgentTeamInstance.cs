@@ -33,16 +33,27 @@ public sealed class AgentTeamInstance : ObjectInstance
     public bool TryGetAgent(string name, out AgentInstance agent) =>
         _members.TryGetValue(name, out agent!);
 
-    public bool TryGetRelation(string from, string to, out AgentRelation relation)
+    public bool TryGetRelation(string from, string to, out AgentRelation relation) =>
+        TryGetRelation(from, to, requiredRel: null, out relation);
+
+    public bool TryGetRelation(string from, string to, string? requiredRel, out AgentRelation relation)
     {
         foreach (var candidate in _relations)
         {
-            if (string.Equals(candidate.From, from, StringComparison.Ordinal)
-                && string.Equals(candidate.To, to, StringComparison.Ordinal))
+            if (!string.Equals(candidate.From, from, StringComparison.Ordinal)
+                || !string.Equals(candidate.To, to, StringComparison.Ordinal))
             {
-                relation = candidate;
-                return true;
+                continue;
             }
+
+            if (requiredRel != null
+                && !string.Equals(candidate.Rel, requiredRel, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            relation = candidate;
+            return true;
         }
 
         relation = default;
@@ -51,7 +62,7 @@ public sealed class AgentTeamInstance : ObjectInstance
 
     public override RuntimeValue Get(string name, ClassDefinition? accessingClass = null)
     {
-        if (name is "get" or "members" or "relations" or "handoff" or "run" or "decompose")
+        if (name is "get" or "members" or "relations" or "handoff" or "review" or "reject" or "run" or "decompose")
         {
             var wrapper = new FunctionValue(null, null, false, null);
             wrapper.BuiltInInstance = this;
@@ -73,6 +84,8 @@ public sealed class AgentTeamInstance : ObjectInstance
             "members" => ListMembers(args),
             "relations" => ListRelations(args),
             "handoff" => AgentsStdLib.Handoff(this, args, interpreter),
+            "review" => AgentsStdLib.Review(this, args, interpreter),
+            "reject" => AgentsStdLib.Reject(this, args, interpreter),
             "run" => Run(args, interpreter),
             "decompose" => Decompose(args, interpreter),
             _ => throw new Exception($"Unknown AgentTeam method: {methodName}")

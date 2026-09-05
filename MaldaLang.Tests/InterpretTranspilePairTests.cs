@@ -290,6 +290,39 @@ public class InterpretTranspilePairTests
     }
 
     [Fact]
+    public void AgentsTeamReviewReject_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            schema DraftCode { path: string; summary: string; }
+            var team = agents.team(
+                [
+                    { name: "Writer", role: "programmer", instructions: "Write." },
+                    { name: "Reviewer", role: "reviewer", instructions: "Review." }
+                ],
+                graph directed {
+                    nodes: ["Writer", "Reviewer"],
+                    edges: [
+                        { from: "Writer", to: "Reviewer", rel: "review", contract: "DraftCode" },
+                        { from: "Reviewer", to: "Writer", rel: "reject", contract: "DraftCode" }
+                    ]
+                }
+            );
+            var ok = team.review("Writer", "Reviewer", { path: "a.malda", summary: "add" });
+            io.print(ok.ok);
+            io.print(ok.approved);
+            var no = team.review("Writer", "Reviewer", { path: "a.malda", summary: "add" }, { approved: false });
+            io.print(no.approved);
+            var back = team.reject("Reviewer", "Writer", { path: "a.malda", summary: "needs tests" });
+            io.print(back.ok);
+            io.print(back.rejected);
+            var bad = team.handoff("Writer", "Reviewer", { path: "a.malda", summary: "add" });
+            io.print(bad.ok);
+            """,
+            "agents-team-review-reject");
+    }
+
+    [Fact]
     public void GroundedWrap_SameStdout()
     {
         InterpretTranspilePair.AssertSameFromSource(

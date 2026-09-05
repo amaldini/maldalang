@@ -384,6 +384,7 @@ public class AgentsTeamTests : TestBase
         var results = obj.Get("results", null).AsArray();
         Assert.Equal("Writer", results[0].AsObject().Get("role", null).AsString());
         Assert.Equal("Reviewer", results[1].AsObject().Get("role", null).AsString());
+        Assert.Equal("handoff", results[1].AsObject().Get("rel", null).AsString());
         Assert.Contains("Prior step write", results[1].AsObject().Get("prompt", null).AsString());
     }
 
@@ -412,6 +413,103 @@ public class AgentsTeamTests : TestBase
         var obj = result.AsObject();
         Assert.True(obj.Get("ok", null).AsBoolean());
         Assert.Equal(ValueType.Null, obj.Get("response", null).Type);
+    }
+
+    [Fact]
+    public void Review_AndReject_RequireMatchingRel()
+    {
+        var source = """
+            schema DraftCode { path: string; summary: string; }
+            var team = agents.team(
+                [
+                    { name: "Writer", role: "programmer", instructions: "Write." },
+                    { name: "Reviewer", role: "reviewer", instructions: "Review." }
+                ],
+                graph directed {
+                    nodes: ["Writer", "Reviewer"],
+                    edges: [
+                        { from: "Writer", to: "Reviewer", rel: "review", contract: "DraftCode" },
+                        { from: "Reviewer", to: "Writer", rel: "reject", contract: "DraftCode" }
+                    ]
+                }
+            );
+            var ok = team.review("Writer", "Reviewer", { path: "a.malda", summary: "add" });
+            io.print(ok.ok);
+            io.print(ok.approved);
+            var no = team.review("Writer", "Reviewer", { path: "a.malda", summary: "add" }, { approved: false });
+            io.print(no.ok);
+            io.print(no.approved);
+            var back = team.reject("Reviewer", "Writer", { path: "a.malda", summary: "needs tests" });
+            io.print(back.ok);
+            io.print(back.rejected);
+            var bad = team.review("Reviewer", "Writer", { path: "a.malda", summary: "nope" });
+            io.print(bad.ok);
+            var wrong = team.handoff("Writer", "Reviewer", { path: "a.malda", summary: "add" });
+            io.print(wrong.ok);
+            """;
+        var lines = RunProgram(source).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal("true", lines[0]);
+        Assert.Equal("true", lines[1]);
+        Assert.Equal("true", lines[2]);
+        Assert.Equal("false", lines[3]);
+        Assert.Equal("true", lines[4]);
+        Assert.Equal("true", lines[5]);
+        Assert.Equal("false", lines[6]);
+        Assert.Equal("false", lines[7]);
+    }
+
+    [Fact]
+    public void Review_ThinkTrue_CallsTargetAfterValidate()
+    {
+        var teamVal = ReviewRejectTeam();
+        var team = Assert.IsType<AgentTeamInstance>(teamVal.AsObject());
+        NullConversation(team.Members["Writer"]);
+        NullConversation(team.Members["Reviewer"]);
+
+        var payload = new JsonObject();
+        payload.Set("path", RuntimeValue.String("a.malda"));
+        payload.Set("summary", RuntimeValue.String("add comments"));
+        var result = AgentsStdLib.Review(
+            team,
+            new List<RuntimeValue>
+            {
+                RuntimeValue.String("Writer"),
+                RuntimeValue.String("Reviewer"),
+                RuntimeValue.Object(payload),
+                RuntimeValue.Boolean(true)
+            },
+            null);
+        var obj = result.AsObject();
+        Assert.True(obj.Get("ok", null).AsBoolean());
+        Assert.True(obj.Get("approved", null).AsBoolean());
+        Assert.Equal(ValueType.Null, obj.Get("response", null).Type);
+    }
+
+    [Fact]
+    public void ExecutePlan_RecordsIncomingReviewRel()
+    {
+        var teamVal = ReviewRejectTeam();
+        var team = Assert.IsType<AgentTeamInstance>(teamVal.AsObject());
+        NullConversation(team.Members["Writer"]);
+        NullConversation(team.Members["Reviewer"]);
+
+        var plan = new JsonObject();
+        plan.Set("steps", RuntimeValue.Array(new List<RuntimeValue>
+        {
+            Step("write", "Write comments", "Writer"),
+            Step("review", "Review the draft", "Reviewer", new[] { "write" })
+        }));
+
+        var result = BuiltInFunctions.CallBuiltIn(
+            "executePlan",
+            new List<RuntimeValue> { RuntimeValue.Object(plan), teamVal },
+            null);
+        var obj = result.AsObject();
+        var err = obj.Get("error", null);
+        if (err.Type == ValueType.String)
+            Assert.Fail("executePlan failed: " + err.AsString());
+        var results = obj.Get("results", null).AsArray();
+        Assert.Equal("review", results[1].AsObject().Get("rel", null).AsString());
     }
 
     [Fact]
@@ -589,6 +687,39 @@ public class AgentsTeamTests : TestBase
             }, null!);
         }
 
+        return AgentsStdLib.Team(
+            new List<RuntimeValue> { RuntimeValue.Array(specs), RuntimeValue.Object(graph) },
+            null);
+    }
+
+    private static RuntimeValue ReviewRejectTeam()
+    {
+        var specs = new List<RuntimeValue>
+        {
+            Spec("Writer", "programmer", "Write."),
+            Spec("Reviewer", "reviewer", "Review.")
+        };
+        var graph = new GraphInstance(true);
+        graph.CallMethod("addNode", new List<RuntimeValue> { RuntimeValue.String("Writer") }, null!);
+        graph.CallMethod("addNode", new List<RuntimeValue> { RuntimeValue.String("Reviewer") }, null!);
+        var review = new DictionaryInstance();
+        review.SetEntry("rel", RuntimeValue.String("review"));
+        graph.CallMethod("addEdge", new List<RuntimeValue>
+        {
+            RuntimeValue.String("Writer"),
+            RuntimeValue.String("Reviewer"),
+            RuntimeValue.Null(),
+            RuntimeValue.Object(review)
+        }, null!);
+        var reject = new DictionaryInstance();
+        reject.SetEntry("rel", RuntimeValue.String("reject"));
+        graph.CallMethod("addEdge", new List<RuntimeValue>
+        {
+            RuntimeValue.String("Reviewer"),
+            RuntimeValue.String("Writer"),
+            RuntimeValue.Null(),
+            RuntimeValue.Object(reject)
+        }, null!);
         return AgentsStdLib.Team(
             new List<RuntimeValue> { RuntimeValue.Array(specs), RuntimeValue.Object(graph) },
             null);
