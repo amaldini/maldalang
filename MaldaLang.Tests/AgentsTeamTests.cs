@@ -437,6 +437,121 @@ public class AgentsTeamTests : TestBase
         Assert.Contains("missing role", err.AsString());
     }
 
+    [Fact]
+    public void ExecutePlan_MissingHop_ReturnsError()
+    {
+        var teamVal = TwoMemberTeam(withEdge: false);
+        var plan = new JsonObject();
+        plan.Set("steps", RuntimeValue.Array(new List<RuntimeValue>
+        {
+            Step("write", "Write comments", "Writer"),
+            Step("review", "Review the draft", "Reviewer", new[] { "write" })
+        }));
+
+        var result = BuiltInFunctions.CallBuiltIn(
+            "executePlan",
+            new List<RuntimeValue> { RuntimeValue.Object(plan), teamVal },
+            null);
+        var err = result.AsObject().Get("error", null);
+        Assert.Equal(ValueType.String, err.Type);
+        Assert.Contains("no relation", err.AsString());
+        Assert.Contains("Writer", err.AsString());
+        Assert.Contains("Reviewer", err.AsString());
+    }
+
+    [Fact]
+    public void ExecutePlan_SameRoleContinuation_DoesNotNeedSelfEdge()
+    {
+        var specs = new List<RuntimeValue> { Spec("Writer", "programmer", "Write.") };
+        var graph = new GraphInstance(true);
+        graph.CallMethod("addNode", new List<RuntimeValue> { RuntimeValue.String("Writer") }, null!);
+        var teamVal = AgentsStdLib.Team(
+            new List<RuntimeValue> { RuntimeValue.Array(specs), RuntimeValue.Object(graph) },
+            null);
+        NullConversation(((AgentTeamInstance)teamVal.AsObject()).Members["Writer"]);
+
+        var plan = new JsonObject();
+        plan.Set("steps", RuntimeValue.Array(new List<RuntimeValue>
+        {
+            Step("draft", "Draft", "Writer"),
+            Step("polish", "Polish", "Writer", new[] { "draft" })
+        }));
+
+        var result = BuiltInFunctions.CallBuiltIn(
+            "executePlan",
+            new List<RuntimeValue> { RuntimeValue.Object(plan), teamVal },
+            null);
+        var err = result.AsObject().Get("error", null);
+        if (err.Type == ValueType.String)
+            Assert.Fail("executePlan failed: " + err.AsString());
+        Assert.Equal(2, result.AsObject().Get("completed", null).AsArray().Count);
+    }
+
+    [Fact]
+    public void DecomposePrompt_IncludesMembersAndRelations()
+    {
+        var teamVal = TwoMemberTeam(withEdge: true);
+        var team = Assert.IsType<AgentTeamInstance>(teamVal.AsObject());
+        var prompt = AgentsStdLib.BuildDecomposeSystemPrompt(team);
+        Assert.Contains("\"role\"", prompt);
+        Assert.Contains("Writer", prompt);
+        Assert.Contains("Reviewer", prompt);
+        Assert.Contains("handoff", prompt);
+        Assert.Contains("DraftCode", prompt);
+        Assert.DoesNotContain("You are a task decomposer. Given a task description", prompt);
+    }
+
+    [Fact]
+    public void DecomposePrompt_WithoutTeam_KeepsOriginalShape()
+    {
+        var prompt = AgentsStdLib.BuildDecomposeSystemPrompt(null);
+        Assert.Contains("\"steps\"", prompt);
+        Assert.DoesNotContain("\"role\"", prompt);
+    }
+
+    [Fact]
+    public void ValidateTeamPlan_RejectsUnknownHop()
+    {
+        var team = Assert.IsType<AgentTeamInstance>(TwoMemberTeam(withEdge: false).AsObject());
+        var steps = new List<RuntimeValue>
+        {
+            Step("write", "Write", "Writer"),
+            Step("review", "Review", "Reviewer", new[] { "write" })
+        };
+        var error = AgentsStdLib.ValidateTeamPlan(team, steps);
+        Assert.NotNull(error);
+        Assert.Contains("no relation", error);
+    }
+
+    private static RuntimeValue TwoMemberTeam(bool withEdge)
+    {
+        var specs = new List<RuntimeValue>
+        {
+            Spec("Writer", "programmer", "Write."),
+            Spec("Reviewer", "reviewer", "Review.")
+        };
+        var graph = new GraphInstance(true);
+        graph.CallMethod("addNode", new List<RuntimeValue> { RuntimeValue.String("Writer") }, null!);
+        graph.CallMethod("addNode", new List<RuntimeValue> { RuntimeValue.String("Reviewer") }, null!);
+        if (withEdge)
+        {
+            var props = new DictionaryInstance();
+            props.SetEntry("rel", RuntimeValue.String("handoff"));
+            props.SetEntry("contract", RuntimeValue.String("DraftCode"));
+            graph.CallMethod("addEdge", new List<RuntimeValue>
+            {
+                RuntimeValue.String("Writer"),
+                RuntimeValue.String("Reviewer"),
+                RuntimeValue.Null(),
+                RuntimeValue.Object(props)
+            }, null!);
+        }
+
+        return AgentsStdLib.Team(
+            new List<RuntimeValue> { RuntimeValue.Array(specs), RuntimeValue.Object(graph) },
+            null);
+    }
+
     private static RuntimeValue Spec(string name, string role, string instructions)
     {
         var spec = new JsonObject();

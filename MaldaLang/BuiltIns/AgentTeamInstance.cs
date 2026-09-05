@@ -51,7 +51,7 @@ public sealed class AgentTeamInstance : ObjectInstance
 
     public override RuntimeValue Get(string name, ClassDefinition? accessingClass = null)
     {
-        if (name is "get" or "members" or "relations" or "handoff" or "run")
+        if (name is "get" or "members" or "relations" or "handoff" or "run" or "decompose")
         {
             var wrapper = new FunctionValue(null, null, false, null);
             wrapper.BuiltInInstance = this;
@@ -74,6 +74,7 @@ public sealed class AgentTeamInstance : ObjectInstance
             "relations" => ListRelations(args),
             "handoff" => AgentsStdLib.Handoff(this, args, interpreter),
             "run" => Run(args, interpreter),
+            "decompose" => Decompose(args, interpreter),
             _ => throw new Exception($"Unknown AgentTeam method: {methodName}")
         };
     }
@@ -116,6 +117,18 @@ public sealed class AgentTeamInstance : ObjectInstance
         }
 
         return RuntimeValue.Array(items);
+    }
+
+    private RuntimeValue Decompose(List<RuntimeValue> args, Interpreter? interpreter)
+    {
+        BuiltInArity.Require("decompose", args, 1, 2, "instruction, client?");
+        if (args[0].Type != ValueType.String)
+            throw new RuntimeException("decompose() expects (instruction, client?)");
+        var call = new List<RuntimeValue> { args[0] };
+        if (args.Count == 2)
+            call.Add(args[1]);
+        call.Add(RuntimeValue.Object(this));
+        return BuiltInFunctions.CallBuiltIn("decomposeTask", call, interpreter);
     }
 
     private RuntimeValue Run(List<RuntimeValue> args, Interpreter? interpreter)

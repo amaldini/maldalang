@@ -1,0 +1,19 @@
+// Team plans: dependsOn hops must match a declared relation. Offline — no LLM.
+var team = agents.team(
+    [
+        { name: "Writer", role: "programmer", instructions: "Write." },
+        { name: "Reviewer", role: "reviewer", instructions: "Review." }
+    ],
+    graph directed {
+        nodes: ["Writer", "Reviewer"],
+        edges: []
+    }
+);
+var plan = {
+    steps: [
+        { id: "write", description: "Write", role: "Writer" },
+        { id: "review", description: "Review", role: "Reviewer", dependsOn: ["write"] }
+    ]
+};
+var result = executePlan(plan, team);
+io.print(result.error != null);
