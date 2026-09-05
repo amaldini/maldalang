@@ -56,10 +56,25 @@
       "prerequisites": ["Agents/single_agent_code_generator.malda"],
       "learningGoal": "Understand how MALDA scales from one agent to multiple collaborating roles.",
       "expectedOutput": "Runs two agents with separate responsibilities.",
-      "next": "Agents/agent_file_reading.malda",
+      "next": "Agents/agent_team_graph.malda",
       "documentationPath": "/?lesson=build-ai-apps#lesson-build-ai-apps",
       "documentationTitle": "Build AI Apps",
       "featured": true
+    },
+    {
+      "name": "Declarative agent team (offline)",
+      "description": "agents.team binds role specs to a directed graph; handoff validates an edge contract",
+      "file": "agent_team_graph.malda",
+      "track": "ai-builder",
+      "difficulty": "intermediate",
+      "minutes": 8,
+      "concepts": ["agents.team", "graph", "handoff", "schema"],
+      "prerequisites": ["Agents/multi_agent_code_review.malda"],
+      "learningGoal": "Declare multiple agents and their relations as data, then validate a hop without an LLM.",
+      "expectedOutput": "Prints member count, writer role, handoff rel, then true/false/false for contract checks.",
+      "next": "Agents/agent_file_reading.malda",
+      "documentationPath": "/?lesson=build-ai-apps#lesson-build-ai-apps",
+      "documentationTitle": "Agent Teams"
     },
     {
       "name": "Agent with File Reading Tool",

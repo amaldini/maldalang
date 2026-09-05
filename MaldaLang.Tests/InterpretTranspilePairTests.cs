@@ -186,6 +186,32 @@ public class InterpretTranspilePairTests
     }
 
     [Fact]
+    public void AgentsTeamHandoff_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            schema DraftCode { path: string; summary: string; }
+            var team = agents.team(
+                [
+                    { name: "Writer", role: "programmer", instructions: "Write." },
+                    { name: "Reviewer", role: "reviewer", instructions: "Review." }
+                ],
+                graph directed {
+                    nodes: ["Writer", "Reviewer"],
+                    edges: [
+                        { from: "Writer", to: "Reviewer", rel: "handoff", contract: "DraftCode" }
+                    ]
+                }
+            );
+            io.print(team.members().length);
+            io.print(team.relations()[0].rel);
+            var hop = team.handoff("Writer", "Reviewer", { path: "a.malda", summary: "add" });
+            io.print(hop.ok);
+            """,
+            "agents-team-handoff");
+    }
+
+    [Fact]
     public void GroundedWrap_SameStdout()
     {
         InterpretTranspilePair.AssertSameFromSource(

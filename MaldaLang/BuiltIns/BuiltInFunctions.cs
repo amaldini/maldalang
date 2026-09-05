@@ -131,6 +131,7 @@ public static class BuiltInFunctions
         env.Define(StdLibNamespaces.OptionModule, RuntimeValue.Object(new OptionInstance()));
         env.Define(StdLibNamespaces.GroundedModule, RuntimeValue.Object(new GroundedInstance()));
         env.Define(StdLibNamespaces.CapModule, RuntimeValue.Object(new CapInstance()));
+        env.Define(StdLibNamespaces.AgentsModule, RuntimeValue.Object(new AgentsInstance()));
     }
     
     private static RuntimeValue BuiltInAll(List<RuntimeValue> args)
@@ -9370,12 +9371,14 @@ public static class BuiltInFunctions
         var planVal = args[0];
         var agentVal = args[1];
         if (agentVal.Type != ValueType.Object)
-            throw new Exception("executePlan second argument must be an Agent instance");
+            throw new Exception("executePlan second argument must be an Agent or AgentTeam instance");
         var agentObj = agentVal.AsObject();
-        if (agentObj is not AgentInstance agentInstance)
+        AgentTeamInstance? team = agentObj as AgentTeamInstance;
+        AgentInstance? agentInstance = agentObj as AgentInstance;
+        if (team == null && agentInstance == null)
         {
             var err = new JsonObject();
-            err.Set("error", RuntimeValue.String("executePlan second argument must be an Agent instance"));
+            err.Set("error", RuntimeValue.String("executePlan second argument must be an Agent or AgentTeam instance"));
             return RuntimeValue.Object(err);
         }
         // Accept already-normalized plan: any object with non-empty "steps" array is used as-is to avoid re-validation.
@@ -9433,9 +9436,34 @@ public static class BuiltInFunctions
             string description = descVal != null && descVal.Type == ValueType.String ? descVal.AsString() : "";
             var stepResult = new JsonObject();
             stepResult.Set("stepId", RuntimeValue.String(stepId));
+            AgentInstance stepAgent;
+            if (team != null)
+            {
+                var role = AgentsStdLib.ReadStepRole(so);
+                if (role == null)
+                {
+                    var err = new JsonObject();
+                    err.Set("error", RuntimeValue.String($"executePlan step '{stepId}' is missing role"));
+                    return RuntimeValue.Object(err);
+                }
+
+                if (!team.TryGetAgent(role, out stepAgent))
+                {
+                    var err = new JsonObject();
+                    err.Set("error", RuntimeValue.String($"executePlan step '{stepId}' has unknown role '{role}'"));
+                    return RuntimeValue.Object(err);
+                }
+
+                stepResult.Set("role", RuntimeValue.String(role));
+            }
+            else
+            {
+                stepAgent = agentInstance!;
+            }
+
             try
             {
-                var thinkResult = agentInstance.Think(RuntimeValue.String(description));
+                var thinkResult = stepAgent.Think(RuntimeValue.String(description));
                 string output = thinkResult.Type == ValueType.String ? thinkResult.AsString() : (thinkResult.ToString() ?? "");
                 if (thinkResult.Type == ValueType.Object)
                 {

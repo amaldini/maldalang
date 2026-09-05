@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — declarative agent teams)
+
+- **`agents.define` / `agents.team`:** namespaced helpers (no flat alias, no new keyword) that build an `Agent` from `{ name, role, instructions, kind?, tools?, memoryScope? }` and bind an array of those specs to a directed graph. Extra graph-literal edge keys besides `from` / `to` / `weight` / `properties` (`rel`, `contract`, …) become edge properties. Allowed `rel`: `handoff`, `delegate`, `review`, `consult`, `reject`. Unknown nodes or rels fail before any LLM call. Construction does not auto-download a local model. `delegate` / `consult` edges install `addSubAgent`. `team.handoff(from, to, payload)` allows only a declared edge and `validate`s `contract` when set. `executePlan(plan, team)` (or `team.run(plan)`) requires each step to name `role` (or `agent`). Interpreter and C# transpile agree. JavaScript: n/a (host-only). Example: `Examples/Agents/agent_team_graph.malda`. Few-shot: `docs/llm/few-shot/34_agents_team.malda`.
+
 #### Changed (PATCH — Mandelbrot iterate and decade sliders)
 
 - **`Examples/Games/three_shader_mandelbrot.malda`:** the host page exposes range sliders for iterate budget (64–2048) and wrap decades (2–32). The BigInt orbit is precomputed at the 2048 runtime max; the shader loop cap matches. Defaults stay 1024 iterates / 8 decades. Hold Space to pause; `[` `]` change speed.

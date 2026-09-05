@@ -20,7 +20,7 @@
 
         <h1>14. Grafi</h1>
 
-        <p>I grafi sono strutture dati che rappresentano relazioni tra nodi (vertici) collegati da archi. MALDA supporta sia grafi diretti sia grafi non diretti, con archi pesati e proprietà opzionali sugli archi.</p>
+        <p>I grafi sono strutture dati che rappresentano relazioni tra nodi (vertici) collegati da archi. MALDA supporta sia grafi diretti sia grafi non diretti, con archi pesati e proprietà opzionali sugli archi. Le chiavi extra su un oggetto arco letterale oltre a <code>from</code>, <code>to</code>, <code>weight</code> e <code>properties</code> (per esempio <code>rel</code> e <code>contract</code>) vengono copiate sulle proprietà di quell'arco così <code>agents.team</code> può leggerle.</p>
 
         <h2>14.1 Sintassi letterale Graph</h2>
         <p>I grafi si creano con la sintassi letterale <code>graph directed { ... }</code> o <code>graph undirected { ... }</code>:</p>

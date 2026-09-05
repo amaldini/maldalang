@@ -17,6 +17,12 @@ malda Examples/Agents/agent_governance_golden.malda
 ```
 
 Uses `schema` + `validate()` + `@pure` helpers + `@effects("print")` on the impure handler.
+
+Declarative multi-agent teams (no LLM):
+
+```bash
+malda Examples/Agents/agent_team_graph.malda
+```
 Unit twin: `phase6_pure_validate.malda`. Structured prompt modes: `Examples/Prompts/` (Mode A / Mode C).
 
 ## Dependencies

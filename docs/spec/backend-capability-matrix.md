@@ -42,6 +42,7 @@ These strings are what `@property` / `runProperty` use via `GetRequiredCapabilit
 | Durable workflows (`workflow` / `step`) | yes | yes | no |
 | Workflow call-graph determinism (WF1001/WF1002 via in-file helpers) | yes | yes | n/a |
 | Agents / prompts / MCP / ACP | yes | yes | no |
+| Agent teams (`agents.define` / `agents.team` / role-aware `executePlan`) | yes | yes | n/a |
 | `schema` / `validate()` / `asVariant()` / `evalPrompt()` | yes | yes | yes (validate + asVariant; payload types n/a). evalPrompt n/a (prompts host-only) |
 | Typed prompt `response_format` (schema → OpenAI structured output) | yes* | yes* | no |
 | Gather-then-extract prompts (`gather:` + `-> Type`) | yes | yes | n/a |

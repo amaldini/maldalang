@@ -624,7 +624,7 @@ print(response.content);</code></pre>
         <p>MALDA supports breaking complex tasks into ordered steps and executing them via an agent. A <strong>plan</strong> is an object <code>{ steps: [{ id, description, dependsOn? }, ...], planId?, taskSummary? }</code>. Each step has a unique <code>id</code> (string), <code>description</code> (string), and optional <code>dependsOn</code> (array of step ids that must complete first).</p>
         <ul>
             <li><strong>decomposeTask(instruction, client?)</strong> – Uses an LLM to turn a high-level instruction into a plan. Optional second argument is an LLM client; if omitted, the default local LLM (Qwen/Qwen2.5-0.5B-Instruct, auto-downloaded as a GGUF build from Hugging Face) is used. Returns a plan object or <code>{ error }</code> on failure.</li>
-            <li><strong>executePlan(plan, agent)</strong> – Validates the plan, topo-sorts steps by <code>dependsOn</code>, then runs <code>agent.think(step.description)</code> for each step in order. Returns <code>{ planId, completed, failed, results }</code>.</li>
+            <li><strong>executePlan(plan, agent)</strong> – Validates the plan, topo-sorts steps by <code>dependsOn</code>, then runs <code>think(step.description)</code> for each step in order. The second argument may be an <code>Agent</code> or an <code>AgentTeam</code> from <code>agents.team</code>. A team requires each step to name <code>role</code> (or <code>agent</code>). Returns <code>{ planId, completed, failed, results }</code>.</li>
             <li><strong>submit_plan</strong> tool – Agents can call this tool to submit a plan (e.g. after a first &quot;think&quot; that produces the plan). DevAgent includes this tool by default. Parameters: <code>plan</code> (object with <code>steps</code>) or <code>steps</code> (array), optional <code>taskSummary</code>. Returns <code>{ accepted: true, planId, stepCount }</code> or <code>{ accepted: false, error }</code>. The accepted plan is stored in process memory with every step <code>pending</code>.</li>
             <li><strong>update_plan</strong> tool – Updates a stored plan. Parameters: <code>planId</code> (required), optional <code>steps</code> (re-validated; surviving ids keep their status), optional <code>taskSummary</code>. Returns <code>{ accepted: true, planId, stepCount, steps }</code> or <code>{ accepted: false, error }</code>. Not parallel-safe. Factory: <code>createUpdatePlanTool()</code>.</li>
             <li><strong>mark_step</strong> tool – Sets a stored step status. Parameters: <code>planId</code>, <code>id</code>, <code>status</code> (<code>pending</code> | <code>in_progress</code> | <code>done</code> | <code>blocked</code>), optional <code>note</code>. Returns <code>{ accepted: true, planId, id, status }</code> or <code>{ accepted: false, error }</code>. Not parallel-safe. Factory: <code>createMarkStepTool()</code>.</li>
@@ -940,6 +940,28 @@ var response = orchestrator.think(
 );
 print(response.content);</code></pre>
         <p>When the orchestrator calls a subagent tool, it passes a <code>prompt</code> parameter, and the subagent's <code>think()</code> method is called automatically. The subagent's response is returned to the orchestrator.</p>
+        <h3>Declarative teams with <code>agents.team</code></h3>
+        <p>Prefer a directed graph over a pile of constructors when several roles share a job. <code>agents.define(spec, client?)</code> builds one <code>Agent</code> from <code>{ name, role, instructions, kind?, tools?, memoryScope? }</code>. <code>agents.team(specs, topology, client?)</code> binds an array of those specs to a <code>graph directed</code>. Extra edge keys besides <code>from</code> / <code>to</code> / <code>weight</code> / <code>properties</code> become edge properties, so <code>rel</code> and <code>contract</code> are first-class. Allowed <code>rel</code> values: <code>handoff</code>, <code>delegate</code>, <code>review</code>, <code>consult</code>, <code>reject</code>. Unknown graph nodes or rels fail before any LLM call. Construction does not auto-download a local model. There is no flat <code>agents()</code> / <code>define()</code> / <code>team()</code> alias. JavaScript: n/a (host-only).</p>
+        <p><code>delegate</code> and <code>consult</code> edges install <code>addSubAgent</code> on the source (supervisor tool list = out-neighbors). <code>team.handoff(from, to, payload)</code> allows only a declared edge; when <code>contract</code> is set it runs <code>validate(contract, payload)</code> and returns <code>{ ok, data }</code> or <code>{ ok: false, error }</code>. <code>executePlan(plan, team)</code> or <code>team.run(plan)</code> routes each step to <code>step.role</code>.</p>
+        <pre><code>schema DraftCode { path: string; summary: string; }
+
+var specs = [
+    { name: "Writer", role: "programmer", instructions: "Write small, tested diffs." },
+    { name: "Reviewer", role: "reviewer", instructions: "Find bugs. Do not edit files." }
+];
+
+var topology = graph directed {
+    nodes: ["Writer", "Reviewer"],
+    edges: [
+        { from: "Writer", to: "Reviewer", rel: "handoff", contract: "DraftCode" }
+    ]
+};
+
+var team = agents.team(specs, topology);
+print(team.members().length);
+var hop = team.handoff("Writer", "Reviewer", { path: "calc.malda", summary: "add comments" });
+print(hop.ok);</code></pre>
+        <p>Offline golden: <code>Examples/Agents/agent_team_graph.malda</code>. You may also declare <code>schema AgentSpec { name: string; role: string; instructions: string; }</code> and <code>validate("AgentSpec", spec)</code> before <code>agents.define</code>; if that schema is registered, <code>define</code> / <code>team</code> run the same check.</p>
         <div class="see-also">
             <h3>See Also</h3>
             <ul>

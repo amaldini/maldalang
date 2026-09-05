@@ -1,0 +1,18 @@
+// Declarative team: specs + directed graph. Offline — no LLM.
+schema DraftCode { path: string; summary: string; }
+
+var team = agents.team(
+    [
+        { name: "Writer", role: "programmer", instructions: "Write small diffs." },
+        { name: "Reviewer", role: "reviewer", instructions: "Find bugs." }
+    ],
+    graph directed {
+        nodes: ["Writer", "Reviewer"],
+        edges: [
+            { from: "Writer", to: "Reviewer", rel: "handoff", contract: "DraftCode" }
+        ]
+    }
+);
+io.print(team.members().length);
+var hop = team.handoff("Writer", "Reviewer", { path: "a.malda", summary: "add comments" });
+io.print(hop.ok);

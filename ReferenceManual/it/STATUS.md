@@ -24,12 +24,12 @@ python3 scripts/sync-reference-manual-it-status.py
 | 10-prompts.html | b96a89901c702318ebdd43319f395e4edc840eeed9b23d156c8847112d951562 |
 | 11-classes-objects.html | 6c803ecad288146f7fecbcb6c180f806876a7b02a3f5bbf11b269ba6f5741fba |
 | 12-input-output.html | 3bccaa1f6a4776e2690bff7dc3086d25871bf1cda1d1bcc32f99fc611ed6b97c |
-| 13-built-in-functions.html | 5217667d1eecc99e1ebb89feb7ac4d68d87fa6cd896f8733e527277444bd554c |
-| 14-graphs.html | e1d0bcbe38cfc57c5642a997f2e52373d3ba8cf784bf1520879cdc6b686b6080 |
+| 13-built-in-functions.html | bdf6c64cb96574b9bbaf7dc4fee1f78f0b85bdfb56cedb0d0cb1bdf24b1cb58e |
+| 14-graphs.html | 75a15edbb451fc2bdd37ac9223b30ea78f5babd7d31d3b1e88371d44284f2d6e |
 | 15-vectordb.html | ed3ea55583b2d8b42f615f4da3a03fa969f56bd9a7bfc1709e78d0124c16f072 |
 | 16-database.html | a47454e18071fc0d091f5dce024d98bd6a49797201555f867f934e04c63301a4 |
 | 17-actors.html | 792d915e87e3170442707ee6ac741e77c9c88699491d364ee1fbe1656b50a381 |
-| 18-agent-orchestration.html | cb7a04116e1a7467e89769bdf147cff238b016f15940269bffe94ee3b078e63c |
+| 18-agent-orchestration.html | 681207d07c0cec783b1f86c069964149c6293f3de39e219e66690e5d433f5d3e |
 | 19-graph-memory.html | 2de060baccd20739a4ab262240474f663e7242576d4b908578379655486b7a6f |
 | 20-mcp-server.html | 2090aec8d2aa2a27e706d64410d74dd4b0d3164cdc4d327f4dd2792237989460 |
 | 21-acp.html | 6008cb499d3e7cb6747981e96516167f2a374aafe40add9c97e20d7d97c6823d |

@@ -39,6 +39,7 @@ After generating a snippet, diagnose with `malda check path.malda --json` before
 | `31_mcptool_schema.malda` | `@MCPTool` third arg is a schema name; `getTools()` prints `inputSchema` |
 | `32_mcptool_validate.malda` | `MCPServer.callTool` host-validates args against the attached schema |
 | `33_check_malda.malda` | `createCheckMaldaTool` + `execute` on a snippet (same report as `malda check --json`) |
+| `34_agents_team.malda` | `agents.team` + graph `rel`/`contract` + `handoff` (offline, no LLM) |
 
 Also useful from the main tree:
 

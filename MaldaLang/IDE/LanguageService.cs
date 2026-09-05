@@ -896,6 +896,9 @@ public class LanguageService : ILanguageService
             "mergeRetrievedDocs" => new List<string> { "docArrays..." },
             "indexInto" => new List<string> { "vectorDb", "documents" },
             "wrap" => new List<string> { "value", "citations?" },
+            "define" => new List<string> { "spec", "client?" },
+            "team" => new List<string> { "specs", "topology", "client?" },
+            "handoff" => new List<string> { "from", "to", "payload" },
             "fileRead" => new List<string> { "path" },
             "fileWrite" => new List<string> { "path" },
             "dirList" => new List<string> { "path" },
@@ -1313,7 +1316,8 @@ public class LanguageService : ILanguageService
         (StdLibNamespaces.ResultModule, "result.ok / result.err"),
         (StdLibNamespaces.OptionModule, "option.some / option.none"),
         (StdLibNamespaces.GroundedModule, "grounded.wrap(value, citations?) — payload plus citations"),
-        (StdLibNamespaces.CapModule, "cap.fileRead(path) — unforgeable file capability tokens")
+        (StdLibNamespaces.CapModule, "cap.fileRead(path) — unforgeable file capability tokens"),
+        (StdLibNamespaces.AgentsModule, "agents.define / agents.team — role specs plus a relation graph")
     };
 
     private static bool TryAddStdLibNamespaceMembers(string moduleName, List<CompletionItem> members)
@@ -1327,6 +1331,9 @@ public class LanguageService : ILanguageService
             StdLibNamespaces.DocModule => StdLibNamespaces.DocMethodNames,
             StdLibNamespaces.ResultModule => StdLibNamespaces.ResultMethodNames,
             StdLibNamespaces.OptionModule => StdLibNamespaces.OptionMethodNames,
+            StdLibNamespaces.GroundedModule => StdLibNamespaces.GroundedMethodNames,
+            StdLibNamespaces.CapModule => StdLibNamespaces.CapMethodNames,
+            StdLibNamespaces.AgentsModule => StdLibNamespaces.AgentsMethodNames,
             _ => null
         };
         if (methods == null)
@@ -1801,7 +1808,12 @@ public class LanguageService : ILanguageService
             "addSubAgent" => "function Agent.addSubAgent(agent, toolDescription) -> Agent\nExposes another agent as a tool.",
             "enableMemory" => "function Agent.enableMemory(dimensionOrPath?, precision?)\nAttaches GraphMemory (new store, or shared store at a path).",
             "remember" => "function Agent.remember(fact, context?)\nWrites a fact into the agent's GraphMemory.",
-            "executePlan" => "function executePlan(plan: object, agent: Agent) -> object\nValidates the plan, topo-sorts steps by dependsOn, then runs agent.think(step.description) for each step. Returns { planId, completed, failed, results }.",
+            "executePlan" => "function executePlan(plan: object, agent: Agent | AgentTeam) -> object\nValidates the plan, topo-sorts steps by dependsOn, then runs think(step.description). A team requires each step.role (or step.agent) to name a member. Returns { planId, completed, failed, results }.",
+            "define" => "function agents.define(spec, client?) -> Agent\nBuilds an Agent from { name, role, instructions, kind?, tools?, memoryScope? }. Does not auto-download a local model. No flat define() alias.",
+            "team" => "function agents.team(specs, topology, client?) -> AgentTeam\nBinds agent specs to a directed graph. Edge keys rel/contract become relations. Unknown nodes/rels fail before any LLM call.",
+            "handoff" => "function AgentTeam.handoff(from, to, payload) -> object\nAllows a hop only along a declared edge. If the edge has contract, runs validate(contract, payload). Returns { ok, data } or { ok: false, error }.",
+            "members" => "function AgentTeam.members() -> array\nSorted agent names in the team.",
+            "relations" => "function AgentTeam.relations() -> array\nDeclared edges as { from, to, rel, contract }.",
             "runProgram" => "function runProgram(program: object) -> any\nRuns a validated program from await prompt(...) -> program(Api) (or equivalent JSON). Calls top-level functions named like api methods; no LLM.",
             "decomposeTask" => "function decomposeTask(instruction: string, client?: LLMClient) -> object\nUses an LLM to break a high-level task into a structured plan. Returns { steps, planId?, taskSummary? } or { error }.",
             "runPrompt" => "function runPrompt(prompt, client?, options?) -> string\nRuns a PromptInstance through an LLM. Options: `{ onToken: fn, onReasoning: fn }` for streaming callbacks.",

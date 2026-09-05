@@ -3073,6 +3073,26 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("}");
         WriteIndent();
+        _output.AppendLine("else if (instance is MaldaLang.BuiltIns.AgentsInstance agents)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("result = agents.CallMethod(methodName, runtimeArgs, MaldaLang.Runtime.TranspiledBuiltinRuntime.GetOrCreateInterpreter());");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        WriteIndent();
+        _output.AppendLine("else if (instance is MaldaLang.BuiltIns.AgentTeamInstance agentTeam)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("result = agentTeam.CallMethod(methodName, runtimeArgs, MaldaLang.Runtime.TranspiledBuiltinRuntime.GetOrCreateInterpreter());");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        WriteIndent();
         _output.AppendLine("else if (instance is MaldaLang.BuiltIns.AgentInstance agent)");
         WriteIndent();
         _output.AppendLine("{");
@@ -9261,6 +9281,10 @@ public class CSharpTranspiler
             {
                 return;
             }
+            if (TryTranspileAgentsStdLibCall(memberAccess2, call))
+            {
+                return;
+            }
             if (memberAccess2.Object is IdentifierExpression taIdExpr &&
                 taIdExpr.Name == "ta" &&
                 OptionalPackTranspilerBuiltIns.IsTimeseriesName(memberAccess2.Member))
@@ -11708,6 +11732,7 @@ public class CSharpTranspiler
             _output.Append("try { var __w = __edgeObj.Get(\"weight\", null); if (__w.Type != MaldaLang.Interpreter.ValueType.Null) __weightVal = __w; } catch { } ");
             _output.Append("var __propsVal = MaldaLang.Interpreter.RuntimeValue.Null(); ");
             _output.Append("try { var __p = __edgeObj.Get(\"properties\", null); if (__p.Type == MaldaLang.Interpreter.ValueType.Object && __p.Value is MaldaLang.Interpreter.DictionaryInstance) __propsVal = __p; } catch { } ");
+            _output.Append("__propsVal = MaldaLang.Interpreter.GraphLiteralEdges.MergeProperties(__edgeObj, __propsVal); ");
             _output.Append("var __args = new System.Collections.Generic.List<MaldaLang.Interpreter.RuntimeValue> { MaldaLang.Interpreter.RuntimeValue.String(__from), MaldaLang.Interpreter.RuntimeValue.String(__to), __weightVal, __propsVal }; ");
             _output.Append("__graph.CallMethod(\"addEdge\", __args, null); ");
             _output.Append("} } } ");
@@ -13505,6 +13530,39 @@ public class CSharpTranspiler
         }
 
         _output.Append(needsInterpreter ? " }, null))" : " }))");
+        return true;
+    }
+
+    private bool TryTranspileAgentsStdLibCall(MemberAccessExpression memberAccess, FunctionCallExpression call)
+    {
+        if (memberAccess.Object is not IdentifierExpression moduleId)
+            return false;
+        if (moduleId.Name != StdLibNamespaces.AgentsModule
+            || !StdLibNamespaces.AgentsMethodNames.Contains(memberAccess.Member))
+            return false;
+
+        var method = memberAccess.Member switch
+        {
+            "define" => nameof(AgentsStdLib.Define),
+            "team" => nameof(AgentsStdLib.Team),
+            _ => null
+        };
+        if (method == null)
+            return false;
+
+        _output.Append("RuntimeHelpers.UnwrapRuntimeValue(MaldaLang.BuiltIns.AgentsStdLib.");
+        _output.Append(method);
+        _output.Append("(new List<MaldaLang.Interpreter.RuntimeValue> { ");
+        for (int i = 0; i < call.Arguments.Count; i++)
+        {
+            if (i > 0)
+                _output.Append(", ");
+            _output.Append("RuntimeHelpers.ToRuntimeValue(");
+            TranspileExpression(call.Arguments[i]);
+            _output.Append(")");
+        }
+
+        _output.Append(" }, MaldaLang.Runtime.TranspiledBuiltinRuntime.GetOrCreateInterpreter()))");
         return true;
     }
 }
