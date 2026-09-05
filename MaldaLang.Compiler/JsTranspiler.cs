@@ -42,7 +42,7 @@ public class JsTranspiler
     private static readonly HashSet<string> JsRuntimeModules = new(StringComparer.Ordinal)
     {
         "dom", "game", "three", "math", "Math", "str", "io",
-        "result", "option", "grounded", "cap", "schema"
+        "result", "option", "grounded", "cap", "agents", "schema"
     };
 
     private static readonly HashSet<string> AsyncBuiltInNames = new(StringComparer.Ordinal)
@@ -1426,6 +1426,12 @@ public class JsTranspiler
                 if (memberObjectIdentifier.Name == "cap")
                 {
                     return $"mlRuntime.cap.{EscapeIdentifier(memberCall.Member)}({JoinArguments(functionCall.Arguments)})";
+                }
+
+                if (memberObjectIdentifier.Name == StdLibNamespaces.AgentsModule)
+                {
+                    throw new NotSupportedException(
+                        "agents.define / agents.team are host-only (interpreter and C# transpile). JavaScript does not support agents.");
                 }
             }
 

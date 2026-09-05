@@ -1,0 +1,31 @@
+// Offline golden: declare a team as specs + a directed graph.
+// Relations and contracts are data. No LLM call.
+// Run: malda Examples/Agents/agent_team_graph.malda
+
+schema DraftCode { path: string; summary: string; }
+
+var specs = [
+    { name: "Writer", role: "programmer", instructions: "Write small, tested diffs." },
+    { name: "Reviewer", role: "reviewer", instructions: "Find bugs. Do not edit files." }
+];
+
+var topology = graph directed {
+    nodes: ["Writer", "Reviewer"],
+    edges: [
+        { from: "Writer", to: "Reviewer", rel: "handoff", contract: "DraftCode" }
+    ]
+};
+
+var team = agents.team(specs, topology);
+io.print(team.members().length);
+io.print(team.get("Writer").role);
+io.print(team.relations()[0].rel);
+
+var ok = team.handoff("Writer", "Reviewer", { path: "calc.malda", summary: "add comments" });
+io.print(ok.ok);
+
+var bad = team.handoff("Writer", "Reviewer", { path: 1, summary: "nope" });
+io.print(bad.ok);
+
+var missing = team.handoff("Reviewer", "Writer", { path: "calc.malda", summary: "back" });
+io.print(missing.ok);

@@ -4142,6 +4142,14 @@ public partial class Interpreter
         {
             return capModule.CallMethod(methodName, arguments, this);
         }
+        else if (instance is BuiltIns.AgentsInstance agentsModule)
+        {
+            return agentsModule.CallMethod(methodName, arguments, this);
+        }
+        else if (instance is BuiltIns.AgentTeamInstance agentTeam)
+        {
+            return agentTeam.CallMethod(methodName, arguments, this);
+        }
         else if (instance.GetType().FullName == "MaldaLang.Timeseries.TaInstance")
         {
             var result = instance.GetType().GetMethod("CallMethod")?.Invoke(instance, new object[] { methodName, arguments, this });
@@ -5855,6 +5863,8 @@ public partial class Interpreter
                 {
                     // properties not provided
                 }
+
+                properties = GraphLiteralEdges.CollectExtraProperties(edgeObj, properties);
                 
                 var args = new List<RuntimeValue>
                 {

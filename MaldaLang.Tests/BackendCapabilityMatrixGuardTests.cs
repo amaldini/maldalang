@@ -62,6 +62,7 @@ public class BackendCapabilityMatrixGuardTests
         AssertContains(markdown, "`grounded.wrap`", "grounded values row");
         AssertContains(markdown, "`new VectorDB`", "VectorDB row");
         AssertContains(markdown, "`cap.fileRead`", "capability tokens row");
+        AssertContains(markdown, "`agents.team`", "agent teams row");
         AssertContains(markdown, "call-graph determinism", "workflow call-graph determinism row");
         AssertContains(markdown, "HttpServer", "HttpServer row");
         AssertContains(markdown, "UIHost", "UIHost row");
