@@ -9439,6 +9439,15 @@ public static class BuiltInFunctions
         var failed = new List<RuntimeValue>();
         var results = new List<RuntimeValue>();
         var priorOutputs = new Dictionary<string, string>(StringComparer.Ordinal);
+        var stepsById = new Dictionary<string, ObjectInstance>(StringComparer.Ordinal);
+        foreach (var step in orderedSteps)
+        {
+            if (step.Type != ValueType.Object)
+                continue;
+            var idVal = step.AsObject().Get("id", null);
+            if (idVal.Type == ValueType.String && idVal.AsString().Length > 0)
+                stepsById[idVal.AsString()] = step.AsObject();
+        }
         foreach (var step in orderedSteps)
         {
             var so = step.AsObject();
@@ -9462,6 +9471,9 @@ public static class BuiltInFunctions
                 }
 
                 stepResult.Set("role", RuntimeValue.String(role));
+                var incomingRel = AgentsStdLib.ReadIncomingRel(team, so, stepsById);
+                if (incomingRel != null)
+                    stepResult.Set("rel", RuntimeValue.String(incomingRel));
             }
             else
             {

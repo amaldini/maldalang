@@ -1,0 +1,33 @@
+// Offline golden: review / reject are typed hops (rel must match).
+// { approved: false } records a verdict without an LLM call.
+// Run: malda Examples/Agents/agent_team_review.malda
+
+schema DraftCode { path: string; summary: string; }
+
+var team = agents.team(
+    [
+        { name: "Writer", role: "programmer", instructions: "Write small diffs." },
+        { name: "Reviewer", role: "reviewer", instructions: "Find bugs." }
+    ],
+    graph directed {
+        nodes: ["Writer", "Reviewer"],
+        edges: [
+            { from: "Writer", to: "Reviewer", rel: "review", contract: "DraftCode" },
+            { from: "Reviewer", to: "Writer", rel: "reject", contract: "DraftCode" }
+        ]
+    }
+);
+
+var ok = team.review("Writer", "Reviewer", { path: "calc.malda", summary: "add comments" });
+io.print(ok.ok);
+io.print(ok.approved);
+
+var no = team.review("Writer", "Reviewer", { path: "calc.malda", summary: "add comments" }, { approved: false });
+io.print(no.approved);
+
+var back = team.reject("Reviewer", "Writer", { path: "calc.malda", summary: "needs tests" });
+io.print(back.ok);
+io.print(back.rejected);
+
+var bad = team.review("Reviewer", "Writer", { path: "calc.malda", summary: "nope" });
+io.print(bad.ok);

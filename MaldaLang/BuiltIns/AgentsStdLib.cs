@@ -224,19 +224,37 @@ public static class AgentsStdLib
         return true;
     }
 
-    internal static RuntimeValue Handoff(AgentTeamInstance team, List<RuntimeValue> args, Interpreter? interpreter)
+    internal static RuntimeValue Handoff(AgentTeamInstance team, List<RuntimeValue> args, Interpreter? interpreter) =>
+        Hop("handoff", RelHandoff, team, args, interpreter, verdictKey: null);
+
+    internal static RuntimeValue Review(AgentTeamInstance team, List<RuntimeValue> args, Interpreter? interpreter) =>
+        Hop("review", RelReview, team, args, interpreter, verdictKey: "approved");
+
+    internal static RuntimeValue Reject(AgentTeamInstance team, List<RuntimeValue> args, Interpreter? interpreter) =>
+        Hop("reject", RelReject, team, args, interpreter, verdictKey: "rejected");
+
+    private static RuntimeValue Hop(
+        string method,
+        string requiredRel,
+        AgentTeamInstance team,
+        List<RuntimeValue> args,
+        Interpreter? interpreter,
+        string? verdictKey)
     {
-        BuiltInArity.Require("handoff", args, 3, 4, "from, to, payload, think?");
+        BuiltInArity.Require(method, args, 3, 4, "from, to, payload, think?");
         if (args[0].Type != ValueType.String || args[1].Type != ValueType.String)
-            throw new RuntimeException("handoff() expects (from, to, payload, think?) with string agent names");
+            throw new RuntimeException($"{method}() expects (from, to, payload, think?) with string agent names");
 
         var from = args[0].AsString();
         var to = args[1].AsString();
         var payload = args[2];
-        var think = args.Count >= 4 && WantsThink(args[3]);
+        var option = args.Count >= 4 ? args[3] : RuntimeValue.Null();
+        var think = WantsThink(option, method);
+        var verdict = ReadOptionVerdict(option, verdictKey);
+        var label = char.ToUpperInvariant(method[0]) + method[1..];
 
-        if (!team.TryGetRelation(from, to, out var relation))
-            return HandoffError($"No relation from '{from}' to '{to}'");
+        if (!team.TryGetRelation(from, to, requiredRel, out var relation))
+            return HopError($"No {requiredRel} relation from '{from}' to '{to}'");
 
         RuntimeValue validated = payload;
         if (!string.IsNullOrEmpty(relation.Contract))
@@ -246,7 +264,7 @@ public static class AgentsStdLib
                 new List<RuntimeValue> { RuntimeValue.String(relation.Contract), payload },
                 interpreter);
             if (check.Type != ValueType.Object)
-                return HandoffError("validate() returned a non-object");
+                return HopError("validate() returned a non-object");
 
             var obj = check.AsObject();
             var ok = obj.Get("ok", null);
@@ -254,7 +272,7 @@ public static class AgentsStdLib
             {
                 var err = obj.Get("error", null);
                 var message = err.Type == ValueType.String ? err.AsString() : "payload failed contract";
-                return HandoffError($"Handoff {from}->{to} failed {relation.Contract}: {message}");
+                return HopError($"{label} {from}->{to} failed {relation.Contract}: {message}");
             }
 
             var data = obj.Get("data", null);
@@ -262,21 +280,25 @@ public static class AgentsStdLib
                 validated = data;
         }
 
-        if (!think)
-            return HandoffOk(validated);
-
-        if (!team.TryGetAgent(to, out var target))
-            return HandoffError($"team has no agent named '{to}'");
-
-        try
+        RuntimeValue? response = null;
+        if (think)
         {
-            var response = target.Think(ToThinkArg(validated, interpreter));
-            return HandoffOk(validated, response);
+            if (!team.TryGetAgent(to, out var target))
+                return HopError($"team has no agent named '{to}'");
+
+            try
+            {
+                response = target.Think(ToThinkArg(validated, interpreter));
+                if (verdict == null)
+                    verdict = ReadResponseVerdict(response, verdictKey);
+            }
+            catch (Exception ex)
+            {
+                return HopError($"{label} {from}->{to} think() failed: {ex.Message}");
+            }
         }
-        catch (Exception ex)
-        {
-            return HandoffError($"Handoff {from}->{to} think() failed: {ex.Message}");
-        }
+
+        return HopOk(validated, response, verdictKey, verdict ?? (verdictKey != null ? true : null));
     }
 
     internal static string? ReadStepRole(ObjectInstance step)
@@ -403,7 +425,34 @@ public static class AgentsStdLib
         return parts.Count == 1 ? description : string.Join("\n\n", parts);
     }
 
-    private static bool WantsThink(RuntimeValue option)
+    internal static string? ReadIncomingRel(
+        AgentTeamInstance team,
+        ObjectInstance step,
+        IReadOnlyDictionary<string, ObjectInstance> byId)
+    {
+        var role = ReadStepRole(step);
+        if (role == null)
+            return null;
+        var deps = step.Get("dependsOn", null);
+        if (deps.Type != ValueType.Array)
+            return null;
+        foreach (var dep in deps.AsArray())
+        {
+            if (dep.Type != ValueType.String)
+                continue;
+            if (!byId.TryGetValue(dep.AsString(), out var pred))
+                continue;
+            var predRole = ReadStepRole(pred);
+            if (predRole == null || string.Equals(predRole, role, StringComparison.Ordinal))
+                continue;
+            if (team.TryGetRelation(predRole, role, out var relation))
+                return relation.Rel;
+        }
+
+        return null;
+    }
+
+    private static bool WantsThink(RuntimeValue option, string method)
     {
         if (option.Type == ValueType.Null)
             return false;
@@ -421,7 +470,56 @@ public static class AgentsStdLib
             return false;
         }
 
-        throw new RuntimeException("handoff() fourth argument must be a boolean or { think: bool }");
+        throw new RuntimeException($"{method}() fourth argument must be a boolean or {{ think: bool }}");
+    }
+
+    private static bool? ReadOptionVerdict(RuntimeValue option, string? verdictKey)
+    {
+        if (verdictKey == null || option.Type != ValueType.Object)
+            return null;
+        var value = option.AsObject().Get(verdictKey, null);
+        return value.Type == ValueType.Boolean ? value.AsBoolean() : null;
+    }
+
+    private static bool? ReadResponseVerdict(RuntimeValue? response, string? verdictKey)
+    {
+        if (verdictKey == null || response == null)
+            return null;
+        if (response.Type == ValueType.Object)
+        {
+            var value = response.AsObject().Get(verdictKey, null);
+            if (value.Type == ValueType.Boolean)
+                return value.AsBoolean();
+            var content = response.AsObject().Get("content", null);
+            if (content.Type == ValueType.String)
+                return ReadJsonBool(content.AsString(), verdictKey);
+        }
+
+        if (response.Type == ValueType.String)
+            return ReadJsonBool(response.AsString(), verdictKey);
+        return null;
+    }
+
+    private static bool? ReadJsonBool(string text, string key)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(text);
+            if (doc.RootElement.ValueKind != System.Text.Json.JsonValueKind.Object)
+                return null;
+            if (!doc.RootElement.TryGetProperty(key, out var prop))
+                return null;
+            return prop.ValueKind switch
+            {
+                System.Text.Json.JsonValueKind.True => true,
+                System.Text.Json.JsonValueKind.False => false,
+                _ => null
+            };
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return null;
+        }
     }
 
     private static RuntimeValue ToThinkArg(RuntimeValue payload, Interpreter? interpreter)
@@ -440,17 +538,23 @@ public static class AgentsStdLib
         return RuntimeValue.String(payload.ToString() ?? "");
     }
 
-    private static RuntimeValue HandoffOk(RuntimeValue payload, RuntimeValue? response = null)
+    private static RuntimeValue HopOk(
+        RuntimeValue payload,
+        RuntimeValue? response,
+        string? verdictKey,
+        bool? verdict)
     {
         var obj = new JsonObject();
         obj.Set("ok", RuntimeValue.Boolean(true));
         obj.Set("data", payload);
+        if (verdictKey != null && verdict != null)
+            obj.Set(verdictKey, RuntimeValue.Boolean(verdict.Value));
         if (response != null)
             obj.Set("response", response);
         return RuntimeValue.Object(obj);
     }
 
-    private static RuntimeValue HandoffError(string message)
+    private static RuntimeValue HopError(string message)
     {
         var obj = new JsonObject();
         obj.Set("ok", RuntimeValue.Boolean(false));

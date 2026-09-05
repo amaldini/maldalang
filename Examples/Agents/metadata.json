@@ -117,9 +117,24 @@
       "prerequisites": ["Agents/agent_team_plan.malda"],
       "learningGoal": "Keep handoff offline by default; opt into to.think only when you pass true.",
       "expectedOutput": "Prints true / true / true — validate-only hops, no response field.",
-      "next": "Agents/agent_file_reading.malda",
+      "next": "Agents/agent_team_review.malda",
       "documentationPath": "/?lesson=build-ai-apps#lesson-build-ai-apps",
       "documentationTitle": "Team Handoff"
+    },
+    {
+      "name": "Team review and reject (offline)",
+      "description": "team.review / team.reject require matching rel; { approved: false } records a verdict without an LLM call",
+      "file": "agent_team_review.malda",
+      "track": "ai-builder",
+      "difficulty": "intermediate",
+      "minutes": 5,
+      "concepts": ["team.review", "team.reject", "agents.team"],
+      "prerequisites": ["Agents/agent_team_handoff_run.malda"],
+      "learningGoal": "Use typed review and reject hops instead of treating every edge as a handoff.",
+      "expectedOutput": "Prints true / true / false / true / true / false.",
+      "next": "Agents/agent_file_reading.malda",
+      "documentationPath": "/?lesson=build-ai-apps#lesson-build-ai-apps",
+      "documentationTitle": "Team Review"
     },
     {
       "name": "Agent with File Reading Tool",

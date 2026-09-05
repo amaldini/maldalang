@@ -25,6 +25,7 @@ malda Examples/Agents/agent_team_graph.malda
 malda Examples/Agents/agent_team_kinds.malda
 malda Examples/Agents/agent_team_plan.malda
 malda Examples/Agents/agent_team_handoff_run.malda
+malda Examples/Agents/agent_team_review.malda
 ```
 Unit twin: `phase6_pure_validate.malda`. Structured prompt modes: `Examples/Prompts/` (Mode A / Mode C).
 
