@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — plan verdicts)
+
+- **`executePlan` review/reject branching:** a `reject` hop runs only when the predecessor is not approved; other hops run only when it is approved. Verdict comes from `step.approved` / `step.rejected`, else JSON `{ approved }` / `{ rejected }` in the think output, else default `approved: true`. Skipped steps are listed in `skipped` and recorded on the step result (`skipped`, `reason`) with no `think()` call. Failed or skipped dependencies cascade. **`plan.think: false`** skips `think()` so goldens stay offline (output is the step description). Interpreter and C# transpile agree. JavaScript: n/a. Example: `Examples/Agents/agent_team_plan_verdict.malda`. Few-shot: `docs/llm/few-shot/39_agents_plan_verdict.malda`.
+
 #### Added (MINOR — review / reject hops)
 
 - **`team.review(from, to, payload, think?)` / `team.reject(...)`:** typed hops. The edge must have `rel: review` or `rel: reject` (a `handoff` edge is not enough). Same contract + optional `think` rules as `team.handoff`. Review returns `{ ok, approved, data }` (`approved` defaults `true`; `{ approved: false }` stays offline). Reject returns `{ ok, rejected, data }` (`rejected` defaults `true`). `team.handoff` now requires `rel: handoff`. `executePlan` records the incoming hop `rel` on each role-change step result. Interpreter and C# transpile agree. JavaScript: n/a. Example: `Examples/Agents/agent_team_review.malda`. Few-shot: `docs/llm/few-shot/38_agents_review_reject.malda`.

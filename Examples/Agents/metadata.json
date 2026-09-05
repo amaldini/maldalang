@@ -132,9 +132,24 @@
       "prerequisites": ["Agents/agent_team_handoff_run.malda"],
       "learningGoal": "Use typed review and reject hops instead of treating every edge as a handoff.",
       "expectedOutput": "Prints true / true / false / true / true / false.",
-      "next": "Agents/agent_file_reading.malda",
+      "next": "Agents/agent_team_plan_verdict.malda",
       "documentationPath": "/?lesson=build-ai-apps#lesson-build-ai-apps",
       "documentationTitle": "Team Review"
+    },
+    {
+      "name": "Team plan verdicts (offline)",
+      "description": "executePlan think: false branches reject hops on step.approved without an LLM call",
+      "file": "agent_team_plan_verdict.malda",
+      "track": "ai-builder",
+      "difficulty": "intermediate",
+      "minutes": 5,
+      "concepts": ["executePlan", "approved", "reject", "think"],
+      "prerequisites": ["Agents/agent_team_review.malda"],
+      "learningGoal": "See a rejected review take the reject hop and an approved review skip it.",
+      "expectedOutput": "Prints 3 / 0 / 2 / rewrite.",
+      "next": "Agents/agent_file_reading.malda",
+      "documentationPath": "/?lesson=build-ai-apps#lesson-build-ai-apps",
+      "documentationTitle": "Team Verdicts"
     },
     {
       "name": "Agent with File Reading Tool",

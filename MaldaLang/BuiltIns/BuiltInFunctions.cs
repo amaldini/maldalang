@@ -9437,9 +9437,14 @@ public static class BuiltInFunctions
 
         var completed = new List<RuntimeValue>();
         var failed = new List<RuntimeValue>();
+        var skipped = new List<RuntimeValue>();
         var results = new List<RuntimeValue>();
         var priorOutputs = new Dictionary<string, string>(StringComparer.Ordinal);
         var stepsById = new Dictionary<string, ObjectInstance>(StringComparer.Ordinal);
+        var approvedById = new Dictionary<string, bool>(StringComparer.Ordinal);
+        var skippedIds = new HashSet<string>(StringComparer.Ordinal);
+        var failedIds = new HashSet<string>(StringComparer.Ordinal);
+        var wantsThink = AgentsStdLib.WantsPlanThink(vObj);
         foreach (var step in orderedSteps)
         {
             if (step.Type != ValueType.Object)
@@ -9474,6 +9479,21 @@ public static class BuiltInFunctions
                 var incomingRel = AgentsStdLib.ReadIncomingRel(team, so, stepsById);
                 if (incomingRel != null)
                     stepResult.Set("rel", RuntimeValue.String(incomingRel));
+
+                var skipReason = AgentsStdLib.SkipReasonForStep(
+                    team, so, stepsById, approvedById, skippedIds, failedIds);
+                if (skipReason != null)
+                {
+                    stepResult.Set("skipped", RuntimeValue.Boolean(true));
+                    stepResult.Set("reason", RuntimeValue.String(skipReason));
+                    if (stepId.Length > 0)
+                    {
+                        skipped.Add(RuntimeValue.String(stepId));
+                        skippedIds.Add(stepId);
+                    }
+                    results.Add(RuntimeValue.Object(stepResult));
+                    continue;
+                }
             }
             else
             {
@@ -9482,24 +9502,39 @@ public static class BuiltInFunctions
 
             try
             {
-                var thinkResult = stepAgent.Think(RuntimeValue.String(thinkPrompt));
-                string output = thinkResult.Type == ValueType.String ? thinkResult.AsString() : (thinkResult.ToString() ?? "");
-                if (thinkResult.Type == ValueType.Object)
+                string output;
+                if (wantsThink)
                 {
-                    var contentVal = thinkResult.AsObject().Get("content", null);
-                    if (contentVal != null && contentVal.Type == ValueType.String)
-                        output = contentVal.AsString();
+                    var thinkResult = stepAgent.Think(RuntimeValue.String(thinkPrompt));
+                    output = thinkResult.Type == ValueType.String ? thinkResult.AsString() : (thinkResult.ToString() ?? "");
+                    if (thinkResult.Type == ValueType.Object)
+                    {
+                        var contentVal = thinkResult.AsObject().Get("content", null);
+                        if (contentVal != null && contentVal.Type == ValueType.String)
+                            output = contentVal.AsString();
+                    }
                 }
+                else
+                {
+                    output = description;
+                }
+                var approved = AgentsStdLib.ResolveStepApproved(so, output);
                 stepResult.Set("success", RuntimeValue.Boolean(true));
                 stepResult.Set("output", RuntimeValue.String(output));
+                stepResult.Set("approved", RuntimeValue.Boolean(approved));
                 if (stepId.Length > 0)
+                {
                     priorOutputs[stepId] = output;
+                    approvedById[stepId] = approved;
+                }
                 completed.Add(RuntimeValue.String(stepId));
             }
             catch (Exception ex)
             {
                 stepResult.Set("success", RuntimeValue.Boolean(false));
                 stepResult.Set("error", RuntimeValue.String(ex.Message));
+                if (stepId.Length > 0)
+                    failedIds.Add(stepId);
                 failed.Add(RuntimeValue.String(stepId));
             }
             results.Add(RuntimeValue.Object(stepResult));
@@ -9508,6 +9543,7 @@ public static class BuiltInFunctions
         outResult.Set("planId", RuntimeValue.String(planId));
         outResult.Set("completed", RuntimeValue.Array(completed));
         outResult.Set("failed", RuntimeValue.Array(failed));
+        outResult.Set("skipped", RuntimeValue.Array(skipped));
         outResult.Set("results", RuntimeValue.Array(results));
         return RuntimeValue.Object(outResult);
     }
