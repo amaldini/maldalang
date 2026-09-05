@@ -62,7 +62,7 @@ public sealed class AgentTeamInstance : ObjectInstance
 
     public override RuntimeValue Get(string name, ClassDefinition? accessingClass = null)
     {
-        if (name is "get" or "members" or "relations" or "handoff" or "review" or "reject" or "run" or "decompose")
+        if (name is "get" or "members" or "relations" or "handoff" or "review" or "reject" or "consult" or "run" or "decompose")
         {
             var wrapper = new FunctionValue(null, null, false, null);
             wrapper.BuiltInInstance = this;
@@ -86,6 +86,7 @@ public sealed class AgentTeamInstance : ObjectInstance
             "handoff" => AgentsStdLib.Handoff(this, args, interpreter),
             "review" => AgentsStdLib.Review(this, args, interpreter),
             "reject" => AgentsStdLib.Reject(this, args, interpreter),
+            "consult" => AgentsStdLib.Consult(this, args, interpreter),
             "run" => Run(args, interpreter),
             "decompose" => Decompose(args, interpreter),
             _ => throw new Exception($"Unknown AgentTeam method: {methodName}")
