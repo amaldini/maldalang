@@ -690,6 +690,28 @@ const FALLBACK_GLOSSARY_EN = [
         "summary": "Built-in Agent class and specialized agents. think() runs a turn with tools."
     },
     {
+        "id": "agent-team",
+        "term": "Agent teams",
+        "aliases": [
+            "agents.team",
+            "agents.define",
+            "AgentTeam",
+            "handoff",
+            "team.handoff",
+            "team.review",
+            "team.reject",
+            "team.consult",
+            "team.run",
+            "team.decompose"
+        ],
+        "href": "18-agent-orchestration.html#declarative-agent-teams",
+        "summary": "Declarative multi-agent teams: agents.define / agents.team bind role specs to a directed graph. Typed hops stay validate-only unless think is true.",
+        "also": [
+            "13-built-in-functions.html#agent-teams",
+            "14-graphs.html"
+        ]
+    },
+    {
         "id": "tool",
         "term": "Tools",
         "aliases": [
@@ -1317,6 +1339,29 @@ const FALLBACK_GLOSSARY_IT = [
         ],
         "href": "18-agent-orchestration.html",
         "summary": "Classe Agent built-in e agenti specializzati. think() esegue un turno con i tool."
+    },
+    {
+        "id": "agent-team",
+        "term": "Team di agenti",
+        "aliases": [
+            "agents.team",
+            "agents.define",
+            "AgentTeam",
+            "handoff",
+            "team.handoff",
+            "team.review",
+            "team.reject",
+            "team.consult",
+            "team.run",
+            "team.decompose",
+            "team dichiarativi"
+        ],
+        "href": "18-agent-orchestration.html#declarative-agent-teams",
+        "summary": "Team multi-agente dichiarativi: agents.define / agents.team collegano spec di ruolo a un grafo diretto. Gli hop tipizzati restano solo validazione se think non è true.",
+        "also": [
+            "13-built-in-functions.html#agent-teams",
+            "14-graphs.html"
+        ]
     },
     {
         "id": "tool",

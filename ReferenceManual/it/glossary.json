@@ -233,6 +233,29 @@
       "summary": "Classe Agent built-in e agenti specializzati. think() esegue un turno con i tool."
     },
     {
+      "id": "agent-team",
+      "term": "Team di agenti",
+      "aliases": [
+        "agents.team",
+        "agents.define",
+        "AgentTeam",
+        "handoff",
+        "team.handoff",
+        "team.review",
+        "team.reject",
+        "team.consult",
+        "team.run",
+        "team.decompose",
+        "team dichiarativi"
+      ],
+      "href": "18-agent-orchestration.html#declarative-agent-teams",
+      "also": [
+        "13-built-in-functions.html#agent-teams",
+        "14-graphs.html"
+      ],
+      "summary": "Team multi-agente dichiarativi: agents.define / agents.team collegano spec di ruolo a un grafo diretto. Gli hop tipizzati restano solo validazione se think non è true."
+    },
+    {
       "id": "tool",
       "term": "Tool",
       "aliases": ["@Tool", "Tool", "createReadFileTool", "createWebFetchTool"],
