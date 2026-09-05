@@ -582,12 +582,13 @@ public partial class HttpServerInstance : ObjectInstance
             return null;
         }
 
-        if (optionsValue.Type != ValueType.Object || optionsValue.AsObject() is not JsonObject options)
+        if (optionsValue.Type != ValueType.Object)
         {
             throw new Exception("use() options must be an object when provided");
         }
 
-        var exceptValue = options.Get("except", null);
+        // Interpreter object literals are JsonObject; C# transpile emits DictionaryInstance.
+        var exceptValue = optionsValue.AsObject().Get("except", null);
         if (exceptValue.Type == ValueType.Null)
         {
             return null;

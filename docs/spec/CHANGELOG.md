@@ -114,7 +114,8 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 #### Added (PATCH — HTTP ship traces)
 
-- **HTTP status + body traces:** `HttpTraceParityTests` GETs `/api/health` on interpret and C# transpile and compares status plus JSON (`JsonNode.DeepEquals`). Inline fixture plus a `malda new webapi` scaffold (port from `MALDA_HTTP_TRACE_PORT`). Registry: `Templates/webapi/app.malda` is `trace`. JavaScript: n/a.
+- **HTTP status + body traces:** `HttpTraceParityTests` GETs `/api/health` on interpret and C# transpile and compares status plus JSON (`JsonNode.DeepEquals`). Inline fixture plus a `malda new webapi` scaffold (ephemeral port baked into the source). Registry: `Templates/webapi/app.malda` is `trace`. JavaScript: n/a.
+- **RestServer C# ship holes closed by those traces:** transpiled `server.start()` was a no-op (`CallVoidMethod` dispatched HttpServer/MCP only). `use(fn, { except: [...] })` rejected transpile object literals (`DictionaryInstance`) because options required `JsonObject`. HttpServer `use()` has the same options contract.
 
 #### Added (MINOR — plan verdicts)
 
@@ -470,7 +471,7 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 
 | Date | Change |
 |------|--------|
-| 2026-09-05 | PATCH: HTTP ship traces (`HttpTraceParityTests`) for `Templates/webapi` `/api/health` |
+| 2026-09-05 | PATCH: HTTP ship traces (`HttpTraceParityTests`) for `Templates/webapi` `/api/health`; RestServer `start()` + `use()` options now match C# transpile |
 | 2026-09-05 | PATCH: ship-contract registry + interpret/transpile exit identity; interpreter `result.map` wraps like C#/JS |
 | 2026-06-04 | Initial CHANGELOG and semver policy (Phase 2.3) |
 | 2026-06-04 | Phase 2.4: parser/spec drift CI script and Bitbucket pipeline |

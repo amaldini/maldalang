@@ -477,6 +477,30 @@ public class RestServerInstance : ObjectInstance
         _listener?.Close();
         _listener = null;
     }
+
+    /// <summary>
+    /// Test-only: stop every RestServer in this process so HTTP traces do not leak ports.
+    /// </summary>
+    internal static void StopAllForTesting()
+    {
+        List<RestServerInstance> snapshot;
+        lock (_instancesLock)
+        {
+            snapshot = _instances.ToList();
+        }
+
+        foreach (var server in snapshot)
+        {
+            try
+            {
+                server.Stop();
+            }
+            catch
+            {
+                // Best-effort — never throw from test cleanup.
+            }
+        }
+    }
     
     private void EnableCORS(bool enabled)
     {
@@ -522,12 +546,13 @@ public class RestServerInstance : ObjectInstance
             return null;
         }
 
-        if (optionsValue.Type != ValueType.Object || optionsValue.AsObject() is not JsonObject options)
+        if (optionsValue.Type != ValueType.Object)
         {
             throw new Exception("use() options must be an object when provided");
         }
 
-        var exceptValue = options.Get("except", null);
+        // Interpreter object literals are JsonObject; C# transpile emits DictionaryInstance.
+        var exceptValue = optionsValue.AsObject().Get("except", null);
         if (exceptValue.Type == ValueType.Null)
         {
             return null;

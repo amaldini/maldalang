@@ -21,11 +21,8 @@ namespace MaldaLang.Tests;
 [Collection("HttpTraceSerial")]
 public class HttpTraceParityTests
 {
-    private const string PortEnv = "MALDA_HTTP_TRACE_PORT";
-
     private const string InlineHealthSource = """
-        var port = int(io.getEnv("MALDA_HTTP_TRACE_PORT"));
-        var server = new RestServer(port);
+        var server = new RestServer(__PORT__);
 
         @GET("/api/health")
         function health() {
@@ -35,23 +32,14 @@ public class HttpTraceParityTests
             };
         }
 
-        @GET("/__stop")
-        function halt() {
-            server.stop();
-            return { "ok": true };
-        }
-
         server.start();
-        while (server.isRunning) {
-            sleep(50);
-        }
         """;
 
     [Fact]
     public async Task InlineHealth_InterpretAndTranspile_SameStatusAndBody()
     {
-        var interpret = await TraceInterpretAsync(InlineHealthSource, stopPath: "/__stop");
-        var transpile = await TraceTranspileAsync(InlineHealthSource, stopPath: "/__stop");
+        var interpret = await TraceInterpretAsync(InlineHealthSource);
+        var transpile = await TraceTranspileAsync(InlineHealthSource);
         AssertSameTrace(interpret, transpile);
     }
 
@@ -70,15 +58,11 @@ public class HttpTraceParityTests
             var appPath = Path.Combine(dest, "app.malda");
             Assert.True(File.Exists(appPath), "scaffolded webapi is missing app.malda");
             var source = File.ReadAllText(appPath);
-            source = source.Replace(
-                "new RestServer(8080)",
-                "new RestServer(int(io.getEnv(\"" + PortEnv + "\")))",
-                StringComparison.Ordinal);
+            source = source.Replace("new RestServer(8080)", "new RestServer(__PORT__)", StringComparison.Ordinal);
             Assert.DoesNotContain("new RestServer(8080)", source, StringComparison.Ordinal);
-            source += "\nwhile (server.isRunning) {\n    sleep(50);\n}\n";
 
-            var interpret = await TraceInterpretAsync(source, stopPath: null);
-            var transpile = await TraceTranspileAsync(source, stopPath: null);
+            var interpret = await TraceInterpretAsync(source);
+            var transpile = await TraceTranspileAsync(source);
             AssertSameTrace(interpret, transpile);
             Assert.Equal("ok", interpret.Json.GetProperty("status").GetString());
         }
@@ -98,11 +82,10 @@ public class HttpTraceParityTests
             + "transpile: " + transpile.Body);
     }
 
-    private static async Task<HttpTrace> TraceInterpretAsync(string source, string? stopPath)
+    private static async Task<HttpTrace> TraceInterpretAsync(string source)
     {
         var port = GetAvailablePort();
-        Environment.SetEnvironmentVariable(PortEnv, port.ToString());
-        BuiltInFunctions.ClearGetEnvCacheForTesting();
+        source = BakePort(source, port);
 
         var lexer = new Lexer(source);
         var tokens = lexer.Tokenize();
@@ -111,22 +94,23 @@ public class HttpTraceParityTests
         Assert.Empty(parser.Errors);
 
         var interpreter = new Interpreter.Interpreter();
-        var run = Task.Run(() => interpreter.InterpretAsync(statements).GetAwaiter().GetResult());
+        await interpreter.InterpretAsync(statements);
         try
         {
-            return await CaptureHealthAsync(port);
+            return await CaptureHealthAsync(port, process: null);
         }
         finally
         {
-            await StopOrTimeoutAsync(port, stopPath, run, process: null);
-            Environment.SetEnvironmentVariable(PortEnv, null);
-            BuiltInFunctions.ClearGetEnvCacheForTesting();
+            RestServerInstance.StopAllForTesting();
         }
     }
 
-    private static async Task<HttpTrace> TraceTranspileAsync(string source, string? stopPath)
+    private static async Task<HttpTrace> TraceTranspileAsync(string source)
     {
         var port = GetAvailablePort();
+        // RestServer.start() returns immediately. Keep Main alive so the published
+        // process does not exit (and tear down HttpListener) before the GET.
+        source = BakePort(source, port) + "\nsleep(60000);\n";
         var tempDir = Path.Combine(Path.GetTempPath(), "malda_http_trace_exe_" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(tempDir);
         var sourcePath = Path.Combine(tempDir, "program.malda");
@@ -136,29 +120,48 @@ public class HttpTraceParityTests
         var startInfo = new ProcessStartInfo
         {
             FileName = exePath,
+            WorkingDirectory = Path.GetDirectoryName(exePath),
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
             CreateNoWindow = true
         };
-        startInfo.Environment[PortEnv] = port.ToString();
         startInfo.Environment["ASPNETCORE_ENVIRONMENT"] = "Production";
         startInfo.Environment["DOTNET_ENVIRONMENT"] = "Production";
 
         using var process = Process.Start(startInfo);
         Assert.NotNull(process);
-        _ = process!.StandardOutput.ReadToEndAsync();
-        _ = process.StandardError.ReadToEndAsync();
+        var stdoutTask = process!.StandardOutput.ReadToEndAsync();
+        var stderrTask = process.StandardError.ReadToEndAsync();
         try
         {
-            return await CaptureHealthAsync(port);
+            return await CaptureHealthAsync(port, process);
+        }
+        catch (Exception ex)
+        {
+            var stdout = stdoutTask.IsCompletedSuccessfully ? stdoutTask.Result : "";
+            var stderr = stderrTask.IsCompletedSuccessfully ? stderrTask.Result : "";
+            throw new Exception(
+                ex.Message
+                + Environment.NewLine + $"process exited={process.HasExited}"
+                + (process.HasExited ? $" code={process.ExitCode}" : "")
+                + Environment.NewLine + "stdout: " + stdout
+                + Environment.NewLine + "stderr: " + stderr,
+                ex);
         }
         finally
         {
-            await StopOrTimeoutAsync(port, stopPath, run: null, process);
+            if (!process.HasExited)
+            {
+                try { process.Kill(entireProcessTree: true); } catch { /* ignore */ }
+                process.WaitForExit(5000);
+            }
             try { Directory.Delete(tempDir, recursive: true); } catch { /* ignore */ }
         }
     }
+
+    private static string BakePort(string source, int port) =>
+        source.Replace("__PORT__", port.ToString(), StringComparison.Ordinal);
 
     private static string CompileToExe(string sourcePath)
     {
@@ -169,7 +172,10 @@ public class HttpTraceParityTests
             outputExe,
             CompilationMode.TranspileToCSharp,
             includeLLamaSharp: false,
-            includeUiHost: false);
+            includeUiHost: false,
+            profilingOptions: null,
+            typedTranspileLevel: 1,
+            includeOptionalPacks: true);
 
         if (!result.Success || string.IsNullOrEmpty(result.OutputPath) || !File.Exists(result.OutputPath))
         {
@@ -187,13 +193,18 @@ public class HttpTraceParityTests
         return result.OutputPath;
     }
 
-    private static async Task<HttpTrace> CaptureHealthAsync(int port)
+    private static async Task<HttpTrace> CaptureHealthAsync(int port, Process? process)
     {
         using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
-        var url = $"http://127.0.0.1:{port}/api/health";
+        var url = $"http://localhost:{port}/api/health";
         Exception? last = null;
-        for (var i = 0; i < 40; i++)
+        for (var i = 0; i < 80; i++)
         {
+            if (process is { HasExited: true })
+            {
+                throw new Exception($"GET {url}: transpiled process exited {process.ExitCode} before the server accepted connections.");
+            }
+
             try
             {
                 using var response = await client.GetAsync(url);
@@ -208,37 +219,6 @@ public class HttpTraceParityTests
         }
 
         throw new Exception($"GET {url} did not become ready. Last error: {last?.Message}");
-    }
-
-    private static async Task StopOrTimeoutAsync(int port, string? stopPath, Task? run, Process? process)
-    {
-        if (!string.IsNullOrEmpty(stopPath))
-        {
-            try
-            {
-                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
-                await client.GetAsync($"http://127.0.0.1:{port}{stopPath}");
-            }
-            catch
-            {
-                // Process may already be gone.
-            }
-        }
-
-        if (run != null)
-        {
-            var finished = await Task.WhenAny(run, Task.Delay(3000));
-            if (finished != run)
-            {
-                // Leave the keep-alive loop; the test process exit reclaims the port.
-            }
-        }
-
-        if (process != null && !process.HasExited)
-        {
-            try { process.Kill(entireProcessTree: true); } catch { /* ignore */ }
-            process.WaitForExit(5000);
-        }
     }
 
     private static int GetAvailablePort()
