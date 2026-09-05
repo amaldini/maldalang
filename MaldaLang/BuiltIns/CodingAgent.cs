@@ -10,6 +10,8 @@ using MaldaLang.Interpreter;
 /// </summary>
 public class CodingAgentInstance : AgentInstance
 {
+    public override string Kind => "CodingAgent";
+
     /// <summary>
     /// Creates a new CodingAgent instance with all file operation tools and command execution tools pre-configured.
     /// </summary>

@@ -10,6 +10,8 @@ using MaldaLang.Interpreter;
 /// </summary>
 public class HumanAgentInstance : AgentInstance
 {
+    public override string Kind => "HumanAgent";
+
     /// <summary>
     /// Creates a new HumanAgent instance with the ask_user tool pre-configured.
     /// </summary>

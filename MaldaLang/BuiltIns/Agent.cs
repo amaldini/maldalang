@@ -19,6 +19,7 @@ public class AgentInstance : ObjectInstance
     public string Name { get; set; } = "";
     public string Role { get; set; } = "";
     public string Instructions { get; set; } = "";
+    public virtual string Kind => "Agent";
     
     /// <summary>
     /// Optional trace session identifier associated with this agent instance.
@@ -61,6 +62,8 @@ public class AgentInstance : ObjectInstance
             return RuntimeValue.String(Role);
         if (name == "instructions")
             return RuntimeValue.String(Instructions);
+        if (name == "kind")
+            return RuntimeValue.String(Kind);
         
         // Handle method access - create a FunctionValue wrapper
         if (name == "think" || name == "addTool" || name == "getConversation" || name == "reset" ||
