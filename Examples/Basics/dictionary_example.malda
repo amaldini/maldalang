@@ -1,4 +1,6 @@
-// Dictionary usage examples
+// Dictionaries: key-value maps, indexing, and keys()/values().
+//
+// Change this: add d["d"] = 4 and print it. Next: recursion.malda
 
 var d = dict { "a": 1, "b": 2 };
 io.print("a = " + d["a"]);

@@ -37,13 +37,27 @@ Start with the Desktop **Start With MALDA** student path (same order in the Web 
 6. `Examples/Basics/functions.malda`
 7. `Examples/Basics/complete_starter_program.malda`
 8. `Examples/Basics/input_example.malda`
+9. `Examples/Basics/lists_indexing.malda`
+10. `Examples/Basics/dictionary_example.malda`
+11. `Examples/Basics/recursion.malda`
 
-`Examples/Basics/first_look.malda` is optional if you already program (prompt + schema + `validate`, no API key). After the core path, `Examples/Basics/lambda.malda` is a useful extra before prompts.
+Then the short **Algorithms** track (ideas, not an encyclopedia):
+
+12. `Examples/Algorithms/binary_search.malda`
+13. `Examples/Algorithms/merge_sort.malda`
+14. `Examples/Algorithms/bfs_dfs.malda` (hand-rolled, then the `graph` builtin)
+15. `Examples/Algorithms/knapsack.malda`
+16. `Examples/Algorithms/union_find.malda`
+17. `Examples/Algorithms/qlearn_grid.malda`
+18. `Examples/Algorithms/simulated_annealing.malda`
+
+`Examples/Basics/first_look.malda` is optional if you already program (prompt + schema + `validate`, no API key). After the core path, `Examples/Basics/lambda.malda` is a useful extra before prompts. After annealing, `Examples/AI_LLM/xor_neural_net.malda` is the gradient-learning follow-on.
 
 Why this path:
 
 - It builds MALDA Core fundamentals before agents, APIs, or workflows
 - The examples are short enough to run, modify, and compare side by side
+- Algorithms stay a handful of teaching files, not a CLRS dump
 
 ## 2. Build An AI App
 

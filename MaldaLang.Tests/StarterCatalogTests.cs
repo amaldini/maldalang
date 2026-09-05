@@ -23,7 +23,10 @@ public class StarterCatalogTests
                 "for-loop",
                 "functions",
                 "complete-starter",
-                "input-output"
+                "input-output",
+                "lists",
+                "dictionaries",
+                "recursion"
             ],
             ids);
     }
@@ -47,16 +50,27 @@ public class StarterCatalogTests
         Assert.Equal("variables", StarterCatalog.GetNextStudentStarter("Basics/hello_world.malda")?.Id);
         Assert.Equal("for-loop", StarterCatalog.GetNextStudentStarter(@"Basics\while_loop.malda")?.Id);
         Assert.Equal("input-output", StarterCatalog.GetNextStudentStarter("Basics/complete_starter_program.malda")?.Id);
-        Assert.Null(StarterCatalog.GetNextStudentStarter("Basics/input_example.malda"));
+        Assert.Equal("lists", StarterCatalog.GetNextStudentStarter("Basics/input_example.malda")?.Id);
+        Assert.Equal("recursion", StarterCatalog.GetNextStudentStarter("Basics/dictionary_example.malda")?.Id);
+        Assert.Null(StarterCatalog.GetNextStudentStarter("Basics/recursion.malda"));
         Assert.Null(StarterCatalog.GetNextStudentStarter("Basics/first_look.malda"));
     }
 
     [Fact]
-    public void IsLastStudentStarter_OnlyInput()
+    public void IsLastStudentStarter_OnlyRecursion()
     {
         Assert.False(StarterCatalog.IsLastStudentStarter("Basics/hello_world.malda"));
-        Assert.True(StarterCatalog.IsLastStudentStarter("Basics/input_example.malda"));
+        Assert.False(StarterCatalog.IsLastStudentStarter("Basics/input_example.malda"));
+        Assert.True(StarterCatalog.IsLastStudentStarter("Basics/recursion.malda"));
         Assert.False(StarterCatalog.IsLastStudentStarter("Prompts/basic_prompt.malda"));
+    }
+
+    [Fact]
+    public void AlgorithmsBranch_OpensBinarySearch()
+    {
+        var branch = StarterCatalog.GetBranches().Single(item => item.Id == "algorithms-track");
+        Assert.Equal("Algorithms/binary_search.malda", StarterCatalog.NormalizeExamplePath(branch.RelativeExamplePath));
+        Assert.Equal("student", branch.AudienceTrack);
     }
 
     [Fact]

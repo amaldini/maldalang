@@ -211,6 +211,7 @@ public class ExampleProgramsService
         if (category.Equals("OOP", StringComparison.OrdinalIgnoreCase)) return 2;
         if (category.Equals("Prompts", StringComparison.OrdinalIgnoreCase)) return 3;
         if (category.Equals("Plan", StringComparison.OrdinalIgnoreCase)) return 4;
+        if (category.Equals("Algorithms", StringComparison.OrdinalIgnoreCase)) return 8;
 
         // Built-in Features
         if (category.Equals("Tools", StringComparison.OrdinalIgnoreCase)) return 10;

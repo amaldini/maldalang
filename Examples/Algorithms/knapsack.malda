@@ -1,0 +1,59 @@
+// 0/1 knapsack: one dynamic-programming table.
+//
+// dp[i][c] = best value using the first i items with capacity c.
+// Change this: raise capacity to 10. Next: union_find.malda
+
+function knapsack(weights, values, capacity) {
+    var n = weights.length;
+    var dp = [];
+    var i = 0;
+    while (i <= n) {
+        var row = [];
+        var c = 0;
+        while (c <= capacity) {
+            row.append(0);
+            c = c + 1;
+        }
+        dp.append(row);
+        i = i + 1;
+    }
+
+    i = 1;
+    while (i <= n) {
+        var w = weights[i - 1];
+        var v = values[i - 1];
+        var c = 0;
+        while (c <= capacity) {
+            var skip = dp[i - 1][c];
+            var take = skip;
+            if (w <= c) {
+                take = dp[i - 1][c - w] + v;
+            }
+            if (take > skip) {
+                dp[i][c] = take;
+            } else {
+                dp[i][c] = skip;
+            }
+            c = c + 1;
+        }
+        i = i + 1;
+    }
+
+    return dp[n][capacity];
+}
+
+var weights = [2, 3, 4, 5];
+var values = [3, 4, 5, 8];
+var capacity = 8;
+var best = knapsack(weights, values, capacity);
+
+io.print("weights=" + string(weights));
+io.print("values=" + string(values));
+io.print("capacity=" + string(capacity));
+io.print("best=" + string(best));
+
+if (best == 12) {
+    io.print("knapsack ok");
+} else {
+    io.print("knapsack failed");
+}

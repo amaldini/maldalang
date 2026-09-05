@@ -1,0 +1,70 @@
+// Merge sort: one O(n log n) sort, written out (not seven sorts).
+//
+// Split the array, sort each half, then merge two sorted runs.
+// Change this: add 0 to the input. Next: bfs_dfs.malda
+
+function copyRange(items, start, endExclusive) {
+    var out = [];
+    var i = start;
+    while (i < endExclusive) {
+        out.append(items[i]);
+        i = i + 1;
+    }
+    return out;
+}
+
+function merge(left, right) {
+    var out = [];
+    var i = 0;
+    var j = 0;
+    while (i < left.length && j < right.length) {
+        if (left[i] <= right[j]) {
+            out.append(left[i]);
+            i = i + 1;
+        } else {
+            out.append(right[j]);
+            j = j + 1;
+        }
+    }
+    while (i < left.length) {
+        out.append(left[i]);
+        i = i + 1;
+    }
+    while (j < right.length) {
+        out.append(right[j]);
+        j = j + 1;
+    }
+    return out;
+}
+
+function mergeSort(items) {
+    if (items.length <= 1) {
+        return items;
+    }
+    var mid = int(items.length / 2);
+    var left = mergeSort(copyRange(items, 0, mid));
+    var right = mergeSort(copyRange(items, mid, items.length));
+    return merge(left, right);
+}
+
+var input = [5, 1, 4, 2, 8, 3];
+var sorted = mergeSort(input);
+io.print("input=" + string(input));
+io.print("sorted=" + string(sorted));
+
+var ok = sorted.length == 6;
+if (ok) {
+    var i = 1;
+    while (i < sorted.length) {
+        if (sorted[i] < sorted[i - 1]) {
+            ok = false;
+        }
+        i = i + 1;
+    }
+}
+
+if (ok && sorted[0] == 1 && sorted[5] == 8) {
+    io.print("merge sort ok");
+} else {
+    io.print("merge sort failed");
+}
