@@ -77,7 +77,7 @@ Server-driven `ui.*` trees, patch protocol, and `MaldaLang.UIHost` wiring are do
 | `ReferenceManual/` | User-facing language reference (English canonical; Italian in [`ReferenceManual/it/`](../ReferenceManual/it/)) |
 | `docs/spec/` | Spec / matrix notes |
 | `docs/spec/backend-capability-matrix.md` | Interpreter vs C# vs JS product capabilities |
-| `docs/spec/ship-contract.md` | Host ship oracles: pair / trace / n/a (templates + README showcases) |
+| `docs/spec/ship-contract.md` | Host ship oracles: pair / workflow journal / HTTP status+body / n/a |
 | `docs/start-here.md`, `docs/architecture.md` | Onboarding |
 | [`docs/roadmap-p0-maturity.md`](roadmap-p0-maturity.md) | P0 maturity roadmap (workstreams complete 2026-08-12; next = post-Final / deferred) |
 | [`docs/roadmap-language-constructs.md`](roadmap-language-constructs.md) | Post-Final language constructs (schema/sum types, Mode C, budget, workflow determinism, grounded values, capability tokens) |
