@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — consult hop)
+
+- **`team.consult(from, to, payload, think?)`:** typed hop. The edge must have `rel: consult` (a `handoff` edge is not enough). Same contract + optional `think` rules as `team.handoff`. One-shot ask: does not transfer the plan and does not set `approved` / `rejected`. `delegate` / `consult` edges still install `addSubAgent` for supervisor tool loops. Interpreter and C# transpile agree. JavaScript: n/a. Example: `Examples/Agents/agent_team_consult.malda`. Few-shot: `docs/llm/few-shot/40_agents_consult.malda`.
+
 #### Added (MINOR — review / reject hops)
 
 - **`team.review(from, to, payload, think?)` / `team.reject(...)`:** typed hops. The edge must have `rel: review` or `rel: reject` (a `handoff` edge is not enough). Same contract + optional `think` rules as `team.handoff`. Review returns `{ ok, approved, data }` (`approved` defaults `true`; `{ approved: false }` stays offline). Reject returns `{ ok, rejected, data }` (`rejected` defaults `true`). `team.handoff` now requires `rel: handoff`. `executePlan` records the incoming hop `rel` on each role-change step result. Interpreter and C# transpile agree. JavaScript: n/a. Example: `Examples/Agents/agent_team_review.malda`. Few-shot: `docs/llm/few-shot/38_agents_review_reject.malda`.

@@ -513,6 +513,66 @@ public class AgentsTeamTests : TestBase
     }
 
     [Fact]
+    public void Consult_RequiresMatchingRel()
+    {
+        var source = """
+            schema Ask { question: string; }
+            var team = agents.team(
+                [
+                    { name: "Writer", role: "programmer", instructions: "Write." },
+                    { name: "Researcher", role: "researcher", instructions: "Look things up." }
+                ],
+                graph directed {
+                    nodes: ["Writer", "Researcher"],
+                    edges: [
+                        { from: "Writer", to: "Researcher", rel: "consult", contract: "Ask" }
+                    ]
+                }
+            );
+            var ok = team.consult("Writer", "Researcher", { question: "which API?" });
+            io.print(ok.ok);
+            io.print(ok.data.question);
+            var bad = team.consult("Researcher", "Writer", { question: "nope" });
+            io.print(bad.ok);
+            var wrong = team.handoff("Writer", "Researcher", { question: "which API?" });
+            io.print(wrong.ok);
+            var invalid = team.consult("Writer", "Researcher", { question: 1 });
+            io.print(invalid.ok);
+            """;
+        var lines = RunProgram(source).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal("true", lines[0]);
+        Assert.Equal("which API?", lines[1]);
+        Assert.Equal("false", lines[2]);
+        Assert.Equal("false", lines[3]);
+        Assert.Equal("false", lines[4]);
+    }
+
+    [Fact]
+    public void Consult_ThinkTrue_CallsTargetAfterValidate()
+    {
+        var teamVal = ConsultTeam();
+        var team = Assert.IsType<AgentTeamInstance>(teamVal.AsObject());
+        NullConversation(team.Members["Writer"]);
+        NullConversation(team.Members["Researcher"]);
+
+        var payload = new JsonObject();
+        payload.Set("question", RuntimeValue.String("which API?"));
+        var result = AgentsStdLib.Consult(
+            team,
+            new List<RuntimeValue>
+            {
+                RuntimeValue.String("Writer"),
+                RuntimeValue.String("Researcher"),
+                RuntimeValue.Object(payload),
+                RuntimeValue.Boolean(true)
+            },
+            null);
+        var obj = result.AsObject();
+        Assert.True(obj.Get("ok", null).AsBoolean());
+        Assert.Equal(ValueType.Null, obj.Get("response", null).Type);
+    }
+
+    [Fact]
     public void BuildStepThinkPrompt_IncludesPriorOutputs()
     {
         var step = Step("review", "Review the draft", "Reviewer", new[] { "write" }).AsObject();
@@ -719,6 +779,30 @@ public class AgentsTeamTests : TestBase
             RuntimeValue.String("Writer"),
             RuntimeValue.Null(),
             RuntimeValue.Object(reject)
+        }, null!);
+        return AgentsStdLib.Team(
+            new List<RuntimeValue> { RuntimeValue.Array(specs), RuntimeValue.Object(graph) },
+            null);
+    }
+
+    private static RuntimeValue ConsultTeam()
+    {
+        var specs = new List<RuntimeValue>
+        {
+            Spec("Writer", "programmer", "Write."),
+            Spec("Researcher", "researcher", "Look things up.")
+        };
+        var graph = new GraphInstance(true);
+        graph.CallMethod("addNode", new List<RuntimeValue> { RuntimeValue.String("Writer") }, null!);
+        graph.CallMethod("addNode", new List<RuntimeValue> { RuntimeValue.String("Researcher") }, null!);
+        var consult = new DictionaryInstance();
+        consult.SetEntry("rel", RuntimeValue.String("consult"));
+        graph.CallMethod("addEdge", new List<RuntimeValue>
+        {
+            RuntimeValue.String("Writer"),
+            RuntimeValue.String("Researcher"),
+            RuntimeValue.Null(),
+            RuntimeValue.Object(consult)
         }, null!);
         return AgentsStdLib.Team(
             new List<RuntimeValue> { RuntimeValue.Array(specs), RuntimeValue.Object(graph) },

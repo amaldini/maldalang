@@ -233,6 +233,9 @@ public static class AgentsStdLib
     internal static RuntimeValue Reject(AgentTeamInstance team, List<RuntimeValue> args, Interpreter? interpreter) =>
         Hop("reject", RelReject, team, args, interpreter, verdictKey: "rejected");
 
+    internal static RuntimeValue Consult(AgentTeamInstance team, List<RuntimeValue> args, Interpreter? interpreter) =>
+        Hop("consult", RelConsult, team, args, interpreter, verdictKey: null);
+
     private static RuntimeValue Hop(
         string method,
         string requiredRel,

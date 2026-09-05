@@ -132,9 +132,24 @@
       "prerequisites": ["Agents/agent_team_handoff_run.malda"],
       "learningGoal": "Use typed review and reject hops instead of treating every edge as a handoff.",
       "expectedOutput": "Prints true / true / false / true / true / false.",
-      "next": "Agents/agent_file_reading.malda",
+      "next": "Agents/agent_team_consult.malda",
       "documentationPath": "/?lesson=build-ai-apps#lesson-build-ai-apps",
       "documentationTitle": "Team Review"
+    },
+    {
+      "name": "Team consult (offline)",
+      "description": "team.consult requires rel: consult; one-shot ask that does not transfer the plan",
+      "file": "agent_team_consult.malda",
+      "track": "ai-builder",
+      "difficulty": "intermediate",
+      "minutes": 5,
+      "concepts": ["team.consult", "agents.team"],
+      "prerequisites": ["Agents/agent_team_review.malda"],
+      "learningGoal": "Ask another role without a handoff or review verdict.",
+      "expectedOutput": "Prints true / which API? / false / false.",
+      "next": "Agents/agent_file_reading.malda",
+      "documentationPath": "/?lesson=build-ai-apps#lesson-build-ai-apps",
+      "documentationTitle": "Team Consult"
     },
     {
       "name": "Agent with File Reading Tool",

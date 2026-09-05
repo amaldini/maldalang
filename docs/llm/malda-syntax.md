@@ -46,12 +46,13 @@ Compact rules for generating correct `.malda`. Prefer this over scraping HTML ma
   `review`, `consult`, `reject`. Spec `kind` selects the class: `Agent` (default),
   `CodingAgent`, `GitAgent`, `HumanAgent`, `DevAgent`, `MALDACodingAgent`. Optional
   `workingDirectory` on specialized kinds; `includeSymbols` / `readOnly` /
-  `prdAuthorOnly` on `DevAgent` only. `team.handoff` / `team.review` / `team.reject`
+  `prdAuthorOnly` on `DevAgent` only. `team.handoff` / `team.review` / `team.reject` / `team.consult`
   `(from, to, payload, think?)` allow only a declared edge whose `rel` matches the
   method and `validate`s `contract` when set. `true` / `{ think: true }` then calls
   `to.think(payload)` (object payloads become JSON). Default is validate-only.
   Review returns `{ ok, approved, data }` (`{ approved: false }` stays offline);
-  reject returns `{ ok, rejected, data }`. `executePlan(plan, team)` requires
+  reject returns `{ ok, rejected, data }`; consult returns `{ ok, data }` (one-shot
+  ask, does not transfer the plan). `executePlan(plan, team)` requires
   each step to name `role` (or `agent`); a `dependsOn` hop between different roles
   must match a declared relation. Dependent steps receive prior outputs in the think
   prompt; the step result includes that hop's `rel`. `decomposeTask(instruction, client?, team?)` (or
@@ -60,10 +61,10 @@ Compact rules for generating correct `.malda`. Prefer this over scraping HTML ma
   local model. JavaScript: n/a (host-only).
   Examples: `Examples/Agents/agent_team_graph.malda`, `Examples/Agents/agent_team_kinds.malda`,
   `Examples/Agents/agent_team_plan.malda`, `Examples/Agents/agent_team_handoff_run.malda`,
-  `Examples/Agents/agent_team_review.malda`.
+  `Examples/Agents/agent_team_review.malda`, `Examples/Agents/agent_team_consult.malda`.
   Few-shots: `docs/llm/few-shot/34_agents_team.malda`, `docs/llm/few-shot/35_agents_kind.malda`,
   `docs/llm/few-shot/36_agents_plan.malda`, `docs/llm/few-shot/37_agents_handoff_think.malda`,
-  `docs/llm/few-shot/38_agents_review_reject.malda`.
+  `docs/llm/few-shot/38_agents_review_reject.malda`, `docs/llm/few-shot/40_agents_consult.malda`.
   File tools that should not invent paths take a capability token, not a string:
   `cap.fileRead("notes.md")` then `cap.read(token)`. `cap.read({ kind, path })` throws.
   `@effects("io")` stays a name allow-list. No flat `cap()` alias.
