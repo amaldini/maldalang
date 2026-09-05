@@ -1,6 +1,8 @@
 // Infinite Mandelbrot zoom: BigInt reference orbit on the host, perturbation
 // kernel in @shader() → GLSL. The GPU never adds the pixel offset to the
 // high-precision center, so the dive stays sharp past float32 ulp.
+// The 256-bit orbit would go much deeper; the wrap is for coloring with a
+// 1024-iterate budget (deeper frames go black when nothing escapes in time).
 //
 // Compile:
 //   malda compile Examples/Games/three_shader_mandelbrot.malda --mode js -o Examples/Games/three_shader_mandelbrot.js
@@ -33,7 +35,10 @@ function fragmentMain() {
     var smoothIter: float = 0.0;
     var mag: float = 0.0;
 
-    while (i < 400.0) {
+    while (i < 1024.0) {
+        if (i >= uMaxIter) {
+            break;
+        }
         var zn: vec4 = texture2D(uOrbit, vec2((i + 0.5) / uOrbitLen, 0.5));
         var wSq: vec2 = cMul(w, w);
         w = cMul(zn.xy, w) * 2.0 + wSq * uScale + p;
@@ -70,6 +75,7 @@ var fragmentShader = glsl.compile({
         "vec2 uResolution",
         "float uScale",
         "float uOrbitLen",
+        "float uMaxIter",
         "sampler2D uOrbit"
     ],
     functions: ["cMul", "palette", "fragmentMain"],
@@ -88,7 +94,7 @@ if (root == null) {
     dom.append(root, heading);
 
     var hint = dom.create("p");
-    dom.setText(hint, "Host BigInt reference orbit + GPU perturbation via @shader(). Exponential zoom into Seahorse Valley; wraps after 32 decades. Hold Space to pause. [ ] change speed.");
+    dom.setText(hint, "Host BigInt reference orbit + GPU perturbation via @shader(). Exponential zoom into Seahorse Valley; wraps after 10 decades. Hold Space to pause. [ ] change speed.");
     dom.append(root, hint);
 
     var zoomLabel = dom.create("p");
@@ -97,7 +103,7 @@ if (root == null) {
 
     var width = 960;
     var height = 540;
-    var maxIter = 400;
+    var maxIter = 1024;
     var orbit = three.mandelbrotOrbit(
         "-0.743643887037158704752191506114774",
         "0.131825904205311970493132056385139",
@@ -119,6 +125,7 @@ if (root == null) {
             "uResolution": [width, height],
             "uScale": 2.55,
             "uOrbitLen": maxIter + 1,
+            "uMaxIter": 400,
             "uOrbit": orbit
         }
     });
@@ -128,7 +135,7 @@ if (root == null) {
 
     var decades = 0.0;
     var speedMul = 1.0;
-    var wrapDecades = 32.0;
+    var wrapDecades = 10.0;
     var zoomPerSecond = 0.55;
     var startScale = 2.55;
 
@@ -158,7 +165,12 @@ if (root == null) {
 
         var wrapped = decades - math.floor(decades / wrapDecades) * wrapDecades;
         var scale = startScale * math.pow(10.0, -wrapped);
+        var iters = 400.0 + wrapped * 62.0;
+        if (iters > 1024.0) {
+            iters = 1024.0;
+        }
         three.setUniform(material, "uScale", scale);
+        three.setUniform(material, "uMaxIter", iters);
 
         var shown = int(wrapped * 10.0) / 10.0;
         dom.setText(zoomLabel, "depth 10^-" + string(shown) + "  speed x" + string(int(speedMul * 10.0) / 10.0));

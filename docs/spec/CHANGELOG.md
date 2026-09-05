@@ -110,7 +110,7 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 #### Added (MINOR — three data textures + Mandelbrot perturbation)
 
 - **`three.createDataTexture` / `three.updateDataTexture` / `three.mandelbrotOrbit` (JavaScript backend only):** `createDataTexture(width, height, pixels, options?)` builds an RGBA `DataTexture` (default float32; `"type": "byte"` for 8-bit), nearest-filtered, no mipmaps, ready immediately. `updateDataTexture(handle, pixels)` rewrites the buffer. `mandelbrotOrbit(real, imag, maxIter)` parses **decimal strings** for C (MALDA IEEE doubles cannot hold a deep center), walks `Z_{n+1} = Z_n² + C` in BigInt fixed-point (256 fraction bits), and packs `(re, im, alive, 1)` into a 1-row float texture. `createShaderMaterial` / `setUniform` unwrap those handles for `sampler2D`. Interpreter / C# transpile: n/a (`three.*`).
-- **`Examples/Games/three_shader_mandelbrot.malda`:** Seahorse Valley infinite zoom now uses the BigInt reference orbit plus a scaled-perturbation `@shader()` kernel (not GPU float-float). Host scale wraps after 32 decades. Hold Space to pause; `[` `]` change speed. Host page: `three_shader_mandelbrot_runtime_smoke_test.html`.
+- **`Examples/Games/three_shader_mandelbrot.malda`:** Seahorse Valley infinite zoom now uses the BigInt reference orbit plus a scaled-perturbation `@shader()` kernel (not GPU float-float). Host scale wraps after 10 decades (1024-iterate coloring budget; past float32 ulp). Hold Space to pause; `[` `]` change speed. Host page: `three_shader_mandelbrot_runtime_smoke_test.html`.
 
 #### Added (PATCH — infinite Mandelbrot zoom example)
 

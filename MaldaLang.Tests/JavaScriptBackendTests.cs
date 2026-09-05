@@ -4356,6 +4356,7 @@ process.exit(0);
         Assert.Contains("vec2 cMul(vec2 a, vec2 b)", js, StringComparison.Ordinal);
         Assert.Contains("vec3 palette(float t)", js, StringComparison.Ordinal);
         Assert.Contains("texture2D(uOrbit", js, StringComparison.Ordinal);
+        Assert.Contains("uniform float uMaxIter", js, StringComparison.Ordinal);
         Assert.Contains("uniform sampler2D uOrbit", js, StringComparison.Ordinal);
         Assert.Contains("uniform float uScale", js, StringComparison.Ordinal);
         Assert.Contains("Seahorse Valley", js, StringComparison.Ordinal);
