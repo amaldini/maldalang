@@ -942,7 +942,7 @@ print(response.content);</code></pre>
         <p>When the orchestrator calls a subagent tool, it passes a <code>prompt</code> parameter, and the subagent's <code>think()</code> method is called automatically. The subagent's response is returned to the orchestrator.</p>
         <h3>Declarative teams with <code>agents.team</code></h3>
         <p>Prefer a directed graph over a pile of constructors when several roles share a job. <code>agents.define(spec, client?)</code> builds one agent from <code>{ name, role, instructions, kind?, tools?, memoryScope?, workingDirectory? }</code>. Allowed <code>kind</code> values: <code>Agent</code> (default), <code>CodingAgent</code>, <code>GitAgent</code>, <code>HumanAgent</code>, <code>DevAgent</code>, <code>MALDACodingAgent</code> — the same tool bundles as the matching constructors. <code>workingDirectory</code> applies to specialized kinds; <code>includeSymbols</code> / <code>readOnly</code> / <code>prdAuthorOnly</code> apply only to <code>DevAgent</code>. Read the class tag on <code>agent.kind</code>. <code>agents.team(specs, topology, client?)</code> binds an array of those specs to a <code>graph directed</code>. Extra edge keys besides <code>from</code> / <code>to</code> / <code>weight</code> / <code>properties</code> become edge properties, so <code>rel</code> and <code>contract</code> are first-class. Allowed <code>rel</code> values: <code>handoff</code>, <code>delegate</code>, <code>review</code>, <code>consult</code>, <code>reject</code>. Unknown graph nodes, rels, or kinds fail before any LLM call. Construction does not auto-download a local model. There is no flat <code>agents()</code> / <code>define()</code> / <code>team()</code> alias. JavaScript: n/a (host-only).</p>
-        <p><code>delegate</code> and <code>consult</code> edges install <code>addSubAgent</code> on the source (supervisor tool list = out-neighbors). <code>team.handoff(from, to, payload)</code> allows only a declared edge; when <code>contract</code> is set it runs <code>validate(contract, payload)</code> and returns <code>{ ok, data }</code> or <code>{ ok: false, error }</code>. <code>executePlan(plan, team)</code> or <code>team.run(plan)</code> routes each step to <code>step.role</code>. A <code>dependsOn</code> hop between different roles must match a declared relation (checked before <code>think()</code>). Same-role continuation does not need a self-edge. <code>decomposeTask(instruction, client?, team?)</code> or <code>team.decompose(instruction, client?)</code> puts the roster and relations in the decomposer prompt and rejects plans that omit <code>role</code> or hop off-graph.</p>
+        <p><code>delegate</code> and <code>consult</code> edges install <code>addSubAgent</code> on the source (supervisor tool list = out-neighbors). <code>team.handoff(from, to, payload, think?)</code> allows only a declared edge; when <code>contract</code> is set it runs <code>validate(contract, payload)</code>. Omit <code>think</code> or pass <code>false</code> / <code>{ think: false }</code> to stay validate-only (offline-safe). Pass <code>true</code> or <code>{ think: true }</code> / <code>{ run: true }</code> to call <code>to.think(payload)</code> after the hop is allowed (object payloads are JSON-encoded). Returns <code>{ ok, data }</code>, <code>{ ok, data, response }</code>, or <code>{ ok: false, error }</code>. <code>executePlan(plan, team)</code> or <code>team.run(plan)</code> routes each step to <code>step.role</code>. A <code>dependsOn</code> hop between different roles must match a declared relation (checked before <code>think()</code>). Same-role continuation does not need a self-edge. Each step <code>think()</code> prompt is the description plus a <code>Prior step &lt;id&gt;:</code> block for every <code>dependsOn</code> that already ran; the step result includes <code>prompt</code>. <code>decomposeTask(instruction, client?, team?)</code> or <code>team.decompose(instruction, client?)</code> puts the roster and relations in the decomposer prompt and rejects plans that omit <code>role</code> or hop off-graph.</p>
         <pre><code>schema DraftCode { path: string; summary: string; }
 
 var specs = [
@@ -960,7 +960,10 @@ var topology = graph directed {
 var team = agents.team(specs, topology);
 print(team.members().length);
 var hop = team.handoff("Writer", "Reviewer", { path: "calc.malda", summary: "add comments" });
-print(hop.ok);</code></pre>
+print(hop.ok);
+var hopOff = team.handoff("Writer", "Reviewer", { path: "calc.malda", summary: "add comments" }, false);
+print(hopOff.ok);
+print(hopOff.response == null);</code></pre>
         <pre><code>var coder = agents.define({
     name: "Coder",
     kind: "CodingAgent",
@@ -976,7 +979,7 @@ print(coder.kind);</code></pre>
     ]
 }, team);
 print(blocked.error != null);</code></pre>
-        <p>Offline goldens: <code>Examples/Agents/agent_team_graph.malda</code>, <code>Examples/Agents/agent_team_kinds.malda</code>, <code>Examples/Agents/agent_team_plan.malda</code>. You may also declare <code>schema AgentSpec { name: string; role: string; instructions: string; }</code> and <code>validate("AgentSpec", spec)</code> before <code>agents.define</code>; if that schema is registered, <code>define</code> / <code>team</code> run the same check.</p>
+        <p>Offline goldens: <code>Examples/Agents/agent_team_graph.malda</code>, <code>Examples/Agents/agent_team_kinds.malda</code>, <code>Examples/Agents/agent_team_plan.malda</code>, <code>Examples/Agents/agent_team_handoff_run.malda</code>. You may also declare <code>schema AgentSpec { name: string; role: string; instructions: string; }</code> and <code>validate("AgentSpec", spec)</code> before <code>agents.define</code>; if that schema is registered, <code>define</code> / <code>team</code> run the same check.</p>
         <div class="see-also">
             <h3>See Also</h3>
             <ul>

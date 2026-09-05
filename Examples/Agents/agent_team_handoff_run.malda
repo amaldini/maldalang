@@ -1,0 +1,25 @@
+// Offline golden: handoff stays validate-only unless think is true.
+// think: false (or omitted) makes no LLM call.
+// Run: malda Examples/Agents/agent_team_handoff_run.malda
+
+schema DraftCode { path: string; summary: string; }
+
+var team = agents.team(
+    [
+        { name: "Writer", role: "programmer", instructions: "Write small diffs." },
+        { name: "Reviewer", role: "reviewer", instructions: "Find bugs." }
+    ],
+    graph directed {
+        nodes: ["Writer", "Reviewer"],
+        edges: [
+            { from: "Writer", to: "Reviewer", rel: "handoff", contract: "DraftCode" }
+        ]
+    }
+);
+
+var hop = team.handoff("Writer", "Reviewer", { path: "calc.malda", summary: "add comments" }, false);
+io.print(hop.ok);
+io.print(hop.response == null);
+
+var hop2 = team.handoff("Writer", "Reviewer", { path: "calc.malda", summary: "add comments" }, { think: false });
+io.print(hop2.ok);

@@ -1,0 +1,14 @@
+// Validate-only handoff; pass true / { think: true } to call to.think(payload).
+schema DraftCode { path: string; summary: string; }
+var team = agents.team(
+    [
+        { name: "Writer", role: "programmer", instructions: "Write." },
+        { name: "Reviewer", role: "reviewer", instructions: "Review." }
+    ],
+    graph directed {
+        nodes: ["Writer", "Reviewer"],
+        edges: [{ from: "Writer", to: "Reviewer", rel: "handoff", contract: "DraftCode" }]
+    }
+);
+var hop = team.handoff("Writer", "Reviewer", { path: "a.malda", summary: "add" }, { think: false });
+io.print(hop.ok);

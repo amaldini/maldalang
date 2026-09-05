@@ -9438,6 +9438,7 @@ public static class BuiltInFunctions
         var completed = new List<RuntimeValue>();
         var failed = new List<RuntimeValue>();
         var results = new List<RuntimeValue>();
+        var priorOutputs = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var step in orderedSteps)
         {
             var so = step.AsObject();
@@ -9445,8 +9446,10 @@ public static class BuiltInFunctions
             var descVal = so.Get("description", null);
             string stepId = stepIdVal != null && stepIdVal.Type == ValueType.String ? stepIdVal.AsString() : "";
             string description = descVal != null && descVal.Type == ValueType.String ? descVal.AsString() : "";
+            var thinkPrompt = AgentsStdLib.BuildStepThinkPrompt(description, so, priorOutputs);
             var stepResult = new JsonObject();
             stepResult.Set("stepId", RuntimeValue.String(stepId));
+            stepResult.Set("prompt", RuntimeValue.String(thinkPrompt));
             AgentInstance stepAgent;
             if (team != null)
             {
@@ -9467,7 +9470,7 @@ public static class BuiltInFunctions
 
             try
             {
-                var thinkResult = stepAgent.Think(RuntimeValue.String(description));
+                var thinkResult = stepAgent.Think(RuntimeValue.String(thinkPrompt));
                 string output = thinkResult.Type == ValueType.String ? thinkResult.AsString() : (thinkResult.ToString() ?? "");
                 if (thinkResult.Type == ValueType.Object)
                 {
@@ -9477,6 +9480,8 @@ public static class BuiltInFunctions
                 }
                 stepResult.Set("success", RuntimeValue.Boolean(true));
                 stepResult.Set("output", RuntimeValue.String(output));
+                if (stepId.Length > 0)
+                    priorOutputs[stepId] = output;
                 completed.Add(RuntimeValue.String(stepId));
             }
             catch (Exception ex)

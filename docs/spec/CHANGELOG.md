@@ -107,6 +107,11 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — operational handoff and prior-step prompts)
+
+- **`team.handoff(from, to, payload, think?)`:** fourth argument `true` or `{ think: true }` / `{ run: true }` calls `to.think(payload)` after the allow-list + contract check. Object payloads are `toJSON`'d for `think()`. Default remains validate-only so offline goldens make no LLM call. Returns `{ ok, data }` or `{ ok, data, response }` or `{ ok: false, error }`.
+- **`executePlan` prior outputs:** each step's `think()` prompt is the description plus `Prior step <id>:` blocks from `dependsOn`. The step result includes `prompt`. Interpreter and C# transpile agree. JavaScript: n/a. Example: `Examples/Agents/agent_team_handoff_run.malda`. Few-shot: `docs/llm/few-shot/37_agents_handoff_think.malda`.
+
 #### Added (MINOR — team plan hops)
 
 - **`executePlan(plan, team)` hop check:** after topo-sort, a `dependsOn` edge between different `role`s must match a declared team relation. Same-role continuation does not need a self-edge. The check runs before `think()`, so an illegal hop returns `{ error }` with no LLM call. `decomposeTask(instruction, client?, team?)` (second argument may be the team) puts member names and relations in the decomposer prompt and rejects plans that omit `role` or hop off-graph. `team.decompose(instruction, client?)` is the same call. Interpreter and C# transpile agree. JavaScript: n/a. Example: `Examples/Agents/agent_team_plan.malda`. Few-shot: `docs/llm/few-shot/36_agents_plan.malda`.
