@@ -14,7 +14,15 @@ from a CDN, so the manual works offline and from `file://`.
 | `syntax.css` | Syntax highlighting token colours |
 | `print.css` | Paper presentation, linked with `media="print"` |
 | `malda-highlight.js` | Dependency-free MALDA / shell / REPL / JSON highlighter |
-| `navigation.js` | Sidebar, copy buttons, print action, Italiano/English switcher |
+| `navigation.js` | Sidebar, search / glossary, copy buttons, print action, Italiano/English switcher |
+
+Search lives in the sidebar on every page (`/` or Ctrl+K). It matches the curated
+glossary in `glossary.json`, chapter titles, and section headings from
+`headings.json`. After changing chapter headings or glossary terms, run:
+
+```bash
+python3 scripts/sync-reference-manual-search-index.py
+```
 
 `print.css` **must** load after `styles.css`, otherwise the screen rules win the
 cascade in the print medium. After adding a chapter, run:

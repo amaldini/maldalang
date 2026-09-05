@@ -1,0 +1,390 @@
+{
+  "terms": [
+    {
+      "id": "capability-tokens",
+      "term": "Token di capability",
+      "aliases": [
+        "cap",
+        "cap.fileRead",
+        "cap.fileWrite",
+        "cap.dirList",
+        "cap.confine",
+        "cap.read",
+        "cap.write",
+        "cap.list",
+        "cap.is",
+        "capability",
+        "capability token",
+        "token di capability"
+      ],
+      "href": "13-built-in-functions.html#capability-tokens",
+      "also": ["12-input-output.html#capability-tokens"],
+      "summary": "Token dell'host non contraffattibili per l'I/O su file. Si emettono con cap.fileRead / cap.fileWrite / cap.dirList; non esiste un alias piatto cap()."
+    },
+    {
+      "id": "prompt",
+      "term": "prompt",
+      "aliases": ["prompts", "blocco prompt"],
+      "href": "10-prompts.html",
+      "summary": "Template di prompt di prima classe. await esegue il modello; senza await la chiamata è solo il template reso."
+    },
+    {
+      "id": "schema",
+      "term": "schema",
+      "aliases": ["schemas", "output strutturato"],
+      "href": "10-prompts.html",
+      "summary": "Forma nominata per il JSON di prompt / LLM. validate(schema, value) controlla un payload rispetto allo schema."
+    },
+    {
+      "id": "validate",
+      "term": "validate",
+      "aliases": ["validate()"],
+      "href": "13-built-in-functions.html#validate",
+      "summary": "validate(schema, value) controlla un dict rispetto a un nome di schema. È lo stesso controllo che await eseguirebbe sul JSON del modello."
+    },
+    {
+      "id": "await-prompt",
+      "term": "await prompt",
+      "aliases": ["await", "runPrompt"],
+      "href": "10-prompts.html",
+      "summary": "Esegue un prompt su un LLM. Senza await, la chiamata al prompt rende solo il template."
+    },
+    {
+      "id": "closed-api",
+      "term": "API chiuse e runProgram",
+      "aliases": ["api", "program", "runProgram", "Mode C"],
+      "href": "10-prompts.html",
+      "summary": "I valori api / program(ApiName) chiusi girano in modo deterministico con runProgram — nessuna ulteriore chiamata LLM."
+    },
+    {
+      "id": "modules",
+      "term": "include, using, import, export",
+      "aliases": ["include", "using", "import", "export", "moduli"],
+      "href": "01-introduction.html#modules",
+      "summary": "Come MALDA compone i file sorgente: include, using, import ed export."
+    },
+    {
+      "id": "keywords",
+      "term": "Keyword",
+      "aliases": ["parole riservate", "reserved words", "reserved"],
+      "href": "03-lexical-structure.html#keywords",
+      "also": ["36-appendix.html"],
+      "summary": "Parole riservate del lexer. fn e def non sono riservate; il parser le rifiuta come keyword di funzione."
+    },
+    {
+      "id": "const",
+      "term": "const",
+      "aliases": ["costante", "costanti", "constant"],
+      "href": "05-variables.html#const",
+      "summary": "Binding costanti. Le costanti sono shallow: il binding non si riassegna, i valori nidificati sì."
+    },
+    {
+      "id": "sum-types",
+      "term": "Tipi somma",
+      "aliases": ["type", "tagged union", "variant", "asVariant", "unione taggata"],
+      "href": "04-data-types.html",
+      "also": ["13-built-in-functions.html#asVariant"],
+      "summary": "Unioni taggate dichiarate con type. Si fa match sulle varianti; asVariant(typeName, value) avvolge un payload."
+    },
+    {
+      "id": "dict",
+      "term": "dict",
+      "aliases": ["dizionario", "dizionari", "dictionary"],
+      "href": "04-data-types.html",
+      "summary": "Letterali e metodi dei dizionari. È anche una keyword per il costruttore dict."
+    },
+    {
+      "id": "match",
+      "term": "match",
+      "aliases": ["case", "pattern matching"],
+      "href": "08-control-structures.html",
+      "summary": "Pattern matching con match / case / default."
+    },
+    {
+      "id": "defer",
+      "term": "defer e using",
+      "aliases": ["defer", "using", "cleanup"],
+      "href": "08-control-structures.html#cleanup",
+      "summary": "Cleanup deterministico: defer gira all'uscita dello scope; using rilascia una risorsa."
+    },
+    {
+      "id": "lambda",
+      "term": "Espressioni lambda",
+      "aliases": ["lambda", "=>", "arrow"],
+      "href": "09-functions.html#lambda-expressions",
+      "summary": "Funzioni anonime con corpo espressione o blocco =>, inclusa la cattura delle closure."
+    },
+    {
+      "id": "decorators",
+      "term": "Decoratori",
+      "aliases": ["@", "@Tool", "@pure", "@effects", "@within", "@budget", "@GET", "@PAGE", "@AIPAGE"],
+      "href": "09-functions.html",
+      "summary": "Decoratori at- sulle funzioni: @Tool, @pure, @effects, @within, @budget e le route HTTP / page."
+    },
+    {
+      "id": "effects-cap",
+      "term": "@effects e @pure",
+      "aliases": ["@effects", "@pure", "malda-pure", "malda-effects"],
+      "href": "09-functions.html",
+      "also": ["13-built-in-functions.html#capability-tokens"],
+      "summary": "@pure vieta l'I/O. @effects elenca i side effect ammessi. @effects(\"cap\") marca gli handler che emettono o consumano token di capability."
+    },
+    {
+      "id": "interpolation",
+      "term": "Interpolazione di stringhe",
+      "aliases": ["$\"", "stringa interpolata"],
+      "href": "07-expressions.html",
+      "summary": "Stringhe interpolate con $\"...\" . Le annotazioni di tipo altrove sono hint IDE/LSP, non controlli a runtime."
+    },
+    {
+      "id": "pipe",
+      "term": "Operatore pipe",
+      "aliases": ["|>", "pipe"],
+      "href": "07-expressions.html",
+      "summary": "Pipe in avanti |>. Lega più debole del ternario, quindi a ? b : c |> f passa all'f l'intero condizionale."
+    },
+    {
+      "id": "null-conditional",
+      "term": "Accesso null-conditional",
+      "aliases": ["?.", "?[", "null-conditional"],
+      "href": "07-expressions.html#null-conditional",
+      "summary": "Accesso sicuro a membri / indici: a?.b e a?[i]."
+    },
+    {
+      "id": "null-coalesce",
+      "term": "Null-coalescing",
+      "aliases": ["??", "null-coalesce"],
+      "href": "07-expressions.html#null-coalesce",
+      "summary": "L'operatore ?? fornisce un fallback quando il lato sinistro è null."
+    },
+    {
+      "id": "comprehensions",
+      "term": "Comprehension",
+      "aliases": ["list comprehension", "dictionary comprehension"],
+      "href": "07-expressions.html#comprehensions",
+      "summary": "Comprehension di liste e dizionari."
+    },
+    {
+      "id": "async-await",
+      "term": "async e await",
+      "aliases": ["async", "await"],
+      "href": "07-expressions.html",
+      "summary": "await è un operatore prefisso unario. await a.b() attende la chiamata; (await a).b() richiede le parentesi."
+    },
+    {
+      "id": "io",
+      "term": "io.*",
+      "aliases": ["io", "io.print", "io.readFile", "print", "readFile", "writeFile"],
+      "href": "12-input-output.html",
+      "summary": "Console, file, path, ambiente e I/O dell'host. Preferisci le chiamate namespaced io.*; print piatto gira ancora."
+    },
+    {
+      "id": "stdlib-namespaces",
+      "term": "Namespace della stdlib",
+      "aliases": ["math", "str", "io", "alias piatti"],
+      "href": "13-built-in-functions.html#stdlib-namespaces",
+      "summary": "Preferisci i namespace math / str / io. Gli alias piatti sono deprecati — non aggiungerne di nuovi."
+    },
+    {
+      "id": "glob-grep",
+      "term": "glob e grep",
+      "aliases": ["glob", "grep"],
+      "href": "13-built-in-functions.html",
+      "also": ["12-input-output.html"],
+      "summary": "Helper di ricerca su file. Il cap di default di glob è 200 risultati (cap rigido 500); grep di default è ricorsivo."
+    },
+    {
+      "id": "result-option",
+      "term": "result e option",
+      "aliases": ["result", "option", "result.ok", "option.some"],
+      "href": "13-built-in-functions.html#result-option",
+      "summary": "Wrapper espliciti di successo / assenza al posto di null."
+    },
+    {
+      "id": "grounded",
+      "term": "grounded.wrap",
+      "aliases": ["grounded", "citations", "citazioni"],
+      "href": "13-built-in-functions.html#grounded-values",
+      "summary": "Avvolge un valore con citazioni di retrieval. GraphMemory ASK può restituire hit grounded."
+    },
+    {
+      "id": "evalPrompt",
+      "term": "evalPrompt",
+      "aliases": ["evalPrompt()"],
+      "href": "13-built-in-functions.html#evalPrompt",
+      "summary": "Esegue un prompt su un fixture senza chiamare un modello — utile nei test."
+    },
+    {
+      "id": "actor",
+      "term": "Actor",
+      "aliases": ["actor", "spawn", "send", "receive", "self"],
+      "href": "17-actors.html",
+      "also": ["17-actors.html#actor-state-isolation"],
+      "summary": "Modello ad actor nativo: spawn, send, receive, self e stato isolato."
+    },
+    {
+      "id": "agent",
+      "term": "Agent",
+      "aliases": ["agents", "agenti", "think", "CodingAgent", "GitAgent", "DevAgent", "HumanAgent"],
+      "href": "18-agent-orchestration.html",
+      "summary": "Classe Agent built-in e agenti specializzati. think() esegue un turno con i tool."
+    },
+    {
+      "id": "tool",
+      "term": "Tool",
+      "aliases": ["@Tool", "Tool", "createReadFileTool", "createWebFetchTool"],
+      "href": "18-agent-orchestration.html",
+      "summary": "Tool degli agenti: decoratore @Tool, new Tool e factory built-in."
+    },
+    {
+      "id": "llm-client",
+      "term": "Client LLM",
+      "aliases": ["LLMClient", "OpenRouterClient", "LlamaCppClient", "Conversation"],
+      "href": "18-agent-orchestration.html",
+      "summary": "Client LLM built-in e Conversation. Se non passi un client viene usato un modello GGUF locale di default."
+    },
+    {
+      "id": "ralph",
+      "term": "Ralph Wiggum",
+      "aliases": ["ralph", "Ralph", "PRD loop"],
+      "href": "18-agent-orchestration.html#ralph-wiggum",
+      "summary": "Loop autonomo di agenti guidato da un PRD."
+    },
+    {
+      "id": "graphmemory",
+      "term": "GraphMemory",
+      "aliases": ["GraphMemory", "memoria semantica", "ask"],
+      "href": "19-graph-memory.html",
+      "summary": "Memoria semantica: grafo di conoscenza più ricerca vettoriale per gli agenti."
+    },
+    {
+      "id": "vectordb",
+      "term": "VectorDB",
+      "aliases": ["VectorDB", "searchSimilar", "embeddings"],
+      "href": "15-vectordb.html",
+      "summary": "Database vettoriale in-process per similarity search e embedding."
+    },
+    {
+      "id": "graph",
+      "term": "graph",
+      "aliases": ["grafi", "graphs", "directed", "undirected"],
+      "href": "14-graphs.html",
+      "summary": "Letterali a grafo, algoritmi e serializzazione."
+    },
+    {
+      "id": "mcp",
+      "term": "Server MCP",
+      "aliases": ["MCP", "mcp"],
+      "href": "20-mcp-server.html",
+      "summary": "Espone funzioni MALDA come tool del Model Context Protocol."
+    },
+    {
+      "id": "acp",
+      "term": "ACP",
+      "aliases": ["ACP", "Agent Communication Protocol"],
+      "href": "21-acp.html",
+      "summary": "Agent Communication Protocol per la collaborazione multi-agente."
+    },
+    {
+      "id": "workflow",
+      "term": "Workflow durevoli",
+      "aliases": ["workflow", "step", "approval", "compensate", "DLQ"],
+      "href": "22-durable-workflows.html",
+      "summary": "Sintassi dei workflow durevoli, storage, CLI, dead letter e operazioni."
+    },
+    {
+      "id": "web-ui",
+      "term": "Web UI (ui.*)",
+      "aliases": ["ui", "ui.button", "component", "property", "UIHost"],
+      "href": "24-web-ui.html",
+      "also": ["23-web-ui-hub.html"],
+      "summary": "UI guidata dal server: component, property e controlli ui.*. Parti dal capitolo 23 se stai scegliendo un modello UI."
+    },
+    {
+      "id": "page",
+      "term": "@PAGE e @AIPAGE",
+      "aliases": ["@PAGE", "@AIPAGE", "HttpServer"],
+      "href": "25-http-server-html-ui.html",
+      "summary": "Pagine HTML route-first su HttpServer, incluso @AIPAGE generato da LLM."
+    },
+    {
+      "id": "rest",
+      "term": "REST API",
+      "aliases": ["@GET", "@POST", "@PUT", "@DELETE", "REST"],
+      "href": "27-rest-api.html",
+      "summary": "Route REST basate su decoratori sul server HTTP MALDA."
+    },
+    {
+      "id": "game-three",
+      "term": "game.* e three.*",
+      "aliases": ["game", "three", "three.js", "@shader", "GLSL"],
+      "href": "26-browser-javascript-backend.html",
+      "also": ["26-browser-javascript-backend.html#three-scene-api", "26-browser-javascript-backend.html#shader-kernels"],
+      "summary": "Kit giochi nel browser (backend JS): game.*, API scene three.* e @shader() verso GLSL."
+    },
+    {
+      "id": "fullstack",
+      "term": "Full-stack",
+      "aliases": ["@client", "@server", "fullstack"],
+      "href": "29-full-stack-development.html",
+      "summary": "App full-stack native MALDA e ibride: UI server o frontend JS più backend MALDA."
+    },
+    {
+      "id": "dotnet",
+      "term": "Interop .NET",
+      "aliases": ["loadNativeModule", "createNativeCallback", "NuGet"],
+      "href": "30-dotnet-interop.html",
+      "summary": "Carica librerie .NET esterne e avvolge funzioni MALDA come delegate."
+    },
+    {
+      "id": "lsp",
+      "term": "Language Server (LSP)",
+      "aliases": ["LSP", "malda-lsp", "language server"],
+      "href": "02-tools.html#language-server",
+      "summary": "Intelligenza dell'editor via malda-lsp. Il debug in interpret è malda debug-adapter, non il language server."
+    },
+    {
+      "id": "debug",
+      "term": "Debug in modalità interpret",
+      "aliases": ["debug-adapter", "DAP", "breakpoint"],
+      "href": "02-tools.html#interpret-mode-debug",
+      "summary": "Debug a livello sorgente per l'interprete: malda debug-adapter (DAP). Non mescolare il DAP in malda-lsp."
+    },
+    {
+      "id": "property-testing",
+      "term": "Property testing",
+      "aliases": ["@requires", "@targets", "runProperty", "property"],
+      "href": "34-property-testing.html",
+      "summary": "Property test deterministici, shrinking e hint di capability del backend."
+    },
+    {
+      "id": "skills",
+      "term": "Skill",
+      "aliases": ["skill", "malda skill"],
+      "href": "32-personal-assistant.html#skills",
+      "summary": "Skill dell'assistente personale: pacchetti di istruzioni riutilizzabili per l'assistente CLI."
+    },
+    {
+      "id": "optional-packs",
+      "term": "Pack opzionali",
+      "aliases": ["optional pack", "vertical pack", "pack opzionali"],
+      "href": "36-appendix.html#optional-packs",
+      "also": ["13-built-in-functions.html#optional-pack-builtins"],
+      "summary": "I pack di dominio restano fuori dal core OSS. Caricali con loadNativeModule; il core non registra in automatico i global dei pack."
+    },
+    {
+      "id": "repl",
+      "term": "Interprete e REPL",
+      "aliases": ["REPL", "malda", "interprete", "interpreter"],
+      "href": "02-tools.html",
+      "summary": "Esegui file .malda o un REPL interattivo. malda check diagnostica senza eseguire."
+    },
+    {
+      "id": "compile",
+      "term": "Compilatore / transpile",
+      "aliases": ["compile", "transpile", "malda compile"],
+      "href": "02-tools.html",
+      "summary": "malda compile produce un eseguibile self-contained. Il modo runtime di default è Interpreter; usa --mode transpile per la publish C# tipizzata."
+    }
+  ]
+}
