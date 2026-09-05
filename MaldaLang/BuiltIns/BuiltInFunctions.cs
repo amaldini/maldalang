@@ -9424,6 +9424,17 @@ public static class BuiltInFunctions
             err.Set("error", RuntimeValue.String("Plan has a cycle in step dependencies"));
             return RuntimeValue.Object(err);
         }
+        if (team != null)
+        {
+            var hopError = AgentsStdLib.ValidateTeamPlan(team, orderedSteps);
+            if (hopError != null)
+            {
+                var err = new JsonObject();
+                err.Set("error", RuntimeValue.String("executePlan " + hopError));
+                return RuntimeValue.Object(err);
+            }
+        }
+
         var completed = new List<RuntimeValue>();
         var failed = new List<RuntimeValue>();
         var results = new List<RuntimeValue>();
@@ -9439,14 +9450,7 @@ public static class BuiltInFunctions
             AgentInstance stepAgent;
             if (team != null)
             {
-                var role = AgentsStdLib.ReadStepRole(so);
-                if (role == null)
-                {
-                    var err = new JsonObject();
-                    err.Set("error", RuntimeValue.String($"executePlan step '{stepId}' is missing role"));
-                    return RuntimeValue.Object(err);
-                }
-
+                var role = AgentsStdLib.ReadStepRole(so)!;
                 if (!team.TryGetAgent(role, out stepAgent))
                 {
                     var err = new JsonObject();
@@ -9510,18 +9514,37 @@ public static class BuiltInFunctions
     
     private static RuntimeValue BuiltInDecomposeTask(List<RuntimeValue> args)
     {
-        BuiltInArity.Require("decomposeTask", args, 1, BuiltInArity.Unbounded, "instruction, client?");
+        BuiltInArity.Require("decomposeTask", args, 1, 3, "instruction, client?, team?");
         if (args[0].Type != ValueType.String)
             throw new Exception("decomposeTask() instruction must be a string");
         var instruction = args[0].AsString();
         LLMClientInstance? client = null;
-        if (args.Count > 1 && args[1].Type == ValueType.Object)
+        AgentTeamInstance? team = null;
+        if (args.Count >= 2 && args[1].Type == ValueType.Object)
         {
             var obj = args[1].AsObject();
-            if (obj is LLMClientInstance llmClient)
+            if (obj is AgentTeamInstance teamArg)
+                team = teamArg;
+            else if (obj is LLMClientInstance llmClient)
                 client = llmClient;
+            else
+                throw new Exception("decomposeTask() second argument must be an LLMClient or AgentTeam");
         }
-        const string systemPrompt = "You are a task decomposer. Given a task description, respond with ONLY a valid JSON object and no other text. The JSON must have this exact shape: {\"steps\": [{\"id\": \"1\", \"description\": \"...\", \"dependsOn\": []}, ...]}. Each step must have \"id\" (unique string) and \"description\" (string). Optional \"dependsOn\" is an array of step ids that must complete before this step. No cycles. No markdown, no explanation.";
+        else if (args.Count >= 2 && args[1].Type != ValueType.Null)
+        {
+            throw new Exception("decomposeTask() second argument must be an LLMClient or AgentTeam");
+        }
+
+        if (args.Count >= 3)
+        {
+            if (team != null)
+                throw new Exception("decomposeTask() team was already passed as the second argument");
+            if (args[2].Type != ValueType.Object || args[2].AsObject() is not AgentTeamInstance teamArg)
+                throw new Exception("decomposeTask() third argument must be an AgentTeam");
+            team = teamArg;
+        }
+
+        var systemPrompt = AgentsStdLib.BuildDecomposeSystemPrompt(team);
         var conv = new ConversationInstance();
         if (client != null)
             conv.Initialize(client, null, null, systemPrompt, null);
@@ -9594,6 +9617,21 @@ public static class BuiltInFunctions
         var errVal = vObj.Get("error", null);
         if (errVal != null && errVal.Type == ValueType.String)
             return validation;
+        if (team != null)
+        {
+            var stepsVal = vObj.Get("steps", null);
+            if (stepsVal.Type == ValueType.Array)
+            {
+                var hopError = AgentsStdLib.ValidateTeamPlan(team, stepsVal.AsArray());
+                if (hopError != null)
+                {
+                    var err = new JsonObject();
+                    err.Set("error", RuntimeValue.String("decomposeTask " + hopError));
+                    return RuntimeValue.Object(err);
+                }
+            }
+        }
+
         return validation;
     }
     

@@ -41,6 +41,7 @@ After generating a snippet, diagnose with `malda check path.malda --json` before
 | `33_check_malda.malda` | `createCheckMaldaTool` + `execute` on a snippet (same report as `malda check --json`) |
 | `34_agents_team.malda` | `agents.team` + graph `rel`/`contract` + `handoff` (offline, no LLM) |
 | `35_agents_kind.malda` | `agents.define` `kind: "CodingAgent"` (offline, no LLM) |
+| `36_agents_plan.malda` | `executePlan(plan, team)` rejects an undeclared role hop (offline) |
 
 Also useful from the main tree:
 

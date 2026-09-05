@@ -48,10 +48,15 @@ Compact rules for generating correct `.malda`. Prefer this over scraping HTML ma
   `workingDirectory` on specialized kinds; `includeSymbols` / `readOnly` /
   `prdAuthorOnly` on `DevAgent` only. `team.handoff(from, to, payload)` allows only a
   declared edge and `validate`s `contract` when set. `executePlan(plan, team)` requires
-  each step to name `role` (or `agent`). No flat `agents()` / `define()` / `team()` alias.
-  Construction does not auto-download a local model. JavaScript: n/a (host-only).
-  Examples: `Examples/Agents/agent_team_graph.malda`, `Examples/Agents/agent_team_kinds.malda`.
-  Few-shots: `docs/llm/few-shot/34_agents_team.malda`, `docs/llm/few-shot/35_agents_kind.malda`.
+  each step to name `role` (or `agent`); a `dependsOn` hop between different roles
+  must match a declared relation. `decomposeTask(instruction, client?, team?)` (or
+  `team.decompose`) lists the roster in the prompt and checks those hops. No flat
+  `agents()` / `define()` / `team()` alias. Construction does not auto-download a
+  local model. JavaScript: n/a (host-only).
+  Examples: `Examples/Agents/agent_team_graph.malda`, `Examples/Agents/agent_team_kinds.malda`,
+  `Examples/Agents/agent_team_plan.malda`.
+  Few-shots: `docs/llm/few-shot/34_agents_team.malda`, `docs/llm/few-shot/35_agents_kind.malda`,
+  `docs/llm/few-shot/36_agents_plan.malda`.
   File tools that should not invent paths take a capability token, not a string:
   `cap.fileRead("notes.md")` then `cap.read(token)`. `cap.read({ kind, path })` throws.
   `@effects("io")` stays a name allow-list. No flat `cap()` alias.

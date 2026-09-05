@@ -1,0 +1,24 @@
+// Offline golden: executePlan on a team rejects hops the graph does not allow.
+// The hop check runs before think(), so this file makes no LLM call.
+// Run: malda Examples/Agents/agent_team_plan.malda
+
+var specs = [
+    { name: "Writer", role: "programmer", instructions: "Write small diffs." },
+    { name: "Reviewer", role: "reviewer", instructions: "Find bugs." }
+];
+
+var team = agents.team(specs, graph directed {
+    nodes: ["Writer", "Reviewer"],
+    edges: [
+        { from: "Writer", to: "Reviewer", rel: "handoff" }
+    ]
+});
+
+var reverse = {
+    steps: [
+        { id: "review", description: "Review first", role: "Reviewer" },
+        { id: "write", description: "Write after", role: "Writer", dependsOn: ["review"] }
+    ]
+};
+var blocked = executePlan(reverse, team);
+io.print(blocked.error != null);

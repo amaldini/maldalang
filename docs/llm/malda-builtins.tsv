@@ -84,7 +84,7 @@ createWebSearchTool	createWebSearchTool	0 arguments
 createWriteFileTool	createWriteFileTool	0-1 arguments: (workingDir?)		
 crossEntropyFromLogits	math.crossEntropyFromLogits	2 arguments: (logits, targetIndex)		
 csrfField	csrfField	secret and optional ttlSeconds		
-decomposeTask	decomposeTask	at least 1 argument: (instruction, client?)		
+decomposeTask	decomposeTask	1-3 arguments: (instruction, client?, team?)		
 degToRad	math.degToRad	1 argument		
 deleteFile	io.deleteFile	1 argument		
 dotnetNew	dotnetNew	at least 1 argument: (typeOrTypeName, ...ctorArgs)		

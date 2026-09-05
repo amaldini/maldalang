@@ -23,6 +23,7 @@ Declarative multi-agent teams (no LLM):
 ```bash
 malda Examples/Agents/agent_team_graph.malda
 malda Examples/Agents/agent_team_kinds.malda
+malda Examples/Agents/agent_team_plan.malda
 ```
 Unit twin: `phase6_pure_validate.malda`. Structured prompt modes: `Examples/Prompts/` (Mode A / Mode C).
 

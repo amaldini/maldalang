@@ -3,6 +3,7 @@
 
 namespace MaldaLang.BuiltIns;
 
+using System.Linq;
 using MaldaLang.Interpreter;
 using ValueType = MaldaLang.Interpreter.ValueType;
 
@@ -265,6 +266,97 @@ public static class AgentsStdLib
         if (agent.Type == ValueType.String && agent.AsString().Length > 0)
             return agent.AsString();
         return null;
+    }
+
+    /// <summary>
+    /// Team plans must name a known member on every step. A <c>dependsOn</c> hop
+    /// between different roles must match a declared relation. Same-role
+    /// continuation does not need a self-edge.
+    /// </summary>
+    internal static string? ValidateTeamPlan(AgentTeamInstance team, IReadOnlyList<RuntimeValue> steps)
+    {
+        var byId = new Dictionary<string, ObjectInstance>(StringComparer.Ordinal);
+        foreach (var step in steps)
+        {
+            if (step.Type != ValueType.Object)
+                continue;
+            var so = step.AsObject();
+            var idVal = so.Get("id", null);
+            var id = idVal.Type == ValueType.String ? idVal.AsString() : "";
+            var role = ReadStepRole(so);
+            if (role == null)
+                return $"step '{id}' is missing role";
+            if (!team.TryGetAgent(role, out _))
+                return $"step '{id}' has unknown role '{role}'";
+            if (id.Length > 0)
+                byId[id] = so;
+        }
+
+        foreach (var step in steps)
+        {
+            if (step.Type != ValueType.Object)
+                continue;
+            var so = step.AsObject();
+            var idVal = so.Get("id", null);
+            var id = idVal.Type == ValueType.String ? idVal.AsString() : "";
+            var role = ReadStepRole(so);
+            if (role == null)
+                continue;
+            var deps = so.Get("dependsOn", null);
+            if (deps.Type != ValueType.Array)
+                continue;
+            foreach (var dep in deps.AsArray())
+            {
+                if (dep.Type != ValueType.String)
+                    continue;
+                if (!byId.TryGetValue(dep.AsString(), out var pred))
+                    continue;
+                var predRole = ReadStepRole(pred);
+                if (predRole == null || string.Equals(predRole, role, StringComparison.Ordinal))
+                    continue;
+                if (!team.TryGetRelation(predRole, role, out _))
+                {
+                    return $"step '{id}' has no relation from '{predRole}' to '{role}'";
+                }
+            }
+        }
+
+        return null;
+    }
+
+    internal static string BuildDecomposeSystemPrompt(AgentTeamInstance? team)
+    {
+        if (team == null)
+        {
+            return "You are a task decomposer. Given a task description, respond with ONLY a valid JSON object and no other text. The JSON must have this exact shape: {\"steps\": [{\"id\": \"1\", \"description\": \"...\", \"dependsOn\": []}, ...]}. Each step must have \"id\" (unique string) and \"description\" (string). Optional \"dependsOn\" is an array of step ids that must complete before this step. No cycles. No markdown, no explanation.";
+        }
+
+        var members = new List<string>();
+        foreach (var name in team.Members.Keys.OrderBy(n => n, StringComparer.Ordinal))
+        {
+            var agent = team.Members[name];
+            members.Add($"- {name} (kind {agent.Kind}, role {agent.Role}): {agent.Instructions}");
+        }
+
+        var rels = new List<string>();
+        foreach (var relation in team.Relations)
+        {
+            var contract = string.IsNullOrEmpty(relation.Contract)
+                ? ""
+                : $" contract {relation.Contract}";
+            rels.Add($"- {relation.From} -{relation.Rel}->{relation.To}{contract}");
+        }
+
+        var roster = members.Count == 0 ? "(none)" : string.Join("\n", members);
+        var graph = rels.Count == 0 ? "(none)" : string.Join("\n", rels);
+        var names = string.Join(", ", team.Members.Keys.OrderBy(n => n, StringComparer.Ordinal));
+        return
+            "You are a task decomposer for a multi-agent team. Respond with ONLY a valid JSON object and no other text. " +
+            "The JSON must have this exact shape: {\"steps\": [{\"id\": \"1\", \"description\": \"...\", \"role\": \"MemberName\", \"dependsOn\": []}, ...]}. " +
+            "Each step must have \"id\" (unique string), \"description\" (string), and \"role\" set to exactly one team member name. " +
+            "Optional \"dependsOn\" is an array of step ids. When a step depends on another step with a different role, that hop must match a declared relation. " +
+            "Same-role continuation does not need a self-edge. No cycles. No markdown, no explanation.\n" +
+            $"Member names: {names}\nMembers:\n{roster}\nRelations:\n{graph}";
     }
 
     private static RuntimeValue HandoffOk(RuntimeValue payload)

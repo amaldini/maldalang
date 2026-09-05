@@ -236,6 +236,33 @@ public class InterpretTranspilePairTests
     }
 
     [Fact]
+    public void AgentsTeamMissingHop_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            var team = agents.team(
+                [
+                    { name: "Writer", role: "programmer", instructions: "Write." },
+                    { name: "Reviewer", role: "reviewer", instructions: "Review." }
+                ],
+                graph directed {
+                    nodes: ["Writer", "Reviewer"],
+                    edges: []
+                }
+            );
+            var plan = {
+                steps: [
+                    { id: "write", description: "Write", role: "Writer" },
+                    { id: "review", description: "Review", role: "Reviewer", dependsOn: ["write"] }
+                ]
+            };
+            var result = executePlan(plan, team);
+            io.print(result.error != null);
+            """,
+            "agents-team-missing-hop");
+    }
+
+    [Fact]
     public void GroundedWrap_SameStdout()
     {
         InterpretTranspilePair.AssertSameFromSource(

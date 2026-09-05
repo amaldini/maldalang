@@ -87,9 +87,24 @@
       "prerequisites": ["Agents/agent_team_graph.malda"],
       "learningGoal": "Pick a specialized agent class from a spec instead of listing tools by name.",
       "expectedOutput": "Prints CodingAgent, HumanAgent, then true for unknown-kind reject.",
-      "next": "Agents/agent_file_reading.malda",
+      "next": "Agents/agent_team_plan.malda",
       "documentationPath": "/?lesson=build-ai-apps#lesson-build-ai-apps",
       "documentationTitle": "Agent Kinds"
+    },
+    {
+      "name": "Team plan hops (offline)",
+      "description": "executePlan(plan, team) rejects a dependsOn hop that is not a declared relation, before any LLM call",
+      "file": "agent_team_plan.malda",
+      "track": "ai-builder",
+      "difficulty": "intermediate",
+      "minutes": 6,
+      "concepts": ["executePlan", "agents.team", "dependsOn", "role"],
+      "prerequisites": ["Agents/agent_team_kinds.malda"],
+      "learningGoal": "See the team graph as an allow-list for plan hops, not just handoff().",
+      "expectedOutput": "Prints true — reverse Writer hop is rejected.",
+      "next": "Agents/agent_file_reading.malda",
+      "documentationPath": "/?lesson=build-ai-apps#lesson-build-ai-apps",
+      "documentationTitle": "Team Plans"
     },
     {
       "name": "Agent with File Reading Tool",
