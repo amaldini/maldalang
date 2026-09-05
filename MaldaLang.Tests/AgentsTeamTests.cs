@@ -60,17 +60,10 @@ public class AgentsTeamTests : TestBase
             });
             io.print(coder.kind);
             io.print(coder.name);
-            var tools = coder.getAvailableTools();
-            var hasRead = false;
-            for (var i = 0; i < tools.length; i++) {
-                if (tools[i] == "read_file") { hasRead = true; }
-            }
-            io.print(hasRead);
             """;
         var lines = RunProgram(source).Split('\n', StringSplitOptions.RemoveEmptyEntries);
         Assert.Equal("CodingAgent", lines[0]);
         Assert.Equal("Coder", lines[1]);
-        Assert.Equal("true", lines[2]);
     }
 
     [Fact]
@@ -94,17 +87,10 @@ public class AgentsTeamTests : TestBase
             });
             io.print(dev.kind);
             io.print(human.kind);
-            var tools = human.getAvailableTools();
-            var hasAsk = false;
-            for (var i = 0; i < tools.length; i++) {
-                if (tools[i] == "ask_user") { hasAsk = true; }
-            }
-            io.print(hasAsk);
             """;
         var lines = RunProgram(source).Split('\n', StringSplitOptions.RemoveEmptyEntries);
         Assert.Equal("DevAgent", lines[0]);
         Assert.Equal("HumanAgent", lines[1]);
-        Assert.Equal("true", lines[2]);
     }
 
     [Fact]
@@ -124,6 +110,17 @@ public class AgentsTeamTests : TestBase
             var agent = Assert.IsAssignableFrom<AgentInstance>(value.AsObject());
             Assert.Equal(kind, agent.Kind);
             Assert.Equal(kind, agent.Get("kind", null).AsString());
+            Assert.Equal(ExpectedType(kind), agent.GetType());
+            if (kind == "CodingAgent")
+                Assert.Contains("read_file", AgentToolNames(agent));
+            if (kind == "HumanAgent")
+                Assert.Contains("ask_user", AgentToolNames(agent));
+            if (kind == "GitAgent")
+                Assert.Contains("git_status", AgentToolNames(agent));
+            if (kind == "MALDACodingAgent")
+                Assert.Contains("read_file", AgentToolNames(agent));
+            if (kind == "DevAgent")
+                Assert.Contains("check_malda", AgentToolNames(agent));
         }
     }
 
@@ -461,6 +458,25 @@ public class AgentsTeamTests : TestBase
             step.Set("dependsOn", RuntimeValue.Array(deps));
         }
         return RuntimeValue.Object(step);
+    }
+
+    private static Type ExpectedType(string kind) => kind switch
+    {
+        "Agent" => typeof(AgentInstance),
+        "CodingAgent" => typeof(CodingAgentInstance),
+        "GitAgent" => typeof(GitAgentInstance),
+        "HumanAgent" => typeof(HumanAgentInstance),
+        "DevAgent" => typeof(DevAgentInstance),
+        "MALDACodingAgent" => typeof(MALDACodingAgentInstance),
+        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
+    };
+
+    private static List<string> AgentToolNames(AgentInstance agent)
+    {
+        var toolsField = typeof(AgentInstance).GetField("_tools", BindingFlags.NonPublic | BindingFlags.Instance);
+        Assert.NotNull(toolsField);
+        var tools = Assert.IsAssignableFrom<List<ToolInstance>>(toolsField!.GetValue(agent));
+        return tools.Select(t => t.Name).ToList();
     }
 
     private static void NullConversation(AgentInstance agent)

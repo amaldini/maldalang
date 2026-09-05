@@ -86,7 +86,7 @@
       "concepts": ["agents.define", "kind", "CodingAgent", "HumanAgent"],
       "prerequisites": ["Agents/agent_team_graph.malda"],
       "learningGoal": "Pick a specialized agent class from a spec instead of listing tools by name.",
-      "expectedOutput": "Prints CodingAgent, HumanAgent, then true/true for read_file presence and unknown-kind reject.",
+      "expectedOutput": "Prints CodingAgent, HumanAgent, then true for unknown-kind reject.",
       "next": "Agents/agent_file_reading.malda",
       "documentationPath": "/?lesson=build-ai-apps#lesson-build-ai-apps",
       "documentationTitle": "Agent Kinds"

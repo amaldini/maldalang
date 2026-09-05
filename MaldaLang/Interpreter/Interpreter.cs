@@ -3882,6 +3882,8 @@ public partial class Interpreter
                 return RuntimeValue.String(agent.Role);
             if (member == "instructions")
                 return RuntimeValue.String(agent.Instructions);
+            if (member == "kind")
+                return RuntimeValue.String(agent.Kind);
         }
         else if (instance is BuiltIns.CodingAgentInstance codingAgent)
         {
@@ -3892,6 +3894,8 @@ public partial class Interpreter
                 return RuntimeValue.String(codingAgent.Role);
             if (member == "instructions")
                 return RuntimeValue.String(codingAgent.Instructions);
+            if (member == "kind")
+                return RuntimeValue.String(codingAgent.Kind);
         }
         else if (instance is BuiltIns.GitAgentInstance gitAgent)
         {
@@ -3902,6 +3906,8 @@ public partial class Interpreter
                 return RuntimeValue.String(gitAgent.Role);
             if (member == "instructions")
                 return RuntimeValue.String(gitAgent.Instructions);
+            if (member == "kind")
+                return RuntimeValue.String(gitAgent.Kind);
         }
         else if (instance is BuiltIns.DevAgentInstance devAgent)
         {
@@ -3912,6 +3918,8 @@ public partial class Interpreter
                 return RuntimeValue.String(devAgent.Role);
             if (member == "instructions")
                 return RuntimeValue.String(devAgent.Instructions);
+            if (member == "kind")
+                return RuntimeValue.String(devAgent.Kind);
         }
         else if (instance is BuiltIns.MALDACodingAgentInstance maldaCodingAgent)
         {
@@ -3922,6 +3930,8 @@ public partial class Interpreter
                 return RuntimeValue.String(maldaCodingAgent.Role);
             if (member == "instructions")
                 return RuntimeValue.String(maldaCodingAgent.Instructions);
+            if (member == "kind")
+                return RuntimeValue.String(maldaCodingAgent.Kind);
         }
         else if (instance is BuiltIns.SqlServerClientInstance sqlServerClient)
         {

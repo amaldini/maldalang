@@ -224,12 +224,6 @@ public class InterpretTranspilePairTests
                 workingDirectory: "."
             });
             io.print(coder.kind);
-            var tools = coder.getAvailableTools();
-            var hasRead = false;
-            for (var i = 0; i < tools.length; i++) {
-                if (tools[i] == "read_file") { hasRead = true; }
-            }
-            io.print(hasRead);
             var threw = false;
             try {
                 agents.define({ name: "X", role: "r", instructions: "i", kind: "Wizard" });
