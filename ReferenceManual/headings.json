@@ -697,6 +697,54 @@
   },
   {
     "file": "12-input-output.html",
+    "level": 3,
+    "id": "",
+    "title": "12.6.1 Why @effects(\"io\") is not enough"
+  },
+  {
+    "file": "12-input-output.html",
+    "level": 3,
+    "id": "",
+    "title": "12.6.2 Three different words “capability”"
+  },
+  {
+    "file": "12-input-output.html",
+    "level": 3,
+    "id": "",
+    "title": "12.6.3 Kinds"
+  },
+  {
+    "file": "12-input-output.html",
+    "level": 3,
+    "id": "",
+    "title": "12.6.4 Mint, inspect, consume"
+  },
+  {
+    "file": "12-input-output.html",
+    "level": 3,
+    "id": "",
+    "title": "12.6.5 Narrow a token with cap.confine"
+  },
+  {
+    "file": "12-input-output.html",
+    "level": 3,
+    "id": "",
+    "title": "12.6.6 Pattern: the host mints, the model passes a relative path"
+  },
+  {
+    "file": "12-input-output.html",
+    "level": 3,
+    "id": "",
+    "title": "12.6.7 Common mistakes"
+  },
+  {
+    "file": "12-input-output.html",
+    "level": 3,
+    "id": "",
+    "title": "12.6.8 Backends and @effects(\"cap\")"
+  },
+  {
+    "file": "12-input-output.html",
     "level": 2,
     "id": "",
     "title": "12.7 Searching Files"
@@ -1306,6 +1354,12 @@
     "level": 2,
     "id": "",
     "title": "18.8 Custom Tools with @Tool Decorator"
+  },
+  {
+    "file": "18-agent-orchestration.html",
+    "level": 3,
+    "id": "capability-tokens-for-tools",
+    "title": "Capability tokens for file tools"
   },
   {
     "file": "18-agent-orchestration.html",

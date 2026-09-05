@@ -16,9 +16,12 @@
         "capability",
         "capability token"
       ],
-      "href": "13-built-in-functions.html#capability-tokens",
-      "also": ["12-input-output.html#capability-tokens"],
-      "summary": "Unforgeable host tokens for file I/O. Mint with cap.fileRead / cap.fileWrite / cap.dirList; there is no flat cap() alias."
+      "href": "12-input-output.html#capability-tokens",
+      "also": [
+        "13-built-in-functions.html#capability-tokens",
+        "18-agent-orchestration.html#capability-tokens-for-tools"
+      ],
+      "summary": "A permission object (a key to one file or folder) so a tool cannot invent a path. The host mints cap.fileRead / fileWrite / dirList; cap.confine narrows to a relative path. There is no flat cap() alias."
     },
     {
       "id": "prompt",

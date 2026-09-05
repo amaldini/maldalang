@@ -697,6 +697,54 @@
   },
   {
     "file": "12-input-output.html",
+    "level": 3,
+    "id": "",
+    "title": "12.6.1 Perché @effects(\"io\") non basta"
+  },
+  {
+    "file": "12-input-output.html",
+    "level": 3,
+    "id": "",
+    "title": "12.6.2 Tre usi diversi della parola “capability”"
+  },
+  {
+    "file": "12-input-output.html",
+    "level": 3,
+    "id": "",
+    "title": "12.6.3 Kind"
+  },
+  {
+    "file": "12-input-output.html",
+    "level": 3,
+    "id": "",
+    "title": "12.6.4 Emettere, ispezionare, consumare"
+  },
+  {
+    "file": "12-input-output.html",
+    "level": 3,
+    "id": "",
+    "title": "12.6.5 Restringere un token con cap.confine"
+  },
+  {
+    "file": "12-input-output.html",
+    "level": 3,
+    "id": "",
+    "title": "12.6.6 Pattern: l'host emette, il modello passa un path relativo"
+  },
+  {
+    "file": "12-input-output.html",
+    "level": 3,
+    "id": "",
+    "title": "12.6.7 Errori frequenti"
+  },
+  {
+    "file": "12-input-output.html",
+    "level": 3,
+    "id": "",
+    "title": "12.6.8 Backend e @effects(\"cap\")"
+  },
+  {
+    "file": "12-input-output.html",
     "level": 2,
     "id": "",
     "title": "12.7 Ricerca nei file"
@@ -1306,6 +1354,12 @@
     "level": 2,
     "id": "",
     "title": "18.8 Tool personalizzati con il decoratore @Tool"
+  },
+  {
+    "file": "18-agent-orchestration.html",
+    "level": 3,
+    "id": "capability-tokens-for-tools",
+    "title": "Token di capability per i tool sui file"
   },
   {
     "file": "18-agent-orchestration.html",

@@ -38,8 +38,9 @@ public class ReferenceManualSearchTests
         var cap = LoadGlossary(Path.Combine(ManualDir, "glossary.json"))
             .Single(term => term.Id == "capability-tokens");
 
-        Assert.Equal("13-built-in-functions.html#capability-tokens", cap.Href);
-        Assert.Contains("12-input-output.html#capability-tokens", cap.Also);
+        Assert.Equal("12-input-output.html#capability-tokens", cap.Href);
+        Assert.Contains("13-built-in-functions.html#capability-tokens", cap.Also);
+        Assert.Contains("18-agent-orchestration.html#capability-tokens-for-tools", cap.Also);
         foreach (var alias in new[] { "cap", "cap.fileRead", "cap.fileWrite", "cap.confine", "capability" })
             Assert.Contains(alias, cap.Aliases);
     }

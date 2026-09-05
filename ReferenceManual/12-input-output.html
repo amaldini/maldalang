@@ -17,7 +17,7 @@
     <main>
         <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>12. Input/Output</span></div>
         <h1>12. Input/Output</h1>
-        <p>This chapter is the <strong>I/O how-to</strong>: console, files, paths, environment variables, and host process facts. Prefer the <code>io.*</code> namespace. Flat aliases such as <code>print</code> and <code>readFile</code> still run, but the editor warns <code>malda-style</code>. Signatures, git helpers, <code>glob</code> / <code>grep</code>, document extractors, and Spectre.Console live in <a href="13-built-in-functions.html">13. Built-in Functions</a>.</p>
+        <p>This chapter is the <strong>I/O how-to</strong>: console, files, paths, environment variables, host process facts, and <a href="#capability-tokens">capability tokens</a> (permission objects so a tool cannot invent a path). Prefer the <code>io.*</code> namespace. Flat aliases such as <code>print</code> and <code>readFile</code> still run, but the editor warns <code>malda-style</code>. Signatures, git helpers, <code>glob</code> / <code>grep</code>, document extractors, and Spectre.Console live in <a href="13-built-in-functions.html">13. Built-in Functions</a>.</p>
         <p>File I/O is a host capability. The interpreter and C# transpile support it; the JavaScript backend does not (<code>file-io</code> is <code>no</code> on the <a href="../docs/spec/backend-capability-matrix.md">backend capability matrix</a>).</p>
 
         <h2>12.1 Console Output</h2>
@@ -54,7 +54,7 @@ io.print($"Hello, {name}. Next year you will be {age + 1}.");</code></pre>
         <p>For malformed numbers prefer <code>toIntOr(raw, fallback)</code> or <code>toIntOrNull(raw)</code> over bare <code>int(...)</code>, which throws. See <a href="13-built-in-functions.html">13.1 Type Conversion</a>.</p>
 
         <h2>12.3 Files</h2>
-        <p>Paths are strings (or a matching <a href="#capability-tokens">capability token</a>). Ordinary failures return <code>null</code> or <code>false</code>; they do not throw. Check the result.</p>
+        <p>Paths are strings (or a matching <a href="#capability-tokens">capability token</a>). Ordinary failures return <code>null</code> or <code>false</code>; they do not throw. Check the result. If a tool must not invent a path, do not pass a string — start with <a href="#capability-tokens">12.6</a>.</p>
 
         <h3>12.3.1 Read and write</h3>
         <p><code>io.writeFile(path, content)</code> overwrites the file and returns <code>true</code> on success, <code>false</code> on I/O failure. Strings are written as UTF-8. Objects and arrays are serialized with <code>toJSON</code> first. <code>io.readFile(path)</code> returns the whole file as a string, or <code>null</code> when the path is missing or unreadable.</p>
@@ -138,16 +138,135 @@ io.print(str.length(host.pathSeparator));</code></pre>
         <p>Assistant config under <code>~/.malda</code> (<code>getMaldaHome</code>, <code>getMaldaConfig</code>) is documented with the <a href="32-personal-assistant.html">personal assistant</a>.</p>
 
         <h2 id="capability-tokens">12.6 Capability Tokens</h2>
-        <p><code>@effects("io")</code> is a <strong>name</strong> allow-list. A tool that takes a path string can still be given <code>"/etc/passwd"</code>. Mint an unforgeable token and pass that instead. Tokens are sealed host objects — a dict <code>{ kind, path }</code> is not a token.</p>
-        <pre><code data-run="true" data-expect="fileRead\ntrue">var notes = cap.fileRead("notes.md");
+        <p>A capability token is a <strong>permission object</strong> that your program (the host) creates. Treat it as a key to one file or folder: whoever holds the key can use that permission. Nobody can make a working key by writing down a description of the lock.</p>
+        <p>That is the whole idea. The rest of this section is the why, the API, and the pattern you should copy for tools.</p>
+        <div class="info-box">
+            <strong>Start here if you write agents.</strong> When an LLM tool receives a path as a string, the model can invent <code>/etc/passwd</code> or <code>../secrets</code>. A token binds the permission to a path <em>you</em> chose, before the model runs. Signature catalog: <a href="13-built-in-functions.html#capability-tokens">13.19.3</a>. First-contact scaffold: <code>malda new agent</code>.
+        </div>
+
+        <h3>12.6.1 Why <code>@effects("io")</code> is not enough</h3>
+        <p><code>@effects("io")</code> is a <strong>name</strong> allow-list for the type checker. It says “this function may do I/O”. It does <em>not</em> say which files. A tool that takes <code>path: string</code> can still read anything the model puts in that string:</p>
+        <pre><code>@effects("io")
+function readNote(path) {
+    return io.readFile(path);  // the model can pass "/etc/passwd"
+}</code></pre>
+        <p>A token closes that hole. The host creates the token for a path it trusts. The tool consumes the token. A string or a look-alike object is rejected.</p>
+
+        <h3>12.6.2 Three different words “capability”</h3>
+        <p>The manual uses “capability” in three places. They are not the same thing:</p>
+        <table>
+            <thead>
+                <tr><th>Phrase</th><th>What it means</th><th>Where</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>cap.fileRead</code> / capability token</td><td>An unforgeable permission object for one path</td><td>This section</td></tr>
+                <tr><td>Backend capability matrix</td><td>Which backends implement a product feature (file I/O, agents, DOM, …)</td><td><a href="../docs/spec/backend-capability-matrix.md">backend-capability-matrix.md</a></td></tr>
+                <tr><td><code>@requires("file-io")</code></td><td>A property test that skips backends that lack that feature</td><td><a href="34-property-testing.html">34. Property Testing</a></td></tr>
+            </tbody>
+        </table>
+
+        <h3>12.6.3 Kinds</h3>
+        <p>A token has two readable fields: <code>kind</code> and <code>path</code>. You cannot assign to them. There is no flat <code>cap()</code> or <code>fileRead()</code> alias — always write <code>cap.…</code>.</p>
+        <table>
+            <thead>
+                <tr><th>Mint</th><th><code>kind</code></th><th>Consume with</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>cap.fileRead(path)</code></td><td><code>fileRead</code></td><td><code>cap.read(token)</code> or <code>io.readFile(token)</code></td></tr>
+                <tr><td><code>cap.fileWrite(path)</code></td><td><code>fileWrite</code></td><td><code>cap.write(token, content)</code> or <code>io.writeFile(token, content)</code></td></tr>
+                <tr><td><code>cap.dirList(path)</code></td><td><code>dirList</code></td><td><code>cap.list(token)</code> or <code>io.listDirectory(token)</code></td></tr>
+            </tbody>
+        </table>
+        <p>A <code>fileWrite</code> token is not a read token. Passing the wrong kind throws.</p>
+
+        <h3>12.6.4 Mint, inspect, consume</h3>
+        <p><strong>Mint</strong> means “create a real token in the host”. The result is a sealed host object, not a dict. <code>cap.is</code> is the only safe type test — <code>typeOf</code> will not tell you “this is a capability”.</p>
+        <pre><code data-run="true" data-expect="fileRead\ntrue\nfalse\nfalse">var notes = cap.fileRead("notes.md");
 io.print(notes.kind);
-io.print(cap.is(notes, "fileRead"));</code></pre>
+io.print(cap.is(notes, "fileRead"));
+io.print(cap.is(notes, "fileWrite"));
+io.print(cap.is({ "kind": "fileRead", "path": "notes.md" }));</code></pre>
+        <p>Consume the matching kind only. Strings and <code>{ kind, path }</code> dicts throw — including after <code>toJSON</code> / <code>parseJSON</code>, because JSON cannot rehydrate a token.</p>
+        <pre><code data-run="true" data-expect="hello from a token\ntrue\ntrue">var path = "_rm_cap_rw.txt";
+cap.write(cap.fileWrite(path), "hello from a token");
+io.print(cap.read(cap.fileRead(path)));
+var forged = false;
+try {
+    cap.read({ "kind": "fileRead", "path": path });
+} catch (e) {
+    forged = true;
+}
+io.print(forged);
+var asString = false;
+try {
+    cap.read(path);
+} catch (e) {
+    asString = true;
+}
+io.print(asString);
+io.deleteFile(path);</code></pre>
         <ul>
-            <li>Mint: <code>cap.fileRead(path)</code>, <code>cap.fileWrite(path)</code>, <code>cap.dirList(path)</code>.</li>
-            <li>Consume: <code>cap.read</code> / <code>cap.write</code> / <code>cap.list</code>, or pass the token to <code>io.readFile</code> / <code>io.writeFile</code> / <code>io.listDirectory</code>. Ordinary string paths still work for non-tool code.</li>
-            <li><code>cap.confine(token, relativePath)</code> narrows a token; paths outside the parent throw.</li>
+            <li><code>cap.read(token, startLine?, endLine?)</code> forwards the optional line range to <code>io.readFile</code> (1-based; see 12.3.2).</li>
+            <li>Ordinary string paths still work on <code>io.readFile</code> / <code>io.writeFile</code> / <code>io.listDirectory</code> for code that is not a tool.</li>
+            <li>Ordinary I/O failures still return <code>null</code> or <code>false</code>. A bad token (string, dict, wrong kind) throws.</li>
         </ul>
-        <p>Full contract and a forged-dict test: <a href="13-built-in-functions.html#capability-tokens">13.19.3</a> and <code>Examples/Tools/capability_tokens.malda</code>. First-contact scaffold: <code>malda new agent</code>.</p>
+
+        <h3>12.6.5 Narrow a token with <code>cap.confine</code></h3>
+        <p><code>cap.confine(token, relativePath)</code> returns a new token of the <strong>same kind</strong> whose path is the parent path plus the relative path. Use it to hand a tool a workspace root, then lock each call down to one child.</p>
+        <p><code>..</code>, an absolute path, or anything else that would escape the parent throws. The host never “fixes” the path for you.</p>
+        <pre><code data-run="true" data-expect="welcome\ntrue">io.writeFile("_rm_cap_welcome.txt", "welcome");
+var root = cap.fileRead(".");
+var child = cap.confine(root, "_rm_cap_welcome.txt");
+io.print(str.trim(cap.read(child)));
+var escaped = false;
+try {
+    cap.confine(root, "../secret.txt");
+} catch (e) {
+    escaped = true;
+}
+io.print(escaped);
+io.deleteFile("_rm_cap_welcome.txt");</code></pre>
+
+        <h3>12.6.6 Pattern: the host mints, the model passes a relative path</h3>
+        <p>Do not send a token through LLM JSON. A token cannot survive <code>toJSON</code>. The model only ever sees a relative path string. The host keeps the root token in its own memory and confines each call:</p>
+        <pre><code data-run="true" data-expect="welcome\ntrue">io.writeFile("_rm_cap_note.txt", "welcome");
+var notesRoot = cap.fileRead(".");
+
+function readNoteWith(rootCap, relativePath) {
+    var child = cap.confine(rootCap, relativePath);
+    return cap.read(child);
+}
+
+io.print(str.trim(readNoteWith(notesRoot, "_rm_cap_note.txt")));
+var escaped = false;
+try {
+    readNoteWith(notesRoot, "../secret.txt");
+} catch (e) {
+    escaped = true;
+}
+io.print(escaped);
+io.deleteFile("_rm_cap_note.txt");</code></pre>
+        <p>On a live agent, wrap that helper with <code>@Tool</code>, validate the args with a <code>schema</code>, and mark the handler <code>@effects("cap")</code>. The model’s tool argument is <code>relativePath</code> only. Full walk-through: <a href="18-agent-orchestration.html#capability-tokens-for-tools">18.8</a>. Offline starter: <code>malda new agent</code> (host-minted <code>notes/</code>).</p>
+
+        <h3>12.6.7 Common mistakes</h3>
+        <table>
+            <thead>
+                <tr><th>Mistake</th><th>What happens</th><th>Do this instead</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Give the tool a <code>path: string</code> and rely on <code>@effects("io")</code></td><td>The model can invent any path. The decorator only names the effect.</td><td>Host-mint a root token; take a relative path; <code>cap.confine</code></td></tr>
+                <tr><td>Pass the token through LLM JSON / <code>toJSON</code></td><td>The other side gets a dict. <code>cap.read</code> throws.</td><td>Keep the token in host memory. Send only a relative path.</td></tr>
+                <tr><td>Build <code>{ "kind": "fileRead", "path": "…" }</code> by hand</td><td>Looks like a token. <code>cap.is</code> is false. Consume throws.</td><td>Call <code>cap.fileRead</code> / <code>fileWrite</code> / <code>dirList</code></td></tr>
+                <tr><td>Call <code>cap.read("notes.md")</code></td><td>Throws. Consume APIs reject strings.</td><td><code>cap.read(cap.fileRead("notes.md"))</code>, or <code>io.readFile("notes.md")</code> in non-tool code</td></tr>
+                <tr><td>Pass a <code>fileWrite</code> token to <code>cap.read</code></td><td>Throws (wrong kind).</td><td>Mint the kind you will consume</td></tr>
+                <tr><td>Treat <code>createReadFileTool(workingDir)</code> as a token</td><td>The factory only checks that paths stay under a string directory. It is not unforgeable.</td><td>Fine for built-in file tools. Custom <code>@Tool</code> file handlers should use <code>cap.*</code></td></tr>
+            </tbody>
+        </table>
+
+        <h3>12.6.8 Backends and <code>@effects("cap")</code></h3>
+        <p>Mark handlers that mint or consume tokens <code>@effects("cap")</code> (or list both <code>"io"</code> and <code>"cap"</code>). <code>@pure()</code> functions cannot mint or consume tokens under <code>--strict-types</code>.</p>
+        <p>The interpreter and C# transpile implement the full surface. JavaScript can mint, <code>cap.is</code>, and <code>cap.confine</code>; file consume (<code>cap.read</code> / <code>write</code> / <code>list</code>) is host-only — same as other file I/O on the <a href="../docs/spec/backend-capability-matrix.md">backend capability matrix</a>.</p>
+        <p>Worked example: <code>Examples/Tools/capability_tokens.malda</code>. Agent-shaped few-shot: <code>docs/llm/few-shot/26_tool_cap_read.malda</code>.</p>
 
         <h2>12.7 Searching Files</h2>
         <p><code>io.glob(pattern, dirPath?)</code> finds paths. <code>io.grep(pattern, filePath)</code> searches contents. Both take a required first argument and then optional positional arguments. On a missing path or a bad regex they return an <em>error string</em>, not a collection — guard with <code>typeOf(result) == "string"</code>.</p>
@@ -180,6 +299,7 @@ io.print("awake");</code></pre>
                 <tr><td>Shell commands</td><td><code>runCommand</code> in <a href="13-built-in-functions.html">13.10</a> (blocked dangerous names, 1-hour timeout cap)</td></tr>
                 <tr><td>Git</td><td><a href="13-built-in-functions.html">13.9</a></td></tr>
                 <tr><td>Agent file tools</td><td><code>createReadFileTool</code> and siblings in <a href="18-agent-orchestration.html">18. Agent Orchestration</a></td></tr>
+                <tr><td>Bind a custom tool to one folder</td><td><a href="#capability-tokens">12.6 Capability tokens</a> and <a href="18-agent-orchestration.html#capability-tokens-for-tools">18.8</a></td></tr>
             </tbody>
         </table>
 
@@ -188,7 +308,8 @@ io.print("awake");</code></pre>
             <ul>
                 <li><a href="07-expressions.html">7. Expressions</a> — string interpolation</li>
                 <li><a href="13-built-in-functions.html">13. Built-in Functions</a> — I/O catalog, Spectre.Console, git, <code>runCommand</code></li>
-                <li><a href="09-functions.html">9. Functions</a> — <code>@pure</code> / <code>@effects("io")</code></li>
+                <li><a href="09-functions.html">9. Functions</a> — <code>@pure</code> / <code>@effects("io")</code> / <code>@effects("cap")</code></li>
+                <li><a href="18-agent-orchestration.html#capability-tokens-for-tools">18.8 Custom tools</a> — host-mint a root token, pass a relative path</li>
                 <li><a href="22-durable-workflows.html">22. Durable Workflows</a> — I/O must live inside <code>step</code></li>
                 <li><code>Examples/Tools/file_operations.malda</code>, <code>Examples/Tools/capability_tokens.malda</code></li>
             </ul>

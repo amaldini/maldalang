@@ -12,7 +12,7 @@
     { "file": "09-functions.html", "title": "Funzioni", "category": "Language Fundamentals", "description": "Dichiarazione, chiamate, decoratori" },
     { "file": "10-prompts.html", "title": "Prompt", "category": "Language Fundamentals", "description": "Template di prompt, await, schema e tool" },
     { "file": "11-classes-objects.html", "title": "Classi e oggetti", "category": "Language Fundamentals", "description": "Funzionalità OOP, ereditarietà" },
-    { "file": "12-input-output.html", "title": "Input/Output", "category": "Standard Library", "description": "Console, file, path, ambiente e I/O dell'host" },
+    { "file": "12-input-output.html", "title": "Input/Output", "category": "Standard Library", "description": "Console, file, path, ambiente, I/O dell'host e token di capability" },
     { "file": "13-built-in-functions.html", "title": "Funzioni built-in", "category": "Standard Library", "description": "Conversioni di tipo, math, stringhe, operazioni su file" },
     { "file": "14-graphs.html", "title": "Grafi", "category": "Standard Library", "description": "Strutture dati a grafo e algoritmi" },
     { "file": "15-vectordb.html", "title": "VectorDB", "category": "Standard Library", "description": "Database vettoriale per la similarity search" },

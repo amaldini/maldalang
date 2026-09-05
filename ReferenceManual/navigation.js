@@ -345,10 +345,11 @@ const FALLBACK_GLOSSARY_EN = [
             "capability",
             "capability token"
         ],
-        "href": "13-built-in-functions.html#capability-tokens",
-        "summary": "Unforgeable host tokens for file I/O. Mint with cap.fileRead / cap.fileWrite / cap.dirList; there is no flat cap() alias.",
+        "href": "12-input-output.html#capability-tokens",
+        "summary": "A permission object (a key to one file or folder) so a tool cannot invent a path. The host mints cap.fileRead / fileWrite / dirList; cap.confine narrows to a relative path. There is no flat cap() alias.",
         "also": [
-            "12-input-output.html#capability-tokens"
+            "13-built-in-functions.html#capability-tokens",
+            "18-agent-orchestration.html#capability-tokens-for-tools"
         ]
     },
     {
@@ -967,10 +968,11 @@ const FALLBACK_GLOSSARY_IT = [
             "capability token",
             "token di capability"
         ],
-        "href": "13-built-in-functions.html#capability-tokens",
-        "summary": "Token dell'host non contraffattibili per l'I/O su file. Si emettono con cap.fileRead / cap.fileWrite / cap.dirList; non esiste un alias piatto cap().",
+        "href": "12-input-output.html#capability-tokens",
+        "summary": "Un oggetto-permesso (una chiave per un file o una cartella) così un tool non può inventare un path. L'host emette cap.fileRead / fileWrite / dirList; cap.confine restringe a un path relativo. Non esiste un alias piatto cap().",
         "also": [
-            "12-input-output.html#capability-tokens"
+            "13-built-in-functions.html#capability-tokens",
+            "18-agent-orchestration.html#capability-tokens-for-tools"
         ]
     },
     {

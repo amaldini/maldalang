@@ -17,9 +17,12 @@
         "capability token",
         "token di capability"
       ],
-      "href": "13-built-in-functions.html#capability-tokens",
-      "also": ["12-input-output.html#capability-tokens"],
-      "summary": "Token dell'host non contraffattibili per l'I/O su file. Si emettono con cap.fileRead / cap.fileWrite / cap.dirList; non esiste un alias piatto cap()."
+      "href": "12-input-output.html#capability-tokens",
+      "also": [
+        "13-built-in-functions.html#capability-tokens",
+        "18-agent-orchestration.html#capability-tokens-for-tools"
+      ],
+      "summary": "Un oggetto-permesso (una chiave per un file o una cartella) così un tool non può inventare un path. L'host emette cap.fileRead / fileWrite / dirList; cap.confine restringe a un path relativo. Non esiste un alias piatto cap()."
     },
     {
       "id": "prompt",

@@ -970,7 +970,8 @@ print(g.citations[0].source);</code></pre>
             <li>GraphMemory opt-in ASK: <code>memory.ask(query, maxResults?, options?)</code> (or <code>query(..., { grounded: true })</code>) wraps hits with citations from <code>filePath</code> / <code>source</code> / <code>nodeId</code>. Plain <code>query()</code> still returns an array. See <a href="19-graph-memory.html">19. GraphMemory</a> §19.3.15.</li>
         </ul>
         <h3 id="capability-tokens">13.19.3 <code>cap.fileRead</code></h3>
-        <p><code>@effects("io")</code> is a name allow-list. Pass an unforgeable token into a tool so the model cannot invent a path. Tokens are sealed host objects, not dicts — JSON and object literals cannot rehydrate one.</p>
+        <p>This subsection is the signature catalog. If you have not used tokens before, start with the how-to in <a href="12-input-output.html#capability-tokens">12.6 Capability tokens</a> — why they exist, the key analogy, <code>cap.confine</code>, and the host-mint pattern for tools.</p>
+        <p>A token is a sealed host object with <code>kind</code> and <code>path</code>. JSON and object literals cannot rehydrate one. <code>@effects("io")</code> only names the effect; it does not bind a path.</p>
         <pre><code data-run="true" data-expect="fileRead\ntrue\ntrue">var notes = cap.fileRead("notes.md");
 print(notes.kind);
 print(cap.is(notes, "fileRead"));
@@ -982,10 +983,11 @@ try {
 }
 print(forged);</code></pre>
         <ul>
-            <li><code>cap.fileRead(path)</code> / <code>cap.fileWrite(path)</code> / <code>cap.dirList(path)</code> — mint a token with <code>kind</code> and <code>path</code>. There is no flat <code>cap()</code> alias.</li>
-            <li><code>cap.read(token)</code> / <code>cap.write(token, content)</code> / <code>cap.list(token)</code> — consume a <strong>matching</strong> token only. Strings and <code>{ kind, path }</code> dicts throw.</li>
-            <li><code>cap.is(value, kind?)</code> — true only for a real token. <code>cap.confine(token, relativePath)</code> returns a narrower token of the same kind; paths outside the parent throw.</li>
-            <li><code>io.readFile</code> / <code>io.writeFile</code> / <code>io.listDirectory</code> also accept a matching token. Ordinary string paths still work.</li>
+            <li><code>cap.fileRead(path)</code> / <code>cap.fileWrite(path)</code> / <code>cap.dirList(path)</code> — mint a token. There is no flat <code>cap()</code> alias.</li>
+            <li><code>cap.read(token, startLine?, endLine?)</code> / <code>cap.write(token, content)</code> / <code>cap.list(token)</code> — consume a <strong>matching</strong> kind only. Strings and <code>{ kind, path }</code> dicts throw.</li>
+            <li><code>cap.is(value, kind?)</code> — true only for a real token. Omit <code>kind</code> to accept any token kind.</li>
+            <li><code>cap.confine(token, relativePath)</code> — same kind, narrower path; paths outside the parent throw.</li>
+            <li><code>io.readFile</code> / <code>io.writeFile</code> / <code>io.listDirectory</code> also accept a matching token. Ordinary string paths still work for non-tool code.</li>
             <li>Mark handlers that mint or consume tokens <code>@effects("cap")</code> (or list both <code>"io"</code> and <code>"cap"</code>). JavaScript can mint / <code>is</code> / <code>confine</code>; file consume is host-only.</li>
             <li>Do not pass a token through LLM JSON. Host-mint a workspace root and <code>cap.confine</code> a relative path from tool args. Scaffold: <code>malda new agent</code>.</li>
             <li>Example: <code>Examples/Tools/capability_tokens.malda</code>.</li>
@@ -1007,6 +1009,7 @@ print(forged);</code></pre>
             <ul>
                 <li><a href="36-appendix.html#optional-packs">Appendix — Optional packs</a></li>
                 <li><a href="12-input-output.html">Input/Output</a> — console, files, paths, environment, host I/O; prefer <code>io.*</code></li>
+                <li><a href="12-input-output.html#capability-tokens">12.6 Capability tokens</a> — how-to for <code>cap.*</code> (this chapter is the catalog)</li>
                 <li><a href="10-prompts.html">Prompts</a> — <code>runProgram</code> and closed <code>api</code> / <code>program(ApiName)</code></li>
                 <li><a href="24-web-ui.html">Web UI Server Components</a> — Server-side UI and component APIs</li>
                 <li><a href="18-agent-orchestration.html">Agent Orchestration</a> — Tools, task plans, and agent logging</li>

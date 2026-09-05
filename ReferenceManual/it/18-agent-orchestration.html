@@ -276,7 +276,7 @@ setAgentVerbosePhase("planning");</code></pre>
             <li><code>createUpdatePlanTool()</code> → <code>Tool</code> - Aggiorna un piano memorizzato. Parametri: <code>planId</code> (obbligatorio), <code>steps</code> opzionale (rivalidati; gli id esistenti conservano lo stato; i nuovi id partono <code>pending</code>), <code>taskSummary</code> opzionale. Restituisce <code>{ accepted: true, planId, stepCount, steps }</code> oppure <code>{ accepted: false, error }</code>. Nessuna directory di lavoro. Non sicuro in parallelo.</li>
             <li><code>createMarkStepTool()</code> → <code>Tool</code> - Imposta lo stato di uno step memorizzato (<code>pending</code> | <code>in_progress</code> | <code>done</code> | <code>blocked</code>). Parametri: <code>planId</code>, <code>id</code>, <code>status</code>, <code>note</code> opzionale. Restituisce <code>{ accepted: true, planId, id, status }</code> oppure <code>{ accepted: false, error }</code>. Nessuna directory di lavoro. Non sicuro in parallelo.</li>
         </ul>
-        <p>Tutte queste factory accettano una <code>workingDirectory</code> opzionale, tranne <code>createSubmitPlanTool</code>, <code>createUpdatePlanTool</code>, <code>createMarkStepTool</code>, <code>createAskUserTool</code>, <code>createWebSearchTool</code>, <code>createWebFetchTool</code> e <code>createValidateJsonTool</code>. Quando una directory è impostata, le operazioni su file e path restano al suo interno e nelle sue sottodirectory.</p>
+        <p>Tutte queste factory accettano una <code>workingDirectory</code> opzionale, tranne <code>createSubmitPlanTool</code>, <code>createUpdatePlanTool</code>, <code>createMarkStepTool</code>, <code>createAskUserTool</code>, <code>createWebSearchTool</code>, <code>createWebFetchTool</code> e <code>createValidateJsonTool</code>. Quando una directory è impostata, le operazioni su file e path restano al suo interno e nelle sue sottodirectory. Quel controllo è un prefisso stringa sulla factory — non è un <a href="12-input-output.html#capability-tokens">token di capability</a> non contraffabile. Gli handler <code>@Tool</code> personalizzati sui file devono usare <code>cap.*</code> (vedi <a href="#capability-tokens-for-tools">18.8</a>).</p>
         <p>Tutte le factory di questo elenco sono supportate dall'interprete e dal transpile C# (non dal backend JavaScript). <code>tool.execute(args)</code> esegue la stessa implementazione host di una chiamata <code>think()</code> dell'agente — inclusi <code>createGlobTool</code>, <code>createGrepTool</code>, <code>createReadFileTool</code> e le altre factory file / git / MALDA. Gli handler di <code>new Tool(...)</code> restano invariati.</p>
         <pre><code>var globTool = createGlobTool(".");
 var found = globTool.execute({ "pattern": "**/*.malda", "dirPath": "." });
@@ -374,6 +374,36 @@ var echoTool = new Tool(
 print(echoTool.execute({ "message": "hello" }));  // got hello
 agent.addTool(echoTool);</code></pre>
         <p>Vedi <code>Examples/Agents/secondbrain_semantic.malda</code> (<code>find_related_notes</code>) per un esempio basato su GraphMemory usato in ASK quando i tool sono abilitati.</p>
+        <h3 id="capability-tokens-for-tools">Token di capability per i tool sui file</h3>
+        <p>Un tool file personalizzato che accetta <code>path: string</code> può comunque leggere <code>/etc/passwd</code>. <code>@effects("io")</code> nomina solo l'effetto. La correzione è un token non contraffabile: l'<strong>host</strong> emette la root del workspace, il <strong>modello</strong> passa un path relativo e <code>cap.confine</code> rifiuta <code>..</code> e i path assoluti.</p>
+        <p>Non mettere il token nello schema del tool. JSON non può fare il round-trip di un token — il modello invierebbe un dict e <code>cap.read</code> lancerebbe un'eccezione. Tieni il token root in memoria sull'host.</p>
+        <pre><code data-run="true" data-expect="welcome\ntrue">io.writeFile("_rm_cap_agent_note.txt", "welcome");
+var notesRoot = cap.fileRead(".");
+
+schema NoteArgs {
+    relativePath: string;
+}
+
+@effects("cap")
+function readNoteWith(rootCap, relativePath) {
+    var check = validate("NoteArgs", dict { "relativePath": relativePath });
+    if (!check.ok) {
+        return "invalid: " + check.error;
+    }
+    var child = cap.confine(rootCap, check.data.relativePath);
+    return cap.read(child);
+}
+
+io.print(str.trim(readNoteWith(notesRoot, "_rm_cap_agent_note.txt")));
+var escaped = false;
+try {
+    readNoteWith(notesRoot, "../secret.txt");
+} catch (e) {
+    escaped = true;
+}
+io.print(escaped);
+io.deleteFile("_rm_cap_agent_note.txt");</code></pre>
+        <p>Su un agente live, avvolgi l'helper con <code>@Tool("read_note", "…", "NoteArgs")</code> e chiama <code>agent.addTool("read_note")</code>. Il modello invia solo <code>relativePath</code>. Concetto, kind ed errori frequenti: <a href="12-input-output.html#capability-tokens">12.6</a>. Starter offline: <code>malda new agent</code>.</p>
         <h2>18.9 CodingAgent</h2>
         <p>La classe <code>CodingAgent</code> è un agente specializzato per i task di coding che include automaticamente tutti i tool di operazione sui file.</p>
         <h3>Tool inclusi</h3>
@@ -917,7 +947,7 @@ print(response.content);</code></pre>
                 <li><a href="09-functions.html">9. Funzioni</a> - sintassi del decoratore @Tool</li>
                 <li><a href="10-prompts.html">10. Prompt</a> - Template di prompt e <code>agent.think</code></li>
                 <li><a href="20-mcp-server.html">20. Server MCP</a> - Tool STDIO lanciati dall'host</li>
-                <li><a href="12-input-output.html">12. Input/Output</a> — i tool sui file consumano <code>io.*</code> e i token di capability</li>
+                <li><a href="12-input-output.html#capability-tokens">12.6 Token di capability</a> — perché esiste <code>cap.*</code> e il pattern host-mint</li>
             </ul>
         </div>
         <h2 id="using-agents-with-actors">18.17 Usare gli agenti con gli actor</h2>
