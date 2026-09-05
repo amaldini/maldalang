@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — plan verdicts)
+
+- **`executePlan` review/reject branching:** a `reject` hop runs only when the predecessor is not approved; other hops run only when it is approved. Verdict comes from `step.approved` / `step.rejected`, else JSON `{ approved }` / `{ rejected }` in the think output, else default `approved: true`. Skipped steps are listed in `skipped` and recorded on the step result (`skipped`, `reason`) with no `think()` call. Failed or skipped dependencies cascade. **`plan.think: false`** skips `think()` so goldens stay offline (output is the step description). Interpreter and C# transpile agree. JavaScript: n/a. Example: `Examples/Agents/agent_team_plan_verdict.malda`. Few-shot: `docs/llm/few-shot/39_agents_plan_verdict.malda`.
+
 #### Added (MINOR — consult hop)
 
 - **`team.consult(from, to, payload, think?)`:** typed hop. The edge must have `rel: consult` (a `handoff` edge is not enough). Same contract + optional `think` rules as `team.handoff`. One-shot ask: does not transfer the plan and does not set `approved` / `rejected`. `delegate` / `consult` edges still install `addSubAgent` for supervisor tool loops. Interpreter and C# transpile agree. JavaScript: n/a. Example: `Examples/Agents/agent_team_consult.malda`. Few-shot: `docs/llm/few-shot/40_agents_consult.malda`.

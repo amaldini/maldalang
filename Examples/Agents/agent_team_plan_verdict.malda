@@ -1,0 +1,39 @@
+// Offline golden: executePlan think: false + review verdicts pick reject vs continue.
+// approved: false runs the reject hop; default approved skips it.
+// Run: malda Examples/Agents/agent_team_plan_verdict.malda
+
+var team = agents.team(
+    [
+        { name: "Writer", role: "programmer", instructions: "Write small diffs." },
+        { name: "Reviewer", role: "reviewer", instructions: "Find bugs." }
+    ],
+    graph directed {
+        nodes: ["Writer", "Reviewer"],
+        edges: [
+            { from: "Writer", to: "Reviewer", rel: "review" },
+            { from: "Reviewer", to: "Writer", rel: "reject" }
+        ]
+    }
+);
+
+var rejected = executePlan({
+    think: false,
+    steps: [
+        { id: "write", description: "Write comments", role: "Writer" },
+        { id: "review", description: "Review the draft", role: "Reviewer", dependsOn: ["write"], approved: false },
+        { id: "rewrite", description: "Fix the draft", role: "Writer", dependsOn: ["review"] }
+    ]
+}, team);
+io.print(rejected.completed.length);
+io.print(rejected.skipped.length);
+
+var approved = executePlan({
+    think: false,
+    steps: [
+        { id: "write", description: "Write comments", role: "Writer" },
+        { id: "review", description: "Review the draft", role: "Reviewer", dependsOn: ["write"] },
+        { id: "rewrite", description: "Fix the draft", role: "Writer", dependsOn: ["review"] }
+    ]
+}, team);
+io.print(approved.completed.length);
+io.print(approved.skipped[0]);

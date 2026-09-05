@@ -402,7 +402,8 @@ public static class AgentsStdLib
             "The JSON must have this exact shape: {\"steps\": [{\"id\": \"1\", \"description\": \"...\", \"role\": \"MemberName\", \"dependsOn\": []}, ...]}. " +
             "Each step must have \"id\" (unique string), \"description\" (string), and \"role\" set to exactly one team member name. " +
             "Optional \"dependsOn\" is an array of step ids. When a step depends on another step with a different role, that hop must match a declared relation. " +
-            "Same-role continuation does not need a self-edge. No cycles. No markdown, no explanation.\n" +
+            "Same-role continuation does not need a self-edge. A reject hop runs only when the predecessor is not approved; other hops run only when the predecessor is approved (default approved). " +
+            "No cycles. No markdown, no explanation.\n" +
             $"Member names: {names}\nMembers:\n{roster}\nRelations:\n{graph}";
     }
 
@@ -450,6 +451,74 @@ public static class AgentsStdLib
                 continue;
             if (team.TryGetRelation(predRole, role, out var relation))
                 return relation.Rel;
+        }
+
+        return null;
+    }
+
+    internal static bool WantsPlanThink(ObjectInstance plan)
+    {
+        var think = plan.Get("think", null);
+        return think.Type != ValueType.Boolean || think.AsBoolean();
+    }
+
+    internal static bool ResolveStepApproved(ObjectInstance step, string output)
+    {
+        var fixture = step.Get("approved", null);
+        if (fixture.Type == ValueType.Boolean)
+            return fixture.AsBoolean();
+        var rejected = step.Get("rejected", null);
+        if (rejected.Type == ValueType.Boolean)
+            return !rejected.AsBoolean();
+        var fromOutput = ReadJsonBool(output, "approved");
+        if (fromOutput != null)
+            return fromOutput.Value;
+        var rejectedOut = ReadJsonBool(output, "rejected");
+        if (rejectedOut != null)
+            return !rejectedOut.Value;
+        return true;
+    }
+
+    internal static string? SkipReasonForStep(
+        AgentTeamInstance team,
+        ObjectInstance step,
+        IReadOnlyDictionary<string, ObjectInstance> byId,
+        IReadOnlyDictionary<string, bool> approvedById,
+        IReadOnlySet<string> skipped,
+        IReadOnlySet<string> failed)
+    {
+        var role = ReadStepRole(step);
+        if (role == null)
+            return null;
+        var deps = step.Get("dependsOn", null);
+        if (deps.Type != ValueType.Array)
+            return null;
+        foreach (var dep in deps.AsArray())
+        {
+            if (dep.Type != ValueType.String)
+                continue;
+            var id = dep.AsString();
+            if (skipped.Contains(id))
+                return $"dependency '{id}' skipped";
+            if (failed.Contains(id))
+                return $"dependency '{id}' failed";
+            if (!byId.TryGetValue(id, out var pred))
+                continue;
+            var predRole = ReadStepRole(pred);
+            if (predRole == null || string.Equals(predRole, role, StringComparison.Ordinal))
+                continue;
+            if (!team.TryGetRelation(predRole, role, out var relation))
+                continue;
+            var predApproved = !approvedById.TryGetValue(id, out var ok) || ok;
+            if (string.Equals(relation.Rel, RelReject, StringComparison.Ordinal))
+            {
+                if (predApproved)
+                    return $"reject hop from '{id}' skipped because it was approved";
+            }
+            else if (!predApproved)
+            {
+                return $"hop from '{id}' skipped because it was not approved";
+            }
         }
 
         return null;

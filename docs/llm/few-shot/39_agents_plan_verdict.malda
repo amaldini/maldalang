@@ -1,0 +1,24 @@
+// executePlan think: false stays offline; reject hops run only when approved is false.
+var team = agents.team(
+    [
+        { name: "Writer", role: "programmer", instructions: "Write." },
+        { name: "Reviewer", role: "reviewer", instructions: "Review." }
+    ],
+    graph directed {
+        nodes: ["Writer", "Reviewer"],
+        edges: [
+            { from: "Writer", to: "Reviewer", rel: "review" },
+            { from: "Reviewer", to: "Writer", rel: "reject" }
+        ]
+    }
+);
+var result = executePlan({
+    think: false,
+    steps: [
+        { id: "write", description: "Write", role: "Writer" },
+        { id: "review", description: "Review", role: "Reviewer", dependsOn: ["write"], approved: false },
+        { id: "rewrite", description: "Fix", role: "Writer", dependsOn: ["review"] }
+    ]
+}, team);
+io.print(result.completed.length);
+io.print(result.skipped.length);

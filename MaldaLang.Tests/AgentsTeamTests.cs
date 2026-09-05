@@ -513,6 +513,69 @@ public class AgentsTeamTests : TestBase
     }
 
     [Fact]
+    public void ExecutePlan_RejectedReview_RunsRejectHop_WithoutThink()
+    {
+        var teamVal = ReviewRejectTeam();
+        var plan = new JsonObject();
+        plan.Set("think", RuntimeValue.Boolean(false));
+        plan.Set("steps", RuntimeValue.Array(new List<RuntimeValue>
+        {
+            Step("write", "Write comments", "Writer"),
+            Step("review", "Review the draft", "Reviewer", new[] { "write" }, approved: false),
+            Step("rewrite", "Fix the draft", "Writer", new[] { "review" })
+        }));
+
+        var result = BuiltInFunctions.CallBuiltIn(
+            "executePlan",
+            new List<RuntimeValue> { RuntimeValue.Object(plan), teamVal },
+            null);
+        var obj = result.AsObject();
+        var err = obj.Get("error", null);
+        if (err.Type == ValueType.String)
+            Assert.Fail("executePlan failed: " + err.AsString());
+
+        var completed = obj.Get("completed", null).AsArray().Select(v => v.AsString()).ToList();
+        var skipped = obj.Get("skipped", null).AsArray();
+        Assert.Equal(new[] { "write", "review", "rewrite" }, completed);
+        Assert.Empty(skipped);
+        var results = obj.Get("results", null).AsArray();
+        Assert.False(results[1].AsObject().Get("approved", null).AsBoolean());
+        Assert.Equal("reject", results[2].AsObject().Get("rel", null).AsString());
+    }
+
+    [Fact]
+    public void ExecutePlan_ApprovedReview_SkipsRejectHop_WithoutThink()
+    {
+        var teamVal = ReviewRejectTeam();
+        var plan = new JsonObject();
+        plan.Set("think", RuntimeValue.Boolean(false));
+        plan.Set("steps", RuntimeValue.Array(new List<RuntimeValue>
+        {
+            Step("write", "Write comments", "Writer"),
+            Step("review", "Review the draft", "Reviewer", new[] { "write" }),
+            Step("rewrite", "Fix the draft", "Writer", new[] { "review" })
+        }));
+
+        var result = BuiltInFunctions.CallBuiltIn(
+            "executePlan",
+            new List<RuntimeValue> { RuntimeValue.Object(plan), teamVal },
+            null);
+        var obj = result.AsObject();
+        var err = obj.Get("error", null);
+        if (err.Type == ValueType.String)
+            Assert.Fail("executePlan failed: " + err.AsString());
+
+        var completed = obj.Get("completed", null).AsArray().Select(v => v.AsString()).ToList();
+        var skipped = obj.Get("skipped", null).AsArray().Select(v => v.AsString()).ToList();
+        Assert.Equal(new[] { "write", "review" }, completed);
+        Assert.Equal(new[] { "rewrite" }, skipped);
+        var results = obj.Get("results", null).AsArray();
+        Assert.True(results[1].AsObject().Get("approved", null).AsBoolean());
+        Assert.True(results[2].AsObject().Get("skipped", null).AsBoolean());
+        Assert.Contains("approved", results[2].AsObject().Get("reason", null).AsString());
+    }
+
+    [Fact]
     public void Consult_RequiresMatchingRel()
     {
         var source = """
@@ -818,7 +881,12 @@ public class AgentsTeamTests : TestBase
         return RuntimeValue.Object(spec);
     }
 
-    private static RuntimeValue Step(string id, string description, string role, string[]? dependsOn = null)
+    private static RuntimeValue Step(
+        string id,
+        string description,
+        string role,
+        string[]? dependsOn = null,
+        bool? approved = null)
     {
         var step = new JsonObject();
         step.Set("id", RuntimeValue.String(id));
@@ -829,6 +897,8 @@ public class AgentsTeamTests : TestBase
             var deps = dependsOn.Select(RuntimeValue.String).Cast<RuntimeValue>().ToList();
             step.Set("dependsOn", RuntimeValue.Array(deps));
         }
+        if (approved != null)
+            step.Set("approved", RuntimeValue.Boolean(approved.Value));
         return RuntimeValue.Object(step);
     }
 

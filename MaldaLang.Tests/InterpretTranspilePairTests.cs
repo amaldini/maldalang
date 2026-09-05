@@ -323,6 +323,48 @@ public class InterpretTranspilePairTests
     }
 
     [Fact]
+    public void AgentsTeamPlanVerdict_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            var team = agents.team(
+                [
+                    { name: "Writer", role: "programmer", instructions: "Write." },
+                    { name: "Reviewer", role: "reviewer", instructions: "Review." }
+                ],
+                graph directed {
+                    nodes: ["Writer", "Reviewer"],
+                    edges: [
+                        { from: "Writer", to: "Reviewer", rel: "review" },
+                        { from: "Reviewer", to: "Writer", rel: "reject" }
+                    ]
+                }
+            );
+            var rejected = executePlan({
+                think: false,
+                steps: [
+                    { id: "write", description: "Write", role: "Writer" },
+                    { id: "review", description: "Review", role: "Reviewer", dependsOn: ["write"], approved: false },
+                    { id: "rewrite", description: "Fix", role: "Writer", dependsOn: ["review"] }
+                ]
+            }, team);
+            io.print(rejected.completed.length);
+            io.print(rejected.skipped.length);
+            var approved = executePlan({
+                think: false,
+                steps: [
+                    { id: "write", description: "Write", role: "Writer" },
+                    { id: "review", description: "Review", role: "Reviewer", dependsOn: ["write"] },
+                    { id: "rewrite", description: "Fix", role: "Writer", dependsOn: ["review"] }
+                ]
+            }, team);
+            io.print(approved.completed.length);
+            io.print(approved.skipped[0]);
+            """,
+            "agents-team-plan-verdict");
+    }
+
+    [Fact]
     public void AgentsTeamConsult_SameStdout()
     {
         InterpretTranspilePair.AssertSameFromSource(
