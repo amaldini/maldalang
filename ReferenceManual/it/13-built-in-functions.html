@@ -971,7 +971,8 @@ print(g.citations[0].source);</code></pre>
             <li>ASK opt-in di GraphMemory: <code>memory.ask(query, maxResults?, options?)</code> (oppure <code>query(..., { grounded: true })</code>) avvolge gli hit con citazioni da <code>filePath</code> / <code>source</code> / <code>nodeId</code>. <code>query()</code> semplice restituisce ancora un array. Vedi <a href="19-graph-memory.html">19. GraphMemory</a> §19.3.15.</li>
         </ul>
         <h3 id="capability-tokens">13.19.3 <code>cap.fileRead</code></h3>
-        <p><code>@effects("io")</code> è un allow-list di nomi. Passa un token non contraffabile in un tool così il modello non può inventare un path. I token sono oggetti host sigillati, non dict — JSON e object literal non possono rigenerarne uno.</p>
+        <p>Questa sottosezione è il catalogo delle firme. Se non hai ancora usato i token, parti dal how-to in <a href="12-input-output.html#capability-tokens">12.6 Token di capability</a> — perché esistono, l'analogia della chiave, <code>cap.confine</code> e il pattern host-mint per i tool.</p>
+        <p>Un token è un oggetto host sigillato con <code>kind</code> e <code>path</code>. JSON e object literal non possono rigenerarne uno. <code>@effects("io")</code> nomina solo l'effetto; non lega un path.</p>
         <pre><code data-run="true" data-expect="fileRead\ntrue\ntrue">var notes = cap.fileRead("notes.md");
 print(notes.kind);
 print(cap.is(notes, "fileRead"));
@@ -983,10 +984,11 @@ try {
 }
 print(forged);</code></pre>
         <ul>
-            <li><code>cap.fileRead(path)</code> / <code>cap.fileWrite(path)</code> / <code>cap.dirList(path)</code> — emette un token con <code>kind</code> e <code>path</code>. Non esiste un alias piatto <code>cap()</code>.</li>
-            <li><code>cap.read(token)</code> / <code>cap.write(token, content)</code> / <code>cap.list(token)</code> — consuma solo un token <strong>corrispondente</strong>. Stringhe e dict <code>{ kind, path }</code> sollevano un'eccezione.</li>
-            <li><code>cap.is(value, kind?)</code> — true solo per un token reale. <code>cap.confine(token, relativePath)</code> restituisce un token più stretto dello stesso kind; i path fuori dal padre sollevano un'eccezione.</li>
-            <li><code>io.readFile</code> / <code>io.writeFile</code> / <code>io.listDirectory</code> accettano anche un token corrispondente. I path stringa ordinari continuano a funzionare.</li>
+            <li><code>cap.fileRead(path)</code> / <code>cap.fileWrite(path)</code> / <code>cap.dirList(path)</code> — emette un token. Non esiste un alias piatto <code>cap()</code>.</li>
+            <li><code>cap.read(token, startLine?, endLine?)</code> / <code>cap.write(token, content)</code> / <code>cap.list(token)</code> — consuma solo un kind <strong>corrispondente</strong>. Stringhe e dict <code>{ kind, path }</code> sollevano un'eccezione.</li>
+            <li><code>cap.is(value, kind?)</code> — true solo per un token reale. Ometti <code>kind</code> per accettare qualsiasi kind di token.</li>
+            <li><code>cap.confine(token, relativePath)</code> — stesso kind, path più stretto; i path fuori dal padre sollevano un'eccezione.</li>
+            <li><code>io.readFile</code> / <code>io.writeFile</code> / <code>io.listDirectory</code> accettano anche un token corrispondente. I path stringa ordinari continuano a funzionare per il codice che non è un tool.</li>
             <li>Marca gli handler che emettono o consumano token con <code>@effects("cap")</code> (o elenca sia <code>"io"</code> sia <code>"cap"</code>). JavaScript può emettere / <code>is</code> / <code>confine</code>; il consumo dei file è solo host.</li>
             <li>Non passare un token attraverso JSON LLM. Emetti la root del workspace sull'host e usa <code>cap.confine</code> su un path relativo dagli argomenti del tool. Scaffold: <code>malda new agent</code>.</li>
             <li>Esempio: <code>Examples/Tools/capability_tokens.malda</code>.</li>
@@ -1008,6 +1010,7 @@ print(forged);</code></pre>
             <ul>
                 <li><a href="36-appendix.html#optional-packs">Appendice — Pacchetti opzionali</a></li>
                 <li><a href="12-input-output.html">Input/Output</a> — console, file, path, ambiente, I/O dell'host; preferisci <code>io.*</code></li>
+                <li><a href="12-input-output.html#capability-tokens">12.6 Token di capability</a> — how-to per <code>cap.*</code> (questo capitolo è il catalogo)</li>
                 <li><a href="10-prompts.html">Prompt</a> — <code>runProgram</code> e <code>api</code> / <code>program(ApiName)</code> chiusi</li>
                 <li><a href="24-web-ui.html">Componenti server Web UI</a> — UI server-side e API dei componenti</li>
                 <li><a href="18-agent-orchestration.html">Orchestrazione di agenti</a> — Tool, piani di task e logging degli agenti</li>

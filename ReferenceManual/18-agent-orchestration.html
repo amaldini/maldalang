@@ -275,7 +275,7 @@ setAgentVerbosePhase("planning");</code></pre>
             <li><code>createUpdatePlanTool()</code> → <code>Tool</code> - Update a stored plan. Parameters: <code>planId</code> (required), optional <code>steps</code> (re-validated; surviving step ids keep their status; new ids start <code>pending</code>), optional <code>taskSummary</code>. Returns <code>{ accepted: true, planId, stepCount, steps }</code> or <code>{ accepted: false, error }</code>. No working directory. Not parallel-safe.</li>
             <li><code>createMarkStepTool()</code> → <code>Tool</code> - Set a stored step status (<code>pending</code> | <code>in_progress</code> | <code>done</code> | <code>blocked</code>). Parameters: <code>planId</code>, <code>id</code>, <code>status</code>, optional <code>note</code>. Returns <code>{ accepted: true, planId, id, status }</code> or <code>{ accepted: false, error }</code>. No working directory. Not parallel-safe.</li>
         </ul>
-        <p>All of these factories accept an optional <code>workingDirectory</code> except <code>createSubmitPlanTool</code>, <code>createUpdatePlanTool</code>, <code>createMarkStepTool</code>, <code>createAskUserTool</code>, <code>createWebSearchTool</code>, <code>createWebFetchTool</code>, and <code>createValidateJsonTool</code>. When a directory is set, file and path operations stay inside it and its subdirectories.</p>
+        <p>All of these factories accept an optional <code>workingDirectory</code> except <code>createSubmitPlanTool</code>, <code>createUpdatePlanTool</code>, <code>createMarkStepTool</code>, <code>createAskUserTool</code>, <code>createWebSearchTool</code>, <code>createWebFetchTool</code>, and <code>createValidateJsonTool</code>. When a directory is set, file and path operations stay inside it and its subdirectories. That check is a string prefix on the factory — it is not an unforgeable <a href="12-input-output.html#capability-tokens">capability token</a>. Custom <code>@Tool</code> file handlers should use <code>cap.*</code> (see <a href="#capability-tokens-for-tools">18.8</a>).</p>
         <p>Every factory in this list is supported by the interpreter and C# transpile (not the JavaScript backend). <code>tool.execute(args)</code> runs the same host implementation as an agent <code>think()</code> call — including <code>createGlobTool</code>, <code>createGrepTool</code>, <code>createReadFileTool</code>, and the other file / git / MALDA factories. Custom <code>new Tool(...)</code> handlers are unchanged.</p>
         <pre><code>var globTool = createGlobTool(".");
 var found = globTool.execute({ "pattern": "**/*.malda", "dirPath": "." });
@@ -373,6 +373,36 @@ var echoTool = new Tool(
 print(echoTool.execute({ "message": "hello" }));  // got hello
 agent.addTool(echoTool);</code></pre>
         <p>See <code>Examples/Agents/secondbrain_semantic.malda</code> (<code>find_related_notes</code>) for a GraphMemory-backed example used in ASK when tools are enabled.</p>
+        <h3 id="capability-tokens-for-tools">Capability tokens for file tools</h3>
+        <p>A custom file tool that takes <code>path: string</code> can still read <code>/etc/passwd</code>. <code>@effects("io")</code> only names the effect. The fix is an unforgeable token: the <strong>host</strong> mints a workspace root, the <strong>model</strong> passes a relative path, and <code>cap.confine</code> rejects <code>..</code> and absolute paths.</p>
+        <p>Do not put the token in the tool schema. JSON cannot round-trip one — the model would send a dict, and <code>cap.read</code> would throw. Keep the root token in host memory.</p>
+        <pre><code data-run="true" data-expect="welcome\ntrue">io.writeFile("_rm_cap_agent_note.txt", "welcome");
+var notesRoot = cap.fileRead(".");
+
+schema NoteArgs {
+    relativePath: string;
+}
+
+@effects("cap")
+function readNoteWith(rootCap, relativePath) {
+    var check = validate("NoteArgs", dict { "relativePath": relativePath });
+    if (!check.ok) {
+        return "invalid: " + check.error;
+    }
+    var child = cap.confine(rootCap, check.data.relativePath);
+    return cap.read(child);
+}
+
+io.print(str.trim(readNoteWith(notesRoot, "_rm_cap_agent_note.txt")));
+var escaped = false;
+try {
+    readNoteWith(notesRoot, "../secret.txt");
+} catch (e) {
+    escaped = true;
+}
+io.print(escaped);
+io.deleteFile("_rm_cap_agent_note.txt");</code></pre>
+        <p>On a live agent, wrap the helper with <code>@Tool("read_note", "…", "NoteArgs")</code> and call <code>agent.addTool("read_note")</code>. The model only ever sends <code>relativePath</code>. Full concept, kinds, and common mistakes: <a href="12-input-output.html#capability-tokens">12.6</a>. Offline starter: <code>malda new agent</code>.</p>
         <h2>18.9 CodingAgent</h2>
         <p>The <code>CodingAgent</code> class is a specialized agent for coding tasks that automatically includes all file operation tools.</p>
         <h3>Included Tools</h3>
@@ -916,7 +946,7 @@ print(response.content);</code></pre>
                 <li><a href="09-functions.html">9. Functions</a> - @Tool decorator syntax</li>
                 <li><a href="10-prompts.html">10. Prompts</a> - Prompt templates and <code>agent.think</code></li>
                 <li><a href="20-mcp-server.html">20. MCP Server</a> - Host-launched STDIO tools</li>
-                <li><a href="12-input-output.html">12. Input/Output</a> — file tools consume <code>io.*</code> and capability tokens</li>
+                <li><a href="12-input-output.html#capability-tokens">12.6 Capability tokens</a> — why <code>cap.*</code> exists and the host-mint pattern</li>
             </ul>
         </div>
         <h2 id="using-agents-with-actors">18.17 Using Agents with Actors</h2>

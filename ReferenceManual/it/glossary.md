@@ -76,6 +76,12 @@ traducono.
 | Examples | Esempi |
 | Version | Versione |
 | AI-First Programming Language | linguaggio di programmazione AI-First |
+| capability token | token di capability |
+| mint (a token) | emettere (un token) |
+| confine / attenuate | restringere |
+| unforgeable | non contraffabile |
+| forged dict | dict contraffatto |
+| host (program that mints tokens) | host |
 
 ## Intestazioni di pagina
 
