@@ -94,7 +94,7 @@ if (root == null) {
     dom.append(root, heading);
 
     var hint = dom.create("p");
-    dom.setText(hint, "Host BigInt reference orbit + GPU perturbation via @shader(). Sliders set iterate budget and wrap decades. Hold Space to pause. [ ] change speed.");
+    dom.setText(hint, "Host BigInt reference orbit + GPU perturbation via @shader(). Exponential zoom into Seahorse Valley. Sliders set iterate budget and wrap decades. Hold Space to pause. [ ] change speed.");
     dom.append(root, hint);
 
     var controls = dom.create("div");
