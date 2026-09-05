@@ -11,7 +11,7 @@ python3 scripts/sync-reference-manual-it-status.py
 
 | File | EN SHA-256 |
 |------|------------|
-| index.html | 7a0ea160e8dc8f31d69ab4bddffa907bd69c157fce7f815544bd7fab9a3b87a3 |
+| index.html | 69e33b392bb86398cf9e32add8f703ee899cfbe233709709dedba2aa5dacf13f |
 | 01-introduction.html | cc118c6c2faf4144660b3612e8cd077cd9cb32ef0957754fa152d6f895c362d8 |
 | 02-tools.html | a0d7e35b89176bde4c5639687fc616a95f84a21a5566e1b178c1b7070258b17d |
 | 03-lexical-structure.html | 5ca8837e7f4fa0d6e91f47a2670c5a00701292946f6cf35a48f631136af7d35a |

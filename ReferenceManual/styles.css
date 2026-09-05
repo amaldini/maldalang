@@ -244,7 +244,7 @@ a.manual-action {
 
 /* --------------------------------------------------------------- Sidebar */
 
-nav {
+body > nav {
     background-color: var(--bg-sidebar);
     border-right: 1px solid var(--border-color);
     padding: 1.25rem 0 2.5rem;
@@ -257,22 +257,22 @@ nav {
     scrollbar-color: var(--border-strong) transparent;
 }
 
-nav::-webkit-scrollbar {
+body > nav::-webkit-scrollbar {
     width: 10px;
 }
 
-nav::-webkit-scrollbar-thumb {
+body > nav::-webkit-scrollbar-thumb {
     background-color: var(--border-strong);
     border: 3px solid var(--bg-sidebar);
     border-radius: 999px;
 }
 
-nav ul {
+body > nav ul {
     list-style: none;
     margin: 0;
 }
 
-nav a {
+body > nav a {
     display: block;
     padding: 0.5rem 1.25rem;
     color: var(--text-light);
@@ -282,13 +282,13 @@ nav a {
     transition: background-color 0.15s, color 0.15s, border-color 0.15s;
 }
 
-nav a:hover {
+body > nav a:hover {
     background-color: rgba(14, 124, 134, 0.07);
     color: var(--primary-dark);
     text-decoration: none;
 }
 
-nav a.active {
+body > nav a.active {
     background-color: var(--primary-tint);
     border-left-color: var(--primary-color);
     color: var(--primary-dark);
@@ -303,6 +303,193 @@ nav a.active {
     font-weight: 600;
     color: var(--text-color);
     margin-bottom: 0.5rem;
+}
+
+.nav-utility a {
+    font-weight: 600;
+    color: var(--primary-dark);
+    margin-bottom: 0.65rem;
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.nav-search {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    padding: 0 0.85rem 0.85rem;
+    background: var(--bg-sidebar);
+}
+
+.nav-search-input {
+    width: 100%;
+    padding: 0.48rem 0.7rem;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--bg-color);
+    color: var(--text-color);
+    font-family: var(--font-sans);
+    font-size: 0.85rem;
+}
+
+.nav-search-input:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 1px;
+    border-color: var(--primary-color);
+}
+
+.nav-search-hint {
+    margin: 0.35rem 0.15rem 0;
+    font-size: 0.7rem;
+    color: var(--text-faint);
+}
+
+.nav-search-results {
+    margin-top: 0.55rem;
+}
+
+.nav-search-empty {
+    margin: 0.25rem 0 0;
+    padding: 0.45rem 0.15rem;
+    font-size: 0.8rem;
+    color: var(--text-light);
+}
+
+.nav-search-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-color);
+    overflow: hidden;
+}
+
+.nav-search-list a {
+    display: flex;
+    flex-direction: column;
+    gap: 0.12rem;
+    padding: 0.5rem 0.7rem;
+    border-left: 3px solid transparent;
+    font-size: 0.82rem;
+    color: var(--text-color);
+}
+
+.nav-search-list a:hover,
+.nav-search-list a.is-active {
+    background-color: var(--primary-tint);
+    border-left-color: var(--primary-color);
+    text-decoration: none;
+}
+
+.nav-search-kind {
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+}
+
+.nav-search-title {
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.nav-search-title mark {
+    background: rgba(14, 124, 134, 0.18);
+    color: inherit;
+    padding: 0 0.1em;
+}
+
+.nav-search-summary {
+    font-size: 0.74rem;
+    color: var(--text-light);
+    line-height: 1.35;
+}
+
+body > nav.nav-searching .nav-root {
+    display: none;
+}
+
+.header-search {
+    display: none;
+}
+
+.glossary-letters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.55rem;
+    margin: 0 0 1.5rem;
+}
+
+.glossary-letters a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.7rem;
+    padding: 0.15rem 0.4rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 650;
+    text-decoration: none;
+}
+
+.glossary-letter {
+    margin-top: 2rem;
+}
+
+.glossary-letter > h2 {
+    margin-top: 0;
+}
+
+.glossary-list {
+    margin: 0;
+}
+
+.glossary-list dt {
+    margin-top: 1.15rem;
+    font-size: 1.05rem;
+    font-weight: 650;
+}
+
+.glossary-list dt:first-child {
+    margin-top: 0;
+}
+
+.glossary-list dd {
+    margin: 0.35rem 0 0;
+}
+
+.glossary-aliases,
+.glossary-also {
+    font-size: 0.92rem;
+    color: var(--text-light);
+}
+
+.glossary-aliases code {
+    margin-right: 0.25rem;
+}
+
+kbd {
+    display: inline-block;
+    padding: 0.05em 0.4em;
+    border: 1px solid var(--border-strong);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    background: var(--bg-light);
+    font-family: var(--font-mono);
+    font-size: 0.82em;
 }
 
 .nav-category {
@@ -1016,6 +1203,10 @@ footer {
         font-size: 0.72rem;
     }
 
+    .header-search {
+        display: inline-flex;
+    }
+
     @media (max-width: 560px) {
         .action-label-full {
             display: none;
@@ -1051,7 +1242,7 @@ footer {
         pointer-events: auto;
     }
 
-    nav {
+    body > nav {
         position: fixed;
         top: var(--header-offset);
         left: 0;
@@ -1072,7 +1263,7 @@ footer {
         -webkit-overflow-scrolling: touch;
     }
 
-    body.nav-drawer-open nav {
+    body.nav-drawer-open > nav {
         transform: translateX(0);
         visibility: visible;
     }

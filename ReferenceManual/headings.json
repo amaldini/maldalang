@@ -1,0 +1,2942 @@
+[
+  {
+    "file": "01-introduction.html",
+    "level": 2,
+    "id": "",
+    "title": "1.1 Overview"
+  },
+  {
+    "file": "01-introduction.html",
+    "level": 2,
+    "id": "",
+    "title": "1.2 AI Unified Runtime Architecture"
+  },
+  {
+    "file": "01-introduction.html",
+    "level": 2,
+    "id": "",
+    "title": "1.3 Language Features"
+  },
+  {
+    "file": "01-introduction.html",
+    "level": 2,
+    "id": "",
+    "title": "1.4 Development Environments"
+  },
+  {
+    "file": "01-introduction.html",
+    "level": 2,
+    "id": "",
+    "title": "1.5 Compiler"
+  },
+  {
+    "file": "01-introduction.html",
+    "level": 2,
+    "id": "modules",
+    "title": "1.6 Source Composition: include, using, import, export"
+  },
+  {
+    "file": "01-introduction.html",
+    "level": 2,
+    "id": "",
+    "title": "1.7 Quick Example"
+  },
+  {
+    "file": "02-tools.html",
+    "level": 2,
+    "id": "",
+    "title": "2.1 Interpreter"
+  },
+  {
+    "file": "02-tools.html",
+    "level": 3,
+    "id": "",
+    "title": "2.1.1 Interactive Mode"
+  },
+  {
+    "file": "02-tools.html",
+    "level": 3,
+    "id": "",
+    "title": "2.1.2 Command-Line Usage"
+  },
+  {
+    "file": "02-tools.html",
+    "level": 3,
+    "id": "",
+    "title": "2.1.3 Getting Help"
+  },
+  {
+    "file": "02-tools.html",
+    "level": 2,
+    "id": "",
+    "title": "2.2 Compiler"
+  },
+  {
+    "file": "02-tools.html",
+    "level": 3,
+    "id": "",
+    "title": "2.2.1 Compilation Modes"
+  },
+  {
+    "file": "02-tools.html",
+    "level": 3,
+    "id": "",
+    "title": "2.2.2 Compiling from Command Line"
+  },
+  {
+    "file": "02-tools.html",
+    "level": 3,
+    "id": "",
+    "title": "2.2.3 Compilation Examples"
+  },
+  {
+    "file": "02-tools.html",
+    "level": 3,
+    "id": "",
+    "title": "2.2.4 Compiled Executable Features"
+  },
+  {
+    "file": "02-tools.html",
+    "level": 2,
+    "id": "",
+    "title": "2.3 Package Manager"
+  },
+  {
+    "file": "02-tools.html",
+    "level": 3,
+    "id": "",
+    "title": "2.3.1 Workspace Packages (preferred)"
+  },
+  {
+    "file": "02-tools.html",
+    "level": 3,
+    "id": "",
+    "title": "2.3.2 Offline Package Commands"
+  },
+  {
+    "file": "02-tools.html",
+    "level": 3,
+    "id": "",
+    "title": "2.3.3 Optional Remote Registry"
+  },
+  {
+    "file": "02-tools.html",
+    "level": 3,
+    "id": "",
+    "title": "2.3.4 Using Packages in Code"
+  },
+  {
+    "file": "02-tools.html",
+    "level": 3,
+    "id": "",
+    "title": "2.3.5 Package Dependencies and Storage"
+  },
+  {
+    "file": "02-tools.html",
+    "level": 2,
+    "id": "",
+    "title": "2.4 Development Workflow"
+  },
+  {
+    "file": "02-tools.html",
+    "level": 2,
+    "id": "",
+    "title": "2.5 IDE Integration"
+  },
+  {
+    "file": "02-tools.html",
+    "level": 2,
+    "id": "language-server",
+    "title": "2.6 Language Server (LSP)"
+  },
+  {
+    "file": "02-tools.html",
+    "level": 3,
+    "id": "",
+    "title": "2.6.1 What the MALDA Language Server Provides"
+  },
+  {
+    "file": "02-tools.html",
+    "level": 3,
+    "id": "",
+    "title": "2.6.2 Setting Up VS Code"
+  },
+  {
+    "file": "02-tools.html",
+    "level": 3,
+    "id": "",
+    "title": "2.6.3 Setting Up Cursor"
+  },
+  {
+    "file": "02-tools.html",
+    "level": 3,
+    "id": "",
+    "title": "2.6.4 Other Editors"
+  },
+  {
+    "file": "02-tools.html",
+    "level": 3,
+    "id": "interpret-mode-debug",
+    "title": "2.6.5 Interpret-mode debug"
+  },
+  {
+    "file": "02-tools.html",
+    "level": 3,
+    "id": "javascript-desktop-debug",
+    "title": "2.6.6 Desktop IDE JavaScript debug"
+  },
+  {
+    "file": "02-tools.html",
+    "level": 2,
+    "id": "",
+    "title": "2.7 Property Testing (Overview)"
+  },
+  {
+    "file": "02-tools.html",
+    "level": 2,
+    "id": "",
+    "title": "2.8 Writing MALDA with a Coding Agent"
+  },
+  {
+    "file": "02-tools.html",
+    "level": 3,
+    "id": "",
+    "title": "2.8.1 The Language Pack"
+  },
+  {
+    "file": "02-tools.html",
+    "level": 3,
+    "id": "",
+    "title": "2.8.2 The Interpreter Is the Feedback Loop"
+  },
+  {
+    "file": "02-tools.html",
+    "level": 3,
+    "id": "",
+    "title": "2.8.3 Known Failure Modes"
+  },
+  {
+    "file": "03-lexical-structure.html",
+    "level": 2,
+    "id": "",
+    "title": "3.1 Comments"
+  },
+  {
+    "file": "03-lexical-structure.html",
+    "level": 2,
+    "id": "",
+    "title": "3.2 Identifiers"
+  },
+  {
+    "file": "03-lexical-structure.html",
+    "level": 2,
+    "id": "keywords",
+    "title": "3.3 Keywords"
+  },
+  {
+    "file": "03-lexical-structure.html",
+    "level": 2,
+    "id": "",
+    "title": "3.4 Literals"
+  },
+  {
+    "file": "03-lexical-structure.html",
+    "level": 2,
+    "id": "",
+    "title": "3.5 Operators"
+  },
+  {
+    "file": "03-lexical-structure.html",
+    "level": 2,
+    "id": "",
+    "title": "3.6 Delimiters"
+  },
+  {
+    "file": "04-data-types.html",
+    "level": 2,
+    "id": "",
+    "title": "4.1 Primitive Types"
+  },
+  {
+    "file": "04-data-types.html",
+    "level": 2,
+    "id": "",
+    "title": "4.2 Type System"
+  },
+  {
+    "file": "04-data-types.html",
+    "level": 2,
+    "id": "",
+    "title": "4.3 Object Types"
+  },
+  {
+    "file": "04-data-types.html",
+    "level": 2,
+    "id": "",
+    "title": "4.4 Dictionaries"
+  },
+  {
+    "file": "04-data-types.html",
+    "level": 2,
+    "id": "",
+    "title": "4.5 Sum Types (Tagged Unions)"
+  },
+  {
+    "file": "04-data-types.html",
+    "level": 2,
+    "id": "",
+    "title": "4.6 Type Checking"
+  },
+  {
+    "file": "05-variables.html",
+    "level": 2,
+    "id": "",
+    "title": "5.1 Variable Declaration"
+  },
+  {
+    "file": "05-variables.html",
+    "level": 2,
+    "id": "",
+    "title": "5.2 Variable Assignment"
+  },
+  {
+    "file": "05-variables.html",
+    "level": 2,
+    "id": "const",
+    "title": "5.3 Constant Declarations"
+  },
+  {
+    "file": "05-variables.html",
+    "level": 2,
+    "id": "",
+    "title": "5.4 Destructuring"
+  },
+  {
+    "file": "05-variables.html",
+    "level": 2,
+    "id": "",
+    "title": "5.5 Variable Scope"
+  },
+  {
+    "file": "06-arrays.html",
+    "level": 2,
+    "id": "",
+    "title": "6.1 Array Declaration"
+  },
+  {
+    "file": "06-arrays.html",
+    "level": 2,
+    "id": "",
+    "title": "6.2 Array Access"
+  },
+  {
+    "file": "06-arrays.html",
+    "level": 2,
+    "id": "",
+    "title": "6.3 Array Operations"
+  },
+  {
+    "file": "06-arrays.html",
+    "level": 2,
+    "id": "",
+    "title": "6.4 Array Methods"
+  },
+  {
+    "file": "06-arrays.html",
+    "level": 2,
+    "id": "",
+    "title": "6.5 Numeric Array Aggregation"
+  },
+  {
+    "file": "06-arrays.html",
+    "level": 2,
+    "id": "",
+    "title": "6.6 Array Length"
+  },
+  {
+    "file": "07-expressions.html",
+    "level": 2,
+    "id": "",
+    "title": "7.1 Arithmetic Expressions"
+  },
+  {
+    "file": "07-expressions.html",
+    "level": 2,
+    "id": "",
+    "title": "7.2 Comparison Expressions"
+  },
+  {
+    "file": "07-expressions.html",
+    "level": 2,
+    "id": "",
+    "title": "7.3 Logical Expressions"
+  },
+  {
+    "file": "07-expressions.html",
+    "level": 2,
+    "id": "",
+    "title": "7.4 String Concatenation"
+  },
+  {
+    "file": "07-expressions.html",
+    "level": 2,
+    "id": "",
+    "title": "7.5 String Repetition"
+  },
+  {
+    "file": "07-expressions.html",
+    "level": 2,
+    "id": "",
+    "title": "7.6 String Interpolation"
+  },
+  {
+    "file": "07-expressions.html",
+    "level": 2,
+    "id": "",
+    "title": "7.7 Increment and Decrement Operators"
+  },
+  {
+    "file": "07-expressions.html",
+    "level": 2,
+    "id": "",
+    "title": "7.8 Compound Assignment Operators"
+  },
+  {
+    "file": "07-expressions.html",
+    "level": 2,
+    "id": "",
+    "title": "7.9 Ternary Conditional Expression"
+  },
+  {
+    "file": "07-expressions.html",
+    "level": 2,
+    "id": "",
+    "title": "7.10 Dictionary Literals and Indexing"
+  },
+  {
+    "file": "07-expressions.html",
+    "level": 2,
+    "id": "comprehensions",
+    "title": "7.11 List and Dictionary Comprehensions"
+  },
+  {
+    "file": "07-expressions.html",
+    "level": 2,
+    "id": "null-conditional",
+    "title": "7.12 Null-Conditional Access"
+  },
+  {
+    "file": "07-expressions.html",
+    "level": 2,
+    "id": "null-coalesce",
+    "title": "7.12.1 Null-Coalescing ??"
+  },
+  {
+    "file": "07-expressions.html",
+    "level": 2,
+    "id": "",
+    "title": "7.13 Operator Precedence"
+  },
+  {
+    "file": "07-expressions.html",
+    "level": 2,
+    "id": "",
+    "title": "7.14 Async and Await Expressions"
+  },
+  {
+    "file": "07-expressions.html",
+    "level": 2,
+    "id": "",
+    "title": "7.15 Pipe Operator (|>)"
+  },
+  {
+    "file": "08-control-structures.html",
+    "level": 2,
+    "id": "",
+    "title": "8.1 Conditional Statements"
+  },
+  {
+    "file": "08-control-structures.html",
+    "level": 2,
+    "id": "",
+    "title": "8.2 Loops"
+  },
+  {
+    "file": "08-control-structures.html",
+    "level": 2,
+    "id": "",
+    "title": "8.3 Pattern Matching"
+  },
+  {
+    "file": "08-control-structures.html",
+    "level": 2,
+    "id": "",
+    "title": "8.4 Exception Handling"
+  },
+  {
+    "file": "08-control-structures.html",
+    "level": 2,
+    "id": "cleanup",
+    "title": "8.5 Deterministic Cleanup"
+  },
+  {
+    "file": "09-functions.html",
+    "level": 2,
+    "id": "",
+    "title": "9.1 Function Declaration"
+  },
+  {
+    "file": "09-functions.html",
+    "level": 2,
+    "id": "",
+    "title": "9.2 Function Call"
+  },
+  {
+    "file": "09-functions.html",
+    "level": 2,
+    "id": "",
+    "title": "9.3 Return Statement"
+  },
+  {
+    "file": "09-functions.html",
+    "level": 2,
+    "id": "",
+    "title": "9.4 Recursion"
+  },
+  {
+    "file": "09-functions.html",
+    "level": 2,
+    "id": "",
+    "title": "9.5 Standalone Functions vs Methods"
+  },
+  {
+    "file": "09-functions.html",
+    "level": 2,
+    "id": "lambda-expressions",
+    "title": "9.6 Lambda Expressions"
+  },
+  {
+    "file": "09-functions.html",
+    "level": 2,
+    "id": "",
+    "title": "9.7 Decorators"
+  },
+  {
+    "file": "09-functions.html",
+    "level": 2,
+    "id": "",
+    "title": "9.8 Prompts"
+  },
+  {
+    "file": "10-prompts.html",
+    "level": 2,
+    "id": "",
+    "title": "10.1 Overview"
+  },
+  {
+    "file": "10-prompts.html",
+    "level": 2,
+    "id": "",
+    "title": "10.2 Prompt Declaration Syntax"
+  },
+  {
+    "file": "10-prompts.html",
+    "level": 2,
+    "id": "",
+    "title": "10.3 Basic Prompt Examples"
+  },
+  {
+    "file": "10-prompts.html",
+    "level": 2,
+    "id": "",
+    "title": "10.4 Using Prompts with Agents"
+  },
+  {
+    "file": "10-prompts.html",
+    "level": 2,
+    "id": "",
+    "title": "10.5 Direct Await Execution"
+  },
+  {
+    "file": "10-prompts.html",
+    "level": 2,
+    "id": "",
+    "title": "10.6 Schema Declarations for Structured Output"
+  },
+  {
+    "file": "10-prompts.html",
+    "level": 2,
+    "id": "",
+    "title": "10.7 Sum Types as Prompt Return Types"
+  },
+  {
+    "file": "10-prompts.html",
+    "level": 2,
+    "id": "",
+    "title": "10.8 Closed APIs and Deterministic Programs"
+  },
+  {
+    "file": "10-prompts.html",
+    "level": 2,
+    "id": "",
+    "title": "10.9 Reusable Pipe Pipelines"
+  },
+  {
+    "file": "10-prompts.html",
+    "level": 2,
+    "id": "",
+    "title": "10.10 PromptInstance Properties"
+  },
+  {
+    "file": "10-prompts.html",
+    "level": 2,
+    "id": "",
+    "title": "10.11 Advanced Prompt Features"
+  },
+  {
+    "file": "10-prompts.html",
+    "level": 2,
+    "id": "",
+    "title": "10.12 Prompt Blocks vs String Concatenation"
+  },
+  {
+    "file": "11-classes-objects.html",
+    "level": 2,
+    "id": "",
+    "title": "11.1 A working class"
+  },
+  {
+    "file": "11-classes-objects.html",
+    "level": 2,
+    "id": "",
+    "title": "11.2 Access modifiers"
+  },
+  {
+    "file": "11-classes-objects.html",
+    "level": 2,
+    "id": "",
+    "title": "11.3 Inheritance"
+  },
+  {
+    "file": "11-classes-objects.html",
+    "level": 2,
+    "id": "",
+    "title": "11.4 Static members"
+  },
+  {
+    "file": "11-classes-objects.html",
+    "level": 2,
+    "id": "",
+    "title": "11.5 Operator overloading"
+  },
+  {
+    "file": "11-classes-objects.html",
+    "level": 2,
+    "id": "",
+    "title": "11.6 Primary constructors"
+  },
+  {
+    "file": "12-input-output.html",
+    "level": 2,
+    "id": "",
+    "title": "12.1 Console Output"
+  },
+  {
+    "file": "12-input-output.html",
+    "level": 2,
+    "id": "",
+    "title": "12.2 Console Input"
+  },
+  {
+    "file": "12-input-output.html",
+    "level": 2,
+    "id": "",
+    "title": "12.3 Files"
+  },
+  {
+    "file": "12-input-output.html",
+    "level": 3,
+    "id": "",
+    "title": "12.3.1 Read and write"
+  },
+  {
+    "file": "12-input-output.html",
+    "level": 3,
+    "id": "",
+    "title": "12.3.2 Line ranges and line arrays"
+  },
+  {
+    "file": "12-input-output.html",
+    "level": 3,
+    "id": "",
+    "title": "12.3.3 Directories, delete, and binary"
+  },
+  {
+    "file": "12-input-output.html",
+    "level": 3,
+    "id": "",
+    "title": "12.3.4 Embedded folders (embed:)"
+  },
+  {
+    "file": "12-input-output.html",
+    "level": 2,
+    "id": "",
+    "title": "12.4 Paths"
+  },
+  {
+    "file": "12-input-output.html",
+    "level": 2,
+    "id": "",
+    "title": "12.5 Environment and Host"
+  },
+  {
+    "file": "12-input-output.html",
+    "level": 2,
+    "id": "capability-tokens",
+    "title": "12.6 Capability Tokens"
+  },
+  {
+    "file": "12-input-output.html",
+    "level": 2,
+    "id": "",
+    "title": "12.7 Searching Files"
+  },
+  {
+    "file": "12-input-output.html",
+    "level": 2,
+    "id": "",
+    "title": "12.8 Sleep"
+  },
+  {
+    "file": "12-input-output.html",
+    "level": 2,
+    "id": "",
+    "title": "12.9 What This Chapter Is Not"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 2,
+    "id": "",
+    "title": "13.1 Type Conversion"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 3,
+    "id": "",
+    "title": "13.1.1 Safe Integer Conversion Helpers"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 2,
+    "id": "stdlib-namespaces",
+    "title": "13.2 Stdlib Namespaces and Flat Aliases"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 2,
+    "id": "",
+    "title": "13.3 Mathematical Functions"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 3,
+    "id": "",
+    "title": "13.3.1 LLM-oriented Math Helpers (Reference)"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 2,
+    "id": "",
+    "title": "13.4 String Functions"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 2,
+    "id": "",
+    "title": "13.5 Environment and Host"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 3,
+    "id": "",
+    "title": "13.5.1 Host Information"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 3,
+    "id": "",
+    "title": "13.5.2 Web search (Brave Search API)"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 3,
+    "id": "",
+    "title": "13.5.3 HTTP auth token helpers"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 2,
+    "id": "",
+    "title": "13.6 Array Utility Functions"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 3,
+    "id": "",
+    "title": "13.6.1 CSV Export Helper"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 2,
+    "id": "",
+    "title": "13.7 JSON Functions"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 3,
+    "id": "validate",
+    "title": "13.7.1 validate(schema, value)"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 3,
+    "id": "asVariant",
+    "title": "13.7.1.1 asVariant(typeName, value)"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 3,
+    "id": "evalPrompt",
+    "title": "13.7.1.2 evalPrompt(prompt, fixture, typeName?)"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 2,
+    "id": "",
+    "title": "13.7.2 AI Pipeline Functions"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 2,
+    "id": "",
+    "title": "13.8 File System Functions"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 3,
+    "id": "",
+    "title": "13.8.0 Embedded folders (embed:)"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 3,
+    "id": "",
+    "title": "13.8.1 Line, Binary, Delete, and PDF Text"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 3,
+    "id": "",
+    "title": "13.8.2 Searching Files: glob and grep"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 2,
+    "id": "",
+    "title": "13.9 Git Functions"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 2,
+    "id": "",
+    "title": "13.10 Command Execution Functions"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 2,
+    "id": "",
+    "title": "13.11 MALDA Execution Functions"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 3,
+    "id": "",
+    "title": "13.10.1 getSymbols(sourceOrFilePath)"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 3,
+    "id": "",
+    "title": "13.10.2 getParseErrors(sourceOrFilePath)"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 3,
+    "id": "",
+    "title": "13.10.3 checkMalda(sourceOrFilePath, typeMode?, workingDir?)"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 3,
+    "id": "",
+    "title": "13.10.4 webFetch(url, maxBytes?, timeoutMs?)"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 2,
+    "id": "",
+    "title": "13.12 Spectre.Console Integration"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 2,
+    "id": "",
+    "title": "13.13 Date and Time Functions"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 2,
+    "id": "",
+    "title": "13.14 Random Number Functions"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 2,
+    "id": "",
+    "title": "13.15 Type Checking Functions"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 2,
+    "id": "",
+    "title": "13.16 Encoding and Decoding Functions"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 2,
+    "id": "",
+    "title": "13.17 Hash Functions"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 3,
+    "id": "",
+    "title": "13.16.1 Password and JWT Security Functions"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 3,
+    "id": "",
+    "title": "13.16.1a Background jobs (lightweight queue)"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 3,
+    "id": "",
+    "title": "13.16.2 Request auth context (req.auth)"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 2,
+    "id": "",
+    "title": "13.18 Range Generation"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 2,
+    "id": "",
+    "title": "13.19 Error Handling Functions"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 3,
+    "id": "result-option",
+    "title": "13.19.1 result and option"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 3,
+    "id": "grounded-values",
+    "title": "13.19.2 grounded.wrap"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 3,
+    "id": "capability-tokens",
+    "title": "13.19.3 cap.fileRead"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 2,
+    "id": "",
+    "title": "13.20 Structured Task Planning"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 2,
+    "id": "",
+    "title": "13.21 Tool Creation Functions"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 2,
+    "id": "",
+    "title": "13.22 Durable Workflow Operations"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 2,
+    "id": "",
+    "title": "13.23 Agent Runtime Logging"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 2,
+    "id": "",
+    "title": "13.24 Web UI Functions"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 2,
+    "id": "optional-pack-builtins",
+    "title": "13.25 Optional packs (not in core)"
+  },
+  {
+    "file": "14-graphs.html",
+    "level": 2,
+    "id": "",
+    "title": "14.1 Graph Literals"
+  },
+  {
+    "file": "14-graphs.html",
+    "level": 2,
+    "id": "",
+    "title": "14.2 Graph Operations"
+  },
+  {
+    "file": "14-graphs.html",
+    "level": 2,
+    "id": "",
+    "title": "14.3 Graph Algorithms"
+  },
+  {
+    "file": "14-graphs.html",
+    "level": 2,
+    "id": "",
+    "title": "14.4 Graph Serialization"
+  },
+  {
+    "file": "14-graphs.html",
+    "level": 2,
+    "id": "",
+    "title": "14.5 Graph Methods Reference"
+  },
+  {
+    "file": "14-graphs.html",
+    "level": 2,
+    "id": "",
+    "title": "14.6 Graph Applications"
+  },
+  {
+    "file": "15-vectordb.html",
+    "level": 2,
+    "id": "",
+    "title": "15.1 Creating a VectorDB"
+  },
+  {
+    "file": "15-vectordb.html",
+    "level": 2,
+    "id": "",
+    "title": "15.2 Adding Vectors"
+  },
+  {
+    "file": "15-vectordb.html",
+    "level": 3,
+    "id": "",
+    "title": "15.2.1 Adding with Automatic Vector Calculation"
+  },
+  {
+    "file": "15-vectordb.html",
+    "level": 3,
+    "id": "",
+    "title": "15.2.2 Adding with Explicit Vector"
+  },
+  {
+    "file": "15-vectordb.html",
+    "level": 2,
+    "id": "",
+    "title": "15.3 Similarity Search"
+  },
+  {
+    "file": "15-vectordb.html",
+    "level": 2,
+    "id": "",
+    "title": "15.4 Binary Serialization"
+  },
+  {
+    "file": "15-vectordb.html",
+    "level": 2,
+    "id": "",
+    "title": "15.5 Complete Example"
+  },
+  {
+    "file": "15-vectordb.html",
+    "level": 2,
+    "id": "",
+    "title": "15.6 Built-in Text Embeddings"
+  },
+  {
+    "file": "15-vectordb.html",
+    "level": 3,
+    "id": "",
+    "title": "15.6.1 Neural Network Embeddings with LLamaSharp"
+  },
+  {
+    "file": "15-vectordb.html",
+    "level": 2,
+    "id": "",
+    "title": "15.7 Retriever (asRetriever)"
+  },
+  {
+    "file": "15-vectordb.html",
+    "level": 2,
+    "id": "",
+    "title": "15.8 Use Cases"
+  },
+  {
+    "file": "15-vectordb.html",
+    "level": 3,
+    "id": "",
+    "title": "15.8.1 Real-World VectorDB Applications"
+  },
+  {
+    "file": "15-vectordb.html",
+    "level": 2,
+    "id": "",
+    "title": "15.9 Performance Considerations"
+  },
+  {
+    "file": "16-database.html",
+    "level": 2,
+    "id": "",
+    "title": "16.1 SQLite from zero"
+  },
+  {
+    "file": "16-database.html",
+    "level": 2,
+    "id": "",
+    "title": "16.2 Shared client API"
+  },
+  {
+    "file": "16-database.html",
+    "level": 2,
+    "id": "",
+    "title": "16.3 Query builder"
+  },
+  {
+    "file": "16-database.html",
+    "level": 3,
+    "id": "",
+    "title": "16.3.1 Select"
+  },
+  {
+    "file": "16-database.html",
+    "level": 3,
+    "id": "",
+    "title": "16.3.2 Insert, update, delete"
+  },
+  {
+    "file": "16-database.html",
+    "level": 2,
+    "id": "",
+    "title": "16.4 Transactions"
+  },
+  {
+    "file": "16-database.html",
+    "level": 2,
+    "id": "",
+    "title": "16.5 SQL Server and PostgreSQL"
+  },
+  {
+    "file": "16-database.html",
+    "level": 2,
+    "id": "",
+    "title": "16.6 Inserted row ids and JSON columns"
+  },
+  {
+    "file": "16-database.html",
+    "level": 2,
+    "id": "",
+    "title": "16.7 Runtime, errors, and backends"
+  },
+  {
+    "file": "16-database.html",
+    "level": 2,
+    "id": "",
+    "title": "16.8 Security"
+  },
+  {
+    "file": "16-database.html",
+    "level": 2,
+    "id": "",
+    "title": "16.9 malda db (local-first scaffolds)"
+  },
+  {
+    "file": "17-actors.html",
+    "level": 2,
+    "id": "",
+    "title": "17.1 Actor Declaration"
+  },
+  {
+    "file": "17-actors.html",
+    "level": 2,
+    "id": "",
+    "title": "17.2 Spawning Actors"
+  },
+  {
+    "file": "17-actors.html",
+    "level": 2,
+    "id": "",
+    "title": "17.3 Sending Messages"
+  },
+  {
+    "file": "17-actors.html",
+    "level": 2,
+    "id": "",
+    "title": "17.4 Message Handlers"
+  },
+  {
+    "file": "17-actors.html",
+    "level": 2,
+    "id": "actor-state-isolation",
+    "title": "17.5 Actor State Isolation"
+  },
+  {
+    "file": "17-actors.html",
+    "level": 2,
+    "id": "",
+    "title": "17.6 Self Reference"
+  },
+  {
+    "file": "17-actors.html",
+    "level": 2,
+    "id": "",
+    "title": "17.7 Receiving Messages"
+  },
+  {
+    "file": "17-actors.html",
+    "level": 2,
+    "id": "",
+    "title": "17.8 Message Passing Between Actors"
+  },
+  {
+    "file": "17-actors.html",
+    "level": 2,
+    "id": "",
+    "title": "17.9 Concurrent Processing"
+  },
+  {
+    "file": "17-actors.html",
+    "level": 2,
+    "id": "",
+    "title": "17.10 Actor Lifecycle"
+  },
+  {
+    "file": "17-actors.html",
+    "level": 2,
+    "id": "",
+    "title": "17.11 Actor Features Summary"
+  },
+  {
+    "file": "17-actors.html",
+    "level": 2,
+    "id": "",
+    "title": "17.12 Using Actors with Agents"
+  },
+  {
+    "file": "18-agent-orchestration.html",
+    "level": 2,
+    "id": "",
+    "title": "18.1 ⚠️ Critical Security and Risk Disclaimer"
+  },
+  {
+    "file": "18-agent-orchestration.html",
+    "level": 2,
+    "id": "",
+    "title": "18.2 LLM Client"
+  },
+  {
+    "file": "18-agent-orchestration.html",
+    "level": 2,
+    "id": "",
+    "title": "18.3 OpenRouterClient"
+  },
+  {
+    "file": "18-agent-orchestration.html",
+    "level": 3,
+    "id": "",
+    "title": "18.3.1 Default local LLM (when no client is provided)"
+  },
+  {
+    "file": "18-agent-orchestration.html",
+    "level": 2,
+    "id": "",
+    "title": "18.4 LlamaCppClient"
+  },
+  {
+    "file": "18-agent-orchestration.html",
+    "level": 2,
+    "id": "",
+    "title": "18.5 Conversation Management"
+  },
+  {
+    "file": "18-agent-orchestration.html",
+    "level": 2,
+    "id": "",
+    "title": "18.6 Tool System"
+  },
+  {
+    "file": "18-agent-orchestration.html",
+    "level": 2,
+    "id": "",
+    "title": "18.7 Agent Class"
+  },
+  {
+    "file": "18-agent-orchestration.html",
+    "level": 2,
+    "id": "",
+    "title": "18.8 Custom Tools with @Tool Decorator"
+  },
+  {
+    "file": "18-agent-orchestration.html",
+    "level": 2,
+    "id": "",
+    "title": "18.9 CodingAgent"
+  },
+  {
+    "file": "18-agent-orchestration.html",
+    "level": 2,
+    "id": "",
+    "title": "18.10 GitAgent"
+  },
+  {
+    "file": "18-agent-orchestration.html",
+    "level": 2,
+    "id": "",
+    "title": "18.11 HumanAgent"
+  },
+  {
+    "file": "18-agent-orchestration.html",
+    "level": 2,
+    "id": "",
+    "title": "18.12 DevAgent"
+  },
+  {
+    "file": "18-agent-orchestration.html",
+    "level": 2,
+    "id": "",
+    "title": "18.13 Structured task planning"
+  },
+  {
+    "file": "18-agent-orchestration.html",
+    "level": 2,
+    "id": "",
+    "title": "18.14 MALDACodingAgent"
+  },
+  {
+    "file": "18-agent-orchestration.html",
+    "level": 2,
+    "id": "",
+    "title": "18.15 Agent Dashboard"
+  },
+  {
+    "file": "18-agent-orchestration.html",
+    "level": 2,
+    "id": "",
+    "title": "18.16 Multi-Agent Orchestration"
+  },
+  {
+    "file": "18-agent-orchestration.html",
+    "level": 2,
+    "id": "using-agents-with-actors",
+    "title": "18.17 Using Agents with Actors"
+  },
+  {
+    "file": "18-agent-orchestration.html",
+    "level": 2,
+    "id": "ralph-wiggum",
+    "title": "18.18 Ralph Wiggum (PRD-driven autonomous loop)"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 2,
+    "id": "",
+    "title": "19.1 Creating a GraphMemory"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 2,
+    "id": "",
+    "title": "19.2 Remembering Facts"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 3,
+    "id": "",
+    "title": "19.2.1 Automatic semantic linking"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 2,
+    "id": "",
+    "title": "19.3 Querying Memory"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 3,
+    "id": "",
+    "title": "19.3.1 Hybrid query (semantic + recent)"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 3,
+    "id": "",
+    "title": "19.3.2 Recent entries (getRecent)"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 3,
+    "id": "",
+    "title": "19.3.3 Forgetting entries (forget)"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 3,
+    "id": "",
+    "title": "19.3.4 Indexing document files (indexDocuments)"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 3,
+    "id": "",
+    "title": "19.3.5 Memory stats (stats)"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 3,
+    "id": "",
+    "title": "19.3.5a Health check (validate)"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 3,
+    "id": "",
+    "title": "19.3.5b Rotating backups on save()"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 3,
+    "id": "",
+    "title": "19.3.6 Node lookup and in-place update"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 3,
+    "id": "",
+    "title": "19.3.7 Episodic consolidation (consolidate)"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 3,
+    "id": "",
+    "title": "19.3.8 Batch pruning (prune)"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 3,
+    "id": "",
+    "title": "19.3.9 Memory size limits (enforceLimits)"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 3,
+    "id": "",
+    "title": "19.3.10 Portable bundles (exportBundle / importBundle)"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 3,
+    "id": "",
+    "title": "19.3.11 LLM reflection (reflect)"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 3,
+    "id": "",
+    "title": "19.3.11a Background reflection (reflectAsync)"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 3,
+    "id": "",
+    "title": "19.3.12 Reindexing documents (reindexDocuments)"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 3,
+    "id": "",
+    "title": "19.3.13 Retrieval evolution"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 3,
+    "id": "",
+    "title": "19.3.14 CLI maintenance (malda memory)"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 3,
+    "id": "",
+    "title": "19.3.15 Grounded ASK (ask / grounded.wrap)"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 2,
+    "id": "",
+    "title": "19.4 Finding Related Nodes"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 2,
+    "id": "",
+    "title": "19.5 Code Element Management"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 3,
+    "id": "",
+    "title": "19.5.1 Adding Code Elements"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 3,
+    "id": "",
+    "title": "19.5.2 Finding Code Relationships"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 3,
+    "id": "",
+    "title": "19.5.3 Analyzing Files"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 2,
+    "id": "",
+    "title": "19.6 Persistence"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 3,
+    "id": "",
+    "title": "19.6.1 Saving Memory"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 3,
+    "id": "",
+    "title": "19.6.2 Loading Memory"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 2,
+    "id": "",
+    "title": "19.7 Graph Export and Import"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 3,
+    "id": "",
+    "title": "19.7.1 Exporting the Graph"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 3,
+    "id": "",
+    "title": "19.7.2 Importing the Graph"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 2,
+    "id": "",
+    "title": "19.8 Clearing Memory"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 2,
+    "id": "",
+    "title": "19.9 Integration with Agents"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 3,
+    "id": "",
+    "title": "19.9.1 Progress memory tools"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 2,
+    "id": "",
+    "title": "19.10 Shared Memory"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 2,
+    "id": "",
+    "title": "19.11 Complete Example"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 2,
+    "id": "",
+    "title": "19.12 Use Cases"
+  },
+  {
+    "file": "19-graph-memory.html",
+    "level": 2,
+    "id": "",
+    "title": "19.13 Technical Details"
+  },
+  {
+    "file": "20-mcp-server.html",
+    "level": 2,
+    "id": "",
+    "title": "20.1 A minimal server"
+  },
+  {
+    "file": "20-mcp-server.html",
+    "level": 2,
+    "id": "",
+    "title": "20.2 @MCPTool and schemas"
+  },
+  {
+    "file": "20-mcp-server.html",
+    "level": 2,
+    "id": "",
+    "title": "20.3 MCPServer"
+  },
+  {
+    "file": "20-mcp-server.html",
+    "level": 2,
+    "id": "",
+    "title": "20.4 MCPClient: call another server"
+  },
+  {
+    "file": "20-mcp-server.html",
+    "level": 2,
+    "id": "",
+    "title": "20.5 Wrapper agent (optional)"
+  },
+  {
+    "file": "20-mcp-server.html",
+    "level": 2,
+    "id": "",
+    "title": "20.6 Advanced: generate a script"
+  },
+  {
+    "file": "21-acp.html",
+    "level": 2,
+    "id": "",
+    "title": "21.1 Overview"
+  },
+  {
+    "file": "21-acp.html",
+    "level": 2,
+    "id": "",
+    "title": "21.2 ACPClient Class"
+  },
+  {
+    "file": "21-acp.html",
+    "level": 2,
+    "id": "",
+    "title": "21.3 ACPServer Class"
+  },
+  {
+    "file": "21-acp.html",
+    "level": 2,
+    "id": "",
+    "title": "21.4 ACPAgentTool Class"
+  },
+  {
+    "file": "21-acp.html",
+    "level": 2,
+    "id": "",
+    "title": "21.5 Use Cases"
+  },
+  {
+    "file": "21-acp.html",
+    "level": 2,
+    "id": "",
+    "title": "21.6 ACP vs MCP"
+  },
+  {
+    "file": "21-acp.html",
+    "level": 2,
+    "id": "",
+    "title": "21.7 Message Format"
+  },
+  {
+    "file": "21-acp.html",
+    "level": 2,
+    "id": "",
+    "title": "21.8 Execution Modes"
+  },
+  {
+    "file": "21-acp.html",
+    "level": 2,
+    "id": "",
+    "title": "21.9 Run Cancellation"
+  },
+  {
+    "file": "21-acp.html",
+    "level": 2,
+    "id": "",
+    "title": "21.10 Await/Resume"
+  },
+  {
+    "file": "21-acp.html",
+    "level": 2,
+    "id": "",
+    "title": "21.11 Session Management"
+  },
+  {
+    "file": "21-acp.html",
+    "level": 2,
+    "id": "",
+    "title": "21.12 Error Handling"
+  },
+  {
+    "file": "22-durable-workflows.html",
+    "level": 2,
+    "id": "",
+    "title": "22.1 Core Concepts"
+  },
+  {
+    "file": "22-durable-workflows.html",
+    "level": 2,
+    "id": "",
+    "title": "22.2 Workflow Syntax"
+  },
+  {
+    "file": "22-durable-workflows.html",
+    "level": 2,
+    "id": "",
+    "title": "22.3 Lifecycle and States"
+  },
+  {
+    "file": "22-durable-workflows.html",
+    "level": 2,
+    "id": "",
+    "title": "22.4 Runtime Operations (Built-ins)"
+  },
+  {
+    "file": "22-durable-workflows.html",
+    "level": 2,
+    "id": "",
+    "title": "22.5 Dead Letters and Requeue"
+  },
+  {
+    "file": "22-durable-workflows.html",
+    "level": 2,
+    "id": "",
+    "title": "22.6 CLI Commands"
+  },
+  {
+    "file": "22-durable-workflows.html",
+    "level": 2,
+    "id": "",
+    "title": "22.7 Reliability and Parity Notes"
+  },
+  {
+    "file": "22-durable-workflows.html",
+    "level": 2,
+    "id": "storage",
+    "title": "22.8 Storage and Persistence"
+  },
+  {
+    "file": "22-durable-workflows.html",
+    "level": 2,
+    "id": "",
+    "title": "22.9 Configuration Guardrails"
+  },
+  {
+    "file": "22-durable-workflows.html",
+    "level": 2,
+    "id": "ha",
+    "title": "22.10 High Availability and Multi-Worker"
+  },
+  {
+    "file": "23-web-ui-hub.html",
+    "level": 2,
+    "id": "",
+    "title": "23.1 Choose your UI model"
+  },
+  {
+    "file": "23-web-ui-hub.html",
+    "level": 2,
+    "id": "",
+    "title": "23.2 Decision guide"
+  },
+  {
+    "file": "23-web-ui-hub.html",
+    "level": 2,
+    "id": "",
+    "title": "23.3 How the models relate"
+  },
+  {
+    "file": "23-web-ui-hub.html",
+    "level": 2,
+    "id": "",
+    "title": "23.4 Runtime boundary reminder"
+  },
+  {
+    "file": "24-web-ui.html",
+    "level": 2,
+    "id": "",
+    "title": "24.1 Chapter Map"
+  },
+  {
+    "file": "24-web-ui.html",
+    "level": 2,
+    "id": "",
+    "title": "24.2 HTML Fragment Components"
+  },
+  {
+    "file": "24-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "24.2.1 Minimal server-side example"
+  },
+  {
+    "file": "24-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "24.2.2 Tiny browser integration example"
+  },
+  {
+    "file": "24-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "24.2.3 Fragment contract"
+  },
+  {
+    "file": "24-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "24.2.4 LIVE channel subscription"
+  },
+  {
+    "file": "24-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "24.2.5 Server UI protocol envelopes"
+  },
+  {
+    "file": "24-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "24.2.6 Component API V2 direction"
+  },
+  {
+    "file": "24-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "24.2.7 Migration guide: @PAGE to component"
+  },
+  {
+    "file": "24-web-ui.html",
+    "level": 2,
+    "id": "",
+    "title": "24.3 Web UI Helper API Reference"
+  },
+  {
+    "file": "24-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "24.3.1 Server component helper functions"
+  },
+  {
+    "file": "24-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "24.3.1.1 UI-native template workflow (transparent UX)"
+  },
+  {
+    "file": "24-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "24.3.1.2 Schema-driven CRUD helper pattern"
+  },
+  {
+    "file": "24-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "24.3.2 Server component state helpers"
+  },
+  {
+    "file": "24-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "24.3.3 Server UI runtime and lifecycle APIs"
+  },
+  {
+    "file": "24-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "24.3.4 UI control catalog"
+  },
+  {
+    "file": "24-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "24.3.4.1 Styling controls"
+  },
+  {
+    "file": "24-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "24.3.5 Advanced data controls"
+  },
+  {
+    "file": "24-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "24.3.6 Control props reference"
+  },
+  {
+    "file": "24-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "24.3.7 Control usage examples"
+  },
+  {
+    "file": "24-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "24.3.8 Event handling patterns"
+  },
+  {
+    "file": "24-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "24.3.9 Form validation patterns and error rendering"
+  },
+  {
+    "file": "24-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "24.3.10 Composition patterns"
+  },
+  {
+    "file": "24-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "24.3.11 State management patterns"
+  },
+  {
+    "file": "24-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "24.3.12 Routing and query param patterns"
+  },
+  {
+    "file": "24-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "24.3.13 Error and security notes"
+  },
+  {
+    "file": "24-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "24.3.14 Styling guidance"
+  },
+  {
+    "file": "24-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "24.3.15 Common pitfalls and debugging"
+  },
+  {
+    "file": "24-web-ui.html",
+    "level": 2,
+    "id": "",
+    "title": "24.4 Request-to-Render Lifecycle"
+  },
+  {
+    "file": "24-web-ui.html",
+    "level": 2,
+    "id": "",
+    "title": "24.5 Production Hardening Checklist"
+  },
+  {
+    "file": "24-web-ui.html",
+    "level": 2,
+    "id": "",
+    "title": "24.6 Testing and Troubleshooting"
+  },
+  {
+    "file": "24-web-ui.html",
+    "level": 2,
+    "id": "",
+    "title": "24.7 Related Chapters and Examples"
+  },
+  {
+    "file": "25-http-server-html-ui.html",
+    "level": 2,
+    "id": "",
+    "title": "25.1 Chapter Map"
+  },
+  {
+    "file": "25-http-server-html-ui.html",
+    "level": 2,
+    "id": "",
+    "title": "25.2 HttpServer Class"
+  },
+  {
+    "file": "25-http-server-html-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "25.2.1 Constructor"
+  },
+  {
+    "file": "25-http-server-html-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "25.2.2 Core methods"
+  },
+  {
+    "file": "25-http-server-html-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "25.2.3 Minimal host example"
+  },
+  {
+    "file": "25-http-server-html-ui.html",
+    "level": 2,
+    "id": "",
+    "title": "25.3 Request and Response Objects"
+  },
+  {
+    "file": "25-http-server-html-ui.html",
+    "level": 2,
+    "id": "",
+    "title": "25.4 Dynamic Pages with @PAGE"
+  },
+  {
+    "file": "25-http-server-html-ui.html",
+    "level": 2,
+    "id": "",
+    "title": "25.5 AI-Generated Pages with @AIPAGE"
+  },
+  {
+    "file": "25-http-server-html-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "25.5.1 Complete AI form example"
+  },
+  {
+    "file": "25-http-server-html-ui.html",
+    "level": 2,
+    "id": "",
+    "title": "25.6 GET/POST Routes in Page-Hosting Flows"
+  },
+  {
+    "file": "25-http-server-html-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "25.6.1 GET handlers"
+  },
+  {
+    "file": "25-http-server-html-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "25.6.2 POST handlers"
+  },
+  {
+    "file": "25-http-server-html-ui.html",
+    "level": 2,
+    "id": "",
+    "title": "25.7 Redirects with RedirectTo"
+  },
+  {
+    "file": "25-http-server-html-ui.html",
+    "level": 2,
+    "id": "",
+    "title": "25.8 HTML Generation Helpers"
+  },
+  {
+    "file": "25-http-server-html-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "25.8.1 HTMLCache Class"
+  },
+  {
+    "file": "25-http-server-html-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "25.8.2 extractHTML Function"
+  },
+  {
+    "file": "25-http-server-html-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "25.8.3 markdownToHtml Function"
+  },
+  {
+    "file": "25-http-server-html-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "25.8.4 generateUI Function"
+  },
+  {
+    "file": "25-http-server-html-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "25.8.5 ui.generate Function"
+  },
+  {
+    "file": "25-http-server-html-ui.html",
+    "level": 2,
+    "id": "",
+    "title": "25.9 Request-to-Render Lifecycle"
+  },
+  {
+    "file": "25-http-server-html-ui.html",
+    "level": 2,
+    "id": "",
+    "title": "25.10 Production Hardening"
+  },
+  {
+    "file": "25-http-server-html-ui.html",
+    "level": 2,
+    "id": "",
+    "title": "25.11 Testing and Troubleshooting"
+  },
+  {
+    "file": "26-browser-javascript-backend.html",
+    "level": 2,
+    "id": "",
+    "title": "26.1 Chapter Map"
+  },
+  {
+    "file": "26-browser-javascript-backend.html",
+    "level": 2,
+    "id": "",
+    "title": "26.2 What This Mode Provides"
+  },
+  {
+    "file": "26-browser-javascript-backend.html",
+    "level": 3,
+    "id": "",
+    "title": "26.2.1 Target decorators in JS output"
+  },
+  {
+    "file": "26-browser-javascript-backend.html",
+    "level": 2,
+    "id": "",
+    "title": "26.3 Compile Commands"
+  },
+  {
+    "file": "26-browser-javascript-backend.html",
+    "level": 2,
+    "id": "",
+    "title": "26.4 Required Script Loading Order"
+  },
+  {
+    "file": "26-browser-javascript-backend.html",
+    "level": 2,
+    "id": "",
+    "title": "26.5 API Mode DOM Helpers"
+  },
+  {
+    "file": "26-browser-javascript-backend.html",
+    "level": 2,
+    "id": "",
+    "title": "26.6 Sum Types and Pattern Matching in JS Mode"
+  },
+  {
+    "file": "26-browser-javascript-backend.html",
+    "level": 2,
+    "id": "",
+    "title": "26.7 Actors in JS Mode"
+  },
+  {
+    "file": "26-browser-javascript-backend.html",
+    "level": 2,
+    "id": "",
+    "title": "26.8 Template Mode Syntax"
+  },
+  {
+    "file": "26-browser-javascript-backend.html",
+    "level": 2,
+    "id": "",
+    "title": "26.9 Game Canvas API"
+  },
+  {
+    "file": "26-browser-javascript-backend.html",
+    "level": 2,
+    "id": "three-scene-api",
+    "title": "26.10 three.js Scene API"
+  },
+  {
+    "file": "26-browser-javascript-backend.html",
+    "level": 3,
+    "id": "shader-kernels",
+    "title": "26.10.1 Shader kernels (MALDA to GLSL)"
+  },
+  {
+    "file": "26-browser-javascript-backend.html",
+    "level": 2,
+    "id": "",
+    "title": "26.11 Common Pitfalls and Guidance"
+  },
+  {
+    "file": "27-rest-api.html",
+    "level": 2,
+    "id": "",
+    "title": "27.1 Decorator Syntax"
+  },
+  {
+    "file": "27-rest-api.html",
+    "level": 2,
+    "id": "",
+    "title": "27.2 RestServer Class"
+  },
+  {
+    "file": "27-rest-api.html",
+    "level": 2,
+    "id": "",
+    "title": "27.3 Path Parameters"
+  },
+  {
+    "file": "27-rest-api.html",
+    "level": 2,
+    "id": "",
+    "title": "27.4 Query Parameters"
+  },
+  {
+    "file": "27-rest-api.html",
+    "level": 2,
+    "id": "",
+    "title": "27.5 Request Body"
+  },
+  {
+    "file": "27-rest-api.html",
+    "level": 2,
+    "id": "",
+    "title": "27.6 Parameter Binding"
+  },
+  {
+    "file": "27-rest-api.html",
+    "level": 2,
+    "id": "",
+    "title": "27.7 Response Handling"
+  },
+  {
+    "file": "27-rest-api.html",
+    "level": 2,
+    "id": "",
+    "title": "27.8 Middleware and Request Context"
+  },
+  {
+    "file": "27-rest-api.html",
+    "level": 2,
+    "id": "",
+    "title": "27.9 Response Helper API"
+  },
+  {
+    "file": "27-rest-api.html",
+    "level": 2,
+    "id": "",
+    "title": "27.10 CSRF and Rate Limiting"
+  },
+  {
+    "file": "27-rest-api.html",
+    "level": 2,
+    "id": "",
+    "title": "27.11 Error Handling"
+  },
+  {
+    "file": "27-rest-api.html",
+    "level": 2,
+    "id": "",
+    "title": "27.12 Validation"
+  },
+  {
+    "file": "27-rest-api.html",
+    "level": 2,
+    "id": "",
+    "title": "27.13 CORS Support"
+  },
+  {
+    "file": "27-rest-api.html",
+    "level": 2,
+    "id": "",
+    "title": "27.14 Swagger/OpenAPI Documentation"
+  },
+  {
+    "file": "27-rest-api.html",
+    "level": 2,
+    "id": "",
+    "title": "27.15 Complete Example"
+  },
+  {
+    "file": "28-rest-web-client.html",
+    "level": 2,
+    "id": "",
+    "title": "28.1 RestClient Class"
+  },
+  {
+    "file": "28-rest-web-client.html",
+    "level": 2,
+    "id": "",
+    "title": "28.2 Static HTTP Functions"
+  },
+  {
+    "file": "28-rest-web-client.html",
+    "level": 2,
+    "id": "",
+    "title": "28.3 Examples"
+  },
+  {
+    "file": "28-rest-web-client.html",
+    "level": 2,
+    "id": "",
+    "title": "28.4 Authentication"
+  },
+  {
+    "file": "28-rest-web-client.html",
+    "level": 2,
+    "id": "",
+    "title": "28.5 Timeouts"
+  },
+  {
+    "file": "28-rest-web-client.html",
+    "level": 2,
+    "id": "",
+    "title": "28.6 Complete Example"
+  },
+  {
+    "file": "29-full-stack-development.html",
+    "level": 2,
+    "id": "",
+    "title": "29.1 What \"full-stack\" means in MALDA"
+  },
+  {
+    "file": "29-full-stack-development.html",
+    "level": 3,
+    "id": "",
+    "title": "29.1.1 Runtime boundary: MALDA vs JavaScript"
+  },
+  {
+    "file": "29-full-stack-development.html",
+    "level": 3,
+    "id": "",
+    "title": "29.1.2 Delivery models"
+  },
+  {
+    "file": "29-full-stack-development.html",
+    "level": 3,
+    "id": "",
+    "title": "29.1.3 Single-source target decorators"
+  },
+  {
+    "file": "29-full-stack-development.html",
+    "level": 2,
+    "id": "",
+    "title": "29.2 Example scenario: Simple items app"
+  },
+  {
+    "file": "29-full-stack-development.html",
+    "level": 2,
+    "id": "",
+    "title": "29.3 Recommended project structure"
+  },
+  {
+    "file": "29-full-stack-development.html",
+    "level": 2,
+    "id": "",
+    "title": "29.4 API layer (Item CRUD + workflow)"
+  },
+  {
+    "file": "29-full-stack-development.html",
+    "level": 2,
+    "id": "",
+    "title": "29.5 UI layer (what technology to use)"
+  },
+  {
+    "file": "29-full-stack-development.html",
+    "level": 3,
+    "id": "",
+    "title": "29.5.0 MALDA-native component pattern"
+  },
+  {
+    "file": "29-full-stack-development.html",
+    "level": 3,
+    "id": "",
+    "title": "29.5.1 MALDA server-side page handlers"
+  },
+  {
+    "file": "29-full-stack-development.html",
+    "level": 3,
+    "id": "",
+    "title": "29.5.2 Browser-side JavaScript calling MALDA API"
+  },
+  {
+    "file": "29-full-stack-development.html",
+    "level": 3,
+    "id": "",
+    "title": "29.5.3 Migration path from @PAGE to components"
+  },
+  {
+    "file": "29-full-stack-development.html",
+    "level": 3,
+    "id": "",
+    "title": "29.5.4 End-to-end UI example"
+  },
+  {
+    "file": "29-full-stack-development.html",
+    "level": 2,
+    "id": "",
+    "title": "29.6 Database integration pattern"
+  },
+  {
+    "file": "29-full-stack-development.html",
+    "level": 2,
+    "id": "",
+    "title": "29.7 AI triage workflow (optional but powerful)"
+  },
+  {
+    "file": "29-full-stack-development.html",
+    "level": 2,
+    "id": "",
+    "title": "29.8 End-to-end request flow"
+  },
+  {
+    "file": "29-full-stack-development.html",
+    "level": 2,
+    "id": "",
+    "title": "29.9 Configuration and secrets"
+  },
+  {
+    "file": "29-full-stack-development.html",
+    "level": 2,
+    "id": "",
+    "title": "29.10 Practical checklist for new full-stack apps"
+  },
+  {
+    "file": "29-full-stack-development.html",
+    "level": 3,
+    "id": "",
+    "title": "29.10.1 Testing and troubleshooting (Web UI + API)"
+  },
+  {
+    "file": "30-dotnet-interop.html",
+    "level": 2,
+    "id": "",
+    "title": "30.1 Types already in the runtime"
+  },
+  {
+    "file": "30-dotnet-interop.html",
+    "level": 2,
+    "id": "",
+    "title": "30.2 Loading .NET Assemblies"
+  },
+  {
+    "file": "30-dotnet-interop.html",
+    "level": 2,
+    "id": "",
+    "title": "30.3 Getting .NET Types"
+  },
+  {
+    "file": "30-dotnet-interop.html",
+    "level": 2,
+    "id": "",
+    "title": "30.4 Creating .NET Objects"
+  },
+  {
+    "file": "30-dotnet-interop.html",
+    "level": 2,
+    "id": "",
+    "title": "30.5 Using .NET Objects"
+  },
+  {
+    "file": "30-dotnet-interop.html",
+    "level": 2,
+    "id": "",
+    "title": "30.6 Using NuGet Packages"
+  },
+  {
+    "file": "30-dotnet-interop.html",
+    "level": 2,
+    "id": "",
+    "title": "30.7 Complete Example"
+  },
+  {
+    "file": "30-dotnet-interop.html",
+    "level": 2,
+    "id": "",
+    "title": "30.8 Implementation Notes"
+  },
+  {
+    "file": "30-dotnet-interop.html",
+    "level": 2,
+    "id": "",
+    "title": "30.9 Use Cases"
+  },
+  {
+    "file": "31-device-integration.html",
+    "level": 2,
+    "id": "",
+    "title": "31.1 Overview"
+  },
+  {
+    "file": "31-device-integration.html",
+    "level": 2,
+    "id": "",
+    "title": "31.2 Serial Communication"
+  },
+  {
+    "file": "31-device-integration.html",
+    "level": 2,
+    "id": "",
+    "title": "31.3 HTTP/REST Devices"
+  },
+  {
+    "file": "31-device-integration.html",
+    "level": 2,
+    "id": "",
+    "title": "31.4 Arduino Integration"
+  },
+  {
+    "file": "31-device-integration.html",
+    "level": 2,
+    "id": "",
+    "title": "31.5 ESP32/ESP8266"
+  },
+  {
+    "file": "31-device-integration.html",
+    "level": 2,
+    "id": "",
+    "title": "31.6 Raspberry Pi"
+  },
+  {
+    "file": "31-device-integration.html",
+    "level": 2,
+    "id": "",
+    "title": "31.7 Smart Home Devices"
+  },
+  {
+    "file": "31-device-integration.html",
+    "level": 2,
+    "id": "",
+    "title": "31.8 Multi-Device Coordination"
+  },
+  {
+    "file": "31-device-integration.html",
+    "level": 2,
+    "id": "",
+    "title": "31.9 Examples"
+  },
+  {
+    "file": "31-device-integration.html",
+    "level": 2,
+    "id": "",
+    "title": "31.10 Troubleshooting"
+  },
+  {
+    "file": "32-personal-assistant.html",
+    "level": 2,
+    "id": "",
+    "title": "32.1 Quick start"
+  },
+  {
+    "file": "32-personal-assistant.html",
+    "level": 2,
+    "id": "",
+    "title": "32.2 Commands"
+  },
+  {
+    "file": "32-personal-assistant.html",
+    "level": 3,
+    "id": "",
+    "title": "32.2.1 malda agent"
+  },
+  {
+    "file": "32-personal-assistant.html",
+    "level": 3,
+    "id": "",
+    "title": "32.2.2 malda onboard"
+  },
+  {
+    "file": "32-personal-assistant.html",
+    "level": 3,
+    "id": "",
+    "title": "32.2.3 malda status"
+  },
+  {
+    "file": "32-personal-assistant.html",
+    "level": 3,
+    "id": "",
+    "title": "32.2.4 malda gateway"
+  },
+  {
+    "file": "32-personal-assistant.html",
+    "level": 3,
+    "id": "",
+    "title": "32.2.5 malda cron"
+  },
+  {
+    "file": "32-personal-assistant.html",
+    "level": 2,
+    "id": "",
+    "title": "32.3 Config file (~/.malda/config.json)"
+  },
+  {
+    "file": "32-personal-assistant.html",
+    "level": 3,
+    "id": "",
+    "title": "32.3.1 agents.memory schema"
+  },
+  {
+    "file": "32-personal-assistant.html",
+    "level": 2,
+    "id": "",
+    "title": "32.4 Selecting OpenRouter vs local llama.cpp"
+  },
+  {
+    "file": "32-personal-assistant.html",
+    "level": 2,
+    "id": "",
+    "title": "32.5 Default assistant behavior"
+  },
+  {
+    "file": "32-personal-assistant.html",
+    "level": 2,
+    "id": "",
+    "title": "32.6 Scheduling on Windows (Task Scheduler)"
+  },
+  {
+    "file": "32-personal-assistant.html",
+    "level": 3,
+    "id": "",
+    "title": "32.5.0 Automatic installation (malda cron install)"
+  },
+  {
+    "file": "32-personal-assistant.html",
+    "level": 3,
+    "id": "",
+    "title": "32.5.1 Add the job in MALDA"
+  },
+  {
+    "file": "32-personal-assistant.html",
+    "level": 3,
+    "id": "",
+    "title": "32.5.2 Find malda.exe"
+  },
+  {
+    "file": "32-personal-assistant.html",
+    "level": 3,
+    "id": "",
+    "title": "32.5.3 Create the scheduled task (GUI)"
+  },
+  {
+    "file": "32-personal-assistant.html",
+    "level": 3,
+    "id": "",
+    "title": "32.5.4 Create the scheduled task (command line)"
+  },
+  {
+    "file": "32-personal-assistant.html",
+    "level": 3,
+    "id": "",
+    "title": "32.5.5 Environment and API key"
+  },
+  {
+    "file": "32-personal-assistant.html",
+    "level": 3,
+    "id": "",
+    "title": "32.5.6 Mapping cron expressions to Task Scheduler"
+  },
+  {
+    "file": "32-personal-assistant.html",
+    "level": 2,
+    "id": "skills",
+    "title": "32.7 Skills"
+  },
+  {
+    "file": "32-personal-assistant.html",
+    "level": 2,
+    "id": "",
+    "title": "32.8 Channels / Telegram"
+  },
+  {
+    "file": "33-examples.html",
+    "level": 2,
+    "id": "",
+    "title": "33.0 First Look"
+  },
+  {
+    "file": "33-examples.html",
+    "level": 2,
+    "id": "",
+    "title": "33.1 Hello World"
+  },
+  {
+    "file": "33-examples.html",
+    "level": 2,
+    "id": "",
+    "title": "33.2 Simple Class Example"
+  },
+  {
+    "file": "33-examples.html",
+    "level": 2,
+    "id": "",
+    "title": "33.3 Inheritance Example"
+  },
+  {
+    "file": "33-examples.html",
+    "level": 2,
+    "id": "",
+    "title": "33.4 Factorial Function"
+  },
+  {
+    "file": "33-examples.html",
+    "level": 2,
+    "id": "",
+    "title": "33.5 Calculator Class"
+  },
+  {
+    "file": "33-examples.html",
+    "level": 2,
+    "id": "",
+    "title": "33.6 FizzBuzz"
+  },
+  {
+    "file": "33-examples.html",
+    "level": 2,
+    "id": "",
+    "title": "33.7 Array Manipulation"
+  },
+  {
+    "file": "33-examples.html",
+    "level": 2,
+    "id": "",
+    "title": "33.8 Input/Output Example"
+  },
+  {
+    "file": "33-examples.html",
+    "level": 2,
+    "id": "",
+    "title": "33.9 Simple Agent Example"
+  },
+  {
+    "file": "33-examples.html",
+    "level": 2,
+    "id": "",
+    "title": "33.10 Test Command Output Modes"
+  },
+  {
+    "file": "33-examples.html",
+    "level": 2,
+    "id": "",
+    "title": "33.11 Scaffolding Starters"
+  },
+  {
+    "file": "33-examples.html",
+    "level": 2,
+    "id": "",
+    "title": "33.12 JavaScript Backend (API mode)"
+  },
+  {
+    "file": "33-examples.html",
+    "level": 2,
+    "id": "",
+    "title": "33.13 JavaScript Backend (template mode)"
+  },
+  {
+    "file": "33-examples.html",
+    "level": 2,
+    "id": "",
+    "title": "33.14 JavaScript Backend (game canvas API)"
+  },
+  {
+    "file": "33-examples.html",
+    "level": 3,
+    "id": "",
+    "title": "33.14.1 Game Audio (v1 quick sample)"
+  },
+  {
+    "file": "33-examples.html",
+    "level": 3,
+    "id": "",
+    "title": "33.14.2 Pixel buffer blit"
+  },
+  {
+    "file": "33-examples.html",
+    "level": 2,
+    "id": "",
+    "title": "33.15 JavaScript Backend (three.js scene API)"
+  },
+  {
+    "file": "33-examples.html",
+    "level": 3,
+    "id": "",
+    "title": "33.15.1 Shader materials"
+  },
+  {
+    "file": "33-examples.html",
+    "level": 2,
+    "id": "",
+    "title": "33.16 Property Testing Quick Example"
+  },
+  {
+    "file": "33-examples.html",
+    "level": 2,
+    "id": "",
+    "title": "33.17 AI Pipeline (RAG)"
+  },
+  {
+    "file": "33-examples.html",
+    "level": 2,
+    "id": "",
+    "title": "33.18 Server-driven UI (ui.*)"
+  },
+  {
+    "file": "34-property-testing.html",
+    "level": 2,
+    "id": "",
+    "title": "34.1 A property that passes"
+  },
+  {
+    "file": "34-property-testing.html",
+    "level": 2,
+    "id": "",
+    "title": "34.2 How arguments are generated"
+  },
+  {
+    "file": "34-property-testing.html",
+    "level": 2,
+    "id": "",
+    "title": "34.3 A property that fails, shrinking, and regressions"
+  },
+  {
+    "file": "34-property-testing.html",
+    "level": 2,
+    "id": "",
+    "title": "34.4 Capability model"
+  },
+  {
+    "file": "34-property-testing.html",
+    "level": 2,
+    "id": "",
+    "title": "34.5 JavaScript limitations and skip semantics"
+  },
+  {
+    "file": "35-grammar.html",
+    "level": 2,
+    "id": "",
+    "title": "35.1 Program"
+  },
+  {
+    "file": "35-grammar.html",
+    "level": 2,
+    "id": "",
+    "title": "35.2 Top-level declarations"
+  },
+  {
+    "file": "35-grammar.html",
+    "level": 2,
+    "id": "",
+    "title": "35.3 Statements"
+  },
+  {
+    "file": "35-grammar.html",
+    "level": 2,
+    "id": "",
+    "title": "35.4 Expressions (precedence)"
+  },
+  {
+    "file": "35-grammar.html",
+    "level": 2,
+    "id": "",
+    "title": "35.5 Patterns"
+  },
+  {
+    "file": "35-grammar.html",
+    "level": 2,
+    "id": "",
+    "title": "35.6 Lexical and tokens"
+  },
+  {
+    "file": "36-appendix.html",
+    "level": 2,
+    "id": "",
+    "title": "36.1 Appendix A: Reserved Words"
+  },
+  {
+    "file": "36-appendix.html",
+    "level": 2,
+    "id": "",
+    "title": "36.2 Appendix B: Operator Precedence"
+  },
+  {
+    "file": "36-appendix.html",
+    "level": 2,
+    "id": "",
+    "title": "36.3 Appendix C: Object-Oriented Concepts Summary"
+  },
+  {
+    "file": "36-appendix.html",
+    "level": 2,
+    "id": "",
+    "title": "36.4 Appendix D: Command-line reference"
+  },
+  {
+    "file": "36-appendix.html",
+    "level": 2,
+    "id": "",
+    "title": "36.5 Appendix E: Deploy and observability contract baseline"
+  },
+  {
+    "file": "36-appendix.html",
+    "level": 2,
+    "id": "",
+    "title": "36.6 Appendix F: Profiling MALDA programs"
+  },
+  {
+    "file": "36-appendix.html",
+    "level": 2,
+    "id": "optional-packs",
+    "title": "36.7 Appendix G: Optional packs"
+  },
+  {
+    "file": "37-appendix-gpu-billiards.html",
+    "level": 2,
+    "id": "",
+    "title": "37.1 Playable table"
+  },
+  {
+    "file": "37-appendix-gpu-billiards.html",
+    "level": 2,
+    "id": "",
+    "title": "37.2 Controls"
+  },
+  {
+    "file": "37-appendix-gpu-billiards.html",
+    "level": 2,
+    "id": "",
+    "title": "37.3 Rebuild the committed script"
+  }
+]

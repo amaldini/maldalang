@@ -31,6 +31,7 @@ Canonical reading order for tools and agents working on this repository.
 ## Language reference (deeper)
 
 - ReferenceManual/index.html — HTML reference home
+- ReferenceManual/glossary.html — concept glossary (`cap`, prompts, workflows, …)
 - docs/spec/malda-language-1.0.md — language spec notes
 - docs/spec/README.md — spec folder index
 - malda-cheat-sheet.html — quick syntax cheat sheet (HTML; prefer docs/llm for agents)
