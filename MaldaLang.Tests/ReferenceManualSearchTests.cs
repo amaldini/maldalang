@@ -124,6 +124,15 @@ public class ReferenceManualSearchTests
         Assert.Contains("headings.json", source, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void SidebarStyles_DoNotApplyToInPageNav()
+    {
+        var css = File.ReadAllText(Path.Combine(ManualDir, "styles.css"));
+        Assert.Contains("body > nav {", css, StringComparison.Ordinal);
+        Assert.Contains(".glossary-letters {", css, StringComparison.Ordinal);
+        Assert.DoesNotContain("\nnav {\n", css, StringComparison.Ordinal);
+    }
+
     private static void AssertEqualGlossary(IReadOnlyList<GlossaryTerm> expected, IReadOnlyList<GlossaryTerm> actual)
     {
         Assert.Equal(expected.Select(t => t.Id), actual.Select(t => t.Id));
