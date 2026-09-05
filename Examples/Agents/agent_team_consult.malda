@@ -1,0 +1,28 @@
+// Offline golden: consult is a typed hop (rel must match).
+// One-shot ask; does not transfer the plan. think stays off.
+// Run: malda Examples/Agents/agent_team_consult.malda
+
+schema Ask { question: string; }
+
+var team = agents.team(
+    [
+        { name: "Writer", role: "programmer", instructions: "Write small diffs." },
+        { name: "Researcher", role: "researcher", instructions: "Look things up." }
+    ],
+    graph directed {
+        nodes: ["Writer", "Researcher"],
+        edges: [
+            { from: "Writer", to: "Researcher", rel: "consult", contract: "Ask" }
+        ]
+    }
+);
+
+var ok = team.consult("Writer", "Researcher", { question: "which API?" });
+io.print(ok.ok);
+io.print(ok.data.question);
+
+var bad = team.consult("Researcher", "Writer", { question: "nope" });
+io.print(bad.ok);
+
+var wrong = team.handoff("Writer", "Researcher", { question: "which API?" });
+io.print(wrong.ok);

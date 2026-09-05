@@ -1,0 +1,14 @@
+// Typed consult hop; omit think to stay offline. handoff() will not use a consult edge.
+schema Ask { question: string; }
+var team = agents.team(
+    [
+        { name: "Writer", role: "programmer", instructions: "Write." },
+        { name: "Researcher", role: "researcher", instructions: "Look things up." }
+    ],
+    graph directed {
+        nodes: ["Writer", "Researcher"],
+        edges: [{ from: "Writer", to: "Researcher", rel: "consult", contract: "Ask" }]
+    }
+);
+var ok = team.consult("Writer", "Researcher", { question: "which API?" });
+io.print(ok.ok);

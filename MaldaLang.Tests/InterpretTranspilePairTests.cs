@@ -365,6 +365,32 @@ public class InterpretTranspilePairTests
     }
 
     [Fact]
+    public void AgentsTeamConsult_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            schema Ask { question: string; }
+            var team = agents.team(
+                [
+                    { name: "Writer", role: "programmer", instructions: "Write." },
+                    { name: "Researcher", role: "researcher", instructions: "Look things up." }
+                ],
+                graph directed {
+                    nodes: ["Writer", "Researcher"],
+                    edges: [
+                        { from: "Writer", to: "Researcher", rel: "consult", contract: "Ask" }
+                    ]
+                }
+            );
+            var ok = team.consult("Writer", "Researcher", { question: "which API?" });
+            io.print(ok.ok);
+            var bad = team.handoff("Writer", "Researcher", { question: "which API?" });
+            io.print(bad.ok);
+            """,
+            "agents-team-consult");
+    }
+
+    [Fact]
     public void GroundedWrap_SameStdout()
     {
         InterpretTranspilePair.AssertSameFromSource(
