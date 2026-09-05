@@ -40,6 +40,7 @@ After generating a snippet, diagnose with `malda check path.malda --json` before
 | `32_mcptool_validate.malda` | `MCPServer.callTool` host-validates args against the attached schema |
 | `33_check_malda.malda` | `createCheckMaldaTool` + `execute` on a snippet (same report as `malda check --json`) |
 | `34_agents_team.malda` | `agents.team` + graph `rel`/`contract` + `handoff` (offline, no LLM) |
+| `35_agents_kind.malda` | `agents.define` `kind: "CodingAgent"` (offline, no LLM) |
 
 Also useful from the main tree:
 

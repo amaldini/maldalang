@@ -212,6 +212,30 @@ public class InterpretTranspilePairTests
     }
 
     [Fact]
+    public void AgentsDefineKind_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            var coder = agents.define({
+                name: "Coder",
+                kind: "CodingAgent",
+                role: "programmer",
+                instructions: "Write small diffs.",
+                workingDirectory: "."
+            });
+            io.print(coder.kind);
+            var threw = false;
+            try {
+                agents.define({ name: "X", role: "r", instructions: "i", kind: "Wizard" });
+            } catch (e) {
+                threw = true;
+            }
+            io.print(threw);
+            """,
+            "agents-define-kind");
+    }
+
+    [Fact]
     public void GroundedWrap_SameStdout()
     {
         InterpretTranspilePair.AssertSameFromSource(

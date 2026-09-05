@@ -10,6 +10,8 @@ using MaldaLang.Interpreter;
 /// </summary>
 public class MALDACodingAgentInstance : AgentInstance
 {
+    public override string Kind => "MALDACodingAgent";
+
     /// <summary>
     /// Creates a new MALDACodingAgent instance with all MALDA development tools pre-configured.
     /// </summary>

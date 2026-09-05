@@ -17,6 +17,8 @@ using ValueType = MaldaLang.Interpreter.ValueType;
 /// </summary>
 public class DevAgentInstance : AgentInstance
 {
+    public override string Kind => "DevAgent";
+
     private string _workingDirectory = ".";
     private bool _codeMemoryToolsAdded;
     /// <summary>

@@ -10,6 +10,8 @@ using MaldaLang.Interpreter;
 /// </summary>
 public class GitAgentInstance : AgentInstance
 {
+    public override string Kind => "GitAgent";
+
     /// <summary>
     /// Creates a new GitAgent instance with all git operation tools pre-configured.
     /// </summary>

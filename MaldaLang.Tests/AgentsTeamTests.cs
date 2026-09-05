@@ -48,6 +48,163 @@ public class AgentsTeamTests : TestBase
     }
 
     [Fact]
+    public void Define_KindCodingAgent_UsesSpecializedClass_WithoutClient()
+    {
+        var source = """
+            var coder = agents.define({
+                name: "Coder",
+                kind: "CodingAgent",
+                role: "programmer",
+                instructions: "Write small diffs.",
+                workingDirectory: "."
+            });
+            io.print(coder.kind);
+            io.print(coder.name);
+            """;
+        var lines = RunProgram(source).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal("CodingAgent", lines[0]);
+        Assert.Equal("Coder", lines[1]);
+    }
+
+    [Fact]
+    public void Define_KindDevAgent_AndHumanAgent()
+    {
+        var source = """
+            var dev = agents.define({
+                name: "Dev",
+                kind: "DevAgent",
+                role: "developer",
+                instructions: "Ship one item.",
+                workingDirectory: ".",
+                includeSymbols: false,
+                readOnly: true
+            });
+            var human = agents.define({
+                name: "Human",
+                kind: "HumanAgent",
+                role: "approver",
+                instructions: "Approve or reject."
+            });
+            io.print(dev.kind);
+            io.print(human.kind);
+            """;
+        var lines = RunProgram(source).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal("DevAgent", lines[0]);
+        Assert.Equal("HumanAgent", lines[1]);
+    }
+
+    [Fact]
+    public void Define_AllSpecializedKinds_SetKindProperty()
+    {
+        foreach (var kind in new[] { "Agent", "CodingAgent", "GitAgent", "HumanAgent", "DevAgent", "MALDACodingAgent" })
+        {
+            var spec = new JsonObject();
+            spec.Set("name", RuntimeValue.String(kind));
+            spec.Set("role", RuntimeValue.String("role"));
+            spec.Set("instructions", RuntimeValue.String("instructions"));
+            spec.Set("kind", RuntimeValue.String(kind));
+            if (kind != "Agent")
+                spec.Set("workingDirectory", RuntimeValue.String("."));
+
+            var value = AgentsStdLib.Define(new List<RuntimeValue> { RuntimeValue.Object(spec) }, null);
+            var agent = Assert.IsAssignableFrom<AgentInstance>(value.AsObject());
+            Assert.Equal(kind, agent.Kind);
+            Assert.Equal(kind, agent.Get("kind", null).AsString());
+            Assert.Equal(ExpectedType(kind), agent.GetType());
+            if (kind == "CodingAgent")
+                Assert.Contains("read_file", AgentToolNames(agent));
+            if (kind == "HumanAgent")
+                Assert.Contains("ask_user", AgentToolNames(agent));
+            if (kind == "GitAgent")
+                Assert.Contains("git_status", AgentToolNames(agent));
+            if (kind == "MALDACodingAgent")
+                Assert.Contains("read_file", AgentToolNames(agent));
+            if (kind == "DevAgent")
+                Assert.Contains("check_malda", AgentToolNames(agent));
+        }
+    }
+
+    [Fact]
+    public void Define_RejectsUnknownKind()
+    {
+        var source = """
+            var threw = false;
+            try {
+                agents.define({ name: "X", role: "r", instructions: "i", kind: "Wizard" });
+            } catch (e) {
+                threw = true;
+            }
+            io.print(threw);
+            """;
+        Assert.Equal("true", RunProgram(source).Trim());
+    }
+
+    [Fact]
+    public void Define_RejectsDevFlagsOnCodingAgent()
+    {
+        var source = """
+            var threw = false;
+            try {
+                agents.define({
+                    name: "Coder",
+                    kind: "CodingAgent",
+                    role: "programmer",
+                    instructions: "Write.",
+                    readOnly: true
+                });
+            } catch (e) {
+                threw = true;
+            }
+            io.print(threw);
+            """;
+        Assert.Equal("true", RunProgram(source).Trim());
+    }
+
+    [Fact]
+    public void Define_RejectsWorkingDirectoryOnBaseAgent()
+    {
+        var source = """
+            var threw = false;
+            try {
+                agents.define({
+                    name: "Writer",
+                    role: "programmer",
+                    instructions: "Write.",
+                    workingDirectory: "."
+                });
+            } catch (e) {
+                threw = true;
+            }
+            io.print(threw);
+            """;
+        Assert.Equal("true", RunProgram(source).Trim());
+    }
+
+    [Fact]
+    public void Team_MixedKinds_DelegateInstallsSubAgent()
+    {
+        var source = """
+            var team = agents.team(
+                [
+                    { name: "Lead", kind: "DevAgent", role: "lead", instructions: "Coordinate." },
+                    { name: "Human", kind: "HumanAgent", role: "approver", instructions: "Approve." }
+                ],
+                graph directed {
+                    nodes: ["Lead", "Human"],
+                    edges: [{ from: "Lead", to: "Human", rel: "delegate" }]
+                }
+            );
+            io.print(team.get("Lead").kind);
+            io.print(team.get("Human").kind);
+            io.print(team.relations()[0].rel);
+            """;
+        var lines = RunProgram(source).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal("DevAgent", lines[0]);
+        Assert.Equal("HumanAgent", lines[1]);
+        Assert.Equal("delegate", lines[2]);
+    }
+
+    [Fact]
     public void Define_RejectsMissingName()
     {
         var source = """
@@ -301,6 +458,25 @@ public class AgentsTeamTests : TestBase
             step.Set("dependsOn", RuntimeValue.Array(deps));
         }
         return RuntimeValue.Object(step);
+    }
+
+    private static Type ExpectedType(string kind) => kind switch
+    {
+        "Agent" => typeof(AgentInstance),
+        "CodingAgent" => typeof(CodingAgentInstance),
+        "GitAgent" => typeof(GitAgentInstance),
+        "HumanAgent" => typeof(HumanAgentInstance),
+        "DevAgent" => typeof(DevAgentInstance),
+        "MALDACodingAgent" => typeof(MALDACodingAgentInstance),
+        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
+    };
+
+    private static List<string> AgentToolNames(AgentInstance agent)
+    {
+        var toolsField = typeof(AgentInstance).GetField("_tools", BindingFlags.NonPublic | BindingFlags.Instance);
+        Assert.NotNull(toolsField);
+        var tools = Assert.IsAssignableFrom<List<ToolInstance>>(toolsField!.GetValue(agent));
+        return tools.Select(t => t.Name).ToList();
     }
 
     private static void NullConversation(AgentInstance agent)

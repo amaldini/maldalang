@@ -1,0 +1,16 @@
+// Specialized kind on agents.define. Offline — no LLM.
+var coder = agents.define({
+    name: "Coder",
+    kind: "CodingAgent",
+    role: "programmer",
+    instructions: "Write small diffs.",
+    workingDirectory: "."
+});
+io.print(coder.kind);
+var threw = false;
+try {
+    agents.define({ name: "X", role: "r", instructions: "i", kind: "Wizard" });
+} catch (e) {
+    threw = true;
+}
+io.print(threw);

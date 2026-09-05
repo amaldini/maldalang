@@ -1,0 +1,28 @@
+// Offline golden: agents.define kind selects specialized classes.
+// Construction does not download a local model.
+// Run: malda Examples/Agents/agent_team_kinds.malda
+
+var coder = agents.define({
+    name: "Coder",
+    kind: "CodingAgent",
+    role: "programmer",
+    instructions: "Write small, tested diffs.",
+    workingDirectory: "."
+});
+io.print(coder.kind);
+
+var human = agents.define({
+    name: "Human",
+    kind: "HumanAgent",
+    role: "approver",
+    instructions: "Approve or reject."
+});
+io.print(human.kind);
+
+var threw = false;
+try {
+    agents.define({ name: "X", role: "r", instructions: "i", kind: "Wizard" });
+} catch (e) {
+    threw = true;
+}
+io.print(threw);

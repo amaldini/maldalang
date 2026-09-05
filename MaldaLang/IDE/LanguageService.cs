@@ -1809,7 +1809,7 @@ public class LanguageService : ILanguageService
             "enableMemory" => "function Agent.enableMemory(dimensionOrPath?, precision?)\nAttaches GraphMemory (new store, or shared store at a path).",
             "remember" => "function Agent.remember(fact, context?)\nWrites a fact into the agent's GraphMemory.",
             "executePlan" => "function executePlan(plan: object, agent: Agent | AgentTeam) -> object\nValidates the plan, topo-sorts steps by dependsOn, then runs think(step.description). A team requires each step.role (or step.agent) to name a member. Returns { planId, completed, failed, results }.",
-            "define" => "function agents.define(spec, client?) -> Agent\nBuilds an Agent from { name, role, instructions, kind?, tools?, memoryScope? }. Does not auto-download a local model. No flat define() alias.",
+            "define" => "function agents.define(spec, client?) -> Agent\nBuilds an agent from { name, role, instructions, kind?, tools?, memoryScope?, workingDirectory? }. kind is Agent (default), CodingAgent, GitAgent, HumanAgent, DevAgent, or MALDACodingAgent. Does not auto-download a local model. No flat define() alias.",
             "team" => "function agents.team(specs, topology, client?) -> AgentTeam\nBinds agent specs to a directed graph. Edge keys rel/contract become relations. Unknown nodes/rels fail before any LLM call.",
             "handoff" => "function AgentTeam.handoff(from, to, payload) -> object\nAllows a hop only along a declared edge. If the edge has contract, runs validate(contract, payload). Returns { ok, data } or { ok: false, error }.",
             "members" => "function AgentTeam.members() -> array\nSorted agent names in the team.",

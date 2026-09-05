@@ -24,10 +24,24 @@ public static class AgentsStdLib
         RelHandoff, RelDelegate, RelReview, RelConsult, RelReject
     };
 
+    public const string KindCodingAgent = "CodingAgent";
+    public const string KindGitAgent = "GitAgent";
+    public const string KindHumanAgent = "HumanAgent";
+    public const string KindDevAgent = "DevAgent";
+    public const string KindMaldaCodingAgent = "MALDACodingAgent";
+
     private static readonly HashSet<string> AllowedKinds = new(StringComparer.Ordinal)
     {
-        DefaultKind
+        DefaultKind,
+        KindCodingAgent,
+        KindGitAgent,
+        KindHumanAgent,
+        KindDevAgent,
+        KindMaldaCodingAgent
     };
+
+    private static readonly string AllowedKindsList =
+        "Agent, CodingAgent, GitAgent, HumanAgent, DevAgent, or MALDACodingAgent";
 
     public static RuntimeValue Define(List<RuntimeValue> args, Interpreter? interpreter)
     {
@@ -135,14 +149,44 @@ public static class AgentsStdLib
         if (!AllowedKinds.Contains(kind))
         {
             throw new RuntimeException(
-                $"define() kind '{kind}' is not supported; use '{DefaultKind}' " +
-                "(specialized classes stay new CodingAgent / new DevAgent / …)");
+                $"define() kind '{kind}' is not supported; use {AllowedKindsList}");
+        }
+
+        var workingDirectory = OptionalSpecString(spec, "workingDirectory");
+        var includeSymbols = OptionalSpecBool(spec, "includeSymbols");
+        var readOnly = OptionalSpecBool(spec, "readOnly");
+        var prdAuthorOnly = OptionalSpecBool(spec, "prdAuthorOnly");
+
+        if (kind == DefaultKind && workingDirectory != null)
+        {
+            throw new RuntimeException(
+                "define() spec.workingDirectory applies to CodingAgent, GitAgent, HumanAgent, DevAgent, and MALDACodingAgent");
+        }
+
+        if (kind != KindDevAgent)
+        {
+            if (includeSymbols.HasValue || readOnly.HasValue || prdAuthorOnly.HasValue)
+            {
+                throw new RuntimeException(
+                    "define() spec.includeSymbols / readOnly / prdAuthorOnly apply only to kind DevAgent");
+            }
         }
 
         ResolveClient(clientVal, out var llm, out var llama, out var bridge);
 
-        var agent = new AgentInstance();
-        agent.Initialize(name, role, instructions, llm, llama, bridge, interpreter?.GetInputProvider());
+        var agent = CreateFromKind(
+            kind,
+            name,
+            role,
+            instructions,
+            llm,
+            llama,
+            bridge,
+            workingDirectory,
+            includeSymbols ?? false,
+            readOnly ?? false,
+            prdAuthorOnly ?? false,
+            interpreter?.GetInputProvider());
         if (interpreter != null)
             agent.SetInterpreter(interpreter);
 
@@ -276,6 +320,69 @@ public static class AgentsStdLib
             throw new RuntimeException($"define() spec.{key} must be a string");
         var text = value.AsString().Trim();
         return text.Length == 0 ? null : text;
+    }
+
+    private static bool? OptionalSpecBool(ObjectInstance spec, string key)
+    {
+        var value = spec.Get(key, null);
+        if (value.Type == ValueType.Null)
+            return null;
+        if (value.Type != ValueType.Boolean)
+            throw new RuntimeException($"define() spec.{key} must be a boolean");
+        return value.AsBoolean();
+    }
+
+    /// <summary>
+    /// Builds a specialized instance without calling constructors that auto-download
+    /// <see cref="DefaultLocalLlm"/>. The three-client overloads register kind tools
+    /// even when every client is null.
+    /// </summary>
+    private static AgentInstance CreateFromKind(
+        string kind,
+        string name,
+        string role,
+        string instructions,
+        LLMClientInstance? llm,
+        LlamaCppClientInstance? llama,
+        LLMClientBridge.LLMClientBridgeInstance? bridge,
+        string? workingDirectory,
+        bool includeSymbols,
+        bool readOnly,
+        bool prdAuthorOnly,
+        IInputProvider? inputProvider)
+    {
+        var workdir = workingDirectory ?? ".";
+        return kind switch
+        {
+            DefaultKind => CreateBaseAgent(name, role, instructions, llm, llama, bridge, inputProvider),
+            KindCodingAgent => new CodingAgentInstance(
+                name, role, instructions, llm, llama, bridge, workdir, inputProvider),
+            KindGitAgent => new GitAgentInstance(
+                name, role, instructions, llm, llama, bridge, workdir, inputProvider),
+            KindHumanAgent => new HumanAgentInstance(
+                name, role, instructions, llm, llama, bridge, workdir, inputProvider),
+            KindDevAgent => new DevAgentInstance(
+                name, role, instructions, llm, llama, bridge, workdir, includeSymbols,
+                inputProvider, readOnly, prdAuthorOnly),
+            KindMaldaCodingAgent => new MALDACodingAgentInstance(
+                name, role, instructions, llm, llama, bridge, workdir, inputProvider),
+            _ => throw new RuntimeException(
+                $"define() kind '{kind}' is not supported; use {AllowedKindsList}")
+        };
+    }
+
+    private static AgentInstance CreateBaseAgent(
+        string name,
+        string role,
+        string instructions,
+        LLMClientInstance? llm,
+        LlamaCppClientInstance? llama,
+        LLMClientBridge.LLMClientBridgeInstance? bridge,
+        IInputProvider? inputProvider)
+    {
+        var agent = new AgentInstance();
+        agent.Initialize(name, role, instructions, llm, llama, bridge, inputProvider);
+        return agent;
     }
 
     private static void ResolveClient(

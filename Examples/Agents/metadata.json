@@ -72,9 +72,24 @@
       "prerequisites": ["Agents/multi_agent_code_review.malda"],
       "learningGoal": "Declare multiple agents and their relations as data, then validate a hop without an LLM.",
       "expectedOutput": "Prints member count, writer role, handoff rel, then true/false/false for contract checks.",
-      "next": "Agents/agent_file_reading.malda",
+      "next": "Agents/agent_team_kinds.malda",
       "documentationPath": "/?lesson=build-ai-apps#lesson-build-ai-apps",
       "documentationTitle": "Agent Teams"
+    },
+    {
+      "name": "Declarative agent kinds (offline)",
+      "description": "agents.define kind selects CodingAgent / HumanAgent / DevAgent tool bundles without downloading a model",
+      "file": "agent_team_kinds.malda",
+      "track": "ai-builder",
+      "difficulty": "intermediate",
+      "minutes": 6,
+      "concepts": ["agents.define", "kind", "CodingAgent", "HumanAgent"],
+      "prerequisites": ["Agents/agent_team_graph.malda"],
+      "learningGoal": "Pick a specialized agent class from a spec instead of listing tools by name.",
+      "expectedOutput": "Prints CodingAgent, HumanAgent, then true for unknown-kind reject.",
+      "next": "Agents/agent_file_reading.malda",
+      "documentationPath": "/?lesson=build-ai-apps#lesson-build-ai-apps",
+      "documentationTitle": "Agent Kinds"
     },
     {
       "name": "Agent with File Reading Tool",

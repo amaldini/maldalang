@@ -43,11 +43,15 @@ Compact rules for generating correct `.malda`. Prefer this over scraping HTML ma
   Multi-agent teams are data, not a keyword: `agents.define(spec, client?)` and
   `agents.team(specs, topology, client?)`. Topology is a `graph directed` whose extra
   edge keys (`rel`, `contract`) become relations. Allowed `rel`: `handoff`, `delegate`,
-  `review`, `consult`, `reject`. `team.handoff(from, to, payload)` allows only a
+  `review`, `consult`, `reject`. Spec `kind` selects the class: `Agent` (default),
+  `CodingAgent`, `GitAgent`, `HumanAgent`, `DevAgent`, `MALDACodingAgent`. Optional
+  `workingDirectory` on specialized kinds; `includeSymbols` / `readOnly` /
+  `prdAuthorOnly` on `DevAgent` only. `team.handoff(from, to, payload)` allows only a
   declared edge and `validate`s `contract` when set. `executePlan(plan, team)` requires
   each step to name `role` (or `agent`). No flat `agents()` / `define()` / `team()` alias.
   Construction does not auto-download a local model. JavaScript: n/a (host-only).
-  Example: `Examples/Agents/agent_team_graph.malda`. Few-shot: `docs/llm/few-shot/34_agents_team.malda`.
+  Examples: `Examples/Agents/agent_team_graph.malda`, `Examples/Agents/agent_team_kinds.malda`.
+  Few-shots: `docs/llm/few-shot/34_agents_team.malda`, `docs/llm/few-shot/35_agents_kind.malda`.
   File tools that should not invent paths take a capability token, not a string:
   `cap.fileRead("notes.md")` then `cap.read(token)`. `cap.read({ kind, path })` throws.
   `@effects("io")` stays a name allow-list. No flat `cap()` alias.
