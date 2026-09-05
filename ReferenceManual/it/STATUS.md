@@ -37,7 +37,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 23-web-ui-hub.html | a5b2900d64f6d82e432c94f1b8a9a1264cba0e5db38e8713744ccb2d78ee6ca5 |
 | 24-web-ui.html | e356e198bcf44c103bb7eb190f84768ddfd86f451f39d88265805c8e9028b1e0 |
 | 25-http-server-html-ui.html | e1db1f78e58b3228e27678e41bf541bc95041a5fbd1db627099118756371a898 |
-| 26-browser-javascript-backend.html | f0f1a8b829d62b45610a4af95d2924096bb3f38838a197a0a27e60b1bd7ec1b7 |
+| 26-browser-javascript-backend.html | 68398a86d5d3aaa239f155ed2ee1d7d47ff7e5052bd9239786657176d6b52627 |
 | 27-rest-api.html | 0e8db47a6d38774edd17aa129ccda36550b2c8826b999d6e59d27406c84dd516 |
 | 28-rest-web-client.html | ccbc7c7db06373c0b812fa186fcd05cfe4ec7bb1a5a894c73b7af782ab286099 |
 | 29-full-stack-development.html | b8bcc733218cc20fe14f60f78d0db93b8ce45524cee18fe980ab0c6ba754bb76 |

@@ -2,7 +2,7 @@
 // kernel in @shader() → GLSL. The GPU never adds the pixel offset to the
 // high-precision center, so the dive stays sharp past float32 ulp.
 // The 256-bit orbit would go much deeper; the wrap is for coloring with a
-// 1024-iterate budget (deeper frames go black when nothing escapes in time).
+// 1024-iterate budget. Wrap after 8 decades so the loop stays colored.
 //
 // Compile:
 //   malda compile Examples/Games/three_shader_mandelbrot.malda --mode js -o Examples/Games/three_shader_mandelbrot.js
@@ -94,7 +94,7 @@ if (root == null) {
     dom.append(root, heading);
 
     var hint = dom.create("p");
-    dom.setText(hint, "Host BigInt reference orbit + GPU perturbation via @shader(). Exponential zoom into Seahorse Valley; wraps after 10 decades. Hold Space to pause. [ ] change speed.");
+    dom.setText(hint, "Host BigInt reference orbit + GPU perturbation via @shader(). Exponential zoom into Seahorse Valley; wraps after 8 decades. Hold Space to pause. [ ] change speed.");
     dom.append(root, hint);
 
     var zoomLabel = dom.create("p");
@@ -125,7 +125,7 @@ if (root == null) {
             "uResolution": [width, height],
             "uScale": 2.55,
             "uOrbitLen": maxIter + 1,
-            "uMaxIter": 400,
+            "uMaxIter": maxIter,
             "uOrbit": orbit
         }
     });
@@ -135,7 +135,7 @@ if (root == null) {
 
     var decades = 0.0;
     var speedMul = 1.0;
-    var wrapDecades = 10.0;
+    var wrapDecades = 8.0;
     var zoomPerSecond = 0.55;
     var startScale = 2.55;
 
@@ -165,12 +165,8 @@ if (root == null) {
 
         var wrapped = decades - math.floor(decades / wrapDecades) * wrapDecades;
         var scale = startScale * math.pow(10.0, -wrapped);
-        var iters = 400.0 + wrapped * 62.0;
-        if (iters > 1024.0) {
-            iters = 1024.0;
-        }
         three.setUniform(material, "uScale", scale);
-        three.setUniform(material, "uMaxIter", iters);
+        three.setUniform(material, "uMaxIter", maxIter);
 
         var shown = int(wrapped * 10.0) / 10.0;
         dom.setText(zoomLabel, "depth 10^-" + string(shown) + "  speed x" + string(int(speedMul * 10.0) / 10.0));
