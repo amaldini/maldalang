@@ -621,11 +621,11 @@ var devAgent = new DevAgent(
 // Agent can handle complete development workflow
 var response = devAgent.think("Implement a new feature: add a user authentication system");
 print(response.content);</code></pre>
-        <h2>18.13 Pianificazione strutturata dei task</h2>
+        <h2 id="structured-task-planning">18.13 Pianificazione strutturata dei task</h2>
         <p>MALDA consente di scomporre i task complessi in step ordinati e di eseguirli tramite un agente. Un <strong>piano</strong> è un oggetto <code>{ steps: [{ id, description, dependsOn? }, ...], planId?, taskSummary? }</code>. Ogni step ha un <code>id</code> univoco (string), una <code>description</code> (string) e un <code>dependsOn</code> opzionale (array di id di step che devono completarsi prima).</p>
         <ul>
             <li><strong>decomposeTask(instruction, client?, team?)</strong> – Usa un LLM per trasformare un'istruzione di alto livello in un piano. Il secondo argomento opzionale è un client LLM o un <code>AgentTeam</code>; se il client è omesso, si usa l'LLM locale di default (Qwen/Qwen2.5-0.5B-Instruct, scaricato automaticamente come build GGUF da Hugging Face). Con un team, ogni step deve impostare <code>role</code> sul nome di un membro. Restituisce un oggetto piano oppure <code>{ error }</code> in caso di fallimento.</li>
-            <li><strong>executePlan(plan, agent)</strong> – Valida il piano, ordina topologicamente gli step in base a <code>dependsOn</code>, poi esegue <code>think(step.description)</code> per ogni step in ordine. Il secondo argomento può essere un <code>Agent</code> o un <code>AgentTeam</code> da <code>agents.team</code>. Un team richiede che ogni step nomini <code>role</code> (o <code>agent</code>). Restituisce <code>{ planId, completed, failed, results }</code>.</li>
+            <li><strong>executePlan(plan, agent)</strong> – Valida il piano, ordina topologicamente gli step in base a <code>dependsOn</code>, poi esegue <code>think(step.description)</code> per ogni step in ordine. Il secondo argomento può essere un <code>Agent</code> o un <code>AgentTeam</code> da <code>agents.team</code>. Un team richiede che ogni step nomini <code>role</code> (o <code>agent</code>). Controlli sugli hop, verdetti review/reject, <code>plan.think: false</code> e l'elenco <code>skipped</code> sono in <a href="#declarative-agent-teams">§ 18.17</a>. Restituisce <code>{ planId, completed, failed, skipped, results }</code>.</li>
             <li><strong>tool submit_plan</strong> – Gli agenti possono chiamare questo tool per inviare un piano (es. dopo un primo &quot;think&quot; che produce il piano). DevAgent include questo tool di default. Parametri: <code>plan</code> (oggetto con <code>steps</code>) oppure <code>steps</code> (array), <code>taskSummary</code> opzionale. Restituisce <code>{ accepted: true, planId, stepCount }</code> oppure <code>{ accepted: false, error }</code>. Il piano accettato è memorizzato in memoria di processo con ogni step <code>pending</code>.</li>
             <li><strong>tool update_plan</strong> – Aggiorna un piano memorizzato. Parametri: <code>planId</code> (obbligatorio), <code>steps</code> opzionale (rivalidati; gli id esistenti conservano lo stato), <code>taskSummary</code> opzionale. Restituisce <code>{ accepted: true, planId, stepCount, steps }</code> oppure <code>{ accepted: false, error }</code>. Non sicuro in parallelo. Factory: <code>createUpdatePlanTool()</code>.</li>
             <li><strong>tool mark_step</strong> – Imposta lo stato di uno step memorizzato. Parametri: <code>planId</code>, <code>id</code>, <code>status</code> (<code>pending</code> | <code>in_progress</code> | <code>done</code> | <code>blocked</code>), <code>note</code> opzionale. Restituisce <code>{ accepted: true, planId, id, status }</code> oppure <code>{ accepted: false, error }</code>. Non sicuro in parallelo. Factory: <code>createMarkStepTool()</code>.</li>
@@ -858,7 +858,7 @@ var response = agent.think("Write a hello world function");
             <li><strong>Supporto multi-processo:</strong> Traccia gli agenti che girano in eseguibili diversi tramite process ID</li>
             <li><strong>Zero overhead:</strong> Nessun impatto sulle prestazioni dell'esecuzione dell'agente</li>
         </ul>
-        <h2>18.16 Orchestrazione multi-agente</h2>
+        <h2 id="multi-agent-orchestration">18.16 Orchestrazione multi-agente</h2>
         <p>Più agenti possono lavorare insieme, ciascuno con ruoli e tool specializzati.</p>
         <h3>Workflow di agenti in parallelo</h3>
         <p>Gli agenti possono lavorare in modo indipendente su task diversi:</p>
@@ -941,10 +941,99 @@ var response = orchestrator.think(
 );
 print(response.content);</code></pre>
         <p>Quando l'orchestratore chiama un tool subagente, passa un parametro <code>prompt</code> e il metodo <code>think()</code> del subagente viene chiamato automaticamente. La risposta del subagente torna all'orchestratore.</p>
-        <h3>Team dichiarativi con <code>agents.team</code></h3>
-        <p>Preferisci un grafo diretto a una sequenza di costruttori quando più ruoli condividono un lavoro. <code>agents.define(spec, client?)</code> crea un agente da <code>{ name, role, instructions, kind?, tools?, memoryScope?, workingDirectory? }</code>. Valori <code>kind</code> ammessi: <code>Agent</code> (predefinito), <code>CodingAgent</code>, <code>GitAgent</code>, <code>HumanAgent</code>, <code>DevAgent</code>, <code>MALDACodingAgent</code> — gli stessi bundle di tool dei costruttori corrispondenti. <code>workingDirectory</code> vale per i kind specializzati; <code>includeSymbols</code> / <code>readOnly</code> / <code>prdAuthorOnly</code> solo per <code>DevAgent</code>. Il tag della classe è <code>agent.kind</code>. <code>agents.team(specs, topology, client?)</code> collega un array di quelle spec a un <code>graph directed</code>. Le chiavi extra sugli archi oltre a <code>from</code> / <code>to</code> / <code>weight</code> / <code>properties</code> diventano proprietà dell'arco, quindi <code>rel</code> e <code>contract</code> sono di prima classe. Valori <code>rel</code> ammessi: <code>handoff</code>, <code>delegate</code>, <code>review</code>, <code>consult</code>, <code>reject</code>. Nodi, rel o kind sconosciuti falliscono prima di qualsiasi chiamata LLM. La costruzione non scarica automaticamente un modello locale. Non esiste un alias piatto <code>agents()</code> / <code>define()</code> / <code>team()</code>. JavaScript: n/a (solo host).</p>
-        <p>Gli archi <code>delegate</code> e <code>consult</code> installano <code>addSubAgent</code> sulla sorgente (l'elenco tool del supervisore = i vicini in uscita). <code>team.handoff</code> / <code>team.review</code> / <code>team.reject</code> / <code>team.consult</code> <code>(from, to, payload, think?)</code> consentono solo un arco dichiarato il cui <code>rel</code> coincide con il metodo; se <code>contract</code> è impostato esegue <code>validate(contract, payload)</code>. Ometti <code>think</code> o passa <code>false</code> / <code>{ think: false }</code> per restare solo validazione (sicuro offline). Passa <code>true</code> o <code>{ think: true }</code> / <code>{ run: true }</code> per chiamare <code>to.think(payload)</code> dopo che l'hop è consentito (i payload oggetto diventano JSON). Handoff e consult restituiscono <code>{ ok, data }</code> oppure <code>{ ok, data, response }</code> (consult è una domanda una tantum e non trasferisce il piano). Review restituisce <code>{ ok, approved, data }</code> (<code>approved</code> è <code>true</code> di default; <code>{ approved: false }</code> resta offline). Reject restituisce <code>{ ok, rejected, data }</code> (<code>rejected</code> è <code>true</code> di default). Gli hop falliti restituiscono <code>{ ok: false, error }</code>. <code>executePlan(plan, team)</code> o <code>team.run(plan)</code> instrada ogni step a <code>step.role</code>. Un hop <code>dependsOn</code> tra ruoli diversi deve coincidere con una relazione dichiarata (controllato prima di <code>think()</code>). La continuazione sullo stesso ruolo non richiede un auto-arco. Un hop <code>reject</code> gira solo quando il predecessore non è approved; gli altri hop girano solo quando è approved. Il verdetto viene da <code>step.approved</code> / <code>step.rejected</code>, altrimenti dal JSON <code>{ approved }</code> / <code>{ rejected }</code> nell'output di think, altrimenti default <code>true</code>. Gli step saltati sono in <code>skipped</code> con <code>reason</code> e non chiamano <code>think()</code>. Imposta <code>plan.think: false</code> per saltare del tutto <code>think()</code> (offline; l'output è la description dello step). Il prompt <code>think()</code> di ogni step è la description più un blocco <code>Prior step &lt;id&gt;:</code> per ogni <code>dependsOn</code> già eseguito; il risultato dello step include <code>prompt</code>, <code>approved</code> e, per un hop di ruolo, <code>rel</code>. <code>decomposeTask(instruction, client?, team?)</code> o <code>team.decompose(instruction, client?)</code> mette roster e relazioni nel prompt del decompositore e rifiuta i piani senza <code>role</code> o con hop fuori grafo.</p>
-        <pre><code>schema DraftCode { path: string; summary: string; }
+        <p>Quando più ruoli condividono un lavoro e vuoi gli hop legali come dati, usa un team dichiarativo — <a href="#declarative-agent-teams">§ 18.17</a>.</p>
+        <div class="see-also">
+            <h3>Vedi anche</h3>
+            <ul>
+                <li><a href="#declarative-agent-teams">18.17 Team dichiarativi di agenti</a> — <code>agents.define</code> / <code>agents.team</code>, hop tipizzati e <code>executePlan</code> consapevole del ruolo</li>
+                <li><a href="09-functions.html">9. Funzioni</a> - sintassi del decoratore @Tool</li>
+                <li><a href="10-prompts.html">10. Prompt</a> - Template di prompt e <code>agent.think</code></li>
+                <li><a href="20-mcp-server.html">20. Server MCP</a> - Tool STDIO lanciati dall'host</li>
+                <li><a href="12-input-output.html#capability-tokens">12.6 Token di capability</a> — perché esiste <code>cap.*</code> e il pattern host-mint</li>
+            </ul>
+        </div>
+        <h2 id="declarative-agent-teams">18.17 Team dichiarativi di agenti</h2>
+        <p>I team multi-agente sono dati, non una keyword. <code>agents.define(spec, client?)</code> crea un agente da un oggetto spec. <code>agents.team(specs, topology, client?)</code> collega un array di quelle spec a un <code>graph directed</code>. Il grafo è una allow-list di hop: un arco <code>dependsOn</code> tra ruoli diversi deve coincidere con una relazione dichiarata. Non esiste un alias piatto <code>agents()</code> / <code>define()</code> / <code>team()</code>. JavaScript: n/a (solo host).</p>
+        <div class="info-box">
+            <strong>Quando usare un team invece di <code>addSubAgent</code>:</strong>
+            <ul>
+                <li><code>addSubAgent</code> (§ 18.16) è un loop di tool del supervisore — l'orchestratore decide quando chiamare uno specialista.</li>
+                <li><code>agents.team</code> è un grafo diretto — il codice host (o <code>executePlan</code>) può saltare solo lungo archi <code>rel</code> dichiarati, opzionalmente validati da un <code>contract</code> schema.</li>
+                <li>La costruzione non scarica automaticamente un modello locale. Passa <code>client</code> quando in seguito chiami <code>think()</code>, oppure usa <code>new CodingAgent(...)</code> se vuoi il GGUF di default.</li>
+            </ul>
+        </div>
+        <h3 id="agents-define">18.17.1 <code>agents.define</code></h3>
+        <p><code>agents.define(spec, client?)</code> restituisce un agente. Campi spec obbligatori: <code>name</code>, <code>role</code>, <code>instructions</code>. Campi opzionali:</p>
+        <table>
+            <thead><tr><th>Campo</th><th>Vale per</th><th>Significato</th></tr></thead>
+            <tbody>
+                <tr><td><code>kind</code></td><td>tutti</td><td>Classe da costruire. Default <code>Agent</code>.</td></tr>
+                <tr><td><code>tools</code></td><td>tutti</td><td>Array di nomi di tool aggiunti dopo la costruzione.</td></tr>
+                <tr><td><code>memoryScope</code></td><td>tutti</td><td>Passato a <code>setMemoryScope</code>.</td></tr>
+                <tr><td><code>workingDirectory</code></td><td>solo kind specializzati</td><td>Come il costruttore corrispondente. Illegale su un <code>Agent</code> semplice.</td></tr>
+                <tr><td><code>includeSymbols</code> / <code>readOnly</code> / <code>prdAuthorOnly</code></td><td>solo <code>DevAgent</code></td><td>Come <code>new DevAgent(...)</code>.</td></tr>
+            </tbody>
+        </table>
+        <p>I valori <code>kind</code> ammessi usano gli stessi bundle di tool dei costruttori corrispondenti. Il tag della classe è <code>agent.kind</code>.</p>
+        <table>
+            <thead><tr><th><code>kind</code></th><th>Costruttore equivalente</th></tr></thead>
+            <tbody>
+                <tr><td><code>Agent</code> (predefinito)</td><td><code>new Agent</code></td></tr>
+                <tr><td><code>CodingAgent</code></td><td><code>new CodingAgent</code></td></tr>
+                <tr><td><code>GitAgent</code></td><td><code>new GitAgent</code></td></tr>
+                <tr><td><code>HumanAgent</code></td><td><code>new HumanAgent</code></td></tr>
+                <tr><td><code>DevAgent</code></td><td><code>new DevAgent</code></td></tr>
+                <tr><td><code>MALDACodingAgent</code></td><td><code>new MALDACodingAgent</code></td></tr>
+            </tbody>
+        </table>
+        <p>I kind sconosciuti falliscono prima di qualsiasi chiamata LLM. Puoi dichiarare <code>schema AgentSpec { name: string; role: string; instructions: string; }</code> e <code>validate("AgentSpec", spec)</code> tu stesso; se quello schema è registrato, <code>define</code> / <code>team</code> eseguono lo stesso controllo.</p>
+        <pre><code data-run="true" data-expect="CodingAgent\nHumanAgent\ntrue">var coder = agents.define({
+    name: "Coder",
+    kind: "CodingAgent",
+    role: "programmer",
+    instructions: "Write small diffs.",
+    workingDirectory: "."
+});
+print(coder.kind);
+
+var human = agents.define({
+    name: "Human",
+    kind: "HumanAgent",
+    role: "approver",
+    instructions: "Approve or reject."
+});
+print(human.kind);
+
+var threw = false;
+try {
+    agents.define({ name: "X", role: "r", instructions: "i", kind: "Wizard" });
+} catch (e) {
+    threw = true;
+}
+print(threw);</code></pre>
+        <h3 id="agents-team">18.17.2 <code>agents.team</code></h3>
+        <p><code>agents.team(specs, topology, client?)</code> prende un array non vuoto di spec e un grafo <strong>diretto</strong>. Ogni nodo del grafo deve coincidere con lo <code>name</code> di una spec. I nomi duplicati falliscono. Le chiavi extra su un arco letterale oltre a <code>from</code> / <code>to</code> / <code>weight</code> / <code>properties</code> diventano proprietà dell'arco, quindi <code>rel</code> e <code>contract</code> sono di prima classe (vedi <a href="14-graphs.html">14. Grafi</a>). Se <code>rel</code> è omesso vale <code>handoff</code>. Nodi o rel sconosciuti falliscono prima di qualsiasi chiamata LLM. Il <code>client</code> opzionale viene inoltrato a ogni <code>define</code>.</p>
+        <h3 id="team-relations">18.17.3 Relazioni</h3>
+        <p>Valori <code>rel</code> ammessi:</p>
+        <table>
+            <thead><tr><th><code>rel</code></th><th>Hop host</th><th>Note</th></tr></thead>
+            <tbody>
+                <tr><td><code>handoff</code></td><td><code>team.handoff</code></td><td>Trasferisce il lavoro lungo l'arco. Default se <code>rel</code> è omesso.</td></tr>
+                <tr><td><code>review</code></td><td><code>team.review</code></td><td>Restituisce <code>approved</code> (default <code>true</code>).</td></tr>
+                <tr><td><code>reject</code></td><td><code>team.reject</code></td><td>Restituisce <code>rejected</code> (default <code>true</code>). Usato da <code>executePlan</code> quando il predecessore non è approved.</td></tr>
+                <tr><td><code>consult</code></td><td><code>team.consult</code></td><td>Domanda una tantum. Non trasferisce il piano e non imposta un verdetto.</td></tr>
+                <tr><td><code>delegate</code></td><td>—</td><td>Nessun metodo di hop tipizzato. Installa <code>addSubAgent</code> sulla sorgente.</td></tr>
+            </tbody>
+        </table>
+        <p>Gli archi <code>delegate</code> e <code>consult</code> installano anche <code>addSubAgent</code> sulla sorgente (l'elenco tool del supervisore = i vicini in uscita). Un arco <code>handoff</code> non basta per <code>review</code> / <code>reject</code> / <code>consult</code> — gli hop sono tipizzati.</p>
+        <h3 id="team-inspection">18.17.4 Ispezionare un team</h3>
+        <ul>
+            <li><code>team.members()</code> — nomi dei membri, ordinati.</li>
+            <li><code>team.get(name)</code> — l'istanza agente; solleva un'eccezione se il nome manca.</li>
+            <li><code>team.relations()</code> — archi dichiarati come <code>{ from, to, rel, contract }</code> (<code>contract</code> è <code>null</code> se non impostato).</li>
+            <li><code>team.graph</code> — il grafo di topologia.</li>
+        </ul>
+        <pre><code data-run="true" data-expect="2\nprogrammer\nhandoff\ntrue\nfalse\nfalse">schema DraftCode { path: string; summary: string; }
 
 var specs = [
     { name: "Writer", role: "programmer", instructions: "Write small, tested diffs." },
@@ -960,48 +1049,62 @@ var topology = graph directed {
 
 var team = agents.team(specs, topology);
 print(team.members().length);
-var hop = team.handoff("Writer", "Reviewer", { path: "calc.malda", summary: "add comments" });
-print(hop.ok);
-var hopOff = team.handoff("Writer", "Reviewer", { path: "calc.malda", summary: "add comments" }, false);
-print(hopOff.ok);
-print(hopOff.response == null);</code></pre>
-        <pre><code>var coder = agents.define({
-    name: "Coder",
-    kind: "CodingAgent",
-    role: "programmer",
-    instructions: "Write small diffs.",
-    workingDirectory: "."
-});
-print(coder.kind);</code></pre>
-        <pre><code>var blocked = executePlan({
-    steps: [
-        { id: "review", description: "Review first", role: "Reviewer" },
-        { id: "write", description: "Write after", role: "Writer", dependsOn: ["review"] }
-    ]
-}, team);
-print(blocked.error != null);</code></pre>
-        <pre><code>var reviewTeam = agents.team(specs, graph directed {
+print(team.get("Writer").role);
+print(team.relations()[0].rel);
+
+var ok = team.handoff("Writer", "Reviewer", { path: "calc.malda", summary: "add comments" });
+print(ok.ok);
+
+var bad = team.handoff("Writer", "Reviewer", { path: 1, summary: "nope" });
+print(bad.ok);
+
+var missing = team.handoff("Reviewer", "Writer", { path: "calc.malda", summary: "back" });
+print(missing.ok);</code></pre>
+        <h3 id="team-hops">18.17.5 Hop tipizzati</h3>
+        <p><code>team.handoff</code> / <code>team.review</code> / <code>team.reject</code> / <code>team.consult</code> condividono lo stesso contratto: <code>(from, to, payload, think?)</code>. L'arco deve esistere con un <code>rel</code> corrispondente. Se <code>contract</code> è impostato, l'hop esegue prima <code>validate(contract, payload)</code>. Gli hop falliti restituiscono <code>{ ok: false, error }</code> e non chiamano <code>think()</code>.</p>
+        <p>Il quarto argomento è opzionale:</p>
+        <ul>
+            <li>Omettilo, o passa <code>false</code> / <code>{ think: false }</code>, per restare solo validazione (sicuro offline). Questo è il default.</li>
+            <li>Passa <code>true</code> o <code>{ think: true }</code> / <code>{ run: true }</code> per chiamare <code>to.think(payload)</code> dopo che l'hop è consentito. I payload oggetto diventano JSON.</li>
+            <li>Per review / reject, <code>{ approved: false }</code> / <code>{ rejected: true }</code> registrano un verdetto senza una chiamata LLM.</li>
+        </ul>
+        <p>Forme di ritorno:</p>
+        <table>
+            <thead><tr><th>Metodo</th><th>Successo</th></tr></thead>
+            <tbody>
+                <tr><td><code>handoff</code> / <code>consult</code></td><td><code>{ ok, data }</code> oppure <code>{ ok, data, response }</code> quando <code>think</code> è stato eseguito</td></tr>
+                <tr><td><code>review</code></td><td><code>{ ok, approved, data }</code> (<code>approved</code> è <code>true</code> di default)</td></tr>
+                <tr><td><code>reject</code></td><td><code>{ ok, rejected, data }</code> (<code>rejected</code> è <code>true</code> di default)</td></tr>
+            </tbody>
+        </table>
+        <p>Consult è una domanda una tantum: non trasferisce il piano e non imposta <code>approved</code> / <code>rejected</code>.</p>
+        <pre><code data-run="true" data-expect="true\ntrue\ntrue\nfalse\ntrue">schema DraftCode { path: string; summary: string; }
+
+var reviewTeam = agents.team([
+    { name: "Writer", role: "programmer", instructions: "Write small diffs." },
+    { name: "Reviewer", role: "reviewer", instructions: "Find bugs." }
+], graph directed {
     nodes: ["Writer", "Reviewer"],
     edges: [
         { from: "Writer", to: "Reviewer", rel: "review", contract: "DraftCode" },
         { from: "Reviewer", to: "Writer", rel: "reject", contract: "DraftCode" }
     ]
 });
+
+var hopOff = reviewTeam.review("Writer", "Reviewer", { path: "calc.malda", summary: "add comments" }, false);
+print(hopOff.ok);
+print(hopOff.response == null);
+
 var reviewed = reviewTeam.review("Writer", "Reviewer", { path: "calc.malda", summary: "add comments" });
 print(reviewed.approved);
+
+var no = reviewTeam.review("Writer", "Reviewer", { path: "calc.malda", summary: "add comments" }, { approved: false });
+print(no.approved);
+
 var sentBack = reviewTeam.reject("Reviewer", "Writer", { path: "calc.malda", summary: "needs tests" });
 print(sentBack.rejected);</code></pre>
-        <pre><code>var bounced = executePlan({
-    think: false,
-    steps: [
-        { id: "write", description: "Write", role: "Writer" },
-        { id: "review", description: "Review", role: "Reviewer", dependsOn: ["write"], approved: false },
-        { id: "rewrite", description: "Fix", role: "Writer", dependsOn: ["review"] }
-    ]
-}, reviewTeam);
-print(bounced.completed.length);
-print(bounced.skipped.length);</code></pre>
-        <pre><code>schema Ask { question: string; }
+        <pre><code data-run="true" data-expect="true\nwhich API?\nfalse\nfalse">schema Ask { question: string; }
+
 var consultTeam = agents.team([
     { name: "Writer", role: "programmer", instructions: "Write small diffs." },
     { name: "Researcher", role: "researcher", instructions: "Look things up." }
@@ -1009,19 +1112,93 @@ var consultTeam = agents.team([
     nodes: ["Writer", "Researcher"],
     edges: [{ from: "Writer", to: "Researcher", rel: "consult", contract: "Ask" }]
 });
+
 var asked = consultTeam.consult("Writer", "Researcher", { question: "which API?" });
-print(asked.ok);</code></pre>
-        <p>Golden offline: <code>Examples/Agents/agent_team_graph.malda</code>, <code>Examples/Agents/agent_team_kinds.malda</code>, <code>Examples/Agents/agent_team_plan.malda</code>, <code>Examples/Agents/agent_team_handoff_run.malda</code>, <code>Examples/Agents/agent_team_review.malda</code>, <code>Examples/Agents/agent_team_plan_verdict.malda</code>, <code>Examples/Agents/agent_team_consult.malda</code>. Puoi anche dichiarare <code>schema AgentSpec { name: string; role: string; instructions: string; }</code> e <code>validate("AgentSpec", spec)</code> prima di <code>agents.define</code>; se quello schema è registrato, <code>define</code> / <code>team</code> eseguono lo stesso controllo.</p>
+print(asked.ok);
+print(asked.data.question);
+
+var bad = consultTeam.consult("Researcher", "Writer", { question: "nope" });
+print(bad.ok);
+
+var wrong = consultTeam.handoff("Writer", "Researcher", { question: "which API?" });
+print(wrong.ok);</code></pre>
+        <h3 id="team-execute-plan">18.17.6 <code>executePlan</code> con un team</h3>
+        <p><code>executePlan(plan, team)</code> o <code>team.run(plan)</code> instrada ogni step a <code>step.role</code> (o <code>step.agent</code>). I piani di team guidati dall'host <strong>non</strong> scelgono un membro di default — un ruolo mancante o sconosciuto restituisce <code>{ error }</code>.</p>
+        <p>Dopo l'ordinamento topologico, un hop <code>dependsOn</code> tra ruoli diversi deve coincidere con una relazione dichiarata. Il controllo gira prima di <code>think()</code>, quindi un hop illegale restituisce <code>{ error }</code> senza chiamate LLM. La continuazione sullo stesso ruolo non richiede un auto-arco.</p>
+        <p>Un hop <code>reject</code> gira solo quando il predecessore non è approved. Ogni altro hop gira solo quando è approved. Il verdetto viene, in ordine, da <code>step.approved</code> / <code>step.rejected</code>, altrimenti dal JSON <code>{ approved }</code> / <code>{ rejected }</code> nell'output di think, altrimenti default <code>approved: true</code>. Gli step saltati sono in <code>skipped</code> (id degli step) e registrati sul risultato dello step come <code>skipped</code> + <code>reason</code>; non chiamano <code>think()</code>. Le dipendenze fallite o saltate si propagano.</p>
+        <p>Imposta <code>plan.think: false</code> per saltare del tutto <code>think()</code> (offline; l'output dello step è la description). Quando <code>think()</code> gira, il prompt è la description più un blocco <code>Prior step &lt;id&gt;:</code> per ogni <code>dependsOn</code> già eseguito. Ogni risultato di step include <code>prompt</code>, <code>approved</code> e, per un hop di ruolo, il <code>rel</code> in ingresso. Il risultato di primo livello è <code>{ planId, completed, failed, skipped, results }</code> oppure <code>{ error }</code>.</p>
+        <pre><code data-run="true" data-expect="true">var team = agents.team([
+    { name: "Writer", role: "programmer", instructions: "Write small diffs." },
+    { name: "Reviewer", role: "reviewer", instructions: "Find bugs." }
+], graph directed {
+    nodes: ["Writer", "Reviewer"],
+    edges: [{ from: "Writer", to: "Reviewer", rel: "handoff" }]
+});
+
+var blocked = executePlan({
+    steps: [
+        { id: "review", description: "Review first", role: "Reviewer" },
+        { id: "write", description: "Write after", role: "Writer", dependsOn: ["review"] }
+    ]
+}, team);
+print(blocked.error != null);</code></pre>
+        <pre><code data-run="true" data-expect="3\n0\n2\nrewrite">var reviewTeam = agents.team([
+    { name: "Writer", role: "programmer", instructions: "Write small diffs." },
+    { name: "Reviewer", role: "reviewer", instructions: "Find bugs." }
+], graph directed {
+    nodes: ["Writer", "Reviewer"],
+    edges: [
+        { from: "Writer", to: "Reviewer", rel: "review" },
+        { from: "Reviewer", to: "Writer", rel: "reject" }
+    ]
+});
+
+var rejected = executePlan({
+    think: false,
+    steps: [
+        { id: "write", description: "Write comments", role: "Writer" },
+        { id: "review", description: "Review the draft", role: "Reviewer", dependsOn: ["write"], approved: false },
+        { id: "rewrite", description: "Fix the draft", role: "Writer", dependsOn: ["review"] }
+    ]
+}, reviewTeam);
+print(rejected.completed.length);
+print(rejected.skipped.length);
+
+var approved = executePlan({
+    think: false,
+    steps: [
+        { id: "write", description: "Write comments", role: "Writer" },
+        { id: "review", description: "Review the draft", role: "Reviewer", dependsOn: ["write"] },
+        { id: "rewrite", description: "Fix the draft", role: "Writer", dependsOn: ["review"] }
+    ]
+}, reviewTeam);
+print(approved.completed.length);
+print(approved.skipped[0]);</code></pre>
+        <h3 id="team-decompose">18.17.7 <code>decomposeTask</code> con un team</h3>
+        <p><code>decomposeTask(instruction, client?, team?)</code> o <code>team.decompose(instruction, client?)</code> mette nomi, kind, ruoli, istruzioni e relazioni dei membri nel prompt del decompositore. Ogni step generato deve impostare <code>role</code> sul nome di un membro. I piani senza <code>role</code> o con hop fuori grafo vengono rifiutati. Il secondo argomento può essere un client LLM o il team (se il team è il secondo argomento, per la chiamata di decompose si usa l'LLM locale di default).</p>
+        <p>Questo percorso chiama un LLM. Preferisci un piano scritto sull'host più <code>plan.think: false</code> quando ti serve un golden offline.</p>
+        <h3 id="team-examples">18.17.8 Golden offline</h3>
+        <p>Questi esempi non fanno chiamate LLM:</p>
+        <ul>
+            <li><code>Examples/Agents/agent_team_graph.malda</code> — spec + grafo + contract</li>
+            <li><code>Examples/Agents/agent_team_kinds.malda</code> — <code>kind</code> specializzati</li>
+            <li><code>Examples/Agents/agent_team_plan.malda</code> — hop illegale rifiutato prima di <code>think()</code></li>
+            <li><code>Examples/Agents/agent_team_handoff_run.malda</code> — <code>handoff</code> solo validazione</li>
+            <li><code>Examples/Agents/agent_team_review.malda</code> — <code>review</code> / <code>reject</code> tipizzati</li>
+            <li><code>Examples/Agents/agent_team_plan_verdict.malda</code> — diramazione <code>approved</code> vs <code>reject</code></li>
+            <li><code>Examples/Agents/agent_team_consult.malda</code> — <code>consult</code> tipizzato</li>
+        </ul>
+        <p>Few-shot per gli agenti: <code>docs/llm/few-shot/34_agents_team.malda</code> fino a <code>40_agents_consult.malda</code>.</p>
         <div class="see-also">
             <h3>Vedi anche</h3>
             <ul>
-                <li><a href="09-functions.html">9. Funzioni</a> - sintassi del decoratore @Tool</li>
-                <li><a href="10-prompts.html">10. Prompt</a> - Template di prompt e <code>agent.think</code></li>
-                <li><a href="20-mcp-server.html">20. Server MCP</a> - Tool STDIO lanciati dall'host</li>
-                <li><a href="12-input-output.html#capability-tokens">12.6 Token di capability</a> — perché esiste <code>cap.*</code> e il pattern host-mint</li>
+                <li><a href="14-graphs.html">14. Grafi</a> — letterali diretti e chiavi extra sugli archi</li>
+                <li><a href="#structured-task-planning">18.13 Pianificazione strutturata dei task</a> — forma del piano, <code>submit_plan</code> / <code>update_plan</code> / <code>mark_step</code></li>
+                <li><a href="#multi-agent-orchestration">18.16 Orchestrazione multi-agente</a> — loop supervisore con <code>addSubAgent</code></li>
+                <li><a href="10-prompts.html">10. Prompt</a> — <code>agent.think</code></li>
             </ul>
         </div>
-        <h2 id="using-agents-with-actors">18.17 Usare gli agenti con gli actor</h2>
+        <h2 id="using-agents-with-actors">18.18 Usare gli agenti con gli actor</h2>
         <p>Agenti e actor sono funzionalità complementari in MALDA. Gli agenti sono classi pensate per interazioni AI sincrone, mentre gli actor offrono elaborazione concorrente basata su messaggi. Combinarli abilita pattern potenti per i sistemi AI distribuiti.</p>
         
         <div class="info-box">
@@ -1193,7 +1370,7 @@ send stateManager.queryAgent("Helper", "What is MALDA?");</code></pre>
             </ul>
         </div>
 
-        <h2 id="ralph-wiggum">18.18 Ralph Wiggum (loop autonomo guidato da PRD)</h2>
+        <h2 id="ralph-wiggum">18.19 Ralph Wiggum (loop autonomo guidato da PRD)</h2>
         <p>Il repository include <code>Examples/RalphWiggum/RalphWiggum.malda</code>, un loop autonomo pronto per la produzione per lo sviluppo guidato da PRD. Usa <code>DevAgent</code>, un PRD a checklist (<code>PRD.md</code>), validazione post-iterazione, stato di resume e <strong>GraphMemory</strong> per la continuità tra le iterazioni quando la cronologia della conversazione viene azzerata a ogni round. Vedi <code>Examples/RalphWiggum/README.md</code> per i prerequisiti e la demo Snake.</p>
 
         <h3>Esecuzione</h3>

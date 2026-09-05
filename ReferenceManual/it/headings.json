@@ -1388,7 +1388,7 @@
   {
     "file": "18-agent-orchestration.html",
     "level": 2,
-    "id": "",
+    "id": "structured-task-planning",
     "title": "18.13 Pianificazione strutturata dei task"
   },
   {
@@ -1406,20 +1406,74 @@
   {
     "file": "18-agent-orchestration.html",
     "level": 2,
-    "id": "",
+    "id": "multi-agent-orchestration",
     "title": "18.16 Orchestrazione multi-agente"
   },
   {
     "file": "18-agent-orchestration.html",
     "level": 2,
+    "id": "declarative-agent-teams",
+    "title": "18.17 Team dichiarativi di agenti"
+  },
+  {
+    "file": "18-agent-orchestration.html",
+    "level": 3,
+    "id": "agents-define",
+    "title": "18.17.1 agents.define"
+  },
+  {
+    "file": "18-agent-orchestration.html",
+    "level": 3,
+    "id": "agents-team",
+    "title": "18.17.2 agents.team"
+  },
+  {
+    "file": "18-agent-orchestration.html",
+    "level": 3,
+    "id": "team-relations",
+    "title": "18.17.3 Relazioni"
+  },
+  {
+    "file": "18-agent-orchestration.html",
+    "level": 3,
+    "id": "team-inspection",
+    "title": "18.17.4 Ispezionare un team"
+  },
+  {
+    "file": "18-agent-orchestration.html",
+    "level": 3,
+    "id": "team-hops",
+    "title": "18.17.5 Hop tipizzati"
+  },
+  {
+    "file": "18-agent-orchestration.html",
+    "level": 3,
+    "id": "team-execute-plan",
+    "title": "18.17.6 executePlan con un team"
+  },
+  {
+    "file": "18-agent-orchestration.html",
+    "level": 3,
+    "id": "team-decompose",
+    "title": "18.17.7 decomposeTask con un team"
+  },
+  {
+    "file": "18-agent-orchestration.html",
+    "level": 3,
+    "id": "team-examples",
+    "title": "18.17.8 Golden offline"
+  },
+  {
+    "file": "18-agent-orchestration.html",
+    "level": 2,
     "id": "using-agents-with-actors",
-    "title": "18.17 Usare gli agenti con gli actor"
+    "title": "18.18 Usare gli agenti con gli actor"
   },
   {
     "file": "18-agent-orchestration.html",
     "level": 2,
     "id": "ralph-wiggum",
-    "title": "18.18 Ralph Wiggum (loop autonomo guidato da PRD)"
+    "title": "18.19 Ralph Wiggum (loop autonomo guidato da PRD)"
   },
   {
     "file": "19-graph-memory.html",

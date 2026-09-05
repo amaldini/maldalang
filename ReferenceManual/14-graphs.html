@@ -20,7 +20,7 @@
 
         <h1>14. Graphs</h1>
 
-        <p>Graphs are data structures that represent relationships between nodes (vertices) connected by edges. MALDA supports both directed and undirected graphs with weighted edges and optional edge properties. Extra keys on a literal edge object besides <code>from</code>, <code>to</code>, <code>weight</code>, and <code>properties</code> (for example <code>rel</code> and <code>contract</code>) are copied onto that edge's properties so <code>agents.team</code> can read them.</p>
+        <p>Graphs are data structures that represent relationships between nodes (vertices) connected by edges. MALDA supports both directed and undirected graphs with weighted edges and optional edge properties. Extra keys on a literal edge object besides <code>from</code>, <code>to</code>, <code>weight</code>, and <code>properties</code> (for example <code>rel</code> and <code>contract</code>) are copied onto that edge's properties so <code>agents.team</code> can read them — see <a href="18-agent-orchestration.html#declarative-agent-teams">18.17 Declarative Agent Teams</a>.</p>
 
         <h2>14.1 Graph Literals</h2>
         <p>Graphs are created with the <code>graph directed { ... }</code> or <code>graph undirected { ... }</code> literal syntax:</p>

@@ -232,6 +232,28 @@
       "summary": "Built-in Agent class and specialized agents. think() runs a turn with tools."
     },
     {
+      "id": "agent-team",
+      "term": "Agent teams",
+      "aliases": [
+        "agents.team",
+        "agents.define",
+        "AgentTeam",
+        "handoff",
+        "team.handoff",
+        "team.review",
+        "team.reject",
+        "team.consult",
+        "team.run",
+        "team.decompose"
+      ],
+      "href": "18-agent-orchestration.html#declarative-agent-teams",
+      "also": [
+        "13-built-in-functions.html#agent-teams",
+        "14-graphs.html"
+      ],
+      "summary": "Declarative multi-agent teams: agents.define / agents.team bind role specs to a directed graph. Typed hops stay validate-only unless think is true."
+    },
+    {
       "id": "tool",
       "term": "Tools",
       "aliases": ["@Tool", "Tool", "createReadFileTool", "createWebFetchTool"],
