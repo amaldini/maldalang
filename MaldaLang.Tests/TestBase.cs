@@ -111,10 +111,33 @@ public abstract class TestBase : IDisposable
     }
 
     /// <summary>
+    /// Interpret outcome for ship-contract pairs: exit 0 on success, 1 when the
+    /// walk throws (same convention as a transpiled <c>Main</c> catch).
+    /// </summary>
+    internal sealed class InterpretOutcome
+    {
+        public int ExitCode { get; init; }
+        public string StdOut { get; init; } = string.Empty;
+        public Exception? Exception { get; init; }
+    }
+
+    /// <summary>
     /// Interpret <paramref name="source"/> with stdout capture. Shares the console gate
     /// with instance <see cref="RunProgramAsync"/> so pair tests do not race other fixtures.
     /// </summary>
     internal static async Task<string> CaptureInterpretAsync(string source, string? sourceFileName = null)
+    {
+        var outcome = await CaptureInterpretOutcomeAsync(source, sourceFileName);
+        if (outcome.Exception != null)
+            throw outcome.Exception;
+        return outcome.StdOut;
+    }
+
+    /// <summary>
+    /// Same capture as <see cref="CaptureInterpretAsync"/> but does not rethrow, so
+    /// interpret/transpile pairs can compare exit identity.
+    /// </summary>
+    internal static async Task<InterpretOutcome> CaptureInterpretOutcomeAsync(string source, string? sourceFileName = null)
     {
         await _consoleSemaphore.WaitAsync();
         try
@@ -150,7 +173,21 @@ public abstract class TestBase : IDisposable
                 await interpreter.InterpretAsync(statements);
                 await Task.Delay(100);
                 outputWriter.Flush();
-                return outputWriter.ToString().Replace("\r", "").Trim();
+                return new InterpretOutcome
+                {
+                    ExitCode = 0,
+                    StdOut = outputWriter.ToString().Replace("\r", "").Trim()
+                };
+            }
+            catch (Exception ex)
+            {
+                outputWriter.Flush();
+                return new InterpretOutcome
+                {
+                    ExitCode = 1,
+                    StdOut = outputWriter.ToString().Replace("\r", "").Trim(),
+                    Exception = ex
+                };
             }
             finally
             {

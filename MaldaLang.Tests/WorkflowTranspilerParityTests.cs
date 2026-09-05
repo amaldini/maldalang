@@ -43,12 +43,12 @@ public class WorkflowTranspilerParityTests
             function flaky() {
                 attempts = attempts + 1;
                 if (attempts == 1) {
-                    sleep(25);
+                    sleep(120);
                 }
                 return attempts;
             }
             workflow RetryFlow(input) {
-                step x = flaky() retry 2 backoff "fixed" delay 1 timeout 5;
+                step x = flaky() retry 2 backoff "fixed" delay 100 timeout 40;
                 return x;
             }
             var id = startWorkflow("RetryFlow", null);

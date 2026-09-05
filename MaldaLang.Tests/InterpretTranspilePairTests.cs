@@ -8,8 +8,9 @@ using Xunit;
 namespace MaldaLang.Tests;
 
 /// <summary>
-/// DT7 curated interpret vs C# transpile pairs (same stdout, exit 0).
-/// Compile-only smoke stays in <see cref="TranspileSmokeTests"/>.
+/// DT7 / ship-contract interpret vs C# transpile pairs (same stdout when both
+/// exit 0; mixed success/failure fails the pair). Compile-only smoke stays in
+/// <see cref="TranspileSmokeTests"/>. Registry: <c>docs/spec/ship-contract.md</c>.
 /// Still n/a (smoke only): LLM-awaiting prompts, agent_governance_golden,
 /// workflow/job Examples (see WorkflowTranspilerParityTests; runprogram_in_step
 /// is smoke + interpreter), grounded_ask
@@ -22,6 +23,7 @@ namespace MaldaLang.Tests;
 public class InterpretTranspilePairTests
 {
     [Theory]
+    [InlineData("Examples/Basics/hello_world.malda")]
     [InlineData("Examples/Basics/first_look.malda")]
     [InlineData("Examples/Basics/schema_validate.malda")]
     [InlineData("Examples/Basics/schema_sumtype_validate.malda")]
@@ -459,6 +461,76 @@ public class InterpretTranspilePairTests
             io.print(str.repeat("x", math.round(2.4)));
             """,
             "math-floor-integer-sink");
+    }
+
+    [Fact]
+    public void ResultMapNestedVariant_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            var nested = result.map(result.ok(10), (x) => result.ok(x + 1));
+            match nested {
+                case Ok(inner):
+                    match inner {
+                        case Ok(n): io.print("nested:" + string(n));
+                        default: io.print("inner-bare");
+                    }
+                default: io.print("outer-fail");
+            }
+            var someNested = option.map(option.some(3), (n) => option.some(n + 1));
+            match someNested {
+                case Some(inner):
+                    match inner {
+                        case Some(n): io.print("some-nested:" + string(n));
+                        default: io.print("some-inner-bare");
+                    }
+                default: io.print("some-fail");
+            }
+            """,
+            "result-map-nested-variant");
+    }
+
+    [Fact]
+    public void DictListAppendLength_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            var obj = dict { "items": [] };
+            var i = 0;
+            while (obj.items.length < 3) {
+                obj.items.append(i);
+                i = i + 1;
+            }
+            io.print(obj.items.length);
+            io.print(obj.items[2]);
+            """,
+            "dict-list-append-length");
+    }
+
+    [Fact]
+    public void TypedTranspileLevel2Numeric_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            var n: float = 3.5;
+            io.print(n * 2);
+            io.print(math.floor(n));
+            io.print(str.repeat("x", math.floor(n)));
+            """,
+            "typed-transpile-level-2-numeric",
+            typedTranspileLevel: 2);
+    }
+
+    [Fact]
+    public void ErrorBuiltin_SameFailure()
+    {
+        InterpretTranspilePair.AssertSameFailureFromSource(
+            """
+            io.print("before-boom");
+            error("ship-contract-boom");
+            """,
+            "error-builtin-failure",
+            token: "ship-contract-boom");
     }
 
     [Fact]

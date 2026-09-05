@@ -30,7 +30,7 @@ public static class TranspiledTestRunner
         return CompileAndRunFromSource(source, includeUiHost: false, environmentVariables: null, commandLineArgs: null, profilingOptions: null);
     }
 
-    public static RunResult CompileAndRunFromSource(string source, bool includeUiHost, IDictionary<string, string>? environmentVariables, IReadOnlyList<string>? commandLineArgs = null, ProfilingOptions? profilingOptions = null)
+    public static RunResult CompileAndRunFromSource(string source, bool includeUiHost, IDictionary<string, string>? environmentVariables, IReadOnlyList<string>? commandLineArgs = null, ProfilingOptions? profilingOptions = null, int typedTranspileLevel = 1)
     {
         var tempDir = Path.Combine(Path.GetTempPath(), "malda_transpiled_tests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(tempDir);
@@ -40,7 +40,7 @@ public static class TranspiledTestRunner
 
         try
         {
-            return CompileAndRunFromFile(sourcePath, includeUiHost, environmentVariables, commandLineArgs, profilingOptions);
+            return CompileAndRunFromFile(sourcePath, includeUiHost, environmentVariables, commandLineArgs, profilingOptions, typedTranspileLevel);
         }
         finally
         {
@@ -56,16 +56,16 @@ public static class TranspiledTestRunner
         return CompileAndRunFromFile(sourcePath, includeUiHost: false, environmentVariables: null, commandLineArgs: null, profilingOptions: null);
     }
 
-    public static RunResult CompileAndRunFromFile(string sourcePath, bool includeUiHost, IDictionary<string, string>? environmentVariables, IReadOnlyList<string>? commandLineArgs = null, ProfilingOptions? profilingOptions = null)
+    public static RunResult CompileAndRunFromFile(string sourcePath, bool includeUiHost, IDictionary<string, string>? environmentVariables, IReadOnlyList<string>? commandLineArgs = null, ProfilingOptions? profilingOptions = null, int typedTranspileLevel = 1)
     {
         lock (TradingCompileLock)
         {
             ReleaseTradingExampleFileLocks();
-            return CompileAndRunFromFileUnlocked(sourcePath, includeUiHost, environmentVariables, commandLineArgs, profilingOptions);
+            return CompileAndRunFromFileUnlocked(sourcePath, includeUiHost, environmentVariables, commandLineArgs, profilingOptions, typedTranspileLevel);
         }
     }
 
-    private static RunResult CompileAndRunFromFileUnlocked(string sourcePath, bool includeUiHost, IDictionary<string, string>? environmentVariables, IReadOnlyList<string>? commandLineArgs = null, ProfilingOptions? profilingOptions = null)
+    private static RunResult CompileAndRunFromFileUnlocked(string sourcePath, bool includeUiHost, IDictionary<string, string>? environmentVariables, IReadOnlyList<string>? commandLineArgs = null, ProfilingOptions? profilingOptions = null, int typedTranspileLevel = 1)
     {
         var compiler = new Compiler.Compiler();
         var outputExe = Path.ChangeExtension(sourcePath, ".exe");
@@ -75,7 +75,7 @@ public static class TranspiledTestRunner
             includeLLamaSharp: false,
             includeUiHost: includeUiHost,
             profilingOptions: profilingOptions,
-            typedTranspileLevel: 1,
+            typedTranspileLevel: typedTranspileLevel,
             includeOptionalPacks: true);
 
         if (!result.Success || result.OutputPath == null || !File.Exists(result.OutputPath))

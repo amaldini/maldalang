@@ -62,7 +62,7 @@ Built-ins are the largest “surface area” for language work:
 - Interpreter recognition: `Interpreter.IsBuiltIn`
 - Transpile recognition + codegen: `CSharpTranspiler.IsBuiltInFunction` / `TranspileBuiltInFunction`
 
-Missing one registration site is a common bug (works interpreted XOR transpiled). CI `InterpretTranspilePairTests` asserts the same stdout and exit on interpret and C# transpile for a curated offline set ([`docs/roadmap-trust.md`](roadmap-trust.md) DT7).
+Missing one registration site is a common bug (works interpreted XOR transpiled). CI `InterpretTranspilePairTests` asserts the same stdout when interpret and C# transpile both exit 0 (mixed success/failure fails). Ship-contract registry: [`docs/spec/ship-contract.md`](spec/ship-contract.md). Plan: [`docs/roadmap-trust.md`](roadmap-trust.md) DT7.
 
 ## Web stack (language feature, not Web IDE)
 
@@ -77,6 +77,7 @@ Server-driven `ui.*` trees, patch protocol, and `MaldaLang.UIHost` wiring are do
 | `ReferenceManual/` | User-facing language reference (English canonical; Italian in [`ReferenceManual/it/`](../ReferenceManual/it/)) |
 | `docs/spec/` | Spec / matrix notes |
 | `docs/spec/backend-capability-matrix.md` | Interpreter vs C# vs JS product capabilities |
+| `docs/spec/ship-contract.md` | Host ship oracles: pair / trace / n/a (templates + README showcases) |
 | `docs/start-here.md`, `docs/architecture.md` | Onboarding |
 | [`docs/roadmap-p0-maturity.md`](roadmap-p0-maturity.md) | P0 maturity roadmap (workstreams complete 2026-08-12; next = post-Final / deferred) |
 | [`docs/roadmap-language-constructs.md`](roadmap-language-constructs.md) | Post-Final language constructs (schema/sum types, Mode C, budget, workflow determinism, grounded values, capability tokens) |

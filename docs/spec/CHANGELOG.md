@@ -107,6 +107,11 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Changed (PATCH — ship contract / `result.map` wrap)
+
+- **Interpret/transpile exit identity:** `InterpretTranspilePair` compares interpret vs C# transpile exit class. Both 0 ⇒ same stdout. Both nonzero ⇒ error identity (optional shared token). Mixed success/failure fails the pair. Registry: [`ship-contract.md`](ship-contract.md). CI smoke includes `ShipContractGuardTests` and `WorkflowTranspilerParityTests`.
+- **`result.map` / `option.map`:** the interpreter now wraps a variant payload as `Ok(Ok(...))` / `Some(Some(...))`, matching C# and JS. Sequencing fallible steps still uses `andThen`. Pair: `ResultMapNestedVariant_SameStdout`.
+
 #### Added (MINOR — plan verdicts)
 
 - **`executePlan` review/reject branching:** a `reject` hop runs only when the predecessor is not approved; other hops run only when it is approved. Verdict comes from `step.approved` / `step.rejected`, else JSON `{ approved }` / `{ rejected }` in the think output, else default `approved: true`. Skipped steps are listed in `skipped` and recorded on the step result (`skipped`, `reason`) with no `think()` call. Failed or skipped dependencies cascade. **`plan.think: false`** skips `think()` so goldens stay offline (output is the step description). Interpreter and C# transpile agree. JavaScript: n/a. Example: `Examples/Agents/agent_team_plan_verdict.malda`. Few-shot: `docs/llm/few-shot/39_agents_plan_verdict.malda`.
@@ -461,6 +466,7 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 
 | Date | Change |
 |------|--------|
+| 2026-09-05 | PATCH: ship-contract registry + interpret/transpile exit identity; interpreter `result.map` wraps like C#/JS |
 | 2026-06-04 | Initial CHANGELOG and semver policy (Phase 2.3) |
 | 2026-06-04 | Phase 2.4: parser/spec drift CI script and Bitbucket pipeline |
 | 2026-08-12 | P0 readiness notes: call-site return hints, nested schemas, WF1001 aliases |

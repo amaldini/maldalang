@@ -92,9 +92,6 @@ public static class VariantStdLib
             throw new Exception($"map() expected variant tag '{successTag}' or '{failureTag}', got '{value.Tag}'");
 
         var mapped = interpreter.CallFunctionAsync(mapper, value.Payload).GetAwaiter().GetResult();
-        if (mapped.Type == ValueType.Variant)
-            return mapped;
-
         return RuntimeValue.Variant(successTag, PayloadFromSingleOrList(mapped));
     }
 

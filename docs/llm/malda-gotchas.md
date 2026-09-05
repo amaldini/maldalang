@@ -67,7 +67,7 @@ claim a program works.
 | `api` / `runProgram` with `--mode js` | JS transpile rejects `api` declarations (host-only, same as prompts). | Interpreter or `malda compile --mode transpile` |
 | `new VectorDB(...)` with `--mode js` | JS has no VectorDB runtime (`malda-js-runtime.js`). Emit is a bare `new VectorDB(...)` that fails at run time. | Interpreter or `malda compile --mode transpile` |
 | `api` method without a top-level `function` of the same name | `runProgram` fails at the call step. | Declare `function add(a, b) { … }` matching the signature |
-| `result.map(r, (x) => result.ok(x + 1))` (or `option.map` returning `Some`/`None`) | `map` transforms a **payload**. Interpreter currently returns a nested variant as-is; C#/JS wrap it as `Ok(Ok(...))` / `Some(Some(...))`. Sequencing fallible steps this way is wrong. | `result.andThen(r, (x) => result.ok(x + 1))` — `fn` must return `Ok`/`Err` (or `Some`/`None` on `option.andThen`) |
+| `result.map(r, (x) => result.ok(x + 1))` (or `option.map` returning `Some`/`None`) | `map` transforms a **payload**. Interpreter, C#, and JS all wrap as `Ok(Ok(...))` / `Some(Some(...))`. Sequencing fallible steps this way is wrong. | `result.andThen(r, (x) => result.ok(x + 1))` — `fn` must return `Ok`/`Err` (or `Some`/`None` on `option.andThen`) |
 | `pdf.extractText(scanned.pdf)` expecting OCR | Extracts the **digital text layer** only (PdfPig). Image-only / scanned PDFs often return empty or near-empty text with no error. | OCR first, or convert to `.md` / `.txt` before BUILD |
 | `doc.extractText("old.doc")` | Only **`.docx`** (Office Open XML) is supported. Legacy binary `.doc` throws. | Save as `.docx`, or convert before BUILD |
 
