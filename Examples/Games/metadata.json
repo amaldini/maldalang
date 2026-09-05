@@ -279,6 +279,29 @@
       ],
       "learningGoal": "Show a ShaderToy-style volumetric path march written as typed MALDA @shader() functions and compiled with glsl.compile.",
       "expectedOutput": "Renders a realtime GPU tunnel that flies along a twisting path.",
+      "next": "Games/three_shader_mandelbrot.malda",
+      "documentationPath": "/?lesson=browser-track#lesson-browser-track",
+      "documentationTitle": "Browser Track"
+    },
+    {
+      "name": "JS three.js Infinite Mandelbrot Zoom",
+      "description": "GPU Mandelbrot infinite zoom: @shader() kernels with float-float arithmetic, exponential dive into Seahorse Valley, then a looping wrap",
+      "file": "three_shader_mandelbrot.malda",
+      "track": "showcase",
+      "difficulty": "advanced",
+      "minutes": 14,
+      "concepts": [
+        "three.*",
+        "GLSL",
+        "shader material",
+        "Mandelbrot",
+        "JavaScript target"
+      ],
+      "prerequisites": [
+        "Games/three_shader_raytracer.malda"
+      ],
+      "learningGoal": "Show an infinite fractal zoom written as typed MALDA @shader() functions, compiled with glsl.compile, using float-float uniforms-free center math.",
+      "expectedOutput": "Renders a realtime GPU Mandelbrot that zooms into Seahorse Valley for six decades, then wraps and dives again. Space pauses; [ ] change speed.",
       "next": "Games/three_cube.malda",
       "documentationPath": "/?lesson=browser-track#lesson-browser-track",
       "documentationTitle": "Browser Track"

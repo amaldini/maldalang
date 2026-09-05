@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (PATCH — infinite Mandelbrot zoom example)
+
+- **`Examples/Games/three_shader_mandelbrot.malda`:** GPU Mandelbrot infinite zoom on the existing `three.createShaderMaterial` / `@shader()` path. The kernel uses float-float (hi/lo) complex arithmetic around Seahorse Valley; host MALDA advances an exponential scale that wraps after six decades so the dive loops. Hold Space to pause; `[` `]` change speed. Host page: `three_shader_mandelbrot_runtime_smoke_test.html`. No new `game.*` / `three.*` names. JavaScript backend only.
+
 #### Added (PATCH — GPU billiards example)
 
 - **`Examples/Games/three_shader_billiards.malda`:** playable GLSL pool table on the existing `three.createShaderMaterial` / `@shader()` path. Host MALDA aims the cue and steps 2D circle physics (elastic ball–ball, cushion restitution, pockets, friction); the kernel traces `uBall0`–`uBall15`, a cue stick, an aim line, and 7-segment decals. The cue stays locked on the white ball; mouse-on-table aims (A/D fine-tunes). Hold click or Space to charge power, release to shoot; R reracks; `[` `]` / `+` `−` zoom; `C` or **Stop camera** zeros orbit speed. Sliders set cushion e, ball e, and felt friction. Host page: `three_shader_billiards_runtime_smoke_test.html`. No new `game.*` / `three.*` names. JavaScript backend only.
