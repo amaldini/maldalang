@@ -121,7 +121,7 @@ Validation rules currently enforced:
   - Three helpers:
     - Renderer/lifecycle: `three.createRenderer(width, height, mountSelector?)`, `three.setClearColor(renderer, color)`, `three.setRendererSize(renderer, width, height)`, `three.start(updateFn, renderFn?)`, `three.stop()`
     - Scene graph: `three.createScene()`, `three.createPerspectiveCamera(fovDeg, aspect, near, far)`, `three.createOrthographicCamera(left, right, top, bottom, near, far)`, `three.setCameraAspect(camera, aspect)`, `three.createGroup()`, `three.createMesh(geometry, material)`, `three.add(parent, child)`, `three.loadGLTF(url)`, `three.modelIsReady(handle)`
-    - Geometry/material/light: `three.createBoxGeometry(width, height, depth)`, `three.createPlaneGeometry(width, height)`, `three.createSphereGeometry(radius, widthSegments?, heightSegments?)`, `three.createTexture(url)`, `three.createStandardMaterial(options)`, `three.createShaderMaterial(options)`, `three.setUniform(material, name, value)`, `three.createDirectionalLight(color, intensity)`, `three.createAmbientLight(color?, intensity?)`
+    - Geometry/material/light: `three.createBoxGeometry(width, height, depth)`, `three.createPlaneGeometry(width, height)`, `three.createSphereGeometry(radius, widthSegments?, heightSegments?)`, `three.createTexture(url)`, `three.createDataTexture(width, height, pixels, options?)`, `three.updateDataTexture(handle, pixels)`, `three.mandelbrotOrbit(real, imag, maxIter)`, `three.createStandardMaterial(options)`, `three.createShaderMaterial(options)`, `three.setUniform(material, name, value)`, `three.createDirectionalLight(color, intensity)`, `three.createAmbientLight(color?, intensity?)`
     - Transforms/input: `three.setPosition(object, x, y, z)`, `three.setRotation(object, x, y, z)`, `three.setScale(object, x, y, z)`, `three.lookAt(object, x, y, z)`, `three.render(renderer, scene, camera)`, `three.isKeyDown(key)`, `three.getMouseX()`, `three.getMouseY()`, `three.isMouseDown(button?)`
     - Shader kernels: `@shader()` plus `glsl.compile` (JS transpile only). User-facing contract — types, subset, `glsl.compile` keys, IDE rename vs string keys — is [Reference Manual 26.10.1](../ReferenceManual/26-browser-javascript-backend.html#shader-kernels). This is not a fourth execution backend.
 - Browser loading model:
@@ -329,6 +329,9 @@ Use `three.*` when you want a browser-hosted 3D scene in MALDA JavaScript mode w
   - `three.createPlaneGeometry(width, height)`
   - `three.createSphereGeometry(radius, widthSegments?, heightSegments?)`
   - `three.createTexture(url)`
+  - `three.createDataTexture(width, height, pixels, options?)`
+  - `three.updateDataTexture(handle, pixels)`
+  - `three.mandelbrotOrbit(real, imag, maxIter)`
   - `three.createStandardMaterial(options)`
   - `three.createShaderMaterial(options)`
   - `three.setUniform(material, name, value)`
@@ -426,7 +429,7 @@ See `Examples/Games/three_cube.malda` and `Examples/Games/three_runtime_smoke_te
 - Call `three.createRenderer(...)` before `three.render(...)` or `three.start(...)`.
 - When you change viewport dimensions after setup, call both `three.setRendererSize(renderer, width, height)` and `three.setCameraAspect(camera, width / height)`.
 - Do not call `three.createRenderer(...)` while the loop is running; call `three.stop()` first.
-- The curated wrapper still has no orbit controls and no raw `THREE.*` in MALDA source. `three.createTexture(url)` returns a handle immediately (async decode; missing files stay unready). `createStandardMaterial({ "map": handle })` leaves `map` unset until the handle is ready, then assigns it. `three.loadGLTF(url)` returns a group you can `add` immediately; children appear when `three.modelIsReady(handle)` is true (JSON `.gltf` or `.glb`; failures stay unready). `three.lookAt(object, x, y, z)` requires `lookAt` on the three.js object. Custom GLSL stays `three.createShaderMaterial` / `three.setUniform`. See `Examples/Games/three_textured.malda`.
+- The curated wrapper still has no orbit controls and no raw `THREE.*` in MALDA source. `three.createTexture(url)` returns a handle immediately (async decode; missing files stay unready). `createStandardMaterial({ "map": handle })` leaves `map` unset until the handle is ready, then assigns it. `three.createDataTexture(width, height, pixels, options?)` is ready immediately (RGBA; default float32, or `"type": "byte"`). `three.updateDataTexture(handle, pixels)` rewrites that buffer. `three.mandelbrotOrbit(real, imag, maxIter)` is JavaScript-only BigInt: pass **decimal strings** for C (MALDA numbers are IEEE double), walk `Z_{n+1} = Z_n² + C` at 256 fraction bits, and pack `(re, im, alive, 1)` into a 1-row float texture. `createShaderMaterial` / `setUniform` unwrap texture handles for `sampler2D`. `three.loadGLTF(url)` returns a group you can `add` immediately; children appear when `three.modelIsReady(handle)` is true (JSON `.gltf` or `.glb`; failures stay unready). `three.lookAt(object, x, y, z)` requires `lookAt` on the three.js object. Custom GLSL stays `three.createShaderMaterial` / `three.setUniform`. See `Examples/Games/three_textured.malda`.
 
 ### Shader materials (`three.createShaderMaterial`)
 
@@ -436,7 +439,7 @@ Use a fullscreen quad plus GLSL when CPU `game.setPixel` is too slow. MALDA owns
 - `three.createShaderMaterial({ "vertexShader": vert, "fragmentShader": frag, "uniforms": { ... } })`
   - `vertexShader` and `fragmentShader` are GLSL strings
   - Prefer writing kernels as typed MALDA `@shader()` functions and compiling them with `glsl.compile({ ... })` (JavaScript mode only). Triple-quoted GLSL strings (`"""`, not `$"""`) still work when you need raw GLSL.
-  - Plain uniform values are wrapped as `{ value }`. Arrays of length 2/3/4 become `Vector2` / `Vector3` / `Vector4`. `#rrggbb` strings become `Color`.
+  - Plain uniform values are wrapped as `{ value }`. Arrays of length 2/3/4 become `Vector2` / `Vector3` / `Vector4`. `#rrggbb` strings become `Color`. Texture handles from `createTexture` / `createDataTexture` / `mandelbrotOrbit` unwrap to `THREE.Texture` for `sampler2D`.
   - Optional flags: `"depthWrite": false`, `"depthTest": false`, `"transparent": true`
 - `three.setUniform(material, name, value)` — update a uniform after creation. Vector uniforms accept arrays.
 
@@ -478,7 +481,7 @@ malda compile Examples/Games/three_shader_billiards.malda --mode js -o Examples/
 malda compile Examples/Games/three_shader_path_tunnel.malda --mode js -o Examples/Games/three_shader_path_tunnel.js
 ```
 
-`Examples/Games/three_shader_mandelbrot.malda` is an infinite Mandelbrot zoom: `@shader()` kernels iterate with float-float arithmetic, the host advances an exponential scale into Seahorse Valley, and the dive wraps after six decades. Hold Space to pause; `[` `]` change speed. Compile:
+`Examples/Games/three_shader_mandelbrot.malda` is an infinite Mandelbrot zoom: the host builds a BigInt reference orbit with `three.mandelbrotOrbit` (decimal strings for C), and the `@shader()` kernel applies scaled perturbation (`w_{n+1} = 2 Z_n w_n + s w_n² + p`) so the GPU never adds the pixel offset to the high-precision center. The dive wraps after 32 decades. Hold Space to pause; `[` `]` change speed. Compile:
 
 ```bash
 malda compile Examples/Games/three_shader_mandelbrot.malda --mode js -o Examples/Games/three_shader_mandelbrot.js

@@ -4219,6 +4219,27 @@ process.exit(0);
     }
 
     [Fact]
+    public void JsTranspiler_MapsThreeDataTextureApis_ToMlRuntimeThree()
+    {
+        var source = """
+            var orbit = three.mandelbrotOrbit("-0.75", "0.1", 64);
+            var tex = three.createDataTexture(4, 1, pixels);
+            var typed = three.createDataTexture(4, 1, pixels, { "type": "float" });
+            three.updateDataTexture(tex, pixels);
+            three.setUniform(material, "uOrbit", orbit);
+            """;
+        var compiler = new Compiler.Compiler();
+
+        var js = compiler.TranspileToJavaScriptFromSource(source);
+
+        Assert.Contains("let orbit = mlRuntime.three.mandelbrotOrbit(\"-0.75\", \"0.1\", 64);", js, StringComparison.Ordinal);
+        Assert.Contains("let tex = mlRuntime.three.createDataTexture(4, 1, pixels);", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.three.createDataTexture(4, 1, pixels,", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.three.updateDataTexture(tex, pixels)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.three.setUniform(material, \"uOrbit\", orbit)", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void JsTranspiler_ShaderRayTracerExample_EmitsShaderCalls()
     {
         var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Games", "three_shader_raytracer.malda");
@@ -4331,14 +4352,17 @@ process.exit(0);
         Assert.Contains("mlRuntime.three.createOrthographicCamera(", js, StringComparison.Ordinal);
         Assert.Contains("varying vec2 vUv", js, StringComparison.Ordinal);
         Assert.Contains("gl_FragColor", js, StringComparison.Ordinal);
-        Assert.Contains("vec2 dsAdd(vec2 a, vec2 b)", js, StringComparison.Ordinal);
-        Assert.Contains("vec2 dsMul(vec2 a, vec2 b)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.three.mandelbrotOrbit(", js, StringComparison.Ordinal);
+        Assert.Contains("vec2 cMul(vec2 a, vec2 b)", js, StringComparison.Ordinal);
         Assert.Contains("vec3 palette(float t)", js, StringComparison.Ordinal);
-        Assert.Contains("const vec2 CX =", js, StringComparison.Ordinal);
-        Assert.Contains("WRAP_DECADES", js, StringComparison.Ordinal);
+        Assert.Contains("texture2D(uOrbit", js, StringComparison.Ordinal);
+        Assert.Contains("uniform sampler2D uOrbit", js, StringComparison.Ordinal);
+        Assert.Contains("uniform float uScale", js, StringComparison.Ordinal);
         Assert.Contains("Seahorse Valley", js, StringComparison.Ordinal);
         Assert.DoesNotContain("function fragmentMain", js, StringComparison.Ordinal);
-        Assert.DoesNotContain("function dsMul", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("function cMul", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("dsAdd", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("WRAP_DECADES", js, StringComparison.Ordinal);
         Assert.DoesNotContain("mlRuntime.game.setPixel", js, StringComparison.Ordinal);
     }
 
@@ -4447,6 +4471,144 @@ process.stdout.write("ok\n");
             var stderr = process.StandardError.ReadToEnd();
             process.WaitForExit(15000);
             Assert.True(process.ExitCode == 0, $"shader material runtime test failed ({process.ExitCode}). stderr: {stderr}");
+            Assert.Equal("ok", stdout.Trim());
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
+        }
+    }
+
+    [Fact]
+    public void ThreeRuntime_MandelbrotOrbitAndDataTexture_PacksFloatRgba()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var runtimePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "wwwroot", "malda-js-runtime.js");
+        var root = CreateTempDirectory("malda_js_mandelbrot_orbit_");
+        try
+        {
+            var scriptPath = Path.Combine(root, "mandelbrot-orbit-test.js");
+            File.WriteAllText(scriptPath, """
+globalThis.document = {
+  body: {},
+  querySelector() { return { appendChild() {}, removeChild() {} }; },
+  createElement() { return { style: {} }; }
+};
+globalThis.window = {
+  addEventListener() {},
+  removeEventListener() {},
+  requestAnimationFrame() { return 1; },
+  cancelAnimationFrame() {},
+  devicePixelRatio: 1
+};
+
+function DataTexture(data, width, height, format, type) {
+  this.image = { data: data, width: width, height: height };
+  this.format = format;
+  this.type = type;
+  this.needsUpdate = false;
+}
+function ShaderMaterial(options) {
+  this.uniforms = options.uniforms;
+  this.vertexShader = options.vertexShader;
+  this.fragmentShader = options.fragmentShader;
+}
+
+globalThis.THREE = {
+  DataTexture,
+  ShaderMaterial,
+  FloatType: 1015,
+  RGBAFormat: 1023,
+  NearestFilter: 1003,
+  ClampToEdgeWrapping: 1001,
+  NoColorSpace: 3000,
+  UnsignedByteType: 1009,
+  Vector2: function () {},
+  Vector3: function () {},
+  Vector4: function () {},
+  Color: function () {}
+};
+
+require(process.argv[2]);
+const three = globalThis.mlRuntime.three;
+
+function assertClose(actual, expected, label, eps) {
+  const tol = eps === undefined ? 1e-5 : eps;
+  if (Math.abs(actual - expected) > tol) {
+    throw new Error(label + ": expected " + expected + ", got " + actual);
+  }
+}
+
+const period2 = three.mandelbrotOrbit("-1", "0", 8);
+if (!period2 || period2.__maldaThreeTexture !== true) throw new Error("orbit handle missing");
+if (period2.size !== 9) throw new Error("orbit size");
+if (period2.escapedAt !== 9) throw new Error("c=-1 should stay bounded, escapedAt=" + period2.escapedAt);
+if (period2.texture.type !== 1015) throw new Error("orbit should be FloatType");
+if (period2.texture.magFilter !== 1003 || period2.texture.generateMipmaps !== false) {
+  throw new Error("orbit texture should be nearest / no mips");
+}
+const p2 = period2.texture.image.data;
+assertClose(p2[0], 0, "Z0 re");
+assertClose(p2[1], 0, "Z0 im");
+assertClose(p2[2], 1, "Z0 alive");
+assertClose(p2[4], -1, "Z1 re");
+assertClose(p2[5], 0, "Z1 im");
+assertClose(p2[8], 0, "Z2 re");
+assertClose(p2[12], -1, "Z3 re");
+
+const escaped = three.mandelbrotOrbit("1", "0", 8);
+if (escaped.escapedAt !== 3) throw new Error("c=1 should escape at iterate 3, got " + escaped.escapedAt);
+const ez = escaped.texture.image.data;
+assertClose(ez[2], 1, "Z0 alive for c=1");
+assertClose(ez[14], 0, "Z3 dead for c=1");
+
+const tex = three.createDataTexture(2, 1, [0.25, 0.5, 0.75, 1, -2, 3, 0, 1]);
+if (!tex.__maldaThreeTexture) throw new Error("createDataTexture handle");
+if (tex.width !== 2 || tex.height !== 1) throw new Error("data texture size");
+assertClose(tex.texture.image.data[0], 0.25, "pixel 0");
+assertClose(tex.texture.image.data[4], -2, "pixel 1 re");
+three.updateDataTexture(tex, [9, 8, 7, 6, 5, 4, 3, 2]);
+assertClose(tex.texture.image.data[0], 9, "updated pixel");
+if (tex.texture.needsUpdate !== true) throw new Error("needsUpdate after rewrite");
+
+const material = three.createShaderMaterial({
+  vertexShader: "void main() {}",
+  fragmentShader: "void main() {}",
+  uniforms: { uOrbit: period2, uScale: 2.55 }
+});
+if (material.uniforms.uOrbit.value !== period2.texture) throw new Error("sampler2D handle not unwrapped");
+if (material.uniforms.uScale.value !== 2.55) throw new Error("scalar uniform");
+three.setUniform(material, "uOrbit", tex);
+if (material.uniforms.uOrbit.value !== tex.texture) throw new Error("setUniform texture unwrap failed");
+
+let threw = false;
+try { three.mandelbrotOrbit("nope", "0", 8); } catch (error) { threw = true; }
+if (!threw) throw new Error("non-decimal real should throw");
+
+process.stdout.write("ok\n");
+""");
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = Environment.GetEnvironmentVariable("MALDA_NODE_PATH") is { Length: > 0 } nodePath
+                    ? nodePath
+                    : "node",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = root
+            };
+            startInfo.ArgumentList.Add(scriptPath);
+            startInfo.ArgumentList.Add(runtimePath);
+
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Failed to start Node.js for mandelbrot orbit runtime test.");
+            var stdout = process.StandardOutput.ReadToEnd();
+            var stderr = process.StandardError.ReadToEnd();
+            process.WaitForExit(15000);
+            Assert.True(process.ExitCode == 0, $"mandelbrot orbit runtime test failed ({process.ExitCode}). stderr: {stderr}");
             Assert.Equal("ok", stdout.Trim());
         }
         finally

@@ -88,6 +88,8 @@ claim a program works.
 
 **`three.createTexture` / `three.loadGLTF` are ready later, not now.** The calls return a handle/group immediately. `createStandardMaterial({ "map": handle })` leaves `map` unset until the texture is ready (missing files stay unready and do not throw). `loadGLTF` is a group you can `add` right away; children appear when `modelIsReady` is true. Failures stay unready. Orbit controls are not in the wrapper. Example: `Examples/Games/three_textured.malda`.
 
+**`three.mandelbrotOrbit` is JavaScript BigInt, not the interpreter.** Pass **decimal strings** for the center (`"-0.75"`, not a MALDA float). Host numbers are IEEE double and will round a deep C before the orbit is built. The helper packs a 1-row float texture; `createShaderMaterial` / `setUniform` unwrap that handle for `sampler2D`. Interpreter and C# transpile do not run `three.*`. Example: `Examples/Games/three_shader_mandelbrot.malda`.
+
 **The interpreter and `malda compile --mode transpile` are different backends.** A program that
 runs under the interpreter is not automatically a program that compiles. Prefer the
 interpret/transpile pair suite (`InterpretTranspilePairTests`) when you need a shippable
