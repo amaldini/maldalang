@@ -1,6 +1,6 @@
 # MALDA trust roadmap (trust before syntax)
 
-**Status:** DT0–DT4 and DT6 landed 2026-08-16; DT7 interpret/transpile pairs landed 2026-08-17; DT5 named (Second Brain instance others use; out of repo)  
+**Status:** DT0–DT4 and DT6 landed 2026-08-16; DT7 interpret/transpile pairs landed 2026-08-17; DT8 ship-contract registry + exit identity landed 2026-09-05; DT5 named (Second Brain instance others use; out of repo)  
 **Created:** 2026-08-15  
 **Audience:** maintainers prioritizing the OSS core after P0 + L1–L6
 
@@ -208,6 +208,23 @@ filter on Windows, Linux, and macOS; Unix runs the published apphost
 
 ---
 
+## DT8 — Ship contract (post-DT7)
+
+DT7 is a curated allowlist. A file that *claims* to ship still needed an
+oracle, not only `compile --mode transpile`.
+
+| Concrete work | Done when |
+|---------------|-----------|
+| Pair helper compares interpret exit vs transpile exit | Mixed success/failure fails; both-nonzero is error identity (`AssertSameFailureFromSource`) |
+| Registry + guard | [`docs/spec/ship-contract.md`](spec/ship-contract.md) lists smoke/pair paths, `malda new` templates, README showcases; `ShipContractGuardTests` in CI |
+| Workflow journal in smoke | `WorkflowTranspilerParityTests` in the CI filter |
+| Known-divergence fixtures | Nested `result.map`, dict `append`+`length`, `--typed-transpile-level 2`, `error()` failure token |
+
+Not in this slice: HTTP request traces (`Templates/webapi` stays `n/a` /
+`http-trace pending`), Second Brain ASK wrapper, Tier 0 C# on every PR.
+
+---
+
 ## Explicitly deferred
 
 - New top-level builtins / flat global aliases
@@ -270,3 +287,4 @@ filter on Windows, Linux, and macOS; Unix runs the published apphost
 | 2026-08-16 | DT6 landed: toolchain 1.0.0 (same `<Version>`, `docs/releases/v1.0.0.md`, tag `v1.0.0`) |
 | 2026-08-17 | DT7 landed: `InterpretTranspilePairTests` (curated Examples + gotcha fixtures; CI smoke filter) |
 | 2026-08-21 | DT7 corpus widened: existing nested-schema / typed-payload Examples + inline gotcha pairs (`grounded.wrap`, `cap.*`, `result`/`option`, primary constructors, tagged catch, `?.`, destructuring, `parseJSON` fields, `io.getEnvOr`). No new showcase Examples. |
+| 2026-09-05 | DT8 landed: pair exit identity, `docs/spec/ship-contract.md` + `ShipContractGuardTests`, workflow journal in CI smoke, nested `result.map` / list-append / typed-transpile-level 2 / `error()` fixtures |

@@ -6,20 +6,28 @@ using Xunit;
 namespace MaldaLang.Tests;
 
 /// <summary>
-/// DT7 helper: same <c>.malda</c>, same exit, same normalized stdout on interpret and
-/// C# transpile. JS is out of scope.
+/// DT7 / ship-contract helper: same <c>.malda</c>, same exit class, same normalized
+/// stdout on interpret and C# transpile when both succeed. JS is out of scope.
+/// Mixed success/failure is a contract failure. Both-nonzero is error identity
+/// (optional shared token in interpret exception or transpile stderr).
 /// </summary>
 public static class InterpretTranspilePair
 {
     public static string Normalize(string text) => text.Replace("\r", "").Trim();
 
-    public static void AssertSameFromSource(string source, string label)
+    public static void AssertSameFromSource(string source, string label, int typedTranspileLevel = 1)
     {
-        var interpreted = TestBase.CaptureInterpretAsync(source).GetAwaiter().GetResult();
+        var interpreted = TestBase.CaptureInterpretOutcomeAsync(source).GetAwaiter().GetResult();
         TranspiledTestRunner.RunResult compiled;
         try
         {
-            compiled = TranspiledTestRunner.CompileAndRunFromSource(source);
+            compiled = TranspiledTestRunner.CompileAndRunFromSource(
+                source,
+                includeUiHost: false,
+                environmentVariables: null,
+                commandLineArgs: null,
+                profilingOptions: null,
+                typedTranspileLevel: typedTranspileLevel);
         }
         catch (Exception ex)
         {
@@ -33,11 +41,11 @@ public static class InterpretTranspilePair
     /// Interpret from the repo path (so <c>import</c> resolves). Transpile from a temp
     /// copy of sibling <c>.malda</c> files so Examples/ is not written with an <c>.exe</c>.
     /// </summary>
-    public static void AssertSameFromFile(string sourcePath, string label)
+    public static void AssertSameFromFile(string sourcePath, string label, int typedTranspileLevel = 1)
     {
         Assert.True(File.Exists(sourcePath), $"Missing pair source: {sourcePath}");
         var source = File.ReadAllText(sourcePath);
-        var interpreted = TestBase.CaptureInterpretAsync(source, sourcePath).GetAwaiter().GetResult();
+        var interpreted = TestBase.CaptureInterpretOutcomeAsync(source, sourcePath).GetAwaiter().GetResult();
 
         var tempDir = Path.Combine(Path.GetTempPath(), "malda_pair", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(tempDir);
@@ -48,7 +56,13 @@ public static class InterpretTranspilePair
             TranspiledTestRunner.RunResult compiled;
             try
             {
-                compiled = TranspiledTestRunner.CompileAndRunFromFile(tempSource);
+                compiled = TranspiledTestRunner.CompileAndRunFromFile(
+                    tempSource,
+                    includeUiHost: false,
+                    environmentVariables: null,
+                    commandLineArgs: null,
+                    profilingOptions: null,
+                    typedTranspileLevel: typedTranspileLevel);
             }
             catch (Exception ex)
             {
@@ -63,10 +77,51 @@ public static class InterpretTranspilePair
         }
     }
 
-    private static void AssertPair(string interpreted, TranspiledTestRunner.RunResult compiled, string label)
+    /// <summary>
+    /// Both backends must fail (nonzero exit). When <paramref name="token"/> is set,
+    /// it must appear in the interpret exception or transpile stderr.
+    /// </summary>
+    public static void AssertSameFailureFromSource(string source, string label, string? token = null)
     {
-        Assert.True(compiled.ExitCode == 0, $"{label}: transpiled exit {compiled.ExitCode}.{FormatStdErr(compiled)}");
-        Assert.Equal(Normalize(interpreted), Normalize(compiled.StdOut));
+        var interpreted = TestBase.CaptureInterpretOutcomeAsync(source).GetAwaiter().GetResult();
+        TranspiledTestRunner.RunResult compiled;
+        try
+        {
+            compiled = TranspiledTestRunner.CompileAndRunFromSource(source);
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"{label}: transpile failed.{Environment.NewLine}{ex.Message}", ex);
+        }
+
+        Assert.True(
+            interpreted.ExitCode != 0 && compiled.ExitCode != 0,
+            $"{label}: expected both to fail. interpret exit {interpreted.ExitCode} ({interpreted.Exception?.Message}); transpile exit {compiled.ExitCode}.{FormatStdErr(compiled)}");
+
+        if (!string.IsNullOrEmpty(token))
+        {
+            var haystack = (interpreted.Exception?.Message ?? "") + "\n" + compiled.StdErr;
+            Assert.True(
+                haystack.Contains(token, StringComparison.Ordinal),
+                $"{label}: expected error token '{token}' in interpret exception or transpile stderr.{Environment.NewLine}{haystack}");
+        }
+    }
+
+    private static void AssertPair(TestBase.InterpretOutcome interpreted, TranspiledTestRunner.RunResult compiled, string label)
+    {
+        if (interpreted.ExitCode == 0 && compiled.ExitCode == 0)
+        {
+            Assert.Equal(Normalize(interpreted.StdOut), Normalize(compiled.StdOut));
+            return;
+        }
+
+        if (interpreted.ExitCode != 0 && compiled.ExitCode != 0)
+            return;
+
+        Assert.True(
+            false,
+            $"{label}: interpret exit {interpreted.ExitCode} vs transpile exit {compiled.ExitCode}.{Environment.NewLine}"
+            + $"interpret error: {interpreted.Exception?.Message}{FormatStdErr(compiled)}");
     }
 
     private static void CopyMaldaSiblings(string sourceDir, string destDir)

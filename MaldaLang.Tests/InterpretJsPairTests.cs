@@ -94,6 +94,24 @@ public class InterpretJsPairTests
     }
 
     [Fact]
+    public void ResultMapNestedVariant_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(
+            """
+            var nested = result.map(result.ok(10), (x) => result.ok(x + 1));
+            match nested {
+                case Ok(inner):
+                    match inner {
+                        case Ok(n): io.print("nested:" + string(n));
+                        default: io.print("inner-bare");
+                    }
+                default: io.print("outer-fail");
+            }
+            """,
+            "result-map-nested-js");
+    }
+
+    [Fact]
     public void ClassExtends_SameStdout()
     {
         InterpretJsPair.AssertSameFromSource(

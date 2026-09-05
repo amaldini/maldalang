@@ -13,6 +13,7 @@ Canonical reading order for tools and agents working on this repository.
 - docs/roadmap-p0-types-impl.md — P0 types T1–T4 implementation plan (status: implemented)
 - docs/roadmap-language-constructs.md — post-Final language constructs plan (schema/sum types, Mode C, budget, WF determinism, grounded values, capability tokens)
 - docs/roadmap-trust.md — trust plan (strict compile, transpile smoke, loud gotchas; toolchain 1.0.0 landed)
+- docs/spec/ship-contract.md — host ship oracles (pair / trace / n/a)
 - docs/roadmap-interpret-debug.md — interpret-mode source-level debug plan (DAP + shared DebugSession; not transpile `#line`)
 - docs/roadmap-games.md — browser games kit (JS-only `game.*` / `three.*`; G0–G17 landed)
 - docs/games-2d-gap-analysis.md — 2D kit gaps vs Love2D / Pico-8 / Phaser / Godot (evaluation, not a workstream plan)
