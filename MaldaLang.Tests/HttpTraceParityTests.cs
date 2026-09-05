@@ -22,7 +22,7 @@ namespace MaldaLang.Tests;
 public class HttpTraceParityTests
 {
     private const string InlineHealthSource = """
-        var server = new RestServer(__PORT__);
+        var server = new RestServer(__PORT__, "127.0.0.1");
 
         @GET("/api/health")
         function health() {
@@ -58,7 +58,7 @@ public class HttpTraceParityTests
             var appPath = Path.Combine(dest, "app.malda");
             Assert.True(File.Exists(appPath), "scaffolded webapi is missing app.malda");
             var source = File.ReadAllText(appPath);
-            source = source.Replace("new RestServer(8080)", "new RestServer(__PORT__)", StringComparison.Ordinal);
+            source = source.Replace("new RestServer(8080)", "new RestServer(__PORT__, \"127.0.0.1\")", StringComparison.Ordinal);
             Assert.DoesNotContain("new RestServer(8080)", source, StringComparison.Ordinal);
 
             var interpret = await TraceInterpretAsync(source);
@@ -93,8 +93,11 @@ public class HttpTraceParityTests
         var statements = parser.Parse();
         Assert.Empty(parser.Errors);
 
-        var interpreter = new Interpreter.Interpreter();
-        await interpreter.InterpretAsync(statements);
+        await TestBase.WithIsolatedConsoleAsync(async () =>
+        {
+            var interpreter = new Interpreter.Interpreter();
+            await interpreter.InterpretAsync(statements);
+        });
         try
         {
             return await CaptureHealthAsync(port, process: null);
@@ -196,7 +199,7 @@ public class HttpTraceParityTests
     private static async Task<HttpTrace> CaptureHealthAsync(int port, Process? process)
     {
         using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
-        var url = $"http://localhost:{port}/api/health";
+        var url = $"http://127.0.0.1:{port}/api/health";
         Exception? last = null;
         for (var i = 0; i < 80; i++)
         {

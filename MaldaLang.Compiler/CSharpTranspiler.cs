@@ -11514,6 +11514,32 @@ public class CSharpTranspiler
             return;
         }
 
+        // RestServer(port?, host?) — coerce because top-level vars are object-typed.
+        if (className == "RestServer")
+        {
+            _output.Append("new MaldaLang.BuiltIns.RestServerInstance(");
+            if (newExpr.Arguments.Count >= 1)
+            {
+                _output.Append("(int)RuntimeHelpers.CoerceToInt(");
+                TranspileExpression(newExpr.Arguments[0]);
+                _output.Append(")");
+            }
+            else
+            {
+                _output.Append("0");
+            }
+
+            if (newExpr.Arguments.Count >= 2)
+            {
+                _output.Append(", RuntimeHelpers.CoerceToString(");
+                TranspileExpression(newExpr.Arguments[1]);
+                _output.Append(")");
+            }
+
+            _output.Append(")");
+            return;
+        }
+
         // HttpServer(port, webDirectory?, pathBase?, host?) needs explicit coercion because top-level vars are object-typed.
         if (className == "HttpServer" && newExpr.Arguments.Count >= 1)
         {
