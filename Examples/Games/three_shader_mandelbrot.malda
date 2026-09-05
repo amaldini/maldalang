@@ -1,6 +1,8 @@
-// Infinite Mandelbrot zoom compiled through @shader() → GLSL (JavaScript mode).
-// Float-float (hi/lo) arithmetic keeps a Seahorse Valley filament center sharp
-// for about six decades, then the exponential scale wraps so the dive loops.
+// Infinite Mandelbrot zoom: BigInt reference orbit on the host, perturbation
+// kernel in @shader() → GLSL. The GPU never adds the pixel offset to the
+// high-precision center, so the dive stays sharp past float32 ulp.
+// The 256-bit orbit would go much deeper; the wrap is for coloring with a
+// 1024-iterate budget. Wrap after 8 decades so the loop stays colored.
 //
 // Compile:
 //   malda compile Examples/Games/three_shader_mandelbrot.malda --mode js -o Examples/Games/three_shader_mandelbrot.js
@@ -12,42 +14,8 @@ function vertexMain() {
 }
 
 @shader()
-function dsRenorm(hi: float, lo: float) -> vec2 {
-    var s: float = hi + lo;
-    return vec2(s, lo - (s - hi));
-}
-
-@shader()
-function dsAdd(a: vec2, b: vec2) -> vec2 {
-    var s: float = a.x + b.x;
-    var e: float = s - a.x;
-    var t: float = ((b.x - e) + (a.x - (s - e))) + a.y + b.y;
-    return dsRenorm(s, t);
-}
-
-@shader()
-function dsNeg(a: vec2) -> vec2 {
-    return vec2(-a.x, -a.y);
-}
-
-@shader()
-function dsScale(a: vec2, s: float) -> vec2 {
-    return dsRenorm(a.x * s, a.y * s);
-}
-
-@shader()
-function dsMul(a: vec2, b: vec2) -> vec2 {
-    var split: float = 4097.0;
-    var cona: float = a.x * split;
-    var conb: float = b.x * split;
-    var a1: float = cona - (cona - a.x);
-    var b1: float = conb - (conb - b.x);
-    var a2: float = a.x - a1;
-    var b2: float = b.x - b1;
-    var p: float = a.x * b.x;
-    var err: float = (((a1 * b1 - p) + a1 * b2) + a2 * b1) + a2 * b2;
-    err = err + (a.x * b.y + a.y * b.x);
-    return dsRenorm(p, err);
+function cMul(a: vec2, b: vec2) -> vec2 {
+    return vec2(a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x);
 }
 
 @shader()
@@ -60,34 +28,31 @@ function palette(t: float) -> vec3 {
 @shader()
 function fragmentMain() {
     var fragCoord: vec2 = vUv * uResolution;
-    var uv: vec2 = (fragCoord - 0.5 * uResolution) / uResolution.y;
-    var decades: float = mod(uTime, WRAP_DECADES);
-    var scale: float = START_SCALE * pow(10.0, -decades);
-    var cx: vec2 = dsAdd(CX, dsRenorm(uv.x * scale, 0.0));
-    var cy: vec2 = dsAdd(CY, dsRenorm(uv.y * scale, 0.0));
-
-    var zx: vec2 = vec2(0.0, 0.0);
-    var zy: vec2 = vec2(0.0, 0.0);
+    var p: vec2 = (fragCoord - 0.5 * uResolution) / uResolution.y;
+    var w: vec2 = vec2(0.0, 0.0);
     var i: float = 0.0;
-    var mag: float = 0.0;
     var escaped: float = 0.0;
     var smoothIter: float = 0.0;
-    var maxIter: float = 140.0 + decades * 28.0;
+    var mag: float = 0.0;
 
-    while (i < 380.0) {
+    while (i < 1024.0) {
+        if (i >= uMaxIter) {
+            break;
+        }
+        var zn: vec4 = texture2D(uOrbit, vec2((i + 0.5) / uOrbitLen, 0.5));
+        var wSq: vec2 = cMul(w, w);
+        w = cMul(zn.xy, w) * 2.0 + wSq * uScale + p;
         i = i + 1.0;
-        if (escaped < 0.5 && i <= maxIter) {
-            var x2: vec2 = dsMul(zx, zx);
-            var y2: vec2 = dsMul(zy, zy);
-            mag = x2.x + y2.x;
-            if (mag > 16.0) {
-                escaped = 1.0;
-                smoothIter = i - log(log(mag)) / log(2.0);
-            } else {
-                var xy: vec2 = dsScale(dsMul(zx, zy), 2.0);
-                zx = dsAdd(dsAdd(x2, dsNeg(y2)), cx);
-                zy = dsAdd(xy, cy);
-            }
+        var znp: vec4 = texture2D(uOrbit, vec2((i + 0.5) / uOrbitLen, 0.5));
+        var z: vec2 = znp.xy + w * uScale;
+        mag = dot(z, z);
+        if (mag > 1.0e20) {
+            mag = 1.0e20;
+        }
+        if (mag > 16.0 || znp.z < 0.5) {
+            escaped = 1.0;
+            smoothIter = i - log(log(max(mag, 16.0))) / log(2.0);
+            break;
         }
     }
 
@@ -108,15 +73,12 @@ var fragmentShader = glsl.compile({
     varyings: ["vec2 vUv"],
     uniforms: [
         "vec2 uResolution",
-        "float uTime"
+        "float uScale",
+        "float uOrbitLen",
+        "float uMaxIter",
+        "sampler2D uOrbit"
     ],
-    consts: [
-        "vec2 CX = vec2(-0.7436438798904419, -7.146709002370244e-9)",
-        "vec2 CY = vec2(0.1318289041519165, 5.3413495848531056e-11)",
-        "float START_SCALE = 2.55",
-        "float WRAP_DECADES = 6.0"
-    ],
-    functions: ["dsRenorm", "dsAdd", "dsNeg", "dsScale", "dsMul", "palette", "fragmentMain"],
+    functions: ["cMul", "palette", "fragmentMain"],
     main: "fragmentMain"
 });
 
@@ -132,15 +94,21 @@ if (root == null) {
     dom.append(root, heading);
 
     var hint = dom.create("p");
-    dom.setText(hint, "GPU Mandelbrot via @shader() → glsl.compile. Float-float center, exponential zoom into Seahorse Valley, then wrap. Hold Space to pause. [ ] change speed.");
+    dom.setText(hint, "Host BigInt reference orbit + GPU perturbation via @shader(). Exponential zoom into Seahorse Valley; wraps after 8 decades. Hold Space to pause. [ ] change speed.");
     dom.append(root, hint);
 
     var zoomLabel = dom.create("p");
-    dom.setText(zoomLabel, "depth 0 decades");
+    dom.setText(zoomLabel, "depth 10^-0");
     dom.append(root, zoomLabel);
 
     var width = 960;
     var height = 540;
+    var maxIter = 1024;
+    var orbit = three.mandelbrotOrbit(
+        "-0.743643887037158704752191506114774",
+        "0.131825904205311970493132056385139",
+        maxIter
+    );
 
     var renderer = three.createRenderer(width, height, "#app");
     three.setClearColor(renderer, "#020617");
@@ -155,7 +123,10 @@ if (root == null) {
         "depthWrite": false,
         "uniforms": {
             "uResolution": [width, height],
-            "uTime": 0
+            "uScale": 2.55,
+            "uOrbitLen": maxIter + 1,
+            "uMaxIter": maxIter,
+            "uOrbit": orbit
         }
     });
 
@@ -164,8 +135,9 @@ if (root == null) {
 
     var decades = 0.0;
     var speedMul = 1.0;
-    var wrapDecades = 6.0;
-    var zoomPerSecond = 0.38;
+    var wrapDecades = 8.0;
+    var zoomPerSecond = 0.55;
+    var startScale = 2.55;
 
     function update(dtMs) {
         var dt = dtMs;
@@ -192,7 +164,9 @@ if (root == null) {
         }
 
         var wrapped = decades - math.floor(decades / wrapDecades) * wrapDecades;
-        three.setUniform(material, "uTime", decades);
+        var scale = startScale * math.pow(10.0, -wrapped);
+        three.setUniform(material, "uScale", scale);
+        three.setUniform(material, "uMaxIter", maxIter);
 
         var shown = int(wrapped * 10.0) / 10.0;
         dom.setText(zoomLabel, "depth 10^-" + string(shown) + "  speed x" + string(int(speedMul * 10.0) / 10.0));

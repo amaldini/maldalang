@@ -5508,6 +5508,10 @@
       }
 
       function wrapUniformValue(THREE, value) {
+        const textureHandle = resolveTextureHandle(value);
+        if (textureHandle) {
+          return textureHandle.texture;
+        }
         if (Array.isArray(value)) {
           const x = toFiniteNumber(value[0], 0);
           const y = toFiniteNumber(value[1], 0);
@@ -5567,6 +5571,168 @@
         if (safeOptions.depthTest === false) material.depthTest = false;
         if (safeOptions.transparent === true) material.transparent = true;
         return material;
+      }
+
+      function copyPixelsToBuffer(target, pixels, count) {
+        const src = pixels && typeof pixels.length === "number" ? pixels : [];
+        const n = Math.max(0, count);
+        for (let i = 0; i < n; i++) {
+          target[i] = toFiniteNumber(src[i], 0);
+        }
+      }
+
+      function configureDataTexture(texture) {
+        const THREE = ensureThree("createDataTexture");
+        if (THREE.NearestFilter !== undefined) {
+          texture.magFilter = THREE.NearestFilter;
+          texture.minFilter = THREE.NearestFilter;
+        }
+        if (THREE.ClampToEdgeWrapping !== undefined) {
+          texture.wrapS = THREE.ClampToEdgeWrapping;
+          texture.wrapT = THREE.ClampToEdgeWrapping;
+        }
+        texture.generateMipmaps = false;
+        if (THREE.NoColorSpace !== undefined) {
+          texture.colorSpace = THREE.NoColorSpace;
+        }
+        texture.needsUpdate = true;
+        return texture;
+      }
+
+      function createDataTexture(width, height, pixels, options) {
+        const THREE = ensureThree("createDataTexture");
+        if (typeof THREE.DataTexture !== "function") {
+          throw new Error("mlRuntime.three.createDataTexture requires THREE.DataTexture on the loaded three.js bundle.");
+        }
+        const w = Math.max(1, coerceToInt(width));
+        const h = Math.max(1, coerceToInt(height));
+        const safeOptions = options && typeof options === "object" && !Array.isArray(options) ? options : {};
+        const typeName = coerceToString(safeOptions.type).trim().toLowerCase();
+        const useFloat = typeName === "" || typeName === "float" || typeName === "float32";
+        const count = w * h * 4;
+        let texture;
+        if (useFloat) {
+          if (THREE.FloatType === undefined || THREE.RGBAFormat === undefined) {
+            throw new Error("mlRuntime.three.createDataTexture float textures require THREE.FloatType and THREE.RGBAFormat.");
+          }
+          const data = new Float32Array(count);
+          copyPixelsToBuffer(data, pixels, count);
+          texture = new THREE.DataTexture(data, w, h, THREE.RGBAFormat, THREE.FloatType);
+        } else {
+          const data = new Uint8Array(count);
+          const src = pixels && typeof pixels.length === "number" ? pixels : [];
+          for (let i = 0; i < count; i++) {
+            const v = toFiniteNumber(src[i], 0);
+            data[i] = v <= 1 && v >= 0 && src[i] !== undefined && Math.abs(v) <= 1
+              ? Math.round(Math.max(0, Math.min(1, v)) * 255)
+              : Math.max(0, Math.min(255, Math.round(v)));
+          }
+          const byteType = THREE.UnsignedByteType !== undefined ? THREE.UnsignedByteType : undefined;
+          texture = byteType !== undefined
+            ? new THREE.DataTexture(data, w, h, THREE.RGBAFormat, byteType)
+            : new THREE.DataTexture(data, w, h, THREE.RGBAFormat);
+        }
+        configureDataTexture(texture);
+        return {
+          __maldaThreeTexture: true,
+          url: "",
+          ready: true,
+          texture,
+          pendingMaterials: [],
+          width: w,
+          height: h
+        };
+      }
+
+      function updateDataTexture(handle, pixels) {
+        ensureThree("updateDataTexture");
+        const resolved = resolveTextureHandle(handle);
+        if (!resolved || !resolved.texture || !resolved.texture.image || !resolved.texture.image.data) {
+          throw new Error("mlRuntime.three.updateDataTexture expects a handle from three.createDataTexture or three.mandelbrotOrbit.");
+        }
+        const data = resolved.texture.image.data;
+        copyPixelsToBuffer(data, pixels, data.length);
+        resolved.texture.needsUpdate = true;
+        return null;
+      }
+
+      function parseDecimalToFixed(text, fracBits) {
+        const raw = coerceToString(text).trim();
+        if (raw === "") {
+          throw new Error("mlRuntime.three.mandelbrotOrbit requires a decimal real/imag string.");
+        }
+        let sign = 1n;
+        let body = raw;
+        if (body.charAt(0) === "-") {
+          sign = -1n;
+          body = body.slice(1);
+        } else if (body.charAt(0) === "+") {
+          body = body.slice(1);
+        }
+        const parts = body.split(".");
+        const ip = parts[0] === "" || parts[0] === undefined ? "0" : parts[0];
+        const fp = parts[1] === undefined ? "" : parts[1];
+        if (!/^\d+$/.test(ip) || (fp.length > 0 && !/^\d+$/.test(fp))) {
+          throw new Error("mlRuntime.three.mandelbrotOrbit real/imag must be decimal strings, for example \"-0.75\".");
+        }
+        const scale = 10n ** BigInt(fp.length);
+        const mag = BigInt(ip) * scale + (fp.length === 0 ? 0n : BigInt(fp));
+        return sign * ((mag << BigInt(fracBits)) / scale);
+      }
+
+      function fixedToFloat(value, fracBits) {
+        const keep = 40;
+        if (fracBits <= keep) {
+          return Number(value) / Math.pow(2, fracBits);
+        }
+        const shift = BigInt(fracBits - keep);
+        return Number(value >> shift) / Math.pow(2, keep);
+      }
+
+      // Host-side Mandelbrot reference orbit for perturbation shaders.
+      // real/imag are decimal strings (MALDA IEEE doubles cannot hold a deep C).
+      // Walks Z_{n+1} = Z_n^2 + C in BigInt fixed-point (256 fraction bits) and
+      // packs each iterate as float RGBA (re, im, alive, 1) in a 1-row DataTexture.
+      function mandelbrotOrbit(real, imag, maxIter) {
+        const THREE = ensureThree("mandelbrotOrbit");
+        if (typeof BigInt !== "function") {
+          throw new Error("mlRuntime.three.mandelbrotOrbit requires JavaScript BigInt.");
+        }
+        const iters = Math.max(1, Math.min(2048, coerceToInt(maxIter)));
+        const fracBits = 256;
+        const cr = parseDecimalToFixed(real, fracBits);
+        const ci = parseDecimalToFixed(imag, fracBits);
+        const four = 4n << BigInt(fracBits);
+        const pixels = new Float32Array((iters + 1) * 4);
+        let zr = 0n;
+        let zi = 0n;
+        let escapedAt = iters + 1;
+        for (let n = 0; n <= iters; n++) {
+          const o = n * 4;
+          pixels[o] = fixedToFloat(zr, fracBits);
+          pixels[o + 1] = fixedToFloat(zi, fracBits);
+          pixels[o + 2] = escapedAt <= n ? 0 : 1;
+          pixels[o + 3] = 1;
+          if (escapedAt <= n) {
+            continue;
+          }
+          const zr2 = (zr * zr) >> BigInt(fracBits);
+          const zi2 = (zi * zi) >> BigInt(fracBits);
+          if (zr2 + zi2 > four) {
+            escapedAt = n;
+            pixels[o + 2] = 0;
+            continue;
+          }
+          const zri = (zr * zi) >> BigInt(fracBits);
+          const nr = zr2 - zi2 + cr;
+          const ni = (zri << 1n) + ci;
+          zr = nr;
+          zi = ni;
+        }
+        const handle = createDataTexture(iters + 1, 1, pixels, { type: "float" });
+        handle.escapedAt = escapedAt;
+        handle.size = iters + 1;
+        return handle;
       }
 
       function setUniform(material, name, value) {
@@ -5768,6 +5934,9 @@
         createPlaneGeometry,
         createSphereGeometry,
         createTexture,
+        createDataTexture,
+        updateDataTexture,
+        mandelbrotOrbit,
         createStandardMaterial,
         loadGLTF,
         modelIsReady,
