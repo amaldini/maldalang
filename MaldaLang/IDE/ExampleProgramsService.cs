@@ -8,6 +8,7 @@ namespace MaldaLang.IDE;
 
 public class ExampleProgramsService
 {
+    private static readonly object ExamplesCacheLock = new();
     private static List<ExampleProgram>? _cachedExamples;
     
     public static List<ExampleProgram> GetExamples()
@@ -16,15 +17,27 @@ public class ExampleProgramsService
         {
             return _cachedExamples;
         }
-        
-        _cachedExamples = new List<ExampleProgram>();
+
+        lock (ExamplesCacheLock)
+        {
+            if (_cachedExamples != null)
+            {
+                return _cachedExamples;
+            }
+
+            return _cachedExamples = LoadExamples();
+        }
+    }
+
+    private static List<ExampleProgram> LoadExamples()
+    {
+        var loaded = new List<ExampleProgram>();
         
         // Get the Examples directory path
         var examplesPath = GetExamplesPath();
         if (!Directory.Exists(examplesPath))
         {
-            // Return empty list if Examples directory doesn't exist
-            return _cachedExamples;
+            return loaded;
         }
         
         // Scan subdirectories
@@ -55,7 +68,7 @@ public class ExampleProgramsService
                             var code = File.ReadAllText(filePath);
                             var relativePath = Path.Combine(categoryName, exampleMeta.File);
                             
-                            _cachedExamples.Add(new ExampleProgram
+                            loaded.Add(new ExampleProgram
                             {
                                 Name = exampleMeta.Name,
                                 Description = exampleMeta.Description,
@@ -87,7 +100,7 @@ public class ExampleProgramsService
             }
         }
         
-        return _cachedExamples;
+        return loaded;
     }
     
     private static string GetExamplesPath()
@@ -211,6 +224,7 @@ public class ExampleProgramsService
         if (category.Equals("OOP", StringComparison.OrdinalIgnoreCase)) return 2;
         if (category.Equals("Prompts", StringComparison.OrdinalIgnoreCase)) return 3;
         if (category.Equals("Plan", StringComparison.OrdinalIgnoreCase)) return 4;
+        if (category.Equals("Algorithms", StringComparison.OrdinalIgnoreCase)) return 8;
 
         // Built-in Features
         if (category.Equals("Tools", StringComparison.OrdinalIgnoreCase)) return 10;

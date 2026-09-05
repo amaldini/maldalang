@@ -1,0 +1,98 @@
+// BFS and DFS from scratch on a list-of-lists adjacency list.
+//
+// After this file, the same walks are one call on the graph builtin:
+//   Examples/Graphs/graph_algorithms.malda
+// Change this: start from node 5. Next: knapsack.malda
+
+function neighborsOf(adj, node) {
+    return adj[node];
+}
+
+function bfs(adj, start) {
+    var seen = [];
+    var i = 0;
+    while (i < adj.length) {
+        seen.append(false);
+        i = i + 1;
+    }
+    var order = [];
+    var queue = [start];
+    seen[start] = true;
+    while (queue.length > 0) {
+        var node = queue.shift();
+        order.append(node);
+        var next = neighborsOf(adj, node);
+        var k = 0;
+        while (k < next.length) {
+            var dest = next[k];
+            if (!seen[dest]) {
+                seen[dest] = true;
+                queue.append(dest);
+            }
+            k = k + 1;
+        }
+    }
+    return order;
+}
+
+function dfsFrom(adj, node, seen, order) {
+    seen[node] = true;
+    order.append(node);
+    var next = neighborsOf(adj, node);
+    var k = 0;
+    while (k < next.length) {
+        var dest = next[k];
+        if (!seen[dest]) {
+            dfsFrom(adj, dest, seen, order);
+        }
+        k = k + 1;
+    }
+}
+
+function dfs(adj, start) {
+    var seen = [];
+    var i = 0;
+    while (i < adj.length) {
+        seen.append(false);
+        i = i + 1;
+    }
+    var order = [];
+    dfsFrom(adj, start, seen, order);
+    return order;
+}
+
+// Undirected 6-node line-and-branch: 0-1-3-5 and 0-2-4-5.
+var adj = [
+    [1, 2],
+    [0, 3],
+    [0, 4],
+    [1, 5],
+    [2, 5],
+    [3, 4]
+];
+
+var bfsOrder = bfs(adj, 0);
+var dfsOrder = dfs(adj, 0);
+io.print("bfs=" + string(bfsOrder));
+io.print("dfs=" + string(dfsOrder));
+
+// Same graph through the builtin — compare the walk, do not reimplement it.
+var g = graph undirected {
+    nodes: ["0", "1", "2", "3", "4", "5"],
+    edges: [
+        { from: "0", to: "1" },
+        { from: "0", to: "2" },
+        { from: "1", to: "3" },
+        { from: "2", to: "4" },
+        { from: "3", to: "5" },
+        { from: "4", to: "5" }
+    ]
+};
+io.print("graph.bfs=" + string(g.bfs("0")));
+io.print("graph.dfs=" + string(g.dfs("0")));
+
+if (bfsOrder[0] == 0 && bfsOrder.length == 6 && dfsOrder[0] == 0 && dfsOrder.length == 6) {
+    io.print("bfs dfs ok");
+} else {
+    io.print("bfs dfs failed");
+}

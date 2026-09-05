@@ -1,0 +1,38 @@
+// Binary search: find a value in a sorted array in O(log n) probes.
+//
+// Loop invariant: if target is present, it lives in items[lo]..items[hi].
+// Change this: search for 16 (the last item). Next: merge_sort.malda
+
+function binarySearch(items, target) {
+    var lo = 0;
+    var hi = items.length - 1;
+    var probes = 0;
+    while (lo <= hi) {
+        var mid = int((lo + hi) / 2);
+        probes = probes + 1;
+        var value = items[mid];
+        if (value == target) {
+            return { "index": mid, "probes": probes };
+        }
+        if (value < target) {
+            lo = mid + 1;
+        } else {
+            hi = mid - 1;
+        }
+    }
+    return { "index": -1, "probes": probes };
+}
+
+var items = [2, 4, 6, 8, 10, 12, 14, 16];
+var found = binarySearch(items, 10);
+var missing = binarySearch(items, 7);
+
+io.print("sorted=" + string(items));
+io.print("search 10 -> index=" + string(found.index) + " probes=" + string(found.probes));
+io.print("search 7 -> index=" + string(missing.index) + " probes=" + string(missing.probes));
+
+if (found.index == 4 && missing.index == -1) {
+    io.print("binary search ok");
+} else {
+    io.print("binary search failed");
+}

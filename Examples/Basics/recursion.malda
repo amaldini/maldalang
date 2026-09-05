@@ -1,0 +1,25 @@
+// Recursion: a function that calls itself with a smaller argument.
+//
+// factorial(n) = n * factorial(n - 1), and factorial(0) = 1.
+// Change this: print factorial(7). Next: Algorithms/binary_search.malda
+
+function factorial(n) {
+    if (n <= 1) {
+        return 1;
+    }
+    return n * factorial(n - 1);
+}
+
+function countdown(n) {
+    if (n <= 0) {
+        io.print("liftoff");
+        return 0;
+    }
+    io.print(n);
+    return countdown(n - 1);
+}
+
+io.print("factorial(5)=" + string(factorial(5)));
+io.print("countdown from 3:");
+countdown(3);
+io.print("recursion ok");

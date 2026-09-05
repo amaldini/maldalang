@@ -1,0 +1,135 @@
+// Tabular Q-learning on a 4x4 grid (no neural net, no API key).
+//
+// Start at cell 0, goal at cell 15. Actions: 0=N 1=E 2=S 3=W.
+// Seeded so the greedy walk after training always reaches the goal.
+// Change this: print Q[0] after fewer episodes. Next: simulated_annealing.malda
+
+function bestAction(q, state) {
+    var best = 0;
+    var bestV = q[state][0];
+    var a = 1;
+    while (a < 4) {
+        if (q[state][a] > bestV) {
+            bestV = q[state][a];
+            best = a;
+        }
+        a = a + 1;
+    }
+    return best;
+}
+
+function step(state, action) {
+    var row = int(state / 4);
+    var col = state % 4;
+    if (action == 0) {
+        row = row - 1;
+    }
+    if (action == 1) {
+        col = col + 1;
+    }
+    if (action == 2) {
+        row = row + 1;
+    }
+    if (action == 3) {
+        col = col - 1;
+    }
+    if (row < 0) {
+        row = 0;
+    }
+    if (row > 3) {
+        row = 3;
+    }
+    if (col < 0) {
+        col = 0;
+    }
+    if (col > 3) {
+        col = 3;
+    }
+    var next = row * 4 + col;
+    if (next == 15) {
+        return { "state": next, "reward": 1.0, "done": true };
+    }
+    return { "state": next, "reward": -0.04, "done": false };
+}
+
+function arrow(action) {
+    if (action == 0) {
+        return "N";
+    }
+    if (action == 1) {
+        return "E";
+    }
+    if (action == 2) {
+        return "S";
+    }
+    return "W";
+}
+
+math.seed(42);
+
+var q = [];
+var s = 0;
+while (s < 16) {
+    q.append([0.0, 0.0, 0.0, 0.0]);
+    s = s + 1;
+}
+
+var alpha = 0.5;
+var gamma = 0.9;
+var epsilon = 0.2;
+var episodes = 250;
+var ep = 1;
+while (ep <= episodes) {
+    var state = 0;
+    var steps = 0;
+    while (state != 15 && steps < 40) {
+        var action = bestAction(q, state);
+        if (math.random() < epsilon) {
+            action = math.randomInt(0, 3);
+        }
+        var outcome = step(state, action);
+        var next = outcome.state;
+        var nextBest = 0.0;
+        if (next != 15) {
+            nextBest = q[next][bestAction(q, next)];
+        }
+        q[state][action] = q[state][action] + alpha * (outcome.reward + gamma * nextBest - q[state][action]);
+        state = next;
+        steps = steps + 1;
+    }
+    ep = ep + 1;
+}
+
+io.print("greedy policy (N E S W):");
+var r = 0;
+while (r < 4) {
+    var line = "";
+    var c = 0;
+    while (c < 4) {
+        var cell = r * 4 + c;
+        if (cell == 15) {
+            line = line + "G ";
+        } else {
+            line = line + arrow(bestAction(q, cell)) + " ";
+        }
+        c = c + 1;
+    }
+    io.print(line);
+    r = r + 1;
+}
+
+var walk = [0];
+var here = 0;
+var guard = 0;
+while (here != 15 && guard < 16) {
+    here = step(here, bestAction(q, here)).state;
+    walk.append(here);
+    guard = guard + 1;
+}
+
+io.print("greedy walk=" + string(walk));
+if (here == 15) {
+    io.print("q-learning ok");
+} else {
+    io.print("q-learning failed");
+}

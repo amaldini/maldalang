@@ -121,6 +121,39 @@ public static class StarterCatalog
         },
         new StarterOption
         {
+            Id = "lists",
+            Title = "9. Lists and Indexing",
+            Description = "Store several values in one array, index them, append and pop, then walk with for and for-in.",
+            Track = "student",
+            RelativeExamplePath = @"Basics\lists_indexing.malda",
+            LearningGoal = "Treat a list as data you can index and grow.",
+            EstimatedTime = "10 min",
+            Highlights = ["arrays", "append", "for-in"]
+        },
+        new StarterOption
+        {
+            Id = "dictionaries",
+            Title = "10. Dictionaries",
+            Description = "Store key-value data, update entries, and inspect keys and values.",
+            Track = "student",
+            RelativeExamplePath = @"Basics\dictionary_example.malda",
+            LearningGoal = "Learn how MALDA stores and updates maps.",
+            EstimatedTime = "10 min",
+            Highlights = ["dict", "containsKey", "keys"]
+        },
+        new StarterOption
+        {
+            Id = "recursion",
+            Title = "11. Recursion",
+            Description = "Write a function that calls itself: a base case and a smaller argument.",
+            Track = "student",
+            RelativeExamplePath = @"Basics\recursion.malda",
+            LearningGoal = "See recursion before merge sort and DFS need it.",
+            EstimatedTime = "10 min",
+            Highlights = ["function", "base case", "factorial"]
+        },
+        new StarterOption
+        {
             Id = "prompt",
             Title = "First Prompt",
             Description = "Try MALDA prompts as a bridge from programming basics into AI-native workflows.",
@@ -167,6 +200,17 @@ public static class StarterCatalog
 
     private static readonly List<LearningBranch> Branches =
     [
+        new LearningBranch
+        {
+            Id = "algorithms-track",
+            Title = "Algorithms",
+            Description = "A short curated track: search, one sort, BFS/DFS, knapsack, union-find, Q-learning, and simulated annealing.",
+            RelativeExamplePath = @"Algorithms\binary_search.malda",
+            AudienceTrack = "student",
+            EstimatedTime = "10-15 min each",
+            LearningGoal = "Learn a few CS ideas in MALDA, not every named algorithm.",
+            Highlights = ["binary search", "merge sort", "Q-learning"]
+        },
         new LearningBranch
         {
             Id = "testing-track",

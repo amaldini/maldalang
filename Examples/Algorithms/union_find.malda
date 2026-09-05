@@ -1,0 +1,52 @@
+// Union-find (disjoint sets): connected components without building a graph.
+//
+// find(x) walks to the root; union(a, b) links two roots.
+// Change this: skip the last union and the "all one component" line should fail.
+// Next: qlearn_grid.malda
+
+function makeParents(n) {
+    var parent = [];
+    var i = 0;
+    while (i < n) {
+        parent.append(i);
+        i = i + 1;
+    }
+    return parent;
+}
+
+function find(parent, x) {
+    if (parent[x] != x) {
+        parent[x] = find(parent, parent[x]);
+    }
+    return parent[x];
+}
+
+function union(parent, a, b) {
+    var ra = find(parent, a);
+    var rb = find(parent, b);
+    if (ra != rb) {
+        parent[rb] = ra;
+        return true;
+    }
+    return false;
+}
+
+var parent = makeParents(5);
+union(parent, 0, 1);
+union(parent, 1, 2);
+union(parent, 3, 4);
+
+var sameA = find(parent, 0) == find(parent, 2);
+var sameB = find(parent, 0) == find(parent, 3);
+io.print("0 and 2 connected=" + string(sameA));
+io.print("0 and 3 connected=" + string(sameB));
+
+union(parent, 2, 3);
+var allOne = find(parent, 0) == find(parent, 4);
+io.print("after bridge, 0 and 4 connected=" + string(allOne));
+
+if (sameA && !sameB && allOne) {
+    io.print("union-find ok");
+} else {
+    io.print("union-find failed");
+}

@@ -44,7 +44,7 @@
       "prerequisites": ["Basics/complete_starter_program.malda"],
       "learningGoal": "Capture user input, convert text to numbers, and respond with computed output.",
       "expectedOutput": "Prompts for a name and age, then prints a personalized message.",
-      "next": "Basics/errors_and_match.malda",
+      "next": "Basics/lists_indexing.malda",
       "documentationPath": "/?lesson=input-output#lesson-input-output",
       "documentationTitle": "Input and Output"
     },
@@ -188,6 +188,38 @@
       "documentationTitle": "Functions"
     },
     {
+      "name": "Lists and Indexing",
+      "description": "Build an array, index it, append and pop, then walk with for and for-in",
+      "file": "lists_indexing.malda",
+      "track": "student",
+      "difficulty": "beginner",
+      "minutes": 10,
+      "requires": ["offline"],
+      "concepts": ["arrays", "indexing", "append", "for-in"],
+      "prerequisites": ["Basics/input_example.malda"],
+      "learningGoal": "Treat a list as data you can index and grow, before algorithms need one.",
+      "expectedOutput": "Prints first item, length changes, a sum, and lists ok.",
+      "next": "Basics/dictionary_example.malda",
+      "documentationPath": "/?lesson=lists#lesson-lists",
+      "documentationTitle": "Lists and Indexing"
+    },
+    {
+      "name": "Recursion",
+      "description": "A function that calls itself: factorial and a countdown",
+      "file": "recursion.malda",
+      "track": "student",
+      "difficulty": "beginner",
+      "minutes": 10,
+      "requires": ["offline"],
+      "concepts": ["recursion", "function", "base case"],
+      "prerequisites": ["Basics/dictionary_example.malda"],
+      "learningGoal": "See a base case and a smaller self-call before merge sort and DFS.",
+      "expectedOutput": "Prints factorial(5)=120, a countdown, and recursion ok.",
+      "next": "Algorithms/binary_search.malda",
+      "documentationPath": "/?lesson=recursion#lesson-recursion",
+      "documentationTitle": "Recursion"
+    },
+    {
       "name": "Complete Starter Program",
       "description": "A small end-to-end example that combines variables, arrays, loops, functions, and conditionals",
       "file": "complete_starter_program.malda",
@@ -207,15 +239,15 @@
       "description": "Create a dictionary, read and write entries, and inspect keys and values",
       "file": "dictionary_example.malda",
       "track": "student",
-      "difficulty": "intermediate",
+      "difficulty": "beginner",
       "minutes": 10,
       "concepts": ["dict", "indexing", "keys", "values"],
-      "prerequisites": ["Basics/functions.malda"],
+      "prerequisites": ["Basics/lists_indexing.malda"],
       "learningGoal": "Learn how MALDA stores and updates key-value data.",
       "expectedOutput": "Prints dictionary values, key presence checks, and collection lengths.",
-      "next": "Basics/lambda.malda",
-      "documentationPath": "/?lesson=variables#lesson-variables",
-      "documentationTitle": "Variables and Arithmetic"
+      "next": "Basics/recursion.malda",
+      "documentationPath": "/?lesson=dictionaries#lesson-dictionaries",
+      "documentationTitle": "Dictionaries"
     },
     {
       "name": "Async All Example",

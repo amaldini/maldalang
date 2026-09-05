@@ -1,0 +1,31 @@
+// Lists (arrays): index, append, pop, and walk.
+//
+// Change this: append another score and re-run. The printed sum should move.
+// Next: dictionary_example.malda
+
+var scores = [88, 92, 75];
+io.print("first=" + string(scores[0]));
+io.print("length=" + string(scores.length));
+
+scores.append(80);
+io.print("after append length=" + string(scores.length));
+
+var last = scores.pop();
+io.print("popped=" + string(last));
+io.print("length after pop=" + string(scores.length));
+
+// Counted for uses an index. for-in walks values.
+var total = 0;
+for (var i = 0; i < scores.length; i = i + 1) {
+    io.print("scores[" + string(i) + "]=" + string(scores[i]));
+    total = total + scores[i];
+}
+
+var walked = 0;
+for (var score in scores) {
+    walked = walked + 1;
+}
+
+io.print("sum=" + string(total));
+io.print("for-in count=" + string(walked));
+io.print("lists ok");

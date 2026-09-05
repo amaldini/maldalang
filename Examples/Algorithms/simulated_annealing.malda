@@ -1,0 +1,107 @@
+// Simulated annealing: a non-gradient search on a tiny TSP.
+//
+// Eight cities on a square. A random tour is cooled until the length
+// is close to the hull (8). Seeded. Change this: start colder (temp=0.2).
+// Next: AI_LLM/xor_neural_net.malda (gradient learning)
+
+function dist(a, b) {
+    var dx = a[0] - b[0];
+    var dy = a[1] - b[1];
+    return math.sqrt(dx * dx + dy * dy);
+}
+
+function tourLength(cities, tour) {
+    var len = 0.0;
+    var i = 0;
+    while (i < tour.length) {
+        var j = i + 1;
+        if (j == tour.length) {
+            j = 0;
+        }
+        len = len + dist(cities[tour[i]], cities[tour[j]]);
+        i = i + 1;
+    }
+    return len;
+}
+
+function copyTour(tour) {
+    var out = [];
+    var i = 0;
+    while (i < tour.length) {
+        out.append(tour[i]);
+        i = i + 1;
+    }
+    return out;
+}
+
+function swapAt(tour, i, j) {
+    var tmp = tour[i];
+    tour[i] = tour[j];
+    tour[j] = tmp;
+}
+
+function fmt(x) {
+    return string(math.round(x * 100.0) / 100.0);
+}
+
+var cities = [
+    [0.0, 0.0],
+    [1.0, 0.0],
+    [2.0, 0.0],
+    [2.0, 1.0],
+    [2.0, 2.0],
+    [1.0, 2.0],
+    [0.0, 2.0],
+    [0.0, 1.0]
+];
+
+math.seed(42);
+var current = [0, 1, 2, 3, 4, 5, 6, 7];
+var i = current.length - 1;
+while (i > 0) {
+    swapAt(current, i, math.randomInt(0, i));
+    i = i - 1;
+}
+
+var currentLen = tourLength(cities, current);
+var startLen = currentLen;
+var best = copyTour(current);
+var bestLen = currentLen;
+var temp = 2.0;
+var cooling = 0.995;
+var steps = 1500;
+var k = 1;
+while (k <= steps) {
+    var a = math.randomInt(0, current.length - 1);
+    var b = math.randomInt(0, current.length - 1);
+    if (a != b) {
+        swapAt(current, a, b);
+        var nextLen = tourLength(cities, current);
+        var delta = nextLen - currentLen;
+        var accept = delta <= 0.0;
+        if (!accept && math.random() < math.exp(-delta / temp)) {
+            accept = true;
+        }
+        if (accept) {
+            currentLen = nextLen;
+            if (currentLen < bestLen) {
+                bestLen = currentLen;
+                best = copyTour(current);
+            }
+        } else {
+            swapAt(current, a, b);
+        }
+    }
+    temp = temp * cooling;
+    k = k + 1;
+}
+
+io.print("start length=" + fmt(startLen));
+io.print("best length=" + fmt(bestLen));
+io.print("best tour=" + string(best));
+
+if (bestLen < startLen && bestLen < 9.0) {
+    io.print("simulated annealing ok");
+} else {
+    io.print("simulated annealing failed");
+}

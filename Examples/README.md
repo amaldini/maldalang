@@ -28,7 +28,8 @@ Each folder’s `metadata.json` may tag examples with `requires`:
 
 | Folder | Focus | Typical requires | Track(s) |
 |--------|--------|------------------|----------|
-| [Basics](Basics/) | Syntax, control flow, functions | offline | student |
+| [Basics](Basics/) | Syntax, control flow, functions, lists, recursion | offline | student |
+| [Algorithms](Algorithms/) | Curated search / sort / graph / DP / RL / annealing | offline | student |
 | [OOP](OOP/) | Classes and inheritance | offline | student |
 | [Prompts](Prompts/) | `prompt` declarations | api-key (most) | ai-builder |
 | [AI_LLM](AI_LLM/) | Clients, conversations, and from-scratch XOR / SVM demos | offline / api-key | ai-builder, student, showcase |
