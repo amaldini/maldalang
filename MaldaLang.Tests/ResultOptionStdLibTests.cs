@@ -52,6 +52,23 @@ public class ResultOptionStdLibTests : TestBase
     }
 
     [Fact]
+    public void Result_Map_WrapsVariantPayload()
+    {
+        var source = """
+            var nested = result.map(result.ok(10), (x) => result.ok(x + 1));
+            match nested {
+                case Ok(inner):
+                    match inner {
+                        case Ok(n): print(n);
+                        default: print("inner-bare");
+                    }
+                default: print("fail");
+            }
+            """;
+        Assert.Equal("11", RunProgram(source).Trim());
+    }
+
+    [Fact]
     public void Result_AndThen_ChainsOk()
     {
         var source = """
