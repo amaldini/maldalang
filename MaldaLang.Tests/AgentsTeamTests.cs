@@ -384,6 +384,47 @@ public class AgentsTeamTests : TestBase
         var results = obj.Get("results", null).AsArray();
         Assert.Equal("Writer", results[0].AsObject().Get("role", null).AsString());
         Assert.Equal("Reviewer", results[1].AsObject().Get("role", null).AsString());
+        Assert.Contains("Prior step write", results[1].AsObject().Get("prompt", null).AsString());
+    }
+
+    [Fact]
+    public void Handoff_ThinkTrue_CallsTargetAfterValidate()
+    {
+        var teamVal = TwoMemberTeam(withEdge: true, contract: null);
+        var team = Assert.IsType<AgentTeamInstance>(teamVal.AsObject());
+        NullConversation(team.Members["Writer"]);
+        NullConversation(team.Members["Reviewer"]);
+
+        var payload = new JsonObject();
+        payload.Set("path", RuntimeValue.String("a.malda"));
+        payload.Set("summary", RuntimeValue.String("add comments"));
+        var result = AgentsStdLib.Handoff(
+            team,
+            new List<RuntimeValue>
+            {
+                RuntimeValue.String("Writer"),
+                RuntimeValue.String("Reviewer"),
+                RuntimeValue.Object(payload),
+                RuntimeValue.Boolean(true)
+            },
+            null);
+        Assert.Equal(ValueType.Object, result.Type);
+        var obj = result.AsObject();
+        Assert.True(obj.Get("ok", null).AsBoolean());
+        Assert.Equal(ValueType.Null, obj.Get("response", null).Type);
+    }
+
+    [Fact]
+    public void BuildStepThinkPrompt_IncludesPriorOutputs()
+    {
+        var step = Step("review", "Review the draft", "Reviewer", new[] { "write" }).AsObject();
+        var prompt = AgentsStdLib.BuildStepThinkPrompt(
+            "Review the draft",
+            step,
+            new Dictionary<string, string> { ["write"] = "added comments" });
+        Assert.Contains("Review the draft", prompt);
+        Assert.Contains("Prior step write", prompt);
+        Assert.Contains("added comments", prompt);
     }
 
     [Fact]
@@ -523,7 +564,7 @@ public class AgentsTeamTests : TestBase
         Assert.Contains("no relation", error);
     }
 
-    private static RuntimeValue TwoMemberTeam(bool withEdge)
+    private static RuntimeValue TwoMemberTeam(bool withEdge, string? contract = "DraftCode")
     {
         var specs = new List<RuntimeValue>
         {
@@ -537,7 +578,8 @@ public class AgentsTeamTests : TestBase
         {
             var props = new DictionaryInstance();
             props.SetEntry("rel", RuntimeValue.String("handoff"));
-            props.SetEntry("contract", RuntimeValue.String("DraftCode"));
+            if (contract != null)
+                props.SetEntry("contract", RuntimeValue.String(contract));
             graph.CallMethod("addEdge", new List<RuntimeValue>
             {
                 RuntimeValue.String("Writer"),

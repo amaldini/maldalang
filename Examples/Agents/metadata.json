@@ -102,9 +102,24 @@
       "prerequisites": ["Agents/agent_team_kinds.malda"],
       "learningGoal": "See the team graph as an allow-list for plan hops, not just handoff().",
       "expectedOutput": "Prints true — reverse Writer hop is rejected.",
-      "next": "Agents/agent_file_reading.malda",
+      "next": "Agents/agent_team_handoff_run.malda",
       "documentationPath": "/?lesson=build-ai-apps#lesson-build-ai-apps",
       "documentationTitle": "Team Plans"
+    },
+    {
+      "name": "Team handoff think flag (offline)",
+      "description": "team.handoff fourth argument stays validate-only when false; true would call to.think(payload)",
+      "file": "agent_team_handoff_run.malda",
+      "track": "ai-builder",
+      "difficulty": "intermediate",
+      "minutes": 5,
+      "concepts": ["team.handoff", "think", "agents.team"],
+      "prerequisites": ["Agents/agent_team_plan.malda"],
+      "learningGoal": "Keep handoff offline by default; opt into to.think only when you pass true.",
+      "expectedOutput": "Prints true / true / true — validate-only hops, no response field.",
+      "next": "Agents/agent_file_reading.malda",
+      "documentationPath": "/?lesson=build-ai-apps#lesson-build-ai-apps",
+      "documentationTitle": "Team Handoff"
     },
     {
       "name": "Agent with File Reading Tool",

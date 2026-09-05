@@ -226,35 +226,57 @@ public static class AgentsStdLib
 
     internal static RuntimeValue Handoff(AgentTeamInstance team, List<RuntimeValue> args, Interpreter? interpreter)
     {
-        BuiltInArity.Require("handoff", args, 3, 3, "from, to, payload");
+        BuiltInArity.Require("handoff", args, 3, 4, "from, to, payload, think?");
         if (args[0].Type != ValueType.String || args[1].Type != ValueType.String)
-            throw new RuntimeException("handoff() expects (from, to, payload) with string agent names");
+            throw new RuntimeException("handoff() expects (from, to, payload, think?) with string agent names");
 
         var from = args[0].AsString();
         var to = args[1].AsString();
         var payload = args[2];
+        var think = args.Count >= 4 && WantsThink(args[3]);
 
         if (!team.TryGetRelation(from, to, out var relation))
             return HandoffError($"No relation from '{from}' to '{to}'");
 
-        if (string.IsNullOrEmpty(relation.Contract))
-            return HandoffOk(payload);
+        RuntimeValue validated = payload;
+        if (!string.IsNullOrEmpty(relation.Contract))
+        {
+            var check = BuiltInFunctions.CallBuiltIn(
+                "validate",
+                new List<RuntimeValue> { RuntimeValue.String(relation.Contract), payload },
+                interpreter);
+            if (check.Type != ValueType.Object)
+                return HandoffError("validate() returned a non-object");
 
-        var check = BuiltInFunctions.CallBuiltIn(
-            "validate",
-            new List<RuntimeValue> { RuntimeValue.String(relation.Contract), payload },
-            interpreter);
-        if (check.Type != ValueType.Object)
-            return HandoffError("validate() returned a non-object");
+            var obj = check.AsObject();
+            var ok = obj.Get("ok", null);
+            if (ok.Type != ValueType.Boolean || !ok.AsBoolean())
+            {
+                var err = obj.Get("error", null);
+                var message = err.Type == ValueType.String ? err.AsString() : "payload failed contract";
+                return HandoffError($"Handoff {from}->{to} failed {relation.Contract}: {message}");
+            }
 
-        var obj = check.AsObject();
-        var ok = obj.Get("ok", null);
-        if (ok.Type == ValueType.Boolean && ok.AsBoolean())
-            return check;
+            var data = obj.Get("data", null);
+            if (data.Type != ValueType.Null)
+                validated = data;
+        }
 
-        var err = obj.Get("error", null);
-        var message = err.Type == ValueType.String ? err.AsString() : "payload failed contract";
-        return HandoffError($"Handoff {from}->{to} failed {relation.Contract}: {message}");
+        if (!think)
+            return HandoffOk(validated);
+
+        if (!team.TryGetAgent(to, out var target))
+            return HandoffError($"team has no agent named '{to}'");
+
+        try
+        {
+            var response = target.Think(ToThinkArg(validated, interpreter));
+            return HandoffOk(validated, response);
+        }
+        catch (Exception ex)
+        {
+            return HandoffError($"Handoff {from}->{to} think() failed: {ex.Message}");
+        }
     }
 
     internal static string? ReadStepRole(ObjectInstance step)
@@ -359,11 +381,72 @@ public static class AgentsStdLib
             $"Member names: {names}\nMembers:\n{roster}\nRelations:\n{graph}";
     }
 
-    private static RuntimeValue HandoffOk(RuntimeValue payload)
+    internal static string BuildStepThinkPrompt(
+        string description,
+        ObjectInstance step,
+        IReadOnlyDictionary<string, string> priorOutputs)
+    {
+        var deps = step.Get("dependsOn", null);
+        if (deps.Type != ValueType.Array || deps.AsArray().Count == 0)
+            return description;
+
+        var parts = new List<string> { description };
+        foreach (var dep in deps.AsArray())
+        {
+            if (dep.Type != ValueType.String)
+                continue;
+            var id = dep.AsString();
+            priorOutputs.TryGetValue(id, out var output);
+            parts.Add($"Prior step {id}:\n{output ?? ""}");
+        }
+
+        return parts.Count == 1 ? description : string.Join("\n\n", parts);
+    }
+
+    private static bool WantsThink(RuntimeValue option)
+    {
+        if (option.Type == ValueType.Null)
+            return false;
+        if (option.Type == ValueType.Boolean)
+            return option.AsBoolean();
+        if (option.Type == ValueType.Object)
+        {
+            var obj = option.AsObject();
+            var think = obj.Get("think", null);
+            if (think.Type == ValueType.Boolean)
+                return think.AsBoolean();
+            var run = obj.Get("run", null);
+            if (run.Type == ValueType.Boolean)
+                return run.AsBoolean();
+            return false;
+        }
+
+        throw new RuntimeException("handoff() fourth argument must be a boolean or { think: bool }");
+    }
+
+    private static RuntimeValue ToThinkArg(RuntimeValue payload, Interpreter? interpreter)
+    {
+        if (payload.Type == ValueType.String)
+            return payload;
+        if (payload.Type == ValueType.Object && payload.AsObject() is PromptInstance)
+            return payload;
+
+        var json = BuiltInFunctions.CallBuiltIn(
+            "toJSON",
+            new List<RuntimeValue> { payload },
+            interpreter);
+        if (json.Type == ValueType.String)
+            return json;
+        return RuntimeValue.String(payload.ToString() ?? "");
+    }
+
+    private static RuntimeValue HandoffOk(RuntimeValue payload, RuntimeValue? response = null)
     {
         var obj = new JsonObject();
         obj.Set("ok", RuntimeValue.Boolean(true));
         obj.Set("data", payload);
+        if (response != null)
+            obj.Set("response", response);
         return RuntimeValue.Object(obj);
     }
 
