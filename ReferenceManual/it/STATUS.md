@@ -37,14 +37,14 @@ python3 scripts/sync-reference-manual-it-status.py
 | 23-web-ui-hub.html | a5b2900d64f6d82e432c94f1b8a9a1264cba0e5db38e8713744ccb2d78ee6ca5 |
 | 24-web-ui.html | e356e198bcf44c103bb7eb190f84768ddfd86f451f39d88265805c8e9028b1e0 |
 | 25-http-server-html-ui.html | e1db1f78e58b3228e27678e41bf541bc95041a5fbd1db627099118756371a898 |
-| 26-browser-javascript-backend.html | 68398a86d5d3aaa239f155ed2ee1d7d47ff7e5052bd9239786657176d6b52627 |
+| 26-browser-javascript-backend.html | e9150e7bd4f4d6ed5dec6d5bc9ae625f3af2b60067823691e14ff1ef7a6a4c9b |
 | 27-rest-api.html | 0e8db47a6d38774edd17aa129ccda36550b2c8826b999d6e59d27406c84dd516 |
 | 28-rest-web-client.html | ccbc7c7db06373c0b812fa186fcd05cfe4ec7bb1a5a894c73b7af782ab286099 |
 | 29-full-stack-development.html | b8bcc733218cc20fe14f60f78d0db93b8ce45524cee18fe980ab0c6ba754bb76 |
 | 30-dotnet-interop.html | fbd81e0e4a05a421588cca3e0a9d3b1946a48bab135923376fdd4b08f2593d3b |
 | 31-device-integration.html | f56bc49cdb55dc8b7353382129a63add2998983c15e02fc83f01e3516d8571e2 |
 | 32-personal-assistant.html | 797aeb3fffe53efc9f914448470265043835433c0b91ea99a80f2ab9946d08fa |
-| 33-examples.html | 19b0b9a689547e7746bbe84d170f641baadfc167577a104690893e35ff49ba16 |
+| 33-examples.html | da5fc64a7f1d5a9722fe0831ee409f249047f35ce8e824e6f8d3e288ffd28363 |
 | 34-property-testing.html | 15974eb96e6b9a7b051b7edb9a663241bade47adb2d9e6dac27dfc78c14cca6f |
 | 35-grammar.html | f6bac292c05c03ba477b8cc0b3bb41ad702ce386acc70ce754414e03b7aa5077 |
 | 36-appendix.html | 8b8dc88d928b3471fe6dacd6b103fe0351ae80134195b3402cdbfeebde017754 |

@@ -1,8 +1,8 @@
 // Infinite Mandelbrot zoom: BigInt reference orbit on the host, perturbation
 // kernel in @shader() → GLSL. The GPU never adds the pixel offset to the
 // high-precision center, so the dive stays sharp past float32 ulp.
-// The 256-bit orbit would go much deeper; the wrap is for coloring with a
-// 1024-iterate budget. Wrap after 8 decades so the loop stays colored.
+// The host precomputes a 2048-iterate orbit (runtime max). Page sliders set
+// the coloring budget and wrap decades; defaults are 1024 iterates / 8 decades.
 //
 // Compile:
 //   malda compile Examples/Games/three_shader_mandelbrot.malda --mode js -o Examples/Games/three_shader_mandelbrot.js
@@ -35,7 +35,7 @@ function fragmentMain() {
     var smoothIter: float = 0.0;
     var mag: float = 0.0;
 
-    while (i < 1024.0) {
+    while (i < 2048.0) {
         if (i >= uMaxIter) {
             break;
         }
@@ -94,20 +94,36 @@ if (root == null) {
     dom.append(root, heading);
 
     var hint = dom.create("p");
-    dom.setText(hint, "Host BigInt reference orbit + GPU perturbation via @shader(). Exponential zoom into Seahorse Valley; wraps after 8 decades. Hold Space to pause. [ ] change speed.");
+    dom.setText(hint, "Host BigInt reference orbit + GPU perturbation via @shader(). Exponential zoom into Seahorse Valley. Sliders set iterate budget and wrap decades. Hold Space to pause. [ ] change speed.");
     dom.append(root, hint);
+
+    var controls = dom.create("div");
+    dom.html(controls, "<p>Iterates <input id='iterRange' type='range' min='64' max='2048' step='64' value='1024'> Decades <input id='decadeRange' type='range' min='2' max='32' step='1' value='8'></p>");
+    dom.append(root, controls);
 
     var zoomLabel = dom.create("p");
     dom.setText(zoomLabel, "depth 10^-0");
     dom.append(root, zoomLabel);
 
+    var iterRange = dom.query("#iterRange");
+    var decadeRange = dom.query("#decadeRange");
+
+    function rangeInt(el, fallback) {
+        if (el == null) {
+            return fallback;
+        }
+        return int(el.value);
+    }
+
     var width = 960;
     var height = 540;
+    var orbitIters = 2048;
     var maxIter = 1024;
+    var wrapDecades = 8.0;
     var orbit = three.mandelbrotOrbit(
         "-0.743643887037158704752191506114774",
         "0.131825904205311970493132056385139",
-        maxIter
+        orbitIters
     );
 
     var renderer = three.createRenderer(width, height, "#app");
@@ -124,7 +140,7 @@ if (root == null) {
         "uniforms": {
             "uResolution": [width, height],
             "uScale": 2.55,
-            "uOrbitLen": maxIter + 1,
+            "uOrbitLen": orbitIters + 1,
             "uMaxIter": maxIter,
             "uOrbit": orbit
         }
@@ -135,7 +151,6 @@ if (root == null) {
 
     var decades = 0.0;
     var speedMul = 1.0;
-    var wrapDecades = 8.0;
     var zoomPerSecond = 0.55;
     var startScale = 2.55;
 
@@ -145,6 +160,21 @@ if (root == null) {
             dt = 50;
         }
         var step = dt / 1000;
+
+        maxIter = rangeInt(iterRange, 1024);
+        if (maxIter < 64) {
+            maxIter = 64;
+        }
+        if (maxIter > orbitIters) {
+            maxIter = orbitIters;
+        }
+        wrapDecades = rangeInt(decadeRange, 8);
+        if (wrapDecades < 2) {
+            wrapDecades = 2;
+        }
+        if (wrapDecades > 32) {
+            wrapDecades = 32;
+        }
 
         if (three.isKeyDown("]")) {
             speedMul = speedMul + (0.7 * step);
@@ -169,7 +199,7 @@ if (root == null) {
         three.setUniform(material, "uMaxIter", maxIter);
 
         var shown = int(wrapped * 10.0) / 10.0;
-        dom.setText(zoomLabel, "depth 10^-" + string(shown) + "  speed x" + string(int(speedMul * 10.0) / 10.0));
+        dom.setText(zoomLabel, "depth 10^-" + string(shown) + "  iterates " + string(maxIter) + "  wrap " + string(int(wrapDecades)) + "  speed x" + string(int(speedMul * 10.0) / 10.0));
     }
 
     function render() {

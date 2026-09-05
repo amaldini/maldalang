@@ -37,7 +37,7 @@ Then open the sibling host page (for example `Examples/Games/maldadash_runtime_s
 
 `three_shader_billiards.malda` is a playable GPU ray-traced pool table on the same `three.createShaderMaterial` path as `three_shader_raytracer.malda`. Host MALDA aims the cue and steps 2D circle physics (cushions, pockets, friction); the kernel traces `uBall0`–`uBall15` plus the cue stick. Digit decals stay procedural. The cue stays locked on the white ball; mouse on the table aims (A/D fine-tunes). Hold click or Space to charge power, release to shoot; R reracks; arrows orbit; `[` `]` zoom; `C` or Stop camera zeros orbit speed. Sliders set cushion e, ball e, and felt friction. The compiled table is playable from [Reference Manual 37](../../ReferenceManual/37-appendix-gpu-billiards.html).
 
-`three_shader_mandelbrot.malda` is an infinite Seahorse Valley zoom on the same `three.createShaderMaterial` / `@shader()` path. The host builds a BigInt reference orbit (`three.mandelbrotOrbit`, decimal strings for C) and the kernel applies scaled perturbation so the dive stays sharp past float32 ulp, wrapping after 8 decades. Hold Space to pause; `[` `]` change speed.
+`three_shader_mandelbrot.malda` is an infinite Seahorse Valley zoom on the same `three.createShaderMaterial` / `@shader()` path. The host builds a BigInt reference orbit (`three.mandelbrotOrbit`, decimal strings for C) and the kernel applies scaled perturbation so the dive stays sharp past float32 ulp. Sliders set iterate budget and wrap decades (defaults 1024 / 8). Hold Space to pause; `[` `]` change speed.
 
 That tunnel demo is a CC-BY-NC-SA-4.0 conversion of [Frostbyte’s path march](https://fragcoord.xyz/s/tbe1g319); it is not under the repository MIT OR Apache-2.0 dual licence.
 
