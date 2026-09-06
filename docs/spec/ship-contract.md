@@ -11,7 +11,7 @@ contract.
 | Kind | Meaning |
 |------|---------|
 | `pair` | Same `.malda` → same stdout when interpret and C# transpile both exit 0. Mixed success/failure fails. Oracle: [`InterpretTranspilePairTests`](../../MaldaLang.Tests/InterpretTranspilePairTests.cs). |
-| `trace` | Structured outcome (workflow journal today). Not stdout. |
+| `trace` | Structured outcome (workflow journal, or HTTP status + JSON body). Not stdout. |
 | `n/a` | Compile-only smoke, or excluded. **Notes must name the reason** (`llm-await`, `too-large`, `relative-cwd`, `js-only`, `http-trace pending`, …). |
 
 Inline pair fixtures (interpolation, `cap.*` abs-path, nested `result.map`, dict
@@ -53,7 +53,7 @@ Templates (`malda new`) and README showcases must appear below even when `n/a`.
 | `Examples/Tools/capability_tokens.malda` | n/a | TranspileSmokeTests | relative-cwd; abs-path cap fixtures are inline pairs |
 | `Examples/VectorDB/basic_vectordb.malda` | n/a | TranspileSmokeTests | inline VectorDB pair covers the contract |
 | `Templates/agent/app.malda` | n/a | — | relative-cwd; `malda new agent`; cap pair fixtures cover the contract |
-| `Templates/webapi/app.malda` | n/a | — | http-trace pending |
+| `Templates/webapi/app.malda` | trace | HttpTraceParityTests | GET `/api/health` status + JSON; scaffold + inline health fixture |
 | `Templates/fullstack/backend/app.malda` | n/a | — | http-trace pending |
 | `Templates/game/app.malda` | n/a | — | js-only |
 | `Templates/game-fullstack/app.malda` | n/a | — | fullstack; do not interpret |

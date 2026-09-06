@@ -126,7 +126,16 @@ public class RestServerTests
         server.CallMethod("use", new List<RuntimeValue> { RuntimeValue.Function(new FunctionValue()) });
         server.CallMethod("use", new List<RuntimeValue> { RuntimeValue.String("globalMiddleware") });
 
-        Assert.True(true);
+        var except = RuntimeValue.Array(new List<RuntimeValue> { RuntimeValue.String("/api/health") });
+        var options = new DictionaryInstance();
+        options.SetEntry("except", except);
+        server.CallMethod(
+            "use",
+            new List<RuntimeValue>
+            {
+                RuntimeValue.String("globalMiddleware"),
+                RuntimeValue.Object(options)
+            });
     }
 
     [Fact]

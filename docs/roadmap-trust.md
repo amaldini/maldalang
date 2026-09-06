@@ -220,8 +220,9 @@ oracle, not only `compile --mode transpile`.
 | Workflow journal in smoke | `WorkflowTranspilerParityTests` in the CI filter |
 | Known-divergence fixtures | Nested `result.map`, dict `append`+`length`, `--typed-transpile-level 2`, `error()` failure token |
 
-Not in this slice: HTTP request traces (`Templates/webapi` stays `n/a` /
-`http-trace pending`), Second Brain ASK wrapper, Tier 0 C# on every PR.
+HTTP GET traces landed in `HttpTraceParityTests` (`Templates/webapi` is
+`trace`). Still out: fullstack HTTP host, jobs-cwd, Second Brain ASK
+wrapper, Tier 0 C# on every PR.
 
 ---
 
@@ -288,3 +289,4 @@ Not in this slice: HTTP request traces (`Templates/webapi` stays `n/a` /
 | 2026-08-17 | DT7 landed: `InterpretTranspilePairTests` (curated Examples + gotcha fixtures; CI smoke filter) |
 | 2026-08-21 | DT7 corpus widened: existing nested-schema / typed-payload Examples + inline gotcha pairs (`grounded.wrap`, `cap.*`, `result`/`option`, primary constructors, tagged catch, `?.`, destructuring, `parseJSON` fields, `io.getEnvOr`). No new showcase Examples. |
 | 2026-09-05 | DT8 landed: pair exit identity, `docs/spec/ship-contract.md` + `ShipContractGuardTests`, workflow journal in CI smoke, nested `result.map` / list-append / typed-transpile-level 2 / `error()` fixtures |
+| 2026-09-05 | HTTP GET traces: `HttpTraceParityTests` (inline health + `malda new webapi`); `Templates/webapi` is `trace` |

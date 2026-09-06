@@ -3632,6 +3632,26 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("}");
         WriteIndent();
+        _output.AppendLine("else if (obj is MaldaLang.BuiltIns.RestServerInstance restServer)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("switch (methodName)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("case \"start\": restServer.CallMethod(\"start\", new List<MaldaLang.Interpreter.RuntimeValue>()); break;");
+        WriteIndent();
+        _output.AppendLine("case \"stop\": restServer.CallMethod(\"stop\", new List<MaldaLang.Interpreter.RuntimeValue>()); break;");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        WriteIndent();
         _output.AppendLine("return null;");
         _indentLevel--;
         WriteIndent();
@@ -11491,6 +11511,32 @@ public class CSharpTranspiler
             _output.Append("), RuntimeHelpers.CoerceToString(");
             TranspileExpression(newExpr.Arguments[1]);
             _output.Append("))");
+            return;
+        }
+
+        // RestServer(port?, host?) — coerce because top-level vars are object-typed.
+        if (className == "RestServer")
+        {
+            _output.Append("new MaldaLang.BuiltIns.RestServerInstance(");
+            if (newExpr.Arguments.Count >= 1)
+            {
+                _output.Append("(int)RuntimeHelpers.CoerceToInt(");
+                TranspileExpression(newExpr.Arguments[0]);
+                _output.Append(")");
+            }
+            else
+            {
+                _output.Append("0");
+            }
+
+            if (newExpr.Arguments.Count >= 2)
+            {
+                _output.Append(", RuntimeHelpers.CoerceToString(");
+                TranspileExpression(newExpr.Arguments[1]);
+                _output.Append(")");
+            }
+
+            _output.Append(")");
             return;
         }
 

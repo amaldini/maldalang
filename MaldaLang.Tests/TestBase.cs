@@ -122,6 +122,42 @@ public abstract class TestBase : IDisposable
     }
 
     /// <summary>
+    /// Serializes Console.Out/Error mutation so HTTP traces cannot leak route banners
+    /// into pair stdout captures (those redirect Console process-wide).
+    /// </summary>
+    internal static async Task WithIsolatedConsoleAsync(Func<Task> action)
+    {
+        await WithIsolatedConsoleAsync(async () =>
+        {
+            await action();
+            return 0;
+        });
+    }
+
+    internal static async Task<T> WithIsolatedConsoleAsync<T>(Func<Task<T>> action)
+    {
+        await _consoleSemaphore.WaitAsync();
+        var originalOut = Console.Out;
+        var originalError = Console.Error;
+        using var outputWriter = new StringWriter();
+        using var errorWriter = new StringWriter();
+        Console.SetOut(outputWriter);
+        Console.SetError(errorWriter);
+        BuiltInFunctions.RebindSpectreConsoleForTesting(outputWriter);
+        try
+        {
+            return await action();
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+            Console.SetError(originalError);
+            BuiltInFunctions.RebindSpectreConsoleForTesting(originalOut);
+            _consoleSemaphore.Release();
+        }
+    }
+
+    /// <summary>
     /// Interpret <paramref name="source"/> with stdout capture. Shares the console gate
     /// with instance <see cref="RunProgramAsync"/> so pair tests do not race other fixtures.
     /// </summary>

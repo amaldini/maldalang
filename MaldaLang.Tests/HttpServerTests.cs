@@ -1783,6 +1783,22 @@ public class HttpServerTests
     }
 
     [Fact]
+    public void HttpServer_UseMiddleware_AcceptsDictionaryInstanceOptions()
+    {
+        var server = new HttpServerInstance(GetAvailablePort(), null, new Interpreter.Interpreter());
+        var except = RuntimeValue.Array(new List<RuntimeValue> { RuntimeValue.String("/api/health") });
+        var options = new DictionaryInstance();
+        options.SetEntry("except", except);
+        server.CallMethod(
+            "use",
+            new List<RuntimeValue>
+            {
+                RuntimeValue.String("requireAuth"),
+                RuntimeValue.Object(options)
+            });
+    }
+
+    [Fact]
     public async Task HttpServer_UseMiddleware_ExceptPaths_SkipsAuthOnPublicRoutes()
     {
         var port = GetAvailablePort();
