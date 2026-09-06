@@ -151,6 +151,26 @@ public class InterpretTranspilePairTests
     }
 
     [Fact]
+    public void SumTypeNamespace_QualifiedOk_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            type r = Ok(msg) | Err(msg);
+            type r2 = Ok(msg) | Warning(msg);
+            var x = r.Ok("Ciao");
+            io.print(match x {
+                case Ok(m): m;
+                case Err(m): m;
+            });
+            io.print(match r2.Ok("Hey") {
+                case Ok(m): m;
+                case Warning(m): m;
+            });
+            """,
+            "sum-type-namespace-qualified");
+    }
+
+    [Fact]
     public void BareUnitVariantPattern_SameStdout()
     {
         InterpretTranspilePair.AssertSameFromSource(

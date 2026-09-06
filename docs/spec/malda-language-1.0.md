@@ -190,7 +190,8 @@ type Intent = Search(query: string) | Buy(sku: string, qty: int);
 - Each constructor parameter may optionally include a payload type (`name: SchemaType`, the same form as schema fields: primitives, `[]`, `?`, schema or sum-type names). Name-only parameters (`Search(query)`) remain valid and stay untyped in the generated JSON Schema.
 - Mixing typed and untyped arms in one `type` is allowed (`Help()` + `Buy(sku: string, qty: int)`).
 - Payload types are **not** prompt-parameter typing. Prompt parameters stay name-only (`prompt greet(name)`).
-- Constructors are invoked as `Ok(7)`, `Err("failed")`, producing **variant** values. Constructor calls are not statically type-checked; the types feed JSON Schema for `validate` and typed prompts.
+- Constructors are invoked as `Ok(7)`, `Err("failed")`, or qualified as `Result.Ok(7)` / `r.Ok(7)`. The type name is a runtime namespace of its constructors. Constructor calls are not statically type-checked; the types feed JSON Schema for `validate` and typed prompts.
+- Constructor tags are a **global** namespace. When two `type`s share a tag, bare `Ok(...)` is last-declaration-wins. IDE/LSP `malda-types` warns; `--strict-types` errors. Prefer unique tags or `Type.Ctor(...)`.
 
 ### 8.2 Variant shape
 
@@ -402,7 +403,7 @@ Top-level `export` on `function`, `var`, `class`, `type`, or `schema` marks a na
 
 - If a module file contains **any** `export` declaration, **only** exported names are merged (and surfaced to IDE / transpile expand).
 - If a module file contains **no** `export` declaration, **all** top-level bindings / types / schemas are merged (backward compatible with SDK preludes).
-- `export type T` includes **T** and all of T’s **constructors** on the export surface. Selecting `T` in `import { T } from …` merges those constructors into the importer.
+- `export type T` includes **T** and all of T’s **constructors** on the export surface. Selecting `T` in `import { T } from …` binds the type namespace (`T.Ok`) and does **not** flatten constructors into the importer. Selecting a constructor name still imports that constructor (and keeps `T` in scope for tooling / `validate`).
 - `export schema S` includes **S** on the export surface (no runtime binding required for selective import; `validate("S", …)` uses the registry populated when the module loaded).
 
 ### 14.3 Sum types and modules

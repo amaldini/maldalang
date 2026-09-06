@@ -44,6 +44,9 @@ public static class TypeCompatibilityDiagnostics
         public Dictionary<string, FunctionHints> VariantConstructors { get; } =
             new(StringComparer.Ordinal);
 
+        public Dictionary<string, Dictionary<string, FunctionHints>> SumTypeNamespaces { get; } =
+            new(StringComparer.Ordinal);
+
         public void PushScope() =>
             _scopes.Push(new Dictionary<string, string>(StringComparer.Ordinal));
 
@@ -94,8 +97,8 @@ public static class TypeCompatibilityDiagnostics
         var index = TypeHintNameIndex.Build(list);
         var functions = new Dictionary<string, FunctionHints>(StringComparer.Ordinal);
         var env = new HintEnv(index);
-        CollectFunctions(list, functions, env.Constructors, env.VariantConstructors);
-        MergeImportedHints(list, sourceFileName, index, functions, env.Constructors, env.VariantConstructors);
+        CollectFunctions(list, functions, env.Constructors, env.VariantConstructors, env.SumTypeNamespaces);
+        MergeImportedHints(list, sourceFileName, index, functions, env.Constructors, env.VariantConstructors, env.SumTypeNamespaces);
 
         foreach (var stmt in list)
             VisitStatement(stmt, functions, env, currentReturn: null, diagnostics, options);
@@ -107,7 +110,8 @@ public static class TypeCompatibilityDiagnostics
         TypeHintNameIndex index,
         Dictionary<string, FunctionHints> functions,
         Dictionary<string, FunctionHints> constructors,
-        Dictionary<string, FunctionHints> variantConstructors)
+        Dictionary<string, FunctionHints> variantConstructors,
+        Dictionary<string, Dictionary<string, FunctionHints>> sumTypeNamespaces)
     {
         if (string.IsNullOrWhiteSpace(sourceFileName))
             return;
@@ -142,7 +146,7 @@ public static class TypeCompatibilityDiagnostics
             }
 
             foreach (var typeDecl in imported.Types)
-                RegisterVariantConstructors(typeDecl, variantConstructors, overwrite: false);
+                RegisterVariantConstructors(typeDecl, variantConstructors, sumTypeNamespaces, overwrite: false);
         }
         catch
         {
@@ -154,7 +158,8 @@ public static class TypeCompatibilityDiagnostics
         IEnumerable<Statement> statements,
         Dictionary<string, FunctionHints> functions,
         Dictionary<string, FunctionHints> constructors,
-        Dictionary<string, FunctionHints> variantConstructors)
+        Dictionary<string, FunctionHints> variantConstructors,
+        Dictionary<string, Dictionary<string, FunctionHints>> sumTypeNamespaces)
     {
         foreach (var stmt in statements)
         {
@@ -172,10 +177,10 @@ public static class TypeCompatibilityDiagnostics
                     CollectTypeMembers(actorDecl.Name, actorDecl.Members, functions, constructors);
                     break;
                 case TypeDeclaration typeDecl:
-                    RegisterVariantConstructors(typeDecl, variantConstructors);
+                    RegisterVariantConstructors(typeDecl, variantConstructors, sumTypeNamespaces);
                     break;
                 case BlockStatement block:
-                    CollectFunctions(block.Statements, functions, constructors, variantConstructors);
+                    CollectFunctions(block.Statements, functions, constructors, variantConstructors, sumTypeNamespaces);
                     break;
             }
         }
@@ -184,6 +189,7 @@ public static class TypeCompatibilityDiagnostics
     private static void RegisterVariantConstructors(
         TypeDeclaration typeDecl,
         Dictionary<string, FunctionHints> variantConstructors,
+        Dictionary<string, Dictionary<string, FunctionHints>> sumTypeNamespaces,
         bool overwrite = true)
     {
         foreach (var ctor in typeDecl.Constructors)
@@ -194,6 +200,19 @@ public static class TypeCompatibilityDiagnostics
             variantConstructors[ctor.Name] = new FunctionHints(
                 ctor.ParameterTypes,
                 typeDecl.TypeName);
+        }
+
+        if (!sumTypeNamespaces.TryGetValue(typeDecl.TypeName, out var ns) || overwrite)
+        {
+            ns = new Dictionary<string, FunctionHints>(StringComparer.Ordinal);
+            sumTypeNamespaces[typeDecl.TypeName] = ns;
+        }
+
+        foreach (var ctor in typeDecl.Constructors)
+        {
+            if (!overwrite && ns.ContainsKey(ctor.Name))
+                continue;
+            ns[ctor.Name] = new FunctionHints(ctor.ParameterTypes, typeDecl.TypeName);
         }
     }
 
@@ -258,11 +277,21 @@ public static class TypeCompatibilityDiagnostics
             }
         }
 
-        if (callee is MemberAccessExpression member &&
-            functions.TryGetValue(member.Member, out hints!))
+        if (callee is MemberAccessExpression member)
         {
-            calleeName = member.Member;
-            return true;
+            if (member.Object is IdentifierExpression typeId &&
+                env.SumTypeNamespaces.TryGetValue(typeId.Name, out var ns) &&
+                ns.TryGetValue(member.Member, out hints!))
+            {
+                calleeName = $"{typeId.Name}.{member.Member}";
+                return true;
+            }
+
+            if (functions.TryGetValue(member.Member, out hints!))
+            {
+                calleeName = member.Member;
+                return true;
+            }
         }
 
         calleeName = "";

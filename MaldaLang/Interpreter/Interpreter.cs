@@ -1539,6 +1539,7 @@ public partial class Interpreter
     private void DefineSumType(TypeDeclaration decl)
     {
         MaldaLang.BuiltIns.SumTypeRegistry.Register(decl);
+        var ns = new MaldaLang.BuiltIns.JsonObject();
         foreach (var ctor in decl.Constructors)
         {
             var fv = new FunctionValue(null, null)
@@ -1546,8 +1547,13 @@ public partial class Interpreter
                 VariantConstructorTag = ctor.Name,
                 VariantConstructorArity = ctor.ParameterNames.Count
             };
-            _globals.Define(ctor.Name, RuntimeValue.Function(fv));
+            var fn = RuntimeValue.Function(fv);
+            _globals.Define(ctor.Name, fn);
+            ns.Set(ctor.Name, fn);
         }
+
+        // Type name is a constructor namespace: r.Ok(...) / Result.Err(...).
+        _globals.Define(decl.TypeName, RuntimeValue.Object(ns));
     }
 
     private void RegisterToolFromDecorator(FunctionValue function, Decorator decorator, FunctionDeclaration decl)
@@ -6104,14 +6110,26 @@ public partial class Interpreter
     {
         tag = name;
         arity = 0;
-        if (!_environment.TryGet(name, out var bound) || bound.Type != ValueType.Function)
-            return false;
-        var fn = bound.AsFunction();
-        if (fn.VariantConstructorTag == null)
-            return false;
-        tag = fn.VariantConstructorTag;
-        arity = fn.VariantConstructorArity;
-        return true;
+        if (_environment.TryGet(name, out var bound) && bound.Type == ValueType.Function)
+        {
+            var fn = bound.AsFunction();
+            if (fn.VariantConstructorTag != null)
+            {
+                tag = fn.VariantConstructorTag;
+                arity = fn.VariantConstructorArity;
+                return true;
+            }
+        }
+
+        // After `import { Result }`, constructors are not flattened into the host.
+        // `case Ok` still matches the tag when any registered sum type declares it.
+        if (MaldaLang.BuiltIns.SumTypeRegistry.TryGetConstructorArity(name, out arity))
+        {
+            tag = name;
+            return true;
+        }
+
+        return false;
     }
 
     private Dictionary<string, RuntimeValue>? MatchVariantPattern(VariantPattern pattern, RuntimeValue value, Dictionary<string, RuntimeValue> bindings)

@@ -164,6 +164,28 @@ public static class SumTypeRegistry
         return true;
     }
 
+    /// <summary>
+    /// Last registered type that declares <paramref name="constructorName"/> wins
+    /// (same last-wins rule as the global constructor binding).
+    /// </summary>
+    public static bool TryGetConstructorArity(string constructorName, out int arity)
+    {
+        arity = 0;
+        var found = false;
+        foreach (var def in Definitions.Values)
+        {
+            foreach (var ctor in def.Constructors)
+            {
+                if (!string.Equals(ctor.Name, constructorName, StringComparison.Ordinal))
+                    continue;
+                arity = ctor.ParameterNames.Count;
+                found = true;
+            }
+        }
+
+        return found;
+    }
+
     public static bool TryGetDefinition(string name, out SumTypeDefinition definition)
     {
         if (Definitions.TryGetValue(name, out definition!))

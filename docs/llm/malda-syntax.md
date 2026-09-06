@@ -99,7 +99,9 @@ Compact rules for generating correct `.malda`. Prefer this over scraping HTML ma
   Prefer a `schema Name { … }` for structured objects, or a **sum type**
   (`type Intent = Search(query: string) | Buy(sku: string, qty: int)`) when the model must pick one of several
   shapes — success yields a real variant for `match`. Constructor payload types are optional;
-  name-only (`Search(query)`) stays a permissive JSON field. Sum-type JSON wire shape:
+  name-only (`Search(query)`) stays a permissive JSON field. Call constructors as `Ok(1)` or
+  `Result.Ok(1)` (the type name is a namespace). Shared constructor tags warn (`malda-types`);
+  prefer `r.Ok` / unique names. `import { Result }` binds `Result`, not `Ok`. Sum-type JSON wire shape:
   `{ "tag": "Buy", "sku": "...", "qty": 2 }` (tag = constructor name; payload fields
   use the constructor parameter names). For closed call plans use
   `api Calc { function add(a: number, b: number); }` with `prompt p(...) -> program(Calc)` then

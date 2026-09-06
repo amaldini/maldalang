@@ -107,6 +107,15 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — sum-type constructor namespaces)
+
+- **`Type.Ctor(...)`:** a `type Result = Ok(value) | Err(msg)` binds `Result` as a runtime namespace of its constructors. `Result.Ok(42)` and bare `Ok(42)` both produce the same tag+payload variant. Interpreter, C#, and JS agree. Example: `Examples/Modules/export_type_schema.malda` uses `Result.Ok` after `import { Result }`.
+- **Constructor-tag clash diagnostic:** two user sum types that share a constructor name (`type r = Ok|Err` plus `type r2 = Ok|Warning`) emit `malda-types` Warning; `--strict-types` elevates to Error. Bare `Ok(...)` remains last-declaration-wins.
+
+#### Changed (MINOR — selective `import { Type }`)
+
+- Selecting a sum type no longer flattens its constructors into the importer. `import { Result } from "lib.malda"` binds `Result` (use `Result.Ok`); `import { Ok }` still imports that constructor. `case Ok` still matches the tag when the type is registered. Spec §8.1 / §14.2.
+
 #### Changed (PATCH — ship contract / `result.map` wrap)
 
 - **Interpret/transpile exit identity:** `InterpretTranspilePair` compares interpret vs C# transpile exit class. Both 0 ⇒ same stdout. Both nonzero ⇒ error identity (optional shared token). Mixed success/failure fails the pair. Registry: [`ship-contract.md`](ship-contract.md). CI smoke includes `ShipContractGuardTests` and `WorkflowTranspilerParityTests`.
@@ -471,6 +480,7 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 
 | Date | Change |
 |------|--------|
+| 2026-09-06 | MINOR: sum-type constructor namespaces (`Result.Ok`); clash diagnostic; `import { T }` no longer flattens constructors |
 | 2026-09-05 | PATCH: HTTP ship traces (`HttpTraceParityTests`) for `Templates/webapi` `/api/health`; RestServer `start()` + `use()` options now match C# transpile |
 | 2026-09-05 | PATCH: ship-contract registry + interpret/transpile exit identity; interpreter `result.map` wraps like C#/JS |
 | 2026-06-04 | Initial CHANGELOG and semver policy (Phase 2.3) |

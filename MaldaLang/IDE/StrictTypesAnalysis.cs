@@ -37,6 +37,7 @@ public static class StrictTypesAnalysis
             }
         }
 
+        VariantConstructorClashDiagnostics.Validate(statements, options, diagnostics, sourceFileName);
         MatchExhaustivenessDiagnostics.Validate(statements, index, options, diagnostics);
         PureEffectsDiagnostics.Validate(statements, options, diagnostics);
         BoundsDiagnostics.Validate(statements, options, diagnostics);

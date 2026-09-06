@@ -183,13 +183,21 @@ print(first[1]);          // value</code></pre>
         <pre><code>type Result = Ok(value) | Err(message);
 type Intent = Search(query: string) | Buy(sku: string, qty: int) | Help();</code></pre>
         <p>I costruttori solo-nome restano validi (<code>Search(query)</code>) e restano non tipizzati nello JSON Schema generato. Mescolare bracci tipizzati e non tipizzati in un unico <code>type</code> è consentito. I tipi di payload <strong>non</strong> sono typing dei parametri di prompt — scrivi <code>prompt greet(name)</code>, mai <code>prompt greet(name: string)</code> — vedi <a href="10-prompts.html">10. Prompt</a>.</p>
-        <p>I nomi dei costruttori (es. <code>Ok</code>, <code>Err</code>) diventano funzioni globali che costruiscono valori di quella variante. Lo stesso nome non può essere anche uno <code>schema</code>. <code>validate("Result", taggedDict)</code> controlla la forma JSON sul filo (<code>{"tag":"Ok","value":…}</code>) senza trasformare il dict in una variante — vedi <a href="13-built-in-functions.html#validate">validate()</a>. Usa <a href="13-built-in-functions.html#asVariant"><code>asVariant("Result", dict)</code></a> quando ti serve una variante per <code>match</code> senza <code>await prompt</code>, oppure <a href="13-built-in-functions.html#evalPrompt"><code>evalPrompt</code></a> per testare con fixture un prompt tipizzato. Quando un payload è tipizzato, <code>validate</code>, <code>asVariant</code>, i prompt tipizzati e <code>evalPrompt</code> rifiutano JSON che non corrisponde (per esempio <code>qty: "x"</code> contro <code>qty: int</code>).</p>
+        <p>I nomi dei costruttori (es. <code>Ok</code>, <code>Err</code>) diventano funzioni globali che costruiscono valori di quella variante. Il nome del tipo è anche un namespace di quei costruttori (<code>Result.Ok(42)</code>). Lo stesso nome di tipo non può essere anche uno <code>schema</code>. Quando due <code>type</code> condividono un tag di costruttore, IDE/LSP segnala <code>malda-types</code> (Warning; Error con <code>--strict-types</code>) e il <code>Ok(...)</code> nudo usa l’ultima dichiarazione — scrivi <code>r.Ok(...)</code> / <code>r2.Ok(...)</code> per scegliere. <code>validate("Result", taggedDict)</code> controlla la forma JSON sul filo (<code>{"tag":"Ok","value":…}</code>) senza trasformare il dict in una variante — vedi <a href="13-built-in-functions.html#validate">validate()</a>. Usa <a href="13-built-in-functions.html#asVariant"><code>asVariant("Result", dict)</code></a> quando ti serve una variante per <code>match</code> senza <code>await prompt</code>, oppure <a href="13-built-in-functions.html#evalPrompt"><code>evalPrompt</code></a> per testare con fixture un prompt tipizzato. Quando un payload è tipizzato, <code>validate</code>, <code>asVariant</code>, i prompt tipizzati e <code>evalPrompt</code> rifiutano JSON che non corrisponde (per esempio <code>qty: "x"</code> contro <code>qty: int</code>).</p>
 
         <h3>Costruire valori</h3>
-        <p>Chiama un costruttore come una funzione. Restituisce un valore etichettato che porta gli argomenti come payload:</p>
+        <p>Chiama un costruttore come una funzione, oppure qualificalo con il nome del tipo. Entrambi restituiscono un valore etichettato che porta gli argomenti come payload:</p>
         <pre><code>var r = Ok(42);           // variant Ok with payload 42
-var e = Err("failed");    // variant Err with payload "failed"
+var e = Result.Err("failed");
 var n = None();           // variant None with no payload</code></pre>
+        <pre><code data-run="true" data-expect="r: Ciao">type r = Ok(msg) | Err(msg);
+type r2 = Ok(msg) | Warning(msg);
+var x = r.Ok("Ciao");
+var label = match x {
+    case Ok(msg): "r: " + msg;
+    case Err(msg): "err: " + msg;
+};
+print(label);</code></pre>
 
         <h3>Match sulle varianti</h3>
         <p>Usa <code>match</code> con <strong>pattern di variante</strong>: <code>ConstructorName(binding, ...)</code>. Il pattern corrisponde se il valore è quella variante e lega il payload ai nomi dati. Un nome di costruttore nudo (<code>case None:</code>) corrisponde a quella variante senza legare i payload (<code>_</code> implicito per ogni slot).</p>

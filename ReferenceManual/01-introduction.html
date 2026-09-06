@@ -292,7 +292,7 @@ print(VERSION);
 // unused();           // not imported, even if exported by the module
 
 import { Result, Contact } from "types_lib.malda";
-var r = Ok(42);                 // constructors arrive with export type Result
+var r = Result.Ok(42);          // type namespace; Ok is not flattened into the host
 var ok = validate("Contact", dict { "name": "Ada" });</code></pre>
         <p>With an alias, the same symbols are grouped into one object, which avoids collisions entirely:</p>
         <pre><code>import mathUtils = "shared/math_utils.malda";

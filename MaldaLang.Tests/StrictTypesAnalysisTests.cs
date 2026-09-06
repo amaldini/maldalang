@@ -275,4 +275,34 @@ public class StrictTypesAnalysisTests
             d.Severity == DiagnosticSeverity.Error &&
             d.Message.Contains("does not match value", StringComparison.Ordinal));
     }
+
+    [Fact]
+    public void DefaultMode_SharedConstructorTag_IsWarning()
+    {
+        var source = """
+            type r = Ok(msg) | Err(msg);
+            type r2 = Ok(msg) | Warning(msg);
+            var x = r.Ok("Ciao");
+            """;
+        var diagnostics = Analyze(source, StrictTypesOptions.Default);
+        Assert.Contains(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Severity == DiagnosticSeverity.Warning &&
+            d.Message.Contains("Constructor 'Ok'", StringComparison.Ordinal) &&
+            d.Message.Contains("r.Ok", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void StrictMode_SharedConstructorTag_IsError()
+    {
+        var source = """
+            type r = Ok(msg) | Err(msg);
+            type r2 = Ok(msg) | Warning(msg);
+            """;
+        var diagnostics = Analyze(source, StrictTypesOptions.Enabled);
+        Assert.Contains(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Severity == DiagnosticSeverity.Error &&
+            d.Message.Contains("Constructor 'Ok'", StringComparison.Ordinal));
+    }
 }

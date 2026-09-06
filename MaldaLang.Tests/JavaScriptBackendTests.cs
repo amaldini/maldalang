@@ -4924,6 +4924,7 @@ const missingModel = three.loadGLTF("missing.gltf");
         Assert.Contains("if (arguments.length !== 1)", js, StringComparison.Ordinal);
         Assert.Contains("return mlRuntime.variant(\"Ok\", Array.from(arguments));", js, StringComparison.Ordinal);
         Assert.Contains("return mlRuntime.variant(\"Err\", Array.from(arguments));", js, StringComparison.Ordinal);
+        Assert.Contains("var Result = { Ok: Ok, Err: Err };", js, StringComparison.Ordinal);
     }
 
     [Fact]

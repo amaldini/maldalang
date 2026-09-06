@@ -976,6 +976,13 @@ public class JsTranspiler
             EmitLine("};");
         }
 
+        var nsName = EscapeIdentifier(declaration.TypeName);
+        var nsMembers = string.Join(
+            ", ",
+            declaration.Constructors.Select(c =>
+                $"{EscapeIdentifier(c.Name)}: {EscapeIdentifier(c.Name)}"));
+        EmitLine($"var {nsName} = {{ {nsMembers} }};");
+
         var constructorSpecs = declaration.Constructors
             .Select(c => new Dictionary<string, object?>
             {

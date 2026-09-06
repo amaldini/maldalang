@@ -13,7 +13,8 @@ public static class ModuleExports
 {
     /// <summary>
     /// Names marked with <c>export</c>. Null means an open module (no <c>export</c> at all).
-    /// For <c>export type</c>, includes the type name and all constructor names.
+    /// For <c>export type</c>, includes the type name (namespace object) and all constructor names
+    /// (so <c>import { Ok }</c> still works; <c>import { T }</c> binds only the namespace).
     /// For <c>export schema</c>, includes the schema name.
     /// </summary>
     public static HashSet<string>? CollectExplicitExports(IEnumerable<Statement> statements)
@@ -78,15 +79,18 @@ public static class ModuleExports
     }
 
     /// <summary>
-    /// Expand selective import names so that selecting a sum type also pulls its constructors,
-    /// and selecting any constructor of an exported type keeps the type declaration in scope
-    /// for tooling (caller still filters values separately).
+    /// Expand selective import names for sum types.
+    /// Selecting a type binds the type namespace (<c>Result.Ok</c>) and keeps the
+    /// declaration in scope for tooling — it does <em>not</em> flatten constructors
+    /// into the importer. Selecting a constructor still imports that constructor
+    /// and the parent type (for <c>validate</c> / transpile / IDE).
     /// </summary>
     public static List<string> ExpandSelectedNames(
         IReadOnlyList<string> selectedNames,
         IEnumerable<Statement> statements)
     {
         var explicitExports = CollectExplicitExports(statements);
+        var requested = new HashSet<string>(selectedNames, System.StringComparer.Ordinal);
         var expanded = new HashSet<string>(selectedNames, System.StringComparer.Ordinal);
 
         foreach (var stmt in statements)
@@ -97,13 +101,13 @@ public static class ModuleExports
                 continue;
 
             var ctorNames = td.Constructors.Select(c => c.Name).ToList();
-            var typeSelected = expanded.Contains(td.TypeName);
-            var ctorSelected = ctorNames.Any(expanded.Contains);
-            if (!typeSelected && !ctorSelected)
+            var typeSelected = requested.Contains(td.TypeName);
+            var selectedCtors = ctorNames.Where(requested.Contains).ToList();
+            if (!typeSelected && selectedCtors.Count == 0)
                 continue;
 
             expanded.Add(td.TypeName);
-            foreach (var ctor in ctorNames)
+            foreach (var ctor in selectedCtors)
                 expanded.Add(ctor);
         }
 

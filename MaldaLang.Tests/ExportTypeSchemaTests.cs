@@ -90,7 +90,7 @@ public class ExportTypeSchemaTests : TestBase
     }
 
     [Fact]
-    public async Task Runtime_SelectiveImport_ExportType_MergesConstructors()
+    public async Task Runtime_SelectiveImport_ExportType_BindsNamespace()
     {
         var id = Guid.NewGuid().ToString("N")[..8];
         var typeName = "Result_" + id;
@@ -110,7 +110,7 @@ public class ExportTypeSchemaTests : TestBase
             var mainPath = Path.Combine(tempDir, "main.malda");
             var source = $$"""
                 import { {{typeName}} } from "lib.malda";
-                var r = {{ok}}(42);
+                var r = {{typeName}}.{{ok}}(42);
                 match r {
                     case {{ok}}(v): print(v);
                     case {{err}}(m): print(m);
@@ -125,6 +125,54 @@ public class ExportTypeSchemaTests : TestBase
             {
                 await interpreter.InterpretAsync(Parse(source, mainPath));
                 Assert.Equal("42", GetOutput().Trim());
+            }
+            finally
+            {
+                RestoreConsole();
+            }
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+                Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public async Task Runtime_SelectiveImport_ConstructorName_StillImportsCtor()
+    {
+        var id = Guid.NewGuid().ToString("N")[..8];
+        var typeName = "Result_" + id;
+        var ok = "Ok_" + id;
+        var err = "Err_" + id;
+        var tempDir = Path.Combine(Path.GetTempPath(), "malda_exp_ctor_" + id);
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            File.WriteAllText(
+                Path.Combine(tempDir, "lib.malda"),
+                $$"""
+                export type {{typeName}} = {{ok}}(value) | {{err}}(msg);
+                """);
+
+            var mainPath = Path.Combine(tempDir, "main.malda");
+            var source = $$"""
+                import { {{ok}} } from "lib.malda";
+                var r = {{ok}}(3);
+                match r {
+                    case {{ok}}(v): print(v);
+                    case {{err}}(m): print(m);
+                }
+                """;
+            File.WriteAllText(mainPath, source);
+
+            var interpreter = new Interpreter.Interpreter(currentFile: mainPath);
+            AttachModuleLoader(interpreter);
+            RedirectConsole();
+            try
+            {
+                await interpreter.InterpretAsync(Parse(source, mainPath));
+                Assert.Equal("3", GetOutput().Trim());
             }
             finally
             {
@@ -207,7 +255,7 @@ public class ExportTypeSchemaTests : TestBase
             var source = $$"""
                 import { {{typeName}} } from "lib.malda";
                 function host() {
-                    var r = {{ok}}(1);
+                    var r = {{typeName}}.{{ok}}(1);
                     return r;
                 }
                 """;

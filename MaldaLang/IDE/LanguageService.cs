@@ -1150,6 +1150,11 @@ public class LanguageService : ILanguageService
         {
             // math / str / io / pdf / doc / result / option members
         }
+        else if (TryAddSumTypeNamespaceMembers(typeToCheck, source, members) ||
+                 TryAddSumTypeNamespaceMembers(objectName, source, members))
+        {
+            // r.Ok / Result.Err
+        }
         else
         {
             // Try to find user-defined class members
@@ -1360,6 +1365,40 @@ public class LanguageService : ILanguageService
         }
 
         return true;
+    }
+
+    private static bool TryAddSumTypeNamespaceMembers(string typeName, string source, List<CompletionItem> members)
+    {
+        if (string.IsNullOrWhiteSpace(typeName) || string.IsNullOrWhiteSpace(source))
+            return false;
+
+        try
+        {
+            var lexer = new Lexer(source);
+            var parser = new MaldaLang.Parser.Parser(lexer.Tokenize());
+            var statements = parser.Parse();
+            var index = SumTypeIndex.Build(statements);
+            var constructors = index.GetConstructors(typeName);
+            if (constructors.Count == 0)
+                return false;
+
+            foreach (var ctor in constructors)
+            {
+                members.Add(new CompletionItem
+                {
+                    Label = ctor,
+                    Kind = "method",
+                    Detail = $"{typeName}.{ctor}()",
+                    InsertText = ctor + "()"
+                });
+            }
+
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static void AddArrayMembers(List<CompletionItem> members)

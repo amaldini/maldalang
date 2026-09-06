@@ -1,10 +1,11 @@
 // Selective import of export type / export schema.
-// Selecting Result merges constructors Ok / Err; Contact enables validate("Contact", …).
+// Selecting Result binds the type namespace (Result.Ok / Result.Err); it does
+// not flatten Ok / Err into the host. Contact enables validate("Contact", …).
 // Design: docs/selective-imports.md
 
 import { Result, Contact } from "types_lib.malda";
 
-var r = Ok(42);
+var r = Result.Ok(42);
 match r {
     case Ok(v): print(v);
     case Err(m): print(m);

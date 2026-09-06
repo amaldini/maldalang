@@ -26,7 +26,7 @@ import { Result, Contact } from "types_lib.malda";
 | `type` | Surfaced (constructors merge) | Requires `export type` (constructors included) |
 | `schema` | Surfaced for IDE + `validate` after load | Requires `export schema` |
 
-`export type T` adds **T** and all of T’s **constructors** to the export name set. Selecting `T` in a selective import merges those constructors into the host. Selecting a constructor name also expands to the type declaration for transpile/IDE.
+`export type T` adds **T** and all of T’s **constructors** to the export name set. Selecting `T` in a selective import binds the type namespace (`T.Ok` / `T.Err`) and does **not** flatten constructors into the host. Selecting a constructor name still imports that constructor and keeps the type declaration in scope for transpile/IDE / `validate`.
 
 ## Semantics
 
@@ -42,7 +42,7 @@ Full `import "…"`, `import pkg`, and `import alias = …` are unchanged.
 
 | Surface | Behavior |
 |---------|----------|
-| Interpreter | Selective merge + missing-name error; constructors from `export type` |
+| Interpreter | Selective merge + missing-name error; `export type` binds the type namespace |
 | `ModuleSymbolResolver` | IDE symbols / type hints see exported (or open-module) types/schemas; selective expands type↔ctors |
 | C# transpile expand | Inlines selected exported declarations (including `type` / `schema`) |
 

@@ -316,13 +316,20 @@ public class CSharpTranspiler
         }
 
         // Generate variant constructors (from type declarations)
+        var emittedCtorKeys = new HashSet<(string Name, int Arity)>();
         foreach (var typeDecl in _typeDeclarations)
         {
             foreach (var ctor in typeDecl.Constructors)
             {
+                var key = (ctor.Name, ctor.ParameterNames.Count);
+                if (!emittedCtorKeys.Add(key))
+                    continue;
                 EmitVariantConstructorMethod(ctor);
             }
         }
+
+        foreach (var typeDecl in _typeDeclarations)
+            EmitSumTypeNamespaceField(typeDecl);
 
         // Generate decorator registration method if needed
         if (HasDecorators(statements))
@@ -9012,10 +9019,10 @@ public class CSharpTranspiler
 
     private void TranspileFunctionCall(FunctionCallExpression call)
     {
-        // Variant constructor call: Ok(expr) -> Ok(RuntimeHelpers.ToRuntimeValue(expr))
-        if (call.Callee is IdentifierExpression variantCtorId && _variantConstructorNames.Contains(variantCtorId.Name))
+        // Variant constructor call: Ok(expr) or Result.Ok(expr)
+        if (TryGetVariantConstructorCallName(call.Callee, out var variantCtorName))
         {
-            _output.Append(EscapeIdentifier(variantCtorId.Name));
+            _output.Append(EscapeIdentifier(variantCtorName));
             _output.Append("(");
             for (int i = 0; i < call.Arguments.Count; i++)
             {
@@ -12475,6 +12482,79 @@ public class CSharpTranspiler
         _output.AppendLine();
     }
     
+    private bool TryGetVariantConstructorCallName(Expression callee, out string constructorName)
+    {
+        if (callee is IdentifierExpression variantCtorId &&
+            _variantConstructorNames.Contains(variantCtorId.Name))
+        {
+            constructorName = variantCtorId.Name;
+            return true;
+        }
+
+        if (callee is MemberAccessExpression member &&
+            member.Object is IdentifierExpression typeId &&
+            IsSumTypeConstructor(typeId.Name, member.Member))
+        {
+            constructorName = member.Member;
+            return true;
+        }
+
+        constructorName = "";
+        return false;
+    }
+
+    private bool IsSumTypeConstructor(string typeName, string constructorName)
+    {
+        foreach (var typeDecl in _typeDeclarations)
+        {
+            if (!string.Equals(typeDecl.TypeName, typeName, StringComparison.Ordinal))
+                continue;
+            foreach (var ctor in typeDecl.Constructors)
+            {
+                if (string.Equals(ctor.Name, constructorName, StringComparison.Ordinal))
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void EmitSumTypeNamespaceField(TypeDeclaration typeDecl)
+    {
+        // Avoid a C# field/method clash when the type is named like a constructor.
+        if (_variantConstructorNames.Contains(typeDecl.TypeName))
+            return;
+
+        var field = EscapeIdentifier(typeDecl.TypeName);
+        var helper = "__sumNs_" + field;
+        WriteIndent();
+        _output.Append("private static MaldaLang.Interpreter.RuntimeValue ");
+        _output.Append(helper);
+        _output.Append("() { var obj = new MaldaLang.BuiltIns.JsonObject(); ");
+        foreach (var ctor in typeDecl.Constructors)
+        {
+            var tag = ctor.Name.Replace("\\", "\\\\").Replace("\"", "\\\"");
+            _output.Append("obj.Set(\"");
+            _output.Append(tag);
+            _output.Append("\", MaldaLang.Interpreter.RuntimeValue.Function(new MaldaLang.Interpreter.FunctionValue(null, null) { VariantConstructorTag = \"");
+            _output.Append(tag);
+            _output.Append("\", VariantConstructorArity = ");
+            _output.Append(ctor.ParameterNames.Count);
+            _output.Append(" })); ");
+        }
+
+        _output.Append("return MaldaLang.Interpreter.RuntimeValue.Object(obj); }");
+        _output.AppendLine();
+
+        WriteIndent();
+        _output.Append("private static readonly MaldaLang.Interpreter.RuntimeValue ");
+        _output.Append(field);
+        _output.Append(" = ");
+        _output.Append(helper);
+        _output.Append("();");
+        _output.AppendLine();
+    }
+
     private void EmitVariantConstructorMethod(VariantConstructor ctor)
     {
         WriteIndent();
