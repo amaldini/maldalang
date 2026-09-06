@@ -18,6 +18,7 @@ public class AlgorithmsTrackTests : TestBase
 
     private static readonly (string File, string OkLine)[] Algorithms =
     [
+        ("towers_of_hanoi.malda", "towers of hanoi ok"),
         ("binary_search.malda", "binary search ok"),
         ("merge_sort.malda", "merge sort ok"),
         ("bfs_dfs.malda", "bfs dfs ok"),
@@ -28,13 +29,13 @@ public class AlgorithmsTrackTests : TestBase
     ];
 
     [Fact]
-    public void Catalog_ListsSevenOfflineStudentExamples()
+    public void Catalog_ListsEightOfflineStudentExamples()
     {
         var examples = ExampleProgramsService.GetExamples()
             .Where(example => example.Category == "Algorithms")
             .ToList();
 
-        Assert.Equal(7, examples.Count);
+        Assert.Equal(8, examples.Count);
         Assert.All(examples, example =>
         {
             Assert.Equal("student", example.Track);
@@ -51,9 +52,9 @@ public class AlgorithmsTrackTests : TestBase
     [Fact]
     public void Catalog_NextChain_EndsAtXorNeuralNet()
     {
-        var first = ExampleProgramsService.GetExampleByRelativePath("Algorithms/binary_search.malda");
+        var first = ExampleProgramsService.GetExampleByRelativePath("Algorithms/towers_of_hanoi.malda");
         Assert.NotNull(first);
-        Assert.Equal("Algorithms/merge_sort.malda", first!.Next);
+        Assert.Equal("Algorithms/binary_search.malda", first!.Next);
 
         var last = ExampleProgramsService.GetExampleByRelativePath("Algorithms/simulated_annealing.malda");
         Assert.NotNull(last);

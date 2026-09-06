@@ -6,6 +6,7 @@ not a complete algorithms encyclopedia.
 
 | File | Idea |
 |------|------|
+| `towers_of_hanoi.malda` | Recursion: move n disks with 2^n - 1 moves |
 | `binary_search.malda` | Loop invariant on a sorted array |
 | `merge_sort.malda` | One O(n log n) sort, written out |
 | `bfs_dfs.malda` | Hand-rolled walks, then the `graph` builtin |

@@ -1,7 +1,7 @@
 // Recursion: a function that calls itself with a smaller argument.
 //
 // factorial(n) = n * factorial(n - 1), and factorial(0) = 1.
-// Change this: print factorial(7). Next: Algorithms/binary_search.malda
+// Change this: print factorial(7). Next: Algorithms/towers_of_hanoi.malda
 
 function factorial(n) {
     if (n <= 1) {

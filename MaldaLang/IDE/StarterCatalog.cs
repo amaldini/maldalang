@@ -204,12 +204,12 @@ public static class StarterCatalog
         {
             Id = "algorithms-track",
             Title = "Algorithms",
-            Description = "A short curated track: search, one sort, BFS/DFS, knapsack, union-find, Q-learning, and simulated annealing.",
-            RelativeExamplePath = @"Algorithms\binary_search.malda",
+            Description = "A short curated track: Towers of Hanoi, search, one sort, BFS/DFS, knapsack, union-find, Q-learning, and simulated annealing.",
+            RelativeExamplePath = @"Algorithms\towers_of_hanoi.malda",
             AudienceTrack = "student",
             EstimatedTime = "10-15 min each",
             LearningGoal = "Learn a few CS ideas in MALDA, not every named algorithm.",
-            Highlights = ["binary search", "merge sort", "Q-learning"]
+            Highlights = ["Towers of Hanoi", "binary search", "merge sort"]
         },
         new LearningBranch
         {

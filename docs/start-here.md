@@ -43,13 +43,14 @@ Start with the Desktop **Start With MALDA** student path (same order in the Web 
 
 Then the short **Algorithms** track (ideas, not an encyclopedia):
 
-12. `Examples/Algorithms/binary_search.malda`
-13. `Examples/Algorithms/merge_sort.malda`
-14. `Examples/Algorithms/bfs_dfs.malda` (hand-rolled, then the `graph` builtin)
-15. `Examples/Algorithms/knapsack.malda`
-16. `Examples/Algorithms/union_find.malda`
-17. `Examples/Algorithms/qlearn_grid.malda`
-18. `Examples/Algorithms/simulated_annealing.malda`
+12. `Examples/Algorithms/towers_of_hanoi.malda`
+13. `Examples/Algorithms/binary_search.malda`
+14. `Examples/Algorithms/merge_sort.malda`
+15. `Examples/Algorithms/bfs_dfs.malda` (hand-rolled, then the `graph` builtin)
+16. `Examples/Algorithms/knapsack.malda`
+17. `Examples/Algorithms/union_find.malda`
+18. `Examples/Algorithms/qlearn_grid.malda`
+19. `Examples/Algorithms/simulated_annealing.malda`
 
 `Examples/Basics/first_look.malda` is optional if you already program (prompt + schema + `validate`, no API key). After the core path, `Examples/Basics/lambda.malda` is a useful extra before prompts. After annealing, `Examples/AI_LLM/xor_neural_net.malda` is the gradient-learning follow-on.
 

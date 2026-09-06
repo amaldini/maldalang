@@ -1,0 +1,73 @@
+// Towers of Hanoi: move n disks from peg A to peg C using peg B.
+//
+// Never put a larger disk on a smaller one. The recurrence is
+// hanoi(n) = 2 * hanoi(n-1) + 1, and hanoi(1) = 1 (so 2^n - 1 moves).
+// Disk 1 is smallest. Each peg is a stack: last item is the top.
+// Change this: solve n=4. Next: binary_search.malda
+
+function expectedMoves(n) {
+    var total = 1;
+    var i = 0;
+    while (i < n) {
+        total = total * 2;
+        i = i + 1;
+    }
+    return total - 1;
+}
+
+function formatPegs(stacks, names) {
+    return names[0] + ":" + string(stacks[0]) + "  " + names[1] + ":" + string(stacks[1]) + "  " + names[2] + ":" + string(stacks[2]);
+}
+
+function moveDisk(stacks, names, from, to) {
+    var fromStack = stacks[from];
+    var disk = fromStack.pop();
+    var toStack = stacks[to];
+    if (toStack.length > 0) {
+        var top = toStack[toStack.length - 1];
+        if (disk > top) {
+            io.print("illegal: disk " + string(disk) + " onto " + string(top));
+            fromStack.append(disk);
+            stacks[from] = fromStack;
+            return;
+        }
+    }
+    toStack.append(disk);
+    stacks[from] = fromStack;
+    stacks[to] = toStack;
+    io.print("move disk " + string(disk) + " " + names[from] + " -> " + names[to] + "  " + formatPegs(stacks, names));
+}
+
+function hanoi(n, stacks, names, from, to, aux) {
+    if (n <= 0) {
+        return 0;
+    }
+    if (n == 1) {
+        moveDisk(stacks, names, from, to);
+        return 1;
+    }
+    var first = hanoi(n - 1, stacks, names, from, aux, to);
+    moveDisk(stacks, names, from, to);
+    var second = hanoi(n - 1, stacks, names, aux, to, from);
+    return first + 1 + second;
+}
+
+var n = 3;
+var names = ["A", "B", "C"];
+var stacks = [[3, 2, 1], [], []];
+
+io.print("Towers of Hanoi, n=" + string(n));
+io.print("start  " + formatPegs(stacks, names));
+var moves = hanoi(n, stacks, names, 0, 2, 1);
+var want = expectedMoves(n);
+io.print("moves=" + string(moves) + " expected=" + string(want));
+io.print("end    " + formatPegs(stacks, names));
+
+var dest = stacks[2];
+var emptyStart = stacks[0].length == 0 && stacks[1].length == 0;
+var stacked = dest.length == n && dest[0] == n && dest[n - 1] == 1;
+if (moves == want && emptyStart && stacked) {
+    io.print("towers of hanoi ok");
+} else {
+    io.print("towers of hanoi failed");
+}

@@ -1,6 +1,22 @@
 {
   "examples": [
     {
+      "name": "Towers of Hanoi",
+      "description": "Move n disks between three pegs with the classic recursive recurrence",
+      "file": "towers_of_hanoi.malda",
+      "track": "student",
+      "difficulty": "intermediate",
+      "minutes": 10,
+      "requires": ["offline"],
+      "concepts": ["recursion", "divide and conquer", "stacks"],
+      "prerequisites": ["Basics/recursion.malda"],
+      "learningGoal": "See a base case plus two smaller self-calls, and check that 2^n - 1 moves empty the start peg.",
+      "expectedOutput": "Prints seven moves for n=3 and towers of hanoi ok.",
+      "next": "Algorithms/binary_search.malda",
+      "documentationPath": "/docs/start-here.md",
+      "documentationTitle": "Start Here"
+    },
+    {
       "name": "Binary Search",
       "description": "Find a value in a sorted array with an O(log n) loop invariant",
       "file": "binary_search.malda",
@@ -9,7 +25,7 @@
       "minutes": 10,
       "requires": ["offline"],
       "concepts": ["binary search", "arrays", "loop invariant"],
-      "prerequisites": ["Basics/recursion.malda"],
+      "prerequisites": ["Algorithms/towers_of_hanoi.malda"],
       "learningGoal": "See a counted loop maintain a shrinking search range.",
       "expectedOutput": "Finds 10 at index 4 and reports that 7 is missing.",
       "next": "Algorithms/merge_sort.malda",

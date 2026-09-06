@@ -66,10 +66,10 @@ public class StarterCatalogTests
     }
 
     [Fact]
-    public void AlgorithmsBranch_OpensBinarySearch()
+    public void AlgorithmsBranch_OpensTowersOfHanoi()
     {
         var branch = StarterCatalog.GetBranches().Single(item => item.Id == "algorithms-track");
-        Assert.Equal("Algorithms/binary_search.malda", StarterCatalog.NormalizeExamplePath(branch.RelativeExamplePath));
+        Assert.Equal("Algorithms/towers_of_hanoi.malda", StarterCatalog.NormalizeExamplePath(branch.RelativeExamplePath));
         Assert.Equal("student", branch.AudienceTrack);
     }
 

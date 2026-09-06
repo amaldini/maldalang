@@ -213,9 +213,9 @@
       "requires": ["offline"],
       "concepts": ["recursion", "function", "base case"],
       "prerequisites": ["Basics/dictionary_example.malda"],
-      "learningGoal": "See a base case and a smaller self-call before merge sort and DFS.",
+      "learningGoal": "See a base case and a smaller self-call before Towers of Hanoi.",
       "expectedOutput": "Prints factorial(5)=120, a countdown, and recursion ok.",
-      "next": "Algorithms/binary_search.malda",
+      "next": "Algorithms/towers_of_hanoi.malda",
       "documentationPath": "/?lesson=recursion#lesson-recursion",
       "documentationTitle": "Recursion"
     },
