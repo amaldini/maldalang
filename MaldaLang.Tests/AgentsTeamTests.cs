@@ -772,6 +772,155 @@ public class AgentsTeamTests : TestBase
     }
 
     [Fact]
+    public void ExecutePlan_StepOut_FixtureCoercesSchema_AndFeedsPriorJson()
+    {
+        var source = """
+            schema DraftCode { path: string; summary: string; }
+            var team = agents.team(
+                [
+                    { name: "Writer", role: "programmer", instructions: "Write." },
+                    { name: "Reviewer", role: "reviewer", instructions: "Review." }
+                ],
+                graph directed {
+                    nodes: ["Writer", "Reviewer"],
+                    edges: [{ from: "Writer", to: "Reviewer", rel: "handoff" }]
+                }
+            );
+            var result = executePlan({
+                think: false,
+                steps: [
+                    { id: "write", description: "Write comments", role: "Writer", out: "DraftCode", fixture: { path: "a.malda", summary: "add comments" } },
+                    { id: "review", description: "Review the draft", role: "Reviewer", dependsOn: ["write"] }
+                ]
+            }, team);
+            io.print(result.completed.length);
+            io.print(result.failed.length);
+            io.print(result.results[0].data.path);
+            io.print(result.results[0].out);
+            io.print(str.indexOf(result.results[1].prompt, "a.malda") >= 0);
+            """;
+        var lines = RunProgram(source).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal("2", lines[0]);
+        Assert.Equal("0", lines[1]);
+        Assert.Equal("a.malda", lines[2]);
+        Assert.Equal("DraftCode", lines[3]);
+        Assert.Equal("true", lines[4]);
+    }
+
+    [Fact]
+    public void ExecutePlan_StepOut_BadFixtureFailsAndSkipsDependent()
+    {
+        var source = """
+            schema DraftCode { path: string; summary: string; }
+            var team = agents.team(
+                [
+                    { name: "Writer", role: "programmer", instructions: "Write." },
+                    { name: "Reviewer", role: "reviewer", instructions: "Review." }
+                ],
+                graph directed {
+                    nodes: ["Writer", "Reviewer"],
+                    edges: [{ from: "Writer", to: "Reviewer", rel: "handoff" }]
+                }
+            );
+            var result = executePlan({
+                think: false,
+                steps: [
+                    { id: "write", description: "Write comments", role: "Writer", out: "DraftCode", fixture: { path: 1, summary: "nope" } },
+                    { id: "review", description: "Review the draft", role: "Reviewer", dependsOn: ["write"] }
+                ]
+            }, team);
+            io.print(result.completed.length);
+            io.print(result.failed[0]);
+            io.print(result.skipped[0]);
+            io.print(result.results[0].success);
+            """;
+        var lines = RunProgram(source).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal("0", lines[0]);
+        Assert.Equal("write", lines[1]);
+        Assert.Equal("review", lines[2]);
+        Assert.Equal("false", lines[3]);
+    }
+
+    [Fact]
+    public void ExecutePlan_StepOut_UnknownType_PlanError()
+    {
+        var source = """
+            var team = agents.team(
+                [
+                    { name: "Writer", role: "programmer", instructions: "Write." }
+                ],
+                graph directed { nodes: ["Writer"], edges: [] }
+            );
+            var result = executePlan({
+                think: false,
+                steps: [
+                    { id: "write", description: "Write", role: "Writer", out: "Nope" }
+                ]
+            }, team);
+            io.print(result.error != null);
+            io.print(str.indexOf(result.error, "unknown out") >= 0);
+            """;
+        var lines = RunProgram(source).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal("true", lines[0]);
+        Assert.Equal("true", lines[1]);
+    }
+
+    [Fact]
+    public void ExecutePlan_StepOut_MissingFixture_ThinkFalse_Fails()
+    {
+        var source = """
+            schema DraftCode { path: string; summary: string; }
+            var team = agents.team(
+                [
+                    { name: "Writer", role: "programmer", instructions: "Write." }
+                ],
+                graph directed { nodes: ["Writer"], edges: [] }
+            );
+            var result = executePlan({
+                think: false,
+                steps: [
+                    { id: "write", description: "Write", role: "Writer", out: "DraftCode" }
+                ]
+            }, team);
+            io.print(result.failed[0]);
+            io.print(str.indexOf(result.results[0].error, "no fixture") >= 0);
+            """;
+        var lines = RunProgram(source).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal("write", lines[0]);
+        Assert.Equal("true", lines[1]);
+    }
+
+    [Fact]
+    public void ExecutePlan_StepOut_SumType_CoercesVariant()
+    {
+        var source = """
+            type Intent = Search(q) | Buy(sku, qty);
+            var team = agents.team(
+                [
+                    { name: "Writer", role: "programmer", instructions: "Write." }
+                ],
+                graph directed { nodes: ["Writer"], edges: [] }
+            );
+            var result = executePlan({
+                think: false,
+                steps: [
+                    { id: "parse", description: "Parse", role: "Writer", out: "Intent", fixture: { tag: "Buy", sku: "SKU-9", qty: 2 } }
+                ]
+            }, team);
+            io.print(result.completed.length);
+            io.print(typeOf(result.results[0].data));
+            match result.results[0].data {
+                case Buy(sku, qty): io.print(sku + " " + string(qty));
+                default: io.print("no");
+            }
+            """;
+        var lines = RunProgram(source).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal("1", lines[0]);
+        Assert.Equal("variant", lines[1]);
+        Assert.Equal("SKU-9 2", lines[2]);
+    }
+
+    [Fact]
     public void ValidateTeamPlan_RejectsUnknownHop()
     {
         var team = Assert.IsType<AgentTeamInstance>(TwoMemberTeam(withEdge: false).AsObject());

@@ -39,51 +39,23 @@ public static class PromptEval
                 typeName = overrideName;
         }
 
-        if (!TryCoerceFixture(fixture, out var parsed, out var coerceError))
-        {
-            if (!string.IsNullOrWhiteSpace(typeName))
-                return Fail(coerceError);
-            return Ok(fixture);
-        }
-
         if (string.IsNullOrWhiteSpace(typeName))
-            return Ok(parsed);
-
-        if (!TypedPromptValidator.TryValidateReturnType(
-                parsed,
-                typeName,
-                interpreter,
-                out var validated,
-                out var error))
         {
-            return Fail(error);
+            if (fixture.Type != ValueType.String)
+                return Ok(fixture);
+            if (!TypedPromptValidator.TryExtractJsonCandidate(fixture.AsString(), out var json, out var coerceError)
+                || !TypedPromptValidator.TryParseJson(json, out var parsed, out coerceError))
+            {
+                return Ok(fixture);
+            }
+
+            return Ok(parsed);
         }
+
+        if (!TypedPromptValidator.TryCoerceTypedValue(fixture, typeName, interpreter, out var validated, out var error))
+            return Fail(error);
 
         return Ok(validated);
-    }
-
-    private static bool TryCoerceFixture(RuntimeValue fixture, out RuntimeValue parsed, out string error)
-    {
-        parsed = fixture;
-        error = "";
-
-        if (fixture.Type != ValueType.String)
-            return true;
-
-        var content = fixture.AsString();
-        if (!TypedPromptValidator.TryExtractJsonCandidate(content, out var json, out var extractError))
-        {
-            error = extractError;
-            return false;
-        }
-
-        if (!TypedPromptValidator.TryParseJson(json, out parsed, out var parseError))
-        {
-            error = parseError;
-            return false;
-        }
-
-        return true;
     }
 
     private static RuntimeValue Ok(RuntimeValue data)

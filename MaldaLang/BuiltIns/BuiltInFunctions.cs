@@ -1110,7 +1110,7 @@ public static class BuiltInFunctions
             "createSubmitPlanTool" => BuiltInCreateSubmitPlanTool(args),
             "createUpdatePlanTool" => BuiltInCreateUpdatePlanTool(args),
             "createMarkStepTool" => BuiltInCreateMarkStepTool(args),
-            "executePlan" => BuiltInExecutePlan(args),
+            "executePlan" => BuiltInExecutePlan(args, interpreter),
             "runProgram" => BuiltInRunProgram(args, interpreter),
             "decomposeTask" => BuiltInDecomposeTask(args),
             "extractHTML" => BuiltInExtractHTML(args),
@@ -1507,7 +1507,7 @@ public static class BuiltInFunctions
             "createSubmitPlanTool" => BuiltInCreateSubmitPlanTool(args),
             "createUpdatePlanTool" => BuiltInCreateUpdatePlanTool(args),
             "createMarkStepTool" => BuiltInCreateMarkStepTool(args),
-            "executePlan" => BuiltInExecutePlan(args),
+            "executePlan" => BuiltInExecutePlan(args, interpreter),
             "runProgram" => BuiltInRunProgram(args, interpreter),
             "decomposeTask" => BuiltInDecomposeTask(args),
             "extractHTML" => BuiltInExtractHTML(args),
@@ -9365,7 +9365,7 @@ public static class BuiltInFunctions
         return ProgramRunner.Run(args[0], interpreter);
     }
 
-    private static RuntimeValue BuiltInExecutePlan(List<RuntimeValue> args)
+    private static RuntimeValue BuiltInExecutePlan(List<RuntimeValue> args, Interpreter? interpreter)
     {
         BuiltInArity.Require("executePlan", args, 2, BuiltInArity.Unbounded, "plan, agent");
         var planVal = args[0];
@@ -9435,6 +9435,14 @@ public static class BuiltInFunctions
             }
         }
 
+        var outTypeError = AgentsStdLib.ValidatePlanOutputTypes(orderedSteps, interpreter);
+        if (outTypeError != null)
+        {
+            var err = new JsonObject();
+            err.Set("error", RuntimeValue.String("executePlan " + outTypeError));
+            return RuntimeValue.Object(err);
+        }
+
         var completed = new List<RuntimeValue>();
         var failed = new List<RuntimeValue>();
         var skipped = new List<RuntimeValue>();
@@ -9460,10 +9468,16 @@ public static class BuiltInFunctions
             var descVal = so.Get("description", null);
             string stepId = stepIdVal != null && stepIdVal.Type == ValueType.String ? stepIdVal.AsString() : "";
             string description = descVal != null && descVal.Type == ValueType.String ? descVal.AsString() : "";
-            var thinkPrompt = AgentsStdLib.BuildStepThinkPrompt(description, so, priorOutputs);
+            var outType = AgentsStdLib.ReadStepOutType(so);
+            var thinkPrompt = AgentsStdLib.ApplyStepOutputAppendix(
+                AgentsStdLib.BuildStepThinkPrompt(description, so, priorOutputs),
+                outType,
+                interpreter);
             var stepResult = new JsonObject();
             stepResult.Set("stepId", RuntimeValue.String(stepId));
             stepResult.Set("prompt", RuntimeValue.String(thinkPrompt));
+            if (!string.IsNullOrEmpty(outType))
+                stepResult.Set("out", RuntimeValue.String(outType));
             AgentInstance stepAgent;
             if (team != null)
             {
@@ -9502,22 +9516,22 @@ public static class BuiltInFunctions
 
             try
             {
-                string output;
-                if (wantsThink)
+                var resolved = AgentsStdLib.ResolveStepOutput(
+                    so, stepAgent, thinkPrompt, wantsThink, interpreter);
+                if (!resolved.Success)
                 {
-                    var thinkResult = stepAgent.Think(RuntimeValue.String(thinkPrompt));
-                    output = thinkResult.Type == ValueType.String ? thinkResult.AsString() : (thinkResult.ToString() ?? "");
-                    if (thinkResult.Type == ValueType.Object)
-                    {
-                        var contentVal = thinkResult.AsObject().Get("content", null);
-                        if (contentVal != null && contentVal.Type == ValueType.String)
-                            output = contentVal.AsString();
-                    }
+                    stepResult.Set("success", RuntimeValue.Boolean(false));
+                    stepResult.Set("error", RuntimeValue.String(resolved.Error ?? "step output failed"));
+                    if (stepId.Length > 0)
+                        failedIds.Add(stepId);
+                    failed.Add(RuntimeValue.String(stepId));
+                    results.Add(RuntimeValue.Object(stepResult));
+                    continue;
                 }
-                else
-                {
-                    output = description;
-                }
+
+                var output = resolved.Output;
+                if (resolved.Data.Type != ValueType.Null)
+                    stepResult.Set("data", resolved.Data);
                 var approved = AgentsStdLib.ResolveStepApproved(so, output);
                 stepResult.Set("success", RuntimeValue.Boolean(true));
                 stepResult.Set("output", RuntimeValue.String(output));

@@ -162,9 +162,24 @@
       "prerequisites": ["Agents/agent_team_plan_verdict.malda"],
       "learningGoal": "Ask another role without a handoff or review verdict.",
       "expectedOutput": "Prints true / which API? / false / false.",
-      "next": "Agents/agent_file_reading.malda",
+      "next": "Agents/agent_team_plan_out.malda",
       "documentationPath": "/?lesson=build-ai-apps#lesson-build-ai-apps",
       "documentationTitle": "Team Consult"
+    },
+    {
+      "name": "Team plan typed outputs (offline)",
+      "description": "executePlan step.out coerces fixture JSON like a typed prompt; a bad fixture fails the step and skips dependents",
+      "file": "agent_team_plan_out.malda",
+      "track": "ai-builder",
+      "difficulty": "intermediate",
+      "minutes": 5,
+      "concepts": ["executePlan", "out", "fixture", "schema", "validate"],
+      "prerequisites": ["Agents/agent_team_consult.malda"],
+      "learningGoal": "Close the Mode A hole for team steps: hop payloads stay contracts, and think/fixture output is a schema or variant.",
+      "expectedOutput": "Prints 2 / a.malda / write / review.",
+      "next": "Agents/agent_file_reading.malda",
+      "documentationPath": "/?lesson=build-ai-apps#lesson-build-ai-apps",
+      "documentationTitle": "Team Step Outputs"
     },
     {
       "name": "Agent with File Reading Tool",

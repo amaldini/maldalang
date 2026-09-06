@@ -46,6 +46,7 @@ After generating a snippet, diagnose with `malda check path.malda --json` before
 | `38_agents_review_reject.malda` | `team.review` / `team.reject` require matching `rel` (offline) |
 | `39_agents_plan_verdict.malda` | `executePlan` `think: false` + `approved: false` runs the reject hop |
 | `40_agents_consult.malda` | `team.consult` requires `rel: consult` (offline) |
+| `41_agents_plan_out.malda` | `executePlan` `step.out` + `fixture` coerce typed output (offline) |
 
 Also useful from the main tree:
 

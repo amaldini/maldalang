@@ -157,6 +157,12 @@ public static class TypedPromptSchemaResolver
         var stepProps = new JsonObject();
         stepProps.Set("id", RuntimeValue.Object(MakeTypeObject("string")));
         stepProps.Set("description", RuntimeValue.Object(MakeTypeObject("string")));
+        stepProps.Set("role", RuntimeValue.Object(MakeTypeObject("string")));
+        stepProps.Set("agent", RuntimeValue.Object(MakeTypeObject("string")));
+        stepProps.Set("out", RuntimeValue.Object(MakeTypeObject("string")));
+        stepProps.Set("approved", RuntimeValue.Object(MakeTypeObject("boolean")));
+        stepProps.Set("rejected", RuntimeValue.Object(MakeTypeObject("boolean")));
+        stepProps.Set("fixture", RuntimeValue.Object(MakeTypeObject("object")));
 
         var dependsOnSchema = new JsonObject();
         dependsOnSchema.Set("type", RuntimeValue.String("array"));
@@ -181,6 +187,7 @@ public static class TypedPromptSchemaResolver
         rootProps.Set("steps", RuntimeValue.Object(stepsSchema));
         rootProps.Set("planId", RuntimeValue.Object(MakeTypeObject("string")));
         rootProps.Set("taskSummary", RuntimeValue.Object(MakeTypeObject("string")));
+        rootProps.Set("think", RuntimeValue.Object(MakeTypeObject("boolean")));
         root.Set("properties", RuntimeValue.Object(rootProps));
         root.Set("required", RuntimeValue.Array(new List<RuntimeValue> { RuntimeValue.String("steps") }));
 

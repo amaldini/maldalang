@@ -622,10 +622,10 @@ var devAgent = new DevAgent(
 var response = devAgent.think("Implement a new feature: add a user authentication system");
 print(response.content);</code></pre>
         <h2 id="structured-task-planning">18.13 Pianificazione strutturata dei task</h2>
-        <p>MALDA consente di scomporre i task complessi in step ordinati e di eseguirli tramite un agente. Un <strong>piano</strong> è un oggetto <code>{ steps: [{ id, description, dependsOn? }, ...], planId?, taskSummary? }</code>. Ogni step ha un <code>id</code> univoco (string), una <code>description</code> (string) e un <code>dependsOn</code> opzionale (array di id di step che devono completarsi prima).</p>
+        <p>MALDA consente di scomporre i task complessi in step ordinati e di eseguirli tramite un agente. Un <strong>piano</strong> è un oggetto <code>{ steps: [{ id, description, dependsOn?, out?, fixture? }, ...], planId?, taskSummary?, think? }</code>. Ogni step ha un <code>id</code> univoco (string), una <code>description</code> (string) e un <code>dependsOn</code> opzionale (array di id di step che devono completarsi prima). <code>out</code> opzionale è un nome di schema / sum type / <code>program(Api)</code>; <code>fixture</code> opzionale è JSON offline per quel contratto (vedi <a href="#team-execute-plan">§ 18.17.6</a>).</p>
         <ul>
             <li><strong>decomposeTask(instruction, client?, team?)</strong> – Usa un LLM per trasformare un'istruzione di alto livello in un piano. Il secondo argomento opzionale è un client LLM o un <code>AgentTeam</code>; se il client è omesso, si usa l'LLM locale di default (Qwen/Qwen2.5-0.5B-Instruct, scaricato automaticamente come build GGUF da Hugging Face). Con un team, ogni step deve impostare <code>role</code> sul nome di un membro. Restituisce un oggetto piano oppure <code>{ error }</code> in caso di fallimento.</li>
-            <li><strong>executePlan(plan, agent)</strong> – Valida il piano, ordina topologicamente gli step in base a <code>dependsOn</code>, poi esegue <code>think(step.description)</code> per ogni step in ordine. Il secondo argomento può essere un <code>Agent</code> o un <code>AgentTeam</code> da <code>agents.team</code>. Un team richiede che ogni step nomini <code>role</code> (o <code>agent</code>). Controlli sugli hop, verdetti review/reject, <code>plan.think: false</code> e l'elenco <code>skipped</code> sono in <a href="#declarative-agent-teams">§ 18.17</a>. Restituisce <code>{ planId, completed, failed, skipped, results }</code>.</li>
+            <li><strong>executePlan(plan, agent)</strong> – Valida il piano, ordina topologicamente gli step in base a <code>dependsOn</code>, poi esegue <code>think(step.description)</code> per ogni step in ordine. Il secondo argomento può essere un <code>Agent</code> o un <code>AgentTeam</code> da <code>agents.team</code>. Un team richiede che ogni step nomini <code>role</code> (o <code>agent</code>). <code>step.out</code> opzionale costringe il JSON di think o <code>step.fixture</code> come un prompt tipizzato. Controlli sugli hop, verdetti review/reject, <code>plan.think: false</code> e l'elenco <code>skipped</code> sono in <a href="#declarative-agent-teams">§ 18.17</a>. Restituisce <code>{ planId, completed, failed, skipped, results }</code>.</li>
             <li><strong>tool submit_plan</strong> – Gli agenti possono chiamare questo tool per inviare un piano (es. dopo un primo &quot;think&quot; che produce il piano). DevAgent include questo tool di default. Parametri: <code>plan</code> (oggetto con <code>steps</code>) oppure <code>steps</code> (array), <code>taskSummary</code> opzionale. Restituisce <code>{ accepted: true, planId, stepCount }</code> oppure <code>{ accepted: false, error }</code>. Il piano accettato è memorizzato in memoria di processo con ogni step <code>pending</code>.</li>
             <li><strong>tool update_plan</strong> – Aggiorna un piano memorizzato. Parametri: <code>planId</code> (obbligatorio), <code>steps</code> opzionale (rivalidati; gli id esistenti conservano lo stato), <code>taskSummary</code> opzionale. Restituisce <code>{ accepted: true, planId, stepCount, steps }</code> oppure <code>{ accepted: false, error }</code>. Non sicuro in parallelo. Factory: <code>createUpdatePlanTool()</code>.</li>
             <li><strong>tool mark_step</strong> – Imposta lo stato di uno step memorizzato. Parametri: <code>planId</code>, <code>id</code>, <code>status</code> (<code>pending</code> | <code>in_progress</code> | <code>done</code> | <code>blocked</code>), <code>note</code> opzionale. Restituisce <code>{ accepted: true, planId, id, status }</code> oppure <code>{ accepted: false, error }</code>. Non sicuro in parallelo. Factory: <code>createMarkStepTool()</code>.</li>
@@ -1126,7 +1126,8 @@ print(wrong.ok);</code></pre>
         <p><code>executePlan(plan, team)</code> o <code>team.run(plan)</code> instrada ogni step a <code>step.role</code> (o <code>step.agent</code>). I piani di team guidati dall'host <strong>non</strong> scelgono un membro di default — un ruolo mancante o sconosciuto restituisce <code>{ error }</code>.</p>
         <p>Dopo l'ordinamento topologico, un hop <code>dependsOn</code> tra ruoli diversi deve coincidere con una relazione dichiarata. Il controllo gira prima di <code>think()</code>, quindi un hop illegale restituisce <code>{ error }</code> senza chiamate LLM. La continuazione sullo stesso ruolo non richiede un auto-arco.</p>
         <p>Un hop <code>reject</code> gira solo quando il predecessore non è approved. Ogni altro hop gira solo quando è approved. Il verdetto viene, in ordine, da <code>step.approved</code> / <code>step.rejected</code>, altrimenti dal JSON <code>{ approved }</code> / <code>{ rejected }</code> nell'output di think, altrimenti default <code>approved: true</code>. Gli step saltati sono in <code>skipped</code> (id degli step) e registrati sul risultato dello step come <code>skipped</code> + <code>reason</code>; non chiamano <code>think()</code>. Le dipendenze fallite o saltate si propagano.</p>
-        <p>Imposta <code>plan.think: false</code> per saltare del tutto <code>think()</code> (offline; l'output dello step è la description). Quando <code>think()</code> gira, il prompt è la description più un blocco <code>Prior step &lt;id&gt;:</code> per ogni <code>dependsOn</code> già eseguito. Ogni risultato di step include <code>prompt</code>, <code>approved</code> e, per un hop di ruolo, il <code>rel</code> in ingresso. Il risultato di primo livello è <code>{ planId, completed, failed, skipped, results }</code> oppure <code>{ error }</code>.</p>
+        <p>Imposta <code>plan.think: false</code> per saltare del tutto <code>think()</code> (offline; l'output dello step è la description, salvo <code>out</code> / <code>fixture</code>). Quando <code>think()</code> gira, il prompt è la description più un blocco <code>Prior step &lt;id&gt;:</code> per ogni <code>dependsOn</code> già eseguito. Ogni risultato di step include <code>prompt</code>, <code>approved</code> e, per un hop di ruolo, il <code>rel</code> in ingresso. Il risultato di primo livello è <code>{ planId, completed, failed, skipped, results }</code> oppure <code>{ error }</code>.</p>
+        <p><code>step.out</code> nomina uno schema, un sum type o <code>program(Api)</code>. L'host estrae JSON da <code>think()</code> (o da <code>step.fixture</code> — un dict o una stringa JSON in stile LLM) e lo costringe sullo stesso percorso di <code>await prompt … -&gt; Type</code> / <code>evalPrompt</code>. In caso di successo imposta <code>results[i].data</code> (una variant per i sum type) e il JSON su <code>output</code> così lo step successivo vede testo strutturato. Un extract fallito marca lo step <code>success: false</code>, lo elenca in <code>failed</code> e salta i dipendenti. Un <code>out</code> sconosciuto fallisce l'intero piano prima di qualsiasi <code>think()</code>. Un fixture salta <code>think()</code> per quello step anche se <code>plan.think</code> è true. Con <code>plan.think: false</code> e <code>out</code> ma senza fixture, lo step fallisce (<code>no fixture</code>).</p>
         <pre><code data-run="true" data-expect="true">var team = agents.team([
     { name: "Writer", role: "programmer", instructions: "Write small diffs." },
     { name: "Reviewer", role: "reviewer", instructions: "Find bugs." }
@@ -1174,6 +1175,35 @@ var approved = executePlan({
 }, reviewTeam);
 print(approved.completed.length);
 print(approved.skipped[0]);</code></pre>
+        <pre><code data-run="true" data-expect="2\na.malda\nwrite\nreview">schema DraftCode { path: string; summary: string; }
+
+var outTeam = agents.team([
+    { name: "Writer", role: "programmer", instructions: "Write small diffs." },
+    { name: "Reviewer", role: "reviewer", instructions: "Find bugs." }
+], graph directed {
+    nodes: ["Writer", "Reviewer"],
+    edges: [{ from: "Writer", to: "Reviewer", rel: "handoff" }]
+});
+
+var typed = executePlan({
+    think: false,
+    steps: [
+        { id: "write", description: "Write comments", role: "Writer", out: "DraftCode", fixture: { path: "a.malda", summary: "add comments" } },
+        { id: "review", description: "Review the draft", role: "Reviewer", dependsOn: ["write"] }
+    ]
+}, outTeam);
+print(typed.completed.length);
+print(typed.results[0].data.path);
+
+var badOut = executePlan({
+    think: false,
+    steps: [
+        { id: "write", description: "Write comments", role: "Writer", out: "DraftCode", fixture: { path: 1, summary: "nope" } },
+        { id: "review", description: "Review the draft", role: "Reviewer", dependsOn: ["write"] }
+    ]
+}, outTeam);
+print(badOut.failed[0]);
+print(badOut.skipped[0]);</code></pre>
         <h3 id="team-decompose">18.17.7 <code>decomposeTask</code> con un team</h3>
         <p><code>decomposeTask(instruction, client?, team?)</code> o <code>team.decompose(instruction, client?)</code> mette nomi, kind, ruoli, istruzioni e relazioni dei membri nel prompt del decompositore. Ogni step generato deve impostare <code>role</code> sul nome di un membro. I piani senza <code>role</code> o con hop fuori grafo vengono rifiutati. Il secondo argomento può essere un client LLM o il team (se il team è il secondo argomento, per la chiamata di decompose si usa l'LLM locale di default).</p>
         <p>Questo percorso chiama un LLM. Preferisci un piano scritto sull'host più <code>plan.think: false</code> quando ti serve un golden offline.</p>
@@ -1187,8 +1217,9 @@ print(approved.skipped[0]);</code></pre>
             <li><code>Examples/Agents/agent_team_review.malda</code> — <code>review</code> / <code>reject</code> tipizzati</li>
             <li><code>Examples/Agents/agent_team_plan_verdict.malda</code> — diramazione <code>approved</code> vs <code>reject</code></li>
             <li><code>Examples/Agents/agent_team_consult.malda</code> — <code>consult</code> tipizzato</li>
+            <li><code>Examples/Agents/agent_team_plan_out.malda</code> — <code>step.out</code> + <code>fixture</code></li>
         </ul>
-        <p>Few-shot per gli agenti: <code>docs/llm/few-shot/34_agents_team.malda</code> fino a <code>40_agents_consult.malda</code>.</p>
+        <p>Few-shot per gli agenti: <code>docs/llm/few-shot/34_agents_team.malda</code> fino a <code>41_agents_plan_out.malda</code>.</p>
         <div class="see-also">
             <h3>Vedi anche</h3>
             <ul>

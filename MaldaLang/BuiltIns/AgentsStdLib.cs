@@ -462,6 +462,153 @@ public static class AgentsStdLib
         return think.Type != ValueType.Boolean || think.AsBoolean();
     }
 
+    internal static string? ReadStepOutType(ObjectInstance step)
+    {
+        var outVal = step.Get("out", null);
+        if (outVal.Type == ValueType.Null)
+            return null;
+        if (outVal.Type != ValueType.String)
+            return "";
+        var name = outVal.AsString().Trim();
+        return name.Length == 0 ? "" : name;
+    }
+
+    internal static RuntimeValue ReadStepFixture(ObjectInstance step) => step.Get("fixture", null);
+
+    /// <summary>
+    /// Unknown or non-string <c>step.out</c> fails the whole plan before any
+    /// <c>think()</c>, same as an illegal hop.
+    /// </summary>
+    internal static string? ValidatePlanOutputTypes(
+        IReadOnlyList<RuntimeValue> steps,
+        Interpreter? interpreter)
+    {
+        foreach (var step in steps)
+        {
+            if (step.Type != ValueType.Object)
+                continue;
+            var so = step.AsObject();
+            var idVal = so.Get("id", null);
+            var id = idVal.Type == ValueType.String ? idVal.AsString() : "";
+            var outType = ReadStepOutType(so);
+            if (outType == null)
+                continue;
+            if (outType.Length == 0)
+                return $"step '{id}' has out that is not a non-empty string";
+            if (!TypedPromptSchemaResolver.TryResolve(outType, interpreter, out _, out var error))
+                return $"step '{id}' has unknown out '{outType}': {error}";
+        }
+
+        return null;
+    }
+
+    internal static string ApplyStepOutputAppendix(
+        string prompt,
+        string? outType,
+        Interpreter? interpreter)
+    {
+        if (string.IsNullOrEmpty(outType))
+            return prompt;
+        if (!TypedPromptSchemaResolver.TryResolve(outType, interpreter, out var schema, out _))
+            return prompt;
+        return TypedPromptValidator.ApplySchemaAppendix(prompt, outType, schema) ?? prompt;
+    }
+
+    internal static RuntimeValue ExtractThinkRaw(RuntimeValue thinkResult)
+    {
+        if (thinkResult.Type != ValueType.Object)
+            return thinkResult;
+        var content = thinkResult.AsObject().Get("content", null);
+        if (content.Type == ValueType.String)
+            return content;
+        return thinkResult;
+    }
+
+    internal static string FormatOutputString(RuntimeValue value, Interpreter? interpreter)
+    {
+        if (value.Type == ValueType.String)
+            return value.AsString();
+        var json = BuiltInFunctions.CallBuiltIn(
+            "toJSON",
+            new List<RuntimeValue> { value },
+            interpreter);
+        if (json.Type == ValueType.String)
+            return json.AsString();
+        return value.ToString() ?? "";
+    }
+
+    internal readonly record struct StepOutputResolution(
+        bool Success,
+        string Output,
+        RuntimeValue Data,
+        string? Error);
+
+    /// <summary>
+    /// When <c>out</c> is set, coerce fixture or think JSON through the same
+    /// path as <c>await prompt … -&gt; Type</c>. A fixture skips <c>think()</c>.
+    /// </summary>
+    internal static StepOutputResolution ResolveStepOutput(
+        ObjectInstance step,
+        AgentInstance agent,
+        string thinkPrompt,
+        bool wantsThink,
+        Interpreter? interpreter)
+    {
+        var outType = ReadStepOutType(step);
+        var fixture = ReadStepFixture(step);
+        var hasFixture = fixture.Type != ValueType.Null;
+
+        if (outType != null)
+        {
+            RuntimeValue raw;
+            if (hasFixture)
+            {
+                raw = fixture;
+            }
+            else if (wantsThink)
+            {
+                raw = ExtractThinkRaw(agent.Think(RuntimeValue.String(thinkPrompt)));
+            }
+            else
+            {
+                return new StepOutputResolution(
+                    false,
+                    "",
+                    RuntimeValue.Null(),
+                    $"step has out '{outType}' but no fixture (plan.think is false)");
+            }
+
+            if (!TypedPromptValidator.TryCoerceTypedValue(
+                    raw,
+                    outType,
+                    interpreter,
+                    out var validated,
+                    out var error))
+            {
+                return new StepOutputResolution(false, "", RuntimeValue.Null(), error);
+            }
+
+            return new StepOutputResolution(true, FormatOutputString(validated, interpreter), validated, null);
+        }
+
+        if (hasFixture)
+            return new StepOutputResolution(true, FormatOutputString(fixture, interpreter), fixture, null);
+
+        if (wantsThink)
+        {
+            var thinkResult = agent.Think(RuntimeValue.String(thinkPrompt));
+            var raw = ExtractThinkRaw(thinkResult);
+            var output = raw.Type == ValueType.String
+                ? raw.AsString()
+                : FormatOutputString(raw, interpreter);
+            return new StepOutputResolution(true, output, RuntimeValue.Null(), null);
+        }
+
+        var desc = step.Get("description", null);
+        var description = desc.Type == ValueType.String ? desc.AsString() : "";
+        return new StepOutputResolution(true, description, RuntimeValue.Null(), null);
+    }
+
     internal static bool ResolveStepApproved(ObjectInstance step, string output)
     {
         var fixture = step.Get("approved", null);

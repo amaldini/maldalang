@@ -413,6 +413,44 @@ public class InterpretTranspilePairTests
     }
 
     [Fact]
+    public void AgentsTeamPlanOut_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            schema DraftCode { path: string; summary: string; }
+            var team = agents.team(
+                [
+                    { name: "Writer", role: "programmer", instructions: "Write." },
+                    { name: "Reviewer", role: "reviewer", instructions: "Review." }
+                ],
+                graph directed {
+                    nodes: ["Writer", "Reviewer"],
+                    edges: [{ from: "Writer", to: "Reviewer", rel: "handoff" }]
+                }
+            );
+            var ok = executePlan({
+                think: false,
+                steps: [
+                    { id: "write", description: "Write", role: "Writer", out: "DraftCode", fixture: { path: "a.malda", summary: "add" } },
+                    { id: "review", description: "Review", role: "Reviewer", dependsOn: ["write"] }
+                ]
+            }, team);
+            io.print(ok.completed.length);
+            io.print(ok.results[0].data.path);
+            var bad = executePlan({
+                think: false,
+                steps: [
+                    { id: "write", description: "Write", role: "Writer", out: "DraftCode", fixture: { path: 1, summary: "nope" } },
+                    { id: "review", description: "Review", role: "Reviewer", dependsOn: ["write"] }
+                ]
+            }, team);
+            io.print(bad.failed[0]);
+            io.print(bad.skipped[0]);
+            """,
+            "agents-team-plan-out");
+    }
+
+    [Fact]
     public void GroundedWrap_SameStdout()
     {
         InterpretTranspilePair.AssertSameFromSource(

@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — typed plan step outputs)
+
+- **`executePlan` `step.out`:** a schema, sum-type, or `program(Api)` name. After `think()` (or `step.fixture` when present), the host extracts JSON and coerces through the same path as `await prompt … -> Type` / `evalPrompt` (`validate` for objects; variants for sum types). Success puts the value on `results[i].data` and JSON on `output` / the next step's `Prior step` block. Failed extract marks the step `success: false`, lists it in `failed`, and skips dependents. Unknown `out` fails the whole plan before any `think()`. `plan.think: false` with `out` and no `fixture` fails that step (`no fixture`). A fixture skips `think()` for that step even when `plan.think` is true. Interpreter and C# transpile agree. JavaScript: n/a. Example: `Examples/Agents/agent_team_plan_out.malda`. Few-shot: `docs/llm/few-shot/41_agents_plan_out.malda`.
+
 #### Added (MINOR — sum-type constructor namespaces)
 
 - **`Type.Ctor(...)`:** a `type Result = Ok(value) | Err(msg)` binds `Result` as a runtime namespace of its constructors. `Result.Ok(42)` and bare `Ok(42)` both produce the same tag+payload variant. Interpreter, C#, and JS agree. Example: `Examples/Modules/export_type_schema.malda` uses `Result.Ok` after `import { Result }`.
@@ -480,6 +484,7 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 
 | Date | Change |
 |------|--------|
+| 2026-09-06 | MINOR: `executePlan` `step.out` + `fixture` typed outputs (`evalPrompt` coerce path) |
 | 2026-09-06 | MINOR: sum-type constructor namespaces (`Result.Ok`); clash diagnostic; `import { T }` no longer flattens constructors |
 | 2026-09-05 | PATCH: HTTP ship traces (`HttpTraceParityTests`) for `Templates/webapi` `/api/health`; RestServer `start()` + `use()` options now match C# transpile |
 | 2026-09-05 | PATCH: ship-contract registry + interpret/transpile exit identity; interpreter `result.map` wraps like C#/JS |

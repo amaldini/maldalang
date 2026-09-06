@@ -75,6 +75,32 @@ public static class TypedPromptValidator
         }
     }
 
+    /// <summary>
+    /// Same extract / parse / coerce path as typed prompts and <c>evalPrompt</c>.
+    /// A string is treated as LLM-shaped JSON (markdown fences allowed).
+    /// </summary>
+    public static bool TryCoerceTypedValue(
+        RuntimeValue raw,
+        string typeName,
+        Interpreter? interpreter,
+        out RuntimeValue validated,
+        out string error)
+    {
+        validated = RuntimeValue.Null();
+        error = "";
+
+        var candidate = raw;
+        if (raw.Type == ValueType.String)
+        {
+            if (!TryExtractJsonCandidate(raw.AsString(), out var json, out error))
+                return false;
+            if (!TryParseJson(json, out candidate, out error))
+                return false;
+        }
+
+        return TryValidateReturnType(candidate, typeName, interpreter, out validated, out error);
+    }
+
     public static bool TryValidateReturnType(RuntimeValue value, string returnType, Interpreter? interpreter, out string error)
     {
         return TryValidateReturnType(value, returnType, interpreter, out _, out error);

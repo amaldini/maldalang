@@ -621,10 +621,10 @@ var devAgent = new DevAgent(
 var response = devAgent.think("Implement a new feature: add a user authentication system");
 print(response.content);</code></pre>
         <h2 id="structured-task-planning">18.13 Structured task planning</h2>
-        <p>MALDA supports breaking complex tasks into ordered steps and executing them via an agent. A <strong>plan</strong> is an object <code>{ steps: [{ id, description, dependsOn? }, ...], planId?, taskSummary? }</code>. Each step has a unique <code>id</code> (string), <code>description</code> (string), and optional <code>dependsOn</code> (array of step ids that must complete first).</p>
+        <p>MALDA supports breaking complex tasks into ordered steps and executing them via an agent. A <strong>plan</strong> is an object <code>{ steps: [{ id, description, dependsOn?, out?, fixture? }, ...], planId?, taskSummary?, think? }</code>. Each step has a unique <code>id</code> (string), <code>description</code> (string), and optional <code>dependsOn</code> (array of step ids that must complete first). Optional <code>out</code> is a schema / sum-type / <code>program(Api)</code> name; optional <code>fixture</code> is offline JSON for that contract (see <a href="#team-execute-plan">§ 18.17.6</a>).</p>
         <ul>
             <li><strong>decomposeTask(instruction, client?, team?)</strong> – Uses an LLM to turn a high-level instruction into a plan. Optional second argument is an LLM client or an <code>AgentTeam</code>; if the client is omitted, the default local LLM (Qwen/Qwen2.5-0.5B-Instruct, auto-downloaded as a GGUF build from Hugging Face) is used. With a team, each step must set <code>role</code> to a member name. Returns a plan object or <code>{ error }</code> on failure.</li>
-            <li><strong>executePlan(plan, agent)</strong> – Validates the plan, topo-sorts steps by <code>dependsOn</code>, then runs <code>think(step.description)</code> for each step in order. The second argument may be an <code>Agent</code> or an <code>AgentTeam</code> from <code>agents.team</code>. A team requires each step to name <code>role</code> (or <code>agent</code>). Team hop checks, review/reject verdicts, <code>plan.think: false</code>, and the <code>skipped</code> list are in <a href="#declarative-agent-teams">§ 18.17</a>. Returns <code>{ planId, completed, failed, skipped, results }</code>.</li>
+            <li><strong>executePlan(plan, agent)</strong> – Validates the plan, topo-sorts steps by <code>dependsOn</code>, then runs <code>think(step.description)</code> for each step in order. The second argument may be an <code>Agent</code> or an <code>AgentTeam</code> from <code>agents.team</code>. A team requires each step to name <code>role</code> (or <code>agent</code>). Optional <code>step.out</code> coerces think JSON or <code>step.fixture</code> like a typed prompt. Team hop checks, review/reject verdicts, <code>plan.think: false</code>, and the <code>skipped</code> list are in <a href="#declarative-agent-teams">§ 18.17</a>. Returns <code>{ planId, completed, failed, skipped, results }</code>.</li>
             <li><strong>submit_plan</strong> tool – Agents can call this tool to submit a plan (e.g. after a first &quot;think&quot; that produces the plan). DevAgent includes this tool by default. Parameters: <code>plan</code> (object with <code>steps</code>) or <code>steps</code> (array), optional <code>taskSummary</code>. Returns <code>{ accepted: true, planId, stepCount }</code> or <code>{ accepted: false, error }</code>. The accepted plan is stored in process memory with every step <code>pending</code>.</li>
             <li><strong>update_plan</strong> tool – Updates a stored plan. Parameters: <code>planId</code> (required), optional <code>steps</code> (re-validated; surviving ids keep their status), optional <code>taskSummary</code>. Returns <code>{ accepted: true, planId, stepCount, steps }</code> or <code>{ accepted: false, error }</code>. Not parallel-safe. Factory: <code>createUpdatePlanTool()</code>.</li>
             <li><strong>mark_step</strong> tool – Sets a stored step status. Parameters: <code>planId</code>, <code>id</code>, <code>status</code> (<code>pending</code> | <code>in_progress</code> | <code>done</code> | <code>blocked</code>), optional <code>note</code>. Returns <code>{ accepted: true, planId, id, status }</code> or <code>{ accepted: false, error }</code>. Not parallel-safe. Factory: <code>createMarkStepTool()</code>.</li>
@@ -1125,7 +1125,8 @@ print(wrong.ok);</code></pre>
         <p><code>executePlan(plan, team)</code> or <code>team.run(plan)</code> routes each step to <code>step.role</code> (or <code>step.agent</code>). Host-driven team plans do <strong>not</strong> pick a default member — a missing or unknown role returns <code>{ error }</code>.</p>
         <p>After topo-sort, a <code>dependsOn</code> hop between different roles must match a declared relation. The check runs before <code>think()</code>, so an illegal hop returns <code>{ error }</code> with no LLM call. Same-role continuation does not need a self-edge.</p>
         <p>A <code>reject</code> hop runs only when the predecessor is not approved. Every other hop runs only when it is approved. The verdict comes from, in order: <code>step.approved</code> / <code>step.rejected</code>, else JSON <code>{ approved }</code> / <code>{ rejected }</code> in the think output, else default <code>approved: true</code>. Skipped steps are listed in <code>skipped</code> (step ids) and recorded on the step result as <code>skipped</code> + <code>reason</code>; they do not call <code>think()</code>. Failed or skipped dependencies cascade.</p>
-        <p>Set <code>plan.think: false</code> to skip <code>think()</code> entirely (offline; the step output is the description). When <code>think()</code> does run, the prompt is the description plus a <code>Prior step &lt;id&gt;:</code> block for every <code>dependsOn</code> that already ran. Each step result includes <code>prompt</code>, <code>approved</code>, and, for a role hop, the incoming <code>rel</code>. The top-level result is <code>{ planId, completed, failed, skipped, results }</code> or <code>{ error }</code>.</p>
+        <p>Set <code>plan.think: false</code> to skip <code>think()</code> entirely (offline; the step output is the description unless <code>out</code> / <code>fixture</code> is set). When <code>think()</code> does run, the prompt is the description plus a <code>Prior step &lt;id&gt;:</code> block for every <code>dependsOn</code> that already ran. Each step result includes <code>prompt</code>, <code>approved</code>, and, for a role hop, the incoming <code>rel</code>. The top-level result is <code>{ planId, completed, failed, skipped, results }</code> or <code>{ error }</code>.</p>
+        <p><code>step.out</code> names a schema, a sum type, or <code>program(Api)</code>. The host extracts JSON from <code>think()</code> (or from <code>step.fixture</code> — a dict or an LLM-shaped JSON string) and coerces it through the same path as <code>await prompt … -&gt; Type</code> / <code>evalPrompt</code>. Success sets <code>results[i].data</code> (a variant for sum types) and JSON on <code>output</code> so the next step sees structured prior text. Failed extract marks the step <code>success: false</code>, lists it in <code>failed</code>, and skips dependents. An unknown <code>out</code> fails the whole plan before any <code>think()</code>. A fixture skips <code>think()</code> for that step even when <code>plan.think</code> is true. With <code>plan.think: false</code> and <code>out</code> but no fixture, the step fails (<code>no fixture</code>).</p>
         <pre><code data-run="true" data-expect="true">var team = agents.team([
     { name: "Writer", role: "programmer", instructions: "Write small diffs." },
     { name: "Reviewer", role: "reviewer", instructions: "Find bugs." }
@@ -1173,6 +1174,35 @@ var approved = executePlan({
 }, reviewTeam);
 print(approved.completed.length);
 print(approved.skipped[0]);</code></pre>
+        <pre><code data-run="true" data-expect="2\na.malda\nwrite\nreview">schema DraftCode { path: string; summary: string; }
+
+var outTeam = agents.team([
+    { name: "Writer", role: "programmer", instructions: "Write small diffs." },
+    { name: "Reviewer", role: "reviewer", instructions: "Find bugs." }
+], graph directed {
+    nodes: ["Writer", "Reviewer"],
+    edges: [{ from: "Writer", to: "Reviewer", rel: "handoff" }]
+});
+
+var typed = executePlan({
+    think: false,
+    steps: [
+        { id: "write", description: "Write comments", role: "Writer", out: "DraftCode", fixture: { path: "a.malda", summary: "add comments" } },
+        { id: "review", description: "Review the draft", role: "Reviewer", dependsOn: ["write"] }
+    ]
+}, outTeam);
+print(typed.completed.length);
+print(typed.results[0].data.path);
+
+var badOut = executePlan({
+    think: false,
+    steps: [
+        { id: "write", description: "Write comments", role: "Writer", out: "DraftCode", fixture: { path: 1, summary: "nope" } },
+        { id: "review", description: "Review the draft", role: "Reviewer", dependsOn: ["write"] }
+    ]
+}, outTeam);
+print(badOut.failed[0]);
+print(badOut.skipped[0]);</code></pre>
         <h3 id="team-decompose">18.17.7 <code>decomposeTask</code> with a team</h3>
         <p><code>decomposeTask(instruction, client?, team?)</code> or <code>team.decompose(instruction, client?)</code> puts member names, kinds, roles, instructions, and relations into the decomposer prompt. Each generated step must set <code>role</code> to a member name. Plans that omit <code>role</code> or hop off-graph are rejected. The second argument may be an LLM client or the team (when the team is passed as the second argument, the default local LLM is used for the decompose call itself).</p>
         <p>This path calls an LLM. Prefer a host-written plan plus <code>plan.think: false</code> when you need an offline golden.</p>
@@ -1186,8 +1216,9 @@ print(approved.skipped[0]);</code></pre>
             <li><code>Examples/Agents/agent_team_review.malda</code> — typed <code>review</code> / <code>reject</code></li>
             <li><code>Examples/Agents/agent_team_plan_verdict.malda</code> — <code>approved</code> vs <code>reject</code> branching</li>
             <li><code>Examples/Agents/agent_team_consult.malda</code> — typed <code>consult</code></li>
+            <li><code>Examples/Agents/agent_team_plan_out.malda</code> — <code>step.out</code> + <code>fixture</code></li>
         </ul>
-        <p>Few-shots for agents: <code>docs/llm/few-shot/34_agents_team.malda</code> through <code>40_agents_consult.malda</code>.</p>
+        <p>Few-shots for agents: <code>docs/llm/few-shot/34_agents_team.malda</code> through <code>41_agents_plan_out.malda</code>.</p>
         <div class="see-also">
             <h3>See Also</h3>
             <ul>
