@@ -133,6 +133,11 @@ public partial class MainWindow
         return _breakpointLines.Contains(lineNumber);
     }
 
+    public bool IsCurrentDebugLine(int lineNumber)
+    {
+        return _currentLineRenderer?.CurrentLine == lineNumber;
+    }
+
     
     public void ToggleBreakpointAtLine(int lineNumber)
     {
@@ -491,7 +496,21 @@ public partial class MainWindow
         if (_currentLineRenderer != null)
         {
             _currentLineRenderer.CurrentLine = editorLine;
-            CodeEditor.TextArea.TextView.InvalidateLayer(KnownLayer.Background);
+            InvalidateDebugLineVisuals();
+            // ScrollToLine may rebuild visual lines after this call; redraw once layout catches up.
+            CodeEditor.Dispatcher.BeginInvoke(DispatcherPriority.Loaded, InvalidateDebugLineVisuals);
+        }
+    }
+
+    private void InvalidateDebugLineVisuals()
+    {
+        _currentLineRenderer?.Invalidate();
+        foreach (var margin in CodeEditor.TextArea.LeftMargins)
+        {
+            if (margin is UIElement element)
+            {
+                element.InvalidateVisual();
+            }
         }
     }
 
@@ -910,7 +929,7 @@ public partial class MainWindow
         if (_currentLineRenderer != null)
         {
             _currentLineRenderer.CurrentLine = null;
-            CodeEditor.TextArea.TextView.InvalidateLayer(KnownLayer.Background);
+            InvalidateDebugLineVisuals();
         }
     }
 

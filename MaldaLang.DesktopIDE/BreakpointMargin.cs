@@ -39,20 +39,24 @@ public class BreakpointMargin : AbstractMargin
         foreach (var visualLine in textView.VisualLines)
         {
             var lineNumber = visualLine.FirstDocumentLine.LineNumber;
+            var lineTop = visualLine.GetTextLineVisualYPosition(visualLine.TextLines[0], VisualYPosition.TextTop) - textView.VerticalOffset;
+            var lineBottom = visualLine.GetTextLineVisualYPosition(visualLine.TextLines[^1], VisualYPosition.TextBottom) - textView.VerticalOffset;
+            var centerX = renderSize.Width / 2;
+            var centerY = (lineTop + lineBottom) / 2;
+
             if (_mainWindow.IsBreakpointLine(lineNumber))
             {
-                var lineTop = visualLine.GetTextLineVisualYPosition(visualLine.TextLines[0], VisualYPosition.TextTop) - textView.VerticalOffset;
-                var lineBottom = visualLine.GetTextLineVisualYPosition(visualLine.TextLines[0], VisualYPosition.TextBottom) - textView.VerticalOffset;
-                
-                var centerX = renderSize.Width / 2;
-                var centerY = (lineTop + lineBottom) / 2;
-                var radius = 5;
-                
-                // Draw breakpoint circle (red)
                 var brush = new SolidColorBrush(Color.FromRgb(220, 50, 47));
                 var pen = new Pen(new SolidColorBrush(Color.FromRgb(180, 30, 27)), 1);
-                
-                drawingContext.DrawEllipse(brush, pen, new Point(centerX, centerY), radius, radius);
+                drawingContext.DrawEllipse(brush, pen, new Point(centerX, centerY), 5, 5);
+            }
+
+            if (_mainWindow.IsCurrentDebugLine(lineNumber))
+            {
+                var arrow = CreateExecutionArrow(centerX - 6, centerY);
+                var fill = new SolidColorBrush(Color.FromRgb(250, 204, 21));
+                var pen = new Pen(new SolidColorBrush(Color.FromRgb(161, 98, 7)), 1);
+                drawingContext.DrawGeometry(fill, pen, arrow);
             }
         }
     }
@@ -81,5 +85,19 @@ public class BreakpointMargin : AbstractMargin
                 }
             }
         }
+    }
+
+    private static StreamGeometry CreateExecutionArrow(double left, double centerY)
+    {
+        var geometry = new StreamGeometry();
+        using (var ctx = geometry.Open())
+        {
+            ctx.BeginFigure(new Point(left, centerY - 5), true, true);
+            ctx.LineTo(new Point(left + 11, centerY), true, false);
+            ctx.LineTo(new Point(left, centerY + 5), true, false);
+        }
+
+        geometry.Freeze();
+        return geometry;
     }
 }
