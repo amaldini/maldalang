@@ -138,10 +138,10 @@ io.print(str.length(host.pathSeparator));</code></pre>
         <p>Assistant config under <code>~/.malda</code> (<code>getMaldaHome</code>, <code>getMaldaConfig</code>) is documented with the <a href="32-personal-assistant.html">personal assistant</a>.</p>
 
         <h2 id="capability-tokens">12.6 Capability Tokens</h2>
-        <p>A capability token is a <strong>permission object</strong> that your program (the host) creates. Treat it as a key to one file or folder: whoever holds the key can use that permission. Nobody can make a working key by writing down a description of the lock.</p>
+        <p>A capability token is a <strong>permission object</strong> that your program (the host) creates. Treat it as a key to one file, HTTP origin, MCP tool, or argv prefix: whoever holds the key can use that permission. Nobody can make a working key by writing down a description of the lock.</p>
         <p>That is the whole idea. The rest of this section is the why, the API, and the pattern you should copy for tools.</p>
         <div class="info-box">
-            <strong>Start here if you write agents.</strong> When an LLM tool receives a path as a string, the model can invent <code>/etc/passwd</code> or <code>../secrets</code>. A token binds the permission to a path <em>you</em> chose, before the model runs. Signature catalog: <a href="13-built-in-functions.html#capability-tokens">13.19.3</a>. First-contact scaffold: <code>malda new agent</code>.
+            <strong>Start here if you write agents.</strong> When an LLM tool receives a path, URL, MCP tool name, or command as a string, the model can invent <code>/etc/passwd</code>, any host, or any argv. A token binds the permission to a value <em>you</em> chose, before the model runs. Signature catalog: <a href="13-built-in-functions.html#capability-tokens">13.19.3</a>. First-contact scaffold: <code>malda new agent</code>.
         </div>
 
         <h3>12.6.1 Why <code>@effects("io")</code> is not enough</h3>
@@ -159,14 +159,14 @@ function readNote(path) {
                 <tr><th>Phrase</th><th>What it means</th><th>Where</th></tr>
             </thead>
             <tbody>
-                <tr><td><code>cap.fileRead</code> / capability token</td><td>An unforgeable permission object for one path</td><td>This section</td></tr>
+                <tr><td><code>cap.fileRead</code> / capability token</td><td>An unforgeable permission object for one path, URL prefix, MCP tool, or argv prefix</td><td>This section</td></tr>
                 <tr><td>Backend capability matrix</td><td>Which backends implement a product feature (file I/O, agents, DOM, …)</td><td><a href="../docs/spec/backend-capability-matrix.md">backend-capability-matrix.md</a></td></tr>
                 <tr><td><code>@requires("file-io")</code></td><td>A property test that skips backends that lack that feature</td><td><a href="34-property-testing.html">34. Property Testing</a></td></tr>
             </tbody>
         </table>
 
         <h3>12.6.3 Kinds</h3>
-        <p>A token has two readable fields: <code>kind</code> and <code>path</code>. You cannot assign to them. There is no flat <code>cap()</code> or <code>fileRead()</code> alias — always write <code>cap.…</code>.</p>
+        <p>A token has readable fields <code>kind</code> and <code>path</code> (plus <code>name</code> for an MCP tool). You cannot assign to them. There is no flat <code>cap()</code> or <code>fileRead()</code> alias — always write <code>cap.…</code>.</p>
         <table>
             <thead>
                 <tr><th>Mint</th><th><code>kind</code></th><th>Consume with</th></tr>
@@ -175,9 +175,25 @@ function readNote(path) {
                 <tr><td><code>cap.fileRead(path)</code></td><td><code>fileRead</code></td><td><code>cap.read(token)</code> or <code>io.readFile(token)</code></td></tr>
                 <tr><td><code>cap.fileWrite(path)</code></td><td><code>fileWrite</code></td><td><code>cap.write(token, content)</code> or <code>io.writeFile(token, content)</code></td></tr>
                 <tr><td><code>cap.dirList(path)</code></td><td><code>dirList</code></td><td><code>cap.list(token)</code> or <code>io.listDirectory(token)</code></td></tr>
+                <tr><td><code>cap.httpGet(origin)</code></td><td><code>httpGet</code></td><td><code>cap.fetch(token, urlOrPath?)</code> or <code>webFetch(token)</code></td></tr>
+                <tr><td><code>cap.mcpCall(server, tool?)</code></td><td><code>mcpCall</code></td><td><code>cap.invoke(token, server, args?)</code> or <code>callTool(token)</code></td></tr>
+                <tr><td><code>cap.shell(prefix)</code></td><td><code>shell</code></td><td><code>cap.run(token, extraArgs?)</code> or <code>runCommand(token)</code></td></tr>
             </tbody>
         </table>
-        <p>A <code>fileWrite</code> token is not a read token. Passing the wrong kind throws.</p>
+        <p>A <code>fileWrite</code> token is not a read token. Passing the wrong kind throws. <code>cap.confine</code> joins a relative file path, HTTP path, MCP tool name, or extra argv — escapes throw before consume.</p>
+        <pre><code data-run="true" data-expect="httpGet\nhttps://example.com/docs\nhttps://example.com/docs/guide\ntrue\nadd\ngit status">var http = cap.httpGet("https://example.com/docs");
+io.print(http.kind);
+io.print(http.path);
+io.print(cap.confine(http, "guide").path);
+var escaped = false;
+try {
+    cap.fetch(http, "https://evil.com");
+} catch (e) {
+    escaped = true;
+}
+io.print(escaped);
+io.print(cap.mcpCall("local", "add").name);
+io.print(cap.confine(cap.shell("git"), "status").path);</code></pre>
 
         <h3>12.6.4 Mint, inspect, consume</h3>
         <p><strong>Mint</strong> means “create a real token in the host”. The result is a sealed host object, not a dict. <code>cap.is</code> is the only safe type test — <code>typeOf</code> will not tell you “this is a capability”.</p>
@@ -256,7 +272,7 @@ io.deleteFile("_rm_cap_note.txt");</code></pre>
             <tbody>
                 <tr><td>Give the tool a <code>path: string</code> and rely on <code>@effects("io")</code></td><td>The model can invent any path. The decorator only names the effect.</td><td>Host-mint a root token; take a relative path; <code>cap.confine</code></td></tr>
                 <tr><td>Pass the token through LLM JSON / <code>toJSON</code></td><td>The other side gets a dict. <code>cap.read</code> throws.</td><td>Keep the token in host memory. Send only a relative path.</td></tr>
-                <tr><td>Build <code>{ "kind": "fileRead", "path": "…" }</code> by hand</td><td>Looks like a token. <code>cap.is</code> is false. Consume throws.</td><td>Call <code>cap.fileRead</code> / <code>fileWrite</code> / <code>dirList</code></td></tr>
+                <tr><td>Build <code>{ "kind": "fileRead", "path": "…" }</code> by hand</td><td>Looks like a token. <code>cap.is</code> is false. Consume throws.</td><td>Call <code>cap.fileRead</code> / <code>httpGet</code> / <code>mcpCall</code> / <code>shell</code></td></tr>
                 <tr><td>Call <code>cap.read("notes.md")</code></td><td>Throws. Consume APIs reject strings.</td><td><code>cap.read(cap.fileRead("notes.md"))</code>, or <code>io.readFile("notes.md")</code> in non-tool code</td></tr>
                 <tr><td>Pass a <code>fileWrite</code> token to <code>cap.read</code></td><td>Throws (wrong kind).</td><td>Mint the kind you will consume</td></tr>
                 <tr><td>Treat <code>createReadFileTool(workingDir)</code> as a token</td><td>The factory only checks that paths stay under a string directory. It is not unforgeable.</td><td>Fine for built-in file tools. Custom <code>@Tool</code> file handlers should use <code>cap.*</code></td></tr>
@@ -265,8 +281,8 @@ io.deleteFile("_rm_cap_note.txt");</code></pre>
 
         <h3>12.6.8 Backends and <code>@effects("cap")</code></h3>
         <p>Mark handlers that mint or consume tokens <code>@effects("cap")</code> (or list both <code>"io"</code> and <code>"cap"</code>). <code>@pure()</code> functions cannot mint or consume tokens under <code>--strict-types</code>.</p>
-        <p>The interpreter and C# transpile implement the full surface. JavaScript can mint, <code>cap.is</code>, and <code>cap.confine</code>; file consume (<code>cap.read</code> / <code>write</code> / <code>list</code>) is host-only — same as other file I/O on the <a href="../docs/spec/backend-capability-matrix.md">backend capability matrix</a>.</p>
-        <p>Worked example: <code>Examples/Tools/capability_tokens.malda</code>. Agent-shaped few-shot: <code>docs/llm/few-shot/26_tool_cap_read.malda</code>.</p>
+        <p>The interpreter and C# transpile implement the full surface. JavaScript can mint, <code>cap.is</code>, and <code>cap.confine</code>; consume (<code>cap.read</code> / <code>write</code> / <code>list</code> / <code>fetch</code> / <code>invoke</code> / <code>run</code>) is host-only — same as other file I/O and agents on the <a href="../docs/spec/backend-capability-matrix.md">backend capability matrix</a>.</p>
+        <p>Worked examples: <code>Examples/Tools/capability_tokens.malda</code>, <code>Examples/Tools/capability_http_mcp_shell.malda</code>. Agent-shaped few-shots: <code>docs/llm/few-shot/26_tool_cap_read.malda</code>, <code>docs/llm/few-shot/42_cap_http_mcp_shell.malda</code>.</p>
 
         <h2>12.7 Searching Files</h2>
         <p><code>io.glob(pattern, dirPath?)</code> finds paths. <code>io.grep(pattern, filePath)</code> searches contents. Both take a required first argument and then optional positional arguments. On a missing path or a bad regex they return an <em>error string</em>, not a collection — guard with <code>typeOf(result) == "string"</code>.</p>

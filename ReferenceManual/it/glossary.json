@@ -13,6 +13,12 @@
         "cap.write",
         "cap.list",
         "cap.is",
+        "cap.httpGet",
+        "cap.mcpCall",
+        "cap.shell",
+        "cap.fetch",
+        "cap.invoke",
+        "cap.run",
         "capability",
         "capability token",
         "token di capability"
@@ -22,7 +28,7 @@
         "13-built-in-functions.html#capability-tokens",
         "18-agent-orchestration.html#capability-tokens-for-tools"
       ],
-      "summary": "Un oggetto-permesso (una chiave per un file o una cartella) così un tool non può inventare un path. L'host emette cap.fileRead / fileWrite / dirList; cap.confine restringe a un path relativo. Non esiste un alias piatto cap()."
+      "summary": "Un oggetto-permesso (una chiave per un file, un origin HTTP, un tool MCP o un prefisso argv) così un tool non può inventare un path, un URL, un tool o un comando. L'host emette cap.fileRead / httpGet / mcpCall / shell; cap.confine restringe. Non esiste un alias piatto cap()."
     },
     {
       "id": "prompt",

@@ -68,8 +68,15 @@ public class MCPServerInstance : ObjectInstance
             case "callTool":
                 if (args.Count < 1 || args.Count > 2)
                     throw new Exception("callTool() expects 1 or 2 arguments: (name, arguments?)");
+                if (CapStdLib.TryGetToken(args[0], out var mcpCap))
+                {
+                    CapStdLib.RequireMcpTool(mcpCap, mcpCap.Name, serverName: null, "callTool");
+                    return CallTool(
+                        mcpCap.Name,
+                        args.Count == 2 ? args[1] : ToolSchemaResolver.EmptyArgsObject());
+                }
                 if (args[0].Type != ValueType.String)
-                    throw new Exception("callTool() name must be a string");
+                    throw new Exception("callTool() name must be a string or an mcpCall capability token");
                 return CallTool(
                     args[0].AsString(),
                     args.Count == 2 ? args[1] : ToolSchemaResolver.EmptyArgsObject());

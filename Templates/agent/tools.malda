@@ -15,3 +15,45 @@ function readNoteWith(rootCap, relativePath) {
     var child = cap.confine(rootCap, check.data.relativePath);
     return cap.read(child);
 }
+
+// Optional helpers for HTTP / MCP / shell tokens. Host-mint the token; the model
+// only passes a relative URL, tool name, or extra argv. Consume (fetch / invoke / run)
+// is host-only — these helpers stop at confine so the starter stays offline.
+schema PageArgs {
+    relativeUrl: string;
+}
+
+schema McpToolArgs {
+    toolName: string;
+}
+
+schema ShellArgs {
+    extra: string;
+}
+
+@effects("cap")
+function pageWith(httpCap, relativeUrl) {
+    var check = validate("PageArgs", dict { "relativeUrl": relativeUrl });
+    if (!check.ok) {
+        return "invalid: " + check.error;
+    }
+    return cap.confine(httpCap, check.data.relativeUrl);
+}
+
+@effects("cap")
+function mcpToolWith(mcpCap, toolName) {
+    var check = validate("McpToolArgs", dict { "toolName": toolName });
+    if (!check.ok) {
+        return "invalid: " + check.error;
+    }
+    return cap.confine(mcpCap, check.data.toolName);
+}
+
+@effects("cap")
+function shellWith(shellCap, extra) {
+    var check = validate("ShellArgs", dict { "extra": extra });
+    if (!check.ok) {
+        return "invalid: " + check.error;
+    }
+    return cap.confine(shellCap, check.data.extra);
+}

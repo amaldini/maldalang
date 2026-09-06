@@ -22,3 +22,26 @@ try {
     forged = true;
 }
 assert(forged, "cap.read should reject a forged { kind, path } dict");
+
+var http = cap.httpGet("https://example.com/docs");
+assert(pageWith(http, "guide").path == "https://example.com/docs/guide", "http confine should join a relative path");
+var httpEscaped = false;
+try {
+    pageWith(http, "https://evil.com");
+} catch (e) {
+    httpEscaped = true;
+}
+assert(httpEscaped, "cap.confine should reject an HTTP origin escape");
+
+var mcp = cap.mcpCall("local");
+assert(mcpToolWith(mcp, "add").name == "add", "mcp confine should set the tool name");
+
+var shell = cap.shell("git");
+assert(shellWith(shell, "status").path == "git status", "shell confine should append argv");
+var shellEscaped = false;
+try {
+    shellWith(shell, "..");
+} catch (e) {
+    shellEscaped = true;
+}
+assert(shellEscaped, "cap.confine should reject a shell .. escape");

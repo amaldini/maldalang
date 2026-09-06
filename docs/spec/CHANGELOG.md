@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — HTTP / MCP / shell capability tokens)
+
+- **`cap.httpGet` / `cap.mcpCall` / `cap.shell`:** mint unforgeable tokens beyond files. `path` is the confinement string (URL prefix, MCP server, argv prefix); `name` is the optional MCP tool. `cap.confine` branches by kind (join a relative URL, set/check a tool name, append argv). `cap.fetch` / `cap.invoke` / `cap.run` consume matching tokens only — strings and `{ kind, path }` dicts throw. `webFetch` / `MCPServer.callTool` / `MCPClient.callTool` / `runCommand` also accept a matching token. `createWebFetchTool(httpCap?)` and `createRunCommandTool(workingDir?, shellCap?)` bind a token so model-supplied URLs / commands stay under it. Escape and wrong-origin / wrong-tool / wrong-prefix checks throw before HTTP, MCP, or process start. No new keyword and no flat alias. Interpreter and C# transpile agree. JS: mint / `is` / `confine` for the new kinds; `fetch` / `invoke` / `run` are host-only. Example: `Examples/Tools/capability_http_mcp_shell.malda`. Few-shot: `docs/llm/few-shot/42_cap_http_mcp_shell.malda`.
+
 #### Added (MINOR — typed plan step outputs)
 
 - **`executePlan` `step.out`:** a schema, sum-type, or `program(Api)` name. After `think()` (or `step.fixture` when present), the host extracts JSON and coerces through the same path as `await prompt … -> Type` / `evalPrompt` (`validate` for objects; variants for sum types). Success puts the value on `results[i].data` and JSON on `output` / the next step's `Prior step` block. Failed extract marks the step `success: false`, lists it in `failed`, and skips dependents. Unknown `out` fails the whole plan before any `think()`. `plan.think: false` with `out` and no `fixture` fails that step (`no fixture`). A fixture skips `think()` for that step even when `plan.think` is true. Interpreter and C# transpile agree. JavaScript: n/a. Example: `Examples/Agents/agent_team_plan_out.malda`. Few-shot: `docs/llm/few-shot/41_agents_plan_out.malda`.

@@ -235,14 +235,24 @@ public class MCPClientInstance : ObjectInstance
     {
         if (args.Count < 1)
             throw new Exception("callTool() expects at least 1 argument: (toolName, arguments?)");
-        
-        if (args[0].Type != ValueType.String)
-            throw new Exception("callTool() toolName must be a string");
 
         if (_client == null || !_client.IsConnected)
             throw new Exception("MCPClient is not connected. Call connect() first.");
 
-        var toolName = args[0].AsString();
+        string toolName;
+        if (CapStdLib.TryGetToken(args[0], out var mcpCap))
+        {
+            CapStdLib.RequireMcpTool(mcpCap, mcpCap.Name, _serverName, "callTool");
+            toolName = mcpCap.Name;
+        }
+        else if (args[0].Type == ValueType.String)
+        {
+            toolName = args[0].AsString();
+        }
+        else
+        {
+            throw new Exception("callTool() toolName must be a string or an mcpCall capability token");
+        }
         
         // Verify tool exists
         bool toolExists = false;

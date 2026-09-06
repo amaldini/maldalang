@@ -972,7 +972,7 @@ print(g.citations[0].source);</code></pre>
         </ul>
         <h3 id="capability-tokens">13.19.3 <code>cap.fileRead</code></h3>
         <p>Questa sottosezione è il catalogo delle firme. Se non hai ancora usato i token, parti dal how-to in <a href="12-input-output.html#capability-tokens">12.6 Token di capability</a> — perché esistono, l'analogia della chiave, <code>cap.confine</code> e il pattern host-mint per i tool.</p>
-        <p>Un token è un oggetto host sigillato con <code>kind</code> e <code>path</code>. JSON e object literal non possono rigenerarne uno. <code>@effects("io")</code> nomina solo l'effetto; non lega un path.</p>
+        <p>Un token è un oggetto host sigillato con <code>kind</code> e <code>path</code> (e <code>name</code> per un tool MCP). JSON e object literal non possono rigenerarne uno. <code>@effects("io")</code> nomina solo l'effetto; non lega un path, un URL, un tool o un argv.</p>
         <pre><code data-run="true" data-expect="fileRead\ntrue\ntrue">var notes = cap.fileRead("notes.md");
 print(notes.kind);
 print(cap.is(notes, "fileRead"));
@@ -984,14 +984,14 @@ try {
 }
 print(forged);</code></pre>
         <ul>
-            <li><code>cap.fileRead(path)</code> / <code>cap.fileWrite(path)</code> / <code>cap.dirList(path)</code> — emette un token. Non esiste un alias piatto <code>cap()</code>.</li>
-            <li><code>cap.read(token, startLine?, endLine?)</code> / <code>cap.write(token, content)</code> / <code>cap.list(token)</code> — consuma solo un kind <strong>corrispondente</strong>. Stringhe e dict <code>{ kind, path }</code> sollevano un'eccezione.</li>
+            <li><code>cap.fileRead(path)</code> / <code>cap.fileWrite(path)</code> / <code>cap.dirList(path)</code> / <code>cap.httpGet(origin)</code> / <code>cap.mcpCall(server, tool?)</code> / <code>cap.shell(prefix)</code> — emette un token. Non esiste un alias piatto <code>cap()</code>.</li>
+            <li><code>cap.read(token, startLine?, endLine?)</code> / <code>cap.write(token, content)</code> / <code>cap.list(token)</code> / <code>cap.fetch(token, urlOrPath?, maxBytes?, timeoutMs?)</code> / <code>cap.invoke(token, server, args?)</code> / <code>cap.run(token, extraArgs?, workingDir?, timeout?)</code> — consuma solo un kind <strong>corrispondente</strong>. Stringhe e dict <code>{ kind, path }</code> sollevano un'eccezione. Origin / tool / <code>..</code> / extra assoluti sbagliati lanciano prima di HTTP, MCP o dell'avvio del processo.</li>
             <li><code>cap.is(value, kind?)</code> — true solo per un token reale. Ometti <code>kind</code> per accettare qualsiasi kind di token.</li>
-            <li><code>cap.confine(token, relativePath)</code> — stesso kind, path più stretto; i path fuori dal padre sollevano un'eccezione.</li>
-            <li><code>io.readFile</code> / <code>io.writeFile</code> / <code>io.listDirectory</code> accettano anche un token corrispondente. I path stringa ordinari continuano a funzionare per il codice che non è un tool.</li>
-            <li>Marca gli handler che emettono o consumano token con <code>@effects("cap")</code> (o elenca sia <code>"io"</code> sia <code>"cap"</code>). JavaScript può emettere / <code>is</code> / <code>confine</code>; il consumo dei file è solo host.</li>
-            <li>Non passare un token attraverso JSON LLM. Emetti la root del workspace sull'host e usa <code>cap.confine</code> su un path relativo dagli argomenti del tool. Scaffold: <code>malda new agent</code>.</li>
-            <li>Esempio: <code>Examples/Tools/capability_tokens.malda</code>.</li>
+            <li><code>cap.confine(token, relative)</code> — stesso kind, path / prefisso URL / tool MCP / prefisso argv più stretto; i valori fuori dal padre sollevano un'eccezione.</li>
+            <li><code>io.readFile</code> / <code>io.writeFile</code> / <code>io.listDirectory</code> / <code>webFetch</code> / <code>callTool</code> / <code>runCommand</code> accettano anche un token corrispondente. Le stringhe ordinarie continuano a funzionare per il codice che non è un tool. <code>createWebFetchTool(httpCap?)</code> / <code>createRunCommandTool(workingDir?, shellCap?)</code> legano un token così URL / comandi del modello restano sotto di esso.</li>
+            <li>Marca gli handler che emettono o consumano token con <code>@effects("cap")</code> (o elenca sia <code>"io"</code> sia <code>"cap"</code>). JavaScript può emettere / <code>is</code> / <code>confine</code>; il consume è solo host.</li>
+            <li>Non passare un token attraverso JSON LLM. Emetti la root del workspace sull'host e usa <code>cap.confine</code> su un path / URL / tool / extra argv relativo dagli argomenti del tool. Scaffold: <code>malda new agent</code>.</li>
+            <li>Esempi: <code>Examples/Tools/capability_tokens.malda</code>, <code>Examples/Tools/capability_http_mcp_shell.malda</code>.</li>
         </ul>
         <h2>13.20 Pianificazione strutturata dei task</h2>
         <p id="agent-teams"><code>decomposeTask</code>, <code>executePlan</code>, <code>createSubmitPlanTool</code>, <code>createUpdatePlanTool</code> e <code>createMarkStepTool</code> vivono in <a href="18-agent-orchestration.html">18. Orchestrazione di agenti</a> (§ 18.13). <code>agents.define</code> / <code>agents.team</code> collegano spec di ruolo a un grafo diretto; <code>executePlan(plan, team)</code> rispetta <code>step.role</code> e gli hop dichiarati, dirama gli hop <code>reject</code> sul verdetto <code>approved</code> del predecessore e accetta <code>plan.think: false</code> per restare offline — vedi <a href="18-agent-orchestration.html#declarative-agent-teams">§ 18.17</a>. <code>team.handoff</code> / <code>team.review</code> / <code>team.reject</code> / <code>team.consult</code> sono hop tipizzati e restano solo validazione se <code>think</code> non è true. <code>runProgram</code> esegue un valore chiuso <code>api</code> / <code>program(ApiName)</code> senza ulteriori chiamate LLM — vedi <a href="10-prompts.html">10. Prompt</a> (§ 10.8 API chiuse e programmi deterministici).</p>

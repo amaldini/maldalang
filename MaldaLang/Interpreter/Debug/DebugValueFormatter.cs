@@ -112,11 +112,16 @@ public static class DebugValueFormatter
                 return children;
             }
             case ValueType.Object when value.Value is CapabilityToken cap:
-                return new List<(string, RuntimeValue)>
+            {
+                var children = new List<(string, RuntimeValue)>
                 {
                     ("kind", RuntimeValue.String(cap.Kind)),
                     ("path", RuntimeValue.String(cap.Path))
                 };
+                if (cap.Kind == CapabilityToken.KindMcpCall || !string.IsNullOrEmpty(cap.Name))
+                    children.Add(("name", RuntimeValue.String(cap.Name)));
+                return children;
+            }
             case ValueType.Object when value.Value is DictionaryInstance dict:
             {
                 var children = new List<(string, RuntimeValue)>(dict.Entries.Count);

@@ -26,7 +26,7 @@ malda test
 
 ## What this starter includes
 
-- `tools.malda`: `schema NoteArgs` + `readNoteWith(rootCap, relativePath)` — `validate` then `cap.confine` then `cap.read`
+- `tools.malda`: `schema NoteArgs` + `readNoteWith(rootCap, relativePath)` — `validate` then `cap.confine` then `cap.read`. Optional `pageWith` / `mcpToolWith` / `shellWith` helpers mint-confine HTTP, MCP, and shell tokens the same way (offline; they do not fetch, invoke, or run).
 - `app.malda`: host-mints `notesRoot` with `getProgramDirectory()`, `@Tool("read_note", …)` wrapping the helper, plus the offline demo
 - `notes/welcome.txt`: the only file the demo is allowed to read
 - `tests/cap_tools.test.malda`: same three checks via `assert` (`malda test`)

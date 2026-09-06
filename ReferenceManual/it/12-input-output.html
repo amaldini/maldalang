@@ -139,10 +139,10 @@ io.print(str.length(host.pathSeparator));</code></pre>
         <p>La config dell'assistente sotto <code>~/.malda</code> (<code>getMaldaHome</code>, <code>getMaldaConfig</code>) è documentata con l'<a href="32-personal-assistant.html">assistente personale</a>.</p>
 
         <h2 id="capability-tokens">12.6 Token di capability</h2>
-        <p>Un token di capability è un <strong>oggetto-permesso</strong> che crea il tuo programma (l'host). Trattalo come una chiave per un file o una cartella: chi tiene la chiave può usare quel permesso. Nessuno può fabbricare una chiave funzionante descrivendo la serratura.</p>
+        <p>Un token di capability è un <strong>oggetto-permesso</strong> che crea il tuo programma (l'host). Trattalo come una chiave per un file, un origin HTTP, un tool MCP o un prefisso argv: chi tiene la chiave può usare quel permesso. Nessuno può fabbricare una chiave funzionante descrivendo la serratura.</p>
         <p>Questa è l'idea intera. Il resto della sezione è il perché, l'API e il pattern da copiare sui tool.</p>
         <div class="info-box">
-            <strong>Parti da qui se scrivi agenti.</strong> Quando un tool LLM riceve un path come stringa, il modello può inventare <code>/etc/passwd</code> o <code>../secrets</code>. Un token lega il permesso a un path scelto <em>da te</em>, prima che il modello giri. Catalogo delle firme: <a href="13-built-in-functions.html#capability-tokens">13.19.3</a>. Scaffold di primo contatto: <code>malda new agent</code>.
+            <strong>Parti da qui se scrivi agenti.</strong> Quando un tool LLM riceve un path, un URL, un nome tool MCP o un comando come stringa, il modello può inventare <code>/etc/passwd</code>, qualsiasi host o qualsiasi argv. Un token lega il permesso a un valore scelto <em>da te</em>, prima che il modello giri. Catalogo delle firme: <a href="13-built-in-functions.html#capability-tokens">13.19.3</a>. Scaffold di primo contatto: <code>malda new agent</code>.
         </div>
 
         <h3>12.6.1 Perché <code>@effects("io")</code> non basta</h3>
@@ -160,14 +160,14 @@ function readNote(path) {
                 <tr><th>Espressione</th><th>Cosa significa</th><th>Dove</th></tr>
             </thead>
             <tbody>
-                <tr><td><code>cap.fileRead</code> / token di capability</td><td>Un oggetto-permesso non contraffabile per un path</td><td>Questa sezione</td></tr>
+                <tr><td><code>cap.fileRead</code> / token di capability</td><td>Un oggetto-permesso non contraffabile per un path, un prefisso URL, un tool MCP o un prefisso argv</td><td>Questa sezione</td></tr>
                 <tr><td>Matrice di capability dei backend</td><td>Quali backend implementano una funzionalità di prodotto (I/O su file, agenti, DOM, …)</td><td><a href="../../docs/spec/backend-capability-matrix.md">backend-capability-matrix.md</a></td></tr>
                 <tr><td><code>@requires("file-io")</code></td><td>Una property test che salta i backend a cui manca quella funzionalità</td><td><a href="34-property-testing.html">34. Property testing</a></td></tr>
             </tbody>
         </table>
 
         <h3>12.6.3 Kind</h3>
-        <p>Un token ha due campi leggibili: <code>kind</code> e <code>path</code>. Non puoi assegnarli. Non esiste un alias piatto <code>cap()</code> o <code>fileRead()</code> — scrivi sempre <code>cap.…</code>.</p>
+        <p>Un token ha i campi leggibili <code>kind</code> e <code>path</code> (più <code>name</code> per un tool MCP). Non puoi assegnarli. Non esiste un alias piatto <code>cap()</code> o <code>fileRead()</code> — scrivi sempre <code>cap.…</code>.</p>
         <table>
             <thead>
                 <tr><th>Emetti</th><th><code>kind</code></th><th>Consuma con</th></tr>
@@ -176,9 +176,25 @@ function readNote(path) {
                 <tr><td><code>cap.fileRead(path)</code></td><td><code>fileRead</code></td><td><code>cap.read(token)</code> o <code>io.readFile(token)</code></td></tr>
                 <tr><td><code>cap.fileWrite(path)</code></td><td><code>fileWrite</code></td><td><code>cap.write(token, content)</code> o <code>io.writeFile(token, content)</code></td></tr>
                 <tr><td><code>cap.dirList(path)</code></td><td><code>dirList</code></td><td><code>cap.list(token)</code> o <code>io.listDirectory(token)</code></td></tr>
+                <tr><td><code>cap.httpGet(origin)</code></td><td><code>httpGet</code></td><td><code>cap.fetch(token, urlOrPath?)</code> o <code>webFetch(token)</code></td></tr>
+                <tr><td><code>cap.mcpCall(server, tool?)</code></td><td><code>mcpCall</code></td><td><code>cap.invoke(token, server, args?)</code> o <code>callTool(token)</code></td></tr>
+                <tr><td><code>cap.shell(prefix)</code></td><td><code>shell</code></td><td><code>cap.run(token, extraArgs?)</code> o <code>runCommand(token)</code></td></tr>
             </tbody>
         </table>
-        <p>Un token <code>fileWrite</code> non è un token di lettura. Passare il kind sbagliato lancia un'eccezione.</p>
+        <p>Un token <code>fileWrite</code> non è un token di lettura. Passare il kind sbagliato lancia un'eccezione. <code>cap.confine</code> unisce un path file relativo, un path HTTP, un nome tool MCP o un extra argv — le fughe lanciano prima del consume.</p>
+        <pre><code data-run="true" data-expect="httpGet\nhttps://example.com/docs\nhttps://example.com/docs/guide\ntrue\nadd\ngit status">var http = cap.httpGet("https://example.com/docs");
+io.print(http.kind);
+io.print(http.path);
+io.print(cap.confine(http, "guide").path);
+var escaped = false;
+try {
+    cap.fetch(http, "https://evil.com");
+} catch (e) {
+    escaped = true;
+}
+io.print(escaped);
+io.print(cap.mcpCall("local", "add").name);
+io.print(cap.confine(cap.shell("git"), "status").path);</code></pre>
 
         <h3>12.6.4 Emettere, ispezionare, consumare</h3>
         <p><strong>Emettere</strong> significa «creare un token vero sull'host». Il risultato è un oggetto host sigillato, non un dict. <code>cap.is</code> è l'unico test di tipo sicuro — <code>typeOf</code> non ti dirà «questo è una capability».</p>
@@ -257,7 +273,7 @@ io.deleteFile("_rm_cap_note.txt");</code></pre>
             <tbody>
                 <tr><td>Dare al tool un <code>path: string</code> e affidarti a <code>@effects("io")</code></td><td>Il modello può inventare qualsiasi path. Il decoratore nomina solo l'effetto.</td><td>Emetti un token root sull'host; prendi un path relativo; <code>cap.confine</code></td></tr>
                 <tr><td>Passare il token attraverso JSON LLM / <code>toJSON</code></td><td>L'altra parte riceve un dict. <code>cap.read</code> lancia un'eccezione.</td><td>Tieni il token in memoria sull'host. Invia solo un path relativo.</td></tr>
-                <tr><td>Costruire a mano <code>{ "kind": "fileRead", "path": "…" }</code></td><td>Sembra un token. <code>cap.is</code> è false. Il consume lancia un'eccezione.</td><td>Chiama <code>cap.fileRead</code> / <code>fileWrite</code> / <code>dirList</code></td></tr>
+                <tr><td>Costruire a mano <code>{ "kind": "fileRead", "path": "…" }</code></td><td>Sembra un token. <code>cap.is</code> è false. Il consume lancia un'eccezione.</td><td>Chiama <code>cap.fileRead</code> / <code>httpGet</code> / <code>mcpCall</code> / <code>shell</code></td></tr>
                 <tr><td>Chiamare <code>cap.read("notes.md")</code></td><td>Lancia un'eccezione. Le API di consume rifiutano le stringhe.</td><td><code>cap.read(cap.fileRead("notes.md"))</code>, oppure <code>io.readFile("notes.md")</code> nel codice che non è un tool</td></tr>
                 <tr><td>Passare un token <code>fileWrite</code> a <code>cap.read</code></td><td>Lancia un'eccezione (kind sbagliato).</td><td>Emetti il kind che consumerai</td></tr>
                 <tr><td>Trattare <code>createReadFileTool(workingDir)</code> come un token</td><td>La factory controlla solo che i path restino sotto una directory stringa. Non è non contraffabile.</td><td>Va bene per i tool file built-in. Gli handler <code>@Tool</code> personalizzati sui file devono usare <code>cap.*</code></td></tr>
@@ -266,8 +282,8 @@ io.deleteFile("_rm_cap_note.txt");</code></pre>
 
         <h3>12.6.8 Backend e <code>@effects("cap")</code></h3>
         <p>Marca gli handler che emettono o consumano token con <code>@effects("cap")</code> (o elenca sia <code>"io"</code> sia <code>"cap"</code>). Le funzioni <code>@pure()</code> non possono emettere o consumare token sotto <code>--strict-types</code>.</p>
-        <p>L'interprete e il transpile C# implementano la superficie completa. JavaScript può emettere, usare <code>cap.is</code> e <code>cap.confine</code>; il consume dei file (<code>cap.read</code> / <code>write</code> / <code>list</code>) è solo host — come il resto dell'I/O su file nella <a href="../../docs/spec/backend-capability-matrix.md">matrice di capability dei backend</a>.</p>
-        <p>Esempio completo: <code>Examples/Tools/capability_tokens.malda</code>. Few-shot a forma di agente: <code>docs/llm/few-shot/26_tool_cap_read.malda</code>.</p>
+        <p>L'interprete e il transpile C# implementano la superficie completa. JavaScript può emettere, usare <code>cap.is</code> e <code>cap.confine</code>; il consume (<code>cap.read</code> / <code>write</code> / <code>list</code> / <code>fetch</code> / <code>invoke</code> / <code>run</code>) è solo host — come il resto dell'I/O su file e degli agenti nella <a href="../../docs/spec/backend-capability-matrix.md">matrice di capability dei backend</a>.</p>
+        <p>Esempi completi: <code>Examples/Tools/capability_tokens.malda</code>, <code>Examples/Tools/capability_http_mcp_shell.malda</code>. Few-shot a forma di agente: <code>docs/llm/few-shot/26_tool_cap_read.malda</code>, <code>docs/llm/few-shot/42_cap_http_mcp_shell.malda</code>.</p>
 
         <h2>12.7 Ricerca nei file</h2>
         <p><code>io.glob(pattern, dirPath?)</code> trova i path. <code>io.grep(pattern, filePath)</code> cerca nei contenuti. Entrambi prendono un primo argomento obbligatorio e poi argomenti posizionali opzionali. Su un path mancante o una regex non valida restituiscono una <em>stringa di errore</em>, non una collezione — proteggi con <code>typeOf(result) == "string"</code>.</p>

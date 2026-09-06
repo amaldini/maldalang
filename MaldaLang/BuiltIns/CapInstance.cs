@@ -6,7 +6,7 @@ namespace MaldaLang.BuiltIns;
 using MaldaLang.Interpreter;
 
 /// <summary>
-/// Global <c>cap</c> module: mint and consume unforgeable file capabilities (L6). No flat alias.
+/// Global <c>cap</c> module: mint and consume unforgeable capabilities (L6). No flat alias.
 /// </summary>
 public sealed class CapInstance : StdLibModuleInstance
 {
@@ -18,11 +18,17 @@ public sealed class CapInstance : StdLibModuleInstance
             "fileRead" => CapStdLib.FileRead(args),
             "fileWrite" => CapStdLib.FileWrite(args),
             "dirList" => CapStdLib.DirList(args),
+            "httpGet" => CapStdLib.HttpGet(args),
+            "mcpCall" => CapStdLib.McpCall(args),
+            "shell" => CapStdLib.Shell(args),
             "is" => CapStdLib.Is(args),
             "confine" => CapStdLib.Confine(args),
             "read" => CapStdLib.Read(args, interpreter),
             "write" => CapStdLib.Write(args, interpreter),
             "list" => CapStdLib.List(args, interpreter),
+            "fetch" => CapStdLib.Fetch(args, interpreter),
+            "invoke" => CapStdLib.Invoke(args),
+            "run" => CapStdLib.Run(args, interpreter),
             _ => throw new Exception($"Unknown cap method: {methodName}")
         };
 }

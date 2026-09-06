@@ -34,7 +34,7 @@ you call is either a built-in function or a class you construct with `new`.
 | `ui` | Server-driven UI composition (web/full-stack apps) |
 | `result` / `option` | `Result` and `Option` constructors and combinators |
 | `grounded` | `grounded.wrap(value, citations?)` — payload plus `{ source, id?, span? }` |
-| `cap` | `cap.fileRead(path)` — unforgeable FileRead token; `cap.confine(token, relative)` then `cap.read`. Scaffold: `malda new agent` |
+| `cap` | `cap.fileRead` / `httpGet` / `mcpCall` / `shell` — unforgeable tokens; `cap.confine` then `cap.read` / `fetch` / `invoke` / `run`. Scaffold: `malda new agent` |
 
 Built-in classes you instantiate with `new`: `LLMClient`, `OpenRouterClient`,
 `LlamaCppClient`, `LlamaEmbedder`, `Agent`, `CodingAgent`, `MALDACodingAgent`, `DevAgent`,

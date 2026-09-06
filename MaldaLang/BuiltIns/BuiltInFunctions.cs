@@ -6131,22 +6131,44 @@ public static class BuiltInFunctions
 
     private static RuntimeValue BuiltInCreateWebFetchTool(List<RuntimeValue> args)
     {
-        BuiltInArity.Require("createWebFetchTool", args, 0, 0);
-        return BuiltInTools.CreateWebFetchTool();
+        BuiltInArity.Require("createWebFetchTool", args, 0, 1, "httpCap?");
+        CapabilityToken? httpCap = null;
+        if (args.Count > 0 && args[0].Type != ValueType.Null)
+        {
+            httpCap = CapStdLib.RequireToken(args[0], CapabilityToken.KindHttpGet, "createWebFetchTool");
+        }
+        return BuiltInTools.CreateWebFetchTool(httpCap);
     }
 
     private static RuntimeValue BuiltInWebFetch(List<RuntimeValue> args)
     {
-        BuiltInArity.Require("webFetch", args, 1, 3, "url, maxBytes?, timeoutMs?");
-        if (args[0].Type != ValueType.String)
-            throw new Exception("webFetch() url must be a string");
+        BuiltInArity.Require("webFetch", args, 1, 4, "urlOrToken, pathOrMaxBytes?, maxBytes?, timeoutMs?");
+        string? pathOrUrl = null;
+        var rest = 1;
+        if (CapStdLib.TryGetToken(args[0], out _))
+        {
+            if (args.Count > 1 && args[1].Type == ValueType.String)
+            {
+                pathOrUrl = args[1].AsString();
+                rest = 2;
+            }
+            else if (args.Count > 1 && args[1].Type == ValueType.Null)
+            {
+                rest = 2;
+            }
+        }
+        else if (args[0].Type != ValueType.String)
+        {
+            throw new Exception("webFetch() url must be a string or an httpGet capability token");
+        }
 
+        var url = CapStdLib.ResolveWebFetchUrl(args[0], pathOrUrl, "webFetch");
         var obj = new JsonObject();
-        obj.Set("url", args[0]);
-        if (args.Count > 1)
-            obj.Set("maxBytes", args[1]);
-        if (args.Count > 2)
-            obj.Set("timeoutMs", args[2]);
+        obj.Set("url", RuntimeValue.String(url));
+        if (args.Count > rest)
+            obj.Set("maxBytes", args[rest]);
+        if (args.Count > rest + 1)
+            obj.Set("timeoutMs", args[rest + 1]);
         return ExecuteWebFetch(RuntimeValue.Object(obj));
     }
 
@@ -7373,11 +7395,24 @@ public static class BuiltInFunctions
     
     private static RuntimeValue BuiltInCreateRunCommandTool(List<RuntimeValue> args)
     {
-        BuiltInArity.Require("createRunCommandTool", args, 0, 1, "workingDir?");
-        var workingDir = args.Count > 0 && args[0].Type == MaldaLang.Interpreter.ValueType.String 
-            ? args[0].AsString() 
-            : "";
-        return BuiltInTools.CreateRunCommandTool(workingDir);
+        BuiltInArity.Require("createRunCommandTool", args, 0, 2, "workingDir?, shellCap?");
+        var workingDir = "";
+        CapabilityToken? shellCap = null;
+        if (args.Count == 1)
+        {
+            if (CapStdLib.TryGetToken(args[0], out _))
+                shellCap = CapStdLib.RequireToken(args[0], CapabilityToken.KindShell, "createRunCommandTool");
+            else if (args[0].Type == ValueType.String)
+                workingDir = args[0].AsString();
+        }
+        else if (args.Count == 2)
+        {
+            if (args[0].Type == ValueType.String)
+                workingDir = args[0].AsString();
+            if (args[1].Type != ValueType.Null)
+                shellCap = CapStdLib.RequireToken(args[1], CapabilityToken.KindShell, "createRunCommandTool");
+        }
+        return BuiltInTools.CreateRunCommandTool(workingDir, shellCap);
     }
     
     private static Dictionary<string, string>? ExtractCommandEnvironment(RuntimeValue envValue)
@@ -7411,7 +7446,13 @@ public static class BuiltInFunctions
     // Command execution function
     private static RuntimeValue BuiltInRunCommand(List<RuntimeValue> args)
     {
-        if (args.Count == 0 || args[0].Type != ValueType.String)
+        if (args.Count == 0)
+            throw new Exception("runCommand() expects at least 1 argument: command (string)");
+
+        if (CapStdLib.TryGetToken(args[0], out _))
+            return CapStdLib.Run(args, interpreter: null);
+
+        if (args[0].Type != ValueType.String)
             throw new Exception("runCommand() expects at least 1 argument: command (string)");
 
         Dictionary<string, string>? extraEnvironment = null;

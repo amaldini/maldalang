@@ -317,7 +317,7 @@ public static class BuiltInTools
         return RuntimeValue.Object(tool);
     }
 
-    public static RuntimeValue CreateWebFetchTool()
+    public static RuntimeValue CreateWebFetchTool(CapabilityToken? httpCap = null)
     {
         var tool = new ToolInstance();
         var parameters = new JsonObject();
@@ -326,7 +326,10 @@ public static class BuiltInTools
 
         var urlProp = new JsonObject();
         urlProp.Set("type", RuntimeValue.String("string"));
-        urlProp.Set("description", RuntimeValue.String("HTTP or HTTPS URL to fetch. Other schemes (file://, ftp://, …) are rejected."));
+        urlProp.Set("description", RuntimeValue.String(
+            httpCap == null
+                ? "HTTP or HTTPS URL to fetch. Other schemes (file://, ftp://, …) are rejected."
+                : "HTTP or HTTPS URL to fetch. Must stay under the host-minted httpGet origin (relative paths are joined)."));
         properties.Set("url", RuntimeValue.Object(urlProp));
 
         var maxBytesProp = new JsonObject();
@@ -347,11 +350,14 @@ public static class BuiltInTools
 
         tool.Initialize(
             "web_fetch",
-            "Fetches an HTTP or HTTPS URL and returns the response body as text. Use for reading documentation or pages (not search). Parameters: url (required), maxBytes? (default 100000, cap 500000), timeoutMs? (default 15000, cap 60000). Returns { ok, status, url, content, truncated, error? }. JSON bodies are returned as a JSON string. Parallel-safe.",
+            httpCap == null
+                ? "Fetches an HTTP or HTTPS URL and returns the response body as text. Use for reading documentation or pages (not search). Parameters: url (required), maxBytes? (default 100000, cap 500000), timeoutMs? (default 15000, cap 60000). Returns { ok, status, url, content, truncated, error? }. JSON bodies are returned as a JSON string. Parallel-safe."
+                : "Fetches an HTTP or HTTPS URL under a host-minted httpGet capability. The model only passes a URL or path; URLs outside the origin are rejected before the request. Parameters: url (required), maxBytes? (default 100000, cap 500000), timeoutMs? (default 15000, cap 60000). Returns { ok, status, url, content, truncated, error? }.",
             RuntimeValue.Object(parameters),
             null,
             ""
         );
+        tool.Capability = httpCap;
 
         return RuntimeValue.Object(tool);
     }
@@ -1022,7 +1028,7 @@ public static class BuiltInTools
         return RuntimeValue.Object(tool);
     }
     
-    public static RuntimeValue CreateRunCommandTool(string workingDirectory = "")
+    public static RuntimeValue CreateRunCommandTool(string workingDirectory = "", CapabilityToken? shellCap = null)
     {
         var tool = new ToolInstance();
         var parameters = new JsonObject();
@@ -1031,7 +1037,10 @@ public static class BuiltInTools
         
         var commandProp = new JsonObject();
         commandProp.Set("type", RuntimeValue.String("string"));
-        commandProp.Set("description", RuntimeValue.String("Command to execute (e.g., 'dotnet', 'npm', 'python', 'echo'). The command name without arguments."));
+        commandProp.Set("description", RuntimeValue.String(
+            shellCap == null
+                ? "Command to execute (e.g., 'dotnet', 'npm', 'python', 'echo'). The command name without arguments."
+                : "Command to execute. Must match the host-minted shell capability prefix (the model cannot change the executable)."));
         properties.Set("command", RuntimeValue.Object(commandProp));
         
         var argsProp = new JsonObject();
@@ -1060,11 +1069,14 @@ public static class BuiltInTools
         
         tool.Initialize(
             "run_command",
-            "Executes a command-line program and returns exitCode, stdout, and stderr. Use direct executables (dotnet, npm, python) — not shell wrappers as the command name. Shell commands (powershell, cmd, bash) may require user confirmation before running.",
+            shellCap == null
+                ? "Executes a command-line program and returns exitCode, stdout, and stderr. Use direct executables (dotnet, npm, python) — not shell wrappers as the command name. Shell commands (powershell, cmd, bash) may require user confirmation before running."
+                : "Executes a command-line program under a host-minted shell capability. The model may only append arguments; a different executable, `..`, or an absolute path is rejected before the process starts.",
             RuntimeValue.Object(parameters),
             null,
             workingDirectory
         );
+        tool.Capability = shellCap;
         
         return RuntimeValue.Object(tool);
     }

@@ -476,11 +476,15 @@
 
   const capStamp = Symbol("malda.capability");
 
-  function mintCap(kind, path, callee) {
+  function mintCap(kind, path, callee, name) {
     if (typeof path !== "string") {
       throw new Error((callee || kind) + "() path must be a string");
     }
-    const token = markDict({ kind, path });
+    const fields = { kind, path };
+    if (kind === "mcpCall" || (name != null && name !== undefined && name !== "")) {
+      fields.name = name == null || name === undefined ? "" : String(name);
+    }
+    const token = markDict(fields);
     Object.defineProperty(token, capStamp, {
       value: true,
       enumerable: false,
@@ -534,6 +538,133 @@
     throw new Error(callee + "() file I/O is not available on the JavaScript backend");
   }
 
+  function capHostOnly(callee) {
+    throw new Error(callee + "() is not available on the JavaScript backend");
+  }
+
+  function hasDotDotSegment(value) {
+    const raw = String(value == null ? "" : value).replace(/\\/g, "/");
+    const cut = raw.search(/[?#]/);
+    const path = cut >= 0 ? raw.slice(0, cut) : raw;
+    return path.split("/").some((part) => part === "..");
+  }
+
+  function normalizeHttpPrefix(raw, callee) {
+    let url;
+    try {
+      url = new URL(String(raw));
+    } catch {
+      throw new Error(callee + "() expects an absolute http or https URL");
+    }
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      throw new Error(callee + "() expects an absolute http or https URL");
+    }
+    let path = url.pathname === "/" ? "" : url.pathname.replace(/\/+$/, "");
+    return url.origin + path;
+  }
+
+  function getHttpOrigin(prefix) {
+    return new URL(prefix).origin;
+  }
+
+  function joinHttpPrefix(parent, relative) {
+    const rel = String(relative).replace(/\\/g, "/").trim();
+    if (rel.startsWith("//")) {
+      throw new Error("confine() path '" + relative + "' is not under capability origin '" + parent + "'");
+    }
+    if (rel.startsWith("/")) {
+      const path = rel.split("?")[0].split("#")[0].replace(/\/+$/, "");
+      return getHttpOrigin(parent) + path;
+    }
+    const relPath = rel.split("?")[0].split("#")[0].replace(/^\/+|\/+$/g, "");
+    return relPath.length === 0 ? parent : parent.replace(/\/+$/, "") + "/" + relPath;
+  }
+
+  function isHttpUnder(parent, child) {
+    let p;
+    let c;
+    try {
+      p = new URL(parent);
+      c = new URL(child);
+    } catch {
+      return false;
+    }
+    if (p.protocol !== c.protocol || p.host !== c.host) return false;
+    const pp = p.pathname === "/" ? "" : p.pathname.replace(/\/+$/, "");
+    const cp = c.pathname === "/" ? "" : c.pathname.replace(/\/+$/, "");
+    if (pp.length === 0) return true;
+    if (pp === cp) return true;
+    return cp.startsWith(pp + "/");
+  }
+
+  function parseArgv(value, callee) {
+    if (typeof value === "string") {
+      return value.trim().length === 0 ? [] : value.trim().split(/\s+/);
+    }
+    if (Array.isArray(value)) {
+      return value.map((item) => {
+        if (typeof item !== "string") {
+          throw new Error(callee + "() prefix entries must be strings");
+        }
+        return item;
+      }).filter((item) => item.trim().length > 0);
+    }
+    throw new Error(callee + "() prefix must be a string or an array of strings");
+  }
+
+  function rejectUnsafeShellArg(arg, callee) {
+    if (!arg || String(arg).trim().length === 0) {
+      throw new Error(callee + "() prefix cannot contain an empty argument");
+    }
+    if (hasDotDotSegment(arg) || /^([A-Za-z]:|[\\/])/.test(arg)) {
+      throw new Error(callee + "() argument '" + arg + "' is not allowed under a shell capability");
+    }
+  }
+
+  function confineHttp(parent, relative) {
+    if (hasDotDotSegment(relative)) {
+      throw new Error("confine() path '" + relative + "' is not under capability origin '" + parent.path + "'");
+    }
+    const pathPart = String(relative).trim().split("?")[0].split("#")[0];
+    let combined = parent.path;
+    if (pathPart.length > 0) {
+      try {
+        combined = /^https?:\/\//i.test(pathPart)
+          ? normalizeHttpPrefix(pathPart, "confine")
+          : joinHttpPrefix(parent.path, pathPart);
+      } catch (err) {
+        throw new Error("confine() path '" + relative + "' is not under capability origin '" + parent.path + "'");
+      }
+    }
+    if (!isHttpUnder(parent.path, combined)) {
+      throw new Error("confine() path '" + relative + "' is not under capability origin '" + parent.path + "'");
+    }
+    return mintCap(parent.kind, combined, "confine");
+  }
+
+  function confineMcp(parent, tool) {
+    if (typeof tool !== "string" || tool.trim().length === 0) {
+      throw new Error("confine() tool name must be a non-empty string");
+    }
+    if (tool.indexOf("/") >= 0 || tool.indexOf("\\") >= 0 || hasDotDotSegment(tool)) {
+      throw new Error("confine() tool '" + tool + "' is not under capability server '" + parent.path + "'");
+    }
+    if (parent.name && parent.name !== tool) {
+      throw new Error("confine() tool '" + tool + "' is not under capability tool '" + parent.name + "'");
+    }
+    return mintCap(parent.kind, parent.path, "confine", tool);
+  }
+
+  function confineShell(parent, relative) {
+    const extra = parseArgv(relative, "confine");
+    extra.forEach((part) => rejectUnsafeShellArg(part, "confine"));
+    const combined = parseArgv(parent.path, "confine").concat(extra);
+    if (combined.length === 0) {
+      throw new Error("confine() shell prefix cannot be empty");
+    }
+    return mintCap(parent.kind, combined.join(" "), "confine");
+  }
+
   const capStdLib = {
     fileRead(path) {
       return mintCap("fileRead", path, "fileRead");
@@ -544,11 +675,40 @@
     dirList(path) {
       return mintCap("dirList", path, "dirList");
     },
+    httpGet(origin) {
+      return mintCap("httpGet", normalizeHttpPrefix(origin, "httpGet"), "httpGet");
+    },
+    mcpCall(server, tool) {
+      if (typeof server !== "string") {
+        throw new Error("mcpCall() path must be a string");
+      }
+      return mintCap("mcpCall", server, "mcpCall", tool == null ? "" : String(tool));
+    },
+    shell(prefix) {
+      const parts = parseArgv(prefix, "shell");
+      if (parts.length === 0) {
+        throw new Error("shell() prefix cannot be empty");
+      }
+      parts.forEach((part) => rejectUnsafeShellArg(part, "shell"));
+      return mintCap("shell", parts.join(" "), "shell");
+    },
     is(value, kind) {
       return isCapToken(value, kind);
     },
     confine(token, relativePath) {
       const parent = requireCapToken(token, null, "confine");
+      if (parent.kind === "httpGet") {
+        if (typeof relativePath !== "string") {
+          throw new Error("confine() path must be a string");
+        }
+        return confineHttp(parent, relativePath);
+      }
+      if (parent.kind === "mcpCall") {
+        return confineMcp(parent, relativePath);
+      }
+      if (parent.kind === "shell") {
+        return confineShell(parent, relativePath);
+      }
       if (typeof relativePath !== "string") {
         throw new Error("confine() path must be a string");
       }
@@ -565,7 +725,10 @@
     },
     read() { capHostIoUnavailable("read"); },
     write() { capHostIoUnavailable("write"); },
-    list() { capHostIoUnavailable("list"); }
+    list() { capHostIoUnavailable("list"); },
+    fetch() { capHostOnly("fetch"); },
+    invoke() { capHostOnly("invoke"); },
+    run() { capHostOnly("run"); }
   };
 
   function normalizeGroundedCitation(item) {

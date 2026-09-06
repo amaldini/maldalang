@@ -19,6 +19,16 @@
       "requires": ["offline"],
       "concepts": ["cap.fileRead", "cap.read", "@effects"],
       "learningGoal": "Pass an unforgeable capability into a helper instead of a free-form path string."
+    },
+    {
+      "name": "HTTP / MCP / shell capability tokens",
+      "description": "Unforgeable httpGet, mcpCall, and shell tokens so tools cannot invent a URL, MCP tool, or argv",
+      "file": "capability_http_mcp_shell.malda",
+      "track": "ai-builder",
+      "difficulty": "intermediate",
+      "requires": ["offline"],
+      "concepts": ["cap.httpGet", "cap.mcpCall", "cap.shell", "cap.confine"],
+      "learningGoal": "Host-mint HTTP, MCP, and shell tokens; confine a relative URL, tool name, or extra argv."
     }
   ]
 }

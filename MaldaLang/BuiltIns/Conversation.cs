@@ -3440,6 +3440,8 @@ public partial class ConversationInstance : ObjectInstance
                 case "web_fetch":
                     try
                     {
+                        if (tool.Capability != null)
+                            arguments = CapStdLib.ApplyHttpTokenToWebFetchArgs(tool.Capability, arguments);
                         return BuiltInTools.ExecuteWebFetch(arguments);
                     }
                     catch (Exception ex)
@@ -3457,7 +3459,7 @@ public partial class ConversationInstance : ObjectInstance
                         var command = commandVal.AsString();
                         if (string.IsNullOrWhiteSpace(command))
                             return RuntimeValue.String("Error: command cannot be empty");
-                        
+
                         // Extract optional args array
                         RuntimeValue? argsArray = null;
                         try
@@ -3531,6 +3533,9 @@ public partial class ConversationInstance : ObjectInstance
                                     argStrings.Add(arg.AsString());
                             }
                         }
+
+                        if (tool.Capability != null)
+                            CapStdLib.RequireCommandUnderShell(tool.Capability, command, argStrings);
 
                         var approval = CommandApprovalService.EnsureApprovedAsync(
                             _inputProvider, command, argStrings, cmdWorkingDirectory

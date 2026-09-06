@@ -74,12 +74,18 @@ Compact rules for generating correct `.malda`. Prefer this over scraping HTML ma
   `docs/llm/few-shot/36_agents_plan.malda`, `docs/llm/few-shot/37_agents_handoff_think.malda`,
   `docs/llm/few-shot/38_agents_review_reject.malda`, `docs/llm/few-shot/39_agents_plan_verdict.malda`,
   `docs/llm/few-shot/40_agents_consult.malda`, `docs/llm/few-shot/41_agents_plan_out.malda`.
-  File tools that should not invent paths take a capability token, not a string:
-  `cap.fileRead("notes.md")` then `cap.read(token)`. `cap.read({ kind, path })` throws.
-  `@effects("io")` stays a name allow-list. No flat `cap()` alias.
-  The model must not pass a token (JSON cannot round-trip one). Host-mint a workspace
-  root and `cap.confine` a relative path from tool args. Scaffold: `malda new agent`.
-  Example: `Examples/Tools/capability_tokens.malda`. Few-shot: `docs/llm/few-shot/26_tool_cap_read.malda`.
+  File / HTTP / MCP / shell tools that should not invent a path, URL, tool name, or
+  argv take a capability token, not a string: `cap.fileRead("notes.md")` then
+  `cap.read(token)`; `cap.httpGet("https://example.com")` then `cap.fetch`;
+  `cap.mcpCall("local", "add")` then `cap.invoke`; `cap.shell("git")` then `cap.run`.
+  `cap.read({ kind, path })` throws. `@effects("io")` stays a name allow-list. No
+  flat `cap()` alias. The model must not pass a token (JSON cannot round-trip one).
+  Host-mint a root and `cap.confine` a relative path / URL / tool / extra argv from
+  tool args. Scaffold: `malda new agent`.
+  Examples: `Examples/Tools/capability_tokens.malda`,
+  `Examples/Tools/capability_http_mcp_shell.malda`.
+  Few-shots: `docs/llm/few-shot/26_tool_cap_read.malda`,
+  `docs/llm/few-shot/42_cap_http_mcp_shell.malda`.
   `@MCPTool("name", "desc", schema?)` / `@Tool(...)` optional third argument is a
   registered schema or sum-type name (`"AddArgs"` or `AddArgs`), a JSON schema object
   string, or omitted (all parameters advertised as strings, no host check).

@@ -327,8 +327,8 @@ print(read_allowed(notes));
 // cap.read({ kind: "fileRead", path: "notes.md" }) throws — not a token
 ```
 
-- `cap.fileRead(path)` / `cap.fileWrite(path)` / `cap.dirList(path)` mint sealed host objects (`kind`, `path`).
-- `cap.read` / `cap.write` / `cap.list` consume **matching tokens only** — not strings, not dicts.
+- `cap.fileRead(path)` / `cap.fileWrite(path)` / `cap.dirList(path)` / `cap.httpGet(origin)` / `cap.mcpCall(server, tool?)` / `cap.shell(prefix)` mint sealed host objects (`kind`, `path`, optional `name`).
+- `cap.read` / `cap.write` / `cap.list` / `cap.fetch` / `cap.invoke` / `cap.run` consume **matching tokens only** — not strings, not dicts.
 - `cap.is(value, kind?)` is the check; `cap.confine(token, relativePath)` attenuates under the parent path.
 - `io.readFile` / `io.writeFile` / `io.listDirectory` also accept a matching token (strings remain for ordinary programs).
 - JSON round-trip cannot rehydrate a token. No `Capability` keyword and no flat `cap()` alias.

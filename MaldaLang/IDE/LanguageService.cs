@@ -908,7 +908,12 @@ public class LanguageService : ILanguageService
             "fileRead" => new List<string> { "path" },
             "fileWrite" => new List<string> { "path" },
             "dirList" => new List<string> { "path" },
-            "confine" => new List<string> { "token", "relativePath" },
+            "httpGet" => new List<string> { "origin" },
+            "mcpCall" => new List<string> { "server", "tool?" },
+            "shell" => new List<string> { "prefix" },
+            "confine" => new List<string> { "token", "relative" },
+            "fetch" => new List<string> { "token", "urlOrPath?", "maxBytes?", "timeoutMs?" },
+            "invoke" => new List<string> { "token", "server", "args?" },
             "ask" => new List<string> { "query", "maxResults?", "options?" },
             "uiOnInit" => new List<string> { "componentId", "sessionId?" },
             "uiOnPreRender" => new List<string> { "componentId", "sessionId?" },
@@ -1071,11 +1076,17 @@ public class LanguageService : ILanguageService
             members.Add(new CompletionItem { Label = "fileRead", Kind = "method", Detail = "fileRead(path) — mint an unforgeable FileRead token", InsertText = "fileRead()" });
             members.Add(new CompletionItem { Label = "fileWrite", Kind = "method", Detail = "fileWrite(path) — mint an unforgeable FileWrite token", InsertText = "fileWrite()" });
             members.Add(new CompletionItem { Label = "dirList", Kind = "method", Detail = "dirList(path) — mint an unforgeable DirList token", InsertText = "dirList()" });
+            members.Add(new CompletionItem { Label = "httpGet", Kind = "method", Detail = "httpGet(origin) — mint an unforgeable HTTP GET token", InsertText = "httpGet()" });
+            members.Add(new CompletionItem { Label = "mcpCall", Kind = "method", Detail = "mcpCall(server, tool?) — mint an unforgeable MCP call token", InsertText = "mcpCall()" });
+            members.Add(new CompletionItem { Label = "shell", Kind = "method", Detail = "shell(prefix) — mint an unforgeable argv-prefix token", InsertText = "shell()" });
             members.Add(new CompletionItem { Label = "is", Kind = "method", Detail = "is(value, kind?) — true only for a real capability token", InsertText = "is()" });
-            members.Add(new CompletionItem { Label = "confine", Kind = "method", Detail = "confine(token, relativePath) — attenuate a token under its path", InsertText = "confine()" });
+            members.Add(new CompletionItem { Label = "confine", Kind = "method", Detail = "confine(token, relative) — attenuate a token under its path / origin / tool / argv", InsertText = "confine()" });
             members.Add(new CompletionItem { Label = "read", Kind = "method", Detail = "read(token) — read using FileRead only (rejects strings and dicts)", InsertText = "read()" });
             members.Add(new CompletionItem { Label = "write", Kind = "method", Detail = "write(token, content) — write using FileWrite only", InsertText = "write()" });
             members.Add(new CompletionItem { Label = "list", Kind = "method", Detail = "list(token) — list using DirList only", InsertText = "list()" });
+            members.Add(new CompletionItem { Label = "fetch", Kind = "method", Detail = "fetch(token, urlOrPath?) — GET using httpGet only (rejects strings and dicts)", InsertText = "fetch()" });
+            members.Add(new CompletionItem { Label = "invoke", Kind = "method", Detail = "invoke(token, server, args?) — callTool using mcpCall only", InsertText = "invoke()" });
+            members.Add(new CompletionItem { Label = "run", Kind = "method", Detail = "run(token, extraArgs?) — runCommand using shell only", InsertText = "run()" });
         }
         else if (typeToCheck == "GraphMemory")
         {
@@ -1327,7 +1338,7 @@ public class LanguageService : ILanguageService
         (StdLibNamespaces.ResultModule, "result.ok / result.err"),
         (StdLibNamespaces.OptionModule, "option.some / option.none"),
         (StdLibNamespaces.GroundedModule, "grounded.wrap(value, citations?) — payload plus citations"),
-        (StdLibNamespaces.CapModule, "cap.fileRead(path) — unforgeable file capability tokens"),
+        (StdLibNamespaces.CapModule, "cap.fileRead(path) — unforgeable file / HTTP / MCP / shell capability tokens"),
         (StdLibNamespaces.AgentsModule, "agents.define / agents.team — role specs plus a relation graph")
     };
 
@@ -1876,7 +1887,12 @@ public class LanguageService : ILanguageService
             "fileRead" => "function cap.fileRead(path) -> cap\nMints an unforgeable FileRead token for that path. Object literals cannot forge one. No flat cap() alias.",
             "fileWrite" => "function cap.fileWrite(path) -> cap\nMints an unforgeable FileWrite token for that path.",
             "dirList" => "function cap.dirList(path) -> cap\nMints an unforgeable DirList token for that path.",
-            "confine" => "function cap.confine(token, relativePath) -> cap\nReturns a narrower token of the same kind whose path is under the parent. Paths outside the parent throw.",
+            "httpGet" => "function cap.httpGet(origin) -> cap\nMints an unforgeable HTTP GET token for that origin or URL prefix. cap.fetch / webFetch consume it.",
+            "mcpCall" => "function cap.mcpCall(server, tool?) -> cap\nMints an unforgeable MCP call token. cap.invoke / callTool consume it. Omit tool to confine later.",
+            "shell" => "function cap.shell(prefix) -> cap\nMints an unforgeable argv-prefix token (string or array). cap.run / runCommand consume it.",
+            "fetch" => "function cap.fetch(token, urlOrPath?, maxBytes?, timeoutMs?) -> object\nGET using an httpGet token only. URLs outside the origin throw before HTTP. Host-only on JS.",
+            "invoke" => "function cap.invoke(token, server, args?) -> object\nCalls MCPServer/MCPClient.callTool using an mcpCall token. Wrong server/tool throws before invoke. Host-only on JS.",
+            "confine" => "function cap.confine(token, relative) -> cap\nReturns a narrower token of the same kind. File paths, HTTP URLs, MCP tool names, and argv extras outside the parent throw.",
             "ask" => "function GraphMemory.ask(query, maxResults?, options?) -> object\nOpt-in GraphMemory ASK: same retrieval as query(), then a grounded wrapper with citations. query(..., { grounded: true }) is the same wrap.",
             "loadDocuments" => "function loadDocuments(pattern, dirPath?) -> array\nGlob-loads files as `{ content, metadata: { source } }` documents.",
             "splitDocuments" => "function splitDocuments(documents, chunkSize?, overlap?) -> array\nSplits documents into overlapping chunks.",

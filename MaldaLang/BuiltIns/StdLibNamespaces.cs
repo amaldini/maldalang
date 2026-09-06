@@ -58,8 +58,10 @@ public static class StdLibNamespaces
     public static readonly IReadOnlySet<string> CapMethodNames = new HashSet<string>(StringComparer.Ordinal)
     {
         "fileRead", "fileWrite", "dirList",
+        "httpGet", "mcpCall", "shell",
         "is", "confine",
-        "read", "write", "list"
+        "read", "write", "list",
+        "fetch", "invoke", "run"
     };
 
     public static readonly IReadOnlySet<string> AgentsMethodNames = new HashSet<string>(StringComparer.Ordinal)

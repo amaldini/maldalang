@@ -971,7 +971,7 @@ print(g.citations[0].source);</code></pre>
         </ul>
         <h3 id="capability-tokens">13.19.3 <code>cap.fileRead</code></h3>
         <p>This subsection is the signature catalog. If you have not used tokens before, start with the how-to in <a href="12-input-output.html#capability-tokens">12.6 Capability tokens</a> — why they exist, the key analogy, <code>cap.confine</code>, and the host-mint pattern for tools.</p>
-        <p>A token is a sealed host object with <code>kind</code> and <code>path</code>. JSON and object literals cannot rehydrate one. <code>@effects("io")</code> only names the effect; it does not bind a path.</p>
+        <p>A token is a sealed host object with <code>kind</code> and <code>path</code> (and <code>name</code> for an MCP tool). JSON and object literals cannot rehydrate one. <code>@effects("io")</code> only names the effect; it does not bind a path, URL, tool, or argv.</p>
         <pre><code data-run="true" data-expect="fileRead\ntrue\ntrue">var notes = cap.fileRead("notes.md");
 print(notes.kind);
 print(cap.is(notes, "fileRead"));
@@ -983,14 +983,14 @@ try {
 }
 print(forged);</code></pre>
         <ul>
-            <li><code>cap.fileRead(path)</code> / <code>cap.fileWrite(path)</code> / <code>cap.dirList(path)</code> — mint a token. There is no flat <code>cap()</code> alias.</li>
-            <li><code>cap.read(token, startLine?, endLine?)</code> / <code>cap.write(token, content)</code> / <code>cap.list(token)</code> — consume a <strong>matching</strong> kind only. Strings and <code>{ kind, path }</code> dicts throw.</li>
+            <li><code>cap.fileRead(path)</code> / <code>cap.fileWrite(path)</code> / <code>cap.dirList(path)</code> / <code>cap.httpGet(origin)</code> / <code>cap.mcpCall(server, tool?)</code> / <code>cap.shell(prefix)</code> — mint a token. There is no flat <code>cap()</code> alias.</li>
+            <li><code>cap.read(token, startLine?, endLine?)</code> / <code>cap.write(token, content)</code> / <code>cap.list(token)</code> / <code>cap.fetch(token, urlOrPath?, maxBytes?, timeoutMs?)</code> / <code>cap.invoke(token, server, args?)</code> / <code>cap.run(token, extraArgs?, workingDir?, timeout?)</code> — consume a <strong>matching</strong> kind only. Strings and <code>{ kind, path }</code> dicts throw. Wrong-origin / wrong-tool / <code>..</code> / absolute extras throw before HTTP, MCP, or process start.</li>
             <li><code>cap.is(value, kind?)</code> — true only for a real token. Omit <code>kind</code> to accept any token kind.</li>
-            <li><code>cap.confine(token, relativePath)</code> — same kind, narrower path; paths outside the parent throw.</li>
-            <li><code>io.readFile</code> / <code>io.writeFile</code> / <code>io.listDirectory</code> also accept a matching token. Ordinary string paths still work for non-tool code.</li>
-            <li>Mark handlers that mint or consume tokens <code>@effects("cap")</code> (or list both <code>"io"</code> and <code>"cap"</code>). JavaScript can mint / <code>is</code> / <code>confine</code>; file consume is host-only.</li>
-            <li>Do not pass a token through LLM JSON. Host-mint a workspace root and <code>cap.confine</code> a relative path from tool args. Scaffold: <code>malda new agent</code>.</li>
-            <li>Example: <code>Examples/Tools/capability_tokens.malda</code>.</li>
+            <li><code>cap.confine(token, relative)</code> — same kind, narrower path / URL prefix / MCP tool / argv prefix; values outside the parent throw.</li>
+            <li><code>io.readFile</code> / <code>io.writeFile</code> / <code>io.listDirectory</code> / <code>webFetch</code> / <code>callTool</code> / <code>runCommand</code> also accept a matching token. Ordinary strings still work for non-tool code. <code>createWebFetchTool(httpCap?)</code> / <code>createRunCommandTool(workingDir?, shellCap?)</code> bind a token so model-supplied URLs / commands stay under it.</li>
+            <li>Mark handlers that mint or consume tokens <code>@effects("cap")</code> (or list both <code>"io"</code> and <code>"cap"</code>). JavaScript can mint / <code>is</code> / <code>confine</code>; consume is host-only.</li>
+            <li>Do not pass a token through LLM JSON. Host-mint a workspace root and <code>cap.confine</code> a relative path / URL / tool / extra argv from tool args. Scaffold: <code>malda new agent</code>.</li>
+            <li>Examples: <code>Examples/Tools/capability_tokens.malda</code>, <code>Examples/Tools/capability_http_mcp_shell.malda</code>.</li>
         </ul>
         <h2>13.20 Structured Task Planning</h2>
         <p id="agent-teams"><code>decomposeTask</code>, <code>executePlan</code>, <code>createSubmitPlanTool</code>, <code>createUpdatePlanTool</code>, and <code>createMarkStepTool</code> live in <a href="18-agent-orchestration.html">18. Agent Orchestration</a> (§ 18.13). <code>agents.define</code> / <code>agents.team</code> bind role specs to a directed graph; <code>executePlan(plan, team)</code> honors <code>step.role</code> and declared hops, branches <code>reject</code> hops on the predecessor <code>approved</code> verdict, and accepts <code>plan.think: false</code> to stay offline — see <a href="18-agent-orchestration.html#declarative-agent-teams">§ 18.17</a>. <code>team.handoff</code> / <code>team.review</code> / <code>team.reject</code> / <code>team.consult</code> are typed hops and stay validate-only unless <code>think</code> is true. <code>runProgram</code> runs a closed <code>api</code> / <code>program(ApiName)</code> value with no further LLM calls — see <a href="10-prompts.html">10. Prompts</a> (§ 10.8 Closed APIs and Deterministic Programs).</p>

@@ -1,0 +1,29 @@
+// Host-mint HTTP / MCP / shell tokens. The model only passes a relative URL,
+// tool name, or extra argv. Forged dicts and escapes throw before consume.
+var http = cap.httpGet("https://example.com/docs");
+var mcp = cap.mcpCall("local");
+var shell = cap.shell("git");
+
+function pageUnder(httpCap, relative) {
+    return cap.confine(httpCap, relative).path;
+}
+
+function toolUnder(mcpCap, toolName) {
+    return cap.confine(mcpCap, toolName).name;
+}
+
+function argvUnder(shellCap, extra) {
+    return cap.confine(shellCap, extra).path;
+}
+
+print(pageUnder(http, "guide") == "https://example.com/docs/guide");
+var escaped = false;
+try {
+    cap.confine(http, "https://evil.com");
+} catch (e) {
+    escaped = true;
+}
+print(escaped);
+print(toolUnder(mcp, "add") == "add");
+print(argvUnder(shell, "status") == "git status");
+print(cap.is({ "kind": "httpGet", "path": "https://example.com/docs" }));

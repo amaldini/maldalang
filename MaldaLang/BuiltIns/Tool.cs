@@ -14,6 +14,11 @@ public class ToolInstance : ObjectInstance
     public string Description { get; set; } = "";
     public string WorkingDirectory { get; set; } = "";
     /// <summary>
+    /// Optional host-minted capability bound to a factory tool so model-supplied
+    /// URLs / commands stay under that token. Not serialized through LLM JSON.
+    /// </summary>
+    public CapabilityToken? Capability { get; set; }
+    /// <summary>
     /// True when <c>@Tool</c> / <c>@MCPTool</c> supplied a third-argument schema
     /// (name or JSON). Auto-generated all-string schemas stay advertise-only.
     /// </summary>

@@ -325,6 +325,223 @@ public class CapabilityTokenTests : TestBase
     }
 
     [Fact]
+    public void FewShot_CapHttpMcpShell_ConfineAndForge()
+    {
+        var path = PlanningPaths.ResolveRepoFile("docs", "llm", "few-shot", "42_cap_http_mcp_shell.malda");
+        var lines = RunProgram(File.ReadAllText(path)).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal("true", lines[0]);
+        Assert.Equal("true", lines[1]);
+        Assert.Equal("true", lines[2]);
+        Assert.Equal("true", lines[3]);
+        Assert.Equal("false", lines[4]);
+    }
+
+    [Fact]
+    public void HttpMcpShell_MintConfineAndRejectBeforeConsume()
+    {
+        var source = """
+            var http = cap.httpGet("https://example.com/docs");
+            print(http.kind);
+            print(http.path);
+            print(cap.confine(http, "guide").path);
+            print(cap.is(http, "httpGet"));
+            print(cap.is({ "kind": "httpGet", "path": "https://example.com/docs" }));
+
+            var fetchForged = false;
+            try {
+                cap.fetch({ "kind": "httpGet", "path": "https://example.com/docs" });
+            } catch (e) {
+                fetchForged = true;
+            }
+            print(fetchForged);
+
+            var fetchOutside = false;
+            try {
+                cap.fetch(http, "https://evil.com");
+            } catch (e) {
+                fetchOutside = true;
+            }
+            print(fetchOutside);
+
+            var confineHttp = false;
+            try {
+                cap.confine(http, "https://evil.com");
+            } catch (e) {
+                confineHttp = true;
+            }
+            print(confineHttp);
+
+            var mcp = cap.mcpCall("local", "add");
+            print(mcp.kind);
+            print(mcp.path);
+            print(mcp.name);
+            print(cap.confine(cap.mcpCall("local"), "add").name);
+
+            var mcpWrongTool = false;
+            try {
+                cap.confine(mcp, "delete");
+            } catch (e) {
+                mcpWrongTool = true;
+            }
+            print(mcpWrongTool);
+
+            var invokeForged = false;
+            try {
+                cap.invoke({ "kind": "mcpCall", "path": "local", "name": "add" }, new MCPServer());
+            } catch (e) {
+                invokeForged = true;
+            }
+            print(invokeForged);
+
+            var shell = cap.shell("git");
+            print(shell.kind);
+            print(shell.path);
+            print(cap.confine(shell, "status").path);
+            print(cap.shell(["malda", "test"]).path);
+
+            var shellEscape = false;
+            try {
+                cap.confine(shell, "..");
+            } catch (e) {
+                shellEscape = true;
+            }
+            print(shellEscape);
+
+            var runForged = false;
+            try {
+                cap.run({ "kind": "shell", "path": "git" });
+            } catch (e) {
+                runForged = true;
+            }
+            print(runForged);
+
+            var runAbs = false;
+            try {
+                cap.run(shell, ["/bin/rm"]);
+            } catch (e) {
+                runAbs = true;
+            }
+            print(runAbs);
+            """;
+        var lines = RunProgram(source).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal("httpGet", lines[0]);
+        Assert.Equal("https://example.com/docs", lines[1]);
+        Assert.Equal("https://example.com/docs/guide", lines[2]);
+        Assert.Equal("true", lines[3]);
+        Assert.Equal("false", lines[4]);
+        Assert.Equal("true", lines[5]);
+        Assert.Equal("true", lines[6]);
+        Assert.Equal("true", lines[7]);
+        Assert.Equal("mcpCall", lines[8]);
+        Assert.Equal("local", lines[9]);
+        Assert.Equal("add", lines[10]);
+        Assert.Equal("add", lines[11]);
+        Assert.Equal("true", lines[12]);
+        Assert.Equal("true", lines[13]);
+        Assert.Equal("shell", lines[14]);
+        Assert.Equal("git", lines[15]);
+        Assert.Equal("git status", lines[16]);
+        Assert.Equal("malda test", lines[17]);
+        Assert.Equal("true", lines[18]);
+        Assert.Equal("true", lines[19]);
+        Assert.Equal("true", lines[20]);
+    }
+
+    [Fact]
+    public void Invoke_UsesMcpToken_AndRejectsWrongTool()
+    {
+        var source = """
+            schema AddArgs {
+                a: int;
+                b: int;
+            }
+
+            @MCPTool("add", "Adds two numbers", "AddArgs")
+            function add(a, b) {
+                return int(a) + int(b);
+            }
+
+            var server = new MCPServer();
+            var addCap = cap.mcpCall("local", "add");
+            var sum = cap.invoke(addCap, server, dict { "a": 2, "b": 3 });
+            print(sum.ok);
+            print(sum.data);
+
+            var viaCallTool = server.callTool(addCap, dict { "a": 4, "b": 1 });
+            print(viaCallTool.ok);
+            print(viaCallTool.data);
+
+            var unnamed = false;
+            try {
+                cap.invoke(cap.mcpCall("local"), server, dict { "a": 1, "b": 2 });
+            } catch (e) {
+                unnamed = true;
+            }
+            print(unnamed);
+            """;
+        var lines = RunProgram(source).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal("true", lines[0]);
+        Assert.Equal("5", lines[1]);
+        Assert.Equal("true", lines[2]);
+        Assert.Equal("5", lines[3]);
+        Assert.Equal("true", lines[4]);
+    }
+
+    [Fact]
+    public void BoundFetchAndRunTools_RejectOutsideToken()
+    {
+        var source = """
+            var http = cap.httpGet("https://example.com/docs");
+            var fetchTool = createWebFetchTool(http);
+            var fetchBlocked = fetchTool.execute({ "url": "https://evil.com" });
+            print(typeOf(fetchBlocked) == "string");
+
+            var shell = cap.shell("git");
+            var runTool = createRunCommandTool(shell);
+            var runBlocked = runTool.execute({ "command": "rm", "args": ["-rf", "/"] });
+            print(typeOf(runBlocked) == "string");
+
+            var webFetchOutside = false;
+            try {
+                webFetch(http, "https://evil.com");
+            } catch (e) {
+                webFetchOutside = true;
+            }
+            print(webFetchOutside);
+            """;
+        var lines = RunProgram(source).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal("true", lines[0]);
+        Assert.Equal("true", lines[1]);
+        Assert.Equal("true", lines[2]);
+    }
+
+    [Fact]
+    public void HttpMcpShell_TranspileAgreesWithInterpreter()
+    {
+        var source = """
+            var http = cap.httpGet("https://example.com/docs");
+            print(http.path);
+            print(cap.confine(http, "guide").path);
+            var fetchOutside = false;
+            try {
+                cap.fetch(http, "https://evil.com");
+            } catch (e) {
+                fetchOutside = true;
+            }
+            print(fetchOutside);
+            print(cap.mcpCall("local", "add").name);
+            print(cap.confine(cap.shell("git"), "status").path);
+            print(cap.is({ "kind": "shell", "path": "git" }));
+            """;
+        var interpreted = RunProgram(source).Replace("\r\n", "\n").Trim();
+        var transpiled = TranspiledTestRunner.CompileAndRunFromSource(source).StdOut.Replace("\r\n", "\n").Trim();
+        Assert.Equal(interpreted, transpiled);
+        Assert.Contains("https://example.com/docs/guide", transpiled);
+        Assert.Contains("true", transpiled);
+        Assert.Contains("false", transpiled);
+    }
+
+    [Fact]
     public void Scaffold_AgentTemplate_RunsAppAndMaldaTest()
     {
         var root = CreateTempDirectory("malda_scaffold_agent_run_");

@@ -1,0 +1,43 @@
+// Capability tokens beyond files: HTTP GET, MCP call, and a shell argv prefix.
+// Consume rejects forged dicts. confine / fetch / invoke / run throw before
+// HTTP, MCP, or a process when the model invents a URL, tool, or executable.
+// Run with: malda Examples/Tools/capability_http_mcp_shell.malda
+
+var http = cap.httpGet("https://example.com/docs");
+io.print(http.kind);
+io.print(http.path);
+io.print(cap.confine(http, "guide").path);
+
+var fetchOutside = false;
+try {
+    cap.fetch(http, "https://evil.com");
+} catch (e) {
+    fetchOutside = true;
+}
+io.print(fetchOutside);
+
+schema AddArgs {
+    a: int;
+    b: int;
+}
+
+@MCPTool("add", "Adds two numbers", "AddArgs")
+function add(a, b) {
+    return int(a) + int(b);
+}
+
+var server = new MCPServer();
+var addCap = cap.mcpCall("local", "add");
+io.print(addCap.name);
+var sum = cap.invoke(addCap, server, dict { "a": 1, "b": 1 });
+io.print(sum.data);
+
+var shell = cap.shell("git");
+io.print(cap.confine(shell, "status").path);
+var runForged = false;
+try {
+    cap.run({ "kind": "shell", "path": "git" });
+} catch (e) {
+    runForged = true;
+}
+io.print(runForged);

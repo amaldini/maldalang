@@ -13632,17 +13632,24 @@ public class CSharpTranspiler
             "fileRead" => nameof(CapStdLib.FileRead),
             "fileWrite" => nameof(CapStdLib.FileWrite),
             "dirList" => nameof(CapStdLib.DirList),
+            "httpGet" => nameof(CapStdLib.HttpGet),
+            "mcpCall" => nameof(CapStdLib.McpCall),
+            "shell" => nameof(CapStdLib.Shell),
             "is" => nameof(CapStdLib.Is),
             "confine" => nameof(CapStdLib.Confine),
             "read" => nameof(CapStdLib.Read),
             "write" => nameof(CapStdLib.Write),
             "list" => nameof(CapStdLib.List),
+            "fetch" => nameof(CapStdLib.Fetch),
+            "invoke" => nameof(CapStdLib.Invoke),
+            "run" => nameof(CapStdLib.Run),
             _ => null
         };
         if (method == null)
             return false;
 
-        var needsInterpreter = method is nameof(CapStdLib.Read) or nameof(CapStdLib.Write) or nameof(CapStdLib.List);
+        var needsInterpreter = method is nameof(CapStdLib.Read) or nameof(CapStdLib.Write) or nameof(CapStdLib.List)
+            or nameof(CapStdLib.Fetch) or nameof(CapStdLib.Run);
         _output.Append("RuntimeHelpers.UnwrapRuntimeValue(MaldaLang.BuiltIns.CapStdLib.");
         _output.Append(method);
         _output.Append("(new List<MaldaLang.Interpreter.RuntimeValue> { ");
