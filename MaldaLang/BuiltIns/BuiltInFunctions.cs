@@ -132,6 +132,8 @@ public static class BuiltInFunctions
         env.Define(StdLibNamespaces.GroundedModule, RuntimeValue.Object(new GroundedInstance()));
         env.Define(StdLibNamespaces.CapModule, RuntimeValue.Object(new CapInstance()));
         env.Define(StdLibNamespaces.AgentsModule, RuntimeValue.Object(new AgentsInstance()));
+        env.Define(StdLibNamespaces.TraceModule, RuntimeValue.Object(new TraceInstance()));
+        AgentErrorStdLib.BindGlobals(env);
     }
     
     private static RuntimeValue BuiltInAll(List<RuntimeValue> args)
@@ -182,31 +184,20 @@ public static class BuiltInFunctions
 
             var tasks = taskList.ToArray();
 
-            try
+            var results = new List<RuntimeValue>(tasks.Length);
+            foreach (var task in tasks)
             {
-                var results = await System.Threading.Tasks.Task.WhenAll(tasks).ConfigureAwait(false);
-                return RuntimeValue.Array(results.ToList());
-            }
-            catch (Exception ex)
-            {
-                // Task.WhenAll throws after all tasks have completed; preserve best-effort
-                Exception? first = ex;
-
-                if (ex is AggregateException agg)
+                try
                 {
-                    var flattened = agg.Flatten();
-                    first = flattened.InnerExceptions.FirstOrDefault() ?? flattened;
+                    results.Add(await task.ConfigureAwait(false));
                 }
-
-                // If the first inner is itself an AggregateException, unwrap one level
-                if (first is AggregateException agg2)
+                catch (Exception ex)
                 {
-                    var flattened2 = agg2.Flatten();
-                    first = flattened2.InnerExceptions.FirstOrDefault() ?? flattened2;
+                    results.Add(AgentErrorStdLib.Upstream(0, ex.Message));
                 }
-
-                throw first!;
             }
+
+            return RuntimeValue.Array(results);
         }
 
         return RuntimeValue.Task(ImplAsync());
@@ -1284,6 +1275,10 @@ public static class BuiltInFunctions
             "exit" => BuiltInExit(args),
             "error" => BuiltInError(args),
             "assert" => BuiltInAssert(args),
+            "expect" => BuiltInExpect(args),
+            "race" => BuiltInRace(args),
+            "firstOk" => BuiltInFirstOk(args),
+            "stream" => StreamStdLib.Stream(args),
             // Additional string utilities
             "startsWith" => BuiltInStartsWith(args),
             "endsWith" => BuiltInEndsWith(args),
@@ -1682,6 +1677,10 @@ public static class BuiltInFunctions
             "exit" => BuiltInExit(args),
             "error" => BuiltInError(args),
             "assert" => BuiltInAssert(args),
+            "expect" => BuiltInExpect(args),
+            "race" => BuiltInRace(args),
+            "firstOk" => BuiltInFirstOk(args),
+            "stream" => StreamStdLib.Stream(args),
             // Additional string utilities
             "startsWith" => BuiltInStartsWith(args),
             "endsWith" => BuiltInEndsWith(args),
@@ -3452,6 +3451,8 @@ public static class BuiltInFunctions
 
         result.Set("ok", RuntimeValue.Boolean(false));
         result.Set("error", RuntimeValue.String(error));
+        var schemaName = args[0].Type == ValueType.String ? args[0].AsString() : "schema";
+        result.Set("agentError", AgentErrorStdLib.SchemaMismatch(schemaName, error));
         return RuntimeValue.Object(result);
     }
 
@@ -4870,7 +4871,66 @@ public static class BuiltInFunctions
         
         return RuntimeValue.Null();
     }
-    
+
+    private static RuntimeValue BuiltInExpect(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("expect", args, 1, 2, "condition, message?");
+        if (!args[0].IsTruthy())
+        {
+            var message = args.Count > 1 && args[1].Type == ValueType.String
+                ? args[1].AsString()
+                : "Expectation failed";
+            throw new RuntimeException(message);
+        }
+
+        return RuntimeValue.Null();
+    }
+
+    private static RuntimeValue BuiltInRace(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("race", args, 1, BuiltInArity.Unbounded, "tasks...");
+        var tasks = FlattenTaskArgs(args);
+        return RaceOrFirst(tasks, firstOk: false);
+    }
+
+    private static RuntimeValue BuiltInFirstOk(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("firstOk", args, 1, BuiltInArity.Unbounded, "tasks...");
+        var tasks = FlattenTaskArgs(args);
+        return RaceOrFirst(tasks, firstOk: true);
+    }
+
+    private static List<RuntimeValue> FlattenTaskArgs(List<RuntimeValue> args)
+    {
+        if (args.Count == 1 && args[0].Type == ValueType.Array)
+            return args[0].AsArray();
+        return args;
+    }
+
+    private static RuntimeValue RaceOrFirst(List<RuntimeValue> taskValues, bool firstOk)
+    {
+        Exception? firstError = null;
+        foreach (var value in taskValues)
+        {
+            try
+            {
+                var result = value.Type == ValueType.Task
+                    ? value.AsTask().GetAwaiter().GetResult()
+                    : value;
+                if (!firstOk || result.Type != ValueType.Variant || result.AsVariant().Tag != "Timeout")
+                    return result;
+            }
+            catch (Exception ex)
+            {
+                firstError ??= ex;
+            }
+        }
+
+        if (firstError != null)
+            throw firstError;
+        return RuntimeValue.Null();
+    }
+
     // ========== Additional String Utilities ==========
     
     private static RuntimeValue BuiltInStartsWith(List<RuntimeValue> args)

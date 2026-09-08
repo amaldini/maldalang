@@ -410,6 +410,17 @@ public static class WorkflowDeterminismDiagnostics
             {
                 AnalyzeCalleeName(memberName, namespaced: true, member.Line, member.Column, Math.Max(1, memberName.Length), depth);
             }
+
+            if (call.Callee is MemberAccessExpression ctxMember
+                && ctxMember.Member is "add" or "compact")
+            {
+                ReportDenyList(
+                    "WF1006",
+                    "WF1006: context mutation or compaction in a deterministic workflow section must be inside a step.",
+                    ctxMember.Line,
+                    ctxMember.Column,
+                    Math.Max(1, ctxMember.Member.Length));
+            }
         }
 
         private void AnalyzeCalleeName(string name, bool namespaced, int line, int column, int length, int depth)

@@ -101,6 +101,7 @@ public static class CapStdLib
     {
         BuiltInArity.Require("read", args, 1, 3, "token, startLine?, endLine?");
         var token = RequireToken(args[0], CapabilityToken.KindFileRead, "read");
+        AuditCap("fs", "read", token.Path);
         var forwarded = new List<RuntimeValue> { RuntimeValue.String(token.Path) };
         for (var i = 1; i < args.Count; i++)
             forwarded.Add(args[i]);
@@ -111,6 +112,7 @@ public static class CapStdLib
     {
         BuiltInArity.Require("write", args, 2, 2, "token, content");
         var token = RequireToken(args[0], CapabilityToken.KindFileWrite, "write");
+        AuditCap("fs", "write", token.Path);
         return BuiltInFunctions.CallBuiltIn(
             "writeFile",
             new List<RuntimeValue> { RuntimeValue.String(token.Path), args[1] },
@@ -121,6 +123,7 @@ public static class CapStdLib
     {
         BuiltInArity.Require("list", args, 1, 1, "token");
         var token = RequireToken(args[0], CapabilityToken.KindDirList, "list");
+        AuditCap("fs", "list", token.Path);
         return BuiltInFunctions.CallBuiltIn(
             "listDirectory",
             new List<RuntimeValue> { RuntimeValue.String(token.Path) },
@@ -144,6 +147,7 @@ public static class CapStdLib
         }
 
         var url = ResolveHttpUrl(token, pathOrUrl);
+        AuditCap("net", "fetch", url);
         var forwarded = new List<RuntimeValue> { RuntimeValue.String(url) };
         for (var i = rest; i < args.Count; i++)
             forwarded.Add(args[i]);
@@ -154,6 +158,7 @@ public static class CapStdLib
     {
         BuiltInArity.Require("invoke", args, 2, 3, "token, server, args?");
         var token = RequireToken(args[0], CapabilityToken.KindMcpCall, "invoke");
+        AuditCap("mcp", "invoke", token.Path);
         if (string.IsNullOrEmpty(token.Name))
             throw new RuntimeException("invoke() token has no tool; mint mcpCall(server, tool) or cap.confine(token, tool)");
 
@@ -180,6 +185,7 @@ public static class CapStdLib
     {
         BuiltInArity.Require("run", args, 1, 4, "token, extraArgs?, workingDir?, timeout?");
         var token = RequireToken(args[0], CapabilityToken.KindShell, "run");
+        AuditCap("shell", "run", token.Path);
         var extras = new List<string>();
         var rest = 1;
         if (args.Count > 1 && args[1].Type != ValueType.Null)
@@ -673,5 +679,22 @@ public static class CapStdLib
             System.IO.Path.GetFileNameWithoutExtension(prefixCmd),
             System.IO.Path.GetFileNameWithoutExtension(supplied),
             StringComparison.OrdinalIgnoreCase);
+    }
+
+    internal static void ThrowIfCancelled()
+    {
+        Interpreter.CurrentCancelToken.ThrowIfCancellationRequested();
+    }
+
+    private static void AuditCap(string domain, string action, string target)
+    {
+        ThrowIfCancelled();
+        MaldaLang.Runtime.Policy.PolicyEngine.Current?.EnsureAllowed(domain, action, target);
+        MaldaLang.Runtime.Journal.RunJournal.Current.Append(new MaldaLang.Runtime.Journal.JournalEvent
+        {
+            Kind = MaldaLang.Runtime.Journal.JournalKind.Cap,
+            Name = $"{domain}.{action}:{target}",
+            Ok = true
+        });
     }
 }

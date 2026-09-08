@@ -287,7 +287,7 @@ Prefer a single listener for UI + API: construct `new RestServer()` (no port), t
 (`get` / `set` / `flash` / `getFlash`). For HTML forms use `csrfField`, `bindForm`,
 `formErrors`, and `pageLayout` (or `ui.layout` for richer pages). Server-driven component
 trees use `ui.*` with signature `ui.control(props, children?, key?)` — no JSX; see
-`few-shot/19_ui_tree.malda` and `ReferenceManual/24-web-ui.html`. Background work that is
+`few-shot/19_ui_tree.malda` and `ReferenceManual/25-web-ui.html`. Background work that is
 not a durable workflow uses `enqueueJob` / `claimJob` / `completeJob` / `failJob` against
 `./.malda/jobs.db`. Durable `workflow` bodies outside `step` refuse deny-listed built-ins
 (`now`, `sleep`, `writeFile`, …) as `WF1001`/`WF1002` **including through same-file helpers**;
@@ -340,6 +340,56 @@ Prefer `str.trimText(response?.content)` over nested `if (response != null) { if
 
 Those are the errors the parser catches for you. The ones it does not catch are in
 [`malda-gotchas.md`](malda-gotchas.md); read that before declaring a program correct.
+
+## Agentic constructs (1.0.17+)
+
+`suite` / `context` / `policy` / `within` are **contextual** (not reserved). `var context = 1;`
+parses. `case` is already a keyword (`case "title" {` vs `case Pattern:`). `expect` / `stream`
+are builtins. JS: n/a (host-only). Human chapter: `ReferenceManual/23-agentic-runs.html`.
+Few-shots: `43_`–`48_`.
+
+```
+suite "name" {                    // skipped by malda run; malda eval executes
+    @samples(N) @threshold(0.9)   // optional; judge after a passing body
+    case "title" { expect(cond); }  // expect throws like assert
+}
+
+context Session {                 // then new Session(); .add / .turns
+    budget: 800 tokens;
+    pin: systemFacts;
+    retain: last 2;
+    evict: oldest;                // oldest | lowestScore | none
+    compact: prompt summarize;    // optional; journaled model call
+}
+
+policy {                          // file-level; enforced on cap consume
+    fs:    readOnly under "./work";
+    net:   allow "api.example.com", "*.internal";
+    shell: deny;                  // deny | allow | readOnly | approve
+    mcp:   allow "local";
+}
+
+within (30s) { … }                // units: Nms | Ns | Nm  (not bare 30)
+within (10ms) budget(tokens: N, tools: N, cost: N?) { … }
+@within(ms)                       // decorator; milliseconds only; not the statement
+```
+
+CLI: `malda eval path.malda [--baseline .malda/evals.json] [--update-baseline]`,
+`malda prompts --diff .malda/evals.json`, `malda check --fix`.
+Env: `MALDA_RECORD` / `MALDA_REPLAY` / `MALDA_REPLAY_STRICT` (cassette key = prompt hash +
+args + model + mode + schema; miss → `cassette_miss` + live fallback unless STRICT),
+`MALDA_TRACE=jsonl|otlp` + `MALDA_TRACE_FILE` (not `malda trace` session files),
+`MALDA_POLICY_APPROVE=1` (else `approve` denies).
+
+Builtins: `trace.span("n", fn)` / `trace.journal()` / `trace.lastUsage()`; `.usage` is
+metadata (own key `usage` wins). `stream(value, schema?)` + `for await (var c in …)`.
+`race` / `firstOk` / `all` (`all` keeps going; failed slots are `AgentError.Upstream`).
+`AgentError` on `r.agentError` beside string `error` (throws still throw).
+`grounded.wrap` + `$"…"` citation union; `@requiresCitations` on sinks.
+WF1006: context mutate / compact inside `workflow` only in a `step`.
+
+Known gaps: `prompt_tools_then_structured` C# NRE (ship `n/a`); GGUF `stream` is buffered;
+`policy { shell: approve }` is env/callback, not a workflow approval UI.
 
 ## Agent host tools (prefer factories, not the shell)
 

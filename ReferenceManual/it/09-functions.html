@@ -174,7 +174,7 @@ print(addFive(10));  // Prints 15</code></pre>
             <strong>Nota:</strong> Le lambda non hanno un proprio contesto <code>this</code>. Se ti serve il binding di <code>this</code>, usa una funzione o un metodo normale.
         </div>
         <h2>9.7 Decoratori</h2>
-        <p>MALDA supporta i decoratori sulle funzioni, per funzionalità come tool personalizzati ed endpoint REST API. I kernel GPU in JavaScript mode usano <code>@shader()</code> — vedi <a href="26-browser-javascript-backend.html#shader-kernels">26.10.1 Kernel shader</a>.</p>
+        <p>MALDA supporta i decoratori sulle funzioni, per funzionalità come tool personalizzati ed endpoint REST API. I kernel GPU in JavaScript mode usano <code>@shader()</code> — vedi <a href="27-browser-javascript-backend.html#shader-kernels">26.10.1 Kernel shader</a>.</p>
         <h3>@within e @budget</h3>
         <p>Usa <code>@within(ms)</code> per una scadenza a orologio reale su un corpo di funzione o su un turno <code>await prompt(...)</code> / <code>agent.think()</code>. Usa <code>@budget(tokens: N, tools: N, cost: N?)</code> per i limiti di risorse sulle stesse dichiarazioni. Non sovraccaricare l'argomento posizionale in millisecondi di <code>@within</code> — le chiavi di budget sono nominate. Le chiavi <code>@budget</code> sconosciute sono errori sotto il flag CLI <code>--strict-types</code> (<code>malda-bounds</code>), con la stessa strictness di <code>@within</code>.</p>
         <pre><code>@within(5000)
@@ -216,7 +216,7 @@ function add(a, b) {
     return int(a) + int(b);
 }</code></pre>
         <h3>Decoratori REST API</h3>
-        <p>Routing, middleware e un server completo sono in <a href="27-rest-api.html">27. Server REST API</a>.</p>
+        <p>Routing, middleware e un server completo sono in <a href="28-rest-api.html">27. Server REST API</a>.</p>
         <pre><code>@GET("/api/users")
 function getUsers() {
     return [{"id": 1, "name": "Alice"}];
@@ -235,7 +235,7 @@ function createUser(body) {
                 <li><a href="10-prompts.html">10. Prompt</a> - Template di prompt, await e schema</li>
                 <li><a href="11-classes-objects.html">11. Classi e oggetti</a> - Metodi nelle classi</li>
                 <li><a href="18-agent-orchestration.html">18. Orchestrazione di agenti</a> - Usare gli agenti con i prompt</li>
-                <li><a href="27-rest-api.html">27. Server REST API</a> - Decoratori REST</li>
+                <li><a href="28-rest-api.html">27. Server REST API</a> - Decoratori REST</li>
             </ul>
         </div>
         <div class="nav-footer">

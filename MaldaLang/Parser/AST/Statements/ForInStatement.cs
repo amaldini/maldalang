@@ -10,12 +10,14 @@ public class ForInStatement : Statement
     public string VariableName { get; }
     public Expression Collection { get; }
     public Statement Body { get; }
+    public bool IsAwait { get; }
     
-    public ForInStatement(string variableName, Expression collection, Statement body, int line = 0, int column = 0)
+    public ForInStatement(string variableName, Expression collection, Statement body, int line = 0, int column = 0, bool isAwait = false)
         : base(line, column)
     {
         VariableName = variableName;
         Collection = collection;
         Body = body;
+        IsAwait = isAwait;
     }
 }

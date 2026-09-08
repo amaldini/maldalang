@@ -2,7 +2,7 @@
 
 *Applies to: MALDA 1.0.17*
 
-Extracted from `ReferenceManual/35-grammar.html` for LLM ingestion.
+Extracted from `ReferenceManual/36-grammar.html` for LLM ingestion.
 If this file disagrees with the parser (`MaldaLang/Parser/Parser.cs`), the **parser wins**.
 Narrative examples: topic chapters under `ReferenceManual/` and `Examples/`.
 
@@ -10,7 +10,7 @@ Narrative examples: topic chapters under `ReferenceManual/` and `Examples/`.
 Program     ::= TopLevelItem*
 TopLevelItem::= IncludeStmt | UsingStmt | ImportStmt
               | WorkflowDecl | ActorDecl | ClassDecl | PromptDecl | TypeDecl | ComponentDecl
-              | SchemaDecl | ApiDecl
+              | SchemaDecl | ApiDecl | SuiteDecl | ContextDecl | PolicyDecl
               | DecoratedFunctionDecl | DecoratedPropertyDecl | PropertyDecl
               | ExportableDecl | Statement
 
@@ -74,6 +74,18 @@ DecoratorArgList ::= DecoratorArg ("," DecoratorArg)*
 DecoratorArg  ::= (Identifier ":")? Expression
                   /* named keys are decorator-only; @budget(tokens: 4000, tools: 8). Call-site ArgList stays positional. */
 
+SuiteDecl     ::= "suite" StringLiteral "{" EvalCase* "}"
+EvalCase      ::= Decorator* "case" StringLiteral Block
+ContextDecl   ::= "context" Identifier "{" ContextField* "}"
+ContextField  ::= ("budget" ":" Integer "tokens"?
+                | "pin" ":" Identifier ("," Identifier)*
+                | "retain" ":" "last" Integer
+                | "evict" ":" Identifier
+                | "compact" ":" "prompt"? Identifier) ";"
+PolicyDecl    ::= "policy" "{" PolicyRule* "}"
+PolicyRule    ::= Identifier ":" Identifier PolicyArg* ";"
+PolicyArg     ::= "under"? (StringLiteral | Identifier)
+
 WorkflowDecl  ::= "workflow" Identifier "(" ParamList? ")" "{" WorkflowStmt* "}"
 WorkflowStmt  ::= StepStmt | ApprovalStmt | WaitStmt | Statement
 StepStmt      ::= "step" Identifier "=" CallExpr StepOptions? ";"
@@ -93,7 +105,8 @@ CallExpr      ::= Expression PostfixSuffix*   /* see Â§34.4 */
 
 Statement   ::= VarDecl | DestructuringVarDecl
               | Assignment | DestructuringAssignment
-              | IfStmt | WhileStmt | ForStmt | ForeachStmt
+              | IfStmt | WhileStmt | ForStmt | ForAwaitStmt | ForeachStmt
+              | WithinStmt
               | ReturnStmt | PrintStmt | BreakStmt | ContinueStmt
               | TryStmt | ThrowStmt | SendStmt
               | MatchStmt | ExpressionStmt | Block
@@ -108,8 +121,11 @@ DestructuringAssignment ::= DestructuringPattern "=" Expression ";"
 IfStmt      ::= "if" "(" Expression ")" Statement ("else" Statement)?
 WhileStmt   ::= "while" "(" Expression ")" Statement
 ForStmt     ::= "for" "(" (VarDecl | Assignment)? ";" Expression? ";" Assignment? ")" Statement
+ForAwaitStmt::= "for" "await" "(" "var" Identifier "in" Expression ")" Statement
 ForeachStmt ::= "foreach" "(" "var" Identifier "in" Expression ")" Statement
               | "for" "(" "var" Identifier "in" Expression ")" Statement
+WithinStmt  ::= "within" "(" Integer ("ms" | "s" | "m") ")"
+                ("budget" "(" BudgetArg ("," BudgetArg)* ")")? Block
 
 ReturnStmt  ::= "return" Expression? ";"
 PrintStmt   ::= "print" "(" Expression ")" ";"

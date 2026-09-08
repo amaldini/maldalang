@@ -328,7 +328,8 @@ public partial class PromptValue
                 WithinBoundsContext.EnsureWithinBound(Declaration.Name);
                 var untypedResponse = agent.Think(promptInstanceValue);
                 var content = TryExtractResponseContent(untypedResponse);
-                return content != null ? RuntimeValue.String(content) : RuntimeValue.String(untypedResponse.ToString());
+                var text = content != null ? RuntimeValue.String(content) : RuntimeValue.String(untypedResponse.ToString());
+                return FinishPromptResult(text, ok: true, repairs: 0, error: null);
             }
 
             const int maxAttempts = 3;
@@ -385,7 +386,7 @@ public partial class PromptValue
                     continue;
                 }
 
-                return validated;
+                return FinishPromptResult(validated, ok: true, repairs: attempt - 1, error: null);
             }
 
             throw new RuntimeException(
@@ -518,5 +519,23 @@ public partial class PromptValue
         }
 
         return list;
+    }
+
+    private RuntimeValue FinishPromptResult(RuntimeValue value, bool ok, int repairs, string? error)
+    {
+        var hash = MaldaLang.Runtime.LlmCassettes.PromptHasher.Hash(Declaration.Name + "\n" + (Declaration.ReturnType ?? ""));
+        MaldaLang.Runtime.Journal.RunJournal.Current.Append(new MaldaLang.Runtime.Journal.JournalEvent
+        {
+            Kind = MaldaLang.Runtime.Journal.JournalKind.Prompt,
+            Name = Declaration.Name,
+            PromptHash = hash,
+            Ok = ok,
+            Repairs = repairs,
+            Error = error
+        });
+        var usage = MaldaLang.Runtime.Journal.RunJournal.Current.LastUsage
+            ?? new MaldaLang.Runtime.Journal.RunUsage { Repairs = repairs };
+        usage.Repairs = repairs;
+        return value.WithUsage(usage);
     }
 }

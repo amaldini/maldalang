@@ -1,0 +1,8 @@
+// File-level policy is not @effects. Consume of a denied cap throws ToolDenied.
+// This file only declares the policy (runnable). Approve needs MALDA_POLICY_APPROVE=1.
+
+policy {
+    shell: deny;
+}
+
+io.print("ok");

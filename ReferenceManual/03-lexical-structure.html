@@ -65,7 +65,7 @@ var my-var = 60;     // Invalid: contains hyphen</code></pre>
 
         <h2 id="keywords">3.3 Keywords</h2>
 
-        <p>Keywords are reserved words that have special meaning in MALDA. They cannot be used as identifiers. The authoritative list is in <code>MaldaLang/Lexer.cs</code>; the same set appears in <a href="36-appendix.html">Appendix A: Reserved Words</a>.</p>
+        <p>Keywords are reserved words that have special meaning in MALDA. They cannot be used as identifiers. The authoritative list is in <code>MaldaLang/Lexer.cs</code>; the same set appears in <a href="37-appendix.html">Appendix A: Reserved Words</a>.</p>
 
         <h3>Complete Keyword List</h3>
         <pre><code><a href="08-control-structures.html">if</a>, <a href="08-control-structures.html">else</a>, <a href="08-control-structures.html">while</a>, <a href="08-control-structures.html">for</a>, <a href="08-control-structures.html">foreach</a>, <a href="09-functions.html">function</a>, <a href="09-functions.html">return</a>, <a href="05-variables.html">var</a>, <a href="05-variables.html">const</a>, <a href="12-input-output.html">print</a>, <a href="12-input-output.html">input</a>,
@@ -75,10 +75,11 @@ var my-var = 60;     // Invalid: contains hyphen</code></pre>
 <a href="10-prompts.html">prompt</a>, <a href="07-expressions.html">async</a>, <a href="07-expressions.html">await</a>,
 <a href="17-actors.html">actor</a>, <a href="17-actors.html">spawn</a>, <a href="17-actors.html">send</a>, <a href="17-actors.html">receive</a>, <a href="17-actors.html">self</a>, <a href="17-actors.html">on</a>, <a href="17-actors.html">then</a>, <a href="17-actors.html">timeout</a>, <a href="17-actors.html">message</a>,
 <a href="22-durable-workflows.html">workflow</a>, <a href="22-durable-workflows.html">step</a>, <a href="22-durable-workflows.html">approval</a>, <a href="22-durable-workflows.html">wait</a>, <a href="22-durable-workflows.html">retry</a>, <a href="22-durable-workflows.html">backoff</a>, <a href="22-durable-workflows.html">delay</a>, <a href="22-durable-workflows.html">maxDelay</a>, <a href="22-durable-workflows.html">compensate</a>, <a href="22-durable-workflows.html">onReject</a>,
-<a href="24-web-ui.html">component</a>, <a href="24-web-ui.html">property</a>,
+<a href="25-web-ui.html">component</a>, <a href="25-web-ui.html">property</a>,
 <a href="07-expressions.html">dict</a>, <a href="14-graphs.html">graph</a>, <a href="14-graphs.html">directed</a>, <a href="14-graphs.html">undirected</a>, <a href="08-control-structures.html">in</a>,
 <a href="01-introduction.html">using</a>, <a href="01-introduction.html">include</a>, <a href="01-introduction.html">import</a>, <a href="01-introduction.html">export</a></code></pre>
         <p><code>fn</code> and <code>def</code> are not keywords; the parser rejects them in favor of <code>function</code>. <code>reply</code> is a built-in function, not a keyword.</p>
+        <p><code>suite</code>, <code>context</code>, <code>policy</code>, and <code>within</code> are <strong>contextual</strong> words, not reserved keywords — <code>var context = 1;</code> still parses. See <a href="23-agentic-runs.html">23.1</a>.</p>
         <p><code>using</code> serves two unrelated purposes: a top-level package alias (<code>using json = System.Text.Json;</code>) and a scoped resource block (<code>using conn = openDb() { ... }</code>). See <a href="01-introduction.html">1. Introduction</a> and <a href="08-control-structures.html">8. Control Structures</a> respectively.</p>
 
         <h3>Keyword Categories</h3>
@@ -102,7 +103,7 @@ var my-var = 60;     // Invalid: contains hyphen</code></pre>
             <li><strong>Null:</strong> <a href="04-data-types.html"><code>null</code></a></li>
             <li><strong>Actors:</strong> <a href="17-actors.html"><code>actor</code></a>, <a href="17-actors.html"><code>message</code></a>, <a href="17-actors.html"><code>spawn</code></a>, <a href="17-actors.html"><code>send</code></a>, <a href="17-actors.html"><code>receive</code></a>, <a href="17-actors.html"><code>self</code></a>, <a href="17-actors.html"><code>on</code></a>, <a href="17-actors.html"><code>then</code></a>, <a href="17-actors.html"><code>timeout</code></a></li>
             <li><strong>Workflows:</strong> <a href="22-durable-workflows.html"><code>workflow</code></a>, <a href="22-durable-workflows.html"><code>step</code></a>, <a href="22-durable-workflows.html"><code>approval</code></a>, <a href="22-durable-workflows.html"><code>wait</code></a>, <a href="22-durable-workflows.html"><code>retry</code></a>, <a href="22-durable-workflows.html"><code>backoff</code></a>, <a href="22-durable-workflows.html"><code>delay</code></a>, <a href="22-durable-workflows.html"><code>maxDelay</code></a>, <a href="22-durable-workflows.html"><code>compensate</code></a>, <a href="22-durable-workflows.html"><code>onReject</code></a></li>
-            <li><strong>Web UI:</strong> <a href="24-web-ui.html"><code>component</code></a>, <a href="24-web-ui.html"><code>property</code></a></li>
+            <li><strong>Web UI:</strong> <a href="25-web-ui.html"><code>component</code></a>, <a href="25-web-ui.html"><code>property</code></a></li>
             <li><strong>Async Operations:</strong> <a href="07-expressions.html"><code>async</code></a>, <a href="07-expressions.html"><code>await</code></a></li>
             <li><strong>Data Structures:</strong> <a href="07-expressions.html"><code>dict</code></a>, <a href="14-graphs.html"><code>graph</code></a>, <a href="14-graphs.html"><code>directed</code></a>, <a href="14-graphs.html"><code>undirected</code></a>, <a href="08-control-structures.html"><code>in</code></a></li>
         </ul>
@@ -433,7 +434,7 @@ print(user?["name"]);   // null, no error</code></pre>
             <h3>See Also</h3>
             <ul>
                 <li><a href="07-expressions.html">7. Expressions</a> - How operators are used in expressions</li>
-                <li><a href="36-appendix.html">36. Appendix</a> - Operator precedence table</li>
+                <li><a href="37-appendix.html">37. Appendix</a> - Operator precedence table</li>
             </ul>
         </div>
 

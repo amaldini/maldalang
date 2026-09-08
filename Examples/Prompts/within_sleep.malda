@@ -1,0 +1,5 @@
+within (10ms) {
+    sleep(50);
+}
+
+io.print("should-not-print");

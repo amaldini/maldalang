@@ -24,6 +24,7 @@ using MaldaLang.UIHost;
 using MaldaLang.Runtime.Profiling;
 using MaldaLang.Runtime.Workflows;
 using MaldaLang.Cli;
+using MaldaLang.Eval;
 using MaldaLang.IDE;
 using MaldaLang.IDE.Models;
 using MaldaLang.BuiltIns;
@@ -219,6 +220,20 @@ class Program
             else if (firstArg == "test")
             {
                 var runner = new TestCommandRunner();
+                var exitCode = runner.Run(args.Skip(1).ToArray(), Console.Out, Console.Error);
+                SystemEnvironment.Exit(exitCode);
+                return;
+            }
+            else if (firstArg == "eval")
+            {
+                var runner = new EvalCommandRunner();
+                var exitCode = runner.Run(args.Skip(1).ToArray(), Console.Out, Console.Error);
+                SystemEnvironment.Exit(exitCode);
+                return;
+            }
+            else if (firstArg == "prompts")
+            {
+                var runner = new PromptsCommandRunner();
                 var exitCode = runner.Run(args.Skip(1).ToArray(), Console.Out, Console.Error);
                 SystemEnvironment.Exit(exitCode);
                 return;
@@ -3996,7 +4011,9 @@ class Program
         Console.WriteLine("  play        Compile a .malda file to JavaScript and serve a local canvas/JS preview");
         Console.WriteLine();
         Console.WriteLine("Build, test, and ship:");
-        Console.WriteLine("  check       Diagnose a .malda file without executing (add --json for agents)");
+        Console.WriteLine("  check       Diagnose a .malda file without executing (add --json / --fix)");
+        Console.WriteLine("  eval        Run suite / case evals (not malda test)");
+        Console.WriteLine("  prompts     Compare prompt hashes (--diff <baseline.json>)");
         Console.WriteLine("  compile     Compile a MALDA file to exe, dll, js, pwa, or fullstack output");
         Console.WriteLine("  test        Discover and run MALDA tests");
         Console.WriteLine("  db          Inspect, migrate, seed, and roll back scaffolded local-first SQLite state");
@@ -4050,6 +4067,12 @@ class Program
         {
             case "check":
                 CheckCommandRunner.PrintUsage(Console.Out);
+                return true;
+            case "eval":
+                new EvalCommandRunner().Run(new[] { "--help" }, Console.Out, Console.Error);
+                return true;
+            case "prompts":
+                new PromptsCommandRunner().Run(new[] { "--help" }, Console.Out, Console.Error);
                 return true;
             case "doctor":
                 DoctorCommandRunner.PrintUsage(Console.Out);

@@ -35,6 +35,8 @@ you call is either a built-in function or a class you construct with `new`.
 | `result` / `option` | `Result` and `Option` constructors and combinators |
 | `grounded` | `grounded.wrap(value, citations?)` — payload plus `{ source, id?, span? }` |
 | `cap` | `cap.fileRead` / `httpGet` / `mcpCall` / `shell` — unforgeable tokens; `cap.confine` then `cap.read` / `fetch` / `invoke` / `run`. Scaffold: `malda new agent` |
+| `trace` | `trace.span` / `trace.journal` / `trace.lastUsage` — run journal |
+| `expect` / `stream` / `race` / `firstOk` | Eval assertion (`malda eval` runs `suite` cases), chunked output, structured concurrency. Cassettes: `MALDA_RECORD` / `MALDA_REPLAY` / `MALDA_REPLAY_STRICT` |
 
 Built-in classes you instantiate with `new`: `LLMClient`, `OpenRouterClient`,
 `LlamaCppClient`, `LlamaEmbedder`, `Agent`, `CodingAgent`, `MALDACodingAgent`, `DevAgent`,
@@ -159,7 +161,7 @@ Use `@PAGE` + `pageLayout` for route-first HTML; use `ui.*` (+ optional `compone
 tree/patch UI. Grep `malda-builtins.tsv` for a control name (`uiButton`, `uiDataGrid`, …);
 call it as `ui.button(...)`, `ui.dataGrid(...)`.
 
-API reference: `ReferenceManual/24-web-ui.html` (start at `23-web-ui-hub.html`).
+API reference: `ReferenceManual/25-web-ui.html` (start at `24-web-ui-hub.html`).
 Runnable shapes: `docs/llm/few-shot/19_ui_tree.malda`, `Examples/Web/ui_*.malda`,
 `Templates/fullstack/`.
 
@@ -184,6 +186,8 @@ Durable: `step result = runProgram(prog)` — `docs/llm/few-shot/29_runprogram_i
 `Examples/Workflows/runprogram_in_step.malda`.
 `validate("Intent", dict)` leaves a tagged dict; `asVariant("Intent", dict)` yields a variant for `match` (few-shot `25_as_variant.malda`).
 `evalPrompt(instance, fixture)` fixture-tests a typed `PromptInstance` without an LLM (few-shot `27_eval_prompt.malda`).
+`malda eval` runs `suite` / `case` / `expect` (ordinary `malda run` skips suites). Cassettes:
+`MALDA_RECORD` / `MALDA_REPLAY` / `MALDA_REPLAY_STRICT` — few-shots `43_`–`48_`, chapter 23.
 
 ## Actors
 

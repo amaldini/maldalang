@@ -3,7 +3,7 @@
 
 namespace MaldaLang.Interpreter;
 
-internal static class WithinBoundsContext
+public static class WithinBoundsContext
 {
     private static readonly AsyncLocal<Stack<DateTime>?> Deadlines = new();
 

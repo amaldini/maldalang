@@ -15,6 +15,21 @@ public partial class Interpreter
         if (expr.IsNullConditional && obj.Type == ValueType.Null)
             return RuntimeValue.Null();
 
+        if (string.Equals(expr.Member, "usage", StringComparison.Ordinal))
+        {
+            if (obj.Type == ValueType.Object && obj.AsObject() is BuiltIns.JsonObject json
+                && json.TryGet("usage", out var own) && own != null && own.Type != ValueType.Null)
+                return own;
+            if (obj.Usage != null)
+                return obj.Usage.ToRuntimeValue();
+        }
+
+        if (string.Equals(expr.Member, "citations", StringComparison.Ordinal) && obj.Grounded != null
+            && !(obj.Type == ValueType.Object && obj.AsObject() is BuiltIns.JsonObject cited
+                 && cited.TryGet("citations", out var ownCitations) && ownCitations != null
+                 && ownCitations.Type != ValueType.Null))
+            return RuntimeValue.Array(obj.Grounded.Citations);
+
         if (obj.Type == ValueType.Array)
         {
             var arrayInstance = obj.AsArrayInstance();
@@ -116,6 +131,8 @@ public partial class Interpreter
         }
         else if (obj.Type == ValueType.String)
         {
+            if (string.Equals(expr.Member, "usage", StringComparison.Ordinal) && obj.Usage != null)
+                return obj.Usage.ToRuntimeValue();
             if (!IsStringExtensionMethod(expr.Member))
                 throw new RuntimeException($"String has no member '{expr.Member}'. Available: length, upper, lower, trim, substring, indexOf, replace, split, startsWith, endsWith, padStart, padEnd, repeat.", expr.Line, _currentFile);
             var wrapper = new FunctionValue(null, null, false, null);
@@ -125,6 +142,8 @@ public partial class Interpreter
         }
         else
         {
+            if (string.Equals(expr.Member, "usage", StringComparison.Ordinal) && obj.Usage != null)
+                return obj.Usage.ToRuntimeValue();
             throw new RuntimeException("Only objects and classes have members.", expr.Line, _currentFile);
         }
     }

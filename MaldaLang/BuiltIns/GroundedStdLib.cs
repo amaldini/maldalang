@@ -28,7 +28,7 @@ public static class GroundedStdLib
         obj.Set("value", value);
         obj.Set("citations", RuntimeValue.Array(normalized));
         obj.Set("sourced", RuntimeValue.Boolean(normalized.Count > 0));
-        return RuntimeValue.Object(obj);
+        return RuntimeValue.Object(obj).WithGrounded(new MaldaLang.Runtime.GroundedMeta(normalized));
     }
 
     /// <summary>

@@ -27,7 +27,8 @@ Canonical reading order for tools and agents working on this repository.
 - docs/llm/malda-grammar.md — plain-text BNF
 - docs/llm/malda-builtins-min.md — high-frequency builtins and top-level objects
 - docs/llm/malda-builtins.tsv — every builtin, grep-able, generated from the engine
-- docs/llm/few-shot/ — tiny runnable snippets
+- docs/llm/few-shot/ — tiny runnable snippets (agentic: `43_`–`48_`)
+- ReferenceManual/23-agentic-runs.html — eval suites, cassettes, journal, `within`, `context`, `policy`, `AgentError`, stream, check loop
 
 ## Language reference (deeper)
 

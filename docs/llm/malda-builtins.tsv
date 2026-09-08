@@ -105,11 +105,13 @@ evalPrompt	evalPrompt	2-3 arguments: (prompt, fixture, typeName?)	no LLM; same e
 executePlan	executePlan	at least 2 arguments: (plan, agent)		
 exit	exit	0-1 arguments: (code?)	terminates the process immediately; the code must be an integer	
 exp	math.exp	1 argument		
+expect	expect	1-2 arguments: (condition, message?)	throws like assert; used in suite cases (malda eval runs them)	
 extractDocxText	extractDocxText	1 argument: (path)		
 extractHTML	extractHTML	1 string argument		
 extractNumbers	str.extractNumbers	1 argument		
 extractPdfText	extractPdfText	1-2 arguments: (path, password?)		
 failJob	failJob	1-3 arguments: (jobId, error?, retry?)		
+firstOk	firstOk	at least 1 argument: (tasks...)	first branch that is not a Timeout variant	
 float	float	1 argument		
 floor	math.floor	1 argument	returns a float even when whole-valued (print shows 1, not 1.0); integer sinks coerce whole floats, so str.repeat("-", math.floor(n)) works; fractional floats still fail	
 formatDate	formatDate	1-2 arguments: (timestamp, format?)		
@@ -176,6 +178,8 @@ isPathUnder	io.isPathUnder	2 arguments: (root, path)
 isString	isString	1 argument		
 isTag	isTag	2 arguments: (value, tag)		
 join	str.join	1-2 arguments: (array, separator?)		
+journal	trace.journal	0 arguments	in-process run events (prompt/tool/cap/hop/step); not malda trace session files	
+lastUsage	trace.lastUsage	0 arguments	last token/cost/ms object, or null	
 length	str.length	1 argument	accepts a string or an array	
 listDirectory	io.listDirectory	1 argument		
 listJobs	listJobs	0-3 arguments: (queue?, status?, limit?)		
@@ -218,6 +222,7 @@ pow	math.pow	2 arguments
 print	io.print	1 argument	appends a newline; there is no println	
 progress	AnsiConsole.progress	at least 1 argument	preferred: callback (ctx) => { ctx.addTask(name, max); ctx.increment(name, n); ctx.isFinished() }; legacy object { tasks, action? }	null
 prompt	AnsiConsole.prompt	at least 1 object argument: (type, message, defaultValue?)	config object: type text|confirm|selection (aliases input/yesno/choice), message, defaultValue?; selection needs choices: string[]; interactive (needs a TTY)	string for text/selection; bool for confirm
+race	race	at least 1 argument: (tasks...)	first completed branch	
 radToDeg	math.radToDeg	1 argument		
 randn	math.randn	0-2 arguments: (std?, mean?)		
 random	math.random	0 arguments	float in [0.0, 1.0)	
@@ -265,12 +270,14 @@ sin	math.sin	1 argument
 sleep	sleep	1 argument: (milliseconds)	real-time delay; prefer it over busy-wait loops	
 softmax	math.softmax	1-2 arguments: (array, temperature?)		
 sort	sort	1-2 arguments: (array, compareFn?)		
+span	trace.span	2 arguments: (name, fn)	nest journal events under that span name	
 split	str.split	(string, string?, bool?)		
 splitDocuments	splitDocuments	(documents, chunkSize?, overlap?)		
 sqrt	math.sqrt	1 argument	returns a float even when whole-valued (sqrt(4) is 2.0); integer sinks coerce whole floats; wrap with int() if you need an Integer-tagged value	
 startsWith	str.startsWith	2 arguments: (str, prefix)		
 startWorkflow	startWorkflow	at least 1 argument: (name, input?, correlationId?)		
 status	AnsiConsole.status	at least 1 string argument: (message, action?)	spinner around optional 0-arg callback: status(message, () => { ... }); spinner is a no-op when stdout is not a TTY	null
+stream	stream	1-2 arguments: (value, schema?)	yields { text } chunks (or schema-aware partials); GGUF is buffered, not live tokens	
 string	string	1 argument	build messages with "n is " + string(n); there is no {n} interpolation outside prompt bodies	
 substring	str.substring	(string, int, int)		
 sum	math.sum	1 argument: (array)		

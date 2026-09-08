@@ -42,20 +42,32 @@ public static class PromptEval
         if (string.IsNullOrWhiteSpace(typeName))
         {
             if (fixture.Type != ValueType.String)
-                return Ok(fixture);
+                return JournalEval(Ok(fixture), ok: true, instance.ReturnType ?? "prompt");
             if (!TypedPromptValidator.TryExtractJsonCandidate(fixture.AsString(), out var json, out var coerceError)
                 || !TypedPromptValidator.TryParseJson(json, out var parsed, out coerceError))
             {
-                return Ok(fixture);
+                return JournalEval(Ok(fixture), ok: true, instance.ReturnType ?? "prompt");
             }
 
-            return Ok(parsed);
+            return JournalEval(Ok(parsed), ok: true, instance.ReturnType ?? "prompt");
         }
 
         if (!TypedPromptValidator.TryCoerceTypedValue(fixture, typeName, interpreter, out var validated, out var error))
-            return Fail(error);
+            return JournalEval(Fail(error, typeName), ok: false, instance.ReturnType ?? typeName);
 
-        return Ok(validated);
+        return JournalEval(Ok(validated), ok: true, instance.ReturnType ?? typeName);
+    }
+
+    private static RuntimeValue JournalEval(RuntimeValue result, bool ok, string name)
+    {
+        MaldaLang.Runtime.Journal.RunJournal.Current.Append(new MaldaLang.Runtime.Journal.JournalEvent
+        {
+            Kind = MaldaLang.Runtime.Journal.JournalKind.Prompt,
+            Name = "evalPrompt:" + name,
+            PromptHash = MaldaLang.Runtime.LlmCassettes.PromptHasher.Hash(name),
+            Ok = ok
+        });
+        return result;
     }
 
     private static RuntimeValue Ok(RuntimeValue data)
@@ -66,11 +78,11 @@ public static class PromptEval
         return RuntimeValue.Object(result);
     }
 
-    private static RuntimeValue Fail(string error)
+    private static RuntimeValue Fail(string error, string? schema = null)
     {
         var result = new JsonObject();
         result.Set("ok", RuntimeValue.Boolean(false));
         result.Set("error", RuntimeValue.String(error));
-        return RuntimeValue.Object(result);
+        return AgentErrorStdLib.Attach(RuntimeValue.Object(result), AgentErrorStdLib.SchemaMismatch(schema ?? "", error));
     }
 }

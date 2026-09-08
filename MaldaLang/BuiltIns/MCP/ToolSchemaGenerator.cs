@@ -102,12 +102,16 @@ public static class ToolSchemaGenerator
         }
         else if (tool.Function?.Declaration != null)
         {
-            foreach (var paramName in tool.Function.Declaration.Parameters)
+            var decl = tool.Function.Declaration;
+            for (var i = 0; i < decl.Parameters.Count; i++)
             {
-                // Default: all parameters are strings
+                var paramName = decl.Parameters[i];
+                var hint = decl.ParameterTypeHints != null && i < decl.ParameterTypeHints.Count
+                    ? decl.ParameterTypeHints[i]
+                    : null;
                 properties[paramName] = new Dictionary<string, object>
                 {
-                    ["type"] = "string",
+                    ["type"] = JsonTypeForHint(hint),
                     ["description"] = $"Parameter {paramName}"
                 };
                 required.Add(paramName);
@@ -136,5 +140,17 @@ public static class ToolSchemaGenerator
     private static RuntimeValue EvaluateDecoratorArgument(Expression expr, Interpreter interpreter)
     {
         return ToolSchemaResolver.EvaluateNameOrLiteral(expr, interpreter);
+    }
+
+    private static string JsonTypeForHint(string? hint)
+    {
+        if (string.IsNullOrWhiteSpace(hint))
+            return "string";
+        var trimmed = hint.Trim();
+        if (trimmed.EndsWith("[]", StringComparison.Ordinal))
+            return "array";
+        if (SchemaRegistry.TryMapPrimitiveJsonType(trimmed, out var jsonType))
+            return jsonType;
+        return "object";
     }
 }

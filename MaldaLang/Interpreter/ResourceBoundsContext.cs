@@ -112,6 +112,13 @@ public static class ResourceBoundsContext
 
     private static void ThrowExceeded(Frame frame, string key)
     {
+        MaldaLang.Runtime.Journal.RunJournal.Current.Append(new MaldaLang.Runtime.Journal.JournalEvent
+        {
+            Kind = MaldaLang.Runtime.Journal.JournalKind.Prompt,
+            Name = frame.Label,
+            Ok = false,
+            Error = $"{key}:{frame.Budget.MaxTokens?.ToString() ?? frame.Budget.MaxTools?.ToString() ?? frame.Budget.MaxCost?.ToString() ?? ""}"
+        });
         throw new RuntimeException($"{frame.Label} exceeded @budget {key} bound.");
     }
 }

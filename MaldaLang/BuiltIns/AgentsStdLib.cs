@@ -292,6 +292,12 @@ public static class AgentsStdLib
             try
             {
                 response = target.Think(ToThinkArg(validated, interpreter));
+                MaldaLang.Runtime.Journal.RunJournal.Current.Append(new MaldaLang.Runtime.Journal.JournalEvent
+                {
+                    Kind = MaldaLang.Runtime.Journal.JournalKind.Hop,
+                    Name = $"{from}->{to}",
+                    Ok = true
+                });
                 if (verdict == null)
                     verdict = ReadResponseVerdict(response, verdictKey);
             }

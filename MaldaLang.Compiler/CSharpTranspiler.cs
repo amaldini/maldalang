@@ -38,6 +38,7 @@ public class CSharpTranspiler
     private readonly HashSet<string> _variantConstructorNames;
     private readonly List<TypeDeclaration> _typeDeclarations;
     private readonly List<ApiDeclaration> _apiDeclarations;
+    private readonly List<ContextDeclaration> _contextDeclarations;
     private bool _isInWorkflowBody;
     private bool _isInActorHandler;
     private bool _transpileCallAsTask;
@@ -69,6 +70,7 @@ public class CSharpTranspiler
         _variantConstructorNames = new HashSet<string>();
         _typeDeclarations = new List<TypeDeclaration>();
         _apiDeclarations = new List<ApiDeclaration>();
+        _contextDeclarations = new List<ContextDeclaration>();
         _isInWorkflowBody = false;
         _profilingOptions = profilingOptions?.Clone();
         _typedScopeStack = new Stack<Dictionary<string, TranspiledClrType>>();
@@ -101,6 +103,7 @@ public class CSharpTranspiler
         _variantConstructorNames.Clear();
         _typeDeclarations.Clear();
         _apiDeclarations.Clear();
+        _contextDeclarations.Clear();
         _canAwait = false;
         _isInWorkflowBody = false;
         _emitLineDirectives = true;
@@ -182,6 +185,12 @@ public class CSharpTranspiler
             else if (statement is ApiDeclaration apiDecl)
             {
                 _apiDeclarations.Add(apiDecl);
+            }
+            else if (statement is ContextDeclaration contextDecl)
+                _contextDeclarations.Add(contextDecl);
+            else if (statement is SuiteDeclaration or PolicyDeclaration)
+            {
+                // Eval/policy declarations are host metadata, not executable statements.
             }
             else if (statement is VarDeclStatement varDecl)
             {
@@ -5624,6 +5633,13 @@ public class CSharpTranspiler
             case PropertyDeclaration:
                 // Properties are transpiled into dedicated property methods.
                 break;
+            case SuiteDeclaration:
+            case PolicyDeclaration:
+            case ContextDeclaration:
+                break;
+            case WithinStatement withinStmt:
+                TranspileWithin(withinStmt);
+                break;
             case WorkflowDeclaration:
                 // Workflow transpilation deferred to Sprint 5
                 break;
@@ -9312,6 +9328,10 @@ public class CSharpTranspiler
             {
                 return;
             }
+            if (TryTranspileTraceStdLibCall(memberAccess2, call))
+            {
+                return;
+            }
             if (memberAccess2.Object is IdentifierExpression taIdExpr &&
                 taIdExpr.Name == "ta" &&
                 OptionalPackTranspilerBuiltIns.IsTimeseriesName(memberAccess2.Member))
@@ -11286,6 +11306,18 @@ public class CSharpTranspiler
     private void TranspileNew(NewExpression newExpr)
     {
         var className = newExpr.ClassName;
+        var contextDecl = _contextDeclarations.FirstOrDefault(c => string.Equals(c.Name, className, StringComparison.Ordinal));
+        if (contextDecl != null)
+        {
+            var pin = string.Join(", ", contextDecl.Pin.Select(p => "\"" + p.Replace("\"", "\\\"") + "\""));
+            _output.Append("RuntimeHelpers.UnwrapRuntimeValue(MaldaLang.BuiltIns.DeclaredContextInstance.Create(");
+            _output.Append($"\"{contextDecl.Name}\", {contextDecl.BudgetTokens ?? 0}, new List<string> {{ {pin} }}, ");
+            _output.Append($"{contextDecl.RetainLast ?? 0}, \"{contextDecl.Evict}\", ");
+            _output.Append(contextDecl.CompactPromptName == null ? "null" : $"\"{contextDecl.CompactPromptName}\"");
+            _output.Append(", MaldaLang.Runtime.TranspiledBuiltinRuntime.GetOrCreateInterpreter()))");
+            return;
+        }
+
         var mappedClassName = MapBuiltInClassName(className);
         
         // Handle special cases that require parameterless constructors + initialization
@@ -13697,5 +13729,93 @@ public class CSharpTranspiler
 
         _output.Append(" }, MaldaLang.Runtime.TranspiledBuiltinRuntime.GetOrCreateInterpreter()))");
         return true;
+    }
+
+    private bool TryTranspileTraceStdLibCall(MemberAccessExpression memberAccess, FunctionCallExpression call)
+    {
+        if (memberAccess.Object is not IdentifierExpression moduleId)
+            return false;
+        if (moduleId.Name != StdLibNamespaces.TraceModule
+            || !StdLibNamespaces.TraceMethodNames.Contains(memberAccess.Member))
+            return false;
+
+        var method = memberAccess.Member switch
+        {
+            "span" => nameof(TraceStdLib.Span),
+            "journal" => nameof(TraceStdLib.Journal),
+            "lastUsage" => nameof(TraceStdLib.LastUsage),
+            _ => null
+        };
+        if (method == null)
+            return false;
+
+        _output.Append("RuntimeHelpers.UnwrapRuntimeValue(MaldaLang.BuiltIns.TraceStdLib.");
+        _output.Append(method);
+        _output.Append("(new List<MaldaLang.Interpreter.RuntimeValue> { ");
+        for (int i = 0; i < call.Arguments.Count; i++)
+        {
+            if (i > 0)
+                _output.Append(", ");
+            _output.Append("RuntimeHelpers.ToRuntimeValue(");
+            TranspileExpression(call.Arguments[i]);
+            _output.Append(")");
+        }
+
+        if (method == nameof(TraceStdLib.Span))
+            _output.Append(" }, MaldaLang.Runtime.TranspiledBuiltinRuntime.GetOrCreateInterpreter()))");
+        else
+            _output.Append(" }))");
+        return true;
+    }
+
+    private void TranspileWithin(WithinStatement stmt)
+    {
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine($"MaldaLang.Interpreter.WithinBoundsContext.Push({stmt.TimeoutMs});");
+        if (stmt.HasBudget)
+        {
+            WriteIndent();
+            _output.Append("MaldaLang.Interpreter.ResourceBoundsContext.Push(new MaldaLang.Interpreter.ResourceBudget(");
+            _output.Append(stmt.BudgetTokens.HasValue ? stmt.BudgetTokens.Value.ToString() : "null");
+            _output.Append(", ");
+            _output.Append(stmt.BudgetTools.HasValue ? stmt.BudgetTools.Value.ToString() : "null");
+            _output.Append(", ");
+            _output.Append(stmt.BudgetCost.HasValue ? stmt.BudgetCost.Value.ToString(System.Globalization.CultureInfo.InvariantCulture) : "null");
+            _output.AppendLine("), \"within\");");
+        }
+
+        WriteIndent();
+        _output.AppendLine("try");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        TranspileStatement(stmt.Body);
+        WriteIndent();
+        _output.AppendLine("MaldaLang.Interpreter.WithinBoundsContext.EnsureWithinBound(\"within\");");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        WriteIndent();
+        _output.AppendLine("finally");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        if (stmt.HasBudget)
+        {
+            WriteIndent();
+            _output.AppendLine("MaldaLang.Interpreter.ResourceBoundsContext.Pop();");
+        }
+
+        WriteIndent();
+        _output.AppendLine("MaldaLang.Interpreter.WithinBoundsContext.Pop();");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
     }
 }

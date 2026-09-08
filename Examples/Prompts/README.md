@@ -13,6 +13,9 @@ malda Examples/Prompts/prompt_tools_then_structured.malda
 malda Examples/Prompts/prompt_budget.malda
 malda Examples/Prompts/api_program_calc.malda
 malda Examples/Prompts/eval_prompt.malda
+malda Examples/Prompts/eval_suite_offline.malda
+malda eval Examples/Prompts/eval_suite_offline.malda
+malda Examples/Prompts/run_journal_offline.malda
 malda Examples/Prompts/multimodal_attachments.malda
 
 # Needs a configured LLM (default local client or API key)
@@ -32,6 +35,9 @@ malda Examples/Prompts/prompt_with_agent.malda
 | `prompt_budget.malda` | — | Offline: `@budget` + `@within` on a typed prompt |
 | `api_program_calc.malda` | — | Offline: closed `api` + program JSON + `runProgram` |
 | `eval_prompt.malda` | — | Offline: `evalPrompt` / `instance.eval` fixture in/out (schema + sum type) |
+| `eval_suite_offline.malda` | — | Offline: `suite` / `case` / `expect`. Ordinary `malda` skips the suite; run `malda eval` |
+| `run_journal_offline.malda` | — | Offline: `evalPrompt` + `cap.dirList` / `cap.list` + `trace.journal()` |
+| `within_sleep.malda` | — | `within (10ms)` + `sleep(50)` — both interpret and C# time out (not a success pair) |
 | `multimodal_attachments.malda` | — | Offline: `attachments:` image/pdf metadata (`user` stays a string) |
 | RAG / agent demos | — | Need LLM provider |
 

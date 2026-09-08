@@ -3,6 +3,8 @@
 
 namespace MaldaLang.Interpreter;
 
+using System.Threading;
+
 /// <summary>
 /// Per-task interpreter state. <c>async f()</c> hot-starts a callee on a forked
 /// activation so overlapping tasks do not share <c>_environment</c>, stacks, or
@@ -32,6 +34,8 @@ internal sealed class InterpreterActivation
     public Stack<List<Func<Task>>> DeferFrames { get; }
     public WorkflowExecutionContext? WorkflowContext { get; set; }
     public bool InsideWorkflowStep { get; set; }
+    public CancellationTokenSource? CancelSource { get; set; }
+    public CancellationToken CancelToken => CancelSource?.Token ?? CancellationToken.None;
 
     /// <summary>
     /// New stacks for a hot-started task; shares the caller's env/this/file/workflow
@@ -46,7 +50,8 @@ internal sealed class InterpreterActivation
             CurrentActor = CurrentActor,
             CurrentFile = CurrentFile,
             WorkflowContext = WorkflowContext,
-            InsideWorkflowStep = InsideWorkflowStep
+            InsideWorkflowStep = InsideWorkflowStep,
+            CancelSource = CancelSource
         };
     }
 }

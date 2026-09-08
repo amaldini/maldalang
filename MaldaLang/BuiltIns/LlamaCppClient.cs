@@ -840,6 +840,16 @@ public class LlamaCppClientInstance : ObjectInstance, IDisposable
     /// <param name="responseFormat">OpenAI response_format. Converted to GBNF for Mode A / extract (no tools); ignored when tools are listed.</param>
     public RuntimeValue Chat(RuntimeValue messages, RuntimeValue? tools, RuntimeValue? responseFormat = null, LlmRequestOverrides? overrides = null)
     {
+        var model = overrides?.Model ?? ModelPath;
+        var mode = tools != null && tools.Type == ValueType.Array && tools.AsArray().Count > 0 ? "B" : "A";
+        return MaldaLang.Runtime.LlmCassettes.CassetteTransport.Execute(
+            MaldaLang.Runtime.LlmCassettes.CassetteTransport.RequestFromRuntime(
+                messages, tools, responseFormat, model, mode),
+            () => ChatLive(messages, tools, responseFormat, overrides));
+    }
+
+    private RuntimeValue ChatLive(RuntimeValue messages, RuntimeValue? tools, RuntimeValue? responseFormat, LlmRequestOverrides? overrides)
+    {
         try
         {
             if (messages.Type != ValueType.Array)

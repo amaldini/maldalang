@@ -262,6 +262,9 @@ public abstract class TestBase : IDisposable
         ToolRegistry.Instance.ClearUserDefinedTools();
 
         AgentPlanStore.Clear();
+        MaldaLang.Runtime.LlmCassettes.CassetteTransport.ResetForTesting();
+        MaldaLang.Runtime.Journal.RunJournal.ResetForTesting();
+        MaldaLang.Runtime.Policy.PolicyEngine.ResetForTesting();
     }
 
     /// <summary>

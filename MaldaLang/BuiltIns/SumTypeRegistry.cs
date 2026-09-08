@@ -35,6 +35,7 @@ public static class SumTypeRegistry
     {
         Definitions.Clear();
         Schemas.Clear();
+        AgentErrorStdLib.EnsureRegistered();
     }
 
     public static void ClearForTesting() => Clear();

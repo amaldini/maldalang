@@ -177,7 +177,7 @@ db.execute("PRAGMA foreign_keys = ON");</code></pre>
         <ul>
             <li>Failed SQL is a runtime error whose message starts with <code>SQL query error:</code> or <code>SQL execute error:</code> plus the driver text.</li>
             <li>Re-calling <code>connect</code> closes the previous connection and opens the new string.</li>
-            <li>JavaScript transpile does not emit these clients. Browser UI should call a MALDA REST or <code>@PAGE</code> backend that owns the database — see <a href="26-browser-javascript-backend.html">26. Browser JavaScript UI Backend</a> and <a href="27-rest-api.html">27. REST API Server</a>.</li>
+            <li>JavaScript transpile does not emit these clients. Browser UI should call a MALDA REST or <code>@PAGE</code> backend that owns the database — see <a href="27-browser-javascript-backend.html">26. Browser JavaScript UI Backend</a> and <a href="28-rest-api.html">27. REST API Server</a>.</li>
             <li>Workflows, the jobs queue, and GraphMemory persist with their own files; do not point <code>SqliteClient</code> at <code>.malda/workflows.db</code> unless you are inspecting it as a DBA.</li>
         </ul>
 
@@ -205,10 +205,10 @@ malda db --help</code></pre>
         <div class="see-also">
             <h3>See Also</h3>
             <ul>
-                <li><a href="33-examples.html">33. Examples</a> - Catalog samples under <code>Examples/Databases/</code></li>
+                <li><a href="34-examples.html">33. Examples</a> - Catalog samples under <code>Examples/Databases/</code></li>
                 <li><a href="12-input-output.html">12. Input/Output</a> - Files and paths</li>
                 <li><a href="02-tools.html">2. Tools &amp; Tooling</a> - Interpreter vs transpile vs JavaScript</li>
-                <li><a href="29-full-stack-development.html">29. Full-Stack Development with MALDA</a> - API + UI + data together</li>
+                <li><a href="30-full-stack-development.html">29. Full-Stack Development with MALDA</a> - API + UI + data together</li>
                 <li><a href="22-durable-workflows.html">22. Durable Workflows</a> - Engine-owned SQLite, not these clients</li>
             </ul>
         </div>

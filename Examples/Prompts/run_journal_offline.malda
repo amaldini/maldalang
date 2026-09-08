@@ -1,0 +1,17 @@
+// Offline journal + cap.list: no LLM. Pair-tested.
+schema Card {
+    name: string;
+}
+
+prompt extract(raw) -> Card {
+    user: raw;
+}
+
+var checked = evalPrompt(extract("Ada"), dict { "name": "Ada" });
+expect(checked.ok);
+
+var token = cap.dirList(".");
+var listing = cap.list(token);
+var events = trace.journal();
+io.print(events.length > 0);
+io.print(checked.ok);

@@ -81,6 +81,16 @@ internal sealed class CheckCommandRunner
         }
 
         var report = Analyze(source, fileLabel, options.TypeOptions);
+        if (options.Fix && !string.IsNullOrEmpty(options.FilePath) && File.Exists(options.FilePath))
+        {
+            var fixedSource = CheckFixer.Apply(source);
+            if (!string.Equals(fixedSource, source, StringComparison.Ordinal))
+            {
+                File.WriteAllText(options.FilePath, fixedSource);
+                output.WriteLine($"Wrote fixes to {options.FilePath}");
+            }
+        }
+
         if (options.Json)
         {
             WriteJson(output, report);
@@ -136,7 +146,7 @@ internal sealed class CheckCommandRunner
 
     public static void PrintUsage(TextWriter output)
     {
-        output.WriteLine("Usage: malda check <file.malda> [--json] [--strict-types] [--lenient-types]");
+        output.WriteLine("Usage: malda check <file.malda> [--json] [--fix] [--strict-types] [--lenient-types]");
         output.WriteLine("       malda check -e \"<code>\" [--json] [--strict-types] [--lenient-types]");
         output.WriteLine("       malda check --stdin [--json] [--strict-types] [--lenient-types]");
         output.WriteLine();
@@ -144,6 +154,7 @@ internal sealed class CheckCommandRunner
         output.WriteLine("  Uses the same LanguageService diagnostics as the IDE/LSP (parser, types,");
         output.WriteLine("  schema/sum-type names, interpolation, UI loop, workflow determinism).");
         output.WriteLine();
+        output.WriteLine("  --fix               Apply mechanical fixes (flat aliases, interpolation, did-you-mean).");
         output.WriteLine("  --json              Machine-readable report on stdout (ok, counts, diagnostics).");
         output.WriteLine("  --strict-types      Full CLI suite (match / @pure / @within / @budget / const).");
         output.WriteLine("  --lenient-types     Type mismatches as warnings (IDE default is errors).");
@@ -163,6 +174,7 @@ internal sealed class CheckCommandRunner
         string? evalCode = null;
         var stdin = false;
         var json = false;
+        var fix = false;
         var strict = false;
         var lenient = false;
         var positionals = new List<string>();
@@ -173,6 +185,10 @@ internal sealed class CheckCommandRunner
             if (arg == "--json")
             {
                 json = true;
+            }
+            else if (arg == "--fix")
+            {
+                fix = true;
             }
             else if (arg == "--strict-types")
             {
@@ -255,6 +271,7 @@ internal sealed class CheckCommandRunner
         options = new CheckCommandOptions
         {
             Json = json,
+            Fix = fix,
             TypeOptions = strict
                 ? StrictTypesOptions.Enabled
                 : lenient
@@ -336,6 +353,7 @@ internal sealed class CheckCommandRunner
     private sealed class CheckCommandOptions
     {
         public bool Json { get; init; }
+        public bool Fix { get; init; }
         public StrictTypesOptions TypeOptions { get; init; } = StrictTypesOptions.Default;
         public string? EvalCode { get; init; }
         public bool ReadStdin { get; init; }

@@ -76,7 +76,7 @@
       "term": "Keywords",
       "aliases": ["reserved words", "reserved"],
       "href": "03-lexical-structure.html#keywords",
-      "also": ["36-appendix.html"],
+      "also": ["37-appendix.html"],
       "summary": "Lexer reserved words. fn and def are not reserved; the parser rejects them as function keywords."
     },
     {
@@ -326,44 +326,44 @@
       "id": "web-ui",
       "term": "Web UI (ui.*)",
       "aliases": ["ui", "ui.button", "component", "property", "UIHost"],
-      "href": "24-web-ui.html",
-      "also": ["23-web-ui-hub.html"],
+      "href": "25-web-ui.html",
+      "also": ["24-web-ui-hub.html"],
       "summary": "Server-driven UI: component, property, and ui.* controls. Start at chapter 23 if choosing a UI model."
     },
     {
       "id": "page",
       "term": "@PAGE and @AIPAGE",
       "aliases": ["@PAGE", "@AIPAGE", "HttpServer"],
-      "href": "25-http-server-html-ui.html",
+      "href": "26-http-server-html-ui.html",
       "summary": "Route-first HTML pages on HttpServer, including LLM-generated @AIPAGE."
     },
     {
       "id": "rest",
       "term": "REST API",
       "aliases": ["@GET", "@POST", "@PUT", "@DELETE", "REST"],
-      "href": "27-rest-api.html",
+      "href": "28-rest-api.html",
       "summary": "Decorator-based REST routes on the MALDA HTTP server."
     },
     {
       "id": "game-three",
       "term": "game.* and three.*",
       "aliases": ["game", "three", "three.js", "@shader", "GLSL"],
-      "href": "26-browser-javascript-backend.html",
-      "also": ["26-browser-javascript-backend.html#three-scene-api", "26-browser-javascript-backend.html#shader-kernels"],
+      "href": "27-browser-javascript-backend.html",
+      "also": ["27-browser-javascript-backend.html#three-scene-api", "27-browser-javascript-backend.html#shader-kernels"],
       "summary": "Browser games kit (JS backend): game.* , three.* scene API, and @shader() to GLSL."
     },
     {
       "id": "fullstack",
       "term": "Full-stack",
       "aliases": ["@client", "@server", "fullstack"],
-      "href": "29-full-stack-development.html",
+      "href": "30-full-stack-development.html",
       "summary": "MALDA-native and hybrid full-stack apps: server UI or JS frontend plus MALDA backend."
     },
     {
       "id": "dotnet",
       "term": ".NET interop",
       "aliases": ["loadNativeModule", "createNativeCallback", "NuGet"],
-      "href": "30-dotnet-interop.html",
+      "href": "31-dotnet-interop.html",
       "summary": "Load external .NET libraries and wrap MALDA functions as delegates."
     },
     {
@@ -384,21 +384,21 @@
       "id": "property-testing",
       "term": "Property testing",
       "aliases": ["@requires", "@targets", "runProperty", "property"],
-      "href": "34-property-testing.html",
+      "href": "35-property-testing.html",
       "summary": "Deterministic property tests, shrinking, and backend capability hints."
     },
     {
       "id": "skills",
       "term": "Skills",
       "aliases": ["skill", "malda skill"],
-      "href": "32-personal-assistant.html#skills",
+      "href": "33-personal-assistant.html#skills",
       "summary": "Personal-assistant skills: reusable instruction packs for the CLI assistant."
     },
     {
       "id": "optional-packs",
       "term": "Optional packs",
       "aliases": ["optional pack", "vertical pack"],
-      "href": "36-appendix.html#optional-packs",
+      "href": "37-appendix.html#optional-packs",
       "also": ["13-built-in-functions.html#optional-pack-builtins"],
       "summary": "Domain packs stay out of OSS core. Load them with loadNativeModule; core does not auto-register pack globals."
     },
@@ -415,6 +415,55 @@
       "aliases": ["compile", "transpile", "malda compile"],
       "href": "02-tools.html",
       "summary": "malda compile produces a self-contained executable. Default runtime mode is Interpreter; use --mode transpile for typed C# publish."
+    },
+    {
+      "id": "suite",
+      "term": "suite",
+      "aliases": ["eval suite", "case", "expect", "malda eval"],
+      "href": "23-agentic-runs.html",
+      "summary": "Named eval cases. Ordinary malda run skips them; malda eval runs them. expect throws like assert."
+    },
+    {
+      "id": "cassette",
+      "term": "cassette",
+      "aliases": ["MALDA_RECORD", "MALDA_REPLAY", "MALDA_REPLAY_STRICT", "cassette_miss"],
+      "href": "23-agentic-runs.html",
+      "summary": "JSONL record/replay of every LLM Chat. Key is prompt hash + args + model + mode + schema. A miss falls through to a live call unless STRICT."
+    },
+    {
+      "id": "trace-journal",
+      "term": "trace.journal",
+      "aliases": ["run journal", "trace.span", "trace.lastUsage", ".usage"],
+      "href": "23-agentic-runs.html",
+      "summary": "In-process journal of prompt, tool, cap, hop, and workflow-step events. MALDA_TRACE exports it; malda trace still reads session files."
+    },
+    {
+      "id": "within",
+      "term": "within",
+      "aliases": ["within scope", "@within"],
+      "href": "23-agentic-runs.html",
+      "summary": "Statement within (30s) is a wall-clock cancel scope (ms/s/m). The decorator @within(ms) is a per-function deadline."
+    },
+    {
+      "id": "declared-context",
+      "term": "declared context",
+      "aliases": ["context", "context Session"],
+      "href": "23-agentic-runs.html",
+      "summary": "context Name { budget / pin / retain / evict / compact } then new Name(). Compaction inside a workflow must sit in a step (WF1006)."
+    },
+    {
+      "id": "policy",
+      "term": "policy",
+      "aliases": ["ToolDenied", "MALDA_POLICY_APPROVE"],
+      "href": "23-agentic-runs.html",
+      "summary": "File-level fs/net/shell/mcp deny list on cap consume. Not the same as @effects. approve needs MALDA_POLICY_APPROVE or a host callback."
+    },
+    {
+      "id": "agent-error",
+      "term": "AgentError",
+      "aliases": ["agentError", "SchemaMismatch", "ToolDenied", "Timeout"],
+      "href": "23-agentic-runs.html",
+      "summary": "Built-in sum type attached beside the string error on result objects. Throws still throw."
     }
   ]
 }

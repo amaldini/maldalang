@@ -268,19 +268,21 @@ setx MALDA_WORKFLOW_CONNECTION "Data Source=C:\ProgramData\malda\workflows.db"</
             <li><strong>Migration:</strong> storage goes through <code>IWorkflowStorageProvider</code>; a future multi-writer backend would need claim/lease and conditional status updates.</li>
         </ul>
         <p>Full failure-mode matrix and migration notes: <code>docs/workflows-ha.md</code> in the repository.</p>
+        <p><strong>WF1006:</strong> mutating a declared <code>context</code> (including compaction) inside a <code>workflow</code> body must sit in a <code>step</code>. Imported or unknown callees stay Info, same as WF1005. Successful steps are also mirrored into the in-process run journal so <code>trace.journal()</code> sees them. Narrative: <a href="23-agentic-runs.html">23. Agentic Runs</a> §23.3 and §23.5.</p>
 
         <div class="see-also">
             <h3>See Also</h3>
             <ul>
                 <li><a href="13-built-in-functions.html">13. Built-in Functions</a> - workflow built-in API reference</li>
-                <li><a href="32-personal-assistant.html">32. Personal Assistant and CLI</a> - CLI configuration and usage</li>
-                <li><a href="35-grammar.html">Grammar</a> — partial BNF only; workflow syntax is documented here and in <code>Parser.cs</code></li>
+                <li><a href="33-personal-assistant.html">33. Personal Assistant and CLI</a> - CLI configuration and usage</li>
+                <li><a href="36-grammar.html">36. Grammar</a> — partial BNF only; workflow syntax is documented here and in <code>Parser.cs</code></li>
+                <li><a href="23-agentic-runs.html">23. Agentic Runs</a> — WF1006, journal mirror, <code>cancelWorkflow</code></li>
             </ul>
         </div>
 
         <div class="nav-footer">
             <a href="21-acp.html">← Previous: 21. ACP (Agent Communication Protocol)</a>
-            <a href="23-web-ui-hub.html">Next: 23. Web UI Overview→</a>
+            <a href="23-agentic-runs.html">Next: 23. Agentic Runs→</a>
         </div>
 
         <footer>

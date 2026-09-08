@@ -93,6 +93,10 @@ public partial class Interpreter
         return _rootActivation;
     }
 
+    /// <summary>Cancellation token for the current activation (within scopes, cancelWorkflow).</summary>
+    public static CancellationToken CurrentCancelToken =>
+        ActivationLocal.Value?.CancelToken ?? CancellationToken.None;
+
     private void SetActivation(InterpreterActivation activation)
     {
         ActivationLocal.Value = activation;
@@ -589,6 +593,14 @@ public partial class Interpreter
                 {
                     DefineProperty(propertyDecl);
                 }
+                else if (stmt is ContextDeclaration contextDecl)
+                {
+                    DefineContext(contextDecl);
+                }
+                else if (stmt is PolicyDeclaration policyDecl)
+                {
+                    MaldaLang.Runtime.Policy.PolicyEngine.Install(policyDecl);
+                }
             }
             
             // Create a fresh top-level frame for this execution
@@ -605,7 +617,7 @@ public partial class Interpreter
             {
                 var stmt = statements[i];
                 
-                if (stmt is not ClassDeclaration && stmt is not FunctionDeclaration && stmt is not PromptDeclaration && stmt is not TypeDeclaration && stmt is not SchemaDeclaration && stmt is not ApiDeclaration && stmt is not WorkflowDeclaration && stmt is not PropertyDeclaration)
+                if (stmt is not ClassDeclaration && stmt is not FunctionDeclaration && stmt is not PromptDeclaration && stmt is not TypeDeclaration && stmt is not SchemaDeclaration && stmt is not ApiDeclaration && stmt is not WorkflowDeclaration && stmt is not PropertyDeclaration && stmt is not SuiteDeclaration && stmt is not ContextDeclaration && stmt is not PolicyDeclaration)
                 {
                     topLevelFrame.StatementIndex = i;
                     await ExecuteAsync(stmt);
@@ -1125,6 +1137,50 @@ public partial class Interpreter
         _workflows[decl.Name] = decl;
     }
 
+    private void DefineContext(ContextDeclaration decl)
+    {
+        var klass = new MaldaLang.BuiltIns.DeclaredContextClass(decl);
+        _classes[decl.Name] = klass;
+        _globals.Define(decl.Name, RuntimeValue.Class(klass));
+    }
+
+    private async Task<RuntimeValue?> ExecuteWithinAsync(WithinStatement stmt)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(Math.Max(1, stmt.TimeoutMs)));
+        var previous = GetActivation().CancelSource;
+        GetActivation().CancelSource = cts;
+        WithinBoundsContext.Push(stmt.TimeoutMs);
+        if (stmt.HasBudget)
+            ResourceBoundsContext.Push(new ResourceBudget(stmt.BudgetTokens, stmt.BudgetTools, stmt.BudgetCost), "within");
+        try
+        {
+            await ExecuteAsync(stmt.Body);
+            WithinBoundsContext.EnsureWithinBound("within");
+            return null;
+        }
+        catch (Exception ex) when (ex is OperationCanceledException or RuntimeException)
+        {
+            MaldaLang.Runtime.Journal.RunJournal.Current.Append(new MaldaLang.Runtime.Journal.JournalEvent
+            {
+                Kind = MaldaLang.Runtime.Journal.JournalKind.Prompt,
+                Name = "within",
+                Ok = false,
+                Ms = stmt.TimeoutMs,
+                Error = "Timeout"
+            });
+            if (ex is RuntimeException re && re.Message.Contains("within", StringComparison.OrdinalIgnoreCase))
+                throw new RuntimeException($"Timeout: exceeded within ({stmt.TimeoutMs}ms)");
+            throw;
+        }
+        finally
+        {
+            WithinBoundsContext.Pop();
+            if (stmt.HasBudget)
+                ResourceBoundsContext.Pop();
+            GetActivation().CancelSource = previous;
+        }
+    }
+
     private void DefineProperty(PropertyDeclaration decl)
     {
         if (_properties.ContainsKey(decl.Name))
@@ -1155,7 +1211,13 @@ public partial class Interpreter
             {
                 // Execute workflow body statements directly (no BlockFrame) so step results land in env.
                 foreach (var st in decl.Body.Statements)
+                {
+                    var inst = engine.GetInstance(instanceId);
+                    if (inst != null && inst.Status == WorkflowStatus.Cancelled)
+                        throw new RuntimeException("Workflow cancelled");
+                    GetActivation().CancelToken.ThrowIfCancellationRequested();
                     await ExecuteAsync(st);
+                }
                 engine.CompleteInstance(instanceId, null);
                 return null;
             }
@@ -1723,6 +1785,10 @@ public partial class Interpreter
                 ApiDeclaration => null, // Already handled
                 WorkflowDeclaration => null, // Already handled in declaration pass
                 PropertyDeclaration => null, // Already handled in declaration pass
+                SuiteDeclaration => null,
+                ContextDeclaration => null,
+                PolicyDeclaration => null,
+                WithinStatement withinStmt => await ExecuteWithinAsync(withinStmt),
                 WorkflowStepStatement stepStmt => await ExecuteWorkflowStepAsync(stepStmt),
                 WorkflowApprovalStatement approvalStmt => await ExecuteWorkflowApprovalAsync(approvalStmt),
                 WorkflowAwaitSignalStatement awaitSignalStmt => await ExecuteWorkflowAwaitSignalAsync(awaitSignalStmt),
@@ -2314,23 +2380,32 @@ public partial class Interpreter
     private async Task<RuntimeValue> EvaluateInterpolatedStringAsync(InterpolatedStringExpression expr)
     {
         var result = new System.Text.StringBuilder();
+        MaldaLang.Runtime.GroundedMeta? grounded = null;
+        var mixed = false;
         
         foreach (var segment in expr.Segments)
         {
             if (segment.IsExpression)
             {
-                // Evaluate the expression and convert to string
                 var value = await EvaluateAsync(segment.Expression!);
                 result.Append(value.ToString());
+                if (value.Grounded != null)
+                    grounded = grounded == null ? value.Grounded : MaldaLang.Runtime.GroundedMeta.Union(grounded, value.Grounded);
+                else
+                    mixed = true;
             }
             else
             {
-                // Add the text segment
                 result.Append(segment.Text ?? "");
+                if (!string.IsNullOrEmpty(segment.Text))
+                    mixed = true;
             }
         }
-        
-        return RuntimeValue.String(result.ToString());
+
+        var text = RuntimeValue.String(result.ToString());
+        if (grounded == null)
+            return text;
+        return text.WithGrounded(mixed ? MaldaLang.Runtime.GroundedMeta.Mix(grounded, result.ToString()) : grounded);
     }
     
     private async Task<RuntimeValue> EvaluateTernaryAsync(TernaryExpression expr)
@@ -3099,6 +3174,16 @@ public partial class Interpreter
         {
             throw new RuntimeException($"Expected {function.Declaration.Parameters.Count} arguments but got {arguments.Count}.");
         }
+
+        if (function.Declaration.Decorators != null
+            && function.Declaration.Decorators.Any(d => d.Name == "requiresCitations"))
+        {
+            foreach (var arg in arguments)
+            {
+                if (arg.Type == ValueType.String && (arg.Grounded == null || !arg.Grounded.HasCitations))
+                    throw new RuntimeException("@requiresCitations: argument is not fully grounded.");
+            }
+        }
         
         // FIX: Use the current active environment (_environment) directly
         // This is the correct environment to restore to after the recursive call returns
@@ -3430,6 +3515,11 @@ public partial class Interpreter
         }
         
         // Handle built-in GraphMemory class
+        if (klass is MaldaLang.BuiltIns.DeclaredContextClass contextClass)
+        {
+            return RuntimeValue.Object(new MaldaLang.BuiltIns.DeclaredContextInstance(contextClass.Declaration, this));
+        }
+
         if (klass == GraphMemoryClassDefinition.Instance)
         {
             if (arguments.Count != 0)
@@ -4161,6 +4251,14 @@ public partial class Interpreter
         else if (instance is BuiltIns.AgentsInstance agentsModule)
         {
             return agentsModule.CallMethod(methodName, arguments, this);
+        }
+        else if (instance is BuiltIns.TraceInstance traceModule)
+        {
+            return traceModule.CallMethod(methodName, arguments, this);
+        }
+        else if (instance is BuiltIns.DeclaredContextInstance declaredContext)
+        {
+            return declaredContext.CallMethod(methodName, arguments, this);
         }
         else if (instance is BuiltIns.AgentTeamInstance agentTeam)
         {

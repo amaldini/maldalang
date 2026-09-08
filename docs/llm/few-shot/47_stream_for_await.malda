@@ -1,0 +1,8 @@
+// stream() yields { text } chunks. for await iterates the materialized array.
+// In-process GGUF is buffered (not live tokens).
+
+var n = 0;
+for await (var chunk in stream("hello world from malda")) {
+    n = n + 1;
+}
+io.print(n > 0);

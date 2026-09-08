@@ -67,9 +67,12 @@ Choose this path if you already know the syntax and want to work with prompts, a
 Start with:
 
 1. `Examples/Prompts/basic_prompt.malda`
-2. `Examples/Prompts/prompt_with_agent.malda`
-3. `malda new agent my-agent` then `malda app.malda` / `malda test` (offline `cap.*` file tool; no API key)
-4. `README.md` section `Creating Your First AI Agent`
+2. `Examples/Prompts/eval_prompt.malda` (offline `evalPrompt` fixture; no API key)
+3. `Examples/Prompts/eval_suite_offline.malda` then `malda eval Examples/Prompts/eval_suite_offline.malda` (suites are skipped by ordinary run)
+4. `Examples/Prompts/run_journal_offline.malda` (`trace.journal` + `cap.list`; no API key)
+5. `Examples/Prompts/prompt_with_agent.malda`
+6. `malda new agent my-agent` then `malda app.malda` / `malda test` (offline `cap.*` file tool; no API key)
+7. `README.md` section `Creating Your First AI Agent`
 
 This path emphasizes **MALDA AI** on top of MALDA Core.
 

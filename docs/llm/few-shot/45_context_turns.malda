@@ -1,0 +1,14 @@
+// Declared context — contextual keyword (var context = 1 still parses).
+// new Session() + .add + .turns. Compaction inside a workflow needs a step (WF1006).
+
+context Session {
+    budget: 800 tokens;
+    pin: systemFacts;
+    retain: last 2;
+    evict: oldest;
+}
+
+var s = new Session();
+s.add("user", "hi");
+s.add("user", "there");
+io.print(s.turns.length >= 1);

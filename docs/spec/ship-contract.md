@@ -31,12 +31,15 @@ Templates (`malda new`) and README showcases must appear below even when `n/a`.
 | `Examples/Basics/sumtype_typed_payloads.malda` | pair | InterpretTranspilePairTests | |
 | `Examples/Basics/async_all_example.malda` | pair | InterpretTranspilePairTests | |
 | `Examples/Prompts/eval_prompt.malda` | pair | InterpretTranspilePairTests | offline `evalPrompt` |
+| `Examples/Prompts/run_journal_offline.malda` | pair | InterpretTranspilePairTests | journal + cap.list; no LLM |
+| `Examples/Prompts/eval_suite_offline.malda` | pair | InterpretTranspilePairTests | suite parse; case runs via `malda eval` |
+| `Examples/Prompts/within_sleep.malda` | pair | InterpretTranspilePairTests | both sides Timeout |
 | `Examples/Prompts/api_program_calc.malda` | pair | InterpretTranspilePairTests | |
 | `Examples/Prompts/prompt_budget.malda` | pair | InterpretTranspilePairTests | no `await` |
 | `Examples/Prompts/multimodal_attachments.malda` | pair | InterpretTranspilePairTests | builds instance only |
-| `Examples/Prompts/prompt_tools_then_structured.malda` | n/a | TranspileSmokeTests | llm-await |
+| `Examples/Prompts/prompt_tools_then_structured.malda` | n/a | TranspileSmokeTests | offline print works; C# construct NRE; live await is llm-await |
 | `Examples/Agents/phase6_pure_validate.malda` | pair | InterpretTranspilePairTests | |
-| `Examples/Agents/agent_governance_golden.malda` | n/a | TranspileSmokeTests | llm-await |
+| `Examples/Agents/agent_governance_golden.malda` | pair | InterpretTranspilePairTests | offline validate + @pure; live agent wiring is commented |
 | `Examples/Agents/secondbrain_semantic.malda` | n/a | — | too-large; README showcase |
 | `Examples/RalphWiggum/RalphWiggum.malda` | n/a | — | too-large; llm-await; README showcase |
 | `Examples/MCP/mcp_schema_tool.malda` | pair | InterpretTranspilePairTests | |

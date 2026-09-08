@@ -80,6 +80,17 @@ foreach (var x in results) {
     print(x);  // Prints: 10, 20, 30
 }</code></pre>
         <p>The same rules as for-in apply: the loop variable is declared with <code>var</code>, the collection must be an array, and <code>break</code> and <code>continue</code> work as in other loops.</p>
+        <h3>For-await</h3>
+        <p><code>for await (var x in expr)</code> iterates a collection produced by <code>stream(...)</code> (today the builtin materializes an array). Full streaming and GGUF buffering notes: <a href="23-agentic-runs.html">23.8</a>.</p>
+        <pre><code>var n = 0;
+for await (var chunk in stream("hello world from malda")) {
+    n = n + 1;
+}</code></pre>
+        <h3><code>within</code> scopes</h3>
+        <p>The statement <code>within (30s) { … }</code> is a wall-clock cancel scope. Units are <code>ms</code>, <code>s</code>, or <code>m</code>. It is not the decorator <code>@within(ms)</code>. Narrative: <a href="23-agentic-runs.html">23.4</a>.</p>
+        <pre><code>within (10ms) {
+    sleep(50);
+}</code></pre>
         <h3>Break and Continue</h3>
         <pre><code>while (true) {
     if (condition) {
@@ -430,6 +441,7 @@ using tmp = new TempFile("scratch.txt") {
             <ul>
                 <li><a href="07-expressions.html">7. Expressions</a> - Expressions used in conditions</li>
                 <li><a href="05-variables.html">5. Variables</a> - Variable scope in control structures and destructuring</li>
+                <li><a href="23-agentic-runs.html">23. Agentic Runs</a> - <code>for await</code>, <code>within</code>, <code>stream</code></li>
             </ul>
         </div>
         <div class="nav-footer">

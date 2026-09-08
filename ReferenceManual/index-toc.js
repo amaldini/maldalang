@@ -53,21 +53,22 @@ const FALLBACK_TOC_CHAPTERS = [
     { file: "20-mcp-server.html", title: "MCP Server", num: "20", category: "AI & Agents", description: "MCP protocol support" },
     { file: "21-acp.html", title: "ACP (Agent Communication Protocol)", num: "21", category: "AI & Agents", description: "Agent communication and collaboration protocol" },
     { file: "22-durable-workflows.html", title: "Durable Workflows", num: "22", category: "AI & Agents", description: "Durable workflow syntax, runtime model, CLI, DLQ, and operations" },
-    { file: "23-web-ui-hub.html", title: "Web UI Overview", num: "23", category: "Web", description: "Choose server components, HttpServer pages, or browser JS" },
-    { file: "24-web-ui.html", title: "Web UI Server Components", num: "24", category: "Web", description: "Server components, fragments, live updates, and ui.*" },
-    { file: "25-http-server-html-ui.html", title: "HttpServer & HTML UI Generation", num: "25", category: "Web", description: "Route-first hosting, @PAGE, @AIPAGE, and HTML generation" },
-    { file: "26-browser-javascript-backend.html", title: "Browser JavaScript UI Backend", num: "26", category: "Web", description: "Browser-hosted MALDA compiled to JavaScript" },
-    { file: "27-rest-api.html", title: "REST API Server", num: "27", category: "Web", description: "Creating REST APIs" },
-    { file: "28-rest-web-client.html", title: "REST Web Client", num: "28", category: "Web", description: "Making HTTP requests to REST APIs" },
-    { file: "29-full-stack-development.html", title: "Full-Stack Development with MALDA", num: "29", category: "Web", description: "End-to-end full-stack architecture and implementation flow" },
-    { file: "30-dotnet-interop.html", title: ".NET Interop", num: "30", category: "Platform", description: "Loading and using external .NET libraries" },
-    { file: "31-device-integration.html", title: "Device Integration", num: "31", category: "Platform", description: "Control physical devices (Arduino, ESP32, IoT, etc.)" },
-    { file: "32-personal-assistant.html", title: "Personal Assistant and CLI", num: "32", category: "Platform", description: "Assistant commands, scheduling, and channels" },
-    { file: "33-examples.html", title: "Examples", num: "33", category: "Reference", description: "Complete code examples" },
-    { file: "34-property-testing.html", title: "Property Testing", num: "34", category: "Reference", description: "Deterministic property tests, shrinking, and regression workflows" },
-    { file: "35-grammar.html", title: "Grammar", num: "35", category: "Reference", description: "BNF-like grammar specification" },
-    { file: "36-appendix.html", title: "Appendix", num: "36", category: "Reference", description: "Reserved words, operator precedence" },
-    { file: "37-appendix-gpu-billiards.html", title: "Appendix: GPU Billiards", num: "37", category: "Reference", description: "Playable compiled GPU billiards showcase" },
+    { file: "23-agentic-runs.html", title: "Agentic Runs", num: "23", category: "AI & Agents", description: "Eval suites, cassettes, journal, within, context, policy, AgentError, stream, check loop" },
+    { file: "24-web-ui-hub.html", title: "Web UI Overview", num: "24", category: "Web", description: "Choose server components, HttpServer pages, or browser JS" },
+    { file: "25-web-ui.html", title: "Web UI Server Components", num: "25", category: "Web", description: "Server components, fragments, live updates, and ui.*" },
+    { file: "26-http-server-html-ui.html", title: "HttpServer & HTML UI Generation", num: "26", category: "Web", description: "Route-first hosting, @PAGE, @AIPAGE, and HTML generation" },
+    { file: "27-browser-javascript-backend.html", title: "Browser JavaScript UI Backend", num: "27", category: "Web", description: "Browser-hosted MALDA compiled to JavaScript" },
+    { file: "28-rest-api.html", title: "REST API Server", num: "28", category: "Web", description: "Creating REST APIs" },
+    { file: "29-rest-web-client.html", title: "REST Web Client", num: "29", category: "Web", description: "Making HTTP requests to REST APIs" },
+    { file: "30-full-stack-development.html", title: "Full-Stack Development with MALDA", num: "30", category: "Web", description: "End-to-end full-stack architecture and implementation flow" },
+    { file: "31-dotnet-interop.html", title: ".NET Interop", num: "31", category: "Platform", description: "Loading and using external .NET libraries" },
+    { file: "32-device-integration.html", title: "Device Integration", num: "32", category: "Platform", description: "Control physical devices (Arduino, ESP32, IoT, etc.)" },
+    { file: "33-personal-assistant.html", title: "Personal Assistant and CLI", num: "33", category: "Platform", description: "Assistant commands, scheduling, and channels" },
+    { file: "34-examples.html", title: "Examples", num: "34", category: "Reference", description: "Complete code examples" },
+    { file: "35-property-testing.html", title: "Property Testing", num: "35", category: "Reference", description: "Deterministic property tests, shrinking, and regression workflows" },
+    { file: "36-grammar.html", title: "Grammar", num: "36", category: "Reference", description: "BNF-like grammar specification" },
+    { file: "37-appendix.html", title: "Appendix", num: "37", category: "Reference", description: "Reserved words, operator precedence" },
+    { file: "38-appendix-gpu-billiards.html", title: "Appendix: GPU Billiards", num: "38", category: "Reference", description: "Playable compiled GPU billiards showcase" },
 ];
 
 const FALLBACK_TOC_CHAPTERS_IT = [
@@ -93,21 +94,22 @@ const FALLBACK_TOC_CHAPTERS_IT = [
     { file: "20-mcp-server.html", title: "Server MCP", num: "20", category: "AI & Agents", description: "Supporto del protocollo MCP" },
     { file: "21-acp.html", title: "ACP (Agent Communication Protocol)", num: "21", category: "AI & Agents", description: "Protocollo di comunicazione e collaborazione tra agenti" },
     { file: "22-durable-workflows.html", title: "Workflow durevoli", num: "22", category: "AI & Agents", description: "Sintassi dei workflow durevoli, modello di runtime, CLI, DLQ e operazioni" },
-    { file: "23-web-ui-hub.html", title: "Panoramica Web UI", num: "23", category: "Web", description: "Scegliere componenti server, pagine HttpServer o JS nel browser" },
-    { file: "24-web-ui.html", title: "Componenti server Web UI", num: "24", category: "Web", description: "Componenti server, fragment, aggiornamenti live e ui.*" },
-    { file: "25-http-server-html-ui.html", title: "HttpServer e generazione UI HTML", num: "25", category: "Web", description: "Hosting route-first, @PAGE, @AIPAGE e generazione HTML" },
-    { file: "26-browser-javascript-backend.html", title: "Backend UI JavaScript nel browser", num: "26", category: "Web", description: "MALDA ospitato nel browser e compilato in JavaScript" },
-    { file: "27-rest-api.html", title: "Server REST API", num: "27", category: "Web", description: "Creare REST API" },
-    { file: "28-rest-web-client.html", title: "Client REST Web", num: "28", category: "Web", description: "Richieste HTTP verso REST API" },
-    { file: "29-full-stack-development.html", title: "Sviluppo full-stack con MALDA", num: "29", category: "Web", description: "Architettura full-stack end-to-end e flusso di implementazione" },
-    { file: "30-dotnet-interop.html", title: "Interop .NET", num: "30", category: "Platform", description: "Caricare e usare librerie .NET esterne" },
-    { file: "31-device-integration.html", title: "Integrazione dispositivi", num: "31", category: "Platform", description: "Controllare dispositivi fisici (Arduino, ESP32, IoT, ecc.)" },
-    { file: "32-personal-assistant.html", title: "Assistente personale e CLI", num: "32", category: "Platform", description: "Comandi dell'assistente, scheduling e canali" },
-    { file: "33-examples.html", title: "Esempi", num: "33", category: "Reference", description: "Esempi di codice completi" },
-    { file: "34-property-testing.html", title: "Property testing", num: "34", category: "Reference", description: "Property test deterministici, shrinking e workflow di regressione" },
-    { file: "35-grammar.html", title: "Grammatica", num: "35", category: "Reference", description: "Specifica della grammatica in stile BNF" },
-    { file: "36-appendix.html", title: "Appendice", num: "36", category: "Reference", description: "Parole riservate, precedenza degli operatori" },
-    { file: "37-appendix-gpu-billiards.html", title: "Appendice: biliardo GPU", num: "37", category: "Reference", description: "Showcase biliardo GPU compilato e giocabile" },
+    { file: "23-agentic-runs.html", title: "Esecuzioni agentiche", num: "23", category: "AI & Agents", description: "Suite eval, cassette, journal, within, context, policy, AgentError, stream, ciclo check" },
+    { file: "24-web-ui-hub.html", title: "Panoramica Web UI", num: "24", category: "Web", description: "Scegliere componenti server, pagine HttpServer o JS nel browser" },
+    { file: "25-web-ui.html", title: "Componenti server Web UI", num: "25", category: "Web", description: "Componenti server, fragment, aggiornamenti live e ui.*" },
+    { file: "26-http-server-html-ui.html", title: "HttpServer e generazione UI HTML", num: "26", category: "Web", description: "Hosting route-first, @PAGE, @AIPAGE e generazione HTML" },
+    { file: "27-browser-javascript-backend.html", title: "Backend UI JavaScript nel browser", num: "27", category: "Web", description: "MALDA ospitato nel browser e compilato in JavaScript" },
+    { file: "28-rest-api.html", title: "Server REST API", num: "28", category: "Web", description: "Creare REST API" },
+    { file: "29-rest-web-client.html", title: "Client REST Web", num: "29", category: "Web", description: "Richieste HTTP verso REST API" },
+    { file: "30-full-stack-development.html", title: "Sviluppo full-stack con MALDA", num: "30", category: "Web", description: "Architettura full-stack end-to-end e flusso di implementazione" },
+    { file: "31-dotnet-interop.html", title: "Interop .NET", num: "31", category: "Platform", description: "Caricare e usare librerie .NET esterne" },
+    { file: "32-device-integration.html", title: "Integrazione dispositivi", num: "32", category: "Platform", description: "Controllare dispositivi fisici (Arduino, ESP32, IoT, ecc.)" },
+    { file: "33-personal-assistant.html", title: "Assistente personale e CLI", num: "33", category: "Platform", description: "Comandi dell'assistente, scheduling e canali" },
+    { file: "34-examples.html", title: "Esempi", num: "34", category: "Reference", description: "Esempi di codice completi" },
+    { file: "35-property-testing.html", title: "Property testing", num: "35", category: "Reference", description: "Property test deterministici, shrinking e workflow di regressione" },
+    { file: "36-grammar.html", title: "Grammatica", num: "36", category: "Reference", description: "Specifica della grammatica in stile BNF" },
+    { file: "37-appendix.html", title: "Appendice", num: "37", category: "Reference", description: "Parole riservate, precedenza degli operatori" },
+    { file: "38-appendix-gpu-billiards.html", title: "Appendice: biliardo GPU", num: "38", category: "Reference", description: "Showcase biliardo GPU compilato e giocabile" },
 ];
 
 function chaptersToTocItems(chapters) {
@@ -162,7 +164,7 @@ function renderTableOfContents(tocContainer, chapters) {
         tocHTML += '</details>\n';
     });
 
-    const hub = chapters.find(function(ch) { return ch.file === '23-web-ui-hub.html'; });
+    const hub = chapters.find(function(ch) { return ch.file === '24-web-ui-hub.html'; });
     if (hub) {
         tocHTML += '\n<div class="info-box" style="margin-top: 20px;">\n';
         tocHTML += '    <strong>Web UI:</strong> ' + (isItalianManual()

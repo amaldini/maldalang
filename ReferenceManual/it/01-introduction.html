@@ -292,7 +292,7 @@ print(VERSION);
 // unused();           // not imported, even if exported by the module
 
 import { Result, Contact } from "types_lib.malda";
-var r = Result.Ok(42);          // namespace del tipo; Ok non viene appiattito nell'host
+var r = Result.Ok(42);          // type namespace; Ok is not flattened into the host
 var ok = validate("Contact", dict { "name": "Ada" });</code></pre>
         <p>Con un alias, gli stessi simboli sono raggruppati in un oggetto, il che evita del tutto le collisioni:</p>
         <pre><code>import mathUtils = "shared/math_utils.malda";
@@ -302,7 +302,7 @@ print(mathUtils.VERSION);     // "1.0"</code></pre>
         <p>Le stesse due forme valgono per i pacchetti, con un nome di pacchetto puntato al posto del path stringa:</p>
         <pre><code>import App.Core;
 import UI = App.Web.Components;</code></pre>
-        <p>I nomi di pacchetto che iniziano con <code>System</code>, <code>Microsoft</code> o <code>Windows</code> vengono risolti come namespace .NET attraverso il layer di interop, non dal gestore di pacchetti. Vedi <a href="30-dotnet-interop.html">30. Interop .NET</a>.</p>
+        <p>I nomi di pacchetto che iniziano con <code>System</code>, <code>Microsoft</code> o <code>Windows</code> vengono risolti come namespace .NET attraverso il layer di interop, non dal gestore di pacchetti. Vedi <a href="31-dotnet-interop.html">30. Interop .NET</a>.</p>
         <p>Se non si riesce a risolvere un target è un errore a runtime: <em>Package or module not found: Name</em> per i pacchetti, e il messaggio di file-not-found sottostante per gli import di file.</p>
 
         <h3>Path e comportamento di sicurezza per <code>include</code></h3>
@@ -389,7 +389,7 @@ person.introduce();</code></pre>
             <ul>
                 <li><a href="03-lexical-structure.html">3. Struttura lessicale</a> - Le basi della sintassi</li>
                 <li><a href="04-data-types.html">4. Tipi di dati</a> - Il sistema di tipi di MALDA</li>
-                <li><a href="33-examples.html">33. Esempi</a> - Altri esempi completi</li>
+                <li><a href="34-examples.html">33. Esempi</a> - Altri esempi completi</li>
             </ul>
         </div>
 

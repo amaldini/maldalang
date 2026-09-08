@@ -318,6 +318,9 @@ public class LanguageService : ILanguageService
             cancellationToken.ThrowIfCancellationRequested();
             StdLibNamespaceDiagnostics.Validate(statements, diagnostics);
             WorkflowDeterminismDiagnostics.Validate(statements, diagnostics, sourceFileName);
+            AgentTeamDiagnostics.Validate(statements, diagnostics);
+            GotchaDiagnostics.Validate(statements, diagnostics);
+            ToolSchemaDiagnostics.Validate(statements, diagnostics);
             UiLoopDiagnostics.Validate(statements, diagnostics);
             InterpolationDiagnostics.Validate(statements, diagnostics);
             StrictTypesAnalysis.Analyze(statements, typeOptions, diagnostics, sourceFileName);
@@ -526,7 +529,8 @@ public class LanguageService : ILanguageService
             "class", "new", "this", "super", "extends", "public", "private", "static", "null",
             "import", "export", "include", "using", "await",
             "prompt", "schema", "api",
-            "workflow", "step", "approval", "wait", "retry", "backoff", "delay", "maxDelay", "compensate", "onReject" };
+            "workflow", "step", "approval", "wait", "retry", "backoff", "delay", "maxDelay", "compensate", "onReject",
+            "suite", "context", "policy", "within", "expect" };
         
         foreach (var keyword in keywords)
         {
@@ -557,6 +561,31 @@ public class LanguageService : ILanguageService
             {
                 insertText = "api Name {\n\tfunction method(a, b);\n}";
                 detail = "Closed API for prompt ... -> program(Api) / runProgram";
+            }
+            else if (keyword == "suite")
+            {
+                insertText = "suite \"name\" {\n\tcase \"title\" {\n\t\texpect(true);\n\t}\n}";
+                detail = "Eval suite — run with malda eval";
+            }
+            else if (keyword == "context")
+            {
+                insertText = "context Session {\n\tbudget: 8000 tokens;\n\tretain: last 20;\n\tevict: oldest;\n}";
+                detail = "Declared conversation context";
+            }
+            else if (keyword == "policy")
+            {
+                insertText = "policy {\n\tshell: deny;\n}";
+                detail = "Program-boundary capability policy";
+            }
+            else if (keyword == "within")
+            {
+                insertText = "within (30s) {\n\t\n}";
+                detail = "Cancel subtree after a duration";
+            }
+            else if (keyword == "expect")
+            {
+                insertText = "expect(condition);";
+                detail = "Eval-suite assertion";
             }
             completions.Add(new CompletionItem
             {
@@ -1339,7 +1368,8 @@ public class LanguageService : ILanguageService
         (StdLibNamespaces.OptionModule, "option.some / option.none"),
         (StdLibNamespaces.GroundedModule, "grounded.wrap(value, citations?) — payload plus citations"),
         (StdLibNamespaces.CapModule, "cap.fileRead(path) — unforgeable file / HTTP / MCP / shell capability tokens"),
-        (StdLibNamespaces.AgentsModule, "agents.define / agents.team — role specs plus a relation graph")
+        (StdLibNamespaces.AgentsModule, "agents.define / agents.team — role specs plus a relation graph"),
+        (StdLibNamespaces.TraceModule, "trace.span / journal / lastUsage — run observability")
     };
 
     private static bool TryAddStdLibNamespaceMembers(string moduleName, List<CompletionItem> members)

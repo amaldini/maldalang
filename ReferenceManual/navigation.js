@@ -269,21 +269,22 @@ const FALLBACK_NAV_ITEMS = [
         { href: "20-mcp-server.html", text: "20. MCP Server", category: "AI & Agents" },
         { href: "21-acp.html", text: "21. ACP (Agent Communication Protocol)", category: "AI & Agents" },
         { href: "22-durable-workflows.html", text: "22. Durable Workflows", category: "AI & Agents" },
-        { href: "23-web-ui-hub.html", text: "23. Web UI Overview", category: "Web" },
-        { href: "24-web-ui.html", text: "24. Web UI Server Components", category: "Web" },
-        { href: "25-http-server-html-ui.html", text: "25. HttpServer & HTML UI Generation", category: "Web" },
-        { href: "26-browser-javascript-backend.html", text: "26. Browser JavaScript UI Backend", category: "Web" },
-        { href: "27-rest-api.html", text: "27. REST API Server", category: "Web" },
-        { href: "28-rest-web-client.html", text: "28. REST Web Client", category: "Web" },
-        { href: "29-full-stack-development.html", text: "29. Full-Stack Development with MALDA", category: "Web" },
-        { href: "30-dotnet-interop.html", text: "30. .NET Interop", category: "Platform" },
-        { href: "31-device-integration.html", text: "31. Device Integration", category: "Platform" },
-        { href: "32-personal-assistant.html", text: "32. Personal Assistant and CLI", category: "Platform" },
-        { href: "33-examples.html", text: "33. Examples", category: "Reference" },
-        { href: "34-property-testing.html", text: "34. Property Testing", category: "Reference" },
-        { href: "35-grammar.html", text: "35. Grammar", category: "Reference" },
-        { href: "36-appendix.html", text: "36. Appendix", category: "Reference" },
-        { href: "37-appendix-gpu-billiards.html", text: "37. Appendix: GPU Billiards", category: "Reference" },
+        { href: "23-agentic-runs.html", text: "23. Agentic Runs", category: "AI & Agents" },
+        { href: "24-web-ui-hub.html", text: "24. Web UI Overview", category: "Web" },
+        { href: "25-web-ui.html", text: "25. Web UI Server Components", category: "Web" },
+        { href: "26-http-server-html-ui.html", text: "26. HttpServer & HTML UI Generation", category: "Web" },
+        { href: "27-browser-javascript-backend.html", text: "27. Browser JavaScript UI Backend", category: "Web" },
+        { href: "28-rest-api.html", text: "28. REST API Server", category: "Web" },
+        { href: "29-rest-web-client.html", text: "29. REST Web Client", category: "Web" },
+        { href: "30-full-stack-development.html", text: "30. Full-Stack Development with MALDA", category: "Web" },
+        { href: "31-dotnet-interop.html", text: "31. .NET Interop", category: "Platform" },
+        { href: "32-device-integration.html", text: "32. Device Integration", category: "Platform" },
+        { href: "33-personal-assistant.html", text: "33. Personal Assistant and CLI", category: "Platform" },
+        { href: "34-examples.html", text: "34. Examples", category: "Reference" },
+        { href: "35-property-testing.html", text: "35. Property Testing", category: "Reference" },
+        { href: "36-grammar.html", text: "36. Grammar", category: "Reference" },
+        { href: "37-appendix.html", text: "37. Appendix", category: "Reference" },
+        { href: "38-appendix-gpu-billiards.html", text: "38. Appendix: GPU Billiards", category: "Reference" },
 ];
 
 const FALLBACK_NAV_ITEMS_IT = [
@@ -310,21 +311,22 @@ const FALLBACK_NAV_ITEMS_IT = [
         { href: "20-mcp-server.html", text: "20. Server MCP", category: "AI & Agents" },
         { href: "21-acp.html", text: "21. ACP (Agent Communication Protocol)", category: "AI & Agents" },
         { href: "22-durable-workflows.html", text: "22. Workflow durevoli", category: "AI & Agents" },
-        { href: "23-web-ui-hub.html", text: "23. Panoramica Web UI", category: "Web" },
-        { href: "24-web-ui.html", text: "24. Componenti server Web UI", category: "Web" },
-        { href: "25-http-server-html-ui.html", text: "25. HttpServer e generazione UI HTML", category: "Web" },
-        { href: "26-browser-javascript-backend.html", text: "26. Backend UI JavaScript nel browser", category: "Web" },
-        { href: "27-rest-api.html", text: "27. Server REST API", category: "Web" },
-        { href: "28-rest-web-client.html", text: "28. Client REST Web", category: "Web" },
-        { href: "29-full-stack-development.html", text: "29. Sviluppo full-stack con MALDA", category: "Web" },
-        { href: "30-dotnet-interop.html", text: "30. Interop .NET", category: "Platform" },
-        { href: "31-device-integration.html", text: "31. Integrazione dispositivi", category: "Platform" },
-        { href: "32-personal-assistant.html", text: "32. Assistente personale e CLI", category: "Platform" },
-        { href: "33-examples.html", text: "33. Esempi", category: "Reference" },
-        { href: "34-property-testing.html", text: "34. Property testing", category: "Reference" },
-        { href: "35-grammar.html", text: "35. Grammatica", category: "Reference" },
-        { href: "36-appendix.html", text: "36. Appendice", category: "Reference" },
-        { href: "37-appendix-gpu-billiards.html", text: "37. Appendice: biliardo GPU", category: "Reference" },
+        { href: "23-agentic-runs.html", text: "23. Esecuzioni agentiche", category: "AI & Agents" },
+        { href: "24-web-ui-hub.html", text: "24. Panoramica Web UI", category: "Web" },
+        { href: "25-web-ui.html", text: "25. Componenti server Web UI", category: "Web" },
+        { href: "26-http-server-html-ui.html", text: "26. HttpServer e generazione UI HTML", category: "Web" },
+        { href: "27-browser-javascript-backend.html", text: "27. Backend UI JavaScript nel browser", category: "Web" },
+        { href: "28-rest-api.html", text: "28. Server REST API", category: "Web" },
+        { href: "29-rest-web-client.html", text: "29. Client REST Web", category: "Web" },
+        { href: "30-full-stack-development.html", text: "30. Sviluppo full-stack con MALDA", category: "Web" },
+        { href: "31-dotnet-interop.html", text: "31. Interop .NET", category: "Platform" },
+        { href: "32-device-integration.html", text: "32. Integrazione dispositivi", category: "Platform" },
+        { href: "33-personal-assistant.html", text: "33. Assistente personale e CLI", category: "Platform" },
+        { href: "34-examples.html", text: "34. Esempi", category: "Reference" },
+        { href: "35-property-testing.html", text: "35. Property testing", category: "Reference" },
+        { href: "36-grammar.html", text: "36. Grammatica", category: "Reference" },
+        { href: "37-appendix.html", text: "37. Appendice", category: "Reference" },
+        { href: "38-appendix-gpu-billiards.html", text: "38. Appendice: biliardo GPU", category: "Reference" },
 ];
 
 // Synced from glossary.json / it/glossary.json by scripts/sync-reference-manual-search-index.py
@@ -432,7 +434,7 @@ const FALLBACK_GLOSSARY_EN = [
         "href": "03-lexical-structure.html#keywords",
         "summary": "Lexer reserved words. fn and def are not reserved; the parser rejects them as function keywords.",
         "also": [
-            "36-appendix.html"
+            "37-appendix.html"
         ]
     },
     {
@@ -828,10 +830,10 @@ const FALLBACK_GLOSSARY_EN = [
             "property",
             "UIHost"
         ],
-        "href": "24-web-ui.html",
+        "href": "25-web-ui.html",
         "summary": "Server-driven UI: component, property, and ui.* controls. Start at chapter 23 if choosing a UI model.",
         "also": [
-            "23-web-ui-hub.html"
+            "24-web-ui-hub.html"
         ]
     },
     {
@@ -842,7 +844,7 @@ const FALLBACK_GLOSSARY_EN = [
             "@AIPAGE",
             "HttpServer"
         ],
-        "href": "25-http-server-html-ui.html",
+        "href": "26-http-server-html-ui.html",
         "summary": "Route-first HTML pages on HttpServer, including LLM-generated @AIPAGE."
     },
     {
@@ -855,7 +857,7 @@ const FALLBACK_GLOSSARY_EN = [
             "@DELETE",
             "REST"
         ],
-        "href": "27-rest-api.html",
+        "href": "28-rest-api.html",
         "summary": "Decorator-based REST routes on the MALDA HTTP server."
     },
     {
@@ -868,11 +870,11 @@ const FALLBACK_GLOSSARY_EN = [
             "@shader",
             "GLSL"
         ],
-        "href": "26-browser-javascript-backend.html",
+        "href": "27-browser-javascript-backend.html",
         "summary": "Browser games kit (JS backend): game.* , three.* scene API, and @shader() to GLSL.",
         "also": [
-            "26-browser-javascript-backend.html#three-scene-api",
-            "26-browser-javascript-backend.html#shader-kernels"
+            "27-browser-javascript-backend.html#three-scene-api",
+            "27-browser-javascript-backend.html#shader-kernels"
         ]
     },
     {
@@ -883,7 +885,7 @@ const FALLBACK_GLOSSARY_EN = [
             "@server",
             "fullstack"
         ],
-        "href": "29-full-stack-development.html",
+        "href": "30-full-stack-development.html",
         "summary": "MALDA-native and hybrid full-stack apps: server UI or JS frontend plus MALDA backend."
     },
     {
@@ -894,7 +896,7 @@ const FALLBACK_GLOSSARY_EN = [
             "createNativeCallback",
             "NuGet"
         ],
-        "href": "30-dotnet-interop.html",
+        "href": "31-dotnet-interop.html",
         "summary": "Load external .NET libraries and wrap MALDA functions as delegates."
     },
     {
@@ -928,7 +930,7 @@ const FALLBACK_GLOSSARY_EN = [
             "runProperty",
             "property"
         ],
-        "href": "34-property-testing.html",
+        "href": "35-property-testing.html",
         "summary": "Deterministic property tests, shrinking, and backend capability hints."
     },
     {
@@ -938,7 +940,7 @@ const FALLBACK_GLOSSARY_EN = [
             "skill",
             "malda skill"
         ],
-        "href": "32-personal-assistant.html#skills",
+        "href": "33-personal-assistant.html#skills",
         "summary": "Personal-assistant skills: reusable instruction packs for the CLI assistant."
     },
     {
@@ -948,7 +950,7 @@ const FALLBACK_GLOSSARY_EN = [
             "optional pack",
             "vertical pack"
         ],
-        "href": "36-appendix.html#optional-packs",
+        "href": "37-appendix.html#optional-packs",
         "summary": "Domain packs stay out of OSS core. Load them with loadNativeModule; core does not auto-register pack globals.",
         "also": [
             "13-built-in-functions.html#optional-pack-builtins"
@@ -975,6 +977,84 @@ const FALLBACK_GLOSSARY_EN = [
         ],
         "href": "02-tools.html",
         "summary": "malda compile produces a self-contained executable. Default runtime mode is Interpreter; use --mode transpile for typed C# publish."
+    },
+    {
+        "id": "suite",
+        "term": "suite",
+        "aliases": [
+            "eval suite",
+            "case",
+            "expect",
+            "malda eval"
+        ],
+        "href": "23-agentic-runs.html",
+        "summary": "Named eval cases. Ordinary malda run skips them; malda eval runs them. expect throws like assert."
+    },
+    {
+        "id": "cassette",
+        "term": "cassette",
+        "aliases": [
+            "MALDA_RECORD",
+            "MALDA_REPLAY",
+            "MALDA_REPLAY_STRICT",
+            "cassette_miss"
+        ],
+        "href": "23-agentic-runs.html",
+        "summary": "JSONL record/replay of every LLM Chat. Key is prompt hash + args + model + mode + schema. A miss falls through to a live call unless STRICT."
+    },
+    {
+        "id": "trace-journal",
+        "term": "trace.journal",
+        "aliases": [
+            "run journal",
+            "trace.span",
+            "trace.lastUsage",
+            ".usage"
+        ],
+        "href": "23-agentic-runs.html",
+        "summary": "In-process journal of prompt, tool, cap, hop, and workflow-step events. MALDA_TRACE exports it; malda trace still reads session files."
+    },
+    {
+        "id": "within",
+        "term": "within",
+        "aliases": [
+            "within scope",
+            "@within"
+        ],
+        "href": "23-agentic-runs.html",
+        "summary": "Statement within (30s) is a wall-clock cancel scope (ms/s/m). The decorator @within(ms) is a per-function deadline."
+    },
+    {
+        "id": "declared-context",
+        "term": "declared context",
+        "aliases": [
+            "context",
+            "context Session"
+        ],
+        "href": "23-agentic-runs.html",
+        "summary": "context Name { budget / pin / retain / evict / compact } then new Name(). Compaction inside a workflow must sit in a step (WF1006)."
+    },
+    {
+        "id": "policy",
+        "term": "policy",
+        "aliases": [
+            "ToolDenied",
+            "MALDA_POLICY_APPROVE"
+        ],
+        "href": "23-agentic-runs.html",
+        "summary": "File-level fs/net/shell/mcp deny list on cap consume. Not the same as @effects. approve needs MALDA_POLICY_APPROVE or a host callback."
+    },
+    {
+        "id": "agent-error",
+        "term": "AgentError",
+        "aliases": [
+            "agentError",
+            "SchemaMismatch",
+            "ToolDenied",
+            "Timeout"
+        ],
+        "href": "23-agentic-runs.html",
+        "summary": "Built-in sum type attached beside the string error on result objects. Throws still throw."
     }
 ];
 
@@ -1084,7 +1164,7 @@ const FALLBACK_GLOSSARY_IT = [
         "href": "03-lexical-structure.html#keywords",
         "summary": "Parole riservate del lexer. fn e def non sono riservate; il parser le rifiuta come keyword di funzione.",
         "also": [
-            "36-appendix.html"
+            "37-appendix.html"
         ]
     },
     {
@@ -1487,10 +1567,10 @@ const FALLBACK_GLOSSARY_IT = [
             "property",
             "UIHost"
         ],
-        "href": "24-web-ui.html",
+        "href": "25-web-ui.html",
         "summary": "UI guidata dal server: component, property e controlli ui.*. Parti dal capitolo 23 se stai scegliendo un modello UI.",
         "also": [
-            "23-web-ui-hub.html"
+            "24-web-ui-hub.html"
         ]
     },
     {
@@ -1501,7 +1581,7 @@ const FALLBACK_GLOSSARY_IT = [
             "@AIPAGE",
             "HttpServer"
         ],
-        "href": "25-http-server-html-ui.html",
+        "href": "26-http-server-html-ui.html",
         "summary": "Pagine HTML route-first su HttpServer, incluso @AIPAGE generato da LLM."
     },
     {
@@ -1514,7 +1594,7 @@ const FALLBACK_GLOSSARY_IT = [
             "@DELETE",
             "REST"
         ],
-        "href": "27-rest-api.html",
+        "href": "28-rest-api.html",
         "summary": "Route REST basate su decoratori sul server HTTP MALDA."
     },
     {
@@ -1527,11 +1607,11 @@ const FALLBACK_GLOSSARY_IT = [
             "@shader",
             "GLSL"
         ],
-        "href": "26-browser-javascript-backend.html",
+        "href": "27-browser-javascript-backend.html",
         "summary": "Kit giochi nel browser (backend JS): game.*, API scene three.* e @shader() verso GLSL.",
         "also": [
-            "26-browser-javascript-backend.html#three-scene-api",
-            "26-browser-javascript-backend.html#shader-kernels"
+            "27-browser-javascript-backend.html#three-scene-api",
+            "27-browser-javascript-backend.html#shader-kernels"
         ]
     },
     {
@@ -1542,7 +1622,7 @@ const FALLBACK_GLOSSARY_IT = [
             "@server",
             "fullstack"
         ],
-        "href": "29-full-stack-development.html",
+        "href": "30-full-stack-development.html",
         "summary": "App full-stack native MALDA e ibride: UI server o frontend JS più backend MALDA."
     },
     {
@@ -1553,7 +1633,7 @@ const FALLBACK_GLOSSARY_IT = [
             "createNativeCallback",
             "NuGet"
         ],
-        "href": "30-dotnet-interop.html",
+        "href": "31-dotnet-interop.html",
         "summary": "Carica librerie .NET esterne e avvolge funzioni MALDA come delegate."
     },
     {
@@ -1587,7 +1667,7 @@ const FALLBACK_GLOSSARY_IT = [
             "runProperty",
             "property"
         ],
-        "href": "34-property-testing.html",
+        "href": "35-property-testing.html",
         "summary": "Property test deterministici, shrinking e hint di capability del backend."
     },
     {
@@ -1597,7 +1677,7 @@ const FALLBACK_GLOSSARY_IT = [
             "skill",
             "malda skill"
         ],
-        "href": "32-personal-assistant.html#skills",
+        "href": "33-personal-assistant.html#skills",
         "summary": "Skill dell'assistente personale: pacchetti di istruzioni riutilizzabili per l'assistente CLI."
     },
     {
@@ -1608,7 +1688,7 @@ const FALLBACK_GLOSSARY_IT = [
             "vertical pack",
             "pack opzionali"
         ],
-        "href": "36-appendix.html#optional-packs",
+        "href": "37-appendix.html#optional-packs",
         "summary": "I pack di dominio restano fuori dal core OSS. Caricali con loadNativeModule; il core non registra in automatico i global dei pack.",
         "also": [
             "13-built-in-functions.html#optional-pack-builtins"
@@ -1636,6 +1716,85 @@ const FALLBACK_GLOSSARY_IT = [
         ],
         "href": "02-tools.html",
         "summary": "malda compile produce un eseguibile self-contained. Il modo runtime di default è Interpreter; usa --mode transpile per la publish C# tipizzata."
+    },
+    {
+        "id": "suite",
+        "term": "suite",
+        "aliases": [
+            "eval suite",
+            "case",
+            "expect",
+            "malda eval"
+        ],
+        "href": "23-agentic-runs.html",
+        "summary": "Case di eval nominati. Un malda run ordinario li salta; malda eval li esegue. expect lancia come assert."
+    },
+    {
+        "id": "cassette",
+        "term": "cassetta",
+        "aliases": [
+            "cassette",
+            "MALDA_RECORD",
+            "MALDA_REPLAY",
+            "MALDA_REPLAY_STRICT",
+            "cassette_miss"
+        ],
+        "href": "23-agentic-runs.html",
+        "summary": "Record/replay JSONL di ogni Chat LLM. La chiave è hash del prompt + args + model + mode + schema. Un miss cade su una chiamata live salvo STRICT."
+    },
+    {
+        "id": "trace-journal",
+        "term": "trace.journal",
+        "aliases": [
+            "journal di run",
+            "trace.span",
+            "trace.lastUsage",
+            ".usage"
+        ],
+        "href": "23-agentic-runs.html",
+        "summary": "Journal in-process di eventi prompt, tool, cap, hop e step di workflow. MALDA_TRACE lo esporta; malda trace continua a leggere i file di sessione."
+    },
+    {
+        "id": "within",
+        "term": "within",
+        "aliases": [
+            "within scope",
+            "@within"
+        ],
+        "href": "23-agentic-runs.html",
+        "summary": "L'istruzione within (30s) è uno scope di cancel a orologio da parete (ms/s/m). Il decoratore @within(ms) è una deadline per funzione."
+    },
+    {
+        "id": "declared-context",
+        "term": "context dichiarato",
+        "aliases": [
+            "context",
+            "context Session"
+        ],
+        "href": "23-agentic-runs.html",
+        "summary": "context Name { budget / pin / retain / evict / compact } poi new Name(). La compaction in un workflow deve stare in uno step (WF1006)."
+    },
+    {
+        "id": "policy",
+        "term": "policy",
+        "aliases": [
+            "ToolDenied",
+            "MALDA_POLICY_APPROVE"
+        ],
+        "href": "23-agentic-runs.html",
+        "summary": "Deny list fs/net/shell/mcp a livello di file sul consume dei cap. Non è @effects. approve richiede MALDA_POLICY_APPROVE o un callback dell'host."
+    },
+    {
+        "id": "agent-error",
+        "term": "AgentError",
+        "aliases": [
+            "agentError",
+            "SchemaMismatch",
+            "ToolDenied",
+            "Timeout"
+        ],
+        "href": "23-agentic-runs.html",
+        "summary": "Sum type built-in attaccato accanto alla stringa error sugli oggetti risultato. I throw restano throw."
     }
 ];
 

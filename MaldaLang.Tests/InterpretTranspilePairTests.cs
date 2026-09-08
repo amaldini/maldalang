@@ -11,7 +11,7 @@ namespace MaldaLang.Tests;
 /// DT7 / ship-contract interpret vs C# transpile pairs (same stdout when both
 /// exit 0; mixed success/failure fails the pair). Compile-only smoke stays in
 /// <see cref="TranspileSmokeTests"/>. Registry: <c>docs/spec/ship-contract.md</c>.
-/// Still n/a (smoke only): LLM-awaiting prompts, agent_governance_golden,
+/// Still n/a (smoke only): live-await LLM prompts (RalphWiggum),
 /// workflow/job Examples (see WorkflowTranspilerParityTests; runprogram_in_step
 /// is smoke + interpreter), grounded_ask
 /// (GraphMemory score drift), capability_tokens Example (relative cwd file I/O;
@@ -29,6 +29,10 @@ public class InterpretTranspilePairTests
     [InlineData("Examples/Basics/schema_sumtype_validate.malda")]
     [InlineData("Examples/Basics/as_variant.malda")]
     [InlineData("Examples/Prompts/eval_prompt.malda")]
+    [InlineData("Examples/Prompts/run_journal_offline.malda")]
+    [InlineData("Examples/Prompts/eval_suite_offline.malda")]
+    [InlineData("Examples/Prompts/within_sleep.malda")]
+    [InlineData("Examples/Agents/agent_governance_golden.malda")]
     [InlineData("docs/llm/few-shot/28_api_program_prompt.malda")]
     [InlineData("Examples/Agents/phase6_pure_validate.malda")]
     [InlineData("Examples/Prompts/api_program_calc.malda")]

@@ -20,7 +20,8 @@
         'using', 'import', 'export', 'include', 'prompt', 'property',
         'match', 'case', 'default', 'type', 'schema', 'api', 'await', 'async',
         'workflow', 'step', 'approval', 'wait', 'retry', 'backoff', 'delay',
-        'maxDelay', 'compensate', 'onReject'
+        'maxDelay', 'compensate', 'onReject', 'suite', 'context', 'policy',
+        'within', 'expect'
     ];
 
     var LITERALS = ['true', 'false', 'null'];

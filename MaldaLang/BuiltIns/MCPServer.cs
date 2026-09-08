@@ -159,7 +159,27 @@ public class MCPServerInstance : ObjectInstance
     private RuntimeValue CallTool(string name, RuntimeValue arguments)
     {
         var handler = _protocolHandler ?? new MCPProtocolHandler(_interpreter);
-        return handler.CallToolByName(name, arguments);
+        try
+        {
+            var result = handler.CallToolByName(name, arguments);
+            MaldaLang.Runtime.Journal.RunJournal.Current.Append(new MaldaLang.Runtime.Journal.JournalEvent
+            {
+                Kind = MaldaLang.Runtime.Journal.JournalKind.Tool,
+                Name = name,
+                Ok = true
+            });
+            return result;
+        }
+        catch (Exception)
+        {
+            MaldaLang.Runtime.Journal.RunJournal.Current.Append(new MaldaLang.Runtime.Journal.JournalEvent
+            {
+                Kind = MaldaLang.Runtime.Journal.JournalKind.Tool,
+                Name = name,
+                Ok = false
+            });
+            throw;
+        }
     }
 
     private void OnMessageReceived(object? sender, string jsonMessage)

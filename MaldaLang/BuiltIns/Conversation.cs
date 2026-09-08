@@ -1541,6 +1541,14 @@ public partial class ConversationInstance : ObjectInstance
             response = ChatWithOptionalStreaming(() =>
                 _client!.Chat(RuntimeValue.Array(_messages), tools, responseFormat, overrides));
         }
+
+        MaldaLang.Runtime.Journal.RunJournal.Current.Append(new MaldaLang.Runtime.Journal.JournalEvent
+        {
+            Kind = MaldaLang.Runtime.Journal.JournalKind.Prompt,
+            Name = "conversation.send",
+            Model = _client?.Model ?? _llamaClient?.ModelPath,
+            Ok = response.Type == ValueType.Object
+        });
         
         // Ensure we always have an object to work with
         if (response.Type != ValueType.Object)

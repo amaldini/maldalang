@@ -110,6 +110,17 @@ public class LLMClientInstance : ObjectInstance
     public RuntimeValue Chat(RuntimeValue messages, RuntimeValue? tools, RuntimeValue? responseFormat = null, LlmRequestOverrides? overrides = null)
     {
         var model = overrides?.Model ?? Model;
+        var mode = tools != null && tools.Type == ValueType.Array && tools.AsArray().Count > 0 ? "B" : "A";
+        MaldaLang.Interpreter.Interpreter.CurrentCancelToken.ThrowIfCancellationRequested();
+        return MaldaLang.Runtime.LlmCassettes.CassetteTransport.Execute(
+            MaldaLang.Runtime.LlmCassettes.CassetteTransport.RequestFromRuntime(
+                messages, tools, responseFormat, model, mode),
+            () => ChatLive(messages, tools, responseFormat, overrides));
+    }
+
+    private RuntimeValue ChatLive(RuntimeValue messages, RuntimeValue? tools, RuntimeValue? responseFormat, LlmRequestOverrides? overrides)
+    {
+        var model = overrides?.Model ?? Model;
         var formatToSend = EffectiveResponseFormat(ApiUrl, model, responseFormat);
         try
         {

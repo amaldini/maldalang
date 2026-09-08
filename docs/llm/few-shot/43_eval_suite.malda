@@ -1,0 +1,19 @@
+// suite + evalPrompt + expect. Ordinary `malda run` skips the suite.
+// Execute cases with: malda eval docs/llm/few-shot/43_eval_suite.malda
+
+schema Card {
+    name: string;
+}
+
+prompt extract(raw) -> Card {
+    user: raw;
+}
+
+suite "extract" {
+    case "offline shape" {
+        var checked = evalPrompt(extract("x"), dict { "name": "Ada" });
+        expect(checked.ok);
+    }
+}
+
+io.print("ok");

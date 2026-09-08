@@ -25,11 +25,25 @@ public class RuntimeValue
 {
     public ValueType Type { get; }
     public object? Value { get; }
+    public MaldaLang.Runtime.Journal.RunUsage? Usage { get; private set; }
+    public MaldaLang.Runtime.GroundedMeta? Grounded { get; private set; }
     
     private RuntimeValue(ValueType type, object? value)
     {
         Type = type;
         Value = value;
+    }
+
+    public RuntimeValue WithUsage(MaldaLang.Runtime.Journal.RunUsage? usage)
+    {
+        var copy = new RuntimeValue(Type, Value) { Usage = usage, Grounded = Grounded };
+        return copy;
+    }
+
+    public RuntimeValue WithGrounded(MaldaLang.Runtime.GroundedMeta? grounded)
+    {
+        var copy = new RuntimeValue(Type, Value) { Usage = Usage, Grounded = grounded };
+        return copy;
     }
     
     public static RuntimeValue Integer(int value) => new(ValueType.Integer, value);

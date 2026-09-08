@@ -212,6 +212,16 @@ public class LLMClientBridgeInstance : ObjectInstance
     
     public RuntimeValue Chat(RuntimeValue messages, RuntimeValue? tools, RuntimeValue? responseFormat = null, LlmRequestOverrides? overrides = null)
     {
+        var model = overrides?.Model;
+        var mode = tools != null && tools.Type == MaldaLang.Interpreter.ValueType.Array && tools.AsArray().Count > 0 ? "B" : "A";
+        return MaldaLang.Runtime.LlmCassettes.CassetteTransport.Execute(
+            MaldaLang.Runtime.LlmCassettes.CassetteTransport.RequestFromRuntime(
+                messages, tools, responseFormat, model, mode),
+            () => ChatLive(messages, tools, responseFormat, overrides));
+    }
+
+    private RuntimeValue ChatLive(RuntimeValue messages, RuntimeValue? tools, RuntimeValue? responseFormat, LlmRequestOverrides? overrides)
+    {
         // Check rate limit
         if (_rateLimiter != null && !_rateLimiter.CheckRateLimit())
         {

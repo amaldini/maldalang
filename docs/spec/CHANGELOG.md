@@ -55,7 +55,7 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 | Change type | Tier |
 |-------------|------|
-| [35-grammar.html](../../ReferenceManual/35-grammar.html) aligned with parser | **PATCH** (spec 1.0 unchanged) |
+| [36-grammar.html](../../ReferenceManual/36-grammar.html) aligned with parser | **PATCH** (spec 1.0 unchanged) |
 | Reference Manual narrative | Not spec versioned; track in manual changelog if needed |
 
 ---
@@ -96,7 +96,7 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 1. Update [malda-language-1.0.md](malda-language-1.0.md) (or fork `malda-language-1.1.md` for large drafts).  
 2. Add a **Conformance** row and test in `MaldaLang.Tests/Conformance/Tier0/` when behavior is normative.  
 3. Add an entry under `[Unreleased]` below with **MAJOR** / **MINOR** / **PATCH** label.  
-4. If syntax changes: update [35-grammar.html](../../ReferenceManual/35-grammar.html) and `ReferenceManualGrammarCoverageTests`.  
+4. If syntax changes: update [36-grammar.html](../../ReferenceManual/36-grammar.html) and `ReferenceManualGrammarCoverageTests`.  
 5. Phase 2.4: `scripts/verify-spec-parser-drift.ps1` and `bitbucket-pipelines.yml` fail PRs that touch `Parser.cs` or `Lexer.cs` without spec/grammar/CHANGELOG update.
 
 **Implementation precedence for Final 1.0:** interpreter + Tier 0 tests → spec prose → Reference Manual.
@@ -106,6 +106,17 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 ## Release history (spec line)
 
 ### [Unreleased]
+
+#### Added (MINOR — agentic run observability, cassettes, eval suites)
+
+- **LLM cassettes:** `MALDA_RECORD` / `MALDA_REPLAY` / `MALDA_REPLAY_STRICT` intercept every `Chat` path. Cassette key is prompt hash + args + model + mode + schema hash. Secrets are redacted on record.
+- **Run journal:** `trace.span` / `trace.journal` / `trace.lastUsage`; `.usage` metadata on prompt results; `MALDA_TRACE=jsonl|otlp` + `MALDA_TRACE_FILE`. Workflow step success is mirrored into the same journal.
+- **`suite` / `case` / `expect` / `malda eval`:** sampling-aware eval runner with `--baseline` / `--update-baseline`.
+- **`AgentError`:** built-in sum type; `validate` mismatch attaches `agentError` beside the string `error`.
+- **`within (30s)`** scopes, **`context Name { … }`**, **`policy { … }`**, **`stream` / `for await`**, **`race` / `firstOk`**.
+- **`malda check --fix`**, `malda-gotcha` / `malda-tools` / `malda-agents` diagnostics, WF1006, `@requiresCitations`, typed `@MCPTool` schemas from parameter hints, `malda prompts --diff`.
+- **2.0 prep (not shipped):** `malda-gotcha` / `--fix` for flat aliases, `parseJson` vs `parseJSON`, and `arr.append`. Aliases stay until a dedicated 2.0 MAJOR.
+- **Documented** in Reference Manual §23 (`23-agentic-runs.html`) and `docs/llm/` (syntax, gotchas, few-shots `43_`–`48_`).
 
 #### Added (MINOR — HTTP / MCP / shell capability tokens)
 
@@ -178,7 +189,7 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 #### Added (PATCH — billiards appendix in the Reference Manual)
 
-- **`ReferenceManual/37-appendix-gpu-billiards.html`:** playable compiled GPU billiards as a manual appendix (`billiards-play.html` + committed `three_shader_billiards.js`). Change the `.malda` source and recompile; a guard fails if the committed JS drifts. GitHub Pages copies `three.min.js` and `malda-js-runtime.js` beside the chapter.
+- **`ReferenceManual/38-appendix-gpu-billiards.html`:** playable compiled GPU billiards as a manual appendix (`billiards-play.html` + committed `three_shader_billiards.js`). Change the `.malda` source and recompile; a guard fails if the committed JS drifts. GitHub Pages copies `three.min.js` and `malda-js-runtime.js` beside the chapter.
 
 #### Added (MINOR — @MCPTool / @Tool host-validate args)
 
@@ -330,7 +341,7 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 #### Added (MINOR — optional api parameter types)
 
-- **`api` method params:** optional `SchemaType` hints, same form as sum-type constructor payloads (`function add(a: number, b: number)`). Name-only remains valid and permissive. Declared types feed program JSON Schema (narrow the `args` union; always keep `string` for `"$alias"`) and coercion (`"2"` becomes a number only when the hint is `number`/`int`; a `string` hint keeps `"2"`). Prompt parameters stay name-only. Implementing `function` bodies stay untyped. Grammar: [`35-grammar.html`](../../ReferenceManual/35-grammar.html) `ApiMethodSig`; narrative: [`10-prompts.html`](../../ReferenceManual/10-prompts.html) §10.8. Example: `Examples/Prompts/api_program_calc.malda`.
+- **`api` method params:** optional `SchemaType` hints, same form as sum-type constructor payloads (`function add(a: number, b: number)`). Name-only remains valid and permissive. Declared types feed program JSON Schema (narrow the `args` union; always keep `string` for `"$alias"`) and coercion (`"2"` becomes a number only when the hint is `number`/`int`; a `string` hint keeps `"2"`). Prompt parameters stay name-only. Implementing `function` bodies stay untyped. Grammar: [`36-grammar.html`](../../ReferenceManual/36-grammar.html) `ApiMethodSig`; narrative: [`10-prompts.html`](../../ReferenceManual/10-prompts.html) §10.8. Example: `Examples/Prompts/api_program_calc.malda`.
 
 #### Fixed (PATCH — interpreter task isolation)
 
@@ -348,7 +359,7 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 #### Added (MINOR — match case guards)
 
-- **`case Pattern if expr:`** optional guard on `match` arms, same `if` word as `catch (e if …)`. Pattern binds first; a falsy guard skips the arm and tries the next case. Interpreter, C# transpile, and JS agree on boolean predicates. Under `--strict-types`, a guarded arm does not cover a variant or count as a catch-all. Conformance: `match-guard.malda`. Grammar: [`35-grammar.html`](../../ReferenceManual/35-grammar.html); narrative: [`08-control-structures.html`](../../ReferenceManual/08-control-structures.html).
+- **`case Pattern if expr:`** optional guard on `match` arms, same `if` word as `catch (e if …)`. Pattern binds first; a falsy guard skips the arm and tries the next case. Interpreter, C# transpile, and JS agree on boolean predicates. Under `--strict-types`, a guarded arm does not cover a variant or count as a catch-all. Conformance: `match-guard.malda`. Grammar: [`36-grammar.html`](../../ReferenceManual/36-grammar.html); narrative: [`08-control-structures.html`](../../ReferenceManual/08-control-structures.html).
 
 #### Removed (MAJOR — function keyword aliases)
 
@@ -376,7 +387,7 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 #### Added (MINOR — primary constructors)
 
-- **`class Name(params)`:** parameter list after the class name desugars to public fields plus a synthesized constructor. Body optional (`class Point(x, y);` or `{ methods }`). Cannot combine with `extends` or an explicit `function Name(...)`. Grammar: [`35-grammar.html`](../../ReferenceManual/35-grammar.html); narrative: [`11-classes-objects.html`](../../ReferenceManual/11-classes-objects.html) §10.11.
+- **`class Name(params)`:** parameter list after the class name desugars to public fields plus a synthesized constructor. Body optional (`class Point(x, y);` or `{ methods }`). Cannot combine with `extends` or an explicit `function Name(...)`. Grammar: [`36-grammar.html`](../../ReferenceManual/36-grammar.html); narrative: [`11-classes-objects.html`](../../ReferenceManual/11-classes-objects.html) §10.11.
 
 #### Added (MINOR — additive module syntax)
 
@@ -445,7 +456,7 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 
 - Keywords `import` and `export`; file and package import with isolated module environments.  
 - Spec §14 and [phase-3-modules-design.md](../planning/phase-3-modules-design.md).  
-- Grammar: `ImportStmt`, `ExportableDecl` in [35-grammar.html](../../ReferenceManual/35-grammar.html).
+- Grammar: `ImportStmt`, `ExportableDecl` in [36-grammar.html](../../ReferenceManual/36-grammar.html).
 
 #### Implementation (Phase 3.2)
 
@@ -458,7 +469,7 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 #### Added (normative documentation)
 
 - Initial [malda-language-1.0.md](malda-language-1.0.md): value model, null, truthiness, `match`, sum types, `async`/`await`/`all`, actors, `typeOf`/`isNumber`, dictionary missing-key → `null`.  
-- Expanded [35-grammar.html](../../ReferenceManual/35-grammar.html) (Phase 2.2).  
+- Expanded [36-grammar.html](../../ReferenceManual/36-grammar.html) (Phase 2.2).  
 - This CHANGELOG and semver policy (Phase 2.3).
 
 #### Implementation alignment (already shipped in toolchain)

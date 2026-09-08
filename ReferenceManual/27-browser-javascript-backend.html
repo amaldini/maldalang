@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>27. Browser JavaScript UI Backend - MALDA Reference Manual</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="syntax.css">
+    <link rel="stylesheet" href="print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>MALDA&trade; Reference Manual</h1>
+        <p>The AI-First Programming Language - Version 1.0.17</p>
+    </header>
+    <nav></nav>
+    <main>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>27. Browser JavaScript UI Backend</span></div>
+        <h1>27. Browser JavaScript UI Backend</h1>
+        <p>MALDA also supports a browser-hosted UI model where MALDA source is transpiled to JavaScript and runs with the MALDA JS runtime. This is separate from server-side <code>@PAGE</code>, <code>@AIPAGE</code>, and server-component flows.</p>
+        <div class="info-box">
+            <strong>Start here:</strong> Read <a href="24-web-ui-hub.html">24. Web UI Overview</a> to compare UI models. This chapter covers browser-side MALDA execution, DOM helpers, template mode, and the canvas/game API. For server-rendered UI, see <a href="25-web-ui.html">Web UI Server Components</a> or <a href="26-http-server-html-ui.html">HttpServer &amp; HTML UI Generation</a>.
+        </div>
+
+        <h2>26.1 Chapter Map</h2>
+        <ul>
+            <li><strong>26.2</strong> What the JavaScript backend provides</li>
+            <li><strong>26.3</strong> Compile commands and output modes</li>
+            <li><strong>26.4</strong> Required script loading order</li>
+            <li><strong>26.5</strong> API mode DOM helpers</li>
+            <li><strong>26.6</strong> Sum types and pattern matching in JS mode</li>
+            <li><strong>26.7</strong> Actors in JS mode</li>
+            <li><strong>26.8</strong> Template mode syntax</li>
+            <li><strong>26.9</strong> Canvas/game API</li>
+            <li><strong>26.10</strong> three.js scene API</li>
+            <li><strong>26.10.1</strong> Shader kernels (MALDA to GLSL)</li>
+            <li><strong>26.11</strong> Common pitfalls and practical guidance</li>
+        </ul>
+
+        <h2>26.2 What This Mode Provides</h2>
+        <ul>
+            <li><strong>API mode</strong> (<code>.malda</code>): write MALDA that manipulates the DOM with <code>dom.*</code> helpers.</li>
+            <li><strong>Template mode</strong> (<code>.malda.html</code>): write HTML-first templates with inline MALDA blocks.</li>
+            <li><strong>Language coverage</strong>: JavaScript backend supports sum types and full <code>match</code> pattern matching.</li>
+            <li><strong>Actor support (local)</strong>: JS mode supports local actors with mailbox semantics compatible with MALDA actor behavior.</li>
+            <li><strong>3D scene support</strong>: JavaScript mode includes a curated <code>three.*</code> wrapper for browser-hosted 3D scenes, plus <code>@shader()</code> kernels compiled to GLSL (see <a href="#three-scene-api">26.10</a>).</li>
+            <li><strong>Runtime expectation</strong>: generated scripts require <code>malda-js-runtime.js</code> before MALDA output runs.</li>
+            <li><strong>Desktop IDE debug</strong>: F5 on <code>dom.*</code> / <code>game.*</code> / <code>three.*</code> programs transpiles to JavaScript, opens Web Preview, and maps editor breakpoints through the source map. Full-stack files (<code>@client()</code> plus <code>@server()</code> or a route) debug the host interpreter and Web Preview together (see <a href="02-tools.html#javascript-desktop-debug">2.6.6</a>).</li>
+        </ul>
+        <h3>26.2.1 Target decorators in JS output</h3>
+        <p>When compiling to JavaScript, target decorators can be used to keep browser and server concerns in one source file:</p>
+        <ul>
+            <li><code>@client()</code> and <code>@javascript()</code> declarations are included in JavaScript output.</li>
+            <li><code>@server()</code> and <code>@csharp()</code> declarations are excluded from JavaScript output.</li>
+            <li><code>@shared()</code> declarations are included in both C# and JavaScript outputs.</li>
+        </ul>
+        <p>Route decorators are still server-oriented. A declaration such as <code>@GET(...)</code> is treated as server code and is not emitted in JavaScript output.</p>
+
+        <h2>26.3 Compile Commands</h2>
+        <pre><code># API mode (.malda source)
+malda compile Examples/Web/js/hello_dom.malda --mode js -o Examples/Web/js/hello_dom.js
+
+# Alias form (equivalent)
+malda compile Examples/Web/js/counter.malda --target js -o Examples/Web/js/counter.js
+
+# PWA output directory
+malda compile Examples/Web/js/hello_dom.malda --target pwa -o dist/hello-dom
+
+# Template mode (.malda.html source)
+malda compile Examples/Web/js/hello_template.malda.html --mode js -o Examples/Web/js/hello_template.generated.js</code></pre>
+        <p><code>--target js</code> is an alias for <code>--mode js</code>. <code>--target pwa</code> is an alias for <code>--mode pwa</code> and produces a directory containing the app shell, runtime, and transpiled JavaScript.</p>
+        <p>The inner loop for canvas games is <code>malda play</code>. It compiles <code>--mode js</code>, writes a host page, and serves a local URL so you do not have to author HTML. Packaging for itch.io stays <code>--mode pwa</code>.</p>
+        <pre><code>malda new game my-game
+cd my-game
+malda play app.malda</code></pre>
+        <p>Canvas plus a score API is <code>malda new game --fullstack</code>. That emits <code>@client()</code> / <code>@GET</code> / <code>@POST</code> and <code>schema Score</code> in one file. Compile with <code>--mode fullstack</code>; <code>malda play</code> refuses those sources.</p>
+        <pre><code>malda new game my-scores --fullstack
+cd my-scores
+malda compile app.malda --mode fullstack -o dist</code></pre>
+
+        <h2>26.4 Required Script Loading Order</h2>
+        <p>The host page must include a container such as <code>#app</code>, then load scripts in this order. Same file: <code>Examples/Web/js/host.html</code>.</p>
+        <ol>
+            <li>Any required browser dependency for the chosen namespace, for example <code>three.js</code> for <code>three.*</code></li>
+            <li><code>malda-js-runtime.js</code></li>
+            <li>The compiled MALDA script</li>
+            <li>The bootstrap call, such as <code>MaldaApp.main()</code></li>
+        </ol>
+        <pre><code>&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+  &lt;meta charset="UTF-8"&gt;
+  &lt;title&gt;MALDA JS host&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;div id="app"&gt;&lt;/div&gt;
+  &lt;script src="../wwwroot/malda-js-runtime.js"&gt;&lt;/script&gt;
+  &lt;script src="./counter.js"&gt;&lt;/script&gt;
+  &lt;script&gt;
+    if (window.MaldaApp &amp;&amp; typeof window.MaldaApp.main === "function") {
+      window.MaldaApp.main();
+    }
+  &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+        <p><code>println</code> is a JavaScript-backend console helper. The interpreter has no <code>println</code> (use <code>io.print</code> / <code>print</code> there — see <a href="12-input-output.html">12. Input/Output</a>).</p>
+
+        <h2>26.5 API Mode DOM Helpers</h2>
+        <p>The JavaScript runtime exposes browser helpers under <code>dom</code> for direct DOM manipulation. Same program: <code>Examples/Web/js/counter.malda</code> (compile with the command in 26.3, then open the host page from 26.4).</p>
+        <ul>
+            <li><code>dom.query(selector, root?)</code></li>
+            <li><code>dom.create(tagName)</code></li>
+            <li><code>dom.append(parent, child)</code></li>
+            <li><code>dom.clear(target)</code></li>
+            <li><code>dom.setText(target, text)</code></li>
+            <li><code>dom.html(target, markup)</code></li>
+            <li><code>dom.on(target, eventName, handler, options?)</code></li>
+        </ul>
+        <pre><code>var root = dom.query("#app");
+
+if (root == null) {
+    println("No #app container found.");
+} else {
+    dom.clear(root);
+
+    var count = 0;
+
+    var title = dom.create("h1");
+    dom.setText(title, "Counter example");
+    dom.append(root, title);
+
+    var valueLabel = dom.create("p");
+    dom.append(root, valueLabel);
+
+    function renderCount() {
+        dom.setText(valueLabel, "Count: " + string(count));
+    }
+
+    var button = dom.create("button");
+    dom.setText(button, "Increment");
+    dom.append(root, button);
+
+    function onIncrementClick() {
+        count = count + 1;
+        renderCount();
+    }
+
+    dom.on(button, "click", onIncrementClick);
+    renderCount();
+}</code></pre>
+
+        <h2>26.6 Sum Types and Pattern Matching in JS Mode</h2>
+        <p>You can use the same sum-type and pattern-matching model in JavaScript backend mode as in interpreted mode.</p>
+        <pre><code>type Result = Ok(value) | Err(message);
+
+function divide(a, b) {
+    if (b == 0) return Err("divide by zero");
+    return Ok(a / b);
+}
+
+var outcome = divide(10, 2);
+var text = match outcome {
+    case Ok(v): "ok: " + v;
+    case Err(msg): "error: " + msg;
+};
+println(text);</code></pre>
+        <p>All pattern families are supported in JS mode: literals, identifiers, wildcard, variant payloads, array patterns with <code>...rest</code>, and nested object patterns.</p>
+
+        <h2>26.7 Actors in JS Mode</h2>
+        <p>The JavaScript backend includes local actor runtime support through <code>mlRuntime.actors</code>. This provides browser-side or Node-local actor concurrency with mailbox semantics aligned to MALDA actor behavior.</p>
+        <ul>
+            <li>Supported features: <code>actor</code>, <code>spawn</code>, call-style <code>send</code>, callback and timeout sends, <code>reply()</code>, <code>receive()</code>, <code>self</code>, and stop routing.</li>
+            <li>Per-actor FIFO mailbox processing is preserved.</li>
+            <li><code>send target.stop();</code> routes through actor-aware stop behavior.</li>
+        </ul>
+        <p><strong>Boundary:</strong> this is local actor runtime support only. Direct transparent communication between browser JS actors and server-side actors is not enabled by default.</p>
+
+        <h2>26.8 Template Mode Syntax</h2>
+        <p>Template mode uses <code>.malda.html</code> files. Use <code>{{ ... }}</code> for interpolation and <code>{% ... %}</code> for statements.</p>
+        <pre><code>&lt;div class="hello-template"&gt;
+  &lt;h1&gt;Hello from template mode&lt;/h1&gt;
+  &lt;p&gt;User: {{ "Andrea" }}&lt;/p&gt;
+  {% var count = 2; %}
+  &lt;p&gt;Count value: {{ count }}&lt;/p&gt;
+&lt;/div&gt;</code></pre>
+        <p>See <code>Examples/Web/js/host.html</code> for a minimal static page that demonstrates runtime loading and compiled-script bootstrap.</p>
+
+        <h2>26.9 Game Canvas API</h2>
+        <p>The JavaScript backend includes a browser canvas/game API under <code>game.*</code> for simple 2D interactive loops.</p>
+        <ul>
+            <li><strong>Canvas and lifecycle:</strong> <code>game.createCanvas</code>, <code>game.setBackground</code>, <code>game.start(updateFn, renderFn?)</code>, <code>game.startFixed(updateFn, renderFn?, tickMs?)</code>, <code>game.stop()</code>, <code>game.save(key, value)</code>, <code>game.load(key)</code>, <code>game.removeSave(key)</code></li>
+            <li><strong>Drawing:</strong> <code>game.clear()</code>, <code>game.fillRect(...)</code>, <code>game.fillCircle(...)</code>, <code>game.strokeCircle(...)</code>, <code>game.drawText(...)</code>, <code>game.measureText(text, font?)</code>, <code>game.drawLine(...)</code>, <code>game.strokeRect(...)</code>, <code>game.setAlpha(a)</code>, <code>game.setBlend(mode)</code>, <code>game.getBlend()</code>, <code>game.setPixelated(enabled)</code>, <code>game.getCanvasWidth()</code>, <code>game.getCanvasHeight()</code></li>
+            <li><strong>Images and camera:</strong> <code>game.loadImage(url)</code>, <code>game.imageIsReady(handle)</code>, <code>game.imageWidth(handle)</code>, <code>game.imageHeight(handle)</code>, <code>game.drawImage(...)</code>, <code>game.drawImageRect(...)</code>, <code>game.drawImageEx(handle, x, y, options?)</code>, <code>game.drawTiles(handle, cells, tileW, tileH, options?)</code>, <code>game.setCamera(x, y)</code>, <code>game.followCamera(targetX, targetY, viewW, viewH, worldW, worldH, options?)</code>, <code>game.getCameraX()</code>, <code>game.getCameraY()</code>, <code>game.setCameraZoom(z)</code>, <code>game.getCameraZoom()</code>, <code>game.pushCamera()</code>, <code>game.popCamera()</code>, <code>game.screenToWorld(x, y)</code>, <code>game.worldToScreen(x, y)</code></li>
+            <li><strong>Pixel buffer / blit:</strong> <code>game.createPixelBuffer(width?, height?)</code>, <code>game.setPixel(x, y, r, g, b, a?)</code>, <code>game.blitPixels(pixels?, destX?, destY?)</code></li>
+            <li><strong>Collision:</strong> <code>game.overlapRect(x1, y1, w1, h1, x2, y2, w2, h2)</code>, <code>game.overlapCircle(x1, y1, r1, x2, y2, r2)</code>, <code>game.pointInRect(px, py, x, y, w, h)</code>, <code>game.pointInCircle(px, py, x, y, r)</code>, <code>game.sweepRect(x, y, w, h, dx, dy, ox, oy, ow, oh)</code>, <code>game.sweepRects(x, y, w, h, dx, dy, obstacles)</code>, <code>game.tileAt(cells, col, row, options?)</code>, <code>game.sweepTiles(x, y, w, h, dx, dy, cells, tileW, tileH, options?)</code></li>
+            <li><strong>Input:</strong> <code>game.isKeyDown(key)</code>, <code>game.wasKeyPressed(key)</code>, <code>game.wasKeyReleased(key)</code>, <code>game.getMouseX()</code>, <code>game.getMouseY()</code>, <code>game.getMouseWorldX()</code>, <code>game.getMouseWorldY()</code>, <code>game.isMouseDown(button?)</code>, <code>game.wasMousePressed(button?)</code>, <code>game.wasMouseReleased(button?)</code>, <code>game.getTouches()</code>, <code>game.isGamepadConnected(index?)</code>, <code>game.getGamepadAxis(index, axis, deadzone?)</code>, <code>game.isGamepadButtonDown(index, button)</code>, <code>game.wasGamepadButtonPressed(index, button)</code>, <code>game.wasGamepadButtonReleased(index, button)</code></li>
+            <li><strong>Audio:</strong> <code>game.audioInit()</code>, <code>game.audioIsReady()</code>, <code>game.audioSetMasterVolume(v)</code>, <code>game.audioPlayTone(...)</code>, <code>game.audioPlayNoise(...)</code>, <code>game.audioPlayPattern(pattern)</code>, <code>game.audioStopPattern()</code>, <code>game.audioPlaySample(url, volume?, options?)</code>, <code>game.audioStopSample(url?)</code>, <code>game.audioLoadTrack(...)</code>, <code>game.audioPlayTrack()</code>, <code>game.audioStopTrack()</code>, <code>game.audioSetTrackOptions(options)</code>, <code>game.audioTrackIsReady()</code>, <code>game.audioGetTrackInfo()</code>, <code>game.audioStopAll()</code></li>
+        </ul>
+        <p><strong>Image and camera guidance:</strong> <code>game.loadImage</code> returns a handle immediately; decode is async. Draws no-op until <code>game.imageIsReady</code> is true (missing files stay unready, no throw). <code>game.imageWidth</code> / <code>game.imageHeight</code> return the bitmap size, or <code>0</code> until ready. <code>game.drawImageEx(handle, x, y, options?)</code> adds atlas source, dest size, origin, rotation, flip, and tint: <code>{ sx?, sy?, sw?, sh?, w?, h?, ox?, oy?, angle?, flipX?, flipY?, tint?, tintFill? }</code>. <code>x</code>/<code>y</code> are the origin (default dest top-left). <code>angle</code> is radians; canvas Y+ down so positive is clockwise. <code>flipX</code> around <code>ox = 0</code> draws to the left of <code>x</code> — set <code>ox</code> to <code>w / 2</code> for in-place facing. <code>tint</code> is a CSS color on an offscreen copy (omit / empty → no tint). Default tint is multiply (white is identity). <code>tintFill: true</code> replaces RGB and keeps alpha — white fill is a hit-flash. <code>game.setBlend(mode)</code> / <code>game.getBlend()</code> set the canvas composite for subsequent world draws: <code>"alpha"</code> (default), <code>"add"</code>, <code>"multiply"</code>, <code>"screen"</code> (unknown → <code>"alpha"</code>). Blend sticks until changed, like <code>setAlpha</code>; <code>clear()</code> always composites as alpha and does not reset the mode; <code>createCanvas</code> resets to <code>"alpha"</code>. Blend does not affect <code>setPixel</code> / <code>blitPixels</code>. <code>game.setCamera</code> subtracts from subsequent world draws (<code>fillRect</code>, <code>drawImage</code>, <code>drawImageEx</code>, lines, text, <code>strokeCircle</code>). <code>game.followCamera(targetX, targetY, viewW, viewH, worldW, worldH, options?)</code> sets pan so the target sits at <code>(screenX, screenY)</code> then clamps the view inside <code>(0, 0)–(worldW, worldH)</code> (options <code>{ screenX?, screenY?, snap? }</code>; default screen is view center; <code>snap: true</code> floors pan; does not change zoom). <code>game.setCameraZoom(z)</code> then scales those world sizes (default <code>1</code>; clamp <code>[0.05, 100]</code>; non-positive → <code>1</code>). Camera does not move <code>setPixel</code> / <code>blitPixels</code>. <code>game.measureText(text, font?)</code> returns <code>{ width, height }</code> in unscaled font pixels (ignores pan/zoom — use it for HUD after zoom 1). <code>game.setPixelated(true)</code> disables smoothing and sets CSS <code>image-rendering: pixelated</code>; <code>createCanvas</code> resets it. <code>getMouseX</code> / <code>getTouches</code> stay in canvas pixels; <code>getMouseWorldX</code> / <code>getMouseWorldY</code> / <code>screenToWorld</code> honor pan and zoom. HUD: <code>pushCamera</code>, <code>setCamera(0, 0)</code>, <code>setCameraZoom(1)</code>, draw, <code>popCamera</code> (empty pop is a no-op; the stack stores pan and zoom). See <code>Examples/Games/game_sprite_smoke.malda</code>.</p>
+        <p><strong>Input guidance:</strong> Key, mouse, and gamepad edges are snapshotted at the start of <code>update</code> and are false in <code>render</code>. Read <code>wasKeyPressed</code> / <code>wasKeyReleased</code> / <code>wasGamepadButtonPressed</code> / <code>wasGamepadButtonReleased</code> / <code>wasMousePressed</code> / <code>wasMouseReleased</code> in <code>update</code> only (same key names as <code>isKeyDown</code>; mouse default button <code>0</code>). <code>getTouches()</code> returns <code>{ id, x, y }</code> in canvas pixels (empty when none). The first active touch still aliases mouse button 0, so a new touch also edges <code>wasMousePressed(0)</code>. Missing Gamepad API or disconnected pads return disconnected / axis <code>0</code>. <code>game.getGamepadAxis(index, axis, deadzone?)</code> keeps the two-arg form raw; optional <code>deadzone</code> (clamp <code>[0, 1]</code>) returns <code>0</code> when <code>|v| ≤ deadzone</code> with no radial rescale. <code>game.stop()</code> clears keys, mouse edges, and button edges. See <code>Examples/Games/game_input_smoke.malda</code>.</p>
+        <p><strong>Collision guidance:</strong> Overlap helpers are inclusive (touching edges count) and return false when any width, height, or radius is ≤ 0. They are pure functions: no canvas, and they do not subtract <code>setCamera</code>. They do not stop a mover that ends the tick past a thin wall. <code>game.sweepRect(x, y, w, h, dx, dy, ox, oy, ow, oh)</code> returns <code>{ hit, t, nx, ny, x, y }</code> at the first contact along the delta (miss: <code>t</code> 1 and the end pose). <code>game.sweepRects(x, y, w, h, dx, dy, obstacles)</code> is the same against an array of <code>{ x, y, w, h }</code> (earliest <code>t</code>; ties keep the first; empty/non-array is a miss). <code>game.tileAt(cells, col, row, options?)</code> returns the id at cell coordinates (nested rows or a flat array plus <code>columns</code>; out of range is <code>out</code>, default <code>0</code>). <code>game.drawTiles(handle, cells, tileW, tileH, options?)</code> blits non-empty ids from an atlas (id <code>0</code> skips; atlas index is <code>id - firstId</code>, default 1; unready no-op; camera applies). <code>game.sweepTiles(...)</code> is <code>sweepRect</code> against solid cells (default: any id other than <code>empty</code>; optional <code>solids</code> array). Canvas Y+ is down, so a floor normal is <code>ny = -1</code>. Already penetrating (positive-area overlap) yields <code>t</code> 0 and a minimum-translation normal. Walking along a touching floor while sweeping X is not a hit. Not a physics engine or Tiled/LDtk. See <code>Examples/Games/game_collision_smoke.malda</code> and <code>Examples/Games/game_tiles_smoke.malda</code>.</p>
+        <p><strong>Loop guidance:</strong> <code>updateFn</code> receives <code>dtMs</code>. Scale movement by <code>dtMs</code> so animation stays frame-rate independent. <code>game.startFixed(updateFn, renderFn?, tickMs?)</code> defaults <code>tickMs</code> to <code>1000 / 60</code>, accrues wall time, and calls <code>update(tickMs)</code> zero or more times per frame (max 5), then <code>render</code> once. It cannot run at the same time as <code>game.start</code>. See <code>Examples/Games/game_fixed_save_smoke.malda</code>.</p>
+        <p><strong>Save guidance:</strong> <code>game.save</code> / <code>game.load</code> / <code>game.removeSave</code> store JSON in origin-scoped <code>localStorage</code> under a <code>malda.game.</code> prefix (not files). Missing storage, quota errors, or corrupt JSON: load returns <code>null</code> and save is a no-op (no throw).</p>
+        <p><strong>Audio guidance:</strong> call <code>game.audioInit()</code> after a user gesture to satisfy browser autoplay policies. <code>game.audioPlaySample(url, volume?, options?)</code> decodes a WAV/OGG once per URL and caches it (<code>volume</code> default <code>1</code>, clamp <code>[0, 1]</code>; options <code>{ loop?: bool, pan?: number, playbackRate?: number }</code>; <code>pan</code> clamp <code>[-1, 1]</code>, default <code>0</code>; <code>playbackRate</code> default <code>1</code>, clamp <code>[0.25, 4]</code>). Overlapping one-shots are allowed. <code>game.audioStopSample(url?)</code> stops samples only — it does not stop the v1 track, pattern, or tones. <code>game.stop()</code> still does not implicit-stop audio. Samples share the 32-node cap with tones. See <code>Examples/Games/game_audio_sample_smoke.malda</code>.</p>
+        <p>For a full quick start and best practices, see <code>docs/javascript-backend.md</code>. For a complete sample, see <code>Examples/Games/game_bounce.malda</code>. For PNG atlas blit plus a scrolling camera, <code>setCameraZoom</code>, <code>drawImageEx</code> flip/rotate/tint/<code>tintFill</code>, <code>setBlend</code> add/multiply, <code>pushCamera</code> HUD, <code>measureText</code> / <code>imageWidth</code> / <code>setPixelated</code> / <code>strokeCircle</code>, and a click-to-world marker, see <code>Examples/Games/game_sprite_smoke.malda</code>. For key edges, <code>wasMousePressed</code>, touches, and gamepad (including <code>wasGamepadButtonReleased</code> and analog deadzone), see <code>Examples/Games/game_input_smoke.malda</code>. For AABB overlap plus swept AABB (<code>sweepRects</code>), see <code>Examples/Games/game_collision_smoke.malda</code>. For a 2D id grid (<code>drawTiles</code> / <code>tileAt</code> / <code>sweepTiles</code>), see <code>Examples/Games/game_tiles_smoke.malda</code>. For overlapping WAV one-shots with pan / <code>playbackRate</code> next to a looping pattern, see <code>Examples/Games/game_audio_sample_smoke.malda</code>. For a fixed timestep plus a high score that survives reload, see <code>Examples/Games/game_fixed_save_smoke.malda</code>. For a short side-scroller that uses the kit together (atlas tiles, <code>followCamera</code>, <code>sweepRects</code>, key edges, sample SFX, <code>startFixed</code>) plus spinning coins, a facing player via <code>drawImageEx</code>, coin-hit <code>tintFill</code> flash, and an additive spark, see <code>Examples/Games/malda_platform.malda</code>. For a canvas client plus <code>schema</code> / <code>validate</code> scores, use <code>malda new game --fullstack</code>. For a Boulder Dash-style tile cave that uses the kit together (<code>drawTiles</code> / <code>tileAt</code> / <code>sweepTiles</code>, <code>followCamera</code>, <code>drawImageEx</code> flip/tint, <code>setBlend</code> add/multiply, key/gamepad/touch, sample SFX, <code>startFixed</code>, saved high score), see <code>Examples/Games/maldadash.malda</code>. For a CPU ray tracer that writes pixels into an <code>ImageData</code> buffer and blits once per frame, see <code>Examples/Games/ray_tracer.malda</code>.</p>
+
+        <h2 id="three-scene-api">26.10 three.js Scene API</h2>
+        <p>The JavaScript backend includes a curated 3D scene API under <code>three.*</code>. Use it when you want a browser-hosted scene in MALDA without writing raw <code>THREE.*</code> calls. The namespace is JavaScript mode only; interpreter and C# transpile do not run these helpers. Calls map to <code>mlRuntime.three.*</code> in the generated script.</p>
+        <p>Build a scene in this order: renderer, scene, camera, then meshes and lights, then <code>three.start</code>. <code>three.createRenderer(width, height, mountSelector?)</code> creates the WebGL canvas and appends it to the host element (default <code>"#app"</code>). Call it once, before <code>three.render</code> or <code>three.start</code>. If you need a new size or a second canvas, call <code>three.stop()</code> first — do not create another renderer while the loop is running.</p>
+        <ul>
+            <li><strong>Renderer and lifecycle:</strong> <code>three.createRenderer</code>, <code>three.setClearColor</code>, <code>three.setRendererSize</code>, <code>three.start(updateFn, renderFn?)</code>, <code>three.stop()</code></li>
+            <li><strong>Scene graph:</strong> <code>three.createScene()</code>, <code>three.createPerspectiveCamera(fovDeg, aspect, near, far)</code>, <code>three.createOrthographicCamera(left, right, top, bottom, near, far)</code>, <code>three.setCameraAspect(camera, aspect)</code>, <code>three.createGroup()</code>, <code>three.createMesh(geometry, material)</code>, <code>three.add(parent, child)</code>, <code>three.loadGLTF(url)</code>, <code>three.modelIsReady(handle)</code></li>
+            <li><strong>Primitives and lighting:</strong> <code>three.createBoxGeometry(width, height, depth)</code>, <code>three.createPlaneGeometry(width, height)</code>, <code>three.createSphereGeometry(radius, widthSegments?, heightSegments?)</code>, <code>three.createTexture(url)</code>, <code>three.createDataTexture(width, height, pixels, options?)</code>, <code>three.updateDataTexture(handle, pixels)</code>, <code>three.mandelbrotOrbit(real, imag, maxIter)</code>, <code>three.createStandardMaterial(options)</code>, <code>three.createShaderMaterial(options)</code>, <code>three.setUniform(material, name, value)</code>, <code>three.createDirectionalLight(color, intensity)</code>, <code>three.createAmbientLight(color?, intensity?)</code></li>
+            <li><strong>Transforms and input:</strong> <code>three.setPosition(object, x, y, z)</code>, <code>three.setRotation(object, x, y, z)</code>, <code>three.setScale(object, x, y, z)</code>, <code>three.lookAt(object, x, y, z)</code>, <code>three.render(renderer, scene, camera)</code>, <code>three.isKeyDown(key)</code>, <code>three.getMouseX()</code>, <code>three.getMouseY()</code>, <code>three.isMouseDown(button?)</code></li>
+        </ul>
+        <p>Positions, scales, and camera <code>near</code>/<code>far</code> are world units. Rotations are radians (a floor lying in XZ is about <code>-1.5708</code> on X). Standard-material options that the wrapper understands include <code>"color"</code> (<code>#rrggbb</code>), <code>"roughness"</code>, <code>"metalness"</code>, and <code>"map"</code> (a <code>three.createTexture</code> handle). <code>createTexture</code> returns immediately; decode is async and missing files stay unready (no throw). The material leaves <code>map</code> unset until the handle is ready. <code>three.createDataTexture(width, height, pixels, options?)</code> is ready immediately (RGBA; default float32, or <code>"type": "byte"</code>; nearest, no mipmaps). <code>three.updateDataTexture(handle, pixels)</code> rewrites that buffer. <code>three.mandelbrotOrbit(real, imag, maxIter)</code> is JavaScript-only BigInt: pass <strong>decimal strings</strong> for C (MALDA numbers are IEEE double), walk <code>Z<sub>n+1</sub> = Z<sub>n</sub>² + C</code> at 256 fraction bits, and pack <code>(re, im, alive, 1)</code> into a 1-row float texture. Shader-material uniforms unwrap those handles for <code>sampler2D</code>. <code>three.loadGLTF(url)</code> returns a group you can <code>add</code> immediately; children appear when <code>three.modelIsReady(handle)</code> is true (JSON <code>.gltf</code> or <code>.glb</code>; failures stay unready). The runtime owns the loader — host pages do not add a fourth <code>&lt;script&gt;</code>. <code>three.lookAt(object, x, y, z)</code> requires <code>lookAt</code> on the three.js object. Groups parent meshes so you can move a cluster with one <code>setPosition</code> / <code>setRotation</code>. Input keys use the same names as the canvas API (<code>"arrowleft"</code>, <code>"arrowright"</code>, …).</p>
+        <p>A first scene with a spinning cube, one key light, and a <code>dtMs</code> loop:</p>
+        <pre><code>var width = 800;
+var height = 500;
+var aspect = width / height;
+
+var renderer = three.createRenderer(width, height, "#app");
+three.setClearColor(renderer, "#101722");
+three.setRendererSize(renderer, width, height);
+
+var scene = three.createScene();
+var camera = three.createPerspectiveCamera(70, aspect, 0.1, 100.0);
+three.setCameraAspect(camera, aspect);
+three.setPosition(camera, 0, 0, 5);
+
+var geometry = three.createBoxGeometry(1, 1, 1);
+var material = three.createStandardMaterial({ "color": "#44aaff" });
+var cube = three.createMesh(geometry, material);
+three.add(scene, cube);
+
+var light = three.createDirectionalLight("#ffffff", 1.1);
+three.setPosition(light, 2, 3, 4);
+three.add(scene, light);
+
+var angle = 0.0;
+
+function update(dtMs) {
+    angle = angle + ((dtMs * 1.2) / 1000);
+    three.setRotation(cube, angle, angle * 0.8, 0.0);
+}
+
+function render() {
+    three.render(renderer, scene, camera);
+}
+
+three.start(update, render);</code></pre>
+        <p><strong>Loop guidance:</strong> <code>updateFn</code> receives <code>dtMs</code>, same as <code>game.start</code>. Scale spin and motion by <code>dtMs / 1000</code> so animation stays frame-rate independent. Cap huge <code>dtMs</code> values after a tab was backgrounded if a single step would jump too far. Put drawing in <code>renderFn</code> (or omit it and render at the end of <code>update</code>).</p>
+        <p><strong>Loading order:</strong> the host page must load a compatible browser bundle that defines <code>globalThis.THREE</code> before <code>malda-js-runtime.js</code> and before the compiled MALDA script, then call <code>MaldaApp.main()</code>. The repository includes <code>Examples/Web/wwwroot/vendor/three.min.js</code> for this purpose.</p>
+        <ol>
+            <li><code>Examples/Web/wwwroot/vendor/three.min.js</code></li>
+            <li><code>malda-js-runtime.js</code></li>
+            <li>compiled MALDA script</li>
+            <li><code>MaldaApp.main()</code></li>
+        </ol>
+        <p><strong>Resize guidance:</strong> if the host page changes the render viewport after setup, update both the renderer and the camera: <code>three.setRendererSize(renderer, width, height)</code> and <code>three.setCameraAspect(camera, width / height)</code>.</p>
+        <p><strong>MVP scope:</strong> orbit controls and generic raw JS interop stay outside this API. Textures and glTF loading are in: see <code>Examples/Games/three_textured.malda</code>. Lit meshes use <code>three.createStandardMaterial</code>. Custom GLSL uses <code>three.createShaderMaterial</code> and <code>three.setUniform</code> — see <a href="#shader-kernels">26.10.1</a>.</p>
+        <p>Compile the cube demo with:</p>
+        <pre><code>malda compile Examples/Games/three_cube.malda --mode js -o Examples/Games/three_cube.js</code></pre>
+        <p>See <code>Examples/Games/three_cube.malda</code> and <code>Examples/Games/three_runtime_smoke_test.html</code> for the end-to-end host page. For a PNG material map, a glTF cube, and <code>lookAt</code>, see <code>Examples/Games/three_textured.malda</code>. A shorter listing is in <a href="34-examples.html">33.15 JavaScript Backend (three.js scene API)</a>. Working notes: <code>docs/javascript-backend.md</code>.</p>
+
+        <h3 id="shader-kernels">26.10.1 Shader kernels (MALDA to GLSL)</h3>
+        <p>When CPU <code>game.setPixel</code> is too slow, put per-pixel work on the GPU. This is a <strong>JavaScript compile-time subset</strong>, not a fourth execution backend. Host MALDA still owns the <code>three.*</code> loop and uniform updates. The kernel owns the rays.</p>
+        <p>Mark GPU functions with <code>@shader()</code> and gather them into a GLSL string with <code>glsl.compile({ ... })</code>. Those functions are <strong>not</strong> emitted as JavaScript or C#. Do not call them from host MALDA. Interpreter and C# transpile skip them.</p>
+        <pre><code>@shader()
+function vertexMain() {
+    vUv = uv;
+    gl_Position = vec4(position.xy, 0.0, 1.0);
+}
+
+var vert = glsl.compile({
+    varyings: ["vec2 vUv"],
+    functions: ["vertexMain"],
+    main: "vertexMain"
+});
+
+var material = three.createShaderMaterial({
+    "vertexShader": vert,
+    "fragmentShader": frag,
+    "uniforms": { "uTime": 0 }
+});
+three.setUniform(material, "uTime", t);</code></pre>
+        <p><code>glsl.compile</code> takes a single object literal. Keys:</p>
+        <ul>
+            <li><code>varyings</code> / <code>uniforms</code> / <code>consts</code> — arrays of GLSL declaration strings, for example <code>"vec3 uCamPos"</code> or <code>"float EPSILON = 0.0015"</code></li>
+            <li><code>functions</code> — names of <code>@shader()</code> functions in this file to emit, in order</li>
+            <li><code>main</code> — which of those functions becomes GLSL <code>void main()</code> (use this when the MALDA name is <code>vertexMain</code> / <code>fragmentMain</code>, because a file cannot declare two MALDA functions named <code>main</code>)</li>
+            <li><code>header</code> — optional raw GLSL prefix</li>
+        </ul>
+        <p>Pass the resulting strings to <code>three.createShaderMaterial</code> as <code>"vertexShader"</code> / <code>"fragmentShader"</code>. Uniform values from host MALDA are wrapped as <code>{ value }</code>. Arrays of length 2/3/4 become <code>Vector2</code> / <code>Vector3</code> / <code>Vector4</code>. <code>#rrggbb</code> strings become <code>Color</code>. Texture handles from <code>createTexture</code> / <code>createDataTexture</code> / <code>mandelbrotOrbit</code> unwrap to <code>THREE.Texture</code> for <code>sampler2D</code>. Optional flags: <code>"depthWrite": false</code>, <code>"depthTest": false</code>, <code>"transparent": true</code>.</p>
+        <p>For a fullscreen pass, use <code>three.createOrthographicCamera(-1, 1, 1, -1, 0, 1)</code> and <code>three.createPlaneGeometry(2, 2)</code>.</p>
+
+        <h4>Types in kernels</h4>
+        <p><code>vec2</code>, <code>vec3</code>, <code>vec4</code>, and other GLSL vector/matrix names are <strong>not MALDA types</strong>. They are GLSL names stored as type hints and copied into the shader. Outside <code>@shader()</code>, <code>var p: vec3 = ...</code> is an unknown-hint Error. Names that already exist in both languages — <code>float</code>, <code>int</code>, <code>bool</code>, <code>void</code> — remain ordinary MALDA hints.</p>
+        <p>Shader parameters and locals need a GLSL type hint. Parameters that GLSL would write with <code>out</code> use a two-word hint: <code>tHit: out float</code>. Host uniforms stay MALDA arrays such as <code>[camX, camY, camZ]</code>, not <code>vec3</code> values.</p>
+
+        <h4>Language subset</h4>
+        <p>Allowed: <code>if</code> / <code>else</code>, <code>while</code>, <code>for</code>, <code>return</code>, arithmetic and comparisons, <code>and</code> / <code>or</code> / <code>not</code> (emitted as <code>&amp;&amp;</code> / <code>||</code> / <code>!</code>), member swizzles such as <code>position.xy</code>, GLSL constructors and builtins (<code>vec3</code>, <code>dot</code>, <code>normalize</code>, <code>mix</code>, <code>clamp</code>, …), and <code>math.sqrt</code> → GLSL <code>sqrt</code> (same for the other mapped <code>math.*</code> names).</p>
+        <p>Not allowed in kernels: actors, prompts, <code>match</code>, strings, <code>foreach</code>, <code>await</code>, classes, and MALDA I/O. A construct the GLSL emitter does not know fails JS compile with a <code>GLSL transpile</code> error at the MALDA line.</p>
+
+        <h4>IDE</h4>
+        <p>Because kernels are ordinary MALDA <code>function</code> declarations, Desktop IDE and LSP rename, find references, highlights, and outline apply to <strong>identifiers</strong> in the kernel — unlike raw GLSL inside a <code>"""</code> string, which is one token. Rename still matches the lexeme across the file (same as the rest of MALDA). It does <strong>not</strong> rewrite string entries in <code>glsl.compile</code> (<code>functions: ["hitSphere"]</code>, <code>uniforms: ["vec3 uCamPos"]</code>, <code>main: "fragmentMain"</code>). After renaming a kernel or uniform identifier, update those strings. GLSL builtins (<code>dot</code>, <code>gl_FragColor</code>, type name <code>vec3</code>) have no MALDA declaration, so go to definition has nowhere to go.</p>
+
+        <h4>Raw GLSL</h4>
+        <p>Triple-quoted GLSL strings still work when you need syntax the subset does not emit. Use <code>"""</code>, not <code>$"""</code>, so braces stay literal. Prefer <code>@shader()</code> when the kernel fits the subset so rename and outline can see it.</p>
+        <p>Compile the realtime GPU ray tracer with:</p>
+        <pre><code>malda compile Examples/Games/three_shader_raytracer.malda --mode js -o Examples/Games/three_shader_raytracer.js
+malda compile Examples/Games/three_shader_billiards.malda --mode js -o Examples/Games/three_shader_billiards.js
+malda compile Examples/Games/three_shader_path_tunnel.malda --mode js -o Examples/Games/three_shader_path_tunnel.js
+malda compile Examples/Games/three_shader_mandelbrot.malda --mode js -o Examples/Games/three_shader_mandelbrot.js</code></pre>
+        <p>Load <code>three.min.js</code> first, same as other <code>three.*</code> demos. A short listing is in <a href="34-examples.html">33.15.1 Shader materials</a>. Working notes: <code>docs/javascript-backend.md</code>. The billiards sample is playable: host MALDA steps 2D physics (zoom, orbit stop, and sliders for cushion/ball restitution and felt friction) and the kernel traces ball/cue uniforms. The compiled table is an appendix: <a href="38-appendix-gpu-billiards.html">37. Appendix: GPU Billiards</a>. The path-tunnel sample is CC-BY-NC-SA-4.0 (Frostbyte). The Mandelbrot sample is an infinite Seahorse Valley zoom: the host builds a BigInt reference orbit (<code>three.mandelbrotOrbit</code>) and the kernel applies scaled perturbation so the dive stays sharp past float32 ulp. Page sliders set iterate budget and wrap decades.</p>
+
+        <h2>26.11 Common Pitfalls and Guidance</h2>
+        <ul>
+            <li>Do not edit generated JavaScript directly when there is a matching <code>.malda</code> source. Change the MALDA file and recompile.</li>
+            <li>Load <code>malda-js-runtime.js</code> before the compiled script or the generated app will fail at runtime.</li>
+            <li>Load <code>Examples/Web/wwwroot/vendor/three.min.js</code> before <code>malda-js-runtime.js</code> when using the <code>three.*</code> namespace.</li>
+            <li><code>three.*</code> is JavaScript mode with a browser host. Call <code>three.createRenderer</code> before <code>three.start</code> or <code>three.render</code>. Do not create a second renderer while the loop is running; <code>three.stop()</code> first.</li>
+            <li>Rotations are radians. After a viewport change, call both <code>three.setRendererSize</code> and <code>three.setCameraAspect</code>.</li>
+            <li>Keep browser-only concerns in JS mode and keep server-only concerns in <code>@PAGE</code>/<code>@AIPAGE</code> or server components.</li>
+            <li>Do not combine <code>@client()</code> with route decorators such as <code>@GET</code> or <code>@PAGE</code>; this is an invalid target combination.</li>
+            <li>Use <code>@shared()</code> only for logic that is safe in both runtimes; keep filesystem/database/server APIs and browser-only APIs out of shared declarations.</li>
+            <li>Create the canvas before drawing or starting a game loop.</li>
+            <li>Use <code>malda new game</code> and <code>malda play app.malda</code> instead of writing a host HTML file. <code>malda play</code> serves <code>.malda-play/</code>, not the source tree. Packaging is still <code>--mode pwa</code>. Canvas plus scores is <code>malda new game --fullstack</code> then <code>malda compile --mode fullstack</code>; <code>malda play</code> refuses those sources.</li>
+            <li>Interpreter F5 cannot debug <code>dom.*</code> / <code>game.*</code> / <code>three.*</code> programs. Use Desktop IDE F5 (Web Preview) or browser DevTools on the compiled <code>.js</code> + <code>.map</code>.</li>
+            <li>Use API mode when you want full DOM control and template mode when the page is mostly HTML with light MALDA logic.</li>
+            <li><code>@shader()</code> functions are GLSL kernels, not host callables. Compile them with <code>glsl.compile</code> and pass the string to <code>three.createShaderMaterial</code>.</li>
+            <li>Rename Symbol updates MALDA identifiers, not the string names inside <code>glsl.compile({ ... })</code>. Keep those lists in sync.</li>
+            <li>Do not use <code>vec3</code> / <code>vec2</code> as MALDA types outside <code>@shader()</code>. Host uniforms are arrays such as <code>[x, y, z]</code>.</li>
+            <li><code>three.mandelbrotOrbit</code> is JavaScript BigInt, not the interpreter. Pass decimal strings for the center; MALDA numbers are IEEE double and will round a deep C.</li>
+        </ul>
+
+        <div class="see-also">
+            <h3>See Also</h3>
+            <ul>
+                <li><a href="24-web-ui-hub.html">24. Web UI Overview</a> - Which UI model to pick</li>
+                <li><a href="25-web-ui.html">25. Web UI Server Components</a> - Server-rendered UI with fragments, live updates, and <code>ui.*</code></li>
+                <li><a href="26-http-server-html-ui.html">HttpServer &amp; HTML UI Generation</a> - Route hosting and AI HTML generation</li>
+                <li><a href="34-examples.html">33.15 JavaScript Backend (three.js)</a> - Cube listing and shader-material sketch</li>
+                <li><a href="30-full-stack-development.html">Full-Stack Development with MALDA</a> - Choosing between server-rendered, API-first, and browser-hosted UI</li>
+            </ul>
+        </div>
+
+        <div class="nav-footer">
+            <a href="26-http-server-html-ui.html">← Previous: 26. HttpServer & HTML UI Generation</a>
+            <a href="28-rest-api.html">Next: 28. REST API Server→</a>
+        </div>
+
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, at your option.</p>
+        </footer>
+    </main>
+    <script src="malda-highlight.js"></script>
+    <script src="navigation.js"></script>
+</body>
+</html>

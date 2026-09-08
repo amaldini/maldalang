@@ -135,7 +135,7 @@ io.print(str.length(host.pathSeparator));</code></pre>
             <li><code>getHostPlatform()</code> — <code>{ os, arch, pathSeparator, description }</code>. No arguments.</li>
             <li><code>getCommandLineArgs()</code> — array of strings passed to the program, excluding the program name. Same in interpreted and transpiled runs.</li>
         </ul>
-        <p>Assistant config under <code>~/.malda</code> (<code>getMaldaHome</code>, <code>getMaldaConfig</code>) is documented with the <a href="32-personal-assistant.html">personal assistant</a>.</p>
+        <p>Assistant config under <code>~/.malda</code> (<code>getMaldaHome</code>, <code>getMaldaConfig</code>) is documented with the <a href="33-personal-assistant.html">personal assistant</a>.</p>
 
         <h2 id="capability-tokens">12.6 Capability Tokens</h2>
         <p>A capability token is a <strong>permission object</strong> that your program (the host) creates. Treat it as a key to one file, HTTP origin, MCP tool, or argv prefix: whoever holds the key can use that permission. Nobody can make a working key by writing down a description of the lock.</p>
@@ -161,7 +161,7 @@ function readNote(path) {
             <tbody>
                 <tr><td><code>cap.fileRead</code> / capability token</td><td>An unforgeable permission object for one path, URL prefix, MCP tool, or argv prefix</td><td>This section</td></tr>
                 <tr><td>Backend capability matrix</td><td>Which backends implement a product feature (file I/O, agents, DOM, …)</td><td><a href="../docs/spec/backend-capability-matrix.md">backend-capability-matrix.md</a></td></tr>
-                <tr><td><code>@requires("file-io")</code></td><td>A property test that skips backends that lack that feature</td><td><a href="34-property-testing.html">34. Property Testing</a></td></tr>
+                <tr><td><code>@requires("file-io")</code></td><td>A property test that skips backends that lack that feature</td><td><a href="35-property-testing.html">34. Property Testing</a></td></tr>
             </tbody>
         </table>
 
@@ -309,8 +309,8 @@ io.print("awake");</code></pre>
                 <tr><th>Need</th><th>Go to</th></tr>
             </thead>
             <tbody>
-                <tr><td>HTTP client / REST calls</td><td><a href="28-rest-web-client.html">28. REST Web Client</a></td></tr>
-                <tr><td>HTTP / HTML / <code>ui.*</code> servers</td><td><a href="23-web-ui-hub.html">23. Web UI Overview</a></td></tr>
+                <tr><td>HTTP client / REST calls</td><td><a href="29-rest-web-client.html">28. REST Web Client</a></td></tr>
+                <tr><td>HTTP / HTML / <code>ui.*</code> servers</td><td><a href="24-web-ui-hub.html">24. Web UI Overview</a></td></tr>
                 <tr><td>SQL clients</td><td><a href="16-database.html">16. Database Support</a></td></tr>
                 <tr><td>Shell commands</td><td><code>runCommand</code> in <a href="13-built-in-functions.html">13.10</a> (blocked dangerous names, 1-hour timeout cap)</td></tr>
                 <tr><td>Git</td><td><a href="13-built-in-functions.html">13.9</a></td></tr>

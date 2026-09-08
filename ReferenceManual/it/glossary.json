@@ -77,7 +77,7 @@
       "term": "Keyword",
       "aliases": ["parole riservate", "reserved words", "reserved"],
       "href": "03-lexical-structure.html#keywords",
-      "also": ["36-appendix.html"],
+      "also": ["37-appendix.html"],
       "summary": "Parole riservate del lexer. fn e def non sono riservate; il parser le rifiuta come keyword di funzione."
     },
     {
@@ -328,44 +328,44 @@
       "id": "web-ui",
       "term": "Web UI (ui.*)",
       "aliases": ["ui", "ui.button", "component", "property", "UIHost"],
-      "href": "24-web-ui.html",
-      "also": ["23-web-ui-hub.html"],
+      "href": "25-web-ui.html",
+      "also": ["24-web-ui-hub.html"],
       "summary": "UI guidata dal server: component, property e controlli ui.*. Parti dal capitolo 23 se stai scegliendo un modello UI."
     },
     {
       "id": "page",
       "term": "@PAGE e @AIPAGE",
       "aliases": ["@PAGE", "@AIPAGE", "HttpServer"],
-      "href": "25-http-server-html-ui.html",
+      "href": "26-http-server-html-ui.html",
       "summary": "Pagine HTML route-first su HttpServer, incluso @AIPAGE generato da LLM."
     },
     {
       "id": "rest",
       "term": "REST API",
       "aliases": ["@GET", "@POST", "@PUT", "@DELETE", "REST"],
-      "href": "27-rest-api.html",
+      "href": "28-rest-api.html",
       "summary": "Route REST basate su decoratori sul server HTTP MALDA."
     },
     {
       "id": "game-three",
       "term": "game.* e three.*",
       "aliases": ["game", "three", "three.js", "@shader", "GLSL"],
-      "href": "26-browser-javascript-backend.html",
-      "also": ["26-browser-javascript-backend.html#three-scene-api", "26-browser-javascript-backend.html#shader-kernels"],
+      "href": "27-browser-javascript-backend.html",
+      "also": ["27-browser-javascript-backend.html#three-scene-api", "27-browser-javascript-backend.html#shader-kernels"],
       "summary": "Kit giochi nel browser (backend JS): game.*, API scene three.* e @shader() verso GLSL."
     },
     {
       "id": "fullstack",
       "term": "Full-stack",
       "aliases": ["@client", "@server", "fullstack"],
-      "href": "29-full-stack-development.html",
+      "href": "30-full-stack-development.html",
       "summary": "App full-stack native MALDA e ibride: UI server o frontend JS più backend MALDA."
     },
     {
       "id": "dotnet",
       "term": "Interop .NET",
       "aliases": ["loadNativeModule", "createNativeCallback", "NuGet"],
-      "href": "30-dotnet-interop.html",
+      "href": "31-dotnet-interop.html",
       "summary": "Carica librerie .NET esterne e avvolge funzioni MALDA come delegate."
     },
     {
@@ -386,21 +386,21 @@
       "id": "property-testing",
       "term": "Property testing",
       "aliases": ["@requires", "@targets", "runProperty", "property"],
-      "href": "34-property-testing.html",
+      "href": "35-property-testing.html",
       "summary": "Property test deterministici, shrinking e hint di capability del backend."
     },
     {
       "id": "skills",
       "term": "Skill",
       "aliases": ["skill", "malda skill"],
-      "href": "32-personal-assistant.html#skills",
+      "href": "33-personal-assistant.html#skills",
       "summary": "Skill dell'assistente personale: pacchetti di istruzioni riutilizzabili per l'assistente CLI."
     },
     {
       "id": "optional-packs",
       "term": "Pack opzionali",
       "aliases": ["optional pack", "vertical pack", "pack opzionali"],
-      "href": "36-appendix.html#optional-packs",
+      "href": "37-appendix.html#optional-packs",
       "also": ["13-built-in-functions.html#optional-pack-builtins"],
       "summary": "I pack di dominio restano fuori dal core OSS. Caricali con loadNativeModule; il core non registra in automatico i global dei pack."
     },
@@ -417,6 +417,55 @@
       "aliases": ["compile", "transpile", "malda compile"],
       "href": "02-tools.html",
       "summary": "malda compile produce un eseguibile self-contained. Il modo runtime di default è Interpreter; usa --mode transpile per la publish C# tipizzata."
+    },
+    {
+      "id": "suite",
+      "term": "suite",
+      "aliases": ["eval suite", "case", "expect", "malda eval"],
+      "href": "23-agentic-runs.html",
+      "summary": "Case di eval nominati. Un malda run ordinario li salta; malda eval li esegue. expect lancia come assert."
+    },
+    {
+      "id": "cassette",
+      "term": "cassetta",
+      "aliases": ["cassette", "MALDA_RECORD", "MALDA_REPLAY", "MALDA_REPLAY_STRICT", "cassette_miss"],
+      "href": "23-agentic-runs.html",
+      "summary": "Record/replay JSONL di ogni Chat LLM. La chiave è hash del prompt + args + model + mode + schema. Un miss cade su una chiamata live salvo STRICT."
+    },
+    {
+      "id": "trace-journal",
+      "term": "trace.journal",
+      "aliases": ["journal di run", "trace.span", "trace.lastUsage", ".usage"],
+      "href": "23-agentic-runs.html",
+      "summary": "Journal in-process di eventi prompt, tool, cap, hop e step di workflow. MALDA_TRACE lo esporta; malda trace continua a leggere i file di sessione."
+    },
+    {
+      "id": "within",
+      "term": "within",
+      "aliases": ["within scope", "@within"],
+      "href": "23-agentic-runs.html",
+      "summary": "L'istruzione within (30s) è uno scope di cancel a orologio da parete (ms/s/m). Il decoratore @within(ms) è una deadline per funzione."
+    },
+    {
+      "id": "declared-context",
+      "term": "context dichiarato",
+      "aliases": ["context", "context Session"],
+      "href": "23-agentic-runs.html",
+      "summary": "context Name { budget / pin / retain / evict / compact } poi new Name(). La compaction in un workflow deve stare in uno step (WF1006)."
+    },
+    {
+      "id": "policy",
+      "term": "policy",
+      "aliases": ["ToolDenied", "MALDA_POLICY_APPROVE"],
+      "href": "23-agentic-runs.html",
+      "summary": "Deny list fs/net/shell/mcp a livello di file sul consume dei cap. Non è @effects. approve richiede MALDA_POLICY_APPROVE o un callback dell'host."
+    },
+    {
+      "id": "agent-error",
+      "term": "AgentError",
+      "aliases": ["agentError", "SchemaMismatch", "ToolDenied", "Timeout"],
+      "href": "23-agentic-runs.html",
+      "summary": "Sum type built-in attaccato accanto alla stringa error sugli oggetti risultato. I throw restano throw."
     }
   ]
 }

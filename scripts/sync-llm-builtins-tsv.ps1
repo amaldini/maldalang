@@ -150,6 +150,7 @@ $registryNames = Get-RegistryNames
 $mathNames = Get-ModuleNames "MathMethodNames"
 $strNames = Get-ModuleNames "StrMethodNames"
 $ioNames = Get-ModuleNames "IoMethodNames"
+$traceNames = Get-ModuleNames "TraceMethodNames"
 $ansiNames = Get-AnsiConsoleNames
 $argumentDescriptions = Get-ArgumentDescriptions
 $existingNotes = Get-ExistingHandWrittenColumn 3
@@ -178,6 +179,7 @@ foreach ($name in @("append", "pop", "shift")) { [void]$arrayMethodNames.Add($na
 foreach ($name in $mathNames) { Add-Row $name "math.$name" }
 foreach ($name in $strNames) { Add-Row $name "str.$name" }
 foreach ($name in $ioNames) { Add-Row $name "io.$name" }
+foreach ($name in $traceNames) { Add-Row $name "trace.$name" }
 foreach ($name in $ansiNames) { Add-Row $name "AnsiConsole.$name" }
 foreach ($name in $registryNames) {
     if ($arrayMethodNames.Contains($name)) {

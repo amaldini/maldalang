@@ -223,6 +223,12 @@ public class Parser
             
             if (Match(TokenType.Function))
                 return FunctionDeclaration();
+            if (MatchLexeme("suite"))
+                return ParseSuiteDeclaration();
+            if (MatchLexeme("context"))
+                return ParseContextDeclaration();
+            if (MatchLexeme("policy"))
+                return ParsePolicyDeclaration();
             return Statement();
         }
         catch (ParseException ex)
@@ -1268,7 +1274,14 @@ public class Parser
         if (Match(TokenType.If)) return IfStatement();
         if (Match(TokenType.While)) return WhileStatement();
         if (Match(TokenType.Foreach)) return ForeachStatement();
-        if (Match(TokenType.For)) return ForStatement();
+        if (Match(TokenType.For))
+        {
+            if (Match(TokenType.Await))
+                return ForAwaitStatement();
+            return ForStatement();
+        }
+        if (MatchLexeme("within"))
+            return ParseWithinStatement();
         if (Match(TokenType.Return)) return ReturnStatement();
         if (Match(TokenType.Print)) return PrintStatement();
         if (Match(TokenType.Break)) return BreakStatement();
@@ -3443,6 +3456,182 @@ public class Parser
             return key;
         throw new ParseException(key.Line, key.Column,
             "Object literal keys must be string literals or identifiers.");
+    }
+
+    private bool CheckLexeme(string name) =>
+        Check(TokenType.Identifier) && string.Equals(Peek()?.Lexeme, name, StringComparison.Ordinal);
+
+    private bool MatchLexeme(string name)
+    {
+        if (!CheckLexeme(name))
+            return false;
+        Advance();
+        return true;
+    }
+
+    private SuiteDeclaration ParseSuiteDeclaration()
+    {
+        var start = Previous();
+        var titleTok = Consume(TokenType.String, "Expect suite title string.");
+        var title = titleTok.Literal as string ?? titleTok.Lexeme.Trim('"');
+        Consume(TokenType.LeftBrace, "Expect '{' after suite title.");
+        var cases = new List<EvalCaseDeclaration>();
+        while (!Check(TokenType.RightBrace) && !IsAtEnd())
+        {
+            var decorators = Check(TokenType.At) ? ParseDecorators() : new List<Decorator>();
+            Consume(TokenType.Case, "Expect 'case' in suite.");
+            var caseTitleTok = Consume(TokenType.String, "Expect case title string.");
+            var caseTitle = caseTitleTok.Literal as string ?? caseTitleTok.Lexeme.Trim('"');
+            Consume(TokenType.LeftBrace, "Expect '{' after case title.");
+            var body = Block();
+            cases.Add(new EvalCaseDeclaration(caseTitle, body, decorators, caseTitleTok.Line, caseTitleTok.Column));
+        }
+
+        Consume(TokenType.RightBrace, "Expect '}' after suite.");
+        return new SuiteDeclaration(title, cases, start.Line, start.Column);
+    }
+
+    private ContextDeclaration ParseContextDeclaration()
+    {
+        var start = Previous();
+        var name = ConsumeIdentifierLike("Expect context name.");
+        Consume(TokenType.LeftBrace, "Expect '{' after context name.");
+        int? budget = null;
+        var pin = new List<string>();
+        int? retain = null;
+        var evict = "oldest";
+        string? compact = null;
+        while (!Check(TokenType.RightBrace) && !IsAtEnd())
+        {
+            var field = ConsumeIdentifierLike("Expect context field.");
+            Consume(TokenType.Colon, "Expect ':' after context field.");
+            if (string.Equals(field, "budget", StringComparison.Ordinal))
+            {
+                var n = Consume(TokenType.Integer, "Expect budget token count.");
+                budget = Convert.ToInt32(n.Literal);
+                MatchLexeme("tokens");
+            }
+            else if (string.Equals(field, "pin", StringComparison.Ordinal))
+            {
+                pin.Add(ConsumeIdentifierLike("Expect pin name."));
+                while (Match(TokenType.Comma))
+                    pin.Add(ConsumeIdentifierLike("Expect pin name."));
+            }
+            else if (string.Equals(field, "retain", StringComparison.Ordinal))
+            {
+                MatchLexeme("last");
+                var n = Consume(TokenType.Integer, "Expect retain count.");
+                retain = Convert.ToInt32(n.Literal);
+            }
+            else if (string.Equals(field, "evict", StringComparison.Ordinal))
+            {
+                evict = ConsumeIdentifierLike("Expect evict strategy.");
+            }
+            else if (string.Equals(field, "compact", StringComparison.Ordinal))
+            {
+                Match(TokenType.Prompt);
+                compact = ConsumeIdentifierLike("Expect compact prompt name.");
+            }
+            else
+            {
+                while (!Check(TokenType.Semicolon) && !Check(TokenType.RightBrace) && !IsAtEnd())
+                    Advance();
+            }
+
+            Match(TokenType.Semicolon);
+        }
+
+        Consume(TokenType.RightBrace, "Expect '}' after context body.");
+        return new ContextDeclaration(name, budget, pin, retain, evict, compact, start.Line, start.Column);
+    }
+
+    private PolicyDeclaration ParsePolicyDeclaration()
+    {
+        var start = Previous();
+        Consume(TokenType.LeftBrace, "Expect '{' after policy.");
+        var rules = new List<PolicyRule>();
+        while (!Check(TokenType.RightBrace) && !IsAtEnd())
+        {
+            var domain = ConsumeIdentifierLike("Expect policy domain.");
+            Consume(TokenType.Colon, "Expect ':' after policy domain.");
+            var action = ConsumeIdentifierLike("Expect policy action.");
+            var args = new List<string>();
+            MatchLexeme("under");
+            while (!Check(TokenType.Semicolon) && !Check(TokenType.RightBrace) && !IsAtEnd())
+            {
+                if (Check(TokenType.String))
+                    args.Add((Consume(TokenType.String, "Expect policy argument.").Literal as string) ?? "");
+                else if (Check(TokenType.Identifier))
+                    args.Add(Advance().Lexeme);
+                else
+                    Advance();
+                Match(TokenType.Comma);
+            }
+
+            Match(TokenType.Semicolon);
+            rules.Add(new PolicyRule(domain, action, args));
+        }
+
+        Consume(TokenType.RightBrace, "Expect '}' after policy.");
+        return new PolicyDeclaration(rules, start.Line, start.Column);
+    }
+
+    private WithinStatement ParseWithinStatement()
+    {
+        var start = Previous();
+        Consume(TokenType.LeftParen, "Expect '(' after within.");
+        var amountTok = Consume(TokenType.Integer, "Expect duration amount.");
+        var amount = Convert.ToInt32(amountTok.Literal);
+        var unit = "ms";
+        if (Check(TokenType.Identifier))
+            unit = Advance().Lexeme;
+        Consume(TokenType.RightParen, "Expect ')' after duration.");
+        var ms = unit switch
+        {
+            "s" => amount * 1000,
+            "m" => amount * 60_000,
+            _ => amount
+        };
+
+        int? tokens = null, tools = null;
+        double? cost = null;
+        if (MatchLexeme("budget"))
+        {
+            Consume(TokenType.LeftParen, "Expect '(' after budget.");
+            while (!Check(TokenType.RightParen) && !IsAtEnd())
+            {
+                var key = ConsumeIdentifierLike("Expect budget key.");
+                Consume(TokenType.Colon, "Expect ':' after budget key.");
+                var num = Current();
+                Advance();
+                if (string.Equals(key, "tokens", StringComparison.Ordinal))
+                    tokens = Convert.ToInt32(num?.Literal ?? 0);
+                else if (string.Equals(key, "tools", StringComparison.Ordinal))
+                    tools = Convert.ToInt32(num?.Literal ?? 0);
+                else if (string.Equals(key, "cost", StringComparison.Ordinal))
+                    cost = Convert.ToDouble(num?.Literal ?? 0);
+                Match(TokenType.Comma);
+            }
+
+            Consume(TokenType.RightParen, "Expect ')' after budget args.");
+        }
+
+        Consume(TokenType.LeftBrace, "Expect '{' after within.");
+        var body = Block();
+        return new WithinStatement(ms, tokens, tools, cost, body, start.Line, start.Column);
+    }
+
+    private ForInStatement ForAwaitStatement()
+    {
+        var start = Previous();
+        Consume(TokenType.LeftParen, "Expect '(' after for await.");
+        Consume(TokenType.Var, "Expect 'var' in for await.");
+        var name = ConsumeIdentifierLike("Expect variable name.");
+        Consume(TokenType.In, "Expect 'in' after for-await variable.");
+        var collection = Expression();
+        Consume(TokenType.RightParen, "Expect ')' after collection.");
+        var body = Statement();
+        return new ForInStatement(name, collection, body, start.Line, start.Column, isAwait: true);
     }
 }
 

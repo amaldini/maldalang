@@ -447,6 +447,12 @@ public sealed class WorkflowEngine
         };
         var payload = BuildEventPayload(workflowInstanceId, stepName, attempt, outputJson ?? "{}");
         Persistence.UpsertStepWithEvent(rec, "workflow_step_succeeded", payload);
+        MaldaLang.Runtime.Journal.RunJournal.Current.Append(new MaldaLang.Runtime.Journal.JournalEvent
+        {
+            Kind = MaldaLang.Runtime.Journal.JournalKind.Step,
+            Name = stepName,
+            Ok = true
+        });
     }
 
     public void JournalCompensationStart(string stepId, string workflowInstanceId, string stepName, int attempt, string? inputJson)

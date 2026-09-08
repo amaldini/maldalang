@@ -114,7 +114,7 @@
     },
     "keywords": {
       "name": "keyword.control.malda",
-      "match": "\\b(?:maxDelay|onReject|compensate|component|continue|directed|foreach|function|approval|extends|finally|include|message|private|property|receive|timeout|undirected|workflow|backoff|default|export|import|prompt|public|return|schema|static|actor|async|await|break|catch|class|const|defer|delay|graph|input|match|print|retry|spawn|super|throw|using|while|case|dict|else|send|self|step|then|this|type|wait|api|for|new|not|try|var|and|in|if|on|or)\\b"
+      "match": "\\b(?:maxDelay|onReject|compensate|component|continue|directed|foreach|function|approval|extends|finally|include|message|private|property|receive|timeout|undirected|workflow|backoff|default|export|import|prompt|public|return|schema|static|actor|async|await|break|catch|class|const|defer|delay|graph|input|match|print|retry|spawn|super|throw|using|while|case|dict|else|send|self|step|then|this|type|wait|api|for|new|not|try|var|and|in|if|on|or|suite|context|policy|within|expect)\\b"
     },
     "literals": {
       "name": "constant.language.malda",
@@ -122,7 +122,7 @@
     },
     "stdlib-modules": {
       "name": "support.module.malda",
-      "match": "\\b(?:io|math|str|pdf|doc|result|option|grounded|cap)\\b"
+      "match": "\\b(?:io|math|str|pdf|doc|result|option|grounded|cap|trace)\\b"
     },
     "operators": {
       "name": "keyword.operator.malda",

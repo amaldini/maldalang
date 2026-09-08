@@ -94,6 +94,25 @@ malda check -e "&lt;code&gt;" --json</code></pre>
         <p><code>--json</code> stampa un oggetto stabile per i loop generate → diagnose → patch: <code>ok</code>, <code>executed</code> (sempre <code>false</code>), <code>file</code>, <code>errorCount</code> / <code>warningCount</code> / <code>infoCount</code> e <code>diagnostics[]</code> con <code>line</code> / <code>column</code> 1-based, <code>code</code> (per esempio <code>parser</code>, <code>malda-schema</code>, <code>malda-interp</code>), <code>message</code>, opzionali <code>hint</code> / <code>suggestedFix</code> / <code>fix</code>.</p>
         <pre><code>malda --check "&lt;code&gt;"</code></pre>
         <p><code>malda --check "&lt;code&gt;"</code> resta una validate del solo compiler (errori di parse, niente diagnostiche IDE). Per i loop degli agenti preferisci <code>malda check --json</code>.</p>
+        <p><code>--fix</code> applica solo edit meccanici (alias flat, interpolazione <code>$"…"</code>, <code>.length()</code> → <code>.length</code>). Non ogni gotcha è auto-fixato. Narrazione: <a href="23-agentic-runs.html">23. Esecuzioni agentiche</a> §23.10.</p>
+        <pre><code>malda check app.malda --fix</code></pre>
+
+        <h4>Suite di eval</h4>
+        <p><code>malda eval</code> esegue le dichiarazioni <code>suite</code> / <code>case</code>. Un <code>malda run</code> ordinario le salta (come <code>property</code>). Non è <code>malda test</code>. Vedi <a href="23-agentic-runs.html">23.1</a>.</p>
+        <pre><code>malda eval Examples/Prompts/eval_suite_offline.malda
+malda eval path.malda --baseline .malda/evals.json
+malda eval path.malda --baseline .malda/evals.json --update-baseline</code></pre>
+
+        <h4>Diff degli hash dei prompt</h4>
+        <pre><code>malda prompts --diff .malda/evals.json</code></pre>
+        <p>Confronta gli hash dei prompt con una baseline di eval. L'opzionale <code>@version("…")</code> su un <code>prompt</code> è un pin informativo.</p>
+
+        <h4>Cassette e journal di run</h4>
+        <pre><code>MALDA_RECORD=tests/cassettes/name.jsonl   malda Examples/path.malda
+MALDA_REPLAY=tests/cassettes/name.jsonl   malda Examples/path.malda
+MALDA_REPLAY_STRICT=1                    malda Examples/path.malda
+MALDA_TRACE=jsonl                        malda Examples/path.malda</code></pre>
+        <p>Le cassette registrano/riproducono ogni <code>Chat</code> LLM. Un miss scrive <code>cassette_miss</code> nel journal e cade su una chiamata live a meno di <code>MALDA_REPLAY_STRICT=1</code>. <code>MALDA_TRACE</code> esporta il journal in-process; non è il CLI <code>malda trace</code> esistente (file di sessione <code>.malda-trace.jsonl</code>). Vedi <a href="23-agentic-runs.html">23.2</a> e <a href="23-agentic-runs.html">23.3</a>.</p>
 
         <h3>2.1.3 Ottenere aiuto</h3>
 
@@ -122,7 +141,7 @@ malda -h</code></pre>
         <h3>Modalità di runtime in sintesi</h3>
         <p>Il codice MALDA può girare in tre contesti di esecuzione comuni. Usa questa tabella per scegliere il percorso giusto prima di compilare o distribuire.</p>
         <table>
-            <tr><th>Capacità</th><th>Interprete<br><code>malda &lt;file.malda&gt;</code></th><th>Eseguibile transpile<br><code>malda compile --mode transpile</code></th><th>Backend JavaScript<br>(vedi <a href="26-browser-javascript-backend.html">26. Backend UI JavaScript nel browser</a>)</th></tr>
+            <tr><th>Capacità</th><th>Interprete<br><code>malda &lt;file.malda&gt;</code></th><th>Eseguibile transpile<br><code>malda compile --mode transpile</code></th><th>Backend JavaScript<br>(vedi <a href="27-browser-javascript-backend.html">26. Backend UI JavaScript nel browser</a>)</th></tr>
             <tr><td>Linguaggio core (variabili, funzioni, classi, match, async)</td><td>Sì</td><td>Sì</td><td>Sì (sottoinsieme documentato)</td></tr>
             <tr><td>Prompt, agenti, tool calling</td><td>Sì</td><td>Sì</td><td>Limitato; preferibile sul server</td></tr>
             <tr><td><code>HttpServer</code>, <code>RestServer</code>, <code>@PAGE</code></td><td>Sì</td><td>Sì</td><td>Solo lato server; il browser usa HTTP verso l'API MALDA</td></tr>
@@ -458,7 +477,7 @@ var result = helper();</code></pre>
         <p>I programmi che chiamano API del browser (<code>dom.*</code>, <code>game.*</code>, <code>three.*</code>) non possono fermarsi nell'interprete. Nell'IDE Desktop, <strong>F5</strong> transpila il file aperto in JavaScript, lo apre nel pannello Web Preview e collega i breakpoint dell'editor allo script generato tramite source map VLQ e il debugger Chromium di WebView2.</p>
         <p>Imposta un breakpoint su un'istruzione (per esempio una riga in <code>Examples/Games/maldanoid.malda</code>), premi F5 e gioca fino a quando quella istruzione viene eseguita. Continue / step over / step into / step out / pause usano la stessa toolbar Debug della modalità interpret. I locali arrivano dal call frame JavaScript; le watch e le condizioni dei breakpoint sono JavaScript, non MALDA <code>and</code>/<code>or</code>.</p>
         <p>I file che includono sia un target client (<code>@client()</code> / <code>@javascript()</code>) sia un target host (<code>@server()</code> / <code>@csharp()</code> oppure un decoratore di route come <code>@GET</code> / <code>@PAGE</code>) sono full-stack. Nell'IDE Desktop, <strong>F5</strong> avvia entrambe le sessioni: l'interprete esegue il debug della partizione host (le funzioni solo-client vengono saltate così <code>dom.*</code> non viene eseguito lì) e Web Preview esegue il debug della partizione JavaScript. Continue / step seguono l'ultimo pause; Pause ferma entrambi. L'output combinato è etichettato <code>[server]</code> e <code>[client]</code>. In un dato momento viene mostrato un solo highlight di riga corrente e un solo pannello inspect. I body <code>@shared()</code> possono fermarsi in entrambi i runtime.</p>
-        <p>Ctrl+F5 (Run) sui programmi solo-browser apre Web Preview senza debugger. Ctrl+F5 sui file full-stack offre ancora il dialogo Server / Client preview / Full stack. F5 in VS Code resta solo interpret. I DevTools del browser funzionano ancora sui file <code>.js</code> + <code>.map</code> compilati. Vedi <a href="26-browser-javascript-backend.html">26. Backend UI JavaScript nel browser</a>.</p>
+        <p>Ctrl+F5 (Run) sui programmi solo-browser apre Web Preview senza debugger. Ctrl+F5 sui file full-stack offre ancora il dialogo Server / Client preview / Full stack. F5 in VS Code resta solo interpret. I DevTools del browser funzionano ancora sui file <code>.js</code> + <code>.map</code> compilati. Vedi <a href="27-browser-javascript-backend.html">26. Backend UI JavaScript nel browser</a>.</p>
 
         <h2>2.7 Property testing (panoramica)</h2>
 
@@ -471,7 +490,7 @@ var result = helper();</code></pre>
         <pre><code>malda test --iterations 100 --seed 1337
 malda test --format ci --iterations 100 --seed 1337
 malda test --write-regression --regression-dir ./artifacts/regressions</code></pre>
-        <p>Per la sintassi del linguaggio, i decoratori di capability, <code>runProperty(...)</code>, la semantica di eleggibilità dei backend e i workflow completi, vedi <a href="34-property-testing.html">Property testing</a>.</p>
+        <p>Per la sintassi del linguaggio, i decoratori di capability, <code>runProperty(...)</code>, la semantica di eleggibilità dei backend e i workflow completi, vedi <a href="35-property-testing.html">Property testing</a>.</p>
 
         <h2>2.8 Scrivere MALDA con un agente di coding</h2>
 

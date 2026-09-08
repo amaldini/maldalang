@@ -1219,7 +1219,7 @@ print(badOut.skipped[0]);</code></pre>
             <li><code>Examples/Agents/agent_team_consult.malda</code> — <code>consult</code> tipizzato</li>
             <li><code>Examples/Agents/agent_team_plan_out.malda</code> — <code>step.out</code> + <code>fixture</code></li>
         </ul>
-        <p>Few-shot per gli agenti: <code>docs/llm/few-shot/34_agents_team.malda</code> fino a <code>41_agents_plan_out.malda</code>.</p>
+        <p>Few-shot per gli agenti: <code>docs/llm/few-shot/34_agents_team.malda</code> fino a <code>41_agents_plan_out.malda</code>. La topologia statica del team (grafi / plan letterali) è anche segnalata come <code>malda-agents</code> da <code>malda check</code> — vedi <a href="23-agentic-runs.html">23.10</a>.</p>
         <div class="see-also">
             <h3>Vedi anche</h3>
             <ul>
@@ -1227,6 +1227,7 @@ print(badOut.skipped[0]);</code></pre>
                 <li><a href="#structured-task-planning">18.13 Pianificazione strutturata dei task</a> — forma del piano, <code>submit_plan</code> / <code>update_plan</code> / <code>mark_step</code></li>
                 <li><a href="#multi-agent-orchestration">18.16 Orchestrazione multi-agente</a> — loop supervisore con <code>addSubAgent</code></li>
                 <li><a href="10-prompts.html">10. Prompt</a> — <code>agent.think</code></li>
+                <li><a href="23-agentic-runs.html">23. Esecuzioni agentiche</a> — check <code>malda-agents</code> sul team, journal, <code>AgentError</code></li>
             </ul>
         </div>
         <h2 id="using-agents-with-actors">18.18 Usare gli agenti con gli actor</h2>

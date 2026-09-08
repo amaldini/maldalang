@@ -388,6 +388,10 @@ public static class BuiltInRegistry
             "exit" or
             "error" or
             "assert" or
+            "expect" or
+            "race" or
+            "firstOk" or
+            "stream" or
             "startsWith" or
             "endsWith" or
             "padStart" or

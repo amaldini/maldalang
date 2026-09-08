@@ -17,7 +17,7 @@ Use this folder when an LLM should **author or review `.malda` source**, not whe
 
 1. `malda-syntax.md` (always — includes array mutation and `$"..."` interpolation)
 2. `malda-gotchas.md` (always — it is short, and it covers the failures nothing else reports)
-3. 2–4 files from `few-shot/` matching the task
+3. 2–4 files from `few-shot/` matching the task (agentic: `43_`–`48_`; human chapter `ReferenceManual/23-agentic-runs.html`)
 4. `malda-grammar.md` if generating unfamiliar constructs
 5. `malda-builtins-min.md` for stdlib shape (I/O, math, arrays, AnsiConsole); grep `malda-builtins.tsv` for one specific name
 6. Deeper: `Examples/`, `ReferenceManual/`, `docs/spec/malda-language-1.0.md`

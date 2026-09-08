@@ -1,0 +1,8 @@
+// within statement — units required (ms / s / m). This body times out.
+// Do not treat stdout as success; interpret and C# both throw Timeout.
+
+within (10ms) {
+    sleep(50);
+}
+
+io.print("should-not-print");
