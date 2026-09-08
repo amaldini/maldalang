@@ -22,8 +22,49 @@
 
         <h1>23. Esecuzioni agentiche</h1>
 
-        <p>Questo capitolo è la superficie del linguaggio per <strong>verificare e delimitare</strong> i programmi agentici: suite di eval, cassette LLM, journal di run, scope di cancellazione, context di conversazione dichiarato, policy di capability a livello di file, <code>AgentError</code> tipizzato, streaming, sink grounded e il ciclo check/fix. Interprete e transpile C# coincidono sugli esempi offline. JavaScript è solo host (<code>n/a</code>).</p>
-        <p><code>suite</code>, <code>context</code>, <code>policy</code> e <code>within</code> sono parole <strong>contestuali</strong>, non keyword riservate. <code>var context = 1;</code> continua a parsare. <code>case</code> è già una keyword (riusata per i case di suite vs <code>match</code>). <code>expect</code> e <code>stream</code> sono builtin. I flag CLI di questi comandi sono in <a href="02-tools.html">2. Strumenti e toolchain</a>.</p>
+        <p>I capitoli <a href="10-prompts.html">10</a> e <a href="18-agent-orchestration.html">18</a> insegnano a <em>chiamare</em> un modello e a <em>orchestrare</em> agenti. Questo capitolo è lo strato delle cinture di sicurezza: come <strong>testare, registrare, limitare nel tempo, ricordare, restringere e diagnosticare</strong> quelle esecuzioni così restano economiche, ripetibili e abbastanza sicure per i compiti e per la CI.</p>
+        <p>Una funzione ordinaria è deterministica: stesso input, stesso output. Un prompt no. Il modello può cambiare le parole, spendere token, chiamare tool, bloccarsi o inventare un path. Serve quindi un macchinario extra che un primo corso di programmazione non usava — non perché MALDA sia più difficile, ma perché l'<em>ospite</em> (il modello) è imprevedibile.</p>
+        <p>Interprete e transpile C# coincidono sugli esempi offline di questo capitolo. JavaScript è solo host (<code>n/a</code>).</p>
+
+        <h2 id="what-you-need">Cosa ti serve già</h2>
+        <p>Leggi questo capitolo dopo aver scritto un <code>prompt</code> con uno <code>schema</code> e aver chiamato <code>evalPrompt</code> (senza API key). <em>Non</em> ti serve un modello live per imparare suite, journal, <code>context</code>, <code>policy</code>, <code>AgentError</code>, <code>stream</code> o <code>grounded.wrap</code>. Le chiamate live compaiono solo quando registri una cassetta o fai <code>await</code> di un prompt.</p>
+
+        <h2 id="concept-map">Mappa del capitolo</h2>
+        <p>Ogni costrutto risponde a una domanda da studente. Scorri la tabella, poi leggi la sezione del problema che hai.</p>
+        <table>
+            <thead>
+                <tr><th>Vuoi…</th><th>Usa</th><th>Sezione</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Fare unit test di un prompt senza chiamare un modello</td><td><code>suite</code> + <code>evalPrompt</code> + <code>expect</code></td><td><a href="#eval-suites">23.1</a></td></tr>
+                <tr><td>Rivedere il traffico LLM di ieri in CI (senza bollette a sorpresa)</td><td>cassette (<code>MALDA_RECORD</code> / <code>MALDA_REPLAY</code>)</td><td><a href="#cassettes">23.2</a></td></tr>
+                <tr><td>Vedere cosa ha fatto davvero la run</td><td><code>trace.journal()</code></td><td><a href="#run-journal">23.3</a></td></tr>
+                <tr><td>Fermare una chiamata bloccata o troppo cara</td><td><code>within (30s) { … }</code></td><td><a href="#within">23.4</a></td></tr>
+                <tr><td>Impedire a una chat di crescere all'infinito</td><td><code>context Session { … }</code></td><td><a href="#declared-context">23.5</a></td></tr>
+                <tr><td>Rifiutare shell / write / host anche se un tool è registrato</td><td><code>policy</code> a livello di file</td><td><a href="#policy">23.6</a></td></tr>
+                <tr><td>Fare branch sul <em>perché</em> un risultato è fallito, non solo sulla stringa</td><td><code>r.agentError</code></td><td><a href="#agent-error">23.7</a></td></tr>
+                <tr><td>Camminare sui token o sul JSON parziale man mano che arriva</td><td><code>stream</code> + <code>for await</code></td><td><a href="#stream">23.8</a></td></tr>
+                <tr><td>Tenere le citazioni attaccate a una risposta</td><td><code>grounded.wrap</code></td><td><a href="#grounded">23.9</a></td></tr>
+                <tr><td>Pulire la sintassi vecchia prima di eseguire</td><td><code>malda check --fix</code></td><td><a href="#check-loop">23.10</a></td></tr>
+            </tbody>
+        </table>
+
+        <h2 id="which-command">Quale comando lancio?</h2>
+        <p>Quattro verbi CLI sembrano simili e fanno quattro lavori diversi. Confonderli è l'errore più comune all'inizio di questo capitolo.</p>
+        <table>
+            <thead>
+                <tr><th>Comando</th><th>Esegue il programma?</th><th>A cosa serve</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>malda path.malda</code> / <code>malda run</code></td><td>Sì</td><td>Esecuzione ordinaria. Salta <code>suite</code> e <code>property</code>.</td></tr>
+                <tr><td><code>malda eval path.malda</code></td><td>Sì, i case della <code>suite</code></td><td>Eval di prompt / agenti. Non è property testing.</td></tr>
+                <tr><td><code>malda test path.malda</code></td><td>Sì, le dichiarazioni <code>property</code> e i file <code>*.test.malda</code></td><td>Test generativi con seed. Vedi <a href="35-property-testing.html">35</a>.</td></tr>
+                <tr><td><code>malda check path.malda</code></td><td>No</td><td>Solo diagnostica. <code>--fix</code> riscrive pochi errori meccanici.</td></tr>
+            </tbody>
+        </table>
+        <p>I flag CLI sono riassunti in <a href="02-tools.html">2. Strumenti e toolchain</a>.</p>
+
+        <p><code>suite</code>, <code>context</code>, <code>policy</code> e <code>within</code> sono parole <strong>contestuali</strong>, non keyword riservate. Significano qualcosa solo nelle forme di dichiarazione / statement qui sotto. <code>var context = 1;</code> continua a parsare. <code>case</code> è già una keyword (riusata per i case di suite vs <code>match</code>). <code>expect</code> e <code>stream</code> sono builtin.</p>
         <div class="info-box">
             <strong>Gap noti (non inventare un workaround nella documentazione):</strong>
             <ul>
@@ -33,9 +74,18 @@
             </ul>
         </div>
 
-        <h2>23.1 Suite di eval</h2>
-        <p>Una <code>suite</code> è un gruppo nominato di <code>case</code> di eval. <code>malda run</code> / l'interpretazione ordinaria <strong>salta</strong> le suite (come <code>property</code>). Si eseguono con <code>malda eval</code>. Non è <code>malda test</code>, che scopre le dichiarazioni <code>property</code> e i file <code>*.test.malda</code> — vedi <a href="35-property-testing.html">35. Property testing</a>.</p>
-        <p>Lookahead dopo <code>case</code>: <code>case "title" {</code> è un case di suite; <code>case Pattern:</code> è un braccio di <code>match</code>.</p>
+        <h2 id="eval-suites">23.1 Suite di eval</h2>
+        <p>Una <code>suite</code> è un gruppo nominato di <code>case</code> di eval — pensali come unit test per i prompt. Ogni case passa una <strong>fixture</strong> (JSON finto del modello) nello stesso percorso extract / validate che userebbe <code>await</code>, poi fa <code>expect</code> di un booleano. Niente API key, niente rete, niente testo a sorpresa.</p>
+        <p>Per questo <code>malda run</code> / l'interpretazione ordinaria <strong>salta</strong> le suite (come <code>property</code>): non fanno parte dell'output del programma. Si eseguono con <code>malda eval</code>. Non è <code>malda test</code>, che scopre le dichiarazioni <code>property</code> e i file <code>*.test.malda</code> — vedi <a href="35-property-testing.html">35. Property testing</a>.</p>
+
+        <h3>23.1.1 La suite più piccola</h3>
+        <p>Tre pezzi lavorano insieme:</p>
+        <ol>
+            <li>Uno <code>schema</code> nomina la forma che vuoi indietro (<code>name: string</code>).</li>
+            <li>Un <code>prompt</code> con <code>-&gt; Card</code> è solo un template finché non fai <code>await</code>. Qui non facciamo mai <code>await</code>.</li>
+            <li><code>evalPrompt(instance, fixture)</code> finge che il modello abbia restituito <code>fixture</code> e percorre lo stesso coerce di <code>await</code>.</li>
+        </ol>
+        <p>Lookahead dopo <code>case</code>: <code>case "title" {</code> è un case di suite; <code>case Pattern:</code> è un braccio di <code>match</code>. Il titolo tra virgolette è il nome che vedrai nel report di eval.</p>
         <pre><code data-run="true" data-expect="ok">schema Card {
     name: string;
 }
@@ -52,28 +102,59 @@ suite "extract" {
 }
 
 print("ok");</code></pre>
-        <p><code>expect(cond)</code> lancia come <code>assert</code> quando la condizione è falsa. Un expect fallito fallisce quel sample. <code>validate</code> continua a tornare <code>{ ok, error }</code> e non lancia sul mismatch.</p>
+        <p>Passo passo: <code>extract("x")</code> costruisce un <code>PromptInstance</code> (ancora nessun modello). Il dict <code>{ "name": "Ada" }</code> è il completamento finto. <code>evalPrompt</code> controlla quel dict contro <code>Card</code> e torna <code>{ ok, data }</code> oppure <code>{ ok: false, error }</code>. <code>expect(checked.ok)</code> lancia come <code>assert</code> se la condizione è falsa, e quel sample fallisce. Il <code>print("ok")</code> dopo la suite gira comunque con <code>malda run</code> perché la suite stessa viene saltata.</p>
+        <p><code>validate</code> è il cugino più quieto: torna <code>{ ok, error }</code> e <em>non</em> lancia sul mismatch. Usa <code>expect</code> dentro i case (fallire il sample). Usa <code>validate</code> nel codice ordinario quando vuoi fare branch.</p>
+        <pre><code data-run="true" data-expect="ok">expect(1 + 1 == 2);
+print("ok");</code></pre>
+
+        <h3>23.1.2 Come eseguirla</h3>
         <pre><code>malda eval Examples/Prompts/eval_suite_offline.malda
 malda eval path.malda --baseline .malda/evals.json
 malda eval path.malda --baseline .malda/evals.json --update-baseline</code></pre>
         <ul>
-            <li><code>@samples(N)</code> — sotto <code>MALDA_REPLAY</code>, replay di N varianti registrate; senza replay, N sample live. <code>N &lt;= 1</code> gira una volta.</li>
-            <li><code>@threshold(0.9)</code> — exit non-zero se il pass rate del case è sotto la soglia.</li>
-            <li><code>@judge(prompt gradeHelpfulness)</code> — dopo un body che passa, valuta l'espressione judge (un prompt viene chiamato con il titolo del case). Un oggetto risultato con <code>ok: false</code> fallisce il sample.</li>
-            <li>Il confronto con una baseline esistente fallisce anche il processo quando il pass rate di un case <strong>cala</strong>.</li>
+            <li>Prima riga: esegue ogni <code>suite</code> del file. Exit non-zero se un case fallisce.</li>
+            <li><code>--baseline</code>: confronta i pass rate di questa run con un JSON salvato. Un case il cui pass rate <strong>cala</strong> fa fallire il processo (hai peggiorato il prompt).</li>
+            <li><code>--update-baseline</code>: scrive i rate attuali in quel file dopo una run di cui ti fidi. Fallo di proposito, non per nascondere una regressione.</li>
         </ul>
-        <p>Stesso file: <code>Examples/Prompts/eval_suite_offline.malda</code>. Snippet agent: <code>docs/llm/few-shot/43_eval_suite.malda</code>.</p>
 
-        <h2>23.2 Cassette</h2>
-        <p>Ogni path LLM <code>Chat</code> (HTTP, GGUF, client bridge) passa da un unico gate record/replay. Le cassette sono JSONL. I secret (<code>Authorization</code>, API key, stringhe con forma da secret) vengono redatti in record.</p>
+        <h3>23.1.3 Decorator opzionali sui case</h3>
+        <p>Stanno su un <code>case</code> (o sulla suite) quando più avanti passi dalle fixture ai sample live:</p>
+        <ul>
+            <li><code>@samples(N)</code> — sotto <code>MALDA_REPLAY</code>, replay di N varianti registrate; senza replay, N sample live. <code>N &lt;= 1</code> gira una volta.</li>
+            <li><code>@threshold(0.9)</code> — exit non-zero quando il pass rate del case è sotto la soglia (qui 90%). Utile quando un modello live può fallire un sample raro.</li>
+            <li><code>@judge(prompt gradeHelpfulness)</code> — dopo un body che passa, valuta l'espressione judge (un prompt viene chiamato con il titolo del case). Un oggetto risultato con <code>ok: false</code> fallisce il sample. Il judge è un secondo prompt che valuta il primo.</li>
+        </ul>
+        <p>Stesso file: <code>Examples/Prompts/eval_suite_offline.malda</code>. Snippet per agenti: <code>docs/llm/few-shot/43_eval_suite.malda</code>.</p>
+        <div class="warning-box">
+            <strong>Errori comuni.</strong> Lanciare il file con un <code>malda</code> semplice e concludere “la suite è rotta” — è stata saltata. Usare <code>malda test</code> (property test) al posto di <code>malda eval</code>. Chiamare <code>await extract(...)</code> dentro un case quando volevi <code>evalPrompt</code> (serve un modello o una cassetta). Trattare <code>validate</code> come asserzione di test — non fallisce il case finché non fai <code>expect(r.ok)</code>.
+        </div>
+
+        <h2 id="cassettes">23.2 Cassette</h2>
+        <p>Una cassetta è un <strong>nastro del traffico LLM</strong>: ogni <code>Chat</code> (HTTP, GGUF, client bridge) si può registrare in un file JSONL e riascoltare dopo. Pensa a un VCR. Registra una volta mentre hai una key e la rete; riascolta per sempre in aula e in CI senza spendere token e senza dipendere dall'umore del vendor.</p>
+        <p>I segreti (<code>Authorization</code>, API key, stringhe evidentemente secret-shaped) vengono redatti in registrazione, così il file è più sicuro da committare di un log grezzo. Come registrare: <code>tests/cassettes/README.md</code>.</p>
+
+        <h3>23.2.1 Registra, poi riascolta</h3>
         <pre><code>MALDA_RECORD=tests/cassettes/name.jsonl   malda Examples/path.malda
 MALDA_REPLAY=tests/cassettes/name.jsonl   malda Examples/path.malda
 MALDA_REPLAY_STRICT=1                    malda Examples/path.malda</code></pre>
-        <p>La chiave della cassetta è hash del prompt + args canonici + model + mode (A/B/C) + hash dello schema. Un miss in replay scrive <code>cassette_miss</code> nel journal. Senza <code>MALDA_REPLAY_STRICT=1</code> l'host avvisa e cade su una chiamata <strong>live</strong>. In strict mode lancia. Come registrare: <code>tests/cassettes/README.md</code>.</p>
-        <p><code>Examples/Agents/agent_governance_golden.malda</code> è una <strong>pair</strong> interpret/transpile offline (senza cassetta). <code>Examples/RalphWiggum/RalphWiggum.malda</code> resta <code>n/a</code> (<code>too-large</code>).</p>
+        <ol>
+            <li><code>MALDA_RECORD</code> — esegui il programma sul serio. Ogni Chat viene appeso al file JSONL.</li>
+            <li><code>MALDA_REPLAY</code> — la run successiva cerca ogni Chat in quel file e restituisce la risposta salvata.</li>
+            <li><code>MALDA_REPLAY_STRICT=1</code> — un miss di lookup è un errore duro. Senza, un miss scrive <code>cassette_miss</code> nel journal e l'host <strong>chiama il modello live</strong>. Questo è il footgun: una CI che “riascolta” può comunque spendere soldi.</li>
+        </ol>
 
-        <h2>23.3 Journal di run</h2>
-        <p>Un journal in-process raccoglie eventi di prompt, tool, cap, hop e step di workflow. SQLite dei workflow resta lo store di durabilità; gli step riusciti sono anche specchiati qui così <code>trace.journal()</code> e gli eventi di workflow condividono un substrato.</p>
+        <h3>23.2.2 Cosa rende due chiamate “la stessa”</h3>
+        <p>La chiave della cassetta è hash del prompt + args canonici + model + mode (A/B/C) + hash dello schema. Cambi il testo del prompt, gli argomenti, il nome del modello, il mode dei tool o lo schema, e ottieni una chiave nuova — un miss di replay. È voluto: non devi riusare in silenzio una risposta registrata per un'altra domanda.</p>
+        <div class="warning-box">
+            <strong>Regola CI.</strong> Imposta sempre <code>MALDA_REPLAY_STRICT=1</code> accanto a <code>MALDA_REPLAY</code> nelle pipeline. Un miss deve far fallire il job, non telefonare al vendor.
+        </div>
+        <p><code>Examples/Agents/agent_governance_golden.malda</code> è una <strong>coppia</strong> interpret/transpile offline (niente cassetta). <code>Examples/RalphWiggum/RalphWiggum.malda</code> resta <code>n/a</code> (<code>too-large</code>).</p>
+
+        <h2 id="run-journal">23.3 Journal di run</h2>
+        <p>Il journal di run è un <strong>scatola nera</strong> in-process. Una lista raccoglie eventi prompt, tool, cap, hop e step di workflow per il processo corrente. Dopo una run puoi chiedere “cosa è successo?” senza raschiare stdout.</p>
+        <p>SQLite dei workflow resta lo store di durabilità per le istanze longeve (vedi <a href="22-durable-workflows.html">22</a>). Gli step riusciti vengono anche specchiati qui così <code>trace.journal()</code> e gli eventi di workflow condividono un substrato. Il journal <em>non</em> è una cassetta: non riascolta le risposte del modello; ricorda solo che una chiamata è avvenuta.</p>
+
+        <h3>23.3.1 Leggilo dopo un prompt offline</h3>
         <pre><code data-run="true" data-expect="true">schema Card {
     name: string;
 }
@@ -85,32 +166,54 @@ prompt extract(raw) -> Card {
 var checked = evalPrompt(extract("Ada"), dict { "name": "Ada" });
 var events = trace.journal();
 print(events.length > 0);</code></pre>
-        <p>Ogni evento è un oggetto con <code>ts</code>, <code>span</code>, <code>kind</code> (<code>prompt</code> / <code>tool</code> / <code>cap</code> / <code>hop</code> / <code>step</code>), <code>name</code>, opzionali <code>promptHash</code> / <code>model</code> / <code>tokens</code> / <code>cost</code> / <code>ms</code> / <code>repairs</code> / <code>error</code>, e <code>ok</code>.</p>
+        <p><code>evalPrompt</code> basta per far atterrare un evento di journal — non serve un Chat live. Ogni evento è un oggetto con <code>ts</code>, <code>span</code>, <code>kind</code> (<code>prompt</code> / <code>tool</code> / <code>cap</code> / <code>hop</code> / <code>step</code>), <code>name</code>, opzionali <code>promptHash</code> / <code>model</code> / <code>tokens</code> / <code>cost</code> / <code>ms</code> / <code>repairs</code> / <code>error</code>, e <code>ok</code>.</p>
         <ul>
-            <li><code>trace.span("name", fn)</code> — nidifica gli eventi sotto quel nome di span.</li>
-            <li><code>trace.lastUsage()</code> — ultimo oggetto token/cost/ms registrato, oppure <code>null</code>.</li>
-            <li><code>.usage</code> su un risultato di prompt è metadata. Una chiave propria dell'oggetto chiamata <code>usage</code> (campo schema) vince.</li>
+            <li><code>trace.span("name", fn)</code> — annida gli eventi sotto quel nome di span (una regione etichettata, come una cartella nel log).</li>
+            <li><code>trace.lastUsage()</code> — ultimo oggetto token/cost/ms registrato, oppure <code>null</code> se non è ancora stato fatturato nulla.</li>
+            <li><code>.usage</code> su un risultato di prompt è metadata. Una chiave propria nominata <code>usage</code> (campo di schema) vince — se lo schema ha un campo <code>usage</code>, quel campo è il valore, non i metadata di billing.</li>
         </ul>
-        <p>Export: <code>MALDA_TRACE=jsonl|otlp</code> più opzionale <code>MALDA_TRACE_FILE</code>. Non è il CLI <code>malda trace</code> esistente, che continua a leggere i file di sessione <code>.malda-trace.jsonl</code>. Stesso file: <code>Examples/Prompts/run_journal_offline.malda</code>.</p>
+        <p>Export: <code>MALDA_TRACE=jsonl|otlp</code> più <code>MALDA_TRACE_FILE</code> opzionale. Non è il CLI <code>malda trace</code> esistente, che continua a leggere i file di sessione <code>.malda-trace.jsonl</code>. Stesso file: <code>Examples/Prompts/run_journal_offline.malda</code>.</p>
+        <div class="info-box">
+            <strong>Tre “trace” diversi.</strong> <code>trace.journal()</code> è questa lista in-process. <code>MALDA_TRACE</code> esporta quella lista. <code>malda trace</code> è un CLI più vecchio che legge file di sessione. Parti da <code>trace.journal()</code> nel programma; aggiungi la env var quando vuoi gli stessi eventi su disco.
+        </div>
 
-        <h2>23.4 Scope <code>within</code></h2>
-        <p>L'istruzione <code>within (30s) { … }</code> è uno scope di cancel a orologio da parete. Le unità sono un numero più <code>ms</code>, <code>s</code> o <code>m</code> (convertite in millisecondi). L'opzionale <code>budget(tokens: N, tools: N, cost: N?)</code> spinge un budget di risorse nidificato come <code>@budget</code>.</p>
-        <p>Il decoratore <code>@within(ms)</code> resta la deadline per funzione / think. Non è un'istruzione e accetta solo millisecondi.</p>
+        <h2 id="within">23.4 Scope <code>within</code></h2>
+        <p>Lo statement <code>within (30s) { … }</code> è un <strong>timer da cucina</strong> a orologio da parete. Quando suona, il runtime scrive un timeout nel journal e lancia <code>Timeout: exceeded within (…ms)</code>. La cancellazione entra in <code>Chat</code> LLM e nel consume dei cap, così una chiamata al modello bloccata o un tool lento non restano in esecuzione per sempre nel processo.</p>
+        <p>Le unità sono un numero più <code>ms</code>, <code>s</code> o <code>m</code> (convertite in millisecondi). Un nudo <code>within (30)</code> è un errore di parse — scrivi <code>30s</code> o <code>30000ms</code>. L'opzionale <code>budget(tokens: N, tools: N, cost: N?)</code> spinge un budget di risorse nidificato come <code>@budget</code>.</p>
+
+        <h3>23.4.1 Statement vs decoratore</h3>
+        <table>
+            <thead>
+                <tr><th>Forma</th><th>Dove</th><th>Argomento</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>within (30s) { … }</code></td><td>Uno statement intorno a un blocco qualsiasi</td><td>Numero + <code>ms</code> / <code>s</code> / <code>m</code></td></tr>
+                <tr><td><code>@within(5000)</code></td><td>Decoratore su una funzione o su <code>think</code></td><td>Solo millisecondi, senza suffisso di unità</td></tr>
+            </tbody>
+        </table>
+        <p>Il decoratore <code>@within(ms)</code> resta la deadline per funzione / per <code>think</code>. Non è uno statement e prende solo millisecondi. Vedi <a href="10-prompts.html">10. Prompt</a> e <a href="09-functions.html">9.7 Decoratori</a>.</p>
         <pre><code>within (10ms) {
     sleep(50);
 }
 
 print("should-not-print");</code></pre>
-        <p>Alla scadenza il runtime scrive un timeout nel journal e lancia <code>Timeout: exceeded within (…ms)</code>. La cancellazione arriva a LLM <code>Chat</code> e al consume dei cap. Stesso file: <code>Examples/Prompts/within_sleep.malda</code> (interpret e C# falliscono entrambi — pair sull'identità dell'errore, non sullo stdout).</p>
-        <ul>
-            <li><code>race(tasks…)</code> — primo ramo completato.</li>
-            <li><code>firstOk(tasks…)</code> — primo ramo che non è una variante <code>Timeout</code>.</li>
-            <li><code>all(tasks…)</code> aspetta ogni ramo. Un ramo fallito diventa uno slot <code>AgentError</code> <code>Upstream</code>; la chiamata non rilancia il primo errore.</li>
-            <li><code>cancelWorkflow(id)</code> mette l'istanza in cancelled; il body interroga quello status fra le istruzioni.</li>
-        </ul>
+        <p>Questo blocco <em>deve</em> fallire. Alla scadenza il runtime scrive un timeout e lancia; il <code>print</code> non viene mai raggiunto. Stesso file: <code>Examples/Prompts/within_sleep.malda</code> (interprete e C# falliscono entrambi — una coppia sull'identità dell'errore, non su stdout).</p>
 
-        <h2>23.5 <code>context</code> dichiarato</h2>
-        <p>Una dichiarazione <code>context Name { … }</code> è un mini-DSL simile a uno schema. <code>new Name()</code> costruisce un oggetto journaled con <code>.add</code> e <code>.turns</code>.</p>
+        <h3>23.4.2 Race fra più rami</h3>
+        <p>Quando avvii più pezzi di lavoro temporizzati, questi builtin scelgono un vincitore:</p>
+        <ul>
+            <li><code>race(tasks…)</code> — primo ramo completato, anche se quel ramo è un timeout.</li>
+            <li><code>firstOk(tasks…)</code> — primo ramo che non è una variante <code>Timeout</code> (salta quelli che hanno finito il tempo).</li>
+            <li><code>all(tasks…)</code> aspetta ogni ramo. Un ramo fallito diventa uno slot <code>AgentError</code> <code>Upstream</code>; la chiamata non rilancia il primo errore. Ispezioni gli slot tu.</li>
+            <li><code>cancelWorkflow(id)</code> mette un'istanza di workflow durevole in cancelled; il body interroga quello status fra gli statement. È un controllo di workflow, non un timer <code>within</code> — vedi <a href="22-durable-workflows.html">22.4</a>.</li>
+        </ul>
+        <div class="warning-box">
+            <strong>Errori comuni.</strong> Scrivere <code>@within(30s)</code> (il decoratore non prende un'unità). Scrivere <code>within (30) { }</code> (servono <code>ms</code>/<code>s</code>/<code>m</code>). Aspettarsi che <code>sleep</code> dentro <code>within</code> torni normalmente — lancia. Trattare <code>race</code> come “primo successo”; quello è <code>firstOk</code>.
+        </div>
+
+        <h2 id="declared-context">23.5 <code>context</code> dichiarato</h2>
+        <p>Una chat è una lista di turni che cresce. I modelli hanno un limite di token; se tieni ogni messaggio per sempre, le chiamate successive diventano più lente, costano di più e alla fine falliscono. Una dichiarazione <code>context Name { … }</code> è un mini-DSL in stile schema per <strong>le regole di casa del taccuino</strong>: quanti turni tenere, cosa non droppare mai, e come restringere il resto.</p>
+        <p><code>new Name()</code> costruisce un oggetto journaled con <code>.add</code> e <code>.turns</code>. Decidi ancora tu quando mandare quei turni a un prompt; l'oggetto context li memorizza e li taglia soltanto.</p>
         <pre><code data-run="true" data-expect="true">context Session {
     budget: 800 tokens;
     pin: systemFacts;
@@ -122,75 +225,166 @@ var s = new Session();
 s.add("user", "hi");
 s.add("user", "there");
 print(s.turns.length >= 1);</code></pre>
-        <ul>
-            <li><code>budget: N tokens</code> — memorizzato sull'istanza (pin informativo).</li>
-            <li><code>pin: name, …</code> — quei turn restano.</li>
-            <li><code>retain: last N</code> — finestra dei turn.</li>
-            <li><code>evict: oldest | lowestScore | none</code>.</li>
-            <li><code>compact: prompt summarize</code> — prompt nominato opzionale; la compaction è una chiamata modello registrata (chiave cassetta) poi evict.</li>
-        </ul>
-        <p><strong>WF1006:</strong> compaction / mutazione del context dentro un body <code>workflow</code> deve stare in uno <code>step</code>. Callee importati o sconosciuti restano Info, come WF1005. Vedi <a href="22-durable-workflows.html">22. Workflow durevoli</a>.</p>
+        <p><code>s.add("user", "hi")</code> appende un turno <code>{ role, content }</code>. L'argomento singolo <code>s.add("hi")</code> è lo stesso del role <code>user</code>. Dopo ogni add, se la lista è più lunga della finestra retain (più gli slot pinned), il runtime scrive un evento <code>context.compact</code> e fa evict.</p>
+        <table>
+            <thead>
+                <tr><th>Campo</th><th>Significato</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>budget: N tokens</code></td><td>Memorizzato sull'istanza (pin informativo). Da solo non abortisce un Chat.</td></tr>
+                <tr><td><code>pin: name, …</code></td><td>Slot riservati che restano (fatti di sistema, le istruzioni originali).</td></tr>
+                <tr><td><code>retain: last N</code></td><td>Quanti turni recenti tenere oltre a quelli pinned.</td></tr>
+                <tr><td><code>evict: oldest | lowestScore | none</code></td><td>Cosa droppare quando la finestra trabocca. <code>none</code> continua a crescere.</td></tr>
+                <tr><td><code>compact: prompt summarize</code></td><td>Prompt nominato opzionale. La compaction è una chiamata al modello registrata (chiave da cassetta), poi evict. Offline / nessun client: droppa solo i più vecchi.</td></tr>
+            </tbody>
+        </table>
+        <p><strong>WF1006:</strong> compaction / mutazione del context dentro il body di un <code>workflow</code> deve stare in uno <code>step</code>. Altrimenti il replay aggiungerebbe lo stesso turno due volte. I callee importati o sconosciuti restano Info, come WF1005. Vedi <a href="22-durable-workflows.html">22. Workflow durevoli</a>.</p>
+        <div class="info-box">
+            <strong>Non è il <code>this</code> / context di JavaScript, e non è una variabile MALDA nominata <code>context</code>.</strong> <code>var context = 1;</code> resta una variabile normale. Solo la forma di dichiarazione <code>context Name { … }</code> crea questo oggetto.
+        </div>
 
-        <h2>23.6 <code>policy</code> di confine del programma</h2>
-        <p>Una <code>policy { … }</code> a livello di file è applicata sul consume dei cap indipendentemente da quali tool l'host ha registrato. La violazione scrive un evento cap nel journal e lancia <code>ToolDenied: …</code>.</p>
+        <h2 id="policy">23.6 <code>policy</code> al confine del programma</h2>
+        <p>Il capitolo <a href="12-input-output.html#capability-tokens">12.6</a> dà a un tool una <strong>chiave</strong> (un capability token) così non può inventare un path. Una <code>policy { … }</code> a livello di file è la <strong>regola del palazzo</strong> sopra: anche se un token è stato mintato, il consume può comunque essere rifiutato. La violazione scrive un evento cap e lancia <code>ToolDenied: …</code>.</p>
+        <p>La policy è enforced sul consume dei cap indipendentemente da quali tool l'host ha registrato. È l'ultimo cancello prima che filesystem, rete, shell o MCP succedano davvero.</p>
         <pre><code>policy {
     fs:    readOnly under "./work";
     net:   allow "api.example.com", "*.internal";
     shell: deny;
     mcp:   allow "local";
 }</code></pre>
-        <ul>
-            <li><code>deny</code> — rifiuta sempre quel dominio.</li>
-            <li><code>allow</code> / <code>readOnly</code> — pattern path/host opzionali; <code>readOnly</code> rifiuta anche le write.</li>
-            <li><code>approve</code> — richiede <code>MALDA_POLICY_APPROVE=1</code> (o <code>true</code>) oppure un <code>ApprovalCallback</code> dell'host. Non c'è ancora un prompt interattivo in stile workflow.</li>
-        </ul>
-        <p><code>@effects("pure")</code> è ancora un check statico (i namespace IO includono <code>cap</code>). La policy è la deny list a runtime. Non sono lo stesso meccanismo.</p>
+        <p>Una policy che deny solo la shell basta per vedere la dichiarazione parsare e girare:</p>
+        <pre><code data-run="true" data-expect="ok">policy {
+    shell: deny;
+}
 
-        <h2>23.7 <code>AgentError</code></h2>
-        <p>Un sum type built-in, pre-registrato:</p>
+print("ok");</code></pre>
+
+        <h3>23.6.1 I quattro verbi</h3>
+        <table>
+            <thead>
+                <tr><th>Verbo</th><th>Significato</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>deny</code></td><td>Rifiuta sempre quel dominio (fs / net / shell / mcp).</td></tr>
+                <tr><td><code>allow</code></td><td>Permette, opzionalmente solo i pattern di path o host elencati.</td></tr>
+                <tr><td><code>readOnly</code></td><td>Come allow, ma le write sono rifiutate. <code>under "./work"</code> limita l'albero.</td></tr>
+                <tr><td><code>approve</code></td><td>Richiede <code>MALDA_POLICY_APPROVE=1</code> (o <code>true</code>) oppure un <code>ApprovalCallback</code> dell'host. Non c'è ancora un prompt interattivo in stile workflow. Senza quelli, approve <em>deny</em>.</td></tr>
+            </tbody>
+        </table>
+
+        <h3>23.6.2 Policy vs <code>@effects</code> vs token</h3>
+        <p>Tre strati che gli studenti comprimono in una sola parola “capability”:</p>
+        <table>
+            <thead>
+                <tr><th>Strato</th><th>Quando gira</th><th>A quale domanda risponde</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>@effects("pure")</code> / <code>"io"</code> / <code>"cap"</code></td><td>Prima che il programma giri (check statico)</td><td>Questa funzione può menzionare nomi I/O?</td></tr>
+                <tr><td>Capability token (<code>cap.fileRead</code>)</td><td>Quando minti / consumi</td><td>Quale <em>unico</em> path, host, tool o prefisso argv?</td></tr>
+                <tr><td><code>policy { … }</code></td><td>Su ogni consume di cap</td><td>Questo dominio è permesso in questo file, anche con un token?</td></tr>
+            </tbody>
+        </table>
+        <p>Non sono lo stesso meccanismo. Una funzione pura non può chiamare <code>cap.run</code>. Un token non sblocca un path che la policy deny. Una policy non sostituisce un token — le API di consume rifiutano ancora stringhe e dict contraffatti. How-to dei token: <a href="12-input-output.html#capability-tokens">12.6</a>.</p>
+        <div class="warning-box">
+            <strong><code>approve</code> non è lo statement <code>approval</code> dei workflow.</strong> Gli approval di workflow mettono in pausa un'istanza per un umano (capitolo 22). Il <code>approve</code> della policy è un flag env o un callback dell'host sul consume dei cap. Non aspettarti un dialog del Desktop IDE da <code>policy { shell: approve }</code>.
+        </div>
+
+        <h2 id="agent-error">23.7 <code>AgentError</code></h2>
+        <p>Quando un prompt o un tool fallisce, le API più vecchie ti danno una stringa <code>error</code>. Le stringhe sono facili da stampare e difficili da usare in <code>match</code>. <code>AgentError</code> è un sum type built-in — una ragione taggata con campi — pre-registrato così non lo dichiari tu:</p>
         <pre><code>AgentError = Refused(reason) | Unparsable(raw, attempts) | SchemaMismatch(schema, error)
            | BudgetExceeded(kind, limit) | ToolDenied(tool, reason) | Timeout(ms)
            | Upstream(status, body)</code></pre>
-        <p>Le stringhe <code>{ ok, error }</code> esistenti restano. I throw restano throw. I siti che già tornano un oggetto risultato attaccano anche <code>agentError</code> come variante. Mismatch di <code>validate</code> → <code>SchemaMismatch</code>.</p>
+        <table>
+            <thead>
+                <tr><th>Variante</th><th>Significato tipico</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>Refused(reason)</code></td><td>Il modello o l'host ha rifiutato la richiesta.</td></tr>
+                <tr><td><code>Unparsable(raw, attempts)</code></td><td>Il completamento non era JSON usabile dopo i tentativi di repair.</td></tr>
+                <tr><td><code>SchemaMismatch(schema, error)</code></td><td>Il JSON ha parsato ma non coincide con lo schema dichiarato.</td></tr>
+                <tr><td><code>BudgetExceeded(kind, limit)</code></td><td>Il budget di token, tool o costo è finito.</td></tr>
+                <tr><td><code>ToolDenied(tool, reason)</code></td><td>La policy o l'host ha rifiutato un tool / consume di cap.</td></tr>
+                <tr><td><code>Timeout(ms)</code></td><td>Uno scope <code>within</code> o una deadline è scaduto.</td></tr>
+                <tr><td><code>Upstream(status, body)</code></td><td>Un peer fallito (status HTTP, o uno slot fallito di <code>all(…)</code>).</td></tr>
+            </tbody>
+        </table>
+        <p>Le stringhe <code>{ ok, error }</code> esistenti restano. I throw restano throw — la scadenza di un <code>within</code> solleva ancora; non diventa un oggetto risultato silenzioso. I siti che già tornano un oggetto risultato attaccano anche <code>agentError</code> come variante. Mismatch di <code>validate</code> → <code>SchemaMismatch</code>.</p>
         <pre><code data-run="true" data-expect="false">schema Card { name: string; }
 var r = validate("Card", dict { "email": "x" });
 print(r.ok);</code></pre>
-        <p>Leggi <code>r.agentError</code> per la variante taggata. Controllare solo la stringa <code>error</code> resta valido e continua a perdere il tag.</p>
+        <pre><code data-run="true" data-expect="true">schema Card { name: string; }
+var r = validate("Card", dict { "email": "x" });
+print(str.indexOf(string(r.agentError), "SchemaMismatch") >= 0);</code></pre>
+        <p>Leggi <code>r.agentError</code> per la variante taggata. Controllare solo la stringa <code>error</code> resta valido e continua a perdere il tag — non distingui <code>SchemaMismatch</code> da <code>Timeout</code> leggendo testo inglese. Vedi anche <a href="04-data-types.html">4. Tipi di dati</a> per <code>match</code> sui sum type.</p>
 
-        <h2>23.8 Stream e <code>for await</code></h2>
-        <p><code>stream(value, schema?)</code> produce un array di chunk <code>{ text }</code>, oppure oggetti parziali schema-aware se si passa un nome di schema registrato. <code>for await (var x in expr)</code> itera quella collezione (oggi il builtin materializza l'array; l'emit C# è <code>foreach</code> su di essa).</p>
+        <h2 id="stream">23.8 Stream e <code>for await</code></h2>
+        <p><code>stream(value, schema?)</code> trasforma un valore in un array di chunk così una UI può aggiornarsi man mano che arriva il testo. Ogni chunk è <code>{ text }</code>, oppure un oggetto parziale schema-aware se passi un nome di schema registrato. <code>for await (var x in expr)</code> itera quella collezione.</p>
+        <p>Oggi il builtin <strong>materializza prima l'array</strong>; l'emit C# è un <code>foreach</code> sopra. Puoi comunque scrivere il loop che una UI streaming terrà quando esisteranno i token live. Non ti serve un LLM per imparare la sintassi: passare una stringa la spezzetta offline.</p>
         <pre><code data-run="true" data-expect="true">var n = 0;
 for await (var chunk in stream("hello world from malda")) {
     n = n + 1;
 }
 print(n > 0);</code></pre>
-        <p>Il parser incrementale di prefissi JSON chiude oggetti/array parziali e produce il prefisso più grande che valida. LlamaCpp non ha uno stream di token live — i chunk sono ritagliati dal testo finito.</p>
+        <p>Il parser incrementale dei prefissi JSON chiude oggetti/array parziali e produce il prefisso più grande che valida — così uno stream schema-aware può mostrare <code>{ "name": "Ad" }</code> prima che arrivi la virgoletta di chiusura. LlamaCpp non ha uno stream di token live — i chunk sono ritagliati dal testo finito (il gap noto in cima al capitolo).</p>
+        <div class="info-box">
+            <strong><code>for await</code> non è <code>await prompt</code>.</strong> <code>await extract(...)</code> chiama un modello e aspetta un risultato. <code>for await</code> cammina su una collezione che <code>stream</code> ha già prodotto. Puoi usare <code>for await</code> senza API key.
+        </div>
 
-        <h2>23.9 Sink grounded</h2>
-        <p><code>grounded.wrap(value, citations?)</code> attacca metadata di citation sul valore runtime (non un nuovo kind di <code>match</code>). Interpolazione e <code>str.*</code> uniscono i set di citation. Mescolare testo grounded e ungrounded marca il risultato come parziale.</p>
+        <h2 id="grounded">23.9 Sink grounded</h2>
+        <p>Una risposta retrieval-augmented dovrebbe ricordare <em>da dove viene</em>. <code>grounded.wrap(value, citations?)</code> attacca metadata di citazione sul valore runtime — un post-it, non un nuovo kind per <code>match</code>. Continui a fare <code>print</code> del testo; puoi anche leggere <code>.citations</code>.</p>
+        <p>Interpolazione e <code>str.*</code> uniscono gli insiemi di citazioni. Mischiare testo grounded e ungrounded marca il risultato come parziale (alcuni pezzi hanno fonti, altri no).</p>
         <pre><code data-run="true" data-expect="true">var g = grounded.wrap("Ada", [{ "source": "wiki", "id": "1" }]);
 var s = $"Hello {g}";
 print(s.citations.length >= 1);</code></pre>
-        <p><code>@requiresCitations</code> su una funzione (e sink marcati come <code>io.writeFile</code> / risposta HTTP) segnala errore quando un argomento stringa non ha citation. <code>match</code> / <code>validate</code> non vedono un tipo nuovo.</p>
+        <p>Passo passo: <code>g</code> è <code>{ value, citations, sourced }</code>. Dentro <code>$"Hello {g}"</code> il wrapper si interpola come il suo value <code>"Ada"</code> e la stringa risultante tiene la citazione wiki. Non c'è un alias flat <code>grounded()</code> né una keyword <code>Grounded</code>. GraphMemory può tornare lo stesso wrapper da <code>memory.ask</code> / <code>query(..., { grounded: true })</code> — vedi <a href="19-graph-memory.html">19.3.15</a>.</p>
+        <p><code>@requiresCitations</code> su una funzione (e sui sink marcati come <code>io.writeFile</code> / risposta HTTP) dà errore quando un argomento stringa non ha citazioni. Usalo sull'ultimo hop prima di una risposta visibile all'utente o di una write su file, così un'allucinazione ungrounded non può uscire. <code>match</code> / <code>validate</code> non vedono un tipo nuovo — le citazioni viaggiano come dati.</p>
+        <div class="warning-box">
+            <strong>Errore comune.</strong> Trattare i hit di <code>memory.query(...)</code> come se <code>match</code> potesse vedere le citazioni. Query torna un array di nodi. La provenienza resta a lato finché non fai wrap (o usi gli helper ASK sopra).
+        </div>
 
-        <h2>23.10 Ciclo check</h2>
-        <p><code>malda check</code> resta solo diagnostica. <code>--fix</code> applica edit meccanici: alias flat della stdlib → chiamate namespaced, <code>"total: {n}"</code> → <code>$"…"</code>, <code>items.length()</code> → <code>items.length</code>. Le diagnostiche <code>--json</code> possono includere <code>suggestedFix</code> (did-you-mean). Non ogni gotcha è auto-fixato.</p>
+        <h2 id="check-loop">23.10 Ciclo check</h2>
+        <p><code>malda check</code> è il correttore ortografico della toolchain: diagnostica e <strong>non esegue</strong>. Usalo in un loop di agente o prima di lanciare un file da studente. <code>--fix</code> poi applica una lista breve di edit meccanici — quelli non ambigui, non “riscrivi il mio programma”.</p>
         <pre><code>malda check app.malda --json
 malda check app.malda --fix
 malda prompts --diff .malda/evals.json</code></pre>
-        <p>Sorgenti diagnostiche:</p>
+        <table>
+            <thead>
+                <tr><th>Cosa riscrive <code>--fix</code></th><th>In</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Alias flat della stdlib (<code>print</code>, <code>sqrt</code>, …)</td><td>Chiamate namespaced (<code>io.print</code>, <code>math.sqrt</code>)</td></tr>
+                <tr><td><code>"total: {n}"</code> (stringa plain, niente interpolazione)</td><td><code>$"total: {n}"</code></td></tr>
+                <tr><td><code>items.length()</code></td><td><code>items.length</code></td></tr>
+            </tbody>
+        </table>
+        <p>Le diagnostiche <code>--json</code> possono includere <code>suggestedFix</code> (did-you-mean). Non ogni gotcha è auto-fixed — se lo strumento non è sicuro, avvisa soltanto. Gli alias flat e <code>parseJson</code> restano fino a un MAJOR 2.0 dedicato; <code>--fix</code> / gotcha sono la preparazione.</p>
+        <p>Sorgenti diagnostiche che vedrai nel JSON:</p>
         <ul>
             <li><code>malda-gotcha</code> — loop EOF di <code>io.input</code>, <code>AnsiConsole.markup</code> senza newline, <code>validate</code> inutilizzato, <code>arr.append</code>, omografo <code>parseJson</code>, <code>borderStyle</code> sconosciuto.</li>
             <li><code>malda-tools</code> — <code>@Tool</code> / <code>@MCPTool</code> senza type hint e senza argomento schema.</li>
             <li><code>malda-agents</code> — topologia statica del team (solo grafi / plan letterali).</li>
         </ul>
-        <p>L'opzionale <code>@version("2026-09-01")</code> su un <code>prompt</code> è un pin informativo. <code>malda prompts --diff</code> confronta gli hash dei prompt fra file di baseline eval. Gli alias flat e <code>parseJson</code> restano fino a un MAJOR 2.0 dedicato; <code>--fix</code> / gotcha sono la preparazione.</p>
+        <p>L'opzionale <code>@version("2026-09-01")</code> su un <code>prompt</code> è un pin informativo. <code>malda prompts --diff</code> confronta gli hash dei prompt fra file di baseline eval così vedi che il template è cambiato anche quando l'eval continua a passare.</p>
+
+        <h2 id="student-path">23.11 Un primo percorso nel capitolo</h2>
+        <p>Se stai scrivendo il primo compito agentico, fai questi passi in ordine. Ogni passo resta offline finché non scegli altrimenti.</p>
+        <ol>
+            <li>Scrivi uno <code>schema</code> e un <code>prompt</code> (capitolo 10). Chiama <code>evalPrompt</code> con un dict fixture. Conferma <code>checked.ok</code>.</li>
+            <li>Sposta quel check in una <code>suite</code> / <code>case</code> e lancia <code>malda eval</code>.</li>
+            <li>Stampa <code>trace.journal()</code> così vedi l'evento prompt.</li>
+            <li>Se il compito usa tool, aggiungi una <code>policy</code> che fa <code>deny</code> di <code>shell</code> (e <code>readOnly</code> sulla cartella di lavoro). Minta i token come in <a href="12-input-output.html#capability-tokens">12.6</a>.</li>
+            <li>Avvolgi il lavoro lento in <code>within (30s) { … }</code>.</li>
+            <li>Quando finalmente fai <code>await</code> di un modello live, registra una cassetta e riascoltala con <code>MALDA_REPLAY_STRICT=1</code>.</li>
+            <li>Prima di consegnare il file, lancia <code>malda check --json</code> (e <code>--fix</code> se gli edit meccanici ti sembrano giusti).</li>
+        </ol>
+        <p>Quel percorso usa ogni costrutto di questo capitolo tranne streaming e citazioni grounded, che aggiungi quando la UI o il compito RAG li chiede.</p>
 
         <div class="see-also">
             <h3>Vedi anche</h3>
             <ul>
                 <li><a href="02-tools.html">2. Strumenti e toolchain</a> — CLI <code>eval</code> / <code>check --fix</code> / <code>prompts</code></li>
                 <li><a href="10-prompts.html">10. Prompt</a> — <code>await</code>, <code>evalPrompt</code>, <code>@budget</code> / <code>@within</code></li>
+                <li><a href="12-input-output.html#capability-tokens">12.6 Capability token</a> — la chiave; la <code>policy</code> di questo capitolo è la regola del palazzo</li>
                 <li><a href="18-agent-orchestration.html">18. Orchestrazione di agenti</a> — team e <code>malda-agents</code></li>
                 <li><a href="22-durable-workflows.html">22. Workflow durevoli</a> — WF1006 e specchio journal degli step</li>
                 <li><a href="35-property-testing.html">35. Property testing</a> — <code>malda test</code> vs <code>malda eval</code></li>
@@ -204,7 +398,7 @@ malda prompts --diff .malda/evals.json</code></pre>
         </div>
 
         <footer>
-            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, at your option.</p>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, a tua scelta.</p>
         </footer>
     </main>
     <script src="../malda-highlight.js"></script>

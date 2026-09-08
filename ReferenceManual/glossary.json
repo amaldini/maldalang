@@ -328,7 +328,7 @@
       "aliases": ["ui", "ui.button", "component", "property", "UIHost"],
       "href": "25-web-ui.html",
       "also": ["24-web-ui-hub.html"],
-      "summary": "Server-driven UI: component, property, and ui.* controls. Start at chapter 23 if choosing a UI model."
+      "summary": "Server-driven UI: component, property, and ui.* controls. Start at chapter 24 if choosing a UI model."
     },
     {
       "id": "page",

@@ -23,7 +23,7 @@
     { "file": "20-mcp-server.html", "title": "Server MCP", "category": "AI & Agents", "description": "Supporto del protocollo MCP" },
     { "file": "21-acp.html", "title": "ACP (Agent Communication Protocol)", "category": "AI & Agents", "description": "Protocollo di comunicazione e collaborazione tra agenti" },
     { "file": "22-durable-workflows.html", "title": "Workflow durevoli", "category": "AI & Agents", "description": "Sintassi dei workflow durevoli, modello di runtime, CLI, DLQ e operazioni" },
-    { "file": "23-agentic-runs.html", "title": "Esecuzioni agentiche", "category": "AI & Agents", "description": "Suite eval, cassette, journal, within, context, policy, AgentError, stream, ciclo check" },
+    { "file": "23-agentic-runs.html", "title": "Esecuzioni agentiche", "category": "AI & Agents", "description": "Come testare, registrare, limitare nel tempo, ricordare, restringere e diagnosticare i programmi agentici" },
     { "file": "24-web-ui-hub.html", "title": "Panoramica Web UI", "category": "Web", "description": "Scegliere componenti server, pagine HttpServer o JS nel browser" },
     { "file": "25-web-ui.html", "title": "Componenti server Web UI", "category": "Web", "description": "Componenti server, fragment, aggiornamenti live e ui.*" },
     { "file": "26-http-server-html-ui.html", "title": "HttpServer e generazione UI HTML", "category": "Web", "description": "Hosting route-first, @PAGE, @AIPAGE e generazione HTML" },

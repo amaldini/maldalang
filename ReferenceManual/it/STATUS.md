@@ -34,7 +34,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 20-mcp-server.html | c559ba7d5e8e0571e2ff787a7ce0d28ddb5f9a4b36a120406f3b7e28ba38b9f8 |
 | 21-acp.html | 364f4e38abcdfdc46187abd1165fdb5ca604d98790c3f60937fd793fb159dc8c |
 | 22-durable-workflows.html | 86d5d169f46399e29c0676dc6126417b7489cd7f55aad267cb498a5a18bff392 |
-| 23-agentic-runs.html | 1b9326a1ee19a14badceae04969cc22c3c3c1ec713222b6e42e11291d772bb89 |
+| 23-agentic-runs.html | a45579079a8408319c58dccc34443fdda42cfa53daff288b629abf91b34c9fcf |
 | 24-web-ui-hub.html | ee6f7b96a8855a0df0c4278f5e686f30e557519895d10907ad217f9af23eadc3 |
 | 25-web-ui.html | 66c054bb25f73469b4d153bbde385b2527dcda97fc3b8184b21cd41c91117b31 |
 | 26-http-server-html-ui.html | 9605c4a3ec4ecb65d94a6b80fb529026d313b2091af651e947748bd97afc8b04 |

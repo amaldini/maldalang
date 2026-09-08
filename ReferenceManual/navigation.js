@@ -831,7 +831,7 @@ const FALLBACK_GLOSSARY_EN = [
             "UIHost"
         ],
         "href": "25-web-ui.html",
-        "summary": "Server-driven UI: component, property, and ui.* controls. Start at chapter 23 if choosing a UI model.",
+        "summary": "Server-driven UI: component, property, and ui.* controls. Start at chapter 24 if choosing a UI model.",
         "also": [
             "24-web-ui-hub.html"
         ]
@@ -1568,7 +1568,7 @@ const FALLBACK_GLOSSARY_IT = [
             "UIHost"
         ],
         "href": "25-web-ui.html",
-        "summary": "UI guidata dal server: component, property e controlli ui.*. Parti dal capitolo 23 se stai scegliendo un modello UI.",
+        "summary": "UI guidata dal server: component, property e controlli ui.*. Parti dal capitolo 24 se stai scegliendo un modello UI.",
         "also": [
             "24-web-ui-hub.html"
         ]

@@ -22,8 +22,49 @@
 
         <h1>23. Agentic Runs</h1>
 
-        <p>This chapter is the language surface for <strong>verifying and bounding</strong> agent programs: eval suites, LLM cassettes, the run journal, cancellation scopes, declared conversation context, a file-level capability policy, typed <code>AgentError</code>, streaming, grounded sinks, and the check/fix loop. Interpreter and C# transpile agree on the offline examples. JavaScript is host-only (<code>n/a</code>).</p>
-        <p><code>suite</code>, <code>context</code>, <code>policy</code>, and <code>within</code> are <strong>contextual</strong> words, not reserved keywords. <code>var context = 1;</code> still parses. <code>case</code> is already a keyword (reused for suite cases vs <code>match</code>). <code>expect</code> and <code>stream</code> are builtins. CLI flags for these commands are summarized in <a href="02-tools.html">2. Tools &amp; Tooling</a>.</p>
+        <p>Chapters <a href="10-prompts.html">10</a> and <a href="18-agent-orchestration.html">18</a> teach you to <em>call</em> a model and to <em>orchestrate</em> agents. This chapter is the seatbelt layer: how you <strong>test, record, time-limit, remember, restrict, and diagnose</strong> those runs so they stay cheap, repeatable, and safe enough for class work and CI.</p>
+        <p>An ordinary function is deterministic: same input, same output. A prompt is not. The model can change its wording, spend tokens, call tools, hang, or invent a path. You therefore need extra machinery that a first programming course never needed — not because MALDA is harder, but because the <em>guest</em> (the model) is unpredictable.</p>
+        <p>Interpreter and C# transpile agree on the offline examples in this chapter. JavaScript is host-only (<code>n/a</code>).</p>
+
+        <h2 id="what-you-need">What you already need</h2>
+        <p>Read this chapter after you can write a <code>prompt</code> with a <code>schema</code> and call <code>evalPrompt</code> (no API key). You do <em>not</em> need a live model to learn suites, journals, <code>context</code>, <code>policy</code>, <code>AgentError</code>, <code>stream</code>, or <code>grounded.wrap</code>. Live calls appear only when you record a cassette or you <code>await</code> a prompt.</p>
+
+        <h2 id="concept-map">A map of the chapter</h2>
+        <p>Each construct answers one student question. Skim the table, then read the section that matches the problem you have.</p>
+        <table>
+            <thead>
+                <tr><th>You want to…</th><th>Use</th><th>Section</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Unit-test a prompt without calling a model</td><td><code>suite</code> + <code>evalPrompt</code> + <code>expect</code></td><td><a href="#eval-suites">23.1</a></td></tr>
+                <tr><td>Replay yesterday’s LLM traffic in CI (no surprise bills)</td><td>cassettes (<code>MALDA_RECORD</code> / <code>MALDA_REPLAY</code>)</td><td><a href="#cassettes">23.2</a></td></tr>
+                <tr><td>See what the run actually did</td><td><code>trace.journal()</code></td><td><a href="#run-journal">23.3</a></td></tr>
+                <tr><td>Stop a hung or spendy call</td><td><code>within (30s) { … }</code></td><td><a href="#within">23.4</a></td></tr>
+                <tr><td>Keep a chat from growing forever</td><td><code>context Session { … }</code></td><td><a href="#declared-context">23.5</a></td></tr>
+                <tr><td>Refuse shell / writes / hosts even if a tool is registered</td><td>file-level <code>policy</code></td><td><a href="#policy">23.6</a></td></tr>
+                <tr><td>Branch on <em>why</em> a result failed, not only the string</td><td><code>r.agentError</code></td><td><a href="#agent-error">23.7</a></td></tr>
+                <tr><td>Walk tokens or partial JSON as they arrive</td><td><code>stream</code> + <code>for await</code></td><td><a href="#stream">23.8</a></td></tr>
+                <tr><td>Keep citations stuck to an answer</td><td><code>grounded.wrap</code></td><td><a href="#grounded">23.9</a></td></tr>
+                <tr><td>Clean old syntax before you run</td><td><code>malda check --fix</code></td><td><a href="#check-loop">23.10</a></td></tr>
+            </tbody>
+        </table>
+
+        <h2 id="which-command">Which command do I run?</h2>
+        <p>Four CLI verbs look similar and do four different jobs. Mixing them up is the most common first mistake in this chapter.</p>
+        <table>
+            <thead>
+                <tr><th>Command</th><th>Runs the program?</th><th>What it is for</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>malda path.malda</code> / <code>malda run</code></td><td>Yes</td><td>Ordinary execution. Skips <code>suite</code> and <code>property</code>.</td></tr>
+                <tr><td><code>malda eval path.malda</code></td><td>Yes, the <code>suite</code> cases</td><td>Prompt / agent evals. Not property tests.</td></tr>
+                <tr><td><code>malda test path.malda</code></td><td>Yes, the <code>property</code> decls and <code>*.test.malda</code></td><td>Seeded generative tests. See <a href="35-property-testing.html">35</a>.</td></tr>
+                <tr><td><code>malda check path.malda</code></td><td>No</td><td>Diagnostics only. <code>--fix</code> rewrites a few mechanical mistakes.</td></tr>
+            </tbody>
+        </table>
+        <p>CLI flags are summarized in <a href="02-tools.html">2. Tools &amp; Tooling</a>.</p>
+
+        <p><code>suite</code>, <code>context</code>, <code>policy</code>, and <code>within</code> are <strong>contextual</strong> words, not reserved keywords. They mean something only in the declaration / statement shapes below. <code>var context = 1;</code> still parses. <code>case</code> is already a keyword (reused for suite cases vs <code>match</code>). <code>expect</code> and <code>stream</code> are builtins.</p>
         <div class="info-box">
             <strong>Known gaps (do not invent a workaround in docs):</strong>
             <ul>
@@ -33,9 +74,18 @@
             </ul>
         </div>
 
-        <h2>23.1 Eval suites</h2>
-        <p>A <code>suite</code> is a named group of eval <code>case</code>s. <code>malda run</code> / ordinary interpret <strong>skips</strong> suites (like <code>property</code>). Run them with <code>malda eval</code>. That is not <code>malda test</code>, which discovers <code>property</code> declarations and <code>*.test.malda</code> files — see <a href="35-property-testing.html">35. Property Testing</a>.</p>
-        <p>Lookahead after <code>case</code>: <code>case "title" {</code> is a suite case; <code>case Pattern:</code> is a <code>match</code> arm.</p>
+        <h2 id="eval-suites">23.1 Eval suites</h2>
+        <p>A <code>suite</code> is a named group of eval <code>case</code>s — think unit tests for prompts. Each case feeds a <strong>fixture</strong> (fake model JSON) through the same extract / validate path that <code>await</code> would use, then <code>expect</code>s a boolean. No API key, no network, no surprise wording.</p>
+        <p>That is why <code>malda run</code> / ordinary interpret <strong>skips</strong> suites (like <code>property</code>): they are not part of the program’s output. Run them with <code>malda eval</code>. That is not <code>malda test</code>, which discovers <code>property</code> declarations and <code>*.test.malda</code> files — see <a href="35-property-testing.html">35. Property Testing</a>.</p>
+
+        <h3>23.1.1 The smallest suite</h3>
+        <p>Three pieces work together:</p>
+        <ol>
+            <li>A <code>schema</code> names the shape you want back (<code>name: string</code>).</li>
+            <li>A <code>prompt</code> with <code>-&gt; Card</code> is only a template until you <code>await</code> it. Here we never <code>await</code>.</li>
+            <li><code>evalPrompt(instance, fixture)</code> pretends the model returned <code>fixture</code> and runs the same coerce path as <code>await</code>.</li>
+        </ol>
+        <p>Lookahead after <code>case</code>: <code>case "title" {</code> is a suite case; <code>case Pattern:</code> is a <code>match</code> arm. The quoted title is the name you will see in the eval report.</p>
         <pre><code data-run="true" data-expect="ok">schema Card {
     name: string;
 }
@@ -52,28 +102,59 @@ suite "extract" {
 }
 
 print("ok");</code></pre>
-        <p><code>expect(cond)</code> throws like <code>assert</code> when the condition is false. A failed expect fails that sample. <code>validate</code> still returns <code>{ ok, error }</code> and does not throw on mismatch.</p>
+        <p>Walk-through: <code>extract("x")</code> builds a <code>PromptInstance</code> (still no model). The dict <code>{ "name": "Ada" }</code> is the fake completion. <code>evalPrompt</code> checks that dict against <code>Card</code> and returns <code>{ ok, data }</code> or <code>{ ok: false, error }</code>. <code>expect(checked.ok)</code> throws like <code>assert</code> when the condition is false, which fails that sample. The <code>print("ok")</code> after the suite still runs under <code>malda run</code> because the suite itself is skipped.</p>
+        <p><code>validate</code> is the quieter cousin: it returns <code>{ ok, error }</code> and does <em>not</em> throw on mismatch. Use <code>expect</code> inside cases (fail the sample). Use <code>validate</code> in ordinary code when you want to branch.</p>
+        <pre><code data-run="true" data-expect="ok">expect(1 + 1 == 2);
+print("ok");</code></pre>
+
+        <h3>23.1.2 How to run it</h3>
         <pre><code>malda eval Examples/Prompts/eval_suite_offline.malda
 malda eval path.malda --baseline .malda/evals.json
 malda eval path.malda --baseline .malda/evals.json --update-baseline</code></pre>
         <ul>
+            <li>First line: run every <code>suite</code> in the file. Exit non-zero if a case fails.</li>
+            <li><code>--baseline</code>: compare this run’s pass rates to a saved JSON file. A case whose pass rate <strong>drops</strong> fails the process (you made the prompt worse).</li>
+            <li><code>--update-baseline</code>: write the current rates into that file after a run you trust. Do this on purpose, not to hide a regression.</li>
+        </ul>
+
+        <h3>23.1.3 Optional case decorators</h3>
+        <p>These sit on a <code>case</code> (or the suite) when you later move from fixtures to live samples:</p>
+        <ul>
             <li><code>@samples(N)</code> — under <code>MALDA_REPLAY</code>, replay N recorded variants; without replay, N live samples. <code>N &lt;= 1</code> runs once.</li>
-            <li><code>@threshold(0.9)</code> — exit non-zero when the case pass rate is below the threshold.</li>
-            <li><code>@judge(prompt gradeHelpfulness)</code> — after a passing body, evaluate the judge expression (a prompt is called with the case title). A result object with <code>ok: false</code> fails the sample.</li>
-            <li>Comparing against an existing baseline also fails the process when a case pass rate <strong>drops</strong>.</li>
+            <li><code>@threshold(0.9)</code> — exit non-zero when the case pass rate is below the threshold (90% here). Useful when a live model is allowed to fail a rare sample.</li>
+            <li><code>@judge(prompt gradeHelpfulness)</code> — after a passing body, evaluate the judge expression (a prompt is called with the case title). A result object with <code>ok: false</code> fails the sample. The judge is a second prompt that grades the first.</li>
         </ul>
         <p>Same file: <code>Examples/Prompts/eval_suite_offline.malda</code>. Agent snippet: <code>docs/llm/few-shot/43_eval_suite.malda</code>.</p>
+        <div class="warning-box">
+            <strong>Common mistakes.</strong> Running the file with plain <code>malda</code> and concluding “the suite is broken” — it was skipped. Using <code>malda test</code> (property tests) instead of <code>malda eval</code>. Calling <code>await extract(...)</code> inside a case when you meant <code>evalPrompt</code> (that needs a model or a cassette). Treating <code>validate</code> as a test assertion — it will not fail the case unless you <code>expect(r.ok)</code>.
+        </div>
 
-        <h2>23.2 Cassettes</h2>
-        <p>Every LLM <code>Chat</code> path (HTTP, GGUF, client bridge) goes through one record/replay gate. Cassettes are JSONL. Secrets (<code>Authorization</code>, API keys, obvious secret-shaped strings) are redacted on record.</p>
+        <h2 id="cassettes">23.2 Cassettes</h2>
+        <p>A cassette is a <strong>tape of LLM traffic</strong>: every <code>Chat</code> (HTTP, GGUF, client bridge) can be recorded to a JSONL file and played back later. Think of a VCR. Record once while you have a key and a network; replay forever in class and CI without spending tokens or depending on the vendor’s mood.</p>
+        <p>Secrets (<code>Authorization</code>, API keys, obvious secret-shaped strings) are redacted on record, so the file is safer to commit than a raw log. How to record: <code>tests/cassettes/README.md</code>.</p>
+
+        <h3>23.2.1 Record, then replay</h3>
         <pre><code>MALDA_RECORD=tests/cassettes/name.jsonl   malda Examples/path.malda
 MALDA_REPLAY=tests/cassettes/name.jsonl   malda Examples/path.malda
 MALDA_REPLAY_STRICT=1                    malda Examples/path.malda</code></pre>
-        <p>The cassette key is prompt hash + canonical args + model + mode (A/B/C) + schema hash. A replay miss journals <code>cassette_miss</code>. Without <code>MALDA_REPLAY_STRICT=1</code> the host warns and falls through to a <strong>live</strong> call. Strict mode throws. How to record: <code>tests/cassettes/README.md</code>.</p>
+        <ol>
+            <li><code>MALDA_RECORD</code> — run the program for real. Each Chat is appended to the JSONL file.</li>
+            <li><code>MALDA_REPLAY</code> — the next run looks up each Chat in that file and returns the saved answer.</li>
+            <li><code>MALDA_REPLAY_STRICT=1</code> — a lookup miss is a hard error. Without it, a miss journals <code>cassette_miss</code> and the host <strong>calls the live model</strong>. That is the footgun: CI that “replays” can still spend money.</li>
+        </ol>
+
+        <h3>23.2.2 What makes two calls “the same”</h3>
+        <p>The cassette key is prompt hash + canonical args + model + mode (A/B/C) + schema hash. Change the prompt text, the arguments, the model name, the tool mode, or the schema, and you get a new key — a replay miss. That is intentional: you should not silently reuse an answer that was recorded for a different question.</p>
+        <div class="warning-box">
+            <strong>CI rule.</strong> Always set <code>MALDA_REPLAY_STRICT=1</code> next to <code>MALDA_REPLAY</code> in pipelines. A miss should fail the job, not phone the vendor.
+        </div>
         <p><code>Examples/Agents/agent_governance_golden.malda</code> is an offline interpret/transpile <strong>pair</strong> (no cassette). <code>Examples/RalphWiggum/RalphWiggum.malda</code> stays <code>n/a</code> (<code>too-large</code>).</p>
 
-        <h2>23.3 Run journal</h2>
-        <p>One in-process journal collects prompt, tool, cap, hop, and workflow-step events. Workflow SQLite remains the durability store; successful steps are also mirrored here so <code>trace.journal()</code> and workflow events share a substrate.</p>
+        <h2 id="run-journal">23.3 Run journal</h2>
+        <p>The run journal is an in-process <strong>flight recorder</strong>. One list collects prompt, tool, cap, hop, and workflow-step events for the current process. After a run you can ask “what happened?” without scraping stdout.</p>
+        <p>Workflow SQLite remains the durability store for long-lived instances (see <a href="22-durable-workflows.html">22</a>). Successful steps are also mirrored here so <code>trace.journal()</code> and workflow events share a substrate. The journal is <em>not</em> a cassette: it does not replay model answers; it only remembers that a call occurred.</p>
+
+        <h3>23.3.1 Read it after an offline prompt</h3>
         <pre><code data-run="true" data-expect="true">schema Card {
     name: string;
 }
@@ -85,32 +166,54 @@ prompt extract(raw) -> Card {
 var checked = evalPrompt(extract("Ada"), dict { "name": "Ada" });
 var events = trace.journal();
 print(events.length > 0);</code></pre>
-        <p>Each event is an object with <code>ts</code>, <code>span</code>, <code>kind</code> (<code>prompt</code> / <code>tool</code> / <code>cap</code> / <code>hop</code> / <code>step</code>), <code>name</code>, optional <code>promptHash</code> / <code>model</code> / <code>tokens</code> / <code>cost</code> / <code>ms</code> / <code>repairs</code> / <code>error</code>, and <code>ok</code>.</p>
+        <p><code>evalPrompt</code> is enough to land a journal event — you do not need a live Chat. Each event is an object with <code>ts</code>, <code>span</code>, <code>kind</code> (<code>prompt</code> / <code>tool</code> / <code>cap</code> / <code>hop</code> / <code>step</code>), <code>name</code>, optional <code>promptHash</code> / <code>model</code> / <code>tokens</code> / <code>cost</code> / <code>ms</code> / <code>repairs</code> / <code>error</code>, and <code>ok</code>.</p>
         <ul>
-            <li><code>trace.span("name", fn)</code> — nest events under that span name.</li>
-            <li><code>trace.lastUsage()</code> — last recorded token/cost/ms object, or <code>null</code>.</li>
-            <li><code>.usage</code> on a prompt result is metadata. An own object key named <code>usage</code> (schema field) wins.</li>
+            <li><code>trace.span("name", fn)</code> — nest events under that span name (a labeled region, like a folder in the log).</li>
+            <li><code>trace.lastUsage()</code> — last recorded token/cost/ms object, or <code>null</code> if nothing has been billed yet.</li>
+            <li><code>.usage</code> on a prompt result is metadata. An own object key named <code>usage</code> (schema field) wins — if your schema has a field <code>usage</code>, that field is the value, not the billing metadata.</li>
         </ul>
         <p>Export: <code>MALDA_TRACE=jsonl|otlp</code> plus optional <code>MALDA_TRACE_FILE</code>. That is <strong>not</strong> the existing <code>malda trace</code> CLI, which still reads session <code>.malda-trace.jsonl</code> files. Same file: <code>Examples/Prompts/run_journal_offline.malda</code>.</p>
+        <div class="info-box">
+            <strong>Three different “traces”.</strong> <code>trace.journal()</code> is this in-process list. <code>MALDA_TRACE</code> exports that list. <code>malda trace</code> is an older CLI that reads session files. Start with <code>trace.journal()</code> in the program; add the env var when you want the same events on disk.
+        </div>
 
-        <h2>23.4 <code>within</code> scopes</h2>
-        <p>The statement <code>within (30s) { … }</code> is a wall-clock cancel scope. Units are a number plus <code>ms</code>, <code>s</code>, or <code>m</code> (converted to milliseconds). Optional <code>budget(tokens: N, tools: N, cost: N?)</code> pushes a nested resource budget like <code>@budget</code>.</p>
-        <p>The decorator <code>@within(ms)</code> remains the per-function / per-think deadline. It is not a statement and takes milliseconds only.</p>
+        <h2 id="within">23.4 <code>within</code> scopes</h2>
+        <p>The statement <code>within (30s) { … }</code> is a wall-clock <strong>kitchen timer</strong>. When the timer rings, the runtime journals a timeout and throws <code>Timeout: exceeded within (…ms)</code>. Cancellation flows into LLM <code>Chat</code> and cap consume, so a stuck model call or a slow tool is not left running forever in your process.</p>
+        <p>Units are a number plus <code>ms</code>, <code>s</code>, or <code>m</code> (converted to milliseconds). A bare <code>within (30)</code> is a parse error — write <code>30s</code> or <code>30000ms</code>. Optional <code>budget(tokens: N, tools: N, cost: N?)</code> pushes a nested resource budget like <code>@budget</code>.</p>
+
+        <h3>23.4.1 Statement vs decorator</h3>
+        <table>
+            <thead>
+                <tr><th>Form</th><th>Where</th><th>Argument</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>within (30s) { … }</code></td><td>A statement around any block</td><td>Number + <code>ms</code> / <code>s</code> / <code>m</code></td></tr>
+                <tr><td><code>@within(5000)</code></td><td>Decorator on a function or <code>think</code></td><td>Milliseconds only, no unit suffix</td></tr>
+            </tbody>
+        </table>
+        <p>The decorator <code>@within(ms)</code> remains the per-function / per-think deadline. It is not a statement and takes milliseconds only. See <a href="10-prompts.html">10. Prompts</a> and <a href="09-functions.html">9.7 Decorators</a>.</p>
         <pre><code>within (10ms) {
     sleep(50);
 }
 
 print("should-not-print");</code></pre>
-        <p>On expiry the runtime journals a timeout and throws <code>Timeout: exceeded within (…ms)</code>. Cancellation flows into LLM <code>Chat</code> and cap consume. Same file: <code>Examples/Prompts/within_sleep.malda</code> (interpret and C# both fail — a pair on error identity, not stdout).</p>
-        <ul>
-            <li><code>race(tasks…)</code> — first completed branch.</li>
-            <li><code>firstOk(tasks…)</code> — first branch that is not a <code>Timeout</code> variant.</li>
-            <li><code>all(tasks…)</code> waits for every branch. A failed branch becomes an <code>AgentError</code> <code>Upstream</code> slot; the call does not rethrow the first error.</li>
-            <li><code>cancelWorkflow(id)</code> flips the instance to cancelled; the body polls that status between statements.</li>
-        </ul>
+        <p>This block is <em>supposed</em> to fail. On expiry the runtime journals a timeout and throws; the <code>print</code> is never reached. Same file: <code>Examples/Prompts/within_sleep.malda</code> (interpret and C# both fail — a pair on error identity, not stdout).</p>
 
-        <h2>23.5 Declared <code>context</code></h2>
-        <p>A <code>context Name { … }</code> declaration is a schema-like mini-DSL. <code>new Name()</code> constructs a journaled object with <code>.add</code> and <code>.turns</code>.</p>
+        <h3>23.4.2 Racing several branches</h3>
+        <p>When you start more than one timed piece of work, these builtins pick a winner:</p>
+        <ul>
+            <li><code>race(tasks…)</code> — first completed branch, even if that branch is a timeout.</li>
+            <li><code>firstOk(tasks…)</code> — first branch that is not a <code>Timeout</code> variant (skip the ones that ran out of time).</li>
+            <li><code>all(tasks…)</code> waits for every branch. A failed branch becomes an <code>AgentError</code> <code>Upstream</code> slot; the call does not rethrow the first error. You inspect the slots yourself.</li>
+            <li><code>cancelWorkflow(id)</code> flips a durable-workflow instance to cancelled; the body polls that status between statements. That is a workflow control, not a <code>within</code> timer — see <a href="22-durable-workflows.html">22.4</a>.</li>
+        </ul>
+        <div class="warning-box">
+            <strong>Common mistakes.</strong> Writing <code>@within(30s)</code> (the decorator does not take a unit). Writing <code>within (30) { }</code> (needs <code>ms</code>/<code>s</code>/<code>m</code>). Expecting <code>sleep</code> inside <code>within</code> to return normally — it throws. Treating <code>race</code> as “first success”; that is <code>firstOk</code>.
+        </div>
+
+        <h2 id="declared-context">23.5 Declared <code>context</code></h2>
+        <p>A chat is a growing list of turns. Models have a token limit; if you keep every message forever, later calls get slower, cost more, and eventually fail. A <code>context Name { … }</code> declaration is a schema-like mini-DSL for <strong>the notebook’s house rules</strong>: how many turns to keep, what never to drop, and how to shrink the rest.</p>
+        <p><code>new Name()</code> constructs a journaled object with <code>.add</code> and <code>.turns</code>. You still decide when to send those turns to a prompt; the context object only stores and trims them.</p>
         <pre><code data-run="true" data-expect="true">context Session {
     budget: 800 tokens;
     pin: systemFacts;
@@ -122,75 +225,166 @@ var s = new Session();
 s.add("user", "hi");
 s.add("user", "there");
 print(s.turns.length >= 1);</code></pre>
-        <ul>
-            <li><code>budget: N tokens</code> — stored on the instance (informational pin).</li>
-            <li><code>pin: name, …</code> — those turns stay.</li>
-            <li><code>retain: last N</code> — turn window.</li>
-            <li><code>evict: oldest | lowestScore | none</code>.</li>
-            <li><code>compact: prompt summarize</code> — optional named prompt; compaction is a recorded model call (cassette-keyed) then evicts.</li>
-        </ul>
-        <p><strong>WF1006:</strong> compaction / context mutation inside a <code>workflow</code> body must sit in a <code>step</code>. Imported or unknown callees stay Info, same as WF1005. See <a href="22-durable-workflows.html">22. Durable Workflows</a>.</p>
+        <p><code>s.add("user", "hi")</code> appends a turn <code>{ role, content }</code>. One-argument <code>s.add("hi")</code> is the same as role <code>user</code>. After each add, if the list is longer than the retain window (plus pinned slots), the runtime journals a <code>context.compact</code> event and evicts.</p>
+        <table>
+            <thead>
+                <tr><th>Field</th><th>Meaning</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>budget: N tokens</code></td><td>Stored on the instance (informational pin). It does not by itself abort a Chat.</td></tr>
+                <tr><td><code>pin: name, …</code></td><td>Reserved slots that stay (system facts, the original instructions).</td></tr>
+                <tr><td><code>retain: last N</code></td><td>How many recent turns to keep besides the pinned ones.</td></tr>
+                <tr><td><code>evict: oldest | lowestScore | none</code></td><td>What to drop when the window overflows. <code>none</code> keeps growing.</td></tr>
+                <tr><td><code>compact: prompt summarize</code></td><td>Optional named prompt. Compaction is a recorded model call (cassette-keyed), then eviction. Offline / no client: drop oldest only.</td></tr>
+            </tbody>
+        </table>
+        <p><strong>WF1006:</strong> compaction / context mutation inside a <code>workflow</code> body must sit in a <code>step</code>. Replay would otherwise add the same turn twice. Imported or unknown callees stay Info, same as WF1005. See <a href="22-durable-workflows.html">22. Durable Workflows</a>.</p>
+        <div class="info-box">
+            <strong>Not the JavaScript <code>this</code> context, and not a MALDA variable named <code>context</code>.</strong> <code>var context = 1;</code> is still a normal variable. Only the declaration form <code>context Name { … }</code> creates this object.
+        </div>
 
-        <h2>23.6 Program-boundary <code>policy</code></h2>
-        <p>A file-level <code>policy { … }</code> is enforced on cap consume regardless of which tools the host registered. Violation journals a cap event and throws <code>ToolDenied: …</code>.</p>
+        <h2 id="policy">23.6 Program-boundary <code>policy</code></h2>
+        <p>Chapter <a href="12-input-output.html#capability-tokens">12.6</a> gives a tool a <strong>key</strong> (a capability token) so it cannot invent a path. A file-level <code>policy { … }</code> is the <strong>building rule</strong> on top: even if a token was minted, consume can still be refused. Violation journals a cap event and throws <code>ToolDenied: …</code>.</p>
+        <p>Policy is enforced on cap consume regardless of which tools the host registered. It is the last gate before filesystem, network, shell, or MCP work actually happens.</p>
         <pre><code>policy {
     fs:    readOnly under "./work";
     net:   allow "api.example.com", "*.internal";
     shell: deny;
     mcp:   allow "local";
 }</code></pre>
-        <ul>
-            <li><code>deny</code> — always refuse that domain.</li>
-            <li><code>allow</code> / <code>readOnly</code> — optional path/host patterns; <code>readOnly</code> also refuses writes.</li>
-            <li><code>approve</code> — requires <code>MALDA_POLICY_APPROVE=1</code> (or <code>true</code>) or a host <code>ApprovalCallback</code>. There is no interactive workflow-style prompt yet.</li>
-        </ul>
-        <p><code>@effects("pure")</code> is still a static check (IO namespaces include <code>cap</code>). Policy is the runtime deny list. They are not the same mechanism.</p>
+        <p>A policy that only denies shell is enough to see the declaration parse and run:</p>
+        <pre><code data-run="true" data-expect="ok">policy {
+    shell: deny;
+}
 
-        <h2>23.7 <code>AgentError</code></h2>
-        <p>A built-in sum type, pre-registered:</p>
+print("ok");</code></pre>
+
+        <h3>23.6.1 The four verbs</h3>
+        <table>
+            <thead>
+                <tr><th>Verb</th><th>Meaning</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>deny</code></td><td>Always refuse that domain (fs / net / shell / mcp).</td></tr>
+                <tr><td><code>allow</code></td><td>Permit, optionally only the listed path or host patterns.</td></tr>
+                <tr><td><code>readOnly</code></td><td>Like allow, but writes are refused. <code>under "./work"</code> limits the tree.</td></tr>
+                <tr><td><code>approve</code></td><td>Requires <code>MALDA_POLICY_APPROVE=1</code> (or <code>true</code>) or a host <code>ApprovalCallback</code>. There is no interactive workflow-style prompt yet. Without those, approve <em>denies</em>.</td></tr>
+            </tbody>
+        </table>
+
+        <h3>23.6.2 Policy vs <code>@effects</code> vs tokens</h3>
+        <p>Three layers that students collapse into one word “capability”:</p>
+        <table>
+            <thead>
+                <tr><th>Layer</th><th>When it runs</th><th>What it answers</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>@effects("pure")</code> / <code>"io"</code> / <code>"cap"</code></td><td>Before the program runs (static check)</td><td>May this function mention I/O names at all?</td></tr>
+                <tr><td>Capability token (<code>cap.fileRead</code>)</td><td>When you mint / consume</td><td>Which <em>one</em> path, host, tool, or argv prefix?</td></tr>
+                <tr><td><code>policy { … }</code></td><td>On every cap consume</td><td>Is this domain allowed in this file, even with a token?</td></tr>
+            </tbody>
+        </table>
+        <p>They are not the same mechanism. A pure function cannot call <code>cap.run</code>. A token cannot unlock a path the policy denies. A policy cannot replace a token — consume APIs still reject strings and forged dicts. How-to for tokens: <a href="12-input-output.html#capability-tokens">12.6</a>.</p>
+        <div class="warning-box">
+            <strong><code>approve</code> is not the workflow <code>approval</code> statement.</strong> Workflow approvals pause an instance for a human (chapter 22). Policy <code>approve</code> is an env flag or host callback on cap consume. Do not expect a Desktop IDE dialog from <code>policy { shell: approve }</code>.
+        </div>
+
+        <h2 id="agent-error">23.7 <code>AgentError</code></h2>
+        <p>When a prompt or tool fails, older APIs give you a string <code>error</code>. Strings are easy to print and hard to <code>match</code> on. <code>AgentError</code> is a built-in sum type — a tagged reason with fields — pre-registered so you do not declare it yourself:</p>
         <pre><code>AgentError = Refused(reason) | Unparsable(raw, attempts) | SchemaMismatch(schema, error)
            | BudgetExceeded(kind, limit) | ToolDenied(tool, reason) | Timeout(ms)
            | Upstream(status, body)</code></pre>
-        <p>Existing <code>{ ok, error }</code> strings stay. Throws stay throws. Sites that already return a result object also attach <code>agentError</code> as the variant. <code>validate</code> mismatch → <code>SchemaMismatch</code>.</p>
+        <table>
+            <thead>
+                <tr><th>Variant</th><th>Typical meaning</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>Refused(reason)</code></td><td>The model or host declined the request.</td></tr>
+                <tr><td><code>Unparsable(raw, attempts)</code></td><td>The completion was not usable JSON after repair attempts.</td></tr>
+                <tr><td><code>SchemaMismatch(schema, error)</code></td><td>JSON parsed but did not match the declared schema.</td></tr>
+                <tr><td><code>BudgetExceeded(kind, limit)</code></td><td>Token, tool, or cost budget ran out.</td></tr>
+                <tr><td><code>ToolDenied(tool, reason)</code></td><td>Policy or host refused a tool / cap consume.</td></tr>
+                <tr><td><code>Timeout(ms)</code></td><td>A <code>within</code> scope or deadline expired.</td></tr>
+                <tr><td><code>Upstream(status, body)</code></td><td>A failed peer (HTTP status, or a failed <code>all(…)</code> slot).</td></tr>
+            </tbody>
+        </table>
+        <p>Existing <code>{ ok, error }</code> strings stay. Throws stay throws — a <code>within</code> expiry still raises; it does not become a quiet result object. Sites that already return a result object also attach <code>agentError</code> as the variant. <code>validate</code> mismatch → <code>SchemaMismatch</code>.</p>
         <pre><code data-run="true" data-expect="false">schema Card { name: string; }
 var r = validate("Card", dict { "email": "x" });
 print(r.ok);</code></pre>
-        <p>Read <code>r.agentError</code> for the tagged variant. Checking only the string <code>error</code> is still valid and still misses the tag.</p>
+        <pre><code data-run="true" data-expect="true">schema Card { name: string; }
+var r = validate("Card", dict { "email": "x" });
+print(str.indexOf(string(r.agentError), "SchemaMismatch") >= 0);</code></pre>
+        <p>Read <code>r.agentError</code> for the tagged variant. Checking only the string <code>error</code> is still valid and still misses the tag — you cannot tell <code>SchemaMismatch</code> from <code>Timeout</code> by reading English text. See also <a href="04-data-types.html">4. Data Types</a> for <code>match</code> on sum types.</p>
 
-        <h2>23.8 Stream and <code>for await</code></h2>
-        <p><code>stream(value, schema?)</code> yields an array of chunks <code>{ text }</code>, or schema-aware partial objects when a registered schema name is passed. <code>for await (var x in expr)</code> iterates that collection (today the builtin materializes the array; C# emit is <code>foreach</code> over it).</p>
+        <h2 id="stream">23.8 Stream and <code>for await</code></h2>
+        <p><code>stream(value, schema?)</code> turns a value into an array of chunks so a UI can update as text arrives. Each chunk is <code>{ text }</code>, or a schema-aware partial object when you pass a registered schema name. <code>for await (var x in expr)</code> iterates that collection.</p>
+        <p>Today the builtin <strong>materializes the array first</strong>; C# emit is <code>foreach</code> over it. You can still write the loop that a streaming UI will keep when live tokens exist. You do not need an LLM to learn the syntax: passing a string chunks that string offline.</p>
         <pre><code data-run="true" data-expect="true">var n = 0;
 for await (var chunk in stream("hello world from malda")) {
     n = n + 1;
 }
 print(n > 0);</code></pre>
-        <p>The incremental JSON prefix parser closes partial objects/arrays and yields the largest prefix that validates. LlamaCpp has no live token stream — chunks are carved from the finished text.</p>
+        <p>The incremental JSON prefix parser closes partial objects/arrays and yields the largest prefix that validates — so a schema-aware stream can show <code>{ "name": "Ad" }</code> before the closing quote arrives. LlamaCpp has no live token stream — chunks are carved from the finished text (the known gap at the top of this chapter).</p>
+        <div class="info-box">
+            <strong><code>for await</code> is not <code>await prompt</code>.</strong> <code>await extract(...)</code> calls a model and waits for one result. <code>for await</code> walks a collection that <code>stream</code> already produced. You can use <code>for await</code> with no API key.
+        </div>
 
-        <h2>23.9 Grounded sinks</h2>
-        <p><code>grounded.wrap(value, citations?)</code> attaches citation metadata on the runtime value (not a new <code>match</code> kind). Interpolation and <code>str.*</code> union citation sets. Mixing grounded and ungrounded text marks the result partial.</p>
+        <h2 id="grounded">23.9 Grounded sinks</h2>
+        <p>A retrieval-augmented answer should remember <em>where it came from</em>. <code>grounded.wrap(value, citations?)</code> attaches citation metadata on the runtime value — a sticky note, not a new <code>match</code> kind. You still <code>print</code> the text; you can also read <code>.citations</code>.</p>
+        <p>Interpolation and <code>str.*</code> union citation sets. Mixing grounded and ungrounded text marks the result partial (some pieces have sources, some do not).</p>
         <pre><code data-run="true" data-expect="true">var g = grounded.wrap("Ada", [{ "source": "wiki", "id": "1" }]);
 var s = $"Hello {g}";
 print(s.citations.length >= 1);</code></pre>
-        <p><code>@requiresCitations</code> on a function (and marked sinks such as <code>io.writeFile</code> / HTTP response) errors when a string argument has no citations. <code>match</code> / <code>validate</code> do not see a new type.</p>
+        <p>Walk-through: <code>g</code> is <code>{ value, citations, sourced }</code>. Inside <code>$"Hello {g}"</code> the wrapper interpolates as its value <code>"Ada"</code> and the resulting string keeps the wiki citation. There is no flat <code>grounded()</code> alias and no <code>Grounded</code> keyword. GraphMemory can return the same wrapper from <code>memory.ask</code> / <code>query(..., { grounded: true })</code> — see <a href="19-graph-memory.html">19.3.15</a>.</p>
+        <p><code>@requiresCitations</code> on a function (and marked sinks such as <code>io.writeFile</code> / HTTP response) errors when a string argument has no citations. Use it on the last hop before a user-visible answer or a file write, so an ungrounded hallucination cannot slip out. <code>match</code> / <code>validate</code> do not see a new type — citations ride along as data.</p>
+        <div class="warning-box">
+            <strong>Common mistake.</strong> Treating <code>memory.query(...)</code> hits as if <code>match</code> could see citations. Query returns an array of nodes. Provenance stays on the side until you wrap it (or use the ASK helpers above).
+        </div>
 
-        <h2>23.10 Check loop</h2>
-        <p><code>malda check</code> is still diagnose-only. <code>--fix</code> applies mechanical edits: flat stdlib aliases → namespaced calls, <code>"total: {n}"</code> → <code>$"…"</code>, <code>items.length()</code> → <code>items.length</code>. <code>--json</code> diagnostics may include <code>suggestedFix</code> (did-you-mean). Not every gotcha is auto-fixed.</p>
+        <h2 id="check-loop">23.10 Check loop</h2>
+        <p><code>malda check</code> is the spellcheck of the toolchain: it diagnoses and <strong>does not execute</strong>. Use it in an agent loop or before you run a student file. <code>--fix</code> then applies a short list of mechanical edits — the ones that are unambiguous, not “rewrite my program”.</p>
         <pre><code>malda check app.malda --json
 malda check app.malda --fix
 malda prompts --diff .malda/evals.json</code></pre>
-        <p>Diagnostic sources:</p>
+        <table>
+            <thead>
+                <tr><th>What <code>--fix</code> rewrites</th><th>To</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Flat stdlib aliases (<code>print</code>, <code>sqrt</code>, …)</td><td>Namespaced calls (<code>io.print</code>, <code>math.sqrt</code>)</td></tr>
+                <tr><td><code>"total: {n}"</code> (plain string, no interpolation)</td><td><code>$"total: {n}"</code></td></tr>
+                <tr><td><code>items.length()</code></td><td><code>items.length</code></td></tr>
+            </tbody>
+        </table>
+        <p><code>--json</code> diagnostics may include <code>suggestedFix</code> (did-you-mean). Not every gotcha is auto-fixed — if the tool is unsure, it only warns. Flat aliases and <code>parseJson</code> stay until a dedicated 2.0 MAJOR; <code>--fix</code> / gotchas are the prep.</p>
+        <p>Diagnostic sources you will see in the JSON:</p>
         <ul>
             <li><code>malda-gotcha</code> — <code>io.input</code> EOF loops, <code>AnsiConsole.markup</code> without a newline, unused <code>validate</code>, <code>arr.append</code>, <code>parseJson</code> homograph, unknown <code>borderStyle</code>.</li>
             <li><code>malda-tools</code> — <code>@Tool</code> / <code>@MCPTool</code> with no type hints and no schema argument.</li>
             <li><code>malda-agents</code> — static team topology (literal graphs / plans only).</li>
         </ul>
-        <p>Optional <code>@version("2026-09-01")</code> on a <code>prompt</code> is an informational pin. <code>malda prompts --diff</code> compares prompt hashes between eval baseline files. Flat aliases and <code>parseJson</code> stay until a dedicated 2.0 MAJOR; <code>--fix</code> / gotchas are the prep.</p>
+        <p>Optional <code>@version("2026-09-01")</code> on a <code>prompt</code> is an informational pin. <code>malda prompts --diff</code> compares prompt hashes between eval baseline files so you can see that the template changed even when the eval still passes.</p>
+
+        <h2 id="student-path">23.11 A first path through the chapter</h2>
+        <p>If you are writing your first agentic homework, do these in order. Each step stays offline until you choose otherwise.</p>
+        <ol>
+            <li>Write a <code>schema</code> and a <code>prompt</code> (chapter 10). Call <code>evalPrompt</code> with a fixture dict. Confirm <code>checked.ok</code>.</li>
+            <li>Move that check into a <code>suite</code> / <code>case</code> and run <code>malda eval</code>.</li>
+            <li>Print <code>trace.journal()</code> so you can see the prompt event.</li>
+            <li>If the homework uses tools, add a <code>policy</code> that <code>deny</code>s <code>shell</code> (and <code>readOnly</code> the work folder). Mint tokens as in <a href="12-input-output.html#capability-tokens">12.6</a>.</li>
+            <li>Wrap slow work in <code>within (30s) { … }</code>.</li>
+            <li>When you finally <code>await</code> a live model, record a cassette and replay it with <code>MALDA_REPLAY_STRICT=1</code>.</li>
+            <li>Before you hand the file in, run <code>malda check --json</code> (and <code>--fix</code> if the mechanical edits look right).</li>
+        </ol>
+        <p>That path uses every construct in this chapter except streaming and grounded citations, which you add when the UI or the RAG homework needs them.</p>
 
         <div class="see-also">
             <h3>See Also</h3>
             <ul>
                 <li><a href="02-tools.html">2. Tools &amp; Tooling</a> — CLI <code>eval</code> / <code>check --fix</code> / <code>prompts</code></li>
                 <li><a href="10-prompts.html">10. Prompts</a> — <code>await</code>, <code>evalPrompt</code>, <code>@budget</code> / <code>@within</code></li>
+                <li><a href="12-input-output.html#capability-tokens">12.6 Capability tokens</a> — the key; this chapter’s <code>policy</code> is the building rule</li>
                 <li><a href="18-agent-orchestration.html">18. Agent Orchestration</a> — teams and <code>malda-agents</code></li>
                 <li><a href="22-durable-workflows.html">22. Durable Workflows</a> — WF1006 and step journal mirror</li>
                 <li><a href="35-property-testing.html">35. Property Testing</a> — <code>malda test</code> vs <code>malda eval</code></li>

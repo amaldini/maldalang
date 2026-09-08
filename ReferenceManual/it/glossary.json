@@ -330,7 +330,7 @@
       "aliases": ["ui", "ui.button", "component", "property", "UIHost"],
       "href": "25-web-ui.html",
       "also": ["24-web-ui-hub.html"],
-      "summary": "UI guidata dal server: component, property e controlli ui.*. Parti dal capitolo 23 se stai scegliendo un modello UI."
+      "summary": "UI guidata dal server: component, property e controlli ui.*. Parti dal capitolo 24 se stai scegliendo un modello UI."
     },
     {
       "id": "page",
