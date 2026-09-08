@@ -286,6 +286,26 @@ public class LanguageService : ILanguageService
                 "tools (positive int, optional): Max tool invocations in the turn",
                 "cost (positive number, optional): Max reported usage cost when the backend exposes it"
             }
+        },
+        ["pure"] = new DecoratorInfo
+        {
+            Name = "pure",
+            Description = "Purity decorator",
+            Format = "@pure()",
+            Documentation = "Marks a helper that must not perform I/O. Checked under CLI --strict-types / full strict analysis (malda-pure). Cannot be combined with @effects. Prefer this on normalize/derive helpers before impure tool work.",
+            MinArgs = 0,
+            MaxArgs = 0,
+            ArgDescriptions = new List<string>()
+        },
+        ["effects"] = new DecoratorInfo
+        {
+            Name = "effects",
+            Description = "Side-effect allow-list decorator",
+            Format = "@effects(\"print\", …)",
+            Documentation = "Declares a name allow-list of side effects on a handler (print, io, cap, await, …). Checked under CLI --strict-types / full strict analysis (malda-effects). Cannot be combined with @pure. @effects(\"io\") names the effect only — it does not bind a path, URL, tool, or argv. Use capability tokens when a tool must not invent a path.",
+            MinArgs = 1,
+            MaxArgs = 0,
+            ArgDescriptions = new List<string> { "effect (string, repeatable): Allowed effect name, e.g. \"print\", \"io\", or \"cap\"" }
         }
     };
     

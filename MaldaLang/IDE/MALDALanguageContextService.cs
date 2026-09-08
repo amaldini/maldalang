@@ -134,10 +134,12 @@ Prefer `grep` + partial `read_file` over reading large files whole.
         var httpDecorators = new List<string> { "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS" };
         var toolDecorators = new List<string> { "Tool", "MCPTool" };
         var paramDecorators = new List<string> { "PathParam", "QueryParam", "Body" };
+        var purityDecorators = new List<string> { "pure", "effects", "within", "budget" };
 
         AppendDecoratorGroup(sb, decorators, "HTTP endpoint decorators", httpDecorators);
         AppendDecoratorGroup(sb, decorators, "Tool decorators", toolDecorators);
         AppendDecoratorGroup(sb, decorators, "Parameter decorators (REST endpoints only)", paramDecorators);
+        AppendDecoratorGroup(sb, decorators, "Purity, effects, and bounds", purityDecorators);
 
         sb.AppendLine("## Examples");
         sb.AppendLine();

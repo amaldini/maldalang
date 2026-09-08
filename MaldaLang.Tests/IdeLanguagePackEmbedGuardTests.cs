@@ -61,6 +61,8 @@ public class IdeLanguagePackEmbedGuardTests
             var decorators = File.ReadAllText(Path.Combine(llmDir, "DECORATORS.md"));
             Assert.Contains("@GET", decorators, StringComparison.Ordinal);
             Assert.Contains("@Tool", decorators, StringComparison.Ordinal);
+            Assert.Contains("@pure()", decorators, StringComparison.Ordinal);
+            Assert.Contains("@effects", decorators, StringComparison.Ordinal);
 
             var syntaxOnDisk = File.ReadAllText(Path.Combine(LlmDir, "malda-syntax.md"));
             var syntaxMaterialized = File.ReadAllText(Path.Combine(llmDir, "malda-syntax.md"));

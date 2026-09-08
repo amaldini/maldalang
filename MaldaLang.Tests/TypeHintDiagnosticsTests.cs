@@ -92,4 +92,45 @@ public class TypeHintDiagnosticsTests
             d.Source == "decorator" &&
             d.Message.Contains("Unknown decorator '@shader'", StringComparison.Ordinal));
     }
+
+    [Fact]
+    public void GetDiagnostics_PureAndEffectsDecorators_NotUnknown()
+    {
+        var service = new LanguageService();
+        var source = """
+            @pure()
+            function normalizeName(name) {
+                return name;
+            }
+
+            @effects("print")
+            function handle(raw) {
+                print(normalizeName(raw));
+            }
+            """;
+        var diagnostics = service.GetDiagnostics(source);
+        Assert.DoesNotContain(diagnostics, d =>
+            d.Source == "decorator" &&
+            d.Message.Contains("Unknown decorator '@pure'", StringComparison.Ordinal));
+        Assert.DoesNotContain(diagnostics, d =>
+            d.Source == "decorator" &&
+            d.Message.Contains("Unknown decorator '@effects'", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void GetDiagnostics_EffectsDecoratorWithoutArgs_IsError()
+    {
+        var service = new LanguageService();
+        var source = """
+            @effects()
+            function handle(raw) {
+                print(raw);
+            }
+            """;
+        var diagnostics = service.GetDiagnostics(source);
+        Assert.Contains(diagnostics, d =>
+            d.Source == "decorator" &&
+            d.Severity == DiagnosticSeverity.Error &&
+            d.Message.Contains("@effects requires at least 1 argument", StringComparison.Ordinal));
+    }
 }
