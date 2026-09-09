@@ -2493,91 +2493,187 @@
     "file": "28-rest-api.html",
     "level": 2,
     "id": "",
-    "title": "27.1 Sintassi dei decoratori"
+    "title": "28.1 Mappa del capitolo"
   },
   {
     "file": "28-rest-api.html",
     "level": 2,
     "id": "",
-    "title": "27.2 Classe RestServer"
+    "title": "28.2 Sintassi dei decoratori"
+  },
+  {
+    "file": "28-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "28.2.1 Metodi HTTP supportati"
+  },
+  {
+    "file": "28-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "28.2.2 Decoratori di metadati delle route"
   },
   {
     "file": "28-rest-api.html",
     "level": 2,
     "id": "",
-    "title": "27.3 Path parameter"
+    "title": "28.3 Classe RestServer"
+  },
+  {
+    "file": "28-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "28.3.1 Costruttore"
+  },
+  {
+    "file": "28-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "28.3.2 Proprietà"
+  },
+  {
+    "file": "28-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "28.3.3 Metodi"
+  },
+  {
+    "file": "28-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "28.3.4 Cosa RestServer non ospita"
   },
   {
     "file": "28-rest-api.html",
     "level": 2,
     "id": "",
-    "title": "27.4 Query parameter"
+    "title": "28.4 Pipeline delle richieste"
   },
   {
     "file": "28-rest-api.html",
     "level": 2,
     "id": "",
-    "title": "27.5 Request body"
+    "title": "28.5 Parameter binding"
+  },
+  {
+    "file": "28-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "28.5.1 Path parameter"
+  },
+  {
+    "file": "28-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "28.5.2 Query parameter"
+  },
+  {
+    "file": "28-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "28.5.3 Request body"
+  },
+  {
+    "file": "28-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "28.5.4 Nomi di parametro speciali"
+  },
+  {
+    "file": "28-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "28.5.5 Binding con decoratori"
   },
   {
     "file": "28-rest-api.html",
     "level": 2,
     "id": "",
-    "title": "27.6 Parameter binding"
+    "title": "28.6 Contesto della request"
+  },
+  {
+    "file": "28-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "28.6.1 Proprietà e helper di req"
+  },
+  {
+    "file": "28-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "28.6.2 req.auth"
+  },
+  {
+    "file": "28-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "28.6.3 req.session"
   },
   {
     "file": "28-rest-api.html",
     "level": 2,
     "id": "",
-    "title": "27.7 Gestione della response"
+    "title": "28.7 Gestione della response"
+  },
+  {
+    "file": "28-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "28.7.1 Forme di return"
+  },
+  {
+    "file": "28-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "28.7.2 API helper di response"
   },
   {
     "file": "28-rest-api.html",
     "level": 2,
     "id": "",
-    "title": "27.8 Middleware e contesto della richiesta"
+    "title": "28.8 Middleware"
   },
   {
     "file": "28-rest-api.html",
     "level": 2,
     "id": "",
-    "title": "27.9 API helper di response"
+    "title": "28.9 CSRF, rate limiting e proxy fidato"
   },
   {
     "file": "28-rest-api.html",
     "level": 2,
     "id": "",
-    "title": "27.10 CSRF e rate limiting"
+    "title": "28.10 Validazione"
   },
   {
     "file": "28-rest-api.html",
     "level": 2,
     "id": "",
-    "title": "27.11 Gestione degli errori"
+    "title": "28.11 Gestione degli errori"
   },
   {
     "file": "28-rest-api.html",
     "level": 2,
     "id": "",
-    "title": "27.12 Validazione"
+    "title": "28.12 CORS e Swagger/OpenAPI"
   },
   {
     "file": "28-rest-api.html",
     "level": 2,
     "id": "",
-    "title": "27.13 Supporto CORS"
+    "title": "28.13 Mount su HttpServer"
   },
   {
     "file": "28-rest-api.html",
     "level": 2,
     "id": "",
-    "title": "27.14 Documentazione Swagger/OpenAPI"
+    "title": "28.14 Interpret vs transpile"
   },
   {
     "file": "28-rest-api.html",
     "level": 2,
     "id": "",
-    "title": "27.15 Esempio completo"
+    "title": "28.15 Esempio completo"
   },
   {
     "file": "29-rest-web-client.html",

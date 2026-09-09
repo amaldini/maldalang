@@ -2493,91 +2493,187 @@
     "file": "28-rest-api.html",
     "level": 2,
     "id": "",
-    "title": "27.1 Decorator Syntax"
+    "title": "28.1 Chapter Map"
   },
   {
     "file": "28-rest-api.html",
     "level": 2,
     "id": "",
-    "title": "27.2 RestServer Class"
+    "title": "28.2 Decorator Syntax"
+  },
+  {
+    "file": "28-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "28.2.1 Supported HTTP Methods"
+  },
+  {
+    "file": "28-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "28.2.2 Route Metadata Decorators"
   },
   {
     "file": "28-rest-api.html",
     "level": 2,
     "id": "",
-    "title": "27.3 Path Parameters"
+    "title": "28.3 RestServer Class"
+  },
+  {
+    "file": "28-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "28.3.1 Constructor"
+  },
+  {
+    "file": "28-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "28.3.2 Properties"
+  },
+  {
+    "file": "28-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "28.3.3 Methods"
+  },
+  {
+    "file": "28-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "28.3.4 What RestServer does not host"
   },
   {
     "file": "28-rest-api.html",
     "level": 2,
     "id": "",
-    "title": "27.4 Query Parameters"
+    "title": "28.4 Request Pipeline"
   },
   {
     "file": "28-rest-api.html",
     "level": 2,
     "id": "",
-    "title": "27.5 Request Body"
+    "title": "28.5 Parameter Binding"
+  },
+  {
+    "file": "28-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "28.5.1 Path parameters"
+  },
+  {
+    "file": "28-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "28.5.2 Query parameters"
+  },
+  {
+    "file": "28-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "28.5.3 Request body"
+  },
+  {
+    "file": "28-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "28.5.4 Special parameter names"
+  },
+  {
+    "file": "28-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "28.5.5 Decorator binding"
   },
   {
     "file": "28-rest-api.html",
     "level": 2,
     "id": "",
-    "title": "27.6 Parameter Binding"
+    "title": "28.6 Request Context"
+  },
+  {
+    "file": "28-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "28.6.1 req properties and helpers"
+  },
+  {
+    "file": "28-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "28.6.2 req.auth"
+  },
+  {
+    "file": "28-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "28.6.3 req.session"
   },
   {
     "file": "28-rest-api.html",
     "level": 2,
     "id": "",
-    "title": "27.7 Response Handling"
+    "title": "28.7 Response Handling"
+  },
+  {
+    "file": "28-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "28.7.1 Return shapes"
+  },
+  {
+    "file": "28-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "28.7.2 Response helper API"
   },
   {
     "file": "28-rest-api.html",
     "level": 2,
     "id": "",
-    "title": "27.8 Middleware and Request Context"
+    "title": "28.8 Middleware"
   },
   {
     "file": "28-rest-api.html",
     "level": 2,
     "id": "",
-    "title": "27.9 Response Helper API"
+    "title": "28.9 CSRF, Rate Limiting, and Trusted Proxy"
   },
   {
     "file": "28-rest-api.html",
     "level": 2,
     "id": "",
-    "title": "27.10 CSRF and Rate Limiting"
+    "title": "28.10 Validation"
   },
   {
     "file": "28-rest-api.html",
     "level": 2,
     "id": "",
-    "title": "27.11 Error Handling"
+    "title": "28.11 Error Handling"
   },
   {
     "file": "28-rest-api.html",
     "level": 2,
     "id": "",
-    "title": "27.12 Validation"
+    "title": "28.12 CORS and Swagger/OpenAPI"
   },
   {
     "file": "28-rest-api.html",
     "level": 2,
     "id": "",
-    "title": "27.13 CORS Support"
+    "title": "28.13 Mounting on HttpServer"
   },
   {
     "file": "28-rest-api.html",
     "level": 2,
     "id": "",
-    "title": "27.14 Swagger/OpenAPI Documentation"
+    "title": "28.14 Interpret vs Transpile"
   },
   {
     "file": "28-rest-api.html",
     "level": 2,
     "id": "",
-    "title": "27.15 Complete Example"
+    "title": "28.15 Complete Example"
   },
   {
     "file": "29-rest-web-client.html",
