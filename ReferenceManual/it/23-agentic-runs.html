@@ -22,15 +22,15 @@
 
         <h1>23. Esecuzioni agentiche</h1>
 
-        <p>I capitoli <a href="10-prompts.html">10</a> e <a href="18-agent-orchestration.html">18</a> insegnano a <em>chiamare</em> un modello e a <em>orchestrare</em> agenti. Questo capitolo è lo strato delle cinture di sicurezza: come <strong>testare, registrare, limitare nel tempo, ricordare, restringere e diagnosticare</strong> quelle esecuzioni così restano economiche, ripetibili e abbastanza sicure per i compiti e per la CI.</p>
-        <p>Una funzione ordinaria è deterministica: stesso input, stesso output. Un prompt no. Il modello può cambiare le parole, spendere token, chiamare tool, bloccarsi o inventare un path. Serve quindi un macchinario extra che un primo corso di programmazione non usava — non perché MALDA sia più difficile, ma perché l'<em>ospite</em> (il modello) è imprevedibile.</p>
+        <p>I capitoli <a href="10-prompts.html">10</a> e <a href="18-agent-orchestration.html">18</a> insegnano a <em>chiamare</em> un modello e a <em>orchestrare</em> agenti. Questo capitolo è lo strato delle cinture di sicurezza: come <strong>testare, registrare, limitare nel tempo, ricordare, restringere e diagnosticare</strong> quelle esecuzioni così restano economiche, ripetibili e abbastanza sicure per il lavoro quotidiano e per la CI.</p>
+        <p>Una funzione ordinaria è deterministica: stesso input, stesso output. Un prompt no. Il modello può cambiare le parole, spendere token, chiamare tool, bloccarsi o inventare un path. Serve quindi un macchinario extra che la programmazione ordinaria non usava — non perché MALDA sia più difficile, ma perché l'<em>ospite</em> (il modello) è imprevedibile.</p>
         <p>Interprete e transpile C# coincidono sugli esempi offline di questo capitolo. JavaScript è solo host (<code>n/a</code>).</p>
 
         <h2 id="what-you-need">Cosa ti serve già</h2>
         <p>Leggi questo capitolo dopo aver scritto un <code>prompt</code> con uno <code>schema</code> e aver chiamato <code>evalPrompt</code> (senza API key). <em>Non</em> ti serve un modello live per imparare suite, journal, <code>context</code>, <code>policy</code>, <code>AgentError</code>, <code>stream</code> o <code>grounded.wrap</code>. Le chiamate live compaiono solo quando registri una cassetta o fai <code>await</code> di un prompt.</p>
 
         <h2 id="concept-map">Mappa del capitolo</h2>
-        <p>Ogni costrutto risponde a una domanda da studente. Scorri la tabella, poi leggi la sezione del problema che hai.</p>
+        <p>Ogni costrutto risponde a una domanda comune. Scorri la tabella, poi leggi la sezione del problema che hai.</p>
         <table>
             <thead>
                 <tr><th>Vuoi…</th><th>Usa</th><th>Sezione</th></tr>
@@ -273,7 +273,7 @@ print("ok");</code></pre>
         </table>
 
         <h3>23.6.2 Policy vs <code>@effects</code> vs token</h3>
-        <p>Tre strati che gli studenti comprimono in una sola parola “capability”:</p>
+        <p>Tre strati che è facile comprimere in una sola parola “capability”:</p>
         <table>
             <thead>
                 <tr><th>Strato</th><th>Quando gira</th><th>A quale domanda risponde</th></tr>
@@ -343,7 +343,7 @@ print(s.citations.length >= 1);</code></pre>
         </div>
 
         <h2 id="check-loop">23.10 Ciclo check</h2>
-        <p><code>malda check</code> è il correttore ortografico della toolchain: diagnostica e <strong>non esegue</strong>. Usalo in un loop di agente o prima di lanciare un file da studente. <code>--fix</code> poi applica una lista breve di edit meccanici — quelli non ambigui, non “riscrivi il mio programma”.</p>
+        <p><code>malda check</code> è il correttore ortografico della toolchain: diagnostica e <strong>non esegue</strong>. Usalo in un loop di agente o prima di lanciare un file sorgente. <code>--fix</code> poi applica una lista breve di edit meccanici — quelli non ambigui, non “riscrivi il mio programma”.</p>
         <pre><code>malda check app.malda --json
 malda check app.malda --fix
 malda prompts --diff .malda/evals.json</code></pre>
@@ -366,18 +366,18 @@ malda prompts --diff .malda/evals.json</code></pre>
         </ul>
         <p>L'opzionale <code>@version("2026-09-01")</code> su un <code>prompt</code> è un pin informativo. <code>malda prompts --diff</code> confronta gli hash dei prompt fra file di baseline eval così vedi che il template è cambiato anche quando l'eval continua a passare.</p>
 
-        <h2 id="student-path">23.11 Un primo percorso nel capitolo</h2>
-        <p>Se stai scrivendo il primo compito agentico, fai questi passi in ordine. Ogni passo resta offline finché non scegli altrimenti.</p>
+        <h2 id="first-path">23.11 Un primo percorso nel capitolo</h2>
+        <p>Se stai scrivendo il primo programma agentico, fai questi passi in ordine. Ogni passo resta offline finché non scegli altrimenti.</p>
         <ol>
             <li>Scrivi uno <code>schema</code> e un <code>prompt</code> (capitolo 10). Chiama <code>evalPrompt</code> con un dict fixture. Conferma <code>checked.ok</code>.</li>
             <li>Sposta quel check in una <code>suite</code> / <code>case</code> e lancia <code>malda eval</code>.</li>
             <li>Stampa <code>trace.journal()</code> così vedi l'evento prompt.</li>
-            <li>Se il compito usa tool, aggiungi una <code>policy</code> che fa <code>deny</code> di <code>shell</code> (e <code>readOnly</code> sulla cartella di lavoro). Minta i token come in <a href="12-input-output.html#capability-tokens">12.6</a>.</li>
+            <li>Se il programma usa tool, aggiungi una <code>policy</code> che fa <code>deny</code> di <code>shell</code> (e <code>readOnly</code> sulla cartella di lavoro). Minta i token come in <a href="12-input-output.html#capability-tokens">12.6</a>.</li>
             <li>Avvolgi il lavoro lento in <code>within (30s) { … }</code>.</li>
             <li>Quando finalmente fai <code>await</code> di un modello live, registra una cassetta e riascoltala con <code>MALDA_REPLAY_STRICT=1</code>.</li>
-            <li>Prima di consegnare il file, lancia <code>malda check --json</code> (e <code>--fix</code> se gli edit meccanici ti sembrano giusti).</li>
+            <li>Prima di rilasciare il file, lancia <code>malda check --json</code> (e <code>--fix</code> se gli edit meccanici ti sembrano giusti).</li>
         </ol>
-        <p>Quel percorso usa ogni costrutto di questo capitolo tranne streaming e citazioni grounded, che aggiungi quando la UI o il compito RAG li chiede.</p>
+        <p>Quel percorso usa ogni costrutto di questo capitolo tranne streaming e citazioni grounded, che aggiungi quando la UI o il progetto RAG li chiede.</p>
 
         <div class="see-also">
             <h3>Vedi anche</h3>

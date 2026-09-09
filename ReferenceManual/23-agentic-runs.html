@@ -22,15 +22,15 @@
 
         <h1>23. Agentic Runs</h1>
 
-        <p>Chapters <a href="10-prompts.html">10</a> and <a href="18-agent-orchestration.html">18</a> teach you to <em>call</em> a model and to <em>orchestrate</em> agents. This chapter is the seatbelt layer: how you <strong>test, record, time-limit, remember, restrict, and diagnose</strong> those runs so they stay cheap, repeatable, and safe enough for class work and CI.</p>
-        <p>An ordinary function is deterministic: same input, same output. A prompt is not. The model can change its wording, spend tokens, call tools, hang, or invent a path. You therefore need extra machinery that a first programming course never needed — not because MALDA is harder, but because the <em>guest</em> (the model) is unpredictable.</p>
+        <p>Chapters <a href="10-prompts.html">10</a> and <a href="18-agent-orchestration.html">18</a> teach you to <em>call</em> a model and to <em>orchestrate</em> agents. This chapter is the seatbelt layer: how you <strong>test, record, time-limit, remember, restrict, and diagnose</strong> those runs so they stay cheap, repeatable, and safe enough for everyday work and CI.</p>
+        <p>An ordinary function is deterministic: same input, same output. A prompt is not. The model can change its wording, spend tokens, call tools, hang, or invent a path. You therefore need extra machinery that ordinary programming never needed — not because MALDA is harder, but because the <em>guest</em> (the model) is unpredictable.</p>
         <p>Interpreter and C# transpile agree on the offline examples in this chapter. JavaScript is host-only (<code>n/a</code>).</p>
 
         <h2 id="what-you-need">What you already need</h2>
         <p>Read this chapter after you can write a <code>prompt</code> with a <code>schema</code> and call <code>evalPrompt</code> (no API key). You do <em>not</em> need a live model to learn suites, journals, <code>context</code>, <code>policy</code>, <code>AgentError</code>, <code>stream</code>, or <code>grounded.wrap</code>. Live calls appear only when you record a cassette or you <code>await</code> a prompt.</p>
 
         <h2 id="concept-map">A map of the chapter</h2>
-        <p>Each construct answers one student question. Skim the table, then read the section that matches the problem you have.</p>
+        <p>Each construct answers one common question. Skim the table, then read the section that matches the problem you have.</p>
         <table>
             <thead>
                 <tr><th>You want to…</th><th>Use</th><th>Section</th></tr>
@@ -273,7 +273,7 @@ print("ok");</code></pre>
         </table>
 
         <h3>23.6.2 Policy vs <code>@effects</code> vs tokens</h3>
-        <p>Three layers that students collapse into one word “capability”:</p>
+        <p>Three layers that are easy to collapse into one word “capability”:</p>
         <table>
             <thead>
                 <tr><th>Layer</th><th>When it runs</th><th>What it answers</th></tr>
@@ -343,7 +343,7 @@ print(s.citations.length >= 1);</code></pre>
         </div>
 
         <h2 id="check-loop">23.10 Check loop</h2>
-        <p><code>malda check</code> is the spellcheck of the toolchain: it diagnoses and <strong>does not execute</strong>. Use it in an agent loop or before you run a student file. <code>--fix</code> then applies a short list of mechanical edits — the ones that are unambiguous, not “rewrite my program”.</p>
+        <p><code>malda check</code> is the spellcheck of the toolchain: it diagnoses and <strong>does not execute</strong>. Use it in an agent loop or before you run a source file. <code>--fix</code> then applies a short list of mechanical edits — the ones that are unambiguous, not “rewrite my program”.</p>
         <pre><code>malda check app.malda --json
 malda check app.malda --fix
 malda prompts --diff .malda/evals.json</code></pre>
@@ -366,18 +366,18 @@ malda prompts --diff .malda/evals.json</code></pre>
         </ul>
         <p>Optional <code>@version("2026-09-01")</code> on a <code>prompt</code> is an informational pin. <code>malda prompts --diff</code> compares prompt hashes between eval baseline files so you can see that the template changed even when the eval still passes.</p>
 
-        <h2 id="student-path">23.11 A first path through the chapter</h2>
-        <p>If you are writing your first agentic homework, do these in order. Each step stays offline until you choose otherwise.</p>
+        <h2 id="first-path">23.11 A first path through the chapter</h2>
+        <p>If you are writing your first agentic program, do these in order. Each step stays offline until you choose otherwise.</p>
         <ol>
             <li>Write a <code>schema</code> and a <code>prompt</code> (chapter 10). Call <code>evalPrompt</code> with a fixture dict. Confirm <code>checked.ok</code>.</li>
             <li>Move that check into a <code>suite</code> / <code>case</code> and run <code>malda eval</code>.</li>
             <li>Print <code>trace.journal()</code> so you can see the prompt event.</li>
-            <li>If the homework uses tools, add a <code>policy</code> that <code>deny</code>s <code>shell</code> (and <code>readOnly</code> the work folder). Mint tokens as in <a href="12-input-output.html#capability-tokens">12.6</a>.</li>
+            <li>If the program uses tools, add a <code>policy</code> that <code>deny</code>s <code>shell</code> (and <code>readOnly</code> the work folder). Mint tokens as in <a href="12-input-output.html#capability-tokens">12.6</a>.</li>
             <li>Wrap slow work in <code>within (30s) { … }</code>.</li>
             <li>When you finally <code>await</code> a live model, record a cassette and replay it with <code>MALDA_REPLAY_STRICT=1</code>.</li>
-            <li>Before you hand the file in, run <code>malda check --json</code> (and <code>--fix</code> if the mechanical edits look right).</li>
+            <li>Before you ship the file, run <code>malda check --json</code> (and <code>--fix</code> if the mechanical edits look right).</li>
         </ol>
-        <p>That path uses every construct in this chapter except streaming and grounded citations, which you add when the UI or the RAG homework needs them.</p>
+        <p>That path uses every construct in this chapter except streaming and grounded citations, which you add when the UI or the RAG project needs them.</p>
 
         <div class="see-also">
             <h3>See Also</h3>
