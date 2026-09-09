@@ -357,7 +357,8 @@ const FALLBACK_GLOSSARY_EN = [
         "summary": "A permission object (a key to one file, HTTP origin, MCP tool, or argv prefix) so a tool cannot invent a path, URL, tool name, or command. The host mints cap.fileRead / httpGet / mcpCall / shell; cap.confine narrows. There is no flat cap() alias.",
         "also": [
             "13-built-in-functions.html#capability-tokens",
-            "18-agent-orchestration.html#capability-tokens-for-tools"
+            "18-agent-orchestration.html#capability-tokens-for-tools",
+            "18-agent-orchestration.html#specialized-kinds-are-not-sandboxes"
         ]
     },
     {
@@ -695,7 +696,10 @@ const FALLBACK_GLOSSARY_EN = [
             "HumanAgent"
         ],
         "href": "18-agent-orchestration.html",
-        "summary": "Built-in Agent class and specialized agents. think() runs a turn with tools."
+        "summary": "Built-in Agent class and specialized agents. think() runs a turn with tools. Specialized kinds are tool bundles, not sandboxes.",
+        "also": [
+            "18-agent-orchestration.html#specialized-kinds-are-not-sandboxes"
+        ]
     },
     {
         "id": "agent-team",
@@ -1086,7 +1090,8 @@ const FALLBACK_GLOSSARY_IT = [
         "summary": "Un oggetto-permesso (una chiave per un file, un origin HTTP, un tool MCP o un prefisso argv) così un tool non può inventare un path, un URL, un tool o un comando. L'host emette cap.fileRead / httpGet / mcpCall / shell; cap.confine restringe. Non esiste un alias piatto cap().",
         "also": [
             "13-built-in-functions.html#capability-tokens",
-            "18-agent-orchestration.html#capability-tokens-for-tools"
+            "18-agent-orchestration.html#capability-tokens-for-tools",
+            "18-agent-orchestration.html#specialized-kinds-are-not-sandboxes"
         ]
     },
     {
@@ -1430,7 +1435,10 @@ const FALLBACK_GLOSSARY_IT = [
             "HumanAgent"
         ],
         "href": "18-agent-orchestration.html",
-        "summary": "Classe Agent built-in e agenti specializzati. think() esegue un turno con i tool."
+        "summary": "Classe Agent built-in e agenti specializzati. think() esegue un turno con i tool. I kind specializzati sono bundle di tool, non sandbox.",
+        "also": [
+            "18-agent-orchestration.html#specialized-kinds-are-not-sandboxes"
+        ]
     },
     {
         "id": "agent-team",

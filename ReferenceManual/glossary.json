@@ -25,7 +25,8 @@
       "href": "12-input-output.html#capability-tokens",
       "also": [
         "13-built-in-functions.html#capability-tokens",
-        "18-agent-orchestration.html#capability-tokens-for-tools"
+        "18-agent-orchestration.html#capability-tokens-for-tools",
+        "18-agent-orchestration.html#specialized-kinds-are-not-sandboxes"
       ],
       "summary": "A permission object (a key to one file, HTTP origin, MCP tool, or argv prefix) so a tool cannot invent a path, URL, tool name, or command. The host mints cap.fileRead / httpGet / mcpCall / shell; cap.confine narrows. There is no flat cap() alias."
     },
@@ -235,7 +236,8 @@
       "term": "Agent",
       "aliases": ["agents", "think", "CodingAgent", "GitAgent", "DevAgent", "HumanAgent"],
       "href": "18-agent-orchestration.html",
-      "summary": "Built-in Agent class and specialized agents. think() runs a turn with tools."
+      "also": ["18-agent-orchestration.html#specialized-kinds-are-not-sandboxes"],
+      "summary": "Built-in Agent class and specialized agents. think() runs a turn with tools. Specialized kinds are tool bundles, not sandboxes."
     },
     {
       "id": "agent-team",

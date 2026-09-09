@@ -118,6 +118,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 - **2.0 prep (not shipped):** `malda-gotcha` / `--fix` for flat aliases, `parseJson` vs `parseJSON`, and `arr.append`. Aliases stay until a dedicated 2.0 MAJOR.
 - **Documented** in Reference Manual §23 (`23-agentic-runs.html`) and `docs/llm/` (syntax, gotchas, few-shots `43_`–`48_`).
 
+#### Clarified (PATCH — specialized agent kinds vs capability tokens)
+
+- **Specialized agent kinds are tool bundles, not sandboxes:** Reference Manual §18 and `docs/llm/` gotchas/syntax: `CodingAgent` / `GitAgent` / `DevAgent` / `MALDACodingAgent` do not take `cap.*`; `workingDirectory` is a string prefix; `policy { }` does not gate their default string-path tools. No runtime change.
+
 #### Added (MINOR — HTTP / MCP / shell capability tokens)
 
 - **`cap.httpGet` / `cap.mcpCall` / `cap.shell`:** mint unforgeable tokens beyond files. `path` is the confinement string (URL prefix, MCP server, argv prefix); `name` is the optional MCP tool. `cap.confine` branches by kind (join a relative URL, set/check a tool name, append argv). `cap.fetch` / `cap.invoke` / `cap.run` consume matching tokens only — strings and `{ kind, path }` dicts throw. `webFetch` / `MCPServer.callTool` / `MCPClient.callTool` / `runCommand` also accept a matching token. `createWebFetchTool(httpCap?)` and `createRunCommandTool(workingDir?, shellCap?)` bind a token so model-supplied URLs / commands stay under it. Escape and wrong-origin / wrong-tool / wrong-prefix checks throw before HTTP, MCP, or process start. No new keyword and no flat alias. Interpreter and C# transpile agree. JS: mint / `is` / `confine` for the new kinds; `fetch` / `invoke` / `run` are host-only. Example: `Examples/Tools/capability_http_mcp_shell.malda`. Few-shot: `docs/llm/few-shot/42_cap_http_mcp_shell.malda`.

@@ -26,7 +26,8 @@
       "href": "12-input-output.html#capability-tokens",
       "also": [
         "13-built-in-functions.html#capability-tokens",
-        "18-agent-orchestration.html#capability-tokens-for-tools"
+        "18-agent-orchestration.html#capability-tokens-for-tools",
+        "18-agent-orchestration.html#specialized-kinds-are-not-sandboxes"
       ],
       "summary": "Un oggetto-permesso (una chiave per un file, un origin HTTP, un tool MCP o un prefisso argv) così un tool non può inventare un path, un URL, un tool o un comando. L'host emette cap.fileRead / httpGet / mcpCall / shell; cap.confine restringe. Non esiste un alias piatto cap()."
     },
@@ -236,7 +237,8 @@
       "term": "Agent",
       "aliases": ["agents", "agenti", "think", "CodingAgent", "GitAgent", "DevAgent", "HumanAgent"],
       "href": "18-agent-orchestration.html",
-      "summary": "Classe Agent built-in e agenti specializzati. think() esegue un turno con i tool."
+      "also": ["18-agent-orchestration.html#specialized-kinds-are-not-sandboxes"],
+      "summary": "Classe Agent built-in e agenti specializzati. think() esegue un turno con i tool. I kind specializzati sono bundle di tool, non sandbox."
     },
     {
       "id": "agent-team",

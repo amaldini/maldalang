@@ -46,7 +46,11 @@ Compact rules for generating correct `.malda`. Prefer this over scraping HTML ma
   `review`, `consult`, `reject`. Spec `kind` selects the class: `Agent` (default),
   `CodingAgent`, `GitAgent`, `HumanAgent`, `DevAgent`, `MALDACodingAgent`. Optional
   `workingDirectory` on specialized kinds; `includeSymbols` / `readOnly` /
-  `prdAuthorOnly` on `DevAgent` only. `team.handoff` / `team.review` / `team.reject` / `team.consult`
+  `prdAuthorOnly` on `DevAgent` only. `workingDirectory` is a string prefix on
+  bundled file tools, not a `cap.*` token. Constructors do not accept tokens.
+  `policy { }` does not gate those default string-path tools. Least privilege:
+  `new Agent` + factories / `@Tool` + `cap.confine`. `readOnly` is `DevAgent` only.
+  `team.handoff` / `team.review` / `team.reject` / `team.consult`
   `(from, to, payload, think?)` allow only a declared edge whose `rel` matches the
   method and `validate`s `contract` when set. `true` / `{ think: true }` then calls
   `to.think(payload)` (object payloads become JSON). Default is validate-only.
@@ -82,6 +86,9 @@ Compact rules for generating correct `.malda`. Prefer this over scraping HTML ma
   flat `cap()` alias. The model must not pass a token (JSON cannot round-trip one).
   Host-mint a root and `cap.confine` a relative path / URL / tool / extra argv from
   tool args. Scaffold: `malda new agent`.
+  `new CodingAgent(...)` / `kind: "CodingAgent"` does not take `cap.*`; bundled
+  `run_command` is created without `cap.shell`. See specialized kinds in
+  `ReferenceManual/18-agent-orchestration.html`.
   Examples: `Examples/Tools/capability_tokens.malda`,
   `Examples/Tools/capability_http_mcp_shell.malda`.
   Few-shots: `docs/llm/few-shot/26_tool_cap_read.malda`,

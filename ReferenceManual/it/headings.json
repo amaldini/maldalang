@@ -1393,6 +1393,12 @@
   },
   {
     "file": "18-agent-orchestration.html",
+    "level": 3,
+    "id": "specialized-kinds-are-not-sandboxes",
+    "title": "I kind specializzati sono bundle di tool, non sandbox"
+  },
+  {
+    "file": "18-agent-orchestration.html",
     "level": 2,
     "id": "",
     "title": "18.9 CodingAgent"

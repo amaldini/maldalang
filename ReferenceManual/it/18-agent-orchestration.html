@@ -95,7 +95,7 @@
             <h3>Strategie di mitigazione</h3>
             <ul>
                 <li><strong>Sandboxing:</strong> Esegui sempre gli agenti in ambienti isolati, con accesso al file system e permessi di rete ristretti.</li>
-                <li><strong>Restrizioni sulla directory di lavoro:</strong> Usa i parametri di directory di lavoro per limitare le operazioni sui file a directory specifiche e non critiche.</li>
+                <li><strong>Restrizioni sulla directory di lavoro:</strong> Passa <code>workingDirectory</code> così i tool sui file del bundle restano sotto una cartella. Quel controllo è un prefisso stringa, non un <a href="12-input-output.html#capability-tokens">token di capability</a>.</li>
                 <li><strong>Human-in-the-loop:</strong> Richiedi un'approvazione esplicita per le operazioni distruttive (delete, git push, esecuzione di comandi).</li>
                 <li><strong>Filtro dei tool:</strong> Fornisci agli agenti solo il set minimo di tool necessario per il task specifico.</li>
                 <li><strong>Validazione dell'input:</strong> Valida e sanitizza tutti gli input utente prima di passarli agli agenti.</li>
@@ -111,7 +111,7 @@
             <h3>Buone pratiche</h3>
             <ul>
                 <li><strong>Parti in piccolo:</strong> Inizia con operazioni in sola lettura e aggiungi gradualmente le capacità di scrittura solo dopo test approfonditi.</li>
-                <li><strong>Usa agenti specializzati:</strong> Preferisci agenti specializzati (CodingAgent, GitAgent) con protezioni built-in rispetto a classi Agent generiche con tool senza restrizioni.</li>
+                <li><strong>Privilegio minimo:</strong> I kind specializzati (<code>CodingAgent</code>, <code>GitAgent</code>, <code>DevAgent</code>, <code>MALDACodingAgent</code>) sono <strong>bundle di tool</strong>, non sandbox. Un <code>Agent</code> vuoto più i tool che aggiungi è più stretto. Per limiti unforgeable su path / host / argv, emetti <code>cap.*</code> sull'host — vedi <a href="#specialized-kinds-are-not-sandboxes">i kind specializzati non sono sandbox</a>.</li>
                 <li><strong>Istruzioni esplicite:</strong> Fornisci agli agenti istruzioni chiare e specifiche; evita direttive ambigue o troppo ampie.</li>
                 <li><strong>Controllo di versione:</strong> Usa sempre il controllo di versione e non consentire mai agli agenti di fare force-push o di modificare branch protetti senza approvazione esplicita.</li>
                 <li><strong>Separazione degli ambienti:</strong> Mantieni una separazione rigorosa tra ambienti di sviluppo, staging e produzione.</li>
@@ -404,6 +404,21 @@ try {
 io.print(escaped);
 io.deleteFile("_rm_cap_agent_note.txt");</code></pre>
         <p>Su un agente live, avvolgi l'helper con <code>@Tool("read_note", "…", "NoteArgs")</code> e chiama <code>agent.addTool("read_note")</code>. Il modello invia solo <code>relativePath</code>. Lo stesso pattern host-mint vale per HTTP, MCP e shell: <code>cap.httpGet</code> + <code>cap.fetch</code> / <code>createWebFetchTool(httpCap)</code>, <code>cap.mcpCall</code> + <code>cap.invoke</code> / <code>callTool(token)</code>, <code>cap.shell</code> + <code>cap.run</code> / <code>createRunCommandTool(dir, shellCap)</code>. Concetto, kind ed errori frequenti: <a href="12-input-output.html#capability-tokens">12.6</a>. Starter offline: <code>malda new agent</code>.</p>
+        <h3 id="specialized-kinds-are-not-sandboxes">I kind specializzati sono bundle di tool, non sandbox</h3>
+        <p>I costruttori in 18.9–18.14 registrano un elenco fisso di tool. Non accettano token <code>cap.*</code>. Non esiste <code>removeTool</code>. <code>workingDirectory</code> viene inoltrata alle factory dei tool sui file come prefisso stringa — lo stesso controllo di <code>createReadFileTool(dir)</code>, non un token non contraffabile. Una <code>policy { shell: deny }</code> a livello di file scatta sul <a href="23-agentic-runs.html#policy">consume del token</a>; non ferma il <code>run_command</code> di default di <code>CodingAgent</code>, che chiama <code>runCommand</code> con stringhe.</p>
+        <table>
+            <thead>
+                <tr><th>Costruzione</th><th>Cosa confina</th><th>Cosa non è</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>new CodingAgent(..., workDir)</code></td><td>I path dei tool sui file sotto <code>workDir</code> (prefisso stringa). <code>run_command</code> è creato <em>senza</em> <code>cap.shell</code>.</td><td>Un token di capability. <code>policy { }</code> non filtra questi tool a path stringa.</td></tr>
+                <tr><td><code>new GitAgent(..., workDir)</code></td><td>La cwd dei tool git sotto <code>workDir</code>.</td><td><code>cap.*</code></td></tr>
+                <tr><td><code>new DevAgent(..., workDir, …, readOnly: true)</code></td><td>Stesso prefisso; <code>readOnly</code> omette write / git / <code>run_command</code>.</td><td><code>cap.*</code>. <code>readOnly</code> esiste solo su <code>DevAgent</code>.</td></tr>
+                <tr><td><code>new MALDACodingAgent(..., workDir)</code></td><td>Stesso prefisso sui tool sui file più <code>run_malda</code> / <code>compile_malda</code>.</td><td><code>cap.*</code></td></tr>
+                <tr><td><code>new Agent</code> + <code>createRunCommandTool(dir, cap.shell(...))</code> / <code>createWebFetchTool(httpCap)</code> / <code>@Tool</code> + <code>cap.confine</code></td><td>Path, host o prefisso argv non contraffabile. La <code>policy</code> si applica al consume.</td><td>Un kind predefinito.</td></tr>
+            </tbody>
+        </table>
+        <p>Il privilegio minimo parte da <code>new Agent</code> e dai tool che aggiungi. Usa un kind specializzato quando vuoi quel bundle, non quando vuoi una sandbox. Pattern host-mint: <a href="#capability-tokens-for-tools">token di capability per i tool sui file</a> e <a href="12-input-output.html#capability-tokens">12.6</a>. Starter offline: <code>malda new agent</code>.</p>
         <h2>18.9 CodingAgent</h2>
         <p>La classe <code>CodingAgent</code> è un agente specializzato per i task di coding che include automaticamente tutti i tool di operazione sui file.</p>
         <h3>Tool inclusi</h3>
@@ -430,6 +445,9 @@ var agent = new CodingAgent(name, role, instructions, client);
 
 // With custom client and working directory
 var agent = new CodingAgent(name, role, instructions, client, workingDirectory);</code></pre>
+        <div class="warning-box">
+            <strong>Non è una sandbox.</strong> Questo costruttore non accetta <code>cap.*</code>. I tool del bundle usano il prefisso <code>workingDirectory</code> nella <a href="#specialized-kinds-are-not-sandboxes">tabella sopra</a>.
+        </div>
         <h3>Esempio</h3>
         <pre><code>var coderAgent = new CodingAgent(
     "CodeMaster",
@@ -441,7 +459,7 @@ var agent = new CodingAgent(name, role, instructions, client, workingDirectory);
 var response = coderAgent.think("Read example.txt and add error handling.");
 print(response.content);</code></pre>
         <h2>18.10 GitAgent</h2>
-        <p>La classe <code>GitAgent</code> è un agente specializzato per le operazioni git che include automaticamente tutti i tool git.</p>
+        <p>La classe <code>GitAgent</code> è un agente specializzato per le operazioni git che include automaticamente tutti i tool git. <code>workingDirectory</code> è un prefisso stringa su quei tool, non un token di capability — <a href="#specialized-kinds-are-not-sandboxes">stessa tabella</a>.</p>
         <h3>Tool inclusi</h3>
         <p>GitAgent include automaticamente i seguenti tool di operazione git:</p>
         <ul>
@@ -552,7 +570,7 @@ var response = orchestrator.think(
             <li><strong>Riuso:</strong> Lo stesso HumanAgent può essere usato da più orchestratori</li>
         </ul>
         <h2>18.12 DevAgent</h2>
-        <p>La classe <code>DevAgent</code> è un agente specializzato per i workflow di sviluppo completi che include automaticamente tutti i tool di operazione sui file, i tool git, i tool di esecuzione comandi e, in opzione, i tool di analisi del codice.</p>
+        <p>La classe <code>DevAgent</code> è un agente specializzato per i workflow di sviluppo completi che include automaticamente tutti i tool di operazione sui file, i tool git, i tool di esecuzione comandi e, in opzione, i tool di analisi del codice. <code>readOnly: true</code> registra solo i tool di lettura (niente write, git o <code>run_command</code>). È un bundle più piccolo, non <code>cap.*</code> — <a href="#specialized-kinds-are-not-sandboxes">stessa tabella</a>.</p>
         <h3>Tool inclusi</h3>
         <p>DevAgent include automaticamente i seguenti tool:</p>
         <ul>
@@ -690,10 +708,10 @@ var maldaAgent = new MALDACodingAgent(
     "MALDA assistant",
     "You help develop and test MALDA scripts.",
     client,
-    "./malda-scripts"  // Restrict operations to ./malda-scripts directory
+    "./malda-scripts"  // File tools stay under this directory (string prefix, not a cap token)
 );
 
-// Agent can only access files within ./malda-scripts
+// File tool paths stay under ./malda-scripts (prefix check)
 var response = maldaAgent.think("List all MALDA files and improve error handling in each one");</code></pre>
         <h3>Quando usare MALDACodingAgent, DevAgent o CodingAgent</h3>
         <ul>
@@ -701,6 +719,7 @@ var response = maldaAgent.think("List all MALDA files and improve error handling
             <li>Usa <code>DevAgent</code> quando ti serve un workflow di sviluppo completo: operazioni sui file, operazioni git, esecuzione di comandi e interazione con l'utente</li>
             <li>Usa <code>CodingAgent</code> quando ti servono solo operazioni sui file ed esecuzione di comandi (più leggero, meno tool, per task di coding generali)</li>
             <li>Usa <code>GitAgent</code> quando ti servono solo le operazioni git</li>
+            <li>Nessuno di questi kind è una sandbox di capability. Scegli un kind per l'elenco di tool; confina con <code>workingDirectory</code>, <code>DevAgent</code> <code>readOnly</code>, oppure <code>new Agent</code> + <code>cap.*</code> — <a href="#specialized-kinds-are-not-sandboxes">i kind specializzati non sono sandbox</a>.</li>
         </ul>
         <h2>18.15 Dashboard degli agenti</h2>
         <p>Gli agenti MALDA segnalano automaticamente le proprie attività a una dashboard centrale senza richiedere alcuna modifica agli script MALDA. Questo abilita monitoraggio e osservabilità su tutti gli agenti, anche quando girano in eseguibili o processi diversi.</p>
@@ -950,6 +969,8 @@ print(response.content);</code></pre>
                 <li><a href="10-prompts.html">10. Prompt</a> - Template di prompt e <code>agent.think</code></li>
                 <li><a href="20-mcp-server.html">20. Server MCP</a> - Tool STDIO lanciati dall'host</li>
                 <li><a href="12-input-output.html#capability-tokens">12.6 Token di capability</a> — perché esiste <code>cap.*</code> e il pattern host-mint</li>
+                <li><a href="#specialized-kinds-are-not-sandboxes">I kind specializzati non sono sandbox</a> — <code>CodingAgent</code> e gli altri kind sono bundle di tool; la <code>policy</code> non avvolge i loro tool a path stringa</li>
+                <li><a href="23-agentic-runs.html#policy">23.6 <code>policy</code> al confine del programma</a> — ultimo cancello sul consume del token</li>
             </ul>
         </div>
         <h2 id="declarative-agent-teams">18.17 Team dichiarativi di agenti</h2>
@@ -970,11 +991,11 @@ print(response.content);</code></pre>
                 <tr><td><code>kind</code></td><td>tutti</td><td>Classe da costruire. Default <code>Agent</code>.</td></tr>
                 <tr><td><code>tools</code></td><td>tutti</td><td>Array di nomi di tool aggiunti dopo la costruzione.</td></tr>
                 <tr><td><code>memoryScope</code></td><td>tutti</td><td>Passato a <code>setMemoryScope</code>.</td></tr>
-                <tr><td><code>workingDirectory</code></td><td>solo kind specializzati</td><td>Come il costruttore corrispondente. Illegale su un <code>Agent</code> semplice.</td></tr>
+                <tr><td><code>workingDirectory</code></td><td>solo kind specializzati</td><td>Come il costruttore corrispondente: un prefisso stringa sui tool sui file del bundle, non un token <code>cap.*</code>. Illegale su un <code>Agent</code> semplice.</td></tr>
                 <tr><td><code>includeSymbols</code> / <code>readOnly</code> / <code>prdAuthorOnly</code></td><td>solo <code>DevAgent</code></td><td>Come <code>new DevAgent(...)</code>.</td></tr>
             </tbody>
         </table>
-        <p>I valori <code>kind</code> ammessi usano gli stessi bundle di tool dei costruttori corrispondenti. Il tag della classe è <code>agent.kind</code>.</p>
+        <p>I valori <code>kind</code> ammessi usano gli stessi bundle di tool dei costruttori corrispondenti — non sandbox (<a href="#specialized-kinds-are-not-sandboxes">18.8</a>). Il tag della classe è <code>agent.kind</code>.</p>
         <table>
             <thead><tr><th><code>kind</code></th><th>Costruttore equivalente</th></tr></thead>
             <tbody>

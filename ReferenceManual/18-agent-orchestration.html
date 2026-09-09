@@ -94,7 +94,7 @@
             <h3>Mitigation Strategies</h3>
             <ul>
                 <li><strong>Sandboxing:</strong> Always run agents in isolated environments with restricted file system access and network permissions.</li>
-                <li><strong>Working Directory Restrictions:</strong> Use working directory parameters to limit file operations to specific, non-critical directories.</li>
+                <li><strong>Working Directory Restrictions:</strong> Pass <code>workingDirectory</code> so bundled file tools stay under a folder. That check is a string prefix, not a <a href="12-input-output.html#capability-tokens">capability token</a>.</li>
                 <li><strong>Human-in-the-Loop:</strong> Require explicit approval for destructive operations (deletes, git pushes, command execution).</li>
                 <li><strong>Tool Filtering:</strong> Only provide agents with the minimum set of tools necessary for their specific task.</li>
                 <li><strong>Input Validation:</strong> Validate and sanitize all user inputs before passing them to agents.</li>
@@ -110,7 +110,7 @@
             <h3>Best Practices</h3>
             <ul>
                 <li><strong>Start Small:</strong> Begin with read-only operations and gradually add write capabilities only after thorough testing.</li>
-                <li><strong>Use Specialized Agents:</strong> Prefer specialized agents (CodingAgent, GitAgent) with built-in safeguards over generic Agent classes with unrestricted tools.</li>
+                <li><strong>Least privilege:</strong> Specialized kinds (<code>CodingAgent</code>, <code>GitAgent</code>, <code>DevAgent</code>, <code>MALDACodingAgent</code>) are <strong>tool bundles</strong>, not sandboxes. A bare <code>Agent</code> plus the tools you add is narrower. For unforgeable path / host / argv limits, host-mint <code>cap.*</code> — see <a href="#specialized-kinds-are-not-sandboxes">specialized kinds are not sandboxes</a>.</li>
                 <li><strong>Explicit Instructions:</strong> Provide clear, specific instructions to agents and avoid ambiguous or overly broad directives.</li>
                 <li><strong>Version Control:</strong> Always use version control and never allow agents to force-push or modify protected branches without explicit approval.</li>
                 <li><strong>Environment Separation:</strong> Maintain strict separation between development, staging, and production environments.</li>
@@ -403,6 +403,21 @@ try {
 io.print(escaped);
 io.deleteFile("_rm_cap_agent_note.txt");</code></pre>
         <p>On a live agent, wrap the helper with <code>@Tool("read_note", "…", "NoteArgs")</code> and call <code>agent.addTool("read_note")</code>. The model only ever sends <code>relativePath</code>. The same host-mint pattern applies to HTTP, MCP, and shell: <code>cap.httpGet</code> + <code>cap.fetch</code> / <code>createWebFetchTool(httpCap)</code>, <code>cap.mcpCall</code> + <code>cap.invoke</code> / <code>callTool(token)</code>, <code>cap.shell</code> + <code>cap.run</code> / <code>createRunCommandTool(dir, shellCap)</code>. Full concept, kinds, and common mistakes: <a href="12-input-output.html#capability-tokens">12.6</a>. Offline starter: <code>malda new agent</code>.</p>
+        <h3 id="specialized-kinds-are-not-sandboxes">Specialized kinds are tool bundles, not sandboxes</h3>
+        <p>The constructors in 18.9–18.14 register a fixed tool list. They do not take <code>cap.*</code> tokens. There is no <code>removeTool</code>. <code>workingDirectory</code> is forwarded to the file-tool factories as a string prefix — the same check as <code>createReadFileTool(dir)</code>, not an unforgeable token. A file-level <code>policy { shell: deny }</code> runs on <a href="23-agentic-runs.html#policy">cap consume</a>; it does not stop <code>CodingAgent</code>'s default <code>run_command</code>, which calls <code>runCommand</code> with strings.</p>
+        <table>
+            <thead>
+                <tr><th>Construction</th><th>What it confines</th><th>What it is not</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>new CodingAgent(..., workDir)</code></td><td>File-tool paths under <code>workDir</code> (string prefix). <code>run_command</code> is created <em>without</em> <code>cap.shell</code>.</td><td>A capability token. <code>policy { }</code> does not gate these string-path tools.</td></tr>
+                <tr><td><code>new GitAgent(..., workDir)</code></td><td>Git-tool cwd under <code>workDir</code>.</td><td><code>cap.*</code></td></tr>
+                <tr><td><code>new DevAgent(..., workDir, …, readOnly: true)</code></td><td>Same prefix; <code>readOnly</code> omits write / git / <code>run_command</code>.</td><td><code>cap.*</code>. <code>readOnly</code> exists only on <code>DevAgent</code>.</td></tr>
+                <tr><td><code>new MALDACodingAgent(..., workDir)</code></td><td>Same prefix on file tools plus <code>run_malda</code> / <code>compile_malda</code>.</td><td><code>cap.*</code></td></tr>
+                <tr><td><code>new Agent</code> + <code>createRunCommandTool(dir, cap.shell(...))</code> / <code>createWebFetchTool(httpCap)</code> / <code>@Tool</code> + <code>cap.confine</code></td><td>Unforgeable path, host, or argv prefix. <code>policy</code> applies on consume.</td><td>A preset kind.</td></tr>
+            </tbody>
+        </table>
+        <p>Least privilege starts from <code>new Agent</code> and the tools you add. Use a specialized kind when you want that bundle, not when you want a sandbox. Host-mint pattern: <a href="#capability-tokens-for-tools">capability tokens for file tools</a> and <a href="12-input-output.html#capability-tokens">12.6</a>. Offline starter: <code>malda new agent</code>.</p>
         <h2>18.9 CodingAgent</h2>
         <p>The <code>CodingAgent</code> class is a specialized agent for coding tasks that automatically includes all file operation tools.</p>
         <h3>Included Tools</h3>
@@ -429,6 +444,9 @@ var agent = new CodingAgent(name, role, instructions, client);
 
 // With custom client and working directory
 var agent = new CodingAgent(name, role, instructions, client, workingDirectory);</code></pre>
+        <div class="warning-box">
+            <strong>Not a sandbox.</strong> This constructor does not accept <code>cap.*</code>. The bundled tools use the <code>workingDirectory</code> prefix in the <a href="#specialized-kinds-are-not-sandboxes">table above</a>.
+        </div>
         <h3>Example</h3>
         <pre><code>var coderAgent = new CodingAgent(
     "CodeMaster",
@@ -440,7 +458,7 @@ var agent = new CodingAgent(name, role, instructions, client, workingDirectory);
 var response = coderAgent.think("Read example.txt and add error handling.");
 print(response.content);</code></pre>
         <h2>18.10 GitAgent</h2>
-        <p>The <code>GitAgent</code> class is a specialized agent for git operations that automatically includes all git tools.</p>
+        <p>The <code>GitAgent</code> class is a specialized agent for git operations that automatically includes all git tools. <code>workingDirectory</code> is a string prefix on those tools, not a capability token — <a href="#specialized-kinds-are-not-sandboxes">same table</a>.</p>
         <h3>Included Tools</h3>
         <p>GitAgent automatically includes the following git operation tools:</p>
         <ul>
@@ -551,7 +569,7 @@ var response = orchestrator.think(
             <li><strong>Reusability:</strong> Same HumanAgent can be used by multiple orchestrators</li>
         </ul>
         <h2>18.12 DevAgent</h2>
-        <p>The <code>DevAgent</code> class is a specialized agent for full development workflows that automatically includes all file operation tools, git tools, command execution tools, and optional code analysis tools.</p>
+        <p>The <code>DevAgent</code> class is a specialized agent for full development workflows that automatically includes all file operation tools, git tools, command execution tools, and optional code analysis tools. <code>readOnly: true</code> registers only the read tools (no writes, git, or <code>run_command</code>). That is a smaller bundle, not <code>cap.*</code> — <a href="#specialized-kinds-are-not-sandboxes">same table</a>.</p>
         <h3>Included Tools</h3>
         <p>DevAgent automatically includes the following tools:</p>
         <ul>
@@ -689,10 +707,10 @@ var maldaAgent = new MALDACodingAgent(
     "MALDA assistant",
     "You help develop and test MALDA scripts.",
     client,
-    "./malda-scripts"  // Restrict operations to ./malda-scripts directory
+    "./malda-scripts"  // File tools stay under this directory (string prefix, not a cap token)
 );
 
-// Agent can only access files within ./malda-scripts
+// File tool paths stay under ./malda-scripts (prefix check)
 var response = maldaAgent.think("List all MALDA files and improve error handling in each one");</code></pre>
         <h3>When to Use MALDACodingAgent vs DevAgent vs CodingAgent</h3>
         <ul>
@@ -700,6 +718,7 @@ var response = maldaAgent.think("List all MALDA files and improve error handling
             <li>Use <code>DevAgent</code> when you need a complete development workflow: file operations, git operations, command execution, and user interaction</li>
             <li>Use <code>CodingAgent</code> when you only need file operations and command execution (lighter weight, fewer tools, for general coding tasks)</li>
             <li>Use <code>GitAgent</code> when you only need git operations</li>
+            <li>None of these kinds is a capability sandbox. Pick a kind for the tool list; confine with <code>workingDirectory</code>, <code>DevAgent</code> <code>readOnly</code>, or <code>new Agent</code> + <code>cap.*</code> — <a href="#specialized-kinds-are-not-sandboxes">specialized kinds are not sandboxes</a>.</li>
         </ul>
         <h2>18.15 Agent Dashboard</h2>
         <p>MALDA agents automatically report their activities to a central dashboard without requiring any modifications to MALDA scripts. This enables monitoring and observability across all agents, even when they run in different executables or processes.</p>
@@ -949,6 +968,8 @@ print(response.content);</code></pre>
                 <li><a href="10-prompts.html">10. Prompts</a> - Prompt templates and <code>agent.think</code></li>
                 <li><a href="20-mcp-server.html">20. MCP Server</a> - Host-launched STDIO tools</li>
                 <li><a href="12-input-output.html#capability-tokens">12.6 Capability tokens</a> — why <code>cap.*</code> exists and the host-mint pattern</li>
+                <li><a href="#specialized-kinds-are-not-sandboxes">Specialized kinds are not sandboxes</a> — <code>CodingAgent</code> and siblings are tool bundles; <code>policy</code> does not wrap their string-path tools</li>
+                <li><a href="23-agentic-runs.html#policy">23.6 Program-boundary policy</a> — last gate on cap consume</li>
             </ul>
         </div>
         <h2 id="declarative-agent-teams">18.17 Declarative Agent Teams</h2>
@@ -969,11 +990,11 @@ print(response.content);</code></pre>
                 <tr><td><code>kind</code></td><td>all</td><td>Class to construct. Default <code>Agent</code>.</td></tr>
                 <tr><td><code>tools</code></td><td>all</td><td>Array of tool names added after construction.</td></tr>
                 <tr><td><code>memoryScope</code></td><td>all</td><td>Passed to <code>setMemoryScope</code>.</td></tr>
-                <tr><td><code>workingDirectory</code></td><td>specialized kinds only</td><td>Same as the matching constructor. Illegal on plain <code>Agent</code>.</td></tr>
+                <tr><td><code>workingDirectory</code></td><td>specialized kinds only</td><td>Same as the matching constructor: a string prefix on bundled file tools, not a <code>cap.*</code> token. Illegal on plain <code>Agent</code>.</td></tr>
                 <tr><td><code>includeSymbols</code> / <code>readOnly</code> / <code>prdAuthorOnly</code></td><td><code>DevAgent</code> only</td><td>Same as <code>new DevAgent(...)</code>.</td></tr>
             </tbody>
         </table>
-        <p>Allowed <code>kind</code> values use the same tool bundles as the matching constructors. Read the class tag on <code>agent.kind</code>.</p>
+        <p>Allowed <code>kind</code> values use the same tool bundles as the matching constructors — not sandboxes (<a href="#specialized-kinds-are-not-sandboxes">18.8</a>). Read the class tag on <code>agent.kind</code>.</p>
         <table>
             <thead><tr><th><code>kind</code></th><th>Constructor twin</th></tr></thead>
             <tbody>
