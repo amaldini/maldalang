@@ -1,6 +1,6 @@
 # MALDA syntax pack (for writing programs)
 
-*Applies to: MALDA 1.0.17*
+*Applies to: MALDA 1.0.18*
 
 Compact rules for generating correct `.malda`. Prefer this over scraping HTML manuals.
 
@@ -341,7 +341,7 @@ Prefer `str.trimText(response?.content)` over nested `if (response != null) { if
 Those are the errors the parser catches for you. The ones it does not catch are in
 [`malda-gotchas.md`](malda-gotchas.md); read that before declaring a program correct.
 
-## Agentic constructs (1.0.17+)
+## Agentic constructs (1.0.18+)
 
 `suite` / `context` / `policy` / `within` are **contextual** (not reserved). `var context = 1;`
 parses. `case` is already a keyword (`case "title" {` vs `case Pattern:`). `expect` / `stream`
