@@ -20,7 +20,7 @@
         <h1>29. Client REST Web</h1>
         <p>MALDA include il supporto nativo alle richieste HTTP verso REST API esterne. Sono disponibili sia la classe <code>RestClient</code> per gli usi avanzati, sia funzioni statiche di convenienza per i casi semplici.</p>
         
-        <h2>28.1 Classe RestClient</h2>
+        <h2>29.1 Classe RestClient</h2>
         <p>La classe <code>RestClient</code> offre un client HTTP completo per le richieste verso REST API.</p>
         
         <h3>Costruttore</h3>
@@ -83,7 +83,7 @@ var client = new RestClient("https://api.example.com", 60000);  // With base URL
             <li><code>ok</code> (bool): false</li>
         </ul>
         
-        <h2>28.2 Funzioni HTTP statiche</h2>
+        <h2>29.2 Funzioni HTTP statiche</h2>
         <p>Nei casi semplici puoi usare funzioni statiche di convenienza senza creare un'istanza di RestClient:</p>
         <ul>
             <li><code>httpGet(url, headers?, queryParams?)</code> - Richiesta GET semplice</li>
@@ -94,7 +94,7 @@ var client = new RestClient("https://api.example.com", 60000);  // With base URL
         </ul>
         <p>Queste funzioni creano internamente un <code>RestClient</code> temporaneo e restituiscono lo stesso formato di risposta dei metodi di RestClient.</p>
         
-        <h2>28.3 Esempi</h2>
+        <h2>29.3 Esempi</h2>
         
         <h3>Usare la classe RestClient</h3>
         <pre><code>// Create client with base URL
@@ -176,7 +176,7 @@ if (response.ok) {
     print("Content-Type: " + contentType);
 }</code></pre>
         
-        <h2>28.4 Autenticazione</h2>
+        <h2>29.4 Autenticazione</h2>
         
         <h3>Autenticazione Bearer Token</h3>
         <pre><code>var client = new RestClient("https://api.example.com");
@@ -192,7 +192,7 @@ var response = client.get("/protected-endpoint");</code></pre>
         <pre><code>var headers = {"Authorization": "Custom token123"};
 var response = httpGet("https://api.example.com/endpoint", headers);</code></pre>
         
-        <h2>28.5 Timeout</h2>
+        <h2>29.5 Timeout</h2>
         <pre><code>// Set timeout to 60 seconds
 var client = new RestClient("https://api.example.com", 60000);
 client.setTimeout(10000);  // Change to 10 seconds
@@ -202,7 +202,7 @@ if (response.error != null && response.error.contains("timeout")) {
     print("Request timed out");
 }</code></pre>
         
-        <h2>28.6 Esempio completo</h2>
+        <h2>29.6 Esempio completo</h2>
         <pre><code>// Create REST client
 var client = new RestClient("https://jsonplaceholder.typicode.com");
 
@@ -240,9 +240,9 @@ if (response.ok) {
         <div class="see-also">
             <h3>Vedi anche</h3>
             <ul>
-                <li><a href="28-rest-api.html">27. Server REST API</a> - Creare server REST API</li>
+                <li><a href="28-rest-api.html">28. Server REST API</a> - Creare server REST API</li>
                 <li><a href="25-web-ui.html">25. Componenti server Web UI</a> - Pattern di integrazione Web UI + API</li>
-                <li><a href="30-full-stack-development.html">29. Sviluppo full-stack con MALDA</a> - Architettura end-to-end e chiamate API dalla UI</li>
+                <li><a href="30-full-stack-development.html">30. Sviluppo full-stack con MALDA</a> - Architettura end-to-end e chiamate API dalla UI</li>
                 <li><a href="12-input-output.html">12. Input/Output</a> — console, file, path, ambiente</li>
             </ul>
         </div>

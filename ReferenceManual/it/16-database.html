@@ -177,7 +177,7 @@ db.execute("PRAGMA foreign_keys = ON");</code></pre>
         <ul>
             <li>Un SQL fallito è un errore di runtime il cui messaggio inizia con <code>SQL query error:</code> oppure <code>SQL execute error:</code> più il testo del driver.</li>
             <li>Richiama <code>connect</code> chiude la connessione precedente e apre la nuova stringa.</li>
-            <li>Il transpile JavaScript non emette questi client. La UI nel browser deve chiamare un backend MALDA REST o <code>@PAGE</code> che possiede il database — vedi <a href="27-browser-javascript-backend.html">26. Backend UI JavaScript nel browser</a> e <a href="28-rest-api.html">27. Server REST API</a>.</li>
+            <li>Il transpile JavaScript non emette questi client. La UI nel browser deve chiamare un backend MALDA REST o <code>@PAGE</code> che possiede il database — vedi <a href="27-browser-javascript-backend.html">27. Backend UI JavaScript nel browser</a> e <a href="28-rest-api.html">28. Server REST API</a>.</li>
             <li>I workflow, la coda dei job e GraphMemory persistono su file propri; non puntare <code>SqliteClient</code> a <code>.malda/workflows.db</code> a meno che tu non lo stia ispezionando come DBA.</li>
         </ul>
 
@@ -205,10 +205,10 @@ malda db --help</code></pre>
         <div class="see-also">
             <h3>Vedi anche</h3>
             <ul>
-                <li><a href="34-examples.html">33. Esempi</a> - Campioni del catalogo in <code>Examples/Databases/</code></li>
+                <li><a href="34-examples.html">34. Esempi</a> - Campioni del catalogo in <code>Examples/Databases/</code></li>
                 <li><a href="12-input-output.html">12. Input/Output</a> - File e path</li>
                 <li><a href="02-tools.html">2. Strumenti e toolchain</a> - Interprete vs transpile vs JavaScript</li>
-                <li><a href="30-full-stack-development.html">29. Sviluppo full-stack con MALDA</a> - API + UI + dati insieme</li>
+                <li><a href="30-full-stack-development.html">30. Sviluppo full-stack con MALDA</a> - API + UI + dati insieme</li>
                 <li><a href="22-durable-workflows.html">22. Workflow durevoli</a> - SQLite del motore, non questi client</li>
             </ul>
         </div>

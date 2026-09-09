@@ -25,7 +25,7 @@
         
         <p>MALDA supporta l'interazione con dispositivi fisici tramite comunicazione seriale (USB) e API HTTP/REST (WiFi). Questo consente di controllare Arduino, ESP32, Raspberry Pi, dispositivi per la smart home e altra attrezzatura IoT.</p>
         
-        <h2>31.1 Panoramica</h2>
+        <h2>32.1 Panoramica</h2>
         
         <h3>Perché l'integrazione dei dispositivi?</h3>
         <p>L'integrazione dei dispositivi consente ai programmi MALDA di:</p>
@@ -65,7 +65,7 @@
             </tr>
         </table>
         
-        <h2>31.2 Comunicazione seriale</h2>
+        <h2>32.2 Comunicazione seriale</h2>
         
         <p>La classe <code>SerialConnection</code> offre comunicazione seriale a basso livello per i dispositivi collegati via USB.</p>
         
@@ -107,9 +107,9 @@ if (connected) {
             <li><strong>macOS</strong>: <code>"/dev/cu.usbserial-*"</code>, <code>"/dev/cu.usbmodem*"</code>, ecc.</li>
         </ul>
         
-        <h2>31.3 Dispositivi HTTP/REST</h2>
+        <h2>32.3 Dispositivi HTTP/REST</h2>
         
-        <p>Per i dispositivi con WiFi, usa la classe <code>RestClient</code> (vedi <a href="29-rest-web-client.html">28. Client REST Web</a> per la documentazione completa). Funziona con qualsiasi dispositivo che espone API HTTP/REST.</p>
+        <p>Per i dispositivi con WiFi, usa la classe <code>RestClient</code> (vedi <a href="29-rest-web-client.html">29. Client REST Web</a> per la documentazione completa). Funziona con qualsiasi dispositivo che espone API HTTP/REST.</p>
         
         <h3>Esempio: dispositivo ESP32</h3>
         <pre><code>var device = new RestClient("http://192.168.1.100");
@@ -129,7 +129,7 @@ device.post("/relay/1", {"state": "on"});</code></pre>
         <pre><code>var device = new RestClient("http://192.168.1.100");
 device.setAuth("Bearer", "your-api-token");</code></pre>
         
-        <h2>31.4 Integrazione Arduino</h2>
+        <h2>32.4 Integrazione Arduino</h2>
         
         <p>La classe <code>ArduinoConnection</code> offre un'interfaccia di alto livello per controllare dispositivi Arduino, con supporto sia alla modalità seriale sia a quella HTTP.</p>
         
@@ -202,7 +202,7 @@ arduino.disconnect();</code></pre>
             <li>Risposte: <code>OK:value\n</code> o <code>ERROR:message\n</code></li>
         </ul>
         
-        <h2>31.5 ESP32/ESP8266</h2>
+        <h2>32.5 ESP32/ESP8266</h2>
         
         <p>I dispositivi ESP32 e ESP8266 si possono controllare via HTTP/REST dopo aver caricato lo sketch bridge.</p>
         
@@ -235,7 +235,7 @@ esp32.digitalWrite(2, true);
 var distance = esp32.analogRead(0);
 print("Distance: " + distance);</code></pre>
         
-        <h2>31.6 Raspberry Pi</h2>
+        <h2>32.6 Raspberry Pi</h2>
         
         <p>Raspberry Pi si può controllare via API HTTP o connessione seriale.</p>
         
@@ -251,7 +251,7 @@ pi.connect("/dev/ttyUSB0", 115200);
 pi.write("command\n");
 var response = pi.readLine();</code></pre>
         
-        <h2>31.7 Dispositivi per la smart home</h2>
+        <h2>32.7 Dispositivi per la smart home</h2>
         
         <p>Molti dispositivi per la smart home espongono REST API che si possono controllare con <code>RestClient</code>.</p>
         
@@ -304,7 +304,7 @@ homeAssistant.post("/api/services/light/turn_on", {
     "entity_id": "light.living_room"
 });</code></pre>
         
-        <h2>31.8 Coordinamento multi-dispositivo</h2>
+        <h2>32.8 Coordinamento multi-dispositivo</h2>
         
         <p>Il modello ad actor di MALDA è ideale per coordinare più dispositivi. Ogni dispositivo può essere controllato dal proprio actor, abilitando operazioni concorrenti e coordinate.</p>
         
@@ -391,7 +391,7 @@ send coordinator.registerRobot(robot1);
 send coordinator.registerRobot(robot2);
 send coordinator.startAll();</code></pre>
         
-        <h2>31.9 Esempi</h2>
+        <h2>32.9 Esempi</h2>
         
         <p>Esempi completi sono disponibili nella directory <code>Examples/Devices/</code>:</p>
         <ul>
@@ -414,7 +414,7 @@ arduino.digitalWrite(13, true);</code></pre>
             </li>
         </ol>
         
-        <h2>31.10 Risoluzione dei problemi</h2>
+        <h2>32.10 Risoluzione dei problemi</h2>
         
         <h3>Problemi di connessione seriale</h3>
         <ul>

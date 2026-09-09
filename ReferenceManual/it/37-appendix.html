@@ -18,7 +18,7 @@
     <main>
         <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>37. Appendice</span></div>
         <h1>37. Appendice</h1>
-        <h2>36.1 Appendice A: parole riservate</h2>
+        <h2>37.1 Appendice A: parole riservate</h2>
         <p>Le keyword sono definite in <code>MaldaLang/Lexer.cs</code>. <code>fn</code> e <code>def</code> non sono riservate; il parser le rifiuta come keyword di funzione. <code>reply</code> è una <strong>funzione built-in</strong>, non una parola riservata. <code>suite</code>, <code>context</code>, <code>policy</code> e <code>within</code> sono contestuali (non elencate qui) così <code>var context = 1;</code> resta valido — vedi <a href="23-agentic-runs.html">23.1</a>.</p>
         <pre><code><a href="08-control-structures.html">if</a>, <a href="08-control-structures.html">else</a>, <a href="08-control-structures.html">while</a>, <a href="08-control-structures.html">for</a>, <a href="08-control-structures.html">foreach</a>, <a href="09-functions.html">function</a>, <a href="09-functions.html">return</a>, <a href="05-variables.html">var</a>, <a href="05-variables.html">const</a>, <a href="12-input-output.html">print</a>, <a href="12-input-output.html">input</a>,
 <a href="04-data-types.html">true</a>, <a href="04-data-types.html">false</a>, <a href="07-expressions.html">and</a>, <a href="07-expressions.html">or</a>, <a href="07-expressions.html">not</a>, <a href="08-control-structures.html">break</a>, <a href="08-control-structures.html">continue</a>, <a href="08-control-structures.html">try</a>, <a href="08-control-structures.html">catch</a>, <a href="08-control-structures.html">finally</a>, <a href="08-control-structures.html">throw</a>,
@@ -30,7 +30,7 @@
 <a href="25-web-ui.html">component</a>, <a href="25-web-ui.html">property</a>,
 <a href="07-expressions.html">dict</a>, <a href="14-graphs.html">graph</a>, <a href="14-graphs.html">directed</a>, <a href="14-graphs.html">undirected</a>, <a href="08-control-structures.html">in</a>,
 <a href="01-introduction.html">using</a>, <a href="01-introduction.html">include</a>, <a href="01-introduction.html">import</a>, <a href="01-introduction.html">export</a></code></pre>
-        <h2>36.2 Appendice B: precedenza degli operatori</h2>
+        <h2>37.2 Appendice B: precedenza degli operatori</h2>
         <p>La tabella sotto rispecchia l'ordine di discesa del parser di riferimento (<code>MaldaLang/Parser/Parser.cs</code>), dalla precedenza <strong>più alta</strong> (lega più stretto) alla <strong>più bassa</strong>.</p>
         <table>
             <thead>
@@ -56,7 +56,7 @@
         <div class="info-box">
             <strong>Due conseguenze da ricordare:</strong> <code>|&gt;</code> lega <em>più lasco</em> del condizionale ternario, quindi <code>a ? b : c |&gt; f</code> invia l'intero condizionale in pipe a <code>f</code>. E <code>await</code> è un operatore unario prefisso, quindi <code>await a.b()</code> attende il risultato della chiamata, mentre <code>(await a).b()</code> richiede parentesi esplicite.
         </div>
-        <h2>36.3 Appendice C: riepilogo dei concetti object-oriented</h2>
+        <h2>37.3 Appendice C: riepilogo dei concetti object-oriented</h2>
         <h3>Classi</h3>
         <ul>
             <li>Modello per creare oggetti</li>
@@ -104,8 +104,8 @@
                 <li><a href="11-classes-objects.html">11. Classi e oggetti</a> - Funzionalità OOP</li>
             </ul>
         </div>
-        <h2>36.4 Appendice D: riferimento da riga di comando</h2>
-        <p>Riepilogo dei comandi CLI <code>malda</code>. Vedi <a href="33-personal-assistant.html">32. Assistente personale e CLI</a> per i dettagli su assistente, config e cron.</p>
+        <h2>37.4 Appendice D: riferimento da riga di comando</h2>
+        <p>Riepilogo dei comandi CLI <code>malda</code>. Vedi <a href="33-personal-assistant.html">33. Assistente personale e CLI</a> per i dettagli su assistente, config e cron.</p>
         <table>
             <tr><th>Comando</th><th>Descrizione</th></tr>
             <tr><td><code>malda &lt;file.malda&gt;</code></td><td>Esegue un file MALDA</td></tr>
@@ -127,7 +127,7 @@
             <tr><td><code>malda install / uninstall / list[--workspace] / search / init</code></td><td>Pacchetti: prima path locale o workspace; search/install remoto richiede <code>MALDA_REGISTRY_URL</code></td></tr>
             <tr><td><code>malda trace summary|show|replay &lt;file&gt;</code></td><td>Ispezione e replay delle trace</td></tr>
         </table>
-        <h2>36.5 Appendice E: baseline del contratto di deploy e osservabilità</h2>
+        <h2>37.5 Appendice E: baseline del contratto di deploy e osservabilità</h2>
         <p>Il comando <code>malda deploy</code> in questa baseline valida i contratti di configurazione ed esce senza avviare l'orchestrazione del deploy.</p>
         <p>Contratti di input di default:</p>
         <ul>
@@ -141,7 +141,7 @@
             <li>La baseline di logging strutturato usa il formato JSON e include i campi core (timestamp, level, message, environment/profile, correlation opzionale).</li>
             <li>Il collegamento dell'endpoint delle metriche è presente e coerente tra i contratti di profilo e di osservabilità.</li>
         </ul>
-        <h2>36.6 Appendice F: profiling dei programmi MALDA</h2>
+        <h2>37.6 Appendice F: profiling dei programmi MALDA</h2>
         <p>MALDA include un profiler built-in per le indagini sulle prestazioni. Può profilare esecuzioni interpretate ed eseguibili transpile e riporta gli hotspot in termini di built-in MALDA, funzioni e posizioni delle istruzioni.</p>
         <p>Flag CLI supportati:</p>
         <ul>
@@ -163,7 +163,7 @@ malda compile my-script.malda --mode transpile -o my-script.exe --profile --prof
             <li><code>Statements</code> - timing aggregato delle istruzioni per posizione nel sorgente MALDA</li>
         </ul>
         <p>Ogni voce del report include conteggio delle chiamate, tempo totale, tempo medio e self time. Il profiling a livello di espressione è volutamente escluso in questa prima versione per tenere l'overhead pratico.</p>
-        <h2 id="optional-packs">36.7 Appendice G: pack opzionali</h2>
+        <h2 id="optional-packs">37.7 Appendice G: pack opzionali</h2>
         <p>Il core MALDA tiene i pack di dominio fuori dal core pubblico. Il compilatore ha comunque hook di emit solo-stringa per i pack opzionali, così assembly distribuiti a parte possono innestarsi senza diventare ProjectReferences del core.</p>
         <p>I pack verticali non sono inclusi in questo repository open-source. Se mantieni un pack di questo tipo, caricalo con <code>loadNativeModule(...)</code> e distribuisci le DLL accanto all'app; il core non registra automaticamente i global dei pack.</p>
         <div class="nav-footer">

@@ -557,7 +557,7 @@ var linked = memory.findRelated("node_0");  // graph edges persist across save/l
             <li><code>load(filePath)</code> - Load memory from disk (string path, extension is ignored)</li>
         </ul>
 
-        <p><strong>Note:</strong> Call <code>initialize(dimension, precision, embeddingFunction)</code> <em>before</em> <code>load()</code> when using a custom embedder; <code>load()</code> preserves the embedding function across its internal re-initialization. The personal assistant defaults to <code>embedHash</code> (384 dimensions) and supports <code>MALDA_MEMORY_EMBED</code> or <code>config.agents.memory.embed</code> values <code>hash</code>, <code>bow</code>, or <code>llama</code> (see <a href="33-personal-assistant.html">32. Personal Assistant</a>).</p>
+        <p><strong>Note:</strong> Call <code>initialize(dimension, precision, embeddingFunction)</code> <em>before</em> <code>load()</code> when using a custom embedder; <code>load()</code> preserves the embedding function across its internal re-initialization. The personal assistant defaults to <code>embedHash</code> (384 dimensions) and supports <code>MALDA_MEMORY_EMBED</code> or <code>config.agents.memory.embed</code> values <code>hash</code>, <code>bow</code>, or <code>llama</code> (see <a href="33-personal-assistant.html">33. Personal Assistant</a>).</p>
 
         <h2>19.7 Graph Export and Import</h2>
         <p>GraphMemory provides methods to export and import the knowledge graph separately from the full persistence system.</p>

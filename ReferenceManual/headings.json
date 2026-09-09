@@ -2067,427 +2067,427 @@
     "file": "24-web-ui-hub.html",
     "level": 2,
     "id": "",
-    "title": "23.1 Choose your UI model"
+    "title": "24.1 Choose your UI model"
   },
   {
     "file": "24-web-ui-hub.html",
     "level": 2,
     "id": "",
-    "title": "23.2 Decision guide"
+    "title": "24.2 Decision guide"
   },
   {
     "file": "24-web-ui-hub.html",
     "level": 2,
     "id": "",
-    "title": "23.3 How the models relate"
+    "title": "24.3 How the models relate"
   },
   {
     "file": "24-web-ui-hub.html",
     "level": 2,
     "id": "",
-    "title": "23.4 Runtime boundary reminder"
+    "title": "24.4 Runtime boundary reminder"
   },
   {
     "file": "25-web-ui.html",
-    "level": 2,
-    "id": "",
-    "title": "24.1 Chapter Map"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 2,
-    "id": "",
-    "title": "24.2 HTML Fragment Components"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "24.2.1 Minimal server-side example"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "24.2.2 Tiny browser integration example"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "24.2.3 Fragment contract"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "24.2.4 LIVE channel subscription"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "24.2.5 Server UI protocol envelopes"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "24.2.6 Component API V2 direction"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "24.2.7 Migration guide: @PAGE to component"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 2,
-    "id": "",
-    "title": "24.3 Web UI Helper API Reference"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "24.3.1 Server component helper functions"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "24.3.1.1 UI-native template workflow (transparent UX)"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "24.3.1.2 Schema-driven CRUD helper pattern"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "24.3.2 Server component state helpers"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "24.3.3 Server UI runtime and lifecycle APIs"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "24.3.4 UI control catalog"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "24.3.4.1 Styling controls"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "24.3.5 Advanced data controls"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "24.3.6 Control props reference"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "24.3.7 Control usage examples"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "24.3.8 Event handling patterns"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "24.3.9 Form validation patterns and error rendering"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "24.3.10 Composition patterns"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "24.3.11 State management patterns"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "24.3.12 Routing and query param patterns"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "24.3.13 Error and security notes"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "24.3.14 Styling guidance"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "24.3.15 Common pitfalls and debugging"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 2,
-    "id": "",
-    "title": "24.4 Request-to-Render Lifecycle"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 2,
-    "id": "",
-    "title": "24.5 Production Hardening Checklist"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 2,
-    "id": "",
-    "title": "24.6 Testing and Troubleshooting"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 2,
-    "id": "",
-    "title": "24.7 Related Chapters and Examples"
-  },
-  {
-    "file": "26-http-server-html-ui.html",
     "level": 2,
     "id": "",
     "title": "25.1 Chapter Map"
   },
   {
-    "file": "26-http-server-html-ui.html",
+    "file": "25-web-ui.html",
     "level": 2,
     "id": "",
-    "title": "25.2 HttpServer Class"
+    "title": "25.2 HTML Fragment Components"
   },
   {
-    "file": "26-http-server-html-ui.html",
+    "file": "25-web-ui.html",
     "level": 3,
     "id": "",
-    "title": "25.2.1 Constructor"
+    "title": "25.2.1 Minimal server-side example"
   },
   {
-    "file": "26-http-server-html-ui.html",
+    "file": "25-web-ui.html",
     "level": 3,
     "id": "",
-    "title": "25.2.2 Core methods"
+    "title": "25.2.2 Tiny browser integration example"
   },
   {
-    "file": "26-http-server-html-ui.html",
+    "file": "25-web-ui.html",
     "level": 3,
     "id": "",
-    "title": "25.2.3 Minimal host example"
+    "title": "25.2.3 Fragment contract"
   },
   {
-    "file": "26-http-server-html-ui.html",
+    "file": "25-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "25.2.4 LIVE channel subscription"
+  },
+  {
+    "file": "25-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "25.2.5 Server UI protocol envelopes"
+  },
+  {
+    "file": "25-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "25.2.6 Component API V2 direction"
+  },
+  {
+    "file": "25-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "25.2.7 Migration guide: @PAGE to component"
+  },
+  {
+    "file": "25-web-ui.html",
     "level": 2,
     "id": "",
-    "title": "25.3 Request and Response Objects"
+    "title": "25.3 Web UI Helper API Reference"
   },
   {
-    "file": "26-http-server-html-ui.html",
-    "level": 2,
-    "id": "",
-    "title": "25.4 Dynamic Pages with @PAGE"
-  },
-  {
-    "file": "26-http-server-html-ui.html",
-    "level": 2,
-    "id": "",
-    "title": "25.5 AI-Generated Pages with @AIPAGE"
-  },
-  {
-    "file": "26-http-server-html-ui.html",
+    "file": "25-web-ui.html",
     "level": 3,
     "id": "",
-    "title": "25.5.1 Complete AI form example"
+    "title": "25.3.1 Server component helper functions"
   },
   {
-    "file": "26-http-server-html-ui.html",
+    "file": "25-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "25.3.1.1 UI-native template workflow (transparent UX)"
+  },
+  {
+    "file": "25-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "25.3.1.2 Schema-driven CRUD helper pattern"
+  },
+  {
+    "file": "25-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "25.3.2 Server component state helpers"
+  },
+  {
+    "file": "25-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "25.3.3 Server UI runtime and lifecycle APIs"
+  },
+  {
+    "file": "25-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "25.3.4 UI control catalog"
+  },
+  {
+    "file": "25-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "25.3.4.1 Styling controls"
+  },
+  {
+    "file": "25-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "25.3.5 Advanced data controls"
+  },
+  {
+    "file": "25-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "25.3.6 Control props reference"
+  },
+  {
+    "file": "25-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "25.3.7 Control usage examples"
+  },
+  {
+    "file": "25-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "25.3.8 Event handling patterns"
+  },
+  {
+    "file": "25-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "25.3.9 Form validation patterns and error rendering"
+  },
+  {
+    "file": "25-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "25.3.10 Composition patterns"
+  },
+  {
+    "file": "25-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "25.3.11 State management patterns"
+  },
+  {
+    "file": "25-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "25.3.12 Routing and query param patterns"
+  },
+  {
+    "file": "25-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "25.3.13 Error and security notes"
+  },
+  {
+    "file": "25-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "25.3.14 Styling guidance"
+  },
+  {
+    "file": "25-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "25.3.15 Common pitfalls and debugging"
+  },
+  {
+    "file": "25-web-ui.html",
     "level": 2,
     "id": "",
-    "title": "25.6 GET/POST Routes in Page-Hosting Flows"
+    "title": "25.4 Request-to-Render Lifecycle"
   },
   {
-    "file": "26-http-server-html-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "25.6.1 GET handlers"
-  },
-  {
-    "file": "26-http-server-html-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "25.6.2 POST handlers"
-  },
-  {
-    "file": "26-http-server-html-ui.html",
+    "file": "25-web-ui.html",
     "level": 2,
     "id": "",
-    "title": "25.7 Redirects with RedirectTo"
+    "title": "25.5 Production Hardening Checklist"
   },
   {
-    "file": "26-http-server-html-ui.html",
+    "file": "25-web-ui.html",
     "level": 2,
     "id": "",
-    "title": "25.8 HTML Generation Helpers"
+    "title": "25.6 Testing and Troubleshooting"
   },
   {
-    "file": "26-http-server-html-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "25.8.1 HTMLCache Class"
-  },
-  {
-    "file": "26-http-server-html-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "25.8.2 extractHTML Function"
-  },
-  {
-    "file": "26-http-server-html-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "25.8.3 markdownToHtml Function"
-  },
-  {
-    "file": "26-http-server-html-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "25.8.4 generateUI Function"
-  },
-  {
-    "file": "26-http-server-html-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "25.8.5 ui.generate Function"
-  },
-  {
-    "file": "26-http-server-html-ui.html",
+    "file": "25-web-ui.html",
     "level": 2,
     "id": "",
-    "title": "25.9 Request-to-Render Lifecycle"
+    "title": "25.7 Related Chapters and Examples"
   },
   {
     "file": "26-http-server-html-ui.html",
-    "level": 2,
-    "id": "",
-    "title": "25.10 Production Hardening"
-  },
-  {
-    "file": "26-http-server-html-ui.html",
-    "level": 2,
-    "id": "",
-    "title": "25.11 Testing and Troubleshooting"
-  },
-  {
-    "file": "27-browser-javascript-backend.html",
     "level": 2,
     "id": "",
     "title": "26.1 Chapter Map"
   },
   {
+    "file": "26-http-server-html-ui.html",
+    "level": 2,
+    "id": "",
+    "title": "26.2 HttpServer Class"
+  },
+  {
+    "file": "26-http-server-html-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "26.2.1 Constructor"
+  },
+  {
+    "file": "26-http-server-html-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "26.2.2 Core methods"
+  },
+  {
+    "file": "26-http-server-html-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "26.2.3 Minimal host example"
+  },
+  {
+    "file": "26-http-server-html-ui.html",
+    "level": 2,
+    "id": "",
+    "title": "26.3 Request and Response Objects"
+  },
+  {
+    "file": "26-http-server-html-ui.html",
+    "level": 2,
+    "id": "",
+    "title": "26.4 Dynamic Pages with @PAGE"
+  },
+  {
+    "file": "26-http-server-html-ui.html",
+    "level": 2,
+    "id": "",
+    "title": "26.5 AI-Generated Pages with @AIPAGE"
+  },
+  {
+    "file": "26-http-server-html-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "26.5.1 Complete AI form example"
+  },
+  {
+    "file": "26-http-server-html-ui.html",
+    "level": 2,
+    "id": "",
+    "title": "26.6 GET/POST Routes in Page-Hosting Flows"
+  },
+  {
+    "file": "26-http-server-html-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "26.6.1 GET handlers"
+  },
+  {
+    "file": "26-http-server-html-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "26.6.2 POST handlers"
+  },
+  {
+    "file": "26-http-server-html-ui.html",
+    "level": 2,
+    "id": "",
+    "title": "26.7 Redirects with RedirectTo"
+  },
+  {
+    "file": "26-http-server-html-ui.html",
+    "level": 2,
+    "id": "",
+    "title": "26.8 HTML Generation Helpers"
+  },
+  {
+    "file": "26-http-server-html-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "26.8.1 HTMLCache Class"
+  },
+  {
+    "file": "26-http-server-html-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "26.8.2 extractHTML Function"
+  },
+  {
+    "file": "26-http-server-html-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "26.8.3 markdownToHtml Function"
+  },
+  {
+    "file": "26-http-server-html-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "26.8.4 generateUI Function"
+  },
+  {
+    "file": "26-http-server-html-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "26.8.5 ui.generate Function"
+  },
+  {
+    "file": "26-http-server-html-ui.html",
+    "level": 2,
+    "id": "",
+    "title": "26.9 Request-to-Render Lifecycle"
+  },
+  {
+    "file": "26-http-server-html-ui.html",
+    "level": 2,
+    "id": "",
+    "title": "26.10 Production Hardening"
+  },
+  {
+    "file": "26-http-server-html-ui.html",
+    "level": 2,
+    "id": "",
+    "title": "26.11 Testing and Troubleshooting"
+  },
+  {
     "file": "27-browser-javascript-backend.html",
     "level": 2,
     "id": "",
-    "title": "26.2 What This Mode Provides"
+    "title": "27.1 Chapter Map"
+  },
+  {
+    "file": "27-browser-javascript-backend.html",
+    "level": 2,
+    "id": "",
+    "title": "27.2 What This Mode Provides"
   },
   {
     "file": "27-browser-javascript-backend.html",
     "level": 3,
     "id": "",
-    "title": "26.2.1 Target decorators in JS output"
+    "title": "27.2.1 Target decorators in JS output"
   },
   {
     "file": "27-browser-javascript-backend.html",
     "level": 2,
     "id": "",
-    "title": "26.3 Compile Commands"
+    "title": "27.3 Compile Commands"
   },
   {
     "file": "27-browser-javascript-backend.html",
     "level": 2,
     "id": "",
-    "title": "26.4 Required Script Loading Order"
+    "title": "27.4 Required Script Loading Order"
   },
   {
     "file": "27-browser-javascript-backend.html",
     "level": 2,
     "id": "",
-    "title": "26.5 API Mode DOM Helpers"
+    "title": "27.5 API Mode DOM Helpers"
   },
   {
     "file": "27-browser-javascript-backend.html",
     "level": 2,
     "id": "",
-    "title": "26.6 Sum Types and Pattern Matching in JS Mode"
+    "title": "27.6 Sum Types and Pattern Matching in JS Mode"
   },
   {
     "file": "27-browser-javascript-backend.html",
     "level": 2,
     "id": "",
-    "title": "26.7 Actors in JS Mode"
+    "title": "27.7 Actors in JS Mode"
   },
   {
     "file": "27-browser-javascript-backend.html",
     "level": 2,
     "id": "",
-    "title": "26.8 Template Mode Syntax"
+    "title": "27.8 Template Mode Syntax"
   },
   {
     "file": "27-browser-javascript-backend.html",
     "level": 2,
     "id": "",
-    "title": "26.9 Game Canvas API"
+    "title": "27.9 Game Canvas API"
   },
   {
     "file": "27-browser-javascript-backend.html",
     "level": 2,
     "id": "three-scene-api",
-    "title": "26.10 three.js Scene API"
+    "title": "27.10 three.js Scene API"
   },
   {
     "file": "27-browser-javascript-backend.html",
     "level": 3,
     "id": "shader-kernels",
-    "title": "26.10.1 Shader kernels (MALDA to GLSL)"
+    "title": "27.10.1 Shader kernels (MALDA to GLSL)"
   },
   {
     "file": "27-browser-javascript-backend.html",
     "level": 2,
     "id": "",
-    "title": "26.11 Common Pitfalls and Guidance"
+    "title": "27.11 Common Pitfalls and Guidance"
   },
   {
     "file": "28-rest-api.html",
@@ -2679,648 +2679,648 @@
     "file": "29-rest-web-client.html",
     "level": 2,
     "id": "",
-    "title": "28.1 RestClient Class"
+    "title": "29.1 RestClient Class"
   },
   {
     "file": "29-rest-web-client.html",
     "level": 2,
     "id": "",
-    "title": "28.2 Static HTTP Functions"
+    "title": "29.2 Static HTTP Functions"
   },
   {
     "file": "29-rest-web-client.html",
     "level": 2,
     "id": "",
-    "title": "28.3 Examples"
+    "title": "29.3 Examples"
   },
   {
     "file": "29-rest-web-client.html",
     "level": 2,
     "id": "",
-    "title": "28.4 Authentication"
+    "title": "29.4 Authentication"
   },
   {
     "file": "29-rest-web-client.html",
     "level": 2,
     "id": "",
-    "title": "28.5 Timeouts"
+    "title": "29.5 Timeouts"
   },
   {
     "file": "29-rest-web-client.html",
     "level": 2,
     "id": "",
-    "title": "28.6 Complete Example"
+    "title": "29.6 Complete Example"
   },
   {
     "file": "30-full-stack-development.html",
     "level": 2,
     "id": "",
-    "title": "29.1 What \"full-stack\" means in MALDA"
+    "title": "30.1 What \"full-stack\" means in MALDA"
   },
   {
     "file": "30-full-stack-development.html",
     "level": 3,
     "id": "",
-    "title": "29.1.1 Runtime boundary: MALDA vs JavaScript"
+    "title": "30.1.1 Runtime boundary: MALDA vs JavaScript"
   },
   {
     "file": "30-full-stack-development.html",
     "level": 3,
     "id": "",
-    "title": "29.1.2 Delivery models"
+    "title": "30.1.2 Delivery models"
   },
   {
     "file": "30-full-stack-development.html",
     "level": 3,
     "id": "",
-    "title": "29.1.3 Single-source target decorators"
+    "title": "30.1.3 Single-source target decorators"
   },
   {
     "file": "30-full-stack-development.html",
     "level": 2,
     "id": "",
-    "title": "29.2 Example scenario: Simple items app"
+    "title": "30.2 Example scenario: Simple items app"
   },
   {
     "file": "30-full-stack-development.html",
     "level": 2,
     "id": "",
-    "title": "29.3 Recommended project structure"
+    "title": "30.3 Recommended project structure"
   },
   {
     "file": "30-full-stack-development.html",
     "level": 2,
     "id": "",
-    "title": "29.4 API layer (Item CRUD + workflow)"
+    "title": "30.4 API layer (Item CRUD + workflow)"
   },
   {
     "file": "30-full-stack-development.html",
     "level": 2,
     "id": "",
-    "title": "29.5 UI layer (what technology to use)"
+    "title": "30.5 UI layer (what technology to use)"
   },
   {
     "file": "30-full-stack-development.html",
     "level": 3,
     "id": "",
-    "title": "29.5.0 MALDA-native component pattern"
+    "title": "30.5.0 MALDA-native component pattern"
   },
   {
     "file": "30-full-stack-development.html",
     "level": 3,
     "id": "",
-    "title": "29.5.1 MALDA server-side page handlers"
+    "title": "30.5.1 MALDA server-side page handlers"
   },
   {
     "file": "30-full-stack-development.html",
     "level": 3,
     "id": "",
-    "title": "29.5.2 Browser-side JavaScript calling MALDA API"
+    "title": "30.5.2 Browser-side JavaScript calling MALDA API"
   },
   {
     "file": "30-full-stack-development.html",
     "level": 3,
     "id": "",
-    "title": "29.5.3 Migration path from @PAGE to components"
+    "title": "30.5.3 Migration path from @PAGE to components"
   },
   {
     "file": "30-full-stack-development.html",
     "level": 3,
     "id": "",
-    "title": "29.5.4 End-to-end UI example"
+    "title": "30.5.4 End-to-end UI example"
   },
   {
     "file": "30-full-stack-development.html",
     "level": 2,
     "id": "",
-    "title": "29.6 Database integration pattern"
+    "title": "30.6 Database integration pattern"
   },
   {
     "file": "30-full-stack-development.html",
     "level": 2,
     "id": "",
-    "title": "29.7 AI triage workflow (optional but powerful)"
+    "title": "30.7 AI triage workflow (optional but powerful)"
   },
   {
     "file": "30-full-stack-development.html",
     "level": 2,
     "id": "",
-    "title": "29.8 End-to-end request flow"
+    "title": "30.8 End-to-end request flow"
   },
   {
     "file": "30-full-stack-development.html",
     "level": 2,
     "id": "",
-    "title": "29.9 Configuration and secrets"
+    "title": "30.9 Configuration and secrets"
   },
   {
     "file": "30-full-stack-development.html",
     "level": 2,
     "id": "",
-    "title": "29.10 Practical checklist for new full-stack apps"
+    "title": "30.10 Practical checklist for new full-stack apps"
   },
   {
     "file": "30-full-stack-development.html",
     "level": 3,
     "id": "",
-    "title": "29.10.1 Testing and troubleshooting (Web UI + API)"
+    "title": "30.10.1 Testing and troubleshooting (Web UI + API)"
   },
   {
     "file": "31-dotnet-interop.html",
     "level": 2,
     "id": "",
-    "title": "30.1 Types already in the runtime"
+    "title": "31.1 Types already in the runtime"
   },
   {
     "file": "31-dotnet-interop.html",
     "level": 2,
     "id": "",
-    "title": "30.2 Loading .NET Assemblies"
+    "title": "31.2 Loading .NET Assemblies"
   },
   {
     "file": "31-dotnet-interop.html",
     "level": 2,
     "id": "",
-    "title": "30.3 Getting .NET Types"
+    "title": "31.3 Getting .NET Types"
   },
   {
     "file": "31-dotnet-interop.html",
     "level": 2,
     "id": "",
-    "title": "30.4 Creating .NET Objects"
+    "title": "31.4 Creating .NET Objects"
   },
   {
     "file": "31-dotnet-interop.html",
     "level": 2,
     "id": "",
-    "title": "30.5 Using .NET Objects"
+    "title": "31.5 Using .NET Objects"
   },
   {
     "file": "31-dotnet-interop.html",
     "level": 2,
     "id": "",
-    "title": "30.6 Using NuGet Packages"
+    "title": "31.6 Using NuGet Packages"
   },
   {
     "file": "31-dotnet-interop.html",
     "level": 2,
     "id": "",
-    "title": "30.7 Complete Example"
+    "title": "31.7 Complete Example"
   },
   {
     "file": "31-dotnet-interop.html",
     "level": 2,
     "id": "",
-    "title": "30.8 Implementation Notes"
+    "title": "31.8 Implementation Notes"
   },
   {
     "file": "31-dotnet-interop.html",
     "level": 2,
     "id": "",
-    "title": "30.9 Use Cases"
+    "title": "31.9 Use Cases"
   },
   {
     "file": "32-device-integration.html",
     "level": 2,
     "id": "",
-    "title": "31.1 Overview"
+    "title": "32.1 Overview"
   },
   {
     "file": "32-device-integration.html",
     "level": 2,
     "id": "",
-    "title": "31.2 Serial Communication"
+    "title": "32.2 Serial Communication"
   },
   {
     "file": "32-device-integration.html",
     "level": 2,
     "id": "",
-    "title": "31.3 HTTP/REST Devices"
+    "title": "32.3 HTTP/REST Devices"
   },
   {
     "file": "32-device-integration.html",
     "level": 2,
     "id": "",
-    "title": "31.4 Arduino Integration"
+    "title": "32.4 Arduino Integration"
   },
   {
     "file": "32-device-integration.html",
     "level": 2,
     "id": "",
-    "title": "31.5 ESP32/ESP8266"
+    "title": "32.5 ESP32/ESP8266"
   },
   {
     "file": "32-device-integration.html",
     "level": 2,
     "id": "",
-    "title": "31.6 Raspberry Pi"
+    "title": "32.6 Raspberry Pi"
   },
   {
     "file": "32-device-integration.html",
     "level": 2,
     "id": "",
-    "title": "31.7 Smart Home Devices"
+    "title": "32.7 Smart Home Devices"
   },
   {
     "file": "32-device-integration.html",
     "level": 2,
     "id": "",
-    "title": "31.8 Multi-Device Coordination"
+    "title": "32.8 Multi-Device Coordination"
   },
   {
     "file": "32-device-integration.html",
     "level": 2,
     "id": "",
-    "title": "31.9 Examples"
+    "title": "32.9 Examples"
   },
   {
     "file": "32-device-integration.html",
     "level": 2,
     "id": "",
-    "title": "31.10 Troubleshooting"
+    "title": "32.10 Troubleshooting"
   },
   {
     "file": "33-personal-assistant.html",
     "level": 2,
     "id": "",
-    "title": "32.1 Quick start"
+    "title": "33.1 Quick start"
   },
   {
     "file": "33-personal-assistant.html",
     "level": 2,
     "id": "",
-    "title": "32.2 Commands"
+    "title": "33.2 Commands"
   },
   {
     "file": "33-personal-assistant.html",
     "level": 3,
     "id": "",
-    "title": "32.2.1 malda agent"
+    "title": "33.2.1 malda agent"
   },
   {
     "file": "33-personal-assistant.html",
     "level": 3,
     "id": "",
-    "title": "32.2.2 malda onboard"
+    "title": "33.2.2 malda onboard"
   },
   {
     "file": "33-personal-assistant.html",
     "level": 3,
     "id": "",
-    "title": "32.2.3 malda status"
+    "title": "33.2.3 malda status"
   },
   {
     "file": "33-personal-assistant.html",
     "level": 3,
     "id": "",
-    "title": "32.2.4 malda gateway"
+    "title": "33.2.4 malda gateway"
   },
   {
     "file": "33-personal-assistant.html",
     "level": 3,
     "id": "",
-    "title": "32.2.5 malda cron"
+    "title": "33.2.5 malda cron"
   },
   {
     "file": "33-personal-assistant.html",
     "level": 2,
     "id": "",
-    "title": "32.3 Config file (~/.malda/config.json)"
+    "title": "33.3 Config file (~/.malda/config.json)"
   },
   {
     "file": "33-personal-assistant.html",
     "level": 3,
     "id": "",
-    "title": "32.3.1 agents.memory schema"
+    "title": "33.3.1 agents.memory schema"
   },
   {
     "file": "33-personal-assistant.html",
     "level": 2,
     "id": "",
-    "title": "32.4 Selecting OpenRouter vs local llama.cpp"
+    "title": "33.4 Selecting OpenRouter vs local llama.cpp"
   },
   {
     "file": "33-personal-assistant.html",
     "level": 2,
     "id": "",
-    "title": "32.5 Default assistant behavior"
+    "title": "33.5 Default assistant behavior"
   },
   {
     "file": "33-personal-assistant.html",
     "level": 2,
     "id": "",
-    "title": "32.6 Scheduling on Windows (Task Scheduler)"
+    "title": "33.6 Scheduling on Windows (Task Scheduler)"
   },
   {
     "file": "33-personal-assistant.html",
     "level": 3,
     "id": "",
-    "title": "32.5.0 Automatic installation (malda cron install)"
+    "title": "33.5.0 Automatic installation (malda cron install)"
   },
   {
     "file": "33-personal-assistant.html",
     "level": 3,
     "id": "",
-    "title": "32.5.1 Add the job in MALDA"
+    "title": "33.5.1 Add the job in MALDA"
   },
   {
     "file": "33-personal-assistant.html",
     "level": 3,
     "id": "",
-    "title": "32.5.2 Find malda.exe"
+    "title": "33.5.2 Find malda.exe"
   },
   {
     "file": "33-personal-assistant.html",
     "level": 3,
     "id": "",
-    "title": "32.5.3 Create the scheduled task (GUI)"
+    "title": "33.5.3 Create the scheduled task (GUI)"
   },
   {
     "file": "33-personal-assistant.html",
     "level": 3,
     "id": "",
-    "title": "32.5.4 Create the scheduled task (command line)"
+    "title": "33.5.4 Create the scheduled task (command line)"
   },
   {
     "file": "33-personal-assistant.html",
     "level": 3,
     "id": "",
-    "title": "32.5.5 Environment and API key"
+    "title": "33.5.5 Environment and API key"
   },
   {
     "file": "33-personal-assistant.html",
     "level": 3,
     "id": "",
-    "title": "32.5.6 Mapping cron expressions to Task Scheduler"
+    "title": "33.5.6 Mapping cron expressions to Task Scheduler"
   },
   {
     "file": "33-personal-assistant.html",
     "level": 2,
     "id": "skills",
-    "title": "32.7 Skills"
+    "title": "33.7 Skills"
   },
   {
     "file": "33-personal-assistant.html",
     "level": 2,
     "id": "",
-    "title": "32.8 Channels / Telegram"
+    "title": "33.8 Channels / Telegram"
   },
   {
     "file": "34-examples.html",
     "level": 2,
     "id": "",
-    "title": "33.0 First Look"
+    "title": "34.0 First Look"
   },
   {
     "file": "34-examples.html",
     "level": 2,
     "id": "",
-    "title": "33.1 Hello World"
+    "title": "34.1 Hello World"
   },
   {
     "file": "34-examples.html",
     "level": 2,
     "id": "",
-    "title": "33.2 Simple Class Example"
+    "title": "34.2 Simple Class Example"
   },
   {
     "file": "34-examples.html",
     "level": 2,
     "id": "",
-    "title": "33.3 Inheritance Example"
+    "title": "34.3 Inheritance Example"
   },
   {
     "file": "34-examples.html",
     "level": 2,
     "id": "",
-    "title": "33.4 Factorial Function"
+    "title": "34.4 Factorial Function"
   },
   {
     "file": "34-examples.html",
     "level": 2,
     "id": "",
-    "title": "33.5 Calculator Class"
+    "title": "34.5 Calculator Class"
   },
   {
     "file": "34-examples.html",
     "level": 2,
     "id": "",
-    "title": "33.6 FizzBuzz"
+    "title": "34.6 FizzBuzz"
   },
   {
     "file": "34-examples.html",
     "level": 2,
     "id": "",
-    "title": "33.7 Array Manipulation"
+    "title": "34.7 Array Manipulation"
   },
   {
     "file": "34-examples.html",
     "level": 2,
     "id": "",
-    "title": "33.8 Input/Output Example"
+    "title": "34.8 Input/Output Example"
   },
   {
     "file": "34-examples.html",
     "level": 2,
     "id": "",
-    "title": "33.9 Simple Agent Example"
+    "title": "34.9 Simple Agent Example"
   },
   {
     "file": "34-examples.html",
     "level": 2,
     "id": "",
-    "title": "33.10 Test Command Output Modes"
+    "title": "34.10 Test Command Output Modes"
   },
   {
     "file": "34-examples.html",
     "level": 2,
     "id": "",
-    "title": "33.11 Scaffolding Starters"
+    "title": "34.11 Scaffolding Starters"
   },
   {
     "file": "34-examples.html",
     "level": 2,
     "id": "",
-    "title": "33.12 JavaScript Backend (API mode)"
+    "title": "34.12 JavaScript Backend (API mode)"
   },
   {
     "file": "34-examples.html",
     "level": 2,
     "id": "",
-    "title": "33.13 JavaScript Backend (template mode)"
+    "title": "34.13 JavaScript Backend (template mode)"
   },
   {
     "file": "34-examples.html",
     "level": 2,
     "id": "",
-    "title": "33.14 JavaScript Backend (game canvas API)"
-  },
-  {
-    "file": "34-examples.html",
-    "level": 3,
-    "id": "",
-    "title": "33.14.1 Game Audio (v1 quick sample)"
+    "title": "34.14 JavaScript Backend (game canvas API)"
   },
   {
     "file": "34-examples.html",
     "level": 3,
     "id": "",
-    "title": "33.14.2 Pixel buffer blit"
-  },
-  {
-    "file": "34-examples.html",
-    "level": 2,
-    "id": "",
-    "title": "33.15 JavaScript Backend (three.js scene API)"
+    "title": "34.14.1 Game Audio (v1 quick sample)"
   },
   {
     "file": "34-examples.html",
     "level": 3,
     "id": "",
-    "title": "33.15.1 Shader materials"
+    "title": "34.14.2 Pixel buffer blit"
   },
   {
     "file": "34-examples.html",
     "level": 2,
     "id": "",
-    "title": "33.16 Property Testing Quick Example"
+    "title": "34.15 JavaScript Backend (three.js scene API)"
+  },
+  {
+    "file": "34-examples.html",
+    "level": 3,
+    "id": "",
+    "title": "34.15.1 Shader materials"
   },
   {
     "file": "34-examples.html",
     "level": 2,
     "id": "",
-    "title": "33.17 AI Pipeline (RAG)"
+    "title": "34.16 Property Testing Quick Example"
   },
   {
     "file": "34-examples.html",
     "level": 2,
     "id": "",
-    "title": "33.18 Server-driven UI (ui.*)"
+    "title": "34.17 AI Pipeline (RAG)"
+  },
+  {
+    "file": "34-examples.html",
+    "level": 2,
+    "id": "",
+    "title": "34.18 Server-driven UI (ui.*)"
   },
   {
     "file": "35-property-testing.html",
     "level": 2,
     "id": "",
-    "title": "34.1 A property that passes"
+    "title": "35.1 A property that passes"
   },
   {
     "file": "35-property-testing.html",
     "level": 2,
     "id": "",
-    "title": "34.2 How arguments are generated"
+    "title": "35.2 How arguments are generated"
   },
   {
     "file": "35-property-testing.html",
     "level": 2,
     "id": "",
-    "title": "34.3 A property that fails, shrinking, and regressions"
+    "title": "35.3 A property that fails, shrinking, and regressions"
   },
   {
     "file": "35-property-testing.html",
     "level": 2,
     "id": "",
-    "title": "34.4 Capability model"
+    "title": "35.4 Capability model"
   },
   {
     "file": "35-property-testing.html",
     "level": 2,
     "id": "",
-    "title": "34.5 JavaScript limitations and skip semantics"
+    "title": "35.5 JavaScript limitations and skip semantics"
   },
   {
     "file": "36-grammar.html",
     "level": 2,
     "id": "",
-    "title": "35.1 Program"
+    "title": "36.1 Program"
   },
   {
     "file": "36-grammar.html",
     "level": 2,
     "id": "",
-    "title": "35.2 Top-level declarations"
+    "title": "36.2 Top-level declarations"
   },
   {
     "file": "36-grammar.html",
     "level": 2,
     "id": "",
-    "title": "35.3 Statements"
+    "title": "36.3 Statements"
   },
   {
     "file": "36-grammar.html",
     "level": 2,
     "id": "",
-    "title": "35.4 Expressions (precedence)"
+    "title": "36.4 Expressions (precedence)"
   },
   {
     "file": "36-grammar.html",
     "level": 2,
     "id": "",
-    "title": "35.5 Patterns"
+    "title": "36.5 Patterns"
   },
   {
     "file": "36-grammar.html",
     "level": 2,
     "id": "",
-    "title": "35.6 Lexical and tokens"
+    "title": "36.6 Lexical and tokens"
   },
   {
     "file": "37-appendix.html",
     "level": 2,
     "id": "",
-    "title": "36.1 Appendix A: Reserved Words"
+    "title": "37.1 Appendix A: Reserved Words"
   },
   {
     "file": "37-appendix.html",
     "level": 2,
     "id": "",
-    "title": "36.2 Appendix B: Operator Precedence"
+    "title": "37.2 Appendix B: Operator Precedence"
   },
   {
     "file": "37-appendix.html",
     "level": 2,
     "id": "",
-    "title": "36.3 Appendix C: Object-Oriented Concepts Summary"
+    "title": "37.3 Appendix C: Object-Oriented Concepts Summary"
   },
   {
     "file": "37-appendix.html",
     "level": 2,
     "id": "",
-    "title": "36.4 Appendix D: Command-line reference"
+    "title": "37.4 Appendix D: Command-line reference"
   },
   {
     "file": "37-appendix.html",
     "level": 2,
     "id": "",
-    "title": "36.5 Appendix E: Deploy and observability contract baseline"
+    "title": "37.5 Appendix E: Deploy and observability contract baseline"
   },
   {
     "file": "37-appendix.html",
     "level": 2,
     "id": "",
-    "title": "36.6 Appendix F: Profiling MALDA programs"
+    "title": "37.6 Appendix F: Profiling MALDA programs"
   },
   {
     "file": "37-appendix.html",
     "level": 2,
     "id": "optional-packs",
-    "title": "36.7 Appendix G: Optional packs"
+    "title": "37.7 Appendix G: Optional packs"
   },
   {
     "file": "38-appendix-gpu-billiards.html",
     "level": 2,
     "id": "",
-    "title": "37.1 Playable table"
+    "title": "38.1 Playable table"
   },
   {
     "file": "38-appendix-gpu-billiards.html",
     "level": 2,
     "id": "",
-    "title": "37.2 Controls"
+    "title": "38.2 Controls"
   },
   {
     "file": "38-appendix-gpu-billiards.html",
     "level": 2,
     "id": "",
-    "title": "37.3 Rebuild the committed script"
+    "title": "38.3 Rebuild the committed script"
   }
 ]

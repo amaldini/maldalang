@@ -21,7 +21,7 @@
         <div class="info-box">
             <strong>Scope:</strong> the productions below cover top-level declarations, control flow, exceptions, resource cleanup, actors, workflows, sum types, schemas, closed <code>api</code> declarations, <code>async</code>/<code>await</code>, pipes, comprehensions, <code>dict</code>/<code>graph</code>/object literals, variant patterns, and <code>send</code>/<code>spawn</code>/<code>receive</code>. Narrative examples stay in the topic chapters (for example <a href="22-durable-workflows.html">Durable Workflows</a> and <a href="17-actors.html">Actors</a>). If the grammar and the parser disagree, the parser wins until a spec amendment.
         </div>
-        <h2>35.1 Program</h2>
+        <h2>36.1 Program</h2>
         <pre><code>Program     ::= TopLevelItem*
 TopLevelItem::= IncludeStmt | UsingStmt | ImportStmt
               | WorkflowDecl | ActorDecl | ClassDecl | PromptDecl | TypeDecl | ComponentDecl
@@ -40,7 +40,7 @@ ExportableDecl ::= "export"? ( FunctionDecl | ClassDecl | TypeDecl | SchemaDecl
                 | "var" Identifier TypeHint? "=" Expression ";" )
 QualifiedName ::= Identifier ("." Identifier)*</code></pre>
         <p><code>function</code> and decorated declarations are parsed at <strong>top level</strong> (and inside blocks via <code>Declaration()</code>). They are not valid as nested <code>Statement</code> forms inside ordinary blocks. <code>fn</code> and <code>def</code> are not productions.</p>
-        <h2>35.2 Top-level declarations</h2>
+        <h2>36.2 Top-level declarations</h2>
         <pre><code>FunctionDecl  ::= "function" Identifier "(" ParamList? ")" ReturnType?
                   ( Block | Expression ";" )
 DecoratedFunctionDecl ::= Decorator+ FunctionDecl
@@ -112,7 +112,7 @@ ParamList     ::= Param ("," Param)*
 Param         ::= Decorator* Identifier TypeHint?
 CallExpr      ::= Expression PostfixSuffix*   /* see §34.4 */</code></pre>
         <p>Property declarations can include decorators such as <code>@requires(...)</code> and <code>@targets(...)</code> for backend capability hints.</p>
-        <h2>35.3 Statements</h2>
+        <h2>36.3 Statements</h2>
         <pre><code>Statement   ::= VarDecl | DestructuringVarDecl
               | Assignment | DestructuringAssignment
               | IfStmt | WhileStmt | ForStmt | ForAwaitStmt | ForeachStmt
@@ -164,7 +164,7 @@ ExpressionStmt ::= Expression ";"
 
 Block       ::= "{" (TopLevelItem | Statement)* "}"</code></pre>
         <p>A bare <code>match { ... }</code> expression may appear as a statement without a trailing semicolon after <code>}</code>.</p>
-        <h2>35.4 Expressions (precedence)</h2>
+        <h2>36.4 Expressions (precedence)</h2>
         <p>Lowest to highest: assignment, pipe <code>|&gt;</code>, ternary <code>? :</code>, null coalescing <code>??</code>, <code>match</code> expression, <code>or</code>/<code>||</code>, <code>and</code>/<code>&amp;&amp;</code>, equality, comparison, additive, multiplicative, unary (<code>await</code>, <code>async</code>, <code>not</code>/<code>!</code>, <code>-</code>, <code>++</code>/<code>--</code>), postfix (<code>()</code>, <code>[]</code>, <code>.</code>, <code>?.</code>, <code>?[]</code>, <code>++</code>/<code>--</code>). The full table is in <a href="37-appendix.html">Appendix B</a>.</p>
         <pre><code>Expression  ::= AssignExpr
 AssignExpr  ::= Pipe (AssignOp Expression)?
@@ -213,7 +213,7 @@ ObjectLiteral ::= "{" (ObjectEntry ("," ObjectEntry)*)? "}"
 ObjectEntry  ::= (StringLiteral | Identifier) ":" Expression
 
 InterpolatedString ::= '$"' … '"' | '$"""' … '"""'</code></pre>
-        <h2>35.5 Patterns</h2>
+        <h2>36.5 Patterns</h2>
         <pre><code>Pattern     ::= LiteralPattern | IdentifierPattern | WildcardPattern
               | VariantPattern | ArrayPattern | ObjectPattern
 LiteralPattern ::= Integer | Float | StringLiteral | Boolean | "null"
@@ -228,7 +228,7 @@ ObjectPattern ::= "{" ObjectPatternEntry ("," ObjectPatternEntry)* "}"
 ObjectPatternEntry ::= (Identifier | StringLiteral) (":" Pattern)?
 
 DestructuringPattern ::= ArrayPattern | ObjectPattern</code></pre>
-        <h2>35.6 Lexical and tokens</h2>
+        <h2>36.6 Lexical and tokens</h2>
         <p>Keywords, operators, comments, strings, and numeric literals are defined in <a href="03-lexical-structure.html">Lexical Structure</a>. <code>fn</code> and <code>def</code> are not keywords. Both <code>=&gt;</code> and <code>-&gt;</code> produce the same <code>Arrow</code> token (lambda bodies and return types).</p>
         <pre><code>Identifier  ::= [A-Za-z_][A-Za-z0-9_]*
 ArgList     ::= Expression ("," Expression)*</code></pre>

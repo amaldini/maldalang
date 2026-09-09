@@ -17,7 +17,7 @@
     <main>
         <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>37. Appendix</span></div>
         <h1>37. Appendix</h1>
-        <h2>36.1 Appendix A: Reserved Words</h2>
+        <h2>37.1 Appendix A: Reserved Words</h2>
         <p>Keywords are defined in <code>MaldaLang/Lexer.cs</code>. <code>fn</code> and <code>def</code> are not reserved; the parser rejects them as function keywords. <code>reply</code> is a <strong>built-in function</strong>, not a reserved word. <code>suite</code>, <code>context</code>, <code>policy</code>, and <code>within</code> are contextual (not listed here) so <code>var context = 1;</code> stays valid — see <a href="23-agentic-runs.html">23.1</a>.</p>
         <pre><code><a href="08-control-structures.html">if</a>, <a href="08-control-structures.html">else</a>, <a href="08-control-structures.html">while</a>, <a href="08-control-structures.html">for</a>, <a href="08-control-structures.html">foreach</a>, <a href="09-functions.html">function</a>, <a href="09-functions.html">return</a>, <a href="05-variables.html">var</a>, <a href="05-variables.html">const</a>, <a href="12-input-output.html">print</a>, <a href="12-input-output.html">input</a>,
 <a href="04-data-types.html">true</a>, <a href="04-data-types.html">false</a>, <a href="07-expressions.html">and</a>, <a href="07-expressions.html">or</a>, <a href="07-expressions.html">not</a>, <a href="08-control-structures.html">break</a>, <a href="08-control-structures.html">continue</a>, <a href="08-control-structures.html">try</a>, <a href="08-control-structures.html">catch</a>, <a href="08-control-structures.html">finally</a>, <a href="08-control-structures.html">throw</a>,
@@ -29,7 +29,7 @@
 <a href="25-web-ui.html">component</a>, <a href="25-web-ui.html">property</a>,
 <a href="07-expressions.html">dict</a>, <a href="14-graphs.html">graph</a>, <a href="14-graphs.html">directed</a>, <a href="14-graphs.html">undirected</a>, <a href="08-control-structures.html">in</a>,
 <a href="01-introduction.html">using</a>, <a href="01-introduction.html">include</a>, <a href="01-introduction.html">import</a>, <a href="01-introduction.html">export</a></code></pre>
-        <h2>36.2 Appendix B: Operator Precedence</h2>
+        <h2>37.2 Appendix B: Operator Precedence</h2>
         <p>The table below mirrors the descent order of the reference parser (<code>MaldaLang/Parser/Parser.cs</code>), from <strong>highest</strong> precedence (binds tightest) to <strong>lowest</strong>.</p>
         <table>
             <thead>
@@ -55,7 +55,7 @@
         <div class="info-box">
             <strong>Two consequences worth remembering:</strong> <code>|&gt;</code> binds <em>looser</em> than the ternary conditional, so <code>a ? b : c |&gt; f</code> pipes the whole conditional into <code>f</code>. And <code>await</code> is a unary prefix operator, so <code>await a.b()</code> awaits the result of the call, while <code>(await a).b()</code> needs explicit parentheses.
         </div>
-        <h2>36.3 Appendix C: Object-Oriented Concepts Summary</h2>
+        <h2>37.3 Appendix C: Object-Oriented Concepts Summary</h2>
         <h3>Classes</h3>
         <ul>
             <li>Blueprint for creating objects</li>
@@ -103,8 +103,8 @@
                 <li><a href="11-classes-objects.html">11. Classes & Objects</a> - OOP features</li>
             </ul>
         </div>
-        <h2>36.4 Appendix D: Command-line reference</h2>
-        <p>Summary of <code>malda</code> CLI commands. See <a href="33-personal-assistant.html">32. Personal Assistant and CLI</a> for details on the assistant, config, and cron.</p>
+        <h2>37.4 Appendix D: Command-line reference</h2>
+        <p>Summary of <code>malda</code> CLI commands. See <a href="33-personal-assistant.html">33. Personal Assistant and CLI</a> for details on the assistant, config, and cron.</p>
         <table>
             <tr><th>Command</th><th>Description</th></tr>
             <tr><td><code>malda &lt;file.malda&gt;</code></td><td>Run a MALDA file</td></tr>
@@ -126,7 +126,7 @@
             <tr><td><code>malda install / uninstall / list[--workspace] / search / init</code></td><td>Packages: local path or workspace first; remote search/install needs <code>MALDA_REGISTRY_URL</code></td></tr>
             <tr><td><code>malda trace summary|show|replay &lt;file&gt;</code></td><td>Trace inspection and replay</td></tr>
         </table>
-        <h2>36.5 Appendix E: Deploy and observability contract baseline</h2>
+        <h2>37.5 Appendix E: Deploy and observability contract baseline</h2>
         <p>The <code>malda deploy</code> command in this baseline validates configuration contracts and exits without starting deployment orchestration.</p>
         <p>Default input contracts:</p>
         <ul>
@@ -140,7 +140,7 @@
             <li>Structured logging baseline uses JSON format and includes core fields (timestamp, level, message, environment/profile, optional correlation).</li>
             <li>Metrics endpoint wiring is present and consistent across profile and observability contracts.</li>
         </ul>
-        <h2>36.6 Appendix F: Profiling MALDA programs</h2>
+        <h2>37.6 Appendix F: Profiling MALDA programs</h2>
         <p>MALDA includes a built-in profiler for performance investigations. It can profile interpreted runs and transpiled executables and reports hotspots in terms of MALDA built-ins, functions, and statement locations.</p>
         <p>Supported CLI flags:</p>
         <ul>
@@ -162,7 +162,7 @@ malda compile my-script.malda --mode transpile -o my-script.exe --profile --prof
             <li><code>Statements</code> - aggregated statement timing by MALDA source location</li>
         </ul>
         <p>Each report entry includes call count, total time, average time, and self time. Expression-level profiling is intentionally not included in this first version to keep overhead practical.</p>
-        <h2 id="optional-packs">36.7 Appendix G: Optional packs</h2>
+        <h2 id="optional-packs">37.7 Appendix G: Optional packs</h2>
         <p>Core MALDA keeps domain-specific packs out of the public core. The compiler still has string-only emit hooks for optional packs so separately distributed assemblies can plug in without becoming ProjectReferences of the core.</p>
         <p>Vertical packs are not included in this open-source repository. If you maintain such a pack, load it with <code>loadNativeModule(...)</code> and ship the DLLs beside your app; core does not auto-register pack globals.</p>
         <div class="nav-footer">

@@ -22,11 +22,11 @@
         <p>MALDA offre più modi per costruire interfacce utente. I modelli sotto condividono concetti HTTP e di routing, ma puntano a runtime e stili di consegna diversi. Parti da qui prima di entrare in un capitolo specifico. Preferisci <strong>un modello per superficie</strong> (IDE <code>UI1002</code> quando un file mescola <code>@PAGE</code>/<code>@AIPAGE</code> con <code>ui.mount</code>/<code>ui.render</code>).</p>
 
         <div class="info-box">
-            <strong>Contesto full-stack:</strong> Per come UI, API, database e agenti stanno insieme, vedi <a href="30-full-stack-development.html">29. Sviluppo full-stack con MALDA</a>.
+            <strong>Contesto full-stack:</strong> Per come UI, API, database e agenti stanno insieme, vedi <a href="30-full-stack-development.html">30. Sviluppo full-stack con MALDA</a>.
             Per gli interni di runtime/host della UI guidata dal server (protocollo patch, <code>UIHost</code>), vedi <a href="../../docs/ui-framework.md"><code>docs/ui-framework.md</code></a>.
         </div>
 
-        <h2>23.1 Scegli il modello UI</h2>
+        <h2>24.1 Scegli il modello UI</h2>
 
         <table>
             <tr>
@@ -39,29 +39,29 @@
                 <td><strong>Componenti a frammenti HTML</strong></td>
                 <td>Pagine di form e liste che restituiscono stringhe HTML, con aggiornamenti mirati dei fragment e SSE opzionale</td>
                 <td><code>component</code>, <code>@ACTION</code>, <code>@LIVE</code>, <code>componentFragment</code>, <code>componentState*</code></td>
-                <td><a href="25-web-ui.html">25. Componenti server Web UI</a> (§ 24.2)</td>
+                <td><a href="25-web-ui.html">25. Componenti server Web UI</a> (§ 25.2)</td>
             </tr>
             <tr>
                 <td><strong>Alberi <code>ui.*</code> guidati dal server</strong></td>
                 <td>UI a patch incrementali ospitata da UIHost; i controlli sono alberi di nodi, non stringhe HTML</td>
                 <td><code>ui.button(props, …)</code>, <code>ui.mount</code> / <code>ui.render</code>, <code>ui.state</code></td>
-                <td><a href="25-web-ui.html">25. Componenti server Web UI</a> (§ 24.3)</td>
+                <td><a href="25-web-ui.html">25. Componenti server Web UI</a> (§ 25.3)</td>
             </tr>
             <tr>
                 <td><strong>Pagine HttpServer</strong></td>
                 <td>App route-first che restituiscono documenti HTML completi, pagine generate dall'AI o siti classici renderizzati sul server</td>
                 <td><code>HttpServer</code>, <code>@PAGE</code>, <code>@AIPAGE</code>, <code>HTMLCache</code>, <code>generateUI()</code></td>
-                <td><a href="26-http-server-html-ui.html">25. HttpServer e generazione UI HTML</a></td>
+                <td><a href="26-http-server-html-ui.html">26. HttpServer e generazione UI HTML</a></td>
             </tr>
             <tr>
                 <td><strong>JavaScript nel browser</strong></td>
                 <td>UI che gira nel browser da MALDA transpile in JavaScript (giochi, app DOM, frontend ibridi)</td>
                 <td><code>dom.*</code>, template mode, <code>@client()</code>, API canvas/game</td>
-                <td><a href="27-browser-javascript-backend.html">26. Backend UI JavaScript nel browser</a></td>
+                <td><a href="27-browser-javascript-backend.html">27. Backend UI JavaScript nel browser</a></td>
             </tr>
         </table>
 
-        <h2>23.2 Guida alla scelta</h2>
+        <h2>24.2 Guida alla scelta</h2>
 
         <h3>Scegli i componenti a frammenti HTML quando…</h3>
         <ul>
@@ -91,7 +91,7 @@
             <li>Ti serve lo split <code>@client()</code> / <code>@shared()</code> da un unico file sorgente <code>.malda</code>.</li>
         </ul>
 
-        <h2>23.3 Come si relazionano i modelli</h2>
+        <h2>24.3 Come si relazionano i modelli</h2>
 
         <pre><code>                    ┌─────────────────────────────────────┐
                     │         MALDA Web UI choices          │
@@ -108,9 +108,9 @@
                               HTTP / REST API layer
                          (see REST API + REST Web Client)</code></pre>
 
-        <p>Puoi combinare i modelli in un unico prodotto quando i confini sono espliciti: per esempio <code>@PAGE</code> per le route di marketing, uno shell di app <code>ui.*</code> e un bundle JS nel browser per un widget interattivo. Vedi <a href="28-rest-api.html">27. Server REST API</a> per gli endpoint JSON che qualsiasi modello UI può chiamare.</p>
+        <p>Puoi combinare i modelli in un unico prodotto quando i confini sono espliciti: per esempio <code>@PAGE</code> per le route di marketing, uno shell di app <code>ui.*</code> e un bundle JS nel browser per un widget interattivo. Vedi <a href="28-rest-api.html">28. Server REST API</a> per gli endpoint JSON che qualsiasi modello UI può chiamare.</p>
 
-        <h2>23.4 Promemoria sul confine di runtime</h2>
+        <h2>24.4 Promemoria sul confine di runtime</h2>
         <ul>
             <li><strong>Server (interprete o .exe transpile):</strong> <code>HttpServer</code>, client database, agenti, componenti server, <code>@PAGE</code>.</li>
             <li><strong>Browser (transpile JS):</strong> helper DOM, API canvas/game, actor locali — niente SQL diretto né filesystem del server dal codice nel browser.</li>
@@ -122,9 +122,9 @@
             <h3>Vedi anche</h3>
             <ul>
                 <li><a href="25-web-ui.html">25. Componenti server Web UI</a> - Frammenti HTML e alberi <code>ui.*</code></li>
-                <li><a href="26-http-server-html-ui.html">25. HttpServer e generazione UI HTML</a> - @PAGE, @AIPAGE, cache HTML</li>
-                <li><a href="27-browser-javascript-backend.html">26. Backend UI JavaScript nel browser</a> - Transpile JS e dom.*</li>
-                <li><a href="30-full-stack-development.html">29. Sviluppo full-stack con MALDA</a> - Architettura end-to-end</li>
+                <li><a href="26-http-server-html-ui.html">26. HttpServer e generazione UI HTML</a> - @PAGE, @AIPAGE, cache HTML</li>
+                <li><a href="27-browser-javascript-backend.html">27. Backend UI JavaScript nel browser</a> - Transpile JS e dom.*</li>
+                <li><a href="30-full-stack-development.html">30. Sviluppo full-stack con MALDA</a> - Architettura end-to-end</li>
             </ul>
         </div>
 

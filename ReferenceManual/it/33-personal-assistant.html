@@ -20,7 +20,7 @@
         <h1>33. Assistente personale e CLI</h1>
         <p>MALDA fornisce un assistente personale built-in e un insieme di comandi CLI per configurazione, attività pianificate e stato. Queste funzionalità usano una directory di config standard <code>~/.malda</code> e un file di config opzionale, così puoi eseguire un assistente AI dalla riga di comando senza scrivere uno script.</p>
 
-        <h2>32.1 Avvio rapido</h2>
+        <h2>33.1 Avvio rapido</h2>
         <ol>
             <li>Esegui <code>malda onboard</code> (oppure <code>malda onboard --download-rerank --download-local-llama</code>) per creare <code>~/.malda</code>, <code>skills/</code>, <code>memory/</code> e un <code>config.json</code> iniziale con <code>agents.memory</code>, <code>channels.telegram</code> e i placeholder dei provider.</li>
             <li>Imposta <code>OPENROUTER_API_KEY</code> oppure aggiungi <code>providers.openrouter.apiKey</code> in <code>~/.malda/config.json</code>.</li>
@@ -28,8 +28,8 @@
             <li>Esegui <code>malda agent</code> per la chat interattiva, oppure <code>malda agent -m "Your question"</code> per una risposta one-shot.</li>
         </ol>
 
-        <h2>32.2 Comandi</h2>
-        <h3>32.2.1 malda agent</h3>
+        <h2>33.2 Comandi</h2>
+        <h3>33.2.1 malda agent</h3>
         <p>Esegue lo script dell'assistente di default in modalità interattiva o one-shot.</p>
         <ul>
             <li><code>malda agent</code> — Avvia un loop interattivo: chiede con <code>You: </code>, legge il messaggio, chiama l'agente e stampa la risposta. Digita <code>exit</code> o <code>quit</code> (oppure una riga vuota) per uscire.</li>
@@ -43,7 +43,7 @@
         </ol>
         <p>Se non viene trovato nessuno script, la CLI stampa un errore ed esce.</p>
 
-        <h3>32.2.2 malda onboard</h3>
+        <h3>33.2.2 malda onboard</h3>
         <p>Inizializza la directory di config MALDA e una config iniziale guidata.</p>
         <ul>
             <li>Crea <code>~/.malda</code>, <code>~/.malda/skills/</code> e <code>~/.malda/memory/</code> se non esistono.</li>
@@ -53,7 +53,7 @@
         </ul>
         <p>Eseguilo una volta prima di usare l'assistente, il gateway o cron. Il comando stampa i passi successivi (API key, Telegram, rerank ONNX, <code>malda doctor</code>).</p>
 
-        <h3>32.2.3 malda status</h3>
+        <h3>33.2.3 malda status</h3>
         <p>Stampa il setup corrente dell'assistente e lo stato di salute del runtime. Usa <code>malda status --json</code> per un output machine-readable (config, canali, skill, gateway, memoria, job cron).</p>
         <ul>
             <li>Home MALDA e path della config; se esiste <code>~/.malda/config.json</code>.</li>
@@ -65,7 +65,7 @@
             <li>Job cron da <code>~/.malda/cron.json</code> (id, name, scope, message, espressione cron).</li>
         </ul>
 
-        <h3>32.2.4 malda gateway</h3>
+        <h3>33.2.4 malda gateway</h3>
         <p>Processo di lunga durata per Telegram e, in opzione, lo scheduling cron in-process.</p>
         <ul>
             <li><code>malda gateway</code> — Avvia il long polling Telegram con lo script dell'assistente di default. Scrive <code>~/.malda/gateway.pid</code> e rifiuta di avviarsi se un altro gateway è già in esecuzione.</li>
@@ -76,7 +76,7 @@
         <p>Il gateway esegue lo stesso <code>assistant.malda</code> di <code>malda agent -c telegram</code>, ma inoltre interroga <code>~/.malda/cron.json</code> ogni minuto e avvia <code>malda agent -m "..."</code> per i job in scadenza (con scope di memoria per job). Richiede un token del bot Telegram in config o in <code>TELEGRAM_BOT_TOKEN</code>.</p>
         <p>Alert del gateway: imposta <code>channels.telegram.notifyChatId</code> (oppure <code>MALDA_GATEWAY_NOTIFY_CHAT_ID</code>) per ricevere messaggi Telegram su fallimenti cron, crash del gateway e riavvii dopo un crash. Gli eventi vengono anche accodati in <code>~/.malda/gateway-alerts.log</code>. <code>malda doctor</code> riporta lo stato del gateway e i crash precedenti tramite <code>~/.malda/gateway-crash.json</code>.</p>
 
-        <h3>32.2.5 malda cron</h3>
+        <h3>33.2.5 malda cron</h3>
         <p>Gestisce i job pianificati memorizzati in <code>~/.malda/cron.json</code>. I job possono girare tramite lo scheduler del gateway, <code>malda cron install</code> (Windows Task Scheduler) o il cron di sistema.</p>
         <ul>
             <li><code>malda cron add --name &lt;name&gt; --message &lt;message&gt; --cron &lt;cron-expr&gt; [--scope &lt;scope&gt;]</code> — Aggiunge un job. Lo scope di default è <code>cron:&lt;name&gt;</code>, così i turni pianificati usano fatti GraphMemory isolati.</li>
@@ -85,7 +85,7 @@
             <li><code>malda cron install</code> — Su Windows, sincronizza i job con Task Scheduler con <code>MALDA_MEMORY_SCOPE</code> impostato per job.</li>
         </ul>
 
-        <h2>32.3 File di config (~/.malda/config.json)</h2>
+        <h2>33.3 File di config (~/.malda/config.json)</h2>
         <p>Opzionale. L'assistente e alcuni built-in leggono la config prima dalla directory corrente (<code>./.malda/config.json</code>), poi dalla directory utente (<code>~/.malda/config.json</code>).</p>
         <p>Struttura minima (solo OpenRouter):</p>
         <pre><code>{
@@ -100,7 +100,7 @@
         </ul>
         <p>Negli script MALDA, usa <code>getMaldaConfig()</code> per leggere questa config come oggetto (oppure <code>null</code> se il file manca). Vedi <a href="13-built-in-functions.html">Funzioni built-in</a> per <code>getMaldaHome()</code> e <code>getMaldaConfig()</code>.</p>
 
-        <h3>32.3.1 Schema agents.memory</h3>
+        <h3>33.3.1 Schema agents.memory</h3>
         <p>L'assistente legge <code>agents.memory</code> per il comportamento di GraphMemory (embedding, reflection, indicizzazione KB e retention).</p>
         <pre><code>{
   "agents": {
@@ -136,7 +136,7 @@
             <li><code>MALDA_MEMORY_REFLECT=1</code> forza la modalità reflection; <code>MALDA_MEMORY_REFLECT_MIN_CONFIDENCE</code> sovrascrive <code>reflectMinConfidence</code>.</li>
         </ul>
 
-        <h2>32.4 Scegliere OpenRouter vs llama.cpp locale</h2>
+        <h2>33.4 Scegliere OpenRouter vs llama.cpp locale</h2>
         <p>L'assistente di default può usare OpenRouter (remoto) oppure un modello locale basato su <code>llama.cpp</code>. Il backend è controllato da <code>agents.defaults.backend</code> in <code>config.json</code> e può essere sovrascritto per esecuzione con <code>MALDA_AGENT_BACKEND</code> o un flag CLI.</p>
         <p>Struttura estesa:</p>
         <pre><code>{
@@ -170,7 +170,7 @@
             <li><code>MALDA_AGENT_BACKEND</code> — Variabile d'ambiente che sovrascrive <code>agents.defaults.backend</code> per il processo corrente (es. <code>MALDA_AGENT_BACKEND=local-llama</code>).</li>
         </ul>
 
-        <h2>32.5 Comportamento dell'assistente di default</h2>
+        <h2>33.5 Comportamento dell'assistente di default</h2>
         <p>Lo script dell'assistente di default (es. <code>Examples/Assistant/assistant.malda</code>) fa quanto segue:</p>
         <ul>
             <li>Legge API key e modello di default da <code>getMaldaConfig()</code> o da <code>OPENROUTER_API_KEY</code>.</li>
@@ -189,10 +189,10 @@
         </ul>
         <p>Puoi sovrascrivere lo script impostando <code>MALDA_AGENT_SCRIPT</code> sul path del tuo file <code>.malda</code> oppure mettendo <code>assistant.malda</code> in <code>~/.malda/</code>.</p>
 
-        <h2>32.6 Scheduling su Windows (Task Scheduler)</h2>
+        <h2>33.6 Scheduling su Windows (Task Scheduler)</h2>
         <p><code>malda cron add/list/remove</code> memorizzano le definizioni dei job in <code>%USERPROFILE%\.malda\cron.json</code>. MALDA non li esegue da solo, ma su Windows puoi usare <code>malda cron install</code> per creare le attività automaticamente, oppure configurare <strong>Task Scheduler</strong> a mano.</p>
 
-        <h3>32.5.0 Installazione automatica (malda cron install)</h3>
+        <h3>33.5.0 Installazione automatica (malda cron install)</h3>
         <p>Per sincronizzare tutti i job da <code>%USERPROFILE%\.malda\cron.json</code> in Windows Task Scheduler, esegui:</p>
         <pre><code>malda cron install</code></pre>
         <p>Questo comando:</p>
@@ -210,19 +210,19 @@
         </table>
         <p>Lo scheduler in-process di <code>malda gateway</code> supporta anche intervalli di minuti <code>*/N</code>, ore separate da virgola (<code>0 9,18 * * *</code>), mensile (<code>0 9 1 * *</code>) ed espressioni multi-giorno (<code>0 9 * * 1,3,5</code>).</p>
 
-        <h3>32.5.1 Aggiungere il job in MALDA</h3>
+        <h3>33.5.1 Aggiungere il job in MALDA</h3>
         <p>Registra il messaggio e la pianificazione così da poter riusare il messaggio quando crei l'attività:</p>
         <pre><code>malda cron add --name "daily" --message "Good morning! What's on my calendar today?" --cron "0 9 * * *"</code></pre>
         <p>Annota l'id del job e il messaggio esatto; userai lo stesso messaggio nell'attività pianificata.</p>
 
-        <h3>32.5.2 Trovare malda.exe</h3>
+        <h3>33.5.2 Trovare malda.exe</h3>
         <p>Task Scheduler ha bisogno del path completo dell'eseguibile MALDA. Se esegui dal repo con <code>dotnet run</code>, l'eseguibile è sotto l'output del progetto, es.:</p>
         <ul>
             <li><code>MaldaLang\bin\Debug\net8.0\malda.exe</code> o <code>MaldaLang\bin\Release\net8.0\malda.exe</code> (relativo alla root della solution).</li>
         </ul>
         <p>Da PowerShell puoi eseguire <code>where.exe malda</code> se <code>malda</code> è nel PATH; altrimenti usa il path sopra. Usa questo path completo come programma nell'attività.</p>
 
-        <h3>32.5.3 Creare l'attività pianificata (GUI)</h3>
+        <h3>33.5.3 Creare l'attività pianificata (GUI)</h3>
         <ol>
             <li>Premi <strong>Win + R</strong>, digita <code>taskschd.msc</code>, premi Invio.</li>
             <li>Fai clic su <strong>Create Task</strong> (non “Create Basic Task”, così puoi impostare un trigger giornaliero a un orario preciso).</li>
@@ -238,19 +238,19 @@
             <li>Fai clic su <strong>OK</strong> per salvare. Crea un'attività per ogni messaggio pianificato (es. una per le 9:00, una per le 18:00).</li>
         </ol>
 
-        <h3>32.5.4 Creare l'attività pianificata (riga di comando)</h3>
+        <h3>33.5.4 Creare l'attività pianificata (riga di comando)</h3>
         <p>Usando <code>schtasks</code> per creare un'attività giornaliera alle 9:00:</p>
         <pre><code>schtasks /Create /TN "MALDA daily" /TR "\"C:\Path\To\malda.exe\" agent -m \"Good morning! What's on my calendar today?\"" /SC DAILY /ST 09:00 /RU "%USERNAME%"</code></pre>
         <p>Sostituisci <code>C:\Path\To\malda.exe</code> con il path reale di <code>malda.exe</code> e il messaggio con quello che hai memorizzato in <code>malda cron add</code>. <code>/RU %USERNAME%</code> esegue l'attività come il tuo utente, così può leggere <code>%USERPROFILE%\.malda</code> e la tua config.</p>
 
-        <h3>32.5.5 Ambiente e API key</h3>
+        <h3>33.5.5 Ambiente e API key</h3>
         <p>L'attività gira in un ambiente pulito. L'assistente ha bisogno di uno tra:</p>
         <ul>
             <li><strong>File di config</strong>: esegui <code>malda onboard</code> e metti <code>providers.openrouter.apiKey</code> in <code>%USERPROFILE%\.malda\config.json</code> (nessuna variabile d'ambiente necessaria per l'attività), oppure</li>
             <li><strong>Variabile d'ambiente</strong>: imposta <code>OPENROUTER_API_KEY</code> nelle variabili d'ambiente utente o di sistema (Proprietà di sistema → Variabili d'ambiente) così l'attività la vede quando gira come il tuo utente.</li>
         </ul>
 
-        <h3>32.5.6 Mapping delle espressioni cron su Task Scheduler</h3>
+        <h3>33.5.6 Mapping delle espressioni cron su Task Scheduler</h3>
         <p>MALDA memorizza le espressioni cron in <code>%USERPROFILE%\.malda\cron.json</code> e non le esegue direttamente. Puoi lasciare che <code>malda cron install</code> mappi automaticamente i pattern supportati sui trigger di Task Scheduler (vedi sopra), oppure tradurli a mano quando crei le attività tu stesso:</p>
         <table>
             <tr><th>Espressione cron</th><th>Significato</th><th>Task Scheduler</th></tr>
@@ -260,7 +260,7 @@
         </table>
         <p>Usa <code>malda cron add</code> per definire ed elencare i job, poi esegui <code>malda cron install</code> (Windows) oppure configura lo scheduler di sistema per eseguire <code>malda agent -m "message"</code> agli orari corrispondenti.</p>
 
-        <h2 id="skills">32.7 Skill</h2>
+        <h2 id="skills">33.7 Skill</h2>
         <p>Le skill sono file MALDA in <code>~/.malda/skills/</code> che esportano tool (e opzionalmente un <code>agent</code>) per l'assistente. Puoi caricarle in due modi.</p>
         <h3>Import statico</h3>
         <p>Usa <code>using Alias = skills.skillname</code> per caricare <code>~/.malda/skills/skillname.malda</code> e importarne i global sotto l'alias. Per esempio:</p>
@@ -292,7 +292,7 @@ var agent = new Agent("GreetingSkill", "specialist", "...", skillClient);
 agent.addTool("greet_user");</code></pre>
         <p>Metti altri file <code>.malda</code> in <code>~/.malda/skills/</code>. L'assistente li scopre e li carica automaticamente quando usi lo script di default. Esegui <code>malda doctor</code> per validare la sintassi delle skill.</p>
 
-        <h2>32.8 Canali / Telegram</h2>
+        <h2>33.8 Canali / Telegram</h2>
         <p>Puoi eseguire l'assistente su un <strong>canale</strong> così comunica con gli utenti tramite un trasporto esterno. Si usa lo stesso script dell'assistente; l'host inietta un canale che fornisce l'input (es. da Telegram) e rimanda l'output di <code>print()</code> su quel canale.</p>
         <h3>Eseguire su Telegram</h3>
         <p>Per eseguire l'assistente come bot Telegram:</p>
@@ -316,7 +316,7 @@ agent.addTool("greet_user");</code></pre>
                 <li><a href="13-built-in-functions.html">13. Funzioni built-in</a> — <code>getMaldaHome()</code>, <code>getMaldaConfig()</code>, <code>ensureDir()</code>, <code>webSearch()</code></li>
                 <li><a href="18-agent-orchestration.html">Orchestrazione di agenti</a> — Agenti, tool e GraphMemory</li>
                 <li><a href="37-appendix.html">Appendice</a> — Riepilogo del riferimento a riga di comando</li>
-                <li>32.7 sopra — Canali / Telegram per <code>malda agent -c telegram</code></li>
+                <li>34.7 sopra — Canali / Telegram per <code>malda agent -c telegram</code></li>
             </ul>
         </div>
         <div class="nav-footer">

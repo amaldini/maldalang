@@ -7,7 +7,7 @@
 This is the plan that made MALDA a **good platform for games people finish** —
 Love2D / Pico-8 / Phaser, not Unity. G0–G17 are landed. Prefer
 [`docs/javascript-backend.md`](javascript-backend.md),
-[Reference Manual 26](../ReferenceManual/26-browser-javascript-backend.html),
+[Reference Manual 27](../ReferenceManual/27-browser-javascript-backend.html),
 and the deferred list at the end for engines that stay out of core.
 
 **Bar today:** JS-only canvas kit — images / atlas blit / camera / draw extras,
@@ -114,8 +114,8 @@ C# transpiler) **do not apply**. Do this instead:
    [`MaldaLang.Tests/JavaScriptBackendTests.cs`](../MaldaLang.Tests/JavaScriptBackendTests.cs)
    — same fake-canvas pattern as `GameRuntime_SetPixelAndBlitPixels_WritesImageData`
 3. Name every new call in
-   [`ReferenceManual/26-browser-javascript-backend.html`](../ReferenceManual/26-browser-javascript-backend.html)
-   (and [`ReferenceManual/it/26-…`](../ReferenceManual/it/26-browser-javascript-backend.html))
+   [`ReferenceManual/27-browser-javascript-backend.html`](../ReferenceManual/27-browser-javascript-backend.html)
+   (and [`ReferenceManual/it/26-…`](../ReferenceManual/it/27-browser-javascript-backend.html))
 4. Document contract + guardrails in [`docs/javascript-backend.md`](javascript-backend.md)
 5. Small `.malda` smoke under `Examples/Games/` (or extend an existing host
    HTML); do not hand-edit generated `.js`

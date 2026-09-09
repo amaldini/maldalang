@@ -22,11 +22,11 @@
         <p>MALDA supports more than one way to build user interfaces. The models below share HTTP and routing concepts but target different runtimes and delivery styles. Start here before diving into a specific chapter. Prefer <strong>one model per surface</strong> (IDE <code>UI1002</code> when a file mixes <code>@PAGE</code>/<code>@AIPAGE</code> with <code>ui.mount</code>/<code>ui.render</code>).</p>
 
         <div class="info-box">
-            <strong>Full-stack context:</strong> For how UI, API, database, and agents fit together, see <a href="30-full-stack-development.html">29. Full-Stack Development with MALDA</a>.
+            <strong>Full-stack context:</strong> For how UI, API, database, and agents fit together, see <a href="30-full-stack-development.html">30. Full-Stack Development with MALDA</a>.
             For server-driven UI runtime/host internals (patch protocol, <code>UIHost</code>), see <a href="../docs/ui-framework.md"><code>docs/ui-framework.md</code></a>.
         </div>
 
-        <h2>23.1 Choose your UI model</h2>
+        <h2>24.1 Choose your UI model</h2>
 
         <table>
             <tr>
@@ -39,29 +39,29 @@
                 <td><strong>HTML fragment components</strong></td>
                 <td>Form and list pages that return HTML strings, with targeted fragment updates and optional SSE</td>
                 <td><code>component</code>, <code>@ACTION</code>, <code>@LIVE</code>, <code>componentFragment</code>, <code>componentState*</code></td>
-                <td><a href="25-web-ui.html">25. Web UI Server Components</a> (§ 24.2)</td>
+                <td><a href="25-web-ui.html">25. Web UI Server Components</a> (§ 25.2)</td>
             </tr>
             <tr>
                 <td><strong>Server-driven <code>ui.*</code> trees</strong></td>
                 <td>Incremental patch UI hosted by UIHost; controls are node trees, not HTML strings</td>
                 <td><code>ui.button(props, …)</code>, <code>ui.mount</code> / <code>ui.render</code>, <code>ui.state</code></td>
-                <td><a href="25-web-ui.html">25. Web UI Server Components</a> (§ 24.3)</td>
+                <td><a href="25-web-ui.html">25. Web UI Server Components</a> (§ 25.3)</td>
             </tr>
             <tr>
                 <td><strong>HttpServer pages</strong></td>
                 <td>Route-first apps that return full HTML documents, AI-generated pages, or classic server-rendered sites</td>
                 <td><code>HttpServer</code>, <code>@PAGE</code>, <code>@AIPAGE</code>, <code>HTMLCache</code>, <code>generateUI()</code></td>
-                <td><a href="26-http-server-html-ui.html">25. HttpServer &amp; HTML UI Generation</a></td>
+                <td><a href="26-http-server-html-ui.html">26. HttpServer &amp; HTML UI Generation</a></td>
             </tr>
             <tr>
                 <td><strong>Browser JavaScript</strong></td>
                 <td>UI that runs in the browser from MALDA transpiled to JavaScript (games, DOM apps, hybrid frontends)</td>
                 <td><code>dom.*</code>, template mode, <code>@client()</code>, canvas/game APIs</td>
-                <td><a href="27-browser-javascript-backend.html">26. Browser JavaScript UI Backend</a></td>
+                <td><a href="27-browser-javascript-backend.html">27. Browser JavaScript UI Backend</a></td>
             </tr>
         </table>
 
-        <h2>23.2 Decision guide</h2>
+        <h2>24.2 Decision guide</h2>
 
         <h3>Pick HTML fragment components when…</h3>
         <ul>
@@ -91,7 +91,7 @@
             <li>You need <code>@client()</code> / <code>@shared()</code> split from a single <code>.malda</code> source file.</li>
         </ul>
 
-        <h2>23.3 How the models relate</h2>
+        <h2>24.3 How the models relate</h2>
 
         <pre><code>                    ┌─────────────────────────────────────┐
                     │         MALDA Web UI choices          │
@@ -108,9 +108,9 @@
                               HTTP / REST API layer
                          (see REST API + REST Web Client)</code></pre>
 
-        <p>You can combine models in one product when boundaries are explicit: for example, <code>@PAGE</code> for marketing routes, a <code>ui.*</code> app shell, and a browser JS bundle for an interactive widget. See <a href="28-rest-api.html">27. REST API Server</a> for JSON endpoints that any UI model can call.</p>
+        <p>You can combine models in one product when boundaries are explicit: for example, <code>@PAGE</code> for marketing routes, a <code>ui.*</code> app shell, and a browser JS bundle for an interactive widget. See <a href="28-rest-api.html">28. REST API Server</a> for JSON endpoints that any UI model can call.</p>
 
-        <h2>23.4 Runtime boundary reminder</h2>
+        <h2>24.4 Runtime boundary reminder</h2>
         <ul>
             <li><strong>Server (interpreter or transpiled .exe):</strong> <code>HttpServer</code>, database clients, agents, server components, <code>@PAGE</code>.</li>
             <li><strong>Browser (JS transpile):</strong> DOM helpers, canvas/game APIs, local actors—no direct SQL or filesystem on the server from browser code.</li>
@@ -122,9 +122,9 @@
             <h3>See Also</h3>
             <ul>
                 <li><a href="25-web-ui.html">25. Web UI Server Components</a> - HTML fragments and <code>ui.*</code> trees</li>
-                <li><a href="26-http-server-html-ui.html">25. HttpServer &amp; HTML UI Generation</a> - @PAGE, @AIPAGE, HTML cache</li>
-                <li><a href="27-browser-javascript-backend.html">26. Browser JavaScript UI Backend</a> - JS transpile and dom.*</li>
-                <li><a href="30-full-stack-development.html">29. Full-Stack Development with MALDA</a> - End-to-end architecture</li>
+                <li><a href="26-http-server-html-ui.html">26. HttpServer &amp; HTML UI Generation</a> - @PAGE, @AIPAGE, HTML cache</li>
+                <li><a href="27-browser-javascript-backend.html">27. Browser JavaScript UI Backend</a> - JS transpile and dom.*</li>
+                <li><a href="30-full-stack-development.html">30. Full-Stack Development with MALDA</a> - End-to-end architecture</li>
             </ul>
         </div>
 

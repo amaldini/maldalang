@@ -18,19 +18,19 @@
     <main>
         <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>38. Appendice: biliardo GPU</span></div>
         <h1>38. Appendice: biliardo GPU</h1>
-        <p>Questa appendice ospita il JavaScript compilato di <code>Examples/Games/three_shader_billiards.malda</code> così il tavolo è giocabile dal manuale. Il kernel resta GLSL <code>@shader()</code>; il MALDA host fa la fisica 2D e invia le uniform di palle e stecca. Vedi <a href="27-browser-javascript-backend.html#shader-kernels">26.10.1 Kernel shader</a> e <a href="34-examples.html">33.15.1 Materiali shader</a>.</p>
-        <h2>37.1 Tavolo giocabile</h2>
+        <p>Questa appendice ospita il JavaScript compilato di <code>Examples/Games/three_shader_billiards.malda</code> così il tavolo è giocabile dal manuale. Il kernel resta GLSL <code>@shader()</code>; il MALDA host fa la fisica 2D e invia le uniform di palle e stecca. Vedi <a href="27-browser-javascript-backend.html#shader-kernels">27.10.1 Kernel shader</a> e <a href="34-examples.html">34.15.1 Materiali shader</a>.</p>
+        <h2>38.1 Tavolo giocabile</h2>
         <p>Serve WebGL. Clicca dentro il frame così mouse e tastiera raggiungono il demo. Tieni premuto click o Spazio per caricare, poi rilascia per tirare. L'interfaccia del demo resta in inglese.</p>
         <iframe class="billiards-play-frame" src="../billiards-play.html" title="Biliardo GPU MALDA giocabile" allow="fullscreen"></iframe>
         <p class="print-only-note">Il tavolo interattivo è omesso dalla stampa. Apri questo capitolo nel browser, oppure compila il sorgente sotto.</p>
-        <h2>37.2 Controlli</h2>
+        <h2>38.2 Controlli</h2>
         <ul>
             <li>Il mouse sul tavolo mira la stecca; A/D raffinano.</li>
             <li>Tieni premuto click o Spazio per caricare; rilascia per tirare.</li>
             <li>R rimette in triangolo. Le frecce orbitano. C o Stop camera azzera la velocità di orbita.</li>
             <li><code>[</code> <code>]</code> o <code>+</code> <code>−</code> zoomano. Gli slider impostano cushion e, ball e e l'attrito del feltro.</li>
         </ul>
-        <h2>37.3 Rigenerare lo script committato</h2>
+        <h2>38.3 Rigenerare lo script committato</h2>
         <p>Non modificare a mano <code>ReferenceManual/three_shader_billiards.js</code>. Cambia il sorgente <code>.malda</code> e compila in una cartella temporanea — <code>malda compile --mode js -o</code> scrive anche <code>index.html</code> accanto allo script, quindi non puntare direttamente a <code>ReferenceManual/</code>:</p>
         <pre><code>malda compile Examples/Games/three_shader_billiards.malda --mode js -o artifacts/billiards-appendix/three_shader_billiards.js
 cp artifacts/billiards-appendix/three_shader_billiards.js ReferenceManual/three_shader_billiards.js</code></pre>

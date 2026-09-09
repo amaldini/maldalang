@@ -20,7 +20,7 @@
         <h1>31. Interop .NET</h1>
         <p>MALDA offre il supporto nativo al caricamento e all'uso di librerie .NET esterne, e così consente di accedere al vasto ecosistema .NET: pacchetti NuGet, class library personalizzate e API del framework. I programmi MALDA possono riusare codice .NET esistente senza riscriverlo.</p>
 
-        <h2>30.1 Tipi già nel runtime</h2>
+        <h2>31.1 Tipi già nel runtime</h2>
         <p>Non ti serve una DLL personalizzata per i tipi BCL di base. Passa il nome completamente qualificato a <code>dotnetNew</code> o <code>getDotNetType</code>. I tipi generici usano l'arietà con backtick: <code>List`1</code> significa <code>List&lt;T&gt;</code> con un parametro di tipo.</p>
         <pre><code>var sb = dotnetNew("System.Text.StringBuilder");
 sb.Append("hello");
@@ -28,7 +28,7 @@ sb.Append(" ");
 sb.Append("MALDA");
 print(sb.ToString());</code></pre>
         
-        <h2>30.2 Caricamento degli assembly .NET</h2>
+        <h2>31.2 Caricamento degli assembly .NET</h2>
         
         <h3><code>loadAssembly(pathOrName)</code></h3>
         <p>Carica un assembly .NET da un path di file o per nome di assembly.</p>
@@ -61,7 +61,7 @@ var customLib = loadAssembly("C:\\MyLibs\\MyLibrary.dll");
 // Load by assembly name (from GAC or already loaded)
 var systemData = loadAssembly("System.Data");</code></pre>
         
-        <h2>30.3 Ottenere i tipi .NET</h2>
+        <h2>31.3 Ottenere i tipi .NET</h2>
         
         <h3><code>getDotNetType(assembly, typeName)</code> or <code>getDotNetType(fullTypeName)</code></h3>
         <p>Recupera un tipo .NET da un assembly o da tutti gli assembly caricati.</p>
@@ -96,7 +96,7 @@ var listType = getDotNetType("System.Collections.Generic.List`1");</code></pre>
             <strong>Nota:</strong> Per i tipi generici usa la notazione con backtick (es. <code>List`1</code> per <code>List&lt;T&gt;</code>). Il numero dopo il backtick indica il numero di parametri di tipo.
         </div>
         
-        <h2>30.4 Creare oggetti .NET</h2>
+        <h2>31.4 Creare oggetti .NET</h2>
         
         <h3><code>dotnetNew(typeOrTypeName, ...ctorArgs)</code></h3>
         <p>Crea una nuova istanza di un tipo .NET.</p>
@@ -128,7 +128,7 @@ var instance2 = dotnetNew(type, "arg1", 42);
 // Direct from type name
 var sb = dotnetNew("System.Text.StringBuilder");</code></pre>
         
-        <h2>30.5 Usare gli oggetti .NET</h2>
+        <h2>31.5 Usare gli oggetti .NET</h2>
         
         <p>Una volta creata un'istanza .NET, puoi:</p>
         <ul>
@@ -175,7 +175,7 @@ print("Length: " + string(sb.Length));</code></pre>
 
 nativeObject.onChanged(callback);</code></pre>
         
-        <h2>30.6 Usare i pacchetti NuGet</h2>
+        <h2>31.6 Usare i pacchetti NuGet</h2>
         
         <p>Per usare pacchetti NuGet in MALDA:</p>
         <ol>
@@ -194,7 +194,7 @@ var processor = dotnetNew(jsonHelperType);
 // Use the library
 var result = processor.ProcessJson(jsonString);</code></pre>
         
-        <h2>30.7 Esempio completo</h2>
+        <h2>31.7 Esempio completo</h2>
         
         <pre><code>// Example: Using a custom .NET library
 var asmPath = "C:\\MyLibraries\\MathUtils.dll";
@@ -212,7 +212,7 @@ print("10 + 20 = " + string(result));
 calc.Precision = 5;
 print("Precision set to: " + string(calc.Precision));</code></pre>
         
-        <h2>30.8 Note di implementazione</h2>
+        <h2>31.8 Note di implementazione</h2>
         
         <ul>
             <li><strong>Caricamento degli assembly</strong>: Usa <code>Assembly.LoadFrom()</code> per i path di file e <code>Assembly.Load()</code> per i nomi di assembly</li>
@@ -222,7 +222,7 @@ print("Precision set to: " + string(calc.Precision));</code></pre>
             <li><strong>Type safety</strong>: Il controllo dei tipi a runtime garantisce che chiamate di metodo e accessi alle proprietà siano validi</li>
         </ul>
         
-        <h2>30.9 Casi d'uso</h2>
+        <h2>31.9 Casi d'uso</h2>
         
         <ul>
             <li><strong>Riusare librerie .NET esistenti</strong>: Usare pacchetti NuGet consolidati senza riscrivere codice</li>
@@ -237,7 +237,7 @@ print("Precision set to: " + string(calc.Precision));</code></pre>
             <ul>
                 <li><a href="12-input-output.html">12. Input/Output</a> — console, file, path, ambiente</li>
                 <li><a href="11-classes-objects.html">11. Classi e oggetti</a> - Creare e usare classi MALDA</li>
-                <li><a href="34-examples.html">33. Esempi</a> - Esempi di codice completi</li>
+                <li><a href="34-examples.html">34. Esempi</a> - Esempi di codice completi</li>
             </ul>
         </div>
         

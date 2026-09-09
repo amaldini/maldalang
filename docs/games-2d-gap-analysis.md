@@ -262,4 +262,4 @@ Revisit this file when a new 2D workstream is actually scheduled. Until then, [`
 - Call contracts: [`docs/javascript-backend.md`](javascript-backend.md)
 - Capability tag `game-canvas`: [`docs/spec/backend-capability-matrix.md`](spec/backend-capability-matrix.md)
 - Examples: [`Examples/Games/README.md`](../Examples/Games/README.md)
-- Chapter 26: [`ReferenceManual/26-browser-javascript-backend.html`](../ReferenceManual/26-browser-javascript-backend.html)
+- Chapter 27: [`ReferenceManual/27-browser-javascript-backend.html`](../ReferenceManual/27-browser-javascript-backend.html)

@@ -537,7 +537,7 @@ var linked = memory.findRelated("node_0");  // graph edges persist across save/l
             <li><code>load(filePath)</code> - Carica la memoria da disco (path stringa, l'estensione è ignorata)</li>
         </ul>
 
-        <p><strong>Nota:</strong> chiama <code>initialize(dimension, precision, embeddingFunction)</code> <em>prima</em> di <code>load()</code> quando usi un embedder personalizzato; <code>load()</code> preserva la funzione di embedding attraverso la propria re-inizializzazione interna. L'assistente personale di default usa <code>embedHash</code> (384 dimensioni) e supporta i valori <code>MALDA_MEMORY_EMBED</code> o <code>config.agents.memory.embed</code> <code>hash</code>, <code>bow</code> o <code>llama</code> (vedi <a href="33-personal-assistant.html">32. Assistente personale e CLI</a>).</p>
+        <p><strong>Nota:</strong> chiama <code>initialize(dimension, precision, embeddingFunction)</code> <em>prima</em> di <code>load()</code> quando usi un embedder personalizzato; <code>load()</code> preserva la funzione di embedding attraverso la propria re-inizializzazione interna. L'assistente personale di default usa <code>embedHash</code> (384 dimensioni) e supporta i valori <code>MALDA_MEMORY_EMBED</code> o <code>config.agents.memory.embed</code> <code>hash</code>, <code>bow</code> o <code>llama</code> (vedi <a href="33-personal-assistant.html">33. Assistente personale e CLI</a>).</p>
 
         <h2>19.7 Export e import del grafo</h2>
         <p>GraphMemory fornisce metodi per esportare e importare il knowledge graph separatamente dal sistema di persistenza completo.</p>

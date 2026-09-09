@@ -22,32 +22,32 @@
             <strong>Start here:</strong> Read <a href="24-web-ui-hub.html">24. Web UI Overview</a> to compare UI models. This chapter covers browser-side MALDA execution, DOM helpers, template mode, and the canvas/game API. For server-rendered UI, see <a href="25-web-ui.html">Web UI Server Components</a> or <a href="26-http-server-html-ui.html">HttpServer &amp; HTML UI Generation</a>.
         </div>
 
-        <h2>26.1 Chapter Map</h2>
+        <h2>27.1 Chapter Map</h2>
         <ul>
-            <li><strong>26.2</strong> What the JavaScript backend provides</li>
-            <li><strong>26.3</strong> Compile commands and output modes</li>
-            <li><strong>26.4</strong> Required script loading order</li>
-            <li><strong>26.5</strong> API mode DOM helpers</li>
-            <li><strong>26.6</strong> Sum types and pattern matching in JS mode</li>
-            <li><strong>26.7</strong> Actors in JS mode</li>
-            <li><strong>26.8</strong> Template mode syntax</li>
-            <li><strong>26.9</strong> Canvas/game API</li>
-            <li><strong>26.10</strong> three.js scene API</li>
-            <li><strong>26.10.1</strong> Shader kernels (MALDA to GLSL)</li>
-            <li><strong>26.11</strong> Common pitfalls and practical guidance</li>
+            <li><strong>27.2</strong> What the JavaScript backend provides</li>
+            <li><strong>27.3</strong> Compile commands and output modes</li>
+            <li><strong>27.4</strong> Required script loading order</li>
+            <li><strong>27.5</strong> API mode DOM helpers</li>
+            <li><strong>27.6</strong> Sum types and pattern matching in JS mode</li>
+            <li><strong>27.7</strong> Actors in JS mode</li>
+            <li><strong>27.8</strong> Template mode syntax</li>
+            <li><strong>27.9</strong> Canvas/game API</li>
+            <li><strong>27.10</strong> three.js scene API</li>
+            <li><strong>27.10.1</strong> Shader kernels (MALDA to GLSL)</li>
+            <li><strong>27.11</strong> Common pitfalls and practical guidance</li>
         </ul>
 
-        <h2>26.2 What This Mode Provides</h2>
+        <h2>27.2 What This Mode Provides</h2>
         <ul>
             <li><strong>API mode</strong> (<code>.malda</code>): write MALDA that manipulates the DOM with <code>dom.*</code> helpers.</li>
             <li><strong>Template mode</strong> (<code>.malda.html</code>): write HTML-first templates with inline MALDA blocks.</li>
             <li><strong>Language coverage</strong>: JavaScript backend supports sum types and full <code>match</code> pattern matching.</li>
             <li><strong>Actor support (local)</strong>: JS mode supports local actors with mailbox semantics compatible with MALDA actor behavior.</li>
-            <li><strong>3D scene support</strong>: JavaScript mode includes a curated <code>three.*</code> wrapper for browser-hosted 3D scenes, plus <code>@shader()</code> kernels compiled to GLSL (see <a href="#three-scene-api">26.10</a>).</li>
+            <li><strong>3D scene support</strong>: JavaScript mode includes a curated <code>three.*</code> wrapper for browser-hosted 3D scenes, plus <code>@shader()</code> kernels compiled to GLSL (see <a href="#three-scene-api">27.10</a>).</li>
             <li><strong>Runtime expectation</strong>: generated scripts require <code>malda-js-runtime.js</code> before MALDA output runs.</li>
             <li><strong>Desktop IDE debug</strong>: F5 on <code>dom.*</code> / <code>game.*</code> / <code>three.*</code> programs transpiles to JavaScript, opens Web Preview, and maps editor breakpoints through the source map. Full-stack files (<code>@client()</code> plus <code>@server()</code> or a route) debug the host interpreter and Web Preview together (see <a href="02-tools.html#javascript-desktop-debug">2.6.6</a>).</li>
         </ul>
-        <h3>26.2.1 Target decorators in JS output</h3>
+        <h3>27.2.1 Target decorators in JS output</h3>
         <p>When compiling to JavaScript, target decorators can be used to keep browser and server concerns in one source file:</p>
         <ul>
             <li><code>@client()</code> and <code>@javascript()</code> declarations are included in JavaScript output.</li>
@@ -56,7 +56,7 @@
         </ul>
         <p>Route decorators are still server-oriented. A declaration such as <code>@GET(...)</code> is treated as server code and is not emitted in JavaScript output.</p>
 
-        <h2>26.3 Compile Commands</h2>
+        <h2>27.3 Compile Commands</h2>
         <pre><code># API mode (.malda source)
 malda compile Examples/Web/js/hello_dom.malda --mode js -o Examples/Web/js/hello_dom.js
 
@@ -78,7 +78,7 @@ malda play app.malda</code></pre>
 cd my-scores
 malda compile app.malda --mode fullstack -o dist</code></pre>
 
-        <h2>26.4 Required Script Loading Order</h2>
+        <h2>27.4 Required Script Loading Order</h2>
         <p>The host page must include a container such as <code>#app</code>, then load scripts in this order. Same file: <code>Examples/Web/js/host.html</code>.</p>
         <ol>
             <li>Any required browser dependency for the chosen namespace, for example <code>three.js</code> for <code>three.*</code></li>
@@ -105,8 +105,8 @@ malda compile app.malda --mode fullstack -o dist</code></pre>
 &lt;/html&gt;</code></pre>
         <p><code>println</code> is a JavaScript-backend console helper. The interpreter has no <code>println</code> (use <code>io.print</code> / <code>print</code> there — see <a href="12-input-output.html">12. Input/Output</a>).</p>
 
-        <h2>26.5 API Mode DOM Helpers</h2>
-        <p>The JavaScript runtime exposes browser helpers under <code>dom</code> for direct DOM manipulation. Same program: <code>Examples/Web/js/counter.malda</code> (compile with the command in 26.3, then open the host page from 26.4).</p>
+        <h2>27.5 API Mode DOM Helpers</h2>
+        <p>The JavaScript runtime exposes browser helpers under <code>dom</code> for direct DOM manipulation. Same program: <code>Examples/Web/js/counter.malda</code> (compile with the command in 27.3, then open the host page from 27.4).</p>
         <ul>
             <li><code>dom.query(selector, root?)</code></li>
             <li><code>dom.create(tagName)</code></li>
@@ -149,7 +149,7 @@ if (root == null) {
     renderCount();
 }</code></pre>
 
-        <h2>26.6 Sum Types and Pattern Matching in JS Mode</h2>
+        <h2>27.6 Sum Types and Pattern Matching in JS Mode</h2>
         <p>You can use the same sum-type and pattern-matching model in JavaScript backend mode as in interpreted mode.</p>
         <pre><code>type Result = Ok(value) | Err(message);
 
@@ -166,7 +166,7 @@ var text = match outcome {
 println(text);</code></pre>
         <p>All pattern families are supported in JS mode: literals, identifiers, wildcard, variant payloads, array patterns with <code>...rest</code>, and nested object patterns.</p>
 
-        <h2>26.7 Actors in JS Mode</h2>
+        <h2>27.7 Actors in JS Mode</h2>
         <p>The JavaScript backend includes local actor runtime support through <code>mlRuntime.actors</code>. This provides browser-side or Node-local actor concurrency with mailbox semantics aligned to MALDA actor behavior.</p>
         <ul>
             <li>Supported features: <code>actor</code>, <code>spawn</code>, call-style <code>send</code>, callback and timeout sends, <code>reply()</code>, <code>receive()</code>, <code>self</code>, and stop routing.</li>
@@ -175,7 +175,7 @@ println(text);</code></pre>
         </ul>
         <p><strong>Boundary:</strong> this is local actor runtime support only. Direct transparent communication between browser JS actors and server-side actors is not enabled by default.</p>
 
-        <h2>26.8 Template Mode Syntax</h2>
+        <h2>27.8 Template Mode Syntax</h2>
         <p>Template mode uses <code>.malda.html</code> files. Use <code>{{ ... }}</code> for interpolation and <code>{% ... %}</code> for statements.</p>
         <pre><code>&lt;div class="hello-template"&gt;
   &lt;h1&gt;Hello from template mode&lt;/h1&gt;
@@ -185,7 +185,7 @@ println(text);</code></pre>
 &lt;/div&gt;</code></pre>
         <p>See <code>Examples/Web/js/host.html</code> for a minimal static page that demonstrates runtime loading and compiled-script bootstrap.</p>
 
-        <h2>26.9 Game Canvas API</h2>
+        <h2>27.9 Game Canvas API</h2>
         <p>The JavaScript backend includes a browser canvas/game API under <code>game.*</code> for simple 2D interactive loops.</p>
         <ul>
             <li><strong>Canvas and lifecycle:</strong> <code>game.createCanvas</code>, <code>game.setBackground</code>, <code>game.start(updateFn, renderFn?)</code>, <code>game.startFixed(updateFn, renderFn?, tickMs?)</code>, <code>game.stop()</code>, <code>game.save(key, value)</code>, <code>game.load(key)</code>, <code>game.removeSave(key)</code></li>
@@ -204,7 +204,7 @@ println(text);</code></pre>
         <p><strong>Audio guidance:</strong> call <code>game.audioInit()</code> after a user gesture to satisfy browser autoplay policies. <code>game.audioPlaySample(url, volume?, options?)</code> decodes a WAV/OGG once per URL and caches it (<code>volume</code> default <code>1</code>, clamp <code>[0, 1]</code>; options <code>{ loop?: bool, pan?: number, playbackRate?: number }</code>; <code>pan</code> clamp <code>[-1, 1]</code>, default <code>0</code>; <code>playbackRate</code> default <code>1</code>, clamp <code>[0.25, 4]</code>). Overlapping one-shots are allowed. <code>game.audioStopSample(url?)</code> stops samples only — it does not stop the v1 track, pattern, or tones. <code>game.stop()</code> still does not implicit-stop audio. Samples share the 32-node cap with tones. See <code>Examples/Games/game_audio_sample_smoke.malda</code>.</p>
         <p>For a full quick start and best practices, see <code>docs/javascript-backend.md</code>. For a complete sample, see <code>Examples/Games/game_bounce.malda</code>. For PNG atlas blit plus a scrolling camera, <code>setCameraZoom</code>, <code>drawImageEx</code> flip/rotate/tint/<code>tintFill</code>, <code>setBlend</code> add/multiply, <code>pushCamera</code> HUD, <code>measureText</code> / <code>imageWidth</code> / <code>setPixelated</code> / <code>strokeCircle</code>, and a click-to-world marker, see <code>Examples/Games/game_sprite_smoke.malda</code>. For key edges, <code>wasMousePressed</code>, touches, and gamepad (including <code>wasGamepadButtonReleased</code> and analog deadzone), see <code>Examples/Games/game_input_smoke.malda</code>. For AABB overlap plus swept AABB (<code>sweepRects</code>), see <code>Examples/Games/game_collision_smoke.malda</code>. For a 2D id grid (<code>drawTiles</code> / <code>tileAt</code> / <code>sweepTiles</code>), see <code>Examples/Games/game_tiles_smoke.malda</code>. For overlapping WAV one-shots with pan / <code>playbackRate</code> next to a looping pattern, see <code>Examples/Games/game_audio_sample_smoke.malda</code>. For a fixed timestep plus a high score that survives reload, see <code>Examples/Games/game_fixed_save_smoke.malda</code>. For a short side-scroller that uses the kit together (atlas tiles, <code>followCamera</code>, <code>sweepRects</code>, key edges, sample SFX, <code>startFixed</code>) plus spinning coins, a facing player via <code>drawImageEx</code>, coin-hit <code>tintFill</code> flash, and an additive spark, see <code>Examples/Games/malda_platform.malda</code>. For a canvas client plus <code>schema</code> / <code>validate</code> scores, use <code>malda new game --fullstack</code>. For a Boulder Dash-style tile cave that uses the kit together (<code>drawTiles</code> / <code>tileAt</code> / <code>sweepTiles</code>, <code>followCamera</code>, <code>drawImageEx</code> flip/tint, <code>setBlend</code> add/multiply, key/gamepad/touch, sample SFX, <code>startFixed</code>, saved high score), see <code>Examples/Games/maldadash.malda</code>. For a CPU ray tracer that writes pixels into an <code>ImageData</code> buffer and blits once per frame, see <code>Examples/Games/ray_tracer.malda</code>.</p>
 
-        <h2 id="three-scene-api">26.10 three.js Scene API</h2>
+        <h2 id="three-scene-api">27.10 three.js Scene API</h2>
         <p>The JavaScript backend includes a curated 3D scene API under <code>three.*</code>. Use it when you want a browser-hosted scene in MALDA without writing raw <code>THREE.*</code> calls. The namespace is JavaScript mode only; interpreter and C# transpile do not run these helpers. Calls map to <code>mlRuntime.three.*</code> in the generated script.</p>
         <p>Build a scene in this order: renderer, scene, camera, then meshes and lights, then <code>three.start</code>. <code>three.createRenderer(width, height, mountSelector?)</code> creates the WebGL canvas and appends it to the host element (default <code>"#app"</code>). Call it once, before <code>three.render</code> or <code>three.start</code>. If you need a new size or a second canvas, call <code>three.stop()</code> first — do not create another renderer while the loop is running.</p>
         <ul>
@@ -258,12 +258,12 @@ three.start(update, render);</code></pre>
             <li><code>MaldaApp.main()</code></li>
         </ol>
         <p><strong>Resize guidance:</strong> if the host page changes the render viewport after setup, update both the renderer and the camera: <code>three.setRendererSize(renderer, width, height)</code> and <code>three.setCameraAspect(camera, width / height)</code>.</p>
-        <p><strong>MVP scope:</strong> orbit controls and generic raw JS interop stay outside this API. Textures and glTF loading are in: see <code>Examples/Games/three_textured.malda</code>. Lit meshes use <code>three.createStandardMaterial</code>. Custom GLSL uses <code>three.createShaderMaterial</code> and <code>three.setUniform</code> — see <a href="#shader-kernels">26.10.1</a>.</p>
+        <p><strong>MVP scope:</strong> orbit controls and generic raw JS interop stay outside this API. Textures and glTF loading are in: see <code>Examples/Games/three_textured.malda</code>. Lit meshes use <code>three.createStandardMaterial</code>. Custom GLSL uses <code>three.createShaderMaterial</code> and <code>three.setUniform</code> — see <a href="#shader-kernels">27.10.1</a>.</p>
         <p>Compile the cube demo with:</p>
         <pre><code>malda compile Examples/Games/three_cube.malda --mode js -o Examples/Games/three_cube.js</code></pre>
-        <p>See <code>Examples/Games/three_cube.malda</code> and <code>Examples/Games/three_runtime_smoke_test.html</code> for the end-to-end host page. For a PNG material map, a glTF cube, and <code>lookAt</code>, see <code>Examples/Games/three_textured.malda</code>. A shorter listing is in <a href="34-examples.html">33.15 JavaScript Backend (three.js scene API)</a>. Working notes: <code>docs/javascript-backend.md</code>.</p>
+        <p>See <code>Examples/Games/three_cube.malda</code> and <code>Examples/Games/three_runtime_smoke_test.html</code> for the end-to-end host page. For a PNG material map, a glTF cube, and <code>lookAt</code>, see <code>Examples/Games/three_textured.malda</code>. A shorter listing is in <a href="34-examples.html">34.15 JavaScript Backend (three.js scene API)</a>. Working notes: <code>docs/javascript-backend.md</code>.</p>
 
-        <h3 id="shader-kernels">26.10.1 Shader kernels (MALDA to GLSL)</h3>
+        <h3 id="shader-kernels">27.10.1 Shader kernels (MALDA to GLSL)</h3>
         <p>When CPU <code>game.setPixel</code> is too slow, put per-pixel work on the GPU. This is a <strong>JavaScript compile-time subset</strong>, not a fourth execution backend. Host MALDA still owns the <code>three.*</code> loop and uniform updates. The kernel owns the rays.</p>
         <p>Mark GPU functions with <code>@shader()</code> and gather them into a GLSL string with <code>glsl.compile({ ... })</code>. Those functions are <strong>not</strong> emitted as JavaScript or C#. Do not call them from host MALDA. Interpreter and C# transpile skip them.</p>
         <pre><code>@shader()
@@ -312,9 +312,9 @@ three.setUniform(material, "uTime", t);</code></pre>
 malda compile Examples/Games/three_shader_billiards.malda --mode js -o Examples/Games/three_shader_billiards.js
 malda compile Examples/Games/three_shader_path_tunnel.malda --mode js -o Examples/Games/three_shader_path_tunnel.js
 malda compile Examples/Games/three_shader_mandelbrot.malda --mode js -o Examples/Games/three_shader_mandelbrot.js</code></pre>
-        <p>Load <code>three.min.js</code> first, same as other <code>three.*</code> demos. A short listing is in <a href="34-examples.html">33.15.1 Shader materials</a>. Working notes: <code>docs/javascript-backend.md</code>. The billiards sample is playable: host MALDA steps 2D physics (zoom, orbit stop, and sliders for cushion/ball restitution and felt friction) and the kernel traces ball/cue uniforms. The compiled table is an appendix: <a href="38-appendix-gpu-billiards.html">37. Appendix: GPU Billiards</a>. The path-tunnel sample is CC-BY-NC-SA-4.0 (Frostbyte). The Mandelbrot sample is an infinite Seahorse Valley zoom: the host builds a BigInt reference orbit (<code>three.mandelbrotOrbit</code>) and the kernel applies scaled perturbation so the dive stays sharp past float32 ulp. Page sliders set iterate budget and wrap decades.</p>
+        <p>Load <code>three.min.js</code> first, same as other <code>three.*</code> demos. A short listing is in <a href="34-examples.html">34.15.1 Shader materials</a>. Working notes: <code>docs/javascript-backend.md</code>. The billiards sample is playable: host MALDA steps 2D physics (zoom, orbit stop, and sliders for cushion/ball restitution and felt friction) and the kernel traces ball/cue uniforms. The compiled table is an appendix: <a href="38-appendix-gpu-billiards.html">38. Appendix: GPU Billiards</a>. The path-tunnel sample is CC-BY-NC-SA-4.0 (Frostbyte). The Mandelbrot sample is an infinite Seahorse Valley zoom: the host builds a BigInt reference orbit (<code>three.mandelbrotOrbit</code>) and the kernel applies scaled perturbation so the dive stays sharp past float32 ulp. Page sliders set iterate budget and wrap decades.</p>
 
-        <h2>26.11 Common Pitfalls and Guidance</h2>
+        <h2>27.11 Common Pitfalls and Guidance</h2>
         <ul>
             <li>Do not edit generated JavaScript directly when there is a matching <code>.malda</code> source. Change the MALDA file and recompile.</li>
             <li>Load <code>malda-js-runtime.js</code> before the compiled script or the generated app will fail at runtime.</li>
@@ -340,7 +340,7 @@ malda compile Examples/Games/three_shader_mandelbrot.malda --mode js -o Examples
                 <li><a href="24-web-ui-hub.html">24. Web UI Overview</a> - Which UI model to pick</li>
                 <li><a href="25-web-ui.html">25. Web UI Server Components</a> - Server-rendered UI with fragments, live updates, and <code>ui.*</code></li>
                 <li><a href="26-http-server-html-ui.html">HttpServer &amp; HTML UI Generation</a> - Route hosting and AI HTML generation</li>
-                <li><a href="34-examples.html">33.15 JavaScript Backend (three.js)</a> - Cube listing and shader-material sketch</li>
+                <li><a href="34-examples.html">34.15 JavaScript Backend (three.js)</a> - Cube listing and shader-material sketch</li>
                 <li><a href="30-full-stack-development.html">Full-Stack Development with MALDA</a> - Choosing between server-rendered, API-first, and browser-hosted UI</li>
             </ul>
         </div>

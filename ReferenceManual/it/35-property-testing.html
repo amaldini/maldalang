@@ -24,7 +24,7 @@
 
         <p>Una <code>property</code> è un invariante: una funzione che deve restituire true per molti input generati a caso. MALDA pesca quegli input da un <strong>seed</strong>, così lo stesso seed ripete le stesse prove. Usala quando pochi casi scritti a mano perderebbero un bordo (interi intorno a zero, stringhe vuote, liste corte). I flag CLI di <code>malda test</code> sono riassunti in <a href="02-tools.html">2. Strumenti e toolchain</a>; questo capitolo spiega il costrutto del linguaggio.</p>
 
-        <h2>34.1 Una property che passa</h2>
+        <h2>35.1 Una property che passa</h2>
         <p>Dichiara una property come una funzione. Il corpo deve restituire un boolean. Stesso file: <code>Examples/Testing/property_core_identity.malda</code>.</p>
         <pre><code>property intIdentity(x) {
     return (x + 0) == x;
@@ -44,7 +44,7 @@ var result = runProperty("stableIdentity", 40, 1337);
 print("Passed: " + string(result.passed));</code></pre>
         <p><code>runProperty(...)</code> restituisce un oggetto con <code>propertyName</code>, <code>passed</code>, <code>iterations</code>, <code>seed</code> e, in caso di fallimento, <code>failedTrial</code>, <code>error</code>, <code>counterexample</code>, <code>shrunkCounterexample</code>.</p>
 
-        <h2>34.2 Come vengono generati gli argomenti</h2>
+        <h2>35.2 Come vengono generati gli argomenti</h2>
         <p>MALDA non prende tipi di generatore espliciti. Sceglie il generatore dal <strong>nome del parametro</strong> (senza distinzione di maiuscole):</p>
         <table>
             <thead>
@@ -60,7 +60,7 @@ print("Passed: " + string(result.passed));</code></pre>
         </table>
         <p>Per questo <code>boolInvolution(isFlag)</code> riceve boolean e <code>intIdentity(x)</code> riceve interi. Rinomina il parametro se il generatore è sbagliato; non esiste la sintassi <code>property foo(x: string)</code>.</p>
 
-        <h2>34.3 Una property che fallisce, shrinking e regressioni</h2>
+        <h2>35.3 Una property che fallisce, shrinking e regressioni</h2>
         <p>Quando una prova restituisce false (o lancia), MALDA registra gli argomenti come <strong>controesempio</strong>, poi li riduce (<strong>shrinking</strong>): interi più vicini a zero, stringhe e liste più corte, finché il fallimento è il più piccolo che riesce a ottenere. Il payload ridotto è quello che vuoi nel file di regressione. Stesso file: <code>Examples/Testing/property_failure_to_regression.malda</code>.</p>
         <pre><code data-run="true" data-expect="Passed: false">property alwaysFails(x) {
     return x == (x + 1);
@@ -84,7 +84,7 @@ malda test ./tests --format ci --iterations 100 --seed 1337</code></pre>
             <strong>Non</strong> “aggiustare” una property che fallisce cambiando il seed finché passa. Correggi il codice o l'invariante; tieni il seed così il vecchio controesempio si riproduce ancora.
         </div>
 
-        <h2>34.4 Modello di capability</h2>
+        <h2>35.4 Modello di capability</h2>
         <p>Le property che servono una funzionalità di runtime (actor, I/O su file, workflow) la dichiarano. Un backend che non può fornire la capability è <strong>non applicabile</strong>, non un fallimento. Stessa idea: <code>Examples/Testing/property_js_capability_skip.malda</code>.</p>
         <pre><code>@requires("core", "actors")
 @targets("interpreter", "csharp", "js")
@@ -103,7 +103,7 @@ property actorSafetyInvariant(x) {
         </ul>
         <p>La matrice di capability è la fonte di verità per l'idoneità dei backend tra <code>interpreter</code>, <code>csharp</code> e <code>js</code>.</p>
 
-        <h2>34.5 Limitazioni JavaScript e semantica di skip</h2>
+        <h2>35.5 Limitazioni JavaScript e semantica di skip</h2>
         <p>La parità del backend JavaScript è condizionata dalle capability. Se una property richiede capability JS non supportate, MALDA riporta JS come <strong>non applicabile</strong> con un motivo. Questo non fa fallire la parità dei backend che hanno girato.</p>
         <p>Per le property idonee a JS in cui un harness JS delle property non è ancora abilitato, MALDA riporta JS come <strong>skipped</strong> con un motivo esplicito in stile TODO, invece di far fallire la parità.</p>
 
@@ -111,7 +111,7 @@ property actorSafetyInvariant(x) {
             <h3>Vedi anche</h3>
             <ul>
                 <li><a href="02-tools.html">2. Strumenti e toolchain</a> - Comandi CLI di test</li>
-                <li><a href="34-examples.html">33. Esempi</a> - Campione breve del catalogo</li>
+                <li><a href="34-examples.html">34. Esempi</a> - Campione breve del catalogo</li>
                 <li><a href="36-grammar.html">36. Grammatica</a> - Sintassi delle dichiarazioni property</li>
             </ul>
         </div>
