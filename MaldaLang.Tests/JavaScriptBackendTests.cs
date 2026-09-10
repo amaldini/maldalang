@@ -4966,6 +4966,27 @@ const missingModel = three.loadGLTF("missing.gltf");
     }
 
     [Fact]
+    public void JsTranspiler_TranspilesMatch_ConstIdentifierPattern()
+    {
+        var source = """
+            const BUY = 1;
+            const SELL = -1;
+            var result = match SELL {
+                case BUY: "BUY";
+                case SELL: "SELL";
+            };
+            """;
+        var compiler = new Compiler.Compiler();
+
+        var js = compiler.TranspileToJavaScriptFromSource(source);
+
+        Assert.Contains("type: \"Equals\", value: BUY", js, StringComparison.Ordinal);
+        Assert.Contains("type: \"Equals\", value: SELL", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("type: \"Identifier\", name: \"BUY\"", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("type: \"Identifier\", name: \"SELL\"", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void JsTranspiler_TranspilesMatch_WithGuard()
     {
         var source = """

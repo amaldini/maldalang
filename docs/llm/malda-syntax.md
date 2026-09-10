@@ -11,7 +11,8 @@ Compact rules for generating correct `.malda`. Prefer this over scraping HTML ma
 - Statements end with **`;`**. The one optional case is a `match { }` **statement**, whose
   trailing `;` may be omitted (`match expr { ... }` or `match expr { ... };`). A `match`
   used as an **expression** is part of a larger statement and still needs that statement's
-  `;`.
+  `;`. In `case NAME:`, a declared variant constructor matches that tag; an in-scope
+  `const` compares with `==` (no bind); any other identifier binds (catch-all).
 - Blocks use `{ }` like C-family languages.
 - Dynamic typing; optional type hints exist (`: Type`) but are not required for most examples.
   Under `--strict-types` (and as IDE Warnings otherwise), mismatches include call results

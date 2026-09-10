@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Changed (MAJOR — `match` const identifier patterns)
+
+- **`case NAME` when `NAME` is an in-scope `const`:** compares with `==` and does not bind. A declared variant constructor still wins (`case Ok:` matches the `Ok` variant). A `var` of the same name still binds (catch-all). Nested patterns (`case [BUY, qty]:`) use the same rule. Interpreter, C#, and JS agree. Fixes `case BUY` / `case SELL` always taking the first arm.
+
 #### Added (MINOR — agentic run observability, cassettes, eval suites)
 
 - **LLM cassettes:** `MALDA_RECORD` / `MALDA_REPLAY` / `MALDA_REPLAY_STRICT` intercept every `Chat` path. Cassette key is prompt hash + args + model + mode + schema hash. Secrets are redacted on record.

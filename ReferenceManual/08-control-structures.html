@@ -179,10 +179,18 @@ print(m3);</code></pre>
 }</code></pre>
         
         <h4>Identifier Patterns</h4>
-        <p>Bind the matched value to a variable name. If the identifier is a declared variant constructor, it is a variant pattern instead (see above), not a catch-all:</p>
+        <p>Bind the matched value to a variable name. If the identifier is a declared variant constructor, it is a variant pattern instead (see above), not a catch-all. If the identifier is an in-scope <code>const</code>, the arm compares with <code>==</code> and does not bind:</p>
         <pre><code>match x {
     case y: y + 10;  // Binds x to y, then evaluates y + 10
 }</code></pre>
+        <pre><code data-run="true" data-expect="SELL">const BUY = 1;
+const SELL = -1;
+var t = SELL;
+var side = match t {
+    case BUY: "BUY";
+    case SELL: "SELL";
+};
+print(side);</code></pre>
         
         <h4>Wildcard Pattern</h4>
         <p>Match anything without binding (use <code>_</code>):</p>
@@ -284,7 +292,7 @@ match response {
             <strong>Pattern Matching Tips:</strong>
             <ul>
                 <li>Patterns are matched in order - the first matching pattern whose optional <code>if</code> guard succeeds executes</li>
-                <li>Identifier patterns always match unless the name is a declared variant constructor (<code>case Ok:</code> matches the <code>Ok</code> variant, not everything)</li>
+                <li>Identifier patterns always match unless the name is a declared variant constructor (<code>case Ok:</code> matches the <code>Ok</code> variant) or an in-scope <code>const</code> (<code>case BUY:</code> compares with <code>==</code>)</li>
                 <li>A failed <code>if</code> guard tries the next case; an <code>if</code> inside the case body does not</li>
                 <li>Use wildcard patterns (<code>_</code>) when you don't need the value</li>
                 <li>Nested patterns allow deep matching of complex data structures</li>

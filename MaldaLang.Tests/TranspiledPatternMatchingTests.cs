@@ -29,6 +29,26 @@ public class TranspiledPatternMatchingTests
     }
     
     [Fact]
+    public void Transpiled_ConstIdentifierPattern_Compares()
+    {
+        var source = @"
+            const BUY = 1;
+            const SELL = -1;
+            var t = SELL;
+            var result = match t {
+                case BUY: ""BUY"";
+                case SELL: ""SELL"";
+            };
+            print(result);
+        ";
+
+        var result = TranspiledTestRunner.CompileAndRunFromSource(source);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("SELL", result.StdOut);
+    }
+
+    [Fact]
     public void Transpiled_IdentifierPattern_Binding()
     {
         var source = @"

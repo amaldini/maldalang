@@ -136,6 +136,22 @@ public class InterpretTranspilePairTests
     }
 
     [Fact]
+    public void MatchConstIdentifier_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            const BUY = 1;
+            const SELL = -1;
+            var t = SELL;
+            io.print(match t {
+                case BUY: "BUY";
+                case SELL: "SELL";
+            });
+            """,
+            "match-const-identifier");
+    }
+
+    [Fact]
     public void MatchGuard_SameStdout()
     {
         InterpretTranspilePair.AssertSameFromSource(

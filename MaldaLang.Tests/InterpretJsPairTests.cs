@@ -62,6 +62,22 @@ public class InterpretJsPairTests
     }
 
     [Fact]
+    public void MatchConstIdentifier_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(
+            """
+            const BUY = 1;
+            const SELL = -1;
+            var t = SELL;
+            io.print(match t {
+                case BUY: "BUY";
+                case SELL: "SELL";
+            });
+            """,
+            "match-const-identifier-js");
+    }
+
+    [Fact]
     public void MatchAndDict_SameStdout()
     {
         InterpretJsPair.AssertSameFromSource(

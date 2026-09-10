@@ -180,10 +180,18 @@ print(m3);</code></pre>
 }</code></pre>
         
         <h4>Pattern identificatore</h4>
-        <p>Legano il valore corrispondente a un nome di variabile. Se l'identificatore è un costruttore di variante dichiarato, è un pattern di variante (vedi sopra), non un catch-all:</p>
+        <p>Legano il valore corrispondente a un nome di variabile. Se l'identificatore è un costruttore di variante dichiarato, è un pattern di variante (vedi sopra), non un catch-all. Se l'identificatore è un <code>const</code> nello scope, il case confronta con <code>==</code> e non crea un binding:</p>
         <pre><code>match x {
     case y: y + 10;  // Binds x to y, then evaluates y + 10
 }</code></pre>
+        <pre><code data-run="true" data-expect="SELL">const BUY = 1;
+const SELL = -1;
+var t = SELL;
+var side = match t {
+    case BUY: "BUY";
+    case SELL: "SELL";
+};
+print(side);</code></pre>
         
         <h4>Pattern wildcard</h4>
         <p>Corrispondono a qualsiasi cosa senza fare binding (usa <code>_</code>):</p>
@@ -285,7 +293,7 @@ match response {
             <strong>Consigli sul pattern matching:</strong>
             <ul>
                 <li>I pattern vengono confrontati in ordine: viene eseguito il primo che corrisponde e la cui guardia <code>if</code> opzionale ha successo</li>
-                <li>I pattern identificatore corrispondono sempre, a meno che il nome sia un costruttore di variante dichiarato (<code>case Ok:</code> corrisponde alla variante <code>Ok</code>, non a tutto)</li>
+                <li>I pattern identificatore corrispondono sempre, a meno che il nome sia un costruttore di variante dichiarato (<code>case Ok:</code> corrisponde alla variante <code>Ok</code>) o un <code>const</code> nello scope (<code>case BUY:</code> confronta con <code>==</code>)</li>
                 <li>Una guardia <code>if</code> fallita prova il case successivo; un <code>if</code> dentro il corpo del case no</li>
                 <li>Usa i pattern wildcard (<code>_</code>) quando non ti serve il valore</li>
                 <li>I pattern nidificati permettono il matching in profondità di strutture dati complesse</li>

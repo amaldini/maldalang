@@ -606,6 +606,67 @@ public class PatternMatchingTests : TestBase
     }
 
     [Fact]
+    public void TestConstIdentifierPattern_ComparesNotBinds()
+    {
+        var source = @"
+            const BUY = 1;
+            const SELL = -1;
+            var t = SELL;
+            var result = match t {
+                case BUY: ""BUY"";
+                case SELL: ""SELL"";
+            };
+            print(result);
+        ";
+        Assert.Equal("SELL", RunProgram(source));
+    }
+
+    [Fact]
+    public void TestConstIdentifierPattern_NoMatchFallsThrough()
+    {
+        var source = @"
+            const BUY = 1;
+            var t = 99;
+            var result = match t {
+                case BUY: ""buy"";
+                case x: ""other:"" + x;
+            };
+            print(result);
+        ";
+        Assert.Equal("other:99", RunProgram(source));
+    }
+
+    [Fact]
+    public void TestVarIdentifierPattern_StillBinds()
+    {
+        var source = @"
+            var BUY = 1;
+            var t = -1;
+            var result = match t {
+                case BUY: ""bound"";
+                default: ""no"";
+            };
+            print(result);
+        ";
+        Assert.Equal("bound", RunProgram(source));
+    }
+
+    [Fact]
+    public void TestConstIdentifierPattern_NestedArray()
+    {
+        var source = @"
+            const BUY = 1;
+            var pair = [1, 7];
+            var result = match pair {
+                case [BUY, qty]: ""buy:"" + qty;
+                default: ""no"";
+            };
+            print(result);
+        ";
+        Assert.Equal("buy:7", RunProgram(source));
+    }
+
+    [Fact]
     public void TestMatchGuard_NoDefault_FailedGuardThrows()
     {
         var source = @"

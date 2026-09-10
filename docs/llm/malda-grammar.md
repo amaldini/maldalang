@@ -193,6 +193,9 @@ Pattern     ::= LiteralPattern | IdentifierPattern | WildcardPattern
               | VariantPattern | ArrayPattern | ObjectPattern
 LiteralPattern ::= Integer | Float | StringLiteral | Boolean | "null"
 IdentifierPattern ::= Identifier
+                 /* Binds the value unless the name is a declared variant
+                    constructor (then VariantPattern) or an in-scope const
+                    (then == compare, no binding). */
 WildcardPattern ::= "_"
 VariantPattern ::= Identifier "(" (Pattern ("," Pattern)*)? ")"
                  /* Bare Identifier naming a declared constructor is also a

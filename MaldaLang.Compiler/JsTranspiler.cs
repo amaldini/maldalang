@@ -38,6 +38,8 @@ public class JsTranspiler
     private readonly Dictionary<string, int> _variantConstructorArities = new(StringComparer.Ordinal);
     private readonly Dictionary<string, FunctionDeclaration> _shaderFunctions = new(StringComparer.Ordinal);
     private readonly Stack<HashSet<string>> _localScopes = new();
+    private readonly HashSet<string> _moduleConstNames = new(StringComparer.Ordinal);
+    private readonly Stack<HashSet<string>> _constScopeStack = new();
 
     private static readonly HashSet<string> JsRuntimeModules = new(StringComparer.Ordinal)
     {
@@ -78,6 +80,7 @@ public class JsTranspiler
         foreach (var kv in other._shaderFunctions)
             _shaderFunctions[kv.Key] = kv.Value;
         CopyLocalScopesFrom(other);
+        CopyConstScopesFrom(other);
     }
 
     public string Transpile(List<Statement> statements, bool isLibrary = false, string? sourceFilePath = null)
@@ -102,6 +105,7 @@ public class JsTranspiler
         _variantConstructorArities.Clear();
         _shaderFunctions.Clear();
         ResetLocalScopes();
+        ResetConstScopes();
         _generatedLine = 1;
         _currentSourceLine = null;
         _currentSourceColumn = null;
@@ -149,6 +153,8 @@ public class JsTranspiler
             else
             {
                 topLevelStatements.Add(statement);
+                if (statement is VarDeclStatement topLevelVar && topLevelVar.IsConst)
+                    _moduleConstNames.Add(topLevelVar.Name);
             }
         }
 
@@ -367,6 +373,8 @@ public class JsTranspiler
                 case VarDeclStatement varDecl:
                     EmitLineWithSource(varDecl.Initializer, $"let {EscapeIdentifier(varDecl.Name)} = {TranspileExpressionAwaited(varDecl.Initializer)};");
                     DeclareLocal(varDecl.Name);
+                    if (varDecl.IsConst)
+                        RegisterConstBinding(varDecl.Name);
                     break;
                 case DestructuringVarDecl destVarDecl:
                     TranspileDestructuringVarDecl(destVarDecl);
@@ -1145,6 +1153,8 @@ public class JsTranspiler
             case LiteralPattern literalPattern:
                 return "{ type: \"Literal\", value: " + TranspileLiteral(literalPattern.Value) + " }";
             case IdentifierPattern identifierPattern:
+                if (IsConstIdentifierPattern(identifierPattern.Name))
+                    return "{ type: \"Equals\", value: " + EscapeIdentifier(identifierPattern.Name) + " }";
                 return "{ type: \"Identifier\", name: \"" + EscapeString(identifierPattern.Name) + "\" }";
             case WildcardPattern:
                 return "{ type: \"Wildcard\" }";
@@ -1171,19 +1181,20 @@ public class JsTranspiler
         }
     }
 
-    private static List<string> CollectPatternBindings(Pattern pattern)
+    private List<string> CollectPatternBindings(Pattern pattern)
     {
         var bindings = new List<string>();
         CollectPatternBindings(pattern, bindings);
         return bindings.Distinct(StringComparer.Ordinal).ToList();
     }
 
-    private static void CollectPatternBindings(Pattern pattern, List<string> bindings)
+    private void CollectPatternBindings(Pattern pattern, List<string> bindings)
     {
         switch (pattern)
         {
             case IdentifierPattern identifierPattern:
-                bindings.Add(identifierPattern.Name);
+                if (!IsConstIdentifierPattern(identifierPattern.Name))
+                    bindings.Add(identifierPattern.Name);
                 break;
             case VariantPattern variantPattern:
                 foreach (var payloadPattern in variantPattern.PayloadPatterns)
@@ -1612,6 +1623,58 @@ public class JsTranspiler
         }
     }
 
+    private void ResetConstScopes()
+    {
+        _moduleConstNames.Clear();
+        _constScopeStack.Clear();
+        _constScopeStack.Push(new HashSet<string>(StringComparer.Ordinal));
+    }
+
+    private void CopyConstScopesFrom(JsTranspiler other)
+    {
+        _moduleConstNames.Clear();
+        foreach (var name in other._moduleConstNames)
+            _moduleConstNames.Add(name);
+        _constScopeStack.Clear();
+        foreach (var scope in other._constScopeStack.Reverse())
+            _constScopeStack.Push(new HashSet<string>(scope, StringComparer.Ordinal));
+    }
+
+    private void PushConstScope()
+    {
+        _constScopeStack.Push(new HashSet<string>(StringComparer.Ordinal));
+    }
+
+    private void PopConstScope()
+    {
+        if (_constScopeStack.Count > 1)
+            _constScopeStack.Pop();
+    }
+
+    private void RegisterConstBinding(string name)
+    {
+        if (string.IsNullOrEmpty(name))
+            return;
+        if (_constScopeStack.Count > 0)
+            _constScopeStack.Peek().Add(name);
+        else
+            _moduleConstNames.Add(name);
+    }
+
+    private bool IsConstIdentifierPattern(string name)
+    {
+        if (_variantConstructorArities.ContainsKey(name))
+            return false;
+        if (_moduleConstNames.Contains(name))
+            return true;
+        foreach (var scope in _constScopeStack)
+        {
+            if (scope.Contains(name))
+                return true;
+        }
+        return false;
+    }
+
     private void PushLocalScope()
     {
         _localScopes.Push(new HashSet<string>(StringComparer.Ordinal));
@@ -1654,6 +1717,7 @@ public class JsTranspiler
     private void InLocalScope(IEnumerable<string> names, Action action)
     {
         PushLocalScope();
+        PushConstScope();
         foreach (var name in names)
         {
             DeclareLocal(name);
@@ -1665,6 +1729,7 @@ public class JsTranspiler
         }
         finally
         {
+            PopConstScope();
             PopLocalScope();
         }
     }
@@ -1672,6 +1737,7 @@ public class JsTranspiler
     private T InLocalScope<T>(IEnumerable<string> names, Func<T> action)
     {
         PushLocalScope();
+        PushConstScope();
         foreach (var name in names)
         {
             DeclareLocal(name);
@@ -1683,6 +1749,7 @@ public class JsTranspiler
         }
         finally
         {
+            PopConstScope();
             PopLocalScope();
         }
     }

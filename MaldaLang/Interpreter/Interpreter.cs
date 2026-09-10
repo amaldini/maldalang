@@ -6180,6 +6180,11 @@ public partial class Interpreter
                         ctorTag, ctorArity, identifierPattern.Line, identifierPattern.Column);
                     return MatchVariantPattern(variantPattern, value, bindings);
                 }
+                if (_environment.IsConst(identifierPattern.Name) &&
+                    _environment.TryGet(identifierPattern.Name, out var constValue))
+                {
+                    return IsEqual(value, constValue) ? bindings : null;
+                }
                 bindings[identifierPattern.Name] = value;
                 return bindings;
                 

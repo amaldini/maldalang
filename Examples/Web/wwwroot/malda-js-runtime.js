@@ -914,6 +914,8 @@
       case "Identifier":
         bindings[coerceToString(pattern.name)] = value;
         return true;
+      case "Equals":
+        return equals(pattern.value, value);
       case "Wildcard":
         return true;
       case "Variant": {

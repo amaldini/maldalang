@@ -1,0 +1,8 @@
+const BUY = 1;
+const SELL = -1;
+var t = SELL;
+var result = match t {
+    case BUY: "BUY";
+    case SELL: "SELL";
+};
+print(result);

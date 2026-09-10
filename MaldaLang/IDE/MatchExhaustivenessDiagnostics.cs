@@ -215,7 +215,7 @@ public static class MatchExhaustivenessDiagnostics
         if (match.DefaultCase != null)
             return;
 
-        if (HasCatchAllPattern(match, index))
+        if (HasCatchAllPattern(match, index, types))
             return;
 
         if (!types.TryResolveSumType(match.Value, out var sumTypeName))
@@ -255,7 +255,7 @@ public static class MatchExhaustivenessDiagnostics
         });
     }
 
-    private static bool HasCatchAllPattern(MatchExpression match, SumTypeIndex index)
+    private static bool HasCatchAllPattern(MatchExpression match, SumTypeIndex index, VariableTypes types)
     {
         foreach (var arm in match.Cases)
         {
@@ -264,7 +264,8 @@ public static class MatchExhaustivenessDiagnostics
             if (arm.Pattern is WildcardPattern)
                 return true;
             if (arm.Pattern is IdentifierPattern id &&
-                !index.TryGetSumTypeForConstructor(id.Name, out _))
+                !index.TryGetSumTypeForConstructor(id.Name, out _) &&
+                !types.IsConst(id.Name))
                 return true;
         }
 
@@ -274,21 +275,31 @@ public static class MatchExhaustivenessDiagnostics
     private sealed class VariableTypes
     {
         private readonly Dictionary<string, string> _sumTypes = new(StringComparer.Ordinal);
+        private readonly HashSet<string> _constNames = new(StringComparer.Ordinal);
         private readonly SumTypeIndex _index;
 
         public VariableTypes(SumTypeIndex index) => _index = index;
 
-        private VariableTypes(SumTypeIndex index, Dictionary<string, string> sumTypes)
+        private VariableTypes(SumTypeIndex index, Dictionary<string, string> sumTypes, HashSet<string> constNames)
         {
             _index = index;
             foreach (var kv in sumTypes)
                 _sumTypes[kv.Key] = kv.Value;
+            foreach (var name in constNames)
+                _constNames.Add(name);
         }
 
-        public VariableTypes Clone() => new(_index, _sumTypes);
+        public VariableTypes Clone() => new(_index, _sumTypes, _constNames);
+
+        public bool IsConst(string name) => _constNames.Contains(name);
 
         public void RecordDeclaration(VarDeclStatement varDecl)
         {
+            if (varDecl.IsConst)
+                _constNames.Add(varDecl.Name);
+            else
+                _constNames.Remove(varDecl.Name);
+
             if (!string.IsNullOrEmpty(varDecl.TypeHint) && _index.IsSumType(varDecl.TypeHint))
                 _sumTypes[varDecl.Name] = varDecl.TypeHint;
             else if (varDecl.Initializer != null &&

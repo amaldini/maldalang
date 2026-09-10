@@ -229,7 +229,7 @@ Supported pattern forms include:
 | Pattern | Matches |
 |---------|---------|
 | Literal | Same literal value (`42`, `"x"`, `true`, `null`) |
-| Identifier `x` | Any value; binds `x` in case body. If `x` is a declared variant constructor, this is a variant pattern instead (see `Ctor` below), not a catch-all. |
+| Identifier `x` | If `x` is a declared variant constructor, this is a variant pattern (see `Ctor` below). Else if `x` is an in-scope `const`, compare with `==` and do not bind. Else bind any value to `x` (catch-all). |
 | `_` | Any value; no binding |
 | `Ctor(p1, p2)` | Variant with tag `Ctor`; binds parameters |
 | `Ctor` | Same tag and arity as the constructor; payloads are implicit `_` (`case None:` ≡ `case None():`) |
@@ -265,7 +265,7 @@ match n {
 - If the guard is falsy, the arm is skipped and the next case is tried. That is not an error.
 - Under `--strict-types`, a guarded arm does **not** count toward exhaustiveness: `case Ok(v) if v > 0` does not cover `Ok`; `case x if …` / `case _ if …` is not a catch-all.
 
-**Conformance:** `match-literal.malda`, `sum-type-match.malda`, `match-object-*.malda`, `match-block-expression.malda`, `match-guard.malda`.
+**Conformance:** `match-literal.malda`, `sum-type-match.malda`, `match-object-*.malda`, `match-block-expression.malda`, `match-guard.malda`, `match-const.malda`.
 
 ---
 

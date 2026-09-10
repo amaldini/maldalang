@@ -52,6 +52,7 @@ public class CSharpTranspiler
     private readonly Stack<string> _desugaredForContinueLabels = new();
     private readonly Stack<Dictionary<string, TranspiledClrType>> _typedScopeStack;
     private readonly Stack<HashSet<string>> _constScopeStack;
+    private readonly HashSet<string> _moduleConstNames;
     private readonly Dictionary<string, TranspiledClrType> _functionReturnTypes;
     private readonly Dictionary<string, IReadOnlyList<TranspiledClrType>> _functionParameterTypes;
     private readonly Stack<TranspiledClrType> _currentFunctionReturnType;
@@ -75,6 +76,7 @@ public class CSharpTranspiler
         _profilingOptions = profilingOptions?.Clone();
         _typedScopeStack = new Stack<Dictionary<string, TranspiledClrType>>();
         _constScopeStack = new Stack<HashSet<string>>();
+        _moduleConstNames = new HashSet<string>(StringComparer.Ordinal);
         _functionReturnTypes = new Dictionary<string, TranspiledClrType>(StringComparer.Ordinal);
         _functionParameterTypes = new Dictionary<string, IReadOnlyList<TranspiledClrType>>(StringComparer.Ordinal);
         _currentFunctionReturnType = new Stack<TranspiledClrType>();
@@ -110,6 +112,7 @@ public class CSharpTranspiler
         _profileTempCounter = 0;
         _typedScopeStack.Clear();
         _constScopeStack.Clear();
+        _moduleConstNames.Clear();
         _functionReturnTypes.Clear();
         _functionParameterTypes.Clear();
         _currentFunctionReturnType.Clear();
@@ -196,6 +199,8 @@ public class CSharpTranspiler
             {
                 // Track top-level variables for field generation in executable mode.
                 topLevelVariables.Add(varDecl);
+                if (varDecl.IsConst)
+                    _moduleConstNames.Add(varDecl.Name);
                 if (!isLibrary)
                     topLevelStatements.Add(statement);
             }
@@ -667,7 +672,14 @@ public class CSharpTranspiler
                 return true;
         }
 
-        return false;
+        return _moduleConstNames.Contains(name);
+    }
+
+    private bool IsConstIdentifierPattern(string name)
+    {
+        if (_variantConstructorNames.Contains(name))
+            return false;
+        return IsConstBinding(name);
     }
 
     private void EmitConstAssignGuard(string name)
@@ -12801,8 +12813,19 @@ public class CSharpTranspiler
                     _output.Append("false");
                 }
                 break;
-            case IdentifierPattern _:
-                _output.Append("true");
+            case IdentifierPattern identifier:
+                if (IsConstIdentifierPattern(identifier.Name))
+                {
+                    _output.Append("RuntimeHelpers.OperatorEqual(");
+                    _output.Append(valueVar);
+                    _output.Append(", ");
+                    _output.Append(EscapeIdentifier(identifier.Name));
+                    _output.Append(")");
+                }
+                else
+                {
+                    _output.Append("true");
+                }
                 break;
             case WildcardPattern _:
                 _output.Append("true");
@@ -12880,6 +12903,8 @@ public class CSharpTranspiler
         switch (pattern)
         {
             case IdentifierPattern identifier:
+                if (IsConstIdentifierPattern(identifier.Name))
+                    break;
                 _output.Append("var ");
                 _output.Append(EscapeIdentifier(identifier.Name));
                 _output.Append(" = ");
@@ -12895,6 +12920,8 @@ public class CSharpTranspiler
                     var sub = variantPattern.PayloadPatterns[i];
                     if (sub is IdentifierPattern idp)
                     {
+                        if (IsConstIdentifierPattern(idp.Name))
+                            continue;
                         _output.Append("var ");
                         _output.Append(EscapeIdentifier(idp.Name));
                         _output.Append(" = __payload[");
