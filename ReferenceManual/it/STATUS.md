@@ -17,10 +17,10 @@ python3 scripts/sync-reference-manual-it-status.py
 | 03-lexical-structure.html | 5fe84cf84ef8f0f28549c7120af2975e25e5d1f8868003744882f5a515b48113 |
 | 04-data-types.html | 5b8d3855fd1b6cca84cd70e6d93d94ae0c78250fd13ebeafe94de5a52049758b |
 | 05-variables.html | a8f3dc7a6bc8f6bc3a9ef5b851888d32438dd9f4fb729b5dcab6093c0f214301 |
-| 06-arrays.html | d2b9a0c02775a35678c8cfdb69000ab402c2c899a0b9b64edec46c12d54b1433 |
+| 06-arrays.html | 361ef4ca0cb0fb1e4b21c2bb30dae0ae985b54727e3f12f98d69361bad8b078f |
 | 07-expressions.html | 4533fb4b7e30b92739e456f777a444825582822decab5c6f8d2d0a4ff8d8b772 |
 | 08-control-structures.html | b9f4548db0d1f9bcd3826d05ddfe7c9c5987af17ee1823eb7de29700e2eaab5a |
-| 09-functions.html | 1b7395b643e2ade18d4da579b43ef4863f3cd256bd3a6f045f0b80ad08b13f6f |
+| 09-functions.html | bfc36bf24000b8d223f136dc2b1a05d67f68978d8d17ac8e634342f0974feaea |
 | 10-prompts.html | eb2c0dc586f5cc15c3c65af78befbfffde01347c5465dba4a2485294b0c6f9a7 |
 | 11-classes-objects.html | eaec524fafbc71cc3abcc0650a2088f379916551f9ef5131b595df2208bece17 |
 | 12-input-output.html | ed3fb9d438fc0f847bf231af035d241449a455fa47cc3d9e35cd6130b58d910f |

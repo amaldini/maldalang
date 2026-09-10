@@ -120,6 +120,9 @@ var getValue = () => 42;
 print(add(2, 3));
 print(square(3));
 print(getValue());</code></pre>
+        <div class="warning-box">
+            <strong>L'assegnamento è un'istruzione, non un'espressione.</strong> Una lambda come <code>x =&gt; x.done = true</code> non scrive il campo. In posizione di espressione il parser tiene solo il lato destro, quindi il callback è <code>x =&gt; true</code> e il programma continua. Metti le mutazioni in un corpo a blocco: <code>x =&gt; { x.done = true; }</code>.
+        </div>
         <h3>Corpo a blocco</h3>
         <p>Le lambda con più istruzioni usano le graffe. Puoi usare un <code>return</code> esplicito, oppure affidarti a <strong>vale l'ultima espressione</strong>: se l'ultima istruzione è un'espressione, il suo valore viene restituito in modo implicito.</p>
         <pre><code>var process = (x) => {
@@ -133,6 +136,13 @@ var process2 = (x) => {
     x * 2;   // implicitly returned
 };
 print(process2(5));  // Prints "processing 5" then 10</code></pre>
+        <pre><code data-run="true" data-expect="true">class Item() {
+    var done = false;
+}
+var items = [];
+items.append(new Item());
+items.forEach(x => { x.done = true; });
+print(items[0].done);</code></pre>
         <h3>Cattura nelle closure</h3>
         <p>Le lambda catturano le variabili dallo scope circostante, e così abilitano pattern di programmazione funzionale:</p>
         <pre><code>function makeMultiplier(factor) {

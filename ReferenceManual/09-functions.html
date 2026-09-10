@@ -119,6 +119,9 @@ var getValue = () => 42;
 print(add(2, 3));
 print(square(3));
 print(getValue());</code></pre>
+        <div class="warning-box">
+            <strong>Assignment is a statement, not an expression.</strong> A lambda such as <code>x =&gt; x.done = true</code> does not write the field. In expression position the parser keeps only the right-hand side, so the callback is <code>x =&gt; true</code> and the program still runs. Put mutations in a block body: <code>x =&gt; { x.done = true; }</code>.
+        </div>
         <h3>Block Body</h3>
         <p>Lambdas with multiple statements use braces. You can use explicit <code>return</code>, or rely on <strong>last expression wins</strong>: if the last statement is an expression, its value is implicitly returned.</p>
         <pre><code>var process = (x) => {
@@ -132,6 +135,13 @@ var process2 = (x) => {
     x * 2;   // implicitly returned
 };
 print(process2(5));  // Prints "processing 5" then 10</code></pre>
+        <pre><code data-run="true" data-expect="true">class Item() {
+    var done = false;
+}
+var items = [];
+items.append(new Item());
+items.forEach(x => { x.done = true; });
+print(items[0].done);</code></pre>
         <h3>Closure Capture</h3>
         <p>Lambdas capture variables from their enclosing scope, enabling powerful functional programming patterns:</p>
         <pre><code>function makeMultiplier(factor) {
