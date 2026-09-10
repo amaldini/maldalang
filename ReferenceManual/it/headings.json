@@ -2679,37 +2679,145 @@
     "file": "29-rest-web-client.html",
     "level": 2,
     "id": "",
-    "title": "29.1 Classe RestClient"
+    "title": "29.1 Mappa del capitolo"
   },
   {
     "file": "29-rest-web-client.html",
     "level": 2,
     "id": "",
-    "title": "29.2 Funzioni HTTP statiche"
+    "title": "29.2 Classe RestClient"
+  },
+  {
+    "file": "29-rest-web-client.html",
+    "level": 3,
+    "id": "",
+    "title": "29.2.1 Costruttore"
+  },
+  {
+    "file": "29-rest-web-client.html",
+    "level": 3,
+    "id": "",
+    "title": "29.2.2 Proprietà"
+  },
+  {
+    "file": "29-rest-web-client.html",
+    "level": 3,
+    "id": "",
+    "title": "29.2.3 Metodi di richiesta"
+  },
+  {
+    "file": "29-rest-web-client.html",
+    "level": 3,
+    "id": "",
+    "title": "29.2.4 Metodi di configurazione"
   },
   {
     "file": "29-rest-web-client.html",
     "level": 2,
     "id": "",
-    "title": "29.3 Esempi"
+    "title": "29.3 URL, query e body"
+  },
+  {
+    "file": "29-rest-web-client.html",
+    "level": 3,
+    "id": "",
+    "title": "29.3.1 Risoluzione URL"
+  },
+  {
+    "file": "29-rest-web-client.html",
+    "level": 3,
+    "id": "",
+    "title": "29.3.2 Query parameter"
+  },
+  {
+    "file": "29-rest-web-client.html",
+    "level": 3,
+    "id": "",
+    "title": "29.3.3 Serializzazione del body"
   },
   {
     "file": "29-rest-web-client.html",
     "level": 2,
     "id": "",
-    "title": "29.4 Autenticazione"
+    "title": "29.4 Formato della risposta"
   },
   {
     "file": "29-rest-web-client.html",
     "level": 2,
     "id": "",
-    "title": "29.5 Timeout"
+    "title": "29.5 Funzioni HTTP statiche"
   },
   {
     "file": "29-rest-web-client.html",
     "level": 2,
     "id": "",
-    "title": "29.6 Esempio completo"
+    "title": "29.6 Autenticazione"
+  },
+  {
+    "file": "29-rest-web-client.html",
+    "level": 2,
+    "id": "",
+    "title": "29.7 Timeout"
+  },
+  {
+    "file": "29-rest-web-client.html",
+    "level": 2,
+    "id": "",
+    "title": "29.8 Redirect e retry"
+  },
+  {
+    "file": "29-rest-web-client.html",
+    "level": 2,
+    "id": "",
+    "title": "29.9 CORS: host vs browser"
+  },
+  {
+    "file": "29-rest-web-client.html",
+    "level": 2,
+    "id": "",
+    "title": "29.10 Interpret vs transpile"
+  },
+  {
+    "file": "29-rest-web-client.html",
+    "level": 2,
+    "id": "",
+    "title": "29.11 Chiamare un RestServer MALDA"
+  },
+  {
+    "file": "29-rest-web-client.html",
+    "level": 2,
+    "id": "",
+    "title": "29.12 Esempi"
+  },
+  {
+    "file": "29-rest-web-client.html",
+    "level": 3,
+    "id": "",
+    "title": "29.12.1 Istanza RestClient"
+  },
+  {
+    "file": "29-rest-web-client.html",
+    "level": 3,
+    "id": "",
+    "title": "29.12.2 Funzioni statiche"
+  },
+  {
+    "file": "29-rest-web-client.html",
+    "level": 3,
+    "id": "",
+    "title": "29.12.3 Errori HTTP vs di trasporto"
+  },
+  {
+    "file": "29-rest-web-client.html",
+    "level": 3,
+    "id": "",
+    "title": "29.12.4 Body e header della risposta"
+  },
+  {
+    "file": "29-rest-web-client.html",
+    "level": 3,
+    "id": "",
+    "title": "29.12.5 Walkthrough contro un'API pubblica"
   },
   {
     "file": "30-full-stack-development.html",
@@ -2746,6 +2854,12 @@
     "level": 2,
     "id": "",
     "title": "30.3 Struttura di progetto consigliata"
+  },
+  {
+    "file": "30-full-stack-development.html",
+    "level": 3,
+    "id": "",
+    "title": "30.3.1 Host a una sola porta: HttpServer.mount"
   },
   {
     "file": "30-full-stack-development.html",

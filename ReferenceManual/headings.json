@@ -2679,37 +2679,145 @@
     "file": "29-rest-web-client.html",
     "level": 2,
     "id": "",
-    "title": "29.1 RestClient Class"
+    "title": "29.1 Chapter Map"
   },
   {
     "file": "29-rest-web-client.html",
     "level": 2,
     "id": "",
-    "title": "29.2 Static HTTP Functions"
+    "title": "29.2 RestClient Class"
+  },
+  {
+    "file": "29-rest-web-client.html",
+    "level": 3,
+    "id": "",
+    "title": "29.2.1 Constructor"
+  },
+  {
+    "file": "29-rest-web-client.html",
+    "level": 3,
+    "id": "",
+    "title": "29.2.2 Properties"
+  },
+  {
+    "file": "29-rest-web-client.html",
+    "level": 3,
+    "id": "",
+    "title": "29.2.3 Request methods"
+  },
+  {
+    "file": "29-rest-web-client.html",
+    "level": 3,
+    "id": "",
+    "title": "29.2.4 Configuration methods"
   },
   {
     "file": "29-rest-web-client.html",
     "level": 2,
     "id": "",
-    "title": "29.3 Examples"
+    "title": "29.3 URL, Query, and Body"
+  },
+  {
+    "file": "29-rest-web-client.html",
+    "level": 3,
+    "id": "",
+    "title": "29.3.1 URL resolution"
+  },
+  {
+    "file": "29-rest-web-client.html",
+    "level": 3,
+    "id": "",
+    "title": "29.3.2 Query parameters"
+  },
+  {
+    "file": "29-rest-web-client.html",
+    "level": 3,
+    "id": "",
+    "title": "29.3.3 Body serialization"
   },
   {
     "file": "29-rest-web-client.html",
     "level": 2,
     "id": "",
-    "title": "29.4 Authentication"
+    "title": "29.4 Response Format"
   },
   {
     "file": "29-rest-web-client.html",
     "level": 2,
     "id": "",
-    "title": "29.5 Timeouts"
+    "title": "29.5 Static HTTP Functions"
   },
   {
     "file": "29-rest-web-client.html",
     "level": 2,
     "id": "",
-    "title": "29.6 Complete Example"
+    "title": "29.6 Authentication"
+  },
+  {
+    "file": "29-rest-web-client.html",
+    "level": 2,
+    "id": "",
+    "title": "29.7 Timeouts"
+  },
+  {
+    "file": "29-rest-web-client.html",
+    "level": 2,
+    "id": "",
+    "title": "29.8 Redirects and Retries"
+  },
+  {
+    "file": "29-rest-web-client.html",
+    "level": 2,
+    "id": "",
+    "title": "29.9 CORS: Host vs Browser"
+  },
+  {
+    "file": "29-rest-web-client.html",
+    "level": 2,
+    "id": "",
+    "title": "29.10 Interpret vs Transpile"
+  },
+  {
+    "file": "29-rest-web-client.html",
+    "level": 2,
+    "id": "",
+    "title": "29.11 Calling a MALDA RestServer"
+  },
+  {
+    "file": "29-rest-web-client.html",
+    "level": 2,
+    "id": "",
+    "title": "29.12 Examples"
+  },
+  {
+    "file": "29-rest-web-client.html",
+    "level": 3,
+    "id": "",
+    "title": "29.12.1 RestClient instance"
+  },
+  {
+    "file": "29-rest-web-client.html",
+    "level": 3,
+    "id": "",
+    "title": "29.12.2 Static functions"
+  },
+  {
+    "file": "29-rest-web-client.html",
+    "level": 3,
+    "id": "",
+    "title": "29.12.3 HTTP vs transport errors"
+  },
+  {
+    "file": "29-rest-web-client.html",
+    "level": 3,
+    "id": "",
+    "title": "29.12.4 Response body and headers"
+  },
+  {
+    "file": "29-rest-web-client.html",
+    "level": 3,
+    "id": "",
+    "title": "29.12.5 Walkthrough against a public API"
   },
   {
     "file": "30-full-stack-development.html",
@@ -2746,6 +2854,12 @@
     "level": 2,
     "id": "",
     "title": "30.3 Recommended project structure"
+  },
+  {
+    "file": "30-full-stack-development.html",
+    "level": 3,
+    "id": "",
+    "title": "30.3.1 Single-port host: HttpServer.mount"
   },
   {
     "file": "30-full-stack-development.html",
