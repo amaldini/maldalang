@@ -172,6 +172,9 @@ io.print("Hello");
 
 var x = 10;
 var name = "Ada";
+const MAX = 3;            // binding cannot be reassigned
+const BUY;                // same as const BUY = "BUY";
+const SELL, EURUSD;       // each name becomes that string
 var items = [1, 2, 3];
 items.append(4);          // member-style method — NOT a free function, and there is no `arr` namespace
 var last = items.pop();   // remove last;  items.shift() removes first
@@ -337,8 +340,9 @@ Prefer `str.trimText(response?.content)` over nested `if (response != null) { if
 
 | Wrong / JS-like | MALDA |
 |-----------------|--------|
-| `const x = 1` | `var x = 1` |
-| `let x = 1` | `var x = 1` |
+| `let x = 1` | `var x = 1` (use `const x = 1` only when the binding must not be reassigned) |
+| `const BUY = "BUY"` | `const BUY;` when the string equals the name; `const BUY, SELL;` for a list |
+| `var BUY;` expecting `"BUY"` | `const BUY;` — only bare `const` is name-as-string; `var` still needs `=` |
 | `function f(x: number)` on prompts | `prompt f(x)` name-only. Constructor payloads may use `Buy(sku: string)` and `api` methods may use `add(a: number)` — that is not prompt typing. |
 | `console.log(x)` | `io.print(x)` |
 | `println(x)` | `io.print(x)` — `println` does not exist |

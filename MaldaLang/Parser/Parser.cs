@@ -41,29 +41,76 @@ public class Parser
         var statements = new List<Statement>();
         while (!IsAtEnd())
         {
-            var stmt = Declaration();
-            if (stmt == null)
-                continue;
-
-            ApplySourceFileRecursive(stmt);
-
-            if (stmt is IncludeStatement includeStmt)
-            {
-                try
-                {
-                    statements.AddRange(ParseIncludedFile(includeStmt));
-                }
-                catch (ParseException ex)
-                {
-                    _errors.Add(ex);
-                }
-                continue;
-            }
-
-            statements.Add(stmt);
+            CollectDeclaration(statements, applySourceFile: true);
         }
         return statements;
     }
+
+    /// <summary>
+    /// Parser-only wrapper so a <c>const A, B;</c> list can be flattened into the
+    /// enclosing statement list without introducing a <see cref="BlockStatement"/> scope.
+    /// </summary>
+    private sealed class StatementSequence : Statement
+    {
+        public List<Statement> Statements { get; }
+
+        public StatementSequence(List<Statement> statements, int line, int column)
+            : base(line, column)
+        {
+            Statements = statements;
+        }
+    }
+
+    private void CollectDeclaration(List<Statement> statements, bool applySourceFile)
+    {
+        var stmt = Declaration();
+        AppendFlattened(statements, stmt, applySourceFile);
+    }
+
+    private void AppendFlattened(List<Statement> statements, Statement? stmt, bool applySourceFile)
+    {
+        if (stmt == null)
+            return;
+
+        if (stmt is StatementSequence sequence)
+        {
+            foreach (var inner in sequence.Statements)
+                AppendFlattened(statements, inner, applySourceFile);
+            return;
+        }
+
+        if (applySourceFile)
+            ApplySourceFileRecursive(stmt);
+
+        if (stmt is IncludeStatement includeStmt)
+        {
+            try
+            {
+                statements.AddRange(ParseIncludedFile(includeStmt));
+            }
+            catch (ParseException ex)
+            {
+                _errors.Add(ex);
+            }
+            return;
+        }
+
+        statements.Add(stmt);
+    }
+
+    private static Statement AsEmbeddedStatement(Statement stmt)
+    {
+        if (stmt is StatementSequence sequence)
+        {
+            if (sequence.Statements.Count == 1)
+                return sequence.Statements[0];
+            return new BlockStatement(sequence.Statements, stmt.Line, stmt.Column);
+        }
+
+        return stmt;
+    }
+
+    private Statement EmbeddedStatement() => AsEmbeddedStatement(Statement());
 
     private void ApplySourceFileRecursive(Node node)
     {
@@ -808,9 +855,7 @@ public class Parser
         {
             while (!Check(TokenType.RightBrace) && !IsAtEnd())
             {
-                var stmt = WorkflowStatement(stepIds);
-                if (stmt != null)
-                    statements.Add(stmt);
+                AppendFlattened(statements, WorkflowStatement(stepIds), applySourceFile: false);
             }
             return new BlockStatement(statements);
         }
@@ -832,6 +877,8 @@ public class Parser
                 return ApprovalStatement();
             if (Match(TokenType.Wait))
                 return WaitSignalStatement();
+            if (Match(TokenType.Var, TokenType.Const))
+                return VarDeclaration(isConst: Previous().Type == TokenType.Const);
             return Statement();
         }
         catch (ParseException ex)
@@ -1426,11 +1473,11 @@ public class Parser
         Consume(TokenType.LeftParen, "Expect '(' after 'if'.");
         var condition = Expression();
         Consume(TokenType.RightParen, "Expect ')' after condition.");
-        var thenBranch = Statement();
+        var thenBranch = EmbeddedStatement();
         Statement? elseBranch = null;
         if (Match(TokenType.Else))
         {
-            elseBranch = Statement();
+            elseBranch = EmbeddedStatement();
         }
         return new IfStatement(condition, thenBranch, elseBranch, token.Line, token.Column);
     }
@@ -1441,7 +1488,7 @@ public class Parser
         Consume(TokenType.LeftParen, "Expect '(' after 'while'.");
         var condition = Expression();
         Consume(TokenType.RightParen, "Expect ')' after condition.");
-        var body = Statement();
+        var body = EmbeddedStatement();
         return new WhileStatement(condition, body, token.Line, token.Column);
     }
     
@@ -1454,7 +1501,7 @@ public class Parser
         Consume(TokenType.In, "Expect 'in' after variable name in foreach.");
         var collection = Expression();
         Consume(TokenType.RightParen, "Expect ')' after collection expression.");
-        var body = Statement();
+        var body = EmbeddedStatement();
         return new ForInStatement(name, collection, body, token.Line, token.Column);
     }
     
@@ -1474,7 +1521,7 @@ public class Parser
             {
                 var collection = Expression();
                 Consume(TokenType.RightParen, "Expect ')' after collection expression.");
-                var forInBody = Statement();
+                var forInBody = EmbeddedStatement();
                 return new ForInStatement(name, collection, forInBody, token.Line, token.Column);
             }
             
@@ -1511,7 +1558,7 @@ public class Parser
             }
             Consume(TokenType.RightParen, "Expect ')' after for clauses.");
             
-            var loopBody = Statement();
+            var loopBody = EmbeddedStatement();
             
             // Desugar for loop into while loop
             if (loopIncrement != null)
@@ -1575,7 +1622,7 @@ public class Parser
         }
         Consume(TokenType.RightParen, "Expect ')' after for clauses.");
         
-        var body = Statement();
+        var body = EmbeddedStatement();
         
         // Desugar for loop into while loop
         if (incrementStmt != null)
@@ -1706,8 +1753,7 @@ public class Parser
                 var stmt = _inWorkflowBlock && _workflowStepIds != null
                     ? WorkflowStatement(_workflowStepIds)
                     : Declaration();
-                if (stmt != null)
-                    statements.Add(stmt);
+                AppendFlattened(statements, stmt, applySourceFile: false);
             }
             Consume(TokenType.RightBrace, "Expect '}' after block.");
             return new BlockStatement(statements);
@@ -1743,15 +1789,81 @@ public class Parser
         }
         
         // Regular variable declaration
-        var name = ConsumeIdentifierLike("Expect variable name.");
+        var nameToken = ConsumeIdentifierTokenLike("Expect variable name.");
+        var name = nameToken.Lexeme;
         typeHint = null;
         if (Match(TokenType.Colon))
             typeHint = Consume(TokenType.Identifier, "Expect type name after ':'.").Lexeme;
-        Consume(TokenType.Assign, "Expect '=' after variable name.");
-        initializer = Expression();
-        Consume(TokenType.Semicolon, "Expect ';' after variable declaration.");
-        
-        return new VarDeclStatement(name, initializer, typeHint, isExported, isConst, token?.Line ?? 0, token?.Column ?? 0);
+
+        if (Match(TokenType.Assign))
+        {
+            initializer = Expression();
+            Consume(TokenType.Semicolon, "Expect ';' after variable declaration.");
+            return new VarDeclStatement(name, initializer, typeHint, isExported, isConst, token?.Line ?? 0, token?.Column ?? 0);
+        }
+
+        if (!isConst)
+            throw Error(Peek(), "Expect '=' after variable name.");
+
+        if (Match(TokenType.Comma))
+        {
+            if (typeHint != null)
+                throw Error(Previous(), "Type hints are only allowed on a single name-as-string const (const NAME: string;).");
+
+            var decls = new List<Statement>
+            {
+                NameAsStringConst(name, nameToken, typeHint, isExported, token)
+            };
+
+            do
+            {
+                if (Check(TokenType.Assign))
+                    throw NameAsStringListInitializerError();
+
+                var nextNameToken = ConsumeIdentifierTokenLike("Expect constant name after ','.");
+                if (Match(TokenType.Colon))
+                    throw Error(Previous(), "Type hints are only allowed on a single name-as-string const (const NAME: string;).");
+                if (Check(TokenType.Assign))
+                    throw NameAsStringListInitializerError();
+
+                decls.Add(NameAsStringConst(nextNameToken.Lexeme, nextNameToken, null, isExported, token));
+            } while (Match(TokenType.Comma));
+
+            if (Check(TokenType.Assign))
+                throw NameAsStringListInitializerError();
+
+            Consume(TokenType.Semicolon, "Expect ';' after constant declaration.");
+            return decls.Count == 1
+                ? decls[0]
+                : new StatementSequence(decls, token?.Line ?? 0, token?.Column ?? 0);
+        }
+
+        Consume(TokenType.Semicolon, "Expect '=' after variable name.");
+        return NameAsStringConst(name, nameToken, typeHint, isExported, token);
+    }
+
+    private ParseException NameAsStringListInitializerError()
+    {
+        return Error(Peek(),
+            "Name-as-string const lists cannot include initializers. Write 'const BUY;' and 'const MAX = 3;' separately, or 'const BUY, MAX;'.");
+    }
+
+    private static VarDeclStatement NameAsStringConst(
+        string name,
+        Token nameToken,
+        string? typeHint,
+        bool isExported,
+        Token? keyword)
+    {
+        var initializer = new LiteralExpression(name, nameToken.Line, nameToken.Column);
+        return new VarDeclStatement(
+            name,
+            initializer,
+            typeHint,
+            isExported,
+            isConst: true,
+            keyword?.Line ?? nameToken.Line,
+            keyword?.Column ?? nameToken.Column);
     }
 
     private Statement ImportStatement()
@@ -2121,7 +2233,7 @@ public class Parser
             if (Match(TokenType.Default))
             {
                 Consume(TokenType.Colon, "Expect ':' after 'default'.");
-                var defaultBody = Statement();
+                var defaultBody = EmbeddedStatement();
                 defaultCase = defaultBody;
                 // Allow optional semicolon after body (e.g. default: {};)
                 if (Check(TokenType.Semicolon)) Advance();
@@ -2134,7 +2246,7 @@ public class Parser
             if (Match(TokenType.If))
                 guard = Expression();
             Consume(TokenType.Colon, "Expect ':' after pattern.");
-            var body = Statement();
+            var body = EmbeddedStatement();
             // Allow optional semicolon after body (e.g. case X: {};)
             if (Check(TokenType.Semicolon)) Advance();
             cases.Add(new MatchCase(pattern, body, pattern.Line, pattern.Column, guard));
@@ -3630,7 +3742,7 @@ public class Parser
         Consume(TokenType.In, "Expect 'in' after for-await variable.");
         var collection = Expression();
         Consume(TokenType.RightParen, "Expect ')' after collection.");
-        var body = Statement();
+        var body = EmbeddedStatement();
         return new ForInStatement(name, collection, body, start.Line, start.Column, isAwait: true);
     }
 }

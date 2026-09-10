@@ -36,11 +36,16 @@ var pi = 3.14159;</code></pre>
 name = "Bob";
 x = x + 1;</code></pre>
         <h2 id="const">5.3 Constant Declarations</h2>
-        <p>A binding declared with <code>const</code> instead of <code>var</code> cannot be reassigned. An initializer is required:</p>
+        <p>A binding declared with <code>const</code> instead of <code>var</code> cannot be reassigned. Write an initializer, or omit it when the value should be the identifier name as a string:</p>
         <pre><code data-run="true" data-expect="3">const MAX_RETRIES = 3;
 const APP_NAME = "malda-demo";
 
 print(MAX_RETRIES);   // 3</code></pre>
+        <h3>Name-as-string shorthand</h3>
+        <p>When the constant name is the string you want, omit the initializer. A comma list declares several such strings. This is still a string <code>const</code>, not an enum or sum type:</p>
+        <pre><code data-run="true" data-expect="BUY">const BUY, SELL;
+print(BUY);   // BUY</code></pre>
+        <p><code>const BUY;</code> is the same as <code>const BUY = "BUY";</code>. The value is the exact identifier lexeme. Type hints are allowed only on the single-name form (<code>const BUY: string;</code>). <code>var BUY;</code> is still a parse error — name-as-string is <code>const</code> only. Do not mix a list with an initializer (<code>const BUY, MAX = 3;</code>); split the declarations or write <code>const BUY, MAX;</code>.</p>
         <p>Attempting to assign to a constant is a runtime error that names the binding:</p>
         <pre><code>const limit = 10;
 limit = 20;   // Runtime error: Cannot assign to const 'limit'.</code></pre>

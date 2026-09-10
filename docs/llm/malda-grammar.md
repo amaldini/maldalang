@@ -103,7 +103,7 @@ ParamList     ::= Param ("," Param)*
 Param         ::= Decorator* Identifier TypeHint?
 CallExpr      ::= Expression PostfixSuffix*   /* see Â§34.4 */
 
-Statement   ::= VarDecl | DestructuringVarDecl
+Statement   ::= VarDecl | ConstDecl | DestructuringVarDecl
               | Assignment | DestructuringAssignment
               | IfStmt | WhileStmt | ForStmt | ForAwaitStmt | ForeachStmt
               | WithinStmt
@@ -112,6 +112,11 @@ Statement   ::= VarDecl | DestructuringVarDecl
               | MatchStmt | ExpressionStmt | Block
 
 VarDecl     ::= "var" Identifier TypeHint? "=" Expression ";"
+ConstDecl   ::= "const" Identifier TypeHint? "=" Expression ";"
+              | "const" Identifier TypeHint? ";"
+              | "const" Identifier ("," Identifier)+ ";"
+              /* omitted initializer => string equal to the identifier lexeme;
+                 lists are all name-as-string (no mixed `= expr`) */
 DestructuringVarDecl ::= "var" DestructuringPattern TypeHint? "=" Expression ";"
 Assignment  ::= LValue AssignOp Expression ";"
 AssignOp    ::= "=" | "+=" | "-=" | "*=" | "/="

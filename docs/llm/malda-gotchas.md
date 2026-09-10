@@ -2,8 +2,10 @@
 
 *Applies to: MALDA 1.0.19*
 
-`malda-syntax.md` lists the JS-isms an agent might guess — `const`, `console.log`, `def`.
+`malda-syntax.md` lists the JS-isms an agent might guess — `let`, `console.log`, `def`.
 Those are cheap: the parser rejects them immediately and you fix them on the next run.
+`const` is a real keyword (immutable binding). `const BUY;` is name-as-string sugar for
+`const BUY = "BUY"`; `var BUY;` is a parse error and does **not** become `"BUY"`.
 
 This file is for the expensive ones. Every entry below **runs without error** and produces
 the wrong output, so there is no feedback loop to self-correct from. Read it before you
@@ -53,7 +55,7 @@ claim a program works.
 | `import { Result } from "lib.malda"` then `Ok(42)` | Selecting the type binds the **namespace**, not the constructors. `Ok` is undefined in the host. | `Result.Ok(42)`, or `import { Ok } from "lib.malda"` |
 | `validate("Intent", taggedDict)` expecting a variant for `match` | Success returns `{ ok, data }` with **`data` still the dict**. Coercion to `Search(q)` / `Buy(…)` happens on `await prompt … -> Intent`, or on `asVariant("Intent", data)`. | `asVariant("Intent", checked.data)` then `match`; or `await` a typed prompt. Example: `docs/llm/few-shot/25_as_variant.malda` |
 | `case x: { if (x > 10) … }` expecting later cases to run | An identifier/`_` pattern always matches **unless** the identifier is a declared variant constructor (`case Ok:` matches the `Ok` variant) or an in-scope `const` (`case BUY:` compares with `==`). An `if` **inside** the body does not fall through. | `case x if x > 10:` then a later case. Failed guards try the next arm. Guarded `Ok` / `_` is **not** exhaustive under `--strict-types` |
-| `case BUY:` with `var BUY = 1` expecting equality | Only **`const`** names compare. A `var` identifier still binds and always matches. | `const BUY = 1` or `case x if x == BUY` |
+| `case BUY:` with `var BUY = 1` expecting equality | Only **`const`** names compare. A `var` identifier still binds and always matches. | `const BUY = 1` / `const BUY;` (name-as-string) or `case x if x == BUY` |
 | `runProgram` vs `executePlan` / `@Tool` | `runProgram` only calls api methods (no LLM). `executePlan` drives an agent per task step. `@Tool` is a multi-round tool loop. | Use `api` + `program(Api)` + `runProgram` for closed deterministic plans |
 | `executePlan(plan, team)` with steps that omit `role` | Host-driven team plans do **not** pick a default member. The call returns `{ error }` naming the step. | Set `role` (or `agent`) to a `agents.team` member name. Example: `Examples/Agents/agent_team_graph.malda` |
 | `executePlan(plan, team)` with `Reviewer` depending on `Writer` but no edge | The graph is an allow-list. A `dependsOn` hop between different roles must match a declared `rel`. Same-role continuation is allowed. | Add `{ from: "Writer", to: "Reviewer", rel: "handoff" }` (or `delegate` / `review` / `consult` / `reject`). Example: `Examples/Agents/agent_team_plan.malda` |

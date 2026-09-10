@@ -37,11 +37,16 @@ var pi = 3.14159;</code></pre>
 name = "Bob";
 x = x + 1;</code></pre>
         <h2 id="const">5.3 Dichiarazioni di costanti</h2>
-        <p>Un binding dichiarato con <code>const</code> invece di <code>var</code> non può essere riassegnato. L'inizializzatore è obbligatorio:</p>
+        <p>Un binding dichiarato con <code>const</code> invece di <code>var</code> non può essere riassegnato. Scrivi un inizializzatore, oppure omettilo quando il valore deve essere il nome dell'identificatore come stringa:</p>
         <pre><code data-run="true" data-expect="3">const MAX_RETRIES = 3;
 const APP_NAME = "malda-demo";
 
 print(MAX_RETRIES);   // 3</code></pre>
+        <h3>Forma breve nome-come-stringa</h3>
+        <p>Quando il nome della costante è la stringa che vuoi, ometti l'inizializzatore. Una lista separata da virgole dichiara più stringhe di questo tipo. Resta un <code>const</code> di tipo stringa, non un enum o un tipo somma:</p>
+        <pre><code data-run="true" data-expect="BUY">const BUY, SELL;
+print(BUY);   // BUY</code></pre>
+        <p><code>const BUY;</code> è uguale a <code>const BUY = "BUY";</code>. Il valore è il lessema esatto dell'identificatore. I type hint sono ammessi solo sulla forma a un solo nome (<code>const BUY: string;</code>). <code>var BUY;</code> resta un errore di parse — la forma nome-come-stringa è solo per <code>const</code>. Non mescolare una lista con un inizializzatore (<code>const BUY, MAX = 3;</code>); separa le dichiarazioni oppure scrivi <code>const BUY, MAX;</code>.</p>
         <p>Tentare di assegnare a una costante è un errore a runtime che nomina il binding:</p>
         <pre><code>const limit = 10;
 limit = 20;   // Runtime error: Cannot assign to const 'limit'.</code></pre>
