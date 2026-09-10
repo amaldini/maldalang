@@ -894,6 +894,52 @@ public class InterpreterTests : TestBase
         Assert.Equal("3", lines[3]);
         Assert.Equal("4", lines[4]);
     }
+
+    [Fact]
+    public void TestArrayExceptMethod()
+    {
+        var source = @"
+            var a = [1, 2, 2, 3, 4];
+            var b = [2, 4];
+            var c = a.except(b);
+            print(c.length);
+            print(c[0]);
+            print(c[1]);
+            print(a.length);
+            print(b.length);
+        ";
+        var output = RunProgram(source);
+        var lines = output.Split('\n');
+        Assert.Equal("2", lines[0]);
+        Assert.Equal("1", lines[1]);
+        Assert.Equal("3", lines[2]);
+        Assert.Equal("5", lines[3]);
+        Assert.Equal("2", lines[4]);
+    }
+
+    [Fact]
+    public void TestArrayExceptKeepsDuplicatesAndCoercesNumbers()
+    {
+        var source = @"
+            var kept = [1, 1, 2].except([2]);
+            print(kept.length);
+            print(kept[0]);
+            print(kept[1]);
+            var mixed = [1, 2].except([2.0]);
+            print(mixed.length);
+            print(mixed[0]);
+            var piped = [1, 2, 3, 4] |> except([2, 4]);
+            print(piped.join("",""));
+        ";
+        var output = RunProgram(source);
+        var lines = output.Split('\n');
+        Assert.Equal("2", lines[0]);
+        Assert.Equal("1", lines[1]);
+        Assert.Equal("1", lines[2]);
+        Assert.Equal("1", lines[3]);
+        Assert.Equal("1", lines[4]);
+        Assert.Equal("1,3", lines[5]);
+    }
     
     [Fact]
     public void TestMultiDimensionalArray()

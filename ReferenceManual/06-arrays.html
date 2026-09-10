@@ -72,6 +72,12 @@ var value = arr.shiftOrNull();  // null</code></pre>
         <pre><code>var a = [1, 2];
 var b = [3, 4];
 var c = a.concat(b);  // c is [1, 2, 3, 4], a and b unchanged</code></pre>
+        <h3>except(otherArray)</h3>
+        <p>Returns a new array of elements from this array that are not in <code>otherArray</code>. Order and duplicates from the receiver are kept; the original arrays are unchanged. Membership uses the same equality as <code>includes</code>:</p>
+        <pre><code>var a = [1, 2, 2, 3];
+var b = [2];
+var c = a.except(b);  // c is [1, 3], a and b unchanged
+var kept = [1, 1, 2].except([2]);  // [1, 1]</code></pre>
         <h3>map(fn)</h3>
         <p>Returns a new array with each element transformed by the function:</p>
         <pre><code>var doubled = [1, 2, 3].map(x => x * 2);  // [2, 4, 6]

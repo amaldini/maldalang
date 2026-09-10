@@ -174,6 +174,7 @@ var name = "Ada";
 var items = [1, 2, 3];
 items.append(4);          // member-style method — NOT a free function, and there is no `arr` namespace
 var last = items.pop();   // remove last;  items.shift() removes first
+var unique = items.except([1]);  // new array without values that appear in the argument
 var first = items[0];
 var n = items.length;     // property, not a call: items.length() is an error
                           // str.length(items) also works

@@ -2625,6 +2625,32 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("}");
         _output.AppendLine();
+
+        WriteIndent();
+        _output.AppendLine("public static List<object> ArrayExcept(List<object> arr, List<object> other)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("var result = new List<object>();");
+        WriteIndent();
+        _output.AppendLine("foreach (var item in arr)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("if (!other.Any(candidate => AreObjectsEqual(item, candidate)))");
+        WriteIndent();
+        _output.AppendLine("    result.Add(item);");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        WriteIndent();
+        _output.AppendLine("return result;");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        _output.AppendLine();
         
         WriteIndent();
         _output.AppendLine("public static List<object> ArraySortWithCompare(List<object> list, System.Func<object, object, System.Threading.Tasks.Task<object>> compare)");
@@ -2813,6 +2839,14 @@ public class CSharpTranspiler
         _output.AppendLine("if (args.Count < 1) return false;");
         WriteIndent();
         _output.AppendLine("return list.Any(item => AreObjectsEqual(item, args[0]));");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("case \"except\":");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("if (args.Count < 1) return new List<object>();");
+        WriteIndent();
+        _output.AppendLine("return ArrayExcept(list, GetArray(args[0]));");
         _indentLevel--;
         WriteIndent();
         _output.AppendLine("case \"indexOf\":");
@@ -8658,7 +8692,7 @@ public class CSharpTranspiler
 
     private static readonly HashSet<string> ArrayPipelineMethods = new(StringComparer.Ordinal)
     {
-        "append", "pop", "shift", "concat", "popOrNull", "shiftOrNull", "get", "at",
+        "append", "pop", "shift", "concat", "except", "popOrNull", "shiftOrNull", "get", "at",
         "map", "filter", "reduce", "forEach", "find", "findIndex", "some", "every",
         "sort", "reverse", "slice", "indexOf", "includes", "join", "sum", "average", "min", "max"
     };
@@ -9196,6 +9230,18 @@ public class CSharpTranspiler
             else if (memberName == "concat")
             {
                 _output.Append("RuntimeHelpers.ArrayConcat(RuntimeHelpers.GetArray(");
+                TranspileExpression(memberAccess.Object);
+                _output.Append("), RuntimeHelpers.GetArray(");
+                if (call.Arguments.Count > 0)
+                    TranspileExpression(call.Arguments[0]);
+                else
+                    _output.Append("new List<object>()");
+                _output.Append("))");
+                return;
+            }
+            else if (memberName == "except")
+            {
+                _output.Append("RuntimeHelpers.ArrayExcept(RuntimeHelpers.GetArray(");
                 TranspileExpression(memberAccess.Object);
                 _output.Append("), RuntimeHelpers.GetArray(");
                 if (call.Arguments.Count > 0)
@@ -11283,7 +11329,7 @@ public class CSharpTranspiler
             }
             return;
         }
-        else if (memberName == "append" || memberName == "pop" || memberName == "shift" || memberName == "concat")
+        else if (memberName == "append" || memberName == "pop" || memberName == "shift" || memberName == "concat" || memberName == "except")
         {
             // This will be handled when the method is called
             // Note: These are built-in array methods, but we don't escape them because

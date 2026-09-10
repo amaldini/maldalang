@@ -11,7 +11,7 @@ public partial class Interpreter
 {
     private static readonly FrozenSet<string> ArrayPipelineMethods = new HashSet<string>(StringComparer.Ordinal)
     {
-        "append", "pop", "shift", "concat", "popOrNull", "shiftOrNull", "get", "at",
+        "append", "pop", "shift", "concat", "except", "popOrNull", "shiftOrNull", "get", "at",
         "map", "filter", "reduce", "forEach", "find", "findIndex", "some", "every",
         "sort", "reverse", "slice", "indexOf", "includes", "join", "sum", "average", "min", "max"
     }.ToFrozenSet();

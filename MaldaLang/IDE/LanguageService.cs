@@ -1374,7 +1374,7 @@ public class LanguageService : ILanguageService
 
     private static bool IsArrayReturningArrayMethod(string name)
     {
-        return name is "concat" or "map" or "filter" or "sort" or "reverse" or "slice";
+        return name is "concat" or "except" or "map" or "filter" or "sort" or "reverse" or "slice";
     }
 
     private static readonly (string Name, string Detail)[] StdLibModuleCompletions =
@@ -1471,6 +1471,7 @@ public class LanguageService : ILanguageService
         members.Add(new CompletionItem { Label = "shift", Kind = "method", Detail = "shift()", InsertText = "shift()" });
         members.Add(new CompletionItem { Label = "shiftOrNull", Kind = "method", Detail = "shiftOrNull()", InsertText = "shiftOrNull()" });
         members.Add(new CompletionItem { Label = "concat", Kind = "method", Detail = "concat(otherArray)", InsertText = "concat()" });
+        members.Add(new CompletionItem { Label = "except", Kind = "method", Detail = "except(otherArray)", InsertText = "except()" });
         members.Add(new CompletionItem { Label = "get", Kind = "method", Detail = "get(index, fallback?)", InsertText = "get()" });
         members.Add(new CompletionItem { Label = "at", Kind = "method", Detail = "at(index)", InsertText = "at()" });
         members.Add(new CompletionItem { Label = "map", Kind = "method", Detail = "map(fn)", InsertText = "map()" });

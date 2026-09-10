@@ -135,4 +135,23 @@ public class InterpretJsPairTests
             """,
             "class-extends-js");
     }
+
+    [Fact]
+    public void ArrayExcept_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(
+            """
+            var a = [1, 2, 2, 3, 4];
+            var b = [2, 4];
+            var c = a.except(b);
+            io.print(c.length);
+            io.print(c.join(","));
+            io.print(a.length);
+            var kept = [1, 1, 2].except([2]);
+            io.print(kept.join(","));
+            var piped = [1, 2, 3, 4] |> except([2, 4]);
+            io.print(piped.join(","));
+            """,
+            "array-except-js");
+    }
 }

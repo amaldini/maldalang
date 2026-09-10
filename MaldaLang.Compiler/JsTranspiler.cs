@@ -789,7 +789,7 @@ public class JsTranspiler
 
     private static readonly HashSet<string> ArrayPipelineMethods = new(StringComparer.Ordinal)
     {
-        "append", "pop", "shift", "concat", "popOrNull", "shiftOrNull", "get", "at",
+        "append", "pop", "shift", "concat", "except", "popOrNull", "shiftOrNull", "get", "at",
         "map", "filter", "reduce", "forEach", "find", "findIndex", "some", "every",
         "sort", "reverse", "slice", "indexOf", "includes", "join", "sum", "average", "min", "max"
     };

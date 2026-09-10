@@ -895,4 +895,25 @@ print(""run="" + string(ran.success) + "","" + string(ran.output));
             try { Directory.Delete(tempDir, recursive: true); } catch { /* ignore */ }
         }
     }
+
+    [Fact]
+    public void ArrayExcept_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            var a = [1, 2, 2, 3, 4];
+            var b = [2, 4];
+            var c = a.except(b);
+            io.print(c.length);
+            io.print(c.join(","));
+            io.print(a.length);
+            var kept = [1, 1, 2].except([2]);
+            io.print(kept.join(","));
+            var mixed = [1, 2].except([2.0]);
+            io.print(mixed.join(","));
+            var piped = [1, 2, 3, 4] |> except([2, 4]);
+            io.print(piped.join(","));
+            """,
+            "array-except");
+    }
 }

@@ -73,6 +73,12 @@ var value = arr.shiftOrNull();  // null</code></pre>
         <pre><code>var a = [1, 2];
 var b = [3, 4];
 var c = a.concat(b);  // c is [1, 2, 3, 4], a and b unchanged</code></pre>
+        <h3>except(otherArray)</h3>
+        <p>Restituisce un nuovo array con gli elementi di questo array che non compaiono in <code>otherArray</code>. L'ordine e i duplicati del ricevente sono conservati; gli array originali non cambiano. L'uguaglianza è la stessa di <code>includes</code>:</p>
+        <pre><code>var a = [1, 2, 2, 3];
+var b = [2];
+var c = a.except(b);  // c is [1, 3], a and b unchanged
+var kept = [1, 1, 2].except([2]);  // [1, 1]</code></pre>
         <h3>map(fn)</h3>
         <p>Restituisce un nuovo array in cui ogni elemento è trasformato dalla funzione:</p>
         <pre><code>var doubled = [1, 2, 3].map(x => x * 2);  // [2, 4, 6]

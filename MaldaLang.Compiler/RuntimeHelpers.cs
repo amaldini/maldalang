@@ -643,6 +643,43 @@ public static class RuntimeHelpers
         return combined;
     }
 
+    public static List<object> ArrayExcept(List<object> arr, List<object> other)
+    {
+        var result = new List<object>();
+        foreach (var item in arr)
+        {
+            var excluded = false;
+            foreach (var candidate in other)
+            {
+                if (AreObjectsEqual(item, candidate))
+                {
+                    excluded = true;
+                    break;
+                }
+            }
+
+            if (!excluded)
+                result.Add(item);
+        }
+
+        return result;
+    }
+
+    private static bool AreObjectsEqual(object? left, object? right)
+    {
+        if (left == null && right == null) return true;
+        if (left == null || right == null) return false;
+        if (left is int li && right is double rd) return li == rd;
+        if (left is double ld && right is int ri) return ld == ri;
+        if (left is int li2 && right is long rl) return li2 == rl;
+        if (left is long ll && right is int ri2) return ll == ri2;
+        if (left is float lf && right is int ri3) return lf == ri3;
+        if (left is int li3 && right is float rf) return li3 == rf;
+        if (left is float lf2 && right is double rd2) return lf2 == rd2;
+        if (left is double ld2 && right is float rf2) return ld2 == rf2;
+        return object.Equals(left, right);
+    }
+
     public static Dictionary<string, object?> GetDictionary(object? value)
     {
         // First unwrap RuntimeValue if needed

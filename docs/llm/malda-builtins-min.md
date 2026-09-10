@@ -87,6 +87,7 @@ different convention from `str.length(s)` / `math.sqrt(x)`. There is no `arr` na
 | `items.length` | Element count — a **property**, not a call (`items.length()` errors). Also `str.length(items)` |
 | `items.append(x)` | Append one item (method on the array) |
 | `items.pop()` / `items.shift()` | Remove last / first element |
+| `items.except(other)` | New array of values that are not in `other` (order/duplicates kept) |
 
 ## Math and randomness
 

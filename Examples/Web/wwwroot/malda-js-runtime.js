@@ -341,6 +341,16 @@
         return sortBuiltin(array, callArgs[0]);
       case "join":
         return joinBuiltin(array, callArgs[0]);
+      case "except": {
+        if (callArgs.length !== 1) {
+          throw new Error("except() expects 1 argument");
+        }
+        if (!Array.isArray(callArgs[0])) {
+          throw new Error("except() expects an array argument");
+        }
+        const other = callArgs[0];
+        return array.filter((item) => !other.some((candidate) => equals(item, candidate)));
+      }
       default:
         throw new Error("Array method not supported in JS runtime: " + methodName);
     }

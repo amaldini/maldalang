@@ -26,7 +26,7 @@ public class ArrayInstance : ObjectInstance
         }
         
         // Support built-in array methods via the built-in method dispatch pipeline
-        if (name is "append" or "pop" or "shift" or "concat" or
+        if (name is "append" or "pop" or "shift" or "concat" or "except" or
             "popOrNull" or "shiftOrNull" or "get" or "at" or
             "map" or "filter" or "reduce" or "forEach" or 
             "find" or "findIndex" or "some" or "every" or 
@@ -56,6 +56,8 @@ public class ArrayInstance : ObjectInstance
                 return CallShift(arguments);
             case "concat":
                 return CallConcat(arguments);
+            case "except":
+                return CallExcept(arguments);
             case "popOrNull":
                 return CallPopOrNull(arguments);
             case "shiftOrNull":
@@ -155,6 +157,36 @@ public class ArrayInstance : ObjectInstance
         
         var newInstance = new ArrayInstance(combined);
         return RuntimeValue.Array(newInstance);
+    }
+
+    private RuntimeValue CallExcept(List<RuntimeValue> arguments)
+    {
+        if (arguments.Count != 1)
+            throw new RuntimeException("except() expects 1 argument");
+
+        var other = arguments[0];
+        if (other.Type != ValueType.Array)
+            throw new RuntimeException("except() expects an array argument");
+
+        var excluded = other.AsArray();
+        var result = new List<RuntimeValue>();
+        foreach (var element in _elements)
+        {
+            var found = false;
+            foreach (var candidate in excluded)
+            {
+                if (AreEqual(element, candidate))
+                {
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found)
+                result.Add(element);
+        }
+
+        return RuntimeValue.Array(new ArrayInstance(result));
     }
 
     private RuntimeValue CallPopOrNull(List<RuntimeValue> arguments)
