@@ -968,7 +968,7 @@
   {
     "file": "13-built-in-functions.html",
     "level": 3,
-    "id": "",
+    "id": "jwt-security",
     "title": "13.16.1 Funzioni di sicurezza per password e JWT"
   },
   {
@@ -2497,6 +2497,12 @@
   },
   {
     "file": "28-rest-api.html",
+    "level": 3,
+    "id": "web-concepts",
+    "title": "28.1.1 Primer sui concetti"
+  },
+  {
+    "file": "28-rest-api.html",
     "level": 2,
     "id": "",
     "title": "28.2 Sintassi dei decoratori"
@@ -2600,7 +2606,7 @@
   {
     "file": "28-rest-api.html",
     "level": 3,
-    "id": "",
+    "id": "req-auth",
     "title": "28.6.2 req.auth"
   },
   {
@@ -2630,13 +2636,13 @@
   {
     "file": "28-rest-api.html",
     "level": 2,
-    "id": "",
+    "id": "middleware",
     "title": "28.8 Middleware"
   },
   {
     "file": "28-rest-api.html",
     "level": 2,
-    "id": "",
+    "id": "csrf-rate-limit",
     "title": "28.9 CSRF, rate limiting e proxy fidato"
   },
   {
@@ -2654,7 +2660,7 @@
   {
     "file": "28-rest-api.html",
     "level": 2,
-    "id": "",
+    "id": "cors",
     "title": "28.12 CORS e Swagger/OpenAPI"
   },
   {
@@ -2680,6 +2686,12 @@
     "level": 2,
     "id": "",
     "title": "29.1 Mappa del capitolo"
+  },
+  {
+    "file": "29-rest-web-client.html",
+    "level": 3,
+    "id": "http-client-concepts",
+    "title": "29.1.1 Primer sui concetti"
   },
   {
     "file": "29-rest-web-client.html",
@@ -2768,7 +2780,7 @@
   {
     "file": "29-rest-web-client.html",
     "level": 2,
-    "id": "",
+    "id": "cors-host-browser",
     "title": "29.9 CORS: host vs browser"
   },
   {

@@ -20,11 +20,12 @@
         <h1>28. REST API Server</h1>
         <p>MALDA includes native support for JSON-first REST APIs. Decorate functions with HTTP methods, then host them on <code>RestServer</code> (standalone) or mount that server on <code>HttpServer</code> for a single-port full-stack app.</p>
         <div class="info-box">
-            <strong>Start here:</strong> This chapter is the API-first reference. Page hosting, <code>@PAGE</code>, HTTPS, static files, multipart uploads, and SSE live in <a href="26-http-server-html-ui.html">26. HttpServer &amp; HTML UI Generation</a>. Calling APIs from MALDA is <a href="29-rest-web-client.html">29. REST Web Client</a>. JWT, CSRF, and password helpers are in <a href="13-built-in-functions.html">13. Built-in Functions</a>.
+            <strong>Start here:</strong> New to web APIs? Read <a href="#web-concepts">28.1.1 Concepts primer</a> first — REST, middleware, auth, JWT, CSRF, CORS, HTTPS, and a threat-to-defense map, without leaving this manual. This chapter is the API-first reference. Page hosting, <code>@PAGE</code>, HTTPS, static files, multipart uploads, and SSE live in <a href="26-http-server-html-ui.html">26. HttpServer &amp; HTML UI Generation</a>. Calling APIs from MALDA is <a href="29-rest-web-client.html">29. REST Web Client</a>. JWT, CSRF, and password helpers are in <a href="13-built-in-functions.html#jwt-security">13. Built-in Functions</a> §13.16.1.
         </div>
 
         <h2>28.1 Chapter Map</h2>
         <ul>
+            <li><strong>28.1.1</strong> Concepts primer — REST, middleware, auth, CSRF, CORS, HTTPS, security map</li>
             <li><strong>28.2</strong> HTTP and route-metadata decorators</li>
             <li><strong>28.3</strong> <code>RestServer</code> constructor, properties, and methods</li>
             <li><strong>28.4</strong> Request pipeline order</li>
@@ -40,6 +41,105 @@
             <li><strong>28.14</strong> Interpret vs transpile notes</li>
             <li><strong>28.15</strong> Complete example and templates</li>
         </ul>
+
+        <h3 id="web-concepts">28.1.1 Concepts primer</h3>
+        <p>The later sections assume a few web terms. This primer is enough to follow the MALDA APIs without an external glossary; it is not a full HTTP textbook. Skim it once, then jump to the section that names the API you need. A one-page <a href="#concept-security-map">threat-to-defense map</a> sits at the end.</p>
+
+        <h4 id="concept-rest">REST and HTTP</h4>
+        <p>HTTP is the request/response protocol the browser and your server already speak. A client sends a <strong>method</strong> (GET, POST, PUT, PATCH, DELETE, OPTIONS) plus a <strong>path</strong>, optional <strong>headers</strong>, and sometimes a <strong>body</strong>. The server answers with a <strong>status code</strong> plus headers and a body.</p>
+        <p><strong>REST</strong> here means: expose operations as HTTP routes that exchange JSON. <code>@GET("/api/users/{id}")</code> is a read; <code>@POST("/api/users")</code> creates; PUT/PATCH update; DELETE removes.</p>
+        <table>
+            <thead>
+                <tr><th>Piece of the request</th><th>Example</th><th>Where MALDA puts it</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Method + path</td><td><code>GET /api/users/12</code></td><td><code>@GET("/api/users/{id}")</code>; <code>id</code> is a path parameter</td></tr>
+                <tr><td>Query string</td><td><code>?status=open</code></td><td>Handler argument or <code>req.query</code></td></tr>
+                <tr><td>Headers</td><td><code>Authorization: Bearer …</code></td><td><code>req.headers</code>, or <code>req.auth</code> after JWT middleware</td></tr>
+                <tr><td>JSON body</td><td><code>{"name": "Ada"}</code></td><td>Handler <code>body</code> argument or <code>req.body</code></td></tr>
+            </tbody>
+        </table>
+        <p>Status families: <strong>2xx</strong> success, <strong>4xx</strong> the client sent something the server will not accept, <strong>5xx</strong> the server failed. Codes you will see often: <strong>200</strong> OK, <strong>400</strong> validation failed, <strong>401</strong> not authenticated, <strong>403</strong> authenticated but not allowed, <strong>404</strong> no such route or resource, <strong>429</strong> rate limited, <strong>500</strong> uncaught server error. MALDA's JSON error envelope is 28.11.</p>
+        <p>GET and PUT are usually <strong>idempotent</strong> (repeating them does not create a second resource). POST often is not. That matters for retries — see <a href="29-rest-web-client.html#http-client-concepts">29.1.1</a>.</p>
+
+        <h4 id="concept-middleware">Middleware</h4>
+        <p>A route handler should do the business work (load a user, save a row). <strong>Middleware</strong> is a function that runs <em>before</em> that handler, for work that many routes share: logging, authentication, attaching a tenant id. Think of a conveyor: every request passes through the same gates, then the specific handler.</p>
+        <p>The MALDA contract is <code>(req, res, next)</code>. Call <code>next()</code> to continue the chain; skip <code>next()</code> (or send a response) to stop — that is how you reject an unauthenticated caller without running the handler. Global middleware is <code>server.use(...)</code>; per-route is <code>@Use("name")</code>. Details: 28.8. Pipeline order: 28.4.</p>
+        <pre><code>function logRequest(req, res, next) {
+    print(req.method + " " + req.path);
+    next();
+}
+
+function requireAuth(req, res, next) {
+    req.auth.authenticateBearerJwt("replace-me");
+    next();
+}
+
+var server = new RestServer(8080);
+server.use(logRequest);
+server.use(requireAuth, { "except": ["/api/health"] });</code></pre>
+        <p>Request flow, left to right: CSRF (if enabled) → global middleware → route <code>@Use</code> → rate limit → <code>@Validate</code> → handler. Auth middleware must run <em>before</em> the rate limiter if you want to key limits on the verified user.</p>
+
+        <h4 id="concept-authentication">Authentication vs authorization</h4>
+        <p><strong>Authentication</strong> answers “who is this?”. <strong>Authorization</strong> answers “may they do this?”. Login proves identity; a role or permission check decides access. In MALDA, <code>req.auth.authenticateBearerJwt(secret)</code> authenticates; <code>req.auth.requireRole("admin")</code> authorizes. A missing or bad token is HTTP <strong>401</strong>; a known user lacking a role is <strong>403</strong>. Never treat “the request has an <code>X-User-Id</code> header” as authentication — anyone can send that header. See 28.6.2.</p>
+
+        <h4 id="concept-jwt">JWT and Bearer tokens</h4>
+        <p>A <strong>JWT</strong> (JSON Web Token) is a signed string: a JSON payload (claims such as <code>sub</code>, <code>role</code>, expiry) plus a signature the server verifies with a secret. The client usually sends it as <code>Authorization: Bearer &lt;token&gt;</code>.</p>
+        <p>Three words that are easy to mix up: <strong>encoding</strong> (Base64, reversible, not a secret), <strong>hashing</strong> (one-way, for passwords — next heading), <strong>signing</strong> (proves the token was minted with your secret; MALDA JWTs are signed, not encrypted). Anyone who has the JWT can <em>read</em> the claims, so do not put passwords in them, treat the token like a password, keep the signing secret off the client, and set a short expiry.</p>
+        <p>Create tokens with <code>createJwt</code> (<a href="13-built-in-functions.html#jwt-security">13.16.1</a>); verify them in middleware with <code>authenticateBearerJwt</code>. Cookie-based JWTs use <code>authenticateCookieJwt</code> instead of the Authorization header.</p>
+
+        <h4 id="concept-password">Password hashing</h4>
+        <p>Never store a login password as plaintext. A <strong>password hash</strong> is a one-way value: given the hash you cannot recover the password, but <code>verifyPassword</code> can check a later login against it. MALDA uses salted PBKDF2 (<code>hashPassword</code> / <code>verifyPassword</code> in <a href="13-built-in-functions.html#jwt-security">13.16.1</a>). A <strong>salt</strong> is random data mixed in so two users with the same password do not get the same hash. This is not JWT signing and not HTTPS encryption — it is only for credentials at rest.</p>
+
+        <h4 id="concept-session">Sessions and cookies</h4>
+        <p>A <strong>cookie</strong> is a small name/value the server sets on the response; the browser sends it back on later requests to the same site. Flags that matter:</p>
+        <ul>
+            <li><strong>HttpOnly</strong> — JavaScript on the page cannot read it (helps against stolen-session XSS).</li>
+            <li><strong>Secure</strong> — send it only over HTTPS.</li>
+            <li><strong>SameSite</strong> (Lax / Strict / None) — limits sending the cookie on cross-site requests. Lax is the MALDA default and blocks most CSRF from other sites on POST; Strict is tighter; None requires Secure and is for cross-site APIs that deliberately use cookies.</li>
+        </ul>
+        <p>A <strong>session</strong> is server-side storage keyed by a session-id cookie — <code>req.session</code> after <code>enableSession</code>. Prefer sessions or cookie JWTs for browser apps (the token is not sitting in JavaScript). Prefer Bearer JWTs for programmatic API clients (scripts, other servers, mobile). Cookie defaults: 28.7.2. Session API: 28.6.3.</p>
+
+        <h4 id="concept-csrf">CSRF</h4>
+        <p><strong>CSRF</strong> (Cross-Site Request Forgery) is a trick where another site causes the <em>user's browser</em> to send a request to yours <em>with the user's cookies</em>. The user is logged in, so the request looks legitimate — for example a hidden form on <code>evil.example</code> that POSTs to <code>https://your-app/api/transfer</code>.</p>
+        <p>Defense: the real page includes a secret token (header or hidden form field) that the attacker site cannot read (the browser's same-origin policy blocks that). Safe methods (GET/HEAD/OPTIONS) may mint the cookie; POST/PUT/PATCH/DELETE must present a matching token. Bearer JWT APIs called from non-browser clients do not send cookies, so CSRF usually does not apply to them; it <em>does</em> apply to cookie sessions and cookie JWTs. Enable with <code>enableCsrf</code>. Details: 28.9.</p>
+
+        <h4 id="concept-cors">CORS</h4>
+        <p>Browsers isolate pages by <strong>origin</strong> (scheme + host + port). <code>https://app.example</code> and <code>https://api.example</code> are different origins; so are <code>http://localhost:5173</code> and <code>http://localhost:8080</code>. A page cannot <em>read</em> a response from another origin unless that API opts in with CORS headers. The browser may first send an OPTIONS <strong>preflight</strong> asking “may I call you this way?”.</p>
+        <p>CORS is not authentication and not CSRF. Same-origin calls (the MALDA UI and API on one <code>HttpServer</code> port) do not need it. Host-side <code>RestClient</code> is not a browser, so CORS does not apply to it. Enable CORS only if browsers on another origin will call you. Details: 28.12 and 29.9.</p>
+
+        <h4 id="concept-xss">XSS</h4>
+        <p><strong>XSS</strong> (Cross-Site Scripting) is injecting script into a page the victim's browser will run — for example concatenating a username into HTML without escaping. The injected script can then read non-HttpOnly cookies or call your API as that user. MALDA does not auto-escape strings you put in HTML: treat every untrusted value as data, not markup, especially in <code>@PAGE</code> handlers (chapter 26). HttpOnly cookies reduce the blast radius; they do not fix XSS.</p>
+
+        <h4 id="concept-rate-limit">Rate limiting and trusted proxies</h4>
+        <p><strong>Rate limiting</strong> caps how many requests a key (IP, user, token) may make in a window, so a buggy client or attacker cannot overwhelm the server or brute-force a login. MALDA's limiter runs <em>after</em> middleware so it can key on a verified JWT subject.</p>
+        <p>A <strong>reverse proxy</strong> (nginx, Caddy, a cloud load balancer) sits in front of your app, often terminating TLS. The TCP peer your process sees is then the proxy, not the user. <code>X-Forwarded-For</code> carries the client IP — but anyone can spoof that header unless you only trust it from your proxy (<code>configureTrustedProxy</code>). Details: 28.9.</p>
+
+        <h4 id="concept-https">HTTPS / TLS</h4>
+        <p><strong>HTTPS</strong> is HTTP over <strong>TLS</strong>: the connection is encrypted and the server presents a certificate so clients know they reached the right host. Without it, cookies, passwords, and Bearer tokens travel in the clear on the network. Enable TLS on <code>HttpServer</code> with <code>enableHttps</code> (<a href="26-http-server-html-ui.html#https">chapter 26</a>). Standalone <code>RestServer</code> does not terminate TLS; mount it on <code>HttpServer</code> or put a reverse proxy in front. Keep signing secrets and certificate passwords in environment variables, not in source.</p>
+
+        <h4 id="concept-correlation">Correlation IDs, validation, and OpenAPI</h4>
+        <p>A <strong>correlation ID</strong> is a string that tags one request across logs and error payloads so you can find “what happened to this call”. MALDA honors inbound <code>X-Correlation-ID</code> or generates one (28.11).</p>
+        <p><strong>Validation</strong> checks that path, query, and body match a schema <em>before</em> your handler runs, so bad input fails with 400 instead of crashing later. That is <code>@Validate</code> (28.10) — related to, but not the same as, prompt/LLM <code>validate()</code> in chapter 10.</p>
+        <p><strong>OpenAPI</strong> (often called Swagger) is a machine-readable description of your routes, parameters, and schemas. MALDA can serve it as JSON when you call <code>enableSwagger(true)</code> (28.12). Humans and code generators read it; it is not a security control.</p>
+
+        <h4 id="concept-security-map">Which defense for which threat</h4>
+        <table>
+            <thead>
+                <tr><th>If you worry about…</th><th>Concept</th><th>MALDA switch</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>A caller pretending to be a user</td><td>Authentication</td><td><code>authenticateBearerJwt</code> / cookie JWT / session</td></tr>
+                <tr><td>A logged-in user doing admin work</td><td>Authorization</td><td><code>requireRole</code> / <code>requirePermission</code></td></tr>
+                <tr><td>Passwords stolen from your database</td><td>Password hashing</td><td><code>hashPassword</code> / <code>verifyPassword</code></td></tr>
+                <tr><td>Another site submitting a form as the user</td><td>CSRF</td><td><code>enableCsrf</code> (cookie sessions / cookie JWTs)</td></tr>
+                <tr><td>A page on another origin calling your API</td><td>CORS</td><td><code>enableCORS</code> only if you want that</td></tr>
+                <tr><td>Script injected into your HTML</td><td>XSS</td><td>Do not concatenate untrusted strings into HTML</td></tr>
+                <tr><td>Tokens or cookies sniffed on the wire</td><td>HTTPS</td><td><code>enableHttps</code> or a TLS reverse proxy</td></tr>
+                <tr><td>Floods or login brute-force</td><td>Rate limiting</td><td><code>setRateLimit</code></td></tr>
+                <tr><td>Wrong client IP behind nginx</td><td>Trusted proxy</td><td><code>configureTrustedProxy</code></td></tr>
+            </tbody>
+        </table>
 
         <h2>28.2 Decorator Syntax</h2>
         <p>Functions decorated with an HTTP method become REST endpoints when a <code>RestServer</code> starts (or is mounted):</p>
@@ -226,7 +326,7 @@ function updatePost(@PathParam("id") userId, @PathParam("postId") postId,
             </tbody>
         </table>
 
-        <h3>28.6.2 req.auth</h3>
+        <h3 id="req-auth">28.6.2 req.auth</h3>
         <p>Prefer <code>req.auth.authenticateBearerJwt(secret)</code> (APIs) or <code>authenticateCookieJwt(cookieName, jwtSecret, cookieSecret?)</code> (browser sessions). Both verify the JWT, populate claims/roles/permissions, and throw a standardized 401 on failure. Create tokens with <code>createJwt</code> (chapter 13).</p>
         <table>
             <thead>
@@ -319,8 +419,8 @@ function getUser(req, res) {
         <p><code>res.send(value)</code> UTF-8-encodes a string body. Use <code>res.sendBase64(b64)</code> for binary payloads (PDF, DOCX, and similar): it decodes the base64 string and writes those bytes. Invalid base64 throws.</p>
         <p>After a send helper, the handler may keep running (background work). Headers and cookies set after send throw <code>response already sent</code>. <code>res.fragment(targetId, html)</code> is the early-send form of <code>componentFragment(targetId, html)</code>: same <code>X-Malda-Fragment</code> headers, but the client receives the fragment before the handler returns.</p>
 
-        <h2>28.8 Middleware</h2>
-        <p>Use <code>server.use(...)</code> for global middleware. The contract is <code>(req, res, next)</code>. Call <code>next()</code> to continue; omitting it short-circuits. Route-level <code>@Use("name")</code> runs after global middleware and before validation + the handler. Transpiled apps should pass the function name as a string: <code>server.use("requireAuth")</code>.</p>
+        <h2 id="middleware">28.8 Middleware</h2>
+        <p>Middleware is a shared function that runs before the route handler — see <a href="#concept-middleware">28.1.1</a> if the term is new. Use <code>server.use(...)</code> for global middleware. The contract is <code>(req, res, next)</code>. Call <code>next()</code> to continue; omitting it short-circuits. Route-level <code>@Use("name")</code> runs after global middleware and before validation + the handler. Transpiled apps should pass the function name as a string: <code>server.use("requireAuth")</code>.</p>
         <pre><code>function logRequest(req, res, next) {
     print(req.method + " " + req.path);
     next();
@@ -330,7 +430,8 @@ var server = new RestServer(8080);
 server.use(logRequest);
 server.start();</code></pre>
 
-        <h2>28.9 CSRF, Rate Limiting, and Trusted Proxy</h2>
+        <h2 id="csrf-rate-limit">28.9 CSRF, Rate Limiting, and Trusted Proxy</h2>
+        <p>What these defenses are, in plain language: <a href="#concept-csrf">CSRF</a>, <a href="#concept-rate-limit">rate limiting and trusted proxies</a>.</p>
         <pre><code>var server = new RestServer(8080);
 server.enableCsrf("my-csrf-secret");                 // cookie: csrf_token, header: X-CSRF-Token
 server.setRateLimit(120, 60, "verifiedSubOrIp");     // after auth middleware; prefer subject when verified
@@ -382,7 +483,8 @@ function getUserById(id, res) {
 }</code></pre>
         <p><code>req.auth.requireRole</code>, <code>requirePermission</code>, <code>requireVerified</code>, and <code>req.requireValid</code> already throw that envelope.</p>
 
-        <h2>28.12 CORS and Swagger/OpenAPI</h2>
+        <h2 id="cors">28.12 CORS and Swagger/OpenAPI</h2>
+        <p>CORS is the browser's cross-origin gate; host-side <code>RestClient</code> ignores it. Primer: <a href="#concept-cors">28.1.1 CORS</a>.</p>
         <pre><code>var server = new RestServer(8080);
 server.enableCORS(true);
 server.setCORSOrigin("*");

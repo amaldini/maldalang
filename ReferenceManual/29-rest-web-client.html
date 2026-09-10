@@ -25,6 +25,7 @@
 
         <h2>29.1 Chapter Map</h2>
         <ul>
+            <li><strong>29.1.1</strong> Concepts primer — HTTP client, status vs transport, Bearer vs Basic</li>
             <li><strong>29.2</strong> <code>RestClient</code> constructor, properties, and methods</li>
             <li><strong>29.3</strong> URL resolution, query parameters, and body</li>
             <li><strong>29.4</strong> Success response vs transport-error object</li>
@@ -37,6 +38,13 @@
             <li><strong>29.11</strong> Calling a MALDA <code>RestServer</code></li>
             <li><strong>29.12</strong> Examples</li>
         </ul>
+
+        <h3 id="http-client-concepts">29.1.1 Concepts primer</h3>
+        <p>This chapter is the <em>caller</em>. Server terms (middleware, CSRF, CORS, JWT) are in <a href="28-rest-api.html#web-concepts">28.1.1 Concepts primer</a>.</p>
+        <p>An HTTP <strong>client</strong> builds a request, sends it, and reads the response. <code>RestClient</code> and <code>httpGet</code> run on the MALDA host (not in the browser), so they ignore CORS. JS-transpiled <code>http*</code> uses the page's <code>fetch</code>, which does obey CORS.</p>
+        <p><strong>Status vs transport:</strong> HTTP 404 still produced a response — check <code>response.status</code> / <code>ok</code>. If the TCP/TLS/DNS layer failed, you get a transport-error object (<code>status</code> usually 0, <code>error</code> set). See 29.4.</p>
+        <p><strong>Bearer vs Basic:</strong> Bearer sends a token as-is in the Authorization header. Basic sends <code>username:password</code> Base64-encoded (encoding is not encryption). Neither hides credentials on the wire; use HTTPS. See 29.6.</p>
+        <p><strong>Idempotent retries:</strong> GET and PUT can usually be repeated safely; POST often cannot (it may create a second resource). Retry transport errors and 5xx when the method is idempotent; do not blindly retry 4xx. See 29.8.</p>
 
         <h2>29.2 RestClient Class</h2>
         <p>Create a reusable client when you need a base URL, default headers, auth, or a timeout other than 30 seconds. The host implementation is <code>RestClientInstance</code> (interpret and C# transpile).</p>
@@ -208,7 +216,7 @@ if (!response.ok &amp;&amp; response.status == 0) {
     return last;
 }</code></pre>
 
-        <h2>29.9 CORS: Host vs Browser</h2>
+        <h2 id="cors-host-browser">29.9 CORS: Host vs Browser</h2>
         <p><code>RestClient</code> and interpreted / C# <code>http*</code> run on the host. They are not a browser, so the CORS algorithm does not apply. Enable CORS on the <em>server</em> you call only if browsers will call it — see <a href="28-rest-api.html">28. REST API Server</a> §28.12.</p>
         <p>JS-transpiled <code>httpGet</code> / <code>httpPost</code> use <code>fetch</code> in the page. Cross-origin calls then need the remote API to allow your origin, method, and headers. Same-origin calls to a mounted MALDA API on the same host (chapter 30) do not need CORS.</p>
         <p>Server-side <code>enableCORS</code> does not change how <code>RestClient</code> sends requests.</p>

@@ -19,7 +19,7 @@
         <h1>26. HttpServer & HTML UI Generation</h1>
         <p>This chapter covers MALDA's route-first web server, HTML page handlers, AI-generated page helpers, and HTML caching utilities. Use it when you want to serve pages with <code>HttpServer</code> and traditional request/response routes.</p>
         <div class="info-box">
-            <strong>Start here:</strong> Read <a href="24-web-ui-hub.html">24. Web UI Overview</a> to compare UI models. This chapter focuses on <code>HttpServer</code>, <code>@PAGE</code>, <code>@AIPAGE</code>, and HTML generation helpers. For server components and <code>ui.*</code>, see <a href="25-web-ui.html">Web UI Server Components</a>. For API-first routes, see <a href="28-rest-api.html">REST API Server</a>.
+            <strong>Start here:</strong> Read <a href="24-web-ui-hub.html">24. Web UI Overview</a> to compare UI models. This chapter focuses on <code>HttpServer</code>, <code>@PAGE</code>, <code>@AIPAGE</code>, and HTML generation helpers. For server components and <code>ui.*</code>, see <a href="25-web-ui.html">Web UI Server Components</a>. For API-first routes, see <a href="28-rest-api.html">REST API Server</a>. Middleware, CSRF, cookies, XSS, and HTTPS are explained in <a href="28-rest-api.html#web-concepts">28.1.1 Concepts primer</a>.
         </div>
 
         <h2>26.1 Chapter Map</h2>
@@ -47,7 +47,7 @@ var server = new HttpServer(port, webDirectory);  // Custom web directory
 var server = new HttpServer(port, webDirectory, pathBase, host);</code></pre>
         <p><code>port</code> must be an integer in <code>1-65535</code>. Privileged ports (<code>1-1023</code>, e.g. <code>80</code>/<code>443</code>) are allowed; binding may still require elevated permissions or OS URL reservations.</p>
         <p>Bind host defaults to <code>localhost</code> (loopback only). Pass <code>host</code> as the optional fourth argument, call <code>setHost(host)</code> before <code>start()</code>, or set the <code>MALDA_HTTP_HOST</code> environment variable. Use <code>0.0.0.0</code> or <code>*</code> to listen on all interfaces (same prefix rules as <code>RestServer</code>). The current bind host is available as the <code>host</code> property.</p>
-        <p>HTTPS is optional and cross-platform. Call <code>enableHttps(certPath, password?)</code> before <code>start()</code> with a <code>.pfx</code>/<code>.p12</code> file, or a PEM <code>.pem</code>/<code>.crt</code> (private key beside it as <code>.key</code>). Environment alternatives: <code>MALDA_HTTP_HTTPS=1</code>, <code>MALDA_HTTP_CERT</code>, and optional <code>MALDA_HTTP_CERT_PASSWORD</code>. Properties: <code>https</code>, <code>certPath</code>. TLS is terminated by Kestrel; the existing request pipeline still runs on a loopback <code>HttpListener</code>.</p>
+        <p id="https">HTTPS is optional and cross-platform. Call <code>enableHttps(certPath, password?)</code> before <code>start()</code> with a <code>.pfx</code>/<code>.p12</code> file, or a PEM <code>.pem</code>/<code>.crt</code> (private key beside it as <code>.key</code>). Environment alternatives: <code>MALDA_HTTP_HTTPS=1</code>, <code>MALDA_HTTP_CERT</code>, and optional <code>MALDA_HTTP_CERT_PASSWORD</code>. Properties: <code>https</code>, <code>certPath</code>. TLS is terminated by Kestrel; the existing request pipeline still runs on a loopback <code>HttpListener</code>. HTTPS is HTTP wrapped in TLS: the bytes on the wire are encrypted, and the certificate identifies the server. Enable it before exposing sessions, CSRF cookies, or login forms beyond localhost. Web security vocabulary (middleware, CSRF, cookies, rate limits) is in <a href="28-rest-api.html#web-concepts">28.1.1 Concepts primer</a>.</p>
 
         <h3>26.2.2 Core methods</h3>
         <ul>
@@ -253,6 +253,7 @@ return envelope;</code></pre>
         </ol>
 
         <h2>26.10 Production Hardening</h2>
+        <p>Terms such as CSRF, rate limiting, and auth middleware are defined in <a href="28-rest-api.html#web-concepts">28.1.1 Concepts primer</a>.</p>
         <ul>
             <li>Enable CSRF protection on mutating routes with <code>enableCsrf</code>.</li>
             <li>Apply rate limiting with <code>setRateLimit</code> (runs after auth middleware so <code>verifiedSubOrIp</code> can key by JWT subject).</li>

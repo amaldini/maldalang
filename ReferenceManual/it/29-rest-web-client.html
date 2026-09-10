@@ -25,6 +25,7 @@
 
         <h2>29.1 Mappa del capitolo</h2>
         <ul>
+            <li><strong>29.1.1</strong> Primer sui concetti — client HTTP, status vs trasporto, Bearer vs Basic</li>
             <li><strong>29.2</strong> Costruttore, proprietà e metodi di <code>RestClient</code></li>
             <li><strong>29.3</strong> Risoluzione URL, query parameter e body</li>
             <li><strong>29.4</strong> Risposta di successo vs oggetto di errore di trasporto</li>
@@ -37,6 +38,13 @@
             <li><strong>29.11</strong> Chiamare un <code>RestServer</code> MALDA</li>
             <li><strong>29.12</strong> Esempi</li>
         </ul>
+
+        <h3 id="http-client-concepts">29.1.1 Primer sui concetti</h3>
+        <p>Questo capitolo è il <em>chiamante</em>. I termini server (middleware, CSRF, CORS, JWT) stanno in <a href="28-rest-api.html#web-concepts">28.1.1 Primer sui concetti</a>.</p>
+        <p>Un <strong>client</strong> HTTP costruisce una richiesta, la invia e legge la risposta. <code>RestClient</code> e <code>httpGet</code> girano sull'host MALDA (non nel browser), quindi ignorano CORS. Gli <code>http*</code> transpilati in JS usano il <code>fetch</code> della pagina, che invece obbedisce a CORS.</p>
+        <p><strong>Status vs trasporto:</strong> un HTTP 404 ha comunque prodotto una risposta — controlla <code>response.status</code> / <code>ok</code>. Se è fallito il livello TCP/TLS/DNS, ottieni un oggetto di errore di trasporto (<code>status</code> di solito 0, <code>error</code> impostato). Vedi 29.4.</p>
+        <p><strong>Bearer vs Basic:</strong> Bearer invia un token così com'è nell'header Authorization. Basic invia <code>username:password</code> in Base64 (la codifica non è cifratura). Nessuno dei due nasconde le credenziali sul filo; usa HTTPS. Vedi 29.6.</p>
+        <p><strong>Retry idempotenti:</strong> GET e PUT di solito si possono ripetere in sicurezza; POST spesso no (può creare una seconda risorsa). Riprova gli errori di trasporto e i 5xx quando il metodo è idempotente; non ritentare alla cieca i 4xx. Vedi 29.8.</p>
 
         <h2>29.2 Classe RestClient</h2>
         <p>Crea un client riusabile quando ti servono un URL di base, header di default, auth o un timeout diverso da 30 secondi. L'implementazione host è <code>RestClientInstance</code> (interprete e transpile C#).</p>
@@ -208,7 +216,7 @@ if (!response.ok &amp;&amp; response.status == 0) {
     return last;
 }</code></pre>
 
-        <h2>29.9 CORS: host vs browser</h2>
+        <h2 id="cors-host-browser">29.9 CORS: host vs browser</h2>
         <p><code>RestClient</code> e gli <code>http*</code> interpretati / C# girano sull'host. Non sono un browser, quindi l'algoritmo CORS non si applica. Abilita CORS sul <em>server</em> che chiami solo se i browser lo chiameranno — vedi <a href="28-rest-api.html">28. Server REST API</a> §28.12.</p>
         <p>Gli <code>httpGet</code> / <code>httpPost</code> transpilati in JS usano <code>fetch</code> nella pagina. Le chiamate cross-origin richiedono allora che l'API remota consenta origine, metodo e header. Le chiamate same-origin a un'API MALDA montata sullo stesso host (capitolo 30) non necessitano di CORS.</p>
         <p><code>enableCORS</code> lato server non cambia il modo in cui <code>RestClient</code> invia le richieste.</p>

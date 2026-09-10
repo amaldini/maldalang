@@ -862,7 +862,205 @@ const FALLBACK_GLOSSARY_EN = [
             "REST"
         ],
         "href": "28-rest-api.html",
-        "summary": "Decorator-based REST routes on the MALDA HTTP server."
+        "summary": "Decorator-based REST routes on the MALDA HTTP server. Primer: 28.1.1 (REST, middleware, auth, CSRF, CORS, security map).",
+        "also": [
+            "28-rest-api.html#web-concepts"
+        ]
+    },
+    {
+        "id": "middleware",
+        "term": "Middleware",
+        "aliases": [
+            "server.use",
+            "@Use",
+            "@Middleware",
+            "next()"
+        ],
+        "href": "28-rest-api.html#concept-middleware",
+        "summary": "A (req, res, next) function that runs before a route handler for shared work such as auth or logging. Call next() to continue.",
+        "also": [
+            "28-rest-api.html#middleware"
+        ]
+    },
+    {
+        "id": "authentication",
+        "term": "Authentication and authorization",
+        "aliases": [
+            "auth",
+            "authn",
+            "authz",
+            "req.auth",
+            "401",
+            "403"
+        ],
+        "href": "28-rest-api.html#concept-authentication",
+        "summary": "Authentication is who the caller is; authorization is what they may do. 401 = not authenticated; 403 = authenticated but not allowed.",
+        "also": [
+            "28-rest-api.html#req-auth",
+            "13-built-in-functions.html#jwt-security"
+        ]
+    },
+    {
+        "id": "jwt",
+        "term": "JWT and Bearer tokens",
+        "aliases": [
+            "JWT",
+            "Bearer",
+            "createJwt",
+            "verifyJwt",
+            "authenticateBearerJwt"
+        ],
+        "href": "28-rest-api.html#concept-jwt",
+        "summary": "Signed JSON claims, usually sent as Authorization: Bearer <token>. Verify with req.auth.authenticateBearerJwt; mint with createJwt.",
+        "also": [
+            "13-built-in-functions.html#jwt-security"
+        ]
+    },
+    {
+        "id": "csrf",
+        "term": "CSRF",
+        "aliases": [
+            "CSRF",
+            "cross-site request forgery",
+            "enableCsrf",
+            "X-CSRF-Token"
+        ],
+        "href": "28-rest-api.html#concept-csrf",
+        "summary": "A forged request that rides the user's cookies. Defense: a secret token the real page sends and the attacker cannot read.",
+        "also": [
+            "28-rest-api.html#csrf-rate-limit"
+        ]
+    },
+    {
+        "id": "cors",
+        "term": "CORS",
+        "aliases": [
+            "CORS",
+            "cross-origin",
+            "preflight",
+            "enableCORS"
+        ],
+        "href": "28-rest-api.html#concept-cors",
+        "summary": "Browser rule: a page may read another origin's response only if that origin opts in. Same-origin MALDA apps do not need it; host RestClient ignores it.",
+        "also": [
+            "28-rest-api.html#cors",
+            "29-rest-web-client.html#cors-host-browser"
+        ]
+    },
+    {
+        "id": "rate-limit",
+        "term": "Rate limiting",
+        "aliases": [
+            "rate limit",
+            "setRateLimit",
+            "429"
+        ],
+        "href": "28-rest-api.html#concept-rate-limit",
+        "summary": "Cap requests per IP, user, or token in a time window. Runs after middleware so verifiedSub* can key on the JWT subject.",
+        "also": [
+            "28-rest-api.html#csrf-rate-limit"
+        ]
+    },
+    {
+        "id": "session-cookie",
+        "term": "Sessions and cookies",
+        "aliases": [
+            "session",
+            "cookie",
+            "enableSession",
+            "req.session",
+            "HttpOnly",
+            "SameSite"
+        ],
+        "href": "28-rest-api.html#concept-session",
+        "summary": "Cookies are name/value pairs the browser stores and resends. A session is server-side data keyed by a session-id cookie (req.session)."
+    },
+    {
+        "id": "https-tls",
+        "term": "HTTPS / TLS",
+        "aliases": [
+            "HTTPS",
+            "TLS",
+            "enableHttps",
+            "certificate"
+        ],
+        "href": "28-rest-api.html#concept-https",
+        "summary": "HTTP over TLS: encrypts the connection and authenticates the server with a certificate. Enable on HttpServer with enableHttps.",
+        "also": [
+            "26-http-server-html-ui.html#https"
+        ]
+    },
+    {
+        "id": "password-hash",
+        "term": "Password hashing",
+        "aliases": [
+            "hashPassword",
+            "verifyPassword",
+            "PBKDF2",
+            "salt"
+        ],
+        "href": "28-rest-api.html#concept-password",
+        "summary": "One-way salted hash of a login password (PBKDF2). Store the hash, never plaintext; verifyPassword on login. Not JWT signing and not HTTPS.",
+        "also": [
+            "13-built-in-functions.html#jwt-security"
+        ]
+    },
+    {
+        "id": "xss",
+        "term": "XSS",
+        "aliases": [
+            "XSS",
+            "cross-site scripting"
+        ],
+        "href": "28-rest-api.html#concept-xss",
+        "summary": "Injected script that runs in the victim's browser. Do not concatenate untrusted strings into HTML; HttpOnly cookies reduce the blast radius but do not fix XSS.",
+        "also": [
+            "28-rest-api.html#concept-security-map",
+            "26-http-server-html-ui.html"
+        ]
+    },
+    {
+        "id": "correlation-id",
+        "term": "Correlation ID",
+        "aliases": [
+            "correlationId",
+            "X-Correlation-ID"
+        ],
+        "href": "28-rest-api.html#concept-correlation",
+        "summary": "A string that tags one request across logs and error payloads. MALDA honors inbound X-Correlation-ID or generates one.",
+        "also": [
+            "28-rest-api.html"
+        ]
+    },
+    {
+        "id": "openapi",
+        "term": "OpenAPI / Swagger",
+        "aliases": [
+            "OpenAPI",
+            "Swagger",
+            "enableSwagger",
+            "swagger.json"
+        ],
+        "href": "28-rest-api.html#concept-correlation",
+        "summary": "Machine-readable description of routes and schemas. enableSwagger(true) serves JSON at /swagger.json. Not a security control.",
+        "also": [
+            "28-rest-api.html#cors"
+        ]
+    },
+    {
+        "id": "security-map",
+        "term": "Web security map",
+        "aliases": [
+            "threat",
+            "defense",
+            "hardening"
+        ],
+        "href": "28-rest-api.html#concept-security-map",
+        "summary": "Which MALDA switch matches which threat: auth, CSRF, CORS, XSS, HTTPS, rate limits, password hashing.",
+        "also": [
+            "28-rest-api.html#web-concepts",
+            "26-http-server-html-ui.html"
+        ]
     },
     {
         "id": "game-three",
@@ -1603,7 +1801,205 @@ const FALLBACK_GLOSSARY_IT = [
             "REST"
         ],
         "href": "28-rest-api.html",
-        "summary": "Route REST basate su decoratori sul server HTTP MALDA."
+        "summary": "Route REST basate su decoratori sul server HTTP MALDA. Primer: 28.1.1 (REST, middleware, auth, CSRF, CORS, mappa di sicurezza).",
+        "also": [
+            "28-rest-api.html#web-concepts"
+        ]
+    },
+    {
+        "id": "middleware",
+        "term": "Middleware",
+        "aliases": [
+            "server.use",
+            "@Use",
+            "@Middleware",
+            "next()"
+        ],
+        "href": "28-rest-api.html#concept-middleware",
+        "summary": "Una funzione (req, res, next) che gira prima dell'handler di route per lavoro condiviso come auth o logging. Chiama next() per continuare.",
+        "also": [
+            "28-rest-api.html#middleware"
+        ]
+    },
+    {
+        "id": "authentication",
+        "term": "Autenticazione e autorizzazione",
+        "aliases": [
+            "auth",
+            "authn",
+            "authz",
+            "req.auth",
+            "401",
+            "403"
+        ],
+        "href": "28-rest-api.html#concept-authentication",
+        "summary": "L'autenticazione è chi è il chiamante; l'autorizzazione è cosa può fare. 401 = non autenticato; 403 = autenticato ma non permesso.",
+        "also": [
+            "28-rest-api.html#req-auth",
+            "13-built-in-functions.html#jwt-security"
+        ]
+    },
+    {
+        "id": "jwt",
+        "term": "JWT e token Bearer",
+        "aliases": [
+            "JWT",
+            "Bearer",
+            "createJwt",
+            "verifyJwt",
+            "authenticateBearerJwt"
+        ],
+        "href": "28-rest-api.html#concept-jwt",
+        "summary": "Claim JSON firmati, di solito inviati come Authorization: Bearer <token>. Verifica con req.auth.authenticateBearerJwt; emetti con createJwt.",
+        "also": [
+            "13-built-in-functions.html#jwt-security"
+        ]
+    },
+    {
+        "id": "csrf",
+        "term": "CSRF",
+        "aliases": [
+            "CSRF",
+            "cross-site request forgery",
+            "enableCsrf",
+            "X-CSRF-Token"
+        ],
+        "href": "28-rest-api.html#concept-csrf",
+        "summary": "Una richiesta contraffatta che usa i cookie dell'utente. Difesa: un token segreto che la pagina vera invia e l'attaccante non può leggere.",
+        "also": [
+            "28-rest-api.html#csrf-rate-limit"
+        ]
+    },
+    {
+        "id": "cors",
+        "term": "CORS",
+        "aliases": [
+            "CORS",
+            "cross-origin",
+            "preflight",
+            "enableCORS"
+        ],
+        "href": "28-rest-api.html#concept-cors",
+        "summary": "Regola del browser: una pagina può leggere la risposta di un altro origin solo se quell'origin acconsente. Le app MALDA same-origin non ne hanno bisogno; il RestClient host lo ignora.",
+        "also": [
+            "28-rest-api.html#cors",
+            "29-rest-web-client.html#cors-host-browser"
+        ]
+    },
+    {
+        "id": "rate-limit",
+        "term": "Rate limiting",
+        "aliases": [
+            "rate limit",
+            "setRateLimit",
+            "429"
+        ],
+        "href": "28-rest-api.html#concept-rate-limit",
+        "summary": "Limita le richieste per IP, utente o token in una finestra di tempo. Gira dopo il middleware così verifiedSub* può usare il subject JWT come chiave.",
+        "also": [
+            "28-rest-api.html#csrf-rate-limit"
+        ]
+    },
+    {
+        "id": "session-cookie",
+        "term": "Sessioni e cookie",
+        "aliases": [
+            "session",
+            "cookie",
+            "enableSession",
+            "req.session",
+            "HttpOnly",
+            "SameSite"
+        ],
+        "href": "28-rest-api.html#concept-session",
+        "summary": "I cookie sono coppie name/value che il browser memorizza e rinvia. Una sessione è dati lato server indicizzati da un cookie session-id (req.session)."
+    },
+    {
+        "id": "https-tls",
+        "term": "HTTPS / TLS",
+        "aliases": [
+            "HTTPS",
+            "TLS",
+            "enableHttps",
+            "certificate"
+        ],
+        "href": "28-rest-api.html#concept-https",
+        "summary": "HTTP su TLS: cifra la connessione e autentica il server con un certificato. Abilita su HttpServer con enableHttps.",
+        "also": [
+            "26-http-server-html-ui.html#https"
+        ]
+    },
+    {
+        "id": "password-hash",
+        "term": "Hash delle password",
+        "aliases": [
+            "hashPassword",
+            "verifyPassword",
+            "PBKDF2",
+            "salt"
+        ],
+        "href": "28-rest-api.html#concept-password",
+        "summary": "Hash one-way con salt di una password di login (PBKDF2). Memorizza l'hash, mai il plaintext; verifyPassword al login. Non è firma JWT e non è HTTPS.",
+        "also": [
+            "13-built-in-functions.html#jwt-security"
+        ]
+    },
+    {
+        "id": "xss",
+        "term": "XSS",
+        "aliases": [
+            "XSS",
+            "cross-site scripting"
+        ],
+        "href": "28-rest-api.html#concept-xss",
+        "summary": "Script iniettato che gira nel browser della vittima. Non concatenare stringhe non fidate in HTML; i cookie HttpOnly riducono il raggio d'azione ma non risolvono l'XSS.",
+        "also": [
+            "28-rest-api.html#concept-security-map",
+            "26-http-server-html-ui.html"
+        ]
+    },
+    {
+        "id": "correlation-id",
+        "term": "Correlation ID",
+        "aliases": [
+            "correlationId",
+            "X-Correlation-ID"
+        ],
+        "href": "28-rest-api.html#concept-correlation",
+        "summary": "Una stringa che etichetta una richiesta attraverso log e payload di errore. MALDA onora X-Correlation-ID in ingresso oppure ne genera uno.",
+        "also": [
+            "28-rest-api.html"
+        ]
+    },
+    {
+        "id": "openapi",
+        "term": "OpenAPI / Swagger",
+        "aliases": [
+            "OpenAPI",
+            "Swagger",
+            "enableSwagger",
+            "swagger.json"
+        ],
+        "href": "28-rest-api.html#concept-correlation",
+        "summary": "Descrizione machine-readable di route e schema. enableSwagger(true) serve JSON a /swagger.json. Non è un controllo di sicurezza.",
+        "also": [
+            "28-rest-api.html#cors"
+        ]
+    },
+    {
+        "id": "security-map",
+        "term": "Mappa di sicurezza web",
+        "aliases": [
+            "threat",
+            "defense",
+            "hardening"
+        ],
+        "href": "28-rest-api.html#concept-security-map",
+        "summary": "Quale interruttore MALDA corrisponde a quale minaccia: auth, CSRF, CORS, XSS, HTTPS, rate limit, hash delle password.",
+        "also": [
+            "28-rest-api.html#web-concepts",
+            "26-http-server-html-ui.html"
+        ]
     },
     {
         "id": "game-three",

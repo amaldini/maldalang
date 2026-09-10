@@ -820,7 +820,8 @@ var sha256Hash = sha256("Hello World");      // Calculate SHA-256 hash (returns 
                 <li>SHA-256 produces 64-character hex strings</li>
             </ul>
         </div>
-        <h3>13.16.1 Password and JWT Security Functions</h3>
+        <h3 id="jwt-security">13.16.1 Password and JWT Security Functions</h3>
+        <p>These helpers implement the tokens and hashes that chapters 26–28 wire into HTTP. A <strong>password hash</strong> is a one-way value (salted PBKDF2 here): store the hash, never the plaintext, then <code>verifyPassword</code> on login; primer: <a href="28-rest-api.html#concept-password">28.1.1 Password hashing</a>. A <strong>JWT</strong> is a signed claims blob the client sends back; primer: <a href="28-rest-api.html#concept-jwt">28.1.1 JWT</a>. A <strong>CSRF token</strong> is a secret the real page can present and a forged cross-site request cannot; primer: <a href="28-rest-api.html#concept-csrf">28.1.1 CSRF</a>.</p>
         <pre><code>var passwordHash = hashPassword("my-password");              // PBKDF2-SHA256 hash
 var isValid = verifyPassword("my-password", passwordHash);   // true/false
 

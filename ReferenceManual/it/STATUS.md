@@ -24,7 +24,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 10-prompts.html | 0dd4ee82cb5583eeb04b2c9273465b6b20867cbc74a45605aced11cd0261adf7 |
 | 11-classes-objects.html | 4f89a4aae573ba908080f2414041253bd16953be3641c3ee4f2790a5cf0d8821 |
 | 12-input-output.html | 3e443ad6e503ea6d145650f930fe192ea079579706d3743e04edcee3b40b6283 |
-| 13-built-in-functions.html | 5b20c9a8c89696ccc8787c5c040093425329f2bc16c8d4529064605446a6ac10 |
+| 13-built-in-functions.html | dcda48833d730c84b4a13f6e66e093efc592f19616bcdff89ced214fa7d22edd |
 | 14-graphs.html | 3d95cfb276729b9eb6c637c58505da8b0d83ac1ab4fb6062f236826a25c2496c |
 | 15-vectordb.html | 040841898e969cc9411397d8a1e7d8881670ac23a3b9283486855b72ae08d7f3 |
 | 16-database.html | 7828b1e1fbb39efa46d214bfc5c0b2e67fa122b0d1a95f13d8c880721f0b65f8 |
@@ -35,13 +35,13 @@ python3 scripts/sync-reference-manual-it-status.py
 | 21-acp.html | a674c1773d8bcf03cea5cc8fb81820aee5340af05099db3dc66cb7ceb1902188 |
 | 22-durable-workflows.html | 284d3e1232b823598ef8ed6bdb4a1843e3d1d0cbcc8171aa0fe92b65f8745b90 |
 | 23-agentic-runs.html | 8ba10c2de1290d10cfe53565a9bd7bd1d9bf8107f0c9461e79425278ba418553 |
-| 24-web-ui-hub.html | cdd1f232105ca1f499a53e608c0c7ee7c0a37a0973006968aa36e72caccacd4d |
+| 24-web-ui-hub.html | ed93346918a710398203768524327dd4706c5f49c210a2881ea469efbfcf61c6 |
 | 25-web-ui.html | 3a74d13facca6d20a59d485aec68687757177d61669b51a3043b9fa34c2e6829 |
-| 26-http-server-html-ui.html | 9be468d437c81204dcab1514ef2afa80034773f050218ee2963f1dc685b56dbf |
+| 26-http-server-html-ui.html | 6198177cfd0c9dca3901627ae1c3461d4ddb23d86ae56ad18aa7ac1da043e888 |
 | 27-browser-javascript-backend.html | 4cde3e0784f52df8dd3773b9d4d3527d925a856e7788578e023f11bdc1786f2f |
-| 28-rest-api.html | dfdaae50ad3ce5f16686369ae6e179fc208c4ff4c1412e29c20d4419ef38400c |
-| 29-rest-web-client.html | d52fcc551428ad08009fac157da8fb0b1ec374556bd998369c61e2f647844e00 |
-| 30-full-stack-development.html | 8ef52757d3db23e0e66dcd5847f6513da1ab3311c3487d93d5599796ab95f16b |
+| 28-rest-api.html | 8bdd41546c9ce27551f8e2dd8d5fd7fbbc1550ce8a77b4bd40c9ad548f0e7536 |
+| 29-rest-web-client.html | 92c9f0d9f165790a94d3c33a235b3d503dca3f3faf830950685ea8b21e8eafba |
+| 30-full-stack-development.html | 5019c143ea62d10e135d8ef6fed90f84abb57bc7693dd06580cf0d7b6f691d74 |
 | 31-dotnet-interop.html | 203596fbebf7253ef4d66c1ccb626348aeccec1aca18294b1884cfad40b6ec6b |
 | 32-device-integration.html | 7954588db8828d2a8763b66013381c45bbebb10d518da2b3cdb28f98f917f56d |
 | 33-personal-assistant.html | 52ab6419053a73a9e0144f15ee70b02efc95f9fb0476b85946c7b9fd0ccc004d |

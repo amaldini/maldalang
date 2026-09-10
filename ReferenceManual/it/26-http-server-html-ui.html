@@ -20,7 +20,7 @@
         <h1>26. HttpServer e generazione UI HTML</h1>
         <p>Questo capitolo copre il web server route-first di MALDA, gli handler di pagine HTML, gli helper per pagine generate dall'AI e le utility di cache HTML. Usalo quando vuoi servire pagine con <code>HttpServer</code> e route tradizionali richiesta/risposta.</p>
         <div class="info-box">
-            <strong>Parti da qui:</strong> Leggi <a href="24-web-ui-hub.html">24. Panoramica Web UI</a> per confrontare i modelli UI. Questo capitolo si concentra su <code>HttpServer</code>, <code>@PAGE</code>, <code>@AIPAGE</code> e gli helper di generazione HTML. Per i componenti server e <code>ui.*</code>, vedi <a href="25-web-ui.html">Componenti server Web UI</a>. Per le route API-first, vedi <a href="28-rest-api.html">Server REST API</a>.
+            <strong>Parti da qui:</strong> Leggi <a href="24-web-ui-hub.html">24. Panoramica Web UI</a> per confrontare i modelli UI. Questo capitolo si concentra su <code>HttpServer</code>, <code>@PAGE</code>, <code>@AIPAGE</code> e gli helper di generazione HTML. Per i componenti server e <code>ui.*</code>, vedi <a href="25-web-ui.html">Componenti server Web UI</a>. Per le route API-first, vedi <a href="28-rest-api.html">Server REST API</a>. Middleware, CSRF, cookie, XSS e HTTPS sono spiegati in <a href="28-rest-api.html#web-concepts">28.1.1 Primer sui concetti</a>.
         </div>
 
         <h2>26.1 Mappa del capitolo</h2>
@@ -48,7 +48,7 @@ var server = new HttpServer(port, webDirectory);  // Custom web directory
 var server = new HttpServer(port, webDirectory, pathBase, host);</code></pre>
         <p><code>port</code> deve essere un intero in <code>1-65535</code>. Le porte privilegiate (<code>1-1023</code>, es. <code>80</code>/<code>443</code>) sono ammesse; il bind può comunque richiedere permessi elevati o reservation URL del sistema operativo.</p>
         <p>L'host di bind di default è <code>localhost</code> (solo loopback). Passa <code>host</code> come quarto argomento opzionale, chiama <code>setHost(host)</code> prima di <code>start()</code>, oppure imposta la variabile d'ambiente <code>MALDA_HTTP_HOST</code>. Usa <code>0.0.0.0</code> o <code>*</code> per ascoltare su tutte le interfacce (stesse regole di prefisso di <code>RestServer</code>). L'host di bind corrente è disponibile come proprietà <code>host</code>.</p>
-        <p>HTTPS è opzionale e cross-platform. Chiama <code>enableHttps(certPath, password?)</code> prima di <code>start()</code> con un file <code>.pfx</code>/<code>.p12</code>, oppure un PEM <code>.pem</code>/<code>.crt</code> (chiave privata accanto come <code>.key</code>). Alternative da ambiente: <code>MALDA_HTTP_HTTPS=1</code>, <code>MALDA_HTTP_CERT</code> e, opzionale, <code>MALDA_HTTP_CERT_PASSWORD</code>. Proprietà: <code>https</code>, <code>certPath</code>. Il TLS è terminato da Kestrel; la pipeline di richiesta esistente continua a girare su un <code>HttpListener</code> in loopback.</p>
+        <p id="https">HTTPS è opzionale e cross-platform. Chiama <code>enableHttps(certPath, password?)</code> prima di <code>start()</code> con un file <code>.pfx</code>/<code>.p12</code>, oppure un PEM <code>.pem</code>/<code>.crt</code> (chiave privata accanto come <code>.key</code>). Alternative da ambiente: <code>MALDA_HTTP_HTTPS=1</code>, <code>MALDA_HTTP_CERT</code> e, opzionale, <code>MALDA_HTTP_CERT_PASSWORD</code>. Proprietà: <code>https</code>, <code>certPath</code>. Il TLS è terminato da Kestrel; la pipeline di richiesta esistente continua a girare su un <code>HttpListener</code> in loopback. HTTPS è HTTP avvolto in TLS: i byte sul filo sono cifrati e il certificato identifica il server. Abilitalo prima di esporre sessioni, cookie CSRF o form di login oltre localhost. Il vocabolario di sicurezza web (middleware, CSRF, cookie, rate limit) sta in <a href="28-rest-api.html#web-concepts">28.1.1 Primer sui concetti</a>.</p>
 
         <h3>26.2.2 Metodi core</h3>
         <ul>
@@ -254,6 +254,7 @@ return envelope;</code></pre>
         </ol>
 
         <h2>26.10 Hardening in produzione</h2>
+        <p>Termini come CSRF, rate limiting e middleware di auth sono definiti in <a href="28-rest-api.html#web-concepts">28.1.1 Primer sui concetti</a>.</p>
         <ul>
             <li>Abilita la protezione CSRF sulle route che mutano con <code>enableCsrf</code>.</li>
             <li>Applica il rate limiting con <code>setRateLimit</code> (gira dopo il middleware di auth così <code>verifiedSubOrIp</code> può usare il subject JWT come chiave).</li>

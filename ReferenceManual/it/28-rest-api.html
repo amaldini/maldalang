@@ -20,11 +20,12 @@
         <h1>28. Server REST API</h1>
         <p>MALDA include il supporto nativo per REST API JSON-first. Decora le funzioni con i metodi HTTP e ospitale su <code>RestServer</code> (standalone) oppure monta quel server su <code>HttpServer</code> per un'app full-stack a una sola porta.</p>
         <div class="info-box">
-            <strong>Parti da qui:</strong> Questo capitolo è il riferimento API-first. Hosting delle pagine, <code>@PAGE</code>, HTTPS, file statici, upload multipart e SSE stanno in <a href="26-http-server-html-ui.html">26. HttpServer e generazione UI HTML</a>. Chiamare API da MALDA è <a href="29-rest-web-client.html">29. Client REST Web</a>. Gli helper JWT, CSRF e password sono in <a href="13-built-in-functions.html">13. Funzioni built-in</a>.
+            <strong>Parti da qui:</strong> Sei nuovo alle API web? Leggi prima <a href="#web-concepts">28.1.1 Primer sui concetti</a> — REST, middleware, auth, JWT, CSRF, CORS, HTTPS e una mappa minaccia/difesa, senza uscire da questo manuale. Questo capitolo è il riferimento API-first. Hosting delle pagine, <code>@PAGE</code>, HTTPS, file statici, upload multipart e SSE stanno in <a href="26-http-server-html-ui.html">26. HttpServer e generazione UI HTML</a>. Chiamare API da MALDA è <a href="29-rest-web-client.html">29. Client REST Web</a>. Gli helper JWT, CSRF e password sono in <a href="13-built-in-functions.html#jwt-security">13. Funzioni built-in</a> §13.16.1.
         </div>
 
         <h2>28.1 Mappa del capitolo</h2>
         <ul>
+            <li><strong>28.1.1</strong> Primer sui concetti — REST, middleware, auth, CSRF, CORS, HTTPS, mappa di sicurezza</li>
             <li><strong>28.2</strong> Decoratori HTTP e metadati di route</li>
             <li><strong>28.3</strong> Costruttore, proprietà e metodi di <code>RestServer</code></li>
             <li><strong>28.4</strong> Ordine della pipeline delle richieste</li>
@@ -40,6 +41,105 @@
             <li><strong>28.14</strong> Note interpret vs transpile</li>
             <li><strong>28.15</strong> Esempio completo e template</li>
         </ul>
+
+        <h3 id="web-concepts">28.1.1 Primer sui concetti</h3>
+        <p>Le sezioni successive danno per noti alcuni termini web. Questo primer basta per seguire le API MALDA senza un glossario esterno; non è un manuale HTTP completo. Leggilo una volta, poi salta alla sezione che nomina l'API che ti serve. In fondo c'è una <a href="#concept-security-map">mappa minaccia/difesa</a> di una pagina.</p>
+
+        <h4 id="concept-rest">REST e HTTP</h4>
+        <p>HTTP è il protocollo richiesta/risposta che browser e server già parlano. Un client invia un <strong>metodo</strong> (GET, POST, PUT, PATCH, DELETE, OPTIONS) più un <strong>path</strong>, <strong>header</strong> opzionali e a volte un <strong>body</strong>. Il server risponde con un <strong>codice di stato</strong> più header e un body.</p>
+        <p><strong>REST</strong> qui significa: esporre operazioni come route HTTP che scambiano JSON. <code>@GET("/api/users/{id}")</code> è una lettura; <code>@POST("/api/users")</code> crea; PUT/PATCH aggiornano; DELETE rimuove.</p>
+        <table>
+            <thead>
+                <tr><th>Pezzo della richiesta</th><th>Esempio</th><th>Dove lo mette MALDA</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Metodo + path</td><td><code>GET /api/users/12</code></td><td><code>@GET("/api/users/{id}")</code>; <code>id</code> è un parametro di path</td></tr>
+                <tr><td>Query string</td><td><code>?status=open</code></td><td>Argomento dell'handler o <code>req.query</code></td></tr>
+                <tr><td>Header</td><td><code>Authorization: Bearer …</code></td><td><code>req.headers</code>, oppure <code>req.auth</code> dopo il middleware JWT</td></tr>
+                <tr><td>Body JSON</td><td><code>{"name": "Ada"}</code></td><td>Argomento <code>body</code> dell'handler o <code>req.body</code></td></tr>
+            </tbody>
+        </table>
+        <p>Famiglie di stato: <strong>2xx</strong> successo, <strong>4xx</strong> il client ha inviato qualcosa che il server non accetta, <strong>5xx</strong> il server è fallito. Codici che vedrai spesso: <strong>200</strong> OK, <strong>400</strong> validazione fallita, <strong>401</strong> non autenticato, <strong>403</strong> autenticato ma non permesso, <strong>404</strong> route o risorsa assente, <strong>429</strong> rate limited, <strong>500</strong> errore server non gestito. L'envelope JSON di errore MALDA è in 28.11.</p>
+        <p>GET e PUT di solito sono <strong>idempotenti</strong> (ripetarli non crea una seconda risorsa). POST spesso no. Conta per i retry — vedi <a href="29-rest-web-client.html#http-client-concepts">29.1.1</a>.</p>
+
+        <h4 id="concept-middleware">Middleware</h4>
+        <p>Un handler di route dovrebbe fare il lavoro di business (caricare un utente, salvare una riga). Il <strong>middleware</strong> è una funzione che gira <em>prima</em> di quell'handler, per lavoro condiviso da molte route: logging, autenticazione, assegnare un tenant id. Pensalo come un nastro: ogni richiesta passa dagli stessi cancelli, poi arriva l'handler specifico.</p>
+        <p>Il contratto MALDA è <code>(req, res, next)</code>. Chiama <code>next()</code> per continuare la catena; ometti <code>next()</code> (o invia una risposta) per fermarti — così rifiuti un chiamante non autenticato senza eseguire l'handler. Il middleware globale è <code>server.use(...)</code>; per-route è <code>@Use("name")</code>. Dettagli: 28.8. Ordine della pipeline: 28.4.</p>
+        <pre><code>function logRequest(req, res, next) {
+    print(req.method + " " + req.path);
+    next();
+}
+
+function requireAuth(req, res, next) {
+    req.auth.authenticateBearerJwt("replace-me");
+    next();
+}
+
+var server = new RestServer(8080);
+server.use(logRequest);
+server.use(requireAuth, { "except": ["/api/health"] });</code></pre>
+        <p>Flusso della richiesta, da sinistra a destra: CSRF (se abilitato) → middleware globale → <code>@Use</code> di route → rate limit → <code>@Validate</code> → handler. Il middleware di auth deve girare <em>prima</em> del rate limiter se vuoi limitare in base all'utente verificato.</p>
+
+        <h4 id="concept-authentication">Autenticazione vs autorizzazione</h4>
+        <p>L'<strong>autenticazione</strong> risponde a «chi è?». L'<strong>autorizzazione</strong> risponde a «può fare questa cosa?». Il login prova l'identità; un controllo di ruolo o permesso decide l'accesso. In MALDA, <code>req.auth.authenticateBearerJwt(secret)</code> autentica; <code>req.auth.requireRole("admin")</code> autorizza. Un token mancante o non valido è HTTP <strong>401</strong>; un utente noto senza il ruolo è <strong>403</strong>. Non trattare «la richiesta ha un header <code>X-User-Id</code>» come autenticazione — chiunque può inviare quell'header. Vedi 28.6.2.</p>
+
+        <h4 id="concept-jwt">JWT e token Bearer</h4>
+        <p>Un <strong>JWT</strong> (JSON Web Token) è una stringa firmata: un payload JSON (claim come <code>sub</code>, <code>role</code>, scadenza) più una firma che il server verifica con un secret. Il client di solito lo invia come <code>Authorization: Bearer &lt;token&gt;</code>.</p>
+        <p>Tre parole facili da confondere: <strong>encoding</strong> (Base64, reversibile, non è un segreto), <strong>hashing</strong> (a senso unico, per le password — heading successivo), <strong>signing</strong> (prova che il token è stato emesso con il tuo secret; i JWT MALDA sono firmati, non cifrati). Chi possiede il JWT può <em>leggere</em> i claim, quindi non metterci password, trattalo come una password, tieni il secret di firma fuori dal client e imposta una scadenza breve.</p>
+        <p>Crea i token con <code>createJwt</code> (<a href="13-built-in-functions.html#jwt-security">13.16.1</a>); verificali nel middleware con <code>authenticateBearerJwt</code>. I JWT in cookie usano <code>authenticateCookieJwt</code> al posto dell'header Authorization.</p>
+
+        <h4 id="concept-password">Hash delle password</h4>
+        <p>Non memorizzare mai una password di login in plaintext. Un <strong>hash di password</strong> è un valore a senso unico: dall'hash non recuperi la password, ma <code>verifyPassword</code> può controllare un login successivo. MALDA usa PBKDF2 con salt (<code>hashPassword</code> / <code>verifyPassword</code> in <a href="13-built-in-functions.html#jwt-security">13.16.1</a>). Un <strong>salt</strong> è dato casuale mescolato così due utenti con la stessa password non ottengono lo stesso hash. Non è la firma JWT e non è la cifratura HTTPS — serve solo alle credenziali a riposo.</p>
+
+        <h4 id="concept-session">Sessioni e cookie</h4>
+        <p>Un <strong>cookie</strong> è un piccolo name/value che il server imposta sulla risposta; il browser lo rinvia nelle richieste successive allo stesso sito. Flag che contano:</p>
+        <ul>
+            <li><strong>HttpOnly</strong> — JavaScript sulla pagina non può leggerlo (aiuta contro XSS che rubano la sessione).</li>
+            <li><strong>Secure</strong> — invialo solo su HTTPS.</li>
+            <li><strong>SameSite</strong> (Lax / Strict / None) — limita l'invio del cookie su richieste cross-site. Lax è il default MALDA e blocca la maggior parte del CSRF da altri siti su POST; Strict è più stretto; None richiede Secure ed è per API cross-site che usano i cookie di proposito.</li>
+        </ul>
+        <p>Una <strong>sessione</strong> è storage lato server indicizzato da un cookie session-id — <code>req.session</code> dopo <code>enableSession</code>. Preferisci sessioni o JWT in cookie per le app browser (il token non sta in JavaScript). Preferisci JWT Bearer per i client API programmatici (script, altri server, mobile). Default dei cookie: 28.7.2. API di sessione: 28.6.3.</p>
+
+        <h4 id="concept-csrf">CSRF</h4>
+        <p>Il <strong>CSRF</strong> (Cross-Site Request Forgery) è un trucco in cui un altro sito fa inviare al <em>browser dell'utente</em> una richiesta verso il tuo <em>con i cookie dell'utente</em>. L'utente è loggato, quindi la richiesta sembra legittima — per esempio un form nascosto su <code>evil.example</code> che fa POST a <code>https://your-app/api/transfer</code>.</p>
+        <p>Difesa: la pagina vera include un token segreto (header o campo hidden del form) che il sito attaccante non può leggere (la same-origin policy del browser lo blocca). I metodi sicuri (GET/HEAD/OPTIONS) possono emettere il cookie; POST/PUT/PATCH/DELETE devono presentare un token corrispondente. Le API JWT Bearer chiamate da client non-browser non inviano cookie, quindi il CSRF di solito non si applica; <em>si</em> applica alle sessioni cookie e ai JWT in cookie. Abilita con <code>enableCsrf</code>. Dettagli: 28.9.</p>
+
+        <h4 id="concept-cors">CORS</h4>
+        <p>I browser isolano le pagine per <strong>origin</strong> (schema + host + porta). <code>https://app.example</code> e <code>https://api.example</code> sono origin diversi; così anche <code>http://localhost:5173</code> e <code>http://localhost:8080</code>. Una pagina non può <em>leggere</em> una risposta da un altro origin a meno che quell'API non acconsenta con header CORS. Il browser può prima inviare un <strong>preflight</strong> OPTIONS chiedendo «posso chiamarti così?».</p>
+        <p>CORS non è autenticazione e non è CSRF. Le chiamate same-origin (UI e API MALDA sulla stessa porta <code>HttpServer</code>) non ne hanno bisogno. Il <code>RestClient</code> host non è un browser, quindi CORS non gli si applica. Abilita CORS solo se ti chiameranno browser da un altro origin. Dettagli: 28.12 e 29.9.</p>
+
+        <h4 id="concept-xss">XSS</h4>
+        <p>L'<strong>XSS</strong> (Cross-Site Scripting) è iniettare script in una pagina che il browser della vittima eseguirà — per esempio concatenare un username in HTML senza escape. Lo script iniettato può poi leggere cookie non HttpOnly o chiamare la tua API come quell'utente. MALDA non fa auto-escape delle stringhe che metti in HTML: tratta ogni valore non fidato come dato, non come markup, soprattutto negli handler <code>@PAGE</code> (capitolo 26). I cookie HttpOnly riducono il raggio d'azione; non risolvono l'XSS.</p>
+
+        <h4 id="concept-rate-limit">Rate limiting e proxy fidati</h4>
+        <p>Il <strong>rate limiting</strong> limita quante richieste una chiave (IP, utente, token) può fare in una finestra, così un client buggato o un attaccante non satura il server né forza un login. Il limiter MALDA gira <em>dopo</em> il middleware così può usare come chiave un subject JWT verificato.</p>
+        <p>Un <strong>reverse proxy</strong> (nginx, Caddy, un load balancer cloud) sta davanti all'app, spesso terminando TLS. Il peer TCP che il processo vede è allora il proxy, non l'utente. <code>X-Forwarded-For</code> porta l'IP del client — ma chiunque può spoofare quell'header finché non ti fidi solo del tuo proxy (<code>configureTrustedProxy</code>). Dettagli: 28.9.</p>
+
+        <h4 id="concept-https">HTTPS / TLS</h4>
+        <p><strong>HTTPS</strong> è HTTP su <strong>TLS</strong>: la connessione è cifrata e il server presenta un certificato così i client sanno di aver raggiunto l'host giusto. Senza di esso, cookie, password e token Bearer viaggiano in chiaro sulla rete. Abilita TLS su <code>HttpServer</code> con <code>enableHttps</code> (<a href="26-http-server-html-ui.html#https">capitolo 26</a>). Uno <code>RestServer</code> standalone non termina TLS; montalo su <code>HttpServer</code> o metti un reverse proxy davanti. Tieni i secret di firma e le password dei certificati in variabili d'ambiente, non nel sorgente.</p>
+
+        <h4 id="concept-correlation">Correlation ID, validazione e OpenAPI</h4>
+        <p>Un <strong>correlation ID</strong> è una stringa che etichetta una richiesta attraverso log e payload di errore così puoi trovare «cosa è successo a questa chiamata». MALDA onora <code>X-Correlation-ID</code> in ingresso oppure ne genera uno (28.11).</p>
+        <p>La <strong>validazione</strong> controlla che path, query e body corrispondano a uno schema <em>prima</em> che l'handler giri, così un input sbagliato fallisce con 400 invece di crashare dopo. È <code>@Validate</code> (28.10) — affine, ma non uguale, al <code>validate()</code> di prompt/LLM del capitolo 10.</p>
+        <p><strong>OpenAPI</strong> (spesso chiamato Swagger) è una descrizione machine-readable delle tue route, parametri e schema. MALDA può servirla come JSON con <code>enableSwagger(true)</code> (28.12). La leggono umani e generatori di codice; non è un controllo di sicurezza.</p>
+
+        <h4 id="concept-security-map">Quale difesa per quale minaccia</h4>
+        <table>
+            <thead>
+                <tr><th>Se ti preoccupa…</th><th>Concetto</th><th>Interruttore MALDA</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Un chiamante che finge di essere un utente</td><td>Autenticazione</td><td><code>authenticateBearerJwt</code> / JWT in cookie / sessione</td></tr>
+                <tr><td>Un utente loggato che fa lavoro da admin</td><td>Autorizzazione</td><td><code>requireRole</code> / <code>requirePermission</code></td></tr>
+                <tr><td>Password rubate dal database</td><td>Hash delle password</td><td><code>hashPassword</code> / <code>verifyPassword</code></td></tr>
+                <tr><td>Un altro sito che invia un form come l'utente</td><td>CSRF</td><td><code>enableCsrf</code> (sessioni cookie / JWT in cookie)</td></tr>
+                <tr><td>Una pagina su un altro origin che chiama la tua API</td><td>CORS</td><td><code>enableCORS</code> solo se lo vuoi</td></tr>
+                <tr><td>Script iniettato nel tuo HTML</td><td>XSS</td><td>Non concatenare stringhe non fidate in HTML</td></tr>
+                <tr><td>Token o cookie sniffati sul filo</td><td>HTTPS</td><td><code>enableHttps</code> o un reverse proxy TLS</td></tr>
+                <tr><td>Alluvioni o brute-force del login</td><td>Rate limiting</td><td><code>setRateLimit</code></td></tr>
+                <tr><td>IP client sbagliato dietro nginx</td><td>Proxy fidato</td><td><code>configureTrustedProxy</code></td></tr>
+            </tbody>
+        </table>
 
         <h2>28.2 Sintassi dei decoratori</h2>
         <p>Le funzioni decorate con un metodo HTTP diventano endpoint REST quando un <code>RestServer</code> parte (o viene montato):</p>
@@ -226,7 +326,7 @@ function updatePost(@PathParam("id") userId, @PathParam("postId") postId,
             </tbody>
         </table>
 
-        <h3>28.6.2 req.auth</h3>
+        <h3 id="req-auth">28.6.2 req.auth</h3>
         <p>Preferisci <code>req.auth.authenticateBearerJwt(secret)</code> (API) o <code>authenticateCookieJwt(cookieName, jwtSecret, cookieSecret?)</code> (sessioni browser). Entrambi verificano il JWT, popolano claim/ruoli/permessi e lanciano un 401 standardizzato in caso di fallimento. Crea i token con <code>createJwt</code> (capitolo 13).</p>
         <table>
             <thead>
@@ -319,8 +419,8 @@ function getUser(req, res) {
         <p><code>res.send(value)</code> codifica il body come stringa UTF-8. Usa <code>res.sendBase64(b64)</code> per payload binari (PDF, DOCX e simili): decodifica la stringa base64 e scrive quei byte. Base64 non valido genera un errore.</p>
         <p>Dopo un helper di send, l'handler può continuare (lavoro in background). Header e cookie impostati dopo il send lanciano <code>response already sent</code>. <code>res.fragment(targetId, html)</code> è la forma early-send di <code>componentFragment(targetId, html)</code>: stessi header <code>X-Malda-Fragment</code>, ma il client riceve il fragment prima che l'handler ritorni.</p>
 
-        <h2>28.8 Middleware</h2>
-        <p>Usa <code>server.use(...)</code> per il middleware globale. Il contratto è <code>(req, res, next)</code>. Chiama <code>next()</code> per continuare; ometterlo interrompe la catena. <code>@Use("name")</code> a livello di route gira dopo il middleware globale e prima della validazione + handler. Le app transpile dovrebbero passare il nome della funzione come stringa: <code>server.use("requireAuth")</code>.</p>
+        <h2 id="middleware">28.8 Middleware</h2>
+        <p>Il middleware è una funzione condivisa che gira prima dell'handler di route — vedi <a href="#concept-middleware">28.1.1</a> se il termine è nuovo. Usa <code>server.use(...)</code> per il middleware globale. Il contratto è <code>(req, res, next)</code>. Chiama <code>next()</code> per continuare; ometterlo interrompe la catena. <code>@Use("name")</code> a livello di route gira dopo il middleware globale e prima della validazione + handler. Le app transpile dovrebbero passare il nome della funzione come stringa: <code>server.use("requireAuth")</code>.</p>
         <pre><code>function logRequest(req, res, next) {
     print(req.method + " " + req.path);
     next();
@@ -330,7 +430,8 @@ var server = new RestServer(8080);
 server.use(logRequest);
 server.start();</code></pre>
 
-        <h2>28.9 CSRF, rate limiting e proxy fidato</h2>
+        <h2 id="csrf-rate-limit">28.9 CSRF, rate limiting e proxy fidato</h2>
+        <p>Cosa sono queste difese, in linguaggio semplice: <a href="#concept-csrf">CSRF</a>, <a href="#concept-rate-limit">rate limiting e proxy fidati</a>.</p>
         <pre><code>var server = new RestServer(8080);
 server.enableCsrf("my-csrf-secret");                 // cookie: csrf_token, header: X-CSRF-Token
 server.setRateLimit(120, 60, "verifiedSubOrIp");     // after auth middleware; prefer subject when verified
@@ -382,7 +483,8 @@ function getUserById(id, res) {
 }</code></pre>
         <p><code>req.auth.requireRole</code>, <code>requirePermission</code>, <code>requireVerified</code> e <code>req.requireValid</code> lanciano già quell'envelope.</p>
 
-        <h2>28.12 CORS e Swagger/OpenAPI</h2>
+        <h2 id="cors">28.12 CORS e Swagger/OpenAPI</h2>
+        <p>CORS è il cancello cross-origin del browser; il <code>RestClient</code> host lo ignora. Primer: <a href="#concept-cors">28.1.1 CORS</a>.</p>
         <pre><code>var server = new RestServer(8080);
 server.enableCORS(true);
 server.setCORSOrigin("*");
