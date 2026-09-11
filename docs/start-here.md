@@ -52,7 +52,15 @@ Then the short **Algorithms** track (ideas, not an encyclopedia):
 18. `Examples/Algorithms/qlearn_grid.malda`
 19. `Examples/Algorithms/simulated_annealing.malda`
 
-`Examples/Basics/first_look.malda` is optional if you already program (prompt + schema + `validate`, no API key). After the core path, `Examples/Basics/lambda.malda` is a useful extra before prompts. After annealing, `Examples/AI_LLM/xor_neural_net.malda` is the gradient-learning follow-on.
+Then the **AI theory** track (from-scratch models; no API key, no agent runtime):
+
+20. `Examples/AI_Theory/sarsa_cliff.malda` (SARSA vs Q-learning on a cliff)
+21. `Examples/AI_Theory/xor_neural_net.malda`
+22. `Examples/AI_Theory/svm_linear.malda`
+23. `Examples/AI_Theory/attention_is_all_you_need.malda`
+24. `Examples/AI_Theory/microgpt.malda`
+
+`Examples/Basics/first_look.malda` is optional if you already program (prompt + schema + `validate`, no API key). After the core path, `Examples/Basics/lambda.malda` is a useful extra before prompts.
 
 Why this path:
 
@@ -74,9 +82,7 @@ Start with:
 6. `malda new agent my-agent` then `malda app.malda` / `malda test` (offline `cap.*` file tool; no API key)
 7. `README.md` section `Creating Your First AI Agent`
 
-This path emphasizes **MALDA AI** on top of MALDA Core.
-
-**From-scratch neural net / SVM (offline):** `Examples/AI_LLM/xor_neural_net.malda` trains a 2-4-1 MLP on XOR with backprop. `Examples/AI_LLM/svm_linear.malda` trains a soft-margin linear SVM (and shows why that model cannot solve XOR). No API key. `Examples/AI_LLM/microgpt.malda` is the larger GPT-style follow-on.
+This path emphasizes **MALDA AI** on top of MALDA Core. From-scratch RL, networks, SVMs, and Transformers are not here — they live in `Examples/AI_Theory/` on the Learn Programming path.
 
 **Autonomous PRD loop (advanced):** `Examples/RalphWiggum/` ships the Ralph Wiggum reference loop and a Snake demo. Requires an OpenRouter API key (or configured provider). Read `Examples/RalphWiggum/README.md` or run `Examples/RalphWiggum/snake-demo/run-ralph.bat` from the repo root on Windows.
 

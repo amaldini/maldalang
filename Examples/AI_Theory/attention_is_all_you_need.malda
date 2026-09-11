@@ -1,0 +1,638 @@
+// Attention Is All You Need — Vaswani, Shazeer, Parmar, Uszkoreit,
+// Jones, Gomez, Kaiser, Polosukhin (NeurIPS 2017). arXiv:1706.03762
+//
+// The paper replaces recurrence and convolution with attention:
+//   Attention(Q, K, V) = softmax(Q K^T / sqrt(d_k)) V          (eq. 1)
+//   MultiHead = Concat(head_i) W^O                              (eq. 2)
+//   PE(pos, 2i) = sin(pos / 10000^(2i/d_model))                 (eq. 5)
+//   FFN(x) = max(0, x W_1 + b_1) W_2 + b_2                      (eq. 2 / §3.3)
+//
+// Paper sizes: N=6, d_model=512, h=8, d_ff=2048, d_k=d_v=64.
+// This file uses tiny tensors (d_model=8, 1 head). The walkthrough is
+// instant; the reverse trainer takes about two minutes to interpret.
+// Decoder-only GPT training is microgpt.malda; this file is the
+// 2017 encoder-decoder Transformer, not a language-model port.
+//
+// Offline and seeded — no API key.
+
+function fmt(x: float) -> string {
+    return string(math.round(x * 100.0) / 100.0);
+}
+
+function fmtCell(x: float) -> string {
+    return str.padStart(fmt(x), 6);
+}
+
+function printMatrix(title: string, matrix: array, rowNames: array, colNames: array) {
+    io.print(title);
+    var header = "      ";
+    for (var j = 0; j < colNames.length; j = j + 1) {
+        header = header + str.padStart(string(colNames[j]), 6);
+    }
+    io.print(header);
+    for (var i = 0; i < matrix.length; i = i + 1) {
+        var line = str.padStart(string(rowNames[i]), 6);
+        for (var j = 0; j < matrix[i].length; j = j + 1) {
+            line = line + fmtCell(matrix[i][j]);
+        }
+        io.print(line);
+    }
+}
+
+function zeros(rows: int, cols: int) -> array {
+    var matrix = [];
+    for (var i = 0; i < rows; i = i + 1) {
+        var row = [];
+        for (var j = 0; j < cols; j = j + 1) {
+            row.append(0.0);
+        }
+        matrix.append(row);
+    }
+    return matrix;
+}
+
+function copyMatrix(matrix: array) -> array {
+    var out = [];
+    for (var i = 0; i < matrix.length; i = i + 1) {
+        var row = [];
+        for (var j = 0; j < matrix[i].length; j = j + 1) {
+            row.append(matrix[i][j]);
+        }
+        out.append(row);
+    }
+    return out;
+}
+
+function transpose(matrix: array) -> array {
+    var rows = matrix.length;
+    var cols = matrix[0].length;
+    var out = zeros(cols, rows);
+    for (var i = 0; i < rows; i = i + 1) {
+        for (var j = 0; j < cols; j = j + 1) {
+            out[j][i] = matrix[i][j];
+        }
+    }
+    return out;
+}
+
+function matMul(a: array, b: array) -> array {
+    var rows = a.length;
+    var inner = b.length;
+    var cols = b[0].length;
+    var out = zeros(rows, cols);
+    for (var i = 0; i < rows; i = i + 1) {
+        for (var j = 0; j < cols; j = j + 1) {
+            var sum = 0.0;
+            for (var k = 0; k < inner; k = k + 1) {
+                sum = sum + a[i][k] * b[k][j];
+            }
+            out[i][j] = sum;
+        }
+    }
+    return out;
+}
+
+function matScale(matrix: array, scale: float) -> array {
+    var out = copyMatrix(matrix);
+    for (var i = 0; i < out.length; i = i + 1) {
+        for (var j = 0; j < out[i].length; j = j + 1) {
+            out[i][j] = out[i][j] * scale;
+        }
+    }
+    return out;
+}
+
+function matAdd(a: array, b: array) -> array {
+    var out = copyMatrix(a);
+    for (var i = 0; i < out.length; i = i + 1) {
+        for (var j = 0; j < out[i].length; j = j + 1) {
+            out[i][j] = out[i][j] + b[i][j];
+        }
+    }
+    return out;
+}
+
+function randomMatrix(rows: int, cols: int, scale: float) -> array {
+    var matrix = [];
+    for (var i = 0; i < rows; i = i + 1) {
+        var row = [];
+        for (var j = 0; j < cols; j = j + 1) {
+            row.append(math.randomFloat(-scale, scale));
+        }
+        matrix.append(row);
+    }
+    return matrix;
+}
+
+function softmaxRows(logits: array) -> array {
+    var weights = [];
+    for (var i = 0; i < logits.length; i = i + 1) {
+        weights.append(math.softmax(logits[i]));
+    }
+    return weights;
+}
+
+// §3.2.1 Scaled Dot-Product Attention.
+// mask[i][j] == 0 hides key j from query i (decoder look-ahead).
+// Pass [] for unmasked attention.
+function scaledDotProductAttention(q: array, k: array, v: array, mask: array) -> object {
+    var dK = k[0].length;
+    var scale = math.rsqrt(float(dK));
+    var scores = matScale(matMul(q, transpose(k)), scale);
+    if (mask.length > 0) {
+        for (var i = 0; i < scores.length; i = i + 1) {
+            for (var j = 0; j < scores[i].length; j = j + 1) {
+                if (mask[i][j] < 0.5) {
+                    scores[i][j] = -1.0e9;
+                }
+            }
+        }
+    }
+    var weights = softmaxRows(scores);
+    return {
+        "weights": weights,
+        "out": matMul(weights, v),
+        "scale": scale
+    };
+}
+
+function causalMask(n: int) -> array {
+    var mask = zeros(n, n);
+    for (var i = 0; i < n; i = i + 1) {
+        for (var j = 0; j < n; j = j + 1) {
+            if (j <= i) {
+                mask[i][j] = 1.0;
+            }
+        }
+    }
+    return mask;
+}
+
+function sliceCols(matrix: array, start: int, end: int) -> array {
+    var out = [];
+    for (var i = 0; i < matrix.length; i = i + 1) {
+        var row = [];
+        for (var j = start; j < end; j = j + 1) {
+            row.append(matrix[i][j]);
+        }
+        out.append(row);
+    }
+    return out;
+}
+
+function concatCols(left: array, right: array) -> array {
+    var out = [];
+    for (var i = 0; i < left.length; i = i + 1) {
+        var row = [];
+        for (var j = 0; j < left[i].length; j = j + 1) {
+            row.append(left[i][j]);
+        }
+        for (var j = 0; j < right[i].length; j = j + 1) {
+            row.append(right[i][j]);
+        }
+        out.append(row);
+    }
+    return out;
+}
+
+// §3.2.2 Multi-Head Attention. W* are [d_model x d_model]; heads split d_model.
+function multiHeadAttention(qX: array, kX: array, vX: array, wQ: array, wK: array, wV: array, wO: array, nHeads: int) -> object {
+    var q = matMul(qX, wQ);
+    var k = matMul(kX, wK);
+    var v = matMul(vX, wV);
+    var dModel = q[0].length;
+    var headDim = int(dModel / nHeads);
+    var combined = null;
+    var headWeights = [];
+    for (var h = 0; h < nHeads; h = h + 1) {
+        var start = h * headDim;
+        var step = scaledDotProductAttention(
+            sliceCols(q, start, start + headDim),
+            sliceCols(k, start, start + headDim),
+            sliceCols(v, start, start + headDim),
+            []);
+        headWeights.append(step.weights);
+        if (combined == null) {
+            combined = step.out;
+        } else {
+            combined = concatCols(combined, step.out);
+        }
+    }
+    return { "out": matMul(combined, wO), "headWeights": headWeights };
+}
+
+// §3.5 sinusoidal positional encoding (fixed, not learned).
+function positionalEncoding(length: int, dModel: int) -> array {
+    var pe = zeros(length, dModel);
+    for (var pos = 0; pos < length; pos = pos + 1) {
+        for (var i = 0; i < dModel; i = i + 2) {
+            var denom = math.pow(10000.0, float(i) / float(dModel));
+            var angle = float(pos) / denom;
+            pe[pos][i] = math.sin(angle);
+            if (i + 1 < dModel) {
+                pe[pos][i + 1] = math.cos(angle);
+            }
+        }
+    }
+    return pe;
+}
+
+// §3.3 position-wise feed-forward: two linear layers, ReLU in between.
+function feedForward(x: array, w1: array, b1: array, w2: array, b2: array) -> array {
+    var hidden = matMul(x, w1);
+    for (var t = 0; t < hidden.length; t = t + 1) {
+        for (var j = 0; j < hidden[t].length; j = j + 1) {
+            var z = hidden[t][j] + b1[j];
+            if (z < 0.0) {
+                z = 0.0;
+            }
+            hidden[t][j] = z;
+        }
+    }
+    var out = matMul(hidden, w2);
+    for (var t = 0; t < out.length; t = t + 1) {
+        for (var j = 0; j < out[t].length; j = j + 1) {
+            out[t][j] = out[t][j] + b2[j];
+        }
+    }
+    return out;
+}
+
+// Add & Norm: LayerNorm(x + sublayer(x)). Paper §3.1 / §5.3.
+function layerNormRows(x: array, gamma: array, beta: array) -> array {
+    var out = [];
+    for (var t = 0; t < x.length; t = t + 1) {
+        var mean = math.average(x[t]);
+        var varSum = 0.0;
+        for (var j = 0; j < x[t].length; j = j + 1) {
+            var d = x[t][j] - mean;
+            varSum = varSum + d * d;
+        }
+        var inv = math.rsqrt(varSum / float(x[t].length) + 0.00001);
+        var row = [];
+        for (var j = 0; j < x[t].length; j = j + 1) {
+            row.append((x[t][j] - mean) * inv * gamma[j] + beta[j]);
+        }
+        out.append(row);
+    }
+    return out;
+}
+
+function ones(n: int) -> array {
+    var values = [];
+    for (var i = 0; i < n; i = i + 1) {
+        values.append(1.0);
+    }
+    return values;
+}
+
+function embedTokens(ids: array, table: array) -> array {
+    var x = [];
+        for (var t = 0; t < ids.length; t = t + 1) {
+        var row = [];
+        var id = int(ids[t]);
+        for (var j = 0; j < table[id].length; j = j + 1) {
+            row.append(table[id][j]);
+        }
+        x.append(row);
+    }
+    return x;
+}
+
+function softmaxBackwardRow(dP: array, p: array) -> array {
+    var dot = 0.0;
+    for (var i = 0; i < p.length; i = i + 1) {
+        dot = dot + dP[i] * p[i];
+    }
+    var dS = [];
+    for (var i = 0; i < p.length; i = i + 1) {
+        dS.append(p[i] * (dP[i] - dot));
+    }
+    return dS;
+}
+
+// Analytic backward for eq. 1 (used by the reverse-sequence trainer).
+function attentionBackward(dOut: array, q: array, k: array, v: array, weights: array, scale: float) -> object {
+    var dV = matMul(transpose(weights), dOut);
+    var dWeights = matMul(dOut, transpose(v));
+    var dScores = [];
+    for (var i = 0; i < weights.length; i = i + 1) {
+        dScores.append(softmaxBackwardRow(dWeights[i], weights[i]));
+    }
+    var dScaled = matScale(dScores, scale);
+    return {
+        "dQ": matMul(dScaled, k),
+        "dK": matMul(transpose(dScaled), q),
+        "dV": dV
+    };
+}
+
+function addGrad(dest: array, src: array) {
+    for (var i = 0; i < dest.length; i = i + 1) {
+        for (var j = 0; j < dest[i].length; j = j + 1) {
+            dest[i][j] = dest[i][j] + src[i][j];
+        }
+    }
+}
+
+function sgd(param: array, grad: array, lr: float) {
+    for (var i = 0; i < param.length; i = i + 1) {
+        for (var j = 0; j < param[i].length; j = j + 1) {
+            param[i][j] = param[i][j] - lr * grad[i][j];
+        }
+    }
+}
+
+function tokensToNames(ids: array, names: array) -> array {
+    var labels = [];
+    for (var i = 0; i < ids.length; i = i + 1) {
+        labels.append(names[int(ids[i])]);
+    }
+    return labels;
+}
+
+function predictIds(logits: array) -> array {
+    var ids = [];
+    for (var t = 0; t < logits.length; t = t + 1) {
+        ids.append(math.argmax(logits[t]));
+    }
+    return ids;
+}
+
+function sameIds(a: array, b: array) -> bool {
+    if (a.length != b.length) {
+        return false;
+    }
+    for (var i = 0; i < a.length; i = i + 1) {
+        if (int(a[i]) != int(b[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function reverseIds(ids: array) -> array {
+    var out = [];
+    for (var i = ids.length - 1; i >= 0; i = i - 1) {
+        out.append(ids[i]);
+    }
+    return out;
+}
+
+function encodeWithPE(ids: array, embed: array, pe: array) -> array {
+    return matAdd(embedTokens(ids, embed), pe);
+}
+
+function forwardReverse(ids: array, embed: array, pe: array, wQ: array, wK: array, wV: array, wOut: array) -> object {
+    var x = encodeWithPE(ids, embed, pe);
+    var q = matMul(x, wQ);
+    var k = matMul(x, wK);
+    var v = matMul(x, wV);
+    var attn = scaledDotProductAttention(q, k, v, []);
+    var logits = matMul(attn.out, wOut);
+    return {
+        "x": x,
+        "q": q,
+        "k": k,
+        "v": v,
+        "weights": attn.weights,
+        "out": attn.out,
+        "logits": logits,
+        "scale": attn.scale
+    };
+}
+
+// ---------------------------------------------------------------------------
+math.seed(42);
+
+io.print("Attention Is All You Need  (Vaswani et al., 2017)");
+io.print("Tiny MALDA walkthrough of the paper, then a trained reverse demo.");
+io.print("");
+
+// --- §3.2.1 worked example -------------------------------------------------
+// "sat" is written to look like the "cat" key, so the verb attends to the noun.
+var words = ["the", "cat", "sat"];
+var qDemo = [
+    [4.0, 0.0, 0.0, 0.0],
+    [0.0, 4.0, 0.0, 0.0],
+    [0.0, 3.6, 0.0, 0.0]
+];
+var kDemo = [
+    [4.0, 0.0, 0.0, 0.0],
+    [0.0, 4.0, 0.0, 0.0],
+    [0.0, 0.0, 4.0, 0.0]
+];
+var vDemo = [
+    [1.0, 0.0],
+    [0.0, 1.0],
+    [0.2, 0.2]
+];
+
+var demo = scaledDotProductAttention(qDemo, kDemo, vDemo, []);
+io.print($"§3.2.1 Scaled Dot-Product Attention   scale=1/sqrt(d_k)={fmt(demo.scale)}");
+printMatrix("Attention weights  (query \\ key)", demo.weights, words, words);
+printMatrix("Output  (weighted values)", demo.out, words, ["e0", "e1"]);
+io.print("sat attends to cat, so its output is close to cat's value [0, 1].");
+io.print("");
+
+// "the" wants to look ahead at "sat". The mask blocks that.
+var qAhead = [
+    [0.0, 0.0, 4.0, 0.0],
+    [0.0, 4.0, 0.0, 0.0],
+    [0.0, 0.0, 4.0, 0.0]
+];
+var open = scaledDotProductAttention(qAhead, kDemo, vDemo, []);
+var causal = scaledDotProductAttention(qAhead, kDemo, vDemo, causalMask(3));
+printMatrix("No mask  (the looks ahead at sat)", open.weights, words, words);
+printMatrix("Causal mask  (query i cannot see key j > i)", causal.weights, words, words);
+io.print("");
+
+// --- §3.2.2 two heads on a 4-d model --------------------------------------
+var xDemo = [
+    [1.0, 0.0, 0.2, 0.0],
+    [0.0, 1.0, 0.0, 0.2],
+    [0.2, 0.8, 0.0, 0.0]
+];
+var wI = [
+    [1.0, 0.0, 0.0, 0.0],
+    [0.0, 1.0, 0.0, 0.0],
+    [0.0, 0.0, 1.0, 0.0],
+    [0.0, 0.0, 0.0, 1.0]
+];
+var heads = multiHeadAttention(xDemo, xDemo, xDemo, wI, wI, wI, wI, 2);
+io.print("§3.2.2 Multi-Head Attention  (h=2, d_k=2, identity projections)");
+printMatrix("Head 0 weights", heads.headWeights[0], words, words);
+printMatrix("Head 1 weights", heads.headWeights[1], words, words);
+io.print("");
+
+// --- §3.5 positional encoding ---------------------------------------------
+var peShow = positionalEncoding(4, 8);
+io.print("§3.5 Sinusoidal positional encoding  PE[pos, dim]  (4 x 8)");
+printMatrix("PE", peShow, ["p0", "p1", "p2", "p3"], ["0", "1", "2", "3", "4", "5", "6", "7"]);
+io.print("");
+
+// --- §3.3 FFN + Add & Norm ------------------------------------------------
+var ffnIn = [[0.5, -0.2, 0.1, 0.0]];
+var w1 = [
+    [1.0, 0.0],
+    [0.0, 1.0],
+    [0.5, 0.0],
+    [0.0, 0.5]
+];
+var ffnOut = feedForward(ffnIn, w1, [0.0, 0.0], transpose(w1), [0.0, 0.0, 0.0, 0.0]);
+var normed = layerNormRows(matAdd(ffnIn, ffnOut), ones(4), [0.0, 0.0, 0.0, 0.0]);
+io.print($"§3.3 FFN + §3.1 Add&Norm  in={fmt(ffnIn[0][0])} {fmt(ffnIn[0][1])} {fmt(ffnIn[0][2])} {fmt(ffnIn[0][3])}");
+io.print($"  FFN out={fmt(ffnOut[0][0])} {fmt(ffnOut[0][1])} {fmt(ffnOut[0][2])} {fmt(ffnOut[0][3])}");
+io.print($"  LayerNorm(x+FFN)={fmt(normed[0][0])} {fmt(normed[0][1])} {fmt(normed[0][2])} {fmt(normed[0][3])}");
+io.print("");
+
+// --- Figure 1: encoder-decoder cross-attention (hand-chosen, not trained) -
+// Encoder keys are English; decoder queries are French. "suis" matches "am".
+var srcWords = ["I", "am"];
+var tgtWords = ["je", "suis"];
+var enc = [
+    [3.0, 0.0, 0.0, 0.0],
+    [0.0, 3.0, 0.0, 0.0]
+];
+var dec = [
+    [2.7, 0.3, 0.0, 0.0],
+    [0.3, 2.7, 0.0, 0.0]
+];
+var cross = scaledDotProductAttention(dec, enc, enc, []);
+io.print("Figure 1  Encoder-decoder attention  (I am  ->  je suis)");
+printMatrix("Cross-attention  (decoder query \\ encoder key)", cross.weights, tgtWords, srcWords);
+io.print("suis attends to am — that is how the decoder reads the source.");
+io.print("");
+
+// --- Train eq. 1 to reverse a 3-token sequence ----------------------------
+// Positional encoding lets each query look up the mirrored position.
+// Held-out pairs test that the rule is positional, not memorized tokens.
+var tokenNames = ["A", "B", "C"];
+var dModel: int = 8;
+var vocab: int = 3;
+var seqLen: int = 3;
+var epochs: int = 180;
+var learningRate: float = 0.18;
+
+var pe = positionalEncoding(seqLen, dModel);
+var embed = randomMatrix(vocab, dModel, 0.35);
+var wQ = randomMatrix(dModel, dModel, 0.35);
+var wK = randomMatrix(dModel, dModel, 0.35);
+var wV = randomMatrix(dModel, dModel, 0.35);
+var wOut = randomMatrix(dModel, vocab, 0.35);
+
+var trainSrc = [
+    [0, 1, 2],
+    [0, 2, 1],
+    [1, 0, 2],
+    [1, 2, 0],
+    [0, 0, 1],
+    [1, 1, 0],
+    [2, 2, 0],
+    [0, 1, 1]
+];
+var testSrc = [
+    [2, 0, 1],
+    [2, 1, 0],
+    [0, 0, 2],
+    [2, 2, 1]
+];
+
+io.print("Train single-head attention to reverse length-3 sequences.");
+io.print("Paper N/d_model/h are 6/512/8; this trainer is 1/8/1.");
+io.print("");
+
+for (var epoch = 1; epoch <= epochs; epoch = epoch + 1) {
+    var epochLoss = 0.0;
+    var dEmbed = zeros(vocab, dModel);
+    var dWQ = zeros(dModel, dModel);
+    var dWK = zeros(dModel, dModel);
+    var dWV = zeros(dModel, dModel);
+    var dWOut = zeros(dModel, vocab);
+
+    for (var s = 0; s < trainSrc.length; s = s + 1) {
+        var src = trainSrc[s];
+        var tgt = reverseIds(src);
+        var step = forwardReverse(src, embed, pe, wQ, wK, wV, wOut);
+        var dOut = zeros(seqLen, dModel);
+        var dLogits = zeros(seqLen, vocab);
+
+        for (var t = 0; t < seqLen; t = t + 1) {
+            epochLoss = epochLoss + math.crossEntropyFromLogits(step.logits[t], int(tgt[t]));
+            var probs = math.softmax(step.logits[t]);
+            for (var c = 0; c < vocab; c = c + 1) {
+                dLogits[t][c] = probs[c];
+            }
+            dLogits[t][int(tgt[t])] = dLogits[t][int(tgt[t])] - 1.0;
+        }
+
+        addGrad(dWOut, matMul(transpose(step.out), dLogits));
+        addGrad(dOut, matMul(dLogits, transpose(wOut)));
+        var dAttn = attentionBackward(dOut, step.q, step.k, step.v, step.weights, step.scale);
+        addGrad(dWQ, matMul(transpose(step.x), dAttn.dQ));
+        addGrad(dWK, matMul(transpose(step.x), dAttn.dK));
+        addGrad(dWV, matMul(transpose(step.x), dAttn.dV));
+        var dX = matAdd(
+            matAdd(matMul(dAttn.dQ, transpose(wQ)), matMul(dAttn.dK, transpose(wK))),
+            matMul(dAttn.dV, transpose(wV)));
+        for (var t = 0; t < seqLen; t = t + 1) {
+            var id = int(src[t]);
+            for (var j = 0; j < dModel; j = j + 1) {
+                dEmbed[id][j] = dEmbed[id][j] + dX[t][j];
+            }
+        }
+    }
+
+    var nPairs = float(trainSrc.length);
+    sgd(embed, dEmbed, learningRate / nPairs);
+    sgd(wQ, dWQ, learningRate / nPairs);
+    sgd(wK, dWK, learningRate / nPairs);
+    sgd(wV, dWV, learningRate / nPairs);
+    sgd(wOut, dWOut, learningRate / nPairs);
+
+    if (epoch == 1 || epoch % 60 == 0 || epoch == epochs) {
+        io.print($"epoch {epoch}: loss={fmt(epochLoss / nPairs)}");
+    }
+}
+
+io.print("");
+var show = [0, 1, 2];
+var showStep = forwardReverse(show, embed, pe, wQ, wK, wV, wOut);
+printMatrix(
+    "Learned attention on A B C  (should be anti-diagonal: each pos reads n-1-i)",
+    showStep.weights,
+    tokensToNames(show, tokenNames),
+    tokensToNames(show, tokenNames));
+
+io.print("");
+io.print("Predictions  src -> pred  (target is reverse(src))");
+var trainCorrect = 0;
+for (var s = 0; s < trainSrc.length; s = s + 1) {
+    var src = trainSrc[s];
+    var tgt = reverseIds(src);
+    var pred = predictIds(forwardReverse(src, embed, pe, wQ, wK, wV, wOut).logits);
+    if (sameIds(pred, tgt)) {
+        trainCorrect = trainCorrect + 1;
+    }
+    io.print($"  train {str.join(tokensToNames(src, tokenNames), "")} -> {str.join(tokensToNames(pred, tokenNames), "")}");
+}
+
+var testCorrect = 0;
+for (var s = 0; s < testSrc.length; s = s + 1) {
+    var src = testSrc[s];
+    var tgt = reverseIds(src);
+    var pred = predictIds(forwardReverse(src, embed, pe, wQ, wK, wV, wOut).logits);
+    if (sameIds(pred, tgt)) {
+        testCorrect = testCorrect + 1;
+    }
+    io.print($"  test  {str.join(tokensToNames(src, tokenNames), "")} -> {str.join(tokensToNames(pred, tokenNames), "")}");
+}
+
+io.print("");
+io.print($"Train accuracy: {trainCorrect}/{trainSrc.length}");
+io.print($"Test accuracy:  {testCorrect}/{testSrc.length}");
+if (trainCorrect == trainSrc.length && testCorrect == testSrc.length) {
+    io.print("Reverse learned — attention is all you need.");
+} else {
+    io.print("Reverse not fully learned — try more epochs or another seed.");
+}

@@ -50,7 +50,7 @@ public class AlgorithmsTrackTests : TestBase
     }
 
     [Fact]
-    public void Catalog_NextChain_EndsAtXorNeuralNet()
+    public void Catalog_NextChain_LeavesAlgorithmsForSarsaCliff()
     {
         var first = ExampleProgramsService.GetExampleByRelativePath("Algorithms/towers_of_hanoi.malda");
         Assert.NotNull(first);
@@ -58,7 +58,7 @@ public class AlgorithmsTrackTests : TestBase
 
         var last = ExampleProgramsService.GetExampleByRelativePath("Algorithms/simulated_annealing.malda");
         Assert.NotNull(last);
-        Assert.Equal("AI_LLM/xor_neural_net.malda", last!.Next);
+        Assert.Equal("AI_Theory/sarsa_cliff.malda", last!.Next);
     }
 
     [Fact]

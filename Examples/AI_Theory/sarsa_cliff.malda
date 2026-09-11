@@ -1,0 +1,266 @@
+// SARSA vs Q-learning on a 4x6 cliff (Sutton & Barto fig. 6.6, shortened).
+//
+// Same Q-table as Algorithms/qlearn_grid.malda; the update target differs:
+//   Q-learning (off-policy): r + gamma * max_a Q[s'][a]
+//   SARSA (on-policy):       r + gamma * Q[s'][a']   (the action you take next)
+//
+// Bottom row is S, then a cliff, then G. Step -1; fall off -100 and restart.
+// Epsilon-greedy training makes the cliff edge dangerous, so SARSA stays
+// inland while Q-learning hugs the optimal rim. Seeded, no API key.
+// Change this: print both greedy walks after 50 episodes.
+// Next: xor_neural_net.malda (gradient learning)
+
+function bestAction(q, state) {
+    var best = 0;
+    var bestV = q[state][0];
+    var a = 1;
+    while (a < 4) {
+        if (q[state][a] > bestV) {
+            bestV = q[state][a];
+            best = a;
+        }
+        a = a + 1;
+    }
+    return best;
+}
+
+function epsilonGreedy(q, state, epsilon) {
+    if (math.random() < epsilon) {
+        return math.randomInt(0, 3);
+    }
+    return bestAction(q, state);
+}
+
+function isCliff(state) {
+    var row = int(state / 6);
+    var col = state % 6;
+    if (row == 3) {
+        if (col > 0) {
+            if (col < 5) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+function step(state, action) {
+    var row = int(state / 6);
+    var col = state % 6;
+    if (action == 0) {
+        row = row - 1;
+    }
+    if (action == 1) {
+        col = col + 1;
+    }
+    if (action == 2) {
+        row = row + 1;
+    }
+    if (action == 3) {
+        col = col - 1;
+    }
+    if (row < 0) {
+        row = 0;
+    }
+    if (row > 3) {
+        row = 3;
+    }
+    if (col < 0) {
+        col = 0;
+    }
+    if (col > 5) {
+        col = 5;
+    }
+    var next = row * 6 + col;
+    if (isCliff(next)) {
+        return { "state": 18, "reward": -100.0, "done": false };
+    }
+    if (next == 23) {
+        return { "state": next, "reward": -1.0, "done": true };
+    }
+    return { "state": next, "reward": -1.0, "done": false };
+}
+
+function arrow(action) {
+    if (action == 0) {
+        return "N";
+    }
+    if (action == 1) {
+        return "E";
+    }
+    if (action == 2) {
+        return "S";
+    }
+    return "W";
+}
+
+function zeroQ() {
+    var q = [];
+    var s = 0;
+    while (s < 24) {
+        q.append([0.0, 0.0, 0.0, 0.0]);
+        s = s + 1;
+    }
+    return q;
+}
+
+function train(onPolicy, alpha, gamma, epsilon, episodes) {
+    var q = zeroQ();
+    var ep = 1;
+    while (ep <= episodes) {
+        var state = 18;
+        var action = epsilonGreedy(q, state, epsilon);
+        var steps = 0;
+        var done = false;
+        while (!done && steps < 80) {
+            var outcome = step(state, action);
+            var next = outcome.state;
+            done = outcome.done;
+            var nextVal = 0.0;
+            var nextAction = 0;
+            if (!done) {
+                nextAction = epsilonGreedy(q, next, epsilon);
+                if (onPolicy) {
+                    nextVal = q[next][nextAction];
+                } else {
+                    nextVal = q[next][bestAction(q, next)];
+                }
+            }
+            q[state][action] = q[state][action] + alpha * (outcome.reward + gamma * nextVal - q[state][action]);
+            state = next;
+            if (onPolicy) {
+                action = nextAction;
+            } else {
+                if (!done) {
+                    action = epsilonGreedy(q, state, epsilon);
+                }
+            }
+            steps = steps + 1;
+        }
+        ep = ep + 1;
+    }
+    return q;
+}
+
+function printPolicy(title, q) {
+    io.print(title);
+    var r = 0;
+    while (r < 4) {
+        var line = "";
+        var c = 0;
+        while (c < 6) {
+            var cell = r * 6 + c;
+            if (cell == 23) {
+                line = line + "G ";
+            } else {
+                if (isCliff(cell)) {
+                    line = line + "C ";
+                } else {
+                    line = line + arrow(bestAction(q, cell)) + " ";
+                }
+            }
+            c = c + 1;
+        }
+        io.print(line);
+        r = r + 1;
+    }
+}
+
+function greedyWalk(q) {
+    var walk = [18];
+    var here = 18;
+    var guard = 0;
+    while (here != 23 && guard < 24) {
+        here = step(here, bestAction(q, here)).state;
+        walk.append(here);
+        guard = guard + 1;
+    }
+    return walk;
+}
+
+function walkRow(state) {
+    return int(state / 6);
+}
+
+function minRow(walk) {
+    var lowest = 99;
+    var i = 0;
+    while (i < walk.length) {
+        var row = walkRow(walk[i]);
+        if (row < lowest) {
+            lowest = row;
+        }
+        i = i + 1;
+    }
+    return lowest;
+}
+
+function walkFell(walk) {
+    var i = 0;
+    while (i < walk.length) {
+        if (isCliff(walk[i])) {
+            return true;
+        }
+        i = i + 1;
+    }
+    return false;
+}
+
+var alpha = 0.5;
+var gamma = 1.0;
+var epsilon = 0.2;
+var episodes = 250;
+
+math.seed(42);
+var qLearn = train(false, alpha, gamma, epsilon, episodes);
+math.seed(42);
+var qSarsa = train(true, alpha, gamma, epsilon, episodes);
+
+io.print("cliff walking 4x6  (S bottom-left, G bottom-right, C cliff)");
+io.print("step -1,  fall -100 back to start,  epsilon=" + string(epsilon));
+io.print("");
+printPolicy("Q-learning (off-policy, max next Q):", qLearn);
+var qWalk = greedyWalk(qLearn);
+io.print("greedy walk=" + string(qWalk));
+io.print("");
+printPolicy("SARSA (on-policy, next action Q):", qSarsa);
+var sWalk = greedyWalk(qSarsa);
+io.print("greedy walk=" + string(sWalk));
+io.print("");
+
+var qOk = false;
+if (qWalk[qWalk.length - 1] == 23) {
+    if (!walkFell(qWalk)) {
+        if (minRow(qWalk) == 2) {
+            qOk = true;
+        }
+    }
+}
+
+var sOk = false;
+if (sWalk[sWalk.length - 1] == 23) {
+    if (!walkFell(sWalk)) {
+        if (minRow(sWalk) <= 1) {
+            if (sWalk.length > qWalk.length) {
+                sOk = true;
+            }
+        }
+    }
+}
+
+if (qOk) {
+    io.print("q-learning hugs the cliff");
+} else {
+    io.print("q-learning did not hug the cliff");
+}
+if (sOk) {
+    io.print("sarsa stays inland");
+} else {
+    io.print("sarsa did not stay inland");
+}
+
+if (qOk && sOk) {
+    io.print("sarsa cliff ok");
+} else {
+    io.print("sarsa cliff failed");
+}

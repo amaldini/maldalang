@@ -2,7 +2,7 @@
 //
 // Eight cities on a square. A random tour is cooled until the length
 // is close to the hull (8). Seeded. Change this: start colder (temp=0.2).
-// Next: AI_LLM/xor_neural_net.malda (gradient learning)
+// Next: AI_Theory/sarsa_cliff.malda (SARSA vs Q-learning), then xor_neural_net.malda.
 
 function dist(a, b) {
     var dx = a[0] - b[0];

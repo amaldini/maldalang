@@ -46,54 +46,6 @@
       "documentationPath": "/?lesson=fullstack-demo#lesson-fullstack-demo",
       "documentationTitle": "Local AI Showcase",
       "featured": true
-    },
-    {
-      "name": "microgpt (Karpathy Port)",
-      "description": "Pure MALDA port of Karpathy's dependency-free microgpt training and inference loop",
-      "file": "microgpt.malda",
-      "track": "showcase",
-      "difficulty": "advanced",
-      "minutes": 30,
-      "concepts": ["training loop", "ML internals", "advanced AI"],
-      "prerequisites": ["AI_LLM/local_llm_example.malda"],
-      "learningGoal": "Provide an advanced AI showcase after the learner already understands MALDA's core and applied AI workflows.",
-      "expectedOutput": "Runs an advanced MALDA implementation of a GPT-style training and inference loop.",
-      "documentationPath": "/?lesson=fullstack-demo#lesson-fullstack-demo",
-      "documentationTitle": "Advanced AI Showcase"
-    },
-    {
-      "name": "XOR Neural Net",
-      "description": "Train a 2-4-1 multilayer perceptron on XOR with backpropagation, from scratch",
-      "file": "xor_neural_net.malda",
-      "track": "student",
-      "difficulty": "intermediate",
-      "minutes": 12,
-      "requires": ["offline"],
-      "concepts": ["neural network", "backpropagation", "XOR", "training loop"],
-      "prerequisites": ["Basics/functions.malda"],
-      "learningGoal": "See a complete forward/backward pass in plain MALDA before the GPT-sized microgpt showcase.",
-      "expectedOutput": "Prints training loss and classifies all four XOR inputs correctly.",
-      "next": "AI_LLM/svm_linear.malda",
-      "documentationPath": "/docs/start-here.md",
-      "documentationTitle": "Start Here",
-      "featured": true
-    },
-    {
-      "name": "Linear SVM",
-      "description": "Train a soft-margin support vector machine with hinge loss and L2, from scratch",
-      "file": "svm_linear.malda",
-      "track": "student",
-      "difficulty": "intermediate",
-      "minutes": 12,
-      "requires": ["offline"],
-      "concepts": ["SVM", "hinge loss", "maximum margin", "linear classifier"],
-      "prerequisites": ["AI_LLM/xor_neural_net.malda"],
-      "learningGoal": "See a max-margin linear separator, then why the same model cannot solve XOR.",
-      "expectedOutput": "Separates two 2D clusters and reports that linear SVM fails on XOR.",
-      "next": "AI_LLM/microgpt.malda",
-      "documentationPath": "/docs/start-here.md",
-      "documentationTitle": "Start Here",
-      "featured": true
     }
   ]
 }

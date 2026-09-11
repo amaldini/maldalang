@@ -126,7 +126,7 @@
       "prerequisites": ["Algorithms/qlearn_grid.malda"],
       "learningGoal": "Accept worse moves early, then freeze near a short tour.",
       "expectedOutput": "Prints a best length under 9, shorter than the shuffled start.",
-      "next": "AI_LLM/xor_neural_net.malda",
+      "next": "AI_Theory/sarsa_cliff.malda",
       "documentationPath": "/docs/start-here.md",
       "documentationTitle": "Start Here",
       "featured": true

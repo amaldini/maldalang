@@ -30,9 +30,10 @@ Each folder’s `metadata.json` may tag examples with `requires`:
 |--------|--------|------------------|----------|
 | [Basics](Basics/) | Syntax, control flow, functions, lists, recursion | offline | student |
 | [Algorithms](Algorithms/) | Curated Hanoi / search / sort / graph / DP / RL / annealing | offline | student |
+| [AI_Theory](AI_Theory/) | From-scratch RL / XOR / SVM / Transformer / microgpt (no agents) | offline | student |
 | [OOP](OOP/) | Classes and inheritance | offline | student |
 | [Prompts](Prompts/) | `prompt` declarations | api-key (most) | ai-builder |
-| [AI_LLM](AI_LLM/) | Clients, conversations, and from-scratch XOR / SVM demos | offline / api-key | ai-builder, student, showcase |
+| [AI_LLM](AI_LLM/) | LLM clients and conversations (calling a model) | offline / api-key | ai-builder, showcase |
 | [Agents](Agents/) | Agents and tools | api-key | ai-builder, showcase |
 | [Web](Web/) | HttpServer, REST, UI, JS DOM target, auth, jobs | network (servers); offline (job queue demo) | student, ai-builder, showcase |
 | [Games](Games/) | Canvas `game.*` and `three.*` graphics (JS target) | offline | student, showcase |

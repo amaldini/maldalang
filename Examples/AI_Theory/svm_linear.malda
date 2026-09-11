@@ -11,7 +11,8 @@
 // This linear model fits two blobs that are linearly separable.
 // XOR is not — the last section shows the linear SVM failing there.
 // For a non-linear separator see xor_neural_net.malda (hidden layer)
-// or a kernel SVM (not in this file). Offline, no API key.
+// or a kernel SVM (not in this file). Next: attention_is_all_you_need.malda.
+// Offline, no API key.
 
 function dot(a: array, b: array) -> float {
     var sum = 0.0;

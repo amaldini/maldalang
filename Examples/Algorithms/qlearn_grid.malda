@@ -3,6 +3,7 @@
 // Start at cell 0, goal at cell 15. Actions: 0=N 1=E 2=S 3=W.
 // Seeded so the greedy walk after training always reaches the goal.
 // Change this: print Q[0] after fewer episodes. Next: simulated_annealing.malda
+// Theory companion: AI_Theory/sarsa_cliff.malda (SARSA vs Q-learning on a cliff).
 
 function bestAction(q, state) {
     var best = 0;
