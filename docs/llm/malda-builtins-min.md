@@ -94,6 +94,7 @@ different convention from `str.length(s)` / `math.sqrt(x)`. There is no `arr` na
 | Call | Role |
 |------|------|
 | `math.abs/round/floor/ceil/sqrt/pow/min/max/sum/average` | Arithmetic |
+| `math.zeros(n)` / `math.zeros(rows, cols)` | 1D or 2D nested array of `0.0`; each 2D row is a fresh array |
 | `math.floor` / `round` / `ceil` / `sqrt` | Always return a **float**; whole-valued results coerce at integer sinks (`repeat`, indexes, …) |
 | `math.randomInt(min, max)` | Random integer, **both endpoints included** |
 | `math.random()` / `math.randomFloat(min, max)` | Random floats |

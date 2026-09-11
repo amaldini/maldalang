@@ -4,7 +4,7 @@
 # Format: symbol -> tier | note
 # Optional-pack / vertical symbols must NOT appear here (enforced by OptionalPackRegistryGuardTests)
 
-# count: 361
+# count: 368
 
 abs -> tier1-core | BuiltInRegistry
 acos -> stdlib-general | BuiltInRegistry
@@ -15,9 +15,9 @@ append -> stdlib-general | BuiltInRegistry
 approveWorkflowStep -> platform-workflow | BuiltInRegistry
 argmax -> stdlib-general | BuiltInRegistry
 argmin -> stdlib-general | BuiltInRegistry
-asVariant -> stdlib-general | BuiltInRegistry
 asin -> stdlib-general | BuiltInRegistry
 assert -> stdlib-general | BuiltInRegistry
+asVariant -> stdlib-general | BuiltInRegistry
 atan -> stdlib-general | BuiltInRegistry
 atan2 -> stdlib-general | BuiltInRegistry
 average -> tier1-core | BuiltInRegistry
@@ -107,11 +107,13 @@ evalPrompt -> stdlib-general | BuiltInRegistry
 executePlan -> platform-ai | BuiltInRegistry
 exit -> stdlib-general | BuiltInRegistry
 exp -> stdlib-general | BuiltInRegistry
+expect -> stdlib-general | BuiltInRegistry
 extractDocxText -> stdlib-general | BuiltInRegistry
 extractHTML -> stdlib-general | BuiltInRegistry
 extractNumbers -> stdlib-general | BuiltInRegistry
 extractPdfText -> stdlib-io | BuiltInRegistry
 failJob -> stdlib-general | BuiltInRegistry
+firstOk -> stdlib-general | BuiltInRegistry
 float -> tier1-core | BuiltInRegistry
 floor -> tier1-core | BuiltInRegistry
 formatDate -> stdlib-general | BuiltInRegistry
@@ -215,6 +217,7 @@ pathNormalize -> stdlib-io | BuiltInRegistry
 pop -> stdlib-general | BuiltInRegistry
 pow -> tier1-core | BuiltInRegistry
 print -> stdlib-general | BuiltInRegistry
+race -> stdlib-general | BuiltInRegistry
 radToDeg -> stdlib-general | BuiltInRegistry
 randn -> stdlib-general | BuiltInRegistry
 random -> tier1-core | BuiltInRegistry
@@ -267,6 +270,7 @@ splitDocuments -> stdlib-general | BuiltInRegistry
 sqrt -> tier1-core | BuiltInRegistry
 startsWith -> stdlib-general | BuiltInRegistry
 startWorkflow -> platform-workflow | BuiltInRegistry
+stream -> stdlib-general | BuiltInRegistry
 string -> tier1-core | BuiltInRegistry
 substring -> stdlib-general | BuiltInRegistry
 sum -> tier1-core | BuiltInRegistry
@@ -369,3 +373,4 @@ webSearch -> platform-web | BuiltInRegistry
 withExamples -> stdlib-general | BuiltInRegistry
 writeFile -> stdlib-io | BuiltInRegistry
 writeFileBase64 -> stdlib-io | BuiltInRegistry
+zeros -> stdlib-general | BuiltInRegistry

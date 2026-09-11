@@ -382,3 +382,4 @@ webSearch	webSearch	at least 1 string argument: (query, apiKey?)
 withExamples	withExamples	(prompt, examples, options?)		
 writeFile	io.writeFile	2 arguments		
 writeFileBase64	io.writeFileBase64	(path, base64Content)		
+zeros	math.zeros	1-2 arguments: (n, cols?)	1D math.zeros(n) or 2D math.zeros(rows, cols); each 2D row is a new array; cells are 0.0	array

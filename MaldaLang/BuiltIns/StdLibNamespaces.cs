@@ -27,7 +27,7 @@ public static class StdLibNamespaces
         "floor", "ceil", "round", "trunc", "sign",
         "exp", "log", "log10", "log2",
         "sin", "cos", "tan", "asin", "acos", "atan", "atan2",
-        "hypot", "clamp", "degToRad", "radToDeg",
+        "hypot", "clamp", "degToRad", "radToDeg", "zeros",
         "rsqrt", "randn", "argmax", "argmin", "logSumExp", "softmax", "crossEntropyFromLogits",
         "randomChoiceWeighted", "seed", "random", "randomInt", "randomFloat"
     };

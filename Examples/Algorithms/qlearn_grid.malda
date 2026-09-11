@@ -68,12 +68,7 @@ function arrow(action) {
 
 math.seed(42);
 
-var q = [];
-var s = 0;
-while (s < 16) {
-    q.append([0.0, 0.0, 0.0, 0.0]);
-    s = s + 1;
-}
+var q = math.zeros(16, 4);
 
 var alpha = 0.5;
 var gamma = 0.9;

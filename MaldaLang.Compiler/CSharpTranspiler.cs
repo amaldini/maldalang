@@ -11116,6 +11116,7 @@ public class CSharpTranspiler
             case "random":
             case "randomInt":
             case "randomFloat":
+            case "zeros":
             // LLM-oriented math helpers
             case "rsqrt":
             case "randn":

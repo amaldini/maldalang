@@ -77,6 +77,7 @@ public static class BuiltInRegistry
             "clamp" or
             "degToRad" or
             "radToDeg" or
+            "zeros" or
             "rsqrt" or
             "randn" or
             "argmax" or

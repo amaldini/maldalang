@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — math.zeros)
+
+- **`math.zeros(n)` / `math.zeros(rows, cols)`:** 1D vector or 2D nested array filled with `0.0`. Two-argument form allocates a fresh row per row. Dimensions are integers `>= 0` (empty sizes allowed). Interpreter, C# transpile, and JS runtime. Examples: `attention_is_all_you_need.malda`, `svm_linear.malda`.
+
 #### Changed (MAJOR — `match` const identifier patterns)
 
 - **`case NAME` when `NAME` is an in-scope `const`:** compares with `==` and does not bind. A declared variant constructor still wins (`case Ok:` matches the `Ok` variant). A `var` of the same name still binds (catch-all). Nested patterns (`case [BUY, qty]:`) use the same rule. Interpreter, C#, and JS agree. Fixes `case BUY` / `case SELL` always taking the first arm.

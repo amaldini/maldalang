@@ -1379,6 +1379,41 @@
     return Math.min(hi, Math.max(lo, n));
   }
 
+  function requireNonNegativeDimension(value) {
+    const n = coerceToFloat(value);
+    if (!Number.isFinite(n) || n !== Math.trunc(n)) {
+      throw new Error("zeros() expects integer dimensions");
+    }
+    if (n < 0) {
+      throw new Error("zeros() dimensions must be >= 0");
+    }
+    return n;
+  }
+
+  function zeroRow(length) {
+    const row = [];
+    for (let i = 0; i < length; i++) {
+      row.push(0);
+    }
+    return row;
+  }
+
+  function mathZeros(nOrRows, cols) {
+    if (arguments.length < 1 || arguments.length > 2) {
+      throw new Error("zeros() expects 1-2 arguments: (n, cols?)");
+    }
+    const n = requireNonNegativeDimension(nOrRows);
+    if (arguments.length === 1) {
+      return zeroRow(n);
+    }
+    const columnCount = requireNonNegativeDimension(cols);
+    const rows = [];
+    for (let i = 0; i < n; i++) {
+      rows.push(zeroRow(columnCount));
+    }
+    return rows;
+  }
+
   const mathStdLib = {
     abs: mathAbs,
     sum: mathSum,
@@ -1407,6 +1442,7 @@
     clamp: mathClamp,
     degToRad: (value) => coerceToFloat(value) * Math.PI / 180,
     radToDeg: (value) => coerceToFloat(value) * 180 / Math.PI,
+    zeros: mathZeros,
     random: randomBuiltin,
     randomInt: randomIntBuiltin,
     randomFloat: randomFloatBuiltin,

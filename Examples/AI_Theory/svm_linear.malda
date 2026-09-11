@@ -46,14 +46,6 @@ function fmt(x: float) -> string {
     return string(math.round(x * 1000.0) / 1000.0);
 }
 
-function zeros(n: int) -> array {
-    var values = [];
-    for (var i = 0; i < n; i = i + 1) {
-        values.append(0.0);
-    }
-    return values;
-}
-
 // Two clusters in the plane. +1 around (2, 2), -1 around (-2, -2).
 // The closer pair near the origin should sit on the margin (support vectors).
 var xs = [
@@ -62,7 +54,7 @@ var xs = [
 ];
 var ys = [1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0];
 
-var w = zeros(2);
+var w = math.zeros(2);
 var b: float = 0.0;
 var learningRate: float = 0.05;
 var lambda: float = 0.01;
@@ -145,7 +137,7 @@ io.print("");
 io.print("Linear SVM on XOR (expected to fail):");
 var xorX = [[0.0, 0.0], [0.0, 1.0], [1.0, 0.0], [1.0, 1.0]];
 var xorY = [-1.0, 1.0, 1.0, -1.0];
-var xorW = zeros(2);
+var xorW = math.zeros(2);
 var xorB: float = 0.0;
 for (var epoch = 1; epoch <= epochs; epoch = epoch + 1) {
     for (var s = 0; s < xorX.length; s = s + 1) {

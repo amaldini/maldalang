@@ -16,7 +16,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 02-tools.html | 13841838a0c0596a026ae22a966cf317a9bfcc97401d8c9577e41b7153e19f25 |
 | 03-lexical-structure.html | 5fe84cf84ef8f0f28549c7120af2975e25e5d1f8868003744882f5a515b48113 |
 | 04-data-types.html | 5b8d3855fd1b6cca84cd70e6d93d94ae0c78250fd13ebeafe94de5a52049758b |
-| 05-variables.html | a8f3dc7a6bc8f6bc3a9ef5b851888d32438dd9f4fb729b5dcab6093c0f214301 |
+| 05-variables.html | fdc36bebd41aa2c698d45f3b07421be7151cbd74e70e71e389dcd48498f4bae0 |
 | 06-arrays.html | 361ef4ca0cb0fb1e4b21c2bb30dae0ae985b54727e3f12f98d69361bad8b078f |
 | 07-expressions.html | 4533fb4b7e30b92739e456f777a444825582822decab5c6f8d2d0a4ff8d8b772 |
 | 08-control-structures.html | a7dce8f0a0c17a1a36f37de007bdc8684d2b9e3388111ce3df38f493f35cb554 |
@@ -24,7 +24,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 10-prompts.html | eb2c0dc586f5cc15c3c65af78befbfffde01347c5465dba4a2485294b0c6f9a7 |
 | 11-classes-objects.html | eaec524fafbc71cc3abcc0650a2088f379916551f9ef5131b595df2208bece17 |
 | 12-input-output.html | ed3fb9d438fc0f847bf231af035d241449a455fa47cc3d9e35cd6130b58d910f |
-| 13-built-in-functions.html | b72a3a21df90eac38364f60060ac3024e4e0ef3d7004788d1bfd8ef150bc4858 |
+| 13-built-in-functions.html | dd6ab54a7727659d3284ad9644e15789b38eb2e2dd8189174e4f923a7a3f0667 |
 | 14-graphs.html | aa57872f357cc1df0463f0020e1a6ea66ee0d542f80ea4621d30c500af56ca06 |
 | 15-vectordb.html | c95110675a56912eca0f8763af981ab2ba6e6eb71a7be1d0d82734ad3a5a8760 |
 | 16-database.html | 02e590b662a39562f93905cf63d11e51e6f9731690d3278ca191ec0c9276b00c |

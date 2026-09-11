@@ -39,18 +39,6 @@ function printMatrix(title: string, matrix: array, rowNames: array, colNames: ar
     }
 }
 
-function zeros(rows: int, cols: int) -> array {
-    var matrix = [];
-    for (var i = 0; i < rows; i = i + 1) {
-        var row = [];
-        for (var j = 0; j < cols; j = j + 1) {
-            row.append(0.0);
-        }
-        matrix.append(row);
-    }
-    return matrix;
-}
-
 function copyMatrix(matrix: array) -> array {
     var out = [];
     for (var i = 0; i < matrix.length; i = i + 1) {
@@ -66,7 +54,7 @@ function copyMatrix(matrix: array) -> array {
 function transpose(matrix: array) -> array {
     var rows = matrix.length;
     var cols = matrix[0].length;
-    var out = zeros(cols, rows);
+    var out = math.zeros(cols, rows);
     for (var i = 0; i < rows; i = i + 1) {
         for (var j = 0; j < cols; j = j + 1) {
             out[j][i] = matrix[i][j];
@@ -79,7 +67,7 @@ function matMul(a: array, b: array) -> array {
     var rows = a.length;
     var inner = b.length;
     var cols = b[0].length;
-    var out = zeros(rows, cols);
+    var out = math.zeros(rows, cols);
     for (var i = 0; i < rows; i = i + 1) {
         for (var j = 0; j < cols; j = j + 1) {
             var sum = 0.0;
@@ -157,7 +145,7 @@ function scaledDotProductAttention(q: array, k: array, v: array, mask: array) ->
 }
 
 function causalMask(n: int) -> array {
-    var mask = zeros(n, n);
+    var mask = math.zeros(n, n);
     for (var i = 0; i < n; i = i + 1) {
         for (var j = 0; j < n; j = j + 1) {
             if (j <= i) {
@@ -223,7 +211,7 @@ function multiHeadAttention(qX: array, kX: array, vX: array, wQ: array, wK: arra
 
 // §3.5 sinusoidal positional encoding (fixed, not learned).
 function positionalEncoding(length: int, dModel: int) -> array {
-    var pe = zeros(length, dModel);
+    var pe = math.zeros(length, dModel);
     for (var pos = 0; pos < length; pos = pos + 1) {
         for (var i = 0; i < dModel; i = i + 2) {
             var denom = math.pow(10000.0, float(i) / float(dModel));
@@ -544,18 +532,18 @@ io.print("");
 
 for (var epoch = 1; epoch <= epochs; epoch = epoch + 1) {
     var epochLoss = 0.0;
-    var dEmbed = zeros(vocab, dModel);
-    var dWQ = zeros(dModel, dModel);
-    var dWK = zeros(dModel, dModel);
-    var dWV = zeros(dModel, dModel);
-    var dWOut = zeros(dModel, vocab);
+    var dEmbed = math.zeros(vocab, dModel);
+    var dWQ = math.zeros(dModel, dModel);
+    var dWK = math.zeros(dModel, dModel);
+    var dWV = math.zeros(dModel, dModel);
+    var dWOut = math.zeros(dModel, vocab);
 
     for (var s = 0; s < trainSrc.length; s = s + 1) {
         var src = trainSrc[s];
         var tgt = reverseIds(src);
         var step = forwardReverse(src, embed, pe, wQ, wK, wV, wOut);
-        var dOut = zeros(seqLen, dModel);
-        var dLogits = zeros(seqLen, vocab);
+        var dOut = math.zeros(seqLen, dModel);
+        var dLogits = math.zeros(seqLen, vocab);
 
         for (var t = 0; t < seqLen; t = t + 1) {
             epochLoss = epochLoss + math.crossEntropyFromLogits(step.logits[t], int(tgt[t]));

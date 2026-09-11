@@ -961,6 +961,7 @@ public static class BuiltInFunctions
             "clamp" => BuiltInClamp(args),
             "degToRad" => BuiltInDegToRad(args),
             "radToDeg" => BuiltInRadToDeg(args),
+            "zeros" => BuiltInZeros(args),
             // LLM-oriented math helpers
             "rsqrt" => BuiltInRsqrt(args),
             "randn" => BuiltInRandn(args),
@@ -1362,6 +1363,7 @@ public static class BuiltInFunctions
             "clamp" => BuiltInClamp(args),
             "degToRad" => BuiltInDegToRad(args),
             "radToDeg" => BuiltInRadToDeg(args),
+            "zeros" => BuiltInZeros(args),
             // LLM-oriented math helpers
             "rsqrt" => BuiltInRsqrt(args),
             "randn" => BuiltInRandn(args),
@@ -2399,6 +2401,37 @@ public static class BuiltInFunctions
         if (args.Count != 1) throw new Exception("radToDeg() expects 1 argument");
         var rad = args[0].Type == MaldaLang.Interpreter.ValueType.Integer ? args[0].AsInteger() : args[0].AsFloat();
         return RuntimeValue.Float(rad * 180.0 / Math.PI);
+    }
+
+    private static RuntimeValue BuiltInZeros(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("zeros", args, 1, 2, "n, cols?");
+        var n = RequireNonNegativeDimension(args[0]);
+        if (args.Count == 1)
+            return RuntimeValue.Array(ZeroRow(n));
+
+        var cols = RequireNonNegativeDimension(args[1]);
+        var rows = new List<RuntimeValue>(n);
+        for (var i = 0; i < n; i++)
+            rows.Add(RuntimeValue.Array(ZeroRow(cols)));
+        return RuntimeValue.Array(rows);
+    }
+
+    private static int RequireNonNegativeDimension(RuntimeValue value)
+    {
+        if (!NumericCoercion.TryAsInteger(value, out var n))
+            throw new RuntimeException("zeros() expects integer dimensions");
+        if (n < 0)
+            throw new RuntimeException("zeros() dimensions must be >= 0");
+        return n;
+    }
+
+    private static List<RuntimeValue> ZeroRow(int length)
+    {
+        var row = new List<RuntimeValue>(length);
+        for (var i = 0; i < length; i++)
+            row.Add(RuntimeValue.Float(0.0));
+        return row;
     }
 
     // LLM-oriented math helpers
