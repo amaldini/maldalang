@@ -4285,31 +4285,42 @@ class Program
             var result = ReadMultilineInput();
             if (result == null || result.Action == "exit")
                 break;
-            if (string.IsNullOrWhiteSpace(result.Code))
-                continue;
-            try
+            ExecutePromptInput(result);
+        }
+    }
+
+    /// <summary>
+    /// Handles one parsed REPL entry. <c>help</c> carries no code, so it must be
+    /// dispatched before the empty-code guard below or it is silently dropped.
+    /// </summary>
+    static void ExecutePromptInput(InputResult result)
+    {
+        try
+        {
+            if (result.Action == "help")
             {
-                if (result.Action == "help")
-                {
-                    ShowHelp();
-                }
-                else if (result.Action == "run")
-                {
-                    Run(result.Code);
-                }
-                else if (result.Action == "compile")
-                {
-                    CompileFromSource(result.Code, "Interpreter");
-                }
-                else if (result.Action == "transpile")
-                {
-                    CompileFromSource(result.Code, "TranspileToCSharp");
-                }
+                ShowHelp();
             }
-            catch (Exception ex)
+            else if (string.IsNullOrWhiteSpace(result.Code))
             {
-                Console.WriteLine($"Error: {ex.Message}");
+                return;
             }
+            else if (result.Action == "run")
+            {
+                Run(result.Code);
+            }
+            else if (result.Action == "compile")
+            {
+                CompileFromSource(result.Code, "Interpreter");
+            }
+            else if (result.Action == "transpile")
+            {
+                CompileFromSource(result.Code, "TranspileToCSharp");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
         }
     }
     
