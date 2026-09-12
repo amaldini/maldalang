@@ -1285,4 +1285,102 @@ print(""run="" + string(ran.success) + "","" + string(ran.output));
             """,
             "super-method-deeper-subclass");
     }
+
+    [Fact]
+    public void DerivedConstructorWithoutSuper_SameStdout()
+    {
+        // The parent constructor must NOT run when a subclass omits super(), so no CS7036.
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            class Base {
+                var v;
+                function Base(v) { this.v = v; }
+            }
+
+            class Derived extends Base {
+                function Derived() { io.print("no super call"); }
+            }
+
+            var d = new Derived();
+            io.print("v=" + string(d.v));
+            """,
+            "derived-constructor-without-super");
+    }
+
+    [Fact]
+    public void DerivedConstructorWithoutSuper_MultiLevel_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            class Base {
+                var v;
+                function Base(v) { this.v = v; }
+            }
+
+            class Mid extends Base {
+                function Mid() { }
+            }
+
+            class Leaf extends Mid {
+                function Leaf() { }
+            }
+
+            var l = new Leaf();
+            io.print("v=" + string(l.v));
+            """,
+            "derived-constructor-without-super-multi-level");
+    }
+
+    [Fact]
+    public void SuperPrivateMethod_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            class Base {
+                private function secret(n) {
+                    return "private-" + string(n);
+                }
+            }
+
+            class Derived extends Base {
+                function Derived() { }
+
+                public function viaSuper() {
+                    return super.secret(7);
+                }
+            }
+
+            var d = new Derived();
+            io.print(d.viaSuper());
+            """,
+            "super-private-method");
+    }
+
+    [Fact]
+    public void SuperPrivateMethodFromGrandparent_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            class Base {
+                function Base() { }
+                private function secret() { return "Base-private"; }
+            }
+
+            class Mid extends Base {
+                function Mid() { super(); }
+            }
+
+            class Leaf extends Mid {
+                function Leaf() { super(); }
+
+                public function viaSuper() {
+                    return super.secret();
+                }
+            }
+
+            var l = new Leaf();
+            io.print(l.viaSuper());
+            """,
+            "super-private-method-grandparent");
+    }
 }

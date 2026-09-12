@@ -62,4 +62,14 @@ public class TranspilerRuntimeHardeningTests
         Assert.Contains("if (__unwrappedCall is MaldaLang.Interpreter.ObjectInstance)", generatedSource);
         Assert.Contains("else if (instance is MaldaLang.BuiltIns.PromptInstance promptInstance)", generatedSource);
     }
+
+    [Fact]
+    public void TranspiledRuntimeHelpers_GeneratedCode_CallBaseMethod_InvokesPrivateBaseMembers()
+    {
+        var generatedSource = LoadTranspilerSource();
+
+        Assert.Contains("System.Type declaringType, string methodName, List<object> args", generatedSource);
+        Assert.Contains("System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.DeclaredOnly", generatedSource);
+        Assert.Contains("return method.Invoke(instance, invokeArgs);", generatedSource);
+    }
 }

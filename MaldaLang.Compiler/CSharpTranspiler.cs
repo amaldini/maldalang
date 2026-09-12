@@ -4371,6 +4371,57 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("}");
         
+        // Resolves super.privateMethod(): C# forbids `base.` on a private member, so invoke the
+        // declaring class's private method through reflection on the current instance.
+        WriteIndent();
+        _output.AppendLine("public static object? CallBaseMethod(object? instance, System.Type declaringType, string methodName, List<object> args)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("if (instance == null) throw new InvalidOperationException(\"Cannot call a base method on null.\");");
+        WriteIndent();
+        _output.AppendLine("const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.DeclaredOnly;");
+        WriteIndent();
+        _output.AppendLine("var method = declaringType.GetMethods(flags).FirstOrDefault(m => m.Name == methodName && m.GetParameters().Length == args.Count);");
+        WriteIndent();
+        _output.AppendLine("if (method == null) throw new InvalidOperationException($\"Base method '{methodName}' not found on {declaringType.Name}.\");");
+        WriteIndent();
+        _output.AppendLine("var parameters = method.GetParameters();");
+        WriteIndent();
+        _output.AppendLine("var invokeArgs = new object?[args.Count];");
+        WriteIndent();
+        _output.AppendLine("for (int i = 0; i < args.Count; i++)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("var parameterType = parameters[i].ParameterType;");
+        WriteIndent();
+        _output.AppendLine("var argValue = args[i];");
+        WriteIndent();
+        _output.AppendLine("if (parameterType == typeof(object) || argValue == null) invokeArgs[i] = argValue;");
+        WriteIndent();
+        _output.AppendLine("else if (parameterType == typeof(int)) invokeArgs[i] = (int)CoerceToInt(argValue);");
+        WriteIndent();
+        _output.AppendLine("else if (parameterType == typeof(double)) invokeArgs[i] = (double)CoerceToFloat(argValue);");
+        WriteIndent();
+        _output.AppendLine("else if (parameterType == typeof(float)) invokeArgs[i] = (float)(double)CoerceToFloat(argValue);");
+        WriteIndent();
+        _output.AppendLine("else if (parameterType == typeof(string)) invokeArgs[i] = CoerceToString(argValue);");
+        WriteIndent();
+        _output.AppendLine("else if (parameterType.IsInstanceOfType(argValue)) invokeArgs[i] = argValue;");
+        WriteIndent();
+        _output.AppendLine("else invokeArgs[i] = argValue;");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        WriteIndent();
+        _output.AppendLine("return method.Invoke(instance, invokeArgs);");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+
         // Static member helpers: transpiled class references are emitted as typeof(Class),
         // so these resolve static fields and methods through reflection on the System.Type.
         WriteIndent();
@@ -8610,12 +8661,58 @@ public class CSharpTranspiler
             TranspileClassMember(member);
         }
         _currentClassName = previousClassName;
+
+        // A MALDA subclass constructor that omits super(...) does not run the parent
+        // constructor, but C# requires chaining to some base constructor. When this class is
+        // extended and exposes no parameterless constructor to chain to, emit a protected
+        // parameterless one so such subclasses compile instead of failing with CS7036.
+        if (IsExtended(classDecl.Name) && !HasAccessibleParameterlessConstructor(classDecl))
+        {
+            WriteIndent();
+            _output.Append("protected ");
+            _output.Append(EscapeIdentifier(classDecl.Name));
+            _output.AppendLine("() { }");
+        }
         
         _indentLevel--;
         WriteIndent();
         _output.Append("}");
         AppendComment(nameof(TranspileClass) + " (close)");
         _output.AppendLine();
+    }
+
+    /// <summary>
+    /// True when some class in this compilation extends <paramref name="className"/>, so its
+    /// subclasses may need to chain to a parameterless base constructor.
+    /// </summary>
+    private bool IsExtended(string className)
+    {
+        foreach (var decl in _classDeclarations.Values)
+        {
+            if (string.Equals(decl.Superclass, className, StringComparison.Ordinal))
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// True when <paramref name="classDecl"/> already offers a parameterless constructor that a
+    /// derived class can chain to: either it declares no constructor at all (C# supplies an
+    /// implicit public parameterless one) or it declares an explicit zero-parameter constructor.
+    /// </summary>
+    private static bool HasAccessibleParameterlessConstructor(ClassDeclaration classDecl)
+    {
+        var hasAnyConstructor = false;
+        foreach (var member in classDecl.Members)
+        {
+            if (member.Type != MemberType.Constructor)
+                continue;
+
+            hasAnyConstructor = true;
+            if (member.Value is FunctionDeclaration ctor && ctor.Parameters.Count == 0)
+                return true;
+        }
+        return !hasAnyConstructor;
     }
 
     private void TranspileClassMember(ClassMember member)
@@ -9387,9 +9484,9 @@ public class CSharpTranspiler
     }
 
     /// <summary>
-    /// Emits <c>super.method(args)</c> as a direct C# <c>base.method(args)</c> call.
-    /// C# resolves <c>base.method</c> through the inheritance chain, so only the method's
-    /// parameter type hints are looked up here (for argument coercion).
+    /// Emits <c>super.method(args)</c>. A directly callable base member becomes
+    /// <c>base.method(args)</c>; a private base method must go through reflection, because
+    /// C# forbids <c>base.</c> access to a private member (CS0122) while MALDA allows it.
     /// </summary>
     private void TranspileSuperMethodCall(FunctionCallExpression call, string methodName)
     {
@@ -9400,7 +9497,32 @@ public class CSharpTranspiler
             throw new NotSupportedException("'super' is only supported inside a class with a superclass.");
         }
 
-        var paramTypes = FindMethodParameterHints(currentDecl.Superclass, methodName);
+        var targetMember = FindMethodMember(currentDecl.Superclass, methodName);
+
+        if (targetMember != null && targetMember.Access == AccessModifier.Private)
+        {
+            // Pass the class that actually declares the method: with DeclaredOnly lookup, using
+            // the immediate superclass would miss a private method declared on a grandparent.
+            var declaringTypeName = FindMethodDeclaringClassName(currentDecl.Superclass, methodName)
+                ?? currentDecl.Superclass;
+
+            _output.Append("RuntimeHelpers.CallBaseMethod(this, typeof(");
+            _output.Append(EscapeIdentifier(declaringTypeName));
+            _output.Append("), \"");
+            _output.Append(EscapeIdentifier(methodName));
+            _output.Append("\", new List<object> { ");
+            for (int i = 0; i < call.Arguments.Count; i++)
+            {
+                if (i > 0) _output.Append(", ");
+                TranspileExpression(call.Arguments[i]);
+            }
+            _output.Append(" })");
+            return;
+        }
+
+        var paramTypes = targetMember?.Value is FunctionDeclaration targetFunc
+            ? targetFunc.ParameterTypeHints
+            : null;
 
         _output.Append("base.");
         _output.Append(EscapeIdentifier(methodName));
@@ -9419,20 +9541,40 @@ public class CSharpTranspiler
     }
 
     /// <summary>
-    /// Walks the superclass chain from <paramref name="className"/> to find the parameter type
-    /// hints of <paramref name="methodName"/>, mirroring <c>ClassDefinition.FindMethod</c>.
+    /// Walks the superclass chain from <paramref name="className"/> to find
+    /// <paramref name="methodName"/>, mirroring <c>ClassDefinition.FindMethod</c>.
     /// </summary>
-    private IReadOnlyList<string?>? FindMethodParameterHints(string className, string methodName)
+    private ClassMember? FindMethodMember(string? className, string methodName)
     {
         for (var current = className; current != null && _classDeclarations.TryGetValue(current, out var decl); current = decl.Superclass)
         {
             foreach (var member in decl.Members)
             {
                 if (member.Type == MemberType.Method
-                    && member.Value is FunctionDeclaration func
                     && string.Equals(member.Name, methodName, StringComparison.Ordinal))
                 {
-                    return func.ParameterTypeHints;
+                    return member;
+                }
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Returns the name of the class in the superclass chain starting at
+    /// <paramref name="className"/> that declares <paramref name="methodName"/>, or null when
+    /// no declaration is found in this compilation.
+    /// </summary>
+    private string? FindMethodDeclaringClassName(string? className, string methodName)
+    {
+        for (var current = className; current != null && _classDeclarations.TryGetValue(current, out var decl); current = decl.Superclass)
+        {
+            foreach (var member in decl.Members)
+            {
+                if (member.Type == MemberType.Method
+                    && string.Equals(member.Name, methodName, StringComparison.Ordinal))
+                {
+                    return decl.Name;
                 }
             }
         }
