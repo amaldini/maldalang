@@ -1153,4 +1153,88 @@ print(""run="" + string(ran.success) + "","" + string(ran.output));
             """,
             "default-visibility-external");
     }
+
+    [Fact]
+    public void SuperConstructorAndMethod_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            class Animal {
+                var name;
+
+                function Animal(name) {
+                    this.name = name;
+                }
+
+                function speak() {
+                    io.print(name + " makes a sound");
+                }
+            }
+
+            class Dog extends Animal {
+                function Dog(name) {
+                    super(name);
+                }
+
+                function speak() {
+                    super.speak();
+                    io.print(name + " says: Woof!");
+                }
+            }
+
+            var dog = new Dog("Rex");
+            dog.speak();
+            """,
+            "super-constructor-and-method");
+    }
+
+    [Fact]
+    public void SuperConstructorOnly_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            class Base {
+                var value;
+
+                function Base(v) {
+                    this.value = v;
+                }
+            }
+
+            class Derived extends Base {
+                function Derived(v) {
+                    super(v);
+                }
+            }
+
+            var d = new Derived(42);
+            io.print(d.value);
+            """,
+            "super-constructor-only");
+    }
+
+    [Fact]
+    public void SuperMethodOnly_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            class Base {
+                public function describe() {
+                    return "base";
+                }
+            }
+
+            class Derived extends Base {
+                function Derived() { }
+
+                public function describe() {
+                    return "derived+" + super.describe();
+                }
+            }
+
+            var d = new Derived();
+            io.print(d.describe());
+            """,
+            "super-method-only");
+    }
 }

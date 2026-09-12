@@ -5766,6 +5766,15 @@ public class CSharpTranspiler
                 }
                 break;
             case ExpressionStatement exprStmt:
+                // A super(...) call can only be a constructor initializer, so it must be the first
+                // statement of the constructor body (see TranspileClassMember). Anything else has
+                // no valid C# representation and would otherwise emit the invalid `base(...)`.
+                if (exprStmt.Expression is FunctionCallExpression { Callee: SuperExpression })
+                {
+                    throw new NotSupportedException(
+                        "'super(...)' must be the first statement of a constructor when transpiling to C#. "
+                        + "Move it to the start of the constructor body (the interpreter allows it later, but C# constructor initializers always run first).");
+                }
                 string? expressionProfile = null;
                 if (ProfilingEnabled)
                 {
@@ -8207,7 +8216,8 @@ public class CSharpTranspiler
         string functionName,
         int line,
         bool appendImplicitNullReturn = false,
-        ResourceBudget? budget = null)
+        ResourceBudget? budget = null,
+        bool skipLeadingStatement = false)
     {
         PushTypedScope();
         PushConstScope();
@@ -8248,6 +8258,9 @@ public class CSharpTranspiler
 
         for (int i = 0; i < block.Statements.Count; i++)
         {
+            if (skipLeadingStatement && i == 0)
+                continue;
+
             var stmt = block.Statements[i];
             var isLast = i == block.Statements.Count - 1;
             if (useLastExprWins && isLast && stmt is ExpressionStatement exprStmt)
@@ -8745,8 +8758,25 @@ public class CSharpTranspiler
                         _output.Append(EscapeIdentifier(ctor.Parameters[i]));
                     }
                     _output.AppendLine(")");
+                    var leadingSuperCall = TryGetLeadingSuperConstructorCall(ctor.Body);
+                    if (leadingSuperCall != null)
+                    {
+                        // MALDA calls the parent constructor explicitly; mirror it with a C#
+                        // constructor initializer so the parent's own field init/body run first.
+                        _output.Append(": base(");
+                        for (int i = 0; i < leadingSuperCall.Arguments.Count; i++)
+                        {
+                            if (i > 0) _output.Append(", ");
+                            TranspileExpression(leadingSuperCall.Arguments[i]);
+                        }
+                        _output.AppendLine(")");
+                    }
                     _currentFunctionReturnType.Push(TranspiledClrType.Object);
-                    TranspileFunctionBlock(ctor.Body, member.Name + ".ctor", ctor.Line);
+                    TranspileFunctionBlock(
+                        ctor.Body,
+                        member.Name + ".ctor",
+                        ctor.Line,
+                        skipLeadingStatement: leadingSuperCall != null);
                     _currentFunctionReturnType.Pop();
                     PopTypedScope();
                 }
@@ -9356,6 +9386,74 @@ public class CSharpTranspiler
         }
     }
 
+    /// <summary>
+    /// Emits <c>super.method(args)</c> as a direct C# <c>base.method(args)</c> call.
+    /// C# resolves <c>base.method</c> through the inheritance chain, so only the method's
+    /// parameter type hints are looked up here (for argument coercion).
+    /// </summary>
+    private void TranspileSuperMethodCall(FunctionCallExpression call, string methodName)
+    {
+        if (_currentClassName == null
+            || !_classDeclarations.TryGetValue(_currentClassName, out var currentDecl)
+            || currentDecl.Superclass == null)
+        {
+            throw new NotSupportedException("'super' is only supported inside a class with a superclass.");
+        }
+
+        var paramTypes = FindMethodParameterHints(currentDecl.Superclass, methodName);
+
+        _output.Append("base.");
+        _output.Append(EscapeIdentifier(methodName));
+        _output.Append("(");
+        for (int i = 0; i < call.Arguments.Count; i++)
+        {
+            if (i > 0) _output.Append(", ");
+            var paramType = (paramTypes != null && i < paramTypes.Count)
+                ? ResolveTranspiledTypeHint(paramTypes[i])
+                : TranspiledClrType.Object;
+            _output.Append(GetCoercionExpressionPrefix(paramType));
+            TranspileExpression(call.Arguments[i]);
+            _output.Append(GetCoercionExpressionSuffix(paramType));
+        }
+        _output.Append(")");
+    }
+
+    /// <summary>
+    /// Walks the superclass chain from <paramref name="className"/> to find the parameter type
+    /// hints of <paramref name="methodName"/>, mirroring <c>ClassDefinition.FindMethod</c>.
+    /// </summary>
+    private IReadOnlyList<string?>? FindMethodParameterHints(string className, string methodName)
+    {
+        for (var current = className; current != null && _classDeclarations.TryGetValue(current, out var decl); current = decl.Superclass)
+        {
+            foreach (var member in decl.Members)
+            {
+                if (member.Type == MemberType.Method
+                    && member.Value is FunctionDeclaration func
+                    && string.Equals(member.Name, methodName, StringComparison.Ordinal))
+                {
+                    return func.ParameterTypeHints;
+                }
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Returns the leading <c>super(...)</c> call of a constructor body, or null when the body
+    /// does not start with one. Only a leading call can be represented as a C# constructor
+    /// initializer, since initializers always run before the body.
+    /// </summary>
+    private static FunctionCallExpression? TryGetLeadingSuperConstructorCall(BlockStatement body)
+    {
+        if (body.Statements.Count > 0
+            && body.Statements[0] is ExpressionStatement { Expression: FunctionCallExpression { Callee: SuperExpression } superCall })
+        {
+            return superCall;
+        }
+        return null;
+    }
+
     private void TranspileFunctionCall(FunctionCallExpression call)
     {
         // Variant constructor call: Ok(expr) or Result.Ok(expr)
@@ -9570,6 +9668,14 @@ public class CSharpTranspiler
         if (call.Callee is MemberAccessExpression memberAccess2)
         {
             var methodName = memberAccess2.Member;
+
+            // super.method(...) must become a direct C# call on the base class; `base` is not a
+            // value, so the generic CallObjectMethod(reflection) path cannot be used here.
+            if (memberAccess2.Object is SuperExpression)
+            {
+                TranspileSuperMethodCall(call, methodName);
+                return;
+            }
 
             // Special handling for .stop() that may target either an actor (ActorRef) or
             // a regular object (e.g., HttpServerInstance, MCPServerInstance).
