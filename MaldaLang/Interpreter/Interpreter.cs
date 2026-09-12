@@ -3601,15 +3601,22 @@ public partial class Interpreter
         
         var instance = new ObjectInstance(klass);
         
-        // Initialize fields with default values
-        foreach (var field in klass.Fields.Values)
+        // Run instance field initializers, base class first. C# runs derived initializers
+        // before base ones, but MALDA evaluates `this.x` in a derived initializer against the
+        // base value, so base-first is the order that keeps `y = this.x + 1` meaningful.
+        // Static fields are owned by the class and are initialized when it is declared, so
+        // they must be skipped here or each `new` would reset them.
+        for (var declaringClass = klass; declaringClass != null; declaringClass = declaringClass.Superclass)
         {
-            if (field.Value is Expression initExpr)
+            foreach (var field in declaringClass.Fields.Values)
             {
+                if (field.IsStatic || field.Value is not Expression initExpr)
+                    continue;
+
                 var previousObject = _currentObject;
                 var previousClass = _currentClass;
                 _currentObject = instance;
-                _currentClass = klass;
+                _currentClass = declaringClass;
                 try
                 {
                     var value = await EvaluateAsync(initExpr);

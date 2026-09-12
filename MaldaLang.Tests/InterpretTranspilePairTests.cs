@@ -1383,4 +1383,64 @@ print(""run="" + string(ran.success) + "","" + string(ran.output));
             """,
             "super-private-method-grandparent");
     }
+
+    [Fact]
+    public void InheritedFieldInitializer_SameStdout()
+    {
+        // The base class's instance field initializer used to be skipped entirely.
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            class Base {
+                var x = 1;
+                function Base() { }
+            }
+
+            class Derived extends Base {
+                function Derived() { super(); }
+            }
+
+            var d = new Derived();
+            io.print("x=" + string(d.x));
+            """,
+            "inherited-field-initializer");
+    }
+
+    [Fact]
+    public void InheritedAndOwnFieldInitializers_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            class Base {
+                var x = 1;
+            }
+
+            class Derived extends Base {
+                var y = 2;
+            }
+
+            var d = new Derived();
+            io.print("x=" + string(d.x) + " y=" + string(d.y));
+            """,
+            "inherited-and-own-field-initializers");
+    }
+
+    [Fact]
+    public void StaticFieldInitializer_NotReappliedPerInstance_SameStdout()
+    {
+        // Static fields belong to the class; constructing an instance must not reset the
+        // class-level value nor expose it as an instance field.
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            class Base {
+                static var counter = 0;
+                function Base() { }
+            }
+
+            Base.counter = 99;
+            var b = new Base();
+            io.print("static=" + string(Base.counter));
+            io.print("instance=" + string(b.counter));
+            """,
+            "static-field-initializer-not-per-instance");
+    }
 }

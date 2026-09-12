@@ -1105,6 +1105,47 @@ public class InterpreterTests : TestBase
     }
     
     [Fact]
+    public void InheritedFieldInitializer_RunsOnSubclassInstance()
+    {
+        // Regression: a base class's instance field initializer was never evaluated for a
+        // subclass instance, so the inherited field read as null.
+        var source = @"
+            class Base {
+                var x = 1;
+                function Base() { }
+            }
+            
+            class Derived extends Base {
+                function Derived() { super(); }
+            }
+            
+            var d = new Derived();
+            print(d.x);
+        ";
+        var output = RunProgram(source);
+        Assert.Equal("1", output);
+    }
+    
+    [Fact]
+    public void StaticFieldInitializer_IsNotReappliedPerInstance()
+    {
+        // Regression: constructing an instance re-evaluated static field initializers and
+        // stored the result on the instance, clobbering the class-level value.
+        var source = @"
+            class Base {
+                static var counter = 0;
+                function Base() { }
+            }
+            
+            Base.counter = 99;
+            var b = new Base();
+            print(Base.counter);
+        ";
+        var output = RunProgram(source);
+        Assert.Equal("99", output);
+    }
+    
+    [Fact]
     public void DefaultVisibility_MembersArePublic()
     {
         // No access modifier on a field or method: both behave as public.
