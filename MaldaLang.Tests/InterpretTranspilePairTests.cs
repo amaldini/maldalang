@@ -1237,4 +1237,52 @@ print(""run="" + string(ran.success) + "","" + string(ran.output));
             """,
             "super-method-only");
     }
+
+    [Fact]
+    public void ThreeLevelSuperConstructorChain_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            class A {
+                var tag;
+                function A() { this.tag = "A"; }
+            }
+
+            class B extends A {
+                function B() { super(); this.tag = this.tag + "B"; }
+            }
+
+            class C extends B {
+                function C() { super(); this.tag = this.tag + "C"; }
+            }
+
+            var c = new C();
+            io.print(c.tag);
+            """,
+            "super-constructor-three-level");
+    }
+
+    [Fact]
+    public void SuperMethodOnDeeperSubclass_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            class A {
+                public function who() { return "A"; }
+            }
+
+            class B extends A {
+                function B() { }
+                public function who() { return super.who(); }
+            }
+
+            class C extends B {
+                function C() { }
+            }
+
+            var c = new C();
+            io.print(c.who());
+            """,
+            "super-method-deeper-subclass");
+    }
 }

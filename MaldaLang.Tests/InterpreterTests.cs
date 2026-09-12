@@ -1053,6 +1053,58 @@ public class InterpreterTests : TestBase
     }
     
     [Fact]
+    public void ThreeLevelSuperConstructorChain_DoesNotRecurse()
+    {
+        // Regression: each constructor's super() used to resolve against the runtime class of
+        // `this`, so B's super() re-entered B for a C instance and overflowed the stack.
+        var source = @"
+            class A {
+                var tag;
+                function A() { this.tag = ""A""; }
+            }
+            
+            class B extends A {
+                function B() { super(); this.tag = this.tag + ""B""; }
+            }
+            
+            class C extends B {
+                function C() { super(); this.tag = this.tag + ""C""; }
+            }
+            
+            var c = new C();
+            print(c.tag);
+        ";
+        var output = RunProgram(source);
+        Assert.Equal("ABC", output);
+    }
+    
+    [Fact]
+    public void SuperMethod_ResolvesDeclaringClass_OnDeeperSubclass()
+    {
+        // Regression: B.who() calling super.who() on a C instance used to recurse forever.
+        // `super` must bind to the declaring class (lexical), matching C# `base`.
+        var source = @"
+            class A {
+                public function who() { return ""A""; }
+            }
+            
+            class B extends A {
+                function B() { }
+                public function who() { return super.who(); }
+            }
+            
+            class C extends B {
+                function C() { }
+            }
+            
+            var c = new C();
+            print(c.who());
+        ";
+        var output = RunProgram(source);
+        Assert.Equal("A", output);
+    }
+    
+    [Fact]
     public void DefaultVisibility_MembersArePublic()
     {
         // No access modifier on a field or method: both behave as public.

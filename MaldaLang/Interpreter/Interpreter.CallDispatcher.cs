@@ -45,12 +45,16 @@ public partial class Interpreter
         {
             if (memberExpr.Object is SuperExpression)
             {
-                if (_currentClass == null || _currentClass.Superclass == null)
+                // Resolve against the lexically enclosing class (the one that declares this
+                // method), not the runtime class of `this`; otherwise a method declared on B
+                // invoked on a C instance would resolve `super` to B itself and recurse.
+                var declaringClass = _currentDeclaringClass;
+                if (declaringClass == null || declaringClass.Superclass == null)
                     throw new RuntimeException("Cannot use 'super' outside of a class or without a superclass.");
                 if (_currentObject == null)
                     throw new RuntimeException("Cannot use 'super' outside of an instance method.");
 
-                var superMethod = _currentClass.Superclass.FindMethod(memberExpr.Member);
+                var superMethod = declaringClass.Superclass.FindMethod(memberExpr.Member);
                 if (superMethod == null)
                     throw new RuntimeException($"Superclass has no method '{memberExpr.Member}'.");
 
@@ -120,12 +124,15 @@ public partial class Interpreter
         }
         else if (expr.Callee is SuperExpression)
         {
-            if (_currentClass == null || _currentClass.Superclass == null)
+            // Same lexical rule as super.method(): a constructor declared on B must call B's
+            // superclass even when constructing a C instance, or this recurses forever.
+            var declaringClass = _currentDeclaringClass;
+            if (declaringClass == null || declaringClass.Superclass == null)
                 throw new RuntimeException("Cannot use 'super' outside of a class or without a superclass.");
             if (_currentObject == null)
                 throw new RuntimeException("Cannot use 'super()' outside of a constructor.");
 
-            var superclass = _currentClass.Superclass;
+            var superclass = declaringClass.Superclass;
             if (superclass.Constructor == null)
                 throw new RuntimeException($"Superclass '{superclass.Name}' has no constructor.");
 

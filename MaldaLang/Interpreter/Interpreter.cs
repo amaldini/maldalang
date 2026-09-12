@@ -124,6 +124,29 @@ public partial class Interpreter
         set => GetActivation().CurrentClass = value;
     }
 
+    /// <summary>
+    /// The class that declares the innermost executing function, i.e. the lexically enclosing
+    /// class. Unlike <see cref="_currentClass"/> (the runtime class of <c>this</c>), this is
+    /// what <c>super</c> must resolve against; using the runtime class makes
+    /// <c>super</c> recurse into the current class for multi-level hierarchies.
+    /// </summary>
+    private ClassDefinition? _currentDeclaringClass
+    {
+        get
+        {
+            foreach (var frame in _executionStack)
+            {
+                if (frame is FunctionFrame functionFrame
+                    && functionFrame.Function.ClassName != null
+                    && _classes.TryGetValue(functionFrame.Function.ClassName, out var declaringClass))
+                {
+                    return declaringClass;
+                }
+            }
+            return null;
+        }
+    }
+
     private ActorInstance? _currentActor
     {
         get => GetActivation().CurrentActor;
