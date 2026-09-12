@@ -1020,4 +1020,137 @@ print(""run="" + string(ran.success) + "","" + string(ran.output));
             """,
             "instance-field-compound-postfix");
     }
+
+    [Fact]
+    public void PrivateInstanceField_InternalAccessAllowed_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            class Box {
+                private var secret;
+
+                function Box() { this.secret = 7; }
+
+                public function readOwn() { return this.secret; }
+                public function writeOwn() { this.secret = 8; return this.secret; }
+            }
+
+            var b = new Box();
+            io.print(b.readOwn());
+            io.print(b.writeOwn());
+            """,
+            "private-instance-field-internal");
+    }
+
+    [Fact]
+    public void PrivateInstanceField_ExternalRead_FailsBoth()
+    {
+        InterpretTranspilePair.AssertSameFailureFromSource(
+            """
+            class Box {
+                private var secret;
+
+                function Box() { this.secret = 7; }
+            }
+
+            var b = new Box();
+            io.print(b.secret);
+            """,
+            "private-instance-field-external",
+            "private field 'secret'");
+    }
+
+    [Fact]
+    public void PrivateInstanceMethod_ExternalCall_FailsBoth()
+    {
+        InterpretTranspilePair.AssertSameFailureFromSource(
+            """
+            class Box {
+                function Box() { }
+
+                private function hidden() { return 1; }
+
+                public function callOwn() { return this.hidden(); }
+            }
+
+            var b = new Box();
+            io.print(b.callOwn());
+            io.print(b.hidden());
+            """,
+            "private-instance-method-external",
+            "private method 'hidden'");
+    }
+
+    [Fact]
+    public void PrivateStaticField_ExternalRead_FailsBoth()
+    {
+        InterpretTranspilePair.AssertSameFailureFromSource(
+            """
+            class Counter {
+                private static var hidden = 42;
+
+                static function readInternal() { return Counter.hidden; }
+            }
+
+            io.print(Counter.readInternal());
+            io.print(Counter.hidden);
+            """,
+            "private-static-field-external",
+            "private static field 'hidden'");
+    }
+
+    [Fact]
+    public void PrivateStaticMethod_ExternalCall_FailsBoth()
+    {
+        InterpretTranspilePair.AssertSameFailureFromSource(
+            """
+            class Counter {
+                private static function secretStatic() { return 1; }
+
+                static function callInternal() { return Counter.secretStatic(); }
+            }
+
+            io.print(Counter.callInternal());
+            io.print(Counter.secretStatic());
+            """,
+            "private-static-method-external",
+            "private static method 'secretStatic'");
+    }
+
+    [Fact]
+    public void PrivateFieldBareName_InternalAccess_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            class Box {
+                private var secret = 5;
+
+                public function readBare() { return secret; }
+            }
+
+            var b = new Box();
+            io.print(b.readBare());
+            """,
+            "private-field-bare-name-internal");
+    }
+
+    [Fact]
+    public void DefaultVisibilityMembers_ExternalAccess_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            class Person {
+                var name;
+
+                function Person(n) { this.name = n; }
+
+                function greet() { return name; }
+            }
+
+            var p = new Person("Alice");
+            io.print(p.name);
+            io.print(p.greet());
+            """,
+            "default-visibility-external");
+    }
 }

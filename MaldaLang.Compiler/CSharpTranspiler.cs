@@ -57,6 +57,13 @@ public class CSharpTranspiler
     private readonly Dictionary<string, TranspiledClrType> _functionReturnTypes;
     private readonly Dictionary<string, IReadOnlyList<TranspiledClrType>> _functionParameterTypes;
     private readonly Stack<TranspiledClrType> _currentFunctionReturnType;
+    /// <summary>
+    /// Name of the MALDA class whose member body is currently being transpiled, or null
+    /// at top level. Used to emit the accessing-class argument for private-member checks.
+    /// </summary>
+    private string? _currentClassName;
+    /// <summary>True while the member body being transpiled is a static member.</summary>
+    private bool _currentMemberIsStatic;
     private readonly int _typedTranspileLevel;
     private string? _catchFilterRenameFrom;
     private string? _catchFilterRenameTo;
@@ -119,6 +126,8 @@ public class CSharpTranspiler
         _functionReturnTypes.Clear();
         _functionParameterTypes.Clear();
         _currentFunctionReturnType.Clear();
+        _currentClassName = null;
+        _currentMemberIsStatic = false;
 
         statements = ModuleSymbolResolver.ExpandFileImportsForTranspile(statements, _sourceFilePath);
 
@@ -712,6 +721,29 @@ public class CSharpTranspiler
                 return type;
         }
         return TranspiledClrType.Object;
+    }
+
+    /// <summary>
+    /// Emits the <c>accessingClass</c> argument for the generated member helpers, mirroring
+    /// the interpreter's <c>_currentClass</c> rule: the runtime type of <c>this</c> inside an
+    /// instance member, the declaring type inside a static member, and <c>null</c> at top level.
+    /// </summary>
+    private void EmitAccessingClassArg()
+    {
+        if (_currentClassName == null)
+        {
+            _output.Append("null");
+        }
+        else if (_currentMemberIsStatic)
+        {
+            _output.Append("typeof(");
+            _output.Append(EscapeIdentifier(_currentClassName));
+            _output.Append(")");
+        }
+        else
+        {
+            _output.Append("this.GetType()");
+        }
     }
 
     /// <summary>
@@ -2815,7 +2847,7 @@ public class CSharpTranspiler
         _output.AppendLine();
         
         WriteIndent();
-        _output.AppendLine("public static async System.Threading.Tasks.Task<object> CallObjectMethod(object? obj, string methodName, List<object> args)");
+        _output.AppendLine("public static async System.Threading.Tasks.Task<object> CallObjectMethod(object? obj, string methodName, List<object> args, System.Type? accessingClass = null)");
         WriteIndent();
         _output.AppendLine("{");
         _indentLevel++;
@@ -3564,6 +3596,10 @@ public class CSharpTranspiler
         _output.AppendLine(".FirstOrDefault(m => m.Name == methodName && m.GetParameters().Length == args.Count);");
         _indentLevel--;
         WriteIndent();
+        _output.AppendLine("if (methodCandidate != null && methodCandidate.IsPrivate && accessingClass != targetType)");
+        WriteIndent();
+        _output.AppendLine("    throw new MaldaLang.Interpreter.RuntimeException($\"Cannot access private method '{methodName}' from outside {targetType.Name}.\");");
+        WriteIndent();
         _output.AppendLine("if (methodCandidate != null)");
         WriteIndent();
         _output.AppendLine("{");
@@ -4085,14 +4121,14 @@ public class CSharpTranspiler
         
         WriteIndent();
         WriteIndent();
-        _output.AppendLine("public static object? GetObjectMemberNullSafe(object? obj, string memberName)");
+        _output.AppendLine("public static object? GetObjectMemberNullSafe(object? obj, string memberName, System.Type? accessingClass = null)");
         WriteIndent();
         _output.AppendLine("{");
         _indentLevel++;
         WriteIndent();
         _output.AppendLine("if (obj == null) return null;");
         WriteIndent();
-        _output.AppendLine("return GetObjectMember(obj, memberName);");
+        _output.AppendLine("return GetObjectMember(obj, memberName, accessingClass);");
         _indentLevel--;
         WriteIndent();
         _output.AppendLine("}");
@@ -4113,7 +4149,7 @@ public class CSharpTranspiler
         _output.AppendLine();
 
         WriteIndent();
-        _output.AppendLine("public static object GetObjectMember(object? obj, string memberName)");
+        _output.AppendLine("public static object GetObjectMember(object? obj, string memberName, System.Type? accessingClass = null)");
         WriteIndent();
         _output.AppendLine("{");
         _indentLevel++;
@@ -4216,11 +4252,21 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("var field = type.GetField(memberName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);");
         WriteIndent();
+        _output.AppendLine("if (field != null && field.IsPrivate && accessingClass != type && type.Assembly == typeof(Program).Assembly)");
+        WriteIndent();
+        _output.AppendLine("    throw new MaldaLang.Interpreter.RuntimeException($\"Cannot access private field '{memberName}' from outside {type.Name}.\");");
+        WriteIndent();
         _output.AppendLine("if (field != null) return field.GetValue(obj);");
         WriteIndent();
         _output.AppendLine("var property = type.GetProperty(memberName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);");
         WriteIndent();
         _output.AppendLine("if (property != null && property.CanRead) return property.GetValue(obj);");
+        WriteIndent();
+        _output.AppendLine("var methodInfo = type.GetMethod(memberName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);");
+        WriteIndent();
+        _output.AppendLine("if (methodInfo != null && methodInfo.IsPrivate && accessingClass != type && type.Assembly == typeof(Program).Assembly)");
+        WriteIndent();
+        _output.AppendLine("    throw new MaldaLang.Interpreter.RuntimeException($\"Cannot access private method '{memberName}' from outside {type.Name}.\");");
         WriteIndent();
         _output.AppendLine("return null;");
         _indentLevel--;
@@ -4328,16 +4374,20 @@ public class CSharpTranspiler
         // Static member helpers: transpiled class references are emitted as typeof(Class),
         // so these resolve static fields and methods through reflection on the System.Type.
         WriteIndent();
-        _output.AppendLine("public static object? GetStaticMember(object? typeOrObj, string memberName)");
+        _output.AppendLine("public static object? GetStaticMember(object? typeOrObj, string memberName, System.Type? accessingClass = null)");
         WriteIndent();
         _output.AppendLine("{");
         _indentLevel++;
         WriteIndent();
-        _output.AppendLine("if (typeOrObj is not System.Type type) return GetObjectMember(typeOrObj, memberName);");
+        _output.AppendLine("if (typeOrObj is not System.Type type) return GetObjectMember(typeOrObj, memberName, accessingClass);");
         WriteIndent();
         _output.AppendLine("const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;");
         WriteIndent();
         _output.AppendLine("var field = type.GetField(memberName, flags);");
+        WriteIndent();
+        _output.AppendLine("if (field != null && field.IsPrivate && accessingClass != type)");
+        WriteIndent();
+        _output.AppendLine("    throw new MaldaLang.Interpreter.RuntimeException($\"Cannot access private static field '{memberName}' from outside {type.Name}.\");");
         WriteIndent();
         _output.AppendLine("if (field != null) return field.GetValue(null);");
         WriteIndent();
@@ -4350,7 +4400,7 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("}");
         WriteIndent();
-        _output.AppendLine("public static void SetStaticMember(object? typeOrObj, string memberName, object? value)");
+        _output.AppendLine("public static void SetStaticMember(object? typeOrObj, string memberName, object? value, System.Type? accessingClass = null)");
         WriteIndent();
         _output.AppendLine("{");
         _indentLevel++;
@@ -4360,6 +4410,10 @@ public class CSharpTranspiler
         _output.AppendLine("const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;");
         WriteIndent();
         _output.AppendLine("var field = type.GetField(memberName, flags);");
+        WriteIndent();
+        _output.AppendLine("if (field != null && field.IsPrivate && accessingClass != type)");
+        WriteIndent();
+        _output.AppendLine("    throw new MaldaLang.Interpreter.RuntimeException($\"Cannot access private static field '{memberName}' from outside {type.Name}.\");");
         WriteIndent();
         _output.AppendLine("if (field != null) { field.SetValue(null, value); return; }");
         WriteIndent();
@@ -4371,16 +4425,20 @@ public class CSharpTranspiler
         _output.AppendLine("}");
         
         WriteIndent();
-        _output.AppendLine("public static async System.Threading.Tasks.Task<object> CallStaticMethod(object? typeOrObj, string methodName, List<object> args)");
+        _output.AppendLine("public static async System.Threading.Tasks.Task<object> CallStaticMethod(object? typeOrObj, string methodName, List<object> args, System.Type? accessingClass = null)");
         WriteIndent();
         _output.AppendLine("{");
         _indentLevel++;
         WriteIndent();
-        _output.AppendLine("if (typeOrObj is not System.Type type) return await CallObjectMethod(typeOrObj, methodName, args);");
+        _output.AppendLine("if (typeOrObj is not System.Type type) return await CallObjectMethod(typeOrObj, methodName, args, accessingClass);");
         WriteIndent();
         _output.AppendLine("const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;");
         WriteIndent();
         _output.AppendLine("var method = type.GetMethods(flags).FirstOrDefault(m => m.Name == methodName && m.GetParameters().Length == args.Count);");
+        WriteIndent();
+        _output.AppendLine("if (method != null && method.IsPrivate && accessingClass != type)");
+        WriteIndent();
+        _output.AppendLine("    throw new MaldaLang.Interpreter.RuntimeException($\"Cannot access private static method '{methodName}' from outside {type.Name}.\");");
         WriteIndent();
         _output.AppendLine("if (method == null) throw new InvalidOperationException($\"Static method '{methodName}' not found on {type.Name}.\");");
         WriteIndent();
@@ -8532,10 +8590,13 @@ public class CSharpTranspiler
         _output.AppendLine();
         _indentLevel++;
         
+        var previousClassName = _currentClassName;
+        _currentClassName = classDecl.Name;
         foreach (var member in classDecl.Members)
         {
             TranspileClassMember(member);
         }
+        _currentClassName = previousClassName;
         
         _indentLevel--;
         WriteIndent();
@@ -8546,15 +8607,17 @@ public class CSharpTranspiler
 
     private void TranspileClassMember(ClassMember member)
     {
+        var previousMemberIsStatic = _currentMemberIsStatic;
+        _currentMemberIsStatic = member.IsStatic;
         WriteIndent();
         
-        // Access modifier
-        if (member.Access == AccessModifier.Public)
-            _output.Append("public ");
-        else if (member.Access == AccessModifier.Private)
+        // Access modifier. MALDA's default is public for both fields and methods, and
+        // instance members are also reached through reflection, so emit `public` whenever
+        // the member is not explicitly private.
+        if (member.Access == AccessModifier.Private)
             _output.Append("private ");
-        else if (member.IsStatic)
-            _output.Append("public "); // MALDA defaults to public; static members are reached through typeof()
+        else
+            _output.Append("public ");
         
         if (member.IsStatic)
             _output.Append("static ");
@@ -8569,10 +8632,15 @@ public class CSharpTranspiler
                 _output.Append(member.Name);
                 if (member.Value != null && member.Value is Expression expr)
                 {
+                    // Field initializers run before `this` exists in C#, so any member access
+                    // here must not emit `this.GetType()` as the accessing class.
+                    var initializerClassName = _currentClassName;
+                    _currentClassName = null;
                     _output.Append(" = ");
                     _output.Append(GetCoercionExpressionPrefix(fieldType));
                     TranspileExpression(expr);
                     _output.Append(GetCoercionExpressionSuffix(fieldType));
+                    _currentClassName = initializerClassName;
                 }
                 _output.AppendLine(";");
                 break;
@@ -8648,11 +8716,8 @@ public class CSharpTranspiler
                     }
 
                     WriteIndent();
-                    // Default visibility for actor constructors should be public to allow spawn
-                    if (member.Access == AccessModifier.Default)
-                    {
-                        _output.Append("public ");
-                    }
+                    // Visibility was already emitted above (public unless explicitly private);
+                    // public is required for actor spawn.
                     _output.Append(EscapeIdentifier(member.Name));
                     _output.Append("(");
                     PushTypedScope();
@@ -8687,6 +8752,7 @@ public class CSharpTranspiler
                 }
                 break;
         }
+        _currentMemberIsStatic = previousMemberIsStatic;
     }
 
     private void TranspileDecorator(Decorator decorator)
@@ -10141,7 +10207,9 @@ public class CSharpTranspiler
                         TranspileExpression(call.Arguments[i]);
                     }
                 }
-                _output.Append(" })");
+                _output.Append(" }, ");
+                EmitAccessingClassArg();
+                _output.Append(")");
                 if (!_canAwait)
                     _output.Append(")");
                 return;
@@ -11575,7 +11643,9 @@ public class CSharpTranspiler
         TranspileReceiver(member.Object);
         _output.Append(", \"");
         _output.Append(memberName);
-        _output.Append("\")");
+        _output.Append("\", ");
+        EmitAccessingClassArg();
+        _output.Append(")");
     }
 
     private void TranspileNew(NewExpression newExpr)
@@ -12454,11 +12524,12 @@ public class CSharpTranspiler
     {
         WriteIndent();
 
-        // Access modifier
-        if (member.Access == AccessModifier.Public)
-            _output.Append("public ");
-        else if (member.Access == AccessModifier.Private)
+        // Access modifier. MALDA's default is public; emit it explicitly so reflection and
+        // inherited/instance member helpers see the same visibility as the interpreter.
+        if (member.Access == AccessModifier.Private)
             _output.Append("private ");
+        else
+            _output.Append("public ");
 
         if (member.IsStatic)
             _output.Append("static ");
@@ -12560,11 +12631,8 @@ public class CSharpTranspiler
                     }
 
                     WriteIndent();
-                    // Default visibility for actor constructors should be public to allow spawn
-                    if (member.Access == AccessModifier.Default)
-                    {
-                        _output.Append("public ");
-                    }
+                    // Visibility was already emitted above (public unless explicitly private);
+                    // public is required for actor spawn.
                     _output.Append(EscapeIdentifier(member.Name));
                     _output.Append("(");
                     PushTypedScope();

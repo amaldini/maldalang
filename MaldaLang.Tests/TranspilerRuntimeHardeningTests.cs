@@ -57,7 +57,7 @@ public class TranspilerRuntimeHardeningTests
     {
         var generatedSource = LoadTranspilerSource();
 
-        Assert.Contains("public static async System.Threading.Tasks.Task<object> CallObjectMethod(object? obj, string methodName, List<object> args)", generatedSource);
+        Assert.Contains("public static async System.Threading.Tasks.Task<object> CallObjectMethod(object? obj, string methodName, List<object> args, System.Type? accessingClass = null)", generatedSource);
         Assert.Contains("if (obj is MaldaLang.Interpreter.RuntimeValue __rvCall)", generatedSource);
         Assert.Contains("if (__unwrappedCall is MaldaLang.Interpreter.ObjectInstance)", generatedSource);
         Assert.Contains("else if (instance is MaldaLang.BuiltIns.PromptInstance promptInstance)", generatedSource);
