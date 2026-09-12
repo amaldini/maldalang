@@ -2372,9 +2372,21 @@ public partial class Interpreter
             var field = _currentObject.Class?.FindField(expr.Name);
             if (field != null)
             {
+                // Static fields live on the class, not on the instance.
+                if (field.IsStatic && _currentObject.Class!.StaticFields.TryGetValue(expr.Name, out var classStatic))
+                    return classStatic;
                 // Access the field through the object instance
                 return _currentObject.Get(expr.Name, _currentClass);
             }
+        }
+        
+        // Static fields of the enclosing class are in scope by bare name inside
+        // that class's methods (mirrors the implicit `this.field` behavior).
+        // Resolution is limited to the current class itself, so this is always
+        // an internal access and needs no visibility check.
+        if (_currentClass != null && _currentClass.StaticFields.TryGetValue(expr.Name, out var staticValue))
+        {
+            return staticValue;
         }
         
         // Variable not found anywhere
@@ -2908,9 +2920,14 @@ public partial class Interpreter
                 {
                     if (field.Access == AccessModifier.Private && _currentClass != _currentObject.Class)
                         throw new RuntimeException($"Cannot access private field '{idExpr.Name}' from outside {_currentObject.Class.Name}.");
+                    if (field.IsStatic && _currentObject.Class!.StaticFields.TryGetValue(idExpr.Name, out var classStatic))
+                        return classStatic;
                     return _currentObject.Get(idExpr.Name);
                 }
             }
+            
+            if (_currentClass != null && _currentClass.StaticFields.TryGetValue(idExpr.Name, out var staticValue))
+                return staticValue;
             
             throw new RuntimeException($"Undefined variable '{idExpr.Name}'.", idExpr.Line, _currentFile);
         }
@@ -3020,9 +3037,20 @@ public partial class Interpreter
                 {
                     if (field.Access == AccessModifier.Private && _currentClass != _currentObject.Class)
                         throw new RuntimeException($"Cannot access private field '{idExpr.Name}' from outside {_currentObject.Class.Name}.");
+                    if (field.IsStatic)
+                    {
+                        _currentObject.Class!.StaticFields[idExpr.Name] = value;
+                        return;
+                    }
                     _currentObject.Set(idExpr.Name, value);
                     return;
                 }
+            }
+            
+            if (_currentClass != null && _currentClass.StaticFields.ContainsKey(idExpr.Name))
+            {
+                _currentClass.StaticFields[idExpr.Name] = value;
+                return;
             }
             
             throw new RuntimeException($"Undefined variable '{idExpr.Name}'.", idExpr.Line, _currentFile);

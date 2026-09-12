@@ -1183,6 +1183,33 @@ public class InterpreterTests : TestBase
     }
     
     [Fact]
+    public void StaticField_BareNameReadAndWrite_IsAllowed()
+    {
+        // A static field is in scope by bare name inside the declaring class's methods.
+        var source = @"
+            class Counter {
+                static var count = 0;
+                
+                static function increment() {
+                    count = count + 1;
+                }
+                
+                static function getCount() {
+                    return count;
+                }
+            }
+            
+            Counter.increment();
+            Counter.increment();
+            print(Counter.getCount());
+            print(Counter.count);
+        ";
+        var output = RunProgram(source);
+        var lines = output.Split('\n', System.StringSplitOptions.RemoveEmptyEntries | System.StringSplitOptions.TrimEntries);
+        Assert.Equal(new[] { "2", "2" }, lines);
+    }
+    
+    [Fact]
     public void TestBuiltInInt()
     {
         var source = @"

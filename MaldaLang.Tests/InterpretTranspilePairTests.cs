@@ -932,4 +932,92 @@ print(""run="" + string(ran.success) + "","" + string(ran.output));
             """,
             "array-except");
     }
+
+    [Fact]
+    public void StaticFieldAndMethod_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            class Counter {
+                static var count = 0;
+
+                static function increment() {
+                    Counter.count = Counter.count + 1;
+                }
+
+                static function getCount() {
+                    return Counter.count;
+                }
+            }
+
+            Counter.increment();
+            Counter.increment();
+            Counter.increment();
+            io.print(Counter.getCount());
+            io.print(Counter.count);
+            """,
+            "static-field-and-method");
+    }
+
+    [Fact]
+    public void StaticFieldBareName_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            class Counter {
+                static var count = 0;
+
+                static function increment() {
+                    count = count + 1;
+                }
+
+                static function getCount() {
+                    return count;
+                }
+            }
+
+            Counter.increment();
+            Counter.increment();
+            io.print(Counter.getCount());
+            """,
+            "static-field-bare-name");
+    }
+
+    [Fact]
+    public void StaticFieldCompoundAndPostfixOps_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            class Counter {
+                static var count = 0;
+                static var total = 10;
+            }
+
+            Counter.count = 5;
+            Counter.count++;
+            Counter.total += 3;
+            Counter.total--;
+            io.print(Counter.count);
+            io.print(Counter.total);
+            """,
+            "static-field-compound-postfix");
+    }
+
+    [Fact]
+    public void InstanceFieldCompoundAndPostfixOps_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            class Box {
+                var value;
+                function Box() { this.value = 10; }
+            }
+
+            var b = new Box();
+            b.value += 3;
+            b.value--;
+            io.print(b.value);
+            """,
+            "instance-field-compound-postfix");
+    }
 }

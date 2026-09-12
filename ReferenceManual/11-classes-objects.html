@@ -103,7 +103,7 @@ cat.speak();</code></pre>
         <p>To run the parent implementation as well, call <code>super.speak()</code> inside the override before or after the child body.</p>
 
         <h2>11.4 Static members</h2>
-        <p>Static members belong to the class, not instances:</p>
+        <p>Static members belong to the class, not instances. Inside the class's own methods, a static field is also reachable by its bare name (like an implicit <code>this.</code> for instance fields):</p>
         <pre><code>class MathUtils {
     static var PI = 3.14159;
 
@@ -114,6 +114,21 @@ cat.speak();</code></pre>
 
 var pi = MathUtils.PI;
 var sum = MathUtils.add(5, 3);</code></pre>
+        <pre><code data-run="true" data-expect="2">class Counter {
+    static var count = 0;
+
+    static function increment() {
+        count = count + 1; // bare name refers to the static field
+    }
+
+    static function getCount() {
+        return Counter.count; // qualified access also works
+    }
+}
+
+Counter.increment();
+Counter.increment();
+print(Counter.getCount());</code></pre>
 
         <h2>11.5 Operator overloading</h2>
         <p>Classes can overload selected operators by defining methods with reserved names. For binary operators, MALDA first tries the left operand overload (<code>__add__</code>, <code>__sub__</code>, etc.). If that overload is not found, MALDA then tries the right operand reversed overload (<code>__radd__</code>, <code>__rsub__</code>, etc.) with the left operand passed as argument. For unary operators, the single operand is the receiver.</p>

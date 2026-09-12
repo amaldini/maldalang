@@ -36,6 +36,7 @@ public class CSharpTranspiler
     private readonly HashSet<string> _functionNames;
     private readonly HashSet<string> _promptNames;
     private readonly HashSet<string> _variantConstructorNames;
+    private readonly Dictionary<string, ClassDeclaration> _classDeclarations;
     private readonly List<TypeDeclaration> _typeDeclarations;
     private readonly List<ApiDeclaration> _apiDeclarations;
     private readonly List<ContextDeclaration> _contextDeclarations;
@@ -69,6 +70,7 @@ public class CSharpTranspiler
         _functionNames = new HashSet<string>();
         _promptNames = new HashSet<string>();
         _variantConstructorNames = new HashSet<string>();
+        _classDeclarations = new Dictionary<string, ClassDeclaration>(StringComparer.Ordinal);
         _typeDeclarations = new List<TypeDeclaration>();
         _apiDeclarations = new List<ApiDeclaration>();
         _contextDeclarations = new List<ContextDeclaration>();
@@ -103,6 +105,7 @@ public class CSharpTranspiler
         _functionNames.Clear();
         _promptNames.Clear();
         _variantConstructorNames.Clear();
+        _classDeclarations.Clear();
         _typeDeclarations.Clear();
         _apiDeclarations.Clear();
         _contextDeclarations.Clear();
@@ -227,6 +230,7 @@ public class CSharpTranspiler
 
         foreach (var classDecl in classes)
         {
+            _classDeclarations[classDecl.Name] = classDecl;
             foreach (var member in classDecl.Members)
             {
                 if (member.Type == MemberType.Method && member.Value is FunctionDeclaration methodFunc)
@@ -708,6 +712,48 @@ public class CSharpTranspiler
                 return type;
         }
         return TranspiledClrType.Object;
+    }
+
+    /// <summary>
+    /// True when <paramref name="name"/> is bound as a local/parameter in the current
+    /// function (i.e. it shadows any top-level class of the same name).
+    /// </summary>
+    private bool IsDeclaredLocal(string name)
+    {
+        foreach (var scope in _typedScopeStack)
+        {
+            if (scope.ContainsKey(name))
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// True when <paramref name="expression"/> is a bare reference to a transpiled class
+    /// (i.e. a static access receiver such as <c>Counter</c> in <c>Counter.count</c>).
+    /// </summary>
+    private bool IsClassReference(Expression? expression)
+    {
+        return expression is IdentifierExpression id
+            && _classDeclarations.ContainsKey(id.Name)
+            && !IsDeclaredLocal(id.Name);
+    }
+
+    /// <summary>
+    /// Emits a receiver for a member access/call. Bare class names become
+    /// <c>typeof(Class)</c> so the static runtime helpers can resolve them; anything
+    /// else is emitted normally.
+    /// </summary>
+    private void TranspileReceiver(Expression expression)
+    {
+        if (IsClassReference(expression))
+        {
+            _output.Append("typeof(");
+            _output.Append(EscapeIdentifier(((IdentifierExpression)expression).Name));
+            _output.Append(")");
+            return;
+        }
+        TranspileExpression(expression);
     }
 
     private TranspiledClrType ResolveExpressionType(Expression expression)
@@ -4279,6 +4325,106 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("}");
         
+        // Static member helpers: transpiled class references are emitted as typeof(Class),
+        // so these resolve static fields and methods through reflection on the System.Type.
+        WriteIndent();
+        _output.AppendLine("public static object? GetStaticMember(object? typeOrObj, string memberName)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("if (typeOrObj is not System.Type type) return GetObjectMember(typeOrObj, memberName);");
+        WriteIndent();
+        _output.AppendLine("const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;");
+        WriteIndent();
+        _output.AppendLine("var field = type.GetField(memberName, flags);");
+        WriteIndent();
+        _output.AppendLine("if (field != null) return field.GetValue(null);");
+        WriteIndent();
+        _output.AppendLine("var property = type.GetProperty(memberName, flags);");
+        WriteIndent();
+        _output.AppendLine("if (property != null && property.CanRead) return property.GetValue(null);");
+        WriteIndent();
+        _output.AppendLine("return null;");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        WriteIndent();
+        _output.AppendLine("public static void SetStaticMember(object? typeOrObj, string memberName, object? value)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("if (typeOrObj is not System.Type type) { SetObjectMember(typeOrObj, memberName, value); return; }");
+        WriteIndent();
+        _output.AppendLine("const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;");
+        WriteIndent();
+        _output.AppendLine("var field = type.GetField(memberName, flags);");
+        WriteIndent();
+        _output.AppendLine("if (field != null) { field.SetValue(null, value); return; }");
+        WriteIndent();
+        _output.AppendLine("var property = type.GetProperty(memberName, flags);");
+        WriteIndent();
+        _output.AppendLine("if (property != null && property.CanWrite) property.SetValue(null, value);");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        
+        WriteIndent();
+        _output.AppendLine("public static async System.Threading.Tasks.Task<object> CallStaticMethod(object? typeOrObj, string methodName, List<object> args)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("if (typeOrObj is not System.Type type) return await CallObjectMethod(typeOrObj, methodName, args);");
+        WriteIndent();
+        _output.AppendLine("const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;");
+        WriteIndent();
+        _output.AppendLine("var method = type.GetMethods(flags).FirstOrDefault(m => m.Name == methodName && m.GetParameters().Length == args.Count);");
+        WriteIndent();
+        _output.AppendLine("if (method == null) throw new InvalidOperationException($\"Static method '{methodName}' not found on {type.Name}.\");");
+        WriteIndent();
+        _output.AppendLine("var parameters = method.GetParameters();");
+        WriteIndent();
+        _output.AppendLine("var invokeArgs = new object?[args.Count];");
+        WriteIndent();
+        _output.AppendLine("for (int i = 0; i < args.Count; i++)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("var parameterType = parameters[i].ParameterType;");
+        WriteIndent();
+        _output.AppendLine("var argValue = args[i];");
+        WriteIndent();
+        _output.AppendLine("if (parameterType == typeof(object) || argValue == null) invokeArgs[i] = argValue;");
+        WriteIndent();
+        _output.AppendLine("else if (parameterType == typeof(int)) invokeArgs[i] = (int)CoerceToInt(argValue);");
+        WriteIndent();
+        _output.AppendLine("else if (parameterType == typeof(double)) invokeArgs[i] = (double)CoerceToFloat(argValue);");
+        WriteIndent();
+        _output.AppendLine("else if (parameterType == typeof(float)) invokeArgs[i] = (float)(double)CoerceToFloat(argValue);");
+        WriteIndent();
+        _output.AppendLine("else if (parameterType == typeof(string)) invokeArgs[i] = CoerceToString(argValue);");
+        WriteIndent();
+        _output.AppendLine("else if (parameterType.IsInstanceOfType(argValue)) invokeArgs[i] = argValue;");
+        WriteIndent();
+        _output.AppendLine("else invokeArgs[i] = argValue;");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        WriteIndent();
+        _output.AppendLine("var invokeResult = method.Invoke(null, invokeArgs);");
+        WriteIndent();
+        _output.AppendLine("if (invokeResult is System.Threading.Tasks.Task<object> objectTask) return await objectTask;");
+        WriteIndent();
+        _output.AppendLine("if (invokeResult is System.Threading.Tasks.Task anyTask) { await anyTask; var resultProperty = anyTask.GetType().GetProperty(\"Result\"); return resultProperty != null ? resultProperty.GetValue(anyTask) : null; }");
+        WriteIndent();
+        _output.AppendLine("return invokeResult;");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        
         WriteIndent();
         _output.AppendLine("public static async System.Threading.Tasks.Task<object> CallFunction(object? func, object? arg)");
         WriteIndent();
@@ -6169,11 +6315,17 @@ public class CSharpTranspiler
         }
         else if (assignment.Target is MemberAccessExpression memberAccess)
         {
+            var setHelper = IsClassReference(memberAccess.Object)
+                ? "RuntimeHelpers.SetStaticMember"
+                : "RuntimeHelpers.SetObjectMember";
+            var getHelper = IsClassReference(memberAccess.Object)
+                ? "RuntimeHelpers.GetStaticMember"
+                : "RuntimeHelpers.GetObjectMember";
             if (assignment.Operator == TokenType.Assign)
             {
                 // Handle ObjectInstance property assignment (e.g., JsonObject properties)
-                _output.Append("RuntimeHelpers.SetObjectMember(");
-                TranspileExpression(memberAccess.Object);
+                _output.Append($"{setHelper}(");
+                TranspileReceiver(memberAccess.Object);
                 _output.Append(", \"");
                 _output.Append(memberAccess.Member);
                 _output.Append("\", ");
@@ -6182,20 +6334,38 @@ public class CSharpTranspiler
             }
             else
             {
-                // Compound assignment for members: expand to get, operate, set
+                // Compound assignment for members: expand to get, operate, set.
+                // Member values are boxed as object, so arithmetic must go through the
+                // RuntimeHelpers.Operator* functions rather than a raw C# `+=`.
+                var boxedHelper = GetBoxedBinaryOperatorHelper(assignment.Operator);
                 var opString = GetOperatorString(assignment.Operator);
-                _output.Append("RuntimeHelpers.SetObjectMember(");
-                TranspileExpression(memberAccess.Object);
+                _output.Append($"{setHelper}(");
+                TranspileReceiver(memberAccess.Object);
                 _output.Append(", \"");
                 _output.Append(memberAccess.Member);
-                _output.Append("\", RuntimeHelpers.GetObjectMember(");
-                TranspileExpression(memberAccess.Object);
-                _output.Append(", \"");
-                _output.Append(memberAccess.Member);
-                _output.Append("\") ");
-                _output.Append(opString);
-                _output.Append(" ");
-                TranspileExpression(assignment.Value);
+                _output.Append("\", ");
+                if (boxedHelper != null)
+                {
+                    _output.Append($"RuntimeHelpers.{boxedHelper}(");
+                    _output.Append($"{getHelper}(");
+                    TranspileReceiver(memberAccess.Object);
+                    _output.Append(", \"");
+                    _output.Append(memberAccess.Member);
+                    _output.Append("\"), ");
+                    TranspileExpression(assignment.Value);
+                    _output.Append(")");
+                }
+                else
+                {
+                    _output.Append($"{getHelper}(");
+                    TranspileReceiver(memberAccess.Object);
+                    _output.Append(", \"");
+                    _output.Append(memberAccess.Member);
+                    _output.Append("\") ");
+                    _output.Append(opString);
+                    _output.Append(" ");
+                    TranspileExpression(assignment.Value);
+                }
                 _output.Append(");");
             }
             AppendComment(nameof(TranspileAssignment) + " (member)");
@@ -8383,6 +8553,8 @@ public class CSharpTranspiler
             _output.Append("public ");
         else if (member.Access == AccessModifier.Private)
             _output.Append("private ");
+        else if (member.IsStatic)
+            _output.Append("public "); // MALDA defaults to public; static members are reached through typeof()
         
         if (member.IsStatic)
             _output.Append("static ");
@@ -9055,6 +9227,45 @@ public class CSharpTranspiler
     
     private void TranspilePostfix(PostfixExpression postfix)
     {
+        // Static members cannot be the left-hand side of a plain C# assignment
+        // (`typeof(Counter).count = ...` is invalid), so expand them through the
+        // static helpers explicitly.
+        if (postfix.Left is MemberAccessExpression staticMember && IsClassReference(staticMember.Object))
+        {
+            var op = postfix.Operator == TokenType.Increment
+                ? "CheckedIntIncrement"
+                : "CheckedIntDecrement";
+            _output.Append("RuntimeHelpers.SetStaticMember(");
+            TranspileReceiver(staticMember.Object);
+            _output.Append(", \"");
+            _output.Append(staticMember.Member);
+            _output.Append($"\", RuntimeHelpers.{op}((int)RuntimeHelpers.CoerceToInt(RuntimeHelpers.GetStaticMember(");
+            TranspileReceiver(staticMember.Object);
+            _output.Append(", \"");
+            _output.Append(staticMember.Member);
+            _output.Append("\"))))");
+            return;
+        }
+
+        // Instance members are reached through RuntimeHelpers, so `obj.field++` cannot be
+        // emitted as a plain C# assignment either; expand it into get/operate/set.
+        if (postfix.Left is MemberAccessExpression instanceMember)
+        {
+            var op = postfix.Operator == TokenType.Increment
+                ? "CheckedIntIncrement"
+                : "CheckedIntDecrement";
+            _output.Append("RuntimeHelpers.SetObjectMember(");
+            TranspileExpression(instanceMember.Object);
+            _output.Append(", \"");
+            _output.Append(instanceMember.Member);
+            _output.Append($"\", RuntimeHelpers.{op}((int)RuntimeHelpers.CoerceToInt(RuntimeHelpers.GetObjectMember(");
+            TranspileExpression(instanceMember.Object);
+            _output.Append(", \"");
+            _output.Append(instanceMember.Member);
+            _output.Append("\"))))");
+            return;
+        }
+
         // For postfix increment/decrement on object types, we need to convert to assignment
         // i++ becomes: i = RuntimeHelpers.CheckedIntIncrement((int)RuntimeHelpers.CoerceToInt(i))
         // i-- becomes: i = RuntimeHelpers.CheckedIntDecrement((int)RuntimeHelpers.CoerceToInt(i))
@@ -9894,11 +10105,14 @@ public class CSharpTranspiler
             // For other ObjectInstance methods, use CallObjectMethod
             if (call.Callee is MemberAccessExpression memberAccess3 && memberAccess3.Object != null)
             {
+                var callHelper = IsClassReference(memberAccess3.Object)
+                    ? "RuntimeHelpers.CallStaticMethod"
+                    : "RuntimeHelpers.CallObjectMethod";
                 if (_canAwait)
-                    _output.Append("await RuntimeHelpers.CallObjectMethod(");
+                    _output.Append($"await {callHelper}(");
                 else
-                    _output.Append("RuntimeHelpers.BlockOn(RuntimeHelpers.CallObjectMethod(");
-                TranspileExpression(memberAccess3.Object);
+                    _output.Append($"RuntimeHelpers.BlockOn({callHelper}(");
+                TranspileReceiver(memberAccess3.Object);
                 _output.Append(", \"");
                 _output.Append(memberAccess3.Member);
                 _output.Append("\", new List<object> { ");
@@ -11354,9 +11568,11 @@ public class CSharpTranspiler
         }
 
         var memberHelper = member.IsNullConditional ? "RuntimeHelpers.GetObjectMemberNullSafe" : "RuntimeHelpers.GetObjectMember";
+        if (IsClassReference(member.Object))
+            memberHelper = "RuntimeHelpers.GetStaticMember";
         _output.Append(memberHelper);
         _output.Append("(");
-        TranspileExpression(member.Object);
+        TranspileReceiver(member.Object);
         _output.Append(", \"");
         _output.Append(memberName);
         _output.Append("\")");
@@ -12099,6 +12315,21 @@ public class CSharpTranspiler
             _ => throw new NotSupportedException($"Operator {op} not supported")
         };
     }
+
+    /// <summary>
+    /// Maps an arithmetic operator (or its compound-assignment form) to the
+    /// <c>RuntimeHelpers.Operator*</c> function used when operands are boxed as
+    /// <see cref="object"/>. Returns <c>null</c> for operators without such a helper.
+    /// </summary>
+    private static string? GetBoxedBinaryOperatorHelper(TokenType op) => op switch
+    {
+        TokenType.Plus or TokenType.PlusAssign => "OperatorAdd",
+        TokenType.Minus or TokenType.MinusAssign => "OperatorSubtract",
+        TokenType.Multiply or TokenType.MultiplyAssign => "OperatorMultiply",
+        TokenType.Divide or TokenType.DivideAssign => "OperatorDivide",
+        TokenType.Modulo => "OperatorModulo",
+        _ => null
+    };
 
     private string GetUnaryOperatorString(TokenType op)
     {
