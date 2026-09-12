@@ -1053,6 +1053,136 @@ public class InterpreterTests : TestBase
     }
     
     [Fact]
+    public void DefaultVisibility_MembersArePublic()
+    {
+        // No access modifier on a field or method: both behave as public.
+        var source = @"
+            class Person {
+                var name;
+                
+                function Person(name) {
+                    this.name = name;
+                }
+                
+                function greet() {
+                    return ""hi "" + name;
+                }
+            }
+            
+            var p = new Person(""Alice"");
+            print(p.name);
+            print(p.greet());
+        ";
+        var output = RunProgram(source);
+        var lines = output.Split('\n', System.StringSplitOptions.RemoveEmptyEntries | System.StringSplitOptions.TrimEntries);
+        Assert.Equal(new[] { "Alice", "hi Alice" }, lines);
+    }
+    
+    [Fact]
+    public void PrivateField_ExternalAccess_Throws()
+    {
+        var source = @"
+            class Person {
+                private var secret;
+                
+                function Person(secret) {
+                    this.secret = secret;
+                }
+            }
+            
+            var p = new Person(""xyz"");
+            print(p.secret);
+        ";
+        var ex = Assert.Throws<RuntimeException>(() => RunProgram(source));
+        Assert.Contains("private field 'secret'", ex.Message);
+    }
+    
+    [Fact]
+    public void PrivateMethod_ExternalAccess_Throws()
+    {
+        var source = @"
+            class Person {
+                function Person() { }
+                
+                private function hidden() {
+                    return 1;
+                }
+            }
+            
+            var p = new Person();
+            print(p.hidden());
+        ";
+        var ex = Assert.Throws<RuntimeException>(() => RunProgram(source));
+        Assert.Contains("private method 'hidden'", ex.Message);
+    }
+    
+    [Fact]
+    public void PrivateStaticField_ExternalRead_Throws()
+    {
+        var source = @"
+            class Counter {
+                private static var hidden = 42;
+                
+                static function readInternal() {
+                    return Counter.hidden;
+                }
+            }
+            
+            print(Counter.readInternal());
+            print(Counter.hidden);
+        ";
+        var ex = Assert.Throws<RuntimeException>(() => RunProgram(source));
+        Assert.Contains("private static field 'hidden'", ex.Message);
+    }
+    
+    [Fact]
+    public void PrivateStaticField_ExternalWrite_Throws()
+    {
+        var source = @"
+            class Counter {
+                private static var hidden = 42;
+            }
+            
+            Counter.hidden = 100;
+        ";
+        var ex = Assert.Throws<RuntimeException>(() => RunProgram(source));
+        Assert.Contains("private static field 'hidden'", ex.Message);
+    }
+    
+    [Fact]
+    public void PrivateStaticField_InternalAccess_IsAllowed()
+    {
+        var source = @"
+            class Counter {
+                private static var hidden = 42;
+                
+                static function bump() {
+                    Counter.hidden = Counter.hidden + 1;
+                    return Counter.hidden;
+                }
+            }
+            
+            print(Counter.bump());
+        ";
+        var output = RunProgram(source);
+        Assert.Equal("43", output);
+    }
+    
+    [Fact]
+    public void PublicStaticField_ExternalAccess_IsAllowed()
+    {
+        var source = @"
+            class Counter {
+                static var open = 7;
+            }
+            
+            print(Counter.open);
+        ";
+        var output = RunProgram(source);
+        Assert.Equal("7", output);
+    }
+    
+    [Fact]
     public void TestBuiltInInt()
     {
         var source = @"

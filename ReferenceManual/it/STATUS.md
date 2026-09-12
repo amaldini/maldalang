@@ -22,7 +22,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 08-control-structures.html | a7dce8f0a0c17a1a36f37de007bdc8684d2b9e3388111ce3df38f493f35cb554 |
 | 09-functions.html | bfc36bf24000b8d223f136dc2b1a05d67f68978d8d17ac8e634342f0974feaea |
 | 10-prompts.html | eb2c0dc586f5cc15c3c65af78befbfffde01347c5465dba4a2485294b0c6f9a7 |
-| 11-classes-objects.html | eaec524fafbc71cc3abcc0650a2088f379916551f9ef5131b595df2208bece17 |
+| 11-classes-objects.html | e6e8c24a3bea7a1a3c7c37c8d99babdab7e259ce0c59b2a697db0fa38321cfeb |
 | 12-input-output.html | ed3fb9d438fc0f847bf231af035d241449a455fa47cc3d9e35cd6130b58d910f |
 | 13-built-in-functions.html | dd6ab54a7727659d3284ad9644e15789b38eb2e2dd8189174e4f923a7a3f0667 |
 | 14-graphs.html | aa57872f357cc1df0463f0020e1a6ea66ee0d542f80ea4621d30c500af56ca06 |

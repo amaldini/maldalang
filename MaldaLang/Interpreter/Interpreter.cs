@@ -1066,9 +1066,13 @@ public partial class Interpreter
             if (member.Type == MemberType.Field)
             {
                 klass.Fields[member.Name] = member;
-                if (member.IsStatic && member.Value is Expression initExpr)
+                if (member.IsStatic)
                 {
-                    klass.StaticFields[member.Name] = await EvaluateAsync(initExpr);
+                    klass.StaticFieldAccess[member.Name] = member.Access;
+                    if (member.Value is Expression initExpr)
+                    {
+                        klass.StaticFields[member.Name] = await EvaluateAsync(initExpr);
+                    }
                 }
             }
             else if (member.Type == MemberType.Method)
@@ -2934,7 +2938,15 @@ public partial class Interpreter
             {
                 var klass = obj.AsClass();
                 if (klass.StaticFields.ContainsKey(memberExpr.Member))
+                {
+                    if (klass.StaticFieldAccess.TryGetValue(memberExpr.Member, out var fieldAccess)
+                        && fieldAccess == AccessModifier.Private
+                        && _currentClass != klass)
+                    {
+                        throw new RuntimeException($"Cannot access private static field '{memberExpr.Member}' from outside {klass.Name}.");
+                    }
                     return klass.StaticFields[memberExpr.Member];
+                }
                 throw new RuntimeException($"Class {klass.Name} has no static field '{memberExpr.Member}'.");
             }
             throw new RuntimeException("Only objects and classes have properties.", memberExpr.Line, _currentFile);
@@ -3027,6 +3039,12 @@ public partial class Interpreter
                 var klass = obj.AsClass();
                 if (klass.StaticFields.ContainsKey(memberExpr.Member))
                 {
+                    if (klass.StaticFieldAccess.TryGetValue(memberExpr.Member, out var fieldAccess)
+                        && fieldAccess == AccessModifier.Private
+                        && _currentClass != klass)
+                    {
+                        throw new RuntimeException($"Cannot access private static field '{memberExpr.Member}' from outside {klass.Name}.");
+                    }
                     klass.StaticFields[memberExpr.Member] = value;
                 }
                 else

@@ -4,6 +4,7 @@
 namespace MaldaLang.Interpreter;
 
 using MaldaLang.BuiltIns;
+using MaldaLang.Parser.AST.Declarations;
 using MaldaLang.Parser.AST.Expressions;
 
 public partial class Interpreter
@@ -63,6 +64,14 @@ public partial class Interpreter
                 {
                     instance = obj.AsObject();
                     callee = instance.Get(memberExpr.Member);
+                    if (callee.Type == ValueType.Function
+                        && instance.Class != null
+                        && instance.Class.MethodAccess.TryGetValue(memberExpr.Member, out var methodAccess)
+                        && methodAccess == AccessModifier.Private
+                        && _currentClass != instance.Class)
+                    {
+                        throw new RuntimeException($"Cannot access private method '{memberExpr.Member}' from outside {instance.Class.Name}.");
+                    }
                 }
                 else if (obj.Type == ValueType.Array)
                 {
@@ -75,6 +84,12 @@ public partial class Interpreter
                     var klass = obj.AsClass();
                     if (klass.StaticMethods.ContainsKey(memberExpr.Member))
                     {
+                        if (klass.StaticMethodAccess.TryGetValue(memberExpr.Member, out var staticMethodAccess)
+                            && staticMethodAccess == AccessModifier.Private
+                            && _currentClass != klass)
+                        {
+                            throw new RuntimeException($"Cannot access private static method '{memberExpr.Member}' from outside {klass.Name}.");
+                        }
                         callee = RuntimeValue.Function(klass.StaticMethods[memberExpr.Member]);
                     }
                     else

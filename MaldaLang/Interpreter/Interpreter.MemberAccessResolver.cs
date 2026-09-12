@@ -116,7 +116,15 @@ public partial class Interpreter
         {
             var klass = obj.AsClass();
             if (klass.StaticFields.ContainsKey(expr.Member))
+            {
+                if (klass.StaticFieldAccess.TryGetValue(expr.Member, out var fieldAccess)
+                    && fieldAccess == AccessModifier.Private
+                    && _currentClass != klass)
+                {
+                    throw new RuntimeException($"Cannot access private static field '{expr.Member}' from outside {klass.Name}.");
+                }
                 return klass.StaticFields[expr.Member];
+            }
             if (klass.StaticMethods.ContainsKey(expr.Member))
             {
                 if (klass.StaticMethodAccess.ContainsKey(expr.Member))

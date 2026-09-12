@@ -16,6 +16,7 @@ public class ClassDefinition
     public Dictionary<string, FunctionValue> StaticMethods { get; }
     public Dictionary<string, AccessModifier> MethodAccess { get; }
     public Dictionary<string, AccessModifier> StaticMethodAccess { get; }
+    public Dictionary<string, AccessModifier> StaticFieldAccess { get; }
     
     public ClassDefinition(string name, ClassDefinition? superclass)
     {
@@ -27,6 +28,7 @@ public class ClassDefinition
         StaticMethods = new Dictionary<string, FunctionValue>();
         MethodAccess = new Dictionary<string, AccessModifier>();
         StaticMethodAccess = new Dictionary<string, AccessModifier>();
+        StaticFieldAccess = new Dictionary<string, AccessModifier>();
     }
     
     public FunctionValue? FindMethod(string name)
