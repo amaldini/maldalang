@@ -5,6 +5,7 @@ using MaldaLang.IDE.Models;
 using MaldaLang.Parser;
 using MaldaLang.Parser.AST.Declarations;
 using MaldaLang.Parser.AST.Statements;
+using System.IO;
 
 namespace MaldaLang.IDE.Services;
 
@@ -14,7 +15,8 @@ public class SymbolNavigationService : ISymbolNavigationService
     {
         if (!TryParseStatements(source, sourceFileName, cancellationToken, out var statements))
         {
-            return new List<DocumentSymbolInfo>();
+            // Import statements are pre-parse information, so the outline still lists them.
+            return GetModuleSymbols(source, sourceFileName, cancellationToken);
         }
 
         var symbols = new List<DocumentSymbolInfo>();
@@ -43,6 +45,34 @@ public class SymbolNavigationService : ISymbolNavigationService
                     symbols.Add(MakeSchemaSymbol(schemaDecl));
                     break;
             }
+        }
+
+        symbols.AddRange(GetModuleSymbols(source, sourceFileName, cancellationToken));
+        return symbols;
+    }
+
+    /// <summary>
+    /// <c>include</c> / file <c>import</c> entries as outline children, so multi-file
+    /// programs (e.g. <c>Examples/RalphWiggum/</c>) show their module list.
+    /// </summary>
+    private static List<DocumentSymbolInfo> GetModuleSymbols(
+        string source,
+        string? sourceFileName,
+        CancellationToken cancellationToken)
+    {
+        var symbols = new List<DocumentSymbolInfo>();
+        foreach (var module in ImportedModuleResolver.CollectModules(source, sourceFileName, cancellationToken))
+        {
+            var resolvedPath = ImportedModuleResolver.ResolvePath(module, sourceFileName);
+            symbols.Add(new DocumentSymbolInfo
+            {
+                Name = Path.GetFileName(module.ModulePath),
+                Kind = SymbolItemKind.Module,
+                Detail = resolvedPath != null && File.Exists(resolvedPath)
+                    ? $"{(module.IsInclude ? "include" : "import")} {resolvedPath}"
+                    : $"{(module.IsInclude ? "include" : "import")} {module.ModulePath} (not found)",
+                Span = CreateSpan(module.Line, module.Column, module.Length)
+            });
         }
 
         return symbols;
@@ -139,6 +169,23 @@ public class SymbolNavigationService : ISymbolNavigationService
 
     public SymbolLocation? GetDefinition(string source, int line, int column, string? sourceFileName = null, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        // include "lib.malda" / import "lib.malda" jump to the target file. Checked before
+        // parsing so a file that half-parses still navigates from its import statements.
+        var module = FindImportedModuleAt(source, line, column, sourceFileName, cancellationToken);
+        if (module != null)
+        {
+            var resolvedPath = ImportedModuleResolver.ResolvePath(module, sourceFileName);
+            if (resolvedPath != null && File.Exists(resolvedPath))
+            {
+                return CreateLocation(resolvedPath, module.ModulePath, 0, 0, 0);
+            }
+
+            // A missing target has nothing to open; ImportDiagnostics reports it instead.
+            return null;
+        }
+
         if (!TryGetTokens(source, sourceFileName, cancellationToken, out var tokens) ||
             !TryParseStatements(source, sourceFileName, cancellationToken, out var statements))
         {
@@ -158,6 +205,21 @@ public class SymbolNavigationService : ISymbolNavigationService
         }
 
         return CreateLocation(sourceFileName, declaration.Value.Name, declaration.Value.Line - 1, declaration.Value.Column - 1, declaration.Value.Name.Length);
+    }
+
+    /// <summary>
+    /// The <c>include</c> / file <c>import</c> path literal under the caret, if any.
+    /// A missing target still returns a location so "go to definition" can create it.
+    /// </summary>
+    private static ImportedModuleResolver.ImportedModuleReference? FindImportedModuleAt(
+        string source,
+        int line,
+        int column,
+        string? sourceFileName,
+        CancellationToken cancellationToken)
+    {
+        var modules = ImportedModuleResolver.CollectModules(source, sourceFileName, cancellationToken);
+        return ImportedModuleResolver.TryGetModuleAt(modules, line, column, out var module) ? module : null;
     }
 
     public List<SymbolLocation> GetReferences(string source, int line, int column, string? sourceFileName = null, CancellationToken cancellationToken = default)

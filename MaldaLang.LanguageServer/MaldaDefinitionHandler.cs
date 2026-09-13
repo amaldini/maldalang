@@ -51,12 +51,18 @@ public class MaldaDefinitionHandler : IDefinitionHandler
             return Task.FromResult(new LocationOrLocationLinks());
         }
 
+        // A real filesystem path is needed so include / module paths resolve from the
+        // document's own directory. uri.Path keeps the leading slash of "/C:/…".
+        var sourceKey = WorkspaceDocumentManager.TryGetFileSystemPath(uri, out var fileSystemPath)
+            ? fileSystemPath
+            : uri.Path;
+
         try
         {
             var workspaceDocuments = _workspaceDocuments.GetWorkspaceDocumentsFor(uri, cancellationToken);
             var definition = workspaceDocuments.Count > 1
-                ? _symbolNavigationService.GetWorkspaceDefinition(workspaceDocuments, text, request.Position.Line, request.Position.Character, uri.Path, cancellationToken)
-                : _symbolNavigationService.GetDefinition(text, request.Position.Line, request.Position.Character, uri.Path, cancellationToken);
+                ? _symbolNavigationService.GetWorkspaceDefinition(workspaceDocuments, text, request.Position.Line, request.Position.Character, sourceKey, cancellationToken)
+                : _symbolNavigationService.GetDefinition(text, request.Position.Line, request.Position.Character, sourceKey, cancellationToken);
             if (definition == null)
             {
                 return Task.FromResult(new LocationOrLocationLinks());

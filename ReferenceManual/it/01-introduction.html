@@ -312,6 +312,7 @@ import UI = App.Web.Components;</code></pre>
             <li>Sono supportati anche i path assoluti.</li>
             <li>Le catene di include circolari vengono rifiutate con un errore di parse.</li>
         </ul>
+        <p>Il tooling segue la stessa risoluzione. Il <em>Vai alla definizione</em> (F12) del Desktop IDE, il <code>textDocument/definition</code> del language server e la Struttura (<code>textDocument/documentSymbol</code>) trattano il path tra virgolette di un <code>include</code> o di un <code>import</code> di file come un riferimento a quel file: il salto apre il target, e la Struttura elenca i moduli che un file richiama. Un target inesistente viene segnalato come warning <code>malda-import</code> da <code>malda check</code> e dall'IDE, accanto all'errore di parse che un <code>include</code> non risolto già solleva.</p>
         <p>Nel Desktop IDE i tab virtuali non sostituiscono <code>include</code>: sono una vista dell'editor su un unico file fisico. Vengono creati solo quando il sorgente contiene i separatori espliciti <code>// @malda-section Name</code>. La risoluzione degli include resta basata sui file e funziona come prima.</p>
 
         <pre><code>// Local file composition: everything from these files becomes part of this program

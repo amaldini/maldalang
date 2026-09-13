@@ -63,19 +63,38 @@ public class WorkspaceDocumentManager
 
     private static string? TryGetFileSystemPath(DocumentUri uri)
     {
-        var path = uri.Path;
-        if (string.IsNullOrWhiteSpace(path))
+        return TryGetFileSystemPath(uri, out var path) ? path : null;
+    }
+
+    /// <summary>
+    /// Filesystem path for a <c>file:</c> document URI, or false when the URI is not a
+    /// local file. Unlike <see cref="DocumentUri.Path"/> the leading slash of
+    /// <c>/C:/…</c> is stripped, so relative module / include resolution gets a real path.
+    /// </summary>
+    public static bool TryGetFileSystemPath(DocumentUri uri, out string path)
+    {
+        path = string.Empty;
+        var raw = uri.Path;
+        if (string.IsNullOrWhiteSpace(raw))
         {
-            return null;
+            return false;
         }
 
-        path = Uri.UnescapeDataString(path);
-        if (path.Length > 2 && path[0] == '/' && path[2] == ':')
+        raw = Uri.UnescapeDataString(raw);
+        if (raw.Length > 2 && raw[0] == '/' && raw[2] == ':')
         {
-            path = path[1..];
+            raw = raw[1..];
         }
 
-        path = path.Replace('/', Path.DirectorySeparatorChar);
-        return Path.GetFullPath(path);
+        raw = raw.Replace('/', Path.DirectorySeparatorChar);
+        try
+        {
+            path = Path.GetFullPath(raw);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 }

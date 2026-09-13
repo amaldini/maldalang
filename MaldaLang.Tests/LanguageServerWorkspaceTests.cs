@@ -46,6 +46,66 @@ function sharedHelper() {
     }
 
     [Fact]
+    public async Task MaldaDefinitionHandler_MultiFileIncludeTree_ReturnsIncludedDocument()
+    {
+        using var workspace = new TemporaryWorkspace(
+            ("ralph/00-env.malda", "var answer = 42;\n"),
+            ("RalphWiggum.malda", """
+include "ralph/00-env.malda";
+io.print(answer);
+"""));
+
+        var store = new DocumentStore();
+        var workspaceDocuments = new WorkspaceDocumentManager();
+        var symbolNavigationService = new SymbolNavigationService();
+        var mainPath = workspace.GetPath("RalphWiggum.malda");
+        var mainUri = CreateUri(mainPath);
+        var mainText = File.ReadAllText(mainPath);
+
+        store.Set(mainUri, mainText);
+        workspaceDocuments.SetOpenDocument(mainUri, mainText);
+
+        var handler = new MaldaDefinitionHandler(store, workspaceDocuments, symbolNavigationService);
+        var result = await handler.Handle(new DefinitionParams
+        {
+            TextDocument = new TextDocumentIdentifier(mainUri),
+            Position = new Position(0, mainText.IndexOf("ralph/00-env", StringComparison.Ordinal) + 1)
+        }, CancellationToken.None);
+
+        var location = result.FirstOrDefault();
+        Assert.NotNull(location);
+        Assert.EndsWith("/ralph/00-env.malda", GetUriPath(location!.IsLocation ? location.Location!.Uri : location.LocationLink!.TargetUri));
+    }
+
+    [Fact]
+    public async Task MaldaDocumentSymbolHandler_IncludeTree_ListsModules()
+    {
+        using var workspace = new TemporaryWorkspace(
+            ("ralph/00-env.malda", "var answer = 42;\n"),
+            ("RalphWiggum.malda", """
+include "ralph/00-env.malda";
+function helper() {
+    return 1;
+}
+"""));
+
+        var store = new DocumentStore();
+        var uri = CreateUri(workspace.GetPath("RalphWiggum.malda"));
+        store.Set(uri, File.ReadAllText(workspace.GetPath("RalphWiggum.malda")));
+
+        var handler = new MaldaDocumentSymbolHandler(store, new SymbolNavigationService());
+        var symbols = await handler.Handle(
+            new DocumentSymbolParams { TextDocument = new TextDocumentIdentifier(uri) },
+            CancellationToken.None);
+
+        Assert.NotNull(symbols);
+        var moduleSymbol = Assert.Single(
+            symbols!,
+            symbol => symbol.IsDocumentSymbol && symbol.DocumentSymbol!.Name == "00-env.malda");
+        Assert.Equal(SymbolKind.Module, moduleSymbol.DocumentSymbol!.Kind);
+    }
+
+    [Fact]
     public async Task MaldaReferencesHandler_CrossFileFunction_ReturnsWorkspaceReferences()
     {
         using var workspace = new TemporaryWorkspace(

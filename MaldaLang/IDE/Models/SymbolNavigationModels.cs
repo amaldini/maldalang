@@ -16,7 +16,8 @@ public enum SymbolItemKind
     Step,
     Event,
     Object,
-    Schema
+    Schema,
+    Module
 }
 
 public sealed class TextSpanInfo

@@ -107,6 +107,11 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — include / import navigation and unresolved-module diagnostics)
+
+- **Module references in tooling:** the quoted path of an `include "…";` or file-form `import "…";` is a navigable file reference. Desktop IDE *Go to Definition* (F12), LSP `textDocument/definition`, and the Outline (`textDocument/documentSymbol`, new `SymbolItemKind.Module`) resolve it against the host file's directory via `ModulePathResolver` — the same rule the parser and module loader use. A file that half-parses still navigates from its import statements (module scanning is pre-parse). No syntax change; `malda check` output set is unchanged apart from the new warning below.
+- **`malda-import` diagnostic:** an `include` / file `import` whose target file is absent is now a **Warning** (`line`/`column` on the path literal, `suggestedFix` naming the resolved path) instead of the silent `catch` in `ModuleSymbolResolver`. `malda check --json` exposes it as `code: "malda-import"`. Generated files, resolvable modules, package imports, and unsaved buffers (a non-existent host key such as `main.malda`) stay quiet. The program still fails at run time; this only makes the IDE / check loop loud.
+
 #### Added (MINOR — math.zeros)
 
 - **`math.zeros(n)` / `math.zeros(rows, cols)`:** 1D vector or 2D nested array filled with `0.0`. Two-argument form allocates a fresh row per row. Dimensions are integers `>= 0` (empty sizes allowed). Interpreter, C# transpile, and JS runtime. Examples: `attention_is_all_you_need.malda`, `svm_linear.malda`.

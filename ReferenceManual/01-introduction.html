@@ -312,6 +312,7 @@ import UI = App.Web.Components;</code></pre>
             <li>Absolute paths are also supported.</li>
             <li>Circular include chains are rejected with a parse error.</li>
         </ul>
+        <p>Tooling follows the same resolution. Desktop IDE <em>Go to Definition</em> (F12), the language server's <code>textDocument/definition</code>, and the Outline (<code>textDocument/documentSymbol</code>) treat the quoted path of an <code>include</code> or file <code>import</code> as a reference to that file: the jump opens the target, and the Outline lists the modules a file pulls in. A target that does not exist is reported as a <code>malda-import</code> warning by <code>malda check</code> and the IDE, alongside the parser error an unresolved <code>include</code> already raises.</p>
         <p>In Desktop IDE, virtual tabs do not replace <code>include</code>: they are an editor view over one physical file. They are created only when the source contains explicit <code>// @malda-section Name</code> separators. Include resolution remains file-based and works the same as before.</p>
 
         <pre><code>// Local file composition: everything from these files becomes part of this program

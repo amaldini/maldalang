@@ -12,7 +12,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | File | EN SHA-256 |
 |------|------------|
 | index.html | ed2ec27d378e813e76c14c27c514ecaceeda948fa8b60e3cc8e04b2fdb2cca75 |
-| 01-introduction.html | 5326bd54e6f203ce5d0eb0bf30d975c8220fbc9509ab391772c03d260304a543 |
+| 01-introduction.html | 1ba75a8b84b42bb0098fe11f04667f7ef8622d1895e478bf53a13f3285b69ebf |
 | 02-tools.html | 60ec03a721c53dda5a2b06114b47c63955556a438100212d976a76ab876c7c8b |
 | 03-lexical-structure.html | 5fe84cf84ef8f0f28549c7120af2975e25e5d1f8868003744882f5a515b48113 |
 | 04-data-types.html | 5b8d3855fd1b6cca84cd70e6d93d94ae0c78250fd13ebeafe94de5a52049758b |
@@ -24,7 +24,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 10-prompts.html | eb2c0dc586f5cc15c3c65af78befbfffde01347c5465dba4a2485294b0c6f9a7 |
 | 11-classes-objects.html | 7ee3c392d3fc9cdfabb0f55f18e6e4c1e0c347520323cfd283449504654139c2 |
 | 12-input-output.html | ed3fb9d438fc0f847bf231af035d241449a455fa47cc3d9e35cd6130b58d910f |
-| 13-built-in-functions.html | dd6ab54a7727659d3284ad9644e15789b38eb2e2dd8189174e4f923a7a3f0667 |
+| 13-built-in-functions.html | e28177f8ec88aa5bd1df859a7db30329bd9eaec0afc4b280e2d7408cb35d1ff4 |
 | 14-graphs.html | aa57872f357cc1df0463f0020e1a6ea66ee0d542f80ea4621d30c500af56ca06 |
 | 15-vectordb.html | c95110675a56912eca0f8763af981ab2ba6e6eb71a7be1d0d82734ad3a5a8760 |
 | 16-database.html | 02e590b662a39562f93905cf63d11e51e6f9731690d3278ca191ec0c9276b00c |

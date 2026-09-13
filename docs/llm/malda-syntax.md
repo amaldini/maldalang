@@ -325,6 +325,8 @@ import { add, VERSION } from "helpers/math_lib.malda";
 
 See `Examples/Modules/selective_import.malda`, `Examples/Basics/modules_import.malda`, and `Examples/Basics/modules_include.malda`.
 
+Tooling treats the quoted path as a file reference: **F12 / `textDocument/definition` on `include "lib.malda";` or `import "lib.malda";` jumps to that file**, and the Outline lists the modules a file pulls in. A missing target is a `malda-import` **warning** in `malda check --json` / the IDE (the program still fails at run time), so check that field rather than assuming an unresolved `import` was quiet.
+
 ## Null-safe boundaries
 
 - `obj?.field` / `arr?[i]` — null-conditional member / index (yields `null` when the
