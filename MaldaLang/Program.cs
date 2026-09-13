@@ -4,6 +4,7 @@
 using MaldaLang;
 using MaldaLang.Parser;
 using MaldaLang.Parser.AST.Declarations;
+using MaldaLang.Parser.AST.Expressions;
 using MaldaLang.Interpreter;
 using MaldaLang.PackageManager;
 using System;
@@ -4280,20 +4281,34 @@ class Program
         Console.WriteLine("You can enter multiline code - the interpreter will continue reading until you type 'run', 'compile', or 'transpile'");
         Console.WriteLine("Type 'exit' to quit, 'run' to execute, 'compile' or 'transpile' to build executable, 'help' for help");
         Console.WriteLine("(c) 2026 - Andrea Maldini");
+        // One interpreter for the whole session: variables, functions, and classes
+        // defined in one entry stay visible in later ones.
+        var interpreter = new Interpreter.Interpreter();
         while (true)
         {
             var result = ReadMultilineInput();
             if (result == null || result.Action == "exit")
                 break;
-            ExecutePromptInput(result);
+            ExecutePromptInput(result, interpreter);
         }
     }
+
+    private static readonly TokenType[] PromptAssignmentTokenTypes =
+    {
+        TokenType.Assign,
+        TokenType.PlusAssign,
+        TokenType.MinusAssign,
+        TokenType.MultiplyAssign,
+        TokenType.DivideAssign
+    };
 
     /// <summary>
     /// Handles one parsed REPL entry. <c>help</c> carries no code, so it must be
     /// dispatched before the empty-code guard below or it is silently dropped.
+    /// <paramref name="interpreter"/> is the session interpreter, reused so state
+    /// defined by earlier entries is still in scope.
     /// </summary>
-    static void ExecutePromptInput(InputResult result)
+    static void ExecutePromptInput(InputResult result, Interpreter.Interpreter interpreter)
     {
         try
         {
@@ -4307,7 +4322,10 @@ class Program
             }
             else if (result.Action == "run")
             {
-                Run(result.Code);
+                // A bare expression echoes its value (`1 + 2` -> `3`); anything else
+                // (statements, declarations, multi-line buffers) runs through Run.
+                if (!TryEchoPromptExpression(result.Code, interpreter))
+                    Run(result.Code, interpreter);
             }
             else if (result.Action == "compile")
             {
@@ -4322,6 +4340,54 @@ class Program
         {
             Console.WriteLine($"Error: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// REPL echo: when <paramref name="code"/> is a single bare expression (no
+    /// trailing <c>;</c> and no assignment), evaluate it in the session globals and
+    /// print the value. Returns false when the entry is a statement/declaration, so
+    /// the caller falls back to <see cref="Run"/>. A null result prints nothing, so
+    /// <c>print(x)</c> is not echoed twice.
+    /// </summary>
+    static bool TryEchoPromptExpression(string code, Interpreter.Interpreter interpreter)
+    {
+        var trimmed = code.Trim();
+        if (trimmed.Length == 0 || trimmed.EndsWith(";", StringComparison.Ordinal))
+            return false;
+
+        List<Token> tokens;
+        try
+        {
+            tokens = new Lexer(code).Tokenize();
+        }
+        catch
+        {
+            return false;
+        }
+
+        // Assignments are statements: evaluating `x = 5` as an expression would
+        // return 5 without performing the assignment.
+        if (tokens.Any(t => PromptAssignmentTokenTypes.Contains(t.Type)))
+            return false;
+
+        Expression expression;
+        try
+        {
+            expression = MaldaLang.Parser.Parser.ParseExpression(tokens);
+        }
+        catch
+        {
+            return false;
+        }
+
+        var value = interpreter
+            .EvaluateInEnvironmentAsync(expression, interpreter.GlobalsEnvironment)
+            .GetAwaiter().GetResult();
+
+        if (value.Type != MaldaLang.Interpreter.ValueType.Null)
+            Console.WriteLine(value.ToString());
+
+        return true;
     }
     
     static InputResult? ReadMultilineInput()

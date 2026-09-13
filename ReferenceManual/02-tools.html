@@ -43,10 +43,12 @@ Type 'exit' to quit, 'run' to execute, 'compile' or 'transpile' to build executa
         <p>In interactive mode, you can:</p>
 
         <ul>
-            <li><strong>Enter code</strong>: Type MALDA code line by line. The interpreter will continue reading until you enter a command.</li>
-            <li><strong><code>run</code></strong>: Execute the entered code</li>
-            <li><strong><code>compile</code></strong>: Compile the entered code to an executable (interpreter mode)</li>
-            <li><strong><code>transpile</code></strong>: Compile the entered code to an executable (transpiled to C#)</li>
+            <li><strong>Enter code</strong>: Type MALDA code line by line. A complete statement runs as soon as you press Enter; a block that is still open continues on the <code>..&gt;</code> continuation prompt.</li>
+            <li><strong>Session state</strong>: Variables, functions, and classes defined in one entry stay visible in later entries. <code>schema</code>, sum-type, and <code>api</code> declarations are not carried across entries — declare them in the same entry that uses them.</li>
+            <li><strong>Bare expressions</strong>: An expression with no trailing <code>;</code> and no assignment echoes its value, so <code>1 + 2</code> prints <code>3</code>.</li>
+            <li><strong><code>run</code></strong>: Execute the buffered code</li>
+            <li><strong><code>compile</code></strong>: Compile the buffered code to an executable (interpreter mode)</li>
+            <li><strong><code>transpile</code></strong>: Compile the buffered code to an executable (transpiled to C#)</li>
             <li><strong><code>help</code></strong>: Show help message with available commands and language features</li>
             <li><strong><code>exit</code></strong>: Exit the interpreter</li>
         </ul>
@@ -56,9 +58,21 @@ Type 'exit' to quit, 'run' to execute, 'compile' or 'transpile' to build executa
         <pre><code>> var x = 10;
 > var y = 20;
 > function add(a, b) { return a + b; }
-> print(add(x, y));
-> run
+> add(x, y)
 30
+> print(x + y);
+30
+> </code></pre>
+
+        <h4>Example: Multiline Entry</h4>
+
+        <pre><code>> var total = 0;
+> while (total &lt; 3) {
+..>     total = total + 1;
+..> }
+..> print(total);
+..> run
+3
 > </code></pre>
 
         <h3>2.1.2 Command-Line Usage</h3>
