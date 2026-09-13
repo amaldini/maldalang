@@ -18,6 +18,7 @@ var server = await LanguageServer.From(
                 services.AddSingleton<DocumentStore>();
                 services.AddSingleton<WorkspaceDocumentManager>();
                 services.AddSingleton<MaldaLspTypeSettings>();
+                services.AddSingleton<MaldaLspClientCapabilities>();
                 services.AddSingleton<ILanguageService, LanguageService>();
                 services.AddSingleton<ISymbolNavigationService, SymbolNavigationService>();
                 services.AddSingleton<WorkspaceSymbolIndex>();
@@ -41,6 +42,9 @@ var server = await LanguageServer.From(
             {
                 var typeSettings = server.Services.GetService(typeof(MaldaLspTypeSettings)) as MaldaLspTypeSettings;
                 typeSettings?.ApplyFromInitializationOptions(request.InitializationOptions);
+
+                var clientCapabilities = server.Services.GetService(typeof(MaldaLspClientCapabilities)) as MaldaLspClientCapabilities;
+                clientCapabilities?.Apply(request.Capabilities);
                 return Task.CompletedTask;
             })
             .ConfigureLogging(logging => logging.SetMinimumLevel(LogLevel.Warning));

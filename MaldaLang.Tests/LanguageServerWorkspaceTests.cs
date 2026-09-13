@@ -4,6 +4,7 @@
 using System.Collections.Concurrent;
 using MaldaLang.IDE;
 using MaldaLang.IDE.Services;
+using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using MaldaLang.LanguageServer;
 using OmniSharp.Extensions.LanguageServer.Protocol;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
@@ -270,7 +271,11 @@ function sharedHelper() {
         var mainText = File.ReadAllText(mainPath);
         store.Set(mainUri, mainText);
 
-        var handler = new MaldaCodeActionHandler(store, workspaceDocuments, new LanguageService());
+        var handler = new MaldaCodeActionHandler(
+            store,
+            workspaceDocuments,
+            new LanguageService(),
+            CreateClientCapabilities(ResourceOperationKind.Create));
         var result = await handler.Handle(new CodeActionParams
         {
             TextDocument = new TextDocumentIdentifier(mainUri),
@@ -315,7 +320,11 @@ function sharedHelper() {
         var mainUri = CreateUri(mainPath);
         store.Set(mainUri, File.ReadAllText(mainPath));
 
-        var handler = new MaldaCodeActionHandler(store, new WorkspaceDocumentManager(), new LanguageService());
+        var handler = new MaldaCodeActionHandler(
+            store,
+            new WorkspaceDocumentManager(),
+            new LanguageService(),
+            CreateClientCapabilities(ResourceOperationKind.Create));
         var range = new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(new Position(0, 7), new Position(0, 20));
         var result = await handler.Handle(new CodeActionParams
         {
@@ -357,6 +366,85 @@ function sharedHelper() {
         var moduleSymbol = Assert.Single(symbols!, symbol => symbol.IsDocumentSymbol && symbol.DocumentSymbol!.Name == "00-env.malda");
         Assert.Contains("00-env.malda", moduleSymbol.DocumentSymbol!.Detail!, StringComparison.Ordinal);
         Assert.DoesNotContain("not found", moduleSymbol.DocumentSymbol!.Detail!, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task MaldaCodeActionHandler_MissingImport_NoActionWhenClientCannotCreateFiles()
+    {
+        using var workspace = new TemporaryWorkspace(
+            ("main.malda", "import \"helpers/missing.malda\";\n"));
+
+        var store = new DocumentStore();
+        var mainPath = workspace.GetPath("main.malda");
+        var mainUri = CreateUri(mainPath);
+        var mainText = File.ReadAllText(mainPath);
+        store.Set(mainUri, mainText);
+
+        // A client that declares no resource operations only applies plain text edits.
+        var handler = new MaldaCodeActionHandler(
+            store,
+            new WorkspaceDocumentManager(),
+            new LanguageService(),
+            new MaldaLspClientCapabilities());
+        var range = new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(new Position(0, 7), new Position(0, 30));
+        var result = await handler.Handle(new CodeActionParams
+        {
+            TextDocument = new TextDocumentIdentifier(mainUri),
+            Range = range,
+            Context = new CodeActionContext
+            {
+                Diagnostics = new Container<OmniSharp.Extensions.LanguageServer.Protocol.Models.Diagnostic>(
+                    new OmniSharp.Extensions.LanguageServer.Protocol.Models.Diagnostic
+                    {
+                        Source = ImportDiagnostics.Source,
+                        Message = "Imported module not found",
+                        Range = range
+                    })
+            }
+        }, CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.Empty(result!);
+    }
+
+    [Fact]
+    public void MaldaTextDocumentSyncHandler_UnsavedBuffer_LeavesIncludeUnreported()
+    {
+        // No local file behind the URI: unresolved modules must stay quiet instead of
+        // resolving a relative path against the URI shape.
+        var uri = new DocumentUri("untitled", "", "main.malda", null, null, null);
+
+        Assert.Null(WorkspaceDocumentManager.GetLocalFilePath(uri));
+        Assert.False(string.IsNullOrWhiteSpace(WorkspaceDocumentManager.GetSourceKey(uri)));
+    }
+
+    [Fact]
+    public void WorkspaceDocumentManager_FileUri_ResolvesLocalPath()
+    {
+        using var workspace = new TemporaryWorkspace(("main.malda", "var x = 1;\n"));
+        var path = workspace.GetPath("main.malda");
+
+        var localPath = WorkspaceDocumentManager.GetLocalFilePath(CreateUri(path));
+
+        Assert.NotNull(localPath);
+        Assert.Equal(Path.GetFullPath(path), localPath);
+        Assert.Equal(localPath, WorkspaceDocumentManager.GetSourceKey(CreateUri(path)));
+    }
+
+    private static MaldaLspClientCapabilities CreateClientCapabilities(params ResourceOperationKind[] operations)
+    {
+        var capabilities = new MaldaLspClientCapabilities();
+        capabilities.Apply(new ClientCapabilities
+        {
+            Workspace = new WorkspaceClientCapabilities
+            {
+                WorkspaceEdit = new Supports<WorkspaceEditCapability>(true, new WorkspaceEditCapability
+                {
+                    ResourceOperations = operations
+                })
+            }
+        });
+        return capabilities;
     }
 
     private static DocumentUri CreateUri(string path)

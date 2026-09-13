@@ -78,6 +78,17 @@ public class WorkspaceDocumentManager
     }
 
     /// <summary>
+    /// The document's real local path, or null for a URI that is not a local file
+    /// (unsaved buffers). Same authority as <see cref="GetSourceKey"/>, but keeps the
+    /// distinction so callers that must not touch the disk can stay quiet on untitled
+    /// documents. Replaces ad-hoc <c>Uri.LocalPath</c> / <c>DocumentUri.Path</c> handling.
+    /// </summary>
+    public static string? GetLocalFilePath(DocumentUri uri)
+    {
+        return TryGetFileSystemPath(uri, out var path) ? path : null;
+    }
+
+    /// <summary>
     /// Filesystem path for a <c>file:</c> document URI, or false when the URI is not a
     /// local file. Unlike <see cref="DocumentUri.Path"/> the leading slash of
     /// <c>/C:/…</c> is stripped, so relative module / include resolution gets a real path.
@@ -85,6 +96,14 @@ public class WorkspaceDocumentManager
     public static bool TryGetFileSystemPath(DocumentUri uri, out string path)
     {
         path = string.Empty;
+
+        // Only a file: URI has a real path. An untitled: buffer (or any other scheme) must
+        // never be treated as a local file, or relative module paths resolve against nothing.
+        if (!string.Equals(uri.Scheme, "file", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
         var raw = uri.Path;
         if (string.IsNullOrWhiteSpace(raw))
         {

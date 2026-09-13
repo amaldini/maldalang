@@ -22,17 +22,28 @@ public class MaldaCodeActionHandler : ICodeActionHandler
     private readonly DocumentStore _store;
     private readonly WorkspaceDocumentManager _workspaceDocuments;
     private readonly ILanguageService _languageService;
+    private readonly MaldaLspClientCapabilities _clientCapabilities;
 
     public MaldaCodeActionHandler(DocumentStore store, ILanguageService languageService)
-        : this(store, new WorkspaceDocumentManager(), languageService)
+        : this(store, new WorkspaceDocumentManager(), languageService, new MaldaLspClientCapabilities())
     {
     }
 
-    public MaldaCodeActionHandler(DocumentStore store, WorkspaceDocumentManager workspaceDocuments, ILanguageService languageService)
+    public MaldaCodeActionHandler(DocumentStore store, ILanguageService languageService, MaldaLspClientCapabilities clientCapabilities)
+        : this(store, new WorkspaceDocumentManager(), languageService, clientCapabilities)
+    {
+    }
+
+    public MaldaCodeActionHandler(
+        DocumentStore store,
+        WorkspaceDocumentManager workspaceDocuments,
+        ILanguageService languageService,
+        MaldaLspClientCapabilities clientCapabilities)
     {
         _store = store;
         _workspaceDocuments = workspaceDocuments;
         _languageService = languageService;
+        _clientCapabilities = clientCapabilities;
     }
 
     public CodeActionRegistrationOptions GetRegistrationOptions(CodeActionCapability capability, ClientCapabilities clientCapabilities)
@@ -131,6 +142,12 @@ public class MaldaCodeActionHandler : ICodeActionHandler
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
+
+            // A CreateFile resource operation is only offered to clients that declared it.
+            if (!_clientCapabilities.SupportsResourceOperation(ResourceOperationKind.Create))
+            {
+                return null;
+            }
 
             var modules = ImportedModuleResolver.CollectModules(text, sourceKey, cancellationToken);
             if (!ImportedModuleResolver.TryGetModuleAt(modules, diagnostic.Range.Start.Line, diagnostic.Range.Start.Character, out var module))

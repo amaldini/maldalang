@@ -204,8 +204,9 @@ public class MaldaTextDocumentSyncHandler : TextDocumentSyncHandlerBase
         if (cancellationToken.IsCancellationRequested)
             return;
 
-        // Full local path so ModuleSymbolResolver can resolve relative imports for type analysis.
-        var sourcePath = ResolveSourcePath(uri);
+        // Real local path so ModuleSymbolResolver resolves relative includes / imports for
+        // type analysis; null for an unsaved buffer, which must not touch the disk.
+        var sourcePath = WorkspaceDocumentManager.GetLocalFilePath(uri);
         List<MaldaLang.IDE.Models.Diagnostic> maldaDiagnostics;
         try
         {
@@ -282,21 +283,5 @@ public class MaldaTextDocumentSyncHandler : TextDocumentSyncHandlerBase
             Message = d.Message,
             Source = d.Source ?? "parser"
         };
-    }
-
-    private static string? ResolveSourcePath(DocumentUri uri)
-    {
-        try
-        {
-            var uriString = uri.ToString();
-            if (Uri.TryCreate(uriString, UriKind.Absolute, out var created) && created.IsFile)
-                return created.LocalPath;
-        }
-        catch
-        {
-            // fall through
-        }
-
-        return uri.Path;
     }
 }
