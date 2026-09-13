@@ -47,7 +47,8 @@ public class MaldaDocumentSymbolHandler : IDocumentSymbolHandler
 
         try
         {
-            var symbols = _symbolNavigationService.GetDocumentSymbols(text, uri.Path, cancellationToken);
+            var sourceKey = WorkspaceDocumentManager.GetSourceKey(uri);
+            var symbols = _symbolNavigationService.GetDocumentSymbols(text, sourceKey, cancellationToken);
             var lspSymbols = symbols.Select(symbol =>
                 (SymbolInformationOrDocumentSymbol)SymbolNavigationLspMapper.ToDocumentSymbol(symbol));
             return Task.FromResult<SymbolInformationOrDocumentSymbolContainer?>(

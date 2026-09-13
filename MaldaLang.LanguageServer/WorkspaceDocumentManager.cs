@@ -67,6 +67,17 @@ public class WorkspaceDocumentManager
     }
 
     /// <summary>
+    /// Source key for the <c>sourceFileName</c> parameter of the IDE navigation services.
+    /// A <c>file:</c> URI yields its real filesystem path so relative <c>include</c> /
+    /// <c>import</c> resolution bases on the document's own directory; anything else falls
+    /// back to <see cref="DocumentUri.Path"/>. Centralized so the handlers cannot drift.
+    /// </summary>
+    public static string GetSourceKey(DocumentUri uri)
+    {
+        return TryGetFileSystemPath(uri, out var path) ? path : uri.Path;
+    }
+
+    /// <summary>
     /// Filesystem path for a <c>file:</c> document URI, or false when the URI is not a
     /// local file. Unlike <see cref="DocumentUri.Path"/> the leading slash of
     /// <c>/C:/…</c> is stripped, so relative module / include resolution gets a real path.

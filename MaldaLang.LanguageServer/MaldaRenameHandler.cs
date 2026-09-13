@@ -62,8 +62,9 @@ public class MaldaRenameHandler : IRenameHandler
         try
         {
             var workspaceDocuments = _workspaceDocuments.GetWorkspaceDocumentsFor(uri, cancellationToken);
+            var sourceKey = WorkspaceDocumentManager.GetSourceKey(uri);
             var workspaceRenameEdits = workspaceDocuments.Count > 1
-                ? _symbolNavigationService.RenameWorkspaceSymbol(workspaceDocuments, text, request.Position.Line, request.Position.Character, newName, uri.Path, cancellationToken)
+                ? _symbolNavigationService.RenameWorkspaceSymbol(workspaceDocuments, text, request.Position.Line, request.Position.Character, newName, sourceKey, cancellationToken)
                 : null;
             if (workspaceRenameEdits != null && workspaceRenameEdits.Count > 0)
             {
@@ -80,7 +81,7 @@ public class MaldaRenameHandler : IRenameHandler
                 return Task.FromResult<WorkspaceEdit?>(new WorkspaceEdit { Changes = workspaceChanges });
             }
 
-            var renameEdits = _symbolNavigationService.Rename(text, request.Position.Line, request.Position.Character, newName, uri.Path, cancellationToken);
+            var renameEdits = _symbolNavigationService.Rename(text, request.Position.Line, request.Position.Character, newName, sourceKey, cancellationToken);
             if (renameEdits == null)
             {
                 return Task.FromResult<WorkspaceEdit?>(null);

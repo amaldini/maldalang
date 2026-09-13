@@ -53,9 +53,7 @@ public class MaldaDefinitionHandler : IDefinitionHandler
 
         // A real filesystem path is needed so include / module paths resolve from the
         // document's own directory. uri.Path keeps the leading slash of "/C:/…".
-        var sourceKey = WorkspaceDocumentManager.TryGetFileSystemPath(uri, out var fileSystemPath)
-            ? fileSystemPath
-            : uri.Path;
+        var sourceKey = WorkspaceDocumentManager.GetSourceKey(uri);
 
         try
         {

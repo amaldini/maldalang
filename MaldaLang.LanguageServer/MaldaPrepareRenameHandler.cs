@@ -53,7 +53,8 @@ public class MaldaPrepareRenameHandler : IPrepareRenameHandler
 
         try
         {
-            var target = _symbolNavigationService.PrepareRename(text, request.Position.Line, request.Position.Character, uri.Path, cancellationToken);
+            var sourceKey = WorkspaceDocumentManager.GetSourceKey(uri);
+            var target = _symbolNavigationService.PrepareRename(text, request.Position.Line, request.Position.Character, sourceKey, cancellationToken);
             if (target == null)
             {
                 return Task.FromResult<RangeOrPlaceholderRange?>(null);

@@ -4,6 +4,8 @@
 namespace MaldaLang.LanguageServer;
 
 using System.Collections.Generic;
+using System.IO;
+using MaldaLang.IDE;
 using MaldaLang.IDE.Models;
 using MaldaLang.IDE.Services;
 using OmniSharp.Extensions.LanguageServer.Protocol;
@@ -12,16 +14,24 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 
 /// <summary>
-/// Handles textDocument/codeAction: expose GetAutoFix quick fixes as LSP Code Actions.
+/// Handles textDocument/codeAction: expose GetAutoFix quick fixes as LSP Code Actions,
+/// plus "create module file" for unresolved <c>include</c> / file <c>import</c> paths.
 /// </summary>
 public class MaldaCodeActionHandler : ICodeActionHandler
 {
     private readonly DocumentStore _store;
+    private readonly WorkspaceDocumentManager _workspaceDocuments;
     private readonly ILanguageService _languageService;
 
     public MaldaCodeActionHandler(DocumentStore store, ILanguageService languageService)
+        : this(store, new WorkspaceDocumentManager(), languageService)
+    {
+    }
+
+    public MaldaCodeActionHandler(DocumentStore store, WorkspaceDocumentManager workspaceDocuments, ILanguageService languageService)
     {
         _store = store;
+        _workspaceDocuments = workspaceDocuments;
         _languageService = languageService;
     }
 
@@ -48,11 +58,23 @@ public class MaldaCodeActionHandler : ICodeActionHandler
         }
 
         var actions = new List<CodeAction>();
+        var sourceKey = WorkspaceDocumentManager.GetSourceKey(uri);
         foreach (var d in request.Context.Diagnostics)
         {
             if (cancellationToken.IsCancellationRequested)
             {
                 break;
+            }
+
+            if (d.Source == ImportDiagnostics.Source)
+            {
+                var moduleAction = TryCreateModuleFileAction(text, sourceKey, d, cancellationToken);
+                if (moduleAction != null)
+                {
+                    actions.Add(moduleAction);
+                }
+
+                continue;
             }
 
             if (d.Source != "parser") continue;
@@ -93,5 +115,60 @@ public class MaldaCodeActionHandler : ICodeActionHandler
 
         var commandOrActions = actions.Select<CodeAction, CommandOrCodeAction>(a => a);
         return Task.FromResult<CommandOrCodeActionContainer?>(new CommandOrCodeActionContainer(commandOrActions));
+    }
+
+    /// <summary>
+    /// "Create module file" for a <see cref="ImportDiagnostics"/> warning: the diagnostic
+    /// names the resolved target, so the quick fix creates exactly that file. Uses a
+    /// resource operation (<c>CreateFile</c>) so the client applies it without a buffer edit.
+    /// </summary>
+    private CodeAction? TryCreateModuleFileAction(
+        string text,
+        string? sourceKey,
+        OmniSharp.Extensions.LanguageServer.Protocol.Models.Diagnostic diagnostic,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var modules = ImportedModuleResolver.CollectModules(text, sourceKey, cancellationToken);
+            if (!ImportedModuleResolver.TryGetModuleAt(modules, diagnostic.Range.Start.Line, diagnostic.Range.Start.Character, out var module))
+            {
+                return null;
+            }
+
+            var resolvedPath = ImportedModuleResolver.ResolvePath(module, sourceKey);
+            if (resolvedPath == null || File.Exists(resolvedPath))
+            {
+                return null;
+            }
+
+            var targetUri = _workspaceDocuments.CreateDocumentUri(resolvedPath);
+            var documentChanges = new List<WorkspaceEditDocumentChange>
+            {
+                new(new CreateFile
+                {
+                    Uri = targetUri,
+                    Options = new CreateFileOptions { Overwrite = false, IgnoreIfExists = true }
+                })
+            };
+
+            return new CodeAction
+            {
+                Title = $"Create module file '{Path.GetFileName(resolvedPath)}'",
+                Kind = CodeActionKind.QuickFix,
+                Edit = new WorkspaceEdit { DocumentChanges = documentChanges }
+            };
+        }
+        catch (OperationCanceledException)
+        {
+            return null;
+        }
+        catch
+        {
+            // Quick fixes must never take down the language service.
+            return null;
+        }
     }
 }

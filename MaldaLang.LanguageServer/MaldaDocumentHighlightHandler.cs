@@ -51,7 +51,8 @@ public class MaldaDocumentHighlightHandler : IDocumentHighlightHandler
 
         try
         {
-            var highlights = _symbolNavigationService.GetDocumentHighlights(text, request.Position.Line, request.Position.Character, uri.Path, cancellationToken)
+            var sourceKey = WorkspaceDocumentManager.GetSourceKey(uri);
+            var highlights = _symbolNavigationService.GetDocumentHighlights(text, request.Position.Line, request.Position.Character, sourceKey, cancellationToken)
                 .Select(span => new DocumentHighlight
                 {
                     Kind = DocumentHighlightKind.Text,

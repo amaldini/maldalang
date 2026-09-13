@@ -54,9 +54,10 @@ public class MaldaReferencesHandler : IReferencesHandler
         try
         {
             var workspaceDocuments = _workspaceDocuments.GetWorkspaceDocumentsFor(uri, cancellationToken);
+            var sourceKey = WorkspaceDocumentManager.GetSourceKey(uri);
             var references = workspaceDocuments.Count > 1
-                ? _symbolNavigationService.GetWorkspaceReferences(workspaceDocuments, text, request.Position.Line, request.Position.Character, uri.Path, cancellationToken)
-                : _symbolNavigationService.GetReferences(text, request.Position.Line, request.Position.Character, uri.Path, cancellationToken);
+                ? _symbolNavigationService.GetWorkspaceReferences(workspaceDocuments, text, request.Position.Line, request.Position.Character, sourceKey, cancellationToken)
+                : _symbolNavigationService.GetReferences(text, request.Position.Line, request.Position.Character, sourceKey, cancellationToken);
             var locations = references.Select(reference =>
             {
                 var locationUri = !string.IsNullOrWhiteSpace(reference.SourceKey)

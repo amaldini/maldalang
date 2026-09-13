@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 using System.Collections.Concurrent;
+using MaldaLang.IDE;
 using MaldaLang.IDE.Services;
 using MaldaLang.LanguageServer;
 using OmniSharp.Extensions.LanguageServer.Protocol;
@@ -254,6 +255,108 @@ function sharedHelper() {
 
         var diagnostics = await WaitForDiagnosticsAsync(diagnosticsPublisher, brokenUri);
         Assert.NotEmpty(diagnostics);
+    }
+
+    [Fact]
+    public async Task MaldaCodeActionHandler_MissingImport_PublishesCreateFileAction()
+    {
+        using var workspace = new TemporaryWorkspace(
+            ("main.malda", "import \"helpers/missing.malda\";\n"));
+
+        var store = new DocumentStore();
+        var workspaceDocuments = new WorkspaceDocumentManager();
+        var mainPath = workspace.GetPath("main.malda");
+        var mainUri = CreateUri(mainPath);
+        var mainText = File.ReadAllText(mainPath);
+        store.Set(mainUri, mainText);
+
+        var handler = new MaldaCodeActionHandler(store, workspaceDocuments, new LanguageService());
+        var result = await handler.Handle(new CodeActionParams
+        {
+            TextDocument = new TextDocumentIdentifier(mainUri),
+            Range = new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(new Position(0, 7), new Position(0, 30)),
+            Context = new CodeActionContext
+            {
+                Diagnostics = new Container<OmniSharp.Extensions.LanguageServer.Protocol.Models.Diagnostic>(
+                    new OmniSharp.Extensions.LanguageServer.Protocol.Models.Diagnostic
+                    {
+                        Source = ImportDiagnostics.Source,
+                        Message = "Imported module not found",
+                        Range = new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(new Position(0, 7), new Position(0, 30))
+                    })
+            }
+        }, CancellationToken.None);
+
+        Assert.NotNull(result);
+        var action = Assert.Single(result!);
+        Assert.True(action.IsCodeAction);
+        Assert.Equal(CodeActionKind.QuickFix, action.CodeAction!.Kind);
+        Assert.Contains("missing.malda", action.CodeAction.Title, StringComparison.Ordinal);
+
+        var documentChanges = action.CodeAction.Edit!.DocumentChanges;
+        Assert.NotNull(documentChanges);
+        var change = Assert.Single(documentChanges!);
+        Assert.True(change.IsCreateFile);
+        Assert.EndsWith(
+            "/helpers/missing.malda",
+            change.CreateFile!.Uri.Path,
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task MaldaCodeActionHandler_ResolvableImport_NoCodeAction()
+    {
+        using var workspace = new TemporaryWorkspace(
+            ("lib.malda", "var answer = 42;\n"),
+            ("main.malda", "import \"lib.malda\";\n"));
+
+        var store = new DocumentStore();
+        var mainPath = workspace.GetPath("main.malda");
+        var mainUri = CreateUri(mainPath);
+        store.Set(mainUri, File.ReadAllText(mainPath));
+
+        var handler = new MaldaCodeActionHandler(store, new WorkspaceDocumentManager(), new LanguageService());
+        var range = new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(new Position(0, 7), new Position(0, 20));
+        var result = await handler.Handle(new CodeActionParams
+        {
+            TextDocument = new TextDocumentIdentifier(mainUri),
+            Range = range,
+            Context = new CodeActionContext
+            {
+                Diagnostics = new Container<OmniSharp.Extensions.LanguageServer.Protocol.Models.Diagnostic>(
+                    new OmniSharp.Extensions.LanguageServer.Protocol.Models.Diagnostic
+                    {
+                        Source = ImportDiagnostics.Source,
+                        Message = "Imported module not found",
+                        Range = range
+                    })
+            }
+        }, CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.Empty(result!);
+    }
+
+    [Fact]
+    public async Task MaldaDocumentSymbolHandler_ResolvableInclude_MarksResolvedNotMissing()
+    {
+        using var workspace = new TemporaryWorkspace(
+            ("ralph/00-env.malda", "var answer = 42;\n"),
+            ("RalphWiggum.malda", "include \"ralph/00-env.malda\";\n"));
+
+        var store = new DocumentStore();
+        var uri = CreateUri(workspace.GetPath("RalphWiggum.malda"));
+        store.Set(uri, File.ReadAllText(workspace.GetPath("RalphWiggum.malda")));
+
+        var handler = new MaldaDocumentSymbolHandler(store, new SymbolNavigationService());
+        var symbols = await handler.Handle(
+            new DocumentSymbolParams { TextDocument = new TextDocumentIdentifier(uri) },
+            CancellationToken.None);
+
+        Assert.NotNull(symbols);
+        var moduleSymbol = Assert.Single(symbols!, symbol => symbol.IsDocumentSymbol && symbol.DocumentSymbol!.Name == "00-env.malda");
+        Assert.Contains("00-env.malda", moduleSymbol.DocumentSymbol!.Detail!, StringComparison.Ordinal);
+        Assert.DoesNotContain("not found", moduleSymbol.DocumentSymbol!.Detail!, StringComparison.Ordinal);
     }
 
     private static DocumentUri CreateUri(string path)
