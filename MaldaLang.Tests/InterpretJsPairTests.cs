@@ -200,4 +200,40 @@ public class InterpretJsPairTests
             """,
             "subclass-forwards-deep-js");
     }
+
+    [Fact]
+    public void SuperWithNoAncestorConstructor_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(
+            """
+            class A {
+                var x = 5;
+            }
+            class B extends A {
+                function B() { super(); }
+            }
+            var b = new B();
+            io.print("x=" + string(b.x));
+            """,
+            "super-no-ancestor-ctor-js");
+    }
+
+    [Fact]
+    public void PrivateBaseFieldViaInheritedMethod_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(
+            """
+            class A {
+                private var x;
+                function A() { this.x = 42; }
+                public function getX() { return this.x; }
+            }
+            class B extends A {
+                function B() { super(); }
+            }
+            var b = new B();
+            io.print("x=" + string(b.getX()));
+            """,
+            "private-base-field-js");
+    }
 }

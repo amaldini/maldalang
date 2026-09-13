@@ -1512,4 +1512,81 @@ print(""run="" + string(ran.success) + "","" + string(ran.output));
             """,
             "subclass-with-own-ctor");
     }
+
+    [Fact]
+    public void SuperWithNoAncestorConstructor_IsNoOp_SameStdout()
+    {
+        // super(...) must not error when no ancestor declares a constructor; the implicit
+        // parameterless constructor runs (matching JavaScript).
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            class A {
+                var x = 5;
+            }
+            class B extends A {
+                function B() { super(); }
+            }
+            var b = new B();
+            io.print("x=" + string(b.x));
+            """,
+            "super-no-ancestor-ctor");
+    }
+
+    [Fact]
+    public void SuperWithArgsAndNoAncestorConstructor_IsNoOp_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            class A {
+                var x = 7;
+            }
+            class B extends A {
+                function B() { super(1, 2); }
+            }
+            var b = new B();
+            io.print("x=" + string(b.x));
+            """,
+            "super-no-ancestor-ctor-with-args");
+    }
+
+    [Fact]
+    public void PrivateBaseField_ReadAndWriteViaInheritedMethods_SameStdout()
+    {
+        // C# GetField does not return base-class private fields, so the generated helper must
+        // walk base types or an inherited method reads/writes null.
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            class A {
+                private var x;
+                function A() { this.x = 42; }
+                public function getX() { return this.x; }
+                public function setX(v) { this.x = v; }
+            }
+            class B extends A {
+                function B() { super(); }
+            }
+            var b = new B();
+            io.print("x=" + string(b.getX()));
+            b.setX(99);
+            io.print("after=" + string(b.getX()));
+            """,
+            "private-base-field-inherited-methods");
+    }
+
+    [Fact]
+    public void PrivateBaseFieldInitializer_ViaInheritedMethod_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            class A {
+                private var x = 1;
+                public function getX() { return this.x; }
+            }
+            class B extends A {
+            }
+            var b = new B();
+            io.print("x=" + string(b.getX()));
+            """,
+            "private-base-field-initializer");
+    }
 }

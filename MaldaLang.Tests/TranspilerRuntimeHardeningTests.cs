@@ -72,4 +72,15 @@ public class TranspilerRuntimeHardeningTests
         Assert.Contains("System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.DeclaredOnly", generatedSource);
         Assert.Contains("return method.Invoke(instance, invokeArgs);", generatedSource);
     }
+
+    [Fact]
+    public void TranspiledRuntimeHelpers_GeneratedCode_WalksBaseTypesForPrivateMembers()
+    {
+        var generatedSource = LoadTranspilerSource();
+
+        Assert.Contains("public static System.Reflection.FieldInfo? FindInheritedField(System.Type type, string name)", generatedSource);
+        Assert.Contains("public static IEnumerable<System.Reflection.MethodInfo> FindInheritedMethods(System.Type type, string name)", generatedSource);
+        Assert.Contains("var field = FindInheritedField(type, memberName);", generatedSource);
+        Assert.Contains("var methodInfo = FindInheritedMethod(type, memberName);", generatedSource);
+    }
 }

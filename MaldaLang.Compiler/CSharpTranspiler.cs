@@ -3590,10 +3590,10 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("var targetType = obj.GetType();");
         WriteIndent();
-        _output.AppendLine("var methodCandidate = targetType.GetMethods(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic)");
+        _output.AppendLine("var methodCandidate = FindInheritedMethods(targetType, methodName)");
         _indentLevel++;
         WriteIndent();
-        _output.AppendLine(".FirstOrDefault(m => m.Name == methodName && m.GetParameters().Length == args.Count);");
+        _output.AppendLine(".FirstOrDefault(m => m.GetParameters().Length == args.Count);");
         _indentLevel--;
         WriteIndent();
         _output.AppendLine("if (methodCandidate != null && methodCandidate.IsPrivate && accessingClass != targetType)");
@@ -4149,6 +4149,64 @@ public class CSharpTranspiler
         _output.AppendLine();
 
         WriteIndent();
+        _output.AppendLine("public static System.Reflection.FieldInfo? FindInheritedField(System.Type type, string name)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("// Private base-class fields are not returned by a plain GetField on the derived type.");
+        WriteIndent();
+        _output.AppendLine("for (var t = type; t != null && t != typeof(object); t = t.BaseType)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("var found = t.GetField(name, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.DeclaredOnly);");
+        WriteIndent();
+        _output.AppendLine("if (found != null) return found;");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        WriteIndent();
+        _output.AppendLine("return null;");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        WriteIndent();
+        _output.AppendLine("public static IEnumerable<System.Reflection.MethodInfo> FindInheritedMethods(System.Type type, string name)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("// Private base-class methods are not returned by a plain GetMethod on the derived type.");
+        WriteIndent();
+        _output.AppendLine("for (var t = type; t != null && t != typeof(object); t = t.BaseType)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("foreach (var found in t.GetMethods(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.DeclaredOnly).Where(m => m.Name == name))");
+        WriteIndent();
+        _output.AppendLine("yield return found;");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        WriteIndent();
+        _output.AppendLine("public static System.Reflection.MethodInfo? FindInheritedMethod(System.Type type, string name)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("return FindInheritedMethods(type, name).FirstOrDefault();");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        _output.AppendLine();
+
+        WriteIndent();
         _output.AppendLine("public static object GetObjectMember(object? obj, string memberName, System.Type? accessingClass = null)");
         WriteIndent();
         _output.AppendLine("{");
@@ -4250,7 +4308,7 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("var type = obj.GetType();");
         WriteIndent();
-        _output.AppendLine("var field = type.GetField(memberName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);");
+        _output.AppendLine("var field = FindInheritedField(type, memberName);");
         WriteIndent();
         _output.AppendLine("if (field != null && field.IsPrivate && accessingClass != type && type.Assembly == typeof(Program).Assembly)");
         WriteIndent();
@@ -4262,7 +4320,7 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("if (property != null && property.CanRead) return property.GetValue(obj);");
         WriteIndent();
-        _output.AppendLine("var methodInfo = type.GetMethod(memberName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);");
+        _output.AppendLine("var methodInfo = FindInheritedMethod(type, memberName);");
         WriteIndent();
         _output.AppendLine("if (methodInfo != null && methodInfo.IsPrivate && accessingClass != type && type.Assembly == typeof(Program).Assembly)");
         WriteIndent();
@@ -4339,7 +4397,7 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("var type = obj.GetType();");
         WriteIndent();
-        _output.AppendLine("var field = type.GetField(memberName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);");
+        _output.AppendLine("var field = FindInheritedField(type, memberName);");
         WriteIndent();
         _output.AppendLine("if (field != null)");
         WriteIndent();
@@ -8713,8 +8771,15 @@ public class CSharpTranspiler
     /// constructor would inherit, mirroring the interpreter's argument forwarding.
     /// </summary>
     private FunctionDeclaration? FindInheritedConstructor(ClassDeclaration classDecl)
+        => FindInheritedConstructor(classDecl.Superclass);
+
+    /// <summary>
+    /// Walks the superclass chain starting at <paramref name="className"/> for the nearest
+    /// declared constructor, or null when no ancestor declares one.
+    /// </summary>
+    private FunctionDeclaration? FindInheritedConstructor(string? className)
     {
-        for (var current = classDecl.Superclass; current != null && _classDeclarations.TryGetValue(current, out var decl); current = decl.Superclass)
+        for (var current = className; current != null && _classDeclarations.TryGetValue(current, out var decl); current = decl.Superclass)
         {
             foreach (var member in decl.Members)
             {
@@ -8936,11 +9001,22 @@ public class CSharpTranspiler
                     {
                         // MALDA calls the parent constructor explicitly; mirror it with a C#
                         // constructor initializer so the parent's own field init/body run first.
+                        // When no ancestor declares a constructor, super(...) is a no-op (the
+                        // implicit parameterless base constructor runs), so drop the arguments
+                        // rather than emitting an invalid base(...) call.
+                        var superclassName = _currentClassName != null
+                            && _classDeclarations.TryGetValue(_currentClassName, out var currentClassDecl)
+                                ? currentClassDecl.Superclass
+                                : null;
+                        var inheritedCtor = FindInheritedConstructor(superclassName);
                         _output.Append(": base(");
-                        for (int i = 0; i < leadingSuperCall.Arguments.Count; i++)
+                        if (inheritedCtor != null)
                         {
-                            if (i > 0) _output.Append(", ");
-                            TranspileExpression(leadingSuperCall.Arguments[i]);
+                            for (int i = 0; i < leadingSuperCall.Arguments.Count; i++)
+                            {
+                                if (i > 0) _output.Append(", ");
+                                TranspileExpression(leadingSuperCall.Arguments[i]);
+                            }
                         }
                         _output.AppendLine(")");
                     }

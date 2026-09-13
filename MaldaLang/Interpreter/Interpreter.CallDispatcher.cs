@@ -10,6 +10,21 @@ using MaldaLang.Parser.AST.Expressions;
 public partial class Interpreter
 {
     /// <summary>
+    /// Walks the superclass chain for the nearest constructor, mirroring the implicit
+    /// constructor forwarding a class without its own constructor performs. Returns null when
+    /// no ancestor declares a constructor, in which case <c>super(...)</c> is a no-op.
+    /// </summary>
+    private static FunctionValue? FindNearestConstructor(ClassDefinition? classDefinition)
+    {
+        for (var current = classDefinition; current != null; current = current.Superclass)
+        {
+            if (current.Constructor != null)
+                return current.Constructor;
+        }
+        return null;
+    }
+
+    /// <summary>
     /// Starts an async call for <c>async expr</c> on a forked <see cref="InterpreterActivation"/>.
     /// Hot-started tasks run until their first await on the current interpreter thread; the
     /// incomplete <c>Task</c> keeps the callee activation via <c>AsyncLocal</c>, while this
@@ -133,12 +148,20 @@ public partial class Interpreter
                 throw new RuntimeException("Cannot use 'super()' outside of a constructor.");
 
             var superclass = declaringClass.Superclass;
-            if (superclass.Constructor == null)
-                throw new RuntimeException($"Superclass '{superclass.Name}' has no constructor.");
+
+            // Mirror JavaScript: super(...) runs the nearest ancestor constructor, forwarding
+            // the arguments. A class without a constructor of its own has an implicit one that
+            // forwards to its own superclass, and when no ancestor declares a constructor at
+            // all the call is a no-op rather than an error.
+            var superConstructor = FindNearestConstructor(superclass);
+            if (superConstructor == null)
+            {
+                return RuntimeValue.Null();
+            }
 
             if (returnTask)
-                return WrapCallAsTask(() => CallFunctionAsync(superclass.Constructor, arguments, _currentObject));
-            return await CallFunctionAsync(superclass.Constructor, arguments, _currentObject);
+                return WrapCallAsTask(() => CallFunctionAsync(superConstructor, arguments, _currentObject));
+            return await CallFunctionAsync(superConstructor, arguments, _currentObject);
         }
         else if (expr.Callee is IdentifierExpression idExpr)
         {

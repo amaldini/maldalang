@@ -1178,6 +1178,42 @@ public class InterpreterTests : TestBase
     }
     
     [Fact]
+    public void SuperCallWithoutAncestorConstructor_IsNoOp()
+    {
+        // Regression: super() threw "Superclass has no constructor" when no ancestor declared
+        // one. It is now a no-op, matching the JavaScript backend's implicit super().
+        var source = @"
+            class A {
+                var x = 5;
+            }
+            class B extends A {
+                function B() { super(); }
+            }
+            var b = new B();
+            print(b.x);
+        ";
+        var output = RunProgram(source);
+        Assert.Equal("5", output);
+    }
+    
+    [Fact]
+    public void SuperCallWithArgsWithoutAncestorConstructor_IsNoOp()
+    {
+        var source = @"
+            class A {
+                var x = 7;
+            }
+            class B extends A {
+                function B() { super(1, 2); }
+            }
+            var b = new B();
+            print(b.x);
+        ";
+        var output = RunProgram(source);
+        Assert.Equal("7", output);
+    }
+    
+    [Fact]
     public void DefaultVisibility_MembersArePublic()
     {
         // No access modifier on a field or method: both behave as public.
