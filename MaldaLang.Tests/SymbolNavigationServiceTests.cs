@@ -236,6 +236,61 @@ class Second {
     }
 
     [Fact]
+    public void Rename_ClassField_RenamesQualifiedUsesOutsideTheClass()
+    {
+        const string source = """
+class Person {
+    public var nome: string;
+
+    function show() {
+        io.print(nome);
+    }
+}
+
+var x = new Person();
+x.nome = "XXX";
+x.show();
+""";
+
+        var fieldColumn = source.Replace("\r\n", "\n").Split('\n')[1].IndexOf("nome", StringComparison.Ordinal);
+        var edits = _service.Rename(source, 1, fieldColumn, "name", "test.malda");
+
+        Assert.NotNull(edits);
+        Assert.Equal(3, edits!.Count);
+        Assert.Contains(edits, edit => edit.Span.Line == 1 && Slice(source, edit.Span) == "nome");
+        Assert.Contains(edits, edit => edit.Span.Line == 4 && Slice(source, edit.Span) == "nome");
+        Assert.Contains(edits, edit => edit.Span.Line == 9 && Slice(source, edit.Span) == "nome");
+    }
+
+    [Fact]
+    public void Rename_ClassField_DoesNotRenameFieldOnADifferentClass()
+    {
+        const string source = """
+class Person {
+    public var nome: string;
+}
+
+class Place {
+    public var nome: string;
+}
+
+var person = new Person();
+var place = new Place();
+person.nome = "Ada";
+place.nome = "Rome";
+""";
+
+        var fieldColumn = source.Replace("\r\n", "\n").Split('\n')[1].IndexOf("nome", StringComparison.Ordinal);
+        var edits = _service.Rename(source, 1, fieldColumn, "name", "test.malda");
+
+        Assert.NotNull(edits);
+        Assert.Equal(2, edits!.Count);
+        Assert.Contains(edits, edit => edit.Span.Line == 1);
+        Assert.Contains(edits, edit => edit.Span.Line == 10);
+        Assert.DoesNotContain(edits, edit => edit.Span.Line is 5 or 11);
+    }
+
+    [Fact]
     public void GetReferences_Local_DoesNotIncludeOtherFunction()
     {
         const string source = """

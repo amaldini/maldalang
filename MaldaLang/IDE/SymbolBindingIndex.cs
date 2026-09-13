@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Andrea Maldini
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+using MaldaLang.BuiltIns;
 using MaldaLang.IDE.Models;
 using MaldaLang.Parser.AST.Declarations;
 using MaldaLang.Parser.AST.Expressions;
@@ -18,6 +19,10 @@ internal sealed class SymbolBindingIndex
     private readonly List<BoundOccurrence> _occurrences = new();
     private readonly List<Token> _tokens;
     private readonly Scope _root = new(parent: null);
+    private readonly Dictionary<string, Scope> _classScopes = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Dictionary<string, Binding>> _typeMembers = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _superclasses = new(StringComparer.Ordinal);
+    private string? _currentTypeName;
     private int _nextBindingId;
 
     private SymbolBindingIndex(List<Token> tokens)
@@ -29,6 +34,7 @@ internal sealed class SymbolBindingIndex
     {
         var index = new SymbolBindingIndex(tokens);
         index.HoistTopLevel(statements);
+        index.HoistTypeMembers(statements);
         foreach (var statement in statements)
         {
             index.VisitStatement(statement, index._root);
@@ -159,6 +165,44 @@ internal sealed class SymbolBindingIndex
         }
     }
 
+    private void HoistTypeMembers(List<Statement> statements)
+    {
+        foreach (var statement in statements)
+        {
+            switch (statement)
+            {
+                case ClassDeclaration classDeclaration:
+                    HoistTypeMembers(classDeclaration.Name, classDeclaration.Superclass, classDeclaration.Members);
+                    break;
+                case ActorDeclaration actorDeclaration:
+                    HoistTypeMembers(actorDeclaration.Name, superclass: null, actorDeclaration.Members);
+                    break;
+            }
+        }
+    }
+
+    private void HoistTypeMembers(string typeName, string? superclass, List<ClassMember> members)
+    {
+        var classScope = new Scope(_root);
+        _classScopes[typeName] = classScope;
+        if (!string.IsNullOrEmpty(superclass))
+        {
+            _superclasses[typeName] = superclass;
+        }
+
+        var typeMembers = new Dictionary<string, Binding>(StringComparer.Ordinal);
+        _typeMembers[typeName] = typeMembers;
+        foreach (var member in members)
+        {
+            if (member.Type is not (MemberType.Field or MemberType.Method))
+            {
+                continue;
+            }
+
+            typeMembers[member.Name] = Declare(classScope, member.Name, BindingKind.Member);
+        }
+    }
+
     private void VisitStatement(Statement? statement, Scope scope)
     {
         if (statement == null)
@@ -208,6 +252,7 @@ internal sealed class SymbolBindingIndex
                     variableDeclaration.Line,
                     variableDeclaration.Column,
                     Declare(scope, variableDeclaration.Name, ScopeKind(scope)));
+                scope.SetType(variableDeclaration.Name, InferType(variableDeclaration.Initializer, scope) ?? UserTypeName(variableDeclaration.TypeHint));
                 break;
             case DestructuringVarDecl destructuring:
                 VisitExpression(destructuring.Initializer, scope);
@@ -276,6 +321,10 @@ internal sealed class SymbolBindingIndex
             case AssignmentStatement assignment:
                 VisitExpression(assignment.Target, scope);
                 VisitExpression(assignment.Value, scope);
+                if (assignment.Target is IdentifierExpression assigned)
+                {
+                    scope.SetType(assigned.Name, InferType(assignment.Value, scope));
+                }
                 break;
             case DestructuringAssignment destructuringAssignment:
                 VisitExpression(destructuringAssignment.Value, scope);
@@ -394,7 +443,9 @@ internal sealed class SymbolBindingIndex
             RecordTypeName(superclass, line, column, scope);
         }
 
-        var classScope = new Scope(scope);
+        var classScope = _classScopes.TryGetValue(name, out var hoisted) ? hoisted : new Scope(scope);
+        var previousType = _currentTypeName;
+        _currentTypeName = name;
         foreach (var member in members)
         {
             if (member.Type == MemberType.Field)
@@ -406,10 +457,6 @@ internal sealed class SymbolBindingIndex
                     VisitExpression(fieldInitializer, classScope);
                 }
             }
-            else if (member.Value is FunctionDeclaration method)
-            {
-                Declare(classScope, method.Name, BindingKind.Member);
-            }
         }
 
         foreach (var member in members)
@@ -419,6 +466,8 @@ internal sealed class SymbolBindingIndex
                 VisitFunction(method, classScope, isMethod: true);
             }
         }
+
+        _currentTypeName = previousType;
     }
 
     private void VisitPrompt(PromptDeclaration prompt, Scope scope)
@@ -510,10 +559,7 @@ internal sealed class SymbolBindingIndex
                 break;
             case MemberAccessExpression member:
                 VisitExpression(member.Object, scope);
-                if (member.Object is ThisExpression or SelfExpression)
-                {
-                    RecordMemberUse(member.Member, member.Line, member.Column, scope);
-                }
+                RecordQualifiedMemberUse(member, scope);
                 break;
             case BinaryExpression binary:
                 VisitExpression(binary.Left, scope);
@@ -853,19 +899,145 @@ internal sealed class SymbolBindingIndex
         }
     }
 
-    private void RecordMemberUse(string name, int line, int column, Scope scope)
+    private void RecordQualifiedMemberUse(MemberAccessExpression member, Scope scope)
     {
-        var binding = FindMemberBinding(scope, name);
+        var binding = ResolveMemberBinding(member.Object, member.Member, scope);
         if (binding == null)
         {
             return;
         }
 
-        var token = FindNameToken(name, line, column);
+        var token = FindMemberToken(member.Object, member.Member);
         if (token != null)
         {
             RecordToken(token, binding, isDeclaration: false);
         }
+    }
+
+    private Binding? ResolveMemberBinding(Expression receiver, string memberName, Scope scope)
+    {
+        var typeName = InferType(receiver, scope);
+        if (!string.IsNullOrEmpty(typeName))
+        {
+            var typed = FindTypeMember(typeName, memberName);
+            if (typed != null)
+            {
+                return typed;
+            }
+        }
+
+        if (receiver is ThisExpression or SelfExpression)
+        {
+            return FindMemberBinding(scope, memberName);
+        }
+
+        if (IsStdLibReceiver(receiver, memberName))
+        {
+            return null;
+        }
+
+        return FindUniqueTypeMember(memberName);
+    }
+
+    private string? InferType(Expression? expression, Scope scope)
+    {
+        switch (expression)
+        {
+            case NewExpression created:
+                return created.ClassName;
+            case IdentifierExpression identifier:
+                return scope.LookupType(identifier.Name);
+            case ThisExpression:
+            case SelfExpression:
+                return _currentTypeName;
+            default:
+                return null;
+        }
+    }
+
+    private Binding? FindTypeMember(string typeName, string memberName)
+    {
+        if (_typeMembers.TryGetValue(typeName, out var members) && members.TryGetValue(memberName, out var binding))
+        {
+            return binding;
+        }
+
+        return _superclasses.TryGetValue(typeName, out var superclass)
+            ? FindTypeMember(superclass, memberName)
+            : null;
+    }
+
+    private Binding? FindUniqueTypeMember(string memberName)
+    {
+        Binding? found = null;
+        foreach (var members in _typeMembers.Values)
+        {
+            if (!members.TryGetValue(memberName, out var binding))
+            {
+                continue;
+            }
+
+            if (found != null && found.Id != binding.Id)
+            {
+                return null;
+            }
+
+            found = binding;
+        }
+
+        return found;
+    }
+
+    private Token? FindMemberToken(Expression receiver, string memberName)
+    {
+        var (line, column) = GetSearchStartAfter(receiver);
+        return FindNameToken(memberName, line, column);
+    }
+
+    private (int Line, int Column) GetSearchStartAfter(Expression expression)
+    {
+        switch (expression)
+        {
+            case IdentifierExpression identifier:
+                return (identifier.Line, identifier.Column + identifier.Name.Length);
+            case ThisExpression thisExpression:
+                return (thisExpression.Line, thisExpression.Column + 4);
+            case SelfExpression selfExpression:
+                return (selfExpression.Line, selfExpression.Column + 4);
+            case MemberAccessExpression member:
+                var nested = FindMemberToken(member.Object, member.Member);
+                return nested != null
+                    ? (nested.Line, nested.Column + nested.Lexeme.Length)
+                    : GetSearchStartAfter(member.Object);
+            case FunctionCallExpression call:
+                return GetSearchStartAfter(call.Callee);
+            default:
+                return (expression.Line, expression.Column);
+        }
+    }
+
+    private static bool IsStdLibReceiver(Expression receiver, string memberName)
+    {
+        return receiver is IdentifierExpression identifier &&
+            StdLibNamespaces.IsStdLibModuleMethod(identifier.Name, memberName);
+    }
+
+    private static string? UserTypeName(string? typeHint)
+    {
+        if (string.IsNullOrWhiteSpace(typeHint))
+        {
+            return null;
+        }
+
+        var name = typeHint.Trim();
+        if (name.EndsWith("[]", StringComparison.Ordinal))
+        {
+            name = name[..^2];
+        }
+
+        return name is "string" or "int" or "number" or "bool" or "any" or "void" or "float" or "double" or "object"
+            ? null
+            : name;
     }
 
     private void RecordDeclaration(string name, int line, int column, Binding binding)
@@ -1022,6 +1194,7 @@ internal sealed class SymbolBindingIndex
     {
         public Scope? Parent { get; }
         public Dictionary<string, Binding> Bindings { get; } = new(StringComparer.Ordinal);
+        public Dictionary<string, string> Types { get; } = new(StringComparer.Ordinal);
 
         public Scope(Scope? parent)
         {
@@ -1036,6 +1209,38 @@ internal sealed class SymbolBindingIndex
             }
 
             return Parent?.Lookup(name);
+        }
+
+        public void SetType(string name, string? typeName)
+        {
+            if (string.IsNullOrEmpty(typeName))
+            {
+                return;
+            }
+
+            if (Bindings.ContainsKey(name))
+            {
+                Types[name] = typeName;
+                return;
+            }
+
+            if (Parent != null)
+            {
+                Parent.SetType(name, typeName);
+                return;
+            }
+
+            Types[name] = typeName;
+        }
+
+        public string? LookupType(string name)
+        {
+            if (Types.TryGetValue(name, out var typeName))
+            {
+                return typeName;
+            }
+
+            return Parent?.LookupType(name);
         }
     }
 }
