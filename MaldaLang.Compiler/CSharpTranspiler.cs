@@ -8673,12 +8673,88 @@ public class CSharpTranspiler
             _output.Append(EscapeIdentifier(classDecl.Name));
             _output.AppendLine("() { }");
         }
-        
+
+        // A MALDA subclass with no constructor of its own inherits the nearest ancestor's
+        // constructor and forwards the arguments it was constructed with (matching the
+        // interpreter and the JavaScript backend). C# needs an explicit constructor to do
+        // that, otherwise `new Sub(a, b)` fails with CS1729.
+        if (!DeclaresOwnConstructor(classDecl))
+        {
+            var inheritedCtor = FindInheritedConstructor(classDecl);
+            if (inheritedCtor != null && inheritedCtor.Parameters.Count > 0)
+            {
+                TranspileForwardingConstructor(classDecl, inheritedCtor);
+            }
+        }
+
         _indentLevel--;
         WriteIndent();
         _output.Append("}");
         AppendComment(nameof(TranspileClass) + " (close)");
         _output.AppendLine();
+    }
+
+    /// <summary>
+    /// True when <paramref name="classDecl"/> declares a constructor of its own (including a
+    /// constructor synthesized from a primary constructor).
+    /// </summary>
+    private static bool DeclaresOwnConstructor(ClassDeclaration classDecl)
+    {
+        foreach (var member in classDecl.Members)
+        {
+            if (member.Type == MemberType.Constructor)
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Walks the superclass chain for the nearest constructor a subclass without its own
+    /// constructor would inherit, mirroring the interpreter's argument forwarding.
+    /// </summary>
+    private FunctionDeclaration? FindInheritedConstructor(ClassDeclaration classDecl)
+    {
+        for (var current = classDecl.Superclass; current != null && _classDeclarations.TryGetValue(current, out var decl); current = decl.Superclass)
+        {
+            foreach (var member in decl.Members)
+            {
+                if (member.Type == MemberType.Constructor && member.Value is FunctionDeclaration ctor)
+                {
+                    return ctor;
+                }
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Emits a constructor on <paramref name="classDecl"/> that forwards its arguments to the
+    /// inherited base constructor, so a subclass without its own constructor behaves the same
+    /// as the interpreter and the JavaScript backend.
+    /// </summary>
+    private void TranspileForwardingConstructor(ClassDeclaration classDecl, FunctionDeclaration inheritedCtor)
+    {
+        WriteIndent();
+        _output.Append("public ");
+        _output.Append(EscapeIdentifier(classDecl.Name));
+        _output.Append("(");
+        for (int i = 0; i < inheritedCtor.Parameters.Count; i++)
+        {
+            if (i > 0) _output.Append(", ");
+            var parameterType = (inheritedCtor.ParameterTypeHints != null && i < inheritedCtor.ParameterTypeHints.Count)
+                ? ResolveTranspiledTypeHint(inheritedCtor.ParameterTypeHints[i])
+                : TranspiledClrType.Object;
+            _output.Append(GetClrTypeName(parameterType));
+            _output.Append(" ");
+            _output.Append(EscapeIdentifier("__ctorArg" + i));
+        }
+        _output.Append(") : base(");
+        for (int i = 0; i < inheritedCtor.Parameters.Count; i++)
+        {
+            if (i > 0) _output.Append(", ");
+            _output.Append(EscapeIdentifier("__ctorArg" + i));
+        }
+        _output.AppendLine(") { }");
     }
 
     /// <summary>

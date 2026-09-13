@@ -3634,7 +3634,18 @@ public partial class Interpreter
         {
             return await CallFunctionAsync(klass.Constructor, arguments, instance);
         }
-        
+
+        // A subclass that declares no constructor of its own inherits the nearest ancestor's
+        // constructor, forwarding the arguments it was constructed with. This matches the
+        // JavaScript backend, where a derived class without a constructor forwards to super.
+        for (var inherited = klass.Superclass; inherited != null; inherited = inherited.Superclass)
+        {
+            if (inherited.Constructor != null)
+            {
+                return await CallFunctionAsync(inherited.Constructor, arguments, instance);
+            }
+        }
+
         return RuntimeValue.Object(instance);
     }
     

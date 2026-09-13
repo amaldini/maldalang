@@ -1443,4 +1443,73 @@ print(""run="" + string(ran.success) + "","" + string(ran.output));
             """,
             "static-field-initializer-not-per-instance");
     }
+
+    [Fact]
+    public void SubclassWithoutConstructor_ForwardsArgsToBase_SameStdout()
+    {
+        // A subclass that declares no constructor inherits the nearest ancestor's constructor
+        // and forwards its arguments, matching the JavaScript backend.
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            class Person(nome, cognome);
+            class Operaio extends Person {}
+            var p = new Operaio("Mario", "Rossi");
+            io.print(p.nome);
+            io.print(p.cognome);
+            """,
+            "subclass-forwards-primary-ctor");
+    }
+
+    [Fact]
+    public void SubclassWithoutConstructor_ForwardsClassicCtor_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            class Person {
+                var nome;
+                function Person(n) { this.nome = n; }
+            }
+            class Operaio extends Person {
+            }
+            var p = new Operaio("Mario");
+            io.print(p.nome);
+            """,
+            "subclass-forwards-classic-ctor");
+    }
+
+    [Fact]
+    public void SubclassWithoutConstructor_ForwardsThroughLevels_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            class A {
+                var tag;
+                function A(v) { this.tag = "A:" + string(v); }
+            }
+            class B extends A { }
+            class C extends B { }
+            var c = new C("deep");
+            io.print(c.tag);
+            """,
+            "subclass-forwards-deep");
+    }
+
+    [Fact]
+    public void SubclassWithOwnConstructor_StillUsesIt_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            class Person {
+                var nome;
+                function Person(n) { this.nome = n; }
+            }
+            class Operaio extends Person {
+                var ruolo;
+                function Operaio(n, r) { super(n); this.ruolo = r; }
+            }
+            var o = new Operaio("Mario", "operaio");
+            io.print(o.nome + " / " + o.ruolo);
+            """,
+            "subclass-with-own-ctor");
+    }
 }

@@ -1146,6 +1146,38 @@ public class InterpreterTests : TestBase
     }
     
     [Fact]
+    public void SubclassWithoutConstructor_InheritsParentConstructor()
+    {
+        // Regression: `new Sub(args)` did nothing when Sub declared no constructor, so the
+        // inherited fields stayed null. It now forwards to the nearest ancestor constructor.
+        var source = @"
+            class Person(nome, cognome);
+            class Operaio extends Person {}
+            var p = new Operaio(""Mario"", ""Rossi"");
+            print(p.nome);
+        ";
+        var output = RunProgram(source);
+        Assert.Equal("Mario", output);
+    }
+    
+    [Fact]
+    public void SubclassWithoutConstructor_ForwardsToNearestAncestorConstructor()
+    {
+        var source = @"
+            class A {
+                var tag;
+                function A(v) { this.tag = ""A:"" + string(v); }
+            }
+            class B extends A { }
+            class C extends B { }
+            var c = new C(""deep"");
+            print(c.tag);
+        ";
+        var output = RunProgram(source);
+        Assert.Equal("A:deep", output);
+    }
+    
+    [Fact]
     public void DefaultVisibility_MembersArePublic()
     {
         // No access modifier on a field or method: both behave as public.

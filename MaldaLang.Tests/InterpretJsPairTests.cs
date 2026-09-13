@@ -170,4 +170,34 @@ public class InterpretJsPairTests
             """,
             "array-except-js");
     }
+
+    [Fact]
+    public void SubclassWithoutConstructor_ForwardsArgsToBase_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(
+            """
+            class Person(nome, cognome);
+            class Operaio extends Person {}
+            var p = new Operaio("Mario", "Rossi");
+            io.print(p.nome);
+            """,
+            "subclass-forwards-primary-ctor-js");
+    }
+
+    [Fact]
+    public void SubclassWithoutConstructor_ForwardsThroughLevels_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(
+            """
+            class A {
+                var tag;
+                function A(v) { this.tag = "A:" + string(v); }
+            }
+            class B extends A { }
+            class C extends B { }
+            var c = new C("deep");
+            io.print(c.tag);
+            """,
+            "subclass-forwards-deep-js");
+    }
 }
