@@ -29,6 +29,8 @@ using ICSharpCode.AvalonEdit.Editing;
 using System.Xml;
 using System.Windows.Threading;
 using System.Windows.Input;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Markup;
 using Markdig;
 using System.Runtime.InteropServices;
@@ -46,6 +48,19 @@ namespace MaldaLang.DesktopIDE;
 
 public partial class MainWindow
 {
+    private DispatcherTimer? _completionTimer;
+    private DispatcherTimer? _signatureHelpTimer;
+    private CancellationTokenSource? _completionCts;
+    private CancellationTokenSource? _signatureHelpCts;
+    private CancellationTokenSource? _diagnosticsCts;
+    private CancellationTokenSource? _highlightsCts;
+    private CancellationTokenSource? _hoverCts;
+    private int _diagnosticsRequestId;
+    private int _highlightsRequestId;
+    private int _signatureHelpRequestId;
+    private int _hoverRequestId;
+    private string? _pendingCompletionTrigger;
+    private bool _pendingCompletionManual;
 
     private void SetupSyntaxHighlighting()
     {
@@ -256,6 +271,18 @@ public partial class MainWindow
             _documentHighlightTimer.Stop();
             UpdateDocumentHighlights();
         };
+        _completionTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
+        _completionTimer.Tick += (_, _) =>
+        {
+            _completionTimer.Stop();
+            RunCompletionQuery(_pendingCompletionTrigger, _pendingCompletionManual);
+        };
+        _signatureHelpTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(80) };
+        _signatureHelpTimer.Tick += (_, _) =>
+        {
+            _signatureHelpTimer.Stop();
+            RunSignatureHelpQuery();
+        };
         
         // Enable glyph margin for breakpoint indicators and quick-fix lightbulbs
         CodeEditor.TextArea.LeftMargins.Insert(0, new BreakpointMargin(CodeEditor.TextArea, this));
@@ -277,7 +304,7 @@ public partial class MainWindow
                 _aiChatPanel.SelectedCode = GetSelectedText();
             }
 
-            UpdateSignatureHelp();
+            ScheduleSignatureHelp();
             ScheduleDocumentHighlightRefresh();
         };
         
@@ -398,15 +425,21 @@ public partial class MainWindow
     
     private void TextArea_TextEntered(object? sender, TextCompositionEventArgs e)
     {
-        // Trigger autocomplete on typing letters, numbers, or certain characters
-        // Include @ for decorator support
-        if (e.Text != null && e.Text.Length > 0 && 
-            (char.IsLetterOrDigit(e.Text[0]) || e.Text == "." || e.Text == "(" || e.Text == "@"))
+        var trigger = e.Text;
+        if (EditorIntelliSensePolicy.ShouldCloseExistingCompletion(trigger, manual: false))
         {
-            ShowCompletion();
+            CloseCompletionWindow();
         }
 
-        UpdateSignatureHelp();
+        if (EditorIntelliSensePolicy.ShouldQueryCompletions(trigger, _completionWindow != null, manual: false))
+        {
+            ScheduleCompletion(trigger, manual: false);
+        }
+
+        if (EditorIntelliSensePolicy.ShouldScheduleSignatureHelp(trigger, caretMoved: false))
+        {
+            ScheduleSignatureHelp();
+        }
     }
 
     
@@ -416,7 +449,7 @@ public partial class MainWindow
         if (e.Key == Key.Space && Keyboard.Modifiers == ModifierKeys.Control)
         {
             e.Handled = true;
-            ShowCompletion();
+            ScheduleCompletion(triggerText: null, manual: true);
         }
         // Close completion and signature help on Escape
         else if (e.Key == Key.Escape)
@@ -432,23 +465,33 @@ public partial class MainWindow
     }
 
     
-    private void ShowCompletion()
+    private void ScheduleCompletion(string? triggerText, bool manual)
     {
-        // Close existing completion window if open
-        if (_completionWindow != null)
+        _pendingCompletionTrigger = triggerText;
+        _pendingCompletionManual = manual;
+        if (_completionTimer == null || EditorIntelliSensePolicy.IsImmediateCompletionQuery(manual, triggerText))
         {
-            _completionWindow.Close();
-            _completionWindow = null;
+            _completionTimer?.Stop();
+            RunCompletionQuery(triggerText, manual);
+            return;
         }
-        
+
+        _completionTimer.Stop();
+        _completionTimer.Start();
+    }
+
+    private void RunCompletionQuery(string? triggerText, bool manual)
+    {
+        if (EditorIntelliSensePolicy.ShouldCloseExistingCompletion(triggerText, manual))
+        {
+            CloseCompletionWindow();
+        }
+
         var textArea = CodeEditor.TextArea;
         var caret = textArea.Caret;
         var document = CodeEditor.Document;
         var line = document.GetLineByNumber(caret.Line);
-        
-        // Find the start of the current word by looking backwards from the caret
-        // Include @ character for decorator support
-        int wordStart = caret.Offset;
+        var wordStart = caret.Offset;
         while (wordStart > line.Offset)
         {
             char c = document.GetCharAt(wordStart - 1);
@@ -461,71 +504,183 @@ public partial class MainWindow
                 break;
             }
         }
-        
-        // Extract the current prefix
-        string prefix = document.GetText(wordStart, caret.Offset - wordStart);
-        
-        // Get completions from language service
+
         var source = CodeEditor.Text;
-        var completions = _languageService.GetCompletions(source, caret.Line - 1, caret.Column - 1);
-        
-        // Check if we're in decorator context (prefix starts with @)
-        bool isDecoratorContext = prefix.StartsWith("@");
-        
-        // For decorator context, language service already filtered the completions
-        // So we should use all returned completions without additional filtering
-        // For other contexts, filter with the full prefix
-        List<CompletionItem> filteredCompletions;
-        if (isDecoratorContext)
+        var caretLine = caret.Line;
+        var caretColumn = caret.Column;
+        var documentKey = _activeDocumentKey;
+        var sourceFileName = GetCurrentSourceKey();
+
+        _completionCts?.Cancel();
+        _completionCts = new CancellationTokenSource();
+        var token = _completionCts.Token;
+
+        _ = QueryCompletionsAsync(source, caretLine, caretColumn, wordStart, documentKey, sourceFileName, token);
+    }
+
+    private async Task QueryCompletionsAsync(
+        string source,
+        int caretLine,
+        int caretColumn,
+        int wordStart,
+        string documentKey,
+        string? sourceFileName,
+        CancellationToken token)
+    {
+        List<CompletionItem> completions;
+        try
         {
-            // Language service already filtered decorators, use all returned completions
-            filteredCompletions = completions;
+            completions = await Task.Run(
+                () => _languageService.GetCompletions(source, caretLine - 1, caretColumn - 1, sourceFileName, token),
+                token).ConfigureAwait(true);
         }
-        else
+        catch (OperationCanceledException)
         {
-            // Filter completions based on the current prefix (case-insensitive)
-            filteredCompletions = completions
-                .Where(c => prefix == "" || c.Label.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-                .ToList();
-        }
-        
-        if (filteredCompletions.Count == 0)
             return;
-        
-        // Create completion window with the correct start offset
+        }
+        catch
+        {
+            return;
+        }
+
+        if (token.IsCancellationRequested || _activeDocumentKey != documentKey || CodeEditor.Document == null)
+        {
+            return;
+        }
+
+        PresentCompletionWindow(completions, wordStart);
+    }
+
+    private void PresentCompletionWindow(List<CompletionItem> completions, int requestedWordStart)
+    {
+        var textArea = CodeEditor.TextArea;
+        var caret = textArea.Caret;
+        var document = CodeEditor.Document;
+        var line = document.GetLineByNumber(caret.Line);
+        var wordStart = caret.Offset;
+        while (wordStart > line.Offset)
+        {
+            char c = document.GetCharAt(wordStart - 1);
+            if (char.IsLetterOrDigit(c) || c == '_' || c == '@')
+            {
+                wordStart--;
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        if (Math.Abs(wordStart - requestedWordStart) > 16)
+        {
+            return;
+        }
+
+        var prefix = document.GetText(wordStart, Math.Max(0, caret.Offset - wordStart));
+        var isDecoratorContext = prefix.StartsWith('@');
+        var filteredCompletions = isDecoratorContext
+            ? completions
+            : completions
+                .Where(c => prefix.Length == 0 || c.Label.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+        if (filteredCompletions.Count == 0)
+        {
+            return;
+        }
+
+        CloseCompletionWindow();
         _completionWindow = new CompletionWindow(textArea);
         EditorPopupTheming.Apply(_completionWindow, _themeService.CurrentTheme);
         var data = _completionWindow.CompletionList.CompletionData;
-        
+
         foreach (var item in filteredCompletions)
         {
             var insertText = item.InsertText ?? item.Label;
             var description = item.Detail ?? item.Label;
-            // Use insertText for both Text and Content so the correct text is inserted
             data.Add(new SimpleCompletionData(insertText, insertText, description));
         }
-        
-        // Set the start offset so the completion window knows what to replace
+
         _completionWindow.StartOffset = wordStart;
-        
-        if (data.Count > 0)
+        if (data.Count == 0)
         {
-            _completionWindow.CompletionList.SelectedItem = data[0];
-            _completionWindow.Show();
-            _completionWindow.Closed += (s, e) => _completionWindow = null;
+            CloseCompletionWindow();
+            return;
         }
-        else
-        {
-            _completionWindow.Close();
-            _completionWindow = null;
-        }
+
+        _completionWindow.CompletionList.SelectedItem = data[0];
+        _completionWindow.Show();
+        _completionWindow.Closed += (_, _) => _completionWindow = null;
     }
 
-    private void UpdateSignatureHelp()
+    private void CloseCompletionWindow()
+    {
+        if (_completionWindow == null)
+        {
+            return;
+        }
+
+        _completionWindow.Close();
+        _completionWindow = null;
+    }
+
+    private void ScheduleSignatureHelp()
+    {
+        if (_signatureHelpTimer == null)
+        {
+            RunSignatureHelpQuery();
+            return;
+        }
+
+        _signatureHelpTimer.Stop();
+        _signatureHelpTimer.Start();
+    }
+
+    private void RunSignatureHelpQuery()
     {
         var caret = CodeEditor.TextArea.Caret;
         var source = CodeEditor.Text;
-        var help = _languageService.GetSignatureHelp(source, caret.Line - 1, caret.Column - 1);
+        var caretLine = caret.Line;
+        var caretColumn = caret.Column;
+        var documentKey = _activeDocumentKey;
+        var requestId = ++_signatureHelpRequestId;
+
+        _signatureHelpCts?.Cancel();
+        _signatureHelpCts = new CancellationTokenSource();
+        var token = _signatureHelpCts.Token;
+
+        _ = QuerySignatureHelpAsync(source, caretLine, caretColumn, documentKey, requestId, token);
+    }
+
+    private async Task QuerySignatureHelpAsync(
+        string source,
+        int caretLine,
+        int caretColumn,
+        string documentKey,
+        int requestId,
+        CancellationToken token)
+    {
+        SignatureHelpInfo? help;
+        try
+        {
+            help = await Task.Run(
+                () => _languageService.GetSignatureHelp(source, caretLine - 1, caretColumn - 1, token),
+                token).ConfigureAwait(true);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        catch
+        {
+            help = null;
+        }
+
+        if (token.IsCancellationRequested || requestId != _signatureHelpRequestId || _activeDocumentKey != documentKey)
+        {
+            return;
+        }
+
         if (help == null)
         {
             CloseSignatureHelp();
@@ -542,7 +697,7 @@ public partial class MainWindow
                 Provider = _signatureHelpProvider
             };
             EditorPopupTheming.Apply(_signatureHelpWindow, _themeService.CurrentTheme);
-            _signatureHelpWindow.Closed += (s, e) =>
+            _signatureHelpWindow.Closed += (_, _) =>
             {
                 _signatureHelpWindow = null;
                 _signatureHelpProvider = null;
@@ -579,13 +734,6 @@ public partial class MainWindow
             var sourceFileName = string.IsNullOrWhiteSpace(activeDocument.PhysicalFilePath)
                 ? activeDocument.FilePath
                 : activeDocument.PhysicalFilePath;
-            var hover = _languageService.GetHoverInformation(
-                CodeEditor.Text,
-                position.Value.Line - 1,
-                position.Value.Column - 1,
-                sourceFileName,
-                CancellationToken.None);
-
             int? offset = null;
             try
             {
@@ -597,43 +745,87 @@ public partial class MainWindow
             }
 
             var diagnosticHit = offset is int hitOffset ? _diagnosticRenderer?.HitTest(hitOffset) : null;
-            if (diagnosticHit != null)
-            {
-                hover = string.IsNullOrWhiteSpace(hover)
-                    ? diagnosticHit.Message
-                    : diagnosticHit.Message + System.Environment.NewLine + hover;
-                if (diagnosticHit.AutoFix != null)
-                {
-                    hover += System.Environment.NewLine + "Press Ctrl+. to apply: " + diagnosticHit.AutoFix.Description;
-                }
-            }
-
-            if (string.IsNullOrWhiteSpace(hover))
-            {
-                CloseHoverToolTip();
-                return;
-            }
-
-            CloseHoverToolTip();
-            _hoverToolTip = new ToolTip
-            {
-                Content = new TextBlock
-                {
-                    Text = NormalizeHoverText(hover),
-                    TextWrapping = TextWrapping.Wrap,
-                    MaxWidth = 420,
-                    Margin = new Thickness(4)
-                },
-                Placement = PlacementMode.Mouse,
-                StaysOpen = true,
-                IsOpen = true
-            };
-            EditorPopupTheming.Apply(_hoverToolTip, _themeService.CurrentTheme);
+            var requestId = ++_hoverRequestId;
+            _hoverCts?.Cancel();
+            _hoverCts = new CancellationTokenSource();
+            var token = _hoverCts.Token;
+            _ = QueryHoverAsync(
+                CodeEditor.Text,
+                position.Value.Line - 1,
+                position.Value.Column - 1,
+                sourceFileName,
+                diagnosticHit,
+                requestId,
+                token);
         }
         catch
         {
             CloseHoverToolTip();
         }
+    }
+
+    private async Task QueryHoverAsync(
+        string source,
+        int line,
+        int column,
+        string? sourceFileName,
+        EditorDiagnosticSpan? diagnosticHit,
+        int requestId,
+        CancellationToken token)
+    {
+        string? hover;
+        try
+        {
+            hover = await Task.Run(
+                () => _languageService.GetHoverInformation(source, line, column, sourceFileName, token),
+                token).ConfigureAwait(true);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        catch
+        {
+            hover = null;
+        }
+
+        if (token.IsCancellationRequested || requestId != _hoverRequestId)
+        {
+            return;
+        }
+
+        if (diagnosticHit != null)
+        {
+            hover = string.IsNullOrWhiteSpace(hover)
+                ? diagnosticHit.Message
+                : diagnosticHit.Message + System.Environment.NewLine + hover;
+            if (diagnosticHit.AutoFix != null)
+            {
+                hover += System.Environment.NewLine + "Press Ctrl+. to apply: " + diagnosticHit.AutoFix.Description;
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(hover))
+        {
+            CloseHoverToolTip();
+            return;
+        }
+
+        CloseHoverToolTip();
+        _hoverToolTip = new ToolTip
+        {
+            Content = new TextBlock
+            {
+                Text = NormalizeHoverText(hover),
+                TextWrapping = TextWrapping.Wrap,
+                MaxWidth = 420,
+                Margin = new Thickness(4)
+            },
+            Placement = PlacementMode.Mouse,
+            StaysOpen = true,
+            IsOpen = true
+        };
+        EditorPopupTheming.Apply(_hoverToolTip, _themeService.CurrentTheme);
     }
 
     private void TextArea_MouseHoverStopped(object? sender, MouseEventArgs e)
@@ -934,21 +1126,81 @@ public partial class MainWindow
     {
         var activeDocument = GetActiveDocument();
         var (source, sourceKey) = GetSourceForAnalysis(activeDocument);
-        var diagnostics = _languageService.GetDiagnostics(
+        var typeOptions = _typeAnalysisSettingsService.ToOptions();
+        var isVirtual = IsVirtualDocument(activeDocument);
+        var virtualStart = activeDocument.VirtualStartLine;
+        var virtualEnd = activeDocument.VirtualEndLine;
+        var documentKey = _activeDocumentKey;
+        var requestId = ++_diagnosticsRequestId;
+
+        _diagnosticsCts?.Cancel();
+        _diagnosticsCts = new CancellationTokenSource();
+        var token = _diagnosticsCts.Token;
+
+        _ = QueryDiagnosticsAsync(
             source,
             sourceKey,
-            strictTypesOptions: _typeAnalysisSettingsService.ToOptions());
-        if (IsVirtualDocument(activeDocument))
+            typeOptions,
+            isVirtual,
+            virtualStart,
+            virtualEnd,
+            documentKey,
+            requestId,
+            token);
+    }
+
+    private async Task QueryDiagnosticsAsync(
+        string source,
+        string? sourceKey,
+        StrictTypesOptions typeOptions,
+        bool isVirtual,
+        int virtualStart,
+        int virtualEnd,
+        string documentKey,
+        int requestId,
+        CancellationToken token)
+    {
+        List<Diagnostic> diagnostics;
+        List<DocumentSymbolInfo> outlineSymbols;
+        try
         {
-            diagnostics = _editorDiagnosticsService.FilterForVirtualSection(
-                diagnostics,
-                activeDocument.VirtualStartLine,
-                activeDocument.VirtualEndLine);
+            (diagnostics, outlineSymbols) = await Task.Run(() =>
+            {
+                var found = _languageService.GetDiagnostics(
+                    source,
+                    sourceKey,
+                    token,
+                    typeOptions);
+                if (isVirtual)
+                {
+                    found = _editorDiagnosticsService.FilterForVirtualSection(
+                        found,
+                        virtualStart,
+                        virtualEnd);
+                }
+
+                var symbols = _symbolNavigationService.GetDocumentSymbols(source, sourceKey, token);
+                return (found, symbols);
+            }, token).ConfigureAwait(true);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        catch
+        {
+            return;
+        }
+
+        if (token.IsCancellationRequested || requestId != _diagnosticsRequestId || _activeDocumentKey != documentKey)
+        {
+            return;
         }
 
         UpdateErrorsPanel(diagnostics);
         UpdateDiagnosticSquiggles(diagnostics);
-        RefreshOutline();
+        _outlineSymbols = outlineSymbols;
+        PopulateOutlineTree();
     }
 
     private void UpdateDiagnosticSquiggles(List<Diagnostic> diagnostics)
@@ -1514,11 +1766,55 @@ public partial class MainWindow
             return;
         }
 
+        var (line, column) = GetCursorPosition();
+        var source = CodeEditor.Text;
+        var sourceKey = GetCurrentSourceKey();
+        var documentKey = _activeDocumentKey;
+        var requestId = ++_highlightsRequestId;
+
+        _highlightsCts?.Cancel();
+        _highlightsCts = new CancellationTokenSource();
+        var token = _highlightsCts.Token;
+
+        _ = QueryDocumentHighlightsAsync(source, line, column, sourceKey, documentKey, requestId, token);
+    }
+
+    private async Task QueryDocumentHighlightsAsync(
+        string source,
+        int line,
+        int column,
+        string? sourceKey,
+        string documentKey,
+        int requestId,
+        CancellationToken token)
+    {
+        List<TextSpanInfo> highlights;
         try
         {
-            var (line, column) = GetCursorPosition();
-            var highlights = _symbolNavigationService.GetDocumentHighlights(
-                CodeEditor.Text, line, column, GetCurrentSourceKey());
+            highlights = await Task.Run(
+                () => _symbolNavigationService.GetDocumentHighlights(source, line, column, sourceKey, token),
+                token).ConfigureAwait(true);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        catch
+        {
+            highlights = new List<TextSpanInfo>();
+        }
+
+        if (token.IsCancellationRequested ||
+            requestId != _highlightsRequestId ||
+            _activeDocumentKey != documentKey ||
+            _documentHighlightRenderer == null ||
+            CodeEditor.Document == null)
+        {
+            return;
+        }
+
+        try
+        {
             var segments = new List<SearchMatchSegment>();
             foreach (var span in highlights)
             {

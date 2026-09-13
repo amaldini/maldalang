@@ -26,6 +26,11 @@ public class DecoratorInfo
 
 public class LanguageService : ILanguageService
 {
+    private readonly object _parseCacheLock = new();
+    private string? _parseCacheSource;
+    private string? _parseCacheFileName;
+    private List<Statement>? _parseCacheStatements;
+
     private static readonly Dictionary<string, DecoratorInfo> SupportedDecorators = new(StringComparer.OrdinalIgnoreCase)
     {
         ["PAGE"] = new DecoratorInfo
@@ -335,6 +340,7 @@ public class LanguageService : ILanguageService
             cancellationToken.ThrowIfCancellationRequested();
             var parser = new MaldaLang.Parser.Parser(tokens, sourceFileName);
             var statements = parser.Parse(); // This will collect errors in parser.Errors
+            StoreParsedStatements(source, sourceFileName, statements);
             cancellationToken.ThrowIfCancellationRequested();
             StdLibNamespaceDiagnostics.Validate(statements, diagnostics);
             ImportDiagnostics.Validate(source, sourceFileName, diagnostics, cancellationToken);
@@ -455,10 +461,7 @@ public class LanguageService : ILanguageService
             TypeHintNameIndex? typeHintIndex = null;
             try
             {
-                var hintLexer = new Lexer(source, sourceFileName);
-                var hintTokens = hintLexer.Tokenize();
-                var hintParser = new MaldaLang.Parser.Parser(hintTokens, sourceFileName);
-                var hintStatements = hintParser.Parse();
+                var hintStatements = ParseStatements(source, sourceFileName, cancellationToken);
                 typeHintIndex = TypeHintNameIndex.Build(hintStatements);
                 if (!string.IsNullOrWhiteSpace(sourceFileName))
                 {
@@ -779,12 +782,21 @@ public class LanguageService : ILanguageService
             var activeParam = CountCommasBeforePosition(lines, callLine, callCol, line, column);
 
             List<string>? parameters = null;
-            var lexer = new Lexer(source);
-            var tokens = lexer.Tokenize();
-            var parser = new MaldaLang.Parser.Parser(tokens);
-            var statements = parser.Parse();
+            try
+            {
+                var statements = ParseStatements(source, sourceFileName: null, cancellationToken);
+                parameters = FindFunctionParameters(statements, name);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch
+            {
+                // Incomplete buffers still offer built-in signatures.
+            }
 
-            parameters = FindFunctionParameters(statements, name) ?? GetBuiltInParameters(name);
+            parameters ??= GetBuiltInParameters(name);
             if (parameters == null || parameters.Count == 0)
             {
                 return null;
@@ -1038,25 +1050,26 @@ public class LanguageService : ILanguageService
     private List<CompletionItem> GetMembersForObject(string objectName, string source, int line, int column)
     {
         var members = new List<CompletionItem>();
-        
-        // First, try to find the variable type if objectName is a variable
-        string? resolvedType = null;
+
+        if (TryAddStdLibNamespaceMembers(objectName, members))
+        {
+            return members;
+        }
+
+        List<Statement>? statements = null;
         try
         {
-            var lexer = new Lexer(source);
-            var tokens = lexer.Tokenize();
-            var parser = new MaldaLang.Parser.Parser(tokens);
-            var statements = parser.Parse();
-            
-            var varType = FindVariableType(statements, objectName, line);
-            if (varType != null)
-            {
-                resolvedType = varType;
-            }
+            statements = ParseStatements(source, sourceFileName: null, CancellationToken.None);
         }
         catch
         {
             // Ignore parse errors
+        }
+
+        string? resolvedType = null;
+        if (statements != null)
+        {
+            resolvedType = FindVariableType(statements, objectName, line);
         }
         
         // Use resolved type if found, otherwise use objectName directly
@@ -1157,50 +1170,10 @@ public class LanguageService : ILanguageService
         }
         else if (typeToCheck == "this")
         {
-            // Try to find the current class and its members
-            try
+            if (statements != null)
             {
-                var lexer = new Lexer(source);
-                var tokens = lexer.Tokenize();
-                var parser = new MaldaLang.Parser.Parser(tokens);
-                var statements = parser.Parse();
-                
-                // Find the class we're in
                 var currentClass = FindClassAtPosition(statements, line);
-                if (currentClass != null)
-                {
-                    foreach (var member in currentClass.Members)
-                    {
-                        if (member.Type == MaldaLang.Parser.AST.Declarations.MemberType.Method)
-                        {
-                            var funcDecl = member.Value as MaldaLang.Parser.AST.Declarations.FunctionDeclaration;
-                            if (funcDecl != null)
-                            {
-                                members.Add(new CompletionItem
-                                {
-                                    Label = member.Name,
-                                    Kind = "method",
-                                    Detail = $"function {member.Name}({string.Join(", ", funcDecl.Parameters)})",
-                                    InsertText = member.Name + "()"
-                                });
-                            }
-                        }
-                        else if (member.Type == MaldaLang.Parser.AST.Declarations.MemberType.Field)
-                        {
-                            members.Add(new CompletionItem
-                            {
-                                Label = member.Name,
-                                Kind = "property",
-                                Detail = "field",
-                                InsertText = member.Name
-                            });
-                        }
-                    }
-                }
-            }
-            catch
-            {
-                // Ignore parse errors
+                AddClassMembers(members, currentClass);
             }
         }
         else if (typeToCheck == "Array")
@@ -1216,53 +1189,10 @@ public class LanguageService : ILanguageService
         {
             // r.Ok / Result.Err
         }
-        else
+        else if (statements != null)
         {
-            // Try to find user-defined class members
-            try
-            {
-                var lexer = new Lexer(source);
-                var tokens = lexer.Tokenize();
-                var parser = new MaldaLang.Parser.Parser(tokens);
-                var statements = parser.Parse();
-                
-                // Find class definition
-                var classDecl = FindClassDeclaration(statements, typeToCheck);
-                if (classDecl != null)
-                {
-                    foreach (var member in classDecl.Members)
-                    {
-                        if (member.Type == MaldaLang.Parser.AST.Declarations.MemberType.Method)
-                        {
-                            var funcDecl = member.Value as MaldaLang.Parser.AST.Declarations.FunctionDeclaration;
-                            if (funcDecl != null)
-                            {
-                                members.Add(new CompletionItem
-                                {
-                                    Label = member.Name,
-                                    Kind = "method",
-                                    Detail = $"function {member.Name}({string.Join(", ", funcDecl.Parameters)})",
-                                    InsertText = member.Name + "()"
-                                });
-                            }
-                        }
-                        else if (member.Type == MaldaLang.Parser.AST.Declarations.MemberType.Field)
-                        {
-                            members.Add(new CompletionItem
-                            {
-                                Label = member.Name,
-                                Kind = "property",
-                                Detail = "field",
-                                InsertText = member.Name
-                            });
-                        }
-                    }
-                }
-            }
-            catch
-            {
-                // Ignore parse errors
-            }
+            var classDecl = FindClassDeclaration(statements, typeToCheck);
+            AddClassMembers(members, classDecl);
         }
         
         return members;
@@ -1509,6 +1439,73 @@ public class LanguageService : ILanguageService
         return null;
     }
     
+    private List<Statement> ParseStatements(
+        string source,
+        string? sourceFileName,
+        CancellationToken cancellationToken)
+    {
+        lock (_parseCacheLock)
+        {
+            if (_parseCacheStatements != null &&
+                _parseCacheSource == source &&
+                string.Equals(_parseCacheFileName, sourceFileName, StringComparison.Ordinal))
+            {
+                return _parseCacheStatements;
+            }
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        var lexer = new Lexer(source, sourceFileName);
+        var tokens = lexer.Tokenize();
+        cancellationToken.ThrowIfCancellationRequested();
+        var parser = new MaldaLang.Parser.Parser(tokens, sourceFileName);
+        var statements = parser.Parse();
+        StoreParsedStatements(source, sourceFileName, statements);
+        return statements;
+    }
+
+    private void StoreParsedStatements(string source, string? sourceFileName, List<Statement> statements)
+    {
+        lock (_parseCacheLock)
+        {
+            _parseCacheSource = source;
+            _parseCacheFileName = sourceFileName;
+            _parseCacheStatements = statements;
+        }
+    }
+
+    private static void AddClassMembers(List<CompletionItem> members, ClassDeclaration? classDecl)
+    {
+        if (classDecl == null)
+        {
+            return;
+        }
+
+        foreach (var member in classDecl.Members)
+        {
+            if (member.Type == MemberType.Method && member.Value is FunctionDeclaration funcDecl)
+            {
+                members.Add(new CompletionItem
+                {
+                    Label = member.Name,
+                    Kind = "method",
+                    Detail = $"function {member.Name}({string.Join(", ", funcDecl.Parameters)})",
+                    InsertText = member.Name + "()"
+                });
+            }
+            else if (member.Type == MemberType.Field)
+            {
+                members.Add(new CompletionItem
+                {
+                    Label = member.Name,
+                    Kind = "property",
+                    Detail = "field",
+                    InsertText = member.Name
+                });
+            }
+        }
+    }
+
     private void TryExtractDocumentSymbols(
         string source,
         string? sourceFileName,
@@ -1517,10 +1514,7 @@ public class LanguageService : ILanguageService
         int column,
         CancellationToken cancellationToken)
     {
-        var lexer = new Lexer(source, sourceFileName);
-        var tokens = lexer.Tokenize();
-        var parser = new MaldaLang.Parser.Parser(tokens, sourceFileName);
-        var statements = parser.Parse();
+        var statements = ParseStatements(source, sourceFileName, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
 
         ExtractSymbols(statements, completions, line, column);
@@ -1630,6 +1624,7 @@ public class LanguageService : ILanguageService
             var tokens = lexer.Tokenize();
             var parser = new MaldaLang.Parser.Parser(tokens, sourceFileName);
             var statements = parser.Parse();
+            StoreParsedStatements(source, sourceFileName, statements);
             cancellationToken.ThrowIfCancellationRequested();
             
             // Find symbol at position
