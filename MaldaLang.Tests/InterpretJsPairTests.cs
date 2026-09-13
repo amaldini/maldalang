@@ -254,4 +254,17 @@ public class InterpretJsPairTests
             """,
             "class-augmentation-js");
     }
+
+    [Fact]
+    public void ToJSON_ClassInstancePublicFields_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(
+            """
+            class Point(x, y);
+            var d = parseJSON(toJSON(new Point(3, 4)));
+            io.print(d.x);
+            io.print(d.y);
+            """,
+            "tojson-class-js");
+    }
 }

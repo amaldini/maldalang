@@ -5412,6 +5412,11 @@ public static class BuiltInFunctions
 
     private static string RuntimeValueToJson(RuntimeValue value)
     {
+        return RuntimeValueToJson(value, new HashSet<object>(ReferenceEqualityComparer.Instance));
+    }
+
+    private static string RuntimeValueToJson(RuntimeValue value, HashSet<object> seen)
+    {
         switch (value.Type)
         {
             case MaldaLang.Interpreter.ValueType.String:
@@ -5437,39 +5442,90 @@ public static class BuiltInFunctions
             
             case MaldaLang.Interpreter.ValueType.Array:
                 var arr = value.AsArray();
-                var items = arr.Select(RuntimeValueToJson);
-                return "[" + string.Join(",", items) + "]";
+                if (!seen.Add(arr))
+                    throw new Exception("toJSON() cannot serialize a cyclic value");
+                try
+                {
+                    var items = arr.Select(item => RuntimeValueToJson(item, seen));
+                    return "[" + string.Join(",", items) + "]";
+                }
+                finally
+                {
+                    seen.Remove(arr);
+                }
             
             case MaldaLang.Interpreter.ValueType.Object:
                 var obj = value.AsObject();
-                if (obj is JsonObject jsonObj)
+                if (!seen.Add(obj))
+                    throw new Exception("toJSON() cannot serialize a cyclic value");
+                try
                 {
-                    var props = new List<string>();
-                    foreach (var kvp in jsonObj.GetProperties())
-                    {
-                        var key = JsonSerializer.Serialize(kvp.Key);
-                        var val = RuntimeValueToJson(kvp.Value);
-                        props.Add($"{key}:{val}");
-                    }
-                    return "{" + string.Join(",", props) + "}";
+                    return RuntimeObjectToJson(obj, seen);
                 }
-                if (obj is DictionaryInstance dictObj)
+                finally
                 {
-                    var props = new List<string>();
-                    foreach (var kvp in dictObj.GetEntries())
-                    {
-                        var key = JsonSerializer.Serialize(kvp.Key);
-                        var val = RuntimeValueToJson(kvp.Value);
-                        props.Add($"{key}:{val}");
-                    }
-                    return "{" + string.Join(",", props) + "}";
+                    seen.Remove(obj);
                 }
-                // For regular ObjectInstance, return empty object for now
-                return "{}";
             
             default:
                 return "\"<" + value.Type + ">\"";
         }
+    }
+
+    private static string RuntimeObjectToJson(ObjectInstance obj, HashSet<object> seen)
+    {
+        if (obj is JsonObject jsonObj)
+        {
+            var props = new List<string>();
+            foreach (var kvp in jsonObj.GetProperties())
+            {
+                var key = JsonSerializer.Serialize(kvp.Key);
+                var val = RuntimeValueToJson(kvp.Value, seen);
+                props.Add($"{key}:{val}");
+            }
+            return "{" + string.Join(",", props) + "}";
+        }
+
+        if (obj is DictionaryInstance dictObj)
+        {
+            var props = new List<string>();
+            foreach (var kvp in dictObj.GetEntries())
+            {
+                var key = JsonSerializer.Serialize(kvp.Key);
+                var val = RuntimeValueToJson(kvp.Value, seen);
+                props.Add($"{key}:{val}");
+            }
+            return "{" + string.Join(",", props) + "}";
+        }
+
+        // User class instances only. Built-in ObjectInstance subclasses (HTTP, graphs, …)
+        // keep the previous "{}" dump so internal host state is not leaked.
+        if (obj.GetType() == typeof(ObjectInstance) && obj.Class != null)
+            return ClassInstanceToJson(obj, seen);
+
+        return "{}";
+    }
+
+    private static string ClassInstanceToJson(ObjectInstance instance, HashSet<object> seen)
+    {
+        var order = new List<string>();
+        var values = new Dictionary<string, RuntimeValue>(StringComparer.Ordinal);
+        foreach (var field in instance.Class!.EnumeratePublicInstanceFieldsFromBase())
+        {
+            if (!values.ContainsKey(field.Name))
+                order.Add(field.Name);
+            instance.TryGet(field.Name, out var fieldValue);
+            values[field.Name] = fieldValue ?? RuntimeValue.Null();
+        }
+
+        var props = new List<string>(order.Count);
+        foreach (var name in order)
+        {
+            var key = JsonSerializer.Serialize(name);
+            var val = RuntimeValueToJson(values[name], seen);
+            props.Add($"{key}:{val}");
+        }
+        return "{" + string.Join(",", props) + "}";
     }
     
     private static RuntimeValue BuiltInLoadNativeModule(List<RuntimeValue> args)

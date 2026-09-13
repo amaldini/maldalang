@@ -365,6 +365,11 @@ var csv3 = toCsv(rows, ["name", "score"], {
         <h2>13.7 JSON Functions</h2>
         <pre><code>var jsonStr = toJSON(obj);  // Convert object to JSON string
 var obj = parseJSON('{"name":"Alice","age":30}');  // Parse JSON string to object</code></pre>
+        <p><code>toJSON</code> writes dicts, arrays, and the <strong>public instance fields</strong> of a class (including a primary constructor). Methods and <code>private</code> fields are omitted. A cycle throws. <code>parseJSON</code> always returns a dict — it does not reconstruct the class. Build a new instance yourself if you need methods again.</p>
+        <pre><code data-run="true" data-expect="3\n4">class Point(x, y);
+var d = parseJSON(toJSON(new Point(3, 4)));
+print(d.x);
+print(d.y);</code></pre>
         <p><code>parseJSON</code> parses arbitrary JSON into MALDA values. <code>parseJson(jsonString, schemaName)</code> parses JSON and validates it against a registered <code>schema</code> declaration, throwing on mismatch.</p>
         <pre><code>schema Answer {
     text: string;

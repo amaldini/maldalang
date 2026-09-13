@@ -1565,6 +1565,8 @@
         });
         return copy;
       }
+      // Class instances: own enumerable fields only (methods live on the prototype).
+      // Matches interpreter toJSON: public instance data, no type tag.
       return item;
     });
   }

@@ -231,7 +231,7 @@ var c = new Counter();
 io.print(c.inc());
 ```
 
-A parameter list after the class name is a primary constructor: each parameter becomes a public field, and `new Name(...)` assigns them. The body is optional (`class Point(x, y);`) and may add methods. Do not mix this form with `extends` or with an explicit `function Point(...)`.
+A parameter list after the class name is a primary constructor: each parameter becomes a public field, and `new Name(...)` assigns them. The body is optional (`class Point(x, y);`) and may add methods. Do not mix this form with `extends` or with an explicit `function Point(...)`. `toJSON` dumps those public fields (and other public instance fields); `parseJSON` returns a dict, not a class instance.
 
 ```malda
 class Point(x, y) {

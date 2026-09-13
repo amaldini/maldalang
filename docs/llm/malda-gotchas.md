@@ -16,6 +16,7 @@ claim a program works.
 | You write | What actually happens | Write this instead |
 |-----------|----------------------|--------------------|
 | `print("n is {n}")` | Prints the literal `n is {n}`. A plain string does **not** interpolate. IDE/LSP **malda-interp** Warning (prompt bodies still use `{name}` templates). | `io.print($"n is {n}")` or `io.print("n is " + string(n))` |
+| `var p2 = parseJSON(toJSON(new Person("Ada", 36)))` expecting a `Person` | `toJSON` dumps **public instance fields** only. `parseJSON` always returns a dict — methods, `private` fields, and identity are gone. | `new Person(data.name, data.age)` after parse. Persist a schema-shaped dict when you can |
 | `var raw = io.input("? ");` in a loop | At end of input this returns `""` — **not** `null`, and it does not exit. Every later call returns `""` too, so a loop that only advances on valid input never terminates. | Treat empty as end/quit: `if (str.trim(raw) == "") { break; }` |
 | `AnsiConsole.markup("line one")` | No trailing newline, so consecutive calls smear onto one line. | `AnsiConsole.markupLine("line one")` |
 | `parseJson(text)` | A schema-validating parser for LLM output, not a JSON reader. One-arg calls now error and name `parseJSON`; two-arg `parseJSON` names `parseJson`. | `parseJSON(text)` — capital JSON |

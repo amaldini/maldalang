@@ -1607,4 +1607,66 @@ print(""run="" + string(ran.success) + "","" + string(ran.output));
             """,
             "private-base-field-initializer");
     }
+
+    [Fact]
+    public void ToJSON_ClassInstancePublicFields_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            class Point(x, y);
+            var d = parseJSON(toJSON(new Point(3, 4)));
+            io.print(d.x);
+            io.print(d.y);
+            """,
+            "tojson-primary-ctor");
+    }
+
+    [Fact]
+    public void ToJSON_ClassInstanceSkipsPrivateAndMethods_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            class Box {
+                public var name;
+                private var secret;
+                function Box(name, secret) {
+                    this.name = name;
+                    this.secret = secret;
+                }
+                function label() {
+                    return this.name;
+                }
+            }
+            var d = parseJSON(toJSON(new Box("Ada", 99)));
+            io.print(d.name);
+            io.print(d.secret == null);
+            io.print(d.label == null);
+            """,
+            "tojson-skip-private-methods");
+    }
+
+    [Fact]
+    public void ToJSON_NestedClassAndInheritance_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            class Animal {
+                public var name;
+                function Animal(name) {
+                    this.name = name;
+                }
+            }
+            class Dog extends Animal {
+                public var breed;
+                function Dog(name, breed) {
+                    super(name);
+                    this.breed = breed;
+                }
+            }
+            var d = parseJSON(toJSON(new Dog("Rex", "lab")));
+            io.print(d.name);
+            io.print(d.breed);
+            """,
+            "tojson-inherited-fields");
+    }
 }

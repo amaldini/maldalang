@@ -366,6 +366,11 @@ var csv3 = toCsv(rows, ["name", "score"], {
         <h2>13.7 Funzioni JSON</h2>
         <pre><code>var jsonStr = toJSON(obj);  // Convert object to JSON string
 var obj = parseJSON('{"name":"Alice","age":30}');  // Parse JSON string to object</code></pre>
+        <p><code>toJSON</code> scrive dict, array e i <strong>campi di istanza pubblici</strong> di una classe (incluso un costruttore primario). I metodi e i campi <code>private</code> vengono omessi. Un ciclo solleva un'eccezione. <code>parseJSON</code> restituisce sempre un dict — non ricostruisce la classe. Crea una nuova istanza se ti servono di nuovo i metodi.</p>
+        <pre><code data-run="true" data-expect="3\n4">class Point(x, y);
+var d = parseJSON(toJSON(new Point(3, 4)));
+print(d.x);
+print(d.y);</code></pre>
         <p><code>parseJSON</code> analizza JSON arbitrario in valori MALDA. <code>parseJson(jsonString, schemaName)</code> analizza JSON e lo valida rispetto a una dichiarazione <code>schema</code> registrata, sollevando un'eccezione in caso di mancata corrispondenza.</p>
         <pre><code>schema Answer {
     text: string;

@@ -3,6 +3,7 @@
 
 namespace MaldaLang.Interpreter;
 
+using System.Collections.Generic;
 using MaldaLang.Parser.AST.Declarations;
 
 public class ClassDefinition
@@ -51,5 +52,25 @@ public class ClassDefinition
             return Superclass.FindField(name);
         
         return null;
+    }
+
+    /// <summary>
+    /// Public (or default-access) instance fields from the root superclass down to this class.
+    /// Used by <c>toJSON</c> so class instances dump data, not <c>{}</c>.
+    /// </summary>
+    public IEnumerable<ClassMember> EnumeratePublicInstanceFieldsFromBase()
+    {
+        if (Superclass != null)
+        {
+            foreach (var field in Superclass.EnumeratePublicInstanceFieldsFromBase())
+                yield return field;
+        }
+
+        foreach (var field in Fields.Values)
+        {
+            if (field.IsStatic || field.Access == AccessModifier.Private)
+                continue;
+            yield return field;
+        }
     }
 }
