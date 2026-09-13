@@ -598,6 +598,23 @@ public class SymbolNavigationService : ISymbolNavigationService
             }
         }
 
+        foreach (var statement in statements)
+        {
+            if (statement is not ClassDeclaration classDeclaration)
+                continue;
+
+            foreach (var member in classDeclaration.Members)
+            {
+                if (!string.Equals(member.Name, name, StringComparison.Ordinal))
+                    continue;
+
+                if (member.Value is FunctionDeclaration functionDeclaration)
+                    return (functionDeclaration.Line, functionDeclaration.Column, functionDeclaration.Name);
+
+                return (classDeclaration.Line, classDeclaration.Column, member.Name);
+            }
+        }
+
         return null;
     }
 

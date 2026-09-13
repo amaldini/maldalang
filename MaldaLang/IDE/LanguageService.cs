@@ -1788,10 +1788,19 @@ public class LanguageService : ILanguageService
             {
                 return $"prompt {promptDecl.Name}({string.Join(", ", promptDecl.Parameters)})";
             }
-            if (stmt is MaldaLang.Parser.AST.Declarations.ClassDeclaration classDecl && 
-                classDecl.Name == name)
+            if (stmt is MaldaLang.Parser.AST.Declarations.ClassDeclaration classDecl)
             {
-                return $"class {classDecl.Name}";
+                if (classDecl.Name == name)
+                    return $"class {classDecl.Name}";
+
+                foreach (var member in classDecl.Members)
+                {
+                    if (!string.Equals(member.Name, name, StringComparison.Ordinal))
+                        continue;
+                    if (member.Value is FunctionDeclaration memberFunc)
+                        return $"function {memberFunc.Name}({string.Join(", ", memberFunc.Parameters)})";
+                    return member.IsStatic ? $"static field {member.Name}" : $"field {member.Name}";
+                }
             }
             if (stmt is WorkflowDeclaration workflowDecl &&
                 workflowDecl.Name == name)
