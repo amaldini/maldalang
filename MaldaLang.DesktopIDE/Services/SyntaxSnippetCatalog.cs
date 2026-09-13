@@ -36,6 +36,12 @@ public static class SyntaxSnippetCatalog
                 "Subclass with super() in the constructor.",
                 $"class Animal {{\n\tvar name;\n\n\tfunction Animal(name) {{\n\t\tthis.name = name;\n\t}}\n}}\n\nclass Dog extends Animal {{\n\tfunction Dog(name) {{\n\t\tsuper({CaretMarker}name);\n\t}}\n}}"),
             Snippet(
+                "class-augment",
+                "OOP",
+                "Class Augmentation",
+                "A later class Name { … } appends members. No primary constructor, no new extends, no repeated names.",
+                $"class Point(x, y);\nclass Point {{\n\tfunction total() {{\n\t\treturn this.x + this.y;\n\t}}\n}}\nio.print(new Point({CaretMarker}3, 4).total());"),
+            Snippet(
                 "function",
                 "Declarations",
                 "Function",
@@ -72,6 +78,18 @@ public static class SyntaxSnippetCatalog
                 "Wall-clock bound plus token/tool budget on a prompt.",
                 "schema Answer {\n\ttext: string;\n}\n\n@within(5000)\n@budget(tokens: 4000, tools: 8)\nprompt answer(q) -> Answer {\n\tuser: \"Question: {q}\"\n}\n\nvar inst = answer(\"" + CaretMarker + "What is @budget?\");"),
             Snippet(
+                "prompt-attachments",
+                "Prompts",
+                "Prompt Attachments",
+                "Additive attachments: on a prompt. user/system stay strings. In-process GGUF throws; use an HTTP vision client.",
+                "prompt describeInvoice(photo, invoice) {\n\tsystem: \"Extract fields. Reply JSON only.\";\n\tuser: \"What is the total on these documents?\";\n\tattachments: [\n\t\t{ kind: \"image\", path: photo },\n\t\t{ kind: \"pdf\", path: invoice }\n\t];\n}\n\nvar inst = describeInvoice(\"" + CaretMarker + "receipts/photo.png\", \"invoices/a.pdf\");"),
+            Snippet(
+                "prompt-program",
+                "Prompts",
+                "Prompt → program(Api)",
+                "Typed prompt that must return a closed api plan. Fixture-test with evalPrompt, then runProgram.",
+                "api Calc {\n\tfunction add(a: number, b: number);\n\tfunction mul(a: number, b: number);\n}\n\nfunction add(a, b) { return a + b; }\nfunction mul(a, b) { return a * b; }\n\nprompt solve(expr) -> program(Calc) {\n\tsystem: \"Translate into Calc steps. JSON only.\";\n\tuser: expr;\n}\n\nvar fixture = parseJSON(\"\"\"\n{\"@api\":\"Calc\",\"steps\":[{\"call\":\"add\",\"args\":[2,3],\"as\":\"t0\"},{\"call\":\"mul\",\"args\":[\"$t0\",4],\"as\":\"r\"}],\"return\":\"$r\"}\n\"\"\");\nvar checked = evalPrompt(solve(\"" + CaretMarker + "(2 + 3) * 4\"), fixture);\nif (checked.ok) {\n\tio.print(runProgram(checked.data));\n} else {\n\tio.print(checked.error);\n}"),
+            Snippet(
                 "if",
                 "Statements",
                 "If",
@@ -102,6 +120,12 @@ public static class SyntaxSnippetCatalog
                 "Alternative foreach syntax over a collection.",
                 $"foreach (var item in collection) {{\n\t{CaretMarker}\n}}"),
             Snippet(
+                "for-await",
+                "Loops",
+                "For-Await Loop",
+                "Iterate stream() chunks. In-process GGUF is buffered, not live tokens.",
+                $"var n = 0;\nfor await (var chunk in stream({CaretMarker}\"hello\")) {{\n\tn = n + 1;\n}}"),
+            Snippet(
                 "lambda-expression",
                 "Functional",
                 "Lambda Expression",
@@ -125,6 +149,12 @@ public static class SyntaxSnippetCatalog
                 "Const",
                 "Declare an immutable binding.",
                 $"const limit = {CaretMarker}42;"),
+            Snippet(
+                "const-name",
+                "Basics",
+                "Const (Name-as-String)",
+                "Bare const BUY; is const BUY = \"BUY\". var BUY; is a parse error and does not become that string.",
+                $"const BUY, SELL;\nmatch \"BUY\" {{\n\tcase BUY: io.print(\"buy\");\n\tcase SELL: io.print(\"sell\");\n\tdefault: io.print({CaretMarker}\"other\");\n}}"),
             Snippet(
                 "null-safe",
                 "Basics",
@@ -294,6 +324,12 @@ public static class SyntaxSnippetCatalog
                 "validate() returns { ok, data } or { ok: false, error } — it does not throw.",
                 "schema Item {\n\tid: int;\n\tlabel: string;\n}\n\nvar candidate = dict { \"id\": 1, \"label\": \"widget\" };\nvar checked = validate(\"Item\", candidate);\nif (checked.ok) {\n\tio.print(checked.data.label);\n} else {\n\tio.print(checked.error);\n}" + CaretMarker),
             Snippet(
+                "as-variant",
+                "Types",
+                "asVariant",
+                "validate() leaves a tagged dict. asVariant coerces it to a variant for match.",
+                "type Intent = Search(query: string) | Buy(sku: string, qty: int) | Help();\nvar tagged = dict { \"tag\": \"Buy\", \"sku\": \"SKU-9\", \"qty\": 2 };\nvar checked = validate(\"Intent\", tagged);\nif (checked.ok) {\n\tmatch asVariant(\"Intent\", checked.data) {\n\t\tcase Search(q): io.print($\"search {q}\");\n\t\tcase Buy(sku, qty): io.print($\"buy {sku} x {qty}\");\n\t\tcase Help(): io.print(\"help\");\n\t}\n} else {\n\tio.print(" + CaretMarker + "checked.error);\n}"),
+            Snippet(
                 "api",
                 "Types",
                 "API + runProgram",
@@ -363,8 +399,20 @@ public static class SyntaxSnippetCatalog
                 "export",
                 "Modules",
                 "Export Function",
-                "Export a binding. Also use export type / export schema when those should leave the module.",
+                "Export a function. Use export type / export schema when those should leave the module.",
                 $"export function add(a, b) {{\n\treturn a + {CaretMarker}b;\n}}"),
+            Snippet(
+                "export-type",
+                "Modules",
+                "Export Type",
+                "Export a sum type. Selective import binds the type namespace (Result.Ok), not flattened constructors.",
+                $"export type Result = Ok(value) | Err(msg);{CaretMarker}"),
+            Snippet(
+                "export-schema",
+                "Modules",
+                "Export Schema",
+                "Export a schema. Once any export exists, unmarked types/schemas drop off the module surface.",
+                $"export schema Contact {{\n\tname: string;\n}}{CaretMarker}"),
             Snippet(
                 "get-route",
                 "Web",
@@ -417,8 +465,20 @@ public static class SyntaxSnippetCatalog
                 "tool",
                 "Decorators",
                 "@Tool",
-                "Register a function as an LLM tool.",
+                "Register a function as an LLM tool. Two arguments advertises all-string properties and does not host-check args.",
                 $"@Tool(\"greet\", \"Greets someone by name\")\nfunction greet(name) {{\n\treturn \"Hello, \" + {CaretMarker}name;\n}}"),
+            Snippet(
+                "tool-schema",
+                "Decorators",
+                "@Tool (Schema)",
+                "LLM tool with a schema name. Host validates args on agent invoke and tool.execute.",
+                "schema GreetArgs {\n\tname: string;\n}\n\n@Tool(\"greet\", \"Greets someone by name\", \"GreetArgs\")\nfunction greet(name) {\n\treturn \"Hello, \" + " + CaretMarker + "name;\n}"),
+            Snippet(
+                "mcptool",
+                "Decorators",
+                "@MCPTool",
+                "MCP tool. Optional third argument is a schema name; the host validates args before the body.",
+                "schema AddArgs {\n\ta: int;\n\tb: int;\n}\n\n@MCPTool(\"add\", \"Adds two numbers\", \"AddArgs\")\nfunction add(a, b) {\n\treturn int(a) + int(b);\n}\n\nvar server = new MCPServer();\nvar tools = server.getTools();\nio.print(" + CaretMarker + "tools[0].name);"),
             Snippet(
                 "pure-effects",
                 "Decorators",
@@ -437,6 +497,30 @@ public static class SyntaxSnippetCatalog
                 "Property Test",
                 "Property-based check. Declaring property switches the runner to property mode.",
                 $"property intIdentity(x) {{\n\treturn (x + 0) == {CaretMarker}x;\n}}"),
+            Snippet(
+                "suite",
+                "Agentic",
+                "Eval Suite",
+                "Skipped by malda run. Execute with malda eval. @samples / @threshold are optional on a case.",
+                "schema Card {\n\tname: string;\n}\n\nprompt extract(raw) -> Card {\n\tuser: raw;\n}\n\nsuite \"extract\" {\n\t@samples(3) @threshold(0.9)\n\tcase \"offline shape\" {\n\t\tvar checked = evalPrompt(extract(\"x\"), dict { \"name\": \"Ada\" });\n\t\texpect(checked.ok);\n\t}\n}\n\nio.print(\"" + CaretMarker + "ok\");"),
+            Snippet(
+                "context",
+                "Agentic",
+                "Context",
+                "Declared conversation context. Contextual keyword — var context = 1 still parses.",
+                "context Session {\n\tbudget: 800 tokens;\n\tpin: systemFacts;\n\tretain: last 2;\n\tevict: oldest;\n}\n\nvar s = new Session();\ns.add(\"user\", \"" + CaretMarker + "hi\");"),
+            Snippet(
+                "policy",
+                "Agentic",
+                "Policy",
+                "File-level capability policy. Not @effects. Denied cap consume throws ToolDenied.",
+                "policy {\n\tfs: readOnly under \"./work\";\n\tnet: allow \"api.example.com\";\n\tshell: deny;\n\tmcp: allow \"local\";\n}\n\nio.print(\"" + CaretMarker + "ok\");"),
+            Snippet(
+                "within-statement",
+                "Agentic",
+                "Within Statement",
+                "Cancel a block after a duration. Units required (ms / s / m). Distinct from the @within decorator.",
+                $"within (30s) {{\n\t{CaretMarker}\n}}"),
             Snippet(
                 "async-await",
                 "Statements",

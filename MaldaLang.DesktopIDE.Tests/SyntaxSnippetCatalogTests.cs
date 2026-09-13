@@ -81,7 +81,21 @@ public class SyntaxSnippetCatalogTests
             "pure-effects",
             "cap-read",
             "async-await",
-            "input"
+            "input",
+            "class-augment",
+            "const-name",
+            "prompt-attachments",
+            "prompt-program",
+            "for-await",
+            "as-variant",
+            "export-type",
+            "export-schema",
+            "tool-schema",
+            "mcptool",
+            "suite",
+            "context",
+            "policy",
+            "within-statement"
         ];
 
         var missing = required.Where(id => !ids.Contains(id)).ToList();
